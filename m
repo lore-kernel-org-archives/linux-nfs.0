@@ -1,16 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:36298 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751597Ab0IQQaB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:30:01 -0400
-Received: by gyd8 with SMTP id 8so778993gyd.19
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:30:01 -0700 (PDT)
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:47907 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751783Ab0IQQ1O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:27:14 -0400
+Received: by mail-gx0-f174.google.com with SMTP id 23so788438gxk.19
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:27:14 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 22/22] NFS: Fix hdrlen calculation in NFSv4's decode_read()
+Subject: [PATCH 06/22] NFS: Move and update xdr_encode_foo() functions that
+	we're keeping
 To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Date: Fri, 17 Sep 2010 12:29:58 -0400
-Message-ID: <20100917162958.19761.85898.stgit@seurat.1015granger.net>
+Date: Fri, 17 Sep 2010 12:27:11 -0400
+Message-ID: <20100917162711.19761.92894.stgit@seurat.1015granger.net>
 In-Reply-To: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
 References: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
@@ -18,26 +19,89 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-When computing the length of the header, be sure to include the
-four octets consumed by "count".
+Clean up.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs4xdr.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/nfs/nfs2xdr.c |   59 ++++++++++++++++++++++++++++++------------------------
+ 1 files changed, 33 insertions(+), 26 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index e1ed89e..011f144 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4180,7 +4180,7 @@ static int decode_read(struct xdr_stream *xdr, struct rpc_rqst *req, struct nfs_
- 		goto out_overflow;
- 	eof = be32_to_cpup(p++);
- 	count = be32_to_cpup(p);
--	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
-+	hdrlen = (u8 *) xdr->p - (u8 *) iov->iov_base;
- 	recvd = req->rq_rcv_buf.len - hdrlen;
- 	if (count > recvd) {
- 		dprintk("NFS: server cheating in read reply: "
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index e4d6c8b..fdfa3ef 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -91,32 +91,6 @@ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
+ }
+ 
+ static inline __be32*
+-xdr_encode_time(__be32 *p, const struct timespec *timep)
+-{
+-	*p++ = htonl(timep->tv_sec);
+-	/* Convert nanoseconds into microseconds */
+-	*p++ = htonl(timep->tv_nsec ? timep->tv_nsec / 1000 : 0);
+-	return p;
+-}
+-
+-static inline __be32*
+-xdr_encode_current_server_time(__be32 *p, const struct timespec *timep)
+-{
+-	/*
+-	 * Passing the invalid value useconds=1000000 is a
+-	 * Sun convention for "set to current server time".
+-	 * It's needed to make permissions checks for the
+-	 * "touch" program across v2 mounts to Solaris and
+-	 * Irix boxes work correctly. See description of
+-	 * sattr in section 6.1 of "NFS Illustrated" by
+-	 * Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5
+-	 */
+-	*p++ = htonl(timep->tv_sec);
+-	*p++ = htonl(1000000);
+-	return p;
+-}
+-
+-static inline __be32*
+ xdr_decode_time(__be32 *p, struct timespec *timep)
+ {
+ 	timep->tv_sec = ntohl(*p++);
+@@ -179,6 +153,39 @@ static void encode_fhandle(struct xdr_stream *xdr, const struct nfs_fh *fh)
+ }
+ 
+ /*
++ * 2.3.4.  timeval
++ *
++ *	struct timeval {
++ *		unsigned int seconds;
++ *		unsigned int useconds;
++ *	};
++ */
++static __be32 *xdr_encode_time(__be32 *p, const struct timespec *timep)
++{
++	*p++ = cpu_to_be32(timep->tv_sec);
++	if (timep->tv_nsec != 0)
++		*p++ = cpu_to_be32(timep->tv_nsec / NSEC_PER_USEC);
++	else
++		*p++ = cpu_to_be32(0);
++	return p;
++}
++
++/*
++ * Passing the invalid value useconds=1000000 is a Sun convention for
++ * "set to current server time".  It's needed to make permissions checks
++ * for the "touch" program across v2 mounts to Solaris and Irix servers
++ * work correctly.  See description of sattr in section 6.1 of "NFS
++ * Illustrated" by Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5.
++ */
++static __be32 *xdr_encode_current_server_time(__be32 *p,
++					      const struct timespec *timep)
++{
++	*p++ = cpu_to_be32(timep->tv_sec);
++	*p++ = cpu_to_be32(1000000);
++	return p;
++}
++
++/*
+  * 2.3.6.  sattr
+  *
+  *	struct sattr {
 
