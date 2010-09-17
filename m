@@ -1,253 +1,347 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58313 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24490 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932481Ab0IGUD4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Sep 2010 16:03:56 -0400
-Received: from [10.58.61.36] (panchal1-lxp.hq.netapp.com [10.58.61.36] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o87K3tmO027444
-	for <linux-nfs@vger.kernel.org>; Tue, 7 Sep 2010 13:03:55 -0700 (PDT)
-Message-ID: <4C869AAB.40004@netapp.com>
-Date: Tue, 07 Sep 2010 16:03:55 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH 6/6] NFS: readdir with vmapped pages
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752125Ab0IQWQz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 18:16:55 -0400
+Subject: Re: [PATCH] nfs: introduce mount option '-olocal_lock' to make
+ locks local
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Suresh Jayaraman <sjayaraman@suse.de>
+Cc: Neil Brown <neilb@suse.de>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+In-Reply-To: <4C91B5B5.2040603@suse.de>
+References: <4C91B5B5.2040603@suse.de>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 17 Sep 2010 18:15:49 -0400
+Message-ID: <1284761749.16553.18.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-NFS readdir with vmapped pages
+On Thu, 2010-09-16 at 11:44 +0530, Suresh Jayaraman wrote:
+> Hi Trond,
+> 
+> I'm resending this patch as a separate email as I have not heard from you.
+> 
+> Changes since last post:
+>   - remove unneeded NFS_MOUNT_NONLM flag checks from do_getlk()/do_setlk()/do_unlck
+>   - update comments to include the new mount option
+> 
 
-We can use vmapped pages to read more information from the network at once.
-This will reduce the number of calls needed to complete a readdir.
+Hi Suresh,
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 4e7df2a..dde5a89 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -901,8 +901,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
- 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
- 
- 	server->dtsize = nfs_block_size(fsinfo->dtpref, NULL);
--	if (server->dtsize > PAGE_CACHE_SIZE)
--		server->dtsize = PAGE_CACHE_SIZE;
-+	if (server->dtsize > PAGE_CACHE_SIZE * NFS_MAX_READDIR_PAGES)
-+		server->dtsize = PAGE_CACHE_SIZE * NFS_MAX_READDIR_PAGES;
- 	if (server->dtsize > server->rsize)
- 		server->dtsize = server->rsize;
- 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 6971946..ece0526 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -278,7 +278,7 @@ exit:
- 
- /* Fill a page with xdr information before transferring to the cache page */
- static inline
--int nfs_readdir_xdr_filler(struct page *xdr_page, nfs_readdir_descriptor_t *desc,
-+int nfs_readdir_xdr_filler(struct page **pages, nfs_readdir_descriptor_t *desc,
- 			struct nfs_entry *entry, struct file *file, struct inode *inode)
- {
- 	struct rpc_cred	*cred = nfs_file_cred(file);
-@@ -288,7 +288,7 @@ int nfs_readdir_xdr_filler(struct page *xdr_page, nfs_readdir_descriptor_t *desc
-  again:
- 	timestamp = jiffies;
- 	gencount = nfs_inc_attr_generation_counter();
--	error = NFS_PROTO(inode)->readdir(file->f_path.dentry, cred, entry->cookie, xdr_page,
-+	error = NFS_PROTO(inode)->readdir(file->f_path.dentry, cred, entry->cookie, pages,
- 					  NFS_SERVER(inode)->dtsize, desc->plus);
- 	if (error < 0) {
- 		/* We requested READDIRPLUS, but the server doesn't grok it */
-@@ -388,22 +388,53 @@ out:
- /* Perform conversion from xdr to cache array */
- static inline
- void nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *entry,
--				struct page *xdr_page, struct page *page)
-+				void *xdr_page, struct page *page)
- {
--	__be32 *ptr = kmap(xdr_page);
-+	__be32 *ptr = xdr_page;
- 	while (xdr_decode(desc, entry, &ptr) == 0) {
- 		if (nfs_readdir_add_to_array(entry, page) == -1)
- 			break;
- 		if (desc->plus == 1)
- 			nfs_prime_dcache(desc->file->f_path.dentry, entry);
- 	}
--	kunmap(xdr_page);
-+}
-+
-+static inline
-+void nfs_readdir_free_large_page(void *ptr, struct page **pages)
-+{
-+	unsigned int i;
-+	if (ptr)
-+		vm_unmap_ram(ptr, NFS_MAX_READDIR_PAGES);
-+	for (i = 0; i < NFS_MAX_READDIR_PAGES; i++)
-+		put_page(pages[i]);
-+}
-+
-+/*
-+ * nfs_readdir_large_page will allocate pages that must be freed with a call
-+ * to nfs_readdir_free_large_page
-+ */
-+static inline
-+void *nfs_readdir_large_page(struct page **pages)
-+{
-+	void *ptr = NULL;
-+	struct page *page = NULL;
-+	int i;
-+	for (i = 0; i < NFS_MAX_READDIR_PAGES; i++) {
-+		page = alloc_page(GFP_KERNEL);
-+		pages[i] = page;
-+	}
-+
-+	ptr = vm_map_ram(pages, NFS_MAX_READDIR_PAGES, 0, PAGE_KERNEL);
-+	if (IS_ERR_OR_NULL(ptr))
-+		nfs_readdir_free_large_page(ptr, pages);
-+	return ptr;
- }
- 
- static
- int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page, struct inode *inode)
- {
--	struct page *xdr_page;
-+	struct page *pages[NFS_MAX_READDIR_PAGES];
-+	void *pages_ptr = NULL;
- 	struct nfs_entry entry;
- 	struct file	*file = desc->file;
- 	struct nfs_cache_array *array;
-@@ -416,6 +447,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 	entry.fattr = nfs_alloc_fattr();
- 	if (entry.fh == NULL || entry.fattr == NULL)
- 		goto out;
-+	printk(KERN_DEBUG "%d %s %s", __LINE__, __FILE__, __func__);
- 
- 	array = nfs_readdir_get_array(page);
- 	memset(array, 0, sizeof(struct nfs_cache_array));
-@@ -426,18 +458,18 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 		goto out;
- 	}
- 
--	xdr_page = alloc_page(GFP_KERNEL);
--	if (!xdr_page)
-+	pages_ptr = nfs_readdir_large_page(pages);
-+	if (!pages_ptr)
- 		goto out_put_page;
- 	do {
--		status = nfs_readdir_xdr_filler(xdr_page, desc, &entry, file, inode);
-+		status = nfs_readdir_xdr_filler(pages, desc, &entry, file, inode);
- 		if (status < 0)
- 			break;
--		nfs_readdir_page_filler(desc, &entry, xdr_page, page);
-+		nfs_readdir_page_filler(desc, &entry, pages_ptr, page);
- 	} while (array->eof_index < 0 && array->size < MAX_READDIR_ARRAY);
- 
- out_put_page:
--	put_page(xdr_page);
-+	nfs_readdir_free_large_page(pages_ptr, pages);
- out:
- 	nfs_free_fattr(entry.fattr);
- 	nfs_free_fhandle(entry.fh);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index c961bc9..f64382c 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -63,6 +63,12 @@ struct nfs_clone_mount {
- #define NFS_UNSPEC_PORT		(-1)
- 
- /*
-+ * Maximum number of pages that readdir can use for creating
-+ * a vmapped array of pages.
-+ */
-+#define NFS_MAX_READDIR_PAGES 8
-+
-+/*
-  * In-kernel mount arguments
-  */
- struct nfs_parsed_mount_data {
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index fabb4f2..033ed04 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -611,7 +611,7 @@ out:
-  */
- static int
- nfs3_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
--		  u64 cookie, struct page *page, unsigned int count, int plus)
-+		  u64 cookie, struct page **pages, unsigned int count, int plus)
- {
- 	struct inode		*dir = dentry->d_inode;
- 	__be32			*verf = NFS_COOKIEVERF(dir);
-@@ -621,7 +621,7 @@ nfs3_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- 		.verf		= {verf[0], verf[1]},
- 		.plus		= plus,
- 		.count		= count,
--		.pages		= &page
-+		.pages		= pages
- 	};
- 	struct nfs3_readdirres	res = {
- 		.verf		= verf,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 089da5b..479f422 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2896,12 +2896,12 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
- }
- 
- static int _nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
--                  u64 cookie, struct page *page, unsigned int count, int plus)
-+		u64 cookie, struct page **pages, unsigned int count, int plus)
- {
- 	struct inode		*dir = dentry->d_inode;
- 	struct nfs4_readdir_arg args = {
- 		.fh = NFS_FH(dir),
--		.pages = &page,
-+		.pages = pages,
- 		.pgbase = 0,
- 		.count = count,
- 		.bitmask = NFS_SERVER(dentry->d_inode)->attr_bitmask,
-@@ -2932,14 +2932,14 @@ static int _nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- }
- 
- static int nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
--                  u64 cookie, struct page *page, unsigned int count, int plus)
-+		u64 cookie, struct page **pages, unsigned int count, int plus)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dentry->d_inode),
- 				_nfs4_proc_readdir(dentry, cred, cookie,
--					page, count, plus),
-+					pages, count, plus),
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 08ef912..f2e2f97 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4225,7 +4225,7 @@ static int decode_readdir(struct xdr_stream *xdr, struct rpc_rqst *req, struct n
- 		pglen = recvd;
- 	xdr_read_pages(xdr, pglen);
- 
--	BUG_ON(pglen + readdir->pgbase > PAGE_CACHE_SIZE);
-+	BUG_ON(pglen + readdir->pgbase > PAGE_CACHE_SIZE * NFS_MAX_READDIR_PAGES);
- 	kaddr = p = kmap_atomic(page, KM_USER0);
- 	end = p + ((pglen + readdir->pgbase) >> 2);
- 	entry = p;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index fc46192..7d8cafa 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1044,7 +1044,7 @@ struct nfs_rpc_ops {
- 	int	(*mkdir)   (struct inode *, struct dentry *, struct iattr *);
- 	int	(*rmdir)   (struct inode *, struct qstr *);
- 	int	(*readdir) (struct dentry *, struct rpc_cred *,
--			    u64, struct page *, unsigned int, int);
-+			    u64, struct page **, unsigned int, int);
- 	int	(*mknod)   (struct inode *, struct dentry *, struct iattr *,
- 			    dev_t);
- 	int	(*statfs)  (struct nfs_server *, struct nfs_fh *,
+Just a couple of comments:
+
+      * Firstly the legacy binary mount interface uses
+        NFS_MOUNT_NONLM=0x200, so we cannot change that value. What I
+        was suggesting was rather that we just parse it to mean
+        NFS_MOUNT_LOCAL_FLOCK | NFS_MOUNT_LOCAL_FCNTL.
+      * Have you tested this with NFSv4? I think I asked you this
+        previously, but I haven't seen an answer. I ask because -onolock
+        used to cause NFSv4 reboot recovery to Oops since the struct
+        file_lock didn't have any associated nfsv4 lock state. I just
+        want to make sure we're not re-enabling that bug.
+
+Cheers
+  Trond
+
+> Thanks,
+> Suresh Jayaraman
+> ---
+> 
+> NFS clients since 2.6.12 support flock locks by emulating fcntl byte-range
+> locks. Due to this, some windows applications which seem to use both flock
+> (share mode lock mapped as flock by Samba) and fcntl locks sequentially on
+> the same file, can't lock as they falsely assume the file is already locked.
+> The problem was reported on a setup with windows clients accessing excel files
+> on a Samba exported share which is originally a NFS mount from a NetApp filer.
+> 
+> Older NFS clients (< 2.6.12) did not see this problem as flock locks were
+> considered local. To support legacy flock behavior, this patch adds a mount
+> option "-olocal_lock=" which can take the following values:
+> 
+>    'none'  		- Neither flock locks nor POSIX locks are local
+>    'flock' 		- flock locks are local
+>    'posix' 		- fcntl/POSIX locks are local
+>    'all'		- Both flock locks and POSIX locks are local
+> 
+> Testing:
+> 
+> This patch was tested by using -olocal_lock option with different values and
+> the NLM calls were noted from the network packet captured.
+> 
+>    'none'  - NLM calls were seen during both flock() and fcntl(), flock lock
+>    	     was granted, fcntl was denied
+>    'flock' - no NLM calls for flock(), NLM call was seen for fcntl(),
+>    	     granted
+>    'posix' - NLM call was seen for flock() - granted, no NLM call for fcntl()
+>    'all'   - no NLM calls were seen during both flock() and fcntl()
+> 
+> Cc: Neil Brown <neilb@suse.de>
+> Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+> ---
+>  fs/nfs/client.c           |    6 +++-
+>  fs/nfs/file.c             |   45 +++++++++++++++++++++++++++++++------------
+>  fs/nfs/super.c            |   46 +++++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/nfs_mount.h |    5 +++-
+>  4 files changed, 86 insertions(+), 16 deletions(-)
+> 
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 4e7df2a..5f01f42 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -635,7 +635,8 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
+>   */
+>  static void nfs_destroy_server(struct nfs_server *server)
+>  {
+> -	if (!(server->flags & NFS_MOUNT_NONLM))
+> +	if (!(server->flags & NFS_MOUNT_LOCAL_FLOCK) ||
+> +			!(server->flags & NFS_MOUNT_LOCAL_FCNTL))
+>  		nlmclnt_done(server->nlm_host);
+>  }
+>  
+> @@ -657,7 +658,8 @@ static int nfs_start_lockd(struct nfs_server *server)
+>  
+>  	if (nlm_init.nfs_version > 3)
+>  		return 0;
+> -	if (server->flags & NFS_MOUNT_NONLM)
+> +	if ((server->flags & NFS_MOUNT_LOCAL_FLOCK) &&
+> +			(server->flags & NFS_MOUNT_LOCAL_FCNTL))
+>  		return 0;
+>  
+>  	switch (clp->cl_proto) {
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index eb51bd6..59cbe1b 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -684,7 +684,8 @@ static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
+>  	return ret;
+>  }
+>  
+> -static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
+> +static int
+> +do_getlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+>  {
+>  	struct inode *inode = filp->f_mapping->host;
+>  	int status = 0;
+> @@ -699,7 +700,7 @@ static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
+>  	if (nfs_have_delegation(inode, FMODE_READ))
+>  		goto out_noconflict;
+>  
+> -	if (NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM)
+> +	if (is_local)
+>  		goto out_noconflict;
+>  
+>  	status = NFS_PROTO(inode)->lock(filp, cmd, fl);
+> @@ -730,7 +731,8 @@ static int do_vfs_lock(struct file *file, struct file_lock *fl)
+>  	return res;
+>  }
+>  
+> -static int do_unlk(struct file *filp, int cmd, struct file_lock *fl)
+> +static int
+> +do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+>  {
+>  	struct inode *inode = filp->f_mapping->host;
+>  	int status;
+> @@ -745,15 +747,19 @@ static int do_unlk(struct file *filp, int cmd, struct file_lock *fl)
+>  	 * 	If we're signalled while cleaning up locks on process exit, we
+>  	 * 	still need to complete the unlock.
+>  	 */
+> -	/* Use local locking if mounted with "-onolock" */
+> -	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
+> +	/*
+> +	 * Use local locking if mounted with "-onolock" or with appropriate
+> +	 * "-olocal_lock="
+> +	 */
+> +	if (!is_local)
+>  		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
+>  	else
+>  		status = do_vfs_lock(filp, fl);
+>  	return status;
+>  }
+>  
+> -static int do_setlk(struct file *filp, int cmd, struct file_lock *fl)
+> +static int
+> +do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+>  {
+>  	struct inode *inode = filp->f_mapping->host;
+>  	int status;
+> @@ -766,8 +772,11 @@ static int do_setlk(struct file *filp, int cmd, struct file_lock *fl)
+>  	if (status != 0)
+>  		goto out;
+>  
+> -	/* Use local locking if mounted with "-onolock" */
+> -	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
+> +	/*
+> +	 * Use local locking if mounted with "-onolock" or with appropriate
+> +	 * "-olocal_lock="
+> +	 */
+> +	if (!is_local)
+>  		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
+>  	else
+>  		status = do_vfs_lock(filp, fl);
+> @@ -791,6 +800,7 @@ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
+>  {
+>  	struct inode *inode = filp->f_mapping->host;
+>  	int ret = -ENOLCK;
+> +	int is_local = 0;
+>  
+>  	dprintk("NFS: lock(%s/%s, t=%x, fl=%x, r=%lld:%lld)\n",
+>  			filp->f_path.dentry->d_parent->d_name.name,
+> @@ -804,6 +814,9 @@ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
+>  	if (__mandatory_lock(inode) && fl->fl_type != F_UNLCK)
+>  		goto out_err;
+>  
+> +	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FCNTL)
+> +		is_local = 1;
+> +
+>  	if (NFS_PROTO(inode)->lock_check_bounds != NULL) {
+>  		ret = NFS_PROTO(inode)->lock_check_bounds(fl);
+>  		if (ret < 0)
+> @@ -811,11 +824,11 @@ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
+>  	}
+>  
+>  	if (IS_GETLK(cmd))
+> -		ret = do_getlk(filp, cmd, fl);
+> +		ret = do_getlk(filp, cmd, fl, is_local);
+>  	else if (fl->fl_type == F_UNLCK)
+> -		ret = do_unlk(filp, cmd, fl);
+> +		ret = do_unlk(filp, cmd, fl, is_local);
+>  	else
+> -		ret = do_setlk(filp, cmd, fl);
+> +		ret = do_setlk(filp, cmd, fl, is_local);
+>  out_err:
+>  	return ret;
+>  }
+> @@ -825,6 +838,9 @@ out_err:
+>   */
+>  static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
+>  {
+> +	struct inode *inode = filp->f_mapping->host;
+> +	int is_local = 0;
+> +
+>  	dprintk("NFS: flock(%s/%s, t=%x, fl=%x)\n",
+>  			filp->f_path.dentry->d_parent->d_name.name,
+>  			filp->f_path.dentry->d_name.name,
+> @@ -833,14 +849,17 @@ static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
+>  	if (!(fl->fl_flags & FL_FLOCK))
+>  		return -ENOLCK;
+>  
+> +	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK)
+> +		is_local = 1;
+> +
+>  	/* We're simulating flock() locks using posix locks on the server */
+>  	fl->fl_owner = (fl_owner_t)filp;
+>  	fl->fl_start = 0;
+>  	fl->fl_end = OFFSET_MAX;
+>  
+>  	if (fl->fl_type == F_UNLCK)
+> -		return do_unlk(filp, cmd, fl);
+> -	return do_setlk(filp, cmd, fl);
+> +		return do_unlk(filp, cmd, fl, is_local);
+> +	return do_setlk(filp, cmd, fl, is_local);
+>  }
+>  
+>  /*
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index ec3966e..78c08e9 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -100,6 +100,7 @@ enum {
+>  	Opt_addr, Opt_mountaddr, Opt_clientaddr,
+>  	Opt_lookupcache,
+>  	Opt_fscache_uniq,
+> +	Opt_local_lock,
+>  
+>  	/* Special mount options */
+>  	Opt_userspace, Opt_deprecated, Opt_sloppy,
+> @@ -171,6 +172,7 @@ static const match_table_t nfs_mount_option_tokens = {
+>  
+>  	{ Opt_lookupcache, "lookupcache=%s" },
+>  	{ Opt_fscache_uniq, "fsc=%s" },
+> +	{ Opt_local_lock, "local_lock=%s" },
+>  
+>  	{ Opt_err, NULL }
+>  };
+> @@ -236,6 +238,22 @@ static match_table_t nfs_lookupcache_tokens = {
+>  	{ Opt_lookupcache_err, NULL }
+>  };
+>  
+> +enum {
+> +	Opt_local_lock_all, Opt_local_lock_flock, Opt_local_lock_posix,
+> +	Opt_local_lock_none,
+> +
+> +	Opt_local_lock_err
+> +};
+> +
+> +static match_table_t nfs_local_lock_tokens = {
+> +	{ Opt_local_lock_all, "all" },
+> +	{ Opt_local_lock_flock, "flock" },
+> +	{ Opt_local_lock_posix, "posix" },
+> +	{ Opt_local_lock_none, "none" },
+> +
+> +	{ Opt_local_lock_err, NULL }
+> +};
+> +
+>  
+>  static void nfs_umount_begin(struct super_block *);
+>  static int  nfs_statfs(struct dentry *, struct kstatfs *);
+> @@ -1412,6 +1430,34 @@ static int nfs_parse_mount_options(char *raw,
+>  			mnt->fscache_uniq = string;
+>  			mnt->options |= NFS_OPTION_FSCACHE;
+>  			break;
+> +		case Opt_local_lock:
+> +			string = match_strdup(args);
+> +			if (string == NULL)
+> +				goto out_nomem;
+> +			token = match_token(string, nfs_local_lock_tokens,
+> +					args);
+> +			kfree(string);
+> +			switch (token) {
+> +			case Opt_local_lock_all:
+> +				mnt->flags |= (NFS_MOUNT_LOCAL_FLOCK |
+> +					       NFS_MOUNT_LOCAL_FCNTL);
+> +				break;
+> +			case Opt_local_lock_flock:
+> +				mnt->flags |= NFS_MOUNT_LOCAL_FLOCK;
+> +				break;
+> +			case Opt_local_lock_posix:
+> +				mnt->flags |= NFS_MOUNT_LOCAL_FCNTL;
+> +				break;
+> +			case Opt_local_lock_none:
+> +				mnt->flags &= ~(NFS_MOUNT_LOCAL_FLOCK |
+> +						NFS_MOUNT_LOCAL_FCNTL);
+> +				break;
+> +			default:
+> +				dfprintk(MOUNT, "NFS:	invalid	"
+> +						"local_lock argument\n");
+> +				return 0;
+> +			};
+> +			break;
+>  
+>  		/*
+>  		 * Special options
+> diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
+> index 5d59ae8..d6a16cc 100644
+> --- a/include/linux/nfs_mount.h
+> +++ b/include/linux/nfs_mount.h
+> @@ -56,7 +56,6 @@ struct nfs_mount_data {
+>  #define NFS_MOUNT_TCP		0x0040	/* 2 */
+>  #define NFS_MOUNT_VER3		0x0080	/* 3 */
+>  #define NFS_MOUNT_KERBEROS	0x0100	/* 3 */
+> -#define NFS_MOUNT_NONLM		0x0200	/* 3 */
+>  #define NFS_MOUNT_BROKEN_SUID	0x0400	/* 4 */
+>  #define NFS_MOUNT_NOACL		0x0800	/* 4 */
+>  #define NFS_MOUNT_STRICTLOCK	0x1000	/* reserved for NFSv4 */
+> @@ -71,4 +70,8 @@ struct nfs_mount_data {
+>  #define NFS_MOUNT_NORESVPORT		0x40000
+>  #define NFS_MOUNT_LEGACY_INTERFACE	0x80000
+>  
+> +#define NFS_MOUNT_LOCAL_FLOCK	0x100000
+> +#define NFS_MOUNT_LOCAL_FCNTL	0x200000
+> +#define NFS_MOUNT_NONLM		(NFS_MOUNT_LOCAL_FLOCK | NFS_MOUNT_LOCAL_FCNTL)
+> +
+>  #endif
+> 
+
+
