@@ -1,58 +1,104 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet (try #4)
-Date: Thu, 16 Sep 2010 17:32:35 -0400
-Message-ID: <4C928CF3.6030508@RedHat.com>
-References: <1283283160-30024-1-git-send-email-jlayton@redhat.com> <4C921580.2050903@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-	bfields@fieldses.org, neilb@suse.de
-To: Steve Dickson <SteveD@redhat.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: Linux pNFS status meeting 09/09
+Date: Fri, 17 Sep 2010 11:41:05 -0400
+Message-ID: <746C00A2-0FAF-486A-88E6-95110C3E1CAC@oracle.com>
+References: <OFFA3EE8C5.4D0C75A4-ON88257791.0070F6D7-88257791.007121E6@us.ibm.com> <OFE3F55151.69564AF8-ON88257798.0056A8F9-88257798.0056BEF8@us.ibm.com> <op.vi4vjkz7unckof@usensfaibisl2e.eng.emc.com> <op.vi6fofkzunckof@usensfaibisl2e.eng.emc.com>
+Mime-Version: 1.0 (Apple Message framework v1081)
+Content-Type: text/plain; charset=iso-8859-1
+Cc: "Marc Eshel" <eshel@almaden.ibm.com>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: sfaibish <sfaibish@emc.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56856 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752432Ab0IPVcp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Sep 2010 17:32:45 -0400
-In-Reply-To: <4C921580.2050903-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:60665 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755067Ab0IQPlZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 11:41:25 -0400
+In-Reply-To: <op.vi6fofkzunckof-sXut7+96orlxdPWQvOaHCoI83tS8F2Zb0E9HWUfgJXw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Sep 17, 2010, at 8:30 AM, sfaibish wrote:
 
-On 09/16/2010 09:02 AM, Steve Dickson wrote:
-> Hey Jeff,
-> 
-> Here is the patch with the L_WARNING change and the 
-> s/else if/if change I just mentioned... 
-> 
-> steved.
-> 
-> Author: Jeff Layton <jlayton@redhat.com>
-> Date:   Thu Sep 16 08:58:02 2010 -0400
->     
-> There's a bit of a chicken and egg problem when nfsd is run the first
-> time. On Fedora/RHEL at least, /proc/fs/nfsd is mounted up whenever nfsd
-> is plugged in via a modprobe.conf "install" directive.
-> 
-> If someone runs rpc.nfsd without plugging in nfsd.ko first,
-> /proc/fs/nfsd won't be mounted and rpc.nfsd will end up using the legacy
-> nfsctl interface. After that, nfsd will be plugged in and subsequent
-> rpc.nfsd invocations will use that instead.
-> 
-> This is a problem as some nfsd command-line options are ignored when the
-> legacy interface is used. It'll also be a problem for people who want
-> IPv6 enabled servers. The upshot is that we really don't want to use the
-> legacy interface unless there is no other option.
-> 
-> To avoid this situation, have rpc.nfsd check to see if the "threads"
-> file is already present. If it's not, then make an attempt to mount
-> /proc/fs/nfsd.  This is a "best-effort" sort of thing, however so we
-> just ignore the return code from the mount attempt and fall back to
-> using nfsctl() if it fails.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed...
+> This is the list of topics for disscusion of the meetings
+> during the fall BAT at EMC:
+>=20
+> 1. Layoutcommit for file layout (Dave Noveck)
+> 2. Server side copy - (James)
+> 3. Sparse files and storage preferences (Dean, Sorin)
+> 4. Secure NFS (David Quigly)
+> 5. Extend cthon tests with callback operations tests (Peter Honeyman)
+> 6. Performance tests - tools and benchmarks (Peter Honeyman)
+> 7. Utils and fedora rpm (Sorin, SteveD)
+> 8. pNFS with IPv6 (Sorin)
+> 9. Unix FedFS imlementation (Craig)
 
-steved.
+9. was my request, I think.  "Linux FedFS implementation overview"
+
+Thanks.
+
+>=20
+> I included in brackets the request source. My intention is to allow 3=
+0 min per
+> item and group them in 2 hour sessions early AM after lunch each day.
+> Please let me know if there are other topics of interest.
+>=20
+> Also I will entertain next call if Marc is not available:
+> 1-888-643-3084; #47712479
+>=20
+> /Sorin
+>=20
+> On Thu, 16 Sep 2010 12:17:34 -0400, sfaibish <sfaibish@emc.com> wrote=
+:
+>=20
+>> Can we discuss the agenda for the BAT discussions during the meeting=
+?
+>>=20
+>> /Sorin
+>>=20
+>>=20
+>> On Wed, 08 Sep 2010 11:47:33 -0400, Marc Eshel <eshel-6kx38NOBMPopQ72tKn6thw@public.gmane.org=
+m> wrote:
+>>=20
+>>> Meeting on Thursday 09/09/10 at 9:30 AM pacific time (12:30 PM UMIC=
+H time)
+>>>=20
+>>> Marc.
+>>>=20
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs=
+" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>=20
+>>>=20
+>>=20
+>>=20
+>>=20
+>=20
+>=20
+>=20
+> --=20
+> Best Regards
+>=20
+> Sorin Faibish
+> Corporate Distinguished Engineer
+> Unified Storage Division
+>        EMC=B2
+> where information lives
+>=20
+> Phone: 508-249-5745
+> Cellphone: 617-510-0422
+> Email : sfaibish@emc.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=20
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
