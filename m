@@ -1,167 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50213 "EHLO mx1.redhat.com"
+Received: from sith.mimuw.edu.pl ([193.0.96.4]:49386 "EHLO sith.mimuw.edu.pl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753650Ab0IONYG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Sep 2010 09:24:06 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/8] nfs: standardize the rename response container
-Date: Wed, 15 Sep 2010 09:23:57 -0400
-Message-Id: <1284557041-4375-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
-References: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
+	id S1755366Ab0IQTEO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Sep 2010 15:04:14 -0400
+Date: Fri, 17 Sep 2010 21:04:13 +0200
+From: Jan =?utf-8?Q?R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
+Message-ID: <20100917190413.GB21111@sith.mimuw.edu.pl>
+References: <20100917181251.GA21111@sith.mimuw.edu.pl> <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Right now, v3 and v4 have their own variants and v2 doesn't have one at
-all. Create a standard struct that will work for v3 and v4.
+On Fri, 17 Sep 2010, Chuck Lever wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/nfs3proc.c       |   16 ++++++++--------
- fs/nfs/nfs3xdr.c        |    6 +++---
- fs/nfs/nfs4proc.c       |    2 +-
- fs/nfs/nfs4xdr.c        |    2 +-
- include/linux/nfs_xdr.h |   23 +++++++++--------------
- 5 files changed, 22 insertions(+), 27 deletions(-)
+> 
+> On Sep 17, 2010, at 2:12 PM, Jan Rękorajski wrote:
+> 
+> > Hi,
+> > rpcbind currently silently ignores any errors that occur during
+> > init_transport, it also happily continues if bind(2) fails for
+> > UDP socket - it's enough if just one UDP socket is bound.
+> > 
+> > This patch makes rpcbind fail if there are problems with
+> > setting up any transport, so we don't end up with
+> > semi/non functional running daemon.
+> 
+> Can you give us some details about why transport initialization was
+> failing?  There are probably some cases where we do want rpcbind to
+> soldier on in spite of such troubles.
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index d8557b3..c5cccf1 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -448,7 +448,7 @@ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		.new_dir	= NFS_FH(new_dir),
- 		.new_name	= new_name,
- 	};
--	struct nfs3_renameres res;
-+	struct nfs_renameres res;
- 	struct rpc_message msg = {
- 		.rpc_proc	= &nfs3_procedures[NFS3PROC_RENAME],
- 		.rpc_argp	= &arg,
-@@ -458,17 +458,17 @@ nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 
- 	dprintk("NFS call  rename %s -> %s\n", old_name->name, new_name->name);
- 
--	res.fromattr = nfs_alloc_fattr();
--	res.toattr = nfs_alloc_fattr();
--	if (res.fromattr == NULL || res.toattr == NULL)
-+	res.old_fattr = nfs_alloc_fattr();
-+	res.new_fattr = nfs_alloc_fattr();
-+	if (res.old_fattr == NULL || res.new_fattr == NULL)
- 		goto out;
- 
- 	status = rpc_call_sync(NFS_CLIENT(old_dir), &msg, 0);
--	nfs_post_op_update_inode(old_dir, res.fromattr);
--	nfs_post_op_update_inode(new_dir, res.toattr);
-+	nfs_post_op_update_inode(old_dir, res.old_fattr);
-+	nfs_post_op_update_inode(new_dir, res.new_fattr);
- out:
--	nfs_free_fattr(res.toattr);
--	nfs_free_fattr(res.fromattr);
-+	nfs_free_fattr(res.old_fattr);
-+	nfs_free_fattr(res.new_fattr);
- 	dprintk("NFS reply rename: %d\n", status);
- 	return status;
- }
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index f385759..89c40f8 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -970,14 +970,14 @@ nfs3_xdr_createres(struct rpc_rqst *req, __be32 *p, struct nfs3_diropres *res)
-  * Decode RENAME reply
-  */
- static int
--nfs3_xdr_renameres(struct rpc_rqst *req, __be32 *p, struct nfs3_renameres *res)
-+nfs3_xdr_renameres(struct rpc_rqst *req, __be32 *p, struct nfs_renameres *res)
- {
- 	int	status;
- 
- 	if ((status = ntohl(*p++)) != 0)
- 		status = nfs_stat_to_errno(status);
--	p = xdr_decode_wcc_data(p, res->fromattr);
--	p = xdr_decode_wcc_data(p, res->toattr);
-+	p = xdr_decode_wcc_data(p, res->old_fattr);
-+	p = xdr_decode_wcc_data(p, res->new_fattr);
- 	return status;
- }
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index eb36784..120a8a6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2682,7 +2682,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		.new_name = new_name,
- 		.bitmask = server->attr_bitmask,
- 	};
--	struct nfs4_rename_res res = {
-+	struct nfs_renameres res = {
- 		.server = server,
- 	};
- 	struct rpc_message msg = {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 7a098ae..b0bd7ef 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -4873,7 +4873,7 @@ out:
- /*
-  * Decode RENAME response
-  */
--static int nfs4_xdr_dec_rename(struct rpc_rqst *rqstp, __be32 *p, struct nfs4_rename_res *res)
-+static int nfs4_xdr_dec_rename(struct rpc_rqst *rqstp, __be32 *p, struct nfs_renameres *res)
- {
- 	struct xdr_stream xdr;
- 	struct compound_hdr hdr;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 60fa509..6265fa8 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -411,6 +411,15 @@ struct nfs_renameargs {
- 	struct nfs4_sequence_args	seq_args;
- };
- 
-+struct nfs_renameres {
-+	const struct nfs_server *	server;
-+	struct nfs4_change_info		old_cinfo;
-+	struct nfs_fattr *		old_fattr;
-+	struct nfs4_change_info		new_cinfo;
-+	struct nfs_fattr *		new_fattr;
-+	struct nfs4_sequence_res	seq_res;
-+};
-+
- /*
-  * Argument struct for decode_entry function
-  */
-@@ -623,11 +632,6 @@ struct nfs3_readlinkargs {
- 	struct page **		pages;
- };
- 
--struct nfs3_renameres {
--	struct nfs_fattr *	fromattr;
--	struct nfs_fattr *	toattr;
--};
--
- struct nfs3_linkres {
- 	struct nfs_fattr *	dir_attr;
- 	struct nfs_fattr *	fattr;
-@@ -795,15 +799,6 @@ struct nfs4_readlink_res {
- 	struct nfs4_sequence_res	seq_res;
- };
- 
--struct nfs4_rename_res {
--	const struct nfs_server *	server;
--	struct nfs4_change_info		old_cinfo;
--	struct nfs_fattr *		old_fattr;
--	struct nfs4_change_info		new_cinfo;
--	struct nfs_fattr *		new_fattr;
--	struct nfs4_sequence_res	seq_res;
--};
--
- #define NFS4_SETCLIENTID_NAMELEN	(127)
- struct nfs4_setclientid {
- 	const nfs4_verifier *		sc_verifier;
+An obvious example is when address given to '-h' option isn't there,
+or daemon can't bind to it for some reason.
+Bind fails, but rpcbind is running as if nothing happened.
+And, besides, behavior for UDP and TCP sockets is curently inconsistent
+as init_transport ignores any failed UDP bind and correctly
+returns error for TCP.
+
+The only legitimate reason for ignoring errors I may see here is when
+IPv6 is configured in /etc/netconfig but it's not set up on net
+interfaces, but as such case is administrative mistake it should be
+fixed by the admin, not the daemon.
+
 -- 
-1.7.1
-
+Jan Rękorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
+baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
+BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
