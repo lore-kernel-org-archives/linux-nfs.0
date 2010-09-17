@@ -1,331 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:8701 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755133Ab0ITRmz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 13:42:55 -0400
-Message-ID: <4C979D2F.7050405@panasas.com>
-Date: Mon, 20 Sep 2010 19:43:11 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 07/12] RFC: pnfs: full mount/umount infrastructure
-References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>	<1284779874-10499-8-git-send-email-iisaman@netapp.com>	<4C976E9A.5080000@panasas.com> <AANLkTingsdMNbEdUNqA72QJvhsgqd+gXoCeZ=e5wZEqt@mail.gmail.com>
-In-Reply-To: <AANLkTingsdMNbEdUNqA72QJvhsgqd+gXoCeZ=e5wZEqt@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:32884 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752085Ab0IQQ22 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:28:28 -0400
+Received: by ywh1 with SMTP id 1so789286ywh.19
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:28:28 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 13/22] NFS: Replace old NFSv3 encoder functions with
+	xdr_stream-based ones
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 17 Sep 2010 12:28:25 -0400
+Message-ID: <20100917162824.19761.51527.stgit@seurat.1015granger.net>
+In-Reply-To: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
+References: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-20 18:21, Fred Isaman wrote:
-> On Mon, Sep 20, 2010 at 10:24 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On 2010-09-18 05:17, Fred Isaman wrote:
->>> From: The pNFS Team <linux-nfs@vger.kernel.org>
->>>
->>> Allow a module implementing a layout type to register, and
->>> have its mount/umount routines called for filesystems that
->>> the server declares support it.
->>>
->>> Signed-off-by: TBD - melding/reorganization of several patches
->>> ---
->>>  Documentation/filesystems/nfs/00-INDEX |    2 +
->>>  Documentation/filesystems/nfs/pnfs.txt |   48 ++++++++++++++++++
->>>  fs/nfs/Kconfig                         |    2 +-
->>>  fs/nfs/pnfs.c                          |   82 +++++++++++++++++++++++++++++++-
->>>  fs/nfs/pnfs.h                          |    9 ++++
->>>  5 files changed, 140 insertions(+), 3 deletions(-)
->>>  create mode 100644 Documentation/filesystems/nfs/pnfs.txt
->>>
->>> diff --git a/Documentation/filesystems/nfs/00-INDEX b/Documentation/filesystems/nfs/00-INDEX
->>> index 2f68cd6..8d930b9 100644
->>> --- a/Documentation/filesystems/nfs/00-INDEX
->>> +++ b/Documentation/filesystems/nfs/00-INDEX
->>> @@ -12,5 +12,7 @@ nfs-rdma.txt
->>>       - how to install and setup the Linux NFS/RDMA client and server software
->>>  nfsroot.txt
->>>       - short guide on setting up a diskless box with NFS root filesystem.
->>> +pnfs.txt
->>> +     - short explanation of some of the internals of the pnfs code
->>
->> that is, pnfs _client_ code...
->>
-> 
-> OK
-> 
-> 
->>>  rpc-cache.txt
->>>       - introduction to the caching mechanisms in the sunrpc layer.
->>> diff --git a/Documentation/filesystems/nfs/pnfs.txt b/Documentation/filesystems/nfs/pnfs.txt
->>> new file mode 100644
->>> index 0000000..bc0b9cf
->>> --- /dev/null
->>> +++ b/Documentation/filesystems/nfs/pnfs.txt
->>> @@ -0,0 +1,48 @@
->>> +Reference counting in pnfs:
->>> +==========================
->>> +
->>> +The are several inter-related caches.  We have layouts which can
->>> +reference multiple devices, each of which can reference multiple data servers.
->>> +Each data server can be referenced by multiple devices.  Each device
->>> +can be referenced by multiple layouts.  To keep all of this straight,
->>> +we need to reference count.
->>> +
->>> +
->>> +struct pnfs_layout_hdr
->>> +----------------------
->>> +The on-the-wire command LAYOUTGET corresponds to struct
->>> +pnfs_layout_segment, usually referred to by the variable name lseg.
->>> +Each nfs_inode may hold a pointer to a cache of of these layout
->>> +segments in nfsi->layout, of type struct pnfs_layout_hdr.
->>> +
->>> +We reference the header for the inode pointing to it, across each
->>> +outstanding RPC call that references it (LAYOUTGET, fs/nfs/LAYOUTRETURN,
->>> +LAYOUTCOMMIT), and for each lseg held within.
->>> +
->>> +Each header is also (when non-empty) put on a list associated with
->>> +struct nfs_client (cl_layouts).  Being put on this list does not bump
->>> +the reference count, as the layout is kept around by the lseg that
->>> +keeps it in the list.
->>> +
->>> +deviceid_cache
->>> +--------------
->>> +lsegs reference device ids, which are resolved per nfs_client and
->>> +layout driver type.  The device ids are held in a RCU cache (struct
->>> +nfs4_deviceid_cache).  The cache itself is referenced across each
->>> +mount.  The entries (struct nfs4_deviceid) themselves are held across
->>> +the lifetime of each lseg referencing them.
->>> +
->>> +RCU is used because the deviceid is basically a write once, read many
->>> +data structure.  The hlist size of 32 buckets needs better
->>> +justification, but seems reasonable given that we can have multiple
->>> +deviceid's per filesystem, and multiple filesystems per nfs_client.
->>> +
->>> +The hash code is copied from the nfsd code base.  A discussion of
->>> +hashing and variations of this algorithm can be found at:
->>> +http://groups.google.com/group/comp.lang.c/browse_thread/thread/9522965e2b8d3809
->>> +
->>> +data server cache
->>> +-----------------
->>> +file driver devices refer to data servers, which are kept in a module
->>> +level cache.  Its reference is held over the lifetime of the deviceid
->>> +pointing to it.
->>> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
->>> index 6c2aad4..5f1b936 100644
->>> --- a/fs/nfs/Kconfig
->>> +++ b/fs/nfs/Kconfig
->>> @@ -78,7 +78,7 @@ config NFS_V4_1
->>>       depends on NFS_V4 && EXPERIMENTAL
->>>       help
->>>         This option enables support for minor version 1 of the NFSv4 protocol
->>> -       (draft-ietf-nfsv4-minorversion1) in the kernel's NFS client.
->>> +       (RFC 5661) in the kernel's NFS client.
->>>
->>>         If unsure, say N.
->>>
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> index 2e5dba1..5a8a676 100644
->>> --- a/fs/nfs/pnfs.c
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -32,16 +32,53 @@
->>>
->>>  #define NFSDBG_FACILITY              NFSDBG_PNFS
->>>
->>> -/* STUB that returns the equivalent of "no module found" */
->>> +/* Locking:
->>> + *
->>> + * pnfs_spinlock:
->>> + *      protects pnfs_modules_tbl.
->>> + */
->>> +static DEFINE_SPINLOCK(pnfs_spinlock);
->>> +
->>> +/*
->>> + * pnfs_modules_tbl holds all pnfs modules
->>> + */
->>> +static LIST_HEAD(pnfs_modules_tbl);
->>> +
->>> +/* Return the registered pnfs layout driver module matching given id */
->>> +static struct pnfs_layoutdriver_type *
->>> +find_pnfs_driver_locked(u32 id) {
->>
->> nit: the curly brace should be moved down a line
-> 
-> OK
-> 
-> 
->>
->>> +     struct  pnfs_layoutdriver_type *local;
->>> +
->>> +     dprintk("PNFS: %s: Searching for %u\n", __func__, id);
->>
->> I'd move this printk down, before returning and print
->> the result as well.
->>
-> 
-> OK
-> 
-> 
->>> +     list_for_each_entry(local, &pnfs_modules_tbl, pnfs_tblid)
->>> +             if (local->id == id) {
->>> +                     if (!try_module_get(local->owner))
->>> +                             local = NULL;
->>
->> If this happens (e.g. in the case the module exited without
->> calling pnfs_unregister_layoutdriver) another (or a different instance)
->> layout driver might have registered on the same id so we need to keep
->> looking.
-> 
-> There can only be a single driver registered with a particular id.  So
-> continuing the search is pointless.
-> 
-> 
+The naming scheme of the new encoder functions, which follows the
+NFSv4 XDR encoder functions, is slightly different than the scheme
+used for the old functions.
 
-After this conditions happens,
-find_pnfs_driver_locked will not find the current one
-so next time pnfs_register_layoutdriver is called, it may
-register a new layout driver with the same id
-and then there will be two entries with the same id.
-One, for which try_module_get returns zero and another one
-which you will never find if you don't keep looking for it.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Benny
+ fs/nfs/nfs3xdr.c |   58 ++++++++++++++++++++++++++++--------------------------
+ 1 files changed, 30 insertions(+), 28 deletions(-)
 
->>
->>> +                     goto out;
->>> +             }
->>> +     local = NULL;
->>> +out:
->>> +     return local;
->>> +}
->>
->> how about the following?
->>
->> static struct pnfs_layoutdriver_type *
->> find_pnfs_driver_locked(u32 id)
->> {
->>        struct pnfs_layoutdriver_type *local, *found = NULL;
->>
->>        list_for_each_entry (local, &pnfs_modules_tbl, pnfs_tblid)
->>                if (local->id == id) {
->>                        if (!try_module_get(local->owner))
->>                                continue;
->>                        found = local;
->>                        break;
->>                }
->> out:
->>        dprintk("%s: layout_type %u found %p\n", __func__, id, found);
->>        return found;
->> }
->>
->>> +
->>>  static struct pnfs_layoutdriver_type *
->>>  find_pnfs_driver(u32 id) {
->>> -     return NULL;
->>> +     struct  pnfs_layoutdriver_type *local;
->>> +
->>> +     spin_lock(&pnfs_spinlock);
->>> +     local = find_pnfs_driver_locked(id);
->>> +     spin_unlock(&pnfs_spinlock);
->>> +     return local;
->>>  }
->>>
->>>  /* Unitialize a mountpoint in a layout driver */
->>>  void
->>>  unset_pnfs_layoutdriver(struct nfs_server *nfss)
->>>  {
->>> +     if (nfss->pnfs_curr_ld) {
->>> +             nfss->pnfs_curr_ld->uninitialize_mountpoint(nfss);
->>> +             module_put(nfss->pnfs_curr_ld->owner);
->>> +     }
->>>       nfss->pnfs_curr_ld = NULL;
->>>  }
->>>
->>> @@ -68,6 +105,13 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
->>>                       goto out_no_driver;
->>>               }
->>>       }
->>> +     if (ld_type->initialize_mountpoint(server)) {
->>> +             printk(KERN_ERR
->>> +                    "%s: Error initializing mount point for layout driver %u.\n",
->>> +                    __func__, id);
->>> +             module_put(ld_type->owner);
->>> +             goto out_no_driver;
->>> +     }
->>>       server->pnfs_curr_ld = ld_type;
->>>       dprintk("%s: pNFS module for %u set\n", __func__, id);
->>>       return;
->>> @@ -76,3 +120,37 @@ out_no_driver:
->>>       dprintk("%s: Using NFSv4 I/O\n", __func__);
->>>       server->pnfs_curr_ld = NULL;
->>>  }
->>> +
->>> +int
->>> +pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
->>> +{
->>> +     int status = -EINVAL;
->>> +     struct pnfs_layoutdriver_type *tmp;
->>> +
->>
->> Since we're relying on the fact the ld_type->id != 0
->> let's add
->>        BUG_ON(ld_type->id == 0);
->>
->> Benny
-> 
-> OK.
-> 
-> Fred
-> 
->>
->>> +     spin_lock(&pnfs_spinlock);
->>> +     tmp = find_pnfs_driver_locked(ld_type->id);
->>> +     if (!tmp) {
->>> +             list_add(&ld_type->pnfs_tblid, &pnfs_modules_tbl);
->>> +             status = 0;
->>> +             dprintk("%s Registering id:%u name:%s\n", __func__, ld_type->id,
->>> +                     ld_type->name);
->>> +     } else {
->>> +             module_put(tmp->owner);
->>> +             printk(KERN_ERR "%s Module with id %d already loaded!\n",
->>> +                     __func__, ld_type->id);
->>> +     }
->>> +     spin_unlock(&pnfs_spinlock);
->>> +
->>> +     return status;
->>> +}
->>> +EXPORT_SYMBOL_GPL(pnfs_register_layoutdriver);
->>> +
->>> +void
->>> +pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
->>> +{
->>> +     dprintk("%s Deregistering id:%u\n", __func__, ld_type->id);
->>> +     spin_lock(&pnfs_spinlock);
->>> +     list_del(&ld_type->pnfs_tblid);
->>> +     spin_unlock(&pnfs_spinlock);
->>> +}
->>> +EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
->>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->>> index c628ef1..61531f3 100644
->>> --- a/fs/nfs/pnfs.h
->>> +++ b/fs/nfs/pnfs.h
->>> @@ -36,8 +36,17 @@
->>>
->>>  /* Per-layout driver specific registration structure */
->>>  struct pnfs_layoutdriver_type {
->>> +     struct list_head pnfs_tblid;
->>> +     const u32 id;
->>> +     const char *name;
->>> +     struct module *owner;
->>> +     int (*initialize_mountpoint) (struct nfs_server *);
->>> +     int (*uninitialize_mountpoint) (struct nfs_server *);
->>>  };
->>>
->>> +extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
->>> +extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
->>> +
->>>  void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
->>>  void unset_pnfs_layoutdriver(struct nfs_server *);
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 6b84691..b1b6465 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -46,10 +46,11 @@
+ #define NFS3_fsinfo_sz		
+ #define NFS3_pathconf_sz		
+ #define NFS3_entry_sz		(NFS3_filename_sz+3)
+-
+-#define NFS3_sattrargs_sz	(NFS3_fh_sz+NFS3_sattr_sz+3)
+ #define NFS3_diropargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
+-#define NFS3_removeargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
++
++#define NFS3_getattrargs_sz	(NFS3_fh_sz)
++#define NFS3_setattrargs_sz	(NFS3_fh_sz+NFS3_sattr_sz+3)
++#define NFS3_lookupargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
+ #define NFS3_accessargs_sz	(NFS3_fh_sz+1)
+ #define NFS3_readlinkargs_sz	(NFS3_fh_sz)
+ #define NFS3_readargs_sz	(NFS3_fh_sz+3)
+@@ -58,6 +59,7 @@
+ #define NFS3_mkdirargs_sz	(NFS3_diropargs_sz+NFS3_sattr_sz)
+ #define NFS3_symlinkargs_sz	(NFS3_diropargs_sz+1+NFS3_sattr_sz)
+ #define NFS3_mknodargs_sz	(NFS3_diropargs_sz+2+NFS3_sattr_sz)
++#define NFS3_removeargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
+ #define NFS3_renameargs_sz	(NFS3_diropargs_sz+NFS3_diropargs_sz)
+ #define NFS3_linkargs_sz		(NFS3_fh_sz+NFS3_diropargs_sz)
+ #define NFS3_readdirargs_sz	(NFS3_fh_sz+NFS3_cookieverf_sz+3)
+@@ -1959,9 +1961,9 @@ nfs3_xdr_setaclres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFS3PROC_##proc] = {							\
+ 	.p_proc      = NFS3PROC_##proc,					\
+-	.p_encode    = (kxdrproc_t) nfs3_xdr_##argtype,			\
++	.p_encode    = (kxdrproc_t) nfs3_xdr_enc_##argtype##3args,	\
+ 	.p_decode    = (kxdrproc_t) nfs3_xdr_##restype,			\
+-	.p_arglen    = NFS3_##argtype##_sz,				\
++	.p_arglen    = NFS3_##argtype##args_sz,				\
+ 	.p_replen    = NFS3_##restype##_sz,				\
+ 	.p_timer     = timer,						\
+ 	.p_statidx   = NFS3PROC_##proc,					\
+@@ -1969,27 +1971,27 @@ nfs3_xdr_setaclres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
+ 	}
+ 
+ struct rpc_procinfo	nfs3_procedures[] = {
+-  PROC(GETATTR,		fhandle,	attrstat, 1),
+-  PROC(SETATTR, 	sattrargs,	wccstat, 0),
+-  PROC(LOOKUP,		diropargs,	lookupres, 2),
+-  PROC(ACCESS,		accessargs,	accessres, 1),
+-  PROC(READLINK,	readlinkargs,	readlinkres, 3),
+-  PROC(READ,		readargs,	readres, 3),
+-  PROC(WRITE,		writeargs,	writeres, 4),
+-  PROC(CREATE,		createargs,	createres, 0),
+-  PROC(MKDIR,		mkdirargs,	createres, 0),
+-  PROC(SYMLINK,		symlinkargs,	createres, 0),
+-  PROC(MKNOD,		mknodargs,	createres, 0),
+-  PROC(REMOVE,		removeargs,	removeres, 0),
+-  PROC(RMDIR,		diropargs,	wccstat, 0),
+-  PROC(RENAME,		renameargs,	renameres, 0),
+-  PROC(LINK,		linkargs,	linkres, 0),
+-  PROC(READDIR,		readdirargs,	readdirres, 3),
+-  PROC(READDIRPLUS,	readdirargs,	readdirres, 3),
+-  PROC(FSSTAT,		fhandle,	fsstatres, 0),
+-  PROC(FSINFO,  	fhandle,	fsinfores, 0),
+-  PROC(PATHCONF,	fhandle,	pathconfres, 0),
+-  PROC(COMMIT,		commitargs,	commitres, 5),
++  PROC(GETATTR,		getattr,	attrstat, 1),
++  PROC(SETATTR,		setattr,	wccstat, 0),
++  PROC(LOOKUP,		lookup,		lookupres, 2),
++  PROC(ACCESS,		access,		accessres, 1),
++  PROC(READLINK,	readlink,	readlinkres, 3),
++  PROC(READ,		read,		readres, 3),
++  PROC(WRITE,		write,		writeres, 4),
++  PROC(CREATE,		create,		createres, 0),
++  PROC(MKDIR,		mkdir,		createres, 0),
++  PROC(SYMLINK,		symlink,	createres, 0),
++  PROC(MKNOD,		mknod,		createres, 0),
++  PROC(REMOVE,		remove,		removeres, 0),
++  PROC(RMDIR,		lookup,		wccstat, 0),
++  PROC(RENAME,		rename,		renameres, 0),
++  PROC(LINK,		link,		linkres, 0),
++  PROC(READDIR,		readdir,	readdirres, 3),
++  PROC(READDIRPLUS,	readdirplus,	readdirres, 3),
++  PROC(FSSTAT,		getattr,	fsstatres, 0),
++  PROC(FSINFO,		getattr,	fsinfores, 0),
++  PROC(PATHCONF,	getattr,	pathconfres, 0),
++  PROC(COMMIT,		commit,		commitres, 5),
+ };
+ 
+ struct rpc_version		nfs_version3 = {
+@@ -2002,7 +2004,7 @@ struct rpc_version		nfs_version3 = {
+ static struct rpc_procinfo	nfs3_acl_procedures[] = {
+ 	[ACLPROC3_GETACL] = {
+ 		.p_proc = ACLPROC3_GETACL,
+-		.p_encode = (kxdrproc_t) nfs3_xdr_getaclargs,
++		.p_encode = (kxdrproc_t) nfs3_xdr_enc_getacl3args,
+ 		.p_decode = (kxdrproc_t) nfs3_xdr_getaclres,
+ 		.p_arglen = ACL3_getaclargs_sz,
+ 		.p_replen = ACL3_getaclres_sz,
+@@ -2011,7 +2013,7 @@ static struct rpc_procinfo	nfs3_acl_procedures[] = {
+ 	},
+ 	[ACLPROC3_SETACL] = {
+ 		.p_proc = ACLPROC3_SETACL,
+-		.p_encode = (kxdrproc_t) nfs3_xdr_setaclargs,
++		.p_encode = (kxdrproc_t) nfs3_xdr_enc_setacl3args,
+ 		.p_decode = (kxdrproc_t) nfs3_xdr_setaclres,
+ 		.p_arglen = ACL3_setaclargs_sz,
+ 		.p_replen = ACL3_setaclres_sz,
+
