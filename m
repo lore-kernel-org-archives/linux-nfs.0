@@ -1,42 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:44979 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754385Ab0IIVqx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Sep 2010 17:46:53 -0400
-Received: from acsinet15.oracle.com (acsinet15.oracle.com [141.146.126.227])
-	by rcsinet10.oracle.com (Switch-3.4.2/Switch-3.4.2) with ESMTP id o89LkorF018678
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Sep 2010 21:46:52 GMT
-Received: from acsmt355.oracle.com (acsmt355.oracle.com [141.146.40.155])
-	by acsinet15.oracle.com (Switch-3.4.2/Switch-3.4.1) with ESMTP id o895ujRQ031792
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Sep 2010 21:46:50 GMT
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: NFS over RDMA bug reports
-Date: Thu, 9 Sep 2010 17:45:54 -0400
-Message-Id: <65A8AD4C-41FE-49F3-899F-E5998AFDC647@oracle.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:14144 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755061Ab0IRDSe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Sep 2010 23:18:34 -0400
+Received: from localhost.localdomain (scher1-lxp.hq.netapp.com [10.58.61.44] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8I3IEV6012071
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 20:18:18 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/12] RFC: nfs: change stateid to be a union
+Date: Fri, 17 Sep 2010 23:17:46 -0400
+Message-Id: <1284779874-10499-5-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
+References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-This is kind of a general question.
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-We have some internal testing of client-side RH/OEL 5 NFS over RDMA that has turned up some bugs, for example:
+In NFSv4.1 the stateid consists of the other and seqid fields. For layout
+processing we need to numerically compare the seqid value of layout stateids.
+To do so, introduce a union to nfs4_stateid to swtich between opaque(16 bytes)
+and opaque(12 bytes) / __be32
 
-  https://bugs.openfabrics.org/show_bug.cgi?id=2076
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/callback_proc.c |    8 ++++----
+ include/linux/nfs4.h   |   15 +++++++++++++--
+ 2 files changed, 17 insertions(+), 6 deletions(-)
 
-Though it's assigned, it looks like it's been around for about 3 months with no activity.  Is filing NFS/RDMA client side bugs with openfabrics the best/only way to document them and get them addressed?  Are these scrubbed regularly?  What resources are available to address these problems?
-
-There was some talk at Connectathon about having all NFS/RDMA bugs reported as above.  However, though OFED packages are required to run NFS/RDMA on EL5 kernels, the crash documented in the above bug is in the kernel NFS client, and that appears to be unmodified EL5.4.  OFED provides only the RDMA kernel modules.  Are they triaging these issues and reporting them back to Red Hat?
-
-What resources are available to address client-side upstream NFS/RDMA issues?
-
-I'm not trying to point fingers, just wondering what the mechanisms are to get these kind of problems resolved.  If there aren't any, I'd like to see what can be done to get something in place.
-
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 930d10f..2950fca 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -118,11 +118,11 @@ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const n
+ 	if (delegation == NULL)
+ 		return 0;
+ 
+-	/* seqid is 4-bytes long */
+-	if (((u32 *) &stateid->data)[0] != 0)
++	if (stateid->stateid.seqid != 0)
+ 		return 0;
+-	if (memcmp(&delegation->stateid.data[4], &stateid->data[4],
+-		   sizeof(stateid->data)-4))
++	if (memcmp(&delegation->stateid.stateid.other,
++		   &stateid->stateid.other,
++		   NFS4_STATEID_OTHER_SIZE))
+ 		return 0;
+ 
+ 	return 1;
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 6798fc3..2dde7c8 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -17,7 +17,9 @@
+ 
+ #define NFS4_BITMAP_SIZE	2
+ #define NFS4_VERIFIER_SIZE	8
+-#define NFS4_STATEID_SIZE	16
++#define NFS4_STATEID_SEQID_SIZE 4
++#define NFS4_STATEID_OTHER_SIZE 12
++#define NFS4_STATEID_SIZE	(NFS4_STATEID_SEQID_SIZE + NFS4_STATEID_OTHER_SIZE)
+ #define NFS4_FHSIZE		128
+ #define NFS4_MAXPATHLEN		PATH_MAX
+ #define NFS4_MAXNAMLEN		NAME_MAX
+@@ -167,7 +169,16 @@ struct nfs4_acl {
+ };
+ 
+ typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+-typedef struct { char data[NFS4_STATEID_SIZE]; } nfs4_stateid;
++
++struct nfs41_stateid {
++	__be32 seqid;
++	char other[NFS4_STATEID_OTHER_SIZE];
++} __attribute__ ((packed));
++
++typedef union {
++	char data[NFS4_STATEID_SIZE];
++	struct nfs41_stateid stateid;
++} nfs4_stateid;
+ 
+ enum nfs_opnum4 {
+ 	OP_ACCESS = 3,
 -- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.2.1
 
