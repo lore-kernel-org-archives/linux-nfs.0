@@ -1,384 +1,345 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from icebox.esperi.org.uk ([81.187.191.129]:58428 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752546Ab0IWVDo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Sep 2010 17:03:44 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: persistent, quasi-random -ESTALE at mount time
-References: <87mxra6duq.fsf@spindle.srvr.nix>
-	<20100922155235.GE15560@fieldses.org>
-From: Nix <nix@esperi.org.uk>
-Date: Thu, 23 Sep 2010 22:03:36 +0100
-In-Reply-To: <20100922155235.GE15560@fieldses.org> (J. Bruce Fields's message of "Wed, 22 Sep 2010 11:52:35 -0400")
-Message-ID: <8762xwqijb.fsf@spindle.srvr.nix>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:52093 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755176Ab0IRDSf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Sep 2010 23:18:35 -0400
+Received: from localhost.localdomain (scher1-lxp.hq.netapp.com [10.58.61.44] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8I3IEVB012071
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 20:18:22 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 09/12] RFC: nfs: create and destroy inode's layout cache
+Date: Fri, 17 Sep 2010 23:17:51 -0400
+Message-Id: <1284779874-10499-10-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
+References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 22 Sep 2010, J. Bruce Fields verbalised:
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-> On Tue, Sep 21, 2010 at 09:28:13PM +0100, Nix wrote:
->> Sep 21 20:51:39 spindle info: auth_unix_ip: inbuf 'nfsd 192.168.16.20'
->> Sep 21 20:51:39 spindle info: auth_unix_ip: client 0x1f3dde0 'mutilate.wkstn.nix'
->> Sep 21 20:51:39 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \x014000000000000095bd22c2253c456f8e36b6cfb9ecd4ef'
->
-> 7 is FSID_UUID16_INUM.
->
->> Sep 21 20:51:39 spindle info: nfsd_fh: found (nil) path (null)
->
-> And mountd didn't find any filesystem matching the given uuid.  That's
-> strange.
+At the start of the io paths, try to grab the relevant layout
+information.  This will initiate the inode's layout cache, but
+stubs ensure the cache stays empty.
 
-I'll say.
+Signed-off-by: TBD - melding/reorganization of several patches
+---
+ fs/nfs/file.c          |    5 ++
+ fs/nfs/inode.c         |    3 +
+ fs/nfs/pnfs.c          |  140 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h          |   39 +++++++++++++
+ fs/nfs/read.c          |    3 +
+ include/linux/nfs_fs.h |    3 +
+ 6 files changed, 193 insertions(+), 0 deletions(-)
 
-(The uuid of this filesystem is 95bd22c2-253c-456f-8e36-b6cfb9ecd4ef,
-which looks just right.)
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index eb51bd6..10ebdfb 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -36,6 +36,7 @@
+ #include "internal.h"
+ #include "iostat.h"
+ #include "fscache.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_FILE
+ 
+@@ -386,6 +387,10 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
+ 		file->f_path.dentry->d_name.name,
+ 		mapping->host->i_ino, len, (long long) pos);
+ 
++	pnfs_update_layout(mapping->host,
++			   nfs_file_open_context(file),
++			   IOMODE_RW);
++
+ start:
+ 	/*
+ 	 * Prevent starvation issues if someone is doing a consistency
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 2f92664..effe985 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -48,6 +48,7 @@
+ #include "internal.h"
+ #include "fscache.h"
+ #include "dns_resolve.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+ 
+@@ -1409,6 +1410,7 @@ void nfs4_evict_inode(struct inode *inode)
+ {
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	end_writeback(inode);
++	pnfs_destroy_layout(NFS_I(inode));
+ 	/* If we are holding a delegation, return it! */
+ 	nfs_inode_return_delegation_noreclaim(inode);
+ 	/* First call standard NFS clear_inode() code */
+@@ -1446,6 +1448,7 @@ static inline void nfs4_init_once(struct nfs_inode *nfsi)
+ 	nfsi->delegation = NULL;
+ 	nfsi->delegation_state = 0;
+ 	init_rwsem(&nfsi->rwsem);
++	nfsi->layout = NULL;
+ #endif
+ }
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 5a8a676..5d55d0b 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -154,3 +154,143 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
+ 	spin_unlock(&pnfs_spinlock);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
++
++static void
++get_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++{
++	assert_spin_locked(&lo->inode->i_lock);
++	lo->refcount++;
++}
++
++static void
++put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++{
++	assert_spin_locked(&lo->inode->i_lock);
++	BUG_ON(lo->refcount == 0);
++
++	lo->refcount--;
++	if (!lo->refcount) {
++		dprintk("%s: freeing layout cache %p\n", __func__, lo);
++		NFS_I(lo->inode)->layout = NULL;
++		kfree(lo);
++	}
++}
++
++void
++pnfs_destroy_layout(struct nfs_inode *nfsi)
++{
++	struct pnfs_layout_hdr *lo;
++
++	spin_lock(&nfsi->vfs_inode.i_lock);
++	lo = nfsi->layout;
++	if (lo) {
++		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
++		put_layout_hdr_locked(lo);
++	}
++	spin_unlock(&nfsi->vfs_inode.i_lock);
++}
++
++/* STUB - pretend LAYOUTGET to server failed */
++static struct pnfs_layout_segment *
++send_layoutget(struct pnfs_layout_hdr *lo,
++	   struct nfs_open_context *ctx,
++	   u32 iomode)
++{
++	struct inode *ino = lo->inode;
++
++	set_bit(lo_fail_bit(iomode), &lo->state);
++	spin_lock(&ino->i_lock);
++	put_layout_hdr_locked(lo);
++	spin_unlock(&ino->i_lock);
++	return NULL;
++}
++
++static struct pnfs_layout_hdr *
++alloc_init_layout_hdr(struct inode *ino)
++{
++	struct pnfs_layout_hdr *lo;
++
++	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
++	if (!lo)
++		return NULL;
++	lo->refcount = 1;
++	lo->inode = ino;
++	return lo;
++}
++
++static struct pnfs_layout_hdr *
++pnfs_find_alloc_layout(struct inode *ino)
++{
++	struct nfs_inode *nfsi = NFS_I(ino);
++	struct pnfs_layout_hdr *new = NULL;
++
++	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
++
++	assert_spin_locked(&ino->i_lock);
++	if (nfsi->layout)
++		return nfsi->layout;
++
++	spin_unlock(&ino->i_lock);
++	new = alloc_init_layout_hdr(ino);
++	spin_lock(&ino->i_lock);
++
++	if (likely(nfsi->layout == NULL))	/* Won the race? */
++		nfsi->layout = new;
++	else
++		kfree(new);
++	return nfsi->layout;
++}
++
++/* STUB - LAYOUTGET never succeeds, so cache is empty */
++static struct pnfs_layout_segment *
++pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
++{
++	return NULL;
++}
++
++/*
++ * Layout segment is retreived from the server if not cached.
++ * The appropriate layout segment is referenced and returned to the caller.
++ */
++struct pnfs_layout_segment *
++pnfs_update_layout(struct inode *ino,
++		   struct nfs_open_context *ctx,
++		   enum pnfs_iomode iomode)
++{
++	struct nfs_inode *nfsi = NFS_I(ino);
++	struct pnfs_layout_hdr *lo;
++	struct pnfs_layout_segment *lseg = NULL;
++
++	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
++		return NULL;
++	spin_lock(&ino->i_lock);
++	lo = pnfs_find_alloc_layout(ino);
++	if (lo == NULL) {
++		dprintk("%s ERROR: can't get pnfs_layout_hdr\n", __func__);
++		goto out_unlock;
++	}
++
++	/* Check to see if the layout for the given range already exists */
++	lseg = pnfs_has_layout(lo, iomode);
++	if (lseg) {
++		dprintk("%s: Using cached lseg %p for iomode %d)\n",
++			__func__, lseg, iomode);
++		goto out_unlock;
++	}
++
++	/* if LAYOUTGET already failed once we don't try again */
++	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->state))
++		goto out_unlock;
++
++	get_layout_hdr_locked(lo);
++	spin_unlock(&ino->i_lock);
++
++	lseg = send_layoutget(lo, ctx, iomode);
++out:
++	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
++		nfsi->layout->state, lseg);
++	return lseg;
++out_unlock:
++	spin_unlock(&ino->i_lock);
++	goto out;
++}
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 61531f3..4ed1b48 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -34,6 +34,11 @@
+ 
+ #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
+ 
++enum {
++	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
++	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
++};
++
+ /* Per-layout driver specific registration structure */
+ struct pnfs_layoutdriver_type {
+ 	struct list_head pnfs_tblid;
+@@ -44,14 +49,48 @@ struct pnfs_layoutdriver_type {
+ 	int (*uninitialize_mountpoint) (struct nfs_server *);
+ };
+ 
++struct pnfs_layout_hdr {
++	unsigned long		refcount;
++	unsigned long		state;
++	struct inode		*inode;
++};
++
+ extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
+ extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
+ 
++struct pnfs_layout_segment *
++pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
++		   enum pnfs_iomode access_type);
+ void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
++void pnfs_destroy_layout(struct nfs_inode *);
++
++
++static inline int lo_fail_bit(u32 iomode)
++{
++	return iomode == IOMODE_RW ?
++			 NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
++}
++
++/* Return true if a layout driver is being used for this mountpoint */
++static inline int pnfs_enabled_sb(struct nfs_server *nfss)
++{
++	return nfss->pnfs_curr_ld != NULL;
++}
+ 
+ #else  /* CONFIG_NFS_V4_1 */
+ 
++static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
++{
++}
++
++static inline struct pnfs_layout_segment *
++pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
++		   enum pnfs_iomode access_type)
++{
++	return NULL;
++}
++
+ static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
+ {
+ }
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 87adc27..f7eb66f 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -25,6 +25,7 @@
+ #include "internal.h"
+ #include "iostat.h"
+ #include "fscache.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+@@ -121,6 +122,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 	len = nfs_page_length(page);
+ 	if (len == 0)
+ 		return nfs_return_empty_page(page);
++	pnfs_update_layout(inode, ctx, IOMODE_READ);
+ 	new = nfs_create_request(ctx, inode, page, 0, len);
+ 	if (IS_ERR(new)) {
+ 		unlock_page(page);
+@@ -625,6 +627,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 	if (ret == 0)
+ 		goto read_complete; /* all pages were read */
+ 
++	pnfs_update_layout(inode, desc.ctx, IOMODE_READ);
+ 	if (rsize < PAGE_CACHE_SIZE)
+ 		nfs_pageio_init(&pgio, inode, nfs_pagein_multi, rsize, 0);
+ 	else
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 499872f..0833bb6 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -188,6 +188,9 @@ struct nfs_inode {
+ 	struct nfs_delegation	*delegation;
+ 	fmode_t			 delegation_state;
+ 	struct rw_semaphore	rwsem;
++
++	/* pNFS layout information */
++	struct pnfs_layout_hdr *layout;
+ #endif /* CONFIG_NFS_V4*/
+ #ifdef CONFIG_NFS_FSCACHE
+ 	struct fscache_cookie	*fscache;
+-- 
+1.7.2.1
 
-(btw, my libuuid comes from 61ef2474c24c80a5bf0e24ba85a7506fd7651a5c in
-the e2fsprogs maint branch; my libblkid is from util-linux-ng commit
-2c26d56ff524bdd9b7bbb45d19e47e67bb2b8d30 (2.18-plus-a-tiny-bit).
-
-These work everywhere else, and indeed they seem to work with
-nfs-utils... after a restart. (Obviously, by the time rpc.mountd is
-running, LVM has long since been started, local filesystems mounted, and
-all the uuids needed for said filesystems should damn well be visible.)
-
->> I'll try a packet capture next (time to use --port, I guess).
-
-Oops. Forgot. Next time. :)
-
-> The output of
->
-> 	rpcdebug -m rpc -s cache
-> 	more /proc/net/*/content
-
-(assuming you meant /proc/net/rpc/*/content)
-
-> after a failed startup might be interesting too.
-
-Here. The normal case, first:
-
-,----
-| #uid cnt: gids...
-| # expiry=1285273838 refcnt=1 flags=3
-| # 0 0:
-| # expiry=1285273838 refcnt=1 flags=3
-| # 1000 0:
-| #class IP domain
-| # expiry=1285274634 refcnt=1 flags=1
-| nfsd 192.168.14.1 fold.srvr.nix
-| # expiry=1285275315 refcnt=2 flags=1
-| nfsd 192.168.16.20 mutilate.wkstn.nix
-| # expiry=2147483647 refcnt=1 flags=1
-| nfsd 0.0.0.0 -test-client-
-| #path domain(flags)
-| # expiry=1285275315 refcnt=1 flags=1
-| /usr/doc	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275315 refcnt=1 flags=1
-| /var/state/munin	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=b5cb6e6b:ed9d4345:abd64535:f56e2519)
-| # expiry=1285275315 refcnt=1 flags=1
-| /usr/share/xplanet	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275315 refcnt=1 flags=1
-| /etc/shai-hulud	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=6c0f7fa7:d6c24054:bff33a87:8460bdc7)
-| # expiry=1285275315 refcnt=1 flags=1
-| /usr/share/clamav	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275315 refcnt=1 flags=1
-| /usr/src	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=333950aa:8e3f440a:bc94d0cc:4adae198)
-| # expiry=1285275315 refcnt=1 flags=1
-| /usr/share/xemacs	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275315 refcnt=1 flags=1
-| /home/.spindle.srvr.nix/nix/Graphics/Photos	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=78c50891:aaac452b:8b4fa769:9565a21e)
-| # expiry=1285275315 refcnt=1 flags=1
-| /home/.spindle.srvr.nix/nix/Mail/nnmh/spambox-verified	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=52d386c2:b6384034:8bd4e199:5e3237bb)
-| # expiry=1285274634 refcnt=1 flags=1
-| /home/.spindle.srvr.nix	fold.srvr.nix(rw,root_squash,async,wdelay,no_subtree_check,uuid=95bd22c2:253c456f:8e36b6cf:b9ecd4ef)
-| # expiry=1285275315 refcnt=1 flags=1
-| /var/log.real	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=b5cb6e6b:ed9d4345:abd64535:f56e2519)
-| # expiry=1285275315 refcnt=1 flags=1
-| /usr/lib/X11/fonts	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275315 refcnt=1 flags=1
-| /usr/share/texlive	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275315 refcnt=1 flags=1
-| /usr/share/httpd/htdocs/munin	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275315 refcnt=1 flags=1
-| /usr/info	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275315 refcnt=1 flags=1
-| /home/.spindle.srvr.nix	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=95bd22c2:253c456f:8e36b6cf:b9ecd4ef)
-| # expiry=1285275315 refcnt=1 flags=1
-| /pkg/non-free	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=07799ff5:baef4492:875dc737:30d6149e)
-| #domain fsidtype fsid [path]
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0000e01e00000000a77f0f6c5440c2d6873af3bfc7bd6084 /etc/shai-hulud
-| # expiry=2147483647 refcnt=1 flags=1
-| fold.srvr.nix 7 0x0000400100000000c222bd956f453c25cfb6368eefd4ecb9 /home/.spindle.srvr.nix
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0000c001000000006b6ecbb545439ded3545d6ab19256ef5 /var/log.real
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 6 0xc286d352344038b699e1d48bbb37325e /home/.spindle.srvr.nix/nix/Mail/nnmh/spambox-verified
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x000120010000000024c2cc5cee4024a9470445b4ecc29838 /usr/info
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0000c001000000001e1d2b5e18f3665c0000000000000000 /var/log.real
-| # expiry=2147483647 refcnt=1 flags=1
-| fold.srvr.nix 6 0x9108c5782b45acaa69a74f8b1ea26595 /home/.spindle.srvr.nix/nix/Graphics/Photos
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 6 0xaa5039330a443f8eccd094bc98e1da4a /usr/src
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0001200100000000e889c66391bc82020000000000000000 /usr/info
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0000653d0000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/clamav
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0000a0010000000024c2cc5cee4024a9470445b4ecc29838 /usr/doc
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 6 0x9108c5782b45acaa69a74f8b1ea26595 /home/.spindle.srvr.nix/nix/Graphics/Photos
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 6 0xf59f79079244efba37c75d879e14d630 /pkg/non-free
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0000400100000000c222bd956f453c25cfb6368eefd4ecb9 /home/.spindle.srvr.nix
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0000e01e00000000d3fc452052a2fd930000000000000000 /etc/shai-hulud
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0008a002000000006b6ecbb545439ded3545d6ab19256ef5 /var/state/munin
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 6 0x802458c28a39500c0000000000000000 /pkg/non-free
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x000075af0000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/httpd/htdocs/munin
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x00004001000000001b8b940d9cd091800000000000000000 /home/.spindle.srvr.nix
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x000065820000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/xemacs
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x000a51840000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/texlive
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x000065850000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/xplanet
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x00086de80000000024c2cc5cee4024a9470445b4ecc29838 /usr/lib/X11/fonts
-`----
-
-Now I rebooted the server, leaving the client running (actually two are
-connected right now: 'fold' is my firewall. I think you can probably
-ignore it.) Post-reboot, it looked like this:
-
-,----
-| #uid cnt: gids...
-| # expiry=1285274048 refcnt=1 flags=3
-| # 1000 0:
-| #class IP domain
-| # expiry=1285275728 refcnt=2 flags=1
-| nfsd 192.168.16.20 mutilate.wkstn.nix
-| #path domain(flags)
-| #domain fsidtype fsid [path]
-| # expiry=2147483647 refcnt=1 flags=3
-| # mutilate.wkstn.nix 7 0x0000400100000000c222bd956f453c25cfb6368eefd4ecb9
-`----
-
-I flipped RPC debug on and rebooted the client next. The server said:
-
-Sep 23 21:33:15 spindle warning: [  127.385537] RPC:       Want update, refage=120, age=0
-Sep 23 21:33:15 spindle warning: [  127.536779] RPC:       Want update, refage=120, age=0
-[repeated 40 times]
-
-When it connected, the server said
-
-Sep 23 21:34:23 spindle warning: [  195.696257] RPC:       Want update, refage=120, age=68
-Sep 23 21:34:23 spindle warning: [  195.696605] RPC:       Want update, refage=120, age=68
-Sep 23 21:34:23 spindle warning: [  195.711495] RPC:       Want update, refage=120, age=68
-Sep 23 21:34:23 spindle warning: [  195.711741] RPC:       Want update, refage=120, age=0
-Sep 23 21:34:23 spindle warning: [  195.712224] RPC:       Want update, refage=120, age=68
-Sep 23 21:34:23 spindle warning: [  195.712753] RPC:       Want update, refage=120, age=68
-Sep 23 21:34:23 spindle warning: [  195.713279] RPC:       Want update, refage=120, age=68
-[repeated eleven times, mostly with seven repetitions, sometimes with eight]
-Sep 23 21:34:23 spindle warning: [  195.800687] RPC:       Want update, refage=120, age=68
-Sep 23 21:34:23 spindle warning: [  195.801247] RPC:       Want update, refage=120, age=68
-Sep 23 21:34:23 spindle warning: [  195.801776] RPC:       Want update, refage=120, age=68
-Sep 23 21:34:23 spindle warning: [  195.802316] RPC:       Want update, refage=120, age=68
-Sep 23 21:34:23 spindle warning: [  195.802834] RPC:       Want update, refage=120, age=68
-Sep 23 21:34:24 spindle warning: [  196.701890] RPC:       Want update, refage=120, age=69
-Sep 23 21:34:24 spindle warning: [  196.702235] RPC:       Want update, refage=120, age=69
-Sep 23 21:34:24 spindle warning: [  196.778129] RPC:       Want update, refage=120, age=69
-Sep 23 21:34:24 spindle warning: [  196.778471] RPC:       Want update, refage=120, age=69
-Sep 23 21:34:26 spindle warning: [  198.703264] RPC:       Want update, refage=120, age=71
-Sep 23 21:34:26 spindle warning: [  198.703606] RPC:       Want update, refage=120, age=71
-Sep 23 21:34:26 spindle warning: [  198.778288] RPC:       Want update, refage=120, age=71
-Sep 23 21:34:26 spindle warning: [  198.778632] RPC:       Want update, refage=120, age=71
-[...]
-Sep 23 21:34:30 spindle warning: [  202.701820] RPC:       Want update, refage=120, age=75
-Sep 23 21:34:30 spindle warning: [  202.702162] RPC:       Want update, refage=120, age=75
-Sep 23 21:34:30 spindle warning: [  202.775312] RPC:       Want update, refage=120, age=75
-Sep 23 21:34:30 spindle warning: [  202.775650] RPC:       Want update, refage=120, age=75
-Sep 23 21:34:35 spindle warning: [  207.562434] RPC:       Want update, refage=120, age=0
-Sep 23 21:34:35 spindle warning: [  207.562784] RPC:       Want update, refage=120, age=0
-Sep 23 21:34:35 spindle warning: [  207.563032] RPC:       Want update, refage=120, age=0
-[...]
-Sep 23 21:34:38 spindle warning: [  210.693953] RPC:       Want update, refage=120, age=83
-Sep 23 21:34:38 spindle warning: [  210.694135] RPC:       Want update, refage=120, age=83
-Sep 23 21:34:38 spindle warning: [  210.766049] RPC:       Want update, refage=120, age=83
-Sep 23 21:34:38 spindle warning: [  210.766205] RPC:       Want update, refage=120, age=83
-
-Now, the rpc/*/content files had grown again, and even the -ESTALEd
-filesystems, like /home/.spindle.srvr.nix, are represented once more:
-
-,----
-| #uid cnt: gids...
-| # expiry=1285274115 refcnt=1 flags=3
-| # 0 0:
-| # expiry=1285274195 refcnt=1 flags=3
-| # 1000 0:
-| #class IP domain
-| # expiry=1285275875 refcnt=3 flags=1
-| nfsd 192.168.14.1 fold.srvr.nix
-| # expiry=1285275878 refcnt=2 flags=1
-| nfsd 192.168.16.20 mutilate.wkstn.nix
-| #path domain(flags)
-| # expiry=1285275878 refcnt=1 flags=1
-| /pkg/non-free	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=07799ff5:baef4492:875dc737:30d6149e)
-| # expiry=1285275863 refcnt=1 flags=1
-| /usr/src	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=333950aa:8e3f440a:bc94d0cc:4adae198)
-| # expiry=1285275863 refcnt=1 flags=1
-| /usr/share/clamav	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275878 refcnt=1 flags=1
-| /home/.spindle.srvr.nix	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=95bd22c2:253c456f:8e36b6cf:b9ecd4ef)
-| # expiry=1285275863 refcnt=1 flags=1
-| /var/log.real	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=b5cb6e6b:ed9d4345:abd64535:f56e2519)
-| # expiry=1285275875 refcnt=1 flags=1
-| /home/.spindle.srvr.nix	fold.srvr.nix(rw,root_squash,async,wdelay,no_subtree_check,uuid=95bd22c2:253c456f:8e36b6cf:b9ecd4ef)
-| # expiry=1285275863 refcnt=1 flags=1
-| /usr/share/texlive	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275863 refcnt=1 flags=1
-| /var/state/munin	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=b5cb6e6b:ed9d4345:abd64535:f56e2519)
-| # expiry=1285275863 refcnt=1 flags=1
-| /usr/info	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275863 refcnt=1 flags=1
-| /etc/shai-hulud	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=6c0f7fa7:d6c24054:bff33a87:8460bdc7)
-| # expiry=1285275863 refcnt=1 flags=1
-| /usr/share/xplanet	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275863 refcnt=1 flags=1
-| /usr/share/xemacs	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275863 refcnt=1 flags=1
-| /usr/doc	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275863 refcnt=1 flags=1
-| /usr/lib/X11/fonts	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| # expiry=1285275863 refcnt=1 flags=1
-| /usr/share/httpd/htdocs/munin	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-| #domain fsidtype fsid [path]
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0000a0010000000024c2cc5cee4024a9470445b4ecc29838 /usr/doc
-| # expiry=2147483647 refcnt=1 flags=3
-| # mutilate.wkstn.nix 6 0xf59f79079244efba37c75d879e14d630
-| # expiry=2147483647 refcnt=1 flags=3
-| # mutilate.wkstn.nix 7 0x0000400100000000c222bd956f453c25cfb6368eefd4ecb9
-| # expiry=2147483647 refcnt=1 flags=1
-| fold.srvr.nix 7 0x0000400100000000c222bd956f453c25cfb6368eefd4ecb9 /home/.spindle.srvr.nix
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0000653d0000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/clamav
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0000c001000000006b6ecbb545439ded3545d6ab19256ef5 /var/log.real
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x000120010000000024c2cc5cee4024a9470445b4ecc29838 /usr/info
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 6 0xaa5039330a443f8eccd094bc98e1da4a /usr/src
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0000e01e00000000a77f0f6c5440c2d6873af3bfc7bd6084 /etc/shai-hulud
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x000065820000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/xemacs
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x000a51840000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/texlive
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x000065850000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/xplanet
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x00086de80000000024c2cc5cee4024a9470445b4ecc29838 /usr/lib/X11/fonts
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x000075af0000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/httpd/htdocs/munin
-| # expiry=2147483647 refcnt=1 flags=1
-| mutilate.wkstn.nix 7 0x0008a002000000006b6ecbb545439ded3545d6ab19256ef5 /var/state/munin
-`----
-
-I restarted rpc.mountd and the client, so it mounted correctly. Here's a
-diff of the rpc/*/content files in this last stage. Some lines differ
-only in times, but many are new:
-
---- rpc-content.post-server-reboot	2010-09-23 21:33:06.957968742 +0100
-+++ rpc-content.back-to-normal	2010-09-23 21:37:17.397020536 +0100
-@@ -1,10 +1,76 @@
- #uid cnt: gids...
--# expiry=1285274048 refcnt=1 flags=3
-+# expiry=1285274237 refcnt=1 flags=3
- # 1000 0:
- #class IP domain
--# expiry=1285275728 refcnt=2 flags=1
-+# expiry=1285276012 refcnt=2 flags=1
- nfsd 192.168.16.20 mutilate.wkstn.nix
- #path domain(flags)
-+# expiry=1285276012 refcnt=1 flags=1
-+/home/.spindle.srvr.nix/nix/Graphics/Photos	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=78c50891:aaac452b:8b4fa769:9565a21e)
-+# expiry=1285276012 refcnt=1 flags=1
-+/pkg/non-free	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=07799ff5:baef4492:875dc737:30d6149e)
-+# expiry=1285276012 refcnt=1 flags=1
-+/usr/src	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=333950aa:8e3f440a:bc94d0cc:4adae198)
-+# expiry=1285276012 refcnt=1 flags=1
-+/usr/share/clamav	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-+# expiry=1285276011 refcnt=1 flags=1
-+/home/.spindle.srvr.nix	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=95bd22c2:253c456f:8e36b6cf:b9ecd4ef)
-+# expiry=1285276012 refcnt=1 flags=1
-+/var/log.real	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=b5cb6e6b:ed9d4345:abd64535:f56e2519)
-+# expiry=1285276011 refcnt=1 flags=1
-+/home/.spindle.srvr.nix/nix/Mail/nnmh/spambox-verified	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,uuid=52d386c2:b6384034:8bd4e199:5e3237bb)
-+# expiry=1285276012 refcnt=1 flags=1
-+/usr/share/texlive	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-+# expiry=1285276012 refcnt=1 flags=1
-+/var/state/munin	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=b5cb6e6b:ed9d4345:abd64535:f56e2519)
-+# expiry=1285276012 refcnt=1 flags=1
-+/usr/info	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-+# expiry=1285276012 refcnt=1 flags=1
-+/etc/shai-hulud	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=6c0f7fa7:d6c24054:bff33a87:8460bdc7)
-+# expiry=1285276012 refcnt=1 flags=1
-+/usr/share/xplanet	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-+# expiry=1285276012 refcnt=1 flags=1
-+/usr/share/xemacs	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-+# expiry=1285276012 refcnt=1 flags=1
-+/usr/doc	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-+# expiry=1285276012 refcnt=1 flags=1
-+/usr/lib/X11/fonts	mutilate.wkstn.nix(ro,root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
-+# expiry=1285276012 refcnt=1 flags=1
-+/usr/share/httpd/htdocs/munin	mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,uuid=5cccc224:a92440ee:b4450447:3898c2ec)
- #domain fsidtype fsid [path]
--# expiry=2147483647 refcnt=1 flags=3
--# mutilate.wkstn.nix 7 0x0000400100000000c222bd956f453c25cfb6368eefd4ecb9
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 6 0x9108c5782b45acaa69a74f8b1ea26595 /home/.spindle.srvr.nix/nix/Graphics/Photos
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x0000a0010000000024c2cc5cee4024a9470445b4ecc29838 /usr/doc
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 6 0xf59f79079244efba37c75d879e14d630 /pkg/non-free
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x0000400100000000c222bd956f453c25cfb6368eefd4ecb9 /home/.spindle.srvr.nix
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x0000653d0000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/clamav
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x0000c001000000006b6ecbb545439ded3545d6ab19256ef5 /var/log.real
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 6 0xc286d352344038b699e1d48bbb37325e /home/.spindle.srvr.nix/nix/Mail/nnmh/spambox-verified
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x000120010000000024c2cc5cee4024a9470445b4ecc29838 /usr/info
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 6 0xaa5039330a443f8eccd094bc98e1da4a /usr/src
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x0000e01e00000000a77f0f6c5440c2d6873af3bfc7bd6084 /etc/shai-hulud
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x000065820000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/xemacs
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x00004001000000001b8b940d9cd091800000000000000000 /home/.spindle.srvr.nix
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x000a51840000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/texlive
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x000065850000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/xplanet
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x00086de80000000024c2cc5cee4024a9470445b4ecc29838 /usr/lib/X11/fonts
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x000075af0000000024c2cc5cee4024a9470445b4ecc29838 /usr/share/httpd/htdocs/munin
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 7 0x0008a002000000006b6ecbb545439ded3545d6ab19256ef5 /var/state/munin
-+# expiry=2147483647 refcnt=1 flags=1
-+mutilate.wkstn.nix 6 0x802458c28a39500c0000000000000000 /pkg/non-free
