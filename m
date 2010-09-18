@@ -1,121 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:35199 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753533Ab0I3Vdb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 17:33:31 -0400
-Message-ID: <4CA50229.9000103@panasas.com>
-Date: Thu, 30 Sep 2010 23:33:29 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 15/16] nfsd4: add new connections to session
-References: <1285863553-8945-1-git-send-email-bfields@redhat.com> <1285863553-8945-16-git-send-email-bfields@redhat.com>
-In-Reply-To: <1285863553-8945-16-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:14144 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755152Ab0IRDSf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Sep 2010 23:18:35 -0400
+Received: from localhost.localdomain (scher1-lxp.hq.netapp.com [10.58.61.44] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8I3IEVA012071
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 20:18:21 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 08/12] RFC: pnfs: filelayout: introduce minimal file layout driver
+Date: Fri, 17 Sep 2010 23:17:50 -0400
+Message-Id: <1284779874-10499-9-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
+References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2010-09-30 18:19, J. Bruce Fields wrote:
-> As long as we're not implementing any session security, we should just
-> automatically add any new connections that come along to the list of
-> sessions associated with the session.
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Doesn't the client need to send BIND_CONN_TO_SESSION?
+This driver just registers itself and supplies trivial mount/umount functions.
 
-18.34. Operation 41: BIND_CONN_TO_SESSION - Associate Connection with Session:
+Signed-off-by: TBD - melding/reorganization of several patches
+---
+ fs/nfs/Makefile         |    3 ++
+ fs/nfs/nfs4filelayout.c |   78 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_fs.h  |    1 +
+ 3 files changed, 82 insertions(+), 0 deletions(-)
+ create mode 100644 fs/nfs/nfs4filelayout.c
 
-   BIND_CONN_TO_SESSION is used to associate additional connections with
-   a session.  It MUST be used on the connection being associated with
-   the session.
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index bb9e773..631ffcb 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -18,3 +18,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
+ nfs-$(CONFIG_SYSCTL) += sysctl.o
+ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
++
++obj-$(CONFIG_NFS_V4_1) += nfs_layout_nfsv41_files.o
++nfs_layout_nfsv41_files-y := nfs4filelayout.o
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+new file mode 100644
+index 0000000..696e283
+--- /dev/null
++++ b/fs/nfs/nfs4filelayout.c
+@@ -0,0 +1,78 @@
++/*
++ *  Module for the pnfs nfs4 file layout driver.
++ *  Defines all I/O and Policy interface operations, plus code
++ *  to register itself with the pNFS client.
++ *
++ *  Copyright (c) 2002
++ *  The Regents of the University of Michigan
++ *  All Rights Reserved
++ *
++ *  Dean Hildebrand <dhildebz@umich.edu>
++ *
++ *  Permission is granted to use, copy, create derivative works, and
++ *  redistribute this software and such derivative works for any purpose,
++ *  so long as the name of the University of Michigan is not used in
++ *  any advertising or publicity pertaining to the use or distribution
++ *  of this software without specific, written prior authorization. If
++ *  the above copyright notice or any other identification of the
++ *  University of Michigan is included in any copy of any portion of
++ *  this software, then the disclaimer below must also be included.
++ *
++ *  This software is provided as is, without representation or warranty
++ *  of any kind either express or implied, including without limitation
++ *  the implied warranties of merchantability, fitness for a particular
++ *  purpose, or noninfringement.  The Regents of the University of
++ *  Michigan shall not be liable for any damages, including special,
++ *  indirect, incidental, or consequential damages, with respect to any
++ *  claim arising out of or in connection with the use of the software,
++ *  even if it has been or is hereafter advised of the possibility of
++ *  such damages.
++ */
++
++#include <linux/nfs_fs.h>
++#include "pnfs.h"
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Dean Hildebrand <dhildebz@umich.edu>");
++MODULE_DESCRIPTION("The NFSv4 file layout driver");
++
++int
++filelayout_initialize_mountpoint(struct nfs_server *nfss)
++{
++	return 0;
++}
++
++int
++filelayout_uninitialize_mountpoint(struct nfs_server *nfss)
++{
++	dprintk("--> %s\n", __func__);
++
++	return 0;
++}
++
++static struct pnfs_layoutdriver_type filelayout_type = {
++	.id = LAYOUT_NFSV4_1_FILES,
++	.name = "LAYOUT_NFSV4_1_FILES",
++	.owner = THIS_MODULE,
++	.initialize_mountpoint   = filelayout_initialize_mountpoint,
++	.uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
++};
++
++static int __init nfs4filelayout_init(void)
++{
++	printk(KERN_INFO "%s: NFSv4 File Layout Driver Registering...\n",
++	       __func__);
++	return pnfs_register_layoutdriver(&filelayout_type);
++}
++
++static void __exit nfs4filelayout_exit(void)
++{
++	printk(KERN_INFO "%s: NFSv4 File Layout Driver Unregistering...\n",
++	       __func__);
++	pnfs_unregister_layoutdriver(&filelayout_type);
++}
++
++module_init(nfs4filelayout_init);
++module_exit(nfs4filelayout_exit);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index aba3da2..499872f 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -616,6 +616,7 @@ nfs_fileid_to_ino_t(u64 fileid)
+ #define NFSDBG_MOUNT		0x0400
+ #define NFSDBG_FSCACHE		0x0800
+ #define NFSDBG_PNFS		0x1000
++#define NFSDBG_PNFS_LD		0x2000
+ #define NFSDBG_ALL		0xFFFF
+ 
+ #ifdef __KERNEL__
+-- 
+1.7.2.1
 
-Also, with these patches, can we set SEQ4_STATUS_CB_PATH_DOWN if there's
-no backchannel?
-
-Benny
-
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs4state.c |   49 +++++++++++++++++++++++++++++++++++++++++++++++--
->  1 files changed, 47 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 3b4d74c..596702e 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -658,13 +658,18 @@ static struct nfsd4_conn *alloc_conn(struct svc_rqst *rqstp)
->  	return conn;
->  }
->  
-> +static void __nfsd4_hash_conn(struct nfsd4_conn *conn, struct nfsd4_session *ses)
-> +{
-> +	conn->cn_session = ses;
-> +	list_add(&conn->cn_persession, &ses->se_conns);
-> +}
-> +
->  static void nfsd4_hash_conn(struct nfsd4_conn *conn, struct nfsd4_session *ses)
->  {
->  	struct nfs4_client *clp = ses->se_client;
->  
->  	spin_lock(&clp->cl_lock);
-> -	conn->cn_session = ses;
-> -	list_add(&conn->cn_persession, &ses->se_conns);
-> +	__nfsd4_hash_conn(conn, ses);
->  	spin_unlock(&clp->cl_lock);
->  }
->  
-> @@ -1612,6 +1617,44 @@ out:
->  	return status;
->  }
->  
-> +static struct nfsd4_conn *__nfsd4_find_conn(struct svc_rqst *r, struct nfsd4_session *s)
-> +{
-> +	struct nfsd4_conn *c;
-> +
-> +	list_for_each_entry(c, &s->se_conns, cn_persession) {
-> +		if (c->cn_xprt == r->rq_xprt) {
-> +			return c;
-> +		}
-> +	}
-> +	return NULL;
-> +}
-> +
-> +static void nfsd4_sequence_check_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
-> +{
-> +	struct nfs4_client *clp = ses->se_client;
-> +	struct nfsd4_conn *c, *new = NULL;
-> +
-> +	spin_lock(&clp->cl_lock);
-> +	c = __nfsd4_find_conn(rqstp, ses);
-> +	spin_unlock(&clp->cl_lock);
-> +	if (c)
-> +		return;
-> +
-> +	new = alloc_conn(rqstp);
-> +
-> +	spin_lock(&clp->cl_lock);
-> +	c = __nfsd4_find_conn(rqstp, ses);
-> +	if (c) {
-> +		spin_unlock(&clp->cl_lock);
-> +		free_conn(new);
-> +		return;
-> +	}
-> +	__nfsd4_hash_conn(new, ses);
-> +	spin_unlock(&clp->cl_lock);
-> +	nfsd4_register_conn(new);
-> +	return;
-> +}
-> +
->  __be32
->  nfsd4_sequence(struct svc_rqst *rqstp,
->  	       struct nfsd4_compound_state *cstate,
-> @@ -1656,6 +1699,8 @@ nfsd4_sequence(struct svc_rqst *rqstp,
->  	if (status)
->  		goto out;
->  
-> +	nfsd4_sequence_check_conn(rqstp, session);
-> +
->  	/* Success! bump slot seqid */
->  	slot->sl_inuse = true;
->  	slot->sl_seqid = seq->seqid;
