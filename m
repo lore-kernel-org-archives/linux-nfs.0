@@ -1,223 +1,318 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58555 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:54044 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753631Ab0IWNb3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Sep 2010 09:31:29 -0400
-Subject: Re: [PATCH] SQUASHME: pnfs: get layout in proper segments.
-Content-Type: text/plain; charset=us-ascii
+	id S1755185Ab0IRDSg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Sep 2010 23:18:36 -0400
+Received: from localhost.localdomain (scher1-lxp.hq.netapp.com [10.58.61.44] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8I3IEVC012071
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 20:18:23 -0700 (PDT)
 From: Fred Isaman <iisaman@netapp.com>
-In-Reply-To: <4C9B05E9.5080303@panasas.com>
-Date: Thu, 23 Sep 2010 09:31:10 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <79652A29-65A5-4385-96C5-838F68915401@netapp.com>
-References: <1285095654-32401-1-git-send-email-bhalevy@panasas.com> <AANLkTi=mSWun+tEOrjGUsuc2gs_79K2+NCUOrXJoaMeW@mail.gmail.com> <4C9B05E9.5080303@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 10/12] RFC: nfs: client needs to maintain list of inodes with active layouts
+Date: Fri, 17 Sep 2010 23:17:52 -0400
+Message-Id: <1284779874-10499-11-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
+References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-On Sep 23, 2010, at 3:46 AM, Benny Halevy wrote:
+In particular, server reboot will invalidate all layouts.
 
-> On 2010-09-21 21:25, Fred Isaman wrote:
->> On Tue, Sep 21, 2010 at 3:00 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->>> Base the LAYOUTGET arguments on the actual required byte ranges
->>> rather than asking for the whole file layout.
->>> 
->>> Add a check in readpage_async_filler that the layout segment
->>> retrieved in pnfs_pageio_init_read still covers the current page
->>> and if not, try getting a new one.
->>> 
->>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>> ---
->>> fs/nfs/file.c |    2 +-
->>> fs/nfs/pnfs.c |   13 ++++++-------
->>> fs/nfs/pnfs.h |   21 ++++++++-------------
->>> fs/nfs/read.c |   17 ++++++++++++++++-
->>> 4 files changed, 31 insertions(+), 22 deletions(-)
->>> 
->>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
->>> index b05c1ff..228f41e 100644
->>> --- a/fs/nfs/file.c
->>> +++ b/fs/nfs/file.c
->>> @@ -390,7 +390,7 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
->>> 
->>>       pnfs_update_layout(mapping->host,
->>>                          nfs_file_open_context(file),
->>> -                          0, NFS4_MAX_UINT64, IOMODE_RW,
->>> +                          pos, len, IOMODE_RW,
->>>                          &lseg);
->>> start:
->>>       /*
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> index e6261a3..de716f6 100644
->>> --- a/fs/nfs/pnfs.c
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -600,11 +600,10 @@ send_layoutget(struct inode *ino,
->>>               pnfs_layout_release(lo, NULL);
->>>               return -ENOMEM;
->>>       }
->>> -       lgp->args.minlength = NFS4_MAX_UINT64;
->>> +       lgp->args.minlength = PAGE_CACHE_SIZE -
->>> +                               (range->offset & (PAGE_CACHE_SIZE-1));
->>>       lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
->>> -       lgp->args.range.iomode = range->iomode;
->>> -       lgp->args.range.offset = 0;
->>> -       lgp->args.range.length = NFS4_MAX_UINT64;
->>> +       lgp->args.range = *range;
->>>       lgp->args.type = server->pnfs_curr_ld->id;
->>>       lgp->args.inode = ino;
->>>       lgp->lsegpp = lsegpp;
->>> @@ -1028,8 +1027,8 @@ _pnfs_update_layout(struct inode *ino,
->>> {
->>>       struct pnfs_layout_range arg = {
->>>               .iomode = iomode,
->>> -               .offset = 0,
->>> -               .length = NFS4_MAX_UINT64,
->>> +               .offset = pos,
->>> +               .length = count,
->>>       };
->>>       struct nfs_inode *nfsi = NFS_I(ino);
->>>       struct pnfs_layout_hdr *lo;
->>> @@ -1330,7 +1329,7 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
->>>       readahead_range(inode, pages, &loff, &count);
->>> 
->>>       if (count > 0) {
->>> -               _pnfs_update_layout(inode, ctx, loff, count, IOMODE_READ,
->>> +               pnfs_update_layout(inode, ctx, loff, count, IOMODE_READ,
->> 
->> 
->> Why this change?  the pnfs_enabled_sb check has already been done at
->> the top of the function, hasn't it?
->> 
-> 
-> Actually, it's for the dprintk, but this is not crucial.
-> 
->> 
->>>                                   &pgio->pg_lseg);
->>>               if (!pgio->pg_lseg)
->>>                       return;
->>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->>> index 81534aa..b666f53 100644
->>> --- a/fs/nfs/pnfs.h
->>> +++ b/fs/nfs/pnfs.h
->>> @@ -188,19 +188,14 @@ static inline int pnfs_return_layout(struct inode *ino,
->>>       return 0;
->>> }
->>> 
->>> -static inline void pnfs_update_layout(struct inode *ino,
->>> -       struct nfs_open_context *ctx,
->>> -       loff_t pos, u64 count, enum pnfs_iomode access_type,
->>> -       struct pnfs_layout_segment **lsegpp)
->>> -{
->>> -       struct nfs_server *nfss = NFS_SERVER(ino);
->>> -
->>> -       if (pnfs_enabled_sb(nfss))
->>> -               _pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp);
->>> -       else {
->>> -               if (lsegpp)
->>> -                       *lsegpp = NULL;
->>> -       }
->>> +#define pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp) { \
->>> +       if (pnfs_enabled_sb(NFS_SERVER(ino))) { \
->>> +               dprintk("%s: updating %s layout pos %llu count %llu\n", __func__, \
->>> +                       (access_type) == IOMODE_READ ? "READ" : "WRITE", \
->>> +                       (unsigned long long)(pos), (unsigned long long)(count)); \
->>> +               _pnfs_update_layout(ino, ctx, pos, count, access_type, lsegpp); \
->>> +       } else \
->>> +               *lsegpp = NULL; \
->>> }
->> 
->> 
->> Why this change?  I much prefer the inline version to the define, and
->> I thought that this was generally being pushed.
->> 
-> 
-> dprintk again.
-> I think I'll just do this as a debug-only patch, just so we have the extra debugging
-> in the development tree.
-> 
->> 
->>> 
->>> static inline int pnfs_get_write_status(struct nfs_write_data *data)
->>> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
->>> index dde7996..36eef5e 100644
->>> --- a/fs/nfs/read.c
->>> +++ b/fs/nfs/read.c
->>> @@ -121,12 +121,14 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
->>>       LIST_HEAD(one_request);
->>>       struct nfs_page *new;
->>>       unsigned int len;
->>> +       loff_t pgoffs;
->>>       struct pnfs_layout_segment *lseg;
->>> 
->>>       len = nfs_page_length(page);
->>>       if (len == 0)
->>>               return nfs_return_empty_page(page);
->>> -       pnfs_update_layout(inode, ctx, 0, NFS4_MAX_UINT64, IOMODE_READ, &lseg);
->>> +       pgoffs = (loff_t)page->index << PAGE_CACHE_SHIFT;
->>> +       pnfs_update_layout(inode, ctx, pgoffs, len, IOMODE_READ, &lseg);
->>>       new = nfs_create_request(ctx, inode, page, 0, len, lseg);
->>>       put_lseg(lseg);
->>>       if (IS_ERR(new)) {
->>> @@ -603,14 +605,27 @@ readpage_async_filler(void *data, struct page *page)
->>> {
->>>       struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
->>>       struct inode *inode = page->mapping->host;
->>> +       struct pnfs_layout_range *range;
->>>       struct nfs_page *new;
->>>       unsigned int len;
->>> +       loff_t pgoff;
->>>       int error;
->>> 
->>>       len = nfs_page_length(page);
->>>       if (len == 0)
->>>               return nfs_return_empty_page(page);
->>> 
->>> +       pgoff = (loff_t)page->index << PAGE_CACHE_SHIFT;
->>> +       range = desc->pgio->pg_lseg ? &desc->pgio->pg_lseg->range : NULL;
->>> +       if (!range ||
->>> +           (range->offset > pgoff + len) ||
->>> +           (range->offset + range->length < pgoff)) {
->>> +               put_lseg(desc->pgio->pg_lseg);
->>> +               desc->pgio->pg_lseg = NULL;
->>> +               pnfs_update_layout(inode, desc->ctx, pgoff, len, IOMODE_READ,
->>> +                                  &desc->pgio->pg_lseg);
->>> +       }
->>> +
->>>       new = nfs_create_request(desc->ctx, inode, page, 0, len,
->>>                                desc->pgio->pg_lseg);
->>>       if (IS_ERR(new))
->>> --
->> 
->> 
->> Wouldn't it be easier to just trim any returned layout to page
->> boundaries, and then pnfs_can_coalesce_requests will handle this
->> automatically.
-> 
-> Trimming the returned layout to page boundaries sounds like a good idea,
-> but in this case it's not the page alignment I'm worried about, but
-> working in layout segments in general.  The first segment we end with
-> after pnfs_pageio_init_read and that we store in desc->pgio->pg_lseg
-> may cover only part of the whole I/O so we need this check to see if
-> it's exhausted and we need another layout segment to continue, otherwise
-> we'll be using a layout segment that does not cover the page in hand.
-> 
-> Benny
-> 
+Note that in order to have an active layout, we must get a successful response
+from the server.  To avoid adding that machinery, this patch just includes a
+stub that fakes up a successful return.  Since the layout is never referenced
+for io, this is not a problem.
 
-Yes, I see.  Though in this case, wouldn't it be simpler to just return an error.  Readpages is only called from the readahead, which ignores errors.  That way, the section covered by the layout gets read in now.  The vfs will call down to read in the pages we did not fill later.
+Signed-off-by: TBD - melding/reorganization of several patches
+---
+ fs/nfs/client.c           |    4 +-
+ fs/nfs/nfs4state.c        |    2 +
+ fs/nfs/pnfs.c             |  131 +++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/pnfs.h             |   14 +++++
+ include/linux/nfs_fs_sb.h |    1 +
+ 5 files changed, 148 insertions(+), 4 deletions(-)
 
-Fred
-
->> 
->> Fred
->> 
->>> 1.7.2.3
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index eed1212..6fc5c84 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -156,7 +156,9 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	cred = rpc_lookup_machine_cred();
+ 	if (!IS_ERR(cred))
+ 		clp->cl_machine_cred = cred;
+-
++#if defined(CONFIG_NFS_V4_1)
++	INIT_LIST_HEAD(&clp->cl_layouts);
++#endif
+ 	nfs_fscache_get_client_cookie(clp);
+ 
+ 	return clp;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 3e2f19b..b53a4ce 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -53,6 +53,7 @@
+ #include "callback.h"
+ #include "delegation.h"
+ #include "internal.h"
++#include "pnfs.h"
+ 
+ #define OPENOWNER_POOL_SIZE	8
+ 
+@@ -1447,6 +1448,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			}
+ 			clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
+ 			set_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state);
++			pnfs_destroy_all_layouts(clp);
+ 		}
+ 
+ 		if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 5d55d0b..a9750f2 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -28,6 +28,7 @@
+  */
+ 
+ #include <linux/nfs_fs.h>
++#include "internal.h"
+ #include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PNFS
+@@ -171,11 +172,67 @@ put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
+ 	lo->refcount--;
+ 	if (!lo->refcount) {
+ 		dprintk("%s: freeing layout cache %p\n", __func__, lo);
++		BUG_ON(!list_empty(&lo->layouts));
+ 		NFS_I(lo->inode)->layout = NULL;
+ 		kfree(lo);
+ 	}
+ }
+ 
++static void
++init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
++{
++	INIT_LIST_HEAD(&lseg->fi_list);
++	kref_init(&lseg->kref);
++	lseg->layout = lo;
++}
++
++static void
++destroy_lseg(struct kref *kref)
++{
++	struct pnfs_layout_segment *lseg =
++		container_of(kref, struct pnfs_layout_segment, kref);
++	struct pnfs_layout_hdr *local = lseg->layout;
++
++	dprintk("--> %s\n", __func__);
++	kfree(lseg);
++	/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
++	put_layout_hdr_locked(local);
++}
++
++static void
++put_lseg_locked(struct pnfs_layout_segment *lseg)
++{
++	if (!lseg)
++		return;
++
++	dprintk("%s: lseg %p ref %d\n", __func__, lseg,
++		atomic_read(&lseg->kref.refcount));
++	kref_put(&lseg->kref, destroy_lseg);
++}
++
++static void
++pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo)
++{
++	struct pnfs_layout_segment *lseg, *next;
++	struct nfs_client *clp;
++
++	dprintk("%s:Begin lo %p\n", __func__, lo);
++
++	assert_spin_locked(&lo->inode->i_lock);
++	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list) {
++		dprintk("%s: freeing lseg %p\n", __func__, lseg);
++		list_del(&lseg->fi_list);
++		put_lseg_locked(lseg);
++	}
++	clp = NFS_SERVER(lo->inode)->nfs_client;
++	spin_lock(&clp->cl_lock);
++	/* List does not take a reference, so no need for put here */
++	list_del_init(&lo->layouts);
++	spin_unlock(&clp->cl_lock);
++
++	dprintk("%s:Return\n", __func__);
++}
++
+ void
+ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ {
+@@ -184,25 +241,91 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	lo = nfsi->layout;
+ 	if (lo) {
++		pnfs_clear_lseg_list(lo);
+ 		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
+ 		put_layout_hdr_locked(lo);
+ 	}
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+ }
+ 
+-/* STUB - pretend LAYOUTGET to server failed */
++/*
++ * Called by the state manger to remove all layouts established under an
++ * expired lease.
++ */
++void
++pnfs_destroy_all_layouts(struct nfs_client *clp)
++{
++	struct pnfs_layout_hdr *lo;
++	LIST_HEAD(tmp_list);
++
++	spin_lock(&clp->cl_lock);
++	list_splice_init(&clp->cl_layouts, &tmp_list);
++	spin_unlock(&clp->cl_lock);
++
++	while (!list_empty(&tmp_list)) {
++		lo = list_entry(tmp_list.next, struct pnfs_layout_hdr,
++				layouts);
++		dprintk("%s freeing layout for inode %lu\n", __func__,
++			lo->inode->i_ino);
++		pnfs_destroy_layout(NFS_I(lo->inode));
++	}
++}
++
++static void pnfs_insert_layout(struct pnfs_layout_hdr *lo,
++			       struct pnfs_layout_segment *lseg);
++
++/* Get layout from server. */
+ static struct pnfs_layout_segment *
+ send_layoutget(struct pnfs_layout_hdr *lo,
+ 	   struct nfs_open_context *ctx,
+ 	   u32 iomode)
+ {
+ 	struct inode *ino = lo->inode;
++	struct pnfs_layout_segment *lseg;
+ 
+-	set_bit(lo_fail_bit(iomode), &lo->state);
++	/* Lets pretend we sent LAYOUTGET and got a response */
++	lseg = kzalloc(sizeof(*lseg), GFP_KERNEL);
++	if (!lseg) {
++		set_bit(lo_fail_bit(iomode), &lo->state);
++		spin_lock(&ino->i_lock);
++		put_layout_hdr_locked(lo);
++		spin_unlock(&ino->i_lock);
++		return NULL;
++	}
++	init_lseg(lo, lseg);
++	lseg->iomode = IOMODE_RW;
+ 	spin_lock(&ino->i_lock);
++	pnfs_insert_layout(lo, lseg);
+ 	put_layout_hdr_locked(lo);
+ 	spin_unlock(&ino->i_lock);
+-	return NULL;
++	return lseg;
++}
++
++static void
++pnfs_insert_layout(struct pnfs_layout_hdr *lo,
++		   struct pnfs_layout_segment *lseg)
++{
++	dprintk("%s:Begin\n", __func__);
++
++	assert_spin_locked(&lo->inode->i_lock);
++	if (list_empty(&lo->segs)) {
++		struct nfs_client *clp = NFS_SERVER(lo->inode)->nfs_client;
++
++		spin_lock(&clp->cl_lock);
++		BUG_ON(!list_empty(&lo->layouts));
++		list_add_tail(&lo->layouts, &clp->cl_layouts);
++		spin_unlock(&clp->cl_lock);
++	}
++	get_layout_hdr_locked(lo);
++	/* STUB - add the constructed lseg if necessary */
++	if (list_empty(&lo->segs)) {
++		list_add_tail(&lseg->fi_list, &lo->segs);
++		dprintk("%s: inserted lseg %p iomode %d at tail\n",
++			__func__, lseg, lseg->iomode);
++	} else
++		put_lseg_locked(lo);
++
++	dprintk("%s:Return\n", __func__);
+ }
+ 
+ static struct pnfs_layout_hdr *
+@@ -214,6 +337,8 @@ alloc_init_layout_hdr(struct inode *ino)
+ 	if (!lo)
+ 		return NULL;
+ 	lo->refcount = 1;
++	INIT_LIST_HEAD(&lo->layouts);
++	INIT_LIST_HEAD(&lo->segs);
+ 	lo->inode = ino;
+ 	return lo;
+ }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 4ed1b48..1c3eb02 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -30,6 +30,13 @@
+ #ifndef FS_NFS_PNFS_H
+ #define FS_NFS_PNFS_H
+ 
++struct pnfs_layout_segment {
++	struct list_head fi_list;
++	u32 iomode;
++	struct kref kref;
++	struct pnfs_layout_hdr *layout;
++};
++
+ #ifdef CONFIG_NFS_V4_1
+ 
+ #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
+@@ -51,6 +58,8 @@ struct pnfs_layoutdriver_type {
+ 
+ struct pnfs_layout_hdr {
+ 	unsigned long		refcount;
++	struct list_head	layouts;   /* other client layouts */
++	struct list_head	segs;      /* layout segments list */
+ 	unsigned long		state;
+ 	struct inode		*inode;
+ };
+@@ -64,6 +73,7 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ void pnfs_destroy_layout(struct nfs_inode *);
++void pnfs_destroy_all_layouts(struct nfs_client *);
+ 
+ 
+ static inline int lo_fail_bit(u32 iomode)
+@@ -80,6 +90,10 @@ static inline int pnfs_enabled_sb(struct nfs_server *nfss)
+ 
+ #else  /* CONFIG_NFS_V4_1 */
+ 
++static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
++{
++}
++
+ static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
+ {
+ }
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 29a821d..e670a9c 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -82,6 +82,7 @@ struct nfs_client {
+ 	/* The flags used for obtaining the clientid during EXCHANGE_ID */
+ 	u32			cl_exchange_flags;
+ 	struct nfs4_session	*cl_session; 	/* sharred session */
++	struct list_head	cl_layouts;
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #ifdef CONFIG_NFS_FSCACHE
+-- 
+1.7.2.1
 
