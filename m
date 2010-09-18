@@ -1,46 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4231 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52093 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755007Ab0IKANN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 20:13:13 -0400
-Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
- layout driver
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <20100911000749.GA31628@infradead.org>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
-	 <1283450419-5648-9-git-send-email-iisaman@netapp.com>
-	 <1284147111.10062.74.camel@heimdal.trondhjem.org>
-	 <20100910235600.GA11231@infradead.org>
-	 <1284163433.14078.102.camel@heimdal.trondhjem.org>
-	 <20100911000749.GA31628@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 10 Sep 2010 20:13:00 -0400
-Message-ID: <1284163980.14078.111.camel@heimdal.trondhjem.org>
+	id S1754753Ab0IRDSd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Sep 2010 23:18:33 -0400
+Received: from localhost.localdomain (scher1-lxp.hq.netapp.com [10.58.61.44] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8I3IEV3012071
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 20:18:15 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 01/12] NFSD: remove duplicate NFS4_STATEID_SIZE
+Date: Fri, 17 Sep 2010 23:17:43 -0400
+Message-Id: <1284779874-10499-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
+References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 2010-09-10 at 20:07 -0400, Christoph Hellwig wrote:
-> On Fri, Sep 10, 2010 at 08:03:53PM -0400, Trond Myklebust wrote:
-> > So you are saying we should simply equate CONFIG_PNFS_FILE_LAYOUT and
-> > CONFIG_NFS_V4_1 right now? Yep, I'd be fine with that... I'm still
-> > working on the patches to get rid of all these CONFIG options, but
-> > ultimately this is what I'm working towards.
-> 
-> If you don't want a separate option that's up to you, but I don't think
-> forcing people to built the pnfs file layout just because they want nfs4.1
-> features is an all that smart idea.
+From: Andy Adamson <andros@netapp.com>
 
-IMHO it should be fine.
+Already accepted by Bruce
+---
+ fs/nfsd/nfs4callback.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
-Most people will be compiling NFS as a module, in which case, the pnfs
-file layout is just another module that can be left out from the final
-binary if people don't want it.
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 988cbb3..014482c 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -41,7 +41,6 @@
+ 
+ #define NFSPROC4_CB_NULL 0
+ #define NFSPROC4_CB_COMPOUND 1
+-#define NFS4_STATEID_SIZE 16
+ 
+ /* Index of predefined Linux callback client operations */
+ 
+-- 
+1.7.2.1
 
-I'm still waiting to hear from people who want to compile NFSv4.1 in the
-main kernel, but who want pNFS to be modularised.
-
-Cheers
-  Trond
