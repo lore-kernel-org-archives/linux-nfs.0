@@ -1,85 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:20983 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752923Ab0IONEy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Sep 2010 09:04:54 -0400
-Message-ID: <4C90BB53.2060401@parallels.com>
-Date: Wed, 15 Sep 2010 16:25:55 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 3/9] sunrpc: Pass xprt to cached get/put routines
-References: <4C90BADB.10700@parallels.com>
-In-Reply-To: <4C90BADB.10700@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:13651 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751749Ab0ISOMf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Sep 2010 10:12:35 -0400
+Message-ID: <4C961A50.5010000@panasas.com>
+Date: Sun, 19 Sep 2010 16:12:32 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Sorin Faibish <sfaibish@emc.com>, "Peter Honeyman" <Honey@citi.umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>
+Subject: Re: Discussion topics for the coming Bake-A-Thon
+References: <op.vi7c6cmorwwil4@sfaibish1.corp.emc.com>
+In-Reply-To: <op.vi7c6cmorwwil4@sfaibish1.corp.emc.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-They do not require the rqst actually and having the xprt simplifies
-further patching.
+On 09/18/2010 02:33 AM, Sorin Faibish wrote:
+> All,
+> 
+> I am trying to build an agenda for discussions during the coming  
+> Bake-A-Thon
+> at EMC October 4-8. I collected the last week several topics of interest  
+> and
+> I want to ask you all to add any other topics of interest so I can close  
+> the
+> agenda of the event. This is the list so far:
+> 
+> 1. Layoutcommit for file layout (Dave Noveck)
+> 2. Server side copy - (James)
+> 3. Sparse files and storage preferences (Dean, Sorin)
+> 4. Secure NFS (David Quigly)
+> 5. Extend cthon tests with callback operations tests (Peter Honeyman)
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+     And local/remote truncate torture tests.
 
----
- net/sunrpc/svcauth_unix.c |   12 +++++-------
- 1 files changed, 5 insertions(+), 7 deletions(-)
+> 6. Performance tests - tools and benchmarks (Peter Honeyman)
 
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index aef0feb..f0017ca 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -426,10 +426,9 @@ void svcauth_unix_purge(void)
- EXPORT_SYMBOL_GPL(svcauth_unix_purge);
- 
- static inline struct ip_map *
--ip_map_cached_get(struct svc_rqst *rqstp)
-+ip_map_cached_get(struct svc_xprt *xprt)
- {
- 	struct ip_map *ipm = NULL;
--	struct svc_xprt *xprt = rqstp->rq_xprt;
- 
- 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags)) {
- 		spin_lock(&xprt->xpt_lock);
-@@ -454,10 +453,8 @@ ip_map_cached_get(struct svc_rqst *rqstp)
- }
- 
- static inline void
--ip_map_cached_put(struct svc_rqst *rqstp, struct ip_map *ipm)
-+ip_map_cached_put(struct svc_xprt *xprt, struct ip_map *ipm)
- {
--	struct svc_xprt *xprt = rqstp->rq_xprt;
--
- 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags)) {
- 		spin_lock(&xprt->xpt_lock);
- 		if (xprt->xpt_auth_cache == NULL) {
-@@ -705,6 +702,7 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
- 	struct ip_map *ipm;
- 	struct group_info *gi;
- 	struct svc_cred *cred = &rqstp->rq_cred;
-+	struct svc_xprt *xprt = rqstp->rq_xprt;
- 
- 	switch (rqstp->rq_addr.ss_family) {
- 	case AF_INET:
-@@ -723,7 +721,7 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
- 	if (rqstp->rq_proc == 0)
- 		return SVC_OK;
- 
--	ipm = ip_map_cached_get(rqstp);
-+	ipm = ip_map_cached_get(xprt);
- 	if (ipm == NULL)
- 		ipm = ip_map_lookup(rqstp->rq_server->sv_program->pg_class,
- 				    &sin6->sin6_addr);
-@@ -742,7 +740,7 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
- 		case 0:
- 			rqstp->rq_client = &ipm->m_client->h;
- 			kref_get(&rqstp->rq_client->ref);
--			ip_map_cached_put(rqstp, ipm);
-+			ip_map_cached_put(xprt, ipm);
- 			break;
- 	}
- 
--- 
-1.5.5.6
+to 6 or 5. Cluster tests. .i.e use of more then one client in concertration
+to confuse and crash a server.
 
+> 7. Utils and fedora rpm (Sorin, SteveD)
+> 8. pNFS with IPv6 (Sorin)
+> 9. Linux FedFS imlementation (Chuck)
+> 
+> I will allocate 30min for each topic and group them in 2 hours sessions
+> mostly in the early PM after lunch.
+> 
+> Please feel free to add any additional topics and thank you for your  
+> patience.
+> 
+> /Sorin
+> 
+
+
+Thanks
+Boaz
