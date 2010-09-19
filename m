@@ -1,144 +1,105 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49142 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932223Ab0I3QTo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 12:19:44 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 13/16] nfsd4: use callbacks on svc_xprt_deletion
-Date: Thu, 30 Sep 2010 12:19:10 -0400
-Message-Id: <1285863553-8945-14-git-send-email-bfields@redhat.com>
-In-Reply-To: <1285863553-8945-1-git-send-email-bfields@redhat.com>
-References: <1285863553-8945-1-git-send-email-bfields@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
+Return-Path: <nfsv4-bounces@ietf.org>
+Date: Sun, 19 Sep 2010 10:49:59 -0400
+To: "Boaz Harrosh" <bharrosh@panasas.com>,
+        "Peter Honeyman"
+	<Honey@citi.umich.edu>
+From: "Sorin Faibish" <sfaibish@emc.com>
+References: <op.vi7c6cmorwwil4@sfaibish1.corp.emc.com>
+	<4C961A50.5010000@panasas.com>
+Message-ID: <op.vjabhlntrwwil4@sfaibish1.corp.emc.com>
+In-Reply-To: <4C961A50.5010000@panasas.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>
+Subject: Re: [nfsv4] Discussion topics for the coming Bake-A-Thon
+List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+Content-Type: text/plain; charset="iso-8859-15"; Format="flowed"; DelSp="yes"
+Sender: nfsv4-bounces@ietf.org
+Errors-To: nfsv4-bounces@ietf.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+On Sun, 19 Sep 2010 10:12:32 -0400, Boaz Harrosh <bharrosh@panasas.com> =20
+wrote:
 
-Remove connections from the list when they go down.
+> On 09/18/2010 02:33 AM, Sorin Faibish wrote:
+>> All,
+>>
+>> I am trying to build an agenda for discussions during the coming
+>> Bake-A-Thon
+>> at EMC October 4-8. I collected the last week several topics of interest
+>> and
+>> I want to ask you all to add any other topics of interest so I can close
+>> the
+>> agenda of the event. This is the list so far:
+>>
+>> 1. Layoutcommit for file layout (Dave Noveck)
+>> 2. Server side copy - (James)
+>> 3. Sparse files and storage preferences (Dean, Sorin)
+>> 4. Secure NFS (David Quigly)
+>> 5. Extend cthon tests with callback operations tests (Peter Honeyman)
+>
+>      And local/remote truncate torture tests.
+Sure. Do we need a separate discussion or only this?
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs4state.c |   51 ++++++++++++++++++++++++++++++++++++++++++---------
- fs/nfsd/state.h     |    3 +++
- 2 files changed, 45 insertions(+), 9 deletions(-)
+>
+>> 6. Performance tests - tools and benchmarks (Peter Honeyman)
+>
+> to 6 or 5. Cluster tests. .i.e use of more then one client in =20
+> concertration
+> to confuse and crash a server.
+This aside from cthon, just for performance qaulification for the git.
+Same do we need an additional spot or this is enough (30 min).
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c7c1a7a..b7e9793 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -625,6 +625,25 @@ static void init_forechannel_attrs(struct nfsd4_channel_attrs *new, struct nfsd4
- 	new->maxops = min_t(u32, req->maxops, NFSD_MAX_OPS_PER_COMPOUND);
- }
- 
-+static void free_conn(struct nfsd4_conn *c)
-+{
-+	svc_xprt_put(c->cn_xprt);
-+	kfree(c);
-+}
-+
-+static void nfsd4_conn_lost(struct svc_xpt_user *u)
-+{
-+	struct nfsd4_conn *c = container_of(u, struct nfsd4_conn, cn_xpt_user);
-+	struct nfs4_client *clp = c->cn_session->se_client;
-+
-+	spin_lock(&clp->cl_lock);
-+	if (!list_empty(&c->cn_persession)) {
-+		list_del(&c->cn_persession);
-+		free_conn(c);
-+	}
-+	spin_unlock(&clp->cl_lock);
-+}
-+
- static __be32 nfsd4_new_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
- {
- 	struct nfs4_client *clp = ses->se_client;
-@@ -636,18 +655,34 @@ static __be32 nfsd4_new_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
- 	conn->cn_flags = NFS4_CDFC4_FORE;
- 	svc_xprt_get(rqstp->rq_xprt);
- 	conn->cn_xprt = rqstp->rq_xprt;
-+	conn->cn_session = ses;
- 
- 	spin_lock(&clp->cl_lock);
- 	list_add(&conn->cn_persession, &ses->se_conns);
- 	spin_unlock(&clp->cl_lock);
- 
-+	conn->cn_xpt_user.callback = nfsd4_conn_lost;
-+	register_xpt_user(rqstp->rq_xprt, &conn->cn_xpt_user);
- 	return nfs_ok;
- }
- 
--static void free_conn(struct nfsd4_conn *c)
-+static void nfsd4_del_conns(struct nfsd4_session *s)
- {
--	svc_xprt_put(c->cn_xprt);
--	kfree(c);
-+	struct nfs4_client *clp = s->se_client;
-+	struct nfsd4_conn *c;
-+
-+	spin_lock(&clp->cl_lock);
-+	while (!list_empty(&s->se_conns)) {
-+		c = list_first_entry(&s->se_conns, struct nfsd4_conn, cn_persession);
-+		list_del_init(&c->cn_persession);
-+		spin_unlock(&clp->cl_lock);
-+
-+		unregister_xpt_user(c->cn_xprt, &c->cn_xpt_user);
-+		free_conn(c);
-+
-+		spin_lock(&clp->cl_lock);
-+	}
-+	spin_unlock(&clp->cl_lock);
- }
- 
- void free_session(struct kref *kref)
-@@ -656,12 +691,7 @@ void free_session(struct kref *kref)
- 	int mem;
- 
- 	ses = container_of(kref, struct nfsd4_session, se_ref);
--	while (!list_empty(&ses->se_conns)) {
--		struct nfsd4_conn *c;
--		c = list_first_entry(&ses->se_conns, struct nfsd4_conn, cn_persession);
--		list_del(&c->cn_persession);
--		free_conn(c);
--	}
-+	nfsd4_del_conns(ses);
- 	spin_lock(&nfsd_drc_lock);
- 	mem = ses->se_fchannel.maxreqs * slot_bytes(&ses->se_fchannel);
- 	nfsd_drc_mem_used -= mem;
-@@ -1552,6 +1582,9 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 	/* wait for callbacks */
- 	nfsd4_shutdown_callback(ses->se_client);
- 	nfs4_unlock_state();
-+
-+	nfsd4_del_conns(ses);
-+
- 	nfsd4_put_session(ses);
- 	status = nfs_ok;
- out:
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 29413c2..8d5e237 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -35,6 +35,7 @@
- #ifndef _NFSD4_STATE_H
- #define _NFSD4_STATE_H
- 
-+#include <linux/sunrpc/svc_xprt.h>
- #include <linux/nfsd/nfsfh.h>
- #include "nfsfh.h"
- 
-@@ -155,6 +156,8 @@ struct nfsd4_clid_slot {
- struct nfsd4_conn {
- 	struct list_head cn_persession;
- 	struct svc_xprt *cn_xprt;
-+	struct svc_xpt_user cn_xpt_user;
-+	struct nfsd4_session *cn_session;
- /* CDFC4_FORE, CDFC4_BACK: */
- 	unsigned char cn_flags;
- };
--- 
-1.7.0.4
+I will update the agenda with your comments and I assume you will be
+part of the discussion, even drive it.
 
+/Sorin
+
+>
+>> 7. Utils and fedora rpm (Sorin, SteveD)
+>> 8. pNFS with IPv6 (Sorin)
+>> 9. Linux FedFS imlementation (Chuck)
+>>
+>> I will allocate 30min for each topic and group them in 2 hours sessions
+>> mostly in the early PM after lunch.
+>>
+>> Please feel free to add any additional topics and thank you for your
+>> patience.
+>>
+>> /Sorin
+>>
+>
+>
+> Thanks
+> Boaz
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+
+
+
+--=20
+Best Regards
+Sorin Faibish
+Corporate Distinguished Engineer
+Unified Storage Division
+
+        EMC=B2
+where information lives
+
+Phone: 508-435-1000 x 48545
+Cellphone: 617-510-0422
+Email : sfaibish@emc.com
+_______________________________________________
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www.ietf.org/mailman/listinfo/nfsv4
