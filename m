@@ -1,347 +1,253 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24490 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752125Ab0IQWQz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 18:16:55 -0400
-Subject: Re: [PATCH] nfs: introduce mount option '-olocal_lock' to make
- locks local
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Suresh Jayaraman <sjayaraman@suse.de>
-Cc: Neil Brown <neilb@suse.de>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-In-Reply-To: <4C91B5B5.2040603@suse.de>
-References: <4C91B5B5.2040603@suse.de>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 17 Sep 2010 18:15:49 -0400
-Message-ID: <1284761749.16553.18.camel@heimdal.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:52722 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756298Ab0ITNNz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 09:13:55 -0400
+Message-ID: <4C975E22.7070609@panasas.com>
+Date: Mon, 20 Sep 2010 15:14:10 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 06/12] RFC: nfs: set layout driver
+References: <1284779874-10499-1-git-send-email-iisaman@netapp.com> <1284779874-10499-7-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1284779874-10499-7-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-09-16 at 11:44 +0530, Suresh Jayaraman wrote:
-> Hi Trond,
+On 2010-09-18 05:17, Fred Isaman wrote:
+> From: The pNFS Team <linux-nfs@vger.kernel.org>
 > 
-> I'm resending this patch as a separate email as I have not heard from you.
+> Put in the infrastructure that uses information returned from the
+> server at mount to select a layout driver module.
 > 
-> Changes since last post:
->   - remove unneeded NFS_MOUNT_NONLM flag checks from do_getlk()/do_setlk()/do_unlck
->   - update comments to include the new mount option
+> In this patch, a stub is used that always returns "no driver found".
 > 
-
-Hi Suresh,
-
-Just a couple of comments:
-
-      * Firstly the legacy binary mount interface uses
-        NFS_MOUNT_NONLM=0x200, so we cannot change that value. What I
-        was suggesting was rather that we just parse it to mean
-        NFS_MOUNT_LOCAL_FLOCK | NFS_MOUNT_LOCAL_FCNTL.
-      * Have you tested this with NFSv4? I think I asked you this
-        previously, but I haven't seen an answer. I ask because -onolock
-        used to cause NFSv4 reboot recovery to Oops since the struct
-        file_lock didn't have any associated nfsv4 lock state. I just
-        want to make sure we're not re-enabling that bug.
-
-Cheers
-  Trond
-
-> Thanks,
-> Suresh Jayaraman
+> Signed-off-by: TBD - melding/reorganization of several patches
 > ---
+>  fs/nfs/Makefile           |    1 +
+>  fs/nfs/client.c           |    4 ++
+>  fs/nfs/pnfs.c             |   78 +++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfs/pnfs.h             |   56 ++++++++++++++++++++++++++++++++
+>  include/linux/nfs_fs.h    |    1 +
+>  include/linux/nfs_fs_sb.h |    1 +
+>  6 files changed, 141 insertions(+), 0 deletions(-)
+>  create mode 100644 fs/nfs/pnfs.c
+>  create mode 100644 fs/nfs/pnfs.h
 > 
-> NFS clients since 2.6.12 support flock locks by emulating fcntl byte-range
-> locks. Due to this, some windows applications which seem to use both flock
-> (share mode lock mapped as flock by Samba) and fcntl locks sequentially on
-> the same file, can't lock as they falsely assume the file is already locked.
-> The problem was reported on a setup with windows clients accessing excel files
-> on a Samba exported share which is originally a NFS mount from a NetApp filer.
-> 
-> Older NFS clients (< 2.6.12) did not see this problem as flock locks were
-> considered local. To support legacy flock behavior, this patch adds a mount
-> option "-olocal_lock=" which can take the following values:
-> 
->    'none'  		- Neither flock locks nor POSIX locks are local
->    'flock' 		- flock locks are local
->    'posix' 		- fcntl/POSIX locks are local
->    'all'		- Both flock locks and POSIX locks are local
-> 
-> Testing:
-> 
-> This patch was tested by using -olocal_lock option with different values and
-> the NLM calls were noted from the network packet captured.
-> 
->    'none'  - NLM calls were seen during both flock() and fcntl(), flock lock
->    	     was granted, fcntl was denied
->    'flock' - no NLM calls for flock(), NLM call was seen for fcntl(),
->    	     granted
->    'posix' - NLM call was seen for flock() - granted, no NLM call for fcntl()
->    'all'   - no NLM calls were seen during both flock() and fcntl()
-> 
-> Cc: Neil Brown <neilb@suse.de>
-> Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
-> ---
->  fs/nfs/client.c           |    6 +++-
->  fs/nfs/file.c             |   45 +++++++++++++++++++++++++++++++------------
->  fs/nfs/super.c            |   46 +++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/nfs_mount.h |    5 +++-
->  4 files changed, 86 insertions(+), 16 deletions(-)
-> 
+> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+> index da7fda6..bb9e773 100644
+> --- a/fs/nfs/Makefile
+> +++ b/fs/nfs/Makefile
+> @@ -15,5 +15,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+>  			   delegation.o idmap.o \
+>  			   callback.o callback_xdr.o callback_proc.o \
+>  			   nfs4namespace.o
+> +nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
+>  nfs-$(CONFIG_SYSCTL) += sysctl.o
+>  nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
 > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 4e7df2a..5f01f42 100644
+> index 4e7df2a..eed1212 100644
 > --- a/fs/nfs/client.c
 > +++ b/fs/nfs/client.c
-> @@ -635,7 +635,8 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
->   */
->  static void nfs_destroy_server(struct nfs_server *server)
->  {
-> -	if (!(server->flags & NFS_MOUNT_NONLM))
-> +	if (!(server->flags & NFS_MOUNT_LOCAL_FLOCK) ||
-> +			!(server->flags & NFS_MOUNT_LOCAL_FCNTL))
->  		nlmclnt_done(server->nlm_host);
->  }
+> @@ -48,6 +48,7 @@
+>  #include "iostat.h"
+>  #include "internal.h"
+>  #include "fscache.h"
+> +#include "pnfs.h"
 >  
-> @@ -657,7 +658,8 @@ static int nfs_start_lockd(struct nfs_server *server)
+>  #define NFSDBG_FACILITY		NFSDBG_CLIENT
 >  
->  	if (nlm_init.nfs_version > 3)
->  		return 0;
-> -	if (server->flags & NFS_MOUNT_NONLM)
-> +	if ((server->flags & NFS_MOUNT_LOCAL_FLOCK) &&
-> +			(server->flags & NFS_MOUNT_LOCAL_FCNTL))
->  		return 0;
->  
->  	switch (clp->cl_proto) {
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index eb51bd6..59cbe1b 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -684,7 +684,8 @@ static ssize_t nfs_file_splice_write(struct pipe_inode_info *pipe,
->  	return ret;
->  }
->  
-> -static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
-> +static int
-> +do_getlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
->  {
->  	struct inode *inode = filp->f_mapping->host;
->  	int status = 0;
-> @@ -699,7 +700,7 @@ static int do_getlk(struct file *filp, int cmd, struct file_lock *fl)
->  	if (nfs_have_delegation(inode, FMODE_READ))
->  		goto out_noconflict;
->  
-> -	if (NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM)
-> +	if (is_local)
->  		goto out_noconflict;
->  
->  	status = NFS_PROTO(inode)->lock(filp, cmd, fl);
-> @@ -730,7 +731,8 @@ static int do_vfs_lock(struct file *file, struct file_lock *fl)
->  	return res;
->  }
->  
-> -static int do_unlk(struct file *filp, int cmd, struct file_lock *fl)
-> +static int
-> +do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
->  {
->  	struct inode *inode = filp->f_mapping->host;
->  	int status;
-> @@ -745,15 +747,19 @@ static int do_unlk(struct file *filp, int cmd, struct file_lock *fl)
->  	 * 	If we're signalled while cleaning up locks on process exit, we
->  	 * 	still need to complete the unlock.
->  	 */
-> -	/* Use local locking if mounted with "-onolock" */
-> -	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
-> +	/*
-> +	 * Use local locking if mounted with "-onolock" or with appropriate
-> +	 * "-olocal_lock="
-> +	 */
-> +	if (!is_local)
->  		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
->  	else
->  		status = do_vfs_lock(filp, fl);
->  	return status;
->  }
->  
-> -static int do_setlk(struct file *filp, int cmd, struct file_lock *fl)
-> +static int
-> +do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
->  {
->  	struct inode *inode = filp->f_mapping->host;
->  	int status;
-> @@ -766,8 +772,11 @@ static int do_setlk(struct file *filp, int cmd, struct file_lock *fl)
->  	if (status != 0)
->  		goto out;
->  
-> -	/* Use local locking if mounted with "-onolock" */
-> -	if (!(NFS_SERVER(inode)->flags & NFS_MOUNT_NONLM))
-> +	/*
-> +	 * Use local locking if mounted with "-onolock" or with appropriate
-> +	 * "-olocal_lock="
-> +	 */
-> +	if (!is_local)
->  		status = NFS_PROTO(inode)->lock(filp, cmd, fl);
->  	else
->  		status = do_vfs_lock(filp, fl);
-> @@ -791,6 +800,7 @@ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
->  {
->  	struct inode *inode = filp->f_mapping->host;
->  	int ret = -ENOLCK;
-> +	int is_local = 0;
->  
->  	dprintk("NFS: lock(%s/%s, t=%x, fl=%x, r=%lld:%lld)\n",
->  			filp->f_path.dentry->d_parent->d_name.name,
-> @@ -804,6 +814,9 @@ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
->  	if (__mandatory_lock(inode) && fl->fl_type != F_UNLCK)
->  		goto out_err;
->  
-> +	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FCNTL)
-> +		is_local = 1;
+> @@ -898,6 +899,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+>  	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
+>  		server->wsize = NFS_MAX_FILE_IO_SIZE;
+>  	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+> +	set_pnfs_layoutdriver(server, fsinfo->layouttype);
 > +
->  	if (NFS_PROTO(inode)->lock_check_bounds != NULL) {
->  		ret = NFS_PROTO(inode)->lock_check_bounds(fl);
->  		if (ret < 0)
-> @@ -811,11 +824,11 @@ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
->  	}
+>  	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
 >  
->  	if (IS_GETLK(cmd))
-> -		ret = do_getlk(filp, cmd, fl);
-> +		ret = do_getlk(filp, cmd, fl, is_local);
->  	else if (fl->fl_type == F_UNLCK)
-> -		ret = do_unlk(filp, cmd, fl);
-> +		ret = do_unlk(filp, cmd, fl, is_local);
->  	else
-> -		ret = do_setlk(filp, cmd, fl);
-> +		ret = do_setlk(filp, cmd, fl, is_local);
->  out_err:
->  	return ret;
->  }
-> @@ -825,6 +838,9 @@ out_err:
->   */
->  static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
+>  	server->dtsize = nfs_block_size(fsinfo->dtpref, NULL);
+> @@ -1017,6 +1020,7 @@ void nfs_free_server(struct nfs_server *server)
 >  {
-> +	struct inode *inode = filp->f_mapping->host;
-> +	int is_local = 0;
+>  	dprintk("--> nfs_free_server()\n");
+>  
+> +	unset_pnfs_layoutdriver(server);
+>  	spin_lock(&nfs_client_lock);
+>  	list_del(&server->client_link);
+>  	list_del(&server->master_link);
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> new file mode 100644
+> index 0000000..2e5dba1
+> --- /dev/null
+> +++ b/fs/nfs/pnfs.c
+> @@ -0,0 +1,78 @@
+> +/*
+> + *  pNFS functions to call and manage layout drivers.
+> + *
+> + *  Copyright (c) 2002 [year of first publication]
+> + *  The Regents of the University of Michigan
+> + *  All Rights Reserved
+> + *
+> + *  Dean Hildebrand <dhildebz@umich.edu>
+> + *
+> + *  Permission is granted to use, copy, create derivative works, and
+> + *  redistribute this software and such derivative works for any purpose,
+> + *  so long as the name of the University of Michigan is not used in
+> + *  any advertising or publicity pertaining to the use or distribution
+> + *  of this software without specific, written prior authorization. If
+> + *  the above copyright notice or any other identification of the
+> + *  University of Michigan is included in any copy of any portion of
+> + *  this software, then the disclaimer below must also be included.
+> + *
+> + *  This software is provided as is, without representation or warranty
+> + *  of any kind either express or implied, including without limitation
+> + *  the implied warranties of merchantability, fitness for a particular
+> + *  purpose, or noninfringement.  The Regents of the University of
+> + *  Michigan shall not be liable for any damages, including special,
+> + *  indirect, incidental, or consequential damages, with respect to any
+> + *  claim arising out of or in connection with the use of the software,
+> + *  even if it has been or is hereafter advised of the possibility of
+> + *  such damages.
+> + */
 > +
->  	dprintk("NFS: flock(%s/%s, t=%x, fl=%x)\n",
->  			filp->f_path.dentry->d_parent->d_name.name,
->  			filp->f_path.dentry->d_name.name,
-> @@ -833,14 +849,17 @@ static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
->  	if (!(fl->fl_flags & FL_FLOCK))
->  		return -ENOLCK;
->  
-> +	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK)
-> +		is_local = 1;
+> +#include <linux/nfs_fs.h>
+> +#include "pnfs.h"
 > +
->  	/* We're simulating flock() locks using posix locks on the server */
->  	fl->fl_owner = (fl_owner_t)filp;
->  	fl->fl_start = 0;
->  	fl->fl_end = OFFSET_MAX;
->  
->  	if (fl->fl_type == F_UNLCK)
-> -		return do_unlk(filp, cmd, fl);
-> -	return do_setlk(filp, cmd, fl);
-> +		return do_unlk(filp, cmd, fl, is_local);
-> +	return do_setlk(filp, cmd, fl, is_local);
->  }
->  
->  /*
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index ec3966e..78c08e9 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -100,6 +100,7 @@ enum {
->  	Opt_addr, Opt_mountaddr, Opt_clientaddr,
->  	Opt_lookupcache,
->  	Opt_fscache_uniq,
-> +	Opt_local_lock,
->  
->  	/* Special mount options */
->  	Opt_userspace, Opt_deprecated, Opt_sloppy,
-> @@ -171,6 +172,7 @@ static const match_table_t nfs_mount_option_tokens = {
->  
->  	{ Opt_lookupcache, "lookupcache=%s" },
->  	{ Opt_fscache_uniq, "fsc=%s" },
-> +	{ Opt_local_lock, "local_lock=%s" },
->  
->  	{ Opt_err, NULL }
->  };
-> @@ -236,6 +238,22 @@ static match_table_t nfs_lookupcache_tokens = {
->  	{ Opt_lookupcache_err, NULL }
->  };
->  
-> +enum {
-> +	Opt_local_lock_all, Opt_local_lock_flock, Opt_local_lock_posix,
-> +	Opt_local_lock_none,
+> +#define NFSDBG_FACILITY		NFSDBG_PNFS
 > +
-> +	Opt_local_lock_err
+> +/* STUB that returns the equivalent of "no module found" */
+> +static struct pnfs_layoutdriver_type *
+> +find_pnfs_driver(u32 id) {
+
+nit: the curly brace should be moved down a line.
+
+Benny
+
+> +	return NULL;
+> +}
+> +
+> +/* Unitialize a mountpoint in a layout driver */
+> +void
+> +unset_pnfs_layoutdriver(struct nfs_server *nfss)
+> +{
+> +	nfss->pnfs_curr_ld = NULL;
+> +}
+> +
+> +/*
+> + * Try to set the server's pnfs module to the pnfs layout type specified by id.
+> + * Currently only one pNFS layout driver per filesystem is supported.
+> + *
+> + * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
+> + */
+> +void
+> +set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
+> +{
+> +	struct pnfs_layoutdriver_type *ld_type = NULL;
+> +
+> +	if (id == 0)
+> +		goto out_no_driver;
+> +	ld_type = find_pnfs_driver(id);
+> +	if (!ld_type) {
+> +		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+> +		ld_type = find_pnfs_driver(id);
+> +		if (!ld_type) {
+> +			dprintk("%s: No pNFS module found for %u.\n",
+> +				__func__, id);
+> +			goto out_no_driver;
+> +		}
+> +	}
+> +	server->pnfs_curr_ld = ld_type;
+> +	dprintk("%s: pNFS module for %u set\n", __func__, id);
+> +	return;
+> +
+> +out_no_driver:
+> +	dprintk("%s: Using NFSv4 I/O\n", __func__);
+> +	server->pnfs_curr_ld = NULL;
+> +}
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> new file mode 100644
+> index 0000000..c628ef1
+> --- /dev/null
+> +++ b/fs/nfs/pnfs.h
+> @@ -0,0 +1,56 @@
+> +/*
+> + *  pNFS client data structures.
+> + *
+> + *  Copyright (c) 2002
+> + *  The Regents of the University of Michigan
+> + *  All Rights Reserved
+> + *
+> + *  Dean Hildebrand <dhildebz@umich.edu>
+> + *
+> + *  Permission is granted to use, copy, create derivative works, and
+> + *  redistribute this software and such derivative works for any purpose,
+> + *  so long as the name of the University of Michigan is not used in
+> + *  any advertising or publicity pertaining to the use or distribution
+> + *  of this software without specific, written prior authorization. If
+> + *  the above copyright notice or any other identification of the
+> + *  University of Michigan is included in any copy of any portion of
+> + *  this software, then the disclaimer below must also be included.
+> + *
+> + *  This software is provided as is, without representation or warranty
+> + *  of any kind either express or implied, including without limitation
+> + *  the implied warranties of merchantability, fitness for a particular
+> + *  purpose, or noninfringement.  The Regents of the University of
+> + *  Michigan shall not be liable for any damages, including special,
+> + *  indirect, incidental, or consequential damages, with respect to any
+> + *  claim arising out of or in connection with the use of the software,
+> + *  even if it has been or is hereafter advised of the possibility of
+> + *  such damages.
+> + */
+> +
+> +#ifndef FS_NFS_PNFS_H
+> +#define FS_NFS_PNFS_H
+> +
+> +#ifdef CONFIG_NFS_V4_1
+> +
+> +#define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
+> +
+> +/* Per-layout driver specific registration structure */
+> +struct pnfs_layoutdriver_type {
 > +};
 > +
-> +static match_table_t nfs_local_lock_tokens = {
-> +	{ Opt_local_lock_all, "all" },
-> +	{ Opt_local_lock_flock, "flock" },
-> +	{ Opt_local_lock_posix, "posix" },
-> +	{ Opt_local_lock_none, "none" },
+> +void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+> +void unset_pnfs_layoutdriver(struct nfs_server *);
 > +
-> +	{ Opt_local_lock_err, NULL }
-> +};
+> +#else  /* CONFIG_NFS_V4_1 */
 > +
->  
->  static void nfs_umount_begin(struct super_block *);
->  static int  nfs_statfs(struct dentry *, struct kstatfs *);
-> @@ -1412,6 +1430,34 @@ static int nfs_parse_mount_options(char *raw,
->  			mnt->fscache_uniq = string;
->  			mnt->options |= NFS_OPTION_FSCACHE;
->  			break;
-> +		case Opt_local_lock:
-> +			string = match_strdup(args);
-> +			if (string == NULL)
-> +				goto out_nomem;
-> +			token = match_token(string, nfs_local_lock_tokens,
-> +					args);
-> +			kfree(string);
-> +			switch (token) {
-> +			case Opt_local_lock_all:
-> +				mnt->flags |= (NFS_MOUNT_LOCAL_FLOCK |
-> +					       NFS_MOUNT_LOCAL_FCNTL);
-> +				break;
-> +			case Opt_local_lock_flock:
-> +				mnt->flags |= NFS_MOUNT_LOCAL_FLOCK;
-> +				break;
-> +			case Opt_local_lock_posix:
-> +				mnt->flags |= NFS_MOUNT_LOCAL_FCNTL;
-> +				break;
-> +			case Opt_local_lock_none:
-> +				mnt->flags &= ~(NFS_MOUNT_LOCAL_FLOCK |
-> +						NFS_MOUNT_LOCAL_FCNTL);
-> +				break;
-> +			default:
-> +				dfprintk(MOUNT, "NFS:	invalid	"
-> +						"local_lock argument\n");
-> +				return 0;
-> +			};
-> +			break;
->  
->  		/*
->  		 * Special options
-> diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
-> index 5d59ae8..d6a16cc 100644
-> --- a/include/linux/nfs_mount.h
-> +++ b/include/linux/nfs_mount.h
-> @@ -56,7 +56,6 @@ struct nfs_mount_data {
->  #define NFS_MOUNT_TCP		0x0040	/* 2 */
->  #define NFS_MOUNT_VER3		0x0080	/* 3 */
->  #define NFS_MOUNT_KERBEROS	0x0100	/* 3 */
-> -#define NFS_MOUNT_NONLM		0x0200	/* 3 */
->  #define NFS_MOUNT_BROKEN_SUID	0x0400	/* 4 */
->  #define NFS_MOUNT_NOACL		0x0800	/* 4 */
->  #define NFS_MOUNT_STRICTLOCK	0x1000	/* reserved for NFSv4 */
-> @@ -71,4 +70,8 @@ struct nfs_mount_data {
->  #define NFS_MOUNT_NORESVPORT		0x40000
->  #define NFS_MOUNT_LEGACY_INTERFACE	0x80000
->  
-> +#define NFS_MOUNT_LOCAL_FLOCK	0x100000
-> +#define NFS_MOUNT_LOCAL_FCNTL	0x200000
-> +#define NFS_MOUNT_NONLM		(NFS_MOUNT_LOCAL_FLOCK | NFS_MOUNT_LOCAL_FCNTL)
+> +static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
+> +{
+> +}
 > +
+> +static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
+> +{
+> +}
+> +
+> +#endif /* CONFIG_NFS_V4_1 */
+> +
+> +#endif /* FS_NFS_PNFS_H */
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index d929b18..aba3da2 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -615,6 +615,7 @@ nfs_fileid_to_ino_t(u64 fileid)
+>  #define NFSDBG_CLIENT		0x0200
+>  #define NFSDBG_MOUNT		0x0400
+>  #define NFSDBG_FSCACHE		0x0800
+> +#define NFSDBG_PNFS		0x1000
+>  #define NFSDBG_ALL		0xFFFF
+>  
+>  #ifdef __KERNEL__
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index c82ee7c..29a821d 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -144,6 +144,7 @@ struct nfs_server {
+>  	u32			acl_bitmask;	/* V4 bitmask representing the ACEs
+>  						   that are supported on this
+>  						   filesystem */
+> +	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
 >  #endif
-> 
-
-
+>  	void (*destroy)(struct nfs_server *);
+>  
