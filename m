@@ -1,81 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:40905 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751378Ab0IWDXJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Sep 2010 23:23:09 -0400
-Date: Thu, 23 Sep 2010 13:23:02 +1000
-From: Neil Brown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 5/7] sunrpc/cache: allow thread manager more control of
- whether threads can wait for upcalls
-Message-ID: <20100923132302.3b15fde1@notabene>
-In-Reply-To: <20100922183622.GD26903@fieldses.org>
-References: <20100922025009.31745.98237.stgit@localhost.localdomain>
-	<20100922025507.31745.30398.stgit@localhost.localdomain>
-	<20100922183622.GD26903@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet10.oracle.com ([148.87.113.121]:55567 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754560Ab0ITSzj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 14:55:39 -0400
+Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
+Content-Type: text/plain; charset=utf-8
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20100920164856.GA20925@sith.mimuw.edu.pl>
+Date: Mon, 20 Sep 2010 14:53:37 -0400
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
+Message-Id: <FC6FA83D-52D7-411A-A18F-4A143A60992E@oracle.com>
+References: <20100917181251.GA21111@sith.mimuw.edu.pl> <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com> <20100917190413.GB21111@sith.mimuw.edu.pl> <DA851F94-8AFB-448D-B48D-BC4ACAD8F395@oracle.com> <20100917222227.GA22144@sith.mimuw.edu.pl> <DC671AB7-F3AF-4E70-B42E-4FF991D16E43@oracle.com> <20100920153157.GA20589@sith.mimuw.edu.pl> <02C38759-5236-454B-8F7B-02F9419B1532@oracle.com> <20100920164856.GA20925@sith.mimuw.edu.pl>
+To: =?utf-8?Q?Jan_R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 22 Sep 2010 14:36:22 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Wed, Sep 22, 2010 at 12:55:07PM +1000, NeilBrown wrote:
-> > Rather than blindly setting a timeout based on a course idea of
-> > busy-ness, allow the 'cache' to call into the 'rqstp' manager to
-> > request permission to wait for an upcall, and how long to wait for.
-> > 
-> > This allows the thread manager to know how many threads are waiting
-> > and reduce the permitted timeout when there are a large number.
-> > 
-> > The same code can check if waiting makes any sense (which it doesn't
-> > on single-threaded services) or if deferral is allowed (which it isn't
-> > e.g. for NFSv4).
-> > 
-> > The current heuristic is to allow a long wait (30 sec) if fewer than
-> > 1/2 the threads are waiting, and to allow no wait at all if there are
-> > more than 1/2 already waiting.
-> > 
-> > This provides better guaranties that slow responses to upcalls will
-> > not block too many threads for too long.
+On Sep 20, 2010, at 12:48 PM, Jan Rękorajski wrote:
+
+> On Mon, 20 Sep 2010, Chuck Lever wrote:
 > 
-> I suppose you're probably looking for comments on the idea rather than
-> the particular choice of heuristic, but:  wasn't one of the motivations
-> that a cache flush in the midst of heavy write traffic could cause long
-> delays due to writes being dropped?
+>> 
+>> On Sep 20, 2010, at 11:31 AM, Jan Rękorajski wrote:
+>> 
+>>> On Mon, 20 Sep 2010, Chuck Lever wrote:
+>>> 
+>>>> 
+>>>> On Sep 17, 2010, at 6:22 PM, Jan Rękorajski wrote:
+>>>> 
+>>> [snip]
+>>>>> 
+>>>>> What about TCP then?  My patch was a by-product of trying to make '-h <IP>'
+>>>>> also work for tcp sockets, so if we skip unbindable addresses for UDP,
+>>>>> then will it be ok to do the same for TCP?
+>>>> 
+>>>> Interesting.  Now that I've actually looked at the documentation >>
+>>>> blush << rpcbind(8) explicitly says that "-h" is only for UDP.  I seem
+>>>> to recall that the legacy portmapper had a problem on multi-homed
+>>>> hosts where a request was received on one interface, and the reply was
+>>>> sent out another.
+>>>> 
+>>>> This is certainly a problem for datagram transports, but shouldn't be
+>>>> an issue for connection-oriented transports: the reply is always sent
+>>>> on the same connection as the request was received.
+>>>> 
+>>>> Can you say a little more about why do you need "-h" to work for
+>>>> connection-oriented sockets?
+>>> 
+>>> I have a multihomed nfs server, and I don't want the portmapper to even
+>>> listen on an outside interface.
+>> 
+>> Understood, but that is accomplished with firewalling, these days.
 > 
-> That seems like a case where most threads may handling rpc's, but
-> waiting is still preferable to dropping.
+> It always was, but it's nice not needing to worry if I closed/opened all
+> that's neccessary.
 > 
+>> Usually, NFS servers are not run on the edge of private networks
+>> unless they are serving files to public hosts.
+> 
+> I would, if I could :)
+> 
+>> None of NFS's RPC daemons allow you to set a bind address, with one
+>> exception.  rpc.statd allows one to specify a "bind address" in the
+>> form of a host name for reasons specific to the NSM protocol.
+> 
+> I may be wrong here, but maybe it's because it was always portmapper
+> doing the binding, so if portmapper couldn't then no one thought of
+> adding this to RPC daemons.
 
-All comments are welcome - thanks.
+If rpc.mountd is running on a host, and rpcbind is not, it doesn't matter.  A port scanner can still find and attack the open mountd port.  The best and safest approach, IMO, is to use a firewall, and then test it with a remote port scanner service.  Our rpcbind implementation has tcp_wrapper already built in, for instance, but I use the iptables firewall in Fedora 13 (and, I keep RPC services on hosts inside the firewall, not on the firewall itself).
 
-Yes, the heuristic needs careful thought.
+[ ... snipped ... ]
 
-Currently a high level of traffic after a cache flush (and with slow mountd)
-will cause the first 300 requests to get deferred and subsequent requests to
-either be dropped or to cause old requests to be dropped.
+>>> Second thing is a host for vservers
+>>> (http://linux-vserver.org), I need to run portmapper in guests but
+>>> rpcbind listening on INADDR_ANY is not letting me.
+>> 
+>> Can you say more?  Maybe it's a bug.
+> 
+> It's more of a design flaw, vserver is an isolation techique, and if I
+> bind to some port on INADDR_ANY on host then I can't bind to that
+> port on guests. I don't know the implementation details, but network
+> interfaces other than lo are not (maybe can't be) isolated enough.
 
-With the proposed code, the '300' becomes 'half the number of nfsd threads'.
-This is smaller by default (bad) but configurable (good).
+The problem is the guest listeners get EADDRINUSE, or equivalent, since they are sharing a network namespace with the host?
 
-I think making it configurable is much more important than having it large by
-default.  But maybe 3/4 would be better than 1/2.
+>>> And finally it's good
+>>> to be consistent, it's strange to me that someone may want to limit only
+>>> the UDP part of portmapper (modulo network issues you mentioned).
+>> 
+>> "-h" was added to address an issue specific to Linux UDP sockets.
+>> It's not a feature, but a bug fix that is UDP-specific.  TCP doesn't
+>> need this bug fix.
+> 
+> Of course, but why not change a bugfix into a feature?
 
-I keep thinking that it would be really nice to have a dynamic thread pool,
-but I'm that sure that would do more than just move the problem...
+If we want to add this feature properly, we will have to change a broad range of user space components.  Therefore it will be a non-trivial undertaking.
 
-Another approach we could take (which only really works for tcp) is to count
-the number of waiting requests against each connection (rqstp) and if a
-single connection has "more than it's fair share" we stop accepting requests
-on that connection, while still allowing new requests on connections where
-there are fewer waiting requests.... sounds a bit complex though.
+For one thing, there appears to be more than one virtualization suite available for Linux (containers, kvm, and so on).  If our NFS infrastructure (both client and server) is to be adapted for lightweight virtualization then I think we need a clear idea of how networking (host naming, interface assignment, routing, and so on) is going to work in these environments.
 
-There is probably a really nice solution and I just cannot see it (maybe the
-solution is just to ignore the 'problem' and allow any request to wait as
-long as it likes).
+Just so you (and Ben) know, I intended to add support during the recent rpc.statd rewrite for multiple hostnames and multiple interfaces, exactly for the purpose of having our NLM and NSM implementations support container-like virtualization.  This idea was NACK'd.
 
-Thanks,
-NeilBrown
+-- 
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
