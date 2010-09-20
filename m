@@ -1,51 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57120 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752486Ab0IVWFj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Sep 2010 18:05:39 -0400
-Received: from localhost.localdomain (vikramyadav.hq.netapp.com [10.58.61.118] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8MM5M8M020412
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Sep 2010 15:05:25 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 02/12] SUNRPC: define xdr_decode_opaque_fixed
-Date: Wed, 22 Sep 2010 18:05:00 -0400
-Message-Id: <1285193110-24073-3-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1285193110-24073-1-git-send-email-iisaman@netapp.com>
-References: <1285193110-24073-1-git-send-email-iisaman@netapp.com>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:39235 "EHLO
+	mx01.colomx.prod.int.phx2.redhat.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752119Ab0ITPQp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 11:16:45 -0400
+Date: Mon, 20 Sep 2010 11:15:56 -0400 (EDT)
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Message-ID: <981484.56.1284995756178.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+In-Reply-To: <14128115.54.1284995685991.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+Subject: Re: Should we be aggressively invalidating cache when using
+ -onolock?
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+----- "Chuck Lever" <chuck.lever@oracle.com> wrote:
+> It also seems to me that if RHEL 4 is _not_ invalidating on lock, then
+> it is not working as designed.  AFAIK the Linux NFS client has always
+> invalidated a file's data cache on lock.  Did I misread something?
+> 
 
-A helper for decoding a fixed length opaque value.
-Returns a pointer to the next item in the xdr stream.
+The flock support for NFS was only implemented in the 2.6.12 kernel. Hence on the RHEL 4 kernel ie 2.6.9 nfs_file_operations->flock is NULL and any flock operations performed by the application was only applicable on that node. No part of the NFS client code was executed for the flock() operation. 
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- include/linux/sunrpc/xdr.h |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
-
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 35cf2e8..23dc117 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -131,6 +131,13 @@ xdr_decode_hyper(__be32 *p, __u64 *valp)
- 	return p + 2;
- }
- 
-+static inline __be32 *
-+xdr_decode_opaque_fixed(__be32 *p, void *ptr, unsigned int len)
-+{
-+	memcpy(ptr, p, len);
-+	return p + XDR_QUADLEN(len);
-+}
-+
- /*
-  * Adjust kvec to reflect end of xdr'ed data (RPC client XDR)
-  */
--- 
-1.7.2.1
-
+Sachin Prabhu
