@@ -1,85 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:45568 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758128Ab0IGUlY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 16:41:24 -0400
-Message-ID: <4C86A36E.9010906@candelatech.com>
-Date: Tue, 07 Sep 2010 13:41:18 -0700
-From: Ben Greear <greearb@candelatech.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: RFC:  support srcaddr= option to bind to local IPs.
-References: <4C81449B.4010900@candelatech.com> <1283882166.2788.48.camel@heimdal.trondhjem.org>
-In-Reply-To: <1283882166.2788.48.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from rcsinet10.oracle.com ([148.87.113.121]:40319 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752115Ab0ITUhq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 16:37:46 -0400
+Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20100920195635.GA18808@fieldses.org>
+Date: Mon, 20 Sep 2010 16:35:54 -0400
+Cc: Pavel Emelyanov <xemul@parallels.com>, Neil Brown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Message-Id: <14F506C2-8BDB-440E-A5A9-A99E4CC7512D@oracle.com>
+References: <4C90BADB.10700@parallels.com> <20100920161326.GL4580@fieldses.org> <4C978CE6.5080508@parallels.com> <20100920180418.GN4580@fieldses.org> <4C97B248.1030801@parallels.com> <EE0DC983-8CFA-42FA-8D64-F4E2564E6FB0@oracle.com> <20100920195635.GA18808@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/07/2010 10:56 AM, Trond Myklebust wrote:
-> On Fri, 2010-09-03 at 11:55 -0700, Ben Greear wrote:
->> This patch lets one bind the local side of NFS sockets to a particular
->> IP address.  This can be useful for users on multi-homed systems.
->>
->> This patch must be on top of the previous patch to fix the IPv6 address
->> comparison or it will not work.
->>
->> Comments and suggestions welcome...I'll incorporate those and post an
->> official signed-off patch after that.
->>
->> Thanks,
->> Ben
->>
->
-> The code in nfs_callback_authenticate is going to break NFSv4 callbacks.
-> Callbacks are sent to the -oclientaddr address, not srcaddr (btw, I
-> really dislike that new boolean argument to nfs_find_client(). If you
-> don't want to compare the source address, then have the caller pass a
-> NULL pointer).
 
+On Sep 20, 2010, at 3:56 PM, J. Bruce Fields wrote:
 
-Would this fix the callback issue you speak of?  The idea is to
-use source and dest to match if it exists, but if we find one
-where server address matches and srcaddr isn't specified,
-then we will use that.
+> On Mon, Sep 20, 2010 at 03:28:00PM -0400, Chuck Lever wrote:
+>> 
+>> On Sep 20, 2010, at 3:13 PM, Pavel Emelyanov wrote:
+>>> The nearest plan is
+>>> 
+>>> 1. Prepare the sunrpc layer to work in net namespaces 2. Make
+>>> rpcpipefs and nfsd filesystems be mountable multiple times 3. Make
+>>> support for multiple instances of the nfsd caches 4. Make suuport
+>>> for multiple instances of the nfsd_serv
+>>> 
+>>> After this several NFSd-s can be used in containers (hopefully I
+>>> didn't miss anything).
+>> 
+>> Are you assuming NFSv4 only?  Something needs to be done about NLM and
+>> NSM to make this work right.
+>> 
+>> Is there an issue for idmapper and svcgssd?  Probably not, but worth
+>> exploring.
+>> 
+>> And, how about AUTH_SYS certs?  These contain the host's name in them,
+>> and that depends on the net namespace.  NLM uses AUTH_SYS, and I
+>> believe the NFS server can make NLM calls to the client.
+> 
+> The client probably can't use the auth_sys cred on nlm callbacks in any
+> sensible way, so this may not be a big deal.
 
-@@ -384,10 +390,30 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
-                 if (!nfs_sockaddr_match_ipaddr(addr, clap))
-                         continue;
-
-+               if (srcaddr) {
-+                       const struct sockaddr *sa;
-+                       sa = (const struct sockaddr *)&clp->srcaddr;
-+                       if (!nfs_sockaddr_match_ipaddr(srcaddr, sa)) {
-+                               /* If clp doesn't bind to srcaddr, then
-+                                * it is a potential match if we don't find
-+                                * a better one.
-+                                */
-+                               if (sa->sa_family == AF_UNSPEC && !ok_fit)
-+                                       ok_fit = clp;
-+                               continue;
-+                       }
-+               }
-+found_one:
-                 atomic_inc(&clp->cl_count);
-                 spin_unlock(&nfs_client_lock);
-                 return clp;
-         }
-+
-+       if (ok_fit) {
-+               clp = ok_fit;
-+               goto found_one;
-+       }
-+
-         spin_unlock(&nfs_client_lock);
-         return NULL;
-  }
-
-
-Thanks,
-Ben
+I doubt anything looks at that hostname, really.  My worry is that it could leak information (like the wrong hostname) onto the network.
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
