@@ -1,151 +1,289 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:48297 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932094Ab0IBUh4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Sep 2010 16:37:56 -0400
-Subject: Re: [PATCH 1/1] mount: RDMA processing in the mount command is broken
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1283457651-12010-1-git-send-email-steved@redhat.com>
-Date: Thu, 2 Sep 2010 16:35:54 -0400
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <E401A220-AAD8-42F1-AE81-3B1EEF209428@oracle.com>
-References: <1283457651-12010-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <steved@redhat.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:38416 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754256Ab0ITOG6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 10:06:58 -0400
+Received: by bwz11 with SMTP id 11so4248878bwz.19
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 07:06:57 -0700 (PDT)
+In-Reply-To: <4C973A86.6050008@panasas.com>
+References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
+	<1284779874-10499-7-git-send-email-iisaman@netapp.com>
+	<4C973A86.6050008@panasas.com>
+Date: Mon, 20 Sep 2010 10:06:56 -0400
+Message-ID: <AANLkTi=3CA+2e6GRytZkFTLbv6Mya7cfRm_iSkvVxXWh@mail.gmail.com>
+Subject: Re: [PATCH 06/12] RFC: nfs: set layout driver
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Mon, Sep 20, 2010 at 6:42 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+> On 2010-09-18 05:17, Fred Isaman wrote:
+>> From: The pNFS Team <linux-nfs@vger.kernel.org>
+>>
+>> Put in the infrastructure that uses information returned from the
+>> server at mount to select a layout driver module.
+>>
+>> In this patch, a stub is used that always returns "no driver found".
+>>
+>> Signed-off-by: TBD - melding/reorganization of several patches
+>> ---
+>>  fs/nfs/Makefile           |    1 +
+>>  fs/nfs/client.c           |    4 ++
+>>  fs/nfs/pnfs.c             |   78 +++++++++++++++++++++++++++++++++++++++++++++
+>>  fs/nfs/pnfs.h             |   56 ++++++++++++++++++++++++++++++++
+>>  include/linux/nfs_fs.h    |    1 +
+>>  include/linux/nfs_fs_sb.h |    1 +
+>>  6 files changed, 141 insertions(+), 0 deletions(-)
+>>  create mode 100644 fs/nfs/pnfs.c
+>>  create mode 100644 fs/nfs/pnfs.h
+>>
+>> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+>> index da7fda6..bb9e773 100644
+>> --- a/fs/nfs/Makefile
+>> +++ b/fs/nfs/Makefile
+>> @@ -15,5 +15,6 @@ nfs-$(CONFIG_NFS_V4)        += nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+>>                          delegation.o idmap.o \
+>>                          callback.o callback_xdr.o callback_proc.o \
+>>                          nfs4namespace.o
+>> +nfs-$(CONFIG_NFS_V4_1)       += pnfs.o
+>>  nfs-$(CONFIG_SYSCTL) += sysctl.o
+>>  nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>> index 4e7df2a..eed1212 100644
+>> --- a/fs/nfs/client.c
+>> +++ b/fs/nfs/client.c
+>> @@ -48,6 +48,7 @@
+>>  #include "iostat.h"
+>>  #include "internal.h"
+>>  #include "fscache.h"
+>> +#include "pnfs.h"
+>>
+>>  #define NFSDBG_FACILITY              NFSDBG_CLIENT
+>>
+>> @@ -898,6 +899,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+>>       if (server->wsize > NFS_MAX_FILE_IO_SIZE)
+>>               server->wsize = NFS_MAX_FILE_IO_SIZE;
+>>       server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+>> +     set_pnfs_layoutdriver(server, fsinfo->layouttype);
+>> +
+>
+> Originally (9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules),
+> nfs4_init_pnfs called set_pnfs_layoutdriver under the following conditions:
+>
+>        if (nfs4_has_session(clp) &&
+>            (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
+>                set_pnfs_layoutdriver(server, fsinfo->layouttype);
+>
+> So in the DS only case we don't want to set server->pnfs_curr_ld.
+> did you test your code with a standalone DS to make there are no
+> ill side effects in this case?
+>
 
-On Sep 2, 2010, at 4:00 PM, Steve Dickson wrote:
+This is called from the mount code.  It is never called for a DS
+(unless the DS is also a MDS, in which case it will be called in the
+MDS role).
 
-> The mounting code that process RMDA mounts is broken in a few places
-> 
-> First with '-o proto=rdma' was broken because nfs_get_proto()
-> did not how to convert a netid of 'rdma' in to a AF_INET
-> address family.
-> 
-> Secondly, '-o rdma' was broken because po_get() was being using
-> to detect the existence of 'rdma' in the options. With '-o rdma'
-> there is no value associated with that option so po_get()
-> was always return NULL.
 
-Looking at nfs(5), "rdma" as a stand-alone option isn't documented.  Only "proto=rdma" appears to be mentioned.  Thus I would argue that this is already behaving correctly.
+>>       server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
+>>
+>>       server->dtsize = nfs_block_size(fsinfo->dtpref, NULL);
+>> @@ -1017,6 +1020,7 @@ void nfs_free_server(struct nfs_server *server)
+>>  {
+>>       dprintk("--> nfs_free_server()\n");
+>>
+>> +     unset_pnfs_layoutdriver(server);
+>>       spin_lock(&nfs_client_lock);
+>>       list_del(&server->client_link);
+>>       list_del(&server->master_link);
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> new file mode 100644
+>> index 0000000..2e5dba1
+>> --- /dev/null
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -0,0 +1,78 @@
+>> +/*
+>> + *  pNFS functions to call and manage layout drivers.
+>> + *
+>> + *  Copyright (c) 2002 [year of first publication]
+>> + *  The Regents of the University of Michigan
+>> + *  All Rights Reserved
+>> + *
+>> + *  Dean Hildebrand <dhildebz@umich.edu>
+>> + *
+>> + *  Permission is granted to use, copy, create derivative works, and
+>> + *  redistribute this software and such derivative works for any purpose,
+>> + *  so long as the name of the University of Michigan is not used in
+>> + *  any advertising or publicity pertaining to the use or distribution
+>> + *  of this software without specific, written prior authorization. If
+>> + *  the above copyright notice or any other identification of the
+>> + *  University of Michigan is included in any copy of any portion of
+>> + *  this software, then the disclaimer below must also be included.
+>> + *
+>> + *  This software is provided as is, without representation or warranty
+>> + *  of any kind either express or implied, including without limitation
+>> + *  the implied warranties of merchantability, fitness for a particular
+>> + *  purpose, or noninfringement.  The Regents of the University of
+>> + *  Michigan shall not be liable for any damages, including special,
+>> + *  indirect, incidental, or consequential damages, with respect to any
+>> + *  claim arising out of or in connection with the use of the software,
+>> + *  even if it has been or is hereafter advised of the possibility of
+>> + *  such damages.
+>> + */
+>> +
+>> +#include <linux/nfs_fs.h>
+>> +#include "pnfs.h"
+>> +
+>> +#define NFSDBG_FACILITY              NFSDBG_PNFS
+>> +
+>> +/* STUB that returns the equivalent of "no module found" */
+>> +static struct pnfs_layoutdriver_type *
+>> +find_pnfs_driver(u32 id) {
+>> +     return NULL;
+>> +}
+>> +
+>> +/* Unitialize a mountpoint in a layout driver */
+>> +void
+>> +unset_pnfs_layoutdriver(struct nfs_server *nfss)
+>> +{
+>> +     nfss->pnfs_curr_ld = NULL;
+>> +}
+>> +
+>> +/*
+>> + * Try to set the server's pnfs module to the pnfs layout type specified by id.
+>> + * Currently only one pNFS layout driver per filesystem is supported.
+>> + *
+>> + * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
+>> + */
+>> +void
+>> +set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
+>> +{
+>> +     struct pnfs_layoutdriver_type *ld_type = NULL;
+>> +
+>> +     if (id == 0)
+>> +             goto out_no_driver;
+>> +     ld_type = find_pnfs_driver(id);
+>> +     if (!ld_type) {
+>> +             request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+>> +             ld_type = find_pnfs_driver(id);
+>> +             if (!ld_type) {
+>> +                     dprintk("%s: No pNFS module found for %u.\n",
+>> +                             __func__, id);
+>> +                     goto out_no_driver;
+>> +             }
+>> +     }
+>> +     server->pnfs_curr_ld = ld_type;
+>> +     dprintk("%s: pNFS module for %u set\n", __func__, id);
+>> +     return;
+>> +
+>> +out_no_driver:
+>> +     dprintk("%s: Using NFSv4 I/O\n", __func__);
+>> +     server->pnfs_curr_ld = NULL;
+>> +}
+>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+>> new file mode 100644
+>> index 0000000..c628ef1
+>> --- /dev/null
+>> +++ b/fs/nfs/pnfs.h
+>> @@ -0,0 +1,56 @@
+>> +/*
+>> + *  pNFS client data structures.
+>> + *
+>> + *  Copyright (c) 2002
+>> + *  The Regents of the University of Michigan
+>> + *  All Rights Reserved
+>> + *
+>> + *  Dean Hildebrand <dhildebz@umich.edu>
+>> + *
+>> + *  Permission is granted to use, copy, create derivative works, and
+>> + *  redistribute this software and such derivative works for any purpose,
+>> + *  so long as the name of the University of Michigan is not used in
+>> + *  any advertising or publicity pertaining to the use or distribution
+>> + *  of this software without specific, written prior authorization. If
+>> + *  the above copyright notice or any other identification of the
+>> + *  University of Michigan is included in any copy of any portion of
+>> + *  this software, then the disclaimer below must also be included.
+>> + *
+>> + *  This software is provided as is, without representation or warranty
+>> + *  of any kind either express or implied, including without limitation
+>> + *  the implied warranties of merchantability, fitness for a particular
+>> + *  purpose, or noninfringement.  The Regents of the University of
+>> + *  Michigan shall not be liable for any damages, including special,
+>> + *  indirect, incidental, or consequential damages, with respect to any
+>> + *  claim arising out of or in connection with the use of the software,
+>> + *  even if it has been or is hereafter advised of the possibility of
+>> + *  such damages.
+>> + */
+>> +
+>> +#ifndef FS_NFS_PNFS_H
+>> +#define FS_NFS_PNFS_H
+>> +
+>> +#ifdef CONFIG_NFS_V4_1
+>> +
+>> +#define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
+>> +
+>> +/* Per-layout driver specific registration structure */
+>> +struct pnfs_layoutdriver_type {
+>> +};
+>> +
+>> +void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+>> +void unset_pnfs_layoutdriver(struct nfs_server *);
+>> +
+>> +#else  /* CONFIG_NFS_V4_1 */
+>> +
+>> +static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
+>> +{
+>> +}
+>> +
+>> +static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
+>> +{
+>> +}
+>> +
+>> +#endif /* CONFIG_NFS_V4_1 */
+>> +
+>> +#endif /* FS_NFS_PNFS_H */
+>> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+>> index d929b18..aba3da2 100644
+>> --- a/include/linux/nfs_fs.h
+>> +++ b/include/linux/nfs_fs.h
+>> @@ -615,6 +615,7 @@ nfs_fileid_to_ino_t(u64 fileid)
+>>  #define NFSDBG_CLIENT                0x0200
+>>  #define NFSDBG_MOUNT         0x0400
+>>  #define NFSDBG_FSCACHE               0x0800
+>> +#define NFSDBG_PNFS          0x1000
+>>  #define NFSDBG_ALL           0xFFFF
+>>
+>>  #ifdef __KERNEL__
+>> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+>> index c82ee7c..29a821d 100644
+>> --- a/include/linux/nfs_fs_sb.h
+>> +++ b/include/linux/nfs_fs_sb.h
+>> @@ -144,6 +144,7 @@ struct nfs_server {
+>>       u32                     acl_bitmask;    /* V4 bitmask representing the ACEs
+>>                                                  that are supported on this
+>>                                                  filesystem */
+>> +     struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+>
+> This is under #ifdef CONFIG_NFS_V4
+> Why not only under CONFIG_NFS_V4_1?
+> (see 9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules)
 
-Are you proposing to add support for "-o rdma" ?  If so what would that mean?
+That was part of the campaign to remove as many ifdef statements as
+possible.  I have no preference one way or the other.
 
-> This patch address both those problems.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> support/nfs/getport.c |    8 ++++++++
-> utils/mount/stropts.c |   31 ++++++++++++++++++++++---------
-> 2 files changed, 30 insertions(+), 9 deletions(-)
-> 
-> diff --git a/support/nfs/getport.c b/support/nfs/getport.c
-> index c930539..b4c2f8f 100644
-> --- a/support/nfs/getport.c
-> +++ b/support/nfs/getport.c
-> @@ -216,6 +216,10 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
-> 	struct netconfig *nconf;
-> 	struct protoent *proto;
-> 
-> +	if (strcasecmp(netid, "rdma") == 0) {
-> +		*family = AF_INET;
-> +		return 1;
-> +	}
-> 	nconf = getnetconfigent(netid);
-> 	if (nconf == NULL)
-> 		return 0;
-> @@ -242,6 +246,10 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
-> {
-> 	struct protoent *proto;
-> 
-> +	if (strcasecmp(netid, "rdma") == 0) {
-> +		*family = AF_INET;
-> +		return 1;
-> +	}
-> 	proto = getprotobyname(netid);
-> 	if (proto == NULL)
-> 		return 0;
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 0241400..d688ee8 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -98,6 +98,22 @@ struct nfsmount_info {
-> 				child;		/* forked bg child? */
-> };
-> 
-> +/*
-> + * Check the options to see if the transport is RDMA
-> + */
-> +static int rdma_enabled(struct mount_options *options)
-> +{
-> +	char *option;
-> +
-> +	if (po_contains(options, "rdma"))
-> +		return 1;
-> +	option = po_get(options, "proto");
-> +	if (option && strcmp(option, "rdma") == 0)
-> +		return 1;
-> +
-> +	return 0;
-> +}
-> +
-> #ifdef MOUNT_CONFIG
-> static void nfs_default_version(struct nfsmount_info *mi);
-> 
-> @@ -302,11 +318,8 @@ static int nfs_set_version(struct nfsmount_info *mi)
-> 
-> 	if (strncmp(mi->type, "nfs4", 4) == 0)
-> 		mi->version = 4;
-> -	else {
-> -		char *option = po_get(mi->options, "proto");
-> -		if (option && strcmp(option, "rdma") == 0)
-> -			mi->version = 3;
-> -	}
-> +	else if (rdma_enabled(mi->options))
-> +		mi->version = 3;
-> 
-> 	/*
-> 	 * If we still don't know, check for version-specific
-> @@ -346,7 +359,9 @@ static int nfs_validate_options(struct nfsmount_info *mi)
-> 	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
-> 		return 0;
-> 
-> -	if (!nfs_nfs_proto_family(mi->options, &family))
-> +	if (rdma_enabled(mi->options))
-> +		family = AF_INET;
-> +	else if (!nfs_nfs_proto_family(mi->options, &family))
-> 		return 0;
-> 
-> 	hint.ai_family = (int)family;
-> @@ -491,13 +506,11 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
-> 	struct sockaddr *mnt_saddr = &mnt_address.sa;
-> 	socklen_t mnt_salen = sizeof(mnt_address);
-> 	struct pmap mnt_pmap;
-> -	char *option;
-> 
-> 	/*
-> 	 * Skip option negotiation for proto=rdma mounts.
-> 	 */
-> -	option = po_get(options, "proto");
-> -	if (option && strcmp(option, "rdma") == 0)
-> +	if (rdma_enabled(options))
-> 		goto out;
-> 
-> 	/*
-> -- 
-> 1.7.1
-> 
+Fred
+
+>
+> Benny
+>
+>>  #endif
+>>       void (*destroy)(struct nfs_server *);
+>>
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
