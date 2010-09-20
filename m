@@ -1,61 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39440 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42863 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932121Ab0I3PoD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 11:44:03 -0400
-Date: Thu, 30 Sep 2010 11:43:50 -0400
+	id S1753045Ab0ITRUw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Sep 2010 13:20:52 -0400
+Date: Mon, 20 Sep 2010 13:19:24 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: pnfs-all-latest client crash
-Message-ID: <20100930154350.GB6598@fieldses.org>
-References: <20100921164211.GK26473@fieldses.org>
- <4C98FCC3.50803@panasas.com>
- <20100921190108.GA4385@fieldses.org>
- <4CA4ABED.7080706@panasas.com>
- <20100930152944.GA6598@fieldses.org>
- <4CA4ADFA.2090807@panasas.com>
+To: Pavel Emelyanov <xemul@parallels.com>
+Cc: Neil Brown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 7/9] sunrpc: The per-net skeleton
+Message-ID: <20100920171924.GM4580@fieldses.org>
+References: <4C90BADB.10700@parallels.com>
+ <4C90BBE9.6000105@parallels.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CA4ADFA.2090807@panasas.com>
+In-Reply-To: <4C90BBE9.6000105@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Sep 30, 2010 at 05:34:18PM +0200, Benny Halevy wrote:
-> On 2010-09-30 17:29, J. Bruce Fields wrote:
-> > On Thu, Sep 30, 2010 at 05:25:33PM +0200, Benny Halevy wrote:
-> >> On 2010-09-21 21:01, J. Bruce Fields wrote:
-> >>> On Tue, Sep 21, 2010 at 08:43:15PM +0200, Benny Halevy wrote:
-> >>>> On 2010-09-21 18:42, J. Bruce Fields wrote:
-> >>>>> I get the following on pnfs-all-latest, while doing a non-pnfs 4.1 mount.
-> >>>>
-> >>>> Bruce, can you please provide you .config file?
-> >>>> >From the registers value it's possible the calldata is used
-> >>>> after free...
-> >>>
-> >>> Yep.  I ran a 'make oldconfig' on the appended and built from that.
-> >>>
-> >>> We've seen poisoning in trond's latest for-next as well.  Which I don't
-> >>> think you're including.  But I'll add linux-nfs to the cc for that.
-> >>>
-> >>> --b.
-> >>>
-> >>> #
-> >>> # Automatically generated make config: don't edit
-> >>> # Linux kernel version: 2.6.36-rc4
-> >>> # Wed Sep 15 14:57:18 2010
-> >>> #
-> > ...
-> >>> # CONFIG_INPUT_TABL
-> >>
-> >> Looks like the message got truncated :-(
-> > 
-> > Huh.  Sorry about that!
-> 
-> And I presume you config all pNFS options as 'N', right?
+On Wed, Sep 15, 2010 at 04:28:25PM +0400, Pavel Emelyanov wrote:
+> @@ -38,18 +58,26 @@ init_sunrpc(void)
+>  	err = rpcauth_init_module();
+>  	if (err)
+>  		goto out3;
+> +
+> +	cache_initialize();
+> +
+> +	err = register_pernet_subsys(&sunrpc_net_ops);
+> +	if (err)
+> +		goto out4;
+>  #ifdef RPC_DEBUG
+>  	rpc_register_sysctl();
+>  #endif
+>  #ifdef CONFIG_PROC_FS
+>  	rpc_proc_init();
+>  #endif
+> -	cache_initialize();
+>  	cache_register(&ip_map_cache);
+>  	cache_register(&unix_gid_cache);
+>  	svc_init_xprt_sock();	/* svc sock transport */
+>  	init_socket_xprt();	/* clnt sock transport */
+>  	return 0;
+> +
+> +out4:
+> +	unregister_pernet_subsys(&sunrpc_net_ops);
 
-I'm just running make oldconfig over that.  Unless the pnfs patches are
-defaulting those options to 'Y', then yes, that must be what it's
-doing....
+If register_pernet_subsys() failed, then shouldn't this be unnecessary?
+Maybe this should be rpcauth_remove_module()?
 
 --b.
+
+>  out3:
+>  	rpc_destroy_mempool();
+>  out2:
+> @@ -69,6 +97,7 @@ cleanup_sunrpc(void)
+>  	rpc_destroy_mempool();
+>  	cache_unregister(&ip_map_cache);
+>  	cache_unregister(&unix_gid_cache);
+> +	unregister_pernet_subsys(&sunrpc_net_ops);
+>  #ifdef RPC_DEBUG
+>  	rpc_unregister_sysctl();
+>  #endif
+> -- 
+> 1.5.5.6
+> 
