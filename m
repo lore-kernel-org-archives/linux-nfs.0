@@ -1,91 +1,191 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57120 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751217Ab0IVWFj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Sep 2010 18:05:39 -0400
-Received: from localhost.localdomain (vikramyadav.hq.netapp.com [10.58.61.118] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8MM5M8O020412
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Sep 2010 15:05:26 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 04/12] RFC: nfs: change stateid to be a union
-Date: Wed, 22 Sep 2010 18:05:02 -0400
-Message-Id: <1285193110-24073-5-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1285193110-24073-1-git-send-email-iisaman@netapp.com>
-References: <1285193110-24073-1-git-send-email-iisaman@netapp.com>
+Received: from mail-ew0-f46.google.com ([209.85.215.46]:56220 "EHLO
+	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756723Ab0ITQGx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 12:06:53 -0400
+Received: by ewy23 with SMTP id 23so1628620ewy.19
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 09:06:52 -0700 (PDT)
+In-Reply-To: <4C978008.50805@eng.auth.gr>
+References: <4C938F3B.4030604@eng.auth.gr>
+	<20100917174328.GC25515@fieldses.org>
+	<4C972DB3.2050405@eng.auth.gr>
+	<20100920145643.GD4580@fieldses.org>
+	<4C978008.50805@eng.auth.gr>
+Date: Mon, 20 Sep 2010 12:06:51 -0400
+Message-ID: <AANLkTimM3xL_qb6i1vDbs-TncW7mQv2B2=eB=0eRkkG8@mail.gmail.com>
+Subject: Re: nfsv3 gssapi client?
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: George Mamalakis <mamalos@eng.auth.gr>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
+On Mon, Sep 20, 2010 at 11:38 AM, George Mamalakis <mamalos@eng.auth.gr> wrote:
+>  On 20/09/2010 17:56, J. Bruce Fields wrote:
+>>
+>> Ouch.  Well, that's a problem.
+>>
+>> (And have you checked the log files to make sure it's gssd segfaulting
+>> and not some kind of crash in the kernel?)
+>>
+>> --b.
+>>
+>
+> Yes, it segfaults, even the log shows it. It's a null pointer exception. I
+> used gdb in gssd and this is my outcome:
+>
+> 0xb783f424 in __kernel_vsyscall ()
+> (gdb) c
+> Continuing.
+>
+> Program received signal SIG37, Real-time event 37.
+> 0xb783f424 in __kernel_vsyscall ()
+> (gdb) c
+> Continuing.
+>
+> Program received signal SIG37, Real-time event 37.
+> 0xb783f424 in __kernel_vsyscall ()
+> (gdb) c
+> Continuing.
+>
+> Program received signal SIGSEGV, Segmentation fault.
+> 0xb72b4c8e in __gss_get_mechanism_cred () from /usr/lib/libgssglue.so.1
+> (gdb) bt
+> #0  0xb72b4c8e in __gss_get_mechanism_cred () from /usr/lib/libgssglue.so.1
+> #1  0xb72b5c2c in gss_init_sec_context () from /usr/lib/libgssglue.so.1
+> #2  0xb776c215 in authgss_refresh () from /usr/lib/libtirpc.so.1
+> #3  0xb776c67d in authgss_create () from /usr/lib/libtirpc.so.1
+> #4  0xb776c779 in authgss_create_default () from /usr/lib/libtirpc.so.1
+> #5  0x0804cbdc in ?? ()
+> #6  0x0804cf9f in ?? ()
+> #7  0x0804d7c8 in ?? ()
+> #8  0x0804b7a8 in ?? ()
+> #9  0x0804b309 in ?? ()
+> #10 0xb761cc76 in __libc_start_main () from /lib/libc.so.6
+> #11 0x0804a621 in ?? ()
+> (gdb) info r
+> eax            0x0    0
+> ecx            0x9    9
+> edx            0x0    0
+> ebx            0xb72b9710    -1221880048
+> esp            0xbfe0b844    0xbfe0b844
+> ebp            0xbfe0b858    0xbfe0b858
+> esi            0x9    9
+> edi            0x9370928    154601768
+> eip            0xb72b4c8e    0xb72b4c8e <__gss_get_mechanism_cred+62>
+> eflags         0x210246    [ PF ZF IF RF ID ]
+> cs             0x73    115
+> ss             0x7b    123
+> ds             0x7b    123
+> es             0x7b    123
+> fs             0x0    0
+> gs             0x33    51
+> (gdb) disass $eip
+> Dump of assembler code for function __gss_get_mechanism_cred:
+>   0xb72b4c50 <+0>:    push   %ebp
+>   0xb72b4c51 <+1>:    mov    %esp,%ebp
+>   0xb72b4c53 <+3>:    push   %edi
+>   0xb72b4c54 <+4>:    push   %esi
+>   0xb72b4c55 <+5>:    sub    $0xc,%esp
+>   0xb72b4c58 <+8>:    mov    0x8(%ebp),%ecx
+>   0xb72b4c5b <+11>:    test   %ecx,%ecx
+>   0xb72b4c5d <+13>:    jne    0xb72b4c68 <__gss_get_mechanism_cred+24>
+>   0xb72b4c5f <+15>:    add    $0xc,%esp
+>   0xb72b4c62 <+18>:    xor    %eax,%eax
+>   0xb72b4c64 <+20>:    pop    %esi
+>   0xb72b4c65 <+21>:    pop    %edi
+>   0xb72b4c66 <+22>:    pop    %ebp
+>   0xb72b4c67 <+23>:    ret
+>   0xb72b4c68 <+24>:    mov    0x8(%ebp),%eax
+>   0xb72b4c6b <+27>:    mov    (%eax),%eax
+>   0xb72b4c6d <+29>:    test   %eax,%eax
+>   0xb72b4c6f <+31>:    mov    %eax,-0x10(%ebp)
+>   0xb72b4c72 <+34>:    jle    0xb72b4c5f <__gss_get_mechanism_cred+15>
+>   0xb72b4c74 <+36>:    mov    0xc(%ebp),%ecx
+>   0xb72b4c77 <+39>:    mov    0x8(%ebp),%eax
+>   0xb72b4c7a <+42>:    mov    (%ecx),%edx
+>   0xb72b4c7c <+44>:    mov    0x4(%eax),%eax
+>   0xb72b4c7f <+47>:    mov    %edx,-0x14(%ebp)
+>   0xb72b4c82 <+50>:    mov    %eax,-0xc(%ebp)
+>   0xb72b4c85 <+53>:    xor    %eax,%eax
+>   0xb72b4c87 <+55>:    nop
+>   0xb72b4c88 <+56>:    mov    -0xc(%ebp),%edx
+>   0xb72b4c8b <+59>:    mov    -0x14(%ebp),%ecx
+> => 0xb72b4c8e <+62>:    cmp    (%edx,%eax,8),%ecx
+>   0xb72b4c91 <+65>:    jne    0xb72b4cab <__gss_get_mechanism_cred+91>
+>   0xb72b4c93 <+67>:    mov    0xc(%ebp),%edx
+>   0xb72b4c96 <+70>:    mov    -0xc(%ebp),%ecx
+>   0xb72b4c99 <+73>:    mov    0x4(%edx),%esi
+>   0xb72b4c9c <+76>:    mov    -0x14(%ebp),%edx
+> ---Type <return> to continue, or q <return> to quit---q
+> Quit
+> (gdb) info r
+> eax            0x0    0
+> ecx            0x9    9
+> edx            0x0    0
+> ebx            0xb72b9710    -1221880048
+> esp            0xbfe0b844    0xbfe0b844
+> ebp            0xbfe0b858    0xbfe0b858
+> esi            0x9    9
+> edi            0x9370928    154601768
+> eip            0xb72b4c8e    0xb72b4c8e <__gss_get_mechanism_cred+62>
+> eflags         0x210246    [ PF ZF IF RF ID ]
+> cs             0x73    115
+> ss             0x7b    123
+> ds             0x7b    123
+> es             0x7b    123
+> fs             0x0    0
+> gs             0x33    51
+>
+>
+> Where you can see the null reference.
+>
+> This, on the other hand, reminded me a discussion I had in the fbsd-stable
+> list, where somebody advised me to use des-cbc-crc keytabs, and then
+> experiment with other encryption types. Even though I didn't have such
+> issues in fbsd, this might be the case on this problem. Maybe linux tries to
+> compare an inexistent mech-type (or enc-type, whatever) with one of it's
+> list, and hence it segfaults. So, to shed a little more light into the
+> issue:
+>
+> - the kdc (not the nfs-server) runs fbsd8, heimdal-1.2.1.
+> - on the linuxbox when I "kinit -k linuxclient" everything works fine.
+> - on the linux client "ktutil -k /etc/krb5.keytab list" shows:
+> /etc/krb5.keytab:
+>
+> Vno  Type                     Principal
+> Aliases
+>  1  des-cbc-md5              host/linuxclient@EXAMPLE
+>  1  des-cbc-md4              host/linuxclient@EXAMPLE
+>  1  des-cbc-crc              host/linuxclient@EXAMPLE
+>  1  aes256-cts-hmac-sha1-96  host/linuxclient@EXAMPLE
+>  1  des3-cbc-sha1            host/linuxclient@EXAMPLE
+>  1  arcfour-hmac-md5         host/linuxclient@EXAMPLE
+>
+> So maybe what I have to do next is to create a keytab of des-cbc-crc
+> encryption-type only for the client (maybe also for the nfsserver as well..)
+> and see how it'll behave...but I will do it tomorrow.
+>
+> Until then,
+>
+> mamalos
 
-In NFSv4.1 the stateid consists of the other and seqid fields. For layout
-processing we need to numerically compare the seqid value of layout stateids.
-To do so, introduce a union to nfs4_stateid to swtich between opaque(16 bytes)
-and opaque(12 bytes) / __be32
 
-Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/callback_proc.c |    8 ++++----
- include/linux/nfs4.h   |   15 +++++++++++++--
- 2 files changed, 17 insertions(+), 6 deletions(-)
+Kernels before 2.6.35:
+gssd has code to limit the encryption types negotiated, so limiting
+its keytab to only des is not strictly required. (callbacks can
+complicate this)  It is required for a linux NFS server.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 930d10f..2950fca 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -118,11 +118,11 @@ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const n
- 	if (delegation == NULL)
- 		return 0;
- 
--	/* seqid is 4-bytes long */
--	if (((u32 *) &stateid->data)[0] != 0)
-+	if (stateid->stateid.seqid != 0)
- 		return 0;
--	if (memcmp(&delegation->stateid.data[4], &stateid->data[4],
--		   sizeof(stateid->data)-4))
-+	if (memcmp(&delegation->stateid.stateid.other,
-+		   &stateid->stateid.other,
-+		   NFS4_STATEID_OTHER_SIZE))
- 		return 0;
- 
- 	return 1;
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 6798fc3..2dde7c8 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -17,7 +17,9 @@
- 
- #define NFS4_BITMAP_SIZE	2
- #define NFS4_VERIFIER_SIZE	8
--#define NFS4_STATEID_SIZE	16
-+#define NFS4_STATEID_SEQID_SIZE 4
-+#define NFS4_STATEID_OTHER_SIZE 12
-+#define NFS4_STATEID_SIZE	(NFS4_STATEID_SEQID_SIZE + NFS4_STATEID_OTHER_SIZE)
- #define NFS4_FHSIZE		128
- #define NFS4_MAXPATHLEN		PATH_MAX
- #define NFS4_MAXNAMLEN		NAME_MAX
-@@ -167,7 +169,16 @@ struct nfs4_acl {
- };
- 
- typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
--typedef struct { char data[NFS4_STATEID_SIZE]; } nfs4_stateid;
-+
-+struct nfs41_stateid {
-+	__be32 seqid;
-+	char other[NFS4_STATEID_OTHER_SIZE];
-+} __attribute__ ((packed));
-+
-+typedef union {
-+	char data[NFS4_STATEID_SIZE];
-+	struct nfs41_stateid stateid;
-+} nfs4_stateid;
- 
- enum nfs_opnum4 {
- 	OP_ACCESS = 3,
--- 
-1.7.2.1
+Kernels 2.6.35 and after:
+However I saw from your previous message that the kernel is passing up
+"enctypes=18,17,16,23,3,1,2", which indicates it is a rather new
+kernel.  What version is your linux kernel?  AFAIK, a version of
+nfs-utils with the changes to support newer enctypes has not yet been
+released.
 
+What kerberos libraries are on the linux client machine?  (MIT or
+Heimdal?)  And what version?  I've seen people successfully using
+Heimdal libraries with gssd, but AFAIK it has not been tested like it
+has with MIT.
