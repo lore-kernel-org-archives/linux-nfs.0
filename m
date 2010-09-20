@@ -1,229 +1,295 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:40490 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751711Ab0IWDAK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Sep 2010 23:00:10 -0400
-Date: Thu, 23 Sep 2010 13:00:02 +1000
-From: Neil Brown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/7] sunrpc: fix race in new cache_wait code.
-Message-ID: <20100923130002.5f2da3e9@notabene>
-In-Reply-To: <20100922175027.GF15560@fieldses.org>
-References: <20100922025009.31745.98237.stgit@localhost.localdomain>
-	<20100922025506.31745.67177.stgit@localhost.localdomain>
-	<20100922175027.GF15560@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from daytona.panasas.com ([67.152.220.89]:40185 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754454Ab0ITOXp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 10:23:45 -0400
+Message-ID: <4C976E81.9040001@panasas.com>
+Date: Mon, 20 Sep 2010 16:24:01 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 06/12] RFC: nfs: set layout driver
+References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>	<1284779874-10499-7-git-send-email-iisaman@netapp.com>	<4C973A86.6050008@panasas.com> <AANLkTi=3CA+2e6GRytZkFTLbv6Mya7cfRm_iSkvVxXWh@mail.gmail.com>
+In-Reply-To: <AANLkTi=3CA+2e6GRytZkFTLbv6Mya7cfRm_iSkvVxXWh@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 22 Sep 2010 13:50:27 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Wed, Sep 22, 2010 at 12:55:06PM +1000, NeilBrown wrote:
-> > If we set up to wait for a cache item to be filled in, and then find
-> > that it is no longer pending, it could be that some other thread is
-> > in 'cache_revisit_request' and has moved our request to its 'pending' list.
-> > So when our setup_deferral calls cache_revisit_request it will find nothing to
-> > put on the pending list, and do nothing.
-> > 
-> > We then return from cache_wait_req, thus leaving the 'sleeper'
-> > on-stack structure open to being corrupted by subsequent stack usage.
-> > 
-> > However that 'sleeper' could still be on the 'pending' list that the
-> > other thread is looking at and so any corruption could cause it to behave badly.
-> > 
-> > To avoid this race we simply take the same path as if the
-> > 'wait_for_completion_interruptible_timeout' was interrupted and if the
-> > sleeper is no longer on the list (which it won't be) we wait on the
-> > completion - which will ensure that any other cache_revisit_request
-> > will have let go of the sleeper.
+On 2010-09-20 16:06, Fred Isaman wrote:
+> On Mon, Sep 20, 2010 at 6:42 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> On 2010-09-18 05:17, Fred Isaman wrote:
+>>> From: The pNFS Team <linux-nfs@vger.kernel.org>
+>>>
+>>> Put in the infrastructure that uses information returned from the
+>>> server at mount to select a layout driver module.
+>>>
+>>> In this patch, a stub is used that always returns "no driver found".
+>>>
+>>> Signed-off-by: TBD - melding/reorganization of several patches
+>>> ---
+>>>  fs/nfs/Makefile           |    1 +
+>>>  fs/nfs/client.c           |    4 ++
+>>>  fs/nfs/pnfs.c             |   78 +++++++++++++++++++++++++++++++++++++++++++++
+>>>  fs/nfs/pnfs.h             |   56 ++++++++++++++++++++++++++++++++
+>>>  include/linux/nfs_fs.h    |    1 +
+>>>  include/linux/nfs_fs_sb.h |    1 +
+>>>  6 files changed, 141 insertions(+), 0 deletions(-)
+>>>  create mode 100644 fs/nfs/pnfs.c
+>>>  create mode 100644 fs/nfs/pnfs.h
+>>>
+>>> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+>>> index da7fda6..bb9e773 100644
+>>> --- a/fs/nfs/Makefile
+>>> +++ b/fs/nfs/Makefile
+>>> @@ -15,5 +15,6 @@ nfs-$(CONFIG_NFS_V4)        += nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+>>>                          delegation.o idmap.o \
+>>>                          callback.o callback_xdr.o callback_proc.o \
+>>>                          nfs4namespace.o
+>>> +nfs-$(CONFIG_NFS_V4_1)       += pnfs.o
+>>>  nfs-$(CONFIG_SYSCTL) += sysctl.o
+>>>  nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+>>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>>> index 4e7df2a..eed1212 100644
+>>> --- a/fs/nfs/client.c
+>>> +++ b/fs/nfs/client.c
+>>> @@ -48,6 +48,7 @@
+>>>  #include "iostat.h"
+>>>  #include "internal.h"
+>>>  #include "fscache.h"
+>>> +#include "pnfs.h"
+>>>
+>>>  #define NFSDBG_FACILITY              NFSDBG_CLIENT
+>>>
+>>> @@ -898,6 +899,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+>>>       if (server->wsize > NFS_MAX_FILE_IO_SIZE)
+>>>               server->wsize = NFS_MAX_FILE_IO_SIZE;
+>>>       server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+>>> +     set_pnfs_layoutdriver(server, fsinfo->layouttype);
+>>> +
+>>
+>> Originally (9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules),
+>> nfs4_init_pnfs called set_pnfs_layoutdriver under the following conditions:
+>>
+>>        if (nfs4_has_session(clp) &&
+>>            (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
+>>                set_pnfs_layoutdriver(server, fsinfo->layouttype);
+>>
+>> So in the DS only case we don't want to set server->pnfs_curr_ld.
+>> did you test your code with a standalone DS to make there are no
+>> ill side effects in this case?
+>>
 > 
-> OK, but I don't think we need that first CACHE_PENDING check in
-> setup_deferral at all.  Best just to ignore it?:
+> This is called from the mount code.  It is never called for a DS
+> (unless the DS is also a MDS, in which case it will be called in the
+> MDS role).
+
+So at least let's add a BUG_ON and a comment since we're relying on
+side effects of code implemented elsewhere.
+
+Benny
+
+P.S. I wonder what happens if you try to explicitly mount a DS
+(which is not an MDS).
+
 > 
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index d789dfc..82804b4 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -567,10 +567,9 @@ static int cache_wait_req(struct cache_req *req, struct cache_head *item, int ti
->  	sleeper.completion = COMPLETION_INITIALIZER_ONSTACK(sleeper.completion);
->  	dreq->revisit = cache_restart_thread;
->  
-> -	ret = setup_deferral(dreq, item);
-> +	setup_deferral(dreq, item);
->  
-> -	if (ret ||
-> -	    wait_for_completion_interruptible_timeout(
-> +	if (wait_for_completion_interruptible_timeout(
->  		    &sleeper.completion, timeout) <= 0) {
->  		/* The completion wasn't completed, so we need
->  		 * to clean up
 > 
-> Then it's obvious that we always wait for completion, and that we fill
-> the basic requirement to avoid corruption here.
+>>>       server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
+>>>
+>>>       server->dtsize = nfs_block_size(fsinfo->dtpref, NULL);
+>>> @@ -1017,6 +1020,7 @@ void nfs_free_server(struct nfs_server *server)
+>>>  {
+>>>       dprintk("--> nfs_free_server()\n");
+>>>
+>>> +     unset_pnfs_layoutdriver(server);
+>>>       spin_lock(&nfs_client_lock);
+>>>       list_del(&server->client_link);
+>>>       list_del(&server->master_link);
+>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>> new file mode 100644
+>>> index 0000000..2e5dba1
+>>> --- /dev/null
+>>> +++ b/fs/nfs/pnfs.c
+>>> @@ -0,0 +1,78 @@
+>>> +/*
+>>> + *  pNFS functions to call and manage layout drivers.
+>>> + *
+>>> + *  Copyright (c) 2002 [year of first publication]
+>>> + *  The Regents of the University of Michigan
+>>> + *  All Rights Reserved
+>>> + *
+>>> + *  Dean Hildebrand <dhildebz@umich.edu>
+>>> + *
+>>> + *  Permission is granted to use, copy, create derivative works, and
+>>> + *  redistribute this software and such derivative works for any purpose,
+>>> + *  so long as the name of the University of Michigan is not used in
+>>> + *  any advertising or publicity pertaining to the use or distribution
+>>> + *  of this software without specific, written prior authorization. If
+>>> + *  the above copyright notice or any other identification of the
+>>> + *  University of Michigan is included in any copy of any portion of
+>>> + *  this software, then the disclaimer below must also be included.
+>>> + *
+>>> + *  This software is provided as is, without representation or warranty
+>>> + *  of any kind either express or implied, including without limitation
+>>> + *  the implied warranties of merchantability, fitness for a particular
+>>> + *  purpose, or noninfringement.  The Regents of the University of
+>>> + *  Michigan shall not be liable for any damages, including special,
+>>> + *  indirect, incidental, or consequential damages, with respect to any
+>>> + *  claim arising out of or in connection with the use of the software,
+>>> + *  even if it has been or is hereafter advised of the possibility of
+>>> + *  such damages.
+>>> + */
+>>> +
+>>> +#include <linux/nfs_fs.h>
+>>> +#include "pnfs.h"
+>>> +
+>>> +#define NFSDBG_FACILITY              NFSDBG_PNFS
+>>> +
+>>> +/* STUB that returns the equivalent of "no module found" */
+>>> +static struct pnfs_layoutdriver_type *
+>>> +find_pnfs_driver(u32 id) {
+>>> +     return NULL;
+>>> +}
+>>> +
+>>> +/* Unitialize a mountpoint in a layout driver */
+>>> +void
+>>> +unset_pnfs_layoutdriver(struct nfs_server *nfss)
+>>> +{
+>>> +     nfss->pnfs_curr_ld = NULL;
+>>> +}
+>>> +
+>>> +/*
+>>> + * Try to set the server's pnfs module to the pnfs layout type specified by id.
+>>> + * Currently only one pNFS layout driver per filesystem is supported.
+>>> + *
+>>> + * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
+>>> + */
+>>> +void
+>>> +set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
+>>> +{
+>>> +     struct pnfs_layoutdriver_type *ld_type = NULL;
+>>> +
+>>> +     if (id == 0)
+>>> +             goto out_no_driver;
+>>> +     ld_type = find_pnfs_driver(id);
+>>> +     if (!ld_type) {
+>>> +             request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+>>> +             ld_type = find_pnfs_driver(id);
+>>> +             if (!ld_type) {
+>>> +                     dprintk("%s: No pNFS module found for %u.\n",
+>>> +                             __func__, id);
+>>> +                     goto out_no_driver;
+>>> +             }
+>>> +     }
+>>> +     server->pnfs_curr_ld = ld_type;
+>>> +     dprintk("%s: pNFS module for %u set\n", __func__, id);
+>>> +     return;
+>>> +
+>>> +out_no_driver:
+>>> +     dprintk("%s: Using NFSv4 I/O\n", __func__);
+>>> +     server->pnfs_curr_ld = NULL;
+>>> +}
+>>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+>>> new file mode 100644
+>>> index 0000000..c628ef1
+>>> --- /dev/null
+>>> +++ b/fs/nfs/pnfs.h
+>>> @@ -0,0 +1,56 @@
+>>> +/*
+>>> + *  pNFS client data structures.
+>>> + *
+>>> + *  Copyright (c) 2002
+>>> + *  The Regents of the University of Michigan
+>>> + *  All Rights Reserved
+>>> + *
+>>> + *  Dean Hildebrand <dhildebz@umich.edu>
+>>> + *
+>>> + *  Permission is granted to use, copy, create derivative works, and
+>>> + *  redistribute this software and such derivative works for any purpose,
+>>> + *  so long as the name of the University of Michigan is not used in
+>>> + *  any advertising or publicity pertaining to the use or distribution
+>>> + *  of this software without specific, written prior authorization. If
+>>> + *  the above copyright notice or any other identification of the
+>>> + *  University of Michigan is included in any copy of any portion of
+>>> + *  this software, then the disclaimer below must also be included.
+>>> + *
+>>> + *  This software is provided as is, without representation or warranty
+>>> + *  of any kind either express or implied, including without limitation
+>>> + *  the implied warranties of merchantability, fitness for a particular
+>>> + *  purpose, or noninfringement.  The Regents of the University of
+>>> + *  Michigan shall not be liable for any damages, including special,
+>>> + *  indirect, incidental, or consequential damages, with respect to any
+>>> + *  claim arising out of or in connection with the use of the software,
+>>> + *  even if it has been or is hereafter advised of the possibility of
+>>> + *  such damages.
+>>> + */
+>>> +
+>>> +#ifndef FS_NFS_PNFS_H
+>>> +#define FS_NFS_PNFS_H
+>>> +
+>>> +#ifdef CONFIG_NFS_V4_1
+>>> +
+>>> +#define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
+>>> +
+>>> +/* Per-layout driver specific registration structure */
+>>> +struct pnfs_layoutdriver_type {
+>>> +};
+>>> +
+>>> +void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+>>> +void unset_pnfs_layoutdriver(struct nfs_server *);
+>>> +
+>>> +#else  /* CONFIG_NFS_V4_1 */
+>>> +
+>>> +static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
+>>> +{
+>>> +}
+>>> +
+>>> +static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
+>>> +{
+>>> +}
+>>> +
+>>> +#endif /* CONFIG_NFS_V4_1 */
+>>> +
+>>> +#endif /* FS_NFS_PNFS_H */
+>>> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+>>> index d929b18..aba3da2 100644
+>>> --- a/include/linux/nfs_fs.h
+>>> +++ b/include/linux/nfs_fs.h
+>>> @@ -615,6 +615,7 @@ nfs_fileid_to_ino_t(u64 fileid)
+>>>  #define NFSDBG_CLIENT                0x0200
+>>>  #define NFSDBG_MOUNT         0x0400
+>>>  #define NFSDBG_FSCACHE               0x0800
+>>> +#define NFSDBG_PNFS          0x1000
+>>>  #define NFSDBG_ALL           0xFFFF
+>>>
+>>>  #ifdef __KERNEL__
+>>> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+>>> index c82ee7c..29a821d 100644
+>>> --- a/include/linux/nfs_fs_sb.h
+>>> +++ b/include/linux/nfs_fs_sb.h
+>>> @@ -144,6 +144,7 @@ struct nfs_server {
+>>>       u32                     acl_bitmask;    /* V4 bitmask representing the ACEs
+>>>                                                  that are supported on this
+>>>                                                  filesystem */
+>>> +     struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+>>
+>> This is under #ifdef CONFIG_NFS_V4
+>> Why not only under CONFIG_NFS_V4_1?
+>> (see 9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules)
 > 
-> (Which is, in more detail: cache_wait_req must not return while dreq is
-> still reachable from anywhere else.  Since dreq is reachable from
-> elsewhere only as long as it is hashed, and since anyone else that might
-> unhash it will call our revisit (which unconditionally calls complete),
-> then forget about it, it suffices for cache_wait_req to either wait for
-> completion, or unhash dreq *itself* (before someone else does).)
+> That was part of the campaign to remove as many ifdef statements as
+> possible.  I have no preference one way or the other.
 > 
-> Also we don't need the PENDING check to ensure we wait only when
-> necessary--we only wait while dreq is hashed, and as long as we're
-> hashed anyone clearing PENDING will also end up doing the complete().
+> Fred
 > 
-> In the deferral case it's maybe a useful optimization if it avoids
-> an unnecessary drop sometimes.  Here it doesn't help.
-> 
-> --b.
-
-I like your thinking and I agree with most of it.
-After adding dreq to the hash table, we need to check CACHE_PENDING.  It is
-possible that it was cleared moments before we added dreq to the hash-table so
-the cache_revisit_request associated with clearing it might have missed our
-dreq, so we need to do something about that....
-
-How about this.
-It gets rid of the return values (which were confusing anyway) and adds
-explicit checks on CAHCE_PENDING where needed.
-??
-
-Also, I noticed there is a race with the call to cache_limit_defers.  The
-'dreq' could be freed before that is called.
-
-It looks like I need to resubmit a lot of this - do you want to just discard
-it all from your -next and I'll make something new?
-
-Thank for the review!
-NeilBrown
-
-
- cache.c |   53 +++++++++++++++++------------------------------------
- 1 file changed, 17 insertions(+), 36 deletions(-)
-
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index c60c7f6..db0fa44 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -37,7 +37,7 @@
- 
- #define	 RPCDBG_FACILITY RPCDBG_CACHE
- 
--static int cache_defer_req(struct cache_req *req, struct cache_head *item);
-+static void cache_defer_req(struct cache_req *req, struct cache_head *item);
- static void cache_revisit_request(struct cache_head *item);
- 
- static void cache_init(struct cache_head *h)
-@@ -268,7 +268,8 @@ int cache_check(struct cache_detail *detail,
- 	}
- 
- 	if (rv == -EAGAIN) {
--		if (cache_defer_req(rqstp, h) < 0) {
-+		cache_defer_req(rqstp, h);
-+		if (!test_bit(CACHE_PENDING, &h->flags)) {
- 			/* Request is not deferred */
- 			rv = cache_is_valid(detail, h);
- 			if (rv == -EAGAIN)
-@@ -527,7 +528,7 @@ static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_he
- 	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
- }
- 
--static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *item)
-+static void setup_deferral(struct cache_deferred_req *dreq, struct cache_head *item)
- {
- 
- 	dreq->item = item;
-@@ -537,13 +538,6 @@ static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *it
- 	__hash_deferred_req(dreq, item);
- 
- 	spin_unlock(&cache_defer_lock);
--
--	if (!test_bit(CACHE_PENDING, &item->flags)) {
--		/* must have just been validated... */
--		cache_revisit_request(item);
--		return -EAGAIN;
--	}
--	return 0;
- }
- 
- struct thread_deferred_req {
-@@ -558,18 +552,17 @@ static void cache_restart_thread(struct cache_deferred_req *dreq, int too_many)
- 	complete(&dr->completion);
- }
- 
--static int cache_wait_req(struct cache_req *req, struct cache_head *item, int timeout)
-+static void cache_wait_req(struct cache_req *req, struct cache_head *item, int timeout)
- {
- 	struct thread_deferred_req sleeper;
- 	struct cache_deferred_req *dreq = &sleeper.handle;
--	int ret;
- 
- 	sleeper.completion = COMPLETION_INITIALIZER_ONSTACK(sleeper.completion);
- 	dreq->revisit = cache_restart_thread;
- 
--	ret = setup_deferral(dreq, item);
-+	setup_deferral(dreq, item);
- 
--	if (ret ||
-+	if (!test_bit(CACHE_PENDING, &item->flags) ||
- 	    wait_for_completion_interruptible_timeout(
- 		    &sleeper.completion, timeout) <= 0) {
- 		/* The completion wasn't completed, so we need
-@@ -589,18 +582,6 @@ static int cache_wait_req(struct cache_req *req, struct cache_head *item, int ti
- 			wait_for_completion(&sleeper.completion);
- 		}
- 	}
--	if (test_bit(CACHE_PENDING, &item->flags)) {
--		/* item is still pending, try request
--		 * deferral
--		 */
--		return -ETIMEDOUT;
--	}
--	/* only return success if we actually deferred the
--	 * request.  In this case we waited until it was
--	 * answered so no deferral has happened - rather
--	 * an answer already exists.
--	 */
--	return -EEXIST;
- }
- 
- static void cache_limit_defers(struct cache_deferred_req *dreq)
-@@ -639,7 +620,7 @@ static void cache_limit_defers(struct cache_deferred_req *dreq)
- 		discard->revisit(discard, 1);
- }
- 
--static int cache_defer_req(struct cache_req *req, struct cache_head *item)
-+static void cache_defer_req(struct cache_req *req, struct cache_head *item)
- {
- 	struct cache_deferred_req *dreq;
- 	int ret;
-@@ -647,17 +628,19 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- 
- 	timeout = req->set_waiter(req, 1);
- 	if (timeout) {
--		ret = cache_wait_req(req, item, timeout);
-+		cache_wait_req(req, item, timeout);
- 		req->set_waiter(req, 0);
--		return ret;
- 	} else {
- 		dreq = req->defer(req);
- 		if (dreq == NULL)
--			return -ENOMEM;
--		if (setup_deferral(dreq, item) < 0)
--			return -EAGAIN;
-+			return;
-+		setup_deferral(dreq, item);
- 		cache_limit_defers(dreq);
--		return 0;
-+		if (!test_bit(CACHE_PENDING, &item->flags))
-+			/* Bit could have been cleared before we managed to
-+			 * set up the deferral, so need to revisit just in case
-+			 */
-+			cache_revisit_request(item);
- 	}
- }
- 
-
+>>
+>> Benny
+>>
+>>>  #endif
+>>>       void (*destroy)(struct nfs_server *);
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
