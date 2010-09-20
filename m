@@ -1,51 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.perches.com ([173.55.12.10]:1393 "EHLO mail.perches.com"
+Received: from fieldses.org ([174.143.236.118]:40432 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754719Ab0IEBxM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 4 Sep 2010 21:53:12 -0400
-From: Joe Perches <joe@perches.com>
-To: Jiri Kosina <trivial@kernel.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH 12/13] net/sunrpc/rpc_pipe.c: Remove unnecessary casts of private_data
-Date: Sat,  4 Sep 2010 18:52:53 -0700
-Message-Id: <dda96f0e94bd038179ae11dab4d73a7ab704276b.1283650107.git.joe@perches.com>
-In-Reply-To: <cover.1283650107.git.joe@perches.com>
-References: <cover.1283650107.git.joe@perches.com>
+	id S1754403Ab0ITDhn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 19 Sep 2010 23:37:43 -0400
+Received: from bfields by fieldses.org with local (Exim 4.71)
+	(envelope-from <bfields@fieldses.org>)
+	id 1OxXB0-0004t5-0Q
+	for linux-nfs@vger.kernel.org; Sun, 19 Sep 2010 23:36:22 -0400
+Date: Sun, 19 Sep 2010 23:36:21 -0400
+To: linux-nfs@vger.kernel.org
+Subject: hang on server boot
+Message-ID: <20100920033621.GB18325@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- net/sunrpc/rpc_pipe.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Trying to do some reboot testing, I hit this bug.  I'm planning to queue
+up this fix for 2.6.37 absent any objections.
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 95ccbcf..1f7fc50 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -204,7 +204,7 @@ rpc_pipe_release(struct inode *inode, struct file *filp)
- 	mutex_lock(&inode->i_mutex);
- 	if (rpci->ops == NULL)
- 		goto out;
--	msg = (struct rpc_pipe_msg *)filp->private_data;
-+	msg = filp->private_data;
- 	if (msg != NULL) {
- 		spin_lock(&inode->i_lock);
- 		msg->errno = -EAGAIN;
-@@ -322,7 +322,7 @@ rpc_pipe_ioctl_unlocked(struct file *filp, unsigned int cmd, unsigned long arg)
- 		len = rpci->pipelen;
- 		if (filp->private_data) {
- 			struct rpc_pipe_msg *msg;
--			msg = (struct rpc_pipe_msg *)filp->private_data;
-+			msg = filp->private_data;
- 			len += msg->len - msg->copied;
- 		}
- 		return put_user(len, (int __user *)arg);
--- 
-1.7.2.19.g9a302
+(Arguably it could go to 2.6.36, but we're getting closer to the next
+release, the consequences of this bug aren't too horrible, and it's not
+a new regression.)
 
+--b.
+
+commit fae1561d4f5ccd315741cf4cb9ca2fb7c3fbe377
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Sun Sep 19 22:55:06 2010 -0400
+
+    nfsd4: fix hang on fast-booting nfs servers
+    
+    The last_close field of a cache_detail is initialized to zero, so the
+    condition
+    
+    	detail->last_close < seconds_since_boot() - 30
+    
+    may be false even for a cache that was never opened.
+    
+    However, we want to immediately fail upcalls to caches that were never
+    opened: in the case of the auth_unix_gid cache, especially, which may
+    never be opened by mountd (if the --manage-gids option is not set), we
+    want to fail the upcall immediately.  Otherwise client requests will be
+    dropped unnecessarily on reboot.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index da872f9..ca7c621 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1091,6 +1091,23 @@ static void warn_no_listener(struct cache_detail *detail)
+ 	}
+ }
+ 
++static bool cache_listeners_exist(struct cache_detail *detail)
++{
++	if (atomic_read(&detail->readers))
++		return true;
++	if (detail->last_close == 0)
++		/* This cache was never opened */
++		return false;
++	if (detail->last_close < seconds_since_boot() - 30)
++		/*
++		 * We allow for the possibility that someone might
++		 * restart a userspace daemon without restarting the
++		 * server; but after 30 seconds, we give up.
++		 */
++		 return false;
++	return true;
++}
++
+ /*
+  * register an upcall request to user-space and queue it up for read() by the
+  * upcall daemon.
+@@ -1109,10 +1126,9 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
+ 	char *bp;
+ 	int len;
+ 
+-	if (atomic_read(&detail->readers) == 0 &&
+-	    detail->last_close < seconds_since_boot() - 30) {
+-			warn_no_listener(detail);
+-			return -EINVAL;
++	if (!cache_listeners_exist(detail)) {
++		warn_no_listener(detail);
++		return -EINVAL;
+ 	}
+ 
+ 	buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
