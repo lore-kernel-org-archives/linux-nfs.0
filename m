@@ -1,56 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:24765 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750782Ab0IRA3l (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 20:29:41 -0400
-Date: Fri, 17 Sep 2010 20:33:38 -0400
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>
-Subject: Discussion topics for the coming Bake-A-Thon
-From: "Sorin Faibish" <sfaibish@emc.com>
-Content-Type: text/plain; format=flowed; delsp=yes; charset=iso-8859-15
-Message-ID: <op.vi7c6cmorwwil4@sfaibish1.corp.emc.com>
+Received: from mail-out1.uio.no ([129.240.10.57]:41510 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754489Ab0ITNzg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Sep 2010 09:55:36 -0400
+Subject: Re: Locking question around "...PagePrivate()"
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Menyhart Zoltan <Zoltan.Menyhart@bull.net>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <4C97584F.4020104@bull.net>
+References: <4C7E4469.70807@duchatelet.net>  <4C97584F.4020104@bull.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 20 Sep 2010 09:55:30 -0400
+Message-ID: <1284990930.2851.3.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-All,
+On Mon, 2010-09-20 at 14:49 +0200, Menyhart Zoltan wrote:
+> Hi,
+> 
+> nfs_inode_add_request() runs under the protection of the Page Lock
+> while setting up SetPagePrivate(), set_page_private().
+> 
+> The consumers of PagePrivate() run also under the protection of the Page Lock.
+> 
+> On the other hand, nfs_inode_remove_request() invoked by
+> nfs_writeback_release_full() and nfs_commit_release() apparently does
+> not take the Page Lock.
+> 
+> nfs_inode_remove_request() includes the sequence of
+> 
+>          set_page_private(req->wb_page, 0);
+>          ClearPagePrivate(req->wb_page);
+> 
+> When the base kernel calls e.g.
+> 
+> 	mapping->a_ops->releasepage(page, gfp_mask)
+> 
+> then nfs_release_page() may see an incoherent "private" state.
+> 
+> Should not all the "private" operations be protected by the Page Lock?
 
-I am trying to build an agenda for discussions during the coming  
-Bake-A-Thon
-at EMC October 4-8. I collected the last week several topics of interest  
-and
-I want to ask you all to add any other topics of interest so I can close  
-the
-agenda of the event. This is the list so far:
+No.
 
-1. Layoutcommit for file layout (Dave Noveck)
-2. Server side copy - (James)
-3. Sparse files and storage preferences (Dean, Sorin)
-4. Secure NFS (David Quigly)
-5. Extend cthon tests with callback operations tests (Peter Honeyman)
-6. Performance tests - tools and benchmarks (Peter Honeyman)
-7. Utils and fedora rpm (Sorin, SteveD)
-8. pNFS with IPv6 (Sorin)
-9. Linux FedFS imlementation (Chuck)
+Cheers
+  Trond
 
-I will allocate 30min for each topic and group them in 2 hours sessions
-mostly in the early PM after lunch.
-
-Please feel free to add any additional topics and thank you for your  
-patience.
-
-/Sorin
-
--- 
-Best Regards
-Sorin Faibish
-Corporate Distinguished Engineer
-Unified Storage Division
-
-        EMC²
-where information lives
-
-Phone: 508-435-1000 x 48545
-Cellphone: 617-510-0422
-Email : sfaibish@emc.com
