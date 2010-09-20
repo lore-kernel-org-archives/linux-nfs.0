@@ -1,82 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49145 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932221Ab0I3QTp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 12:19:45 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 14/16] nfsd4: refactor connection allocation
-Date: Thu, 30 Sep 2010 12:19:11 -0400
-Message-Id: <1285863553-8945-15-git-send-email-bfields@redhat.com>
-In-Reply-To: <1285863553-8945-1-git-send-email-bfields@redhat.com>
-References: <1285863553-8945-1-git-send-email-bfields@redhat.com>
+Received: from mail.candelatech.com ([208.74.158.172]:49759 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756862Ab0ITQeO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 12:34:14 -0400
+Message-ID: <4C978CEE.7090503@candelatech.com>
+Date: Mon, 20 Sep 2010 09:33:50 -0700
+From: Ben Greear <greearb@candelatech.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: =?UTF-8?B?SmFuIFLEmWtvcmFqc2tp?= <baggins@sith.mimuw.edu.pl>,
+        Steve Dickson <SteveD@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
+References: <20100917181251.GA21111@sith.mimuw.edu.pl> <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com> <20100917190413.GB21111@sith.mimuw.edu.pl> <DA851F94-8AFB-448D-B48D-BC4ACAD8F395@oracle.com> <20100917222227.GA22144@sith.mimuw.edu.pl> <DC671AB7-F3AF-4E70-B42E-4FF991D16E43@oracle.com> <20100920153157.GA20589@sith.mimuw.edu.pl> <02C38759-5236-454B-8F7B-02F9419B1532@oracle.com>
+In-Reply-To: <02C38759-5236-454B-8F7B-02F9419B1532@oracle.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   32 ++++++++++++++++++++++++++------
- 1 files changed, 26 insertions(+), 6 deletions(-)
+On 09/20/2010 09:21 AM, Chuck Lever wrote:
+>
+> On Sep 20, 2010, at 11:31 AM, Jan Rękorajski wrote:
+>
+>> On Mon, 20 Sep 2010, Chuck Lever wrote:
+>>
+>>>
+>>> On Sep 17, 2010, at 6:22 PM, Jan Rękorajski wrote:
+>>>
+>> [snip]
+>>>>
+>>>> What about TCP then?  My patch was a by-product of trying to make '-h<IP>'
+>>>> also work for tcp sockets, so if we skip unbindable addresses for UDP,
+>>>> then will it be ok to do the same for TCP?
+>>>
+>>> Interesting.  Now that I've actually looked at the documentation>>
+>>> blush<<  rpcbind(8) explicitly says that "-h" is only for UDP.  I seem
+>>> to recall that the legacy portmapper had a problem on multi-homed
+>>> hosts where a request was received on one interface, and the reply was
+>>> sent out another.
+>>>
+>>> This is certainly a problem for datagram transports, but shouldn't be
+>>> an issue for connection-oriented transports: the reply is always sent
+>>> on the same connection as the request was received.
+>>>
+>>> Can you say a little more about why do you need "-h" to work for
+>>> connection-oriented sockets?
+>>
+>> I have a multihomed nfs server, and I don't want the portmapper to even
+>> listen on an outside interface.
+>
+> Understood, but that is accomplished with firewalling, these days.  Usually, NFS servers are not run on the edge of private networks unless they are serving files to public hosts.
+>
+> None of NFS's RPC daemons allow you to set a bind address, with one exception.  rpc.statd allows one to specify a "bind address" in the form of a host name for reasons specific to the NSM protocol.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b7e9793..3b4d74c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -644,25 +644,45 @@ static void nfsd4_conn_lost(struct svc_xpt_user *u)
- 	spin_unlock(&clp->cl_lock);
- }
- 
--static __be32 nfsd4_new_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
-+static struct nfsd4_conn *alloc_conn(struct svc_rqst *rqstp)
- {
--	struct nfs4_client *clp = ses->se_client;
- 	struct nfsd4_conn *conn;
- 
- 	conn = kmalloc(sizeof(struct nfsd4_conn), GFP_KERNEL);
- 	if (!conn)
--		return nfserr_jukebox;
--	conn->cn_flags = NFS4_CDFC4_FORE;
-+		return NULL;
- 	svc_xprt_get(rqstp->rq_xprt);
- 	conn->cn_xprt = rqstp->rq_xprt;
--	conn->cn_session = ses;
-+	conn->cn_flags = NFS4_CDFC4_FORE;
-+	INIT_LIST_HEAD(&conn->cn_xpt_user.list);
-+	return conn;
-+}
-+
-+static void nfsd4_hash_conn(struct nfsd4_conn *conn, struct nfsd4_session *ses)
-+{
-+	struct nfs4_client *clp = ses->se_client;
- 
- 	spin_lock(&clp->cl_lock);
-+	conn->cn_session = ses;
- 	list_add(&conn->cn_persession, &ses->se_conns);
- 	spin_unlock(&clp->cl_lock);
-+}
- 
-+static void nfsd4_register_conn(struct nfsd4_conn *conn)
-+{
- 	conn->cn_xpt_user.callback = nfsd4_conn_lost;
--	register_xpt_user(rqstp->rq_xprt, &conn->cn_xpt_user);
-+	register_xpt_user(conn->cn_xprt, &conn->cn_xpt_user);
-+}
-+
-+static __be32 nfsd4_new_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
-+{
-+	struct nfsd4_conn *conn;
-+
-+	conn = alloc_conn(rqstp);
-+	if (!conn)
-+		return nfserr_jukebox;
-+	nfsd4_hash_conn(conn, ses);
-+	nfsd4_register_conn(conn);
- 	return nfs_ok;
- }
- 
+Simply not listening to an IP may be more convenient (and perform better)
+than setting up firewalls.
+
+Binding also allows one to specify which interface to use if you have
+two interfaces on the same subnet.
+
+I posted a patch a week or two ago that allowed the kernel components
+to bind to specific IPs.  I'm glad to see I'm not the only one interested
+in this, and hopefully we can start making all parts of NFS able to bind
+to specific IPs when requested.
+
+Thanks,
+Ben
+
 -- 
-1.7.0.4
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
