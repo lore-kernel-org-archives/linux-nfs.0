@@ -1,271 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:17922 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932121Ab0I3PoI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 11:44:08 -0400
-Subject: Re: [PATCH] nfs-utils: Add nfs.upcall for idmapper
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4CA48CEF.9060600@netapp.com>
-Date: Thu, 30 Sep 2010 11:42:35 -0400
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        SteveD@redhat.com
-Message-Id: <59CA8CDE-0A68-4F99-BB09-804D24452148@oracle.com>
-References: <4CA39681.3000104@netapp.com> <1285798396.3557.18.camel@heimdal.trondhjem.org> <4CA48CEF.9060600@netapp.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
+Received: from vergina.eng.auth.gr ([155.207.18.1]:54810 "EHLO
+	vergina.eng.auth.gr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754248Ab0ITJyv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 05:54:51 -0400
+Message-ID: <4C972F4D.3050409@eng.auth.gr>
+Date: Mon, 20 Sep 2010 12:54:21 +0300
+From: George Mamalakis <mamalos@eng.auth.gr>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: nfsv3 gssapi client?
+References: <4C938F3B.4030604@eng.auth.gr>	<20100917174328.GC25515@fieldses.org> <20100917143506.0b85a04b@tlielax.poochiereds.net>
+In-Reply-To: <20100917143506.0b85a04b@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+  Hi Jeff, and thanx for your answer,
+>> 111 is ECONNREFUSED.  I'm not sure why that's failing.  (Should failure
+>> to register lockd fail the whole mount?  I thought it would at worst
+>> result in ENOLCK on lock requests?) Do you get better results if you
+>> mount with nolock?
+>>
+> Firewalling issues maybe?
+>
+The fbsd box runs no firewall whatsoever, and nvsv3 mounts work just 
+fine if sec=sys is given in the mount command instead of sec=krb5(ip). 
+On the linux box I haven't setup any iptables whatsoever. My 
+/etc/hosts.allow on the linuxbox reads:
+[root@linuxclient ~]# cat /etc/hosts.allow
+#
+# /etc/hosts.allow
+#
+ALL:ALL
 
-On Sep 30, 2010, at 9:13 AM, Bryan Schumaker wrote:
 
-> On 09/29/2010 06:13 PM, Trond Myklebust wrote:
->> On Wed, 2010-09-29 at 15:41 -0400, Bryan Schumaker wrote:
->>> +	else
->>> +		keyctl_negate(key, timeout, 0);
->> 
->> Hmm... I've been looking more closely at the design of request-key. It
->> looks as if the idea there is that you are supposed to return without
->> instantiating the key if you are unable to service the request.
->> 
->> Basically, if your program exits with a non-zero value, then request-key
->> is supposed to look at the next matching entry in /etc/request-key.conf
->> (until it hits they very last entry, which is always 'keyctl negate').
->> 
->> Sorry, Bryan. The above line was a result of me bugging you. I should
->> have checked the sources first...
->> 
->>> +	free(arg);
->>> +	return rc;
->>> +}
->> 
->> Cheers
->>  Trond
-> 
-> 
-> No problem.  Here is an updated patch with the line removed.
+So I guess that there is no problem from this side too.
 
-Overall this work seems like a positive direction.
+Thanx again,
 
-I might choose a less generic name for this program, unless there are plans to make it handle all NFS upcalls, eventually.  How about nfs.idmap ?
+mamalos
 
-Should nfs.upcall have its own man page?  My opinion is that it should.  That might be a better place for the setup information (needed by mortal system administrators) added under Documentation/ by an earlier patch.  Documentation/ is an appropriate place for the upcall design information, though.
 
-Also, I've been looking at the Mesta-Adamson draft that provides NFSv4 domain information via DNS.  I'd like to see Linux make use of this TXT record, as Solaris does today.  It would help make Linux NFSv4 more automatically configurable, especially in heterogeneous environments.
-
-As I understand it, nfs.upcall would obviate rpc.idmapd, correct?  In that case, what entity would be responsible for a putative DNS lookup to determine the local NFSv4 domain name?  How would this information be cached?
-
-Finally, if at all possible, it would be better if the kernel could automatically recognize and use nfs.upcall rather than the legacy idmapping mechanism.  My experience with CONFIG options is that people will almost always choose the wrong setting no matter how many large neon arrows you add.  I know there are likely some technical challenges here.
-
-> Bryan
-> 
-> 
-> 
-> This patch adds the nfs.upcall program to nfs-utils.  This program is called by
-> the nfs idmapper through request-keys to map between uid / user name and
-> gid / group name.
-> 
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
-> diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
-> new file mode 100644
-> index 0000000..84bc112
-> --- /dev/null
-> +++ b/aclocal/keyutils.m4
-> @@ -0,0 +1,11 @@
-> +dnl Checks for keyutils library and headers
-> +dnl
-> +AC_DEFUN([AC_KEYUTILS], [
-> +
-> +  dnl Check for libkeyutils; do not add to LIBS if found
-> +  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
-> +  AC_SUBST(LIBKEYUTILS)
-> +
-> +  AC_CHECK_HEADERS([keyutils.h], ,
-> +  		   [AC_MSG_ERROR([keyutils.h header not found.])])
-> +])dnl
-> diff --git a/configure.ac b/configure.ac
-> index 3058be6..a5e8620 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
->   dnl check for nfsidmap libraries and headers
->   AC_LIBNFSIDMAP
-> 
-> +  dnl check for the keyutils libraries and headers
-> +  AC_KEYUTILS
-> +
->   dnl librpcsecgss already has a dependency on libgssapi,
->   dnl but we need to make sure we get the right version
->   if test "$enable_gss" = yes; then
-> @@ -435,6 +438,7 @@ AC_CONFIG_FILES([
-> 	utils/mountd/Makefile
-> 	utils/nfsd/Makefile
-> 	utils/nfsstat/Makefile
-> +	utils/nfs.upcall/Makefile
-> 	utils/showmount/Makefile
-> 	utils/statd/Makefile
-> 	tests/Makefile
-> diff --git a/utils/Makefile.am b/utils/Makefile.am
-> index 8665183..0104a6c 100644
-> --- a/utils/Makefile.am
-> +++ b/utils/Makefile.am
-> @@ -4,6 +4,7 @@ OPTDIRS =
-> 
-> if CONFIG_NFSV4
-> OPTDIRS += idmapd
-> +OPTDIRS += nfs.upcall
-> endif
-> 
-> if CONFIG_GSS
-> diff --git a/utils/nfs.upcall/Makefile.am b/utils/nfs.upcall/Makefile.am
-> new file mode 100644
-> index 0000000..52afd3d
-> --- /dev/null
-> +++ b/utils/nfs.upcall/Makefile.am
-> @@ -0,0 +1,7 @@
-> +## Process this file with automake to produce Makefile.in
-> +
-> +sbin_PROGRAMS	= nfs.upcall
-> +nfs_upcall_SOURCES = nfs.upcall.c
-> +nfs_upcall_LDADD = -lnfsidmap -lkeyutils
-> +
-> +MAINTAINERCLEANFILES = Makefile.in
-> diff --git a/utils/nfs.upcall/nfs.upcall.c b/utils/nfs.upcall/nfs.upcall.c
-> new file mode 100644
-> index 0000000..9200972
-> --- /dev/null
-> +++ b/utils/nfs.upcall/nfs.upcall.c
-> @@ -0,0 +1,118 @@
-> +
-> +#include <stdarg.h>
-> +#include <stdio.h>
-> +#include <stdlib.h>
-> +#include <string.h>
-> +
-> +#include <pwd.h>
-> +#include <grp.h>
-> +#include <keyutils.h>
-> +#include <nfsidmap.h>
-> +
-> +#include <syslog.h>
-> +
-> +/* gcc nfs.upcall.c -o nfs.upcall -l nfsidmap -l keyutils */
-> +
-> +#define MAX_ID_LEN   11
-> +#define IDMAP_NAMESZ 128
-> +#define USER  1
-> +#define GROUP 0
-> +
-> +
-> +/*
-> + * Find either a user or group id based on the name@domain string
-> + */
-> +int id_lookup(char *name_at_domain, key_serial_t key, int type)
-> +{
-> +	char id[MAX_ID_LEN];
-> +	uid_t uid = 0;
-> +	gid_t gid = 0;
-> +	int rc;
-> +
-> +	if (type == USER) {
-> +		rc = nfs4_owner_to_uid(name_at_domain, &uid);
-> +		sprintf(id, "%u", uid);
-> +	} else {
-> +		rc = nfs4_group_owner_to_gid(name_at_domain, &gid);
-> +		sprintf(id, "%u", gid);
-> +	}
-> +
-> +	if (rc == 0)
-> +		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
-> +
-> +	return rc;
-> +}
-> +
-> +/*
-> + * Find the name@domain string from either a user or group id
-> + */
-> +int name_lookup(char *id, key_serial_t key, int type)
-> +{
-> +	char name[IDMAP_NAMESZ];
-> +	char domain[NFS4_MAX_DOMAIN_LEN];
-> +	uid_t uid;
-> +	gid_t gid;
-> +	int rc;
-> +
-> +	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
-> +	if (rc != 0) {
-> +		rc = -1;
-> +		goto out;
-> +	}
-> +
-> +	if (type == USER) {
-> +		uid = atoi(id);
-> +		rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
-> +	} else {
-> +		gid = atoi(id);
-> +		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
-> +	}
-> +
-> +	if (rc == 0)
-> +		rc = keyctl_instantiate(key, &name, strlen(name), 0);
-> +
-> +out:
-> +	return rc;
-> +}
-> +
-> +int main(int argc, char **argv)
-> +{
-> +	char *arg;
-> +	char *value;
-> +	char *type;
-> +	int rc = 1;
-> +	int timeout = 600;
-> +	key_serial_t key;
-> +
-> +	if (argc < 3)
-> +		return 1;
-> +
-> +	arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
-> +	strcpy(arg, argv[2]);
-> +	type = strtok(arg, ":");
-> +	value = strtok(NULL, ":");
-> +
-> +	if (argc == 4) {
-> +		timeout = atoi(argv[3]);
-> +		if (timeout < 0)
-> +			timeout = 0;
-> +	}
-> +
-> +	key = strtol(argv[1], NULL, 10);
-> +
-> +	if (strcmp(type, "uid") == 0)
-> +		rc = id_lookup(value, key, USER);
-> +	else if (strcmp(type, "gid") == 0)
-> +		rc = id_lookup(value, key, GROUP);
-> +	else if (strcmp(type, "user") == 0)
-> +		rc = name_lookup(value, key, USER);
-> +	else if (strcmp(type, "group") == 0)
-> +		rc = name_lookup(value, key, GROUP);
-> +
-> +	/* Set timeout to 5 (600 seconds) minutes */
-> +	if (rc == 0)
-> +		keyctl_set_timeout(key, timeout);
-> +
-> +	free(arg);
-> +	return rc;
-> +}
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+PS. Sorry I haven't answered to your question in my previous email, I 
+saw your email after sending the previous answer.
 
 -- 
-chuck[dot]lever[at]oracle[dot]com
+George Mamalakis
 
+IT Officer
+Electrical and Computer Engineer (Aristotle Un. of Thessaloniki),
+MSc (Imperial College of London)
 
+Department of Electrical and Computer Engineering
+Faculty of Engineering
+Aristotle University of Thessaloniki
 
+phone number : +30 (2310) 994379
 
