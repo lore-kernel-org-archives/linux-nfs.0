@@ -1,55 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57143 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752624Ab0ITT6I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Sep 2010 15:58:08 -0400
-Date: Mon, 20 Sep 2010 15:56:35 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Pavel Emelyanov <xemul@parallels.com>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
-Message-ID: <20100920195635.GA18808@fieldses.org>
-References: <4C90BADB.10700@parallels.com>
- <20100920161326.GL4580@fieldses.org>
- <4C978CE6.5080508@parallels.com>
- <20100920180418.GN4580@fieldses.org>
- <4C97B248.1030801@parallels.com>
- <EE0DC983-8CFA-42FA-8D64-F4E2564E6FB0@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <EE0DC983-8CFA-42FA-8D64-F4E2564E6FB0@oracle.com>
+Received: from vergina.eng.auth.gr ([155.207.18.1]:61634 "EHLO
+	vergina.eng.auth.gr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755784Ab0ITJrp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 05:47:45 -0400
+Message-ID: <4C972DB3.2050405@eng.auth.gr>
+Date: Mon, 20 Sep 2010 12:47:31 +0300
+From: George Mamalakis <mamalos@eng.auth.gr>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: nfsv3 gssapi client?
+References: <4C938F3B.4030604@eng.auth.gr> <20100917174328.GC25515@fieldses.org>
+In-Reply-To: <20100917174328.GC25515@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Sep 20, 2010 at 03:28:00PM -0400, Chuck Lever wrote:
-> 
-> On Sep 20, 2010, at 3:13 PM, Pavel Emelyanov wrote:
-> > The nearest plan is
-> > 
-> > 1. Prepare the sunrpc layer to work in net namespaces 2. Make
-> > rpcpipefs and nfsd filesystems be mountable multiple times 3. Make
-> > support for multiple instances of the nfsd caches 4. Make suuport
-> > for multiple instances of the nfsd_serv
-> > 
-> > After this several NFSd-s can be used in containers (hopefully I
-> > didn't miss anything).
-> 
-> Are you assuming NFSv4 only?  Something needs to be done about NLM and
-> NSM to make this work right.
-> 
-> Is there an issue for idmapper and svcgssd?  Probably not, but worth
-> exploring.
-> 
-> And, how about AUTH_SYS certs?  These contain the host's name in them,
-> and that depends on the net namespace.  NLM uses AUTH_SYS, and I
-> believe the NFS server can make NLM calls to the client.
+  Hi Bruce and thanx for the reply,
 
-The client probably can't use the auth_sys cred on nlm callbacks in any
-sensible way, so this may not be a big deal.
+to your questions now:
 
-But, yes, there are probably a lot more details like this; we'll need a
-list.
+On 17/09/2010 20:43, J. Bruce Fields wrote:
+>
+>> # mount -t nfs -o sec=krb5 fbsdserver:/exports /mnt
+>>
+> Was there supposed to be some error output there?  Or did the mount just
+> hang?
+>
+The mount command stalls and no output is presented; only the messages 
+on /var/log/messages.
+>> Sep 17 16:06:01 linuxclient kernel: svc: failed to register lockdv1
+>> RPC service (errno 111).
+> 111 is ECONNREFUSED.  I'm not sure why that's failing.  (Should failure
+> to register lockd fail the whole mount?  I thought it would at worst
+> result in ENOLCK on lock requests?) Do you get better results if you
+> mount with nolock?
+>
+Now this is peculiar. If run mount -o nolock then gssd segfaults. This 
+is because it creates a /tmp/krb5cc_machine_REALM ticket, and when it 
+access it, it segfaults. To overcome this issue I deleted the temporary 
+file, and ran gssd manually to see its output. So, mount returned the 
+following:
 
---b.
+[root@linuxclient ~]# mount -t nfs -o sec=krb5,nolock 
+fbsdserver:/exports /mnt
+mount.nfs: access denied by server while mounting fbsdserver:/exports
+
+and gssd console output read:
+
+destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt110
+handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
+handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
+handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
+process_krb5_upcall: service is '<null>'
+getting credentials for client with uid 0 for server fbsdserver
+WARNING: Failed to create krb5 context for user with uid 0 for server 
+fbsdserver
+doing error downcall
+destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt113
+handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
+handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
+handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
+process_krb5_upcall: service is '<null>'
+getting credentials for client with uid 0 for server fbsdserver
+WARNING: Failed to create krb5 context for user with uid 0 for server 
+fbsdserver
+doing error downcall
+handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
+handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
+handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt112)
+process_krb5_upcall: service is '<null>'
+getting credentials for client with uid 0 for server fbsdclient.ee.auth.gr
+WARNING: Failed to create krb5 context for user with uid 0 for server 
+fbsdserver
+doing error downcall
+destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt112
+destroying client /var/lib/nfs/rpc_pipefs/nfs/clnt111
+
+/var/log/messages shows nothing.
+
+
+I think that's all regarding your questions.
+
+Thanx again,
+
+mamalos.
+
+-- 
+George Mamalakis
+
+IT Officer
+Electrical and Computer Engineer (Aristotle Un. of Thessaloniki),
+MSc (Imperial College of London)
+
+Department of Electrical and Computer Engineering
+Faculty of Engineering
+Aristotle University of Thessaloniki
+
+phone number : +30 (2310) 994379
+
