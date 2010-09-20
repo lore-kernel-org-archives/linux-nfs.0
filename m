@@ -1,88 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sith.mimuw.edu.pl ([193.0.96.4]:5742 "EHLO sith.mimuw.edu.pl"
+Received: from mx2.netapp.com ([216.240.18.37]:47227 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755241Ab0IQSVh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Sep 2010 14:21:37 -0400
-Date: Fri, 17 Sep 2010 20:12:51 +0200
-From: Jan =?utf-8?Q?R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: [PATCH] rpcbind: don't ignore bind and init_transport errors
-Message-ID: <20100917181251.GA21111@sith.mimuw.edu.pl>
-Content-Type: text/plain; charset=utf-8
+	id S1752624Ab0ITUFV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 16:05:21 -0400
+Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Pavel Emelyanov <xemul@parallels.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4C97B248.1030801@parallels.com>
+References: <4C90BADB.10700@parallels.com>
+	 <20100920161326.GL4580@fieldses.org> <4C978CE6.5080508@parallels.com>
+	 <20100920180418.GN4580@fieldses.org>  <4C97B248.1030801@parallels.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 20 Sep 2010 16:05:16 -0400
+Message-ID: <1285013116.2851.71.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
-rpcbind currently silently ignores any errors that occur during
-init_transport, it also happily continues if bind(2) fails for
-UDP socket - it's enough if just one UDP socket is bound.
+On Mon, 2010-09-20 at 23:13 +0400, Pavel Emelyanov wrote:
+> On 09/20/2010 10:04 PM, J. Bruce Fields wrote:
+> > On Mon, Sep 20, 2010 at 08:33:42PM +0400, Pavel Emelyanov wrote:
+> >>>> Looking forward to your feedback.
+> >>>
+> >>> What are you thinking of as a use-case for this?
+> >>
+> >> To make it possible run both NFS server and client in containers.
+> > 
+> > Could you describe that in user-visible terms?  (Currently if I create a
+> > new network namespace, what happens, and what will happen differently
+> > afterwards?)
+> 
+> This is not about the network namespace only I believe. E.g. the
+> nfsd filesystem is a filesystem already and shouldn't be tied to
+> any task-driven context.
+> 
+> E.g. as far as the net namespace part is concerned. First of all
+> the TCP/UDP socket used by transport will be per-namespace. User
+> will "feel" this for example by different routing and netfilter
+> rules applied to connections. Besides the rpc service sockets will
+> be per namespace as well.
+> 
+> >> Sure! The thing is that the full containerization of that stuff is
+> >> too many patches and I'm not sure that you and other maintainers wish
+> >> to review the 100-patch set in one go ;)
+> > 
+> > Well, if it's really all ready....
+> > 
+> > Better, though, would be an outline of the work to be done and what you
+> > expect to be working at the end.
+> 
+> The nearest plan is
+> 
+> 1. Prepare the sunrpc layer to work in net namespaces
+> 2. Make rpcpipefs and nfsd filesystems be mountable multiple times
+> 3. Make support for multiple instances of the nfsd caches
+> 4. Make suuport for multiple instances of the nfsd_serv
+> 
+> After this several NFSd-s can be used in containers (hopefully I
+> didn't miss anything).
+> 
+> Plans about the nfs client are much more obscure for now.
 
-This patch makes rpcbind fail if there are problems with
-setting up any transport, so we don't end up with
-semi/non functional running daemon.
+The client should be something like the following:
 
-Signed-off-by: Jan Rękorajski <baggins@sith.mimuw.edu.pl>
+ 1) Ensure sunrpc sockets are created using the correct net namespace
+ 2) Convert rpc_pipefs to be per-net namespace.
+ 3) Convert the nfs_client and superblock to be per-net namespace
+ 4) Convert lockd's struct host to be per-net namespace
 
-diff --git a/src/rpcbind.c b/src/rpcbind.c
-index 63023e1..06e5b08 100644
---- a/src/rpcbind.c
-+++ b/src/rpcbind.c
-@@ -179,11 +179,17 @@ main(int argc, char *argv[])
- 	
- 	rpc_control(RPC_SVC_CONNMAXREC_SET, &maxrec);
- 
--	init_transport(nconf);
-+	if (init_transport(nconf)) {
-+		syslog(LOG_ERR, "%s: can't init local transport\n", argv[0]);
-+		exit(1);
-+	}
- 
- 	while ((nconf = getnetconfig(nc_handle))) {
- 		if (nconf->nc_flag & NC_VISIBLE)
--			init_transport(nconf);
-+			if (init_transport(nconf)) {
-+				syslog(LOG_ERR, "%s: can't init %s transport\n", argv[0], nconf->nc_netid);
-+				exit(1);
-+			}
- 	}
- 	endnetconfig(nc_handle);
- 
-@@ -276,7 +282,6 @@ init_transport(struct netconfig *nconf)
- 	int aicode;
- 	int addrlen = 0;
- 	int nhostsbak;
--	int checkbind;
- 	int on = 1;
- 	struct sockaddr *sa = NULL;
- 	u_int32_t host_addr[4];  /* IPv4 or IPv6 */
-@@ -358,7 +363,6 @@ init_transport(struct netconfig *nconf)
- 	       /*
- 		* Bind to specific IPs if asked to
- 		*/
--		checkbind = 0;
- 		while (nhostsbak > 0) {
- 			--nhostsbak;
- 			/*
-@@ -425,9 +429,8 @@ init_transport(struct netconfig *nconf)
- 					hosts[nhostsbak], nconf->nc_netid);
- 				if (res != NULL)
- 					freeaddrinfo(res);
--				continue;
--			} else
--				checkbind++;
-+				return 1;
-+			}
- 			(void) umask(oldmask);
- 
- 			/* Copy the address */
-@@ -476,8 +479,6 @@ init_transport(struct netconfig *nconf)
- 				goto error;
- 			}
- 		}
--		if (!checkbind)
--			return 1;
- 	} else {	/* NC_TPI_COTS */
- 		if ((strcmp(nconf->nc_netid, "local") != 0) &&
- 		    (strcmp(nconf->nc_netid, "unix") != 0)) {
+Cheers
+  Trond
