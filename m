@@ -1,49 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10803 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752813Ab0IOPif (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Sep 2010 11:38:35 -0400
-Date: Wed, 15 Sep 2010 11:38:30 -0400
-From: Jeff Layton <jlayton@redhat.com>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:42927 "EHLO
+	mx01.colomx.prod.int.phx2.redhat.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752855Ab0ITPe3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 11:34:29 -0400
+Date: Mon, 20 Sep 2010 11:34:21 -0400 (EDT)
+From: Sachin Prabhu <sprabhu@redhat.com>
 To: Chuck Lever <chuck.lever@oracle.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/8] nfs: standardize the rename response container
-Message-ID: <20100915113830.63fccdf5@corrin.poochiereds.net>
-In-Reply-To: <4F074BCC-0BFD-4AD1-8CB9-02DE2DEA440E@oracle.com>
-References: <1284557041-4375-1-git-send-email-jlayton@redhat.com>
-	<1284557041-4375-5-git-send-email-jlayton@redhat.com>
-	<4F074BCC-0BFD-4AD1-8CB9-02DE2DEA440E@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Message-ID: <8396119.58.1284996858103.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+In-Reply-To: <B8845252-0CD5-45AF-B29D-52C45D295BBF@oracle.com>
+Subject: Re: Should we be aggressively invalidating cache when using
+ -onolock?
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 15 Sep 2010 11:29:38 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
 
-> > index 60fa509..6265fa8 100644
-> > --- a/include/linux/nfs_xdr.h
-> > +++ b/include/linux/nfs_xdr.h
-> > @@ -411,6 +411,15 @@ struct nfs_renameargs {
-> > 	struct nfs4_sequence_args	seq_args;
-> > };
+----- "Chuck Lever" <chuck.lever@oracle.com> wrote:
+
+> On Sep 20, 2010, at 11:15 AM, Sachin Prabhu wrote:
+> 
+> > ----- "Chuck Lever" <chuck.lever@oracle.com> wrote:
+> >> It also seems to me that if RHEL 4 is _not_ invalidating on lock,
+> then
+> >> it is not working as designed.  AFAIK the Linux NFS client has
+> always
+> >> invalidated a file's data cache on lock.  Did I misread something?
+> >> 
 > > 
-> > +struct nfs_renameres {
-> > +	const struct nfs_server *	server;
-> > +	struct nfs4_change_info		old_cinfo;
-> > +	struct nfs_fattr *		old_fattr;
-> > +	struct nfs4_change_info		new_cinfo;
-> > +	struct nfs_fattr *		new_fattr;
-> > +	struct nfs4_sequence_res	seq_res;
-> > +};
+> > The flock support for NFS was only implemented in the 2.6.12 kernel.
+> Hence on the RHEL 4 kernel ie 2.6.9 nfs_file_operations->flock is NULL
+> and any flock operations performed by the application was only
+> applicable on that node. No part of the NFS client code was executed
+> for the flock() operation. 
 > 
-> Likewise.  Is #ifdef CONFIG_NFS_V4 needed here?  I guess the question is, have you tried building with CONFIG_NFS_V4 disabled?
+> I see, so in RHEL 4, the original fcntl(2) invalidate-on-lock behavior
+> is working correctly, but flock(2) is not, since flock(2) wasn't
+> supported in 2.6.9's NFS client.  Correct?
 > 
-
-Yes, I have built this with v4 disabled and it worked just fine. The
-#ifdef isn't really needed. I suppose we could add that in to save
-a bit of memory but it's probably not worth it. Note that nfs_removeres
-has the same sort of fields and they aren't wrapped in #ifdef's.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Yes.
