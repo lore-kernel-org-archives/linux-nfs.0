@@ -1,101 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:38545 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932187Ab0IXNzW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Sep 2010 09:55:22 -0400
-Subject: Re: [bfields@pop.test.fieldses.org: all f08d6374 Merge branch 'nfs-for-next' into linux-next results]
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <1285262981.14171.6.camel@heimdal.trondhjem.org>
-Date: Fri, 24 Sep 2010 09:49:42 -0400
-Cc: Benny Halevy <bhalevy@panasas.com>, Jeff Layton <jlayton@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Message-Id: <B76D0203-AFD5-40AE-86E6-1033C3A44FFA@netapp.com>
-References: <20100918171546.GA9859@fieldses.org> <1284831680.2787.1.camel@heimdal.trondhjem.org> <20100919184549.GD32071@fieldses.org>	<20100920130106.GB4580@fieldses.org> <20100920131025.GC4580@fieldses.org> <1285091815.30222.19.camel@heimdal.trondhjem.org> <20100921111657.330e7838@corrin.poochiereds.net> <20100921192005.GC4385@fieldses.org> <1285097787.30222.24.camel@heimdal.trondhjem.org> <1285099232.30222.25.camel@heimdal.trondhjem.org> <20100921202411.GA10570@fieldses.org> <1285101981.30222.27.camel@heimdal.trondhjem.org> <20100921145823.2ec2a81c@corrin.poochiereds.net> <4C9B8C72.2020405@panasas.com> <1285262981.14171.6.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:53685 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756779Ab0ITQdh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 12:33:37 -0400
+Received: by gxk23 with SMTP id 23so1361533gxk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 09:33:37 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 7/7] nfsd: Enable IPv6 support in rpc.nfsd again.
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 20 Sep 2010 12:33:34 -0400
+Message-ID: <20100920163334.3170.34867.stgit@ellison.1015granger.net>
+In-Reply-To: <20100920162616.3170.24625.stgit@ellison.1015granger.net>
+References: <20100920162616.3170.24625.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Revert commit b2a3cd59 so that rpc.nfsd can create IPv6 listener
+sockets for the kernel.
 
-On Sep 23, 2010, at 1:29 PM, Trond Myklebust wrote:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> On Thu, 2010-09-23 at 19:20 +0200, Benny Halevy wrote:
->> On 2010-09-21 23:58, Jeff Layton wrote:
->>> On Tue, 21 Sep 2010 16:46:21 -0400
->>> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
->>> 
->>>> On Tue, 2010-09-21 at 16:24 -0400, J. Bruce Fields wrote:
->>>>> On Tue, Sep 21, 2010 at 04:00:32PM -0400, Trond Myklebust wrote:
->>>>>> On Tue, 2010-09-21 at 15:36 -0400, Trond Myklebust wrote:
->>>>>>> On Tue, 2010-09-21 at 15:20 -0400, J. Bruce Fields wrote:
->>>>>>>> All I need to do is mount nfs4.1 and run cthon -s.  The last output I
->>>>>>>> see from the test is:
->>>>>>>> 
->>>>>>>> check for proper open/unlink operation
->>>>>>>> nfsjunk files before unlink:
->>>>>>>> 
->>>>>>> 
->>>>>>> Oh... I bet I see what it is.
->>>>>>> 
->>>>>>> It's that damned res->sr_slotid = NFS4_MAX_SLOT_TABLE and related
->>>>>>> initialisation junk that's biting us in the arse again...
->>>>>>> 
->>>>>>> I'll fix it...
->>>>>> 
->>>>>> Does this work?
->>>>> 
->>>>> Yup.
->>>> 
->>>> It seems to fix things for me too... Once you mentioned NFSv4.1 it was
->>>> easy to reproduce the bug.
->>>> 
->>>> OK. I'll merge these into nfs-for-2.6.37...
->>> 
->>> Thanks for fixing it. I should have mentioned that the 4.1 parts were
->>> written using the "cargo-cult" programming method of copying what
->>> unlink does, and that they needed careful review. Mea culpa!
->>> 
->> 
->> I still hate it that the sr_slotid requires explicit, non-trivial initialization.
->> Once upon a time, the equivalent of sr_slotid used to be a pointer to
->> struct slot.  Using a pointer, implicitly initialized to NULL is significantly
->> more straight forward as in the patch below.
->> (passes cthon tests over your nfs-for-2.6.37 branch + the patch I
->> sent earlier that fixes __put_nfs_open_context. w/o it I readily reproduce the
->> crash reported on this thread)
->> 
->> From 50221fb5bd8fbd46f6cabe1fc795db7efc71bff7 Mon Sep 17 00:00:00 2001
->> From: Benny Halevy <bhalevy@panasas.com>
->> Date: Thu, 23 Sep 2010 19:08:21 +0200
->> Subject: [PATCH] NFSv4.1: keep seq_res.sr_slot as pointer rather than an index
->> 
->> Having to explicitly initialize sr_slotid to NFS4_MAX_SLOT_TABLE
->> resulted in numerous bugs.  Keeping the current slot as a pointer
->> to the slot table is more straight forward and robust as it's
->> implicitly set up to NULL wherever the seq_res member is initialized
->> to zeroes.
->> 
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> 
-> Looks fine to me, and I prefer this approach to the one we have today. 
-> 
-> Note, however, that I've already applied commit
-> d688e11007419fd060ae74d8d952a5c4ece735aa (NFSv4.1: Fix the slotid
-> initialisation in nfs_async_rename()) to the nfs-for-2.6.37 branch.
-> 
-> Are people happy with me rebasing nfs-for-2.6.37 to remove the above
-> commit, and apply this one instead?
+ utils/nfsd/nfsd.c   |    9 ---------
+ utils/nfsd/nfssvc.c |    9 ---------
+ 2 files changed, 0 insertions(+), 18 deletions(-)
 
-Yes, I like this approach as well and think it should be applied.
-
--->Andy
-
-> 
-> Cheers
->  Trond
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index 658b8fa..e7e1470 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -27,15 +27,6 @@
+ #include "nfssvc.h"
+ #include "xlog.h"
+ 
+-/*
+- * IPv6 support for nfsd was finished before some of the other daemons (mountd
+- * and statd in particular). That could be a problem in the future if someone
+- * were to boot a kernel that supports IPv6 serving with  an older nfs-utils. For
+- * now, hardcode the IPv6 switch into the off position until the other daemons
+- * are functional.
+- */
+-#undef IPV6_SUPPORTED
+-
+ static void	usage(const char *);
+ 
+ static struct option longopts[] =
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index 7693626..ea36399 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -24,15 +24,6 @@
+ #include "nfslib.h"
+ #include "xlog.h"
+ 
+-/*
+- * IPv6 support for nfsd was finished before some of the other daemons (mountd
+- * and statd in particular). That could be a problem in the future if someone
+- * were to boot a kernel that supports IPv6 serving with an older nfs-utils. For
+- * now, hardcode the IPv6 switch into the off position until the other daemons
+- * are functional.
+- */
+-#undef IPV6_SUPPORTED
+-
+ #ifndef NFSD_FS_DIR
+ #define NFSD_FS_DIR	  "/proc/fs/nfsd"
+ #endif
 
