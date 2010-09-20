@@ -1,178 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49114 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932192Ab0I3QTi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 12:19:38 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 04/16] nfsd4: generic callback code
-Date: Thu, 30 Sep 2010 12:19:01 -0400
-Message-Id: <1285863553-8945-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1285863553-8945-1-git-send-email-bfields@redhat.com>
-References: <1285863553-8945-1-git-send-email-bfields@redhat.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:40743 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752543Ab0ITPRs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 11:17:48 -0400
+Received: by bwz11 with SMTP id 11so4315296bwz.19
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 08:17:47 -0700 (PDT)
+In-Reply-To: <4C976E81.9040001@panasas.com>
+References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
+	<1284779874-10499-7-git-send-email-iisaman@netapp.com>
+	<4C973A86.6050008@panasas.com>
+	<AANLkTi=3CA+2e6GRytZkFTLbv6Mya7cfRm_iSkvVxXWh@mail.gmail.com>
+	<4C976E81.9040001@panasas.com>
+Date: Mon, 20 Sep 2010 11:17:47 -0400
+Message-ID: <AANLkTin3mabp5XBy8ivYisDaBSskXw9bK9A_-JQT8ozo@mail.gmail.com>
+Subject: Re: [PATCH 06/12] RFC: nfs: set layout driver
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+On Mon, Sep 20, 2010 at 10:24 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+> On 2010-09-20 16:06, Fred Isaman wrote:
+>> On Mon, Sep 20, 2010 at 6:42 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>> On 2010-09-18 05:17, Fred Isaman wrote:
+>>>> From: The pNFS Team <linux-nfs@vger.kernel.org>
+>>>>
+>>>> Put in the infrastructure that uses information returned from the
+>>>> server at mount to select a layout driver module.
+>>>>
+>>>> In this patch, a stub is used that always returns "no driver found".
+>>>>
+>>>> Signed-off-by: TBD - melding/reorganization of several patches
+>>>> ---
+>>>>  fs/nfs/Makefile           |    1 +
+>>>>  fs/nfs/client.c           |    4 ++
+>>>>  fs/nfs/pnfs.c             |   78 +++++++++++++++++++++++++++++++++++++++++++++
+>>>>  fs/nfs/pnfs.h             |   56 ++++++++++++++++++++++++++++++++
+>>>>  include/linux/nfs_fs.h    |    1 +
+>>>>  include/linux/nfs_fs_sb.h |    1 +
+>>>>  6 files changed, 141 insertions(+), 0 deletions(-)
+>>>>  create mode 100644 fs/nfs/pnfs.c
+>>>>  create mode 100644 fs/nfs/pnfs.h
+>>>>
+>>>> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+>>>> index da7fda6..bb9e773 100644
+>>>> --- a/fs/nfs/Makefile
+>>>> +++ b/fs/nfs/Makefile
+>>>> @@ -15,5 +15,6 @@ nfs-$(CONFIG_NFS_V4)        += nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+>>>>                          delegation.o idmap.o \
+>>>>                          callback.o callback_xdr.o callback_proc.o \
+>>>>                          nfs4namespace.o
+>>>> +nfs-$(CONFIG_NFS_V4_1)       += pnfs.o
+>>>>  nfs-$(CONFIG_SYSCTL) += sysctl.o
+>>>>  nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+>>>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>>>> index 4e7df2a..eed1212 100644
+>>>> --- a/fs/nfs/client.c
+>>>> +++ b/fs/nfs/client.c
+>>>> @@ -48,6 +48,7 @@
+>>>>  #include "iostat.h"
+>>>>  #include "internal.h"
+>>>>  #include "fscache.h"
+>>>> +#include "pnfs.h"
+>>>>
+>>>>  #define NFSDBG_FACILITY              NFSDBG_CLIENT
+>>>>
+>>>> @@ -898,6 +899,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+>>>>       if (server->wsize > NFS_MAX_FILE_IO_SIZE)
+>>>>               server->wsize = NFS_MAX_FILE_IO_SIZE;
+>>>>       server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+>>>> +     set_pnfs_layoutdriver(server, fsinfo->layouttype);
+>>>> +
+>>>
+>>> Originally (9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules),
+>>> nfs4_init_pnfs called set_pnfs_layoutdriver under the following conditions:
+>>>
+>>>        if (nfs4_has_session(clp) &&
+>>>            (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
+>>>                set_pnfs_layoutdriver(server, fsinfo->layouttype);
+>>>
+>>> So in the DS only case we don't want to set server->pnfs_curr_ld.
+>>> did you test your code with a standalone DS to make there are no
+>>> ill side effects in this case?
+>>>
+>>
+>> This is called from the mount code.  It is never called for a DS
+>> (unless the DS is also a MDS, in which case it will be called in the
+>> MDS role).
+>
+> So at least let's add a BUG_ON and a comment since we're relying on
+> side effects of code implemented elsewhere.
+>
 
-Make the recall callback code more generic, so that other callbacks
-will be able to use it too.
+OK.
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs4callback.c |   70 +++++++++++++++++++++--------------------------
- fs/nfsd/state.h        |    2 +
- 2 files changed, 33 insertions(+), 39 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index ae63f69..2289ad5 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -584,7 +584,6 @@ void nfsd4_probe_callback(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
- static int nfsd41_cb_setup_sequence(struct nfs4_client *clp,
- 		struct rpc_task *task)
- {
--	struct nfsd4_cb_args *args = task->tk_msg.rpc_argp;
- 	u32 *ptr = (u32 *)clp->cl_sessionid.data;
- 	int status = 0;
- 
-@@ -597,14 +596,6 @@ static int nfsd41_cb_setup_sequence(struct nfs4_client *clp,
- 		status = -EAGAIN;
- 		goto out;
- 	}
--
--	/*
--	 * We'll need the clp during XDR encoding and decoding,
--	 * and the sequence during decoding to verify the reply
--	 */
--	args->args_clp = clp;
--	task->tk_msg.rpc_resp = args;
--
- out:
- 	dprintk("%s status=%d\n", __func__, status);
- 	return status;
-@@ -616,7 +607,8 @@ out:
-  */
- static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
- {
--	struct nfs4_delegation *dp = calldata;
-+	struct nfsd4_callback *cb = calldata;
-+	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
- 	struct nfs4_client *clp = dp->dl_client;
- 	struct nfsd4_cb_args *args = task->tk_msg.rpc_argp;
- 	u32 minorversion = clp->cl_cb_conn.cb_minorversion;
-@@ -639,7 +631,8 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
- 
- static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
- {
--	struct nfs4_delegation *dp = calldata;
-+	struct nfsd4_callback *cb = calldata;
-+	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
- 	struct nfs4_client *clp = dp->dl_client;
- 
- 	dprintk("%s: minorversion=%d\n", __func__,
-@@ -661,7 +654,8 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
- 
- static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
- {
--	struct nfs4_delegation *dp = calldata;
-+	struct nfsd4_callback *cb = calldata;
-+	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
- 	struct nfs4_client *clp = dp->dl_client;
- 	struct rpc_clnt *current_rpc_client = clp->cl_cb_client;
- 
-@@ -706,7 +700,8 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
- 
- static void nfsd4_cb_recall_release(void *calldata)
- {
--	struct nfs4_delegation *dp = calldata;
-+	struct nfsd4_callback *cb = calldata;
-+	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
- 
- 	nfs4_put_delegation(dp);
- }
-@@ -748,42 +743,39 @@ void nfsd4_set_callback_client(struct nfs4_client *clp, struct rpc_clnt *new)
- 		rpc_shutdown_client(old);
- }
- 
--/*
-- * called with dp->dl_count inc'ed.
-- */
--static void _nfsd4_cb_recall(struct nfs4_delegation *dp)
-+void nfsd4_release_cb(struct nfsd4_callback *cb)
- {
--	struct nfs4_client *clp = dp->dl_client;
-+	if (cb->cb_ops->rpc_release)
-+		cb->cb_ops->rpc_release(cb);
-+}
-+
-+void nfsd4_do_callback_rpc(struct work_struct *w)
-+{
-+	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
-+	struct nfs4_client *clp = cb->cb_args.args_clp;
- 	struct rpc_clnt *clnt = clp->cl_cb_client;
--	struct nfsd4_cb_args *args = &dp->dl_recall.cb_args;
--	struct rpc_message msg = {
--		.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL],
--		.rpc_cred = callback_cred
--	};
- 
- 	if (clnt == NULL) {
--		nfs4_put_delegation(dp);
-+		nfsd4_release_cb(cb);
- 		return; /* Client is shutting down; give up. */
- 	}
--
--	args->args_op = dp;
--	msg.rpc_argp = args;
--	dp->dl_retries = 1;
--	rpc_call_async(clnt, &msg, RPC_TASK_SOFT, &nfsd4_cb_recall_ops, dp);
-+	rpc_call_async(clnt, &cb->cb_msg, RPC_TASK_SOFT, cb->cb_ops, cb);
- }
- 
--void nfsd4_do_callback_rpc(struct work_struct *w)
-+void nfsd4_cb_recall(struct nfs4_delegation *dp)
- {
--	/* XXX: for now, just send off delegation recall. */
--	/* In future, generalize to handle any sort of callback. */
--	struct nfsd4_callback *c = container_of(w, struct nfsd4_callback, cb_work);
--	struct nfs4_delegation *dp = container_of(c, struct nfs4_delegation, dl_recall);
--
--	_nfsd4_cb_recall(dp);
--}
-+	struct nfsd4_callback *cb = &dp->dl_recall;
- 
-+	dp->dl_retries = 1;
-+	cb->cb_args.args_op = dp;
-+	cb->cb_args.args_clp = dp->dl_client;
-+	cb->cb_msg.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL];
-+	cb->cb_msg.rpc_argp = &cb->cb_args;
-+	cb->cb_msg.rpc_resp = &cb->cb_args;
-+	cb->cb_msg.rpc_cred = callback_cred;
-+
-+	cb->cb_ops = &nfsd4_cb_recall_ops;
-+	dp->dl_retries = 1;
- 
--void nfsd4_cb_recall(struct nfs4_delegation *dp)
--{
- 	queue_work(callback_wq, &dp->dl_recall.cb_work);
- }
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index f988b90..6e59214 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -72,6 +72,8 @@ struct nfsd4_cb_args {
- 
- struct nfsd4_callback {
- 	struct nfsd4_cb_args cb_args;
-+	struct rpc_message cb_msg;
-+	const struct rpc_call_ops *cb_ops;
- 	struct work_struct cb_work;
- };
- 
--- 
-1.7.0.4
+> Benny
+>
+> P.S. I wonder what happens if you try to explicitly mount a DS
+> (which is not an MDS).
+>
+>
 
+Note there are two possibilities here, DS only, or DS and normal NFS
+server (but not a MDS).
+
+In the second case, the mount should work, and it does.  In the first,
+the client should abort when it sees the EXCHID flags (which it
+doesn't...this needs to be fixed) or when the server sends
+NFS4ERR_NOTSUPP to the PUTROOTFH, which it MUST do.
+
+Fred
