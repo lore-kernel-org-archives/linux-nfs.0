@@ -1,267 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:54737 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755461Ab0ITKl6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 06:41:58 -0400
-Message-ID: <4C973A86.6050008@panasas.com>
-Date: Mon, 20 Sep 2010 12:42:14 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 06/12] RFC: nfs: set layout driver
-References: <1284779874-10499-1-git-send-email-iisaman@netapp.com> <1284779874-10499-7-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1284779874-10499-7-git-send-email-iisaman@netapp.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:45206 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757170Ab0ITTNX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Sep 2010 15:13:23 -0400
+Message-ID: <4C97B248.1030801@parallels.com>
+Date: Mon, 20 Sep 2010 23:13:12 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Neil Brown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
+References: <4C90BADB.10700@parallels.com> <20100920161326.GL4580@fieldses.org> <4C978CE6.5080508@parallels.com> <20100920180418.GN4580@fieldses.org>
+In-Reply-To: <20100920180418.GN4580@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-18 05:17, Fred Isaman wrote:
-> From: The pNFS Team <linux-nfs@vger.kernel.org>
+On 09/20/2010 10:04 PM, J. Bruce Fields wrote:
+> On Mon, Sep 20, 2010 at 08:33:42PM +0400, Pavel Emelyanov wrote:
+>>>> Looking forward to your feedback.
+>>>
+>>> What are you thinking of as a use-case for this?
+>>
+>> To make it possible run both NFS server and client in containers.
 > 
-> Put in the infrastructure that uses information returned from the
-> server at mount to select a layout driver module.
+> Could you describe that in user-visible terms?  (Currently if I create a
+> new network namespace, what happens, and what will happen differently
+> afterwards?)
+
+This is not about the network namespace only I believe. E.g. the
+nfsd filesystem is a filesystem already and shouldn't be tied to
+any task-driven context.
+
+E.g. as far as the net namespace part is concerned. First of all
+the TCP/UDP socket used by transport will be per-namespace. User
+will "feel" this for example by different routing and netfilter
+rules applied to connections. Besides the rpc service sockets will
+be per namespace as well.
+
+>> Sure! The thing is that the full containerization of that stuff is
+>> too many patches and I'm not sure that you and other maintainers wish
+>> to review the 100-patch set in one go ;)
 > 
-> In this patch, a stub is used that always returns "no driver found".
+> Well, if it's really all ready....
 > 
-> Signed-off-by: TBD - melding/reorganization of several patches
-> ---
->  fs/nfs/Makefile           |    1 +
->  fs/nfs/client.c           |    4 ++
->  fs/nfs/pnfs.c             |   78 +++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfs/pnfs.h             |   56 ++++++++++++++++++++++++++++++++
->  include/linux/nfs_fs.h    |    1 +
->  include/linux/nfs_fs_sb.h |    1 +
->  6 files changed, 141 insertions(+), 0 deletions(-)
->  create mode 100644 fs/nfs/pnfs.c
->  create mode 100644 fs/nfs/pnfs.h
+> Better, though, would be an outline of the work to be done and what you
+> expect to be working at the end.
+
+The nearest plan is
+
+1. Prepare the sunrpc layer to work in net namespaces
+2. Make rpcpipefs and nfsd filesystems be mountable multiple times
+3. Make support for multiple instances of the nfsd caches
+4. Make suuport for multiple instances of the nfsd_serv
+
+After this several NFSd-s can be used in containers (hopefully I
+didn't miss anything).
+
+Plans about the nfs client are much more obscure for now.
+
+>> I want to find out what git tree to hack on and prepare small patch
+>> sets making things step-by-step. This one is just the first in a row.
 > 
-> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-> index da7fda6..bb9e773 100644
-> --- a/fs/nfs/Makefile
-> +++ b/fs/nfs/Makefile
-> @@ -15,5 +15,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
->  			   delegation.o idmap.o \
->  			   callback.o callback_xdr.o callback_proc.o \
->  			   nfs4namespace.o
-> +nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
->  nfs-$(CONFIG_SYSCTL) += sysctl.o
->  nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 4e7df2a..eed1212 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -48,6 +48,7 @@
->  #include "iostat.h"
->  #include "internal.h"
->  #include "fscache.h"
-> +#include "pnfs.h"
->  
->  #define NFSDBG_FACILITY		NFSDBG_CLIENT
->  
-> @@ -898,6 +899,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
->  	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
->  		server->wsize = NFS_MAX_FILE_IO_SIZE;
->  	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-> +	set_pnfs_layoutdriver(server, fsinfo->layouttype);
-> +
+> For the server side you can use
+> 
+> 	git://linux-nfs.org/~bfields/linux.git nfsd-next
+> 
+> though generally the latest upstream will likely work as well.
 
-Originally (9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules),
-nfs4_init_pnfs called set_pnfs_layoutdriver under the following conditions:
+OK, I will re-base the set onto the nfsd-next then.
 
-	if (nfs4_has_session(clp) &&
-	    (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
-		set_pnfs_layoutdriver(server, fsinfo->layouttype);
+> On a quick skim, those patches look fine (and brokenly up nicely for
+> review, thanks).  My main concern is just being sure I understand where
+> this all ends up.
 
-So in the DS only case we don't want to set server->pnfs_curr_ld.
-did you test your code with a standalone DS to make there are no
-ill side effects in this case?
+Well, as far as I know the nfsd and sunrpc code the plan described
+above should give us most of the work needed to containerize nfsd.
 
->  	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
->  
->  	server->dtsize = nfs_block_size(fsinfo->dtpref, NULL);
-> @@ -1017,6 +1020,7 @@ void nfs_free_server(struct nfs_server *server)
->  {
->  	dprintk("--> nfs_free_server()\n");
->  
-> +	unset_pnfs_layoutdriver(server);
->  	spin_lock(&nfs_client_lock);
->  	list_del(&server->client_link);
->  	list_del(&server->master_link);
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> new file mode 100644
-> index 0000000..2e5dba1
-> --- /dev/null
-> +++ b/fs/nfs/pnfs.c
-> @@ -0,0 +1,78 @@
-> +/*
-> + *  pNFS functions to call and manage layout drivers.
-> + *
-> + *  Copyright (c) 2002 [year of first publication]
-> + *  The Regents of the University of Michigan
-> + *  All Rights Reserved
-> + *
-> + *  Dean Hildebrand <dhildebz@umich.edu>
-> + *
-> + *  Permission is granted to use, copy, create derivative works, and
-> + *  redistribute this software and such derivative works for any purpose,
-> + *  so long as the name of the University of Michigan is not used in
-> + *  any advertising or publicity pertaining to the use or distribution
-> + *  of this software without specific, written prior authorization. If
-> + *  the above copyright notice or any other identification of the
-> + *  University of Michigan is included in any copy of any portion of
-> + *  this software, then the disclaimer below must also be included.
-> + *
-> + *  This software is provided as is, without representation or warranty
-> + *  of any kind either express or implied, including without limitation
-> + *  the implied warranties of merchantability, fitness for a particular
-> + *  purpose, or noninfringement.  The Regents of the University of
-> + *  Michigan shall not be liable for any damages, including special,
-> + *  indirect, incidental, or consequential damages, with respect to any
-> + *  claim arising out of or in connection with the use of the software,
-> + *  even if it has been or is hereafter advised of the possibility of
-> + *  such damages.
-> + */
-> +
-> +#include <linux/nfs_fs.h>
-> +#include "pnfs.h"
-> +
-> +#define NFSDBG_FACILITY		NFSDBG_PNFS
-> +
-> +/* STUB that returns the equivalent of "no module found" */
-> +static struct pnfs_layoutdriver_type *
-> +find_pnfs_driver(u32 id) {
-> +	return NULL;
-> +}
-> +
-> +/* Unitialize a mountpoint in a layout driver */
-> +void
-> +unset_pnfs_layoutdriver(struct nfs_server *nfss)
-> +{
-> +	nfss->pnfs_curr_ld = NULL;
-> +}
-> +
-> +/*
-> + * Try to set the server's pnfs module to the pnfs layout type specified by id.
-> + * Currently only one pNFS layout driver per filesystem is supported.
-> + *
-> + * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
-> + */
-> +void
-> +set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
-> +{
-> +	struct pnfs_layoutdriver_type *ld_type = NULL;
-> +
-> +	if (id == 0)
-> +		goto out_no_driver;
-> +	ld_type = find_pnfs_driver(id);
-> +	if (!ld_type) {
-> +		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
-> +		ld_type = find_pnfs_driver(id);
-> +		if (!ld_type) {
-> +			dprintk("%s: No pNFS module found for %u.\n",
-> +				__func__, id);
-> +			goto out_no_driver;
-> +		}
-> +	}
-> +	server->pnfs_curr_ld = ld_type;
-> +	dprintk("%s: pNFS module for %u set\n", __func__, id);
-> +	return;
-> +
-> +out_no_driver:
-> +	dprintk("%s: Using NFSv4 I/O\n", __func__);
-> +	server->pnfs_curr_ld = NULL;
-> +}
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> new file mode 100644
-> index 0000000..c628ef1
-> --- /dev/null
-> +++ b/fs/nfs/pnfs.h
-> @@ -0,0 +1,56 @@
-> +/*
-> + *  pNFS client data structures.
-> + *
-> + *  Copyright (c) 2002
-> + *  The Regents of the University of Michigan
-> + *  All Rights Reserved
-> + *
-> + *  Dean Hildebrand <dhildebz@umich.edu>
-> + *
-> + *  Permission is granted to use, copy, create derivative works, and
-> + *  redistribute this software and such derivative works for any purpose,
-> + *  so long as the name of the University of Michigan is not used in
-> + *  any advertising or publicity pertaining to the use or distribution
-> + *  of this software without specific, written prior authorization. If
-> + *  the above copyright notice or any other identification of the
-> + *  University of Michigan is included in any copy of any portion of
-> + *  this software, then the disclaimer below must also be included.
-> + *
-> + *  This software is provided as is, without representation or warranty
-> + *  of any kind either express or implied, including without limitation
-> + *  the implied warranties of merchantability, fitness for a particular
-> + *  purpose, or noninfringement.  The Regents of the University of
-> + *  Michigan shall not be liable for any damages, including special,
-> + *  indirect, incidental, or consequential damages, with respect to any
-> + *  claim arising out of or in connection with the use of the software,
-> + *  even if it has been or is hereafter advised of the possibility of
-> + *  such damages.
-> + */
-> +
-> +#ifndef FS_NFS_PNFS_H
-> +#define FS_NFS_PNFS_H
-> +
-> +#ifdef CONFIG_NFS_V4_1
-> +
-> +#define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
-> +
-> +/* Per-layout driver specific registration structure */
-> +struct pnfs_layoutdriver_type {
-> +};
-> +
-> +void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
-> +void unset_pnfs_layoutdriver(struct nfs_server *);
-> +
-> +#else  /* CONFIG_NFS_V4_1 */
-> +
-> +static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
-> +{
-> +}
-> +
-> +static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
-> +{
-> +}
-> +
-> +#endif /* CONFIG_NFS_V4_1 */
-> +
-> +#endif /* FS_NFS_PNFS_H */
-> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-> index d929b18..aba3da2 100644
-> --- a/include/linux/nfs_fs.h
-> +++ b/include/linux/nfs_fs.h
-> @@ -615,6 +615,7 @@ nfs_fileid_to_ino_t(u64 fileid)
->  #define NFSDBG_CLIENT		0x0200
->  #define NFSDBG_MOUNT		0x0400
->  #define NFSDBG_FSCACHE		0x0800
-> +#define NFSDBG_PNFS		0x1000
->  #define NFSDBG_ALL		0xFFFF
->  
->  #ifdef __KERNEL__
-> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> index c82ee7c..29a821d 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -144,6 +144,7 @@ struct nfs_server {
->  	u32			acl_bitmask;	/* V4 bitmask representing the ACEs
->  						   that are supported on this
->  						   filesystem */
-> +	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
-
-This is under #ifdef CONFIG_NFS_V4
-Why not only under CONFIG_NFS_V4_1?
-(see 9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules)
-
-Benny
-
->  #endif
->  	void (*destroy)(struct nfs_server *);
->  
+> --b.
