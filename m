@@ -1,236 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39457 "EHLO mx2.netapp.com"
+Received: from sith.mimuw.edu.pl ([193.0.96.4]:29910 "EHLO sith.mimuw.edu.pl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932506Ab0IGUua convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 16:50:30 -0400
-Subject: Re: [RFC][PATCH] nfs: support legacy NFS flock behavior via mount
- option
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Suresh Jayaraman <sjayaraman@suse.de>
-Cc: Neil Brown <neilb@suse.de>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>
-In-Reply-To: <4C869D00.8030604@suse.de>
-References: <4C84DFA7.7050507@suse.de>
-	 <1283869039.4291.16.camel@heimdal.trondhjem.org> <4C869D00.8030604@suse.de>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 07 Sep 2010 16:49:37 -0400
-Message-ID: <1283892577.2788.104.camel@heimdal.trondhjem.org>
+	id S1752001Ab0ITQs6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Sep 2010 12:48:58 -0400
+Date: Mon, 20 Sep 2010 18:48:56 +0200
+From: Jan =?utf-8?Q?R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
+Message-ID: <20100920164856.GA20925@sith.mimuw.edu.pl>
+References: <20100917181251.GA21111@sith.mimuw.edu.pl> <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com> <20100917190413.GB21111@sith.mimuw.edu.pl> <DA851F94-8AFB-448D-B48D-BC4ACAD8F395@oracle.com> <20100917222227.GA22144@sith.mimuw.edu.pl> <DC671AB7-F3AF-4E70-B42E-4FF991D16E43@oracle.com> <20100920153157.GA20589@sith.mimuw.edu.pl> <02C38759-5236-454B-8F7B-02F9419B1532@oracle.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <02C38759-5236-454B-8F7B-02F9419B1532@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-09-08 at 01:43 +0530, Suresh Jayaraman wrote:
-> On 09/07/2010 07:47 PM, Trond Myklebust wrote:
-> > On Mon, 2010-09-06 at 18:03 +0530, Suresh Jayaraman wrote:
-> >> NFS clients since 2.6.12 support flock()locks by emulating the
-> >> BSD-style locks in terms of POSIX byte range locks. So the NFS client
-> >> does not allow to lock the same file using both flock() and fcntl
-> >> byte-range locks.
-> >>
-> >> For some Windows applications which seem to use both share mode locks
-> >> (flock()) and fcntl byte range locks sequentially on the same file,
-> >> the locking is failing as the lock has already been acquired. i.e. the
-> >> flock mapped as posix locks collide with actual byte range locks from
-> >> the same process. The problem was observed on a setup with Windows
-> >> clients accessing Excel files on a Samba exported share which is
-> >> originally a NFS mount from a NetApp filer. Since kernels < 2.6.12 does
-> >> not support flock, what was working (as flock locks were local) in
-> >> older kernels is not working with newer kernels.
-> >>
-> >> This could be seen as a bug in the implementation of the windows
-> >> application or a NFS client regression, but that is debatable.
-> >> In the spirit of not breaking existing setups, this patch adds mount
-> >> options "flock=local" that enables older flock behavior and
-> >> "flock=fcntl" that allows the current flock behavior.
+On Mon, 20 Sep 2010, Chuck Lever wrote:
+
+> 
+> On Sep 20, 2010, at 11:31 AM, Jan Rękorajski wrote:
+> 
+> > On Mon, 20 Sep 2010, Chuck Lever wrote:
 > > 
-> > So instead of having a special option for flock only, what say we rather
-> > introduce an option of the form
+> >> 
+> >> On Sep 17, 2010, at 6:22 PM, Jan Rękorajski wrote:
+> >> 
+> > [snip]
+> >>> 
+> >>> What about TCP then?  My patch was a by-product of trying to make '-h <IP>'
+> >>> also work for tcp sockets, so if we skip unbindable addresses for UDP,
+> >>> then will it be ok to do the same for TCP?
+> >> 
+> >> Interesting.  Now that I've actually looked at the documentation >>
+> >> blush << rpcbind(8) explicitly says that "-h" is only for UDP.  I seem
+> >> to recall that the legacy portmapper had a problem on multi-homed
+> >> hosts where a request was received on one interface, and the reply was
+> >> sent out another.
+> >> 
+> >> This is certainly a problem for datagram transports, but shouldn't be
+> >> an issue for connection-oriented transports: the reply is always sent
+> >> on the same connection as the request was received.
+> >> 
+> >> Can you say a little more about why do you need "-h" to work for
+> >> connection-oriented sockets?
 > > 
-> >   -olocal_lock=
-> > 
-> > which can take the values 'none', 'flock', 'fcntl' (or 'posix'?) and
-> > 'all'?
-> > 
+> > I have a multihomed nfs server, and I don't want the portmapper to even
+> > listen on an outside interface.
 > 
-> Sounds good. I just figured out Solaris and HPUX (perhaps few other
-> Unixes too) already support "llock" mount option (short form of local
-> lock) with similar semantics. So, I think it would make sense for us to
-> adapt the same. But, if you think "local_lock" is better, please do a
-> s/llock/local_lock on the below patch.
+> Understood, but that is accomplished with firewalling, these days.
+
+It always was, but it's nice not needing to worry if I closed/opened all
+that's neccessary.
+
+> Usually, NFS servers are not run on the edge of private networks
+> unless they are serving files to public hosts.
+
+I would, if I could :)
+
+> None of NFS's RPC daemons allow you to set a bind address, with one
+> exception.  rpc.statd allows one to specify a "bind address" in the
+> form of a host name for reasons specific to the NSM protocol.
+
+I may be wrong here, but maybe it's because it was always portmapper
+doing the binding, so if portmapper couldn't then no one thought of
+adding this to RPC daemons.
+
+> If this is NFSv4 only, ostensibly rpcbind is not needed.  I know our
+> implementation today still clings to rpcbind a bit, but theoretically
+> at least, you could just leave it unstarted if you are only running an
+> NFSv4 service.  rpc.mountd should also allow itself to be run without
+> starting network listeners in recent versions of nfs-utils.
+
+That's all good, but some still need portmapper for other services.
+
+> I'm not necessarily arguing against the idea of adding a bind address
+> command line option, but this _would_ be a change to long established
+> historical behavior, and it would not be consistent with many of the
+> other Linux RPC services I'm aware of.  So, I'd like to be absolutely
+> sure we understand what you need here, and ensure we can't address it
+> with existing administrative controls.
+
+I understand your concerns, but I have problem imagining someone that
+had to limit UDP bind not wanting to also limit TCP.
+ 
+> > Second thing is a host for vservers
+> > (http://linux-vserver.org), I need to run portmapper in guests but
+> > rpcbind listening on INADDR_ANY is not letting me.
 > 
-> ---
-> From: Suresh Jayaraman <sjayaraman@suse.de>
-> Subject: [PATCH] nfs: introduce mount option 'llock' to make locks local
+> Can you say more?  Maybe it's a bug.
+
+It's more of a design flaw, vserver is an isolation techique, and if I
+bind to some port on INADDR_ANY on host then I can't bind to that
+port on guests. I don't know the implementation details, but network
+interfaces other than lo are not (maybe can't be) isolated enough.
+
+> > And finally it's good
+> > to be consistent, it's strange to me that someone may want to limit only
+> > the UDP part of portmapper (modulo network issues you mentioned).
 > 
-> NFS clients since 2.6.12 support flock locks by emulating fcntl byte-range
-> locks. Due to this, some windows applications which seem to use both flock and
-> fcntl locks sequentially on the same file, can't lock as they falsely assume
-> the file is already locked. The problem was reported on a setup with windows
-> clients accessing excel files on a Samba exported share which is originally a
-> NFS mount from a NetApp filer.
-> 
-> Older NFS clients (< 2.6.12) did not see this problem as flock locks were
-> considered local. To support legacy flock behavior, this patch adds a mount
-> option "-ollock=" which can take the following values:
-> 
->    'none'  		- Neither of flock locks and fcntl/posix locks are local
->    'flock'/'posix' 	- flock locks are local
->    'fcntl' 		- fcntl locks are local
->    'all'		- Both flock locks and fcntl/posix locks are local
+> "-h" was added to address an issue specific to Linux UDP sockets.
+> It's not a feature, but a bug fix that is UDP-specific.  TCP doesn't
+> need this bug fix.
 
-So, the main reason I had for not suggesting llock was because on
-Solaris, HPUX, AIX etc, llock is the same as our nolock, and doesn't
-really take an argument.
-IOW: I'm worried about introducing a syntax that is deliberately
-confusing to people who are used to administrating non-Linux systems.
+Of course, but why not change a bugfix into a feature?
 
-> Cc: Neil Brown <neilb@suse.de>
-> Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
-> ---
->  fs/nfs/file.c             |   15 ++++++++++++---
->  fs/nfs/super.c            |   44 ++++++++++++++++++++++++++++++++++++++++++++
->  include/linux/nfs_mount.h |    3 +++
->  3 files changed, 59 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index eb51bd6..a13a83e 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -800,8 +800,13 @@ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
->  
->  	nfs_inc_stats(inode, NFSIOS_VFSLOCK);
->  
-> -	/* No mandatory locks over NFS */
-> -	if (__mandatory_lock(inode) && fl->fl_type != F_UNLCK)
-> +	/*
-> +	 * No mandatory locks over NFS.
-> +	 * fcntl lock is local if mounted with "-o llock=fcntl" or
-> +	 * "-o llock=posix"
-> +	 */
-> +	if ((__mandatory_lock(inode) && fl->fl_type != F_UNLCK) ||
-> +			(NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FCNTL))
->  		goto out_err;
->  
->  	if (NFS_PROTO(inode)->lock_check_bounds != NULL) {
-> @@ -825,12 +830,16 @@ out_err:
->   */
->  static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
->  {
-> +	struct inode *inode = filp->f_mapping->host;
-> +
->  	dprintk("NFS: flock(%s/%s, t=%x, fl=%x)\n",
->  			filp->f_path.dentry->d_parent->d_name.name,
->  			filp->f_path.dentry->d_name.name,
->  			fl->fl_type, fl->fl_flags);
->  
-> -	if (!(fl->fl_flags & FL_FLOCK))
-> +	/* flock is local if mounted with "-o llock=flock" */
-> +	if ((NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK) ||
-> +			(!(fl->fl_flags & FL_FLOCK)))
->  		return -ENOLCK;
-
-Is this really what we want to do? Shouldn't we rather default to
-treating this as if NFS_MOUNT_NONLM were set?
-
-Also, don't we need similar code in the fcntl cases?
-
->  	/* We're simulating flock() locks using posix locks on the server */
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index ec3966e..7769dd3 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -100,6 +100,7 @@ enum {
->  	Opt_addr, Opt_mountaddr, Opt_clientaddr,
->  	Opt_lookupcache,
->  	Opt_fscache_uniq,
-> +	Opt_llock,
->  
->  	/* Special mount options */
->  	Opt_userspace, Opt_deprecated, Opt_sloppy,
-> @@ -171,6 +172,7 @@ static const match_table_t nfs_mount_option_tokens = {
->  
->  	{ Opt_lookupcache, "lookupcache=%s" },
->  	{ Opt_fscache_uniq, "fsc=%s" },
-> +	{ Opt_llock, "llock=%s" },
->  
->  	{ Opt_err, NULL }
->  };
-> @@ -236,6 +238,21 @@ static match_table_t nfs_lookupcache_tokens = {
->  	{ Opt_lookupcache_err, NULL }
->  };
->  
-> +enum {
-> +	Opt_llock_all, Opt_llock_flock, Opt_llock_fcntl, Opt_llock_none,
-> +	Opt_llock_err
-> +};
-> +
-> +static match_table_t nfs_llock_tokens = {
-> +	{ Opt_llock_all, "all" },
-> +	{ Opt_llock_flock, "flock" },
-> +	{ Opt_llock_fcntl, "fcntl" },
-> +	{ Opt_llock_fcntl, "posix" },
-> +	{ Opt_llock_none, "none" },
-> +
-> +	{ Opt_llock_err, NULL }
-> +};
-> +
->  
->  static void nfs_umount_begin(struct super_block *);
->  static int  nfs_statfs(struct dentry *, struct kstatfs *);
-> @@ -1412,6 +1429,33 @@ static int nfs_parse_mount_options(char *raw,
->  			mnt->fscache_uniq = string;
->  			mnt->options |= NFS_OPTION_FSCACHE;
->  			break;
-> +		case Opt_llock:
-> +			string = match_strdup(args);
-> +			if (string == NULL)
-> +				goto out_nomem;
-> +			token = match_token(string, nfs_llock_tokens, args);
-> +			kfree(string);
-> +			switch (token) {
-> +			case Opt_llock_all:
-> +				mnt->flags |= (NFS_MOUNT_LOCAL_FLOCK |
-> +					       NFS_MOUNT_LOCAL_FCNTL);
-> +				break;
-> +			case Opt_llock_flock:
-> +				mnt->flags |= NFS_MOUNT_LOCAL_FLOCK;
-> +				break;
-> +			case Opt_llock_fcntl:
-> +				mnt->flags |= NFS_MOUNT_LOCAL_FCNTL;
-> +				break;
-> +			case Opt_llock_none:
-> +				mnt->flags &= ~(NFS_MOUNT_LOCAL_FLOCK |
-> +						NFS_MOUNT_LOCAL_FCNTL);
-> +				break;
-> +			default:
-> +				dfprintk(MOUNT, "NFS:	invalid	"
-> +						"llock argument\n");
-> +				return 0;
-> +			};
-> +			break;
-
-Could we perhaps also convert Opt_nolock so that it just sets
-NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL (and ditto for the legacy
-NFS_MOUNT_NONLM).
-
->  
->  		/*
->  		 * Special options
-> diff --git a/include/linux/nfs_mount.h b/include/linux/nfs_mount.h
-> index 5d59ae8..576bddd 100644
-> --- a/include/linux/nfs_mount.h
-> +++ b/include/linux/nfs_mount.h
-> @@ -71,4 +71,7 @@ struct nfs_mount_data {
->  #define NFS_MOUNT_NORESVPORT		0x40000
->  #define NFS_MOUNT_LEGACY_INTERFACE	0x80000
->  
-> +#define NFS_MOUNT_LOCAL_FLOCK	0x100000
-> +#define NFS_MOUNT_LOCAL_FCNTL	0x200000
-> +
->  #endif
-> 
-> 
-
-Cheers
-  Trond
+-- 
+Jan Rękorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
+baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
+BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
