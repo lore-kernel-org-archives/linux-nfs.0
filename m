@@ -1,153 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41499 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753038Ab0IUUiN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Sep 2010 16:38:13 -0400
-Message-ID: <4C9917B4.1010607@netapp.com>
-Date: Tue, 21 Sep 2010 16:38:12 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 2/2] lockd: Mostly remove BKL from the server
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:47890 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756543Ab0ITPkB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 11:40:01 -0400
+Received: by gxk23 with SMTP id 23so1345479gxk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 08:40:00 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/2] nfs-utils: Fix source code character encoding
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 20 Sep 2010 11:39:57 -0400
+Message-ID: <20100920153957.2604.35091.stgit@ellison.1015granger.net>
+In-Reply-To: <20100920153714.2604.50581.stgit@ellison.1015granger.net>
+References: <20100920153714.2604.50581.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-lockd: Mostly remove BKL from the server
+Minor clean up.
 
-This patch removes all but one call to lock_kernel() from the server.
+Most modern Linux distributions set UTF-8 locales.  Standardize the
+character encoding of source files on UTF-8, to squelch vim com-
+plaints.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+I probably missed a few spots.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index 031c656..a336e83 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -230,9 +230,7 @@ static void nlm4svc_callback_exit(struct rpc_task *task, void *data)
- 
- static void nlm4svc_callback_release(void *data)
- {
--	lock_kernel();
- 	nlm_release_call(data);
--	unlock_kernel();
- }
- 
- static const struct rpc_call_ops nlm4svc_callback_ops = {
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 84055d3..6f1ef00 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -52,12 +52,13 @@ static const struct rpc_call_ops nlmsvc_grant_ops;
-  * The list of blocked locks to retry
-  */
- static LIST_HEAD(nlm_blocked);
-+static DEFINE_SPINLOCK(nlm_blocked_lock);
+
+ support/include/conffile.h |    2 +-
+ support/nfs/conffile.c     |    2 +-
+ support/nfs/nfs_mntent.c   |    2 +-
+ support/nfs/xcommon.c      |    2 +-
+ utils/mount/fstab.c        |    2 +-
+ utils/mount/nfsmount.c     |    2 +-
+ 6 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/support/include/conffile.h b/support/include/conffile.h
+index ce7aa21..181133d 100644
+--- a/support/include/conffile.h
++++ b/support/include/conffile.h
+@@ -3,7 +3,7 @@
  
  /*
-  * Insert a blocked lock into the global list
-  */
- static void
--nlmsvc_insert_block(struct nlm_block *block, unsigned long when)
-+nlmsvc_insert_block_locked(struct nlm_block *block, unsigned long when)
- {
- 	struct nlm_block *b;
- 	struct list_head *pos;
-@@ -87,6 +88,13 @@ nlmsvc_insert_block(struct nlm_block *block, unsigned long when)
- 	block->b_when = when;
- }
+  * Copyright (c) 1998, 1999, 2001 Niklas Hallqvist.  All rights reserved.
+- * Copyright (c) 2000, 2003 H�kan Olsson.  All rights reserved.
++ * Copyright (c) 2000, 2003 Håkan Olsson.  All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+  * modification, are permitted provided that the following conditions
+diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+index 24640f4..bae42c9 100644
+--- a/support/nfs/conffile.c
++++ b/support/nfs/conffile.c
+@@ -3,7 +3,7 @@
  
-+static void nlmsvc_insert_block(struct nlm_block *block, unsigned long when)
-+{
-+	spin_lock(&nlm_blocked_lock);
-+	nlmsvc_insert_block_locked(block, when);
-+	spin_unlock(&nlm_blocked_lock);
-+}
-+
  /*
-  * Remove a block from the global list
-  */
-@@ -94,7 +102,9 @@ static inline void
- nlmsvc_remove_block(struct nlm_block *block)
- {
- 	if (!list_empty(&block->b_list)) {
-+		spin_lock(&nlm_blocked_lock);
- 		list_del_init(&block->b_list);
-+		spin_unlock(&nlm_blocked_lock);
- 		nlmsvc_release_block(block);
- 	}
- }
-@@ -651,7 +661,7 @@ static int nlmsvc_grant_deferred(struct file_lock *fl, struct file_lock *conf,
- 	struct nlm_block *block;
- 	int rc = -ENOENT;
+  * Copyright (c) 1998, 1999, 2000, 2001 Niklas Hallqvist.  All rights reserved.
+- * Copyright (c) 2000, 2001, 2002 H�kan Olsson.  All rights reserved.
++ * Copyright (c) 2000, 2001, 2002 Håkan Olsson.  All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+  * modification, are permitted provided that the following conditions
+diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
+index 9c73ae0..a3e643c 100644
+--- a/support/nfs/nfs_mntent.c
++++ b/support/nfs/nfs_mntent.c
+@@ -1,7 +1,7 @@
+ /* Private version of the libc *mntent() routines. */
+ /* Note slightly different prototypes. */
  
--	lock_kernel();
-+	spin_lock(&nlm_blocked_lock);
- 	list_for_each_entry(block, &nlm_blocked, b_list) {
- 		if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)) {
- 			dprintk("lockd: nlmsvc_notify_blocked block %p flags %d\n",
-@@ -665,13 +675,13 @@ static int nlmsvc_grant_deferred(struct file_lock *fl, struct file_lock *conf,
- 			} else if (result == 0)
- 				block->b_granted = 1;
- 
--			nlmsvc_insert_block(block, 0);
-+			nlmsvc_insert_block_locked(block, 0);
- 			svc_wake_up(block->b_daemon);
- 			rc = 0;
- 			break;
- 		}
- 	}
--	unlock_kernel();
-+	spin_unlock(&nlm_blocked_lock);
- 	if (rc == -ENOENT)
- 		printk(KERN_WARNING "lockd: grant for unknown block\n");
- 	return rc;
-@@ -803,7 +813,7 @@ static void nlmsvc_grant_callback(struct rpc_task *task, void *data)
- 
- 	dprintk("lockd: GRANT_MSG RPC callback\n");
- 
--	lock_kernel();
-+	spin_lock(&nlm_blocked_lock);
- 	/* if the block is not on a list at this point then it has
- 	 * been invalidated. Don't try to requeue it.
- 	 *
-@@ -825,19 +835,20 @@ static void nlmsvc_grant_callback(struct rpc_task *task, void *data)
- 		/* Call was successful, now wait for client callback */
- 		timeout = 60 * HZ;
- 	}
--	nlmsvc_insert_block(block, timeout);
-+	nlmsvc_insert_block_locked(block, timeout);
- 	svc_wake_up(block->b_daemon);
- out:
--	unlock_kernel();
-+	spin_unlock(&nlm_blocked_lock);
- }
- 
-+/*
-+ * FIXME: nlmsvc_release_block() grabs a mutex.  This is not allowed for an
-+ * .rpc_release rpc_call_op
-+ */
- static void nlmsvc_grant_release(void *data)
- {
- 	struct nlm_rqst		*call = data;
--
--	lock_kernel();
- 	nlmsvc_release_block(call->a_block);
--	unlock_kernel();
- }
- 
- static const struct rpc_call_ops nlmsvc_grant_ops = {
-diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index 0f2ab74..c3069f3 100644
---- a/fs/lockd/svcproc.c
-+++ b/fs/lockd/svcproc.c
-@@ -260,9 +260,7 @@ static void nlmsvc_callback_exit(struct rpc_task *task, void *data)
- 
- static void nlmsvc_callback_release(void *data)
- {
--	lock_kernel();
- 	nlm_release_call(data);
--	unlock_kernel();
- }
- 
- static const struct rpc_call_ops nlmsvc_callback_ops = {
+-/* 1999-02-22 Arkadiusz Mi�kiewicz <misiek@pld.ORG.PL>
++/* 1999-02-22 Arkadiusz Miśkiewicz <misiek@pld.ORG.PL>
+  * - added Native Language Support
+  *
+  * 2006-06-08 Amit Gud <agud@redhat.com>
+diff --git a/support/nfs/xcommon.c b/support/nfs/xcommon.c
+index d862a07..068a709 100644
+--- a/support/nfs/xcommon.c
++++ b/support/nfs/xcommon.c
+@@ -3,7 +3,7 @@
+  *
+  * added fcntl locking by Kjetil T. (kjetilho@math.uio.no) - aeb, 950927
+  *
+- * 1999-02-22 Arkadiusz Mi�kiewicz <misiek@pld.ORG.PL>
++ * 1999-02-22 Arkadiusz Miśkiewicz <misiek@pld.ORG.PL>
+  * - added Native Language Support
+  *
+  * 2006-06-06 Amit Gud <agud@redhat.com>
+diff --git a/utils/mount/fstab.c b/utils/mount/fstab.c
+index 2775d0b..a85ca7e 100644
+--- a/utils/mount/fstab.c
++++ b/utils/mount/fstab.c
+@@ -1,4 +1,4 @@
+-/* 1999-02-22 Arkadiusz Mi�kiewicz <misiek@pld.ORG.PL>
++/* 1999-02-22 Arkadiusz Miśkiewicz <misiek@pld.ORG.PL>
+  * - added Native Language Support
+  * Sun Mar 21 1999 - Arnaldo Carvalho de Melo <acme@conectiva.com.br>
+  * - fixed strerr(errno) in gettext calls
+diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
+index 5b934b5..84bb627 100644
+--- a/utils/mount/nfsmount.c
++++ b/utils/mount/nfsmount.c
+@@ -21,7 +21,7 @@
+  * Wed Oct  1 23:55:28 1997: Dick Streefland <dick_streefland@tasking.com>
+  * Implemented the "bg", "fg" and "retry" mount options for NFS.
+  *
+- * 1999-02-22 Arkadiusz Mi�kiewicz <misiek@pld.ORG.PL>
++ * 1999-02-22 Arkadiusz Miśkiewicz <misiek@pld.ORG.PL>
+  * - added Native Language Support
+  *
+  * Modified by Olaf Kirch and Trond Myklebust for new NFS code,
+
