@@ -1,107 +1,267 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.tpi.com ([70.99.223.143]:1821 "EHLO mail.tpi.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751405Ab0IHQxJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Sep 2010 12:53:09 -0400
-Message-ID: <4C87BF63.3070808@canonical.com>
-Date: Wed, 08 Sep 2010 10:52:51 -0600
-From: Tim Gardner <tim.gardner@canonical.com>
-Reply-To: tim.gardner@canonical.com
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Trond.Myklebust@netapp.com
-Subject: Re: nfsd deadlock, 2.6.36-rc3
-References: <4C7E73CB.7030603@canonical.com> <20100901165400.GB1201@fieldses.org> <20100902065551.079e297c@notabene> <4C7EC17B.6070509@canonical.com> <20100901211321.GC10507@fieldses.org> <4C7FBF26.3090203@canonical.com>
-In-Reply-To: <4C7FBF26.3090203@canonical.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from daytona.panasas.com ([67.152.220.89]:54737 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755461Ab0ITKl6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 06:41:58 -0400
+Message-ID: <4C973A86.6050008@panasas.com>
+Date: Mon, 20 Sep 2010 12:42:14 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 06/12] RFC: nfs: set layout driver
+References: <1284779874-10499-1-git-send-email-iisaman@netapp.com> <1284779874-10499-7-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1284779874-10499-7-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/02/2010 09:13 AM, Tim Gardner wrote:
-> On 09/01/2010 03:13 PM, J. Bruce Fields wrote:
->> On Wed, Sep 01, 2010 at 03:11:23PM -0600, Tim Gardner wrote:
->>> On 09/01/2010 02:55 PM, Neil Brown wrote:
->>>> On Wed, 1 Sep 2010 12:54:01 -0400
->>>> "J. Bruce Fields"<bfields@fieldses.org> wrote:
->>>>
->>>>> On Wed, Sep 01, 2010 at 09:39:55AM -0600, Tim Gardner wrote:
->>>>>> I've been pursuing a simple reproducer for an NFS lockup that shows
->>>>>> up under stress. There is a bunch of info (some of it extraneous) in
->>>>>> http://bugs.launchpad.net/bugs/561210. I can reproduce it by writing
->>>>>> loop mounted NFS exports:
->>>>>>
->>>>>> /etc/fstab: 127.0.0.1:/srv /mnt/srv nfs rw 0 2
->>>>>> /etc/exports: /srv 127.0.0.1(rw,insecure,no_subtree_check)
->>>>>>
->>>>>> See the attached scripts test_master.sh and test_client.sh. I simply
->>>>>> repeat './test_master.sh wait' until nfsd locks up, typically within
->>>>>> 1-3 cycles, e.g.,
->>>>>
->>>>> Without looking at the dmesg and scripts carefully to confirm, one
->>>>> possible explanation is a deadlock when the server can't allocate
->>>>> memory
->>>>> required to service client requests, memory which the client itself
->>>>> needs to free by writing back dirty pages, but can't because the
->>>>> server
->>>>> isn't processing its writes.
->>>>
->>>> Having looked closely I'd say it is almost certainly this issue.
->>>> nfsd thread 1266 is in zone_reclaim waiting on a page to be written
->>>> out so
->>>> the memory can be reused.
->>>> The other nfsd threads are blocking on a mutex held by 1266.
->>>> The dd processes are waiting for pages to be written to the server
->>>>
->>>> The particular page that 1266 is waiting on is almost certainly a
->>>> page on an
->>>> NFS file, so you have a cyclic deadlock.
->>>>
->>>>>
->>>>> For that reason we just don't support loopback mounts--they're OK for
->>>>> light testing, but it would be difficult to make them completely
->>>>> robust
->>>>> under load.
->>>>
->>>> I wonder if we could use 'containers' to partition available memory
->>>> between
->>>> 'nfsd threads' and 'everything else'?? Probably not worth the effort.
->>>>
->>>> NeilBrown
->>>>
->>>
->>> I'm currently working with my support folks to reproduce this using
->>> the exact same configuration as the customer, e.g., an NFS server
->>> (running as a guest on a VMWare ESX host) serving multiple gigabit
->>> clients.
->>>
->>> I assume that is a reasonable scenario?
->>
->> Assuming no VMWare problem (which I know nothing about), sure.
->>
->> --b.
->>
->
-> The support folks were able to reproduce the failure using external
-> clients after about 6 hours. We're thinking that its the same symptom as
-> seen in https://bugzilla.kernel.org/show_bug.cgi?id=16056. That
-> backported patch b608b283a962caaa280756bc8563016a71712acf from Trond was
-> just incorporated into the Ubuntu 10.04 kernel, so they'll retest to see
-> if its a bona-fide fix.
->
-> rtg
+On 2010-09-18 05:17, Fred Isaman wrote:
+> From: The pNFS Team <linux-nfs@vger.kernel.org>
+> 
+> Put in the infrastructure that uses information returned from the
+> server at mount to select a layout driver module.
+> 
+> In this patch, a stub is used that always returns "no driver found".
+> 
+> Signed-off-by: TBD - melding/reorganization of several patches
+> ---
+>  fs/nfs/Makefile           |    1 +
+>  fs/nfs/client.c           |    4 ++
+>  fs/nfs/pnfs.c             |   78 +++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfs/pnfs.h             |   56 ++++++++++++++++++++++++++++++++
+>  include/linux/nfs_fs.h    |    1 +
+>  include/linux/nfs_fs_sb.h |    1 +
+>  6 files changed, 141 insertions(+), 0 deletions(-)
+>  create mode 100644 fs/nfs/pnfs.c
+>  create mode 100644 fs/nfs/pnfs.h
+> 
+> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+> index da7fda6..bb9e773 100644
+> --- a/fs/nfs/Makefile
+> +++ b/fs/nfs/Makefile
+> @@ -15,5 +15,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+>  			   delegation.o idmap.o \
+>  			   callback.o callback_xdr.o callback_proc.o \
+>  			   nfs4namespace.o
+> +nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
+>  nfs-$(CONFIG_SYSCTL) += sysctl.o
+>  nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 4e7df2a..eed1212 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -48,6 +48,7 @@
+>  #include "iostat.h"
+>  #include "internal.h"
+>  #include "fscache.h"
+> +#include "pnfs.h"
+>  
+>  #define NFSDBG_FACILITY		NFSDBG_CLIENT
+>  
+> @@ -898,6 +899,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+>  	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
+>  		server->wsize = NFS_MAX_FILE_IO_SIZE;
+>  	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
+> +	set_pnfs_layoutdriver(server, fsinfo->layouttype);
+> +
 
-The solution appears to be to twiddle with /proc/sys/vm/min_free_kbytes 
-and /proc/sys/vm/drop_caches, though I'm not sure this addresses the 
-root cause. Perhaps low memory really is the root cause.
+Originally (9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules),
+nfs4_init_pnfs called set_pnfs_layoutdriver under the following conditions:
 
-At any rate, their solution was to set min_free_kbytes to 4GB, and to 
-'echo 1 > /proc/sys/vm/drop_caches' whenever free memory fell below 8GB. 
-Not particularly elegant, but it appears to have stopped their server 
-from wedging.
+	if (nfs4_has_session(clp) &&
+	    (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
+		set_pnfs_layoutdriver(server, fsinfo->layouttype);
 
-rtg
+So in the DS only case we don't want to set server->pnfs_curr_ld.
+did you test your code with a standalone DS to make there are no
+ill side effects in this case?
 
--- 
-Tim Gardner tim.gardner@canonical.com
+>  	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
+>  
+>  	server->dtsize = nfs_block_size(fsinfo->dtpref, NULL);
+> @@ -1017,6 +1020,7 @@ void nfs_free_server(struct nfs_server *server)
+>  {
+>  	dprintk("--> nfs_free_server()\n");
+>  
+> +	unset_pnfs_layoutdriver(server);
+>  	spin_lock(&nfs_client_lock);
+>  	list_del(&server->client_link);
+>  	list_del(&server->master_link);
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> new file mode 100644
+> index 0000000..2e5dba1
+> --- /dev/null
+> +++ b/fs/nfs/pnfs.c
+> @@ -0,0 +1,78 @@
+> +/*
+> + *  pNFS functions to call and manage layout drivers.
+> + *
+> + *  Copyright (c) 2002 [year of first publication]
+> + *  The Regents of the University of Michigan
+> + *  All Rights Reserved
+> + *
+> + *  Dean Hildebrand <dhildebz@umich.edu>
+> + *
+> + *  Permission is granted to use, copy, create derivative works, and
+> + *  redistribute this software and such derivative works for any purpose,
+> + *  so long as the name of the University of Michigan is not used in
+> + *  any advertising or publicity pertaining to the use or distribution
+> + *  of this software without specific, written prior authorization. If
+> + *  the above copyright notice or any other identification of the
+> + *  University of Michigan is included in any copy of any portion of
+> + *  this software, then the disclaimer below must also be included.
+> + *
+> + *  This software is provided as is, without representation or warranty
+> + *  of any kind either express or implied, including without limitation
+> + *  the implied warranties of merchantability, fitness for a particular
+> + *  purpose, or noninfringement.  The Regents of the University of
+> + *  Michigan shall not be liable for any damages, including special,
+> + *  indirect, incidental, or consequential damages, with respect to any
+> + *  claim arising out of or in connection with the use of the software,
+> + *  even if it has been or is hereafter advised of the possibility of
+> + *  such damages.
+> + */
+> +
+> +#include <linux/nfs_fs.h>
+> +#include "pnfs.h"
+> +
+> +#define NFSDBG_FACILITY		NFSDBG_PNFS
+> +
+> +/* STUB that returns the equivalent of "no module found" */
+> +static struct pnfs_layoutdriver_type *
+> +find_pnfs_driver(u32 id) {
+> +	return NULL;
+> +}
+> +
+> +/* Unitialize a mountpoint in a layout driver */
+> +void
+> +unset_pnfs_layoutdriver(struct nfs_server *nfss)
+> +{
+> +	nfss->pnfs_curr_ld = NULL;
+> +}
+> +
+> +/*
+> + * Try to set the server's pnfs module to the pnfs layout type specified by id.
+> + * Currently only one pNFS layout driver per filesystem is supported.
+> + *
+> + * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
+> + */
+> +void
+> +set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
+> +{
+> +	struct pnfs_layoutdriver_type *ld_type = NULL;
+> +
+> +	if (id == 0)
+> +		goto out_no_driver;
+> +	ld_type = find_pnfs_driver(id);
+> +	if (!ld_type) {
+> +		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+> +		ld_type = find_pnfs_driver(id);
+> +		if (!ld_type) {
+> +			dprintk("%s: No pNFS module found for %u.\n",
+> +				__func__, id);
+> +			goto out_no_driver;
+> +		}
+> +	}
+> +	server->pnfs_curr_ld = ld_type;
+> +	dprintk("%s: pNFS module for %u set\n", __func__, id);
+> +	return;
+> +
+> +out_no_driver:
+> +	dprintk("%s: Using NFSv4 I/O\n", __func__);
+> +	server->pnfs_curr_ld = NULL;
+> +}
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> new file mode 100644
+> index 0000000..c628ef1
+> --- /dev/null
+> +++ b/fs/nfs/pnfs.h
+> @@ -0,0 +1,56 @@
+> +/*
+> + *  pNFS client data structures.
+> + *
+> + *  Copyright (c) 2002
+> + *  The Regents of the University of Michigan
+> + *  All Rights Reserved
+> + *
+> + *  Dean Hildebrand <dhildebz@umich.edu>
+> + *
+> + *  Permission is granted to use, copy, create derivative works, and
+> + *  redistribute this software and such derivative works for any purpose,
+> + *  so long as the name of the University of Michigan is not used in
+> + *  any advertising or publicity pertaining to the use or distribution
+> + *  of this software without specific, written prior authorization. If
+> + *  the above copyright notice or any other identification of the
+> + *  University of Michigan is included in any copy of any portion of
+> + *  this software, then the disclaimer below must also be included.
+> + *
+> + *  This software is provided as is, without representation or warranty
+> + *  of any kind either express or implied, including without limitation
+> + *  the implied warranties of merchantability, fitness for a particular
+> + *  purpose, or noninfringement.  The Regents of the University of
+> + *  Michigan shall not be liable for any damages, including special,
+> + *  indirect, incidental, or consequential damages, with respect to any
+> + *  claim arising out of or in connection with the use of the software,
+> + *  even if it has been or is hereafter advised of the possibility of
+> + *  such damages.
+> + */
+> +
+> +#ifndef FS_NFS_PNFS_H
+> +#define FS_NFS_PNFS_H
+> +
+> +#ifdef CONFIG_NFS_V4_1
+> +
+> +#define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
+> +
+> +/* Per-layout driver specific registration structure */
+> +struct pnfs_layoutdriver_type {
+> +};
+> +
+> +void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+> +void unset_pnfs_layoutdriver(struct nfs_server *);
+> +
+> +#else  /* CONFIG_NFS_V4_1 */
+> +
+> +static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
+> +{
+> +}
+> +
+> +static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
+> +{
+> +}
+> +
+> +#endif /* CONFIG_NFS_V4_1 */
+> +
+> +#endif /* FS_NFS_PNFS_H */
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index d929b18..aba3da2 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -615,6 +615,7 @@ nfs_fileid_to_ino_t(u64 fileid)
+>  #define NFSDBG_CLIENT		0x0200
+>  #define NFSDBG_MOUNT		0x0400
+>  #define NFSDBG_FSCACHE		0x0800
+> +#define NFSDBG_PNFS		0x1000
+>  #define NFSDBG_ALL		0xFFFF
+>  
+>  #ifdef __KERNEL__
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index c82ee7c..29a821d 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -144,6 +144,7 @@ struct nfs_server {
+>  	u32			acl_bitmask;	/* V4 bitmask representing the ACEs
+>  						   that are supported on this
+>  						   filesystem */
+> +	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+
+This is under #ifdef CONFIG_NFS_V4
+Why not only under CONFIG_NFS_V4_1?
+(see 9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules)
+
+Benny
+
+>  #endif
+>  	void (*destroy)(struct nfs_server *);
+>  
