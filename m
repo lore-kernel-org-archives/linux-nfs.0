@@ -1,91 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:20983 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753422Ab0IONE6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Sep 2010 09:04:58 -0400
-Message-ID: <4C90BB32.2050304@parallels.com>
-Date: Wed, 15 Sep 2010 16:25:22 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 2/9] sunrpc: Make xprt auth cache release work with the xprt
-References: <4C90BADB.10700@parallels.com>
-In-Reply-To: <4C90BADB.10700@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:50761 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756855Ab0ITQcr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 12:32:47 -0400
+Received: by mail-gx0-f174.google.com with SMTP id 23so1361234gxk.19
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 09:32:47 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/7] mountd: Support TI-RPC mountd listener
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 20 Sep 2010 12:32:44 -0400
+Message-ID: <20100920163244.3170.72910.stgit@ellison.1015granger.net>
+In-Reply-To: <20100920162616.3170.24625.stgit@ellison.1015granger.net>
+References: <20100920162616.3170.24625.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This is done in order to facilitate getting the ip_map_cache from
-which to put the ip_map.
+If TI-RPC is available, use it to create mountd's svc listener.  If
+not, use the old function, rpc_init(), to create mountd's listener.
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+IPv6 can be supported if TI-RPC is available.  In this case,
+/etc/netconfig is searched to determine which transports to advertise.
 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svcauth.h |    3 ++-
- net/sunrpc/svc_xprt.c          |    5 ++---
- net/sunrpc/svcauth_unix.c      |    9 ++++++---
- 3 files changed, 10 insertions(+), 7 deletions(-)
 
-diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
-index d39dbdc..f656667 100644
---- a/include/linux/sunrpc/svcauth.h
-+++ b/include/linux/sunrpc/svcauth.h
-@@ -112,6 +112,7 @@ struct auth_ops {
- #define	SVC_PENDING	8
- #define	SVC_COMPLETE	9
- 
-+struct svc_xprt;
- 
- extern int	svc_authenticate(struct svc_rqst *rqstp, __be32 *authp);
- extern int	svc_authorise(struct svc_rqst *rqstp);
-@@ -127,7 +128,7 @@ extern struct auth_domain *auth_domain_find(char *name);
- extern struct auth_domain *auth_unix_lookup(struct in6_addr *addr);
- extern int auth_unix_forget_old(struct auth_domain *dom);
- extern void svcauth_unix_purge(void);
--extern void svcauth_unix_info_release(void *);
-+extern void svcauth_unix_info_release(struct svc_xprt *xpt);
- extern int svcauth_unix_set_client(struct svc_rqst *rqstp);
- 
- static inline unsigned long hash_str(char *name, int bits)
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index cbc0849..57703ac 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -128,9 +128,8 @@ static void svc_xprt_free(struct kref *kref)
- 	struct svc_xprt *xprt =
- 		container_of(kref, struct svc_xprt, xpt_ref);
- 	struct module *owner = xprt->xpt_class->xcl_owner;
--	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags) &&
--	    xprt->xpt_auth_cache != NULL)
--		svcauth_unix_info_release(xprt->xpt_auth_cache);
-+	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
-+		svcauth_unix_info_release(xprt);
- 	xprt->xpt_ops->xpo_free(xprt);
- 	module_put(owner);
- }
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 1fe37be..aef0feb 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -472,10 +472,13 @@ ip_map_cached_put(struct svc_rqst *rqstp, struct ip_map *ipm)
+ utils/mountd/mountd.c |   26 +++++++++++++++++---------
+ 1 files changed, 17 insertions(+), 9 deletions(-)
+
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 753fd37..a4fdcc8 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -86,6 +86,11 @@ static int version3(void)
+ 	return nfs_version & NFSVERSBIT(3);
  }
  
- void
--svcauth_unix_info_release(void *info)
-+svcauth_unix_info_release(struct svc_xprt *xpt)
- {
--	struct ip_map *ipm = info;
--	cache_put(&ipm->h, &ip_map_cache);
-+	struct ip_map *ipm;
++static int version23(void)
++{
++	return nfs_version & (NFSVERSBIT(2) | NFSVERSBIT(3));
++}
 +
-+	ipm = xpt->xpt_auth_cache;
-+	if (ipm != NULL)
-+		cache_put(&ipm->h, &ip_map_cache);
+ static int version_any(void)
+ {
+ 	return nfs_version & NFSVERSBIT_ALL;
+@@ -95,11 +100,11 @@ static void
+ unregister_services (void)
+ {
+ 	if (version2()) {
+-		pmap_unset (MOUNTPROG, MOUNTVERS);
+-		pmap_unset (MOUNTPROG, MOUNTVERS_POSIX);
++		nfs_svc_unregister(MOUNTPROG, MOUNTVERS);
++		nfs_svc_unregister(MOUNTPROG, MOUNTVERS_POSIX);
+ 	}
+ 	if (version3())
+-		pmap_unset (MOUNTPROG, MOUNTVERS_NFSV3);
++		nfs_svc_unregister(MOUNTPROG, MOUNTVERS_NFSV3);
  }
  
- /****************************************************************************
--- 
-1.5.5.6
+ static void
+@@ -687,6 +692,7 @@ main(int argc, char **argv)
+ {
+ 	char	*export_file = _PATH_EXPORTS;
+ 	char    *state_dir = NFS_STATEDIR;
++	unsigned int listeners = 0;
+ 	int	foreground = 0;
+ 	int	port = 0;
+ 	int	descriptors = 0;
+@@ -830,14 +836,16 @@ main(int argc, char **argv)
+ 		cache_open();
+ 
+ 	if (version2()) {
+-		rpc_init("mountd", MOUNTPROG, MOUNTVERS,
+-			 mount_dispatch, port);
+-		rpc_init("mountd", MOUNTPROG, MOUNTVERS_POSIX,
+-			 mount_dispatch, port);
++		listeners += nfs_svc_create("mountd", MOUNTPROG,
++					MOUNTVERS, mount_dispatch, port);
++		listeners += nfs_svc_create("mountd", MOUNTPROG,
++					MOUNTVERS_POSIX, mount_dispatch, port);
+ 	}
+ 	if (version3())
+-		rpc_init("mountd", MOUNTPROG, MOUNTVERS_NFSV3,
+-			 mount_dispatch, port);
++		listeners += nfs_svc_create("mountd", MOUNTPROG,
++					MOUNTVERS_NFSV3, mount_dispatch, port);
++	if (version23() && listeners == 0)
++		xlog(L_FATAL, "mountd: could not create listeners\n");
+ 
+ 	sa.sa_handler = killer;
+ 	sigaction(SIGINT, &sa, NULL);
 
