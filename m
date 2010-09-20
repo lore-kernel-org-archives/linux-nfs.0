@@ -1,34 +1,267 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:46829 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755038Ab0IKAHu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 20:07:50 -0400
-Date: Fri, 10 Sep 2010 20:07:49 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Christoph Hellwig <hch@infradead.org>, Fred Isaman <iisaman@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
- layout driver
-Message-ID: <20100911000749.GA31628@infradead.org>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
- <1283450419-5648-9-git-send-email-iisaman@netapp.com>
- <1284147111.10062.74.camel@heimdal.trondhjem.org>
- <20100910235600.GA11231@infradead.org>
- <1284163433.14078.102.camel@heimdal.trondhjem.org>
+Received: from sith.mimuw.edu.pl ([193.0.96.4]:47412 "EHLO sith.mimuw.edu.pl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753685Ab0ITLaY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Sep 2010 07:30:24 -0400
+Date: Mon, 20 Sep 2010 13:30:23 +0200
+From: Jan =?utf-8?Q?R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: [PATCH] rpcbind: bind also to specific IP for TCP if requested
+Message-ID: <20100920113023.GA4358@sith.mimuw.edu.pl>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1284163433.14078.102.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Sep 10, 2010 at 08:03:53PM -0400, Trond Myklebust wrote:
-> So you are saying we should simply equate CONFIG_PNFS_FILE_LAYOUT and
-> CONFIG_NFS_V4_1 right now? Yep, I'd be fine with that... I'm still
-> working on the patches to get rid of all these CONFIG options, but
-> ultimately this is what I'm working towards.
+Hi,
+It was always bothering me that rpcbind only can bind to specific IP for
+UDP requests and always INADDR_ANY for TCP.  This patch changes the '-h'
+option to work for both UDP and TCP.  The patch just moves NC_TPI_COTS
+specific code into nhosts loop and removes code that is no longer needed.
+I run-tested it on a multi-homed server and simple nfs clients.
 
-If you don't want a separate option that's up to you, but I don't think
-forcing people to built the pnfs file layout just because they want nfs4.1
-features is an all that smart idea.
 
+diff --git a/src/rpcbind.c b/src/rpcbind.c
+index 63023e1..310c243 100644
+--- a/src/rpcbind.c
++++ b/src/rpcbind.c
+@@ -275,7 +275,7 @@ init_transport(struct netconfig *nconf)
+ 	int status;	/* bound checking ? */
+ 	int aicode;
+ 	int addrlen = 0;
+-	int nhostsbak;
++	int nhostsbak = 1;
+ 	int checkbind;
+ 	int on = 1;
+ 	struct sockaddr *sa = NULL;
+@@ -301,18 +301,6 @@ init_transport(struct netconfig *nconf)
+ 	}
+ #endif
+ 
+-	/*
+-	 * XXX - using RPC library internal functions. For NC_TPI_CLTS
+-	 * we call this later, for each socket we like to bind.
+-	 */
+-	if (nconf->nc_semantics != NC_TPI_CLTS) {
+-		if ((fd = __rpc_nconf2fd(nconf)) < 0) {
+-			syslog(LOG_ERR, "cannot create socket for %s",
+-			    nconf->nc_netid);
+-			return (1);
+-		}
+-	}
+-
+ 	if (!__rpc_nconf2sockinfo(nconf, &si)) {
+ 		syslog(LOG_ERR, "cannot get information for %s",
+ 		    nconf->nc_netid);
+@@ -335,8 +323,6 @@ init_transport(struct netconfig *nconf)
+ 		hints.ai_family = si.si_af;
+ 		hints.ai_socktype = si.si_socktype;
+ 		hints.ai_protocol = si.si_proto;
+-	}
+-	if (nconf->nc_semantics == NC_TPI_CLTS) {
+ 		/*
+ 		 * If no hosts were specified, just bind to INADDR_ANY.  Otherwise
+ 		 * make sure 127.0.0.1 is added to the list.
+@@ -354,21 +340,15 @@ init_transport(struct netconfig *nconf)
+ 			} else
+ 				return 1;
+ 		}
+-
+-	       /*
+-		* Bind to specific IPs if asked to
+-		*/
+-		checkbind = 0;
+-		while (nhostsbak > 0) {
+-			--nhostsbak;
+-			/*
+-			 * XXX - using RPC library internal functions.
+-			 */
+-			if ((fd = __rpc_nconf2fd(nconf)) < 0) {
+-				syslog(LOG_ERR, "cannot create socket for %s",
+-				    nconf->nc_netid);
+-				return (1);
+-			}
++	}
++       /*
++	* Bind to specific IPs if asked to
++	*/
++	checkbind = 0;
++	while (nhostsbak > 0) {
++		--nhostsbak;
++		if ((strcmp(nconf->nc_netid, "local") != 0) &&
++		    (strcmp(nconf->nc_netid, "unix") != 0)) {
+ 			switch (hints.ai_family) {
+ 			case AF_INET:
+ 				if (inet_pton(AF_INET, hosts[nhostsbak],
+@@ -395,7 +375,7 @@ init_transport(struct netconfig *nconf)
+ 					    host_addr) == 1)
+ 						continue;
+ 				}
+-	        		break;
++				break;
+ 			default:
+ 				break;
+ 			}
+@@ -418,97 +398,37 @@ init_transport(struct netconfig *nconf)
+ 			}
+ 			addrlen = res->ai_addrlen;
+ 			sa = (struct sockaddr *)res->ai_addr;
+-			oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
+-                        if (bind(fd, sa, addrlen) != 0) {
+-				syslog(LOG_ERR, "cannot bind %s on %s: %m",
+-					(hosts[nhostsbak] == NULL) ? "*" :
+-					hosts[nhostsbak], nconf->nc_netid);
+-				if (res != NULL)
+-					freeaddrinfo(res);
+-				continue;
+-			} else
+-				checkbind++;
+-			(void) umask(oldmask);
++		}
+ 
+-			/* Copy the address */
+-			taddr.addr.maxlen = taddr.addr.len = addrlen;
+-			taddr.addr.buf = malloc(addrlen);
+-			if (taddr.addr.buf == NULL) {
+-				syslog(LOG_ERR,
+-				    "cannot allocate memory for %s address",
+-				    nconf->nc_netid);
++		/*
++		 * XXX - using RPC library internal functions.
++		 */
++		if ((fd = __rpc_nconf2fd(nconf)) < 0) {
++			syslog(LOG_ERR, "cannot create socket for %s",
++			    nconf->nc_netid);
++			continue;
++		}
++		oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
++		if (nconf->nc_semantics != NC_TPI_CLTS) {
++			__rpc_fd2sockinfo(fd, &si);
++			if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on,
++					sizeof(on)) != 0) {
++				syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
++					nconf->nc_netid);
+ 				if (res != NULL)
+ 					freeaddrinfo(res);
+-				return 1;
+-			}
+-			memcpy(taddr.addr.buf, sa, addrlen);
+-#ifdef RPCBIND_DEBUG
+-			if (debugging) {
+-				/*
+-				 * for debugging print out our universal
+-				 * address
+-				 */
+-				char *uaddr;
+-				struct netbuf nb;
+-				int sa_size = 0;
+-
+-				nb.buf = sa;
+-				switch( sa->sa_family){
+-				case AF_INET:
+-				  sa_size = sizeof (struct sockaddr_in);
+-				  break;
+-				case AF_INET6:
+-				  sa_size = sizeof (struct sockaddr_in6);				 
+-				  break;
+-				}
+-				nb.len = nb.maxlen = sa_size;
+-				uaddr = taddr2uaddr(nconf, &nb);
+-				(void) fprintf(stderr,
+-				    "rpcbind : my address is %s\n", uaddr);
+-				(void) free(uaddr);
+-			}
+-#endif
+-			my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr, 
+-                                RPC_MAXDATASIZE, RPC_MAXDATASIZE);
+-			if (my_xprt == (SVCXPRT *)NULL) {
+-				syslog(LOG_ERR, "%s: could not create service", 
+-                                        nconf->nc_netid);
+-				goto error;
+-			}
+-		}
+-		if (!checkbind)
+-			return 1;
+-	} else {	/* NC_TPI_COTS */
+-		if ((strcmp(nconf->nc_netid, "local") != 0) &&
+-		    (strcmp(nconf->nc_netid, "unix") != 0)) {
+-			if ((aicode = getaddrinfo(NULL, servname, &hints, &res))!= 0) {
+-			  if ((aicode = getaddrinfo(NULL, "portmapper", &hints, &res))!= 0) {
+-			  printf("cannot get local address for %s: %s",  nconf->nc_netid, gai_strerror(aicode));
+-			  syslog(LOG_ERR,
+-				    "cannot get local address for %s: %s",
+-				    nconf->nc_netid, gai_strerror(aicode));
+-				return 1;
+-			  }
++				continue;
+ 			}
+-			addrlen = res->ai_addrlen;
+-			sa = (struct sockaddr *)res->ai_addr;
+-		}
+-		oldmask = umask(S_IXUSR|S_IXGRP|S_IXOTH);
+-		__rpc_fd2sockinfo(fd, &si);
+-		if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on,
+-				sizeof(on)) != 0) {
+-			syslog(LOG_ERR, "cannot set SO_REUSEADDR on %s",
+-				nconf->nc_netid);
+-			if (res != NULL)
+-				freeaddrinfo(res);
+-			return 1;
+ 		}
+ 		if (bind(fd, sa, addrlen) < 0) {
+-			syslog(LOG_ERR, "cannot bind %s: %m", nconf->nc_netid);
++			syslog(LOG_ERR, "cannot bind %s on %s: %m",
++				(hosts && hosts[nhostsbak]) ? hosts[nhostsbak] : "*",
++				nconf->nc_netid);
+ 			if (res != NULL)
+ 				freeaddrinfo(res);
+-			return 1;
+-		}
++			continue;
++		} else
++			checkbind++;
+ 		(void) umask(oldmask);
+ 
+ 		/* Copy the address */
+@@ -527,7 +447,7 @@ init_transport(struct netconfig *nconf)
+ 			/* for debugging print out our universal address */
+ 			char *uaddr;
+ 			struct netbuf nb;
+-		        int sa_size2 = 0;
++			int sa_size2 = 0;
+ 
+ 			nb.buf = sa;
+ 			switch( sa->sa_family){
+@@ -546,7 +466,8 @@ init_transport(struct netconfig *nconf)
+ 		}
+ #endif
+ 
+-		listen(fd, SOMAXCONN);
++		if (nconf->nc_semantics != NC_TPI_CLTS)
++			listen(fd, SOMAXCONN);
+ 
+ 		my_xprt = (SVCXPRT *)svc_tli_create(fd, nconf, &taddr, RPC_MAXDATASIZE, RPC_MAXDATASIZE);
+ 		if (my_xprt == (SVCXPRT *)NULL) {
+@@ -555,6 +476,8 @@ init_transport(struct netconfig *nconf)
+ 			goto error;
+ 		}
+ 	}
++	if (!checkbind)
++		return 1;
+ 
+ #ifdef PORTMAP
+ 	/*
+diff --git a/man/rpcbind.8 b/man/rpcbind.8
+index c5b8fb7..aa53a25 100644
+--- a/man/rpcbind.8
++++ b/man/rpcbind.8
+@@ -85,7 +85,7 @@ checks are shown in detail.
+ .It Fl f
+ Do not fork and become a background process.
+ .It Fl h
+-Specify specific IP addresses to bind to for UDP requests.
++Specify specific IP addresses to bind to for requests.
+ This option
+ may be specified multiple times and is typically necessary when running
+ on a multi-homed host.
