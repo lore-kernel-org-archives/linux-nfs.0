@@ -1,193 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40640 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754325Ab0IQSfU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Sep 2010 14:35:20 -0400
-Date: Fri, 17 Sep 2010 14:35:06 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: George Mamalakis <mamalos@eng.auth.gr>, linux-nfs@vger.kernel.org
-Subject: Re: nfsv3 gssapi client?
-Message-ID: <20100917143506.0b85a04b@tlielax.poochiereds.net>
-In-Reply-To: <20100917174328.GC25515@fieldses.org>
-References: <4C938F3B.4030604@eng.auth.gr>
-	<20100917174328.GC25515@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet10.oracle.com ([148.87.113.121]:47145 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755090Ab0ITT3A convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 15:29:00 -0400
+Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4C97B248.1030801@parallels.com>
+Date: Mon, 20 Sep 2010 15:28:00 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Message-Id: <EE0DC983-8CFA-42FA-8D64-F4E2564E6FB0@oracle.com>
+References: <4C90BADB.10700@parallels.com> <20100920161326.GL4580@fieldses.org> <4C978CE6.5080508@parallels.com> <20100920180418.GN4580@fieldses.org> <4C97B248.1030801@parallels.com>
+To: Pavel Emelyanov <xemul@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 17 Sep 2010 13:43:28 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Fri, Sep 17, 2010 at 06:54:35PM +0300, George Mamalakis wrote:
-> >   Hi all,
-> > 
-> > I have a FreeBSD nfsv3 server that exports a filesystem with
-> > sec=krb5. Mounting the share with sec=krb5 under a fbsd client works
-> > fine. I now try to mount it under linux (archlinux, upgraded today)
-> > using nfs-utils. Heimdal is configured on the linux-box, kinit -k
-> > linuxclient works fine. I am also able to kinit to my user
-> > principals from it. When I try to mount the nvsv3 sec=krb5 share, I
-> > get the following error:
-> > 
-> > # mount -t nfs -o sec=krb5 fbsdserver:/exports /mnt
-> > 
-> 
-> Was there supposed to be some error output there?  Or did the mount just
-> hang?
-> 
-> > # tail /var/log/messages
-> > Sep 17 16:05:31 linuxclient rpc.statd[27683]: Version 1.2.2 starting
-> > Sep 17 16:05:31 linuxclient sm-notify[27684]: Version 1.2.2 starting
-> > Sep 17 16:05:31 linuxclient sm-notify[27684]: Already notifying
-> > clients; Exiting!
-> > Sep 17 16:05:31 linuxclient rpc.statd[27683]: Running as root.
-> > chown /var/lib/nfs to choose different user
-> > Sep 17 16:05:31 linuxclient sm-notify[27687]: Version 1.2.2 starting
-> > Sep 17 16:05:31 linuxclient sm-notify[27687]: Already notifying
-> > clients; Exiting!
-> > Sep 17 16:05:53 linuxclient kernel: svc: failed to register lockdv1
-> > RPC service (errno 111).
-> > Sep 17 16:05:53 linuxclient kernel: lockd_up: makesock failed, error=-111
-> > Sep 17 16:05:54 linuxclient kernel: svc: failed to register lockdv1
-> > RPC service (errno 111).
-> > Sep 17 16:05:57 linuxclient kernel: svc: failed to register lockdv1
-> > RPC service (errno 111).
-> > Sep 17 16:06:01 linuxclient kernel: svc: failed to register lockdv1
-> > RPC service (errno 111).
-> 
-> 111 is ECONNREFUSED.  I'm not sure why that's failing.  (Should failure
-> to register lockd fail the whole mount?  I thought it would at worst
-> result in ENOLCK on lock requests?) Do you get better results if you
-> mount with nolock?
-> 
+On Sep 20, 2010, at 3:13 PM, Pavel Emelyanov wrote:
 
-Firewalling issues maybe?
+> On 09/20/2010 10:04 PM, J. Bruce Fields wrote:
+>> On Mon, Sep 20, 2010 at 08:33:42PM +0400, Pavel Emelyanov wrote:
+>>>>> Looking forward to your feedback.
+>>>> 
+>>>> What are you thinking of as a use-case for this?
+>>> 
+>>> To make it possible run both NFS server and client in containers.
+>> 
+>> Could you describe that in user-visible terms?  (Currently if I create a
+>> new network namespace, what happens, and what will happen differently
+>> afterwards?)
+> 
+> This is not about the network namespace only I believe. E.g. the
+> nfsd filesystem is a filesystem already and shouldn't be tied to
+> any task-driven context.
+> 
+> E.g. as far as the net namespace part is concerned. First of all
+> the TCP/UDP socket used by transport will be per-namespace. User
+> will "feel" this for example by different routing and netfilter
+> rules applied to connections. Besides the rpc service sockets will
+> be per namespace as well.
+> 
+>>> Sure! The thing is that the full containerization of that stuff is
+>>> too many patches and I'm not sure that you and other maintainers wish
+>>> to review the 100-patch set in one go ;)
+>> 
+>> Well, if it's really all ready....
+>> 
+>> Better, though, would be an outline of the work to be done and what you
+>> expect to be working at the end.
+> 
+> The nearest plan is
+> 
+> 1. Prepare the sunrpc layer to work in net namespaces
+> 2. Make rpcpipefs and nfsd filesystems be mountable multiple times
+> 3. Make support for multiple instances of the nfsd caches
+> 4. Make suuport for multiple instances of the nfsd_serv
+> 
+> After this several NFSd-s can be used in containers (hopefully I
+> didn't miss anything).
 
-> > and it keeps on like this.
-> > 
-> > My nfs-common.conf reads:
-> > 
-> > [root@linuxclient ~]# cat /etc/conf.d/nfs-common.conf
-> > # Parameters to be passed to nfs-common (nfs clients & server) init script.
-> > #
-> > 
-> > # If you do not set values for the NEED_ options, they will be attempted
-> > # autodetected; this should be sufficient for most people. Valid
-> > alternatives
-> > # for the NEED_ options are "yes" and "no".
-> > 
-> > # Do you want to start the statd daemon? It is not needed for NFSv4.
-> > NEED_STATD=""
-> > 
-> > # Options to pass to rpc.statd.
-> > # See rpc.statd(8) for more details.
-> > # N.B. statd normally runs on both client and server, and run-time
-> > # options should be specified accordingly.
-> > # STATD_OPTS="-p 32765 -o 32766"
-> > STATD_OPTS=""
-> > 
-> > # Options to pass to sm-notify
-> > # e.g. SMNOTIFY_OPTS="-p 32764"
-> > SMNOTIFY_OPTS=""
-> > 
-> > # Do you want to start the idmapd daemon? It is only needed for NFSv4.
-> > NEED_IDMAPD=""
-> > 
-> > # Options to pass to rpc.idmapd.
-> > # See rpc.idmapd(8) for more details.
-> > IDMAPD_OPTS="-vvv"
-> > 
-> > # Do you want to start the gssd daemon? It is required for Kerberos mounts.
-> > NEED_GSSD="yes"
-> > 
-> > # Options to pass to rpc.gssd.
-> > # See rpc.gssd(8) for more details.
-> > GSSD_OPTS="-vvv"
-> > #RPCGSSDOPTS="-vvv"
-> > # Where to mount rpc_pipefs filesystem; the default is
-> > "/var/lib/nfs/rpc_pipefs".
-> > PIPEFS_MOUNTPOINT=""
-> > 
-> > # Options used to mount rpc_pipefs filesystem; the default is "defaults".
-> > PIPEFS_MOUNTOPTS=""
-> > 
-> > my rpc processes are:
-> > [root@linuxclient ~]# ps axuww  | grep -i rpc
-> > root      1228  0.0  0.0      0     0 ?        S    14:47   0:00 [rpciod/0]
-> > root     27670  0.0  0.0   6232   908 ?        Ss   16:05   0:00
-> > /usr/bin/rpcbind
-> > root     27683  0.0  0.1   6332  1236 ?        Ss   16:05   0:00
-> > /usr/sbin/rpc.statd
-> > root     27699  0.0  0.1   6264  1180 ?        Ss   16:05   0:00
-> > /usr/sbin/rpc.gssd -vvv
-> > root     27720  0.0  0.0   3776   476 pts/0    S+   17:01   0:00
-> > grep -i rpc
-> > 
-> > And rpcinfo shows:
-> > root@linuxclient ~]# rpcinfo
-> >    program version netid     address                service    owner
-> >     100000    4    tcp6      ::.0.111               portmapper superuser
-> >     100000    3    tcp6      ::.0.111               portmapper superuser
-> >     100000    4    udp6      ::.0.111               portmapper superuser
-> >     100000    3    udp6      ::.0.111               portmapper superuser
-> >     100000    4    udp       0.0.0.0.0.111          portmapper superuser
-> >     100000    3    udp       0.0.0.0.0.111          portmapper superuser
-> >     100000    2    udp       0.0.0.0.0.111          portmapper superuser
-> >     100000    4    local     /var/run/rpcbind.sock  portmapper superuser
-> >     100000    3    local     /var/run/rpcbind.sock  portmapper superuser
-> >     100024    1    udp       0.0.0.0.228.144        status     superuser
-> >     100024    1    tcp       0.0.0.0.198.8          status     superuser
-> > [root@linuxclient ~]# rpcinfo -s
-> >    program version(s) netid(s)                         service     owner
-> >     100000  2,3,4     local,udp,udp6,tcp6              portmapper
-> > superuser
-> >     100024  1         tcp,udp                          status
-> > superuser
-> > 
-> > whereas on the fbsd box I have:
-> > [root@fbsdserver ~]# rpcinfo -s
-> >    program version(s) netid(s)                         service     owner
-> >     100000  2,3,4     local,udp6,tcp6,udp,tcp          rpcbind
-> > superuser
-> >     100024  1         tcp,udp,tcp6,udp6                status
-> > superuser
-> >     100021  4,3,1,0   tcp,udp,tcp6,udp6                nlockmgr
-> > superuser
-> >     100003  3,2       tcp6,tcp,udp6,udp                nfs
-> > superuser
-> >     100005  3,1       tcp,udp,tcp6,udp6                mountd
-> > superuser
-> > 
-> > 
-> > The versions I use are:
-> > rpcbind-0.2.0-2
-> > nfs-utils-1.2.2-3
-> > 
-> > And uname -a shows:
-> > 
-> > [root@linuxclient ~]# uname -a
-> > Linux linuxclient 2.6.35-ARCH #1 SMP PREEMPT Fri Aug 27 16:22:18 UTC
-> > 2010 i686 Intel(R) Xeon(R) CPU E5310 @ 1.60GHz GenuineIntel
-> > GNU/Linux
-> > 
-> > Does linux support RPCSEC_GSS security flavors over nvsv3?
-> 
-> Yes, and this is something I test regularly.
-> 
-> > And if
-> > so, could somebody direct me on how to establish mounting the remote
-> > share?
-> 
-> Looks like the server advertises ipv6.  I wonder if anyone's tested gss
-> in that case?
-> 
+Are you assuming NFSv4 only?  Something needs to be done about NLM and NSM to make this work right.
 
-Not in a while, but I did test it when I did the IPv6 changes for
-rpc.gssd. It should work fine, AFAIK. Based on the logs above,
-RPCSEC_GSS is probably a red herring. The real problem seems to be that
-there are problems communicating with the portmapper.
+Is there an issue for idmapper and svcgssd?  Probably not, but worth exploring.
+
+And, how about AUTH_SYS certs?  These contain the host's name in them, and that depends on the net namespace.  NLM uses AUTH_SYS, and I believe the NFS server can make NLM calls to the client.
+
+> Plans about the nfs client are much more obscure for now.
+> 
+>>> I want to find out what git tree to hack on and prepare small patch
+>>> sets making things step-by-step. This one is just the first in a row.
+>> 
+>> For the server side you can use
+>> 
+>> 	git://linux-nfs.org/~bfields/linux.git nfsd-next
+>> 
+>> though generally the latest upstream will likely work as well.
+> 
+> OK, I will re-base the set onto the nfsd-next then.
+> 
+>> On a quick skim, those patches look fine (and brokenly up nicely for
+>> review, thanks).  My main concern is just being sure I understand where
+>> this all ends up.
+> 
+> Well, as far as I know the nfsd and sunrpc code the plan described
+> above should give us most of the work needed to containerize nfsd.
+> 
+>> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
