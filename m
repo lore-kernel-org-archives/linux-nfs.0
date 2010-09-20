@@ -1,77 +1,176 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42387 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42226 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752476Ab0IAVNv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Sep 2010 17:13:51 -0400
-Date: Wed, 1 Sep 2010 17:13:21 -0400
+	id S1756779Ab0ITQI4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Sep 2010 12:08:56 -0400
+Date: Mon, 20 Sep 2010 12:07:32 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tim Gardner <tim.gardner@canonical.com>
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Trond.Myklebust@netapp.com
-Subject: Re: nfsd deadlock, 2.6.36-rc3
-Message-ID: <20100901211321.GC10507@fieldses.org>
-References: <4C7E73CB.7030603@canonical.com>
- <20100901165400.GB1201@fieldses.org>
- <20100902065551.079e297c@notabene>
- <4C7EC17B.6070509@canonical.com>
+To: George Mamalakis <mamalos@eng.auth.gr>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsv3 gssapi client?
+Message-ID: <20100920160732.GK4580@fieldses.org>
+References: <4C938F3B.4030604@eng.auth.gr>
+ <20100917174328.GC25515@fieldses.org>
+ <4C972DB3.2050405@eng.auth.gr>
+ <20100920145643.GD4580@fieldses.org>
+ <4C978008.50805@eng.auth.gr>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C7EC17B.6070509@canonical.com>
+In-Reply-To: <4C978008.50805@eng.auth.gr>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Sep 01, 2010 at 03:11:23PM -0600, Tim Gardner wrote:
-> On 09/01/2010 02:55 PM, Neil Brown wrote:
-> >On Wed, 1 Sep 2010 12:54:01 -0400
-> >"J. Bruce Fields"<bfields@fieldses.org>  wrote:
+On Mon, Sep 20, 2010 at 06:38:48PM +0300, George Mamalakis wrote:
+>  On 20/09/2010 17:56, J. Bruce Fields wrote:
 > >
-> >>On Wed, Sep 01, 2010 at 09:39:55AM -0600, Tim Gardner wrote:
-> >>>I've been pursuing a simple reproducer for an NFS lockup that shows
-> >>>up under stress. There is a bunch of info (some of it extraneous) in
-> >>>http://bugs.launchpad.net/bugs/561210. I can reproduce it by writing
-> >>>loop mounted NFS exports:
-> >>>
-> >>>/etc/fstab: 127.0.0.1:/srv /mnt/srv nfs rw 0 2
-> >>>/etc/exports: /srv 127.0.0.1(rw,insecure,no_subtree_check)
-> >>>
-> >>>See the attached scripts test_master.sh and test_client.sh. I simply
-> >>>repeat './test_master.sh wait' until nfsd locks up, typically within
-> >>>1-3 cycles, e.g.,
-> >>
-> >>Without looking at the dmesg and scripts carefully to confirm, one
-> >>possible explanation is a deadlock when the server can't allocate memory
-> >>required to service client requests, memory which the client itself
-> >>needs to free by writing back dirty pages, but can't because the server
-> >>isn't processing its writes.
+> >Ouch.  Well, that's a problem.
 > >
-> >Having looked closely I'd say it is almost certainly this issue.
-> >nfsd thread 1266 is in zone_reclaim waiting on a page to be written out so
-> >the memory can be reused.
-> >The other nfsd threads are blocking on a mutex held by 1266.
-> >The dd processes are waiting for pages to be written to the server
+> >(And have you checked the log files to make sure it's gssd segfaulting
+> >and not some kind of crash in the kernel?)
 > >
-> >The particular page that 1266 is waiting on is almost certainly a page on an
-> >NFS file, so you have a cyclic deadlock.
-> >
-> >>
-> >>For that reason we just don't support loopback mounts--they're OK for
-> >>light testing, but it would be difficult to make them completely robust
-> >>under load.
-> >
-> >I wonder if we could use 'containers' to partition available memory between
-> >'nfsd threads' and 'everything else'??  Probably not worth the effort.
-> >
-> >NeilBrown
+> >--b.
 > >
 > 
-> I'm currently working with my support folks to reproduce this using
-> the exact same configuration as the customer, e.g., an NFS server
-> (running as a guest on a VMWare ESX host) serving multiple gigabit
-> clients.
+> Yes, it segfaults, even the log shows it. It's a null pointer
+> exception. I used gdb in gssd and this is my outcome:
 > 
-> I assume that is a reasonable scenario?
+> 0xb783f424 in __kernel_vsyscall ()
+> (gdb) c
+> Continuing.
+> 
+> Program received signal SIG37, Real-time event 37.
+> 0xb783f424 in __kernel_vsyscall ()
+> (gdb) c
+> Continuing.
+> 
+> Program received signal SIG37, Real-time event 37.
+> 0xb783f424 in __kernel_vsyscall ()
+> (gdb) c
+> Continuing.
+> 
+> Program received signal SIGSEGV, Segmentation fault.
+> 0xb72b4c8e in __gss_get_mechanism_cred () from /usr/lib/libgssglue.so.1
+> (gdb) bt
+> #0  0xb72b4c8e in __gss_get_mechanism_cred () from /usr/lib/libgssglue.so.1
+> #1  0xb72b5c2c in gss_init_sec_context () from /usr/lib/libgssglue.so.1
+> #2  0xb776c215 in authgss_refresh () from /usr/lib/libtirpc.so.1
+> #3  0xb776c67d in authgss_create () from /usr/lib/libtirpc.so.1
+> #4  0xb776c779 in authgss_create_default () from /usr/lib/libtirpc.so.1
+> #5  0x0804cbdc in ?? ()
+> #6  0x0804cf9f in ?? ()
+> #7  0x0804d7c8 in ?? ()
+> #8  0x0804b7a8 in ?? ()
+> #9  0x0804b309 in ?? ()
+> #10 0xb761cc76 in __libc_start_main () from /lib/libc.so.6
+> #11 0x0804a621 in ?? ()
+> (gdb) info r
+> eax            0x0    0
+> ecx            0x9    9
+> edx            0x0    0
+> ebx            0xb72b9710    -1221880048
+> esp            0xbfe0b844    0xbfe0b844
+> ebp            0xbfe0b858    0xbfe0b858
+> esi            0x9    9
+> edi            0x9370928    154601768
+> eip            0xb72b4c8e    0xb72b4c8e <__gss_get_mechanism_cred+62>
+> eflags         0x210246    [ PF ZF IF RF ID ]
+> cs             0x73    115
+> ss             0x7b    123
+> ds             0x7b    123
+> es             0x7b    123
+> fs             0x0    0
+> gs             0x33    51
+> (gdb) disass $eip
+> Dump of assembler code for function __gss_get_mechanism_cred:
+>    0xb72b4c50 <+0>:    push   %ebp
+>    0xb72b4c51 <+1>:    mov    %esp,%ebp
+>    0xb72b4c53 <+3>:    push   %edi
+>    0xb72b4c54 <+4>:    push   %esi
+>    0xb72b4c55 <+5>:    sub    $0xc,%esp
+>    0xb72b4c58 <+8>:    mov    0x8(%ebp),%ecx
+>    0xb72b4c5b <+11>:    test   %ecx,%ecx
+>    0xb72b4c5d <+13>:    jne    0xb72b4c68 <__gss_get_mechanism_cred+24>
+>    0xb72b4c5f <+15>:    add    $0xc,%esp
+>    0xb72b4c62 <+18>:    xor    %eax,%eax
+>    0xb72b4c64 <+20>:    pop    %esi
+>    0xb72b4c65 <+21>:    pop    %edi
+>    0xb72b4c66 <+22>:    pop    %ebp
+>    0xb72b4c67 <+23>:    ret
+>    0xb72b4c68 <+24>:    mov    0x8(%ebp),%eax
+>    0xb72b4c6b <+27>:    mov    (%eax),%eax
+>    0xb72b4c6d <+29>:    test   %eax,%eax
+>    0xb72b4c6f <+31>:    mov    %eax,-0x10(%ebp)
+>    0xb72b4c72 <+34>:    jle    0xb72b4c5f <__gss_get_mechanism_cred+15>
+>    0xb72b4c74 <+36>:    mov    0xc(%ebp),%ecx
+>    0xb72b4c77 <+39>:    mov    0x8(%ebp),%eax
+>    0xb72b4c7a <+42>:    mov    (%ecx),%edx
+>    0xb72b4c7c <+44>:    mov    0x4(%eax),%eax
+>    0xb72b4c7f <+47>:    mov    %edx,-0x14(%ebp)
+>    0xb72b4c82 <+50>:    mov    %eax,-0xc(%ebp)
+>    0xb72b4c85 <+53>:    xor    %eax,%eax
+>    0xb72b4c87 <+55>:    nop
+>    0xb72b4c88 <+56>:    mov    -0xc(%ebp),%edx
+>    0xb72b4c8b <+59>:    mov    -0x14(%ebp),%ecx
+> => 0xb72b4c8e <+62>:    cmp    (%edx,%eax,8),%ecx
+>    0xb72b4c91 <+65>:    jne    0xb72b4cab <__gss_get_mechanism_cred+91>
+>    0xb72b4c93 <+67>:    mov    0xc(%ebp),%edx
+>    0xb72b4c96 <+70>:    mov    -0xc(%ebp),%ecx
+>    0xb72b4c99 <+73>:    mov    0x4(%edx),%esi
+>    0xb72b4c9c <+76>:    mov    -0x14(%ebp),%edx
+> ---Type <return> to continue, or q <return> to quit---q
+> Quit
+> (gdb) info r
+> eax            0x0    0
+> ecx            0x9    9
+> edx            0x0    0
+> ebx            0xb72b9710    -1221880048
+> esp            0xbfe0b844    0xbfe0b844
+> ebp            0xbfe0b858    0xbfe0b858
+> esi            0x9    9
+> edi            0x9370928    154601768
+> eip            0xb72b4c8e    0xb72b4c8e <__gss_get_mechanism_cred+62>
+> eflags         0x210246    [ PF ZF IF RF ID ]
+> cs             0x73    115
+> ss             0x7b    123
+> ds             0x7b    123
+> es             0x7b    123
+> fs             0x0    0
+> gs             0x33    51
+> 
+> 
+> Where you can see the null reference.
+> 
+> This, on the other hand, reminded me a discussion I had in the
+> fbsd-stable list, where somebody advised me to use des-cbc-crc
+> keytabs, and then experiment with other encryption types. Even
+> though I didn't have such issues in fbsd, this might be the case on
+> this problem. Maybe linux tries to compare an inexistent mech-type
+> (or enc-type, whatever) with one of it's list, and hence it
+> segfaults. So, to shed a little more light into the issue:
+> 
+> - the kdc (not the nfs-server) runs fbsd8, heimdal-1.2.1.
+> - on the linuxbox when I "kinit -k linuxclient" everything works fine.
+> - on the linux client "ktutil -k /etc/krb5.keytab list" shows:
+> /etc/krb5.keytab:
+> 
+> Vno  Type                     Principal
+> Aliases
+>   1  des-cbc-md5              host/linuxclient@EXAMPLE
+>   1  des-cbc-md4              host/linuxclient@EXAMPLE
+>   1  des-cbc-crc              host/linuxclient@EXAMPLE
+>   1  aes256-cts-hmac-sha1-96  host/linuxclient@EXAMPLE
+>   1  des3-cbc-sha1            host/linuxclient@EXAMPLE
+>   1  arcfour-hmac-md5         host/linuxclient@EXAMPLE
+> 
+> So maybe what I have to do next is to create a keytab of des-cbc-crc
+> encryption-type only for the client (maybe also for the nfsserver as
+> well..) and see how it'll behave...but I will do it tomorrow.
 
-Assuming no VMWare problem (which I know nothing about), sure.
+OK, thanks for the investigation so far!
+
+Unfortunately, I don't know who's going to follow up on this soon, so
+you may also want to get out the source that was built from, try to
+figure exactly what line the NULL dereference is happening on, which
+caller passed in the bad data, etc.
 
 --b.
