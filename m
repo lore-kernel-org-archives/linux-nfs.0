@@ -1,72 +1,54 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: Problems with the git://linux-nfs.org/ server
-Date: Tue, 28 Sep 2010 16:50:26 +0200
-Message-ID: <4CA200B2.7020208@panasas.com>
-References: <4CA1B40D.2080204@panasas.com>	 <1285679386.9185.4.camel@heimdal.trondhjem.org>	 <4CA1EE83.1000700@panasas.com> <1285681777.9185.13.camel@heimdal.trondhjem.org> <4CA1FFF0.6090304@panasas.com>
+From: Pavel Emelyanov <xemul@parallels.com>
+Subject: Re: [PATCH 7/9] sunrpc: The per-net skeleton
+Date: Mon, 20 Sep 2010 22:54:28 +0400
+Message-ID: <4C97ADE4.6030503@parallels.com>
+References: <4C90BADB.10700@parallels.com> <4C90BBE9.6000105@parallels.com> <20100920171924.GM4580@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Boaz Harrosh <bharrosh@panasas.com>,
-	NFS list <linux-nfs@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Neil Brown <neilb@suse.de>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:32686 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756508Ab0I1Ou3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Sep 2010 10:50:29 -0400
-In-Reply-To: <4CA1FFF0.6090304@panasas.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:30871 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752371Ab0ITSyy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Sep 2010 14:54:54 -0400
+In-Reply-To: <20100920171924.GM4580@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2010-09-28 16:47, Benny Halevy wrote:
-> On 2010-09-28 15:49, Trond Myklebust wrote:
->> On Tue, 2010-09-28 at 15:32 +0200, Boaz Harrosh wrote:
->>> On 09/28/2010 03:09 PM, Trond Myklebust wrote:
->>>> On Tue, 2010-09-28 at 11:23 +0200, Boaz Harrosh wrote:
->>>>> It looks like the git daemon on git://linux-nfs.org/ is down
->>>>>
->>>>> Thanks
->>>>> Boaz
->>>>
->>>> It's working for me...
->>>>
->>>> [trondmy@heimdal linux-2.6]$ git remote update linux-nfs
->>>> Fetching linux-nfs
->>>>
->>>> Cheers
->>>>   Trond
->>>>
->>>
->>> Thanks. I still get problems so I guess it's related to
->>> this side of the ocean, I'm trying for example:
->>>
->>> $ git ls-remote git://git.linux-nfs.org/~trondmy/nfs-2.6.git
->>> And get: git.linux-nfs.org[0: 173.201.45.137]: errno=Connection timed out
->>>
->>
->> Yes. The above too works for me, and I can't see anything in the logs
->> that indicates anything wrong.
->>
->> Could it perhaps be that you are hitting one of those ancient BSD-based
->> routers that are broken w.r.t. TCP explicit congestion notification
->> (a.k.a. ECN) and/or TCP window scaling? You might try turning those off
->> on your client and see if that helps.
+On 09/20/2010 09:19 PM, J. Bruce Fields wrote:
+> On Wed, Sep 15, 2010 at 04:28:25PM +0400, Pavel Emelyanov wrote:
+>> @@ -38,18 +58,26 @@ init_sunrpc(void)
+>>  	err = rpcauth_init_module();
+>>  	if (err)
+>>  		goto out3;
+>> +
+>> +	cache_initialize();
+>> +
+>> +	err = register_pernet_subsys(&sunrpc_net_ops);
+>> +	if (err)
+>> +		goto out4;
+>>  #ifdef RPC_DEBUG
+>>  	rpc_register_sysctl();
+>>  #endif
+>>  #ifdef CONFIG_PROC_FS
+>>  	rpc_proc_init();
+>>  #endif
+>> -	cache_initialize();
+>>  	cache_register(&ip_map_cache);
+>>  	cache_register(&unix_gid_cache);
+>>  	svc_init_xprt_sock();	/* svc sock transport */
+>>  	init_socket_xprt();	/* clnt sock transport */
+>>  	return 0;
+>> +
+>> +out4:
+>> +	unregister_pernet_subsys(&sunrpc_net_ops);
 > 
-> hmm, we also see ~16% packet loss over PING :-(
+> If register_pernet_subsys() failed, then shouldn't this be unnecessary?
+> Maybe this should be rpcauth_remove_module()?
 
-But I don't see this from Panasas' US hosts so
-it's somewhere in between Israel and linux-nfs.org
+Ouch! Of course you're right here... Will fix.
 
-Benny
-
-> 
-> Benny
-> 
->>
->> Cheers
->>   Trond
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --b.
