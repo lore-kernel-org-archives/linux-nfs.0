@@ -1,214 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42635 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755658Ab0I2Tlz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Sep 2010 15:41:55 -0400
-Message-ID: <4CA39681.3000104@netapp.com>
-Date: Wed, 29 Sep 2010 15:41:53 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: SteveD@redhat.com
-Subject: [PATCH] nfs-utils: Add nfs.upcall for idmapper
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:50620 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752855Ab0ITPjl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 11:39:41 -0400
+Received: by gyd8 with SMTP id 8so1335929gyd.19
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 08:39:40 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/2] Two minor nfs-utils bug fixes
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 20 Sep 2010 11:39:36 -0400
+Message-ID: <20100920153714.2604.50581.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Add nfs.upcall
+Hi Steve-
 
-This patch adds the nfs.upcall program to nfs-utils.  This program is called by
-the nfs idmapper through request-keys to map between uid / user name and
-gid / group name.
+A couple of minor clean up patches.  I'm still working on the
+"remount" issue.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
-diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
-new file mode 100644
-index 0000000..84bc112
---- /dev/null
-+++ b/aclocal/keyutils.m4
-@@ -0,0 +1,11 @@
-+dnl Checks for keyutils library and headers
-+dnl
-+AC_DEFUN([AC_KEYUTILS], [
-+
-+  dnl Check for libkeyutils; do not add to LIBS if found
-+  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
-+  AC_SUBST(LIBKEYUTILS)
-+
-+  AC_CHECK_HEADERS([keyutils.h], ,
-+  		   [AC_MSG_ERROR([keyutils.h header not found.])])
-+])dnl
-diff --git a/configure.ac b/configure.ac
-index 3058be6..a5e8620 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
-   dnl check for nfsidmap libraries and headers
-   AC_LIBNFSIDMAP
- 
-+  dnl check for the keyutils libraries and headers
-+  AC_KEYUTILS
-+
-   dnl librpcsecgss already has a dependency on libgssapi,
-   dnl but we need to make sure we get the right version
-   if test "$enable_gss" = yes; then
-@@ -435,6 +438,7 @@ AC_CONFIG_FILES([
- 	utils/mountd/Makefile
- 	utils/nfsd/Makefile
- 	utils/nfsstat/Makefile
-+	utils/nfs.upcall/Makefile
- 	utils/showmount/Makefile
- 	utils/statd/Makefile
- 	tests/Makefile
-diff --git a/utils/Makefile.am b/utils/Makefile.am
-index 8665183..0104a6c 100644
---- a/utils/Makefile.am
-+++ b/utils/Makefile.am
-@@ -4,6 +4,7 @@ OPTDIRS =
- 
- if CONFIG_NFSV4
- OPTDIRS += idmapd
-+OPTDIRS += nfs.upcall
- endif
- 
- if CONFIG_GSS
-diff --git a/utils/nfs.upcall/Makefile.am b/utils/nfs.upcall/Makefile.am
-new file mode 100644
-index 0000000..52afd3d
---- /dev/null
-+++ b/utils/nfs.upcall/Makefile.am
-@@ -0,0 +1,7 @@
-+## Process this file with automake to produce Makefile.in
-+
-+sbin_PROGRAMS	= nfs.upcall
-+nfs_upcall_SOURCES = nfs.upcall.c
-+nfs_upcall_LDADD = -lnfsidmap -lkeyutils
-+
-+MAINTAINERCLEANFILES = Makefile.in
-diff --git a/utils/nfs.upcall/nfs.upcall.c b/utils/nfs.upcall/nfs.upcall.c
-new file mode 100644
-index 0000000..37aa5e9
---- /dev/null
-+++ b/utils/nfs.upcall/nfs.upcall.c
-@@ -0,0 +1,120 @@
-+
-+#include <stdarg.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+
-+#include <pwd.h>
-+#include <grp.h>
-+#include <keyutils.h>
-+#include <nfsidmap.h>
-+
-+#include <syslog.h>
-+
-+/* gcc nfs.upcall.c -o nfs.upcall -l nfsidmap -l keyutils */
-+
-+#define MAX_ID_LEN   11
-+#define IDMAP_NAMESZ 128
-+#define USER  1
-+#define GROUP 0
-+
-+
-+/*
-+ * Find either a user or group id based on the name@domain string
-+ */
-+int id_lookup(char *name_at_domain, key_serial_t key, int type)
-+{
-+	char id[MAX_ID_LEN];
-+	uid_t uid = 0;
-+	gid_t gid = 0;
-+	int rc;
-+
-+	if (type == USER) {
-+		rc = nfs4_owner_to_uid(name_at_domain, &uid);
-+		sprintf(id, "%u", uid);
-+	} else {
-+		rc = nfs4_group_owner_to_gid(name_at_domain, &gid);
-+		sprintf(id, "%u", gid);
-+	}
-+
-+	if (rc == 0)
-+		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
-+
-+	return rc;
-+}
-+
-+/*
-+ * Find the name@domain string from either a user or group id
-+ */
-+int name_lookup(char *id, key_serial_t key, int type)
-+{
-+	char name[IDMAP_NAMESZ];
-+	char domain[NFS4_MAX_DOMAIN_LEN];
-+	uid_t uid;
-+	gid_t gid;
-+	int rc;
-+
-+	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
-+	if (rc != 0) {
-+		rc = -1;
-+		goto out;
-+	}
-+
-+	if (type == USER) {
-+		uid = atoi(id);
-+		rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
-+	} else {
-+		gid = atoi(id);
-+		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
-+	}
-+
-+	if (rc == 0)
-+		rc = keyctl_instantiate(key, &name, strlen(name), 0);
-+
-+out:
-+	return rc;
-+}
-+
-+int main(int argc, char **argv)
-+{
-+	char *arg;
-+	char *value;
-+	char *type;
-+	int rc = 1;
-+	int timeout = 600;
-+	key_serial_t key;
-+
-+	if (argc < 3)
-+		return 1;
-+
-+	arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
-+	strcpy(arg, argv[2]);
-+	type = strtok(arg, ":");
-+	value = strtok(NULL, ":");
-+
-+	if (argc == 4) {
-+		timeout = atoi(argv[3]);
-+		if (timeout < 0)
-+			timeout = 0;
-+	}
-+
-+	key = strtol(argv[1], NULL, 10);
-+
-+	if (strcmp(type, "uid") == 0)
-+		rc = id_lookup(value, key, USER);
-+	else if (strcmp(type, "gid") == 0)
-+		rc = id_lookup(value, key, GROUP);
-+	else if (strcmp(type, "user") == 0)
-+		rc = name_lookup(value, key, USER);
-+	else if (strcmp(type, "group") == 0)
-+		rc = name_lookup(value, key, GROUP);
-+
-+	/* Set timeout to 5 (600 seconds) minutes */
-+	if (rc == 0)
-+		keyctl_set_timeout(key, timeout);
-+	else
-+		keyctl_negate(key, timeout, 0);
-+
-+	free(arg);
-+	return rc;
-+}
+
+Chuck Lever (2):
+      nfs-utils: Fix source code character encoding
+      libnfs.a: Remove support/nfs/fstab.c
+
+
+ support/include/conffile.h |    2 
+ support/nfs/conffile.c     |    2 
+ support/nfs/fstab.c        |  554 --------------------------------------------
+ support/nfs/nfs_mntent.c   |    2 
+ support/nfs/xcommon.c      |    2 
+ utils/mount/fstab.c        |    2 
+ utils/mount/nfsmount.c     |    2 
+ 7 files changed, 6 insertions(+), 560 deletions(-)
+ delete mode 100644 support/nfs/fstab.c
+
+-- 
+Chuck Lever
