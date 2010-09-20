@@ -1,228 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:62961 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753343Ab0IMRWg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 13:22:36 -0400
-Received: by yxp4 with SMTP id 4so2096756yxp.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 10:22:35 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/12] mountd: clean up cache API
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 13 Sep 2010 13:22:32 -0400
-Message-ID: <20100913172232.19017.54813.stgit@seurat.1015granger.net>
-In-Reply-To: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
-References: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:40677 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757197Ab0ITTKe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 15:10:34 -0400
+Received: by bwz11 with SMTP id 11so4523265bwz.19
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 12:10:32 -0700 (PDT)
+In-Reply-To: <4C97AAA6.30501@panasas.com>
+References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>
+	<1284779874-10499-12-git-send-email-iisaman@netapp.com>
+	<4C965F66.7000200@panasas.com>
+	<AANLkTinFLgys9T-JX-fU_y5KUzHiW2QBscm9EpS7D+19@mail.gmail.com>
+	<4C9789BF.4090303@panasas.com>
+	<4C97AAA6.30501@panasas.com>
+Date: Mon, 20 Sep 2010 15:10:32 -0400
+Message-ID: <AANLkTikdsnW+PM8iF4BDYLa=s_XHR9wSp4YR_BBJjJpv@mail.gmail.com>
+Subject: Re: [PATCH 11/12] RFC: pnfs: add LAYOUTGET and GETDEVICEINFO infrastructure
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up: Squelch compiler warnings and document public parts of
-cache API.
+On Mon, Sep 20, 2010 at 2:40 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+> On 2010-09-20 18:20, Boaz Harrosh wrote:
+>> On 09/20/2010 04:56 PM, Fred Isaman wrote:
+>>> On Sun, Sep 19, 2010 at 3:07 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>>>> On 09/18/2010 05:17 AM, Fred Isaman wrote:
+>>>
+>>> I agree. �The original deviceid code had an issue where nothing was
+>>> ever deallocated until shutdown. �The code as given here ties the
+>>> deviceid lifetime to existing references. �This is not ideal, because
+>>> a brief loss of reference to a deviceid will cause an unnecessary
+>>> GETDEVICEINFO. �However, for the current submission, it has the
+>>> advantage that it is simple and correct. �Adding the machinery to do
+>>> as you suggest above is indeed a (fairly high) priority goal, but was
+>>> intentionally deferred.
+>>>
+>>
+>> I would like to please return it. That is deallocate it only at shut down.
+>> Otherwise we are for a lot of trouble. We are not yet in a situation of
+>> 1000nd of devices where it might matter. Even up to 100rd it is still fine
+>> to never de-allocate. (Currently on the planet Panasas is the only one with
+>> 1000nd of devices in a single installation)
+>>
+>> Look at it this way. Before we mounted all the NFS servers in our domain
+>> prior to usage, and/or as part of auto-mount which never got unmounted
+>> until shotdown/unmount. So we do the same with pNFS only we have the
+>> privilege of doing a single mount and have everything dynamically logged
+>> in for us. So we are just as before.
+>>
+>> For all pNFS filesystems today the first IOs will GETDEVICEINFO for the
+>> 10s of devices deploid and keep them allocated. If we free them then
+>> what will happen if we need to GETDEVICEINFO when all memory is dirty
+>> and we need it for cleaning that dirty memory. We don't have any
+>> forward progress provision for that yet.
+>
+> Devices are no different than layouts for this matter.
+> To flush your cache under low memory conditions using pnfs you'll need
+> both a layout and the corresponding devices. So why do you want to
+> keep the devices forever but not the layouts?
+>
+>>
+>> The simple thing to do is keep them allocated for ever (until unmount)
+>> by adding a single did_get() call in the did_add() function.
+>> (And did_put() in cache deallocation). That's more simple then hardening
+>> the code.
+>>
+>> And If we don't the pNFS performance will suck big time specially for
+>> that humongous files-layout get_device_info. Because it will be done
+>> for every get_layout. A regular bash script opens a file then closes it.
+>> Most of the time we are not parallel as we think.
+>>
+>
+> I'd like to see the actual numbers for a given benchmark.
+> Keep in mind that typically for the files layout the server won't
+> ask for return_on_close so the layout will actually be kept around
+> (and the associated devices) while the inode is resident, right?
+>
 
-cache.c: At top level:
-cache.c:67: warning: no previous prototype for ‘auth_unix_ip’
-cache.c:123: warning: no previous prototype for ‘auth_unix_gid’
-cache.c:217: warning: no previous prototype for ‘get_uuid’
-cache.c:247: warning: no previous prototype for ‘uuid_by_path’
-cache.c:326: warning: no previous prototype for ‘nfsd_fh’
-cache.c:745: warning: no previous prototype for ‘nfsd_export’
-cache.c:820: warning: no previous prototype for ‘cache_open’
-cache.c:832: warning: no previous prototype for ‘cache_set_fds’
-cache.c:841: warning: no previous prototype for ‘cache_process_req’
-cache.c:921: warning: no previous prototype for ‘cache_export’
-cache.c:953: warning: no previous prototype for ‘cache_get_filehandle’
+True.  The current code (once bugfixed) is simple, spec-compliant, and
+works reasonably well for filelayout.  Why do improvements like
+maintaining cache lifetime past reference need to be in the initial
+submission?  I agree they are important and will need to be done, but
+why now?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Fred
 
- utils/mountd/cache.c  |   49 +++++++++++++++++++++++++++++++++++++++----------
- utils/mountd/mountd.c |    4 ----
- utils/mountd/mountd.h |    4 ++++
- 3 files changed, 43 insertions(+), 14 deletions(-)
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 2909ad3..ab873d5 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -37,6 +37,11 @@
- #include "blkid/blkid.h"
- #endif
- 
-+/*
-+ * Invoked by RPC service loop
-+ */
-+void	cache_set_fds(fd_set *fdset);
-+int	cache_process_req(fd_set *readfds);
- 
- enum nfsd_fsid {
- 	FSID_DEV = 0,
-@@ -57,14 +62,14 @@ enum nfsd_fsid {
-  * Record is terminated with newline.
-  *
-  */
--int cache_export_ent(char *domain, struct exportent *exp, char *p);
-+static int cache_export_ent(char *domain, struct exportent *exp, char *p);
- 
- 
- char *lbuf  = NULL;
- int lbuflen = 0;
- extern int use_ipaddr;
- 
--void auth_unix_ip(FILE *f)
-+static void auth_unix_ip(FILE *f)
- {
- 	/* requests are
- 	 *  class IP-ADDR
-@@ -120,7 +125,7 @@ void auth_unix_ip(FILE *f)
- 	free(client);
- }
- 
--void auth_unix_gid(FILE *f)
-+static void auth_unix_gid(FILE *f)
- {
- 	/* Request are
- 	 *  uid
-@@ -214,7 +219,7 @@ static const char *get_uuid_blkdev(char *path)
- #define get_uuid_blkdev(path) (NULL)
- #endif
- 
--int get_uuid(const char *val, int uuidlen, char *u)
-+static int get_uuid(const char *val, int uuidlen, char *u)
- {
- 	/* extract hex digits from uuidstr and compose a uuid
- 	 * of the given length (max 16), xoring bytes to make
-@@ -244,7 +249,7 @@ int get_uuid(const char *val, int uuidlen, char *u)
- 	return 1;
- }
- 
--int uuid_by_path(char *path, int type, int uuidlen, char *uuid)
-+static int uuid_by_path(char *path, int type, int uuidlen, char *uuid)
- {
- 	/* get a uuid for the filesystem found at 'path'.
- 	 * There are several possible ways of generating the
-@@ -323,7 +328,7 @@ static char *next_mnt(void **v, char *p)
- 	return me->mnt_dir;
- }
- 
--void nfsd_fh(FILE *f)
-+static void nfsd_fh(FILE *f)
- {
- 	/* request are:
- 	 *  domain fsidtype fsid
-@@ -742,7 +747,7 @@ lookup_export(char *dom, char *path, struct addrinfo *ai)
- 	return found;
- }
- 
--void nfsd_export(FILE *f)
-+static void nfsd_export(FILE *f)
- {
- 	/* requests are:
- 	 *  domain path
-@@ -817,6 +822,11 @@ struct {
- };
- 
- extern int manage_gids;
-+
-+/**
-+ * cache_open - prepare communications channels with kernel RPC caches
-+ *
-+ */
- void cache_open(void) 
- {
- 	int i;
-@@ -829,6 +839,10 @@ void cache_open(void)
- 	}
- }
- 
-+/**
-+ * cache_set_fds - prepare cache file descriptors for one iteration of the service loop
-+ * @fdset: pointer to fd_set to prepare
-+ */
- void cache_set_fds(fd_set *fdset)
- {
- 	int i;
-@@ -838,6 +852,10 @@ void cache_set_fds(fd_set *fdset)
- 	}
- }
- 
-+/**
-+ * cache_process_req - process any active cache file descriptors during service loop iteration
-+ * @fdset: pointer to fd_set to examine for activity
-+ */
- int cache_process_req(fd_set *readfds) 
- {
- 	int i;
-@@ -860,7 +878,7 @@ int cache_process_req(fd_set *readfds)
-  * % echo $domain $path $[now+30*60] $options $anonuid $anongid $fsid > /proc/net/rpc/nfsd.export/channel
-  */
- 
--int cache_export_ent(char *domain, struct exportent *exp, char *path)
-+static int cache_export_ent(char *domain, struct exportent *exp, char *path)
- {
- 	int err;
- 	FILE *f = fopen("/proc/net/rpc/nfsd.export/channel", "w");
-@@ -918,6 +936,11 @@ int cache_export_ent(char *domain, struct exportent *exp, char *path)
- 	return err;
- }
- 
-+/**
-+ * cache_export - Inform kernel of a new nfs_export
-+ * @exp: target nfs_export
-+ * @path: NUL-terminated C string containing export path
-+ */
- int cache_export(nfs_export *exp, char *path)
- {
- 	char buf[INET_ADDRSTRLEN];
-@@ -943,7 +966,14 @@ int cache_export(nfs_export *exp, char *path)
- 	return err;
- }
- 
--/* Get a filehandle.
-+/**
-+ * cache_get_filehandle - given an nfs_export, get its root filehandle
-+ * @exp: target nfs_export
-+ * @len: length of requested file handle
-+ * @p: NUL-terminated C string containing export path
-+ *
-+ * Returns pointer to NFS file handle of root directory of export
-+ *
-  * { 
-  *   echo $domain $path $length 
-  *   read filehandle <&0
-@@ -977,4 +1007,3 @@ cache_get_filehandle(nfs_export *exp, int len, char *p)
- 	fh.fh_size = qword_get(&bp, (char *)fh.fh_handle, NFS3_FHSIZE);
- 	return &fh;
- }
--
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 98b396d..982b06e 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -28,10 +28,6 @@
- #include "rpcmisc.h"
- #include "pseudoflavors.h"
- 
--extern void	cache_open(void);
--extern struct nfs_fh_len *cache_get_filehandle(nfs_export *exp, int len, char *p);
--extern int cache_export(nfs_export *exp, char *path);
--
- extern void my_svc_run(void);
- 
- static void		usage(const char *, int exitcode);
-diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
-index 0d31ca7..4c184d2 100644
---- a/utils/mountd/mountd.h
-+++ b/utils/mountd/mountd.h
-@@ -51,5 +51,9 @@ void		mountlist_del(char *host, const char *path);
- void		mountlist_del_all(const struct sockaddr *sap);
- mountlist	mountlist_list(void);
- 
-+void		cache_open(void);
-+struct nfs_fh_len *
-+		cache_get_filehandle(nfs_export *exp, int len, char *p);
-+int		cache_export(nfs_export *exp, char *path);
- 
- #endif /* MOUNTD_H */
-
+>>>>
+>>>> So in effect if [optional] code above is not yet implemented then a
+>>>> getdeviceinfo is never preformed twice for the same deviceid
+>>>> (Assuming no device recall). This is what I had in osd, and is cardinal
+>>>> for it's performance. Is that what we are aiming at?
+>>>
+>>> Yes, that is the goal. �Right now, if a layout is still around that
+>>> references a deviceid, a second GETDEVICEINFO will not be sent.
+>>> However, if all layouts referencing a specific deviceid have been
+>>> returned, then yes, a second GETDEVICEINFO will be called.
+>>>
+>>
+>> Then sure when we come to the situation that we need proper support
+>> for more then 100 machines in a cluster, then we can add the clean
+>> on add stage where if we are higher then x devices we start to replace
+>> entries.
+>>
+>> What you guys think?
+>
+> It's hard to tell without the actual numbers.
+>
+> Keeping a reference count on the device from the layout makes sure
+> you'll have the devices to use the layout and that you don't issue
+> multiple GETDEVICEINFOs in case a device is shared between more than
+> one layout.
+>
+> Ideally, a laundromat service could clean up unused client state once
+> in a while so to keep it around for a short while so it can be reused
+> if possible.
+>
+> Benny
+>
+>>
+>> Boaz
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at �http://vger.kernel.org/majordomo-info.html
+>
