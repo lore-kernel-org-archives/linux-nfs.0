@@ -1,65 +1,115 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
-Date: Mon, 20 Sep 2010 17:43:38 -0400
-Message-ID: <20100920214338.GG18808@fieldses.org>
-References: <4C90BADB.10700@parallels.com>
- <20100920161326.GL4580@fieldses.org>
- <4C978CE6.5080508@parallels.com>
- <20100920180418.GN4580@fieldses.org>
- <4C97B248.1030801@parallels.com>
- <1285013116.2851.71.camel@heimdal.trondhjem.org>
- <20100920200950.GB18808@fieldses.org>
- <1285018566.2851.159.camel@heimdal.trondhjem.org>
+From: George Mamalakis <mamalos-Dav8WUqeL15Mo1R+fwTmgw@public.gmane.org>
+Subject: Re: nfsv3 gssapi client?
+Date: Tue, 21 Sep 2010 17:40:42 +0300
+Message-ID: <4C98C3EA.3020406@eng.auth.gr>
+References: <4C938F3B.4030604@eng.auth.gr> <20100917174328.GC25515@fieldses.org> <4C972DB3.2050405@eng.auth.gr> <20100920145643.GD4580@fieldses.org> <4C978008.50805@eng.auth.gr> <20100920160732.GK4580@fieldses.org> <4C986E82.7040003@eng.auth.gr> <20100921135157.GA26473@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Pavel Emelyanov <xemul@parallels.com>, Neil Brown <neilb@suse.de>,
-	linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Cc: linux-nfs@vger.kernel.org, kwc@citi.umich.edu
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46938 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755282Ab0ITVpF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Sep 2010 17:45:05 -0400
-In-Reply-To: <1285018566.2851.159.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from vergina.eng.auth.gr ([155.207.18.1]:63527 "EHLO
+	vergina.eng.auth.gr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755808Ab0IUOk7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Sep 2010 10:40:59 -0400
+In-Reply-To: <20100921135157.GA26473@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 20, 2010 at 05:36:06PM -0400, Trond Myklebust wrote:
-> On Mon, 2010-09-20 at 16:09 -0400, J. Bruce Fields wrote:
-> > For the client, that's initially the net namespace of the mount?  (What
-> > about submounts?)
-> 
-> It is the net namespace of the process that does the mount, yes.
-> 
-> > >  2) Convert rpc_pipefs to be per-net namespace.
-> > >  3) Convert the nfs_client and superblock to be per-net namespace
-> > >  4) Convert lockd's struct host to be per-net namespace
-> > 
-> > What do we expect behavior to actually look like from the point of view
-> > of somebody on the client?
-> > 
-> > I'd like to see someone write some kind of spec for how this should all
-> > work.  That worries me a lot more than the code.....
-> 
-> I think it is fairly obvious what should happen once you are in a net
-> namespace jail: you want all future NFS mounts to confine themselves to
-> that private net namespace. i.e. they must talk to the portmapper,
-> rpc.statd, and rpc.gssd that are defined on that net namespace, and they
-> must confine themselves to that net namespace when talking to servers.
-> 
-> The problem is dealing with clone() and unshare() (i.e. the process of
-> changing net namespaces).
-> If the resulting container inherits an NFS mountpoint from its parent
-> process, then I cannot see how we could sanely migrate that to a new net
-> namespace, since the super block etc remains shared between the two
-> containers as part of the mount namespaces. To avoid confusion, I
-> believe we need to ensure that under-the-cover mounts etc inherit the
-> same net namespace as the original mount, and they should talk to the
-> portmapper, rpc.statd and rpc.gssd that the original mount uses.
+  On 21/09/2010 16:51, J. Bruce Fields wrote:
+> On Tue, Sep 21, 2010 at 11:36:18AM +0300, George Mamalakis wrote:
+>>   Hi guys,
+>>
+>> Kevin:
+>> As stated in my first email, the linux box is running on a 2.6.35
+>> kernel, heimdal 1.3.3-1 (the version was not mentioned in my email),
+> As Kevin says, it would be worth trying MIT kerberos instead of heimdal
+> if you can, as that is generally better tested.
+>
+> --b.
+>
+>> rpcbind-0.2.0-2, nfs-utils-1.2.2-3, and the distro is arch-linux.
+>>
+>> Bruce: I would rather find an "easier" (configuration-specific) way
+>> to overcome my problem instead of delving into the code, since I am
+>> not a developer (I am an admin :)). Nevertheless, when I used
+>> google.com/searchcode for _gss_get_mechanism_cred I found that there
+>> is a libgss/g_glue.c that defines this function in the following way
+>> (the site is svn://svn.genunix.org/on/trunk<http://google.com/codesearch/p?hl=en#m0BoFGhUuEY/&q=_gss_get_mechanism_cred>):
+>>
+>> /*
+>>   * Glue routine for returning the mechanism-specific credential from a
+>>   * external union credential.
+>>   */
+>> gss_cred_id_t
+>> __gss_get_mechanism_cred(union_cred, mech_type)
+>>          const  gss_union_cred_t  union_cred;
+>>          const  gss_OID           mech_type;
+>> {
+>>          int                      i;
+>>
+>>          if  (union_cred == (gss_union_cred_t)GSS_C_NO_CREDENTIAL)
+>>                  return  (GSS_C_NO_CREDENTIAL);
+>>
+>>          for  (i =0; i<   union_cred->count; i++) {
+>>                  if  (g_OID_equal(mech_type,&union_cred->mechs_array[i]))
+>>                          return  (union_cred->cred_array[i]);
+>>          }
+>>          return  (GSS_C_NO_CREDENTIAL);
+>> }
+>>
+>>
+>> where you can see that the guy returns a cred_array[i] element, that
+>> obviously is null, because (most probably) the if statement above
+>> did not match any "compatible" mechanisms during the recursion.
+>>
+>> Maybe I am totally wrong, since I haven't checked the code
+>> thoroughly, but I think that the problem is located somewhere in
+>> this code segment.
+>>
+>> As I stated before, I was rather hoping to avoid this procedure,
+>> since I decided to use the linux distro for my clients due to its
+>> 'out-of-the-box' and 'everything-is-supported' benefits as
+>> (slightly-)opposed to fbsd (which I use in all my servers and
+>> personal computers, and "love" as an operating system) can be a bit
+>> more "demanding" when out-of-the-box-general-purpose issues are
+>> involved. The thing is that the client will be used as a
+>> general-purpose student pc in a university lab.
+>>
+>> Thanx again for your help,
+>>
+>> if anybody could direct me somewhere else I would be delighted to know so!
+>>
+>> mamalos
+>>
+>> -- 
+>> George Mamalakis
+>>
+>> IT Officer
+>> Electrical and Computer Engineer (Aristotle Un. of Thessaloniki),
+>> MSc (Imperial College of London)
+>>
+>> Department of Electrical and Computer Engineering
+>> Faculty of Engineering
+>> Aristotle University of Thessaloniki
+>>
+>> phone number : +30 (2310) 994379
+>>
+Ok Bruce and Kevin,
 
-OK, that sounds right to me.
+I'll try and do that. I only hope that MIT-client is compatible with 
+Heimdal-server (if I manage to install it on archlinux through AUR...:)).
 
---b.
+-- 
+George Mamalakis
 
-> If
-> those die, then too bad - that's operator error.
+IT Officer
+Electrical and Computer Engineer (Aristotle Un. of Thessaloniki),
+MSc (Imperial College of London)
+
+Department of Electrical and Computer Engineering
+Faculty of Engineering
+Aristotle University of Thessaloniki
+
+phone number : +30 (2310) 994379
+
