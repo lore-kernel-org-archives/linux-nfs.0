@@ -1,66 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42863 "EHLO fieldses.org"
+Received: from mail-out1.uio.no ([129.240.10.57]:47714 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753045Ab0ITRUw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Sep 2010 13:20:52 -0400
-Date: Mon, 20 Sep 2010 13:19:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Pavel Emelyanov <xemul@parallels.com>
-Cc: Neil Brown <neilb@suse.de>, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 7/9] sunrpc: The per-net skeleton
-Message-ID: <20100920171924.GM4580@fieldses.org>
-References: <4C90BADB.10700@parallels.com>
- <4C90BBE9.6000105@parallels.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C90BBE9.6000105@parallels.com>
+	id S1756589Ab0IUUAm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Sep 2010 16:00:42 -0400
+Subject: Re: [bfields@pop.test.fieldses.org: all f08d6374 Merge branch
+ 'nfs-for-next' into linux-next results]
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <1285097787.30222.24.camel@heimdal.trondhjem.org>
+References: <20100918171546.GA9859@fieldses.org>
+	 <1284831680.2787.1.camel@heimdal.trondhjem.org>
+	 <20100919184549.GD32071@fieldses.org> <20100920130106.GB4580@fieldses.org>
+	 <20100920131025.GC4580@fieldses.org>
+	 <1285091815.30222.19.camel@heimdal.trondhjem.org>
+	 <20100921111657.330e7838@corrin.poochiereds.net>
+	 <20100921192005.GC4385@fieldses.org>
+	 <1285097787.30222.24.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 21 Sep 2010 16:00:32 -0400
+Message-ID: <1285099232.30222.25.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Sep 15, 2010 at 04:28:25PM +0400, Pavel Emelyanov wrote:
-> @@ -38,18 +58,26 @@ init_sunrpc(void)
->  	err = rpcauth_init_module();
->  	if (err)
->  		goto out3;
-> +
-> +	cache_initialize();
-> +
-> +	err = register_pernet_subsys(&sunrpc_net_ops);
-> +	if (err)
-> +		goto out4;
->  #ifdef RPC_DEBUG
->  	rpc_register_sysctl();
->  #endif
->  #ifdef CONFIG_PROC_FS
->  	rpc_proc_init();
->  #endif
-> -	cache_initialize();
->  	cache_register(&ip_map_cache);
->  	cache_register(&unix_gid_cache);
->  	svc_init_xprt_sock();	/* svc sock transport */
->  	init_socket_xprt();	/* clnt sock transport */
->  	return 0;
-> +
-> +out4:
-> +	unregister_pernet_subsys(&sunrpc_net_ops);
-
-If register_pernet_subsys() failed, then shouldn't this be unnecessary?
-Maybe this should be rpcauth_remove_module()?
-
---b.
-
->  out3:
->  	rpc_destroy_mempool();
->  out2:
-> @@ -69,6 +97,7 @@ cleanup_sunrpc(void)
->  	rpc_destroy_mempool();
->  	cache_unregister(&ip_map_cache);
->  	cache_unregister(&unix_gid_cache);
-> +	unregister_pernet_subsys(&sunrpc_net_ops);
->  #ifdef RPC_DEBUG
->  	rpc_unregister_sysctl();
->  #endif
-> -- 
-> 1.5.5.6
+On Tue, 2010-09-21 at 15:36 -0400, Trond Myklebust wrote:
+> On Tue, 2010-09-21 at 15:20 -0400, J. Bruce Fields wrote:
+> > All I need to do is mount nfs4.1 and run cthon -s.  The last output I
+> > see from the test is:
+> > 
+> > check for proper open/unlink operation
+> > nfsjunk files before unlink:
+> >   
 > 
+> Oh... I bet I see what it is.
+> 
+> It's that damned res->sr_slotid = NFS4_MAX_SLOT_TABLE and related
+> initialisation junk that's biting us in the arse again...
+> 
+> I'll fix it...
+
+Does this work?
+
+Cheers
+  Trond
+-------------------------------------------------------------------------------------
+NFSv4.1: Fix the slotid initialisation in nfs_async_rename()
+
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+
+ fs/nfs/nfs4proc.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index c46e45e..72aa706 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2550,6 +2550,7 @@ static void nfs4_proc_unlink_setup(struct rpc_message *msg, struct inode *dir)
+ 
+ 	args->bitmask = server->cache_consistency_bitmask;
+ 	res->server = server;
++	res->seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_REMOVE];
+ }
+ 
+@@ -2575,6 +2576,7 @@ static void nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RENAME];
+ 	arg->bitmask = server->attr_bitmask;
+ 	res->server = server;
++	res->seq_res.sr_slotid = NFS4_MAX_SLOT_TABLE;
+ }
+ 
+ static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
+
+
