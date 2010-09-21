@@ -1,124 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:39275 "EHLO mx1.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:54353 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752552Ab0IHOg7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Sep 2010 10:36:59 -0400
-Message-ID: <4C879F81.6000500@suse.de>
-Date: Wed, 08 Sep 2010 20:06:49 +0530
-From: Suresh Jayaraman <sjayaraman@suse.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Neil Brown <neilb@suse.de>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [RFC][PATCH] nfs: support legacy NFS flock behavior via mount
- option
-References: <4C84DFA7.7050507@suse.de>	 <1283869039.4291.16.camel@heimdal.trondhjem.org> <4C869D00.8030604@suse.de> <1283892577.2788.104.camel@heimdal.trondhjem.org>
-In-Reply-To: <1283892577.2788.104.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1755901Ab0IUV62 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Sep 2010 17:58:28 -0400
+Date: Tue, 21 Sep 2010 14:58:23 -0700
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [bfields@pop.test.fieldses.org: all f08d6374 Merge branch
+ 'nfs-for-next' into linux-next results]
+Message-ID: <20100921145823.2ec2a81c@corrin.poochiereds.net>
+In-Reply-To: <1285101981.30222.27.camel@heimdal.trondhjem.org>
+References: <20100918171546.GA9859@fieldses.org>
+	<1284831680.2787.1.camel@heimdal.trondhjem.org>
+	<20100919184549.GD32071@fieldses.org>
+	<20100920130106.GB4580@fieldses.org>
+	<20100920131025.GC4580@fieldses.org>
+	<1285091815.30222.19.camel@heimdal.trondhjem.org>
+	<20100921111657.330e7838@corrin.poochiereds.net>
+	<20100921192005.GC4385@fieldses.org>
+	<1285097787.30222.24.camel@heimdal.trondhjem.org>
+	<1285099232.30222.25.camel@heimdal.trondhjem.org>
+	<20100921202411.GA10570@fieldses.org>
+	<1285101981.30222.27.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/08/2010 02:19 AM, Trond Myklebust wrote:
-> On Wed, 2010-09-08 at 01:43 +0530, Suresh Jayaraman wrote:
+On Tue, 21 Sep 2010 16:46:21 -0400
+Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
 
->> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
->> index eb51bd6..a13a83e 100644
->> --- a/fs/nfs/file.c
->> +++ b/fs/nfs/file.c
->> @@ -800,8 +800,13 @@ static int nfs_lock(struct file *filp, int cmd, struct file_lock *fl)
->>  
->>  	nfs_inc_stats(inode, NFSIOS_VFSLOCK);
->>  
->> -	/* No mandatory locks over NFS */
->> -	if (__mandatory_lock(inode) && fl->fl_type != F_UNLCK)
->> +	/*
->> +	 * No mandatory locks over NFS.
->> +	 * fcntl lock is local if mounted with "-o llock=fcntl" or
->> +	 * "-o llock=posix"
->> +	 */
->> +	if ((__mandatory_lock(inode) && fl->fl_type != F_UNLCK) ||
->> +			(NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FCNTL))
->>  		goto out_err;
->>  
->>  	if (NFS_PROTO(inode)->lock_check_bounds != NULL) {
->> @@ -825,12 +830,16 @@ out_err:
->>   */
->>  static int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
->>  {
->> +	struct inode *inode = filp->f_mapping->host;
->> +
->>  	dprintk("NFS: flock(%s/%s, t=%x, fl=%x)\n",
->>  			filp->f_path.dentry->d_parent->d_name.name,
->>  			filp->f_path.dentry->d_name.name,
->>  			fl->fl_type, fl->fl_flags);
->>  
->> -	if (!(fl->fl_flags & FL_FLOCK))
->> +	/* flock is local if mounted with "-o llock=flock" */
->> +	if ((NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK) ||
->> +			(!(fl->fl_flags & FL_FLOCK)))
->>  		return -ENOLCK;
+> On Tue, 2010-09-21 at 16:24 -0400, J. Bruce Fields wrote:
+> > On Tue, Sep 21, 2010 at 04:00:32PM -0400, Trond Myklebust wrote:
+> > > On Tue, 2010-09-21 at 15:36 -0400, Trond Myklebust wrote:
+> > > > On Tue, 2010-09-21 at 15:20 -0400, J. Bruce Fields wrote:
+> > > > > All I need to do is mount nfs4.1 and run cthon -s.  The last output I
+> > > > > see from the test is:
+> > > > > 
+> > > > > check for proper open/unlink operation
+> > > > > nfsjunk files before unlink:
+> > > > >   
+> > > > 
+> > > > Oh... I bet I see what it is.
+> > > > 
+> > > > It's that damned res->sr_slotid = NFS4_MAX_SLOT_TABLE and related
+> > > > initialisation junk that's biting us in the arse again...
+> > > > 
+> > > > I'll fix it...
+> > > 
+> > > Does this work?
+> > 
+> > Yup.
 > 
-> Is this really what we want to do? Shouldn't we rather default to
-> treating this as if NFS_MOUNT_NONLM were set?
+> It seems to fix things for me too... Once you mentioned NFSv4.1 it was
+> easy to reproduce the bug.
 > 
+> OK. I'll merge these into nfs-for-2.6.37...
 
-ah, yes, you're right.
-
->>  
->>  static void nfs_umount_begin(struct super_block *);
->>  static int  nfs_statfs(struct dentry *, struct kstatfs *);
->> @@ -1412,6 +1429,33 @@ static int nfs_parse_mount_options(char *raw,
->>  			mnt->fscache_uniq = string;
->>  			mnt->options |= NFS_OPTION_FSCACHE;
->>  			break;
->> +		case Opt_llock:
->> +			string = match_strdup(args);
->> +			if (string == NULL)
->> +				goto out_nomem;
->> +			token = match_token(string, nfs_llock_tokens, args);
->> +			kfree(string);
->> +			switch (token) {
->> +			case Opt_llock_all:
->> +				mnt->flags |= (NFS_MOUNT_LOCAL_FLOCK |
->> +					       NFS_MOUNT_LOCAL_FCNTL);
->> +				break;
->> +			case Opt_llock_flock:
->> +				mnt->flags |= NFS_MOUNT_LOCAL_FLOCK;
->> +				break;
->> +			case Opt_llock_fcntl:
->> +				mnt->flags |= NFS_MOUNT_LOCAL_FCNTL;
->> +				break;
->> +			case Opt_llock_none:
->> +				mnt->flags &= ~(NFS_MOUNT_LOCAL_FLOCK |
->> +						NFS_MOUNT_LOCAL_FCNTL);
->> +				break;
->> +			default:
->> +				dfprintk(MOUNT, "NFS:	invalid	"
->> +						"llock argument\n");
->> +				return 0;
->> +			};
->> +			break;
-> 
-> Could we perhaps also convert Opt_nolock so that it just sets
-> NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL (and ditto for the legacy
-> NFS_MOUNT_NONLM).
-> 
-
-Did you mean defining NFS_MOUNT_NONLM as
-
-#define NFS_MOUNT_NONLM         (NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL) ?
-
-This would be problematic when we want to say make flock local but
-fcntl NLM lock.. or make fcntl local but flock NLM lock.. i.e
-when we setup lockd, we check
-
- if (server->flags & NFS_MOUNT_NONLM)
-
-which will succeed and nlmclnt would remain uninitialized..
-
-
-Thanks,
+Thanks for fixing it. I should have mentioned that the 4.1 parts were
+written using the "cargo-cult" programming method of copying what
+unlink does, and that they needed careful review. Mea culpa!
 
 -- 
-Suresh Jayaraman
+Jeff Layton <jlayton@redhat.com>
