@@ -1,37 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:37122 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751414Ab0IMOsJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 10:48:09 -0400
-Date: Mon, 13 Sep 2010 10:48:08 -0400
-From: Christoph Hellwig <hch@infradead.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:31312 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752317Ab0IUHLh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Sep 2010 03:11:37 -0400
+Message-ID: <4C985A88.1000902@parallels.com>
+Date: Tue, 21 Sep 2010 11:11:04 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
- layout driver
-Message-ID: <20100913144808.GB31105@infradead.org>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
- <1283450419-5648-9-git-send-email-iisaman@netapp.com>
- <1284147111.10062.74.camel@heimdal.trondhjem.org>
- <AANLkTi=6vcQC1k28B=aKJbN=jRBipoff3+79BpgLxtXw@mail.gmail.com>
- <1284158223.14078.78.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1284158223.14078.78.camel@heimdal.trondhjem.org>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
+References: <4C90BADB.10700@parallels.com>	 <20100920161326.GL4580@fieldses.org> <4C978CE6.5080508@parallels.com>	 <20100920180418.GN4580@fieldses.org>  <4C97B248.1030801@parallels.com> <1285013116.2851.71.camel@heimdal.trondhjem.org>
+In-Reply-To: <1285013116.2851.71.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Sep 10, 2010 at 06:37:03PM -0400, Trond Myklebust wrote:
->       struct module *owner = THIS_MODULE;
+> The client should be something like the following:
 > 
-> > }
+>  1) Ensure sunrpc sockets are created using the correct net namespace
+
+Ack
+
+>  2) Convert rpc_pipefs to be per-net namespace.
+
+Trond, I think this part should be done the other way.
+
+You see, the rpc_pipefs is a filesystem already and we shouldn't
+make it bound to any task-driven context. What I was thinking about
+in that direction is make it mountable multiple times.
+
+The central issue of this is - the way we say the rpc_get_mount() 
+which vfsmount we need. Userspace will just use the per-container (i.e.
+per-chroot) instance of it and the kernel users will work with the
+vfsmount obtained by the rpc_get_mount() call.
+
+Now, how do I plan to solve the rpc_get_mount problem. Some time ago
+there was similar problem with the devpts filesystem - people making
+ptys work per-container tried to solve the same problem and they
+ended up (with Al's help) with a yet another devpts mount option which
+explicitly stated that a new instance should be created. How do you
+think if we do the same for rpc_pipefs (a newinstance mount option) and
+add yet another mount option for its only client (nfs) telling it where
+to look for the rpc mount for (e.g. rpcmount=/var/...) ?
+
+>  3) Convert the nfs_client and superblock to be per-net namespace
+
+Ack about the nfs_client, but as far as the superblock is
+concerned - I think we should tag only the nfs_server with
+net for the same reasons as in the item 2) above.
+
+>  4) Convert lockd's struct host to be per-net namespace
+
+Ack
+
+> Cheers
+>   Trond
 > 
-> ...although the struct module could probably indeed be part of
-> pnfs_layoutdriver_type too.
-
-If we only ever have one instances of the ops per type that's absolutely
-the way to go.  const ops structures are nice to have, but if means
-making the code more complex just for that there's no point.
-
-Take a look at e.g. struct file_system_type.
+> 
 
