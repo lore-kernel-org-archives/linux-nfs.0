@@ -1,140 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42218 "EHLO mx2.netapp.com"
+Received: from cantor.suse.de ([195.135.220.2]:50191 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752664Ab0IVWFk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Sep 2010 18:05:40 -0400
-Received: from localhost.localdomain (vikramyadav.hq.netapp.com [10.58.61.118] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8MM5M8P020412
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Sep 2010 15:05:27 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 05/12] RFC: nfs: ask for layouttypes during fsinfo call
-Date: Wed, 22 Sep 2010 18:05:03 -0400
-Message-Id: <1285193110-24073-6-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1285193110-24073-1-git-send-email-iisaman@netapp.com>
-References: <1285193110-24073-1-git-send-email-iisaman@netapp.com>
+	id S1752257Ab0IUXhc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Sep 2010 19:37:32 -0400
+Date: Wed, 22 Sep 2010 09:37:25 +1000
+From: Neil Brown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/6] sunrpc: close connection when a request is
+ irretrievably lost.
+Message-ID: <20100922093725.48a1a5fe@notabene>
+In-Reply-To: <20100921205343.GB10570@fieldses.org>
+References: <20100812065722.11459.18978.stgit@localhost.localdomain>
+	<20100812070406.11459.61914.stgit@localhost.localdomain>
+	<20100921205343.GB10570@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
+On Tue, 21 Sep 2010 16:53:43 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-This information will be used to determine which layout driver,
-if any, to use for subsequent IO on this filesystem.  Each driver
-is assigned an integer id, with 0 reserved to indicate no driver.
+> Apologies for the delay getting to the rest of these.
+> 
+> On Thu, Aug 12, 2010 at 05:04:07PM +1000, NeilBrown wrote:
+> > If we drop a request in the sunrpc layer, either due kmalloc failure,
+> > or due to a cache miss when we could not queue the request for later
+> > replay, then close the connection to encourage the client to retry sooner.
+> > 
+> > Note that if the drop happens in the NFS layer, NFSERR_JUKEBOX
+> > (aka NFS4ERR_DELAY) is returned to guide the client concerning
+> > replay.
+> 
+> Looks fine, but:
+> 
+> > diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> > index d9017d6..6359c42 100644
+> > --- a/net/sunrpc/svc.c
+> > +++ b/net/sunrpc/svc.c
+> > @@ -1055,6 +1055,9 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+> >  		goto err_bad;
+> >  	case SVC_DENIED:
+> >  		goto err_bad_auth;
+> > +	case SVC_CLOSE:
+> > +		if (test_bit(XPT_TEMP, &rqstp->rq_xprt->xpt_flags))
+> > +			svc_close_xprt(rqstp->rq_xprt);
+> 
+> There are also dropit's later in svc_process_common when xdr encoding
+> fails.  I wonder if we should close there?
+> 
+> Well, it's an odd case.  Seems like it should almost be declared a
+> programming error and made a WARN().
+> 
+> Applying as is.--b.
 
-The server can in theory return multiple ids.  However, our current
-client implementation only notes the first entry and ignores the
-rest.
+Thanks, I was wondering what had happened to these...
 
-Signed-off-by: TBD - melding/reorganization of several patches
----
- fs/nfs/nfs4proc.c       |    2 +-
- fs/nfs/nfs4xdr.c        |   57 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs_xdr.h |    1 +
- 3 files changed, 59 insertions(+), 1 deletions(-)
+I cannot find them in your git though - not pushed yet, or am I looking in
+the wrong branch (for-2.6.37 and nfsd-next seem the obvious choices).
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 72aa706..8b25cef 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -129,7 +129,7 @@ const u32 nfs4_fsinfo_bitmap[2] = { FATTR4_WORD0_MAXFILESIZE
- 			| FATTR4_WORD0_MAXREAD
- 			| FATTR4_WORD0_MAXWRITE
- 			| FATTR4_WORD0_LEASE_TIME,
--			0
-+			FATTR4_WORD1_FS_LAYOUT_TYPES
- };
- 
- const u32 nfs4_fs_locations_bitmap[2] = {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index b0bd7ef..e138237 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -3868,6 +3868,60 @@ xdr_error:
- 	return status;
- }
- 
-+/*
-+ * Decode potentially multiple layout types. Currently we only support
-+ * one layout driver per file system.
-+ */
-+static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
-+					 uint32_t *layouttype)
-+{
-+	uint32_t *p;
-+	int num;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+	num = be32_to_cpup(p);
-+
-+	/* pNFS is not supported by the underlying file system */
-+	if (num == 0) {
-+		*layouttype = 0;
-+		return 0;
-+	}
-+	if (num > 1)
-+		printk(KERN_INFO "%s: Warning: Multiple pNFS layout drivers "
-+			"per filesystem not supported\n", __func__);
-+
-+	/* Decode and set first layout type, move xdr->p past unused types */
-+	p = xdr_inline_decode(xdr, num * 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+	*layouttype = be32_to_cpup(p);
-+	return 0;
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+}
-+
-+/*
-+ * The type of file system exported.
-+ * Note we must ensure that layouttype is set in any non-error case.
-+ */
-+static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
-+				uint32_t *layouttype)
-+{
-+	int status = 0;
-+
-+	dprintk("%s: bitmap is %x\n", __func__, bitmap[1]);
-+	if (unlikely(bitmap[1] & (FATTR4_WORD1_FS_LAYOUT_TYPES - 1U)))
-+		return -EIO;
-+	if (bitmap[1] & FATTR4_WORD1_FS_LAYOUT_TYPES) {
-+		status = decode_first_pnfs_layout_type(xdr, layouttype);
-+		bitmap[1] &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
-+	} else
-+		*layouttype = 0;
-+	return status;
-+}
- 
- static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- {
-@@ -3894,6 +3948,9 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
- 	if ((status = decode_attr_maxwrite(xdr, bitmap, &fsinfo->wtmax)) != 0)
- 		goto xdr_error;
- 	fsinfo->wtpref = fsinfo->wtmax;
-+	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
-+	if (status)
-+		goto xdr_error;
- 
- 	status = verify_attr_len(xdr, savep, attrlen);
- xdr_error:
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 172df83..7d68a5c 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -113,6 +113,7 @@ struct nfs_fsinfo {
- 	__u32			dtpref;	/* pref. readdir transfer size */
- 	__u64			maxfilesize;
- 	__u32			lease_time; /* in seconds */
-+	__u32			layouttype; /* supported pnfs layout driver */
- };
- 
- struct nfs_fsstat {
--- 
-1.7.2.1
+For the other 'dropit' cases I think the svc_authorise failure is most likely
+to be interesting.  That can only fail if svcauth_gss_wrap_resp_* fails.  I
+don't really know what that means that ... maybe we should close the
+connection in that case.
+
+NeilBrown
 
