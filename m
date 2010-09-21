@@ -1,22 +1,40 @@
-From: Dean Hildebrand <seattleplus@gmail.com>
-Subject: Linux pNFS status meeting 09/23/10
-Date: Tue, 21 Sep 2010 09:57:41 -0700
-Message-ID: <4C98E405.7080906@gmail.com>
-References: <OFFA3EE8C5.4D0C75A4-ON88257791.0070F6D7-88257791.007121E6@us.ibm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [bfields-btOuF8jVhiP3NsPE3w5/ayCwEArCW2h5@public.gmane.org: all f08d6374 Merge branch
+ 'nfs-for-next' into linux-next results]
+Date: Tue, 21 Sep 2010 15:42:02 -0400
+Message-ID: <20100921194202.GD4385@fieldses.org>
+References: <20100918171546.GA9859@fieldses.org>
+ <1284831680.2787.1.camel@heimdal.trondhjem.org>
+ <20100919184549.GD32071@fieldses.org>
+ <20100920130106.GB4580@fieldses.org>
+ <20100920131025.GC4580@fieldses.org>
+ <1285091815.30222.19.camel@heimdal.trondhjem.org>
+ <20100921111657.330e7838@corrin.poochiereds.net>
+ <20100921192005.GC4385@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:54610 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754985Ab0IUQ5I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Sep 2010 12:57:08 -0400
-Received: by bwz11 with SMTP id 11so5235723bwz.19
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Sep 2010 09:57:07 -0700 (PDT)
-In-Reply-To: <OFFA3EE8C5.4D0C75A4-ON88257791.0070F6D7-88257791.007121E6@us.ibm.com>
+Received: from fieldses.org ([174.143.236.118]:44599 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753444Ab0IUTna (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Sep 2010 15:43:30 -0400
+In-Reply-To: <20100921192005.GC4385@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Meeting on Thursday 09/23/10 at 9:30 AM PDT (12:30 PM EST)
+On Tue, Sep 21, 2010 at 03:20:05PM -0400, J. Bruce Fields wrote:
+> All I need to do is mount nfs4.1 and run cthon -s.  The last output I
+> see from the test is:
+> 
+> check for proper open/unlink operation
+> nfsjunk files before unlink:
+>   
+> 
+> That's on a kernel without Trond's fix above.
 
-Dean
+But, as expected, that fix makes no difference.
+
+--b.
