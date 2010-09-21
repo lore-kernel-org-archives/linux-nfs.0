@@ -1,89 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6474 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:35449 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751781Ab0IBLvs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Sep 2010 07:51:48 -0400
-Date: Thu, 2 Sep 2010 07:55:18 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Neil Brown <neilb@suse.de>, "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] rpc.nfsd: mount up nfsdfs is it doesn't appear to be
- mounted yet (try #2)
-Message-ID: <20100902075518.58a1daf3@corrin.poochiereds.net>
-In-Reply-To: <4C7F8A80.3050705@RedHat.com>
-References: <1283283160-30024-1-git-send-email-jlayton@redhat.com>
-	<20100901204818.GA10507@fieldses.org>
-	<20100901165605.41f4978d@tlielax.poochiereds.net>
-	<20100902073156.577757b5@notabene>
-	<4C7F8A80.3050705@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1755237Ab0IUU7n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Sep 2010 16:59:43 -0400
+Date: Tue, 21 Sep 2010 16:58:13 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [bfields@pop.test.fieldses.org: all f08d6374 Merge branch
+ 'nfs-for-next' into linux-next results]
+Message-ID: <20100921205813.GC10570@fieldses.org>
+References: <20100919184549.GD32071@fieldses.org>
+ <20100920130106.GB4580@fieldses.org>
+ <20100920131025.GC4580@fieldses.org>
+ <1285091815.30222.19.camel@heimdal.trondhjem.org>
+ <20100921111657.330e7838@corrin.poochiereds.net>
+ <20100921192005.GC4385@fieldses.org>
+ <1285097787.30222.24.camel@heimdal.trondhjem.org>
+ <1285099232.30222.25.camel@heimdal.trondhjem.org>
+ <20100921202411.GA10570@fieldses.org>
+ <1285101981.30222.27.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1285101981.30222.27.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 02 Sep 2010 07:29:04 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
-
-> Hey,
+On Tue, Sep 21, 2010 at 04:46:21PM -0400, Trond Myklebust wrote:
+> On Tue, 2010-09-21 at 16:24 -0400, J. Bruce Fields wrote:
+> > On Tue, Sep 21, 2010 at 04:00:32PM -0400, Trond Myklebust wrote:
+> > > On Tue, 2010-09-21 at 15:36 -0400, Trond Myklebust wrote:
+> > > > On Tue, 2010-09-21 at 15:20 -0400, J. Bruce Fields wrote:
+> > > > > All I need to do is mount nfs4.1 and run cthon -s.  The last output I
+> > > > > see from the test is:
+> > > > > 
+> > > > > check for proper open/unlink operation
+> > > > > nfsjunk files before unlink:
+> > > > >   
+> > > > 
+> > > > Oh... I bet I see what it is.
+> > > > 
+> > > > It's that damned res->sr_slotid = NFS4_MAX_SLOT_TABLE and related
+> > > > initialisation junk that's biting us in the arse again...
+> > > > 
+> > > > I'll fix it...
+> > > 
+> > > Does this work?
+> > 
+> > Yup.
 > 
-> On 09/01/2010 05:31 PM, Neil Brown wrote:
-> > 
-> > Hi,
-> >  I was musing about this and thought I would share my musings - not to be
-> >  taken too seriously unless they resonate with you.
-> > 
-> >  If rpc.nfsd is mounting /proc/fs/nfsd, should it also be starting rpc.statd,
-> >  which should be running before nfsd is started?
-> >  Should it 'exportfs -av' too?
-> > 
-> >  Should mount.nfs be mounting /var/lib/nfs/rpc_pipefs too?
-> >  It already runs statd as requimred, which in-turn runs sm-notify, though it
-> >  is really best to run that much earlier.
-> > 
-> >  How far do we really want to go with this "just do the right thing" approach?
-> Good point... My original thoughts were just to exit if /proc/fs/nfsd was
-> not mounted, which would be the simplest way... But in the name of "things
-> just working" I feel having rpc.nfsd trying the mount makes some sense... 
+> It seems to fix things for me too... Once you mentioned NFSv4.1 it was
+> easy to reproduce the bug.
+
+OK, good.  I've a slight fear I may have volunteered as Mr. Upstream NFS
+QA, which I didn't really intend, though of course I want to see stuff
+caught sooner rather than later....
+
+Anyway, I should have noticed which test it failed on sooner.
+
+--b.
+
 > 
-> > 
-> >  Should "rpc.nfsd" be a replacement for /etc/init.d/nfs-kernel-server or
-> >  whatever your favourite distro calls it?  Or should it just be a tool for
-> >  managing the nfsd threads?
-> No and yes.. 
+> OK. I'll merge these into nfs-for-2.6.37...
 > 
-> I also see rpc.nfsd becoming the real daemon which will take care of 
-> all the upcalls from the kernel. Basically ripping out all the upcall code
-> out of rpc.mountd and putting it into rpc.nfsd. That way rpc.mountd will
-> not have to run in V4-only environments.
+> Cheers
+>   Trond
 > 
-
-That seems like a lot of work for little gain. rpc.nfsd (despite its
-'d' suffix) is currently just a "control program". It does its thing
-and then exits.
-
-If you do the above then it'll have to live as a full-fledged daemon.
-Won't we just be trading rpc.mountd for rpc.nfsd at that point? What
-would be the benefit?
-
-If you're concerned about the sockets that mountd listens on, I think
-that Chuck had a patch at one point that made it possible to run mountd
-as an "upcall-only" daemon for v4-only servers.
-
-> > 
-> > 
-> >  I could imagine that it would be OK to add a '-L' flag to say 'use legacy
-> >  interface' and have rpc.nfsd fail noisily if nfsdfs wasn't mounted, and -L
-> >  wasn't given.
-> > 
-> >  I could imagine that if protocol options were specified with -L, that would
-> >  be an error.
-> Hmm... The first thing that comes to my mind is slipper slope... I think
-> we just deprecate interface and move on...
-> 
-
-Agreed. Let's go ahead and start deprecating the kernel interface. We
-can decide afterward what to do in userspace.
-
--- 
-Jeff Layton <jlayton@redhat.com>
