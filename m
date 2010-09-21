@@ -1,144 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:42659 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932390Ab0IGRji convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 13:39:38 -0400
-Subject: Re: mount.nfs: protocol fallback when server doesn't support TCP
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20100907113225.4a018ba3@notabene>
-Date: Tue, 7 Sep 2010 13:37:40 -0400
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <597F59F8-FA58-4D44-AB2A-9F03E4C61583@oracle.com>
-References: <20100826120635.4c3157bc@notabene> <659EE931-F48E-4A5D-9212-D4F8AE421029@oracle.com> <20100830103025.70d09ec8@notabene> <BC2D2164-0836-4DAC-99C5-C7BE23D3B163@oracle.com> <20100831110024.68e8877d@notabene> <EC686BD1-834D-4060-84E7-FBF0733B7ACA@oracle.com> <20100907113225.4a018ba3@notabene>
-To: Neil Brown <neilb@suse.de>
+Received: from mx2.netapp.com ([216.240.18.37]:50832 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751803Ab0IUMSR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Sep 2010 08:18:17 -0400
+Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Pavel Emelyanov <xemul@parallels.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4C985A88.1000902@parallels.com>
+References: <4C90BADB.10700@parallels.com>
+	 <20100920161326.GL4580@fieldses.org> <4C978CE6.5080508@parallels.com>
+	 <20100920180418.GN4580@fieldses.org>  <4C97B248.1030801@parallels.com>
+	 <1285013116.2851.71.camel@heimdal.trondhjem.org>
+	 <4C985A88.1000902@parallels.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 21 Sep 2010 08:18:13 -0400
+Message-ID: <1285071493.3105.55.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Sep 6, 2010, at 9:32 PM, Neil Brown wrote:
-
-> On Tue, 31 Aug 2010 12:38:09 -0400
-> Chuck Lever <chuck.lever@oracle.com> wrote:
+On Tue, 2010-09-21 at 11:11 +0400, Pavel Emelyanov wrote:
+> > The client should be something like the following:
+> > 
+> >  1) Ensure sunrpc sockets are created using the correct net namespace
 > 
+> Ack
 > 
->>>> 
->>>>> +						/* OK to try different protocols. Lets see
->>>>> +						 * what portmap thinks.
->>>>> +						 */
->>>>> +						int oldfake = mi->fake;
->>>>> +						int res;
->>>>> +						mi->fake = 1;
->>>>> +						res = nfs_try_mount_v3v2(mi);
->>>> 
->>>> If you just want to probe the server's portmapper, I think you can use nfs_probe_bothports() directly.
->>>> 
->>> 
->>> Not quite.  You would need to wrap it in a loop over all addresses in
->>> md->address, and would need to worry about the mounthost option.  It seems
->>> easier to just call nfs_try_mount_v3v2 which already does this.
->> 
->> /me smacks forehead
->> 
->> Complexity that I guess we have to live with.  A comment that explains the oldfake hack would be helpful.
+> >  2) Convert rpc_pipefs to be per-net namespace.
 > 
-> And often trying to write such a comment can make it clear why the code was a
-> bad idea in the first place.... :-)
+> Trond, I think this part should be done the other way.
 > 
-> Rather than write a comment I wouldn't believe myself, here is something
-> quite different - my third draft.
-> This is on top of the nice tidy-up patches you posted earlier.
+> You see, the rpc_pipefs is a filesystem already and we shouldn't
+> make it bound to any task-driven context. What I was thinking about
+> in that direction is make it mountable multiple times.
 > 
-> It uses nfs_getport to make very focussed requests to portmap.
+> The central issue of this is - the way we say the rpc_get_mount() 
+> which vfsmount we need. Userspace will just use the per-container (i.e.
+> per-chroot) instance of it and the kernel users will work with the
+> vfsmount obtained by the rpc_get_mount() call.
 > 
-> Two things I'm still not really sure about:
+> Now, how do I plan to solve the rpc_get_mount problem. Some time ago
+> there was similar problem with the devpts filesystem - people making
+> ptys work per-container tried to solve the same problem and they
+> ended up (with Al's help) with a yet another devpts mount option which
+> explicitly stated that a new instance should be created. How do you
+> think if we do the same for rpc_pipefs (a newinstance mount option) and
+> add yet another mount option for its only client (nfs) telling it where
+> to look for the rpc mount for (e.g. rpcmount=/var/...) ?
+
+As long as we have some mechanism to ensure that rpc.gssd from one net
+namespace doesn't try to establish a kerberos security context on behalf
+of a NFS mount that resides in a different net namespace.
+My point is if the rpc.gssd resides in a different net namespace, then
+we have no guarantee that the IP address we pass in the upcall even
+points to the same server, so we must ensure that the namespaces match.
+
+> >  3) Convert the nfs_client and superblock to be per-net namespace
 > 
-> 1/ RDMA.  How does that interact with fallback.  Do we only support v4 over
->   RDMA?  That would be nice was we could simply avoid fallback in that case.
+> Ack about the nfs_client, but as far as the superblock is
+> concerned - I think we should tag only the nfs_server with
+> net for the same reasons as in the item 2) above.
 
-My impression is that today RDMA is stable only on vers=3; someday it should be stable with vers=4 too.
+You should tag the nfs_server, and then make sure that nfs_compare_super
+does not match something that is tagged with a different net namespace
+than the current one. Otherwise, you can end up mounting the wrong NFS
+server (for the same reason as above).
 
-I think Steve and I need to agree on the final form of the RDMA patches before we can say with authority how fallback will work.
+> >  4) Convert lockd's struct host to be per-net namespace
 
-> 2/ IPv6.  I should possibly be checking if v3v2 are available via UDP6 as well
->   as UDP - and similarly if v4 has become available via TCP6?? Or is that
->   all magically handled somewhere under the hood?
-
-nfs_try_mount_v4() will try all address families provided by getaddrinfo(3).  So when ECONNREFUSED finally bubbles up to nfs_try_mount(), mount.nfs should have already tried NFSv4 via both tcp and tcp6.
-
-Anyway, this seems to answer my original question about "what are the risks of trying the portmapper-based approach?"  It looks like a complex solution no matter what.
-
-I'm not suggesting you abandon this direction, but if the nfs_try_mount() logic does nothing more but fallback to v2/v3 if the NFSv4 mount attempt fails with ECONNREFUSED, what harm could that cause?
-
-> From 60dae9b9c14869ae630db683e2524ad230064b19 Mon Sep 17 00:00:00 2001
-> From: Neil Brown <neilb@suse.de>
-> Date: Tue, 7 Sep 2010 11:23:02 +1000
-> Subject: [PATCH] mount: correctly handle fallback for  ECONNREFUSED during mount attempt.
-> 
-> If we get ECONNREFUSED when attempting a v4 mount, it could be that
-> the server just isn't ready yet (the current assumption) or it could
-> be that the server only support UDP - and thus only v3/v2.  The latter
-> possibility isn't handled currently.
-> 
-> So if we get ECONNREFUSED when fallback is an option, check with
-> portmap/rpcbind to see if it could be that case that v2/v3 are
-> supported over UDP, and v4 still is not.  In that case, fall back to v2v3.
-> 
-> I'm not at all sure if IPv6 possibilities are RDMA are handled correctly..
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 9e29a19..5ebcf3e 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -750,6 +750,7 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
-> {
-> 	unsigned long protocol;
-> 	int result;
-> +	struct addrinfo *ai;
-> 
-> 	/*
-> 	 * If UDP was requested from the command line, try
-> @@ -796,6 +797,33 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
-> 		/* Linux servers prior to 2.6.25 may return
-> 		 * EPERM when NFS version 4 is not supported. */
-> 		goto fall_back;
-> +	case ECONNREFUSED:
-> +		/* Either the server doesn't accept TCP connections,
-> +		 * or it just isn't quite ready yet.
-> +		 * In the first case, fall back to v3v2, in the second
-> +		 * return failure - as this isn't a permanent error
-> +		 * the attempt will be retried.
-> +		 * To determine which, we need to check with portmap/rpcbind.
-> +		 * If v2 or v3 are supported on UDP, but v4 isn't on TCP then fall-back.
-> +		 */
-> +		for (ai = mi->address; ai != NULL; ai = ai->ai_next) {
-> +			if (nfs_getport(ai->ai_addr, ai->ai_addrlen,
-> +					NFS_PROGRAM, 3, IPPROTO_UDP) != 0 ||
-> +			    nfs_getport(ai->ai_addr, ai->ai_addrlen,
-> +					NFS_PROGRAM, 2, IPPROTO_UDP) != 0) {
-> +				if (nfs_getport(ai->ai_addr, ai->ai_addrlen,
-> +						NFS_PROGRAM, 4, IPPROTO_TCP) != 0) {
-> +					/* v4 support is almost online, wait for it. */
-> +					errno = ECONNREFUSED;
-> +					return result;
-> +				} else
-> +					/* v2/v3 is supported, but v4 isn't, fall_back */
-> +					goto fall_back;
-> +			}
-> +		}
-> +		/* portmap is not responding yet either, so just try again */
-> +		errno = ECONNREFUSED;
-> +		return result;
-> 	default:
-> 		return result;
-> 	}
-
--- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Cheers
+  Trond
