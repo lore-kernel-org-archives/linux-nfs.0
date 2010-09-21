@@ -1,161 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:54449 "EHLO mx1.suse.de"
+Received: from fieldses.org ([174.143.236.118]:34079 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753001Ab0IVC6A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Sep 2010 22:58:00 -0400
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Wed, 22 Sep 2010 12:55:07 +1000
-Subject: [PATCH 4/7] sunrpc/cache: centralise handling of size limit on
-	deferred list.
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20100922025507.31745.61919.stgit@localhost.localdomain>
-In-Reply-To: <20100922025009.31745.98237.stgit@localhost.localdomain>
-References: <20100922025009.31745.98237.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+	id S1751456Ab0IUNxZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Sep 2010 09:53:25 -0400
+Date: Tue, 21 Sep 2010 09:51:57 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: George Mamalakis <mamalos@eng.auth.gr>
+Cc: linux-nfs@vger.kernel.org, kwc@citi.umich.edu
+Subject: Re: nfsv3 gssapi client?
+Message-ID: <20100921135157.GA26473@fieldses.org>
+References: <4C938F3B.4030604@eng.auth.gr>
+ <20100917174328.GC25515@fieldses.org>
+ <4C972DB3.2050405@eng.auth.gr>
+ <20100920145643.GD4580@fieldses.org>
+ <4C978008.50805@eng.auth.gr>
+ <20100920160732.GK4580@fieldses.org>
+ <4C986E82.7040003@eng.auth.gr>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4C986E82.7040003@eng.auth.gr>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We limit the number of 'defer' requests to DFR_MAX.
+On Tue, Sep 21, 2010 at 11:36:18AM +0300, George Mamalakis wrote:
+>  Hi guys,
+> 
+> Kevin:
+> As stated in my first email, the linux box is running on a 2.6.35
+> kernel, heimdal 1.3.3-1 (the version was not mentioned in my email),
 
-The imposition of this limit is spread about a bit - sometime we don't
-add new things to the list, sometimes we remove old things.
+As Kevin says, it would be worth trying MIT kerberos instead of heimdal
+if you can, as that is generally better tested.
 
-Also it is currently applied to requests which we are 'waiting' for
-rather than 'deferring'.  This doesn't seem ideal as 'waiting'
-requests are naturally limited by the number of threads.
+--b.
 
-So gather the DFR_MAX handling code to one place and only apply it to
-requests that are actually being deferred.
-
-This means that not all 'cache_deferred_req' structures go on the
-'cache_defer_list, so we need to be careful when removing things.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- net/sunrpc/cache.c |   68 +++++++++++++++++++++++++++++++++++-----------------
- 1 files changed, 46 insertions(+), 22 deletions(-)
-
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 466f65c..1963e2a 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -511,22 +511,24 @@ static int cache_defer_cnt;
- 
- static void __unhash_deferred_req(struct cache_deferred_req *dreq)
- {
--	list_del_init(&dreq->recent);
- 	hlist_del_init(&dreq->hash);
--	cache_defer_cnt--;
-+	if (!list_empty(&dreq->recent)) {
-+		list_del_init(&dreq->recent);
-+		cache_defer_cnt--;
-+	}
- }
- 
- static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_head *item)
- {
- 	int hash = DFR_HASH(item);
- 
-+	INIT_LIST_HEAD(&dreq->recent);
- 	list_add(&dreq->recent, &cache_defer_list);
- 	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
- }
- 
- static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *item)
- {
--	struct cache_deferred_req *discard;
- 
- 	dreq->item = item;
- 
-@@ -534,19 +536,8 @@ static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *it
- 
- 	__hash_deferred_req(dreq, item);
- 
--	/* it is in, now maybe clean up */
--	discard = NULL;
--	if (++cache_defer_cnt > DFR_MAX) {
--		discard = list_entry(cache_defer_list.prev,
--				     struct cache_deferred_req, recent);
--		__unhash_deferred_req(discard);
--	}
- 	spin_unlock(&cache_defer_lock);
- 
--	if (discard)
--		/* there was one too many */
--		discard->revisit(discard, 1);
--
- 	if (!test_bit(CACHE_PENDING, &item->flags)) {
- 		/* must have just been validated... */
- 		cache_revisit_request(item);
-@@ -612,18 +603,47 @@ static int cache_wait_req(struct cache_req *req, struct cache_head *item)
- 	return -EEXIST;
- }
- 
-+static void cache_limit_defers(struct cache_deferred_req *dreq)
-+{
-+	/* Add 'dreq' to the list of deferred requests and make sure
-+	 * we don't exceed the limit of allowed deferred requests.
-+	 */
-+	struct cache_deferred_req *discard = NULL;
-+
-+	spin_lock(&cache_defer_lock);
-+	if (!list_empty(&dreq->recent) ||
-+	    hlist_unhashed(&dreq->hash)) {
-+		/* Must have lost a race, maybe cache_revisit_request is
-+		 * already processing this.  In any case, there is nothing for
-+		 * us to do.
-+		 */
-+		spin_unlock(&cache_defer_lock);
-+	}
-+
-+	/* First, add this to the list */
-+	cache_defer_cnt++;
-+	list_add(&dreq->recent, &cache_defer_list);
-+
-+	/* now consider removing either the first or the last */
-+	if (cache_defer_cnt > DFR_MAX) {
-+		if (net_random() & 1)
-+			discard = list_entry(cache_defer_list.next,
-+					     struct cache_deferred_req, recent);
-+		else
-+			discard = list_entry(cache_defer_list.prev,
-+					     struct cache_deferred_req, recent);
-+		__unhash_deferred_req(discard);
-+	}
-+	spin_unlock(&cache_defer_lock);
-+	if (discard)
-+		discard->revisit(discard, 1);
-+}
-+
- static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- {
- 	struct cache_deferred_req *dreq;
- 	int ret;
- 
--	if (cache_defer_cnt >= DFR_MAX) {
--		/* too much in the cache, randomly drop this one,
--		 * or continue and drop the oldest
--		 */
--		if (net_random()&1)
--			return -ENOMEM;
--	}
- 	if (req->thread_wait) {
- 		ret = cache_wait_req(req, item);
- 		if (ret != -ETIMEDOUT)
-@@ -632,7 +652,11 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
- 	dreq = req->defer(req);
- 	if (dreq == NULL)
- 		return -ENOMEM;
--	return setup_deferral(dreq, item);
-+	if (setup_deferral(dreq, item) < 0)
-+		return -EAGAIN;
-+	
-+	cache_limit_defers(dreq);
-+	return 0;
- }
- 
- static void cache_revisit_request(struct cache_head *item)
-
-
+> rpcbind-0.2.0-2, nfs-utils-1.2.2-3, and the distro is arch-linux.
+> 
+> Bruce: I would rather find an "easier" (configuration-specific) way
+> to overcome my problem instead of delving into the code, since I am
+> not a developer (I am an admin :)). Nevertheless, when I used
+> google.com/searchcode for _gss_get_mechanism_cred I found that there
+> is a libgss/g_glue.c that defines this function in the following way
+> (the site is svn://svn.genunix.org/on/trunk <http://google.com/codesearch/p?hl=en#m0BoFGhUuEY/&q=_gss_get_mechanism_cred>):
+> 
+> /*
+>  * Glue routine for returning the mechanism-specific credential from a
+>  * external union credential.
+>  */
+> gss_cred_id_t
+> __gss_get_mechanism_cred(union_cred, mech_type)
+>         const  gss_union_cred_t  union_cred;
+>         const  gss_OID           mech_type;
+> {
+>         int                      i;
+> 
+>         if  (union_cred == (gss_union_cred_t)GSS_C_NO_CREDENTIAL)
+>                 return  (GSS_C_NO_CREDENTIAL);
+> 
+>         for  (i =0; i<  union_cred->count; i++) {
+>                 if  (g_OID_equal(mech_type,&union_cred->mechs_array[i]))
+>                         return  (union_cred->cred_array[i]);
+>         }
+>         return  (GSS_C_NO_CREDENTIAL);
+> }
+> 
+> 
+> where you can see that the guy returns a cred_array[i] element, that
+> obviously is null, because (most probably) the if statement above
+> did not match any "compatible" mechanisms during the recursion.
+> 
+> Maybe I am totally wrong, since I haven't checked the code
+> thoroughly, but I think that the problem is located somewhere in
+> this code segment.
+> 
+> As I stated before, I was rather hoping to avoid this procedure,
+> since I decided to use the linux distro for my clients due to its
+> 'out-of-the-box' and 'everything-is-supported' benefits as
+> (slightly-)opposed to fbsd (which I use in all my servers and
+> personal computers, and "love" as an operating system) can be a bit
+> more "demanding" when out-of-the-box-general-purpose issues are
+> involved. The thing is that the client will be used as a
+> general-purpose student pc in a university lab.
+> 
+> Thanx again for your help,
+> 
+> if anybody could direct me somewhere else I would be delighted to know so!
+> 
+> mamalos
+> 
+> -- 
+> George Mamalakis
+> 
+> IT Officer
+> Electrical and Computer Engineer (Aristotle Un. of Thessaloniki),
+> MSc (Imperial College of London)
+> 
+> Department of Electrical and Computer Engineering
+> Faculty of Engineering
+> Aristotle University of Thessaloniki
+> 
+> phone number : +30 (2310) 994379
+> 
