@@ -1,116 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:64102 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752700Ab0IHDLX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Sep 2010 23:11:23 -0400
-Message-ID: <4C86FECF.2050103@cn.fujitsu.com>
-Date: Wed, 08 Sep 2010 11:11:11 +0800
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
- delegation
-References: <4C592F85.8070308@cn.fujitsu.com>	 <4C59306A.9090302@cn.fujitsu.com>	 <1280925913.3011.23.camel@heimdal.trondhjem.org>	 <4C5A213F.9000506@cn.fujitsu.com>	 <1281013423.2948.1.camel@heimdal.trondhjem.org>	 <4C5B8B48.4050008@cn.fujitsu.com>	 <1281101448.3586.11.camel@heimdal.trondhjem.org>	 <4C68EDAE.5000201@cn.fujitsu.com>	 <1282087012.18385.30.camel@heimdal.trondhjem.org>	 <4C7DF56B.3040206@cn.fujitsu.com>	 <1283897068.9097.15.camel@heimdal.trondhjem.org>	 <4C86E7FA.7020701@cn.fujitsu.com> <1283911036.16070.1.camel@heimdal.trondhjem.org>
-In-Reply-To: <1283911036.16070.1.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from sith.mimuw.edu.pl ([193.0.96.4]:26908 "EHLO sith.mimuw.edu.pl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755981Ab0IUJIW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Sep 2010 05:08:22 -0400
+Date: Tue, 21 Sep 2010 11:08:21 +0200
+From: Jan =?utf-8?Q?R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
+Message-ID: <20100921090820.GF4358@sith.mimuw.edu.pl>
+References: <20100917181251.GA21111@sith.mimuw.edu.pl> <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com> <20100917190413.GB21111@sith.mimuw.edu.pl> <DA851F94-8AFB-448D-B48D-BC4ACAD8F395@oracle.com> <20100917222227.GA22144@sith.mimuw.edu.pl> <DC671AB7-F3AF-4E70-B42E-4FF991D16E43@oracle.com> <20100920153157.GA20589@sith.mimuw.edu.pl> <02C38759-5236-454B-8F7B-02F9419B1532@oracle.com> <20100920164856.GA20925@sith.mimuw.edu.pl> <FC6FA83D-52D7-411A-A18F-4A143A60992E@oracle.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <FC6FA83D-52D7-411A-A18F-4A143A60992E@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-If there are not any delegation at this inode, we should clear stateid's
-NFS_DELEGATED_STATE when update it.
+On Mon, 20 Sep 2010, Chuck Lever wrote:
 
-Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+> 
+> On Sep 20, 2010, at 12:48 PM, Jan Rękorajski wrote:
+> 
+> > On Mon, 20 Sep 2010, Chuck Lever wrote:
+> > 
+> >> 
+> >> On Sep 20, 2010, at 11:31 AM, Jan Rękorajski wrote:
+> >> 
+> >>> On Mon, 20 Sep 2010, Chuck Lever wrote:
+> >>> 
+> >>>> 
+> >>>> On Sep 17, 2010, at 6:22 PM, Jan Rękorajski wrote:
+> >>>> 
+[snip]
+> > 
+> >> None of NFS's RPC daemons allow you to set a bind address, with one
+> >> exception.  rpc.statd allows one to specify a "bind address" in the
+> >> form of a host name for reasons specific to the NSM protocol.
+> > 
+> > I may be wrong here, but maybe it's because it was always portmapper
+> > doing the binding, so if portmapper couldn't then no one thought of
+> > adding this to RPC daemons.
+> 
+> If rpc.mountd is running on a host, and rpcbind is not, it doesn't
+> matter.  A port scanner can still find and attack the open mountd
+> port.  The best and safest approach, IMO, is to use a firewall, and
+> then test it with a remote port scanner service.  Our rpcbind
+> implementation has tcp_wrapper already built in, for instance, but I
+> use the iptables firewall in Fedora 13 (and, I keep RPC services on
+> hosts inside the firewall, not on the firewall itself).
 
----
- fs/nfs/delegation.c |    1 +
- fs/nfs/nfs4proc.c   |   12 +++++++++++-
- 2 files changed, 12 insertions(+), 1 deletions(-)
+You're right, but try to see that rpcbind is not just a part of NFS
+implementation.  It is an RPC port mapper daemon that happens to be
+mostly used by NFS and is maintained by NFS people.  So rpc.mountd
+security should be a separate issue, especially if it can run without a
+portmapper.
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index b9c3c43..62f296e 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -106,6 +106,7 @@ again:
- 			continue;
- 		if (memcmp(state->stateid.data, stateid->data, sizeof(state->stateid.data)) != 0)
- 			continue;
-+		clear_bit(NFS_DELEGATED_STATE, &state->flags);
- 		get_nfs_open_context(ctx);
- 		spin_unlock(&inode->i_lock);
- 		err = nfs4_open_delegation_recall(ctx, state, stateid);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 089da5b..f7e45b4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -919,8 +919,18 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
- 
- 	rcu_read_lock();
- 	deleg_cur = rcu_dereference(nfsi->delegation);
--	if (deleg_cur == NULL)
-+	if (deleg_cur == NULL) {
-+		if (delegation == NULL && open_stateid != NULL) {
-+			/*
-+			 * FIXME: If the state has NFS_DELEGATED_STATE bit
-+			 * we catch a race. Maybe should recover its open
-+			 * stateid, now we just clear the NFS_DELEGATED_STATE
-+			 * bit.
-+			 */
-+			clear_bit(NFS_DELEGATED_STATE, &state->flags);
-+		}
- 		goto no_delegation;
-+	}
- 
- 	spin_lock(&deleg_cur->lock);
- 	if (nfsi->delegation != deleg_cur ||
--- 
-1.7.0
+> [ ... snipped ... ]
+> 
+> >>> Second thing is a host for vservers
+> >>> (http://linux-vserver.org), I need to run portmapper in guests but
+> >>> rpcbind listening on INADDR_ANY is not letting me.
+> >> 
+> >> Can you say more?  Maybe it's a bug.
+> > 
+> > It's more of a design flaw, vserver is an isolation techique, and if I
+> > bind to some port on INADDR_ANY on host then I can't bind to that
+> > port on guests. I don't know the implementation details, but network
+> > interfaces other than lo are not (maybe can't be) isolated enough.
+> 
+> The problem is the guest listeners get EADDRINUSE, or equivalent,
+> since they are sharing a network namespace with the host?
 
+It appears so, sorry that I can't elaborate more on this.
 
->>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>> index 36400d3..c0c0320 100644
->>>> --- a/fs/nfs/nfs4proc.c
->>>> +++ b/fs/nfs/nfs4proc.c
->>>> @@ -900,8 +900,18 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
->>>>  
->>>>  	rcu_read_lock();
->>>>  	deleg_cur = rcu_dereference(nfsi->delegation);
->>>> -	if (deleg_cur == NULL)
->>>> +	if (deleg_cur == NULL) {
->>>> +		if (delegation == NULL &&
->>>> +		    test_bit(NFS_DELEGATED_STATE, &state->flags)) {
->>> Any reason why we can't ditch the 'test_bit'?
->>>
->>   Because i am not sure it's ok that we just clear_bit at here.
->>   If you think it's ok, i'd be fine with removing this test_bit.
+> >>> And finally it's good
+> >>> to be consistent, it's strange to me that someone may want to limit only
+> >>> the UDP part of portmapper (modulo network issues you mentioned).
+> >> 
+> >> "-h" was added to address an issue specific to Linux UDP sockets.
+> >> It's not a feature, but a bug fix that is UDP-specific.  TCP doesn't
+> >> need this bug fix.
+> > 
+> > Of course, but why not change a bugfix into a feature?
 > 
-> How is it different from just clearing the bit?
-> 
->>>> +			/*FIXME: If the state has NFS_DELEGATED_STATE bit, 
->>>> +			 * we catch a race. Maybe should recover its open
->>>> +			 * stateid, here we just clear the NFS_DELEGATED_STATE
->>>> +			 * bit.
->>> Can this ever be called with both deleg_cur==NULL and
->>> open_stateid==NULL? If so, then we still have a bug.
->>>
->>   Yes, i will add a checking. Thanks very much.
->>
->>>> +			 */
->>>> +			clear_bit(NFS_DELEGATED_STATE, &state->flags);
->>>> +		}
->>>>  		goto no_delegation;
->>>> +	}
->>>>  
->>>>  	spin_lock(&deleg_cur->lock);
->>>>  	if (nfsi->delegation != deleg_cur ||
-> 
-> Cheers
->   Trond
-> 
-> 
-> 
+> If we want to add this feature properly, we will have to change a
+> broad range of user space components.  Therefore it will be a
+> non-trivial undertaking.
+
+IMO adding this to rpcbind won't hurt anybody, it's simple and may be a good
+starting point to work on the rest of the daemons.  Besides I do have rpcbind
+with my patch running and NFS and other RPC services are working just fine.
 
 -- 
-Regards
-Bian Naimeng
-
+Jan Rękorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
+baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
+BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
