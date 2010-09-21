@@ -1,75 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51296 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755475Ab0IGWXo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Sep 2010 18:23:44 -0400
-Date: Wed, 8 Sep 2010 08:23:36 +1000
-From: Neil Brown <neilb@suse.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Suresh Jayaraman <sjayaraman@suse.de>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC][PATCH] nfs: support legacy NFS flock behavior via mount
- option
-Message-ID: <20100908082336.3efda031@notabene>
-In-Reply-To: <1283869039.4291.16.camel@heimdal.trondhjem.org>
-References: <4C84DFA7.7050507@suse.de>
-	<1283869039.4291.16.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from vergina.eng.auth.gr ([155.207.18.1]:63297 "EHLO
+	vergina.eng.auth.gr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757020Ab0IUIge (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Sep 2010 04:36:34 -0400
+Message-ID: <4C986E82.7040003@eng.auth.gr>
+Date: Tue, 21 Sep 2010 11:36:18 +0300
+From: George Mamalakis <mamalos@eng.auth.gr>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org, kwc@citi.umich.edu
+Subject: Re: nfsv3 gssapi client?
+References: <4C938F3B.4030604@eng.auth.gr> <20100917174328.GC25515@fieldses.org> <4C972DB3.2050405@eng.auth.gr> <20100920145643.GD4580@fieldses.org> <4C978008.50805@eng.auth.gr> <20100920160732.GK4580@fieldses.org>
+In-Reply-To: <20100920160732.GK4580@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 07 Sep 2010 10:17:19 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+  Hi guys,
 
-> On Mon, 2010-09-06 at 18:03 +0530, Suresh Jayaraman wrote:
-> > NFS clients since 2.6.12 support flock()locks by emulating the
-> > BSD-style locks in terms of POSIX byte range locks. So the NFS client
-> > does not allow to lock the same file using both flock() and fcntl
-> > byte-range locks.
-> > 
-> > For some Windows applications which seem to use both share mode locks
-> > (flock()) and fcntl byte range locks sequentially on the same file,
-> > the locking is failing as the lock has already been acquired. i.e. the
-> > flock mapped as posix locks collide with actual byte range locks from
-> > the same process. The problem was observed on a setup with Windows
-> > clients accessing Excel files on a Samba exported share which is
-> > originally a NFS mount from a NetApp filer. Since kernels < 2.6.12 does
-> > not support flock, what was working (as flock locks were local) in
-> > older kernels is not working with newer kernels.
-> > 
-> > This could be seen as a bug in the implementation of the windows
-> > application or a NFS client regression, but that is debatable.
-> > In the spirit of not breaking existing setups, this patch adds mount
-> > options "flock=local" that enables older flock behavior and
-> > "flock=fcntl" that allows the current flock behavior.
-> 
-> So instead of having a special option for flock only, what say we rather
-> introduce an option of the form
-> 
->   -olocal_lock=
-> 
-> which can take the values 'none', 'flock', 'fcntl' (or 'posix'?) and
-> 'all'?
+Kevin:
+As stated in my first email, the linux box is running on a 2.6.35 
+kernel, heimdal 1.3.3-1 (the version was not mentioned in my email),  
+rpcbind-0.2.0-2, nfs-utils-1.2.2-3, and the distro is arch-linux.
 
-I observe that the NLM protocol has support for 'share' reservations.
-Requesting 'access == READ, mode==DENY_WRITE' is like a shared lock,
-and 'access = WRITE, mode== DENY_READ_WRITE' is like an exclusive lock.
+Bruce: I would rather find an "easier" (configuration-specific) way to 
+overcome my problem instead of delving into the code, since I am not a 
+developer (I am an admin :)). Nevertheless, when I used 
+google.com/searchcode for _gss_get_mechanism_cred I found that there is 
+a libgss/g_glue.c that defines this function in the following way (the 
+site is svn://svn.genunix.org/on/trunk 
+<http://google.com/codesearch/p?hl=en#m0BoFGhUuEY/&q=_gss_get_mechanism_cred>):
 
-As samba maps theh share reservations into flock locks, it could make sense
-for NFS to (optionally) map flock locks into share reservations.
+/*
+  * Glue routine for returning the mechanism-specific credential from a
+  * external union credential.
+  */
+gss_cred_id_t
+__gss_get_mechanism_cred(union_cred, mech_type)
+         const  gss_union_cred_t  union_cred;
+         const  gss_OID           mech_type;
+{
+         int                      i;
 
-The current Linux nfsd handles contention between these reservations entirely
-internally, but it could conceivably grow an option to map them into flock
-lock, just like samba does.
+         if  (union_cred == (gss_union_cred_t)GSS_C_NO_CREDENTIAL)
+                 return  (GSS_C_NO_CREDENTIAL);
 
-If this were at all a possible future direction, I would like to ensure that
-option names chosen now allowed for that extension.
- flock=local and flock=fcntl naturally extends to flock=share
+         for  (i =0; i<  union_cred->count; i++) {
+                 if  (g_OID_equal(mech_type,&union_cred->mechs_array[i]))
+                         return  (union_cred->cred_array[i]);
+         }
+         return  (GSS_C_NO_CREDENTIAL);
+}
 
-local_lock= doesn't really extend ... unless shared_lock=flock, but that
-seems a bit backwards.
 
-Is that a direction we could ever want to go?
+where you can see that the guy returns a cred_array[i] element, that 
+obviously is null, because (most probably) the if statement above did 
+not match any "compatible" mechanisms during the recursion.
 
-NeilBrown
+Maybe I am totally wrong, since I haven't checked the code thoroughly, 
+but I think that the problem is located somewhere in this code segment.
+
+As I stated before, I was rather hoping to avoid this procedure, since I 
+decided to use the linux distro for my clients due to its 
+'out-of-the-box' and 'everything-is-supported' benefits as 
+(slightly-)opposed to fbsd (which I use in all my servers and personal 
+computers, and "love" as an operating system) can be a bit more 
+"demanding" when out-of-the-box-general-purpose issues are involved. The 
+thing is that the client will be used as a general-purpose student pc in 
+a university lab.
+
+Thanx again for your help,
+
+if anybody could direct me somewhere else I would be delighted to know so!
+
+mamalos
+
+-- 
+George Mamalakis
+
+IT Officer
+Electrical and Computer Engineer (Aristotle Un. of Thessaloniki),
+MSc (Imperial College of London)
+
+Department of Electrical and Computer Engineering
+Faculty of Engineering
+Aristotle University of Thessaloniki
+
+phone number : +30 (2310) 994379
+
