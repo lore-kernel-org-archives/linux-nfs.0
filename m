@@ -1,204 +1,254 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36355 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:57120 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755810Ab0IQRoo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Sep 2010 13:44:44 -0400
-Date: Fri, 17 Sep 2010 13:43:28 -0400
-To: George Mamalakis <mamalos@eng.auth.gr>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfsv3 gssapi client?
-Message-ID: <20100917174328.GC25515@fieldses.org>
-References: <4C938F3B.4030604@eng.auth.gr>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C938F3B.4030604@eng.auth.gr>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1752423Ab0IVWFk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Sep 2010 18:05:40 -0400
+Received: from localhost.localdomain (vikramyadav.hq.netapp.com [10.58.61.118] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8MM5M8Q020412
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Sep 2010 15:05:28 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 06/12] RFC: nfs: set layout driver
+Date: Wed, 22 Sep 2010 18:05:04 -0400
+Message-Id: <1285193110-24073-7-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1285193110-24073-1-git-send-email-iisaman@netapp.com>
+References: <1285193110-24073-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Sep 17, 2010 at 06:54:35PM +0300, George Mamalakis wrote:
->   Hi all,
-> 
-> I have a FreeBSD nfsv3 server that exports a filesystem with
-> sec=krb5. Mounting the share with sec=krb5 under a fbsd client works
-> fine. I now try to mount it under linux (archlinux, upgraded today)
-> using nfs-utils. Heimdal is configured on the linux-box, kinit -k
-> linuxclient works fine. I am also able to kinit to my user
-> principals from it. When I try to mount the nvsv3 sec=krb5 share, I
-> get the following error:
-> 
-> # mount -t nfs -o sec=krb5 fbsdserver:/exports /mnt
-> 
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Was there supposed to be some error output there?  Or did the mount just
-hang?
+Put in the infrastructure that uses information returned from the
+server at mount to select a layout driver module.
 
-> # tail /var/log/messages
-> Sep 17 16:05:31 linuxclient rpc.statd[27683]: Version 1.2.2 starting
-> Sep 17 16:05:31 linuxclient sm-notify[27684]: Version 1.2.2 starting
-> Sep 17 16:05:31 linuxclient sm-notify[27684]: Already notifying
-> clients; Exiting!
-> Sep 17 16:05:31 linuxclient rpc.statd[27683]: Running as root.
-> chown /var/lib/nfs to choose different user
-> Sep 17 16:05:31 linuxclient sm-notify[27687]: Version 1.2.2 starting
-> Sep 17 16:05:31 linuxclient sm-notify[27687]: Already notifying
-> clients; Exiting!
-> Sep 17 16:05:53 linuxclient kernel: svc: failed to register lockdv1
-> RPC service (errno 111).
-> Sep 17 16:05:53 linuxclient kernel: lockd_up: makesock failed, error=-111
-> Sep 17 16:05:54 linuxclient kernel: svc: failed to register lockdv1
-> RPC service (errno 111).
-> Sep 17 16:05:57 linuxclient kernel: svc: failed to register lockdv1
-> RPC service (errno 111).
-> Sep 17 16:06:01 linuxclient kernel: svc: failed to register lockdv1
-> RPC service (errno 111).
+In this patch, a stub is used that always returns "no driver found".
 
-111 is ECONNREFUSED.  I'm not sure why that's failing.  (Should failure
-to register lockd fail the whole mount?  I thought it would at worst
-result in ENOLCK on lock requests?) Do you get better results if you
-mount with nolock?
+Signed-off-by: TBD - melding/reorganization of several patches
+---
+ fs/nfs/Makefile           |    1 +
+ fs/nfs/client.c           |    4 ++
+ fs/nfs/pnfs.c             |   80 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h             |   56 +++++++++++++++++++++++++++++++
+ include/linux/nfs_fs.h    |    1 +
+ include/linux/nfs_fs_sb.h |    1 +
+ 6 files changed, 143 insertions(+), 0 deletions(-)
+ create mode 100644 fs/nfs/pnfs.c
+ create mode 100644 fs/nfs/pnfs.h
 
-> and it keeps on like this.
-> 
-> My nfs-common.conf reads:
-> 
-> [root@linuxclient ~]# cat /etc/conf.d/nfs-common.conf
-> # Parameters to be passed to nfs-common (nfs clients & server) init script.
-> #
-> 
-> # If you do not set values for the NEED_ options, they will be attempted
-> # autodetected; this should be sufficient for most people. Valid
-> alternatives
-> # for the NEED_ options are "yes" and "no".
-> 
-> # Do you want to start the statd daemon? It is not needed for NFSv4.
-> NEED_STATD=""
-> 
-> # Options to pass to rpc.statd.
-> # See rpc.statd(8) for more details.
-> # N.B. statd normally runs on both client and server, and run-time
-> # options should be specified accordingly.
-> # STATD_OPTS="-p 32765 -o 32766"
-> STATD_OPTS=""
-> 
-> # Options to pass to sm-notify
-> # e.g. SMNOTIFY_OPTS="-p 32764"
-> SMNOTIFY_OPTS=""
-> 
-> # Do you want to start the idmapd daemon? It is only needed for NFSv4.
-> NEED_IDMAPD=""
-> 
-> # Options to pass to rpc.idmapd.
-> # See rpc.idmapd(8) for more details.
-> IDMAPD_OPTS="-vvv"
-> 
-> # Do you want to start the gssd daemon? It is required for Kerberos mounts.
-> NEED_GSSD="yes"
-> 
-> # Options to pass to rpc.gssd.
-> # See rpc.gssd(8) for more details.
-> GSSD_OPTS="-vvv"
-> #RPCGSSDOPTS="-vvv"
-> # Where to mount rpc_pipefs filesystem; the default is
-> "/var/lib/nfs/rpc_pipefs".
-> PIPEFS_MOUNTPOINT=""
-> 
-> # Options used to mount rpc_pipefs filesystem; the default is "defaults".
-> PIPEFS_MOUNTOPTS=""
-> 
-> my rpc processes are:
-> [root@linuxclient ~]# ps axuww  | grep -i rpc
-> root      1228  0.0  0.0      0     0 ?        S    14:47   0:00 [rpciod/0]
-> root     27670  0.0  0.0   6232   908 ?        Ss   16:05   0:00
-> /usr/bin/rpcbind
-> root     27683  0.0  0.1   6332  1236 ?        Ss   16:05   0:00
-> /usr/sbin/rpc.statd
-> root     27699  0.0  0.1   6264  1180 ?        Ss   16:05   0:00
-> /usr/sbin/rpc.gssd -vvv
-> root     27720  0.0  0.0   3776   476 pts/0    S+   17:01   0:00
-> grep -i rpc
-> 
-> And rpcinfo shows:
-> root@linuxclient ~]# rpcinfo
->    program version netid     address                service    owner
->     100000    4    tcp6      ::.0.111               portmapper superuser
->     100000    3    tcp6      ::.0.111               portmapper superuser
->     100000    4    udp6      ::.0.111               portmapper superuser
->     100000    3    udp6      ::.0.111               portmapper superuser
->     100000    4    udp       0.0.0.0.0.111          portmapper superuser
->     100000    3    udp       0.0.0.0.0.111          portmapper superuser
->     100000    2    udp       0.0.0.0.0.111          portmapper superuser
->     100000    4    local     /var/run/rpcbind.sock  portmapper superuser
->     100000    3    local     /var/run/rpcbind.sock  portmapper superuser
->     100024    1    udp       0.0.0.0.228.144        status     superuser
->     100024    1    tcp       0.0.0.0.198.8          status     superuser
-> [root@linuxclient ~]# rpcinfo -s
->    program version(s) netid(s)                         service     owner
->     100000  2,3,4     local,udp,udp6,tcp6              portmapper
-> superuser
->     100024  1         tcp,udp                          status
-> superuser
-> 
-> whereas on the fbsd box I have:
-> [root@fbsdserver ~]# rpcinfo -s
->    program version(s) netid(s)                         service     owner
->     100000  2,3,4     local,udp6,tcp6,udp,tcp          rpcbind
-> superuser
->     100024  1         tcp,udp,tcp6,udp6                status
-> superuser
->     100021  4,3,1,0   tcp,udp,tcp6,udp6                nlockmgr
-> superuser
->     100003  3,2       tcp6,tcp,udp6,udp                nfs
-> superuser
->     100005  3,1       tcp,udp,tcp6,udp6                mountd
-> superuser
-> 
-> 
-> The versions I use are:
-> rpcbind-0.2.0-2
-> nfs-utils-1.2.2-3
-> 
-> And uname -a shows:
-> 
-> [root@linuxclient ~]# uname -a
-> Linux linuxclient 2.6.35-ARCH #1 SMP PREEMPT Fri Aug 27 16:22:18 UTC
-> 2010 i686 Intel(R) Xeon(R) CPU E5310 @ 1.60GHz GenuineIntel
-> GNU/Linux
-> 
-> Does linux support RPCSEC_GSS security flavors over nvsv3?
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index da7fda6..bb9e773 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -15,5 +15,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ 			   delegation.o idmap.o \
+ 			   callback.o callback_xdr.o callback_proc.o \
+ 			   nfs4namespace.o
++nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
+ nfs-$(CONFIG_SYSCTL) += sysctl.o
+ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 4e7df2a..eed1212 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -48,6 +48,7 @@
+ #include "iostat.h"
+ #include "internal.h"
+ #include "fscache.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_CLIENT
+ 
+@@ -898,6 +899,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
+ 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
+ 		server->wsize = NFS_MAX_FILE_IO_SIZE;
+ 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
++	set_pnfs_layoutdriver(server, fsinfo->layouttype);
++
+ 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
+ 
+ 	server->dtsize = nfs_block_size(fsinfo->dtpref, NULL);
+@@ -1017,6 +1020,7 @@ void nfs_free_server(struct nfs_server *server)
+ {
+ 	dprintk("--> nfs_free_server()\n");
+ 
++	unset_pnfs_layoutdriver(server);
+ 	spin_lock(&nfs_client_lock);
+ 	list_del(&server->client_link);
+ 	list_del(&server->master_link);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+new file mode 100644
+index 0000000..ff4f34b
+--- /dev/null
++++ b/fs/nfs/pnfs.c
+@@ -0,0 +1,80 @@
++/*
++ *  pNFS functions to call and manage layout drivers.
++ *
++ *  Copyright (c) 2002 [year of first publication]
++ *  The Regents of the University of Michigan
++ *  All Rights Reserved
++ *
++ *  Dean Hildebrand <dhildebz@umich.edu>
++ *
++ *  Permission is granted to use, copy, create derivative works, and
++ *  redistribute this software and such derivative works for any purpose,
++ *  so long as the name of the University of Michigan is not used in
++ *  any advertising or publicity pertaining to the use or distribution
++ *  of this software without specific, written prior authorization. If
++ *  the above copyright notice or any other identification of the
++ *  University of Michigan is included in any copy of any portion of
++ *  this software, then the disclaimer below must also be included.
++ *
++ *  This software is provided as is, without representation or warranty
++ *  of any kind either express or implied, including without limitation
++ *  the implied warranties of merchantability, fitness for a particular
++ *  purpose, or noninfringement.  The Regents of the University of
++ *  Michigan shall not be liable for any damages, including special,
++ *  indirect, incidental, or consequential damages, with respect to any
++ *  claim arising out of or in connection with the use of the software,
++ *  even if it has been or is hereafter advised of the possibility of
++ *  such damages.
++ */
++
++#include <linux/nfs_fs.h>
++#include "pnfs.h"
++
++#define NFSDBG_FACILITY		NFSDBG_PNFS
++
++/* STUB that returns the equivalent of "no module found" */
++static struct pnfs_layoutdriver_type *
++find_pnfs_driver(u32 id)
++{
++	return NULL;
++}
++
++void
++unset_pnfs_layoutdriver(struct nfs_server *nfss)
++{
++	nfss->pnfs_curr_ld = NULL;
++}
++
++/*
++ * Try to set the server's pnfs module to the pnfs layout type specified by id.
++ * Currently only one pNFS layout driver per filesystem is supported.
++ *
++ * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
++ */
++void
++set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
++{
++	struct pnfs_layoutdriver_type *ld_type = NULL;
++
++	BUG_ON(!(server->nfs_client->cl_exchange_flags &
++		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS)));
++	if (id == 0)
++		goto out_no_driver;
++	ld_type = find_pnfs_driver(id);
++	if (!ld_type) {
++		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
++		ld_type = find_pnfs_driver(id);
++		if (!ld_type) {
++			dprintk("%s: No pNFS module found for %u.\n",
++				__func__, id);
++			goto out_no_driver;
++		}
++	}
++	server->pnfs_curr_ld = ld_type;
++	dprintk("%s: pNFS module for %u set\n", __func__, id);
++	return;
++
++out_no_driver:
++	dprintk("%s: Using NFSv4 I/O\n", __func__);
++	server->pnfs_curr_ld = NULL;
++}
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+new file mode 100644
+index 0000000..c628ef1
+--- /dev/null
++++ b/fs/nfs/pnfs.h
+@@ -0,0 +1,56 @@
++/*
++ *  pNFS client data structures.
++ *
++ *  Copyright (c) 2002
++ *  The Regents of the University of Michigan
++ *  All Rights Reserved
++ *
++ *  Dean Hildebrand <dhildebz@umich.edu>
++ *
++ *  Permission is granted to use, copy, create derivative works, and
++ *  redistribute this software and such derivative works for any purpose,
++ *  so long as the name of the University of Michigan is not used in
++ *  any advertising or publicity pertaining to the use or distribution
++ *  of this software without specific, written prior authorization. If
++ *  the above copyright notice or any other identification of the
++ *  University of Michigan is included in any copy of any portion of
++ *  this software, then the disclaimer below must also be included.
++ *
++ *  This software is provided as is, without representation or warranty
++ *  of any kind either express or implied, including without limitation
++ *  the implied warranties of merchantability, fitness for a particular
++ *  purpose, or noninfringement.  The Regents of the University of
++ *  Michigan shall not be liable for any damages, including special,
++ *  indirect, incidental, or consequential damages, with respect to any
++ *  claim arising out of or in connection with the use of the software,
++ *  even if it has been or is hereafter advised of the possibility of
++ *  such damages.
++ */
++
++#ifndef FS_NFS_PNFS_H
++#define FS_NFS_PNFS_H
++
++#ifdef CONFIG_NFS_V4_1
++
++#define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
++
++/* Per-layout driver specific registration structure */
++struct pnfs_layoutdriver_type {
++};
++
++void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
++void unset_pnfs_layoutdriver(struct nfs_server *);
++
++#else  /* CONFIG_NFS_V4_1 */
++
++static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
++{
++}
++
++static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
++{
++}
++
++#endif /* CONFIG_NFS_V4_1 */
++
++#endif /* FS_NFS_PNFS_H */
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index d929b18..aba3da2 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -615,6 +615,7 @@ nfs_fileid_to_ino_t(u64 fileid)
+ #define NFSDBG_CLIENT		0x0200
+ #define NFSDBG_MOUNT		0x0400
+ #define NFSDBG_FSCACHE		0x0800
++#define NFSDBG_PNFS		0x1000
+ #define NFSDBG_ALL		0xFFFF
+ 
+ #ifdef __KERNEL__
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index c82ee7c..29a821d 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -144,6 +144,7 @@ struct nfs_server {
+ 	u32			acl_bitmask;	/* V4 bitmask representing the ACEs
+ 						   that are supported on this
+ 						   filesystem */
++	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+ #endif
+ 	void (*destroy)(struct nfs_server *);
+ 
+-- 
+1.7.2.1
 
-Yes, and this is something I test regularly.
-
-> And if
-> so, could somebody direct me on how to establish mounting the remote
-> share?
-
-Looks like the server advertises ipv6.  I wonder if anyone's tested gss
-in that case?
-
---b.
-
-> 
-> Thank you all for your time and attention in advance,
-> 
-> regards,
-> 
-> mamalos
-> 
-> -- 
-> George Mamalakis
-> 
-> IT Officer
-> Electrical and Computer Engineer (Aristotle Un. of Thessaloniki),
-> MSc (Imperial College of London)
-> 
-> Department of Electrical and Computer Engineering
-> Faculty of Engineering
-> Aristotle University of Thessaloniki
-> 
-> phone number : +30 (2310) 994379
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
