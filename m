@@ -1,40 +1,33 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 3/7] sunrpc/cache: change deferred-request hash table to
- use hlist.
-Date: Wed, 22 Sep 2010 14:51:13 +1000
-Message-ID: <20100922145113.30ede403@notabene>
-References: <20100922025009.31745.98237.stgit@localhost.localdomain>
-	<20100922025506.31745.9409.stgit@localhost.localdomain>
-	<20100922025944.GC22021@fieldses.org>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: Linux pNFS status meeting 09/23/10
+Date: Wed, 22 Sep 2010 11:23:13 -0400
+Message-ID: <4C9A1F61.9020405@RedHat.com>
+References: <OFFA3EE8C5.4D0C75A4-ON88257791.0070F6D7-88257791.007121E6@us.ibm.com> <4C98E405.7080906@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, nfsv4@linux-nfs.org
+To: Dean Hildebrand <seattleplus@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57451 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:26309 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750730Ab0IVEvU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Sep 2010 00:51:20 -0400
-In-Reply-To: <20100922025944.GC22021@fieldses.org>
+	id S1754427Ab0IVPXi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Sep 2010 11:23:38 -0400
+In-Reply-To: <4C98E405.7080906@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 21 Sep 2010 22:59:44 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+I will have to miss this one... I'm at the dentist... Joy Joy.. 
 
-> On Wed, Sep 22, 2010 at 12:55:07PM +1000, NeilBrown wrote:
-> > Being a hash table, hlist is the best option.
-> > 
-> > There is currently some ugliness were we treat "->next == NULL" as
-> > a special case to avoid having to initialise the whole array.
-> > This change nicely gets rid of that case.
+steved.
+
+On 09/21/2010 12:57 PM, Dean Hildebrand wrote:
+> Meeting on Thursday 09/23/10 at 9:30 AM PDT (12:30 PM EST)
 > 
-> This (or some hopefully correct variant!) should already be applied;
-> could you check that it looks right?
-
-I must has pulled just a little too early - I see it now.
-Just a couple of minor formatting improvements in your version, otherwise
-identical.
-
-Thanks,
-NeilBrown
+> Dean
+> _______________________________________________
+> NOTE: THIS LIST IS DEPRECATED.  Please use linux-nfs@vger.kernel.org instead.
+> (To subscribe to linux-nfs@vger.kernel.org: send "subscribe linux-nfs" in the body of a message to majordomo-u79uwXL29TaiAVqoAR/hOA@public.gmane.org)
+> 
+> NFSv4 mailing list
+> NFSv4@linux-nfs.org
+> To change your subscription to this list, please see http://linux-nfs.org/cgi-bin/mailman/listinfo/nfsv4
