@@ -1,151 +1,161 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:22931 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:54449 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754219Ab0IJT1X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Sep 2010 15:27:23 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRMaW001848
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:22 -0400
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRIBY018810
-	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:22 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 7/9] nfs: add a rename_setup nfs_rpc_op for async renames
-Date: Fri, 10 Sep 2010 15:27:16 -0400
-Message-Id: <1284146838-1468-8-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
-References: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
+	id S1753001Ab0IVC6A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Sep 2010 22:58:00 -0400
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Wed, 22 Sep 2010 12:55:07 +1000
+Subject: [PATCH 4/7] sunrpc/cache: centralise handling of size limit on
+	deferred list.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20100922025507.31745.61919.stgit@localhost.localdomain>
+In-Reply-To: <20100922025009.31745.98237.stgit@localhost.localdomain>
+References: <20100922025009.31745.98237.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Add a call that can set up the arguments and the response container for
-an asynchronous rename call.
+We limit the number of 'defer' requests to DFR_MAX.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+The imposition of this limit is spread about a bit - sometime we don't
+add new things to the list, sometimes we remove old things.
+
+Also it is currently applied to requests which we are 'waiting' for
+rather than 'deferring'.  This doesn't seem ideal as 'waiting'
+requests are naturally limited by the number of threads.
+
+So gather the DFR_MAX handling code to one place and only apply it to
+requests that are actually being deferred.
+
+This means that not all 'cache_deferred_req' structures go on the
+'cache_defer_list, so we need to be careful when removing things.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfs/nfs3proc.c       |   18 ++++++++++++++++++
- fs/nfs/nfs4proc.c       |   21 +++++++++++++++++++++
- fs/nfs/proc.c           |    8 ++++++++
- include/linux/nfs_xdr.h |    1 +
- 4 files changed, 48 insertions(+), 0 deletions(-)
+ net/sunrpc/cache.c |   68 +++++++++++++++++++++++++++++++++++-----------------
+ 1 files changed, 46 insertions(+), 22 deletions(-)
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index c5cccf1..0654177 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -439,6 +439,23 @@ nfs3_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 466f65c..1963e2a 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -511,22 +511,24 @@ static int cache_defer_cnt;
+ 
+ static void __unhash_deferred_req(struct cache_deferred_req *dreq)
+ {
+-	list_del_init(&dreq->recent);
+ 	hlist_del_init(&dreq->hash);
+-	cache_defer_cnt--;
++	if (!list_empty(&dreq->recent)) {
++		list_del_init(&dreq->recent);
++		cache_defer_cnt--;
++	}
  }
  
- static int
-+nfs3_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
+ static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_head *item)
+ {
+ 	int hash = DFR_HASH(item);
+ 
++	INIT_LIST_HEAD(&dreq->recent);
+ 	list_add(&dreq->recent, &cache_defer_list);
+ 	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
+ }
+ 
+ static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *item)
+ {
+-	struct cache_deferred_req *discard;
+ 
+ 	dreq->item = item;
+ 
+@@ -534,19 +536,8 @@ static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *it
+ 
+ 	__hash_deferred_req(dreq, item);
+ 
+-	/* it is in, now maybe clean up */
+-	discard = NULL;
+-	if (++cache_defer_cnt > DFR_MAX) {
+-		discard = list_entry(cache_defer_list.prev,
+-				     struct cache_deferred_req, recent);
+-		__unhash_deferred_req(discard);
+-	}
+ 	spin_unlock(&cache_defer_lock);
+ 
+-	if (discard)
+-		/* there was one too many */
+-		discard->revisit(discard, 1);
+-
+ 	if (!test_bit(CACHE_PENDING, &item->flags)) {
+ 		/* must have just been validated... */
+ 		cache_revisit_request(item);
+@@ -612,18 +603,47 @@ static int cache_wait_req(struct cache_req *req, struct cache_head *item)
+ 	return -EEXIST;
+ }
+ 
++static void cache_limit_defers(struct cache_deferred_req *dreq)
 +{
-+	struct nfs_renameres *res = msg->rpc_resp;
++	/* Add 'dreq' to the list of deferred requests and make sure
++	 * we don't exceed the limit of allowed deferred requests.
++	 */
++	struct cache_deferred_req *discard = NULL;
 +
-+	msg->rpc_proc = &nfs3_procedures[NFS3PROC_RENAME];
++	spin_lock(&cache_defer_lock);
++	if (!list_empty(&dreq->recent) ||
++	    hlist_unhashed(&dreq->hash)) {
++		/* Must have lost a race, maybe cache_revisit_request is
++		 * already processing this.  In any case, there is nothing for
++		 * us to do.
++		 */
++		spin_unlock(&cache_defer_lock);
++	}
 +
-+	res->old_fattr = nfs_alloc_fattr();
-+	res->new_fattr = nfs_alloc_fattr();
-+	if (res->old_fattr != NULL && res->new_fattr != NULL)
-+		return 0;
++	/* First, add this to the list */
++	cache_defer_cnt++;
++	list_add(&dreq->recent, &cache_defer_list);
 +
-+	nfs_free_fattr(res->old_fattr);
-+	nfs_free_fattr(res->new_fattr);
-+	return -ENOMEM;
++	/* now consider removing either the first or the last */
++	if (cache_defer_cnt > DFR_MAX) {
++		if (net_random() & 1)
++			discard = list_entry(cache_defer_list.next,
++					     struct cache_deferred_req, recent);
++		else
++			discard = list_entry(cache_defer_list.prev,
++					     struct cache_deferred_req, recent);
++		__unhash_deferred_req(discard);
++	}
++	spin_unlock(&cache_defer_lock);
++	if (discard)
++		discard->revisit(discard, 1);
 +}
 +
-+static int
- nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		 struct inode *new_dir, struct qstr *new_name)
+ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
  {
-@@ -842,6 +859,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.unlink_setup	= nfs3_proc_unlink_setup,
- 	.unlink_done	= nfs3_proc_unlink_done,
- 	.rename		= nfs3_proc_rename,
-+	.rename_setup	= nfs3_proc_rename_setup,
- 	.link		= nfs3_proc_link,
- 	.symlink	= nfs3_proc_symlink,
- 	.mkdir		= nfs3_proc_mkdir,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 120a8a6..011dc90 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2671,6 +2671,26 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- 	return 1;
- }
+ 	struct cache_deferred_req *dreq;
+ 	int ret;
  
-+static int nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
-+{
-+	struct nfs_server *server = NFS_SERVER(dir);
-+	struct nfs_renameargs *arg = msg->rpc_argp;
-+	struct nfs_renameres *res = msg->rpc_resp;
-+
-+	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RENAME];
-+	arg->bitmask = server->attr_bitmask;
-+	res->server = server;
-+
-+	res->old_fattr = nfs_alloc_fattr();
-+	res->new_fattr = nfs_alloc_fattr();
-+	if (res->old_fattr != NULL && res->new_fattr != NULL)
-+		return 0;
-+
-+	nfs_free_fattr(res->old_fattr);
-+	nfs_free_fattr(res->new_fattr);
-+	return -ENOMEM;
-+}
-+
- static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		struct inode *new_dir, struct qstr *new_name)
- {
-@@ -5443,6 +5463,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.unlink_setup	= nfs4_proc_unlink_setup,
- 	.unlink_done	= nfs4_proc_unlink_done,
- 	.rename		= nfs4_proc_rename,
-+	.rename_setup	= nfs4_proc_rename_setup,
- 	.link		= nfs4_proc_link,
- 	.symlink	= nfs4_proc_symlink,
- 	.mkdir		= nfs4_proc_mkdir,
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 5c70b58..48410f9 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -366,6 +366,13 @@ static int nfs_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- }
- 
- static int
-+nfs_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
-+{
-+	msg->rpc_proc = &nfs_procedures[NFSPROC_RENAME];
+-	if (cache_defer_cnt >= DFR_MAX) {
+-		/* too much in the cache, randomly drop this one,
+-		 * or continue and drop the oldest
+-		 */
+-		if (net_random()&1)
+-			return -ENOMEM;
+-	}
+ 	if (req->thread_wait) {
+ 		ret = cache_wait_req(req, item);
+ 		if (ret != -ETIMEDOUT)
+@@ -632,7 +652,11 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 	dreq = req->defer(req);
+ 	if (dreq == NULL)
+ 		return -ENOMEM;
+-	return setup_deferral(dreq, item);
++	if (setup_deferral(dreq, item) < 0)
++		return -EAGAIN;
++	
++	cache_limit_defers(dreq);
 +	return 0;
-+}
-+
-+static int
- nfs_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		struct inode *new_dir, struct qstr *new_name)
- {
-@@ -703,6 +710,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.unlink_setup	= nfs_proc_unlink_setup,
- 	.unlink_done	= nfs_proc_unlink_done,
- 	.rename		= nfs_proc_rename,
-+	.rename_setup	= nfs_proc_rename_setup,
- 	.link		= nfs_proc_link,
- 	.symlink	= nfs_proc_symlink,
- 	.mkdir		= nfs_proc_mkdir,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 6265fa8..d470751 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1018,6 +1018,7 @@ struct nfs_rpc_ops {
- 	int	(*unlink_done) (struct rpc_task *, struct inode *);
- 	int	(*rename)  (struct inode *, struct qstr *,
- 			    struct inode *, struct qstr *);
-+	int	(*rename_setup)  (struct rpc_message *msg, struct inode *dir);
- 	int	(*link)    (struct inode *, struct inode *, struct qstr *);
- 	int	(*symlink) (struct inode *, struct dentry *, struct page *,
- 			    unsigned int, struct iattr *);
--- 
-1.7.1
+ }
+ 
+ static void cache_revisit_request(struct cache_head *item)
+
 
