@@ -1,157 +1,212 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:34373 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756779Ab0ITQdH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 12:33:07 -0400
-Received: by gwj17 with SMTP id 17so1357564gwj.19
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 09:33:07 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/7] mountd: Fix up version and usage messages
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 20 Sep 2010 12:33:04 -0400
-Message-ID: <20100920163304.3170.42195.stgit@ellison.1015granger.net>
-In-Reply-To: <20100920162616.3170.24625.stgit@ellison.1015granger.net>
-References: <20100920162616.3170.24625.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:58596 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751635Ab0IVPyE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Sep 2010 11:54:04 -0400
+Date: Wed, 22 Sep 2010 11:52:35 -0400
+To: Nix <nix@esperi.org.uk>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: persistent, quasi-random -ESTALE at mount time
+Message-ID: <20100922155235.GE15560@fieldses.org>
+References: <87mxra6duq.fsf@spindle.srvr.nix>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87mxra6duq.fsf@spindle.srvr.nix>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up: rpc.mountd is no longer known as kmountd.  Use the program's
-basename rather than the full pathname for the usage message.  Display
-a version message at start up similar to statd's.
+On Tue, Sep 21, 2010 at 09:28:13PM +0100, Nix wrote:
+> I've noticed since at least 2.6.34 and possibly before (I only booted
+> 2.6.33 and .34 once, so it's hard to remember) that initial mounts from
+> my NFSv3 server are failing with -ESTALE.
+> 
+> This is only intermittent: sometimes, everything works. But, more often
+> than that, I get an -ESTALE on some or all of the filesystems (again,
+> the choice appears consistent but with no rhyme or reason to it:
+> /usr/info and /pkg/non-free? /var/log.real and /home/.spindle.srvr.nix? 
+> But /usr/doc always mounts OK, even though it is pretty much identical
+> to /usr/info in all respects: same server mount point and everything):
+> and, upon rebooting the server, I find that some of all of the
+> previously correctly mounted filesystems are now returning -ESTALE as
+> well. Unmounting and remounting them doesn't help: I just get more
+> ESTALEs, which leads to an endless sequence of e.g. this:
+> 
+> mount.nfs: trying 192.168.14.15 prog 100003 vers 3 prot TCP port 2049
+> mount.nfs: trying 192.168.14.15 prog 100005 vers 3 prot UDP port 33976
+> mount.nfs: timeout set for Tue Sep 21 20:40:06 2010
+> mount.nfs: trying text-based options 'hard,acl,vers=3,addr=192.168.14.15'
+> mount.nfs: prog 100003, trying vers=3, prot=6
+> mount.nfs: prog 100005, trying vers=3, prot=17
+> spindle:/home/.spindle.srvr.nix on /home/.spindle.srvr.nix type nfs (rw,hard,acl,vers=3)
+> 
+> What *does* help is restarting rpc.mountd on the server. Everything
+> works after that. Further, it seems to work if the client is stuck in
+> the middle of rebooting for the entire time the server is rebooting:
+> i.e. if the client starts rebooting first and ends rebooting later.
+> (However, I do this very rarely, so I have few instances to reason from:
+> this may be erroneous.)
+> 
+> Daemon boot order is as recommended, i.e.
+> 
+> mount /proc/fs/nfsd
+> /usr/sbin/exportfs -ra
+> /usr/sbin/portmap -t /var/lib/portmap
+> /usr/sbin/rpc.mountd
+> /usr/sbin/rpc.statd --no-notify
+> /usr/sbin/rpc.nfsd 16
+> /usr/sbin/sm-notify
+> 
+> On the client, we have
+> 
+> /usr/sbin/portmap -t /var/lib/portmap
+> /usr/sbin/rpc.statd --no-notify
+> /usr/sbin/sm-notify
+> 
+> (then we mount away... and it often fails with -ESTALE)
+> 
+> The client and server are running identical kernels (from 2.6.34 to
+> 2.6.35.5), and identical versions of the nfs-utils (seen with 1.2.2-rc7
+> up to tip-of-master). They're both nearly-identical 64-bit Nehalems (one
+> is an i7 920, the other an L5520) with bags of RAM (12Gb up, mostly
+> unused). All the filesystems being exported are ext4, all mounted with
+> 
+> defaults,nobarrier,relatime,nosuid,nodev,journal_async_commit,commit=30,user_xattr,acl
+> 
+> (yes, nobarrier is safe, the server has a battery-backed RAID array).
+> 
+> (Back in the day (pre-2.6.33) this problem wasn't present, and the
+> filesystems are all older than that, so I doubt it's purely FS-related.)
+> 
+> 
+> Debugging output from a failing rpc.mountd:
+> 
+> Sep 21 20:51:18 spindle info: v4root_create: path '/'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home/.spindle.srvr.nix/nix'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home/.spindle.srvr.nix/nix/Mail'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home/.spindle.srvr.nix/nix/Mail/nnmh'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home/.spindle.srvr.nix/nix'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home/.spindle.srvr.nix/nix/Mail'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home/.spindle.srvr.nix/nix/Mail/nnmh'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home/.spindle.srvr.nix/nix/Graphics'
+> Sep 21 20:51:18 local@spindle info: Last message 'v4root_create: path ' repeated 1 times, supressed by syslog-ng on spindle.srvr.nix
+> Sep 21 20:51:18 spindle info: v4root_create: path '/usr'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/usr/share'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/pkg'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/usr/lib'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/usr/lib/X11'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/var'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/etc'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/var/state'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/usr/share/httpd'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/usr/share/httpd/htdocs'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/usr'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/usr/share'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/trees'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home/.spindle.srvr.nix'
+> Sep 21 20:51:18 spindle info: v4root_create: path '/home/.spindle.srvr.nix/nix'
+> Sep 21 20:51:19 spindle notice: Version 1.2.2 starting
+> Sep 21 20:51:19 spindle warning: Flags: 
+> Sep 21 20:51:23 spindle notice: Version 1.2.2 starting
+> 
+> (now I started rebooting the client: I suspect this is unmounting
+> activity)
+> 
+> Sep 21 20:51:39 spindle info: auth_unix_ip: inbuf 'nfsd 192.168.16.20'
+> Sep 21 20:51:39 spindle info: auth_unix_ip: client 0x1f3dde0 'mutilate.wkstn.nix'
+> Sep 21 20:51:39 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \x014000000000000095bd22c2253c456f8e36b6cfb9ecd4ef'
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+7 is FSID_UUID16_INUM.
 
- utils/mountd/mountd.c |   38 ++++++++++++++++++++++----------------
- 1 files changed, 22 insertions(+), 16 deletions(-)
+> Sep 21 20:51:39 spindle info: nfsd_fh: found (nil) path (null)
 
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 9c7caf9..1a14a85 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -692,6 +692,7 @@ main(int argc, char **argv)
- {
- 	char	*export_file = _PATH_EXPORTS;
- 	char    *state_dir = NFS_STATEDIR;
-+	char	*progname;
- 	unsigned int listeners = 0;
- 	int	foreground = 0;
- 	int	port = 0;
-@@ -701,6 +702,12 @@ main(int argc, char **argv)
- 	struct sigaction sa;
- 	struct rlimit rlim;
- 
-+	/* Set the basename */
-+	if ((progname = strrchr(argv[0], '/')) != NULL)
-+		progname++;
-+	else
-+		progname = argv[0];
-+
- 	/* Parse the command line options and arguments. */
- 	opterr = 0;
- 	while ((c = getopt_long(argc, argv, "o:nFd:f:p:P:hH:N:V:vrs:t:g", longopts, NULL)) != EOF)
-@@ -712,8 +719,8 @@ main(int argc, char **argv)
- 			descriptors = atoi(optarg);
- 			if (descriptors <= 0) {
- 				fprintf(stderr, "%s: bad descriptors: %s\n",
--					argv [0], optarg);
--				usage(argv [0], 1);
-+					progname, optarg);
-+				usage(progname, 1);
- 			}
- 			break;
- 		case 'F':
-@@ -729,15 +736,15 @@ main(int argc, char **argv)
- 			ha_callout_prog = optarg;
- 			break;
- 		case 'h':
--			usage(argv [0], 0);
-+			usage(progname, 0);
- 			break;
- 		case 'P':	/* XXX for nfs-server compatibility */
- 		case 'p':
- 			port = atoi(optarg);
- 			if (port <= 0 || port > 65535) {
- 				fprintf(stderr, "%s: bad port number: %s\n",
--					argv [0], optarg);
--				usage(argv [0], 1);
-+					progname, optarg);
-+				usage(progname, 1);
- 			}
- 			break;
- 		case 'N':
-@@ -758,7 +765,7 @@ main(int argc, char **argv)
- 		case 's':
- 			if ((state_dir = xstrdup(optarg)) == NULL) {
- 				fprintf(stderr, "%s: xstrdup(%s) failed!\n",
--					argv[0], optarg);
-+					progname, optarg);
- 				exit(1);
- 			}
- 			break;
-@@ -775,30 +782,28 @@ main(int argc, char **argv)
- 			nfs_version |= NFSVERSBIT(vers);
- 			break;
- 		case 'v':
--			printf("kmountd %s\n", VERSION);
-+			printf("%s version " VERSION "\n", progname);
- 			exit(0);
- 		case 0:
- 			break;
- 		case '?':
- 		default:
--			usage(argv [0], 1);
-+			usage(progname, 1);
- 		}
- 
--	/* No more arguments allowed.
--	 * Require at least one valid version (2, 3, or 4)
--	 */
-+	/* No more arguments allowed. */
- 	if (optind != argc || !version_any())
--		usage(argv [0], 1);
-+		usage(progname, 1);
- 
- 	if (chdir(state_dir)) {
- 		fprintf(stderr, "%s: chdir(%s) failed: %s\n",
--			argv [0], state_dir, strerror(errno));
-+			progname, state_dir, strerror(errno));
- 		exit(1);
- 	}
- 
- 	if (getrlimit (RLIMIT_NOFILE, &rlim) != 0)
- 		fprintf(stderr, "%s: getrlimit (RLIMIT_NOFILE) failed: %s\n",
--				argv [0], strerror(errno));
-+				progname, strerror(errno));
- 	else {
- 		/* glibc sunrpc code dies if getdtablesize > FD_SETSIZE */
- 		if ((descriptors == 0 && rlim.rlim_cur > FD_SETSIZE) ||
-@@ -808,14 +813,14 @@ main(int argc, char **argv)
- 			rlim.rlim_cur = descriptors;
- 			if (setrlimit (RLIMIT_NOFILE, &rlim) != 0) {
- 				fprintf(stderr, "%s: setrlimit (RLIMIT_NOFILE) failed: %s\n",
--					argv [0], strerror(errno));
-+					progname, strerror(errno));
- 				exit(1);
- 			}
- 		}
- 	}
- 	/* Initialize logging. */
- 	if (!foreground) xlog_stderr(0);
--	xlog_open("mountd");
-+	xlog_open(progname);
- 
- 	sa.sa_handler = SIG_IGN;
- 	sa.sa_flags = 0;
-@@ -886,6 +891,7 @@ main(int argc, char **argv)
- 	if (num_threads > 1)
- 		fork_workers();
- 
-+	xlog(L_NOTICE, "Version " VERSION " starting");
- 	my_svc_run();
- 
- 	xlog(L_ERROR, "RPC service loop terminated unexpectedly. Exiting...\n");
+And mountd didn't find any filesystem matching the given uuid.  That's
+strange.
 
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \x01400000000000000d948b1b8091d09c0000000000000000'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found 0x1f316c0 path /home/.spindle.srvr.nix
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \x01c0000000000000b5cb6e6bed9d4345abd64535f56e2519'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found (nil) path (null)
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \x1ee00000000000006c0f7fa7d6c24054bff33a878460bdc7'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found (nil) path (null)
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \x01200100000000005cccc224a92440eeb44504473898c2ec'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found (nil) path (null)
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \x01a00000000000005cccc224a92440eeb44504473898c2ec'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found 0x1f2f6e0 path /usr/doc
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \x82650000000000005cccc224a92440eeb44504473898c2ec'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found 0x1f2e6f0 path /usr/share/xemacs
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \x85650000000000005cccc224a92440eeb44504473898c2ec'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found 0x1f2e1a0 path /usr/share/xplanet
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \x84510a00000000005cccc224a92440eeb44504473898c2ec'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found 0x1f2ec40 path /usr/share/texlive
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \xe86d0800000000005cccc224a92440eeb44504473898c2ec'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found 0x1f2d1b0 path /usr/lib/X11/fonts
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 6 \x07799ff5baef4492875dc73730d6149e'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found (nil) path (null)
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 6 \x333950aa8e3f440abc94d0cc4adae198'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found 0x1f2bc70 path /usr/src
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \x02a0080000000000b5cb6e6bed9d4345abd64535f56e2519'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found 0x1f2b720 path /var/state/munin
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \xaf750000000000005cccc224a92440eeb44504473898c2ec'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found 0x1f2b1f0 path /usr/share/httpd/htdocs/munin
+> Sep 21 20:51:42 spindle info: nfsd_fh: inbuf 'mutilate.wkstn.nix 7 \x3d650000000000005cccc224a92440eeb44504473898c2ec'
+> Sep 21 20:51:42 spindle info: nfsd_fh: found 0x1f2ace0 path /usr/share/clamav
+> 
+> (client reboot underway. from here on, I'll only show one of the
+> filesystems that failed to mount, rather than all of them.)
+> 
+> Sep 21 20:51:53 mutilate info: Switching to runlevel: 6
+> Sep 21 20:52:56 spindle info: from_local: updating local if addr list
+> Sep 21 20:52:56 spindle info: from_local: checked 14 local if addrs; incoming address not found
+> Sep 21 20:52:56 spindle info: check_default: access by 192.168.16.20 ALLOWED
+> Sep 21 20:52:56 spindle info: Received NULL request from 192.168.16.20
+> Sep 21 20:52:56 spindle info: check_default: access by 192.168.16.20 ALLOWED (cached)
+> Sep 21 20:52:56 spindle info: Received NULL request from 192.168.16.20
+> Sep 21 20:52:56 spindle info: check_default: access by 192.168.16.20 ALLOWED (cached)
+> Sep 21 20:52:56 spindle info: Received MNT3(/home/.spindle.srvr.nix) request from 192.168.16.20
+> Sep 21 20:52:56 spindle notice: authenticated mount request from 192.168.16.20:673 for /home/.spindle.srvr.nix (/home/.spindle.srvr.nix)
+> [identical messages for all the other filesystems]
+> Sep 21 20:52:57 spindle info: check_default: access by 192.168.16.20 ALLOWED (cached)
+> Sep 21 20:52:57 spindle info: Received NULL request from 192.168.16.20
+> Sep 21 20:52:57 spindle info: check_default: access by 192.168.16.20 ALLOWED (cached)
+> Sep 21 20:52:57 spindle info: Received NULL request from 192.168.16.20
+> Sep 21 20:52:57 spindle info: check_default: access by 192.168.16.20 ALLOWED (cached)
+> Sep 21 20:52:57 spindle info: Received MNT3(/home/.spindle.srvr.nix) request from 192.168.16.20
+> Sep 21 20:52:57 spindle notice: authenticated mount request from 192.168.16.20:976 for /home/.spindle.srvr.nix (/home/.spindle.srvr.nix)
+> [identical messages for the subset of those mounts that got -ESTALE]
+> Sep 21 20:52:59 spindle notice: authenticated mount request from 192.168.16.20:820 for /home/.spindle.srvr.nix (/home/.spindle.srvr.nix)
+> Sep 21 20:52:59 spindle info: check_default: access by 192.168.16.20 ALLOWED (cached)
+> Sep 21 20:52:59 spindle info: Received NULL request from 192.168.16.20
+> Sep 21 20:52:59 spindle info: check_default: access by 192.168.16.20 ALLOWED (cached)
+> Sep 21 20:52:59 spindle info: Received NULL request from 192.168.16.20
+> Sep 21 20:52:59 spindle info: check_default: access by 192.168.16.20 ALLOWED (cached)
+> Sep 21 20:52:59 spindle info: Received MNT3(/var/log.real) request from 192.168.16.20
+> [repeat forever]
+> 
+> which all looks fine to me apart from the way the mount persistently
+> fails despite the server saying it's OK.
+> 
+> Upon restart, it Just Works.
+> 
+> Any idea what the cause of this one might be? It's... mystifying. The
+> 'fails only if just rebooted' part is particularly bizarre, as if
+> rpc.mountd *really* wants to start after rpc.nfsd or something.
+> 
+> 
+> I'll try a packet capture next (time to use --port, I guess).
+
+The output of
+
+	rpcdebug -m rpc -s cache
+	more /proc/net/*/content
+
+after a failed startup might be interesting too.
+
+--b.
