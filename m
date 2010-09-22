@@ -1,60 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:38428 "EHLO relay.sw.ru"
+Received: from cantor2.suse.de ([195.135.220.15]:54903 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753350Ab0IUMbx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Sep 2010 08:31:53 -0400
-Message-ID: <4C98A5AE.3000901@parallels.com>
-Date: Tue, 21 Sep 2010 16:31:42 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
-References: <4C90BADB.10700@parallels.com>	 <20100920161326.GL4580@fieldses.org> <4C978CE6.5080508@parallels.com>	 <20100920180418.GN4580@fieldses.org>  <4C97B248.1030801@parallels.com>	 <1285013116.2851.71.camel@heimdal.trondhjem.org>	 <4C985A88.1000902@parallels.com> <1285071493.3105.55.camel@heimdal.trondhjem.org>
-In-Reply-To: <1285071493.3105.55.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1753001Ab0IVC5y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Sep 2010 22:57:54 -0400
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Wed, 22 Sep 2010 12:55:07 +1000
+Subject: [PATCH 3/7] sunrpc/cache: change deferred-request hash table to use
+	hlist.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20100922025506.31745.9409.stgit@localhost.localdomain>
+In-Reply-To: <20100922025009.31745.98237.stgit@localhost.localdomain>
+References: <20100922025009.31745.98237.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
->> Now, how do I plan to solve the rpc_get_mount problem. Some time ago
->> there was similar problem with the devpts filesystem - people making
->> ptys work per-container tried to solve the same problem and they
->> ended up (with Al's help) with a yet another devpts mount option which
->> explicitly stated that a new instance should be created. How do you
->> think if we do the same for rpc_pipefs (a newinstance mount option) and
->> add yet another mount option for its only client (nfs) telling it where
->> to look for the rpc mount for (e.g. rpcmount=/var/...) ?
-> 
-> As long as we have some mechanism to ensure that rpc.gssd from one net
-> namespace doesn't try to establish a kerberos security context on behalf
-> of a NFS mount that resides in a different net namespace.
-> My point is if the rpc.gssd resides in a different net namespace, then
-> we have no guarantee that the IP address we pass in the upcall even
-> points to the same server, so we must ensure that the namespaces match.
+Being a hash table, hlist is the best option.
 
-Sure, but for doing so there's no need in strict aliasing rpcpipefs-s
-super blocks with struct net. By strict I mean, that not only the
-superblock knows which struct net it works with, but also a struct net
-references rpcpipefs-s supers.
+There is currently some ugliness were we treat "->next == NULL" as
+a special case to avoid having to initialise the whole array.
+This change nicely gets rid of that case.
 
->>>  3) Convert the nfs_client and superblock to be per-net namespace
->>
->> Ack about the nfs_client, but as far as the superblock is
->> concerned - I think we should tag only the nfs_server with
->> net for the same reasons as in the item 2) above.
-> 
-> You should tag the nfs_server, and then make sure that nfs_compare_super
-> does not match something that is tagged with a different net namespace
-> than the current one. Otherwise, you can end up mounting the wrong NFS
-> server (for the same reason as above).
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ include/linux/sunrpc/cache.h |    2 +-
+ net/sunrpc/cache.c           |   22 ++++++++--------------
+ 2 files changed, 9 insertions(+), 15 deletions(-)
 
-Yes, of course.
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 52a7d72..0349635 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -133,7 +133,7 @@ struct cache_req {
+  * delayed awaiting cache-fill
+  */
+ struct cache_deferred_req {
+-	struct list_head	hash;	/* on hash chain */
++	struct hlist_node	hash;	/* on hash chain */
+ 	struct list_head	recent; /* on fifo */
+ 	struct cache_head	*item;  /* cache item we wait on */
+ 	void			*owner; /* we might need to discard all defered requests
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index a9e850e..466f65c 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -506,13 +506,13 @@ EXPORT_SYMBOL_GPL(cache_purge);
+ 
+ static DEFINE_SPINLOCK(cache_defer_lock);
+ static LIST_HEAD(cache_defer_list);
+-static struct list_head cache_defer_hash[DFR_HASHSIZE];
++static struct hlist_head cache_defer_hash[DFR_HASHSIZE];
+ static int cache_defer_cnt;
+ 
+ static void __unhash_deferred_req(struct cache_deferred_req *dreq)
+ {
+ 	list_del_init(&dreq->recent);
+-	list_del_init(&dreq->hash);
++	hlist_del_init(&dreq->hash);
+ 	cache_defer_cnt--;
+ }
+ 
+@@ -521,9 +521,7 @@ static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_he
+ 	int hash = DFR_HASH(item);
+ 
+ 	list_add(&dreq->recent, &cache_defer_list);
+-	if (cache_defer_hash[hash].next == NULL)
+-		INIT_LIST_HEAD(&cache_defer_hash[hash]);
+-	list_add(&dreq->hash, &cache_defer_hash[hash]);
++	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
+ }
+ 
+ static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *item)
+@@ -587,7 +585,7 @@ static int cache_wait_req(struct cache_req *req, struct cache_head *item)
+ 		 * to clean up
+ 		 */
+ 		spin_lock(&cache_defer_lock);
+-		if (!list_empty(&sleeper.handle.hash)) {
++		if (!hlist_unhashed(&sleeper.handle.hash)) {
+ 			__unhash_deferred_req(&sleeper.handle);
+ 			spin_unlock(&cache_defer_lock);
+ 		} else {
+@@ -642,23 +640,19 @@ static void cache_revisit_request(struct cache_head *item)
+ 	struct cache_deferred_req *dreq;
+ 	struct list_head pending;
+ 
+-	struct list_head *lp;
++	struct hlist_node *lp, *tmp;
+ 	int hash = DFR_HASH(item);
+ 
+ 	INIT_LIST_HEAD(&pending);
+ 	spin_lock(&cache_defer_lock);
+ 
+-	lp = cache_defer_hash[hash].next;
+-	if (lp) {
+-		while (lp != &cache_defer_hash[hash]) {
+-			dreq = list_entry(lp, struct cache_deferred_req, hash);
+-			lp = lp->next;
++	hlist_for_each_entry_safe(dreq, lp, tmp,
++				  &cache_defer_hash[hash], hash)
+ 			if (dreq->item == item) {
+ 				__unhash_deferred_req(dreq);
+ 				list_add(&dreq->recent, &pending);
+ 			}
+-		}
+-	}
++
+ 	spin_unlock(&cache_defer_lock);
+ 
+ 	while (!list_empty(&pending)) {
 
->>>  4) Convert lockd's struct host to be per-net namespace
-> 
-> Cheers
->   Trond
-> 
-> 
 
