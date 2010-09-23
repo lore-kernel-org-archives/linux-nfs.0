@@ -1,55 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62143 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753214Ab0I1J5r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Sep 2010 05:57:47 -0400
-Date: Tue, 28 Sep 2010 11:50:58 +0200
-From: "Michael S. Tsirkin" <mst@redhat.com>
-To: Leszek Urbanski <tygrys@moo.pl>
-Cc: Anthony Liguori <anthony@codemonkey.ws>, qemu-devel@nongnu.org,
-        netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
-        virtualization@lists.linux-foundation.org
-Subject: Re: BUG - qdev - partial loss of network connectivity
-Message-ID: <20100928095058.GI12472@redhat.com>
-References: <20100922171832.GA28721@moo.pl>
- <4C9A3FAF.9090503@codemonkey.ws>
- <20100922182049.GA29263@moo.pl>
- <4C9A4C77.2080806@codemonkey.ws>
- <20100923140437.GA9256@moo.pl>
- <20100926154324.GD21843@redhat.com>
- <20100927213203.GA28089@moo.pl>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100927213203.GA28089@moo.pl>
+Received: from smtp-out-2.desy.de ([131.169.56.85]:45629 "EHLO
+	smtp-out-2.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751844Ab0IWVbI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Sep 2010 17:31:08 -0400
+Received: from smtp-map-2.desy.de (smtp-map-2.desy.de [131.169.56.67])
+	by smtp-out-2.desy.de (DESY_OUT_1) with ESMTP id 0ED86DF4
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Sep 2010 23:31:07 +0200 (MEST)
+Received: from adserv70.win.desy.de (adserv70.win.desy.de [131.169.97.56])
+	by smtp-map-2.desy.de (DESY_MAP_2) with ESMTP id 09CFADF1
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Sep 2010 23:31:06 +0200 (MEST)
+Content-Type: text/plain; charset=US-ASCII
+Subject: RE: question about nfs41 features
+Date: Thu, 23 Sep 2010 23:31:06 +0200
+Message-ID: <2CF5F37A49FC1743A7940A3FA6E0A8FB050FBDA5@ADXV1.win.desy.de>
+References: <AANLkTinvrHsQmcLCpt99dE1nU0md8zfwsh4vP8JRBJT6@mail.gmail.com>
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: "Olga Kornievskaia" <aglo@citi.umich.edu>,
+        "linux-nfs" <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Sep 27, 2010 at 11:32:03PM +0200, Leszek Urbanski wrote:
-> <20100926154324.GD21843@redhat.com>; from Michael S. Tsirkin on Sun, Sep 26, 2010 at 17:43:24 +0200
-> 
-> > > > >It's vanilla 2.6.32.22, but I also reproduced this on Debian's 2.6.32-23
-> > > > >(based on 2.6.32.21).
-> > > > >
-> > > > >If offload is the only difference, I'll play with different offload
-> > > > >options and check which one causes it.
-> > > > >   
-> > > > 
-> > > > It's not technically the only difference but it's the most likely 
-> > > > culprit IMHO.
-> > > 
-> > > udp fragmentation offload is definitely the culprit.
-> > 
-> > I see. Most likely guest bug - won't be the first bug around UFO.
-> > If so pls copy netdev linux-nfs and virtualization.
-> > Do you see anything in dmesg? Can try 2.6.36-rc5?
-> 
-> (for reference: first post is at:
-> http://lists.nongnu.org/archive/html/qemu-devel/2010-09/msg01685.html )
-> 
-> I can't reproduce it on 2.6.36-rc5. Do you have an idea which patch may have
-> fixed it, or should I dissect?
 
-bisect, yes: there were many UFO related patches since 2.6.32.
 
--- 
-MST
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org on behalf of Olga Kornievskaia
+Sent: Thu 9/23/2010 20:30
+To: linux-nfs
+Subject: question about nfs41 features
+ 
+I would greatly appreciate it I can get a reply from NFS41 server
+implementers out there on the subject of whether or not the following
+feature are (a) currently implemented by your server, (b) will be
+implemented soon (1year), (c) having interest in being implemented
+within the next few years and (d) are so low in priority that could be
+said: will never be implemented.
+
+
+d) volatile handles
+c) named attributes
+c) directory delegations
+d) SSV
+a? if not - have to be fixed) trunking (session or clientid)
+a, but switched off as linux client can't do that) segmented file layouts
+
+b) recall of file layouts
+a/b) cb_notify_deviceid
+c) cb_getattr
+c) cb_recall_slot
+d) cb_notify_lock
+
+Thank you.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
