@@ -1,87 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:37288 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3548 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751162Ab0IHB6L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 21:58:11 -0400
-Subject: Re: [PATCH 2/2] We should clear NFS_DELEGATED_STATE after return
- delegation
+	id S1752880Ab0IWPnt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Sep 2010 11:43:49 -0400
+Subject: Re: [PATCH] nfs: introduce mount option '-olocal_lock' to make
+ locks local (try++)
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Bian Naimeng <biannm@cn.fujitsu.com>
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-In-Reply-To: <4C86E7FA.7020701@cn.fujitsu.com>
-References: <4C592F85.8070308@cn.fujitsu.com>
-	 <4C59306A.9090302@cn.fujitsu.com>
-	 <1280925913.3011.23.camel@heimdal.trondhjem.org>
-	 <4C5A213F.9000506@cn.fujitsu.com>
-	 <1281013423.2948.1.camel@heimdal.trondhjem.org>
-	 <4C5B8B48.4050008@cn.fujitsu.com>
-	 <1281101448.3586.11.camel@heimdal.trondhjem.org>
-	 <4C68EDAE.5000201@cn.fujitsu.com>
-	 <1282087012.18385.30.camel@heimdal.trondhjem.org>
-	 <4C7DF56B.3040206@cn.fujitsu.com>
-	 <1283897068.9097.15.camel@heimdal.trondhjem.org>
-	 <4C86E7FA.7020701@cn.fujitsu.com>
+To: Suresh Jayaraman <sjayaraman@suse.de>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Neil Brown <neilb@suse.de>
+In-Reply-To: <1285246614.7809.0.camel@heimdal.trondhjem.org>
+References: <4C97416F.7020504@suse.de>
+	 <1285171602.4811.54.camel@heimdal.trondhjem.org> <4C9AFD56.4090603@suse.de>
+	 <1285246614.7809.0.camel@heimdal.trondhjem.org>
 Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 07 Sep 2010 21:57:16 -0400
-Message-ID: <1283911036.16070.1.camel@heimdal.trondhjem.org>
+Date: Thu, 23 Sep 2010 11:43:30 -0400
+Message-ID: <1285256610.7809.20.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-09-08 at 09:33 +0800, Bian Naimeng wrote:
-> >>> OK. I see agree that is a race, but AFAICS, your fix means that we end
-> >>> up with an nfs_state structure that has cleared NFS_DELEGATED_STATE, but
-> >>> that did not recover its open stateid.
-> >>>
-> >> Hi trond, what do you think about this one?
+On Thu, 2010-09-23 at 08:56 -0400, Trond Myklebust wrote:
+> On Thu, 2010-09-23 at 12:40 +0530, Suresh Jayaraman wrote:
+> > On 09/22/2010 09:36 PM, Trond Myklebust wrote:
+> > > On Mon, 2010-09-20 at 16:41 +0530, Suresh Jayaraman wrote:
+> > >> Changes since last post:
+> > >>
+> > >>    - NFS_MOUNT_NONLM definition remains unmodified as legacy binary mount
+> > >>      interface uses it
+> > >>    - Fixed an Oops in _nfs4_do_setlk() found during NFSv4 reboot recovery
+> > >>    - Rebased against Trond's nfs-2.6.git (nfs-for-2.6.37 branch)
+> > >>
+> > >> Thanks,
+> > >> Suresh Jayaraman
+> > >>
+> > > 
+> > > Suresh,
+> > > 
+> > > This still appears to break the binary mount interface. You need
+> > > something in nfs_validate_mount_data() to convert the NFS_MOUNT_NONLM
+> > > flag into (NFS_MOUNT_LOCAL_FLOCK | NFS_MOUNT_LOCAL_FCNTL).
+> > > 
 > > 
-> > Hi Bian,
-> > 
-> > See comments/questions below.
-> > 
+> > Good catch, thanks. Here's the fixed version (haven't tested it as I don't
+> > find a simple way to test it and it looks obvious):
 > 
->   Thanks for your answer.
+> Hi Suresh,
 > 
-> >> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> >> index 36400d3..c0c0320 100644
-> >> --- a/fs/nfs/nfs4proc.c
-> >> +++ b/fs/nfs/nfs4proc.c
-> >> @@ -900,8 +900,18 @@ static int update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stat
-> >>  
-> >>  	rcu_read_lock();
-> >>  	deleg_cur = rcu_dereference(nfsi->delegation);
-> >> -	if (deleg_cur == NULL)
-> >> +	if (deleg_cur == NULL) {
-> >> +		if (delegation == NULL &&
-> >> +		    test_bit(NFS_DELEGATED_STATE, &state->flags)) {
-> > 
-> > Any reason why we can't ditch the 'test_bit'?
-> > 
+> This one looks good to me.
 > 
->   Because i am not sure it's ok that we just clear_bit at here.
->   If you think it's ok, i'd be fine with removing this test_bit.
+> Thanks!
+>   Trond
 
-How is it different from just clearing the bit?
-
-> >> +			/*FIXME: If the state has NFS_DELEGATED_STATE bit, 
-> >> +			 * we catch a race. Maybe should recover its open
-> >> +			 * stateid, here we just clear the NFS_DELEGATED_STATE
-> >> +			 * bit.
-> > 
-> > Can this ever be called with both deleg_cur==NULL and
-> > open_stateid==NULL? If so, then we still have a bug.
-> > 
-> 
->   Yes, i will add a checking. Thanks very much.
-> 
-> >> +			 */
-> >> +			clear_bit(NFS_DELEGATED_STATE, &state->flags);
-> >> +		}
-> >>  		goto no_delegation;
-> >> +	}
-> >>  
-> >>  	spin_lock(&deleg_cur->lock);
-> >>  	if (nfsi->delegation != deleg_cur ||
+Hmm... One thing to note: it would be nice to display the 'local_lock'
+status in /proc/mounts. That can be applied as a separate patch, though.
 
 Cheers
   Trond
