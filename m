@@ -1,62 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from python-06.easyrencontre.com ([91.199.255.56]:52324 "EHLO
-	mail.easyflirt.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751131Ab0IBHcV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Sep 2010 03:32:21 -0400
-Received: from [127.0.0.1] (office.easyrencontre.com [78.155.152.6])
-	by mail.easyflirt.com (Postfix) with ESMTPSA id 2192B6374D2
-	for <linux-nfs@vger.kernel.org>; Thu,  2 Sep 2010 09:32:19 +0200 (CEST)
-Message-ID: <4C7F5302.30300@duchatelet.net>
-Date: Thu, 02 Sep 2010 09:32:18 +0200
-From: Greg <greg-sys@duchatelet.net>
-To: linux-nfs@vger.kernel.org
-Subject: Re: Relocate NFS root FS for maintenance
-References: <4C7E4469.70807@duchatelet.net> <4C7ECB23.60300@excfb.com>
-In-Reply-To: <4C7ECB23.60300@excfb.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:51844 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754653Ab0IWMXJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Sep 2010 08:23:09 -0400
+Subject: Re: Oops in nfs-for-2.6.37
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+In-Reply-To: <4C9B3E81.8090505@panasas.com>
+References: <4C9B3E81.8090505@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 23 Sep 2010 08:22:50 -0400
+Message-ID: <1285244570.3329.7.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-  Tom,
+On Thu, 2010-09-23 at 13:48 +0200, Benny Halevy wrote:
+> How about the following?
+> 
+> >From e7019592dae2945ea4091f42ab54f2a1f13465f7 Mon Sep 17 00:00:00 2001
+> From: Benny Halevy <bhalevy@panasas.com>
+> Date: Thu, 23 Sep 2010 13:26:43 +0200
+> Subject: [PATCH] NFS: handle inode==NULL in __put_nfs_open_context
+> 
+> inode may be NULL when put_nfs_open_context is called from nfs_atomic_lookup
+> before d_add_unique(dentry, inode)
+> 
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/inode.c |   13 ++++++++-----
+>  1 files changed, 8 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 2ff8142..a4e579c 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -654,11 +654,14 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
+>  {
+>  	struct inode *inode = ctx->path.dentry->d_inode;
+>  
+> -	if (!atomic_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
+> -		return;
+> -	list_del(&ctx->list);
+> -	spin_unlock(&inode->i_lock);
+> -	NFS_PROTO(inode)->close_context(ctx, is_sync);
+> +	if (inode) {
+> +		if (!atomic_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
+> +			return;
+> +		list_del(&ctx->list);
+> +		spin_unlock(&inode->i_lock);
+> +		NFS_PROTO(inode)->close_context(ctx, is_sync);
+> +	} else
+> +		BUG_ON(atomic_dec_return(&ctx->lock_context.count) != 0);
+>  	if (ctx->cred != NULL)
+>  		put_rpccred(ctx->cred);
+>  	path_put(&ctx->path);
 
->
-> What you are missing here is that the client uses two things to access 
-> content on
-> the servers - path and file handles. When you do the reshare, you 
-> would be pointing any
-> new requests to the empty directories. But, any application which 
-> already had a
-> file handle would have a reference to the old mount (via the fsid part 
-> of the file handle).
+Hi Benny,
 
-OK thanks for the precisions. It's why I'm getting those errors :
-Sep  1 15:12:53 varan-14 kernel: [3424547.256518] NFS: server 
-filer-large-vip.local error: fileid changed
-Sep  1 15:12:53 varan-14 kernel: [3424547.256518] fsid 0:13: expected 
-fileid 0x2, got 0x41
+Let's drop the BUG_ON() and instead use an atomic_dec_and_test() for the
+inode==NULL case. That way the refcounting is guaranteed to just work.
 
-> The options I see are to:
->
-> 1) Shutdown NFS/remove write access to the export/etc - this is along 
-> the lines of what
-> you have done. And the result is that the server will inform the 
-> client of an error.
->
-> 2) Disconnect the servers from the network. (Or partition the 
-> network). In this scenario,
-> the client will be getting timeouts and will probably use a retry schema.
->
-> 3) Shutdown the NFS clients - harsh, but they will not be accessing 
-> the servers and you
-> can easily do the upgrades.
->
-> These all result in downtime for both your servers and your clients.
-
-So in short there is no way to do a maintenance on attached storage, 
-could it be hard drives, RAID, iSCSI or anything.
-Is such a "feature" in the roadmap ?
-
--- 
-Greg
-
+Cheers
+  Trond
