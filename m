@@ -1,81 +1,229 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from metis.ext.pengutronix.de ([92.198.50.35]:43108 "EHLO
-	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759162Ab0I0MyW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Sep 2010 08:54:22 -0400
-Date: Mon, 27 Sep 2010 14:54:04 +0200
-From: Uwe =?iso-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Neil Brown <neilb@suse.de>, "David S. Miller" <davem@davemloft.net>,
-        Randy Dunlap <randy.dunlap@oracle.com>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: Re: [PATCH] sunrpc: prompt for RPCSEC_GSS_KRB5 even if NFS_V4 is
-	enabled
-Message-ID: <20100927125404.GB6271@pengutronix.de>
-References: <20100909181454.GB14915@pengutronix.de> <1285584120-16860-1-git-send-email-u.kleine-koenig@pengutronix.de> <1285587572.19362.2.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <1285587572.19362.2.camel@heimdal.trondhjem.org>
+Received: from cantor.suse.de ([195.135.220.2]:40490 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751711Ab0IWDAK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Sep 2010 23:00:10 -0400
+Date: Thu, 23 Sep 2010 13:00:02 +1000
+From: Neil Brown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/7] sunrpc: fix race in new cache_wait code.
+Message-ID: <20100923130002.5f2da3e9@notabene>
+In-Reply-To: <20100922175027.GF15560@fieldses.org>
+References: <20100922025009.31745.98237.stgit@localhost.localdomain>
+	<20100922025506.31745.67177.stgit@localhost.localdomain>
+	<20100922175027.GF15560@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Trond,
+On Wed, 22 Sep 2010 13:50:27 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-On Mon, Sep 27, 2010 at 07:39:32AM -0400, Trond Myklebust wrote:
-> On Mon, 2010-09-27 at 12:41 +0200, Uwe Kleine-König wrote:
-> > NFS_V4 works fine without RPCSEC_GSS_KRB5 (even without CRYPTO).
-> > This dependency was introduced in
+> On Wed, Sep 22, 2010 at 12:55:06PM +1000, NeilBrown wrote:
+> > If we set up to wait for a cache item to be filled in, and then find
+> > that it is no longer pending, it could be that some other thread is
+> > in 'cache_revisit_request' and has moved our request to its 'pending' list.
+> > So when our setup_deferral calls cache_revisit_request it will find nothing to
+> > put on the pending list, and do nothing.
 > > 
-> > 	df486a2 (NFS: Fix the selection of security flavours in Kconfig)
+> > We then return from cache_wait_req, thus leaving the 'sleeper'
+> > on-stack structure open to being corrupted by subsequent stack usage.
 > > 
-> > to fix a build failure as RPCSEC_GSS_KRB5 was thought to be needed for
-> > NFS_V4.  The fix didn't work completely as NFS_V4 didn't enforce CRYPTO
-> > and so the select on RPCSEC_GSS_KRB5 didn't work in all situations (e.g.
-> > arm/mx1_defconfig).
+> > However that 'sleeper' could still be on the 'pending' list that the
+> > other thread is looking at and so any corruption could cause it to behave badly.
 > > 
-> > This was rectified by
-> > 
-> > 	827e345 (SUNRPC: Fix the NFSv4 and RPCSEC_GSS Kconfig dependencies)
-> > 
-> > but the magic for RPCSEC_GSS_KRB5 introduced by df486a2 wasn't reverted.
-> > 
-> > Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > Signed-off-by: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
-> > ---
-> > Hello,
-> > 
-> > after Trond sent me the patch that later ended in 827e345702 I suggested
-> > to fold the patch below into it[1], but without reaction and success as I
-> > noticed just now. :-(
-> > 
-> > Best regards
-> > Uwe
+> > To avoid this race we simply take the same path as if the
+> > 'wait_for_completion_interruptible_timeout' was interrupted and if the
+> > sleeper is no longer on the list (which it won't be) we wait on the
+> > completion - which will ensure that any other cache_revisit_request
+> > will have let go of the sleeper.
 > 
-> That's because you completely fail to justify why should we change the
-> behaviour to suddenly make RPCSEC_GSS_KRB5 optional for NFSv4. That has
-> never been the case before.
-My intention is not to make "RPCSEC_GSS_KRB5 optional for NFSv4".  First
-I saw a build failure and then I wondered if the fix was optimal.  After
-reading the log of 827e345 I thought NFSv4 doesn't depend on
-RPCSEC_GSS_KRB5, still more considering that 827e345 was your fix after
-I suggested to select CRYPTO to enforce RPCSEC_GSS_KRB5 again.
+> OK, but I don't think we need that first CACHE_PENDING check in
+> setup_deferral at all.  Best just to ignore it?:
+> 
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index d789dfc..82804b4 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -567,10 +567,9 @@ static int cache_wait_req(struct cache_req *req, struct cache_head *item, int ti
+>  	sleeper.completion = COMPLETION_INITIALIZER_ONSTACK(sleeper.completion);
+>  	dreq->revisit = cache_restart_thread;
+>  
+> -	ret = setup_deferral(dreq, item);
+> +	setup_deferral(dreq, item);
+>  
+> -	if (ret ||
+> -	    wait_for_completion_interruptible_timeout(
+> +	if (wait_for_completion_interruptible_timeout(
+>  		    &sleeper.completion, timeout) <= 0) {
+>  		/* The completion wasn't completed, so we need
+>  		 * to clean up
+> 
+> Then it's obvious that we always wait for completion, and that we fill
+> the basic requirement to avoid corruption here.
+> 
+> (Which is, in more detail: cache_wait_req must not return while dreq is
+> still reachable from anywhere else.  Since dreq is reachable from
+> elsewhere only as long as it is hashed, and since anyone else that might
+> unhash it will call our revisit (which unconditionally calls complete),
+> then forget about it, it suffices for cache_wait_req to either wait for
+> completion, or unhash dreq *itself* (before someone else does).)
+> 
+> Also we don't need the PENDING check to ensure we wait only when
+> necessary--we only wait while dreq is hashed, and as long as we're
+> hashed anyone clearing PENDING will also end up doing the complete().
+> 
+> In the deferral case it's maybe a useful optimization if it avoids
+> an unnecessary drop sometimes.  Here it doesn't help.
+> 
+> --b.
 
-Currently you can have NFSv4 without RPCSEC_GSS_KRB5 because if you
-don't have CRYPTO RPCSEC_GSS_KRB5 is off, too, even if it defaults to
-yes and there's no prompt.  (Selecting would not work, too.)
-And note that RPCSEC_GSS_KRB5 already selects SUNRPC_GSS, so 827e345
-doesn't do anything useful if NFS_V4 really needs RPCSEC_GSS_KRB5.
+I like your thinking and I agree with most of it.
+After adding dreq to the hash table, we need to check CACHE_PENDING.  It is
+possible that it was cleared moments before we added dreq to the hash-table so
+the cache_revisit_request associated with clearing it might have missed our
+dreq, so we need to do something about that....
 
-So either we should really enforce RPCSEC_GSS_KRB5 if NFS_V4 is selected
-(by letting one of these select CRYPTO, see e.g. my first patch, or by
-letting NFS_V4 depend on CRYPTO) or make it optional in all cases (as it
-is already now in some cases).
+How about this.
+It gets rid of the return values (which were confusing anyway) and adds
+explicit checks on CAHCE_PENDING where needed.
+??
 
-Best regards
-Uwe
+Also, I noticed there is a race with the call to cache_limit_defers.  The
+'dreq' could be freed before that is called.
 
--- 
-Pengutronix e.K.                           | Uwe Kleine-König            |
-Industrial Linux Solutions                 | http://www.pengutronix.de/  |
+It looks like I need to resubmit a lot of this - do you want to just discard
+it all from your -next and I'll make something new?
+
+Thank for the review!
+NeilBrown
+
+
+ cache.c |   53 +++++++++++++++++------------------------------------
+ 1 file changed, 17 insertions(+), 36 deletions(-)
+
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index c60c7f6..db0fa44 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -37,7 +37,7 @@
+ 
+ #define	 RPCDBG_FACILITY RPCDBG_CACHE
+ 
+-static int cache_defer_req(struct cache_req *req, struct cache_head *item);
++static void cache_defer_req(struct cache_req *req, struct cache_head *item);
+ static void cache_revisit_request(struct cache_head *item);
+ 
+ static void cache_init(struct cache_head *h)
+@@ -268,7 +268,8 @@ int cache_check(struct cache_detail *detail,
+ 	}
+ 
+ 	if (rv == -EAGAIN) {
+-		if (cache_defer_req(rqstp, h) < 0) {
++		cache_defer_req(rqstp, h);
++		if (!test_bit(CACHE_PENDING, &h->flags)) {
+ 			/* Request is not deferred */
+ 			rv = cache_is_valid(detail, h);
+ 			if (rv == -EAGAIN)
+@@ -527,7 +528,7 @@ static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_he
+ 	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
+ }
+ 
+-static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *item)
++static void setup_deferral(struct cache_deferred_req *dreq, struct cache_head *item)
+ {
+ 
+ 	dreq->item = item;
+@@ -537,13 +538,6 @@ static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *it
+ 	__hash_deferred_req(dreq, item);
+ 
+ 	spin_unlock(&cache_defer_lock);
+-
+-	if (!test_bit(CACHE_PENDING, &item->flags)) {
+-		/* must have just been validated... */
+-		cache_revisit_request(item);
+-		return -EAGAIN;
+-	}
+-	return 0;
+ }
+ 
+ struct thread_deferred_req {
+@@ -558,18 +552,17 @@ static void cache_restart_thread(struct cache_deferred_req *dreq, int too_many)
+ 	complete(&dr->completion);
+ }
+ 
+-static int cache_wait_req(struct cache_req *req, struct cache_head *item, int timeout)
++static void cache_wait_req(struct cache_req *req, struct cache_head *item, int timeout)
+ {
+ 	struct thread_deferred_req sleeper;
+ 	struct cache_deferred_req *dreq = &sleeper.handle;
+-	int ret;
+ 
+ 	sleeper.completion = COMPLETION_INITIALIZER_ONSTACK(sleeper.completion);
+ 	dreq->revisit = cache_restart_thread;
+ 
+-	ret = setup_deferral(dreq, item);
++	setup_deferral(dreq, item);
+ 
+-	if (ret ||
++	if (!test_bit(CACHE_PENDING, &item->flags) ||
+ 	    wait_for_completion_interruptible_timeout(
+ 		    &sleeper.completion, timeout) <= 0) {
+ 		/* The completion wasn't completed, so we need
+@@ -589,18 +582,6 @@ static int cache_wait_req(struct cache_req *req, struct cache_head *item, int ti
+ 			wait_for_completion(&sleeper.completion);
+ 		}
+ 	}
+-	if (test_bit(CACHE_PENDING, &item->flags)) {
+-		/* item is still pending, try request
+-		 * deferral
+-		 */
+-		return -ETIMEDOUT;
+-	}
+-	/* only return success if we actually deferred the
+-	 * request.  In this case we waited until it was
+-	 * answered so no deferral has happened - rather
+-	 * an answer already exists.
+-	 */
+-	return -EEXIST;
+ }
+ 
+ static void cache_limit_defers(struct cache_deferred_req *dreq)
+@@ -639,7 +620,7 @@ static void cache_limit_defers(struct cache_deferred_req *dreq)
+ 		discard->revisit(discard, 1);
+ }
+ 
+-static int cache_defer_req(struct cache_req *req, struct cache_head *item)
++static void cache_defer_req(struct cache_req *req, struct cache_head *item)
+ {
+ 	struct cache_deferred_req *dreq;
+ 	int ret;
+@@ -647,17 +628,19 @@ static int cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 
+ 	timeout = req->set_waiter(req, 1);
+ 	if (timeout) {
+-		ret = cache_wait_req(req, item, timeout);
++		cache_wait_req(req, item, timeout);
+ 		req->set_waiter(req, 0);
+-		return ret;
+ 	} else {
+ 		dreq = req->defer(req);
+ 		if (dreq == NULL)
+-			return -ENOMEM;
+-		if (setup_deferral(dreq, item) < 0)
+-			return -EAGAIN;
++			return;
++		setup_deferral(dreq, item);
+ 		cache_limit_defers(dreq);
+-		return 0;
++		if (!test_bit(CACHE_PENDING, &item->flags))
++			/* Bit could have been cleared before we managed to
++			 * set up the deferral, so need to revisit just in case
++			 */
++			cache_revisit_request(item);
+ 	}
+ }
+ 
+
