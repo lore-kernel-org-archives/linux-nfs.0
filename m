@@ -1,53 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sith.mimuw.edu.pl ([193.0.96.4]:47764 "EHLO sith.mimuw.edu.pl"
+Received: from cantor.suse.de ([195.135.220.2]:41092 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752855Ab0ITPb6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Sep 2010 11:31:58 -0400
-Date: Mon, 20 Sep 2010 17:31:57 +0200
-From: Jan =?utf-8?Q?R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
-Message-ID: <20100920153157.GA20589@sith.mimuw.edu.pl>
-References: <20100917181251.GA21111@sith.mimuw.edu.pl> <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com> <20100917190413.GB21111@sith.mimuw.edu.pl> <DA851F94-8AFB-448D-B48D-BC4ACAD8F395@oracle.com> <20100917222227.GA22144@sith.mimuw.edu.pl> <DC671AB7-F3AF-4E70-B42E-4FF991D16E43@oracle.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <DC671AB7-F3AF-4E70-B42E-4FF991D16E43@oracle.com>
+	id S1755830Ab0IWSyh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Sep 2010 14:54:37 -0400
+Message-ID: <4C9BA266.1040102@suse.de>
+Date: Fri, 24 Sep 2010 00:24:30 +0530
+From: Suresh Jayaraman <sjayaraman@suse.de>
+To: steved@redhat.com
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        trond.myklebust@netapp.com
+Subject: [PATCH] nfs(5): document new local_lock option
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 20 Sep 2010, Chuck Lever wrote:
+Kernel 2.6.37 would most likely add a new mount option: local_lock.
+Document the new option in the nfs(5) man page.
 
-> 
-> On Sep 17, 2010, at 6:22 PM, Jan Rękorajski wrote:
-> 
-[snip]
-> > 
-> > What about TCP then?  My patch was a by-product of trying to make '-h <IP>'
-> > also work for tcp sockets, so if we skip unbindable addresses for UDP,
-> > then will it be ok to do the same for TCP?
-> 
-> Interesting.  Now that I've actually looked at the documentation >>
-> blush << rpcbind(8) explicitly says that "-h" is only for UDP.  I seem
-> to recall that the legacy portmapper had a problem on multi-homed
-> hosts where a request was received on one interface, and the reply was
-> sent out another.
-> 
-> This is certainly a problem for datagram transports, but shouldn't be
-> an issue for connection-oriented transports: the reply is always sent
-> on the same connection as the request was received.
-> 
-> Can you say a little more about why do you need "-h" to work for
-> connection-oriented sockets?
+Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+---
+ utils/mount/nfs.man |   44 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 44 insertions(+), 0 deletions(-)
 
-I have a multihomed nfs server, and I don't want the portmapper to even
-listen on an outside interface. Second thing is a host for vservers
-(http://linux-vserver.org), I need to run portmapper in guests but
-rpcbind listening on INADDR_ANY is not letting me. And finally it's good
-to be consistent, it's strange to me that someone may want to limit only
-the UDP part of portmapper (modulo network issues you mentioned).
-
--- 
-Jan Rękorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
-baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
-BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 55d4b55..d2a4c5f 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -717,6 +717,50 @@ If this option is not specified, the NFS client uses READDIRPLUS requests
+ on NFS version 3 mounts to read small directories.
+ Some applications perform better if the client uses only READDIR requests
+ for all directories.
++.TP 1.5i
++.BR local_lock= mechanism
++Specifies whether to use local locking for any or both of the flock and the
++POSIX locking mechanisms.
++.I mechanism
++can be one of
++.BR all ,
++.BR flock ,
++.BR posix ,
++or
++.BR none .
++This option is supported in kernels 2.6.37 and later.
++.IP
++The Linux NFS client provides a way to make locks local. This means, the
++applications can lock files, but such locks provide exclusion only against
++other applications running on the same client. Remote applications are not
++affected by these locks.
++.IP
++If this option is not specified, or if
++.B none
++is specified, the client assumes that the locks are not local.
++.IP
++If
++.BR all
++is specified, the client assumes that both flock and POSIX locks are local.
++.IP
++If
++.BR flock
++is specified, the client assumes that only flock locks are local and uses
++NLM sideband protocol to lock files when POSIX locks are used.
++.IP
++If
++.BR posix
++is specified, the client assumes that POSIX locks are local and uses NLM
++sideband protocol to lock files when flock locks are used.
++.IP
++To support legacy flock behavior similar to that of NFS clients < 2.6.12, use
++'local_lock=flock'. This option is required when exporting NFS mounts via
++Samba as Samba maps Windows share mode locks as flock. Since NFS clients >
++2.6.12 implement flock by emulating POSIX locks, this will result in
++conflicting locks.
++.IP
++NOTE: When used together, the 'local_lock' mount option will be overridden
++by 'nolock'/'lock' mount option.
+ .SS "Options for version 4 only"
+ Use these options, along with the options in the first subsection above,
+ for NFSv4 only. They will be ignored with older versions.
