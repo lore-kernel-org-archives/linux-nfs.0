@@ -1,54 +1,74 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH v2] NFS: handle inode==NULL in __put_nfs_open_context
-Date: Thu, 23 Sep 2010 12:18:16 -0400
-Message-ID: <1285258696.14171.0.camel@heimdal.trondhjem.org>
-References: <1285244570.3329.7.camel@heimdal.trondhjem.org>
-	 <1285258640-9599-1-git-send-email-bhalevy@panasas.com>
+From: Olga Kornievskaia <aglo@citi.umich.edu>
+Subject: Re: question about nfs41 features
+Date: Thu, 23 Sep 2010 17:09:01 -0400
+Message-ID: <AANLkTin-JSojTi51PcxVAQCDkJj1B-pX_SCKY8i1GBMu@mail.gmail.com>
+References: <AANLkTinvrHsQmcLCpt99dE1nU0md8zfwsh4vP8JRBJT6@mail.gmail.com>
+	<20100923210440.GC14610@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-nfs@vger.kernel.org
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:49614 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755112Ab0IWQSe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Sep 2010 12:18:34 -0400
-In-Reply-To: <1285258640-9599-1-git-send-email-bhalevy@panasas.com>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:41089 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755635Ab0IWVJD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Sep 2010 17:09:03 -0400
+Received: by wwd20 with SMTP id 20so185342wwd.1
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Sep 2010 14:09:02 -0700 (PDT)
+In-Reply-To: <20100923210440.GC14610@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2010-09-23 at 18:17 +0200, Benny Halevy wrote:
-> inode may be NULL when put_nfs_open_context is called from nfs_atomic_lookup
-> before d_add_unique(dentry, inode)
-> 
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/inode.c |   11 +++++++----
->  1 files changed, 7 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 2ff8142..702ed09 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -654,11 +654,14 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
->  {
->  	struct inode *inode = ctx->path.dentry->d_inode;
->  
-> -	if (!atomic_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
-> +	if (inode) {
-> +		if (!atomic_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
-> +			return;
-> +		list_del(&ctx->list);
-> +		spin_unlock(&inode->i_lock);
-> +		NFS_PROTO(inode)->close_context(ctx, is_sync);
-> +	} else if (!atomic_dec_and_test(&ctx->lock_context.count))
->  		return;
-> -	list_del(&ctx->list);
-> -	spin_unlock(&inode->i_lock);
-> -	NFS_PROTO(inode)->close_context(ctx, is_sync);
->  	if (ctx->cred != NULL)
->  		put_rpccred(ctx->cred);
->  	path_put(&ctx->path);
+On Thu, Sep 23, 2010 at 5:04 PM, J. Bruce Fields <bfields@fieldses.org>=
+ wrote:
+> On Thu, Sep 23, 2010 at 02:30:49PM -0400, Olga Kornievskaia wrote:
+>> I would greatly appreciate it I can get a reply from NFS41 server
+>> implementers out there on the subject of whether or not the followin=
+g
+>> feature are (a) currently implemented by your server, (b) will be
+>> implemented soon (1year), (c) having interest in being implemented
+>> within the next few years and (d) are so low in priority that could =
+be
+>> said: will never be implemented.
+>
+> This could change depending on interest, of course, but:
+>
+>> volatile handles
+>> named attributes
+>
+> Probably both (d).
+>
+>> directory delegations
+>> SSV
+>
+> I'm guessing (c) or (d). =A0(I'd be happier if SSV were a higher prio=
+rity,
+> but oh well.)
+>
+>> trunking (session or clientid)
+>
+> (b)
+>
+>> segmented file layouts
+>>
+>> recall of file layouts
+>> cb_notify_deviceid
+>
+> Not sure.
+>
+>> cb_getattr
+>
+> (c)
+>
+>> cb_recall_slot
+>> cb_notify_lock
+>
+> Probably both (c).
+>
+> This list doesn't necessarily get you anyone other than linux
+> implementors, so you may want to ask on nfsv4@ietf.org or ask people =
+at
+> the bakeathon.
 
-Thank you! Applied...
-  Trond
+Thank you Bruce. Thomas Haynes has also pointed this mistake out to me
+and I posted to the ietf list.
