@@ -1,51 +1,60 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] nfs: introduce mount option '-olocal_lock' to make
- locks local (try++)
-Date: Thu, 23 Sep 2010 08:56:54 -0400
-Message-ID: <1285246614.7809.0.camel@heimdal.trondhjem.org>
-References: <4C97416F.7020504@suse.de>
-	 <1285171602.4811.54.camel@heimdal.trondhjem.org> <4C9AFD56.4090603@suse.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH nfsd-next] nfsd: Export get_task_comm for nfsd
+Date: Thu, 23 Sep 2010 10:39:06 -0400
+Message-ID: <20100923143906.GC1054@fieldses.org>
+References: <4C9B176E.4090808@parallels.com>
+ <20100923140550.GA10137@infradead.org>
+ <4C9B63B2.4030907@parallels.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-	Neil Brown <neilb@suse.de>
-To: Suresh Jayaraman <sjayaraman@suse.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+To: Pavel Emelyanov <xemul@parallels.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:62672 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33438 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754826Ab0IWM5L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Sep 2010 08:57:11 -0400
-In-Reply-To: <4C9AFD56.4090603@suse.de>
+	id S1755589Ab0IWOkj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Sep 2010 10:40:39 -0400
+In-Reply-To: <4C9B63B2.4030907@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2010-09-23 at 12:40 +0530, Suresh Jayaraman wrote:
-> On 09/22/2010 09:36 PM, Trond Myklebust wrote:
-> > On Mon, 2010-09-20 at 16:41 +0530, Suresh Jayaraman wrote:
-> >> Changes since last post:
-> >>
-> >>    - NFS_MOUNT_NONLM definition remains unmodified as legacy binary mount
-> >>      interface uses it
-> >>    - Fixed an Oops in _nfs4_do_setlk() found during NFSv4 reboot recovery
-> >>    - Rebased against Trond's nfs-2.6.git (nfs-for-2.6.37 branch)
-> >>
-> >> Thanks,
-> >> Suresh Jayaraman
-> >>
-> > 
-> > Suresh,
-> > 
-> > This still appears to break the binary mount interface. You need
-> > something in nfs_validate_mount_data() to convert the NFS_MOUNT_NONLM
-> > flag into (NFS_MOUNT_LOCAL_FLOCK | NFS_MOUNT_LOCAL_FCNTL).
-> > 
+On Thu, Sep 23, 2010 at 06:26:58PM +0400, Pavel Emelyanov wrote:
+> > Why doesn't it simply use current->comm as countless other users?
 > 
-> Good catch, thanks. Here's the fixed version (haven't tested it as I don't
-> find a simple way to test it and it looks obvious):
+> Yep, this is indeed better...
+> 
+> The git://linux-nfs.org/~bfields/linux.git nfsd-next branch doesn't
+> compile when nfsd is a module with the following error:
+> 
+>    ERROR: "get_task_comm" [fs/nfsd/nfsd.ko] undefined!
+> 
+> Replace the get_task_comm call with direct comm access, which is
+> safe for current.
+> 
+> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
 
-Hi Suresh,
+Applied, thanks.
 
-This one looks good to me.
+--b.
 
-Thanks!
-  Trond
+> 
+> ---
+> 
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 83c82ed..b6e192d 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -129,12 +129,10 @@ static ssize_t nfsctl_transaction_read(struct file *file, char __user *buf, size
+>  {
+>  	static int warned;
+>  	if (file->f_dentry->d_name.name[0] == '.' && !warned) {
+> -		char name[sizeof(current->comm)];
+>  		printk(KERN_INFO
+>  		       "Warning: \"%s\" uses deprecated NFSD interface: %s."
+>  		       "  This will be removed in 2.6.40\n",
+> -		       get_task_comm(name, current),
+> -		       file->f_dentry->d_name.name);
+> +		       current->comm, file->f_dentry->d_name.name);
+>  		warned = 1;
+>  	}
+>  	if (! file->private_data) {
