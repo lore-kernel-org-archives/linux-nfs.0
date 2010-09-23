@@ -1,51 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42218 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41699 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751217Ab0IVWFj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Sep 2010 18:05:39 -0400
-Received: from localhost.localdomain (vikramyadav.hq.netapp.com [10.58.61.118] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8MM5M8K020412
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Sep 2010 15:05:23 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 00/12] RFC: pnfs: LAYOUTGRT/DEVINFO submission, v3
-Date: Wed, 22 Sep 2010 18:04:58 -0400
-Message-Id: <1285193110-24073-1-git-send-email-iisaman@netapp.com>
+	id S1756687Ab0IWVIS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Sep 2010 17:08:18 -0400
+Date: Thu, 23 Sep 2010 17:06:42 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>, Jeff Layton <jlayton@redhat.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [bfields@pop.test.fieldses.org: all f08d6374 Merge branch
+ 'nfs-for-next' into linux-next results]
+Message-ID: <20100923210642.GD14610@fieldses.org>
+References: <20100921111657.330e7838@corrin.poochiereds.net>
+ <20100921192005.GC4385@fieldses.org>
+ <1285097787.30222.24.camel@heimdal.trondhjem.org>
+ <1285099232.30222.25.camel@heimdal.trondhjem.org>
+ <20100921202411.GA10570@fieldses.org>
+ <1285101981.30222.27.camel@heimdal.trondhjem.org>
+ <20100921145823.2ec2a81c@corrin.poochiereds.net>
+ <4C9B8C72.2020405@panasas.com>
+ <1285262981.14171.6.camel@heimdal.trondhjem.org>
+ <DEA83846-A762-46E8-9A5B-D55215EAA8BE@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <DEA83846-A762-46E8-9A5B-D55215EAA8BE@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This fixes various issue brought up in comments to the previous version.
+> On Sep 23, 2010, at 1:29 PM, Trond Myklebust wrote:
+> > Looks fine to me, and I prefer this approach to the one we have today. 
+> > 
+> > Note, however, that I've already applied commit
+> > d688e11007419fd060ae74d8d952a5c4ece735aa (NFSv4.1: Fix the slotid
+> > initialisation in nfs_async_rename()) to the nfs-for-2.6.37 branch.
+> > 
+> > Are people happy with me rebasing nfs-for-2.6.37 to remove the above
+> > commit, and apply this one instead?
 
-Major changes are:
-bugfixes and renames in the deviceid cache
-fix Kconfig using a suggestion from Trond
-moved module_get to simplify and avoid bug in find_pnfs_driver_locked
+I'm happier with incremental patches and no rebasing--I like having the
+history around--but the rebase won't cause me serious practical
+problems.
 
-For those interested, the patches can also be found at
-git://linux-nfs.org/~iisaman/linux-pnfs.git,
-under the branch devinfo-submit-rc5-trond
-
-A rebase of Benny's pnfs-submit branch onto these patches is under
-the branch bennys-pnfs-submit-on-devinfo-rc5
-
-
-
-
-
-This is the start of code implementing pnfs, based on RFC 5661.  Since
-sending the whole thing at once would be overwhelming, we are trying
-to break it into bite sized chunks.  This chunk implements the
-mount/umount infrastructure, as well as sending the LAYOUTGET and
-GETDEVTICEINFO calls on io (but not actually using the information for
-io).  Note that two major simplifications to the protocol will be made 
-throughout the initial submission process:  only the file layout
-driver is considered, and only whole file layouts are requested.
-
-
-These patches apply against Trond's nfs-for-2.6.37 branch.
-
-patches 01-08 implement the mount/umount hooks
-patches 09-12 implement LAYOUTGET and GETDEVICEINFO
-
+--b.
