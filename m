@@ -1,105 +1,64 @@
-Return-Path: <nfsv4-bounces@ietf.org>
-Date: Sun, 19 Sep 2010 10:49:59 -0400
-To: "Boaz Harrosh" <bharrosh@panasas.com>,
-        "Peter Honeyman"
-	<Honey@citi.umich.edu>
-From: "Sorin Faibish" <sfaibish@emc.com>
-References: <op.vi7c6cmorwwil4@sfaibish1.corp.emc.com>
-	<4C961A50.5010000@panasas.com>
-Message-ID: <op.vjabhlntrwwil4@sfaibish1.corp.emc.com>
-In-Reply-To: <4C961A50.5010000@panasas.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>
-Subject: Re: [nfsv4] Discussion topics for the coming Bake-A-Thon
-List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Content-Type: text/plain; charset="iso-8859-15"; Format="flowed"; DelSp="yes"
-Sender: nfsv4-bounces@ietf.org
-Errors-To: nfsv4-bounces@ietf.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:41694 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752485Ab0IWVGM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Sep 2010 17:06:12 -0400
+Date: Thu, 23 Sep 2010 17:04:40 -0400
+To: Olga Kornievskaia <aglo@citi.umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: question about nfs41 features
+Message-ID: <20100923210440.GC14610@fieldses.org>
+References: <AANLkTinvrHsQmcLCpt99dE1nU0md8zfwsh4vP8JRBJT6@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AANLkTinvrHsQmcLCpt99dE1nU0md8zfwsh4vP8JRBJT6@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-On Sun, 19 Sep 2010 10:12:32 -0400, Boaz Harrosh <bharrosh@panasas.com> =20
-wrote:
+On Thu, Sep 23, 2010 at 02:30:49PM -0400, Olga Kornievskaia wrote:
+> I would greatly appreciate it I can get a reply from NFS41 server
+> implementers out there on the subject of whether or not the following
+> feature are (a) currently implemented by your server, (b) will be
+> implemented soon (1year), (c) having interest in being implemented
+> within the next few years and (d) are so low in priority that could be
+> said: will never be implemented.
 
-> On 09/18/2010 02:33 AM, Sorin Faibish wrote:
->> All,
->>
->> I am trying to build an agenda for discussions during the coming
->> Bake-A-Thon
->> at EMC October 4-8. I collected the last week several topics of interest
->> and
->> I want to ask you all to add any other topics of interest so I can close
->> the
->> agenda of the event. This is the list so far:
->>
->> 1. Layoutcommit for file layout (Dave Noveck)
->> 2. Server side copy - (James)
->> 3. Sparse files and storage preferences (Dean, Sorin)
->> 4. Secure NFS (David Quigly)
->> 5. Extend cthon tests with callback operations tests (Peter Honeyman)
->
->      And local/remote truncate torture tests.
-Sure. Do we need a separate discussion or only this?
+This could change depending on interest, of course, but:
 
->
->> 6. Performance tests - tools and benchmarks (Peter Honeyman)
->
-> to 6 or 5. Cluster tests. .i.e use of more then one client in =20
-> concertration
-> to confuse and crash a server.
-This aside from cthon, just for performance qaulification for the git.
-Same do we need an additional spot or this is enough (30 min).
+> volatile handles
+> named attributes
 
-I will update the agenda with your comments and I assume you will be
-part of the discussion, even drive it.
+Probably both (d).
 
-/Sorin
+> directory delegations
+> SSV
 
->
->> 7. Utils and fedora rpm (Sorin, SteveD)
->> 8. pNFS with IPv6 (Sorin)
->> 9. Linux FedFS imlementation (Chuck)
->>
->> I will allocate 30min for each topic and group them in 2 hours sessions
->> mostly in the early PM after lunch.
->>
->> Please feel free to add any additional topics and thank you for your
->> patience.
->>
->> /Sorin
->>
->
->
-> Thanks
-> Boaz
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+I'm guessing (c) or (d).  (I'd be happier if SSV were a higher priority,
+but oh well.)
 
+> trunking (session or clientid)
 
+(b)
 
---=20
-Best Regards
-Sorin Faibish
-Corporate Distinguished Engineer
-Unified Storage Division
+> segmented file layouts
+> 
+> recall of file layouts
+> cb_notify_deviceid
 
-        EMC=B2
-where information lives
+Not sure.
 
-Phone: 508-435-1000 x 48545
-Cellphone: 617-510-0422
-Email : sfaibish@emc.com
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
+> cb_getattr
+
+(c)
+
+> cb_recall_slot
+> cb_notify_lock
+
+Probably both (c).
+
+This list doesn't necessarily get you anyone other than linux
+implementors, so you may want to ask on nfsv4@ietf.org or ask people at
+the bakeathon.
+
+--b.
