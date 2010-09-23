@@ -1,307 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6905 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:47415 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932178Ab0I3SQY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 14:16:24 -0400
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 11/17] autofs4: removed unused code
-To: viro@ftp.linux.org.uk, jmoyer@redhat.com
-Cc: linux-fs@vger.kernel.org, autofs@linux.kernel.org,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        Ian Kent <raven@themaw.net>, David Howells <dhowells@redhat.com>
-Date: Thu, 30 Sep 2010 19:15:52 +0100
-Message-ID: <20100930181551.30939.35128.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
-References: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+	id S1752555Ab0IWO1I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Sep 2010 10:27:08 -0400
+Message-ID: <4C9B63B2.4030907@parallels.com>
+Date: Thu, 23 Sep 2010 18:26:58 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH nfsd-next] nfsd: Export get_task_comm for nfsd
+References: <4C9B176E.4090808@parallels.com> <20100923140550.GA10137@infradead.org>
+In-Reply-To: <20100923140550.GA10137@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Ian Kent <raven@themaw.net>
+> Why doesn't it simply use current->comm as countless other users?
 
-Remove code that is not used due to the use of ->d_automount()
-and ->d_manage().
+Yep, this is indeed better...
 
-Signed-off-by: Ian Kent <raven@themaw.net>
-Signed-off-by: David Howells <dhowells@redhat.com>
+The git://linux-nfs.org/~bfields/linux.git nfsd-next branch doesn't
+compile when nfsd is a module with the following error:
+
+   ERROR: "get_task_comm" [fs/nfsd/nfsd.ko] undefined!
+
+Replace the get_task_comm call with direct comm access, which is
+safe for current.
+
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+
 ---
 
- fs/autofs4/autofs_i.h |    7 -
- fs/autofs4/root.c     |  229 -------------------------------------------------
- 2 files changed, 0 insertions(+), 236 deletions(-)
-
-diff --git a/fs/autofs4/autofs_i.h b/fs/autofs4/autofs_i.h
-index 48f8248..cb86036 100644
---- a/fs/autofs4/autofs_i.h
-+++ b/fs/autofs4/autofs_i.h
-@@ -172,13 +172,6 @@ static inline int autofs4_ispending(struct dentry *dentry)
- 	return 0;
- }
- 
--static inline void autofs4_copy_atime(struct file *src, struct file *dst)
--{
--	dst->f_path.dentry->d_inode->i_atime =
--		src->f_path.dentry->d_inode->i_atime;
--	return;
--}
--
- struct inode *autofs4_get_inode(struct super_block *, struct autofs_info *);
- void autofs4_free_ino(struct autofs_info *);
- 
-diff --git a/fs/autofs4/root.c b/fs/autofs4/root.c
-index 3e71e4c..77257dd 100644
---- a/fs/autofs4/root.c
-+++ b/fs/autofs4/root.c
-@@ -32,9 +32,6 @@ static long autofs4_root_compat_ioctl(struct file *,unsigned int,unsigned long);
- static int autofs4_dir_open(struct inode *inode, struct file *file);
- static struct dentry *autofs4_lookup(struct inode *,struct dentry *, struct nameidata *);
- 
--#define TRIGGER_FLAGS   (LOOKUP_CONTINUE | LOOKUP_DIRECTORY)
--#define TRIGGER_INTENTS (LOOKUP_OPEN | LOOKUP_CREATE)
--
- const struct file_operations autofs4_root_operations = {
- 	.open		= dcache_dir_open,
- 	.release	= dcache_dir_close,
-@@ -110,14 +107,6 @@ static void autofs4_del_active(struct dentry *dentry)
- 	return;
- }
- 
--static unsigned int autofs4_need_mount(unsigned int flags)
--{
--	unsigned int res = 0;
--	if (flags & (TRIGGER_FLAGS | TRIGGER_INTENTS))
--		res = 1;
--	return res;
--}
--
- static int autofs4_dir_open(struct inode *inode, struct file *file)
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 83c82ed..b6e192d 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -129,12 +129,10 @@ static ssize_t nfsctl_transaction_read(struct file *file, char __user *buf, size
  {
- 	struct dentry *dentry = file->f_path.dentry;
-@@ -149,224 +138,6 @@ out:
- 	return dcache_dir_open(inode, file);
- }
- 
--static int try_to_fill_dentry(struct dentry *dentry, int flags)
--{
--	struct autofs_sb_info *sbi = autofs4_sbi(dentry->d_sb);
--	struct autofs_info *ino = autofs4_dentry_ino(dentry);
--	int status;
--
--	DPRINTK("dentry=%p %.*s ino=%p",
--		 dentry, dentry->d_name.len, dentry->d_name.name, dentry->d_inode);
--
--	/*
--	 * Wait for a pending mount, triggering one if there
--	 * isn't one already
--	 */
--	if (dentry->d_inode == NULL) {
--		DPRINTK("waiting for mount name=%.*s",
--			 dentry->d_name.len, dentry->d_name.name);
--
--		status = autofs4_wait(sbi, dentry, NFY_MOUNT);
--
--		DPRINTK("mount done status=%d", status);
--
--		/* Turn this into a real negative dentry? */
--		if (status == -ENOENT) {
--			spin_lock(&sbi->fs_lock);
--			ino->flags &= ~AUTOFS_INF_PENDING;
--			spin_unlock(&sbi->fs_lock);
--			return status;
--		} else if (status) {
--			/* Return a negative dentry, but leave it "pending" */
--			return status;
--		}
--	/* Trigger mount for path component or follow link */
--	} else if (ino->flags & AUTOFS_INF_PENDING ||
--			autofs4_need_mount(flags)) {
--		DPRINTK("waiting for mount name=%.*s",
--			dentry->d_name.len, dentry->d_name.name);
--
--		spin_lock(&sbi->fs_lock);
--		ino->flags |= AUTOFS_INF_PENDING;
--		spin_unlock(&sbi->fs_lock);
--		status = autofs4_wait(sbi, dentry, NFY_MOUNT);
--
--		DPRINTK("mount done status=%d", status);
--
--		if (status) {
--			spin_lock(&sbi->fs_lock);
--			ino->flags &= ~AUTOFS_INF_PENDING;
--			spin_unlock(&sbi->fs_lock);
--			return status;
--		}
--	}
--
--	/* Initialize expiry counter after successful mount */
--	ino->last_used = jiffies;
--
--	spin_lock(&sbi->fs_lock);
--	ino->flags &= ~AUTOFS_INF_PENDING;
--	spin_unlock(&sbi->fs_lock);
--
--	return 0;
--}
--
--/* For autofs direct mounts the follow link triggers the mount */
--static void *autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
--{
--	struct autofs_sb_info *sbi = autofs4_sbi(dentry->d_sb);
--	struct autofs_info *ino = autofs4_dentry_ino(dentry);
--	int oz_mode = autofs4_oz_mode(sbi);
--	unsigned int lookup_type;
--	int status;
--
--	DPRINTK("dentry=%p %.*s oz_mode=%d nd->flags=%d",
--		dentry, dentry->d_name.len, dentry->d_name.name, oz_mode,
--		nd->flags);
--	/*
--	 * For an expire of a covered direct or offset mount we need
--	 * to break out of follow_down_one() at the autofs mount trigger
--	 * (d_mounted--), so we can see the expiring flag, and manage
--	 * the blocking and following here until the expire is completed.
--	 */
--	if (oz_mode) {
--		spin_lock(&sbi->fs_lock);
--		if (ino->flags & AUTOFS_INF_EXPIRING) {
--			spin_unlock(&sbi->fs_lock);
--			/* Follow down to our covering mount. */
--			if (!follow_down_one(&nd->path))
--				goto done;
--			goto follow;
--		}
--		spin_unlock(&sbi->fs_lock);
--		goto done;
--	}
--
--	/* If an expire request is pending everyone must wait. */
--	autofs4_expire_wait(dentry);
--
--	/* We trigger a mount for almost all flags */
--	lookup_type = autofs4_need_mount(nd->flags);
--	spin_lock(&sbi->fs_lock);
--	spin_lock(&dcache_lock);
--	if (!(lookup_type || ino->flags & AUTOFS_INF_PENDING)) {
--		spin_unlock(&dcache_lock);
--		spin_unlock(&sbi->fs_lock);
--		goto follow;
--	}
--
--	/*
--	 * If the dentry contains directories then it is an autofs
--	 * multi-mount with no root mount offset. So don't try to
--	 * mount it again.
--	 */
--	if (ino->flags & AUTOFS_INF_PENDING ||
--	    (!d_mountpoint(dentry) && list_empty(&dentry->d_subdirs))) {
--		spin_unlock(&dcache_lock);
--		spin_unlock(&sbi->fs_lock);
--
--		status = try_to_fill_dentry(dentry, nd->flags);
--		if (status)
--			goto out_error;
--
--		goto follow;
--	}
--	spin_unlock(&dcache_lock);
--	spin_unlock(&sbi->fs_lock);
--follow:
--	/*
--	 * If there is no root mount it must be an autofs
--	 * multi-mount with no root offset so we don't need
--	 * to follow it.
--	 */
--	if (d_managed(dentry)) {
--		status = follow_down(&nd->path, false);
--		if (status < 0)
--			goto out_error;
--	}
--
--done:
--	return NULL;
--
--out_error:
--	path_put(&nd->path);
--	return ERR_PTR(status);
--}
--
--/*
-- * Revalidate is called on every cache lookup.  Some of those
-- * cache lookups may actually happen while the dentry is not
-- * yet completely filled in, and revalidate has to delay such
-- * lookups..
-- */
--static int autofs4_revalidate(struct dentry *dentry, struct nameidata *nd)
--{
--	struct inode *dir = dentry->d_parent->d_inode;
--	struct autofs_sb_info *sbi = autofs4_sbi(dir->i_sb);
--	int oz_mode = autofs4_oz_mode(sbi);
--	int flags = nd ? nd->flags : 0;
--	int status = 1;
--
--	/* Pending dentry */
--	spin_lock(&sbi->fs_lock);
--	if (autofs4_ispending(dentry)) {
--		/* The daemon never causes a mount to trigger */
--		spin_unlock(&sbi->fs_lock);
--
--		if (oz_mode)
--			return 1;
--
--		/*
--		 * If the directory has gone away due to an expire
--		 * we have been called as ->d_revalidate() and so
--		 * we need to return false and proceed to ->lookup().
--		 */
--		if (autofs4_expire_wait(dentry) == -EAGAIN)
--			return 0;
--
--		/*
--		 * A zero status is success otherwise we have a
--		 * negative error code.
--		 */
--		status = try_to_fill_dentry(dentry, flags);
--		if (status == 0)
--			return 1;
--
--		return status;
--	}
--	spin_unlock(&sbi->fs_lock);
--
--	/* Negative dentry.. invalidate if "old" */
--	if (dentry->d_inode == NULL)
--		return 0;
--
--	/* Check for a non-mountpoint directory with no contents */
--	spin_lock(&dcache_lock);
--	if (S_ISDIR(dentry->d_inode->i_mode) &&
--	    !d_mountpoint(dentry) && list_empty(&dentry->d_subdirs)) {
--		DPRINTK("dentry=%p %.*s, emptydir",
--			 dentry, dentry->d_name.len, dentry->d_name.name);
--		spin_unlock(&dcache_lock);
--
--		/* The daemon never causes a mount to trigger */
--		if (oz_mode)
--			return 1;
--
--		/*
--		 * A zero status is success otherwise we have a
--		 * negative error code.
--		 */
--		status = try_to_fill_dentry(dentry, flags);
--		if (status == 0)
--			return 1;
--
--		return status;
--	}
--	spin_unlock(&dcache_lock);
--
--	return 1;
--}
--
- void autofs4_dentry_release(struct dentry *de)
- {
- 	struct autofs_info *inf;
-
+ 	static int warned;
+ 	if (file->f_dentry->d_name.name[0] == '.' && !warned) {
+-		char name[sizeof(current->comm)];
+ 		printk(KERN_INFO
+ 		       "Warning: \"%s\" uses deprecated NFSD interface: %s."
+ 		       "  This will be removed in 2.6.40\n",
+-		       get_task_comm(name, current),
+-		       file->f_dentry->d_name.name);
++		       current->comm, file->f_dentry->d_name.name);
+ 		warned = 1;
+ 	}
+ 	if (! file->private_data) {
