@@ -1,139 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out-3.desy.de ([131.169.56.86]:52323 "EHLO
-	smtp-out-3.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752085Ab0IQGd6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 02:33:58 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-out-3.desy.de (DESY_OUT_3) with ESMTP id 9327B15D7
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 08:33:57 +0200 (MEST)
-Received: from adserv70.win.desy.de (adserv70.win.desy.de [131.169.97.56])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 8B7F215D5
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 08:33:57 +0200 (MEST)
-Message-ID: <4C930BB3.5080907@desy.de>
-Date: Fri, 17 Sep 2010 08:33:23 +0200
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: kernel panic
-References: <4C90C872.7080100@desy.de> <4C923933.9040907@panasas.com>
-In-Reply-To: <4C923933.9040907@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:38545 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932187Ab0IXNzW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Sep 2010 09:55:22 -0400
+Subject: Re: [bfields@pop.test.fieldses.org: all f08d6374 Merge branch 'nfs-for-next' into linux-next results]
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <1285262981.14171.6.camel@heimdal.trondhjem.org>
+Date: Fri, 24 Sep 2010 09:49:42 -0400
+Cc: Benny Halevy <bhalevy@panasas.com>, Jeff Layton <jlayton@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Message-Id: <B76D0203-AFD5-40AE-86E6-1033C3A44FFA@netapp.com>
+References: <20100918171546.GA9859@fieldses.org> <1284831680.2787.1.camel@heimdal.trondhjem.org> <20100919184549.GD32071@fieldses.org>	<20100920130106.GB4580@fieldses.org> <20100920131025.GC4580@fieldses.org> <1285091815.30222.19.camel@heimdal.trondhjem.org> <20100921111657.330e7838@corrin.poochiereds.net> <20100921192005.GC4385@fieldses.org> <1285097787.30222.24.camel@heimdal.trondhjem.org> <1285099232.30222.25.camel@heimdal.trondhjem.org> <20100921202411.GA10570@fieldses.org> <1285101981.30222.27.camel@heimdal.trondhjem.org> <20100921145823.2ec2a81c@corrin.poochiereds.net> <4C9B8C72.2020405@panasas.com> <1285262981.14171.6.camel@heimdal.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-  On 09/16/2010 05:35 PM, Benny Halevy wrote:
-> On 2010-09-15 15:21, Tigran Mkrtchyan wrote:
->> This is pnfs-all-latest git fa5a03da84b02026396be0736288b3f4a8143ff2
-> Hmm, it's pnfs-all-2.6.35 by now :)
 
-I already moved my desktop and 2.6.36-rc3 git 
-7c40d303e13ec2f2e0b6cf217c008106b391d058
-and farm nodes will be upgraded today.
-> but nevertheless, the IP below doesn't seem to agree with the assembly
-> code for nfs41_sequence_done.
-> Do mind running gdb on your binary (fs/nfs/nfs.ko) and locating
-I will do that next time. Unfortunately when I got your mail my system was
-running newer kernel.
+On Sep 23, 2010, at 1:29 PM, Trond Myklebust wrote:
 
-Thanks
-    Tigran.
+> On Thu, 2010-09-23 at 19:20 +0200, Benny Halevy wrote:
+>> On 2010-09-21 23:58, Jeff Layton wrote:
+>>> On Tue, 21 Sep 2010 16:46:21 -0400
+>>> Trond Myklebust <trond.myklebust@fys.uio.no> wrote:
+>>> 
+>>>> On Tue, 2010-09-21 at 16:24 -0400, J. Bruce Fields wrote:
+>>>>> On Tue, Sep 21, 2010 at 04:00:32PM -0400, Trond Myklebust wrote:
+>>>>>> On Tue, 2010-09-21 at 15:36 -0400, Trond Myklebust wrote:
+>>>>>>> On Tue, 2010-09-21 at 15:20 -0400, J. Bruce Fields wrote:
+>>>>>>>> All I need to do is mount nfs4.1 and run cthon -s.  The last output I
+>>>>>>>> see from the test is:
+>>>>>>>> 
+>>>>>>>> check for proper open/unlink operation
+>>>>>>>> nfsjunk files before unlink:
+>>>>>>>> 
+>>>>>>> 
+>>>>>>> Oh... I bet I see what it is.
+>>>>>>> 
+>>>>>>> It's that damned res->sr_slotid = NFS4_MAX_SLOT_TABLE and related
+>>>>>>> initialisation junk that's biting us in the arse again...
+>>>>>>> 
+>>>>>>> I'll fix it...
+>>>>>> 
+>>>>>> Does this work?
+>>>>> 
+>>>>> Yup.
+>>>> 
+>>>> It seems to fix things for me too... Once you mentioned NFSv4.1 it was
+>>>> easy to reproduce the bug.
+>>>> 
+>>>> OK. I'll merge these into nfs-for-2.6.37...
+>>> 
+>>> Thanks for fixing it. I should have mentioned that the 4.1 parts were
+>>> written using the "cargo-cult" programming method of copying what
+>>> unlink does, and that they needed careful review. Mea culpa!
+>>> 
+>> 
+>> I still hate it that the sr_slotid requires explicit, non-trivial initialization.
+>> Once upon a time, the equivalent of sr_slotid used to be a pointer to
+>> struct slot.  Using a pointer, implicitly initialized to NULL is significantly
+>> more straight forward as in the patch below.
+>> (passes cthon tests over your nfs-for-2.6.37 branch + the patch I
+>> sent earlier that fixes __put_nfs_open_context. w/o it I readily reproduce the
+>> crash reported on this thread)
+>> 
+>> From 50221fb5bd8fbd46f6cabe1fc795db7efc71bff7 Mon Sep 17 00:00:00 2001
+>> From: Benny Halevy <bhalevy@panasas.com>
+>> Date: Thu, 23 Sep 2010 19:08:21 +0200
+>> Subject: [PATCH] NFSv4.1: keep seq_res.sr_slot as pointer rather than an index
+>> 
+>> Having to explicitly initialize sr_slotid to NFS4_MAX_SLOT_TABLE
+>> resulted in numerous bugs.  Keeping the current slot as a pointer
+>> to the slot table is more straight forward and robust as it's
+>> implicitly set up to NULL wherever the seq_res member is initialized
+>> to zeroes.
+>> 
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> 
+> Looks fine to me, and I prefer this approach to the one we have today. 
+> 
+> Note, however, that I've already applied commit
+> d688e11007419fd060ae74d8d952a5c4ece735aa (NFSv4.1: Fix the slotid
+> initialisation in nfs_async_rename()) to the nfs-for-2.6.37 branch.
+> 
+> Are people happy with me rebasing nfs-for-2.6.37 to remove the above
+> commit, and apply this one instead?
 
-P.S: the rss feed from git does not show rebases and I am missing latest 
-updates. Could you send a e-mail around whem you merge?
-> the exact line and cpu instruction to see what's going on?
->
-> Thanks,
->
-> Benny
->
->> $ uname -a
->> Linux anahit 2.6.35-pnfs-2 #22 SMP Fri Aug 27 17:47:27 CEST 2010 x86_64
->> x86_64 x86_64 GNU/Linux
->> $
->>
->> On server restart:
->>
->> [624967.868286] BUG: unable to handle kernel NULL pointer dereference at
->> (null)
->> [624967.868291] IP: [<ffffffffa0492f42>] nfs41_sequence_done+0x52/0x2e0
->> [nfs]
->> [624967.868312] PGD 0
->> [624967.868315] Oops: 0002 [#1] SMP
->> [624967.868317] last sysfs file:
->> /sys/devices/pci0000:00/0000:00:1a.7/usb1/1-5/1-5:1.0/host8/target8:0:0/8:0:0:0/block/sdb/sdb1/stat
->> [624967.868321] CPU 0
->> [624967.868322] Modules linked in: nfs_layout_nfsv41_files snd_pcm_oss
->> snd_mixer_oss snd_seq edd rpcsec_gss_krb5 vboxnetadp vboxnetflt nfs
->> lockd fscache nfs_acl auth_rpcgss sunrpc vboxdrv cpufreq_conservative
->> cpufreq_userspace cpufreq_powersave acpi_cpufreq mperf fuse loop dm_mod
->> snd_hda_codec_idt snd_usb_audio snd_hda_intel snd_hda_codec snd_hwdep
->> iTCO_wdt snd_pcm sr_mod snd_timer iTCO_vendor_support snd_usbmidi_lib sg
->> cdrom pcspkr serio_raw snd_rawmidi snd_seq_device ohci1394 ieee1394
->> i2c_i801 button snd microcode e1000e snd_page_alloc ext4 jbd2 crc16 fan
->> processor ide_pci_generic ide_core ata_generic pata_marvell thermal
->> thermal_sys
->> [624967.868363]
->> [624967.868366] Pid: 2267, comm: rpciod/0 Tainted: G          I
->> 2.6.35-pnfs-2 #22 DX38BT/pczW1007
->> [624967.868368] RIP: 0010:[<ffffffffa0492f42>]  [<ffffffffa0492f42>]
->> nfs41_sequence_done+0x52/0x2e0 [nfs]
->> [624967.868382] RSP: 0018:ffff880107e8dda0  EFLAGS: 00010246
->> [624967.868384] RAX: 0000000000000000 RBX: ffff88012d28ca98 RCX:
->> 0000000000000000
->> [624967.868386] RDX: 0000000000000000 RSI: ffff88012d28ca98 RDI:
->> ffff880107c9e180
->> [624967.868388] RBP: ffff880107e8ddc0 R08: 0000000000000000 R09:
->> 0000000000000000
->> [624967.868391] R10: 0000000000000000 R11: 00000000ffffffff R12:
->> ffff880107c9e180
->> [624967.868393] R13: 0000000000000001 R14: 0000000000000000 R15:
->> ffff880116802300
->> [624967.868396] FS:  0000000000000000(0000) GS:ffff880001a00000(0000)
->> knlGS:0000000000000000
->> [624967.868398] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->> [624967.868400] CR2: 0000000000000000 CR3: 00000000015c8000 CR4:
->> 00000000000406f0
->> [624967.868403] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
->> 0000000000000000
->> [624967.868405] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7:
->> 0000000000000400
->> [624967.868408] Process rpciod/0 (pid: 2267, threadinfo
->> ffff880107e8c000, task ffff880116802300)
->> [624967.868410] Stack:
->> [624967.868411]  0000000000012300 ffff880107c9e180 ffff880022c5a000
->> 0000000000000001
->> [624967.868415]<0>  ffff880107e8dde0 ffffffffa04934d0 ffff880107c9e180
->> ffff880107c9e1f0
->> [624967.868419]<0>  ffff880107e8de00 ffffffffa040ab17 0000000000000001
->> ffff880107c9e180
->> [624967.868423] Call Trace:
->> [624967.868435]  [<ffffffffa04934d0>]
->> nfs41_sequence_call_done+0x20/0x100 [nfs]
->> [624967.868447]  [<ffffffffa040ab17>] rpc_exit_task+0x27/0x60 [sunrpc]
->> [624967.868457]  [<ffffffffa040b322>] __rpc_execute+0xa2/0x290 [sunrpc]
->> [624967.868466]  [<ffffffffa040b510>] ? rpc_async_schedule+0x0/0x20 [sunrpc]
->> [624967.868475]  [<ffffffffa040b520>] rpc_async_schedule+0x10/0x20 [sunrpc]
->> [624967.868481]  [<ffffffff81059fed>] worker_thread+0x12d/0x1f0
->> [624967.868485]  [<ffffffff8105e530>] ? autoremove_wake_function+0x0/0x40
->> [624967.868488]  [<ffffffff81059ec0>] ? worker_thread+0x0/0x1f0
->> [624967.868491]  [<ffffffff8105e08e>] kthread+0x8e/0xa0
->> [624967.868495]  [<ffffffff81003b54>] kernel_thread_helper+0x4/0x10
->> [624967.868498]  [<ffffffff8105e000>] ? kthread+0x0/0xa0
->> [624967.868501]  [<ffffffff81003b50>] ? kernel_thread_helper+0x0/0x10
->> [624967.868503] Code: 08 80 fa 80 74 73 48 8b 0b 0f b6 c2 48 c1 e0 02 48
->> 03 41 60 8b 4b 0c 81 f9 e8 d8 ff ff 0f 84 26 01 00 00 85 c9 0f 85 fe 00
->> 00 00<83>  00 01 48 8b 03 4c 8b 6b 10 4c 8b a0 38 02 00 00 49 8d bc 24
->> [624967.868532] RIP  [<ffffffffa0492f42>] nfs41_sequence_done+0x52/0x2e0
->> [nfs]
->> [624967.868544]  RSP<ffff880107e8dda0>
->> [624967.868546] CR2: 0000000000000000
->> [624967.868548] ---[ end trace a7919e7f17c0a727 ]---
->>
->>
->> Tigran.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Yes, I like this approach as well and think it should be applied.
+
+-->Andy
+
+> 
+> Cheers
+>  Trond
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
