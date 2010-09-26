@@ -1,95 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:40346 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:40644 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751285Ab0I0KGg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Sep 2010 06:06:36 -0400
-Message-ID: <4CA06CA0.6060606@parallels.com>
-Date: Mon, 27 Sep 2010 14:06:24 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 1/8] sunrpc: Factor out rpc_xprt freeing
-References: <4CA06C7A.5060307@parallels.com>
-In-Reply-To: <4CA06C7A.5060307@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754674Ab0IZRCZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 26 Sep 2010 13:02:25 -0400
+Received: from bfields by fieldses.org with local (Exim 4.71)
+	(envelope-from <bfields@fieldses.org>)
+	id 1Ozuai-0008F8-Hb
+	for linux-nfs@vger.kernel.org; Sun, 26 Sep 2010 13:00:44 -0400
+Date: Sun, 26 Sep 2010 12:59:38 -0400
+From: linux-nfs-owner@vger.kernel.org
+To: Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] CLNT: Turn on cache_this for specific tests
+Message-ID: <20100926165938.GC25106@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+From: J. Bruce Fields <bfields@redhat.com>
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+A previous patch turned this off by default; but we need it back on for
+anything that tests the reply cache.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- net/sunrpc/xprtsock.c |   20 ++++++++++++--------
- 1 files changed, 12 insertions(+), 8 deletions(-)
+ nfs4.1/server41tests/st_sequence.py |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index b6309db..98d4b7b 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -759,6 +759,8 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
- 		xs_tcp_shutdown(xprt);
- }
- 
-+static void xs_free_xprt(struct rpc_xprt *xprt);
-+
- /**
-  * xs_destroy - prepare to shutdown a transport
-  * @xprt: doomed transport
-@@ -774,8 +776,7 @@ static void xs_destroy(struct rpc_xprt *xprt)
- 
- 	xs_close(xprt);
- 	xs_free_peer_addresses(xprt);
--	kfree(xprt->slot);
--	kfree(xprt);
-+	xs_free_xprt(xprt);
- 	module_put(THIS_MODULE);
- }
- 
-@@ -2298,6 +2299,12 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
- 	return xprt;
- }
- 
-+static void xs_free_xprt(struct rpc_xprt *xprt)
-+{
-+	kfree(xprt->slot);
-+	kfree(xprt);
-+}
-+
- static const struct rpc_timeout xs_udp_default_timeout = {
- 	.to_initval = 5 * HZ,
- 	.to_maxval = 30 * HZ,
-@@ -2371,8 +2378,7 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
- 		return xprt;
- 	ret = ERR_PTR(-EINVAL);
- out_err:
--	kfree(xprt->slot);
--	kfree(xprt);
-+	xs_free_xprt(xprt);
- 	return ret;
- }
- 
-@@ -2447,8 +2453,7 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
- 		return xprt;
- 	ret = ERR_PTR(-EINVAL);
- out_err:
--	kfree(xprt->slot);
--	kfree(xprt);
-+	xs_free_xprt(xprt);
- 	return ret;
- }
- 
-@@ -2528,8 +2533,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 		return xprt;
- 	ret = ERR_PTR(-EINVAL);
- out_err:
--	kfree(xprt->slot);
--	kfree(xprt);
-+	xs_free_xprt(xprt);
- 	return ret;
- }
- 
+Also available from:
+
+	git://linux-nfs.org/~bfields/pynfs41.git
+
+I've also done a little more triage of the results and turned on another
+36 of the pynfs41 tests in my server regression testing:
+
+	git://linux-nfs.org/~bfields/testd.git
+
+--b.
+
+diff --git a/nfs4.1/server41tests/st_sequence.py b/nfs4.1/server41tests/st_sequence.py
+index f939408..a5e344d 100644
+--- a/nfs4.1/server41tests/st_sequence.py
++++ b/nfs4.1/server41tests/st_sequence.py
+@@ -191,7 +191,7 @@ def testReplayCache001(t, env):
+     """
+     c1 = env.c1.new_client(env.testname(t))
+     sess1 = c1.create_session()
+-    res1 = sess1.compound([op.putrootfh()])
++    res1 = sess1.compound([op.putrootfh()], cache_this=True)
+     check(res1)
+     res2 = sess1.compound([op.putrootfh()], seq_delta=0)
+     check(res2)
+@@ -211,7 +211,7 @@ def testReplayCache002(t, env):
+     check(res)
+     ops = env.home + [op.savefh(),\
+           op.rename("%s_1" % env.testname(t), "%s_2" % env.testname(t))]
+-    res1 = sess1.compound(ops)
++    res1 = sess1.compound(ops, cache_this=True)
+     check(res1)
+     res2 = sess1.compound(ops, seq_delta=0)
+     check(res2)
+@@ -227,7 +227,7 @@ def testReplayCache003(t, env):
+     """
+     c1 = env.c1.new_client(env.testname(t))
+     sess1 = c1.create_session()
+-    res1 = sess1.compound([op.putrootfh(), op.lookup("")])
++    res1 = sess1.compound([op.putrootfh(), op.lookup("")], cache_this=True)
+     check(res1, NFS4ERR_INVAL)
+     res2 = sess1.compound([op.putrootfh(), op.lookup("")], seq_delta=0)
+     check(res2, NFS4ERR_INVAL)
+@@ -244,7 +244,7 @@ def testReplayCache004(t, env):
+     c1 = env.c1.new_client(env.testname(t))
+     sess1 = c1.create_session()
+     ops = [op.putrootfh(), op.savefh(), op.rename("", "foo")]
+-    res1 = sess1.compound(ops)
++    res1 = sess1.compound(ops, cache_this=True)
+     check(res1, NFS4ERR_INVAL)
+     res2 = sess1.compound(ops, seq_delta=0)
+     check(res2, NFS4ERR_INVAL)
+@@ -260,7 +260,7 @@ def testReplayCache005(t, env):
+     """
+     c1 = env.c1.new_client(env.testname(t))
+     sess1 = c1.create_session()
+-    res1 = sess1.compound([op.illegal()])
++    res1 = sess1.compound([op.illegal()], cache_this=True)
+     check(res1, NFS4ERR_OP_ILLEGAL)
+     res2 = sess1.compound([op.illegal()], seq_delta=0)
+     check(res2, NFS4ERR_OP_ILLEGAL)
 -- 
-1.5.5.6
+1.7.0.4
 
