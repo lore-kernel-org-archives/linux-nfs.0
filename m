@@ -1,42 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.perches.com ([173.55.12.10]:1920 "EHLO mail.perches.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:30597 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755428Ab0IMTsn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Sep 2010 15:48:43 -0400
-From: Joe Perches <joe@perches.com>
-To: linux-kernel@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+	id S932988Ab0I0J7U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Sep 2010 05:59:20 -0400
+Message-ID: <4CA06AD2.4050805@parallels.com>
+Date: Mon, 27 Sep 2010 13:58:42 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
         Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH 23/25] net/sunrpc: Use static const char arrays
-Date: Mon, 13 Sep 2010 12:48:01 -0700
-Message-Id: <c87c4e9337ce9af6a3b17baee29ec0dda5a4d392.1284406639.git.joe@perches.com>
-In-Reply-To: <cover.1284406638.git.joe@perches.com>
-References: <cover.1284406638.git.joe@perches.com>
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 2/9] sunrpc: Make xprt auth cache release work with the xprt
+References: <4CA06A63.6090507@parallels.com>
+In-Reply-To: <4CA06A63.6090507@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- net/sunrpc/auth_gss/gss_krb5_mech.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+This is done in order to facilitate getting the ip_map_cache from
+which to put the ip_map.
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index 0326446..8a4d083 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -422,7 +422,7 @@ static int
- context_derive_keys_rc4(struct krb5_ctx *ctx)
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+---
+ include/linux/sunrpc/svcauth.h |    3 ++-
+ net/sunrpc/svc_xprt.c          |    5 ++---
+ net/sunrpc/svcauth_unix.c      |    9 ++++++---
+ 3 files changed, 10 insertions(+), 7 deletions(-)
+
+diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
+index 1126693..18bce95 100644
+--- a/include/linux/sunrpc/svcauth.h
++++ b/include/linux/sunrpc/svcauth.h
+@@ -116,6 +116,7 @@ struct auth_ops {
+ #define	SVC_PENDING	9
+ #define	SVC_COMPLETE	10
+ 
++struct svc_xprt;
+ 
+ extern int	svc_authenticate(struct svc_rqst *rqstp, __be32 *authp);
+ extern int	svc_authorise(struct svc_rqst *rqstp);
+@@ -131,7 +132,7 @@ extern struct auth_domain *auth_domain_find(char *name);
+ extern struct auth_domain *auth_unix_lookup(struct in6_addr *addr);
+ extern int auth_unix_forget_old(struct auth_domain *dom);
+ extern void svcauth_unix_purge(void);
+-extern void svcauth_unix_info_release(void *);
++extern void svcauth_unix_info_release(struct svc_xprt *xpt);
+ extern int svcauth_unix_set_client(struct svc_rqst *rqstp);
+ 
+ static inline unsigned long hash_str(char *name, int bits)
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 95fc3e8..385d822 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -128,9 +128,8 @@ static void svc_xprt_free(struct kref *kref)
+ 	struct svc_xprt *xprt =
+ 		container_of(kref, struct svc_xprt, xpt_ref);
+ 	struct module *owner = xprt->xpt_class->xcl_owner;
+-	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags) &&
+-	    xprt->xpt_auth_cache != NULL)
+-		svcauth_unix_info_release(xprt->xpt_auth_cache);
++	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
++		svcauth_unix_info_release(xprt);
+ 	xprt->xpt_ops->xpo_free(xprt);
+ 	module_put(owner);
+ }
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 31b99c5..49e39ff 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -472,10 +472,13 @@ ip_map_cached_put(struct svc_rqst *rqstp, struct ip_map *ipm)
+ }
+ 
+ void
+-svcauth_unix_info_release(void *info)
++svcauth_unix_info_release(struct svc_xprt *xpt)
  {
- 	struct crypto_hash *hmac;
--	char sigkeyconstant[] = "signaturekey";
-+	static const char sigkeyconstant[] = "signaturekey";
- 	int slen = strlen(sigkeyconstant) + 1;	/* include null terminator */
- 	struct hash_desc desc;
- 	struct scatterlist sg[1];
+-	struct ip_map *ipm = info;
+-	cache_put(&ipm->h, &ip_map_cache);
++	struct ip_map *ipm;
++
++	ipm = xpt->xpt_auth_cache;
++	if (ipm != NULL)
++		cache_put(&ipm->h, &ip_map_cache);
+ }
+ 
+ /****************************************************************************
 -- 
-1.7.3.rc1
+1.5.5.6
 
