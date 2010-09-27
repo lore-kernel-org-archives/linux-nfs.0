@@ -1,114 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:54903 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:49889 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753001Ab0IVC5y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Sep 2010 22:57:54 -0400
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Wed, 22 Sep 2010 12:55:07 +1000
-Subject: [PATCH 3/7] sunrpc/cache: change deferred-request hash table to use
-	hlist.
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20100922025506.31745.9409.stgit@localhost.localdomain>
-In-Reply-To: <20100922025009.31745.98237.stgit@localhost.localdomain>
-References: <20100922025009.31745.98237.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+	id S933483Ab0I0UKT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Sep 2010 16:10:19 -0400
+Subject: Re: [PATCH] NFS: initialize nfs_open_context.list member at
+ allocation time
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, pbunyan@redhat.com
+In-Reply-To: <1285355683-7244-1-git-send-email-jlayton@redhat.com>
+References: <1285355683-7244-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 27 Sep 2010 16:09:59 -0400
+Message-ID: <1285618199.25777.21.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Being a hash table, hlist is the best option.
+On Fri, 2010-09-24 at 15:14 -0400, Jeff Layton wrote:
+> alloc_nfs_open_context creates a nfs_open_context struct, but doesn't
+> initialize the list_head embedded in it. In newer kernels, this is
+> harmless since the ctx is always put on a list soon after creation. In
+> an older RHEL4 kernel however, it's possible (though unlikely) for a ctx
+> to be passed to put_nfs_open_context without ever being put on a list,
+> which can cause an oops.
+> 
+> Since it's hard to predict how this code will change in the future,
+> let's go ahead and initialize the list.
+> 
+> Reported-by: Paul Bunyan <pbunyan@redhat.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfs/inode.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 7d2d6c7..3185fc2 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -638,6 +638,7 @@ static struct nfs_open_context *alloc_nfs_open_context(struct path *path, struct
+>  		ctx->dir_cookie = 0;
+>  		nfs_init_lock_context(&ctx->lock_context);
+>  		ctx->lock_context.open_context = ctx;
+> +		INIT_LIST_HEAD(&ctx->list);
+>  	}
+>  	return ctx;
+>  }
 
-There is currently some ugliness were we treat "->next == NULL" as
-a special case to avoid having to initialise the whole array.
-This change nicely gets rid of that case.
+Hi Jeff,
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- include/linux/sunrpc/cache.h |    2 +-
- net/sunrpc/cache.c           |   22 ++++++++--------------
- 2 files changed, 9 insertions(+), 15 deletions(-)
+I'm really too keen to merge stuff into 2.6.37 with the sole
+justification being that it is needed to keep kernel 2.6.9 in sync.
 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 52a7d72..0349635 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -133,7 +133,7 @@ struct cache_req {
-  * delayed awaiting cache-fill
-  */
- struct cache_deferred_req {
--	struct list_head	hash;	/* on hash chain */
-+	struct hlist_node	hash;	/* on hash chain */
- 	struct list_head	recent; /* on fifo */
- 	struct cache_head	*item;  /* cache item we wait on */
- 	void			*owner; /* we might need to discard all defered requests
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index a9e850e..466f65c 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -506,13 +506,13 @@ EXPORT_SYMBOL_GPL(cache_purge);
- 
- static DEFINE_SPINLOCK(cache_defer_lock);
- static LIST_HEAD(cache_defer_list);
--static struct list_head cache_defer_hash[DFR_HASHSIZE];
-+static struct hlist_head cache_defer_hash[DFR_HASHSIZE];
- static int cache_defer_cnt;
- 
- static void __unhash_deferred_req(struct cache_deferred_req *dreq)
+That said, you appear to be in luck today: I found a reason to apply
+something like the above in 2.6.37 too. Please see the patch below, that
+appears to need to be applied to the nfs-for-2.6.37 branch.
+
+Cheers
+  Trond
+-------------------------------------------------------------------------------------------
+commit 2128d32b4fbb85bba129ca7b6d4c8e118d4a325b
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Mon Sep 27 15:51:20 2010 -0400
+
+    NFS: Really fix put_nfs_open_context()
+    
+    In nfs_open_revalidate(), if the open_context() call returns an inode that
+    is not the same as dentry->d_inode, then we will call
+    put_nfs_open_context() with a valid dentry->d_inode, but without the
+    context being part of the nfsi->open_files list.
+    
+    In this case too, we want to just skip the list removal, but we do want to
+    call the ->close_context() callback in order to close the NFSv4 state.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index cc22ef5..fca63b9 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -635,6 +635,7 @@ struct nfs_open_context *alloc_nfs_open_context(struct path *path, struct rpc_cr
+ 		ctx->dir_cookie = 0;
+ 		nfs_init_lock_context(&ctx->lock_context);
+ 		ctx->lock_context.open_context = ctx;
++		INIT_LIST_HEAD(&ctx->list);
+ 	}
+ 	return ctx;
+ }
+@@ -650,14 +651,15 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
  {
- 	list_del_init(&dreq->recent);
--	list_del_init(&dreq->hash);
-+	hlist_del_init(&dreq->hash);
- 	cache_defer_cnt--;
- }
+ 	struct inode *inode = ctx->path.dentry->d_inode;
  
-@@ -521,9 +521,7 @@ static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_he
- 	int hash = DFR_HASH(item);
- 
- 	list_add(&dreq->recent, &cache_defer_list);
--	if (cache_defer_hash[hash].next == NULL)
--		INIT_LIST_HEAD(&cache_defer_hash[hash]);
--	list_add(&dreq->hash, &cache_defer_hash[hash]);
-+	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
- }
- 
- static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *item)
-@@ -587,7 +585,7 @@ static int cache_wait_req(struct cache_req *req, struct cache_head *item)
- 		 * to clean up
- 		 */
- 		spin_lock(&cache_defer_lock);
--		if (!list_empty(&sleeper.handle.hash)) {
-+		if (!hlist_unhashed(&sleeper.handle.hash)) {
- 			__unhash_deferred_req(&sleeper.handle);
- 			spin_unlock(&cache_defer_lock);
- 		} else {
-@@ -642,23 +640,19 @@ static void cache_revisit_request(struct cache_head *item)
- 	struct cache_deferred_req *dreq;
- 	struct list_head pending;
- 
--	struct list_head *lp;
-+	struct hlist_node *lp, *tmp;
- 	int hash = DFR_HASH(item);
- 
- 	INIT_LIST_HEAD(&pending);
- 	spin_lock(&cache_defer_lock);
- 
--	lp = cache_defer_hash[hash].next;
--	if (lp) {
--		while (lp != &cache_defer_hash[hash]) {
--			dreq = list_entry(lp, struct cache_deferred_req, hash);
--			lp = lp->next;
-+	hlist_for_each_entry_safe(dreq, lp, tmp,
-+				  &cache_defer_hash[hash], hash)
- 			if (dreq->item == item) {
- 				__unhash_deferred_req(dreq);
- 				list_add(&dreq->recent, &pending);
- 			}
--		}
--	}
-+
- 	spin_unlock(&cache_defer_lock);
- 
- 	while (!list_empty(&pending)) {
-
+-	if (inode) {
++	if (!list_empty(&ctx->list)) {
+ 		if (!atomic_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
+ 			return;
+ 		list_del(&ctx->list);
+ 		spin_unlock(&inode->i_lock);
+-		NFS_PROTO(inode)->close_context(ctx, is_sync);
+ 	} else if (!atomic_dec_and_test(&ctx->lock_context.count))
+ 		return;
++	if (inode != NULL)
++		NFS_PROTO(inode)->close_context(ctx, is_sync);
+ 	if (ctx->cred != NULL)
+ 		put_rpccred(ctx->cred);
+ 	path_put(&ctx->path);
 
