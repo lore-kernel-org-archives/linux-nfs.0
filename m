@@ -1,58 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out-2.desy.de ([131.169.56.85]:45629 "EHLO
-	smtp-out-2.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751844Ab0IWVbI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Sep 2010 17:31:08 -0400
-Received: from smtp-map-2.desy.de (smtp-map-2.desy.de [131.169.56.67])
-	by smtp-out-2.desy.de (DESY_OUT_1) with ESMTP id 0ED86DF4
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Sep 2010 23:31:07 +0200 (MEST)
-Received: from adserv70.win.desy.de (adserv70.win.desy.de [131.169.97.56])
-	by smtp-map-2.desy.de (DESY_MAP_2) with ESMTP id 09CFADF1
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Sep 2010 23:31:06 +0200 (MEST)
-Content-Type: text/plain; charset=US-ASCII
-Subject: RE: question about nfs41 features
-Date: Thu, 23 Sep 2010 23:31:06 +0200
-Message-ID: <2CF5F37A49FC1743A7940A3FA6E0A8FB050FBDA5@ADXV1.win.desy.de>
-References: <AANLkTinvrHsQmcLCpt99dE1nU0md8zfwsh4vP8JRBJT6@mail.gmail.com>
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: "Olga Kornievskaia" <aglo@citi.umich.edu>,
-        "linux-nfs" <linux-nfs@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:29076 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755239Ab0I0LNs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Sep 2010 07:13:48 -0400
+Message-ID: <4CA07C67.2060201@RedHat.com>
+Date: Mon, 27 Sep 2010 07:13:43 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Eberhard Kuemmerle <E.Kuemmerle@fz-juelich.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Patch proposal for svcgssd
+References: <201009271029.43607.E.Kuemmerle@fz-juelich.de>
+In-Reply-To: <201009271029.43607.E.Kuemmerle@fz-juelich.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
 
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org on behalf of Olga Kornievskaia
-Sent: Thu 9/23/2010 20:30
-To: linux-nfs
-Subject: question about nfs41 features
- 
-I would greatly appreciate it I can get a reply from NFS41 server
-implementers out there on the subject of whether or not the following
-feature are (a) currently implemented by your server, (b) will be
-implemented soon (1year), (c) having interest in being implemented
-within the next few years and (d) are so low in priority that could be
-said: will never be implemented.
+On 09/27/2010 04:29 AM, Eberhard Kuemmerle wrote:
+> Hello,
+> 
+> we use a two-node cluster (pacemaker, corosync, drbd) as nfs-server.
+> We configured a virtual cluster-IP (using ocf::heartbeat:IPaddr2, iptables CLUSTERIP),
+> i.e. the nfs clients call the server as OurClusterIP.OurDomain.de while the real hostnames of the servers are
+> OurServer1.OurDomain.de and OurServer2.OurDomain.de.
+> 
+> If I tried to use the mount option krb5, svcgssd denied the mount with the message:
+> ERROR: GSS-API: error in handle_nullreq: gss_accept_sec_context(): Unspecified GSS failure.  Minor code may provide more information - Wrong principal in request
+> 
+> I patched svcgssd that we can specify the principal to use as an option:
+> svcgssd -p nfs/OurClusterIP.OurDomain.de
+> 
+> Now, krb5 works fine!
+> 
+> I suggest to include that patch in the main line of nfs-utils to enable the use of krb5 with such virtual IP's.
+> The small patch is appended to the mail.
+This looks like a reasonable idea... but a couple of nits...
 
+1) There needs to be an update to the man page, in a separate patch, preferably.
 
-d) volatile handles
-c) named attributes
-c) directory delegations
-d) SSV
-a? if not - have to be fixed) trunking (session or clientid)
-a, but switched off as linux client can't do that) segmented file layouts
+2) Please don't make the patch an email attachment, inline it in
+   email. See http://www.kernel.org/pub/linux/docs/lkml/#s1-10
+   for details.
 
-b) recall of file layouts
-a/b) cb_notify_deviceid
-c) cb_getattr
-c) cb_recall_slot
-d) cb_notify_lock
+3) Please add the 'Signed-off-by:' line after your patch description.
 
-Thank you.
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Note, in the next day or so I will be doing nfs-utils release.
+If you are interested in having this patch included please repost 
+it in a timely matter... 
 
+tia,
+
+steved.
+
+> 
+> Best regards
+>   Eberhard Kuemmerle
+> 
+> ------------------------------------------------------------------------------------------------
+> ------------------------------------------------------------------------------------------------
+> Forschungszentrum Juelich GmbH
+> 52425 Juelich
+> Sitz der Gesellschaft: Juelich
+> Eingetragen im Handelsregister des Amtsgerichts Dueren Nr. HR B 3498
+> Vorsitzender des Aufsichtsrats: MinDirig Dr. Karl Eugen Huthmacher
+> Geschaeftsfuehrung: Prof. Dr. Achim Bachem (Vorsitzender),
+> Dr. Ulrich Krafft (stellv. Vorsitzender), Prof. Dr.-Ing. Harald Bolt,
+> Prof. Dr. Sebastian M. Schmidt
+> ------------------------------------------------------------------------------------------------
+> ------------------------------------------------------------------------------------------------
