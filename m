@@ -1,133 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:39557 "EHLO relay.sw.ru"
+Received: from mail-out1.uio.no ([129.240.10.57]:35566 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753414Ab0I1PPe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Sep 2010 11:15:34 -0400
-Message-ID: <4CA20689.6060405@parallels.com>
-Date: Tue, 28 Sep 2010 19:15:21 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 1/7] sunrpc: Factor out rpc_xprt allocation
-References: <4CA20651.4070605@parallels.com>
-In-Reply-To: <4CA20651.4070605@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1755967Ab0I0MYd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Sep 2010 08:24:33 -0400
+Subject: Re: when will we be able to use LIPKEY on NFS4 on Linux?
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Zhang Weiwu <zhangweiwu@realss.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <4CA05749.8070502@realss.com>
+References: <4CA05749.8070502@realss.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 27 Sep 2010 08:24:26 -0400
+Message-ID: <1285590266.19362.37.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+On Mon, 2010-09-27 at 16:35 +0800, Zhang Weiwu wrote:
+> Hello.
+> 
+> Quote from 2006 article:
+> http://www.ibm.com/developerworks/systems/library/es-nfs-security/index.html#N100AF
+> 
+>     In /a few years/, NFS Version 4 implementations will start claiming
+>     support for the public key-based security mechanism (SPKM and LIPKEY).
+> 
+> 
+> My question:
+> 
+>    1. Is LIPKEY already implemented in some NFS4 implementation?
+>       Particularly, I am interested using it on Debian Linux.
+>    2. I could not manage to find a how-to on using LIPKEY, e.g. where to
+>       store the public key and certificates, where to configure
+>       username/password for client authentication. Is there one existing?
+> 
+> Thanks in advance!
 
----
- include/linux/sunrpc/xprt.h     |    1 +
- net/sunrpc/xprtrdma/transport.c |   13 ++-----------
- net/sunrpc/xprtsock.c           |   37 +++++++++++++++++++++++++------------
- 3 files changed, 28 insertions(+), 23 deletions(-)
+We're likely to drop the requirement that SPKM3/LIPKEY be a mandatory
+security mechanism for NFSv4 in the revised RFC3530 (a.k.a. RFC3530bis)
+that is being drafted.
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index ff5a77b..00f6e3f 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -280,6 +280,7 @@ void			xprt_release_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
- void			xprt_release(struct rpc_task *task);
- struct rpc_xprt *	xprt_get(struct rpc_xprt *xprt);
- void			xprt_put(struct rpc_xprt *xprt);
-+struct rpc_xprt *	xprt_alloc(int size, int max_req);
- 
- static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
- {
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index a85e866..9d77bf2 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -285,23 +285,14 @@ xprt_setup_rdma(struct xprt_create *args)
- 		return ERR_PTR(-EBADF);
- 	}
- 
--	xprt = kzalloc(sizeof(struct rpcrdma_xprt), GFP_KERNEL);
-+	xprt = xprt_alloc(sizeof(struct rpcrdma_xprt),
-+			xprt_rdma_slot_table_entries);
- 	if (xprt == NULL) {
- 		dprintk("RPC:       %s: couldn't allocate rpcrdma_xprt\n",
- 			__func__);
- 		return ERR_PTR(-ENOMEM);
- 	}
- 
--	xprt->max_reqs = xprt_rdma_slot_table_entries;
--	xprt->slot = kcalloc(xprt->max_reqs,
--				sizeof(struct rpc_rqst), GFP_KERNEL);
--	if (xprt->slot == NULL) {
--		dprintk("RPC:       %s: couldn't allocate %d slots\n",
--			__func__, xprt->max_reqs);
--		kfree(xprt);
--		return ERR_PTR(-ENOMEM);
--	}
--
- 	/* 60 second timeout, no retries */
- 	xprt->timeout = &xprt_rdma_default_timeout;
- 	xprt->bind_timeout = (60U * HZ);
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index b6309db..9f2dd3b 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -759,6 +759,28 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
- 		xs_tcp_shutdown(xprt);
- }
- 
-+struct rpc_xprt *xprt_alloc(int size, int max_req)
-+{
-+	struct rpc_xprt *xprt;
-+
-+	xprt = kzalloc(size, GFP_KERNEL);
-+	if (xprt == NULL)
-+		goto out;
-+
-+	xprt->max_reqs = max_req;
-+	xprt->slot = kcalloc(max_req, sizeof(struct rpc_rqst), GFP_KERNEL);
-+	if (xprt->slot == NULL)
-+		goto out_free;
-+
-+	return xprt;
-+
-+out_free:
-+	kfree(xprt);
-+out:
-+	return NULL;
-+}
-+EXPORT_SYMBOL_GPL(xprt_alloc);
-+
- /**
-  * xs_destroy - prepare to shutdown a transport
-  * @xprt: doomed transport
-@@ -2273,23 +2295,14 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
- 		return ERR_PTR(-EBADF);
- 	}
- 
--	new = kzalloc(sizeof(*new), GFP_KERNEL);
--	if (new == NULL) {
-+	xprt = xprt_alloc(sizeof(*new), slot_table_size);
-+	if (xprt == NULL) {
- 		dprintk("RPC:       xs_setup_xprt: couldn't allocate "
- 				"rpc_xprt\n");
- 		return ERR_PTR(-ENOMEM);
- 	}
--	xprt = &new->xprt;
--
--	xprt->max_reqs = slot_table_size;
--	xprt->slot = kcalloc(xprt->max_reqs, sizeof(struct rpc_rqst), GFP_KERNEL);
--	if (xprt->slot == NULL) {
--		kfree(xprt);
--		dprintk("RPC:       xs_setup_xprt: couldn't allocate slot "
--				"table\n");
--		return ERR_PTR(-ENOMEM);
--	}
- 
-+	new = container_of(xprt, struct sock_xprt, xprt);
- 	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
- 	xprt->addrlen = args->addrlen;
- 	if (args->srcaddr)
--- 
-1.5.5.6
+The reason is that the SPKM3 mechanism (on which LIPKEY relies) appears
+to contain inherent security flaws that are difficult to fix. The IETF
+security group have therefore pretty much killed it as an option.
+Other alternatives to SPKM3 are being discussed, but I'm not aware of
+anything that replaces LIPKEY.
+
+Cheers
+  Trond
 
