@@ -1,38 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60092 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42352 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752670Ab0IAVG0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Sep 2010 17:06:26 -0400
-Date: Wed, 1 Sep 2010 17:05:55 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Neil Brown <neilb@suse.de>
-Cc: Tim Gardner <tim.gardner@canonical.com>, linux-nfs@vger.kernel.org,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Trond.Myklebust@netapp.com
-Subject: Re: nfsd deadlock, 2.6.36-rc3
-Message-ID: <20100901210555.GB10507@fieldses.org>
-References: <4C7E73CB.7030603@canonical.com>
- <20100901165400.GB1201@fieldses.org>
- <20100902065551.079e297c@notabene>
+	id S1756307Ab0I0RMb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Sep 2010 13:12:31 -0400
+Date: Mon, 27 Sep 2010 13:12:27 -0400
+To: Malte Zacharias <kernel-ml-alias@asenwelt.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS+krb5 ID mapping always maps to nobody
+Message-ID: <20100927171227.GA12033@fieldses.org>
+References: <4C9E72BB.5080000@asenwelt.de>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100902065551.079e297c@notabene>
+In-Reply-To: <4C9E72BB.5080000@asenwelt.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Sep 02, 2010 at 06:55:51AM +1000, Neil Brown wrote:
-> On Wed, 1 Sep 2010 12:54:01 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > For that reason we just don't support loopback mounts--they're OK for
-> > light testing, but it would be difficult to make them completely robust
-> > under load.
+On Sun, Sep 26, 2010 at 12:07:55AM +0200, Malte Zacharias wrote:
+> Hello,
 > 
-> I wonder if we could use 'containers' to partition available memory between
-> 'nfsd threads' and 'everything else'??  Probably not worth the effort.
+> I have been trying to configure an nfsv4 client and server for my
+> network for some time now, but there is one issue I can't resolve.
+> 
+> I run a small (2-5 clients) network using .local as a domain suffix and
+> for mDNS resolution. For "historical" reasons, my Kerberos Realm is
+> TADPOLE. I setup an NFSv4 server and Client that uses Kerberos for
+> authentication.
+> 
+> My problem is that everytime my client accesses the server, its ID is
+> mapped to nobody, but I can't find any reason as to why this is
+> happening. I verified this by creating a file via NFS and it always is
+> created under user nobody. Test scenarios were:
+>  - Identical usernames, different UIDs
+>  - Identical usernames, Identical groupnames, Identical UIDs/GIDs
 
-cgroups, I don't know, I guess the essential thing would be to make sure
-that nfsd has the resources it needs to make forward progress, however
-slowly--even if it means, for example, only enough to keep a single
-thread processing requests.
+If you're using kerberos then it's the kerberos principal name->uid
+mapping that matters here.
+
+So:
+
+> This is a sample command sequence for my problem:
+> /mnt/nfs/heap is writeable by everyone, /mnt/nfs/nfstest01 only by
+> nfstest01:
+> ===============================================
+> nfstest01@desktop:/$ touch /mnt/nfs/heap/test
+> nfstest01@desktop:/$ touch /mnt/nfs/nfstest01/test
+> touch: cannot touch `/mnt/nfs/nfstest01/test': Permission denied
+> nfstest01@desktop:/$ ls -l /mnt/nfs/heap/test
+> -rw-r--r-- 1 nobody nogroup 0 2010-09-26 00:02 /mnt/nfs/heap/test
+> nfstest01@desktop:/$ ls -l /mnt/nfs/
+> drwxr-xrwx  8 malte     users     8192 2010-09-26 00:02 heap
+> drwxr-x---  2 nfstest01 nfstest01 4096 2010-09-25 22:34 nfstest01
+> nfstest01@desktop:/$ id
+> uid=4321(nfstest01) gid=4321(nfstest01) groups=4321(nfstest01)
+> 
+> ===============================================
+
+who did you kinit as before doing this?  (What does klist say?)
 
 --b.
