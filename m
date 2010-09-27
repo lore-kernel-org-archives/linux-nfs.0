@@ -1,41 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:47816 "EHLO mail-out1.uio.no"
+Received: from mailhub.sw.ru ([195.214.232.25]:14054 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751029Ab0IVPtk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Sep 2010 11:49:40 -0400
-Subject: Re: [PATCH 2/2] lockd: Mostly remove BKL from the server
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <4C9A2406.6070100@netapp.com>
-References: <4C9917B4.1010607@netapp.com>
-	 <20100922153702.GD15560@fieldses.org>  <4C9A2406.6070100@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 22 Sep 2010 11:49:32 -0400
-Message-ID: <1285170572.4811.48.camel@heimdal.trondhjem.org>
+	id S1750841Ab0I0KF5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Sep 2010 06:05:57 -0400
+Message-ID: <4CA06C7A.5060307@parallels.com>
+Date: Mon, 27 Sep 2010 14:05:46 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 0/8] sunrpc: Create sockets in namespaces
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-09-22 at 11:43 -0400, Bryan Schumaker wrote:
-> On 09/22/2010 11:37 AM, J. Bruce Fields wrote:
-> > On Tue, Sep 21, 2010 at 04:38:12PM -0400, Bryan Schumaker wrote:
-> >> lockd: Mostly remove BKL from the server
-> >>
-> >> This patch removes all but one call to lock_kernel() from the server.
-> > 
-> > Thanks.  Does this need to go in any particular order with respect to
-> > the other BKL patches, or should I just apply this whenever?
-> > 
-> > --b.
-> 
-> It doesn't use lock_flocks(), so you should be able to apply it whenever.  
+Hi!
 
-Note that a patch defining lock_flocks() in terms of the BKL went into
-Linus' tree last night, so we no longer have to worry about that
-dependency.
+This set implements pulling the net * argument down to the existing
+sock_create_kern calls in the sunrpc layer and creating the sockets
+in the given net.
 
-Cheers
-  Trond
+Patch #7 opens the __sock_create for public and I hope we can do it
+not in the Dave's tree :)
 
+Applies to git://linux-nfs.org/~bfields/linux.git nfsd-next after the
+ip_map_cache virtualization patch set I sent before.
+
+Thanks,
+Pavel
