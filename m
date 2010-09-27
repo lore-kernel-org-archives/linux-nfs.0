@@ -1,92 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:26471 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1495 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755416Ab0IGWnj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 18:43:39 -0400
-Subject: Re: [RFC][PATCH] nfs: support legacy NFS flock behavior via mount
- option
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+	id S1750847Ab0I0Lq3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Sep 2010 07:46:29 -0400
+Message-ID: <4CA0840F.7000106@RedHat.com>
+Date: Mon, 27 Sep 2010 07:46:23 -0400
+From: Steve Dickson <SteveD@redhat.com>
 To: Neil Brown <neilb@suse.de>
-Cc: Suresh Jayaraman <sjayaraman@suse.de>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-In-Reply-To: <20100908082336.3efda031@notabene>
-References: <4C84DFA7.7050507@suse.de>
-	 <1283869039.4291.16.camel@heimdal.trondhjem.org>
-	 <20100908082336.3efda031@notabene>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 07 Sep 2010 18:42:42 -0400
-Message-ID: <1283899362.9097.42.camel@heimdal.trondhjem.org>
+CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] Allow check_fqdn to compare IPv6 addresses
+References: <20100804064553.16641.92857.stgit@localhost.localdomain> <20100804064945.16641.74397.stgit@localhost.localdomain>
+In-Reply-To: <20100804064945.16641.74397.stgit@localhost.localdomain>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-09-08 at 08:23 +1000, Neil Brown wrote:
-> On Tue, 07 Sep 2010 10:17:19 -0400
-> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Mon, 2010-09-06 at 18:03 +0530, Suresh Jayaraman wrote:
-> > > NFS clients since 2.6.12 support flock()locks by emulating the
-> > > BSD-style locks in terms of POSIX byte range locks. So the NFS client
-> > > does not allow to lock the same file using both flock() and fcntl
-> > > byte-range locks.
-> > > 
-> > > For some Windows applications which seem to use both share mode locks
-> > > (flock()) and fcntl byte range locks sequentially on the same file,
-> > > the locking is failing as the lock has already been acquired. i.e. the
-> > > flock mapped as posix locks collide with actual byte range locks from
-> > > the same process. The problem was observed on a setup with Windows
-> > > clients accessing Excel files on a Samba exported share which is
-> > > originally a NFS mount from a NetApp filer. Since kernels < 2.6.12 does
-> > > not support flock, what was working (as flock locks were local) in
-> > > older kernels is not working with newer kernels.
-> > > 
-> > > This could be seen as a bug in the implementation of the windows
-> > > application or a NFS client regression, but that is debatable.
-> > > In the spirit of not breaking existing setups, this patch adds mount
-> > > options "flock=local" that enables older flock behavior and
-> > > "flock=fcntl" that allows the current flock behavior.
-> > 
-> > So instead of having a special option for flock only, what say we rather
-> > introduce an option of the form
-> > 
-> >   -olocal_lock=
-> > 
-> > which can take the values 'none', 'flock', 'fcntl' (or 'posix'?) and
-> > 'all'?
-> 
-> I observe that the NLM protocol has support for 'share' reservations.
-> Requesting 'access == READ, mode==DENY_WRITE' is like a shared lock,
-> and 'access = WRITE, mode== DENY_READ_WRITE' is like an exclusive lock.
-> 
-> As samba maps theh share reservations into flock locks, it could make sense
-> for NFS to (optionally) map flock locks into share reservations.
-> 
-> The current Linux nfsd handles contention between these reservations entirely
-> internally, but it could conceivably grow an option to map them into flock
-> lock, just like samba does.
-> 
-> If this were at all a possible future direction, I would like to ensure that
-> option names chosen now allowed for that extension.
->  flock=local and flock=fcntl naturally extends to flock=share
-> 
-> local_lock= doesn't really extend ... unless shared_lock=flock, but that
-> seems a bit backwards.
-> 
-> Is that a direction we could ever want to go?
 
-I'd be against it for several reasons:
 
-      * Ordinary flock locks are advisory, whereas deny share
-        reservations are special mandatory locks. In fact if you look at
-        the Samba implementation, it uses a special 'LOCK_MAND' flag in
-        addition to the usual flock() flag.
-      * DENY_WRITE and DENY_BOTH share reservation modes break unlink()
-        behaviour on posix systems.
-      * Once the file has been opened with a given access mode, my
-        interpretation of the protocol is that you cannot change the
-        deny mode without closing any conflicting shares first. (Section
-        8.9 says: This checking of share reservations on OPEN is done
-        with no exception for an existing OPEN for the same open_owner.)
+On 08/04/2010 02:49 AM, Neil Brown wrote:
+> Simply use nfs_compare_sockaddr in place of addrs_match
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+>  support/export/client.c |   23 +----------------------
+>  1 files changed, 1 insertions(+), 22 deletions(-)
+> 
+> diff --git a/support/export/client.c b/support/export/client.c
+> index dc01067..286dcd6 100644
+> --- a/support/export/client.c
+> +++ b/support/export/client.c
+> @@ -372,27 +372,6 @@ add_name(char *old, const char *add)
+>  	return new;
+>  }
+>  
+> -static _Bool
+> -addrs_match4(const struct sockaddr *sa1, const struct sockaddr *sa2)
+> -{
+> -	const struct sockaddr_in *si1 = (const struct sockaddr_in *)sa1;
+> -	const struct sockaddr_in *si2 = (const struct sockaddr_in *)sa2;
+> -
+> -	return si1->sin_addr.s_addr == si2->sin_addr.s_addr;
+> -}
+> -
+> -static _Bool
+> -addrs_match(const struct sockaddr *sa1, const struct sockaddr *sa2)
+> -{
+> -	if (sa1->sa_family == sa2->sa_family)
+> -		switch (sa1->sa_family) {
+> -		case AF_INET:
+> -			return addrs_match4(sa1, sa2);
+> -		}
+> -
+> -	return false;
+> -}
+> -
+>  /*
+>   * Check each address listed in @ai against each address
+>   * stored in @clp.  Return 1 if a match is found, otherwise
+> @@ -405,7 +384,7 @@ check_fqdn(const nfs_client *clp, const struct addrinfo *ai)
+>  
+>  	for (; ai; ai = ai->ai_next)
+>  		for (i = 0; i < clp->m_naddr; i++)
+> -			if (addrs_match(ai->ai_addr, get_addrlist(clp, i)))
+> +			if (nfs_compare_sockaddr(ai->ai_addr, get_addrlist(clp, i)))
+>  				return 1;
+>  
+>  	return 0;
+> 
+> 
+This change already exists due to commit 60abb9
 
-Cheers
-  Trond
+steved.
