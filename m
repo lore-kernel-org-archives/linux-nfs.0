@@ -1,129 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42499 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58453 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754164Ab0IPVCH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Sep 2010 17:02:07 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: viro@zeniv.linux.org.uk, hch@infradead.org
-Subject: [PATCH 4/6] NFSv4: Further cleanups for nfs4_open_revalidate()
-Date: Thu, 16 Sep 2010 17:01:41 -0400
-Message-Id: <1284670903-28475-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1284670903-28475-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1284670903-28475-1-git-send-email-Trond.Myklebust@netapp.com>
- <1284670903-28475-2-git-send-email-Trond.Myklebust@netapp.com>
- <1284670903-28475-3-git-send-email-Trond.Myklebust@netapp.com>
- <1284670903-28475-4-git-send-email-Trond.Myklebust@netapp.com>
+	id S1750780Ab0I0Ld4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Sep 2010 07:33:56 -0400
+Message-ID: <4CA0811E.3040906@RedHat.com>
+Date: Mon, 27 Sep 2010 07:33:50 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Neil Brown <neilb@suse.de>
+CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] Make buffers large enough for IPv6 addresses
+References: <20100804064553.16641.92857.stgit@localhost.localdomain> <20100804064945.16641.40216.stgit@localhost.localdomain>
+In-Reply-To: <20100804064945.16641.40216.stgit@localhost.localdomain>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/dir.c      |   32 ++++++++++++++++++++++++++------
- fs/nfs/nfs4_fs.h  |    1 -
- fs/nfs/nfs4proc.c |   28 ----------------------------
- 3 files changed, 26 insertions(+), 35 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 196775c..dc93d35 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1204,16 +1204,36 @@ static int nfs_open_revalidate(struct dentry *dentry, struct nameidata *nd)
- 	 * operations that change the directory. We therefore save the
- 	 * change attribute *before* we do the RPC call.
- 	 */
--	ret = nfs4_open_revalidate(dir, ctx, openflags);
--	if (ret == 1)
-+	inode = nfs4_atomic_open(dir, ctx, openflags, NULL);
-+	if (IS_ERR(inode)) {
-+		ret = PTR_ERR(inode);
-+		switch (ret) {
-+		case -EPERM:
-+		case -EACCES:
-+		case -EDQUOT:
-+		case -ENOSPC:
-+		case -EROFS:
-+			goto out_put_ctx;
-+		default:
-+			goto out_drop;
-+		}
-+	}
-+	iput(inode);
-+	if (inode == dentry->d_inode) {
-+		nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
- 		nfs_intent_set_file(nd, ctx);
--	else
--		put_nfs_open_context(ctx);
-+	} else
-+		goto out_drop;
- out:
- 	dput(parent);
--	if (!ret)
--		d_drop(dentry);
- 	return ret;
-+out_drop:
-+	d_drop(dentry);
-+	ret = 0;
-+out_put_ctx:
-+	put_nfs_open_context(ctx);
-+	goto out;
-+
- no_open_dput:
- 	dput(parent);
- no_open:
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 76ec1c6..6cf12ba 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -243,7 +243,6 @@ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
- extern int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait);
- extern struct inode *nfs4_atomic_open(struct inode *, struct nfs_open_context *, int, struct iattr *);
--extern int nfs4_open_revalidate(struct inode *, struct nfs_open_context *, int);
- extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
- extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 		struct nfs4_fs_locations *fs_locations, struct page *page);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b476246..83c5ef6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2037,34 +2037,6 @@ nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx, int open_flags
- 	return igrab(state->inode);
- }
- 
--int
--nfs4_open_revalidate(struct inode *dir, struct nfs_open_context *ctx, int openflags)
--{
--	struct nfs4_state *state;
--
--	state = nfs4_do_open(dir, &ctx->path, ctx->mode, openflags, NULL, ctx->cred);
--	if (IS_ERR(state)) {
--		switch (PTR_ERR(state)) {
--			case -EPERM:
--			case -EACCES:
--			case -EDQUOT:
--			case -ENOSPC:
--			case -EROFS:
--				return PTR_ERR(state);
--			default:
--				goto out_drop;
--		}
--	}
--	ctx->state = state;
--	if (state->inode == ctx->path.dentry->d_inode) {
--		nfs_set_verifier(ctx->path.dentry, nfs_save_change_attribute(dir));
--		return 1;
--	}
--out_drop:
--	d_drop(ctx->path.dentry);
--	return 0;
--}
--
- static void nfs4_close_context(struct nfs_open_context *ctx, int is_sync)
- {
- 	if (ctx->state == NULL)
--- 
-1.7.2.3
 
+On 08/04/2010 02:49 AM, Neil Brown wrote:
+> Each of these buffers is use to hold the presentation format for an
+> address which could be either IPv4 or IPv6, so make the buffers large
+> enough for either.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+>  support/export/hostname.c |    2 +-
+>  utils/mountd/cache.c      |    6 +++---
+>  utils/mountd/rmtab.c      |    2 +-
+>  3 files changed, 5 insertions(+), 5 deletions(-)
+> 
+> diff --git a/support/export/hostname.c b/support/export/hostname.c
+> index 232e040..f6a59f1 100644
+> --- a/support/export/hostname.c
+> +++ b/support/export/hostname.c
+> @@ -299,7 +299,7 @@ struct addrinfo *
+>  host_numeric_addrinfo(const struct sockaddr *sap)
+>  {
+>  	socklen_t salen = sockaddr_size(sap);
+> -	char buf[INET_ADDRSTRLEN];
+> +	char buf[INET6_ADDRSTRLEN];
+>  	struct addrinfo *ai;
+>  	int error;
+>  
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index bf18a9a..736668e 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -75,7 +75,7 @@ void auth_unix_ip(FILE *f)
+>  	 */
+>  	char *cp;
+>  	char class[20];
+> -	char ipaddr[20];
+> +	char ipaddr[INET6_ADDRSTRLEN];
+>  	char *client = NULL;
+>  	struct addrinfo *tmp = NULL;
+>  	struct addrinfo *ai = NULL;
+> @@ -90,7 +90,7 @@ void auth_unix_ip(FILE *f)
+>  	    strcmp(class, "nfsd") != 0)
+>  		return;
+>  
+> -	if (qword_get(&cp, ipaddr, 20) <= 0)
+> +	if (qword_get(&cp, ipaddr, sizeof(ipaddr)) <= 0)
+>  		return;
+>  
+>  	tmp = host_pton(ipaddr);
+> @@ -920,7 +920,7 @@ int cache_export_ent(char *domain, struct exportent *exp, char *path)
+>  
+>  int cache_export(nfs_export *exp, char *path)
+>  {
+> -	char buf[INET_ADDRSTRLEN];
+> +	char buf[INET6_ADDRSTRLEN];
+>  	int err;
+>  	FILE *f;
+>  
+> diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
+> index ba0fcf6..d86b0db 100644
+> --- a/utils/mountd/rmtab.c
+> +++ b/utils/mountd/rmtab.c
+> @@ -143,7 +143,7 @@ mountlist_del_all(struct sockaddr_in *sin)
+>  		return;
+>  	hostname = host_canonname((struct sockaddr *)sin);
+>  	if (hostname == NULL) {
+> -		char buf[INET_ADDRSTRLEN];
+> +		char buf[INET6_ADDRSTRLEN];
+>  		xlog(L_ERROR, "can't get hostname of %s",
+>  			host_ntop((struct sockaddr *)sin, buf, sizeof(buf)));
+>  		goto out_unlock;
+> 
+> 
+These size changes already exist due to commit d901e32
+
+steved.
