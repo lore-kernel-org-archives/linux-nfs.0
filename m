@@ -1,38 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:2816 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753242Ab0IWJBj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Sep 2010 05:01:39 -0400
-Message-ID: <4C9B176E.4090808@parallels.com>
-Date: Thu, 23 Sep 2010 13:01:34 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH nfsd-next] nfsd: Export get_task_comm for nfsd
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:42374 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757289Ab0I0Tkq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Sep 2010 15:40:46 -0400
+Subject: Re: [PATCH 1/8] sunrpc: Factor out rpc_xprt freeing
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4CA06CA0.6060606@parallels.com>
+Date: Mon, 27 Sep 2010 15:40:26 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Message-Id: <02506D5E-BD8D-40AC-822F-00BBC14792E9@oracle.com>
+References: <4CA06C7A.5060307@parallels.com> <4CA06CA0.6060606@parallels.com>
+To: Pavel Emelyanov <xemul@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The git://linux-nfs.org/~bfields/linux.git nfsd-next branch doesn't
-compile when nfsd is a module with the following error:
 
-   ERROR: "get_task_comm" [fs/nfsd/nfsd.ko] undefined!
+On Sep 27, 2010, at 6:06 AM, Pavel Emelyanov wrote:
 
-The get_task_comm is used in nfsctl_transaction_read's printk.
+> 
+> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+> ---
+> net/sunrpc/xprtsock.c |   20 ++++++++++++--------
+> 1 files changed, 12 insertions(+), 8 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index b6309db..98d4b7b 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -759,6 +759,8 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
+> 		xs_tcp_shutdown(xprt);
+> }
+> 
+> +static void xs_free_xprt(struct rpc_xprt *xprt);
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+Style nit: we usually like forward declarations at the top of source files.
 
----
+Do you need to fix up xprtrdma too?  (eg. xprt_rdma_destroy)  It looks like it has similar logic around freeing xprts.  Even though it doesn't use sockets, do we need to be concerned about net namespaces for RDMA transports?
 
-diff --git a/fs/exec.c b/fs/exec.c
-index 828dd24..1d22c4b 100644
---- a/fs/exec.c
-+++ b/fs/exec.c
-@@ -957,6 +957,7 @@ char *get_task_comm(char *buf, struct task_struct *tsk)
- 	task_unlock(tsk);
- 	return buf;
- }
-+EXPORT_SYMBOL_GPL(get_task_comm);
- 
- void set_task_comm(struct task_struct *tsk, char *buf)
- {
+> +
+> /**
+>  * xs_destroy - prepare to shutdown a transport
+>  * @xprt: doomed transport
+> @@ -774,8 +776,7 @@ static void xs_destroy(struct rpc_xprt *xprt)
+> 
+> 	xs_close(xprt);
+> 	xs_free_peer_addresses(xprt);
+> -	kfree(xprt->slot);
+> -	kfree(xprt);
+> +	xs_free_xprt(xprt);
+> 	module_put(THIS_MODULE);
+> }
+> 
+> @@ -2298,6 +2299,12 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
+> 	return xprt;
+> }
+> 
+> +static void xs_free_xprt(struct rpc_xprt *xprt)
+> +{
+> +	kfree(xprt->slot);
+> +	kfree(xprt);
+> +}
+> +
+> static const struct rpc_timeout xs_udp_default_timeout = {
+> 	.to_initval = 5 * HZ,
+> 	.to_maxval = 30 * HZ,
+> @@ -2371,8 +2378,7 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+> 		return xprt;
+> 	ret = ERR_PTR(-EINVAL);
+> out_err:
+> -	kfree(xprt->slot);
+> -	kfree(xprt);
+> +	xs_free_xprt(xprt);
+> 	return ret;
+> }
+> 
+> @@ -2447,8 +2453,7 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+> 		return xprt;
+> 	ret = ERR_PTR(-EINVAL);
+> out_err:
+> -	kfree(xprt->slot);
+> -	kfree(xprt);
+> +	xs_free_xprt(xprt);
+> 	return ret;
+> }
+> 
+> @@ -2528,8 +2533,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+> 		return xprt;
+> 	ret = ERR_PTR(-EINVAL);
+> out_err:
+> -	kfree(xprt->slot);
+> -	kfree(xprt);
+> +	xs_free_xprt(xprt);
+> 	return ret;
+> }
+> 
+> -- 
+> 1.5.5.6
+> 
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
