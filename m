@@ -1,111 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sith.mimuw.edu.pl ([193.0.96.4]:29910 "EHLO sith.mimuw.edu.pl"
+Received: from mailhub.sw.ru ([195.214.232.25]:30031 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752001Ab0ITQs6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Sep 2010 12:48:58 -0400
-Date: Mon, 20 Sep 2010 18:48:56 +0200
-From: Jan =?utf-8?Q?R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
-Message-ID: <20100920164856.GA20925@sith.mimuw.edu.pl>
-References: <20100917181251.GA21111@sith.mimuw.edu.pl> <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com> <20100917190413.GB21111@sith.mimuw.edu.pl> <DA851F94-8AFB-448D-B48D-BC4ACAD8F395@oracle.com> <20100917222227.GA22144@sith.mimuw.edu.pl> <DC671AB7-F3AF-4E70-B42E-4FF991D16E43@oracle.com> <20100920153157.GA20589@sith.mimuw.edu.pl> <02C38759-5236-454B-8F7B-02F9419B1532@oracle.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <02C38759-5236-454B-8F7B-02F9419B1532@oracle.com>
+	id S1753079Ab0I0KJt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Sep 2010 06:09:49 -0400
+Message-ID: <4CA06D62.4040703@parallels.com>
+Date: Mon, 27 Sep 2010 14:09:38 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 7/8] net: Export __sock_create
+References: <4CA06C7A.5060307@parallels.com>
+In-Reply-To: <4CA06C7A.5060307@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 20 Sep 2010, Chuck Lever wrote:
+Can we can do it not through the Dave's tree?
 
-> 
-> On Sep 20, 2010, at 11:31 AM, Jan Rękorajski wrote:
-> 
-> > On Mon, 20 Sep 2010, Chuck Lever wrote:
-> > 
-> >> 
-> >> On Sep 17, 2010, at 6:22 PM, Jan Rękorajski wrote:
-> >> 
-> > [snip]
-> >>> 
-> >>> What about TCP then?  My patch was a by-product of trying to make '-h <IP>'
-> >>> also work for tcp sockets, so if we skip unbindable addresses for UDP,
-> >>> then will it be ok to do the same for TCP?
-> >> 
-> >> Interesting.  Now that I've actually looked at the documentation >>
-> >> blush << rpcbind(8) explicitly says that "-h" is only for UDP.  I seem
-> >> to recall that the legacy portmapper had a problem on multi-homed
-> >> hosts where a request was received on one interface, and the reply was
-> >> sent out another.
-> >> 
-> >> This is certainly a problem for datagram transports, but shouldn't be
-> >> an issue for connection-oriented transports: the reply is always sent
-> >> on the same connection as the request was received.
-> >> 
-> >> Can you say a little more about why do you need "-h" to work for
-> >> connection-oriented sockets?
-> > 
-> > I have a multihomed nfs server, and I don't want the portmapper to even
-> > listen on an outside interface.
-> 
-> Understood, but that is accomplished with firewalling, these days.
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+---
+ include/linux/net.h |    2 ++
+ net/socket.c        |    3 ++-
+ 2 files changed, 4 insertions(+), 1 deletions(-)
 
-It always was, but it's nice not needing to worry if I closed/opened all
-that's neccessary.
-
-> Usually, NFS servers are not run on the edge of private networks
-> unless they are serving files to public hosts.
-
-I would, if I could :)
-
-> None of NFS's RPC daemons allow you to set a bind address, with one
-> exception.  rpc.statd allows one to specify a "bind address" in the
-> form of a host name for reasons specific to the NSM protocol.
-
-I may be wrong here, but maybe it's because it was always portmapper
-doing the binding, so if portmapper couldn't then no one thought of
-adding this to RPC daemons.
-
-> If this is NFSv4 only, ostensibly rpcbind is not needed.  I know our
-> implementation today still clings to rpcbind a bit, but theoretically
-> at least, you could just leave it unstarted if you are only running an
-> NFSv4 service.  rpc.mountd should also allow itself to be run without
-> starting network listeners in recent versions of nfs-utils.
-
-That's all good, but some still need portmapper for other services.
-
-> I'm not necessarily arguing against the idea of adding a bind address
-> command line option, but this _would_ be a change to long established
-> historical behavior, and it would not be consistent with many of the
-> other Linux RPC services I'm aware of.  So, I'd like to be absolutely
-> sure we understand what you need here, and ensure we can't address it
-> with existing administrative controls.
-
-I understand your concerns, but I have problem imagining someone that
-had to limit UDP bind not wanting to also limit TCP.
+diff --git a/include/linux/net.h b/include/linux/net.h
+index dee0b11..16faa13 100644
+--- a/include/linux/net.h
++++ b/include/linux/net.h
+@@ -229,6 +229,8 @@ enum {
+ extern int	     sock_wake_async(struct socket *sk, int how, int band);
+ extern int	     sock_register(const struct net_proto_family *fam);
+ extern void	     sock_unregister(int family);
++extern int	     __sock_create(struct net *net, int family, int type, int proto,
++				 struct socket **res, int kern);
+ extern int	     sock_create(int family, int type, int proto,
+ 				 struct socket **res);
+ extern int	     sock_create_kern(int family, int type, int proto,
+diff --git a/net/socket.c b/net/socket.c
+index 2270b94..0c37b00 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -1144,7 +1144,7 @@ call_kill:
+ }
+ EXPORT_SYMBOL(sock_wake_async);
  
-> > Second thing is a host for vservers
-> > (http://linux-vserver.org), I need to run portmapper in guests but
-> > rpcbind listening on INADDR_ANY is not letting me.
-> 
-> Can you say more?  Maybe it's a bug.
-
-It's more of a design flaw, vserver is an isolation techique, and if I
-bind to some port on INADDR_ANY on host then I can't bind to that
-port on guests. I don't know the implementation details, but network
-interfaces other than lo are not (maybe can't be) isolated enough.
-
-> > And finally it's good
-> > to be consistent, it's strange to me that someone may want to limit only
-> > the UDP part of portmapper (modulo network issues you mentioned).
-> 
-> "-h" was added to address an issue specific to Linux UDP sockets.
-> It's not a feature, but a bug fix that is UDP-specific.  TCP doesn't
-> need this bug fix.
-
-Of course, but why not change a bugfix into a feature?
-
+-static int __sock_create(struct net *net, int family, int type, int protocol,
++int __sock_create(struct net *net, int family, int type, int protocol,
+ 			 struct socket **res, int kern)
+ {
+ 	int err;
+@@ -1256,6 +1256,7 @@ out_release:
+ 	rcu_read_unlock();
+ 	goto out_sock_release;
+ }
++EXPORT_SYMBOL(__sock_create);
+ 
+ int sock_create(int family, int type, int protocol, struct socket **res)
+ {
 -- 
-Jan Rękorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
-baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
-BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
+1.5.5.6
+
