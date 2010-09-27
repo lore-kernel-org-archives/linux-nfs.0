@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:30597 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:4975 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932988Ab0I0J7U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Sep 2010 05:59:20 -0400
-Message-ID: <4CA06AD2.4050805@parallels.com>
-Date: Mon, 27 Sep 2010 13:58:42 +0400
+	id S932912Ab0I0J5r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Sep 2010 05:57:47 -0400
+Message-ID: <4CA06A90.4080002@parallels.com>
+Date: Mon, 27 Sep 2010 13:57:36 +0400
 From: Pavel Emelyanov <xemul@parallels.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 CC: Chuck Lever <chuck.lever@oracle.com>,
         Trond Myklebust <Trond.Myklebust@netapp.com>,
         linux-nfs@vger.kernel.org
-Subject: [PATCH 2/9] sunrpc: Make xprt auth cache release work with the xprt
+Subject: [PATCH 1/9] sunrpc: Pass the ip_map_parse's cd to lower calls
 References: <4CA06A63.6090507@parallels.com>
 In-Reply-To: <4CA06A63.6090507@parallels.com>
 Content-Type: text/plain; charset=ISO-8859-1
@@ -18,74 +18,98 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This is done in order to facilitate getting the ip_map_cache from
-which to put the ip_map.
+The target is to have many ip_map_cache-s in the system. This particular
+patch handles its usage by the ip_map_parse callback.
 
 Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
 ---
- include/linux/sunrpc/svcauth.h |    3 ++-
- net/sunrpc/svc_xprt.c          |    5 ++---
- net/sunrpc/svcauth_unix.c      |    9 ++++++---
- 3 files changed, 10 insertions(+), 7 deletions(-)
+ net/sunrpc/svcauth_unix.c |   31 +++++++++++++++++++++----------
+ 1 files changed, 21 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/sunrpc/svcauth.h b/include/linux/sunrpc/svcauth.h
-index 1126693..18bce95 100644
---- a/include/linux/sunrpc/svcauth.h
-+++ b/include/linux/sunrpc/svcauth.h
-@@ -116,6 +116,7 @@ struct auth_ops {
- #define	SVC_PENDING	9
- #define	SVC_COMPLETE	10
- 
-+struct svc_xprt;
- 
- extern int	svc_authenticate(struct svc_rqst *rqstp, __be32 *authp);
- extern int	svc_authorise(struct svc_rqst *rqstp);
-@@ -131,7 +132,7 @@ extern struct auth_domain *auth_domain_find(char *name);
- extern struct auth_domain *auth_unix_lookup(struct in6_addr *addr);
- extern int auth_unix_forget_old(struct auth_domain *dom);
- extern void svcauth_unix_purge(void);
--extern void svcauth_unix_info_release(void *);
-+extern void svcauth_unix_info_release(struct svc_xprt *xpt);
- extern int svcauth_unix_set_client(struct svc_rqst *rqstp);
- 
- static inline unsigned long hash_str(char *name, int bits)
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 95fc3e8..385d822 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -128,9 +128,8 @@ static void svc_xprt_free(struct kref *kref)
- 	struct svc_xprt *xprt =
- 		container_of(kref, struct svc_xprt, xpt_ref);
- 	struct module *owner = xprt->xpt_class->xcl_owner;
--	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags) &&
--	    xprt->xpt_auth_cache != NULL)
--		svcauth_unix_info_release(xprt->xpt_auth_cache);
-+	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
-+		svcauth_unix_info_release(xprt);
- 	xprt->xpt_ops->xpo_free(xprt);
- 	module_put(owner);
- }
 diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 31b99c5..49e39ff 100644
+index e91b550..31b99c5 100644
 --- a/net/sunrpc/svcauth_unix.c
 +++ b/net/sunrpc/svcauth_unix.c
-@@ -472,10 +472,13 @@ ip_map_cached_put(struct svc_rqst *rqstp, struct ip_map *ipm)
+@@ -178,8 +178,8 @@ static int ip_map_upcall(struct cache_detail *cd, struct cache_head *h)
+ 	return sunrpc_cache_pipe_upcall(cd, h, ip_map_request);
  }
  
- void
--svcauth_unix_info_release(void *info)
-+svcauth_unix_info_release(struct svc_xprt *xpt)
+-static struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr);
+-static int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t expiry);
++static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class, struct in6_addr *addr);
++static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm, struct unix_domain *udom, time_t expiry);
+ 
+ static int ip_map_parse(struct cache_detail *cd,
+ 			  char *mesg, int mlen)
+@@ -249,9 +249,9 @@ static int ip_map_parse(struct cache_detail *cd,
+ 		dom = NULL;
+ 
+ 	/* IPv6 scope IDs are ignored for now */
+-	ipmp = ip_map_lookup(class, &sin6.sin6_addr);
++	ipmp = __ip_map_lookup(cd, class, &sin6.sin6_addr);
+ 	if (ipmp) {
+-		err = ip_map_update(ipmp,
++		err = __ip_map_update(cd, ipmp,
+ 			     container_of(dom, struct unix_domain, h),
+ 			     expiry);
+ 	} else
+@@ -309,14 +309,15 @@ struct cache_detail ip_map_cache = {
+ 	.alloc		= ip_map_alloc,
+ };
+ 
+-static struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr)
++static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class,
++		struct in6_addr *addr)
  {
--	struct ip_map *ipm = info;
--	cache_put(&ipm->h, &ip_map_cache);
-+	struct ip_map *ipm;
-+
-+	ipm = xpt->xpt_auth_cache;
-+	if (ipm != NULL)
-+		cache_put(&ipm->h, &ip_map_cache);
+ 	struct ip_map ip;
+ 	struct cache_head *ch;
+ 
+ 	strcpy(ip.m_class, class);
+ 	ipv6_addr_copy(&ip.m_addr, addr);
+-	ch = sunrpc_cache_lookup(&ip_map_cache, &ip.h,
++	ch = sunrpc_cache_lookup(cd, &ip.h,
+ 				 hash_str(class, IP_HASHBITS) ^
+ 				 hash_ip6(*addr));
+ 
+@@ -326,7 +327,13 @@ static struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr)
+ 		return NULL;
  }
  
- /****************************************************************************
+-static int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t expiry)
++static inline struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr)
++{
++	return __ip_map_lookup(&ip_map_cache, class, addr);
++}
++
++static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm,
++		struct unix_domain *udom, time_t expiry)
+ {
+ 	struct ip_map ip;
+ 	struct cache_head *ch;
+@@ -344,16 +351,20 @@ static int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t ex
+ 			ip.m_add_change++;
+ 	}
+ 	ip.h.expiry_time = expiry;
+-	ch = sunrpc_cache_update(&ip_map_cache,
+-				 &ip.h, &ipm->h,
++	ch = sunrpc_cache_update(cd, &ip.h, &ipm->h,
+ 				 hash_str(ipm->m_class, IP_HASHBITS) ^
+ 				 hash_ip6(ipm->m_addr));
+ 	if (!ch)
+ 		return -ENOMEM;
+-	cache_put(ch, &ip_map_cache);
++	cache_put(ch, cd);
+ 	return 0;
+ }
+ 
++static inline int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t expiry)
++{
++	return __ip_map_update(&ip_map_cache, ipm, udom, expiry);
++}
++
+ int auth_unix_add_addr(struct in6_addr *addr, struct auth_domain *dom)
+ {
+ 	struct unix_domain *udom;
 -- 
 1.5.5.6
 
