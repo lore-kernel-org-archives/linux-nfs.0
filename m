@@ -1,172 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.rwedea.de ([194.39.1.131]:38542 "EHLO mx1.rwedea.de"
+Received: from mailhub.sw.ru ([195.214.232.25]:3783 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751600Ab0I2JCb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 05:02:31 -0400
-Content-Type: text/plain;
-	charset="iso-8859-1"
-Subject: NFS4 / GSS: Problem with users accessing the mounted directories (with root, everything ist okay)
-Date: Wed, 29 Sep 2010 11:02:21 +0200
-Message-ID: <D4AFE98FB48D2F4CBFEACD015C9642DF026628@sha2122.hamburg.rwedea.de>
-From: "Beyersdorf, Wolfgang" <Wolfgang.Beyersdorf.Fa.Kontraktor@rwedea.com>
-To: <linux-nfs@vger.kernel.org>
+	id S1750780Ab0I0KHm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Sep 2010 06:07:42 -0400
+Message-ID: <4CA06CE3.1040907@parallels.com>
+Date: Mon, 27 Sep 2010 14:07:31 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 3/8] sunrpc: Pull net argument downto svc_create_socket
+References: <4CA06C7A.5060307@parallels.com>
+In-Reply-To: <4CA06C7A.5060307@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+After this the socket creation in it knows the context.
+
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+---
+ include/linux/sunrpc/svc_xprt.h          |    1 +
+ net/sunrpc/svc_xprt.c                    |    5 +++--
+ net/sunrpc/svcsock.c                     |   10 +++++++---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 ++
+ 4 files changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 646263c..bb18297 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -12,6 +12,7 @@
  
-
-
-Dear all,
-
-I got NFS4 with GSS running on CentOS 5. Everything is okay, all TGTs are okay and is working fine for the user ROOT.
-
-When I change to an other user, I got a permission denied, when I try to access the dierctory (e.g. ls -la)
-
-Here is the /var/log/messages part for this access (with full debugging on ndf, ndfs and rcp):
-
-Sep 29 10:11:59 sha9013 kernel: NFS: revalidating (0:1a/4030465)
-Sep 29 10:11:59 sha9013 kernel: RPC:    0 new task procpid 15472
-Sep 29 10:11:59 sha9013 kernel: RPC:    0 allocated task
-Sep 29 10:11:59 sha9013 kernel: RPC:    0 looking up RPCSEC_GSS cred
-Sep 29 10:11:59 sha9013 kernel: RPC: gc'ing RPC credentials for auth ffff810076dc22c0
-Sep 29 10:11:59 sha9013 kernel: RPC:      gss_destroy_cred
-Sep 29 10:11:59 sha9013 kernel: RPC:      gss_create_cred for uid 569926353, flavor 390003
-Sep 29 10:11:59 sha9013 kernel: RPC: gss_upcall for uid 569926353
-Sep 29 10:11:59 sha9013 kernel: RPC:      gss_find_upcall found nothing
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: handling krb5 upcall
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: getting credentials for client with uid 569926353 for server sha9012.hamburg.rwedea.de
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: CC file 'krb5cc_569926353' being considered
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: CC file 'krb5cc_569926353' matches owner check and has mtime of 1285746876
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: CC file 'krb5cc_0_osSsov' being considered
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: '/tmp/krb5cc_0_osSsov' owned by 0, not 569926353
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: CC file 'krb5cc_0_mLx0Bh' being considered
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: '/tmp/krb5cc_0_mLx0Bh' owned by 0, not 569926353
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: using FILE:/tmp/krb5cc_569926353 as credentials cache for client with uid 569926353 for server sha9012.hamburg.rwede
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: using environment variable to select krb5 ccache FILE:/tmp/krb5cc_569926353
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: creating context using fsuid 569926353 (save_uid 0)
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: creating tcp client for server sha9012.hamburg.rwedea.de
-Sep 29 10:11:59 sha9013 rpc.gssd[1645]: creating context with server nfs@sha9012.hamburg.rwedea.de			<================================== system ist wating for 25 seconds
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: WARNING: Failed to create krb5 context for user with uid 569926353 for server sha9012.hamburg.rwedea.de
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: WARNING: Failed to create krb5 context for user with uid 569926353 for server sha9012.hamburg.rwedea.de
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: doing error downcall
-Sep 29 10:12:23 sha9013 kernel: RPC:      gss_fill_context returning 13
-Sep 29 10:12:23 sha9013 kernel: RPC:      gss_find_upcall found msg ffff81007e824ec0
-Sep 29 10:12:23 sha9013 kernel: RPC:      gss_destroy_ctx
-Sep 29 10:12:23 sha9013 kernel: RPC:      gss_pipe_downcall returning length 16
-Sep 29 10:12:23 sha9013 kernel: RPC: gss_create_upcall for uid 569926353 result -13
-Sep 29 10:12:23 sha9013 kernel: RPC:      rpc_release_client(ffff810073dbc200, 1)
-Sep 29 10:12:23 sha9013 kernel: nfs_revalidate_inode: (0:1a/4030465) getattr failed, error=-13
-Sep 29 10:12:23 sha9013 kernel: RPC:     looking up RPCSEC_GSS cred
-Sep 29 10:12:23 sha9013 kernel: RPC: gss_upcall for uid 569926353
-Sep 29 10:12:23 sha9013 kernel: RPC:      gss_find_upcall found nothing
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: handling krb5 upcall
-Sep 29 10:12:23 sha9013 kernel: RPC:    0 freeing task
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: getting credentials for client with uid 569926353 for server sha9012.hamburg.rwedea.de
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: CC file 'krb5cc_569926353' being considered
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: CC file 'krb5cc_569926353' matches owner check and has mtime of 1285746876
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: CC file 'krb5cc_0_osSsov' being considered
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: '/tmp/krb5cc_0_osSsov' owned by 0, not 569926353
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: CC file 'krb5cc_0_mLx0Bh' being considered
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: '/tmp/krb5cc_0_mLx0Bh' owned by 0, not 569926353
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: using FILE:/tmp/krb5cc_569926353 as credentials cache for client with uid 569926353 for server sha9012.hamburg.rwede
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: using environment variable to select krb5 ccache FILE:/tmp/krb5cc_569926353
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: creating context using fsuid 569926353 (save_uid 0)
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: creating tcp client for server sha9012.hamburg.rwedea.de
-Sep 29 10:12:23 sha9013 rpc.gssd[1645]: creating context with server nfs@sha9012.hamburg.rwedea.de
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: WARNING: Failed to create krb5 context for user with uid 569926353 for server sha9012.hamburg.rwedea.de
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: WARNING: Failed to create krb5 context for user with uid 569926353 for server sha9012.hamburg.rwedea.de
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: doing error downcall
-Sep 29 10:12:48 sha9013 kernel: RPC:      gss_fill_context returning 13
-Sep 29 10:12:48 sha9013 kernel: RPC:      gss_find_upcall found msg ffff81007e824ec0
-Sep 29 10:12:48 sha9013 kernel: RPC:      gss_destroy_ctx
-Sep 29 10:12:48 sha9013 kernel: RPC:      gss_pipe_downcall returning length 16
-Sep 29 10:12:48 sha9013 kernel: RPC: gss_create_upcall for uid 569926353 result -13
-Sep 29 10:12:48 sha9013 kernel: NFS: permission(0:1a/4030465), mask=0x1, res=-13
-Sep 29 10:12:48 sha9013 kernel: RPC:     looking up RPCSEC_GSS cred
-Sep 29 10:12:48 sha9013 kernel: RPC: gss_upcall for uid 569926353
-Sep 29 10:12:48 sha9013 kernel: RPC:      gss_find_upcall found nothing
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: handling krb5 upcall
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: getting credentials for client with uid 569926353 for server sha9012.hamburg.rwedea.de
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: CC file 'krb5cc_569926353' being considered
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: CC file 'krb5cc_569926353' matches owner check and has mtime of 1285746876
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: CC file 'krb5cc_0_osSsov' being considered
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: '/tmp/krb5cc_0_osSsov' owned by 0, not 569926353
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: CC file 'krb5cc_0_mLx0Bh' being considered
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: '/tmp/krb5cc_0_mLx0Bh' owned by 0, not 569926353
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: using FILE:/tmp/krb5cc_569926353 as credentials cache for client with uid 569926353 for server sha9012.hamburg.rwede
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: using environment variable to select krb5 ccache FILE:/tmp/krb5cc_569926353
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: creating context using fsuid 569926353 (save_uid 0)
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: creating tcp client for server sha9012.hamburg.rwedea.de
-Sep 29 10:12:48 sha9013 rpc.gssd[1645]: creating context with server nfs@sha9012.hamburg.rwedea.de
-
-
-
-A  klist gives the following result:
-========================
-
-Ticket cache: FILE:/tmp/krb5cc_569926353
-Default principal: xdiwb@HAMBURG.RWEDEA.DE
-
-Valid starting     Expires            Service principal
-09/29/10 08:59:35  09/29/10 18:59:54  krbtgt/HAMBURG.RWEDEA.DE@HAMBURG.RWEDEA.DE
-        renew until 09/30/10 08:59:35
-09/29/10 09:00:02  09/29/10 18:59:54  nfs/sha9012.hamburg.rwedea.de@HAMBURG.RWEDEA.DE
-        renew until 09/30/10 08:59:35
-09/29/10 09:54:43  09/29/10 18:59:54  nfs/sha2059.hamburg.rwedea.de@HAMBURG.RWEDEA.DE
-        renew until 09/30/10 08:59:35
-
-
-Kerberos 4 ticket cache: /tmp/tkt569926353
-klist: You have no tickets cached
-
-
-Here the result from ls -la:
-===================
-
-?---------  ? ?    ?        ?            ? nfs4test
-drwxr-xr-x  3 root root  4096 Sep 13 15:19 opt
-dr-xr-xr-x 95 root root     0 Sep 27 14:28 proc
-drwxr-x---  3 root root  4096 Jan 26  2010 root
-drwxr-xr-x  2 root root 12288 Sep 15 04:02 sbin
-drwxr-xr-x  2 root root  4096 Jan 26  2010 selinux
-drwxr-xr-x  2 root root  4096 Jan 26  2010 srv
-drwxr-xr-x 30 root root     0 Sep 28 09:19 sw
-drwxr-xr-x 11 root root     0 Sep 27 14:28 sys
--rw-r--r--  1 root root  6932 Sep 28 10:35 tdump.dmp
-drwxr-xr-x  2 root root  4096 Sep 13 17:04 test
-drwxrwxrwt  4 root root  4096 Sep 29 08:59 tmp
-drwxr-xr-x 14 root root  4096 Sep 13 15:01 usr
-drwxr-xr-x 19 root root  4096 Sep 13 15:01 var
-
-
-
-On the server, there is nothing inside the /var/log/messages
-
-
-Could anybody help me?
-
-Thanks a lot.
-
-
-
-Mit freundlichen Grüßen / Best regards
-
-Wolfgang Beyersdorf
-
-RWE Dea AG
-Abteilung IT-Infraktrukturen
-Überseering 40, 22297 Hamburg, Germany
-T +49 40 6375-3258
-M +40 160 5497897
-E Wolfgang.Beyersdorf.FA.Kontraktor@rwedea.com
-I www.rwedea.com
-
-RWE Dea AG
-Vorsitzender des Aufsichtsrats: Dr. Ulrich Jobs
-Vorstand: Thomas Rappuhn (Vorsitzender), Lutz-Michael Liebau, Ralf to Baben
-
-Sitz der Gesellschaft: Hamburg
-Eingetragen beim AG Hamburg, Handelsregister - Nr.: HRB 6882
-
+ struct svc_xprt_ops {
+ 	struct svc_xprt	*(*xpo_create)(struct svc_serv *,
++				       struct net *net,
+ 				       struct sockaddr *, int,
+ 				       int);
+ 	struct svc_xprt	*(*xpo_accept)(struct svc_xprt *);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index d80789a..678b6ee 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -166,6 +166,7 @@ EXPORT_SYMBOL_GPL(svc_xprt_init);
+ 
+ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
+ 					 struct svc_serv *serv,
++					 struct net *net,
+ 					 const int family,
+ 					 const unsigned short port,
+ 					 int flags)
+@@ -200,7 +201,7 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
+ 		return ERR_PTR(-EAFNOSUPPORT);
+ 	}
+ 
+-	return xcl->xcl_ops->xpo_create(serv, sap, len, flags);
++	return xcl->xcl_ops->xpo_create(serv, net, sap, len, flags);
+ }
+ 
+ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+@@ -221,7 +222,7 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+ 			goto err;
+ 
+ 		spin_unlock(&svc_xprt_class_lock);
+-		newxprt = __svc_xpo_create(xcl, serv, family, port, flags);
++		newxprt = __svc_xpo_create(xcl, serv, net, family, port, flags);
+ 		if (IS_ERR(newxprt)) {
+ 			module_put(xcl->xcl_owner);
+ 			return PTR_ERR(newxprt);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 7e534dd..5593385 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -64,7 +64,8 @@ static void		svc_tcp_sock_detach(struct svc_xprt *);
+ static void		svc_sock_free(struct svc_xprt *);
+ 
+ static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
+-					  struct sockaddr *, int, int);
++					  struct net *, struct sockaddr *,
++					  int, int);
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ static struct lock_class_key svc_key[2];
+ static struct lock_class_key svc_slock_key[2];
+@@ -657,10 +658,11 @@ static struct svc_xprt *svc_udp_accept(struct svc_xprt *xprt)
+ }
+ 
+ static struct svc_xprt *svc_udp_create(struct svc_serv *serv,
++				       struct net *net,
+ 				       struct sockaddr *sa, int salen,
+ 				       int flags)
+ {
+-	return svc_create_socket(serv, IPPROTO_UDP, sa, salen, flags);
++	return svc_create_socket(serv, IPPROTO_UDP, net, sa, salen, flags);
+ }
+ 
+ static struct svc_xprt_ops svc_udp_ops = {
+@@ -1178,10 +1180,11 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+ }
+ 
+ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
++				       struct net *net,
+ 				       struct sockaddr *sa, int salen,
+ 				       int flags)
+ {
+-	return svc_create_socket(serv, IPPROTO_TCP, sa, salen, flags);
++	return svc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
+ }
+ 
+ static struct svc_xprt_ops svc_tcp_ops = {
+@@ -1385,6 +1388,7 @@ EXPORT_SYMBOL_GPL(svc_addsock);
+  */
+ static struct svc_xprt *svc_create_socket(struct svc_serv *serv,
+ 					  int protocol,
++					  struct net *net,
+ 					  struct sockaddr *sin, int len,
+ 					  int flags)
+ {
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index edea15a..950a206 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -52,6 +52,7 @@
+ #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+ 
+ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
++					struct net *net,
+ 					struct sockaddr *sa, int salen,
+ 					int flags);
+ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt);
+@@ -670,6 +671,7 @@ static int rdma_cma_handler(struct rdma_cm_id *cma_id,
+  * Create a listening RDMA service endpoint.
+  */
+ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
++					struct net *net,
+ 					struct sockaddr *sa, int salen,
+ 					int flags)
+ {
+-- 
+1.5.5.6
 
