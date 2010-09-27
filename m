@@ -1,143 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:24346 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:48221 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752536Ab0I2MEa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Sep 2010 08:04:30 -0400
-Message-ID: <4CA32B42.90800@parallels.com>
-Date: Wed, 29 Sep 2010 16:04:18 +0400
+	id S1751419Ab0I0KHJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Sep 2010 06:07:09 -0400
+Message-ID: <4CA06CC1.1050408@parallels.com>
+Date: Mon, 27 Sep 2010 14:06:57 +0400
 From: Pavel Emelyanov <xemul@parallels.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 CC: Chuck Lever <chuck.lever@oracle.com>,
         Trond Myklebust <Trond.Myklebust@netapp.com>,
         linux-nfs@vger.kernel.org
-Subject: [PATCH 4/9] sunrpc: Pull net argument downto svc_create_socket
-References: <4CA32AB4.2090808@parallels.com>
-In-Reply-To: <4CA32AB4.2090808@parallels.com>
+Subject: [PATCH 2/8] sunrpc: Add net argument to svc_create_xprt
+References: <4CA06C7A.5060307@parallels.com>
+In-Reply-To: <4CA06C7A.5060307@parallels.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-After this the socket creation in it knows the context.
 
 Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
 ---
- include/linux/sunrpc/svc_xprt.h          |    1 +
- net/sunrpc/svc_xprt.c                    |    5 +++--
- net/sunrpc/svcsock.c                     |   10 +++++++---
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 ++
- 4 files changed, 13 insertions(+), 5 deletions(-)
+ fs/lockd/svc.c                  |    2 +-
+ fs/nfs/callback.c               |    4 ++--
+ fs/nfsd/nfsctl.c                |    4 ++--
+ fs/nfsd/nfssvc.c                |    5 +++--
+ include/linux/sunrpc/svc_xprt.h |    4 ++--
+ net/sunrpc/svc_xprt.c           |    4 ++--
+ 6 files changed, 12 insertions(+), 11 deletions(-)
 
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index f1bacf1..b13aabc 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -206,7 +206,7 @@ static int create_lockd_listener(struct svc_serv *serv, const char *name,
+ 
+ 	xprt = svc_find_xprt(serv, name, family, 0);
+ 	if (xprt == NULL)
+-		return svc_create_xprt(serv, name, family, port,
++		return svc_create_xprt(serv, name, &init_net, family, port,
+ 						SVC_SOCK_DEFAULTS);
+ 	svc_xprt_put(xprt);
+ 	return 0;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index e17b49e..aeec017 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -109,7 +109,7 @@ nfs4_callback_up(struct svc_serv *serv)
+ {
+ 	int ret;
+ 
+-	ret = svc_create_xprt(serv, "tcp", PF_INET,
++	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET,
+ 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+ 	if (ret <= 0)
+ 		goto out_err;
+@@ -117,7 +117,7 @@ nfs4_callback_up(struct svc_serv *serv)
+ 	dprintk("NFS: Callback listener port = %u (af %u)\n",
+ 			nfs_callback_tcpport, PF_INET);
+ 
+-	ret = svc_create_xprt(serv, "tcp", PF_INET6,
++	ret = svc_create_xprt(serv, "tcp", &init_net, PF_INET6,
+ 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
+ 	if (ret > 0) {
+ 		nfs_callback_tcpport6 = ret;
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index b6e192d..b81da24 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1015,12 +1015,12 @@ static ssize_t __write_ports_addxprt(char *buf)
+ 	if (err != 0)
+ 		return err;
+ 
+-	err = svc_create_xprt(nfsd_serv, transport,
++	err = svc_create_xprt(nfsd_serv, transport, &init_net,
+ 				PF_INET, port, SVC_SOCK_ANONYMOUS);
+ 	if (err < 0)
+ 		goto out_err;
+ 
+-	err = svc_create_xprt(nfsd_serv, transport,
++	err = svc_create_xprt(nfsd_serv, transport, &init_net,
+ 				PF_INET6, port, SVC_SOCK_ANONYMOUS);
+ 	if (err < 0 && err != -EAFNOSUPPORT)
+ 		goto out_close;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index e2c4346..2bae1d8 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -16,6 +16,7 @@
+ #include <linux/lockd/bind.h>
+ #include <linux/nfsacl.h>
+ #include <linux/seq_file.h>
++#include <net/net_namespace.h>
+ #include "nfsd.h"
+ #include "cache.h"
+ #include "vfs.h"
+@@ -186,12 +187,12 @@ static int nfsd_init_socks(int port)
+ 	if (!list_empty(&nfsd_serv->sv_permsocks))
+ 		return 0;
+ 
+-	error = svc_create_xprt(nfsd_serv, "udp", PF_INET, port,
++	error = svc_create_xprt(nfsd_serv, "udp", &init_net, PF_INET, port,
+ 					SVC_SOCK_DEFAULTS);
+ 	if (error < 0)
+ 		return error;
+ 
+-	error = svc_create_xprt(nfsd_serv, "tcp", PF_INET, port,
++	error = svc_create_xprt(nfsd_serv, "tcp", &init_net, PF_INET, port,
+ 					SVC_SOCK_DEFAULTS);
+ 	if (error < 0)
+ 		return error;
 diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 646263c..bb18297 100644
+index e50e3ec..646263c 100644
 --- a/include/linux/sunrpc/svc_xprt.h
 +++ b/include/linux/sunrpc/svc_xprt.h
-@@ -12,6 +12,7 @@
- 
- struct svc_xprt_ops {
- 	struct svc_xprt	*(*xpo_create)(struct svc_serv *,
-+				       struct net *net,
- 				       struct sockaddr *, int,
- 				       int);
- 	struct svc_xprt	*(*xpo_accept)(struct svc_xprt *);
+@@ -74,8 +74,8 @@ int	svc_reg_xprt_class(struct svc_xprt_class *);
+ void	svc_unreg_xprt_class(struct svc_xprt_class *);
+ void	svc_xprt_init(struct svc_xprt_class *, struct svc_xprt *,
+ 		      struct svc_serv *);
+-int	svc_create_xprt(struct svc_serv *, const char *, const int,
+-			const unsigned short, int);
++int	svc_create_xprt(struct svc_serv *, const char *, struct net *,
++			const int, const unsigned short, int);
+ void	svc_xprt_enqueue(struct svc_xprt *xprt);
+ void	svc_xprt_received(struct svc_xprt *);
+ void	svc_xprt_put(struct svc_xprt *xprt);
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index d80789a..678b6ee 100644
+index f7e8915..d80789a 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -166,6 +166,7 @@ EXPORT_SYMBOL_GPL(svc_xprt_init);
- 
- static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
- 					 struct svc_serv *serv,
-+					 struct net *net,
- 					 const int family,
- 					 const unsigned short port,
- 					 int flags)
-@@ -200,7 +201,7 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
- 		return ERR_PTR(-EAFNOSUPPORT);
- 	}
- 
--	return xcl->xcl_ops->xpo_create(serv, sap, len, flags);
-+	return xcl->xcl_ops->xpo_create(serv, net, sap, len, flags);
+@@ -204,8 +204,8 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
  }
  
  int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
-@@ -221,7 +222,7 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
- 			goto err;
- 
- 		spin_unlock(&svc_xprt_class_lock);
--		newxprt = __svc_xpo_create(xcl, serv, family, port, flags);
-+		newxprt = __svc_xpo_create(xcl, serv, net, family, port, flags);
- 		if (IS_ERR(newxprt)) {
- 			module_put(xcl->xcl_owner);
- 			return PTR_ERR(newxprt);
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 7e534dd..5593385 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -64,7 +64,8 @@ static void		svc_tcp_sock_detach(struct svc_xprt *);
- static void		svc_sock_free(struct svc_xprt *);
- 
- static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
--					  struct sockaddr *, int, int);
-+					  struct net *, struct sockaddr *,
-+					  int, int);
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
- static struct lock_class_key svc_key[2];
- static struct lock_class_key svc_slock_key[2];
-@@ -657,10 +658,11 @@ static struct svc_xprt *svc_udp_accept(struct svc_xprt *xprt)
- }
- 
- static struct svc_xprt *svc_udp_create(struct svc_serv *serv,
-+				       struct net *net,
- 				       struct sockaddr *sa, int salen,
- 				       int flags)
+-		    const int family, const unsigned short port,
+-		    int flags)
++		    struct net *net, const int family,
++		    const unsigned short port, int flags)
  {
--	return svc_create_socket(serv, IPPROTO_UDP, sa, salen, flags);
-+	return svc_create_socket(serv, IPPROTO_UDP, net, sa, salen, flags);
- }
+ 	struct svc_xprt_class *xcl;
  
- static struct svc_xprt_ops svc_udp_ops = {
-@@ -1178,10 +1180,11 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
- }
- 
- static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
-+				       struct net *net,
- 				       struct sockaddr *sa, int salen,
- 				       int flags)
- {
--	return svc_create_socket(serv, IPPROTO_TCP, sa, salen, flags);
-+	return svc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
- }
- 
- static struct svc_xprt_ops svc_tcp_ops = {
-@@ -1385,6 +1388,7 @@ EXPORT_SYMBOL_GPL(svc_addsock);
-  */
- static struct svc_xprt *svc_create_socket(struct svc_serv *serv,
- 					  int protocol,
-+					  struct net *net,
- 					  struct sockaddr *sin, int len,
- 					  int flags)
- {
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index edea15a..950a206 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -52,6 +52,7 @@
- #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
- 
- static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
-+					struct net *net,
- 					struct sockaddr *sa, int salen,
- 					int flags);
- static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt);
-@@ -670,6 +671,7 @@ static int rdma_cma_handler(struct rdma_cm_id *cma_id,
-  * Create a listening RDMA service endpoint.
-  */
- static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
-+					struct net *net,
- 					struct sockaddr *sa, int salen,
- 					int flags)
- {
 -- 
 1.5.5.6
 
