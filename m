@@ -1,32 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:14054 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:1207 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750841Ab0I0KF5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Sep 2010 06:05:57 -0400
-Message-ID: <4CA06C7A.5060307@parallels.com>
-Date: Mon, 27 Sep 2010 14:05:46 +0400
+	id S1754792Ab0I1PP6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Sep 2010 11:15:58 -0400
+Message-ID: <4CA206A2.7070409@parallels.com>
+Date: Tue, 28 Sep 2010 19:15:46 +0400
 From: Pavel Emelyanov <xemul@parallels.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 CC: Chuck Lever <chuck.lever@oracle.com>,
         Trond Myklebust <Trond.Myklebust@netapp.com>,
         linux-nfs@vger.kernel.org
-Subject: [PATCH 0/8] sunrpc: Create sockets in namespaces
+Subject: [PATCH 2/7] sunrpc: Factor out rpc_xprt freeing
+References: <4CA20651.4070605@parallels.com>
+In-Reply-To: <4CA20651.4070605@parallels.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi!
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+---
+ include/linux/sunrpc/xprt.h     |    1 +
+ net/sunrpc/xprtrdma/transport.c |    7 ++-----
+ net/sunrpc/xprtsock.c           |   19 +++++++++++--------
+ 3 files changed, 14 insertions(+), 13 deletions(-)
 
-This set implements pulling the net * argument down to the existing
-sock_create_kern calls in the sunrpc layer and creating the sockets
-in the given net.
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 00f6e3f..af4b560 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -281,6 +281,7 @@ void			xprt_release(struct rpc_task *task);
+ struct rpc_xprt *	xprt_get(struct rpc_xprt *xprt);
+ void			xprt_put(struct rpc_xprt *xprt);
+ struct rpc_xprt *	xprt_alloc(int size, int max_req);
++void			xprt_free(struct rpc_xprt *);
+ 
+ static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
+ {
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 9d77bf2..0f7a1b9 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -251,9 +251,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
+ 
+ 	xprt_rdma_free_addresses(xprt);
+ 
+-	kfree(xprt->slot);
+-	xprt->slot = NULL;
+-	kfree(xprt);
++	xprt_free(xprt);
+ 
+ 	dprintk("RPC:       %s: returning\n", __func__);
+ 
+@@ -401,8 +399,7 @@ out3:
+ out2:
+ 	rpcrdma_ia_close(&new_xprt->rx_ia);
+ out1:
+-	kfree(xprt->slot);
+-	kfree(xprt);
++	xprt_free(xprt);
+ 	return ERR_PTR(rc);
+ }
+ 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 9f2dd3b..77cb595 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -781,6 +781,13 @@ out:
+ }
+ EXPORT_SYMBOL_GPL(xprt_alloc);
+ 
++void xprt_free(struct rpc_xprt *xprt)
++{
++	kfree(xprt->slot);
++	kfree(xprt);
++}
++EXPORT_SYMBOL_GPL(xprt_free);
++
+ /**
+  * xs_destroy - prepare to shutdown a transport
+  * @xprt: doomed transport
+@@ -796,8 +803,7 @@ static void xs_destroy(struct rpc_xprt *xprt)
+ 
+ 	xs_close(xprt);
+ 	xs_free_peer_addresses(xprt);
+-	kfree(xprt->slot);
+-	kfree(xprt);
++	xprt_free(xprt);
+ 	module_put(THIS_MODULE);
+ }
+ 
+@@ -2384,8 +2390,7 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+ 		return xprt;
+ 	ret = ERR_PTR(-EINVAL);
+ out_err:
+-	kfree(xprt->slot);
+-	kfree(xprt);
++	xprt_free(xprt);
+ 	return ret;
+ }
+ 
+@@ -2460,8 +2465,7 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+ 		return xprt;
+ 	ret = ERR_PTR(-EINVAL);
+ out_err:
+-	kfree(xprt->slot);
+-	kfree(xprt);
++	xprt_free(xprt);
+ 	return ret;
+ }
+ 
+@@ -2541,8 +2545,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 		return xprt;
+ 	ret = ERR_PTR(-EINVAL);
+ out_err:
+-	kfree(xprt->slot);
+-	kfree(xprt);
++	xprt_free(xprt);
+ 	return ret;
+ }
+ 
+-- 
+1.5.5.6
 
-Patch #7 opens the __sock_create for public and I hope we can do it
-not in the Dave's tree :)
-
-Applies to git://linux-nfs.org/~bfields/linux.git nfsd-next after the
-ip_map_cache virtualization patch set I sent before.
-
-Thanks,
-Pavel
