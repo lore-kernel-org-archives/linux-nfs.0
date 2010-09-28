@@ -1,22 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:53557 "EHLO e4.ny.us.ibm.com"
+Received: from fieldses.org ([174.143.236.118]:40020 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754642Ab0I3WXs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 18:23:48 -0400
-In-Reply-To: <4CA455C4.4030705@panasas.com>
-References: <4C7BDD8C.40509@panasas.com> <4CA31DC3.8070300@panasas.com> <4CA34830.1040703@desy.de> <4CA34883.40005@desy.de> <4CA34B93.2010100@panasas.com> <4CA44AAA.4030803@panasas.com> <4CA45462.1070503@desy.de> <4CA455C4.4030705@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: NFS list <linux-nfs@vger.kernel.org>, linux-nfs-owner@vger.kernel.org
-Subject: Re: pnfs git tree status pnfs-all-2.6.36-rc6-2010-09-29
-Message-ID: <OF0CB10368.34D43BDF-ON882577AE.007AC71D-882577AE.007B026B@us.ibm.com>
-From: Marc Eshel <eshel@almaden.ibm.com>
-Date: Thu, 30 Sep 2010 15:23:36 -0700
-Content-Type: text/plain; charset="US-ASCII"
+	id S1752473Ab0I1N4n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Sep 2010 09:56:43 -0400
+Date: Tue, 28 Sep 2010 09:56:34 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Pavel Emelyanov <xemul@parallels.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/8] sunrpc: Factor out rpc_xprt freeing
+Message-ID: <20100928135634.GE24465@fieldses.org>
+References: <4CA06C7A.5060307@parallels.com>
+ <4CA06CA0.6060606@parallels.com>
+ <02506D5E-BD8D-40AC-822F-00BBC14792E9@oracle.com>
+ <4CA1C71D.70109@parallels.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4CA1C71D.70109@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-It been a while since I used pNFS, I see GETATTR requests going to the DS, 
-did I configure something wrong or is the same old bug that keeps coming 
-back.
-Thanks, Marc.
+On Tue, Sep 28, 2010 at 02:44:45PM +0400, Pavel Emelyanov wrote:
+> On 09/27/2010 11:40 PM, Chuck Lever wrote:
+> > 
+> > On Sep 27, 2010, at 6:06 AM, Pavel Emelyanov wrote:
+> > 
+> >>
+> >> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+> >> ---
+> >> net/sunrpc/xprtsock.c |   20 ++++++++++++--------
+> >> 1 files changed, 12 insertions(+), 8 deletions(-)
+> >>
+> >> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> >> index b6309db..98d4b7b 100644
+> >> --- a/net/sunrpc/xprtsock.c
+> >> +++ b/net/sunrpc/xprtsock.c
+> >> @@ -759,6 +759,8 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
+> >> 		xs_tcp_shutdown(xprt);
+> >> }
+> >>
+> >> +static void xs_free_xprt(struct rpc_xprt *xprt);
+> > 
+> > Style nit: we usually like forward declarations at the top of source files.
+> 
+> OK.
+> 
+> > Do you need to fix up xprtrdma too?  (eg. xprt_rdma_destroy)  It looks like it has 
+> > similar logic around freeing xprts. 
+> 
+> Indeed. Bruce, which way would you prefer - should I re-send the whole set or
+> can apply this change incrementally?
+
+I haven't pushed it out yet, so just do whichever you prefer.
+
+--b.
+
+> 
+> > Even though it doesn't use sockets, do we need to be concerned about net namespaces
+> > for RDMA transports?
+> 
+> I believe we should, since at least its initialization goes to the rdma_resolve_addr
+> which in turn resolves the address using IP-level routing. But I wanted to finish with
+> the tcp/udp transports first.
+> 
+> Thanks,
+> Pavel
