@@ -1,44 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 74-93-104-97-Washington.hfc.comcastbusiness.net ([74.93.104.97]:53294
-	"EHLO sunset.davemloft.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752237Ab0I1Rk1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Sep 2010 13:40:27 -0400
-Date: Tue, 28 Sep 2010 10:40:47 -0700 (PDT)
-Message-Id: <20100928.104047.104076408.davem@davemloft.net>
-To: xemul@parallels.com
-Cc: Trond.Myklebust@netapp.com, bfields@fieldses.org, chuck.lever@oracle.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 7/8] net: Export __sock_create
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <4CA09F03.6090407@parallels.com>
-References: <4CA06D62.4040703@parallels.com>
-	<1285594260.19362.40.camel@heimdal.trondhjem.org>
-	<4CA09F03.6090407@parallels.com>
-Content-Type: Text/Plain; charset=us-ascii
+Received: from mx1.redhat.com ([209.132.183.28]:62143 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753214Ab0I1J5r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Sep 2010 05:57:47 -0400
+Date: Tue, 28 Sep 2010 11:50:58 +0200
+From: "Michael S. Tsirkin" <mst@redhat.com>
+To: Leszek Urbanski <tygrys@moo.pl>
+Cc: Anthony Liguori <anthony@codemonkey.ws>, qemu-devel@nongnu.org,
+        netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
+        virtualization@lists.linux-foundation.org
+Subject: Re: BUG - qdev - partial loss of network connectivity
+Message-ID: <20100928095058.GI12472@redhat.com>
+References: <20100922171832.GA28721@moo.pl>
+ <4C9A3FAF.9090503@codemonkey.ws>
+ <20100922182049.GA29263@moo.pl>
+ <4C9A4C77.2080806@codemonkey.ws>
+ <20100923140437.GA9256@moo.pl>
+ <20100926154324.GD21843@redhat.com>
+ <20100927213203.GA28089@moo.pl>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100927213203.GA28089@moo.pl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Pavel Emelyanov <xemul@parallels.com>
-Date: Mon, 27 Sep 2010 17:41:23 +0400
-
-> On 09/27/2010 05:31 PM, Trond Myklebust wrote:
->> On Mon, 2010-09-27 at 14:09 +0400, Pavel Emelyanov wrote:
->>> Can we can do it not through the Dave's tree?
->> 
->> I think we will still need Dave's approval for this. Either an Ack or a
->> signed-off-by. Linus will very likely yell at us and refuse to take the
->> patch if we don't.
+On Mon, Sep 27, 2010 at 11:32:03PM +0200, Leszek Urbanski wrote:
+> <20100926154324.GD21843@redhat.com>; from Michael S. Tsirkin on Sun, Sep 26, 2010 at 17:43:24 +0200
 > 
-> OK, I then put Dave in Cc.
+> > > > >It's vanilla 2.6.32.22, but I also reproduced this on Debian's 2.6.32-23
+> > > > >(based on 2.6.32.21).
+> > > > >
+> > > > >If offload is the only difference, I'll play with different offload
+> > > > >options and check which one causes it.
+> > > > >   
+> > > > 
+> > > > It's not technically the only difference but it's the most likely 
+> > > > culprit IMHO.
+> > > 
+> > > udp fragmentation offload is definitely the culprit.
+> > 
+> > I see. Most likely guest bug - won't be the first bug around UFO.
+> > If so pls copy netdev linux-nfs and virtualization.
+> > Do you see anything in dmesg? Can try 2.6.36-rc5?
 > 
-> And a small background of the patch - I'm trying to make sunrpc layer work
-> in net namespaces and in order to do this I need to turn existing calls to
-> sock_create_kern() into __sock_create() to specify the net namespace the
-> socket are to be created in.
+> (for reference: first post is at:
+> http://lists.nongnu.org/archive/html/qemu-devel/2010-09/msg01685.html )
 > 
-> Dave, can we go on with this, please? :)
+> I can't reproduce it on 2.6.36-rc5. Do you have an idea which patch may have
+> fixed it, or should I dissect?
 
-This is fine:
+bisect, yes: there were many UFO related patches since 2.6.32.
 
-Acked-by: David S. Miller <davem@davemloft.net>
+-- 
+MST
