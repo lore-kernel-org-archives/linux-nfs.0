@@ -1,106 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:61673 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754362Ab0IQS1t convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 14:27:49 -0400
-Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
-Content-Type: text/plain; charset=utf-8
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20100917181251.GA21111@sith.mimuw.edu.pl>
-Date: Fri, 17 Sep 2010 14:26:08 -0400
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Message-Id: <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com>
-References: <20100917181251.GA21111@sith.mimuw.edu.pl>
-To: =?utf-8?Q?Jan_R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
+Received: from mx1.redhat.com ([209.132.183.28]:57200 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753802Ab0I1NOD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Sep 2010 09:14:03 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond.Myklebust@netapp.com
+Cc: fengguang.wu@gmail.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: don't use FLUSH_SYNC on WB_SYNC_NONE COMMIT calls (try #2)
+Date: Tue, 28 Sep 2010 09:14:01 -0400
+Message-Id: <1285679641-19763-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+WB_SYNC_NONE is supposed to mean "don't wait on anything". That should
+also include not waiting for COMMIT calls to complete.
 
-On Sep 17, 2010, at 2:12 PM, Jan Rękorajski wrote:
+WB_SYNC_NONE is also implied when wbc->nonblocking and
+wbc->for_background are set, so we can replace those checks in
+nfs_commit_unstable_pages with a check for WB_SYNC_NONE.
 
-> Hi,
-> rpcbind currently silently ignores any errors that occur during
-> init_transport, it also happily continues if bind(2) fails for
-> UDP socket - it's enough if just one UDP socket is bound.
-> 
-> This patch makes rpcbind fail if there are problems with
-> setting up any transport, so we don't end up with
-> semi/non functional running daemon.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: Wu Fengguang <fengguang.wu@intel.com>
+---
+ fs/nfs/write.c |   16 +++++++++-------
+ 1 files changed, 9 insertions(+), 7 deletions(-)
 
-Can you give us some details about why transport initialization was failing?  There are probably some cases where we do want rpcbind to soldier on in spite of such troubles.
-
-> Signed-off-by: Jan Rękorajski <baggins@sith.mimuw.edu.pl>
-> 
-> diff --git a/src/rpcbind.c b/src/rpcbind.c
-> index 63023e1..06e5b08 100644
-> --- a/src/rpcbind.c
-> +++ b/src/rpcbind.c
-> @@ -179,11 +179,17 @@ main(int argc, char *argv[])
-> 	
-> 	rpc_control(RPC_SVC_CONNMAXREC_SET, &maxrec);
-> 
-> -	init_transport(nconf);
-> +	if (init_transport(nconf)) {
-> +		syslog(LOG_ERR, "%s: can't init local transport\n", argv[0]);
-> +		exit(1);
-> +	}
-> 
-> 	while ((nconf = getnetconfig(nc_handle))) {
-> 		if (nconf->nc_flag & NC_VISIBLE)
-> -			init_transport(nconf);
-> +			if (init_transport(nconf)) {
-> +				syslog(LOG_ERR, "%s: can't init %s transport\n", argv[0], nconf->nc_netid);
-> +				exit(1);
-> +			}
-> 	}
-> 	endnetconfig(nc_handle);
-> 
-> @@ -276,7 +282,6 @@ init_transport(struct netconfig *nconf)
-> 	int aicode;
-> 	int addrlen = 0;
-> 	int nhostsbak;
-> -	int checkbind;
-> 	int on = 1;
-> 	struct sockaddr *sa = NULL;
-> 	u_int32_t host_addr[4];  /* IPv4 or IPv6 */
-> @@ -358,7 +363,6 @@ init_transport(struct netconfig *nconf)
-> 	       /*
-> 		* Bind to specific IPs if asked to
-> 		*/
-> -		checkbind = 0;
-> 		while (nhostsbak > 0) {
-> 			--nhostsbak;
-> 			/*
-> @@ -425,9 +429,8 @@ init_transport(struct netconfig *nconf)
-> 					hosts[nhostsbak], nconf->nc_netid);
-> 				if (res != NULL)
-> 					freeaddrinfo(res);
-> -				continue;
-> -			} else
-> -				checkbind++;
-> +				return 1;
-> +			}
-> 			(void) umask(oldmask);
-> 
-> 			/* Copy the address */
-> @@ -476,8 +479,6 @@ init_transport(struct netconfig *nconf)
-> 				goto error;
-> 			}
-> 		}
-> -		if (!checkbind)
-> -			return 1;
-> 	} else {	/* NC_TPI_COTS */
-> 		if ((strcmp(nconf->nc_netid, "local") != 0) &&
-> 		    (strcmp(nconf->nc_netid, "unix") != 0)) {
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 4d6d35d..605e292 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1431,15 +1431,17 @@ static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_contr
+ 	int flags = FLUSH_SYNC;
+ 	int ret = 0;
+ 
+-	/* Don't commit yet if this is a non-blocking flush and there are
+-	 * lots of outstanding writes for this mapping.
+-	 */
+-	if (wbc->sync_mode == WB_SYNC_NONE &&
+-	    nfsi->ncommit <= (nfsi->npages >> 1))
+-		goto out_mark_dirty;
++	if (wbc->sync_mode == WB_SYNC_NONE) {
++		/* Don't commit yet if this is a non-blocking flush and there
++		 * are a lot of outstanding writes for this mapping.
++		 */
++		if (nfsi->ncommit <= (nfsi->npages >> 1))
++			goto out_mark_dirty;
+ 
+-	if (wbc->nonblocking || wbc->for_background)
++		/* don't wait for the COMMIT response */
+ 		flags = 0;
++	}
++
+ 	ret = nfs_commit_inode(inode, flags);
+ 	if (ret >= 0) {
+ 		if (wbc->sync_mode == WB_SYNC_NONE) {
 -- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.1
 
