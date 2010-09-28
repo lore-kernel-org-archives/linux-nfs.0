@@ -1,34 +1,34 @@
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-Subject: Re: Problems with the git://linux-nfs.org/ server
-Date: Tue, 28 Sep 2010 09:09:46 -0400
-Message-ID: <1285679386.9185.4.camel@heimdal.trondhjem.org>
-References: <4CA1B40D.2080204@panasas.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFS: don't use FLUSH_SYNC on WB_SYNC_NONE COMMIT calls
+ (try #2)
+Date: Tue, 28 Sep 2010 09:30:11 -0400
+Message-ID: <1285680611.9185.5.camel@heimdal.trondhjem.org>
+References: <1285679641-19763-1-git-send-email-jlayton@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: NFS list <linux-nfs@vger.kernel.org>,
-	Benny Halevy <bhalevy@panasas.com>,
-	"J. Bruce Fields" <bfields@citi.umich.edu>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: fengguang.wu@gmail.com, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:58343 "EHLO mail-out1.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:10607 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753780Ab0I1NJ4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Sep 2010 09:09:56 -0400
-In-Reply-To: <4CA1B40D.2080204@panasas.com>
+	id S1753910Ab0I1NaV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Sep 2010 09:30:21 -0400
+In-Reply-To: <1285679641-19763-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2010-09-28 at 11:23 +0200, Boaz Harrosh wrote:
-> It looks like the git daemon on git://linux-nfs.org/ is down
+On Tue, 2010-09-28 at 09:14 -0400, Jeff Layton wrote:
+> WB_SYNC_NONE is supposed to mean "don't wait on anything". That should
+> also include not waiting for COMMIT calls to complete.
 > 
-> Thanks
-> Boaz
+> WB_SYNC_NONE is also implied when wbc->nonblocking and
+> wbc->for_background are set, so we can replace those checks in
+> nfs_commit_unstable_pages with a check for WB_SYNC_NONE.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Reviewed-by: Wu Fengguang <fengguang.wu@intel.com>
 
-It's working for me...
-
-[trondmy@heimdal linux-2.6]$ git remote update linux-nfs
-Fetching linux-nfs
+Thanks. Applied to nfs-for-next...
 
 Cheers
   Trond
-
