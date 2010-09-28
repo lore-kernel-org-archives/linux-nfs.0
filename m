@@ -1,75 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20594 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:34339 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751991Ab0IJWhX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 18:37:23 -0400
-Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8AMb4j7004229
-	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:37:07 -0700 (PDT)
-Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
- layout driver
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Fred Isaman <iisaman@netapp.com>
+	id S1753740Ab0I1PvY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Sep 2010 11:51:24 -0400
+Date: Tue, 28 Sep 2010 11:51:17 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benny Halevy <bhalevy@panasas.com>
 Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <AANLkTi=6vcQC1k28B=aKJbN=jRBipoff3+79BpgLxtXw@mail.gmail.com>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
-	 <1283450419-5648-9-git-send-email-iisaman@netapp.com>
-	 <1284147111.10062.74.camel@heimdal.trondhjem.org>
-	 <AANLkTi=6vcQC1k28B=aKJbN=jRBipoff3+79BpgLxtXw@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 10 Sep 2010 18:37:03 -0400
-Message-ID: <1284158223.14078.78.camel@heimdal.trondhjem.org>
+Subject: Re: pnfs-all-latest client crash
+Message-ID: <20100928155117.GK24465@fieldses.org>
+References: <20100921164211.GK26473@fieldses.org>
+ <4C98FCC3.50803@panasas.com>
+ <20100921190108.GA4385@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100921190108.GA4385@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2010-09-10 at 14:11 -0700, Fred Isaman wrote:
-> On Fri, Sep 10, 2010 at 12:31 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
-> OK
+On Tue, Sep 21, 2010 at 03:01:08PM -0400, J. Bruce Fields wrote:
+> On Tue, Sep 21, 2010 at 08:43:15PM +0200, Benny Halevy wrote:
+> > On 2010-09-21 18:42, J. Bruce Fields wrote:
+> > > I get the following on pnfs-all-latest, while doing a non-pnfs 4.1 mount.
+> > 
+> > Bruce, can you please provide you .config file?
+> > >From the registers value it's possible the calldata is used
+> > after free...
 > 
-> >> +     .initialize_mountpoint   = filelayout_initialize_mountpoint,
-> >> +     .uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
-> >> +};
-> >> +
-> >> +
-> >> +struct pnfs_layoutdriver_type filelayout_type = {
-> >
-> > Ditto.
+> Yep.  I ran a 'make oldconfig' on the appended and built from that.
 > 
-> This includes a list_head field which is set by the generic layer.
-> 
-> >
-> >> +     .id = LAYOUT_NFSV4_1_FILES,
-> >> +     .name = "LAYOUT_NFSV4_1_FILES",
-> >> +     .ld_io_ops = &filelayout_io_operations,
-> >
-> > Why do we need a separate 'struct layoutdriver_io_operations'? Any
-> > reason those can't just be embedded in struct pnfs_layoutdriver_type?
-> 
-> I believe this decision was primarily aesthetics.  However, keeping
-> the static io_ops seperate from the variable list_head seems like a
-> good idea.
+> We've seen poisoning in trond's latest for-next as well.  Which I don't
+> think you're including.  But I'll add linux-nfs to the cc for that.
 
-I dunno. They are in a 1-1 correspondence, so I'm not sure I see the
-need for a separation.
+By the way, nightly tests on pnfs code havn't been running due to lack
+of upstream writeback fixes:
+	b76b4014f9d988d2412b873e4d4c13c7f9afc4e4
+and
+	6628bc74f1aa9c35dd386320bf7ec04f12edb1b3
 
-> Perhaps having a driver structure that includes the io_ops and static
-> portions of pnfs_layoutdriver_type, with the generic layer allocating
-> a wrapper structure that is basically:
-> struct {
->     struct list_head list;
->     struct pnfs_layoutdriver_type *driver_info;
+(both in -rc4, I believe).
 
-      Should be const...
-
-      struct module *owner = THIS_MODULE;
-
-> }
-
-...although the struct module could probably indeed be part of
-pnfs_layoutdriver_type too.
-
-Cheers
-  Trond
+--b.
