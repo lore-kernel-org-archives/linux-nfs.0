@@ -1,84 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:10944 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:27511 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753353Ab0I2MHI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Sep 2010 08:07:08 -0400
-Message-ID: <4CA32BE1.8010800@parallels.com>
-Date: Wed, 29 Sep 2010 16:06:57 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 9/9] sunrpc: Create sockets in net namespaces
-References: <4CA32AB4.2090808@parallels.com>
-In-Reply-To: <4CA32AB4.2090808@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1755182Ab0I1N7q convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Sep 2010 09:59:46 -0400
+Subject: Re: [PATCH 1/8] sunrpc: Factor out rpc_xprt freeing
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Pavel Emelyanov <xemul@parallels.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+In-Reply-To: <4CA1C71D.70109@parallels.com>
+References: <4CA06C7A.5060307@parallels.com>
+	 <4CA06CA0.6060606@parallels.com>
+	 <02506D5E-BD8D-40AC-822F-00BBC14792E9@oracle.com>
+	 <4CA1C71D.70109@parallels.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 28 Sep 2010 09:59:44 -0400
+Message-ID: <1285682384.9185.16.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The context is already known in all the sock_create callers.
+On Tue, 2010-09-28 at 14:44 +0400, Pavel Emelyanov wrote:
+> On 09/27/2010 11:40 PM, Chuck Lever wrote:
+> > 
+> > On Sep 27, 2010, at 6:06 AM, Pavel Emelyanov wrote:
+> > 
+> >>
+> >> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+> >> ---
+> >> net/sunrpc/xprtsock.c |   20 ++++++++++++--------
+> >> 1 files changed, 12 insertions(+), 8 deletions(-)
+> >>
+> >> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> >> index b6309db..98d4b7b 100644
+> >> --- a/net/sunrpc/xprtsock.c
+> >> +++ b/net/sunrpc/xprtsock.c
+> >> @@ -759,6 +759,8 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
+> >> 		xs_tcp_shutdown(xprt);
+> >> }
+> >>
+> >> +static void xs_free_xprt(struct rpc_xprt *xprt);
+> > 
+> > Style nit: we usually like forward declarations at the top of source files.
+> 
+> OK.
+> 
+> > Do you need to fix up xprtrdma too?  (eg. xprt_rdma_destroy)  It looks like it has 
+> > similar logic around freeing xprts. 
+> 
+> Indeed. Bruce, which way would you prefer - should I re-send the whole set or
+> can apply this change incrementally?
+> 
+> > Even though it doesn't use sockets, do we need to be concerned about net namespaces
+> > for RDMA transports?
+> 
+> I believe we should, since at least its initialization goes to the rdma_resolve_addr
+> which in turn resolves the address using IP-level routing. But I wanted to finish with
+> the tcp/udp transports first.
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
----
- net/sunrpc/svcsock.c  |    2 +-
- net/sunrpc/xprtsock.c |    8 ++++----
- 2 files changed, 5 insertions(+), 5 deletions(-)
+If you are redoing the patch, then could you please just get rid of the
+above forward declaration for xs_free_xprt, and instead just move the
+function itself further up the file?
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 5593385..88de3d0 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1425,7 +1425,7 @@ static struct svc_xprt *svc_create_socket(struct svc_serv *serv,
- 		return ERR_PTR(-EINVAL);
- 	}
- 
--	error = sock_create_kern(family, type, protocol, &sock);
-+	error = __sock_create(net, family, type, protocol, &sock, 1);
- 	if (error < 0)
- 		return ERR_PTR(error);
- 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 4ef3a6a..f9964ef 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1680,7 +1680,7 @@ static void xs_udp_connect_worker4(struct work_struct *work)
- 	/* Start by resetting any existing state */
- 	xs_reset_transport(transport);
- 
--	err = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
-+	err = __sock_create(xprt->xprt_net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
- 	if (err < 0) {
- 		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
- 		goto out;
-@@ -1725,7 +1725,7 @@ static void xs_udp_connect_worker6(struct work_struct *work)
- 	/* Start by resetting any existing state */
- 	xs_reset_transport(transport);
- 
--	err = sock_create_kern(PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock);
-+	err = __sock_create(xprt->xprt_net, PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
- 	if (err < 0) {
- 		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
- 		goto out;
-@@ -1931,7 +1931,7 @@ static struct socket *xs_create_tcp_sock4(struct rpc_xprt *xprt,
- 	int err;
- 
- 	/* start from scratch */
--	err = sock_create_kern(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sock);
-+	err = __sock_create(xprt->xprt_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sock, 1);
- 	if (err < 0) {
- 		dprintk("RPC:       can't create TCP transport socket (%d).\n",
- 				-err);
-@@ -1970,7 +1970,7 @@ static struct socket *xs_create_tcp_sock6(struct rpc_xprt *xprt,
- 	int err;
- 
- 	/* start from scratch */
--	err = sock_create_kern(PF_INET6, SOCK_STREAM, IPPROTO_TCP, &sock);
-+	err = __sock_create(xprt->xprt_net, PF_INET6, SOCK_STREAM, IPPROTO_TCP, &sock, 1);
- 	if (err < 0) {
- 		dprintk("RPC:       can't create TCP transport socket (%d).\n",
- 				-err);
--- 
-1.5.5.6
-
+Cheers
+  Trond
