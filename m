@@ -1,49 +1,57 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 Subject: Re: Problems with the git://linux-nfs.org/ server
-Date: Tue, 28 Sep 2010 15:32:51 +0200
-Message-ID: <4CA1EE83.1000700@panasas.com>
-References: <4CA1B40D.2080204@panasas.com> <1285679386.9185.4.camel@heimdal.trondhjem.org>
+Date: Tue, 28 Sep 2010 09:49:37 -0400
+Message-ID: <1285681777.9185.13.camel@heimdal.trondhjem.org>
+References: <4CA1B40D.2080204@panasas.com>
+	 <1285679386.9185.4.camel@heimdal.trondhjem.org>
+	 <4CA1EE83.1000700@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="UTF-8"
 Cc: NFS list <linux-nfs@vger.kernel.org>,
 	Benny Halevy <bhalevy@panasas.com>,
 	"J. Bruce Fields" <bfields@citi.umich.edu>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:42747 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755057Ab0I1Ncy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Sep 2010 09:32:54 -0400
-In-Reply-To: <1285679386.9185.4.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail-out1.uio.no ([129.240.10.57]:34652 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753102Ab0I1Ntm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Sep 2010 09:49:42 -0400
+In-Reply-To: <4CA1EE83.1000700@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/28/2010 03:09 PM, Trond Myklebust wrote:
-> On Tue, 2010-09-28 at 11:23 +0200, Boaz Harrosh wrote:
->> It looks like the git daemon on git://linux-nfs.org/ is down
->>
->> Thanks
->> Boaz
+On Tue, 2010-09-28 at 15:32 +0200, Boaz Harrosh wrote:
+> On 09/28/2010 03:09 PM, Trond Myklebust wrote:
+> > On Tue, 2010-09-28 at 11:23 +0200, Boaz Harrosh wrote:
+> >> It looks like the git daemon on git://linux-nfs.org/ is down
+> >>
+> >> Thanks
+> >> Boaz
+> > 
+> > It's working for me...
+> > 
+> > [trondmy@heimdal linux-2.6]$ git remote update linux-nfs
+> > Fetching linux-nfs
+> > 
+> > Cheers
+> >   Trond
+> > 
 > 
-> It's working for me...
+> Thanks. I still get problems so I guess it's related to
+> this side of the ocean, I'm trying for example:
 > 
-> [trondmy@heimdal linux-2.6]$ git remote update linux-nfs
-> Fetching linux-nfs
-> 
-> Cheers
->   Trond
+> $ git ls-remote git://git.linux-nfs.org/~trondmy/nfs-2.6.git
+> And get: git.linux-nfs.org[0: 173.201.45.137]: errno=Connection timed out
 > 
 
-Thanks. I still get problems so I guess it's related to
-this side of the ocean, I'm trying for example:
+Yes. The above too works for me, and I can't see anything in the logs
+that indicates anything wrong.
 
-$ git ls-remote git://git.linux-nfs.org/~trondmy/nfs-2.6.git
-And get: git.linux-nfs.org[0: 173.201.45.137]: errno=Connection timed out
+Could it perhaps be that you are hitting one of those ancient BSD-based
+routers that are broken w.r.t. TCP explicit congestion notification
+(a.k.a. ECN) and/or TCP window scaling? You might try turning those off
+on your client and see if that helps.
 
-But ping git.linux-nfs.org works (8% packet loss)
-
-I'll wait for things to calm down, I guess
-
-Boaz
-
+Cheers
+  Trond
 
