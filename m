@@ -1,41 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:20254 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753277Ab0I2LMb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:12:31 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 16/17] SQUASHME: pnfs-obj: fix REQ flags usage
-Date: Wed, 29 Sep 2010 13:12:29 +0200
-Message-Id: <1285758749-27305-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4CA31DC3.8070300@panasas.com>
-References: <4CA31DC3.8070300@panasas.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:7841 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756568Ab0I1PRx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Sep 2010 11:17:53 -0400
+Message-ID: <4CA20716.7000306@parallels.com>
+Date: Tue, 28 Sep 2010 19:17:42 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 6/7] sunrpc: Add net to xprt_create
+References: <4CA20651.4070605@parallels.com>
+In-Reply-To: <4CA20651.4070605@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-fixes "pnfs-obj use REQ flags rather than BIO flags"
-
-Cc: Boaz Harrosh <bharrosh@panasas.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
 ---
- fs/nfs/objlayout/objio_osd.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ include/linux/sunrpc/xprt.h |    1 +
+ net/sunrpc/clnt.c           |    1 +
+ 2 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 223980b..75d5df4 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -910,7 +910,7 @@ static int _write_mirrors(struct objio_state *ios, unsigned cur_comp)
- 		} else {
- 			bio = master_dev->bio;
- 			/* FIXME: bio_set_dir() */
--			bio->bi_rw |= (1 << REQ_WRITE);
-+			bio->bi_rw |= REQ_WRITE;
- 		}
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index af4b560..c4f9315 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -249,6 +249,7 @@ static inline int bc_prealloc(struct rpc_rqst *req)
  
- 		osd_req_write(or, &obj, per_dev->offset, bio, per_dev->length);
+ struct xprt_create {
+ 	int			ident;		/* XPRT_TRANSPORT identifier */
++	struct net *		net;
+ 	struct sockaddr *	srcaddr;	/* optional local address */
+ 	struct sockaddr *	dstaddr;	/* remote peer address */
+ 	size_t			addrlen;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index fa55490..f4bbd83 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -284,6 +284,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 	struct rpc_xprt *xprt;
+ 	struct rpc_clnt *clnt;
+ 	struct xprt_create xprtargs = {
++		.net = args->net,
+ 		.ident = args->protocol,
+ 		.srcaddr = args->saddress,
+ 		.dstaddr = args->address,
 -- 
-1.7.2.3
+1.5.5.6
 
