@@ -1,329 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47548 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:6413 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755260Ab0IISKn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Sep 2010 14:10:43 -0400
-Received: from localhost.localdomain (surajit-lxp.hq.netapp.com [10.58.50.95] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o89IAW1V002948
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Sep 2010 11:10:41 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 10/13] RFC: nfs: client needs to maintain list of inodes with active layouts
-Date: Thu,  2 Sep 2010 14:00:16 -0400
-Message-Id: <1283450419-5648-11-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
+	id S1753728Ab0I1PQz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Sep 2010 11:16:55 -0400
+Message-ID: <4CA206DC.8010302@parallels.com>
+Date: Tue, 28 Sep 2010 19:16:44 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 4/7] sunrpc: Pull net argument downto svc_create_socket
+References: <4CA20651.4070605@parallels.com>
+In-Reply-To: <4CA20651.4070605@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
+After this the socket creation in it knows the context.
 
-In particular, server reboot will invalidate all layouts.
-
-Note that in order to have an active layout, we must get a successful response
-from the server.  To avoid adding that machinery, this patch just includes a
-stub that fakes up a successful return.  Since the layout is never referenced
-for io, this is not a problem.
-
-Signed-off-by: TBD - melding/reorganization of several patches
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
 ---
- fs/nfs/client.c           |    4 +-
- fs/nfs/nfs4state.c        |    2 +
- fs/nfs/pnfs.c             |  130 +++++++++++++++++++++++++++++++++++++++++++-
- fs/nfs/pnfs.h             |   20 +++++++
- include/linux/nfs_fs_sb.h |    1 +
- 5 files changed, 153 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/svc_xprt.h          |    1 +
+ net/sunrpc/svc_xprt.c                    |    5 +++--
+ net/sunrpc/svcsock.c                     |   10 +++++++---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 ++
+ 4 files changed, 13 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index eed1212..6fc5c84 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -156,7 +156,9 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
- 	cred = rpc_lookup_machine_cred();
- 	if (!IS_ERR(cred))
- 		clp->cl_machine_cred = cred;
--
-+#if defined(CONFIG_NFS_V4_1)
-+	INIT_LIST_HEAD(&clp->cl_layouts);
-+#endif
- 	nfs_fscache_get_client_cookie(clp);
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 646263c..bb18297 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -12,6 +12,7 @@
  
- 	return clp;
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 3e2f19b..b53a4ce 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -53,6 +53,7 @@
- #include "callback.h"
- #include "delegation.h"
- #include "internal.h"
-+#include "pnfs.h"
+ struct svc_xprt_ops {
+ 	struct svc_xprt	*(*xpo_create)(struct svc_serv *,
++				       struct net *net,
+ 				       struct sockaddr *, int,
+ 				       int);
+ 	struct svc_xprt	*(*xpo_accept)(struct svc_xprt *);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index d80789a..678b6ee 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -166,6 +166,7 @@ EXPORT_SYMBOL_GPL(svc_xprt_init);
  
- #define OPENOWNER_POOL_SIZE	8
+ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
+ 					 struct svc_serv *serv,
++					 struct net *net,
+ 					 const int family,
+ 					 const unsigned short port,
+ 					 int flags)
+@@ -200,7 +201,7 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
+ 		return ERR_PTR(-EAFNOSUPPORT);
+ 	}
  
-@@ -1447,6 +1448,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 			}
- 			clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
- 			set_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state);
-+			pnfs_destroy_all_layouts(clp);
- 		}
+-	return xcl->xcl_ops->xpo_create(serv, sap, len, flags);
++	return xcl->xcl_ops->xpo_create(serv, net, sap, len, flags);
+ }
  
- 		if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 65f923b..cbce942 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -28,6 +28,7 @@
+ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+@@ -221,7 +222,7 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+ 			goto err;
+ 
+ 		spin_unlock(&svc_xprt_class_lock);
+-		newxprt = __svc_xpo_create(xcl, serv, family, port, flags);
++		newxprt = __svc_xpo_create(xcl, serv, net, family, port, flags);
+ 		if (IS_ERR(newxprt)) {
+ 			module_put(xcl->xcl_owner);
+ 			return PTR_ERR(newxprt);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 7e534dd..5593385 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -64,7 +64,8 @@ static void		svc_tcp_sock_detach(struct svc_xprt *);
+ static void		svc_sock_free(struct svc_xprt *);
+ 
+ static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
+-					  struct sockaddr *, int, int);
++					  struct net *, struct sockaddr *,
++					  int, int);
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ static struct lock_class_key svc_key[2];
+ static struct lock_class_key svc_slock_key[2];
+@@ -657,10 +658,11 @@ static struct svc_xprt *svc_udp_accept(struct svc_xprt *xprt)
+ }
+ 
+ static struct svc_xprt *svc_udp_create(struct svc_serv *serv,
++				       struct net *net,
+ 				       struct sockaddr *sa, int salen,
+ 				       int flags)
+ {
+-	return svc_create_socket(serv, IPPROTO_UDP, sa, salen, flags);
++	return svc_create_socket(serv, IPPROTO_UDP, net, sa, salen, flags);
+ }
+ 
+ static struct svc_xprt_ops svc_udp_ops = {
+@@ -1178,10 +1180,11 @@ static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+ }
+ 
+ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
++				       struct net *net,
+ 				       struct sockaddr *sa, int salen,
+ 				       int flags)
+ {
+-	return svc_create_socket(serv, IPPROTO_TCP, sa, salen, flags);
++	return svc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
+ }
+ 
+ static struct svc_xprt_ops svc_tcp_ops = {
+@@ -1385,6 +1388,7 @@ EXPORT_SYMBOL_GPL(svc_addsock);
   */
- 
- #include <linux/nfs_fs.h>
-+#include "internal.h"
- #include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PNFS
-@@ -168,11 +169,67 @@ put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
- 	lo->refcount--;
- 	if (!lo->refcount) {
- 		dprintk("%s: freeing layout cache %p\n", __func__, lo);
-+		BUG_ON(!list_empty(&lo->layouts));
- 		NFS_I(lo->inode)->layout = NULL;
- 		kfree(lo);
- 	}
- }
- 
-+static void
-+init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
-+{
-+	INIT_LIST_HEAD(&lseg->fi_list);
-+	kref_init(&lseg->kref);
-+	lseg->layout = lo;
-+}
-+
-+static void
-+destroy_lseg(struct kref *kref)
-+{
-+	struct pnfs_layout_segment *lseg =
-+		container_of(kref, struct pnfs_layout_segment, kref);
-+	struct pnfs_layout_hdr *local = lseg->layout;
-+
-+	dprintk("--> %s\n", __func__);
-+	kfree(lseg);
-+	/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
-+	put_layout_hdr_locked(local);
-+}
-+
-+static void
-+put_lseg_locked(struct pnfs_layout_segment *lseg)
-+{
-+	if (!lseg)
-+		return;
-+
-+	dprintk("%s: lseg %p ref %d\n", __func__, lseg,
-+		atomic_read(&lseg->kref.refcount));
-+	kref_put(&lseg->kref, destroy_lseg);
-+}
-+
-+static void
-+pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo)
-+{
-+	struct pnfs_layout_segment *lseg, *next;
-+	struct nfs_client *clp;
-+
-+	dprintk("%s:Begin lo %p\n", __func__, lo);
-+
-+	assert_spin_locked(&lo->inode->i_lock);
-+	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list) {
-+		dprintk("%s: freeing lseg %p\n", __func__, lseg);
-+		list_del(&lseg->fi_list);
-+		put_lseg_locked(lseg);
-+	}
-+	clp = PNFS_NFS_SERVER(lo)->nfs_client;
-+	spin_lock(&clp->cl_lock);
-+	/* List does not take a reference, so no need for put here */
-+	list_del_init(&lo->layouts);
-+	spin_unlock(&clp->cl_lock);
-+
-+	dprintk("%s:Return\n", __func__);
-+}
-+
- void
- pnfs_destroy_layout(struct nfs_inode *nfsi)
+ static struct svc_xprt *svc_create_socket(struct svc_serv *serv,
+ 					  int protocol,
++					  struct net *net,
+ 					  struct sockaddr *sin, int len,
+ 					  int flags)
  {
-@@ -181,25 +238,90 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
- 	spin_lock(&nfsi->vfs_inode.i_lock);
- 	lo = nfsi->layout;
- 	if (lo) {
-+		pnfs_clear_lseg_list(lo);
- 		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
- 		put_layout_hdr_locked(lo);
- 	}
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
- }
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index edea15a..950a206 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -52,6 +52,7 @@
+ #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
  
--/* STUB - pretend LAYOUTGET to server failed */
-+/*
-+ * Called by the state manger to remove all layouts established under an
-+ * expired lease.
-+ */
-+void
-+pnfs_destroy_all_layouts(struct nfs_client *clp)
-+{
-+	struct pnfs_layout_hdr *lo;
-+	LIST_HEAD(tmp_list);
-+
-+	spin_lock(&clp->cl_lock);
-+	list_splice_init(&clp->cl_layouts, &tmp_list);
-+	spin_unlock(&clp->cl_lock);
-+
-+	while (!list_empty(&tmp_list)) {
-+		lo = list_entry(tmp_list.next, struct pnfs_layout_hdr,
-+				layouts);
-+		dprintk("%s freeing layout for inode %lu\n", __func__,
-+			lo->inode->i_ino);
-+		pnfs_destroy_layout(NFS_I(lo->inode));
-+	}
-+}
-+
-+static void pnfs_insert_layout(struct pnfs_layout_hdr *lo,
-+			       struct pnfs_layout_segment *lseg);
-+
-+/* Get layout from server. */
- static struct pnfs_layout_segment *
- send_layoutget(struct pnfs_layout_hdr *lo,
- 	   struct nfs_open_context *ctx,
- 	   u32 iomode)
+ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
++					struct net *net,
+ 					struct sockaddr *sa, int salen,
+ 					int flags);
+ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt);
+@@ -670,6 +671,7 @@ static int rdma_cma_handler(struct rdma_cm_id *cma_id,
+  * Create a listening RDMA service endpoint.
+  */
+ static struct svc_xprt *svc_rdma_create(struct svc_serv *serv,
++					struct net *net,
+ 					struct sockaddr *sa, int salen,
+ 					int flags)
  {
- 	struct inode *ino = lo->inode;
-+	struct pnfs_layout_segment *lseg;
- 
--	set_bit(lo_fail_bit(iomode), &lo->state);
-+	/* Lets pretend we sent LAYOUTGET and got a response */
-+	lseg = kzalloc(sizeof(*lseg), GFP_KERNEL);
-+	if (!lseg) {
-+		set_bit(lo_fail_bit(iomode), &lo->state);
-+		spin_lock(&ino->i_lock);
-+		put_layout_hdr_locked(lo);
-+		spin_unlock(&ino->i_lock);
-+		return NULL;
-+	}
-+	init_lseg(lo, lseg);
-+	lseg->iomode = IOMODE_RW;
- 	spin_lock(&ino->i_lock);
-+	pnfs_insert_layout(lo, lseg);
- 	put_layout_hdr_locked(lo);
- 	spin_unlock(&ino->i_lock);
--	return NULL;
-+	return lseg;
-+}
-+
-+static void
-+pnfs_insert_layout(struct pnfs_layout_hdr *lo,
-+		   struct pnfs_layout_segment *lseg)
-+{
-+	dprintk("%s:Begin\n", __func__);
-+
-+	assert_spin_locked(&lo->inode->i_lock);
-+	if (list_empty(&lo->segs)) {
-+		struct nfs_client *clp = PNFS_NFS_SERVER(lo)->nfs_client;
-+
-+		spin_lock(&clp->cl_lock);
-+		BUG_ON(!list_empty(&lo->layouts));
-+		list_add_tail(&lo->layouts, &clp->cl_layouts);
-+		spin_unlock(&clp->cl_lock);
-+	}
-+	/* STUB - add the constructed lseg if necessary */
-+	if (list_empty(&lo->segs)) {
-+		list_add_tail(&lseg->fi_list, &lo->segs);
-+		get_layout_hdr_locked(lo);
-+		dprintk("%s: inserted lseg %p iomode %d at tail\n",
-+			__func__, lseg, lseg->iomode);
-+	}
-+
-+	dprintk("%s:Return\n", __func__);
- }
- 
- static struct pnfs_layout_hdr *
-@@ -211,6 +333,8 @@ alloc_init_layout_hdr(struct inode *ino)
- 	if (!lo)
- 		return NULL;
- 	lo->refcount = 1;
-+	INIT_LIST_HEAD(&lo->layouts);
-+	INIT_LIST_HEAD(&lo->segs);
- 	lo->inode = ino;
- 	return lo;
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index b63b445..dac6a72 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -10,6 +10,13 @@
- #ifndef FS_NFS_PNFS_H
- #define FS_NFS_PNFS_H
- 
-+struct pnfs_layout_segment {
-+	struct list_head fi_list;
-+	u32 iomode;
-+	struct kref kref;
-+	struct pnfs_layout_hdr *layout;
-+};
-+
- #ifdef CONFIG_NFS_V4_1
- 
- #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
-@@ -29,6 +36,8 @@ struct pnfs_layoutdriver_type {
- 
- struct pnfs_layout_hdr {
- 	int			refcount;
-+	struct list_head	layouts;   /* other client layouts */
-+	struct list_head	segs;      /* layout segments list */
- 	unsigned long		state;
- 	struct inode		*inode;
- };
-@@ -43,12 +52,19 @@ struct layoutdriver_io_operations {
- extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
- extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
- 
-+static inline struct nfs_server *
-+PNFS_NFS_SERVER(struct pnfs_layout_hdr *lo)
-+{
-+	return NFS_SERVER(lo->inode);
-+}
-+
- struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
- 		   enum pnfs_iomode access_type);
- void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
- void unset_pnfs_layoutdriver(struct nfs_server *);
- void pnfs_destroy_layout(struct nfs_inode *);
-+void pnfs_destroy_all_layouts(struct nfs_client *);
- 
- 
- static inline int lo_fail_bit(u32 iomode)
-@@ -65,6 +81,10 @@ static inline int pnfs_enabled_sb(struct nfs_server *nfss)
- 
- #else  /* CONFIG_NFS_V4_1 */
- 
-+static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
-+{
-+}
-+
- static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
- {
- }
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 29a821d..e670a9c 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -82,6 +82,7 @@ struct nfs_client {
- 	/* The flags used for obtaining the clientid during EXCHANGE_ID */
- 	u32			cl_exchange_flags;
- 	struct nfs4_session	*cl_session; 	/* sharred session */
-+	struct list_head	cl_layouts;
- #endif /* CONFIG_NFS_V4_1 */
- 
- #ifdef CONFIG_NFS_FSCACHE
 -- 
-1.7.2.1
+1.5.5.6
 
