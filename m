@@ -1,110 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:55370 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751015Ab0I3CMQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Sep 2010 22:12:16 -0400
-Message-ID: <4CA3F1CE.2070108@cn.fujitsu.com>
-Date: Thu, 30 Sep 2010 10:11:26 +0800
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-To: Jim Rees <rees@umich.edu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: block layout oops
-References: <20100929172552.GA24460@merit.edu>
-In-Reply-To: <20100929172552.GA24460@merit.edu>
-Content-Type: text/plain; charset=Shift_JIS
+Received: from mailhub.sw.ru ([195.214.232.25]:19197 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755515Ab0I1PSe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Sep 2010 11:18:34 -0400
+Message-ID: <4CA2073F.6070805@parallels.com>
+Date: Tue, 28 Sep 2010 19:18:23 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 7/7] sunrpc: Tag rpc_xprt with net
+References: <4CA20651.4070605@parallels.com>
+In-Reply-To: <4CA20651.4070605@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> I'm getting this when I try to do a block layout mount with benny's new
-> pnfs-all-latest kernel, 2.6.36-rc6-pnfs:
-> 
-> BUG: unable to handle kernel NULL pointer dereference at 00000008
-> IP: [<e0c5f9a3>] nfs4_proc_getdevicelist+0x3c/0x118 [nfs]
-> *pde = 00000000 
-> Oops: 0000 [#1] 
-> last sysfs file: /sys/module/sunrpc/initstate
-> Modules linked in: blocklayoutdriver nfs lockd fscache nfs_acl auth_rpcgss sunrpc ip6t_REJECT nf_conntrack_ipv6 ip6table_filter ip6_tables ipv6 iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi snd_intel8x0 snd_ac97_codec ac97_bus snd_pcm microcode snd_timer snd i2c_piix4 pcnet32 i2c_core soundcore pcspkr snd_page_alloc mii [last unloaded: speedstep_lib]
-> 
-> Pid: 1226, comm: mount.nfs4 Not tainted 2.6.36-rc6-pnfs #9 /VirtualBox
-> EIP: 0060:[<e0c5f9a3>] EFLAGS: 00210246 CPU: 0
-> EIP is at nfs4_proc_getdevicelist+0x3c/0x118 [nfs]
-> EAX: 00000000 EBX: e0cb3310 ECX: 00000004 EDX: de9c3c40
-> ESI: df756000 EDI: de9c3c68 EBP: de9c3c90 ESP: de9c3c30
->  DS: 007b ES: 007b FS: 0000 GS: 00e0 SS: 0069
-> Process mount.nfs4 (pid: 1226, ti=de9c2000 task=df626380 task.ti=de9c2000)
-> Stack:
->  de9c3c40 de9c3c68 debfb300 dec0ee00 00000000 00000000 df756000 e0caec47
-> <0> c14b830c dea26588 dea26590 de9c3c88 c10a2f7f 00000008 00200246 e0cb3310
-> <0> c14b8624 de9c3c90 00000000 00000000 00000000 e0cb3310 00000003 de9c3d38
-> Call Trace:
->  [<e0caec47>] ? T.983+0x12/0x14 [blocklayoutdriver]
->  [<c10a2f7f>] ? __kmalloc+0xf7/0x103
->  [<e0caed2e>] ? bl_initialize_mountpoint+0xe5/0x36b [blocklayoutdriver]
->  [<e0c7233e>] ? set_pnfs_layoutdriver+0x146/0x1e2 [nfs]
->  [<e0c48ba8>] ? nfs_probe_fsinfo+0x18a/0x2c0 [nfs]
->  [<e0c483a6>] ? nfs_init_server_rpcclient+0x25/0xd1 [nfs]
->  [<e0c49511>] ? nfs_clone_server+0x11f/0x206 [nfs]
->  [<e0c51ca2>] ? nfs4_xdev_get_sb+0x42/0x1cc [nfs]
->  [<c10acf0a>] ? vfs_kern_mount+0x9b/0x15d
->  [<e0c59871>] ? nfs_follow_mountpoint+0x1df/0x31e [nfs]
->  [<c10b3950>] ? do_follow_link+0xcc/0x1ed
->  [<c10b3d54>] ? link_path_walk+0x2e3/0x3be
->  [<c10b3f18>] ? path_walk+0x52/0xaf
->  [<c10b3fe6>] ? vfs_path_lookup+0x71/0xb5
->  [<e0c5197f>] ? nfs_follow_remote_path+0x126/0x255 [nfs]
->  [<e0c51b9b>] ? nfs4_try_mount+0x61/0x94 [nfs]
->  [<e0c52586>] ? nfs4_get_sb+0x22a/0x299 [nfs]
->  [<c10acf0a>] ? vfs_kern_mount+0x9b/0x15d
->  [<c10ad01b>] ? do_kern_mount+0x38/0xc2
->  [<c10be1e9>] ? do_mount+0x5ee/0x634
->  [<c10bcd5c>] ? copy_mount_options+0x78/0xd7
->  [<c10be295>] ? sys_mount+0x66/0x94
->  [<c132425c>] ? syscall_call+0x7/0xb
-> Code: c0 89 4d ac 8d 7d e8 b9 03 00 00 00 89 55 a8 8d 55 b0 f3 ab 8d 45 d8 89 45 a4 89 55 a0 8b 86 a8 01 00 00 b9 04 00 00 00 8b 7d a4 <8b> 50 08 31 c0 f3 ab 8b 4d a8 8b 7d a0 89 55 dc 89 4d d8 b9 06 
-> EIP: [<e0c5f9a3>] nfs4_proc_getdevicelist+0x3c/0x118 [nfs] SS:ESP 0068:de9c3c30
-> CR2: 0000000000000008
+The net is known from the xprt_create and this tagging will also
+give un the context in the conntection workers where real sockets
+are created.
 
-
-  Is this patch can fix it?
-
-----------------------------------------------------------------------
-We must specify the layout type before initialize mountpoint, so we should try set 
-pnfs_curr_ld earlier.
-
-Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
-
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
 ---
- fs/nfs/pnfs.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ include/linux/sunrpc/xprt.h     |    3 ++-
+ net/sunrpc/xprtrdma/transport.c |    2 +-
+ net/sunrpc/xprtsock.c           |    6 ++++--
+ 3 files changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a225cd1..72ec712 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -162,6 +162,7 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
- 		dprintk("%s: Could not grab reference on module\n", __func__);
- 		goto out_no_driver;
- 	}
-+	server->pnfs_curr_ld = ld_type;
- 	if (ld_type->initialize_mountpoint(server, mntfh)) {
- 		printk(KERN_ERR
- 		       "%s: Error initializing mount point for layout driver %u.\n",
-@@ -169,7 +170,6 @@ set_pnfs_layoutdriver(struct nfs_server *server, const struct nfs_fh *mntfh,
- 		module_put(ld_type->owner);
- 		goto out_no_driver;
- 	}
--	server->pnfs_curr_ld = ld_type;
- 	dprintk("%s: pNFS module for %u set\n", __func__, id);
- 	return;
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index c4f9315..89d10d2 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -224,6 +224,7 @@ struct rpc_xprt {
+ 					bklog_u;	/* backlog queue utilization */
+ 	} stat;
  
++	struct net		*xprt_net;
+ 	const char		*address_strings[RPC_DISPLAY_MAX];
+ };
+ 
+@@ -281,7 +282,7 @@ void			xprt_release_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
+ void			xprt_release(struct rpc_task *task);
+ struct rpc_xprt *	xprt_get(struct rpc_xprt *xprt);
+ void			xprt_put(struct rpc_xprt *xprt);
+-struct rpc_xprt *	xprt_alloc(int size, int max_req);
++struct rpc_xprt *	xprt_alloc(struct net *net, int size, int max_req);
+ void			xprt_free(struct rpc_xprt *);
+ 
+ static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 0f7a1b9..2da32b4 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -283,7 +283,7 @@ xprt_setup_rdma(struct xprt_create *args)
+ 		return ERR_PTR(-EBADF);
+ 	}
+ 
+-	xprt = xprt_alloc(sizeof(struct rpcrdma_xprt),
++	xprt = xprt_alloc(args->net, sizeof(struct rpcrdma_xprt),
+ 			xprt_rdma_slot_table_entries);
+ 	if (xprt == NULL) {
+ 		dprintk("RPC:       %s: couldn't allocate rpcrdma_xprt\n",
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 77cb595..dbac32e 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -759,7 +759,7 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
+ 		xs_tcp_shutdown(xprt);
+ }
+ 
+-struct rpc_xprt *xprt_alloc(int size, int max_req)
++struct rpc_xprt *xprt_alloc(struct net *net, int size, int max_req)
+ {
+ 	struct rpc_xprt *xprt;
+ 
+@@ -772,6 +772,7 @@ struct rpc_xprt *xprt_alloc(int size, int max_req)
+ 	if (xprt->slot == NULL)
+ 		goto out_free;
+ 
++	xprt->xprt_net = get_net(net);
+ 	return xprt;
+ 
+ out_free:
+@@ -783,6 +784,7 @@ EXPORT_SYMBOL_GPL(xprt_alloc);
+ 
+ void xprt_free(struct rpc_xprt *xprt)
+ {
++	put_net(xprt->xprt_net);
+ 	kfree(xprt->slot);
+ 	kfree(xprt);
+ }
+@@ -2301,7 +2303,7 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
+ 		return ERR_PTR(-EBADF);
+ 	}
+ 
+-	xprt = xprt_alloc(sizeof(*new), slot_table_size);
++	xprt = xprt_alloc(args->net, sizeof(*new), slot_table_size);
+ 	if (xprt == NULL) {
+ 		dprintk("RPC:       xs_setup_xprt: couldn't allocate "
+ 				"rpc_xprt\n");
 -- 
-1.7.0.1
-
-
-
-
--- 
-Regards
-Bian Naimeng
+1.5.5.6
 
