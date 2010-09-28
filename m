@@ -1,47 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4981 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:39557 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755038Ab0IKAEF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 20:04:05 -0400
-Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
- layout driver
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <20100910235600.GA11231@infradead.org>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
-	 <1283450419-5648-9-git-send-email-iisaman@netapp.com>
-	 <1284147111.10062.74.camel@heimdal.trondhjem.org>
-	 <20100910235600.GA11231@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 10 Sep 2010 20:03:53 -0400
-Message-ID: <1284163433.14078.102.camel@heimdal.trondhjem.org>
+	id S1753414Ab0I1PPe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Sep 2010 11:15:34 -0400
+Message-ID: <4CA20689.6060405@parallels.com>
+Date: Tue, 28 Sep 2010 19:15:21 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 1/7] sunrpc: Factor out rpc_xprt allocation
+References: <4CA20651.4070605@parallels.com>
+In-Reply-To: <4CA20651.4070605@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2010-09-10 at 19:56 -0400, Christoph Hellwig wrote:
-> On Fri, Sep 10, 2010 at 03:31:51PM -0400, Trond Myklebust wrote:
-> > > +	tristate
-> > > +	depends on NFS_FS && NFS_V4_1
-> > > +	default m
-> > 
-> > Should be 'default y', otherwise it has an implicit dependency on
-> > CONFIG_MODULES.
-> 
-> No, it should not have a default statement at all.  The only reason to
-> put in a default statement is to keep existing code working when it's
-> split into multiple options, which this is not.  This is not just my
-> opinion, btw - Linus has frequently whacked people for introducing pointless
-> defaults in the past.
-> 
-> And even if it was okay sometimes pnfs nowhere is near important enough
-> to add it in Kconfig.
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
 
-So you are saying we should simply equate CONFIG_PNFS_FILE_LAYOUT and
-CONFIG_NFS_V4_1 right now? Yep, I'd be fine with that... I'm still
-working on the patches to get rid of all these CONFIG options, but
-ultimately this is what I'm working towards.
+---
+ include/linux/sunrpc/xprt.h     |    1 +
+ net/sunrpc/xprtrdma/transport.c |   13 ++-----------
+ net/sunrpc/xprtsock.c           |   37 +++++++++++++++++++++++++------------
+ 3 files changed, 28 insertions(+), 23 deletions(-)
 
-Cheers
-  Trond
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index ff5a77b..00f6e3f 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -280,6 +280,7 @@ void			xprt_release_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
+ void			xprt_release(struct rpc_task *task);
+ struct rpc_xprt *	xprt_get(struct rpc_xprt *xprt);
+ void			xprt_put(struct rpc_xprt *xprt);
++struct rpc_xprt *	xprt_alloc(int size, int max_req);
+ 
+ static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
+ {
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index a85e866..9d77bf2 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -285,23 +285,14 @@ xprt_setup_rdma(struct xprt_create *args)
+ 		return ERR_PTR(-EBADF);
+ 	}
+ 
+-	xprt = kzalloc(sizeof(struct rpcrdma_xprt), GFP_KERNEL);
++	xprt = xprt_alloc(sizeof(struct rpcrdma_xprt),
++			xprt_rdma_slot_table_entries);
+ 	if (xprt == NULL) {
+ 		dprintk("RPC:       %s: couldn't allocate rpcrdma_xprt\n",
+ 			__func__);
+ 		return ERR_PTR(-ENOMEM);
+ 	}
+ 
+-	xprt->max_reqs = xprt_rdma_slot_table_entries;
+-	xprt->slot = kcalloc(xprt->max_reqs,
+-				sizeof(struct rpc_rqst), GFP_KERNEL);
+-	if (xprt->slot == NULL) {
+-		dprintk("RPC:       %s: couldn't allocate %d slots\n",
+-			__func__, xprt->max_reqs);
+-		kfree(xprt);
+-		return ERR_PTR(-ENOMEM);
+-	}
+-
+ 	/* 60 second timeout, no retries */
+ 	xprt->timeout = &xprt_rdma_default_timeout;
+ 	xprt->bind_timeout = (60U * HZ);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index b6309db..9f2dd3b 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -759,6 +759,28 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
+ 		xs_tcp_shutdown(xprt);
+ }
+ 
++struct rpc_xprt *xprt_alloc(int size, int max_req)
++{
++	struct rpc_xprt *xprt;
++
++	xprt = kzalloc(size, GFP_KERNEL);
++	if (xprt == NULL)
++		goto out;
++
++	xprt->max_reqs = max_req;
++	xprt->slot = kcalloc(max_req, sizeof(struct rpc_rqst), GFP_KERNEL);
++	if (xprt->slot == NULL)
++		goto out_free;
++
++	return xprt;
++
++out_free:
++	kfree(xprt);
++out:
++	return NULL;
++}
++EXPORT_SYMBOL_GPL(xprt_alloc);
++
+ /**
+  * xs_destroy - prepare to shutdown a transport
+  * @xprt: doomed transport
+@@ -2273,23 +2295,14 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
+ 		return ERR_PTR(-EBADF);
+ 	}
+ 
+-	new = kzalloc(sizeof(*new), GFP_KERNEL);
+-	if (new == NULL) {
++	xprt = xprt_alloc(sizeof(*new), slot_table_size);
++	if (xprt == NULL) {
+ 		dprintk("RPC:       xs_setup_xprt: couldn't allocate "
+ 				"rpc_xprt\n");
+ 		return ERR_PTR(-ENOMEM);
+ 	}
+-	xprt = &new->xprt;
+-
+-	xprt->max_reqs = slot_table_size;
+-	xprt->slot = kcalloc(xprt->max_reqs, sizeof(struct rpc_rqst), GFP_KERNEL);
+-	if (xprt->slot == NULL) {
+-		kfree(xprt);
+-		dprintk("RPC:       xs_setup_xprt: couldn't allocate slot "
+-				"table\n");
+-		return ERR_PTR(-ENOMEM);
+-	}
+ 
++	new = container_of(xprt, struct sock_xprt, xprt);
+ 	memcpy(&xprt->addr, args->dstaddr, args->addrlen);
+ 	xprt->addrlen = args->addrlen;
+ 	if (args->srcaddr)
+-- 
+1.5.5.6
+
