@@ -1,72 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29076 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:25310 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755239Ab0I0LNs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Sep 2010 07:13:48 -0400
-Message-ID: <4CA07C67.2060201@RedHat.com>
-Date: Mon, 27 Sep 2010 07:13:43 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Eberhard Kuemmerle <E.Kuemmerle@fz-juelich.de>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Patch proposal for svcgssd
-References: <201009271029.43607.E.Kuemmerle@fz-juelich.de>
-In-Reply-To: <201009271029.43607.E.Kuemmerle@fz-juelich.de>
+	id S1753353Ab0I2MGr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Sep 2010 08:06:47 -0400
+Message-ID: <4CA32BC8.7040802@parallels.com>
+Date: Wed, 29 Sep 2010 16:06:32 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, David Miller <davem@davemloft.net>
+Subject: [PATCH 8/9] net: Export __sock_create
+References: <4CA32AB4.2090808@parallels.com>
+In-Reply-To: <4CA32AB4.2090808@parallels.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+Acked-by: David S. Miller <davem@davemloft.net>
+---
+ include/linux/net.h |    2 ++
+ net/socket.c        |    3 ++-
+ 2 files changed, 4 insertions(+), 1 deletions(-)
 
+diff --git a/include/linux/net.h b/include/linux/net.h
+index dee0b11..16faa13 100644
+--- a/include/linux/net.h
++++ b/include/linux/net.h
+@@ -229,6 +229,8 @@ enum {
+ extern int	     sock_wake_async(struct socket *sk, int how, int band);
+ extern int	     sock_register(const struct net_proto_family *fam);
+ extern void	     sock_unregister(int family);
++extern int	     __sock_create(struct net *net, int family, int type, int proto,
++				 struct socket **res, int kern);
+ extern int	     sock_create(int family, int type, int proto,
+ 				 struct socket **res);
+ extern int	     sock_create_kern(int family, int type, int proto,
+diff --git a/net/socket.c b/net/socket.c
+index 2270b94..0c37b00 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -1144,7 +1144,7 @@ call_kill:
+ }
+ EXPORT_SYMBOL(sock_wake_async);
+ 
+-static int __sock_create(struct net *net, int family, int type, int protocol,
++int __sock_create(struct net *net, int family, int type, int protocol,
+ 			 struct socket **res, int kern)
+ {
+ 	int err;
+@@ -1256,6 +1256,7 @@ out_release:
+ 	rcu_read_unlock();
+ 	goto out_sock_release;
+ }
++EXPORT_SYMBOL(__sock_create);
+ 
+ int sock_create(int family, int type, int protocol, struct socket **res)
+ {
+-- 
+1.5.5.6
 
-On 09/27/2010 04:29 AM, Eberhard Kuemmerle wrote:
-> Hello,
-> 
-> we use a two-node cluster (pacemaker, corosync, drbd) as nfs-server.
-> We configured a virtual cluster-IP (using ocf::heartbeat:IPaddr2, iptables CLUSTERIP),
-> i.e. the nfs clients call the server as OurClusterIP.OurDomain.de while the real hostnames of the servers are
-> OurServer1.OurDomain.de and OurServer2.OurDomain.de.
-> 
-> If I tried to use the mount option krb5, svcgssd denied the mount with the message:
-> ERROR: GSS-API: error in handle_nullreq: gss_accept_sec_context(): Unspecified GSS failure.  Minor code may provide more information - Wrong principal in request
-> 
-> I patched svcgssd that we can specify the principal to use as an option:
-> svcgssd -p nfs/OurClusterIP.OurDomain.de
-> 
-> Now, krb5 works fine!
-> 
-> I suggest to include that patch in the main line of nfs-utils to enable the use of krb5 with such virtual IP's.
-> The small patch is appended to the mail.
-This looks like a reasonable idea... but a couple of nits...
-
-1) There needs to be an update to the man page, in a separate patch, preferably.
-
-2) Please don't make the patch an email attachment, inline it in
-   email. See http://www.kernel.org/pub/linux/docs/lkml/#s1-10
-   for details.
-
-3) Please add the 'Signed-off-by:' line after your patch description.
-
-Note, in the next day or so I will be doing nfs-utils release.
-If you are interested in having this patch included please repost 
-it in a timely matter... 
-
-tia,
-
-steved.
-
-> 
-> Best regards
->   Eberhard Kuemmerle
-> 
-> ------------------------------------------------------------------------------------------------
-> ------------------------------------------------------------------------------------------------
-> Forschungszentrum Juelich GmbH
-> 52425 Juelich
-> Sitz der Gesellschaft: Juelich
-> Eingetragen im Handelsregister des Amtsgerichts Dueren Nr. HR B 3498
-> Vorsitzender des Aufsichtsrats: MinDirig Dr. Karl Eugen Huthmacher
-> Geschaeftsfuehrung: Prof. Dr. Achim Bachem (Vorsitzender),
-> Dr. Ulrich Krafft (stellv. Vorsitzender), Prof. Dr.-Ing. Harald Bolt,
-> Prof. Dr. Sebastian M. Schmidt
-> ------------------------------------------------------------------------------------------------
-> ------------------------------------------------------------------------------------------------
