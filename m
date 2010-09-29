@@ -1,26 +1,89 @@
-From: Jim Rees <rees@umich.edu>
-Subject: Re: another block layout oops
-Date: Thu, 30 Sep 2010 17:52:20 -0400
-Message-ID: <20100930215220.GB7244@merit.edu>
-References: <20100930171325.GA5731@merit.edu>
- <4CA503C2.2090607@panasas.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] nfs(5): document new local_lock option
+Date: Wed, 29 Sep 2010 07:16:16 -0400
+Message-ID: <4CA32000.8040906@RedHat.com>
+References: <4C9BA266.1040102@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+	trond.myklebust@netapp.com
+To: Suresh Jayaraman <sjayaraman@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:39523 "EHLO magus.merit.edu"
+Received: from mx1.redhat.com ([209.132.183.28]:42188 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932156Ab0I3VwV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Sep 2010 17:52:21 -0400
-In-Reply-To: <4CA503C2.2090607@panasas.com>
+	id S1753260Ab0I2LQU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Sep 2010 07:16:20 -0400
+In-Reply-To: <4C9BA266.1040102@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Benny Halevy wrote:
 
-  Jim, would you mind retesting with pnfs-all-2.6.36-rc6-2010-09-30?
-  Not that there's any possible fix there, but a fresh Oops could
-  help, if you can reproduce it.
 
-Will do, probably after an important meeting I have at 6:00 this evening.
+On 09/23/2010 02:54 PM, Suresh Jayaraman wrote:
+> Kernel 2.6.37 would most likely add a new mount option: local_lock.
+> Document the new option in the nfs(5) man page.
+> 
+> Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
+Committed...
+
+steved.
+
+> ---
+>  utils/mount/nfs.man |   44 ++++++++++++++++++++++++++++++++++++++++++++
+>  1 files changed, 44 insertions(+), 0 deletions(-)
+> 
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index 55d4b55..d2a4c5f 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -717,6 +717,50 @@ If this option is not specified, the NFS client uses READDIRPLUS requests
+>  on NFS version 3 mounts to read small directories.
+>  Some applications perform better if the client uses only READDIR requests
+>  for all directories.
+> +.TP 1.5i
+> +.BR local_lock= mechanism
+> +Specifies whether to use local locking for any or both of the flock and the
+> +POSIX locking mechanisms.
+> +.I mechanism
+> +can be one of
+> +.BR all ,
+> +.BR flock ,
+> +.BR posix ,
+> +or
+> +.BR none .
+> +This option is supported in kernels 2.6.37 and later.
+> +.IP
+> +The Linux NFS client provides a way to make locks local. This means, the
+> +applications can lock files, but such locks provide exclusion only against
+> +other applications running on the same client. Remote applications are not
+> +affected by these locks.
+> +.IP
+> +If this option is not specified, or if
+> +.B none
+> +is specified, the client assumes that the locks are not local.
+> +.IP
+> +If
+> +.BR all
+> +is specified, the client assumes that both flock and POSIX locks are local.
+> +.IP
+> +If
+> +.BR flock
+> +is specified, the client assumes that only flock locks are local and uses
+> +NLM sideband protocol to lock files when POSIX locks are used.
+> +.IP
+> +If
+> +.BR posix
+> +is specified, the client assumes that POSIX locks are local and uses NLM
+> +sideband protocol to lock files when flock locks are used.
+> +.IP
+> +To support legacy flock behavior similar to that of NFS clients < 2.6.12, use
+> +'local_lock=flock'. This option is required when exporting NFS mounts via
+> +Samba as Samba maps Windows share mode locks as flock. Since NFS clients >
+> +2.6.12 implement flock by emulating POSIX locks, this will result in
+> +conflicting locks.
+> +.IP
+> +NOTE: When used together, the 'local_lock' mount option will be overridden
+> +by 'nolock'/'lock' mount option.
+>  .SS "Options for version 4 only"
+>  Use these options, along with the options in the first subsection above,
+>  for NFSv4 only. They will be ignored with older versions.
