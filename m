@@ -1,37 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:50466 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755007Ab0IJX4B (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Sep 2010 19:56:01 -0400
-Date: Fri, 10 Sep 2010 19:56:00 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 08/13] RFC: pnfs: filelayout: introduce minimal file
- layout driver
-Message-ID: <20100910235600.GA11231@infradead.org>
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>
- <1283450419-5648-9-git-send-email-iisaman@netapp.com>
- <1284147111.10062.74.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1284147111.10062.74.camel@heimdal.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:18240 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753452Ab0I2PZQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 11:25:16 -0400
+Message-ID: <4CA35A59.9020303@panasas.com>
+Date: Wed, 29 Sep 2010 17:25:13 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: pnfs git tree status pnfs-all-2.6.36-rc6-2010-09-29
+References: <4C7BDD8C.40509@panasas.com> <4CA31DC3.8070300@panasas.com> <4CA34830.1040703@desy.de> <4CA34883.40005@desy.de> <4CA34B93.2010100@panasas.com> <4CA34F05.3020809@desy.de>
+In-Reply-To: <4CA34F05.3020809@desy.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Sep 10, 2010 at 03:31:51PM -0400, Trond Myklebust wrote:
-> > +	tristate
-> > +	depends on NFS_FS && NFS_V4_1
-> > +	default m
+On 2010-09-29 16:36, Tigran Mkrtchyan wrote:
+>   On 09/29/2010 04:22 PM, Benny Halevy wrote:
+>> On 2010-09-29 16:09, Tigran Mkrtchyan wrote:
+>>>    On 09/29/2010 04:07 PM, Tigran Mkrtchyan wrote:
+>>>> I am support to publish first kernel crash.....
+>>> sorry to publish....
+>>>
+>>>> this is
+>>>> pnfs-all-2.6.36-rc6-2010-09-29 git
+>>>> c2b3b75c6b1db1dfc3f236200de1763e14c514d8
+>>>>
+>>>> Regards,
+>>>>     Tigran.
+>>>>
+>>>>
+>> Thanks for testing!
+>> Does the following patch help?
+>>
 > 
-> Should be 'default y', otherwise it has an implicit dependency on
-> CONFIG_MODULES.
+> No :(
+> 
 
-No, it should not have a default statement at all.  The only reason to
-put in a default statement is to keep existing code working when it's
-split into multiple options, which this is not.  This is not just my
-opinion, btw - Linus has frequently whacked people for introducing pointless
-defaults in the past.
+Tigran, do you have a new trace maybe?
+I cross referenced the dump you sent to the
+disassembled code and it seems like it hit NULL dereference on 
+size = fl->stripe_unit;
 
-And even if it was okay sometimes pnfs nowhere is near important enough
-to add it in Kconfig.
+I'm going to commit this patch anyway but I want to
+understand what else I missed...
+
+Benny
+
+>> git diff --stat -p -M
+>>   fs/nfs/nfs4filelayout.c |    2 ++
+>>   1 files changed, 2 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>> index 75e07c8..8fbb0db 100644
+>> --- a/fs/nfs/nfs4filelayout.c
+>> +++ b/fs/nfs/nfs4filelayout.c
+>> @@ -636,6 +636,8 @@ filelayout_get_stripesize(struct pnfs_layout_hdr *lo)
+>>
+>>   	/* Horrible hack...ideally upper layer would send lseg */
+>>   	lseg = pnfs_has_layout(lo,&range);
+>> +	if (!lseg)
+>> +		return 0;
+>>   	fl = container_of(lseg, struct nfs4_filelayout_segment, generic_hdr);
+>>   	size = fl->stripe_unit;
+>>   	put_lseg_locked(lseg);
+> 
