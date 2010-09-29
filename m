@@ -1,132 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:59260 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751597Ab0IQQ3v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:29:51 -0400
-Received: by yxp4 with SMTP id 4so789642yxp.19
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:29:51 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 21/22] lockd: Move nlmdbg_cookie2a() to svclock.c
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 17 Sep 2010 12:29:48 -0400
-Message-ID: <20100917162948.19761.54476.stgit@seurat.1015granger.net>
-In-Reply-To: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
-References: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:16995 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752536Ab0I2LJv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:09:51 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/5] SQUASHME: pnfs-submit: handle non-pnfs case in set_pnfs_layoutdriver
+Date: Wed, 29 Sep 2010 13:09:48 +0200
+Message-Id: <1285758588-26823-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4CA31DC3.8070300@panasas.com>
+References: <4CA31DC3.8070300@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Clean up.  nlmdbg_cookie2a() is used only in svclock.c.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ fs/nfs/pnfs.c |    8 ++++++--
+ 1 files changed, 6 insertions(+), 2 deletions(-)
 
- fs/lockd/svclock.c          |   30 ++++++++++++++++++++++++++++++
- fs/lockd/xdr.c              |   29 -----------------------------
- include/linux/lockd/debug.h |   10 ----------
- 3 files changed, 30 insertions(+), 39 deletions(-)
-
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 84055d3..48d7447 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -47,6 +47,7 @@ static void	nlmsvc_remove_block(struct nlm_block *block);
- static int nlmsvc_setgrantargs(struct nlm_rqst *call, struct nlm_lock *lock);
- static void nlmsvc_freegrantargs(struct nlm_rqst *call);
- static const struct rpc_call_ops nlmsvc_grant_ops;
-+static const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie);
- 
- /*
-  * The list of blocked locks to retry
-@@ -922,3 +923,32 @@ nlmsvc_retry_blocked(void)
- 
- 	return timeout;
- }
-+
-+#ifdef RPC_DEBUG
-+static const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
-+{
-+	/*
-+	 * We can get away with a static buffer because we're only
-+	 * called with BKL held.
-+	 */
-+	static char buf[2*NLM_MAXCOOKIELEN+1];
-+	unsigned int i, len = sizeof(buf);
-+	char *p = buf;
-+
-+	len--;	/* allow for trailing \0 */
-+	if (len < 3)
-+		return "???";
-+	for (i = 0 ; i < cookie->len ; i++) {
-+		if (len < 2) {
-+			strcpy(p-3, "...");
-+			break;
-+		}
-+		sprintf(p, "%02x", cookie->data[i]);
-+		p += 2;
-+		len -= 2;
-+	}
-+	*p = '\0';
-+
-+	return buf;
-+}
-+#endif
-diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
-index 0eb694d..964666c 100644
---- a/fs/lockd/xdr.c
-+++ b/fs/lockd/xdr.c
-@@ -341,32 +341,3 @@ nlmsvc_encode_void(struct svc_rqst *rqstp, __be32 *p, void *dummy)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 1ccf8d8..9d53c3c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -139,10 +139,14 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
  {
- 	return xdr_ressize_check(rqstp, p);
- }
--
--#ifdef RPC_DEBUG
--const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
--{
--	/*
--	 * We can get away with a static buffer because we're only
--	 * called with BKL held.
--	 */
--	static char buf[2*NLM_MAXCOOKIELEN+1];
--	unsigned int i, len = sizeof(buf);
--	char *p = buf;
--
--	len--;	/* allow for trailing \0 */
--	if (len < 3)
--		return "???";
--	for (i = 0 ; i < cookie->len ; i++) {
--		if (len < 2) {
--			strcpy(p-3, "...");
--			break;
--		}
--		sprintf(p, "%02x", cookie->data[i]);
--		p += 2;
--		len -= 2;
--	}
--	*p = '\0';
--
--	return buf;
--}
--#endif
-diff --git a/include/linux/lockd/debug.h b/include/linux/lockd/debug.h
-index 34b2b7f..257d377 100644
---- a/include/linux/lockd/debug.h
-+++ b/include/linux/lockd/debug.h
-@@ -44,14 +44,4 @@
- #define NLMDBG_XDR		0x0100
- #define NLMDBG_ALL		0x7fff
+ 	struct pnfs_layoutdriver_type *ld_type = NULL;
  
--
--/*
-- * Support for printing NLM cookies in dprintk()
-- */
--#ifdef RPC_DEBUG
--struct nlm_cookie;
--/* Call this function with the BKL held (it uses a static buffer) */
--extern const char *nlmdbg_cookie2a(const struct nlm_cookie *);
--#endif
--
- #endif /* LINUX_LOCKD_DEBUG_H */
+-	BUG_ON(!(server->nfs_client->cl_exchange_flags &
+-		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS)));
+ 	if (id == 0)
+ 		goto out_no_driver;
++	if (!(server->nfs_client->cl_exchange_flags &
++		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
++		printk(KERN_ERR "%s: id %u cl_exchange_flags 0x%x\n", __func__,
++		       id, server->nfs_client->cl_exchange_flags);
++		goto out_no_driver;
++	}
+ 	ld_type = find_pnfs_driver(id);
+ 	if (!ld_type) {
+ 		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
+-- 
+1.7.2.3
 
