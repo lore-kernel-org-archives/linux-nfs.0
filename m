@@ -1,255 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:40105 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753722Ab0IMRVM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 13:21:12 -0400
-Received: by mail-gx0-f174.google.com with SMTP id 23so2101445gxk.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 10:21:11 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/12] mountd: add IPv6 support in auth_authenticate()
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 13 Sep 2010 13:21:08 -0400
-Message-ID: <20100913172108.19017.20534.stgit@seurat.1015granger.net>
-In-Reply-To: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
-References: <20100913171844.19017.13446.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:24740 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751412Ab0I2LLa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:11:30 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 11/15] SQUASHME: pnfsblock: use nfs4_deviceid
+Date: Wed, 29 Sep 2010 13:11:28 +0200
+Message-Id: <1285758688-27119-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4CA31DC3.8070300@panasas.com>
+References: <4CA31DC3.8070300@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Make the entire auth_authenticate() code path address-family agnostic.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ fs/nfs/blocklayout/blocklayout.c    |    2 +-
+ fs/nfs/blocklayout/blocklayout.h    |   10 +++++-----
+ fs/nfs/blocklayout/blocklayoutdev.c |    8 ++++----
+ fs/nfs/blocklayout/extents.c        |    2 +-
+ 4 files changed, 11 insertions(+), 11 deletions(-)
 
- utils/mountd/auth.c   |   52 +++++++++++++++++++++++++------------------------
- utils/mountd/mountd.c |   14 +++++++------
- utils/mountd/mountd.h |    5 +++--
- utils/mountd/rmtab.c  |    3 ++-
- 4 files changed, 39 insertions(+), 35 deletions(-)
-
-diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index 04487e5..ccc849a 100644
---- a/utils/mountd/auth.c
-+++ b/utils/mountd/auth.c
-@@ -15,6 +15,8 @@
- #include <arpa/inet.h>
- #include <errno.h>
- #include <unistd.h>
-+
-+#include "sockaddr.h"
- #include "misc.h"
- #include "nfslib.h"
- #include "exportfs.h"
-@@ -111,13 +113,14 @@ auth_reload()
- }
- 
- static char *
--get_client_hostname(struct sockaddr_in *caller, struct addrinfo *ai,
-+get_client_hostname(const struct sockaddr *caller, struct addrinfo *ai,
- 		enum auth_error *error)
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index f49c68c..071e7ef 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -683,7 +683,7 @@ static void free_blk_mountid(struct block_mount_id *mid)
+  */
+ static struct pnfs_block_dev *
+ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
+-			struct pnfs_deviceid *d_id,
++			struct nfs4_deviceid *d_id,
+ 			struct list_head *sdlist)
  {
-+	char buf[INET6_ADDRSTRLEN];
- 	char *n;
+ 	struct pnfs_device *dev;
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index fc0fb23..d62e3f9 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -55,7 +55,7 @@ struct block_mount_id {
  
- 	if (use_ipaddr)
--		return strdup(inet_ntoa(caller->sin_addr));
-+		return strdup(host_ntop(caller, buf, sizeof(buf)));
- 	n = client_compose(ai);
- 	*error = unknown_host;
- 	if (!n)
-@@ -130,8 +133,8 @@ get_client_hostname(struct sockaddr_in *caller, struct addrinfo *ai,
+ struct pnfs_block_dev {
+ 	struct list_head		bm_node;
+-	struct pnfs_deviceid		bm_mdevid;    /* associated devid */
++	struct nfs4_deviceid		bm_mdevid;    /* associated devid */
+ 	struct block_device		*bm_mdev;     /* meta device itself */
+ };
  
- /* return static nfs_export with details filled in */
- static nfs_export *
--auth_authenticate_newcache(struct sockaddr_in *caller,
--			   char *path, struct addrinfo *ai,
-+auth_authenticate_newcache(const struct sockaddr *caller,
-+			   const char *path, struct addrinfo *ai,
- 			   enum auth_error *error)
+@@ -132,7 +132,7 @@ struct pnfs_inval_tracking {
+ struct pnfs_block_extent {
+ 	struct kref	be_refcnt;
+ 	struct list_head be_node;	/* link into lseg list */
+-	struct pnfs_deviceid be_devid;  /* STUB - remevable??? */
++	struct nfs4_deviceid be_devid;  /* STUB - remevable??? */
+ 	struct block_device *be_mdev;
+ 	sector_t	be_f_offset;	/* the starting offset in the file */
+ 	sector_t	be_length;	/* the size of the extent */
+@@ -144,7 +144,7 @@ struct pnfs_block_extent {
+ /* Shortened extent used by LAYOUTCOMMIT */
+ struct pnfs_block_short_extent {
+ 	struct list_head bse_node;
+-	struct pnfs_deviceid bse_devid;	/* STUB - removable??? */
++	struct nfs4_deviceid bse_devid;	/* STUB - removable??? */
+ 	struct block_device *bse_mdev;
+ 	sector_t	bse_f_offset;	/* the starting offset in the file */
+ 	sector_t	bse_length;	/* the size of the extent */
+@@ -226,7 +226,7 @@ uint32_t *blk_overflow(uint32_t *p, uint32_t *end, size_t nbytes);
+ 	memcpy((x), p, nbytes);                 \
+ 	p += XDR_QUADLEN(nbytes);               \
+ } while (0)
+-#define READ_DEVID(x)	COPYMEM((x)->data, NFS4_PNFS_DEVICEID4_SIZE)
++#define READ_DEVID(x)	COPYMEM((x)->data, NFS4_DEVICEID4_SIZE)
+ #define READ_SECTOR(x)     do { \
+ 	READ64(tmp); \
+ 	if (tmp & 0x1ff) { \
+@@ -248,7 +248,7 @@ uint32_t *blk_overflow(uint32_t *p, uint32_t *end, size_t nbytes);
+ #define WRITEMEM(ptr, nbytes)     do {                          \
+ 	p = xdr_encode_opaque_fixed(p, ptr, nbytes);	\
+ } while (0)
+-#define WRITE_DEVID(x)  WRITEMEM((x)->data, NFS4_PNFS_DEVICEID4_SIZE)
++#define WRITE_DEVID(x)  WRITEMEM((x)->data, NFS4_DEVICEID4_SIZE)
+ 
+ /* blocklayoutdev.c */
+ struct block_device *nfs4_blkdev_get(dev_t dev);
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index e9ea86a..17bd25a 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -133,7 +133,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
+ 		goto out_err;
+ 
+ 	rv->bm_mdev = bd;
+-	memcpy(&rv->bm_mdevid, &dev->dev_id, sizeof(struct pnfs_deviceid));
++	memcpy(&rv->bm_mdevid, &dev->dev_id, sizeof(struct nfs4_deviceid));
+ 	dprintk("%s Created device %s with bd_block_size %u\n",
+ 		__func__,
+ 		bd->bd_disk->disk_name,
+@@ -153,7 +153,7 @@ out_err:
+ 
+ /* Map deviceid returned by the server to constructed block_device */
+ static struct block_device *translate_devid(struct pnfs_layout_hdr *lo,
+-					    struct pnfs_deviceid *id)
++					    struct nfs4_deviceid *id)
  {
- 	nfs_export *exp;
-@@ -144,7 +147,7 @@ auth_authenticate_newcache(struct sockaddr_in *caller,
- 		return NULL;
+ 	struct block_device *rv = NULL;
+ 	struct block_mount_id *mid;
+@@ -164,7 +164,7 @@ static struct block_device *translate_devid(struct pnfs_layout_hdr *lo,
+ 	spin_lock(&mid->bm_lock);
+ 	list_for_each_entry(dev, &mid->bm_devlist, bm_node) {
+ 		if (memcmp(id->data, dev->bm_mdevid.data,
+-			   NFS4_PNFS_DEVICEID4_SIZE) == 0) {
++			   NFS4_DEVICEID4_SIZE) == 0) {
+ 			rv = dev->bm_mdev;
+ 			goto out;
+ 		}
+@@ -254,7 +254,7 @@ nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+ 	READ32(count);
  
- 	my_client.m_naddr = 1;
--	set_addrlist_in(&my_client, 0, caller);
-+	set_addrlist(&my_client, 0, caller);
- 	my_exp.m_client = &my_client;
+ 	dprintk("%s enter, number of extents %i\n", __func__, count);
+-	BLK_READBUF(p, end, (28 + NFS4_PNFS_DEVICEID4_SIZE) * count);
++	BLK_READBUF(p, end, (28 + NFS4_DEVICEID4_SIZE) * count);
  
- 	exp = NULL;
-@@ -168,9 +171,8 @@ auth_authenticate_newcache(struct sockaddr_in *caller,
- }
- 
- static nfs_export *
--auth_authenticate_internal(struct sockaddr_in *caller,
--			   char *path, struct addrinfo *ai,
--			   enum auth_error *error)
-+auth_authenticate_internal(const struct sockaddr *caller, const char *path,
-+		struct addrinfo *ai, enum auth_error *error)
+ 	/* Decode individual extents, putting them in temporary
+ 	 * staging area until whole layout is decoded to make error
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 20cc863..40dff82 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -794,7 +794,7 @@ _prep_new_extent(struct pnfs_block_extent *new,
  {
- 	nfs_export *exp;
- 
-@@ -190,7 +192,7 @@ auth_authenticate_internal(struct sockaddr_in *caller,
- 		return NULL;
- 	}
- 	if (!(exp->m_export.e_flags & NFSEXP_INSECURE_PORT) &&
--		     ntohs(caller->sin_port) >= IPPORT_RESERVED) {
-+		     nfs_get_port(caller) >= IPPORT_RESERVED) {
- 		*error = illegal_port;
- 		return NULL;
- 	}
-@@ -200,18 +202,19 @@ auth_authenticate_internal(struct sockaddr_in *caller,
- }
- 
- nfs_export *
--auth_authenticate(char *what, struct sockaddr_in *caller, char *path)
-+auth_authenticate(const char *what, const struct sockaddr *caller,
-+		const char *path)
- {
- 	nfs_export	*exp = NULL;
- 	char		epath[MAXPATHLEN+1];
- 	char		*p = NULL;
-+	char		buf[INET6_ADDRSTRLEN];
- 	struct addrinfo *ai = NULL;
--	struct in_addr	addr = caller->sin_addr;
- 	enum auth_error	error = bad_path;
- 
--	if (path [0] != '/') {
--		xlog(L_WARNING, "bad path in %s request from %s: \"%s\"",
--		     what, inet_ntoa(addr), path);
-+	if (path[0] != '/') {
-+		xlog(L_WARNING, "Bad path in %s request from %s: \"%s\"",
-+			     what, host_ntop(caller, buf, sizeof(buf)), path);
- 		return exp;
- 	}
- 
-@@ -219,14 +222,13 @@ auth_authenticate(char *what, struct sockaddr_in *caller, char *path)
- 	epath[sizeof (epath) - 1] = '\0';
- 	auth_fixpath(epath); /* strip duplicate '/' etc */
- 
--	ai = client_resolve((struct sockaddr *)caller);
-+	ai = client_resolve(caller);
- 	if (ai == NULL)
- 		return exp;
- 
- 	/* Try the longest matching exported pathname. */
- 	while (1) {
--		exp = auth_authenticate_internal(caller, epath,
--						 ai, &error);
-+		exp = auth_authenticate_internal(caller, epath, ai, &error);
- 		if (exp || (error != not_exported && error != no_entry))
- 			break;
- 		/* We have to treat the root, "/", specially. */
-@@ -239,12 +241,12 @@ auth_authenticate(char *what, struct sockaddr_in *caller, char *path)
- 	switch (error) {
- 	case bad_path:
- 		xlog(L_WARNING, "bad path in %s request from %s: \"%s\"",
--		     what, inet_ntoa(addr), path);
-+		     what, host_ntop(caller, buf, sizeof(buf)), path);
- 		break;
- 
- 	case unknown_host:
- 		xlog(L_WARNING, "refused %s request from %s for %s (%s): unmatched host",
--		     what, inet_ntoa(addr), path, epath);
-+		     what, host_ntop(caller, buf, sizeof(buf)), path, epath);
- 		break;
- 
- 	case no_entry:
-@@ -258,17 +260,17 @@ auth_authenticate(char *what, struct sockaddr_in *caller, char *path)
- 		break;
- 
- 	case illegal_port:
--		xlog(L_WARNING, "refused %s request from %s for %s (%s): illegal port %d",
--		     what, ai->ai_canonname, path, epath, ntohs(caller->sin_port));
-+		xlog(L_WARNING, "refused %s request from %s for %s (%s): illegal port %u",
-+		     what, ai->ai_canonname, path, epath, nfs_get_port(caller));
- 		break;
- 
- 	case success:
--		xlog(L_NOTICE, "authenticated %s request from %s:%d for %s (%s)",
--		     what, ai->ai_canonname, ntohs(caller->sin_port), path, epath);
-+		xlog(L_NOTICE, "authenticated %s request from %s:%u for %s (%s)",
-+		     what, ai->ai_canonname, nfs_get_port(caller), path, epath);
- 		break;
- 	default:
--		xlog(L_NOTICE, "%s request from %s:%d for %s (%s) gave %d",
--		     what, ai->ai_canonname, ntohs(caller->sin_port),
-+		xlog(L_NOTICE, "%s request from %s:%u for %s (%s) gave %d",
-+		     what, ai->ai_canonname, nfs_get_port(caller),
- 			path, epath, error);
- 	}
- 
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 78f26c2..c8ea3f7 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -237,9 +237,9 @@ mount_umnt_1_svc(struct svc_req *rqstp, dirpath *argp, void *UNUSED(resp))
- 		p = rpath;
- 	}
- 
--	if (!(exp = auth_authenticate("unmount", sin, p))) {
-+	exp = auth_authenticate("unmount", (struct sockaddr *)sin, p);
-+	if (exp == NULL)
- 		return 1;
--	}
- 
- 	mountlist_del(inet_ntoa(sin->sin_addr), p);
- 	return 1;
-@@ -313,10 +313,10 @@ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
- 	}
- 
- 	/* Now authenticate the intruder... */
--	exp = auth_authenticate("pathconf", sin, p);
--	if (!exp) {
-+	exp = auth_authenticate("pathconf", (struct sockaddr *)sin, p);
-+	if (exp == NULL)
- 		return 1;
--	} else if (stat(p, &stb) < 0) {
-+	else if (stat(p, &stb) < 0) {
- 		xlog(L_WARNING, "can't stat exported dir %s: %s",
- 				p, strerror(errno));
- 		return 1;
-@@ -415,8 +415,8 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
- 	}
- 
- 	/* Now authenticate the intruder... */
--	exp = auth_authenticate("mount", sin, p);
--	if (!exp) {
-+	exp = auth_authenticate("mount", (struct sockaddr *)sin, p);
-+	if (exp == NULL) {
- 		*error = NFSERR_ACCES;
- 		return NULL;
- 	}
-diff --git a/utils/mountd/mountd.h b/utils/mountd/mountd.h
-index 31bacb5..96e9bf1 100644
---- a/utils/mountd/mountd.h
-+++ b/utils/mountd/mountd.h
-@@ -41,8 +41,9 @@ bool_t		mount_mnt_3_svc(struct svc_req *, dirpath *, mountres3 *);
- void		mount_dispatch(struct svc_req *, SVCXPRT *);
- void		auth_init(char *export_file);
- unsigned int	auth_reload(void);
--nfs_export *	auth_authenticate(char *what, struct sockaddr_in *sin,
--					char *path);
-+nfs_export *	auth_authenticate(const char *what,
-+					const struct sockaddr *caller,
-+					const char *path);
- void		auth_export(nfs_export *exp);
- 
- void		mountlist_add(char *host, const char *path);
-diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
-index ba0fcf6..d23712b 100644
---- a/utils/mountd/rmtab.c
-+++ b/utils/mountd/rmtab.c
-@@ -157,7 +157,8 @@ mountlist_del_all(struct sockaddr_in *sin)
- 
- 	while ((rep = getrmtabent(1, NULL)) != NULL) {
- 		if (strcmp(rep->r_client, hostname) == 0 &&
--		    (exp = auth_authenticate("umountall", sin, rep->r_path)))
-+		    (exp = auth_authenticate("umountall",
-+				(struct sockaddr *)sin, rep->r_path)))
- 			continue;
- 		fputrmtabent(fp, rep, NULL);
- 	}
+ 	kref_init(&new->be_refcnt);
+ 	/* don't need to INIT_LIST_HEAD(&new->be_node) */
+-	memcpy(&new->be_devid, &orig->be_devid, sizeof(struct pnfs_deviceid));
++	memcpy(&new->be_devid, &orig->be_devid, sizeof(struct nfs4_deviceid));
+ 	new->be_mdev = orig->be_mdev;
+ 	new->be_f_offset = offset;
+ 	new->be_length = length;
+-- 
+1.7.2.3
 
