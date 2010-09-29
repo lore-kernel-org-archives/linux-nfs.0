@@ -1,137 +1,142 @@
-Return-Path: <nfsv4-bounces@ietf.org>
-From: Thomas Haynes <thomas@netapp.com>
-In-Reply-To: <op.vjabhlntrwwil4@sfaibish1.corp.emc.com>
-Date: Mon, 20 Sep 2010 11:19:30 -0500
-Message-Id: <CAD787A2-E432-4EB3-9725-70A5FBD0EE55@netapp.com>
-References: <op.vi7c6cmorwwil4@sfaibish1.corp.emc.com>
-	<4C961A50.5010000@panasas.com>
-	<op.vjabhlntrwwil4@sfaibish1.corp.emc.com>
-To: Sorin Faibish <sfaibish@emc.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Peter Honeyman <Honey@citi.umich.edu>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>, Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [nfsv4] Discussion topics for the coming Bake-A-Thon
-List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Content-Type: multipart/mixed; boundary="===============0863728073=="
-Sender: nfsv4-bounces@ietf.org
-Errors-To: nfsv4-bounces@ietf.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from daytona.panasas.com ([67.152.220.89]:7695 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752122Ab0I2LKm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:10:42 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 7/9] pnfs: allow nfs4_proc_layoutget to sleep on invalid lsegs
+Date: Wed, 29 Sep 2010 13:10:38 +0200
+Message-Id: <1285758638-26971-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4CA31DC3.8070300@panasas.com>
+References: <4CA31DC3.8070300@panasas.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
+MIME-Version: 1.0
 
---===============0863728073==
-Content-Type: multipart/alternative; boundary=Apple-Mail-13--397790676
+Introduce lo_rpcwaitq and sleep on it while there's an lseg marked invalid,
+i.e. it is being returned (in the future, it could also be layoutget in progress).
 
---Apple-Mail-13--397790676
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/inode.c         |    1 +
+ fs/nfs/nfs4proc.c      |   25 ++++++++++++++++++++++---
+ fs/nfs/pnfs.c          |   26 ++++++++++++++++----------
+ include/linux/nfs_fs.h |    1 +
+ 4 files changed, 40 insertions(+), 13 deletions(-)
 
-=20
-On Sep 19, 2010, at 9:49 AM, Sorin Faibish wrote:
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 8cdea1a..e3d44a9 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1459,6 +1459,7 @@ static inline void nfs4_init_once(struct nfs_inode *nfsi)
+ 	nfsi->delegation_state = 0;
+ 	init_rwsem(&nfsi->rwsem);
+ 	init_waitqueue_head(&nfsi->lo_waitq);
++	rpc_init_wait_queue(&nfsi->lo_rpcwaitq, "pNFS Layout");
+ 	nfsi->layout = NULL;
+ #endif
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index cd87704..ebf5127 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5426,13 +5426,32 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_layoutget *lgp = calldata;
+ 	struct inode *ino = lgp->args.inode;
++	struct nfs_inode *nfsi = NFS_I(ino);
+ 	struct nfs_server *server = NFS_SERVER(ino);
++	struct pnfs_layout_segment *lseg;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	if (nfs4_setup_sequence(server, NULL, &lgp->args.seq_args,
+-				&lgp->res.seq_res, 0, task))
++	spin_lock(&ino->i_lock);
++	lseg = pnfs_has_layout(nfsi->layout, &lgp->args.range);
++	if (likely(!lseg)) {
++		spin_unlock(&ino->i_lock);
++		dprintk("%s: no lseg found, proceeding\n", __func__);
++		if (!nfs4_setup_sequence(server, NULL, &lgp->args.seq_args,
++					 &lgp->res.seq_res, 0, task))
++			rpc_call_start(task);
+ 		return;
+-	rpc_call_start(task);
++	}
++	if (!lseg->valid) {
++		put_lseg_locked(lseg);
++		spin_unlock(&ino->i_lock);
++		dprintk("%s: invalid lseg found, waiting\n", __func__);
++		rpc_sleep_on(&nfsi->lo_rpcwaitq, task, NULL);
++		return;
++	}
++	*lgp->lsegpp = lseg;
++	spin_unlock(&ino->i_lock);
++	dprintk("%s: valid lseg found, no rpc required\n", __func__);
++	rpc_exit(task, NFS4_OK);
+ }
+ 
+ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 8339444..31a703d 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -315,8 +315,10 @@ put_lseg_locked(struct pnfs_layout_segment *lseg)
+ 	do_wake_up = !lseg->valid;
+ 	nfsi = NFS_I(lseg->layout->inode);
+ 	kref_put(&lseg->kref, destroy_lseg);
+-	if (do_wake_up)
++	if (do_wake_up) {
+ 		wake_up(&nfsi->lo_waitq);
++		rpc_wake_up(&nfsi->lo_rpcwaitq);
++	}
+ }
+ EXPORT_SYMBOL_GPL(put_lseg_locked);
+ 
+@@ -975,17 +977,21 @@ pnfs_update_layout(struct inode *ino,
+ 
+ 	/* Check to see if the layout for the given range already exists */
+ 	lseg = pnfs_has_layout(lo, &arg);
+-	if (lseg && !lseg->valid) {
+-		put_lseg_locked(lseg);
++	if (lseg) {
++		if (lseg->valid) {
++			dprintk("%s: Using cached lseg %p for %llu@%llu "
++				"iomode %d)\n",
++				__func__,
++				lseg,
++				arg.length,
++				arg.offset,
++				arg.iomode);
++
++			goto out_unlock;
++		}
+ 		/* someone is cleaning the layout */
++		put_lseg_locked(lseg);
+ 		lseg = NULL;
+-		goto out_unlock;
+-	}
+-
+-	if (lseg) {
+-		dprintk("%s: Using cached lseg %p for iomode %d)\n",
+-			__func__, lseg, iomode);
+-		goto out_unlock;
+ 	}
+ 
+ 	/* if LAYOUTGET already failed once we don't try again */
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 3184e63..1af18fd 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -191,6 +191,7 @@ struct nfs_inode {
+ 
+ 	/* pNFS layout information */
+ 	wait_queue_head_t lo_waitq;
++	struct rpc_wait_queue lo_rpcwaitq;
+ 	struct pnfs_layout_hdr *layout;
+ #endif /* CONFIG_NFS_V4*/
+ #ifdef CONFIG_NFS_FSCACHE
+-- 
+1.7.2.3
 
-> On Sun, 19 Sep 2010 10:12:32 -0400, Boaz Harrosh =
-<bharrosh@panasas.com> wrote:
->=20
->> On 09/18/2010 02:33 AM, Sorin Faibish wrote:
->>>=20
->>> 5. Extend cthon tests with callback operations tests (Peter =
-Honeyman)
->>=20
->>     And local/remote truncate torture tests.
-> Sure. Do we need a separate discussion or only this?
->=20
->>=20
->>> 6. Performance tests - tools and benchmarks (Peter Honeyman)
->>=20
->> to 6 or 5. Cluster tests. .i.e use of more then one client in =
-concertration
->> to confuse and crash a server.
-> This aside from cthon, just for performance qaulification for the git.
-> Same do we need an additional spot or this is enough (30 min).
->=20
-> I will update the agenda with your comments and I assume you will be
-> part of the discussion, even drive it.
->=20
-> /Sorin
->=20
-
-
-One subject I would like to see us address as a community is where we go
-with respect to our general testing strategy. We have had discussions =
-the
-last several years at the Connectathons about the ability to contribute =
-to the
-cthon test suites and the legal status of the code.
-
-Basically, because of the lack of understanding of the licensing, I =
-believe
-companies are not contributing changes back into the shared code base.
-
-We can talk about what it would take to get the license straightened =
-out,
-but it might be more expedient to acknowledge that the cthon test suite =
-is
-a low bar and drive the creation of a new test suite.
-
-
---Apple-Mail-13--397790676
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/html;
-	charset=us-ascii
-
-<html><head>
-<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dus-ascii"=
-></head><body style=3D"word-wrap: break-word; -webkit-nbsp-mode: space; -we=
-bkit-line-break: after-white-space; ">&nbsp;<br><div><div>On Sep 19, 2010, =
-at 9:49 AM, Sorin Faibish wrote:</div><br class=3D"Apple-interchange-newlin=
-e"><blockquote type=3D"cite"><div>On Sun, 19 Sep 2010 10:12:32 -0400, Boaz =
-Harrosh &lt;<a href=3D"mailto:bharrosh@panasas.com">bharrosh@panasas.com</a=
->&gt; wrote:<br><br><blockquote type=3D"cite">On 09/18/2010 02:33 AM, Sorin=
- Faibish wrote:<br></blockquote><blockquote type=3D"cite"><blockquote type=
-=3D"cite"><br></blockquote></blockquote><blockquote type=3D"cite"><blockquo=
-te type=3D"cite">5. Extend cthon tests with callback operations tests (Pete=
-r Honeyman)<br></blockquote></blockquote><blockquote type=3D"cite"><br></bl=
-ockquote><blockquote type=3D"cite"> &nbsp;&nbsp;&nbsp;&nbsp;And local/remot=
-e truncate torture tests.<br></blockquote>Sure. Do we need a separate discu=
-ssion or only this?<br><br><blockquote type=3D"cite"><br></blockquote><bloc=
-kquote type=3D"cite"><blockquote type=3D"cite">6. Performance tests - tools=
- and benchmarks (Peter Honeyman)<br></blockquote></blockquote><blockquote t=
-ype=3D"cite"><br></blockquote><blockquote type=3D"cite">to 6 or 5. Cluster =
-tests. .i.e use of more then one client in concertration<br></blockquote><b=
-lockquote type=3D"cite">to confuse and crash a server.<br></blockquote>This=
- aside from cthon, just for performance qaulification for the git.<br>Same =
-do we need an additional spot or this is enough (30 min).<br><br>I will upd=
-ate the agenda with your comments and I assume you will be<br>part of the d=
-iscussion, even drive it.<br><br>/Sorin<br><font class=3D"Apple-style-span"=
- color=3D"#006312"><br></font></div></blockquote><br></div><div><br></div><=
-div>One subject I would like to see us address as a community is where we g=
-o</div><div>with respect to our general testing strategy. We have had discu=
-ssions the</div><div>last several years at the Connectathons about the abil=
-ity to contribute to the</div><div>cthon test suites and the legal status o=
-f the code.</div><div><br></div><div>Basically, because of the lack of unde=
-rstanding of the licensing, I believe</div><div>companies are not contribut=
-ing changes back into the shared code base.</div><div><br></div><div>We can=
- talk about what it would take to get the license straightened out,</div><d=
-iv>but it might be more expedient to acknowledge that the cthon test suite =
-is</div><div>a low bar and drive the creation of a new test suite.</div><br=
-></body></html>=
-
---Apple-Mail-13--397790676--
-
---===============0863728073==
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-nfsv4 mailing list
-nfsv4@ietf.org
-https://www.ietf.org/mailman/listinfo/nfsv4
-
---===============0863728073==--
