@@ -1,98 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:39331 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750896Ab0I2EMu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Sep 2010 00:12:50 -0400
-Message-ID: <4CA2BCBB.4000008@suse.de>
-Date: Wed, 29 Sep 2010 09:42:43 +0530
-From: Suresh Jayaraman <sjayaraman@suse.de>
-To: steved@redhat.com
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs(5): document new local_lock option
-References: <4C9BA266.1040102@suse.de>
-In-Reply-To: <4C9BA266.1040102@suse.de>
-Content-Type: text/plain; charset=ISO-8859-15
+Received: from rcsinet10.oracle.com ([148.87.113.121]:51133 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753205Ab0I2Vts convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 17:49:48 -0400
+Subject: Re: [PATCH v3 0/9] sunrpc: Create sockets in namespaces
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20100929214527.GC26180@fieldses.org>
+Date: Wed, 29 Sep 2010 17:49:31 -0400
+Cc: Pavel Emelyanov <xemul@parallels.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Message-Id: <0678928F-3DE0-4AB9-8CD9-7BDA3A362A20@oracle.com>
+References: <4CA32AB4.2090808@parallels.com> <20100929214527.GC26180@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Steve,
 
-I see this patch is missing in the recent release. Do you see any
-problems with this? (For the record, the local_lock kernel patches are
-already in Trond nfs-for-2.6.37 tree).
+On Sep 29, 2010, at 5:45 PM, J. Bruce Fields wrote:
 
-Thanks,
-
-On 09/24/2010 12:24 AM, Suresh Jayaraman wrote:
-> Kernel 2.6.37 would most likely add a new mount option: local_lock.
-> Document the new option in the nfs(5) man page.
+> On Wed, Sep 29, 2010 at 04:01:56PM +0400, Pavel Emelyanov wrote:
+>> v3 changes:
+>> Moved the generic xprt alloc/free code to xprt.c.
+>> Got David's ack on the 8th patch :)
+>> 
+>> v2 changes:
+>> Fixed comments from Chuck and Trond.
+>> Added one patch, that factors out rpc_xprt allocation as well.
+>> 
+>> v1:
+>> This set implements pulling the net * argument down to the existing
+>> sock_create_kern calls in the sunrpc layer and creating the sockets
+>> in the given net.
 > 
-> Signed-off-by: Suresh Jayaraman <sjayaraman@suse.de>
-> ---
->  utils/mount/nfs.man |   44 ++++++++++++++++++++++++++++++++++++++++++++
->  1 files changed, 44 insertions(+), 0 deletions(-)
-> 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index 55d4b55..d2a4c5f 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -717,6 +717,50 @@ If this option is not specified, the NFS client uses READDIRPLUS requests
->  on NFS version 3 mounts to read small directories.
->  Some applications perform better if the client uses only READDIR requests
->  for all directories.
-> +.TP 1.5i
-> +.BR local_lock= mechanism
-> +Specifies whether to use local locking for any or both of the flock and the
-> +POSIX locking mechanisms.
-> +.I mechanism
-> +can be one of
-> +.BR all ,
-> +.BR flock ,
-> +.BR posix ,
-> +or
-> +.BR none .
-> +This option is supported in kernels 2.6.37 and later.
-> +.IP
-> +The Linux NFS client provides a way to make locks local. This means, the
-> +applications can lock files, but such locks provide exclusion only against
-> +other applications running on the same client. Remote applications are not
-> +affected by these locks.
-> +.IP
-> +If this option is not specified, or if
-> +.B none
-> +is specified, the client assumes that the locks are not local.
-> +.IP
-> +If
-> +.BR all
-> +is specified, the client assumes that both flock and POSIX locks are local.
-> +.IP
-> +If
-> +.BR flock
-> +is specified, the client assumes that only flock locks are local and uses
-> +NLM sideband protocol to lock files when POSIX locks are used.
-> +.IP
-> +If
-> +.BR posix
-> +is specified, the client assumes that POSIX locks are local and uses NLM
-> +sideband protocol to lock files when flock locks are used.
-> +.IP
-> +To support legacy flock behavior similar to that of NFS clients < 2.6.12, use
-> +'local_lock=flock'. This option is required when exporting NFS mounts via
-> +Samba as Samba maps Windows share mode locks as flock. Since NFS clients >
-> +2.6.12 implement flock by emulating POSIX locks, this will result in
-> +conflicting locks.
-> +.IP
-> +NOTE: When used together, the 'local_lock' mount option will be overridden
-> +by 'nolock'/'lock' mount option.
->  .SS "Options for version 4 only"
->  Use these options, along with the options in the first subsection above,
->  for NFSv4 only. They will be ignored with older versions.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Shall I commit this to my for-2.6.37 tree?  Objections?
 
+I think it looks OK.
+
+But I was wondering if there were any other changes needed for the RDMA transport capability, or had we decided that would happen at a latter point, or that changes are entirely unneeded (are namespaces already supported in the IB stack)?
 
 -- 
-Suresh Jayaraman
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
