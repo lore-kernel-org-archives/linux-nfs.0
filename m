@@ -1,68 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:40020 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752473Ab0I1N4n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Sep 2010 09:56:43 -0400
-Date: Tue, 28 Sep 2010 09:56:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Pavel Emelyanov <xemul@parallels.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/8] sunrpc: Factor out rpc_xprt freeing
-Message-ID: <20100928135634.GE24465@fieldses.org>
-References: <4CA06C7A.5060307@parallels.com>
- <4CA06CA0.6060606@parallels.com>
- <02506D5E-BD8D-40AC-822F-00BBC14792E9@oracle.com>
- <4CA1C71D.70109@parallels.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CA1C71D.70109@parallels.com>
+Received: from daytona.panasas.com ([67.152.220.89]:58547 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753420Ab0I2LM4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:12:56 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 18/18] SQUASHME: pnfsd-exofs: convert to new pnfs-submit changes
+Date: Wed, 29 Sep 2010 13:12:53 +0200
+Message-Id: <1285758773-27381-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4CA31DC3.8070300@panasas.com>
+References: <4CA31DC3.8070300@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Sep 28, 2010 at 02:44:45PM +0400, Pavel Emelyanov wrote:
-> On 09/27/2010 11:40 PM, Chuck Lever wrote:
-> > 
-> > On Sep 27, 2010, at 6:06 AM, Pavel Emelyanov wrote:
-> > 
-> >>
-> >> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
-> >> ---
-> >> net/sunrpc/xprtsock.c |   20 ++++++++++++--------
-> >> 1 files changed, 12 insertions(+), 8 deletions(-)
-> >>
-> >> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> >> index b6309db..98d4b7b 100644
-> >> --- a/net/sunrpc/xprtsock.c
-> >> +++ b/net/sunrpc/xprtsock.c
-> >> @@ -759,6 +759,8 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
-> >> 		xs_tcp_shutdown(xprt);
-> >> }
-> >>
-> >> +static void xs_free_xprt(struct rpc_xprt *xprt);
-> > 
-> > Style nit: we usually like forward declarations at the top of source files.
-> 
-> OK.
-> 
-> > Do you need to fix up xprtrdma too?  (eg. xprt_rdma_destroy)  It looks like it has 
-> > similar logic around freeing xprts. 
-> 
-> Indeed. Bruce, which way would you prefer - should I re-send the whole set or
-> can apply this change incrementally?
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/exofs/export.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-I haven't pushed it out yet, so just do whichever you prefer.
+diff --git a/fs/exofs/export.c b/fs/exofs/export.c
+index fe2c3a7..69bce46 100644
+--- a/fs/exofs/export.c
++++ b/fs/exofs/export.c
+@@ -32,7 +32,7 @@ static int exofs_layout_type(struct super_block *sb)
+ 	return LAYOUT_OSD2_OBJECTS;
+ }
+ 
+-static void set_dev_id(struct pnfs_deviceid *pnfs_devid, u64 sbid, u64 devid)
++static void set_dev_id(struct nfs4_deviceid *pnfs_devid, u64 sbid, u64 devid)
+ {
+ 	struct nfsd4_pnfs_deviceid *dev_id =
+ 		(struct nfsd4_pnfs_deviceid *)pnfs_devid;
+-- 
+1.7.2.3
 
---b.
-
-> 
-> > Even though it doesn't use sockets, do we need to be concerned about net namespaces
-> > for RDMA transports?
-> 
-> I believe we should, since at least its initialization goes to the rdma_resolve_addr
-> which in turn resolves the address using IP-level routing. But I wanted to finish with
-> the tcp/udp transports first.
-> 
-> Thanks,
-> Pavel
