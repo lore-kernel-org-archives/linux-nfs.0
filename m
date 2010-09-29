@@ -1,372 +1,148 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:60886 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752205Ab0IQQ1q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:27:46 -0400
-Received: by ywh1 with SMTP id 1so789051ywh.19
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:27:45 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/22] NFS: Replace old NFSv2 decoder functions with
-	xdr_stream-based ones
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 17 Sep 2010 12:27:42 -0400
-Message-ID: <20100917162742.19761.43036.stgit@seurat.1015granger.net>
-In-Reply-To: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
-References: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:60394 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752122Ab0I2LKy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:10:54 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 8/9] SQUASHME: pnfs: refactor put_lseg{_locked}
+Date: Wed, 29 Sep 2010 13:10:51 +0200
+Message-Id: <1285758651-27008-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4CA31DC3.8070300@panasas.com>
+References: <4CA31DC3.8070300@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Clean up.
+move common code into put_lseg_common
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ fs/nfs/nfs4proc.c |    8 ++++++++
+ fs/nfs/pnfs.c     |   36 ++++++++++++++----------------------
+ fs/nfs/pnfs.h     |    1 +
+ 3 files changed, 23 insertions(+), 22 deletions(-)
 
- fs/nfs/nfs2xdr.c |  281 +-----------------------------------------------------
- 1 files changed, 4 insertions(+), 277 deletions(-)
-
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index eb3238c..0d8864f 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -91,15 +91,6 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
- /*
-  * Common NFS XDR functions as inlines
-  */
--static inline __be32 *
--xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
--{
--	/* NFSv2 handles have a fixed length */
--	fhandle->size = NFS2_FHSIZE;
--	memcpy(fhandle->data, p, NFS2_FHSIZE);
--	return p + XDR_QUADLEN(NFS2_FHSIZE);
--}
--
- static inline __be32*
- xdr_decode_time(__be32 *p, struct timespec *timep)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ebf5127..52c5ddf 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5664,9 +5664,17 @@ nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
  {
-@@ -616,48 +607,6 @@ static int nfs2_xdr_enc_readargs(struct rpc_rqst *req, __be32 *p,
+ 	struct nfs4_layoutreturn *lrp = calldata;
+ 	struct inode *ino = lrp->args.inode;
++	struct nfs_inode *nfsi = NFS_I(ino);
+ 	struct nfs_server *server = NFS_SERVER(ino);
+ 
+ 	dprintk("--> %s\n", __func__);
++	if ((lrp->args.return_type == RETURN_FILE) &&
++	    pnfs_return_layout_barrier(nfsi, &lrp->args.range)) {
++		dprintk("%s: waiting on barrier\n", __func__);
++		rpc_sleep_on(&nfsi->lo_rpcwaitq, task, NULL);
++		return;
++	}
++
+ 	if (nfs4_setup_sequence(server, NULL, &lrp->args.seq_args,
+ 				&lrp->res.seq_res, 0, task))
+ 		return;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 31a703d..4e47c2a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -301,14 +301,10 @@ destroy_lseg(struct kref *kref)
+ 	put_layout_hdr_locked(local);
  }
  
- /*
-- * Decode READ reply
-- */
--static int
--nfs_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
--{
--	struct kvec *iov = req->rq_rcv_buf.head;
--	size_t hdrlen;
--	u32 count, recvd;
--	int status;
+-void
+-put_lseg_locked(struct pnfs_layout_segment *lseg)
++static void
++put_lseg_common(struct nfs_inode *nfsi, struct pnfs_layout_segment *lseg)
+ {
+ 	bool do_wake_up;
+-	struct nfs_inode *nfsi;
 -
--	if ((status = ntohl(*p++)))
--		return nfs_stat_to_errno(status);
--	p = xdr_decode_fattr(p, res->fattr);
--
--	count = ntohl(*p++);
--	res->eof = 0;
--	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
--	if (iov->iov_len < hdrlen) {
--		dprintk("NFS: READ reply header overflowed:"
--				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
--		return -errno_NFSERR_IO;
--	} else if (iov->iov_len != hdrlen) {
--		dprintk("NFS: READ header is short. iovec will be shifted.\n");
--		xdr_shift_buf(&req->rq_rcv_buf, iov->iov_len - hdrlen);
--	}
--
--	recvd = req->rq_rcv_buf.len - hdrlen;
--	if (count > recvd) {
--		dprintk("NFS: server cheating in read reply: "
--			"count %u > recvd %u\n", count, recvd);
--		count = recvd;
--	}
--
--	dprintk("RPC:      readres OK count %u\n", count);
--	if (count < res->count)
--		res->count = count;
--
--	return count;
--}
--
--
--/*
-  * 2.2.9.  writeargs
-  *
-  *	struct writeargs {
-@@ -820,133 +769,11 @@ static int nfs2_xdr_enc_readdirargs(struct rpc_rqst *req, __be32 *p,
+-	if (!lseg)
+-		return;
+ 
+ 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+ 		atomic_read(&lseg->kref.refcount), lseg->valid);
+@@ -320,12 +316,21 @@ put_lseg_locked(struct pnfs_layout_segment *lseg)
+ 		rpc_wake_up(&nfsi->lo_rpcwaitq);
+ 	}
+ }
++
++void
++put_lseg_locked(struct pnfs_layout_segment *lseg)
++{
++	if (!lseg)
++		return;
++
++	assert_spin_locked(&lseg->layout->inode->i_lock);
++	put_lseg_common(NFS_I(lseg->layout->inode), lseg);
++}
+ EXPORT_SYMBOL_GPL(put_lseg_locked);
+ 
+ void
+ put_lseg(struct pnfs_layout_segment *lseg)
+ {
+-	bool do_wake_up;
+ 	struct nfs_inode *nfsi;
+ 
+ 	if (!lseg)
+@@ -333,13 +338,10 @@ put_lseg(struct pnfs_layout_segment *lseg)
+ 
+ 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+ 		atomic_read(&lseg->kref.refcount), lseg->valid);
+-	do_wake_up = !lseg->valid;
+ 	nfsi = NFS_I(lseg->layout->inode);
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+-	kref_put(&lseg->kref, destroy_lseg);
++	put_lseg_common(nfsi, lseg);
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+-	if (do_wake_up)
+-		wake_up(&nfsi->lo_waitq);
+ }
+ EXPORT_SYMBOL_GPL(put_lseg);
+ 
+@@ -654,7 +656,7 @@ has_layout_to_return(struct pnfs_layout_hdr *lo,
+ 	return out;
  }
  
- /*
-- * Decode the result of a readdir call.
-- * We're not really decoding anymore, we just leave the buffer untouched
-- * and only check that it is syntactically correct.
-- * The real decoding happens in nfs_decode_entry below, called directly
-- * from nfs_readdir for each entry.
-- */
--static int
--nfs_xdr_readdirres(struct rpc_rqst *req, __be32 *p, void *dummy)
--{
--	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
--	struct kvec *iov = rcvbuf->head;
--	struct page **page;
--	size_t hdrlen;
--	unsigned int pglen, recvd;
--	u32 len;
--	int status, nr = 0;
--	__be32 *end, *entry, *kaddr;
--
--	if ((status = ntohl(*p++)))
--		return nfs_stat_to_errno(status);
--
--	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
--	if (iov->iov_len < hdrlen) {
--		dprintk("NFS: READDIR reply header overflowed:"
--				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
--		return -errno_NFSERR_IO;
--	} else if (iov->iov_len != hdrlen) {
--		dprintk("NFS: READDIR header is short. iovec will be shifted.\n");
--		xdr_shift_buf(rcvbuf, iov->iov_len - hdrlen);
--	}
--
--	pglen = rcvbuf->page_len;
--	recvd = rcvbuf->len - hdrlen;
--	if (pglen > recvd)
--		pglen = recvd;
--	page = rcvbuf->pages;
--	kaddr = p = kmap_atomic(*page, KM_USER0);
--	end = (__be32 *)((char *)p + pglen);
--	entry = p;
--
--	/* Make sure the packet actually has a value_follows and EOF entry */
--	if ((entry + 1) > end)
--		goto short_pkt;
--
--	for (; *p++; nr++) {
--		if (p + 2 > end)
--			goto short_pkt;
--		p++; /* fileid */
--		len = ntohl(*p++);
--		p += XDR_QUADLEN(len) + 1;	/* name plus cookie */
--		if (len > NFS2_MAXNAMLEN) {
--			dprintk("NFS: giant filename in readdir (len 0x%x)!\n",
--						len);
--			goto err_unmap;
+-static bool
++bool
+ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+ 			   struct pnfs_layout_range *range)
+ {
+@@ -743,16 +745,6 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 
+ 		spin_unlock(&ino->i_lock);
+ 
+-		if (pnfs_return_layout_barrier(nfsi, &arg)) {
+-			if (stateid) { /* callback */
+-				status = -EAGAIN;
+-				goto out_put;
+-			}
+-			dprintk("%s: waiting\n", __func__);
+-			wait_event(nfsi->lo_waitq,
+-				   !pnfs_return_layout_barrier(nfsi, &arg));
 -		}
--		if (p + 2 > end)
--			goto short_pkt;
--		entry = p;
--	}
 -
--	/*
--	 * Apparently some server sends responses that are a valid size, but
--	 * contain no entries, and have value_follows==0 and EOF==0. For
--	 * those, just set the EOF marker.
--	 */
--	if (!nr && entry[1] == 0) {
--		dprintk("NFS: readdir reply truncated!\n");
--		entry[1] = 1;
--	}
-- out:
--	kunmap_atomic(kaddr, KM_USER0);
--	return nr;
-- short_pkt:
--	/*
--	 * When we get a short packet there are 2 possibilities. We can
--	 * return an error, or fix up the response to look like a valid
--	 * response and return what we have so far. If there are no
--	 * entries and the packet was short, then return -EIO. If there
--	 * are valid entries in the response, return them and pretend that
--	 * the call was successful, but incomplete. The caller can retry the
--	 * readdir starting at the last cookie.
--	 */
--	entry[0] = entry[1] = 0;
--	if (!nr)
--		nr = -errno_NFSERR_IO;
--	goto out;
--err_unmap:
--	nr = -errno_NFSERR_IO;
--	goto out;
--}
--
--__be32 *
--nfs_decode_dirent(__be32 *p, struct nfs_entry *entry, int plus)
--{
--	if (!*p++) {
--		if (!*p)
--			return ERR_PTR(-EAGAIN);
--		entry->eof = 1;
--		return ERR_PTR(-EBADCOOKIE);
--	}
--
--	entry->ino	  = ntohl(*p++);
--	entry->len	  = ntohl(*p++);
--	entry->name	  = (const char *) p;
--	p		 += XDR_QUADLEN(entry->len);
--	entry->prev_cookie	  = entry->cookie;
--	entry->cookie	  = ntohl(*p++);
--	entry->eof	  = !p[0] && p[1];
--
--	return p;
--}
--
--/*
-- * NFS XDR decode functions
-- */
--/*
-- * Decode simple status reply
-+ * NFSv2 XDR decode functions
-+ *
-+ * NFSv2 result types are defined in section 2.2 of RFC 1094:
-+ * "NFS: Network File System Protocol Specification".
-  */
--static int
--nfs_xdr_stat(struct rpc_rqst *req, __be32 *p, void *dummy)
--{
--	int	status;
--
--	if ((status = ntohl(*p++)) != 0)
--		status = nfs_stat_to_errno(status);
--	return status;
--}
- 
- static int nfs2_xdr_dec_stat(struct rpc_rqst *req, __be32 *p,
- 			     void *__unused)
-@@ -967,21 +794,6 @@ out_default:
- 	return nfs_stat_to_errno(status);
- }
- 
--/*
-- * Decode attrstat reply
-- * GETATTR, SETATTR, WRITE
-- */
--static int
--nfs_xdr_attrstat(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
--{
--	int	status;
--
--	if ((status = ntohl(*p++)))
--		return nfs_stat_to_errno(status);
--	xdr_decode_fattr(p, fattr);
--	return 0;
--}
--
- static int nfs2_xdr_dec_attrstat(struct rpc_rqst *req, __be32 *p,
- 				 struct nfs_fattr *result)
- {
-@@ -991,22 +803,6 @@ static int nfs2_xdr_dec_attrstat(struct rpc_rqst *req, __be32 *p,
- 	return decode_attrstat(&xdr, result);
- }
- 
--/*
-- * Decode diropres reply
-- * LOOKUP, CREATE, MKDIR
-- */
--static int
--nfs_xdr_diropres(struct rpc_rqst *req, __be32 *p, struct nfs_diropok *res)
--{
--	int	status;
--
--	if ((status = ntohl(*p++)))
--		return nfs_stat_to_errno(status);
--	p = xdr_decode_fhandle(p, res->fh);
--	xdr_decode_fattr(p, res->fattr);
--	return 0;
--}
--
- static int nfs2_xdr_dec_diropres(struct rpc_rqst *req, __be32 *p,
- 				 struct nfs_diropok *result)
- {
-@@ -1017,46 +813,6 @@ static int nfs2_xdr_dec_diropres(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Decode READLINK reply
-- */
--static int
--nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
--{
--	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
--	struct kvec *iov = rcvbuf->head;
--	size_t hdrlen;
--	u32 len, recvd;
--	int	status;
--
--	if ((status = ntohl(*p++)))
--		return nfs_stat_to_errno(status);
--	/* Convert length of symlink */
--	len = ntohl(*p++);
--	if (len >= rcvbuf->page_len) {
--		dprintk("nfs: server returned giant symlink!\n");
--		return -ENAMETOOLONG;
--	}
--	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
--	if (iov->iov_len < hdrlen) {
--		dprintk("NFS: READLINK reply header overflowed:"
--				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
--		return -errno_NFSERR_IO;
--	} else if (iov->iov_len != hdrlen) {
--		dprintk("NFS: READLINK header is short. iovec will be shifted.\n");
--		xdr_shift_buf(rcvbuf, iov->iov_len - hdrlen);
--	}
--	recvd = req->rq_rcv_buf.len - hdrlen;
--	if (recvd < len) {
--		dprintk("NFS: server cheating in readlink reply: "
--				"count %u > recvd %u\n", len, recvd);
--		return -EIO;
--	}
--
--	xdr_terminate_string(rcvbuf, len);
--	return 0;
--}
--
--/*
-  * 2.2.6.  readlinkres
-  *
-  *	union readlinkres switch (stat status) {
-@@ -1120,16 +876,6 @@ out_default:
- 	return nfs_stat_to_errno(status);
- }
- 
--/*
-- * Decode WRITE reply
-- */
--static int
--nfs_xdr_writeres(struct rpc_rqst *req, __be32 *p, struct nfs_writeres *res)
--{
--	res->verf->committed = NFS_FILE_SYNC;
--	return nfs_xdr_attrstat(req, p, res->fattr);
--}
--
- static int nfs2_xdr_dec_writeres(struct rpc_rqst *req, __be32 *p,
- 				 struct nfs_writeres *result)
- {
-@@ -1306,25 +1052,6 @@ __be32 *nfs2_decode_dirent(__be32 *p, struct nfs_entry *entry, int plus)
- }
- 
- /*
-- * Decode STATFS reply
-- */
--static int
--nfs_xdr_statfsres(struct rpc_rqst *req, __be32 *p, struct nfs2_fsstat *res)
--{
--	int	status;
--
--	if ((status = ntohl(*p++)))
--		return nfs_stat_to_errno(status);
--
--	res->tsize  = ntohl(*p++);
--	res->bsize  = ntohl(*p++);
--	res->blocks = ntohl(*p++);
--	res->bfree  = ntohl(*p++);
--	res->bavail = ntohl(*p++);
--	return 0;
--}
--
--/*
-  * 2.2.18.  statfsres
-  *
-  *	union statfsres (stat status) {
+ 		if (layoutcommit_needed(nfsi)) {
+ 			if (stateid && !wait) { /* callback */
+ 				dprintk("%s: layoutcommit pending\n", __func__);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 36ce9fa..b143390 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -239,6 +239,7 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, struct pnfs_layout_range *range);
+ struct pnfs_layout_segment *
+ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 		   loff_t pos, u64 count, enum pnfs_iomode access_type);
++bool pnfs_return_layout_barrier(struct nfs_inode *, struct pnfs_layout_range *);
+ int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *,
+ 			const nfs4_stateid *stateid, /* optional */
+ 			enum pnfs_layoutreturn_type, bool wait);
+-- 
+1.7.2.3
 
