@@ -1,33 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:59145 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757217Ab0IGTCj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 15:02:39 -0400
-Subject: Re: [PATCH 03/03] sunrpc: scale hashtable cache size with memory
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Miquel van Smoorenburg <mikevs@xs4all.net>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20100822183149.GC26607@xs4all.net>
-References: <20100822182848.GA26590@xs4all.net>
-	 <20100822183149.GC26607@xs4all.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 07 Sep 2010 15:02:19 -0400
-Message-ID: <1283886139.2788.72.camel@heimdal.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:10677 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752536Ab0I2LKD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:10:03 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 4/5] pnfs-submit: file needs layout commit, server attributes may be stale
+Date: Wed, 29 Sep 2010 13:10:01 +0200
+Message-Id: <1285758601-26860-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4CA31DC3.8070300@panasas.com>
+References: <4CA31DC3.8070300@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Sun, 2010-08-22 at 20:31 +0200, Miquel van Smoorenburg wrote:
-> Set the number of entries of the authcache to 4096 on servers
-> with 4G of memory or more. Because kmallocing more than a few K
-> is frowned upon, change the allocator from kmalloc to __get_free_pages.
-> Since the minimum allocation size of __get_free_pages is 1 page,
-> set the number of entries in the authcache to PAGE_SIZE / (entry_size)
-> on servers with < 4G of memory so that exactly one page is used.
+[part of "pnfs: layoutcommit"]
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/inode.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-I'm not really understanding why this is an improvement. kmalloc() will
-use pretty much the same mechanism when allocating a slab that is >
-PAGE_SIZE, so why should we duplicate that in the RPC layer?
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 979483f..8cdea1a 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1212,6 +1212,14 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		server->fsid = fattr->fsid;
+ 
+ 	/*
++	 * file needs layout commit, server attributes may be stale
++	 */
++	if (layoutcommit_needed(nfsi) && nfsi->change_attr >= fattr->change_attr) {
++		dprintk("NFS: %s: layoutcommit is needed for file %s/%ld\n",
++			__func__, inode->i_sb->s_id, inode->i_ino);
++		return 0;
++	}
++	/*
+ 	 * Update the read time so we don't revalidate too often.
+ 	 */
+ 	nfsi->read_cache_jiffies = fattr->time_start;
+-- 
+1.7.2.3
 
-Cheers
-  Trond
