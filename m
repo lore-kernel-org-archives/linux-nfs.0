@@ -1,106 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:19197 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755515Ab0I1PSe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Sep 2010 11:18:34 -0400
-Message-ID: <4CA2073F.6070805@parallels.com>
-Date: Tue, 28 Sep 2010 19:18:23 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 7/7] sunrpc: Tag rpc_xprt with net
-References: <4CA20651.4070605@parallels.com>
-In-Reply-To: <4CA20651.4070605@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:25947 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752122Ab0I2LLG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Sep 2010 07:11:06 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 9/9] SQUASHME: pnfs: get rid of lo_waitq
+Date: Wed, 29 Sep 2010 13:11:03 +0200
+Message-Id: <1285758663-27045-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4CA31DC3.8070300@panasas.com>
+References: <4CA31DC3.8070300@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-The net is known from the xprt_create and this tagging will also
-give un the context in the conntection workers where real sockets
-are created.
+it has no more users at this point.
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- include/linux/sunrpc/xprt.h     |    3 ++-
- net/sunrpc/xprtrdma/transport.c |    2 +-
- net/sunrpc/xprtsock.c           |    6 ++++--
- 3 files changed, 7 insertions(+), 4 deletions(-)
+ fs/nfs/inode.c         |    1 -
+ fs/nfs/pnfs.c          |    6 +-----
+ include/linux/nfs_fs.h |    1 -
+ 3 files changed, 1 insertions(+), 7 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index c4f9315..89d10d2 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -224,6 +224,7 @@ struct rpc_xprt {
- 					bklog_u;	/* backlog queue utilization */
- 	} stat;
- 
-+	struct net		*xprt_net;
- 	const char		*address_strings[RPC_DISPLAY_MAX];
- };
- 
-@@ -281,7 +282,7 @@ void			xprt_release_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
- void			xprt_release(struct rpc_task *task);
- struct rpc_xprt *	xprt_get(struct rpc_xprt *xprt);
- void			xprt_put(struct rpc_xprt *xprt);
--struct rpc_xprt *	xprt_alloc(int size, int max_req);
-+struct rpc_xprt *	xprt_alloc(struct net *net, int size, int max_req);
- void			xprt_free(struct rpc_xprt *);
- 
- static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 0f7a1b9..2da32b4 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -283,7 +283,7 @@ xprt_setup_rdma(struct xprt_create *args)
- 		return ERR_PTR(-EBADF);
- 	}
- 
--	xprt = xprt_alloc(sizeof(struct rpcrdma_xprt),
-+	xprt = xprt_alloc(args->net, sizeof(struct rpcrdma_xprt),
- 			xprt_rdma_slot_table_entries);
- 	if (xprt == NULL) {
- 		dprintk("RPC:       %s: couldn't allocate rpcrdma_xprt\n",
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 77cb595..dbac32e 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -759,7 +759,7 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
- 		xs_tcp_shutdown(xprt);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index e3d44a9..437d9a6 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1458,7 +1458,6 @@ static inline void nfs4_init_once(struct nfs_inode *nfsi)
+ 	nfsi->delegation = NULL;
+ 	nfsi->delegation_state = 0;
+ 	init_rwsem(&nfsi->rwsem);
+-	init_waitqueue_head(&nfsi->lo_waitq);
+ 	rpc_init_wait_queue(&nfsi->lo_rpcwaitq, "pNFS Layout");
+ 	nfsi->layout = NULL;
+ #endif
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 4e47c2a..0796c17 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -311,10 +311,8 @@ put_lseg_common(struct nfs_inode *nfsi, struct pnfs_layout_segment *lseg)
+ 	do_wake_up = !lseg->valid;
+ 	nfsi = NFS_I(lseg->layout->inode);
+ 	kref_put(&lseg->kref, destroy_lseg);
+-	if (do_wake_up) {
+-		wake_up(&nfsi->lo_waitq);
++	if (do_wake_up)
+ 		rpc_wake_up(&nfsi->lo_rpcwaitq);
+-	}
  }
  
--struct rpc_xprt *xprt_alloc(int size, int max_req)
-+struct rpc_xprt *xprt_alloc(struct net *net, int size, int max_req)
- {
- 	struct rpc_xprt *xprt;
- 
-@@ -772,6 +772,7 @@ struct rpc_xprt *xprt_alloc(int size, int max_req)
- 	if (xprt->slot == NULL)
- 		goto out_free;
- 
-+	xprt->xprt_net = get_net(net);
- 	return xprt;
- 
- out_free:
-@@ -783,6 +784,7 @@ EXPORT_SYMBOL_GPL(xprt_alloc);
- 
- void xprt_free(struct rpc_xprt *xprt)
- {
-+	put_net(xprt->xprt_net);
- 	kfree(xprt->slot);
- 	kfree(xprt);
+ void
+@@ -476,7 +474,6 @@ pnfs_layoutget_release(struct pnfs_layout_hdr *lo)
+ 	 */
+ 	put_layout_hdr_locked(lo);
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+-	wake_up_all(&nfsi->lo_waitq);
  }
-@@ -2301,7 +2303,7 @@ static struct rpc_xprt *xs_setup_xprt(struct xprt_create *args,
- 		return ERR_PTR(-EBADF);
- 	}
  
--	xprt = xprt_alloc(sizeof(*new), slot_table_size);
-+	xprt = xprt_alloc(args->net, sizeof(*new), slot_table_size);
- 	if (xprt == NULL) {
- 		dprintk("RPC:       xs_setup_xprt: couldn't allocate "
- 				"rpc_xprt\n");
+ void
+@@ -494,7 +491,6 @@ pnfs_layoutreturn_release(struct pnfs_layout_hdr *lo,
+ 	 */
+ 	put_layout_hdr_locked(lo);
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+-	wake_up_all(&nfsi->lo_waitq);
+ }
+ 
+ void
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 1af18fd..059e61d 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -190,7 +190,6 @@ struct nfs_inode {
+ 	struct rw_semaphore	rwsem;
+ 
+ 	/* pNFS layout information */
+-	wait_queue_head_t lo_waitq;
+ 	struct rpc_wait_queue lo_rpcwaitq;
+ 	struct pnfs_layout_hdr *layout;
+ #endif /* CONFIG_NFS_V4*/
 -- 
-1.5.5.6
+1.7.2.3
 
