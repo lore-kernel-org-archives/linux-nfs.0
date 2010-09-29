@@ -1,63 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44996 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:10944 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752933Ab0IGQIy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Sep 2010 12:08:54 -0400
-Date: Tue, 7 Sep 2010 12:08:47 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Suresh Jayaraman <sjayaraman@suse.de>, Neil Brown <neilb@suse.de>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC][PATCH] nfs: support legacy NFS flock behavior via mount
- option
-Message-ID: <20100907120847.692bd32e@tlielax.poochiereds.net>
-In-Reply-To: <1283869039.4291.16.camel@heimdal.trondhjem.org>
-References: <4C84DFA7.7050507@suse.de>
-	<1283869039.4291.16.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753353Ab0I2MHI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Sep 2010 08:07:08 -0400
+Message-ID: <4CA32BE1.8010800@parallels.com>
+Date: Wed, 29 Sep 2010 16:06:57 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 9/9] sunrpc: Create sockets in net namespaces
+References: <4CA32AB4.2090808@parallels.com>
+In-Reply-To: <4CA32AB4.2090808@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 07 Sep 2010 10:17:19 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+The context is already known in all the sock_create callers.
 
-> On Mon, 2010-09-06 at 18:03 +0530, Suresh Jayaraman wrote:
-> > NFS clients since 2.6.12 support flock()locks by emulating the
-> > BSD-style locks in terms of POSIX byte range locks. So the NFS client
-> > does not allow to lock the same file using both flock() and fcntl
-> > byte-range locks.
-> > 
-> > For some Windows applications which seem to use both share mode locks
-> > (flock()) and fcntl byte range locks sequentially on the same file,
-> > the locking is failing as the lock has already been acquired. i.e. the
-> > flock mapped as posix locks collide with actual byte range locks from
-> > the same process. The problem was observed on a setup with Windows
-> > clients accessing Excel files on a Samba exported share which is
-> > originally a NFS mount from a NetApp filer. Since kernels < 2.6.12 does
-> > not support flock, what was working (as flock locks were local) in
-> > older kernels is not working with newer kernels.
-> > 
-> > This could be seen as a bug in the implementation of the windows
-> > application or a NFS client regression, but that is debatable.
-> > In the spirit of not breaking existing setups, this patch adds mount
-> > options "flock=local" that enables older flock behavior and
-> > "flock=fcntl" that allows the current flock behavior.
-> 
-> So instead of having a special option for flock only, what say we rather
-> introduce an option of the form
-> 
->   -olocal_lock=
-> 
-> which can take the values 'none', 'flock', 'fcntl' (or 'posix'?) and
-> 'all'?
-> 
-> Cheers
->   Trond
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+---
+ net/sunrpc/svcsock.c  |    2 +-
+ net/sunrpc/xprtsock.c |    8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-Another thought -- we already have "-olock" and "-onolock" and we'll
-have to keep them for compatability. Maybe this should be "-oflock" and
-"-onoflock"?
-
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 5593385..88de3d0 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1425,7 +1425,7 @@ static struct svc_xprt *svc_create_socket(struct svc_serv *serv,
+ 		return ERR_PTR(-EINVAL);
+ 	}
+ 
+-	error = sock_create_kern(family, type, protocol, &sock);
++	error = __sock_create(net, family, type, protocol, &sock, 1);
+ 	if (error < 0)
+ 		return ERR_PTR(error);
+ 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 4ef3a6a..f9964ef 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1680,7 +1680,7 @@ static void xs_udp_connect_worker4(struct work_struct *work)
+ 	/* Start by resetting any existing state */
+ 	xs_reset_transport(transport);
+ 
+-	err = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
++	err = __sock_create(xprt->xprt_net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
+ 	if (err < 0) {
+ 		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
+ 		goto out;
+@@ -1725,7 +1725,7 @@ static void xs_udp_connect_worker6(struct work_struct *work)
+ 	/* Start by resetting any existing state */
+ 	xs_reset_transport(transport);
+ 
+-	err = sock_create_kern(PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock);
++	err = __sock_create(xprt->xprt_net, PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
+ 	if (err < 0) {
+ 		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
+ 		goto out;
+@@ -1931,7 +1931,7 @@ static struct socket *xs_create_tcp_sock4(struct rpc_xprt *xprt,
+ 	int err;
+ 
+ 	/* start from scratch */
+-	err = sock_create_kern(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sock);
++	err = __sock_create(xprt->xprt_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sock, 1);
+ 	if (err < 0) {
+ 		dprintk("RPC:       can't create TCP transport socket (%d).\n",
+ 				-err);
+@@ -1970,7 +1970,7 @@ static struct socket *xs_create_tcp_sock6(struct rpc_xprt *xprt,
+ 	int err;
+ 
+ 	/* start from scratch */
+-	err = sock_create_kern(PF_INET6, SOCK_STREAM, IPPROTO_TCP, &sock);
++	err = __sock_create(xprt->xprt_net, PF_INET6, SOCK_STREAM, IPPROTO_TCP, &sock, 1);
+ 	if (err < 0) {
+ 		dprintk("RPC:       can't create TCP transport socket (%d).\n",
+ 				-err);
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.5.5.6
+
