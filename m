@@ -1,74 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47227 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:10244 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752624Ab0ITUFV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 16:05:21 -0400
-Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Pavel Emelyanov <xemul@parallels.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+	id S1753353Ab0I2MFZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Sep 2010 08:05:25 -0400
+Message-ID: <4CA32B78.1010409@parallels.com>
+Date: Wed, 29 Sep 2010 16:05:12 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
         linux-nfs@vger.kernel.org
-In-Reply-To: <4C97B248.1030801@parallels.com>
-References: <4C90BADB.10700@parallels.com>
-	 <20100920161326.GL4580@fieldses.org> <4C978CE6.5080508@parallels.com>
-	 <20100920180418.GN4580@fieldses.org>  <4C97B248.1030801@parallels.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 20 Sep 2010 16:05:16 -0400
-Message-ID: <1285013116.2851.71.camel@heimdal.trondhjem.org>
+Subject: [PATCH 6/9] sunrpc: Add net to xprt_create
+References: <4CA32AB4.2090808@parallels.com>
+In-Reply-To: <4CA32AB4.2090808@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-09-20 at 23:13 +0400, Pavel Emelyanov wrote:
-> On 09/20/2010 10:04 PM, J. Bruce Fields wrote:
-> > On Mon, Sep 20, 2010 at 08:33:42PM +0400, Pavel Emelyanov wrote:
-> >>>> Looking forward to your feedback.
-> >>>
-> >>> What are you thinking of as a use-case for this?
-> >>
-> >> To make it possible run both NFS server and client in containers.
-> > 
-> > Could you describe that in user-visible terms?  (Currently if I create a
-> > new network namespace, what happens, and what will happen differently
-> > afterwards?)
-> 
-> This is not about the network namespace only I believe. E.g. the
-> nfsd filesystem is a filesystem already and shouldn't be tied to
-> any task-driven context.
-> 
-> E.g. as far as the net namespace part is concerned. First of all
-> the TCP/UDP socket used by transport will be per-namespace. User
-> will "feel" this for example by different routing and netfilter
-> rules applied to connections. Besides the rpc service sockets will
-> be per namespace as well.
-> 
-> >> Sure! The thing is that the full containerization of that stuff is
-> >> too many patches and I'm not sure that you and other maintainers wish
-> >> to review the 100-patch set in one go ;)
-> > 
-> > Well, if it's really all ready....
-> > 
-> > Better, though, would be an outline of the work to be done and what you
-> > expect to be working at the end.
-> 
-> The nearest plan is
-> 
-> 1. Prepare the sunrpc layer to work in net namespaces
-> 2. Make rpcpipefs and nfsd filesystems be mountable multiple times
-> 3. Make support for multiple instances of the nfsd caches
-> 4. Make suuport for multiple instances of the nfsd_serv
-> 
-> After this several NFSd-s can be used in containers (hopefully I
-> didn't miss anything).
-> 
-> Plans about the nfs client are much more obscure for now.
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+---
+ include/linux/sunrpc/xprt.h |    1 +
+ net/sunrpc/clnt.c           |    1 +
+ 2 files changed, 2 insertions(+), 0 deletions(-)
 
-The client should be something like the following:
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index af4b560..c4f9315 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -249,6 +249,7 @@ static inline int bc_prealloc(struct rpc_rqst *req)
+ 
+ struct xprt_create {
+ 	int			ident;		/* XPRT_TRANSPORT identifier */
++	struct net *		net;
+ 	struct sockaddr *	srcaddr;	/* optional local address */
+ 	struct sockaddr *	dstaddr;	/* remote peer address */
+ 	size_t			addrlen;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index fa55490..f4bbd83 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -284,6 +284,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 	struct rpc_xprt *xprt;
+ 	struct rpc_clnt *clnt;
+ 	struct xprt_create xprtargs = {
++		.net = args->net,
+ 		.ident = args->protocol,
+ 		.srcaddr = args->saddress,
+ 		.dstaddr = args->address,
+-- 
+1.5.5.6
 
- 1) Ensure sunrpc sockets are created using the correct net namespace
- 2) Convert rpc_pipefs to be per-net namespace.
- 3) Convert the nfs_client and superblock to be per-net namespace
- 4) Convert lockd's struct host to be per-net namespace
-
-Cheers
-  Trond
