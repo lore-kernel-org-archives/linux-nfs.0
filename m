@@ -1,71 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:60916 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758227Ab0IGUQi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 16:16:38 -0400
-Subject: Re: [PATCH 4/4] mount.nfs: Prepare way for "vers=4,rdma" mounts
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4C869B70.4020405@RedHat.com>
-Date: Tue, 7 Sep 2010 16:14:36 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <8653371E-0798-4F57-9289-684A8D09B1C7@oracle.com>
-References: <20100907162156.3392.90376.stgit@seurat.1015granger.net> <20100907162638.3392.14786.stgit@seurat.1015granger.net> <4C869B70.4020405@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:12713 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755216Ab0I3SP4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 14:15:56 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 05/17] Remove the automount through follow_link() kludge code
+	from pathwalk
+To: viro@ftp.linux.org.uk, jmoyer@redhat.com
+Cc: linux-fs@vger.kernel.org, autofs@linux.kernel.org,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        David Howells <dhowells@redhat.com>, Ian Kent <raven@themaw.net>
+Date: Thu, 30 Sep 2010 19:15:21 +0100
+Message-ID: <20100930181521.30939.31415.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
+References: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Remove the automount through follow_link() kludge code from pathwalk in favour
+of using d_automount().
 
-On Sep 7, 2010, at 4:07 PM, Steve Dickson wrote:
+Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: Ian Kent <raven@themaw.net>
+---
 
-> 
-> 
-> On 09/07/2010 12:26 PM, Chuck Lever wrote:
->> At some point, when the kernel starts to support "vers=4,rdma" mounts,
->> we will want the mount.nfs command to pass "vers=4,rdma" mounts
->> instead of rejecting them.
->> 
->> Assuming that the kernel will reject these today with EPROTONOSUPPORT,
->> that would cause the version fallback logic to go to "vers=3,rdma"
->> automatically.  So the extra check we have now is not needed anyway.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
->> utils/mount/stropts.c |    7 -------
->> 1 files changed, 0 insertions(+), 7 deletions(-)
->> 
->> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->> index 9695c73..a8b22ce 100644
->> --- a/utils/mount/stropts.c
->> +++ b/utils/mount/stropts.c
->> @@ -302,13 +302,6 @@ static int nfs_set_version(struct nfsmount_info *mi)
->> 
->> 	if (strncmp(mi->type, "nfs4", 4) == 0)
->> 		mi->version = 4;
->> -	else {
->> -		unsigned long protocol;
->> -		if (!nfs_nfs_protocol(mi->options, &protocol))
->> -			return 0;
->> -		if (protocol == NFSPROTO_RDMA)
->> -			mi->version = 3;
->> -	}
->> 
->> 	/*
->> 	 * If we still don't know, check for version-specific
->> 
-> This is a show stopper... We can default to v4 because the callbacks.
+ fs/namei.c |   17 +++--------------
+ 1 files changed, 3 insertions(+), 14 deletions(-)
 
-Again, this patch was for comments only, it isn't required.  But I don't understand your comment.
-
-We don't default to NFSv4 for RDMA today, because of the if clause I remove here.  If no version is specified, it defaults to vers=3 for RDMA mounts.
-
-I suggest we make it default to v4 in this case.  What is the callback requirement?
-
--- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/fs/namei.c b/fs/namei.c
+index c50b9d7..86421f9 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -861,17 +861,6 @@ fail:
+ }
+ 
+ /*
+- * This is a temporary kludge to deal with "automount" symlinks; proper
+- * solution is to trigger them on follow_mount(), so that do_lookup()
+- * would DTRT.  To be killed before 2.6.34-final.
+- */
+-static inline int follow_on_final(struct inode *inode, unsigned lookup_flags)
+-{
+-	return inode && unlikely(inode->i_op->follow_link) &&
+-		((lookup_flags & LOOKUP_FOLLOW) || S_ISDIR(inode->i_mode));
+-}
+-
+-/*
+  * Name resolution.
+  * This is the basic name resolution function, turning a pathname into
+  * the final dentry. We expect 'base' to be positive and a directory.
+@@ -991,7 +980,8 @@ last_component:
+ 		if (err)
+ 			break;
+ 		inode = next.dentry->d_inode;
+-		if (follow_on_final(inode, lookup_flags)) {
++		if (inode && unlikely(inode->i_op->follow_link) &&
++		    (lookup_flags & LOOKUP_FOLLOW)) {
+ 			err = do_follow_link(&next, nd);
+ 			if (err)
+ 				goto return_err;
+@@ -1882,8 +1872,7 @@ reval:
+ 		struct inode *inode = path.dentry->d_inode;
+ 		void *cookie;
+ 		error = -ELOOP;
+-		/* S_ISDIR part is a temporary automount kludge */
+-		if (!(nd.flags & LOOKUP_FOLLOW) && !S_ISDIR(inode->i_mode))
++		if (!(nd.flags & LOOKUP_FOLLOW))
+ 			goto exit_dput;
+ 		if (count++ == 32)
+ 			goto exit_dput;
 
