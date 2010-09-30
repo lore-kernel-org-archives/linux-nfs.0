@@ -1,146 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:42034 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752521Ab0IMRRk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 13:17:40 -0400
-Received: by iwn5 with SMTP id 5so5305686iwn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Sep 2010 10:17:40 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] mount.nfs: Refactor mount version and protocol
-	autonegotiation
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 13 Sep 2010 13:17:36 -0400
-Message-ID: <20100913171736.18926.97496.stgit@seurat.1015granger.net>
-In-Reply-To: <20100913171100.18926.77712.stgit@seurat.1015granger.net>
-References: <20100913171100.18926.77712.stgit@seurat.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:1894 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755299Ab0I3SP6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 14:15:58 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 06/17] Add an AT_NO_AUTOMOUNT flag to suppress terminal
+	automount
+To: viro@ftp.linux.org.uk, jmoyer@redhat.com
+Cc: linux-fs@vger.kernel.org, autofs@linux.kernel.org,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        David Howells <dhowells@redhat.com>, Ian Kent <raven@themaw.net>
+Date: Thu, 30 Sep 2010 19:15:26 +0100
+Message-ID: <20100930181526.30939.22704.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
+References: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
+Add an AT_NO_AUTOMOUNT flag to suppress terminal automounting of directories
+with follow_link semantics.  This can be used by fstatat() users to permit the
+gathering of attributes on an automount point and also prevent
+mass-automounting of a directory of automount points by ls.
 
-I'm beginning to agree with Bruce and Steve's assessment that the
-fallthrough switch case in nfs_try_mount() is more difficult to read
-and understand than it needs to be.  The logic that manages
-negotiating NFS version and protocol settings is getting more complex
-over time anyway.
-
-So let's split the autonegotiation piece out of nfs_try_mount().
-
-We can reduce indenting, and use cleaner switch-based logic.  Also,
-adding more comments can only help.
-
-Neil also suggested replacing the pre-call "errno = 0" trick.  The
-lower-level functions may try to mount several times (given a list of
-addresses to try).  errno could be set by any of those.  The mount
-request will succeed at some point, and "success" is returned, but
-errno is still set to some non-zero value.
-
-The kernel version check in nfs_try_mount() is more or less loop
-invariant: it's impossible for the result of that test to change
-between retries.  So we should be able to safely move it to the logic
-that sets the initial value of mi->version.
-
-This patch is not supposed to cause a behavioral change.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: Ian Kent <raven@themaw.net>
 ---
 
- utils/mount/stropts.c |   67 +++++++++++++++++++++++++++++++++++++++----------
- 1 files changed, 53 insertions(+), 14 deletions(-)
+ fs/namei.c            |    6 ++++++
+ fs/stat.c             |    4 +++-
+ include/linux/fcntl.h |    1 +
+ include/linux/namei.h |    2 ++
+ 4 files changed, 12 insertions(+), 1 deletions(-)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index c82ddfe..c5c4ba1 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -304,6 +304,16 @@ static int nfs_set_version(struct nfsmount_info *mi)
- 		mi->version = 4;
+diff --git a/fs/namei.c b/fs/namei.c
+index 86421f9..74bce3a 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -625,6 +625,12 @@ static int follow_automount(struct path *path, unsigned flags,
+ 	if (!path->dentry->d_op || !path->dentry->d_op->d_automount)
+ 		return -EREMOTE;
  
- 	/*
-+	 * Before 2.6.32, the kernel NFS client didn't
-+	 * support "-t nfs vers=4" mounts, so NFS version
-+	 * 4 cannot be included when autonegotiating
-+	 * while running on those kernels.
++	/* We don't want to mount if someone supplied AT_NO_AUTOMOUNT
++	 * and this is the terminal part of the path.
 +	 */
-+	if (mi->version == 0 &&
-+	    linux_version_code() <= MAKE_VERSION(2, 6, 31))
-+		mi->version = 3;
++	if ((flags & LOOKUP_NO_AUTOMOUNT) && !(flags & LOOKUP_CONTINUE))
++		return -EXDEV; /* we actually want to stop here */
 +
-+	/*
- 	 * If we still don't know, check for version-specific
- 	 * mount options.
- 	 */
-@@ -746,6 +756,47 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
- }
+ 	/* We want to mount if someone is trying to open/create a file of any
+ 	 * type under the mountpoint, wants to traverse through the mountpoint
+ 	 * or wants to open the mounted directory.
+diff --git a/fs/stat.c b/fs/stat.c
+index 12e90e2..d5c61cf 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -75,11 +75,13 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ 	int error = -EINVAL;
+ 	int lookup_flags = 0;
  
+-	if ((flag & ~AT_SYMLINK_NOFOLLOW) != 0)
++	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT)) != 0)
+ 		goto out;
+ 
+ 	if (!(flag & AT_SYMLINK_NOFOLLOW))
+ 		lookup_flags |= LOOKUP_FOLLOW;
++	if (flag & AT_NO_AUTOMOUNT)
++		lookup_flags |= LOOKUP_NO_AUTOMOUNT;
+ 
+ 	error = user_path_at(dfd, filename, lookup_flags, &path);
+ 	if (error)
+diff --git a/include/linux/fcntl.h b/include/linux/fcntl.h
+index afc00af..a562fa5 100644
+--- a/include/linux/fcntl.h
++++ b/include/linux/fcntl.h
+@@ -45,6 +45,7 @@
+ #define AT_REMOVEDIR		0x200   /* Remove directory instead of
+                                            unlinking file.  */
+ #define AT_SYMLINK_FOLLOW	0x400   /* Follow symbolic links.  */
++#define AT_NO_AUTOMOUNT		0x800	/* Suppress terminal automount traversal */
+ 
+ #ifdef __KERNEL__
+ 
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index 05b441d..1e1febf 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -43,12 +43,14 @@ enum {LAST_NORM, LAST_ROOT, LAST_DOT, LAST_DOTDOT, LAST_BIND};
+  *  - internal "there are more path components" flag
+  *  - locked when lookup done with dcache_lock held
+  *  - dentry cache is untrusted; force a real lookup
++ *  - suppress terminal automount
+  */
+ #define LOOKUP_FOLLOW		 1
+ #define LOOKUP_DIRECTORY	 2
+ #define LOOKUP_CONTINUE		 4
+ #define LOOKUP_PARENT		16
+ #define LOOKUP_REVAL		64
++#define LOOKUP_NO_AUTOMOUNT	128
  /*
-+ * Handle NFS version and transport protocol
-+ * autonegotiation.
-+ *
-+ * When no version or protocol is specified on the
-+ * command line, mount.nfs negotiates with the server
-+ * to determine appropriate settings for the new
-+ * mount point.
-+ *
-+ * Returns TRUE if successful, otherwise FALSE.
-+ * "errno" is set to reflect the individual error.
-+ */
-+static int nfs_autonegotiate(struct nfsmount_info *mi)
-+{
-+	int result;
-+
-+	result = nfs_try_mount_v4(mi);
-+	if (result)
-+		return result;
-+		
-+	switch (errno) {
-+	case EPROTONOSUPPORT:
-+		/* A clear indication that the server or our
-+		 * client does not support NFS version 4. */
-+		goto fall_back;
-+	case ENOENT:
-+		/* Legacy Linux servers don't export an NFS
-+		 * version 4 pseudoroot. */
-+		goto fall_back;
-+	case EPERM:
-+		/* Linux servers prior to 2.6.25 may return
-+		 * EPERM when NFS version 4 is not supported. */
-+		goto fall_back;
-+	default:
-+		return result;
-+	}
-+
-+fall_back:
-+	return nfs_try_mount_v3v2(mi);
-+}
-+
-+/*
-  * This is a single pass through the fg/bg loop.
-  *
-  * Returns TRUE if successful, otherwise FALSE.
-@@ -757,20 +808,8 @@ static int nfs_try_mount(struct nfsmount_info *mi)
- 
- 	switch (mi->version) {
- 	case 0:
--		if (linux_version_code() > MAKE_VERSION(2, 6, 31)) {
--			errno = 0;
--			result = nfs_try_mount_v4(mi);
--			if (errno != EPROTONOSUPPORT) {
--				/* 
--				 * To deal with legacy Linux servers that don't
--				 * automatically export a pseudo root, retry
--				 * ENOENT errors using version 3. And for
--				 * Linux servers prior to 2.6.25, retry EPERM
--				 */
--				if (errno != ENOENT && errno != EPERM)
--					break;
--			}
--		}
-+		result = nfs_autonegotiate(mi);
-+		break;
- 	case 2:
- 	case 3:
- 		result = nfs_try_mount_v3v2(mi);
+  * Intent data
+  */
 
