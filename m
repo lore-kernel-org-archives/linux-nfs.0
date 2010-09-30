@@ -1,263 +1,306 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:38222 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754669Ab0IMLcM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 07:32:12 -0400
-Message-ID: <4C8E0BBA.9070109@panasas.com>
-Date: Mon, 13 Sep 2010 13:32:10 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 09/13] RFC: nfs: create and destroy inode's layout cache
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>	 <1283450419-5648-10-git-send-email-iisaman@netapp.com> <1284147785.10062.80.camel@heimdal.trondhjem.org>
-In-Reply-To: <1284147785.10062.80.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:43301 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755016Ab0I3SPu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 14:15:50 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 04/17] CIFS: Use d_automount() rather than abusing
+	follow_link()
+To: viro@ftp.linux.org.uk, jmoyer@redhat.com
+Cc: linux-fs@vger.kernel.org, autofs@linux.kernel.org,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        David Howells <dhowells@redhat.com>, Steve French <sfrench@samba.org>
+Date: Thu, 30 Sep 2010 19:15:16 +0100
+Message-ID: <20100930181515.30939.57129.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
+References: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-10 22:43, Trond Myklebust wrote:
-> On Thu, 2010-09-02 at 14:00 -0400, Fred Isaman wrote:
->> From: The pNFS Team <linux-nfs@vger.kernel.org>
->>
->> At the start of the io paths, try to grab the relevant layout
->> information.  This will initiate the inode's layout cache, but
->> stubs ensure the cache stays empty.
->>
->> Signed-off-by: TBD - melding/reorganization of several patches
->> ---
->>  fs/nfs/file.c          |    5 ++
->>  fs/nfs/inode.c         |    3 +
->>  fs/nfs/pnfs.c          |  140 ++++++++++++++++++++++++++++++++++++++++++++++++
->>  fs/nfs/pnfs.h          |   39 +++++++++++++
->>  fs/nfs/read.c          |    3 +
->>  include/linux/nfs_fs.h |    3 +
->>  6 files changed, 193 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
->> index eb51bd6..10ebdfb 100644
->> --- a/fs/nfs/file.c
->> +++ b/fs/nfs/file.c
->> @@ -36,6 +36,7 @@
->>  #include "internal.h"
->>  #include "iostat.h"
->>  #include "fscache.h"
->> +#include "pnfs.h"
->>  
->>  #define NFSDBG_FACILITY		NFSDBG_FILE
->>  
->> @@ -386,6 +387,10 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
->>  		file->f_path.dentry->d_name.name,
->>  		mapping->host->i_ino, len, (long long) pos);
->>  
->> +	pnfs_update_layout(mapping->host,
->> +			   nfs_file_open_context(file),
->> +			   IOMODE_RW);
->> +
->>  start:
->>  	/*
->>  	 * Prevent starvation issues if someone is doing a consistency
->> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->> index 7d2d6c7..0dc6dad 100644
->> --- a/fs/nfs/inode.c
->> +++ b/fs/nfs/inode.c
->> @@ -48,6 +48,7 @@
->>  #include "internal.h"
->>  #include "fscache.h"
->>  #include "dns_resolve.h"
->> +#include "pnfs.h"
->>  
->>  #define NFSDBG_FACILITY		NFSDBG_VFS
->>  
->> @@ -1409,6 +1410,7 @@ void nfs4_evict_inode(struct inode *inode)
->>  {
->>  	truncate_inode_pages(&inode->i_data, 0);
->>  	end_writeback(inode);
->> +	pnfs_destroy_layout(NFS_I(inode));
->>  	/* If we are holding a delegation, return it! */
->>  	nfs_inode_return_delegation_noreclaim(inode);
->>  	/* First call standard NFS clear_inode() code */
->> @@ -1446,6 +1448,7 @@ static inline void nfs4_init_once(struct nfs_inode *nfsi)
->>  	nfsi->delegation = NULL;
->>  	nfsi->delegation_state = 0;
->>  	init_rwsem(&nfsi->rwsem);
->> +	nfsi->layout = NULL;
->>  #endif
->>  }
->>  
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 8d503fc..65f923b 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -151,3 +151,143 @@ pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
->>  	spin_unlock(&pnfs_spinlock);
->>  }
->>  EXPORT_SYMBOL(pnfs_unregister_layoutdriver);
->> +
->> +static void
->> +get_layout_hdr_locked(struct pnfs_layout_hdr *lo)
->> +{
->> +	assert_spin_locked(&lo->inode->i_lock);
->> +	lo->refcount++;
->> +}
->> +
->> +static void
->> +put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
->> +{
->> +	assert_spin_locked(&lo->inode->i_lock);
->> +	BUG_ON(lo->refcount <= 0);
->> +
->> +	lo->refcount--;
->> +	if (!lo->refcount) {
->> +		dprintk("%s: freeing layout cache %p\n", __func__, lo);
->> +		NFS_I(lo->inode)->layout = NULL;
->> +		kfree(lo);
->> +	}
->> +}
->> +
->> +void
->> +pnfs_destroy_layout(struct nfs_inode *nfsi)
->> +{
->> +	struct pnfs_layout_hdr *lo;
->> +
->> +	spin_lock(&nfsi->vfs_inode.i_lock);
->> +	lo = nfsi->layout;
->> +	if (lo) {
->> +		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
->> +		put_layout_hdr_locked(lo);
->> +	}
->> +	spin_unlock(&nfsi->vfs_inode.i_lock);
->> +}
->> +
->> +/* STUB - pretend LAYOUTGET to server failed */
->> +static struct pnfs_layout_segment *
->> +send_layoutget(struct pnfs_layout_hdr *lo,
->> +	   struct nfs_open_context *ctx,
->> +	   u32 iomode)
->> +{
->> +	struct inode *ino = lo->inode;
->> +
->> +	set_bit(lo_fail_bit(iomode), &lo->state);
->> +	spin_lock(&ino->i_lock);
->> +	put_layout_hdr_locked(lo);
->> +	spin_unlock(&ino->i_lock);
->> +	return NULL;
->> +}
->> +
->> +static struct pnfs_layout_hdr *
->> +alloc_init_layout_hdr(struct inode *ino)
->> +{
->> +	struct pnfs_layout_hdr *lo;
->> +
->> +	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
->> +	if (!lo)
->> +		return NULL;
->> +	lo->refcount = 1;
->> +	lo->inode = ino;
->> +	return lo;
->> +}
->> +
->> +static struct pnfs_layout_hdr *
->> +pnfs_find_alloc_layout(struct inode *ino)
->> +{
->> +	struct nfs_inode *nfsi = NFS_I(ino);
->> +	struct pnfs_layout_hdr *new = NULL;
->> +
->> +	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
->> +
->> +	assert_spin_locked(&ino->i_lock);
->> +	if (nfsi->layout)
->> +		return nfsi->layout;
->> +
->> +	spin_unlock(&ino->i_lock);
->> +	new = alloc_init_layout_hdr(ino);
->> +	spin_lock(&ino->i_lock);
->> +
->> +	if (likely(nfsi->layout == NULL))	/* Won the race? */
->> +		nfsi->layout = new;
->> +	else
->> +		kfree(new);
->> +	return nfsi->layout;
->> +}
->> +
->> +/* STUB - LAYOUTGET never succeeds, so cache is empty */
->> +static struct pnfs_layout_segment *
->> +pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
->> +{
->> +	return NULL;
->> +}
->> +
->> +/*
->> + * Layout segment is retreived from the server if not cached.
->> + * The appropriate layout segment is referenced and returned to the caller.
->> + */
->> +struct pnfs_layout_segment *
->> +pnfs_update_layout(struct inode *ino,
->> +		   struct nfs_open_context *ctx,
->> +		   enum pnfs_iomode iomode)
->> +{
->> +	struct nfs_inode *nfsi = NFS_I(ino);
->> +	struct pnfs_layout_hdr *lo;
->> +	struct pnfs_layout_segment *lseg = NULL;
->> +
->> +	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
->> +		return NULL;
->> +	spin_lock(&ino->i_lock);
->> +	lo = pnfs_find_alloc_layout(ino);
->> +	if (lo == NULL) {
->> +		dprintk("%s ERROR: can't get pnfs_layout_hdr\n", __func__);
->> +		goto out_unlock;
->> +	}
->> +
->> +	/* Check to see if the layout for the given range already exists */
->> +	lseg = pnfs_has_layout(lo, iomode);
->> +	if (lseg) {
->> +		dprintk("%s: Using cached lseg %p for iomode %d)\n",
->> +			__func__, lseg, iomode);
->> +		goto out_unlock;
->> +	}
->> +
->> +	/* if LAYOUTGET already failed once we don't try again */
->> +	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->state))
->> +		goto out_unlock;
->> +
->> +	get_layout_hdr_locked(lo);
->> +	spin_unlock(&ino->i_lock);
->> +
->> +	lseg = send_layoutget(lo, ctx, iomode);
->> +out:
->> +	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
->> +		nfsi->layout->state, lseg);
->> +	return lseg;
->> +out_unlock:
->> +	spin_unlock(&ino->i_lock);
->> +	goto out;
->> +}
->> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->> index 9049b9a..b63b445 100644
->> --- a/fs/nfs/pnfs.h
->> +++ b/fs/nfs/pnfs.h
->> @@ -14,6 +14,11 @@
->>  
->>  #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
->>  
->> +enum {
->> +	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
->> +	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
->> +};
->> +
->>  /* Per-layout driver specific registration structure */
->>  struct pnfs_layoutdriver_type {
->>  	struct list_head pnfs_tblid;
->> @@ -22,6 +27,12 @@ struct pnfs_layoutdriver_type {
->>  	struct layoutdriver_io_operations *ld_io_ops;
->>  };
->>  
->> +struct pnfs_layout_hdr {
->> +	int			refcount;
->         ^^^^^ Why not make this 'unsigned int', and/or 'unsigned long'?
+Make CIFS use the new d_automount() dentry operation rather than abusing
+follow_link() on directories.
 
-Should be fine, we just need to be careful about underflow/overflow
-before changing its value.
+[NOTE: THIS IS UNTESTED!]
 
-Benny
+[Question:  Why does cifs_dfs_do_refmount() when the caller has already done
+	    that and could pass the result through?]
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+Cc: Steve French <sfrench@samba.org>
+---
+
+ fs/cifs/cifs_dfs_ref.c |  134 +++++++++++++++++++++++-------------------------
+ fs/cifs/cifsfs.h       |    6 ++
+ fs/cifs/dir.c          |    2 +
+ fs/cifs/inode.c        |    8 ++-
+ 4 files changed, 78 insertions(+), 72 deletions(-)
+
+diff --git a/fs/cifs/cifs_dfs_ref.c b/fs/cifs/cifs_dfs_ref.c
+index d6ced7a..8fc4943 100644
+--- a/fs/cifs/cifs_dfs_ref.c
++++ b/fs/cifs/cifs_dfs_ref.c
+@@ -256,35 +256,6 @@ static struct vfsmount *cifs_dfs_do_refmount(struct cifs_sb_info *cifs_sb,
+ 
+ }
+ 
+-static int add_mount_helper(struct vfsmount *newmnt, struct nameidata *nd,
+-				struct list_head *mntlist)
+-{
+-	/* stolen from afs code */
+-	int err;
+-
+-	mntget(newmnt);
+-	err = do_add_mount(newmnt, &nd->path, nd->path.mnt->mnt_flags | MNT_SHRINKABLE, mntlist);
+-	switch (err) {
+-	case 0:
+-		path_put(&nd->path);
+-		nd->path.mnt = newmnt;
+-		nd->path.dentry = dget(newmnt->mnt_root);
+-		schedule_delayed_work(&cifs_dfs_automount_task,
+-				      cifs_dfs_mountpoint_expiry_timeout);
+-		break;
+-	case -EBUSY:
+-		/* someone else made a mount here whilst we were busy */
+-		while (d_mountpoint(nd->path.dentry) &&
+-		       follow_down(&nd->path))
+-			;
+-		err = 0;
+-	default:
+-		mntput(newmnt);
+-		break;
+-	}
+-	return err;
+-}
+-
+ static void dump_referral(const struct dfs_info3_param *ref)
+ {
+ 	cFYI(1, "DFS: ref path: %s", ref->path_name);
+@@ -294,34 +265,30 @@ static void dump_referral(const struct dfs_info3_param *ref)
+ 				ref->path_consumed);
+ }
+ 
+-
+-static void*
+-cifs_dfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
++/*
++ * Create a vfsmount that we can automount
++ */
++static struct vfsmount *cifs_dfs_do_automount(struct dentry *mntpt)
+ {
+ 	struct dfs_info3_param *referrals = NULL;
+ 	unsigned int num_referrals = 0;
+ 	struct cifs_sb_info *cifs_sb;
+ 	struct cifsSesInfo *ses;
+-	char *full_path = NULL;
++	char *full_path;
+ 	int xid, i;
+-	int rc = 0;
+-	struct vfsmount *mnt = ERR_PTR(-ENOENT);
++	int rc;
++	struct vfsmount *mnt;
+ 
+ 	cFYI(1, "in %s", __func__);
+-	BUG_ON(IS_ROOT(dentry));
++	BUG_ON(IS_ROOT(mntpt));
+ 
+ 	xid = GetXid();
+ 
+-	dput(nd->path.dentry);
+-	nd->path.dentry = dget(dentry);
+-
+-	cifs_sb = CIFS_SB(dentry->d_inode->i_sb);
++	cifs_sb = CIFS_SB(mntpt->d_inode->i_sb);
++	mnt = ERR_PTR(-EINVAL);
+ 	ses = cifs_sb->tcon->ses;
+-
+-	if (!ses) {
+-		rc = -EINVAL;
+-		goto out_err;
+-	}
++	if (!ses)
++		goto free_xid;
+ 
+ 	/*
+ 	 * The MSDFS spec states that paths in DFS referral requests and
+@@ -329,56 +296,85 @@ cifs_dfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
+ 	 * the double backslashes usually used in the UNC. This function
+ 	 * gives us the latter, so we must adjust the result.
+ 	 */
+-	full_path = build_path_from_dentry(dentry);
+-	if (full_path == NULL) {
+-		rc = -ENOMEM;
+-		goto out_err;
+-	}
++	mnt = ERR_PTR(-ENOMEM);
++	full_path = build_path_from_dentry(mntpt);
++	if (full_path == NULL)
++		goto free_xid;
+ 
+ 	rc = get_dfs_path(xid, ses , full_path + 1, cifs_sb->local_nls,
+ 		&num_referrals, &referrals,
+ 		cifs_sb->mnt_cifs_flags & CIFS_MOUNT_MAP_SPECIAL_CHR);
+ 
++	mnt = ERR_PTR(-ENOENT);
+ 	for (i = 0; i < num_referrals; i++) {
+ 		int len;
+-		dump_referral(referrals+i);
++		dump_referral(referrals + i);
+ 		/* connect to a node */
+ 		len = strlen(referrals[i].node_name);
+ 		if (len < 2) {
+ 			cERROR(1, "%s: Net Address path too short: %s",
+ 					__func__, referrals[i].node_name);
+-			rc = -EINVAL;
+-			goto out_err;
++			mnt = ERR_PTR(-EINVAL);
++			break;
+ 		}
+ 		mnt = cifs_dfs_do_refmount(cifs_sb,
+ 				full_path, referrals + i);
+ 		cFYI(1, "%s: cifs_dfs_do_refmount:%s , mnt:%p", __func__,
+ 					referrals[i].node_name, mnt);
+-
+-		/* complete mount procedure if we accured submount */
+ 		if (!IS_ERR(mnt))
+-			break;
++			goto success;
+ 	}
+ 
+-	/* we need it cause for() above could exit without valid submount */
+-	rc = PTR_ERR(mnt);
+-	if (IS_ERR(mnt))
+-		goto out_err;
+-
+-	rc = add_mount_helper(mnt, nd, &cifs_dfs_automount_list);
++	/* no valid submounts were found; return error from get_dfs_path() by
++	 * preference */
++	if (rc != 0)
++		mnt = ERR_PTR(rc);
+ 
+-out:
+-	FreeXid(xid);
++success:
+ 	free_dfs_info_array(referrals, num_referrals);
+ 	kfree(full_path);
++free_xid:
++	FreeXid(xid);
+ 	cFYI(1, "leaving %s" , __func__);
+ 	return ERR_PTR(rc);
+-out_err:
+-	path_put(&nd->path);
+-	goto out;
++}
++
++/*
++ * Attempt to automount the referral
++ */
++struct vfsmount *cifs_dfs_d_automount(struct path *path)
++{
++	struct vfsmount *newmnt;
++	int err;
++
++	cFYI(1, "in %s", __func__);
++
++	newmnt = cifs_dfs_do_automount(path->dentry);
++	if (IS_ERR(newmnt)) {
++		cFYI(1, "leaving %s [automount failed]" , __func__);
++		return newmnt;
++	}
++
++	mntget(newmnt);
++	err = do_add_mount(newmnt, path, MNT_SHRINKABLE,
++			   &cifs_dfs_automount_list);
++	switch (err) {
++	case 0:
++		schedule_delayed_work(&cifs_dfs_automount_task,
++				      cifs_dfs_mountpoint_expiry_timeout);
++		cFYI(1, "leaving %s [ok]" , __func__);
++		return newmnt;
++	case -EBUSY:
++		/* someone else made a mount here whilst we were busy */
++		mntput(newmnt);
++		cFYI(1, "leaving %s [EBUSY]" , __func__);
++		return NULL;
++	default:
++		mntput(newmnt);
++		cFYI(1, "leaving %s [error %d]" , __func__, err);
++		return ERR_PTR(err);
++	}
+ }
+ 
+ const struct inode_operations cifs_dfs_referral_inode_operations = {
+-	.follow_link = cifs_dfs_follow_mountpoint,
+ };
+-
+diff --git a/fs/cifs/cifsfs.h b/fs/cifs/cifsfs.h
+index d82f5fb..34b18a6 100644
+--- a/fs/cifs/cifsfs.h
++++ b/fs/cifs/cifsfs.h
+@@ -95,6 +95,12 @@ extern int cifs_readdir(struct file *file, void *direntry, filldir_t filldir);
+ extern const struct dentry_operations cifs_dentry_ops;
+ extern const struct dentry_operations cifs_ci_dentry_ops;
+ 
++#ifdef CONFIG_CIFS_DFS_UPCALL
++extern struct vfsmount *cifs_dfs_d_automount(struct path *path);
++#else
++#define cifs_dfs_d_automount NULL
++#endif
++
+ /* Functions related to symlinks */
+ extern void *cifs_follow_link(struct dentry *direntry, struct nameidata *nd);
+ extern void cifs_put_link(struct dentry *direntry,
+diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
+index f9ed075..fc97233 100644
+--- a/fs/cifs/dir.c
++++ b/fs/cifs/dir.c
+@@ -795,6 +795,7 @@ cifs_d_revalidate(struct dentry *direntry, struct nameidata *nd)
+ 
+ const struct dentry_operations cifs_dentry_ops = {
+ 	.d_revalidate = cifs_d_revalidate,
++	.d_automount = cifs_dfs_d_automount,
+ /* d_delete:       cifs_d_delete,      */ /* not needed except for debugging */
+ };
+ 
+@@ -835,4 +836,5 @@ const struct dentry_operations cifs_ci_dentry_ops = {
+ 	.d_revalidate = cifs_d_revalidate,
+ 	.d_hash = cifs_ci_hash,
+ 	.d_compare = cifs_ci_compare,
++	.d_automount = cifs_dfs_d_automount,
+ };
+diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
+index 93f77d4..a1f810c 100644
+--- a/fs/cifs/inode.c
++++ b/fs/cifs/inode.c
+@@ -32,7 +32,7 @@
+ #include "fscache.h"
+ 
+ 
+-static void cifs_set_ops(struct inode *inode, const bool is_dfs_referral)
++static void cifs_set_ops(struct inode *inode)
+ {
+ 	struct cifs_sb_info *cifs_sb = CIFS_SB(inode->i_sb);
+ 
+@@ -60,7 +60,7 @@ static void cifs_set_ops(struct inode *inode, const bool is_dfs_referral)
+ 		break;
+ 	case S_IFDIR:
+ #ifdef CONFIG_CIFS_DFS_UPCALL
+-		if (is_dfs_referral) {
++		if (IS_AUTOMOUNT(inode)) {
+ 			inode->i_op = &cifs_dfs_referral_inode_operations;
+ 		} else {
+ #else /* NO DFS support, treat as a directory */
+@@ -167,7 +167,9 @@ cifs_fattr_to_inode(struct inode *inode, struct cifs_fattr *fattr)
+ 	}
+ 	spin_unlock(&inode->i_lock);
+ 
+-	cifs_set_ops(inode, fattr->cf_flags & CIFS_FATTR_DFS_REFERRAL);
++	if (fattr->cf_flags & CIFS_FATTR_DFS_REFERRAL)
++		inode->i_flags |= S_AUTOMOUNT;
++	cifs_set_ops(inode);
+ }
+ 
+ void
+
