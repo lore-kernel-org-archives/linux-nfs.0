@@ -1,64 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57863 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42338 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757362Ab0IGRcK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Sep 2010 13:32:10 -0400
-Date: Tue, 7 Sep 2010 13:31:18 -0400
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>,
-        Bian Naimeng <biannm@cn.fujitsu.com>, linux-nfs@vger.kernel.org
-Subject: Re: Query regarding NFS packet capture at application layer -
- umount operation.
-Message-ID: <20100907173118.GC13022@fieldses.org>
-References: <D3F292ADF945FB49B35E96C94C2061B90D19835A@nsmail.netscout.com>
- <4C85EE24.9070007@cn.fujitsu.com>
- <D3F292ADF945FB49B35E96C94C2061B90D198455@nsmail.netscout.com>
- <20100907131902.3f22b411@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100907131902.3f22b411@tlielax.poochiereds.net>
+	id S1755868Ab0I3NPc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 09:15:32 -0400
+Date: Thu, 30 Sep 2010 09:15:20 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: pnfs-all-latest client crash
+Message-ID: <20100930131520.GB751@fieldses.org>
+References: <20100921164211.GK26473@fieldses.org>
+ <4C98FCC3.50803@panasas.com>
+ <20100921190108.GA4385@fieldses.org>
+ <20100928155117.GK24465@fieldses.org>
+ <4CA35C9B.5050307@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4CA35C9B.5050307@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Sep 07, 2010 at 01:19:02PM -0400, Jeff Layton wrote:
-> On Tue, 7 Sep 2010 04:02:29 -0400
-> "Tayade, Nilesh" <Nilesh.Tayade@netscout.com> wrote:
+On Wed, Sep 29, 2010 at 05:34:51PM +0200, Benny Halevy wrote:
+> On 2010-09-28 17:51, J. Bruce Fields wrote:
+> > On Tue, Sep 21, 2010 at 03:01:08PM -0400, J. Bruce Fields wrote:
+> >> On Tue, Sep 21, 2010 at 08:43:15PM +0200, Benny Halevy wrote:
+> >>> On 2010-09-21 18:42, J. Bruce Fields wrote:
+> >>>> I get the following on pnfs-all-latest, while doing a non-pnfs 4.1 mount.
+> >>>
+> >>> Bruce, can you please provide you .config file?
+> >>> >From the registers value it's possible the calldata is used
+> >>> after free...
+> >>
+> >> Yep.  I ran a 'make oldconfig' on the appended and built from that.
+> >>
+> >> We've seen poisoning in trond's latest for-next as well.  Which I don't
+> >> think you're including.  But I'll add linux-nfs to the cc for that.
+> > 
+> > By the way, nightly tests on pnfs code havn't been running due to lack
+> > of upstream writeback fixes:
+> > 	b76b4014f9d988d2412b873e4d4c13c7f9afc4e4
+> > and
+> > 	6628bc74f1aa9c35dd386320bf7ec04f12edb1b3
+> > 
+> > (both in -rc4, I believe).
+> > 
+> > --b.
 > 
-> > > -----Original Message-----
-> > > From: Bian Naimeng [mailto:biannm@cn.fujitsu.com]
-> > > Sent: Tuesday, September 07, 2010 1:18 PM
-> > > To: Tayade, Nilesh
-> > > Cc: linux-nfs@vger.kernel.org
-> > > Subject: Re: Query regarding NFS packet capture at application layer
-> > > - umount operation.
-> > > 
-> > 
-> > 
-> > > > Could someone please explain why there is no NFS packet observed
-> > > during
-> > > > an unmount? Also there seems not much information, related to NFS
-> > > mount
-> > > > point being unmounted, in TCP packet. So is there any way to
-> > > detect the
-> > > > unmount operation by hacking such packets?
-> > > >
-> > > 
-> > >   I guess you used NFSv4. NFSv4 umount operation does not send any
-> > > NFS packet.
-> > >   The TCP packets you captured were sent by TCP close procedure,
-> > > because NFS
-> > >   umount operation need close the TCP connection with NFS server.
-> > 
-> > I am using NFSv3. (Sorry, I forgot to mention it in first email - so I
-> > have replied to my original email with capture file).
-> > 
-> 
-> I'm fairly sure that's still handled by the userspace piece. Do you
-> have a /sbin/umount.nfs? If not, that may be why.
+> OK, now that I've rebased onto -rc6 they should be there.
 
-Or if you're only capturing traffic to port 2049, that would also
-explain why you don't see anything.  (NFSv2/v3 mount/umount use
-different protocol.)
+Thanks.  Looks like v4 is happier now, but v4.1 mounts fail with -EIO.
+
+(That's on pnfs-all-latest; pnfs-submit is OK.)
 
 --b.
