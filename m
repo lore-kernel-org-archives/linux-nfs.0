@@ -1,80 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:10859 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932260Ab0IGUa1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Sep 2010 16:30:27 -0400
-Message-ID: <4C86A0E0.6050003@RedHat.com>
-Date: Tue, 07 Sep 2010 16:30:24 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/4] mount.nfs: Prepare way for "vers=4,rdma" mounts
-References: <20100907162156.3392.90376.stgit@seurat.1015granger.net> <20100907162638.3392.14786.stgit@seurat.1015granger.net> <4C869B70.4020405@RedHat.com> <8653371E-0798-4F57-9289-684A8D09B1C7@oracle.com>
-In-Reply-To: <8653371E-0798-4F57-9289-684A8D09B1C7@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:26845 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753026Ab0I3RcB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 13:32:01 -0400
+Subject: Re: ANNOUNCE: nfs-utils-1.2.3 released.
+Content-Type: text/plain; charset=utf-8
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20100930172842.GA12882@sith.mimuw.edu.pl>
+Date: Thu, 30 Sep 2010 13:31:40 -0400
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Steve Dickson <SteveD@redhat.com>
+Message-Id: <B90557BC-EDC3-43E8-96E8-C507C4165A1F@oracle.com>
+References: <4CA1E5E4.1070404@RedHat.com> <20100930172842.GA12882@sith.mimuw.edu.pl>
+To: =?utf-8?Q?Jan_R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hi Jan-
 
+Can you file this on bugzilla.linux-nfs.org and assign it to me?  It's likely that this feature isn't working for statd either.  I'll try to get right to it.
 
-On 09/07/2010 04:14 PM, Chuck Lever wrote:
+On Sep 30, 2010, at 1:28 PM, Jan Rękorajski wrote:
+
+> On Tue, 28 Sep 2010, Steve Dickson wrote:
 > 
-> On Sep 7, 2010, at 4:07 PM, Steve Dickson wrote:
+>> New Features in this release:
+>> 
+>>   * Both Client and server IPv6 support is available with the 
+>>     --enable-ipv6 configuration flag (which is on by default)
+>> 
+>>   * NFSoverRDMA mount support.
+>> 
+>>   * A large number of bug fixes.
 > 
->>
->>
->> On 09/07/2010 12:26 PM, Chuck Lever wrote:
->>> At some point, when the kernel starts to support "vers=4,rdma" mounts,
->>> we will want the mount.nfs command to pass "vers=4,rdma" mounts
->>> instead of rejecting them.
->>>
->>> Assuming that the kernel will reject these today with EPROTONOSUPPORT,
->>> that would cause the version fallback logic to go to "vers=3,rdma"
->>> automatically.  So the extra check we have now is not needed anyway.
->>>
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>>
->>> utils/mount/stropts.c |    7 -------
->>> 1 files changed, 0 insertions(+), 7 deletions(-)
->>>
->>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->>> index 9695c73..a8b22ce 100644
->>> --- a/utils/mount/stropts.c
->>> +++ b/utils/mount/stropts.c
->>> @@ -302,13 +302,6 @@ static int nfs_set_version(struct nfsmount_info *mi)
->>>
->>> 	if (strncmp(mi->type, "nfs4", 4) == 0)
->>> 		mi->version = 4;
->>> -	else {
->>> -		unsigned long protocol;
->>> -		if (!nfs_nfs_protocol(mi->options, &protocol))
->>> -			return 0;
->>> -		if (protocol == NFSPROTO_RDMA)
->>> -			mi->version = 3;
->>> -	}
->>>
->>> 	/*
->>> 	 * If we still don't know, check for version-specific
->>>
->> This is a show stopper... We can default to v4 because the callbacks.
+> Unfortunately there is a new misfeature in rpc.mountd that crept in
+> with IPv6 support.
+> Option '-p <port>' is no longer working, mountd succesfully registers
+> MNT1 and then fails with -EADDRINUSE for MNT2 and MNT3 on ip4/tcp,udp and
+> ip6/tcp,udp transports.
 > 
-> Again, this patch was for comments only, it isn't required.  
-I guess I missed that in your description.
-
-> But I don't understand your comment.
-We can not default to v4 because of the callbacks.
-
+> [root@home ~]# rpc.mountd -d all -F -p 4444
+> rpc.mountd: svc_tli_create: could not bind to requested address
+> rpc.mountd: Failed to create listener xprt (mountd, 2, udp)
+> rpc.mountd: svc_tli_create: could not bind to requested address
+> rpc.mountd: Failed to create listener xprt (mountd, 2, tcp)
+> rpc.mountd: svc_tli_create: could not bind to requested address
+> rpc.mountd: Failed to create listener xprt (mountd, 2, udp6)
+> rpc.mountd: svc_tli_create: could not bind to requested address
+> rpc.mountd: Failed to create listener xprt (mountd, 2, tcp6)
+> rpc.mountd: svc_tli_create: could not bind to requested address
+> rpc.mountd: Failed to create listener xprt (mountd, 3, udp)
+> rpc.mountd: svc_tli_create: could not bind to requested address
+> rpc.mountd: Failed to create listener xprt (mountd, 3, tcp)
+> rpc.mountd: svc_tli_create: could not bind to requested address
+> rpc.mountd: Failed to create listener xprt (mountd, 3, udp6)
+> rpc.mountd: svc_tli_create: could not bind to requested address
+> rpc.mountd: Failed to create listener xprt (mountd, 3, tcp6)
+> rpc.mountd: Kernel does not have pseudo root support.
+> rpc.mountd: NFS v4 mounts will be disabled unless fsid=0
+> rpc.mountd: is specfied in /etc/exports file.
+> rpc.mountd: Version 1.2.3 starting
 > 
-> We don't default to NFSv4 for RDMA today, because of the if clause I remove here.  
-> If no version is specified, it defaults to vers=3 for RDMA mounts.
-no... this is not the case with the above patched applied... 
-I do have a way to test... 
-
+> [root@home ~]# rpcinfo -t localhost 100005
+> program 100005 version 1 ready and waiting
 > 
-> I suggest we make it default to v4 in this case.  What is the callback requirement?
-Its not clear they work... 
+> If I start mountd without '-p' it succesfully registers all versions
+> on random ports.
+> 
+> [root@home ~]# rpc.mountd -d all -F 
+> rpc.mountd: Kernel does not have pseudo root support.
+> rpc.mountd: NFS v4 mounts will be disabled unless fsid=0
+> rpc.mountd: is specfied in /etc/exports file.
+> rpc.mountd: Version 1.2.3 starting
+> 
+> [root@home ~]# rpcinfo -t localhost 100005
+> program 100005 version 1 ready and waiting
+> program 100005 version 2 ready and waiting
+> program 100005 version 3 ready and waiting
+> 
+> Reverting b551b1fd0052de9b8c674b30c39d9f2a1e9d79cc cures the problem.
+> but I guess it's not the right thing to do.
+> 
+> -- 
+> Jan Rękorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
+> baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
+> BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
 
-steved.
+-- 
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
