@@ -1,84 +1,22 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:5770 "EHLO relay.sw.ru"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:53557 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752614Ab0I0KKP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Sep 2010 06:10:15 -0400
-Message-ID: <4CA06D7A.1010202@parallels.com>
-Date: Mon, 27 Sep 2010 14:10:02 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 8/8] sunrpc: Create sockets in net namespaces
-References: <4CA06C7A.5060307@parallels.com>
-In-Reply-To: <4CA06C7A.5060307@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754642Ab0I3WXs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 18:23:48 -0400
+In-Reply-To: <4CA455C4.4030705@panasas.com>
+References: <4C7BDD8C.40509@panasas.com> <4CA31DC3.8070300@panasas.com> <4CA34830.1040703@desy.de> <4CA34883.40005@desy.de> <4CA34B93.2010100@panasas.com> <4CA44AAA.4030803@panasas.com> <4CA45462.1070503@desy.de> <4CA455C4.4030705@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>, linux-nfs-owner@vger.kernel.org
+Subject: Re: pnfs git tree status pnfs-all-2.6.36-rc6-2010-09-29
+Message-ID: <OF0CB10368.34D43BDF-ON882577AE.007AC71D-882577AE.007B026B@us.ibm.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Date: Thu, 30 Sep 2010 15:23:36 -0700
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The context is already known in all the sock_create callers.
-
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
----
- net/sunrpc/svcsock.c  |    2 +-
- net/sunrpc/xprtsock.c |    8 ++++----
- 2 files changed, 5 insertions(+), 5 deletions(-)
-
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 5593385..88de3d0 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1425,7 +1425,7 @@ static struct svc_xprt *svc_create_socket(struct svc_serv *serv,
- 		return ERR_PTR(-EINVAL);
- 	}
- 
--	error = sock_create_kern(family, type, protocol, &sock);
-+	error = __sock_create(net, family, type, protocol, &sock, 1);
- 	if (error < 0)
- 		return ERR_PTR(error);
- 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 292f449..aa24ba5 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1682,7 +1682,7 @@ static void xs_udp_connect_worker4(struct work_struct *work)
- 	/* Start by resetting any existing state */
- 	xs_reset_transport(transport);
- 
--	err = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
-+	err = __sock_create(xprt->xprt_net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
- 	if (err < 0) {
- 		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
- 		goto out;
-@@ -1727,7 +1727,7 @@ static void xs_udp_connect_worker6(struct work_struct *work)
- 	/* Start by resetting any existing state */
- 	xs_reset_transport(transport);
- 
--	err = sock_create_kern(PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock);
-+	err = __sock_create(xprt->xprt_net, PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
- 	if (err < 0) {
- 		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
- 		goto out;
-@@ -1933,7 +1933,7 @@ static struct socket *xs_create_tcp_sock4(struct rpc_xprt *xprt,
- 	int err;
- 
- 	/* start from scratch */
--	err = sock_create_kern(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sock);
-+	err = __sock_create(xprt->xprt_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sock, 1);
- 	if (err < 0) {
- 		dprintk("RPC:       can't create TCP transport socket (%d).\n",
- 				-err);
-@@ -1972,7 +1972,7 @@ static struct socket *xs_create_tcp_sock6(struct rpc_xprt *xprt,
- 	int err;
- 
- 	/* start from scratch */
--	err = sock_create_kern(PF_INET6, SOCK_STREAM, IPPROTO_TCP, &sock);
-+	err = __sock_create(xprt->xprt_net, PF_INET6, SOCK_STREAM, IPPROTO_TCP, &sock, 1);
- 	if (err < 0) {
- 		dprintk("RPC:       can't create TCP transport socket (%d).\n",
- 				-err);
--- 
-1.5.5.6
-
+It been a while since I used pNFS, I see GETATTR requests going to the DS, 
+did I configure something wrong or is the same old bug that keeps coming 
+back.
+Thanks, Marc.
