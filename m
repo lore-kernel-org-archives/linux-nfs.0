@@ -1,142 +1,271 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42218 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752486Ab0IVWFl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Sep 2010 18:05:41 -0400
-Received: from localhost.localdomain (vikramyadav.hq.netapp.com [10.58.61.118] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o8MM5M8S020412
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Sep 2010 15:05:29 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 08/12] RFC: pnfs: filelayout: introduce minimal file layout driver
-Date: Wed, 22 Sep 2010 18:05:06 -0400
-Message-Id: <1285193110-24073-9-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1285193110-24073-1-git-send-email-iisaman@netapp.com>
-References: <1285193110-24073-1-git-send-email-iisaman@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:17922 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932121Ab0I3PoI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 11:44:08 -0400
+Subject: Re: [PATCH] nfs-utils: Add nfs.upcall for idmapper
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4CA48CEF.9060600@netapp.com>
+Date: Thu, 30 Sep 2010 11:42:35 -0400
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        SteveD@redhat.com
+Message-Id: <59CA8CDE-0A68-4F99-BB09-804D24452148@oracle.com>
+References: <4CA39681.3000104@netapp.com> <1285798396.3557.18.camel@heimdal.trondhjem.org> <4CA48CEF.9060600@netapp.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-This driver just registers itself and supplies trivial mount/umount functions.
+On Sep 30, 2010, at 9:13 AM, Bryan Schumaker wrote:
 
-Signed-off-by: TBD - melding/reorganization of several patches
----
- fs/nfs/Makefile         |    3 ++
- fs/nfs/nfs4filelayout.c |   78 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs_fs.h  |    1 +
- 3 files changed, 82 insertions(+), 0 deletions(-)
- create mode 100644 fs/nfs/nfs4filelayout.c
+> On 09/29/2010 06:13 PM, Trond Myklebust wrote:
+>> On Wed, 2010-09-29 at 15:41 -0400, Bryan Schumaker wrote:
+>>> +	else
+>>> +		keyctl_negate(key, timeout, 0);
+>> 
+>> Hmm... I've been looking more closely at the design of request-key. It
+>> looks as if the idea there is that you are supposed to return without
+>> instantiating the key if you are unable to service the request.
+>> 
+>> Basically, if your program exits with a non-zero value, then request-key
+>> is supposed to look at the next matching entry in /etc/request-key.conf
+>> (until it hits they very last entry, which is always 'keyctl negate').
+>> 
+>> Sorry, Bryan. The above line was a result of me bugging you. I should
+>> have checked the sources first...
+>> 
+>>> +	free(arg);
+>>> +	return rc;
+>>> +}
+>> 
+>> Cheers
+>>  Trond
+> 
+> 
+> No problem.  Here is an updated patch with the line removed.
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index bb9e773..08a8889 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -18,3 +18,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
- nfs-$(CONFIG_SYSCTL) += sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
-+
-+obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
-+nfs_layout_nfsv41_files-y := nfs4filelayout.o
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-new file mode 100644
-index 0000000..696e283
---- /dev/null
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -0,0 +1,78 @@
-+/*
-+ *  Module for the pnfs nfs4 file layout driver.
-+ *  Defines all I/O and Policy interface operations, plus code
-+ *  to register itself with the pNFS client.
-+ *
-+ *  Copyright (c) 2002
-+ *  The Regents of the University of Michigan
-+ *  All Rights Reserved
-+ *
-+ *  Dean Hildebrand <dhildebz@umich.edu>
-+ *
-+ *  Permission is granted to use, copy, create derivative works, and
-+ *  redistribute this software and such derivative works for any purpose,
-+ *  so long as the name of the University of Michigan is not used in
-+ *  any advertising or publicity pertaining to the use or distribution
-+ *  of this software without specific, written prior authorization. If
-+ *  the above copyright notice or any other identification of the
-+ *  University of Michigan is included in any copy of any portion of
-+ *  this software, then the disclaimer below must also be included.
-+ *
-+ *  This software is provided as is, without representation or warranty
-+ *  of any kind either express or implied, including without limitation
-+ *  the implied warranties of merchantability, fitness for a particular
-+ *  purpose, or noninfringement.  The Regents of the University of
-+ *  Michigan shall not be liable for any damages, including special,
-+ *  indirect, incidental, or consequential damages, with respect to any
-+ *  claim arising out of or in connection with the use of the software,
-+ *  even if it has been or is hereafter advised of the possibility of
-+ *  such damages.
-+ */
-+
-+#include <linux/nfs_fs.h>
-+#include "pnfs.h"
-+
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+MODULE_LICENSE("GPL");
-+MODULE_AUTHOR("Dean Hildebrand <dhildebz@umich.edu>");
-+MODULE_DESCRIPTION("The NFSv4 file layout driver");
-+
-+int
-+filelayout_initialize_mountpoint(struct nfs_server *nfss)
-+{
-+	return 0;
-+}
-+
-+int
-+filelayout_uninitialize_mountpoint(struct nfs_server *nfss)
-+{
-+	dprintk("--> %s\n", __func__);
-+
-+	return 0;
-+}
-+
-+static struct pnfs_layoutdriver_type filelayout_type = {
-+	.id = LAYOUT_NFSV4_1_FILES,
-+	.name = "LAYOUT_NFSV4_1_FILES",
-+	.owner = THIS_MODULE,
-+	.initialize_mountpoint   = filelayout_initialize_mountpoint,
-+	.uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
-+};
-+
-+static int __init nfs4filelayout_init(void)
-+{
-+	printk(KERN_INFO "%s: NFSv4 File Layout Driver Registering...\n",
-+	       __func__);
-+	return pnfs_register_layoutdriver(&filelayout_type);
-+}
-+
-+static void __exit nfs4filelayout_exit(void)
-+{
-+	printk(KERN_INFO "%s: NFSv4 File Layout Driver Unregistering...\n",
-+	       __func__);
-+	pnfs_unregister_layoutdriver(&filelayout_type);
-+}
-+
-+module_init(nfs4filelayout_init);
-+module_exit(nfs4filelayout_exit);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index aba3da2..499872f 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -616,6 +616,7 @@ nfs_fileid_to_ino_t(u64 fileid)
- #define NFSDBG_MOUNT		0x0400
- #define NFSDBG_FSCACHE		0x0800
- #define NFSDBG_PNFS		0x1000
-+#define NFSDBG_PNFS_LD		0x2000
- #define NFSDBG_ALL		0xFFFF
- 
- #ifdef __KERNEL__
+Overall this work seems like a positive direction.
+
+I might choose a less generic name for this program, unless there are plans to make it handle all NFS upcalls, eventually.  How about nfs.idmap ?
+
+Should nfs.upcall have its own man page?  My opinion is that it should.  That might be a better place for the setup information (needed by mortal system administrators) added under Documentation/ by an earlier patch.  Documentation/ is an appropriate place for the upcall design information, though.
+
+Also, I've been looking at the Mesta-Adamson draft that provides NFSv4 domain information via DNS.  I'd like to see Linux make use of this TXT record, as Solaris does today.  It would help make Linux NFSv4 more automatically configurable, especially in heterogeneous environments.
+
+As I understand it, nfs.upcall would obviate rpc.idmapd, correct?  In that case, what entity would be responsible for a putative DNS lookup to determine the local NFSv4 domain name?  How would this information be cached?
+
+Finally, if at all possible, it would be better if the kernel could automatically recognize and use nfs.upcall rather than the legacy idmapping mechanism.  My experience with CONFIG options is that people will almost always choose the wrong setting no matter how many large neon arrows you add.  I know there are likely some technical challenges here.
+
+> Bryan
+> 
+> 
+> 
+> This patch adds the nfs.upcall program to nfs-utils.  This program is called by
+> the nfs idmapper through request-keys to map between uid / user name and
+> gid / group name.
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+> diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
+> new file mode 100644
+> index 0000000..84bc112
+> --- /dev/null
+> +++ b/aclocal/keyutils.m4
+> @@ -0,0 +1,11 @@
+> +dnl Checks for keyutils library and headers
+> +dnl
+> +AC_DEFUN([AC_KEYUTILS], [
+> +
+> +  dnl Check for libkeyutils; do not add to LIBS if found
+> +  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
+> +  AC_SUBST(LIBKEYUTILS)
+> +
+> +  AC_CHECK_HEADERS([keyutils.h], ,
+> +  		   [AC_MSG_ERROR([keyutils.h header not found.])])
+> +])dnl
+> diff --git a/configure.ac b/configure.ac
+> index 3058be6..a5e8620 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
+>   dnl check for nfsidmap libraries and headers
+>   AC_LIBNFSIDMAP
+> 
+> +  dnl check for the keyutils libraries and headers
+> +  AC_KEYUTILS
+> +
+>   dnl librpcsecgss already has a dependency on libgssapi,
+>   dnl but we need to make sure we get the right version
+>   if test "$enable_gss" = yes; then
+> @@ -435,6 +438,7 @@ AC_CONFIG_FILES([
+> 	utils/mountd/Makefile
+> 	utils/nfsd/Makefile
+> 	utils/nfsstat/Makefile
+> +	utils/nfs.upcall/Makefile
+> 	utils/showmount/Makefile
+> 	utils/statd/Makefile
+> 	tests/Makefile
+> diff --git a/utils/Makefile.am b/utils/Makefile.am
+> index 8665183..0104a6c 100644
+> --- a/utils/Makefile.am
+> +++ b/utils/Makefile.am
+> @@ -4,6 +4,7 @@ OPTDIRS =
+> 
+> if CONFIG_NFSV4
+> OPTDIRS += idmapd
+> +OPTDIRS += nfs.upcall
+> endif
+> 
+> if CONFIG_GSS
+> diff --git a/utils/nfs.upcall/Makefile.am b/utils/nfs.upcall/Makefile.am
+> new file mode 100644
+> index 0000000..52afd3d
+> --- /dev/null
+> +++ b/utils/nfs.upcall/Makefile.am
+> @@ -0,0 +1,7 @@
+> +## Process this file with automake to produce Makefile.in
+> +
+> +sbin_PROGRAMS	= nfs.upcall
+> +nfs_upcall_SOURCES = nfs.upcall.c
+> +nfs_upcall_LDADD = -lnfsidmap -lkeyutils
+> +
+> +MAINTAINERCLEANFILES = Makefile.in
+> diff --git a/utils/nfs.upcall/nfs.upcall.c b/utils/nfs.upcall/nfs.upcall.c
+> new file mode 100644
+> index 0000000..9200972
+> --- /dev/null
+> +++ b/utils/nfs.upcall/nfs.upcall.c
+> @@ -0,0 +1,118 @@
+> +
+> +#include <stdarg.h>
+> +#include <stdio.h>
+> +#include <stdlib.h>
+> +#include <string.h>
+> +
+> +#include <pwd.h>
+> +#include <grp.h>
+> +#include <keyutils.h>
+> +#include <nfsidmap.h>
+> +
+> +#include <syslog.h>
+> +
+> +/* gcc nfs.upcall.c -o nfs.upcall -l nfsidmap -l keyutils */
+> +
+> +#define MAX_ID_LEN   11
+> +#define IDMAP_NAMESZ 128
+> +#define USER  1
+> +#define GROUP 0
+> +
+> +
+> +/*
+> + * Find either a user or group id based on the name@domain string
+> + */
+> +int id_lookup(char *name_at_domain, key_serial_t key, int type)
+> +{
+> +	char id[MAX_ID_LEN];
+> +	uid_t uid = 0;
+> +	gid_t gid = 0;
+> +	int rc;
+> +
+> +	if (type == USER) {
+> +		rc = nfs4_owner_to_uid(name_at_domain, &uid);
+> +		sprintf(id, "%u", uid);
+> +	} else {
+> +		rc = nfs4_group_owner_to_gid(name_at_domain, &gid);
+> +		sprintf(id, "%u", gid);
+> +	}
+> +
+> +	if (rc == 0)
+> +		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
+> +
+> +	return rc;
+> +}
+> +
+> +/*
+> + * Find the name@domain string from either a user or group id
+> + */
+> +int name_lookup(char *id, key_serial_t key, int type)
+> +{
+> +	char name[IDMAP_NAMESZ];
+> +	char domain[NFS4_MAX_DOMAIN_LEN];
+> +	uid_t uid;
+> +	gid_t gid;
+> +	int rc;
+> +
+> +	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
+> +	if (rc != 0) {
+> +		rc = -1;
+> +		goto out;
+> +	}
+> +
+> +	if (type == USER) {
+> +		uid = atoi(id);
+> +		rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
+> +	} else {
+> +		gid = atoi(id);
+> +		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
+> +	}
+> +
+> +	if (rc == 0)
+> +		rc = keyctl_instantiate(key, &name, strlen(name), 0);
+> +
+> +out:
+> +	return rc;
+> +}
+> +
+> +int main(int argc, char **argv)
+> +{
+> +	char *arg;
+> +	char *value;
+> +	char *type;
+> +	int rc = 1;
+> +	int timeout = 600;
+> +	key_serial_t key;
+> +
+> +	if (argc < 3)
+> +		return 1;
+> +
+> +	arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
+> +	strcpy(arg, argv[2]);
+> +	type = strtok(arg, ":");
+> +	value = strtok(NULL, ":");
+> +
+> +	if (argc == 4) {
+> +		timeout = atoi(argv[3]);
+> +		if (timeout < 0)
+> +			timeout = 0;
+> +	}
+> +
+> +	key = strtol(argv[1], NULL, 10);
+> +
+> +	if (strcmp(type, "uid") == 0)
+> +		rc = id_lookup(value, key, USER);
+> +	else if (strcmp(type, "gid") == 0)
+> +		rc = id_lookup(value, key, GROUP);
+> +	else if (strcmp(type, "user") == 0)
+> +		rc = name_lookup(value, key, USER);
+> +	else if (strcmp(type, "group") == 0)
+> +		rc = name_lookup(value, key, GROUP);
+> +
+> +	/* Set timeout to 5 (600 seconds) minutes */
+> +	if (rc == 0)
+> +		keyctl_set_timeout(key, timeout);
+> +
+> +	free(arg);
+> +	return rc;
+> +}
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.2.1
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
