@@ -1,176 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42226 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:39440 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756779Ab0ITQI4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Sep 2010 12:08:56 -0400
-Date: Mon, 20 Sep 2010 12:07:32 -0400
+	id S932121Ab0I3PoD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 11:44:03 -0400
+Date: Thu, 30 Sep 2010 11:43:50 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: George Mamalakis <mamalos@eng.auth.gr>
+To: Benny Halevy <bhalevy@panasas.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfsv3 gssapi client?
-Message-ID: <20100920160732.GK4580@fieldses.org>
-References: <4C938F3B.4030604@eng.auth.gr>
- <20100917174328.GC25515@fieldses.org>
- <4C972DB3.2050405@eng.auth.gr>
- <20100920145643.GD4580@fieldses.org>
- <4C978008.50805@eng.auth.gr>
+Subject: Re: pnfs-all-latest client crash
+Message-ID: <20100930154350.GB6598@fieldses.org>
+References: <20100921164211.GK26473@fieldses.org>
+ <4C98FCC3.50803@panasas.com>
+ <20100921190108.GA4385@fieldses.org>
+ <4CA4ABED.7080706@panasas.com>
+ <20100930152944.GA6598@fieldses.org>
+ <4CA4ADFA.2090807@panasas.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4C978008.50805@eng.auth.gr>
+In-Reply-To: <4CA4ADFA.2090807@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Sep 20, 2010 at 06:38:48PM +0300, George Mamalakis wrote:
->  On 20/09/2010 17:56, J. Bruce Fields wrote:
-> >
-> >Ouch.  Well, that's a problem.
-> >
-> >(And have you checked the log files to make sure it's gssd segfaulting
-> >and not some kind of crash in the kernel?)
-> >
-> >--b.
-> >
+On Thu, Sep 30, 2010 at 05:34:18PM +0200, Benny Halevy wrote:
+> On 2010-09-30 17:29, J. Bruce Fields wrote:
+> > On Thu, Sep 30, 2010 at 05:25:33PM +0200, Benny Halevy wrote:
+> >> On 2010-09-21 21:01, J. Bruce Fields wrote:
+> >>> On Tue, Sep 21, 2010 at 08:43:15PM +0200, Benny Halevy wrote:
+> >>>> On 2010-09-21 18:42, J. Bruce Fields wrote:
+> >>>>> I get the following on pnfs-all-latest, while doing a non-pnfs 4.1 mount.
+> >>>>
+> >>>> Bruce, can you please provide you .config file?
+> >>>> >From the registers value it's possible the calldata is used
+> >>>> after free...
+> >>>
+> >>> Yep.  I ran a 'make oldconfig' on the appended and built from that.
+> >>>
+> >>> We've seen poisoning in trond's latest for-next as well.  Which I don't
+> >>> think you're including.  But I'll add linux-nfs to the cc for that.
+> >>>
+> >>> --b.
+> >>>
+> >>> #
+> >>> # Automatically generated make config: don't edit
+> >>> # Linux kernel version: 2.6.36-rc4
+> >>> # Wed Sep 15 14:57:18 2010
+> >>> #
+> > ...
+> >>> # CONFIG_INPUT_TABL
+> >>
+> >> Looks like the message got truncated :-(
+> > 
+> > Huh.  Sorry about that!
 > 
-> Yes, it segfaults, even the log shows it. It's a null pointer
-> exception. I used gdb in gssd and this is my outcome:
-> 
-> 0xb783f424 in __kernel_vsyscall ()
-> (gdb) c
-> Continuing.
-> 
-> Program received signal SIG37, Real-time event 37.
-> 0xb783f424 in __kernel_vsyscall ()
-> (gdb) c
-> Continuing.
-> 
-> Program received signal SIG37, Real-time event 37.
-> 0xb783f424 in __kernel_vsyscall ()
-> (gdb) c
-> Continuing.
-> 
-> Program received signal SIGSEGV, Segmentation fault.
-> 0xb72b4c8e in __gss_get_mechanism_cred () from /usr/lib/libgssglue.so.1
-> (gdb) bt
-> #0  0xb72b4c8e in __gss_get_mechanism_cred () from /usr/lib/libgssglue.so.1
-> #1  0xb72b5c2c in gss_init_sec_context () from /usr/lib/libgssglue.so.1
-> #2  0xb776c215 in authgss_refresh () from /usr/lib/libtirpc.so.1
-> #3  0xb776c67d in authgss_create () from /usr/lib/libtirpc.so.1
-> #4  0xb776c779 in authgss_create_default () from /usr/lib/libtirpc.so.1
-> #5  0x0804cbdc in ?? ()
-> #6  0x0804cf9f in ?? ()
-> #7  0x0804d7c8 in ?? ()
-> #8  0x0804b7a8 in ?? ()
-> #9  0x0804b309 in ?? ()
-> #10 0xb761cc76 in __libc_start_main () from /lib/libc.so.6
-> #11 0x0804a621 in ?? ()
-> (gdb) info r
-> eax            0x0    0
-> ecx            0x9    9
-> edx            0x0    0
-> ebx            0xb72b9710    -1221880048
-> esp            0xbfe0b844    0xbfe0b844
-> ebp            0xbfe0b858    0xbfe0b858
-> esi            0x9    9
-> edi            0x9370928    154601768
-> eip            0xb72b4c8e    0xb72b4c8e <__gss_get_mechanism_cred+62>
-> eflags         0x210246    [ PF ZF IF RF ID ]
-> cs             0x73    115
-> ss             0x7b    123
-> ds             0x7b    123
-> es             0x7b    123
-> fs             0x0    0
-> gs             0x33    51
-> (gdb) disass $eip
-> Dump of assembler code for function __gss_get_mechanism_cred:
->    0xb72b4c50 <+0>:    push   %ebp
->    0xb72b4c51 <+1>:    mov    %esp,%ebp
->    0xb72b4c53 <+3>:    push   %edi
->    0xb72b4c54 <+4>:    push   %esi
->    0xb72b4c55 <+5>:    sub    $0xc,%esp
->    0xb72b4c58 <+8>:    mov    0x8(%ebp),%ecx
->    0xb72b4c5b <+11>:    test   %ecx,%ecx
->    0xb72b4c5d <+13>:    jne    0xb72b4c68 <__gss_get_mechanism_cred+24>
->    0xb72b4c5f <+15>:    add    $0xc,%esp
->    0xb72b4c62 <+18>:    xor    %eax,%eax
->    0xb72b4c64 <+20>:    pop    %esi
->    0xb72b4c65 <+21>:    pop    %edi
->    0xb72b4c66 <+22>:    pop    %ebp
->    0xb72b4c67 <+23>:    ret
->    0xb72b4c68 <+24>:    mov    0x8(%ebp),%eax
->    0xb72b4c6b <+27>:    mov    (%eax),%eax
->    0xb72b4c6d <+29>:    test   %eax,%eax
->    0xb72b4c6f <+31>:    mov    %eax,-0x10(%ebp)
->    0xb72b4c72 <+34>:    jle    0xb72b4c5f <__gss_get_mechanism_cred+15>
->    0xb72b4c74 <+36>:    mov    0xc(%ebp),%ecx
->    0xb72b4c77 <+39>:    mov    0x8(%ebp),%eax
->    0xb72b4c7a <+42>:    mov    (%ecx),%edx
->    0xb72b4c7c <+44>:    mov    0x4(%eax),%eax
->    0xb72b4c7f <+47>:    mov    %edx,-0x14(%ebp)
->    0xb72b4c82 <+50>:    mov    %eax,-0xc(%ebp)
->    0xb72b4c85 <+53>:    xor    %eax,%eax
->    0xb72b4c87 <+55>:    nop
->    0xb72b4c88 <+56>:    mov    -0xc(%ebp),%edx
->    0xb72b4c8b <+59>:    mov    -0x14(%ebp),%ecx
-> => 0xb72b4c8e <+62>:    cmp    (%edx,%eax,8),%ecx
->    0xb72b4c91 <+65>:    jne    0xb72b4cab <__gss_get_mechanism_cred+91>
->    0xb72b4c93 <+67>:    mov    0xc(%ebp),%edx
->    0xb72b4c96 <+70>:    mov    -0xc(%ebp),%ecx
->    0xb72b4c99 <+73>:    mov    0x4(%edx),%esi
->    0xb72b4c9c <+76>:    mov    -0x14(%ebp),%edx
-> ---Type <return> to continue, or q <return> to quit---q
-> Quit
-> (gdb) info r
-> eax            0x0    0
-> ecx            0x9    9
-> edx            0x0    0
-> ebx            0xb72b9710    -1221880048
-> esp            0xbfe0b844    0xbfe0b844
-> ebp            0xbfe0b858    0xbfe0b858
-> esi            0x9    9
-> edi            0x9370928    154601768
-> eip            0xb72b4c8e    0xb72b4c8e <__gss_get_mechanism_cred+62>
-> eflags         0x210246    [ PF ZF IF RF ID ]
-> cs             0x73    115
-> ss             0x7b    123
-> ds             0x7b    123
-> es             0x7b    123
-> fs             0x0    0
-> gs             0x33    51
-> 
-> 
-> Where you can see the null reference.
-> 
-> This, on the other hand, reminded me a discussion I had in the
-> fbsd-stable list, where somebody advised me to use des-cbc-crc
-> keytabs, and then experiment with other encryption types. Even
-> though I didn't have such issues in fbsd, this might be the case on
-> this problem. Maybe linux tries to compare an inexistent mech-type
-> (or enc-type, whatever) with one of it's list, and hence it
-> segfaults. So, to shed a little more light into the issue:
-> 
-> - the kdc (not the nfs-server) runs fbsd8, heimdal-1.2.1.
-> - on the linuxbox when I "kinit -k linuxclient" everything works fine.
-> - on the linux client "ktutil -k /etc/krb5.keytab list" shows:
-> /etc/krb5.keytab:
-> 
-> Vno  Type                     Principal
-> Aliases
->   1  des-cbc-md5              host/linuxclient@EXAMPLE
->   1  des-cbc-md4              host/linuxclient@EXAMPLE
->   1  des-cbc-crc              host/linuxclient@EXAMPLE
->   1  aes256-cts-hmac-sha1-96  host/linuxclient@EXAMPLE
->   1  des3-cbc-sha1            host/linuxclient@EXAMPLE
->   1  arcfour-hmac-md5         host/linuxclient@EXAMPLE
-> 
-> So maybe what I have to do next is to create a keytab of des-cbc-crc
-> encryption-type only for the client (maybe also for the nfsserver as
-> well..) and see how it'll behave...but I will do it tomorrow.
+> And I presume you config all pNFS options as 'N', right?
 
-OK, thanks for the investigation so far!
-
-Unfortunately, I don't know who's going to follow up on this soon, so
-you may also want to get out the source that was built from, try to
-figure exactly what line the NULL dereference is happening on, which
-caller passed in the bad data, etc.
+I'm just running make oldconfig over that.  Unless the pnfs patches are
+defaulting those options to 'Y', then yes, that must be what it's
+doing....
 
 --b.
