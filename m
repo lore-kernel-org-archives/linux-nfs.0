@@ -1,64 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:22111 "EHLO relay.sw.ru"
+Received: from sith.mimuw.edu.pl ([193.0.96.4]:58665 "EHLO sith.mimuw.edu.pl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754316Ab0IOQFq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Sep 2010 12:05:46 -0400
-Message-ID: <4C90EECB.9050103@parallels.com>
-Date: Wed, 15 Sep 2010 20:05:31 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/9] sunrpc: Start making sunrpc work in containers
-References: <4C90BADB.10700@parallels.com> <4C90E6D2.3030008@panasas.com>
-In-Reply-To: <4C90E6D2.3030008@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+	id S932268Ab0I3Rkw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 13:40:52 -0400
+Date: Thu, 30 Sep 2010 19:40:50 +0200
+From: Jan =?utf-8?Q?R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: Re: ANNOUNCE: nfs-utils-1.2.3 released.
+Message-ID: <20100930174050.GB12882@sith.mimuw.edu.pl>
+References: <4CA1E5E4.1070404@RedHat.com> <20100930172842.GA12882@sith.mimuw.edu.pl> <B90557BC-EDC3-43E8-96E8-C507C4165A1F@oracle.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <B90557BC-EDC3-43E8-96E8-C507C4165A1F@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 09/15/2010 07:31 PM, Boaz Harrosh wrote:
-> On 09/15/2010 02:23 PM, Pavel Emelyanov wrote:
->> Hello everyone!
->>
->> I would like to prepare the sunrpc layer for working in a containerized
->> environments. The ultimate goal is to make both nfs client and server
->> work in containers. Hopefully you won't object :)
->>
->> Not to look like an idle talker I've prepared this set which makes the
->> /proc/net/rpc appear in net namespaces and made the ip_map_cache be per-net.
->>
->> I do not have any plans about when this patches appear at Linus tree and
->> thus do not know which git tree to hack on. That said I prepared the patches
->> against the net-next tree (I have some custom netns debugging code in it
->> and don't want to port it around in vain).
->>
->> Looking forward to your feedback.
->>
+On Thu, 30 Sep 2010, Chuck Lever wrote:
+
+> Hi Jan-
 > 
-> We are very curios people and would like to know more.
+> Can you file this on bugzilla.linux-nfs.org and assign it to me?  It's
+> likely that this feature isn't working for statd either.  I'll try to
+> get right to it.
 
-Sure.
-
-> What does it mean to work in containers? Why is it better for
-> the client why is it better for the server? who and how to enjoy
-> this benefits. Does it have any effects on the operation of nfs/nfsd?
-> What problem does it solve?
-
-That's an old question actually. What does it mean, why is it better, who
-and how to enjoy etc. were answered years ago. Do you want me to google these
-articles for you?
-
-If I misunderstood your question, please rephrase.
-
-Thanks
-Pavel
-
-> Thanks
-> Boaz
+Done.
+https://bugzilla.linux-nfs.org/show_bug.cgi?id=190
+ 
+> On Sep 30, 2010, at 1:28 PM, Jan Rękorajski wrote:
 > 
->> Thanks,
->> Pavel
+> > On Tue, 28 Sep 2010, Steve Dickson wrote:
+> > 
+> >> New Features in this release:
+> >> 
+> >>   * Both Client and server IPv6 support is available with the 
+> >>     --enable-ipv6 configuration flag (which is on by default)
+> >> 
+> >>   * NFSoverRDMA mount support.
+> >> 
+> >>   * A large number of bug fixes.
+> > 
+> > Unfortunately there is a new misfeature in rpc.mountd that crept in
+> > with IPv6 support.
+> > Option '-p <port>' is no longer working, mountd succesfully registers
+> > MNT1 and then fails with -EADDRINUSE for MNT2 and MNT3 on ip4/tcp,udp and
+> > ip6/tcp,udp transports.
+> > 
+> > [root@home ~]# rpc.mountd -d all -F -p 4444
+> > rpc.mountd: svc_tli_create: could not bind to requested address
+> > rpc.mountd: Failed to create listener xprt (mountd, 2, udp)
+> > rpc.mountd: svc_tli_create: could not bind to requested address
+> > rpc.mountd: Failed to create listener xprt (mountd, 2, tcp)
+> > rpc.mountd: svc_tli_create: could not bind to requested address
+> > rpc.mountd: Failed to create listener xprt (mountd, 2, udp6)
+> > rpc.mountd: svc_tli_create: could not bind to requested address
+> > rpc.mountd: Failed to create listener xprt (mountd, 2, tcp6)
+> > rpc.mountd: svc_tli_create: could not bind to requested address
+> > rpc.mountd: Failed to create listener xprt (mountd, 3, udp)
+> > rpc.mountd: svc_tli_create: could not bind to requested address
+> > rpc.mountd: Failed to create listener xprt (mountd, 3, tcp)
+> > rpc.mountd: svc_tli_create: could not bind to requested address
+> > rpc.mountd: Failed to create listener xprt (mountd, 3, udp6)
+> > rpc.mountd: svc_tli_create: could not bind to requested address
+> > rpc.mountd: Failed to create listener xprt (mountd, 3, tcp6)
+> > rpc.mountd: Kernel does not have pseudo root support.
+> > rpc.mountd: NFS v4 mounts will be disabled unless fsid=0
+> > rpc.mountd: is specfied in /etc/exports file.
+> > rpc.mountd: Version 1.2.3 starting
+> > 
+> > [root@home ~]# rpcinfo -t localhost 100005
+> > program 100005 version 1 ready and waiting
+> > 
+> > If I start mountd without '-p' it succesfully registers all versions
+> > on random ports.
+> > 
+> > [root@home ~]# rpc.mountd -d all -F 
+> > rpc.mountd: Kernel does not have pseudo root support.
+> > rpc.mountd: NFS v4 mounts will be disabled unless fsid=0
+> > rpc.mountd: is specfied in /etc/exports file.
+> > rpc.mountd: Version 1.2.3 starting
+> > 
+> > [root@home ~]# rpcinfo -t localhost 100005
+> > program 100005 version 1 ready and waiting
+> > program 100005 version 2 ready and waiting
+> > program 100005 version 3 ready and waiting
+> > 
+> > Reverting b551b1fd0052de9b8c674b30c39d9f2a1e9d79cc cures the problem.
+> > but I guess it's not the right thing to do.
+> > 
+> > -- 
+> > Jan Rękorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
+> > baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
+> > BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
 > 
+> -- 
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+-- 
+Jan Rękorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
+baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
+BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
