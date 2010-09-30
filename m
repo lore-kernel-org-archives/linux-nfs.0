@@ -1,95 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:50761 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756855Ab0ITQcr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 12:32:47 -0400
-Received: by mail-gx0-f174.google.com with SMTP id 23so1361234gxk.19
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Sep 2010 09:32:47 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/7] mountd: Support TI-RPC mountd listener
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 20 Sep 2010 12:32:44 -0400
-Message-ID: <20100920163244.3170.72910.stgit@ellison.1015granger.net>
-In-Reply-To: <20100920162616.3170.24625.stgit@ellison.1015granger.net>
-References: <20100920162616.3170.24625.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:36219 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755879Ab0I3Rde (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 13:33:34 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] SQUASHME: pnfsd: factor out pnfsd check_export crap out of check_export
+Date: Thu, 30 Sep 2010 19:33:30 +0200
+Message-Id: <1285868010-28386-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-If TI-RPC is available, use it to create mountd's svc listener.  If
-not, use the old function, rpc_init(), to create mountd's listener.
-
-IPv6 can be supported if TI-RPC is available.  In this case,
-/etc/netconfig is searched to determine which transports to advertise.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
+ fs/nfsd/export.c |   82 +++++++++++++++++++++++++++++------------------------
+ 1 files changed, 45 insertions(+), 37 deletions(-)
 
- utils/mountd/mountd.c |   26 +++++++++++++++++---------
- 1 files changed, 17 insertions(+), 9 deletions(-)
-
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 753fd37..a4fdcc8 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -86,6 +86,11 @@ static int version3(void)
- 	return nfs_version & NFSVERSBIT(3);
- }
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 91be0d7..e856320 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -398,44 +398,9 @@ static struct svc_export *svc_export_update(struct svc_export *new,
+ 					    struct svc_export *old);
+ static struct svc_export *svc_export_lookup(struct svc_export *);
  
-+static int version23(void)
-+{
-+	return nfs_version & (NFSVERSBIT(2) | NFSVERSBIT(3));
+-static int check_export(struct inode *inode, int *flags, unsigned char *uuid)
++static int pnfsd_check_export(struct inode *inode, int *flags)
+ {
+-
+-	/*
+-	 * We currently export only dirs, regular files, and (for v4
+-	 * pseudoroot) symlinks.
+-	 */
+-	if (!S_ISDIR(inode->i_mode) &&
+-	    !S_ISLNK(inode->i_mode) &&
+-	    !S_ISREG(inode->i_mode))
+-		return -ENOTDIR;
+-
+-	/*
+-	 * Mountd should never pass down a writeable V4ROOT export, but,
+-	 * just to make sure:
+-	 */
+-	if (*flags & NFSEXP_V4ROOT)
+-		*flags |= NFSEXP_READONLY;
+-
+-	/* There are two requirements on a filesystem to be exportable.
+-	 * 1:  We must be able to identify the filesystem from a number.
+-	 *       either a device number (so FS_REQUIRES_DEV needed)
+-	 *       or an FSID number (so NFSEXP_FSID or ->uuid is needed).
+-	 * 2:  We must be able to find an inode from a filehandle.
+-	 *       This means that s_export_op must be set.
+-	 */
+-	if (!(inode->i_sb->s_type->fs_flags & FS_REQUIRES_DEV) &&
+-	    !(*flags & NFSEXP_FSID) &&
+-	    uuid == NULL) {
+-		dprintk("exp_export: export of non-dev fs without fsid\n");
+-		return -EINVAL;
+-	}
+-
+-	if (!inode->i_sb->s_export_op ||
+-	    !inode->i_sb->s_export_op->fh_to_dentry) {
+-		dprintk("exp_export: export of invalid fs type.\n");
+-		return -EINVAL;
+-	}
++#if defined(CONFIG_PNFSD)
+ 
+ #if !defined(CONFIG_SPNFS)
+ 	if (inode->i_sb->s_pnfs_op &&
+@@ -478,8 +443,51 @@ static int check_export(struct inode *inode, int *flags, unsigned char *uuid)
+ 	}
+ #endif /* CONFIG_SPNFS */
+ 
++#endif /* CONFIG_PNFSD */
++
+ 	return 0;
 +}
 +
- static int version_any(void)
- {
- 	return nfs_version & NFSVERSBIT_ALL;
-@@ -95,11 +100,11 @@ static void
- unregister_services (void)
- {
- 	if (version2()) {
--		pmap_unset (MOUNTPROG, MOUNTVERS);
--		pmap_unset (MOUNTPROG, MOUNTVERS_POSIX);
-+		nfs_svc_unregister(MOUNTPROG, MOUNTVERS);
-+		nfs_svc_unregister(MOUNTPROG, MOUNTVERS_POSIX);
- 	}
- 	if (version3())
--		pmap_unset (MOUNTPROG, MOUNTVERS_NFSV3);
-+		nfs_svc_unregister(MOUNTPROG, MOUNTVERS_NFSV3);
++static int check_export(struct inode *inode, int *flags, unsigned char *uuid)
++{
++
++	/*
++	 * We currently export only dirs, regular files, and (for v4
++	 * pseudoroot) symlinks.
++	 */
++	if (!S_ISDIR(inode->i_mode) &&
++	    !S_ISLNK(inode->i_mode) &&
++	    !S_ISREG(inode->i_mode))
++		return -ENOTDIR;
++
++	/*
++	 * Mountd should never pass down a writeable V4ROOT export, but,
++	 * just to make sure:
++	 */
++	if (*flags & NFSEXP_V4ROOT)
++		*flags |= NFSEXP_READONLY;
++
++	/* There are two requirements on a filesystem to be exportable.
++	 * 1:  We must be able to identify the filesystem from a number.
++	 *       either a device number (so FS_REQUIRES_DEV needed)
++	 *       or an FSID number (so NFSEXP_FSID or ->uuid is needed).
++	 * 2:  We must be able to find an inode from a filehandle.
++	 *       This means that s_export_op must be set.
++	 */
++	if (!(inode->i_sb->s_type->fs_flags & FS_REQUIRES_DEV) &&
++	    !(*flags & NFSEXP_FSID) &&
++	    uuid == NULL) {
++		dprintk("exp_export: export of non-dev fs without fsid\n");
++		return -EINVAL;
++	}
++
++	if (!inode->i_sb->s_export_op ||
++	    !inode->i_sb->s_export_op->fh_to_dentry) {
++		dprintk("exp_export: export of invalid fs type.\n");
++		return -EINVAL;
++	}
+ 
++	return pnfsd_check_export(inode, flags);
  }
  
- static void
-@@ -687,6 +692,7 @@ main(int argc, char **argv)
- {
- 	char	*export_file = _PATH_EXPORTS;
- 	char    *state_dir = NFS_STATEDIR;
-+	unsigned int listeners = 0;
- 	int	foreground = 0;
- 	int	port = 0;
- 	int	descriptors = 0;
-@@ -830,14 +836,16 @@ main(int argc, char **argv)
- 		cache_open();
- 
- 	if (version2()) {
--		rpc_init("mountd", MOUNTPROG, MOUNTVERS,
--			 mount_dispatch, port);
--		rpc_init("mountd", MOUNTPROG, MOUNTVERS_POSIX,
--			 mount_dispatch, port);
-+		listeners += nfs_svc_create("mountd", MOUNTPROG,
-+					MOUNTVERS, mount_dispatch, port);
-+		listeners += nfs_svc_create("mountd", MOUNTPROG,
-+					MOUNTVERS_POSIX, mount_dispatch, port);
- 	}
- 	if (version3())
--		rpc_init("mountd", MOUNTPROG, MOUNTVERS_NFSV3,
--			 mount_dispatch, port);
-+		listeners += nfs_svc_create("mountd", MOUNTPROG,
-+					MOUNTVERS_NFSV3, mount_dispatch, port);
-+	if (version23() && listeners == 0)
-+		xlog(L_FATAL, "mountd: could not create listeners\n");
- 
- 	sa.sa_handler = killer;
- 	sigaction(SIGINT, &sa, NULL);
+ #ifdef CONFIG_NFSD_V4
+-- 
+1.7.2.3
 
