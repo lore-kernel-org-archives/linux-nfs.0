@@ -1,149 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:65052 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:3363 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754408Ab0IJT1X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Sep 2010 15:27:23 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRN04009493
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:23 -0400
-Received: from dantu.rdu.redhat.com (dantu.rdu.redhat.com [10.11.228.66])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o8AJRIBZ018810
-	for <linux-nfs@vger.kernel.org>; Fri, 10 Sep 2010 15:27:22 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 8/9] nfs: add rename_done nfs_rpc_op
-Date: Fri, 10 Sep 2010 15:27:17 -0400
-Message-Id: <1284146838-1468-9-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
-References: <1284146838-1468-1-git-send-email-jlayton@redhat.com>
+	id S932083Ab0I3Pek (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 11:34:40 -0400
+Message-ID: <4CA4ADEA.2010700@parallels.com>
+Date: Thu, 30 Sep 2010 19:34:02 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 0/9] sunrpc: Create sockets in namespaces
+References: <4CA32AB4.2090808@parallels.com> <20100929214527.GC26180@fieldses.org> <0678928F-3DE0-4AB9-8CD9-7BDA3A362A20@oracle.com> <4CA42437.3090102@parallels.com> <F11D1388-D48E-48F5-9711-79960B397FBF@oracle.com>
+In-Reply-To: <F11D1388-D48E-48F5-9711-79960B397FBF@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-...for processing the rename reply.
+On 09/30/2010 07:16 PM, Chuck Lever wrote:
+> 
+> On Sep 30, 2010, at 1:46 AM, Pavel Emelyanov wrote:
+> 
+>>>> Shall I commit this to my for-2.6.37 tree?  Objections?
+>>>
+>>> I think it looks OK.
+>>>
+>>> But I was wondering if there were any other changes needed for the RDMA 
+>>> transport capability, or had we decided that would happen at a latter point, 
+>>> or that changes are entirely unneeded
+>>
+>> We definitely need more changes in the RDMA transport, but I would like to
+>> have it done later (unless someone other than me starts doing it earlier ;) ).
+> 
+> OK, thanks for clearing that up.  It makes sense to keep the scope of this socket
+> patch set narrow, but I don't want the RDMA pieces to get lost.  The more we let
+> the RDMA and socket transport capabilities differ, the harder it will be to support
+> RDMA in the long run.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/nfs3proc.c       |   16 ++++++++++++++++
- fs/nfs/nfs4proc.c       |   18 ++++++++++++++++++
- fs/nfs/proc.c           |   12 ++++++++++++
- include/linux/nfs_xdr.h |    1 +
- 4 files changed, 47 insertions(+), 0 deletions(-)
+OK, but I may have problems with the IB hardware. If you can advise me the
+way to test the RDMA without it, it would be very helpful.
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 0654177..b072519 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -456,6 +456,21 @@ nfs3_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
- }
- 
- static int
-+nfs3_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
-+		      struct inode *new_dir)
-+{
-+	struct nfs_renameres *res;
-+
-+	if (nfs3_async_handle_jukebox(task, old_dir))
-+		return 0;
-+	res = task->tk_msg.rpc_resp;
-+
-+	nfs_post_op_update_inode(old_dir, res->old_fattr);
-+	nfs_post_op_update_inode(new_dir, res->new_fattr);
-+	return 1;
-+}
-+
-+static int
- nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		 struct inode *new_dir, struct qstr *new_name)
- {
-@@ -860,6 +875,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.unlink_done	= nfs3_proc_unlink_done,
- 	.rename		= nfs3_proc_rename,
- 	.rename_setup	= nfs3_proc_rename_setup,
-+	.rename_done	= nfs3_proc_rename_done,
- 	.link		= nfs3_proc_link,
- 	.symlink	= nfs3_proc_symlink,
- 	.mkdir		= nfs3_proc_mkdir,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 011dc90..9c4160c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2691,6 +2691,23 @@ static int nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
- 	return -ENOMEM;
- }
- 
-+static int nfs4_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
-+				 struct inode *new_dir)
-+{
-+	struct nfs_renameres *res = task->tk_msg.rpc_resp;
-+
-+	if (!nfs4_sequence_done(task, &res->seq_res))
-+		return 0;
-+	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
-+		return 0;
-+
-+	update_changeattr(old_dir, &res->old_cinfo);
-+	nfs_post_op_update_inode(old_dir, res->old_fattr);
-+	update_changeattr(new_dir, &res->new_cinfo);
-+	nfs_post_op_update_inode(new_dir, res->new_fattr);
-+	return 1;
-+}
-+
- static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		struct inode *new_dir, struct qstr *new_name)
- {
-@@ -5464,6 +5481,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.unlink_done	= nfs4_proc_unlink_done,
- 	.rename		= nfs4_proc_rename,
- 	.rename_setup	= nfs4_proc_rename_setup,
-+	.rename_done	= nfs4_proc_rename_done,
- 	.link		= nfs4_proc_link,
- 	.symlink	= nfs4_proc_symlink,
- 	.mkdir		= nfs4_proc_mkdir,
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 48410f9..ba28dd7 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -373,6 +373,17 @@ nfs_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
- }
- 
- static int
-+nfs_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
-+		     struct inode *new_dir)
-+{
-+	if (nfs_async_handle_expired_key(task))
-+		return 0;
-+	nfs_mark_for_revalidate(old_dir);
-+	nfs_mark_for_revalidate(new_dir);
-+	return 1;
-+}
-+
-+static int
- nfs_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		struct inode *new_dir, struct qstr *new_name)
- {
-@@ -711,6 +722,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.unlink_done	= nfs_proc_unlink_done,
- 	.rename		= nfs_proc_rename,
- 	.rename_setup	= nfs_proc_rename_setup,
-+	.rename_done	= nfs_proc_rename_done,
- 	.link		= nfs_proc_link,
- 	.symlink	= nfs_proc_symlink,
- 	.mkdir		= nfs_proc_mkdir,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index d470751..97f7eaa 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1019,6 +1019,7 @@ struct nfs_rpc_ops {
- 	int	(*rename)  (struct inode *, struct qstr *,
- 			    struct inode *, struct qstr *);
- 	int	(*rename_setup)  (struct rpc_message *msg, struct inode *dir);
-+	int	(*rename_done) (struct rpc_task *task, struct inode *old_dir, struct inode *new_dir);
- 	int	(*link)    (struct inode *, struct inode *, struct qstr *);
- 	int	(*symlink) (struct inode *, struct dentry *, struct page *,
- 			    unsigned int, struct iattr *);
--- 
-1.7.1
+> Anyway, Bruce, I have no objection to the latest version of this socket patch set, fwiw.
+> 
+>>> (are namespaces already supported in the IB stack)?
+>>
+>> Nope. And this makes RDMA netnsization even more harder :(
+> 
 
