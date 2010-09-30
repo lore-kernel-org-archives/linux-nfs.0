@@ -1,382 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:42284 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750819Ab0IQQ1F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 12:27:05 -0400
-Received: by yxp4 with SMTP id 4so788878yxp.19
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Sep 2010 09:27:04 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/22] NFS: Remove old NFSv2 encoder functions
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 17 Sep 2010 12:27:01 -0400
-Message-ID: <20100917162701.19761.66362.stgit@seurat.1015granger.net>
-In-Reply-To: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
-References: <20100917162204.19761.58249.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:45177 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751150Ab0I3Vi7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 17:38:59 -0400
+Date: Thu, 30 Sep 2010 17:38:45 -0400
+From: "J. Bruce Fields" <bfields@citi.umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 11/16] nfsd4: keep per-session list of connections
+Message-ID: <20100930213845.GF15207@fieldses.org>
+References: <1285863553-8945-1-git-send-email-bfields@redhat.com>
+ <1285863553-8945-12-git-send-email-bfields@redhat.com>
+ <4CA4FF6E.3030907@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4CA4FF6E.3030907@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up:  Remove unused encoder helper functions, and move and update
-remaining ones.  Removed unused argument encoder functions.
+On Thu, Sep 30, 2010 at 11:21:50PM +0200, Benny Halevy wrote:
+> On 2010-09-30 18:19, J. Bruce Fields wrote:
+> > From: J. Bruce Fields <bfields@citi.umich.edu>
+> > 
+> > The spec requires us in various places to keep track of the connections
+> > associated with each session.
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+> > ---
+> >  fs/nfsd/nfs4state.c  |   69 +++++++++++++++++++++++++++++++++++++++-----------
+> >  fs/nfsd/state.h      |    8 ++++++
+> >  include/linux/nfs4.h |    3 ++
+> >  3 files changed, 65 insertions(+), 15 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index f86476c..c7c1a7a 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -625,11 +625,58 @@ static void init_forechannel_attrs(struct nfsd4_channel_attrs *new, struct nfsd4
+> >  	new->maxops = min_t(u32, req->maxops, NFSD_MAX_OPS_PER_COMPOUND);
+> >  }
+> >  
+> > +
+> > +static void free_conn(struct nfsd4_conn *c)
+> > +{
+> > +	svc_xprt_put(c->cn_xprt);
+> > +	kfree(c);
+> > +}
+> > +
+> > +void free_session(struct kref *kref)
+> > +{
+> > +	struct nfsd4_session *ses;
+> > +	int mem;
+> > +
+> > +	ses = container_of(kref, struct nfsd4_session, se_ref);
+> > +	while (!list_empty(&ses->se_conns)) {
+> > +		struct nfsd4_conn *c;
+> > +		c = list_first_entry(&ses->se_conns, struct nfsd4_conn, cn_persession);
+> > +		list_del(&c->cn_persession);
+> > +		free_conn(c);
+> > +	}
+> > +	spin_lock(&nfsd_drc_lock);
+> > +	mem = ses->se_fchannel.maxreqs * slot_bytes(&ses->se_fchannel);
+> > +	nfsd_drc_mem_used -= mem;
+> > +	spin_unlock(&nfsd_drc_lock);
+> > +	free_session_slots(ses);
+> > +	kfree(ses);
+> > +}
+> > +
+> > +
+> >  static __be32 alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp, struct nfsd4_create_session *cses)
+> >  {
+> >  	struct nfsd4_session *new;
+> >  	struct nfsd4_channel_attrs *fchan = &cses->fore_channel;
+> >  	int numslots, slotsize;
+> > +	int status;
+> >  	int idx;
+> >  
+> >  	/*
+> > @@ -654,6 +701,8 @@ static __be32 alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp
+> >  	memcpy(clp->cl_sessionid.data, new->se_sessionid.data,
+> >  	       NFS4_MAX_SESSIONID_LEN);
+> >  
+> > +	INIT_LIST_HEAD(&new->se_conns);
+> > +
+> >  	new->se_flags = cses->flags;
+> >  	kref_init(&new->se_ref);
+> >  	idx = hash_sessionid(&new->se_sessionid);
+> > @@ -662,6 +711,11 @@ static __be32 alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp
+> >  	list_add(&new->se_perclnt, &clp->cl_sessions);
+> >  	spin_unlock(&client_lock);
+> >  
+> > +	status = nfsd4_new_conn(rqstp, new);
+> > +	if (status) {
+> > +		free_session(&new->se_ref);
+> > +		return nfserr_jukebox;
+> 
+> why not return status?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+The status is sort of bogus; all that can really happen is an allocation
+failure:
 
- fs/nfs/nfs2xdr.c |  249 +-----------------------------------------------------
- 1 files changed, 4 insertions(+), 245 deletions(-)
+> > +static __be32 nfsd4_new_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
+> > +{
+> > +	struct nfs4_client *clp = ses->se_client;
+> > +	struct nfsd4_conn *conn;
+> > +
+> > +	conn = kmalloc(sizeof(struct nfsd4_conn), GFP_KERNEL);
+> > +	if (!conn)
+> > +		return nfserr_jukebox;
+> > +	conn->cn_flags = NFS4_CDFC4_FORE;
+> > +	svc_xprt_get(rqstp->rq_xprt);
+> > +	conn->cn_xprt = rqstp->rq_xprt;
+> > +
+> > +	spin_lock(&clp->cl_lock);
+> > +	list_add(&conn->cn_persession, &ses->se_conns);
+> > +	spin_unlock(&clp->cl_lock);
+> > +
+> > +	return nfs_ok;
+> > +}
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 86f867b..e4d6c8b 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -82,13 +82,6 @@ static void prepare_reply_buffer(struct rpc_rqst *req, struct page **pages,
-  * Common NFS XDR functions as inlines
-  */
- static inline __be32 *
--xdr_encode_fhandle(__be32 *p, const struct nfs_fh *fhandle)
--{
--	memcpy(p, fhandle->data, NFS2_FHSIZE);
--	return p + XDR_QUADLEN(NFS2_FHSIZE);
--}
--
--static inline __be32 *
- xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
- {
- 	/* NFSv2 handles have a fixed length */
-@@ -160,36 +153,6 @@ xdr_decode_fattr(__be32 *p, struct nfs_fattr *fattr)
- 	return p;
- }
- 
--static inline __be32 *
--xdr_encode_sattr(__be32 *p, struct iattr *attr)
--{
--	const __be32 not_set = __constant_htonl(0xFFFFFFFF);
--
--	*p++ = (attr->ia_valid & ATTR_MODE) ? htonl(attr->ia_mode) : not_set;
--	*p++ = (attr->ia_valid & ATTR_UID) ? htonl(attr->ia_uid) : not_set;
--	*p++ = (attr->ia_valid & ATTR_GID) ? htonl(attr->ia_gid) : not_set;
--	*p++ = (attr->ia_valid & ATTR_SIZE) ? htonl(attr->ia_size) : not_set;
--
--	if (attr->ia_valid & ATTR_ATIME_SET) {
--		p = xdr_encode_time(p, &attr->ia_atime);
--	} else if (attr->ia_valid & ATTR_ATIME) {
--		p = xdr_encode_current_server_time(p, &attr->ia_atime);
--	} else {
--		*p++ = not_set;
--		*p++ = not_set;
--	}
--
--	if (attr->ia_valid & ATTR_MTIME_SET) {
--		p = xdr_encode_time(p, &attr->ia_mtime);
--	} else if (attr->ia_valid & ATTR_MTIME) {
--		p = xdr_encode_current_server_time(p, &attr->ia_mtime);
--	} else {
--		*p++ = not_set;	
--		*p++ = not_set;
--	}
--  	return p;
--}
--
- /*
-  * Encode/decode NFSv2 basic data types
-  *
-@@ -321,19 +284,11 @@ static void encode_diropargs(struct xdr_stream *xdr, const struct nfs_fh *fh,
- 
- 
- /*
-- * NFS encode functions
-- */
--/*
-- * Encode file handle argument
-- * GETATTR, READLINK, STATFS
-+ * NFSv2 XDR encode functions
-+ *
-+ * NFSv2 argument types are defined in section 2.2 of RFC 1094:
-+ * "NFS: Network File System Protocol Specification".
-  */
--static int
--nfs_xdr_fhandle(struct rpc_rqst *req, __be32 *p, struct nfs_fh *fh)
--{
--	p = xdr_encode_fhandle(p, fh);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
- 
- static int nfs2_xdr_enc_fhandle(struct rpc_rqst *req, __be32 *p,
- 				const struct nfs_fh *fh)
-@@ -346,18 +301,6 @@ static int nfs2_xdr_enc_fhandle(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode SETATTR arguments
-- */
--static int
--nfs_xdr_sattrargs(struct rpc_rqst *req, __be32 *p, struct nfs_sattrargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_sattr(p, args->sattr);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 2.2.3.  sattrargs
-  *
-  *	struct sattrargs {
-@@ -376,19 +319,6 @@ static int nfs2_xdr_enc_sattrargs(struct rpc_rqst *req, __be32 *p,
- 	return 0;
- }
- 
--/*
-- * Encode directory ops argument
-- * LOOKUP, RMDIR
-- */
--static int
--nfs_xdr_diropargs(struct rpc_rqst *req, __be32 *p, struct nfs_diropargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_array(p, args->name, args->len);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
- static int nfs2_xdr_enc_diropargs(struct rpc_rqst *req, __be32 *p,
- 				  const struct nfs_diropargs *args)
- {
-@@ -399,18 +329,6 @@ static int nfs2_xdr_enc_diropargs(struct rpc_rqst *req, __be32 *p,
- 	return 0;
- }
- 
--/*
-- * Encode REMOVE argument
-- */
--static int
--nfs_xdr_removeargs(struct rpc_rqst *req, __be32 *p, const struct nfs_removeargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_array(p, args->name.name, args->name.len);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
- static int nfs2_xdr_enc_readlinkargs(struct rpc_rqst *req, __be32 *p,
- 				     const struct nfs_readlinkargs *args)
- {
-@@ -424,33 +342,6 @@ static int nfs2_xdr_enc_readlinkargs(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Arguments to a READ call. Since we read data directly into the page
-- * cache, we also set up the reply iovec here so that iov[1] points
-- * exactly to the page we want to fetch.
-- */
--static int
--nfs_xdr_readargs(struct rpc_rqst *req, __be32 *p, struct nfs_readargs *args)
--{
--	struct rpc_auth	*auth = req->rq_cred->cr_auth;
--	unsigned int replen;
--	u32 offset = (u32)args->offset;
--	u32 count = args->count;
--
--	p = xdr_encode_fhandle(p, args->fh);
--	*p++ = htonl(offset);
--	*p++ = htonl(count);
--	*p++ = htonl(count);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--
--	/* Inline the page array */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS_readres_sz) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen,
--			 args->pages, args->pgbase, count);
--	req->rq_rcv_buf.flags |= XDRBUF_READ;
--	return 0;
--}
--
--/*
-  * 2.2.7.  readargs
-  *
-  *	struct readargs {
-@@ -531,29 +422,6 @@ nfs_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
- 
- 
- /*
-- * Write arguments. Splice the buffer to be written into the iovec.
-- */
--static int
--nfs_xdr_writeargs(struct rpc_rqst *req, __be32 *p, struct nfs_writeargs *args)
--{
--	struct xdr_buf *sndbuf = &req->rq_snd_buf;
--	u32 offset = (u32)args->offset;
--	u32 count = args->count;
--
--	p = xdr_encode_fhandle(p, args->fh);
--	*p++ = htonl(offset);
--	*p++ = htonl(offset);
--	*p++ = htonl(count);
--	*p++ = htonl(count);
--	sndbuf->len = xdr_adjust_iovec(sndbuf->head, p);
--
--	/* Copy the page array */
--	xdr_encode_pages(sndbuf, args->pages, args->pgbase, count);
--	sndbuf->flags |= XDRBUF_WRITE;
--	return 0;
--}
--
--/*
-  * 2.2.9.  writeargs
-  *
-  *	struct writeargs {
-@@ -595,20 +463,6 @@ static int nfs2_xdr_enc_writeargs(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode create arguments
-- * CREATE, MKDIR
-- */
--static int
--nfs_xdr_createargs(struct rpc_rqst *req, __be32 *p, struct nfs_createargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_array(p, args->name, args->len);
--	p = xdr_encode_sattr(p, args->sattr);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 2.2.10.  createargs
-  *
-  *	struct createargs {
-@@ -638,20 +492,6 @@ static int nfs2_xdr_enc_removeargs(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode RENAME arguments
-- */
--static int
--nfs_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs_renameargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fromfh);
--	p = xdr_encode_array(p, args->fromname, args->fromlen);
--	p = xdr_encode_fhandle(p, args->tofh);
--	p = xdr_encode_array(p, args->toname, args->tolen);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 2.2.12.  renameargs
-  *
-  *	struct renameargs {
-@@ -671,19 +511,6 @@ static int nfs2_xdr_enc_renameargs(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode LINK arguments
-- */
--static int
--nfs_xdr_linkargs(struct rpc_rqst *req, __be32 *p, struct nfs_linkargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fromfh);
--	p = xdr_encode_fhandle(p, args->tofh);
--	p = xdr_encode_array(p, args->toname, args->tolen);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 2.2.13.  linkargs
-  *
-  *	struct linkargs {
-@@ -703,35 +530,6 @@ static int nfs2_xdr_enc_linkargs(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode SYMLINK arguments
-- */
--static int
--nfs_xdr_symlinkargs(struct rpc_rqst *req, __be32 *p, struct nfs_symlinkargs *args)
--{
--	struct xdr_buf *sndbuf = &req->rq_snd_buf;
--	size_t pad;
--
--	p = xdr_encode_fhandle(p, args->fromfh);
--	p = xdr_encode_array(p, args->fromname, args->fromlen);
--	*p++ = htonl(args->pathlen);
--	sndbuf->len = xdr_adjust_iovec(sndbuf->head, p);
--
--	xdr_encode_pages(sndbuf, args->pages, 0, args->pathlen);
--
--	/*
--	 * xdr_encode_pages may have added a few bytes to ensure the
--	 * pathname ends on a 4-byte boundary.  Start encoding the
--	 * attributes after the pad bytes.
--	 */
--	pad = sndbuf->tail->iov_len;
--	if (pad > 0)
--		p++;
--	p = xdr_encode_sattr(p, args->sattr);
--	sndbuf->len += xdr_adjust_iovec(sndbuf->tail, p) - pad;
--	return 0;
--}
--
--/*
-  * 2.2.14.  symlinkargs
-  *
-  *	struct symlinkargs {
-@@ -753,27 +551,6 @@ static int nfs2_xdr_enc_symlinkargs(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode arguments to readdir call
-- */
--static int
--nfs_xdr_readdirargs(struct rpc_rqst *req, __be32 *p, struct nfs_readdirargs *args)
--{
--	struct rpc_auth	*auth = req->rq_cred->cr_auth;
--	unsigned int replen;
--	u32 count = args->count;
--
--	p = xdr_encode_fhandle(p, args->fh);
--	*p++ = htonl(args->cookie);
--	*p++ = htonl(count); /* see above */
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--
--	/* Inline the page array */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS_readdirres_sz) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, 0, count);
--	return 0;
--}
--
--/*
-  * 2.2.17.  readdirargs
-  *
-  *	struct readdirargs {
-@@ -967,24 +744,6 @@ nfs_xdr_diropres(struct rpc_rqst *req, __be32 *p, struct nfs_diropok *res)
- }
- 
- /*
-- * Encode READLINK args
-- */
--static int
--nfs_xdr_readlinkargs(struct rpc_rqst *req, __be32 *p, struct nfs_readlinkargs *args)
--{
--	struct rpc_auth	*auth = req->rq_cred->cr_auth;
--	unsigned int replen;
--
--	p = xdr_encode_fhandle(p, args->fh);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--
--	/* Inline the page array */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS_readlinkres_sz) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, args->pgbase, args->pglen);
--	return 0;
--}
--
--/*
-  * Decode READLINK reply
-  */
- static int
+I'd actually rather change alloc_init_session() to return NULL or the
+new session.  But, yeah, it grates a bit to have a status return that's
+ignored.  Hm.
 
+> > diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> > index 07e40c6..79b15fb 100644
+> > --- a/include/linux/nfs4.h
+> > +++ b/include/linux/nfs4.h
+> > @@ -61,6 +61,9 @@
+> >  #define NFS4_SHARE_SIGNAL_DELEG_WHEN_RESRC_AVAIL	0x10000
+> >  #define NFS4_SHARE_PUSH_DELEG_WHEN_UNCONTENDED		0x20000
+> >  
+> > +#define NFS4_CDFC4_FORE	0x1
+> > +#define NFS4_CDFC4_BACK 0x2
+> > +
+> 
+> nit: I think that defining flags shifted bits is clearer, e.g.:
+> 
+> enum nfsd4_channel_dir {
+> 	NFS4_CDFC4_FORE	 = 1 << 0,
+> 	NFS4_CDFC4_BACK = 1 << 1,
+
+I see what you mean.
+
+I was just taking the definitions from the spec.  And I should add
+FORE_OR_BOTH and BACK_OR_BOTH some time, neither powers of two.  I
+dunno.
+
+--b.
+
+> };
+> 
+> Benny
+> 
+> >  #define NFS4_SET_TO_SERVER_TIME	0
+> >  #define NFS4_SET_TO_CLIENT_TIME	1
+> >  
+> 
