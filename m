@@ -1,104 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11658 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751374Ab0I0Lox (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Sep 2010 07:44:53 -0400
-Message-ID: <4CA083AD.2090306@RedHat.com>
-Date: Mon, 27 Sep 2010 07:44:45 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Neil Brown <neilb@suse.de>
-CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] Give hostname.c more support for IPv6
-References: <20100804064553.16641.92857.stgit@localhost.localdomain> <20100804064945.16641.71097.stgit@localhost.localdomain>
-In-Reply-To: <20100804064945.16641.71097.stgit@localhost.localdomain>
-Content-Type: text/plain; charset=UTF-8
+Received: from daytona.panasas.com ([67.152.220.89]:35199 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753533Ab0I3Vdb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 17:33:31 -0400
+Message-ID: <4CA50229.9000103@panasas.com>
+Date: Thu, 30 Sep 2010 23:33:29 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 15/16] nfsd4: add new connections to session
+References: <1285863553-8945-1-git-send-email-bfields@redhat.com> <1285863553-8945-16-git-send-email-bfields@redhat.com>
+In-Reply-To: <1285863553-8945-16-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 2010-09-30 18:19, J. Bruce Fields wrote:
+> As long as we're not implementing any session security, we should just
+> automatically add any new connections that come along to the list of
+> sessions associated with the session.
 
+Doesn't the client need to send BIND_CONN_TO_SESSION?
 
-On 08/04/2010 02:49 AM, Neil Brown wrote:
-> Allow host_pton,  host_addrinfo, and all functions that use
-> sockaddr_size to work correctly with IPv6 addresses.
+18.34. Operation 41: BIND_CONN_TO_SESSION - Associate Connection with Session:
+
+   BIND_CONN_TO_SESSION is used to associate additional connections with
+   a session.  It MUST be used on the connection being associated with
+   the session.
+
+Also, with these patches, can we set SEQ4_STATUS_CB_PATH_DOWN if there's
+no backchannel?
+
+Benny
+
 > 
-> This means host_addrinfo can now return IPv6 addresses, but I think
-> all code is ready for that.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 > ---
->  support/export/hostname.c |   26 ++++++++++++++++++--------
->  1 files changed, 18 insertions(+), 8 deletions(-)
+>  fs/nfsd/nfs4state.c |   49 +++++++++++++++++++++++++++++++++++++++++++++++--
+>  1 files changed, 47 insertions(+), 2 deletions(-)
 > 
-> diff --git a/support/export/hostname.c b/support/export/hostname.c
-> index f6a59f1..46ddfe2 100644
-> --- a/support/export/hostname.c
-> +++ b/support/export/hostname.c
-> @@ -38,9 +38,11 @@
->  static socklen_t
->  sockaddr_size(const struct sockaddr *sap)
->  {
-> -	if (sap->sa_family != AF_INET)
-> -		return 0;
-> -	return (socklen_t)sizeof(struct sockaddr_in);
-> +	if (sap->sa_family == AF_INET)
-> +		return (socklen_t)sizeof(struct sockaddr_in);
-> +	if (sap->sa_family == AF_INET6)
-> +		return (socklen_t)sizeof(struct sockaddr_in6);
-> +	return 0;
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 3b4d74c..596702e 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -658,13 +658,18 @@ static struct nfsd4_conn *alloc_conn(struct svc_rqst *rqstp)
+>  	return conn;
 >  }
->  #endif	/* HAVE_GETNAMEINFO */
-This routine was eliminated with commit 63afb9
-
 >  
-> @@ -126,10 +128,12 @@ host_pton(const char *paddr)
->  	 * addresses that end with a blank.
->  	 *
->  	 * inet_pton(3) is much stricter.  Use it to be certain we
-> -	 * have a real AF_INET presentation address, before invoking
-> -	 * getaddrinfo(3) to generate the full addrinfo list.
-> +	 * have a real AF_INET or AF_INET6 presentation address,
-> +	 * before invoking getaddrinfo(3) to generate the full
-> +	 * addrinfo list.
->  	 */
-> -	if (inet_pton(AF_INET, paddr, &sin.sin_addr) == 0)
-> +	if (inet_pton(AF_INET, paddr, &sin.sin_addr) == 0 &&
-> +	    inet_pton(AF_INET6, paddr, &sin.sin_addr) == 0)
->  		return NULL;
-This error case is  already handled in the current version of
-of host_pton, but I must say, the above approved is much clear
-than the existing code... but I'm going to leave things as-is..
-
->  
->  	error = getaddrinfo(paddr, NULL, &hint, &ai);
-> @@ -168,7 +172,7 @@ host_addrinfo(const char *hostname)
+> +static void __nfsd4_hash_conn(struct nfsd4_conn *conn, struct nfsd4_session *ses)
+> +{
+> +	conn->cn_session = ses;
+> +	list_add(&conn->cn_persession, &ses->se_conns);
+> +}
+> +
+>  static void nfsd4_hash_conn(struct nfsd4_conn *conn, struct nfsd4_session *ses)
 >  {
->  	struct addrinfo *ai = NULL;
->  	struct addrinfo hint = {
-> -		.ai_family	= AF_INET,
-> +		.ai_family	= AF_UNSPEC,
->  		/* don't return duplicates */
->  		.ai_protocol	= (int)IPPROTO_UDP,
->  		.ai_flags	= AI_ADDRCONFIG | AI_CANONNAME,
-> @@ -178,7 +182,13 @@ host_addrinfo(const char *hostname)
->  	error = getaddrinfo(hostname, NULL, &hint, &ai);
->  	switch (error) {
->  	case 0:
-> -		return ai;
-> +		if (ai->ai_family == AF_INET ||
-> +		    ai->ai_family == AF_INET6)
-> +			return ai;
-> +		freeaddrinfo(ai);
-> +		xlog(D_GENERAL, "%s: resolved to neither IPv4 nor IPv6 address.",
-> +				hostname);
-> +		break;
-I think I'm going to try and blend this in with Chuck's recent patches
-since I do like the idea of logging unsupported address families...
-
-steved.
-
->  	case EAI_SYSTEM:
->  		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
->  				__func__, hostname, errno);
-> 
-> 
+>  	struct nfs4_client *clp = ses->se_client;
+>  
+>  	spin_lock(&clp->cl_lock);
+> -	conn->cn_session = ses;
+> -	list_add(&conn->cn_persession, &ses->se_conns);
+> +	__nfsd4_hash_conn(conn, ses);
+>  	spin_unlock(&clp->cl_lock);
+>  }
+>  
+> @@ -1612,6 +1617,44 @@ out:
+>  	return status;
+>  }
+>  
+> +static struct nfsd4_conn *__nfsd4_find_conn(struct svc_rqst *r, struct nfsd4_session *s)
+> +{
+> +	struct nfsd4_conn *c;
+> +
+> +	list_for_each_entry(c, &s->se_conns, cn_persession) {
+> +		if (c->cn_xprt == r->rq_xprt) {
+> +			return c;
+> +		}
+> +	}
+> +	return NULL;
+> +}
+> +
+> +static void nfsd4_sequence_check_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
+> +{
+> +	struct nfs4_client *clp = ses->se_client;
+> +	struct nfsd4_conn *c, *new = NULL;
+> +
+> +	spin_lock(&clp->cl_lock);
+> +	c = __nfsd4_find_conn(rqstp, ses);
+> +	spin_unlock(&clp->cl_lock);
+> +	if (c)
+> +		return;
+> +
+> +	new = alloc_conn(rqstp);
+> +
+> +	spin_lock(&clp->cl_lock);
+> +	c = __nfsd4_find_conn(rqstp, ses);
+> +	if (c) {
+> +		spin_unlock(&clp->cl_lock);
+> +		free_conn(new);
+> +		return;
+> +	}
+> +	__nfsd4_hash_conn(new, ses);
+> +	spin_unlock(&clp->cl_lock);
+> +	nfsd4_register_conn(new);
+> +	return;
+> +}
+> +
+>  __be32
+>  nfsd4_sequence(struct svc_rqst *rqstp,
+>  	       struct nfsd4_compound_state *cstate,
+> @@ -1656,6 +1699,8 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  	if (status)
+>  		goto out;
+>  
+> +	nfsd4_sequence_check_conn(rqstp, session);
+> +
+>  	/* Success! bump slot seqid */
+>  	slot->sl_inuse = true;
+>  	slot->sl_seqid = seq->seqid;
