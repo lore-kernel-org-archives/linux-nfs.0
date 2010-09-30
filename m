@@ -1,137 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.17.8]:64405 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751809Ab0IQMiQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Sep 2010 08:38:16 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: netdev@vger.kernel.org
-Subject: sunrpc: remove the big kernel lock
-Date: Fri, 17 Sep 2010 14:38:02 +0200
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org, David Miller <davem@davemloft.net>
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201009171438.02313.arnd@arndb.de>
+Received: from mx2.netapp.com ([216.240.18.37]:12628 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756741Ab0I3RH1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 13:07:27 -0400
+Subject: Re: [PATCH] nfs-utils: Add nfs.upcall for idmapper
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        SteveD@redhat.com
+In-Reply-To: <59CA8CDE-0A68-4F99-BB09-804D24452148@oracle.com>
+References: <4CA39681.3000104@netapp.com>
+	 <1285798396.3557.18.camel@heimdal.trondhjem.org>
+	 <4CA48CEF.9060600@netapp.com>
+	 <59CA8CDE-0A68-4F99-BB09-804D24452148@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 30 Sep 2010 13:07:17 -0400
+Message-ID: <1285866437.14635.27.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The sunrpc cache_ioctl function does not need the big kernel lock
-because it uses its own queue_lock already.
+On Thu, 2010-09-30 at 11:42 -0400, Chuck Lever wrote:
 
-rpc_pipe_ioctl apparently should be using i_lock like the other
-operations on the pipe file descriptor do.
+> I might choose a less generic name for this program, unless there are plans to make it handle all NFS upcalls, eventually.  How about nfs.idmap ?
 
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
----
-I missed this one because I considered the use of the BKL to
-be part of nfs/nfsd, but in this is really an unrelated usage.
-Please apply to an appropriate tree.
+nfs.idmap sounds good.
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 5b7b56f..9e4827c 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -28,7 +28,6 @@
- #include <linux/workqueue.h>
- #include <linux/mutex.h>
- #include <linux/pagemap.h>
--#include <linux/smp_lock.h>
- #include <asm/ioctls.h>
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/cache.h>
-@@ -1426,15 +1425,10 @@ static unsigned int cache_poll_procfs(struct file *filp, poll_table *wait)
- static long cache_ioctl_procfs(struct file *filp,
- 			       unsigned int cmd, unsigned long arg)
- {
--	long ret;
- 	struct inode *inode = filp->f_path.dentry->d_inode;
- 	struct cache_detail *cd = PDE(inode)->data;
- 
--	lock_kernel();
--	ret = cache_ioctl(inode, filp, cmd, arg, cd);
--	unlock_kernel();
--
--	return ret;
-+	return cache_ioctl(inode, filp, cmd, arg, cd);
- }
- 
- static int cache_open_procfs(struct inode *inode, struct file *filp)
-@@ -1634,13 +1628,8 @@ static long cache_ioctl_pipefs(struct file *filp,
- {
- 	struct inode *inode = filp->f_dentry->d_inode;
- 	struct cache_detail *cd = RPC_I(inode)->private;
--	long ret;
- 
--	lock_kernel();
--	ret = cache_ioctl(inode, filp, cmd, arg, cd);
--	unlock_kernel();
--
--	return ret;
-+	return cache_ioctl(inode, filp, cmd, arg, cd);
- }
- 
- static int cache_open_pipefs(struct inode *inode, struct file *filp)
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 8c8eef2..28bcd52 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -27,7 +27,6 @@
- #include <linux/workqueue.h>
- #include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/sunrpc/cache.h>
--#include <linux/smp_lock.h>
- 
- static struct vfsmount *rpc_mount __read_mostly;
- static int rpc_mount_count;
-@@ -309,40 +308,33 @@ rpc_pipe_poll(struct file *filp, struct poll_table_struct *wait)
- 	return mask;
- }
- 
--static int
--rpc_pipe_ioctl_unlocked(struct file *filp, unsigned int cmd, unsigned long arg)
-+static long
-+rpc_pipe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- {
--	struct rpc_inode *rpci = RPC_I(filp->f_path.dentry->d_inode);
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	struct rpc_inode *rpci = RPC_I(inode);
- 	int len;
- 
- 	switch (cmd) {
- 	case FIONREAD:
--		if (rpci->ops == NULL)
-+		spin_lock(&inode->i_lock);
-+		if (rpci->ops == NULL) {
-+			spin_unlock(&inode->i_lock);
- 			return -EPIPE;
-+		}
- 		len = rpci->pipelen;
- 		if (filp->private_data) {
- 			struct rpc_pipe_msg *msg;
- 			msg = (struct rpc_pipe_msg *)filp->private_data;
- 			len += msg->len - msg->copied;
- 		}
-+		spin_unlock(&inode->i_lock);
- 		return put_user(len, (int __user *)arg);
- 	default:
- 		return -EINVAL;
- 	}
- }
- 
--static long
--rpc_pipe_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
--{
--	long ret;
--
--	lock_kernel();
--	ret = rpc_pipe_ioctl_unlocked(filp, cmd, arg);
--	unlock_kernel();
--
--	return ret;
--}
--
- static const struct file_operations rpc_pipe_fops = {
- 	.owner		= THIS_MODULE,
- 	.llseek		= no_llseek,
+> Should nfs.upcall have its own man page?  My opinion is that it should.  That might be a better place for the setup information (needed by mortal system administrators) added under Documentation/ by an earlier patch.  Documentation/ is an appropriate place for the upcall design information, though.
+
+Agreed. We do need to help people who want to edit /etc/request-key.conf
+themselves.
+
+> Also, I've been looking at the Mesta-Adamson draft that provides NFSv4 domain information via DNS.  I'd like to see Linux make use of this TXT record, as Solaris does today.  It would help make Linux NFSv4 more automatically configurable, especially in heterogeneous environments.
+
+That looks like something that needs to be added to libnfsidmap. I don't
+think we need to make the kernel domain-aware.
+
+> As I understand it, nfs.upcall would obviate rpc.idmapd, correct?  In that case, what entity would be responsible for a putative DNS lookup to determine the local NFSv4 domain name?  How would this information be cached?
+
+See above.
+
+> Finally, if at all possible, it would be better if the kernel could automatically recognize and use nfs.upcall rather than the legacy idmapping mechanism.  My experience with CONFIG options is that people will almost always choose the wrong setting no matter how many large neon arrows you add.  I know there are likely some technical challenges here.
+
+I don't think that is easy to do. The keyring upcall mechanism will
+almost always succeed, no matter whether or not there is a handler for
+the type of key requested. Instead, it will result in a negative lookup.
+Unfortunately, seeing a negative key isn't sufficient to determine that
+no handler exists.
+
+Cheers
+  Trond
