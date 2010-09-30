@@ -1,39 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp109.prem.mail.ac4.yahoo.com ([76.13.13.92]:46275 "HELO
-	smtp109.prem.mail.ac4.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753554Ab0IAUTb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Sep 2010 16:19:31 -0400
-Date: Wed, 1 Sep 2010 15:19:25 -0500 (CDT)
-From: Christoph Lameter <cl@linux.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-cc: Kian Mohageri <kian.mohageri@gmail.com>, davidr@ressman.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: fsync/wb deadlocks in 2.6.32
-In-Reply-To: <1283314832.5220.31.camel@heimdal.trondhjem.org>
-Message-ID: <alpine.DEB.2.00.1009011517260.16464@router.home>
-References: <AANLkTikWR_YSnx=4=KAodATpX+xO9+hj-cf7_e158f4d@mail.gmail.com>  <AANLkTi=gj901aF_84+40j9MhvAwNJSNB8qRnpY8o0gBZ@mail.gmail.com>  <AANLkTinEoMgXLvN4MvfnCHjHtHCwV1HDP67BoKQ3ZbQx@mail.gmail.com>  <alpine.DEB.2.00.1008301101560.10316@router.home>
- <AANLkTinieSM_-x4qra7_HOCsONFAdyjn3LQbyBDJRebT@mail.gmail.com>  <alpine.DEB.2.00.1008310934150.867@router.home> <1283314832.5220.31.camel@heimdal.trondhjem.org>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from mx1.redhat.com ([209.132.183.28]:8674 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755736Ab0I3SQs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 14:16:48 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 15/17] autofs4 - fix wait validation
+To: viro@ftp.linux.org.uk, jmoyer@redhat.com
+Cc: linux-fs@vger.kernel.org, autofs@linux.kernel.org,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        Ian Kent <raven@themaw.net>, David Howells <dhowells@redhat.com>
+Date: Thu, 30 Sep 2010 19:16:12 +0100
+Message-ID: <20100930181612.30939.30493.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
+References: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 1 Sep 2010, Trond Myklebust wrote:
+From: Ian Kent <raven@themaw.net>
 
-> >From what I could see in your original email to me, you appear to be
-> using NFS over UDP on IPoIB on a 2.6.32-18 kernel. Is that still the
-> case? If so, does anything change if you change to use TCP and/or an
-> ordinary NIC?
+It is possible for the check in wait.c:validate_request() to return
+an incorrect result if the dentry that was mounted upon has changed
+during the callback.
 
-It is still the case. We have changed to udp from tcp and saw no change.
-We have not tried to use an Ethernet NIC instead.
+Signed-off-by: Ian Kent <raven@themaw.net>
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-> Your link to https://bugs.launchpad.net/ubuntu/+source/linux/+bug/561210
-> appears to be the kswapd bug, which should be hacked around in later
-> 2.6.32 stable versions.
+ fs/autofs4/waitq.c |   17 ++++++++++++++++-
+ 1 files changed, 16 insertions(+), 1 deletions(-)
 
-We are runing 2.6.32.18 which should have the fix. But the issue is still
-there.
-
-Is there any other patch available?
+diff --git a/fs/autofs4/waitq.c b/fs/autofs4/waitq.c
+index 2341375..f3792ff 100644
+--- a/fs/autofs4/waitq.c
++++ b/fs/autofs4/waitq.c
+@@ -296,6 +296,9 @@ static int validate_request(struct autofs_wait_queue **wait,
+ 	 * completed while we waited on the mutex ...
+ 	 */
+ 	if (notify == NFY_MOUNT) {
++		struct dentry *new = NULL;
++		int valid = 1;
++
+ 		/*
+ 		 * If the dentry was successfully mounted while we slept
+ 		 * on the wait queue mutex we can return success. If it
+@@ -303,8 +306,20 @@ static int validate_request(struct autofs_wait_queue **wait,
+ 		 * a multi-mount with no mount at it's base) we can
+ 		 * continue on and create a new request.
+ 		 */
++		if (!IS_ROOT(dentry)) {
++			if (dentry->d_inode && d_unhashed(dentry)) {
++				struct dentry *parent = dentry->d_parent;
++				new = d_lookup(parent, &dentry->d_name);
++				if (new)
++					dentry = new;
++			}
++		}
+ 		if (have_submounts(dentry))
+-			return 0;
++			valid = 0;
++
++		if (new)
++			dput(new);
++		return valid;
+ 	}
+ 
+ 	return 1;
 
