@@ -1,295 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:40185 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:61631 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754454Ab0ITOXp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Sep 2010 10:23:45 -0400
-Message-ID: <4C976E81.9040001@panasas.com>
-Date: Mon, 20 Sep 2010 16:24:01 +0200
+	with ESMTP id S1755985Ab0I3TwX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 15:52:23 -0400
+Message-ID: <4CA4EA74.8070701@panasas.com>
+Date: Thu, 30 Sep 2010 21:52:20 +0200
 From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 06/12] RFC: nfs: set layout driver
-References: <1284779874-10499-1-git-send-email-iisaman@netapp.com>	<1284779874-10499-7-git-send-email-iisaman@netapp.com>	<4C973A86.6050008@panasas.com> <AANLkTi=3CA+2e6GRytZkFTLbv6Mya7cfRm_iSkvVxXWh@mail.gmail.com>
-In-Reply-To: <AANLkTi=3CA+2e6GRytZkFTLbv6Mya7cfRm_iSkvVxXWh@mail.gmail.com>
+Subject: Re: pnfs-all-latest client crash
+References: <20100921164211.GK26473@fieldses.org> <4C98FCC3.50803@panasas.com> <20100921190108.GA4385@fieldses.org> <4CA4ABED.7080706@panasas.com> <20100930152944.GA6598@fieldses.org> <4CA4ADFA.2090807@panasas.com> <20100930154350.GB6598@fieldses.org>
+In-Reply-To: <20100930154350.GB6598@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-09-20 16:06, Fred Isaman wrote:
-> On Mon, Sep 20, 2010 at 6:42 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On 2010-09-18 05:17, Fred Isaman wrote:
->>> From: The pNFS Team <linux-nfs@vger.kernel.org>
+On 2010-09-30 17:43, J. Bruce Fields wrote:
+> On Thu, Sep 30, 2010 at 05:34:18PM +0200, Benny Halevy wrote:
+>> On 2010-09-30 17:29, J. Bruce Fields wrote:
+>>> On Thu, Sep 30, 2010 at 05:25:33PM +0200, Benny Halevy wrote:
+>>>> On 2010-09-21 21:01, J. Bruce Fields wrote:
+>>>>> On Tue, Sep 21, 2010 at 08:43:15PM +0200, Benny Halevy wrote:
+>>>>>> On 2010-09-21 18:42, J. Bruce Fields wrote:
+>>>>>>> I get the following on pnfs-all-latest, while doing a non-pnfs 4.1 mount.
+>>>>>>
+>>>>>> Bruce, can you please provide you .config file?
+>>>>>> >From the registers value it's possible the calldata is used
+>>>>>> after free...
+>>>>>
+>>>>> Yep.  I ran a 'make oldconfig' on the appended and built from that.
+>>>>>
+>>>>> We've seen poisoning in trond's latest for-next as well.  Which I don't
+>>>>> think you're including.  But I'll add linux-nfs to the cc for that.
+>>>>>
+>>>>> --b.
+>>>>>
+>>>>> #
+>>>>> # Automatically generated make config: don't edit
+>>>>> # Linux kernel version: 2.6.36-rc4
+>>>>> # Wed Sep 15 14:57:18 2010
+>>>>> #
+>>> ...
+>>>>> # CONFIG_INPUT_TABL
+>>>>
+>>>> Looks like the message got truncated :-(
 >>>
->>> Put in the infrastructure that uses information returned from the
->>> server at mount to select a layout driver module.
->>>
->>> In this patch, a stub is used that always returns "no driver found".
->>>
->>> Signed-off-by: TBD - melding/reorganization of several patches
->>> ---
->>>  fs/nfs/Makefile           |    1 +
->>>  fs/nfs/client.c           |    4 ++
->>>  fs/nfs/pnfs.c             |   78 +++++++++++++++++++++++++++++++++++++++++++++
->>>  fs/nfs/pnfs.h             |   56 ++++++++++++++++++++++++++++++++
->>>  include/linux/nfs_fs.h    |    1 +
->>>  include/linux/nfs_fs_sb.h |    1 +
->>>  6 files changed, 141 insertions(+), 0 deletions(-)
->>>  create mode 100644 fs/nfs/pnfs.c
->>>  create mode 100644 fs/nfs/pnfs.h
->>>
->>> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
->>> index da7fda6..bb9e773 100644
->>> --- a/fs/nfs/Makefile
->>> +++ b/fs/nfs/Makefile
->>> @@ -15,5 +15,6 @@ nfs-$(CONFIG_NFS_V4)        += nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
->>>                          delegation.o idmap.o \
->>>                          callback.o callback_xdr.o callback_proc.o \
->>>                          nfs4namespace.o
->>> +nfs-$(CONFIG_NFS_V4_1)       += pnfs.o
->>>  nfs-$(CONFIG_SYSCTL) += sysctl.o
->>>  nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
->>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
->>> index 4e7df2a..eed1212 100644
->>> --- a/fs/nfs/client.c
->>> +++ b/fs/nfs/client.c
->>> @@ -48,6 +48,7 @@
->>>  #include "iostat.h"
->>>  #include "internal.h"
->>>  #include "fscache.h"
->>> +#include "pnfs.h"
->>>
->>>  #define NFSDBG_FACILITY              NFSDBG_CLIENT
->>>
->>> @@ -898,6 +899,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
->>>       if (server->wsize > NFS_MAX_FILE_IO_SIZE)
->>>               server->wsize = NFS_MAX_FILE_IO_SIZE;
->>>       server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
->>> +     set_pnfs_layoutdriver(server, fsinfo->layouttype);
->>> +
+>>> Huh.  Sorry about that!
 >>
->> Originally (9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules),
->> nfs4_init_pnfs called set_pnfs_layoutdriver under the following conditions:
->>
->>        if (nfs4_has_session(clp) &&
->>            (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
->>                set_pnfs_layoutdriver(server, fsinfo->layouttype);
->>
->> So in the DS only case we don't want to set server->pnfs_curr_ld.
->> did you test your code with a standalone DS to make there are no
->> ill side effects in this case?
->>
+>> And I presume you config all pNFS options as 'N', right?
 > 
-> This is called from the mount code.  It is never called for a DS
-> (unless the DS is also a MDS, in which case it will be called in the
-> MDS role).
+> I'm just running make oldconfig over that.  Unless the pnfs patches are
+> defaulting those options to 'Y', then yes, that must be what it's
+> doing....
+> 
+> --b.
 
-So at least let's add a BUG_ON and a comment since we're relying on
-side effects of code implemented elsewhere.
+That's really odd.
+
+with your .config and !CONFIG_PNFSD
+and with no modules configured
+though with modules enabled:
+CONFIG_MODULES=y
+# CONFIG_MODULE_FORCE_LOAD is not set
+CONFIG_MODULE_UNLOAD=y
+# CONFIG_MODULE_FORCE_UNLOAD is not set
+# CONFIG_MODVERSIONS is not set
+# CONFIG_MODULE_SRCVERSION_ALL is not set
+
+when turning on rpc debugging I see the server rejecting
+I believe the EXCHANGE_ID RPC on BADCRED:
+
+svc: svc_authenticate (1)
+svc: authentication failed (1)
+
+I see this also over NFSv4.0...
+
+Is this what you're seeing too?
 
 Benny
-
-P.S. I wonder what happens if you try to explicitly mount a DS
-(which is not an MDS).
-
-> 
-> 
->>>       server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
->>>
->>>       server->dtsize = nfs_block_size(fsinfo->dtpref, NULL);
->>> @@ -1017,6 +1020,7 @@ void nfs_free_server(struct nfs_server *server)
->>>  {
->>>       dprintk("--> nfs_free_server()\n");
->>>
->>> +     unset_pnfs_layoutdriver(server);
->>>       spin_lock(&nfs_client_lock);
->>>       list_del(&server->client_link);
->>>       list_del(&server->master_link);
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> new file mode 100644
->>> index 0000000..2e5dba1
->>> --- /dev/null
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -0,0 +1,78 @@
->>> +/*
->>> + *  pNFS functions to call and manage layout drivers.
->>> + *
->>> + *  Copyright (c) 2002 [year of first publication]
->>> + *  The Regents of the University of Michigan
->>> + *  All Rights Reserved
->>> + *
->>> + *  Dean Hildebrand <dhildebz@umich.edu>
->>> + *
->>> + *  Permission is granted to use, copy, create derivative works, and
->>> + *  redistribute this software and such derivative works for any purpose,
->>> + *  so long as the name of the University of Michigan is not used in
->>> + *  any advertising or publicity pertaining to the use or distribution
->>> + *  of this software without specific, written prior authorization. If
->>> + *  the above copyright notice or any other identification of the
->>> + *  University of Michigan is included in any copy of any portion of
->>> + *  this software, then the disclaimer below must also be included.
->>> + *
->>> + *  This software is provided as is, without representation or warranty
->>> + *  of any kind either express or implied, including without limitation
->>> + *  the implied warranties of merchantability, fitness for a particular
->>> + *  purpose, or noninfringement.  The Regents of the University of
->>> + *  Michigan shall not be liable for any damages, including special,
->>> + *  indirect, incidental, or consequential damages, with respect to any
->>> + *  claim arising out of or in connection with the use of the software,
->>> + *  even if it has been or is hereafter advised of the possibility of
->>> + *  such damages.
->>> + */
->>> +
->>> +#include <linux/nfs_fs.h>
->>> +#include "pnfs.h"
->>> +
->>> +#define NFSDBG_FACILITY              NFSDBG_PNFS
->>> +
->>> +/* STUB that returns the equivalent of "no module found" */
->>> +static struct pnfs_layoutdriver_type *
->>> +find_pnfs_driver(u32 id) {
->>> +     return NULL;
->>> +}
->>> +
->>> +/* Unitialize a mountpoint in a layout driver */
->>> +void
->>> +unset_pnfs_layoutdriver(struct nfs_server *nfss)
->>> +{
->>> +     nfss->pnfs_curr_ld = NULL;
->>> +}
->>> +
->>> +/*
->>> + * Try to set the server's pnfs module to the pnfs layout type specified by id.
->>> + * Currently only one pNFS layout driver per filesystem is supported.
->>> + *
->>> + * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
->>> + */
->>> +void
->>> +set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
->>> +{
->>> +     struct pnfs_layoutdriver_type *ld_type = NULL;
->>> +
->>> +     if (id == 0)
->>> +             goto out_no_driver;
->>> +     ld_type = find_pnfs_driver(id);
->>> +     if (!ld_type) {
->>> +             request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
->>> +             ld_type = find_pnfs_driver(id);
->>> +             if (!ld_type) {
->>> +                     dprintk("%s: No pNFS module found for %u.\n",
->>> +                             __func__, id);
->>> +                     goto out_no_driver;
->>> +             }
->>> +     }
->>> +     server->pnfs_curr_ld = ld_type;
->>> +     dprintk("%s: pNFS module for %u set\n", __func__, id);
->>> +     return;
->>> +
->>> +out_no_driver:
->>> +     dprintk("%s: Using NFSv4 I/O\n", __func__);
->>> +     server->pnfs_curr_ld = NULL;
->>> +}
->>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->>> new file mode 100644
->>> index 0000000..c628ef1
->>> --- /dev/null
->>> +++ b/fs/nfs/pnfs.h
->>> @@ -0,0 +1,56 @@
->>> +/*
->>> + *  pNFS client data structures.
->>> + *
->>> + *  Copyright (c) 2002
->>> + *  The Regents of the University of Michigan
->>> + *  All Rights Reserved
->>> + *
->>> + *  Dean Hildebrand <dhildebz@umich.edu>
->>> + *
->>> + *  Permission is granted to use, copy, create derivative works, and
->>> + *  redistribute this software and such derivative works for any purpose,
->>> + *  so long as the name of the University of Michigan is not used in
->>> + *  any advertising or publicity pertaining to the use or distribution
->>> + *  of this software without specific, written prior authorization. If
->>> + *  the above copyright notice or any other identification of the
->>> + *  University of Michigan is included in any copy of any portion of
->>> + *  this software, then the disclaimer below must also be included.
->>> + *
->>> + *  This software is provided as is, without representation or warranty
->>> + *  of any kind either express or implied, including without limitation
->>> + *  the implied warranties of merchantability, fitness for a particular
->>> + *  purpose, or noninfringement.  The Regents of the University of
->>> + *  Michigan shall not be liable for any damages, including special,
->>> + *  indirect, incidental, or consequential damages, with respect to any
->>> + *  claim arising out of or in connection with the use of the software,
->>> + *  even if it has been or is hereafter advised of the possibility of
->>> + *  such damages.
->>> + */
->>> +
->>> +#ifndef FS_NFS_PNFS_H
->>> +#define FS_NFS_PNFS_H
->>> +
->>> +#ifdef CONFIG_NFS_V4_1
->>> +
->>> +#define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
->>> +
->>> +/* Per-layout driver specific registration structure */
->>> +struct pnfs_layoutdriver_type {
->>> +};
->>> +
->>> +void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
->>> +void unset_pnfs_layoutdriver(struct nfs_server *);
->>> +
->>> +#else  /* CONFIG_NFS_V4_1 */
->>> +
->>> +static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
->>> +{
->>> +}
->>> +
->>> +static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
->>> +{
->>> +}
->>> +
->>> +#endif /* CONFIG_NFS_V4_1 */
->>> +
->>> +#endif /* FS_NFS_PNFS_H */
->>> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
->>> index d929b18..aba3da2 100644
->>> --- a/include/linux/nfs_fs.h
->>> +++ b/include/linux/nfs_fs.h
->>> @@ -615,6 +615,7 @@ nfs_fileid_to_ino_t(u64 fileid)
->>>  #define NFSDBG_CLIENT                0x0200
->>>  #define NFSDBG_MOUNT         0x0400
->>>  #define NFSDBG_FSCACHE               0x0800
->>> +#define NFSDBG_PNFS          0x1000
->>>  #define NFSDBG_ALL           0xFFFF
->>>
->>>  #ifdef __KERNEL__
->>> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
->>> index c82ee7c..29a821d 100644
->>> --- a/include/linux/nfs_fs_sb.h
->>> +++ b/include/linux/nfs_fs_sb.h
->>> @@ -144,6 +144,7 @@ struct nfs_server {
->>>       u32                     acl_bitmask;    /* V4 bitmask representing the ACEs
->>>                                                  that are supported on this
->>>                                                  filesystem */
->>> +     struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
->>
->> This is under #ifdef CONFIG_NFS_V4
->> Why not only under CONFIG_NFS_V4_1?
->> (see 9170cf5 pnfs_submit: set and unset pnfs layoutdriver modules)
-> 
-> That was part of the campaign to remove as many ifdef statements as
-> possible.  I have no preference one way or the other.
-> 
-> Fred
-> 
->>
->> Benny
->>
->>>  #endif
->>>       void (*destroy)(struct nfs_server *);
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
