@@ -1,168 +1,165 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:52003 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753359Ab0IOPln convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Sep 2010 11:41:43 -0400
-Subject: Re: [PATCH 6/8] nfs: add a rename_setup nfs_rpc_op for async renames
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1284557041-4375-7-git-send-email-jlayton@redhat.com>
-Date: Wed, 15 Sep 2010 11:39:38 -0400
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <1683BE39-BC28-4A0E-969F-792D4D29B985@oracle.com>
-References: <1284557041-4375-1-git-send-email-jlayton@redhat.com> <1284557041-4375-7-git-send-email-jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:10969 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752632Ab0I3SPf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 14:15:35 -0400
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 00/17] Introduce automounter dentry ops
+To: viro@ftp.linux.org.uk, jmoyer@redhat.com
+Cc: linux-fs@vger.kernel.org, autofs@linux.kernel.org,
+        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org
+Date: Thu, 30 Sep 2010 19:14:55 +0100
+Message-ID: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+The attached patches introduce a couple of new dentry operations for use by
+automounters and make AFS, NFS, CIFS and autofs4 use them.  This means that
+these filesystems no longer have to abuse lookup(), follow_link() and
+d_revalidate() to achieve the desired effect.
 
-On Sep 15, 2010, at 9:23 AM, Jeff Layton wrote:
+There are two dentry operations provided:
 
-> Add a call that can set up the arguments and the response container for
-> an asynchronous rename call.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> fs/nfs/nfs3proc.c       |   18 ++++++++++++++++++
-> fs/nfs/nfs4proc.c       |   21 +++++++++++++++++++++
-> fs/nfs/proc.c           |   12 ++++++++++++
-> include/linux/nfs_xdr.h |    1 +
-> 4 files changed, 52 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-> index c5cccf1..0654177 100644
-> --- a/fs/nfs/nfs3proc.c
-> +++ b/fs/nfs/nfs3proc.c
-> @@ -439,6 +439,23 @@ nfs3_proc_unlink_done(struct rpc_task *task, struct inode *dir)
-> }
-> 
-> static int
-> +nfs3_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
-> +{
-> +	struct nfs_renameres *res = msg->rpc_resp;
-> +
-> +	msg->rpc_proc = &nfs3_procedures[NFS3PROC_RENAME];
-> +
-> +	res->old_fattr = nfs_alloc_fattr();
-> +	res->new_fattr = nfs_alloc_fattr();
-> +	if (res->old_fattr != NULL && res->new_fattr != NULL)
-> +		return 0;
-> +
-> +	nfs_free_fattr(res->old_fattr);
-> +	nfs_free_fattr(res->new_fattr);
-> +	return -ENOMEM;
-> +}
+ (1) struct vfsmount *(*d_automount)(struct path *path);
 
-This is just a style nit, but my understanding is that there is a stated preference for the error case to be handled in the statement block after the NULL checks, and the common case should exit through the tail of the function.
+     This is used by follow_automount() in fs/namei.c to ask the filesystem
+     that owns the dentry at the current path point to mount something on
+     @path.
 
-I suspect that these last three patches can be merged together for submission.  I read somewhere recently that the powers that be do not like patches that introduce new code that isn't used by anything.
+     It is called if either the inode belonging to the given dentry is flagged
+     S_AUTOMOUNT or the dentry is flagged DMANAGED_AUTOMOUNT, and if the dentry
+     has nothing mounted on it in the current namespace when someone attempts
+     to use that dentry.
 
-> +
-> +static int
-> nfs3_proc_rename(struct inode *old_dir, struct qstr *old_name,
-> 		 struct inode *new_dir, struct qstr *new_name)
-> {
-> @@ -842,6 +859,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
-> 	.unlink_setup	= nfs3_proc_unlink_setup,
-> 	.unlink_done	= nfs3_proc_unlink_done,
-> 	.rename		= nfs3_proc_rename,
-> +	.rename_setup	= nfs3_proc_rename_setup,
-> 	.link		= nfs3_proc_link,
-> 	.symlink	= nfs3_proc_symlink,
-> 	.mkdir		= nfs3_proc_mkdir,
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 120a8a6..011dc90 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2671,6 +2671,26 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
-> 	return 1;
-> }
-> 
-> +static int nfs4_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
-> +{
-> +	struct nfs_server *server = NFS_SERVER(dir);
-> +	struct nfs_renameargs *arg = msg->rpc_argp;
-> +	struct nfs_renameres *res = msg->rpc_resp;
-> +
-> +	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_RENAME];
-> +	arg->bitmask = server->attr_bitmask;
-> +	res->server = server;
-> +
-> +	res->old_fattr = nfs_alloc_fattr();
-> +	res->new_fattr = nfs_alloc_fattr();
-> +	if (res->old_fattr != NULL && res->new_fattr != NULL)
-> +		return 0;
-> +
-> +	nfs_free_fattr(res->old_fattr);
-> +	nfs_free_fattr(res->new_fattr);
-> +	return -ENOMEM;
-> +}
-> +
-> static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
-> 		struct inode *new_dir, struct qstr *new_name)
-> {
-> @@ -5443,6 +5463,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
-> 	.unlink_setup	= nfs4_proc_unlink_setup,
-> 	.unlink_done	= nfs4_proc_unlink_done,
-> 	.rename		= nfs4_proc_rename,
-> +	.rename_setup	= nfs4_proc_rename_setup,
-> 	.link		= nfs4_proc_link,
-> 	.symlink	= nfs4_proc_symlink,
-> 	.mkdir		= nfs4_proc_mkdir,
-> diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-> index 5c70b58..1b02dee 100644
-> --- a/fs/nfs/proc.c
-> +++ b/fs/nfs/proc.c
-> @@ -366,6 +366,17 @@ static int nfs_proc_unlink_done(struct rpc_task *task, struct inode *dir)
-> }
-> 
-> static int
-> +nfs_proc_rename_setup(struct rpc_message *msg, struct inode *dir)
-> +{
-> +	struct nfs_renameres *res = msg->rpc_resp;
-> +
-> +	msg->rpc_proc = &nfs_procedures[NFSPROC_RENAME];
-> +	res->old_fattr = NULL;
-> +	res->new_fattr = NULL;
-> +	return 0;
-> +}
-> +
-> +static int
-> nfs_proc_rename(struct inode *old_dir, struct qstr *old_name,
-> 		struct inode *new_dir, struct qstr *new_name)
-> {
-> @@ -703,6 +714,7 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
-> 	.unlink_setup	= nfs_proc_unlink_setup,
-> 	.unlink_done	= nfs_proc_unlink_done,
-> 	.rename		= nfs_proc_rename,
-> +	.rename_setup	= nfs_proc_rename_setup,
-> 	.link		= nfs_proc_link,
-> 	.symlink	= nfs_proc_symlink,
-> 	.mkdir		= nfs_proc_mkdir,
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 6265fa8..d470751 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1018,6 +1018,7 @@ struct nfs_rpc_ops {
-> 	int	(*unlink_done) (struct rpc_task *, struct inode *);
-> 	int	(*rename)  (struct inode *, struct qstr *,
-> 			    struct inode *, struct qstr *);
-> +	int	(*rename_setup)  (struct rpc_message *msg, struct inode *dir);
-> 	int	(*link)    (struct inode *, struct inode *, struct qstr *);
-> 	int	(*symlink) (struct inode *, struct dentry *, struct page *,
-> 			    unsigned int, struct iattr *);
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+     No locks will be held when this is called.
 
--- 
-chuck[dot]lever[at]oracle[dot]com
+     d_op->d_automount() may return one of:
+
+     (a) The vfsmount mounted upon that dentry, in which case pathwalk will
+     	 move to the root dentry of that vfsmount.
+
+     (b) NULL if something was already mounted there, in which case pathwalk
+     	 will loop around and recheck the mountings.
+
+     (c) -EISDIR, in which case pathwalk will stop at this point and attempt to
+     	 use that dentry as the object of interest.  If the current dentry is
+     	 not terminal within the path, -EREMOTE will be returned.
+
+     (d) An error value, to be returned immediately.
+
+     Automount transits are counted as symlinks to prevent circular references
+     from being a problem.  If one is detected, -ELOOP will be returned.
+
+     If stat() is given AT_NO_AUTOMOUNT then d_op->d_automount() will not be
+     invoked on a terminal dentry; instead that dentry will be returned by
+     pathwalk.
+
+     follow_automount() also does not invoke d_op->d_automount() if the caller
+     gave AT_SYMLINK_NOFOLLOW to stat(), but rather returns the base dentry.
 
 
+ (2) int (*d_manage)(struct path *path, bool mounting_here);
 
+     This is called by managed_dentry() or follow_down() in fs/namei.c to
+     indicate to a filesystem that pathwalk is about to step off of the current
+     path point and walk to another point in the path.
+
+     This is called if DMANAGED_TRANSIT is set on a dentry.
+
+     This can then be used by autofs to stop non-daemon processes from walking
+     until it has finished constructing or expiring the tree behind the dentry.
+     It could also be used to prevent undesirables from mounting on this
+     dentry.
+
+     @mounting_here is true if called from follow_down() from mount, in which
+     case namespace_sem is held exclusively by the caller of follow_down().
+     Otherwise, no locks are held.
+
+     d_op->d_manage() may return one of:
+
+     (a) 0 to continue the pathwalk as normal.
+
+     (b) -EISDIR to prevent managed_dentry() from crossing to a mounted
+     	 filesystem or calling d_op->d_automount(), in which case the dentry
+     	 will be treated as an ordinary directory.
+
+     (c) An error to abort the pathwalk completely.
+
+
+To make this work for autofs, d_mounted in struct dentry has become d_managed.
+This used to be a count of the number of mounts on this dentry.  The bottom 28
+bits are still that (DMANAGED_MOUNTPOINT).  The upper four bits contain a
+couple of flags, DMANAGED_TRANSIT and DMANAGED_AUTOMOUNT.  This allows
+managed_dentry() to test all three conditions with minimumal overhead if none
+of them are true.
+
+For other filesystems, setting S_AUTOMOUNT is sufficient.  This is noted by
+__d_instantiate() which will set DMANAGED_AUTOMOUNT automatically if it is
+seen.  Checking S_AUTOMOUNT doesn't work for autofs, however, since the dentry
+might not have an inode, hence why a dentry flag also.
+
+S_AUTOMOUNT and d_automount() are introduced in patch 1; d_manage(), d_managed
+and DMANAGED_* are introduced in patch 7.
+
+David
+---
+
+David Howells (8):
+      Make follow_down() handle d_manage()
+      Make dentry::d_mounted into a more general field for special function dirs
+      Add an AT_NO_AUTOMOUNT flag to suppress terminal automount
+      Remove the automount through follow_link() kludge code from pathwalk
+      CIFS: Use d_automount() rather than abusing follow_link()
+      NFS: Use d_automount() rather than abusing follow_link()
+      AFS: Use d_automount() rather than abusing follow_link()
+      Add a dentry op to handle automounting rather than abusing follow_link()
+
+Ian Kent (9):
+      autofs4 - bump version
+      autofs4 - add v4 pseudo direct mount support
+      autofs4 - fix wait validation
+      autofs4: cleanup autofs4_free_ino()
+      autofs4: cleanup dentry operations
+      autofs4: cleanup inode operations
+      autofs4: removed unused code
+      autofs4: add d_manage() dentry operation
+      autofs4: add d_automount() dentry operation
+
+
+ Documentation/filesystems/Locking |    2 
+ Documentation/filesystems/vfs.txt |   22 +
+ fs/afs/dir.c                      |    1 
+ fs/afs/inode.c                    |    3 
+ fs/afs/internal.h                 |    1 
+ fs/afs/mntpt.c                    |   47 +--
+ fs/autofs/dirhash.c               |    5 
+ fs/autofs4/autofs_i.h             |  100 ++++--
+ fs/autofs4/dev-ioctl.c            |    2 
+ fs/autofs4/expire.c               |   42 ++
+ fs/autofs4/inode.c                |   28 --
+ fs/autofs4/root.c                 |  668 ++++++++++++++++---------------------
+ fs/autofs4/waitq.c                |   17 +
+ fs/cifs/cifs_dfs_ref.c            |  134 ++++---
+ fs/cifs/cifsfs.h                  |    6 
+ fs/cifs/dir.c                     |    2 
+ fs/cifs/inode.c                   |    8 
+ fs/dcache.c                       |    7 
+ fs/namei.c                        |  243 +++++++++++--
+ fs/namespace.c                    |   20 +
+ fs/nfs/dir.c                      |    4 
+ fs/nfs/inode.c                    |    4 
+ fs/nfs/internal.h                 |    1 
+ fs/nfs/namespace.c                |   87 ++---
+ fs/nfsd/vfs.c                     |    5 
+ fs/stat.c                         |    4 
+ include/linux/auto_fs4.h          |    2 
+ include/linux/dcache.h            |   19 +
+ include/linux/fcntl.h             |    1 
+ include/linux/fs.h                |    2 
+ include/linux/namei.h             |    5 
+ include/linux/nfs_fs.h            |    1 
+ 32 files changed, 836 insertions(+), 657 deletions(-)
 
