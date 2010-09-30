@@ -1,97 +1,178 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sith.mimuw.edu.pl ([193.0.96.4]:26908 "EHLO sith.mimuw.edu.pl"
+Received: from fieldses.org ([174.143.236.118]:49114 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755981Ab0IUJIW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Sep 2010 05:08:22 -0400
-Date: Tue, 21 Sep 2010 11:08:21 +0200
-From: Jan =?utf-8?Q?R=C4=99korajski?= <baggins@sith.mimuw.edu.pl>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] rpcbind: don't ignore bind and init_transport errors
-Message-ID: <20100921090820.GF4358@sith.mimuw.edu.pl>
-References: <20100917181251.GA21111@sith.mimuw.edu.pl> <690CDF34-1D1E-44E2-B077-7EDD350701CB@oracle.com> <20100917190413.GB21111@sith.mimuw.edu.pl> <DA851F94-8AFB-448D-B48D-BC4ACAD8F395@oracle.com> <20100917222227.GA22144@sith.mimuw.edu.pl> <DC671AB7-F3AF-4E70-B42E-4FF991D16E43@oracle.com> <20100920153157.GA20589@sith.mimuw.edu.pl> <02C38759-5236-454B-8F7B-02F9419B1532@oracle.com> <20100920164856.GA20925@sith.mimuw.edu.pl> <FC6FA83D-52D7-411A-A18F-4A143A60992E@oracle.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <FC6FA83D-52D7-411A-A18F-4A143A60992E@oracle.com>
+	id S932192Ab0I3QTi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 12:19:38 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
+Subject: [PATCH 04/16] nfsd4: generic callback code
+Date: Thu, 30 Sep 2010 12:19:01 -0400
+Message-Id: <1285863553-8945-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1285863553-8945-1-git-send-email-bfields@redhat.com>
+References: <1285863553-8945-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 20 Sep 2010, Chuck Lever wrote:
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-> 
-> On Sep 20, 2010, at 12:48 PM, Jan Rękorajski wrote:
-> 
-> > On Mon, 20 Sep 2010, Chuck Lever wrote:
-> > 
-> >> 
-> >> On Sep 20, 2010, at 11:31 AM, Jan Rękorajski wrote:
-> >> 
-> >>> On Mon, 20 Sep 2010, Chuck Lever wrote:
-> >>> 
-> >>>> 
-> >>>> On Sep 17, 2010, at 6:22 PM, Jan Rękorajski wrote:
-> >>>> 
-[snip]
-> > 
-> >> None of NFS's RPC daemons allow you to set a bind address, with one
-> >> exception.  rpc.statd allows one to specify a "bind address" in the
-> >> form of a host name for reasons specific to the NSM protocol.
-> > 
-> > I may be wrong here, but maybe it's because it was always portmapper
-> > doing the binding, so if portmapper couldn't then no one thought of
-> > adding this to RPC daemons.
-> 
-> If rpc.mountd is running on a host, and rpcbind is not, it doesn't
-> matter.  A port scanner can still find and attack the open mountd
-> port.  The best and safest approach, IMO, is to use a firewall, and
-> then test it with a remote port scanner service.  Our rpcbind
-> implementation has tcp_wrapper already built in, for instance, but I
-> use the iptables firewall in Fedora 13 (and, I keep RPC services on
-> hosts inside the firewall, not on the firewall itself).
+Make the recall callback code more generic, so that other callbacks
+will be able to use it too.
 
-You're right, but try to see that rpcbind is not just a part of NFS
-implementation.  It is an RPC port mapper daemon that happens to be
-mostly used by NFS and is maintained by NFS people.  So rpc.mountd
-security should be a separate issue, especially if it can run without a
-portmapper.
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+---
+ fs/nfsd/nfs4callback.c |   70 +++++++++++++++++++++--------------------------
+ fs/nfsd/state.h        |    2 +
+ 2 files changed, 33 insertions(+), 39 deletions(-)
 
-> [ ... snipped ... ]
-> 
-> >>> Second thing is a host for vservers
-> >>> (http://linux-vserver.org), I need to run portmapper in guests but
-> >>> rpcbind listening on INADDR_ANY is not letting me.
-> >> 
-> >> Can you say more?  Maybe it's a bug.
-> > 
-> > It's more of a design flaw, vserver is an isolation techique, and if I
-> > bind to some port on INADDR_ANY on host then I can't bind to that
-> > port on guests. I don't know the implementation details, but network
-> > interfaces other than lo are not (maybe can't be) isolated enough.
-> 
-> The problem is the guest listeners get EADDRINUSE, or equivalent,
-> since they are sharing a network namespace with the host?
-
-It appears so, sorry that I can't elaborate more on this.
-
-> >>> And finally it's good
-> >>> to be consistent, it's strange to me that someone may want to limit only
-> >>> the UDP part of portmapper (modulo network issues you mentioned).
-> >> 
-> >> "-h" was added to address an issue specific to Linux UDP sockets.
-> >> It's not a feature, but a bug fix that is UDP-specific.  TCP doesn't
-> >> need this bug fix.
-> > 
-> > Of course, but why not change a bugfix into a feature?
-> 
-> If we want to add this feature properly, we will have to change a
-> broad range of user space components.  Therefore it will be a
-> non-trivial undertaking.
-
-IMO adding this to rpcbind won't hurt anybody, it's simple and may be a good
-starting point to work on the rest of the daemons.  Besides I do have rpcbind
-with my patch running and NFS and other RPC services are working just fine.
-
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index ae63f69..2289ad5 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -584,7 +584,6 @@ void nfsd4_probe_callback(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
+ static int nfsd41_cb_setup_sequence(struct nfs4_client *clp,
+ 		struct rpc_task *task)
+ {
+-	struct nfsd4_cb_args *args = task->tk_msg.rpc_argp;
+ 	u32 *ptr = (u32 *)clp->cl_sessionid.data;
+ 	int status = 0;
+ 
+@@ -597,14 +596,6 @@ static int nfsd41_cb_setup_sequence(struct nfs4_client *clp,
+ 		status = -EAGAIN;
+ 		goto out;
+ 	}
+-
+-	/*
+-	 * We'll need the clp during XDR encoding and decoding,
+-	 * and the sequence during decoding to verify the reply
+-	 */
+-	args->args_clp = clp;
+-	task->tk_msg.rpc_resp = args;
+-
+ out:
+ 	dprintk("%s status=%d\n", __func__, status);
+ 	return status;
+@@ -616,7 +607,8 @@ out:
+  */
+ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+ {
+-	struct nfs4_delegation *dp = calldata;
++	struct nfsd4_callback *cb = calldata;
++	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
+ 	struct nfs4_client *clp = dp->dl_client;
+ 	struct nfsd4_cb_args *args = task->tk_msg.rpc_argp;
+ 	u32 minorversion = clp->cl_cb_conn.cb_minorversion;
+@@ -639,7 +631,8 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+ 
+ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
+ {
+-	struct nfs4_delegation *dp = calldata;
++	struct nfsd4_callback *cb = calldata;
++	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
+ 	struct nfs4_client *clp = dp->dl_client;
+ 
+ 	dprintk("%s: minorversion=%d\n", __func__,
+@@ -661,7 +654,8 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
+ 
+ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
+ {
+-	struct nfs4_delegation *dp = calldata;
++	struct nfsd4_callback *cb = calldata;
++	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
+ 	struct nfs4_client *clp = dp->dl_client;
+ 	struct rpc_clnt *current_rpc_client = clp->cl_cb_client;
+ 
+@@ -706,7 +700,8 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
+ 
+ static void nfsd4_cb_recall_release(void *calldata)
+ {
+-	struct nfs4_delegation *dp = calldata;
++	struct nfsd4_callback *cb = calldata;
++	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
+ 
+ 	nfs4_put_delegation(dp);
+ }
+@@ -748,42 +743,39 @@ void nfsd4_set_callback_client(struct nfs4_client *clp, struct rpc_clnt *new)
+ 		rpc_shutdown_client(old);
+ }
+ 
+-/*
+- * called with dp->dl_count inc'ed.
+- */
+-static void _nfsd4_cb_recall(struct nfs4_delegation *dp)
++void nfsd4_release_cb(struct nfsd4_callback *cb)
+ {
+-	struct nfs4_client *clp = dp->dl_client;
++	if (cb->cb_ops->rpc_release)
++		cb->cb_ops->rpc_release(cb);
++}
++
++void nfsd4_do_callback_rpc(struct work_struct *w)
++{
++	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
++	struct nfs4_client *clp = cb->cb_args.args_clp;
+ 	struct rpc_clnt *clnt = clp->cl_cb_client;
+-	struct nfsd4_cb_args *args = &dp->dl_recall.cb_args;
+-	struct rpc_message msg = {
+-		.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL],
+-		.rpc_cred = callback_cred
+-	};
+ 
+ 	if (clnt == NULL) {
+-		nfs4_put_delegation(dp);
++		nfsd4_release_cb(cb);
+ 		return; /* Client is shutting down; give up. */
+ 	}
+-
+-	args->args_op = dp;
+-	msg.rpc_argp = args;
+-	dp->dl_retries = 1;
+-	rpc_call_async(clnt, &msg, RPC_TASK_SOFT, &nfsd4_cb_recall_ops, dp);
++	rpc_call_async(clnt, &cb->cb_msg, RPC_TASK_SOFT, cb->cb_ops, cb);
+ }
+ 
+-void nfsd4_do_callback_rpc(struct work_struct *w)
++void nfsd4_cb_recall(struct nfs4_delegation *dp)
+ {
+-	/* XXX: for now, just send off delegation recall. */
+-	/* In future, generalize to handle any sort of callback. */
+-	struct nfsd4_callback *c = container_of(w, struct nfsd4_callback, cb_work);
+-	struct nfs4_delegation *dp = container_of(c, struct nfs4_delegation, dl_recall);
+-
+-	_nfsd4_cb_recall(dp);
+-}
++	struct nfsd4_callback *cb = &dp->dl_recall;
+ 
++	dp->dl_retries = 1;
++	cb->cb_args.args_op = dp;
++	cb->cb_args.args_clp = dp->dl_client;
++	cb->cb_msg.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_RECALL];
++	cb->cb_msg.rpc_argp = &cb->cb_args;
++	cb->cb_msg.rpc_resp = &cb->cb_args;
++	cb->cb_msg.rpc_cred = callback_cred;
++
++	cb->cb_ops = &nfsd4_cb_recall_ops;
++	dp->dl_retries = 1;
+ 
+-void nfsd4_cb_recall(struct nfs4_delegation *dp)
+-{
+ 	queue_work(callback_wq, &dp->dl_recall.cb_work);
+ }
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index f988b90..6e59214 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -72,6 +72,8 @@ struct nfsd4_cb_args {
+ 
+ struct nfsd4_callback {
+ 	struct nfsd4_cb_args cb_args;
++	struct rpc_message cb_msg;
++	const struct rpc_call_ops *cb_ops;
+ 	struct work_struct cb_work;
+ };
+ 
 -- 
-Jan Rękorajski            |  ALL SUSPECTS ARE GUILTY. PERIOD!
-baggins<at>mimuw.edu.pl   |  OTHERWISE THEY WOULDN'T BE SUSPECTS, WOULD THEY?
-BOFH, MANIAC              |                   -- TROOPS by Kevin Rubio
+1.7.0.4
+
