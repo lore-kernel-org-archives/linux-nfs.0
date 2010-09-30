@@ -1,47 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13734 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:49149 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753320Ab0IAQGi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Sep 2010 12:06:38 -0400
-Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o81G6bVY008475
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Sep 2010 12:06:37 -0400
-Received: from badhat.bos.devel.redhat.com (badhat.boston.devel.redhat.com [10.16.60.49])
-	by int-mx08.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o81G6bQb023397
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Sep 2010 12:06:37 -0400
-Message-ID: <4C7E7A0C.70402@RedHat.com>
-Date: Wed, 01 Sep 2010 12:06:36 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Updated pNFS Developmental kernel repository
-Content-Type: text/plain; charset=ISO-8859-1
+	id S932225Ab0I3QTp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 12:19:45 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 15/16] nfsd4: add new connections to session
+Date: Thu, 30 Sep 2010 12:19:12 -0400
+Message-Id: <1285863553-8945-16-git-send-email-bfields@redhat.com>
+In-Reply-To: <1285863553-8945-1-git-send-email-bfields@redhat.com>
+References: <1285863553-8945-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hello,
+As long as we're not implementing any session security, we should just
+automatically add any new connections that come along to the list of
+sessions associated with the session.
 
-I've updated the Fedora pNFS development repository to include the
-Fedora 13, 14 and Devel kernels that have the latest pNFS bits:
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   49 +++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 files changed, 47 insertions(+), 2 deletions(-)
 
-    Tag: pnfs-all-2.6.35-2010-08-24     for Fedora 13 and 14 kernels
-    Tag: pnfs-all-2.6.36-rc3-2010-08-30 for Devel/f15 kernels
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3b4d74c..596702e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -658,13 +658,18 @@ static struct nfsd4_conn *alloc_conn(struct svc_rqst *rqstp)
+ 	return conn;
+ }
+ 
++static void __nfsd4_hash_conn(struct nfsd4_conn *conn, struct nfsd4_session *ses)
++{
++	conn->cn_session = ses;
++	list_add(&conn->cn_persession, &ses->se_conns);
++}
++
+ static void nfsd4_hash_conn(struct nfsd4_conn *conn, struct nfsd4_session *ses)
+ {
+ 	struct nfs4_client *clp = ses->se_client;
+ 
+ 	spin_lock(&clp->cl_lock);
+-	conn->cn_session = ses;
+-	list_add(&conn->cn_persession, &ses->se_conns);
++	__nfsd4_hash_conn(conn, ses);
+ 	spin_unlock(&clp->cl_lock);
+ }
+ 
+@@ -1612,6 +1617,44 @@ out:
+ 	return status;
+ }
+ 
++static struct nfsd4_conn *__nfsd4_find_conn(struct svc_rqst *r, struct nfsd4_session *s)
++{
++	struct nfsd4_conn *c;
++
++	list_for_each_entry(c, &s->se_conns, cn_persession) {
++		if (c->cn_xprt == r->rq_xprt) {
++			return c;
++		}
++	}
++	return NULL;
++}
++
++static void nfsd4_sequence_check_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
++{
++	struct nfs4_client *clp = ses->se_client;
++	struct nfsd4_conn *c, *new = NULL;
++
++	spin_lock(&clp->cl_lock);
++	c = __nfsd4_find_conn(rqstp, ses);
++	spin_unlock(&clp->cl_lock);
++	if (c)
++		return;
++
++	new = alloc_conn(rqstp);
++
++	spin_lock(&clp->cl_lock);
++	c = __nfsd4_find_conn(rqstp, ses);
++	if (c) {
++		spin_unlock(&clp->cl_lock);
++		free_conn(new);
++		return;
++	}
++	__nfsd4_hash_conn(new, ses);
++	spin_unlock(&clp->cl_lock);
++	nfsd4_register_conn(new);
++	return;
++}
++
+ __be32
+ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	       struct nfsd4_compound_state *cstate,
+@@ -1656,6 +1699,8 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	if (status)
+ 		goto out;
+ 
++	nfsd4_sequence_check_conn(rqstp, session);
++
+ 	/* Success! bump slot seqid */
+ 	slot->sl_inuse = true;
+ 	slot->sl_seqid = seq->seqid;
+-- 
+1.7.0.4
 
-(Note: there are also kernel-debuginfo and kernel-devel rpms for people who 
-use things like systemtap probes and crash).
-
-I've also updated the pNFS-enabled nfs-utils in all three releases. 
-
-Instructions on how to install and use these kernels are at:
-http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
-
- If/when bugs are found with these rpms please enter them
-in to the NFS Bugzilla Main Page at:
-    https://bugzilla.linux-nfs.org/index.cgi
-
-Please use the "pNFS" keyword.. 
-
-Any question or issues please feel free to contact me... 
-
-steved.
