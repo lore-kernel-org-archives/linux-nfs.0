@@ -1,47 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:30186 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:1633 "EHLO
 	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754677Ab0IMLYy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Sep 2010 07:24:54 -0400
-Message-ID: <4C8E0A03.3020500@panasas.com>
-Date: Mon, 13 Sep 2010 13:24:51 +0200
+	with ESMTP id S1754892Ab0I3Srx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 14:47:53 -0400
 From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Christoph Hellwig <hch@infradead.org>
-CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 07/13] RFC: pnfs: full mount/umount infrastructure
-References: <1283450419-5648-1-git-send-email-iisaman@netapp.com>	 <1283450419-5648-8-git-send-email-iisaman@netapp.com>	 <20100910235858.GB11231@infradead.org> <1284163679.14078.106.camel@heimdal.trondhjem.org>
-In-Reply-To: <1284163679.14078.106.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+To: " J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] nfsd4: adjust buflen for encoded attrs bitmap based on actual bitmap length
+Date: Thu, 30 Sep 2010 20:47:46 +0200
+Message-Id: <1285872466-21013-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2010-09-11 03:07, Trond Myklebust wrote:
-> On Fri, 2010-09-10 at 19:58 -0400, Christoph Hellwig wrote:
->>> +EXPORT_SYMBOL(pnfs_register_layoutdriver);
->>
->> Al exports from nfs.ko needs to be _GPL - this is in no way a public
->> API, just an internal subdivision of the nfs client.
-> 
-> ACK. We're not committing to supporting a stable ABI here in any way,
-> shape or form...
+The existing code adjusted it based on the worst case scenario for the returned
+bitmap and the best case scenario for the supported attrs attribute.
 
-OK, not yet.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfsd/nfs4xdr.c |   14 ++++++++++----
+ 1 files changed, 10 insertions(+), 4 deletions(-)
 
-However, on the longer run I'd like us to consider formalizing
-the kABI for non-GPLed layout drivers.
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 1a468bb..f48d891 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1805,19 +1805,23 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 				goto out_nfserr;
+ 		}
+ 	}
+-	if ((buflen -= 16) < 0)
+-		goto out_resource;
+ 
+ 	if (unlikely(bmval2)) {
++		if ((buflen -= 16) < 0)
++			goto out_resource;
+ 		WRITE32(3);
+ 		WRITE32(bmval0);
+ 		WRITE32(bmval1);
+ 		WRITE32(bmval2);
+ 	} else if (likely(bmval1)) {
++		if ((buflen -= 12) < 0)
++			goto out_resource;
+ 		WRITE32(2);
+ 		WRITE32(bmval0);
+ 		WRITE32(bmval1);
+ 	} else {
++		if ((buflen -= 8) < 0)
++			goto out_resource;
+ 		WRITE32(1);
+ 		WRITE32(bmval0);
+ 	}
+@@ -1828,15 +1832,17 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 		u32 word1 = nfsd_suppattrs1(minorversion);
+ 		u32 word2 = nfsd_suppattrs2(minorversion);
+ 
+-		if ((buflen -= 12) < 0)
+-			goto out_resource;
+ 		if (!aclsupport)
+ 			word0 &= ~FATTR4_WORD0_ACL;
+ 		if (!word2) {
++			if ((buflen -= 12) < 0)
++				goto out_resource;
+ 			WRITE32(2);
+ 			WRITE32(word0);
+ 			WRITE32(word1);
+ 		} else {
++			if ((buflen -= 16) < 0)
++				goto out_resource;
+ 			WRITE32(3);
+ 			WRITE32(word0);
+ 			WRITE32(word1);
+-- 
+1.7.2.3
 
-I think that this is a great selling point as it fully materializes the
-extensibility of the layout-type / layout-driver design model.
-
-Benny
-
-> 
-> Cheers
->   Trond
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
