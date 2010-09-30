@@ -1,37 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-vbr13.xs4all.nl ([194.109.24.33]:1508 "EHLO
-	smtp-vbr13.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757519Ab0IGTZG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Sep 2010 15:25:06 -0400
-Subject: Re: [PATCH 02/03]: sunrpc: make auth_hashtable_size param mode 0444
-From: Miquel van Smoorenburg <mikevs@xs4all.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1283885932.2788.69.camel@heimdal.trondhjem.org>
-References: <20100822182848.GA26590@xs4all.net>
-	 <20100822183109.GB26607@xs4all.net>
-	 <1283885932.2788.69.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset="ANSI_X3.4-1968"
-Date: Tue, 07 Sep 2010 21:24:09 +0200
-Message-ID: <1283887449.12858.208.camel@laptop>
+Received: from daytona.panasas.com ([67.152.220.89]:43457 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753188Ab0I3I0Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 04:26:24 -0400
+Message-ID: <4CA449AE.4020809@panasas.com>
+Date: Thu, 30 Sep 2010 10:26:22 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: pnfs git tree status pnfs-all-2.6.36-rc6-2010-09-29
+References: <4C7BDD8C.40509@panasas.com> <4CA31DC3.8070300@panasas.com> <4CA3C1E2.2050701@RedHat.com>
+In-Reply-To: <4CA3C1E2.2050701@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-09-07 at 14:58 -0400, Trond Myklebust wrote:
-> On Sun, 2010-08-22 at 20:31 +0200, Miquel van Smoorenburg wrote:
-> > The auth_hashtable_size parameter shows up in
-> > /sys/module/sunrpc/parameters with mode 0644. However the hashtables
-> > are allocated when the module is loaded, and changing the parameter
-> > afterwards doesn't do much. So make it read-only.
+On 2010-09-30 00:46, Steve Dickson wrote:
 > 
-> The above observation is only correct for AUTH_SYS. The reason for
-> making the mode 0644 was to allow users to change the value after
-> loading if they want to use RPCSEC_GSS.
+> 
+> On 09/29/2010 07:06 AM, Benny Halevy wrote:
+>> This version includes Fred's pnfs-submit RFC patches (v5).
+>> and is rebased onto v2.6.36-rc6
+>>
+>> Cumulative patches can be generated from
+>> git://linux-nfs.org/~bhalevy/linux-pnfs.git
+>> using
+>> git diff v2.6.36-rc6 pnfs-all-2.6.36-rc6-2010-09-29
+>>
+> So only the 2.6.36-rc kernels are being supported? 
+> No 2.6.35 kernels?
 
-Right, I can see that being useful. It's confusing though. It'd be more
-clear if there was a seperate knob to tune just
-rpcsec_auth_hashtable_size. Anyway, never mind then.
+Latest and greatest for 2.6.35 is at pnfs-all-2.6.35-2010-09-14
 
-Mike.
+One patch merged since pnfs-all-2.6.35-2010-08-24:
 
+	Benny Halevy be619de5 pnfs: mark commit data as PNFS_NO_RPC in pnfs_try_to_commit
+
+> 
+> steved.
