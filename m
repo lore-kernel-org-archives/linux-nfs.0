@@ -1,115 +1,243 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:4975 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:43773 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932912Ab0I0J5r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 27 Sep 2010 05:57:47 -0400
-Message-ID: <4CA06A90.4080002@parallels.com>
-Date: Mon, 27 Sep 2010 13:57:36 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 1/9] sunrpc: Pass the ip_map_parse's cd to lower calls
-References: <4CA06A63.6090507@parallels.com>
-In-Reply-To: <4CA06A63.6090507@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751761Ab0I3NNU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Sep 2010 09:13:20 -0400
+Message-ID: <4CA48CEF.9060600@netapp.com>
+Date: Thu, 30 Sep 2010 09:13:19 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>, SteveD@redhat.com
+Subject: Re: [PATCH] nfs-utils: Add nfs.upcall for idmapper
+References: <4CA39681.3000104@netapp.com> <1285798396.3557.18.camel@heimdal.trondhjem.org>
+In-Reply-To: <1285798396.3557.18.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The target is to have many ip_map_cache-s in the system. This particular
-patch handles its usage by the ip_map_parse callback.
+On 09/29/2010 06:13 PM, Trond Myklebust wrote:
+> On Wed, 2010-09-29 at 15:41 -0400, Bryan Schumaker wrote:
+>> +	else
+>> +		keyctl_negate(key, timeout, 0);
+> 
+> Hmm... I've been looking more closely at the design of request-key. It
+> looks as if the idea there is that you are supposed to return without
+> instantiating the key if you are unable to service the request.
+> 
+> Basically, if your program exits with a non-zero value, then request-key
+> is supposed to look at the next matching entry in /etc/request-key.conf
+> (until it hits they very last entry, which is always 'keyctl negate').
+> 
+> Sorry, Bryan. The above line was a result of me bugging you. I should
+> have checked the sources first...
+> 
+>> +	free(arg);
+>> +	return rc;
+>> +}
+> 
+> Cheers
+>   Trond
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+
+No problem.  Here is an updated patch with the line removed.
+
+Bryan
+
+
+
+This patch adds the nfs.upcall program to nfs-utils.  This program is called by
+the nfs idmapper through request-keys to map between uid / user name and
+gid / group name.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- net/sunrpc/svcauth_unix.c |   31 +++++++++++++++++++++----------
- 1 files changed, 21 insertions(+), 10 deletions(-)
-
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index e91b550..31b99c5 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -178,8 +178,8 @@ static int ip_map_upcall(struct cache_detail *cd, struct cache_head *h)
- 	return sunrpc_cache_pipe_upcall(cd, h, ip_map_request);
- }
+diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
+new file mode 100644
+index 0000000..84bc112
+--- /dev/null
++++ b/aclocal/keyutils.m4
+@@ -0,0 +1,11 @@
++dnl Checks for keyutils library and headers
++dnl
++AC_DEFUN([AC_KEYUTILS], [
++
++  dnl Check for libkeyutils; do not add to LIBS if found
++  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
++  AC_SUBST(LIBKEYUTILS)
++
++  AC_CHECK_HEADERS([keyutils.h], ,
++  		   [AC_MSG_ERROR([keyutils.h header not found.])])
++])dnl
+diff --git a/configure.ac b/configure.ac
+index 3058be6..a5e8620 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
+   dnl check for nfsidmap libraries and headers
+   AC_LIBNFSIDMAP
  
--static struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr);
--static int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t expiry);
-+static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class, struct in6_addr *addr);
-+static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm, struct unix_domain *udom, time_t expiry);
++  dnl check for the keyutils libraries and headers
++  AC_KEYUTILS
++
+   dnl librpcsecgss already has a dependency on libgssapi,
+   dnl but we need to make sure we get the right version
+   if test "$enable_gss" = yes; then
+@@ -435,6 +438,7 @@ AC_CONFIG_FILES([
+ 	utils/mountd/Makefile
+ 	utils/nfsd/Makefile
+ 	utils/nfsstat/Makefile
++	utils/nfs.upcall/Makefile
+ 	utils/showmount/Makefile
+ 	utils/statd/Makefile
+ 	tests/Makefile
+diff --git a/utils/Makefile.am b/utils/Makefile.am
+index 8665183..0104a6c 100644
+--- a/utils/Makefile.am
++++ b/utils/Makefile.am
+@@ -4,6 +4,7 @@ OPTDIRS =
  
- static int ip_map_parse(struct cache_detail *cd,
- 			  char *mesg, int mlen)
-@@ -249,9 +249,9 @@ static int ip_map_parse(struct cache_detail *cd,
- 		dom = NULL;
+ if CONFIG_NFSV4
+ OPTDIRS += idmapd
++OPTDIRS += nfs.upcall
+ endif
  
- 	/* IPv6 scope IDs are ignored for now */
--	ipmp = ip_map_lookup(class, &sin6.sin6_addr);
-+	ipmp = __ip_map_lookup(cd, class, &sin6.sin6_addr);
- 	if (ipmp) {
--		err = ip_map_update(ipmp,
-+		err = __ip_map_update(cd, ipmp,
- 			     container_of(dom, struct unix_domain, h),
- 			     expiry);
- 	} else
-@@ -309,14 +309,15 @@ struct cache_detail ip_map_cache = {
- 	.alloc		= ip_map_alloc,
- };
- 
--static struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr)
-+static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class,
-+		struct in6_addr *addr)
- {
- 	struct ip_map ip;
- 	struct cache_head *ch;
- 
- 	strcpy(ip.m_class, class);
- 	ipv6_addr_copy(&ip.m_addr, addr);
--	ch = sunrpc_cache_lookup(&ip_map_cache, &ip.h,
-+	ch = sunrpc_cache_lookup(cd, &ip.h,
- 				 hash_str(class, IP_HASHBITS) ^
- 				 hash_ip6(*addr));
- 
-@@ -326,7 +327,13 @@ static struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr)
- 		return NULL;
- }
- 
--static int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t expiry)
-+static inline struct ip_map *ip_map_lookup(char *class, struct in6_addr *addr)
+ if CONFIG_GSS
+diff --git a/utils/nfs.upcall/Makefile.am b/utils/nfs.upcall/Makefile.am
+new file mode 100644
+index 0000000..52afd3d
+--- /dev/null
++++ b/utils/nfs.upcall/Makefile.am
+@@ -0,0 +1,7 @@
++## Process this file with automake to produce Makefile.in
++
++sbin_PROGRAMS	= nfs.upcall
++nfs_upcall_SOURCES = nfs.upcall.c
++nfs_upcall_LDADD = -lnfsidmap -lkeyutils
++
++MAINTAINERCLEANFILES = Makefile.in
+diff --git a/utils/nfs.upcall/nfs.upcall.c b/utils/nfs.upcall/nfs.upcall.c
+new file mode 100644
+index 0000000..9200972
+--- /dev/null
++++ b/utils/nfs.upcall/nfs.upcall.c
+@@ -0,0 +1,118 @@
++
++#include <stdarg.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include <pwd.h>
++#include <grp.h>
++#include <keyutils.h>
++#include <nfsidmap.h>
++
++#include <syslog.h>
++
++/* gcc nfs.upcall.c -o nfs.upcall -l nfsidmap -l keyutils */
++
++#define MAX_ID_LEN   11
++#define IDMAP_NAMESZ 128
++#define USER  1
++#define GROUP 0
++
++
++/*
++ * Find either a user or group id based on the name@domain string
++ */
++int id_lookup(char *name_at_domain, key_serial_t key, int type)
 +{
-+	return __ip_map_lookup(&ip_map_cache, class, addr);
++	char id[MAX_ID_LEN];
++	uid_t uid = 0;
++	gid_t gid = 0;
++	int rc;
++
++	if (type == USER) {
++		rc = nfs4_owner_to_uid(name_at_domain, &uid);
++		sprintf(id, "%u", uid);
++	} else {
++		rc = nfs4_group_owner_to_gid(name_at_domain, &gid);
++		sprintf(id, "%u", gid);
++	}
++
++	if (rc == 0)
++		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
++
++	return rc;
 +}
 +
-+static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm,
-+		struct unix_domain *udom, time_t expiry)
- {
- 	struct ip_map ip;
- 	struct cache_head *ch;
-@@ -344,16 +351,20 @@ static int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t ex
- 			ip.m_add_change++;
- 	}
- 	ip.h.expiry_time = expiry;
--	ch = sunrpc_cache_update(&ip_map_cache,
--				 &ip.h, &ipm->h,
-+	ch = sunrpc_cache_update(cd, &ip.h, &ipm->h,
- 				 hash_str(ipm->m_class, IP_HASHBITS) ^
- 				 hash_ip6(ipm->m_addr));
- 	if (!ch)
- 		return -ENOMEM;
--	cache_put(ch, &ip_map_cache);
-+	cache_put(ch, cd);
- 	return 0;
- }
- 
-+static inline int ip_map_update(struct ip_map *ipm, struct unix_domain *udom, time_t expiry)
++/*
++ * Find the name@domain string from either a user or group id
++ */
++int name_lookup(char *id, key_serial_t key, int type)
 +{
-+	return __ip_map_update(&ip_map_cache, ipm, udom, expiry);
++	char name[IDMAP_NAMESZ];
++	char domain[NFS4_MAX_DOMAIN_LEN];
++	uid_t uid;
++	gid_t gid;
++	int rc;
++
++	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
++	if (rc != 0) {
++		rc = -1;
++		goto out;
++	}
++
++	if (type == USER) {
++		uid = atoi(id);
++		rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
++	} else {
++		gid = atoi(id);
++		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
++	}
++
++	if (rc == 0)
++		rc = keyctl_instantiate(key, &name, strlen(name), 0);
++
++out:
++	return rc;
 +}
 +
- int auth_unix_add_addr(struct in6_addr *addr, struct auth_domain *dom)
- {
- 	struct unix_domain *udom;
--- 
-1.5.5.6
++int main(int argc, char **argv)
++{
++	char *arg;
++	char *value;
++	char *type;
++	int rc = 1;
++	int timeout = 600;
++	key_serial_t key;
++
++	if (argc < 3)
++		return 1;
++
++	arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
++	strcpy(arg, argv[2]);
++	type = strtok(arg, ":");
++	value = strtok(NULL, ":");
++
++	if (argc == 4) {
++		timeout = atoi(argv[3]);
++		if (timeout < 0)
++			timeout = 0;
++	}
++
++	key = strtol(argv[1], NULL, 10);
++
++	if (strcmp(type, "uid") == 0)
++		rc = id_lookup(value, key, USER);
++	else if (strcmp(type, "gid") == 0)
++		rc = id_lookup(value, key, GROUP);
++	else if (strcmp(type, "user") == 0)
++		rc = name_lookup(value, key, USER);
++	else if (strcmp(type, "group") == 0)
++		rc = name_lookup(value, key, GROUP);
++
++	/* Set timeout to 5 (600 seconds) minutes */
++	if (rc == 0)
++		keyctl_set_timeout(key, timeout);
++
++	free(arg);
++	return rc;
++}
 
