@@ -1,52 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64087 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750774Ab0JUOm0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 10:42:26 -0400
-Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
- mounts.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Neil Brown <neilb@suse.de>, Jeff Layton <jlayton@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <5CF8C718-2D02-481E-9200-8CAA724D9C8C@oracle.com>
-References: <20101020181701.232dbeea@notabene>
-	 <20101020135525.22977d8d@tlielax.poochiereds.net>
-	 <20101020151657.42bc53f7@tlielax.poochiereds.net>
-	 <20101021074028.44bca336@notabene>
-	 <20101020204532.2019eb93@corrin.poochiereds.net>
-	 <20101021142518.3934ae17@notabene>
-	 <1287669939.3645.12.camel@heimdal.trondhjem.org>
-	 <5CF8C718-2D02-481E-9200-8CAA724D9C8C@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 21 Oct 2010 10:42:04 -0400
-Message-ID: <1287672124.3645.19.camel@heimdal.trondhjem.org>
+Received: from mx4-phx2.redhat.com ([209.132.183.25]:42046 "EHLO
+	mx02.colomx.prod.int.phx2.redhat.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1756472Ab0JALas (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 07:30:48 -0400
+Received: from mail06.corp.redhat.com (zmail06.collab.prod.int.phx2.redhat.com [10.5.5.45])
+	by mx02.colomx.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o91BUmBT029060
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Oct 2010 07:30:48 -0400
+Date: Fri, 1 Oct 2010 07:30:48 -0400 (EDT)
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <25362267.86.1285932646433.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+In-Reply-To: <8181361.84.1285932468389.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+Subject: NFS4 clients cannot reclaim locks
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-10-21 at 10:31 -0400, Chuck Lever wrote:
-> On Oct 21, 2010, at 10:05 AM, Trond Myklebust wrote:
-> > It seems to me that the problem is basically that RPC_IS_SOFTCONN is
-> > poorly defined. IMO, the definition should really be that
-> > 'RPC_IS_SOFTCONN' tasks MUST exit with an error if they ever have to run
-> > call_bind or a call_connect more than once (i.e. if they ever have to
-> > loop back).
-> 
-> I think you are suggesting that we define the places where RPC_IS_SOFTCONN should be tested as exactly those places that might want to restart the RPC call via rpc_force_rebind, tk_action = call_refresh, and so on.  Yes?
+NFS4 clients appear to have problems reclaiming locks after a server reboot. I can recreate the issue on 2.6.34.7-56.fc13.x86_64 on a Fedora system. 
 
-Yes.
+The problem appears to happen in cases where after a reboot, a WRITE call is made just before the RENEW call. In that case, the NFS4ERR_STALE_STATEID is returned for the WRITE call which results in NFS_STATE_RECLAIM_REBOOT being set in the state flags. However the NFS4ERR_STALE_CLIENTID returned for the subsequent RENEW call is handled by 
+nfs4_recovery_handle_error() -> nfs4_state_end_reclaim_reboot(clp);  
+which ends up setting the state flag to NFS_STATE_RECLAIM_NOGRACE and clearing the NFS_STATE_RECLAIM_REBOOT in nfs4_state_mark_reclaim_nograce(). 
 
-> > With that in mind, I really don't see why the RPC_IS_SOFTCONN case is
-> > being handled in call_transmit_status() instead of in call_status().
-> 
-> I tried it in call_status(), but it didn't work as expected.  My notes aren't specific about the problem.  One thing is for sure, there seems to be some redundant error handling logic in both of those states.  Unraveling it might be more than Neil bargained for, but would help "future generations."
+The process of reclaiming the locks then seem to hit another roadblock in nfs4_open_expired() where it fails to open the file and reset the state. It ends up calling nfs4_reclaim_locks() in a loop with the old stateid in nfs4_reclaim_open_state().
 
-call_transmit_status() is there basically in order to call
-xprt_end_transmit() in the cases where we want to free up the socket
-write lock (and then possibly sleep).
+By commenting out the call to nfs4_state_end_reclaim_reboot(clp) in nfs4_recovery_handle_error(), the client was able to handle this particular scenario properly.
 
-Actual state error handling is supposed occur in call_status().
+Has any one else seen this issue?
 
-Cheers
-   Trond
+Sachin Prabhu
