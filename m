@@ -1,72 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:46599 "EHLO mail-out2.uio.no"
+Received: from mx1.redhat.com ([209.132.183.28]:13895 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753792Ab0J0Vc5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Oct 2010 17:32:57 -0400
-Subject: Re: [PATCH 3/3] SQUASHME: pnfs: filelayout: print_ds should use
- dprintk
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <4CC899B7.3080904@panasas.com>
-References: <4CC86D96.8020803@panasas.com>
-	 <1288203860-26920-1-git-send-email-bhalevy@panasas.com>
-	 <AANLkTikKpCO_xYjOpj74AiptyDjtMtJJhQaObksF_+LE@mail.gmail.com>
-	 <4CC8863B.3080504@panasas.com>
-	 <AANLkTinsRNKCOQZjH4kYTTou-a+J02dM8nB=WL_xu7Wb@mail.gmail.com>
-	 <4CC892E1.3070703@panasas.com>
-	 <1288214583.13431.19.camel@heimdal.trondhjem.org>
-	 <4CC899B7.3080904@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 27 Oct 2010 17:32:51 -0400
-Message-ID: <1288215171.13431.20.camel@heimdal.trondhjem.org>
+	id S1755122Ab0JALE7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Oct 2010 07:04:59 -0400
+Received: from int-mx03.intmail.prod.int.phx2.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o91B4w4A007091
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Oct 2010 07:04:58 -0400
+Received: from badhat.bos.devel.redhat.com (vpn-225-4.phx2.redhat.com [10.3.225.4])
+	by int-mx03.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o91B4vxr002915
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Oct 2010 07:04:58 -0400
+Message-ID: <4CA5C059.6000805@RedHat.com>
+Date: Fri, 01 Oct 2010 07:04:57 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Updated pNFS Developmental kernel repository
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-10-27 at 23:29 +0200, Benny Halevy wrote:
-> On 2010-10-27 23:23, Trond Myklebust wrote:
-> > On Wed, 2010-10-27 at 23:00 +0200, Benny Halevy wrote:
-> >> On 2010-10-27 22:17, Fred Isaman wrote:
-> >>> On Wed, Oct 27, 2010 at 4:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
-> >>>> On 2010-10-27 21:49, Fred Isaman wrote:
-> >>>>> The change to printk was in response to Trond's complaint about
-> >>>>> successive dprintks.
-> >>>>>
-> >>>>> Instead, the following would work:
-> >>>>>
-> >>>>>
-> >>>>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> >>>>> index 5f52e6f..2ce393c 100644
-> >>>>> --- a/fs/nfs/nfs4filelayout.c
-> >>>>> +++ b/fs/nfs/nfs4filelayout.c
-> >>>>> @@ -585,7 +585,8 @@ filelayout_commit(struct nfs_write_data *data, int sync)
-> >>>>>               }
-> >>>>
-> >>>> If we're going this way, the ifdebug could cover the following
-> >>>> printout as well...
-> >>>>
-> >>>
-> >>> Did you mean preceding printout?  By the way - the complaint about
-> >>
-> >> Yeah, preceding the call to print_ds (following my comment :)
-> >>
-> >>> successive dprintks was regarding
-> >>> print_ds_list repeatedly calling print_ds, which at the time used dprintk.
-> >>
-> >> Why do we care to optimize the debug case so much?
-> >> print_ds_list is already calling print_ds inside ifdebug(FACILITY)
-> >> so the common, non-debug case is optimized correctly. I.e. we don't
-> >> repeatedly check the debug flag normally.
-> > 
-> > It's not about optimizing the debug case. It's about avoiding having to
-> > check ifdebug(FACILITY) all the time when we're _not_ debugging.
-> 
-> Right, and so we do, as the whole loop in print_ds_list is enclosed
-> in ifdebug(FACILITY).
+Hello,
 
-In that case, I agree: the whole thing can be converted to use ordinary
-printks...
+I've updated the Fedora pNFS development repository to include the
+Fedora 13, 14 and Devel kernels that have the latest pNFS bits:
 
-Trond
+    Tag: pnfs-all-2.6.35-2010-09-14     for Fedora 13 and 14 kernels
+    Tag: pnfs-all-latest                for Devel/f15 kernels
 
+(Note: there are also kernel-debuginfo and kernel-devel rpms for people who 
+use things like systemtap probes and crash).
+
+I have not updated the nfs-utils rpms because I'm waiting 
+for a fix to a problem in rpc.mountd. Once the problem is resolve
+I'll update those rpms as well... 
+
+Instructions on how to install and use these kernels are at:
+http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
+
+ If/when bugs are found with these rpms please enter them
+in to the NFS Bugzilla Main Page at:
+    https://bugzilla.linux-nfs.org/index.cgi
+
+Please use the "pNFS" keyword.. 
+
+Any question or issues please feel free to contact me... 
+
+steved.
