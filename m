@@ -1,23 +1,28 @@
 From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 Subject: Re: Updated pNFS Developmental kernel repository
-Date: Fri, 01 Oct 2010 13:18:03 +0200
-Message-ID: <4CA5C36B.3080605@desy.de>
+Date: Fri, 01 Oct 2010 15:51:00 +0200
+Message-ID: <4CA5E744.9010006@desy.de>
 References: <4CA5C059.6000805@RedHat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out-2.desy.de ([131.169.56.85]:43528 "EHLO
-	smtp-out-2.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756361Ab0JALS2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 07:18:28 -0400
-Received: from smtp-map-2.desy.de (smtp-map-2.desy.de [131.169.56.67])
-	by smtp-out-2.desy.de (DESY_OUT_1) with ESMTP id 92F33E68
-	for <linux-nfs@vger.kernel.org>; Fri,  1 Oct 2010 13:18:27 +0200 (MEST)
+Received: from smtp-out-1.desy.de ([131.169.56.84]:35519 "EHLO
+	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756805Ab0JANvZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 09:51:25 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id 5F3CD1786
+	for <linux-nfs@vger.kernel.org>; Fri,  1 Oct 2010 15:51:24 +0200 (MEST)
 Received: from adserv72.win.desy.de (adserv72.win.desy.de [131.169.97.58])
-	by smtp-map-2.desy.de (DESY_MAP_2) with ESMTP id 87B9DE5E
-	for <linux-nfs@vger.kernel.org>; Fri,  1 Oct 2010 13:18:27 +0200 (MEST)
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 5604B13F26
+	for <linux-nfs@vger.kernel.org>; Fri,  1 Oct 2010 15:51:24 +0200 (MEST)
+Received: from smtp-intra-3.desy.de (lb-40-26.desy.de) by adserv72.win.desy.de
+ (Clearswift SMTPRS 5.3.4) with ESMTP id <T9874e660e283a9613afa8-5mtNOt3R2DyEutHAMwCrcgxv4HzkJkzx@public.gmane.org> for <linux-nfs@vger.kernel.org>;
+ Fri, 1 Oct 2010 15:51:24 +0200
+Received: from [131.169.185.68] (anahit.desy.de [131.169.185.68])
+	by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id E6B0411E0
+	for <linux-nfs@vger.kernel.org>; Fri,  1 Oct 2010 15:51:23 +0200 (MEST)
 In-Reply-To: <4CA5C059.6000805-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
