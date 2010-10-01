@@ -1,34 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:55285 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932335Ab0JRQVo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2010 12:21:44 -0400
-Received: by fxm4 with SMTP id 4so766306fxm.19
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Oct 2010 09:21:43 -0700 (PDT)
-In-Reply-To: <20101018164414.ec860360.ctpm@ist.utl.pt>
-References: <1287362142-sup-777@au1.ibm.com>
-	<20101018101059.574b715a@corrin.poochiereds.net>
-	<20101018154811.768baeb5.ctpm@ist.utl.pt>
-	<20101018155344.6e50dbb9.ctpm@ist.utl.pt>
-	<20101018110138.5f5001eb@corrin.poochiereds.net>
-	<20101018164414.ec860360.ctpm@ist.utl.pt>
-Date: Mon, 18 Oct 2010 12:21:43 -0400
-Message-ID: <AANLkTi=FauBoB4R=WCudvX8fLmVU1tGfKQkwpKaQPPLg@mail.gmail.com>
-Subject: Re: NFS sillyrename side effect
-From: Lyle Seaman <lyleseaman@gmail.com>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from magus.merit.edu ([198.108.1.13]:46706 "EHLO magus.merit.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932468Ab0JAM4Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Oct 2010 08:56:25 -0400
+Date: Fri, 1 Oct 2010 08:56:20 -0400
+From: Jim Rees <rees@umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Updated pNFS Developmental kernel repository
+Message-ID: <20101001125620.GB19000@merit.edu>
+References: <4CA5C059.6000805@RedHat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4CA5C059.6000805@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-You would need to do the state recovery before or during the fsck
-(which would require the local filesystem to have some loose
-integration with the network protocol).
+Steve Dickson wrote:
 
-Also, re the original issue, can't the client do a silly rename of the
-directory if it contains only .nfs files during rmdir?
+  Hello,
+  
+  I've updated the Fedora pNFS development repository to include the
+  Fedora 13, 14 and Devel kernels that have the latest pNFS bits:
+  
+      Tag: pnfs-all-2.6.35-2010-09-14     for Fedora 13 and 14 kernels
+      Tag: pnfs-all-latest                for Devel/f15 kernels
+  
+  (Note: there are also kernel-debuginfo and kernel-devel rpms for people who 
+  use things like systemtap probes and crash).
 
-> Suppose though that the server crashes and reboots. When it comes back
->> up, fsck figures out that the file has been unlinked and frees the
->> blocks on the disk. Now you can't reclaim the state on the open file.
+I would be very interested in hearing from anyone using the block layout
+client, either positive or negative experiences.
