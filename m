@@ -1,66 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:27566 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757074Ab0JEFmU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Oct 2010 01:42:20 -0400
-Message-ID: <4CAABAAB.8040608@parallels.com>
-Date: Tue, 05 Oct 2010 09:42:03 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 9/13] sunrpc: Merge the xs_bind code
-References: <4CA9CDA8.4010407@parallels.com> <4CA9CEE8.9050404@parallels.com> <66FA6AAD-87DC-4B81-8DAC-8F1D4FF7B72E@oracle.com>
-In-Reply-To: <66FA6AAD-87DC-4B81-8DAC-8F1D4FF7B72E@oracle.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:64067 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751466Ab0JAUOJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 16:14:09 -0400
+Received: by bwz11 with SMTP id 11so2458204bwz.19
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Oct 2010 13:14:08 -0700 (PDT)
+In-Reply-To: <20101001200747.GA4353@merit.edu>
+References: <4CA5C059.6000805@RedHat.com>
+	<4CA5E744.9010006@desy.de>
+	<4CA63D1A.5070108@RedHat.com>
+	<20101001200747.GA4353@merit.edu>
+Date: Fri, 1 Oct 2010 16:13:57 -0400
+Message-ID: <AANLkTin9+_aWyLMv1xP9ou1YRXfY46dgK7J-to+p5LTb@mail.gmail.com>
+Subject: Re: Updated pNFS Developmental kernel repository
+From: Fred Isaman <iisaman@netapp.com>
+To: Jim Rees <rees@umich.edu>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        peter honeyman <honey@citi.umich.edu>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
->> -static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
->> +static int xs_bind(struct sock_xprt *transport, struct socket *sock)
->> {
->> -	struct sockaddr_in myaddr = {
->> -		.sin_family = AF_INET,
->> -	};
->> -	struct sockaddr_in *sa;
->> +	struct sockaddr myaddr;
-> 
-> You want "struct sockaddr_storage" here.  A "struct sockaddr" is required by
-> standard (iirc) to be only as large as a "struct sockaddr_in".  So this can't
-> possibly hold an IPv6 socket address without overflowing.
+On Fri, Oct 1, 2010 at 4:07 PM, Jim Rees <rees@umich.edu> wrote:
+> Steve Dickson wrote:
+>
+>  On 10/01/2010 09:51 AM, Tigran Mkrtchyan wrote:
+>  >
+>  > Hi Steve,
+>  >
+>  > thanks for the builds. What I am missing is modprobe configuration file
+>  > which I have to add myself.
+>  Unfortunately yes... I have not figured out a good way to have
+>  the mobprobe done on the client since, in general, init scripts
+>  don't run on the client (with the exception of rpc.statd and rpc.gssd).
+>
+>  I guess I could come up with an pnfs init script..but that
+>  seems like a bit overkill just to do a modprobe...
+>
+> I've already got an init script for the block layout client that does the
+> modprobe and starts the daemon.  How about we generalize it to modprobe the
+> other modules too, and call it the pnfs init script?
 
-OK
+The current code is designed to request the loading of the module as
+needed.  All that is needed is an alias, of the type
 
->> 	int err, nloop = 0;
->> 	unsigned short port = xs_get_srcport(transport);
->> 	unsigned short last;
->>
->> -	sa = (struct sockaddr_in *)&transport->srcaddr;
->> -	myaddr.sin_addr = sa->sin_addr;
->> +	memcpy(&myaddr, &transport->srcaddr, transport->xprt.addrlen);
->> 	do {
->> -		myaddr.sin_port = htons(port);
->> -		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
->> -						sizeof(myaddr));
->> +		BUILD_BUG_ON(offsetof(struct sockaddr_in, sin_port) !=
->> +				offsetof(struct sockaddr_in6, sin6_port));
->> +		((struct sockaddr_in *)&myaddr)->sin_port = htons(port);
-> 
-> This series of patches looks mostly OK at first blush, but this little 
-> change is a bit offensive.  :-)
-> 
-> There should be some static inline helper functions that can get and set the
-> port number in a socket address without a lot of magic, and I would prefer you
-> use those instead.  (I would point you directly to them, but I can't easily
-> access kernel source at the moment -- hotel internet sucks).
-> 
-> There should be one or two code examples in the RPC module or in headers that
-> set and get ports in an automatic struct sockaddr_storage variable to give you
-> an idea of what this needs to look like to avoid stack overruns and bad 
-> pointer aliasing.
+alias nfs-layouttype4-[INTEGER_ID] ACTUAL_MODULE_NAME
 
-I believe you mean the rpc_set_port() one. Will do!
+Fred
 
-Thanks,
-Pavel
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
