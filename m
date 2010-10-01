@@ -1,101 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:51118 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S932357Ab0JAPSG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 11:18:06 -0400
-Message-ID: <4CA5FBAB.2040309@panasas.com>
-Date: Fri, 01 Oct 2010 17:18:03 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsd4: adjust buflen for encoded attrs bitmap based
- on actual bitmap length
-References: <1285872466-21013-1-git-send-email-bhalevy@panasas.com> <20101001145018.GD17310@fieldses.org>
-In-Reply-To: <20101001145018.GD17310@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:9112 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751589Ab0JAQDn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Oct 2010 12:03:43 -0400
+Received: from localhost.localdomain (vpn2ntap-420885.hq.netapp.com [10.58.51.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o91G3Uep008238
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Oct 2010 09:03:42 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/7] SQUASHME: pnfs-devinfo-submit: Use only asynch error handler for LAYOUTGET
+Date: Fri,  1 Oct 2010 12:02:49 -0400
+Message-Id: <1285948971-2048-6-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
+References: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2010-10-01 16:50,  J. Bruce Fields wrote:
-> On Thu, Sep 30, 2010 at 08:47:46PM +0200, Benny Halevy wrote:
->> The existing code adjusted it based on the worst case scenario for the returned
->> bitmap and the best case scenario for the supported attrs attribute.
-> 
-> Looks fine, thanks.  Mind if I just ditch the unlikely()s?  I know,
-> they've been there for a while, but I'm just skeptical of their value on
-> anything but the most unbelievably hot optimized-to-death code paths.
+This corrects the problem where a retry uses freed memory.
 
-Well, they don't bother me so I don't the value of ditching them either :)
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   38 +++++++++++++++-----------------------
+ 1 files changed, 15 insertions(+), 23 deletions(-)
 
-They're supposed to help branch prediction thus optimizing the common
-code paths on the expense of the unlikely path but I too didn't measure
-their affect.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index aad6fdc..e28da81 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5426,15 +5426,26 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
+ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_layoutget *lgp = calldata;
++	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+ 
+ 	dprintk("--> %s\n", __func__);
+ 
+ 	if (!nfs4_sequence_done(task, &lgp->res.seq_res))
+ 		return;
+ 
+-	/* Error handling done later using nfs4_handle_exception to get
+-	 * exponential backoff.
+-	 */
++	switch (task->tk_status) {
++	case 0:
++		break;
++	case -NFS4ERR_LAYOUTTRYLATER:
++	case -NFS4ERR_RECALLCONFLICT:
++		task->tk_status = -NFS4ERR_DELAY;
++		/* Fall through */
++	default:
++		if (nfs4_async_handle_error(task, server, NULL, NULL) == -EAGAIN) {
++			rpc_restart_call_prepare(task);
++			return;
++		}
++	}
+ 	lgp->status = task->tk_status;
+ 	dprintk("<-- %s\n", __func__);
+ }
+@@ -5458,7 +5469,7 @@ static const struct rpc_call_ops nfs4_layoutget_call_ops = {
+ 	.rpc_release = nfs4_layoutget_release,
+ };
+ 
+-static int _nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
++int nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
+ {
+ 	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+ 	struct rpc_task *task;
+@@ -5501,25 +5512,6 @@ out:
+ 	return status;
+ }
+ 
+-int nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
+-{
+-	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+-	struct nfs4_exception exception = { };
+-	int err;
+-	do {
+-		err = _nfs4_proc_layoutget(lgp);
+-		switch (err) {
+-		case -NFS4ERR_LAYOUTTRYLATER:
+-		case -NFS4ERR_RECALLCONFLICT:
+-			err = -NFS4ERR_DELAY;
+-			/* Fall through */
+-		default:
+-			err = nfs4_handle_exception(server, err, &exception);
+-		}
+-	} while (exception.retry);
+-	return err;
+-}
+-
+ static void nfs4_layoutcommit_prepare(struct rpc_task *task, void *data)
+ {
+ 	struct nfs4_layoutcommit_data *ldata =
+-- 
+1.7.2.1
 
-Bottom line is that I don't have and strong reservations either for or
-against them in this case :)
-
-Benny
-
-> 
-> --b.
-> 
->>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  fs/nfsd/nfs4xdr.c |   14 ++++++++++----
->>  1 files changed, 10 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->> index 1a468bb..f48d891 100644
->> --- a/fs/nfsd/nfs4xdr.c
->> +++ b/fs/nfsd/nfs4xdr.c
->> @@ -1805,19 +1805,23 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
->>  				goto out_nfserr;
->>  		}
->>  	}
->> -	if ((buflen -= 16) < 0)
->> -		goto out_resource;
->>  
->>  	if (unlikely(bmval2)) {
->> +		if ((buflen -= 16) < 0)
->> +			goto out_resource;
->>  		WRITE32(3);
->>  		WRITE32(bmval0);
->>  		WRITE32(bmval1);
->>  		WRITE32(bmval2);
->>  	} else if (likely(bmval1)) {
->> +		if ((buflen -= 12) < 0)
->> +			goto out_resource;
->>  		WRITE32(2);
->>  		WRITE32(bmval0);
->>  		WRITE32(bmval1);
->>  	} else {
->> +		if ((buflen -= 8) < 0)
->> +			goto out_resource;
->>  		WRITE32(1);
->>  		WRITE32(bmval0);
->>  	}
->> @@ -1828,15 +1832,17 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
->>  		u32 word1 = nfsd_suppattrs1(minorversion);
->>  		u32 word2 = nfsd_suppattrs2(minorversion);
->>  
->> -		if ((buflen -= 12) < 0)
->> -			goto out_resource;
->>  		if (!aclsupport)
->>  			word0 &= ~FATTR4_WORD0_ACL;
->>  		if (!word2) {
->> +			if ((buflen -= 12) < 0)
->> +				goto out_resource;
->>  			WRITE32(2);
->>  			WRITE32(word0);
->>  			WRITE32(word1);
->>  		} else {
->> +			if ((buflen -= 16) < 0)
->> +				goto out_resource;
->>  			WRITE32(3);
->>  			WRITE32(word0);
->>  			WRITE32(word1);
->> -- 
->> 1.7.2.3
->>
