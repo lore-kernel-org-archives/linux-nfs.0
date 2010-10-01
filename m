@@ -1,97 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:59623 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752962Ab0ILRDU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Sep 2010 13:03:20 -0400
-Message-ID: <4C8D07D5.6010006@panasas.com>
-Date: Sun, 12 Sep 2010 19:03:17 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@panasas.com>,
-        Andy Adamson <andros@netapp.com>, Fred Isaman <iisaman@netapp.com>
-Subject: [RFC 1/3] SQUASHME: Generalize the device cache so it can be used
- by all layouts
-References: <4C8D0759.6090201@panasas.com>
-In-Reply-To: <4C8D0759.6090201@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:38986 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750706Ab0JACOM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Sep 2010 22:14:12 -0400
+Received: by bwz11 with SMTP id 11so1897765bwz.19
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Sep 2010 19:14:10 -0700 (PDT)
+In-Reply-To: <20100930215220.GB7244@merit.edu>
+References: <20100930171325.GA5731@merit.edu>
+	<4CA503C2.2090607@panasas.com>
+	<20100930215220.GB7244@merit.edu>
+Date: Thu, 30 Sep 2010 22:14:10 -0400
+Message-ID: <AANLkTi=bRwN3uoszG0jTzVSPMSwP6VKn+rW470uWwAj1@mail.gmail.com>
+Subject: Re: another block layout oops
+From: Fred Isaman <iisaman@netapp.com>
+To: Jim Rees <rees@umich.edu>
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Thu, Sep 30, 2010 at 5:52 PM, Jim Rees <rees@umich.edu> wrote:
+> Benny Halevy wrote:
+>
+>  Jim, would you mind retesting with pnfs-all-2.6.36-rc6-2010-09-30?
+>  Not that there's any possible fix there, but a fresh Oops could
+>  help, if you can reproduce it.
+>
+> Will do, probably after an important meeting I have at 6:00 this evening.
 
-Current code thinks that there can be a single device_id per
-layout segment. Change that to assume no relations between segments
-and device_ids. It's now up to the layout-driver to make any relations.
+There is a problem with the LAYOUTGET error handling, which is
+probably what Jim is hitting  (the block servers are much more likely
+to send RETRYLATER).  I'll send in a fix tomorrow morning.
 
-Files layout driver is fixed in next patch.
+Fred
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/pnfs.c             |   20 +++++---------------
- include/linux/nfs4_pnfs.h |    6 +-----
- 2 files changed, 6 insertions(+), 20 deletions(-)
-
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index eb4e092..f26abc0 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1892,26 +1892,16 @@ nfs4_init_deviceid_node(struct nfs4_deviceid *d)
- }
- EXPORT_SYMBOL(nfs4_init_deviceid_node);
- 
--/* Called from layoutdriver_io_operations->alloc_lseg */
--void
--nfs4_set_layout_deviceid(struct pnfs_layout_segment *l, struct nfs4_deviceid *d)
--{
--	dprintk("%s [%d]\n", __func__, atomic_read(&d->de_kref.refcount));
--	l->deviceid = d;
--}
--EXPORT_SYMBOL(nfs4_set_layout_deviceid);
--
- /* Called from layoutdriver_io_operations->free_lseg */
- void
--nfs4_put_unset_layout_deviceid(struct pnfs_layout_segment *l,
--			   struct nfs4_deviceid *d,
--			   void (*free_callback)(struct kref *))
-+nfs4_put_deviceid(struct nfs4_deviceid_cache *c,
-+			   struct nfs4_deviceid *d)
- {
- 	dprintk("%s [%d]\n", __func__, atomic_read(&d->de_kref.refcount));
--	l->deviceid = NULL;
--	kref_put(&d->de_kref, free_callback);
-+	kref_put(&d->de_kref, c->dc_free_callback);
-+	/* Do we need to return the deviceid_cache ref */
- }
--EXPORT_SYMBOL(nfs4_put_unset_layout_deviceid);
-+EXPORT_SYMBOL(nfs4_put_deviceid);
- 
- /* Find and reference a deviceid */
- struct nfs4_deviceid *
-diff --git a/include/linux/nfs4_pnfs.h b/include/linux/nfs4_pnfs.h
-index 577cd2b..dc3410e 100644
---- a/include/linux/nfs4_pnfs.h
-+++ b/include/linux/nfs4_pnfs.h
-@@ -111,7 +111,6 @@ struct pnfs_layout_segment {
- 	struct kref kref;
- 	bool valid;
- 	struct pnfs_layout_hdr *layout;
--	struct nfs4_deviceid *deviceid;
- 	u8 ld_data[];			/* layout driver private data */
- };
- 
-@@ -287,11 +286,8 @@ extern struct nfs4_deviceid *nfs4_find_get_deviceid(
- 				struct pnfs_deviceid *);
- extern struct nfs4_deviceid *nfs4_add_get_deviceid(struct nfs4_deviceid_cache *,
- 				struct nfs4_deviceid *);
--extern void nfs4_set_layout_deviceid(struct pnfs_layout_segment *,
-+extern void nfs4_put_deviceid(struct nfs4_deviceid_cache *,
- 				struct nfs4_deviceid *);
--extern void nfs4_put_unset_layout_deviceid(struct pnfs_layout_segment *,
--				struct nfs4_deviceid *,
--				void (*free_callback)(struct kref *));
- extern void nfs4_delete_device(struct nfs4_deviceid_cache *,
- 				struct pnfs_deviceid *);
- 
--- 
-1.7.2.2
-
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
