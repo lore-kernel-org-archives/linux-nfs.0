@@ -1,91 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3691 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758717Ab0J1PeA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Oct 2010 11:34:00 -0400
-Message-ID: <4CC997E7.7080402@netapp.com>
-Date: Thu, 28 Oct 2010 11:33:59 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFS: rename nfs.upcall -> nfsidmap
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from out5.smtp.messagingengine.com ([66.111.4.29]:41874 "EHLO
+	out5.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752499Ab0JAJGd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 05:06:33 -0400
+Subject: Re: [PATCH 06/17] Add an AT_NO_AUTOMOUNT flag to suppress terminal
+ automount
+From: Ian Kent <raven@themaw.net>
+To: David Howells <dhowells@redhat.com>
+Cc: viro@ftp.linux.org.uk, jmoyer@redhat.com, linux-fs@vger.kernel.org,
+        autofs@linux.kernel.org, linux-kernel@vger.kernel.org,
+        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org
+In-Reply-To: <20100930181526.30939.22704.stgit@warthog.procyon.org.uk>
+References: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
+	 <20100930181526.30939.22704.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 01 Oct 2010 16:55:47 +0800
+Message-ID: <1285923347.3207.7.camel@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This patch renames the idmapper upcall program from nfs.upcall to nfsidmap in
-the NFS documentation.  This is because the program has been renamed in the
-nfs-utils source.
+On Thu, 2010-09-30 at 19:15 +0100, David Howells wrote:
+> Add an AT_NO_AUTOMOUNT flag to suppress terminal automounting of directories
+> with follow_link semantics.  This can be used by fstatat() users to permit the
+> gathering of attributes on an automount point and also prevent
+> mass-automounting of a directory of automount points by ls.
+> 
+> Signed-off-by: David Howells <dhowells@redhat.com>
+> Acked-by: Ian Kent <raven@themaw.net>
+> ---
+> 
+>  fs/namei.c            |    6 ++++++
+>  fs/stat.c             |    4 +++-
+>  include/linux/fcntl.h |    1 +
+>  include/linux/namei.h |    2 ++
+>  4 files changed, 12 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 86421f9..74bce3a 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -625,6 +625,12 @@ static int follow_automount(struct path *path, unsigned flags,
+>  	if (!path->dentry->d_op || !path->dentry->d_op->d_automount)
+>  		return -EREMOTE;
+>  
+> +	/* We don't want to mount if someone supplied AT_NO_AUTOMOUNT
+> +	 * and this is the terminal part of the path.
+> +	 */
+> +	if ((flags & LOOKUP_NO_AUTOMOUNT) && !(flags & LOOKUP_CONTINUE))
+> +		return -EXDEV; /* we actually want to stop here */
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
-diff --git a/Documentation/filesystems/nfs/idmapper.txt b/Documentation/filesystems/nfs/idmapper.txt
-index c385204..18ee6f5 100644
---- a/Documentation/filesystems/nfs/idmapper.txt
-+++ b/Documentation/filesystems/nfs/idmapper.txt
-@@ -6,7 +6,7 @@ Id mapper is used by NFS to translate user and group ids into names, and to
- translate user and group names into ids.  Part of this translation involves
- performing an upcall to userspace to request the information.  Id mapper will
- user request-key to perform this upcall and cache the result.  The program
--/usr/sbin/nfs.upcall should be called by request-key, and will perform the
-+/sbin/nfsidmap should be called by request-key, and will perform the
- translation and initialize a key with the resulting information.
- 
-  NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
-@@ -20,12 +20,12 @@ direct the upcall.  The following line should be added:
- 
- #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
- #======	=======	===============	===============	===============================
--create	id_resolver	*	*		/usr/sbin/nfs.upcall %k %d 600
-+create	id_resolver	*	*		/sbin/nfsidmap %k %d 600
- 
--This will direct all id_resolver requests to the program /usr/sbin/nfs.upcall.
-+This will direct all id_resolver requests to the program /sbin/nfsidmap.
- The last parameter, 600, defines how many seconds into the future the key will
--expire.  This parameter is optional for /usr/sbin/nfs.upcall.  When the timeout
--is not specified, nfs.upcall will default to 600 seconds.
-+expire.  This parameter is optional for /sbin/nfsidmap.  When the timeout
-+is not specified, nfsidmap will default to 600 seconds.
- 
- id mapper uses for key descriptions:
- 	  uid:  Find the UID for the given user
-@@ -39,29 +39,29 @@ would edit your request-key.conf so it look similar to this:
- 
- #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
- #======	=======	===============	===============	===============================
--create	id_resolver	uid:*	*		/some/other/program  %k %d 600
--create	id_resolver	*	*		/sbin/nfs.upcall %k %d 600
-+create	id_resolver	uid:*	*		/some/other/program %k %d 600
-+create	id_resolver	*	*		/sbin/nfsidmap %k %d 600
- 
- Notice that the new line was added above the line for the generic program.
- request-key will find the first matching line and corresponding program.  In
- this case, /some/other/program will handle all uid lookups and
--/usr/sbin/nfs.upcall will handle gid, user, and group lookups.
-+/sbin/nfsidmap will handle gid, user, and group lookups.
- 
- See <file:Documentation/keys-request-keys.txt> for more information about the
- request-key function.
- 
- 
--==========
--nfs.upcall
--==========
--nfs.upcall is designed to be called by request-key, and should not be run "by
-+========
-+nfsidmap
-+========
-+nfsidmap is designed to be called by request-key, and should not be run "by
- hand".  This program takes two arguments, a serialized key and a key
- description.  The serialized key is first converted into a key_serial_t, and
- then passed as an argument to keyctl_instantiate (both are part of keyutils.h).
- 
--The actual lookups are performed by functions found in nfsidmap.h.  nfs.upcall
-+The actual lookups are performed by functions found in nfsidmap.h.  nfsidmap
- determines the correct function to call by looking at the first part of the
- description string.  For example, a uid lookup description will appear as
- "uid:user@domain".
- 
--nfs.upcall will return 0 if the key was instantiated, and non-zero otherwise.
-+nfsidmap will return 0 if the key was instantiated, and non-zero otherwise.
+Oops, we missed this -EXDEV when we made the change to -EISDIR.
+
+Ian
+
