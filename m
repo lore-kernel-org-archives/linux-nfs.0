@@ -1,94 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from blue.agorabox.fr ([91.121.20.208]:37848 "EHLO blue.yxes.fr"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756364Ab0J2Iti (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Oct 2010 04:49:38 -0400
-Received: from localhost (localhost.localdomain [127.0.0.1])
-	by blue.yxes.fr (Postfix) with ESMTP id 8081017696E
-	for <linux-nfs@vger.kernel.org>; Fri, 29 Oct 2010 10:40:04 +0200 (CEST)
-Received: from blue.yxes.fr ([127.0.0.1])
-	by localhost (blue.agorabox.fr [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id fKfmVdppiuQo for <linux-nfs@vger.kernel.org>;
-	Fri, 29 Oct 2010 10:40:03 +0200 (CEST)
-Received: from hutsys.alpha.agorabox.org (unknown [132.227.168.7])
-	(Authenticated sender: marc.schlinger@agorabox.org)
-	by blue.yxes.fr (Postfix) with ESMTPA id C0E3417696C
-	for <linux-nfs@vger.kernel.org>; Fri, 29 Oct 2010 10:40:03 +0200 (CEST)
-Message-ID: <4CCA8863.6040505@agorabox.org>
-Date: Fri, 29 Oct 2010 10:40:03 +0200
-From: Marc Schlinger <marc.schlinger@agorabox.org>
-To: linux-nfs@vger.kernel.org
-Subject: rpc.gssd and proxiable/forwardable tickets.
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from daytona.panasas.com ([67.152.220.89]:32601 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755634Ab0JAPRy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 11:17:54 -0400
+Message-ID: <4CA5FB9F.1030508@panasas.com>
+Date: Fri, 01 Oct 2010 17:17:51 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsd41: mask out unsupported pnfs attributes
+References: <1285872478-21045-1-git-send-email-bhalevy@panasas.com> <20101001144847.GC17310@fieldses.org>
+In-Reply-To: <20101001144847.GC17310@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 2010-10-01 16:48,  J. Bruce Fields wrote:
+> On Thu, Sep 30, 2010 at 08:47:58PM +0200, Benny Halevy wrote:
+>> These attributes are valid in NFSv4.1, the just doesn't support them yet.
+> 
+> The existing code handles unsupported attributes in the operations
+> themselves.  Perhaps it makes sense to move those checks here, but if
+> so, explain why, and let's do this for all unsupported attributes, not
+> just these two.
 
-Hello,
+The client can run a DOS attack on the server by requesting invalid attributes
+and tripping the BUG_ONs in nfsd4_encode_fattr.
 
-I'm using WebAuth to authenticate my user and provide them a mean to
-join their NFSv4 files through a web page.
-I'd  like to have the kerberos credentials used by the web server, but I
-didn't managed to impersonate the kerberos user with nfsv4 in a webauth
-protected page.
-When I try to list the an nfs directory  from the webpage I've got this
-error from rpc.gssd:
+We can/should also change the BUG_ONs to either report invalid
+attribute or just silently ignore them, but the client is
+perfectly entitled to get attrs we don't support :)
 
-CC file '/tmp/krb5cc_500' is expired or corrupt
+> 
+> Looking back at the spec....  I guess it's only on operations that set
+> attributes that we return NFS4ERR_ATTRNOTSUPP, and otherwise we silently
+> ignore them?
 
-My distribution is Fedora 12 and i'm using nfs-utils 1.2.1.
+For the GETATTR case, we just return the attrmask for the attrs we support.
+IOW:
+   The server returns an attribute bitmap that
+   indicates the attribute values that it was able to return, which will
+   include all attributes requested by the client that are attributes
+   supported by the server for the target file system.
 
-WebAuth is configured to ask the client a forwardable ticket for
-nfs/<mynfsserver>@<myrealm>. In my application's code I can see the
-ticket and even do a klist with it. The output looks like this:
+Benny
 
-$ klist
-Ticket cache: FILE:/tmp/krb5cc_500
-Default principal: marc@<myrealm>
-
-Valid starting     Expires            Service principal
-10/28/10 20:15:17  10/29/10 20:15:15  nfs/<mynfsserver>@<myrealm>
-     Flags: FAT
-
-So my application never gets the krbtgt tickets. Considering security, I
-believe this is a good point.
-
-I must confess that I didn't manage to follow rpc.gssd process with gdb
-or with ltrace.
-So until I'm able to trace gssd execution all things that follows are
-pure suppositions.
-
-
-While trying to find a valid credential_cache gssd calls a function in
-utils/krb5_utils.c, "check_for_tgt", that does this loop:
-
-     while (!found&&   (ret = krb5_cc_next_cred(context, ccache,&cur,
-&creds)) == 0) {
-         if (creds.server->length == 2&&
-                 data_is_equal(creds.server->realm, principal->realm)&&
-                 creds.server->data[0].length == 6&&
-->              memcmp(creds.server->data[0].data, "krbtgt", 6) == 0&&
-                 data_is_equal(creds.server->data[1], principal->realm)&&
-                 creds.times.endtime>   time(NULL))
-             found = 1;
-         krb5_free_cred_contents(context,&creds);
-     }
-
-
-What I understand is that without a krbtgt entry, a credential cache
-will be considered invalid.
-
-Is there some reasons for this?
-For what I've understand about kerberos protocol, a proxiable or
-forwardable service ticket is sufficient to communicate with the nfs
-server. But I may be wrong.
-
-
-Thanks for your help.
-
-Marc Schlinger
-
-
-
-
+> 
+> --b.
+> 
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfsd/nfs4xdr.c |    4 ++++
+>>  1 files changed, 4 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index f48d891..bd4ce68 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -1761,6 +1761,10 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+>>  		.dentry	= dentry,
+>>  	};
+>>  
+>> +	/* mask out unsupported pNFS attributes */
+>> +	bmval1 &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
+>> +	bmval2 &= ~FATTR4_WORD2_LAYOUT_BLKSIZE;
+>> +
+>>  	BUG_ON(bmval1 & NFSD_WRITEONLY_ATTRS_WORD1);
+>>  	BUG_ON(bmval0 & ~nfsd_suppattrs0(minorversion));
+>>  	BUG_ON(bmval1 & ~nfsd_suppattrs1(minorversion));
+>> -- 
+>> 1.7.2.3
+>>
