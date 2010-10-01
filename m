@@ -1,80 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35763 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:50456 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755355Ab0JKSRE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Oct 2010 14:17:04 -0400
-Date: Mon, 11 Oct 2010 14:16:47 -0400
-To: Phil Endecott <phil_bnaqb_endecott@chezphil.org>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        netdev@vger.kernel.org
-Subject: Re: NFS & atl1c : "RPC: multiple fragments per record not
- supported"
-Message-ID: <20101011181647.GA3166@fieldses.org>
-References: <1286722097803@dmwebmail.dmwebmail.chezphil.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1286722097803@dmwebmail.dmwebmail.chezphil.org>
+	id S1753188Ab0JARHs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Oct 2010 13:07:48 -0400
+Date: Fri, 1 Oct 2010 13:07:33 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: pnfs-all-latest client crash
+Message-ID: <20101001170733.GA30570@fieldses.org>
+References: <20100921164211.GK26473@fieldses.org>
+ <4C98FCC3.50803@panasas.com>
+ <20100921190108.GA4385@fieldses.org>
+ <4CA4ABED.7080706@panasas.com>
+ <20100930152944.GA6598@fieldses.org>
+ <4CA4ADFA.2090807@panasas.com>
+ <20100930154350.GB6598@fieldses.org>
+ <4CA4EA74.8070701@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4CA4EA74.8070701@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, Oct 10, 2010 at 03:48:17PM +0100, Phil Endecott wrote:
-> Dear Experts,
+On Thu, Sep 30, 2010 at 09:52:20PM +0200, Benny Halevy wrote:
+> On 2010-09-30 17:43, J. Bruce Fields wrote:
+> > On Thu, Sep 30, 2010 at 05:34:18PM +0200, Benny Halevy wrote:
+> >> On 2010-09-30 17:29, J. Bruce Fields wrote:
+> >>> On Thu, Sep 30, 2010 at 05:25:33PM +0200, Benny Halevy wrote:
+> >>>> On 2010-09-21 21:01, J. Bruce Fields wrote:
+> >>>>> On Tue, Sep 21, 2010 at 08:43:15PM +0200, Benny Halevy wrote:
+> >>>>>> On 2010-09-21 18:42, J. Bruce Fields wrote:
+> >>>>>>> I get the following on pnfs-all-latest, while doing a non-pnfs 4.1 mount.
+> >>>>>>
+> >>>>>> Bruce, can you please provide you .config file?
+> >>>>>> >From the registers value it's possible the calldata is used
+> >>>>>> after free...
+> >>>>>
+> >>>>> Yep.  I ran a 'make oldconfig' on the appended and built from that.
+> >>>>>
+> >>>>> We've seen poisoning in trond's latest for-next as well.  Which I don't
+> >>>>> think you're including.  But I'll add linux-nfs to the cc for that.
+> >>>>>
+> >>>>> --b.
+> >>>>>
+> >>>>> #
+> >>>>> # Automatically generated make config: don't edit
+> >>>>> # Linux kernel version: 2.6.36-rc4
+> >>>>> # Wed Sep 15 14:57:18 2010
+> >>>>> #
+> >>> ...
+> >>>>> # CONFIG_INPUT_TABL
+> >>>>
+> >>>> Looks like the message got truncated :-(
+> >>>
+> >>> Huh.  Sorry about that!
+> >>
+> >> And I presume you config all pNFS options as 'N', right?
+> > 
+> > I'm just running make oldconfig over that.  Unless the pnfs patches are
+> > defaulting those options to 'Y', then yes, that must be what it's
+> > doing....
+> > 
+> > --b.
 > 
-> I am seeing the error "RPC: multiple fragments per record not
-> supported" on my NFS server when an NFS client with an atl1c network
-> driver talks to it.
+> That's really odd.
 > 
-> The server is a QNAP TS119 ARM box running Debian's 2.6.33.2 kernel.
-> It works reliably with other clients.
+> with your .config and !CONFIG_PNFSD
+> and with no modules configured
+> though with modules enabled:
+> CONFIG_MODULES=y
+> # CONFIG_MODULE_FORCE_LOAD is not set
+> CONFIG_MODULE_UNLOAD=y
+> # CONFIG_MODULE_FORCE_UNLOAD is not set
+> # CONFIG_MODVERSIONS is not set
+> # CONFIG_MODULE_SRCVERSION_ALL is not set
 > 
-> The client is a new x86 system with an "Atheros Communications
-> AR8131 Gigabit Ethernet (rev c0)" (1969:1063).  The kernel is
-> Debian's 2.6.32-5-686 and the driver seems to be atl1c.
+> when turning on rpc debugging I see the server rejecting
+> I believe the EXCHANGE_ID RPC on BADCRED:
+> 
+> svc: svc_authenticate (1)
+> svc: authentication failed (1)
+> 
+> I see this also over NFSv4.0...
 
-To my knowledge the Linux client has never sent packets that would
-trigger the prink above, so off hand it does sound like some sort of
-corruption at the network level.
+That's odd.
 
-(Independently of that: we should fix the server to support multiple
-fragments per record at some point.  But if you hadn't hit that printk,
-I'm guessing you would have had a failure soon enough anyway.)
+> Is this what you're seeing too?
 
-> Typically NFS works for a few seconds and then stops, with that
-> message repeated on the server.  Other network activity seems
-> reliable (e.g. HTTP, ssh, etc.)
-> 
-> If I use a USB-ethernet adaptor instead of the built-in gigabit it
-> works reliably.  (The USB device is not gigabit, but I do still see
-> the problems if I limit the port to 100 Mbit on the switch.)
-> 
-> I see the problem with NFS v3 and v4.  However, I only see it with
-> proto=tcp.  By changing the NFS protocol to UDP, the problem seems
-> to go away [well, it has been working for about 20 minutes now
-> without any issues].
-> 
-> Google finds a previous report here:
-> http://lkml.org/lkml/2010/1/20/198 ; the suggestion is to turn off
-> tcp segmentation offload, but it seems that this is not possible
-> with my system:
-> 
-> # ethtool -K eth0 tso off
-> Cannot set device tcp segmentation offload settings: Operation not supported
-> 
-> I have looked at the changes to atl1c since 2.6.32 (http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=history;f=drivers/net/atl1c;h=53cd10d07d040b7bec957acb1c69bc7b44897e69;hb=HEAD)
-> and they seem harmless.
-> 
-> I wiresharked the network activity while this error was being shown,
-> and it did include some packets with the high-contrast colour
-> schemes that wireshark uses for "bad" packets.  Unfortunately my
-> laptop ran out of battery before I could decipher these packets
-> further.
-> 
-> So, is this a known issue?  Do people agree that the atl1c driver is
-> most likely the culprit?  Can I offer any further debugging?
-
-I haven't seen that before.  Adding netdev to the cc:, as you seem to
-have reasonable evidence that the problem is the network driver.
+I actually haven't seen either problem manifest itself on the latest
+runs, and haven't had time to go back and look at the failure on the
+earlier ones.
 
 --b.
