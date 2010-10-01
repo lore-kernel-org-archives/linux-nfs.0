@@ -1,57 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out5.smtp.messagingengine.com ([66.111.4.29]:41874 "EHLO
-	out5.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752499Ab0JAJGd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 05:06:33 -0400
-Subject: Re: [PATCH 06/17] Add an AT_NO_AUTOMOUNT flag to suppress terminal
- automount
-From: Ian Kent <raven@themaw.net>
-To: David Howells <dhowells@redhat.com>
-Cc: viro@ftp.linux.org.uk, jmoyer@redhat.com, linux-fs@vger.kernel.org,
-        autofs@linux.kernel.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org
-In-Reply-To: <20100930181526.30939.22704.stgit@warthog.procyon.org.uk>
-References: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk>
-	 <20100930181526.30939.22704.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 01 Oct 2010 16:55:47 +0800
-Message-ID: <1285923347.3207.7.camel@localhost>
+Received: from magus.merit.edu ([198.108.1.13]:46860 "EHLO magus.merit.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753410Ab0JAUHs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Oct 2010 16:07:48 -0400
+Date: Fri, 1 Oct 2010 16:07:47 -0400
+From: Jim Rees <rees@umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        peter honeyman <honey@citi.umich.edu>
+Subject: Re: Updated pNFS Developmental kernel repository
+Message-ID: <20101001200747.GA4353@merit.edu>
+References: <4CA5C059.6000805@RedHat.com>
+ <4CA5E744.9010006@desy.de>
+ <4CA63D1A.5070108@RedHat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4CA63D1A.5070108@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-09-30 at 19:15 +0100, David Howells wrote:
-> Add an AT_NO_AUTOMOUNT flag to suppress terminal automounting of directories
-> with follow_link semantics.  This can be used by fstatat() users to permit the
-> gathering of attributes on an automount point and also prevent
-> mass-automounting of a directory of automount points by ls.
-> 
-> Signed-off-by: David Howells <dhowells@redhat.com>
-> Acked-by: Ian Kent <raven@themaw.net>
-> ---
-> 
->  fs/namei.c            |    6 ++++++
->  fs/stat.c             |    4 +++-
->  include/linux/fcntl.h |    1 +
->  include/linux/namei.h |    2 ++
->  4 files changed, 12 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 86421f9..74bce3a 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -625,6 +625,12 @@ static int follow_automount(struct path *path, unsigned flags,
->  	if (!path->dentry->d_op || !path->dentry->d_op->d_automount)
->  		return -EREMOTE;
->  
-> +	/* We don't want to mount if someone supplied AT_NO_AUTOMOUNT
-> +	 * and this is the terminal part of the path.
-> +	 */
-> +	if ((flags & LOOKUP_NO_AUTOMOUNT) && !(flags & LOOKUP_CONTINUE))
-> +		return -EXDEV; /* we actually want to stop here */
+Steve Dickson wrote:
 
-Oops, we missed this -EXDEV when we made the change to -EISDIR.
+  On 10/01/2010 09:51 AM, Tigran Mkrtchyan wrote:
+  > 
+  > Hi Steve,
+  > 
+  > thanks for the builds. What I am missing is modprobe configuration file
+  > which I have to add myself.
+  Unfortunately yes... I have not figured out a good way to have
+  the mobprobe done on the client since, in general, init scripts
+  don't run on the client (with the exception of rpc.statd and rpc.gssd).
+  
+  I guess I could come up with an pnfs init script..but that
+  seems like a bit overkill just to do a modprobe... 
 
-Ian
-
+I've already got an init script for the block layout client that does the
+modprobe and starts the daemon.  How about we generalize it to modprobe the
+other modules too, and call it the pnfs init script?
