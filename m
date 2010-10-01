@@ -1,59 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:34607 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756596Ab0JANoq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 09:44:46 -0400
-Received: by qyk36 with SMTP id 36so3337845qyk.19
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Oct 2010 06:44:45 -0700 (PDT)
-Message-ID: <4CA5E5CB.7000204@stevek.com>
-Date: Fri, 01 Oct 2010 09:44:43 -0400
-From: Steve Kann <stevek@stevek.com>
-To: linux-nfs@vger.kernel.org
-Subject: question about serialization/queuing behavior in linux nfs client
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from daytona.panasas.com ([67.152.220.89]:9422 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754627Ab0JAU6R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 16:58:17 -0400
+Message-ID: <4CA64B65.3050808@panasas.com>
+Date: Fri, 01 Oct 2010 22:58:13 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Updated pNFS Developmental kernel repository
+References: <4CA5C059.6000805@RedHat.com> <4CA5E744.9010006@desy.de> <4CA63D1A.5070108@RedHat.com>
+In-Reply-To: <4CA63D1A.5070108@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 2010-10-01 21:57, Steve Dickson wrote:
+> 
+> 
+> On 10/01/2010 09:51 AM, Tigran Mkrtchyan wrote:
+>>
+>> Hi Steve,
+>>
+>> thanks for the builds. What I am missing is modprobe configuration file
+>> which I have to add myself.
+> Unfortunately yes... I have not figured out a good way to have
+> the mobprobe done on the client since, in general, init scripts
+> don't run on the client (with the exception of rpc.statd and rpc.gssd).
+> 
+> I guess I could come up with an pnfs init script..but that
+> seems like a bit overkill just to do a modprobe... 
 
-Hi, List,
+One feature I want to do for a long time is to automatically
+load the driver from the kernel and eventually add a mount option
+to optionally load a layoutdriver on demand, or disable pnfs
+for this mount altogether.  For example:
 
-     I'm trying to debug some performance problems I've been seeing in a 
-particular application.  My main problem is the simple case of an 
-overloaded server, but there's one aspect of the behavior I'm seeing in 
-benchmarks that I don't quite understand.
+pnfs=(auto|none|<layout_driver>|<layout_type>)
 
-Basics:
-     I'm doing benchmarks from a CentOS4 (2.6.9-78.0.13), using NFSv3 
-(over tcp) to connect to a NetApp filer.
-     My benchmark application is a simple perl script which times 
-directory operations (stat, mkdir, rmdir), and I typically am running 
-between 20-200 parallel copies.
+Benny
 
-What I don't quite understand is that if I look on the wire, I see the 
-"worst case" operation times taking up to about ~10 seconds, but from 
-the application, it's reporting worst case times in the 30-60 (or 
-higher!) second range.
-
-At first, I thought that perhaps the system calls in the application 
-were being mapped into multiple NFS operations, but that does not appear 
-to be the case.
-
-My second thought was that the kernel is somehow limiting the number of 
-outstanding requests it's issuing to the server.  It seems that way back 
-in kernel 2.4, there was a limit of 256 outstanding requests (as per 
-nfs.sourceforge.net FAQ B7), but that hard limit was removed back in 2.5 
-with this patch from Trond (http://lwn.net/Articles/15074/), and 
-replaced with other mechanisms to limit memory usage.
-
-The machine I'm testing from has 4GB, and a pretty low application 
-memory footprint (there's nothing much else running on the machine other 
-than my tests).
-
-Any idea what causes the disparity between what I'm seeing on the wire, 
-and what my test application is seeing?
-
-Thanks for helping me understand,
-
--SteveK
-
+> 
+> steved.
+> 
+>>
+>> thanks,
+>>    Tigran.
+>>
+>> On 10/01/2010 01:04 PM, Steve Dickson wrote:
+>>> Hello,
+>>>
+>>> I've updated the Fedora pNFS development repository to include the
+>>> Fedora 13, 14 and Devel kernels that have the latest pNFS bits:
+>>>
+>>>      Tag: pnfs-all-2.6.35-2010-09-14     for Fedora 13 and 14 kernels
+>>>      Tag: pnfs-all-latest                for Devel/f15 kernels
+>>>
+>>> (Note: there are also kernel-debuginfo and kernel-devel rpms for people who
+>>> use things like systemtap probes and crash).
+>>>
+>>> I have not updated the nfs-utils rpms because I'm waiting
+>>> for a fix to a problem in rpc.mountd. Once the problem is resolve
+>>> I'll update those rpms as well...
+>>>
+>>> Instructions on how to install and use these kernels are at:
+>>> http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
+>>>
+>>>   If/when bugs are found with these rpms please enter them
+>>> in to the NFS Bugzilla Main Page at:
+>>>      https://bugzilla.linux-nfs.org/index.cgi
+>>>
+>>> Please use the "pNFS" keyword..
+>>>
+>>> Any question or issues please feel free to contact me...
+>>>
+>>> steved.
+>>> -- 
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>> -- 
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
