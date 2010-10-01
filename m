@@ -1,43 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp2.ist.utl.pt ([193.136.128.22]:55900 "EHLO smtp2.ist.utl.pt"
+Received: from mx2.netapp.com ([216.240.18.37]:9112 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757130Ab0JRRAU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Oct 2010 13:00:20 -0400
-Date: Mon, 18 Oct 2010 18:00:18 +0100
-From: =?UTF-8?B?Q2zDoXVkaW8=?= Martins <ctpm@ist.utl.pt>
-To: Lyle Seaman <lyleseaman@gmail.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: NFS sillyrename side effect
-Message-Id: <20101018180018.9d730e1f.ctpm@ist.utl.pt>
-In-Reply-To: <AANLkTi=FauBoB4R=WCudvX8fLmVU1tGfKQkwpKaQPPLg@mail.gmail.com>
-References: <1287362142-sup-777@au1.ibm.com>
-	<20101018101059.574b715a@corrin.poochiereds.net>
-	<20101018154811.768baeb5.ctpm@ist.utl.pt>
-	<20101018155344.6e50dbb9.ctpm@ist.utl.pt>
-	<20101018110138.5f5001eb@corrin.poochiereds.net>
-	<20101018164414.ec860360.ctpm@ist.utl.pt>
-	<AANLkTi=FauBoB4R=WCudvX8fLmVU1tGfKQkwpKaQPPLg@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+	id S1751589Ab0JAQDl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Oct 2010 12:03:41 -0400
+Received: from localhost.localdomain (vpn2ntap-420885.hq.netapp.com [10.58.51.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o91G3Uen008238
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Oct 2010 09:03:39 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/7] SQUASHME: pnfs-devinfo-submit: fix comments in pnfs_layout*_release
+Date: Fri,  1 Oct 2010 12:02:47 -0400
+Message-Id: <1285948971-2048-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
+References: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+comments were not changed with the functions
 
-On Mon, 18 Oct 2010 12:21:43 -0400 Lyle Seaman <lyleseaman@gmail.com> wrote:
-> You would need to do the state recovery before or during the fsck
-> (which would require the local filesystem to have some loose
-> integration with the network protocol).
-> 
-> Also, re the original issue, can't the client do a silly rename of the
-> directory if it contains only .nfs files during rmdir?
-> 
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   12 ++----------
+ 1 files changed, 2 insertions(+), 10 deletions(-)
 
- I think the problem is that would be racy. You have no guarantee that
-other clients won't create files on that directory between the time you
-check the directory and the time you'd silly-rename it, so you would
-end up "deleting" directories which are not "empty".
-
-Best regards
-
-Cláudio
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 5ba2c45..7013916 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -390,11 +390,7 @@ pnfs_layoutget_release(struct pnfs_layout_hdr *lo)
+ 	struct nfs_inode *nfsi = NFS_I(lo->inode);
+ 
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+-	/*
+-	 * Matched in _pnfs_update_layout for layoutget
+-	 * and by get_layout in _pnfs_return_layout for layoutreturn
+-	 */
+-	put_layout_hdr_locked(lo);
++	put_layout_hdr_locked(lo); /* Matched in _pnfs_update_layout */
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+ 	wake_up_all(&nfsi->lo_waitq);
+ }
+@@ -408,11 +404,7 @@ pnfs_layoutreturn_release(struct pnfs_layout_hdr *lo,
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	if (range)
+ 		pnfs_clear_lseg_list(lo, range);
+-	/*
+-	 * Matched in _pnfs_update_layout for layoutget
+-	 * and by get_layout in _pnfs_return_layout for layoutreturn
+-	 */
+-	put_layout_hdr_locked(lo);
++	put_layout_hdr_locked(lo); /* Matched in _pnfs_return_layout */
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+ 	wake_up_all(&nfsi->lo_waitq);
+ }
+-- 
+1.7.2.1
 
