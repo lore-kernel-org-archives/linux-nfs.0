@@ -1,56 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55479 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:9112 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932412Ab0JAPUq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Oct 2010 11:20:46 -0400
-Date: Fri, 1 Oct 2010 11:20:32 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsd41: mask out unsupported pnfs attributes
-Message-ID: <20101001152032.GF17310@fieldses.org>
-References: <1285872478-21045-1-git-send-email-bhalevy@panasas.com>
- <20101001144847.GC17310@fieldses.org>
- <4CA5FB9F.1030508@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CA5FB9F.1030508@panasas.com>
+	id S1751589Ab0JAQDm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Oct 2010 12:03:42 -0400
+Received: from localhost.localdomain (vpn2ntap-420885.hq.netapp.com [10.58.51.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o91G3Ueo008238
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Oct 2010 09:03:41 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 4/7] nfs: change end of line commas to semicolons
+Date: Fri,  1 Oct 2010 12:02:48 -0400
+Message-Id: <1285948971-2048-5-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
+References: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Oct 01, 2010 at 05:17:51PM +0200, Benny Halevy wrote:
-> On 2010-10-01 16:48,  J. Bruce Fields wrote:
-> > On Thu, Sep 30, 2010 at 08:47:58PM +0200, Benny Halevy wrote:
-> >> These attributes are valid in NFSv4.1, the just doesn't support them yet.
-> > 
-> > The existing code handles unsupported attributes in the operations
-> > themselves.  Perhaps it makes sense to move those checks here, but if
-> > so, explain why, and let's do this for all unsupported attributes, not
-> > just these two.
-> 
-> The client can run a DOS attack on the server by requesting invalid attributes
-> and tripping the BUG_ONs in nfsd4_encode_fattr.
+Fix a copy-paste error from a previous code reorg.
 
-How can they do that?  getattr and readdir, for example, both handle
-this.  But I may well be missing something!
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 
-> We can/should also change the BUG_ONs to either report invalid
-> attribute or just silently ignore them, but the client is
-> perfectly entitled to get attrs we don't support :)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 61a110d..aad6fdc 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1983,8 +1983,8 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, i
+ 	path_get(path);
+ 	calldata->path = *path;
+ 
+-	msg.rpc_argp = &calldata->arg,
+-	msg.rpc_resp = &calldata->res,
++	msg.rpc_argp = &calldata->arg;
++	msg.rpc_resp = &calldata->res;
+ 	task_setup_data.callback_data = calldata;
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+@@ -4048,8 +4048,8 @@ static struct rpc_task *nfs4_do_unlck(struct file_lock *fl,
+ 		return ERR_PTR(-ENOMEM);
+ 	}
+ 
+-	msg.rpc_argp = &data->arg,
+-	msg.rpc_resp = &data->res,
++	msg.rpc_argp = &data->arg;
++	msg.rpc_resp = &data->res;
+ 	task_setup_data.callback_data = data;
+ 	return rpc_run_task(&task_setup_data);
+ }
+@@ -4286,8 +4286,8 @@ static int _nfs4_do_setlk(struct nfs4_state *state, int cmd, struct file_lock *f
+ 			data->arg.reclaim = NFS_LOCK_RECLAIM;
+ 		task_setup_data.callback_ops = &nfs4_recover_lock_ops;
+ 	}
+-	msg.rpc_argp = &data->arg,
+-	msg.rpc_resp = &data->res,
++	msg.rpc_argp = &data->arg;
++	msg.rpc_resp = &data->res;
+ 	task_setup_data.callback_data = data;
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+-- 
+1.7.2.1
 
-Sure.
-
-> > Looking back at the spec....  I guess it's only on operations that set
-> > attributes that we return NFS4ERR_ATTRNOTSUPP, and otherwise we silently
-> > ignore them?
-> 
-> For the GETATTR case, we just return the attrmask for the attrs we support.
-> IOW:
->    The server returns an attribute bitmap that
->    indicates the attribute values that it was able to return, which will
->    include all attributes requested by the client that are attributes
->    supported by the server for the target file system.
-
-OK, makes sense.
-
---b.
