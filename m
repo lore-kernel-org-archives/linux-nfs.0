@@ -1,56 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48946 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757581Ab0JEWqf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Oct 2010 18:46:35 -0400
-Date: Tue, 5 Oct 2010 18:46:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Pavel Emelyanov <xemul@parallels.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond@netapp.com>
-Subject: Re: [PATCH] sunrpc: Remove useless if (task == NULL) from
- xprt_reserve_xprt
-Message-ID: <20101005224608.GA24954@fieldses.org>
-References: <4CAB5694.5030400@parallels.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CAB5694.5030400@parallels.com>
+Received: from daytona.panasas.com ([67.152.220.89]:23873 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750814Ab0JAPfH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 11:35:07 -0400
+Message-ID: <4CA5FFA9.7090301@panasas.com>
+Date: Fri, 01 Oct 2010 17:35:05 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsd41: mask out unsupported pnfs attributes
+References: <1285872478-21045-1-git-send-email-bhalevy@panasas.com> <20101001144847.GC17310@fieldses.org> <4CA5FB9F.1030508@panasas.com> <20101001152032.GF17310@fieldses.org>
+In-Reply-To: <20101001152032.GF17310@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Oct 05, 2010 at 08:47:16PM +0400, Pavel Emelyanov wrote:
-> The task in question is dereferenced above (and is actually never NULL).
-
-Makes sense to me.
-
-(But probably it should go through Trond unless there's some dependency
-on your patches in my tree.)
-
---b.
-
+On 2010-10-01 17:20, J. Bruce Fields wrote:
+> On Fri, Oct 01, 2010 at 05:17:51PM +0200, Benny Halevy wrote:
+>> On 2010-10-01 16:48,  J. Bruce Fields wrote:
+>>> On Thu, Sep 30, 2010 at 08:47:58PM +0200, Benny Halevy wrote:
+>>>> These attributes are valid in NFSv4.1, the just doesn't support them yet.
+>>>
+>>> The existing code handles unsupported attributes in the operations
+>>> themselves.  Perhaps it makes sense to move those checks here, but if
+>>> so, explain why, and let's do this for all unsupported attributes, not
+>>> just these two.
+>>
+>> The client can run a DOS attack on the server by requesting invalid attributes
+>> and tripping the BUG_ONs in nfsd4_encode_fattr.
 > 
-> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
-> ---
->  net/sunrpc/xprt.c |    2 --
->  1 files changed, 0 insertions(+), 2 deletions(-)
+> How can they do that?  getattr and readdir, for example, both handle
+> this.  But I may well be missing something!
 > 
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index 953206d..64a4a94 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -199,8 +199,6 @@ int xprt_reserve_xprt(struct rpc_task *task)
->  	if (test_and_set_bit(XPRT_LOCKED, &xprt->state)) {
->  		if (task == xprt->snd_task)
->  			return 1;
-> -		if (task == NULL)
-> -			return 0;
->  		goto out_sleep;
->  	}
->  	xprt->snd_task = task;
-> -- 
-> 1.5.5.6
+
+You're right.  I got confused by the pnfsd specific bug I fixed here:
+http://marc.info/?l=linux-nfs&m=128587444310102&w=2
+
+In this case LAYOUT_BLKSIZE was marked as supported but nothing
+really supported it so we ended up with an invalid result sent
+to the client.
+
+So let's drop this patch. sorry.
+
+Benny
+
+>> We can/should also change the BUG_ONs to either report invalid
+>> attribute or just silently ignore them, but the client is
+>> perfectly entitled to get attrs we don't support :)
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Sure.
+> 
+>>> Looking back at the spec....  I guess it's only on operations that set
+>>> attributes that we return NFS4ERR_ATTRNOTSUPP, and otherwise we silently
+>>> ignore them?
+>>
+>> For the GETATTR case, we just return the attrmask for the attrs we support.
+>> IOW:
+>>    The server returns an attribute bitmap that
+>>    indicates the attribute values that it was able to return, which will
+>>    include all attributes requested by the client that are attributes
+>>    supported by the server for the target file system.
+> 
+> OK, makes sense.
+> 
+> --b.
