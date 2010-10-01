@@ -1,44 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21893 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:19895 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756016Ab0J0TgD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Oct 2010 15:36:03 -0400
+	id S1753371Ab0JAUqm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 16:46:42 -0400
+Subject: Re: NFS4 clients cannot reclaim locks
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] Ensure we check libnfsidmap for function 'nfs4_owner_to_uid'
-Date: Wed, 27 Oct 2010 15:35:56 -0400
-Message-Id: <1288208156-13874-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1288208156-13874-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1288208156-13874-1-git-send-email-Trond.Myklebust@netapp.com>
- <1288208156-13874-2-git-send-email-Trond.Myklebust@netapp.com>
+To: Sachin Prabhu <sprabhu@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+In-Reply-To: <25362267.86.1285932646433.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+References: <25362267.86.1285932646433.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 01 Oct 2010 16:46:40 -0400
+Message-ID: <1285966000.4391.14.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The new idmapper requires a more recent version of libnfsidmap. Ensure
-that autoconf checks for this.
+On Fri, 2010-10-01 at 07:30 -0400, Sachin Prabhu wrote:
+> NFS4 clients appear to have problems reclaiming locks after a server reboot. I can recreate the issue on 2.6.34.7-56.fc13.x86_64 on a Fedora system. 
+> 
+> The problem appears to happen in cases where after a reboot, a WRITE call is made just before the RENEW call. In that case, the NFS4ERR_STALE_STATEID is returned for the WRITE call which results in NFS_STATE_RECLAIM_REBOOT being set in the state flags. However the NFS4ERR_STALE_CLIENTID returned for the subsequent RENEW call is handled by 
+> nfs4_recovery_handle_error() -> nfs4_state_end_reclaim_reboot(clp);  
+> which ends up setting the state flag to NFS_STATE_RECLAIM_NOGRACE and clearing the NFS_STATE_RECLAIM_REBOOT in nfs4_state_mark_reclaim_nograce(). 
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- aclocal/libnfsidmap.m4 |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+Yup. I don't think we should call nfs4_state_mark_reclaim_reboot() here.
 
-diff --git a/aclocal/libnfsidmap.m4 b/aclocal/libnfsidmap.m4
-index cfcde2f..00a1405 100644
---- a/aclocal/libnfsidmap.m4
-+++ b/aclocal/libnfsidmap.m4
-@@ -6,6 +6,9 @@ AC_DEFUN([AC_LIBNFSIDMAP], [
-   AC_CHECK_LIB([nfsidmap], [nfs4_init_name_mapping], [libnfsidmap=1],
-                [AC_MSG_ERROR([libnfsidmap not found.])])
- 
-+  AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid], ,
-+               [AC_MSG_ERROR([libnfsidmap version too old.])])
-+
-   AC_CHECK_HEADERS([nfsidmap.h], ,
-                    [AC_MSG_ERROR([libnfsidmap headers not found.])])
- 
--- 
-1.7.2.3
+> The process of reclaiming the locks then seem to hit another roadblock in nfs4_open_expired() where it fails to open the file and reset the state. It ends up calling nfs4_reclaim_locks() in a loop with the old stateid in nfs4_reclaim_open_state().
 
+Any idea how nfs4_open_expired() is failing? It seems that if it does,
+we should see an error, which would cause the lock reclaim to fail.
+
+Also, why is the call to nfs4_reclaim_locks() looping? That too should
+exit in case of an error.
+
+> By commenting out the call to nfs4_state_end_reclaim_reboot(clp) in nfs4_recovery_handle_error(), the client was able to handle this particular scenario properly.
+
+We do need to keep the nfs4_state_end_reclaim_reboot() there. Otherwise,
+we have a problem if the server reboots again while we're in the middle
+of reclaiming state.
+
+Cheers
+  Trond
