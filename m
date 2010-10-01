@@ -1,40 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:54101 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754324Ab0J1M4v convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 08:56:51 -0400
-Received: by ywk9 with SMTP id 9so1178647ywk.19
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Oct 2010 05:56:50 -0700 (PDT)
-In-Reply-To: <4CC92A0C.20704@cea.fr>
-References: <4CC92A0C.20704@cea.fr>
-Date: Thu, 28 Oct 2010 08:56:50 -0400
-Message-ID: <AANLkTikvHmPT-veXmJjwx8W56u0+1LKcxg96ewZ1c9T2@mail.gmail.com>
-Subject: Re: Manpages about functions within libnfsidmap ?
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: DENIEL Philippe <philippe.deniel@cea.fr>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:9112 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751589Ab0JAQDp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Oct 2010 12:03:45 -0400
+Received: from localhost.localdomain (vpn2ntap-420885.hq.netapp.com [10.58.51.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o91G3Uer008238
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Oct 2010 09:03:44 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 7/7] SQUASHME: pnfs_submit: only use asynch error handler for LAYOUTRETURN
+Date: Fri,  1 Oct 2010 12:02:51 -0400
+Message-Id: <1285948971-2048-8-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
+References: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-I think the closest thing is the man page for the config file?
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   15 +--------------
+ 1 files changed, 1 insertions(+), 14 deletions(-)
 
-http://git.linux-nfs.org/?p=kwc/libnfsidmap.git;a=blob;f=idmapd.conf.5;h=9c7f1ae1bc5686142c6a8a0d71a5cb756daef212;hb=HEAD
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0ac77a6..d29ed4b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5662,7 +5662,7 @@ static const struct rpc_call_ops nfs4_layoutreturn_call_ops = {
+ 	.rpc_release = nfs4_layoutreturn_release,
+ };
+ 
+-int _nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool issync)
++int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool issync)
+ {
+ 	struct inode *ino = lrp->args.inode;
+ 	struct nfs_server *server = NFS_SERVER(ino);
+@@ -5698,19 +5698,6 @@ out:
+ 	return status;
+ }
+ 
+-int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool issync)
+-{
+-	struct nfs_server *server = NFS_SERVER(lrp->args.inode);
+-	struct nfs4_exception exception = { };
+-	int err;
+-	do {
+-		err = nfs4_handle_exception(server,
+-				_nfs4_proc_layoutreturn(lrp, issync),
+-				&exception);
+-	} while (exception.retry);
+-	return err;
+-}
+-
+ static int
+ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
+ {
+-- 
+1.7.2.1
 
-There is, of course, the libnfsidmap source code as well...
-
-K.C.
-
-
-On Thu, Oct 28, 2010 at 3:45 AM, DENIEL Philippe <philippe.deniel@cea.fr> wrote:
-> Hi,
->
-> I wondered if documentations about the functions implemented in libnfsidmap
-> exists. For now, I had a look at the rpc.idmapd's source code, but this is
-> no "explicit" docs. Does such a thing exist ? (as manpages, plain text or
-> any other human readable format)
->
->   Regards
->
->      Philippe
