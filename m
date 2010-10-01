@@ -1,97 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:34974 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752760Ab0JNPVe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Oct 2010 11:21:34 -0400
-Received: by fxm4 with SMTP id 4so2508875fxm.19
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Oct 2010 08:21:33 -0700 (PDT)
-Date: Thu, 14 Oct 2010 11:21:33 -0400
-Message-ID: <AANLkTin8tXxRFA5G8c9jKLv6aeEM8YLRX54YT5GozxK+@mail.gmail.com>
-Subject: Thread scheduling issues
-From: Lyle Seaman <lyleseaman@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:9112 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751589Ab0JAQDi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Oct 2010 12:03:38 -0400
+Received: from localhost.localdomain (vpn2ntap-420885.hq.netapp.com [10.58.51.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o91G3Uel008238
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Oct 2010 09:03:37 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: [PATCH 1/7] SQUASHME: pnfs-devinfo-submit: misc small fixes
+Date: Fri,  1 Oct 2010 12:02:45 -0400
+Message-Id: <1285948971-2048-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
+References: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Ok.  I've been trying to figure out a performance problem with some of
-my production servers (I'm just not able to get enough simultaneous
-I/Os queued up to get decent performance out of my disk subsystem),
-and I have run into something that strikes me as odd.  For reference,
-the code I'm looking at is from a 2.6.35.22 kernel, and I know there
-have been some relevant changes since then but I am not seeing the
-discussion of this in the mailing list archives. If I have to figure
-out the new source control system to look at the head-of-line code,
-say so.
+These are various minor touchups to the devinfo submission code
 
-in sunrpc/svc_xprt.c:svc_recv() I find this:
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c    |    2 +-
+ fs/nfs/nfs4filelayoutdev.c |    4 +---
+ fs/nfs/pnfs.c              |    4 ++--
+ fs/nfs/pnfs.h              |    5 -----
+ fs/nfs/read.c              |    1 -
+ 5 files changed, 4 insertions(+), 12 deletions(-)
 
-        /* now allocate needed pages.  If we get a failure, sleep briefly */
- 620        pages = (serv->sv_max_mesg + PAGE_SIZE) / PAGE_SIZE;
- 621        for (i = 0; i < pages ; i++)
- 622                while (rqstp->rq_pages[i] == NULL) {
- 623                        struct page *p = alloc_page(GFP_KERNEL);
- 624                        if (!p) {
- 625                                set_current_state(TASK_INTERRUPTIBLE);
- 626                                if (signalled() || kthread_should_stop()) {
- 627                                        set_current_state(TASK_RUNNING);
- 628                                        return -EINTR;
- 629                                }
- 630                                schedule_timeout(msecs_to_jiffies(500));
- 631                        }
- 632                        rqstp->rq_pages[i] = p;
- 633                }
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index a33c47e..2b6e3c9 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -631,7 +631,7 @@ filelayout_get_stripesize(struct pnfs_layout_hdr *lo)
+ 	lseg = pnfs_has_layout(lo, &range);
+ 	if (!lseg)
+ 		return 0;
+-	fl = container_of(lseg, struct nfs4_filelayout_segment, generic_hdr);
++	fl = FILELAYOUT_LSEG(lseg);
+ 	size = fl->stripe_unit;
+ 	put_lseg_locked(lseg);
+ 	return size;
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index e4f91f6..5da6fec 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -355,9 +355,7 @@ out_err:
+ 	return ds;
+ }
+ 
+-
+-
+-/*Decode opaque device data and return the result */
++/* Decode opaque device data and return the result */
+ static struct nfs4_file_layout_dsaddr*
+ decode_device(struct inode *ino, struct pnfs_device *pdev)
+ {
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 333b7db..131602c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -50,7 +50,7 @@ static LIST_HEAD(pnfs_modules_tbl);
+ static struct pnfs_layoutdriver_type *
+ find_pnfs_driver_locked(u32 id)
+ {
+-	struct  pnfs_layoutdriver_type *local;
++	struct pnfs_layoutdriver_type *local;
+ 
+ 	list_for_each_entry(local, &pnfs_modules_tbl, pnfs_tblid)
+ 		if (local->id == id)
+@@ -64,7 +64,7 @@ out:
+ static struct pnfs_layoutdriver_type *
+ find_pnfs_driver(u32 id)
+ {
+-	struct  pnfs_layoutdriver_type *local;
++	struct pnfs_layoutdriver_type *local;
+ 
+ 	spin_lock(&pnfs_spinlock);
+ 	local = find_pnfs_driver_locked(id);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 9500aa4..4ea3ae0 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -153,7 +153,6 @@ struct pnfs_deviceid_cache {
+ 	atomic_t		dc_ref;
+ 	void			(*dc_free_callback)(struct pnfs_deviceid_node *);
+ 	struct hlist_head	dc_deviceids[NFS4_DEVICE_ID_HASH_SIZE];
+-	struct hlist_head	dc_to_free;
+ };
+ 
+ extern int pnfs_alloc_init_deviceid_cache(struct nfs_client *,
+@@ -295,10 +294,6 @@ static inline void put_lseg(struct pnfs_layout_segment *lseg)
+ {
+ }
+ 
+-static inline void put_lseg_locked(struct pnfs_layout_segment *lseg)
+-{
+-}
+-
+ static inline struct pnfs_layout_segment *
+ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 		   enum pnfs_iomode access_type)
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index be29689..c34f97d 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -29,7 +29,6 @@
+ #include "internal.h"
+ #include "iostat.h"
+ #include "fscache.h"
+-#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+-- 
+1.7.2.1
 
-First of all, 500ms is a long way from "brief".  Second, it seems like
-a really bad idea to sleep while holding a contended resource.
-Shouldn't you drop those pages before sleeping?  It's been a long time
-since I knew anything about the Linux vm system, but presumably the
-reason that alloc_page has failed is because there aren't 26 pages
-available*.  So now I'm going to sleep while holding, say, the last 24
-free pages?  This looks like deadlock city, except for the valiant
-efforts by the vm system to keep freeing pages, and other adjustments
-to vary sv_max_mesg depending on the number of threads which mean that
-in practice, deadlock is unlikely.  But figuring out the interaction
-of all those other systems requires global knowledge, which is asking
-for trouble in the long run.  And there are intermediate degrees of
-cascading interlocked interdependencies that result in poor
-performance which aren't technically a complete deadlock.
-
-(* I'm going to have to do some more digging here, because in my
-specific situation, vmstat generally reports between 100M and 600M
-free, so I'm admittedly not clear on why alloc_page is failing me,
-unless there is a difference between "free" and "available for nfsd".)
-
-And then there's this, in svc_xprt_enqueue()
-
- 360 process:
- 361        /* Work out whether threads are available */
- 362        thread_avail = !list_empty(&pool->sp_threads);  /* threads
-are asleep */
- 363        if (pool->sp_nwaking >= SVC_MAX_WAKING) {
-//  == 5 -lws
- 364                /* too many threads are runnable and trying to wake up */
- 365                thread_avail = 0;
- 366                pool->sp_stats.overloads_avoided++;
- 367        }
-
-Now, the sp_nwaking counter is only decremented after that snippet of
-code earlier, so if I've got five threads that happen to all run into
-a transient problem getting the pages they need, they're going to
-sleep for 500 millis and -nothing- is going to happen.
-
-I see that this overloads_avoided branch disappeared in more recent
-kernels, was there some discussion of it that you can point me to so I
-don't have to rehash an old topic? I think that removing it actually
-increases the likelihood of deadlock.
-
-Finally, zero-copy is great, awesome, I love it.  But it seems
-profligate to allocate an entire 26 pages for every operation when
-only 9% of them (at least in my workload) are writes.  All the rest of
-the operations only need a small fraction of that to be preallocated.
-I don't have a concrete suggestion here, I'd have to do some tinkering
-with the code first.  I'm just... saying.  Maybe allocate two pages up
-front, then wait to see if the others are needed and allocate them at
-that time.  If you're willing to sleep in svc_recv while holding lots
-of pages, it's no worse to sleep while holding one or two.
