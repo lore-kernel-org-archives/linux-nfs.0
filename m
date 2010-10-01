@@ -1,57 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44840 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:57986 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752387Ab0JKXby (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Oct 2010 19:31:54 -0400
-Received: from bfields by fieldses.org with local (Exim 4.71)
-	(envelope-from <bfields@fieldses.org>)
-	id 1P5RqT-0004xl-Ik
-	for linux-nfs@vger.kernel.org; Mon, 11 Oct 2010 19:31:53 -0400
-Date: Mon, 11 Oct 2010 19:31:53 -0400
-To: linux-nfs@vger.kernel.org
-Subject: expire clients more promptly
-Message-ID: <20101011233153.GA16442@fieldses.org>
+	id S1753478Ab0JARK3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Oct 2010 13:10:29 -0400
+Date: Fri, 1 Oct 2010 13:10:12 -0400
+To: Marc Eshel <eshel@almaden.ibm.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, Boaz Harrosh <bharrosh@panasas.com>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        NFS list <linux-nfs@vger.kernel.org>, linux-nfs-owner@vger.kernel.org,
+        Fred Isaman <iisaman@netapp.com>
+Subject: Re: pNFS DS session
+Message-ID: <20101001171012.GB30570@fieldses.org>
+References: <4CA34883.40005@desy.de>
+ <4CA34B93.2010100@panasas.com>
+ <4CA44AAA.4030803@panasas.com>
+ <4CA45462.1070503@desy.de>
+ <4CA455C4.4030705@panasas.com>
+ <OF6B8488BA.B9C50431-ON882577AF.0016FDCE-882577AF.0017999B@us.ibm.com>
+ <4CA57BC6.9030701@desy.de>
+ <4CA5A012.2090404@panasas.com>
+ <4CA5D537.30300@panasas.com>
+ <4CA600F4.2010006@almaden.ibm.com>
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4CA600F4.2010006@almaden.ibm.com>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I'm planning on queuing this up for 2.6.37.
+On Fri, Oct 01, 2010 at 08:40:36AM -0700, Marc Eshel wrote:
+>  On 10/1/2010 5:33 AM, Benny Halevy wrote:
+> >On 2010-10-01 10:47, Boaz Harrosh wrote:
+> >>On 10/01/2010 08:12 AM, Tigran Mkrtchyan wrote:
+> >>>   On 10/01/2010 06:17 AM, Marc Eshel wrote:
+> >>>>Hi Benny,
+> >>>>
+> >>>>Running connectathon I see that some times the clients decides to destroy
+> >>>>the session with the DS. The test continue and the session is
+> >>>>re-established. It looks like layout return reduces the hold on device
+> >>>>info the reduces the hold on the client struct which decide to destroy the
+> >>>>session. Is that a known problem?
+> >>>>
+> >>Yes, I want to emphasize on Marks words: "a known *problem*"
+> >Marc, assuming the code behaves as expected, does this cause any other badness
+> >like the GETATTRs you see going out to the DS?
+> >
+> >Benny
+> >
+> 
+> No i don't see any "badness" the test continues without errors and
+> this problem is not related to the GETATTRs I see on the DS but I
+> would consider destroying the session in short run of couple of
+> minutes some times more than one time as something bad.
 
-Honestly, this is mainly just to make a few pynfs tests pass more
-reliably, which isn't a good enough reason on its own.
+Why?
 
-But I also can't see any problem with letting the laundromat thread run
-as much as once a second.
+I wouldn't expect session destruction/creation to be *that* expensive.
 
 --b.
-
-commit 76b409f70568ef011e476ce60eab6770572f4839
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Oct 11 16:49:44 2010 -0400
-
-    nfsd4: expire clients more promptly
-    
-    Expire clients more promptly, at the expense of possibly running the
-    laundromat thread more frequently.
-    
-    Though it's not the default, I'd like it to be feasible to run with a
-    lease time of just a few seconds, at which point a minimum 10 second
-    wait between laundromat runs seems a little much.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index b76ac3a..6b641cf 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -249,7 +249,7 @@ extern time_t nfsd4_grace;
- #define	COMPOUND_SLACK_SPACE		140    /* OP_GETFH */
- #define COMPOUND_ERR_SLACK_SPACE	12     /* OP_SETATTR */
- 
--#define NFSD_LAUNDROMAT_MINTIMEOUT      10   /* seconds */
-+#define NFSD_LAUNDROMAT_MINTIMEOUT      1   /* seconds */
- 
- /*
-  * The following attributes are currently not supported by the NFSv4 server:
