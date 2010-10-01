@@ -1,75 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:32601 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755634Ab0JAPRy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 11:17:54 -0400
-Message-ID: <4CA5FB9F.1030508@panasas.com>
-Date: Fri, 01 Oct 2010 17:17:51 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsd41: mask out unsupported pnfs attributes
-References: <1285872478-21045-1-git-send-email-bhalevy@panasas.com> <20101001144847.GC17310@fieldses.org>
-In-Reply-To: <20101001144847.GC17310@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:9112 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751589Ab0JAQDo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Oct 2010 12:03:44 -0400
+Received: from localhost.localdomain (vpn2ntap-420885.hq.netapp.com [10.58.51.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o91G3Ueq008238
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Oct 2010 09:03:43 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 6/7] SQUASHME: pnfs_submit: Only use asynch error handler for LAYOUTCOMMIT
+Date: Fri,  1 Oct 2010 12:02:50 -0400
+Message-Id: <1285948971-2048-7-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
+References: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2010-10-01 16:48,  J. Bruce Fields wrote:
-> On Thu, Sep 30, 2010 at 08:47:58PM +0200, Benny Halevy wrote:
->> These attributes are valid in NFSv4.1, the just doesn't support them yet.
-> 
-> The existing code handles unsupported attributes in the operations
-> themselves.  Perhaps it makes sense to move those checks here, but if
-> so, explain why, and let's do this for all unsupported attributes, not
-> just these two.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   18 ++----------------
+ 1 files changed, 2 insertions(+), 16 deletions(-)
 
-The client can run a DOS attack on the server by requesting invalid attributes
-and tripping the BUG_ONs in nfsd4_encode_fattr.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e28da81..0ac77a6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5561,8 +5561,8 @@ static const struct rpc_call_ops nfs4_layoutcommit_ops = {
+ };
+ 
+ /* Execute a layoutcommit to the server */
+-static int
+-_nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int issync)
++int
++nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int issync)
+ {
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTCOMMIT],
+@@ -5605,20 +5605,6 @@ out:
+ 	return 0;
+ }
+ 
+-int nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int issync)
+-{
+-	struct nfs4_exception exception = { };
+-	struct nfs_server *server = NFS_SERVER(data->args.inode);
+-	int err;
+-
+-	do {
+-		err = nfs4_handle_exception(server,
+-					_nfs4_proc_layoutcommit(data, issync),
+-					&exception);
+-	} while (exception.retry);
+-	return err;
+-}
+-
+ static void
+ nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
+ {
+-- 
+1.7.2.1
 
-We can/should also change the BUG_ONs to either report invalid
-attribute or just silently ignore them, but the client is
-perfectly entitled to get attrs we don't support :)
-
-> 
-> Looking back at the spec....  I guess it's only on operations that set
-> attributes that we return NFS4ERR_ATTRNOTSUPP, and otherwise we silently
-> ignore them?
-
-For the GETATTR case, we just return the attrmask for the attrs we support.
-IOW:
-   The server returns an attribute bitmap that
-   indicates the attribute values that it was able to return, which will
-   include all attributes requested by the client that are attributes
-   supported by the server for the target file system.
-
-Benny
-
-> 
-> --b.
-> 
->>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  fs/nfsd/nfs4xdr.c |    4 ++++
->>  1 files changed, 4 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->> index f48d891..bd4ce68 100644
->> --- a/fs/nfsd/nfs4xdr.c
->> +++ b/fs/nfsd/nfs4xdr.c
->> @@ -1761,6 +1761,10 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
->>  		.dentry	= dentry,
->>  	};
->>  
->> +	/* mask out unsupported pNFS attributes */
->> +	bmval1 &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
->> +	bmval2 &= ~FATTR4_WORD2_LAYOUT_BLKSIZE;
->> +
->>  	BUG_ON(bmval1 & NFSD_WRITEONLY_ATTRS_WORD1);
->>  	BUG_ON(bmval0 & ~nfsd_suppattrs0(minorversion));
->>  	BUG_ON(bmval1 & ~nfsd_suppattrs1(minorversion));
->> -- 
->> 1.7.2.3
->>
