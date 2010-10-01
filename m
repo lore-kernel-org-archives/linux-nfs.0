@@ -1,55 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:42448 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759319Ab0J1Q5W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 12:57:22 -0400
-Date: Thu, 28 Oct 2010 18:57:08 +0200
-From: Dan Carpenter <error27@gmail.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, wharms@bfs.de,
-        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
-Subject: Re: [patch] nfs: check kmalloc() return
-Message-ID: <20101028165708.GH6062@bicker>
-References: <20101028044403.GV6062@bicker> <4CC92338.7070304@bfs.de> <1288273273.3194.16.camel@heimdal.trondhjem.org> <4CC98534.40907@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CC98534.40907@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:9112 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751589Ab0JAQDj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Oct 2010 12:03:39 -0400
+Received: from localhost.localdomain (vpn2ntap-420885.hq.netapp.com [10.58.51.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o91G3Uem008238
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Oct 2010 09:03:38 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/7] SQUASHME: pnfs_submit: remove inlines from *.c files
+Date: Fri,  1 Oct 2010 12:02:46 -0400
+Message-Id: <1285948971-2048-3-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
+References: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Oct 28, 2010 at 04:14:12PM +0200, Benny Halevy wrote:
-> >>> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-> >>> index 51fe64a..098113c 100644
-> >>> --- a/fs/nfs/nfs4filelayoutdev.c
-> >>> +++ b/fs/nfs/nfs4filelayoutdev.c
-> >>> @@ -219,6 +219,8 @@ decode_and_add_ds(__be32 **pp, struct inode *inode)
-> >>>  		goto out_err;
-> >>>  	}
-> >>>  	buf = kmalloc(rlen + 1, GFP_KERNEL);
-> >>> +	if (!buf)
-> >>> +		goto out_err;
-> >>>  	buf[rlen] = '\0';
-> >>>  	memcpy(buf, r_addr, rlen);
-> >>>  
-> >>
-> >> it seems that r_addr is a string, then kstdup() is emulated here.
-> >>
-> >> re,
-> >>  wh
-> > 
-> > Not quite. kstrdup() requires that the argument be a NUL-terminated
-> > string. The above code doesn't.
-> 
-> Right.  kmemdup is the right one.
-> 
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayoutdev.c |    2 +-
+ fs/nfs/pnfs.c              |    4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-We need to duplicate the data and also add a NUL char on the end.
-kmemdup() only does the first bit.  You could copy one char past the end
-so you have space for the NUL but that's not the right idea.
-
-Anyway, I'm out of here for the next few days.  :)  See you after the
-weekend.
-
-regards,
-dan carpenter
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 5da6fec..e0edf93 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -559,7 +559,7 @@ nfs4_fl_find_get_deviceid(struct nfs_client *clp, struct nfs4_deviceid *id)
+  * Want res = (offset - layout->pattern_offset)/ layout->stripe_unit
+  * Then: ((res + fsi) % dsaddr->stripe_count)
+  */
+-static inline u32
++static u32
+ _nfs4_fl_calc_j_index(struct pnfs_layout_segment *lseg, loff_t offset)
+ {
+ 	struct nfs4_filelayout_segment *flseg = FILELAYOUT_LSEG(lseg);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 131602c..5ba2c45 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -336,7 +336,7 @@ EXPORT_SYMBOL_GPL(put_lseg);
+  * READ		READ	true
+  * READ		RW	false
+  */
+-static inline int
++static int
+ should_free_lseg(struct pnfs_layout_segment *lseg,
+ 		   struct pnfs_layout_range *range)
+ {
+@@ -344,7 +344,7 @@ should_free_lseg(struct pnfs_layout_segment *lseg,
+ 		lseg->range.iomode == range->iomode);
+ }
+ 
+-static inline bool
++static bool
+ _pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
+ {
+ 	return atomic_read(&lseg->kref.refcount) == 1;
+-- 
+1.7.2.1
 
