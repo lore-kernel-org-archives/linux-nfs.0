@@ -1,39 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cirse-out.extra.cea.fr ([132.166.172.106]:53181 "EHLO
-	cirse-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932213Ab0JLLSQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Oct 2010 07:18:16 -0400
-Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
-	by cirse.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.0) with ESMTP id o9CBIFMB018144
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 13:18:15 +0200
-Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
-	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id o9CBIE3G023571
-	for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 13:18:14 +0200
-	(envelope-from philippe.deniel@cea.fr)
-Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
-	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id o9CBIEGf008212
-	for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 13:18:14 +0200
-Message-ID: <4CB443F6.5060106@cea.fr>
-Date: Tue, 12 Oct 2010 13:18:14 +0200
-From: DENIEL Philippe <philippe.deniel@cea.fr>
-To: linux-nfs@vger.kernel.org
-Subject: POSIX's "tables of the law"
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:30425 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754490Ab0JASaA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 14:30:00 -0400
+Subject: Re: pNFS DS session
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <20101001181455.GC32256@fieldses.org>
+Date: Fri, 1 Oct 2010 14:29:57 -0400
+Cc: Marc Eshel <eshel@almaden.ibm.com>, Benny Halevy <bhalevy@panasas.com>,
+        Boaz Harrosh <bharrosh@panasas.com>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        NFS list <linux-nfs@vger.kernel.org>, linux-nfs-owner@vger.kernel.org,
+        Fred Isaman <iisaman@netapp.com>
+Message-Id: <2DE155F2-DCC3-4930-8CAE-D21F26730058@netapp.com>
+References: <4CA44AAA.4030803@panasas.com> <4CA45462.1070503@desy.de> <4CA455C4.4030705@panasas.com> <OF6B8488BA.B9C50431-ON882577AF.0016FDCE-882577AF.0017999B@us.ibm.com> <4CA57BC6.9030701@desy.de> <4CA5A012.2090404@panasas.com> <4CA5D537.30300@panasas.com> <4CA600F4.2010006@almaden.ibm.com> <20101001171012.GB30570@fieldses.org> <4CA621A4.2040508@almaden.ibm.com> <20101001181455.GC32256@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
 
-on many aspects, knowing the POSIX standard and behavior is quite 
-important when working on implementing something like NFSv4. There a 
-problem occur : if I need information on NFS (whatever version) or any 
-"related" protocol (RPCSEC_GSS, ONCRPC, ...) I can easily find a 
-document that is the absolute reference to use. But what about POSIX ? I 
-must have missed something but I never see such a reference. Do you have 
-book references to provide me with about this subject ?
+On Oct 1, 2010, at 2:14 PM, J. Bruce Fields wrote:
 
-   Regards,
+> On Fri, Oct 01, 2010 at 11:00:04AM -0700, Marc Eshel wrote:
+>> On 10/1/2010 10:10 AM, J. Bruce Fields wrote:
+>>> On Fri, Oct 01, 2010 at 08:40:36AM -0700, Marc Eshel wrote:
+>>>> On 10/1/2010 5:33 AM, Benny Halevy wrote:
+>>>>> On 2010-10-01 10:47, Boaz Harrosh wrote:
+>>>>>> On 10/01/2010 08:12 AM, Tigran Mkrtchyan wrote:
+>>>>>>>  On 10/01/2010 06:17 AM, Marc Eshel wrote:
+>>>>>>>> Hi Benny,
+>>>>>>>> 
+>>>>>>>> Running connectathon I see that some times the clients decides to destroy
+>>>>>>>> the session with the DS. The test continue and the session is
+>>>>>>>> re-established. It looks like layout return reduces the hold on device
+>>>>>>>> info the reduces the hold on the client struct which decide to destroy the
+>>>>>>>> session. Is that a known problem?
+>>>>>>>> 
+>>>>>> Yes, I want to emphasize on Marks words: "a known *problem*"
+>>>>> Marc, assuming the code behaves as expected, does this cause any other badness
+>>>>> like the GETATTRs you see going out to the DS?
+>>>>> 
+>>>>> Benny
+>>>>> 
+>>>> No i don't see any "badness" the test continues without errors and
+>>>> this problem is not related to the GETATTRs I see on the DS but I
+>>>> would consider destroying the session in short run of couple of
+>>>> minutes some times more than one time as something bad.
+>>> Why?
+>>> 
+>>> I wouldn't expect session destruction/creation to be *that* expensive.
+>> 
+>> I assumed that it is inexpensive. We are talking about potential
+>> destruction/creation of session from every DS for each file IO if
+>> there is no overlap in holding layouts, right ?
+> 
+> Well, I guess the tradeoffs aren't obvious to me: if you end up having
+> to set up an enormous number of sessions (and tcp connections, etc.) all
+> at once, then I can see why it might be a problem.  It would also seem
+> inefficient to keep around an enormous number of those when they aren't
+> being used for a while.
 
-     Philippe
+The plan is to add some code that waits a lease time before destroying an un-referenced deviceid. The next submission patch set will include layoutreturn and the return-on-close code, so it will probably be added then.
+
+-->Andy
+
+> 
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
