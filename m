@@ -1,155 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:65500 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756930Ab0JLCSq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Oct 2010 22:18:46 -0400
-Received: by qwa26 with SMTP id 26so147015qwa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Oct 2010 19:18:45 -0700 (PDT)
-In-Reply-To: <673201D6-5B4C-4782-ACB8-8C5B6E6B501E@oracle.com>
-References: <AANLkTimYM_A-puoU6tm=2rtAaKVe0_aW2zEwOCFHcu=y@mail.gmail.com>
-	<673201D6-5B4C-4782-ACB8-8C5B6E6B501E@oracle.com>
-Date: Tue, 12 Oct 2010 10:18:45 +0800
-Message-ID: <AANLkTi=wBcAYVG_+c3AYoX59PZ=mQ8KNLECJtyzp+DQQ@mail.gmail.com>
-Subject: Re: rpc sleep user task, will never wake up if response from server
-From: Ivan Chan <ivanming@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+Received: from fieldses.org ([174.143.236.118]:45456 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751860Ab0JBWuN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 2 Oct 2010 18:50:13 -0400
+Date: Sat, 2 Oct 2010 18:49:55 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bian Naimeng <biannm@cn.fujitsu.com>
 Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: Re: [PATCH] Revert "nfsd4: distinguish expired from stale stateids"
+Message-ID: <20101002224954.GD18079@fieldses.org>
+References: <20100518233746.GC26911@fieldses.org>
+ <4C563CE5.1010101@cn.fujitsu.com>
+ <20100802135036.GA12637@fieldses.org>
+ <4C57DD66.1070001@cn.fujitsu.com>
+ <20100922193933.GJ26903@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20100922193933.GJ26903@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Chuck,
+On Wed, Sep 22, 2010 at 03:39:33PM -0400, J. Bruce Fields wrote:
+> On Tue, Aug 03, 2010 at 05:12:06PM +0800, Bian Naimeng wrote:
+> >   As i see, this question is difficult to slove. Freebsd looks like nerver return 
+> >   the NFSERR_EXPIRED error.  And solaris more than happy to return NFSERR_EXPIRED 
+> >   rather than NFSERR_BAD_STATEID when the stateid is not found at server.
+> > 
+> >   I mean it's difficult to distinguish expired_stateid and bad_stateid(they are not
+> >   exist at server), so maybe we have not a exactly solution to solve it.
+> > 
+> >   Maybe we should choose which error we are more needed, NFSERR_EXPIRED  or NFSERR_BAD_STATEID?
+> 
+> Yes, that would probably be simplest.
 
-Thanks for your response, but I try to mount via udp, it still cannot
-wake up user task,
+So, like this?
 
-The log just show one time "not responding, still trying", and then
-keep retry, even without disconnect notification.
+--b.
 
-[57993.843932] RPC:   172 xprt_prepare_transmit
-[57993.843935] RPC:   172 xprt_cwnd_limited cong = 0 cwnd = 512
-[57993.843939] RPC:   172 xprt_transmit(92)
-[57996.840019] RPC:   172 xprt_prepare_transmit
-[57996.840026] RPC:   172 xprt_transmit(92)
-[57999.840019] RPC:   172 xprt_prepare_transmit
-[57999.840025] RPC:   172 xprt_transmit(92)
-[58002.840016] nfs: server 192.168.100.91 not responding, still trying
-[58002.840022] RPC:   172 xprt_prepare_transmit
-[58002.840027] RPC:   172 xprt_transmit(92)
-[58005.840016] RPC:   172 xprt_prepare_transmit
-[58005.840022] RPC:   172 xprt_transmit(92)
-[58008.840015] RPC:   172 xprt_prepare_transmit
-[58008.840021] RPC:   172 xprt_transmit(92)
-[58011.844024] RPC:   172 xprt_prepare_transmit
+commit 3d5bdf44f73f2e4136d27fe7bd45b9ca6674e590
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Sat Oct 2 18:42:39 2010 -0400
 
-Regards,
-Ivan
+    nfsd4: return expired on unfound stateid's
+    
+    Commit 78155ed75f470710f2aecb3e75e3d97107ba8374 "nfsd4: distinguish
+    expired from stale stateids" attempted to distinguish expired and stale
+    stateid's using time information that may not have been completely
+    reliable, so I reverted it.
+    
+    That was throwing out the baby with the bathwater; we still do want to
+    return expired, but let's do that using the simpler approach of just
+    assuming any stateid is expired if it looks like it was given out by the
+    current server instance, but we can't find it any more.
+    
+    This may help clients that are recovering from network partitions.
+    
+    Reported-by: Bian Naimeng <biannm@cn.fujitsu.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-On Mon, Oct 11, 2010 at 11:17 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Take a look at http://nfs.sourceforge.net/
->
-> The upshot is that NFS defaults to "hard" mounts which means clients will retry an operation until it succeeds, possibly forever.  It sounds like you want a "soft" mount instead, which will time out operations that get no response.
->
-> Note that using "soft" may impact data integrity.
->
-> On Oct 11, 2010, at 4:46 AM, Ivan Chan wrote:
->
->> Hi all,
->>
->>    I am facing a problem in 2.6.32-31 kernel, when I try to fetch
->> something from nfs server, and if there is no response server, for
->> example loss IP.
->> The user task will hang, and after scanning the RPC code, I think the
->> user task is actualy being slept by RPC, and will not wake up until it
->> get response from server.
->> The following is the log, it show the RPC retry, and finally
->> disconnect, However the use applcaiton is still hang/(sleep).  I am
->> new to this, I don't know it is a design purpose for some condition or
->> it should be fixed in generel. But in my use case, I hope the user
->> application can know there is error from NFS/RPC, such that it can
->> dicide to do the fail response. But I don't read the RPC code in deep
->> yet,
->> would you please suggest me which part I should focus , thanks a lot.
->>
->> [363855.998281] NFS: permission(0:18/1443226), mask=0x1, res=0
->> [363855.998286] NFS: dentry_delete(/out_A1.mp4, 88)
->> [363855.998303] NFS: permission(0:18/1443226), mask=0x1, res=0
->> [363855.998308] NFS: dentry_delete(/out_A3.mp4, 88)
->> [363855.998325] NFS: permission(0:18/1443226), mask=0x1, res=0
->> [363855.998329] NFS: dentry_delete(/zero, 88)
->> [363895.460527] RPC:   172 reserved req c344a000 xid 5f9ff6fe
->> [363895.460531] RPC:   172 xprt_prepare_transmit
->> [363895.460536] RPC:   172 xprt_transmit(96)
->> [363895.460556] RPC:   172 xmit complete
->> [363955.460015] RPC:   172 xprt_timer
->> [363955.460020] RPC:   172 xprt_prepare_transmit
->> [363955.460025] RPC:   172 xprt_transmit(96)
->> [363955.460037] RPC:   172 xmit complete
->> [364075.460015] RPC:   172 xprt_timer
->> [364075.460021] nfs: server 192.168.100.91 not responding, still trying
->> [364075.460025] RPC:   172 xprt_prepare_transmit
->> [364075.460030] RPC:   172 xprt_transmit(96)
->> [364075.460042] RPC:   172 xmit complete
->> [364135.460015] RPC:   172 xprt_timer
->> [364135.460020] RPC:   172 xprt_prepare_transmit
->> [364135.460026] RPC:   172 xprt_transmit(96)
->> [364135.460038] RPC:   172 xmit complete
->> [364255.460017] RPC:   172 xprt_timer
->> [364255.460022] RPC:   172 xprt_prepare_transmit
->> [364255.460027] RPC:   172 xprt_transmit(96)
->> [364255.460039] RPC:   172 xmit complete
->> [364315.460023] RPC:   172 xprt_timer
->> [364315.460028] RPC:   172 xprt_prepare_transmit
->> [364315.460033] RPC:   172 xprt_transmit(96)
->> [364315.460045] RPC:   172 xmit complete
->> [364435.460017] RPC:   172 xprt_timer
->> [364435.460023] RPC:   172 xprt_prepare_transmit
->> [364435.460028] RPC:   172 xprt_transmit(96)
->> [364435.460041] RPC:   172 xmit complete
->> [364495.460016] RPC:   172 xprt_timer
->> [364495.460021] RPC:   172 xprt_prepare_transmit
->> [364495.460026] RPC:   172 xprt_transmit(96)
->> [364495.460038] RPC:   172 xmit complete
->> [364615.460016] RPC:   172 xprt_timer
->> [364615.460022] RPC:   172 xprt_prepare_transmit
->> [364615.460027] RPC:   172 xprt_transmit(96)
->> [364615.460039] RPC:   172 xmit complete
->> [364675.460016] RPC:   172 xprt_timer
->> [364675.460021] RPC:   172 xprt_prepare_transmit
->> [364675.460026] RPC:   172 xprt_transmit(96)
->> [364675.460039] RPC:   172 xmit complete
->> [364795.460017] RPC:   172 xprt_timer
->> [364795.460022] RPC:   172 xprt_prepare_transmit
->> [364795.460027] RPC:   172 xprt_transmit(96)
->> [364795.460040] RPC:   172 xmit complete
->> [364855.460015] RPC:   172 xprt_timer
->> [364855.460020] RPC:   172 xprt_prepare_transmit
->> [364855.460025] RPC:   172 xprt_transmit(96)
->> [364855.460037] RPC:   172 xmit complete
->> [364944.152011] RPC:       disconnected transport c3682000
->> [364944.152021] RPC:   172 xprt_prepare_transmit
->> [364944.152026] RPC:   172 xprt_transmit(96)
->> [364944.152031] RPC:       disconnected transport c3682000
->> [364944.152037] RPC:   172 xprt_connect xprt c3682000 is not connected
->> [364944.152052] RPC:       disconnected transport c3682000
->> [364944.152058] RPC:   172 xprt_connect_status: retrying
->> [364944.152061] RPC:   172 xprt_prepare_transmit
->> [364944.152064] RPC:   172 xprt_transmit(96)
->> [364944.152066] RPC:       disconnected transport c3682000
->> [364944.152070] RPC:   172 xprt_connect xprt c3682000 is not connected
->>
->> Regards,
->> Ivan
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> --
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
->
->
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 596702e..02c23b7 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3046,7 +3046,11 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 	if (STALE_STATEID(stateid)) 
+ 		goto out;
+ 
+-	status = nfserr_bad_stateid;
++	/*
++	 * We assume that any stateid that has the current boot time,
++	 * but that we can't find, is expired:
++	 */
++	status = nfserr_expired;
+ 	if (is_delegation_stateid(stateid)) {
+ 		dp = find_delegation_stateid(ino, stateid);
+ 		if (!dp)
+@@ -3066,6 +3070,7 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+ 		stp = find_stateid(stateid, flags);
+ 		if (!stp)
+ 			goto out;
++		status = nfserr_bad_stateid;
+ 		if (nfs4_check_fh(current_fh, stp))
+ 			goto out;
+ 		if (!stp->st_stateowner->so_confirmed)
+@@ -3140,8 +3145,9 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 		 * a replayed close:
+ 		 */
+ 		sop = search_close_lru(stateid->si_stateownerid, flags);
++		/* It's not stale; let's assume it's expired: */
+ 		if (sop == NULL)
+-			return nfserr_bad_stateid;
++			return nfserr_expired;
+ 		*sopp = sop;
+ 		goto check_replay;
+ 	}
+@@ -3406,6 +3412,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	status = nfserr_bad_stateid;
+ 	if (!is_delegation_stateid(stateid))
+ 		goto out;
++	status = nfserr_expired;
+ 	dp = find_delegation_stateid(inode, stateid);
+ 	if (!dp)
+ 		goto out;
