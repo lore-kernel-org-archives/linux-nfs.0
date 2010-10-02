@@ -1,52 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:59485 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:18690 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751525Ab0JGQhP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Oct 2010 12:37:15 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@rhel6-1.androsmac.org>,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/3] pnfs_submit: move layout segment valid test
-Date: Thu,  7 Oct 2010 12:37:08 -0700
-Message-Id: <1286480230-9418-1-git-send-email-andros@netapp.com>
+	id S1750836Ab0JBQt6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 2 Oct 2010 12:49:58 -0400
+Message-ID: <4CA762AE.5000807@RedHat.com>
+Date: Sat, 02 Oct 2010 12:49:50 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Updated pNFS Developmental kernel repository
+References: <4CA5C059.6000805@RedHat.com> <4CA5E744.9010006@desy.de> <4CA63D1A.5070108@RedHat.com> <4CA72977.10908@desy.de>
+In-Reply-To: <4CA72977.10908@desy.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@rhel6-1.androsmac.org>
 
-Do not get_lseg for a non-valid lseg.
-Prepare for calling put_lseg outside of inode i_lock.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/pnfs.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+On 10/02/2010 08:45 AM, Tigran Mkrtchyan wrote:
+> On 10/01/2010 09:57 PM, Steve Dickson wrote:
+>>
+>> On 10/01/2010 09:51 AM, Tigran Mkrtchyan wrote:
+>>   
+>>> Hi Steve,
+>>>
+>>> thanks for the builds. What I am missing is modprobe configuration file
+>>> which I have to add myself.
+>>>     
+>> Unfortunately yes... I have not figured out a good way to have
+>> the mobprobe done on the client since, in general, init scripts
+>> don't run on the client (with the exception of rpc.statd and rpc.gssd).
+>>
+>> I guess I could come up with an pnfs init script..but that
+>> seems like a bit overkill just to do a modprobe... 
+>>
+>>   
+> I include /etc/modprobe.d/nfsv41 into rpms  which I build for our
+> systems (RHEL5) with following content:
+> 
+> alias nfs-layouttype4-1 nfs_layout_nfsv41_files
+> alias nfs-layouttype4-2 off
+> alias nfs-layouttype4-3 off
+> 
+> 
+> and following  into the spec file:
+> 
+> %config(noreplace) /etc/modprobe.d/nfsv41
+> 
+> I made it part of kernel rpm, but may be nfs-utils is more appropriate
+> place.
+Very cool... I try to incorporate this into the upcoming nfs-utils...
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 6b2a95d..24620cf 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -845,7 +845,8 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo,
- 	list_for_each_entry(lseg, &lo->segs, fi_list) {
- 		if (is_matching_lseg(lseg, range)) {
- 			ret = lseg;
--			get_lseg(ret);
-+			if (lseg->valid)
-+				get_lseg(ret);
- 			break;
- 		}
- 		if (cmp_layout(range, &lseg->range) > 0)
-@@ -889,7 +890,6 @@ pnfs_update_layout(struct inode *ino,
- 	/* Check to see if the layout for the given range already exists */
- 	lseg = pnfs_has_layout(lo, &arg);
- 	if (lseg && !lseg->valid) {
--		put_lseg_locked(lseg);
- 		/* someone is cleaning the layout */
- 		lseg = NULL;
- 		goto out_unlock;
--- 
-1.6.6
+Because at the end of day, the distro "powers to be" are really 
+against more init scripts... more init script means a longer time
+to boot... and it seems fast reboots are the new in thing to have...
+(which is a good thing.. :-) )
 
+steved. 
