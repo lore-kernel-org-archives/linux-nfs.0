@@ -1,127 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og104.obsmtp.com ([64.18.0.178]:48488 "HELO
-	exprod5og104.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753388Ab0J0VAU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Oct 2010 17:00:20 -0400
-Message-ID: <4CC892E1.3070703@panasas.com>
-Date: Wed, 27 Oct 2010 23:00:17 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] SQUASHME: pnfs: filelayout: print_ds should use dprintk
-References: <4CC86D96.8020803@panasas.com>	<1288203860-26920-1-git-send-email-bhalevy@panasas.com>	<AANLkTikKpCO_xYjOpj74AiptyDjtMtJJhQaObksF_+LE@mail.gmail.com>	<4CC8863B.3080504@panasas.com> <AANLkTinsRNKCOQZjH4kYTTou-a+J02dM8nB=WL_xu7Wb@mail.gmail.com>
-In-Reply-To: <AANLkTinsRNKCOQZjH4kYTTou-a+J02dM8nB=WL_xu7Wb@mail.gmail.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:47372 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755801Ab0JDMwB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Oct 2010 08:52:01 -0400
+Message-ID: <4CA9CDEC.1080201@parallels.com>
+Date: Mon, 04 Oct 2010 16:51:56 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/13] sunrpc: Remove unused sock arg from xs_next_srcport
+References: <4CA9CDA8.4010407@parallels.com>
+In-Reply-To: <4CA9CDA8.4010407@parallels.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-10-27 22:17, Fred Isaman wrote:
-> On Wed, Oct 27, 2010 at 4:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On 2010-10-27 21:49, Fred Isaman wrote:
->>> The change to printk was in response to Trond's complaint about
->>> successive dprintks.
->>>
->>> Instead, the following would work:
->>>
->>>
->>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->>> index 5f52e6f..2ce393c 100644
->>> --- a/fs/nfs/nfs4filelayout.c
->>> +++ b/fs/nfs/nfs4filelayout.c
->>> @@ -585,7 +585,8 @@ filelayout_commit(struct nfs_write_data *data, int sync)
->>>               }
->>
->> If we're going this way, the ifdebug could cover the following
->> printout as well...
->>
-> 
-> Did you mean preceding printout?  By the way - the complaint about
 
-Yeah, preceding the call to print_ds (following my comment :)
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+---
+ net/sunrpc/xprtsock.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-> successive dprintks was regarding
-> print_ds_list repeatedly calling print_ds, which at the time used dprintk.
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 304e2de..024a644 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1524,7 +1524,7 @@ static unsigned short xs_get_srcport(struct sock_xprt *transport)
+ 	return port;
+ }
+ 
+-static unsigned short xs_next_srcport(struct sock_xprt *transport, struct socket *sock, unsigned short port)
++static unsigned short xs_next_srcport(struct sock_xprt *transport, unsigned short port)
+ {
+ 	if (transport->srcport != 0)
+ 		transport->srcport = 0;
+@@ -1558,7 +1558,7 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
+ 			break;
+ 		}
+ 		last = port;
+-		port = xs_next_srcport(transport, sock, port);
++		port = xs_next_srcport(transport, port);
+ 		if (port > last)
+ 			nloop++;
+ 	} while (err == -EADDRINUSE && nloop != 2);
+@@ -1591,7 +1591,7 @@ static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
+ 			break;
+ 		}
+ 		last = port;
+-		port = xs_next_srcport(transport, sock, port);
++		port = xs_next_srcport(transport, port);
+ 		if (port > last)
+ 			nloop++;
+ 	} while (err == -EADDRINUSE && nloop != 2);
+-- 
+1.5.5.6
 
-Why do we care to optimize the debug case so much?
-print_ds_list is already calling print_ds inside ifdebug(FACILITY)
-so the common, non-debug case is optimized correctly. I.e. we don't
-repeatedly check the debug flag normally.
-
-Benny
-
-> 
-> Fred
-> 
->> Benny
->>
->>>               dprintk("%s: Initiating commit: %llu USE DS:\n",
->>>                       __func__, file_offset);
->>> -             print_ds(ds);
->>> +             ifdebug(FACILITY)
->>> +                     print_ds(ds);
->>>
->>>               /* Send COMMIT to data server */
->>>               nfs_initiate_commit(dsdata, clnt, call_ops, sync);
->>>
->>>
->>> Fred
->>>
->>> On Wed, Oct 27, 2010 at 2:24 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->>>> rather than printk to prevent printouts in non-debug mode
->>>> currently happening in filelayout_commit
->>>>
->>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>>> ---
->>>>  fs/nfs/nfs4filelayoutdev.c |    9 ++++-----
->>>>  1 files changed, 4 insertions(+), 5 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
->>>> index 1f0ab62..de47112 100644
->>>> --- a/fs/nfs/nfs4filelayoutdev.c
->>>> +++ b/fs/nfs/nfs4filelayoutdev.c
->>>> @@ -53,10 +53,10 @@ void
->>>>  print_ds(struct nfs4_pnfs_ds *ds)
->>>>  {
->>>>        if (ds == NULL) {
->>>> -               printk("%s NULL device\n", __func__);
->>>> +               dprintk("%s NULL device\n", __func__);
->>>>                return;
->>>>        }
->>>> -       printk("        ip_addr %x port %hu\n"
->>>> +       dprintk("        ip_addr %x port %hu\n"
->>>>                "        ref count %d\n"
->>>>                "        client %p\n"
->>>>                "        cl_exchange_flags %x\n",
->>>> @@ -71,7 +71,7 @@ print_ds_list(struct nfs4_file_layout_dsaddr *dsaddr)
->>>>        int i;
->>>>
->>>>        ifdebug(FACILITY) {
->>>> -               printk("%s dsaddr->ds_num %d\n", __func__,
->>>> +               dprintk("%s dsaddr->ds_num %d\n", __func__,
->>>>                       dsaddr->ds_num);
->>>>                for (i = 0; i < dsaddr->ds_num; i++)
->>>>                        print_ds(dsaddr->ds_list[i]);
->>>> @@ -211,8 +211,7 @@ static void
->>>>  destroy_ds(struct nfs4_pnfs_ds *ds)
->>>>  {
->>>>        dprintk("--> %s\n", __func__);
->>>> -       ifdebug(FACILITY)
->>>> -               print_ds(ds);
->>>> +       print_ds(ds);
->>>>
->>>>        if (ds->ds_clp)
->>>>                nfs_put_client(ds->ds_clp);
->>>> --
->>>> 1.7.2.3
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
