@@ -1,176 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56225 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:18525 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756177Ab0JOSIy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Oct 2010 14:08:54 -0400
-Date: Fri, 15 Oct 2010 14:08:52 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Pavel Emelyanov <xemul@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 9/13] sunrpc: Merge the xs_bind code
-Message-ID: <20101015180852.GC18869@fieldses.org>
+	id S1755834Ab0JDM5o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Oct 2010 08:57:44 -0400
+Message-ID: <4CA9CF44.2040101@parallels.com>
+Date: Mon, 04 Oct 2010 16:57:40 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH 12/13] sunrpc: Remove TCP worker wrappers
 References: <4CA9CDA8.4010407@parallels.com>
- <4CA9CEE8.9050404@parallels.com>
- <66FA6AAD-87DC-4B81-8DAC-8F1D4FF7B72E@oracle.com>
- <4CAABAAB.8040608@parallels.com>
- <4CAB11A4.7000306@parallels.com>
- <20101015160545.GB12268@fieldses.org>
- <9D130D08-1FD3-4088-AB43-8CEFFE6476B3@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <9D130D08-1FD3-4088-AB43-8CEFFE6476B3@oracle.com>
+In-Reply-To: <4CA9CDA8.4010407@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Oct 15, 2010 at 12:39:36PM -0400, Chuck Lever wrote:
-> 
-> On Oct 15, 2010, at 12:05 PM, J. Bruce Fields wrote:
-> 
-> > On Tue, Oct 05, 2010 at 03:53:08PM +0400, Pavel Emelyanov wrote:
-> >> There's the only difference betseen the xs_bind4 and the
-> >> xs_bind6 - the size of sockaddr structure they use.
-> >> 
-> >> Fortunatelly its size can be indirectly get from the transport.
-> >> 
-> >> Change since v1:
-> >> * use sockaddr_storage instead of sockaddr
-> >> * use rpc_set_port instead of manual port assigning
-> > 
-> > Whoops, dropping this; it breaks nfsd startup.  I haven't figured out
-> > why yet, but I get
-> > 
-> > RPC: server localhost requires stronger authentication.
-> > svc: failed to register nfsdv2 RPC service (errno 13).
-> 
-> Capturing a network trace of lo during server initialization should reveal all.  Compare a trace from a working run and a non-working one.
+The v4 and the v6 wrappers only pass the respective family
+to the xs_tcp_setup_socket. This family can be taken from the
+xprt's sockaddr.
 
-Hm.  One difference is the source port of the portmap calls: 33471 in
-the bad case, 1016 in the bad.--b.
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+---
+ net/sunrpc/xprtsock.c |   39 +++++++--------------------------------
+ 1 files changed, 7 insertions(+), 32 deletions(-)
 
-> 
-> > 
-> > --b.
-> > 
-> >> 
-> >> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
-> >> ---
-> >> net/sunrpc/xprtsock.c |   64 +++++++++++++------------------------------------
-> >> 1 files changed, 17 insertions(+), 47 deletions(-)
-> >> 
-> >> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> >> index 7fdf2bb..bab808f 100644
-> >> --- a/net/sunrpc/xprtsock.c
-> >> +++ b/net/sunrpc/xprtsock.c
-> >> @@ -1534,23 +1534,18 @@ static unsigned short xs_next_srcport(struct sock_xprt *transport, unsigned shor
-> >> 		return xprt_max_resvport;
-> >> 	return --port;
-> >> }
-> >> -
-> >> -static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
-> >> +static int xs_bind(struct sock_xprt *transport, struct socket *sock)
-> >> {
-> >> -	struct sockaddr_in myaddr = {
-> >> -		.sin_family = AF_INET,
-> >> -	};
-> >> -	struct sockaddr_in *sa;
-> >> +	struct sockaddr_storage myaddr;
-> >> 	int err, nloop = 0;
-> >> 	unsigned short port = xs_get_srcport(transport);
-> >> 	unsigned short last;
-> >> 
-> >> -	sa = (struct sockaddr_in *)&transport->srcaddr;
-> >> -	myaddr.sin_addr = sa->sin_addr;
-> >> +	memcpy(&myaddr, &transport->srcaddr, transport->xprt.addrlen);
-> >> 	do {
-> >> -		myaddr.sin_port = htons(port);
-> >> -		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
-> >> -						sizeof(myaddr));
-> >> +		rpc_set_port((struct sockaddr *)&myaddr, port);
-> >> +		err = kernel_bind(sock, (struct sockaddr *)&myaddr,
-> >> +				transport->xprt.addrlen);
-> >> 		if (port == 0)
-> >> 			break;
-> >> 		if (err == 0) {
-> >> @@ -1562,44 +1557,19 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
-> >> 		if (port > last)
-> >> 			nloop++;
-> >> 	} while (err == -EADDRINUSE && nloop != 2);
-> >> -	dprintk("RPC:       %s %pI4:%u: %s (%d)\n",
-> >> -			__func__, &myaddr.sin_addr,
-> >> -			port, err ? "failed" : "ok", err);
-> >> -	return err;
-> >> -}
-> >> -
-> >> -static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
-> >> -{
-> >> -	struct sockaddr_in6 myaddr = {
-> >> -		.sin6_family = AF_INET6,
-> >> -	};
-> >> -	struct sockaddr_in6 *sa;
-> >> -	int err, nloop = 0;
-> >> -	unsigned short port = xs_get_srcport(transport);
-> >> -	unsigned short last;
-> >> 
-> >> -	sa = (struct sockaddr_in6 *)&transport->srcaddr;
-> >> -	myaddr.sin6_addr = sa->sin6_addr;
-> >> -	do {
-> >> -		myaddr.sin6_port = htons(port);
-> >> -		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
-> >> -						sizeof(myaddr));
-> >> -		if (port == 0)
-> >> -			break;
-> >> -		if (err == 0) {
-> >> -			transport->srcport = port;
-> >> -			break;
-> >> -		}
-> >> -		last = port;
-> >> -		port = xs_next_srcport(transport, port);
-> >> -		if (port > last)
-> >> -			nloop++;
-> >> -	} while (err == -EADDRINUSE && nloop != 2);
-> >> -	dprintk("RPC:       xs_bind6 %pI6:%u: %s (%d)\n",
-> >> -		&myaddr.sin6_addr, port, err ? "failed" : "ok", err);
-> >> +	if (myaddr.ss_family == PF_INET)
-> >> +		dprintk("RPC:       %s %pI4:%u: %s (%d)\n", __func__,
-> >> +				&((struct sockaddr_in *)&myaddr)->sin_addr,
-> >> +				port, err ? "failed" : "ok", err);
-> >> +	else
-> >> +		dprintk("RPC:       %s %pI6:%u: %s (%d)\n", __func__,
-> >> +				&((struct sockaddr_in6 *)&myaddr)->sin6_addr,
-> >> +				port, err ? "failed" : "ok", err);
-> >> 	return err;
-> >> }
-> >> 
-> >> +
-> >> #ifdef CONFIG_DEBUG_LOCK_ALLOC
-> >> static struct lock_class_key xs_key[2];
-> >> static struct lock_class_key xs_slock_key[2];
-> >> @@ -1645,7 +1615,7 @@ static struct socket *xs_create_sock4(struct rpc_xprt *xprt,
-> >> 	}
-> >> 	xs_reclassify_socket4(sock);
-> >> 
-> >> -	if (xs_bind4(transport, sock)) {
-> >> +	if (xs_bind(transport, sock)) {
-> >> 		sock_release(sock);
-> >> 		goto out;
-> >> 	}
-> >> @@ -1669,7 +1639,7 @@ static struct socket *xs_create_sock6(struct rpc_xprt *xprt,
-> >> 	}
-> >> 	xs_reclassify_socket6(sock);
-> >> 
-> >> -	if (xs_bind6(transport, sock)) {
-> >> +	if (xs_bind(transport, sock)) {
-> >> 		sock_release(sock);
-> >> 		goto out;
-> >> 	}
-> >> -- 
-> >> 1.5.5.6
-> >> 
-> 
-> -- 
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index d4d7c98..4760ce8 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1826,8 +1826,10 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+  *
+  * Invoked by a work queue tasklet.
+  */
+-static void xs_tcp_setup_socket(struct sock_xprt *transport, int family)
++static void xs_tcp_setup_socket(struct work_struct *work)
+ {
++	struct sock_xprt *transport =
++		container_of(work, struct sock_xprt, connect_worker.work);
+ 	struct socket *sock = transport->sock;
+ 	struct rpc_xprt *xprt = &transport->xprt;
+ 	int status = -EIO;
+@@ -1837,7 +1839,8 @@ static void xs_tcp_setup_socket(struct sock_xprt *transport, int family)
+ 
+ 	if (!sock) {
+ 		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+-		sock = xs_create_sock(xprt, transport, family, SOCK_STREAM, IPPROTO_TCP);
++		sock = xs_create_sock(xprt, transport,
++				xs_addr(xprt)->sa_family, SOCK_STREAM, IPPROTO_TCP);
+ 		if (IS_ERR(sock)) {
+ 			status = PTR_ERR(sock);
+ 			goto out;
+@@ -1898,34 +1901,6 @@ out:
+ }
+ 
+ /**
+- * xs_tcp_connect_worker4 - connect a TCP socket to a remote endpoint
+- * @work: RPC transport to connect
+- *
+- * Invoked by a work queue tasklet.
+- */
+-static void xs_tcp_connect_worker4(struct work_struct *work)
+-{
+-	struct sock_xprt *transport =
+-		container_of(work, struct sock_xprt, connect_worker.work);
+-
+-	xs_tcp_setup_socket(transport, PF_INET);
+-}
+-
+-/**
+- * xs_tcp_connect_worker6 - connect a TCP socket to a remote endpoint
+- * @work: RPC transport to connect
+- *
+- * Invoked by a work queue tasklet.
+- */
+-static void xs_tcp_connect_worker6(struct work_struct *work)
+-{
+-	struct sock_xprt *transport =
+-		container_of(work, struct sock_xprt, connect_worker.work);
+-
+-	xs_tcp_setup_socket(transport, PF_INET6);
+-}
+-
+-/**
+  * xs_connect - connect a socket to a remote endpoint
+  * @task: address of RPC task that manages state of connect request
+  *
+@@ -2328,7 +2303,7 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+ 			xprt_set_bound(xprt);
+ 
+ 		INIT_DELAYED_WORK(&transport->connect_worker,
+-					xs_tcp_connect_worker4);
++					xs_tcp_setup_socket);
+ 		xs_format_peer_addresses(xprt, "tcp", RPCBIND_NETID_TCP);
+ 		break;
+ 	case AF_INET6:
+@@ -2336,7 +2311,7 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+ 			xprt_set_bound(xprt);
+ 
+ 		INIT_DELAYED_WORK(&transport->connect_worker,
+-					xs_tcp_connect_worker6);
++					xs_tcp_setup_socket);
+ 		xs_format_peer_addresses(xprt, "tcp", RPCBIND_NETID_TCP6);
+ 		break;
+ 	default:
+-- 
+1.5.5.6
+
