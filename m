@@ -1,180 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:32506 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758164Ab0JZNjz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Oct 2010 09:39:55 -0400
-Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o9QDdsm5029996
-	for <linux-nfs@vger.kernel.org>; Tue, 26 Oct 2010 06:39:54 -0700 (PDT)
-Subject: Re: [PATCH] NFS: rename idmapper components
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <4CC6D4F9.3040402@netapp.com>
-References: <4CC6D4F9.3040402@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 26 Oct 2010 09:39:14 -0400
-Message-ID: <1288100354.9435.5.camel@heimdal.trondhjem.org>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:37012 "EHLO
+	mx01.colomx.prod.int.phx2.redhat.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753907Ab0JDKDb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Oct 2010 06:03:31 -0400
+Date: Mon, 4 Oct 2010 06:03:28 -0400 (EDT)
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <14582176.106.1286186603313.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+In-Reply-To: <18163799.104.1286186355944.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+Subject: Re: NFS4 clients cannot reclaim locks
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-10-26 at 09:17 -0400, Bryan Schumaker wrote:
-> This patch renames the idmapper upcall program from nfs.upcall to nfs.idmap.
-> It also changes the key type from id_resolver to nfs_idmap.
+----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
+> On Fri, 2010-10-01 at 07:30 -0400, Sachin Prabhu wrote:
+> > NFS4 clients appear to have problems reclaiming locks after a server
+> reboot. I can recreate the issue on 2.6.34.7-56.fc13.x86_64 on a
+> Fedora system. 
+> > 
+> > The problem appears to happen in cases where after a reboot, a WRITE
+> call is made just before the RENEW call. In that case, the
+> NFS4ERR_STALE_STATEID is returned for the WRITE call which results in
+> NFS_STATE_RECLAIM_REBOOT being set in the state flags. However the
+> NFS4ERR_STALE_CLIENTID returned for the subsequent RENEW call is
+> handled by 
+> > nfs4_recovery_handle_error() -> nfs4_state_end_reclaim_reboot(clp); 
 > 
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
-> diff --git a/Documentation/filesystems/nfs/idmapper.txt b/Documentation/filesystems/nfs/idmapper.txt
-> index c385204..18ee6f5 100644
-> --- a/Documentation/filesystems/nfs/idmapper.txt
-> +++ b/Documentation/filesystems/nfs/idmapper.txt
-> @@ -6,7 +6,7 @@ Id mapper is used by NFS to translate user and group ids into names, and to
->  translate user and group names into ids.  Part of this translation involves
->  performing an upcall to userspace to request the information.  Id mapper will
->  user request-key to perform this upcall and cache the result.  The program
-> -/usr/sbin/nfs.upcall should be called by request-key, and will perform the
-> +/usr/sbin/nfs.idmap should be called by request-key, and will perform the
->  translation and initialize a key with the resulting information.
->  
->   NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
-> @@ -20,12 +20,12 @@ direct the upcall.  The following line should be added:
->  
->  #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
->  #======	=======	===============	===============	===============================
-> -create	id_resolver	*	*		/usr/sbin/nfs.upcall %k %d 600
-> +create	nfs_idmap	*	*		/usr/sbin/nfs.idmap %k %d 600
->  
-> -This will direct all id_resolver requests to the program /usr/sbin/nfs.upcall.
-> +This will direct all nfs_idmap requests to the program /usr/sbin/nfs.idmap.
->  The last parameter, 600, defines how many seconds into the future the key will
-> -expire.  This parameter is optional for /usr/sbin/nfs.upcall.  When the timeout
-> -is not specified, nfs.upcall will default to 600 seconds.
-> +expire.  This parameter is optional for /usr/sbin/nfs.idmap.  When the timeout
-> +is not specified, nfs.idmap will default to 600 seconds.
->  
->  id mapper uses for key descriptions:
->  	  uid:  Find the UID for the given user
-> @@ -39,29 +39,29 @@ would edit your request-key.conf so it look similar to this:
->  
->  #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
->  #======	=======	===============	===============	===============================
-> -create	id_resolver	uid:*	*		/some/other/program  %k %d 600
-> -create	id_resolver	*	*		/usr/sbin/nfs.upcall %k %d 600
-> +create	nfs_idmap	uid:*	*		/some/other/program %k %d 600
-> +create	nfs_idmap	*	*		/usr/sbin/nfs.idmap %k %d 600
->  
->  Notice that the new line was added above the line for the generic program.
->  request-key will find the first matching line and corresponding program.  In
->  this case, /some/other/program will handle all uid lookups and
-> -/usr/sbin/nfs.upcall will handle gid, user, and group lookups.
-> +/usr/sbin/nfs.idmap will handle gid, user, and group lookups.
->  
->  See <file:Documentation/keys-request-keys.txt> for more information about the
->  request-key function.
->  
+> > which ends up setting the state flag to NFS_STATE_RECLAIM_NOGRACE
+> and clearing the NFS_STATE_RECLAIM_REBOOT in
+> nfs4_state_mark_reclaim_nograce(). 
 > 
-> -==========
-> -nfs.upcall
-> -==========
-> -nfs.upcall is designed to be called by request-key, and should not be run "by
-> +=========
-> +nfs.idmap
-> +=========
-> +nfs.idmap is designed to be called by request-key, and should not be run "by
->  hand".  This program takes two arguments, a serialized key and a key
->  description.  The serialized key is first converted into a key_serial_t, and
->  then passed as an argument to keyctl_instantiate (both are part of keyutils.h).
->  
-> -The actual lookups are performed by functions found in nfsidmap.h.  nfs.upcall
-> +The actual lookups are performed by functions found in nfsidmap.h.  nfs.idmap
->  determines the correct function to call by looking at the first part of the
->  description string.  For example, a uid lookup description will appear as
->  "uid:user@domain".
->  
-> -nfs.upcall will return 0 if the key was instantiated, and non-zero otherwise.
-> +nfs.idmap will return 0 if the key was instantiated, and non-zero otherwise.
-> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-> index dec47ed..313e878 100644
-> --- a/fs/nfs/idmap.c
-> +++ b/fs/nfs/idmap.c
-> @@ -49,10 +49,10 @@
->  
->  #define NFS_UINT_MAXLEN 11
->  
-> -const struct cred *id_resolver_cache;
-> +const struct cred *nfs_idmap_cache;
->  
-> -struct key_type key_type_id_resolver = {
-> -	.name		= "id_resolver",
-> +struct key_type key_type_nfs_idmap = {
-> +	.name		= "nfs_idmap",
->  	.instantiate	= user_instantiate,
->  	.match		= user_match,
->  	.revoke		= user_revoke,
-> @@ -67,13 +67,13 @@ int nfs_idmap_init(void)
->  	struct key *keyring;
->  	int ret = 0;
->  
-> -	printk(KERN_NOTICE "Registering the %s key type\n", key_type_id_resolver.name);
-> +	printk(KERN_NOTICE "Registering the %s key type\n", key_type_nfs_idmap.name);
->  
->  	cred = prepare_kernel_cred(NULL);
->  	if (!cred)
->  		return -ENOMEM;
->  
-> -	keyring = key_alloc(&key_type_keyring, ".id_resolver", 0, 0, cred,
-> +	keyring = key_alloc(&key_type_keyring, ".nfs_idmap", 0, 0, cred,
->  			     (KEY_POS_ALL & ~KEY_POS_SETATTR) |
->  			     KEY_USR_VIEW | KEY_USR_READ,
->  			     KEY_ALLOC_NOT_IN_QUOTA);
-> @@ -86,13 +86,13 @@ int nfs_idmap_init(void)
->  	if (ret < 0)
->  		goto failed_put_key;
->  
-> -	ret = register_key_type(&key_type_id_resolver);
-> +	ret = register_key_type(&key_type_nfs_idmap);
->  	if (ret < 0)
->  		goto failed_put_key;
->  
->  	cred->thread_keyring = keyring;
->  	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
-> -	id_resolver_cache = cred;
-> +	nfs_idmap_cache = cred;
->  	return 0;
->  
->  failed_put_key:
-> @@ -104,9 +104,9 @@ failed_put_cred:
->  
->  void nfs_idmap_quit(void)
->  {
-> -	key_revoke(id_resolver_cache->thread_keyring);
-> -	unregister_key_type(&key_type_id_resolver);
-> -	put_cred(id_resolver_cache);
-> +	key_revoke(nfs_idmap_cache->thread_keyring);
-> +	unregister_key_type(&key_type_nfs_idmap);
-> +	put_cred(nfs_idmap_cache);
->  }
->  
->  /*
-> @@ -150,8 +150,8 @@ static ssize_t nfs_idmap_request_key(const char *name, size_t namelen,
->  	if (ret <= 0)
->  		goto out;
->  
-> -	saved_cred = override_creds(id_resolver_cache);
-> -	rkey = request_key(&key_type_id_resolver, desc, "");
-> +	saved_cred = override_creds(nfs_idmap_cache);
-> +	rkey = request_key(&key_type_nfs_idmap, desc, "");
->  	revert_creds(saved_cred);
->  	kfree(desc);
->  	if (IS_ERR(rkey)) {
+> Yup. I don't think we should call nfs4_state_mark_reclaim_reboot()
+> here.
+> 
+> > The process of reclaiming the locks then seem to hit another
+> roadblock in nfs4_open_expired() where it fails to open the file and
+> reset the state. It ends up calling nfs4_reclaim_locks() in a loop
+> with the old stateid in nfs4_reclaim_open_state().
+> 
+> Any idea how nfs4_open_expired() is failing? It seems that if it
+> does,
+> we should see an error, which would cause the lock reclaim to fail.
+> 
+> Also, why is the call to nfs4_reclaim_locks() looping? That too
+> should
+> exit in case of an error.
+> 
 
-We should _not_ be doing this kind of user space api change after the
-code has been merged by Linus.
+>From instrumentation, the problem appears to happen at nfs4_open_prepare
 
-I don't mind a patch to the documentation that changes 'nfs.upcall' to
-match the name given in nfs-utils, but it is too late to change the name
-'id_resolver': that should have been done before the merge window.
+static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+{
+..
+        /*
+         * Check if we still need to send an OPEN call, or if we can use
+         * a delegation instead.
+         */
 
-Cheers
-  Trond
+        if (data->state != NULL) {
+                struct nfs_delegation *delegation;
+
+                if (can_open_cached(data->state, data->o_arg.fmode, data->o_arg.open_flags))
+                        goto out_no_action;
+..
+out_no_action:
+        task->tk_action = NULL;
+
+}
+
+Here, can_open_cached returns true. The open call is never made and the old state is used.
+static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs4_state_recovery_ops *ops)
+{
+..
+restart:
+..
+                status = ops->recover_open(sp, state); <-- This call attempts to use cached state and status is set to 0
+                if (status >= 0) {
+                        status = nfs4_reclaim_locks(state, ops); <-- Attempts to reclaim locks using old stateid
+        -- Here status is set to -NFS4ERR_BAD_STATEID --
+                 ..
+                }
+                switch (status) {
+..
+                        case -NFS4ERR_BAD_STATEID:
+                        case -NFS4ERR_RECLAIM_BAD:
+                        case -NFS4ERR_RECLAIM_CONFLICT:
+                                nfs4_state_mark_reclaim_nograce(sp->so_client, state);
+                                break;
+..
+                }
+                nfs4_put_open_state(state);
+                goto restart;
+..
+}
+
+The call to ops->recover_open() calls nfs4_open_expired(). While preparing the RPC call to OPEN, in nfs4_open_prepare(), it decides that the caches copy is valid and it attempts to use it. So nfs4_open_expired() returns 0. The subsequent call to reclaim locks using nfs4_reclaim_locks() fails with with a -NFS4ERR_BAD_STATEID. A goto statement in nfs4_reclaim_open_state() results in it looping with the same results as before.
+
+Sachin Prabhu
