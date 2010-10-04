@@ -1,63 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35664 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:8292 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753056Ab0J0Rks (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Oct 2010 13:40:48 -0400
-Date: Wed, 27 Oct 2010 13:40:16 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Arnd Bergmann <arnd@arndb.de>, Christoph Hellwig <hch@infradead.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: nfsd changes for 2.6.37
-Message-ID: <20101027174016.GA18974@fieldses.org>
-References: <20101026164549.GD19445@fieldses.org>
- <20101027145538.GC6328@fieldses.org>
- <20101027145929.GA5788@infradead.org>
- <201010271723.59734.arnd@arndb.de>
- <AANLkTinTm-LwjfBfoFUyp5Dj8S2hexnHGQGpZiOWqyMY@mail.gmail.com>
- <20101027164606.GF6328@fieldses.org>
- <AANLkTinTXoGiFap-vfu0P_SXb5xS+gMsHOwQtN3Hra3r@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <AANLkTinTXoGiFap-vfu0P_SXb5xS+gMsHOwQtN3Hra3r@mail.gmail.com>
+	id S1755791Ab0JDMzA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Oct 2010 08:55:00 -0400
+Message-ID: <4CA9CE9F.3050001@parallels.com>
+Date: Mon, 04 Oct 2010 16:54:55 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH 7/13] sunrpc: Factor out v6 sockets creation
+References: <4CA9CDA8.4010407@parallels.com>
+In-Reply-To: <4CA9CDA8.4010407@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Oct 27, 2010 at 10:32:20AM -0700, Linus Torvalds wrote:
-> On Wed, Oct 27, 2010 at 9:46 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Wed, Oct 27, 2010 at 09:12:06AM -0700, Linus Torvalds wrote:
-> >>
-> >> Something like the attached (UNTESTED!) perhaps?
-> >
-> > Makes sense to me.  Testing....
-> 
-> So I found a buglet in the patch: the
-> 
->   NOTE! It is very important that the FASYNC flag always
->   match the state "is the filp on a fasync list".
-> 
-> comment should be moved to be associated with "fasync_insert_entry()"
-> rather than "fasync_add_entry()", since it's the insert-entry thing
-> that does the actual FASYNC flag handling.
-> 
-> But that incorrect comment placement shouldn't affect testing, obviously ;)
-> 
-> Btw, who is going to collect these things assuming it passes testing?
-> Arnd? You? I'll happily sign off on the fasync patch (with the comment
-> movement) assuming it tests out ok, but there's all the other patches
-> too that have been passed around. I really do want to get this into
-> the merge window, because it would be a big shame if we couldn't
-> effectively get rid of the BKL now just because of these kinds of
-> smallish final details, so I'm just checking who wants to step up to
-> the plate to collect it all together and make sure I have it?
+Same patch for v6 protocols.
 
-Doesn't matter to me.  What I've currently got (Arnd's patches with some
-minor fixes from me, and your patch, all in a poorly changelogged
-jumble) is in
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+---
+ net/sunrpc/xprtsock.c |   63 ++++++++++++++++++++----------------------------
+ 1 files changed, 26 insertions(+), 37 deletions(-)
 
-	git://linux-nfs.org/~bfields/linux-topics.git TMP-BKL-TESTING
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index b73a605..96128d0 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1655,6 +1655,30 @@ out:
+ 	return ERR_PTR(err);
+ }
+ 
++static struct socket *xs_create_sock6(struct rpc_xprt *xprt,
++		struct sock_xprt *transport, int type, int protocol)
++{
++	struct socket *sock;
++	int err;
++
++	err = __sock_create(xprt->xprt_net, PF_INET6, type, protocol, &sock, 1);
++	if (err < 0) {
++		dprintk("RPC:       can't create %d transport socket (%d).\n",
++				protocol, -err);
++		goto out;
++	}
++	xs_reclassify_socket6(sock);
++
++	if (xs_bind6(transport, sock)) {
++		sock_release(sock);
++		goto out;
++	}
++
++	return sock;
++out:
++	return ERR_PTR(err);
++}
++
+ static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+ {
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+@@ -1745,24 +1769,7 @@ static void xs_udp_connect_worker4(struct work_struct *work)
+ static struct socket *xs_create_udp_sock6(struct rpc_xprt *xprt,
+ 		struct sock_xprt *transport)
+ {
+-	struct socket *sock;
+-	int err;
+-
+-	err = __sock_create(xprt->xprt_net, PF_INET6, SOCK_DGRAM, IPPROTO_UDP, &sock, 1);
+-	if (err < 0) {
+-		dprintk("RPC:       can't create UDP transport socket (%d).\n", -err);
+-		goto out;
+-	}
+-	xs_reclassify_socket6(sock);
+-
+-	if (xs_bind6(transport, sock) < 0) {
+-		sock_release(sock);
+-		goto out;
+-	}
+-
+-	return sock;
+-out:
+-	return ERR_PTR(err);
++	return xs_create_sock6(xprt, transport, SOCK_DGRAM, IPPROTO_UDP);
+ }
+ 
+ static void xs_udp_connect_worker6(struct work_struct *work)
+@@ -1970,25 +1977,7 @@ static void xs_tcp_connect_worker4(struct work_struct *work)
+ static struct socket *xs_create_tcp_sock6(struct rpc_xprt *xprt,
+ 		struct sock_xprt *transport)
+ {
+-	struct socket *sock;
+-	int err;
+-
+-	/* start from scratch */
+-	err = __sock_create(xprt->xprt_net, PF_INET6, SOCK_STREAM, IPPROTO_TCP, &sock, 1);
+-	if (err < 0) {
+-		dprintk("RPC:       can't create TCP transport socket (%d).\n",
+-				-err);
+-		goto out_err;
+-	}
+-	xs_reclassify_socket6(sock);
+-
+-	if (xs_bind6(transport, sock) < 0) {
+-		sock_release(sock);
+-		goto out_err;
+-	}
+-	return sock;
+-out_err:
+-	return ERR_PTR(-EIO);
++	return xs_create_sock6(xprt, transport, SOCK_STREAM, IPPROTO_TCP);
+ }
+ 
+ /**
+-- 
+1.5.5.6
 
-You wouldn't want to merge that as is, but it does seem to work.
-
---b.
