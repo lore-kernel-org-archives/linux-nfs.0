@@ -1,139 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:60731 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758619Ab0JHPwP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Oct 2010 11:52:15 -0400
-Received: by bwz15 with SMTP id 15so365541bwz.19
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Oct 2010 08:52:13 -0700 (PDT)
-In-Reply-To: <AANLkTim6Ejf9T3YPAd-4x30tBd3Z2-yiZPM8m5AHotQd@mail.gmail.com>
-References: <1286397317-17881-1-git-send-email-iisaman@netapp.com>
-	<1286397317-17881-3-git-send-email-iisaman@netapp.com>
-	<4CADCC48.4030908@panasas.com>
-	<AANLkTimnVJYW-ndu_rhk71JXkh3zW-0hLfMTYkRc8VpK@mail.gmail.com>
-	<4CADD3E9.7040307@panasas.com>
-	<AANLkTimUeQGrFXzZfgkkiE834MvMYz3uxobHHAdzE79p@mail.gmail.com>
-	<AANLkTikCvmqk9Og0iRGLsogYCe1g3Um30sH3G150cQJ5@mail.gmail.com>
-	<AANLkTim6Ejf9T3YPAd-4x30tBd3Z2-yiZPM8m5AHotQd@mail.gmail.com>
-Date: Fri, 8 Oct 2010 11:52:13 -0400
-Message-ID: <AANLkTimGaPXHMawXqxV8VUiz7HrqyAiC2G1frwevUrj+@mail.gmail.com>
-Subject: Re: [PATCH 2/4] pnfs_submit: Only update stateid if it is more recent
- than current
-From: Fred Isaman <iisaman@netapp.com>
-To: "P.B.Shelley" <shelleypt@gmail.com>
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
+Received: from mailhub.sw.ru ([195.214.232.25]:22756 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755227Ab0JDMzn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Oct 2010 08:55:43 -0400
+Message-ID: <4CA9CECA.6000700@parallels.com>
+Date: Mon, 04 Oct 2010 16:55:38 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH 8/13] sunrpc: Call xs_create_sockX directly from setup_socket
+References: <4CA9CDA8.4010407@parallels.com>
+In-Reply-To: <4CA9CDA8.4010407@parallels.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Oct 8, 2010 at 11:36 AM, P.B.Shelley <shelleypt@gmail.com> wrote:
-> On Fri, Oct 8, 2010 at 10:35 PM, Fred Isaman <iisaman@netapp.com> wrote:
->> On Fri, Oct 8, 2010 at 10:13 AM, P.B.Shelley <shelleypt@gmail.com> wrote:
->>> On Thu, Oct 7, 2010 at 10:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->>>> On 2010-10-07 10:01, Fred Isaman wrote:
->>>>> On Thu, Oct 7, 2010 at 9:34 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->>>>>> On 2010-10-06 16:35, Fred Isaman wrote:
->>>>>>> Right now, when we set the stateid, we blindly overwrite the current
->>>>>>> one, allowing the seqid to incorrectly roll backward.
->>>>>>>
->>>>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->>>>>>> ---
->>>>>>>  fs/nfs/pnfs.c |   38 ++++++++++++++++++++++++++++++++------
->>>>>>>  1 files changed, 32 insertions(+), 6 deletions(-)
->>>>>>>
->>>>>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>>>>>> index 39bce9b..555955b 100644
->>>>>>> --- a/fs/nfs/pnfs.c
->>>>>>> +++ b/fs/nfs/pnfs.c
->>>>>>> @@ -459,16 +459,42 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
->>>>>>>       }
->>>>>>>  }
->>>>>>>
->>>>>>> +/* update lo->stateid with new if is more recent
->>>>>>> + *
->>>>>>> + * lo->stateid could be the open stateid, in which case we just use what given.
->>>>>>> + */
->>>>>>>  static void
->>>>>>>  pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
->>>>>>> -                     const nfs4_stateid *stateid)
->>>>>>> +                     const nfs4_stateid *new)
->>>>>>>  {
->>>>>>> -     /* TODO - should enforce that embedded seqid, in the case
->>>>>>> -      * that the two stateid.others are equal,  only increases.
->>>>>>> -      * Complicated by wrap-around.
->>>>>>> -      */
->>>>>>> +     nfs4_stateid *old = &lo->stateid;
->>>>>>> +     bool overwrite = false;
->>>>>>> +
->>>>>>>       write_seqlock(&lo->seqlock);
->>>>>>> -     memcpy(lo->stateid.data, stateid->data, sizeof(lo->stateid.data));
->>>>>>> +     if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
->>>>>>> +         memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
->>>>>>> +             overwrite = true;
->>>>>>> +     else {
->>>>>>> +             u32 oldseq, newseq, limit;
->>>>>>> +
->>>>>>> +             oldseq = be32_to_cpu(old->stateid.seqid);
->>>>>>> +             newseq = be32_to_cpu(new->stateid.seqid);
->>>>>>> +             /* There are no good bounds on window size, so just
->>>>>>> +              * use a ridiculously large window of 2^31.
->>>>>>> +              */
->>>>>>> +             limit = oldseq + (1 << 31);
->>>>>>> +             if (oldseq < limit) {
->>>>>>> +                     /* The easy, non-wraparound case */
->>>>>>> +                     if (oldseq < newseq && newseq < limit)
->>>>>>> +                             overwrite = true;
->>>>>>> +             } else {
->>>>>>> +                     /* Near wraparound edge */
->>>>>>> +                     if (oldseq < newseq || newseq < limit)
->>>>>>> +                             overwrite = true;
->>>>>>> +             }
->>>>>>
->>>>>> Wouldn't it be simpler to just look at (int32_t)(newseq - oldseq)?
->>>>>>
->>>>>
->>>>> Why yes it would.  I'll send a new version of this patch shortly.
->>>>>
->>>>
->>>> No need :)
->>>> I'll just change this as follows:
->>>>
->>>> +       else {
->>>> +               u32 oldseq, newseq, limit;
->>>> +
->>>> +               oldseq = be32_to_cpu(old->stateid.seqid);
->>>> +               newseq = be32_to_cpu(new->stateid.seqid);
->>>> +               if ((int)(newseq - oldseq) > 0)
->>>> +                       overwrite = true;
->>> Do we also need to verify the other field of the stateid? Will there
->>> be situations that server change the other field and reset the seqid?
->>
->> The server is going to use the "other" we sent, except in the case we
->> sent an open stateid.  The only potential for trouble I see is if a
->> LAYOUTGET reply gets lost in the network for a long time and is
->> received after the layout stateid has been reset for some reason.
->> However, that implies an error elsewhere (which may well exist at the
->> moment...careful stateid handling is next on the agenda), as we should
->> have been waiting for that lseg to arrive before continuing.
-> Oops, I missed the other field comparing code. Thank you for pointing
-> it out, Benny.
->
-> Can client choose to send an open stateid for LATYOUTGET request, even
-> if client has a layout stateid for the file?
->
+Remove now unneeded wrappers that just add type and protocol
+to socket creation callback.
 
-No (see 12.5.2).  But the spec seems to allow sending multiple
-LAYOUTGETs with the open stateid until it processes the first reply
-which includes a proper layout stateid.
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+---
+ net/sunrpc/xprtsock.c |   40 ++++++++--------------------------------
+ 1 files changed, 8 insertions(+), 32 deletions(-)
 
-Fred
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 96128d0..7fdf2bb 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1710,7 +1710,7 @@ static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+ 
+ static void xs_udp_setup_socket(struct sock_xprt *transport,
+ 		struct socket *(*create_sock)(struct rpc_xprt *,
+-			struct sock_xprt *))
++			struct sock_xprt *, int type, int protocol))
+ {
+ 	struct rpc_xprt *xprt = &transport->xprt;
+ 	struct socket *sock = transport->sock;
+@@ -1721,7 +1721,7 @@ static void xs_udp_setup_socket(struct sock_xprt *transport,
+ 
+ 	/* Start by resetting any existing state */
+ 	xs_reset_transport(transport);
+-	sock = create_sock(xprt, transport);
++	sock = create_sock(xprt, transport, SOCK_DGRAM, IPPROTO_UDP);
+ 	if (IS_ERR(sock))
+ 		goto out;
+ 
+@@ -1745,18 +1745,12 @@ out:
+  * Invoked by a work queue tasklet.
+  */
+ 
+-static struct socket *xs_create_udp_sock4(struct rpc_xprt *xprt,
+-		struct sock_xprt *transport)
+-{
+-	return xs_create_sock4(xprt, transport, SOCK_DGRAM, IPPROTO_UDP);
+-}
+-
+ static void xs_udp_connect_worker4(struct work_struct *work)
+ {
+ 	struct sock_xprt *transport =
+ 		container_of(work, struct sock_xprt, connect_worker.work);
+ 
+-	xs_udp_setup_socket(transport, xs_create_udp_sock4);
++	xs_udp_setup_socket(transport, xs_create_sock4);
+ }
+ 
+ /**
+@@ -1766,18 +1760,12 @@ static void xs_udp_connect_worker4(struct work_struct *work)
+  * Invoked by a work queue tasklet.
+  */
+ 
+-static struct socket *xs_create_udp_sock6(struct rpc_xprt *xprt,
+-		struct sock_xprt *transport)
+-{
+-	return xs_create_sock6(xprt, transport, SOCK_DGRAM, IPPROTO_UDP);
+-}
+-
+ static void xs_udp_connect_worker6(struct work_struct *work)
+ {
+ 	struct sock_xprt *transport =
+ 		container_of(work, struct sock_xprt, connect_worker.work);
+ 
+-	xs_udp_setup_socket(transport, xs_create_udp_sock6);
++	xs_udp_setup_socket(transport, xs_create_sock6);
+ }
+ 
+ /*
+@@ -1883,7 +1871,7 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+  */
+ static void xs_tcp_setup_socket(struct sock_xprt *transport,
+ 		struct socket *(*create_sock)(struct rpc_xprt *,
+-			struct sock_xprt *))
++			struct sock_xprt *, int type, int protocol))
+ {
+ 	struct socket *sock = transport->sock;
+ 	struct rpc_xprt *xprt = &transport->xprt;
+@@ -1894,7 +1882,7 @@ static void xs_tcp_setup_socket(struct sock_xprt *transport,
+ 
+ 	if (!sock) {
+ 		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+-		sock = create_sock(xprt, transport);
++		sock = create_sock(xprt, transport, SOCK_STREAM, IPPROTO_TCP);
+ 		if (IS_ERR(sock)) {
+ 			status = PTR_ERR(sock);
+ 			goto out;
+@@ -1954,12 +1942,6 @@ out:
+ 	xprt_wake_pending_tasks(xprt, status);
+ }
+ 
+-static struct socket *xs_create_tcp_sock4(struct rpc_xprt *xprt,
+-		struct sock_xprt *transport)
+-{
+-	return xs_create_sock4(xprt, transport, SOCK_STREAM, IPPROTO_TCP);
+-}
+-
+ /**
+  * xs_tcp_connect_worker4 - connect a TCP socket to a remote endpoint
+  * @work: RPC transport to connect
+@@ -1971,13 +1953,7 @@ static void xs_tcp_connect_worker4(struct work_struct *work)
+ 	struct sock_xprt *transport =
+ 		container_of(work, struct sock_xprt, connect_worker.work);
+ 
+-	xs_tcp_setup_socket(transport, xs_create_tcp_sock4);
+-}
+-
+-static struct socket *xs_create_tcp_sock6(struct rpc_xprt *xprt,
+-		struct sock_xprt *transport)
+-{
+-	return xs_create_sock6(xprt, transport, SOCK_STREAM, IPPROTO_TCP);
++	xs_tcp_setup_socket(transport, xs_create_sock4);
+ }
+ 
+ /**
+@@ -1991,7 +1967,7 @@ static void xs_tcp_connect_worker6(struct work_struct *work)
+ 	struct sock_xprt *transport =
+ 		container_of(work, struct sock_xprt, connect_worker.work);
+ 
+-	xs_tcp_setup_socket(transport, xs_create_tcp_sock6);
++	xs_tcp_setup_socket(transport, xs_create_sock6);
+ }
+ 
+ /**
+-- 
+1.5.5.6
 
-
-> --
-> Thanks,
-> Shelley
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
