@@ -1,43 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:19895 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:33133 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753371Ab0JAUqm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 16:46:42 -0400
-Subject: Re: NFS4 clients cannot reclaim locks
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Sachin Prabhu <sprabhu@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-In-Reply-To: <25362267.86.1285932646433.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-References: <25362267.86.1285932646433.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 01 Oct 2010 16:46:40 -0400
-Message-ID: <1285966000.4391.14.camel@heimdal.trondhjem.org>
+	id S1751354Ab0JEQsI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Oct 2010 12:48:08 -0400
+Message-ID: <4CAB56C2.3080801@parallels.com>
+Date: Tue, 05 Oct 2010 20:48:02 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH] sunrpc: Use helper to set v4 mapped addr in ip_map_parse
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2010-10-01 at 07:30 -0400, Sachin Prabhu wrote:
-> NFS4 clients appear to have problems reclaiming locks after a server reboot. I can recreate the issue on 2.6.34.7-56.fc13.x86_64 on a Fedora system. 
-> 
-> The problem appears to happen in cases where after a reboot, a WRITE call is made just before the RENEW call. In that case, the NFS4ERR_STALE_STATEID is returned for the WRITE call which results in NFS_STATE_RECLAIM_REBOOT being set in the state flags. However the NFS4ERR_STALE_CLIENTID returned for the subsequent RENEW call is handled by 
-> nfs4_recovery_handle_error() -> nfs4_state_end_reclaim_reboot(clp);  
-> which ends up setting the state flag to NFS_STATE_RECLAIM_NOGRACE and clearing the NFS_STATE_RECLAIM_REBOOT in nfs4_state_mark_reclaim_nograce(). 
+Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+---
+ net/sunrpc/svcauth_unix.c |    5 ++---
+ 1 files changed, 2 insertions(+), 3 deletions(-)
 
-Yup. I don't think we should call nfs4_state_mark_reclaim_reboot() here.
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 8b378f9..560677d 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -220,10 +220,9 @@ static int ip_map_parse(struct cache_detail *cd,
+ 	switch (address.sa.sa_family) {
+ 	case AF_INET:
+ 		/* Form a mapped IPv4 address in sin6 */
+-		memset(&sin6, 0, sizeof(sin6));
+ 		sin6.sin6_family = AF_INET6;
+-		sin6.sin6_addr.s6_addr32[2] = htonl(0xffff);
+-		sin6.sin6_addr.s6_addr32[3] = address.s4.sin_addr.s_addr;
++		ipv6_addr_set_v4mapped(address.s4.sin_addr.s_addr,
++				&sin6.sin6_addr);
+ 		break;
+ #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+ 	case AF_INET6:
+-- 
+1.5.5.6
 
-> The process of reclaiming the locks then seem to hit another roadblock in nfs4_open_expired() where it fails to open the file and reset the state. It ends up calling nfs4_reclaim_locks() in a loop with the old stateid in nfs4_reclaim_open_state().
-
-Any idea how nfs4_open_expired() is failing? It seems that if it does,
-we should see an error, which would cause the lock reclaim to fail.
-
-Also, why is the call to nfs4_reclaim_locks() looping? That too should
-exit in case of an error.
-
-> By commenting out the call to nfs4_state_end_reclaim_reboot(clp) in nfs4_recovery_handle_error(), the client was able to handle this particular scenario properly.
-
-We do need to keep the nfs4_state_end_reclaim_reboot() there. Otherwise,
-we have a problem if the server reboots again while we're in the middle
-of reclaiming state.
-
-Cheers
-  Trond
