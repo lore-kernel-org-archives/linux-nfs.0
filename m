@@ -1,273 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:56731 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:8280 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757624Ab0JZMnD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Oct 2010 08:43:03 -0400
-Subject: Re: [PATCH] nfs-utils: add nfs.upcall
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
+	id S1752311Ab0JEO2q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Oct 2010 10:28:46 -0400
+Date: Tue, 5 Oct 2010 10:27:52 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Schumaker Bryan <Bryan.Schumaker@netapp.com>, steved@redhat.com,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4CC6CC73.6030008@netapp.com>
-References: <1288046434-18503-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <B7AE3537-6F68-4716-B486-7EC8A44ED882@oracle.com>
-	 <61E98BF7-2E64-47D5-A5C0-5701E36B8C99@netapp.com>
-	 <4CC6CC73.6030008@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 26 Oct 2010 08:42:47 -0400
-Message-ID: <1288096967.3123.11.camel@heimdal.trondhjem.org>
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Sachin Prabhu <sprabhu@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: Should we be aggressively invalidating cache when using
+ -onolock?
+Message-ID: <20101005102752.67b75416@tlielax.poochiereds.net>
+In-Reply-To: <20100920182536.GA17543@fieldses.org>
+References: <1103741.22.1284726314119.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+	<29790688.25.1284726394683.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+	<20100917174644.GD25515@fieldses.org>
+	<20100918070932.1c1bb700@corrin.poochiereds.net>
+	<20100919185318.GE32071@fieldses.org>
+	<88791E8C-1109-480A-A3FA-E9DBA1DBF75D@oracle.com>
+	<20100920182536.GA17543@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-10-26 at 08:41 -0400, Bryan Schumaker wrote:
-> Sure.  Do you want a patch that renames it in the kernel documentation file too?
+On Mon, 20 Sep 2010 14:25:36 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Yes. The documentation definitely needs to be consistent with the
-implementation.
-
-> Bryan
+> On Mon, Sep 20, 2010 at 10:41:59AM -0400, Chuck Lever wrote:
+> > At one point long ago, I had asked Trond if we could get rid of the
+> > cache-invalidation-on-lock behavior if "-onolock" was in effect.  He
+> > said at the time that this would eliminate the only recourse
+> > applications have for invalidating the data cache in case it was
+> > stale, and NACK'd the request.
 > 
-> On 10/25/2010 07:46 PM, Myklebust, Trond wrote:
-> > Ah, fsck... You're right.
+> Argh.  I guess I can see the argument, though.
+> 
+> > I suggested introducing a new mount option called "llock" that would
+> > be semantically the same as "llock" on other operating systems, to do
+> > this.  It never went anywhere.
 > > 
-> > Bryan, can you instead resend your latest patch for nfs-utils? I've asked Linus to merge the kernel part, so it is time to get the userspace stuff in order too!
-> > 
-> > Sent from my iPhone
-> > 
-> > On Oct 25, 2010, at 19:21, "Chuck Lever" <chuck.lever@oracle.com> wrote:
-> > 
-> >> I thought we were going to call this nfs.idmap ... ?
-> >>
-> >> On Oct 25, 2010, at 6:40 PM, Trond Myklebust wrote:
-> >>
-> >>> From: Bryan Schumaker <bjschuma@netapp.com>
-> >>>
-> >>> Add nfs.upcall
-> >>>
-> >>> This patch adds the nfs.upcall program to nfs-utils.  This program is called by
-> >>> the nfs idmapper through request-keys to map between uid / user name and
-> >>> gid / group name.
-> >>>
-> >>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> >>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> >>> ---
-> >>> aclocal/keyutils.m4           |   11 ++++
-> >>> configure.ac                  |    4 ++
-> >>> utils/Makefile.am             |    1 +
-> >>> utils/nfs.upcall/Makefile.am  |    7 +++
-> >>> utils/nfs.upcall/nfs.upcall.c |  120 +++++++++++++++++++++++++++++++++++++++++
-> >>> 5 files changed, 143 insertions(+), 0 deletions(-)
-> >>> create mode 100644 aclocal/keyutils.m4
-> >>> create mode 100644 utils/nfs.upcall/Makefile.am
-> >>> create mode 100644 utils/nfs.upcall/nfs.upcall.c
-> >>>
-> >>> diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
-> >>> new file mode 100644
-> >>> index 0000000..8aea646
-> >>> --- /dev/null
-> >>> +++ b/aclocal/keyutils.m4
-> >>> @@ -0,0 +1,11 @@
-> >>> +dnl Checks for keyutils library and headers
-> >>> +dnl
-> >>> +AC_DEFUN([AC_KEYUTILS], [
-> >>> +
-> >>> +  dnl Check for libkeyutils; do not add to LIBS if found
-> >>> +  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
-> >>> +  AC_SUBST(LIBKEYUTILS)
-> >>> +
-> >>> +  AC_CHECK_HEADERS([keyutils.h], ,
-> >>> +           [AC_MSG_ERROR([keyutils.h header not found.])])
-> >>> +])dnl
-> >>> diff --git a/configure.ac b/configure.ac
-> >>> index 3058be6..a5e8620 100644
-> >>> --- a/configure.ac
-> >>> +++ b/configure.ac
-> >>> @@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
-> >>>  dnl check for nfsidmap libraries and headers
-> >>>  AC_LIBNFSIDMAP
-> >>>
-> >>> +  dnl check for the keyutils libraries and headers
-> >>> +  AC_KEYUTILS
-> >>> +
-> >>>  dnl librpcsecgss already has a dependency on libgssapi,
-> >>>  dnl but we need to make sure we get the right version
-> >>>  if test "$enable_gss" = yes; then
-> >>> @@ -435,6 +438,7 @@ AC_CONFIG_FILES([
-> >>>    utils/mountd/Makefile
-> >>>    utils/nfsd/Makefile
-> >>>    utils/nfsstat/Makefile
-> >>> +    utils/nfs.upcall/Makefile
-> >>>    utils/showmount/Makefile
-> >>>    utils/statd/Makefile
-> >>>    tests/Makefile
-> >>> diff --git a/utils/Makefile.am b/utils/Makefile.am
-> >>> index 8665183..0104a6c 100644
-> >>> --- a/utils/Makefile.am
-> >>> +++ b/utils/Makefile.am
-> >>> @@ -4,6 +4,7 @@ OPTDIRS =
-> >>>
-> >>> if CONFIG_NFSV4
-> >>> OPTDIRS += idmapd
-> >>> +OPTDIRS += nfs.upcall
-> >>> endif
-> >>>
-> >>> if CONFIG_GSS
-> >>> diff --git a/utils/nfs.upcall/Makefile.am b/utils/nfs.upcall/Makefile.am
-> >>> new file mode 100644
-> >>> index 0000000..52afd3d
-> >>> --- /dev/null
-> >>> +++ b/utils/nfs.upcall/Makefile.am
-> >>> @@ -0,0 +1,7 @@
-> >>> +## Process this file with automake to produce Makefile.in
-> >>> +
-> >>> +sbin_PROGRAMS    = nfs.upcall
-> >>> +nfs_upcall_SOURCES = nfs.upcall.c
-> >>> +nfs_upcall_LDADD = -lnfsidmap -lkeyutils
-> >>> +
-> >>> +MAINTAINERCLEANFILES = Makefile.in
-> >>> diff --git a/utils/nfs.upcall/nfs.upcall.c b/utils/nfs.upcall/nfs.upcall.c
-> >>> new file mode 100644
-> >>> index 0000000..11b9a01
-> >>> --- /dev/null
-> >>> +++ b/utils/nfs.upcall/nfs.upcall.c
-> >>> @@ -0,0 +1,120 @@
-> >>> +
-> >>> +#include <stdarg.h>
-> >>> +#include <stdio.h>
-> >>> +#include <stdlib.h>
-> >>> +#include <string.h>
-> >>> +
-> >>> +#include <pwd.h>
-> >>> +#include <grp.h>
-> >>> +#include <keyutils.h>
-> >>> +#include <nfsidmap.h>
-> >>> +
-> >>> +#include <syslog.h>
-> >>> +
-> >>> +/* gcc nfs.upcall.c -o nfs.upcall -l nfsidmap -l keyutils */
-> >>> +
-> >>> +#define MAX_ID_LEN   11
-> >>> +#define IDMAP_NAMESZ 128
-> >>> +#define USER  1
-> >>> +#define GROUP 0
-> >>> +
-> >>> +
-> >>> +/*
-> >>> + * Find either a user or group id based on the name@domain string
-> >>> + */
-> >>> +int id_lookup(char *name_at_domain, key_serial_t key, int type)
-> >>> +{
-> >>> +    char id[MAX_ID_LEN];
-> >>> +    uid_t uid = 0;
-> >>> +    gid_t gid = 0;
-> >>> +
-> >>> +    if (type == USER) {
-> >>> +        nfs4_owner_to_uid(name_at_domain, &uid);
-> >>> +        sprintf(id, "%u", uid);
-> >>> +    } else {
-> >>> +        nfs4_group_owner_to_gid(name_at_domain, &gid);
-> >>> +        sprintf(id, "%u", gid);
-> >>> +    }
-> >>> +
-> >>> +    return keyctl_instantiate(key, id, strlen(id) + 1, 0);
-> >>> +}
-> >>> +
-> >>> +/*
-> >>> + * Find the name@domain string from either a user or group id
-> >>> + */
-> >>> +int name_lookup(char *id, key_serial_t key, int type)
-> >>> +{
-> >>> +    char name[IDMAP_NAMESZ];
-> >>> +    char domain[NFS4_MAX_DOMAIN_LEN];
-> >>> +    uid_t uid;
-> >>> +    gid_t gid;
-> >>> +    int rc = 0;
-> >>> +
-> >>> +    rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
-> >>> +    if (rc != 0) {
-> >>> +        rc = -1;
-> >>> +        goto out;
-> >>> +    }
-> >>> +
-> >>> +    if (type == USER) {
-> >>> +        uid = atoi(id);
-> >>> +        rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
-> >>> +    } else {
-> >>> +        gid = atoi(id);
-> >>> +        rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
-> >>> +    }
-> >>> +
-> >>> +    if (rc == 0)
-> >>> +        rc = keyctl_instantiate(key, &name, strlen(name), 0);
-> >>> +
-> >>> +out:
-> >>> +    return rc;
-> >>> +}
-> >>> +
-> >>> +int main(int argc, char **argv)
-> >>> +{
-> >>> +    char *arg;
-> >>> +    char *value;
-> >>> +    char *type;
-> >>> +    int rc = 1;
-> >>> +    int timeout = 600;
-> >>> +    key_serial_t key;
-> >>> +
-> >>> +    /*openlog("nfs.upcall", 0, LOG_DAEMON);*/
-> >>> +
-> >>> +    if (argc < 3)
-> >>> +        return 1;
-> >>> +
-> >>> +    arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
-> >>> +    strcpy(arg, argv[2]);
-> >>> +    type = strtok(arg, ":");
-> >>> +    value = strtok(NULL, ":");
-> >>> +
-> >>> +    if (argc == 4) {
-> >>> +        timeout = atoi(argv[3]);
-> >>> +        if (timeout < 0)
-> >>> +            timeout = 0;
-> >>> +    }
-> >>> +
-> >>> +    /*syslog(LOG_ERR, "type: %s", type);
-> >>> +    syslog(LOG_ERR, "value: %s", value);
-> >>> +    syslog(LOG_ERR, "timeout: %d", timeout);*/
-> >>> +
-> >>> +    key = strtol(argv[1], NULL, 10);
-> >>> +
-> >>> +    if (strcmp(type, "uid") == 0)
-> >>> +        rc = id_lookup(value, key, USER);
-> >>> +    else if (strcmp(type, "gid") == 0)
-> >>> +        rc = id_lookup(value, key, GROUP);
-> >>> +    else if (strcmp(type, "user") == 0)
-> >>> +        rc = name_lookup(value, key, USER);
-> >>> +    else if (strcmp(type, "group") == 0)
-> >>> +        rc = name_lookup(value, key, GROUP);
-> >>> +
-> >>> +    /* Set timeout to 5 (600 seconds) minutes */
-> >>> +    keyctl_set_timeout(key, timeout);
-> >>> +
-> >>> +    free(arg);
-> >>> +    /*closelog();*/
-> >>> +    return rc;
-> >>> +}
-> >>> -- 
-> >>> 1.7.2.3
-> >>>
-> >>> --
-> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >>> the body of a message to majordomo@vger.kernel.org
-> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>
-> >> -- 
-> >> Chuck Lever
-> >> chuck[dot]lever[at]oracle[dot]com
-> >>
-> >>
-> >>
-> >>
+> > We now seem to have a fresh opportunity to address this issue with the
+> > recent addition of "local_lock".  Can we augment this option or add
+> > another which allows better control of caching behavior during a file
+> > lock?
+> 
+> I wouldn't stand in the way, but it does start to sound like a rather
+> confusing array of choices.
 > 
 
+I can sort of see the argument too, but on the other hand...does anyone
+*really* use locks in this way? If we want a mechanism to allow the
+client to force cache invalidation on an inode it seems like we'd be
+better off with an interface for that purpose only (dare I say
+ioctl? :).
 
+Piggybacking this behavior into the locking interfaces seems like it
+punishes -o nolock performance for the benefit of some questionable
+usage patterns.
+
+Mixing this in with -o local_lock also seems confusing, but if we want
+to do that it's probably best to make that call before any kernels ship
+with -o local_lock.
+
+Trond, care to weigh in on this?
+-- 
+Jeff Layton <jlayton@redhat.com>
