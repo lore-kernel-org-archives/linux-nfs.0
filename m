@@ -1,105 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:2946 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:27566 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751496Ab0J1Tzx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Oct 2010 15:55:53 -0400
-Message-ID: <4CC9D543.4020004@RedHat.com>
-Date: Thu, 28 Oct 2010 15:55:47 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1757074Ab0JEFmU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Oct 2010 01:42:20 -0400
+Message-ID: <4CAABAAB.8040608@parallels.com>
+Date: Tue, 05 Oct 2010 09:42:03 +0400
+From: Pavel Emelyanov <xemul@parallels.com>
 To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 6/6] nfs(5): Document remount behavior
-References: <20101026155216.19184.36979.stgit@matisse.1015granger.net> <20101026155847.19184.44036.stgit@matisse.1015granger.net> <4CC9BAA8.5000509@RedHat.com> <BFCEEA71-05CB-4D4F-9ED8-64B140E20D2C@oracle.com>
-In-Reply-To: <BFCEEA71-05CB-4D4F-9ED8-64B140E20D2C@oracle.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 9/13] sunrpc: Merge the xs_bind code
+References: <4CA9CDA8.4010407@parallels.com> <4CA9CEE8.9050404@parallels.com> <66FA6AAD-87DC-4B81-8DAC-8F1D4FF7B72E@oracle.com>
+In-Reply-To: <66FA6AAD-87DC-4B81-8DAC-8F1D4FF7B72E@oracle.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-On 10/28/2010 02:58 PM, Chuck Lever wrote:
+>> -static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
+>> +static int xs_bind(struct sock_xprt *transport, struct socket *sock)
+>> {
+>> -	struct sockaddr_in myaddr = {
+>> -		.sin_family = AF_INET,
+>> -	};
+>> -	struct sockaddr_in *sa;
+>> +	struct sockaddr myaddr;
 > 
-> On Oct 28, 2010, at 2:02 PM, Steve Dickson wrote:
-> 
->> Chuck,
+> You want "struct sockaddr_storage" here.  A "struct sockaddr" is required by
+> standard (iirc) to be only as large as a "struct sockaddr_in".  So this can't
+> possibly hold an IPv6 socket address without overflowing.
+
+OK
+
+>> 	int err, nloop = 0;
+>> 	unsigned short port = xs_get_srcport(transport);
+>> 	unsigned short last;
 >>
->> I'm a bit concern about this patch.... 
->>
->> I'm asking myself who is going care how remounts update 
->> /etc/mtab and what mode is used.
+>> -	sa = (struct sockaddr_in *)&transport->srcaddr;
+>> -	myaddr.sin_addr = sa->sin_addr;
+>> +	memcpy(&myaddr, &transport->srcaddr, transport->xprt.addrlen);
+>> 	do {
+>> -		myaddr.sin_port = htons(port);
+>> -		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
+>> -						sizeof(myaddr));
+>> +		BUILD_BUG_ON(offsetof(struct sockaddr_in, sin_port) !=
+>> +				offsetof(struct sockaddr_in6, sin6_port));
+>> +		((struct sockaddr_in *)&myaddr)->sin_port = htons(port);
 > 
-> Someone who has done a remount and found that it doesn't behave as they expect. 
-> I've handled bug reports like this.  When customers want to see existing 
-> documentation of strange behavior, it's pretty important to have something to
-> point them to.  Documentation is the first thing I'm asked for by customers 
-> and system engineers who encounter weird NFS behavior.
-Documentation is great! I too get numerous requests for documentation.
-That's why I think are the first 3 paragraphs in "THE REMOUNT OPTION"
-is perfect! Well written and to the point... Its the rest of 
-the section I don't think we needed... that's all... 
- 
+> This series of patches looks mostly OK at first blush, but this little 
+> change is a bit offensive.  :-)
 > 
->> I just thinking that type of info 
->> adds a lot verbiage that nobody really care about.
+> There should be some static inline helper functions that can get and set the
+> port number in a socket address without a lot of magic, and I would prefer you
+> use those instead.  (I would point you directly to them, but I can't easily
+> access kernel source at the moment -- hotel internet sucks).
 > 
-> Don't you think that's a bit harsh and even disrespectful? 
-By no means... whatsoever... I was just being honest...
-maybe a bit too brutally... ;-) My apologies if it came 
-off in that manner...  
+> There should be one or two code examples in the RPC module or in headers that
+> set and get ports in an automatic struct sockaddr_storage variable to give you
+> an idea of what this needs to look like to avoid stack overruns and bad 
+> pointer aliasing.
 
-> What criteria do you use to decide that "no-one cares"?
-I can't image anybody caring about how the inners of /etc/mtab
-are being maintained on an NFS umount... As long as the unmount
-works, that's all they care about... 
-> 
-> This patch documents very confusing behavior that is not documented anywhere else.
-> It's not documented elsewhere because other file systems don't have a dependency 
-> on /etc/mtab as we have.  This also documents why replacing /etc/mtab with 
-> /proc/mounts will cause some fuzzy NFS umount behavior (which is exactly the documentation you were looking for last week).
-> 
-> The fact that it took me so long to figure out is evidence enough that this is 
-> not obvious and needs to be written down somewhere.  Where else should we document
-> behavior that is related to /etc/fstab and mount(8), and is NFS specific?
-How about the NFS FAQ? 
+I believe you mean the rpc_set_port() one. Will do!
 
-All I'm saying is that type of details information (how mtab is managed) is
-not useful to a system admin trying figure out how to use remount 
-on an NFS file system... So I think its a waste to put in the man page... 
-
-> 
->> Plus why are
->> we documenting something (/etc/mtab) that will be going 
->> away as soon as humanly possible? 
-> 
-> Do you have a schedule for this?  I've talked very recently with Karel, 
-> and libmount is not even ready to be published.  The work to integrate 
-> libmount into every mount subcommand sounds like it could be a ways in 
-> the future.  (Karel and I even discussed me doing this work for mount.nfs).
-No I don't... but it can come soon enough... IMHO... 
-Cool... Karel is a good guy to work with... 
-
-> 
-> I expect we will have a dependence on /etc/mtab for a while yet.  And, 
-> it's pretty easy to change these docs once we've transitioned.
-> 
->> Basically I'm saying the entire "Unmounting after a remount" 
->> section is not needed. Only the 3 paragraphs in "THE REMOUNT OPTION"
->> section are needed IMHO... 
-> 
-> 
-> I'll consider recrafting it, but this is important and confusing 
-> behavior that must be documented.  We can argue about how the information 
-> is presented, but just throwing it all out and ignoring it is not an option.
-> 
-Good...
-
-All I'm saying make the it concise and to the point so its useful
-to a system admin... Like the first 3 paragraphs are... 
-
-And maybe I'm wrong...  but... I just don't think an system admin 
-really cares what happens to the mtab after a umount of a 
-remounted mount point... As long as the unmount works... they are
-happy... again... IMHO... 
-
-steved.
+Thanks,
+Pavel
