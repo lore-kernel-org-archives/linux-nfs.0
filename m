@@ -1,277 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:54812 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933173Ab0JZMq5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Oct 2010 08:46:57 -0400
-Message-ID: <4CC6CDBF.1020703@netapp.com>
-Date: Tue, 26 Oct 2010 08:46:55 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Schumaker Bryan <Bryan.Schumaker@netapp.com>, steved@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs-utils: add nfs.upcall
-References: <1288046434-18503-1-git-send-email-Trond.Myklebust@netapp.com>	 <B7AE3537-6F68-4716-B486-7EC8A44ED882@oracle.com>	 <61E98BF7-2E64-47D5-A5C0-5701E36B8C99@netapp.com>	 <4CC6CC73.6030008@netapp.com> <1288096967.3123.11.camel@heimdal.trondhjem.org>
-In-Reply-To: <1288096967.3123.11.camel@heimdal.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:5981 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751363Ab0JEOtT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Oct 2010 10:49:19 -0400
+Message-ID: <4CAB3AED.8020907@panasas.com>
+Date: Tue, 05 Oct 2010 10:49:17 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] bdi: Initialize inode->i_mapping.backing_dev_info to sb->s_bdi
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Ok.  While I am fixing things up, I will also take this chance to change the key type to nfs_idmap instead of id_resolver.  I'll send the utils patch in a separate email, and I'll have the kernel patch out as soon as I can make it.
+From: Jan Kara <jack@suse.cz>
 
-Bryan
+This patch is needed in pnfs tree for exofs.
 
+Currently, we initialize inode->i_mapping.backing_dev_info to the bdi of device
+sb->s_bdev points to. However there is quite a big number of filesystems that
+do not set sb->s_bdev (because they do not have one) but do set sb->s_bdi.
+These filesystems would generally benefit from setting
+inode->i_mapping.backing_dev_info to their s_bdi because otherwise their inodes
+would point to default_backing_dev_info and thus dirty inode tracking would
+happen there. So change inode initialization code to use sb->s_bdi if it
+is available.
 
-On 10/26/2010 08:42 AM, Trond Myklebust wrote:
-> On Tue, 2010-10-26 at 08:41 -0400, Bryan Schumaker wrote:
->> Sure.  Do you want a patch that renames it in the kernel documentation file too?
-> 
-> Yes. The documentation definitely needs to be consistent with the
-> implementation.
-> 
->> Bryan
->>
->> On 10/25/2010 07:46 PM, Myklebust, Trond wrote:
->>> Ah, fsck... You're right.
->>>
->>> Bryan, can you instead resend your latest patch for nfs-utils? I've asked Linus to merge the kernel part, so it is time to get the userspace stuff in order too!
->>>
->>> Sent from my iPhone
->>>
->>> On Oct 25, 2010, at 19:21, "Chuck Lever" <chuck.lever@oracle.com> wrote:
->>>
->>>> I thought we were going to call this nfs.idmap ... ?
->>>>
->>>> On Oct 25, 2010, at 6:40 PM, Trond Myklebust wrote:
->>>>
->>>>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>>>
->>>>> Add nfs.upcall
->>>>>
->>>>> This patch adds the nfs.upcall program to nfs-utils.  This program is called by
->>>>> the nfs idmapper through request-keys to map between uid / user name and
->>>>> gid / group name.
->>>>>
->>>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->>>>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->>>>> ---
->>>>> aclocal/keyutils.m4           |   11 ++++
->>>>> configure.ac                  |    4 ++
->>>>> utils/Makefile.am             |    1 +
->>>>> utils/nfs.upcall/Makefile.am  |    7 +++
->>>>> utils/nfs.upcall/nfs.upcall.c |  120 +++++++++++++++++++++++++++++++++++++++++
->>>>> 5 files changed, 143 insertions(+), 0 deletions(-)
->>>>> create mode 100644 aclocal/keyutils.m4
->>>>> create mode 100644 utils/nfs.upcall/Makefile.am
->>>>> create mode 100644 utils/nfs.upcall/nfs.upcall.c
->>>>>
->>>>> diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
->>>>> new file mode 100644
->>>>> index 0000000..8aea646
->>>>> --- /dev/null
->>>>> +++ b/aclocal/keyutils.m4
->>>>> @@ -0,0 +1,11 @@
->>>>> +dnl Checks for keyutils library and headers
->>>>> +dnl
->>>>> +AC_DEFUN([AC_KEYUTILS], [
->>>>> +
->>>>> +  dnl Check for libkeyutils; do not add to LIBS if found
->>>>> +  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
->>>>> +  AC_SUBST(LIBKEYUTILS)
->>>>> +
->>>>> +  AC_CHECK_HEADERS([keyutils.h], ,
->>>>> +           [AC_MSG_ERROR([keyutils.h header not found.])])
->>>>> +])dnl
->>>>> diff --git a/configure.ac b/configure.ac
->>>>> index 3058be6..a5e8620 100644
->>>>> --- a/configure.ac
->>>>> +++ b/configure.ac
->>>>> @@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
->>>>>  dnl check for nfsidmap libraries and headers
->>>>>  AC_LIBNFSIDMAP
->>>>>
->>>>> +  dnl check for the keyutils libraries and headers
->>>>> +  AC_KEYUTILS
->>>>> +
->>>>>  dnl librpcsecgss already has a dependency on libgssapi,
->>>>>  dnl but we need to make sure we get the right version
->>>>>  if test "$enable_gss" = yes; then
->>>>> @@ -435,6 +438,7 @@ AC_CONFIG_FILES([
->>>>>    utils/mountd/Makefile
->>>>>    utils/nfsd/Makefile
->>>>>    utils/nfsstat/Makefile
->>>>> +    utils/nfs.upcall/Makefile
->>>>>    utils/showmount/Makefile
->>>>>    utils/statd/Makefile
->>>>>    tests/Makefile
->>>>> diff --git a/utils/Makefile.am b/utils/Makefile.am
->>>>> index 8665183..0104a6c 100644
->>>>> --- a/utils/Makefile.am
->>>>> +++ b/utils/Makefile.am
->>>>> @@ -4,6 +4,7 @@ OPTDIRS =
->>>>>
->>>>> if CONFIG_NFSV4
->>>>> OPTDIRS += idmapd
->>>>> +OPTDIRS += nfs.upcall
->>>>> endif
->>>>>
->>>>> if CONFIG_GSS
->>>>> diff --git a/utils/nfs.upcall/Makefile.am b/utils/nfs.upcall/Makefile.am
->>>>> new file mode 100644
->>>>> index 0000000..52afd3d
->>>>> --- /dev/null
->>>>> +++ b/utils/nfs.upcall/Makefile.am
->>>>> @@ -0,0 +1,7 @@
->>>>> +## Process this file with automake to produce Makefile.in
->>>>> +
->>>>> +sbin_PROGRAMS    = nfs.upcall
->>>>> +nfs_upcall_SOURCES = nfs.upcall.c
->>>>> +nfs_upcall_LDADD = -lnfsidmap -lkeyutils
->>>>> +
->>>>> +MAINTAINERCLEANFILES = Makefile.in
->>>>> diff --git a/utils/nfs.upcall/nfs.upcall.c b/utils/nfs.upcall/nfs.upcall.c
->>>>> new file mode 100644
->>>>> index 0000000..11b9a01
->>>>> --- /dev/null
->>>>> +++ b/utils/nfs.upcall/nfs.upcall.c
->>>>> @@ -0,0 +1,120 @@
->>>>> +
->>>>> +#include <stdarg.h>
->>>>> +#include <stdio.h>
->>>>> +#include <stdlib.h>
->>>>> +#include <string.h>
->>>>> +
->>>>> +#include <pwd.h>
->>>>> +#include <grp.h>
->>>>> +#include <keyutils.h>
->>>>> +#include <nfsidmap.h>
->>>>> +
->>>>> +#include <syslog.h>
->>>>> +
->>>>> +/* gcc nfs.upcall.c -o nfs.upcall -l nfsidmap -l keyutils */
->>>>> +
->>>>> +#define MAX_ID_LEN   11
->>>>> +#define IDMAP_NAMESZ 128
->>>>> +#define USER  1
->>>>> +#define GROUP 0
->>>>> +
->>>>> +
->>>>> +/*
->>>>> + * Find either a user or group id based on the name@domain string
->>>>> + */
->>>>> +int id_lookup(char *name_at_domain, key_serial_t key, int type)
->>>>> +{
->>>>> +    char id[MAX_ID_LEN];
->>>>> +    uid_t uid = 0;
->>>>> +    gid_t gid = 0;
->>>>> +
->>>>> +    if (type == USER) {
->>>>> +        nfs4_owner_to_uid(name_at_domain, &uid);
->>>>> +        sprintf(id, "%u", uid);
->>>>> +    } else {
->>>>> +        nfs4_group_owner_to_gid(name_at_domain, &gid);
->>>>> +        sprintf(id, "%u", gid);
->>>>> +    }
->>>>> +
->>>>> +    return keyctl_instantiate(key, id, strlen(id) + 1, 0);
->>>>> +}
->>>>> +
->>>>> +/*
->>>>> + * Find the name@domain string from either a user or group id
->>>>> + */
->>>>> +int name_lookup(char *id, key_serial_t key, int type)
->>>>> +{
->>>>> +    char name[IDMAP_NAMESZ];
->>>>> +    char domain[NFS4_MAX_DOMAIN_LEN];
->>>>> +    uid_t uid;
->>>>> +    gid_t gid;
->>>>> +    int rc = 0;
->>>>> +
->>>>> +    rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
->>>>> +    if (rc != 0) {
->>>>> +        rc = -1;
->>>>> +        goto out;
->>>>> +    }
->>>>> +
->>>>> +    if (type == USER) {
->>>>> +        uid = atoi(id);
->>>>> +        rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
->>>>> +    } else {
->>>>> +        gid = atoi(id);
->>>>> +        rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
->>>>> +    }
->>>>> +
->>>>> +    if (rc == 0)
->>>>> +        rc = keyctl_instantiate(key, &name, strlen(name), 0);
->>>>> +
->>>>> +out:
->>>>> +    return rc;
->>>>> +}
->>>>> +
->>>>> +int main(int argc, char **argv)
->>>>> +{
->>>>> +    char *arg;
->>>>> +    char *value;
->>>>> +    char *type;
->>>>> +    int rc = 1;
->>>>> +    int timeout = 600;
->>>>> +    key_serial_t key;
->>>>> +
->>>>> +    /*openlog("nfs.upcall", 0, LOG_DAEMON);*/
->>>>> +
->>>>> +    if (argc < 3)
->>>>> +        return 1;
->>>>> +
->>>>> +    arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
->>>>> +    strcpy(arg, argv[2]);
->>>>> +    type = strtok(arg, ":");
->>>>> +    value = strtok(NULL, ":");
->>>>> +
->>>>> +    if (argc == 4) {
->>>>> +        timeout = atoi(argv[3]);
->>>>> +        if (timeout < 0)
->>>>> +            timeout = 0;
->>>>> +    }
->>>>> +
->>>>> +    /*syslog(LOG_ERR, "type: %s", type);
->>>>> +    syslog(LOG_ERR, "value: %s", value);
->>>>> +    syslog(LOG_ERR, "timeout: %d", timeout);*/
->>>>> +
->>>>> +    key = strtol(argv[1], NULL, 10);
->>>>> +
->>>>> +    if (strcmp(type, "uid") == 0)
->>>>> +        rc = id_lookup(value, key, USER);
->>>>> +    else if (strcmp(type, "gid") == 0)
->>>>> +        rc = id_lookup(value, key, GROUP);
->>>>> +    else if (strcmp(type, "user") == 0)
->>>>> +        rc = name_lookup(value, key, USER);
->>>>> +    else if (strcmp(type, "group") == 0)
->>>>> +        rc = name_lookup(value, key, GROUP);
->>>>> +
->>>>> +    /* Set timeout to 5 (600 seconds) minutes */
->>>>> +    keyctl_set_timeout(key, timeout);
->>>>> +
->>>>> +    free(arg);
->>>>> +    /*closelog();*/
->>>>> +    return rc;
->>>>> +}
->>>>> -- 
->>>>> 1.7.2.3
->>>>>
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>
->>>> -- 
->>>> Chuck Lever
->>>> chuck[dot]lever[at]oracle[dot]com
->>>>
->>>>
->>>>
->>>>
->>
-> 
-> 
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/inode.c |   22 ++++++++++++++--------
+ 1 files changed, 14 insertions(+), 8 deletions(-)
+
+diff --git a/fs/inode.c b/fs/inode.c
+index 8646433..e415be4 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -172,15 +172,21 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
+ 	mapping->writeback_index = 0;
+ 
+ 	/*
+-	 * If the block_device provides a backing_dev_info for client
+-	 * inodes then use that.  Otherwise the inode share the bdev's
+-	 * backing_dev_info.
++	 * If the filesystem provides a backing_dev_info for client inodes
++	 * then use that. Otherwise inodes share default_backing_dev_info.
+ 	 */
+-	if (sb->s_bdev) {
+-		struct backing_dev_info *bdi;
+-
+-		bdi = sb->s_bdev->bd_inode->i_mapping->backing_dev_info;
+-		mapping->backing_dev_info = bdi;
++	if (sb->s_bdi && sb->s_bdi != &noop_backing_dev_info) {
++		/*
++		 * Catch cases where filesystem might be bitten by using s_bdi
++		 * instead of sb->s_bdev. Can be removed in 2.6.38.
++		 */
++		if (sb->s_bdev) {
++			struct backing_dev_info *bdi =
++			  sb->s_bdev->bd_inode->i_mapping->backing_dev_info;
++			WARN(bdi != sb->s_bdi, "s_bdev bdi %s != s_bdi %s\n",
++			     bdi->name, sb->s_bdi->name);
++		}
++		mapping->backing_dev_info = sb->s_bdi;
+ 	}
+ 	inode->i_private = NULL;
+ 	inode->i_mapping = mapping;
+-- 
+1.7.2
 
