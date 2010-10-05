@@ -1,144 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e23smtp02.au.ibm.com ([202.81.31.144]:34155 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750751Ab0JRBUa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Oct 2010 21:20:30 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.31.245])
-	by e23smtp02.au.ibm.com (8.14.4/8.13.1) with ESMTP id o9I1FtEs024007
-	for <linux-nfs@vger.kernel.org>; Mon, 18 Oct 2010 12:15:55 +1100
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o9I1KO7E704520
-	for <linux-nfs@vger.kernel.org>; Mon, 18 Oct 2010 12:20:24 +1100
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o9I1KNkh002522
-	for <linux-nfs@vger.kernel.org>; Mon, 18 Oct 2010 12:20:24 +1100
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs <linux-nfs@vger.kernel.org>,
-        Scott Romanowski <romansc@us.ibm.com>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>
-Subject: NFS sillyrename side effect
-From: Ian Munsie <imunsie@au1.ibm.com>
-To: Trond Myklebust <trond.myklebust@netapp.com>
-Date: Mon, 18 Oct 2010 12:20:19 +1100
-Message-Id: <1287362142-sup-777@au1.ibm.com>
+Received: from fieldses.org ([174.143.236.118]:48946 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757581Ab0JEWqf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Oct 2010 18:46:35 -0400
+Date: Tue, 5 Oct 2010 18:46:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Pavel Emelyanov <xemul@parallels.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond@netapp.com>
+Subject: Re: [PATCH] sunrpc: Remove useless if (task == NULL) from
+ xprt_reserve_xprt
+Message-ID: <20101005224608.GA24954@fieldses.org>
+References: <4CAB5694.5030400@parallels.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4CAB5694.5030400@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Trond,
+On Tue, Oct 05, 2010 at 08:47:16PM +0400, Pavel Emelyanov wrote:
+> The task in question is dereferenced above (and is actually never NULL).
 
-I'm currently investigating a bug report related to NFS for an internal
-project, and I wanted to get your input as I've been able to reproduce
-it on an upstream 2.6.36-rc7 kernel on Power7 hardware. I have tracked
-it down to a side effect of the nfs_sillyrename function.
+Makes sense to me.
 
-I'm not very familiar with the inner workings of the nfs layer, is the
-purpose of the sillyrename function to work around a limitation of nfs
-if a file is unlinked while in use?
+(But probably it should go through Trond unless there's some dependency
+on your patches in my tree.)
 
-It seems to me that if the sillyrename function is indeed necessary that
-we should not reveal the temporary filename it produces to userspace,
-but I wonder if that might create issues (say if userspace thinks a
-directory is empty when it acutally has a sillyrename file in it)?
+--b.
 
-Basically I want to know if the behaviour I've outlined below is
-the expected behaviour of NFS, or if you considder this a bug?
-
-
-
-The gist of the original bug report is that running the syscalls test
-suite from the Linux Test Project on an nfsroot would emit warnings on
-the recvmsg01 test, however that test never emits warnings when run
-individually. The particular warning in question is:
-
-tst_rmdir(): rmobj(/tmp/ltp-Url7aJLwfH/recZ7XHW6) failed:
-unlink(/tmp/ltp-Url7aJLwfH/recZ7XHW6/.nfs00000000019f12d80000002e) failed;
-errno=16: Device or resource busy
-
-However removing a number of preceding tests would instead produce a
-warning like the following:
-
-recvmsg01    0  TWARN  :  tst_rmdir():
-rmobj(/tmp/ltp-eenc4irncU/recRpxeMd) failed:
-lstat(/tmp/ltp-eenc4irncU/recRpxeMd/.nfs00000000400a0e9a0000023c) failed;
-errno=2: No such file or directory
-
-
-Scott (on CC), the original reporter produced that second behaviour by
-commenting out the first 475 tests and all the tests after recvmsg01.
-I've been able to produce it over 50% of the time with just the
-following two test cases:
-
-foo echo
-recvmsg01 recvmsg01
-
-Presumably this is a race and the exact conditions necessary to
-reproduce it will vary depending on network, hardware, etc.
-Scott reported that this behaviour only began after transitioning from
-2.6.31 to 2.6.32 - I haven't checked 2.6.31 to determine if the issue
-may have existed and just have been harder to produce or if 2.6.31
-really did not exhibit this behaviour.
-
-
-
-The recvmsg01 testcase sets up a temporary directory, performs a mkstemp
-to generate a temporary file within that directory which it promptly
-unlinks and creates a unix socket with that filename to perform it's
-tests. That all seems to work fine.
-
-When it cleans up it kills it's server, unlinks that unix socket then
-calls tst_rmdir() which recursively removes (by calling it's rmobj
-function) the temporary directory and it's contents.
-
-The race seems to be that when the socket is unlinked it's still in use,
-so the nfs layer performs a sillyrename on it to asynchronously unlink
-it, but before that completes the tst_rmdir function has already read
-the contents of the directory and spotted the .nfs00000... file from the
-sillyrename, which depending on the exact timing of the unlink will
-cause one of the above two warnings.
-
-
-A somewhat filtered (grep -v permission) output of the race after
-activating nfs_debug is below:
-
-setup:
-NFS: lookup(recRpxeMd/udsockOxmZAh)
-NFS: create(0:d/1074400921), udsockOxmZAh
-NFS: nfs_fhget(0:d/1074400922 ct=1)
-NFS: dentry_delete(recRpxeMd/udsockOxmZAh, 0)
-NFS: nfs_update_inode(0:d/1074400921 ct=1 info=0x7d7f)
-NFS: isize change on server for file 0:d/1074400921
-NFS: unlink(0:d/1074400921, udsockOxmZAh)
-NFS: safe_remove(recRpxeMd/udsockOxmZAh)
-NFS: dentry_delete(recRpxeMd/udsockOxmZAh, 18)
-NFS: nfs_update_inode(0:d/1074400921 ct=1 info=0x7d7f)
-NFS: isize change on server for file 0:d/1074400921
-NFS: lookup(recRpxeMd/udsockOxmZAh)
-NFS: mknod(0:d/1074400921), udsockOxmZAh
-...
-cleanup:
-NFS: unlink(0:d/1074400921, udsockOxmZAh)
-NFS: silly-rename(recRpxeMd/udsockOxmZAh, ct=3)
-NFS: trying to rename udsockOxmZAh to .nfs00000000400a0e9a0000023c
-NFS: lookup(recRpxeMd/.nfs00000000400a0e9a0000023c)
-NFS: dentry_delete(recRpxeMd/.nfs00000000400a0e9a0000023c, 10)
-NFS: nfs_update_inode(0:d/1074400921 ct=1 info=0x7d7f)
-NFS: isize change on server for file 0:d/1074400921
-NFS: nfs_update_inode(0:d/3758724786 ct=2 info=0x1fdff)
-NFS: nfs_update_inode(0:d/1074400921 ct=1 info=0x7d7f)
-NFS: dentry_delete(recRpxeMd/.nfs00000000400a0e9a0000023c, 102)
-NFS: dentry_delete(recRpxeMd/smtAmobkv, 8)
-NFS: dentry_delete(recRpxeMd/smtAmobkv, 8)
-NFS: unlink(0:d/1074400921, smtAmobkv)
-NFS: safe_remove(recRpxeMd/smtAmobkv)
-NFS: dentry_delete(recRpxeMd/smtAmobkv, 18)
-NFS: nfs_update_inode(0:d/1074400921 ct=1 info=0x7d7f)
-NFS: mtime change on server for file 0:d/1074400921
-NFS: isize change on server for file 0:d/1074400921
-NFS: lookup(recRpxeMd/.nfs00000000400a0e9a0000023c)
-NFS: dentry_delete(recRpxeMd/.nfs00000000400a0e9a0000023c, 0)
-NFS: dentry_delete(bin/recvmsg02, 8)
-
-
-Cheers,
--Ian
+> 
+> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+> ---
+>  net/sunrpc/xprt.c |    2 --
+>  1 files changed, 0 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index 953206d..64a4a94 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -199,8 +199,6 @@ int xprt_reserve_xprt(struct rpc_task *task)
+>  	if (test_and_set_bit(XPRT_LOCKED, &xprt->state)) {
+>  		if (task == xprt->snd_task)
+>  			return 1;
+> -		if (task == NULL)
+> -			return 0;
+>  		goto out_sleep;
+>  	}
+>  	xprt->snd_task = task;
+> -- 
+> 1.5.5.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
