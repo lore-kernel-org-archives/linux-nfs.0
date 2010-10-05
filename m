@@ -1,64 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:58157 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758071Ab0JVSQs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Oct 2010 14:16:48 -0400
-Subject: Re: [PATCH] xs_bind retry binding forever
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1287769536.6311.9.camel@heimdal.trondhjem.org>
-Date: Fri, 22 Oct 2010 14:15:26 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <BDE2E840-86B2-4E2F-B80D-93E6B020E765@oracle.com>
-References: <20101021183203.12776.28469.stgit@lady3jane.americas.sgi.com> <20101021183337.12776.18768.stgit@lady3jane.americas.sgi.com> <1287689917.9144.84.camel@heimdal.trondhjem.org> <48B51F5A-E060-4B0B-8AD6-1E4247C4289F@oracle.com> <1287769536.6311.9.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>, Ben Myers <bpm@sgi.com>
+Received: from moo.pl ([217.149.240.132]:55469 "EHLO moo.pl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755894Ab0JEV3T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Oct 2010 17:29:19 -0400
+Date: Tue, 5 Oct 2010 23:29:13 +0200
+From: Leszek Urbanski <tygrys@moo.pl>
+To: "Michael S. Tsirkin" <mst@redhat.com>
+Cc: Anthony Liguori <anthony@codemonkey.ws>, qemu-devel@nongnu.org,
+        netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
+        virtualization@lists.linux-foundation.org
+Subject: Re: BUG - qdev - partial loss of network connectivity
+Message-ID: <20101005212913.GA27869@moo.pl>
+References: <20100922171832.GA28721@moo.pl> <4C9A3FAF.9090503@codemonkey.ws> <20100922182049.GA29263@moo.pl> <4C9A4C77.2080806@codemonkey.ws> <20100923140437.GA9256@moo.pl> <20100926154324.GD21843@redhat.com> <20100927213203.GA28089@moo.pl>
+Content-Type: text/plain; charset=iso-8859-2
+In-Reply-To: <20100927213203.GA28089@moo.pl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+<20100927213203.GA28089@moo.pl>; from Leszek Urbanski on Mon, Sep 27, 2010 at 23:32:03 +0200
 
-On Oct 22, 2010, at 1:45 PM, Trond Myklebust wrote:
-
-> On Fri, 2010-10-22 at 11:56 -0400, Chuck Lever wrote:
->> On Oct 21, 2010, at 3:38 PM, Trond Myklebust wrote:
->> 
->>> On Thu, 2010-10-21 at 13:33 -0500, Ben Myers wrote:
->>>> Retry bind for reserved source ports forever.  Add an error message when we
->>>> have a hard time binding one.
->>> 
->>> NACK. This approach leads to the process spinning forever in that loop,
->>> which is exactly why we introduced the limit in the first place. See all
->>> the old archived bug report emails about 'rpciod taking 100% cpu'.
->> 
->> The root problem seems to be the hard loop.  Thinking out loud, what if the client's FSM or some other higher up layer performed the retry, with a short delay inserted after each attempt?
+> > > > >It's vanilla 2.6.32.22, but I also reproduced this on Debian's 2.6.32-23
+> > > > >(based on 2.6.32.21).
+> > > > >
+> > > > >If offload is the only difference, I'll play with different offload
+> > > > >options and check which one causes it.
+> > > > >   
+> > > > 
+> > > > It's not technically the only difference but it's the most likely 
+> > > > culprit IMHO.
+> > > 
+> > > udp fragmentation offload is definitely the culprit.
+> > 
+> > I see. Most likely guest bug - won't be the first bug around UFO.
+> > If so pls copy netdev linux-nfs and virtualization.
+> > Do you see anything in dmesg? Can try 2.6.36-rc5?
 > 
-> The problem isn't only the hard loop. The reason why we return the
-> EADDRINUSE is in order to allow quick failure of mounts and/or
-> automounts when we can't bind the socket.
+> (for reference: first post is at:
+> http://lists.nongnu.org/archive/html/qemu-devel/2010-09/msg01685.html )
 > 
-> I suggest 2 changes:
-> 
->     1. In case of error, pass the return value from xs_bind to the
->        pending tasks
->     2. Add a handler for EADDRINUSE in call_status(),
->        xprt_connect_status() and call_connect_status(). Make sure that
->        call_status() and call_connect_status() fail for SOFTCONN tasks,
->        and that they print an error message, delay and retry in the
->        case of ordinary hard tasks.
+> I can't reproduce it on 2.6.36-rc5. Do you have an idea which patch may have
 
-The thing is, though, we don't want mounts to fail in this case; that's the presenting problem Ben is trying to address.
+This one definitely fixes it: http://patchwork.ozlabs.org/patch/55643/
 
-This is not the same problem as SOFTCONN -- it's entirely one of how the local system allocates its own resources.  Thus, theoretically, it's one where it is possible for us to behave entirely predictably.  At its heart, our privileged port allocation mechanism is really an unfair way to allocate this resource, since there's no way to prevent starvation.
+(Herbert Xu: udp: Fix bogus UFO packet generation)
 
-I don't know if this is within the realm of possibilities, but it would be nice, for example, if the MNT client and the rpcbind client could each hold onto a privileged TCP port (to prevent others from using it) and just re-use that port whenever a new request needs to be sent to any remote host.
+The patch works with 2.6.32.24 too - it should probably be backported to
+2.6.32.x.
 
-It would be fun to use net namespaces to allocate a separate port range that no-one else could touch, but I don't think that's possible without a separate IP address.
-
-Ben, our client already has the ability to use unprivileged ports for MNT, as long as the server's mountd is configured to accept it.  That, plus stipulating mountproto=udp, may give you more relief.
 
 -- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Leszek "Tygrys" Urbanski, SCSA, SCNA
+ "Unix-to-Unix Copy Program;" said PDP-1. "You will never find a more
+  wretched hive of bugs and flamers. We must be cautious." -- DECWARS
+     http://cygnus.moo.pl/ -- Cygnus High Altitude Balloon
