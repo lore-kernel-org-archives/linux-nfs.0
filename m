@@ -1,115 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:51917 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753639Ab0JEUYt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Oct 2010 16:24:49 -0400
-Date: Tue, 5 Oct 2010 16:24:38 -0400
-From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH] nfs-utils: Move common code into support
-Message-ID: <20101005202438.GA15113@merit.edu>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:46279 "EHLO
+	mx01.colomx.prod.int.phx2.redhat.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1759221Ab0JFP7q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Oct 2010 11:59:46 -0400
+Date: Wed, 6 Oct 2010 11:59:20 -0400 (EDT)
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <26335422.12.1286380757582.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+In-Reply-To: <1286285838.3338.1.camel@heimdal.trondhjem.org>
+Subject: Re: NFS4 clients cannot reclaim locks
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This is a re-worked version of David P. Quigley's patch sent to the list on
-22 Jun 2010.  I just made it apply against current source.
 
-There are several source files and headers present in the ./utils/idmapd
-directory which are also usable in a doimapd daemon. Because of this we move
-that support into the support directory such that it can be shared by both
-daemons.
+----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- support/include/nfslib.h                 |    6 ++++++
- support/nfs/Makefile.am                  |    2 +-
- {utils/idmapd => support/nfs}/atomicio.c |    0
- {utils/idmapd => support/nfs}/strlcat.c  |    0
- {utils/idmapd => support/nfs}/strlcpy.c  |    0
- utils/idmapd/Makefile.am                 |    4 ----
- utils/idmapd/idmapd.c                    |    4 ----
- 7 files changed, 7 insertions(+), 9 deletions(-)
- rename {utils/idmapd => support/nfs}/atomicio.c (100%)
- rename {utils/idmapd => support/nfs}/strlcat.c (100%)
- rename {utils/idmapd => support/nfs}/strlcpy.c (100%)
+> Yup. That makes sense. Does the following patch help?
+> 
+> Cheers
+>   Trond
+> --------------------------------------------------------------------------------------------------------
+> NFSv4: Fix open recovery
+> 
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> NFSv4 open recovery is currently broken: since we do not clear the
+> state->flags states before attempting recovery, we end up with the
+> 'can_open_cached()' function triggering. This again leads to no OPEN
+> call
+> being put on the wire.
+> 
+> Reported-by: Sachin Prabhu <sprabhu@redhat.com>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> 
+>  fs/nfs/nfs4proc.c |    3 +++
+>  1 files changed, 3 insertions(+), 0 deletions(-)
+> 
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 089da5b..01b4817 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1120,6 +1120,7 @@ static int nfs4_open_recover(struct
+> nfs4_opendata *opendata, struct nfs4_state *
+>  	clear_bit(NFS_DELEGATED_STATE, &state->flags);
+>  	smp_rmb();
+>  	if (state->n_rdwr != 0) {
+> +		clear_bit(NFS_O_RDWR_STATE, &state->flags);
+>  		ret = nfs4_open_recover_helper(opendata, FMODE_READ|FMODE_WRITE,
+> &newstate);
+>  		if (ret != 0)
+>  			return ret;
+> @@ -1127,6 +1128,7 @@ static int nfs4_open_recover(struct
+> nfs4_opendata *opendata, struct nfs4_state *
+>  			return -ESTALE;
+>  	}
+>  	if (state->n_wronly != 0) {
+> +		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
+>  		ret = nfs4_open_recover_helper(opendata, FMODE_WRITE, &newstate);
+>  		if (ret != 0)
+>  			return ret;
+> @@ -1134,6 +1136,7 @@ static int nfs4_open_recover(struct
+> nfs4_opendata *opendata, struct nfs4_state *
+>  			return -ESTALE;
+>  	}
+>  	if (state->n_rdonly != 0) {
+> +		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
+>  		ret = nfs4_open_recover_helper(opendata, FMODE_READ, &newstate);
+>  		if (ret != 0)
+>  			return ret;
+> 
 
-diff --git a/support/include/nfslib.h b/support/include/nfslib.h
-index 3db5bec..53ece0e 100644
---- a/support/include/nfslib.h
-+++ b/support/include/nfslib.h
-@@ -163,6 +163,12 @@ void closeall(int min);
- int			svctcp_socket (u_long __number, int __reuse);
- int			svcudp_socket (u_long __number);
- 
-+/* Misc shared code prototypes */
-+size_t  strlcat(char *, const char *, size_t);
-+size_t  strlcpy(char *, const char *, size_t);
-+ssize_t atomicio(ssize_t (*f) (int, void*, size_t),
-+		 int, void *, size_t);
-+
- 
- #define UNUSED(x) UNUSED_ ## x __attribute__((unused))
- 
-diff --git a/support/nfs/Makefile.am b/support/nfs/Makefile.am
-index 60400b2..05c2fc4 100644
---- a/support/nfs/Makefile.am
-+++ b/support/nfs/Makefile.am
-@@ -5,7 +5,7 @@ libnfs_a_SOURCES = exports.c rmtab.c xio.c rpcmisc.c rpcdispatch.c \
- 		   xlog.c xcommon.c wildmat.c nfsclient.c \
- 		   nfsexport.c getfh.c nfsctl.c rpc_socket.c getport.c \
- 		   svc_socket.c cacheio.c closeall.c nfs_mntent.c conffile.c \
--		   svc_create.c
-+		   svc_create.c atomicio.c strlcpy.c strlcat.c
- 
- MAINTAINERCLEANFILES = Makefile.in
- 
-diff --git a/utils/idmapd/atomicio.c b/support/nfs/atomicio.c
-similarity index 100%
-rename from utils/idmapd/atomicio.c
-rename to support/nfs/atomicio.c
-diff --git a/utils/idmapd/strlcat.c b/support/nfs/strlcat.c
-similarity index 100%
-rename from utils/idmapd/strlcat.c
-rename to support/nfs/strlcat.c
-diff --git a/utils/idmapd/strlcpy.c b/support/nfs/strlcpy.c
-similarity index 100%
-rename from utils/idmapd/strlcpy.c
-rename to support/nfs/strlcpy.c
-diff --git a/utils/idmapd/Makefile.am b/utils/idmapd/Makefile.am
-index 4218048..4328e41 100644
---- a/utils/idmapd/Makefile.am
-+++ b/utils/idmapd/Makefile.am
-@@ -11,12 +11,8 @@ EXTRA_DIST = \
- 	idmapd.conf
- 
- idmapd_SOURCES = \
--	atomicio.c \
- 	idmapd.c \
--	strlcat.c \
--	strlcpy.c \
- 	\
--	cfg.h \
- 	nfs_idmap.h \
- 	queue.h
- 
-diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-index b76607a..76a56ef 100644
---- a/utils/idmapd/idmapd.c
-+++ b/utils/idmapd/idmapd.c
-@@ -158,10 +158,6 @@ static int nfsdopenone(struct idmap_client *);
- static void nfsdreopen_one(struct idmap_client *);
- static void nfsdreopen(void);
- 
--size_t  strlcat(char *, const char *, size_t);
--size_t  strlcpy(char *, const char *, size_t);
--ssize_t atomicio(ssize_t (*f) (int, void*, size_t),
--		 int, void *, size_t);
- void    mydaemon(int, int);
- void    release_parent(void);
- 
--- 
-1.7.0.4
 
+Yes. The patch works. 
+
+As expected, repeated open calls are made with claim-type set to NULL. For each of these calls, a NFS4ERR_GRACE is returned by the server as long as it is in Grace period. Once the grace period has completed, the open call succeeds, a new stateid is set and the write operation continues.
+
+Thank You
+Sachin Prabhu
