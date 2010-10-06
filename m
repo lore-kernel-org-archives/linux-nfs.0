@@ -1,101 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:64447 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754093Ab0JGSME convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 14:12:04 -0400
-Received: by bwz11 with SMTP id 11so102390bwz.19
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Oct 2010 11:12:03 -0700 (PDT)
-In-Reply-To: <AANLkTin6MDKMEPxZR=qcH5gaF0KKpsbg12=w7u8Xm8cN@mail.gmail.com>
-References: <1286480230-9418-1-git-send-email-andros@netapp.com>
-	<1286480230-9418-2-git-send-email-andros@netapp.com>
-	<1286480230-9418-3-git-send-email-andros@netapp.com>
-	<4CADFE2E.7050401@panasas.com>
-	<AANLkTin6MDKMEPxZR=qcH5gaF0KKpsbg12=w7u8Xm8cN@mail.gmail.com>
-Date: Thu, 7 Oct 2010 14:12:02 -0400
-Message-ID: <AANLkTi=sMXvPLyNepS9CqVYX1+gAVhq4uA1t8nT4LA7M@mail.gmail.com>
-Subject: Re: [PATCH 3/3] pnfs_submit: enforce requested DS only pNFS role
-From: Fred Isaman <iisaman@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: andros@netapp.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:46654 "EHLO
+	mx01.colomx.prod.int.phx2.redhat.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S932666Ab0JFQB0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Oct 2010 12:01:26 -0400
+Date: Wed, 6 Oct 2010 12:01:25 -0400 (EDT)
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <3901595.16.1286380884167.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+In-Reply-To: <18697573.14.1286380841649.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
+Subject: Re: NFS4 clients cannot reclaim locks
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Oct 7, 2010 at 2:10 PM, Fred Isaman <iisaman@netapp.com> wrote:
-> On Thu, Oct 7, 2010 at 1:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On 2010-10-07 15:37, andros@netapp.com wrote:
->>> From: Andy Adamson <andros@netapp.com>
->>>
->>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>> ---
->>>  fs/nfs/nfs4filelayoutdev.c |    5 -----
->>>  fs/nfs/nfs4state.c         |    5 +++++
->>>  2 files changed, 5 insertions(+), 5 deletions(-)
->>>
->>> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
->>> index e0edf93..1f0ab62 100644
->>> --- a/fs/nfs/nfs4filelayoutdev.c
->>> +++ b/fs/nfs/nfs4filelayoutdev.c
->>> @@ -183,11 +183,6 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
->>>               goto out_put;
->>>       }
->>>       /*
->>> -      * Mask the (possibly) returned EXCHGID4_FLAG_USE_PNFS_MDS pNFS role
->>> -      * The is_ds_only_session depends on this.
->>> -      */
->>> -     clp->cl_exchange_flags &= ~EXCHGID4_FLAG_USE_PNFS_MDS;
->>> -     /*
->>>        * Set DS lease equal to the MDS lease, renewal is scheduled in
->>>        * create_session
->>>        */
->>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->>> index 91584ad..e2fc175 100644
->>> --- a/fs/nfs/nfs4state.c
->>> +++ b/fs/nfs/nfs4state.c
->>> @@ -188,6 +188,7 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
->>>  int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
->>>  {
->>>       int status;
->>> +     u32 req_exchange_flags = clp->cl_exchange_flags;
->>>
->>>       nfs4_begin_drain_session(clp);
->>>       status = nfs4_proc_exchange_id(clp, cred);
->>> @@ -196,6 +197,10 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
->>>       status = nfs4_proc_create_session(clp);
->>>       if (status != 0)
->>>               goto out;
->>> +     if (is_ds_only_session(req_exchange_flags))
->>> +             /* Mask the (possibly) returned MDS and non-pNFS roles */
->>
->> This comment does not really add anything substantial that the code doesn't tell you :)
->>
->>> +             clp->cl_exchange_flags &=
->>> +                  ~(EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_NON_PNFS);
->>
->> I'm not why you want to mask out EXCHGID4_FLAG_USE_NON_PNFS.
->> If the server is not a DS why not just return an error?
->
-> We *know* _USE_PNFS_DS is set.  We just want to mask out
-> _USE_NON_PNFS, which  would indicate it is also a 4.0 server.
->
 
-Oops...we *know* _PNFS_DS is set in req_exchange_flags.  As you point
-out, we would like to know it is in the reply.
+----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
+> ...Here is the second patch.
+> 
+> Cheers
+>   Trond
+> ------------------------------------------------------------------------------------------------------
+> NFSv4: Don't call nfs4_state_mark_reclaim_reboot() from error
+> handlers
+> 
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> In the case of a server reboot, the state recovery thread starts by
+> calling
+> nfs4_state_end_reclaim_reboot() in order to avoid edge conditions
+> when
+> the server reboots while the client is in the middle of recovery.
+> 
+> However, if the client has already marked the nfs4_state as requiring
+> reboot recovery, then the above behaviour will cause the recovery
+> thread to
+> treat the open as if it was part of such an edge condition: the open
+> will
+> be recovered as if it was part of a lease expiration (and all the
+> locks
+> will be lost).
+> Fix is to remove the call to nfs4_state_mark_reclaim_reboot from
+> nfs4_async_handle_error(), and nfs4_handle_exception(). Instead we
+> leave it
+> to the recovery thread to do this for us.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> 
+>  fs/nfs/nfs4proc.c |    6 ------
+>  1 files changed, 0 insertions(+), 6 deletions(-)
+> 
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 01b4817..74aa54e 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -255,9 +255,6 @@ static int nfs4_handle_exception(const struct
+> nfs_server *server, int errorcode,
+>  			nfs4_state_mark_reclaim_nograce(clp, state);
+>  			goto do_state_recovery;
+>  		case -NFS4ERR_STALE_STATEID:
+> -			if (state == NULL)
+> -				break;
+> -			nfs4_state_mark_reclaim_reboot(clp, state);
+>  		case -NFS4ERR_STALE_CLIENTID:
+>  		case -NFS4ERR_EXPIRED:
+>  			goto do_state_recovery;
+> @@ -3493,9 +3490,6 @@ nfs4_async_handle_error(struct rpc_task *task,
+> const struct nfs_server *server,
+>  			nfs4_state_mark_reclaim_nograce(clp, state);
+>  			goto do_state_recovery;
+>  		case -NFS4ERR_STALE_STATEID:
+> -			if (state == NULL)
+> -				break;
+> -			nfs4_state_mark_reclaim_reboot(clp, state);
+>  		case -NFS4ERR_STALE_CLIENTID:
+>  		case -NFS4ERR_EXPIRED:
+>  			goto do_state_recovery;
 
-Fred
+Yes. The patch works for me.
 
-> Fred
->
->>
->> Benny
->>
->>>       nfs41_setup_state_renewal(clp);
->>>       nfs_mark_client_ready(clp, NFS_CS_READY);
->>>  out:
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
+An open call is made to the server with claim-type set to claim previous. This resets the stateid and the write operation can continue.
+
+Thank You
+
+Sachin Prabhu
+
