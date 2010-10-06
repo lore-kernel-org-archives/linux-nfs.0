@@ -1,54 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32677 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60167 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758652Ab0J1Meh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Oct 2010 08:34:37 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o9SCYbXW027432
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 28 Oct 2010 08:34:37 -0400
-Date: Thu, 28 Oct 2010 08:34:35 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] [bz 192] Fixed Regression in NFS Direct I/O path
-Message-ID: <20101028083435.35c990f0@tlielax.poochiereds.net>
-In-Reply-To: <1288268274-9444-1-git-send-email-steved@redhat.com>
-References: <1288268274-9444-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1760478Ab0JGNLA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Oct 2010 09:11:00 -0400
+Received: from localhost.localdomain (laino1-lxp.hq.netapp.com [10.58.48.170])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o97DAgWA017616
+	for <linux-nfs@vger.kernel.org>; Thu, 7 Oct 2010 06:10:45 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/4] pnfs_submit: Only update stateid if it is more recent than current
+Date: Wed,  6 Oct 2010 16:35:15 -0400
+Message-Id: <1286397317-17881-3-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1286397317-17881-1-git-send-email-iisaman@netapp.com>
+References: <1286397317-17881-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 28 Oct 2010 08:17:54 -0400
-Steve Dickson <steved@redhat.com> wrote:
+Right now, when we set the stateid, we blindly overwrite the current
+one, allowing the seqid to incorrectly roll backward.
 
-> A typo, introduced by commit f11ac8db, in the nfs_direct_write()
-> routine causes writes with O_DIRECT set to fail with a ENOMEM error.
-> 
-> Found-by: Jeff Layton <jlayton@redhat.com>
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  fs/nfs/direct.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index 064a809..84d3c8b 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -873,7 +873,7 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
->  	dreq->inode = inode;
->  	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
->  	dreq->l_ctx = nfs_get_lock_context(dreq->ctx);
-> -	if (dreq->l_ctx != NULL)
-> +	if (dreq->l_ctx == NULL)
->  		goto out_release;
->  	if (!is_sync_kiocb(iocb))
->  		dreq->iocb = iocb;
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   38 ++++++++++++++++++++++++++++++++------
+ 1 files changed, 32 insertions(+), 6 deletions(-)
 
-Also, since get_lock_context holds references, this prevents the fs
-from being unmounted. It looks like this bug is in 2.6.36 too, so this
-may be suitable for stable series as well.
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 39bce9b..555955b 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -459,16 +459,42 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+ 	}
+ }
+ 
++/* update lo->stateid with new if is more recent
++ *
++ * lo->stateid could be the open stateid, in which case we just use what given.
++ */
+ static void
+ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+-			const nfs4_stateid *stateid)
++			const nfs4_stateid *new)
+ {
+-	/* TODO - should enforce that embedded seqid, in the case
+-	 * that the two stateid.others are equal,  only increases.
+-	 * Complicated by wrap-around.
+-	 */
++	nfs4_stateid *old = &lo->stateid;
++	bool overwrite = false;
++
+ 	write_seqlock(&lo->seqlock);
+-	memcpy(lo->stateid.data, stateid->data, sizeof(lo->stateid.data));
++	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
++	    memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
++		overwrite = true;
++	else {
++		u32 oldseq, newseq, limit;
++
++		oldseq = be32_to_cpu(old->stateid.seqid);
++		newseq = be32_to_cpu(new->stateid.seqid);
++		/* There are no good bounds on window size, so just
++		 * use a ridiculously large window of 2^31.
++		 */
++		limit = oldseq + (1 << 31);
++		if (oldseq < limit) {
++			/* The easy, non-wraparound case */
++			if (oldseq < newseq && newseq < limit)
++				overwrite = true;
++		} else {
++			/* Near wraparound edge */
++			if (oldseq < newseq || newseq < limit)
++				overwrite = true;
++		}
++	}
++	if (overwrite)
++		memcpy(&old->stateid, &new->stateid, sizeof(new->stateid));
+ 	write_sequnlock(&lo->seqlock);
+ }
+ 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.2.1
+
