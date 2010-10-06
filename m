@@ -1,192 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:60803 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750825Ab0JMKcQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 06:32:16 -0400
-Received: by bwz15 with SMTP id 15so3063397bwz.19
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 03:32:15 -0700 (PDT)
-Date: Wed, 13 Oct 2010 06:32:14 -0400
-Message-ID: <AANLkTikoiWGYs+nEtP7YoBkzsc6c0dBhwkxZzYKc7k3h@mail.gmail.com>
-Subject: LAYOUTGET/LAYOUTRETURN/CB_RECALL sequencing
+Received: from mx2.netapp.com ([216.240.18.37]:60167 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760537Ab0JGNLA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Oct 2010 09:11:00 -0400
+Received: from localhost.localdomain (laino1-lxp.hq.netapp.com [10.58.48.170])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o97DAgWC017616
+	for <linux-nfs@vger.kernel.org>; Thu, 7 Oct 2010 06:10:46 -0700 (PDT)
 From: Fred Isaman <iisaman@netapp.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 4/4] pnfs_submit: Fix clp refcounting in layout recalls
+Date: Wed,  6 Oct 2010 16:35:17 -0400
+Message-Id: <1286397317-17881-5-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1286397317-17881-1-git-send-email-iisaman@netapp.com>
+References: <1286397317-17881-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Here is my outline of how to deal with layout stateid and RPC races.
-There are two methods outlined, though both end up being similar.  The
-first resolves issues by storing replies and processing them in same
-order they are processed on the server.  The second by tossing any
-LAYOUTGET replies we get that we notice were done before a
-LAYOUTRETURN we processed.  Any input you have would be appreciated.
+We were issing a put, and doing pointless zero checking on clp for
+which we hold a reference.
 
-Fred
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/callback_proc.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-The pro/cons of each that I see are:
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 5a996b5..6b560ce 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -304,8 +304,7 @@ static int pnfs_async_return_layout(struct nfs_client *clp, struct inode *inode,
+ 
+ 	init_completion(&data.started);
+ 	__module_get(THIS_MODULE);
+-	if (!atomic_inc_not_zero(&clp->cl_count))
+-		goto out_put_no_client;
++	atomic_inc(&clp->cl_count);
+ 
+ 	t = kthread_run(pnfs_recall_layout, &data, "%s", "pnfs_recall_layout");
+ 	if (IS_ERR(t)) {
+@@ -320,7 +319,6 @@ static int pnfs_async_return_layout(struct nfs_client *clp, struct inode *inode,
+ 	return data.result;
+ out_module_put:
+ 	nfs_put_client(clp);
+-out_put_no_client:
+ 	clear_bit(NFS4CLNT_LAYOUT_RECALL, &clp->cl_state);
+ 	module_put(THIS_MODULE);
+ 	return status;
+@@ -643,7 +641,7 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy)
+ 	status = cpu_to_be32(NFS4ERR_INVAL);
+ 	if (!validate_bitmap_values((const unsigned long *)
+ 				    &args->craa_type_mask))
+-		return status;
++		goto out_put;
+ 
+ 	status = cpu_to_be32(NFS4_OK);
+ 	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, (const unsigned long *)
+@@ -659,6 +657,8 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy)
+ 
+ 	if (flags)
+ 		nfs_expire_all_delegation_types(clp, flags);
++out_put:
++	nfs_put_client(clp);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+ 	return status;
+-- 
+1.7.2.1
 
-ordered list:
-pro:
-  Works well with segmented layouts
-  Not wasting effort, sending LAYOUTGETs only to ignore the replies.
-This becomes more of an issue when segmented layouts come into play.
-con:
-  Somewhat more complicated code.
-  Delay issues - we may wait unecessarily if we have sent a bunch of
-LAYOUTGETs with no interspersed LAYOUTRECALLs (though this could be
-avoided by tracking more data.  As a future optimization, we could
-process an LGET reply received while we have no outstanding LRETURNS
-sent or preceeding the LGET in the ordered reply list).
-
-barrier:
-pro:
-  simpler code
-  no waiting for delayed replies, just continue on and ignore the
-reply when it arives
-con:
-  LAYOUTGETs sent may be wasted
-  method does not generalize well to segmented layouts
-
-
-
-
-ordered list method
-==================
-
-list - consists of LGET, LRETURN responses
-expected = next seqid we should actively process
-STATE of layout cache stateid - one of NONE, ESTABLISHING,
-ESTABLISHED, used to ensure only a single LAYOUTGET with an open
-stateid goes out, as it gets painful otherwise
-ordered list attached to inode contains LGET and LRETURN replies
-FIFO list attached to nfs_client contains CB_RECALL data
-
-LAYOUTGET
-  in get_layoutstateid:
-    if STATE is NONE, wait for outstanding==0, then grab open stateid,
-move state to ESTABLISHING, expected = 1
-    if STATE is ESTABLISHING, wait until STATE changes
-    if STATE is ESTABLISHED, grab layout stateid
-  in prepare:
-    if matches any entry in FIFO list, wait, then go back to get_layoutstateid
-    outstanding++
-  in done:
-    put reply on list, ordered by seqid
-  in post processing:
-    while first's seqid == expected or infinity:
-      pull first off list
-      if LAYOUTGET:
-        insert into inode layout cache
-      else if LAYOUTRETURN:
-        remove from inode layout cache
-      update or invalidate the layout stateid
-      outstanding--, on zero wake waiters
-      expected++
-      free memory
-      move STATE to ESTABLISHED if necessary, and wake waiters
-
-CB_RECALL:
-  in RPC thread:
-    add details to FIFO list hung on nfs_client
-    mark lsegs invalid to start draining io (could done in LRETURN)
-    in FILE case:
-      update layout stateid
-      move STATE to ESTABLISHED if necessary, and wake waiters
-    schedule worker thread to run (why not use state manager)
-    return OK/NOMATCHING depending on if we marked any lsegs invalid
-  in worker thread:
-    while entry in FIFO list:
-      if FILE:
-        wait for expected == CB_RECALL's seqid
-	expected++
-      cycle through FILE LAYOUTRETURNS that need to be sent (or
-forgotten - used to drain io)
-      wait for those to finish
-      send non-FILE LAYOUTRETURN if needed
-      wait for reply
-      remove entry from FIFO list and wake waiters
-
-LAYOUTRETURN
-  in prepare:
-    outstanding++
-    if FILE
-      wait for io to drain
-      if triggered by nonFILE, abort the RPC and forget the layout in
-post processing
-    else
-      pass (we've taken care of draining by the time we get here)
-  in done:
-    if error - who cares? just forget the layout in post processing (seqid==???)
-    if ok, add to list, ordered by seqid, with no seqid==infinity
-  in post processing
-    do same as for layoutget
-
-=========================================================================
-
-barrier method
-==============
-
-barrier consists of a stateid, seqid + other.
-Anything below the barrier is just ignored, as we were supposed to
-wait for it before continuing.  But it is functionally equivalent to
-"forget" response.
-
-LAYOUTGET
-  in get_layoutstateid:
-    if state is NONE, grab open stateid, barrier=0, move state to ESTABLISHING
-    if state is ESTABLISHING, wait until state changes
-    if state is ESTABLISHED, grab layout stateid
-  in prepare
-    if matches any entry in FIFO list, wait, then go back to get_layoutstateid
-    (we could just send the LAYOUTGET, but since need FIFO list
-anyway, why not use it)
-    outstanding++
-  in post processing
-    move state to ESTABLISHED if necessary and wake waiters
-    if seqid < barrier, or INRECALL mark on wider struct, toss (forget) layout
-    process the layoutget
-    update layout stateid
-    outstanding--, on zero wake waiters
-
-CB_RECALL
-  in RPC thread:
-    add details to FIFO list hung on nfs_client
-    mark lsegs invalid to start draining io (could done in LRETURN)
-    in FILE case:
-      update layout stateid
-      move STATE to ESTABLISHED if necessary, and wake waiters
-      set barrier to CB_RECALL seqid
-    schedule worker thread to run (why not use state manager)
-    return OK/NOMATCHING depending on if we marked any lsegs invalid
-  in worker thread
-    while entry in FIFO list:
-      cycle through FILE LAYOUTRETURNS that need to be sent (or
-forgotten - used to drain io)
-      wait for those to finish
-      send non-FILE LAYOUTRETURN if needed
-      wait for reply
-      remove entry from FIFO list and wake waiters
-
-LAYOUTRETURN
-  in prepare:
-    outstanding++
-    if FILE
-      wait for io to drain
-      if triggered by nonFILE, abort the RPC and forget the layout in
-post processing
-    else
-      pass (we've taken care of draining by the time we get here)
-  in done:
-    if error - who cares? just forget the layout in post processing
-(barrier==???)
-    if ok, set barrier to LAYOUTRETURN seqid if exists, else infinity
-  in post processing
-    if LAYOUT seqid exist:
-      update seqid
-      set barrier = seqid
-    else:
-      invalidate stateid (set state to NONE, barrier to 0)
-    outstanding--
-
-=========================================================================
