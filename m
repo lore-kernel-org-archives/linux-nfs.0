@@ -1,86 +1,24 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og108.obsmtp.com ([64.18.0.186]:40876 "HELO
-	exprod5og108.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753333Ab0J1NLe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 09:11:34 -0400
-Message-ID: <4CC97683.2010004@panasas.com>
-Date: Thu, 28 Oct 2010 15:11:31 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] SQUASHME: pnfs: filelayout: print_ds should use dprintk
-References: <4CC86D96.8020803@panasas.com>	 <1288203860-26920-1-git-send-email-bhalevy@panasas.com>	 <AANLkTikKpCO_xYjOpj74AiptyDjtMtJJhQaObksF_+LE@mail.gmail.com>	 <4CC8863B.3080504@panasas.com>	 <AANLkTinsRNKCOQZjH4kYTTou-a+J02dM8nB=WL_xu7Wb@mail.gmail.com>	 <4CC892E1.3070703@panasas.com>	 <1288214583.13431.19.camel@heimdal.trondhjem.org>	 <4CC899B7.3080904@panasas.com> <1288215171.13431.20.camel@heimdal.trondhjem.org> <4CC89CBF.9010801@panasas.com>
-In-Reply-To: <4CC89CBF.9010801@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:49535 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754097Ab0JGNK7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Oct 2010 09:10:59 -0400
+Received: from localhost.localdomain (laino1-lxp.hq.netapp.com [10.58.48.170])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o97DAgW8017616
+	for <linux-nfs@vger.kernel.org>; Thu, 7 Oct 2010 06:10:44 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/4] pnfs-submit: misc fixes in CB_LAYOUTRECALL and layout stateid code
+Date: Wed,  6 Oct 2010 16:35:13 -0400
+Message-Id: <1286397317-17881-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2010-10-27 23:42, Benny Halevy wrote:
-> On 2010-10-27 23:32, Trond Myklebust wrote:
->> On Wed, 2010-10-27 at 23:29 +0200, Benny Halevy wrote:
->>> On 2010-10-27 23:23, Trond Myklebust wrote:
->>>> On Wed, 2010-10-27 at 23:00 +0200, Benny Halevy wrote:
->>>>> On 2010-10-27 22:17, Fred Isaman wrote:
->>>>>> On Wed, Oct 27, 2010 at 4:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->>>>>>> On 2010-10-27 21:49, Fred Isaman wrote:
->>>>>>>> The change to printk was in response to Trond's complaint about
->>>>>>>> successive dprintks.
->>>>>>>>
->>>>>>>> Instead, the following would work:
->>>>>>>>
->>>>>>>>
->>>>>>>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->>>>>>>> index 5f52e6f..2ce393c 100644
->>>>>>>> --- a/fs/nfs/nfs4filelayout.c
->>>>>>>> +++ b/fs/nfs/nfs4filelayout.c
->>>>>>>> @@ -585,7 +585,8 @@ filelayout_commit(struct nfs_write_data *data, int sync)
->>>>>>>>               }
->>>>>>>
->>>>>>> If we're going this way, the ifdebug could cover the following
->>>>>>> printout as well...
->>>>>>>
->>>>>>
->>>>>> Did you mean preceding printout?  By the way - the complaint about
->>>>>
->>>>> Yeah, preceding the call to print_ds (following my comment :)
->>>>>
->>>>>> successive dprintks was regarding
->>>>>> print_ds_list repeatedly calling print_ds, which at the time used dprintk.
->>>>>
->>>>> Why do we care to optimize the debug case so much?
->>>>> print_ds_list is already calling print_ds inside ifdebug(FACILITY)
->>>>> so the common, non-debug case is optimized correctly. I.e. we don't
->>>>> repeatedly check the debug flag normally.
->>>>
->>>> It's not about optimizing the debug case. It's about avoiding having to
->>>> check ifdebug(FACILITY) all the time when we're _not_ debugging.
->>>
->>> Right, and so we do, as the whole loop in print_ds_list is enclosed
->>> in ifdebug(FACILITY).
->>
->> In that case, I agree: the whole thing can be converted to use ordinary
->> printks...
-> 
-> The point is it has a singular caller outside of this loop for which
-> the caller needs to check ifdebug(FACILITY) before calling print_ds.
-> Not a big deal, but I think it'd be cleaner if print_ds will do a dprintk
-> to simplify its singular usage, while the cost of that will be extra tests
-> when called, possibly many times, in debug mode from print_ds_list.
+Preparing for second submission wave, here are some misc fixes to the
+LAYOUTRETURN and callback code, that all apply to the top of Benny's
+pnfs-submit branch
 
-Nevermind, I just merged Fred's patch instead.
-No need to spend that much energy on cosmetics in this case :)
+Fred
 
-Benny
-
-> 
-> Benny
-> 
->>
->> Trond
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
