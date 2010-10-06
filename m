@@ -1,52 +1,155 @@
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] nfs-utils typo
-Date: Tue, 5 Oct 2010 22:34:18 -0400
-Message-ID: <FA907009-83DF-4B4D-9687-B5879EB96B97@oracle.com>
-References: <20101005194304.GA7508@merit.edu>
+Subject: Re: [PATCH v2 9/13] sunrpc: Merge the xs_bind code
+Date: Tue, 5 Oct 2010 23:04:16 -0400
+Message-ID: <AFE62DED-CFFF-4EC4-A879-DBFFDECABE07@oracle.com>
+References: <4CA9CDA8.4010407@parallels.com> <4CA9CEE8.9050404@parallels.com> <66FA6AAD-87DC-4B81-8DAC-8F1D4FF7B72E@oracle.com> <4CAABAAB.8040608@parallels.com> <4CAB11A4.7000306@parallels.com>
 Mime-Version: 1.0 (Apple Message framework v1081)
 Content-Type: text/plain; charset=us-ascii
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
-	peter honeyman <honey@citi.umich.edu>
-To: Jim Rees <rees@umich.edu>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: Pavel Emelyanov <xemul@parallels.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:59972 "EHLO
+Received: from rcsinet10.oracle.com ([148.87.113.121]:60641 "EHLO
 	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758266Ab0JFCfL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Oct 2010 22:35:11 -0400
-In-Reply-To: <20101005194304.GA7508-8f4Pc2RrbJmHXe+LvDLADg@public.gmane.org>
+	with ESMTP id S1758492Ab0JFDGD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Oct 2010 23:06:03 -0400
+In-Reply-To: <4CAB11A4.7000306@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Oct 5, 2010, at 3:43 PM, Jim Rees wrote:
+On Oct 5, 2010, at 7:53 AM, Pavel Emelyanov wrote:
 
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> ---
-> utils/mount/nfs.man |    2 +-
-> 1 files changed, 1 insertions(+), 1 deletions(-)
+> There's the only difference betseen the xs_bind4 and the
+> xs_bind6 - the size of sockaddr structure they use.
 > 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index d2a4c5f..0667b3a 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -619,7 +619,7 @@ in such cases.
-> .BI nfsvers= n
-> The NFS protocol version number used to contact the server's NFS service.
-> If the server does not support the requested version, the mount request fails.
-> -If this option is not specified, the client negociate a suitable version with
-> +If this option is not specified, the client negotiate a suitable version with
+> Fortunatelly its size can be indirectly get from the transport.
+> 
+> Change since v1:
+> * use sockaddr_storage instead of sockaddr
+> * use rpc_set_port instead of manual port assigning
+> 
+> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+> ---
+> net/sunrpc/xprtsock.c |   64 +++++++++++++------------------------------------
+> 1 files changed, 17 insertions(+), 47 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 7fdf2bb..bab808f 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1534,23 +1534,18 @@ static unsigned short xs_next_srcport(struct sock_xprt *transport, unsigned shor
+> 		return xprt_max_resvport;
+> 	return --port;
+> }
+> -
+> -static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
+> +static int xs_bind(struct sock_xprt *transport, struct socket *sock)
+> {
+> -	struct sockaddr_in myaddr = {
+> -		.sin_family = AF_INET,
+> -	};
+> -	struct sockaddr_in *sa;
+> +	struct sockaddr_storage myaddr;
+> 	int err, nloop = 0;
+> 	unsigned short port = xs_get_srcport(transport);
+> 	unsigned short last;
+> 
+> -	sa = (struct sockaddr_in *)&transport->srcaddr;
+> -	myaddr.sin_addr = sa->sin_addr;
+> +	memcpy(&myaddr, &transport->srcaddr, transport->xprt.addrlen);
+> 	do {
+> -		myaddr.sin_port = htons(port);
+> -		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
+> -						sizeof(myaddr));
+> +		rpc_set_port((struct sockaddr *)&myaddr, port);
+> +		err = kernel_bind(sock, (struct sockaddr *)&myaddr,
+> +				transport->xprt.addrlen);
 
-negotiate(s)?
+That looks reasonable, and probably even improves your ratio of deletions to additions.
 
-> the server, trying version 4 first, version 3 second, and version 2 last.
-> .TP 1.5i
-> .BI vers= n
+For the series,
+
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+
+> 		if (port == 0)
+> 			break;
+> 		if (err == 0) {
+> @@ -1562,44 +1557,19 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
+> 		if (port > last)
+> 			nloop++;
+> 	} while (err == -EADDRINUSE && nloop != 2);
+> -	dprintk("RPC:       %s %pI4:%u: %s (%d)\n",
+> -			__func__, &myaddr.sin_addr,
+> -			port, err ? "failed" : "ok", err);
+> -	return err;
+> -}
+> -
+> -static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
+> -{
+> -	struct sockaddr_in6 myaddr = {
+> -		.sin6_family = AF_INET6,
+> -	};
+> -	struct sockaddr_in6 *sa;
+> -	int err, nloop = 0;
+> -	unsigned short port = xs_get_srcport(transport);
+> -	unsigned short last;
+> 
+> -	sa = (struct sockaddr_in6 *)&transport->srcaddr;
+> -	myaddr.sin6_addr = sa->sin6_addr;
+> -	do {
+> -		myaddr.sin6_port = htons(port);
+> -		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
+> -						sizeof(myaddr));
+> -		if (port == 0)
+> -			break;
+> -		if (err == 0) {
+> -			transport->srcport = port;
+> -			break;
+> -		}
+> -		last = port;
+> -		port = xs_next_srcport(transport, port);
+> -		if (port > last)
+> -			nloop++;
+> -	} while (err == -EADDRINUSE && nloop != 2);
+> -	dprintk("RPC:       xs_bind6 %pI6:%u: %s (%d)\n",
+> -		&myaddr.sin6_addr, port, err ? "failed" : "ok", err);
+> +	if (myaddr.ss_family == PF_INET)
+> +		dprintk("RPC:       %s %pI4:%u: %s (%d)\n", __func__,
+> +				&((struct sockaddr_in *)&myaddr)->sin_addr,
+> +				port, err ? "failed" : "ok", err);
+> +	else
+> +		dprintk("RPC:       %s %pI6:%u: %s (%d)\n", __func__,
+> +				&((struct sockaddr_in6 *)&myaddr)->sin6_addr,
+> +				port, err ? "failed" : "ok", err);
+> 	return err;
+> }
+> 
+> +
+> #ifdef CONFIG_DEBUG_LOCK_ALLOC
+> static struct lock_class_key xs_key[2];
+> static struct lock_class_key xs_slock_key[2];
+> @@ -1645,7 +1615,7 @@ static struct socket *xs_create_sock4(struct rpc_xprt *xprt,
+> 	}
+> 	xs_reclassify_socket4(sock);
+> 
+> -	if (xs_bind4(transport, sock)) {
+> +	if (xs_bind(transport, sock)) {
+> 		sock_release(sock);
+> 		goto out;
+> 	}
+> @@ -1669,7 +1639,7 @@ static struct socket *xs_create_sock6(struct rpc_xprt *xprt,
+> 	}
+> 	xs_reclassify_socket6(sock);
+> 
+> -	if (xs_bind6(transport, sock)) {
+> +	if (xs_bind(transport, sock)) {
+> 		sock_release(sock);
+> 		goto out;
+> 	}
 > -- 
-> 1.7.0.4
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 1.5.5.6
+> 
 
 --
 Chuck Lever
