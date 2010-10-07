@@ -1,69 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:59485 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:49131 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753771Ab0JGQhS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Oct 2010 12:37:18 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 3/3] pnfs_submit: enforce requested DS only pNFS role
-Date: Thu,  7 Oct 2010 12:37:10 -0700
-Message-Id: <1286480230-9418-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1286480230-9418-2-git-send-email-andros@netapp.com>
-References: <1286480230-9418-1-git-send-email-andros@netapp.com>
- <1286480230-9418-2-git-send-email-andros@netapp.com>
+	id S1751496Ab0JGEaP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Oct 2010 00:30:15 -0400
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Thu, 07 Oct 2010 15:29:46 +1100
+Subject: [PATCH 0/2] revised sunrpc deferral patches
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20101007042637.26629.60300.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Hi Bruce,
+  Here is the incremental clean-up as requested, plus I've fixed the
+  problem I found with the cache_limit_deferers patch.
+  I think that'll do for now.
+  I cannot think of any better way to do what lockd does with
+  deferrals, so I think we need to keep deferrals after all.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Thanks,
+NeilBrown
+
+
 ---
- fs/nfs/nfs4filelayoutdev.c |    5 -----
- fs/nfs/nfs4state.c         |    5 +++++
- 2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index e0edf93..1f0ab62 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -183,11 +183,6 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
- 		goto out_put;
- 	}
- 	/*
--	 * Mask the (possibly) returned EXCHGID4_FLAG_USE_PNFS_MDS pNFS role
--	 * The is_ds_only_session depends on this.
--	 */
--	clp->cl_exchange_flags &= ~EXCHGID4_FLAG_USE_PNFS_MDS;
--	/*
- 	 * Set DS lease equal to the MDS lease, renewal is scheduled in
- 	 * create_session
- 	 */
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 91584ad..e2fc175 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -188,6 +188,7 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
- int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- {
- 	int status;
-+	u32 req_exchange_flags = clp->cl_exchange_flags;
- 
- 	nfs4_begin_drain_session(clp);
- 	status = nfs4_proc_exchange_id(clp, cred);
-@@ -196,6 +197,10 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 	status = nfs4_proc_create_session(clp);
- 	if (status != 0)
- 		goto out;
-+	if (is_ds_only_session(req_exchange_flags))
-+		/* Mask the (possibly) returned MDS and non-pNFS roles */
-+		clp->cl_exchange_flags &=
-+		     ~(EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_NON_PNFS);
- 	nfs41_setup_state_renewal(clp);
- 	nfs_mark_client_ready(clp, NFS_CS_READY);
- out:
+NeilBrown (2):
+      sunrpc: Simplify cache_defer_req and related functions.
+      sunrpc/cache: centralise handling of size limit on deferred list.
+
+
+ net/sunrpc/cache.c |  110 +++++++++++++++++++++++++++-------------------------
+ 1 files changed, 58 insertions(+), 52 deletions(-)
+
 -- 
-1.6.6
+Signature
 
