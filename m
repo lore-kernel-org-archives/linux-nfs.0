@@ -1,102 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:16522 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755287Ab0JUUSf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 16:18:35 -0400
-Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
- mounts.
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <20101021160846.49f30db3@corrin.poochiereds.net>
-References: <20101020181701.232dbeea@notabene>
-	 <20101020135525.22977d8d@tlielax.poochiereds.net>
-	 <20101020151657.42bc53f7@tlielax.poochiereds.net>
-	 <20101021074028.44bca336@notabene>
-	 <20101020204532.2019eb93@corrin.poochiereds.net>
-	 <20101021142518.3934ae17@notabene>
-	 <1287669939.3645.12.camel@heimdal.trondhjem.org>
-	 <5CF8C718-2D02-481E-9200-8CAA724D9C8C@oracle.com>
-	 <1287672124.3645.19.camel@heimdal.trondhjem.org>
-	 <20101021154012.48f92cfc@corrin.poochiereds.net>
-	 <1287690444.9144.88.camel@heimdal.trondhjem.org>
-	 <20101021160846.49f30db3@corrin.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 21 Oct 2010 16:18:18 -0400
-Message-ID: <1287692298.9144.95.camel@heimdal.trondhjem.org>
+Received: from exprod5og103.obsmtp.com ([64.18.0.145]:60369 "HELO
+	exprod5og103.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750919Ab0JGSwm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 14:52:42 -0400
+Message-ID: <4CAE16FA.9040606@panasas.com>
+Date: Thu, 07 Oct 2010 14:52:42 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: andros@netapp.com
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] pnfs_submit: move layout segment valid test
+References: <1286480230-9418-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1286480230-9418-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-10-21 at 16:08 -0400, Jeff Layton wrote:
-> On Thu, 21 Oct 2010 15:47:24 -0400
-> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+On 2010-10-07 15:37, andros@netapp.com wrote:
+> From: Andy Adamson <andros@rhel6-1.androsmac.org>
 > 
-> > On Thu, 2010-10-21 at 15:40 -0400, Jeff Layton wrote:
-> > > On Thu, 21 Oct 2010 10:42:04 -0400
-> > > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > > 
-> > > > On Thu, 2010-10-21 at 10:31 -0400, Chuck Lever wrote:
-> > > > > On Oct 21, 2010, at 10:05 AM, Trond Myklebust wrote:
-> > > > > > It seems to me that the problem is basically that RPC_IS_SOFTCONN is
-> > > > > > poorly defined. IMO, the definition should really be that
-> > > > > > 'RPC_IS_SOFTCONN' tasks MUST exit with an error if they ever have to run
-> > > > > > call_bind or a call_connect more than once (i.e. if they ever have to
-> > > > > > loop back).
-> > > > > 
-> > > > > I think you are suggesting that we define the places where RPC_IS_SOFTCONN should be tested as exactly those places that might want to restart the RPC call via rpc_force_rebind, tk_action = call_refresh, and so on.  Yes?
-> > > > 
-> > > > Yes.
-> > > > 
-> > > > > > With that in mind, I really don't see why the RPC_IS_SOFTCONN case is
-> > > > > > being handled in call_transmit_status() instead of in call_status().
-> > > > > 
-> > > > > I tried it in call_status(), but it didn't work as expected.  My notes aren't specific about the problem.  One thing is for sure, there seems to be some redundant error handling logic in both of those states.  Unraveling it might be more than Neil bargained for, but would help "future generations."
-> > > > 
-> > > > call_transmit_status() is there basically in order to call
-> > > > xprt_end_transmit() in the cases where we want to free up the socket
-> > > > write lock (and then possibly sleep).
-> > > > 
-> > > > Actual state error handling is supposed occur in call_status().
-> > > > 
-> > > 
-> > > This is terribly confusing. So the connect handling is done in
-> > > call_transmit?
-> > 
-> > No. Connection-related _error conditions_ that result from trying to
-> > send stuff through a socket that is not connected, are handled in
-> > call_status(). Usually, by sending the process back to call_connect().
-> > 
+> Do not get_lseg for a non-valid lseg.
+> Prepare for calling put_lseg outside of inode i_lock.
 > 
-> Yep, I get that part...
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/pnfs.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
 > 
-> > > It seems like it would make more sense to have the connect handling
-> > > mostly done in call_connect and call_connect_status, and only allow the
-> > > tasks to proceed to the call_transmit phase after the connect has
-> > > succeeded.
-> > 
-> > That is the case. However sockets can and do get closed by the _server_
-> > in unpredictable ways. This is what may need to be handled after the
-> > task has passed the call_connect state.
-> > 
-> 
-> Right, the socket can change state at any time, but the code doesn't
-> seem to do what you describe for initial connects.
-> 
-> In the EHOSTDOWN case, kernel_connect returns EINPROGRESS and then
-> xs_error_report is called with a socket error of EHOSTDOWN. That wakes
-> up the tasks with a status of EAGAIN and call_connect_status sends the
-> task to call_transmit even though the socket is still not connected.
-> 
-> Having xs_error_report set the status of all tasks with EAGAIN seems
-> wrong to me since we're essentially losing the error code that the
-> socket layer sent up.
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 6b2a95d..24620cf 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -845,7 +845,8 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo,
+>  	list_for_each_entry(lseg, &lo->segs, fi_list) {
+>  		if (is_matching_lseg(lseg, range)) {
+>  			ret = lseg;
+> -			get_lseg(ret);
+> +			if (lseg->valid)
+> +				get_lseg(ret);
 
-No. The next task to try to access the socket should pick it up.
+We shouldn't be hiding this inside pnfs_has_layout
+and have different side effects in the different cases.
+Since we're called under the lock, pnfs_has_layout
+can just return the lseg and never get a reference and its
+caller can take it if necessary before releasing the lock.
 
-See my previous comment about ensuring that we don't try to handle
-state-related without adequate protection (i.e. locks) to ensure that
-the state being reported by the error hasn't changed.
+Also, it doesn't need to be EXPORT_SYMBOL_GPLed as it's
+not used outside of the nfs client module.
 
-Trond
+Benny
+
+>  			break;
+>  		}
+>  		if (cmp_layout(range, &lseg->range) > 0)
+> @@ -889,7 +890,6 @@ pnfs_update_layout(struct inode *ino,
+>  	/* Check to see if the layout for the given range already exists */
+>  	lseg = pnfs_has_layout(lo, &arg);
+>  	if (lseg && !lseg->valid) {
+> -		put_lseg_locked(lseg);
+>  		/* someone is cleaning the layout */
+>  		lseg = NULL;
+>  		goto out_unlock;
