@@ -1,43 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54552 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752004Ab0JYBVo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 24 Oct 2010 21:21:44 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: neilb@suse.de, Menyhart Zoltan <Zoltan.Menyhart@bull.net>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/4] svcrpc: svc_tcp_sendto XTP_DEAD check is redundant
-Date: Sun, 24 Oct 2010 21:21:33 -0400
-Message-Id: <1287969693-12340-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <20101025010923.GB11470@fieldses.org>
-References: <20101025010923.GB11470@fieldses.org>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:50257 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932745Ab0JGOBY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 10:01:24 -0400
+Received: by bwz11 with SMTP id 11so457600bwz.19
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Oct 2010 07:01:19 -0700 (PDT)
+In-Reply-To: <4CADCC48.4030908@panasas.com>
+References: <1286397317-17881-1-git-send-email-iisaman@netapp.com>
+	<1286397317-17881-3-git-send-email-iisaman@netapp.com>
+	<4CADCC48.4030908@panasas.com>
+Date: Thu, 7 Oct 2010 10:01:19 -0400
+Message-ID: <AANLkTimnVJYW-ndu_rhk71JXkh3zW-0hLfMTYkRc8VpK@mail.gmail.com>
+Subject: Re: [PATCH 2/4] pnfs_submit: Only update stateid if it is more recent
+ than current
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The only caller (svc_send) has already checked XPT_DEAD.
+On Thu, Oct 7, 2010 at 9:34 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+> On 2010-10-06 16:35, Fred Isaman wrote:
+>> Right now, when we set the stateid, we blindly overwrite the current
+>> one, allowing the seqid to incorrectly roll backward.
+>>
+>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>> ---
+>>  fs/nfs/pnfs.c |   38 ++++++++++++++++++++++++++++++++------
+>>  1 files changed, 32 insertions(+), 6 deletions(-)
+>>
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> index 39bce9b..555955b 100644
+>> --- a/fs/nfs/pnfs.c
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -459,16 +459,42 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+>>       }
+>>  }
+>>
+>> +/* update lo->stateid with new if is more recent
+>> + *
+>> + * lo->stateid could be the open stateid, in which case we just use what given.
+>> + */
+>>  static void
+>>  pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+>> -                     const nfs4_stateid *stateid)
+>> +                     const nfs4_stateid *new)
+>>  {
+>> -     /* TODO - should enforce that embedded seqid, in the case
+>> -      * that the two stateid.others are equal,  only increases.
+>> -      * Complicated by wrap-around.
+>> -      */
+>> +     nfs4_stateid *old = &lo->stateid;
+>> +     bool overwrite = false;
+>> +
+>>       write_seqlock(&lo->seqlock);
+>> -     memcpy(lo->stateid.data, stateid->data, sizeof(lo->stateid.data));
+>> +     if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
+>> +         memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
+>> +             overwrite = true;
+>> +     else {
+>> +             u32 oldseq, newseq, limit;
+>> +
+>> +             oldseq = be32_to_cpu(old->stateid.seqid);
+>> +             newseq = be32_to_cpu(new->stateid.seqid);
+>> +             /* There are no good bounds on window size, so just
+>> +              * use a ridiculously large window of 2^31.
+>> +              */
+>> +             limit = oldseq + (1 << 31);
+>> +             if (oldseq < limit) {
+>> +                     /* The easy, non-wraparound case */
+>> +                     if (oldseq < newseq && newseq < limit)
+>> +                             overwrite = true;
+>> +             } else {
+>> +                     /* Near wraparound edge */
+>> +                     if (oldseq < newseq || newseq < limit)
+>> +                             overwrite = true;
+>> +             }
+>
+> Wouldn't it be simpler to just look at (int32_t)(newseq - oldseq)?
+>
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/svcsock.c |    3 ---
- 1 files changed, 0 insertions(+), 3 deletions(-)
+Why yes it would.  I'll send a new version of this patch shortly.
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 1454739..07919e1 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1135,9 +1135,6 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
- 	reclen = htonl(0x80000000|((xbufp->len ) - 4));
- 	memcpy(xbufp->head[0].iov_base, &reclen, 4);
- 
--	if (test_bit(XPT_DEAD, &rqstp->rq_xprt->xpt_flags))
--		return -ENOTCONN;
--
- 	sent = svc_sendto(rqstp, &rqstp->rq_res);
- 	if (sent != xbufp->len) {
- 		printk(KERN_NOTICE
--- 
-1.7.1
+Fred
 
+> Benny
+>
+>> +     }
+>> +     if (overwrite)
+>> +             memcpy(&old->stateid, &new->stateid, sizeof(new->stateid));
+>>       write_sequnlock(&lo->seqlock);
+>>  }
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
