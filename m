@@ -1,104 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3541 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753080Ab0JZR14 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Oct 2010 13:27:56 -0400
-Message-ID: <4CC70F8E.2030600@netapp.com>
-Date: Tue, 26 Oct 2010 13:27:42 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS: rename nfs.upcall -> nfs.idmap
-References: <4CC70D00.2020804@netapp.com> <1288113704.12370.6.camel@heimdal.trondhjem.org>
-In-Reply-To: <1288113704.12370.6.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:64447 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754093Ab0JGSME convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 14:12:04 -0400
+Received: by bwz11 with SMTP id 11so102390bwz.19
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Oct 2010 11:12:03 -0700 (PDT)
+In-Reply-To: <AANLkTin6MDKMEPxZR=qcH5gaF0KKpsbg12=w7u8Xm8cN@mail.gmail.com>
+References: <1286480230-9418-1-git-send-email-andros@netapp.com>
+	<1286480230-9418-2-git-send-email-andros@netapp.com>
+	<1286480230-9418-3-git-send-email-andros@netapp.com>
+	<4CADFE2E.7050401@panasas.com>
+	<AANLkTin6MDKMEPxZR=qcH5gaF0KKpsbg12=w7u8Xm8cN@mail.gmail.com>
+Date: Thu, 7 Oct 2010 14:12:02 -0400
+Message-ID: <AANLkTi=sMXvPLyNepS9CqVYX1+gAVhq4uA1t8nT4LA7M@mail.gmail.com>
+Subject: Re: [PATCH 3/3] pnfs_submit: enforce requested DS only pNFS role
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 10/26/2010 01:21 PM, Trond Myklebust wrote:
-> On Tue, 2010-10-26 at 13:16 -0400, Bryan Schumaker wrote:
->> This patch renames the idmapper upcall program from nfs.upcall to nfs.idmap.
-> 
-> ...which reflects the name being used in the nfs-utils source.
-> 
-Ok, how's this?
+On Thu, Oct 7, 2010 at 2:10 PM, Fred Isaman <iisaman@netapp.com> wrote:
+> On Thu, Oct 7, 2010 at 1:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> On 2010-10-07 15:37, andros@netapp.com wrote:
+>>> From: Andy Adamson <andros@netapp.com>
+>>>
+>>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>>> ---
+>>>  fs/nfs/nfs4filelayoutdev.c |    5 -----
+>>>  fs/nfs/nfs4state.c         |    5 +++++
+>>>  2 files changed, 5 insertions(+), 5 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+>>> index e0edf93..1f0ab62 100644
+>>> --- a/fs/nfs/nfs4filelayoutdev.c
+>>> +++ b/fs/nfs/nfs4filelayoutdev.c
+>>> @@ -183,11 +183,6 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+>>>               goto out_put;
+>>>       }
+>>>       /*
+>>> -      * Mask the (possibly) returned EXCHGID4_FLAG_USE_PNFS_MDS pNFS role
+>>> -      * The is_ds_only_session depends on this.
+>>> -      */
+>>> -     clp->cl_exchange_flags &= ~EXCHGID4_FLAG_USE_PNFS_MDS;
+>>> -     /*
+>>>        * Set DS lease equal to the MDS lease, renewal is scheduled in
+>>>        * create_session
+>>>        */
+>>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>>> index 91584ad..e2fc175 100644
+>>> --- a/fs/nfs/nfs4state.c
+>>> +++ b/fs/nfs/nfs4state.c
+>>> @@ -188,6 +188,7 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
+>>>  int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+>>>  {
+>>>       int status;
+>>> +     u32 req_exchange_flags = clp->cl_exchange_flags;
+>>>
+>>>       nfs4_begin_drain_session(clp);
+>>>       status = nfs4_proc_exchange_id(clp, cred);
+>>> @@ -196,6 +197,10 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+>>>       status = nfs4_proc_create_session(clp);
+>>>       if (status != 0)
+>>>               goto out;
+>>> +     if (is_ds_only_session(req_exchange_flags))
+>>> +             /* Mask the (possibly) returned MDS and non-pNFS roles */
+>>
+>> This comment does not really add anything substantial that the code doesn't tell you :)
+>>
+>>> +             clp->cl_exchange_flags &=
+>>> +                  ~(EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_NON_PNFS);
+>>
+>> I'm not why you want to mask out EXCHGID4_FLAG_USE_NON_PNFS.
+>> If the server is not a DS why not just return an error?
+>
+> We *know* _USE_PNFS_DS is set.  We just want to mask out
+> _USE_NON_PNFS, which  would indicate it is also a 4.0 server.
+>
 
--Bryan
+Oops...we *know* _PNFS_DS is set in req_exchange_flags.  As you point
+out, we would like to know it is in the reply.
 
+Fred
 
-This patch renames the idmapper upcall program from nfs.upcall to nfs.idmap in
-the NFS documentation.  This is because the program has been renamed in the
-nfs-utils source.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
-diff --git a/Documentation/filesystems/nfs/idmapper.txt b/Documentation/filesystems/nfs/idmapper.txt
-index c385204..18ee6f5 100644
---- a/Documentation/filesystems/nfs/idmapper.txt
-+++ b/Documentation/filesystems/nfs/idmapper.txt
-@@ -6,7 +6,7 @@ Id mapper is used by NFS to translate user and group ids into names, and to
- translate user and group names into ids.  Part of this translation involves
- performing an upcall to userspace to request the information.  Id mapper will
- user request-key to perform this upcall and cache the result.  The program
--/usr/sbin/nfs.upcall should be called by request-key, and will perform the
-+/usr/sbin/nfs.idmap should be called by request-key, and will perform the
- translation and initialize a key with the resulting information.
- 
-  NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
-@@ -20,12 +20,12 @@ direct the upcall.  The following line should be added:
- 
- #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
- #======	=======	===============	===============	===============================
--create	id_resolver	*	*		/usr/sbin/nfs.upcall %k %d 600
-+create	id_resolver	*	*		/usr/sbin/nfs.idmap %k %d 600
- 
--This will direct all id_resolver requests to the program /usr/sbin/nfs.upcall.
-+This will direct all id_resolver requests to the program /usr/sbin/nfs.idmap.
- The last parameter, 600, defines how many seconds into the future the key will
--expire.  This parameter is optional for /usr/sbin/nfs.upcall.  When the timeout
--is not specified, nfs.upcall will default to 600 seconds.
-+expire.  This parameter is optional for /usr/sbin/nfs.idmap.  When the timeout
-+is not specified, nfs.idmap will default to 600 seconds.
- 
- id mapper uses for key descriptions:
- 	  uid:  Find the UID for the given user
-@@ -39,29 +39,29 @@ would edit your request-key.conf so it look similar to this:
- 
- #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
- #======	=======	===============	===============	===============================
--create	id_resolver	uid:*	*		/some/other/program  %k %d 600
--create	id_resolver	*	*		/usr/sbin/nfs.upcall %k %d 600
-+create	id_resolver	uid:*	*		/some/other/program %k %d 600
-+create	id_resolver	*	*		/usr/sbin/nfs.idmap %k %d 600
- 
- Notice that the new line was added above the line for the generic program.
- request-key will find the first matching line and corresponding program.  In
- this case, /some/other/program will handle all uid lookups and
--/usr/sbin/nfs.upcall will handle gid, user, and group lookups.
-+/usr/sbin/nfs.idmap will handle gid, user, and group lookups.
- 
- See <file:Documentation/keys-request-keys.txt> for more information about the
- request-key function.
- 
- 
--==========
--nfs.upcall
--==========
--nfs.upcall is designed to be called by request-key, and should not be run "by
-+=========
-+nfs.idmap
-+=========
-+nfs.idmap is designed to be called by request-key, and should not be run "by
- hand".  This program takes two arguments, a serialized key and a key
- description.  The serialized key is first converted into a key_serial_t, and
- then passed as an argument to keyctl_instantiate (both are part of keyutils.h).
- 
--The actual lookups are performed by functions found in nfsidmap.h.  nfs.upcall
-+The actual lookups are performed by functions found in nfsidmap.h.  nfs.idmap
- determines the correct function to call by looking at the first part of the
- description string.  For example, a uid lookup description will appear as
- "uid:user@domain".
- 
--nfs.upcall will return 0 if the key was instantiated, and non-zero otherwise.
-+nfs.idmap will return 0 if the key was instantiated, and non-zero otherwise.
+> Fred
+>
+>>
+>> Benny
+>>
+>>>       nfs41_setup_state_renewal(clp);
+>>>       nfs_mark_client_ready(clp, NFS_CS_READY);
+>>>  out:
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
