@@ -1,41 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6720 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759789Ab0JHX6L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Oct 2010 19:58:11 -0400
-Date: Fri, 8 Oct 2010 19:57:42 -0400
-From: Valerie Aurora <vaurora@redhat.com>
-To: David Howells <dhowells@redhat.com>
-Cc: viro@ftp.linux.org.uk, jmoyer@redhat.com, linux-fs@vger.kernel.org,
-        autofs@linux.kernel.org, linux-kernel@vger.kernel.org,
-        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, Ian Kent <raven@themaw.net>
-Subject: Re: [PATCH 07/17] Make dentry::d_mounted into a more general field for special function dirs
-Message-ID: <20101008235741.GF30846@shell>
-References: <20100930181455.30939.53914.stgit@warthog.procyon.org.uk> <20100930181531.30939.10438.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20100930181531.30939.10438.stgit@warthog.procyon.org.uk>
+Received: from exprod5og105.obsmtp.com ([64.18.0.180]:40447 "HELO
+	exprod5og105.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754312Ab0JGSIQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 14:08:16 -0400
+Message-ID: <4CAE0C8B.5060204@panasas.com>
+Date: Thu, 07 Oct 2010 14:08:11 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: andros@netapp.com
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] pnfs_submit: enforce requested DS only pNFS role
+References: <1286480230-9418-1-git-send-email-andros@netapp.com> <1286480230-9418-2-git-send-email-andros@netapp.com> <1286480230-9418-3-git-send-email-andros@netapp.com> <4CADFE2E.7050401@panasas.com>
+In-Reply-To: <4CADFE2E.7050401@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Sep 30, 2010 at 07:15:31PM +0100, David Howells wrote:
-> Make the d_mounted field in struct dentry into a more general field for special
-> function directories such as mountpoints and autofs substructures.
+On 2010-10-07 13:06, Benny Halevy wrote:
+> On 2010-10-07 15:37, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  fs/nfs/nfs4filelayoutdev.c |    5 -----
+>>  fs/nfs/nfs4state.c         |    5 +++++
+>>  2 files changed, 5 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+>> index e0edf93..1f0ab62 100644
+>> --- a/fs/nfs/nfs4filelayoutdev.c
+>> +++ b/fs/nfs/nfs4filelayoutdev.c
+>> @@ -183,11 +183,6 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+>>  		goto out_put;
+>>  	}
+>>  	/*
+>> -	 * Mask the (possibly) returned EXCHGID4_FLAG_USE_PNFS_MDS pNFS role
+>> -	 * The is_ds_only_session depends on this.
+>> -	 */
+>> -	clp->cl_exchange_flags &= ~EXCHGID4_FLAG_USE_PNFS_MDS;
+>> -	/*
+>>  	 * Set DS lease equal to the MDS lease, renewal is scheduled in
+>>  	 * create_session
+>>  	 */
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index 91584ad..e2fc175 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -188,6 +188,7 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
+>>  int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+>>  {
+>>  	int status;
+>> +	u32 req_exchange_flags = clp->cl_exchange_flags;
+>>  
+>>  	nfs4_begin_drain_session(clp);
+>>  	status = nfs4_proc_exchange_id(clp, cred);
+>> @@ -196,6 +197,10 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+>>  	status = nfs4_proc_create_session(clp);
+>>  	if (status != 0)
+>>  		goto out;
+>> +	if (is_ds_only_session(req_exchange_flags))
+>> +		/* Mask the (possibly) returned MDS and non-pNFS roles */
 > 
-> d_mounted is renamed d_managed, and that is split into three fields:
+> This comment does not really add anything substantial that the code doesn't tell you :)
 > 
->  (*) #define DMANAGED_MOUNTPOINT	0x0fffffff
+>> +		clp->cl_exchange_flags &=
+>> +		     ~(EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_NON_PNFS);
+> 
+> I'm not why you want to mask out EXCHGID4_FLAG_USE_NON_PNFS.
+> If the server is not a DS why not just return an error?
 
-No matter how hard I try, I always read this as "DAMAGED".  Which I
-can't help but imagine subliminally influences the reader's opinion of
-the patches.
+So Andy convinced me and the spec. says that USE_PNFS_DS | USE_NON_PNFS
+is a valid response.
+However, if USE_PNFS_DS is unset in the response in this case
+we need not create the client and better return an error.
+I'll send a patch that does that.
 
-Of course I am excellent at naming things, see "chunkfs" and
-"relatime".  But some ideas for naming various concepts in this patch:
+Benny
 
-D_MIGHT_MOUNT
-D_CHILL_OUT
-D_ITS_COMPLICATED
-
--VAL
+> 
+> Benny
+> 
+>>  	nfs41_setup_state_renewal(clp);
+>>  	nfs_mark_client_ready(clp, NFS_CS_READY);
+>>  out:
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
