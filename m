@@ -1,31 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:58421 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753119Ab0JARG1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Oct 2010 13:06:27 -0400
-Date: Fri, 1 Oct 2010 13:06:26 -0400
-From: Jim Rees <rees@umich.edu>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: another block layout oops
-Message-ID: <20101001170625.GA3113@merit.edu>
-References: <20100930171325.GA5731@merit.edu>
- <4CA503C2.2090607@panasas.com>
- <20100930215220.GB7244@merit.edu>
- <AANLkTi=bRwN3uoszG0jTzVSPMSwP6VKn+rW470uWwAj1@mail.gmail.com>
- <4CA594B5.1090207@panasas.com>
- <AANLkTi=T6PY6MDzbyWikSYOi7HoMWAsEarw-3k=S1+Bu@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTi=T6PY6MDzbyWikSYOi7HoMWAsEarw-3k=S1+Bu@mail.gmail.com>
+Received: from exprod5og111.obsmtp.com ([64.18.0.22]:59156 "HELO
+	exprod5og111.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753414Ab0JGTR6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 15:17:58 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] SQUASHME: pnfs: get_lseg in nfs4_layoutget_prepare rather than in pnfs_has_layout
+Date: Thu,  7 Oct 2010 15:17:58 -0400
+Message-Id: <1286479078-29072-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4CAE16FA.9040606@panasas.com>
+References: <4CAE16FA.9040606@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Fred Isaman wrote:
+pnfs_has_layout does not get_lref on its return value anymore
 
-  Jim, does the recently submitted PATCH 5/7 fix this?
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-I think benny's merged this, right?  I'll fetch the new pnfs-all-latest and
-test, if I can.  My 3GB fedora root partition filled up doing a yum update
-and now it looks unrecoverable.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 25bc169..97cc539 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5442,12 +5442,12 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
+ 		return;
+ 	}
+ 	if (!lseg->valid) {
+-		put_lseg_locked(lseg);
+ 		spin_unlock(&ino->i_lock);
+ 		dprintk("%s: invalid lseg found, waiting\n", __func__);
+ 		rpc_sleep_on(&nfsi->lo_rpcwaitq, task, NULL);
+ 		return;
+ 	}
++	get_lseg(lseg);
+ 	*lgp->lsegpp = lseg;
+ 	spin_unlock(&ino->i_lock);
+ 	dprintk("%s: valid lseg found, no rpc required\n", __func__);
+-- 
+1.7.2.3
+
