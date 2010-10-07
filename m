@@ -1,258 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13124 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:17731 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757170Ab0JYXrL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Oct 2010 19:47:11 -0400
-Subject: Re: [PATCH] nfs-utils: add nfs.upcall
-References: <1288046434-18503-1-git-send-email-Trond.Myklebust@netapp.com> <B7AE3537-6F68-4716-B486-7EC8A44ED882@oracle.com>
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Content-Type: text/plain;
-	charset="us-ascii"
-In-Reply-To: <B7AE3537-6F68-4716-B486-7EC8A44ED882@oracle.com>
-Message-ID: <61E98BF7-2E64-47D5-A5C0-5701E36B8C99@netapp.com>
-Date: Mon, 25 Oct 2010 19:46:34 -0400
-To: "Chuck Lever" <chuck.lever@oracle.com>,
-        "Schumaker Bryan" <Bryan.Schumaker@netapp.com>
-Cc: <steved@redhat.com>, <linux-nfs@vger.kernel.org>
+	id S1758299Ab0JHOzj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Oct 2010 10:55:39 -0400
+Received: from localhost.localdomain (mukeshv-lxp.hq.netapp.com [10.58.48.113])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o98EtMpZ008229
+	for <linux-nfs@vger.kernel.org>; Fri, 8 Oct 2010 07:55:22 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] pnfs_submit: Restore forgetful mode io draining
+Date: Thu,  7 Oct 2010 05:35:45 -0400
+Message-Id: <1286444145-12781-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Ah, fsck... You're right.
+Recent changes to the waitq code removed the wait for io to drain
+in the case of a "forgetful" return.  Restore the previous behavior.
 
-Bryan, can you instead resend your latest patch for nfs-utils? I've asked Linus to merge the kernel part, so it is time to get the userspace stuff in order too!
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4proc.c       |    6 +++++-
+ fs/nfs/pnfs.c           |    9 +++------
+ include/linux/nfs_xdr.h |    1 +
+ 3 files changed, 9 insertions(+), 7 deletions(-)
 
-Sent from my iPhone
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index c854814..7727f592 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5639,7 +5639,11 @@ nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
+ 		rpc_sleep_on(&nfsi->lo_rpcwaitq, task, NULL);
+ 		return;
+ 	}
+-
++	if (lrp->stateid) {
++		/* Forget the layout, without sending the return */
++		rpc_exit(task, 0);
++		return;
++	}
+ 	if (nfs4_setup_sequence(server, NULL, &lrp->args.seq_args,
+ 				&lrp->res.seq_res, 0, task))
+ 		return;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index f573219..eb4dfdf 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -612,7 +612,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+ static int
+ return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 	      enum pnfs_layoutreturn_type type, struct pnfs_layout_hdr *lo,
+-	      bool wait)
++	      bool wait, const nfs4_stateid *stateid)
+ {
+ 	struct nfs4_layoutreturn *lrp;
+ 	struct nfs_server *server = NFS_SERVER(ino);
+@@ -633,6 +633,7 @@ return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 	lrp->args.return_type = type;
+ 	lrp->args.range = *range;
+ 	lrp->args.inode = ino;
++	lrp->stateid = stateid;
+ 
+ 	status = nfs4_proc_layoutreturn(lrp, wait);
+ out:
+@@ -688,11 +689,7 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 					__func__, status);
+ 			}
+ 		}
+-
+-		if (!stateid)
+-			status = return_layout(ino, &arg, type, lo, wait);
+-		else
+-			pnfs_layoutreturn_release(lo, &arg);
++		status = return_layout(ino, &arg, type, lo, wait, stateid);
+ 	}
+ out:
+ 	dprintk("<-- %s status: %d\n", __func__, status);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index c72de21..80e6a36 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -277,6 +277,7 @@ struct nfs4_layoutreturn {
+ 	struct nfs4_layoutreturn_args args;
+ 	struct nfs4_layoutreturn_res res;
+ 	struct rpc_cred *cred;
++	const nfs4_stateid *stateid;
+ 	int rpc_status;
+ };
+ 
+-- 
+1.7.2.1
 
-On Oct 25, 2010, at 19:21, "Chuck Lever" <chuck.lever@oracle.com> wrote:
-
-> I thought we were going to call this nfs.idmap ... ?
-> 
-> On Oct 25, 2010, at 6:40 PM, Trond Myklebust wrote:
-> 
->> From: Bryan Schumaker <bjschuma@netapp.com>
->> 
->> Add nfs.upcall
->> 
->> This patch adds the nfs.upcall program to nfs-utils.  This program is called by
->> the nfs idmapper through request-keys to map between uid / user name and
->> gid / group name.
->> 
->> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->> ---
->> aclocal/keyutils.m4           |   11 ++++
->> configure.ac                  |    4 ++
->> utils/Makefile.am             |    1 +
->> utils/nfs.upcall/Makefile.am  |    7 +++
->> utils/nfs.upcall/nfs.upcall.c |  120 +++++++++++++++++++++++++++++++++++++++++
->> 5 files changed, 143 insertions(+), 0 deletions(-)
->> create mode 100644 aclocal/keyutils.m4
->> create mode 100644 utils/nfs.upcall/Makefile.am
->> create mode 100644 utils/nfs.upcall/nfs.upcall.c
->> 
->> diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
->> new file mode 100644
->> index 0000000..8aea646
->> --- /dev/null
->> +++ b/aclocal/keyutils.m4
->> @@ -0,0 +1,11 @@
->> +dnl Checks for keyutils library and headers
->> +dnl
->> +AC_DEFUN([AC_KEYUTILS], [
->> +
->> +  dnl Check for libkeyutils; do not add to LIBS if found
->> +  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
->> +  AC_SUBST(LIBKEYUTILS)
->> +
->> +  AC_CHECK_HEADERS([keyutils.h], ,
->> +           [AC_MSG_ERROR([keyutils.h header not found.])])
->> +])dnl
->> diff --git a/configure.ac b/configure.ac
->> index 3058be6..a5e8620 100644
->> --- a/configure.ac
->> +++ b/configure.ac
->> @@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
->>  dnl check for nfsidmap libraries and headers
->>  AC_LIBNFSIDMAP
->> 
->> +  dnl check for the keyutils libraries and headers
->> +  AC_KEYUTILS
->> +
->>  dnl librpcsecgss already has a dependency on libgssapi,
->>  dnl but we need to make sure we get the right version
->>  if test "$enable_gss" = yes; then
->> @@ -435,6 +438,7 @@ AC_CONFIG_FILES([
->>    utils/mountd/Makefile
->>    utils/nfsd/Makefile
->>    utils/nfsstat/Makefile
->> +    utils/nfs.upcall/Makefile
->>    utils/showmount/Makefile
->>    utils/statd/Makefile
->>    tests/Makefile
->> diff --git a/utils/Makefile.am b/utils/Makefile.am
->> index 8665183..0104a6c 100644
->> --- a/utils/Makefile.am
->> +++ b/utils/Makefile.am
->> @@ -4,6 +4,7 @@ OPTDIRS =
->> 
->> if CONFIG_NFSV4
->> OPTDIRS += idmapd
->> +OPTDIRS += nfs.upcall
->> endif
->> 
->> if CONFIG_GSS
->> diff --git a/utils/nfs.upcall/Makefile.am b/utils/nfs.upcall/Makefile.am
->> new file mode 100644
->> index 0000000..52afd3d
->> --- /dev/null
->> +++ b/utils/nfs.upcall/Makefile.am
->> @@ -0,0 +1,7 @@
->> +## Process this file with automake to produce Makefile.in
->> +
->> +sbin_PROGRAMS    = nfs.upcall
->> +nfs_upcall_SOURCES = nfs.upcall.c
->> +nfs_upcall_LDADD = -lnfsidmap -lkeyutils
->> +
->> +MAINTAINERCLEANFILES = Makefile.in
->> diff --git a/utils/nfs.upcall/nfs.upcall.c b/utils/nfs.upcall/nfs.upcall.c
->> new file mode 100644
->> index 0000000..11b9a01
->> --- /dev/null
->> +++ b/utils/nfs.upcall/nfs.upcall.c
->> @@ -0,0 +1,120 @@
->> +
->> +#include <stdarg.h>
->> +#include <stdio.h>
->> +#include <stdlib.h>
->> +#include <string.h>
->> +
->> +#include <pwd.h>
->> +#include <grp.h>
->> +#include <keyutils.h>
->> +#include <nfsidmap.h>
->> +
->> +#include <syslog.h>
->> +
->> +/* gcc nfs.upcall.c -o nfs.upcall -l nfsidmap -l keyutils */
->> +
->> +#define MAX_ID_LEN   11
->> +#define IDMAP_NAMESZ 128
->> +#define USER  1
->> +#define GROUP 0
->> +
->> +
->> +/*
->> + * Find either a user or group id based on the name@domain string
->> + */
->> +int id_lookup(char *name_at_domain, key_serial_t key, int type)
->> +{
->> +    char id[MAX_ID_LEN];
->> +    uid_t uid = 0;
->> +    gid_t gid = 0;
->> +
->> +    if (type == USER) {
->> +        nfs4_owner_to_uid(name_at_domain, &uid);
->> +        sprintf(id, "%u", uid);
->> +    } else {
->> +        nfs4_group_owner_to_gid(name_at_domain, &gid);
->> +        sprintf(id, "%u", gid);
->> +    }
->> +
->> +    return keyctl_instantiate(key, id, strlen(id) + 1, 0);
->> +}
->> +
->> +/*
->> + * Find the name@domain string from either a user or group id
->> + */
->> +int name_lookup(char *id, key_serial_t key, int type)
->> +{
->> +    char name[IDMAP_NAMESZ];
->> +    char domain[NFS4_MAX_DOMAIN_LEN];
->> +    uid_t uid;
->> +    gid_t gid;
->> +    int rc = 0;
->> +
->> +    rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
->> +    if (rc != 0) {
->> +        rc = -1;
->> +        goto out;
->> +    }
->> +
->> +    if (type == USER) {
->> +        uid = atoi(id);
->> +        rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
->> +    } else {
->> +        gid = atoi(id);
->> +        rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
->> +    }
->> +
->> +    if (rc == 0)
->> +        rc = keyctl_instantiate(key, &name, strlen(name), 0);
->> +
->> +out:
->> +    return rc;
->> +}
->> +
->> +int main(int argc, char **argv)
->> +{
->> +    char *arg;
->> +    char *value;
->> +    char *type;
->> +    int rc = 1;
->> +    int timeout = 600;
->> +    key_serial_t key;
->> +
->> +    /*openlog("nfs.upcall", 0, LOG_DAEMON);*/
->> +
->> +    if (argc < 3)
->> +        return 1;
->> +
->> +    arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
->> +    strcpy(arg, argv[2]);
->> +    type = strtok(arg, ":");
->> +    value = strtok(NULL, ":");
->> +
->> +    if (argc == 4) {
->> +        timeout = atoi(argv[3]);
->> +        if (timeout < 0)
->> +            timeout = 0;
->> +    }
->> +
->> +    /*syslog(LOG_ERR, "type: %s", type);
->> +    syslog(LOG_ERR, "value: %s", value);
->> +    syslog(LOG_ERR, "timeout: %d", timeout);*/
->> +
->> +    key = strtol(argv[1], NULL, 10);
->> +
->> +    if (strcmp(type, "uid") == 0)
->> +        rc = id_lookup(value, key, USER);
->> +    else if (strcmp(type, "gid") == 0)
->> +        rc = id_lookup(value, key, GROUP);
->> +    else if (strcmp(type, "user") == 0)
->> +        rc = name_lookup(value, key, USER);
->> +    else if (strcmp(type, "group") == 0)
->> +        rc = name_lookup(value, key, GROUP);
->> +
->> +    /* Set timeout to 5 (600 seconds) minutes */
->> +    keyctl_set_timeout(key, timeout);
->> +
->> +    free(arg);
->> +    /*closelog();*/
->> +    return rc;
->> +}
->> -- 
->> 1.7.2.3
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
