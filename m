@@ -1,49 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:53528 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752070Ab0JVXUk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Oct 2010 19:20:40 -0400
-Date: Fri, 22 Oct 2010 16:18:52 -0700
-From: Randy Dunlap <randy.dunlap@oracle.com>
-To: Stephen Rothwell <sfr@canb.auug.org.au>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        akpm <akpm@linux-foundation.org>
-Cc: linux-next@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH -next] nfs: include ratelimit.h, fix nfs4state build error
-Message-Id: <20101022161852.2ef2638c.randy.dunlap@oracle.com>
-In-Reply-To: <20101022152350.fc79e2b9.sfr@canb.auug.org.au>
-References: <20101022152350.fc79e2b9.sfr@canb.auug.org.au>
-Content-Type: text/plain; charset=US-ASCII
+Received: from exprod5og114.obsmtp.com ([64.18.0.28]:43024 "HELO
+	exprod5og114.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753181Ab0JGVZm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 17:25:42 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] SQUASHME: pnfs: loga_minlength must not be greater than loga_length
+Date: Thu,  7 Oct 2010 17:25:36 -0400
+Message-Id: <1286486736-27457-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Randy Dunlap <randy.dunlap@oracle.com>
-
-nfs4state.c uses interfaces from ratelimit.h.  It needs to include
-that header file to fix build errors:
-
-fs/nfs/nfs4state.c:1195: warning: type defaults to 'int' in declaration of 'DEFINE_RATELIMIT_STATE'
-fs/nfs/nfs4state.c:1195: warning: parameter names (without types) in function declaration
-fs/nfs/nfs4state.c:1195: error: invalid storage class for function 'DEFINE_RATELIMIT_STATE'
-fs/nfs/nfs4state.c:1195: error: implicit declaration of function '__ratelimit'
-fs/nfs/nfs4state.c:1195: error: '_rs' undeclared (first use in this function)
-
-Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
-Cc:	Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc:	linux-nfs@vger.kernel.org
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/nfs4state.c |    1 +
- 1 file changed, 1 insertion(+)
+ fs/nfs/pnfs.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
---- linux-next-20101022.orig/fs/nfs/nfs4state.c
-+++ linux-next-20101022/fs/nfs/nfs4state.c
-@@ -46,6 +46,7 @@
- #include <linux/kthread.h>
- #include <linux/module.h>
- #include <linux/random.h>
-+#include <linux/ratelimit.h>
- #include <linux/workqueue.h>
- #include <linux/bitops.h>
- 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index f346533..6cc0543 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -622,6 +622,8 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 		return NULL;
+ 	}
+ 	lgp->args.minlength = PAGE_CACHE_SIZE;
++	if (lgp->args.minlength > range->length)
++		lgp->args.minlength = range->length;
+ 	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
+ 	lgp->args.range = *range;
+ 	lgp->args.type = server->pnfs_curr_ld->id;
+-- 
+1.7.2.3
+
