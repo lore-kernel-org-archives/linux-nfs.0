@@ -1,156 +1,76 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH linux-2.6.36-rc7] sunrpc/xprtrdma: clean up workqueue
- usage
-Date: Fri, 15 Oct 2010 13:11:33 -0400
-Message-ID: <20101015171132.GA18869@fieldses.org>
-References: <4CB87807.7050108@kernel.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: server 4.1 issues list
+Date: Thu, 07 Oct 2010 14:10:17 -0400
+Message-ID: <4CAE0D09.5040704@panasas.com>
+References: <20101007155306.GA28053@fieldses.org> <20101007175424.GA31443@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
-	Tom Tucker <tom@ogc.us>
-To: Tejun Heo <tj@kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:52859 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756371Ab0JORMC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Oct 2010 13:12:02 -0400
-In-Reply-To: <4CB87807.7050108@kernel.org>
+Received: from exprod5og106.obsmtp.com ([64.18.0.182]:42583 "HELO
+	exprod5og106.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753557Ab0JGSKR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 14:10:17 -0400
+In-Reply-To: <20101007175424.GA31443@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tom, could you take a look?
+On 2010-10-07 13:54, J. Bruce Fields wrote:
+> On Thu, Oct 07, 2010 at 11:53:06AM -0400, bfields wrote:
+>> Someone also asked whether we've fixed the backchannel attribute
+>> checking.  We haven't, but that should be fairly quick--I'll take a look
+>> at it now.
+> 
+> Actually there's a bit of tedious arithmetic to do here to figure out
+> what we need e.g. for the maximum request size.  I'm setting this aside
+> for now, so this is up for grabs.
 
---b.
+Ack. FWIW :)
 
-On Fri, Oct 15, 2010 at 05:49:27PM +0200, Tejun Heo wrote:
-> * Create and use svc_rdma_wq instead of using the system workqueue and
->   flush_scheduled_work().  This workqueue is necessary to serve as
->   flushing domain for rdma->sc_work which is used to destroy itself
->   and thus can't be flushed explicitly.
 > 
-> * Replace cancel_delayed_work() + flush_scheduled_work() with
->   cancel_delayed_work_sync().
+> --b.
 > 
-> * Implement synchronous connect in xprt_rdma_connect() using
->   flush_delayed_work() on the rdma_connect work instead of using
->   flush_scheduled_work().
-> 
-> This is to prepare for the deprecation and removal of
-> flush_scheduled_work().
-> 
-> Signed-off-by: Tejun Heo <tj@kernel.org>
-> ---
->  net/sunrpc/xprtrdma/svc_rdma.c           |   11 ++++++++++-
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 +++++-
->  net/sunrpc/xprtrdma/transport.c          |    5 ++---
->  3 files changed, 17 insertions(+), 5 deletions(-)
-> 
-> Index: work/net/sunrpc/xprtrdma/svc_rdma.c
-> ===================================================================
-> --- work.orig/net/sunrpc/xprtrdma/svc_rdma.c
-> +++ work/net/sunrpc/xprtrdma/svc_rdma.c
-> @@ -43,6 +43,7 @@
->  #include <linux/slab.h>
->  #include <linux/fs.h>
->  #include <linux/sysctl.h>
-> +#include <linux/workqueue.h>
->  #include <linux/sunrpc/clnt.h>
->  #include <linux/sunrpc/sched.h>
->  #include <linux/sunrpc/svc_rdma.h>
-> @@ -74,6 +75,8 @@ atomic_t rdma_stat_sq_prod;
->  struct kmem_cache *svc_rdma_map_cachep;
->  struct kmem_cache *svc_rdma_ctxt_cachep;
-> 
-> +struct workqueue_struct *svc_rdma_wq;
-> +
->  /*
->   * This function implements reading and resetting an atomic_t stat
->   * variable through read/write to a proc file. Any write to the file
-> @@ -231,7 +234,7 @@ static ctl_table svcrdma_root_table[] =
->  void svc_rdma_cleanup(void)
->  {
->  	dprintk("SVCRDMA Module Removed, deregister RPC RDMA transport\n");
-> -	flush_scheduled_work();
-> +	destroy_workqueue(svc_rdma_wq);
->  	if (svcrdma_table_header) {
->  		unregister_sysctl_table(svcrdma_table_header);
->  		svcrdma_table_header = NULL;
-> @@ -249,6 +252,11 @@ int svc_rdma_init(void)
->  	dprintk("\tsq_depth         : %d\n",
->  		svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT);
->  	dprintk("\tmax_inline       : %d\n", svcrdma_max_req_size);
-> +
-> +	svc_rdma_wq = alloc_workqueue("svc_rdma", 0, 0);
-> +	if (!svc_rdma_wq)
-> +		return -ENOMEM;
-> +
->  	if (!svcrdma_table_header)
->  		svcrdma_table_header =
->  			register_sysctl_table(svcrdma_root_table);
-> @@ -283,6 +291,7 @@ int svc_rdma_init(void)
->  	kmem_cache_destroy(svc_rdma_map_cachep);
->   err0:
->  	unregister_sysctl_table(svcrdma_table_header);
-> +	destroy_workqueue(svc_rdma_wq);
->  	return -ENOMEM;
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 6233917..0f8e90b 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1493,6 +1493,23 @@ nfsd4_replay_create_session(struct nfsd4_create_session *cr_ses,
+>  	return slot->sl_status;
 >  }
->  MODULE_AUTHOR("Tom Tucker <tom@opengridcomputing.com>");
-> Index: work/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> ===================================================================
-> --- work.orig/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ work/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -45,6 +45,7 @@
->  #include <linux/sched.h>
->  #include <linux/slab.h>
->  #include <linux/spinlock.h>
-> +#include <linux/workqueue.h>
->  #include <rdma/ib_verbs.h>
->  #include <rdma/rdma_cm.h>
->  #include <linux/sunrpc/svc_rdma.h>
-> @@ -89,6 +90,9 @@ struct svc_xprt_class svc_rdma_class = {
->  /* WR context cache. Created in svc_rdma.c  */
->  extern struct kmem_cache *svc_rdma_ctxt_cachep;
-> 
-> +/* Workqueue created in svc_rdma.c */
-> +extern struct workqueue_struct *svc_rdma_wq;
+>  
+> +static __be32 verify_backchannel_attributes(struct nfsd4_create_session *cr_ses)
+> +{
+> +	struct nfsd4_channel_attrs *attrs;
 > +
->  struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
->  {
->  	struct svc_rdma_op_ctxt *ctxt;
-> @@ -1184,7 +1188,7 @@ static void svc_rdma_free(struct svc_xpr
->  	struct svcxprt_rdma *rdma =
->  		container_of(xprt, struct svcxprt_rdma, sc_xprt);
->  	INIT_WORK(&rdma->sc_work, __svc_rdma_free);
-> -	schedule_work(&rdma->sc_work);
-> +	queue_work(svc_rdma_wq, &rdma->sc_work);
->  }
-> 
->  static int svc_rdma_has_wspace(struct svc_xprt *xprt)
-> Index: work/net/sunrpc/xprtrdma/transport.c
-> ===================================================================
-> --- work.orig/net/sunrpc/xprtrdma/transport.c
-> +++ work/net/sunrpc/xprtrdma/transport.c
-> @@ -237,8 +237,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
-> 
->  	dprintk("RPC:       %s: called\n", __func__);
-> 
-> -	cancel_delayed_work(&r_xprt->rdma_connect);
-> -	flush_scheduled_work();
-> +	cancel_delayed_work_sync(&r_xprt->rdma_connect);
-> 
->  	xprt_clear_connected(xprt);
-> 
-> @@ -460,7 +459,7 @@ xprt_rdma_connect(struct rpc_task *task)
->  	} else {
->  		schedule_delayed_work(&r_xprt->rdma_connect, 0);
->  		if (!RPC_IS_ASYNC(task))
-> -			flush_scheduled_work();
-> +			flush_delayed_work(&r_xprt->rdma_connect);
->  	}
->  }
-> 
+> +	if (!cses->flags & SESSION4_BACK_CHAN)
+> +		return nfs_ok;
+> +	if (attrs.maxreqs < 1)
+> +		return nfserr_inval;
+> +	/* XXX: check other fields here; see
+> +	 * http://tools.ietf.org/search/rfc5661#section-18.36 to
+> +	 * determine when we can modify the fields to be acceptable, and
+> +	 * when we must return inval.  We'll need to figure out the
+> +	 * things like how large a callback request we need to be able to
+> +	 * send. */
+> +	return nfs_ok;
+> +}
+> +
+>  __be32
+>  nfsd4_create_session(struct svc_rqst *rqstp,
+>  		     struct nfsd4_compound_state *cstate,
+> @@ -1553,6 +1570,9 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>  	cr_ses->flags &= ~SESSION4_PERSIST;
+>  	cr_ses->flags &= ~SESSION4_RDMA;
+>  
+> +	status = verify_backchannel_attributes(cr_ses);
+> +	if (status)
+> +		goto out;
+>  	status = nfserr_jukebox;
+>  	new = alloc_init_session(rqstp, conf, cr_ses);
+>  	if (!new)
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+=
