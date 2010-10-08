@@ -1,76 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37702 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755919Ab0JNS2Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Oct 2010 14:28:25 -0400
-Date: Thu, 14 Oct 2010 14:28:24 -0400
-To: zoolook <nbensa@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs4 all_squash: does it work at all?
-Message-ID: <20101014182824.GB1913@fieldses.org>
-References: <AANLkTi=rzJXAPc17ggmw0LPS_Hn9HG15syLOtSN=nWdp@mail.gmail.com>
- <AANLkTimNH+YuR2fHo3Sz1sO434oOag9ON-omTXBQ0_2Z@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTimNH+YuR2fHo3Sz1sO434oOag9ON-omTXBQ0_2Z@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:55277 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757269Ab0JHOfk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Oct 2010 10:35:40 -0400
+Received: by bwz15 with SMTP id 15so289236bwz.19
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Oct 2010 07:35:39 -0700 (PDT)
+In-Reply-To: <AANLkTimUeQGrFXzZfgkkiE834MvMYz3uxobHHAdzE79p@mail.gmail.com>
+References: <1286397317-17881-1-git-send-email-iisaman@netapp.com>
+	<1286397317-17881-3-git-send-email-iisaman@netapp.com>
+	<4CADCC48.4030908@panasas.com>
+	<AANLkTimnVJYW-ndu_rhk71JXkh3zW-0hLfMTYkRc8VpK@mail.gmail.com>
+	<4CADD3E9.7040307@panasas.com>
+	<AANLkTimUeQGrFXzZfgkkiE834MvMYz3uxobHHAdzE79p@mail.gmail.com>
+Date: Fri, 8 Oct 2010 10:35:38 -0400
+Message-ID: <AANLkTikCvmqk9Og0iRGLsogYCe1g3Um30sH3G150cQJ5@mail.gmail.com>
+Subject: Re: [PATCH 2/4] pnfs_submit: Only update stateid if it is more recent
+ than current
+From: Fred Isaman <iisaman@netapp.com>
+To: "P.B.Shelley" <shelleypt@gmail.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Oct 13, 2010 at 12:41:50AM -0300, zoolook wrote:
-> 2010/10/12 zoolook <nbensa@gmail.com>:
-> > Why uid:1000 with nfs4 and uid:65534 with nfs3? What am I missing?
-> > Note that I would like nfs4 behave like nfs3.
-> 
-> I've been struggling with this for two weeks. I've read lots of docs,
-> posts, forums, faqs... and I hate when I find the answer just after
-> clicking send to a mailing list.
-> 
-> For the record, what I missed was the fact that I need to do bind
-> mount for nfs4 to work properly.
+On Fri, Oct 8, 2010 at 10:13 AM, P.B.Shelley <shelleypt@gmail.com> wrote:
+> On Thu, Oct 7, 2010 at 10:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> On 2010-10-07 10:01, Fred Isaman wrote:
+>>> On Thu, Oct 7, 2010 at 9:34 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>>> On 2010-10-06 16:35, Fred Isaman wrote:
+>>>>> Right now, when we set the stateid, we blindly overwrite the current
+>>>>> one, allowing the seqid to incorrectly roll backward.
+>>>>>
+>>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>>>> ---
+>>>>>  fs/nfs/pnfs.c |   38 ++++++++++++++++++++++++++++++++------
+>>>>>  1 files changed, 32 insertions(+), 6 deletions(-)
+>>>>>
+>>>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>>>> index 39bce9b..555955b 100644
+>>>>> --- a/fs/nfs/pnfs.c
+>>>>> +++ b/fs/nfs/pnfs.c
+>>>>> @@ -459,16 +459,42 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+>>>>>       }
+>>>>>  }
+>>>>>
+>>>>> +/* update lo->stateid with new if is more recent
+>>>>> + *
+>>>>> + * lo->stateid could be the open stateid, in which case we just use what given.
+>>>>> + */
+>>>>>  static void
+>>>>>  pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+>>>>> -                     const nfs4_stateid *stateid)
+>>>>> +                     const nfs4_stateid *new)
+>>>>>  {
+>>>>> -     /* TODO - should enforce that embedded seqid, in the case
+>>>>> -      * that the two stateid.others are equal,  only increases.
+>>>>> -      * Complicated by wrap-around.
+>>>>> -      */
+>>>>> +     nfs4_stateid *old = &lo->stateid;
+>>>>> +     bool overwrite = false;
+>>>>> +
+>>>>>       write_seqlock(&lo->seqlock);
+>>>>> -     memcpy(lo->stateid.data, stateid->data, sizeof(lo->stateid.data));
+>>>>> +     if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
+>>>>> +         memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
+>>>>> +             overwrite = true;
+>>>>> +     else {
+>>>>> +             u32 oldseq, newseq, limit;
+>>>>> +
+>>>>> +             oldseq = be32_to_cpu(old->stateid.seqid);
+>>>>> +             newseq = be32_to_cpu(new->stateid.seqid);
+>>>>> +             /* There are no good bounds on window size, so just
+>>>>> +              * use a ridiculously large window of 2^31.
+>>>>> +              */
+>>>>> +             limit = oldseq + (1 << 31);
+>>>>> +             if (oldseq < limit) {
+>>>>> +                     /* The easy, non-wraparound case */
+>>>>> +                     if (oldseq < newseq && newseq < limit)
+>>>>> +                             overwrite = true;
+>>>>> +             } else {
+>>>>> +                     /* Near wraparound edge */
+>>>>> +                     if (oldseq < newseq || newseq < limit)
+>>>>> +                             overwrite = true;
+>>>>> +             }
+>>>>
+>>>> Wouldn't it be simpler to just look at (int32_t)(newseq - oldseq)?
+>>>>
+>>>
+>>> Why yes it would.  I'll send a new version of this patch shortly.
+>>>
+>>
+>> No need :)
+>> I'll just change this as follows:
+>>
+>> +       else {
+>> +               u32 oldseq, newseq, limit;
+>> +
+>> +               oldseq = be32_to_cpu(old->stateid.seqid);
+>> +               newseq = be32_to_cpu(new->stateid.seqid);
+>> +               if ((int)(newseq - oldseq) > 0)
+>> +                       overwrite = true;
+> Do we also need to verify the other field of the stateid? Will there
+> be situations that server change the other field and reset the seqid?
 
-Careful--if /NFSROOT/shares and /NFSROOT/shares/Sistemas are on the same
-filesystem partition, then the all_squash on Sistemas is easily bypassed
-by a malicious client.
+The server is going to use the "other" we sent, except in the case we
+sent an open stateid.  The only potential for trouble I see is if a
+LAYOUTGET reply gets lost in the network for a long time and is
+received after the layout stateid has been reset for some reason.
+However, that implies an error elsewhere (which may well exist at the
+moment...careful stateid handling is next on the agenda), as we should
+have been waiting for that lseg to arrive before continuing.
 
-With new kernel & nfs-utils, you really should just be able to do
+Fred
 
-	/shares/systemas *(rw,sync,no_subtree_check,all_squash,anongid=1002)
-
-and it should just work with v3 and v4.
-
---b.
-
-> 
-> Server:
-> $ ls -lnd /shares/sistemas/
-> drwxrws--- 2 65534 1002 4096 2010-10-12 23:25 /shares/sistemas/
-> 
-> $ mount | grep NFSROOT
-> /shares/sistemas on /NFSROOT/shares/Sistemas type none (rw,bind)
-> 
-> $ cat /etc/exports
-> /NFSROOT			*(ro,sync,no_subtree_check,fsid=root)
-> /NFSROOT/shares/Sistemas	*(rw,sync,no_subtree_check,all_squash,anongid=1002)
-> 
-> Client:
-> $ mount | grep nfsserver
-> nfsserver:/shares/Sistemas on /compartidos/sistemas type nfs4
-> (rw,clientaddr=10.11.101.124,addr=10.11.101.126)
-> 
-> $ touch /compartidos/sistemas/q
-> 
-> $ ls -ln /compartidos/sistemas/
-> total 0
-> -rw-r--r-- 1 65534 1002 0 2010-10-13 00:37 q
-> 
-> 
-> 
-> Thanks to all who have read. And I'm sorry for the noise.
-> 
-> Best regards,
-> Norberto
+>
+> Thanks,
+> Shelley
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
