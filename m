@@ -1,41 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:26034 "EHLO mx1.redhat.com"
+Received: from magus.merit.edu ([198.108.1.13]:60200 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756450Ab0J1QED (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Oct 2010 12:04:03 -0400
-Message-ID: <4CC99EF1.1040503@RedHat.com>
-Date: Thu, 28 Oct 2010 12:04:01 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Bryan Schumaker <bjschuma@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs-utils: add nfs.idmap
-References: <4CC6CE30.90105@netapp.com> <4CC70D34.1060600@netapp.com>	 <4CC99463.9000108@RedHat.com>  <4CC9966B.1050103@netapp.com>	 <1288280405.3194.44.camel@heimdal.trondhjem.org>	 <4CC99A9D.10908@RedHat.com> <1288281101.3194.48.camel@heimdal.trondhjem.org>
-In-Reply-To: <1288281101.3194.48.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1757014Ab0JHQGn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Oct 2010 12:06:43 -0400
+Date: Fri, 8 Oct 2010 12:06:33 -0400
+From: Jim Rees <rees@umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org, sfaibish <sfaibish@emc.com>,
+        peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 0/4] nfs-utils: rework device scanning in blkmapd
+Message-ID: <cover.1286552019.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+This series reworks the way device scanning is done in blkmapd as a result
+of test results and discussions at the Fall 2010 Bakeathon.
 
+We get rid of the config file and instead examine all block devices as
+listed in /sys/block and /proc/partitions (this is the way fdisk does it).
+Since we're looking for pnfs signatures, it usually doesn't hurt to examine
+a device that isn't part of a layout, and in general it's hard to tell ahead
+of time which devices should be considered, so I think having a config file
+does more harm than good.
 
-On 10/28/2010 11:51 AM, Trond Myklebust wrote:
-> On Thu, 2010-10-28 at 11:45 -0400, Steve Dickson wrote:
->>
->> On 10/28/2010 11:40 AM, Trond Myklebust wrote:
->>>
->>> Let's wait with this until an actual nfs-utils release is available, so
->>> we can also update the 'Documentation/Changes' file with the new minimal
->>> release version number.
->> Just to be clear... the kernel changes will be in the 2.6.37 kernel, correct?
-> 
-> Yes. They have already been merged into Linus' git tree.
-Cool..
+We get rid of periodic (once a minute) device rescanning, and instead rescan
+only when the kernel asks for a layout.  This will suffice for the common
+case, and works with all current known server implementations.  A later
+patch will re-introduce rescanning during the life of a layout, but will be
+triggered by configuration change notifications from udev, rather than by
+expiration of an arbitrary time interval.
 
-> 
-> So FWIW, the name nfs.idmap is consistent with the apparent convention
-> in /etc/request-key.conf for the cifs.upcall and David's proposal for a
-> dns.upcall.
-Well those don't live in nfs-utils.. ;-)
+We get rid of the test for active/passive devices.  This test really only
+works for EMC servers, and isn't even needed because the passive devices
+will be skipped over during signature detection.  Just remove the detection
+code.
 
-steved.
+Jim Rees (4):
+  blkmapd: get rid of config file and instead examine all block devices
+  blkmapd: don't rescan periodically
+  blkmapd: don't use atomicio() where it's not needed
+  blkmapd: don't try to distinguish between active/passive devices
+
+ utils/blkmapd/Makefile.am        |    2 -
+ utils/blkmapd/cfg.c              |  248 --------------------------------------
+ utils/blkmapd/cfg.h              |   47 -------
+ utils/blkmapd/device-discovery.c |  141 ++++++++--------------
+ utils/blkmapd/device-discovery.h |    3 -
+ utils/blkmapd/device-inq.c       |   40 ++-----
+ utils/blkmapd/device-process.c   |    2 +-
+ 7 files changed, 60 insertions(+), 423 deletions(-)
+ delete mode 100644 utils/blkmapd/cfg.c
+ delete mode 100644 utils/blkmapd/cfg.h
+
