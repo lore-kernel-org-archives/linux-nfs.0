@@ -1,101 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:50257 "EHLO
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:55350 "EHLO
 	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932745Ab0JGOBY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 10:01:24 -0400
-Received: by bwz11 with SMTP id 11so457600bwz.19
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Oct 2010 07:01:19 -0700 (PDT)
-In-Reply-To: <4CADCC48.4030908@panasas.com>
+	with ESMTP id S1752417Ab0JHON4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Oct 2010 10:13:56 -0400
+Received: by bwz15 with SMTP id 15so267139bwz.19
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Oct 2010 07:13:55 -0700 (PDT)
+In-Reply-To: <4CADD3E9.7040307@panasas.com>
 References: <1286397317-17881-1-git-send-email-iisaman@netapp.com>
-	<1286397317-17881-3-git-send-email-iisaman@netapp.com>
-	<4CADCC48.4030908@panasas.com>
-Date: Thu, 7 Oct 2010 10:01:19 -0400
-Message-ID: <AANLkTimnVJYW-ndu_rhk71JXkh3zW-0hLfMTYkRc8VpK@mail.gmail.com>
+ <1286397317-17881-3-git-send-email-iisaman@netapp.com> <4CADCC48.4030908@panasas.com>
+ <AANLkTimnVJYW-ndu_rhk71JXkh3zW-0hLfMTYkRc8VpK@mail.gmail.com> <4CADD3E9.7040307@panasas.com>
+From: "P.B.Shelley" <shelleypt@gmail.com>
+Date: Fri, 8 Oct 2010 22:13:33 +0800
+Message-ID: <AANLkTimUeQGrFXzZfgkkiE834MvMYz3uxobHHAdzE79p@mail.gmail.com>
 Subject: Re: [PATCH 2/4] pnfs_submit: Only update stateid if it is more recent
  than current
-From: Fred Isaman <iisaman@netapp.com>
 To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Oct 7, 2010 at 9:34 AM, Benny Halevy <bhalevy@panasas.com> wrote:
-> On 2010-10-06 16:35, Fred Isaman wrote:
->> Right now, when we set the stateid, we blindly overwrite the current
->> one, allowing the seqid to incorrectly roll backward.
+On Thu, Oct 7, 2010 at 10:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+> On 2010-10-07 10:01, Fred Isaman wrote:
+>> On Thu, Oct 7, 2010 at 9:34 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>> On 2010-10-06 16:35, Fred Isaman wrote:
+>>>> Right now, when we set the stateid, we blindly overwrite the current
+>>>> one, allowing the seqid to incorrectly roll backward.
+>>>>
+>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>>> ---
+>>>> Â fs/nfs/pnfs.c | Â  38 ++++++++++++++++++++++++++++++++------
+>>>> Â 1 files changed, 32 insertions(+), 6 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>>> index 39bce9b..555955b 100644
+>>>> --- a/fs/nfs/pnfs.c
+>>>> +++ b/fs/nfs/pnfs.c
+>>>> @@ -459,16 +459,42 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+>>>> Â  Â  Â  }
+>>>> Â }
+>>>>
+>>>> +/* update lo->stateid with new if is more recent
+>>>> + *
+>>>> + * lo->stateid could be the open stateid, in which case we just use what given.
+>>>> + */
+>>>> Â static void
+>>>> Â pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+>>>> - Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  const nfs4_stateid *stateid)
+>>>> + Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  const nfs4_stateid *new)
+>>>> Â {
+>>>> - Â  Â  /* TODO - should enforce that embedded seqid, in the case
+>>>> - Â  Â  Â * that the two stateid.others are equal, Â only increases.
+>>>> - Â  Â  Â * Complicated by wrap-around.
+>>>> - Â  Â  Â */
+>>>> + Â  Â  nfs4_stateid *old = &lo->stateid;
+>>>> + Â  Â  bool overwrite = false;
+>>>> +
+>>>> Â  Â  Â  write_seqlock(&lo->seqlock);
+>>>> - Â  Â  memcpy(lo->stateid.data, stateid->data, sizeof(lo->stateid.data));
+>>>> + Â  Â  if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
+>>>> + Â  Â  Â  Â  memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
+>>>> + Â  Â  Â  Â  Â  Â  overwrite = true;
+>>>> + Â  Â  else {
+>>>> + Â  Â  Â  Â  Â  Â  u32 oldseq, newseq, limit;
+>>>> +
+>>>> + Â  Â  Â  Â  Â  Â  oldseq = be32_to_cpu(old->stateid.seqid);
+>>>> + Â  Â  Â  Â  Â  Â  newseq = be32_to_cpu(new->stateid.seqid);
+>>>> + Â  Â  Â  Â  Â  Â  /* There are no good bounds on window size, so just
+>>>> + Â  Â  Â  Â  Â  Â  Â * use a ridiculously large window of 2^31.
+>>>> + Â  Â  Â  Â  Â  Â  Â */
+>>>> + Â  Â  Â  Â  Â  Â  limit = oldseq + (1 << 31);
+>>>> + Â  Â  Â  Â  Â  Â  if (oldseq < limit) {
+>>>> + Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  /* The easy, non-wraparound case */
+>>>> + Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  if (oldseq < newseq && newseq < limit)
+>>>> + Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  overwrite = true;
+>>>> + Â  Â  Â  Â  Â  Â  } else {
+>>>> + Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  /* Near wraparound edge */
+>>>> + Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  if (oldseq < newseq || newseq < limit)
+>>>> + Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  overwrite = true;
+>>>> + Â  Â  Â  Â  Â  Â  }
+>>>
+>>> Wouldn't it be simpler to just look at (int32_t)(newseq - oldseq)?
+>>>
 >>
->> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->> ---
->>  fs/nfs/pnfs.c |   38 ++++++++++++++++++++++++++++++++------
->>  1 files changed, 32 insertions(+), 6 deletions(-)
+>> Why yes it would. Â I'll send a new version of this patch shortly.
 >>
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 39bce9b..555955b 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -459,16 +459,42 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
->>       }
->>  }
->>
->> +/* update lo->stateid with new if is more recent
->> + *
->> + * lo->stateid could be the open stateid, in which case we just use what given.
->> + */
->>  static void
->>  pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
->> -                     const nfs4_stateid *stateid)
->> +                     const nfs4_stateid *new)
->>  {
->> -     /* TODO - should enforce that embedded seqid, in the case
->> -      * that the two stateid.others are equal,  only increases.
->> -      * Complicated by wrap-around.
->> -      */
->> +     nfs4_stateid *old = &lo->stateid;
->> +     bool overwrite = false;
->> +
->>       write_seqlock(&lo->seqlock);
->> -     memcpy(lo->stateid.data, stateid->data, sizeof(lo->stateid.data));
->> +     if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
->> +         memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
->> +             overwrite = true;
->> +     else {
->> +             u32 oldseq, newseq, limit;
->> +
->> +             oldseq = be32_to_cpu(old->stateid.seqid);
->> +             newseq = be32_to_cpu(new->stateid.seqid);
->> +             /* There are no good bounds on window size, so just
->> +              * use a ridiculously large window of 2^31.
->> +              */
->> +             limit = oldseq + (1 << 31);
->> +             if (oldseq < limit) {
->> +                     /* The easy, non-wraparound case */
->> +                     if (oldseq < newseq && newseq < limit)
->> +                             overwrite = true;
->> +             } else {
->> +                     /* Near wraparound edge */
->> +                     if (oldseq < newseq || newseq < limit)
->> +                             overwrite = true;
->> +             }
 >
-> Wouldn't it be simpler to just look at (int32_t)(newseq - oldseq)?
+> No need :)
+> I'll just change this as follows:
 >
+> + Â  Â  Â  else {
+> + Â  Â  Â  Â  Â  Â  Â  u32 oldseq, newseq, limit;
+> +
+> + Â  Â  Â  Â  Â  Â  Â  oldseq = be32_to_cpu(old->stateid.seqid);
+> + Â  Â  Â  Â  Â  Â  Â  newseq = be32_to_cpu(new->stateid.seqid);
+> + Â  Â  Â  Â  Â  Â  Â  if ((int)(newseq - oldseq) > 0)
+> + Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  overwrite = true;
+Do we also need to verify the other field of the stateid? Will there
+be situations that server change the other field and reset the seqid?
 
-Why yes it would.  I'll send a new version of this patch shortly.
-
-Fred
-
-> Benny
->
->> +     }
->> +     if (overwrite)
->> +             memcpy(&old->stateid, &new->stateid, sizeof(new->stateid));
->>       write_sequnlock(&lo->seqlock);
->>  }
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Thanks,
+Shelley
