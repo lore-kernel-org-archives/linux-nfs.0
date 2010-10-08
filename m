@@ -1,76 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57705 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754665Ab0JUQUp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Oct 2010 12:20:45 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 11/11] nfsd4: only require krb5 principal for NFSv4.0 callbacks
-Date: Thu, 21 Oct 2010 12:20:18 -0400
-Message-Id: <1287678018-9266-12-git-send-email-bfields@redhat.com>
-In-Reply-To: <1287678018-9266-1-git-send-email-bfields@redhat.com>
-References: <1287678018-9266-1-git-send-email-bfields@redhat.com>
+Received: from exprod5og112.obsmtp.com ([64.18.0.24]:42419 "HELO
+	exprod5og112.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753981Ab0JHOQd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Oct 2010 10:16:33 -0400
+Message-ID: <4CAF27BE.9080402@panasas.com>
+Date: Fri, 08 Oct 2010 10:16:30 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: "P.B.Shelley" <shelleypt@gmail.com>
+CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/4] pnfs_submit: Only update stateid if it is more recent
+ than current
+References: <1286397317-17881-1-git-send-email-iisaman@netapp.com> <1286397317-17881-3-git-send-email-iisaman@netapp.com> <4CADCC48.4030908@panasas.com> <AANLkTimnVJYW-ndu_rhk71JXkh3zW-0hLfMTYkRc8VpK@mail.gmail.com> <4CADD3E9.7040307@panasas.com> <AANLkTimUeQGrFXzZfgkkiE834MvMYz3uxobHHAdzE79p@mail.gmail.com>
+In-Reply-To: <AANLkTimUeQGrFXzZfgkkiE834MvMYz3uxobHHAdzE79p@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-In the sessions backchannel case, we don't need a krb5 principal name
-for the client; we use the already-created forechannel credentials
-instead.
+On 2010-10-08 10:13, P.B.Shelley wrote:
+> On Thu, Oct 7, 2010 at 10:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> On 2010-10-07 10:01, Fred Isaman wrote:
+>>> On Thu, Oct 7, 2010 at 9:34 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>>> On 2010-10-06 16:35, Fred Isaman wrote:
+>>>>> Right now, when we set the stateid, we blindly overwrite the current
+>>>>> one, allowing the seqid to incorrectly roll backward.
+>>>>>
+>>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>>>> ---
+>>>>>  fs/nfs/pnfs.c |   38 ++++++++++++++++++++++++++++++++------
+>>>>>  1 files changed, 32 insertions(+), 6 deletions(-)
+>>>>>
+>>>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>>>> index 39bce9b..555955b 100644
+>>>>> --- a/fs/nfs/pnfs.c
+>>>>> +++ b/fs/nfs/pnfs.c
+>>>>> @@ -459,16 +459,42 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+>>>>>       }
+>>>>>  }
+>>>>>
+>>>>> +/* update lo->stateid with new if is more recent
+>>>>> + *
+>>>>> + * lo->stateid could be the open stateid, in which case we just use what given.
+>>>>> + */
+>>>>>  static void
+>>>>>  pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+>>>>> -                     const nfs4_stateid *stateid)
+>>>>> +                     const nfs4_stateid *new)
+>>>>>  {
+>>>>> -     /* TODO - should enforce that embedded seqid, in the case
+>>>>> -      * that the two stateid.others are equal,  only increases.
+>>>>> -      * Complicated by wrap-around.
+>>>>> -      */
+>>>>> +     nfs4_stateid *old = &lo->stateid;
+>>>>> +     bool overwrite = false;
+>>>>> +
+>>>>>       write_seqlock(&lo->seqlock);
+>>>>> -     memcpy(lo->stateid.data, stateid->data, sizeof(lo->stateid.data));
+>>>>> +     if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
+>>>>> +         memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
 
-Some cleanup, while we're there: make it clearer which code here is 4.0-
-or sessions- specific.
+here we check the 'other' part.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4callback.c |   15 ++++++++-------
- 1 files changed, 8 insertions(+), 7 deletions(-)
+>>>>> +             overwrite = true;
+>>>>> +     else {
+>>>>> +             u32 oldseq, newseq, limit;
+>>>>> +
+>>>>> +             oldseq = be32_to_cpu(old->stateid.seqid);
+>>>>> +             newseq = be32_to_cpu(new->stateid.seqid);
+>>>>> +             /* There are no good bounds on window size, so just
+>>>>> +              * use a ridiculously large window of 2^31.
+>>>>> +              */
+>>>>> +             limit = oldseq + (1 << 31);
+>>>>> +             if (oldseq < limit) {
+>>>>> +                     /* The easy, non-wraparound case */
+>>>>> +                     if (oldseq < newseq && newseq < limit)
+>>>>> +                             overwrite = true;
+>>>>> +             } else {
+>>>>> +                     /* Near wraparound edge */
+>>>>> +                     if (oldseq < newseq || newseq < limit)
+>>>>> +                             overwrite = true;
+>>>>> +             }
+>>>>
+>>>> Wouldn't it be simpler to just look at (int32_t)(newseq - oldseq)?
+>>>>
+>>>
+>>> Why yes it would.  I'll send a new version of this patch shortly.
+>>>
+>>
+>> No need :)
+>> I'll just change this as follows:
+>>
+>> +       else {
+>> +               u32 oldseq, newseq, limit;
+>> +
+>> +               oldseq = be32_to_cpu(old->stateid.seqid);
+>> +               newseq = be32_to_cpu(new->stateid.seqid);
+>> +               if ((int)(newseq - oldseq) > 0)
+>> +                       overwrite = true;
+> Do we also need to verify the other field of the stateid? Will there
+> be situations that server change the other field and reset the seqid?
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 67bcd2c..143da2e 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -481,22 +481,24 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
- 	};
- 	struct rpc_create_args args = {
- 		.net		= &init_net,
--		.protocol	= XPRT_TRANSPORT_TCP,
- 		.address	= (struct sockaddr *) &conn->cb_addr,
- 		.addrsize	= conn->cb_addrlen,
- 		.timeout	= &timeparms,
- 		.program	= &cb_program,
--		.prognumber	= conn->cb_prog,
- 		.version	= 0,
- 		.authflavor	= clp->cl_flavor,
- 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
--		.client_name    = clp->cl_principal,
- 	};
- 	struct rpc_clnt *client;
- 
--	if (!clp->cl_principal && (clp->cl_flavor >= RPC_AUTH_GSS_KRB5))
--		return -EINVAL;
--	if (clp->cl_minorversion) {
-+	if (clp->cl_minorversion == 0) {
-+		if (!clp->cl_principal && (clp->cl_flavor >= RPC_AUTH_GSS_KRB5))
-+			return -EINVAL;
-+		args.client_name = clp->cl_principal;
-+		args.prognumber	= conn->cb_prog,
-+		args.protocol = XPRT_TRANSPORT_TCP;
-+		clp->cl_cb_ident = conn->cb_ident;
-+	} else {
- 		args.bc_xprt = conn->cb_xprt;
- 		args.prognumber = clp->cl_cb_session->se_cb_prog;
- 		args.protocol = XPRT_TRANSPORT_BC_TCP;
-@@ -508,7 +510,6 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
- 			PTR_ERR(client));
- 		return PTR_ERR(client);
- 	}
--	clp->cl_cb_ident = conn->cb_ident;
- 	clp->cl_cb_client = client;
- 	return 0;
- 
--- 
-1.7.1
+We do :)
+see block above.
 
+Benny
+
+> 
+> Thanks,
+> Shelley
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
