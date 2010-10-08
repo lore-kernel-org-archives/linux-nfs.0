@@ -1,96 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:42829 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751949Ab0JAUFt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 16:05:49 -0400
-Received: by bwz11 with SMTP id 11so2452911bwz.19
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Oct 2010 13:05:48 -0700 (PDT)
-In-Reply-To: <4CA63D1A.5070108@RedHat.com>
-References: <4CA5C059.6000805@RedHat.com>
-	<4CA5E744.9010006@desy.de>
-	<4CA63D1A.5070108@RedHat.com>
-Date: Fri, 1 Oct 2010 16:05:48 -0400
-Message-ID: <AANLkTinAL6eSqEpzmtMOgw8=+3j4rz4q25VeEdDO9iAr@mail.gmail.com>
-Subject: Re: Updated pNFS Developmental kernel repository
-From: Fred Isaman <iisaman@netapp.com>
+Received: from magus.merit.edu ([198.108.1.13]:60624 "EHLO magus.merit.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757346Ab0JHQIF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Oct 2010 12:08:05 -0400
+Date: Fri, 8 Oct 2010 12:07:57 -0400
+From: Jim Rees <rees@umich.edu>
 To: Steve Dickson <SteveD@redhat.com>
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, sfaibish <sfaibish@emc.com>,
+        peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 2/4] blkmapd: don't rescan periodically
+Message-ID: <bcd177b948fae7bc90f96313dbf5bb05a3266795.1286552019.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1286552019.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-With recent code, you don't need a modprobe on the client.  All you
-need to do is set up an alias.
+Periodic device rescanning is always going to be wrong, since the interval
+will either be too long and miss an important change, or too short and waste
+resources.  It's not even needed in the normal case, only when the devices
+change during the life of a layout.  For now, just rescan when the kernel
+asks for a layout.  A later patch will re-introduce rescanning during the
+life of a layout, but will be triggered by configuration change
+notifications from udev, rather than by expiration of an arbitrary time
+interval.
 
-In some /etc/modprobe.d file put:
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ utils/blkmapd/device-discovery.c |   14 ++++++++++----
+ utils/blkmapd/device-discovery.h |    2 --
+ 2 files changed, 10 insertions(+), 6 deletions(-)
 
-alias nfs-layouttype4-1 nfs_layout_nfsv41_files
+diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
+index 0fc8fd3..71b4d48 100644
+--- a/utils/blkmapd/device-discovery.c
++++ b/utils/blkmapd/device-discovery.c
+@@ -308,6 +308,15 @@ int bl_disk_inquiry_process(int fd)
+ 	head->status = BL_DEVICE_REQUEST_PROC;
+ 	switch (head->type) {
+ 	case BL_DEVICE_MOUNT:
++		/*
++		 * It shouldn't be necessary to discover devices here, since
++		 * process_deviceinfo() will re-discover if it can't find
++		 * the devices it needs.  But in the case of multipath
++		 * devices (ones that appear more than once, for example an
++		 * active and a standby LUN), this will re-order them in the
++		 * correct priority.
++		 */
++		bl_discover_devices();
+ 		if (!process_deviceinfo(buf, buflen, &major, &minor)) {
+ 			head->status = BL_DEVICE_REQUEST_ERR;
+ 			goto out;
+@@ -329,7 +338,6 @@ int bl_disk_inquiry_process(int fd)
+ 	case BL_DEVICE_UMOUNT:
+ 		if (!dm_device_remove_all((uint64_t *) buf))
+ 			head->status = BL_DEVICE_REQUEST_ERR;
+-		bl_discover_devices();
+ 		break;
+ 	default:
+ 		head->status = BL_DEVICE_REQUEST_ERR;
+@@ -357,7 +365,6 @@ unsigned int bl_process_stop;
+ int bl_run_disk_inquiry_process(int fd)
+ {
+ 	fd_set rset;
+-	struct timeval tv;
+ 	int ret;
+ 
+ 	bl_process_stop = 0;
+@@ -368,8 +375,7 @@ int bl_run_disk_inquiry_process(int fd)
+ 		FD_ZERO(&rset);
+ 		FD_SET(fd, &rset);
+ 		ret = 0;
+-		tv.tv_sec = BL_DEVICE_DISCOVERY_INTERVAL;
+-		switch (select(fd + 1, &rset, NULL, NULL, &tv)) {
++		switch (select(fd + 1, &rset, NULL, NULL, NULL)) {
+ 		case -1:
+ 			if (errno == EINTR)
+ 				continue;
+diff --git a/utils/blkmapd/device-discovery.h b/utils/blkmapd/device-discovery.h
+index 71c0748..b8d26a6 100644
+--- a/utils/blkmapd/device-discovery.h
++++ b/utils/blkmapd/device-discovery.h
+@@ -27,8 +27,6 @@
+ #ifndef BL_DEVICE_DISCOVERY_H
+ #define BL_DEVICE_DISCOVERY_H
+ 
+-#define BL_DEVICE_DISCOVERY_INTERVAL 60
+-
+ #include <stdint.h>
+ #include <syslog.h>
+ 
+-- 
+1.7.0.4
 
-Fred
-
-On Fri, Oct 1, 2010 at 3:57 PM, Steve Dickson <SteveD@redhat.com> wrote:
->
->
-> On 10/01/2010 09:51 AM, Tigran Mkrtchyan wrote:
->>
->> Hi Steve,
->>
->> thanks for the builds. What I am missing is modprobe configuration file
->> which I have to add myself.
-> Unfortunately yes... I have not figured out a good way to have
-> the mobprobe done on the client since, in general, init scripts
-> don't run on the client (with the exception of rpc.statd and rpc.gssd).
->
-> I guess I could come up with an pnfs init script..but that
-> seems like a bit overkill just to do a modprobe...
->
-> steved.
->
->>
->> thanks,
->>    Tigran.
->>
->> On 10/01/2010 01:04 PM, Steve Dickson wrote:
->>> Hello,
->>>
->>> I've updated the Fedora pNFS development repository to include the
->>> Fedora 13, 14 and Devel kernels that have the latest pNFS bits:
->>>
->>>      Tag: pnfs-all-2.6.35-2010-09-14     for Fedora 13 and 14 kernels
->>>      Tag: pnfs-all-latest                for Devel/f15 kernels
->>>
->>> (Note: there are also kernel-debuginfo and kernel-devel rpms for people who
->>> use things like systemtap probes and crash).
->>>
->>> I have not updated the nfs-utils rpms because I'm waiting
->>> for a fix to a problem in rpc.mountd. Once the problem is resolve
->>> I'll update those rpms as well...
->>>
->>> Instructions on how to install and use these kernels are at:
->>> http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
->>>
->>>   If/when bugs are found with these rpms please enter them
->>> in to the NFS Bugzilla Main Page at:
->>>      https://bugzilla.linux-nfs.org/index.cgi
->>>
->>> Please use the "pNFS" keyword..
->>>
->>> Any question or issues please feel free to contact me...
->>>
->>> steved.
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
