@@ -1,90 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og113.obsmtp.com ([64.18.0.26]:51371 "HELO
-	exprod5og113.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S932443Ab0JXMCH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Oct 2010 08:02:07 -0400
-Message-ID: <4CC4203C.2050600@panasas.com>
-Date: Sun, 24 Oct 2010 14:02:04 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Jim Rees <rees@umich.edu>
-CC: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH] move include lines out of include file
-References: <20101022005120.GA15788@merit.edu>
-In-Reply-To: <20101022005120.GA15788@merit.edu>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:30725 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755950Ab0JOGRk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Oct 2010 02:17:40 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 01/12] NFSD: remove duplicate NFS4_STATEID_SIZE
+Date: Sun, 10 Oct 2010 11:22:42 -0400
+Message-Id: <1286724173-8493-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
+References: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 10/22/2010 02:51 AM, Jim Rees wrote:
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> ---
->  include/linux/sunrpc/simple_rpc_pipefs.h |    6 ------
->  net/sunrpc/simple_rpc_pipefs.c           |    5 +++++
->  2 files changed, 5 insertions(+), 6 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/simple_rpc_pipefs.h b/include/linux/sunrpc/simple_rpc_pipefs.h
-> index 02e8147..f6a1227 100644
-> --- a/include/linux/sunrpc/simple_rpc_pipefs.h
-> +++ b/include/linux/sunrpc/simple_rpc_pipefs.h
-> @@ -39,14 +39,8 @@
->  #ifndef _SIMPLE_RPC_PIPEFS_H_
->  #define _SIMPLE_RPC_PIPEFS_H_
->  
-> -#include <linux/fs.h>
-> -#include <linux/list.h>
-> -#include <linux/mount.h>
-> -#include <linux/sched.h>
-> -#include <linux/sunrpc/clnt.h>
->  #include <linux/sunrpc/rpc_pipe_fs.h>
->  
-> -
->  #define payload_of(headerp)  ((void *)(headerp + 1))
->  
->  /*
-> diff --git a/net/sunrpc/simple_rpc_pipefs.c b/net/sunrpc/simple_rpc_pipefs.c
-> index c9306aa..b749cf7 100644
-> --- a/net/sunrpc/simple_rpc_pipefs.c
-> +++ b/net/sunrpc/simple_rpc_pipefs.c
-> @@ -41,6 +41,11 @@
->  #include <linux/completion.h>
->  #include <linux/uaccess.h>
->  #include <linux/module.h>
-> +#include <linux/fs.h>
-> +#include <linux/list.h>
-> +#include <linux/mount.h>
-> +#include <linux/sched.h>
-> +#include <linux/sunrpc/clnt.h>
->  #include <linux/sunrpc/simple_rpc_pipefs.h>
->  
+From: Andy Adamson <andros@netapp.com>
 
-This patch does *not* break the header's independence. .i.e
-the header can still be compiled independently without any other
-includes. Which means some of the includes here are un-needed.
-See patch below. (Please squash it into your patch)
+Already accepted by Bruce
 
-Boaz
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
-git diff --stat -p -M net/sunrpc/simple_rpc_pipefs.c
- net/sunrpc/simple_rpc_pipefs.c |    6 ------
- 1 files changed, 0 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4callback.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/simple_rpc_pipefs.c b/net/sunrpc/simple_rpc_pipefs.c
-index c4825b7..24e2277 100644
---- a/net/sunrpc/simple_rpc_pipefs.c
-+++ b/net/sunrpc/simple_rpc_pipefs.c
-@@ -38,13 +38,7 @@
-  *  With thanks to CITI's project sponsor and partner, IBM.
-  */
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 988cbb3..014482c 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -41,7 +41,6 @@
  
--#include <linux/completion.h>
--#include <linux/uaccess.h>
--#include <linux/module.h>
--#include <linux/fs.h>
--#include <linux/list.h>
- #include <linux/mount.h>
--#include <linux/sched.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/simple_rpc_pipefs.h>
+ #define NFSPROC4_CB_NULL 0
+ #define NFSPROC4_CB_COMPOUND 1
+-#define NFS4_STATEID_SIZE 16
  
+ /* Index of predefined Linux callback client operations */
+ 
+-- 
+1.7.2.1
+
