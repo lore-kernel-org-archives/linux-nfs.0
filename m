@@ -1,149 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:50080 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S933143Ab0J0QNH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Oct 2010 12:13:07 -0400
-In-Reply-To: <201010271723.59734.arnd@arndb.de>
-References: <20101026164549.GD19445@fieldses.org> <20101027145538.GC6328@fieldses.org>
- <20101027145929.GA5788@infradead.org> <201010271723.59734.arnd@arndb.de>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Wed, 27 Oct 2010 09:12:06 -0700
-Message-ID: <AANLkTinTm-LwjfBfoFUyp5Dj8S2hexnHGQGpZiOWqyMY@mail.gmail.com>
-Subject: Re: nfsd changes for 2.6.37
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Content-Type: multipart/mixed; boundary=000e0cd30b2a0002f404939b7ecf
+Received: from mx2.netapp.com ([216.240.18.37]:30725 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756117Ab0JOGRk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Oct 2010 02:17:40 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 03/12] RFC: pnfsd, pnfs: protocol level pnfs constants
+Date: Sun, 10 Oct 2010 11:22:44 -0400
+Message-Id: <1286724173-8493-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
+References: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
---000e0cd30b2a0002f404939b7ecf
-Content-Type: text/plain; charset=ISO-8859-1
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-On Wed, Oct 27, 2010 at 8:23 AM, Arnd Bergmann <arnd@arndb.de> wrote:
->
-> locks_delete_lock is also called with lock_flocks held and calls
-> fasync_helper...
+Use only layoutreturn constant for both returns and recalls.
+(return_* works better for recall_type rather the other way around)
 
-We don't really have to use fasync_helper.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ include/linux/nfs4.h |   45 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 45 insertions(+), 0 deletions(-)
 
-In fact, the whole interface is pretty broken for something like file
-locking, which isn't actually "fasync()". That whole "on/off as an
-argument" is just crazy. It would be _trivial_ to expose a version of
-fasync_helper() that takes a pre-allocated fasync_struct for add, and
-that has separate helper functions for the add/delete case so that you
-don't have the pointless crazy arguments (for "delete" the "fd"
-argument is useless, and I do hate "modal" functions that take what
-they should do as a flag).
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 07e40c6..6c0406e 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -471,6 +471,8 @@ enum lock_type4 {
+ #define FATTR4_WORD1_TIME_MODIFY        (1UL << 21)
+ #define FATTR4_WORD1_TIME_MODIFY_SET    (1UL << 22)
+ #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
++#define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
++#define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
+ 
+ #define NFSPROC4_NULL 0
+ #define NFSPROC4_COMPOUND 1
+@@ -550,6 +552,49 @@ enum state_protect_how4 {
+ 	SP4_SSV		= 2
+ };
+ 
++enum pnfs_layouttype {
++	LAYOUT_NFSV4_1_FILES  = 1,
++	LAYOUT_OSD2_OBJECTS = 2,
++	LAYOUT_BLOCK_VOLUME = 3,
++};
++
++/* used for both layout return and recall */
++enum pnfs_layoutreturn_type {
++	RETURN_FILE = 1,
++	RETURN_FSID = 2,
++	RETURN_ALL  = 3
++};
++
++enum pnfs_iomode {
++	IOMODE_READ = 1,
++	IOMODE_RW = 2,
++	IOMODE_ANY = 3,
++};
++
++enum pnfs_notify_deviceid_type4 {
++	NOTIFY_DEVICEID4_CHANGE = 1 << 1,
++	NOTIFY_DEVICEID4_DELETE = 1 << 2,
++};
++
++#define NFL4_UFLG_MASK			0x0000003F
++#define NFL4_UFLG_DENSE			0x00000001
++#define NFL4_UFLG_COMMIT_THRU_MDS	0x00000002
++#define NFL4_UFLG_STRIPE_UNIT_SIZE_MASK	0xFFFFFFC0
++
++/* Encoded in the loh_body field of type layouthint4 */
++enum filelayout_hint_care4 {
++	NFLH4_CARE_DENSE		= NFL4_UFLG_DENSE,
++	NFLH4_CARE_COMMIT_THRU_MDS	= NFL4_UFLG_COMMIT_THRU_MDS,
++	NFLH4_CARE_STRIPE_UNIT_SIZE	= 0x00000040,
++	NFLH4_CARE_STRIPE_COUNT		= 0x00000080
++};
++
++#define NFS4_DEVICEID4_SIZE 16
++
++struct nfs4_deviceid {
++	char data[NFS4_DEVICEID4_SIZE];
++};
++
+ #endif
+ #endif
+ 
+-- 
+1.7.2.1
 
-Then fcntl_setlease() would trivially just allocate the dang thing before.
-
-Something like the attached (UNTESTED!) perhaps?
-
-                           Linus
-
---000e0cd30b2a0002f404939b7ecf
-Content-Type: text/x-patch; charset=US-ASCII; name="patch.diff"
-Content-Disposition: attachment; filename="patch.diff"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_gfsekse90
-
-IGZzL2ZjbnRsLmMgICAgICAgICB8ICAgNjYgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKysrLS0tLS0tLS0tLS0tCiBmcy9sb2Nrcy5jICAgICAgICAgfCAgIDE3ICsrKysrKysr
-KysrKy0KIGluY2x1ZGUvbGludXgvZnMuaCB8ICAgIDUgKysrKwogMyBmaWxlcyBjaGFuZ2VkLCA3
-MSBpbnNlcnRpb25zKCspLCAxNyBkZWxldGlvbnMoLSkKCmRpZmYgLS1naXQgYS9mcy9mY250bC5j
-IGIvZnMvZmNudGwuYwppbmRleCBmOGNjMzRmLi5kY2RiYzZmIDEwMDY0NAotLS0gYS9mcy9mY250
-bC5jCisrKyBiL2ZzL2ZjbnRsLmMKQEAgLTY0MCw3ICs2NDAsNyBAQCBzdGF0aWMgdm9pZCBmYXN5
-bmNfZnJlZV9yY3Uoc3RydWN0IHJjdV9oZWFkICpoZWFkKQogICogbWF0Y2ggdGhlIHN0YXRlICJp
-cyB0aGUgZmlscCBvbiBhIGZhc3luYyBsaXN0Ii4KICAqCiAgKi8KLXN0YXRpYyBpbnQgZmFzeW5j
-X3JlbW92ZV9lbnRyeShzdHJ1Y3QgZmlsZSAqZmlscCwgc3RydWN0IGZhc3luY19zdHJ1Y3QgKipm
-YXBwKQoraW50IGZhc3luY19yZW1vdmVfZW50cnkoc3RydWN0IGZpbGUgKmZpbHAsIHN0cnVjdCBm
-YXN5bmNfc3RydWN0ICoqZmFwcCkKIHsKIAlzdHJ1Y3QgZmFzeW5jX3N0cnVjdCAqZmEsICoqZnA7
-CiAJaW50IHJlc3VsdCA9IDA7CkBAIC02NjYsMjEgKzY2NiwyOCBAQCBzdGF0aWMgaW50IGZhc3lu
-Y19yZW1vdmVfZW50cnkoc3RydWN0IGZpbGUgKmZpbHAsIHN0cnVjdCBmYXN5bmNfc3RydWN0ICoq
-ZmFwcCkKIAlyZXR1cm4gcmVzdWx0OwogfQogCitzdHJ1Y3QgZmFzeW5jX3N0cnVjdCAqZmFzeW5j
-X2FsbG9jKHZvaWQpCit7CisJcmV0dXJuIGttZW1fY2FjaGVfYWxsb2MoZmFzeW5jX2NhY2hlLCBH
-RlBfS0VSTkVMKTsKK30KKwogLyoKLSAqIEFkZCBhIGZhc3luYyBlbnRyeS4gUmV0dXJuIG5lZ2F0
-aXZlIG9uIGVycm9yLCBwb3NpdGl2ZSBpZgotICogYWRkZWQsIGFuZCB6ZXJvIGlmIGRpZCBub3Ro
-aW5nIGJ1dCBjaGFuZ2UgYW4gZXhpc3Rpbmcgb25lLgotICoKLSAqIE5PVEUhIEl0IGlzIHZlcnkg
-aW1wb3J0YW50IHRoYXQgdGhlIEZBU1lOQyBmbGFnIGFsd2F5cwotICogbWF0Y2ggdGhlIHN0YXRl
-ICJpcyB0aGUgZmlscCBvbiBhIGZhc3luYyBsaXN0Ii4KKyAqIE5PVEUhIFRoaXMgY2FuIGJlIHVz
-ZWQgb25seSBmb3IgdW51c2VkIGZhc3luYyBlbnRyaWVzOgorICogZW50cmllcyB0aGF0IGFjdHVh
-bGx5IGdvdCBpbnNlcnRlZCBvbiB0aGUgZmFzeW5jIGxpc3QKKyAqIG5lZWQgdG8gYmUgcmVsZWFz
-ZWQgYnkgcmN1IC0gc2VlIGZhc3luY19yZW1vdmVfZW50cnkuCiAgKi8KLXN0YXRpYyBpbnQgZmFz
-eW5jX2FkZF9lbnRyeShpbnQgZmQsIHN0cnVjdCBmaWxlICpmaWxwLCBzdHJ1Y3QgZmFzeW5jX3N0
-cnVjdCAqKmZhcHApCit2b2lkIGZhc3luY19mcmVlKHN0cnVjdCBmYXN5bmNfc3RydWN0ICpuZXcp
-CiB7Ci0Jc3RydWN0IGZhc3luY19zdHJ1Y3QgKm5ldywgKmZhLCAqKmZwOwotCWludCByZXN1bHQg
-PSAwOworCWttZW1fY2FjaGVfZnJlZShmYXN5bmNfY2FjaGUsIG5ldyk7Cit9CiAKLQluZXcgPSBr
-bWVtX2NhY2hlX2FsbG9jKGZhc3luY19jYWNoZSwgR0ZQX0tFUk5FTCk7Ci0JaWYgKCFuZXcpCi0J
-CXJldHVybiAtRU5PTUVNOworLyoKKyAqIEluc2VydCBhIG5ldyBlbnRyeSBpbnRvIHRoZSBmYXN5
-bmMgbGlzdC4gIFJldHVybiB0aGUgcG9pbnRlciB0byB0aGUKKyAqIG9sZCBvbmUgaWYgd2UgZGlk
-bid0IHVzZSB0aGUgbmV3IG9uZS4KKyAqLworc3RydWN0IGZhc3luY19zdHJ1Y3QgKmZhc3luY19p
-bnNlcnRfZW50cnkoaW50IGZkLCBzdHJ1Y3QgZmlsZSAqZmlscCwgc3RydWN0IGZhc3luY19zdHJ1
-Y3QgKipmYXBwLCBzdHJ1Y3QgZmFzeW5jX3N0cnVjdCAqbmV3KQoreworICAgICAgICBzdHJ1Y3Qg
-ZmFzeW5jX3N0cnVjdCAqZmEsICoqZnA7CiAKIAlzcGluX2xvY2soJmZpbHAtPmZfbG9jayk7CiAJ
-c3Bpbl9sb2NrKCZmYXN5bmNfbG9jayk7CkBAIC02OTEsOCArNjk4LDYgQEAgc3RhdGljIGludCBm
-YXN5bmNfYWRkX2VudHJ5KGludCBmZCwgc3RydWN0IGZpbGUgKmZpbHAsIHN0cnVjdCBmYXN5bmNf
-c3RydWN0ICoqZmEKIAkJc3Bpbl9sb2NrX2lycSgmZmEtPmZhX2xvY2spOwogCQlmYS0+ZmFfZmQg
-PSBmZDsKIAkJc3Bpbl91bmxvY2tfaXJxKCZmYS0+ZmFfbG9jayk7Ci0KLQkJa21lbV9jYWNoZV9m
-cmVlKGZhc3luY19jYWNoZSwgbmV3KTsKIAkJZ290byBvdXQ7CiAJfQogCkBAIC03MDIsMTMgKzcw
-Nyw0MiBAQCBzdGF0aWMgaW50IGZhc3luY19hZGRfZW50cnkoaW50IGZkLCBzdHJ1Y3QgZmlsZSAq
-ZmlscCwgc3RydWN0IGZhc3luY19zdHJ1Y3QgKipmYQogCW5ldy0+ZmFfZmQgPSBmZDsKIAluZXct
-PmZhX25leHQgPSAqZmFwcDsKIAlyY3VfYXNzaWduX3BvaW50ZXIoKmZhcHAsIG5ldyk7Ci0JcmVz
-dWx0ID0gMTsKIAlmaWxwLT5mX2ZsYWdzIHw9IEZBU1lOQzsKIAogb3V0OgogCXNwaW5fdW5sb2Nr
-KCZmYXN5bmNfbG9jayk7CiAJc3Bpbl91bmxvY2soJmZpbHAtPmZfbG9jayk7Ci0JcmV0dXJuIHJl
-c3VsdDsKKwlyZXR1cm4gZmE7Cit9CisKKy8qCisgKiBBZGQgYSBmYXN5bmMgZW50cnkuIFJldHVy
-biBuZWdhdGl2ZSBvbiBlcnJvciwgcG9zaXRpdmUgaWYKKyAqIGFkZGVkLCBhbmQgemVybyBpZiBk
-aWQgbm90aGluZyBidXQgY2hhbmdlIGFuIGV4aXN0aW5nIG9uZS4KKyAqCisgKiBOT1RFISBJdCBp
-cyB2ZXJ5IGltcG9ydGFudCB0aGF0IHRoZSBGQVNZTkMgZmxhZyBhbHdheXMKKyAqIG1hdGNoIHRo
-ZSBzdGF0ZSAiaXMgdGhlIGZpbHAgb24gYSBmYXN5bmMgbGlzdCIuCisgKi8KK3N0YXRpYyBpbnQg
-ZmFzeW5jX2FkZF9lbnRyeShpbnQgZmQsIHN0cnVjdCBmaWxlICpmaWxwLCBzdHJ1Y3QgZmFzeW5j
-X3N0cnVjdCAqKmZhcHApCit7CisJc3RydWN0IGZhc3luY19zdHJ1Y3QgKm5ldzsKKworCW5ldyA9
-IGZhc3luY19hbGxvYygpOworCWlmICghbmV3KQorCQlyZXR1cm4gLUVOT01FTTsKKworCS8qCisJ
-ICogZmFzeW5jX2luc2VydF9lbnRyeSgpIHJldHVybnMgdGhlIG9sZCAodXBkYXRlKSBlbnRyeSBp
-ZgorCSAqIGl0IGV4aXN0ZWQuCisJICoKKwkgKiBTbyBmcmVlIHRoZSAodW51c2VkKSBuZXcgZW50
-cnkgYW5kIHJldHVybiAwIHRvIGxldCB0aGUKKwkgKiBjYWxsZXIga25vdyB0aGF0IHdlIGRpZG4n
-dCBhZGQgYW55IG5ldyBmYXN5bmMgZW50cmllcy4KKwkgKi8KKwlpZiAoZmFzeW5jX2luc2VydF9l
-bnRyeShmZCwgZmlscCwgZmFwcCwgbmV3KSkgeworCQlmYXN5bmNfZnJlZShuZXcpOworCQlyZXR1
-cm4gMDsKKwl9CisKKwlyZXR1cm4gMTsKIH0KIAogLyoKZGlmZiAtLWdpdCBhL2ZzL2xvY2tzLmMg
-Yi9mcy9sb2Nrcy5jCmluZGV4IDRkZTNhMjYuLjlmZjNmNjYgMTAwNjQ0Ci0tLSBhL2ZzL2xvY2tz
-LmMKKysrIGIvZnMvbG9ja3MuYwpAQCAtMTUxNSw2ICsxNTE1LDcgQEAgRVhQT1JUX1NZTUJPTF9H
-UEwodmZzX3NldGxlYXNlKTsKIGludCBmY250bF9zZXRsZWFzZSh1bnNpZ25lZCBpbnQgZmQsIHN0
-cnVjdCBmaWxlICpmaWxwLCBsb25nIGFyZykKIHsKIAlzdHJ1Y3QgZmlsZV9sb2NrIGZsLCAqZmxw
-ID0gJmZsOworCXN0cnVjdCBmYXN5bmNfc3RydWN0ICpuZXc7CiAJc3RydWN0IGlub2RlICppbm9k
-ZSA9IGZpbHAtPmZfcGF0aC5kZW50cnktPmRfaW5vZGU7CiAJaW50IGVycm9yOwogCkBAIC0xNTIz
-LDEzICsxNTI0LDI1IEBAIGludCBmY250bF9zZXRsZWFzZSh1bnNpZ25lZCBpbnQgZmQsIHN0cnVj
-dCBmaWxlICpmaWxwLCBsb25nIGFyZykKIAlpZiAoZXJyb3IpCiAJCXJldHVybiBlcnJvcjsKIAor
-CW5ldyA9IGZhc3luY19hbGxvYygpOworCWlmICghbmV3KQorCQlyZXR1cm4gLUVOT01FTTsKKwog
-CWxvY2tfZmxvY2tzKCk7CiAKIAllcnJvciA9IF9fdmZzX3NldGxlYXNlKGZpbHAsIGFyZywgJmZs
-cCk7CiAJaWYgKGVycm9yIHx8IGFyZyA9PSBGX1VOTENLKQogCQlnb3RvIG91dF91bmxvY2s7CiAK
-LQllcnJvciA9IGZhc3luY19oZWxwZXIoZmQsIGZpbHAsIDEsICZmbHAtPmZsX2Zhc3luYyk7CisJ
-LyoKKwkgKiBmYXN5bmNfaW5zZXJ0X2VudHJ5KCkgcmV0dXJucyB0aGUgb2xkIGVudHJ5IGlmIGFu
-eS4KKwkgKiBJZiB0aGVyZSB3YXMgbm8gb2xkIGVudHJ5LCB0aGVuIGl0IHVzZWQgJ25ldycgYW5k
-CisJICogaW5zZXJ0ZWQgaXQgaW50byB0aGUgZmFzeW5jIGxpc3QuIENsZWFyIG5ldyBzbyB0aGF0
-CisJICogd2UgZG9uJ3QgcmVsZWFzZSBpdCBoZXJlLgorCSAqLworCWlmICghZmFzeW5jX2luc2Vy
-dF9lbnRyeShmZCwgZmlscCwgJmZscC0+ZmxfZmFzeW5jLCBuZXcpKQorCQluZXcgPSBOVUxMOwor
-CiAJaWYgKGVycm9yIDwgMCkgewogCQkvKiByZW1vdmUgbGVhc2UganVzdCBpbnNlcnRlZCBieSBz
-ZXRsZWFzZSAqLwogCQlmbHAtPmZsX3R5cGUgPSBGX1VOTENLIHwgRl9JTlBST0dSRVNTOwpAQCAt
-MTU0MSw2ICsxNTU0LDggQEAgaW50IGZjbnRsX3NldGxlYXNlKHVuc2lnbmVkIGludCBmZCwgc3Ry
-dWN0IGZpbGUgKmZpbHAsIGxvbmcgYXJnKQogCWVycm9yID0gX19mX3NldG93bihmaWxwLCB0YXNr
-X3BpZChjdXJyZW50KSwgUElEVFlQRV9QSUQsIDApOwogb3V0X3VubG9jazoKIAl1bmxvY2tfZmxv
-Y2tzKCk7CisJaWYgKG5ldykKKwkJZmFzeW5jX2ZyZWUobmV3KTsKIAlyZXR1cm4gZXJyb3I7CiB9
-CiAKZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvZnMuaCBiL2luY2x1ZGUvbGludXgvZnMuaApp
-bmRleCAyNDBlYjFkLi5kNDg3NzcyIDEwMDY0NAotLS0gYS9pbmNsdWRlL2xpbnV4L2ZzLmgKKysr
-IGIvaW5jbHVkZS9saW51eC9mcy5oCkBAIC0xMzEwLDYgKzEzMTAsMTEgQEAgc3RydWN0IGZhc3lu
-Y19zdHJ1Y3QgewogCiAvKiBTTVAgc2FmZSBmYXN5bmMgaGVscGVyczogKi8KIGV4dGVybiBpbnQg
-ZmFzeW5jX2hlbHBlcihpbnQsIHN0cnVjdCBmaWxlICosIGludCwgc3RydWN0IGZhc3luY19zdHJ1
-Y3QgKiopOworZXh0ZXJuIHN0cnVjdCBmYXN5bmNfc3RydWN0ICpmYXN5bmNfaW5zZXJ0X2VudHJ5
-KGludCwgc3RydWN0IGZpbGUgKiwgc3RydWN0IGZhc3luY19zdHJ1Y3QgKiosIHN0cnVjdCBmYXN5
-bmNfc3RydWN0ICopOworZXh0ZXJuIGludCBmYXN5bmNfcmVtb3ZlX2VudHJ5KHN0cnVjdCBmaWxl
-ICosIHN0cnVjdCBmYXN5bmNfc3RydWN0ICoqKTsKK2V4dGVybiBzdHJ1Y3QgZmFzeW5jX3N0cnVj
-dCAqZmFzeW5jX2FsbG9jKHZvaWQpOworZXh0ZXJuIHZvaWQgZmFzeW5jX2ZyZWUoc3RydWN0IGZh
-c3luY19zdHJ1Y3QgKik7CisKIC8qIGNhbiBiZSBjYWxsZWQgZnJvbSBpbnRlcnJ1cHRzICovCiBl
-eHRlcm4gdm9pZCBraWxsX2Zhc3luYyhzdHJ1Y3QgZmFzeW5jX3N0cnVjdCAqKiwgaW50LCBpbnQp
-OwogCg==
-
---000e0cd30b2a0002f404939b7ecf--
