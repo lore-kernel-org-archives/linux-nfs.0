@@ -1,63 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:28737 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754125Ab0JAIrR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 04:47:17 -0400
-Message-ID: <4CA5A012.2090404@panasas.com>
-Date: Fri, 01 Oct 2010 10:47:14 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-CC: Marc Eshel <eshel@almaden.ibm.com>, Benny Halevy <bhalevy@panasas.com>,
-        NFS list <linux-nfs@vger.kernel.org>, linux-nfs-owner@vger.kernel.org,
-        Fred Isaman <iisaman@netapp.com>
-Subject: Re: pNFS DS session
-References: <4C7BDD8C.40509@panasas.com> <4CA31DC3.8070300@panasas.com> <4CA34830.1040703@desy.de> <4CA34883.40005@desy.de> <4CA34B93.2010100@panasas.com> <4CA44AAA.4030803@panasas.com> <4CA45462.1070503@desy.de> <4CA455C4.4030705@panasas.com> <OF6B8488BA.B9C50431-ON882577AF.0016FDCE-882577AF.0017999B@us.ibm.com> <4CA57BC6.9030701@desy.de>
-In-Reply-To: <4CA57BC6.9030701@desy.de>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:30725 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755816Ab0JOGRj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Oct 2010 02:17:39 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 00/12] RFC: pnfs: LAYOUTGET/DEVINFO submission, try 4
+Date: Sun, 10 Oct 2010 11:22:41 -0400
+Message-Id: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 10/01/2010 08:12 AM, Tigran Mkrtchyan wrote:
->   On 10/01/2010 06:17 AM, Marc Eshel wrote:
->> Hi Benny,
->>
->> Running connectathon I see that some times the clients decides to destroy
->> the session with the DS. The test continue and the session is
->> re-established. It looks like layout return reduces the hold on device
->> info the reduces the hold on the client struct which decide to destroy the
->> session. Is that a known problem?
->>
+This is try 4 of the first wave of the linux pnfs client submission.
+This fixes some issues seen at the recent bakeathon, and includes
+fixes noted since the last version was published in Benny's tree.
 
-Yes, I want to emphasize on Marks words: "a known *problem*"
+Major changes are:
+fix problems due to uninitialized flag when using v2/3
+fix deadlock caused by free_lseg sleeping
+properly update stateid, instead of blindly overwriting
+fix error handler for LAYOUTGET
 
-I have objected strongly to this new "fixture" by Fred and backed up by Benny.
-They decided to only hold a deviceid as long as a layout references it. And
-not like before, until unmount. I think they are totally wrong with regard
-to current servers and implementation and a setup that might enjoy what is
-done now, will not exist for at least 3 years or more.
+A complete change set can be found at
+git://linux-nfs.org/~iisaman/linux-pnfs.git,
+branch devinfo-submit-rc6-needs-squashed
 
-An argument was made that current code is more simple. But I have demonstrated
-that all that is needed is a one-line get_ref at device add. And that iteration
-on all devices at umount time that was there before and removed in latest code.
+For those interested, the patches themselves can also be found under
+the branch devinfo-submit-rc6-trond
 
-!!!
-Boaz
+A rebase of Benny's pnfs-submit branch onto these patches is under
+the branch bennys-pnfs-submit-on-devinfo-rc6
 
 
-> Just wan to confirm  that we see this as well (pnfs-submit and 
-> pnfs-all-latest).
-> 
-> Tigran.
->> Thanks, Marc.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
+
+
+This is the start of code implementing pnfs, based on RFC 5661.  Since
+sending the whole thing at once would be overwhelming, we are trying
+to break it into bite sized waves.  This first wave implements the
+mount/umount infrastructure, as well as sending the LAYOUTGET and
+GETDEVTICEINFO calls on io (but not actually using the information for
+io).  Note that two major simplifications to the protocol will be made 
+throughout the initial submission process:  only the file layout
+driver is considered, and only whole file layouts are requested.
+
+
+These patches apply against Trond's nfs-for-2.6.37 branch.
+
+patches 01-08 implement the mount/umount hooks
+patches 09-12 implement LAYOUTGET and GETDEVICEINFO
 
