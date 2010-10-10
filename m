@@ -1,203 +1,272 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55165 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:30725 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752013Ab0J0Ozq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Oct 2010 10:55:46 -0400
-Date: Wed, 27 Oct 2010 10:55:39 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: nfsd changes for 2.6.37
-Message-ID: <20101027145538.GC6328@fieldses.org>
-References: <20101026164549.GD19445@fieldses.org>
- <20101027083924.GA28129@infradead.org>
- <20101027133924.GB6328@fieldses.org>
- <201010271546.09036.arnd@arndb.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201010271546.09036.arnd@arndb.de>
+	id S1756163Ab0JOGRl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Oct 2010 02:17:41 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 07/12] RFC: pnfs: full mount/umount infrastructure
+Date: Sun, 10 Oct 2010 11:22:48 -0400
+Message-Id: <1286724173-8493-8-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
+References: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Oct 27, 2010 at 03:46:08PM +0200, Arnd Bergmann wrote:
-> On Wednesday 27 October 2010, J. Bruce Fields wrote:
-> > On Wed, Oct 27, 2010 at 04:39:24AM -0400, Christoph Hellwig wrote:
-> > > Do locks_alloc_lock and initialization of the heap struct file_lock
-> > > in the caller.  This also avoids an entirely useless copy of the
-> > > lock structure.  free the passed in structure if we are modifying
-> > > an existing lock structure.
-> > 
-> > That sounds good; I'll give it a try.
-> 
-> I've already started, this is what I've come up with. I don't have
-> a good way to test it though, and don't know as much as you about this
-> code. Feel free to use it as a starting point if you like.
-> It does look correct to me, but I'm not very confident in this.
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Hm, two problems:
-	- We introduce the possibility of fcntl(fd, F_SETLEASE, F_UNLCK)
-	  failing with ENOMEM.
-	- fasync_helper(.,.,1,.) sleeps.  Argh.
+Allow a module implementing a layout type to register, and
+have its mount/umount routines called for filesystems that
+the server declares support it.
 
---b.
-> 
-> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-> ---
-> 
-> diff --git a/fs/locks.c b/fs/locks.c
-> index 8b2b6ad..c5ec771 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -162,10 +162,11 @@ EXPORT_SYMBOL_GPL(unlock_flocks);
->  static struct kmem_cache *filelock_cache __read_mostly;
->  
->  /* Allocate an empty lock structure. */
-> -static struct file_lock *locks_alloc_lock(void)
-> +struct file_lock *locks_alloc_lock(void)
->  {
->  	return kmem_cache_alloc(filelock_cache, GFP_KERNEL);
->  }
-> +EXPORT_SYMBOL_GPL(locks_alloc_lock);
->  
->  void locks_release_private(struct file_lock *fl)
->  {
-> @@ -1365,7 +1366,6 @@ int fcntl_getlease(struct file *filp)
->  int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
->  {
->  	struct file_lock *fl, **before, **my_before = NULL, *lease;
-> -	struct file_lock *new_fl = NULL;
->  	struct dentry *dentry = filp->f_path.dentry;
->  	struct inode *inode = dentry->d_inode;
->  	int error, rdlease_count = 0, wrlease_count = 0;
-> @@ -1385,11 +1385,6 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
->  	lease = *flp;
->  
->  	if (arg != F_UNLCK) {
-> -		error = -ENOMEM;
-> -		new_fl = locks_alloc_lock();
-> -		if (new_fl == NULL)
-> -			goto out;
-> -
->  		error = -EAGAIN;
->  		if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
->  			goto out;
-> @@ -1434,23 +1429,19 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
->  		goto out;
->  	}
->  
-> -	error = 0;
->  	if (arg == F_UNLCK)
-> -		goto out;
-> +		goto out_unlck;
->  
->  	error = -EINVAL;
->  	if (!leases_enable)
->  		goto out;
->  
-> -	locks_copy_lock(new_fl, lease);
-> -	locks_insert_lock(before, new_fl);
-> -
-> -	*flp = new_fl;
-> +	locks_insert_lock(before, lease);
-> +out_unlck:
->  	return 0;
->  
->  out:
-> -	if (new_fl != NULL)
-> -		locks_free_lock(new_fl);
-> +	locks_free_lock(lease);
->  	return error;
->  }
->  EXPORT_SYMBOL(generic_setlease);
-> @@ -1514,26 +1505,31 @@ EXPORT_SYMBOL_GPL(vfs_setlease);
->   */
->  int fcntl_setlease(unsigned int fd, struct file *filp, long arg)
->  {
-> -	struct file_lock fl, *flp = &fl;
-> +	struct file_lock *fl;
->  	struct inode *inode = filp->f_path.dentry->d_inode;
->  	int error;
->  
-> -	locks_init_lock(&fl);
-> -	error = lease_init(filp, arg, &fl);
-> -	if (error)
-> +	fl = locks_alloc_lock();
-> +	if (!fl)
-> +		return -ENOMEM;
-> +
-> +	locks_init_lock(fl);
-> +	error = lease_init(filp, arg, fl);
-> +	if (error) {
-> +		locks_free_lock(fl);
->  		return error;
-> +	}
->  
->  	lock_flocks();
-> -
-> -	error = __vfs_setlease(filp, arg, &flp);
-> +	error = __vfs_setlease(filp, arg, &fl);
->  	if (error || arg == F_UNLCK)
->  		goto out_unlock;
->  
-> -	error = fasync_helper(fd, filp, 1, &flp->fl_fasync);
-> +	error = fasync_helper(fd, filp, 1, &fl->fl_fasync);
->  	if (error < 0) {
->  		/* remove lease just inserted by setlease */
-> -		flp->fl_type = F_UNLCK | F_INPROGRESS;
-> -		flp->fl_break_time = jiffies - 10;
-> +		fl->fl_type = F_UNLCK | F_INPROGRESS;
-> +		fl->fl_break_time = jiffies - 10;
->  		time_out_leases(inode);
->  		goto out_unlock;
->  	}
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 9019e8e..56347e0 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2614,7 +2614,7 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open, struct nfs4_sta
->  	struct nfs4_delegation *dp;
->  	struct nfs4_stateowner *sop = stp->st_stateowner;
->  	int cb_up = atomic_read(&sop->so_client->cl_cb_set);
-> -	struct file_lock fl, *flp = &fl;
-> +	struct file_lock *fl;
->  	int status, flag = 0;
->  
->  	flag = NFS4_OPEN_DELEGATE_NONE;
-> @@ -2648,20 +2648,24 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open, struct nfs4_sta
->  		flag = NFS4_OPEN_DELEGATE_NONE;
->  		goto out;
->  	}
-> -	locks_init_lock(&fl);
-> -	fl.fl_lmops = &nfsd_lease_mng_ops;
-> -	fl.fl_flags = FL_LEASE;
-> -	fl.fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
-> -	fl.fl_end = OFFSET_MAX;
-> -	fl.fl_owner =  (fl_owner_t)dp;
-> -	fl.fl_file = find_readable_file(stp->st_file);
-> -	BUG_ON(!fl.fl_file);
-> -	fl.fl_pid = current->tgid;
-> +	status = -ENOMEM;
-> +	fl = locks_alloc_lock();
-> +	if (!fl)
-> +		goto out;
-> +	locks_init_lock(fl);
-> +	fl->fl_lmops = &nfsd_lease_mng_ops;
-> +	fl->fl_flags = FL_LEASE;
-> +	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
-> +	fl->fl_end = OFFSET_MAX;
-> +	fl->fl_owner =  (fl_owner_t)dp;
-> +	fl->fl_file = find_readable_file(stp->st_file);
-> +	BUG_ON(!fl->fl_file);
-> +	fl->fl_pid = current->tgid;
->  
->  	/* vfs_setlease checks to see if delegation should be handed out.
->  	 * the lock_manager callbacks fl_mylease and fl_change are used
->  	 */
-> -	if ((status = vfs_setlease(fl.fl_file, fl.fl_type, &flp))) {
-> +	if ((status = vfs_setlease(fl->fl_file, fl->fl_type, &fl))) {
->  		dprintk("NFSD: setlease failed [%d], no delegation\n", status);
->  		unhash_delegation(dp);
->  		flag = NFS4_OPEN_DELEGATE_NONE;
+Signed-off-by: Andy Adamson<andros@netapp.com>
+Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ Documentation/filesystems/nfs/00-INDEX |    2 +
+ Documentation/filesystems/nfs/pnfs.txt |   48 +++++++++++++++++
+ fs/nfs/Kconfig                         |    8 ++-
+ fs/nfs/pnfs.c                          |   88 +++++++++++++++++++++++++++++++-
+ fs/nfs/pnfs.h                          |    9 +++
+ 5 files changed, 151 insertions(+), 4 deletions(-)
+ create mode 100644 Documentation/filesystems/nfs/pnfs.txt
+
+diff --git a/Documentation/filesystems/nfs/00-INDEX b/Documentation/filesystems/nfs/00-INDEX
+index 2f68cd6..e474827 100644
+--- a/Documentation/filesystems/nfs/00-INDEX
++++ b/Documentation/filesystems/nfs/00-INDEX
+@@ -12,5 +12,7 @@ nfs-rdma.txt
+ 	- how to install and setup the Linux NFS/RDMA client and server software
+ nfsroot.txt
+ 	- short guide on setting up a diskless box with NFS root filesystem.
++pnfs.txt
++	- short explanation of some of the internals of the pnfs client code
+ rpc-cache.txt
+ 	- introduction to the caching mechanisms in the sunrpc layer.
+diff --git a/Documentation/filesystems/nfs/pnfs.txt b/Documentation/filesystems/nfs/pnfs.txt
+new file mode 100644
+index 0000000..bc0b9cf
+--- /dev/null
++++ b/Documentation/filesystems/nfs/pnfs.txt
+@@ -0,0 +1,48 @@
++Reference counting in pnfs:
++==========================
++
++The are several inter-related caches.  We have layouts which can
++reference multiple devices, each of which can reference multiple data servers.
++Each data server can be referenced by multiple devices.  Each device
++can be referenced by multiple layouts.  To keep all of this straight,
++we need to reference count.
++
++
++struct pnfs_layout_hdr
++----------------------
++The on-the-wire command LAYOUTGET corresponds to struct
++pnfs_layout_segment, usually referred to by the variable name lseg.
++Each nfs_inode may hold a pointer to a cache of of these layout
++segments in nfsi->layout, of type struct pnfs_layout_hdr.
++
++We reference the header for the inode pointing to it, across each
++outstanding RPC call that references it (LAYOUTGET, LAYOUTRETURN,
++LAYOUTCOMMIT), and for each lseg held within.
++
++Each header is also (when non-empty) put on a list associated with
++struct nfs_client (cl_layouts).  Being put on this list does not bump
++the reference count, as the layout is kept around by the lseg that
++keeps it in the list.
++
++deviceid_cache
++--------------
++lsegs reference device ids, which are resolved per nfs_client and
++layout driver type.  The device ids are held in a RCU cache (struct
++nfs4_deviceid_cache).  The cache itself is referenced across each
++mount.  The entries (struct nfs4_deviceid) themselves are held across
++the lifetime of each lseg referencing them.
++
++RCU is used because the deviceid is basically a write once, read many
++data structure.  The hlist size of 32 buckets needs better
++justification, but seems reasonable given that we can have multiple
++deviceid's per filesystem, and multiple filesystems per nfs_client.
++
++The hash code is copied from the nfsd code base.  A discussion of
++hashing and variations of this algorithm can be found at:
++http://groups.google.com/group/comp.lang.c/browse_thread/thread/9522965e2b8d3809
++
++data server cache
++-----------------
++file driver devices refer to data servers, which are kept in a module
++level cache.  Its reference is held over the lifetime of the deviceid
++pointing to it.
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 6c2aad4..a267f3f 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -75,13 +75,17 @@ config NFS_V4
+ 
+ config NFS_V4_1
+ 	bool "NFS client support for NFSv4.1 (EXPERIMENTAL)"
+-	depends on NFS_V4 && EXPERIMENTAL
++	depends on NFS_FS && NFS_V4 && EXPERIMENTAL
++	select PNFS_FILE_LAYOUT
+ 	help
+ 	  This option enables support for minor version 1 of the NFSv4 protocol
+-	  (draft-ietf-nfsv4-minorversion1) in the kernel's NFS client.
++	  (RFC 5661) in the kernel's NFS client.
+ 
+ 	  If unsure, say N.
+ 
++config PNFS_FILE_LAYOUT
++	tristate
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index b483026..cf79562 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -32,16 +32,51 @@
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PNFS
+ 
+-/* STUB that returns the equivalent of "no module found" */
++/* Locking:
++ *
++ * pnfs_spinlock:
++ *      protects pnfs_modules_tbl.
++ */
++static DEFINE_SPINLOCK(pnfs_spinlock);
++
++/*
++ * pnfs_modules_tbl holds all pnfs modules
++ */
++static LIST_HEAD(pnfs_modules_tbl);
++
++/* Return the registered pnfs layout driver module matching given id */
++static struct pnfs_layoutdriver_type *
++find_pnfs_driver_locked(u32 id)
++{
++	struct pnfs_layoutdriver_type *local;
++
++	list_for_each_entry(local, &pnfs_modules_tbl, pnfs_tblid)
++		if (local->id == id)
++			goto out;
++	local = NULL;
++out:
++	dprintk("%s: Searching for id %u, found %p\n", __func__, id, local);
++	return local;
++}
++
+ static struct pnfs_layoutdriver_type *
+ find_pnfs_driver(u32 id)
+ {
+-	return NULL;
++	struct pnfs_layoutdriver_type *local;
++
++	spin_lock(&pnfs_spinlock);
++	local = find_pnfs_driver_locked(id);
++	spin_unlock(&pnfs_spinlock);
++	return local;
+ }
+ 
+ void
+ unset_pnfs_layoutdriver(struct nfs_server *nfss)
+ {
++	if (nfss->pnfs_curr_ld) {
++		nfss->pnfs_curr_ld->uninitialize_mountpoint(nfss);
++		module_put(nfss->pnfs_curr_ld->owner);
++	}
+ 	nfss->pnfs_curr_ld = NULL;
+ }
+ 
+@@ -74,7 +109,18 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
+ 			goto out_no_driver;
+ 		}
+ 	}
++	if (!try_module_get(ld_type->owner)) {
++		dprintk("%s: Could not grab reference on module\n", __func__);
++		goto out_no_driver;
++	}
+ 	server->pnfs_curr_ld = ld_type;
++	if (ld_type->initialize_mountpoint(server)) {
++		printk(KERN_ERR
++		       "%s: Error initializing mount point for layout driver %u.\n",
++		       __func__, id);
++		module_put(ld_type->owner);
++		goto out_no_driver;
++	}
+ 	dprintk("%s: pNFS module for %u set\n", __func__, id);
+ 	return;
+ 
+@@ -82,3 +128,41 @@ out_no_driver:
+ 	dprintk("%s: Using NFSv4 I/O\n", __func__);
+ 	server->pnfs_curr_ld = NULL;
+ }
++
++int
++pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
++{
++	int status = -EINVAL;
++	struct pnfs_layoutdriver_type *tmp;
++
++	if (ld_type->id == 0) {
++		printk(KERN_ERR "%s id 0 is reserved\n", __func__);
++		return status;
++	}
++
++	spin_lock(&pnfs_spinlock);
++	tmp = find_pnfs_driver_locked(ld_type->id);
++	if (!tmp) {
++		list_add(&ld_type->pnfs_tblid, &pnfs_modules_tbl);
++		status = 0;
++		dprintk("%s Registering id:%u name:%s\n", __func__, ld_type->id,
++			ld_type->name);
++	} else {
++		printk(KERN_ERR "%s Module with id %d already loaded!\n",
++			__func__, ld_type->id);
++	}
++	spin_unlock(&pnfs_spinlock);
++
++	return status;
++}
++EXPORT_SYMBOL_GPL(pnfs_register_layoutdriver);
++
++void
++pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *ld_type)
++{
++	dprintk("%s Deregistering id:%u\n", __func__, ld_type->id);
++	spin_lock(&pnfs_spinlock);
++	list_del(&ld_type->pnfs_tblid);
++	spin_unlock(&pnfs_spinlock);
++}
++EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index c628ef1..61531f3 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -36,8 +36,17 @@
+ 
+ /* Per-layout driver specific registration structure */
+ struct pnfs_layoutdriver_type {
++	struct list_head pnfs_tblid;
++	const u32 id;
++	const char *name;
++	struct module *owner;
++	int (*initialize_mountpoint) (struct nfs_server *);
++	int (*uninitialize_mountpoint) (struct nfs_server *);
+ };
+ 
++extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
++extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
++
+ void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ 
+-- 
+1.7.2.1
+
