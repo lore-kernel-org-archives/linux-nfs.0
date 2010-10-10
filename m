@@ -1,66 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from icebox.esperi.org.uk ([81.187.191.129]:46050 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753640Ab0JAWlt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 18:41:49 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: persistent, quasi-random -ESTALE at mount time
-References: <87mxra6duq.fsf@spindle.srvr.nix>
-	<20100922155235.GE15560@fieldses.org>
-	<8762xwqijb.fsf@spindle.srvr.nix> <20101001220018.GE1472@fieldses.org>
-From: Nix <nix@esperi.org.uk>
-Date: Fri, 01 Oct 2010 23:41:42 +0100
-In-Reply-To: <20101001220018.GE1472@fieldses.org> (J. Bruce Fields's message of "Fri, 1 Oct 2010 18:00:18 -0400")
-Message-ID: <87zkux5ye1.fsf@spindle.srvr.nix>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:30725 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756130Ab0JOGRk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Oct 2010 02:17:40 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 05/12] RFC: nfs: ask for layouttypes during v4 fsinfo call
+Date: Sun, 10 Oct 2010 11:22:46 -0400
+Message-Id: <1286724173-8493-6-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
+References: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 1 Oct 2010, J. Bruce Fields spake thusly:
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-> On Thu, Sep 23, 2010 at 10:03:36PM +0100, Nix wrote:
->> I'll say.
->
-> Sorry for the slow response; have you figured out anything more?
+This information will be used to determine which layout driver,
+if any, to use for subsequent IO on this filesystem.  Each driver
+is assigned an integer id, with 0 reserved to indicate no driver.
 
-Not yet. I try not to reboot the server except at weekends... I'll
-try to hook things up with a more rebootable machine as an NFS
-server (perhaps via qemu) so I can look into this without so much
-disruption.
+The server can in theory return multiple ids.  However, our current
+client implementation only notes the first entry and ignores the
+rest.
 
->> I flipped RPC debug on and rebooted the client next. The server said:
->> 
->> Sep 23 21:33:15 spindle warning: [  127.385537] RPC:       Want update, refage=120, age=0
->> Sep 23 21:33:15 spindle warning: [  127.536779] RPC:       Want update, refage=120, age=0
->> [repeated 40 times]
->> 
->> When it connected, the server said
->> 
->> Sep 23 21:34:23 spindle warning: [  195.696257] RPC:       Want update, refage=120, age=68
-> ...
->> Sep 23 21:34:38 spindle warning: [  210.766205] RPC:       Want update, refage=120, age=83
->> 
->> Now, the rpc/*/content files had grown again, and even the -ESTALEd
->> filesystems, like /home/.spindle.srvr.nix, are represented once more:
->
-> I'm a little confused.  Are you saying that in this case the client did
-> get ESTALE's?
+Signed-off-by: Andy Adamson<andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4proc.c       |    2 +-
+ fs/nfs/nfs4xdr.c        |   57 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_xdr.h |    1 +
+ 3 files changed, 59 insertions(+), 1 deletions(-)
 
-Yes. Bizarre, isn't it? -ESTALE, but here the filesystems are! Note that
-if you try to reboot again, you still get -ESTALE: only restarting
-rpc.mountd seems to fix it.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index aee1bcc..c3b1d98 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -129,7 +129,7 @@ const u32 nfs4_fsinfo_bitmap[2] = { FATTR4_WORD0_MAXFILESIZE
+ 			| FATTR4_WORD0_MAXREAD
+ 			| FATTR4_WORD0_MAXWRITE
+ 			| FATTR4_WORD0_LEASE_TIME,
+-			0
++			FATTR4_WORD1_FS_LAYOUT_TYPES
+ };
+ 
+ const u32 nfs4_fs_locations_bitmap[2] = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 3feace6..6e4d18d 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3868,6 +3868,60 @@ xdr_error:
+ 	return status;
+ }
+ 
++/*
++ * Decode potentially multiple layout types. Currently we only support
++ * one layout driver per file system.
++ */
++static int decode_first_pnfs_layout_type(struct xdr_stream *xdr,
++					 uint32_t *layouttype)
++{
++	uint32_t *p;
++	int num;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	num = be32_to_cpup(p);
++
++	/* pNFS is not supported by the underlying file system */
++	if (num == 0) {
++		*layouttype = 0;
++		return 0;
++	}
++	if (num > 1)
++		printk(KERN_INFO "%s: Warning: Multiple pNFS layout drivers "
++			"per filesystem not supported\n", __func__);
++
++	/* Decode and set first layout type, move xdr->p past unused types */
++	p = xdr_inline_decode(xdr, num * 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	*layouttype = be32_to_cpup(p);
++	return 0;
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
++/*
++ * The type of file system exported.
++ * Note we must ensure that layouttype is set in any non-error case.
++ */
++static int decode_attr_pnfstype(struct xdr_stream *xdr, uint32_t *bitmap,
++				uint32_t *layouttype)
++{
++	int status = 0;
++
++	dprintk("%s: bitmap is %x\n", __func__, bitmap[1]);
++	if (unlikely(bitmap[1] & (FATTR4_WORD1_FS_LAYOUT_TYPES - 1U)))
++		return -EIO;
++	if (bitmap[1] & FATTR4_WORD1_FS_LAYOUT_TYPES) {
++		status = decode_first_pnfs_layout_type(xdr, layouttype);
++		bitmap[1] &= ~FATTR4_WORD1_FS_LAYOUT_TYPES;
++	} else
++		*layouttype = 0;
++	return status;
++}
+ 
+ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+ {
+@@ -3894,6 +3948,9 @@ static int decode_fsinfo(struct xdr_stream *xdr, struct nfs_fsinfo *fsinfo)
+ 	if ((status = decode_attr_maxwrite(xdr, bitmap, &fsinfo->wtmax)) != 0)
+ 		goto xdr_error;
+ 	fsinfo->wtpref = fsinfo->wtmax;
++	status = decode_attr_pnfstype(xdr, bitmap, &fsinfo->layouttype);
++	if (status)
++		goto xdr_error;
+ 
+ 	status = verify_attr_len(xdr, savep, attrlen);
+ xdr_error:
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 5772b2c..d89920c 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -113,6 +113,7 @@ struct nfs_fsinfo {
+ 	__u32			dtpref;	/* pref. readdir transfer size */
+ 	__u64			maxfilesize;
+ 	__u32			lease_time; /* in seconds */
++	__u32			layouttype; /* supported pnfs layout driver */
+ };
+ 
+ struct nfs_fsstat {
+-- 
+1.7.2.1
 
->> I restarted rpc.mountd and the client, so it mounted correctly. Here's a
->
-> And then here the problems was cleared and you didn't see any more of
-> them?
-
-Yes, until the server got rebooted again.
-
-I mean, yes, we can work around it by killing rpc.mountd and restarting
-it as soon as the server has booted, but, well, yuck, no thanks, too
-much of a kludge. I'll have a concentrated hunt for the bug soon (once I
-can reproduce it without rebooting the single largest machine I have
-root on!)
