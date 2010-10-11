@@ -1,41 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:33133 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751354Ab0JEQsI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Oct 2010 12:48:08 -0400
-Message-ID: <4CAB56C2.3080801@parallels.com>
-Date: Tue, 05 Oct 2010 20:48:02 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] sunrpc: Use helper to set v4 mapped addr in ip_map_parse
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:38170 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752543Ab0JKAFX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Oct 2010 20:05:23 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 6so2668490iwn.19
+        for <linux-nfs@vger.kernel.org>; Sun, 10 Oct 2010 17:05:23 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 08/15] mount.nfs: Eliminate compiler warnings in
+	utils/mount/mount.c
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Sun, 10 Oct 2010 20:05:21 -0400
+Message-ID: <20101011000521.6667.46574.stgit@ellison.1015granger.net>
+In-Reply-To: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
+References: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
----
- net/sunrpc/svcauth_unix.c |    5 ++---
- 1 files changed, 2 insertions(+), 3 deletions(-)
+Clean up.
 
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 8b378f9..560677d 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -220,10 +220,9 @@ static int ip_map_parse(struct cache_detail *cd,
- 	switch (address.sa.sa_family) {
- 	case AF_INET:
- 		/* Form a mapped IPv4 address in sin6 */
--		memset(&sin6, 0, sizeof(sin6));
- 		sin6.sin6_family = AF_INET6;
--		sin6.sin6_addr.s6_addr32[2] = htonl(0xffff);
--		sin6.sin6_addr.s6_addr32[3] = address.s4.sin_addr.s_addr;
-+		ipv6_addr_set_v4mapped(address.s4.sin_addr.s_addr,
-+				&sin6.sin6_addr);
- 		break;
- #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
- 	case AF_INET6:
--- 
-1.5.5.6
+mount.c: In function ‘parse_opt’:
+mount.c:354: warning: conversion to ‘size_t’ from ‘int’ may change the sign of the result
+mount.c:354: warning: conversion to ‘int’ from ‘size_t’ may change the sign of the result
+mount.c:359: warning: conversion to ‘size_t’ from ‘int’ may change the sign of the result
+mount.c:359: warning: conversion to ‘int’ from ‘size_t’ may change the sign of the result
+mount.c: In function ‘parse_opts’:
+mount.c:374: warning: conversion to ‘int’ from ‘size_t’ may change the sign of the result
+mount.c:377: warning: conversion to ‘size_t’ from ‘int’ may change the sign of the result
+
+Character string lengths are usually size_t anyway.  We can easily
+avoid the implicit type cast here.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/mount/mount.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 1c6a88f..2909595 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -337,7 +337,7 @@ static void mount_usage(void)
+ 	printf(_("\tnfsoptions\tRefer to mount.nfs(8) or nfs(5)\n\n"));
+ }
+ 
+-static void parse_opt(const char *opt, int *mask, char *extra_opts, int len)
++static void parse_opt(const char *opt, int *mask, char *extra_opts, size_t len)
+ {
+ 	const struct opt_map *om;
+ 
+@@ -371,7 +371,7 @@ static void parse_opts(const char *options, int *flags, char **extra_opts)
+ 	if (options != NULL) {
+ 		char *opts = xstrdup(options);
+ 		char *opt, *p;
+-		int len = strlen(opts) + 1;	/* include room for a null */
++		size_t len = strlen(opts) + 1;	/* include room for a null */
+ 		int open_quote = 0;
+ 
+ 		*extra_opts = xmalloc(len);
 
