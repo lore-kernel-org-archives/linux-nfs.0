@@ -1,102 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:52600 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757691Ab0JZWlN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Oct 2010 18:41:13 -0400
-Date: Tue, 26 Oct 2010 18:41:07 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Arnd Bergmann <arnd@arndb.de>, Bryan Schumaker <bjschuma@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: nfsd changes for 2.6.37
-Message-ID: <20101026224107.GE1842@fieldses.org>
-References: <20101026164549.GD19445@fieldses.org>
- <201010262218.36940.arnd@arndb.de>
- <4CC73BA6.1090407@netapp.com>
- <201010262255.40481.arnd@arndb.de>
- <AANLkTimPBqafDPxYpZjuym8+-yk4vKYTU15Js-Ux_e6Z@mail.gmail.com>
- <20101026212433.GB1842@fieldses.org>
- <AANLkTinOd9pDVRYDQ5+dqn8LPf4yoOW=j8NxyCfCQAB6@mail.gmail.com>
- <20101026214441.GC1842@fieldses.org>
- <20101026221156.GD1842@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101026221156.GD1842@fieldses.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:38170 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752630Ab0JKAGe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Oct 2010 20:06:34 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 6so2668490iwn.19
+        for <linux-nfs@vger.kernel.org>; Sun, 10 Oct 2010 17:06:33 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 15/15] mount.nfs: don't show "remount" flag in /etc/mtab
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Sun, 10 Oct 2010 20:06:30 -0400
+Message-ID: <20101011000630.6667.13971.stgit@ellison.1015granger.net>
+In-Reply-To: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
+References: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Oct 26, 2010 at 06:11:56PM -0400, J. Bruce Fields wrote:
-> On Tue, Oct 26, 2010 at 05:44:41PM -0400, J. Bruce Fields wrote:
-> > On Tue, Oct 26, 2010 at 02:37:26PM -0700, Linus Torvalds wrote:
-> > > On Tue, Oct 26, 2010 at 2:24 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > > >
-> > > > I did a couple connectathon runs just now with no obvious ill effects
-> > > > except for some sleep-within-spinlock warnings in the lease code.
-> > > 
-> > > Hmm. Those sleep-within-spinlock warnings are very likely serious
-> > > bugs.
-> > 
-> > Yeah, didn't mean to belittle them.
-> > 
-> > > Can you quote the whole warning with stack trace?
-> > 
-> > It's just obvious allocations in setlease:
-> > 
-> > BUG: sleeping function called from invalid context at mm/slab.c:3101
-> > in_atomic(): 1, irqs_disabled(): 0, pid: 4345, name: lease_tests
-> > 1 lock held by lease_tests/4345:
-> >  #0:  (file_lock_lock){+.+.+.}, at: [<ffffffff81128be5>] lock_flocks+0x15/0x20
-> > Pid: 4345, comm: lease_tests Not tainted 2.6.36-05858-gbd5e20b #1028
-> > Call Trace:
-> >  [<ffffffff8103141d>] __might_sleep+0x10d/0x140
-> >  [<ffffffff810e3ad3>] kmem_cache_alloc+0x1f3/0x230
-> >  [<ffffffff8112a4d2>] generic_setlease+0x112/0x2c0
-> >  [<ffffffff8112a6b5>] __vfs_setlease+0x35/0x40
-> >  [<ffffffff8112acfe>] fcntl_setlease+0xce/0x180
-> >  [<ffffffff810f7c2e>] sys_fcntl+0x2fe/0x630
-> >  [<ffffffff81961999>] ? trace_hardirqs_on_thunk+0x3a/0x3f
-> >  [<ffffffff81002658>] system_call_fastpath+0x16/0x1b
-> > 
-> > I'm testing a patch.
-> 
-> This works for me.
-> 
-> I'm not saying it's correct, but it does at least pass my dumb tests
-> without complaining.
+Don't add the 'remount' option to /etc/mtab.  This is the same
+behavior as file systems that use the monolithic /sbin/mount command.
+See the MS_NOMTAB macro in utils-linux-ng/mount/mount.c.
 
-I can't think of any more missing locking, though I did notice this on a
-quick look.
+Note that mount(8) has MS_USERS and MS_USER in the "nomtab" category
+as well, but mount.nfs needs to record those values so that unmounting
+a user-mounted NFS file system can work.
 
---b.
+While we're here, fix some white space damage in fix_opts_string().
 
-commit fc42117585672abd3cbf247dd311869233d1606a
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Oct 26 18:25:30 2010 -0400
+This is a partial fix for:
 
-    fix nlmsvc_notify_blocked locking
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+  https://bugzilla.linux-nfs.org/show_bug.cgi?id=188
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 6f1ef00..c462d34 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -700,14 +700,16 @@ nlmsvc_notify_blocked(struct file_lock *fl)
- 	struct nlm_block	*block;
- 
- 	dprintk("lockd: VFS unblock notification for block %p\n", fl);
-+	spin_lock(&nlm_blocked_lock);
- 	list_for_each_entry(block, &nlm_blocked, b_list) {
- 		if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)) {
--			nlmsvc_insert_block(block, 0);
-+			nlmsvc_insert_block_locked(block, 0);
-+			spin_unlock(&nlm_blocked_lock);
- 			svc_wake_up(block->b_daemon);
- 			return;
- 		}
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/mount/mount.c           |    4 ++--
+ utils/mount/mount_constants.h |    4 ++++
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 2909595..b4da21f 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -209,7 +209,7 @@ static char *fix_opts_string(int flags, const char *extra_opts)
  	}
--
-+	spin_unlock(&nlm_blocked_lock);
- 	printk(KERN_WARNING "lockd: notification for unknown block!\n");
- }
+ 	if (flags & MS_USERS)
+ 		new_opts = xstrconcat3(new_opts, ",users", "");
+-	
++
+ 	for (om = opt_map; om->opt != NULL; om++) {
+ 		if (om->skip)
+ 			continue;
+@@ -281,7 +281,7 @@ static int add_mtab(char *spec, char *mount_point, char *fstype,
+ 	ment.mnt_fsname = spec;
+ 	ment.mnt_dir = mount_point;
+ 	ment.mnt_type = fstype;
+-	ment.mnt_opts = fix_opts_string(flags, opts);
++	ment.mnt_opts = fix_opts_string(flags & ~MS_NOMTAB, opts);
+ 	ment.mnt_freq = freq;
+ 	ment.mnt_passno = pass;
  
+diff --git a/utils/mount/mount_constants.h b/utils/mount/mount_constants.h
+index cbfb099..4d050d8 100644
+--- a/utils/mount/mount_constants.h
++++ b/utils/mount/mount_constants.h
+@@ -64,4 +64,8 @@ if we have a stack or plain mount - mount atop of it, forming a stack. */
+ #define MS_MGC_MSK 0xffff0000	/* magic flag number mask */
+ #endif
+ 
++/* Generic options that are prevented from appearing
++ * in the options field in /etc/mtab. */
++#define MS_NOMTAB	(MS_REMOUNT)
++
+ #endif	/* _NFS_UTILS_MOUNT_CONSTANTS_H */
+
