@@ -1,71 +1,58 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 00/15] Fixes for nfs-utils-1.2.4
-Date: Mon, 11 Oct 2010 11:18:34 -0400
-Message-ID: <357CCE21-A0D3-4E69-BAAB-32FE10EDFE9D@oracle.com>
-References: <20101010234836.6667.4057.stgit@ellison.1015granger.net> <20101011151615.30cbefd3@notabene>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-To: Neil Brown <neilb@suse.de>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 04/15] mount.nfs: Eliminate compiler warnings
+Date: Mon, 11 Oct 2010 12:45:16 -0400
+Message-ID: <4CB33F1C.6050108@RedHat.com>
+References: <20101010234836.6667.4057.stgit@ellison.1015granger.net> <20101011000441.6667.68536.stgit@ellison.1015granger.net> <4CB311D6.2000503@RedHat.com> <3C05DAD4-965A-42EB-A0AE-1EFD7DCEF3A9@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:59393 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754669Ab0JKPTF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Oct 2010 11:19:05 -0400
-In-Reply-To: <20101011151615.30cbefd3@notabene>
+Received: from mx1.redhat.com ([209.132.183.28]:26525 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755346Ab0JKQpU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Oct 2010 12:45:20 -0400
+In-Reply-To: <3C05DAD4-965A-42EB-A0AE-1EFD7DCEF3A9@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Oct 11, 2010, at 12:16 AM, Neil Brown wrote:
 
-> On Sun, 10 Oct 2010 20:04:01 -0400
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> Steve-
->> 
->> Here are fifteen patches which address several mount and mountd bugs
->> and correct other minor problems in nfs-utils-1.2.3.  Now that the
->> bake-a-thon event has passed, folks should have some spare moments to
->> review these.
-> 
-> Hi,
-> here is another you might like to add to the list.
+On 10/11/2010 12:18 PM, Chuck Lever wrote:
+>=20
+> On Oct 11, 2010, at 9:32 AM, Steve Dickson wrote:
+>=20
+>>
+>>
+>> On 10/10/2010 08:04 PM, Chuck Lever wrote:
+>>> Clean up.
+>>>
+>>> fstab.c: In function =91lock_mtab=92:
+>>> fstab.c:385: warning: declaration of =91errsv=92 shadows a previous=
+ local
+>>> fstab.c:367: warning: shadowed declaration is here
+>>> fstab.c:407: warning: declaration of =91errsv=92 shadows a previous=
+ local
+>>> fstab.c:367: warning: shadowed declaration is here
+>>> fstab.c:417: warning: declaration of =91tries=92 shadows a previous=
+ local
+>>> fstab.c:325: warning: shadowed declaration is here
+>>> fstab.c:422: warning: declaration of =91errsv=92 shadows a previous=
+ local
+>>> fstab.c:367: warning: shadowed declaration is here
+>> Could you please post the gcc flags you using to generate=20
+>> theses warnings... These warnings are not being generated with
+>> the default gcc flags we are currently using...=20
+>=20
+> Since I've already privately sent you the compiler flags I use,=20
+> would you like me to repost all of these compiler warning patches=20
+> with the compiler command line options listed in the patch descriptio=
+ns?
+No... I'll just dig out those flags you sent me..
 
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+>=20
+> You can probably see the warnings fixed in this particular patch with=
+ "-Wshadow"
+Thanks... I'll give that a try...
 
-> 
-> gcc complained:
-> 
-> client.c: In function 'init_netmask6':
-> client.c:181:1: warning: no return statement in function returning non-void
-> 
-> and Suse' build system complained
-> 
-> I: Program returns random data in a function
-> E: nfs-utils no-return-in-nonvoid-function client.c:181
-> 
-> when I built without --enable-ipv6
-> 
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> 
-> diff --git a/support/export/client.c b/support/export/client.c
-> index dbfc2b1..ba2db8f 100644
-> --- a/support/export/client.c
-> +++ b/support/export/client.c
-> @@ -178,6 +178,7 @@ out_badprefix:
-> static int
-> init_netmask6(nfs_client *UNUSED(clp), const char *UNUSED(slash))
-> {
-> +	return 0;
-> }
-> #endif	/* IPV6_SUPPORTED */
-> 
-
--- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+steved.
