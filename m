@@ -1,43 +1,68 @@
-From: Valentijn Sessink <valentyn-FXuWeBwviIQ@public.gmane.org>
-Subject: ipv6 + krb5, server status?
-Date: Sat, 09 Oct 2010 16:19:20 +0200
-Message-ID: <4CB079E8.7040606@blub.net>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 0/4] nfs-utils: rework device scanning in blkmapd
+Date: Mon, 11 Oct 2010 11:05:56 -0400
+Message-ID: <4CB327D4.8050807@panasas.com>
+References: <cover.1286552019.git.rees@umich.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
+	sfaibish <sfaibish@emc.com>,
+	peter honeyman <honey@citi.umich.edu>
+To: Jim Rees <rees@umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from filter.openoffice.nl ([217.170.2.175]:34837 "EHLO
-	filter.openoffice.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754994Ab0JIO2I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Oct 2010 10:28:08 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by filter.openoffice.nl (Postfix) with ESMTP id 811202439D9
-	for <linux-nfs@vger.kernel.org>; Sat,  9 Oct 2010 16:19:24 +0200 (CEST)
-Received: from filter.openoffice.nl ([127.0.0.1])
-	by localhost (post-it.openoffice.nl [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id JNiUPuJT5Nfe for <linux-nfs@vger.kernel.org>;
-	Sat,  9 Oct 2010 16:19:22 +0200 (CEST)
-Received: from blub.net (095-097-076-243.static.chello.nl [95.97.76.243])
-	by filter.openoffice.nl (Postfix) with ESMTP id B4C912439CD
-	for <linux-nfs@vger.kernel.org>; Sat,  9 Oct 2010 16:19:22 +0200 (CEST)
-Received: from [192.168.1.2] (dhcp-095-096-074-210.chello.nl [95.96.74.210])
-	by blub.net (Postfix) with ESMTPSA id 7E1513002CA
-	for <linux-nfs@vger.kernel.org>; Sat,  9 Oct 2010 16:19:22 +0200 (CEST)
+Received: from exprod5og102.obsmtp.com ([64.18.0.143]:41692 "HELO
+	exprod5og102.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754501Ab0JKPF6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Oct 2010 11:05:58 -0400
+In-Reply-To: <cover.1286552019.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello list,
+Merged, thanks!
 
-I found a lot of information on the subject (ipv6 + krb5, server 
-status), but not anything conclusive. So I tried it out; I got IPv6 + 
-NFS4 to work, but only with sec=sys. When using sec=krb5, there seemed 
-to be errors in gssd communication. (Ubuntu 10.04 with rpcbind instead 
-of portmap; with nfs-utils-1.2.3 from nfs.sf.net, and with a
-2.6.35-020635rc1-generic kernel package (read: 2.6.35-something)).
+Benny
 
-Is this correct, i.e. svcgssd still needs to be adapted to IPv6? Or are 
-there configuration options that should make the above work?
-
-Best regards,
-
-Valentijn Sessink
+On 2010-10-08 12:06, Jim Rees wrote:
+> This series reworks the way device scanning is done in blkmapd as a result
+> of test results and discussions at the Fall 2010 Bakeathon.
+> 
+> We get rid of the config file and instead examine all block devices as
+> listed in /sys/block and /proc/partitions (this is the way fdisk does it).
+> Since we're looking for pnfs signatures, it usually doesn't hurt to examine
+> a device that isn't part of a layout, and in general it's hard to tell ahead
+> of time which devices should be considered, so I think having a config file
+> does more harm than good.
+> 
+> We get rid of periodic (once a minute) device rescanning, and instead rescan
+> only when the kernel asks for a layout.  This will suffice for the common
+> case, and works with all current known server implementations.  A later
+> patch will re-introduce rescanning during the life of a layout, but will be
+> triggered by configuration change notifications from udev, rather than by
+> expiration of an arbitrary time interval.
+> 
+> We get rid of the test for active/passive devices.  This test really only
+> works for EMC servers, and isn't even needed because the passive devices
+> will be skipped over during signature detection.  Just remove the detection
+> code.
+> 
+> Jim Rees (4):
+>   blkmapd: get rid of config file and instead examine all block devices
+>   blkmapd: don't rescan periodically
+>   blkmapd: don't use atomicio() where it's not needed
+>   blkmapd: don't try to distinguish between active/passive devices
+> 
+>  utils/blkmapd/Makefile.am        |    2 -
+>  utils/blkmapd/cfg.c              |  248 --------------------------------------
+>  utils/blkmapd/cfg.h              |   47 -------
+>  utils/blkmapd/device-discovery.c |  141 ++++++++--------------
+>  utils/blkmapd/device-discovery.h |    3 -
+>  utils/blkmapd/device-inq.c       |   40 ++-----
+>  utils/blkmapd/device-process.c   |    2 +-
+>  7 files changed, 60 insertions(+), 423 deletions(-)
+>  delete mode 100644 utils/blkmapd/cfg.c
+>  delete mode 100644 utils/blkmapd/cfg.h
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
