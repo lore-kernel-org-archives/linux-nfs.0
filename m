@@ -1,85 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:47795 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750936Ab0JZA3D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Oct 2010 20:29:03 -0400
-Date: Mon, 25 Oct 2010 20:28:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Neil Brown <neilb@suse.de>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        Menyhart Zoltan <Zoltan.Menyhart@bull.net>
-Subject: Re: [PATCH 1/4] svcrpc: never clear XPT_BUSY on dead xprt
-Message-ID: <20101026002858.GH13523@fieldses.org>
-References: <20101025010923.GB11470@fieldses.org>
- <1287969693-12340-1-git-send-email-bfields@redhat.com>
- <20101025124357.63b966bb@notabene>
- <20101025202155.GD13523@fieldses.org>
- <20101026095836.61bf6a38@notabene>
- <20101025230331.GF13523@fieldses.org>
- <20101026105447.264b690e@notabene>
- <20101026001145.GG13523@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101026001145.GG13523@fieldses.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:38170 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752543Ab0JKAGD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Oct 2010 20:06:03 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 6so2668490iwn.19
+        for <linux-nfs@vger.kernel.org>; Sun, 10 Oct 2010 17:06:03 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 12/15] mount.nfs: Eliminate compiler warnings in
+	utils/mount/network.c
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Sun, 10 Oct 2010 20:06:00 -0400
+Message-ID: <20101011000600.6667.50880.stgit@ellison.1015granger.net>
+In-Reply-To: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
+References: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Oct 25, 2010 at 08:11:45PM -0400, J. Bruce Fields wrote:
-> On Tue, Oct 26, 2010 at 10:54:47AM +1100, Neil Brown wrote:
-> > Note that once we always set XPT_BUSY and it stays set.  So we call
-> > svc_delete_xprt instread of svc_close_xprt.
-> > 
-> > Maybe we don't actually need to list_del_init - both the pool and the xprt
-> > will soon be freed and if there is linkage between them, who cares??
-> > In that case we wouldn't need to for_each_pool after all ???
+Clean up.
 
-So, untested:
+network.c: In function ‘get_socket’:
+network.c:431: warning: dereferencing type-punned pointer might break strict-aliasing rules
 
-commit 5e0bffc6376d8d3316771e12af698631a4ca2634
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Oct 25 18:11:21 2010 -0400
+network.c: In function ‘probe_bothports’:
+network.c:759: warning: dereferencing type-punned pointer might break strict-aliasing rules
+network.c:762: warning: dereferencing type-punned pointer might break strict-aliasing rules
 
-    svcrpc: simplify svc_close_all
-    
-    There's no need to be fooling with XPT_BUSY now that all the threads
-    are gone.
-    
-    The list_del_init() here could execute at the same time as the
-    svc_xprt_enqueue()'s list_add_tail(), with undefined results.  We don't
-    really care at this point, but it might result in a spurious
-    list-corruption warning or something.
-    
-    And svc_close() isn't adding any value; just call svc_delete_xprt()
-    directly.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+network.c: In function ‘nfs_probe_statd’:
+network.c:775: warning: dereferencing type-punned pointer might break strict-aliasing rules
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index dd61cd0..8c018df 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -941,16 +941,16 @@ void svc_close_all(struct list_head *xprt_list)
- 	struct svc_xprt *xprt;
- 	struct svc_xprt *tmp;
+network.c: In function ‘nfs_call_umount’:
+network.c:904: warning: dereferencing type-punned pointer might break strict-aliasing rules
+
+network.c: In function ‘nfs_ca_sockname’:
+network.c:1106: warning: dereferencing type-punned pointer might break strict-aliasing rules
+network.c:1112: warning: dereferencing type-punned pointer might break strict-aliasing rules
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/mount/network.c |   23 +++++++++++++----------
+ 1 files changed, 13 insertions(+), 10 deletions(-)
+
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index d612427..62973cf 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -59,6 +59,8 @@
+ #define CONNECT_TIMEOUT	(20)
+ #define MOUNT_TIMEOUT	(30)
  
-+	/*
-+	 * The server is shutting down, and no more threads are running.
-+	 * svc_xprt_enqueue() might still be running, but at worst it
-+	 * will re-add the xprt to sp_sockets, which will soon get
-+	 * freed.  So we don't bother with any more locking, and don't
-+	 * leave the close to the (nonexistent) server threads:
-+	 */
- 	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
- 		set_bit(XPT_CLOSE, &xprt->xpt_flags);
--		if (test_bit(XPT_BUSY, &xprt->xpt_flags)) {
--			/* Waiting to be processed, but no threads left,
--			 * So just remove it from the waiting list
--			 */
--			list_del_init(&xprt->xpt_ready);
--			clear_bit(XPT_BUSY, &xprt->xpt_flags);
--		}
--		svc_close_xprt(xprt);
-+		svc_delete_xprt(xprt);
++#define SAFE_SOCKADDR(x)	(struct sockaddr *)(char *)(x)
++
+ extern int nfs_mount_data_version;
+ extern char *progname;
+ extern int verbose;
+@@ -428,12 +430,12 @@ static int get_socket(struct sockaddr_in *saddr, unsigned int p_prot,
+ 		if (bindresvport(so, &laddr) < 0)
+ 			goto err_bindresvport;
+ 	} else {
+-		cc = bind(so, (struct sockaddr *)&laddr, namelen);
++		cc = bind(so, SAFE_SOCKADDR(&laddr), namelen);
+ 		if (cc < 0)
+ 			goto err_bind;
  	}
+ 	if (type == SOCK_STREAM || (conn && type == SOCK_DGRAM)) {
+-		cc = connect_to(so, (struct sockaddr *)saddr, namelen,
++		cc = connect_to(so, SAFE_SOCKADDR(saddr), namelen,
+ 				timeout);
+ 		if (cc < 0)
+ 			goto err_connect;
+@@ -756,11 +758,12 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
+  */
+ int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+ {
+-	return nfs_probe_bothports((struct sockaddr *)&mnt_server->saddr,
+-					sizeof(mnt_server->saddr),
++	struct sockaddr *mnt_addr = SAFE_SOCKADDR(&mnt_server->saddr);
++	struct sockaddr *nfs_addr = SAFE_SOCKADDR(&nfs_server->saddr);
++
++	return nfs_probe_bothports(mnt_addr, sizeof(mnt_server->saddr),
+ 					&mnt_server->pmap,
+-					(struct sockaddr *)&nfs_server->saddr,
+-					sizeof(nfs_server->saddr),
++					nfs_addr, sizeof(nfs_server->saddr),
+ 					&nfs_server->pmap);
  }
  
+@@ -772,7 +775,7 @@ static int nfs_probe_statd(void)
+ 	};
+ 	rpcprog_t program = nfs_getrpcbyname(NSMPROG, nfs_ns_pgmtbl);
+ 
+-	return nfs_getport_ping((struct sockaddr *)&addr, sizeof(addr),
++	return nfs_getport_ping(SAFE_SOCKADDR(&addr), sizeof(addr),
+ 				program, (rpcvers_t)1, IPPROTO_UDP);
+ }
+ 
+@@ -901,7 +904,7 @@ int nfs_advise_umount(const struct sockaddr *sap, const socklen_t salen,
+  */
+ int nfs_call_umount(clnt_addr_t *mnt_server, dirpath *argp)
+ {
+-	struct sockaddr *sap = (struct sockaddr *)&mnt_server->saddr;
++	struct sockaddr *sap = SAFE_SOCKADDR(&mnt_server->saddr);
+ 	socklen_t salen = sizeof(mnt_server->saddr);
+ 	struct pmap *pmap = &mnt_server->pmap;
+ 	CLIENT *clnt;
+@@ -1103,13 +1106,13 @@ static int nfs_ca_sockname(const struct sockaddr *sap, const socklen_t salen,
+ 
+ 	switch (sap->sa_family) {
+ 	case AF_INET:
+-		if (bind(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
++		if (bind(sock, SAFE_SOCKADDR(&sin), sizeof(sin)) < 0) {
+ 			close(sock);
+ 			return 0;
+ 		}
+ 		break;
+ 	case AF_INET6:
+-		if (bind(sock, (struct sockaddr *)&sin6, sizeof(sin6)) < 0) {
++		if (bind(sock, SAFE_SOCKADDR(&sin6), sizeof(sin6)) < 0) {
+ 			close(sock);
+ 			return 0;
+ 		}
+
