@@ -1,67 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:23873 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750814Ab0JAPfH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 11:35:07 -0400
-Message-ID: <4CA5FFA9.7090301@panasas.com>
-Date: Fri, 01 Oct 2010 17:35:05 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsd41: mask out unsupported pnfs attributes
-References: <1285872478-21045-1-git-send-email-bhalevy@panasas.com> <20101001144847.GC17310@fieldses.org> <4CA5FB9F.1030508@panasas.com> <20101001152032.GF17310@fieldses.org>
-In-Reply-To: <20101001152032.GF17310@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:49854 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754315Ab0JKNWz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Oct 2010 09:22:55 -0400
+Message-ID: <4CB30FA9.8020308@RedHat.com>
+Date: Mon, 11 Oct 2010 09:22:49 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Jim Rees <rees@umich.edu>
+CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 02/15] libnfs.a: Allow multiple RPC listeners to share
+ listener port number
+References: <20101010234836.6667.4057.stgit@ellison.1015granger.net> <20101011000421.6667.60700.stgit@ellison.1015granger.net> <20101011002022.GB25663@merit.edu>
+In-Reply-To: <20101011002022.GB25663@merit.edu>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-10-01 17:20, J. Bruce Fields wrote:
-> On Fri, Oct 01, 2010 at 05:17:51PM +0200, Benny Halevy wrote:
->> On 2010-10-01 16:48,  J. Bruce Fields wrote:
->>> On Thu, Sep 30, 2010 at 08:47:58PM +0200, Benny Halevy wrote:
->>>> These attributes are valid in NFSv4.1, the just doesn't support them yet.
->>>
->>> The existing code handles unsupported attributes in the operations
->>> themselves.  Perhaps it makes sense to move those checks here, but if
->>> so, explain why, and let's do this for all unsupported attributes, not
->>> just these two.
->>
->> The client can run a DOS attack on the server by requesting invalid attributes
->> and tripping the BUG_ONs in nfsd4_encode_fattr.
-> 
-> How can they do that?  getattr and readdir, for example, both handle
-> this.  But I may well be missing something!
-> 
 
-You're right.  I got confused by the pnfsd specific bug I fixed here:
-http://marc.info/?l=linux-nfs&m=128587444310102&w=2
 
-In this case LAYOUT_BLKSIZE was marked as supported but nothing
-really supported it so we ended up with an invalid result sent
-to the client.
+On 10/10/2010 08:20 PM, Jim Rees wrote:
+> Chuck Lever wrote:
+> 
+>   Normally, when "-p" is not specified on the mountd command line, the
+>   TI-RPC library chooses random port numbers for each listener.  If a
+>   port number _is_ specified on the command line, all the listeners
+>   will get the same port number, so SO_REUSEADDR needs to be set on
+>   each socket.
+>   
+>   Thus we can't let TI-RPC create the listener sockets for us in this
+>   case; we must create them ourselves and then set SO_REUSEADDR (and
+>   other socket options) by hand.
+> 
+> It bothers me that there are two separate code paths in two separate
+> libraries for these two nearly identical cases.  Wouldn't it be better to
+> add this functionality to tirpc?
+I have to agree... Why can't we simply had the tirpc code a socket
+that has the SO_REUSEADDR set on it? 
 
-So let's drop this patch. sorry.
-
-Benny
-
->> We can/should also change the BUG_ONs to either report invalid
->> attribute or just silently ignore them, but the client is
->> perfectly entitled to get attrs we don't support :)
-> 
-> Sure.
-> 
->>> Looking back at the spec....  I guess it's only on operations that set
->>> attributes that we return NFS4ERR_ATTRNOTSUPP, and otherwise we silently
->>> ignore them?
->>
->> For the GETATTR case, we just return the attrmask for the attrs we support.
->> IOW:
->>    The server returns an attribute bitmap that
->>    indicates the attribute values that it was able to return, which will
->>    include all attributes requested by the client that are attributes
->>    supported by the server for the target file system.
-> 
-> OK, makes sense.
-> 
-> --b.
+steved.
