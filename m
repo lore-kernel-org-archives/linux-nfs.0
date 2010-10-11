@@ -1,40 +1,39 @@
-From: Jim Rees <rees@umich.edu>
-Subject: Re: [PATCH 02/15] libnfs.a: Allow multiple RPC listeners to share
- listener port number
-Date: Mon, 11 Oct 2010 16:00:17 -0400
-Message-ID: <20101011200017.GA2451@merit.edu>
-References: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
- <20101011000421.6667.60700.stgit@ellison.1015granger.net>
- <20101011002022.GB25663@merit.edu>
- <4CB30FA9.8020308@RedHat.com>
- <F750C283-3965-4953-9938-CF049FB914A7@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 0/13] sunrpc: Compact the xprtsock code a bit
+Date: Mon, 11 Oct 2010 19:47:11 -0400
+Message-ID: <20101011234711.GC16442@fieldses.org>
+References: <4CA9CDA8.4010407@parallels.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	Trond Myklebust <trond@netapp.com>
+To: Pavel Emelyanov <xemul@parallels.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:49996 "EHLO magus.merit.edu"
+Received: from fieldses.org ([174.143.236.118]:41139 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755105Ab0JKUAS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Oct 2010 16:00:18 -0400
-In-Reply-To: <F750C283-3965-4953-9938-CF049FB914A7@oracle.com>
+	id S1753561Ab0JKXrM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Oct 2010 19:47:12 -0400
+In-Reply-To: <4CA9CDA8.4010407@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
+On Mon, Oct 04, 2010 at 04:50:48PM +0400, Pavel Emelyanov wrote:
+> Hi!
+> 
+> This set removes some unused parts of code and merges together
+> routines that are related to the sockets creation.
+> 
+> After all the changes the result is
+> 
+>  net/sunrpc/xprtsock.c: 77 insertions(+), 206 deletions(-)
+> 
+> from the code-lines point of view and
+> 
+>   add/remove: 2/11 grow/shrink: 4/1 up/down: 879/-1626 (-747)
+> 
+> from the bloat-o-meter's point of view.
 
-  >> It bothers me that there are two separate code paths in two separate
-  >> libraries for these two nearly identical cases.
-  
-  Are there?  Where's the other one?
-  
-  The two implementations I'm aware of are both in libnfs.a.  One is for
-  legacy RPC, and the other is for TI-RPC, and they both reside in
-  support/nfs/ (and thus in libnfs.a, which is shared by the daemons in
-  nfs-utils).  What am I missing?
+I'm assuming Trond is taking these.  Let me know if that doesn't
+work....
 
-Your svc_create_sock() duplicates code in svc_tli_create(), including the
-calls to socket(), bind(), and listen().
-
-I'll buy your argument that we shouldn't change the tirpc api and that
-REUSEADDR is only half the fix.  But it still bothers me.
+--b.
