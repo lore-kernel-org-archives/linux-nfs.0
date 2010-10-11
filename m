@@ -1,68 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.17.10]:58475 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751183Ab0J0HVj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Oct 2010 03:21:39 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfsd changes for 2.6.37
-Date: Wed, 27 Oct 2010 09:21:36 +0200
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-References: <20101026164549.GD19445@fieldses.org> <20101026214441.GC1842@fieldses.org> <20101026221156.GD1842@fieldses.org>
-In-Reply-To: <20101026221156.GD1842@fieldses.org>
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201010270921.37032.arnd@arndb.de>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:38170 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752478Ab0JKAEF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Oct 2010 20:04:05 -0400
+Received: by iwn6 with SMTP id 6so2668490iwn.19
+        for <linux-nfs@vger.kernel.org>; Sun, 10 Oct 2010 17:04:04 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 00/15] Fixes for nfs-utils-1.2.4
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Sun, 10 Oct 2010 20:04:01 -0400
+Message-ID: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wednesday 27 October 2010 00:11:56 J. Bruce Fields wrote:
-> > BUG: sleeping function called from invalid context at mm/slab.c:3101
-> > in_atomic(): 1, irqs_disabled(): 0, pid: 4345, name: lease_tests
-> > 1 lock held by lease_tests/4345:
-> >  #0:  (file_lock_lock){+.+.+.}, at: [<ffffffff81128be5>] lock_flocks+0x15/0x20
-> > Pid: 4345, comm: lease_tests Not tainted 2.6.36-05858-gbd5e20b #1028
-> > Call Trace:
-> >  [<ffffffff8103141d>] __might_sleep+0x10d/0x140
-> >  [<ffffffff810e3ad3>] kmem_cache_alloc+0x1f3/0x230
-> >  [<ffffffff8112a4d2>] generic_setlease+0x112/0x2c0
-> >  [<ffffffff8112a6b5>] __vfs_setlease+0x35/0x40
-> >  [<ffffffff8112acfe>] fcntl_setlease+0xce/0x180
-> >  [<ffffffff810f7c2e>] sys_fcntl+0x2fe/0x630
-> >  [<ffffffff81961999>] ? trace_hardirqs_on_thunk+0x3a/0x3f
-> >  [<ffffffff81002658>] system_call_fastpath+0x16/0x1b
-> > 
-> > I'm testing a patch.
-> 
+Steve-
 
-Thanks for the report!
+Here are fifteen patches which address several mount and mountd bugs
+and correct other minor problems in nfs-utils-1.2.3.  Now that the
+bake-a-thon event has passed, folks should have some spare moments to
+review these.
 
-> @@ -1524,8 +1528,6 @@ int fcntl_setlease(unsigned int fd, struct file *filp, long arg)
->         if (error)
->                 return error;
->  
-> -       lock_flocks();
-> -
->         error = __vfs_setlease(filp, arg, &flp);
->         if (error || arg == F_UNLCK)
->                 goto out_unlock;
-> @@ -1541,7 +1543,6 @@ int fcntl_setlease(unsigned int fd, struct file *filp, long arg)
->  
->         error = __f_setown(filp, task_pid(current), PIDTYPE_PID, 0);
->  out_unlock:
-> -       unlock_flocks();
->         return error;
->  }
+This series includes the final version of the patch that addresses the
+"mountd -p <port> does not work" issue.
 
-If you don't hold lock_flocks throughout fcntl_setlease, the flp variable
-points to a flock that may get modified by another thread and you call
-time_out_leases() without holding lock_flocks, which it requires.
+The series does not include a patch to address the "remount erases a
+mount point's version setting" issue.  The remount problem is not a
+1.2.3 regression, it's been around for a very long time.  I'm still
+exploring solutions.
 
-The two alternatives I can see are to either use GFP_ATOMIC or to
-take the lock inside of generic_setlease and drop it outside.
-Neither of the two sounds particularly appealing.
+These patches are also available in my nfs-utils git repo on
+git.linux-nfs.org.
 
-	Arnd
+---
+
+Chuck Lever (14):
+      mount.nfs: don't show "remount" flag in /etc/mtab
+      umount.nfs: Distinguish between nfs4 and nfs mounts
+      mount.nfs: mountproto does not support RDMA
+      mount.nfs: Eliminate compiler warnings in utils/mount/network.c
+      mount.nfs: Eliminate compiler warning in utils/mount/parse_opt.c
+      mount.nfs: Eliminate compiler warning in utils/mount/nfsumount.c
+      mount.nfs: Eliminate compiler warning in utils/mount/nfsumount.c
+      mount.nfs: Eliminate compiler warnings in utils/mount/mount.c
+      mount.nfs: Eliminate compiler warning in utils/mount/mount.c
+      mount.nfs: Eliminate compiler warnings in utils/mount/version.h
+      mount.nfs: Eliminate compiler warning in utils/mount/mount.c
+      mount.nfs: Eliminate compiler warnings
+      libnfs.a: Allow multiple RPC listeners to share listener port number
+      mountd: Clear mountd registrations at start up
+
+Trond Myklebust (1):
+      export: Ensure that we free struct exportent->e_uuid
+
+
+ support/export/export.c       |    1 
+ support/nfs/exports.c         |    2 
+ support/nfs/svc_create.c      |  252 ++++++++++++++++++++++++++++++++++++++++-
+ utils/mount/fstab.c           |   29 +++--
+ utils/mount/mount.c           |   10 +-
+ utils/mount/mount_config.h    |   21 ++-
+ utils/mount/mount_constants.h |    4 +
+ utils/mount/network.c         |   29 +++--
+ utils/mount/nfsumount.c       |  120 ++++++++++++++++++--
+ utils/mount/parse_opt.c       |    2 
+ utils/mount/version.h         |    6 -
+ utils/mountd/mountd.c         |    1 
+ 12 files changed, 417 insertions(+), 60 deletions(-)
+
+-- 
+Chuck Lever
