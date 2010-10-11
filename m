@@ -1,153 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:39188 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751974Ab0J2Qk3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Oct 2010 12:40:29 -0400
-Received: by iwn10 with SMTP id 10so3902183iwn.19
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Oct 2010 09:40:28 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] nfs(5): Document remount behavior (take 3)
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 29 Oct 2010 12:40:22 -0400
-Message-ID: <20101029163746.5646.31637.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:44840 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752387Ab0JKXby (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Oct 2010 19:31:54 -0400
+Received: from bfields by fieldses.org with local (Exim 4.71)
+	(envelope-from <bfields@fieldses.org>)
+	id 1P5RqT-0004xl-Ik
+	for linux-nfs@vger.kernel.org; Mon, 11 Oct 2010 19:31:53 -0400
+Date: Mon, 11 Oct 2010 19:31:53 -0400
+To: linux-nfs@vger.kernel.org
+Subject: expire clients more promptly
+Message-ID: <20101011233153.GA16442@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-It appears that, for a long while, NFS "remount" mounts have
-completely wiped the existing mount options in /etc/mtab for a given
-mount point.  This is a problem for umount.nfs, since it reads its
-options out of /etc/mtab to find out how to do the unmount.
+I'm planning on queuing this up for 2.6.37.
 
-The mount(8) command provides the NFS mount subcommand with the mount
-options to perform the remount.  There are four cases to consider:
+Honestly, this is mainly just to make a few pynfs tests pass more
+reliably, which isn't a good enough reason on its own.
 
-  1. Both the device and mount directory are specified on the
-     command line, and the target mount point is in /etc/fstab
+But I also can't see any problem with letting the laundromat thread run
+as much as once a second.
 
-  2. Only one of the device and mount directory is specified on
-     the command line, and the target mount point is in
-     /etc/fstab
+--b.
 
-  3. Both the device and mount directory are specified on the
-     command line, and the target mount point is not in /etc/fstab
+commit 76b409f70568ef011e476ce60eab6770572f4839
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Mon Oct 11 16:49:44 2010 -0400
 
-  4. Only one of the device and mount directory is specified on
-     the command line, and the target mount point is not in
-     /etc/fstab
+    nfsd4: expire clients more promptly
+    
+    Expire clients more promptly, at the expense of possibly running the
+    laundromat thread more frequently.
+    
+    Though it's not the default, I'd like it to be feasible to run with a
+    lease time of just a few seconds, at which point a minimum 10 second
+    wait between laundromat runs seems a little much.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-Currently only case 4 works correctly.  In that case, mount(8)
-provides the correct set of mount options to the mount.nfs
-subcommand and it can update /etc/mtab correctly.
-
-Cases 1 and 3 replace all mount options in /etc/mtab with the options
-provided on the command line during a remount.  Case 2 replaces the
-mount options in /etc/mtab with a mix of options from /etc/fstab and
-/etc/mtab.
-
-Cases 1 and 3 are historical behavior.  Basically this is a formal
-interface to allow administrators to replace the mount options in
-/etc/mtab completely, instead of merging in new ones.  The present
-patch documents that behavior in nfs(5), and provides best practice
-for remounting NFS mount points.
-
-There are near-term plans to address case 2 by fixing mount(8)
-(provided by utils-linux-ng in most distributions).
-
-This is a partial fix for:
-
-  https://bugzilla.linux-nfs.org/show_bug.cgi?id=188
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
-Take 3:
-
-  o  Actually commit the patch before trying to e-mail it
-
-  o  Remove all mention of /etc/mtab
-
-  o  Refocus umount discussion on umount requirements rather
-     than remount behavior
-
- utils/mount/nfs.man |   54 ++++++++++++++++++++++++++++++++++++---------------
- 1 files changed, 38 insertions(+), 16 deletions(-)
-
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 1b86768..be91a25 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -1523,32 +1523,54 @@ of Access Control Lists that are semantically richer than POSIX ACLs.
- NFS version 4 ACLs are not fully compatible with POSIX ACLs; as such,
- some translation between the two is required
- in an environment that mixes POSIX ACLs and NFS version 4.
--.SH FILES
--.TP 1.5i
--.I /etc/fstab
--file system table
--.SH BUGS
--The generic
--.B remount
--option is not fully supported.
--Generic options, such as
--.BR rw " and " ro
--can be modified using the
--.B remount
--option,
--but NFS-specific options are not all supported.
-+.SH "THE REMOUNT OPTION"
-+Generic mount options such as
-+.BR rw " and " sync
-+can be modified on NFS mount points using the
-+.BR remount
-+option.
-+See
-+.BR mount (8)
-+for more information on generic mount options.
-+.P
-+With few exceptions, NFS-specific options
-+are not able to be modified during a remount.
- The underlying transport or NFS version
- cannot be changed by a remount, for example.
-+.P
- Performing a remount on an NFS file system mounted with the
- .B noac
- option may have unintended consequences.
- The
- .B noac
--option is a mixture of a generic option,
-+option is a combination of the generic option
- .BR sync ,
--and an NFS-specific option
-+and the NFS-specific option
- .BR actimeo=0 .
-+.SS "Unmounting after a remount"
-+For mount points that use NFS versions 2 or 3, the NFS umount subcommand
-+depends on knowing the original set of mount options used to perform the
-+MNT operation.
-+These options are stored on disk by the NFS mount subcommand,
-+and can be erased by a remount.
- .P
-+To ensure that the saved mount options are not erased during a remount,
-+specify either the local mount directory, or the server hostname and
-+export pathname, but not both, during a remount.  For example,
-+.P
-+.NF
-+.TA 2.5i
-+	mount -o remount,ro /mnt
-+.FI
-+.P
-+merges the mount option
-+.B ro
-+with the mount options already saved on disk for the NFS server mounted at /mnt.
-+.SH FILES
-+.TP 1.5i
-+.I /etc/fstab
-+file system table
-+.SH BUGS
- Before 2.4.7, the Linux NFS client did not support NFS over TCP.
- .P
- Before 2.4.20, the Linux NFS client used a heuristic
-
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index b76ac3a..6b641cf 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -249,7 +249,7 @@ extern time_t nfsd4_grace;
+ #define	COMPOUND_SLACK_SPACE		140    /* OP_GETFH */
+ #define COMPOUND_ERR_SLACK_SPACE	12     /* OP_SETATTR */
+ 
+-#define NFSD_LAUNDROMAT_MINTIMEOUT      10   /* seconds */
++#define NFSD_LAUNDROMAT_MINTIMEOUT      1   /* seconds */
+ 
+ /*
+  * The following attributes are currently not supported by the NFSv4 server:
