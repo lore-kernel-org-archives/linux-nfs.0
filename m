@@ -1,70 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39495 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753303Ab0JGRy2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Oct 2010 13:54:28 -0400
-Received: from bfields by fieldses.org with local (Exim 4.71)
-	(envelope-from <bfields@fieldses.org>)
-	id 1P3ufg-0008Vm-Gk
-	for linux-nfs@vger.kernel.org; Thu, 07 Oct 2010 13:54:24 -0400
-Date: Thu, 7 Oct 2010 13:54:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org
-Subject: Re: server 4.1 issues list
-Message-ID: <20101007175424.GA31443@fieldses.org>
-References: <20101007155306.GA28053@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101007155306.GA28053@fieldses.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:38170 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752621Ab0JKAGN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Oct 2010 20:06:13 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 6so2668490iwn.19
+        for <linux-nfs@vger.kernel.org>; Sun, 10 Oct 2010 17:06:13 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 13/15] mount.nfs: mountproto does not support RDMA
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Sun, 10 Oct 2010 20:06:10 -0400
+Message-ID: <20101011000610.6667.50921.stgit@ellison.1015granger.net>
+In-Reply-To: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
+References: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Oct 07, 2010 at 11:53:06AM -0400, bfields wrote:
-> Someone also asked whether we've fixed the backchannel attribute
-> checking.  We haven't, but that should be fairly quick--I'll take a look
-> at it now.
+Clean up.  Our client does not support the MNT protocol on RDMA.
 
-Actually there's a bit of tedious arithmetic to do here to figure out
-what we need e.g. for the maximum request size.  I'm setting this aside
-for now, so this is up for grabs.
+nfs_mount_protocol() isn't invoked for RDMA mounts (they are shunted
+off before nfs_options2pmap() is invoked).  But in case it ever is,
+it should return the expected response.
 
---b.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6233917..0f8e90b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1493,6 +1493,23 @@ nfsd4_replay_create_session(struct nfsd4_create_session *cr_ses,
- 	return slot->sl_status;
+ utils/mount/network.c |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
+
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 62973cf..1ebaced 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -1521,7 +1521,11 @@ nfs_mount_protocol(struct mount_options *options, unsigned long *protocol)
+ 	 * set @protocol to zero.  The pmap protocol value will
+ 	 * be filled in later by an rpcbind query in this case.
+ 	 */
+-	return nfs_nfs_protocol(options, protocol);
++	if (!nfs_nfs_protocol(options, protocol))
++		return 0;
++	if (*protocol == NFSPROTO_RDMA)
++		*protocol = IPPROTO_TCP;
++	return 1;
  }
  
-+static __be32 verify_backchannel_attributes(struct nfsd4_create_session *cr_ses)
-+{
-+	struct nfsd4_channel_attrs *attrs;
-+
-+	if (!cses->flags & SESSION4_BACK_CHAN)
-+		return nfs_ok;
-+	if (attrs.maxreqs < 1)
-+		return nfserr_inval;
-+	/* XXX: check other fields here; see
-+	 * http://tools.ietf.org/search/rfc5661#section-18.36 to
-+	 * determine when we can modify the fields to be acceptable, and
-+	 * when we must return inval.  We'll need to figure out the
-+	 * things like how large a callback request we need to be able to
-+	 * send. */
-+	return nfs_ok;
-+}
-+
- __be32
- nfsd4_create_session(struct svc_rqst *rqstp,
- 		     struct nfsd4_compound_state *cstate,
-@@ -1553,6 +1570,9 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	cr_ses->flags &= ~SESSION4_PERSIST;
- 	cr_ses->flags &= ~SESSION4_RDMA;
- 
-+	status = verify_backchannel_attributes(cr_ses);
-+	if (status)
-+		goto out;
- 	status = nfserr_jukebox;
- 	new = alloc_init_session(rqstp, conf, cr_ses);
- 	if (!new)
+ /*
+
