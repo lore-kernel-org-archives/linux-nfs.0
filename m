@@ -1,44 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.perches.com ([173.55.12.10]:3753 "EHLO mail.perches.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752298Ab0J3VJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 30 Oct 2010 17:09:40 -0400
-From: Joe Perches <joe@perches.com>
-To: Jiri Kosina <trivial@kernel.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH 24/39] fs/nfsd: Update WARN uses
-Date: Sat, 30 Oct 2010 14:08:41 -0700
-Message-Id: <189d2bf83b31931f2ba04c488475522156ef537e.1288471898.git.joe@perches.com>
-In-Reply-To: <cover.1288471897.git.joe@perches.com>
-References: <cover.1288471897.git.joe@perches.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:38170 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752543Ab0JKAFx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Oct 2010 20:05:53 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 6so2668490iwn.19
+        for <linux-nfs@vger.kernel.org>; Sun, 10 Oct 2010 17:05:53 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 11/15] mount.nfs: Eliminate compiler warning in
+	utils/mount/parse_opt.c
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Sun, 10 Oct 2010 20:05:50 -0400
+Message-ID: <20101011000550.6667.58637.stgit@ellison.1015granger.net>
+In-Reply-To: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
+References: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Add missing 1 as first argument.
-Align arguments.
+parse_opt.c: In function ‘po_rightmost’:
+parse_opt.c:517: warning: conversion to ‘int’ from ‘unsigned int’ may change the sign of the result
 
-Signed-off-by: Joe Perches <joe@perches.com>
+"i" contains the function's result value, so it should be defined as
+the same type as the function's return type.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 56347e0..0d57eed 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1235,7 +1235,8 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- 					(char *)resp->xbuf->head[0].iov_base;
- 	if (read_bytes_from_xdr_buf(resp->xbuf, base, slot->sl_data,
- 				    slot->sl_datalen))
--		WARN("%s: sessions DRC could not cache compound\n", __func__);
-+		WARN(1, "%s: sessions DRC could not cache compound\n",
-+		     __func__);
- 	return;
- }
+ utils/mount/parse_opt.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/utils/mount/parse_opt.c b/utils/mount/parse_opt.c
+index f0918f7..ab869d9 100644
+--- a/utils/mount/parse_opt.c
++++ b/utils/mount/parse_opt.c
+@@ -508,7 +508,7 @@ po_found_t po_get_numeric(struct mount_options *options, char *keyword, long *va
+ int po_rightmost(struct mount_options *options, const char *keys[])
+ {
+ 	struct mount_option *option;
+-	unsigned int i;
++	int i;
  
--- 
-1.7.3.1.g432b3.dirty
+ 	if (options) {
+ 		for (option = options->tail; option; option = option->prev) {
 
