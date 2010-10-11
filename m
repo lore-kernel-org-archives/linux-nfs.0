@@ -1,54 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53797 "EHLO mx1.redhat.com"
+Received: from magus.merit.edu ([198.108.1.13]:33825 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758880Ab0J1ODN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Oct 2010 10:03:13 -0400
-Message-ID: <4CC9829E.90709@RedHat.com>
-Date: Thu, 28 Oct 2010 10:03:10 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs-utils: fix default value for --enable-tirpc
-References: <1286846991-4876-1-git-send-email-jlayton@redhat.com>	<4CC97970.6010706@RedHat.com> <20101028093833.6541ce21@tlielax.poochiereds.net>
-In-Reply-To: <20101028093833.6541ce21@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1750842Ab0JKAUY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 10 Oct 2010 20:20:24 -0400
+Date: Sun, 10 Oct 2010 20:20:22 -0400
+From: Jim Rees <rees@umich.edu>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 02/15] libnfs.a: Allow multiple RPC listeners to share
+ listener port number
+Message-ID: <20101011002022.GB25663@merit.edu>
+References: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
+ <20101011000421.6667.60700.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101011000421.6667.60700.stgit@ellison.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Chuck Lever wrote:
 
+  Normally, when "-p" is not specified on the mountd command line, the
+  TI-RPC library chooses random port numbers for each listener.  If a
+  port number _is_ specified on the command line, all the listeners
+  will get the same port number, so SO_REUSEADDR needs to be set on
+  each socket.
+  
+  Thus we can't let TI-RPC create the listener sockets for us in this
+  case; we must create them ourselves and then set SO_REUSEADDR (and
+  other socket options) by hand.
 
-On 10/28/2010 09:38 AM, Jeff Layton wrote:
-> On Thu, 28 Oct 2010 09:24:00 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->> Jeff,
->>
->> On 10/11/2010 09:29 PM, Jeff Layton wrote:
->>> The patch I originally proposed to make --enable-tirpc the default had
->>> the default for $enable_tirpc as a blank string. When it was merged
->>> however, that value was changed to a 'yes'. 
->> Which commit or proposal are you talking about? I'm looking at commit 148503a
->> which changed it for no to yes, but I can not seem to find the 
->> proposal you are talking about?
->>
->> I'm just trying to figure how the merge broke it so it does
->> not happen again... 
->>
->> steved.
->>
-> 
-> Here was the original patch posting:
-> 
-> http://www.spinics.net/lists/linux-nfs/msg07718.html
-> 
-> I checked my mail archives and didn't see emails where we discussed
-> this patch specifically around that time. Maybe we did on IRC before
-> you merged it and I misunderstood what you intended to change? Hard to
-> remember since it was over a year ago...
-I generally just cut and paste the patches and if 
-I make any changes I post them... So I'm wondering 
-how that got changed... anyway... its fixed now...
-
-steved.
- 
+It bothers me that there are two separate code paths in two separate
+libraries for these two nearly identical cases.  Wouldn't it be better to
+add this functionality to tirpc?
