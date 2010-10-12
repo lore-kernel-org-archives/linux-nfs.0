@@ -1,163 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46353 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751847Ab0J0UCi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Oct 2010 16:02:38 -0400
-Date: Wed, 27 Oct 2010 16:01:45 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: nfsd changes for 2.6.37
-Message-ID: <20101027200145.GE18974@fieldses.org>
-References: <20101026164549.GD19445@fieldses.org>
- <AANLkTimZSj7Y8KUic-VLSgrPFTf5wc_KRdfedzLAkNKT@mail.gmail.com>
- <AANLkTin53pdmfaBahExgi79XjaeFtP5wCS=rrKxfrAHs@mail.gmail.com>
- <201010272148.47376.arnd@arndb.de>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:54833 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754308Ab0JLUGs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Oct 2010 16:06:48 -0400
+Subject: Re: whither NFS umount?
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201010272148.47376.arnd@arndb.de>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20101012155234.094a87c3@corrin.poochiereds.net>
+Date: Tue, 12 Oct 2010 15:59:21 -0400
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <457DDEA3-4989-4B0F-AC90-155949666E7A@oracle.com>
+References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com> <1286903046.24878.13.camel@heimdal.trondhjem.org> <C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com> <20101012151826.76b75f52@corrin.poochiereds.net> <1286912649.1956.19.camel@heimdal.trondhjem.org> <20101012155234.094a87c3@corrin.poochiereds.net>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Oct 27, 2010 at 09:48:47PM +0200, Arnd Bergmann wrote:
-> On Wednesday 27 October 2010 20:43:59 Linus Torvalds wrote:
-> > On Wed, Oct 27, 2010 at 11:42 AM, Linus Torvalds
-> > <torvalds@linux-foundation.org> wrote:
-> > >
-> > > Feel free to edit the message/patch to your hearts content.
-> > 
-> > Oh, and if you want me to just commit this part, I can do so. It
-> > doesn't make much sense without the other parts to actually make it
-> > useful, though, so it probably makes more sense to come with them.
-> 
-> Once Bruce is happy with the test results, you can pull it from
-> 
-> git+ssh://master.kernel.org/pub/scm/linux/kernel/git/arnd/bkl.git flock
 
-Not the useful url for us hoi polloi out here.  OK, looking at
-git://git.kernel.org/pub/scm/linux/kernel/git/arnd/bkl.git flock....
+On Oct 12, 2010, at 3:52 PM, Jeff Layton wrote:
 
-> I've rewritten all the changelogs to make more sense as a series,
-> and split out the bits that turn lock_flocks into a spinlock to
-> come last, so we get a bisectable series.
+> On Tue, 12 Oct 2010 15:44:09 -0400
+> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 > 
-> The contents are left unchanged.
+>> On Tue, 2010-10-12 at 15:18 -0400, Jeff Layton wrote:
+>> 
+>>> I think the part that causes problems is having userspace do this. In
+>>> theory, if the kernel were in charge of sending the UMNT, then it's not
+>>> really a problem since it knows when to do it. If we have code that
+>>> sends a UMNT already, why not do a best-effort UMNT call from the
+>>> kernel when we tear down the sb?
+>> 
+>> Purely for the pleasure of allowing the server to maintain inaccurate
+>> statistics about who is currently mounting what? I think not...
+>> 
+>> You can get far more accurate results by replacing the MNT/UMNT state
+>> counter with a purely server-based scheme to track who accessed one or
+>> more files on each exported partition in the past 5 minutes or so. That
+>> would even work with NFSv4...
+>> 
+> 
+> True, but for better or worse, UMNT is part of the protocol. It seems
+> like we ought to do our best to implement it, even if it is
+> fundamentally flawed.
 
-Looks fine to me!
+I would like to see the kernel send UMNT, but I don't have a strong technical reason for it.  It's just a best-effort kind of thing.  Besides, we should be conservative in what we send (ie follow the protocol as closely as possible), and liberal in what we receive.
 
-I haven't retested that, but I can see that the result is identical to
-what I tested.
+In any event, whether the kernel sends a UMNT or no-one does, we can rip it out of umount.nfs now, I think.
 
-(You're missing Linus's comment fix, though, unless I'm confused.)
-
---b.
+-- 
+chuck[dot]lever[at]oracle[dot]com
 
 
-> 
-> 	Arnd
-> ---
-> 
-> commit b3426739cc8f7c7dd127ca8dad5e25195930cac1
-> Author: Arnd Bergmann <arnd@arndb.de>
-> Date:   Wed Oct 27 21:39:58 2010 +0200
-> 
->     locks: turn lock_flocks into a spinlock
->     
->     Nothing depends on lock_flocks using the BKL
->     any more, so we can do the switch over to
->     a private spinlock.
->     
->     Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-> 
->  fs/Kconfig |    1 -
->  fs/locks.c |    5 +++--
->  2 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> commit 55d3ff97c5c0b3dce39f705e2b1fe85818891822
-> Author: Linus Torvalds <torvalds@linux-foundation.org>
-> Date:   Wed Oct 27 12:38:12 2010 -0400
-> 
->     locks: avoid fasync allocation under lock_flocks
->     
->     This splits fasync_helper into four functions: fasync_alloc,
->     fasync_free, fasync_insert_entry and fasync_remove_entry,
->     in order to allow the lease handling to call them directly
->     instead of going through fasync_helper.
->     
->     The fasync_helper interface really doesn't make sense outside
->     of ->fasync file operations, which use the same calling
->     conventions of passing flags in and out as the helper.
->     
->     After the change, fcntl_setlease can simply allocate the
->     new fasync_struct outside of lock_flocks, which is required
->     to turn that into a spinlock.
->     
->     Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
->     [bfields@redhat.com: rebase on top of my changes to Arnd's patch]
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->     [arnd: rewrite changelog text]
->     Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-> 
->  fs/fcntl.c         |   66 +++++++++++++++++++++++++++++++++++++++------------
->  fs/locks.c         |   18 +++++++++++++-
->  include/linux/fs.h |    5 ++++
->  3 files changed, 72 insertions(+), 17 deletions(-)
-> 
-> commit c5b1f0d92c36851aca09ac6c7c0c4f9690ac14f3
-> Author: Arnd Bergmann <arnd@arndb.de>
-> Date:   Wed Oct 27 15:46:08 2010 +0200
-> 
->     locks/nfsd: allocate file lock outside of spinlock
->     
->     As suggested by Christoph Hellwig, this moves allocation
->     of new file locks out of generic_setlease into the
->     callers, nfs4_open_delegation and fcntl_setlease in order
->     to allow GFP_KERNEL allocations when lock_flocks has
->     become a spinlock.
->     
->     Signed-off-by: Arnd Bergmann <arnd@arndb.de>
->     Acked-by: J. Bruce Fields <bfields@redhat.com>
-> 
->  fs/locks.c          |   36 ++++++++++++------------------------
->  fs/nfsd/nfs4state.c |   26 +++++++++++++++-----------
->  include/linux/fs.h  |    1 +
->  3 files changed, 28 insertions(+), 35 deletions(-)
-> 
-> commit a282a1fa6b23bd21ba0b86e53ed2a316b001836f
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue Oct 26 18:25:30 2010 -0400
-> 
->     lockd: fix nlmsvc_notify_blocked locking
->     
->     nlmsvc_notify_blocked walks the nlm_blocked list,
->     which requires nlm_blocked_lock.
->     
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->     Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-> 
->  fs/lockd/svclock.c |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
-> 
-> commit 763641d81202834e9d64de2019d1edec12868f4f
-> Author: Arnd Bergmann <arnd@arndb.de>
-> Date:   Tue Oct 26 22:55:40 2010 +0200
-> 
->     lockd: push lock_flocks down
->     
->     lockd should use lock_flocks() instead of lock_kernel()
->     to lock against posix locks accessing the i_flock list.
->     
->     This is a prerequisite to turning lock_flocks into a
->     spinlock.
->     
->     Signed-off-by: Arnd Bergmann <arnd@arndb.de>
->     Acked-by: J. Bruce Fields <bfields@redhat.com>
-> 
->  fs/lockd/svc.c     |   11 -----------
->  fs/lockd/svcsubs.c |    9 ++++++++-
->  fs/nfs/Kconfig     |    1 -
->  fs/nfsd/Kconfig    |    1 -
->  4 files changed, 8 insertions(+), 14 deletions(-)
+
+
