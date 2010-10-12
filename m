@@ -1,143 +1,227 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:19372 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751128Ab0JTESP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Oct 2010 00:18:15 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 08/12] NFSv4.1: pnfs: filelayout: introduce minimal file layout driver
-Date: Wed, 20 Oct 2010 00:18:00 -0400
-Message-Id: <1287548284-28374-9-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
-References: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
+Received: from exprod5og111.obsmtp.com ([64.18.0.22]:57061 "HELO
+	exprod5og111.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751717Ab0JLSEg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Oct 2010 14:04:36 -0400
+Message-ID: <4CB4A332.8090803@panasas.com>
+Date: Tue, 12 Oct 2010 14:04:34 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] pnfs_submit: Restore forgetful mode io draining
+References: <1286444145-12781-1-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1286444145-12781-1-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Dean Hildebrand <dhildebz@umich.edu>
+On 2010-10-07 05:35, Fred Isaman wrote:
+> Recent changes to the waitq code removed the wait for io to drain
+> in the case of a "forgetful" return.  Restore the previous behavior.
+> 
+> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+> ---
+>  fs/nfs/nfs4proc.c       |    6 +++++-
+>  fs/nfs/pnfs.c           |    9 +++------
+>  include/linux/nfs_xdr.h |    1 +
+>  3 files changed, 9 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index c854814..7727f592 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5639,7 +5639,11 @@ nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
+>  		rpc_sleep_on(&nfsi->lo_rpcwaitq, task, NULL);
+>  		return;
+>  	}
+> -
+> +	if (lrp->stateid) {
+> +		/* Forget the layout, without sending the return */
+> +		rpc_exit(task, 0);
+> +		return;
+> +	}
+>  	if (nfs4_setup_sequence(server, NULL, &lrp->args.seq_args,
+>  				&lrp->res.seq_res, 0, task))
+>  		return;
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index f573219..eb4dfdf 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -612,7 +612,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+>  static int
+>  return_layout(struct inode *ino, struct pnfs_layout_range *range,
+>  	      enum pnfs_layoutreturn_type type, struct pnfs_layout_hdr *lo,
+> -	      bool wait)
+> +	      bool wait, const nfs4_stateid *stateid)
+>  {
+>  	struct nfs4_layoutreturn *lrp;
+>  	struct nfs_server *server = NFS_SERVER(ino);
+> @@ -633,6 +633,7 @@ return_layout(struct inode *ino, struct pnfs_layout_range *range,
+>  	lrp->args.return_type = type;
+>  	lrp->args.range = *range;
+>  	lrp->args.inode = ino;
+> +	lrp->stateid = stateid;
+>  
+>  	status = nfs4_proc_layoutreturn(lrp, wait);
+>  out:
+> @@ -688,11 +689,7 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+>  					__func__, status);
+>  			}
+>  		}
+> -
+> -		if (!stateid)
+> -			status = return_layout(ino, &arg, type, lo, wait);
+> -		else
+> -			pnfs_layoutreturn_release(lo, &arg);
+> +		status = return_layout(ino, &arg, type, lo, wait, stateid);
+>  	}
+>  out:
+>  	dprintk("<-- %s status: %d\n", __func__, status);
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index c72de21..80e6a36 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -277,6 +277,7 @@ struct nfs4_layoutreturn {
+>  	struct nfs4_layoutreturn_args args;
+>  	struct nfs4_layoutreturn_res res;
+>  	struct rpc_cred *cred;
+> +	const nfs4_stateid *stateid;
+>  	int rpc_status;
+>  };
+>  
 
-This driver just registers itself and supplies trivial mount/umount functions.
+So after reverting this patch in post-submit there's no real reason
+for passing the stateid to pnfs_return_layout, is it?
+I'm planning to do the following in the pnfs branch (post revert of your patch):
 
-Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/Makefile         |    3 ++
- fs/nfs/nfs4filelayout.c |   78 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs_fs.h  |    1 +
- 3 files changed, 82 insertions(+), 0 deletions(-)
- create mode 100644 fs/nfs/nfs4filelayout.c
+git diff --stat -p -M
+ fs/nfs/callback_proc.c |    5 ++---
+ fs/nfs/inode.c         |    2 +-
+ fs/nfs/nfs4state.c     |    2 +-
+ fs/nfs/pnfs.c          |   11 +----------
+ fs/nfs/pnfs.h          |    5 +----
+ 5 files changed, 6 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index bb9e773..08a8889 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -18,3 +18,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
- nfs-$(CONFIG_SYSCTL) += sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
-+
-+obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
-+nfs_layout_nfsv41_files-y := nfs4filelayout.o
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-new file mode 100644
-index 0000000..696e283
---- /dev/null
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -0,0 +1,78 @@
-+/*
-+ *  Module for the pnfs nfs4 file layout driver.
-+ *  Defines all I/O and Policy interface operations, plus code
-+ *  to register itself with the pNFS client.
-+ *
-+ *  Copyright (c) 2002
-+ *  The Regents of the University of Michigan
-+ *  All Rights Reserved
-+ *
-+ *  Dean Hildebrand <dhildebz@umich.edu>
-+ *
-+ *  Permission is granted to use, copy, create derivative works, and
-+ *  redistribute this software and such derivative works for any purpose,
-+ *  so long as the name of the University of Michigan is not used in
-+ *  any advertising or publicity pertaining to the use or distribution
-+ *  of this software without specific, written prior authorization. If
-+ *  the above copyright notice or any other identification of the
-+ *  University of Michigan is included in any copy of any portion of
-+ *  this software, then the disclaimer below must also be included.
-+ *
-+ *  This software is provided as is, without representation or warranty
-+ *  of any kind either express or implied, including without limitation
-+ *  the implied warranties of merchantability, fitness for a particular
-+ *  purpose, or noninfringement.  The Regents of the University of
-+ *  Michigan shall not be liable for any damages, including special,
-+ *  indirect, incidental, or consequential damages, with respect to any
-+ *  claim arising out of or in connection with the use of the software,
-+ *  even if it has been or is hereafter advised of the possibility of
-+ *  such damages.
-+ */
-+
-+#include <linux/nfs_fs.h>
-+#include "pnfs.h"
-+
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+MODULE_LICENSE("GPL");
-+MODULE_AUTHOR("Dean Hildebrand <dhildebz@umich.edu>");
-+MODULE_DESCRIPTION("The NFSv4 file layout driver");
-+
-+int
-+filelayout_initialize_mountpoint(struct nfs_server *nfss)
-+{
-+	return 0;
-+}
-+
-+int
-+filelayout_uninitialize_mountpoint(struct nfs_server *nfss)
-+{
-+	dprintk("--> %s\n", __func__);
-+
-+	return 0;
-+}
-+
-+static struct pnfs_layoutdriver_type filelayout_type = {
-+	.id = LAYOUT_NFSV4_1_FILES,
-+	.name = "LAYOUT_NFSV4_1_FILES",
-+	.owner = THIS_MODULE,
-+	.initialize_mountpoint   = filelayout_initialize_mountpoint,
-+	.uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
-+};
-+
-+static int __init nfs4filelayout_init(void)
-+{
-+	printk(KERN_INFO "%s: NFSv4 File Layout Driver Registering...\n",
-+	       __func__);
-+	return pnfs_register_layoutdriver(&filelayout_type);
-+}
-+
-+static void __exit nfs4filelayout_exit(void)
-+{
-+	printk(KERN_INFO "%s: NFSv4 File Layout Driver Unregistering...\n",
-+	       __func__);
-+	pnfs_unregister_layoutdriver(&filelayout_type);
-+}
-+
-+module_init(nfs4filelayout_init);
-+module_exit(nfs4filelayout_exit);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index aba3da2..499872f 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -616,6 +616,7 @@ nfs_fileid_to_ino_t(u64 fileid)
- #define NFSDBG_MOUNT		0x0400
- #define NFSDBG_FSCACHE		0x0800
- #define NFSDBG_PNFS		0x1000
-+#define NFSDBG_PNFS_LD		0x2000
- #define NFSDBG_ALL		0xFFFF
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 6b560ce..93a9b2e 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -234,8 +234,7 @@ static int pnfs_recall_layout(void *data)
+ 		if (pnfs_is_next_layout_stateid(NFS_I(inode)->layout,
+ 						rl.cbl_stateid))
+ 			status = pnfs_return_layout(inode, &rl.cbl_seg,
+-						    &rl.cbl_stateid, RETURN_FILE,
+-						    false);
++						    RETURN_FILE, false);
+ 		else
+ 			status = cpu_to_be32(NFS4ERR_DELAY);
+ 		if (status)
+@@ -255,7 +254,7 @@ static int pnfs_recall_layout(void *data)
+ 	/* IMPROVEME: This loop is inefficient, running in O(|s_inodes|^2) */
+ 	while ((ino = nfs_layoutrecall_find_inode(clp, &rl)) != NULL) {
+ 		/* FIXME: need to check status on pnfs_return_layout */
+-		pnfs_return_layout(ino, &rl.cbl_seg, NULL, RETURN_FILE, false);
++		pnfs_return_layout(ino, &rl.cbl_seg, RETURN_FILE, false);
+ 		iput(ino);
+ 	}
  
- #ifdef __KERNEL__
--- 
-1.7.2.1
-
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 437d9a6..cbd5b3f 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1418,7 +1418,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+  */
+ void nfs4_evict_inode(struct inode *inode)
+ {
+-	pnfs_return_layout(inode, NULL, NULL, RETURN_FILE, true);
++	pnfs_return_layout(inode, NULL, RETURN_FILE, true);
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	end_writeback(inode);
+ 	pnfs_destroy_layout(NFS_I(inode));
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 3168d77..8d32f2f 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -612,7 +612,7 @@ static void __nfs4_close(struct path *path, struct nfs4_state *state,
+ 				.length = NFS4_MAX_UINT64,
+ 			};
+ 
+-			pnfs_return_layout(state->inode, &range, NULL,
++			pnfs_return_layout(state->inode, &range,
+ 					   RETURN_FILE, wait);
+ 		}
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index f573219..74d8532 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -642,7 +642,6 @@ out:
+ 
+ int
+ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+-		    const nfs4_stateid *stateid, /* optional */
+ 		    enum pnfs_layoutreturn_type type,
+ 		    bool wait)
+ {
+@@ -675,11 +674,6 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 		spin_unlock(&ino->i_lock);
+ 
+ 		if (layoutcommit_needed(nfsi)) {
+-			if (stateid && !wait) { /* callback */
+-				dprintk("%s: layoutcommit pending\n", __func__);
+-				status = -EAGAIN;
+-				goto out_put;
+-			}
+ 			status = pnfs_layoutcommit_inode(ino, wait);
+ 			if (status) {
+ 				/* Return layout even if layoutcommit fails */
+@@ -689,10 +683,7 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 			}
+ 		}
+ 
+-		if (!stateid)
+-			status = return_layout(ino, &arg, type, lo, wait);
+-		else
+-			pnfs_layoutreturn_release(lo, &arg);
++		status = return_layout(ino, &arg, type, lo, wait);
+ 	}
+ out:
+ 	dprintk("<-- %s status: %d\n", __func__, status);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 235709e..7ca22a0 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -184,7 +184,6 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 		   enum pnfs_iomode access_type);
+ bool pnfs_return_layout_barrier(struct nfs_inode *, struct pnfs_layout_range *);
+ int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *,
+-			const nfs4_stateid *stateid, /* optional */
+ 			enum pnfs_layoutreturn_type, bool wait);
+ void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+@@ -252,7 +251,6 @@ pnfs_layout_roc_iomode(struct nfs_inode *nfsi)
+ 
+ static inline int pnfs_return_layout(struct inode *ino,
+ 				     struct pnfs_layout_range *range,
+-				     const nfs4_stateid *stateid, /* optional */
+ 				     enum pnfs_layoutreturn_type type,
+ 				     bool wait)
+ {
+@@ -261,7 +259,7 @@ static inline int pnfs_return_layout(struct inode *ino,
+ 
+ 	if (pnfs_enabled_sb(nfss) &&
+ 	    (type != RETURN_FILE || has_layout(nfsi)))
+-		return _pnfs_return_layout(ino, range, stateid, type, wait);
++		return _pnfs_return_layout(ino, range, type, wait);
+ 
+ 	return 0;
+ }
+@@ -350,7 +348,6 @@ pnfs_layout_roc_iomode(struct nfs_inode *nfsi)
+ 
+ static inline int pnfs_return_layout(struct inode *ino,
+ 				     struct pnfs_layout_range *range,
+-				     const nfs4_stateid *stateid, /* optional */
+ 				     enum pnfs_layoutreturn_type type,
+ 				     bool wait)
+ {
