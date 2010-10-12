@@ -1,109 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6168 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753467Ab0JTTRE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Oct 2010 15:17:04 -0400
-Date: Wed, 20 Oct 2010 15:16:57 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Neil Brown <neilb@suse.de>, chuck.lever@oracle.com
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
- mounts.
-Message-ID: <20101020151657.42bc53f7@tlielax.poochiereds.net>
-In-Reply-To: <20101020135525.22977d8d@tlielax.poochiereds.net>
-References: <20101020181701.232dbeea@notabene>
-	<20101020135525.22977d8d@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:52795 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753860Ab0JLNL5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Oct 2010 09:11:57 -0400
+Received: by bwz15 with SMTP id 15so2376330bwz.19
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 06:11:56 -0700 (PDT)
+In-Reply-To: <AANLkTikEYkC0Y0wf2GsOraCdK5BnB_NC7m_bgyaAwaWK@mail.gmail.com>
+References: <AANLkTikEYkC0Y0wf2GsOraCdK5BnB_NC7m_bgyaAwaWK@mail.gmail.com>
+Date: Tue, 12 Oct 2010 09:11:53 -0400
+Message-ID: <AANLkTik6WBUJrSW5GY+i-iERxU-rMz5D0oWFa-n8HhH+@mail.gmail.com>
+Subject: Re: Question about LAYOUTRETURN stateid
+From: Fred Isaman <iisaman@netapp.com>
+To: "P.B.Shelley" <shelleypt@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 20 Oct 2010 13:55:25 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+On Tue, Oct 12, 2010 at 7:09 AM, P.B.Shelley <shelleypt@gmail.com> wrote:
+> Hi, all
+>
+> While reading Linux pnfs code, I have a question in layoutreturn code path.
+>
+> nfs4_layoutreturn_release() only invalidate layout stateid when
+> res.lrs_present is FALSE. If it is TRUE, client is supposed to set it
+> to res.stateid, is it? But I do not see somewhere the layout stateid
+> is updated. Am I missing something?
+>
 
-> On Wed, 20 Oct 2010 18:17:01 +1100
-> Neil Brown <neilb@suse.de> wrote:
-> 
-> > 
-> > 
-> > If I don't have any network configured (except loop-back), and try an NFSv3
-> > mount, then it fails quickly:
-> > 
-> > 
-> > ....
-> > mount.nfs: portmap query failed: RPC: Remote system error - Network is unreachable
-> > mount.nfs: Network is unreachable
-> > 
-> > 
-> > If I try the same thing with a NFSv4 mount, it times out before it fails,
-> > making a much longer delay.
-> > 
-> > This is because mount.nfs doesn't do a portmap lookup but just leaves
-> > everything to the kernel.
-> > The kernel does an 'rpc_ping()' which sets RPC_TASK_SOFTCONN.
-> > So at least it doesn't retry after the timeout.  But given that we have a
-> > clear error, we shouldn't timeout at all.
-> > 
-> > Unfortunately I cannot see an easy way to fix this.
-> > 
-> > The place where ENETUNREACH is in xs_tcp_setup_socket.  The comment there
-> > says "Retry with the same socket after a delay".  The "delay" bit is correct,
-> > the "retry" isn't.
-> > 
-> > It would seem that we should just add a 'goto out' there if RPC_TASK_SOFTCONN
-> > was set.  However we cannot see the task at this point - in fact it seems
-> > that there could be a queue of tasks waiting on this connection.  I guess
-> > some could be soft, and some not. ???
-> > 
-> > So: An suggestions how to get a ENETUNREACH (or ECONNREFUSED or similar) to
-> > fail immediately when  RPC_TASK_SOFTCONN is set ???
-> > 
-> > 
-> > This affects people who upgrade from openSUSE11.2 (which didn't support v4
-> > mounts) to openSUSE11.3 (which defaults to v4) and who use network-manager
-> > (which configures networks late) and have NFS mounts in /etc/fstab with
-> > either explicit IP addresses or host names that can be resolved without the
-> > network.
-> > This config will work because when the network comes up, network-manager will
-> > re-run the 'init.d/nfs' script.  However since 11.3 there is an unpleasant
-> > pause before boot completes.
-> > 
-> 
-> Took me a few tries to get an ENETUNREACH error but I see the same hang
-> you do. For the record I was able to get one by not configuring an IPv6
-> addr on the box and attempting to mount an IPv6 address.
-> 
-> Interestingly while I was trying to reproduce it, I ended up
-> reproducing an EHOSTUNREACH error by trying to mount a IPv6 host to
-> which I didn't have a route. That error returns quickly from the
-> kernel. Maybe we can solve this simply by treating ENETUNREACH the same
-> as EHOSTUNREACH in this situation?
-> 
-> I'm not quite sure exactly how to make that happen, but it seems like
-> reasonable behavior.
-> 
+No, you are not missing anything.  that is a bug.
 
-Sigh, nothing's ever easy in the RPC layer. Please bear with my
-scatterbrained analysis...
+Fred
 
-There's a bit of difference at the socket layer between those two cases.
-xs_tcp_finish_connecting calls this to connect the socket:
-
-    kernel_connect(sock, xs_addr(xprt), xprt->addrlen, O_NONBLOCK);
-
-...in the ENETUNREACH case, this returns immediately with the error. In
-EHOSTUNREACH case, it returns EINPROGRESS and then the sk_error_report
-handles the rest. Fine...we can emulate the similar behavior, but...
-
-Then what happens is that xs_tcp_send_request gets called again to try
-to resend the packet. In the EHOSTUNREACH case, that returns
-EHOSTUNREACH which eventually causes an rpc_exit with that error. In
-the ENETUNREACH case that returns EPIPE, which makes the state machine
-move next to call_bind and the whole thing starts over again.
-
-I'm still not sure what the right approach is here. The fact that
-attempting to send on the socket in this case gives us an EPIPE makes
-it tough to handle this case the same way as EHOSTUNREACH.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> 5683 static void nfs4_layoutreturn_release(void *calldata)
+> 5684 {
+> 5685         struct nfs4_layoutreturn *lrp = calldata;
+> 5686         struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
+> 5687
+> 5688         dprintk("--> %s return_type %d lo %p\n", __func__,
+> 5689                 lrp->args.return_type, lo);
+> 5690
+> 5691         if (lrp->args.return_type == RETURN_FILE) {
+> 5692                 if (!lrp->res.lrs_present)
+> 5693                         pnfs_invalidate_layout_stateid(lo);
+> 5694                 pnfs_layoutreturn_release(lo, &lrp->args.range);
+> 5695         }
+> 5696         kfree(calldata);
+> 5697         dprintk("<-- %s\n", __func__);
+> 5698 }
+>
+> --
+> Thanks,
+> Shelley
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
