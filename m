@@ -1,84 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64582 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51266 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752189Ab0JUTij convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 15:38:39 -0400
-Subject: Re: [PATCH] xs_bind retry binding forever
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Ben Myers <bpm@sgi.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20101021183337.12776.18768.stgit@lady3jane.americas.sgi.com>
-References: <20101021183203.12776.28469.stgit@lady3jane.americas.sgi.com>
-	 <20101021183337.12776.18768.stgit@lady3jane.americas.sgi.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 21 Oct 2010 15:38:37 -0400
-Message-ID: <1287689917.9144.84.camel@heimdal.trondhjem.org>
+	id S1750964Ab0JLVcc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Oct 2010 17:32:32 -0400
+Date: Tue, 12 Oct 2010 16:50:40 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: whither NFS umount?
+Message-ID: <20101012165040.39852c8d@corrin.poochiereds.net>
+In-Reply-To: <C6938516-D27B-4D1D-93E1-AF37EB920DD5@oracle.com>
+References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>
+	<1286903046.24878.13.camel@heimdal.trondhjem.org>
+	<C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>
+	<20101012151826.76b75f52@corrin.poochiereds.net>
+	<1286912649.1956.19.camel@heimdal.trondhjem.org>
+	<20101012155234.094a87c3@corrin.poochiereds.net>
+	<1286914860.3166.10.camel@heimdal.trondhjem.org>
+	<20101012162625.074f7292@corrin.poochiereds.net>
+	<C6938516-D27B-4D1D-93E1-AF37EB920DD5@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-10-21 at 13:33 -0500, Ben Myers wrote:
-> Retry bind for reserved source ports forever.  Add an error message when we
-> have a hard time binding one.
+On Tue, 12 Oct 2010 16:34:45 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-NACK. This approach leads to the process spinning forever in that loop,
-which is exactly why we introduced the limit in the first place. See all
-the old archived bug report emails about 'rpciod taking 100% cpu'.
-
-Cheers
-  Trond
-
-> Signed-off-by: Ben Myers <bpm@sgi.com>
-> ---
->  net/sunrpc/xprtsock.c |   22 ++++++++++++++++++----
->  1 files changed, 18 insertions(+), 4 deletions(-)
 > 
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index b6309db..79a001b 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -1560,9 +1560,16 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
->  		}
->  		last = port;
->  		port = xs_next_srcport(transport, sock, port);
-> -		if (port > last)
-> +		if (port > last) {
-> +			if (nloop > 2 && net_ratelimit()) {
-> +				printk("RPC: %s %pI4: Cannot bind reserved "
-> +				       "source port.  Consider decreasing "
-> +				       "min_resvport.\n",
-> +				       __func__, &myaddr.sin_addr);
-> +			}
->  			nloop++;
-> -	} while (err == -EADDRINUSE && nloop != 2);
-> +		}
-> +	} while (err == -EADDRINUSE);
->  	dprintk("RPC:       %s %pI4:%u: %s (%d)\n",
->  			__func__, &myaddr.sin_addr,
->  			port, err ? "failed" : "ok", err);
-> @@ -1593,9 +1600,16 @@ static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
->  		}
->  		last = port;
->  		port = xs_next_srcport(transport, sock, port);
-> -		if (port > last)
-> +		if (port > last) {
-> +			if (nloop > 2 && net_ratelimit()) {
-> +				printk("RPC: %s %pI6: Cannot bind reserved "
-> +				       "source port.  Consider decreasing "
-> +				       "min_resvport.\n",
-> +					__func__, &myaddr.sin6_addr);
-> +			}
->  			nloop++;
-> -	} while (err == -EADDRINUSE && nloop != 2);
-> +		}
-> +	} while (err == -EADDRINUSE);
->  	dprintk("RPC:       xs_bind6 %pI6:%u: %s (%d)\n",
->  		&myaddr.sin6_addr, port, err ? "failed" : "ok", err);
->  	return err;
+> On Oct 12, 2010, at 4:26 PM, Jeff Layton wrote:
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > On Tue, 12 Oct 2010 16:21:00 -0400
+> > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > 
+> >> On Tue, 2010-10-12 at 15:52 -0400, Jeff Layton wrote:
+> >>> On Tue, 12 Oct 2010 15:44:09 -0400
+> >>> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> >>> 
+> >>>> On Tue, 2010-10-12 at 15:18 -0400, Jeff Layton wrote:
+> >>>> 
+> >>>>> I think the part that causes problems is having userspace do this. In
+> >>>>> theory, if the kernel were in charge of sending the UMNT, then it's not
+> >>>>> really a problem since it knows when to do it. If we have code that
+> >>>>> sends a UMNT already, why not do a best-effort UMNT call from the
+> >>>>> kernel when we tear down the sb?
+> >>>> 
+> >>>> Purely for the pleasure of allowing the server to maintain inaccurate
+> >>>> statistics about who is currently mounting what? I think not...
+> >>>> 
+> >>>> You can get far more accurate results by replacing the MNT/UMNT state
+> >>>> counter with a purely server-based scheme to track who accessed one or
+> >>>> more files on each exported partition in the past 5 minutes or so. That
+> >>>> would even work with NFSv4...
+> >>>> 
+> >>> 
+> >>> True, but for better or worse, UMNT is part of the protocol. It seems
+> >>> like we ought to do our best to implement it, even if it is
+> >>> fundamentally flawed.
+> >>> 
+> >> 
+> >> UMNTALL is part of the same protocol, and yet we have never implemented
+> >> that. Just because something is documented, it doesn't mean we have to
+> >> do it...
+> >> 
+> >> The bottom line is that UMNT doesn't do what it advertises itself as
+> >> doing, and so we should not waste space supporting it in the kernel. We
+> >> shouldn't do so in userspace either.
+> >> 
+> > 
+> > Fair enough. Like Chuck I don't have strong feelings about it, other
+> > than seeing no need to continue shipping umount.nfs.
+> 
+> Careful... we still need umount.nfs, which is a link to mount.nfs.  Something in user space has to kick off local namespace changes, even if the server isn't affected.
+> 
 
+Most other filesystems don't need a umount helper. If there isn't one
+present then /bin/umount takes care of the umount() call and cleaning
+the entry out of /etc/mtab.
 
+My understanding was that umount.nfs only existed because it was needed
+to handle the UMNT RPC. Without that, there's really no need for it.
+
+...or am I overlooking something?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
