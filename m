@@ -1,53 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:38170 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752543Ab0JKAFE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Oct 2010 20:05:04 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 6so2668490iwn.19
-        for <linux-nfs@vger.kernel.org>; Sun, 10 Oct 2010 17:05:04 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/15] mount.nfs: Eliminate compiler warnings in
-	utils/mount/version.h
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Sun, 10 Oct 2010 20:05:01 -0400
-Message-ID: <20101011000501.6667.87285.stgit@ellison.1015granger.net>
-In-Reply-To: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
-References: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:1027 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755180Ab0JLUZ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Oct 2010 16:25:59 -0400
+Date: Tue, 12 Oct 2010 16:26:25 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: whither NFS umount?
+Message-ID: <20101012162625.074f7292@corrin.poochiereds.net>
+In-Reply-To: <1286914860.3166.10.camel@heimdal.trondhjem.org>
+References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>
+	<1286903046.24878.13.camel@heimdal.trondhjem.org>
+	<C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>
+	<20101012151826.76b75f52@corrin.poochiereds.net>
+	<1286912649.1956.19.camel@heimdal.trondhjem.org>
+	<20101012155234.094a87c3@corrin.poochiereds.net>
+	<1286914860.3166.10.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
+On Tue, 12 Oct 2010 16:21:00 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-In file included from mount.c:50:
-version.h: In function ‘linux_version_code’:
-version.h:48: warning: conversion to ‘unsigned int’ from ‘int’ may change the sign of the result
-version.h:48: warning: conversion to ‘unsigned int’ from ‘int’ may change the sign of the result
-version.h:48: warning: conversion to ‘unsigned int’ from ‘int’ may change the sign of the result
+> On Tue, 2010-10-12 at 15:52 -0400, Jeff Layton wrote:
+> > On Tue, 12 Oct 2010 15:44:09 -0400
+> > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > 
+> > > On Tue, 2010-10-12 at 15:18 -0400, Jeff Layton wrote:
+> > > 
+> > > > I think the part that causes problems is having userspace do this. In
+> > > > theory, if the kernel were in charge of sending the UMNT, then it's not
+> > > > really a problem since it knows when to do it. If we have code that
+> > > > sends a UMNT already, why not do a best-effort UMNT call from the
+> > > > kernel when we tear down the sb?
+> > > 
+> > > Purely for the pleasure of allowing the server to maintain inaccurate
+> > > statistics about who is currently mounting what? I think not...
+> > > 
+> > > You can get far more accurate results by replacing the MNT/UMNT state
+> > > counter with a purely server-based scheme to track who accessed one or
+> > > more files on each exported partition in the past 5 minutes or so. That
+> > > would even work with NFSv4...
+> > > 
+> > 
+> > True, but for better or worse, UMNT is part of the protocol. It seems
+> > like we ought to do our best to implement it, even if it is
+> > fundamentally flawed.
+> > 
+> 
+> UMNTALL is part of the same protocol, and yet we have never implemented
+> that. Just because something is documented, it doesn't mean we have to
+> do it...
+> 
+> The bottom line is that UMNT doesn't do what it advertises itself as
+> doing, and so we should not waste space supporting it in the kernel. We
+> shouldn't do so in userspace either.
+> 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Fair enough. Like Chuck I don't have strong feelings about it, other
+than seeing no need to continue shipping umount.nfs.
 
- utils/mount/version.h |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/utils/mount/version.h b/utils/mount/version.h
-index 46552a1..af61a6f 100644
---- a/utils/mount/version.h
-+++ b/utils/mount/version.h
-@@ -42,9 +42,9 @@ static inline unsigned int linux_version_code(void)
- 	if (uname(&my_utsname))
- 		return 0;
- 
--	p = atoi(strtok(my_utsname.release, "."));
--	q = atoi(strtok(NULL, "."));
--	r = atoi(strtok(NULL, "."));
-+	p = (unsigned int)atoi(strtok(my_utsname.release, "."));
-+	q = (unsigned int)atoi(strtok(NULL, "."));
-+	r = (unsigned int)atoi(strtok(NULL, "."));
- 	return MAKE_VERSION(p, q, r);
- }
- 
-
+-- 
+Jeff Layton <jlayton@redhat.com>
