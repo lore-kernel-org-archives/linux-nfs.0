@@ -1,68 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57206 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753718Ab0JUTje (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Oct 2010 15:39:34 -0400
-Date: Thu, 21 Oct 2010 15:40:12 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>,
+Received: from rcsinet10.oracle.com ([148.87.113.121]:31002 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755180Ab0JLUg4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Oct 2010 16:36:56 -0400
+Subject: Re: whither NFS umount?
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20101012162625.074f7292@corrin.poochiereds.net>
+Date: Tue, 12 Oct 2010 16:34:45 -0400
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
- mounts.
-Message-ID: <20101021154012.48f92cfc@corrin.poochiereds.net>
-In-Reply-To: <1287672124.3645.19.camel@heimdal.trondhjem.org>
-References: <20101020181701.232dbeea@notabene>
-	<20101020135525.22977d8d@tlielax.poochiereds.net>
-	<20101020151657.42bc53f7@tlielax.poochiereds.net>
-	<20101021074028.44bca336@notabene>
-	<20101020204532.2019eb93@corrin.poochiereds.net>
-	<20101021142518.3934ae17@notabene>
-	<1287669939.3645.12.camel@heimdal.trondhjem.org>
-	<5CF8C718-2D02-481E-9200-8CAA724D9C8C@oracle.com>
-	<1287672124.3645.19.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+Message-Id: <C6938516-D27B-4D1D-93E1-AF37EB920DD5@oracle.com>
+References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com> <1286903046.24878.13.camel@heimdal.trondhjem.org> <C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com> <20101012151826.76b75f52@corrin.poochiereds.net> <1286912649.1956.19.camel@heimdal.trondhjem.org> <20101012155234.094a87c3@corrin.poochiereds.net> <1286914860.3166.10.camel@heimdal.trondhjem.org> <20101012162625.074f7292@corrin.poochiereds.net>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 21 Oct 2010 10:42:04 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-> On Thu, 2010-10-21 at 10:31 -0400, Chuck Lever wrote:
-> > On Oct 21, 2010, at 10:05 AM, Trond Myklebust wrote:
-> > > It seems to me that the problem is basically that RPC_IS_SOFTCONN is
-> > > poorly defined. IMO, the definition should really be that
-> > > 'RPC_IS_SOFTCONN' tasks MUST exit with an error if they ever have to run
-> > > call_bind or a call_connect more than once (i.e. if they ever have to
-> > > loop back).
-> > 
-> > I think you are suggesting that we define the places where RPC_IS_SOFTCONN should be tested as exactly those places that might want to restart the RPC call via rpc_force_rebind, tk_action = call_refresh, and so on.  Yes?
-> 
-> Yes.
-> 
-> > > With that in mind, I really don't see why the RPC_IS_SOFTCONN case is
-> > > being handled in call_transmit_status() instead of in call_status().
-> > 
-> > I tried it in call_status(), but it didn't work as expected.  My notes aren't specific about the problem.  One thing is for sure, there seems to be some redundant error handling logic in both of those states.  Unraveling it might be more than Neil bargained for, but would help "future generations."
-> 
-> call_transmit_status() is there basically in order to call
-> xprt_end_transmit() in the cases where we want to free up the socket
-> write lock (and then possibly sleep).
-> 
-> Actual state error handling is supposed occur in call_status().
-> 
+On Oct 12, 2010, at 4:26 PM, Jeff Layton wrote:
 
-This is terribly confusing. So the connect handling is done in
-call_transmit?
+> On Tue, 12 Oct 2010 16:21:00 -0400
+> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> 
+>> On Tue, 2010-10-12 at 15:52 -0400, Jeff Layton wrote:
+>>> On Tue, 12 Oct 2010 15:44:09 -0400
+>>> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+>>> 
+>>>> On Tue, 2010-10-12 at 15:18 -0400, Jeff Layton wrote:
+>>>> 
+>>>>> I think the part that causes problems is having userspace do this. In
+>>>>> theory, if the kernel were in charge of sending the UMNT, then it's not
+>>>>> really a problem since it knows when to do it. If we have code that
+>>>>> sends a UMNT already, why not do a best-effort UMNT call from the
+>>>>> kernel when we tear down the sb?
+>>>> 
+>>>> Purely for the pleasure of allowing the server to maintain inaccurate
+>>>> statistics about who is currently mounting what? I think not...
+>>>> 
+>>>> You can get far more accurate results by replacing the MNT/UMNT state
+>>>> counter with a purely server-based scheme to track who accessed one or
+>>>> more files on each exported partition in the past 5 minutes or so. That
+>>>> would even work with NFSv4...
+>>>> 
+>>> 
+>>> True, but for better or worse, UMNT is part of the protocol. It seems
+>>> like we ought to do our best to implement it, even if it is
+>>> fundamentally flawed.
+>>> 
+>> 
+>> UMNTALL is part of the same protocol, and yet we have never implemented
+>> that. Just because something is documented, it doesn't mean we have to
+>> do it...
+>> 
+>> The bottom line is that UMNT doesn't do what it advertises itself as
+>> doing, and so we should not waste space supporting it in the kernel. We
+>> shouldn't do so in userspace either.
+>> 
+> 
+> Fair enough. Like Chuck I don't have strong feelings about it, other
+> than seeing no need to continue shipping umount.nfs.
 
-It seems like it would make more sense to have the connect handling
-mostly done in call_connect and call_connect_status, and only allow the
-tasks to proceed to the call_transmit phase after the connect has
-succeeded.
-
-If that's not the case, then maybe some renaming of functions is in
-order so that the purpose of them is more clear?
+Careful... we still need umount.nfs, which is a link to mount.nfs.  Something in user space has to kick off local namespace changes, even if the server isn't affected.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
