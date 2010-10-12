@@ -1,45 +1,38 @@
-From: Pavel Emelyanov <xemul@parallels.com>
-Subject: Re: [PATCH 0/13] sunrpc: Compact the xprtsock code a bit
-Date: Tue, 12 Oct 2010 11:51:25 +0400
-Message-ID: <4CB4137D.2000709@parallels.com>
-References: <4CA9CDA8.4010407@parallels.com> <20101011234711.GC16442@fieldses.org>
+From: DENIEL Philippe <philippe.deniel@cea.fr>
+Subject: Re: RPM packaging for libnfsidmap ?
+Date: Tue, 12 Oct 2010 13:51:22 +0200
+Message-ID: <4CB44BBA.5080200@cea.fr>
+References: <4CB4432B.7020709@cea.fr> <20101012114334.GA2577@merit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	Trond Myklebust <trond@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1;
+	format=flowed
+Cc: linux-nfs@vger.kernel.org
+To: Jim Rees <rees@umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:46482 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756896Ab0JLHwE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Oct 2010 03:52:04 -0400
-In-Reply-To: <20101011234711.GC16442@fieldses.org>
+Received: from cirse-out.extra.cea.fr ([132.166.172.106]:40862 "EHLO
+	cirse-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757212Ab0JLLvY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Oct 2010 07:51:24 -0400
+Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
+	by cirse.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.0) with ESMTP id o9CBpNju023349
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 13:51:23 +0200
+Received: from muguet2.intra.cea.fr (muguet2.intra.cea.fr [132.166.192.7])
+	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id o9CBpMie001288
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 13:51:23 +0200
+	(envelope-from philippe.deniel@cea.fr)
+Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
+	by muguet2.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id o9CBpMKG018707
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 13:51:22 +0200
+In-Reply-To: <20101012114334.GA2577-8f4Pc2RrbJmHXe+LvDLADg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/12/2010 03:47 AM, J. Bruce Fields wrote:
-> On Mon, Oct 04, 2010 at 04:50:48PM +0400, Pavel Emelyanov wrote:
->> Hi!
->>
->> This set removes some unused parts of code and merges together
->> routines that are related to the sockets creation.
->>
->> After all the changes the result is
->>
->>  net/sunrpc/xprtsock.c: 77 insertions(+), 206 deletions(-)
->>
->> from the code-lines point of view and
->>
->>   add/remove: 2/11 grow/shrink: 4/1 up/down: 879/-1626 (-747)
->>
->> from the bloat-o-meter's point of view.
-> 
-> I'm assuming Trond is taking these.  Let me know if that doesn't
-> work....
+Jim Rees a =E9crit :
+> On fedora it's part of nfs-utils-lib-devel.  I don't know about rhel.
+>  =20
 
-When will these appear in your three then? The thing is my next patches
-depend on this set.
+OK, This is exactly what I needed :-)
+Thanks
 
-> --b.
-> 
-
+    Philippe
