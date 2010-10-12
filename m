@@ -1,53 +1,45 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] sunrpc: Use helper to set v4 mapped addr in
- ip_map_parse
-Date: Mon, 11 Oct 2010 20:02:17 -0400
-Message-ID: <20101012000217.GD16442@fieldses.org>
-References: <4CAB56C2.3080801@parallels.com>
+From: Pavel Emelyanov <xemul@parallels.com>
+Subject: Re: [PATCH 0/13] sunrpc: Compact the xprtsock code a bit
+Date: Tue, 12 Oct 2010 11:51:25 +0400
+Message-ID: <4CB4137D.2000709@parallels.com>
+References: <4CA9CDA8.4010407@parallels.com> <20101011234711.GC16442@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Pavel Emelyanov <xemul@parallels.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	Trond Myklebust <trond@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:58175 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:46482 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754937Ab0JLACS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Oct 2010 20:02:18 -0400
-In-Reply-To: <4CAB56C2.3080801@parallels.com>
+	id S1756896Ab0JLHwE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Oct 2010 03:52:04 -0400
+In-Reply-To: <20101011234711.GC16442@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 05, 2010 at 08:48:02PM +0400, Pavel Emelyanov wrote:
-> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
-
-Thanks, applying.
-
-(Assuming someone else is testing for ipv6 regressions, though--I don't
-have a setup for it currently.)
-
---b.
-
-> ---
->  net/sunrpc/svcauth_unix.c |    5 ++---
->  1 files changed, 2 insertions(+), 3 deletions(-)
+On 10/12/2010 03:47 AM, J. Bruce Fields wrote:
+> On Mon, Oct 04, 2010 at 04:50:48PM +0400, Pavel Emelyanov wrote:
+>> Hi!
+>>
+>> This set removes some unused parts of code and merges together
+>> routines that are related to the sockets creation.
+>>
+>> After all the changes the result is
+>>
+>>  net/sunrpc/xprtsock.c: 77 insertions(+), 206 deletions(-)
+>>
+>> from the code-lines point of view and
+>>
+>>   add/remove: 2/11 grow/shrink: 4/1 up/down: 879/-1626 (-747)
+>>
+>> from the bloat-o-meter's point of view.
 > 
-> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-> index 8b378f9..560677d 100644
-> --- a/net/sunrpc/svcauth_unix.c
-> +++ b/net/sunrpc/svcauth_unix.c
-> @@ -220,10 +220,9 @@ static int ip_map_parse(struct cache_detail *cd,
->  	switch (address.sa.sa_family) {
->  	case AF_INET:
->  		/* Form a mapped IPv4 address in sin6 */
-> -		memset(&sin6, 0, sizeof(sin6));
->  		sin6.sin6_family = AF_INET6;
-> -		sin6.sin6_addr.s6_addr32[2] = htonl(0xffff);
-> -		sin6.sin6_addr.s6_addr32[3] = address.s4.sin_addr.s_addr;
-> +		ipv6_addr_set_v4mapped(address.s4.sin_addr.s_addr,
-> +				&sin6.sin6_addr);
->  		break;
->  #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
->  	case AF_INET6:
-> -- 
-> 1.5.5.6
+> I'm assuming Trond is taking these.  Let me know if that doesn't
+> work....
+
+When will these appear in your three then? The thing is my next patches
+depend on this set.
+
+> --b.
 > 
+
