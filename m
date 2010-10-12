@@ -1,69 +1,36 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: Question about LAYOUTRETURN stateid
-Date: Tue, 12 Oct 2010 10:40:47 -0400
-Message-ID: <4CB4736F.2060507@panasas.com>
-References: <AANLkTikEYkC0Y0wf2GsOraCdK5BnB_NC7m_bgyaAwaWK@mail.gmail.com> <AANLkTik6WBUJrSW5GY+i-iERxU-rMz5D0oWFa-n8HhH+@mail.gmail.com>
+From: Pavel Emelyanov <xemul@parallels.com>
+Subject: Re: [PATCH 0/13] sunrpc: Compact the xprtsock code a bit
+Date: Tue, 12 Oct 2010 19:21:31 +0400
+Message-ID: <4CB47CFB.7040503@parallels.com>
+References: <4CA9CDA8.4010407@parallels.com> <20101011234711.GC16442@fieldses.org> <4CB4137D.2000709@parallels.com> <20101012135020.GB12752@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: "P.B.Shelley" <shelleypt@gmail.com>, linux-nfs@vger.kernel.org
-To: Fred Isaman <iisaman@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	Trond Myklebust <trond@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og111.obsmtp.com ([64.18.0.22]:58249 "HELO
-	exprod5og111.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1757360Ab0JLOks (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Oct 2010 10:40:48 -0400
-In-Reply-To: <AANLkTik6WBUJrSW5GY+i-iERxU-rMz5D0oWFa-n8HhH+-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from mailhub.sw.ru ([195.214.232.25]:21467 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753500Ab0JLPVv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Oct 2010 11:21:51 -0400
+In-Reply-To: <20101012135020.GB12752@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2010-10-12 09:11, Fred Isaman wrote:
-> On Tue, Oct 12, 2010 at 7:09 AM, P.B.Shelley <shelleypt@gmail.com> wrote:
->> Hi, all
+>>> I'm assuming Trond is taking these.  Let me know if that doesn't
+>>> work....
 >>
->> While reading Linux pnfs code, I have a question in layoutreturn code path.
->>
->> nfs4_layoutreturn_release() only invalidate layout stateid when
->> res.lrs_present is FALSE. If it is TRUE, client is supposed to set it
->> to res.stateid, is it? But I do not see somewhere the layout stateid
->> is updated. Am I missing something?
->>
+>> When will these appear in your three then? The thing is my next patches
+>> depend on this set.
 > 
-> No, you are not missing anything.  that is a bug.
+> If Trond ACK's them I'd happily merge them into my tree.
+> 
+> (Or Trond could merge them, then one of us could merge the other's tree,
+> and you could work on top of that.)
+
+OK. Then I'll wait for Trond's decision.
+
+> --b.
+> .
 > 
 
-Agreed.
-Who's volunteering to send a fix? :)
-
-Benny
-
-> Fred
-> 
->> 5683 static void nfs4_layoutreturn_release(void *calldata)
->> 5684 {
->> 5685         struct nfs4_layoutreturn *lrp = calldata;
->> 5686         struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
->> 5687
->> 5688         dprintk("--> %s return_type %d lo %p\n", __func__,
->> 5689                 lrp->args.return_type, lo);
->> 5690
->> 5691         if (lrp->args.return_type == RETURN_FILE) {
->> 5692                 if (!lrp->res.lrs_present)
->> 5693                         pnfs_invalidate_layout_stateid(lo);
->> 5694                 pnfs_layoutreturn_release(lo, &lrp->args.range);
->> 5695         }
->> 5696         kfree(calldata);
->> 5697         dprintk("<-- %s\n", __func__);
->> 5698 }
->>
->> --
->> Thanks,
->> Shelley
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
