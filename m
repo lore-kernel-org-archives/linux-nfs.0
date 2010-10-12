@@ -1,48 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:16639 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57020 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754833Ab0J3RxH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Oct 2010 13:53:07 -0400
-Subject: Re: Error: state manager failed on NFSv4 server linux with error
- 127
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Brian J. Murrell" <brian@interlinx.bc.ca>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1288460514.32627.105.camel@pc>
-References: <1287334833.4871.6.camel@pc>
-	 <1287340520.5266.70.camel@heimdal.trondhjem.org>
-	 <1288460514.32627.105.camel@pc>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sat, 30 Oct 2010 13:52:31 -0400
-Message-ID: <1288461151.3238.9.camel@heimdal.trondhjem.org>
+	id S1755952Ab0JLB3z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Oct 2010 21:29:55 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs-utils: fix default value for --enable-tirpc
+Date: Mon, 11 Oct 2010 21:29:51 -0400
+Message-Id: <1286846991-4876-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Sat, 2010-10-30 at 13:41 -0400, Brian J. Murrell wrote:
-> On Sun, 2010-10-17 at 14:35 -0400, Trond Myklebust wrote: 
-> > 
-> > Error 127 is EKEYEXPIRED. It means that the RPCSEC_GSS context for at
-> > least one of your threads has expired.
-> > 
-> > Sigh... It looks as if we have a really poor handling of that in the
-> > recovery threads.
-> > 
-> > Does the following patch help?
-> 
-> Well, while I don't seem to have had any of the state manager failed
-> errors, I did have a number of processes blocked in NFS4 today with the
-> patched kernel running:
-> 
-> [316999.281908] SysRq : Show Blocked State
-> [316999.285576]   task                PC stack   pid father
-> [316999.285576] rhythmbox     D f32d1c9c     0 12726  12614 0x00000000
-<snip>
-> 
-> Maybe the above is an unrelated problem?
+The patch I originally proposed to make --enable-tirpc the default had
+the default for $enable_tirpc as a blank string. When it was merged
+however, that value was changed to a 'yes'. This broke the ability for
+autoconf to detect and autodisable building with tirpc. When tirpc isn't
+present now, the configure step fails unless someone explicitly
+specifies --disable-libtirpc.
 
-The processes appeared to be waiting for state recovery to complete, but
-your trace didn't contain any evidence that a state recovery thread was
-running. Did you over-edit the trace output, or was this really all?
+We need $enable_tirpc to be a tristate. 'yes' means that someone
+explicitly requested building with tirpc. 'no' means that it was
+explicitly disabled. Anything else means that no one specified a value.
 
-Trond
+Fix it by setting the value to a blank string so that the default is
+properly undefined.
+
+Reported-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ configure.ac |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 3058be6..5408e85 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -136,7 +136,7 @@ AC_ARG_ENABLE(tirpc,
+ 	[AC_HELP_STRING([--enable-tirpc],
+ 			[enable use of TI-RPC @<:@default=yes@:>@])],
+ 	enable_tirpc=$enableval,
+-	enable_tirpc='yes')
++	enable_tirpc='')
+ AC_ARG_ENABLE(ipv6,
+ 	[AC_HELP_STRING([--enable-ipv6],
+                         [enable support for IPv6 @<:@default=no@:>@])],
+-- 
+1.7.1
+
