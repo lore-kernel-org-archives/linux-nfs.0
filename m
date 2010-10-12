@@ -1,56 +1,245 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34194 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751407Ab0JYBJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 24 Oct 2010 21:09:29 -0400
-Date: Sun, 24 Oct 2010 21:09:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Menyhart Zoltan <Zoltan.Menyhart@bull.net>
-Cc: linux-nfs@vger.kernel.org, neilb@suse.de
-Subject: Re: "xprt" reference count drops to 0
-Message-ID: <20101025010923.GB11470@fieldses.org>
-References: <4C7E4469.70807@duchatelet.net>
- <4CAAE046.5060209@bull.net>
- <20101021203801.GA12038@fieldses.org>
- <4CC1A722.4060907@bull.net>
- <20101022212007.GB22837@fieldses.org>
- <20101022230111.GC22837@fieldses.org>
- <20101022232133.GD22837@fieldses.org>
- <20101023033250.GA24630@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101023033250.GA24630@fieldses.org>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:52465 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751892Ab0JLSst convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Oct 2010 14:48:49 -0400
+Received: by bwz15 with SMTP id 15so2641290bwz.19
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 11:48:47 -0700 (PDT)
+In-Reply-To: <4CB4A332.8090803@panasas.com>
+References: <1286444145-12781-1-git-send-email-iisaman@netapp.com>
+	<4CB4A332.8090803@panasas.com>
+Date: Tue, 12 Oct 2010 14:48:47 -0400
+Message-ID: <AANLkTi=T+qPGLycDohBX5wCZc2EPVZKvhVmVYMHZzs58@mail.gmail.com>
+Subject: Re: [PATCH 1/1] pnfs_submit: Restore forgetful mode io draining
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Oct 22, 2010 at 11:32:50PM -0400, J. Bruce Fields wrote:
-> On Fri, Oct 22, 2010 at 07:21:33PM -0400, J. Bruce Fields wrote:
-> > On Fri, Oct 22, 2010 at 07:01:12PM -0400, J. Bruce Fields wrote:
-> > > On Fri, Oct 22, 2010 at 05:20:07PM -0400, J. Bruce Fields wrote:
-> > > > On Fri, Oct 22, 2010 at 05:00:50PM +0200, Menyhart Zoltan wrote:
-> > > > > J. Bruce Fields wrote:
-> > > > > >On Tue, Oct 05, 2010 at 10:22:30AM +0200, Menyhart Zoltan wrote:
-> > > > > >>Due to some race conditions, the reference count can become 0
-> > > > > >>while "xprt" is still on a "pool":
-> > > > > >
-> > > > > >Apologies, your email got buried in my inbox....
-> > > > > >
-> > > > > >>
-> > > > > >>WARNING: at lib/kref.c:43 kref_get+0x23/0x2d()
-> > > > > >>  [] kref_get+0x23/0x2d
-> > > > > >>  [] svc_xprt_get+0x12/0x14 [sunrpc]
-> > > > > >>  [] svc_recv+0x2db/0x78a [sunrpc]
-> > > > > >
-> > > > > >Which kernel exactly did you see this on?  Is it reproduceable?
-> > > > > 
-> > > > > I saw it on a 2.6.32.
-> > > > > It has not been corrected for the 2.6.36-rc3 yet.
-> 
-> Doh.  Wait, when you say "has not been corrected on 2.6.36-rc3", do you
-> mean you've actually *seen* the problem occur on 2.6.36-rc3?
-> 
-> If not, it's more likely you're seeing the problem that was fixed by
-> 1b644b6e6f6160ae35ce4b52c2ca89ed3e356e18, in 2.6.34-rc1.
+On Tue, Oct 12, 2010 at 2:04 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+> On 2010-10-07 05:35, Fred Isaman wrote:
+>> Recent changes to the waitq code removed the wait for io to drain
+>> in the case of a "forgetful" return.  Restore the previous behavior.
+>>
+>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>> ---
+>>  fs/nfs/nfs4proc.c       |    6 +++++-
+>>  fs/nfs/pnfs.c           |    9 +++------
+>>  include/linux/nfs_xdr.h |    1 +
+>>  3 files changed, 9 insertions(+), 7 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index c854814..7727f592 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -5639,7 +5639,11 @@ nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
+>>               rpc_sleep_on(&nfsi->lo_rpcwaitq, task, NULL);
+>>               return;
+>>       }
+>> -
+>> +     if (lrp->stateid) {
+>> +             /* Forget the layout, without sending the return */
+>> +             rpc_exit(task, 0);
+>> +             return;
+>> +     }
+>>       if (nfs4_setup_sequence(server, NULL, &lrp->args.seq_args,
+>>                               &lrp->res.seq_res, 0, task))
+>>               return;
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> index f573219..eb4dfdf 100644
+>> --- a/fs/nfs/pnfs.c
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -612,7 +612,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+>>  static int
+>>  return_layout(struct inode *ino, struct pnfs_layout_range *range,
+>>             enum pnfs_layoutreturn_type type, struct pnfs_layout_hdr *lo,
+>> -           bool wait)
+>> +           bool wait, const nfs4_stateid *stateid)
+>>  {
+>>       struct nfs4_layoutreturn *lrp;
+>>       struct nfs_server *server = NFS_SERVER(ino);
+>> @@ -633,6 +633,7 @@ return_layout(struct inode *ino, struct pnfs_layout_range *range,
+>>       lrp->args.return_type = type;
+>>       lrp->args.range = *range;
+>>       lrp->args.inode = ino;
+>> +     lrp->stateid = stateid;
+>>
+>>       status = nfs4_proc_layoutreturn(lrp, wait);
+>>  out:
+>> @@ -688,11 +689,7 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+>>                                       __func__, status);
+>>                       }
+>>               }
+>> -
+>> -             if (!stateid)
+>> -                     status = return_layout(ino, &arg, type, lo, wait);
+>> -             else
+>> -                     pnfs_layoutreturn_release(lo, &arg);
+>> +             status = return_layout(ino, &arg, type, lo, wait, stateid);
+>>       }
+>>  out:
+>>       dprintk("<-- %s status: %d\n", __func__, status);
+>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>> index c72de21..80e6a36 100644
+>> --- a/include/linux/nfs_xdr.h
+>> +++ b/include/linux/nfs_xdr.h
+>> @@ -277,6 +277,7 @@ struct nfs4_layoutreturn {
+>>       struct nfs4_layoutreturn_args args;
+>>       struct nfs4_layoutreturn_res res;
+>>       struct rpc_cred *cred;
+>> +     const nfs4_stateid *stateid;
+>>       int rpc_status;
+>>  };
+>>
+>
+> So after reverting this patch in post-submit there's no real reason
+> for passing the stateid to pnfs_return_layout, is it?
+> I'm planning to do the following in the pnfs branch (post revert of your patch):
 
-But, as long as we're here, I think there's a minor fix and some cleanup
-we could do; patches follow.--b.
+It was used (merely as a boolean flag) to note that the return should
+be "forgotten".  My understanding of your suggested patch is that the
+client would now always call LAYOUTRETURN, but without adding any of
+the race detection code we intentionally avoided writing because we
+were using the forgetful model.
+
+Fred
+
+>
+> git diff --stat -p -M
+>  fs/nfs/callback_proc.c |    5 ++---
+>  fs/nfs/inode.c         |    2 +-
+>  fs/nfs/nfs4state.c     |    2 +-
+>  fs/nfs/pnfs.c          |   11 +----------
+>  fs/nfs/pnfs.h          |    5 +----
+>  5 files changed, 6 insertions(+), 19 deletions(-)
+>
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index 6b560ce..93a9b2e 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -234,8 +234,7 @@ static int pnfs_recall_layout(void *data)
+>                if (pnfs_is_next_layout_stateid(NFS_I(inode)->layout,
+>                                                rl.cbl_stateid))
+>                        status = pnfs_return_layout(inode, &rl.cbl_seg,
+> -                                                   &rl.cbl_stateid, RETURN_FILE,
+> -                                                   false);
+> +                                                   RETURN_FILE, false);
+>                else
+>                        status = cpu_to_be32(NFS4ERR_DELAY);
+>                if (status)
+> @@ -255,7 +254,7 @@ static int pnfs_recall_layout(void *data)
+>        /* IMPROVEME: This loop is inefficient, running in O(|s_inodes|^2) */
+>        while ((ino = nfs_layoutrecall_find_inode(clp, &rl)) != NULL) {
+>                /* FIXME: need to check status on pnfs_return_layout */
+> -               pnfs_return_layout(ino, &rl.cbl_seg, NULL, RETURN_FILE, false);
+> +               pnfs_return_layout(ino, &rl.cbl_seg, RETURN_FILE, false);
+>                iput(ino);
+>        }
+>
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 437d9a6..cbd5b3f 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -1418,7 +1418,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+>  */
+>  void nfs4_evict_inode(struct inode *inode)
+>  {
+> -       pnfs_return_layout(inode, NULL, NULL, RETURN_FILE, true);
+> +       pnfs_return_layout(inode, NULL, RETURN_FILE, true);
+>        truncate_inode_pages(&inode->i_data, 0);
+>        end_writeback(inode);
+>        pnfs_destroy_layout(NFS_I(inode));
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index 3168d77..8d32f2f 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -612,7 +612,7 @@ static void __nfs4_close(struct path *path, struct nfs4_state *state,
+>                                .length = NFS4_MAX_UINT64,
+>                        };
+>
+> -                       pnfs_return_layout(state->inode, &range, NULL,
+> +                       pnfs_return_layout(state->inode, &range,
+>                                           RETURN_FILE, wait);
+>                }
+>
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index f573219..74d8532 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -642,7 +642,6 @@ out:
+>
+>  int
+>  _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+> -                   const nfs4_stateid *stateid, /* optional */
+>                    enum pnfs_layoutreturn_type type,
+>                    bool wait)
+>  {
+> @@ -675,11 +674,6 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+>                spin_unlock(&ino->i_lock);
+>
+>                if (layoutcommit_needed(nfsi)) {
+> -                       if (stateid && !wait) { /* callback */
+> -                               dprintk("%s: layoutcommit pending\n", __func__);
+> -                               status = -EAGAIN;
+> -                               goto out_put;
+> -                       }
+>                        status = pnfs_layoutcommit_inode(ino, wait);
+>                        if (status) {
+>                                /* Return layout even if layoutcommit fails */
+> @@ -689,10 +683,7 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+>                        }
+>                }
+>
+> -               if (!stateid)
+> -                       status = return_layout(ino, &arg, type, lo, wait);
+> -               else
+> -                       pnfs_layoutreturn_release(lo, &arg);
+> +               status = return_layout(ino, &arg, type, lo, wait);
+>        }
+>  out:
+>        dprintk("<-- %s status: %d\n", __func__, status);
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 235709e..7ca22a0 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -184,7 +184,6 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+>                   enum pnfs_iomode access_type);
+>  bool pnfs_return_layout_barrier(struct nfs_inode *, struct pnfs_layout_range *);
+>  int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *,
+> -                       const nfs4_stateid *stateid, /* optional */
+>                        enum pnfs_layoutreturn_type, bool wait);
+>  void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+>  void unset_pnfs_layoutdriver(struct nfs_server *);
+> @@ -252,7 +251,6 @@ pnfs_layout_roc_iomode(struct nfs_inode *nfsi)
+>
+>  static inline int pnfs_return_layout(struct inode *ino,
+>                                     struct pnfs_layout_range *range,
+> -                                    const nfs4_stateid *stateid, /* optional */
+>                                     enum pnfs_layoutreturn_type type,
+>                                     bool wait)
+>  {
+> @@ -261,7 +259,7 @@ static inline int pnfs_return_layout(struct inode *ino,
+>
+>        if (pnfs_enabled_sb(nfss) &&
+>            (type != RETURN_FILE || has_layout(nfsi)))
+> -               return _pnfs_return_layout(ino, range, stateid, type, wait);
+> +               return _pnfs_return_layout(ino, range, type, wait);
+>
+>        return 0;
+>  }
+> @@ -350,7 +348,6 @@ pnfs_layout_roc_iomode(struct nfs_inode *nfsi)
+>
+>  static inline int pnfs_return_layout(struct inode *ino,
+>                                     struct pnfs_layout_range *range,
+> -                                    const nfs4_stateid *stateid, /* optional */
+>                                     enum pnfs_layoutreturn_type type,
+>                                     bool wait)
+>  {
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
