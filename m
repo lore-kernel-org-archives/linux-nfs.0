@@ -1,132 +1,135 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57703 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751048Ab0JUQUo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Oct 2010 12:20:44 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 10/11] nfsd4: move minorversion to client
-Date: Thu, 21 Oct 2010 12:20:17 -0400
-Message-Id: <1287678018-9266-11-git-send-email-bfields@redhat.com>
-In-Reply-To: <1287678018-9266-1-git-send-email-bfields@redhat.com>
-References: <1287678018-9266-1-git-send-email-bfields@redhat.com>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:55055 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754247Ab0JLUd6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Oct 2010 16:33:58 -0400
+From: Tom Tucker <tom@ogc.us>
+Subject: [PATCH 2/2] svcrdma: Cleanup DMA unmapping in error paths.
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Tue, 12 Oct 2010 15:33:57 -0500
+Message-ID: <20101012203357.22154.95700.stgit@build.ogc.int>
+In-Reply-To: <20101012203332.22154.37230.stgit@build.ogc.int>
+References: <20101012203332.22154.37230.stgit@build.ogc.int>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The minorversion seems more a property of the client than the callback
-channel.
+There are several error paths in the code that do not unmap DMA. This
+patch adds calls to svc_rdma_unmap_dma to free these DMA contexts.
 
-Some time we should probably also enforce consistent minorversion usage
-from the client; for now, this is just a cosmetic change.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
 ---
- fs/nfsd/nfs4callback.c |    8 ++++----
- fs/nfsd/nfs4state.c    |   12 ++++++++++--
- fs/nfsd/state.h        |    2 +-
- 3 files changed, 15 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index d38ee3c..67bcd2c 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -496,7 +496,7 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
- 
- 	if (!clp->cl_principal && (clp->cl_flavor >= RPC_AUTH_GSS_KRB5))
- 		return -EINVAL;
--	if (conn->cb_minorversion) {
-+	if (clp->cl_minorversion) {
- 		args.bc_xprt = conn->cb_xprt;
- 		args.prognumber = clp->cl_cb_session->se_cb_prog;
- 		args.protocol = XPRT_TRANSPORT_BC_TCP;
-@@ -620,7 +620,7 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
- 	struct nfsd4_callback *cb = calldata;
- 	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
- 	struct nfs4_client *clp = dp->dl_client;
--	u32 minorversion = clp->cl_cb_conn.cb_minorversion;
-+	u32 minorversion = clp->cl_minorversion;
- 	int status = 0;
- 
- 	cb->cb_minorversion = minorversion;
-@@ -645,9 +645,9 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
- 	struct nfs4_client *clp = dp->dl_client;
- 
- 	dprintk("%s: minorversion=%d\n", __func__,
--		clp->cl_cb_conn.cb_minorversion);
-+		clp->cl_minorversion);
- 
--	if (clp->cl_cb_conn.cb_minorversion) {
-+	if (clp->cl_minorversion) {
- 		/* No need for lock, access serialized in nfsd4_cb_prepare */
- 		++clp->cl_cb_session->se_cb_seq_nr;
- 		clear_bit(0, &clp->cl_cb_slot_busy);
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0f2643d..ce0412f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -782,7 +782,6 @@ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct n
- 		svc_xprt_get(rqstp->rq_xprt);
- 		rpc_copy_addr((struct sockaddr *)&clp->cl_cb_conn.cb_addr, sa);
- 		clp->cl_cb_conn.cb_addrlen = svc_addr_len(sa);
--		clp->cl_cb_conn.cb_minorversion = 1;
- 		nfsd4_probe_callback(clp);
- 	}
- 	return new;
-@@ -1200,7 +1199,6 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
- 	if (conn->cb_addr.ss_family == AF_INET6)
- 		((struct sockaddr_in6 *)&conn->cb_addr)->sin6_scope_id = scopeid;
- 
--	conn->cb_minorversion = 0;
- 	conn->cb_prog = se->se_callback_prog;
- 	conn->cb_ident = se->se_callback_ident;
- 	return;
-@@ -1541,6 +1539,11 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	}
- 
- 	/*
-+	 * XXX: we should probably set this at creation time, and check
-+	 * for consistent minorversion use throughout:
-+	 */
-+	conf->cl_minorversion = 1;
-+	/*
- 	 * We do not support RDMA or persistent sessions
- 	 */
- 	cr_ses->flags &= ~SESSION4_PERSIST;
-@@ -1857,6 +1860,11 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    1 +
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    2 ++
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   29 ++++++++++++++---------------
+ 3 files changed, 17 insertions(+), 15 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 926bdb4..df67211 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -495,6 +495,7 @@ next_sge:
+ 			printk(KERN_ERR "svcrdma: Error %d posting RDMA_READ\n",
+ 			       err);
+ 			set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
++			svc_rdma_unmap_dma(ctxt);
+ 			svc_rdma_put_context(ctxt, 0);
  			goto out;
- 		gen_clid(new);
+ 		}
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index d4f5e0e..249a835 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -367,6 +367,8 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
+ 		goto err;
+ 	return 0;
+  err:
++	svc_rdma_unmap_dma(ctxt);
++	svc_rdma_put_frmr(xprt, vec->frmr);
+ 	svc_rdma_put_context(ctxt, 0);
+ 	/* Fatal error, close transport */
+ 	return -EIO;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 23f90c3..d22a44d 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -511,9 +511,9 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
+ 		ctxt->sge[sge_no].addr = pa;
+ 		ctxt->sge[sge_no].length = PAGE_SIZE;
+ 		ctxt->sge[sge_no].lkey = xprt->sc_dma_lkey;
++		ctxt->count = sge_no + 1;
+ 		buflen += PAGE_SIZE;
  	}
-+	/*
-+	 * XXX: we should probably set this at creation time, and check
-+	 * for consistent minorversion use throughout:
-+	 */
-+	new->cl_minorversion = 0;
- 	gen_callback(new, setclid, rpc_get_scope_id(sa));
- 	add_to_unconfirmed(new, strhashval);
- 	setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index bbc4d58..39adc27 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -98,7 +98,6 @@ struct nfs4_cb_conn {
- 	size_t			cb_addrlen;
- 	u32                     cb_prog; /* used only in 4.0 case;
- 					    per-session otherwise */
--	u32			cb_minorversion;
- 	u32                     cb_ident;	/* minorversion 0 only */
- 	struct svc_xprt		*cb_xprt;	/* minorversion 1 only */
- };
-@@ -227,6 +226,7 @@ struct nfs4_client {
- 	clientid_t		cl_clientid;	/* generated by server */
- 	nfs4_verifier		cl_confirm;	/* generated by server */
- 	u32			cl_firststate;	/* recovery dir creation */
-+	u32			cl_minorversion;
+-	ctxt->count = sge_no;
+ 	recv_wr.next = NULL;
+ 	recv_wr.sg_list = &ctxt->sge[0];
+ 	recv_wr.num_sge = ctxt->count;
+@@ -529,6 +529,7 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt)
+ 	return ret;
  
- 	/* for v4.0 and v4.1 callbacks: */
- 	struct nfs4_cb_conn	cl_cb_conn;
--- 
-1.7.1
+  err_put_ctxt:
++	svc_rdma_unmap_dma(ctxt);
+ 	svc_rdma_put_context(ctxt, 1);
+ 	return -ENOMEM;
+ }
+@@ -1306,7 +1307,6 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+ 			 enum rpcrdma_errcode err)
+ {
+ 	struct ib_send_wr err_wr;
+-	struct ib_sge sge;
+ 	struct page *p;
+ 	struct svc_rdma_op_ctxt *ctxt;
+ 	u32 *va;
+@@ -1319,26 +1319,27 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+ 	/* XDR encode error */
+ 	length = svc_rdma_xdr_encode_error(xprt, rmsgp, err, va);
+ 
++	ctxt = svc_rdma_get_context(xprt);
++	ctxt->direction = DMA_FROM_DEVICE;
++	ctxt->count = 1;
++	ctxt->pages[0] = p;
++
+ 	/* Prepare SGE for local address */
+-	sge.addr = ib_dma_map_page(xprt->sc_cm_id->device,
+-				   p, 0, PAGE_SIZE, DMA_FROM_DEVICE);
+-	if (ib_dma_mapping_error(xprt->sc_cm_id->device, sge.addr)) {
++	ctxt->sge[0].addr = ib_dma_map_page(xprt->sc_cm_id->device,
++					    p, 0, length, DMA_FROM_DEVICE);
++	if (ib_dma_mapping_error(xprt->sc_cm_id->device, ctxt->sge[0].addr)) {
+ 		put_page(p);
+ 		return;
+ 	}
+ 	atomic_inc(&xprt->sc_dma_used);
+-	sge.lkey = xprt->sc_dma_lkey;
+-	sge.length = length;
+-
+-	ctxt = svc_rdma_get_context(xprt);
+-	ctxt->count = 1;
+-	ctxt->pages[0] = p;
++	ctxt->sge[0].lkey = xprt->sc_dma_lkey;
++	ctxt->sge[0].length = length;
+ 
+ 	/* Prepare SEND WR */
+ 	memset(&err_wr, 0, sizeof err_wr);
+ 	ctxt->wr_op = IB_WR_SEND;
+ 	err_wr.wr_id = (unsigned long)ctxt;
+-	err_wr.sg_list = &sge;
++	err_wr.sg_list = ctxt->sge;
+ 	err_wr.num_sge = 1;
+ 	err_wr.opcode = IB_WR_SEND;
+ 	err_wr.send_flags = IB_SEND_SIGNALED;
+@@ -1348,9 +1349,7 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+ 	if (ret) {
+ 		dprintk("svcrdma: Error %d posting send for protocol error\n",
+ 			ret);
+-		ib_dma_unmap_page(xprt->sc_cm_id->device,
+-				  sge.addr, PAGE_SIZE,
+-				  DMA_FROM_DEVICE);
++		svc_rdma_unmap_dma(ctxt);
+ 		svc_rdma_put_context(ctxt, 1);
+ 	}
+ }
 
