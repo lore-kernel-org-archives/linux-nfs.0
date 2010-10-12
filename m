@@ -1,72 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36241 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755891Ab0JYOg6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Oct 2010 10:36:58 -0400
-Date: Mon, 25 Oct 2010 10:36:57 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Menyhart Zoltan <Zoltan.Menyhart@bull.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: "xprt" reference count drops to 0
-Message-ID: <20101025143656.GA3233@fieldses.org>
-References: <4C7E4469.70807@duchatelet.net>
- <4CAAE046.5060209@bull.net>
- <20101021203801.GA12038@fieldses.org>
- <4CC1A722.4060907@bull.net>
- <20101022212007.GB22837@fieldses.org>
- <4CC5706F.3020308@bull.net>
+Received: from rcsinet14.oracle.com ([148.87.113.126]:40752 "EHLO
+	rcsinet14.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751203Ab0JMBUS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Oct 2010 21:20:18 -0400
+Received: from rcsinet10.oracle.com (rcsinet10.oracle.com [148.87.113.121])
+	by rcsinet14.oracle.com (Sentrion-MP-4.0.0/Sentrion-MP-4.0.0) with ESMTP id o9CLKKh4003311
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 21:20:20 GMT
+Subject: Re: whither NFS umount?
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CC5706F.3020308@bull.net>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20101012165040.39852c8d@corrin.poochiereds.net>
+Date: Tue, 12 Oct 2010 17:19:11 -0400
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <7A0E248F-125A-4117-8140-290718E68998@oracle.com>
+References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com> <1286903046.24878.13.camel@heimdal.trondhjem.org> <C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com> <20101012151826.76b75f52@corrin.poochiereds.net> <1286912649.1956.19.camel@heimdal.trondhjem.org> <20101012155234.094a87c3@corrin.poochiereds.net> <1286914860.3166.10.camel@heimdal.trondhjem.org> <20101012162625.074f7292@corrin.poochiereds.net> <C6938516-D27B-4D1D-93E1-AF37EB920DD5@oracle.com> <20101012165040.39852c8d@corrin.poochiereds.net>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Oct 25, 2010 at 01:56:31PM +0200, Menyhart Zoltan wrote:
-> We do not really use more advanced kernel than the 2.6.32 in a great number.
-> Just some test configurations up to the 2.6.36-rc6...
-> I have not seen this problem on recent kernels.
+
+On Oct 12, 2010, at 4:50 PM, Jeff Layton wrote:
+
+> On Tue, 12 Oct 2010 16:34:45 -0400
+> Chuck Lever <chuck.lever@oracle.com> wrote:
 > 
-> I'm not sure that I can really follow your explication.
+>> 
+>> On Oct 12, 2010, at 4:26 PM, Jeff Layton wrote:
+>> 
+>>> On Tue, 12 Oct 2010 16:21:00 -0400
+>>> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+>>> 
+>>>> On Tue, 2010-10-12 at 15:52 -0400, Jeff Layton wrote:
+>>>>> On Tue, 12 Oct 2010 15:44:09 -0400
+>>>>> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+>>>>> 
+>>>>>> On Tue, 2010-10-12 at 15:18 -0400, Jeff Layton wrote:
+>>>>>> 
+>>>>>>> I think the part that causes problems is having userspace do this. In
+>>>>>>> theory, if the kernel were in charge of sending the UMNT, then it's not
+>>>>>>> really a problem since it knows when to do it. If we have code that
+>>>>>>> sends a UMNT already, why not do a best-effort UMNT call from the
+>>>>>>> kernel when we tear down the sb?
+>>>>>> 
+>>>>>> Purely for the pleasure of allowing the server to maintain inaccurate
+>>>>>> statistics about who is currently mounting what? I think not...
+>>>>>> 
+>>>>>> You can get far more accurate results by replacing the MNT/UMNT state
+>>>>>> counter with a purely server-based scheme to track who accessed one or
+>>>>>> more files on each exported partition in the past 5 minutes or so. That
+>>>>>> would even work with NFSv4...
+>>>>>> 
+>>>>> 
+>>>>> True, but for better or worse, UMNT is part of the protocol. It seems
+>>>>> like we ought to do our best to implement it, even if it is
+>>>>> fundamentally flawed.
+>>>>> 
+>>>> 
+>>>> UMNTALL is part of the same protocol, and yet we have never implemented
+>>>> that. Just because something is documented, it doesn't mean we have to
+>>>> do it...
+>>>> 
+>>>> The bottom line is that UMNT doesn't do what it advertises itself as
+>>>> doing, and so we should not waste space supporting it in the kernel. We
+>>>> shouldn't do so in userspace either.
+>>>> 
+>>> 
+>>> Fair enough. Like Chuck I don't have strong feelings about it, other
+>>> than seeing no need to continue shipping umount.nfs.
+>> 
+>> Careful... we still need umount.nfs, which is a link to mount.nfs.  Something in user space has to kick off local namespace changes, even if the server isn't affected.
+>> 
+> 
+> Most other filesystems don't need a umount helper. If there isn't one
+> present then /bin/umount takes care of the umount() call and cleaning
+> the entry out of /etc/mtab.
+> 
+> My understanding was that umount.nfs only existed because it was needed
+> to handle the UMNT RPC. Without that, there's really no need for it.
+> 
+> ...or am I overlooking something?
 
-Look at the callers of svc_xprt_put().  You'll see that all of them have
-an obvious paired svc_xprt_get():
+umount.nfs still handles "users=" which has special behavior for NFS mounts, for example.  Does that matter?
 
-	- Any svc_xprt_put() that clears a rqstp->rq_xprt is paired with
-	  the svc_xprt_get() that originally set rqstp->rq_xprt
-	- The svc_xprt_put() in svc_check_conn_limits() is paired with
-	  the immediately preceding svc_xprt_get() that took the xprt
-	  off the sv_tempsocks list.
-	- Etc.
+-- 
+chuck[dot]lever[at]oracle[dot]com
 
-*Except* for the svc_xprt_put() at the end of svc_delete_xprt().  That
-one you can think of as paired with the initial reference created by the
-kref_init() in svc_xprt_init().
 
-So, each xprt has one special reference which keeps the xprt from being
-removed before svc_delete_xprt() is called.
 
-There are only two callers of svc_delete_xprt(): svc_close_xprt(), and
-svc_recv().
 
-When we exit svc_xprt_enqueue(), we exit with XPT_BUSY set on the xprt
-in question.
-
-That flag will be cleared only by the svc_recv() call that picks up this
-xprt (or by svc_close_all() if nfsd shuts down before then).
-
-That prevents svc_close_xprt() from deleting the xprt, since it returns
-without doing anything if XPT_BUSY is already set.
-
-So the only code that could normally delete this xprt is the svc_recv()
-that processes the xprt.  It takes the xprt off the pool->sp_sockets
-list before it does that.
-
-So, returning from svc_xprt_enqueue() with an xprt on ->sp_sockets that
-has XPT_BUSY set is safe.
-
-Think of XPT_BUSY as a kind of lock, ownership of which can pass from
-the svc_xprt_enqueue() that queues up an xprt to the svc_recv() that
-processes it, and note that an xprt can only be deleted under this
-XPT_BUSY lock.
-
---b.
