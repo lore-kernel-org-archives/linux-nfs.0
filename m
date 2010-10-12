@@ -1,38 +1,69 @@
-From: DENIEL Philippe <philippe.deniel@cea.fr>
-Subject: Re: RPM packaging for libnfsidmap ?
-Date: Tue, 12 Oct 2010 13:51:22 +0200
-Message-ID: <4CB44BBA.5080200@cea.fr>
-References: <4CB4432B.7020709@cea.fr> <20101012114334.GA2577@merit.edu>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: Question about LAYOUTRETURN stateid
+Date: Tue, 12 Oct 2010 10:40:47 -0400
+Message-ID: <4CB4736F.2060507@panasas.com>
+References: <AANLkTikEYkC0Y0wf2GsOraCdK5BnB_NC7m_bgyaAwaWK@mail.gmail.com> <AANLkTik6WBUJrSW5GY+i-iERxU-rMz5D0oWFa-n8HhH+@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Cc: linux-nfs@vger.kernel.org
-To: Jim Rees <rees@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "P.B.Shelley" <shelleypt@gmail.com>, linux-nfs@vger.kernel.org
+To: Fred Isaman <iisaman@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cirse-out.extra.cea.fr ([132.166.172.106]:40862 "EHLO
-	cirse-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757212Ab0JLLvY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Oct 2010 07:51:24 -0400
-Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
-	by cirse.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.0) with ESMTP id o9CBpNju023349
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 13:51:23 +0200
-Received: from muguet2.intra.cea.fr (muguet2.intra.cea.fr [132.166.192.7])
-	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id o9CBpMie001288
-	for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 13:51:23 +0200
-	(envelope-from philippe.deniel@cea.fr)
-Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
-	by muguet2.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id o9CBpMKG018707
-	for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 13:51:22 +0200
-In-Reply-To: <20101012114334.GA2577-8f4Pc2RrbJmHXe+LvDLADg@public.gmane.org>
+Received: from exprod5og111.obsmtp.com ([64.18.0.22]:58249 "HELO
+	exprod5og111.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1757360Ab0JLOks (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Oct 2010 10:40:48 -0400
+In-Reply-To: <AANLkTik6WBUJrSW5GY+i-iERxU-rMz5D0oWFa-n8HhH+-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jim Rees a =E9crit :
-> On fedora it's part of nfs-utils-lib-devel.  I don't know about rhel.
->  =20
+On 2010-10-12 09:11, Fred Isaman wrote:
+> On Tue, Oct 12, 2010 at 7:09 AM, P.B.Shelley <shelleypt@gmail.com> wrote:
+>> Hi, all
+>>
+>> While reading Linux pnfs code, I have a question in layoutreturn code path.
+>>
+>> nfs4_layoutreturn_release() only invalidate layout stateid when
+>> res.lrs_present is FALSE. If it is TRUE, client is supposed to set it
+>> to res.stateid, is it? But I do not see somewhere the layout stateid
+>> is updated. Am I missing something?
+>>
+> 
+> No, you are not missing anything.  that is a bug.
+> 
 
-OK, This is exactly what I needed :-)
-Thanks
+Agreed.
+Who's volunteering to send a fix? :)
 
-    Philippe
+Benny
+
+> Fred
+> 
+>> 5683 static void nfs4_layoutreturn_release(void *calldata)
+>> 5684 {
+>> 5685         struct nfs4_layoutreturn *lrp = calldata;
+>> 5686         struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
+>> 5687
+>> 5688         dprintk("--> %s return_type %d lo %p\n", __func__,
+>> 5689                 lrp->args.return_type, lo);
+>> 5690
+>> 5691         if (lrp->args.return_type == RETURN_FILE) {
+>> 5692                 if (!lrp->res.lrs_present)
+>> 5693                         pnfs_invalidate_layout_stateid(lo);
+>> 5694                 pnfs_layoutreturn_release(lo, &lrp->args.range);
+>> 5695         }
+>> 5696         kfree(calldata);
+>> 5697         dprintk("<-- %s\n", __func__);
+>> 5698 }
+>>
+>> --
+>> Thanks,
+>> Shelley
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
