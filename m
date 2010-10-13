@@ -1,38 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out-2.desy.de ([131.169.56.85]:55001 "EHLO
-	smtp-out-2.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753254Ab0JAGMs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 02:12:48 -0400
-Message-ID: <4CA57BC6.9030701@desy.de>
-Date: Fri, 01 Oct 2010 08:12:22 +0200
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: Marc Eshel <eshel@almaden.ibm.com>
-CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        linux-nfs-owner@vger.kernel.org
-Subject: Re: pNFS DS session
-References: <4C7BDD8C.40509@panasas.com> <4CA31DC3.8070300@panasas.com> <4CA34830.1040703@desy.de> <4CA34883.40005@desy.de> <4CA34B93.2010100@panasas.com> <4CA44AAA.4030803@panasas.com> <4CA45462.1070503@desy.de> <4CA455C4.4030705@panasas.com> <OF6B8488BA.B9C50431-ON882577AF.0016FDCE-882577AF.0017999B@us.ibm.com>
-In-Reply-To: <OF6B8488BA.B9C50431-ON882577AF.0016FDCE-882577AF.0017999B@us.ibm.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:2084 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753999Ab0JMO5W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Oct 2010 10:57:22 -0400
+Date: Wed, 13 Oct 2010 10:58:00 -0400
+From: Jeff Layton <jlayton@redhat.com>
+Cc: Valentijn Sessink <valentyn@blub.net>, linux-nfs@vger.kernel.org
+Subject: Re: ipv6 + krb5, server status?
+Message-ID: <20101013105800.66e5a83d@corrin.poochiereds.net>
+In-Reply-To: <20101013104937.358fe122@corrin.poochiereds.net>
+References: <4CB59086.9080108@blub.net>
+	<20101013125656.GA5197@merit.edu>
+	<20101013095216.5b9b31a7@corrin.poochiereds.net>
+	<4CB5BA8F.2090608@blub.net>
+	<20101013104937.358fe122@corrin.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
+To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-  On 10/01/2010 06:17 AM, Marc Eshel wrote:
-> Hi Benny,
->
-> Running connectathon I see that some times the clients decides to destroy
-> the session with the DS. The test continue and the session is
-> re-established. It looks like layout return reduces the hold on device
-> info the reduces the hold on the client struct which decide to destroy the
-> session. Is that a known problem?
->
-Just wan to confirm  that we see this as well (pnfs-submit and 
-pnfs-all-latest).
+On Wed, 13 Oct 2010 10:49:37 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-Tigran.
-> Thanks, Marc.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> On Wed, 13 Oct 2010 15:56:31 +0200
+> Valentijn Sessink <valentyn@blub.net> wrote:
+> 
+> > Jeff Layton schreef:
+> > > As of nfs-utils-1.2.3, IPv6 server-side support should be
+> > > "complete" (modulo bugs, of course).
+> > 
+> > Which is "correct" (I copied the quotation marks, because I tested very
+> > inextensively). What I'm wondering about is the combination with
+> > Kerberos. I'm currently setting up a better testing environment.
+> > 
+> > V.
+> > 
+> 
+> FWIW, I was planning on doing some testing of this soon anyway. It
+> works for me:
+> 
+> From /proc/mounts:
+> 
+> rhel6srv.example.com:/export/ /mnt/test nfs4 rw,relatime,vers=4,rsize=131072,wsize=131072,namlen=255,hard,proto=tcp6,port=0,timeo=600,retrans=2,sec=krb5,clientaddr=feed::3,minorversion=0,addr=feed::4 0 0
+> 
+> $ klist
+> Ticket cache: FILE:/tmp/krb5cc_50000
+> Default principal: testuser@EXAMPLE.COM
+> 
+> Valid starting     Expires            Service principal
+> 10/13/10 10:43:48  10/14/10 10:43:46  krbtgt/EXAMPLE.COM@EXAMPLE.COM
+> 	renew until 10/13/10 10:43:48
+> 10/13/10 10:43:58  10/14/10 10:43:46  nfs/rhel6srv.example.com@EXAMPLE.COM
+> 	renew until 10/13/10 10:43:48
+> 
+> $ id -a
+> uid=50000(testuser) gid=50000(testuser) groups=50000(testuser) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+> 
+> $ cd /mnt/test; echo foo > testuser ; stat testuser
+>   File: `testuser'
+>   Size: 4         	Blocks: 0          IO Block: 131072 regular file
+> Device: 15h/21d	Inode: 29          Links: 1
+> Access: (0664/-rw-rw-r--)  Uid: (50000/testuser)   Gid: (50000/testuser)
+> Access: 2010-10-13 10:47:07.771053989 -0400
+> Modify: 2010-10-13 10:47:07.802186619 -0400
+> Change: 2010-10-13 10:47:07.802186619 -0400
+> 
+> It sounds more like you have a problem with idmapping rather than
+> anything krb5 specific, but I'm not sure why that would be the case
+> with sec=krb5 and not with sec=sys.
+> 
 
+One thing that you may need to do is set the Local-Realms option
+in idmapd.conf, depending on your network and krb5 configuration.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
