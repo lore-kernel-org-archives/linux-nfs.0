@@ -1,54 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sachiko.kuiki.net ([80.68.89.100]:39608 "EHLO sachiko.kuiki.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753521Ab0JQOgL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 17 Oct 2010 10:36:11 -0400
-Received: from localhost (unknown [76.14.51.87])
-	by sachiko.kuiki.net (Postfix) with ESMTP id 1EED6C44B
-	for <linux-nfs@vger.kernel.org>; Sun, 17 Oct 2010 14:29:22 +0000 (UTC)
-Date: Sun, 17 Oct 2010 07:29:19 -0700
-From: Jonathan Steinert <hachi@kuiki.net>
-To: linux-nfs@vger.kernel.org
-Subject: nfsd rpc service update failures on 2.6.32
-Message-ID: <20101017142918.GA6805@miyako>
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:51897 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750806Ab0JMSDI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 14:03:08 -0400
+Received: by bwz15 with SMTP id 15so3414804bwz.19
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 11:03:07 -0700 (PDT)
+In-Reply-To: <1285758613-26897-1-git-send-email-bhalevy@panasas.com>
+References: <4CA31DC3.8070300@panasas.com>
+	<1285758613-26897-1-git-send-email-bhalevy@panasas.com>
+Date: Wed, 13 Oct 2010 14:03:07 -0400
+Message-ID: <AANLkTim8BCOgLNXZt3QKLX=g1dEruNEWHsb2GPs2AVYD@mail.gmail.com>
+Subject: Re: [PATCH 5/5] NFS: clear fsinfo before sendign rpc
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi folks, I've got a machine here that I've been debugging NFS issues on for a week or so now.
+On Wed, Sep 29, 2010 at 7:10 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+> To initialize all values to zero, in case the server or protocol version
+> do no support particular attributes.
 
-I've boiled the issue down to this:
+Sorry for the delayed response, but...
 
-Start up the NFS server, this seems to work fine, no errors:
-  rpc.nfsd 1
+Zero is not an appropriate default for many of the values.  Further,
+decode_fsinfo sets a default for each value, even in cases where the
+server or protocol version do not support particular attributes.  So
+this patch seems to server no purpose.
 
-Check to see if nfsd has registered with rpcbind, this never shows the nfsd service being registered:
-  rpcinfo -p
+Fred
 
-So far I've got the following diagnostics done:
-
-- Cranked up the debugging in rpcbind, never found SET updates happening (only UNSET)
-- Captured the rpc update frames going over lo, viewed in wireshark. They are all UNSET only
-- Crank up rpcdebug on kernel, only unregister frames are being generated.
-
-The interesting thing I see is:
-
-svc: svc_register(nfsdv4, udp, 0, 2)
-RPC:       unregistering [100003, 4, 0.0.0.0.0.0, 'udp'] with local rpcbind
-
-For some reason svc_register is being called with '0' as the port argument.
-
-Looking at the ports list in proc says that udp and tcp 2049 are to be used.
-
-I've been searching around for any information regarding this issue, but haven't found anything. Do any of you folks know if this has been fixed in a later kernel? Is this even a known issue of some kind? I would be testing a newer kernel, but my box has a major issue with some driver as of 2.6.33, which I am also still debugging.
-
-Not subscribed to this list, please CC me if you can. I'll watch the archives too.
-
-Thanks much
-
---hachi
-
-------------------------------------------------------------------------
-"She smiled again, shrugged her shoulders, and became a perfect mirror."
-------------------------------------------------------------------------
+>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/client.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+>
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 23d740c..beb206e 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -942,6 +942,7 @@ static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, str
+>                        goto out_error;
+>        }
+>
+> +       memset(&fsinfo, 0, sizeof(fsinfo));
+>        fsinfo.fattr = fattr;
+>        error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
+>        if (error < 0)
+> --
+> 1.7.2.3
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
