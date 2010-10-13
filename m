@@ -1,118 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58590 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:20763 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752809Ab0JTV3s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Oct 2010 17:29:48 -0400
-Date: Thu, 21 Oct 2010 08:29:38 +1100
-From: Neil Brown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@ORACLE.COM>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
- mounts.
-Message-ID: <20101021082938.45e4c941@notabene>
-In-Reply-To: <C56CFB9A-FCA4-41DA-971F-49B9C9EE7F03@oracle.com>
-References: <20101020181701.232dbeea@notabene>
-	<C56CFB9A-FCA4-41DA-971F-49B9C9EE7F03@oracle.com>
+	id S1751612Ab0JMBAT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Oct 2010 21:00:19 -0400
+Date: Tue, 12 Oct 2010 21:00:45 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: whither NFS umount?
+Message-ID: <20101012210045.6db60342@corrin.poochiereds.net>
+In-Reply-To: <7A0E248F-125A-4117-8140-290718E68998@oracle.com>
+References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>
+	<1286903046.24878.13.camel@heimdal.trondhjem.org>
+	<C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>
+	<20101012151826.76b75f52@corrin.poochiereds.net>
+	<1286912649.1956.19.camel@heimdal.trondhjem.org>
+	<20101012155234.094a87c3@corrin.poochiereds.net>
+	<1286914860.3166.10.camel@heimdal.trondhjem.org>
+	<20101012162625.074f7292@corrin.poochiereds.net>
+	<C6938516-D27B-4D1D-93E1-AF37EB920DD5@oracle.com>
+	<20101012165040.39852c8d@corrin.poochiereds.net>
+	<7A0E248F-125A-4117-8140-290718E68998@oracle.com>
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 20 Oct 2010 10:29:05 -0400
-Chuck Lever <chuck.lever@ORACLE.COM> wrote:
+On Tue, 12 Oct 2010 17:19:11 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
 > 
-> On Oct 20, 2010, at 3:17 AM, Neil Brown wrote:
+> On Oct 12, 2010, at 4:50 PM, Jeff Layton wrote:
 > 
+> > On Tue, 12 Oct 2010 16:34:45 -0400
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
 > > 
+> >> 
+> >> On Oct 12, 2010, at 4:26 PM, Jeff Layton wrote:
+> >> 
+> >>> On Tue, 12 Oct 2010 16:21:00 -0400
+> >>> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> >>> 
+> >>>> On Tue, 2010-10-12 at 15:52 -0400, Jeff Layton wrote:
+> >>>>> On Tue, 12 Oct 2010 15:44:09 -0400
+> >>>>> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> >>>>> 
+> >>>>>> On Tue, 2010-10-12 at 15:18 -0400, Jeff Layton wrote:
+> >>>>>> 
+> >>>>>>> I think the part that causes problems is having userspace do this. In
+> >>>>>>> theory, if the kernel were in charge of sending the UMNT, then it's not
+> >>>>>>> really a problem since it knows when to do it. If we have code that
+> >>>>>>> sends a UMNT already, why not do a best-effort UMNT call from the
+> >>>>>>> kernel when we tear down the sb?
+> >>>>>> 
+> >>>>>> Purely for the pleasure of allowing the server to maintain inaccurate
+> >>>>>> statistics about who is currently mounting what? I think not...
+> >>>>>> 
+> >>>>>> You can get far more accurate results by replacing the MNT/UMNT state
+> >>>>>> counter with a purely server-based scheme to track who accessed one or
+> >>>>>> more files on each exported partition in the past 5 minutes or so. That
+> >>>>>> would even work with NFSv4...
+> >>>>>> 
+> >>>>> 
+> >>>>> True, but for better or worse, UMNT is part of the protocol. It seems
+> >>>>> like we ought to do our best to implement it, even if it is
+> >>>>> fundamentally flawed.
+> >>>>> 
+> >>>> 
+> >>>> UMNTALL is part of the same protocol, and yet we have never implemented
+> >>>> that. Just because something is documented, it doesn't mean we have to
+> >>>> do it...
+> >>>> 
+> >>>> The bottom line is that UMNT doesn't do what it advertises itself as
+> >>>> doing, and so we should not waste space supporting it in the kernel. We
+> >>>> shouldn't do so in userspace either.
+> >>>> 
+> >>> 
+> >>> Fair enough. Like Chuck I don't have strong feelings about it, other
+> >>> than seeing no need to continue shipping umount.nfs.
+> >> 
+> >> Careful... we still need umount.nfs, which is a link to mount.nfs.  Something in user space has to kick off local namespace changes, even if the server isn't affected.
+> >> 
 > > 
-> > If I don't have any network configured (except loop-back), and try an NFSv3
-> > mount, then it fails quickly:
+> > Most other filesystems don't need a umount helper. If there isn't one
+> > present then /bin/umount takes care of the umount() call and cleaning
+> > the entry out of /etc/mtab.
 > > 
+> > My understanding was that umount.nfs only existed because it was needed
+> > to handle the UMNT RPC. Without that, there's really no need for it.
 > > 
-> > ....
-> > mount.nfs: portmap query failed: RPC: Remote system error - Network is unreachable
-> > mount.nfs: Network is unreachable
-> > 
-> > 
-> > If I try the same thing with a NFSv4 mount, it times out before it fails,
-> > making a much longer delay.
-> > 
-> > This is because mount.nfs doesn't do a portmap lookup but just leaves
-> > everything to the kernel.
-> > The kernel does an 'rpc_ping()' which sets RPC_TASK_SOFTCONN.
-> > So at least it doesn't retry after the timeout.  But given that we have a
-> > clear error, we shouldn't timeout at all.
-> > 
-> > Unfortunately I cannot see an easy way to fix this.
-> > 
-> > The place where ENETUNREACH is in xs_tcp_setup_socket.  The comment there
-> > says "Retry with the same socket after a delay".  The "delay" bit is correct,
-> > the "retry" isn't.
-> > 
-> > It would seem that we should just add a 'goto out' there if RPC_TASK_SOFTCONN
-> > was set.  However we cannot see the task at this point - in fact it seems
-> > that there could be a queue of tasks waiting on this connection.  I guess
-> > some could be soft, and some not. ???
-> > 
-> > So: An suggestions how to get a ENETUNREACH (or ECONNREFUSED or similar) to
-> > fail immediately when  RPC_TASK_SOFTCONN is set ???
+> > ...or am I overlooking something?
 > 
-> ECONNREFUSED should already fail immediately in this case.  If it's not failing immediately, that's a bug.
+> umount.nfs still handles "users=" which has special behavior for NFS mounts, for example.  Does that matter?
 > 
-> I agree that ENETUNREACH seems appropriate for quick failure if RPC_TASK_SOFTCONN is set.  (I thought it already worked this way, but maybe I'm mistaken).
 
-There is certainly code that seems to treat ENETUNREACH differently if
-RPC_TASK_SOFTCONN is set, but it doesn't seem to apply in the particular case
-I am testing.
-e.g. call_bind_status handles ENETUNREACH as a retry if not SOFTCONN and as a
-failure in the SOFTCONN case.  
-I guess NFSv4 doesn't hit this because the port is explicitly set to 2049 so
-it never does the rpcbind step.
-So maybe we need to handle ENETUNREACH in call_connect_status as well as
-call_bind_status ??
+Does it? I don't see where it does anything with "users=", but it does
+handle "users" and "user=". So does /bin/umount though, and I think the
+semantics are the same for both that and umount.nfs.
 
-Maybe something like that ...  The placement of rpc_delay seems a little of
-to me, but follows call_bind_status, so it could be correct.
-
-??
-
-I haven't thought how EHOSTUNREACH fits into this... presumably it should
-fail-quickly when SOFTCONN (which Jeff suggests it does) and should retry for
-not SOFTCONN (which I haven't checked).
-
-NeilBrown
-
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index fa55490..539885e 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1245,6 +1245,12 @@ call_connect_status(struct rpc_task *task)
-        }
- 
-        switch (status) {
-+       case -ENETUNREACH:
-+       case -ECONNRESET:
-+       case -ECONNREFUSED:
-+               if (!RPC_IS_SOFTCONN(task))
-+                       rpc_delay(task, 5*HZ);
-+               /* fall through */
-                /* if soft mounted, test if we've timed out */
-        case -ETIMEDOUT:
-                task->tk_action = call_timeout;
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index fe9306b..0743994 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1906,7 +1906,8 @@ static void xs_tcp_setup_socket(struct rpc_xprt *xprt,
-        case -ECONNREFUSED:
-        case -ECONNRESET:
-        case -ENETUNREACH:
--               /* retry with existing socket, after a delay */
-+               /* allow upper layers to choose between failure and retry */
-+               goto out;
-        case 0:
-        case -EINPROGRESS:
-        case -EALREADY:
-
+-- 
+Jeff Layton <jlayton@redhat.com>
