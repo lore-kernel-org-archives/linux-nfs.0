@@ -1,66 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og112.obsmtp.com ([64.18.0.24]:54521 "HELO
-	exprod5og112.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751979Ab0JMUez (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 16:34:55 -0400
-Message-ID: <4CB617ED.4000504@panasas.com>
-Date: Wed, 13 Oct 2010 16:34:53 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 5/5] NFS: clear fsinfo before sendign rpc
-References: <4CA31DC3.8070300@panasas.com>	<1285758613-26897-1-git-send-email-bhalevy@panasas.com> <AANLkTim8BCOgLNXZt3QKLX=g1dEruNEWHsb2GPs2AVYD@mail.gmail.com>
-In-Reply-To: <AANLkTim8BCOgLNXZt3QKLX=g1dEruNEWHsb2GPs2AVYD@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:20352 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752611Ab0JMUMh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 16:12:37 -0400
+Subject: Re: [PATCH 01/15] mountd: Clear mountd registrations at start up
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4CB5CC64.1060303@RedHat.com>
+Date: Wed, 13 Oct 2010 16:12:19 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <B4BCB06D-A992-407C-BD96-65E7AE1F0649@oracle.com>
+References: <20101010234836.6667.4057.stgit@ellison.1015granger.net> <20101011000411.6667.17979.stgit@ellison.1015granger.net> <4CB5C876.3030203@RedHat.com> <4CB5CC64.1060303@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-10-13 14:03, Fred Isaman wrote:
-> On Wed, Sep 29, 2010 at 7:10 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->> To initialize all values to zero, in case the server or protocol version
->> do no support particular attributes.
-> 
-> Sorry for the delayed response, but...
-> 
-> Zero is not an appropriate default for many of the values.  Further,
-> decode_fsinfo sets a default for each value, even in cases where the
-> server or protocol version do not support particular attributes.  So
-> this patch seems to server no purpose.
 
-Note that nfs_probe_fsinfo is called also for nfs version 2 and 3
-and these don't know anything about nfsv4.1 attributes so they can't
-cannot explicitly set them to any default value.
-
-Benny
-
+On Oct 13, 2010, at 11:12 AM, Steve Dickson wrote:
 
 > 
-> Fred
 > 
->>
->> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> ---
->>  fs/nfs/client.c |    1 +
->>  1 files changed, 1 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
->> index 23d740c..beb206e 100644
->> --- a/fs/nfs/client.c
->> +++ b/fs/nfs/client.c
->> @@ -942,6 +942,7 @@ static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, str
->>                        goto out_error;
->>        }
->>
->> +       memset(&fsinfo, 0, sizeof(fsinfo));
->>        fsinfo.fattr = fattr;
->>        error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
->>        if (error < 0)
->> --
->> 1.7.2.3
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+> On 10/13/2010 10:55 AM, Steve Dickson wrote:
+>> 
+>> 
+>> On 10/10/2010 08:04 PM, Chuck Lever wrote:
+>>> Clear stale MNT registrations before mountd tries to create fresh
+>>> listeners, to ensure that mountd starts.  This is also what statd
+>>> does.
+>>> 
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>> 
+>>> utils/mountd/mountd.c |    1 +
+>>> 1 files changed, 1 insertions(+), 0 deletions(-)
+>>> 
+>>> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+>>> index d309950..7e0cf6a 100644
+>>> --- a/utils/mountd/mountd.c
+>>> +++ b/utils/mountd/mountd.c
+>>> @@ -840,6 +840,7 @@ main(int argc, char **argv)
+>>> 	if (new_cache)
+>>> 		cache_open();
+>>> 
+>>> +	unregister_services();
+>>> 	if (version2()) {
+>>> 		listeners += nfs_svc_create("mountd", MOUNTPROG,
+>>> 					MOUNTVERS, mount_dispatch, port);
+>>> 
+>> Question, since unregister_services() only unregisters version
+>> that are currently requested, won't it miss unregistering 
+>> version that are not currently requested, ones that are left over
+>> from a previous instant of mountd? 
+>> 
+>> The point being all versions need to be unregistered at his point, 
+>> not just the ones currently being requested. 
+
+I actually don't see a case where you would want to unregister just specific versions.  unregister_services() is currently too clever, by half.
+
+The best thing to do is have unregister_services unregister everything, unconditionally.  So, add the new unregister_services() call site as my patch does, but change unregister_services() itself to do something like:
+
+	nfs_svc_unregister(MOUNTPROG, MOUNTVERS);
+	nfs_svc_unregister(MOUNTPROG, MOUNTVERS_POSIX);
+	nfs_svc_unregister(MOUNTPROG, NFSV3);
+
+What do you think?
+
+> Something like:
+> 
+> mountd: Clear mountd registrations at start up
+> 
+> Clear stale MNT registrations before mountd tries to create fresh
+> listeners, to ensure that mountd starts.  This is also what statd
+> does.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+> index d309950..c36c471 100644
+> --- a/utils/mountd/mountd.c
+> +++ b/utils/mountd/mountd.c
+> @@ -97,13 +97,13 @@ static int version_any(void)
+> }
+> 
+> static void
+> -unregister_services (void)
+> +unregister_services (int all)
+> {
+> -	if (version2()) {
+> +	if (all || version2()) {
+> 		nfs_svc_unregister(MOUNTPROG, MOUNTVERS);
+> 		nfs_svc_unregister(MOUNTPROG, MOUNTVERS_POSIX);
+> 	}
+> -	if (version3())
+> +	if (all || version3())
+> 		nfs_svc_unregister(MOUNTPROG, MOUNTVERS_NFSV3);
+> }
+> 
+> @@ -180,7 +180,7 @@ fork_workers(void)
+> 
+> 	/* in parent */
+> 	wait_for_workers();
+> -	unregister_services();
+> +	unregister_services(0);
+> 	cleanup_lockfiles();
+> 	xlog(L_NOTICE, "mountd: no more workers, exiting\n");
+> 	exit(0);
+> @@ -192,7 +192,7 @@ fork_workers(void)
+> static void 
+> killer (int sig)
+> {
+> -	unregister_services();
+> +	unregister_services(0);
+> 	if (num_threads > 1) {
+> 		/* play Kronos and eat our children */
+> 		kill(0, SIGTERM);
+> @@ -840,6 +840,7 @@ main(int argc, char **argv)
+> 	if (new_cache)
+> 		cache_open();
+> 
+> +	unregister_services(1);
+> 	if (version2()) {
+> 		listeners += nfs_svc_create("mountd", MOUNTPROG,
+> 					MOUNTVERS, mount_dispatch, port);
+> @@ -895,7 +896,7 @@ main(int argc, char **argv)
+> 	my_svc_run();
+> 
+> 	xlog(L_ERROR, "RPC service loop terminated unexpectedly. Exiting...\n");
+> -	unregister_services();
+> +	unregister_services(0);
+> 	exit(1);
+> }
+> 
+> 
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
