@@ -1,56 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63856 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:41156 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755053Ab0J3SUE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Oct 2010 14:20:04 -0400
-Subject: Re: Error: state manager failed on NFSv4 server linux with error
- 127
+	id S1750796Ab0JMVUP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 17:20:15 -0400
+Subject: Re: [PATCH 5/5] NFS: clear fsinfo before sendign rpc
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Brian J. Murrell" <brian@interlinx.bc.ca>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1288461562.32627.151.camel@pc>
-References: <1287334833.4871.6.camel@pc>
-	 <1287340520.5266.70.camel@heimdal.trondhjem.org>
-	 <1288460514.32627.105.camel@pc>
-	 <1288461151.3238.9.camel@heimdal.trondhjem.org>
-	 <1288461562.32627.151.camel@pc>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <4CB62105.2040908@panasas.com>
+References: <4CA31DC3.8070300@panasas.com>
+	 <1285758613-26897-1-git-send-email-bhalevy@panasas.com>
+	 <AANLkTim8BCOgLNXZt3QKLX=g1dEruNEWHsb2GPs2AVYD@mail.gmail.com>
+	 <4CB617ED.4000504@panasas.com>
+	 <1287003279.3015.205.camel@heimdal.trondhjem.org>
+	 <4CB62105.2040908@panasas.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Sat, 30 Oct 2010 14:19:46 -0400
-Message-ID: <1288462786.3238.16.camel@heimdal.trondhjem.org>
+Date: Wed, 13 Oct 2010 17:20:13 -0400
+Message-ID: <1287004813.3015.212.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, 2010-10-30 at 13:59 -0400, Brian J. Murrell wrote:
-> On Sat, 2010-10-30 at 13:52 -0400, Trond Myklebust wrote: 
+On Wed, 2010-10-13 at 17:13 -0400, Benny Halevy wrote:
+> On 2010-10-13 16:54, Trond Myklebust wrote:
+> > On Wed, 2010-10-13 at 16:34 -0400, Benny Halevy wrote:
+> >> On 2010-10-13 14:03, Fred Isaman wrote:
+> >>> On Wed, Sep 29, 2010 at 7:10 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+> >>>> To initialize all values to zero, in case the server or protocol version
+> >>>> do no support particular attributes.
+> >>>
+> >>> Sorry for the delayed response, but...
+> >>>
+> >>> Zero is not an appropriate default for many of the values.  Further,
+> >>> decode_fsinfo sets a default for each value, even in cases where the
+> >>> server or protocol version do not support particular attributes.  So
+> >>> this patch seems to server no purpose.
+> >>
+> >> Note that nfs_probe_fsinfo is called also for nfs version 2 and 3
+> >> and these don't know anything about nfsv4.1 attributes so they can't
+> >> cannot explicitly set them to any default value.
 > > 
-> > The processes appeared to be waiting for state recovery to complete, but
-> > your trace didn't contain any evidence that a state recovery thread was
-> > running.
+> > Err... Why would we care? Under exactly what circumstances would we want
+> > generic code to be processing fsinfo attributes that are specific only
+> > to NFSv4.1?
+> > 
+> > Trond
 > 
-> To be clear, the trace was only that of blocked processes (echo w
-> > /proc/sysrq-trigger).  I'm not sure if we should have expected the
-> state recovery thread to have been included (i.e. it was blocked too).
-> 
-> > Did you over-edit the trace output, or was this really all?
-> 
-> Other than the usual post-show-blocked-state output, yes, this really
-> was all there was.
-> 
-> What does the state recovery thread look like in the process table so
-> that I can look for it next time?
+> Originally, set_pnfs_layoutdriver, was called only for nfsv4.1
+> but we changed it to always be called in nfs_server_set_fsinfo()
 
-It will be running a process with a name of the form "<server IP
-address>-manager", and will be running the function
-nfs4_run_state_manager().
-
-BTW: Do you have the following patches applied?
-  http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=b0ed9dbc24f1fd912b2dd08b995153cafc1d5b1c
-and
-  http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=ae1007d37e00144b72906a4bdc47d517ae91bcc1
-
-They are not yet in the stable kernel series, AFAIK, but are slated to
-be merged soon.
+So it relies on a flag in the fsinfo structure to tell it that this is a
+pNFS-capable server? That's fine, but in that case, you should perhaps
+explicitly initialise that flag to the non-pNFS capable value in the
+generic code.
+We shouldn't need to zero out the entire structure.
 
 Cheers
   Trond
