@@ -1,32 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx4-phx2.redhat.com ([209.132.183.25]:42046 "EHLO
-	mx02.colomx.prod.int.phx2.redhat.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1756472Ab0JALas (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 07:30:48 -0400
-Received: from mail06.corp.redhat.com (zmail06.collab.prod.int.phx2.redhat.com [10.5.5.45])
-	by mx02.colomx.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o91BUmBT029060
-	for <linux-nfs@vger.kernel.org>; Fri, 1 Oct 2010 07:30:48 -0400
-Date: Fri, 1 Oct 2010 07:30:48 -0400 (EDT)
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <25362267.86.1285932646433.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-In-Reply-To: <8181361.84.1285932468389.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-Subject: NFS4 clients cannot reclaim locks
-Content-Type: text/plain; charset=utf-8
+Received: from rcsinet10.oracle.com ([148.87.113.121]:17104 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753091Ab0JMUrd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 16:47:33 -0400
+Subject: Re: whither NFS umount?
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4CB6090F.60301@RedHat.com>
+Date: Wed, 13 Oct 2010 16:47:07 -0400
+Cc: Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <E22DAFE2-A677-4D91-8976-5F641141DD36@oracle.com>
+References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>	<1286903046.24878.13.camel@heimdal.trondhjem.org>	<C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>	<20101012151826.76b75f52@corrin.poochiereds.net>	<1286912649.1956.19.camel@heimdal.trondhjem.org>	<4CB5EF15.5030003@RedHat.com>	<20101013141317.66f23906@corrin.poochiereds.net>	<4CB5FE65.3090409@RedHat.com> <20101013145601.468acc2a@corrin.poochiereds.net> <4CB6090F.60301@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-NFS4 clients appear to have problems reclaiming locks after a server reboot. I can recreate the issue on 2.6.34.7-56.fc13.x86_64 on a Fedora system. 
 
-The problem appears to happen in cases where after a reboot, a WRITE call is made just before the RENEW call. In that case, the NFS4ERR_STALE_STATEID is returned for the WRITE call which results in NFS_STATE_RECLAIM_REBOOT being set in the state flags. However the NFS4ERR_STALE_CLIENTID returned for the subsequent RENEW call is handled by 
-nfs4_recovery_handle_error() -> nfs4_state_end_reclaim_reboot(clp);  
-which ends up setting the state flag to NFS_STATE_RECLAIM_NOGRACE and clearing the NFS_STATE_RECLAIM_REBOOT in nfs4_state_mark_reclaim_nograce(). 
+On Oct 13, 2010, at 3:31 PM, Steve Dickson wrote:
 
-The process of reclaiming the locks then seem to hit another roadblock in nfs4_open_expired() where it fails to open the file and reset the state. It ends up calling nfs4_reclaim_locks() in a loop with the old stateid in nfs4_reclaim_open_state().
+> On 10/13/2010 02:56 PM, Jeff Layton wrote:
+>> On Wed, 13 Oct 2010 14:45:57 -0400
+>> Steve Dickson <SteveD@redhat.com> wrote:
+>> 
+>>> I would say send the UMNT, since it does not cause any pain to send it
+>>> verses the pain that could be cause by not sending it...
+>>> 
+>>> This is a perfect example of fixing something that is not
+>>> broken... We can put our energy in better place that worrying
+>>> about things like this... IMHO...
+>> 
+>> But it *is* broken. As Chuck pointed out, the main problem is that mtab
+>> handling is broken on remounts. That's a real problem that needs to be
+>> fixed.
+> Fine... Lets just focus on that issue...  
 
-By commenting out the call to nfs4_state_end_reclaim_reboot(clp) in nfs4_recovery_handle_error(), the client was able to handle this particular scenario properly.
+Actually...
 
-Has any one else seen this issue?
+Removing UMNT support _is_ the proposed fix for the "-o remount" issue.  The reason we depend on /etc/mtab is because umount needs to know how to do the unmount.  A "-o remount" wipes that information.  It turns out that there is no correct implementation of remount rewriting the options in /etc/mtab.  utils-linux-ng does not even get this right, and mount(8) claims that /etc/mtab will not be reliable after a remount.
 
-Sachin Prabhu
+If we no longer have to perform a UMNT, then there is no need to worry about the contents of /etc/mtab, for any reason, and it can go away.  I believe we are the only file system that is holding up the complete removal of /etc/mtab.
+
+I think there's no reason to keep UMNT in user space; it simply can never work correctly there.  I believe a kernel space implementation would be simple, and would work correctly much more often than user space UMNT does now.  I don't agree with Trond that we should not do it there, but that's an argument I can't win.
+
+>> I agree that our time is better spent elsewhere. I just think that we
+>> ought to make that happen by eliminating the unnecessary umount helper.
+>> The less code that we need to maintain, the better...
+> In general I agree... but removing functionality (i.e. umount.nfs)
+> can cause more pain than just leaving things as is...
+
+Is there any specific evidence that there will be pain if umount.nfs is removed?  I can't think of any use case it would harm.  It's already broken in many cases, and we have never heard of a specific application complaint about it.  If there had been a complaint we would have fixed it already.  UMNT is clearly vestigial.
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
+
