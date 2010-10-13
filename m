@@ -1,89 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og105.obsmtp.com ([64.18.0.180]:40447 "HELO
-	exprod5og105.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754312Ab0JGSIQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 14:08:16 -0400
-Message-ID: <4CAE0C8B.5060204@panasas.com>
-Date: Thu, 07 Oct 2010 14:08:11 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: andros@netapp.com
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] pnfs_submit: enforce requested DS only pNFS role
-References: <1286480230-9418-1-git-send-email-andros@netapp.com> <1286480230-9418-2-git-send-email-andros@netapp.com> <1286480230-9418-3-git-send-email-andros@netapp.com> <4CADFE2E.7050401@panasas.com>
-In-Reply-To: <4CADFE2E.7050401@panasas.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:61396 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750796Ab0JMEKx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 00:10:53 -0400
+Received: by bwz15 with SMTP id 15so2924972bwz.19
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Oct 2010 21:10:52 -0700 (PDT)
+In-Reply-To: <AANLkTi=rzJXAPc17ggmw0LPS_Hn9HG15syLOtSN=nWdp@mail.gmail.com>
+References: <AANLkTi=rzJXAPc17ggmw0LPS_Hn9HG15syLOtSN=nWdp@mail.gmail.com>
+Date: Wed, 13 Oct 2010 00:41:50 -0300
+Message-ID: <AANLkTimNH+YuR2fHo3Sz1sO434oOag9ON-omTXBQ0_2Z@mail.gmail.com>
+Subject: Re: nfs4 all_squash: does it work at all?
+From: zoolook <nbensa@gmail.com>
+To: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-10-07 13:06, Benny Halevy wrote:
-> On 2010-10-07 15:37, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->>  fs/nfs/nfs4filelayoutdev.c |    5 -----
->>  fs/nfs/nfs4state.c         |    5 +++++
->>  2 files changed, 5 insertions(+), 5 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
->> index e0edf93..1f0ab62 100644
->> --- a/fs/nfs/nfs4filelayoutdev.c
->> +++ b/fs/nfs/nfs4filelayoutdev.c
->> @@ -183,11 +183,6 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
->>  		goto out_put;
->>  	}
->>  	/*
->> -	 * Mask the (possibly) returned EXCHGID4_FLAG_USE_PNFS_MDS pNFS role
->> -	 * The is_ds_only_session depends on this.
->> -	 */
->> -	clp->cl_exchange_flags &= ~EXCHGID4_FLAG_USE_PNFS_MDS;
->> -	/*
->>  	 * Set DS lease equal to the MDS lease, renewal is scheduled in
->>  	 * create_session
->>  	 */
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index 91584ad..e2fc175 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -188,6 +188,7 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
->>  int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
->>  {
->>  	int status;
->> +	u32 req_exchange_flags = clp->cl_exchange_flags;
->>  
->>  	nfs4_begin_drain_session(clp);
->>  	status = nfs4_proc_exchange_id(clp, cred);
->> @@ -196,6 +197,10 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
->>  	status = nfs4_proc_create_session(clp);
->>  	if (status != 0)
->>  		goto out;
->> +	if (is_ds_only_session(req_exchange_flags))
->> +		/* Mask the (possibly) returned MDS and non-pNFS roles */
-> 
-> This comment does not really add anything substantial that the code doesn't tell you :)
-> 
->> +		clp->cl_exchange_flags &=
->> +		     ~(EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_NON_PNFS);
-> 
-> I'm not why you want to mask out EXCHGID4_FLAG_USE_NON_PNFS.
-> If the server is not a DS why not just return an error?
+2010/10/12 zoolook <nbensa@gmail.com>:
+> Why uid:1000 with nfs4 and uid:65534 with nfs3? What am I missing?
+> Note that I would like nfs4 behave like nfs3.
 
-So Andy convinced me and the spec. says that USE_PNFS_DS | USE_NON_PNFS
-is a valid response.
-However, if USE_PNFS_DS is unset in the response in this case
-we need not create the client and better return an error.
-I'll send a patch that does that.
+I've been struggling with this for two weeks. I've read lots of docs,
+posts, forums, faqs... and I hate when I find the answer just after
+clicking send to a mailing list.
 
-Benny
+For the record, what I missed was the fact that I need to do bind
+mount for nfs4 to work properly.
 
-> 
-> Benny
-> 
->>  	nfs41_setup_state_renewal(clp);
->>  	nfs_mark_client_ready(clp, NFS_CS_READY);
->>  out:
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Server:
+$ ls -lnd /shares/sistemas/
+drwxrws--- 2 65534 1002 4096 2010-10-12 23:25 /shares/sistemas/
+
+$ mount | grep NFSROOT
+/shares/sistemas on /NFSROOT/shares/Sistemas type none (rw,bind)
+
+$ cat /etc/exports
+/NFSROOT			*(ro,sync,no_subtree_check,fsid=root)
+/NFSROOT/shares/Sistemas	*(rw,sync,no_subtree_check,all_squash,anongid=1002)
+
+Client:
+$ mount | grep nfsserver
+nfsserver:/shares/Sistemas on /compartidos/sistemas type nfs4
+(rw,clientaddr=10.11.101.124,addr=10.11.101.126)
+
+$ touch /compartidos/sistemas/q
+
+$ ls -ln /compartidos/sistemas/
+total 0
+-rw-r--r-- 1 65534 1002 0 2010-10-13 00:37 q
+
+
+
+Thanks to all who have read. And I'm sorry for the noise.
+
+Best regards,
+Norberto
