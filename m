@@ -1,75 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:40100 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753121Ab0JTO3Z convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Oct 2010 10:29:25 -0400
-Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3 mounts.
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@ORACLE.COM>
-In-Reply-To: <20101020181701.232dbeea@notabene>
-Date: Wed, 20 Oct 2010 10:29:05 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <C56CFB9A-FCA4-41DA-971F-49B9C9EE7F03@oracle.com>
-References: <20101020181701.232dbeea@notabene>
-To: Neil Brown <neilb@suse.de>
+Received: from mx1.redhat.com ([209.132.183.28]:65491 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751763Ab0JMSMk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Oct 2010 14:12:40 -0400
+Date: Wed, 13 Oct 2010 14:13:17 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: whither NFS umount?
+Message-ID: <20101013141317.66f23906@corrin.poochiereds.net>
+In-Reply-To: <4CB5EF15.5030003@RedHat.com>
+References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>
+	<1286903046.24878.13.camel@heimdal.trondhjem.org>
+	<C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>
+	<20101012151826.76b75f52@corrin.poochiereds.net>
+	<1286912649.1956.19.camel@heimdal.trondhjem.org>
+	<4CB5EF15.5030003@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, 13 Oct 2010 13:40:37 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-On Oct 20, 2010, at 3:17 AM, Neil Brown wrote:
+> Sorry for joining late... 
+> 
+> On 10/12/2010 03:44 PM, Trond Myklebust wrote:
+> > On Tue, 2010-10-12 at 15:18 -0400, Jeff Layton wrote:
+> > 
+> >> I think the part that causes problems is having userspace do this. In
+> >> theory, if the kernel were in charge of sending the UMNT, then it's not
+> >> really a problem since it knows when to do it. If we have code that
+> >> sends a UMNT already, why not do a best-effort UMNT call from the
+> >> kernel when we tear down the sb?
+> > 
+> > Purely for the pleasure of allowing the server to maintain inaccurate
+> > statistics about who is currently mounting what? I think not...
+> > 
+> > You can get far more accurate results by replacing the MNT/UMNT state
+> > counter with a purely server-based scheme to track who accessed one or
+> > more files on each exported partition in the past 5 minutes or so. That
+> > would even work with NFSv4...
+> > 
+> >> Either way, eliminating umount.nfs would be nice...
+> > 
+> > Agreed.
+> I having a hard time understanding this logic... 
+> 
+> Why do we think we (the Linux community) can simply 
+> throw way an established part of the protocol just because 
+> we deem it advisory... Now maybe in our implementation UMNT its
+> advisory and it might even be advisory in the spec, but how do we 
+> know with  other NFS implementation is not advisory, its actually needed.
+> We don't known and we can't known....
+> 
+> Now when our implementation becomes an NFSv4 only implementation, 
+> I say fine; Eliminate all the protocols that go along
+> with both v2 and v3. But until then lets just have leave
+> the legacy protocols along and move forward in more meaningful 
+> efforts... 
+> 
 
-> 
-> 
-> If I don't have any network configured (except loop-back), and try an NFSv3
-> mount, then it fails quickly:
-> 
-> 
-> ....
-> mount.nfs: portmap query failed: RPC: Remote system error - Network is unreachable
-> mount.nfs: Network is unreachable
-> 
-> 
-> If I try the same thing with a NFSv4 mount, it times out before it fails,
-> making a much longer delay.
-> 
-> This is because mount.nfs doesn't do a portmap lookup but just leaves
-> everything to the kernel.
-> The kernel does an 'rpc_ping()' which sets RPC_TASK_SOFTCONN.
-> So at least it doesn't retry after the timeout.  But given that we have a
-> clear error, we shouldn't timeout at all.
-> 
-> Unfortunately I cannot see an easy way to fix this.
-> 
-> The place where ENETUNREACH is in xs_tcp_setup_socket.  The comment there
-> says "Retry with the same socket after a delay".  The "delay" bit is correct,
-> the "retry" isn't.
-> 
-> It would seem that we should just add a 'goto out' there if RPC_TASK_SOFTCONN
-> was set.  However we cannot see the task at this point - in fact it seems
-> that there could be a queue of tasks waiting on this connection.  I guess
-> some could be soft, and some not. ???
-> 
-> So: An suggestions how to get a ENETUNREACH (or ECONNREFUSED or similar) to
-> fail immediately when  RPC_TASK_SOFTCONN is set ???
+It's not clear to me what you're advocating here...
 
-ECONNREFUSED should already fail immediately in this case.  If it's not failing immediately, that's a bug.
+umount.nfs is clearly broken today -- it sends UMNT calls even when it
+shouldn't and there are problems with mtab handling.
 
-I agree that ENETUNREACH seems appropriate for quick failure if RPC_TASK_SOFTCONN is set.  (I thought it already worked this way, but maybe I'm mistaken).
+The latter part is the main problem. The question is though -- should
+we fix umount.nfs or just do away with it?
 
-> This affects people who upgrade from openSUSE11.2 (which didn't support v4
-> mounts) to openSUSE11.3 (which defaults to v4) and who use network-manager
-> (which configures networks late) and have NFS mounts in /etc/fstab with
-> either explicit IP addresses or host names that can be resolved without the
-> network.
-> This config will work because when the network comes up, network-manager will
-> re-run the 'init.d/nfs' script.  However since 11.3 there is an unpleasant
-> pause before boot completes.
+My position is that it really serves no good purpose these days. Only
+the kernel knows when a UMNT call should be sent, so that really has no
+place in umount.nfs. Once that piece is out of userspace, we might as
+well just let /bin/umount do everything and not bother with umount.nfs.
 
+A separate question is whether we should sent a UMNT request at all.
+Trond has basically said "don't bother" to that one. I don't feel
+strongly either way, but wouldn't be opposed to sending a best-effort
+UMNT call from the kernel if it makes some servers happy.
 
 -- 
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Jeff Layton <jlayton@redhat.com>
