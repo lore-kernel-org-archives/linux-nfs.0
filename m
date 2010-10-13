@@ -1,43 +1,31 @@
 From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 02/15] libnfs.a: Allow multiple RPC listeners to share
- listener port number
-Date: Wed, 13 Oct 2010 10:17:05 -0400
-Message-ID: <4CB5BF61.9090607@RedHat.com>
-References: <20101010234836.6667.4057.stgit@ellison.1015granger.net> <20101011000421.6667.60700.stgit@ellison.1015granger.net> <20101011002022.GB25663@merit.edu> <4CB30FA9.8020308@RedHat.com> <F750C283-3965-4953-9938-CF049FB914A7@oracle.com> <20101011200017.GA2451@merit.edu>
+Subject: Re: [PATCH] nfs-utils: Move common code into support
+Date: Wed, 13 Oct 2010 10:21:51 -0400
+Message-ID: <4CB5C07F.2080902@RedHat.com>
+References: <20101005202438.GA15113@merit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
 To: Jim Rees <rees@umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6441 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59990 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751936Ab0JMORM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Oct 2010 10:17:12 -0400
-In-Reply-To: <20101011200017.GA2451-8f4Pc2RrbJmHXe+LvDLADg@public.gmane.org>
+	id S1750937Ab0JMOV4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Oct 2010 10:21:56 -0400
+In-Reply-To: <20101005202438.GA15113-8f4Pc2RrbJmHXe+LvDLADg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 10/11/2010 04:00 PM, Jim Rees wrote:
-> Chuck Lever wrote:
+On 10/05/2010 04:24 PM, Jim Rees wrote:
+> This is a re-worked version of David P. Quigley's patch sent to the list on
+> 22 Jun 2010.  I just made it apply against current source.
 > 
->   >> It bothers me that there are two separate code paths in two separate
->   >> libraries for these two nearly identical cases.
->   
->   Are there?  Where's the other one?
->   
->   The two implementations I'm aware of are both in libnfs.a.  One is for
->   legacy RPC, and the other is for TI-RPC, and they both reside in
->   support/nfs/ (and thus in libnfs.a, which is shared by the daemons in
->   nfs-utils).  What am I missing?
-> 
-> Your svc_create_sock() duplicates code in svc_tli_create(), including the
-> calls to socket(), bind(), and listen().
-> 
-> I'll buy your argument that we shouldn't change the tirpc api and that
-> REUSEADDR is only half the fix.  But it still bothers me.
-I agree that adding the use of REUSEADDR to the libtirpc API is
-probably not way to go... So I'll take the patch as is..
+> There are several source files and headers present in the ./utils/idmapd
+> directory which are also usable in a doimapd daemon. Because of this we move
+> that support into the support directory such that it can be shared by both
+> daemons.
+Committed...
 
 steved.
