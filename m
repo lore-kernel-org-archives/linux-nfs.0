@@ -1,95 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:5768 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757417Ab0JFOHJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Oct 2010 10:07:09 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SQUASHME: pnfs-submit: init pg_lseg to NULL when !CONFIG_NFS_V4_1
-Date: Wed,  6 Oct 2010 10:06:46 -0400
-Message-Id: <1286374006-7193-1-git-send-email-bhalevy@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:14511 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752286Ab0JMPMk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Oct 2010 11:12:40 -0400
+Message-ID: <4CB5CC64.1060303@RedHat.com>
+Date: Wed, 13 Oct 2010 11:12:36 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 01/15] mountd: Clear mountd registrations at start up
+References: <20101010234836.6667.4057.stgit@ellison.1015granger.net> <20101011000411.6667.17979.stgit@ellison.1015granger.net> <4CB5C876.3030203@RedHat.com>
+In-Reply-To: <4CB5C876.3030203@RedHat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs.h  |   17 +++++++++++++++--
- fs/nfs/read.c  |    2 --
- fs/nfs/write.c |    2 --
- 3 files changed, 15 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 4ea3ae0..a94241a 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -30,6 +30,8 @@
- #ifndef FS_NFS_PNFS_H
- #define FS_NFS_PNFS_H
- 
-+#include <linux/nfs_page.h>
-+
- struct pnfs_layout_segment {
- 	struct list_head fi_list;
- 	struct pnfs_layout_range range;
-@@ -45,8 +47,6 @@ enum pnfs_try_status {
- 
- #ifdef CONFIG_NFS_V4_1
- 
--#include <linux/nfs_page.h> /* For struct nfs_pageio_descriptor */
--
- #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
- 
- enum {
-@@ -368,6 +368,19 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
- {
+
+On 10/13/2010 10:55 AM, Steve Dickson wrote:
+> 
+> 
+> On 10/10/2010 08:04 PM, Chuck Lever wrote:
+>> Clear stale MNT registrations before mountd tries to create fresh
+>> listeners, to ensure that mountd starts.  This is also what statd
+>> does.
+>>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+>>  utils/mountd/mountd.c |    1 +
+>>  1 files changed, 1 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+>> index d309950..7e0cf6a 100644
+>> --- a/utils/mountd/mountd.c
+>> +++ b/utils/mountd/mountd.c
+>> @@ -840,6 +840,7 @@ main(int argc, char **argv)
+>>  	if (new_cache)
+>>  		cache_open();
+>>  
+>> +	unregister_services();
+>>  	if (version2()) {
+>>  		listeners += nfs_svc_create("mountd", MOUNTPROG,
+>>  					MOUNTVERS, mount_dispatch, port);
+>>
+> Question, since unregister_services() only unregisters version
+> that are currently requested, won't it miss unregistering 
+> version that are not currently requested, ones that are left over
+> from a previous instant of mountd? 
+> 
+> The point being all versions need to be unregistered at his point, 
+> not just the ones currently being requested. 
+Something like:
+
+mountd: Clear mountd registrations at start up
+
+Clear stale MNT registrations before mountd tries to create fresh
+listeners, to ensure that mountd starts.  This is also what statd
+does.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index d309950..c36c471 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -97,13 +97,13 @@ static int version_any(void)
  }
  
-+static inline void
-+pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *ino,
-+		      struct nfs_open_context *ctx, struct list_head *pages)
-+{
-+	pgio->pg_lseg = NULL;
-+}
-+
-+static inline void
-+pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *ino)
-+{
-+	pgio->pg_lseg = NULL;
-+}
-+
- #endif /* CONFIG_NFS_V4_1 */
- 
- #endif /* FS_NFS_PNFS_H */
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index c34f97d..4d0e26a 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -665,9 +665,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 	if (ret == 0)
- 		goto read_complete; /* all pages were read */
- 
--#ifdef CONFIG_NFS_V4_1
- 	pnfs_pageio_init_read(&pgio, inode, desc.ctx, pages);
--#endif /* CONFIG_NFS_V4_1 */
- 	if (rsize < PAGE_CACHE_SIZE)
- 		nfs_pageio_init(&pgio, inode, nfs_pagein_multi, rsize, 0);
- 	else
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 2251551..652c130 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1029,9 +1029,7 @@ static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+ static void
+-unregister_services (void)
++unregister_services (int all)
  {
- 	size_t wsize = NFS_SERVER(inode)->wsize;
+-	if (version2()) {
++	if (all || version2()) {
+ 		nfs_svc_unregister(MOUNTPROG, MOUNTVERS);
+ 		nfs_svc_unregister(MOUNTPROG, MOUNTVERS_POSIX);
+ 	}
+-	if (version3())
++	if (all || version3())
+ 		nfs_svc_unregister(MOUNTPROG, MOUNTVERS_NFSV3);
+ }
  
--#ifdef CONFIG_NFS_V4_1
- 	pnfs_pageio_init_write(pgio, inode);
--#endif /* CONFIG_NFS_V4_1 */
+@@ -180,7 +180,7 @@ fork_workers(void)
  
- 	if (wsize < PAGE_CACHE_SIZE)
- 		nfs_pageio_init(pgio, inode, nfs_flush_multi, wsize, ioflags);
--- 
-1.7.2.3
+ 	/* in parent */
+ 	wait_for_workers();
+-	unregister_services();
++	unregister_services(0);
+ 	cleanup_lockfiles();
+ 	xlog(L_NOTICE, "mountd: no more workers, exiting\n");
+ 	exit(0);
+@@ -192,7 +192,7 @@ fork_workers(void)
+ static void 
+ killer (int sig)
+ {
+-	unregister_services();
++	unregister_services(0);
+ 	if (num_threads > 1) {
+ 		/* play Kronos and eat our children */
+ 		kill(0, SIGTERM);
+@@ -840,6 +840,7 @@ main(int argc, char **argv)
+ 	if (new_cache)
+ 		cache_open();
+ 
++	unregister_services(1);
+ 	if (version2()) {
+ 		listeners += nfs_svc_create("mountd", MOUNTPROG,
+ 					MOUNTVERS, mount_dispatch, port);
+@@ -895,7 +896,7 @@ main(int argc, char **argv)
+ 	my_svc_run();
+ 
+ 	xlog(L_ERROR, "RPC service loop terminated unexpectedly. Exiting...\n");
+-	unregister_services();
++	unregister_services(0);
+ 	exit(1);
+ }
+ 
 
