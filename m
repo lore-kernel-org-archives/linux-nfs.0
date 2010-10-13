@@ -1,40 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:55152 "EHLO mx2.netapp.com"
+Received: from relay1.sgi.com ([192.48.179.29]:36081 "EHLO relay.sgi.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756894Ab0JFQJY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Oct 2010 12:09:24 -0400
-Received: from localhost.localdomain (sanjayk3-lxp.hq.netapp.com [10.58.62.92] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o96G9NZs013981
-	for <linux-nfs@vger.kernel.org>; Wed, 6 Oct 2010 09:09:24 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
+	id S1752442Ab0JMVok (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Oct 2010 17:44:40 -0400
+Received: from lady3jane.americas.sgi.com (lady3jane.americas.sgi.com [128.162.244.187])
+	by relay1.corp.sgi.com (Postfix) with ESMTP id A1ADF8F8040
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 14:44:39 -0700 (PDT)
+Received: from lady3jane.americas.sgi.com (localhost [127.0.0.1])
+	by lady3jane.americas.sgi.com (Postfix) with ESMTP id 11CD42416E13
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 15:52:05 -0500 (CDT)
+Subject: [PATCH] Add an error message for xs_bind
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] Don't check exchange flags unless using v4.1 try 2
-Date: Wed,  6 Oct 2010 12:09:22 -0400
-Message-Id: <1286381362-5639-1-git-send-email-iisaman@netapp.com>
+From: Ben Myers <bpm@sgi.com>
+Date: Wed, 13 Oct 2010 15:52:05 -0500
+Message-ID: <20101013205205.17640.48657.stgit@lady3jane.americas.sgi.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+xs_bind4 doesn't log an error when it can't get a reserved source port due to
+them all being in use.  This situation can be hard to debug when it is
+intermittent or you don't know what to look for in the debug output.  Add an
+error message describing how to resolve this problem when it happens.
 ---
- fs/nfs/pnfs.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+ net/sunrpc/xprtsock.c |   12 ++++++++++++
+ 1 files changed, 12 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7013916..4b33cde 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -141,6 +141,9 @@ set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
- 
- 	if (id == 0)
- 		goto out_no_driver;
-+	if ((server->nfs_client->rpc_ops->version != 4) ||
-+	    (server->nfs_client->cl_minorversion != 1))
-+		goto out_no_driver;
- 	if (!(server->nfs_client->cl_exchange_flags &
- 		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
- 		printk(KERN_ERR "%s: id %u cl_exchange_flags 0x%x\n", __func__,
--- 
-1.7.2.1
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index fe9306b..ea5f38e 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1563,6 +1563,12 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
+ 		if (port > last)
+ 			nloop++;
+ 	} while (err == -EADDRINUSE && nloop != 2);
++	if (err == -EADDRINUSE && nloop == 2 && transport->xprt.resvport) {
++		printk("RPC: %s %pI4: cannot bind reserved source port, "
++				"too many ports already in use.  "
++				"consider increasing xprt_max_resvport.\n",
++				__func__, &myaddr.sin_addr);
++	}
+ 	dprintk("RPC:       %s %pI4:%u: %s (%d)\n",
+ 			__func__, &myaddr.sin_addr,
+ 			port, err ? "failed" : "ok", err);
+@@ -1596,6 +1602,12 @@ static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
+ 		if (port > last)
+ 			nloop++;
+ 	} while (err == -EADDRINUSE && nloop != 2);
++	if (err == -EADDRINUSE && nloop == 2 && transport->xprt.resvport) {
++		printk("RPC: %s %pI6: cannot bind reserved source port, "
++				"too many ports already in use.  "
++				"consider increasing xprt_max_resvport.\n",
++				__func__, &myaddr.sin6_addr);
++	}
+ 	dprintk("RPC:       xs_bind6 %pI6:%u: %s (%d)\n",
+ 		&myaddr.sin6_addr, port, err ? "failed" : "ok", err);
+ 	return err;
 
