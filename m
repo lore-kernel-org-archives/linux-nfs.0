@@ -1,60 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9112 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751589Ab0JAQDl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Oct 2010 12:03:41 -0400
-Received: from localhost.localdomain (vpn2ntap-420885.hq.netapp.com [10.58.51.27])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o91G3Uen008238
-	for <linux-nfs@vger.kernel.org>; Fri, 1 Oct 2010 09:03:39 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
+Received: from filter.openoffice.nl ([217.170.2.175]:44522 "EHLO
+	filter.openoffice.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752277Ab0JMK5N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 06:57:13 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by filter.openoffice.nl (Postfix) with ESMTP id 1CEC72439F2
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 12:57:13 +0200 (CEST)
+Received: from filter.openoffice.nl ([127.0.0.1])
+	by localhost (post-it.openoffice.nl [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id XMx-fLdN0on1 for <linux-nfs@vger.kernel.org>;
+	Wed, 13 Oct 2010 12:57:11 +0200 (CEST)
+Received: from blub.net (095-097-076-243.static.chello.nl [95.97.76.243])
+	by filter.openoffice.nl (Postfix) with ESMTP id 3E8862439E5
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 12:57:11 +0200 (CEST)
+Received: from stout.kantoor.openoffice.nl (stout.kantoor.openoffice.nl [192.168.112.50])
+	by blub.net (Postfix) with ESMTP id 15E83300050
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 12:57:11 +0200 (CEST)
+Message-ID: <4CB59086.9080108@blub.net>
+Date: Wed, 13 Oct 2010 12:57:10 +0200
+From: Valentijn Sessink <valentyn@blub.net>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/7] SQUASHME: pnfs-devinfo-submit: fix comments in pnfs_layout*_release
-Date: Fri,  1 Oct 2010 12:02:47 -0400
-Message-Id: <1285948971-2048-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
-References: <1285948971-2048-1-git-send-email-iisaman@netapp.com>
+Subject: ipv6 + krb5, server status?
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-comments were not changed with the functions
+Hello list,
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c |   12 ++----------
- 1 files changed, 2 insertions(+), 10 deletions(-)
+I found a lot of information on the subject NFS server, ipv6 + krb5, but
+not anything conclusive. So I tried it out; I got IPv6 +
+NFS4 to work, but only with sec=sys.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 5ba2c45..7013916 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -390,11 +390,7 @@ pnfs_layoutget_release(struct pnfs_layout_hdr *lo)
- 	struct nfs_inode *nfsi = NFS_I(lo->inode);
- 
- 	spin_lock(&nfsi->vfs_inode.i_lock);
--	/*
--	 * Matched in _pnfs_update_layout for layoutget
--	 * and by get_layout in _pnfs_return_layout for layoutreturn
--	 */
--	put_layout_hdr_locked(lo);
-+	put_layout_hdr_locked(lo); /* Matched in _pnfs_update_layout */
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
- 	wake_up_all(&nfsi->lo_waitq);
- }
-@@ -408,11 +404,7 @@ pnfs_layoutreturn_release(struct pnfs_layout_hdr *lo,
- 	spin_lock(&nfsi->vfs_inode.i_lock);
- 	if (range)
- 		pnfs_clear_lseg_list(lo, range);
--	/*
--	 * Matched in _pnfs_update_layout for layoutget
--	 * and by get_layout in _pnfs_return_layout for layoutreturn
--	 */
--	put_layout_hdr_locked(lo);
-+	put_layout_hdr_locked(lo); /* Matched in _pnfs_return_layout */
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
- 	wake_up_all(&nfsi->lo_waitq);
- }
--- 
-1.7.2.1
+When using sec=krb5, there seemed to be errors in gssd communication.
+(Ubuntu 10.04 with rpcbind instead of portmap; with nfs-utils-1.2.3 from
+nfs.sf.net, and with a 2.6.35-020635rc1-generic kernel package).
 
+Is this correct, i.e. svcgssd still needs to be adapted to IPv6? Or
+should NFS-server/IPv6/Kerberos on Linux just work, i.e. should I
+re-check my configuration?
+
+Best regards,
+
+Valentijn Sessink
+
+(I hope you don't mind the repost; I did not get any answers on my
+previous posting. If you do mind, please say so off-list).
