@@ -1,45 +1,60 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: whither NFS umount?
-Date: Wed, 13 Oct 2010 15:31:27 -0400
-Message-ID: <4CB6090F.60301@RedHat.com>
-References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>	<1286903046.24878.13.camel@heimdal.trondhjem.org>	<C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>	<20101012151826.76b75f52@corrin.poochiereds.net>	<1286912649.1956.19.camel@heimdal.trondhjem.org>	<4CB5EF15.5030003@RedHat.com>	<20101013141317.66f23906@corrin.poochiereds.net>	<4CB5FE65.3090409@RedHat.com> <20101013145601.468acc2a@corrin.poochiereds.net>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 5/5] NFS: clear fsinfo before sendign rpc
+Date: Wed, 13 Oct 2010 17:27:53 -0400
+Message-ID: <4CB62459.50006@panasas.com>
+References: <4CA31DC3.8070300@panasas.com>	 <1285758613-26897-1-git-send-email-bhalevy@panasas.com>	 <AANLkTim8BCOgLNXZt3QKLX=g1dEruNEWHsb2GPs2AVYD@mail.gmail.com>	 <4CB617ED.4000504@panasas.com>	 <1287003279.3015.205.camel@heimdal.trondhjem.org>	 <4CB62105.2040908@panasas.com> <1287004813.3015.212.camel@heimdal.trondhjem.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59753 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752476Ab0JMTbb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Oct 2010 15:31:31 -0400
-In-Reply-To: <20101013145601.468acc2a-4QP7MXygkU+dMjc06nkz3ljfA9RmPOcC@public.gmane.org>
+Received: from exprod5og103.obsmtp.com ([64.18.0.145]:35777 "HELO
+	exprod5og103.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751523Ab0JMV1z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 17:27:55 -0400
+In-Reply-To: <1287004813.3015.212.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/13/2010 02:56 PM, Jeff Layton wrote:
-> On Wed, 13 Oct 2010 14:45:57 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->> I would say send the UMNT, since it does not cause any pain to send it
->> verses the pain that could be cause by not sending it...
+On 2010-10-13 17:20, Trond Myklebust wrote:
+> On Wed, 2010-10-13 at 17:13 -0400, Benny Halevy wrote:
+>> On 2010-10-13 16:54, Trond Myklebust wrote:
+>>> On Wed, 2010-10-13 at 16:34 -0400, Benny Halevy wrote:
+>>>> On 2010-10-13 14:03, Fred Isaman wrote:
+>>>>> On Wed, Sep 29, 2010 at 7:10 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>>>>> To initialize all values to zero, in case the server or protocol version
+>>>>>> do no support particular attributes.
+>>>>>
+>>>>> Sorry for the delayed response, but...
+>>>>>
+>>>>> Zero is not an appropriate default for many of the values.  Further,
+>>>>> decode_fsinfo sets a default for each value, even in cases where the
+>>>>> server or protocol version do not support particular attributes.  So
+>>>>> this patch seems to server no purpose.
+>>>>
+>>>> Note that nfs_probe_fsinfo is called also for nfs version 2 and 3
+>>>> and these don't know anything about nfsv4.1 attributes so they can't
+>>>> cannot explicitly set them to any default value.
+>>>
+>>> Err... Why would we care? Under exactly what circumstances would we want
+>>> generic code to be processing fsinfo attributes that are specific only
+>>> to NFSv4.1?
+>>>
+>>> Trond
 >>
->> This is a perfect example of fixing something that is not
->> broken... We can put our energy in better place that worrying
->> about things like this... IMHO...
+>> Originally, set_pnfs_layoutdriver, was called only for nfsv4.1
+>> but we changed it to always be called in nfs_server_set_fsinfo()
 > 
-> But it *is* broken. As Chuck pointed out, the main problem is that mtab
-> handling is broken on remounts. That's a real problem that needs to be
-> fixed.
-Fine... Lets just focus on that issue...  
+> So it relies on a flag in the fsinfo structure to tell it that this is a
+> pNFS-capable server? That's fine, but in that case, you should perhaps
+> explicitly initialise that flag to the non-pNFS capable value in the
+> generic code.
+> We shouldn't need to zero out the entire structure.
+
+OK. That's possible.
+
+Benny
 
 > 
-> I agree that our time is better spent elsewhere. I just think that we
-> ought to make that happen by eliminating the unnecessary umount helper.
-> The less code that we need to maintain, the better...
-In general I agree... but removing functionality (i.e. umount.nfs)
-can cause more pain than just leaving things as is...
-
-steved.
-
+> Cheers
+>   Trond
