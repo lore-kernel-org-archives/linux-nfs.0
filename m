@@ -1,88 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57694 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:45972 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751048Ab0JUQUk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Oct 2010 12:20:40 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 07/11] nfsd4: callback program number is per-session
-Date: Thu, 21 Oct 2010 12:20:14 -0400
-Message-Id: <1287678018-9266-8-git-send-email-bfields@redhat.com>
-In-Reply-To: <1287678018-9266-1-git-send-email-bfields@redhat.com>
-References: <1287678018-9266-1-git-send-email-bfields@redhat.com>
+	id S1750952Ab0JMSSU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 14:18:20 -0400
+Subject: Re: whither NFS umount?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <4CB5EF15.5030003@RedHat.com>
+References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>
+	 <1286903046.24878.13.camel@heimdal.trondhjem.org>
+	 <C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>
+	 <20101012151826.76b75f52@corrin.poochiereds.net>
+	 <1286912649.1956.19.camel@heimdal.trondhjem.org>
+	 <4CB5EF15.5030003@RedHat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 13 Oct 2010 14:18:18 -0400
+Message-ID: <1286993898.3015.123.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The callback program is allowed to depend on the session which the
-callback is going over.
+On Wed, 2010-10-13 at 13:40 -0400, Steve Dickson wrote:
+> Sorry for joining late... 
+> 
+> On 10/12/2010 03:44 PM, Trond Myklebust wrote:
+> > On Tue, 2010-10-12 at 15:18 -0400, Jeff Layton wrote:
+> > 
+> >> I think the part that causes problems is having userspace do this. In
+> >> theory, if the kernel were in charge of sending the UMNT, then it's not
+> >> really a problem since it knows when to do it. If we have code that
+> >> sends a UMNT already, why not do a best-effort UMNT call from the
+> >> kernel when we tear down the sb?
+> > 
+> > Purely for the pleasure of allowing the server to maintain inaccurate
+> > statistics about who is currently mounting what? I think not...
+> > 
+> > You can get far more accurate results by replacing the MNT/UMNT state
+> > counter with a purely server-based scheme to track who accessed one or
+> > more files on each exported partition in the past 5 minutes or so. That
+> > would even work with NFSv4...
+> > 
+> >> Either way, eliminating umount.nfs would be nice...
+> > 
+> > Agreed.
+> I having a hard time understanding this logic... 
+> 
+> Why do we think we (the Linux community) can simply 
+> throw way an established part of the protocol just because 
+> we deem it advisory... Now maybe in our implementation UMNT its
+> advisory and it might even be advisory in the spec, but how do we 
+> know with  other NFS implementation is not advisory, its actually needed.
+> We don't known and we can't known....
 
-No change in behavior yet, while we still only do callbacks over a
-single session for the lifetime of the client.
+Yes we do know!
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4callback.c |    1 +
- fs/nfsd/nfs4state.c    |    2 +-
- fs/nfsd/state.h        |    4 +++-
- 3 files changed, 5 insertions(+), 2 deletions(-)
+Anything that relies on a _stateful_ protocol that doesn't have a way to
+deal with the fact that clients may go away and never return is
+inherently broken. That lesson is exactly why we moved to making state
+subject to a lease in NFSv4.
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 5df9dda..140bb36 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -498,6 +498,7 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
- 		return -EINVAL;
- 	if (conn->cb_minorversion) {
- 		args.bc_xprt = conn->cb_xprt;
-+		args.prognumber = clp->cl_cb_session->se_cb_prog;
- 		args.protocol = XPRT_TRANSPORT_BC_TCP;
- 	}
- 	/* Create RPC client */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c470cb7..59bc001 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -760,6 +760,7 @@ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct n
- 
- 	new->se_cb_seq_nr = 1;
- 	new->se_flags = cses->flags;
-+	new->se_cb_prog = cses->callback_prog;
- 	kref_init(&new->se_ref);
- 	idx = hash_sessionid(&new->se_sessionid);
- 	spin_lock(&client_lock);
-@@ -782,7 +783,6 @@ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct n
- 		rpc_copy_addr((struct sockaddr *)&clp->cl_cb_conn.cb_addr, sa);
- 		clp->cl_cb_conn.cb_addrlen = svc_addr_len(sa);
- 		clp->cl_cb_conn.cb_minorversion = 1;
--		clp->cl_cb_conn.cb_prog = cses->callback_prog;
- 		nfsd4_probe_callback(clp, &clp->cl_cb_conn);
- 	}
- 	return new;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 7f5b267..b3bed36 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -96,7 +96,8 @@ struct nfs4_cb_conn {
- 	/* SETCLIENTID info */
- 	struct sockaddr_storage	cb_addr;
- 	size_t			cb_addrlen;
--	u32                     cb_prog;
-+	u32                     cb_prog; /* used only in 4.0 case;
-+					    per-session otherwise */
- 	u32			cb_minorversion;
- 	u32                     cb_ident;	/* minorversion 0 only */
- 	struct svc_xprt		*cb_xprt;	/* minorversion 1 only */
-@@ -172,6 +173,7 @@ struct nfsd4_session {
- 	struct nfsd4_channel_attrs se_fchannel;
- 	struct nfsd4_channel_attrs se_bchannel;
- 	struct list_head	se_conns;
-+	u32			se_cb_prog;
- 	u32			se_cb_seq_nr;
- 	struct nfsd4_slot	*se_slots[];	/* forward channel slots */
- };
--- 
-1.7.1
+Furthermore, it is not as if we have more than a semi-working
+implementation of this now: we don't implement UMNTALL on client reboot
+(I doubt that even Solaris bothers doing that) and we don't get UMNT
+right if the same filesystem is mounted twice on the same client.
 
+IOW: if there are servers that really do require UMNT to work, then they
+will already be learning the errors of their assumptions with today's
+client.
+
+> Now when our implementation becomes an NFSv4 only implementation, 
+> I say fine; Eliminate all the protocols that go along
+> with both v2 and v3. But until then lets just have leave
+> the legacy protocols along and move forward in more meaningful 
+> efforts... 
+
+For the reasons state above, I see no need to put UMNT support in the
+kernel, nor do I want yet another upcall mechanism in order to make
+UMNTALL work.
+For the same reasons, I don't care if people keep it or throw it out
+from the userland utilities.
+
+Trond
