@@ -1,85 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:45972 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1328 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750952Ab0JMSSU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 14:18:20 -0400
-Subject: Re: whither NFS umount?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <4CB5EF15.5030003@RedHat.com>
-References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>
-	 <1286903046.24878.13.camel@heimdal.trondhjem.org>
-	 <C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>
-	 <20101012151826.76b75f52@corrin.poochiereds.net>
-	 <1286912649.1956.19.camel@heimdal.trondhjem.org>
-	 <4CB5EF15.5030003@RedHat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 13 Oct 2010 14:18:18 -0400
-Message-ID: <1286993898.3015.123.camel@heimdal.trondhjem.org>
+	id S1751896Ab0JMOtA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 10:49:00 -0400
+Date: Wed, 13 Oct 2010 10:49:37 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Valentijn Sessink <valentyn@blub.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: ipv6 + krb5, server status?
+Message-ID: <20101013104937.358fe122@corrin.poochiereds.net>
+In-Reply-To: <4CB5BA8F.2090608@blub.net>
+References: <4CB59086.9080108@blub.net>
+	<20101013125656.GA5197@merit.edu>
+	<20101013095216.5b9b31a7@corrin.poochiereds.net>
+	<4CB5BA8F.2090608@blub.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-10-13 at 13:40 -0400, Steve Dickson wrote:
-> Sorry for joining late... 
+On Wed, 13 Oct 2010 15:56:31 +0200
+Valentijn Sessink <valentyn@blub.net> wrote:
+
+> Jeff Layton schreef:
+> > As of nfs-utils-1.2.3, IPv6 server-side support should be
+> > "complete" (modulo bugs, of course).
 > 
-> On 10/12/2010 03:44 PM, Trond Myklebust wrote:
-> > On Tue, 2010-10-12 at 15:18 -0400, Jeff Layton wrote:
-> > 
-> >> I think the part that causes problems is having userspace do this. In
-> >> theory, if the kernel were in charge of sending the UMNT, then it's not
-> >> really a problem since it knows when to do it. If we have code that
-> >> sends a UMNT already, why not do a best-effort UMNT call from the
-> >> kernel when we tear down the sb?
-> > 
-> > Purely for the pleasure of allowing the server to maintain inaccurate
-> > statistics about who is currently mounting what? I think not...
-> > 
-> > You can get far more accurate results by replacing the MNT/UMNT state
-> > counter with a purely server-based scheme to track who accessed one or
-> > more files on each exported partition in the past 5 minutes or so. That
-> > would even work with NFSv4...
-> > 
-> >> Either way, eliminating umount.nfs would be nice...
-> > 
-> > Agreed.
-> I having a hard time understanding this logic... 
+> Which is "correct" (I copied the quotation marks, because I tested very
+> inextensively). What I'm wondering about is the combination with
+> Kerberos. I'm currently setting up a better testing environment.
 > 
-> Why do we think we (the Linux community) can simply 
-> throw way an established part of the protocol just because 
-> we deem it advisory... Now maybe in our implementation UMNT its
-> advisory and it might even be advisory in the spec, but how do we 
-> know with  other NFS implementation is not advisory, its actually needed.
-> We don't known and we can't known....
+> V.
+> 
 
-Yes we do know!
+FWIW, I was planning on doing some testing of this soon anyway. It
+works for me:
 
-Anything that relies on a _stateful_ protocol that doesn't have a way to
-deal with the fact that clients may go away and never return is
-inherently broken. That lesson is exactly why we moved to making state
-subject to a lease in NFSv4.
+>From /proc/mounts:
 
-Furthermore, it is not as if we have more than a semi-working
-implementation of this now: we don't implement UMNTALL on client reboot
-(I doubt that even Solaris bothers doing that) and we don't get UMNT
-right if the same filesystem is mounted twice on the same client.
+rhel6srv.example.com:/export/ /mnt/test nfs4 rw,relatime,vers=4,rsize=131072,wsize=131072,namlen=255,hard,proto=tcp6,port=0,timeo=600,retrans=2,sec=krb5,clientaddr=feed::3,minorversion=0,addr=feed::4 0 0
 
-IOW: if there are servers that really do require UMNT to work, then they
-will already be learning the errors of their assumptions with today's
-client.
+$ klist
+Ticket cache: FILE:/tmp/krb5cc_50000
+Default principal: testuser@EXAMPLE.COM
 
-> Now when our implementation becomes an NFSv4 only implementation, 
-> I say fine; Eliminate all the protocols that go along
-> with both v2 and v3. But until then lets just have leave
-> the legacy protocols along and move forward in more meaningful 
-> efforts... 
+Valid starting     Expires            Service principal
+10/13/10 10:43:48  10/14/10 10:43:46  krbtgt/EXAMPLE.COM@EXAMPLE.COM
+	renew until 10/13/10 10:43:48
+10/13/10 10:43:58  10/14/10 10:43:46  nfs/rhel6srv.example.com@EXAMPLE.COM
+	renew until 10/13/10 10:43:48
 
-For the reasons state above, I see no need to put UMNT support in the
-kernel, nor do I want yet another upcall mechanism in order to make
-UMNTALL work.
-For the same reasons, I don't care if people keep it or throw it out
-from the userland utilities.
+$ id -a
+uid=50000(testuser) gid=50000(testuser) groups=50000(testuser) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
 
-Trond
+$ cd /mnt/test; echo foo > testuser ; stat testuser
+  File: `testuser'
+  Size: 4         	Blocks: 0          IO Block: 131072 regular file
+Device: 15h/21d	Inode: 29          Links: 1
+Access: (0664/-rw-rw-r--)  Uid: (50000/testuser)   Gid: (50000/testuser)
+Access: 2010-10-13 10:47:07.771053989 -0400
+Modify: 2010-10-13 10:47:07.802186619 -0400
+Change: 2010-10-13 10:47:07.802186619 -0400
+
+It sounds more like you have a problem with idmapping rather than
+anything krb5 specific, but I'm not sure why that would be the case
+with sec=krb5 and not with sec=sys.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
