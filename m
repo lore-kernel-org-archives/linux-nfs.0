@@ -1,41 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:47128 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756798Ab0JFOdw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Oct 2010 10:33:52 -0400
-Date: Wed, 6 Oct 2010 10:33:33 -0400
-From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chucklever@gmail.com>,
-        peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH] nfs-utils: typo (revised)
-Message-ID: <20101006143333.GA18235@merit.edu>
-Content-Type: text/plain; charset=us-ascii
+Received: from exprod5og112.obsmtp.com ([64.18.0.24]:54521 "HELO
+	exprod5og112.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751979Ab0JMUez (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 16:34:55 -0400
+Message-ID: <4CB617ED.4000504@panasas.com>
+Date: Wed, 13 Oct 2010 16:34:53 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 5/5] NFS: clear fsinfo before sendign rpc
+References: <4CA31DC3.8070300@panasas.com>	<1285758613-26897-1-git-send-email-bhalevy@panasas.com> <AANLkTim8BCOgLNXZt3QKLX=g1dEruNEWHsb2GPs2AVYD@mail.gmail.com>
+In-Reply-To: <AANLkTim8BCOgLNXZt3QKLX=g1dEruNEWHsb2GPs2AVYD@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Chuck pointed out there was a grammar typo in addition to the spelling
-typo.  Here is a revised version of the patch.
+On 2010-10-13 14:03, Fred Isaman wrote:
+> On Wed, Sep 29, 2010 at 7:10 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> To initialize all values to zero, in case the server or protocol version
+>> do no support particular attributes.
+> 
+> Sorry for the delayed response, but...
+> 
+> Zero is not an appropriate default for many of the values.  Further,
+> decode_fsinfo sets a default for each value, even in cases where the
+> server or protocol version do not support particular attributes.  So
+> this patch seems to server no purpose.
 
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- utils/mount/nfs.man |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Note that nfs_probe_fsinfo is called also for nfs version 2 and 3
+and these don't know anything about nfsv4.1 attributes so they can't
+cannot explicitly set them to any default value.
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index d2a4c5f..01bc712 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -619,7 +619,7 @@ in such cases.
- .BI nfsvers= n
- The NFS protocol version number used to contact the server's NFS service.
- If the server does not support the requested version, the mount request fails.
--If this option is not specified, the client negociate a suitable version with
-+If this option is not specified, the client negotiates a suitable version with
- the server, trying version 4 first, version 3 second, and version 2 last.
- .TP 1.5i
- .BI vers= n
--- 
-1.7.0.4
+Benny
 
+
+> 
+> Fred
+> 
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>>  fs/nfs/client.c |    1 +
+>>  1 files changed, 1 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>> index 23d740c..beb206e 100644
+>> --- a/fs/nfs/client.c
+>> +++ b/fs/nfs/client.c
+>> @@ -942,6 +942,7 @@ static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, str
+>>                        goto out_error;
+>>        }
+>>
+>> +       memset(&fsinfo, 0, sizeof(fsinfo));
+>>        fsinfo.fattr = fattr;
+>>        error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
+>>        if (error < 0)
+>> --
+>> 1.7.2.3
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
