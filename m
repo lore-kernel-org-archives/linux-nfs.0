@@ -1,214 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:64903 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752302Ab0JURIF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 13:08:05 -0400
-Received: by iwn7 with SMTP id 7so3849756iwn.19
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Oct 2010 10:08:03 -0700 (PDT)
-In-Reply-To: <4CC06EE8.7010705@panasas.com>
-References: <AANLkTi=XSSM5+wmCrVzQrZF8rA81OLqDO_dMzUqwHc7g@mail.gmail.com>
-	<4CC06EE8.7010705@panasas.com>
-Date: Thu, 21 Oct 2010 13:08:02 -0400
-Message-ID: <AANLkTim6aBaQ=yj0UYhiXSFzHh37V756EGurw1JorKPX@mail.gmail.com>
-Subject: Re: [pnfs] pnfs first write has very long delay
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: quanli gui <gqlxj1987@gmail.com>, linux-pnfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:48636 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755719Ab0JNRPY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Oct 2010 13:15:24 -0400
+Date: Thu, 14 Oct 2010 13:15:23 -0400
+To: Lyle Seaman <lyleseaman@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Thread scheduling issues
+Message-ID: <20101014171522.GA553@fieldses.org>
+References: <AANLkTin8tXxRFA5G8c9jKLv6aeEM8YLRX54YT5GozxK+@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AANLkTin8tXxRFA5G8c9jKLv6aeEM8YLRX54YT5GozxK+@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The first I/O to a data server includes:
+On Thu, Oct 14, 2010 at 11:21:33AM -0400, Lyle Seaman wrote:
+> Ok.  I've been trying to figure out a performance problem with some of
+> my production servers (I'm just not able to get enough simultaneous
+> I/Os queued up to get decent performance out of my disk subsystem),
+> and I have run into something that strikes me as odd.  For reference,
+> the code I'm looking at is from a 2.6.35.22 kernel, and I know there
+> have been some relevant changes since then but I am not seeing the
+> discussion of this in the mailing list archives. If I have to figure
+> out the new source control system to look at the head-of-line code,
+> say so.
+> 
+> in sunrpc/svc_xprt.c:svc_recv() I find this:
+> 
+>         /* now allocate needed pages.  If we get a failure, sleep briefly */
+>  620        pages = (serv->sv_max_mesg + PAGE_SIZE) / PAGE_SIZE;
+>  621        for (i = 0; i < pages ; i++)
+>  622                while (rqstp->rq_pages[i] == NULL) {
+>  623                        struct page *p = alloc_page(GFP_KERNEL);
+>  624                        if (!p) {
+>  625                                set_current_state(TASK_INTERRUPTIBLE);
+>  626                                if (signalled() || kthread_should_stop()) {
+>  627                                        set_current_state(TASK_RUNNING);
+>  628                                        return -EINTR;
+>  629                                }
+>  630                                schedule_timeout(msecs_to_jiffies(500));
+>  631                        }
+>  632                        rqstp->rq_pages[i] = p;
+>  633                }
+> 
+> First of all, 500ms is a long way from "brief".  Second, it seems like
+> a really bad idea to sleep while holding a contended resource.
+> Shouldn't you drop those pages before sleeping?  It's been a long time
+> since I knew anything about the Linux vm system, but presumably the
+> reason that alloc_page has failed is because there aren't 26 pages
+> available*.  So now I'm going to sleep while holding, say, the last 24
+> free pages?  This looks like deadlock city, except for the valiant
+> efforts by the vm system to keep freeing pages, and other adjustments
+> to vary sv_max_mesg depending on the number of threads which mean that
+> in practice, deadlock is unlikely.  But figuring out the interaction
+> of all those other systems requires global knowledge, which is asking
+> for trouble in the long run.  And there are intermediate degrees of
+> cascading interlocked interdependencies that result in poor
+> performance which aren't technically a complete deadlock.
+> 
+> (* I'm going to have to do some more digging here, because in my
+> specific situation, vmstat generally reports between 100M and 600M
+> free, so I'm admittedly not clear on why alloc_page is failing me,
+> unless there is a difference between "free" and "available for nfsd".)
 
-1) setting up the session EXCHANGE_ID, CREATE_SESSION
-2) the first time a Linux server (including a data server ) sees a
-file handle, it does an upcall to mountd to import the share
-information into the kernel. This is one cause of the NFS4_ERR_DELAY.
+OK, I'm more than willing to consider proposals for improvement here,
+but I'm losing the connection to your problem: how do you know that this
+particular alloc_page is failing in your case, and how do you know
+that's the cause of your problem?
 
-The write status of -11 is EAGAIN which is the response to NFS4_ERR_DELAY
+> And then there's this, in svc_xprt_enqueue()
+> 
+>  360 process:
+>  361        /* Work out whether threads are available */
+>  362        thread_avail = !list_empty(&pool->sp_threads);  /* threads
+> are asleep */
+>  363        if (pool->sp_nwaking >= SVC_MAX_WAKING) {
+> //  == 5 -lws
+>  364                /* too many threads are runnable and trying to wake up */
+>  365                thread_avail = 0;
+>  366                pool->sp_stats.overloads_avoided++;
+>  367        }
 
--->Andy
+That strikes me as a more likely cause of your problem.  But it was
+reverted in v2.6.33, and you say you're using v2.6.35.22, so there's
+some confusion here?
 
-On Thu, Oct 21, 2010 at 12:48 PM, Benny Halevy <bhalevy@panasas.com> wrote:
-> On 2010-10-21 14:03, quanli gui wrote:
->> When pnfs is mount on the client, I write a file to the mount dir by the
->> first time. It must wait a very long time until the pnfs complete the write.
->> When the operation waited, I dmesg the operation information. Find that
->> NFS:     0 initiated write call (req 0:13/200809, 3035 bytes @ offset 49152)
->> --> nfs4_setup_sequence clp c450a800 session c450ac00 sr_slotid 128
->> --> nfs41_setup_sequence
->> --> nfs4_find_slot used_slots=0007 highest_used=2 max_slots=16
->> <-- nfs4_find_slot used_slots=000f highest_used=3 slotid=3
->> <-- nfs41_setup_sequence slotid=3 seqid=1
->> <-- nfs4_setup_sequence status=0
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=1 slotid=3 max_slotid=3
->> cache_this=1
->> filelayout_write_call_done new off 40960 orig offset 40960
->> pnfs_writeback_done: Begin (status -10008)
->
-> What kind of DS are you using?
-> The 10008 error means that the DS returned NFS4ERR_DELAY
-> so we need to understand why that happened.
->
-> Benny
->
->> put_lseg: lseg ce417e40 ref 3 valid 1
->> NFS:    34 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> pnfs_writepages End (trypnfs:0)
->> filelayout_write_call_done new off 49152 orig offset 49152
->> pnfs_writeback_done: Begin (status -10008)
->> put_lseg: lseg ce417e40 ref 2 valid 1
->> NFS:    35 nfs_writeback_done (status -10008 count 3035)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> nfs4_renew_state: start
->> nfs4_renew_state: failed to call renewd. Reason: lease not expired
->> nfs4_renew_state: requeueing work. Lease period = 56
->> nfs4_renew_state: done
->> nfs4_renew_state: start
->> nfs4_renew_state: failed to call renewd. Reason: lease not expired
->> nfs4_renew_state: requeueing work. Lease period = 56
->> nfs4_renew_state: done
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=2 slotid=0 max_slotid=3
->> cache_this=1
->> NFS:    29 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677247:2:2:0 seqid=2 slotid=0 max_slotid=2
->> cache_this=1
->> NFS:    30 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=2 slotid=1 max_slotid=3
->> cache_this=1
->> NFS:    31 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677247:2:2:0 seqid=2 slotid=1 max_slotid=2
->> cache_this=1
->> NFS:    32 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=2 slotid=2 max_slotid=3
->> cache_this=1
->> NFS:    33 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677247:2:2:0 seqid=2 slotid=2 max_slotid=2
->> cache_this=1
->> NFS:    34 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=2 slotid=3 max_slotid=3
->> cache_this=1
->> NFS:    35 nfs_writeback_done (status -10008 count 3035)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> nfs4_renew_state: start
->> nfs4_renew_state: failed to call renewd. Reason: lease not expired
->> nfs4_renew_state: requeueing work. Lease period = 37
->> nfs4_renew_state: done
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=3 slotid=0 max_slotid=3
->> cache_this=1
->> NFS:    29 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677247:2:2:0 seqid=3 slotid=0 max_slotid=2
->> cache_this=1
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=3 slotid=1 max_slotid=3
->> cache_this=1
->> NFS:    30 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> NFS:    31 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677247:2:2:0 seqid=3 slotid=1 max_slotid=2
->> cache_this=1
->> NFS:    32 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=3 slotid=2 max_slotid=3
->> cache_this=1
->> NFS:    33 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677247:2:2:0 seqid=3 slotid=2 max_slotid=2
->> cache_this=1
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=3 slotid=3 max_slotid=3
->> cache_this=1
->> NFS:    34 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> NFS:    35 nfs_writeback_done (status -10008 count 3035)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=4 slotid=0 max_slotid=3
->> cache_this=1
->> NFS:    29 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677247:2:2:0 seqid=4 slotid=0 max_slotid=2
->> cache_this=1
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=4 slotid=1 max_slotid=3
->> cache_this=1
->> NFS:    30 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> NFS:    31 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677247:2:2:0 seqid=4 slotid=1 max_slotid=2
->> cache_this=1
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=4 slotid=2 max_slotid=3
->> cache_this=1
->> NFS:    32 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> NFS:    33 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677253:2:2:0 seqid=4 slotid=3 max_slotid=3
->> cache_this=1
->> encode_compound: tag=
->> encode_sequence: sessionid=1287677247:2:2:0 seqid=4 slotid=2 max_slotid=2
->> cache_this=1
->> NFS:    35 nfs_writeback_done (status -10008 count 3035)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> NFS:    34 nfs_writeback_done (status -10008 count 8192)
->> pnfs4_write_done DS write
->> <-- pnfs4_write_done status= -11
->> I don't know why so many pnfs_write_done()  return -11 only for the first
->> write. But after the first write, I write files again. This time the time of
->> the operation is OK. Please tell me why this thing happen.
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+But again we're jumping to conclusions: what's your setup, what symptoms
+are you seeing, what did you try to do to fix it, and what were the
+results?
+
+> Now, the sp_nwaking counter is only decremented after that snippet of
+> code earlier, so if I've got five threads that happen to all run into
+> a transient problem getting the pages they need, they're going to
+> sleep for 500 millis and -nothing- is going to happen.
+> 
+> I see that this overloads_avoided branch disappeared in more recent
+> kernels, was there some discussion of it that you can point me to so I
+> don't have to rehash an old topic? I think that removing it actually
+> increases the likelihood of deadlock.
+> 
+> Finally, zero-copy is great, awesome, I love it.  But it seems
+> profligate to allocate an entire 26 pages for every operation when
+> only 9% of them (at least in my workload) are writes.  All the rest of
+> the operations only need a small fraction of that to be preallocated.
+> I don't have a concrete suggestion here, I'd have to do some tinkering
+> with the code first.  I'm just... saying.  Maybe allocate two pages up
+> front, then wait to see if the others are needed and allocate them at
+> that time.  If you're willing to sleep in svc_recv while holding lots
+> of pages, it's no worse to sleep while holding one or two.
+
+Could be.  I think the code was trying to avoid reading an rpc request
+until it was reasonably sure it would have the resources to complete it,
+so we didn't end up with a thread stuck waiting on a half-received rpc.
+
+--b.
