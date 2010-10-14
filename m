@@ -1,59 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og102.obsmtp.com ([64.18.0.143]:49498 "HELO
-	exprod5og102.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751951Ab0J1OOR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 10:14:17 -0400
-Message-ID: <4CC98534.40907@panasas.com>
-Date: Thu, 28 Oct 2010 16:14:12 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: wharms@bfs.de, Dan Carpenter <error27@gmail.com>,
-        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
-Subject: Re: [patch] nfs: check kmalloc() return
-References: <20101028044403.GV6062@bicker>  <4CC92338.7070304@bfs.de> <1288273273.3194.16.camel@heimdal.trondhjem.org>
-In-Reply-To: <1288273273.3194.16.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from exprod6og104.obsmtp.com ([64.18.1.187]:53892 "HELO
+	exprod6og104.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751061Ab0JNMch convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Oct 2010 08:32:37 -0400
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: 'Continuation' packets in case of NFS READ.
+Date: Thu, 14 Oct 2010 08:30:53 -0400
+Message-ID: <D3F292ADF945FB49B35E96C94C2061B90DAD029A@nsmail.netscout.com>
+In-Reply-To: <AANLkTik0neXy5r7TZ3nr8ZT4w8T7oFG2NoySWS73GBYq@mail.gmail.com>
+References: <D3F292ADF945FB49B35E96C94C2061B90DAD01D8@nsmail.netscout.com><AANLkTimMm0-Ux+frJq4k0PD5JyR2rMi8Bq9xXYSfjKbB@mail.gmail.com><D3F292ADF945FB49B35E96C94C2061B90DAD0231@nsmail.netscout.com> <AANLkTik0neXy5r7TZ3nr8ZT4w8T7oFG2NoySWS73GBYq@mail.gmail.com>
+From: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
+To: "Lyle Seaman" <lyleseaman@gmail.com>
+Cc: <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-10-28 15:41, Trond Myklebust wrote:
-> On Thu, 2010-10-28 at 09:16 +0200, walter harms wrote:
->>
->> Dan Carpenter schrieb:
->>> The decode_and_add_ds() should return NULL on failure.
->>>
->>> Signed-off-by: Dan Carpenter <error27@gmail.com>
->>>
->>> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
->>> index 51fe64a..098113c 100644
->>> --- a/fs/nfs/nfs4filelayoutdev.c
->>> +++ b/fs/nfs/nfs4filelayoutdev.c
->>> @@ -219,6 +219,8 @@ decode_and_add_ds(__be32 **pp, struct inode *inode)
->>>  		goto out_err;
->>>  	}
->>>  	buf = kmalloc(rlen + 1, GFP_KERNEL);
->>> +	if (!buf)
->>> +		goto out_err;
->>>  	buf[rlen] = '\0';
->>>  	memcpy(buf, r_addr, rlen);
->>>  
->>
->> it seems that r_addr is a string, then kstdup() is emulated here.
->>
->> re,
->>  wh
+> From: Lyle Seaman [mailto:lyleseaman@gmail.com]
+> Sent: Thursday, October 14, 2010 5:35 PM
+> To: Tayade, Nilesh
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: 'Continuation' packets in case of NFS READ.
+>
+> Sorry, that was imprecise of me.  I ought to have said "it's an RPC
+function".  Distinguishing between the end of one RPC and the next is
+easy with UDP.  For TCP it's done with an end-of-record marker.  See the
+RFCs.  RFC1057 is the one I remember. Maybe there's been an update, but
+that's a good place to start.
 > 
-> Not quite. kstrdup() requires that the argument be a NUL-terminated
-> string. The above code doesn't.
 
-Right.  kmemdup is the right one.
+Sorry, if question is not clear or I am unable to interpret your
+response and cluttering the mailing list. I shall also go through the
+RFC1057.
+What I wanted to know is -
 
-Benny
+If I have file1 on mountpoint-1 and file2 on mountpoint-2. Both these
+mount points reside on same server and the respective file size is also
+big. If we look at the packets for these mount point access, we can see
+source port for packet of mount-1 same as that of packet of mount-2
+(Ofcourse, NFS port 2049 will remain same, but the other port used for
+setting up the connection also remains same).
 
-> 
-> Trond
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So if the 'Continuation' chunk comes, how does the client know which
+file it belongs to? The RPC packet doesn't have much info and TCP/UDP
+packets will show same ip-port pair.
+
+
+--
+Thanks,
+Nilesh
