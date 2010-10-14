@@ -1,42 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42063 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751005Ab0JGPxJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Oct 2010 11:53:09 -0400
-Received: from bfields by fieldses.org with local (Exim 4.71)
-	(envelope-from <bfields@fieldses.org>)
-	id 1P3smI-0007Ov-2Z
-	for linux-nfs@vger.kernel.org; Thu, 07 Oct 2010 11:53:06 -0400
-Date: Thu, 7 Oct 2010 11:53:06 -0400
+Received: from cirse-out.extra.cea.fr ([132.166.172.106]:53554 "EHLO
+	cirse-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753266Ab0JNLsb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Oct 2010 07:48:31 -0400
+Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
+	by cirse.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.0) with ESMTP id o9EBmTot026433
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Thu, 14 Oct 2010 13:48:29 +0200
+Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
+	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id o9EBmT5I032527
+	for <linux-nfs@vger.kernel.org>; Thu, 14 Oct 2010 13:48:29 +0200
+	(envelope-from philippe.deniel@cea.fr)
+Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
+	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id o9EBmTAO023368
+	for <linux-nfs@vger.kernel.org>; Thu, 14 Oct 2010 13:48:29 +0200
+Message-ID: <4CB6EE0D.5060303@cea.fr>
+Date: Thu, 14 Oct 2010 13:48:29 +0200
+From: DENIEL Philippe <philippe.deniel@cea.fr>
 To: linux-nfs@vger.kernel.org
-Subject: server 4.1 issues list
-Message-ID: <20101007155306.GA28053@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Effect of NFS4ERR_DELAY on the client
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Based on conversation at the bakeathon yesterday, I've updated
+Hi,
 
-	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues
+I have a question about NFS4ERR_DELAY. What is the behavior of the 
+client when such an error is returned. Does it retry ? If yes, how many 
+times and with what kind of interval between each retry ?
+Is the behavior similar to what the NFSv3 client when receiving 
+NFS3ERR_JUKEBOX ?
+My purpose is to run NFSv4.x on top of a namespace whose entries can be 
+migrated : opening a file may require staging it (in this case 
+NFS4ERR_DELAY and NFS3ERR_JUKEBOX will be returned)
 
-Changes:
-	- Mark deferral fixes done.
-	- Update in-progress status at
-	  http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues#4.1
-	- Add callback error handling.
-	- Various minor clarifications.
-
-Some sort of difficulty or time-required rating was also requested, but
-I haven't attempted that.
-
-Someone asked whether we error out as we should on
-mandatory-not-to-implement 4.1 operations; from a quick check of the
-code it appears that we do, so I haven't added that.
-
-Someone also asked whether we've fixed the backchannel attribute
-checking.  We haven't, but that should be fairly quick--I'll take a look
-at it now.
-
---b.
+     Philippe
