@@ -1,60 +1,31 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 5/5] NFS: clear fsinfo before sendign rpc
-Date: Wed, 13 Oct 2010 17:27:53 -0400
-Message-ID: <4CB62459.50006@panasas.com>
-References: <4CA31DC3.8070300@panasas.com>	 <1285758613-26897-1-git-send-email-bhalevy@panasas.com>	 <AANLkTim8BCOgLNXZt3QKLX=g1dEruNEWHsb2GPs2AVYD@mail.gmail.com>	 <4CB617ED.4000504@panasas.com>	 <1287003279.3015.205.camel@heimdal.trondhjem.org>	 <4CB62105.2040908@panasas.com> <1287004813.3015.212.camel@heimdal.trondhjem.org>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Linux pNFS status meeting 10/14/10
+Date: Wed, 13 Oct 2010 19:06:44 -0700
+Message-ID: <OF7DFFAE81.65A55F81-ON882577BC.000B23CB-882577BC.000B95AB@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="US-ASCII"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og103.obsmtp.com ([64.18.0.145]:35777 "HELO
-	exprod5og103.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751523Ab0JMV1z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 17:27:55 -0400
-In-Reply-To: <1287004813.3015.212.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:60457 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752974Ab0JNCGi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Oct 2010 22:06:38 -0400
+Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
+	by e6.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id o9E273bZ003349
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 22:07:03 -0400
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o9E26ZBN315420
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 22:06:35 -0400
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o9E26Zon009345
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 22:06:35 -0400
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id o9E26ZQw009341
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 22:06:35 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2010-10-13 17:20, Trond Myklebust wrote:
-> On Wed, 2010-10-13 at 17:13 -0400, Benny Halevy wrote:
->> On 2010-10-13 16:54, Trond Myklebust wrote:
->>> On Wed, 2010-10-13 at 16:34 -0400, Benny Halevy wrote:
->>>> On 2010-10-13 14:03, Fred Isaman wrote:
->>>>> On Wed, Sep 29, 2010 at 7:10 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->>>>>> To initialize all values to zero, in case the server or protocol version
->>>>>> do no support particular attributes.
->>>>>
->>>>> Sorry for the delayed response, but...
->>>>>
->>>>> Zero is not an appropriate default for many of the values.  Further,
->>>>> decode_fsinfo sets a default for each value, even in cases where the
->>>>> server or protocol version do not support particular attributes.  So
->>>>> this patch seems to server no purpose.
->>>>
->>>> Note that nfs_probe_fsinfo is called also for nfs version 2 and 3
->>>> and these don't know anything about nfsv4.1 attributes so they can't
->>>> cannot explicitly set them to any default value.
->>>
->>> Err... Why would we care? Under exactly what circumstances would we want
->>> generic code to be processing fsinfo attributes that are specific only
->>> to NFSv4.1?
->>>
->>> Trond
->>
->> Originally, set_pnfs_layoutdriver, was called only for nfsv4.1
->> but we changed it to always be called in nfs_server_set_fsinfo()
-> 
-> So it relies on a flag in the fsinfo structure to tell it that this is a
-> pNFS-capable server? That's fine, but in that case, you should perhaps
-> explicitly initialise that flag to the non-pNFS capable value in the
-> generic code.
-> We shouldn't need to zero out the entire structure.
+Meeting on Thursday 10/14/10 at 9:30 AM pacific time (12:30 PM UMICH time)
 
-OK. That's possible.
+Marc. 
 
-Benny
-
-> 
-> Cheers
->   Trond
