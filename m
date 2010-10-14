@@ -1,364 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:38170 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752478Ab0JKAEZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Oct 2010 20:04:25 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 6so2668490iwn.19
-        for <linux-nfs@vger.kernel.org>; Sun, 10 Oct 2010 17:04:25 -0700 (PDT)
+Received: from rcsinet10.oracle.com ([148.87.113.121]:47366 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755647Ab0JNTPG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Oct 2010 15:15:06 -0400
+Subject: Re: whither NFS umount?
+Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 02/15] libnfs.a: Allow multiple RPC listeners to share
-	listener port number
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Sun, 10 Oct 2010 20:04:21 -0400
-Message-ID: <20101011000421.6667.60700.stgit@ellison.1015granger.net>
-In-Reply-To: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
-References: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <4CB74B90.1050403@RedHat.com>
+Date: Thu, 14 Oct 2010 15:13:14 -0400
+Cc: Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <0F7E614A-3450-48DE-BE44-E0D7CC170B66@oracle.com>
+References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>	<1286903046.24878.13.camel@heimdal.trondhjem.org>	<C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>	<20101012151826.76b75f52@corrin.poochiereds.net>	<1286912649.1956.19.camel@heimdal.trondhjem.org>	<4CB5EF15.5030003@RedHat.com>	<20101013141317.66f23906@corrin.poochiereds.net>	<4CB5FE65.3090409@RedHat.com> <20101013145601.468acc2a@corrin.poochiereds.net> <4CB6090F.60301@RedHat.com> <E22DAFE2-A677-4D91-8976-5F641141DD36@oracle.com> <4CB63E81.9010100@RedHat.com> <1BC33C94-1C91-42BE-8FC1-5F85E0D6FABD@oracle.com> <4CB74B90.1050403@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Normally, when "-p" is not specified on the mountd command line, the
-TI-RPC library chooses random port numbers for each listener.  If a
-port number _is_ specified on the command line, all the listeners
-will get the same port number, so SO_REUSEADDR needs to be set on
-each socket.
 
-Thus we can't let TI-RPC create the listener sockets for us in this
-case; we must create them ourselves and then set SO_REUSEADDR (and
-other socket options) by hand.
+On Oct 14, 2010, at 2:27 PM, Steve Dickson wrote:
 
-Different versions of the same RPC program have to share the same
-listener and SVCXPRT, so we have to cache xprts we create, and re-use
-them when additional requests for registration come from the
-application.
+> Hey... 
+> 
+> On 10/14/2010 11:29 AM, Chuck Lever wrote:
+>> On Oct 13, 2010, at 7:19 PM, Steve Dickson wrote:
+>> 
+>> Using /proc/mounts to determine whether a mount point is NFSv4 or NFS is OK.
+>> However, /proc/mounts doesn't contain the original mount options used 
+>> to negotiate the mount.  Ideally, we want to use the original mount command 
+>> line options, and not the exact options that were negotiated, when doing the umount.
+>> 
+>> The example I use to explain why /proc/mounts is not appropriate is a 
+>> simple mount "vers=3".  It negotiates with the server and discovers the 
+>> mount service is on port 4545.  The mount proceeds.  After a while the 
+>> server reboots, and puts the mount service on port 32769.  Our /proc/mounts 
+>> still has "mountport=4545" since that's what was negotiated at mount time 
+>> and passed to the kernel.  When umount tries the UMNT request, it will 
+>> read /proc/mounts, send the UMNT request to port 4545, and fail.
+> Either don't use the mountport that's in /proc/mounts or better yet
+> be prepared to do a GETPORT of the service when the UMNT call
+> fails with 'RPC: Program not registered'. Something that is 
+> commonly done.. 
+> 
+>> 
+>> Now, we could just say "screw it" and use the negotiated options rather 
+>> than the user-specified ones.  But that means there are still cases we 
+>> could perform the UMNT correctly which would not work.
+> Even the information in /etc/mtab can go stale. 
+>   mount mountport=4545 /mnt; server restart ; umount /mnt
+> were the server comes up on a different port. 
+> 
+> Granted this is a pilot error by the admin since if the 
+> port is  specified on the command line the server better
+> be listening on that port. The point being there can be stale 
+> information in any static list.
+> 
+> So regardless of which list is read (/etc/mtab or /proc/mounts)
+> we need to be prepared deal with static information...  
+> 
+>> 
+>> Another choice would be to store the original NFS-related command line
+>> mount options somewhere other than /etc/mtab, and leave them alone during 
+>> a remount.  If we can't perform UMNT in the kernel, I'd prefer this type
+>> of solution to either updating /etc/mtab on a remount or using /proc/mounts 
+>> during umount.
+>> 
+>> How about a file under /var/lib/nfs ?
+> I refer to my above statement... No matter where we put the list, there
+> is always a chance of the information in the list to go stale... 
+> 
+> So I would suggest we use /proc/mounts since that is the last known
+> valid options and then be prepared to deal with stale options.
 
-Though it doesn't look like it, this fix was "copied" from the legacy
-rpc_init() function.  It's more complicated for TI-RPC, of course,
-since a TI-RPC application can set up listeners with a nearly
-arbitrary number of address families and socket types, not just the
-two listeners that legacy RPC applications can set up (one for AF_INET
-UDP and one for AF_INET TCP).
+It sounds like we agree that umount.nfs needs to do some negotiation (and it already does this today).  What I'm suggesting is we can be more clever about what the starting point is for the umount negotiation.
 
-See:
-  https://bugzilla.linux-nfs.org/show_bug.cgi?id=190
+My goal for text-based mounts (until now) has been to keep the originally specified mount options in /etc/mtab, and use those as the starting point for negotiation during the umount.  This appears to have been the intent of mount.nfs's use of /etc/mtab, all along (but we agree /etc/mtab is probably a bad place to put this info).  The original mount options will have the best chance of working.  Ideally these would be recorded after config file processing, but before version and transport negotiation (unlike /proc/mounts, which would have the post-negotiation options).
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+The mount protocol information in /proc/mounts can be very very stale.  If the mount point is very long lived, as it is for static mount points on server-class systems, the client may have been up for months, while the NFS servers can have rebooted multiple times during that time span.  Each server reboot can result in the mount port changing, for example.
 
- support/nfs/svc_create.c |  252 +++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 246 insertions(+), 6 deletions(-)
+/proc/mounts has the specific set of options that were the result of negotiation during the mount process.  Those will work sometimes, but I think those actually have a good chance of not working in some cases.  If umount.nfs starts with /proc/mounts, how can it know which of "vers=" and "proto=" and "port=" and "mountport=" were specified on the original command line (and thus are required to make the mount work) and those which were negotiated by mount.nfs (and thus may have changed since the original mount)?
 
-diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
-index 59ba505..b3f75ed 100644
---- a/support/nfs/svc_create.c
-+++ b/support/nfs/svc_create.c
-@@ -27,6 +27,7 @@
- #include <memory.h>
- #include <signal.h>
- #include <unistd.h>
-+#include <errno.h>
- #include <netdb.h>
- 
- #include <netinet/in.h>
-@@ -41,11 +42,68 @@
- #include "tcpwrapper.h"
- #endif
- 
-+#include "sockaddr.h"
- #include "rpcmisc.h"
- #include "xlog.h"
- 
- #ifdef HAVE_LIBTIRPC
- 
-+#define SVC_CREATE_XPRT_CACHE_SIZE	(8)
-+static SVCXPRT *svc_create_xprt_cache[SVC_CREATE_XPRT_CACHE_SIZE] = { NULL, };
-+
-+/*
-+ * Cache an SVC xprt, in case there are more programs or versions to
-+ * register against it.
-+ */
-+static void
-+svc_create_cache_xprt(SVCXPRT *xprt)
-+{
-+	unsigned int i;
-+
-+	/* Check if we've already got this one... */
-+	for (i = 0; i < SVC_CREATE_XPRT_CACHE_SIZE; i++)
-+		if (svc_create_xprt_cache[i] == xprt)
-+			return;
-+
-+	/* No, we don't.  Cache it. */
-+	for (i = 0; i < SVC_CREATE_XPRT_CACHE_SIZE; i++)
-+		if (svc_create_xprt_cache[i] == NULL) {
-+			svc_create_xprt_cache[i] = xprt;
-+			return;
-+		}
-+
-+	xlog(L_ERROR, "%s: Failed to cache an xprt", __func__);
-+}
-+
-+/*
-+ * Find a previously cached SVC xprt structure with the given bind address
-+ * and transport semantics.
-+ *
-+ * Returns pointer to a cached SVC xprt.
-+ *
-+ * If no matching SVC XPRT can be found, NULL is returned.
-+ */
-+static SVCXPRT *
-+svc_create_find_xprt(const struct sockaddr *bindaddr, const struct netconfig *nconf)
-+{
-+	unsigned int i;
-+
-+	for (i = 0; i < SVC_CREATE_XPRT_CACHE_SIZE; i++) {
-+		SVCXPRT *xprt = svc_create_xprt_cache[i];
-+		struct sockaddr *sap;
-+
-+		if (xprt == NULL)
-+			continue;
-+		if (strcmp(nconf->nc_netid, xprt->xp_netid) != 0)
-+			continue;
-+		sap = (struct sockaddr *)xprt->xp_ltaddr.buf;
-+		if (!nfs_compare_sockaddr(bindaddr, sap))
-+			continue;
-+		return xprt;
-+	}
-+	return NULL;
-+}
-+
- /*
-  * Set up an appropriate bind address, given @port and @nconf.
-  *
-@@ -98,17 +156,113 @@ svc_create_bindaddr(struct netconfig *nconf, const uint16_t port)
- 	return ai;
- }
- 
-+/*
-+ * Create a listener socket on a specific bindaddr, and set
-+ * special socket options to allow it to share the same port
-+ * as other listeners.
-+ *
-+ * Returns an open, bound, and possibly listening network
-+ * socket on success.
-+ *
-+ * Otherwise returns -1 if some error occurs.
-+ */
-+static int
-+svc_create_sock(const struct sockaddr *sap, socklen_t salen,
-+		struct netconfig *nconf)
-+{
-+	int fd, type, protocol;
-+	int one = 1;
-+
-+	switch(nconf->nc_semantics) {
-+	case NC_TPI_CLTS:
-+		type = SOCK_DGRAM;
-+		break;
-+	case NC_TPI_COTS_ORD:
-+		type = SOCK_STREAM;
-+		break;
-+	default:
-+		xlog(D_GENERAL, "%s: Unrecognized bind address semantics: %u",
-+			__func__, nconf->nc_semantics);
-+		return -1;
-+	}
-+
-+	if (strcmp(nconf->nc_proto, NC_UDP) == 0)
-+		protocol = (int)IPPROTO_UDP;
-+	else if (strcmp(nconf->nc_proto, NC_TCP) == 0)
-+		protocol = (int)IPPROTO_TCP;
-+	else {
-+		xlog(D_GENERAL, "%s: Unrecognized bind address protocol: %s",
-+			__func__, nconf->nc_proto);
-+		return -1;
-+	}
-+
-+	fd = socket((int)sap->sa_family, type, protocol);
-+	if (fd == -1) {
-+		xlog(L_ERROR, "Could not make a socket: (%d) %m",
-+			errno);
-+		return -1;
-+	}
-+
-+#ifdef IPV6_SUPPORTED
-+	if (sap->sa_family == AF_INET6) {
-+		if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY,
-+				&one, sizeof(one)) == -1) {
-+			xlog(L_ERROR, "Failed to set IPV6_V6ONLY: (%d) %m",
-+				errno);
-+			(void)close(fd);
-+			return -1;
-+		}
-+	}
-+#endif	/* IPV6_SUPPORTED */
-+
-+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
-+		       &one, sizeof(one)) == -1) {
-+		xlog(L_ERROR, "Failed to set SO_REUSEADDR: (%d) %m",
-+			errno);
-+		(void)close(fd);
-+		return -1;
-+	}
-+
-+	if (bind(fd, sap, salen) == -1) {
-+		xlog(L_ERROR, "Could not bind socket: (%d) %m",
-+			errno);
-+		(void)close(fd);
-+		return -1;
-+	}
-+
-+	if (nconf->nc_semantics == NC_TPI_COTS_ORD)
-+		if (listen(fd, SOMAXCONN) == -1) {
-+			xlog(L_ERROR, "Could not listen on socket: (%d) %m",
-+				errno);
-+			(void)close(fd);
-+			return -1;
-+		}
-+
-+	return fd;
-+}
-+
-+/*
-+ * The simple case is allowing the TI-RPC library to create a
-+ * transport itself, given just the bind address and transport
-+ * semantics.
-+ *
-+ * Our local xprt cache is ignored in this path, since the
-+ * caller is not interested in sharing listeners or ports, and
-+ * the library automatically avoids ports already in use.
-+ *
-+ * Returns the count of started listeners (one or zero).
-+ */
- static unsigned int
--svc_create_nconf(const char *name, const rpcprog_t program,
-+svc_create_nconf_rand_port(const char *name, const rpcprog_t program,
- 		const rpcvers_t version,
- 		void (*dispatch)(struct svc_req *, SVCXPRT *),
--		const uint16_t port, struct netconfig *nconf)
-+		struct netconfig *nconf)
- {
- 	struct t_bind bindaddr;
- 	struct addrinfo *ai;
- 	SVCXPRT	*xprt;
- 
--	ai = svc_create_bindaddr(nconf, port);
-+	ai = svc_create_bindaddr(nconf, 0);
- 	if (ai == NULL)
- 		return 0;
- 
-@@ -119,7 +273,7 @@ svc_create_nconf(const char *name, const rpcprog_t program,
- 	freeaddrinfo(ai);
- 	if (xprt == NULL) {
- 		xlog(D_GENERAL, "Failed to create listener xprt "
--				"(%s, %u, %s)", name, version, nconf->nc_netid);
-+			"(%s, %u, %s)", name, version, nconf->nc_netid);
- 		return 0;
- 	}
- 
-@@ -133,6 +287,93 @@ svc_create_nconf(const char *name, const rpcprog_t program,
- 	return 1;
- }
- 
-+/*
-+ * If a port is specified on the command line, that port value will be
-+ * the same for all listeners created here.  Create each listener
-+ * socket in advance and set SO_REUSEADDR, rather than allowing the
-+ * RPC library to create the listeners for us on a randomly chosen
-+ * port via svc_tli_create(RPC_ANYFD).
-+ *
-+ * Some callers want to listen for more than one RPC version using the
-+ * same port number.  For example, mountd could want to listen for MNT
-+ * version 1, 2, and 3 requests.  This means mountd must use the same
-+ * set of listener sockets for multiple RPC versions, since, on one
-+ * system, you can't have two listener sockets with the exact same
-+ * bind address (and port) and transport protocol.
-+ *
-+ * To accomplish this, this function caches xprts as they are created.
-+ * This cache is checked to see if a previously created xprt can be
-+ * used, before creating a new xprt for this [program, version].  If
-+ * there is a cached xprt with the same bindaddr and transport
-+ * semantics, we simply register the new version with that xprt,
-+ * rather than creating a fresh xprt for it.
-+ *
-+ * The xprt cache implemented here is local to a process.  Two
-+ * separate RPC daemons can not share a set of listeners.
-+ *
-+ * Returns the count of started listeners (one or zero).
-+ */
-+static unsigned int
-+svc_create_nconf_fixed_port(const char *name, const rpcprog_t program,
-+		const rpcvers_t version,
-+		void (*dispatch)(struct svc_req *, SVCXPRT *),
-+		const uint16_t port, struct netconfig *nconf)
-+{
-+	struct addrinfo *ai;
-+	SVCXPRT	*xprt;
-+
-+	ai = svc_create_bindaddr(nconf, port);
-+	if (ai == NULL)
-+		return 0;
-+
-+	xprt = svc_create_find_xprt(ai->ai_addr, nconf);
-+	if (xprt == NULL) {
-+		int fd;
-+
-+		fd = svc_create_sock(ai->ai_addr, ai->ai_addrlen, nconf);
-+		if (fd == -1)
-+			goto out_free;
-+
-+		xprt = svc_tli_create(fd, nconf, NULL, 0, 0);
-+		if (xprt == NULL) {
-+			xlog(D_GENERAL, "Failed to create listener xprt "
-+				"(%s, %u, %s)", name, version, nconf->nc_netid);
-+			(void)close(fd);
-+			goto out_free;
-+		}
-+	}
-+
-+	if (!svc_reg(xprt, program, version, dispatch, nconf)) {
-+		/* svc_reg(3) destroys @xprt in this case */
-+		xlog(D_GENERAL, "Failed to register (%s, %u, %s)",
-+				name, version, nconf->nc_netid);
-+		goto out_free;
-+	}
-+
-+	svc_create_cache_xprt(xprt);
-+
-+	freeaddrinfo(ai);
-+	return 1;
-+
-+out_free:
-+	freeaddrinfo(ai);
-+	return 0;
-+}
-+
-+static unsigned int
-+svc_create_nconf(const char *name, const rpcprog_t program,
-+		const rpcvers_t version,
-+		void (*dispatch)(struct svc_req *, SVCXPRT *),
-+		const uint16_t port, struct netconfig *nconf)
-+{
-+	if (port != 0)
-+		return svc_create_nconf_fixed_port(name, program,
-+			version, dispatch, port, nconf);
-+
-+	return svc_create_nconf_rand_port(name, program,
-+			version, dispatch, nconf);
-+}
-+
- /**
-  * nfs_svc_create - start up RPC svc listeners
-  * @name: C string containing name of new service
-@@ -145,8 +386,7 @@ svc_create_nconf(const char *name, const rpcprog_t program,
-  * the RPC dispatcher.  Returns the number of started network transports.
-  */
- unsigned int
--nfs_svc_create(__attribute__((unused)) char *name,
--		const rpcprog_t program, const rpcvers_t version,
-+nfs_svc_create(char *name, const rpcprog_t program, const rpcvers_t version,
- 		void (*dispatch)(struct svc_req *, SVCXPRT *),
- 		const uint16_t port)
- {
+So, preserving the original mount options somewhere and using that as the starting point for negotiation during the umount is the best way to ensure that a UMNT request will get to the server, in my opinion, not the least because that's the intent of the code we have now.
+
+I think there are more cases when using /proc/mounts will be worse than using /etc/mtab, and thus we'll get worse behavior on UMNT than we have today in some cases.  If this weren't true, I think we would have embraced /proc/mounts already.  I consider a change to use /proc/mounts as risky as a change to not send UMNT at all.
+
+So, I'm OK with keeping umount.nfs around for the time being, but maybe I have to put my foot down and say we mustn't use /proc/mounts for anything but deciding whether the mount point is an NFSv4 mount.  I'm happy to volunteer code, and also happy to collaborate with you on a fix.  I've already spent a lot of time poking at this and coding prototypes, so I'm "invested."
+
+To summarize: instead of relying on /etc/mtab, also use an NFS-specific place to record the same information.  umount.nfs can use that instead of /etc/mtab.  And by the way, we don't touch this information during a remount... heh.  That guarantees that we preserve existing good behaviors of umount.nfs, continue to update /etc/mtab as documented, until maybe it goes away, but eliminate our functional dependence on it.
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
