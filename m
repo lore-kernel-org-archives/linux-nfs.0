@@ -1,100 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:47757 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750916Ab0JYL5Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Oct 2010 07:57:24 -0400
-Message-ID: <4CC5706F.3020308@bull.net>
-Date: Mon, 25 Oct 2010 13:56:31 +0200
-From: Menyhart Zoltan <Zoltan.Menyhart@bull.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: "xprt" reference count drops to 0
-References: <4C7E4469.70807@duchatelet.net> <4CAAE046.5060209@bull.net> <20101021203801.GA12038@fieldses.org> <4CC1A722.4060907@bull.net> <20101022212007.GB22837@fieldses.org>
-In-Reply-To: <20101022212007.GB22837@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:34974 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752760Ab0JNPVe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Oct 2010 11:21:34 -0400
+Received: by fxm4 with SMTP id 4so2508875fxm.19
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Oct 2010 08:21:33 -0700 (PDT)
+Date: Thu, 14 Oct 2010 11:21:33 -0400
+Message-ID: <AANLkTin8tXxRFA5G8c9jKLv6aeEM8YLRX54YT5GozxK+@mail.gmail.com>
+Subject: Thread scheduling issues
+From: Lyle Seaman <lyleseaman@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> Maybe your fix is right, but I'm not sure: It looks to me like if
-> svc_xprt_enqueue() gets to "process:" in a situation where the caller
-> holds the only reference, then that's already a bug.  Do you know who
-> the caller of svc_xprt_enqueue() was when this happened?
+Ok.  I've been trying to figure out a performance problem with some of
+my production servers (I'm just not able to get enough simultaneous
+I/Os queued up to get decent performance out of my disk subsystem),
+and I have run into something that strikes me as odd.  For reference,
+the code I'm looking at is from a 2.6.35.22 kernel, and I know there
+have been some relevant changes since then but I am not seeing the
+discussion of this in the mailing list archives. If I have to figure
+out the new source control system to look at the head-of-line code,
+say so.
 
-Unfortunately, I do not.
-We saw lots of warnings like this (before my patch):
+in sunrpc/svc_xprt.c:svc_recv() I find this:
 
-WARNING: at lib/kref.c:43 kref_get+0x23/0x2d()
-Hardware name: Stoutland Platform
-Modules linked in: rdma_ucm ib_sdp rdma_cm iw_cm ib_addr ib_ipoib ib_cm ib_sa ib_uverbs ib_umad mlx4_ib mlx4_core ib_mthca ib_mad ib_core ipt_MASQUERADE iptable_nat nf_nat nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 ip_tables x_tables nfsd exportfs nfs lockd fscache nfs_acl auth_rpcgss sunrpc ipv6 scsi_dh_emc dm_round_robin dm_multipath iTCO_wdt i2c_i801 i2c_core igb ioatdma iTCO_vendor_support dca raid0 lpfc usb_storage scsi_transport_fc scsi_tgt [last unloaded: mlx4_core]
-Pid: 3571, comm: nfsd Tainted: G      D W  2.6.32.9-21.fc12.Bull.6.x86_64 #1
-Call Trace:
-  [<ffffffff81050af0>] warn_slowpath_common+0x7c/0x94
-  [<ffffffff81050b1c>] warn_slowpath_null+0x14/0x16
-  [<ffffffff81222cca>] kref_get+0x23/0x2d
-  [<ffffffffa01d0a90>] svc_xprt_get+0x12/0x14 [sunrpc]
-  [<ffffffffa01d1903>] svc_recv+0x2db/0x78a [sunrpc]
-  [<ffffffff8104b2ef>] ? default_wake_function+0x0/0x14
-  [<ffffffffa02a1898>] nfsd+0xac/0x13f [nfsd]
-  [<ffffffffa02a17ec>] ? nfsd+0x0/0x13f [nfsd]
-  [<ffffffff8106ee0e>] kthread+0x7f/0x87
-  [<ffffffff8100cd6a>] child_rip+0xa/0x20
-  [<ffffffff8106ed8f>] ? kthread+0x0/0x87
-  [<ffffffff8100cd60>] ? child_rip+0x0/0x20
+        /* now allocate needed pages.  If we get a failure, sleep briefly */
+ 620        pages = (serv->sv_max_mesg + PAGE_SIZE) / PAGE_SIZE;
+ 621        for (i = 0; i < pages ; i++)
+ 622                while (rqstp->rq_pages[i] == NULL) {
+ 623                        struct page *p = alloc_page(GFP_KERNEL);
+ 624                        if (!p) {
+ 625                                set_current_state(TASK_INTERRUPTIBLE);
+ 626                                if (signalled() || kthread_should_stop()) {
+ 627                                        set_current_state(TASK_RUNNING);
+ 628                                        return -EINTR;
+ 629                                }
+ 630                                schedule_timeout(msecs_to_jiffies(500));
+ 631                        }
+ 632                        rqstp->rq_pages[i] = p;
+ 633                }
 
-When you can see the messages like this, the guilty task is already over...
+First of all, 500ms is a long way from "brief".  Second, it seems like
+a really bad idea to sleep while holding a contended resource.
+Shouldn't you drop those pages before sleeping?  It's been a long time
+since I knew anything about the Linux vm system, but presumably the
+reason that alloc_page has failed is because there aren't 26 pages
+available*.  So now I'm going to sleep while holding, say, the last 24
+free pages?  This looks like deadlock city, except for the valiant
+efforts by the vm system to keep freeing pages, and other adjustments
+to vary sv_max_mesg depending on the number of threads which mean that
+in practice, deadlock is unlikely.  But figuring out the interaction
+of all those other systems requires global knowledge, which is asking
+for trouble in the long run.  And there are intermediate degrees of
+cascading interlocked interdependencies that result in poor
+performance which aren't technically a complete deadlock.
 
-> Doh.  Wait, when you say "has not been corrected on 2.6.36-rc3", do you
-> mean you've actually *seen* the problem occur on 2.6.36-rc3?
+(* I'm going to have to do some more digging here, because in my
+specific situation, vmstat generally reports between 100M and 600M
+free, so I'm admittedly not clear on why alloc_page is failing me,
+unless there is a difference between "free" and "available for nfsd".)
 
-We do not really use more advanced kernel than the 2.6.32 in a great number.
-Just some test configurations up to the 2.6.36-rc6...
-I have not seen this problem on recent kernels.
+And then there's this, in svc_xprt_enqueue()
 
-I'm not sure that I can really follow your explication.
+ 360 process:
+ 361        /* Work out whether threads are available */
+ 362        thread_avail = !list_empty(&pool->sp_threads);  /* threads
+are asleep */
+ 363        if (pool->sp_nwaking >= SVC_MAX_WAKING) {
+//  == 5 -lws
+ 364                /* too many threads are runnable and trying to wake up */
+ 365                thread_avail = 0;
+ 366                pool->sp_stats.overloads_avoided++;
+ 367        }
 
-I have got two reasons why I think my patch is good.
+Now, the sp_nwaking counter is only decremented after that snippet of
+code earlier, so if I've got five threads that happen to all run into
+a transient problem getting the pages they need, they're going to
+sleep for 500 millis and -nothing- is going to happen.
 
-1. There are several code sequences where just after calling "svc_xprt_enqueue()",
-    we drop "kref", i.e. we do not delegate the access right. Therefore "kref"
-    should be increased by "svc_xprt_enqueue()". See:
+I see that this overloads_avoided branch disappeared in more recent
+kernels, was there some discussion of it that you can point me to so I
+don't have to rehash an old topic? I think that removing it actually
+increases the likelihood of deadlock.
 
-svc_revisit()
-{
-...
-	svc_xprt_enqueue(xprt);
-	svc_xprt_put(xprt);
-}
-
-svc_xprt_release()
-{
-...
-	svc_reserve(rqstp, 0):
-		...
-		svc_xprt_enqueue(xprt);
-	svc_xprt_put(xprt);
-}
-
-svc_check_conn_limits()
-{
-...
-			svc_xprt_enqueue(xprt);
-			svc_xprt_put(xprt);
-}
-
-svc_age_temp_xprts()
-{
-...
-		svc_xprt_enqueue(xprt);
-		svc_xprt_put(xprt);
-}
-
-2. Increasing "kref" by "svc_recv()" is too late: by the time you can increase
-    "kref", the structure may have already been destroyed.
-
-As "svc_xprt_enqueue()" has not been modified since, I deduce that my patch is
-correct for the 2.6.36-rc kernels, too.
-
-Thanks.
-
-Zoltan Menyhart
+Finally, zero-copy is great, awesome, I love it.  But it seems
+profligate to allocate an entire 26 pages for every operation when
+only 9% of them (at least in my workload) are writes.  All the rest of
+the operations only need a small fraction of that to be preallocated.
+I don't have a concrete suggestion here, I'd have to do some tinkering
+with the code first.  I'm just... saying.  Maybe allocate two pages up
+front, then wait to see if the others are needed and allocate them at
+that time.  If you're willing to sleep in svc_recv while holding lots
+of pages, it's no worse to sleep while holding one or two.
