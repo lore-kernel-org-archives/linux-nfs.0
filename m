@@ -1,95 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50456 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753188Ab0JARHs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Oct 2010 13:07:48 -0400
-Date: Fri, 1 Oct 2010 13:07:33 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: pnfs-all-latest client crash
-Message-ID: <20101001170733.GA30570@fieldses.org>
-References: <20100921164211.GK26473@fieldses.org>
- <4C98FCC3.50803@panasas.com>
- <20100921190108.GA4385@fieldses.org>
- <4CA4ABED.7080706@panasas.com>
- <20100930152944.GA6598@fieldses.org>
- <4CA4ADFA.2090807@panasas.com>
- <20100930154350.GB6598@fieldses.org>
- <4CA4EA74.8070701@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CA4EA74.8070701@panasas.com>
+Received: from snt0-omc3-s7.snt0.hotmail.com ([65.55.90.146]:4707 "EHLO
+	snt0-omc3-s7.snt0.hotmail.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753539Ab0JNWjL convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Oct 2010 18:39:11 -0400
+Message-ID: <SNT118-W30AF741CD2856C503B4CBECD560@phx.gbl>
+From: David Stalder <davestar99@hotmail.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: Client machine freezes under various circumstances
+Date: Thu, 14 Oct 2010 22:39:10 +0000
+In-Reply-To: <SNT118-W26DE5FF8A1DD773D3EDD64CD560@phx.gbl>
+References: <SNT118-W26DE5FF8A1DD773D3EDD64CD560@phx.gbl>
+Content-Type: text/plain; charset="iso-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Sep 30, 2010 at 09:52:20PM +0200, Benny Halevy wrote:
-> On 2010-09-30 17:43, J. Bruce Fields wrote:
-> > On Thu, Sep 30, 2010 at 05:34:18PM +0200, Benny Halevy wrote:
-> >> On 2010-09-30 17:29, J. Bruce Fields wrote:
-> >>> On Thu, Sep 30, 2010 at 05:25:33PM +0200, Benny Halevy wrote:
-> >>>> On 2010-09-21 21:01, J. Bruce Fields wrote:
-> >>>>> On Tue, Sep 21, 2010 at 08:43:15PM +0200, Benny Halevy wrote:
-> >>>>>> On 2010-09-21 18:42, J. Bruce Fields wrote:
-> >>>>>>> I get the following on pnfs-all-latest, while doing a non-pnfs 4.1 mount.
-> >>>>>>
-> >>>>>> Bruce, can you please provide you .config file?
-> >>>>>> >From the registers value it's possible the calldata is used
-> >>>>>> after free...
-> >>>>>
-> >>>>> Yep.  I ran a 'make oldconfig' on the appended and built from that.
-> >>>>>
-> >>>>> We've seen poisoning in trond's latest for-next as well.  Which I don't
-> >>>>> think you're including.  But I'll add linux-nfs to the cc for that.
-> >>>>>
-> >>>>> --b.
-> >>>>>
-> >>>>> #
-> >>>>> # Automatically generated make config: don't edit
-> >>>>> # Linux kernel version: 2.6.36-rc4
-> >>>>> # Wed Sep 15 14:57:18 2010
-> >>>>> #
-> >>> ...
-> >>>>> # CONFIG_INPUT_TABL
-> >>>>
-> >>>> Looks like the message got truncated :-(
-> >>>
-> >>> Huh.  Sorry about that!
-> >>
-> >> And I presume you config all pNFS options as 'N', right?
-> > 
-> > I'm just running make oldconfig over that.  Unless the pnfs patches are
-> > defaulting those options to 'Y', then yes, that must be what it's
-> > doing....
-> > 
-> > --b.
-> 
-> That's really odd.
-> 
-> with your .config and !CONFIG_PNFSD
-> and with no modules configured
-> though with modules enabled:
-> CONFIG_MODULES=y
-> # CONFIG_MODULE_FORCE_LOAD is not set
-> CONFIG_MODULE_UNLOAD=y
-> # CONFIG_MODULE_FORCE_UNLOAD is not set
-> # CONFIG_MODVERSIONS is not set
-> # CONFIG_MODULE_SRCVERSION_ALL is not set
-> 
-> when turning on rpc debugging I see the server rejecting
-> I believe the EXCHANGE_ID RPC on BADCRED:
-> 
-> svc: svc_authenticate (1)
-> svc: authentication failed (1)
-> 
-> I see this also over NFSv4.0...
 
-That's odd.
+Hello
 
-> Is this what you're seeing too?
 
-I actually haven't seen either problem manifest itself on the latest
-runs, and haven't had time to go back and look at the failure on the
-earlier ones.
+I'm not sure if this is the right place to post this issue but I'm trying here because different support forums for my Linux distribution and hours of searching the web couldn't solve my question. I'm quite a linux novice, though.
 
---b.
+
+I'm running a NFS server (Kubuntu 10.4 / 2.6.32-25) on which I accessed without problems for months with a Kubuntu 8.04 client machine. The machines are connected via Gigabit Ethernet. Recently I upgraded the client machine to Kubuntu 10.10 / 2.6.35-22 and now I'm facing the following problems:
+
+
+Under various circumstances the client machine completely locks up when performing actions on the NFS shares
+- Unzipping a big file from the NFS server to the NFS server via the client -> always freezes (mostly after a few seconds, sometimes it takes a bit longer)
+
+- Transfering big files from one NFS folder to another -> mostly freezes after a short while
+- Letting the Strigi-Indexer index files on the NFS shares -> mostly freeze after a short while
+- Watching a movie which is on the NFS server -> sometimes freezes after variably amounts of time
+
+
+
+So it seems that 'heavy' data transfer load causes the client to lock up.
+
+
+/proc/mounts tells me that the shares are mounted as follows:
+
+
+192.168.1.101:/media/data4 /media/data4 nfs rw,sync,nosuid,nodev,noexec,noatime,nodiratime,vers=3,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.1.101,mountvers=3,mountport=51311,mountproto=udp ,addr=192.168.1.101 0 0
+
+Before at the 8.04 setup which worked perfectly it was:
+
+192.168.1.101:/media/data4 /media/data4 nfs rw,nosuid,nodev,noexec,vers=3,rsize=262144,wsize=2 62144,hard,nointr,proto=tcp,timeo=600,retrans=2,se c=sys,addr=192.168.1.101 0 0
+
+
+
+I tried to change some of the mount / export options (for example switching from async to sync) but nothing caused any positive effect on the problem.
+
+
+I'd gladly provide you with any additional informations and/or logs if you could tell me how to enable respectively where to gather.
+
+
+Thanks!
+
+
+ 		 	   		  
