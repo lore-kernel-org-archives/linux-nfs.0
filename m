@@ -1,31 +1,39 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Linux pNFS status meeting 10/14/10
-Date: Wed, 13 Oct 2010 19:06:44 -0700
-Message-ID: <OF7DFFAE81.65A55F81-ON882577BC.000B23CB-882577BC.000B95AB@us.ibm.com>
+From: "Halevy, Benny" <bhalevy@panasas.com>
+Subject: RE: Linux pNFS status meeting 10/14/10
+Date: Thu, 14 Oct 2010 09:12:29 -0400
+Message-ID: <7225594ED4A1304C9E43D030A886D221F4C9A2@daytona.int.panasas.com>
+References: <OF7DFFAE81.65A55F81-ON882577BC.000B23CB-882577BC.000B95AB@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+To: "Marc Eshel" <eshel@almaden.ibm.com>, <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:60457 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752974Ab0JNCGi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Oct 2010 22:06:38 -0400
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by e6.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id o9E273bZ003349
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 22:07:03 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o9E26ZBN315420
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 22:06:35 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o9E26Zon009345
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 22:06:35 -0400
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id o9E26ZQw009341
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 22:06:35 -0400
+Received: from exprod5og114.obsmtp.com ([64.18.0.28]:53264 "HELO
+	exprod5og114.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754157Ab0JNNN0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Oct 2010 09:13:26 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Boaz and I will be on our flight back to Israel so we'll have to skip it this time.
+ 
+Benny
+
+________________________________
+
+From: linux-nfs-owner@vger.kernel.org on behalf of Marc Eshel
+Sent: Thu 2010-10-14 04:06
+To: linux-nfs@vger.kernel.org
+Subject: Linux pNFS status meeting 10/14/10
+
+
+
 Meeting on Thursday 10/14/10 at 9:30 AM pacific time (12:30 PM UMICH time)
 
-Marc. 
+Marc.
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
