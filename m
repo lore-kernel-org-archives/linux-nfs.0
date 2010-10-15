@@ -1,164 +1,169 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7923 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932464Ab0JZNSC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Oct 2010 09:18:02 -0400
-Message-ID: <4CC6D4F9.3040402@netapp.com>
-Date: Tue, 26 Oct 2010 09:17:45 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFS: rename idmapper components
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:44163 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756645Ab0JORrA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Oct 2010 13:47:00 -0400
+Message-ID: <4CB89393.6000207@opengridcomputing.com>
+Date: Fri, 15 Oct 2010 12:46:59 -0500
+From: Tom Tucker <tom@opengridcomputing.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Tejun Heo <tj@kernel.org>, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
+        Tom Tucker <tom@ogc.us>
+Subject: Re: [PATCH linux-2.6.36-rc7] sunrpc/xprtrdma: clean up workqueue
+ usage
+References: <4CB87807.7050108@kernel.org> <20101015171132.GA18869@fieldses.org>
+In-Reply-To: <20101015171132.GA18869@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This patch renames the idmapper upcall program from nfs.upcall to nfs.idmap.
-It also changes the key type from id_resolver to nfs_idmap.
+  On 10/15/10 12:11 PM, J. Bruce Fields wrote:
+> Tom, could you take a look?
+>
+This looks reasonable to me.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
-diff --git a/Documentation/filesystems/nfs/idmapper.txt b/Documentation/filesystems/nfs/idmapper.txt
-index c385204..18ee6f5 100644
---- a/Documentation/filesystems/nfs/idmapper.txt
-+++ b/Documentation/filesystems/nfs/idmapper.txt
-@@ -6,7 +6,7 @@ Id mapper is used by NFS to translate user and group ids into names, and to
- translate user and group names into ids.  Part of this translation involves
- performing an upcall to userspace to request the information.  Id mapper will
- user request-key to perform this upcall and cache the result.  The program
--/usr/sbin/nfs.upcall should be called by request-key, and will perform the
-+/usr/sbin/nfs.idmap should be called by request-key, and will perform the
- translation and initialize a key with the resulting information.
- 
-  NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
-@@ -20,12 +20,12 @@ direct the upcall.  The following line should be added:
- 
- #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
- #======	=======	===============	===============	===============================
--create	id_resolver	*	*		/usr/sbin/nfs.upcall %k %d 600
-+create	nfs_idmap	*	*		/usr/sbin/nfs.idmap %k %d 600
- 
--This will direct all id_resolver requests to the program /usr/sbin/nfs.upcall.
-+This will direct all nfs_idmap requests to the program /usr/sbin/nfs.idmap.
- The last parameter, 600, defines how many seconds into the future the key will
--expire.  This parameter is optional for /usr/sbin/nfs.upcall.  When the timeout
--is not specified, nfs.upcall will default to 600 seconds.
-+expire.  This parameter is optional for /usr/sbin/nfs.idmap.  When the timeout
-+is not specified, nfs.idmap will default to 600 seconds.
- 
- id mapper uses for key descriptions:
- 	  uid:  Find the UID for the given user
-@@ -39,29 +39,29 @@ would edit your request-key.conf so it look similar to this:
- 
- #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
- #======	=======	===============	===============	===============================
--create	id_resolver	uid:*	*		/some/other/program  %k %d 600
--create	id_resolver	*	*		/usr/sbin/nfs.upcall %k %d 600
-+create	nfs_idmap	uid:*	*		/some/other/program %k %d 600
-+create	nfs_idmap	*	*		/usr/sbin/nfs.idmap %k %d 600
- 
- Notice that the new line was added above the line for the generic program.
- request-key will find the first matching line and corresponding program.  In
- this case, /some/other/program will handle all uid lookups and
--/usr/sbin/nfs.upcall will handle gid, user, and group lookups.
-+/usr/sbin/nfs.idmap will handle gid, user, and group lookups.
- 
- See <file:Documentation/keys-request-keys.txt> for more information about the
- request-key function.
- 
- 
--==========
--nfs.upcall
--==========
--nfs.upcall is designed to be called by request-key, and should not be run "by
-+=========
-+nfs.idmap
-+=========
-+nfs.idmap is designed to be called by request-key, and should not be run "by
- hand".  This program takes two arguments, a serialized key and a key
- description.  The serialized key is first converted into a key_serial_t, and
- then passed as an argument to keyctl_instantiate (both are part of keyutils.h).
- 
--The actual lookups are performed by functions found in nfsidmap.h.  nfs.upcall
-+The actual lookups are performed by functions found in nfsidmap.h.  nfs.idmap
- determines the correct function to call by looking at the first part of the
- description string.  For example, a uid lookup description will appear as
- "uid:user@domain".
- 
--nfs.upcall will return 0 if the key was instantiated, and non-zero otherwise.
-+nfs.idmap will return 0 if the key was instantiated, and non-zero otherwise.
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index dec47ed..313e878 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -49,10 +49,10 @@
- 
- #define NFS_UINT_MAXLEN 11
- 
--const struct cred *id_resolver_cache;
-+const struct cred *nfs_idmap_cache;
- 
--struct key_type key_type_id_resolver = {
--	.name		= "id_resolver",
-+struct key_type key_type_nfs_idmap = {
-+	.name		= "nfs_idmap",
- 	.instantiate	= user_instantiate,
- 	.match		= user_match,
- 	.revoke		= user_revoke,
-@@ -67,13 +67,13 @@ int nfs_idmap_init(void)
- 	struct key *keyring;
- 	int ret = 0;
- 
--	printk(KERN_NOTICE "Registering the %s key type\n", key_type_id_resolver.name);
-+	printk(KERN_NOTICE "Registering the %s key type\n", key_type_nfs_idmap.name);
- 
- 	cred = prepare_kernel_cred(NULL);
- 	if (!cred)
- 		return -ENOMEM;
- 
--	keyring = key_alloc(&key_type_keyring, ".id_resolver", 0, 0, cred,
-+	keyring = key_alloc(&key_type_keyring, ".nfs_idmap", 0, 0, cred,
- 			     (KEY_POS_ALL & ~KEY_POS_SETATTR) |
- 			     KEY_USR_VIEW | KEY_USR_READ,
- 			     KEY_ALLOC_NOT_IN_QUOTA);
-@@ -86,13 +86,13 @@ int nfs_idmap_init(void)
- 	if (ret < 0)
- 		goto failed_put_key;
- 
--	ret = register_key_type(&key_type_id_resolver);
-+	ret = register_key_type(&key_type_nfs_idmap);
- 	if (ret < 0)
- 		goto failed_put_key;
- 
- 	cred->thread_keyring = keyring;
- 	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
--	id_resolver_cache = cred;
-+	nfs_idmap_cache = cred;
- 	return 0;
- 
- failed_put_key:
-@@ -104,9 +104,9 @@ failed_put_cred:
- 
- void nfs_idmap_quit(void)
- {
--	key_revoke(id_resolver_cache->thread_keyring);
--	unregister_key_type(&key_type_id_resolver);
--	put_cred(id_resolver_cache);
-+	key_revoke(nfs_idmap_cache->thread_keyring);
-+	unregister_key_type(&key_type_nfs_idmap);
-+	put_cred(nfs_idmap_cache);
- }
- 
- /*
-@@ -150,8 +150,8 @@ static ssize_t nfs_idmap_request_key(const char *name, size_t namelen,
- 	if (ret <= 0)
- 		goto out;
- 
--	saved_cred = override_creds(id_resolver_cache);
--	rkey = request_key(&key_type_id_resolver, desc, "");
-+	saved_cred = override_creds(nfs_idmap_cache);
-+	rkey = request_key(&key_type_nfs_idmap, desc, "");
- 	revert_creds(saved_cred);
- 	kfree(desc);
- 	if (IS_ERR(rkey)) {
+My bet is that it wasn't tested though due to hardware availability. I'll 
+test it this weekend and let you know how it goes.
+
+Tom
+> --b.
+>
+> On Fri, Oct 15, 2010 at 05:49:27PM +0200, Tejun Heo wrote:
+>> * Create and use svc_rdma_wq instead of using the system workqueue and
+>>    flush_scheduled_work().  This workqueue is necessary to serve as
+>>    flushing domain for rdma->sc_work which is used to destroy itself
+>>    and thus can't be flushed explicitly.
+>>
+>> * Replace cancel_delayed_work() + flush_scheduled_work() with
+>>    cancel_delayed_work_sync().
+>>
+>> * Implement synchronous connect in xprt_rdma_connect() using
+>>    flush_delayed_work() on the rdma_connect work instead of using
+>>    flush_scheduled_work().
+>>
+>> This is to prepare for the deprecation and removal of
+>> flush_scheduled_work().
+>>
+>> Signed-off-by: Tejun Heo<tj@kernel.org>
+>> ---
+>>   net/sunrpc/xprtrdma/svc_rdma.c           |   11 ++++++++++-
+>>   net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 +++++-
+>>   net/sunrpc/xprtrdma/transport.c          |    5 ++---
+>>   3 files changed, 17 insertions(+), 5 deletions(-)
+>>
+>> Index: work/net/sunrpc/xprtrdma/svc_rdma.c
+>> ===================================================================
+>> --- work.orig/net/sunrpc/xprtrdma/svc_rdma.c
+>> +++ work/net/sunrpc/xprtrdma/svc_rdma.c
+>> @@ -43,6 +43,7 @@
+>>   #include<linux/slab.h>
+>>   #include<linux/fs.h>
+>>   #include<linux/sysctl.h>
+>> +#include<linux/workqueue.h>
+>>   #include<linux/sunrpc/clnt.h>
+>>   #include<linux/sunrpc/sched.h>
+>>   #include<linux/sunrpc/svc_rdma.h>
+>> @@ -74,6 +75,8 @@ atomic_t rdma_stat_sq_prod;
+>>   struct kmem_cache *svc_rdma_map_cachep;
+>>   struct kmem_cache *svc_rdma_ctxt_cachep;
+>>
+>> +struct workqueue_struct *svc_rdma_wq;
+>> +
+>>   /*
+>>    * This function implements reading and resetting an atomic_t stat
+>>    * variable through read/write to a proc file. Any write to the file
+>> @@ -231,7 +234,7 @@ static ctl_table svcrdma_root_table[] =
+>>   void svc_rdma_cleanup(void)
+>>   {
+>>   	dprintk("SVCRDMA Module Removed, deregister RPC RDMA transport\n");
+>> -	flush_scheduled_work();
+>> +	destroy_workqueue(svc_rdma_wq);
+>>   	if (svcrdma_table_header) {
+>>   		unregister_sysctl_table(svcrdma_table_header);
+>>   		svcrdma_table_header = NULL;
+>> @@ -249,6 +252,11 @@ int svc_rdma_init(void)
+>>   	dprintk("\tsq_depth         : %d\n",
+>>   		svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT);
+>>   	dprintk("\tmax_inline       : %d\n", svcrdma_max_req_size);
+>> +
+>> +	svc_rdma_wq = alloc_workqueue("svc_rdma", 0, 0);
+>> +	if (!svc_rdma_wq)
+>> +		return -ENOMEM;
+>> +
+>>   	if (!svcrdma_table_header)
+>>   		svcrdma_table_header =
+>>   			register_sysctl_table(svcrdma_root_table);
+>> @@ -283,6 +291,7 @@ int svc_rdma_init(void)
+>>   	kmem_cache_destroy(svc_rdma_map_cachep);
+>>    err0:
+>>   	unregister_sysctl_table(svcrdma_table_header);
+>> +	destroy_workqueue(svc_rdma_wq);
+>>   	return -ENOMEM;
+>>   }
+>>   MODULE_AUTHOR("Tom Tucker<tom@opengridcomputing.com>");
+>> Index: work/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> ===================================================================
+>> --- work.orig/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> +++ work/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> @@ -45,6 +45,7 @@
+>>   #include<linux/sched.h>
+>>   #include<linux/slab.h>
+>>   #include<linux/spinlock.h>
+>> +#include<linux/workqueue.h>
+>>   #include<rdma/ib_verbs.h>
+>>   #include<rdma/rdma_cm.h>
+>>   #include<linux/sunrpc/svc_rdma.h>
+>> @@ -89,6 +90,9 @@ struct svc_xprt_class svc_rdma_class = {
+>>   /* WR context cache. Created in svc_rdma.c  */
+>>   extern struct kmem_cache *svc_rdma_ctxt_cachep;
+>>
+>> +/* Workqueue created in svc_rdma.c */
+>> +extern struct workqueue_struct *svc_rdma_wq;
+>> +
+>>   struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+>>   {
+>>   	struct svc_rdma_op_ctxt *ctxt;
+>> @@ -1184,7 +1188,7 @@ static void svc_rdma_free(struct svc_xpr
+>>   	struct svcxprt_rdma *rdma =
+>>   		container_of(xprt, struct svcxprt_rdma, sc_xprt);
+>>   	INIT_WORK(&rdma->sc_work, __svc_rdma_free);
+>> -	schedule_work(&rdma->sc_work);
+>> +	queue_work(svc_rdma_wq,&rdma->sc_work);
+>>   }
+>>
+>>   static int svc_rdma_has_wspace(struct svc_xprt *xprt)
+>> Index: work/net/sunrpc/xprtrdma/transport.c
+>> ===================================================================
+>> --- work.orig/net/sunrpc/xprtrdma/transport.c
+>> +++ work/net/sunrpc/xprtrdma/transport.c
+>> @@ -237,8 +237,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
+>>
+>>   	dprintk("RPC:       %s: called\n", __func__);
+>>
+>> -	cancel_delayed_work(&r_xprt->rdma_connect);
+>> -	flush_scheduled_work();
+>> +	cancel_delayed_work_sync(&r_xprt->rdma_connect);
+>>
+>>   	xprt_clear_connected(xprt);
+>>
+>> @@ -460,7 +459,7 @@ xprt_rdma_connect(struct rpc_task *task)
+>>   	} else {
+>>   		schedule_delayed_work(&r_xprt->rdma_connect, 0);
+>>   		if (!RPC_IS_ASYNC(task))
+>> -			flush_scheduled_work();
+>> +			flush_delayed_work(&r_xprt->rdma_connect);
+>>   	}
+>>   }
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+
