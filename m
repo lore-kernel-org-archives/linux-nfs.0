@@ -1,59 +1,38 @@
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-Subject: Re: linux-next: Tree for October 6
-Date: Tue, 26 Oct 2010 23:57:16 +1100
-Message-ID: <20101026235716.06c0fe3c.sfr@canb.auug.org.au>
-References: <20101006163632.c1943a38.sfr@canb.auug.org.au>
-	<AANLkTimb2NxXcfj-o=F18S1u2rn-o851F+1sgQ_2uOVQ@mail.gmail.com>
-	<20101026080822.GA10520@elte.hu>
-	<1288096333.3123.9.camel@heimdal.trondhjem.org>
-	<20101026124113.GA10872@elte.hu>
+From: Tejun Heo <tj@kernel.org>
+Subject: Re: [PATCH linux-2.6.36-rc7] sunrpc/xprtrdma: clean up workqueue
+ usage
+Date: Fri, 15 Oct 2010 21:11:01 +0200
+Message-ID: <4CB8A745.5020206@kernel.org>
+References: <4CB87807.7050108@kernel.org> <20101015171132.GA18869@fieldses.org> <4CB89393.6000207@opengridcomputing.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pgp-signature";
- micalg="PGP-SHA1";
- boundary="Signature=_Tue__26_Oct_2010_23_57_16_+1100_6=oxbTPMBh_4nXaa"
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Charles Edward Lever <Chuck.Lever@oracle.com>,
-	Zimny Lech <napohybelskurwysynom2010@gmail.com>,
-	linux-next@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	linux-nfs@vger.kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>
-To: Ingo Molnar <mingo@elte.hu>
-Return-path: <linux-next-owner@vger.kernel.org>
-In-Reply-To: <20101026124113.GA10872@elte.hu>
-Sender: linux-next-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
+	Tom Tucker <tom@ogc.us>
+To: Tom Tucker <tom@opengridcomputing.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from hera.kernel.org ([140.211.167.34]:32907 "EHLO hera.kernel.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756401Ab0JOTLy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Oct 2010 15:11:54 -0400
+In-Reply-To: <4CB89393.6000207@opengridcomputing.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Signature=_Tue__26_Oct_2010_23_57_16_+1100_6=oxbTPMBh_4nXaa
-Content-Type: text/plain; charset=US-ASCII
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On 10/15/2010 07:46 PM, Tom Tucker wrote:
+>  On 10/15/10 12:11 PM, J. Bruce Fields wrote:
+>> Tom, could you take a look?
+>>
+> This looks reasonable to me.
+> 
+> My bet is that it wasn't tested though due to hardware
+> availability. I'll test it this weekend and let you know how it
+> goes.
 
-On Tue, 26 Oct 2010 14:41:13 +0200 Ingo Molnar <mingo@elte.hu> wrote:
->
->   Reported-by: Stephen Rothwell <sfr@canb.auug.org.au>
+Yeap, only compile tested.  Testing would be much appreciated.
 
-Actually
+Thanks.
 
-Reported-by: Zimny Lech <napohybelskurwysynom2010@gmail.com>
-
---=20
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
-http://www.canb.auug.org.au/~sfr/
-
---Signature=_Tue__26_Oct_2010_23_57_16_+1100_6=oxbTPMBh_4nXaa
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-
-iQEcBAEBAgAGBQJMxtAsAAoJEDMEi1NhKgbsnOAH/jjGBEwkC18GBDcCNocPBKjq
-Efz59FJRuTA06+wgAUredbNL3/FLewG6ZyWrxHaCOaZdzzF6s5N62shDwUFgQI2r
-WFv9Mdw0cXzbNTSDpasT12YAEY5teBPJrgYOex9CpGcJ13OKUAbIcRL+H/rLTidX
-Xjl/06tQsnjK+bBqBsbgoE+ZKwfWO5UesXvu1r5Cy7q1qtc4I14glgdwA2QLuLyW
-/TnJKRWQRLArFzrZtcMv2fc+1XqXPbOCCXoZNqHoj7i7QHoRDT/z1kq5VbZNv93F
-YS0/6tqymR4502Cv7HnIYlYDqZbSr93XLd4mVP14P9pzvtLnWOuNqD3rdJikyd4=
-=oE9y
------END PGP SIGNATURE-----
-
---Signature=_Tue__26_Oct_2010_23_57_16_+1100_6=oxbTPMBh_4nXaa--
+-- 
+tejun
