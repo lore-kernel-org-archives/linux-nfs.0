@@ -1,158 +1,156 @@
-From: Pavel Emelyanov <xemul@parallels.com>
-Subject: Re: [PATCH v2 9/13] sunrpc: Merge the xs_bind code
-Date: Fri, 15 Oct 2010 20:24:44 +0400
-Message-ID: <4CB8804C.1060108@parallels.com>
-References: <4CA9CDA8.4010407@parallels.com> <4CA9CEE8.9050404@parallels.com> <66FA6AAD-87DC-4B81-8DAC-8F1D4FF7B72E@oracle.com> <4CAABAAB.8040608@parallels.com> <4CAB11A4.7000306@parallels.com> <20101015160545.GB12268@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH linux-2.6.36-rc7] sunrpc/xprtrdma: clean up workqueue
+ usage
+Date: Fri, 15 Oct 2010 13:11:33 -0400
+Message-ID: <20101015171132.GA18869@fieldses.org>
+References: <4CB87807.7050108@kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
+	Tom Tucker <tom@ogc.us>
+To: Tejun Heo <tj@kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:5646 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:52859 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755389Ab0JOQY4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Oct 2010 12:24:56 -0400
-In-Reply-To: <20101015160545.GB12268@fieldses.org>
+	id S1756371Ab0JORMC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Oct 2010 13:12:02 -0400
+In-Reply-To: <4CB87807.7050108@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/15/2010 08:05 PM, J. Bruce Fields wrote:
-> On Tue, Oct 05, 2010 at 03:53:08PM +0400, Pavel Emelyanov wrote:
->> There's the only difference betseen the xs_bind4 and the
->> xs_bind6 - the size of sockaddr structure they use.
->>
->> Fortunatelly its size can be indirectly get from the transport.
->>
->> Change since v1:
->> * use sockaddr_storage instead of sockaddr
->> * use rpc_set_port instead of manual port assigning
-> 
-> Whoops, dropping this; it breaks nfsd startup.  I haven't figured out
-> why yet, but I get
-> 
-> RPC: server localhost requires stronger authentication.
-> svc: failed to register nfsdv2 RPC service (errno 13).
+Tom, could you take a look?
 
-Hm... Will take a look, I haven't seen that at my tests :(
+--b.
 
-> --b.
+On Fri, Oct 15, 2010 at 05:49:27PM +0200, Tejun Heo wrote:
+> * Create and use svc_rdma_wq instead of using the system workqueue and
+>   flush_scheduled_work().  This workqueue is necessary to serve as
+>   flushing domain for rdma->sc_work which is used to destroy itself
+>   and thus can't be flushed explicitly.
 > 
->>
->> Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
->> ---
->>  net/sunrpc/xprtsock.c |   64 +++++++++++++------------------------------------
->>  1 files changed, 17 insertions(+), 47 deletions(-)
->>
->> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->> index 7fdf2bb..bab808f 100644
->> --- a/net/sunrpc/xprtsock.c
->> +++ b/net/sunrpc/xprtsock.c
->> @@ -1534,23 +1534,18 @@ static unsigned short xs_next_srcport(struct sock_xprt *transport, unsigned shor
->>  		return xprt_max_resvport;
->>  	return --port;
->>  }
->> -
->> -static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
->> +static int xs_bind(struct sock_xprt *transport, struct socket *sock)
->>  {
->> -	struct sockaddr_in myaddr = {
->> -		.sin_family = AF_INET,
->> -	};
->> -	struct sockaddr_in *sa;
->> +	struct sockaddr_storage myaddr;
->>  	int err, nloop = 0;
->>  	unsigned short port = xs_get_srcport(transport);
->>  	unsigned short last;
->>  
->> -	sa = (struct sockaddr_in *)&transport->srcaddr;
->> -	myaddr.sin_addr = sa->sin_addr;
->> +	memcpy(&myaddr, &transport->srcaddr, transport->xprt.addrlen);
->>  	do {
->> -		myaddr.sin_port = htons(port);
->> -		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
->> -						sizeof(myaddr));
->> +		rpc_set_port((struct sockaddr *)&myaddr, port);
->> +		err = kernel_bind(sock, (struct sockaddr *)&myaddr,
->> +				transport->xprt.addrlen);
->>  		if (port == 0)
->>  			break;
->>  		if (err == 0) {
->> @@ -1562,44 +1557,19 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
->>  		if (port > last)
->>  			nloop++;
->>  	} while (err == -EADDRINUSE && nloop != 2);
->> -	dprintk("RPC:       %s %pI4:%u: %s (%d)\n",
->> -			__func__, &myaddr.sin_addr,
->> -			port, err ? "failed" : "ok", err);
->> -	return err;
->> -}
->> -
->> -static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
->> -{
->> -	struct sockaddr_in6 myaddr = {
->> -		.sin6_family = AF_INET6,
->> -	};
->> -	struct sockaddr_in6 *sa;
->> -	int err, nloop = 0;
->> -	unsigned short port = xs_get_srcport(transport);
->> -	unsigned short last;
->>  
->> -	sa = (struct sockaddr_in6 *)&transport->srcaddr;
->> -	myaddr.sin6_addr = sa->sin6_addr;
->> -	do {
->> -		myaddr.sin6_port = htons(port);
->> -		err = kernel_bind(sock, (struct sockaddr *) &myaddr,
->> -						sizeof(myaddr));
->> -		if (port == 0)
->> -			break;
->> -		if (err == 0) {
->> -			transport->srcport = port;
->> -			break;
->> -		}
->> -		last = port;
->> -		port = xs_next_srcport(transport, port);
->> -		if (port > last)
->> -			nloop++;
->> -	} while (err == -EADDRINUSE && nloop != 2);
->> -	dprintk("RPC:       xs_bind6 %pI6:%u: %s (%d)\n",
->> -		&myaddr.sin6_addr, port, err ? "failed" : "ok", err);
->> +	if (myaddr.ss_family == PF_INET)
->> +		dprintk("RPC:       %s %pI4:%u: %s (%d)\n", __func__,
->> +				&((struct sockaddr_in *)&myaddr)->sin_addr,
->> +				port, err ? "failed" : "ok", err);
->> +	else
->> +		dprintk("RPC:       %s %pI6:%u: %s (%d)\n", __func__,
->> +				&((struct sockaddr_in6 *)&myaddr)->sin6_addr,
->> +				port, err ? "failed" : "ok", err);
->>  	return err;
->>  }
->>  
->> +
->>  #ifdef CONFIG_DEBUG_LOCK_ALLOC
->>  static struct lock_class_key xs_key[2];
->>  static struct lock_class_key xs_slock_key[2];
->> @@ -1645,7 +1615,7 @@ static struct socket *xs_create_sock4(struct rpc_xprt *xprt,
->>  	}
->>  	xs_reclassify_socket4(sock);
->>  
->> -	if (xs_bind4(transport, sock)) {
->> +	if (xs_bind(transport, sock)) {
->>  		sock_release(sock);
->>  		goto out;
->>  	}
->> @@ -1669,7 +1639,7 @@ static struct socket *xs_create_sock6(struct rpc_xprt *xprt,
->>  	}
->>  	xs_reclassify_socket6(sock);
->>  
->> -	if (xs_bind6(transport, sock)) {
->> +	if (xs_bind(transport, sock)) {
->>  		sock_release(sock);
->>  		goto out;
->>  	}
->> -- 
->> 1.5.5.6
->>
-> .
+> * Replace cancel_delayed_work() + flush_scheduled_work() with
+>   cancel_delayed_work_sync().
 > 
-
+> * Implement synchronous connect in xprt_rdma_connect() using
+>   flush_delayed_work() on the rdma_connect work instead of using
+>   flush_scheduled_work().
+> 
+> This is to prepare for the deprecation and removal of
+> flush_scheduled_work().
+> 
+> Signed-off-by: Tejun Heo <tj@kernel.org>
+> ---
+>  net/sunrpc/xprtrdma/svc_rdma.c           |   11 ++++++++++-
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 +++++-
+>  net/sunrpc/xprtrdma/transport.c          |    5 ++---
+>  3 files changed, 17 insertions(+), 5 deletions(-)
+> 
+> Index: work/net/sunrpc/xprtrdma/svc_rdma.c
+> ===================================================================
+> --- work.orig/net/sunrpc/xprtrdma/svc_rdma.c
+> +++ work/net/sunrpc/xprtrdma/svc_rdma.c
+> @@ -43,6 +43,7 @@
+>  #include <linux/slab.h>
+>  #include <linux/fs.h>
+>  #include <linux/sysctl.h>
+> +#include <linux/workqueue.h>
+>  #include <linux/sunrpc/clnt.h>
+>  #include <linux/sunrpc/sched.h>
+>  #include <linux/sunrpc/svc_rdma.h>
+> @@ -74,6 +75,8 @@ atomic_t rdma_stat_sq_prod;
+>  struct kmem_cache *svc_rdma_map_cachep;
+>  struct kmem_cache *svc_rdma_ctxt_cachep;
+> 
+> +struct workqueue_struct *svc_rdma_wq;
+> +
+>  /*
+>   * This function implements reading and resetting an atomic_t stat
+>   * variable through read/write to a proc file. Any write to the file
+> @@ -231,7 +234,7 @@ static ctl_table svcrdma_root_table[] =
+>  void svc_rdma_cleanup(void)
+>  {
+>  	dprintk("SVCRDMA Module Removed, deregister RPC RDMA transport\n");
+> -	flush_scheduled_work();
+> +	destroy_workqueue(svc_rdma_wq);
+>  	if (svcrdma_table_header) {
+>  		unregister_sysctl_table(svcrdma_table_header);
+>  		svcrdma_table_header = NULL;
+> @@ -249,6 +252,11 @@ int svc_rdma_init(void)
+>  	dprintk("\tsq_depth         : %d\n",
+>  		svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT);
+>  	dprintk("\tmax_inline       : %d\n", svcrdma_max_req_size);
+> +
+> +	svc_rdma_wq = alloc_workqueue("svc_rdma", 0, 0);
+> +	if (!svc_rdma_wq)
+> +		return -ENOMEM;
+> +
+>  	if (!svcrdma_table_header)
+>  		svcrdma_table_header =
+>  			register_sysctl_table(svcrdma_root_table);
+> @@ -283,6 +291,7 @@ int svc_rdma_init(void)
+>  	kmem_cache_destroy(svc_rdma_map_cachep);
+>   err0:
+>  	unregister_sysctl_table(svcrdma_table_header);
+> +	destroy_workqueue(svc_rdma_wq);
+>  	return -ENOMEM;
+>  }
+>  MODULE_AUTHOR("Tom Tucker <tom@opengridcomputing.com>");
+> Index: work/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> ===================================================================
+> --- work.orig/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ work/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -45,6 +45,7 @@
+>  #include <linux/sched.h>
+>  #include <linux/slab.h>
+>  #include <linux/spinlock.h>
+> +#include <linux/workqueue.h>
+>  #include <rdma/ib_verbs.h>
+>  #include <rdma/rdma_cm.h>
+>  #include <linux/sunrpc/svc_rdma.h>
+> @@ -89,6 +90,9 @@ struct svc_xprt_class svc_rdma_class = {
+>  /* WR context cache. Created in svc_rdma.c  */
+>  extern struct kmem_cache *svc_rdma_ctxt_cachep;
+> 
+> +/* Workqueue created in svc_rdma.c */
+> +extern struct workqueue_struct *svc_rdma_wq;
+> +
+>  struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+>  {
+>  	struct svc_rdma_op_ctxt *ctxt;
+> @@ -1184,7 +1188,7 @@ static void svc_rdma_free(struct svc_xpr
+>  	struct svcxprt_rdma *rdma =
+>  		container_of(xprt, struct svcxprt_rdma, sc_xprt);
+>  	INIT_WORK(&rdma->sc_work, __svc_rdma_free);
+> -	schedule_work(&rdma->sc_work);
+> +	queue_work(svc_rdma_wq, &rdma->sc_work);
+>  }
+> 
+>  static int svc_rdma_has_wspace(struct svc_xprt *xprt)
+> Index: work/net/sunrpc/xprtrdma/transport.c
+> ===================================================================
+> --- work.orig/net/sunrpc/xprtrdma/transport.c
+> +++ work/net/sunrpc/xprtrdma/transport.c
+> @@ -237,8 +237,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
+> 
+>  	dprintk("RPC:       %s: called\n", __func__);
+> 
+> -	cancel_delayed_work(&r_xprt->rdma_connect);
+> -	flush_scheduled_work();
+> +	cancel_delayed_work_sync(&r_xprt->rdma_connect);
+> 
+>  	xprt_clear_connected(xprt);
+> 
+> @@ -460,7 +459,7 @@ xprt_rdma_connect(struct rpc_task *task)
+>  	} else {
+>  		schedule_delayed_work(&r_xprt->rdma_connect, 0);
+>  		if (!RPC_IS_ASYNC(task))
+> -			flush_scheduled_work();
+> +			flush_delayed_work(&r_xprt->rdma_connect);
+>  	}
+>  }
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
