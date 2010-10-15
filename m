@@ -1,56 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from moo.pl ([217.149.240.132]:55469 "EHLO moo.pl"
+Received: from hera.kernel.org ([140.211.167.34]:46630 "EHLO hera.kernel.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755894Ab0JEV3T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Oct 2010 17:29:19 -0400
-Date: Tue, 5 Oct 2010 23:29:13 +0200
-From: Leszek Urbanski <tygrys@moo.pl>
-To: "Michael S. Tsirkin" <mst@redhat.com>
-Cc: Anthony Liguori <anthony@codemonkey.ws>, qemu-devel@nongnu.org,
-        netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
-        virtualization@lists.linux-foundation.org
-Subject: Re: BUG - qdev - partial loss of network connectivity
-Message-ID: <20101005212913.GA27869@moo.pl>
-References: <20100922171832.GA28721@moo.pl> <4C9A3FAF.9090503@codemonkey.ws> <20100922182049.GA29263@moo.pl> <4C9A4C77.2080806@codemonkey.ws> <20100923140437.GA9256@moo.pl> <20100926154324.GD21843@redhat.com> <20100927213203.GA28089@moo.pl>
-Content-Type: text/plain; charset=iso-8859-2
-In-Reply-To: <20100927213203.GA28089@moo.pl>
+	id S1755296Ab0JOPtd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Oct 2010 11:49:33 -0400
+Message-ID: <4CB87807.7050108@kernel.org>
+Date: Fri, 15 Oct 2010 17:49:27 +0200
+From: Tejun Heo <tj@kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        lkml <linux-kernel@vger.kernel.org>
+Subject: [PATCH linux-2.6.36-rc7] sunrpc/xprtrdma: clean up workqueue usage
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-<20100927213203.GA28089@moo.pl>; from Leszek Urbanski on Mon, Sep 27, 2010 at 23:32:03 +0200
+* Create and use svc_rdma_wq instead of using the system workqueue and
+  flush_scheduled_work().  This workqueue is necessary to serve as
+  flushing domain for rdma->sc_work which is used to destroy itself
+  and thus can't be flushed explicitly.
 
-> > > > >It's vanilla 2.6.32.22, but I also reproduced this on Debian's 2.6.32-23
-> > > > >(based on 2.6.32.21).
-> > > > >
-> > > > >If offload is the only difference, I'll play with different offload
-> > > > >options and check which one causes it.
-> > > > >   
-> > > > 
-> > > > It's not technically the only difference but it's the most likely 
-> > > > culprit IMHO.
-> > > 
-> > > udp fragmentation offload is definitely the culprit.
-> > 
-> > I see. Most likely guest bug - won't be the first bug around UFO.
-> > If so pls copy netdev linux-nfs and virtualization.
-> > Do you see anything in dmesg? Can try 2.6.36-rc5?
-> 
-> (for reference: first post is at:
-> http://lists.nongnu.org/archive/html/qemu-devel/2010-09/msg01685.html )
-> 
-> I can't reproduce it on 2.6.36-rc5. Do you have an idea which patch may have
+* Replace cancel_delayed_work() + flush_scheduled_work() with
+  cancel_delayed_work_sync().
 
-This one definitely fixes it: http://patchwork.ozlabs.org/patch/55643/
+* Implement synchronous connect in xprt_rdma_connect() using
+  flush_delayed_work() on the rdma_connect work instead of using
+  flush_scheduled_work().
 
-(Herbert Xu: udp: Fix bogus UFO packet generation)
+This is to prepare for the deprecation and removal of
+flush_scheduled_work().
 
-The patch works with 2.6.32.24 too - it should probably be backported to
-2.6.32.x.
+Signed-off-by: Tejun Heo <tj@kernel.org>
+---
+ net/sunrpc/xprtrdma/svc_rdma.c           |   11 ++++++++++-
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    6 +++++-
+ net/sunrpc/xprtrdma/transport.c          |    5 ++---
+ 3 files changed, 17 insertions(+), 5 deletions(-)
 
+Index: work/net/sunrpc/xprtrdma/svc_rdma.c
+===================================================================
+--- work.orig/net/sunrpc/xprtrdma/svc_rdma.c
++++ work/net/sunrpc/xprtrdma/svc_rdma.c
+@@ -43,6 +43,7 @@
+ #include <linux/slab.h>
+ #include <linux/fs.h>
+ #include <linux/sysctl.h>
++#include <linux/workqueue.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/svc_rdma.h>
+@@ -74,6 +75,8 @@ atomic_t rdma_stat_sq_prod;
+ struct kmem_cache *svc_rdma_map_cachep;
+ struct kmem_cache *svc_rdma_ctxt_cachep;
 
--- 
-Leszek "Tygrys" Urbanski, SCSA, SCNA
- "Unix-to-Unix Copy Program;" said PDP-1. "You will never find a more
-  wretched hive of bugs and flamers. We must be cautious." -- DECWARS
-     http://cygnus.moo.pl/ -- Cygnus High Altitude Balloon
++struct workqueue_struct *svc_rdma_wq;
++
+ /*
+  * This function implements reading and resetting an atomic_t stat
+  * variable through read/write to a proc file. Any write to the file
+@@ -231,7 +234,7 @@ static ctl_table svcrdma_root_table[] =
+ void svc_rdma_cleanup(void)
+ {
+ 	dprintk("SVCRDMA Module Removed, deregister RPC RDMA transport\n");
+-	flush_scheduled_work();
++	destroy_workqueue(svc_rdma_wq);
+ 	if (svcrdma_table_header) {
+ 		unregister_sysctl_table(svcrdma_table_header);
+ 		svcrdma_table_header = NULL;
+@@ -249,6 +252,11 @@ int svc_rdma_init(void)
+ 	dprintk("\tsq_depth         : %d\n",
+ 		svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT);
+ 	dprintk("\tmax_inline       : %d\n", svcrdma_max_req_size);
++
++	svc_rdma_wq = alloc_workqueue("svc_rdma", 0, 0);
++	if (!svc_rdma_wq)
++		return -ENOMEM;
++
+ 	if (!svcrdma_table_header)
+ 		svcrdma_table_header =
+ 			register_sysctl_table(svcrdma_root_table);
+@@ -283,6 +291,7 @@ int svc_rdma_init(void)
+ 	kmem_cache_destroy(svc_rdma_map_cachep);
+  err0:
+ 	unregister_sysctl_table(svcrdma_table_header);
++	destroy_workqueue(svc_rdma_wq);
+ 	return -ENOMEM;
+ }
+ MODULE_AUTHOR("Tom Tucker <tom@opengridcomputing.com>");
+Index: work/net/sunrpc/xprtrdma/svc_rdma_transport.c
+===================================================================
+--- work.orig/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ work/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -45,6 +45,7 @@
+ #include <linux/sched.h>
+ #include <linux/slab.h>
+ #include <linux/spinlock.h>
++#include <linux/workqueue.h>
+ #include <rdma/ib_verbs.h>
+ #include <rdma/rdma_cm.h>
+ #include <linux/sunrpc/svc_rdma.h>
+@@ -89,6 +90,9 @@ struct svc_xprt_class svc_rdma_class = {
+ /* WR context cache. Created in svc_rdma.c  */
+ extern struct kmem_cache *svc_rdma_ctxt_cachep;
+
++/* Workqueue created in svc_rdma.c */
++extern struct workqueue_struct *svc_rdma_wq;
++
+ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+ {
+ 	struct svc_rdma_op_ctxt *ctxt;
+@@ -1184,7 +1188,7 @@ static void svc_rdma_free(struct svc_xpr
+ 	struct svcxprt_rdma *rdma =
+ 		container_of(xprt, struct svcxprt_rdma, sc_xprt);
+ 	INIT_WORK(&rdma->sc_work, __svc_rdma_free);
+-	schedule_work(&rdma->sc_work);
++	queue_work(svc_rdma_wq, &rdma->sc_work);
+ }
+
+ static int svc_rdma_has_wspace(struct svc_xprt *xprt)
+Index: work/net/sunrpc/xprtrdma/transport.c
+===================================================================
+--- work.orig/net/sunrpc/xprtrdma/transport.c
++++ work/net/sunrpc/xprtrdma/transport.c
+@@ -237,8 +237,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
+
+ 	dprintk("RPC:       %s: called\n", __func__);
+
+-	cancel_delayed_work(&r_xprt->rdma_connect);
+-	flush_scheduled_work();
++	cancel_delayed_work_sync(&r_xprt->rdma_connect);
+
+ 	xprt_clear_connected(xprt);
+
+@@ -460,7 +459,7 @@ xprt_rdma_connect(struct rpc_task *task)
+ 	} else {
+ 		schedule_delayed_work(&r_xprt->rdma_connect, 0);
+ 		if (!RPC_IS_ASYNC(task))
+-			flush_scheduled_work();
++			flush_delayed_work(&r_xprt->rdma_connect);
+ 	}
+ }
+
