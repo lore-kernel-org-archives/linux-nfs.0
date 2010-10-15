@@ -1,60 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4277 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40527 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752076Ab0JMRk4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Oct 2010 13:40:56 -0400
-Message-ID: <4CB5EF15.5030003@RedHat.com>
-Date: Wed, 13 Oct 2010 13:40:37 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
+	id S1755198Ab0JONmQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Oct 2010 09:42:16 -0400
+Date: Fri, 15 Oct 2010 09:41:55 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Subject: Re: whither NFS umount?
-References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>	 <1286903046.24878.13.camel@heimdal.trondhjem.org>	 <C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>	 <20101012151826.76b75f52@corrin.poochiereds.net> <1286912649.1956.19.camel@heimdal.trondhjem.org>
-In-Reply-To: <1286912649.1956.19.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Message-ID: <20101015094155.0f498e86@tlielax.poochiereds.net>
+In-Reply-To: <4CB8531B.60902@RedHat.com>
+References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>
+	<1286903046.24878.13.camel@heimdal.trondhjem.org>
+	<C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>
+	<20101012151826.76b75f52@corrin.poochiereds.net>
+	<1286912649.1956.19.camel@heimdal.trondhjem.org>
+	<4CB5EF15.5030003@RedHat.com>
+	<20101013141317.66f23906@corrin.poochiereds.net>
+	<4CB5FE65.3090409@RedHat.com>
+	<20101013145601.468acc2a@corrin.poochiereds.net>
+	<4CB6090F.60301@RedHat.com>
+	<E22DAFE2-A677-4D91-8976-5F641141DD36@oracle.com>
+	<4CB63E81.9010100@RedHat.com>
+	<1BC33C94-1C91-42BE-8FC1-5F85E0D6FABD@oracle.com>
+	<4CB74B90.1050403@RedHat.com>
+	<0F7E614A-3450-48DE-BE44-E0D7CC170B66@oracle.com>
+	<4CB77502.605@RedHat.com>
+	<37D6F414-BDC5-475F-BCC6-27C891D327C0@oracle.com>
+	<4CB8531B.60902@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Sorry for joining late... 
+On Fri, 15 Oct 2010 09:11:55 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-On 10/12/2010 03:44 PM, Trond Myklebust wrote:
-> On Tue, 2010-10-12 at 15:18 -0400, Jeff Layton wrote:
-> 
->> I think the part that causes problems is having userspace do this. In
->> theory, if the kernel were in charge of sending the UMNT, then it's not
->> really a problem since it knows when to do it. If we have code that
->> sends a UMNT already, why not do a best-effort UMNT call from the
->> kernel when we tear down the sb?
-> 
-> Purely for the pleasure of allowing the server to maintain inaccurate
-> statistics about who is currently mounting what? I think not...
-> 
-> You can get far more accurate results by replacing the MNT/UMNT state
-> counter with a purely server-based scheme to track who accessed one or
-> more files on each exported partition in the past 5 minutes or so. That
-> would even work with NFSv4...
-> 
->> Either way, eliminating umount.nfs would be nice...
-> 
-> Agreed.
-I having a hard time understanding this logic... 
+> > 
+> >>> To summarize: instead of relying on /etc/mtab, also use an NFS-specific 
+> >>> place to record the same information.  umount.nfs can use that 
+> >>> instead of /etc/mtab.  And by the way, we don't touch this information
+> >>> during a remount... heh.  That guarantees that we preserve existing 
+> >>> good behaviors of umount.nfs, continue to update /etc/mtab as documented,
+> >>> until maybe it goes away, but eliminate our functional dependence on it.
+> >>>
+> >> If the info in /etc/mntab is not updated on remounts, then what is 
+> >> the issue we are talking about? Just curious, will the info in /proc/mounts
+> >> be updated on remounts?
+> > 
+> > /etc/mtab would still be updated on remounts, and would still have the 
+> > bug where "remount" would wipe the options.  But we would no longer depend
+> > on that destroyed information to perform the umount reliably.
+> The remount would wipe out the *original* options, basically overriding
+> them with the updated options... As long as we have a mechanism to
+> retry the UMNT if the first call fails, I don't see this a being a 
+> problem... 
+>  
 
-Why do we think we (the Linux community) can simply 
-throw way an established part of the protocol just because 
-we deem it advisory... Now maybe in our implementation UMNT its
-advisory and it might even be advisory in the spec, but how do we 
-know with  other NFS implementation is not advisory, its actually needed.
-We don't known and we can't known....
+FWIW, I think the only info we really need to worry about preserving
+in mtab is the "user=" and "users" options. Without those, you can have
+user mountable filesystems that may become un-unmountable by those
+users.
 
-Now when our implementation becomes an NFSv4 only implementation, 
-I say fine; Eliminate all the protocols that go along
-with both v2 and v3. But until then lets just have leave
-the legacy protocols along and move forward in more meaningful 
-efforts... 
+This is true whether umount.nfs stays or not.
 
-steved.
- 
-
-
+-- 
+Jeff Layton <jlayton@redhat.com>
