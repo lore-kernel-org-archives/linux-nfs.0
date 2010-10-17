@@ -1,54 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58616 "EHLO mx1.redhat.com"
+Received: from sachiko.kuiki.net ([80.68.89.100]:39608 "EHLO sachiko.kuiki.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752255Ab0JMNvl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Oct 2010 09:51:41 -0400
-Date: Wed, 13 Oct 2010 09:52:16 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Jim Rees <rees@umich.edu>
-Cc: Valentijn Sessink <valentyn@blub.net>, linux-nfs@vger.kernel.org
-Subject: Re: ipv6 + krb5, server status?
-Message-ID: <20101013095216.5b9b31a7@corrin.poochiereds.net>
-In-Reply-To: <20101013125656.GA5197@merit.edu>
-References: <4CB59086.9080108@blub.net>
-	<20101013125656.GA5197@merit.edu>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753521Ab0JQOgL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 17 Oct 2010 10:36:11 -0400
+Received: from localhost (unknown [76.14.51.87])
+	by sachiko.kuiki.net (Postfix) with ESMTP id 1EED6C44B
+	for <linux-nfs@vger.kernel.org>; Sun, 17 Oct 2010 14:29:22 +0000 (UTC)
+Date: Sun, 17 Oct 2010 07:29:19 -0700
+From: Jonathan Steinert <hachi@kuiki.net>
+To: linux-nfs@vger.kernel.org
+Subject: nfsd rpc service update failures on 2.6.32
+Message-ID: <20101017142918.GA6805@miyako>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 13 Oct 2010 08:56:56 -0400
-Jim Rees <rees@umich.edu> wrote:
+Hi folks, I've got a machine here that I've been debugging NFS issues on for a week or so now.
 
-> Valentijn Sessink wrote:
-> 
->   Hello list,
->   
->   I found a lot of information on the subject NFS server, ipv6 + krb5, but
->   not anything conclusive. So I tried it out; I got IPv6 +
->   NFS4 to work, but only with sec=sys.
->   
->   When using sec=krb5, there seemed to be errors in gssd communication.
->   (Ubuntu 10.04 with rpcbind instead of portmap; with nfs-utils-1.2.3 from
->   nfs.sf.net, and with a 2.6.35-020635rc1-generic kernel package).
->   
->   Is this correct, i.e. svcgssd still needs to be adapted to IPv6? Or
->   should NFS-server/IPv6/Kerberos on Linux just work, i.e. should I
->   re-check my configuration?
-> 
-> I don't know the specific answer to your question, but ipv6 support is still
-> a work in progress, and I'm actually a bit surprised it works out of the box
-> even with sec=sys.
-> 
-> You may want to try the very latest ipv6 version of nfs-utils, which may
-> have some patches that have not yet been merged upstream.  You can get it
-> from git://git.linux-nfs.org/projects/cel/nfs-utils.git .  The usual
-> warnings apply, this is experimental code, you could lose data, it may not
-> work with your 2.6.35 kernel, and if you find bugs you can't necessarily get
-> anyone to help you.
+I've boiled the issue down to this:
 
-As of nfs-utils-1.2.3, IPv6 server-side support should be
-"complete" (modulo bugs, of course).
+Start up the NFS server, this seems to work fine, no errors:
+  rpc.nfsd 1
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Check to see if nfsd has registered with rpcbind, this never shows the nfsd service being registered:
+  rpcinfo -p
+
+So far I've got the following diagnostics done:
+
+- Cranked up the debugging in rpcbind, never found SET updates happening (only UNSET)
+- Captured the rpc update frames going over lo, viewed in wireshark. They are all UNSET only
+- Crank up rpcdebug on kernel, only unregister frames are being generated.
+
+The interesting thing I see is:
+
+svc: svc_register(nfsdv4, udp, 0, 2)
+RPC:       unregistering [100003, 4, 0.0.0.0.0.0, 'udp'] with local rpcbind
+
+For some reason svc_register is being called with '0' as the port argument.
+
+Looking at the ports list in proc says that udp and tcp 2049 are to be used.
+
+I've been searching around for any information regarding this issue, but haven't found anything. Do any of you folks know if this has been fixed in a later kernel? Is this even a known issue of some kind? I would be testing a newer kernel, but my box has a major issue with some driver as of 2.6.33, which I am also still debugging.
+
+Not subscribed to this list, please CC me if you can. I'll watch the archives too.
+
+Thanks much
+
+--hachi
+
+------------------------------------------------------------------------
+"She smiled again, shrugged her shoulders, and became a perfect mirror."
+------------------------------------------------------------------------
