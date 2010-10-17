@@ -1,88 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51266 "EHLO mx1.redhat.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:60707 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750964Ab0JLVcc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Oct 2010 17:32:32 -0400
-Date: Tue, 12 Oct 2010 16:50:40 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: whither NFS umount?
-Message-ID: <20101012165040.39852c8d@corrin.poochiereds.net>
-In-Reply-To: <C6938516-D27B-4D1D-93E1-AF37EB920DD5@oracle.com>
-References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>
-	<1286903046.24878.13.camel@heimdal.trondhjem.org>
-	<C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>
-	<20101012151826.76b75f52@corrin.poochiereds.net>
-	<1286912649.1956.19.camel@heimdal.trondhjem.org>
-	<20101012155234.094a87c3@corrin.poochiereds.net>
-	<1286914860.3166.10.camel@heimdal.trondhjem.org>
-	<20101012162625.074f7292@corrin.poochiereds.net>
-	<C6938516-D27B-4D1D-93E1-AF37EB920DD5@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S932729Ab0JQUc5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 17 Oct 2010 16:32:57 -0400
+Subject: Re: Strange behaviour of NFS4ERR_MOVED and referrals
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Pavel Strashkin <pavel.strashkin@nexenta.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <AANLkTimsEoWmm8dZSTT2HA1vhc1wfJK6QpqHA0q9Yt8r@mail.gmail.com>
+References: <AANLkTikOjYEBGJVHc7fKisNoC7OrJRjePuCcaNtPnHCy@mail.gmail.com>
+	 <1287336241.5266.19.camel@heimdal.trondhjem.org>
+	 <AANLkTimsEoWmm8dZSTT2HA1vhc1wfJK6QpqHA0q9Yt8r@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sun, 17 Oct 2010 16:32:51 -0400
+Message-ID: <1287347571.5266.80.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 12 Oct 2010 16:34:45 -0400
-Chuck Lever <chuck.lever@oracle.com> wrote:
-
+On Sun, 2010-10-17 at 23:07 +0400, Pavel Strashkin wrote:
+> I knew that you will first who will answer on my question :) Thank you
+> for your explanation.
 > 
-> On Oct 12, 2010, at 4:26 PM, Jeff Layton wrote:
-> 
-> > On Tue, 12 Oct 2010 16:21:00 -0400
-> > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > 
-> >> On Tue, 2010-10-12 at 15:52 -0400, Jeff Layton wrote:
-> >>> On Tue, 12 Oct 2010 15:44:09 -0400
-> >>> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> >>> 
-> >>>> On Tue, 2010-10-12 at 15:18 -0400, Jeff Layton wrote:
-> >>>> 
-> >>>>> I think the part that causes problems is having userspace do this. In
-> >>>>> theory, if the kernel were in charge of sending the UMNT, then it's not
-> >>>>> really a problem since it knows when to do it. If we have code that
-> >>>>> sends a UMNT already, why not do a best-effort UMNT call from the
-> >>>>> kernel when we tear down the sb?
-> >>>> 
-> >>>> Purely for the pleasure of allowing the server to maintain inaccurate
-> >>>> statistics about who is currently mounting what? I think not...
-> >>>> 
-> >>>> You can get far more accurate results by replacing the MNT/UMNT state
-> >>>> counter with a purely server-based scheme to track who accessed one or
-> >>>> more files on each exported partition in the past 5 minutes or so. That
-> >>>> would even work with NFSv4...
-> >>>> 
-> >>> 
-> >>> True, but for better or worse, UMNT is part of the protocol. It seems
-> >>> like we ought to do our best to implement it, even if it is
-> >>> fundamentally flawed.
-> >>> 
-> >> 
-> >> UMNTALL is part of the same protocol, and yet we have never implemented
-> >> that. Just because something is documented, it doesn't mean we have to
-> >> do it...
-> >> 
-> >> The bottom line is that UMNT doesn't do what it advertises itself as
-> >> doing, and so we should not waste space supporting it in the kernel. We
-> >> shouldn't do so in userspace either.
-> >> 
-> > 
-> > Fair enough. Like Chuck I don't have strong feelings about it, other
-> > than seeing no need to continue shipping umount.nfs.
-> 
-> Careful... we still need umount.nfs, which is a link to mount.nfs.  Something in user space has to kick off local namespace changes, even if the server isn't affected.
-> 
+> Do you have any plans (or may be progress) for migration mechanism? I
+> mean the situations when on a server side a referral object will store
+> the new fs_locations list or will be replaced by a real directory, and
+> the client automatically will do re-mount.
 
-Most other filesystems don't need a umount helper. If there isn't one
-present then /bin/umount takes care of the umount() call and cleaning
-the entry out of /etc/mtab.
+Yes. Work is already in progress to add migration support for NFSv4.
+Both Chuck and I are working on it.
 
-My understanding was that umount.nfs only existed because it was needed
-to handle the UMNT RPC. Without that, there's really no need for it.
+Cheers
+  Trond
 
-...or am I overlooking something?
+> 2010/10/17 Trond Myklebust <trond.myklebust@fys.uio.no>:
+> > On Sun, 2010-10-17 at 15:51 +0400, Pavel Strashkin wrote:
+> >> Hi all,
+> >>
+> >> I'm learning NFS4 "referral" feature.
+> >> I have 4 machines with installed Ubuntu 10.10 (kernel
+> >> 2.6.35-22-generic): Server-A, Server-B, Server-C and Client-A.
+> >>
+> >> Server-A is the main server in the "cluster" that provides NFS share
+> >> "/exports" with a single referral: "/exports/referral".
+> >> That referral points to 2 servers: Server-B and Server-C.
+> >>
+> >> Client-A is the user of this referral.
+> >>
+> >> When i mount "/exports" NFS share from Server-A on Client-A, i have no
+> >> issues and i can see "referral" directory. After that Client-A have an
+> >> access to that "referral" directory and can see files on Server-B
+> >> because Server-B the first server in referral list. NFS4ERR_MOVED
+> >> works as expected.
+> >>
+> >> ...now let's switch off Server-B...
+> >>
+> >> When Server-B is down (dont forget, we had 2 servers in referral list)
+> >> and i'm trying to do "ls -l" for "referral" directory, the operation
+> >> hangs forever. If i kill -9 "ls" process and remount directory then it
+> >> automatically switches to Server-C (because Server-B is unreachabel).
+> >>
+> >> The question: why there is no migration (fail-over? switch?) to
+> >> another server from referral list when share already mounted and
+> >> current server from referral list is down?
+> >>
+> >> I looked at NFS kernel code and as i understand it keeps information
+> >> about FIRST valid server from referral list in inode. It keeps single
+> >> server information, not a whole list of servers (fs_locations). After
+> >> that all operations related to referral inode will be delegated to
+> >> that server.
+> >>
+> >> RFC says that if client can not access to the first server in referral
+> >> list, it should try the next. One thing i dont undertand here - RFC
+> >> means "try next" when we do mount or when we're working with referral
+> >> inode?
+> >>
+> >> P.S. i also triend another one situation: i removed referral on
+> >> Server-A and replace it by real directory called "referral". After
+> >> that client still trying to access to referral (share on Server-B),
+> >> but not real directory on Server-A. Seems like invalidation does not
+> >> work.
+> >
+> > Please don't confuse referrals and migrations; they are very different
+> > events.
+> >
+> >        A referral is special type of filesystem object that is
+> >        discovered at LOOKUP time, and basically acts to automount a new
+> >        filesystem from a different server. This is an easy case to
+> >        implement, because you are mounting a new filesystem, and so
+> >        there is no existing file state to worry about.
+> >
+> >        A migration is an event that occurs after the client has mounted
+> >        a filesystem. It means that particular filesystem has been
+> >        removed from the original server, and should now be mounted
+> >        through a different server. This is a very difficult case to
+> >        implement because the NFS protocol does not specify how the
+> >        migration should occur on the back end (i.e. from server to
+> >        server). The client therefore may end up having to do a lot of
+> >        extra work in order to recover filehandles, file open and
+> >        locking state, without the application discovering what is going
+> >        on.
+> >
+> > The Linux client supports referrals. It does not yet support migration.
+> >
+> > Trond
+> >
+> >
 
--- 
-Jeff Layton <jlayton@redhat.com>
+
+
