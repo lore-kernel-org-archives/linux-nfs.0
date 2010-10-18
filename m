@@ -1,122 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53552 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751233Ab0JVXBN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Oct 2010 19:01:13 -0400
-Date: Fri, 22 Oct 2010 19:01:12 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Menyhart Zoltan <Zoltan.Menyhart@bull.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: "xprt" reference count drops to 0
-Message-ID: <20101022230111.GC22837@fieldses.org>
-References: <4C7E4469.70807@duchatelet.net>
- <4CAAE046.5060209@bull.net>
- <20101021203801.GA12038@fieldses.org>
- <4CC1A722.4060907@bull.net>
- <20101022212007.GB22837@fieldses.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:41576 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751343Ab0JRVzR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2010 17:55:17 -0400
+Subject: Re: [PATCH v2 9/13] sunrpc: Merge the xs_bind code
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101022212007.GB22837@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20101018214305.GE4740@fieldses.org>
+Date: Mon, 18 Oct 2010 17:53:45 -0400
+Cc: Pavel Emelyanov <xemul@parallels.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <4480316F-74A4-4157-B685-056FD958890E@oracle.com>
+References: <4CA9CDA8.4010407@parallels.com> <4CA9CEE8.9050404@parallels.com> <66FA6AAD-87DC-4B81-8DAC-8F1D4FF7B72E@oracle.com> <4CAABAAB.8040608@parallels.com> <4CAB11A4.7000306@parallels.com> <20101015160545.GB12268@fieldses.org> <9D130D08-1FD3-4088-AB43-8CEFFE6476B3@oracle.com> <20101015180852.GC18869@fieldses.org> <068F3C9A-2930-46F7-AC15-EB71ADA1933F@oracle.com> <20101018211537.GC4740@fieldses.org> <20101018214305.GE4740@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Oct 22, 2010 at 05:20:07PM -0400, J. Bruce Fields wrote:
-> On Fri, Oct 22, 2010 at 05:00:50PM +0200, Menyhart Zoltan wrote:
-> > J. Bruce Fields wrote:
-> > >On Tue, Oct 05, 2010 at 10:22:30AM +0200, Menyhart Zoltan wrote:
-> > >>Due to some race conditions, the reference count can become 0
-> > >>while "xprt" is still on a "pool":
-> > >
-> > >Apologies, your email got buried in my inbox....
-> > >
-> > >>
-> > >>WARNING: at lib/kref.c:43 kref_get+0x23/0x2d()
-> > >>  [] kref_get+0x23/0x2d
-> > >>  [] svc_xprt_get+0x12/0x14 [sunrpc]
-> > >>  [] svc_recv+0x2db/0x78a [sunrpc]
-> > >
-> > >Which kernel exactly did you see this on?  Is it reproduceable?
-> > 
-> > I saw it on a 2.6.32.
-> > It has not been corrected for the 2.6.36-rc3 yet.
-> > The patch is for  the 2.6.36-rc3.
-> > 
-> > It is a narrow window, you need a high work load and a bit of luck  to
-> > delay the current CPU just after"svc_xprt_enqueue()" returns.
-> > 
-> > >>I think we should increase the reference counter before adding "xprt"
-> > >>onto any list.
-> > >
-> > >I don't see the xprt added to any list after the svc_xprt_get() you've
-> > >added below.
-> > 
-> > "svc_xprt_enqueue()" has got two ways to pass an "xprt":
-> > - via "rqstp->rq_xprt" if a worker is available,
-> > - on the "pool->sp_sockets" list otherwise
-> > 
-> >         if (!list_empty(&pool->sp_threads)) {
-> >                 rqstp = list_entry(pool->sp_threads.next,  struct svc_rqst,  rq_list);
-> >                 svc_thread_dequeue(pool, rqstp);
-> >                 rqstp->rq_xprt = xprt;
-> >                 svc_xprt_get(xprt);
-> >                 rqstp->rq_reserved = serv->sv_max_mesg;
-> >                 atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
-> >                 pool->sp_stats.threads_woken++;
-> >                 wake_up(&rqstp->rq_wait);
-> >         } else {
-> >                 list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
-> >                 pool->sp_stats.sockets_queued++;
-> >         }
-> > 
-> > In the 1st case, there is a "svc_xprt_get(xprt)", in the 2nd one, there is not.
-> > Once "svc_xprt_enqueue()" returns, at some places, "svc_xprt_put(xprt)" is
-> > invoked. If we has passed the "else" branch, the "kref" can drop down to 0.
+
+On Oct 18, 2010, at 5:43 PM, J. Bruce Fields wrote:
+
+> On Mon, Oct 18, 2010 at 05:15:37PM -0400, J. Bruce Fields wrote:
+>> On Fri, Oct 15, 2010 at 02:11:29PM -0400, Chuck Lever wrote:
+>>> 
+>>> On Oct 15, 2010, at 2:08 PM, J. Bruce Fields wrote:
+>>> 
+>>>> On Fri, Oct 15, 2010 at 12:39:36PM -0400, Chuck Lever wrote:
+>>>>> 
+>>>>> On Oct 15, 2010, at 12:05 PM, J. Bruce Fields wrote:
+>>>>> 
+>>>>>> On Tue, Oct 05, 2010 at 03:53:08PM +0400, Pavel Emelyanov wrote:
+>>>>>>> There's the only difference betseen the xs_bind4 and the
+>>>>>>> xs_bind6 - the size of sockaddr structure they use.
+>>>>>>> 
+>>>>>>> Fortunatelly its size can be indirectly get from the transport.
+>>>>>>> 
+>>>>>>> Change since v1:
+>>>>>>> * use sockaddr_storage instead of sockaddr
+>>>>>>> * use rpc_set_port instead of manual port assigning
+>>>>>> 
+>>>>>> Whoops, dropping this; it breaks nfsd startup.  I haven't figured out
+>>>>>> why yet, but I get
+>>>>>> 
+>>>>>> RPC: server localhost requires stronger authentication.
+>>>>>> svc: failed to register nfsdv2 RPC service (errno 13).
+>>>>> 
+>>>>> Capturing a network trace of lo during server initialization should reveal all.  Compare a trace from a working run and a non-working one.
+>>>> 
+>>>> Hm.  One difference is the source port of the portmap calls: 33471 in
+>>>> the bad case, 1016 in the bad.--b.
+>>> 
+>>> 1016 in the good... yes, that's because the server's registration upcall needs a privileged port, and xs_bind is not obliging here.  That certainly would result in a "requires stronger authentication" error from rpcbind.
+>> 
+>> So, adding some printk's: the problem is that the patch assumes that the
+>> trasnport->xprt.addrlen and transport->srcaddr.ss_family have been
+>> initialized at this point.  But they haven't been.  I don't know where
+>> that's supposed to happen.
 > 
-> Maybe your fix is right, but I'm not sure: It looks to me like if
-> svc_xprt_enqueue() gets to "process:" in a situation where the caller
-> holds the only reference, then that's already a bug.  Do you know who
-> the caller of svc_xprt_enqueue() was when this happened?
+> Sorry, I meant just the family, the length seems fine.
+> 
+> I'll just fold this into the relevant patches and push out the result if
+> nobody objects.
+> 
+> --b.
+> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 8dc287f..324d97a 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1625,6 +1625,7 @@ static struct socket *xs_create_sock(struct rpc_xprt *xprt,
+> 				protocol, -err);
+> 		goto out;
+> 	}
+> +	transport->srcaddr.ss_family = family;
+> 	xs_reclassify_socket(family, sock);
+> 
+> 	if (xs_bind(transport, sock)) {
 
-Hm.  Maybe something like this could happen: two threads call
-svc_check_conn_limits at about the same time, and both pick the same
-victim xprt.
+Can you post the full revised patch?  I'm wondering if it's OK to init the sockaddr's family that way, but I can't tell from just the snippet.
 
-
-	thread 1			thread 2
-	^^^^^^^^			^^^^^^^^
-	set CLOSE			set CLOSE
-	call svc_xprt_enqueue
-	  set BUSY
-
-	thread 3
-	^^^^^^^^			call svc_xprt_enqueue
-	call svc_recv
-	  dequeue our xprt		
-					check DEAD, see it unset
-	  call svc_delete_xprt
-	    remove xprt from any
-	  	global lists
-	    put xprt
-	  clear BUSY
-					test_and_set_bit BUSY
-					test CLOSE, go to process:
-					make xprt globablly visible
-						again
-					ARGH!
+-- 
+chuck[dot]lever[at]oracle[dot]com
 
 
-The put in svc_delete_xprt() is meant to happen only when the xprt is
-taken off any rqstp's or global lists.  We shouldn't be able to requeue
-the xprt after that's done.
 
-So, both the svc_check_conn_limits return, the reference count's
-probably gone to zero at that point, and the xprt's freed while there
-are still references to it somewhere.
 
-It seems wrong to be clearing BUSY after deleting an xprt; what good
-could come of letting someone try to process an xprt that's already
-DEAD?
-
-But I need to go back over that.  Maybe I've missed something.
-
---b.
