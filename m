@@ -1,103 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:5285 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758818Ab0J1NzN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Oct 2010 09:55:13 -0400
-Date: Thu, 28 Oct 2010 09:55:07 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: Steve Dickson <steved@redhat.com>,
+Received: from exprod5og110.obsmtp.com ([64.18.0.20]:39354 "HELO
+	exprod5og110.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753807Ab0JRRON (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2010 13:14:13 -0400
+Message-ID: <4CBC805B.60909@panasas.com>
+Date: Mon, 18 Oct 2010 19:14:03 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jesper Krogh <jesper@krogh.cc>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] [bz 192] Fixed Regression in NFS Direct I/O path
-Message-ID: <20101028095507.3a11ee17@tlielax.poochiereds.net>
-In-Reply-To: <20101028083435.35c990f0@tlielax.poochiereds.net>
-References: <1288268274-9444-1-git-send-email-steved@redhat.com>
-	<20101028083435.35c990f0@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=US-ASCII
+Subject: Re: lsof and open files from the nfs-server
+References: <4CB62095.4010708@krogh.cc> <4CBC74E8.7070801@panasas.com> <20101018170459.GA3744@fieldses.org>
+In-Reply-To: <20101018170459.GA3744@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 28 Oct 2010 08:34:35 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
-
-> On Thu, 28 Oct 2010 08:17:54 -0400
-> Steve Dickson <steved@redhat.com> wrote:
+On 10/18/2010 07:04 PM, J. Bruce Fields wrote:
+> On Mon, Oct 18, 2010 at 06:25:12PM +0200, Boaz Harrosh wrote:
+>> On 10/13/2010 11:11 PM, Jesper Krogh wrote:
+>>> Hi.
+>>>
+>>> Quite often when you have to umount a fileshare you get the
+>>> message "Device or resource busy". Typically I traverse through
+>>> the output of lsof | grep mountpoint and stop processes or kill
+>>> until I can safely umount.
+>>>
+>>> But the nfs-kernel-server does not register its open files, so
+>>> seen from userspace is it extremely hard to find out that is actually
+>>> is the nfs-server that prevents you from being able to umount
+>>> the filesystems.
+>>>
+>>> Would it be possible to register the open files the same place
+>>> so administrators can see them?
+>>>
+>>> ... basically just a feature-request from one who just spend an hour on 
+>>> that.
+>>>
+>>
+>> Me to!
+>>
+>> Also note that even if there are no open files in clients
+>> and no client mounts on the server, but there where in the
+>> passed. The used to be used super-block is referenced. Only
+>> restart of the nfs service will release it.
+>>
+>> But yes if it could register as a special file for lsof to
+>> see it would help a lot.
 > 
-> > A typo, introduced by commit f11ac8db, in the nfs_direct_write()
-> > routine causes writes with O_DIRECT set to fail with a ENOMEM error.
-> > 
-> > Found-by: Jeff Layton <jlayton@redhat.com>
-> > Signed-off-by: Steve Dickson <steved@redhat.com>
-> > ---
-> >  fs/nfs/direct.c |    2 +-
-> >  1 files changed, 1 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> > index 064a809..84d3c8b 100644
-> > --- a/fs/nfs/direct.c
-> > +++ b/fs/nfs/direct.c
-> > @@ -873,7 +873,7 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
-> >  	dreq->inode = inode;
-> >  	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
-> >  	dreq->l_ctx = nfs_get_lock_context(dreq->ctx);
-> > -	if (dreq->l_ctx != NULL)
-> > +	if (dreq->l_ctx == NULL)
-> >  		goto out_release;
-> >  	if (!is_sync_kiocb(iocb))
-> >  		dreq->iocb = iocb;
-> 
-> Also, since get_lock_context holds references, this prevents the fs
-> from being unmounted. It looks like this bug is in 2.6.36 too, so this
-> may be suitable for stable series as well.
+> So what does lsof do, scan /proc/?  Does it make sense to have proc
+> entries for kernel threads?  Is there any other subsystem that does this
+> kind of thing?
 > 
 
-Oh...and another thing I noticed too...
+Don't mind if I do ;-)
 
-nfs_create_request doesn't check for a NULL return from
-nfs_get_lock_context. If it ever does, it looks like that will likely
-trickle down to an oops in encode_stateid.
+I don't know about policy here and what it actually means (Lifetime rules,
+module dependency, ...) But it would be nice to have it, as a user.
 
-It might be good to fix that as well. Maybe something like this
-compile-tested-only patch?
+If it can not be added to the regular /proc places. Maybe we can patch
+lsof to also look in nfs special places and print those as well.
 
---------------------[snip]---------------------
+> --b.
 
-nfs: handle lock context allocation failures in nfs_create_request
-
-nfs_get_lock_context can return NULL on an allocation failure.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/pagelist.c |    8 +++++++-
- 1 files changed, 7 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 9194902..137b549 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -65,6 +65,13 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
- 	if (req == NULL)
- 		return ERR_PTR(-ENOMEM);
- 
-+	/* get lock context early so we can deal with alloc failures */
-+	req->wb_lock_context = nfs_get_lock_context(ctx);
-+	if (req->wb_lock_context == NULL) {
-+		nfs_page_free(req);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+
- 	/* Initialize the request struct. Initially, we assume a
- 	 * long write-back delay. This will be adjusted in
- 	 * update_nfs_request below if the region is not locked. */
-@@ -79,7 +86,6 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
- 	req->wb_pgbase	= offset;
- 	req->wb_bytes   = count;
- 	req->wb_context = get_nfs_open_context(ctx);
--	req->wb_lock_context = nfs_get_lock_context(ctx);
- 	kref_init(&req->wb_kref);
- 	return req;
- }
--- 
-1.7.2.3
-
+Thanks
+Boaz
