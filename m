@@ -1,37 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:39179 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757861Ab0JUMky (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 08:40:54 -0400
-Date: Thu, 21 Oct 2010 08:40:50 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: Jim Rees <rees@umich.edu>
-Cc: Christoph Hellwig <hch@infradead.org>, Steve Dickson <SteveD@redhat.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs-utils: Check for strlcat/cpy and compile our private
- version only if it's needed.
-Message-ID: <20101021124050.GA17654@infradead.org>
-References: <20101020213554.GA27541@merit.edu>
- <20101021021437.GA5241@infradead.org>
- <20101021120110.GA29219@merit.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101021120110.GA29219@merit.edu>
+Received: from exprod5og113.obsmtp.com ([64.18.0.26]:36790 "HELO
+	exprod5og113.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755163Ab0JRQ01 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2010 12:26:27 -0400
+Message-ID: <4CBC74E8.7070801@panasas.com>
+Date: Mon, 18 Oct 2010 18:25:12 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Jesper Krogh <jesper@krogh.cc>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: lsof and open files from the nfs-server
+References: <4CB62095.4010708@krogh.cc>
+In-Reply-To: <4CB62095.4010708@krogh.cc>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Oct 21, 2010 at 08:01:10AM -0400, Jim Rees wrote:
-> Christoph Hellwig wrote:
+On 10/13/2010 11:11 PM, Jesper Krogh wrote:
+> Hi.
 > 
->   Not that I'd complain, but what Linux libc provides strlcat/cpy?
+> Quite often when you have to umount a fileshare you get the
+> message "Device or resource busy". Typically I traverse through
+> the output of lsof | grep mountpoint and stop processes or kill
+> until I can safely umount.
 > 
-> None that I know of.  The patch seems like a good idea to me, but it does
-> add a couple of ugly ifdefs to the include file.
+> But the nfs-kernel-server does not register its open files, so
+> seen from userspace is it extremely hard to find out that is actually
+> is the nfs-server that prevents you from being able to umount
+> the filesystems.
 > 
-> There are already quite a few much sillier checks in configure.ac, like
-> memset, socket, and mkdir.
+> Would it be possible to register the open files the same place
+> so administrators can see them?
 > 
-> But I won't object if you want to drop this patch.
+> ... basically just a feature-request from one who just spend an hour on 
+> that.
+> 
 
-I'm just wondering why you submit it.  Do you plan to port nfs-utils to
-a non-Linux system?
+Me to!
+
+Also note that even if there are no open files in clients
+and no client mounts on the server, but there where in the
+passed. The used to be used super-block is referenced. Only
+restart of the nfs service will release it.
+
+But yes if it could register as a special file for lsof to
+see it would help a lot.
+
+Boaz
+ 
