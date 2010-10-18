@@ -1,194 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og110.obsmtp.com ([64.18.0.20]:50996 "HELO
-	exprod5og110.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751562Ab0JUQso (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 12:48:44 -0400
-Message-ID: <4CC06EE8.7010705@panasas.com>
-Date: Thu, 21 Oct 2010 18:48:40 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: quanli gui <gqlxj1987@gmail.com>
-CC: linux-pnfs <linux-nfs@vger.kernel.org>
-Subject: Re: [pnfs] pnfs first write has very long delay
-References: <AANLkTi=XSSM5+wmCrVzQrZF8rA81OLqDO_dMzUqwHc7g@mail.gmail.com>
-In-Reply-To: <AANLkTi=XSSM5+wmCrVzQrZF8rA81OLqDO_dMzUqwHc7g@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54377 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755586Ab0JRPBk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2010 11:01:40 -0400
+Date: Mon, 18 Oct 2010 11:01:38 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: =?ISO-8859-1?B?Q2zhdWRpbw==?= Martins <ctpm@ist.utl.pt>
+Cc: Ian Munsie <imunsie@au1.ibm.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Scott Romanowski <romansc@us.ibm.com>,
+        Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Subject: Re: NFS sillyrename side effect
+Message-ID: <20101018110138.5f5001eb@corrin.poochiereds.net>
+In-Reply-To: <20101018155344.6e50dbb9.ctpm@ist.utl.pt>
+References: <1287362142-sup-777@au1.ibm.com>
+	<20101018101059.574b715a@corrin.poochiereds.net>
+	<20101018154811.768baeb5.ctpm@ist.utl.pt>
+	<20101018155344.6e50dbb9.ctpm@ist.utl.pt>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-10-21 14:03, quanli gui wrote:
-> When pnfs is mount on the client, I write a file to the mount dir by the
-> first time. It must wait a very long time until the pnfs complete the write.
-> When the operation waited, I dmesg the operation information. Find that
-> NFS:     0 initiated write call (req 0:13/200809, 3035 bytes @ offset 49152)
-> --> nfs4_setup_sequence clp c450a800 session c450ac00 sr_slotid 128
-> --> nfs41_setup_sequence
-> --> nfs4_find_slot used_slots=0007 highest_used=2 max_slots=16
-> <-- nfs4_find_slot used_slots=000f highest_used=3 slotid=3
-> <-- nfs41_setup_sequence slotid=3 seqid=1
-> <-- nfs4_setup_sequence status=0
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=1 slotid=3 max_slotid=3
-> cache_this=1
-> filelayout_write_call_done new off 40960 orig offset 40960
-> pnfs_writeback_done: Begin (status -10008)
+On Mon, 18 Oct 2010 15:53:44 +0100
+Cláudio Martins <ctpm@ist.utl.pt> wrote:
 
-What kind of DS are you using?
-The 10008 error means that the DS returned NFS4ERR_DELAY
-so we need to understand why that happened.
-
-Benny
-
-> put_lseg: lseg ce417e40 ref 3 valid 1
-> NFS:    34 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> pnfs_writepages End (trypnfs:0)
-> filelayout_write_call_done new off 49152 orig offset 49152
-> pnfs_writeback_done: Begin (status -10008)
-> put_lseg: lseg ce417e40 ref 2 valid 1
-> NFS:    35 nfs_writeback_done (status -10008 count 3035)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> nfs4_renew_state: start
-> nfs4_renew_state: failed to call renewd. Reason: lease not expired
-> nfs4_renew_state: requeueing work. Lease period = 56
-> nfs4_renew_state: done
-> nfs4_renew_state: start
-> nfs4_renew_state: failed to call renewd. Reason: lease not expired
-> nfs4_renew_state: requeueing work. Lease period = 56
-> nfs4_renew_state: done
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=2 slotid=0 max_slotid=3
-> cache_this=1
-> NFS:    29 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677247:2:2:0 seqid=2 slotid=0 max_slotid=2
-> cache_this=1
-> NFS:    30 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=2 slotid=1 max_slotid=3
-> cache_this=1
-> NFS:    31 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677247:2:2:0 seqid=2 slotid=1 max_slotid=2
-> cache_this=1
-> NFS:    32 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=2 slotid=2 max_slotid=3
-> cache_this=1
-> NFS:    33 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677247:2:2:0 seqid=2 slotid=2 max_slotid=2
-> cache_this=1
-> NFS:    34 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=2 slotid=3 max_slotid=3
-> cache_this=1
-> NFS:    35 nfs_writeback_done (status -10008 count 3035)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> nfs4_renew_state: start
-> nfs4_renew_state: failed to call renewd. Reason: lease not expired
-> nfs4_renew_state: requeueing work. Lease period = 37
-> nfs4_renew_state: done
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=3 slotid=0 max_slotid=3
-> cache_this=1
-> NFS:    29 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677247:2:2:0 seqid=3 slotid=0 max_slotid=2
-> cache_this=1
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=3 slotid=1 max_slotid=3
-> cache_this=1
-> NFS:    30 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> NFS:    31 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677247:2:2:0 seqid=3 slotid=1 max_slotid=2
-> cache_this=1
-> NFS:    32 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=3 slotid=2 max_slotid=3
-> cache_this=1
-> NFS:    33 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677247:2:2:0 seqid=3 slotid=2 max_slotid=2
-> cache_this=1
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=3 slotid=3 max_slotid=3
-> cache_this=1
-> NFS:    34 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> NFS:    35 nfs_writeback_done (status -10008 count 3035)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=4 slotid=0 max_slotid=3
-> cache_this=1
-> NFS:    29 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677247:2:2:0 seqid=4 slotid=0 max_slotid=2
-> cache_this=1
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=4 slotid=1 max_slotid=3
-> cache_this=1
-> NFS:    30 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> NFS:    31 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677247:2:2:0 seqid=4 slotid=1 max_slotid=2
-> cache_this=1
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=4 slotid=2 max_slotid=3
-> cache_this=1
-> NFS:    32 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> NFS:    33 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677253:2:2:0 seqid=4 slotid=3 max_slotid=3
-> cache_this=1
-> encode_compound: tag=
-> encode_sequence: sessionid=1287677247:2:2:0 seqid=4 slotid=2 max_slotid=2
-> cache_this=1
-> NFS:    35 nfs_writeback_done (status -10008 count 3035)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> NFS:    34 nfs_writeback_done (status -10008 count 8192)
-> pnfs4_write_done DS write
-> <-- pnfs4_write_done status= -11
-> I don't know why so many pnfs_write_done()  return -11 only for the first
-> write. But after the first write, I write files again. This time the time of
-> the operation is OK. Please tell me why this thing happen.
 > 
+> On Mon, 18 Oct 2010 15:48:11 +0100 Cláudio Martins <ctpm@ist.utl.pt> wrote:
+> > 
+> >  Section D2 ends with:
+> > 
+> > "The NFS version 4 protocol is stateful, and could actually support
+> > delete-on-last-close. Unfortunately there isn't an easy way to do this
+> > and remain backwards-compatible with version 2 and 3 accessors."
+> > 
+> >  So, theoretically, could one modify the code to selectively disable
+> > silly rename on a client, when it knows it is talking v4 with the
+> > server?
+> > 
+> 
+>  BTW, to clarify, I'm assuming a scenario where the server is
+> configured to talk v4 only, which I suspect should be common, at least
+> when you're relying on v4 kerberos security.
+> 
+
+Sadly, no...
+
+The server does generally hold the file open as long as the client has
+the file open. So, you could delete the file while nfsd has it open and
+everything would probably still work.
+
+Suppose though that the server crashes and reboots. When it comes back
+up, fsck figures out that the file has been unlinked and frees the
+blocks on the disk. Now you can't reclaim the state on the open file.
+
+We're pretty much stuck with silly-renaming even for v4.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
