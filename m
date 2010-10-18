@@ -1,51 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:33933 "EHLO relay.sw.ru"
+Received: from smtp2.ist.utl.pt ([193.136.128.22]:55900 "EHLO smtp2.ist.utl.pt"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755840Ab0JEQtk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Oct 2010 12:49:40 -0400
-Message-ID: <4CAB571F.1000307@parallels.com>
-Date: Tue, 05 Oct 2010 20:49:35 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] sunrpc: Remove dead "else" branch from bc xprt creation
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1757130Ab0JRRAU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Oct 2010 13:00:20 -0400
+Date: Mon, 18 Oct 2010 18:00:18 +0100
+From: =?UTF-8?B?Q2zDoXVkaW8=?= Martins <ctpm@ist.utl.pt>
+To: Lyle Seaman <lyleseaman@gmail.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: NFS sillyrename side effect
+Message-Id: <20101018180018.9d730e1f.ctpm@ist.utl.pt>
+In-Reply-To: <AANLkTi=FauBoB4R=WCudvX8fLmVU1tGfKQkwpKaQPPLg@mail.gmail.com>
+References: <1287362142-sup-777@au1.ibm.com>
+	<20101018101059.574b715a@corrin.poochiereds.net>
+	<20101018154811.768baeb5.ctpm@ist.utl.pt>
+	<20101018155344.6e50dbb9.ctpm@ist.utl.pt>
+	<20101018110138.5f5001eb@corrin.poochiereds.net>
+	<20101018164414.ec860360.ctpm@ist.utl.pt>
+	<AANLkTi=FauBoB4R=WCudvX8fLmVU1tGfKQkwpKaQPPLg@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Since the xprt in question is forcibly set to be bound the else
-branch of this check is unneeded.
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
----
- net/sunrpc/xprtsock.c |   13 ++++---------
- 1 files changed, 4 insertions(+), 9 deletions(-)
+On Mon, 18 Oct 2010 12:21:43 -0400 Lyle Seaman <lyleseaman@gmail.com> wrote:
+> You would need to do the state recovery before or during the fsck
+> (which would require the local filesystem to have some loose
+> integration with the network protocol).
+> 
+> Also, re the original issue, can't the client do a silly rename of the
+> directory if it contains only .nfs files during rmdir?
+> 
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 114cca0..c0001ce 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2365,15 +2365,10 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 		goto out_err;
- 	}
- 
--	if (xprt_bound(xprt))
--		dprintk("RPC:       set up xprt to %s (port %s) via %s\n",
--				xprt->address_strings[RPC_DISPLAY_ADDR],
--				xprt->address_strings[RPC_DISPLAY_PORT],
--				xprt->address_strings[RPC_DISPLAY_PROTO]);
--	else
--		dprintk("RPC:       set up xprt to %s (autobind) via %s\n",
--				xprt->address_strings[RPC_DISPLAY_ADDR],
--				xprt->address_strings[RPC_DISPLAY_PROTO]);
-+	dprintk("RPC:       set up xprt to %s (port %s) via %s\n",
-+			xprt->address_strings[RPC_DISPLAY_ADDR],
-+			xprt->address_strings[RPC_DISPLAY_PORT],
-+			xprt->address_strings[RPC_DISPLAY_PROTO]);
- 
- 	/*
- 	 * Since we don't want connections for the backchannel, we set
--- 
-1.5.5.6
+ I think the problem is that would be racy. You have no guarantee that
+other clients won't create files on that directory between the time you
+check the directory and the time you'd silly-rename it, so you would
+end up "deleting" directories which are not "empty".
+
+Best regards
+
+Cláudio
 
