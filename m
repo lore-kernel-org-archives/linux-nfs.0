@@ -1,75 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og111.obsmtp.com ([64.18.0.22]:51648 "HELO
-	exprod5og111.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752558Ab0JGRGz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 13:06:55 -0400
-Message-ID: <4CADFE2E.7050401@panasas.com>
-Date: Thu, 07 Oct 2010 13:06:54 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: andros@netapp.com
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] pnfs_submit: enforce requested DS only pNFS role
-References: <1286480230-9418-1-git-send-email-andros@netapp.com> <1286480230-9418-2-git-send-email-andros@netapp.com> <1286480230-9418-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1286480230-9418-3-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:48504 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750985Ab0JRRK3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Oct 2010 13:10:29 -0400
+Date: Mon, 18 Oct 2010 13:10:15 -0400
+To: Jeff Layton <jlayton@redhat.com>
+Cc: =?utf-8?Q?Cl=C3=A1udio?= Martins <ctpm@ist.utl.pt>,
+        Ian Munsie <imunsie@au1.ibm.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Scott Romanowski <romansc@us.ibm.com>,
+        Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Subject: Re: NFS sillyrename side effect
+Message-ID: <20101018171015.GB3744@fieldses.org>
+References: <1287362142-sup-777@au1.ibm.com>
+ <20101018101059.574b715a@corrin.poochiereds.net>
+ <20101018154811.768baeb5.ctpm@ist.utl.pt>
+ <20101018155344.6e50dbb9.ctpm@ist.utl.pt>
+ <20101018110138.5f5001eb@corrin.poochiereds.net>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20101018110138.5f5001eb@corrin.poochiereds.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-10-07 15:37, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Mon, Oct 18, 2010 at 11:01:38AM -0400, Jeff Layton wrote:
+> On Mon, 18 Oct 2010 15:53:44 +0100
+> Cláudio Martins <ctpm@ist.utl.pt> wrote:
 > 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/nfs4filelayoutdev.c |    5 -----
->  fs/nfs/nfs4state.c         |    5 +++++
->  2 files changed, 5 insertions(+), 5 deletions(-)
+> > 
+> > On Mon, 18 Oct 2010 15:48:11 +0100 Cláudio Martins <ctpm@ist.utl.pt> wrote:
+> > > 
+> > >  Section D2 ends with:
+> > > 
+> > > "The NFS version 4 protocol is stateful, and could actually support
+> > > delete-on-last-close. Unfortunately there isn't an easy way to do this
+> > > and remain backwards-compatible with version 2 and 3 accessors."
+> > > 
+> > >  So, theoretically, could one modify the code to selectively disable
+> > > silly rename on a client, when it knows it is talking v4 with the
+> > > server?
+> > > 
+> > 
+> >  BTW, to clarify, I'm assuming a scenario where the server is
+> > configured to talk v4 only, which I suspect should be common, at least
+> > when you're relying on v4 kerberos security.
+> > 
 > 
-> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-> index e0edf93..1f0ab62 100644
-> --- a/fs/nfs/nfs4filelayoutdev.c
-> +++ b/fs/nfs/nfs4filelayoutdev.c
-> @@ -183,11 +183,6 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
->  		goto out_put;
->  	}
->  	/*
-> -	 * Mask the (possibly) returned EXCHGID4_FLAG_USE_PNFS_MDS pNFS role
-> -	 * The is_ds_only_session depends on this.
-> -	 */
-> -	clp->cl_exchange_flags &= ~EXCHGID4_FLAG_USE_PNFS_MDS;
-> -	/*
->  	 * Set DS lease equal to the MDS lease, renewal is scheduled in
->  	 * create_session
->  	 */
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 91584ad..e2fc175 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -188,6 +188,7 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
->  int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
->  {
->  	int status;
-> +	u32 req_exchange_flags = clp->cl_exchange_flags;
->  
->  	nfs4_begin_drain_session(clp);
->  	status = nfs4_proc_exchange_id(clp, cred);
-> @@ -196,6 +197,10 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
->  	status = nfs4_proc_create_session(clp);
->  	if (status != 0)
->  		goto out;
-> +	if (is_ds_only_session(req_exchange_flags))
-> +		/* Mask the (possibly) returned MDS and non-pNFS roles */
+> Sadly, no...
+> 
+> The server does generally hold the file open as long as the client has
+> the file open. So, you could delete the file while nfsd has it open and
+> everything would probably still work.
+> 
+> Suppose though that the server crashes and reboots. When it comes back
+> up, fsck figures out that the file has been unlinked and frees the
+> blocks on the disk. Now you can't reclaim the state on the open file.
+> 
+> We're pretty much stuck with silly-renaming even for v4.
 
-This comment does not really add anything substantial that the code doesn't tell you :)
+The server could do something like rename the file into a special
+directory somewhere that only it had access to, preserving the file
+across reboot.  Then at the end of the grace period it would remove any
+files in that directory that had not been reclaimed by some client.
 
-> +		clp->cl_exchange_flags &=
-> +		     ~(EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_NON_PNFS);
+The problem would still remain that the *client* wouldn't know that the
+server was capable of doing this, so would still be stuck doing
+sillyrename on its own just to be sure.
 
-I'm not why you want to mask out EXCHGID4_FLAG_USE_NON_PNFS.
-If the server is not a DS why not just return an error?
+NFSv4.1 adds an open return flag which allows the server to tell the
+client that the client doesn't need to do sillyrename; see the
+discussion of OPEN4_RESULT_PRESERVE_UNLINKED flag in rfc 5661.
 
-Benny
+I don't think anyone's looked into implementing that yet; might be a fun
+project.
 
->  	nfs41_setup_state_renewal(clp);
->  	nfs_mark_client_ready(clp, NFS_CS_READY);
->  out:
+--b.
