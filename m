@@ -1,41 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:58865 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750978Ab0JGRN3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 13:13:29 -0400
-Received: by bwz11 with SMTP id 11so59750bwz.19
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Oct 2010 10:13:28 -0700 (PDT)
-Date: Thu, 7 Oct 2010 13:13:27 -0400
-Message-ID: <AANLkTimJXX_sr-fJCfLqLHdAaOPyG9Ry46JbpiNCcvH5@mail.gmail.com>
-Subject: pnfs code suggestions
-From: Fred Isaman <iisaman@netapp.com>
-To: NFS list <linux-nfs@vger.kernel.org>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:55285 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932335Ab0JRQVo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2010 12:21:44 -0400
+Received: by fxm4 with SMTP id 4so766306fxm.19
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Oct 2010 09:21:43 -0700 (PDT)
+In-Reply-To: <20101018164414.ec860360.ctpm@ist.utl.pt>
+References: <1287362142-sup-777@au1.ibm.com>
+	<20101018101059.574b715a@corrin.poochiereds.net>
+	<20101018154811.768baeb5.ctpm@ist.utl.pt>
+	<20101018155344.6e50dbb9.ctpm@ist.utl.pt>
+	<20101018110138.5f5001eb@corrin.poochiereds.net>
+	<20101018164414.ec860360.ctpm@ist.utl.pt>
+Date: Mon, 18 Oct 2010 12:21:43 -0400
+Message-ID: <AANLkTi=FauBoB4R=WCudvX8fLmVU1tGfKQkwpKaQPPLg@mail.gmail.com>
+Subject: Re: NFS sillyrename side effect
+From: Lyle Seaman <lyleseaman@gmail.com>
+To: linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We are starting to think about wave 2 of the code submission, which
-will be LAYOUTRETURN and callback handling.  Current code does not
-correctly wait for outstanding LAYOUTGETS on CB_RECALL.  Remembering
-that this is for whole file layouts with the forgetful model, my
-intent is to work on patches implementing the following.  Let me know
-if anyone sees problems with this approach.
+You would need to do the state recovery before or during the fsck
+(which would require the local filesystem to have some loose
+integration with the network protocol).
 
-On CB_RECALL, set a "barrier" equal to one less than the seqid
-embedded in the cb_recall stateid.  Then, instead of waiting on any
-outstanding LAYOUTGETs whose seqid is less than the barrier, as
-required by the spec, we just drop any LAYOUTGET reply that has a
-seqid less than the barrier.  Because we are using the forgetful
-model, this is functionally equivalent to waiting, and simpler.
-We similarly increase the barrier based on replies from LAYOUTRETURNs.
-The major issue I see with this approach is that we have to be very
-careful on reset of the stateid to either drain or detect outstanding
-LAYOUTGETS.
+Also, re the original issue, can't the client do a silly rename of the
+directory if it contains only .nfs files during rmdir?
 
-We will still need to wait on outstanding IO within any existing
-layout.  I suggest we use Benny's rpc waitq code, shifting it up into
-the submission branch.
-
-Thanks,
-Fred
+> Suppose though that the server crashes and reboots. When it comes back
+>> up, fsck figures out that the file has been unlinked and frees the
+>> blocks on the disk. Now you can't reclaim the state on the open file.
