@@ -1,82 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50967 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42706 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751403Ab0JUT4f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Oct 2010 15:56:35 -0400
-Date: Thu, 21 Oct 2010 15:56:33 -0400
-To: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS bug with utime/file create
-Message-ID: <20101021195633.GG10192@fieldses.org>
-References: <20101007160659.GP12489@ics.muni.cz>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101007160659.GP12489@ics.muni.cz>
+	id S1752885Ab0JSPU2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Oct 2010 11:20:28 -0400
+Date: Tue, 19 Oct 2010 11:20:25 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@Oracle.com>
+Cc: Pavel Emelyanov <xemul@parallels.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 9/13] sunrpc: Merge the xs_bind code
+Message-ID: <20101019152025.GB16742@fieldses.org>
+References: <9D130D08-1FD3-4088-AB43-8CEFFE6476B3@oracle.com>
+ <20101015180852.GC18869@fieldses.org>
+ <068F3C9A-2930-46F7-AC15-EB71ADA1933F@oracle.com>
+ <20101018211537.GC4740@fieldses.org>
+ <20101018214305.GE4740@fieldses.org>
+ <4480316F-74A4-4157-B685-056FD958890E@oracle.com>
+ <20101018215758.GH4740@fieldses.org>
+ <C254B855-0C70-4989-8559-143EB388D2EA@oracle.com>
+ <20101018235509.GI4740@fieldses.org>
+ <3E07FB7E-0697-409E-B51E-A3B310F7B065@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <3E07FB7E-0697-409E-B51E-A3B310F7B065@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Oct 07, 2010 at 06:06:59PM +0200, Lukas Hejtmanek wrote:
-> Hello,
+On Tue, Oct 19, 2010 at 10:35:51AM -0400, Chuck Lever wrote:
 > 
-> I noticed an interesing bug in 2.6.26 kernel, not sure whether this has been
-> fixed in newer version or not.
+> On Oct 18, 2010, at 7:55 PM, J. Bruce Fields wrote:
 > 
-> I have an application, that does basically the following code:
-> int
-> main(int argc, char *argv[]) {
->         int fd = open(argv[1], O_WRONLY|O_CREAT|O_TRUNC, 0666);
->         char buff[300];
->         write(fd, buff, 300);
->         while(1) {
->                 utime(argv[1], NULL);
->                 sleep(30);
->         }
->         return 0;
-> }
+> > On Mon, Oct 18, 2010 at 06:37:01PM -0400, Chuck Lever wrote:
+> >> 
+> >> The calling convention for rpc_create() allows this.  Notice in xs_setup_xprt() the source address is copied only if the args->srcaddr pointer is not NULL.  If it _is_ NULL, then the sock_xprt's srcaddr field should be filled with all zeros (which is the ANYADDR in both IPv4 and IPv6) because we allocate the new sock_xprt structure via kzalloc().  But the sa_family field is left zero as well in this case.
+> >> 
+> >> This is where the actual bug is, I think.  When srcaddr is NULL, instead of leaving that srcaddr field uninitialized in xs_setup_xprt(), it should plant an appropriate ANYADDR address there.  The family of that ANYADDR address is determined by the family of dstaddr, which is always initialized before this function is called.  I can send you a simple example patch that might apply before Pavel's work, if you like.
+> >> 
+> >> In the current code, the fact that ANYADDR just happens to be all zeroes saved our ass on this one.
+> > 
+> > It sounds like you're saying that before we ensured that fields other
+> > tha .sin_family were zero in one way (with the automatic initialiation
+> > of myaddr above), and now ensure it in another (kzalloc of the thing we
+> > copy from)--I'm not sure the difference is as important as all that?
 > 
+> When the ULPs did not provide a source address, we've always used a zeroed out sockaddr.  That's marginally incorrect, but since ANYADDR is all zeroes, functionally it doesn't matter.  Formerly xs_bind?() copied only the address part (not the family or the port) when building the bind address.  With Pavel's changes it's copying more than just the address field in the source address.
 > 
-> another application that runs on a different client does:
-> 17:57:30.605304 nanosleep({24, 0}, {24, 0}) = 0
-> 17:57:54.605526 stat64("/storage/home/xhejtman/gangadir/workspace/xhejtman/LocalXML/0",
-> {st_mode=S_IFDIR|0700, st_size=59, ...}) = 0
-> 17:57:54.606029 mkdir("/storage/home/xhejtman/gangadir/workspace/xhejtman/LocalXML/0/output",
-> 0777) = -1 EEXIST (File exists)
-> 17:57:54.606414 open("/storage/home/xhejtman/gangadir/workspace/xhejtman/LocalXML/0/output/__jobstatus__",
-> O_RDONLY|O_LARGEFILE) = 3
-> 17:57:54.607073 fstat64(3, {st_mode=S_IFREG|0644, st_size=300, ...}) = 0
-> 17:57:54.607230 mmap2(NULL, 1048576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xb74ef000
-> 17:57:54.607325 _llseek(3, 0, [0], SEEK_CUR) = 0
-> 17:57:54.607408 read(3, "\0\0\0\0\0\0\0\0\336e\356,\345\177\0\0\0\0\0\0\0\0\0\0"..., 1048576) = 300
-> 17:57:54.607765 read(3, "", 1048576)    = 0
-> 17:57:54.607854 close(3)                = 0
-> 17:57:54.608128 munmap(0xb74ef000, 1048576) = 0
-> 17:57:54.608224 stat64("/storage/home/xhejtman/gangadir/workspace/xhejtman/LocalXML/0/output/__jobstatus__",
-> {st_mode=S_IFREG|0644, st_size=300, ...}) = 0
+> All I'm saying is that the transport's source address should always be fully initialized (family included) at xprt setup time.
 > 
-> The first application tries to create a file (something like:
-> open("time_elapsed.txt", O_WRONLY|O_CREAT|O_TRUNC, 0666) (*)
+> > But, honestly, I'm not following all this--I'll happily take whatever
+> > revision you and Pavel want to give me, either incremental or as a
+> > replacement for the 17 patches.
 > 
-> at this point, it emits PUTFH, SAVEFH, OPEN, GETFH, GETATTR, RESTOREFH,
-> GETATTR compount. The server replies with NFS4ERR_EXPIRED.
-> 
-> The client tries to RENEW, the server replies NFS4ERR_EXPIRED.
-> 
-> The client restarts using SETCLIENTID and so on. During this phase, the first
-> application emits utime call. It seems that orignial open (*) get lost and system
-> deadlocks. 
-> 
-> Using NFS debugs, I can see a warning, that the lease is not expired (from the
-> client's point of view, but the server is conviced that the lease is expired).
-> 
-> I can reliably reproduce it with diane/ganga framework. I cannot fully reproduce it
-> just using simple C programs. 
-> 
-> 
-> Is there something I could do?
+> It's a minor change.  I can send you something later today to try.
 
-There have been a number of fixes to the client state recovery code
-since then, so it may be worth just retrying with a newer kernel on the
-client.
+OK, thanks.  I think it'll be easiest to proceed if I just go ahead and
+commit what we've got so far; so I've just pushed out Pavel's stuff to
+
+	git://linux-nfs.org/~bfields/linux.git for-2.6.37
+
+Incremental patches on top of that welcomed.
 
 --b.
