@@ -1,115 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48025 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751561Ab0JZM74 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Oct 2010 08:59:56 -0400
-Date: Tue, 26 Oct 2010 08:59:47 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Neil Brown <neilb@suse.de>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        Menyhart Zoltan <Zoltan.Menyhart@bull.net>
-Subject: Re: [PATCH 1/4] svcrpc: never clear XPT_BUSY on dead xprt
-Message-ID: <20101026125947.GA19445@fieldses.org>
-References: <1287969693-12340-1-git-send-email-bfields@redhat.com>
- <20101025124357.63b966bb@notabene>
- <20101025202155.GD13523@fieldses.org>
- <20101026095836.61bf6a38@notabene>
- <20101025230331.GF13523@fieldses.org>
- <20101026105447.264b690e@notabene>
- <20101026001145.GG13523@fieldses.org>
- <20101026002858.GH13523@fieldses.org>
- <20101026003008.GI13523@fieldses.org>
- <20101026122820.1518ec7e@notabene>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101026122820.1518ec7e@notabene>
+Received: from mailrelay2.lrz-muenchen.de ([129.187.254.102]:57891 "EHLO
+	mailrelay2.lrz-muenchen.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S933331Ab0JSNPV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Oct 2010 09:15:21 -0400
+Received: from st-brauchle.localnet ([129.187.109.181] [129.187.109.181]) by mailout.lrz-muenchen.de with ESMTP for linux-nfs@vger.kernel.org; Tue, 19 Oct 2010 15:00:08 +0200
+From: Joschi Brauchle <joschi.brauchle@tum.de>
+To: linux-nfs@vger.kernel.org
+Subject: RPCIOD constantly taking 10-20% CPU, X hangs (in NFSv4 Environment)
+Date: Tue, 19 Oct 2010 15:00:07 +0200
+Content-Type: Text/Plain;
+  charset="us-ascii"
+Message-Id: <201010191500.07799.joschi.brauchle@tum.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Oct 26, 2010 at 12:28:20PM +1100, Neil Brown wrote:
-> On Mon, 25 Oct 2010 20:30:08 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> >     svcrpc: simplify svc_close_xprt, fix minor race
-> >     
-> >     We're assuming that in the XPT_BUSY case, somebody else will take care
-> >     of the close.  But that's not necessarily the case (e.g. if
-> >     svc_xprt_enqueue() exits due to a lack of write space).  So the close
-> >     could in theory be delayed indefinitely.  We should be calling
-> >     svc_xprt_enqueue() after every set of XPT_CLOSE.
-> >     
-> >     Also with svc_close_all() no longer relying on svc_close, it no longer
-> >     needs to be able to immediately do the svc_delete_xprt() itself.
-> >     
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > 
-> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> > index 8c018df..dfee123 100644
-> > --- a/net/sunrpc/svc_xprt.c
-> > +++ b/net/sunrpc/svc_xprt.c
-> > @@ -928,11 +928,7 @@ void svc_delete_xprt(struct svc_xprt *xprt)
-> >  void svc_close_xprt(struct svc_xprt *xprt)
-> >  {
-> >  	set_bit(XPT_CLOSE, &xprt->xpt_flags);
-> > -	if (test_and_set_bit(XPT_BUSY, &xprt->xpt_flags))
-> > -		/* someone else will have to effect the close */
-> > -		return;
-> > -
-> > -	svc_delete_xprt(xprt);
-> > +	svc_xprt_enqueue(xprt);
-> >  }
-> >  EXPORT_SYMBOL_GPL(svc_close_xprt);
-> >  
-> 
-> I'm not quite so sure about this one.
-> 
-> svc_close_xprt gets called when user-space writes some magic string to some
-> magic file.  This could be done when there are no active nfsd threads.
-> It is a bit far fetched, but you could tell nfsd to open a socket, then tell
-> it to close it, before telling it to start any threads.
-> 
-> In that case the socket would stay open until the first thread was started.
+Hello everyone,
 
-Thanks, that's an odd case, but I think you're right.  OK:
+I have a problem with a OpenSuSE 11.3 box that I reported here: 
+https://bugzilla.novell.com/show_bug.cgi?id=644880
 
---b.
+I thought I'd post this to the NFS mailing list, as I did not get a response 
+from Novell yet and the problem keeps us from upgrading about 100 machines 
+from OpenSuSE11.1 to 11.3. 
+-----------------------
 
-commit 6a04c0fa098b60e93d4077c12f7fa7a2f189df95
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Oct 25 20:24:48 2010 -0400
+I have the following problem with Opensuse 11.3, x86_64 in an NFSv4 
+environment:
 
-    svcrpc: fix minor svc_close_xprt race
-    
-    We're assuming that in the XPT_BUSY case, somebody else will take care
-    of the close.  But that's not necessarily the case.  So the close could
-    in theory be delayed indefinitely.
+Mostly in the morning when I return to the box (it's running idle all night), 
+the X server hangs and 'top' shows 'rpciod/0' taking between 10-20% cpu
+constantly. A 'reboot' fails as stopping the 'automount' service fails due to 
+my home (NFSv4 mount) being busy. 
 
-    We should instead be calling svc_xprt_enqueue() after every set of
-    XPT_CLOSE.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Sometimes the X server freezes with the same symptoms even randomly during 
+work, but mostly it seems to happen when the session is idle at night.
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 8c018df..99996ad 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -928,10 +928,17 @@ void svc_delete_xprt(struct svc_xprt *xprt)
- void svc_close_xprt(struct svc_xprt *xprt)
- {
- 	set_bit(XPT_CLOSE, &xprt->xpt_flags);
--	if (test_and_set_bit(XPT_BUSY, &xprt->xpt_flags))
-+	if (test_and_set_bit(XPT_BUSY, &xprt->xpt_flags)) {
- 		/* someone else will have to effect the close */
-+		svc_xprt_enqueue(xprt);
- 		return;
--
-+	}
-+	/*
-+	 * We expect svc_close_xprt() to work even when no threads are
-+	 * running (e.g., while configuring the server before starting
-+	 * any threads), so if the transport isn't busy, we delete
-+	 * it ourself:
-+	 */
- 	svc_delete_xprt(xprt);
- }
- EXPORT_SYMBOL_GPL(svc_close_xprt);
+I'm not very experienced in debugging a problem like this, so I definitely 
+need instructions on how to get more information. Here is the information I 
+have at hand:
+-----------------------
+'uname -a' on the Opensuse 11.3 box:
+Linux <hostname> 2.6.34.7-0.3-desktop #1 SMP PREEMPT 2010-09-20 15:27:38 +0200 
+x86_64 x86_64 x86_64 GNU/Linux
+-----------------------
+'mount' returns the following line on my home:
+192.168.109.3:/home/staff/<username> on /home/<username> type nfs4 
+(rw,rsize=32768,wsize=32768,sec=krb5,sloppy,addr=192.168.109.3,clientaddr=192.168.109.72)
+
+There are no other NFSv4 mounts.
+-----------------------
+I get a LOT of these messages in '/var/log/messages':
+Sep 28 18:30:58 <hostname> kernel: [117887.140931] NFS: v4 server returned a 
+bad sequence-id error on an unconfirmed sequence ffff88007babd828!
+-----------------------
+
+The NFS server is running SLES 10SP3 in a two-node Heartbeat cluster 
+configuration with a shared IP (192.168.109.3), serving NFSv3 and NFSv4 (with 
+Kerberos/GSS Security). 
+/etc/exports on the server contains:
+-----------------------
+# NFSv4 entries (with Kerberos and GSS Security): 
+/export          gss/krb5(rw,fsid=0,no_all_squash,async,no_subtree_check)
+
+We have about 40 OpenSuse 11.1 clients getting their homes from this server, 
+they are all running fine without problems for several months. It seems to be 
+a problem in the kernel of 11.3.
+
+I also tried the latest kernel 2.6.36.rc7 available from the OpenSuse 
+Buildservice. The problem persists, but the process that is hanging here is 
+called "kworker".
+
+By now I switched to the debug kernel 2.6.34.7. As I said, just let me know 
+what more debug info is needed and how to obtain it. Also I have not found a 
+way to reproduce or trigger the problem manually. I will try to create more 
+NFSv4 traffic to see if I can reproduce the problem.
+
+Thanks!
