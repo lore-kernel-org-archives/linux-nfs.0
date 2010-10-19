@@ -1,38 +1,74 @@
-From: Peng Tao <bergwolf@gmail.com>
-Subject: Re: pnfs-nfs-utils compile errors
-Date: Tue, 19 Oct 2010 08:26:03 +0800
-Message-ID: <AANLkTikT25FWtb=C0xx=-LZUFT_hOERu0Z1ZxAkVuJN9@mail.gmail.com>
-References: <AANLkTin3xF4+QbG8G2pgiUxv9mUMmFOnQOUD2C1ocVrA@mail.gmail.com> <20101018160953.GA19529@merit.edu>
-Mime-Version: 1.0
+From: Ian Munsie <imunsie-8fk3Idey6ehBDgjK7y7TUQ@public.gmane.org>
+Subject: Re: NFS sillyrename side effect
+Date: Tue, 19 Oct 2010 16:18:54 +1100
+Message-ID: <1287465288-sup-9227@au1.ibm.com>
+References: <1287362142-sup-777@au1.ibm.com> <20101018101059.574b715a@corrin.poochiereds.net>
 Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Jim Rees <rees@umich.edu>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	=?utf-8?q?Cl=C3=A1udio_Martins?= <ctpm-s6mEjpzMaPUVhHzd4jOs4w@public.gmane.org>,
+	Trond Myklebust <trond.myklebust@netapp.com>,
+	linux-nfs <linux-nfs@vger.kernel.org>,
+	Scott Romanowski <romansc@us.ibm.com>,
+	Benjamin Herrenschmidt <benh@kernel.crashing.org>
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:41323 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753953Ab0JSA0Y convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2010 20:26:24 -0400
-Received: by vws2 with SMTP id 2so954805vws.19
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Oct 2010 17:26:24 -0700 (PDT)
-In-Reply-To: <20101018160953.GA19529-8f4Pc2RrbJmHXe+LvDLADg@public.gmane.org>
+Received: from e23smtp01.au.ibm.com ([202.81.31.143]:33674 "EHLO
+	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751501Ab0JSFS7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Oct 2010 01:18:59 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.31.245])
+	by e23smtp01.au.ibm.com (8.14.4/8.13.1) with ESMTP id o9J5FoQe024934
+	for <linux-nfs@vger.kernel.org>; Tue, 19 Oct 2010 16:15:50 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o9J5Iu8g876570
+	for <linux-nfs@vger.kernel.org>; Tue, 19 Oct 2010 16:18:56 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o9J5It8s020888
+	for <linux-nfs@vger.kernel.org>; Tue, 19 Oct 2010 16:18:56 +1100
+In-reply-to: <20101018101059.574b715a-4QP7MXygkU+dMjc06nkz3ljfA9RmPOcC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 19, 2010 at 12:09 AM, Jim Rees <rees@umich.edu> wrote:
-> Peng Tao wrote:
->
-> =C2=A0I fail to compile with pnfs-nfs-utils master branch (commit
-> =C2=A048a8d6b13b2f0b720267b1af104addb7426e7cc9). It fails in blkmapd
-> =C2=A0directory. Are the files cfg.c and cfg.h missing or deleted?
->
-> Yes, they were removed in commit fb9c48c5e1ce2023d3dc2e279537e158130a=
-6ba0,
-> "blkmapd: get rid of config file and instead examine all block device=
-s."
-> Maybe you need to do a autogen.sh or make distclean?
-Thanks, Jim. After running autogen.sh, I compile successfully.
->
+Hi all,
 
---=20
-Thanks,
--Bergwolf
+Excerpts from Jeff Layton's message of Tue Oct 19 01:10:59 +1100 2010:
+> See:
+> 
+> http://nfs.sourceforge.net/
+> 
+> ...section D2. The faq mentions that NFSv4 could do away with it
+> because it's stateful, but that's not really the case either.
+
+Thanks for the pointer.
+
+> > It seems to me that if the sillyrename function is indeed necessary that
+> > we should not reveal the temporary filename it produces to userspace,
+> > but I wonder if that might create issues (say if userspace thinks a
+> > directory is empty when it acutally has a sillyrename file in it)?
+> > 
+> > Basically I want to know if the behaviour I've outlined below is
+> > the expected behaviour of NFS, or if you considder this a bug?
+> > 
+> 
+> 
+> It's expected. Sillyrenaming sucks, but there really is no great
+> alternative to it. It's one of the prices we pay for having NFSv2/3 be
+> stateless.
+> 
+> I suppose in principle we could do things like hide silly-renamed
+> dentries from userspace, but that might also be problematic. You'd
+> still be unable to remove a directory that has a silly-renamed file in
+> it, for instance even though it looks empty. There would also be
+> inconsistencies as other machines and the server would still see
+> the .nfsXXXXX files.
+
+I had a feeling that would be the case.
+
+> The bottom line is that you need to be really careful with programs
+> that use delete-on-last-close when running on NFS.
+
+
+Thanks to everyone who replied for clarifying this matter for me.
+
+Cheers,
+-Ian
