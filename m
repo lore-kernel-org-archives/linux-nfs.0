@@ -1,41 +1,34 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/2] svcrdma: NFSRDMA Server fixes for 2.6.37
-Date: Tue, 19 Oct 2010 10:54:43 -0400
-Message-ID: <20101019145443.GA16742@fieldses.org>
-References: <20101012203332.22154.37230.stgit@build.ogc.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-To: Tom Tucker <tom@ogc.us>
-Return-path: <linux-rdma-owner@vger.kernel.org>
-In-Reply-To: <20101012203332.22154.37230.stgit-T4OLL4TyM9aNDNWfRnPdfg@public.gmane.org>
-Sender: linux-rdma-owner@vger.kernel.org
+From: Steve Dickson <steved@redhat.com>
+Subject: Froe 0d941e1c15147045c26a6cc4918743786e8a1e40 Mon Sep 17 00:00:00 2001
+Date: Tue, 19 Oct 2010 16:00:23 -0400
+Message-ID: <1287518425-12962-1-git-send-email-steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:23653 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752520Ab0JST4H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Oct 2010 15:56:07 -0400
+Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o9JJu6pM003230
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 19 Oct 2010 15:56:06 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx08.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o9JJu6hJ028627
+	for <linux-nfs@vger.kernel.org>; Tue, 19 Oct 2010 15:56:06 -0400
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 12, 2010 at 03:33:46PM -0500, Tom Tucker wrote:
-> Hi Bruce,
-> 
-> These fixes are ready for 2.6.37. They fix two bugs in the server-side
-> NFSRDMA transport.
+Here are a couple tweaks of two man pages that
+have been point out. 
 
-Both applied and pushed out, thanks.
+Steve Dickson (2):
+  Cleared up the sync option in the exportfs man page
+  Updated rpc.mountd man page
 
---b.
+ utils/exportfs/exports.man |    4 +++-
+ utils/mountd/mountd.man    |    6 +++---
+ 2 files changed, 6 insertions(+), 4 deletions(-)
 
-> 
-> Thanks,
-> Tom
-> ---
-> 
-> Tom Tucker (2):
->       svcrdma: Cleanup DMA unmapping in error paths.
->       svcrdma: Change DMA mapping logic to avoid the page_address kernel API
-> 
-> 
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   19 ++++---
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   82 ++++++++++++++++++++++--------
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |   41 +++++++--------
->  3 files changed, 92 insertions(+), 50 deletions(-)
-> 
-> -- 
-> Signed-off-by: Tom Tucker <tom@ogc.us>
+-- 
+1.7.2.3
+
