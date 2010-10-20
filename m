@@ -1,90 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-phx2.redhat.com ([209.132.183.24]:46654 "EHLO
-	mx01.colomx.prod.int.phx2.redhat.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S932666Ab0JFQB0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Oct 2010 12:01:26 -0400
-Date: Wed, 6 Oct 2010 12:01:25 -0400 (EDT)
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <3901595.16.1286380884167.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-In-Reply-To: <18697573.14.1286380841649.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-Subject: Re: NFS4 clients cannot reclaim locks
-Content-Type: text/plain; charset=utf-8
+Received: from cantor2.suse.de ([195.135.220.15]:34405 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758338Ab0JTHRK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Oct 2010 03:17:10 -0400
+Received: from relay1.suse.de (charybdis-ext.suse.de [195.135.221.2])
+	by mx2.suse.de (Postfix) with ESMTP id C70D488B6C
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Oct 2010 09:17:08 +0200 (CEST)
+Date: Wed, 20 Oct 2010 18:17:01 +1100
+From: Neil Brown <neilb@suse.de>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
+ mounts.
+Message-ID: <20101020181701.232dbeea@notabene>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
------ "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
-> ...Here is the second patch.
-> 
-> Cheers
->   Trond
-> ------------------------------------------------------------------------------------------------------
-> NFSv4: Don't call nfs4_state_mark_reclaim_reboot() from error
-> handlers
-> 
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> In the case of a server reboot, the state recovery thread starts by
-> calling
-> nfs4_state_end_reclaim_reboot() in order to avoid edge conditions
-> when
-> the server reboots while the client is in the middle of recovery.
-> 
-> However, if the client has already marked the nfs4_state as requiring
-> reboot recovery, then the above behaviour will cause the recovery
-> thread to
-> treat the open as if it was part of such an edge condition: the open
-> will
-> be recovered as if it was part of a lease expiration (and all the
-> locks
-> will be lost).
-> Fix is to remove the call to nfs4_state_mark_reclaim_reboot from
-> nfs4_async_handle_error(), and nfs4_handle_exception(). Instead we
-> leave it
-> to the recovery thread to do this for us.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  fs/nfs/nfs4proc.c |    6 ------
->  1 files changed, 0 insertions(+), 6 deletions(-)
-> 
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 01b4817..74aa54e 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -255,9 +255,6 @@ static int nfs4_handle_exception(const struct
-> nfs_server *server, int errorcode,
->  			nfs4_state_mark_reclaim_nograce(clp, state);
->  			goto do_state_recovery;
->  		case -NFS4ERR_STALE_STATEID:
-> -			if (state == NULL)
-> -				break;
-> -			nfs4_state_mark_reclaim_reboot(clp, state);
->  		case -NFS4ERR_STALE_CLIENTID:
->  		case -NFS4ERR_EXPIRED:
->  			goto do_state_recovery;
-> @@ -3493,9 +3490,6 @@ nfs4_async_handle_error(struct rpc_task *task,
-> const struct nfs_server *server,
->  			nfs4_state_mark_reclaim_nograce(clp, state);
->  			goto do_state_recovery;
->  		case -NFS4ERR_STALE_STATEID:
-> -			if (state == NULL)
-> -				break;
-> -			nfs4_state_mark_reclaim_reboot(clp, state);
->  		case -NFS4ERR_STALE_CLIENTID:
->  		case -NFS4ERR_EXPIRED:
->  			goto do_state_recovery;
 
-Yes. The patch works for me.
+If I don't have any network configured (except loop-back), and try an NFSv3
+mount, then it fails quickly:
 
-An open call is made to the server with claim-type set to claim previous. This resets the stateid and the write operation can continue.
 
-Thank You
+....
+mount.nfs: portmap query failed: RPC: Remote system error - Network is unreachable
+mount.nfs: Network is unreachable
 
-Sachin Prabhu
 
+If I try the same thing with a NFSv4 mount, it times out before it fails,
+making a much longer delay.
+
+This is because mount.nfs doesn't do a portmap lookup but just leaves
+everything to the kernel.
+The kernel does an 'rpc_ping()' which sets RPC_TASK_SOFTCONN.
+So at least it doesn't retry after the timeout.  But given that we have a
+clear error, we shouldn't timeout at all.
+
+Unfortunately I cannot see an easy way to fix this.
+
+The place where ENETUNREACH is in xs_tcp_setup_socket.  The comment there
+says "Retry with the same socket after a delay".  The "delay" bit is correct,
+the "retry" isn't.
+
+It would seem that we should just add a 'goto out' there if RPC_TASK_SOFTCONN
+was set.  However we cannot see the task at this point - in fact it seems
+that there could be a queue of tasks waiting on this connection.  I guess
+some could be soft, and some not. ???
+
+So: An suggestions how to get a ENETUNREACH (or ECONNREFUSED or similar) to
+fail immediately when  RPC_TASK_SOFTCONN is set ???
+
+
+This affects people who upgrade from openSUSE11.2 (which didn't support v4
+mounts) to openSUSE11.3 (which defaults to v4) and who use network-manager
+(which configures networks late) and have NFS mounts in /etc/fstab with
+either explicit IP addresses or host names that can be resolved without the
+network.
+This config will work because when the network comes up, network-manager will
+re-run the 'init.d/nfs' script.  However since 11.3 there is an unpleasant
+pause before boot completes.
+
+Thanks,
+NeilBrown
