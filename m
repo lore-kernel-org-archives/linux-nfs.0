@@ -1,98 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:14785 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754325Ab0JETaZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Oct 2010 15:30:25 -0400
-Message-ID: <4CAB7CCB.3070904@parallels.com>
-Date: Tue, 05 Oct 2010 23:30:19 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] sunrpc: Turn list_for_each-s into the ..._entry-s
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:58285 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752065Ab0JTQDM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Oct 2010 12:03:12 -0400
+Received: by gwb19 with SMTP id 19so87756gwb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Oct 2010 09:03:11 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/2] SUNRPC: Use conventional switch statement when
+	reclassifying sockets
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 20 Oct 2010 11:52:51 -0400
+Message-ID: <20101020155251.6446.28913.stgit@ellison.1015granger.net>
+In-Reply-To: <20101020155158.6446.29915.stgit@ellison.1015granger.net>
+References: <20101020155158.6446.29915.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Saves some lines of code and some branticks when reading one.
+Clean up.
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+Defensive coding: If "family" is ever something that is neither
+AF_INET nor AF_INET6, xs_reclassify_socket6() is not the appropriate
+default action.  Choose to do nothing in that case.
+
+Introduced by commit 6bc9638a.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/svc_xprt.c |    6 ++----
- net/sunrpc/svcsock.c  |   12 +++---------
- net/sunrpc/xprt.c     |    6 ++----
- 3 files changed, 7 insertions(+), 17 deletions(-)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 12025ee..bef1e88 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -100,16 +100,14 @@ EXPORT_SYMBOL_GPL(svc_unreg_xprt_class);
-  */
- int svc_print_xprts(char *buf, int maxlen)
+ net/sunrpc/xprtsock.c |   10 +++++++---
+ 1 files changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 7915565..b58eef7 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1558,7 +1558,7 @@ static int xs_bind(struct sock_xprt *transport, struct socket *sock)
+ 			nloop++;
+ 	} while (err == -EADDRINUSE && nloop != 2);
+ 
+-	if (myaddr.ss_family == PF_INET)
++	if (myaddr.ss_family == AF_INET)
+ 		dprintk("RPC:       %s %pI4:%u: %s (%d)\n", __func__,
+ 				&((struct sockaddr_in *)&myaddr)->sin_addr,
+ 				port, err ? "failed" : "ok", err);
+@@ -1594,10 +1594,14 @@ static inline void xs_reclassify_socket6(struct socket *sock)
+ 
+ static inline void xs_reclassify_socket(int family, struct socket *sock)
  {
--	struct list_head *le;
-+	struct svc_xprt_class *xcl;
- 	char tmpstr[80];
- 	int len = 0;
- 	buf[0] = '\0';
- 
- 	spin_lock(&svc_xprt_class_lock);
--	list_for_each(le, &svc_xprt_class_list) {
-+	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
- 		int slen;
--		struct svc_xprt_class *xcl =
--			list_entry(le, struct svc_xprt_class, xcl_list);
- 
- 		sprintf(tmpstr, "%s %d\n", xcl->xcl_name, xcl->xcl_max_payload);
- 		slen = strlen(tmpstr);
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 88de3d0..1454739 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1261,19 +1261,13 @@ void svc_sock_update_bufs(struct svc_serv *serv)
- 	 * The number of server threads has changed. Update
- 	 * rcvbuf and sndbuf accordingly on all sockets
- 	 */
--	struct list_head *le;
-+	struct svc_sock *svsk;
- 
- 	spin_lock_bh(&serv->sv_lock);
--	list_for_each(le, &serv->sv_permsocks) {
--		struct svc_sock *svsk =
--			list_entry(le, struct svc_sock, sk_xprt.xpt_list);
-+	list_for_each_entry(svsk, &serv->sv_permsocks, sk_xprt.xpt_list)
- 		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
--	}
--	list_for_each(le, &serv->sv_tempsocks) {
--		struct svc_sock *svsk =
--			list_entry(le, struct svc_sock, sk_xprt.xpt_list);
-+	list_for_each_entry(svsk, &serv->sv_tempsocks, sk_xprt.xpt_list)
- 		set_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags);
--	}
- 	spin_unlock_bh(&serv->sv_lock);
+-	if (family == PF_INET)
++	switch (family) {
++	case AF_INET:
+ 		xs_reclassify_socket4(sock);
+-	else
++		break;
++	case AF_INET6:
+ 		xs_reclassify_socket6(sock);
++		break;
++	}
  }
- EXPORT_SYMBOL_GPL(svc_sock_update_bufs);
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 64a4a94..4c8f18a 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -755,13 +755,11 @@ static void xprt_connect_status(struct rpc_task *task)
-  */
- struct rpc_rqst *xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid)
- {
--	struct list_head *pos;
-+	struct rpc_rqst *entry;
- 
--	list_for_each(pos, &xprt->recv) {
--		struct rpc_rqst *entry = list_entry(pos, struct rpc_rqst, rq_list);
-+	list_for_each_entry(entry, &xprt->recv, rq_list)
- 		if (entry->rq_xid == xid)
- 			return entry;
--	}
- 
- 	dprintk("RPC:       xprt_lookup_rqst did not find xid %08x\n",
- 			ntohl(xid));
--- 
-1.5.5.6
+ #else
+ static inline void xs_reclassify_socket4(struct socket *sock)
 
