@@ -1,43 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:38170 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752478Ab0JKAEO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Oct 2010 20:04:14 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 6so2668490iwn.19
-        for <linux-nfs@vger.kernel.org>; Sun, 10 Oct 2010 17:04:14 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/15] mountd: Clear mountd registrations at start up
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Sun, 10 Oct 2010 20:04:11 -0400
-Message-ID: <20101011000411.6667.17979.stgit@ellison.1015granger.net>
-In-Reply-To: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
-References: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:58552 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751128Ab0JTESM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Oct 2010 00:18:12 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 03/12] NFSv4.1: pnfsd, pnfs: protocol level pnfs constants
+Date: Wed, 20 Oct 2010 00:17:55 -0400
+Message-Id: <1287548284-28374-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
+References: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Clear stale MNT registrations before mountd tries to create fresh
-listeners, to ensure that mountd starts.  This is also what statd
-does.
+From: Dean Hildebrand <dhildebz@umich.edu>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Use only layoutreturn constant for both returns and recalls.
+(return_* works better for recall_type rather the other way around)
+
+Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
+ include/linux/nfs4.h |   45 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 45 insertions(+), 0 deletions(-)
 
- utils/mountd/mountd.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
-
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index d309950..7e0cf6a 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -840,6 +840,7 @@ main(int argc, char **argv)
- 	if (new_cache)
- 		cache_open();
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 07e40c6..6c0406e 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -471,6 +471,8 @@ enum lock_type4 {
+ #define FATTR4_WORD1_TIME_MODIFY        (1UL << 21)
+ #define FATTR4_WORD1_TIME_MODIFY_SET    (1UL << 22)
+ #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
++#define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
++#define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
  
-+	unregister_services();
- 	if (version2()) {
- 		listeners += nfs_svc_create("mountd", MOUNTPROG,
- 					MOUNTVERS, mount_dispatch, port);
+ #define NFSPROC4_NULL 0
+ #define NFSPROC4_COMPOUND 1
+@@ -550,6 +552,49 @@ enum state_protect_how4 {
+ 	SP4_SSV		= 2
+ };
+ 
++enum pnfs_layouttype {
++	LAYOUT_NFSV4_1_FILES  = 1,
++	LAYOUT_OSD2_OBJECTS = 2,
++	LAYOUT_BLOCK_VOLUME = 3,
++};
++
++/* used for both layout return and recall */
++enum pnfs_layoutreturn_type {
++	RETURN_FILE = 1,
++	RETURN_FSID = 2,
++	RETURN_ALL  = 3
++};
++
++enum pnfs_iomode {
++	IOMODE_READ = 1,
++	IOMODE_RW = 2,
++	IOMODE_ANY = 3,
++};
++
++enum pnfs_notify_deviceid_type4 {
++	NOTIFY_DEVICEID4_CHANGE = 1 << 1,
++	NOTIFY_DEVICEID4_DELETE = 1 << 2,
++};
++
++#define NFL4_UFLG_MASK			0x0000003F
++#define NFL4_UFLG_DENSE			0x00000001
++#define NFL4_UFLG_COMMIT_THRU_MDS	0x00000002
++#define NFL4_UFLG_STRIPE_UNIT_SIZE_MASK	0xFFFFFFC0
++
++/* Encoded in the loh_body field of type layouthint4 */
++enum filelayout_hint_care4 {
++	NFLH4_CARE_DENSE		= NFL4_UFLG_DENSE,
++	NFLH4_CARE_COMMIT_THRU_MDS	= NFL4_UFLG_COMMIT_THRU_MDS,
++	NFLH4_CARE_STRIPE_UNIT_SIZE	= 0x00000040,
++	NFLH4_CARE_STRIPE_COUNT		= 0x00000080
++};
++
++#define NFS4_DEVICEID4_SIZE 16
++
++struct nfs4_deviceid {
++	char data[NFS4_DEVICEID4_SIZE];
++};
++
+ #endif
+ #endif
+ 
+-- 
+1.7.2.1
 
