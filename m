@@ -1,43 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from gate.crashing.org ([63.228.1.57]:60103 "EHLO gate.crashing.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753254Ab0JAGBj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Oct 2010 02:01:39 -0400
-Subject: Re: Odd NFS related SIGBUS (& possible fix)
-From: Benjamin Herrenschmidt <benh@kernel.crashing.org>
-To: Nick Piggin <npiggin@kernel.dk>
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <1285912667.2463.68.camel@pasglop>
-References: <1285734825.14081.87.camel@pasglop>
-	 <1285912667.2463.68.camel@pasglop>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 01 Oct 2010 16:01:30 +1000
-Message-ID: <1285912890.2463.71.camel@pasglop>
+Received: from filter.openoffice.nl ([217.170.2.175]:42086 "EHLO
+	filter.openoffice.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751159Ab0JTLBW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Oct 2010 07:01:22 -0400
+Message-ID: <4CBECBFF.2050802@blub.net>
+Date: Wed, 20 Oct 2010 13:01:19 +0200
+From: Valentijn Sessink <valentyn@blub.net>
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: ipv6 + krb5, server status?
+References: <4CB59086.9080108@blub.net>	<20101013125656.GA5197@merit.edu>	<20101013095216.5b9b31a7@corrin.poochiereds.net>	<4CB5BA8F.2090608@blub.net> <20101013104937.358fe122@corrin.poochiereds.net>
+In-Reply-To: <20101013104937.358fe122@corrin.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2010-10-01 at 15:57 +1000, Benjamin Herrenschmidt wrote:
+Jeff, list,
 
-> I actually just reproduced the lockup on x86_64 with 4 CPUs using
-> mmapstress01 -p 5 -t 1.3 -f 4096.
-> 
-> So the trick is to mount /tmp over nfs (so that the mmap'ed file ends up
-> on nfs) and run mmapstress01 as above. Then try ctrl-C it.
-> 
-> I'll do a bz for that one.
-> 
-> I'm now going to try going back kernel versions to see if I can also
-> reproduce the SIGBUS or other timing issues.
+Jeff Layton schreef:
+> It sounds more like you have a problem with idmapping rather than
+> anything krb5 specific, but I'm not sure why that would be the case
+> with sec=krb5 and not with sec=sys.
 
-So on x86 I didn't get a backtrace, but the VGA console was still
-responsive somewhat, and I saw mmapstress01 there using 100% CPU and
-unresponsive to kill -9 (stays in state R).
+Well, I did, in fact. At least, that is what I'm currently seeing with
+another system, where "networkmanager" messes with the hosts-file, and
+as a result, effectively wipes out the FQDN. Thus, idmapd thinks that
+"localdomain" (added by networkmanager - why?? - no that's not a
+question, just venting my frustration ;) was a good guess to test the
+logged in user against:
 
-Cheers,
-Ben.
+rpc.idmapd: nss_getpwnam: name 'valentyn@kantoor.openoffice.nl' domain
+'localdomain': resulting localname '(null)'
 
+(We run idmapd relying on DNS instead of a "Domain = " clause, because
+we thought that made us flexible - I'll rethink that decision.)
 
+V.
