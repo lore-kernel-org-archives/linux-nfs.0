@@ -1,54 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:50341 "EHLO mail-out1.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:19372 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751853Ab0J3Vlb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 30 Oct 2010 17:41:31 -0400
-Subject: Re: Error: state manager failed on NFSv4 server linux with error
- 127
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "Brian J. Murrell" <brian@interlinx.bc.ca>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1288474164.32627.383.camel@pc>
-References: <1287334833.4871.6.camel@pc>
-	 <1287340520.5266.70.camel@heimdal.trondhjem.org>
-	 <1288460514.32627.105.camel@pc>
-	 <1288461151.3238.9.camel@heimdal.trondhjem.org>
-	 <1288461562.32627.151.camel@pc>
-	 <1288462786.3238.16.camel@heimdal.trondhjem.org>
-	 <1288474164.32627.383.camel@pc>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sat, 30 Oct 2010 17:41:26 -0400
-Message-ID: <1288474886.8621.3.camel@heimdal.trondhjem.org>
+	id S1751128Ab0JTESP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Oct 2010 00:18:15 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 08/12] NFSv4.1: pnfs: filelayout: introduce minimal file layout driver
+Date: Wed, 20 Oct 2010 00:18:00 -0400
+Message-Id: <1287548284-28374-9-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
+References: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Sat, 2010-10-30 at 17:29 -0400, Brian J. Murrell wrote: 
-> On Sat, 2010-10-30 at 14:19 -0400, Trond Myklebust wrote: 
-> > 
-> > BTW: Do you have the following patches applied?
-> >   http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=b0ed9dbc24f1fd912b2dd08b995153cafc1d5b1c
-> > and
-> >   http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=ae1007d37e00144b72906a4bdc47d517ae91bcc1
-> 
-> These patches both deal with recovery issues, which you mentioned seems
-> to be the state the previously posted stack traces where in also.
-> 
-> Since the server has not been rebooted or even had its export list
-> reread/reexported, I wonder why recovery would have been triggered, to
-> cause this client problem.
-> 
-> Does recovery actually get invoked on the client for events other than
-> an outright restart of NFS on the server?  NFS on the server here should
-> have been entirely stable over the period of time in which this client
-> went bad.
+From: Dean Hildebrand <dhildebz@umich.edu>
 
-There are 2 cases which can trigger recovery: server reboot, and network
-partition (i.e. a networking fault that causes the client to be unable
-to contact the server in time in order to renew its lease).
+This driver just registers itself and supplies trivial mount/umount functions.
 
-If none of the above apply, then we need to look at whether it is the
-client or the server that is screwed up.
+Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/Makefile         |    3 ++
+ fs/nfs/nfs4filelayout.c |   78 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_fs.h  |    1 +
+ 3 files changed, 82 insertions(+), 0 deletions(-)
+ create mode 100644 fs/nfs/nfs4filelayout.c
 
-Trond
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index bb9e773..08a8889 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -18,3 +18,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
+ nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
+ nfs-$(CONFIG_SYSCTL) += sysctl.o
+ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
++
++obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
++nfs_layout_nfsv41_files-y := nfs4filelayout.o
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+new file mode 100644
+index 0000000..696e283
+--- /dev/null
++++ b/fs/nfs/nfs4filelayout.c
+@@ -0,0 +1,78 @@
++/*
++ *  Module for the pnfs nfs4 file layout driver.
++ *  Defines all I/O and Policy interface operations, plus code
++ *  to register itself with the pNFS client.
++ *
++ *  Copyright (c) 2002
++ *  The Regents of the University of Michigan
++ *  All Rights Reserved
++ *
++ *  Dean Hildebrand <dhildebz@umich.edu>
++ *
++ *  Permission is granted to use, copy, create derivative works, and
++ *  redistribute this software and such derivative works for any purpose,
++ *  so long as the name of the University of Michigan is not used in
++ *  any advertising or publicity pertaining to the use or distribution
++ *  of this software without specific, written prior authorization. If
++ *  the above copyright notice or any other identification of the
++ *  University of Michigan is included in any copy of any portion of
++ *  this software, then the disclaimer below must also be included.
++ *
++ *  This software is provided as is, without representation or warranty
++ *  of any kind either express or implied, including without limitation
++ *  the implied warranties of merchantability, fitness for a particular
++ *  purpose, or noninfringement.  The Regents of the University of
++ *  Michigan shall not be liable for any damages, including special,
++ *  indirect, incidental, or consequential damages, with respect to any
++ *  claim arising out of or in connection with the use of the software,
++ *  even if it has been or is hereafter advised of the possibility of
++ *  such damages.
++ */
++
++#include <linux/nfs_fs.h>
++#include "pnfs.h"
++
++#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Dean Hildebrand <dhildebz@umich.edu>");
++MODULE_DESCRIPTION("The NFSv4 file layout driver");
++
++int
++filelayout_initialize_mountpoint(struct nfs_server *nfss)
++{
++	return 0;
++}
++
++int
++filelayout_uninitialize_mountpoint(struct nfs_server *nfss)
++{
++	dprintk("--> %s\n", __func__);
++
++	return 0;
++}
++
++static struct pnfs_layoutdriver_type filelayout_type = {
++	.id = LAYOUT_NFSV4_1_FILES,
++	.name = "LAYOUT_NFSV4_1_FILES",
++	.owner = THIS_MODULE,
++	.initialize_mountpoint   = filelayout_initialize_mountpoint,
++	.uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
++};
++
++static int __init nfs4filelayout_init(void)
++{
++	printk(KERN_INFO "%s: NFSv4 File Layout Driver Registering...\n",
++	       __func__);
++	return pnfs_register_layoutdriver(&filelayout_type);
++}
++
++static void __exit nfs4filelayout_exit(void)
++{
++	printk(KERN_INFO "%s: NFSv4 File Layout Driver Unregistering...\n",
++	       __func__);
++	pnfs_unregister_layoutdriver(&filelayout_type);
++}
++
++module_init(nfs4filelayout_init);
++module_exit(nfs4filelayout_exit);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index aba3da2..499872f 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -616,6 +616,7 @@ nfs_fileid_to_ino_t(u64 fileid)
+ #define NFSDBG_MOUNT		0x0400
+ #define NFSDBG_FSCACHE		0x0800
+ #define NFSDBG_PNFS		0x1000
++#define NFSDBG_PNFS_LD		0x2000
+ #define NFSDBG_ALL		0xFFFF
+ 
+ #ifdef __KERNEL__
+-- 
+1.7.2.1
 
