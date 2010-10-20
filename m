@@ -1,47 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53185 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:22398 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751044Ab0JLRsO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Oct 2010 13:48:14 -0400
-Date: Tue, 12 Oct 2010 13:48:10 -0400
-To: Jim Rees <rees@umich.edu>
-Cc: DENIEL Philippe <philippe.deniel@cea.fr>, linux-nfs@vger.kernel.org
-Subject: Re: POSIX's "tables of the law"
-Message-ID: <20101012174810.GF22495@fieldses.org>
-References: <4CB443F6.5060106@cea.fr>
- <20101012115026.GB2577@merit.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101012115026.GB2577@merit.edu>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751135Ab0JTESM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Oct 2010 00:18:12 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 04/12] NFS: change stateid to be a union
+Date: Wed, 20 Oct 2010 00:17:56 -0400
+Message-Id: <1287548284-28374-5-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
+References: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Oct 12, 2010 at 07:50:26AM -0400, Jim Rees wrote:
-> DENIEL Philippe wrote:
-> 
->   on many aspects, knowing the POSIX standard and behavior is quite
->   important when working on implementing something like NFSv4. There a
->   problem occur : if I need information on NFS (whatever version) or
->   any "related" protocol (RPCSEC_GSS, ONCRPC, ...) I can easily find a
->   document that is the absolute reference to use. But what about POSIX
->   ? I must have missed something but I never see such a reference. Do
->   you have book references to provide me with about this subject ?
-> 
-> The posix spec situation is confused because there are many different specs
-> published at different times, and the ones that are most important (like
-> acls) were never ratified as far as I know, so are still in draft form.
-> Originally they were ISO specs, which cost big money, which is why you won't
-> find them on the web.  More recently I think the Open Group has been working
-> on them, maybe you'll find copies there: www.opengroup.org
+From: Alexandros Batsakis <batsakis@netapp.com>
 
-I think you want:
+In NFSv4.1 the stateid consists of the other and seqid fields. For layout
+processing we need to numerically compare the seqid value of layout stateids.
+To do so, introduce a union to nfs4_stateid to switch between opaque(16 bytes)
+and opaque(12 bytes) / __be32
 
-	http://www.unix.org/single_unix_specification/
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/callback_proc.c |    8 ++++----
+ include/linux/nfs4.h   |   15 +++++++++++++--
+ 2 files changed, 17 insertions(+), 6 deletions(-)
 
-You have to fill out a form but there's no charge.
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 930d10f..2950fca 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -118,11 +118,11 @@ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const n
+ 	if (delegation == NULL)
+ 		return 0;
+ 
+-	/* seqid is 4-bytes long */
+-	if (((u32 *) &stateid->data)[0] != 0)
++	if (stateid->stateid.seqid != 0)
+ 		return 0;
+-	if (memcmp(&delegation->stateid.data[4], &stateid->data[4],
+-		   sizeof(stateid->data)-4))
++	if (memcmp(&delegation->stateid.stateid.other,
++		   &stateid->stateid.other,
++		   NFS4_STATEID_OTHER_SIZE))
+ 		return 0;
+ 
+ 	return 1;
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 6c0406e..34da324 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -17,7 +17,9 @@
+ 
+ #define NFS4_BITMAP_SIZE	2
+ #define NFS4_VERIFIER_SIZE	8
+-#define NFS4_STATEID_SIZE	16
++#define NFS4_STATEID_SEQID_SIZE 4
++#define NFS4_STATEID_OTHER_SIZE 12
++#define NFS4_STATEID_SIZE	(NFS4_STATEID_SEQID_SIZE + NFS4_STATEID_OTHER_SIZE)
+ #define NFS4_FHSIZE		128
+ #define NFS4_MAXPATHLEN		PATH_MAX
+ #define NFS4_MAXNAMLEN		NAME_MAX
+@@ -167,7 +169,16 @@ struct nfs4_acl {
+ };
+ 
+ typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+-typedef struct { char data[NFS4_STATEID_SIZE]; } nfs4_stateid;
++
++struct nfs41_stateid {
++	__be32 seqid;
++	char other[NFS4_STATEID_OTHER_SIZE];
++} __attribute__ ((packed));
++
++typedef union {
++	char data[NFS4_STATEID_SIZE];
++	struct nfs41_stateid stateid;
++} nfs4_stateid;
+ 
+ enum nfs_opnum4 {
+ 	OP_ACCESS = 3,
+-- 
+1.7.2.1
 
-Of course you can also write little test programs and such to find out
-what other filesystems or platforms do.  No spec is perfect, alas.
-
---b.
