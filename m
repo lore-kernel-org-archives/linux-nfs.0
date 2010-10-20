@@ -1,62 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:34552 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751526Ab0JQLvk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Oct 2010 07:51:40 -0400
-Received: by qwa26 with SMTP id 26so1113618qwa.19
-        for <linux-nfs@vger.kernel.org>; Sun, 17 Oct 2010 04:51:40 -0700 (PDT)
-Date: Sun, 17 Oct 2010 15:51:40 +0400
-Message-ID: <AANLkTikOjYEBGJVHc7fKisNoC7OrJRjePuCcaNtPnHCy@mail.gmail.com>
-Subject: Strange behaviour of NFS4ERR_MOVED and referrals
-From: Pavel Strashkin <pavel.strashkin@nexenta.com>
+Received: from mx2.netapp.com ([216.240.18.37]:46757 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751135Ab0JTESM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Oct 2010 00:18:12 -0400
+From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 02/12] SUNRPC: define xdr_decode_opaque_fixed
+Date: Wed, 20 Oct 2010 00:17:54 -0400
+Message-Id: <1287548284-28374-3-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
+References: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi all,
+From: Benny Halevy <bhalevy@panasas.com>
 
-I'm learning NFS4 "referral" feature.
-I have 4 machines with installed Ubuntu 10.10 (kernel
-2.6.35-22-generic): Server-A, Server-B, Server-C and Client-A.
+A helper for decoding a fixed length opaque value.
+Returns a pointer to the next item in the xdr stream.
 
-Server-A is the main server in the "cluster" that provides NFS share
-"/exports" with a single referral: "/exports/referral".
-That referral points to 2 servers: Server-B and Server-C.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ include/linux/sunrpc/xdr.h |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
 
-Client-A is the user of this referral.
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 8c1dcbb..f104f90 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -132,6 +132,13 @@ xdr_decode_hyper(__be32 *p, __u64 *valp)
+ 	return p + 2;
+ }
+ 
++static inline __be32 *
++xdr_decode_opaque_fixed(__be32 *p, void *ptr, unsigned int len)
++{
++	memcpy(ptr, p, len);
++	return p + XDR_QUADLEN(len);
++}
++
+ /*
+  * Adjust kvec to reflect end of xdr'ed data (RPC client XDR)
+  */
+-- 
+1.7.2.1
 
-When i mount "/exports" NFS share from Server-A on Client-A, i have no
-issues and i can see "referral" directory. After that Client-A have an
-access to that "referral" directory and can see files on Server-B
-because Server-B the first server in referral list. NFS4ERR_MOVED
-works as expected.
-
-...now let's switch off Server-B...
-
-When Server-B is down (dont forget, we had 2 servers in referral list)
-and i'm trying to do "ls -l" for "referral" directory, the operation
-hangs forever. If i kill -9 "ls" process and remount directory then it
-automatically switches to Server-C (because Server-B is unreachabel).
-
-The question: why there is no migration (fail-over? switch?) to
-another server from referral list when share already mounted and
-current server from referral list is down?
-
-I looked at NFS kernel code and as i understand it keeps information
-about FIRST valid server from referral list in inode. It keeps single
-server information, not a whole list of servers (fs_locations). After
-that all operations related to referral inode will be delegated to
-that server.
-
-RFC says that if client can not access to the first server in referral
-list, it should try the next. One thing i dont undertand here - RFC
-means "try next" when we do mount or when we're working with referral
-inode?
-
-P.S. i also triend another one situation: i removed referral on
-Server-A and replace it by real directory called "referral". After
-that client still trying to access to referral (share on Server-B),
-but not real directory on Server-A. Seems like invalidation does not
-work.
