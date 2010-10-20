@@ -1,90 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:53265 "EHLO magus.merit.edu"
+Received: from magus.merit.edu ([198.108.1.13]:42373 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750762Ab0JTVf5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Oct 2010 17:35:57 -0400
-Date: Wed, 20 Oct 2010 17:35:54 -0400
+	id S1751894Ab0JTMuL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Oct 2010 08:50:11 -0400
+Date: Wed, 20 Oct 2010 08:50:07 -0400
 From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs-utils: Check for strlcat/cpy and compile our private
- version only if it's needed.
-Message-ID: <20101020213554.GA27541@merit.edu>
+To: Valentijn Sessink <valentyn@blub.net>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: ipv6 + krb5, server status?
+Message-ID: <20101020125007.GA4159@merit.edu>
+References: <4CB59086.9080108@blub.net>
+ <20101013125656.GA5197@merit.edu>
+ <20101013095216.5b9b31a7@corrin.poochiereds.net>
+ <4CB5BA8F.2090608@blub.net>
+ <20101013104937.358fe122@corrin.poochiereds.net>
+ <4CBECBFF.2050802@blub.net>
+ <20101020120519.GA3848@merit.edu>
+ <4CBEDC75.6020503@blub.net>
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4CBEDC75.6020503@blub.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- configure.ac             |    2 +-
- support/include/nfslib.h |    2 ++
- support/nfs/strlcat.c    |    2 ++
- support/nfs/strlcpy.c    |    2 ++
- 4 files changed, 7 insertions(+), 1 deletions(-)
+Valentijn Sessink wrote:
 
-diff --git a/configure.ac b/configure.ac
-index 3058be6..0e56b30 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -347,7 +347,7 @@ AC_CHECK_FUNCS([alarm atexit dup2 fdatasync ftruncate getcwd \
-                getnameinfo getrpcbyname getifaddrs \
-                gettimeofday hasmntopt inet_ntoa innetgr memset mkdir pathconf \
-                realpath rmdir select socket strcasecmp strchr strdup \
--               strerror strrchr strtol strtoul sigprocmask])
-+               strerror strlcat strrchr strtol strtoul sigprocmask])
- 
- 
- dnl *************************************************************
-diff --git a/support/include/nfslib.h b/support/include/nfslib.h
-index 53ece0e..ba2d52a 100644
---- a/support/include/nfslib.h
-+++ b/support/include/nfslib.h
-@@ -164,8 +164,10 @@ int			svctcp_socket (u_long __number, int __reuse);
- int			svcudp_socket (u_long __number);
- 
- /* Misc shared code prototypes */
-+#ifndef HAVE_STRLCAT
- size_t  strlcat(char *, const char *, size_t);
- size_t  strlcpy(char *, const char *, size_t);
-+#endif /* HAVE_STRLCAT */
- ssize_t atomicio(ssize_t (*f) (int, void*, size_t),
- 		 int, void *, size_t);
- 
-diff --git a/support/nfs/strlcat.c b/support/nfs/strlcat.c
-index daedd7a..d469a69 100644
---- a/support/nfs/strlcat.c
-+++ b/support/nfs/strlcat.c
-@@ -27,6 +27,7 @@
-  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
- 
-+#ifndef HAVE_STRLCAT
- #if defined(LIBC_SCCS) && !defined(lint)
- static char *rcsid = "$OpenBSD: strlcat.c,v 1.8 2001/05/13 15:40:15 deraadt Exp $";
- #endif /* LIBC_SCCS and not lint */
-@@ -74,3 +75,4 @@ strlcat(char *dst,
- 
- 	return(dlen + (s - src));	/* count does not include NUL */
- }
-+#endif /* HAVE_STRLCAT */
-diff --git a/support/nfs/strlcpy.c b/support/nfs/strlcpy.c
-index a2653ee..754c51a 100644
---- a/support/nfs/strlcpy.c
-+++ b/support/nfs/strlcpy.c
-@@ -27,6 +27,7 @@
-  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
- 
-+#ifndef HAVE_STRLCAT
- #if defined(LIBC_SCCS) && !defined(lint)
- static char *rcsid = "$OpenBSD: strlcpy.c,v 1.5 2001/05/13 15:40:16 deraadt Exp $";
- #endif /* LIBC_SCCS and not lint */
-@@ -70,3 +71,4 @@ strlcpy(char *dst,
- 
- 	return(s - src - 1);	/* count does not include NUL */
- }
-+#endif /* HAVE_STRLCAT */
--- 
-1.7.0.4
+  Jim Rees schreef:
+  >   another system, where "networkmanager" messes with the hosts-file, and
+  > You mean resolv.conf?
+  
+  No, /etc/hosts
 
+That's evil.  The 127 net addresses have always been listed in /etc/hosts as
+just "localhost" with no fqdn, and everything worked fine.  I will add this
+to my already long list of reasons to hate network manager.
+
+  But I guess I'm being corrected by reality.
+
+Ha!
