@@ -1,40 +1,30 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Froe 0d941e1c15147045c26a6cc4918743786e8a1e40 Mon Sep 17 00:00:00
- 2001
-Date: Wed, 20 Oct 2010 13:59:29 -0400
-Message-ID: <4CBF2E01.6000107@RedHat.com>
-References: <1287518425-12962-1-git-send-email-steved@redhat.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Linux pNFS status meeting 10/21/10
+Date: Wed, 20 Oct 2010 12:22:19 -0700
+Message-ID: <OFBB5859AF.0FF61055-ON882577C2.006A3C72-882577C2.006A64EA@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <steved@redhat.com>
+Content-Type: text/plain; charset="US-ASCII"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59698 "EHLO mx1.redhat.com"
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:51696 "EHLO e5.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754041Ab0JTR7a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Oct 2010 13:59:30 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o9KHxUbC017671
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Oct 2010 13:59:30 -0400
-In-Reply-To: <1287518425-12962-1-git-send-email-steved@redhat.com>
+	id S1755278Ab0JTTWV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Oct 2010 15:22:21 -0400
+Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
+	by e5.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id o9KJ1avj010319
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Oct 2010 15:01:36 -0400
+Received: from d01av05.pok.ibm.com (d01av05.pok.ibm.com [9.56.224.195])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id o9KJMKth131486
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Oct 2010 15:22:20 -0400
+Received: from d01av05.pok.ibm.com (loopback [127.0.0.1])
+	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id o9KIMKGN027682
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Oct 2010 14:22:20 -0400
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id o9KIMKxe027679
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Oct 2010 14:22:20 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Meeting on Thursday 10/21/10 at 9:30 AM pacific time (12:30 PM UMICH time)
 
-
-On 10/19/2010 04:00 PM, Steve Dickson wrote:
-> Here are a couple tweaks of two man pages that
-> have been point out. 
-> 
-> Steve Dickson (2):
->   Cleared up the sync option in the exportfs man page
->   Updated rpc.mountd man page
-> 
->  utils/exportfs/exports.man |    4 +++-
->  utils/mountd/mountd.man    |    6 +++---
->  2 files changed, 6 insertions(+), 4 deletions(-)
-> 
-Both Committed...
-
-steved
+Marc. 
