@@ -1,78 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52594 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:58590 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758670Ab0JSNdq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Oct 2010 09:33:46 -0400
-Subject: Re: NFS sillyrename side effect
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Jeff Layton <jlayton@redhat.com>,
-        =?ISO-8859-1?Q?Cl=E1udio?= Martins <ctpm@ist.utl.pt>,
-        Ian Munsie <imunsie@au1.ibm.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Scott Romanowski <romansc@us.ibm.com>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>
-In-Reply-To: <4CBD3D4E.5080305@panasas.com>
-References: <1287362142-sup-777@au1.ibm.com>
-	 <20101018101059.574b715a@corrin.poochiereds.net>
-	 <20101018154811.768baeb5.ctpm@ist.utl.pt>
-	 <20101018155344.6e50dbb9.ctpm@ist.utl.pt>
-	 <20101018110138.5f5001eb@corrin.poochiereds.net>
-	 <20101018171015.GB3744@fieldses.org>  <4CBD3D4E.5080305@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 19 Oct 2010 09:32:48 -0400
-Message-ID: <1287495168.2969.9.camel@heimdal.trondhjem.org>
+	id S1752809Ab0JTV3s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Oct 2010 17:29:48 -0400
+Date: Thu, 21 Oct 2010 08:29:38 +1100
+From: Neil Brown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@ORACLE.COM>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
+ mounts.
+Message-ID: <20101021082938.45e4c941@notabene>
+In-Reply-To: <C56CFB9A-FCA4-41DA-971F-49B9C9EE7F03@oracle.com>
+References: <20101020181701.232dbeea@notabene>
+	<C56CFB9A-FCA4-41DA-971F-49B9C9EE7F03@oracle.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-10-19 at 08:40 +0200, Benny Halevy wrote:
-> On 2010-10-18 19:10, J. Bruce Fields wrote:
-> > On Mon, Oct 18, 2010 at 11:01:38AM -0400, Jeff Layton wrote:
-> >> On Mon, 18 Oct 2010 15:53:44 +0100
-> >> Cláudio Martins <ctpm@ist.utl.pt> wrote:
-> >>
-> >>>
-> >>> On Mon, 18 Oct 2010 15:48:11 +0100 Cláudio Martins <ctpm@ist.utl.pt> wrote:
-> >>>>
-> >>>>  Section D2 ends with:
-> >>>>
-> >>>> "The NFS version 4 protocol is stateful, and could actually support
-> >>>> delete-on-last-close. Unfortunately there isn't an easy way to do this
-> >>>> and remain backwards-compatible with version 2 and 3 accessors."
-> >>>>
-> >>>>  So, theoretically, could one modify the code to selectively disable
-> >>>> silly rename on a client, when it knows it is talking v4 with the
-> >>>> server?
-> >>>>
-> >>>
-> >>>  BTW, to clarify, I'm assuming a scenario where the server is
-> >>> configured to talk v4 only, which I suspect should be common, at least
-> >>> when you're relying on v4 kerberos security.
-> >>>
-> >>
-> >> Sadly, no...
-> >>
-> >> The server does generally hold the file open as long as the client has
-> >> the file open. So, you could delete the file while nfsd has it open and
-> >> everything would probably still work.
-> >>
-> >> Suppose though that the server crashes and reboots. When it comes back
-> >> up, fsck figures out that the file has been unlinked and frees the
-> >> blocks on the disk. Now you can't reclaim the state on the open file.
-> >>
-> >> We're pretty much stuck with silly-renaming even for v4.
-> > 
-> > The server could do something like rename the file into a special
-> > directory somewhere 
+On Wed, 20 Oct 2010 10:29:05 -0400
+Chuck Lever <chuck.lever@ORACLE.COM> wrote:
+
 > 
-> The clients can do something similar too, like sillyrenaming the
-> files onto <mountpoint>/.unlinked_while_opened.<client-id>
-> Removing this directory when it empties.
+> On Oct 20, 2010, at 3:17 AM, Neil Brown wrote:
+> 
+> > 
+> > 
+> > If I don't have any network configured (except loop-back), and try an NFSv3
+> > mount, then it fails quickly:
+> > 
+> > 
+> > ....
+> > mount.nfs: portmap query failed: RPC: Remote system error - Network is unreachable
+> > mount.nfs: Network is unreachable
+> > 
+> > 
+> > If I try the same thing with a NFSv4 mount, it times out before it fails,
+> > making a much longer delay.
+> > 
+> > This is because mount.nfs doesn't do a portmap lookup but just leaves
+> > everything to the kernel.
+> > The kernel does an 'rpc_ping()' which sets RPC_TASK_SOFTCONN.
+> > So at least it doesn't retry after the timeout.  But given that we have a
+> > clear error, we shouldn't timeout at all.
+> > 
+> > Unfortunately I cannot see an easy way to fix this.
+> > 
+> > The place where ENETUNREACH is in xs_tcp_setup_socket.  The comment there
+> > says "Retry with the same socket after a delay".  The "delay" bit is correct,
+> > the "retry" isn't.
+> > 
+> > It would seem that we should just add a 'goto out' there if RPC_TASK_SOFTCONN
+> > was set.  However we cannot see the task at this point - in fact it seems
+> > that there could be a queue of tasks waiting on this connection.  I guess
+> > some could be soft, and some not. ???
+> > 
+> > So: An suggestions how to get a ENETUNREACH (or ECONNREFUSED or similar) to
+> > fail immediately when  RPC_TASK_SOFTCONN is set ???
+> 
+> ECONNREFUSED should already fail immediately in this case.  If it's not failing immediately, that's a bug.
+> 
+> I agree that ENETUNREACH seems appropriate for quick failure if RPC_TASK_SOFTCONN is set.  (I thought it already worked this way, but maybe I'm mistaken).
 
-This would require access, directory create, and delete permissions for
-the directory '<mountpoint>/', which is not always a given.
+There is certainly code that seems to treat ENETUNREACH differently if
+RPC_TASK_SOFTCONN is set, but it doesn't seem to apply in the particular case
+I am testing.
+e.g. call_bind_status handles ENETUNREACH as a retry if not SOFTCONN and as a
+failure in the SOFTCONN case.  
+I guess NFSv4 doesn't hit this because the port is explicitly set to 2049 so
+it never does the rpcbind step.
+So maybe we need to handle ENETUNREACH in call_connect_status as well as
+call_bind_status ??
 
-Besides, what if the server reboots, and my clientid changes?
+Maybe something like that ...  The placement of rpc_delay seems a little of
+to me, but follows call_bind_status, so it could be correct.
 
-Trond
+??
+
+I haven't thought how EHOSTUNREACH fits into this... presumably it should
+fail-quickly when SOFTCONN (which Jeff suggests it does) and should retry for
+not SOFTCONN (which I haven't checked).
+
+NeilBrown
+
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index fa55490..539885e 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1245,6 +1245,12 @@ call_connect_status(struct rpc_task *task)
+        }
+ 
+        switch (status) {
++       case -ENETUNREACH:
++       case -ECONNRESET:
++       case -ECONNREFUSED:
++               if (!RPC_IS_SOFTCONN(task))
++                       rpc_delay(task, 5*HZ);
++               /* fall through */
+                /* if soft mounted, test if we've timed out */
+        case -ETIMEDOUT:
+                task->tk_action = call_timeout;
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index fe9306b..0743994 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1906,7 +1906,8 @@ static void xs_tcp_setup_socket(struct rpc_xprt *xprt,
+        case -ECONNREFUSED:
+        case -ECONNRESET:
+        case -ENETUNREACH:
+-               /* retry with existing socket, after a delay */
++               /* allow upper layers to choose between failure and retry */
++               goto out;
+        case 0:
+        case -EINPROGRESS:
+        case -EALREADY:
+
