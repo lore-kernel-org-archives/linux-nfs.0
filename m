@@ -1,78 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:60583 "EHLO mx2.netapp.com"
+Received: from magus.merit.edu ([198.108.1.13]:53265 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758884Ab0J1TKJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Oct 2010 15:10:09 -0400
-Received: from localhost.localdomain (elee16240.hq.netapp.com [10.58.53.47] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o9SJA27i000482
-	for <linux-nfs@vger.kernel.org>; Thu, 28 Oct 2010 12:10:07 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/6] pnfs_submit: fix layoutreturn layout stateid processing
-Date: Thu, 28 Oct 2010 15:10:01 -0400
-Message-Id: <1288293001-26289-6-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1288293001-26289-1-git-send-email-iisaman@netapp.com>
-References: <1288293001-26289-1-git-send-email-iisaman@netapp.com>
+	id S1750762Ab0JTVf5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Oct 2010 17:35:57 -0400
+Date: Wed, 20 Oct 2010 17:35:54 -0400
+From: Jim Rees <rees@umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs-utils: Check for strlcat/cpy and compile our private
+ version only if it's needed.
+Message-ID: <20101020213554.GA27541@merit.edu>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
-
-This is a rebase of Andy's patch (which is not yet in the pns-submit tree)
-onto my patches, yet taking into account some issues Benny noted which are
-best addressed by ensuring that nfs4_layoutreturn_release make no reference
-to call results, as there is no guarantee that a call was made.
-
-Add missing layoutreturn stateid update.
-This patch also enforces the following rfc 5661 requirement:
-
-section 12.5.3
-   "For LAYOUTRETURN results, the client MUST delete the range from its
-   record of what ranges of the file's layout it had before using the
-   seqid."
-
-Reported-by: P.B.Shelley <shelleypt@gmail.com>
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
 ---
- fs/nfs/nfs4proc.c |   14 ++++++++++----
- 1 files changed, 10 insertions(+), 4 deletions(-)
+ configure.ac             |    2 +-
+ support/include/nfslib.h |    2 ++
+ support/nfs/strlcat.c    |    2 ++
+ support/nfs/strlcpy.c    |    2 ++
+ 4 files changed, 7 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 96bd822..4fba3f0 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5674,10 +5674,6 @@ static void nfs4_layoutreturn_release(void *calldata)
+diff --git a/configure.ac b/configure.ac
+index 3058be6..0e56b30 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -347,7 +347,7 @@ AC_CHECK_FUNCS([alarm atexit dup2 fdatasync ftruncate getcwd \
+                getnameinfo getrpcbyname getifaddrs \
+                gettimeofday hasmntopt inet_ntoa innetgr memset mkdir pathconf \
+                realpath rmdir select socket strcasecmp strchr strdup \
+-               strerror strrchr strtol strtoul sigprocmask])
++               strerror strlcat strrchr strtol strtoul sigprocmask])
  
- 	if (lrp->args.return_type == RETURN_FILE) {
- 		struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
--		spin_lock(&lo->inode->i_lock);
--		if (!lrp->res.lrs_present)
--			pnfs_invalidate_layout_stateid(lo);
--		spin_unlock(&lo->inode->i_lock);
- 		pnfs_layoutreturn_release(lo, &lrp->args.range);
- 	}
- 	kfree(calldata);
-@@ -5720,6 +5716,16 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool issync)
- 	if (status != 0)
- 		goto out;
- 	status = task->tk_status;
-+	if (status == 0 && lrp->args.return_type == RETURN_FILE) {
-+		struct pnfs_layout_hdr *lo = NFS_I(ino)->layout;
-+
-+		spin_lock(&lo->inode->i_lock);
-+		if (!lrp->res.lrs_present)
-+			pnfs_invalidate_layout_stateid(lo);
-+		else
-+			pnfs_set_layout_stateid(lo, &lrp->res.stateid);
-+		spin_unlock(&lo->inode->i_lock);
-+	}
- out:
- 	dprintk("<-- %s\n", __func__);
- 	rpc_put_task(task);
+ 
+ dnl *************************************************************
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index 53ece0e..ba2d52a 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -164,8 +164,10 @@ int			svctcp_socket (u_long __number, int __reuse);
+ int			svcudp_socket (u_long __number);
+ 
+ /* Misc shared code prototypes */
++#ifndef HAVE_STRLCAT
+ size_t  strlcat(char *, const char *, size_t);
+ size_t  strlcpy(char *, const char *, size_t);
++#endif /* HAVE_STRLCAT */
+ ssize_t atomicio(ssize_t (*f) (int, void*, size_t),
+ 		 int, void *, size_t);
+ 
+diff --git a/support/nfs/strlcat.c b/support/nfs/strlcat.c
+index daedd7a..d469a69 100644
+--- a/support/nfs/strlcat.c
++++ b/support/nfs/strlcat.c
+@@ -27,6 +27,7 @@
+  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
++#ifndef HAVE_STRLCAT
+ #if defined(LIBC_SCCS) && !defined(lint)
+ static char *rcsid = "$OpenBSD: strlcat.c,v 1.8 2001/05/13 15:40:15 deraadt Exp $";
+ #endif /* LIBC_SCCS and not lint */
+@@ -74,3 +75,4 @@ strlcat(char *dst,
+ 
+ 	return(dlen + (s - src));	/* count does not include NUL */
+ }
++#endif /* HAVE_STRLCAT */
+diff --git a/support/nfs/strlcpy.c b/support/nfs/strlcpy.c
+index a2653ee..754c51a 100644
+--- a/support/nfs/strlcpy.c
++++ b/support/nfs/strlcpy.c
+@@ -27,6 +27,7 @@
+  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
++#ifndef HAVE_STRLCAT
+ #if defined(LIBC_SCCS) && !defined(lint)
+ static char *rcsid = "$OpenBSD: strlcpy.c,v 1.5 2001/05/13 15:40:16 deraadt Exp $";
+ #endif /* LIBC_SCCS and not lint */
+@@ -70,3 +71,4 @@ strlcpy(char *dst,
+ 
+ 	return(s - src - 1);	/* count does not include NUL */
+ }
++#endif /* HAVE_STRLCAT */
 -- 
-1.7.2.1
+1.7.0.4
 
