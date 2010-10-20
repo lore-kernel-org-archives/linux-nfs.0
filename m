@@ -1,143 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30728 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:6168 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756165Ab0JOGRl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Oct 2010 02:17:41 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 08/12] RFC: pnfs: filelayout: introduce minimal file layout driver
-Date: Sun, 10 Oct 2010 11:22:49 -0400
-Message-Id: <1286724173-8493-9-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
-References: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
+	id S1753467Ab0JTTRE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Oct 2010 15:17:04 -0400
+Date: Wed, 20 Oct 2010 15:16:57 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Neil Brown <neilb@suse.de>, chuck.lever@oracle.com
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
+ mounts.
+Message-ID: <20101020151657.42bc53f7@tlielax.poochiereds.net>
+In-Reply-To: <20101020135525.22977d8d@tlielax.poochiereds.net>
+References: <20101020181701.232dbeea@notabene>
+	<20101020135525.22977d8d@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Dean Hildebrand <dhildebz@umich.edu>
+On Wed, 20 Oct 2010 13:55:25 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-This driver just registers itself and supplies trivial mount/umount functions.
+> On Wed, 20 Oct 2010 18:17:01 +1100
+> Neil Brown <neilb@suse.de> wrote:
+> 
+> > 
+> > 
+> > If I don't have any network configured (except loop-back), and try an NFSv3
+> > mount, then it fails quickly:
+> > 
+> > 
+> > ....
+> > mount.nfs: portmap query failed: RPC: Remote system error - Network is unreachable
+> > mount.nfs: Network is unreachable
+> > 
+> > 
+> > If I try the same thing with a NFSv4 mount, it times out before it fails,
+> > making a much longer delay.
+> > 
+> > This is because mount.nfs doesn't do a portmap lookup but just leaves
+> > everything to the kernel.
+> > The kernel does an 'rpc_ping()' which sets RPC_TASK_SOFTCONN.
+> > So at least it doesn't retry after the timeout.  But given that we have a
+> > clear error, we shouldn't timeout at all.
+> > 
+> > Unfortunately I cannot see an easy way to fix this.
+> > 
+> > The place where ENETUNREACH is in xs_tcp_setup_socket.  The comment there
+> > says "Retry with the same socket after a delay".  The "delay" bit is correct,
+> > the "retry" isn't.
+> > 
+> > It would seem that we should just add a 'goto out' there if RPC_TASK_SOFTCONN
+> > was set.  However we cannot see the task at this point - in fact it seems
+> > that there could be a queue of tasks waiting on this connection.  I guess
+> > some could be soft, and some not. ???
+> > 
+> > So: An suggestions how to get a ENETUNREACH (or ECONNREFUSED or similar) to
+> > fail immediately when  RPC_TASK_SOFTCONN is set ???
+> > 
+> > 
+> > This affects people who upgrade from openSUSE11.2 (which didn't support v4
+> > mounts) to openSUSE11.3 (which defaults to v4) and who use network-manager
+> > (which configures networks late) and have NFS mounts in /etc/fstab with
+> > either explicit IP addresses or host names that can be resolved without the
+> > network.
+> > This config will work because when the network comes up, network-manager will
+> > re-run the 'init.d/nfs' script.  However since 11.3 there is an unpleasant
+> > pause before boot completes.
+> > 
+> 
+> Took me a few tries to get an ENETUNREACH error but I see the same hang
+> you do. For the record I was able to get one by not configuring an IPv6
+> addr on the box and attempting to mount an IPv6 address.
+> 
+> Interestingly while I was trying to reproduce it, I ended up
+> reproducing an EHOSTUNREACH error by trying to mount a IPv6 host to
+> which I didn't have a route. That error returns quickly from the
+> kernel. Maybe we can solve this simply by treating ENETUNREACH the same
+> as EHOSTUNREACH in this situation?
+> 
+> I'm not quite sure exactly how to make that happen, but it seems like
+> reasonable behavior.
+> 
 
-Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/Makefile         |    3 ++
- fs/nfs/nfs4filelayout.c |   78 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs_fs.h  |    1 +
- 3 files changed, 82 insertions(+), 0 deletions(-)
- create mode 100644 fs/nfs/nfs4filelayout.c
+Sigh, nothing's ever easy in the RPC layer. Please bear with my
+scatterbrained analysis...
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index bb9e773..08a8889 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -18,3 +18,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
- nfs-$(CONFIG_SYSCTL) += sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
-+
-+obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
-+nfs_layout_nfsv41_files-y := nfs4filelayout.o
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-new file mode 100644
-index 0000000..696e283
---- /dev/null
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -0,0 +1,78 @@
-+/*
-+ *  Module for the pnfs nfs4 file layout driver.
-+ *  Defines all I/O and Policy interface operations, plus code
-+ *  to register itself with the pNFS client.
-+ *
-+ *  Copyright (c) 2002
-+ *  The Regents of the University of Michigan
-+ *  All Rights Reserved
-+ *
-+ *  Dean Hildebrand <dhildebz@umich.edu>
-+ *
-+ *  Permission is granted to use, copy, create derivative works, and
-+ *  redistribute this software and such derivative works for any purpose,
-+ *  so long as the name of the University of Michigan is not used in
-+ *  any advertising or publicity pertaining to the use or distribution
-+ *  of this software without specific, written prior authorization. If
-+ *  the above copyright notice or any other identification of the
-+ *  University of Michigan is included in any copy of any portion of
-+ *  this software, then the disclaimer below must also be included.
-+ *
-+ *  This software is provided as is, without representation or warranty
-+ *  of any kind either express or implied, including without limitation
-+ *  the implied warranties of merchantability, fitness for a particular
-+ *  purpose, or noninfringement.  The Regents of the University of
-+ *  Michigan shall not be liable for any damages, including special,
-+ *  indirect, incidental, or consequential damages, with respect to any
-+ *  claim arising out of or in connection with the use of the software,
-+ *  even if it has been or is hereafter advised of the possibility of
-+ *  such damages.
-+ */
-+
-+#include <linux/nfs_fs.h>
-+#include "pnfs.h"
-+
-+#define NFSDBG_FACILITY         NFSDBG_PNFS_LD
-+
-+MODULE_LICENSE("GPL");
-+MODULE_AUTHOR("Dean Hildebrand <dhildebz@umich.edu>");
-+MODULE_DESCRIPTION("The NFSv4 file layout driver");
-+
-+int
-+filelayout_initialize_mountpoint(struct nfs_server *nfss)
-+{
-+	return 0;
-+}
-+
-+int
-+filelayout_uninitialize_mountpoint(struct nfs_server *nfss)
-+{
-+	dprintk("--> %s\n", __func__);
-+
-+	return 0;
-+}
-+
-+static struct pnfs_layoutdriver_type filelayout_type = {
-+	.id = LAYOUT_NFSV4_1_FILES,
-+	.name = "LAYOUT_NFSV4_1_FILES",
-+	.owner = THIS_MODULE,
-+	.initialize_mountpoint   = filelayout_initialize_mountpoint,
-+	.uninitialize_mountpoint = filelayout_uninitialize_mountpoint,
-+};
-+
-+static int __init nfs4filelayout_init(void)
-+{
-+	printk(KERN_INFO "%s: NFSv4 File Layout Driver Registering...\n",
-+	       __func__);
-+	return pnfs_register_layoutdriver(&filelayout_type);
-+}
-+
-+static void __exit nfs4filelayout_exit(void)
-+{
-+	printk(KERN_INFO "%s: NFSv4 File Layout Driver Unregistering...\n",
-+	       __func__);
-+	pnfs_unregister_layoutdriver(&filelayout_type);
-+}
-+
-+module_init(nfs4filelayout_init);
-+module_exit(nfs4filelayout_exit);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index aba3da2..499872f 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -616,6 +616,7 @@ nfs_fileid_to_ino_t(u64 fileid)
- #define NFSDBG_MOUNT		0x0400
- #define NFSDBG_FSCACHE		0x0800
- #define NFSDBG_PNFS		0x1000
-+#define NFSDBG_PNFS_LD		0x2000
- #define NFSDBG_ALL		0xFFFF
- 
- #ifdef __KERNEL__
+There's a bit of difference at the socket layer between those two cases.
+xs_tcp_finish_connecting calls this to connect the socket:
+
+    kernel_connect(sock, xs_addr(xprt), xprt->addrlen, O_NONBLOCK);
+
+...in the ENETUNREACH case, this returns immediately with the error. In
+EHOSTUNREACH case, it returns EINPROGRESS and then the sk_error_report
+handles the rest. Fine...we can emulate the similar behavior, but...
+
+Then what happens is that xs_tcp_send_request gets called again to try
+to resend the packet. In the EHOSTUNREACH case, that returns
+EHOSTUNREACH which eventually causes an rpc_exit with that error. In
+the ENETUNREACH case that returns EPIPE, which makes the state machine
+move next to call_bind and the whole thing starts over again.
+
+I'm still not sure what the right approach is here. The fact that
+attempting to send on the socket in this case gives us an EPIPE makes
+it tough to handle this case the same way as EHOSTUNREACH.
+
 -- 
-1.7.2.1
-
+Jeff Layton <jlayton@redhat.com>
