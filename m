@@ -1,42 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:46757 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751128Ab0JTESL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Oct 2010 00:18:11 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 00/12] pnfs: LAYOUTGET/DEVINFO submission v5
-Date: Wed, 20 Oct 2010 00:17:52 -0400
-Message-Id: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
+Received: from filter.openoffice.nl ([217.170.2.175]:35068 "EHLO
+	filter.openoffice.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752535Ab0JTMLk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Oct 2010 08:11:40 -0400
+Message-ID: <4CBEDC75.6020503@blub.net>
+Date: Wed, 20 Oct 2010 14:11:33 +0200
+From: Valentijn Sessink <valentyn@blub.net>
+To: Jim Rees <rees@umich.edu>
+CC: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: ipv6 + krb5, server status?
+References: <4CB59086.9080108@blub.net> <20101013125656.GA5197@merit.edu> <20101013095216.5b9b31a7@corrin.poochiereds.net> <4CB5BA8F.2090608@blub.net> <20101013104937.358fe122@corrin.poochiereds.net> <4CBECBFF.2050802@blub.net> <20101020120519.GA3848@merit.edu>
+In-Reply-To: <20101020120519.GA3848@merit.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This is try 5 of the first wave of the linux pnfs client submission.
-The only change (besides rebase on top of Trond's most recent
-nfs-for-2.6.37 branch) between this series and the previous is that
-owner/sign-off issues have been addressed, which allows us to
-remove the RFC label of the previous series.
+Hi Jim, Jeff, list,
 
-For those interested, the patches themselves can also be found at
-git://linux-nfs.org/~iisaman/linux-pnfs.git,
-branch devinfo-submit-rc7-trond
+Jim Rees schreef:
+>   another system, where "networkmanager" messes with the hosts-file, and
+> You mean resolv.conf?
 
+No, /etc/hosts
 
-This is the start of code implementing pnfs, based on RFC 5661.  Since
-sending the whole thing at once would be overwhelming, we are trying
-to break it into bite sized waves.  This first wave implements the
-mount/umount infrastructure, as well as sending the LAYOUTGET and
-GETDEVTICEINFO calls on io (but not actually using the information for
-io).  Note that two major simplifications to the protocol will be made 
-throughout the initial submission process:  only the file layout
-driver is considered, and only whole file layouts are requested.
+Today, I found a long standing Ubuntu bug about this:
+https://bugs.launchpad.net/ubuntu/+source/network-manager/+bug/8980
 
+>  This is one of my gripes with network manager.  I
+> usually un-install it, or "chattr +i resolv.conf".
 
-These patches apply against Trond's nfs-for-2.6.37 branch.
+Yep, we usually uninstall it as well.
 
-patches 01-08 implement the mount/umount hooks
-patches 09-12 implement LAYOUTGET and GETDEVICEINFO
+But now, we're thinking about changing nsswitch.conf to "hosts: dns
+files" - might be a better way in this case.
+
+> The usual fix for idmapd is to set the domain in /etc/idmapd.conf.
+
+Yes, I know. In fact, during the install phase we commented the "Domain"
+clause out, to have the system configure it's own FQDN (based on DHCP,
+mostly). I'm not a big fan of spraying domain name and hostname on every
+file in /etc if the system can find things out by itself.
+
+But I guess I'm being corrected by reality.
+
+V.
 
