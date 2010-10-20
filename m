@@ -1,83 +1,52 @@
-From: Sachin Prabhu <sprabhu@redhat.com>
-Subject: Re: Should we be aggressively invalidating cache when using
- -onolock?
-Date: Wed, 20 Oct 2010 06:42:42 -0400 (EDT)
-Message-ID: <21109089.191.1287571357382.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-References: <20101005102752.67b75416@tlielax.poochiereds.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: nfsd rpc service update failures on 2.6.32
+Date: Wed, 20 Oct 2010 12:59:10 -0400
+Message-ID: <20101020165909.GB2804@fieldses.org>
+References: <20101017142918.GA6805@miyako>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	linux-nfs <linux-nfs@vger.kernel.org>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-nfs@vger.kernel.org
+To: Jonathan Steinert <hachi-rIxVFxJalAJeoWH0uzbU5w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx4-phx2.redhat.com ([209.132.183.25]:58864 "EHLO
-	mx4-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752952Ab0JTKmv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Oct 2010 06:42:51 -0400
-In-Reply-To: <20101005102752.67b75416-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Received: from fieldses.org ([174.143.236.118]:55719 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752894Ab0JTQ7N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Oct 2010 12:59:13 -0400
+In-Reply-To: <20101017142918.GA6805@miyako>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
------ "Jeff Layton" <jlayton@redhat.com> wrote:
-
-> On Mon, 20 Sep 2010 14:25:36 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Sun, Oct 17, 2010 at 07:29:19AM -0700, Jonathan Steinert wrote:
+> Hi folks, I've got a machine here that I've been debugging NFS issues on for a week or so now.
 > 
-> > On Mon, Sep 20, 2010 at 10:41:59AM -0400, Chuck Lever wrote:
-> > > At one point long ago, I had asked Trond if we could get rid of
-> the
-> > > cache-invalidation-on-lock behavior if "-onolock" was in effect. 
-> He
-> > > said at the time that this would eliminate the only recourse
-> > > applications have for invalidating the data cache in case it was
-> > > stale, and NACK'd the request.
-> > 
-> > Argh.  I guess I can see the argument, though.
-> > 
-> > > I suggested introducing a new mount option called "llock" that
-> would
-> > > be semantically the same as "llock" on other operating systems, to
-> do
-> > > this.  It never went anywhere.
-> > > 
-> > > We now seem to have a fresh opportunity to address this issue with
-> the
-> > > recent addition of "local_lock".  Can we augment this option or
-> add
-> > > another which allows better control of caching behavior during a
-> file
-> > > lock?
-> > 
-> > I wouldn't stand in the way, but it does start to sound like a
-> rather
-> > confusing array of choices.
-> > 
+> I've boiled the issue down to this:
 > 
-> I can sort of see the argument too, but on the other hand...does
-> anyone
-> *really* use locks in this way? If we want a mechanism to allow the
-> client to force cache invalidation on an inode it seems like we'd be
-> better off with an interface for that purpose only (dare I say
-> ioctl? :).
+> Start up the NFS server, this seems to work fine, no errors:
+>   rpc.nfsd 1
 > 
-> Piggybacking this behavior into the locking interfaces seems like it
-> punishes -o nolock performance for the benefit of some questionable
-> usage patterns.
+> Check to see if nfsd has registered with rpcbind, this never shows the nfsd service being registered:
+>   rpcinfo -p
 > 
-> Mixing this in with -o local_lock also seems confusing, but if we
-> want
-> to do that it's probably best to make that call before any kernels
-> ship
-> with -o local_lock.
+> So far I've got the following diagnostics done:
 > 
-> Trond, care to weigh in on this?
+> - Cranked up the debugging in rpcbind, never found SET updates happening (only UNSET)
+> - Captured the rpc update frames going over lo, viewed in wireshark. They are all UNSET only
+> - Crank up rpcdebug on kernel, only unregister frames are being generated.
+> 
+> The interesting thing I see is:
+> 
+> svc: svc_register(nfsdv4, udp, 0, 2)
+> RPC:       unregistering [100003, 4, 0.0.0.0.0.0, 'udp'] with local rpcbind
+> 
+> For some reason svc_register is being called with '0' as the port argument.
+> 
+> Looking at the ports list in proc says that udp and tcp 2049 are to be used.
+> 
+> I've been searching around for any information regarding this issue, but haven't found anything. Do any of you folks know if this has been fixed in a later kernel? Is this even a known issue of some kind? I would be testing a newer kernel, but my box has a major issue with some driver as of 2.6.33, which I am also still debugging.
+> 
+> Not subscribed to this list, please CC me if you can. I'll watch the archives too.
 
+It doesn't ring any bells.  What distro are you using, and how is it
+starting nfsd?
 
-Trond, 
-
-What do you think about this issue?
-
-Sachin Prabhu
+--b.
