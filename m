@@ -1,75 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57692 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750932Ab0JUQUg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Oct 2010 12:20:36 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@citi.umich.edu>
-Subject: [PATCH 06/11] nfsd4: track backchannel connections
-Date: Thu, 21 Oct 2010 12:20:13 -0400
-Message-Id: <1287678018-9266-7-git-send-email-bfields@redhat.com>
-In-Reply-To: <1287678018-9266-1-git-send-email-bfields@redhat.com>
-References: <1287678018-9266-1-git-send-email-bfields@redhat.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:40100 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753121Ab0JTO3Z convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Oct 2010 10:29:25 -0400
+Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3 mounts.
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@ORACLE.COM>
+In-Reply-To: <20101020181701.232dbeea@notabene>
+Date: Wed, 20 Oct 2010 10:29:05 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <C56CFB9A-FCA4-41DA-971F-49B9C9EE7F03@oracle.com>
+References: <20101020181701.232dbeea@notabene>
+To: Neil Brown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
 
-We need to keep track of which connections are available for use with
-the backchannel, which for the forechannel, and which for both.
+On Oct 20, 2010, at 3:17 AM, Neil Brown wrote:
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
----
- fs/nfsd/nfs4state.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
+> 
+> 
+> If I don't have any network configured (except loop-back), and try an NFSv3
+> mount, then it fails quickly:
+> 
+> 
+> ....
+> mount.nfs: portmap query failed: RPC: Remote system error - Network is unreachable
+> mount.nfs: Network is unreachable
+> 
+> 
+> If I try the same thing with a NFSv4 mount, it times out before it fails,
+> making a much longer delay.
+> 
+> This is because mount.nfs doesn't do a portmap lookup but just leaves
+> everything to the kernel.
+> The kernel does an 'rpc_ping()' which sets RPC_TASK_SOFTCONN.
+> So at least it doesn't retry after the timeout.  But given that we have a
+> clear error, we shouldn't timeout at all.
+> 
+> Unfortunately I cannot see an easy way to fix this.
+> 
+> The place where ENETUNREACH is in xs_tcp_setup_socket.  The comment there
+> says "Retry with the same socket after a delay".  The "delay" bit is correct,
+> the "retry" isn't.
+> 
+> It would seem that we should just add a 'goto out' there if RPC_TASK_SOFTCONN
+> was set.  However we cannot see the task at this point - in fact it seems
+> that there could be a queue of tasks waiting on this connection.  I guess
+> some could be soft, and some not. ???
+> 
+> So: An suggestions how to get a ENETUNREACH (or ECONNREFUSED or similar) to
+> fail immediately when  RPC_TASK_SOFTCONN is set ???
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7e817d1..c470cb7 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -644,7 +644,7 @@ static void nfsd4_conn_lost(struct svc_xpt_user *u)
- 	spin_unlock(&clp->cl_lock);
- }
- 
--static struct nfsd4_conn *alloc_conn(struct svc_rqst *rqstp)
-+static struct nfsd4_conn *alloc_conn(struct svc_rqst *rqstp, u32 flags)
- {
- 	struct nfsd4_conn *conn;
- 
-@@ -653,7 +653,7 @@ static struct nfsd4_conn *alloc_conn(struct svc_rqst *rqstp)
- 		return NULL;
- 	svc_xprt_get(rqstp->rq_xprt);
- 	conn->cn_xprt = rqstp->rq_xprt;
--	conn->cn_flags = NFS4_CDFC4_FORE;
-+	conn->cn_flags = flags;
- 	INIT_LIST_HEAD(&conn->cn_xpt_user.list);
- 	return conn;
- }
-@@ -682,8 +682,11 @@ static void nfsd4_register_conn(struct nfsd4_conn *conn)
- static __be32 nfsd4_new_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
- {
- 	struct nfsd4_conn *conn;
-+	u32 flags = NFS4_CDFC4_FORE;
- 
--	conn = alloc_conn(rqstp);
-+	if (ses->se_flags & SESSION4_BACK_CHAN)
-+		flags |= NFS4_CDFC4_BACK;
-+	conn = alloc_conn(rqstp, flags);
- 	if (!conn)
- 		return nfserr_jukebox;
- 	nfsd4_hash_conn(conn, ses);
-@@ -1640,7 +1643,7 @@ static void nfsd4_sequence_check_conn(struct svc_rqst *rqstp, struct nfsd4_sessi
- 	if (c)
- 		return;
- 
--	new = alloc_conn(rqstp);
-+	new = alloc_conn(rqstp, NFS4_CDFC4_FORE);
- 
- 	spin_lock(&clp->cl_lock);
- 	c = __nfsd4_find_conn(rqstp, ses);
+ECONNREFUSED should already fail immediately in this case.  If it's not failing immediately, that's a bug.
+
+I agree that ENETUNREACH seems appropriate for quick failure if RPC_TASK_SOFTCONN is set.  (I thought it already worked this way, but maybe I'm mistaken).
+
+> This affects people who upgrade from openSUSE11.2 (which didn't support v4
+> mounts) to openSUSE11.3 (which defaults to v4) and who use network-manager
+> (which configures networks late) and have NFS mounts in /etc/fstab with
+> either explicit IP addresses or host names that can be resolved without the
+> network.
+> This config will work because when the network comes up, network-manager will
+> re-run the 'init.d/nfs' script.  However since 11.3 there is an unpleasant
+> pause before boot completes.
+
+
 -- 
-1.7.1
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
