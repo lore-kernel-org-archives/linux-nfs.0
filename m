@@ -1,119 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:11595 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751024Ab0JENhm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Oct 2010 09:37:42 -0400
-Subject: Re: NFS4 clients cannot reclaim locks
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Sachin Prabhu <sprabhu@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-In-Reply-To: <14582176.106.1286186603313.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-References: <14582176.106.1286186603313.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 05 Oct 2010 09:37:18 -0400
-Message-ID: <1286285838.3338.1.camel@heimdal.trondhjem.org>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:47414 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758359Ab0JUPDp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 11:03:45 -0400
+Received: by ywi6 with SMTP id 6so2799132ywi.19
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Oct 2010 08:03:44 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 3/4] mount.nfs: Preserve options in /etc/mtab during remount
+To: linux-nfs@vger.kernel.org
+Cc: kzak@redhat.com
+Date: Thu, 21 Oct 2010 11:03:41 -0400
+Message-ID: <20101021150341.2866.22727.stgit@ellison.1015granger.net>
+In-Reply-To: <20101021145747.2866.11537.stgit@ellison.1015granger.net>
+References: <20101021145747.2866.11537.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-10-04 at 06:03 -0400, Sachin Prabhu wrote:
-> From instrumentation, the problem appears to happen at nfs4_open_prepare
-> 
-> static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
-> {
-> ..
->         /*
->          * Check if we still need to send an OPEN call, or if we can use
->          * a delegation instead.
->          */
-> 
->         if (data->state != NULL) {
->                 struct nfs_delegation *delegation;
-> 
->                 if (can_open_cached(data->state, data->o_arg.fmode, data->o_arg.open_flags))
->                         goto out_no_action;
-> ..
-> out_no_action:
->         task->tk_action = NULL;
-> 
-> }
-> 
-> Here, can_open_cached returns true. The open call is never made and the old state is used.
-> static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs4_state_recovery_ops *ops)
-> {
-> ..
-> restart:
-> ..
->                 status = ops->recover_open(sp, state); <-- This call attempts to use cached state and status is set to 0
->                 if (status >= 0) {
->                         status = nfs4_reclaim_locks(state, ops); <-- Attempts to reclaim locks using old stateid
->         -- Here status is set to -NFS4ERR_BAD_STATEID --
->                  ..
->                 }
->                 switch (status) {
-> ..
->                         case -NFS4ERR_BAD_STATEID:
->                         case -NFS4ERR_RECLAIM_BAD:
->                         case -NFS4ERR_RECLAIM_CONFLICT:
->                                 nfs4_state_mark_reclaim_nograce(sp->so_client, state);
->                                 break;
-> ..
->                 }
->                 nfs4_put_open_state(state);
->                 goto restart;
-> ..
-> }
-> 
-> The call to ops->recover_open() calls nfs4_open_expired(). While preparing the RPC call to OPEN, in nfs4_open_prepare(), it decides that the caches copy is valid and it attempts to use it. So nfs4_open_expired() returns 0. The subsequent call to reclaim locks using nfs4_reclaim_locks() fails with with a -NFS4ERR_BAD_STATEID. A goto statement in nfs4_reclaim_open_state() results in it looping with the same results as before.
+It appears that, for a long while, NFS "remount" mounts have
+completely wiped the existing mount options in /etc/mtab for a given
+mount point.  This is a problem for umount.nfs, since it reads its
+options out of /etc/mtab to find out how to do the unmount.
 
-Yup. That makes sense. Does the following patch help?
+umount.nfs could read /proc/mounts instead, since it always has the
+authoritative set of mount options in effect for that mount point.
+However, /proc/mounts contains the options that were negotiated, not
+the options that were specified on the command line.
 
-Cheers
-  Trond
---------------------------------------------------------------------------------------------------------
-NFSv4: Fix open recovery
+For example, if the server's mountd had been restarted and has acquired
+a different port since the client mounted the server, the specified
+command line mount options would probably allow the UMNT to renegotiate
+and complete successfully.  But the "in effect" mount options in
+/proc/mounts, which always include a specific mountport=, would most
+likely fail in this case.
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+In addition, older kernels won't show much of the information in
+/proc/mounts that umount.nfs needs.
 
-NFSv4 open recovery is currently broken: since we do not clear the
-state->flags states before attempting recovery, we end up with the
-'can_open_cached()' function triggering. This again leads to no OPEN call
-being put on the wire.
+Therefore mount.nfs (and umount.nfs) must put the correct set of mount
+options in /etc/mtab to ensure that the final umount.nfs will do the
+right thing.
 
-Reported-by: Sachin Prabhu <sprabhu@redhat.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+This is a fix for:
+
+  https://bugzilla.linux-nfs.org/show_bug.cgi?id=188
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs4proc.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+ utils/mount/mount.c |   78 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 78 insertions(+), 0 deletions(-)
 
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 089da5b..01b4817 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1120,6 +1120,7 @@ static int nfs4_open_recover(struct nfs4_opendata *opendata, struct nfs4_state *
- 	clear_bit(NFS_DELEGATED_STATE, &state->flags);
- 	smp_rmb();
- 	if (state->n_rdwr != 0) {
-+		clear_bit(NFS_O_RDWR_STATE, &state->flags);
- 		ret = nfs4_open_recover_helper(opendata, FMODE_READ|FMODE_WRITE, &newstate);
- 		if (ret != 0)
- 			return ret;
-@@ -1127,6 +1128,7 @@ static int nfs4_open_recover(struct nfs4_opendata *opendata, struct nfs4_state *
- 			return -ESTALE;
- 	}
- 	if (state->n_wronly != 0) {
-+		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
- 		ret = nfs4_open_recover_helper(opendata, FMODE_WRITE, &newstate);
- 		if (ret != 0)
- 			return ret;
-@@ -1134,6 +1136,7 @@ static int nfs4_open_recover(struct nfs4_opendata *opendata, struct nfs4_state *
- 			return -ESTALE;
- 	}
- 	if (state->n_rdonly != 0) {
-+		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
- 		ret = nfs4_open_recover_helper(opendata, FMODE_READ, &newstate);
- 		if (ret != 0)
- 			return ret;
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index 8fb03e0..45ae5f6 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -273,6 +273,81 @@ create_mtab (void) {
+ 	reset_mtab_info();
+ }
+ 
++static int string_is_empty(const char *s)
++{
++	if (s != NULL && *s != '\0')
++		return 0;
++	return 1;
++}
++
++static char *concat_opts(const char *left, const char *right)
++{
++	char *retval;
++
++	if (string_is_empty(left)) {
++		if (string_is_empty(right))
++			return NULL;
++		return strdup(right);
++	}
++	if (string_is_empty(right))
++		return strdup(left);
++
++	retval = malloc(strlen(left) + strlen(",") + strlen(right) + 1);
++	if (retval == NULL)
++		return retval;
++
++	retval[0] = '\0';
++	strcat(retval, left);
++	strcat(retval, ",");
++	strcat(retval, right);
++	return retval;
++}
++
++/*
++ * Return new set of MS_ flags and dynamically allocated string
++ * containing mount options to write to /etc/mtab after a remount.
++ */
++static void remount_opts(char *spec, char *cmdline,
++		int *flags, char **extra_opts)
++{
++	char *old_opts, *tmp_opts;
++	struct mntentchn *mc;
++
++	/*
++	 * Retrieve the existing mount options for this mount
++	 * point from /etc/mtab (or /proc/mounts).
++	 */
++	if (*spec == '/')
++		mc = getmntdirbackward(spec, NULL);
++	else
++		mc = getmntdevbackward(spec, NULL);
++	if (mc == NULL) {
++		if (verbose)
++			printf(_("Could not find %s in mtab\n"), spec);
++		/* don't change flags and extra_opts */
++		return;
++	}
++
++	/*
++	 * To construct the correct set of flags, concatenate the
++	 * command line options to the old options from mtab, then
++	 * parse them, left to right.  This ensures we handle the
++	 * default setting of "ro" and "rw" correctly, and prevents
++	 * duplicate MS_ options from showing up.
++	 *
++	 * Later, fix_opts_string() will re-assemble these into a
++	 * single canonical mount options string.
++	 */
++	tmp_opts = concat_opts(mc->m.mnt_opts, cmdline);
++	if (tmp_opts == NULL)
++		return;
++
++	xfree(*extra_opts);
++	*flags = 0;
++	parse_opts(tmp_opts, flags, extra_opts);
++	free(tmp_opts);
++}
++
+ static int add_mtab(char *spec, char *mount_point, char *fstype,
+ 			int flags, char *opts)
+ {
+@@ -442,6 +517,9 @@ static int try_mount(char *spec, char *mount_point, int flags,
+ 	if (!fake)
+ 		print_one(spec, mount_point, fs_type, mount_opts);
+ 
++	if (flags & MS_REMOUNT)
++		remount_opts(spec, mount_opts, &flags, extra_opts);
++
+ 	return add_mtab(spec, mount_point, fs_type, flags, *extra_opts);
+ }
+ 
 
