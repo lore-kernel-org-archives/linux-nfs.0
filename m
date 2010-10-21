@@ -1,146 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:22756 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:57703 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755227Ab0JDMzn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Oct 2010 08:55:43 -0400
-Message-ID: <4CA9CECA.6000700@parallels.com>
-Date: Mon, 04 Oct 2010 16:55:38 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH 8/13] sunrpc: Call xs_create_sockX directly from setup_socket
-References: <4CA9CDA8.4010407@parallels.com>
-In-Reply-To: <4CA9CDA8.4010407@parallels.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751048Ab0JUQUo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Oct 2010 12:20:44 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 10/11] nfsd4: move minorversion to client
+Date: Thu, 21 Oct 2010 12:20:17 -0400
+Message-Id: <1287678018-9266-11-git-send-email-bfields@redhat.com>
+In-Reply-To: <1287678018-9266-1-git-send-email-bfields@redhat.com>
+References: <1287678018-9266-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Remove now unneeded wrappers that just add type and protocol
-to socket creation callback.
+The minorversion seems more a property of the client than the callback
+channel.
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+Some time we should probably also enforce consistent minorversion usage
+from the client; for now, this is just a cosmetic change.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- net/sunrpc/xprtsock.c |   40 ++++++++--------------------------------
- 1 files changed, 8 insertions(+), 32 deletions(-)
+ fs/nfsd/nfs4callback.c |    8 ++++----
+ fs/nfsd/nfs4state.c    |   12 ++++++++++--
+ fs/nfsd/state.h        |    2 +-
+ 3 files changed, 15 insertions(+), 7 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 96128d0..7fdf2bb 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1710,7 +1710,7 @@ static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index d38ee3c..67bcd2c 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -496,7 +496,7 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
  
- static void xs_udp_setup_socket(struct sock_xprt *transport,
- 		struct socket *(*create_sock)(struct rpc_xprt *,
--			struct sock_xprt *))
-+			struct sock_xprt *, int type, int protocol))
- {
- 	struct rpc_xprt *xprt = &transport->xprt;
- 	struct socket *sock = transport->sock;
-@@ -1721,7 +1721,7 @@ static void xs_udp_setup_socket(struct sock_xprt *transport,
+ 	if (!clp->cl_principal && (clp->cl_flavor >= RPC_AUTH_GSS_KRB5))
+ 		return -EINVAL;
+-	if (conn->cb_minorversion) {
++	if (clp->cl_minorversion) {
+ 		args.bc_xprt = conn->cb_xprt;
+ 		args.prognumber = clp->cl_cb_session->se_cb_prog;
+ 		args.protocol = XPRT_TRANSPORT_BC_TCP;
+@@ -620,7 +620,7 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+ 	struct nfsd4_callback *cb = calldata;
+ 	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
+ 	struct nfs4_client *clp = dp->dl_client;
+-	u32 minorversion = clp->cl_cb_conn.cb_minorversion;
++	u32 minorversion = clp->cl_minorversion;
+ 	int status = 0;
  
- 	/* Start by resetting any existing state */
- 	xs_reset_transport(transport);
--	sock = create_sock(xprt, transport);
-+	sock = create_sock(xprt, transport, SOCK_DGRAM, IPPROTO_UDP);
- 	if (IS_ERR(sock))
- 		goto out;
+ 	cb->cb_minorversion = minorversion;
+@@ -645,9 +645,9 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
+ 	struct nfs4_client *clp = dp->dl_client;
  
-@@ -1745,18 +1745,12 @@ out:
-  * Invoked by a work queue tasklet.
-  */
+ 	dprintk("%s: minorversion=%d\n", __func__,
+-		clp->cl_cb_conn.cb_minorversion);
++		clp->cl_minorversion);
  
--static struct socket *xs_create_udp_sock4(struct rpc_xprt *xprt,
--		struct sock_xprt *transport)
--{
--	return xs_create_sock4(xprt, transport, SOCK_DGRAM, IPPROTO_UDP);
--}
--
- static void xs_udp_connect_worker4(struct work_struct *work)
- {
- 	struct sock_xprt *transport =
- 		container_of(work, struct sock_xprt, connect_worker.work);
+-	if (clp->cl_cb_conn.cb_minorversion) {
++	if (clp->cl_minorversion) {
+ 		/* No need for lock, access serialized in nfsd4_cb_prepare */
+ 		++clp->cl_cb_session->se_cb_seq_nr;
+ 		clear_bit(0, &clp->cl_cb_slot_busy);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0f2643d..ce0412f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -782,7 +782,6 @@ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct n
+ 		svc_xprt_get(rqstp->rq_xprt);
+ 		rpc_copy_addr((struct sockaddr *)&clp->cl_cb_conn.cb_addr, sa);
+ 		clp->cl_cb_conn.cb_addrlen = svc_addr_len(sa);
+-		clp->cl_cb_conn.cb_minorversion = 1;
+ 		nfsd4_probe_callback(clp);
+ 	}
+ 	return new;
+@@ -1200,7 +1199,6 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
+ 	if (conn->cb_addr.ss_family == AF_INET6)
+ 		((struct sockaddr_in6 *)&conn->cb_addr)->sin6_scope_id = scopeid;
  
--	xs_udp_setup_socket(transport, xs_create_udp_sock4);
-+	xs_udp_setup_socket(transport, xs_create_sock4);
- }
+-	conn->cb_minorversion = 0;
+ 	conn->cb_prog = se->se_callback_prog;
+ 	conn->cb_ident = se->se_callback_ident;
+ 	return;
+@@ -1541,6 +1539,11 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 	}
  
- /**
-@@ -1766,18 +1760,12 @@ static void xs_udp_connect_worker4(struct work_struct *work)
-  * Invoked by a work queue tasklet.
-  */
- 
--static struct socket *xs_create_udp_sock6(struct rpc_xprt *xprt,
--		struct sock_xprt *transport)
--{
--	return xs_create_sock6(xprt, transport, SOCK_DGRAM, IPPROTO_UDP);
--}
--
- static void xs_udp_connect_worker6(struct work_struct *work)
- {
- 	struct sock_xprt *transport =
- 		container_of(work, struct sock_xprt, connect_worker.work);
- 
--	xs_udp_setup_socket(transport, xs_create_udp_sock6);
-+	xs_udp_setup_socket(transport, xs_create_sock6);
- }
- 
- /*
-@@ -1883,7 +1871,7 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
-  */
- static void xs_tcp_setup_socket(struct sock_xprt *transport,
- 		struct socket *(*create_sock)(struct rpc_xprt *,
--			struct sock_xprt *))
-+			struct sock_xprt *, int type, int protocol))
- {
- 	struct socket *sock = transport->sock;
- 	struct rpc_xprt *xprt = &transport->xprt;
-@@ -1894,7 +1882,7 @@ static void xs_tcp_setup_socket(struct sock_xprt *transport,
- 
- 	if (!sock) {
- 		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
--		sock = create_sock(xprt, transport);
-+		sock = create_sock(xprt, transport, SOCK_STREAM, IPPROTO_TCP);
- 		if (IS_ERR(sock)) {
- 			status = PTR_ERR(sock);
+ 	/*
++	 * XXX: we should probably set this at creation time, and check
++	 * for consistent minorversion use throughout:
++	 */
++	conf->cl_minorversion = 1;
++	/*
+ 	 * We do not support RDMA or persistent sessions
+ 	 */
+ 	cr_ses->flags &= ~SESSION4_PERSIST;
+@@ -1857,6 +1860,11 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
  			goto out;
-@@ -1954,12 +1942,6 @@ out:
- 	xprt_wake_pending_tasks(xprt, status);
- }
+ 		gen_clid(new);
+ 	}
++	/*
++	 * XXX: we should probably set this at creation time, and check
++	 * for consistent minorversion use throughout:
++	 */
++	new->cl_minorversion = 0;
+ 	gen_callback(new, setclid, rpc_get_scope_id(sa));
+ 	add_to_unconfirmed(new, strhashval);
+ 	setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index bbc4d58..39adc27 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -98,7 +98,6 @@ struct nfs4_cb_conn {
+ 	size_t			cb_addrlen;
+ 	u32                     cb_prog; /* used only in 4.0 case;
+ 					    per-session otherwise */
+-	u32			cb_minorversion;
+ 	u32                     cb_ident;	/* minorversion 0 only */
+ 	struct svc_xprt		*cb_xprt;	/* minorversion 1 only */
+ };
+@@ -227,6 +226,7 @@ struct nfs4_client {
+ 	clientid_t		cl_clientid;	/* generated by server */
+ 	nfs4_verifier		cl_confirm;	/* generated by server */
+ 	u32			cl_firststate;	/* recovery dir creation */
++	u32			cl_minorversion;
  
--static struct socket *xs_create_tcp_sock4(struct rpc_xprt *xprt,
--		struct sock_xprt *transport)
--{
--	return xs_create_sock4(xprt, transport, SOCK_STREAM, IPPROTO_TCP);
--}
--
- /**
-  * xs_tcp_connect_worker4 - connect a TCP socket to a remote endpoint
-  * @work: RPC transport to connect
-@@ -1971,13 +1953,7 @@ static void xs_tcp_connect_worker4(struct work_struct *work)
- 	struct sock_xprt *transport =
- 		container_of(work, struct sock_xprt, connect_worker.work);
- 
--	xs_tcp_setup_socket(transport, xs_create_tcp_sock4);
--}
--
--static struct socket *xs_create_tcp_sock6(struct rpc_xprt *xprt,
--		struct sock_xprt *transport)
--{
--	return xs_create_sock6(xprt, transport, SOCK_STREAM, IPPROTO_TCP);
-+	xs_tcp_setup_socket(transport, xs_create_sock4);
- }
- 
- /**
-@@ -1991,7 +1967,7 @@ static void xs_tcp_connect_worker6(struct work_struct *work)
- 	struct sock_xprt *transport =
- 		container_of(work, struct sock_xprt, connect_worker.work);
- 
--	xs_tcp_setup_socket(transport, xs_create_tcp_sock6);
-+	xs_tcp_setup_socket(transport, xs_create_sock6);
- }
- 
- /**
+ 	/* for v4.0 and v4.1 callbacks: */
+ 	struct nfs4_cb_conn	cl_cb_conn;
 -- 
-1.5.5.6
+1.7.1
 
