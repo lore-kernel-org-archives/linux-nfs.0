@@ -1,85 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og103.obsmtp.com ([64.18.0.145]:46050 "HELO
-	exprod5og103.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753989Ab0JURuQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 13:50:16 -0400
-Message-ID: <4CC07D54.7070204@panasas.com>
-Date: Thu, 21 Oct 2010 19:50:12 +0200
-From: Benny Halevy <bhalevy@panasas.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:22069 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751878Ab0JUOdQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 10:33:16 -0400
+Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3 mounts.
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1287669939.3645.12.camel@heimdal.trondhjem.org>
+Date: Thu, 21 Oct 2010 10:31:57 -0400
+Cc: Neil Brown <neilb@suse.de>, Jeff Layton <jlayton@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <5CF8C718-2D02-481E-9200-8CAA724D9C8C@oracle.com>
+References: <20101020181701.232dbeea@notabene> <20101020135525.22977d8d@tlielax.poochiereds.net> <20101020151657.42bc53f7@tlielax.poochiereds.net> <20101021074028.44bca336@notabene> <20101020204532.2019eb93@corrin.poochiereds.net> <20101021142518.3934ae17@notabene> <1287669939.3645.12.camel@heimdal.trondhjem.org>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, Jeff Layton <jlayton@redhat.com>,
-        =?UTF-8?B?Q2zDoXVkaW8gTWFydGlucw==?= <ctpm@ist.utl.pt>,
-        Ian Munsie <imunsie@au1.ibm.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Scott Romanowski <romansc@us.ibm.com>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>
-Subject: Re: NFS sillyrename side effect
-References: <1287362142-sup-777@au1.ibm.com>	 <20101018101059.574b715a@corrin.poochiereds.net>	 <20101018154811.768baeb5.ctpm@ist.utl.pt>	 <20101018155344.6e50dbb9.ctpm@ist.utl.pt>	 <20101018110138.5f5001eb@corrin.poochiereds.net>	 <20101018171015.GB3744@fieldses.org>  <4CBD3D4E.5080305@panasas.com> <1287495168.2969.9.camel@heimdal.trondhjem.org>
-In-Reply-To: <1287495168.2969.9.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-10-19 15:32, Trond Myklebust wrote:
-> On Tue, 2010-10-19 at 08:40 +0200, Benny Halevy wrote:
->> On 2010-10-18 19:10, J. Bruce Fields wrote:
->>> On Mon, Oct 18, 2010 at 11:01:38AM -0400, Jeff Layton wrote:
->>>> On Mon, 18 Oct 2010 15:53:44 +0100
->>>> Cláudio Martins <ctpm@ist.utl.pt> wrote:
->>>>
->>>>>
->>>>> On Mon, 18 Oct 2010 15:48:11 +0100 Cláudio Martins <ctpm@ist.utl.pt> wrote:
->>>>>>
->>>>>>  Section D2 ends with:
->>>>>>
->>>>>> "The NFS version 4 protocol is stateful, and could actually support
->>>>>> delete-on-last-close. Unfortunately there isn't an easy way to do this
->>>>>> and remain backwards-compatible with version 2 and 3 accessors."
->>>>>>
->>>>>>  So, theoretically, could one modify the code to selectively disable
->>>>>> silly rename on a client, when it knows it is talking v4 with the
->>>>>> server?
->>>>>>
->>>>>
->>>>>  BTW, to clarify, I'm assuming a scenario where the server is
->>>>> configured to talk v4 only, which I suspect should be common, at least
->>>>> when you're relying on v4 kerberos security.
->>>>>
->>>>
->>>> Sadly, no...
->>>>
->>>> The server does generally hold the file open as long as the client has
->>>> the file open. So, you could delete the file while nfsd has it open and
->>>> everything would probably still work.
->>>>
->>>> Suppose though that the server crashes and reboots. When it comes back
->>>> up, fsck figures out that the file has been unlinked and frees the
->>>> blocks on the disk. Now you can't reclaim the state on the open file.
->>>>
->>>> We're pretty much stuck with silly-renaming even for v4.
->>>
->>> The server could do something like rename the file into a special
->>> directory somewhere 
->>
->> The clients can do something similar too, like sillyrenaming the
->> files onto <mountpoint>/.unlinked_while_opened.<client-id>
->> Removing this directory when it empties.
+
+On Oct 21, 2010, at 10:05 AM, Trond Myklebust wrote:
+
+> On Thu, 2010-10-21 at 14:25 +1100, Neil Brown wrote:
+>> On Wed, 20 Oct 2010 20:45:32 -0400
+>> Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> On Thu, 21 Oct 2010 07:40:28 +1100
+>>> Neil Brown <neilb@suse.de> wrote:
+>>> 
+>>>>> 
+>>>>> Then what happens is that xs_tcp_send_request gets called again to try
+>>>>> to resend the packet. In the EHOSTUNREACH case, that returns
+>>>>> EHOSTUNREACH which eventually causes an rpc_exit with that error. In
+>>>>> the ENETUNREACH case that returns EPIPE, which makes the state machine
+>>>>> move next to call_bind and the whole thing starts over again.
+>>>> 
+>>>> This confuses me.  Why would  xs_tcp_send_request (aka ->send_request) get
+>>>> called before the connect has succeeded?  Can you make sense of that?
+>>>> 
+>>> 
+>>> It confuses me too. I suspect that this may actually be a bug...
+>>> 
+>>> So EINPROGRESS makes the connect_worker task clear the connecting bit
+>>> and return. Eventually, the EHOSTUNREACH error is reported to
+>>> xs_error_report. That function does this:
+>>> 
+>>>        xprt_wake_pending_tasks(xprt, -EAGAIN);
+>>> 
+>>> The task that was waiting on the connect_worker is then woken up.
+>>> call_connect_status does this:
+>>> 
+>>>        if (status >= 0 || status == -EAGAIN) {
+>>>                clnt->cl_stats->netreconn++;
+>>>                task->tk_action = call_transmit;
+>>>                return;
+>>>        }
+>>> 
+>>> ...and we end up in call_transmit without the socket being connected.
+>>> 
+>>> So I understand how this happened, but I don't really understand the
+>>> design of the connect mechanism well enough to know whether this is
+>>> by design or not.
+>>> 
+>> 
+>> Now that *is* interesting.....
+>> 
+>> I thought that code in call_connect_status was hard to understand too, so I
+>> asked git who to blame it on. It said:
+>> 
+>> commit 2a4919919a97911b0aa4b9f5ac1eab90ba87652b
+>> Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+>> Date:   Wed Mar 11 14:38:00 2009 -0400
+>> 
+>>    SUNRPC: Return EAGAIN instead of ENOTCONN when waking up xprt->pending
+>> 
+>>    While we should definitely return socket errors to the task that is
+>>    currently trying to send data, there is no need to propagate the same error
+>>    to all the other tasks on xprt->pending. Doing so actually slows down
+>>    recovery, since it causes more than one tasks to attempt socket recovery.
+>> 
+>>    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>> 
+>> 
+>> 
+>> That commit not only adds the "status == -EAGAIN" test, but also introduced
+>> some of the xprtsock.c code that I suggested changing in a previous patch.
 > 
-> This would require access, directory create, and delete permissions for
-> the directory '<mountpoint>/', which is not always a given.
-
-Correct. But that's pretty easy to probe :)
-
+> That is because ENOTCONN was trying to report the current state of the
+> socket to a bunch of tasks on the 'pending' list. The problem is that
+> because none of those tasks hold any form of lock, then by the time they
+> get round to processing that ENOTCONN, the state of the socket can (and
+> usually will) have changed.
 > 
-> Besides, what if the server reboots, and my clientid changes?
-
-By <client-id> I meant a unique identifier for the client, not necessarily
-the nfsv4.x clientid.  The client could just as well use its ip address
-(to help admins deal with the aftermath in case the client goes away) and its
-boot time, or even a random string.
-
-Benny
-
+>> So there seem to be some correlation between that commit and the present
+>> problem.
+>> 
+>> I tried compiling the kernel just prior to that commit, and 
+>>  mount -t nfs4 unrouteable.ip.addres:/ /mnt
+>> 
+>> took 3 seconds to time fail.
+>> 
+>> I then stepped forward to that commit and the same command took 3 *minutes* to
+>> time out.  So something isn't right there.  Unfortunately I don't know what.
+>> 
+>> Trond: can you comment on this - maybe explain the reasoning behind that
+>> commit better, and suggest how we can get ENOTCONN to fail SOFTCONN
+>> connections faster without undoing the things this patch tried to achieve?
 > 
-> Trond
+> It seems to me that the problem is basically that RPC_IS_SOFTCONN is
+> poorly defined. IMO, the definition should really be that
+> 'RPC_IS_SOFTCONN' tasks MUST exit with an error if they ever have to run
+> call_bind or a call_connect more than once (i.e. if they ever have to
+> loop back).
+
+I think you are suggesting that we define the places where RPC_IS_SOFTCONN should be tested as exactly those places that might want to restart the RPC call via rpc_force_rebind, tk_action = call_refresh, and so on.  Yes?
+
+> With that in mind, I really don't see why the RPC_IS_SOFTCONN case is
+> being handled in call_transmit_status() instead of in call_status().
+
+I tried it in call_status(), but it didn't work as expected.  My notes aren't specific about the problem.  One thing is for sure, there seems to be some redundant error handling logic in both of those states.  Unraveling it might be more than Neil bargained for, but would help "future generations."
+
+> I furthermore don't see why ECONNRESET, ENOTCONN and EPIPE should be
+> treated any differently from ECONNREFUSED, EHOSTDOWN, EHOSTUNREACH and
+> ENETUNREACH.
+
+I can get behind that.  It looks like call_bind_status already combines all these error codes, so it makes some sense.
+
+-- 
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
