@@ -1,56 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og102.obsmtp.com ([64.18.0.143]:43141 "HELO
-	exprod5og102.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751197Ab0JGTRw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 15:17:52 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] SQUASHME: pnfs-submit: do not get_lseg in pnfs_has_layout
-Date: Thu,  7 Oct 2010 15:17:49 -0400
-Message-Id: <1286479069-29035-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4CAE16FA.9040606@panasas.com>
-References: <4CAE16FA.9040606@panasas.com>
+Received: from mx1.redhat.com ([209.132.183.28]:57206 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753718Ab0JUTje (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Oct 2010 15:39:34 -0400
+Date: Thu, 21 Oct 2010 15:40:12 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
+ mounts.
+Message-ID: <20101021154012.48f92cfc@corrin.poochiereds.net>
+In-Reply-To: <1287672124.3645.19.camel@heimdal.trondhjem.org>
+References: <20101020181701.232dbeea@notabene>
+	<20101020135525.22977d8d@tlielax.poochiereds.net>
+	<20101020151657.42bc53f7@tlielax.poochiereds.net>
+	<20101021074028.44bca336@notabene>
+	<20101020204532.2019eb93@corrin.poochiereds.net>
+	<20101021142518.3934ae17@notabene>
+	<1287669939.3645.12.camel@heimdal.trondhjem.org>
+	<5CF8C718-2D02-481E-9200-8CAA724D9C8C@oracle.com>
+	<1287672124.3645.19.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-let its caller do that if necessary
+On Thu, 21 Oct 2010 10:42:04 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs.c |    4 +---
- 1 files changed, 1 insertions(+), 3 deletions(-)
+> On Thu, 2010-10-21 at 10:31 -0400, Chuck Lever wrote:
+> > On Oct 21, 2010, at 10:05 AM, Trond Myklebust wrote:
+> > > It seems to me that the problem is basically that RPC_IS_SOFTCONN is
+> > > poorly defined. IMO, the definition should really be that
+> > > 'RPC_IS_SOFTCONN' tasks MUST exit with an error if they ever have to run
+> > > call_bind or a call_connect more than once (i.e. if they ever have to
+> > > loop back).
+> > 
+> > I think you are suggesting that we define the places where RPC_IS_SOFTCONN should be tested as exactly those places that might want to restart the RPC call via rpc_force_rebind, tk_action = call_refresh, and so on.  Yes?
+> 
+> Yes.
+> 
+> > > With that in mind, I really don't see why the RPC_IS_SOFTCONN case is
+> > > being handled in call_transmit_status() instead of in call_status().
+> > 
+> > I tried it in call_status(), but it didn't work as expected.  My notes aren't specific about the problem.  One thing is for sure, there seems to be some redundant error handling logic in both of those states.  Unraveling it might be more than Neil bargained for, but would help "future generations."
+> 
+> call_transmit_status() is there basically in order to call
+> xprt_end_transmit() in the cases where we want to free up the socket
+> write lock (and then possibly sleep).
+> 
+> Actual state error handling is supposed occur in call_status().
+> 
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 40d1dc6..a27df2b 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -844,8 +844,6 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo,
- 	list_for_each_entry(lseg, &lo->segs, fi_list) {
- 		if (is_matching_lseg(lseg, range)) {
- 			ret = lseg;
--			if (lseg->valid)
--				get_lseg(ret);
- 			break;
- 		}
- 		if (cmp_layout(range, &lseg->range) > 0)
-@@ -857,7 +855,6 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo,
- 		ret ? ret->valid : 0);
- 	return ret;
- }
--EXPORT_SYMBOL_GPL(pnfs_has_layout);
- 
- /*
-  * Layout segment is retreived from the server if not cached.
-@@ -897,6 +894,7 @@ pnfs_update_layout(struct inode *ino,
- 	if (lseg) {
- 		dprintk("%s: Using cached lseg %p for iomode %d)\n",
- 			__func__, lseg, iomode);
-+		get_lseg(lseg);
- 		goto out_unlock;
- 	}
- 
+This is terribly confusing. So the connect handling is done in
+call_transmit?
+
+It seems like it would make more sense to have the connect handling
+mostly done in call_connect and call_connect_status, and only allow the
+tasks to proceed to the call_transmit phase after the connect has
+succeeded.
+
+If that's not the case, then maybe some renaming of functions is in
+order so that the purpose of them is more clear?
+
 -- 
-1.7.2.3
-
+Jeff Layton <jlayton@redhat.com>
