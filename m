@@ -1,122 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:46709 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752377Ab0JHPg0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Oct 2010 11:36:26 -0400
-Received: by bwz15 with SMTP id 15so350198bwz.19
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Oct 2010 08:36:24 -0700 (PDT)
-In-Reply-To: <AANLkTikCvmqk9Og0iRGLsogYCe1g3Um30sH3G150cQJ5@mail.gmail.com>
-References: <1286397317-17881-1-git-send-email-iisaman@netapp.com>
- <1286397317-17881-3-git-send-email-iisaman@netapp.com> <4CADCC48.4030908@panasas.com>
- <AANLkTimnVJYW-ndu_rhk71JXkh3zW-0hLfMTYkRc8VpK@mail.gmail.com>
- <4CADD3E9.7040307@panasas.com> <AANLkTimUeQGrFXzZfgkkiE834MvMYz3uxobHHAdzE79p@mail.gmail.com>
- <AANLkTikCvmqk9Og0iRGLsogYCe1g3Um30sH3G150cQJ5@mail.gmail.com>
-From: "P.B.Shelley" <shelleypt@gmail.com>
-Date: Fri, 8 Oct 2010 23:36:02 +0800
-Message-ID: <AANLkTim6Ejf9T3YPAd-4x30tBd3Z2-yiZPM8m5AHotQd@mail.gmail.com>
-Subject: Re: [PATCH 2/4] pnfs_submit: Only update stateid if it is more recent
- than current
-To: Fred Isaman <iisaman@netapp.com>
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:58190 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754695Ab0JUPDe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 11:03:34 -0400
+Received: by mail-gy0-f174.google.com with SMTP id 13so509532gyb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Oct 2010 08:03:34 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/4] mount.nfs: freq and pass are always zero
+To: linux-nfs@vger.kernel.org
+Cc: kzak@redhat.com
+Date: Thu, 21 Oct 2010 11:03:31 -0400
+Message-ID: <20101021150331.2866.82516.stgit@ellison.1015granger.net>
+In-Reply-To: <20101021145747.2866.11537.stgit@ellison.1015granger.net>
+References: <20101021145747.2866.11537.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Oct 8, 2010 at 10:35 PM, Fred Isaman <iisaman@netapp.com> wrote:
-> On Fri, Oct 8, 2010 at 10:13 AM, P.B.Shelley <shelleypt@gmail.com> wrote:
->> On Thu, Oct 7, 2010 at 10:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->>> On 2010-10-07 10:01, Fred Isaman wrote:
->>>> On Thu, Oct 7, 2010 at 9:34 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->>>>> On 2010-10-06 16:35, Fred Isaman wrote:
->>>>>> Right now, when we set the stateid, we blindly overwrite the current
->>>>>> one, allowing the seqid to incorrectly roll backward.
->>>>>>
->>>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->>>>>> ---
->>>>>>  fs/nfs/pnfs.c |   38 ++++++++++++++++++++++++++++++++------
->>>>>>  1 files changed, 32 insertions(+), 6 deletions(-)
->>>>>>
->>>>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>>>>> index 39bce9b..555955b 100644
->>>>>> --- a/fs/nfs/pnfs.c
->>>>>> +++ b/fs/nfs/pnfs.c
->>>>>> @@ -459,16 +459,42 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
->>>>>>       }
->>>>>>  }
->>>>>>
->>>>>> +/* update lo->stateid with new if is more recent
->>>>>> + *
->>>>>> + * lo->stateid could be the open stateid, in which case we just use what given.
->>>>>> + */
->>>>>>  static void
->>>>>>  pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
->>>>>> -                     const nfs4_stateid *stateid)
->>>>>> +                     const nfs4_stateid *new)
->>>>>>  {
->>>>>> -     /* TODO - should enforce that embedded seqid, in the case
->>>>>> -      * that the two stateid.others are equal,  only increases.
->>>>>> -      * Complicated by wrap-around.
->>>>>> -      */
->>>>>> +     nfs4_stateid *old = &lo->stateid;
->>>>>> +     bool overwrite = false;
->>>>>> +
->>>>>>       write_seqlock(&lo->seqlock);
->>>>>> -     memcpy(lo->stateid.data, stateid->data, sizeof(lo->stateid.data));
->>>>>> +     if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
->>>>>> +         memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
->>>>>> +             overwrite = true;
->>>>>> +     else {
->>>>>> +             u32 oldseq, newseq, limit;
->>>>>> +
->>>>>> +             oldseq = be32_to_cpu(old->stateid.seqid);
->>>>>> +             newseq = be32_to_cpu(new->stateid.seqid);
->>>>>> +             /* There are no good bounds on window size, so just
->>>>>> +              * use a ridiculously large window of 2^31.
->>>>>> +              */
->>>>>> +             limit = oldseq + (1 << 31);
->>>>>> +             if (oldseq < limit) {
->>>>>> +                     /* The easy, non-wraparound case */
->>>>>> +                     if (oldseq < newseq && newseq < limit)
->>>>>> +                             overwrite = true;
->>>>>> +             } else {
->>>>>> +                     /* Near wraparound edge */
->>>>>> +                     if (oldseq < newseq || newseq < limit)
->>>>>> +                             overwrite = true;
->>>>>> +             }
->>>>>
->>>>> Wouldn't it be simpler to just look at (int32_t)(newseq - oldseq)?
->>>>>
->>>>
->>>> Why yes it would.  I'll send a new version of this patch shortly.
->>>>
->>>
->>> No need :)
->>> I'll just change this as follows:
->>>
->>> +       else {
->>> +               u32 oldseq, newseq, limit;
->>> +
->>> +               oldseq = be32_to_cpu(old->stateid.seqid);
->>> +               newseq = be32_to_cpu(new->stateid.seqid);
->>> +               if ((int)(newseq - oldseq) > 0)
->>> +                       overwrite = true;
->> Do we also need to verify the other field of the stateid? Will there
->> be situations that server change the other field and reset the seqid?
->
-> The server is going to use the "other" we sent, except in the case we
-> sent an open stateid.  The only potential for trouble I see is if a
-> LAYOUTGET reply gets lost in the network for a long time and is
-> received after the layout stateid has been reset for some reason.
-> However, that implies an error elsewhere (which may well exist at the
-> moment...careful stateid handling is next on the agenda), as we should
-> have been waiting for that lseg to arrive before continuing.
-Oops, I missed the other field comparing code. Thank you for pointing
-it out, Benny.
+Clean up.
 
-Can client choose to send an open stateid for LATYOUTGET request, even
-if client has a layout stateid for the file?
+No need to pass constant zeros to add_mtab() from its only call site.
 
--- 
-Thanks,
-Shelley
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/mount/mount.c |   11 +++++------
+ 1 files changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index b4da21f..8fb03e0 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -249,6 +249,7 @@ create_mtab (void) {
+ 		mnt.mnt_fsname = xstrdup(fstab->m.mnt_fsname);
+ 		mnt.mnt_type = fstab->m.mnt_type;
+ 		mnt.mnt_opts = fix_opts_string (flags, extra_opts);
++		/* these are always zero for NFS */
+ 		mnt.mnt_freq = mnt.mnt_passno = 0;
+ 		free(extra_opts);
+ 
+@@ -273,7 +274,7 @@ create_mtab (void) {
+ }
+ 
+ static int add_mtab(char *spec, char *mount_point, char *fstype,
+-			int flags, char *opts, int freq, int pass)
++			int flags, char *opts)
+ {
+ 	struct mntent ment;
+ 	int result = EX_SUCCESS;
+@@ -282,8 +283,8 @@ static int add_mtab(char *spec, char *mount_point, char *fstype,
+ 	ment.mnt_dir = mount_point;
+ 	ment.mnt_type = fstype;
+ 	ment.mnt_opts = fix_opts_string(flags & ~MS_NOMTAB, opts);
+-	ment.mnt_freq = freq;
+-	ment.mnt_passno = pass;
++	/* these are always zero for NFS */
++	ment.mnt_freq = ment.mnt_passno = 0;
+ 
+ 	if (!nomtab && mtab_does_not_exist()) {
+ 		if (verbose > 1)
+@@ -441,9 +442,7 @@ static int try_mount(char *spec, char *mount_point, int flags,
+ 	if (!fake)
+ 		print_one(spec, mount_point, fs_type, mount_opts);
+ 
+-	ret = add_mtab(spec, mount_point, fs_type, flags, *extra_opts,
+-			0, 0 /* these are always zero for NFS */ );
+-	return ret;
++	return add_mtab(spec, mount_point, fs_type, flags, *extra_opts);
+ }
+ 
+ int main(int argc, char *argv[])
+
