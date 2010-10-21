@@ -1,32 +1,27 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 0/2] Two clean-ups for 2.6.37
-Date: Thu, 21 Oct 2010 11:16:48 -0400
-Message-ID: <20101021151647.GB8738@fieldses.org>
-References: <20101020155158.6446.29915.stgit@ellison.1015granger.net>
+From: Tejun Heo <tj@kernel.org>
+Subject: Re: [PATCH linux-2.6.36-rc7] sunrpc/xprtrdma: clean up workqueue
+ usage
+Date: Thu, 21 Oct 2010 17:33:21 +0200
+Message-ID: <4CC05D41.1090207@kernel.org>
+References: <4CB87807.7050108@kernel.org> <20101015171132.GA18869@fieldses.org> <4CB89393.6000207@opengridcomputing.com> <4CB8A745.5020206@kernel.org> <4CBF1331.70107@opengridcomputing.com> <20101021151621.GA8738@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36827 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750915Ab0JUPQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Oct 2010 11:16:51 -0400
-In-Reply-To: <20101020155158.6446.29915.stgit-ewv44WTpT0t9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Tom Tucker <tom@opengridcomputing.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
+	Tom Tucker <tom@ogc.us>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20101021151621.GA8738@fieldses.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 20, 2010 at 11:52:40AM -0400, Chuck Lever wrote:
-> Hi Bruce-
+On 10/21/2010 05:16 PM, J. Bruce Fields wrote:
+>> I've tested this now with iozone etc... works like a charm ;-)
 > 
-> Here are the clean-up patches we discussed.  Compile-tested only.
-> 
-> ---
-> 
-> Chuck Lever (2):
->       SUNRPC: Properly initialize sock_xprt.srcaddr in all cases
->       SUNRPC: Use conventional switch statement when reclassifying sockets
+> Applied, thanks!
 
-Applied, thanks.
+Great, thank you.  :-)
 
---b.
+-- 
+tejun
