@@ -1,69 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3926 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57855 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757176Ab0JVOOk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Oct 2010 10:14:40 -0400
-Message-ID: <4CC19C46.2030203@netapp.com>
-Date: Fri, 22 Oct 2010 10:14:30 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: [PATCH 05/10] SUNRPC: Add a helper function xdr_inline_peek
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1755181Ab0JUUIA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Oct 2010 16:08:00 -0400
+Date: Thu, 21 Oct 2010 16:08:46 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
+ mounts.
+Message-ID: <20101021160846.49f30db3@corrin.poochiereds.net>
+In-Reply-To: <1287690444.9144.88.camel@heimdal.trondhjem.org>
+References: <20101020181701.232dbeea@notabene>
+	<20101020135525.22977d8d@tlielax.poochiereds.net>
+	<20101020151657.42bc53f7@tlielax.poochiereds.net>
+	<20101021074028.44bca336@notabene>
+	<20101020204532.2019eb93@corrin.poochiereds.net>
+	<20101021142518.3934ae17@notabene>
+	<1287669939.3645.12.camel@heimdal.trondhjem.org>
+	<5CF8C718-2D02-481E-9200-8CAA724D9C8C@oracle.com>
+	<1287672124.3645.19.camel@heimdal.trondhjem.org>
+	<20101021154012.48f92cfc@corrin.poochiereds.net>
+	<1287690444.9144.88.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We sometimes need to be able to read ahead in an xdr_stream without
-incrementing the current pointer position.
+On Thu, 21 Oct 2010 15:47:24 -0400
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- include/linux/sunrpc/xdr.h |    1 +
- net/sunrpc/xdr.c           |   21 +++++++++++++++++++++
- 2 files changed, 22 insertions(+), 0 deletions(-)
+> On Thu, 2010-10-21 at 15:40 -0400, Jeff Layton wrote:
+> > On Thu, 21 Oct 2010 10:42:04 -0400
+> > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > 
+> > > On Thu, 2010-10-21 at 10:31 -0400, Chuck Lever wrote:
+> > > > On Oct 21, 2010, at 10:05 AM, Trond Myklebust wrote:
+> > > > > It seems to me that the problem is basically that RPC_IS_SOFTCONN is
+> > > > > poorly defined. IMO, the definition should really be that
+> > > > > 'RPC_IS_SOFTCONN' tasks MUST exit with an error if they ever have to run
+> > > > > call_bind or a call_connect more than once (i.e. if they ever have to
+> > > > > loop back).
+> > > > 
+> > > > I think you are suggesting that we define the places where RPC_IS_SOFTCONN should be tested as exactly those places that might want to restart the RPC call via rpc_force_rebind, tk_action = call_refresh, and so on.  Yes?
+> > > 
+> > > Yes.
+> > > 
+> > > > > With that in mind, I really don't see why the RPC_IS_SOFTCONN case is
+> > > > > being handled in call_transmit_status() instead of in call_status().
+> > > > 
+> > > > I tried it in call_status(), but it didn't work as expected.  My notes aren't specific about the problem.  One thing is for sure, there seems to be some redundant error handling logic in both of those states.  Unraveling it might be more than Neil bargained for, but would help "future generations."
+> > > 
+> > > call_transmit_status() is there basically in order to call
+> > > xprt_end_transmit() in the cases where we want to free up the socket
+> > > write lock (and then possibly sleep).
+> > > 
+> > > Actual state error handling is supposed occur in call_status().
+> > > 
+> > 
+> > This is terribly confusing. So the connect handling is done in
+> > call_transmit?
+> 
+> No. Connection-related _error conditions_ that result from trying to
+> send stuff through a socket that is not connected, are handled in
+> call_status(). Usually, by sending the process back to call_connect().
+> 
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 8c1dcbb..ab91d86 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -201,6 +201,7 @@ extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
- extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
- 		unsigned int base, unsigned int len);
- extern void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
-+extern __be32 *xdr_inline_peek(struct xdr_stream *xdr, size_t nbytes);
- extern __be32 *xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes);
- extern void xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
- extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index e0725d9..cd9e841 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -573,6 +573,27 @@ void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p)
- EXPORT_SYMBOL_GPL(xdr_init_decode);
- 
- /**
-+ * xdr_inline_peek - Allow read-ahead in the XDR data stream
-+ * @xdr: pointer to xdr_stream struct
-+ * @nbytes: number of bytes of data to decode
-+ *
-+ * Check if the input buffer is long enough to enable us to decode
-+ * 'nbytes' more bytes of data starting at the current position.
-+ * If so return the current pointer without updating the current
-+ * pointer position.
-+ */
-+__be32 * xdr_inline_peek(struct xdr_stream *xdr, size_t nbytes)
-+{
-+	__be32 *p = xdr->p;
-+	__be32 *q = p + XDR_QUADLEN(nbytes);
-+
-+	if (unlikely(q > xdr->end || q < p))
-+		return NULL;
-+	return p;
-+}
-+EXPORT_SYMBOL_GPL(xdr_inline_peek);
-+
-+/**
-  * xdr_inline_decode - Retrieve non-page XDR data to decode
-  * @xdr: pointer to xdr_stream struct
-  * @nbytes: number of bytes of data to decode
+Yep, I get that part...
+
+> > It seems like it would make more sense to have the connect handling
+> > mostly done in call_connect and call_connect_status, and only allow the
+> > tasks to proceed to the call_transmit phase after the connect has
+> > succeeded.
+> 
+> That is the case. However sockets can and do get closed by the _server_
+> in unpredictable ways. This is what may need to be handled after the
+> task has passed the call_connect state.
+> 
+
+Right, the socket can change state at any time, but the code doesn't
+seem to do what you describe for initial connects.
+
+In the EHOSTDOWN case, kernel_connect returns EINPROGRESS and then
+xs_error_report is called with a socket error of EHOSTDOWN. That wakes
+up the tasks with a status of EAGAIN and call_connect_status sends the
+task to call_transmit even though the socket is still not connected.
+
+Having xs_error_report set the status of all tasks with EAGAIN seems
+wrong to me since we're essentially losing the error code that the
+socket layer sent up.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
