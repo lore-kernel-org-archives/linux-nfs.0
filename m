@@ -1,36 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og114.obsmtp.com ([64.18.0.28]:43024 "HELO
-	exprod5og114.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753181Ab0JGVZm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Oct 2010 17:25:42 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SQUASHME: pnfs: loga_minlength must not be greater than loga_length
-Date: Thu,  7 Oct 2010 17:25:36 -0400
-Message-Id: <1286486736-27457-1-git-send-email-bhalevy@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:64087 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750774Ab0JUOm0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 10:42:26 -0400
+Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
+ mounts.
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Neil Brown <neilb@suse.de>, Jeff Layton <jlayton@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <5CF8C718-2D02-481E-9200-8CAA724D9C8C@oracle.com>
+References: <20101020181701.232dbeea@notabene>
+	 <20101020135525.22977d8d@tlielax.poochiereds.net>
+	 <20101020151657.42bc53f7@tlielax.poochiereds.net>
+	 <20101021074028.44bca336@notabene>
+	 <20101020204532.2019eb93@corrin.poochiereds.net>
+	 <20101021142518.3934ae17@notabene>
+	 <1287669939.3645.12.camel@heimdal.trondhjem.org>
+	 <5CF8C718-2D02-481E-9200-8CAA724D9C8C@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 21 Oct 2010 10:42:04 -0400
+Message-ID: <1287672124.3645.19.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+On Thu, 2010-10-21 at 10:31 -0400, Chuck Lever wrote:
+> On Oct 21, 2010, at 10:05 AM, Trond Myklebust wrote:
+> > It seems to me that the problem is basically that RPC_IS_SOFTCONN is
+> > poorly defined. IMO, the definition should really be that
+> > 'RPC_IS_SOFTCONN' tasks MUST exit with an error if they ever have to run
+> > call_bind or a call_connect more than once (i.e. if they ever have to
+> > loop back).
+> 
+> I think you are suggesting that we define the places where RPC_IS_SOFTCONN should be tested as exactly those places that might want to restart the RPC call via rpc_force_rebind, tk_action = call_refresh, and so on.  Yes?
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index f346533..6cc0543 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -622,6 +622,8 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 		return NULL;
- 	}
- 	lgp->args.minlength = PAGE_CACHE_SIZE;
-+	if (lgp->args.minlength > range->length)
-+		lgp->args.minlength = range->length;
- 	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
- 	lgp->args.range = *range;
- 	lgp->args.type = server->pnfs_curr_ld->id;
--- 
-1.7.2.3
+Yes.
 
+> > With that in mind, I really don't see why the RPC_IS_SOFTCONN case is
+> > being handled in call_transmit_status() instead of in call_status().
+> 
+> I tried it in call_status(), but it didn't work as expected.  My notes aren't specific about the problem.  One thing is for sure, there seems to be some redundant error handling logic in both of those states.  Unraveling it might be more than Neil bargained for, but would help "future generations."
+
+call_transmit_status() is there basically in order to call
+xprt_end_transmit() in the cases where we want to free up the socket
+write lock (and then possibly sleep).
+
+Actual state error handling is supposed occur in call_status().
+
+Cheers
+   Trond
