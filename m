@@ -1,125 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57168 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752777Ab0JTUkg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Oct 2010 16:40:36 -0400
-Date: Thu, 21 Oct 2010 07:40:28 +1100
-From: Neil Brown <neilb@suse.de>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: chuck.lever@oracle.com, Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
- mounts.
-Message-ID: <20101021074028.44bca336@notabene>
-In-Reply-To: <20101020151657.42bc53f7@tlielax.poochiereds.net>
-References: <20101020181701.232dbeea@notabene>
-	<20101020135525.22977d8d@tlielax.poochiereds.net>
-	<20101020151657.42bc53f7@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:47414 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754473Ab0JUPDz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 11:03:55 -0400
+Received: by mail-yw0-f46.google.com with SMTP id 6so2799132ywi.19
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Oct 2010 08:03:54 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 4/4] mount.nfs: Fix memory leak in nfs_sys_mount()
+To: linux-nfs@vger.kernel.org
+Cc: kzak@redhat.com
+Date: Thu, 21 Oct 2010 11:03:51 -0400
+Message-ID: <20101021150351.2866.208.stgit@ellison.1015granger.net>
+In-Reply-To: <20101021145747.2866.11537.stgit@ellison.1015granger.net>
+References: <20101021145747.2866.11537.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 20 Oct 2010 15:16:57 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+This appears to have been left behind by last year's adjustments to
+how the extra_opts string is constructed.
 
-> On Wed, 20 Oct 2010 13:55:25 -0400
-> Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > On Wed, 20 Oct 2010 18:17:01 +1100
-> > Neil Brown <neilb@suse.de> wrote:
-> > 
-> > > 
-> > > 
-> > > If I don't have any network configured (except loop-back), and try an NFSv3
-> > > mount, then it fails quickly:
-> > > 
-> > > 
-> > > ....
-> > > mount.nfs: portmap query failed: RPC: Remote system error - Network is unreachable
-> > > mount.nfs: Network is unreachable
-> > > 
-> > > 
-> > > If I try the same thing with a NFSv4 mount, it times out before it fails,
-> > > making a much longer delay.
-> > > 
-> > > This is because mount.nfs doesn't do a portmap lookup but just leaves
-> > > everything to the kernel.
-> > > The kernel does an 'rpc_ping()' which sets RPC_TASK_SOFTCONN.
-> > > So at least it doesn't retry after the timeout.  But given that we have a
-> > > clear error, we shouldn't timeout at all.
-> > > 
-> > > Unfortunately I cannot see an easy way to fix this.
-> > > 
-> > > The place where ENETUNREACH is in xs_tcp_setup_socket.  The comment there
-> > > says "Retry with the same socket after a delay".  The "delay" bit is correct,
-> > > the "retry" isn't.
-> > > 
-> > > It would seem that we should just add a 'goto out' there if RPC_TASK_SOFTCONN
-> > > was set.  However we cannot see the task at this point - in fact it seems
-> > > that there could be a queue of tasks waiting on this connection.  I guess
-> > > some could be soft, and some not. ???
-> > > 
-> > > So: An suggestions how to get a ENETUNREACH (or ECONNREFUSED or similar) to
-> > > fail immediately when  RPC_TASK_SOFTCONN is set ???
-> > > 
-> > > 
-> > > This affects people who upgrade from openSUSE11.2 (which didn't support v4
-> > > mounts) to openSUSE11.3 (which defaults to v4) and who use network-manager
-> > > (which configures networks late) and have NFS mounts in /etc/fstab with
-> > > either explicit IP addresses or host names that can be resolved without the
-> > > network.
-> > > This config will work because when the network comes up, network-manager will
-> > > re-run the 'init.d/nfs' script.  However since 11.3 there is an unpleasant
-> > > pause before boot completes.
-> > > 
-> > 
-> > Took me a few tries to get an ENETUNREACH error but I see the same hang
-> > you do. For the record I was able to get one by not configuring an IPv6
-> > addr on the box and attempting to mount an IPv6 address.
-> > 
-> > Interestingly while I was trying to reproduce it, I ended up
-> > reproducing an EHOSTUNREACH error by trying to mount a IPv6 host to
-> > which I didn't have a route. That error returns quickly from the
-> > kernel. Maybe we can solve this simply by treating ENETUNREACH the same
-> > as EHOSTUNREACH in this situation?
-> > 
-> > I'm not quite sure exactly how to make that happen, but it seems like
-> > reasonable behavior.
-> > 
-> 
-> Sigh, nothing's ever easy in the RPC layer. Please bear with my
-> scatterbrained analysis...
-> 
-> There's a bit of difference at the socket layer between those two cases.
-> xs_tcp_finish_connecting calls this to connect the socket:
-> 
->     kernel_connect(sock, xs_addr(xprt), xprt->addrlen, O_NONBLOCK);
-> 
-> ...in the ENETUNREACH case, this returns immediately with the error. In
-> EHOSTUNREACH case, it returns EINPROGRESS and then the sk_error_report
-> handles the rest. Fine...we can emulate the similar behavior, but...
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-That all seems to make sense and helps complete the picture, however ...
+ utils/mount/stropts.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
 
-
-> 
-> Then what happens is that xs_tcp_send_request gets called again to try
-> to resend the packet. In the EHOSTUNREACH case, that returns
-> EHOSTUNREACH which eventually causes an rpc_exit with that error. In
-> the ENETUNREACH case that returns EPIPE, which makes the state machine
-> move next to call_bind and the whole thing starts over again.
-
-This confuses me.  Why would  xs_tcp_send_request (aka ->send_request) get
-called before the connect has succeeded?  Can you make sense of that?
-
-
-Thanks,
-NeilBrown
-
-
-> 
-> I'm still not sure what the right approach is here. The fact that
-> attempting to send on the socket in this case gives us an EPIPE makes
-> it tough to handle this case the same way as EHOSTUNREACH.
-> 
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index bcc36f3..e3a25be 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -565,16 +565,18 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
+ 	char *options = NULL;
+ 	int result;
+ 
++	if (mi->fake)
++		return 1;
++
+ 	if (po_join(opts, &options) == PO_FAILED) {
+ 		errno = EIO;
+ 		return 0;
+ 	}
+ 
+-	if (mi->fake)
+-		return 1;
+-
+ 	result = mount(mi->spec, mi->node, mi->type,
+ 			mi->flags & ~(MS_USER|MS_USERS), options);
++	free(options);
++
+ 	if (verbose && result) {
+ 		int save = errno;
+ 		nfs_error(_("%s: mount(2): %s"), progname, strerror(save));
 
