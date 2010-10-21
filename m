@@ -1,45 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34807 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:57701 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758467Ab0J1PkW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 11:40:22 -0400
-Subject: Re: [PATCH] nfs-utils: add nfs.idmap
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <4CC9966B.1050103@netapp.com>
-References: <4CC6CE30.90105@netapp.com> <4CC70D34.1060600@netapp.com>
-	 <4CC99463.9000108@RedHat.com>  <4CC9966B.1050103@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 28 Oct 2010 11:40:05 -0400
-Message-ID: <1288280405.3194.44.camel@heimdal.trondhjem.org>
+	id S1751048Ab0JUQUn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Oct 2010 12:20:43 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 09/11] nfsd4: delay session removal till free_client
+Date: Thu, 21 Oct 2010 12:20:16 -0400
+Message-Id: <1287678018-9266-10-git-send-email-bfields@redhat.com>
+In-Reply-To: <1287678018-9266-1-git-send-email-bfields@redhat.com>
+References: <1287678018-9266-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2010-10-28 at 11:27 -0400, Bryan Schumaker wrote:
-> On 10/28/2010 11:18 AM, Steve Dickson wrote:
-> > Hey Bryan,
-> > 
-> > A couple nits.... which I will be more than willing to take of... 
-> > 
-> > 1) I would like to change the binary name from nfs.idmap to nfsidmap
-> >    which is consistent with how the rest of the binaries are named.
-> >    (i.e. binary names generally don't have any '.' or '-' in them)
-> >    
-> > 2) Change the source directory from utils/nfs.idmap to 
-> >    utils/idmap which again makes it consistent with what
-> >    is already there. 
-> 
-> These both sounds reasonable to me.  I'll make a patch to modify the kernel documentation to reflect this.
-> > 
+Have unhash_client_locked() remove client and associated sessions from
+global hashes, but delay further dismantling till free_client().
 
-We just sent in one patch to change the name in the kernel docs, now the
-name is changing again?
+(After unhash_client_locked(), the only remaining references outside the
+destroying thread are from any connections which have xpt_user callbacks
+registered.)
 
-Let's wait with this until an actual nfs-utils release is available, so
-we can also update the 'Documentation/Changes' file with the new minimal
-release version number.
+This will simplify locking on session destruction.
 
-Trond
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   21 +++++++++++++--------
+ 1 files changed, 13 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2327a8c..0f2643d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -883,6 +883,13 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+ static inline void
+ free_client(struct nfs4_client *clp)
+ {
++	while (!list_empty(&clp->cl_sessions)) {
++		struct nfsd4_session *ses;
++		ses = list_entry(clp->cl_sessions.next, struct nfsd4_session,
++				se_perclnt);
++		list_del(&ses->se_perclnt);
++		nfsd4_put_session(ses);
++	}
+ 	if (clp->cl_cred.cr_group_info)
+ 		put_group_info(clp->cl_cred.cr_group_info);
+ 	kfree(clp->cl_principal);
+@@ -909,15 +916,12 @@ release_session_client(struct nfsd4_session *session)
+ static inline void
+ unhash_client_locked(struct nfs4_client *clp)
+ {
++	struct nfsd4_session *ses;
++
+ 	mark_client_expired(clp);
+ 	list_del(&clp->cl_lru);
+-	while (!list_empty(&clp->cl_sessions)) {
+-		struct nfsd4_session  *ses;
+-		ses = list_entry(clp->cl_sessions.next, struct nfsd4_session,
+-				 se_perclnt);
+-		unhash_session(ses);
+-		nfsd4_put_session(ses);
+-	}
++	list_for_each_entry(ses, &clp->cl_sessions, se_perclnt)
++		list_del_init(&ses->se_hash);
+ }
+ 
+ static void
+@@ -1031,6 +1035,8 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
+ 	if (clp == NULL)
+ 		return NULL;
+ 
++	INIT_LIST_HEAD(&clp->cl_sessions);
++
+ 	princ = svc_gss_principal(rqstp);
+ 	if (princ) {
+ 		clp->cl_principal = kstrdup(princ, GFP_KERNEL);
+@@ -1047,7 +1053,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
+ 	INIT_LIST_HEAD(&clp->cl_strhash);
+ 	INIT_LIST_HEAD(&clp->cl_openowners);
+ 	INIT_LIST_HEAD(&clp->cl_delegations);
+-	INIT_LIST_HEAD(&clp->cl_sessions);
+ 	INIT_LIST_HEAD(&clp->cl_lru);
+ 	spin_lock_init(&clp->cl_lock);
+ 	INIT_WORK(&clp->cl_cb_null.cb_work, nfsd4_do_callback_rpc);
+-- 
+1.7.1
+
