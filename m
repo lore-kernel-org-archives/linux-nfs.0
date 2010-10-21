@@ -1,58 +1,194 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:39622 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933342Ab0J0PUc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Oct 2010 11:20:32 -0400
-Date: Wed, 27 Oct 2010 11:19:59 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>, Arnd Bergmann <arnd@arndb.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: nfsd changes for 2.6.37
-Message-ID: <20101027151959.GA17370@infradead.org>
-References: <20101026164549.GD19445@fieldses.org>
- <20101027083924.GA28129@infradead.org>
- <20101027133924.GB6328@fieldses.org>
- <201010271546.09036.arnd@arndb.de>
- <20101027145538.GC6328@fieldses.org>
- <20101027145929.GA5788@infradead.org>
- <20101027151645.GD6328@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101027151645.GD6328@fieldses.org>
+Received: from exprod5og110.obsmtp.com ([64.18.0.20]:50996 "HELO
+	exprod5og110.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751562Ab0JUQso (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 12:48:44 -0400
+Message-ID: <4CC06EE8.7010705@panasas.com>
+Date: Thu, 21 Oct 2010 18:48:40 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: quanli gui <gqlxj1987@gmail.com>
+CC: linux-pnfs <linux-nfs@vger.kernel.org>
+Subject: Re: [pnfs] pnfs first write has very long delay
+References: <AANLkTi=XSSM5+wmCrVzQrZF8rA81OLqDO_dMzUqwHc7g@mail.gmail.com>
+In-Reply-To: <AANLkTi=XSSM5+wmCrVzQrZF8rA81OLqDO_dMzUqwHc7g@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Oct 27, 2010 at 11:16:46AM -0400, J. Bruce Fields wrote:
-> On Wed, Oct 27, 2010 at 10:59:29AM -0400, Christoph Hellwig wrote:
-> > On Wed, Oct 27, 2010 at 10:55:39AM -0400, J. Bruce Fields wrote:
-> > > Hm, two problems:
-> > > 	- We introduce the possibility of fcntl(fd, F_SETLEASE, F_UNLCK)
-> > > 	  failing with ENOMEM.
-> > 
-> > splitt ->setlease into ->add_least and ->delete_lease.  No need to pass
-> > in a structure for the later.  No need to return one either.
-> 
-> Sounds fine to me.
-> 
-> > 
-> > > 	- fasync_helper(.,.,1,.) sleeps.  Argh.
-> > 
-> > That's not new..
-> 
-> So we could do
-> 
-> 	unlock_flocks();
-> 	error = fasync_helper(fd, filp, 1, &fl->fl_fasync);
-> 	lock_flocks();
-> 
-> and say, hey, we didn't introduce any new bug there.  But....
-> 
-> I don't know, maybe add a version of fasync_add_entry() that takes a
-> preallocated fasync_struct??
+On 2010-10-21 14:03, quanli gui wrote:
+> When pnfs is mount on the client, I write a file to the mount dir by the
+> first time. It must wait a very long time until the pnfs complete the write.
+> When the operation waited, I dmesg the operation information. Find that
+> NFS:     0 initiated write call (req 0:13/200809, 3035 bytes @ offset 49152)
+> --> nfs4_setup_sequence clp c450a800 session c450ac00 sr_slotid 128
+> --> nfs41_setup_sequence
+> --> nfs4_find_slot used_slots=0007 highest_used=2 max_slots=16
+> <-- nfs4_find_slot used_slots=000f highest_used=3 slotid=3
+> <-- nfs41_setup_sequence slotid=3 seqid=1
+> <-- nfs4_setup_sequence status=0
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=1 slotid=3 max_slotid=3
+> cache_this=1
+> filelayout_write_call_done new off 40960 orig offset 40960
+> pnfs_writeback_done: Begin (status -10008)
 
-Or just convert the lock to a sleeping mutex.  Now that we have adaptive
-spinning the horrible behaviour that Willy saw years ago might not be
-that bad any more.  That'll need some benchmarking, though.
+What kind of DS are you using?
+The 10008 error means that the DS returned NFS4ERR_DELAY
+so we need to understand why that happened.
+
+Benny
+
+> put_lseg: lseg ce417e40 ref 3 valid 1
+> NFS:    34 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> pnfs_writepages End (trypnfs:0)
+> filelayout_write_call_done new off 49152 orig offset 49152
+> pnfs_writeback_done: Begin (status -10008)
+> put_lseg: lseg ce417e40 ref 2 valid 1
+> NFS:    35 nfs_writeback_done (status -10008 count 3035)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> nfs4_renew_state: start
+> nfs4_renew_state: failed to call renewd. Reason: lease not expired
+> nfs4_renew_state: requeueing work. Lease period = 56
+> nfs4_renew_state: done
+> nfs4_renew_state: start
+> nfs4_renew_state: failed to call renewd. Reason: lease not expired
+> nfs4_renew_state: requeueing work. Lease period = 56
+> nfs4_renew_state: done
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=2 slotid=0 max_slotid=3
+> cache_this=1
+> NFS:    29 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677247:2:2:0 seqid=2 slotid=0 max_slotid=2
+> cache_this=1
+> NFS:    30 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=2 slotid=1 max_slotid=3
+> cache_this=1
+> NFS:    31 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677247:2:2:0 seqid=2 slotid=1 max_slotid=2
+> cache_this=1
+> NFS:    32 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=2 slotid=2 max_slotid=3
+> cache_this=1
+> NFS:    33 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677247:2:2:0 seqid=2 slotid=2 max_slotid=2
+> cache_this=1
+> NFS:    34 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=2 slotid=3 max_slotid=3
+> cache_this=1
+> NFS:    35 nfs_writeback_done (status -10008 count 3035)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> nfs4_renew_state: start
+> nfs4_renew_state: failed to call renewd. Reason: lease not expired
+> nfs4_renew_state: requeueing work. Lease period = 37
+> nfs4_renew_state: done
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=3 slotid=0 max_slotid=3
+> cache_this=1
+> NFS:    29 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677247:2:2:0 seqid=3 slotid=0 max_slotid=2
+> cache_this=1
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=3 slotid=1 max_slotid=3
+> cache_this=1
+> NFS:    30 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> NFS:    31 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677247:2:2:0 seqid=3 slotid=1 max_slotid=2
+> cache_this=1
+> NFS:    32 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=3 slotid=2 max_slotid=3
+> cache_this=1
+> NFS:    33 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677247:2:2:0 seqid=3 slotid=2 max_slotid=2
+> cache_this=1
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=3 slotid=3 max_slotid=3
+> cache_this=1
+> NFS:    34 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> NFS:    35 nfs_writeback_done (status -10008 count 3035)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=4 slotid=0 max_slotid=3
+> cache_this=1
+> NFS:    29 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677247:2:2:0 seqid=4 slotid=0 max_slotid=2
+> cache_this=1
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=4 slotid=1 max_slotid=3
+> cache_this=1
+> NFS:    30 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> NFS:    31 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677247:2:2:0 seqid=4 slotid=1 max_slotid=2
+> cache_this=1
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=4 slotid=2 max_slotid=3
+> cache_this=1
+> NFS:    32 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> NFS:    33 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677253:2:2:0 seqid=4 slotid=3 max_slotid=3
+> cache_this=1
+> encode_compound: tag=
+> encode_sequence: sessionid=1287677247:2:2:0 seqid=4 slotid=2 max_slotid=2
+> cache_this=1
+> NFS:    35 nfs_writeback_done (status -10008 count 3035)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> NFS:    34 nfs_writeback_done (status -10008 count 8192)
+> pnfs4_write_done DS write
+> <-- pnfs4_write_done status= -11
+> I don't know why so many pnfs_write_done()  return -11 only for the first
+> write. But after the first write, I write files again. This time the time of
+> the operation is OK. Please tell me why this thing happen.
+> 
