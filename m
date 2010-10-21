@@ -1,137 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:58392 "EHLO fieldses.org"
+Received: from cantor.suse.de ([195.135.220.2]:51037 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754178Ab0JVXVe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Oct 2010 19:21:34 -0400
-Date: Fri, 22 Oct 2010 19:21:33 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Menyhart Zoltan <Zoltan.Menyhart@bull.net>
-Cc: linux-nfs@vger.kernel.org, neilb@suse.de
-Subject: Re: "xprt" reference count drops to 0
-Message-ID: <20101022232133.GD22837@fieldses.org>
-References: <4C7E4469.70807@duchatelet.net>
- <4CAAE046.5060209@bull.net>
- <20101021203801.GA12038@fieldses.org>
- <4CC1A722.4060907@bull.net>
- <20101022212007.GB22837@fieldses.org>
- <20101022230111.GC22837@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101022230111.GC22837@fieldses.org>
+	id S1755667Ab0JUA4f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Oct 2010 20:56:35 -0400
+Date: Thu, 21 Oct 2010 11:56:22 +1100
+From: Neil Brown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@ORACLE.COM>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
+ mounts.
+Message-ID: <20101021115622.4766887b@notabene>
+In-Reply-To: <20101021082938.45e4c941@notabene>
+References: <20101020181701.232dbeea@notabene>
+	<C56CFB9A-FCA4-41DA-971F-49B9C9EE7F03@oracle.com>
+	<20101021082938.45e4c941@notabene>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Oct 22, 2010 at 07:01:12PM -0400, J. Bruce Fields wrote:
-> On Fri, Oct 22, 2010 at 05:20:07PM -0400, J. Bruce Fields wrote:
-> > On Fri, Oct 22, 2010 at 05:00:50PM +0200, Menyhart Zoltan wrote:
-> > > J. Bruce Fields wrote:
-> > > >On Tue, Oct 05, 2010 at 10:22:30AM +0200, Menyhart Zoltan wrote:
-> > > >>Due to some race conditions, the reference count can become 0
-> > > >>while "xprt" is still on a "pool":
-> > > >
-> > > >Apologies, your email got buried in my inbox....
-> > > >
-> > > >>
-> > > >>WARNING: at lib/kref.c:43 kref_get+0x23/0x2d()
-> > > >>  [] kref_get+0x23/0x2d
-> > > >>  [] svc_xprt_get+0x12/0x14 [sunrpc]
-> > > >>  [] svc_recv+0x2db/0x78a [sunrpc]
-> > > >
-> > > >Which kernel exactly did you see this on?  Is it reproduceable?
-> > > 
-> > > I saw it on a 2.6.32.
-> > > It has not been corrected for the 2.6.36-rc3 yet.
-> > > The patch is for  the 2.6.36-rc3.
-> > > 
-> > > It is a narrow window, you need a high work load and a bit of luck  to
-> > > delay the current CPU just after"svc_xprt_enqueue()" returns.
-> > > 
-> > > >>I think we should increase the reference counter before adding "xprt"
-> > > >>onto any list.
-> > > >
-> > > >I don't see the xprt added to any list after the svc_xprt_get() you've
-> > > >added below.
-> > > 
-> > > "svc_xprt_enqueue()" has got two ways to pass an "xprt":
-> > > - via "rqstp->rq_xprt" if a worker is available,
-> > > - on the "pool->sp_sockets" list otherwise
-> > > 
-> > >         if (!list_empty(&pool->sp_threads)) {
-> > >                 rqstp = list_entry(pool->sp_threads.next,  struct svc_rqst,  rq_list);
-> > >                 svc_thread_dequeue(pool, rqstp);
-> > >                 rqstp->rq_xprt = xprt;
-> > >                 svc_xprt_get(xprt);
-> > >                 rqstp->rq_reserved = serv->sv_max_mesg;
-> > >                 atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
-> > >                 pool->sp_stats.threads_woken++;
-> > >                 wake_up(&rqstp->rq_wait);
-> > >         } else {
-> > >                 list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
-> > >                 pool->sp_stats.sockets_queued++;
-> > >         }
-> > > 
-> > > In the 1st case, there is a "svc_xprt_get(xprt)", in the 2nd one, there is not.
-> > > Once "svc_xprt_enqueue()" returns, at some places, "svc_xprt_put(xprt)" is
-> > > invoked. If we has passed the "else" branch, the "kref" can drop down to 0.
+On Thu, 21 Oct 2010 08:29:38 +1100
+Neil Brown <neilb@suse.de> wrote:
+
+> On Wed, 20 Oct 2010 10:29:05 -0400
+> Chuck Lever <chuck.lever@ORACLE.COM> wrote:
+> 
 > > 
-> > Maybe your fix is right, but I'm not sure: It looks to me like if
-> > svc_xprt_enqueue() gets to "process:" in a situation where the caller
-> > holds the only reference, then that's already a bug.  Do you know who
-> > the caller of svc_xprt_enqueue() was when this happened?
+> > On Oct 20, 2010, at 3:17 AM, Neil Brown wrote:
+> > 
+> > > 
+> > > 
+> > > If I don't have any network configured (except loop-back), and try an NFSv3
+> > > mount, then it fails quickly:
+> > > 
+> > > 
+> > > ....
+> > > mount.nfs: portmap query failed: RPC: Remote system error - Network is unreachable
+> > > mount.nfs: Network is unreachable
+> > > 
+> > > 
+> > > If I try the same thing with a NFSv4 mount, it times out before it fails,
+> > > making a much longer delay.
+> > > 
+> > > This is because mount.nfs doesn't do a portmap lookup but just leaves
+> > > everything to the kernel.
+> > > The kernel does an 'rpc_ping()' which sets RPC_TASK_SOFTCONN.
+> > > So at least it doesn't retry after the timeout.  But given that we have a
+> > > clear error, we shouldn't timeout at all.
+> > > 
+> > > Unfortunately I cannot see an easy way to fix this.
+> > > 
+> > > The place where ENETUNREACH is in xs_tcp_setup_socket.  The comment there
+> > > says "Retry with the same socket after a delay".  The "delay" bit is correct,
+> > > the "retry" isn't.
+> > > 
+> > > It would seem that we should just add a 'goto out' there if RPC_TASK_SOFTCONN
+> > > was set.  However we cannot see the task at this point - in fact it seems
+> > > that there could be a queue of tasks waiting on this connection.  I guess
+> > > some could be soft, and some not. ???
+> > > 
+> > > So: An suggestions how to get a ENETUNREACH (or ECONNREFUSED or similar) to
+> > > fail immediately when  RPC_TASK_SOFTCONN is set ???
+> > 
+> > ECONNREFUSED should already fail immediately in this case.  If it's not failing immediately, that's a bug.
+> > 
+> > I agree that ENETUNREACH seems appropriate for quick failure if RPC_TASK_SOFTCONN is set.  (I thought it already worked this way, but maybe I'm mistaken).
 > 
-> Hm.  Maybe something like this could happen: two threads call
-> svc_check_conn_limits at about the same time, and both pick the same
-> victim xprt.
+> There is certainly code that seems to treat ENETUNREACH differently if
+> RPC_TASK_SOFTCONN is set, but it doesn't seem to apply in the particular case
+> I am testing.
+> e.g. call_bind_status handles ENETUNREACH as a retry if not SOFTCONN and as a
+> failure in the SOFTCONN case.  
+> I guess NFSv4 doesn't hit this because the port is explicitly set to 2049 so
+> it never does the rpcbind step.
+> So maybe we need to handle ENETUNREACH in call_connect_status as well as
+> call_bind_status ??
 > 
-> 
-> 	thread 1			thread 2
-> 	^^^^^^^^			^^^^^^^^
-> 	set CLOSE			set CLOSE
-> 	call svc_xprt_enqueue
-> 	  set BUSY
-> 
-> 	thread 3
-> 	^^^^^^^^			call svc_xprt_enqueue
-> 	call svc_recv
-> 	  dequeue our xprt		
-> 					check DEAD, see it unset
-> 	  call svc_delete_xprt
-> 	    remove xprt from any
-> 	  	global lists
-> 	    put xprt
-> 	  clear BUSY
+> Maybe something like that ...  The placement of rpc_delay seems a little of
+> to me, but follows call_bind_status, so it could be correct.
+>
 
-I'm wrong here; svc_recv leaves the xprt BUSY in the case where it calls
-svc_delete_xprt().
+I did a bit of testing of the patch that I sent and it isn't quite write -
+the ENETUNREACH doesn't propagate all the way up to call_connect_status.
+This patch fixes that.
 
-svc_close_xprt() does clear BUSY after calling svc_delete_xprt(), for
-some bizarre reason, but that's probably harmless, except maybe at
-server shutdown time.  I assume you weren't shutting down the server
-when you saw this.
+With it, the rpc_ping fails nicely,  but when a reconnect is tried on an
+already-mounted filesystem it doesn't fail but rather retries every 5 seconds.
+This is what I wanted to happen.
 
-Ugh.  cc'ing Neil, maybe he has some idea.
+However I'm not at all sure that "5 seconds" is correct.  I copied it from
+call_bind_status, but it seems a bit short.  Maybe the number in
+call_bind_status is a bit low???
 
---b.
+Here is my current patch - which is more a starting point for discussion than
+a concrete proposal.
 
-> 					test_and_set_bit BUSY
-> 					test CLOSE, go to process:
-> 					make xprt globablly visible
-> 						again
-> 					ARGH!
-> 
-> 
-> The put in svc_delete_xprt() is meant to happen only when the xprt is
-> taken off any rqstp's or global lists.  We shouldn't be able to requeue
-> the xprt after that's done.
-> 
-> So, both the svc_check_conn_limits return, the reference count's
-> probably gone to zero at that point, and the xprt's freed while there
-> are still references to it somewhere.
-> 
-> It seems wrong to be clearing BUSY after deleting an xprt; what good
-> could come of letting someone try to process an xprt that's already
-> DEAD?
-> 
-> But I need to go back over that.  Maybe I've missed something.
-> 
-> --b.
+Thanks,
+NeilBrown
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index fa55490..539885e 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1245,6 +1245,12 @@ call_connect_status(struct rpc_task *task)
+ 	}
+ 
+ 	switch (status) {
++	case -ENETUNREACH:
++	case -ECONNRESET:
++	case -ECONNREFUSED:
++		if (!RPC_IS_SOFTCONN(task))
++			rpc_delay(task, 5*HZ);
++		/* fall through */
+ 		/* if soft mounted, test if we've timed out */
+ 	case -ETIMEDOUT:
+ 		task->tk_action = call_timeout;
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 970fb00..27673d9 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -733,6 +733,10 @@ static void xprt_connect_status(struct rpc_task *task)
+ 	}
+ 
+ 	switch (task->tk_status) {
++	case -ENETUNREACH:
++	case -ECONNREFUSED:
++	case -ECONNRESET:
++		break;
+ 	case -EAGAIN:
+ 		dprintk("RPC: %5u xprt_connect_status: retrying\n", task->tk_pid);
+ 		break;
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index fe9306b..0743994 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1906,7 +1906,8 @@ static void xs_tcp_setup_socket(struct rpc_xprt *xprt,
+ 	case -ECONNREFUSED:
+ 	case -ECONNRESET:
+ 	case -ENETUNREACH:
+-		/* retry with existing socket, after a delay */
++		/* allow upper layers to choose between failure and retry */
++		goto out;
+ 	case 0:
+ 	case -EINPROGRESS:
+ 	case -EALREADY:
+
