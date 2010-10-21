@@ -1,97 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58552 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64582 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751128Ab0JTESM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Oct 2010 00:18:12 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 03/12] NFSv4.1: pnfsd, pnfs: protocol level pnfs constants
-Date: Wed, 20 Oct 2010 00:17:55 -0400
-Message-Id: <1287548284-28374-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
-References: <1287548284-28374-1-git-send-email-iisaman@netapp.com>
+	id S1752189Ab0JUTij convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 15:38:39 -0400
+Subject: Re: [PATCH] xs_bind retry binding forever
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Ben Myers <bpm@sgi.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20101021183337.12776.18768.stgit@lady3jane.americas.sgi.com>
+References: <20101021183203.12776.28469.stgit@lady3jane.americas.sgi.com>
+	 <20101021183337.12776.18768.stgit@lady3jane.americas.sgi.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 21 Oct 2010 15:38:37 -0400
+Message-ID: <1287689917.9144.84.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Dean Hildebrand <dhildebz@umich.edu>
+On Thu, 2010-10-21 at 13:33 -0500, Ben Myers wrote:
+> Retry bind for reserved source ports forever.  Add an error message when we
+> have a hard time binding one.
 
-Use only layoutreturn constant for both returns and recalls.
-(return_* works better for recall_type rather the other way around)
+NACK. This approach leads to the process spinning forever in that loop,
+which is exactly why we introduced the limit in the first place. See all
+the old archived bug report emails about 'rpciod taking 100% cpu'.
 
-Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- include/linux/nfs4.h |   45 +++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 45 insertions(+), 0 deletions(-)
+Cheers
+  Trond
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 07e40c6..6c0406e 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -471,6 +471,8 @@ enum lock_type4 {
- #define FATTR4_WORD1_TIME_MODIFY        (1UL << 21)
- #define FATTR4_WORD1_TIME_MODIFY_SET    (1UL << 22)
- #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
-+#define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
-+#define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
- 
- #define NFSPROC4_NULL 0
- #define NFSPROC4_COMPOUND 1
-@@ -550,6 +552,49 @@ enum state_protect_how4 {
- 	SP4_SSV		= 2
- };
- 
-+enum pnfs_layouttype {
-+	LAYOUT_NFSV4_1_FILES  = 1,
-+	LAYOUT_OSD2_OBJECTS = 2,
-+	LAYOUT_BLOCK_VOLUME = 3,
-+};
-+
-+/* used for both layout return and recall */
-+enum pnfs_layoutreturn_type {
-+	RETURN_FILE = 1,
-+	RETURN_FSID = 2,
-+	RETURN_ALL  = 3
-+};
-+
-+enum pnfs_iomode {
-+	IOMODE_READ = 1,
-+	IOMODE_RW = 2,
-+	IOMODE_ANY = 3,
-+};
-+
-+enum pnfs_notify_deviceid_type4 {
-+	NOTIFY_DEVICEID4_CHANGE = 1 << 1,
-+	NOTIFY_DEVICEID4_DELETE = 1 << 2,
-+};
-+
-+#define NFL4_UFLG_MASK			0x0000003F
-+#define NFL4_UFLG_DENSE			0x00000001
-+#define NFL4_UFLG_COMMIT_THRU_MDS	0x00000002
-+#define NFL4_UFLG_STRIPE_UNIT_SIZE_MASK	0xFFFFFFC0
-+
-+/* Encoded in the loh_body field of type layouthint4 */
-+enum filelayout_hint_care4 {
-+	NFLH4_CARE_DENSE		= NFL4_UFLG_DENSE,
-+	NFLH4_CARE_COMMIT_THRU_MDS	= NFL4_UFLG_COMMIT_THRU_MDS,
-+	NFLH4_CARE_STRIPE_UNIT_SIZE	= 0x00000040,
-+	NFLH4_CARE_STRIPE_COUNT		= 0x00000080
-+};
-+
-+#define NFS4_DEVICEID4_SIZE 16
-+
-+struct nfs4_deviceid {
-+	char data[NFS4_DEVICEID4_SIZE];
-+};
-+
- #endif
- #endif
- 
--- 
-1.7.2.1
+> Signed-off-by: Ben Myers <bpm@sgi.com>
+> ---
+>  net/sunrpc/xprtsock.c |   22 ++++++++++++++++++----
+>  1 files changed, 18 insertions(+), 4 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index b6309db..79a001b 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1560,9 +1560,16 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
+>  		}
+>  		last = port;
+>  		port = xs_next_srcport(transport, sock, port);
+> -		if (port > last)
+> +		if (port > last) {
+> +			if (nloop > 2 && net_ratelimit()) {
+> +				printk("RPC: %s %pI4: Cannot bind reserved "
+> +				       "source port.  Consider decreasing "
+> +				       "min_resvport.\n",
+> +				       __func__, &myaddr.sin_addr);
+> +			}
+>  			nloop++;
+> -	} while (err == -EADDRINUSE && nloop != 2);
+> +		}
+> +	} while (err == -EADDRINUSE);
+>  	dprintk("RPC:       %s %pI4:%u: %s (%d)\n",
+>  			__func__, &myaddr.sin_addr,
+>  			port, err ? "failed" : "ok", err);
+> @@ -1593,9 +1600,16 @@ static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
+>  		}
+>  		last = port;
+>  		port = xs_next_srcport(transport, sock, port);
+> -		if (port > last)
+> +		if (port > last) {
+> +			if (nloop > 2 && net_ratelimit()) {
+> +				printk("RPC: %s %pI6: Cannot bind reserved "
+> +				       "source port.  Consider decreasing "
+> +				       "min_resvport.\n",
+> +					__func__, &myaddr.sin6_addr);
+> +			}
+>  			nloop++;
+> -	} while (err == -EADDRINUSE && nloop != 2);
+> +		}
+> +	} while (err == -EADDRINUSE);
+>  	dprintk("RPC:       xs_bind6 %pI6:%u: %s (%d)\n",
+>  		&myaddr.sin6_addr, port, err ? "failed" : "ok", err);
+>  	return err;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
