@@ -1,69 +1,172 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from tweak.unx.csupomona.edu ([134.71.247.20]:36656 "EHLO
-	tweak.unx.csupomona.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758427Ab0J1XPi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 19:15:38 -0400
-Date: Thu, 28 Oct 2010 16:15:36 -0700
-From: Brian De Wolf <bldewolf@csupomona.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: rpc.gssd still spammed in 2.6.35
-Message-ID: <20101028161536.41358127@csupomona.edu>
-In-Reply-To: <1288274419.3194.33.camel@heimdal.trondhjem.org>
-References: <20101027172452.68b944ec@csupomona.edu>
-	<1288274419.3194.33.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:49203 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754029Ab0JUPDZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 11:03:25 -0400
+Received: by gwj21 with SMTP id 21so148978gwj.19
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Oct 2010 08:03:24 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/4] nfs-utils: Remove all uses of AI_ADDRCONFIG
+To: linux-nfs@vger.kernel.org
+Cc: kzak@redhat.com
+Date: Thu, 21 Oct 2010 11:03:21 -0400
+Message-ID: <20101021150321.2866.96284.stgit@ellison.1015granger.net>
+In-Reply-To: <20101021145747.2866.11537.stgit@ellison.1015granger.net>
+References: <20101021145747.2866.11537.stgit@ellison.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 28 Oct 2010 07:00:19 -0700
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+Steve Dickson reports that, if only "lo" is up,
 
-> What about the rpc_pipefs errors, EAGAIN, EPIPE and ETIMEDOUT? Why
-> should they result in the cred being marked as negative?
-> 
+  mount.nfs 127.0.0.1:/export /mount
 
-I have a limited grasp of the exact mechanics going on, but the general
-reasoning I have in my mind is this:
+fails with "Name or service not known".
 
-If a given credential request causes an error to be returned, be it
-from rpc_pipefs or rpc.gssd, there are two possible reasons for the
-failure:
+"man 3 getaddrinfo" says this:
 
-1) rpc.gssd is missing or unresponsive.  If this is the case, it doesn't
-matter if you can retry immediately or if you wait 5 seconds, it's
-still going to fail.
+  If hints.ai_flags includes the AI_ADDRCONFIG flag, then IPv4
+  addresses are returned in the list pointed to by res only if the
+  local system has at least one IPv4 address configured, and IPv6
+  addresses are only returned if the local system has at least
+  one IPv6 address configured.
 
-2) Something about the request has caused either rpc_pipefs or rpc.gssd
-to produce an error, while other requests still process normally. If
-this is the case, we should prioritize the requests that will succeed
-by penalizing the requests that don't via negative caching of their
-failures. Otherwise those failing requests can flood rpc.gssd and
-prevent those that can succeed from ever being attempted (and this is
-what has been happening in my environment).
+The man page oversimplifies here.  A review of glibc shows that
+getaddrinfo(3) explicitly ignores loopback addresses when deciding
+whether an IPv4 or IPv6 address is configured.
 
+This behavior around loopback is a problem not just for mount.nfs,
+but also for RPC daemons that have to start up before a system's
+networking is fully configured and started.  Given the history of
+other problems with AI_ADDRCONFIG and the unpredictable behavior it
+introduces, let's just remove it everywhere in nfs-utils.
 
-The only problem I can see with it is that, if a request fails and the
-keys become available within 5 seconds, the user just has to wait it
-out. I don't think I can usually "kinit" with my password in 5 seconds,
-but I could see an automated system being interfered with.  I haven't
-experimented with it, but I suspect a sub-second negative cache timeout
-would still protect rpc.gssd from flooding while not causing extra
-disruption to use.
+This fix addresses:
 
-I'd really just like to see some sort of rate-limiting on the failures
-heading into rpc.gssd so that it can continue processing valid requests.
+  https://bugzilla.linux-nfs.org/show_bug.cgi?id=191
 
-> rpc.gssd itself will only pass down 3 errors: 0, EKEYEXPIRED and EACCES.
-> 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Is this set in stone?  My fear is that, if rpc.gssd is ever improved to
-return even more error codes or can somehow be coerced to return some
-other unexpected error code, rpc.gssd can be taken out of service by
-flooding it with requests that subvert the negative caching.
+ support/export/hostname.c     |    6 +-----
+ tests/nsm_client/nsm_client.c |    2 +-
+ utils/mount/network.c         |    3 ---
+ utils/mount/stropts.c         |    5 -----
+ utils/statd/hostname.c        |    4 ----
+ utils/statd/sm-notify.c       |    5 -----
+ 6 files changed, 2 insertions(+), 23 deletions(-)
 
+diff --git a/support/export/hostname.c b/support/export/hostname.c
+index 3c55ce7..efcb75c 100644
+--- a/support/export/hostname.c
++++ b/support/export/hostname.c
+@@ -30,10 +30,6 @@
+ #include "sockaddr.h"
+ #include "exportfs.h"
+ 
+-#ifndef HAVE_DECL_AI_ADDRCONFIG
+-#define AI_ADDRCONFIG	0
+-#endif
+-
+ /**
+  * host_ntop - generate presentation address given a sockaddr
+  * @sap: pointer to socket address
+@@ -170,7 +166,7 @@ host_addrinfo(const char *hostname)
+ #endif
+ 		/* don't return duplicates */
+ 		.ai_protocol	= (int)IPPROTO_UDP,
+-		.ai_flags	= AI_ADDRCONFIG | AI_CANONNAME,
++		.ai_flags	= AI_CANONNAME,
+ 	};
+ 	int error;
+ 
+diff --git a/tests/nsm_client/nsm_client.c b/tests/nsm_client/nsm_client.c
+index 0d1159a..0fa3422 100644
+--- a/tests/nsm_client/nsm_client.c
++++ b/tests/nsm_client/nsm_client.c
+@@ -205,7 +205,7 @@ nsm_client_get_rpcclient(const char *node)
+ {
+ 	unsigned short		port;
+ 	struct addrinfo		*ai;
+-	struct addrinfo		hints = { .ai_flags	= AI_ADDRCONFIG };
++	struct addrinfo		hints = { };
+ 	int			err;
+ 	CLIENT			*client = NULL;
+ 
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 5b515c3..21a7a2c 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -210,9 +210,6 @@ int nfs_lookup(const char *hostname, const sa_family_t family,
+ {
+ 	struct addrinfo *gai_results;
+ 	struct addrinfo gai_hint = {
+-#ifdef HAVE_DECL_AI_ADDRCONFIG
+-		.ai_flags	= AI_ADDRCONFIG,
+-#endif	/* HAVE_DECL_AI_ADDRCONFIG */
+ 		.ai_family	= family,
+ 	};
+ 	socklen_t len = *salen;
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 50a1a2a..bcc36f3 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -49,10 +49,6 @@
+ #include "parse_dev.h"
+ #include "conffile.h"
+ 
+-#ifndef HAVE_DECL_AI_ADDRCONFIG
+-#define AI_ADDRCONFIG	0
+-#endif
+-
+ #ifndef NFS_PROGRAM
+ #define NFS_PROGRAM	(100003)
+ #endif
+@@ -343,7 +339,6 @@ static int nfs_validate_options(struct nfsmount_info *mi)
+ {
+ 	struct addrinfo hint = {
+ 		.ai_protocol	= (int)IPPROTO_UDP,
+-		.ai_flags	= AI_ADDRCONFIG,
+ 	};
+ 	sa_family_t family;
+ 	int error;
+diff --git a/utils/statd/hostname.c b/utils/statd/hostname.c
+index 38f2265..616a3cb 100644
+--- a/utils/statd/hostname.c
++++ b/utils/statd/hostname.c
+@@ -39,10 +39,6 @@
+ #include "statd.h"
+ #include "xlog.h"
+ 
+-#ifndef HAVE_DECL_AI_ADDRCONFIG
+-#define AI_ADDRCONFIG	0
+-#endif
+-
+ /**
+  * statd_present_address - convert sockaddr to presentation address
+  * @sap: pointer to socket address to convert
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 437e37a..b7f4371 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -34,10 +34,6 @@
+ #include "nsm.h"
+ #include "nfsrpc.h"
+ 
+-#ifndef HAVE_DECL_AI_ADDRCONFIG
+-#define AI_ADDRCONFIG	0
+-#endif
+-
+ #define NSM_TIMEOUT	2
+ #define NSM_MAX_TIMEOUT	120	/* don't make this too big */
+ 
+@@ -78,7 +74,6 @@ smn_lookup(const char *name)
+ {
+ 	struct addrinfo	*ai = NULL;
+ 	struct addrinfo hint = {
+-		.ai_flags	= AI_ADDRCONFIG,
+ 		.ai_family	= (nsm_family == AF_INET ? AF_INET: AF_UNSPEC),
+ 		.ai_protocol	= (int)IPPROTO_UDP,
+ 	};
 
-Sorry if I'm out of touch with the internals or what's best for the
-kernel.  I'm just a sysadmin dabbling in the kernel, trying to fix some
-problems I've been running into...
