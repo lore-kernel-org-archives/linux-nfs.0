@@ -1,103 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:53996 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753283Ab0JKIqT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Oct 2010 04:46:19 -0400
-Received: by vws2 with SMTP id 2so801620vws.19
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Oct 2010 01:46:19 -0700 (PDT)
-Date: Mon, 11 Oct 2010 16:46:18 +0800
-Message-ID: <AANLkTimYM_A-puoU6tm=2rtAaKVe0_aW2zEwOCFHcu=y@mail.gmail.com>
-Subject: rpc sleep user task, will never wake up if response from server
-From: Ivan Chan <ivanming@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:36052 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751164Ab0JUQsD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Oct 2010 12:48:03 -0400
+Date: Thu, 21 Oct 2010 12:48:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: 2.6.37 nfsd changes
+Message-ID: <20101021164759.GB9537@fieldses.org>
+References: <20101021162306.GA9537@fieldses.org>
+ <20101021163234.GA23584@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101021163234.GA23584@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi all,
+On Thu, Oct 21, 2010 at 12:32:34PM -0400, Christoph Hellwig wrote:
+> > Pavel Emelyanov (37):
+> >       nfsd: Export get_task_comm for nfsd
+> 
+> NAK.  As mentioned in the reply to the patch series nfsd should
+> just use current->comm.
 
-    I am facing a problem in 2.6.32-31 kernel, when I try to fetch
-something from nfs server, and if there is no response server, for
-example loss IP.
-The user task will hang, and after scanning the RPC code, I think the
-user task is actualy being slept by RPC, and will not wake up until it
-get response from server.
-The following is the log, it show the RPC retry, and finally
-disconnect, However the use applcaiton is still hang/(sleep).  I am
-new to this, I don't know it is a design purpose for some condition or
-it should be fixed in generel. But in my use case, I hope the user
-application can know there is error from NFS/RPC, such that it can
-dicide to do the fail response. But I don't read the RPC code in deep
-yet,
-would you please suggest me which part I should focus , thanks a lot.
+Ugh, sorry: I did fix up the code, but I forgot the subject line; it was
+committed as follows.
 
-[363855.998281] NFS: permission(0:18/1443226), mask=0x1, res=0
-[363855.998286] NFS: dentry_delete(/out_A1.mp4, 88)
-[363855.998303] NFS: permission(0:18/1443226), mask=0x1, res=0
-[363855.998308] NFS: dentry_delete(/out_A3.mp4, 88)
-[363855.998325] NFS: permission(0:18/1443226), mask=0x1, res=0
-[363855.998329] NFS: dentry_delete(/zero, 88)
-[363895.460527] RPC:   172 reserved req c344a000 xid 5f9ff6fe
-[363895.460531] RPC:   172 xprt_prepare_transmit
-[363895.460536] RPC:   172 xprt_transmit(96)
-[363895.460556] RPC:   172 xmit complete
-[363955.460015] RPC:   172 xprt_timer
-[363955.460020] RPC:   172 xprt_prepare_transmit
-[363955.460025] RPC:   172 xprt_transmit(96)
-[363955.460037] RPC:   172 xmit complete
-[364075.460015] RPC:   172 xprt_timer
-[364075.460021] nfs: server 192.168.100.91 not responding, still trying
-[364075.460025] RPC:   172 xprt_prepare_transmit
-[364075.460030] RPC:   172 xprt_transmit(96)
-[364075.460042] RPC:   172 xmit complete
-[364135.460015] RPC:   172 xprt_timer
-[364135.460020] RPC:   172 xprt_prepare_transmit
-[364135.460026] RPC:   172 xprt_transmit(96)
-[364135.460038] RPC:   172 xmit complete
-[364255.460017] RPC:   172 xprt_timer
-[364255.460022] RPC:   172 xprt_prepare_transmit
-[364255.460027] RPC:   172 xprt_transmit(96)
-[364255.460039] RPC:   172 xmit complete
-[364315.460023] RPC:   172 xprt_timer
-[364315.460028] RPC:   172 xprt_prepare_transmit
-[364315.460033] RPC:   172 xprt_transmit(96)
-[364315.460045] RPC:   172 xmit complete
-[364435.460017] RPC:   172 xprt_timer
-[364435.460023] RPC:   172 xprt_prepare_transmit
-[364435.460028] RPC:   172 xprt_transmit(96)
-[364435.460041] RPC:   172 xmit complete
-[364495.460016] RPC:   172 xprt_timer
-[364495.460021] RPC:   172 xprt_prepare_transmit
-[364495.460026] RPC:   172 xprt_transmit(96)
-[364495.460038] RPC:   172 xmit complete
-[364615.460016] RPC:   172 xprt_timer
-[364615.460022] RPC:   172 xprt_prepare_transmit
-[364615.460027] RPC:   172 xprt_transmit(96)
-[364615.460039] RPC:   172 xmit complete
-[364675.460016] RPC:   172 xprt_timer
-[364675.460021] RPC:   172 xprt_prepare_transmit
-[364675.460026] RPC:   172 xprt_transmit(96)
-[364675.460039] RPC:   172 xmit complete
-[364795.460017] RPC:   172 xprt_timer
-[364795.460022] RPC:   172 xprt_prepare_transmit
-[364795.460027] RPC:   172 xprt_transmit(96)
-[364795.460040] RPC:   172 xmit complete
-[364855.460015] RPC:   172 xprt_timer
-[364855.460020] RPC:   172 xprt_prepare_transmit
-[364855.460025] RPC:   172 xprt_transmit(96)
-[364855.460037] RPC:   172 xmit complete
-[364944.152011] RPC:       disconnected transport c3682000
-[364944.152021] RPC:   172 xprt_prepare_transmit
-[364944.152026] RPC:   172 xprt_transmit(96)
-[364944.152031] RPC:       disconnected transport c3682000
-[364944.152037] RPC:   172 xprt_connect xprt c3682000 is not connected
-[364944.152052] RPC:       disconnected transport c3682000
-[364944.152058] RPC:   172 xprt_connect_status: retrying
-[364944.152061] RPC:   172 xprt_prepare_transmit
-[364944.152064] RPC:   172 xprt_transmit(96)
-[364944.152066] RPC:       disconnected transport c3682000
-[364944.152070] RPC:   172 xprt_connect xprt c3682000 is not connected
+--b.
 
-Regards,
-Ivan
+commit 049ef27b224ecc33958465fef83d5e4e8a056115
+Author: Pavel Emelyanov <xemul@parallels.com>
+Date:   Thu Sep 23 18:26:58 2010 +0400
+
+    nfsd: Export get_task_comm for nfsd
+    
+    The git://linux-nfs.org/~bfields/linux.git nfsd-next branch doesn't
+    compile when nfsd is a module with the following error:
+    
+       ERROR: "get_task_comm" [fs/nfsd/nfsd.ko] undefined!
+    
+    Replace the get_task_comm call with direct comm access, which is
+    safe for current.
+    
+    Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index b278e44..7b2fa1d 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -129,12 +129,10 @@ static ssize_t nfsctl_transaction_read(struct file *file, char __user *buf, size
+ {
+ 	static int warned;
+ 	if (file->f_dentry->d_name.name[0] == '.' && !warned) {
+-		char name[sizeof(current->comm)];
+ 		printk(KERN_INFO
+ 		       "Warning: \"%s\" uses deprecated NFSD interface: %s."
+ 		       "  This will be removed in 2.6.40\n",
+-		       get_task_comm(name, current),
+-		       file->f_dentry->d_name.name);
++		       current->comm, file->f_dentry->d_name.name);
+ 		warned = 1;
+ 	}
+ 	if (! file->private_data) {
