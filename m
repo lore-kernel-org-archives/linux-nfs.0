@@ -1,47 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:38170 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752543Ab0JKAFx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Oct 2010 20:05:53 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 6so2668490iwn.19
-        for <linux-nfs@vger.kernel.org>; Sun, 10 Oct 2010 17:05:53 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/15] mount.nfs: Eliminate compiler warning in
-	utils/mount/parse_opt.c
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Sun, 10 Oct 2010 20:05:50 -0400
-Message-ID: <20101011000550.6667.58637.stgit@ellison.1015granger.net>
-In-Reply-To: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
-References: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:3926 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757167Ab0JVOOk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Oct 2010 10:14:40 -0400
+Message-ID: <4CC19C3F.2080801@netapp.com>
+Date: Fri, 22 Oct 2010 10:14:23 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Subject: [PATCH 02/10] NFS: Optimise the readdir searches
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-parse_opt.c: In function ‘po_rightmost’:
-parse_opt.c:517: warning: conversion to ‘int’ from ‘unsigned int’ may change the sign of the result
+If we're going through the loop in nfs_readdir() more than once, we usually
+do not want to restart searching from the beginning of the pages cache.
 
-"i" contains the function's result value, so it should be defined as
-the same type as the function's return type.
+We only want to do that if the previous search failed...
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/dir.c |    6 ++----
+ 1 files changed, 2 insertions(+), 4 deletions(-)
 
- utils/mount/parse_opt.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/utils/mount/parse_opt.c b/utils/mount/parse_opt.c
-index f0918f7..ab869d9 100644
---- a/utils/mount/parse_opt.c
-+++ b/utils/mount/parse_opt.c
-@@ -508,7 +508,7 @@ po_found_t po_get_numeric(struct mount_options *options, char *keyword, long *va
- int po_rightmost(struct mount_options *options, const char *keys[])
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 1d4138d..4b07f0a 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -491,10 +491,6 @@ static inline
+ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
  {
- 	struct mount_option *option;
--	unsigned int i;
-+	int i;
+ 	int res = -EAGAIN;
+-	desc->page_index = 0;
+-
+-	if (*desc->dir_cookie == 0)
+-		desc->cache_entry_index = 0;
  
- 	if (options) {
- 		for (option = options->tail; option; option = option->prev) {
-
+ 	while (1) {
+ 		res = find_cache_page(desc);
+@@ -589,6 +585,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
+ 		goto out_release;
+ 	}
+ 
++	desc->page_index = 0;
+ 	desc->page = page;
+ 	status = nfs_do_filldir(desc, dirent, filldir);
+ 
+@@ -653,6 +650,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+ 		if (res == -ETOOSMALL && desc->plus) {
+ 			clear_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
+ 			nfs_zap_caches(inode);
++			desc->page_index = 0;
+ 			desc->plus = 0;
+ 			desc->eof = 0;
+ 			continue;
