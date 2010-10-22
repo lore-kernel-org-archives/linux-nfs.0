@@ -1,98 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay3.sgi.com ([192.48.152.1]:40871 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753947Ab0JVPVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Oct 2010 11:21:12 -0400
-Date: Fri, 22 Oct 2010 10:20:52 -0500
-From: bpm@sgi.com
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from fieldses.org ([174.143.236.118]:51036 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753454Ab0JVVUJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Oct 2010 17:20:09 -0400
+Date: Fri, 22 Oct 2010 17:20:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Menyhart Zoltan <Zoltan.Menyhart@bull.net>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] xs_bind retry binding forever
-Message-ID: <20101022152052.GA11980@sgi.com>
-References: <20101021183203.12776.28469.stgit@lady3jane.americas.sgi.com> <20101021183337.12776.18768.stgit@lady3jane.americas.sgi.com> <1287689917.9144.84.camel@heimdal.trondhjem.org>
+Subject: Re: "xprt" reference count drops to 0
+Message-ID: <20101022212007.GB22837@fieldses.org>
+References: <4C7E4469.70807@duchatelet.net>
+ <4CAAE046.5060209@bull.net>
+ <20101021203801.GA12038@fieldses.org>
+ <4CC1A722.4060907@bull.net>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1287689917.9144.84.camel@heimdal.trondhjem.org>
+In-Reply-To: <4CC1A722.4060907@bull.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hey Trond,
-
-On Thu, Oct 21, 2010 at 03:38:37PM -0400, Trond Myklebust wrote:
-> On Thu, 2010-10-21 at 13:33 -0500, Ben Myers wrote:
-> > Retry bind for reserved source ports forever.  Add an error message when we
-> > have a hard time binding one.
+On Fri, Oct 22, 2010 at 05:00:50PM +0200, Menyhart Zoltan wrote:
+> J. Bruce Fields wrote:
+> >On Tue, Oct 05, 2010 at 10:22:30AM +0200, Menyhart Zoltan wrote:
+> >>Due to some race conditions, the reference count can become 0
+> >>while "xprt" is still on a "pool":
+> >
+> >Apologies, your email got buried in my inbox....
+> >
+> >>
+> >>WARNING: at lib/kref.c:43 kref_get+0x23/0x2d()
+> >>  [] kref_get+0x23/0x2d
+> >>  [] svc_xprt_get+0x12/0x14 [sunrpc]
+> >>  [] svc_recv+0x2db/0x78a [sunrpc]
+> >
+> >Which kernel exactly did you see this on?  Is it reproduceable?
 > 
-> NACK. This approach leads to the process spinning forever in that loop,
-> which is exactly why we introduced the limit in the first place. See all
-> the old archived bug report emails about 'rpciod taking 100% cpu'.
+> I saw it on a 2.6.32.
+> It has not been corrected for the 2.6.36-rc3 yet.
+> The patch is for  the 2.6.36-rc3.
+> 
+> It is a narrow window, you need a high work load and a bit of luck  to
+> delay the current CPU just after"svc_xprt_enqueue()" returns.
+> 
+> >>I think we should increase the reference counter before adding "xprt"
+> >>onto any list.
+> >
+> >I don't see the xprt added to any list after the svc_xprt_get() you've
+> >added below.
+> 
+> "svc_xprt_enqueue()" has got two ways to pass an "xprt":
+> - via "rqstp->rq_xprt" if a worker is available,
+> - on the "pool->sp_sockets" list otherwise
+> 
+>         if (!list_empty(&pool->sp_threads)) {
+>                 rqstp = list_entry(pool->sp_threads.next,  struct svc_rqst,  rq_list);
+>                 svc_thread_dequeue(pool, rqstp);
+>                 rqstp->rq_xprt = xprt;
+>                 svc_xprt_get(xprt);
+>                 rqstp->rq_reserved = serv->sv_max_mesg;
+>                 atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+>                 pool->sp_stats.threads_woken++;
+>                 wake_up(&rqstp->rq_wait);
+>         } else {
+>                 list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
+>                 pool->sp_stats.sockets_queued++;
+>         }
+> 
+> In the 1st case, there is a "svc_xprt_get(xprt)", in the 2nd one, there is not.
+> Once "svc_xprt_enqueue()" returns, at some places, "svc_xprt_put(xprt)" is
+> invoked. If we has passed the "else" branch, the "kref" can drop down to 0.
 
-Ok, fair enough.  ;)
+Maybe your fix is right, but I'm not sure: It looks to me like if
+svc_xprt_enqueue() gets to "process:" in a situation where the caller
+holds the only reference, then that's already a bug.  Do you know who
+the caller of svc_xprt_enqueue() was when this happened?
 
-Do you feel it is reasonable to try and return some kind of easily
-understandable error code (or message) to the user?  I can testify to
-the fact that something like this isn't trivial to debug unless you know
-what to look for ahead of time.  If you're interested in that I can
-spend some time on it.
-
-Thanks!
--Ben
+--b.
 
 > 
-> Cheers
->   Trond
+> "svc_recv()" includes:
 > 
-> > Signed-off-by: Ben Myers <bpm@sgi.com>
-> > ---
-> >  net/sunrpc/xprtsock.c |   22 ++++++++++++++++++----
-> >  1 files changed, 18 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > index b6309db..79a001b 100644
-> > --- a/net/sunrpc/xprtsock.c
-> > +++ b/net/sunrpc/xprtsock.c
-> > @@ -1560,9 +1560,16 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
-> >  		}
-> >  		last = port;
-> >  		port = xs_next_srcport(transport, sock, port);
-> > -		if (port > last)
-> > +		if (port > last) {
-> > +			if (nloop > 2 && net_ratelimit()) {
-> > +				printk("RPC: %s %pI4: Cannot bind reserved "
-> > +				       "source port.  Consider decreasing "
-> > +				       "min_resvport.\n",
-> > +				       __func__, &myaddr.sin_addr);
-> > +			}
-> >  			nloop++;
-> > -	} while (err == -EADDRINUSE && nloop != 2);
-> > +		}
-> > +	} while (err == -EADDRINUSE);
-> >  	dprintk("RPC:       %s %pI4:%u: %s (%d)\n",
-> >  			__func__, &myaddr.sin_addr,
-> >  			port, err ? "failed" : "ok", err);
-> > @@ -1593,9 +1600,16 @@ static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
-> >  		}
-> >  		last = port;
-> >  		port = xs_next_srcport(transport, sock, port);
-> > -		if (port > last)
-> > +		if (port > last) {
-> > +			if (nloop > 2 && net_ratelimit()) {
-> > +				printk("RPC: %s %pI6: Cannot bind reserved "
-> > +				       "source port.  Consider decreasing "
-> > +				       "min_resvport.\n",
-> > +					__func__, &myaddr.sin6_addr);
-> > +			}
-> >  			nloop++;
-> > -	} while (err == -EADDRINUSE && nloop != 2);
-> > +		}
-> > +	} while (err == -EADDRINUSE);
-> >  	dprintk("RPC:       xs_bind6 %pI6:%u: %s (%d)\n",
-> >  		&myaddr.sin6_addr, port, err ? "failed" : "ok", err);
-> >  	return err;
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>         xprt = svc_xprt_dequeue(pool);
+>         if (xprt) {
+>                 rqstp->rq_xprt = xprt;
+>                 svc_xprt_get(xprt);
+>                 rqstp->rq_reserved = serv->sv_max_mesg;
+>                 atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+>         } else {
+> 
+> i.e. it calls "svc_xprt_get(xprt)" if it has picked up "xprt" from the "pool" list.
+> Yet it is too late, if the caller of "svc_xprt_enqueue()" has already had the
+> time to call "svc_xprt_put(xprt)".
+> 
+> I think "svc_xprt_get(xprt)" should be called in "svc_xprt_enqueue()" before
+> "list_add_tail(&xprt->xpt_ready, &pool->sp_sockets)" to keep the reference
+> counter valid.
+> It is much simpler to move the call "svc_xprt_get(xprt)" just before
+> 
+> 	if (!list_empty(&pool->sp_threads))
+> 
+> Thanks,
+> 
+> Zoltan
+> 
 > 
 > 
