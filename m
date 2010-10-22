@@ -1,121 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14511 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752286Ab0JMPMk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Oct 2010 11:12:40 -0400
-Message-ID: <4CB5CC64.1060303@RedHat.com>
-Date: Wed, 13 Oct 2010 11:12:36 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 01/15] mountd: Clear mountd registrations at start up
-References: <20101010234836.6667.4057.stgit@ellison.1015granger.net> <20101011000411.6667.17979.stgit@ellison.1015granger.net> <4CB5C876.3030203@RedHat.com>
-In-Reply-To: <4CB5C876.3030203@RedHat.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from relay3.sgi.com ([192.48.152.1]:40871 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753947Ab0JVPVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Oct 2010 11:21:12 -0400
+Date: Fri, 22 Oct 2010 10:20:52 -0500
+From: bpm@sgi.com
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] xs_bind retry binding forever
+Message-ID: <20101022152052.GA11980@sgi.com>
+References: <20101021183203.12776.28469.stgit@lady3jane.americas.sgi.com> <20101021183337.12776.18768.stgit@lady3jane.americas.sgi.com> <1287689917.9144.84.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1287689917.9144.84.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hey Trond,
 
+On Thu, Oct 21, 2010 at 03:38:37PM -0400, Trond Myklebust wrote:
+> On Thu, 2010-10-21 at 13:33 -0500, Ben Myers wrote:
+> > Retry bind for reserved source ports forever.  Add an error message when we
+> > have a hard time binding one.
+> 
+> NACK. This approach leads to the process spinning forever in that loop,
+> which is exactly why we introduced the limit in the first place. See all
+> the old archived bug report emails about 'rpciod taking 100% cpu'.
 
-On 10/13/2010 10:55 AM, Steve Dickson wrote:
+Ok, fair enough.  ;)
+
+Do you feel it is reasonable to try and return some kind of easily
+understandable error code (or message) to the user?  I can testify to
+the fact that something like this isn't trivial to debug unless you know
+what to look for ahead of time.  If you're interested in that I can
+spend some time on it.
+
+Thanks!
+-Ben
+
+> 
+> Cheers
+>   Trond
+> 
+> > Signed-off-by: Ben Myers <bpm@sgi.com>
+> > ---
+> >  net/sunrpc/xprtsock.c |   22 ++++++++++++++++++----
+> >  1 files changed, 18 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index b6309db..79a001b 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -1560,9 +1560,16 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
+> >  		}
+> >  		last = port;
+> >  		port = xs_next_srcport(transport, sock, port);
+> > -		if (port > last)
+> > +		if (port > last) {
+> > +			if (nloop > 2 && net_ratelimit()) {
+> > +				printk("RPC: %s %pI4: Cannot bind reserved "
+> > +				       "source port.  Consider decreasing "
+> > +				       "min_resvport.\n",
+> > +				       __func__, &myaddr.sin_addr);
+> > +			}
+> >  			nloop++;
+> > -	} while (err == -EADDRINUSE && nloop != 2);
+> > +		}
+> > +	} while (err == -EADDRINUSE);
+> >  	dprintk("RPC:       %s %pI4:%u: %s (%d)\n",
+> >  			__func__, &myaddr.sin_addr,
+> >  			port, err ? "failed" : "ok", err);
+> > @@ -1593,9 +1600,16 @@ static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
+> >  		}
+> >  		last = port;
+> >  		port = xs_next_srcport(transport, sock, port);
+> > -		if (port > last)
+> > +		if (port > last) {
+> > +			if (nloop > 2 && net_ratelimit()) {
+> > +				printk("RPC: %s %pI6: Cannot bind reserved "
+> > +				       "source port.  Consider decreasing "
+> > +				       "min_resvport.\n",
+> > +					__func__, &myaddr.sin6_addr);
+> > +			}
+> >  			nloop++;
+> > -	} while (err == -EADDRINUSE && nloop != 2);
+> > +		}
+> > +	} while (err == -EADDRINUSE);
+> >  	dprintk("RPC:       xs_bind6 %pI6:%u: %s (%d)\n",
+> >  		&myaddr.sin6_addr, port, err ? "failed" : "ok", err);
+> >  	return err;
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
 > 
-> On 10/10/2010 08:04 PM, Chuck Lever wrote:
->> Clear stale MNT registrations before mountd tries to create fresh
->> listeners, to ensure that mountd starts.  This is also what statd
->> does.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->>
->>  utils/mountd/mountd.c |    1 +
->>  1 files changed, 1 insertions(+), 0 deletions(-)
->>
->> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
->> index d309950..7e0cf6a 100644
->> --- a/utils/mountd/mountd.c
->> +++ b/utils/mountd/mountd.c
->> @@ -840,6 +840,7 @@ main(int argc, char **argv)
->>  	if (new_cache)
->>  		cache_open();
->>  
->> +	unregister_services();
->>  	if (version2()) {
->>  		listeners += nfs_svc_create("mountd", MOUNTPROG,
->>  					MOUNTVERS, mount_dispatch, port);
->>
-> Question, since unregister_services() only unregisters version
-> that are currently requested, won't it miss unregistering 
-> version that are not currently requested, ones that are left over
-> from a previous instant of mountd? 
-> 
-> The point being all versions need to be unregistered at his point, 
-> not just the ones currently being requested. 
-Something like:
-
-mountd: Clear mountd registrations at start up
-
-Clear stale MNT registrations before mountd tries to create fresh
-listeners, to ensure that mountd starts.  This is also what statd
-does.
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
-
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index d309950..c36c471 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -97,13 +97,13 @@ static int version_any(void)
- }
- 
- static void
--unregister_services (void)
-+unregister_services (int all)
- {
--	if (version2()) {
-+	if (all || version2()) {
- 		nfs_svc_unregister(MOUNTPROG, MOUNTVERS);
- 		nfs_svc_unregister(MOUNTPROG, MOUNTVERS_POSIX);
- 	}
--	if (version3())
-+	if (all || version3())
- 		nfs_svc_unregister(MOUNTPROG, MOUNTVERS_NFSV3);
- }
- 
-@@ -180,7 +180,7 @@ fork_workers(void)
- 
- 	/* in parent */
- 	wait_for_workers();
--	unregister_services();
-+	unregister_services(0);
- 	cleanup_lockfiles();
- 	xlog(L_NOTICE, "mountd: no more workers, exiting\n");
- 	exit(0);
-@@ -192,7 +192,7 @@ fork_workers(void)
- static void 
- killer (int sig)
- {
--	unregister_services();
-+	unregister_services(0);
- 	if (num_threads > 1) {
- 		/* play Kronos and eat our children */
- 		kill(0, SIGTERM);
-@@ -840,6 +840,7 @@ main(int argc, char **argv)
- 	if (new_cache)
- 		cache_open();
- 
-+	unregister_services(1);
- 	if (version2()) {
- 		listeners += nfs_svc_create("mountd", MOUNTPROG,
- 					MOUNTVERS, mount_dispatch, port);
-@@ -895,7 +896,7 @@ main(int argc, char **argv)
- 	my_svc_run();
- 
- 	xlog(L_ERROR, "RPC service loop terminated unexpectedly. Exiting...\n");
--	unregister_services();
-+	unregister_services(0);
- 	exit(1);
- }
- 
-
