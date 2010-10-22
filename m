@@ -1,27 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:42822 "EHLO magus.merit.edu"
+Received: from mx2.netapp.com ([216.240.18.37]:12732 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932193Ab0JLLng (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Oct 2010 07:43:36 -0400
-Date: Tue, 12 Oct 2010 07:43:34 -0400
-From: Jim Rees <rees@umich.edu>
-To: DENIEL Philippe <philippe.deniel@cea.fr>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: RPM packaging for libnfsidmap ?
-Message-ID: <20101012114334.GA2577@merit.edu>
-References: <4CB4432B.7020709@cea.fr>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CB4432B.7020709@cea.fr>
+	id S1754968Ab0JVOQc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Oct 2010 10:16:32 -0400
+Message-ID: <4CC19CBF.1030306@netapp.com>
+Date: Fri, 22 Oct 2010 10:16:31 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Subject: [PATCH 1/2] NFS: nfs_readdir_filler catch all errors
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-DENIEL Philippe wrote:
+Check for all errors, not a specific one.
 
-  I have searched on Google, and I found no distribution of libnfsidmap as
-  a rpm package (but I could easily find the tarball on CITI's website).
-  On my site, I need such a rpm (we have a massive cluster with yum
-  repository + configuration files managed by Puppet) so I will do it if
-  none is available.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-On fedora it's part of nfs-utils-lib-devel.  I don't know about rhel.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 879308e..628eca7 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -556,7 +556,7 @@ int nfs_readdir_filler(nfs_readdir_descriptor_t *desc, struct page* page)
+ {
+ 	struct inode	*inode = desc->file->f_path.dentry->d_inode;
+ 
+-	if (nfs_readdir_xdr_to_array(desc, page, inode) == -1)
++	if (nfs_readdir_xdr_to_array(desc, page, inode) < 0)
+ 		goto error;
+ 	SetPageUptodate(page);
+ 
