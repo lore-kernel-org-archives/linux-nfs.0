@@ -1,131 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:49878 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755350Ab0JKQSi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Oct 2010 12:18:38 -0400
-Subject: Re: [PATCH 04/15] mount.nfs: Eliminate compiler warnings
-Content-Type: text/plain; charset=windows-1252
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4CB311D6.2000503@RedHat.com>
-Date: Mon, 11 Oct 2010 12:18:17 -0400
+Received: from fieldses.org ([174.143.236.118]:53552 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751233Ab0JVXBN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Oct 2010 19:01:13 -0400
+Date: Fri, 22 Oct 2010 19:01:12 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Menyhart Zoltan <Zoltan.Menyhart@bull.net>
 Cc: linux-nfs@vger.kernel.org
-Message-Id: <3C05DAD4-965A-42EB-A0AE-1EFD7DCEF3A9@oracle.com>
-References: <20101010234836.6667.4057.stgit@ellison.1015granger.net> <20101011000441.6667.68536.stgit@ellison.1015granger.net> <4CB311D6.2000503@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Subject: Re: "xprt" reference count drops to 0
+Message-ID: <20101022230111.GC22837@fieldses.org>
+References: <4C7E4469.70807@duchatelet.net>
+ <4CAAE046.5060209@bull.net>
+ <20101021203801.GA12038@fieldses.org>
+ <4CC1A722.4060907@bull.net>
+ <20101022212007.GB22837@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101022212007.GB22837@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Oct 11, 2010, at 9:32 AM, Steve Dickson wrote:
-
+On Fri, Oct 22, 2010 at 05:20:07PM -0400, J. Bruce Fields wrote:
+> On Fri, Oct 22, 2010 at 05:00:50PM +0200, Menyhart Zoltan wrote:
+> > J. Bruce Fields wrote:
+> > >On Tue, Oct 05, 2010 at 10:22:30AM +0200, Menyhart Zoltan wrote:
+> > >>Due to some race conditions, the reference count can become 0
+> > >>while "xprt" is still on a "pool":
+> > >
+> > >Apologies, your email got buried in my inbox....
+> > >
+> > >>
+> > >>WARNING: at lib/kref.c:43 kref_get+0x23/0x2d()
+> > >>  [] kref_get+0x23/0x2d
+> > >>  [] svc_xprt_get+0x12/0x14 [sunrpc]
+> > >>  [] svc_recv+0x2db/0x78a [sunrpc]
+> > >
+> > >Which kernel exactly did you see this on?  Is it reproduceable?
+> > 
+> > I saw it on a 2.6.32.
+> > It has not been corrected for the 2.6.36-rc3 yet.
+> > The patch is for  the 2.6.36-rc3.
+> > 
+> > It is a narrow window, you need a high work load and a bit of luck  to
+> > delay the current CPU just after"svc_xprt_enqueue()" returns.
+> > 
+> > >>I think we should increase the reference counter before adding "xprt"
+> > >>onto any list.
+> > >
+> > >I don't see the xprt added to any list after the svc_xprt_get() you've
+> > >added below.
+> > 
+> > "svc_xprt_enqueue()" has got two ways to pass an "xprt":
+> > - via "rqstp->rq_xprt" if a worker is available,
+> > - on the "pool->sp_sockets" list otherwise
+> > 
+> >         if (!list_empty(&pool->sp_threads)) {
+> >                 rqstp = list_entry(pool->sp_threads.next,  struct svc_rqst,  rq_list);
+> >                 svc_thread_dequeue(pool, rqstp);
+> >                 rqstp->rq_xprt = xprt;
+> >                 svc_xprt_get(xprt);
+> >                 rqstp->rq_reserved = serv->sv_max_mesg;
+> >                 atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+> >                 pool->sp_stats.threads_woken++;
+> >                 wake_up(&rqstp->rq_wait);
+> >         } else {
+> >                 list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
+> >                 pool->sp_stats.sockets_queued++;
+> >         }
+> > 
+> > In the 1st case, there is a "svc_xprt_get(xprt)", in the 2nd one, there is not.
+> > Once "svc_xprt_enqueue()" returns, at some places, "svc_xprt_put(xprt)" is
+> > invoked. If we has passed the "else" branch, the "kref" can drop down to 0.
 > 
-> 
-> On 10/10/2010 08:04 PM, Chuck Lever wrote:
->> Clean up.
->> 
->> fstab.c: In function ‘lock_mtab’:
->> fstab.c:385: warning: declaration of ‘errsv’ shadows a previous local
->> fstab.c:367: warning: shadowed declaration is here
->> fstab.c:407: warning: declaration of ‘errsv’ shadows a previous local
->> fstab.c:367: warning: shadowed declaration is here
->> fstab.c:417: warning: declaration of ‘tries’ shadows a previous local
->> fstab.c:325: warning: shadowed declaration is here
->> fstab.c:422: warning: declaration of ‘errsv’ shadows a previous local
->> fstab.c:367: warning: shadowed declaration is here
-> Could you please post the gcc flags you using to generate 
-> theses warnings... These warnings are not being generated with
-> the default gcc flags we are currently using... 
+> Maybe your fix is right, but I'm not sure: It looks to me like if
+> svc_xprt_enqueue() gets to "process:" in a situation where the caller
+> holds the only reference, then that's already a bug.  Do you know who
+> the caller of svc_xprt_enqueue() was when this happened?
 
-Since I've already privately sent you the compiler flags I use, would you like me to repost all of these compiler warning patches with the compiler command line options listed in the patch descriptions?
-
-You can probably see the warnings fixed in this particular patch with "-Wshadow"
-
-The exact warnings issued vary with compiler version and host hardware platform, so I can include that information as well, if desired.
-
-gcc (GCC) 4.4.4 20100630 (Red Hat 4.4.4-10)
-
-2.6.34.7-56.fc13.i686.PAE i386
-
-Let me know if you need more.
-
-> tia,
-> 
-> steved.
-> 
->> These are probably harmless.  Reusing a variable name, however, is a
->> little confusing to follow when reading the code.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
->> utils/mount/fstab.c |   29 ++++++++++++++++-------------
->> 1 files changed, 16 insertions(+), 13 deletions(-)
->> 
->> diff --git a/utils/mount/fstab.c b/utils/mount/fstab.c
->> index 051fa38..a742e64 100644
->> --- a/utils/mount/fstab.c
->> +++ b/utils/mount/fstab.c
->> @@ -364,19 +364,22 @@ lock_mtab (void) {
->> 	/* Repeat until it was us who made the link */
->> 	while (!we_created_lockfile) {
->> 		struct flock flock;
->> -		int errsv, j;
->> +		int j;
->> 
->> 		j = link(linktargetfile, MOUNTED_LOCK);
->> -		errsv = errno;
->> 
->> -		if (j == 0)
->> -			we_created_lockfile = 1;
->> +		{
->> +			int errsv = errno;
->> 
->> -		if (j < 0 && errsv != EEXIST) {
->> -			(void) unlink(linktargetfile);
->> -			die (EX_FILEIO, _("can't link lock file %s: %s "
->> -			     "(use -n flag to override)"),
->> -			     MOUNTED_LOCK, strerror (errsv));
->> +			if (j == 0)
->> +				we_created_lockfile = 1;
->> +
->> +			if (j < 0 && errsv != EEXIST) {
->> +				(void) unlink(linktargetfile);
->> +				die (EX_FILEIO, _("can't link lock file %s: %s "
->> +				     "(use -n flag to override)"),
->> +				     MOUNTED_LOCK, strerror (errsv));
->> +			}
->> 		}
->> 
->> 		lockfile_fd = open (MOUNTED_LOCK, O_WRONLY);
->> @@ -414,7 +417,7 @@ lock_mtab (void) {
->> 			}
->> 			(void) unlink(linktargetfile);
->> 		} else {
->> -			static int tries = 0;
->> +			static int retries = 0;
->> 
->> 			/* Someone else made the link. Wait. */
->> 			alarm(LOCK_TIMEOUT);
->> @@ -428,10 +431,10 @@ lock_mtab (void) {
->> 			alarm(0);
->> 			/* Limit the number of iterations - maybe there
->> 			   still is some old /etc/mtab~ */
->> -			++tries;
->> -			if (tries % 200 == 0)
->> +			++retries;
->> +			if (retries % 200 == 0)
->> 			   usleep(30);
->> -			if (tries > 100000) {
->> +			if (retries > 100000) {
->> 				(void) unlink(linktargetfile);
->> 				close(lockfile_fd);
->> 				die (EX_FILEIO, _("Cannot create link %s\n"
->> 
-
--- 
-chuck[dot]lever[at]oracle[dot]com
+Hm.  Maybe something like this could happen: two threads call
+svc_check_conn_limits at about the same time, and both pick the same
+victim xprt.
 
 
+	thread 1			thread 2
+	^^^^^^^^			^^^^^^^^
+	set CLOSE			set CLOSE
+	call svc_xprt_enqueue
+	  set BUSY
+
+	thread 3
+	^^^^^^^^			call svc_xprt_enqueue
+	call svc_recv
+	  dequeue our xprt		
+					check DEAD, see it unset
+	  call svc_delete_xprt
+	    remove xprt from any
+	  	global lists
+	    put xprt
+	  clear BUSY
+					test_and_set_bit BUSY
+					test CLOSE, go to process:
+					make xprt globablly visible
+						again
+					ARGH!
 
 
+The put in svc_delete_xprt() is meant to happen only when the xprt is
+taken off any rqstp's or global lists.  We shouldn't be able to requeue
+the xprt after that's done.
+
+So, both the svc_check_conn_limits return, the reference count's
+probably gone to zero at that point, and the xprt's freed while there
+are still references to it somewhere.
+
+It seems wrong to be clearing BUSY after deleting an xprt; what good
+could come of letting someone try to process an xprt that's already
+DEAD?
+
+But I need to go back over that.  Maybe I've missed something.
+
+--b.
