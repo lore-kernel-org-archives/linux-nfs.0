@@ -1,106 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51096 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6970 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758880Ab0J1ODZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 10:03:25 -0400
-Subject: Re: [PATCH] [bz 192] Fixed Regression in NFS Direct I/O path
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <20101028095507.3a11ee17@tlielax.poochiereds.net>
-References: <1288268274-9444-1-git-send-email-steved@redhat.com>
-	 <20101028083435.35c990f0@tlielax.poochiereds.net>
-	 <20101028095507.3a11ee17@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 28 Oct 2010 10:03:23 -0400
-Message-ID: <1288274603.3194.34.camel@heimdal.trondhjem.org>
+	id S1757168Ab0JVOOk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Oct 2010 10:14:40 -0400
+Message-ID: <4CC19C44.1060907@netapp.com>
+Date: Fri, 22 Oct 2010 10:14:28 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Subject: [PATCH 04/10] NFS: remove readdir plus limit
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-10-28 at 09:55 -0400, Jeff Layton wrote:
-> On Thu, 28 Oct 2010 08:34:35 -0400
-> Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > On Thu, 28 Oct 2010 08:17:54 -0400
-> > Steve Dickson <steved@redhat.com> wrote:
-> > 
-> > > A typo, introduced by commit f11ac8db, in the nfs_direct_write()
-> > > routine causes writes with O_DIRECT set to fail with a ENOMEM error.
-> > > 
-> > > Found-by: Jeff Layton <jlayton@redhat.com>
-> > > Signed-off-by: Steve Dickson <steved@redhat.com>
-> > > ---
-> > >  fs/nfs/direct.c |    2 +-
-> > >  1 files changed, 1 insertions(+), 1 deletions(-)
-> > > 
-> > > diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> > > index 064a809..84d3c8b 100644
-> > > --- a/fs/nfs/direct.c
-> > > +++ b/fs/nfs/direct.c
-> > > @@ -873,7 +873,7 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
-> > >  	dreq->inode = inode;
-> > >  	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
-> > >  	dreq->l_ctx = nfs_get_lock_context(dreq->ctx);
-> > > -	if (dreq->l_ctx != NULL)
-> > > +	if (dreq->l_ctx == NULL)
-> > >  		goto out_release;
-> > >  	if (!is_sync_kiocb(iocb))
-> > >  		dreq->iocb = iocb;
-> > 
-> > Also, since get_lock_context holds references, this prevents the fs
-> > from being unmounted. It looks like this bug is in 2.6.36 too, so this
-> > may be suitable for stable series as well.
-> > 
-> 
-> Oh...and another thing I noticed too...
-> 
-> nfs_create_request doesn't check for a NULL return from
-> nfs_get_lock_context. If it ever does, it looks like that will likely
-> trickle down to an oops in encode_stateid.
-> 
-> It might be good to fix that as well. Maybe something like this
-> compile-tested-only patch?
-> 
-> --------------------[snip]---------------------
-> 
-> nfs: handle lock context allocation failures in nfs_create_request
-> 
-> nfs_get_lock_context can return NULL on an allocation failure.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfs/pagelist.c |    8 +++++++-
->  1 files changed, 7 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> index 9194902..137b549 100644
-> --- a/fs/nfs/pagelist.c
-> +++ b/fs/nfs/pagelist.c
-> @@ -65,6 +65,13 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
->  	if (req == NULL)
->  		return ERR_PTR(-ENOMEM);
->  
-> +	/* get lock context early so we can deal with alloc failures */
-> +	req->wb_lock_context = nfs_get_lock_context(ctx);
-> +	if (req->wb_lock_context == NULL) {
-> +		nfs_page_free(req);
-> +		return ERR_PTR(-ENOMEM);
-> +	}
-> +
->  	/* Initialize the request struct. Initially, we assume a
->  	 * long write-back delay. This will be adjusted in
->  	 * update_nfs_request below if the region is not locked. */
-> @@ -79,7 +86,6 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
->  	req->wb_pgbase	= offset;
->  	req->wb_bytes   = count;
->  	req->wb_context = get_nfs_open_context(ctx);
-> -	req->wb_lock_context = nfs_get_lock_context(ctx);
->  	kref_init(&req->wb_kref);
->  	return req;
->  }
+We will now use readdir plus even on directories that are very large.
 
-Yup. That looks as if it should be required...
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/inode.c |    6 +-----
+ 1 files changed, 1 insertions(+), 5 deletions(-)
 
-Trond
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index f2d2c80..6eec286 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -234,9 +234,6 @@ nfs_init_locked(struct inode *inode, void *opaque)
+ 	return 0;
+ }
+ 
+-/* Don't use READDIRPLUS on directories that we believe are too large */
+-#define NFS_LIMIT_READDIRPLUS (8*PAGE_SIZE)
+-
+ /*
+  * This is our front-end to iget that looks up inodes by file handle
+  * instead of inode number.
+@@ -291,8 +288,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		} else if (S_ISDIR(inode->i_mode)) {
+ 			inode->i_op = NFS_SB(sb)->nfs_client->rpc_ops->dir_inode_ops;
+ 			inode->i_fop = &nfs_dir_operations;
+-			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS)
+-			    && fattr->size <= NFS_LIMIT_READDIRPLUS)
++			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS))
+ 				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
+ 			/* Deal with crossing mountpoints */
+ 			if ((fattr->valid & NFS_ATTR_FATTR_FSID)
