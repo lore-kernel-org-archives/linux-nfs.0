@@ -1,43 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-3.hut.fi ([130.233.228.93]:50451 "EHLO smtp-3.hut.fi"
+Received: from mx2.netapp.com ([216.240.18.37]:3926 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753855Ab0JEP2Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Oct 2010 11:28:24 -0400
-Date: Tue, 5 Oct 2010 18:03:29 +0300 (EEST)
-From: Timo Aaltonen <timo.aaltonen@aalto.fi>
-To: Sachin Prabhu <sprabhu@redhat.com>
-cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: NFS4 clients cannot reclaim locks
-In-Reply-To: <25362267.86.1285932646433.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-Message-ID: <alpine.DEB.2.00.1010051758550.7784@kosh.hut.fi>
-References: <25362267.86.1285932646433.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+	id S1757176Ab0JVOOk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Oct 2010 10:14:40 -0400
+Message-ID: <4CC19C46.2030203@netapp.com>
+Date: Fri, 22 Oct 2010 10:14:30 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Subject: [PATCH 05/10] SUNRPC: Add a helper function xdr_inline_peek
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 1 Oct 2010, Sachin Prabhu wrote:
+We sometimes need to be able to read ahead in an xdr_stream without
+incrementing the current pointer position.
 
-> NFS4 clients appear to have problems reclaiming locks after a server reboot. I can recreate the issue on 2.6.34.7-56.fc13.x86_64 on a Fedora system.
->
-> The problem appears to happen in cases where after a reboot, a WRITE call is made just before the RENEW call. In that case, the NFS4ERR_STALE_STATEID is returned for the WRITE call which results in NFS_STATE_RECLAIM_REBOOT being set in the state flags. However the NFS4ERR_STALE_CLIENTID returned for the subsequent RENEW call is handled by
-> nfs4_recovery_handle_error() -> nfs4_state_end_reclaim_reboot(clp);
-> which ends up setting the state flag to NFS_STATE_RECLAIM_NOGRACE and clearing the NFS_STATE_RECLAIM_REBOOT in nfs4_state_mark_reclaim_nograce().
->
-> The process of reclaiming the locks then seem to hit another roadblock in nfs4_open_expired() where it fails to open the file and reset the state. It ends up calling nfs4_reclaim_locks() in a loop with the old stateid in nfs4_reclaim_open_state().
->
-> By commenting out the call to nfs4_state_end_reclaim_reboot(clp) in nfs4_recovery_handle_error(), the client was able to handle this particular scenario properly.
->
-> Has any one else seen this issue?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ include/linux/sunrpc/xdr.h |    1 +
+ net/sunrpc/xdr.c           |   21 +++++++++++++++++++++
+ 2 files changed, 22 insertions(+), 0 deletions(-)
 
-could this be related to the bug I was seeing with nfsv4 (now using v3 
-with success):
-
-https://bugzilla.kernel.org/show_bug.cgi?id=15973
-
-though the error returned by the server is BAD_STATEID..
-
-
--- 
-Timo Aaltonen
-Systems Specialist, Aalto IT
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 8c1dcbb..ab91d86 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -201,6 +201,7 @@ extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
+ extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
+ 		unsigned int base, unsigned int len);
+ extern void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
++extern __be32 *xdr_inline_peek(struct xdr_stream *xdr, size_t nbytes);
+ extern __be32 *xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes);
+ extern void xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
+ extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index e0725d9..cd9e841 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -573,6 +573,27 @@ void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p)
+ EXPORT_SYMBOL_GPL(xdr_init_decode);
+ 
+ /**
++ * xdr_inline_peek - Allow read-ahead in the XDR data stream
++ * @xdr: pointer to xdr_stream struct
++ * @nbytes: number of bytes of data to decode
++ *
++ * Check if the input buffer is long enough to enable us to decode
++ * 'nbytes' more bytes of data starting at the current position.
++ * If so return the current pointer without updating the current
++ * pointer position.
++ */
++__be32 * xdr_inline_peek(struct xdr_stream *xdr, size_t nbytes)
++{
++	__be32 *p = xdr->p;
++	__be32 *q = p + XDR_QUADLEN(nbytes);
++
++	if (unlikely(q > xdr->end || q < p))
++		return NULL;
++	return p;
++}
++EXPORT_SYMBOL_GPL(xdr_inline_peek);
++
++/**
+  * xdr_inline_decode - Retrieve non-page XDR data to decode
+  * @xdr: pointer to xdr_stream struct
+  * @nbytes: number of bytes of data to decode
