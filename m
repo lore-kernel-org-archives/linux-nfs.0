@@ -1,53 +1,33 @@
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH -next] nfs: include ratelimit.h, fix nfs4state build
- error
-Date: Sat, 23 Oct 2010 10:09:06 -0400
-Message-ID: <1287842947.3022.7.camel@heimdal.trondhjem.org>
-References: <20101022152350.fc79e2b9.sfr@canb.auug.org.au>
-	 <20101022161852.2ef2638c.randy.dunlap@oracle.com>
+Subject: Re: PROBLEM: NULL pointer dereference in rpcauth_refreshcred
+Date: Sun, 24 Oct 2010 17:29:21 -0400
+Message-ID: <1287955761.2915.1.camel@heimdal.trondhjem.org>
+References: <3DE04C32-0B15-4BBF-A541-27152D3EC69B@mars.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Stephen Rothwell <sfr@canb.auug.org.au>,
-	akpm <akpm@linux-foundation.org>, linux-next@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org
-To: Randy Dunlap <randy.dunlap@oracle.com>
-Return-path: <linux-next-owner@vger.kernel.org>
-In-Reply-To: <20101022161852.2ef2638c.randy.dunlap@oracle.com>
-Sender: linux-next-owner@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+	Neil Brown <neilb@suse.de>,
+	"David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Rob Leslie <rob-O+g/SLjAo04@public.gmane.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:31570 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757067Ab0JXV31 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Oct 2010 17:29:27 -0400
+In-Reply-To: <3DE04C32-0B15-4BBF-A541-27152D3EC69B-O+g/SLjAo04@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2010-10-22 at 16:18 -0700, Randy Dunlap wrote:
-> From: Randy Dunlap <randy.dunlap@oracle.com>
+On Sat, 2010-10-23 at 14:50 -0700, Rob Leslie wrote:
+> [1.] One line summary of the problem:
 > 
-> nfs4state.c uses interfaces from ratelimit.h.  It needs to include
-> that header file to fix build errors:
-> 
-> fs/nfs/nfs4state.c:1195: warning: type defaults to 'int' in declaration of 'DEFINE_RATELIMIT_STATE'
-> fs/nfs/nfs4state.c:1195: warning: parameter names (without types) in function declaration
-> fs/nfs/nfs4state.c:1195: error: invalid storage class for function 'DEFINE_RATELIMIT_STATE'
-> fs/nfs/nfs4state.c:1195: error: implicit declaration of function '__ratelimit'
-> fs/nfs/nfs4state.c:1195: error: '_rs' undeclared (first use in this function)
-> 
-> Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
-> Cc:	Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc:	linux-nfs@vger.kernel.org
-> ---
->  fs/nfs/nfs4state.c |    1 +
->  1 file changed, 1 insertion(+)
-> 
-> --- linux-next-20101022.orig/fs/nfs/nfs4state.c
-> +++ linux-next-20101022/fs/nfs/nfs4state.c
-> @@ -46,6 +46,7 @@
->  #include <linux/kthread.h>
->  #include <linux/module.h>
->  #include <linux/random.h>
-> +#include <linux/ratelimit.h>
->  #include <linux/workqueue.h>
->  #include <linux/bitops.h>
->  
+> NULL pointer dereference in rpcauth_refreshcred
 
-That one is my fault. Sorry, and thanks Randy! I've applied the fix to
-the linux-next branch...
+Hi Rob,
+
+I suspect the following one-line patch should fix the problem.
 
 Cheers
   Trond
+------------------------------------------------------------------------------------------------------
