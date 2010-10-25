@@ -1,105 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51392 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:54546 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752069Ab0JMSnR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Oct 2010 14:43:17 -0400
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: iisaman@netapp.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/2] pnfs_submit: fix layoutreturn layout stateid processing
-Date: Tue, 12 Oct 2010 06:13:27 -0400
-Message-Id: <1286878408-10287-1-git-send-email-andros@netapp.com>
+	id S1751495Ab0JYBVm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 24 Oct 2010 21:21:42 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: neilb@suse.de, Menyhart Zoltan <Zoltan.Menyhart@bull.net>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/4] svcrpc: assume svc_delete_xprt() called only once
+Date: Sun, 24 Oct 2010 21:21:31 -0400
+Message-Id: <1287969693-12340-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <20101025010923.GB11470@fieldses.org>
+References: <20101025010923.GB11470@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+As long as DEAD exports are left BUSY, and svc_delete_xprt is called
+only with BUSY held, then svc_delete_xprt() will never be called on an
+xprt that is already DEAD.
 
-Add missing layoutreturn stateid update.
-This patch also enforces the following rfc 5661 requirement:
-
-section 12.5.4
-   "For LAYOUTRETURN results, the client MUST delete the range from its
-   record of what ranges of the file's layout it had before using the
-   seqid."
-
-Reported-by: P.B.Shelley <shelleypt@gmail.com>
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4proc.c |   10 +++++-----
- fs/nfs/pnfs.c     |    7 +++----
- fs/nfs/pnfs.h     |    3 ++-
- 3 files changed, 10 insertions(+), 10 deletions(-)
+ net/sunrpc/svc_xprt.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7727f59..4c56d9b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5678,11 +5678,11 @@ static void nfs4_layoutreturn_release(void *calldata)
- 	dprintk("--> %s return_type %d lo %p\n", __func__,
- 		lrp->args.return_type, lo);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index db90e4d..409881a 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -903,7 +903,7 @@ void svc_delete_xprt(struct svc_xprt *xprt)
  
--	if (lrp->args.return_type == RETURN_FILE) {
--		if (!lrp->res.lrs_present)
--			pnfs_invalidate_layout_stateid(lo);
--		pnfs_layoutreturn_release(lo, &lrp->args.range);
--	}
-+	pnfs_layoutreturn_release(lo, &lrp->args.range);
-+	if (!lrp->res.lrs_present)
-+		pnfs_invalidate_layout_stateid(lo);
-+	else
-+		pnfs_set_layout_stateid(lo, &lrp->res.stateid);
- 	kfree(calldata);
- 	dprintk("<-- %s\n", __func__);
- }
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index eb4dfdf..124d3ca 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -400,8 +400,7 @@ pnfs_layoutreturn_release(struct pnfs_layout_hdr *lo,
- 	LIST_HEAD(tmp_list);
+ 	/* Only do this once */
+ 	if (test_and_set_bit(XPT_DEAD, &xprt->xpt_flags))
+-		return;
++		BUG();
  
- 	spin_lock(&nfsi->vfs_inode.i_lock);
--	if (range)
--		pnfs_clear_lseg_list(lo, &tmp_list, range);
-+	pnfs_clear_lseg_list(lo, &tmp_list, range);
- 	put_layout_hdr_locked(lo); /* Matched in _pnfs_return_layout */
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
-@@ -460,7 +459,7 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
-  *
-  * lo->stateid could be the open stateid, in which case we just use what given.
-  */
--static void
-+void
- pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 			const nfs4_stateid *new)
- {
-@@ -625,7 +624,7 @@ return_layout(struct inode *ino, struct pnfs_layout_range *range,
- 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
- 	if (lrp == NULL) {
- 		if (lo && (type == RETURN_FILE))
--			pnfs_layoutreturn_release(lo, NULL);
-+			put_layout_hdr(lo->inode);
- 		goto out;
- 	}
- 	lrp->args.reclaim = 0;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 235709e..3fd2bc3 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -210,7 +210,8 @@ void pnfs_destroy_all_layouts(struct nfs_client *);
- void put_layout_hdr(struct inode *inode);
- void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 			     struct nfs4_state *open_state);
--
-+void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
-+				    const nfs4_stateid *new);
- 
- static inline bool
- has_layout(struct nfs_inode *nfsi)
+ 	dprintk("svc: svc_delete_xprt(%p)\n", xprt);
+ 	xprt->xpt_ops->xpo_detach(xprt);
 -- 
-1.6.6
+1.7.1
 
