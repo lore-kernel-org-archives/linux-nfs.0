@@ -1,33 +1,57 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: PROBLEM: NULL pointer dereference in rpcauth_refreshcred
-Date: Sun, 24 Oct 2010 17:29:21 -0400
-Message-ID: <1287955761.2915.1.camel@heimdal.trondhjem.org>
-References: <3DE04C32-0B15-4BBF-A541-27152D3EC69B@mars.org>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH 1/4] svcrpc: never clear XPT_BUSY on dead xprt
+Date: Tue, 26 Oct 2010 09:58:36 +1100
+Message-ID: <20101026095836.61bf6a38@notabene>
+References: <20101025010923.GB11470@fieldses.org>
+	<1287969693-12340-1-git-send-email-bfields@redhat.com>
+	<20101025124357.63b966bb@notabene>
+	<20101025202155.GD13523@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>,
-	"David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Rob Leslie <rob-O+g/SLjAo04@public.gmane.org>
+Content-Type: text/plain; charset=US-ASCII
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+	Menyhart Zoltan <Zoltan.Menyhart@bull.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:31570 "EHLO mx2.netapp.com"
+Received: from cantor.suse.de ([195.135.220.2]:37180 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757067Ab0JXV31 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Oct 2010 17:29:27 -0400
-In-Reply-To: <3DE04C32-0B15-4BBF-A541-27152D3EC69B-O+g/SLjAo04@public.gmane.org>
+	id S1752695Ab0JYW6p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Oct 2010 18:58:45 -0400
+In-Reply-To: <20101025202155.GD13523@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2010-10-23 at 14:50 -0700, Rob Leslie wrote:
-> [1.] One line summary of the problem:
+On Mon, 25 Oct 2010 16:21:56 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Mon, Oct 25, 2010 at 12:43:57PM +1100, Neil Brown wrote:
+> > On Sun, 24 Oct 2010 21:21:30 -0400
+> > "J. Bruce Fields" <bfields@redhat.com> wrote:
+> > 
+> > > Once an xprt has been deleted, there's no reason to allow it to be
+> > > enqueued--at worst, that might cause the xprt to be re-added to some
+> > > global list, resulting in later corruption.
+> > > 
+> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > Yep, this makes svc_close_xprt() behave the same way as svc_recv() which
+> > calls svc_delete_xprt but does not clear XPT_BUSY.  The other branches in
+> > svc_recv call svc_xprt_received, but the XPT_CLOSE branch doesn't
+> > 
+> > Reviewed-by: NeilBrown <neilb@suse.de>
 > 
-> NULL pointer dereference in rpcauth_refreshcred
+> Also, of course:
+> 
+> > >  	svc_xprt_get(xprt);
+> > >  	svc_delete_xprt(xprt);
+> > > -	clear_bit(XPT_BUSY, &xprt->xpt_flags);
+> > >  	svc_xprt_put(xprt);
+> 
+> The get/put is pointless: the only reason I can see for doing that of
+> course was to be able to safely clear the bit afterwards.
+>
 
-Hi Rob,
+Agreed.
 
-I suspect the following one-line patch should fix the problem.
+I like patches that get rid of code!!
 
-Cheers
-  Trond
-------------------------------------------------------------------------------------------------------
+NeilBrown
