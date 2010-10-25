@@ -1,146 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.17.10]:50520 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752261Ab0J0Tsw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Oct 2010 15:48:52 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: nfsd changes for 2.6.37
-Date: Wed, 27 Oct 2010 21:48:47 +0200
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-References: <20101026164549.GD19445@fieldses.org> <AANLkTimZSj7Y8KUic-VLSgrPFTf5wc_KRdfedzLAkNKT@mail.gmail.com> <AANLkTin53pdmfaBahExgi79XjaeFtP5wCS=rrKxfrAHs@mail.gmail.com>
-In-Reply-To: <AANLkTin53pdmfaBahExgi79XjaeFtP5wCS=rrKxfrAHs@mail.gmail.com>
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201010272148.47376.arnd@arndb.de>
+Received: from fieldses.org ([174.143.236.118]:39363 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753159Ab0JYPDN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Oct 2010 11:03:13 -0400
+Date: Mon, 25 Oct 2010 11:03:08 -0400
+To: Neil Brown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        Menyhart Zoltan <Zoltan.Menyhart@bull.net>
+Subject: Re: [PATCH 4/4] svcrpc: svc_tcp_sendto XTP_DEAD check is redundant
+Message-ID: <20101025150308.GB3233@fieldses.org>
+References: <20101025010923.GB11470@fieldses.org>
+ <1287969693-12340-4-git-send-email-bfields@redhat.com>
+ <20101025131024.1addf30d@notabene>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101025131024.1addf30d@notabene>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wednesday 27 October 2010 20:43:59 Linus Torvalds wrote:
-> On Wed, Oct 27, 2010 at 11:42 AM, Linus Torvalds
-> <torvalds@linux-foundation.org> wrote:
-> >
-> > Feel free to edit the message/patch to your hearts content.
+On Mon, Oct 25, 2010 at 01:10:24PM +1100, Neil Brown wrote:
+> On Sun, 24 Oct 2010 21:21:33 -0400
+> "J. Bruce Fields" <bfields@redhat.com> wrote:
 > 
-> Oh, and if you want me to just commit this part, I can do so. It
-> doesn't make much sense without the other parts to actually make it
-> useful, though, so it probably makes more sense to come with them.
+> > The only caller (svc_send) has already checked XPT_DEAD.
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  net/sunrpc/svcsock.c |    3 ---
+> >  1 files changed, 0 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> > index 1454739..07919e1 100644
+> > --- a/net/sunrpc/svcsock.c
+> > +++ b/net/sunrpc/svcsock.c
+> > @@ -1135,9 +1135,6 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
+> >  	reclen = htonl(0x80000000|((xbufp->len ) - 4));
+> >  	memcpy(xbufp->head[0].iov_base, &reclen, 4);
+> >  
+> > -	if (test_bit(XPT_DEAD, &rqstp->rq_xprt->xpt_flags))
+> > -		return -ENOTCONN;
+> > -
+> >  	sent = svc_sendto(rqstp, &rqstp->rq_res);
+> >  	if (sent != xbufp->len) {
+> >  		printk(KERN_NOTICE
+> 
+> 
+> So after removing all these references to XPT_DEAD, do we need XPT_DEAD at
+> all???
+> 
+> I think it is only used in two other places.
+> 
+> 1/ In svc_revisit we don't queue the deferred request to an XPT_DEAD
+>   transport.
+>   We could avoid that but changing the 'owner' of a deferred request from the
+>   service to the xprt, and call cache_clean_deferred in svc_delete_xprt
 
-Once Bruce is happy with the test results, you can pull it from
+That use does seem a bit of a hack to me, so I'd be happy to get rid of
+it.
 
-git+ssh://master.kernel.org/pub/scm/linux/kernel/git/arnd/bkl.git flock
+> 2/ in svc_send().  I wonder if we need this at all.  There doesn't seem to be
+> any locking to ensure that XPT_DEAD doesn't get set immediately after the
+> test, and the underlying sendto (whether tcp or udp or whatever) should fail
+> if the socket is closed, and if it doesn't it shouldn't really matter??
 
-I've rewritten all the changelogs to make more sense as a series,
-and split out the bits that turn lock_flocks into a spinlock to
-come last, so we get a bisectable series.
+Does it make a difference in the case of a half-close?  If the client
+follows a request immediately by a FIN, and if that results in our
+setting DEAD (I think it does, assuming svc_tcp_state_change() is called
+in that case), then the current code may have the effect of preventing
+us from sending the reply.
 
-The contents are left unchanged.
+I don't know if that's good or bad.
 
-	Arnd
----
+> So can we get rid of XPT_DEAL altogether?
 
-commit b3426739cc8f7c7dd127ca8dad5e25195930cac1
-Author: Arnd Bergmann <arnd@arndb.de>
-Date:   Wed Oct 27 21:39:58 2010 +0200
+OK, I also had another use in mind: for the purposes of 4.1 (which needs
+to know when a connection goes down, e.g. to know that it's no longer
+available for callbacks), I added a list of callbacks to the xprt,
+called on svc_delete_xprt().
 
-    locks: turn lock_flocks into a spinlock
-    
-    Nothing depends on lock_flocks using the BKL
-    any more, so we can do the switch over to
-    a private spinlock.
-    
-    Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+I just noticed that I think my current code allows the 4.1 code to
+register an xprt after svc_delete_xprt() is called.  I could fix that
+race by checking for DEAD after trying to register.
 
- fs/Kconfig |    1 -
- fs/locks.c |    5 +++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+(That callback code already seems messier than it should be, so maybe
+someone else could suggest a better scheme.  I'm stuck.
 
-commit 55d3ff97c5c0b3dce39f705e2b1fe85818891822
-Author: Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Wed Oct 27 12:38:12 2010 -0400
+In any case, it wouldn't be so bad if that were the one remaining use of
+DEAD.)
 
-    locks: avoid fasync allocation under lock_flocks
-    
-    This splits fasync_helper into four functions: fasync_alloc,
-    fasync_free, fasync_insert_entry and fasync_remove_entry,
-    in order to allow the lease handling to call them directly
-    instead of going through fasync_helper.
-    
-    The fasync_helper interface really doesn't make sense outside
-    of ->fasync file operations, which use the same calling
-    conventions of passing flags in and out as the helper.
-    
-    After the change, fcntl_setlease can simply allocate the
-    new fasync_struct outside of lock_flocks, which is required
-    to turn that into a spinlock.
-    
-    Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-    [bfields@redhat.com: rebase on top of my changes to Arnd's patch]
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-    [arnd: rewrite changelog text]
-    Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-
- fs/fcntl.c         |   66 +++++++++++++++++++++++++++++++++++++++------------
- fs/locks.c         |   18 +++++++++++++-
- include/linux/fs.h |    5 ++++
- 3 files changed, 72 insertions(+), 17 deletions(-)
-
-commit c5b1f0d92c36851aca09ac6c7c0c4f9690ac14f3
-Author: Arnd Bergmann <arnd@arndb.de>
-Date:   Wed Oct 27 15:46:08 2010 +0200
-
-    locks/nfsd: allocate file lock outside of spinlock
-    
-    As suggested by Christoph Hellwig, this moves allocation
-    of new file locks out of generic_setlease into the
-    callers, nfs4_open_delegation and fcntl_setlease in order
-    to allow GFP_KERNEL allocations when lock_flocks has
-    become a spinlock.
-    
-    Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-    Acked-by: J. Bruce Fields <bfields@redhat.com>
-
- fs/locks.c          |   36 ++++++++++++------------------------
- fs/nfsd/nfs4state.c |   26 +++++++++++++++-----------
- include/linux/fs.h  |    1 +
- 3 files changed, 28 insertions(+), 35 deletions(-)
-
-commit a282a1fa6b23bd21ba0b86e53ed2a316b001836f
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Oct 26 18:25:30 2010 -0400
-
-    lockd: fix nlmsvc_notify_blocked locking
-    
-    nlmsvc_notify_blocked walks the nlm_blocked list,
-    which requires nlm_blocked_lock.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-    Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-
- fs/lockd/svclock.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
-
-commit 763641d81202834e9d64de2019d1edec12868f4f
-Author: Arnd Bergmann <arnd@arndb.de>
-Date:   Tue Oct 26 22:55:40 2010 +0200
-
-    lockd: push lock_flocks down
-    
-    lockd should use lock_flocks() instead of lock_kernel()
-    to lock against posix locks accessing the i_flock list.
-    
-    This is a prerequisite to turning lock_flocks into a
-    spinlock.
-    
-    Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-    Acked-by: J. Bruce Fields <bfields@redhat.com>
-
- fs/lockd/svc.c     |   11 -----------
- fs/lockd/svcsubs.c |    9 ++++++++-
- fs/nfs/Kconfig     |    1 -
- fs/nfsd/Kconfig    |    1 -
- 4 files changed, 8 insertions(+), 14 deletions(-)
+--b.
