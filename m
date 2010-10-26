@@ -1,58 +1,285 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:17680 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:23168 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755782Ab0JDMv2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Oct 2010 08:51:28 -0400
-Message-ID: <4CA9CDCB.7070903@parallels.com>
-Date: Mon, 04 Oct 2010 16:51:23 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/13] sunrpc: Remove unused sock arg from xs_get_srcport
-References: <4CA9CDA8.4010407@parallels.com>
-In-Reply-To: <4CA9CDA8.4010407@parallels.com>
+	id S1753150Ab0JZRRx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Oct 2010 13:17:53 -0400
+Message-ID: <4CC70D34.1060600@netapp.com>
+Date: Tue, 26 Oct 2010 13:17:40 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: SteveD@redhat.com, "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs-utils: add nfs.idmap
+References: <4CC6CE30.90105@netapp.com>
+In-Reply-To: <4CC6CE30.90105@netapp.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Here is an updated patch.
+-Bryan
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
+
+
+This patch adds the nfs.idmap program to nfs-utils.  This program is called by
+the nfs idmapper through request-keys to map between uid / user name and
+gid / group name.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- net/sunrpc/xprtsock.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index f9964ef..304e2de 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1515,7 +1515,7 @@ static void xs_set_port(struct rpc_xprt *xprt, unsigned short port)
- 	xs_update_peer_port(xprt);
- }
+diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
+new file mode 100644
+index 0000000..84bc112
+--- /dev/null
++++ b/aclocal/keyutils.m4
+@@ -0,0 +1,11 @@
++dnl Checks for keyutils library and headers
++dnl
++AC_DEFUN([AC_KEYUTILS], [
++
++  dnl Check for libkeyutils; do not add to LIBS if found
++  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
++  AC_SUBST(LIBKEYUTILS)
++
++  AC_CHECK_HEADERS([keyutils.h], ,
++  		   [AC_MSG_ERROR([keyutils.h header not found.])])
++])dnl
+diff --git a/configure.ac b/configure.ac
+index 3058be6..0907f72 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
+   dnl check for nfsidmap libraries and headers
+   AC_LIBNFSIDMAP
  
--static unsigned short xs_get_srcport(struct sock_xprt *transport, struct socket *sock)
-+static unsigned short xs_get_srcport(struct sock_xprt *transport)
- {
- 	unsigned short port = transport->srcport;
++  dnl check for the keyutils libraries and headers
++  AC_KEYUTILS
++
+   dnl librpcsecgss already has a dependency on libgssapi,
+   dnl but we need to make sure we get the right version
+   if test "$enable_gss" = yes; then
+@@ -435,6 +438,7 @@ AC_CONFIG_FILES([
+ 	utils/mountd/Makefile
+ 	utils/nfsd/Makefile
+ 	utils/nfsstat/Makefile
++	utils/nfs.idmap/Makefile
+ 	utils/showmount/Makefile
+ 	utils/statd/Makefile
+ 	tests/Makefile
+diff --git a/utils/Makefile.am b/utils/Makefile.am
+index 8665183..332ecff 100644
+--- a/utils/Makefile.am
++++ b/utils/Makefile.am
+@@ -4,6 +4,7 @@ OPTDIRS =
  
-@@ -1542,7 +1542,7 @@ static int xs_bind4(struct sock_xprt *transport, struct socket *sock)
- 	};
- 	struct sockaddr_in *sa;
- 	int err, nloop = 0;
--	unsigned short port = xs_get_srcport(transport, sock);
-+	unsigned short port = xs_get_srcport(transport);
- 	unsigned short last;
+ if CONFIG_NFSV4
+ OPTDIRS += idmapd
++OPTDIRS += nfs.idmap
+ endif
  
- 	sa = (struct sockaddr_in *)&transport->srcaddr;
-@@ -1575,7 +1575,7 @@ static int xs_bind6(struct sock_xprt *transport, struct socket *sock)
- 	};
- 	struct sockaddr_in6 *sa;
- 	int err, nloop = 0;
--	unsigned short port = xs_get_srcport(transport, sock);
-+	unsigned short port = xs_get_srcport(transport);
- 	unsigned short last;
- 
- 	sa = (struct sockaddr_in6 *)&transport->srcaddr;
--- 
-1.5.5.6
-
+ if CONFIG_GSS
+diff --git a/utils/nfs.idmap/Makefile.am b/utils/nfs.idmap/Makefile.am
+new file mode 100644
+index 0000000..29e17af
+--- /dev/null
++++ b/utils/nfs.idmap/Makefile.am
+@@ -0,0 +1,9 @@
++## Process this file with automake to produce Makefile.in
++
++man8_MANS = nfs.idmap.man
++
++sbin_PROGRAMS	= nfs.idmap
++nfs_idmap_SOURCES = nfs.idmap.c
++nfs_idmap_LDADD = -lnfsidmap -lkeyutils
++
++MAINTAINERCLEANFILES = Makefile.in
+diff --git a/utils/nfs.idmap/nfs.idmap.c b/utils/nfs.idmap/nfs.idmap.c
+new file mode 100644
+index 0000000..abbcb65
+--- /dev/null
++++ b/utils/nfs.idmap/nfs.idmap.c
+@@ -0,0 +1,118 @@
++
++#include <stdarg.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include <pwd.h>
++#include <grp.h>
++#include <keyutils.h>
++#include <nfsidmap.h>
++
++#include <syslog.h>
++
++/* gcc nfs.idmap.c -o nfs.idmap -l nfsidmap -l keyutils */
++
++#define MAX_ID_LEN   11
++#define IDMAP_NAMESZ 128
++#define USER  1
++#define GROUP 0
++
++
++/*
++ * Find either a user or group id based on the name@domain string
++ */
++int id_lookup(char *name_at_domain, key_serial_t key, int type)
++{
++	char id[MAX_ID_LEN];
++	uid_t uid = 0;
++	gid_t gid = 0;
++	int rc;
++
++	if (type == USER) {
++		rc = nfs4_owner_to_uid(name_at_domain, &uid);
++		sprintf(id, "%u", uid);
++	} else {
++		rc = nfs4_group_owner_to_gid(name_at_domain, &gid);
++		sprintf(id, "%u", gid);
++	}
++
++	if (rc == 0)
++		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
++
++	return rc;
++}
++
++/*
++ * Find the name@domain string from either a user or group id
++ */
++int name_lookup(char *id, key_serial_t key, int type)
++{
++	char name[IDMAP_NAMESZ];
++	char domain[NFS4_MAX_DOMAIN_LEN];
++	uid_t uid;
++	gid_t gid;
++	int rc;
++
++	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
++	if (rc != 0) {
++		rc = -1;
++		goto out;
++	}
++
++	if (type == USER) {
++		uid = atoi(id);
++		rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
++	} else {
++		gid = atoi(id);
++		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
++	}
++
++	if (rc == 0)
++		rc = keyctl_instantiate(key, &name, strlen(name), 0);
++
++out:
++	return rc;
++}
++
++int main(int argc, char **argv)
++{
++	char *arg;
++	char *value;
++	char *type;
++	int rc = 1;
++	int timeout = 600;
++	key_serial_t key;
++
++	if (argc < 3)
++		return 1;
++
++	arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
++	strcpy(arg, argv[2]);
++	type = strtok(arg, ":");
++	value = strtok(NULL, ":");
++
++	if (argc == 4) {
++		timeout = atoi(argv[3]);
++		if (timeout < 0)
++			timeout = 0;
++	}
++
++	key = strtol(argv[1], NULL, 10);
++
++	if (strcmp(type, "uid") == 0)
++		rc = id_lookup(value, key, USER);
++	else if (strcmp(type, "gid") == 0)
++		rc = id_lookup(value, key, GROUP);
++	else if (strcmp(type, "user") == 0)
++		rc = name_lookup(value, key, USER);
++	else if (strcmp(type, "group") == 0)
++		rc = name_lookup(value, key, GROUP);
++
++	/* Set timeout to 5 (600 seconds) minutes */
++	if (rc == 0)
++		keyctl_set_timeout(key, timeout);
++
++	free(arg);
++	return rc;
++}
+diff --git a/utils/nfs.idmap/nfs.idmap.man b/utils/nfs.idmap/nfs.idmap.man
+new file mode 100644
+index 0000000..9008dd9
+--- /dev/null
++++ b/utils/nfs.idmap/nfs.idmap.man
+@@ -0,0 +1,60 @@
++.\"
++.\"@(#)nfs.idmap(8) - The NFS idmapper upcall program
++.\"
++.\" Copyright (C) 2010 Bryan Schumaker <bjschuma@netapp.com>
++.TH nfs.idmap 5 "1 October 2010"
++.SH NAME
++nfs.idmap \- The NFS idmapper upcall program
++.SH DESCRIPTION
++The file
++.I /usr/sbin/idmap
++is used by the NFS idmapper to translate user and group ids into names, and to
++translate user and group names into ids. Idmapper uses request-key to perform
++the upcall and cache the result.
++.I /usr/sbin/idmap
++should only be called by request-key, and will perform the translation and
++initialize a key with the resulting information.
++.PP
++NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
++feature.
++.SH CONFIGURING
++The file
++.I /etc/request-key.conf
++will need to be modified so
++.I /sbin/request-key
++can properly direct the upcall. The following line should be added before a call
++to keyctl negate:
++.PP
++create	id_resolver	*	*	/usr/sbin/nfs.idmap %k %d 600
++.PP
++This will direct all nfs_idmap requests to the program
++.I /usr/sbin/nfs.idmap
++The last parameter, 600, defines how many seconds into the future the key will
++expire.  This is an optional parameter for
++.I /usr/sbin/nfs.idmap
++and will default to 600 seconds when not specified.
++.PP
++The idmapper system uses four key descriptions:
++.PP
++	  uid: Find the UID for the given user
++.br
++	  gid: Find the GID for the given group
++.br
++	 user: Find the user name for the given UID
++.br
++	group: Find the group name for the given GID
++.PP
++You can choose to handle any of these individually, rather than using the
++generic upcall program.  If you would like to use your own program for a uid
++lookup then you would edit your request-key.conf so it looks similar to this:
++.PP
++create	id_resolver	uid:*	*	/some/other/program %k %d 600
++.br
++create	id_resolver	*		*	/usr/sbin/nfs.idmap %k %d 600
++.PP
++Notice that the new line was added above the line for the generic program.
++request-key will find the first matching line and run the corresponding program.
++In this case, /some/other/program will handle all uid lookups, and
++/usr/sbin/nfs.idmap will handle gid, user, and group lookups.
++.SH AUTHOR
++Bryan Schumaker, <bjschuma@netapp.com>
