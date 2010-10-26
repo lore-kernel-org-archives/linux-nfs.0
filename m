@@ -1,229 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29210 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758406Ab0J1TKI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Oct 2010 15:10:08 -0400
-Received: from localhost.localdomain (elee16240.hq.netapp.com [10.58.53.47] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o9SJA27g000482
-	for <linux-nfs@vger.kernel.org>; Thu, 28 Oct 2010 12:10:06 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/6] pnfs-submit: change layout state seqlock to a spinlock
-Date: Thu, 28 Oct 2010 15:09:59 -0400
-Message-Id: <1288293001-26289-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1288293001-26289-1-git-send-email-iisaman@netapp.com>
-References: <1288293001-26289-1-git-send-email-iisaman@netapp.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:53668 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754528Ab0JZP6k (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Oct 2010 11:58:40 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 10so2336058iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Oct 2010 08:58:40 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 5/6] nfs(5): Grammar and style fixes
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 26 Oct 2010 11:58:37 -0400
+Message-ID: <20101026155837.19184.77590.stgit@matisse.1015granger.net>
+In-Reply-To: <20101026155216.19184.36979.stgit@matisse.1015granger.net>
+References: <20101026155216.19184.36979.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This prepares for future changes, where the layout state needs
-to change atomically with several other variables.  In particular,
-it will need to know if lo->segs is empty.  One possible future
-alternative is to have a statelock that also covers lo->segs, but
-this method is less intrusive.  Moreover, the layoutstateid is not really
-a read-mostly structure, as it is written on each LAYOUTGET.
+Clean up grammar and style issues introduced by recent updates.  Also,
+I'm not certain inappropriate options are always ignored.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/callback_proc.c |    8 +++---
- fs/nfs/nfs4proc.c      |    2 +
- fs/nfs/nfs4xdr.c       |    2 +
- fs/nfs/pnfs.c          |   57 +++++++++++++++--------------------------------
- fs/nfs/pnfs.h          |    6 ++--
- 5 files changed, 29 insertions(+), 46 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 84c5a1b..3e022a8 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -135,12 +135,11 @@ static bool
- pnfs_is_next_layout_stateid(const struct pnfs_layout_hdr *lo,
- 			    const nfs4_stateid stateid)
- {
--	int seqlock;
- 	bool res;
- 	u32 oldseqid, newseqid;
- 
--	do {
--		seqlock = read_seqbegin(&lo->seqlock);
-+	spin_lock(&lo->inode->i_lock);
-+	{
- 		oldseqid = be32_to_cpu(lo->stateid.stateid.seqid);
- 		newseqid = be32_to_cpu(stateid.stateid.seqid);
- 		res = !memcmp(lo->stateid.stateid.other,
-@@ -158,7 +157,8 @@ pnfs_is_next_layout_stateid(const struct pnfs_layout_hdr *lo,
- 			if (res)
- 				res = (newseqid == 1);
- 		}
--	} while (read_seqretry(&lo->seqlock, seqlock));
-+	}
-+	spin_unlock(&lo->inode->i_lock);
- 
- 	return res;
- }
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index c854814..4705ea6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5675,8 +5675,10 @@ static void nfs4_layoutreturn_release(void *calldata)
- 		lrp->args.return_type, lo);
- 
- 	if (lrp->args.return_type == RETURN_FILE) {
-+		spin_lock(&lo->inode->i_lock);
- 		if (!lrp->res.lrs_present)
- 			pnfs_invalidate_layout_stateid(lo);
-+		spin_unlock(&lo->inode->i_lock);
- 		pnfs_layoutreturn_release(lo, &lrp->args.range);
- 	}
- 	kfree(calldata);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c178946..b146b48 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1904,7 +1904,9 @@ encode_layoutreturn(struct xdr_stream *xdr,
- 		p = reserve_space(xdr, 16 + NFS4_STATEID_SIZE);
- 		p = xdr_encode_hyper(p, args->range.offset);
- 		p = xdr_encode_hyper(p, args->range.length);
-+		spin_lock(&args->inode->i_lock);
- 		pnfs_copy_layout_stateid(&stateid, NFS_I(args->inode)->layout);
-+		spin_unlock(&args->inode->i_lock);
- 		p = xdr_encode_opaque_fixed(p, &stateid.data,
- 					    NFS4_STATEID_SIZE);
- 		p = reserve_space(xdr, 4);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index c088cd4..7a6b24c 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -480,14 +480,14 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
-  *
-  * lo->stateid could be the open stateid, in which case we just use what given.
-  */
--static void
-+void
- pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 			const nfs4_stateid *new)
- {
- 	nfs4_stateid *old = &lo->stateid;
- 	bool overwrite = false;
- 
--	write_seqlock(&lo->seqlock);
-+	assert_spin_locked(&lo->inode->i_lock);
- 	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
- 	    memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
- 		overwrite = true;
-@@ -501,54 +501,34 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 	}
- 	if (overwrite)
- 		memcpy(&old->stateid, &new->stateid, sizeof(new->stateid));
--	write_sequnlock(&lo->seqlock);
--}
--
--static void
--pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
--			      struct nfs4_state *state)
--{
--	int seq;
--
--	dprintk("--> %s\n", __func__);
--	write_seqlock(&lo->seqlock);
--	do {
--		seq = read_seqbegin(&state->seqlock);
--		memcpy(lo->stateid.data, state->stateid.data,
--		       sizeof(state->stateid.data));
--	} while (read_seqretry(&state->seqlock, seq));
--	set_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
--	write_sequnlock(&lo->seqlock);
--	dprintk("<-- %s\n", __func__);
- }
- 
- /* Layoutreturn may use an invalid stateid, just copy what is there */
- void pnfs_copy_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo)
- {
--	int seq;
--
--	do {
--		seq = read_seqbegin(&lo->seqlock);
--		memcpy(dst->data, lo->stateid.data, sizeof(lo->stateid.data));
--	} while (read_seqretry(&lo->seqlock, seq));
-+	assert_spin_locked(&lo->inode->i_lock);
-+	memcpy(dst->data, lo->stateid.data, sizeof(lo->stateid.data));
- }
- 
- void
- pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 			struct nfs4_state *open_state)
- {
--	int seq;
--
- 	dprintk("--> %s\n", __func__);
--	do {
--		seq = read_seqbegin(&lo->seqlock);
--		if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state)) {
--			/* This will trigger retry of the read */
--			pnfs_layout_from_open_stateid(lo, open_state);
--		} else
--			memcpy(dst->data, lo->stateid.data,
--			       sizeof(lo->stateid.data));
--	} while (read_seqretry(&lo->seqlock, seq));
-+	spin_lock(&lo->inode->i_lock);
-+	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state)) {
-+		int seq;
-+
-+		do {
-+			seq = read_seqbegin(&open_state->seqlock);
-+			memcpy(dst->data, open_state->stateid.data,
-+			       sizeof(open_state->stateid.data));
-+		} while (read_seqretry(&open_state->seqlock, seq));
-+		set_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
-+	} else
-+		memcpy(dst->data, lo->stateid.data,
-+		       sizeof(lo->stateid.data));
-+	spin_unlock(&lo->inode->i_lock);
- 	dprintk("<-- %s\n", __func__);
- }
- 
-@@ -807,7 +787,6 @@ alloc_init_layout_hdr(struct inode *ino)
- 	lo->refcount = 1;
- 	INIT_LIST_HEAD(&lo->layouts);
- 	INIT_LIST_HEAD(&lo->segs);
--	seqlock_init(&lo->seqlock);
- 	lo->inode = ino;
- 	return lo;
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index c06b510..6e73fbe 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -96,7 +96,6 @@ struct pnfs_layout_hdr {
- 	struct list_head	layouts;   /* other client layouts */
- 	struct list_head	segs;      /* layout segments list */
- 	int			roc_iomode;/* return on close iomode, 0=none */
--	seqlock_t		seqlock;   /* Protects the stateid */
- 	nfs4_stateid		stateid;
- 	unsigned long		state;
- 	struct rpc_cred		*cred;     /* layoutcommit credential */
-@@ -208,6 +207,8 @@ void pnfs_layoutreturn_release(struct pnfs_layout_hdr *,
- void pnfs_destroy_layout(struct nfs_inode *);
- void pnfs_destroy_all_layouts(struct nfs_client *);
- void put_layout_hdr(struct inode *inode);
-+void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
-+			     const nfs4_stateid *new);
- void pnfs_copy_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo);
- void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 			     struct nfs4_state *open_state);
-@@ -227,9 +228,8 @@ static inline int lo_fail_bit(u32 iomode)
- 
- static inline void pnfs_invalidate_layout_stateid(struct pnfs_layout_hdr *lo)
- {
--	write_seqlock(&lo->seqlock);
-+	assert_spin_locked(&lo->inode->i_lock);
- 	clear_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
--	write_sequnlock(&lo->seqlock);
- }
- 
- static inline void get_lseg(struct pnfs_layout_segment *lseg)
--- 
-1.7.2.1
+ utils/mount/nfs.man |   15 +++++++--------
+ 1 files changed, 7 insertions(+), 8 deletions(-)
+
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 01bc712..1b86768 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -69,10 +69,9 @@ for details on specifying raw IPv6 addresses.
+ .P
+ The
+ .I fstype
+-field contains "nfs", for whatever version of the protocol.
+-The
+-.B nfs
+-allow several mount options, which are described below.
++field contains "nfs".  Use of the "nfs4" fstype in
++.I /etc/fstab
++is deprecated.
+ .SH "MOUNT OPTIONS"
+ Refer to
+ .BR mount (8)
+@@ -464,9 +463,9 @@ by other clients, but can impact application and server performance.
+ .IP
+ The DATA AND METADATA COHERENCE section contains a
+ detailed discussion of these trade-offs.
+-.SS "Options for versions 2 and 3 only"
++.SS "Options for NFS versions 2 and 3 only"
+ Use these options, along with the options in the above subsection,
+-for NFSv2/v3 only. They will be ignored for newer versions.
++for NFS versions 2 and 3 only.
+ .TP 1.5i
+ .BI proto= netid
+ The transport protocol name and protocol family the NFS client uses
+@@ -761,9 +760,9 @@ conflicting locks.
+ .IP
+ NOTE: When used together, the 'local_lock' mount option will be overridden
+ by 'nolock'/'lock' mount option.
+-.SS "Options for version 4 only"
++.SS "Options for NFS version 4 only"
+ Use these options, along with the options in the first subsection above,
+-for NFSv4 only. They will be ignored with older versions.
++for NFS version 4 and newer.
+ .TP 1.5i
+ .BI proto= netid
+ The transport protocol name and protocol family the NFS client uses
 
