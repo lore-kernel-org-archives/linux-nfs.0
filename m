@@ -1,58 +1,264 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:17104 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753091Ab0JMUrd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 16:47:33 -0400
-Subject: Re: whither NFS umount?
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4CB6090F.60301@RedHat.com>
-Date: Wed, 13 Oct 2010 16:47:07 -0400
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <E22DAFE2-A677-4D91-8976-5F641141DD36@oracle.com>
-References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>	<1286903046.24878.13.camel@heimdal.trondhjem.org>	<C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>	<20101012151826.76b75f52@corrin.poochiereds.net>	<1286912649.1956.19.camel@heimdal.trondhjem.org>	<4CB5EF15.5030003@RedHat.com>	<20101013141317.66f23906@corrin.poochiereds.net>	<4CB5FE65.3090409@RedHat.com> <20101013145601.468acc2a@corrin.poochiereds.net> <4CB6090F.60301@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:38461 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759860Ab0JZMlY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Oct 2010 08:41:24 -0400
+Message-ID: <4CC6CC73.6030008@netapp.com>
+Date: Tue, 26 Oct 2010 08:41:23 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Schumaker Bryan <Bryan.Schumaker@netapp.com>, steved@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils: add nfs.upcall
+References: <1288046434-18503-1-git-send-email-Trond.Myklebust@netapp.com> <B7AE3537-6F68-4716-B486-7EC8A44ED882@oracle.com> <61E98BF7-2E64-47D5-A5C0-5701E36B8C99@netapp.com>
+In-Reply-To: <61E98BF7-2E64-47D5-A5C0-5701E36B8C99@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Sure.  Do you want a patch that renames it in the kernel documentation file too?
 
-On Oct 13, 2010, at 3:31 PM, Steve Dickson wrote:
+Bryan
 
-> On 10/13/2010 02:56 PM, Jeff Layton wrote:
->> On Wed, 13 Oct 2010 14:45:57 -0400
->> Steve Dickson <SteveD@redhat.com> wrote:
->> 
->>> I would say send the UMNT, since it does not cause any pain to send it
->>> verses the pain that could be cause by not sending it...
->>> 
->>> This is a perfect example of fixing something that is not
->>> broken... We can put our energy in better place that worrying
->>> about things like this... IMHO...
->> 
->> But it *is* broken. As Chuck pointed out, the main problem is that mtab
->> handling is broken on remounts. That's a real problem that needs to be
->> fixed.
-> Fine... Lets just focus on that issue...  
-
-Actually...
-
-Removing UMNT support _is_ the proposed fix for the "-o remount" issue.  The reason we depend on /etc/mtab is because umount needs to know how to do the unmount.  A "-o remount" wipes that information.  It turns out that there is no correct implementation of remount rewriting the options in /etc/mtab.  utils-linux-ng does not even get this right, and mount(8) claims that /etc/mtab will not be reliable after a remount.
-
-If we no longer have to perform a UMNT, then there is no need to worry about the contents of /etc/mtab, for any reason, and it can go away.  I believe we are the only file system that is holding up the complete removal of /etc/mtab.
-
-I think there's no reason to keep UMNT in user space; it simply can never work correctly there.  I believe a kernel space implementation would be simple, and would work correctly much more often than user space UMNT does now.  I don't agree with Trond that we should not do it there, but that's an argument I can't win.
-
->> I agree that our time is better spent elsewhere. I just think that we
->> ought to make that happen by eliminating the unnecessary umount helper.
->> The less code that we need to maintain, the better...
-> In general I agree... but removing functionality (i.e. umount.nfs)
-> can cause more pain than just leaving things as is...
-
-Is there any specific evidence that there will be pain if umount.nfs is removed?  I can't think of any use case it would harm.  It's already broken in many cases, and we have never heard of a specific application complaint about it.  If there had been a complaint we would have fixed it already.  UMNT is clearly vestigial.
-
--- 
-chuck[dot]lever[at]oracle[dot]com
+On 10/25/2010 07:46 PM, Myklebust, Trond wrote:
+> Ah, fsck... You're right.
+> 
+> Bryan, can you instead resend your latest patch for nfs-utils? I've asked Linus to merge the kernel part, so it is time to get the userspace stuff in order too!
+> 
+> Sent from my iPhone
+> 
+> On Oct 25, 2010, at 19:21, "Chuck Lever" <chuck.lever@oracle.com> wrote:
+> 
+>> I thought we were going to call this nfs.idmap ... ?
+>>
+>> On Oct 25, 2010, at 6:40 PM, Trond Myklebust wrote:
+>>
+>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>
+>>> Add nfs.upcall
+>>>
+>>> This patch adds the nfs.upcall program to nfs-utils.  This program is called by
+>>> the nfs idmapper through request-keys to map between uid / user name and
+>>> gid / group name.
+>>>
+>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>>> ---
+>>> aclocal/keyutils.m4           |   11 ++++
+>>> configure.ac                  |    4 ++
+>>> utils/Makefile.am             |    1 +
+>>> utils/nfs.upcall/Makefile.am  |    7 +++
+>>> utils/nfs.upcall/nfs.upcall.c |  120 +++++++++++++++++++++++++++++++++++++++++
+>>> 5 files changed, 143 insertions(+), 0 deletions(-)
+>>> create mode 100644 aclocal/keyutils.m4
+>>> create mode 100644 utils/nfs.upcall/Makefile.am
+>>> create mode 100644 utils/nfs.upcall/nfs.upcall.c
+>>>
+>>> diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
+>>> new file mode 100644
+>>> index 0000000..8aea646
+>>> --- /dev/null
+>>> +++ b/aclocal/keyutils.m4
+>>> @@ -0,0 +1,11 @@
+>>> +dnl Checks for keyutils library and headers
+>>> +dnl
+>>> +AC_DEFUN([AC_KEYUTILS], [
+>>> +
+>>> +  dnl Check for libkeyutils; do not add to LIBS if found
+>>> +  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
+>>> +  AC_SUBST(LIBKEYUTILS)
+>>> +
+>>> +  AC_CHECK_HEADERS([keyutils.h], ,
+>>> +           [AC_MSG_ERROR([keyutils.h header not found.])])
+>>> +])dnl
+>>> diff --git a/configure.ac b/configure.ac
+>>> index 3058be6..a5e8620 100644
+>>> --- a/configure.ac
+>>> +++ b/configure.ac
+>>> @@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
+>>>  dnl check for nfsidmap libraries and headers
+>>>  AC_LIBNFSIDMAP
+>>>
+>>> +  dnl check for the keyutils libraries and headers
+>>> +  AC_KEYUTILS
+>>> +
+>>>  dnl librpcsecgss already has a dependency on libgssapi,
+>>>  dnl but we need to make sure we get the right version
+>>>  if test "$enable_gss" = yes; then
+>>> @@ -435,6 +438,7 @@ AC_CONFIG_FILES([
+>>>    utils/mountd/Makefile
+>>>    utils/nfsd/Makefile
+>>>    utils/nfsstat/Makefile
+>>> +    utils/nfs.upcall/Makefile
+>>>    utils/showmount/Makefile
+>>>    utils/statd/Makefile
+>>>    tests/Makefile
+>>> diff --git a/utils/Makefile.am b/utils/Makefile.am
+>>> index 8665183..0104a6c 100644
+>>> --- a/utils/Makefile.am
+>>> +++ b/utils/Makefile.am
+>>> @@ -4,6 +4,7 @@ OPTDIRS =
+>>>
+>>> if CONFIG_NFSV4
+>>> OPTDIRS += idmapd
+>>> +OPTDIRS += nfs.upcall
+>>> endif
+>>>
+>>> if CONFIG_GSS
+>>> diff --git a/utils/nfs.upcall/Makefile.am b/utils/nfs.upcall/Makefile.am
+>>> new file mode 100644
+>>> index 0000000..52afd3d
+>>> --- /dev/null
+>>> +++ b/utils/nfs.upcall/Makefile.am
+>>> @@ -0,0 +1,7 @@
+>>> +## Process this file with automake to produce Makefile.in
+>>> +
+>>> +sbin_PROGRAMS    = nfs.upcall
+>>> +nfs_upcall_SOURCES = nfs.upcall.c
+>>> +nfs_upcall_LDADD = -lnfsidmap -lkeyutils
+>>> +
+>>> +MAINTAINERCLEANFILES = Makefile.in
+>>> diff --git a/utils/nfs.upcall/nfs.upcall.c b/utils/nfs.upcall/nfs.upcall.c
+>>> new file mode 100644
+>>> index 0000000..11b9a01
+>>> --- /dev/null
+>>> +++ b/utils/nfs.upcall/nfs.upcall.c
+>>> @@ -0,0 +1,120 @@
+>>> +
+>>> +#include <stdarg.h>
+>>> +#include <stdio.h>
+>>> +#include <stdlib.h>
+>>> +#include <string.h>
+>>> +
+>>> +#include <pwd.h>
+>>> +#include <grp.h>
+>>> +#include <keyutils.h>
+>>> +#include <nfsidmap.h>
+>>> +
+>>> +#include <syslog.h>
+>>> +
+>>> +/* gcc nfs.upcall.c -o nfs.upcall -l nfsidmap -l keyutils */
+>>> +
+>>> +#define MAX_ID_LEN   11
+>>> +#define IDMAP_NAMESZ 128
+>>> +#define USER  1
+>>> +#define GROUP 0
+>>> +
+>>> +
+>>> +/*
+>>> + * Find either a user or group id based on the name@domain string
+>>> + */
+>>> +int id_lookup(char *name_at_domain, key_serial_t key, int type)
+>>> +{
+>>> +    char id[MAX_ID_LEN];
+>>> +    uid_t uid = 0;
+>>> +    gid_t gid = 0;
+>>> +
+>>> +    if (type == USER) {
+>>> +        nfs4_owner_to_uid(name_at_domain, &uid);
+>>> +        sprintf(id, "%u", uid);
+>>> +    } else {
+>>> +        nfs4_group_owner_to_gid(name_at_domain, &gid);
+>>> +        sprintf(id, "%u", gid);
+>>> +    }
+>>> +
+>>> +    return keyctl_instantiate(key, id, strlen(id) + 1, 0);
+>>> +}
+>>> +
+>>> +/*
+>>> + * Find the name@domain string from either a user or group id
+>>> + */
+>>> +int name_lookup(char *id, key_serial_t key, int type)
+>>> +{
+>>> +    char name[IDMAP_NAMESZ];
+>>> +    char domain[NFS4_MAX_DOMAIN_LEN];
+>>> +    uid_t uid;
+>>> +    gid_t gid;
+>>> +    int rc = 0;
+>>> +
+>>> +    rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
+>>> +    if (rc != 0) {
+>>> +        rc = -1;
+>>> +        goto out;
+>>> +    }
+>>> +
+>>> +    if (type == USER) {
+>>> +        uid = atoi(id);
+>>> +        rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
+>>> +    } else {
+>>> +        gid = atoi(id);
+>>> +        rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
+>>> +    }
+>>> +
+>>> +    if (rc == 0)
+>>> +        rc = keyctl_instantiate(key, &name, strlen(name), 0);
+>>> +
+>>> +out:
+>>> +    return rc;
+>>> +}
+>>> +
+>>> +int main(int argc, char **argv)
+>>> +{
+>>> +    char *arg;
+>>> +    char *value;
+>>> +    char *type;
+>>> +    int rc = 1;
+>>> +    int timeout = 600;
+>>> +    key_serial_t key;
+>>> +
+>>> +    /*openlog("nfs.upcall", 0, LOG_DAEMON);*/
+>>> +
+>>> +    if (argc < 3)
+>>> +        return 1;
+>>> +
+>>> +    arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
+>>> +    strcpy(arg, argv[2]);
+>>> +    type = strtok(arg, ":");
+>>> +    value = strtok(NULL, ":");
+>>> +
+>>> +    if (argc == 4) {
+>>> +        timeout = atoi(argv[3]);
+>>> +        if (timeout < 0)
+>>> +            timeout = 0;
+>>> +    }
+>>> +
+>>> +    /*syslog(LOG_ERR, "type: %s", type);
+>>> +    syslog(LOG_ERR, "value: %s", value);
+>>> +    syslog(LOG_ERR, "timeout: %d", timeout);*/
+>>> +
+>>> +    key = strtol(argv[1], NULL, 10);
+>>> +
+>>> +    if (strcmp(type, "uid") == 0)
+>>> +        rc = id_lookup(value, key, USER);
+>>> +    else if (strcmp(type, "gid") == 0)
+>>> +        rc = id_lookup(value, key, GROUP);
+>>> +    else if (strcmp(type, "user") == 0)
+>>> +        rc = name_lookup(value, key, USER);
+>>> +    else if (strcmp(type, "group") == 0)
+>>> +        rc = name_lookup(value, key, GROUP);
+>>> +
+>>> +    /* Set timeout to 5 (600 seconds) minutes */
+>>> +    keyctl_set_timeout(key, timeout);
+>>> +
+>>> +    free(arg);
+>>> +    /*closelog();*/
+>>> +    return rc;
+>>> +}
+>>> -- 
+>>> 1.7.2.3
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>> -- 
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>>
+>>
+>>
+>>
 
