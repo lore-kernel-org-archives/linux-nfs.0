@@ -1,63 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod6og103.obsmtp.com ([64.18.1.185]:39965 "HELO
-	exprod6og103.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753046Ab0JNL2t convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Oct 2010 07:28:49 -0400
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: 'Continuation' packets in case of NFS READ.
-Date: Thu, 14 Oct 2010 07:26:46 -0400
-Message-ID: <D3F292ADF945FB49B35E96C94C2061B90DAD0231@nsmail.netscout.com>
-In-Reply-To: <AANLkTimMm0-Ux+frJq4k0PD5JyR2rMi8Bq9xXYSfjKbB@mail.gmail.com>
-References: <D3F292ADF945FB49B35E96C94C2061B90DAD01D8@nsmail.netscout.com> <AANLkTimMm0-Ux+frJq4k0PD5JyR2rMi8Bq9xXYSfjKbB@mail.gmail.com>
-From: "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
-To: "Lyle Seaman" <lyleseaman@gmail.com>
-Cc: <linux-nfs@vger.kernel.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:53668 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754528Ab0JZP6a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Oct 2010 11:58:30 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 10so2336058iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Oct 2010 08:58:29 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 4/6] mount.nfs: mnt_freq and mnt_pass are always zero
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 26 Oct 2010 11:58:26 -0400
+Message-ID: <20101026155826.19184.84163.stgit@matisse.1015granger.net>
+In-Reply-To: <20101026155216.19184.36979.stgit@matisse.1015granger.net>
+References: <20101026155216.19184.36979.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
->From: Lyle Seaman [mailto:lyleseaman@gmail.com]
->Sent: Thursday, October 14, 2010 4:23 PM
->To: Tayade, Nilesh
->Cc: linux-nfs@vger.kernel.org
->Subject: Re: 'Continuation' packets in case of NFS READ.
->
->TCP (or UDP) handles that. It's transparent to NFS.
+Clean up.
 
-Thanks for the information. But I also observed that if you mount
-multiple mount points 
-from same server, the packets for different mount points flow through
-the same socket. 
+No need to pass constant zeros to add_mtab() from its only call site.
+Ensure that initialization of a struct mntent is consistent in both
+places that it is done.
 
-Could you please elaborate how TCP/UDP can differentiate? Is this based
-on the sequence number etc.? 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
->On Oct 14, 2010 3:50 AM, "Tayade, Nilesh" <Nilesh.Tayade@netscout.com>
-wrote:
->
->>Hi,
->>
->>I am working on NFS packet capturing for NFS version3 protocol. In one
->>of the scenarios, I tried opening a very big file and in this case the
->>file data was transferred from server to client in several chunks.
->>
->>I observed there were some 'Continuation' RPC payload sent from server
->>to client which carry file data. But even in Wireshark this doesn't
->>decode any other fields apart from the file contents.
->>
->>Could someone please advice how client knows which particular file a
->>specific 'continuation' packet belongs to? The packet doesn't even
-have
->>the filehandle/program version data.
->>
->>I have attached the trace file.
->>
->
+ utils/mount/mount.c |   34 +++++++++++++++++++---------------
+ 1 files changed, 19 insertions(+), 15 deletions(-)
 
---
-Thanks,
-Nilesh
-
-
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index b4da21f..a19af53 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -224,6 +224,20 @@ static char *fix_opts_string(int flags, const char *extra_opts)
+ 	return new_opts;
+ }
+ 
++static void
++init_mntent(struct mntent *mnt, char *fsname, char *dir, char *type,
++		int flags, char *opts)
++{
++	mnt->mnt_fsname	= fsname;
++	mnt->mnt_dir	= dir;
++	mnt->mnt_type	= type;
++	mnt->mnt_opts	= fix_opts_string(flags & ~MS_NOMTAB, opts);
++
++	/* these are always zero for NFS */
++	mnt->mnt_freq	= 0;
++	mnt->mnt_passno	= 0;
++}
++
+ /* Create mtab with a root entry.  */
+ static void
+ create_mtab (void) {
+@@ -245,11 +259,8 @@ create_mtab (void) {
+ 	if ((fstab = getfsfile ("/")) || (fstab = getfsfile ("root"))) {
+ 		char *extra_opts;
+ 		parse_opts (fstab->m.mnt_opts, &flags, &extra_opts);
+-		mnt.mnt_dir = "/";
+-		mnt.mnt_fsname = xstrdup(fstab->m.mnt_fsname);
+-		mnt.mnt_type = fstab->m.mnt_type;
+-		mnt.mnt_opts = fix_opts_string (flags, extra_opts);
+-		mnt.mnt_freq = mnt.mnt_passno = 0;
++		init_mntent(&mnt, xstrdup(fstab->m.mnt_fsname), "/",
++				fstab->m.mnt_type, flags, extra_opts);
+ 		free(extra_opts);
+ 
+ 		if (nfs_addmntent (mfp, &mnt) == 1) {
+@@ -273,17 +284,12 @@ create_mtab (void) {
+ }
+ 
+ static int add_mtab(char *spec, char *mount_point, char *fstype,
+-			int flags, char *opts, int freq, int pass)
++			int flags, char *opts)
+ {
+ 	struct mntent ment;
+ 	int result = EX_SUCCESS;
+ 
+-	ment.mnt_fsname = spec;
+-	ment.mnt_dir = mount_point;
+-	ment.mnt_type = fstype;
+-	ment.mnt_opts = fix_opts_string(flags & ~MS_NOMTAB, opts);
+-	ment.mnt_freq = freq;
+-	ment.mnt_passno = pass;
++	init_mntent(&ment, spec, mount_point, fstype, flags, opts);
+ 
+ 	if (!nomtab && mtab_does_not_exist()) {
+ 		if (verbose > 1)
+@@ -441,9 +447,7 @@ static int try_mount(char *spec, char *mount_point, int flags,
+ 	if (!fake)
+ 		print_one(spec, mount_point, fs_type, mount_opts);
+ 
+-	ret = add_mtab(spec, mount_point, fs_type, flags, *extra_opts,
+-			0, 0 /* these are always zero for NFS */ );
+-	return ret;
++	return add_mtab(spec, mount_point, fs_type, flags, *extra_opts);
+ }
+ 
+ int main(int argc, char *argv[])
 
