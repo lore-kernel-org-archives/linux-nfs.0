@@ -1,124 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:55277 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757269Ab0JHOfk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Oct 2010 10:35:40 -0400
-Received: by bwz15 with SMTP id 15so289236bwz.19
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Oct 2010 07:35:39 -0700 (PDT)
-In-Reply-To: <AANLkTimUeQGrFXzZfgkkiE834MvMYz3uxobHHAdzE79p@mail.gmail.com>
-References: <1286397317-17881-1-git-send-email-iisaman@netapp.com>
-	<1286397317-17881-3-git-send-email-iisaman@netapp.com>
-	<4CADCC48.4030908@panasas.com>
-	<AANLkTimnVJYW-ndu_rhk71JXkh3zW-0hLfMTYkRc8VpK@mail.gmail.com>
-	<4CADD3E9.7040307@panasas.com>
-	<AANLkTimUeQGrFXzZfgkkiE834MvMYz3uxobHHAdzE79p@mail.gmail.com>
-Date: Fri, 8 Oct 2010 10:35:38 -0400
-Message-ID: <AANLkTikCvmqk9Og0iRGLsogYCe1g3Um30sH3G150cQJ5@mail.gmail.com>
-Subject: Re: [PATCH 2/4] pnfs_submit: Only update stateid if it is more recent
- than current
-From: Fred Isaman <iisaman@netapp.com>
-To: "P.B.Shelley" <shelleypt@gmail.com>
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:53668 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753774Ab0JZP6I (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Oct 2010 11:58:08 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 10so2336058iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Oct 2010 08:58:08 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/6] mount: Fix compiler warning in nfs_parse_retry_option()
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 26 Oct 2010 11:58:05 -0400
+Message-ID: <20101026155805.19184.18299.stgit@matisse.1015granger.net>
+In-Reply-To: <20101026155216.19184.36979.stgit@matisse.1015granger.net>
+References: <20101026155216.19184.36979.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Oct 8, 2010 at 10:13 AM, P.B.Shelley <shelleypt@gmail.com> wrote:
-> On Thu, Oct 7, 2010 at 10:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On 2010-10-07 10:01, Fred Isaman wrote:
->>> On Thu, Oct 7, 2010 at 9:34 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->>>> On 2010-10-06 16:35, Fred Isaman wrote:
->>>>> Right now, when we set the stateid, we blindly overwrite the current
->>>>> one, allowing the seqid to incorrectly roll backward.
->>>>>
->>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->>>>> ---
->>>>>  fs/nfs/pnfs.c |   38 ++++++++++++++++++++++++++++++++------
->>>>>  1 files changed, 32 insertions(+), 6 deletions(-)
->>>>>
->>>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>>>> index 39bce9b..555955b 100644
->>>>> --- a/fs/nfs/pnfs.c
->>>>> +++ b/fs/nfs/pnfs.c
->>>>> @@ -459,16 +459,42 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
->>>>>       }
->>>>>  }
->>>>>
->>>>> +/* update lo->stateid with new if is more recent
->>>>> + *
->>>>> + * lo->stateid could be the open stateid, in which case we just use what given.
->>>>> + */
->>>>>  static void
->>>>>  pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
->>>>> -                     const nfs4_stateid *stateid)
->>>>> +                     const nfs4_stateid *new)
->>>>>  {
->>>>> -     /* TODO - should enforce that embedded seqid, in the case
->>>>> -      * that the two stateid.others are equal,  only increases.
->>>>> -      * Complicated by wrap-around.
->>>>> -      */
->>>>> +     nfs4_stateid *old = &lo->stateid;
->>>>> +     bool overwrite = false;
->>>>> +
->>>>>       write_seqlock(&lo->seqlock);
->>>>> -     memcpy(lo->stateid.data, stateid->data, sizeof(lo->stateid.data));
->>>>> +     if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
->>>>> +         memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
->>>>> +             overwrite = true;
->>>>> +     else {
->>>>> +             u32 oldseq, newseq, limit;
->>>>> +
->>>>> +             oldseq = be32_to_cpu(old->stateid.seqid);
->>>>> +             newseq = be32_to_cpu(new->stateid.seqid);
->>>>> +             /* There are no good bounds on window size, so just
->>>>> +              * use a ridiculously large window of 2^31.
->>>>> +              */
->>>>> +             limit = oldseq + (1 << 31);
->>>>> +             if (oldseq < limit) {
->>>>> +                     /* The easy, non-wraparound case */
->>>>> +                     if (oldseq < newseq && newseq < limit)
->>>>> +                             overwrite = true;
->>>>> +             } else {
->>>>> +                     /* Near wraparound edge */
->>>>> +                     if (oldseq < newseq || newseq < limit)
->>>>> +                             overwrite = true;
->>>>> +             }
->>>>
->>>> Wouldn't it be simpler to just look at (int32_t)(newseq - oldseq)?
->>>>
->>>
->>> Why yes it would.  I'll send a new version of this patch shortly.
->>>
->>
->> No need :)
->> I'll just change this as follows:
->>
->> +       else {
->> +               u32 oldseq, newseq, limit;
->> +
->> +               oldseq = be32_to_cpu(old->stateid.seqid);
->> +               newseq = be32_to_cpu(new->stateid.seqid);
->> +               if ((int)(newseq - oldseq) > 0)
->> +                       overwrite = true;
-> Do we also need to verify the other field of the stateid? Will there
-> be situations that server change the other field and reset the seqid?
+stropts.c: In function â€˜nfs_parse_retry_optionâ€™:
+stropts.c:131: warning: conversion to â€˜unsigned intâ€™ from â€˜long intâ€™ may alter its value
 
-The server is going to use the "other" we sent, except in the case we
-sent an open stateid.  The only potential for trouble I see is if a
-LAYOUTGET reply gets lost in the network for a long time and is
-received after the layout stateid has been reset for some reason.
-However, that implies an error elsewhere (which may well exist at the
-moment...careful stateid handling is next on the agenda), as we should
-have been waiting for that lseg to arrive before continuing.
+Make it more clear what the second argument is for, and flag the
+switch fallthrough case.
 
-Fred
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
->
-> Thanks,
-> Shelley
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+ utils/mount/stropts.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index bcc36f3..29b1aaa 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -119,10 +119,12 @@ inline void nfs_default_version(struct nfsmount_info *mi) {}
+  * Returns a time_t timeout timestamp, in seconds.
+  */
+ static time_t nfs_parse_retry_option(struct mount_options *options,
+-				     unsigned int timeout_minutes)
++				     const time_t default_timeout)
+ {
++	time_t timeout_minutes;
+ 	long tmp;
+ 
++	timeout_minutes = default_timeout;
+ 	switch (po_get_numeric(options, "retry", &tmp)) {
+ 	case PO_NOT_FOUND:
+ 		break;
+@@ -131,6 +133,7 @@ static time_t nfs_parse_retry_option(struct mount_options *options,
+ 			timeout_minutes = tmp;
+ 			break;
+ 		}
++		/*FALLTHROUGH*/
+ 	case PO_BAD_VALUE:
+ 		if (verbose)
+ 			nfs_error(_("%s: invalid retry timeout was specified; "
+@@ -138,7 +141,7 @@ static time_t nfs_parse_retry_option(struct mount_options *options,
+ 		break;
+ 	}
+ 
+-	return time(NULL) + (time_t)(timeout_minutes * 60);
++	return time(NULL) + (timeout_minutes * 60);
+ }
+ 
+ /*
+
