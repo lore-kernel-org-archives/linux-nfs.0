@@ -1,71 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:15390 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756753Ab0JAMeF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 08:34:05 -0400
-Message-ID: <4CA5D537.30300@panasas.com>
-Date: Fri, 01 Oct 2010 14:33:59 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Marc Eshel <eshel@almaden.ibm.com>
-CC: Boaz Harrosh <bharrosh@panasas.com>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        NFS list <linux-nfs@vger.kernel.org>, linux-nfs-owner@vger.kernel.org,
-        Fred Isaman <iisaman@netapp.com>
-Subject: Re: pNFS DS session
-References: <4C7BDD8C.40509@panasas.com> <4CA31DC3.8070300@panasas.com> <4CA34830.1040703@desy.de> <4CA34883.40005@desy.de> <4CA34B93.2010100@panasas.com> <4CA44AAA.4030803@panasas.com> <4CA45462.1070503@desy.de> <4CA455C4.4030705@panasas.com> <OF6B8488BA.B9C50431-ON882577AF.0016FDCE-882577AF.0017999B@us.ibm.com> <4CA57BC6.9030701@desy.de> <4CA5A012.2090404@panasas.com>
-In-Reply-To: <4CA5A012.2090404@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:47800 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753145Ab0JZAaL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Oct 2010 20:30:11 -0400
+Date: Mon, 25 Oct 2010 20:30:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Neil Brown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        Menyhart Zoltan <Zoltan.Menyhart@bull.net>
+Subject: Re: [PATCH 1/4] svcrpc: never clear XPT_BUSY on dead xprt
+Message-ID: <20101026003008.GI13523@fieldses.org>
+References: <20101025010923.GB11470@fieldses.org>
+ <1287969693-12340-1-git-send-email-bfields@redhat.com>
+ <20101025124357.63b966bb@notabene>
+ <20101025202155.GD13523@fieldses.org>
+ <20101026095836.61bf6a38@notabene>
+ <20101025230331.GF13523@fieldses.org>
+ <20101026105447.264b690e@notabene>
+ <20101026001145.GG13523@fieldses.org>
+ <20101026002858.GH13523@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101026002858.GH13523@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-10-01 10:47, Boaz Harrosh wrote:
-> On 10/01/2010 08:12 AM, Tigran Mkrtchyan wrote:
->>   On 10/01/2010 06:17 AM, Marc Eshel wrote:
->>> Hi Benny,
->>>
->>> Running connectathon I see that some times the clients decides to destroy
->>> the session with the DS. The test continue and the session is
->>> re-established. It looks like layout return reduces the hold on device
->>> info the reduces the hold on the client struct which decide to destroy the
->>> session. Is that a known problem?
->>>
+On Mon, Oct 25, 2010 at 08:28:58PM -0400, J. Bruce Fields wrote:
+> On Mon, Oct 25, 2010 at 08:11:45PM -0400, J. Bruce Fields wrote:
+> > On Tue, Oct 26, 2010 at 10:54:47AM +1100, Neil Brown wrote:
+> > > Note that once we always set XPT_BUSY and it stays set.  So we call
+> > > svc_delete_xprt instread of svc_close_xprt.
+> > > 
+> > > Maybe we don't actually need to list_del_init - both the pool and the xprt
+> > > will soon be freed and if there is linkage between them, who cares??
+> > > In that case we wouldn't need to for_each_pool after all ???
 > 
-> Yes, I want to emphasize on Marks words: "a known *problem*"
+> So, untested:
 
-Marc, assuming the code behaves as expected, does this cause any other badness
-like the GETATTRs you see going out to the DS?
+Ditto.  But, hey, it deletes more code, it must be good.
 
-Benny
+--b.
 
-> 
-> I have objected strongly to this new "fixture" by Fred and backed up by Benny.
-> They decided to only hold a deviceid as long as a layout references it. And
-> not like before, until unmount. I think they are totally wrong with regard
-> to current servers and implementation and a setup that might enjoy what is
-> done now, will not exist for at least 3 years or more.
-> 
-> An argument was made that current code is more simple. But I have demonstrated
-> that all that is needed is a one-line get_ref at device add. And that iteration
-> on all devices at umount time that was there before and removed in latest code.
-> 
-> !!!
-> Boaz
-> 
-> 
->> Just wan to confirm  that we see this as well (pnfs-submit and 
->> pnfs-all-latest).
->>
->> Tigran.
->>> Thanks, Marc.
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> 
+commit 99401f6f6c3d0782ef79bb37749ace2accd4c79a
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Mon Oct 25 20:24:48 2010 -0400
+
+    svcrpc: simplify svc_close_xprt, fix minor race
+    
+    We're assuming that in the XPT_BUSY case, somebody else will take care
+    of the close.  But that's not necessarily the case (e.g. if
+    svc_xprt_enqueue() exits due to a lack of write space).  So the close
+    could in theory be delayed indefinitely.  We should be calling
+    svc_xprt_enqueue() after every set of XPT_CLOSE.
+    
+    Also with svc_close_all() no longer relying on svc_close, it no longer
+    needs to be able to immediately do the svc_delete_xprt() itself.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 8c018df..dfee123 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -928,11 +928,7 @@ void svc_delete_xprt(struct svc_xprt *xprt)
+ void svc_close_xprt(struct svc_xprt *xprt)
+ {
+ 	set_bit(XPT_CLOSE, &xprt->xpt_flags);
+-	if (test_and_set_bit(XPT_BUSY, &xprt->xpt_flags))
+-		/* someone else will have to effect the close */
+-		return;
+-
+-	svc_delete_xprt(xprt);
++	svc_xprt_enqueue(xprt);
+ }
+ EXPORT_SYMBOL_GPL(svc_close_xprt);
+ 
