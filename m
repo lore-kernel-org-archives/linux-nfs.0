@@ -1,49 +1,36 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFS: rename idmapper components
-Date: Tue, 26 Oct 2010 13:30:04 -0400
-Message-ID: <20101026173003.GC526@fieldses.org>
-References: <4CC6D4F9.3040402@netapp.com>
- <1288100354.9435.5.camel@heimdal.trondhjem.org>
- <20101026172016.GA526@fieldses.org>
- <1288114038.12370.8.camel@heimdal.trondhjem.org>
+Subject: Re: nfsd changes for 2.6.37
+Date: Tue, 26 Oct 2010 13:46:48 -0400
+Message-ID: <20101026174648.GA1842@fieldses.org>
+References: <20101026164549.GD19445@fieldses.org>
+ <20101026172250.GB526@fieldses.org>
+ <AANLkTi=emsmLNFSV=j48d37JQxecQmNGZwY9OYdoKjeS@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Bryan Schumaker <bjschuma@netapp.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35010 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:49440 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752407Ab0JZRaG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Oct 2010 13:30:06 -0400
-In-Reply-To: <1288114038.12370.8.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1760165Ab0JZRqt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Oct 2010 13:46:49 -0400
+In-Reply-To: <AANLkTi=emsmLNFSV=j48d37JQxecQmNGZwY9OYdoKjeS-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 26, 2010 at 01:27:18PM -0400, Trond Myklebust wrote:
-> On Tue, 2010-10-26 at 13:20 -0400, J. Bruce Fields wrote:
-> > On Tue, Oct 26, 2010 at 09:39:14AM -0400, Trond Myklebust wrote:
-> > > On Tue, 2010-10-26 at 09:17 -0400, Bryan Schumaker wrote:
-> > > > This patch renames the idmapper upcall program from nfs.upcall to nfs.idmap.
-> > > > It also changes the key type from id_resolver to nfs_idmap.
-> > ...
-> > > We should _not_ be doing this kind of user space api change after the
-> > > code has been merged by Linus.
-> > > 
-> > > I don't mind a patch to the documentation that changes 'nfs.upcall' to
-> > > match the name given in nfs-utils, but it is too late to change the name
-> > > 'id_resolver': that should have been done before the merge window.
-> > 
-> > There's precedent for fixing new interfaces before the final release, so
-> > it seems unlikely to be a huge problem before -rc1.
-> > 
-> > Though agreed that there should still be a higher standard for changes
-> > made after the moment the interface is merged--and a slightly
-> > inconsistent name may not meet the standard....
+On Tue, Oct 26, 2010 at 10:39:41AM -0700, Linus Torvalds wrote:
+> But even that kind of "both non-merged and pre-merged" pull requests
+> should be reserved just for cases where there really was a somewhat
+> involved conflict. For trivial conflicts like a feature removal doc
+> clash, don't even bother.  I do several trivial merges a day, it's
+> normal and it doesn't really take me any appreciable extra time. Git
+> command line of the day:
 > 
-> The name isn't really inconsistent: we use "dns_resolver" for the DNS
-> upcall types, so "id_resolver" shouldn't really be a problem...
+>   git log --oneline v2.6.36.. --merges --author=Torvalds --grep=onflict
+> 
+> to see at least a partial list of the trivial conflicts I've done in
+> just this merge window. It's 3-4 per day, it's perfectly normal.
 
-OK, makes senses.
+Makes sense, thanks!
 
 --b.
