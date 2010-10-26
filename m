@@ -1,57 +1,102 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH 1/4] svcrpc: never clear XPT_BUSY on dead xprt
-Date: Tue, 26 Oct 2010 09:58:36 +1100
-Message-ID: <20101026095836.61bf6a38@notabene>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 4/4] svcrpc: svc_tcp_sendto XTP_DEAD check is redundant
+Date: Mon, 25 Oct 2010 21:25:17 -0400
+Message-ID: <20101026012517.GJ13523@fieldses.org>
 References: <20101025010923.GB11470@fieldses.org>
-	<1287969693-12340-1-git-send-email-bfields@redhat.com>
-	<20101025124357.63b966bb@notabene>
-	<20101025202155.GD13523@fieldses.org>
+ <1287969693-12340-4-git-send-email-bfields@redhat.com>
+ <20101025131024.1addf30d@notabene>
+ <20101025150308.GB3233@fieldses.org>
+ <20101026102338.25167800@notabene>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
 	Menyhart Zoltan <Zoltan.Menyhart@bull.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: Neil Brown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:37180 "EHLO mx1.suse.de"
+Received: from fieldses.org ([174.143.236.118]:33052 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752695Ab0JYW6p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Oct 2010 18:58:45 -0400
-In-Reply-To: <20101025202155.GD13523@fieldses.org>
+	id S1752958Ab0JZBZX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Oct 2010 21:25:23 -0400
+In-Reply-To: <20101026102338.25167800@notabene>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 25 Oct 2010 16:21:56 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Mon, Oct 25, 2010 at 12:43:57PM +1100, Neil Brown wrote:
-> > On Sun, 24 Oct 2010 21:21:30 -0400
-> > "J. Bruce Fields" <bfields@redhat.com> wrote:
-> > 
-> > > Once an xprt has been deleted, there's no reason to allow it to be
-> > > enqueued--at worst, that might cause the xprt to be re-added to some
-> > > global list, resulting in later corruption.
+On Tue, Oct 26, 2010 at 10:23:38AM +1100, Neil Brown wrote:
+> On Mon, 25 Oct 2010 11:03:08 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Mon, Oct 25, 2010 at 01:10:24PM +1100, Neil Brown wrote:
+> > > On Sun, 24 Oct 2010 21:21:33 -0400
+> > > "J. Bruce Fields" <bfields@redhat.com> wrote:
 > > > 
-> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > > The only caller (svc_send) has already checked XPT_DEAD.
+> > > > 
+> > > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > > ---
+> > > >  net/sunrpc/svcsock.c |    3 ---
+> > > >  1 files changed, 0 insertions(+), 3 deletions(-)
+> > > > 
+> > > > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> > > > index 1454739..07919e1 100644
+> > > > --- a/net/sunrpc/svcsock.c
+> > > > +++ b/net/sunrpc/svcsock.c
+> > > > @@ -1135,9 +1135,6 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
+> > > >  	reclen = htonl(0x80000000|((xbufp->len ) - 4));
+> > > >  	memcpy(xbufp->head[0].iov_base, &reclen, 4);
+> > > >  
+> > > > -	if (test_bit(XPT_DEAD, &rqstp->rq_xprt->xpt_flags))
+> > > > -		return -ENOTCONN;
+> > > > -
+> > > >  	sent = svc_sendto(rqstp, &rqstp->rq_res);
+> > > >  	if (sent != xbufp->len) {
+> > > >  		printk(KERN_NOTICE
+> > > 
+> > > 
+> > > So after removing all these references to XPT_DEAD, do we need XPT_DEAD at
+> > > all???
+> > > 
+> > > I think it is only used in two other places.
+> > > 
+> > > 1/ In svc_revisit we don't queue the deferred request to an XPT_DEAD
+> > >   transport.
+> > >   We could avoid that but changing the 'owner' of a deferred request from the
+> > >   service to the xprt, and call cache_clean_deferred in svc_delete_xprt
 > > 
-> > Yep, this makes svc_close_xprt() behave the same way as svc_recv() which
-> > calls svc_delete_xprt but does not clear XPT_BUSY.  The other branches in
-> > svc_recv call svc_xprt_received, but the XPT_CLOSE branch doesn't
+> > That use does seem a bit of a hack to me, so I'd be happy to get rid of
+> > it.
 > > 
-> > Reviewed-by: NeilBrown <neilb@suse.de>
+> > > 2/ in svc_send().  I wonder if we need this at all.  There doesn't seem to be
+> > > any locking to ensure that XPT_DEAD doesn't get set immediately after the
+> > > test, and the underlying sendto (whether tcp or udp or whatever) should fail
+> > > if the socket is closed, and if it doesn't it shouldn't really matter??
+> > 
+> > Does it make a difference in the case of a half-close?  If the client
+> > follows a request immediately by a FIN, and if that results in our
+> > setting DEAD (I think it does, assuming svc_tcp_state_change() is called
+> > in that case), then the current code may have the effect of preventing
+> > us from sending the reply.
+> > 
+> > I don't know if that's good or bad.
+> > 
+> > > So can we get rid of XPT_DEAL altogether?
+> > 
+> > OK, I also had another use in mind: for the purposes of 4.1 (which needs
+> > to know when a connection goes down, e.g. to know that it's no longer
+> > available for callbacks), I added a list of callbacks to the xprt,
+> > called on svc_delete_xprt().
+> > 
+> > I just noticed that I think my current code allows the 4.1 code to
+> > register an xprt after svc_delete_xprt() is called.  I could fix that
+> > race by checking for DEAD after trying to register.
+> > 
+> > (That callback code already seems messier than it should be, so maybe
+> > someone else could suggest a better scheme.  I'm stuck.
+> > 
+> > In any case, it wouldn't be so bad if that were the one remaining use of
+> > DEAD.)
 > 
-> Also, of course:
-> 
-> > >  	svc_xprt_get(xprt);
-> > >  	svc_delete_xprt(xprt);
-> > > -	clear_bit(XPT_BUSY, &xprt->xpt_flags);
-> > >  	svc_xprt_put(xprt);
-> 
-> The get/put is pointless: the only reason I can see for doing that of
-> course was to be able to safely clear the bit afterwards.
->
+> Could you use XPT_CLOSE for that??
 
-Agreed.
+Good idea, yes, I think so.
 
-I like patches that get rid of code!!
-
-NeilBrown
+--b.
