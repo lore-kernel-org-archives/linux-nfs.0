@@ -1,60 +1,298 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:18690 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:42299 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750836Ab0JBQt6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 2 Oct 2010 12:49:58 -0400
-Message-ID: <4CA762AE.5000807@RedHat.com>
-Date: Sat, 02 Oct 2010 12:49:50 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Updated pNFS Developmental kernel repository
-References: <4CA5C059.6000805@RedHat.com> <4CA5E744.9010006@desy.de> <4CA63D1A.5070108@RedHat.com> <4CA72977.10908@desy.de>
-In-Reply-To: <4CA72977.10908@desy.de>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1756107Ab0JZC0d convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Oct 2010 22:26:33 -0400
+Subject: [GIT PULL] Please pull NFSv4.1 and pNFS client changes
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 25 Oct 2010 22:25:30 -0400
+Message-ID: <1288059930.19787.6.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hi Linus,
+
+Please pull from the "nfs-for-2.6.37" branch of the repository at
+
+   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git nfs-for-2.6.37
+
+This will update the following files through the appended changesets.
+
+  Cheers,
+    Trond
+
+----
+ Documentation/filesystems/nfs/00-INDEX |    2 +
+ Documentation/filesystems/nfs/pnfs.txt |   48 ++
+ fs/nfs/Kconfig                         |    8 +-
+ fs/nfs/Makefile                        |    4 +
+ fs/nfs/callback_proc.c                 |    8 +-
+ fs/nfs/client.c                        |   10 +-
+ fs/nfs/file.c                          |    5 +
+ fs/nfs/inode.c                         |    3 +
+ fs/nfs/nfs4filelayout.c                |  280 ++++++++++++
+ fs/nfs/nfs4filelayout.h                |   94 ++++
+ fs/nfs/nfs4filelayoutdev.c             |  448 ++++++++++++++++++
+ fs/nfs/nfs4proc.c                      |  218 ++++++++--
+ fs/nfs/nfs4state.c                     |    2 +
+ fs/nfs/nfs4xdr.c                       |  360 +++++++++++++++
+ fs/nfs/pnfs.c                          |  783 ++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h                          |  189 ++++++++
+ fs/nfs/read.c                          |    3 +
+ fs/nfsd/nfs4callback.c                 |    1 -
+ include/linux/nfs4.h                   |   62 +++-
+ include/linux/nfs_fs.h                 |    5 +
+ include/linux/nfs_fs_sb.h              |    3 +
+ include/linux/nfs_xdr.h                |   50 ++
+ include/linux/sunrpc/xdr.h             |    7 +
+ net/sunrpc/auth_gss/gss_krb5_mech.c    |    2 +-
+ 24 files changed, 2550 insertions(+), 45 deletions(-)
+
+commit 411b5e05617593efebc06241dbc56f42150f2abe
+Author: Joe Perches <joe@perches.com>
+Date:   Mon Sep 13 12:48:01 2010 -0700
+
+    net/sunrpc: Use static const char arrays
+    
+    Signed-off-by: Joe Perches <joe@perches.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 43c2e885be25311e6289c7da52e8a03c4453ee03
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Sat Oct 2 15:19:01 2010 -0400
+
+    nfs4: fix channel attribute sanity-checks
+    
+    The sanity checks here are incorrect; in the worst case they allow
+    values that crash the client.
+    
+    They're also over-reliant on the preprocessor.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 1c787096fce217b5fdd9806dbce96e738c9345c0
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Thu Oct 21 16:56:48 2010 -0400
+
+    NFSv4.1: Use more sensible names for 'initialize_mountpoint'
+    
+    The initialize_mountpoint/uninitialise_mountpoint functions are really about
+    setting or clearing the layout driver to be used on this filesystem. Change
+    the names to the more descriptive 'set_layoutdriver/clear_layoutdriver'.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 16b374ca439fb406e46e071f75428f5b033056f8
+Author: Andy Adamson <andros@netapp.com>
+Date:   Wed Oct 20 00:18:04 2010 -0400
+
+    NFSv4.1: pnfs: filelayout: add driver's LAYOUTGET and GETDEVICEINFO infrastructure
+    
+    Implement the driver's io_ops->alloc_lseg and free_lseg functions,
+    which integrate into the deviceid cache and calls out to
+    nfs4_proc_getdeviceinfo when necessary.
+    
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
+    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+    Signed-off-by: Mike Sager <sager@netapp.com>
+    Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+    Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+    Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+    Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+    Signed-off-by: Fred Isaman <iisaman@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit b1f69b754ee312ec75f2c7ead0e6851cd9598cc2
+Author: Andy Adamson <andros@netapp.com>
+Date:   Wed Oct 20 00:18:03 2010 -0400
+
+    NFSv4.1: pnfs: add LAYOUTGET and GETDEVICEINFO infrastructure
+    
+    Add the ability to actually send LAYOUTGET and GETDEVICEINFO.  This also adds
+    in the machinery to handle layout state and the deviceid cache.  Note that
+    GETDEVICEINFO is not called directly by the generic layer.  Instead it
+    is called by the drivers while parsing the LAYOUTGET opaque data in response
+    to an unknown device id embedded therein.  RFC 5661 only encodes
+    device ids within the driver-specific opaque data.
+    
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
+    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+    Signed-off-by: Mike Sager <sager@netapp.com>
+    Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+    Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+    Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+    Signed-off-by: Fred Isaman <iisaman@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 974cec8ca0352eb5d281535b714cf194a606e98f
+Author: Andy Adamson <andros@netapp.com>
+Date:   Wed Oct 20 00:18:02 2010 -0400
+
+    NFS: client needs to maintain list of inodes with active layouts
+    
+    In particular, server reboot will invalidate all layouts.
+    
+    Note that in order to have an active layout, we must get a successful response
+    from the server.  To avoid adding that machinery, this patch just includes a
+    stub that fakes up a successful return.  Since the layout is never referenced
+    for io, this is not a problem.
+    
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
+    Signed-off-by: Fred Isaman <iisaman@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit e5e940170b2136ad4d5483ef293ae284b9cc8d53
+Author: Benny Halevy <bhalevy@panasas.com>
+Date:   Wed Oct 20 00:18:01 2010 -0400
+
+    NFS: create and destroy inode's layout cache
+    
+    At the start of the io paths, try to grab the relevant layout
+    information.  This will initiate the inode's layout cache, but
+    stubs ensure the cache stays empty.
+    
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
+    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+    Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+    Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
+    Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Fred Isaman <iisaman@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 7ab672ce312133ee4a5d85b71447b2b334403681
+Author: Dean Hildebrand <dhildebz@umich.edu>
+Date:   Wed Oct 20 00:18:00 2010 -0400
+
+    NFSv4.1: pnfs: filelayout: introduce minimal file layout driver
+    
+    This driver just registers itself and supplies trivial mount/umount functions.
+    
+    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
+    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    Signed-off-by: Fred Isaman <iisaman@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 02c35fca7cf4ea2dfdc6db279e230cacbbf4b870
+Author: Fred Isaman <iisaman@netapp.com>
+Date:   Wed Oct 20 00:17:59 2010 -0400
+
+    NFSv4.1: pnfs: full mount/umount infrastructure
+    
+    Allow a module implementing a layout type to register, and
+    have its mount/umount routines called for filesystems that
+    the server declares support it.
+    
+    Signed-off-by: Fred Isaman <iisaman@netapp.com>
+    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+    Signed-off-by: Andy Adamson<andros@netapp.com>
+    Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 85e174ba6b786ad336eb2df105b4f66d0932e70a
+Author: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Date:   Wed Oct 20 00:17:58 2010 -0400
+
+    NFS: set layout driver
+    
+    Put in the infrastructure that uses information returned from the
+    server at mount to select a layout driver module.
+    
+    In this patch, a stub is used that always returns "no driver found".
+    
+    Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
+    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    Signed-off-by: Fred Isaman <iisaman@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 504913fbc84c00bba7224d73e4aab525c1731f7d
+Author: Andy Adamson <andros@netapp.com>
+Date:   Wed Oct 20 00:17:57 2010 -0400
+
+    NFS: ask for layouttypes during v4 fsinfo call
+    
+    This information will be used to determine which layout driver,
+    if any, to use for subsequent IO on this filesystem.  Each driver
+    is assigned an integer id, with 0 reserved to indicate no driver.
+    
+    The server can in theory return multiple ids.  However, our current
+    client implementation only notes the first entry and ignores the
+    rest.
+    
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    Signed-off-by: Fred Isaman <iisaman@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 9449925273933d19235d7d36c1fd970841d055de
+Author: Alexandros Batsakis <batsakis@netapp.com>
+Date:   Wed Oct 20 00:17:56 2010 -0400
+
+    NFS: change stateid to be a union
+    
+    In NFSv4.1 the stateid consists of the other and seqid fields. For layout
+    processing we need to numerically compare the seqid value of layout stateids.
+    To do so, introduce a union to nfs4_stateid to switch between opaque(16 bytes)
+    and opaque(12 bytes) / __be32
+    
+    Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    Signed-off-by: Fred Isaman <iisaman@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit c772567d97fa0fca454eea68aeae915ca1bc732b
+Author: Dean Hildebrand <dhildebz@umich.edu>
+Date:   Wed Oct 20 00:17:55 2010 -0400
+
+    NFSv4.1: pnfsd, pnfs: protocol level pnfs constants
+    
+    Use only layoutreturn constant for both returns and recalls.
+    (return_* works better for recall_type rather the other way around)
+    
+    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
+    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    Signed-off-by: Fred Isaman <iisaman@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 35b61e63323ccf5fdcdd74b11751b58392c9cce1
+Author: Benny Halevy <bhalevy@panasas.com>
+Date:   Wed Oct 20 00:17:54 2010 -0400
+
+    SUNRPC: define xdr_decode_opaque_fixed
+    
+    A helper for decoding a fixed length opaque value.
+    Returns a pointer to the next item in the xdr stream.
+    
+    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+    Signed-off-by: Fred Isaman <iisaman@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 3c9101a0575f6078191dae6bb91a834c6aac3557
+Author: Andy Adamson <andros@netapp.com>
+Date:   Wed Oct 20 00:17:53 2010 -0400
+
+    NFSD: remove duplicate NFS4_STATEID_SIZE
+    
+    Already accepted by Bruce
+    
+    Signed-off-by: Andy Adamson <andros@netapp.com>
+    Signed-off-by: Fred Isaman <iisaman@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
 
-On 10/02/2010 08:45 AM, Tigran Mkrtchyan wrote:
-> On 10/01/2010 09:57 PM, Steve Dickson wrote:
->>
->> On 10/01/2010 09:51 AM, Tigran Mkrtchyan wrote:
->>   
->>> Hi Steve,
->>>
->>> thanks for the builds. What I am missing is modprobe configuration file
->>> which I have to add myself.
->>>     
->> Unfortunately yes... I have not figured out a good way to have
->> the mobprobe done on the client since, in general, init scripts
->> don't run on the client (with the exception of rpc.statd and rpc.gssd).
->>
->> I guess I could come up with an pnfs init script..but that
->> seems like a bit overkill just to do a modprobe... 
->>
->>   
-> I include /etc/modprobe.d/nfsv41 into rpms  which I build for our
-> systems (RHEL5) with following content:
-> 
-> alias nfs-layouttype4-1 nfs_layout_nfsv41_files
-> alias nfs-layouttype4-2 off
-> alias nfs-layouttype4-3 off
-> 
-> 
-> and following  into the spec file:
-> 
-> %config(noreplace) /etc/modprobe.d/nfsv41
-> 
-> I made it part of kernel rpm, but may be nfs-utils is more appropriate
-> place.
-Very cool... I try to incorporate this into the upcoming nfs-utils...
-
-Because at the end of day, the distro "powers to be" are really 
-against more init scripts... more init script means a longer time
-to boot... and it seems fast reboots are the new in thing to have...
-(which is a good thing.. :-) )
-
-steved. 
