@@ -1,269 +1,184 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:30726 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755950Ab0JOGRk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Oct 2010 02:17:40 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 06/12] RFC: nfs: set layout driver
-Date: Sun, 10 Oct 2010 11:22:47 -0400
-Message-Id: <1286724173-8493-7-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
-References: <1286724173-8493-1-git-send-email-iisaman@netapp.com>
+Received: from mail-px0-f174.google.com ([209.85.212.174]:57445 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754528Ab0JZP6v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Oct 2010 11:58:51 -0400
+Received: by pxi15 with SMTP id 15so770937pxi.19
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Oct 2010 08:58:51 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 6/6] nfs(5): Document remount behavior
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 26 Oct 2010 11:58:47 -0400
+Message-ID: <20101026155847.19184.44036.stgit@matisse.1015granger.net>
+In-Reply-To: <20101026155216.19184.36979.stgit@matisse.1015granger.net>
+References: <20101026155216.19184.36979.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
+It appears that, for a long while, NFS "remount" mounts have
+completely wiped the existing mount options in /etc/mtab for a given
+mount point.  This is a problem for umount.nfs, since it reads its
+options out of /etc/mtab to find out how to do the unmount.
 
-Put in the infrastructure that uses information returned from the
-server at mount to select a layout driver module.
+The mount(8) command provides the NFS mount subcommand with the mount
+options to perform the remount.  There are four cases to consider:
 
-In this patch, a stub is used that always returns "no driver found".
+  1. Both the device and mount directory are specified on the
+     command line, and the target mount point is in /etc/fstab
 
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+  2. Only one of the device and mount directory is specified on
+     the command line, and the target mount point is in
+     /etc/fstab
+
+  3. Both the device and mount directory are specified on the
+     command line, and the target mount point is not in /etc/fstab
+
+  4. Only one of the device and mount directory is specified on
+     the command line, and the target mount point is not in
+     /etc/fstab
+
+Currently only case 4 works correctly.  In that case, mount(8)
+provides the correct set of mount options to the mount.nfs
+subcommand and it can update /etc/mtab correctly.
+
+Cases 1 and 3 replace all mount options in /etc/mtab with the options
+provided on the command line during a remount.  Case 2 replaces the
+mount options in /etc/mtab with a mix of options from /etc/fstab and
+/etc/mtab.
+
+Cases 1 and 3 are historical behavior.  Basically this is a formal
+interface to allow administrators to replace the mount options in
+/etc/mtab completely, instead of merging in new ones.  The present
+patch documents that behavior in nfs(5), and provides best practice
+for remounting NFS mount points.
+
+There are near-term plans to address case 2 by fixing mount(8)
+(provided by utils-linux-ng in most distributions).
+
+This is a partial fix for:
+
+  https://bugzilla.linux-nfs.org/show_bug.cgi?id=188
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/Makefile           |    1 +
- fs/nfs/client.c           |    5 +++
- fs/nfs/pnfs.c             |   84 +++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/pnfs.h             |   56 ++++++++++++++++++++++++++++++
- include/linux/nfs_fs.h    |    1 +
- include/linux/nfs_fs_sb.h |    1 +
- 6 files changed, 148 insertions(+), 0 deletions(-)
- create mode 100644 fs/nfs/pnfs.c
- create mode 100644 fs/nfs/pnfs.h
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index da7fda6..bb9e773 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -15,5 +15,6 @@ nfs-$(CONFIG_NFS_V4)	+= nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o \
- 			   delegation.o idmap.o \
- 			   callback.o callback_xdr.o callback_proc.o \
- 			   nfs4namespace.o
-+nfs-$(CONFIG_NFS_V4_1)	+= pnfs.o
- nfs-$(CONFIG_SYSCTL) += sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 5f01f42..836fc25 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -48,6 +48,7 @@
- #include "iostat.h"
- #include "internal.h"
- #include "fscache.h"
-+#include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_CLIENT
- 
-@@ -900,6 +901,8 @@ static void nfs_server_set_fsinfo(struct nfs_server *server, struct nfs_fsinfo *
- 	if (server->wsize > NFS_MAX_FILE_IO_SIZE)
- 		server->wsize = NFS_MAX_FILE_IO_SIZE;
- 	server->wpages = (server->wsize + PAGE_CACHE_SIZE - 1) >> PAGE_CACHE_SHIFT;
-+	set_pnfs_layoutdriver(server, fsinfo->layouttype);
-+
- 	server->wtmult = nfs_block_bits(fsinfo->wtmult, NULL);
- 
- 	server->dtsize = nfs_block_size(fsinfo->dtpref, NULL);
-@@ -937,6 +940,7 @@ static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, str
- 	}
- 
- 	fsinfo.fattr = fattr;
-+	fsinfo.layouttype = 0;
- 	error = clp->rpc_ops->fsinfo(server, mntfh, &fsinfo);
- 	if (error < 0)
- 		goto out_error;
-@@ -1019,6 +1023,7 @@ void nfs_free_server(struct nfs_server *server)
- {
- 	dprintk("--> nfs_free_server()\n");
- 
-+	unset_pnfs_layoutdriver(server);
- 	spin_lock(&nfs_client_lock);
- 	list_del(&server->client_link);
- 	list_del(&server->master_link);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-new file mode 100644
-index 0000000..b483026
---- /dev/null
-+++ b/fs/nfs/pnfs.c
-@@ -0,0 +1,84 @@
-+/*
-+ *  pNFS functions to call and manage layout drivers.
-+ *
-+ *  Copyright (c) 2002 [year of first publication]
-+ *  The Regents of the University of Michigan
-+ *  All Rights Reserved
-+ *
-+ *  Dean Hildebrand <dhildebz@umich.edu>
-+ *
-+ *  Permission is granted to use, copy, create derivative works, and
-+ *  redistribute this software and such derivative works for any purpose,
-+ *  so long as the name of the University of Michigan is not used in
-+ *  any advertising or publicity pertaining to the use or distribution
-+ *  of this software without specific, written prior authorization. If
-+ *  the above copyright notice or any other identification of the
-+ *  University of Michigan is included in any copy of any portion of
-+ *  this software, then the disclaimer below must also be included.
-+ *
-+ *  This software is provided as is, without representation or warranty
-+ *  of any kind either express or implied, including without limitation
-+ *  the implied warranties of merchantability, fitness for a particular
-+ *  purpose, or noninfringement.  The Regents of the University of
-+ *  Michigan shall not be liable for any damages, including special,
-+ *  indirect, incidental, or consequential damages, with respect to any
-+ *  claim arising out of or in connection with the use of the software,
-+ *  even if it has been or is hereafter advised of the possibility of
-+ *  such damages.
-+ */
-+
-+#include <linux/nfs_fs.h>
-+#include "pnfs.h"
-+
-+#define NFSDBG_FACILITY		NFSDBG_PNFS
-+
-+/* STUB that returns the equivalent of "no module found" */
-+static struct pnfs_layoutdriver_type *
-+find_pnfs_driver(u32 id)
-+{
-+	return NULL;
-+}
-+
-+void
-+unset_pnfs_layoutdriver(struct nfs_server *nfss)
-+{
-+	nfss->pnfs_curr_ld = NULL;
-+}
-+
-+/*
-+ * Try to set the server's pnfs module to the pnfs layout type specified by id.
-+ * Currently only one pNFS layout driver per filesystem is supported.
-+ *
-+ * @id layout type. Zero (illegal layout type) indicates pNFS not in use.
-+ */
-+void
-+set_pnfs_layoutdriver(struct nfs_server *server, u32 id)
-+{
-+	struct pnfs_layoutdriver_type *ld_type = NULL;
-+
-+	if (id == 0)
-+		goto out_no_driver;
-+	if (!(server->nfs_client->cl_exchange_flags &
-+		 (EXCHGID4_FLAG_USE_NON_PNFS | EXCHGID4_FLAG_USE_PNFS_MDS))) {
-+		printk(KERN_ERR "%s: id %u cl_exchange_flags 0x%x\n", __func__,
-+		       id, server->nfs_client->cl_exchange_flags);
-+		goto out_no_driver;
-+	}
-+	ld_type = find_pnfs_driver(id);
-+	if (!ld_type) {
-+		request_module("%s-%u", LAYOUT_NFSV4_1_MODULE_PREFIX, id);
-+		ld_type = find_pnfs_driver(id);
-+		if (!ld_type) {
-+			dprintk("%s: No pNFS module found for %u.\n",
-+				__func__, id);
-+			goto out_no_driver;
-+		}
-+	}
-+	server->pnfs_curr_ld = ld_type;
-+	dprintk("%s: pNFS module for %u set\n", __func__, id);
-+	return;
-+
-+out_no_driver:
-+	dprintk("%s: Using NFSv4 I/O\n", __func__);
-+	server->pnfs_curr_ld = NULL;
-+}
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-new file mode 100644
-index 0000000..c628ef1
---- /dev/null
-+++ b/fs/nfs/pnfs.h
-@@ -0,0 +1,56 @@
-+/*
-+ *  pNFS client data structures.
-+ *
-+ *  Copyright (c) 2002
-+ *  The Regents of the University of Michigan
-+ *  All Rights Reserved
-+ *
-+ *  Dean Hildebrand <dhildebz@umich.edu>
-+ *
-+ *  Permission is granted to use, copy, create derivative works, and
-+ *  redistribute this software and such derivative works for any purpose,
-+ *  so long as the name of the University of Michigan is not used in
-+ *  any advertising or publicity pertaining to the use or distribution
-+ *  of this software without specific, written prior authorization. If
-+ *  the above copyright notice or any other identification of the
-+ *  University of Michigan is included in any copy of any portion of
-+ *  this software, then the disclaimer below must also be included.
-+ *
-+ *  This software is provided as is, without representation or warranty
-+ *  of any kind either express or implied, including without limitation
-+ *  the implied warranties of merchantability, fitness for a particular
-+ *  purpose, or noninfringement.  The Regents of the University of
-+ *  Michigan shall not be liable for any damages, including special,
-+ *  indirect, incidental, or consequential damages, with respect to any
-+ *  claim arising out of or in connection with the use of the software,
-+ *  even if it has been or is hereafter advised of the possibility of
-+ *  such damages.
-+ */
-+
-+#ifndef FS_NFS_PNFS_H
-+#define FS_NFS_PNFS_H
-+
-+#ifdef CONFIG_NFS_V4_1
-+
-+#define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
-+
-+/* Per-layout driver specific registration structure */
-+struct pnfs_layoutdriver_type {
-+};
-+
-+void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
-+void unset_pnfs_layoutdriver(struct nfs_server *);
-+
-+#else  /* CONFIG_NFS_V4_1 */
-+
-+static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
-+{
-+}
-+
-+static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
-+{
-+}
-+
-+#endif /* CONFIG_NFS_V4_1 */
-+
-+#endif /* FS_NFS_PNFS_H */
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index d929b18..aba3da2 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -615,6 +615,7 @@ nfs_fileid_to_ino_t(u64 fileid)
- #define NFSDBG_CLIENT		0x0200
- #define NFSDBG_MOUNT		0x0400
- #define NFSDBG_FSCACHE		0x0800
-+#define NFSDBG_PNFS		0x1000
- #define NFSDBG_ALL		0xFFFF
- 
- #ifdef __KERNEL__
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index c82ee7c..29a821d 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -144,6 +144,7 @@ struct nfs_server {
- 	u32			acl_bitmask;	/* V4 bitmask representing the ACEs
- 						   that are supported on this
- 						   filesystem */
-+	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
- #endif
- 	void (*destroy)(struct nfs_server *);
- 
--- 
-1.7.2.1
+ utils/mount/nfs.man |   92 ++++++++++++++++++++++++++++++++++++++++++---------
+ 1 files changed, 76 insertions(+), 16 deletions(-)
+
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 1b86768..a357000 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -1523,32 +1523,92 @@ of Access Control Lists that are semantically richer than POSIX ACLs.
+ NFS version 4 ACLs are not fully compatible with POSIX ACLs; as such,
+ some translation between the two is required
+ in an environment that mixes POSIX ACLs and NFS version 4.
+-.SH FILES
+-.TP 1.5i
+-.I /etc/fstab
+-file system table
+-.SH BUGS
+-The generic
+-.B remount
+-option is not fully supported.
+-Generic options, such as
+-.BR rw " and " ro
+-can be modified using the
+-.B remount
+-option,
+-but NFS-specific options are not all supported.
++.SH "THE REMOUNT OPTION"
++Generic mount options such as
++.BR rw " and " sync
++can be modified on NFS mount points using the
++.BR remount
++option.
++See
++.BR mount (8)
++for more information on generic mount options.
++.P
++With few exceptions, NFS-specific options
++are not able to be modified during a remount.
+ The underlying transport or NFS version
+ cannot be changed by a remount, for example.
++.P
+ Performing a remount on an NFS file system mounted with the
+ .B noac
+ option may have unintended consequences.
+ The
+ .B noac
+-option is a mixture of a generic option,
++option is a combination of the generic option
+ .BR sync ,
+-and an NFS-specific option
++and the NFS-specific option
+ .BR actimeo=0 .
++.SS "Unmounting after a remount"
++For NFS versions 2 and 3, the NFS umount subcommand
++depends on
++.I /etc/mtab
++to contain the mount options needed to send an UMNT request
++to the server.
++The NFS mount subcommand stores these mount options in
++.I /etc/mtab
++after a successful mount operation is complete.
++A remount can alter these stored mount options, however.
+ .P
++When it comes to what is written back to
++.I /etc/mtab
++during a remount, the
++.BR mount (8)
++command has two different modes of operation.
++One mode
++.I merges
++the command line mount options with the mount
++options already in
++.IR /etc/mtab ,
++and the other
++.I replaces
++the mount options in
++.I /etc/mtab
++with the command line mount options.
++.P
++To
++.I replace
++the mount options that are in
++.IR /etc/mtab ,
++specify both the server hostname and export path, and the
++local mount directory during a remount.
++To
++.I merge
++the mount options on the command line with
++the options already in
++.IR /etc/mtab ,
++specify either the local mount directory, or the server
++hostname and export pathname, but not both.  For example,
++.P
++.NF
++.TA 2.5i
++	mount -o remount,ro /mnt
++.FI
++.P
++merges the mount option
++.B ro
++with the mount options already in
++.I /etc/mtab
++for the NFS server mounted at /mnt.
++Merging is almost always the desired outcome, as it preserves the
++ability of the client to contact the server when it comes time
++to send an UMNT request.
++.SH FILES
++.TP 1.5i
++.I /etc/fstab
++file system table
++.TP 1.5i
++.I /etc/mtab
++table of mounted file systems
++.SH BUGS
+ Before 2.4.7, the Linux NFS client did not support NFS over TCP.
+ .P
+ Before 2.4.20, the Linux NFS client used a heuristic
 
