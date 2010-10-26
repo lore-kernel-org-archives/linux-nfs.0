@@ -1,50 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56707 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752581Ab0JAWFY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Oct 2010 18:05:24 -0400
-Date: Fri, 1 Oct 2010 18:05:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benny Halevy <bhalevy@panasas.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:53668 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753774Ab0JZP5s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Oct 2010 11:57:48 -0400
+Received: by iwn10 with SMTP id 10so2336058iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Oct 2010 08:57:47 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/6] More fix-ups for nfs-utils-1.2.4
+To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsd4: adjust buflen for encoded attrs bitmap
- based on actual bitmap length
-Message-ID: <20101001220508.GF1472@fieldses.org>
-References: <1285872466-21013-1-git-send-email-bhalevy@panasas.com>
- <20101001145018.GD17310@fieldses.org>
- <4CA5FBAB.2040309@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CA5FBAB.2040309@panasas.com>
+Date: Tue, 26 Oct 2010 11:57:43 -0400
+Message-ID: <20101026155216.19184.36979.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Oct 01, 2010 at 05:18:03PM +0200, Benny Halevy wrote:
-> On 2010-10-01 16:50,  J. Bruce Fields wrote:
-> > On Thu, Sep 30, 2010 at 08:47:46PM +0200, Benny Halevy wrote:
-> >> The existing code adjusted it based on the worst case scenario for the returned
-> >> bitmap and the best case scenario for the supported attrs attribute.
-> > 
-> > Looks fine, thanks.  Mind if I just ditch the unlikely()s?  I know,
-> > they've been there for a while, but I'm just skeptical of their value on
-> > anything but the most unbelievably hot optimized-to-death code paths.
-> 
-> Well, they don't bother me so I don't the value of ditching them either :)
+Hi Steve-
 
-For me it's an infinitessimal optimization versus a very minor
-improvement in readability.
+Here are rather more final versions of the patches I posted here last
+week for review.  There are a couple of extra clean-ups here as well.
+I think these are ready to be considered for nfs-utils 1.2.4.
 
-Admittedly my scales of judgement may not be fine enough to correctly
-balance such small quantities....
+---
 
-Anyway, applied without annotations; thanks.
+Chuck Lever (6):
+      nfs(5): Document remount behavior
+      nfs(5): Grammar and style fixes
+      mount.nfs: mnt_freq and mnt_pass are always zero
+      mount.nfs: Fix memory leak in nfs_sys_mount()
+      mount: Fix compiler warning in nfs_parse_retry_option()
+      nfs-utils: Remove all uses of AI_ADDRCONFIG
 
---b.
 
-> 
-> They're supposed to help branch prediction thus optimizing the common
-> code paths on the expense of the unlikely path but I too didn't measure
-> their affect.
-> 
-> Bottom line is that I don't have and strong reservations either for or
-> against them in this case :)
+ support/export/hostname.c     |    6 --
+ tests/nsm_client/nsm_client.c |    2 -
+ utils/mount/mount.c           |   34 +++++++------
+ utils/mount/network.c         |    3 -
+ utils/mount/nfs.man           |  107 ++++++++++++++++++++++++++++++++---------
+ utils/mount/stropts.c         |   20 ++++----
+ utils/statd/hostname.c        |    4 --
+ utils/statd/sm-notify.c       |    5 --
+ 8 files changed, 114 insertions(+), 67 deletions(-)
+
+-- 
+Chuck Lever
