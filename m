@@ -1,146 +1,180 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:51677 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755428Ab0JaMfO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Oct 2010 08:35:14 -0400
-Date: Sun, 31 Oct 2010 08:35:10 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Arnd Bergmann <arnd@arndb.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH 1/2] locks: let the caller free file_lock on ->setlease
- failure
-Message-ID: <20101031123510.GA4520@infradead.org>
-References: <20101026164549.GD19445@fieldses.org>
- <20101027083924.GA28129@infradead.org>
- <20101027133924.GB6328@fieldses.org>
- <201010271546.09036.arnd@arndb.de>
- <20101027145538.GC6328@fieldses.org>
- <20101027145929.GA5788@infradead.org>
- <20101030212500.GE480@fieldses.org>
- <20101031123419.GA4491@infradead.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101031123419.GA4491@infradead.org>
+Received: from mx2.netapp.com ([216.240.18.37]:32506 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758164Ab0JZNjz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Oct 2010 09:39:55 -0400
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o9QDdsm5029996
+	for <linux-nfs@vger.kernel.org>; Tue, 26 Oct 2010 06:39:54 -0700 (PDT)
+Subject: Re: [PATCH] NFS: rename idmapper components
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <4CC6D4F9.3040402@netapp.com>
+References: <4CC6D4F9.3040402@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 26 Oct 2010 09:39:14 -0400
+Message-ID: <1288100354.9435.5.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The caller allocated it, the caller should free it.  The only issue so
-far is that we could change the flp pointer even on an error return if
-the fl_change callback failed.  But we can simply move the flp assignment
-after the fl_change invocation, as the callers don't care about the
-flp return value if the setlease call failed.
+On Tue, 2010-10-26 at 09:17 -0400, Bryan Schumaker wrote:
+> This patch renames the idmapper upcall program from nfs.upcall to nfs.idmap.
+> It also changes the key type from id_resolver to nfs_idmap.
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+> diff --git a/Documentation/filesystems/nfs/idmapper.txt b/Documentation/filesystems/nfs/idmapper.txt
+> index c385204..18ee6f5 100644
+> --- a/Documentation/filesystems/nfs/idmapper.txt
+> +++ b/Documentation/filesystems/nfs/idmapper.txt
+> @@ -6,7 +6,7 @@ Id mapper is used by NFS to translate user and group ids into names, and to
+>  translate user and group names into ids.  Part of this translation involves
+>  performing an upcall to userspace to request the information.  Id mapper will
+>  user request-key to perform this upcall and cache the result.  The program
+> -/usr/sbin/nfs.upcall should be called by request-key, and will perform the
+> +/usr/sbin/nfs.idmap should be called by request-key, and will perform the
+>  translation and initialize a key with the resulting information.
+>  
+>   NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
+> @@ -20,12 +20,12 @@ direct the upcall.  The following line should be added:
+>  
+>  #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
+>  #======	=======	===============	===============	===============================
+> -create	id_resolver	*	*		/usr/sbin/nfs.upcall %k %d 600
+> +create	nfs_idmap	*	*		/usr/sbin/nfs.idmap %k %d 600
+>  
+> -This will direct all id_resolver requests to the program /usr/sbin/nfs.upcall.
+> +This will direct all nfs_idmap requests to the program /usr/sbin/nfs.idmap.
+>  The last parameter, 600, defines how many seconds into the future the key will
+> -expire.  This parameter is optional for /usr/sbin/nfs.upcall.  When the timeout
+> -is not specified, nfs.upcall will default to 600 seconds.
+> +expire.  This parameter is optional for /usr/sbin/nfs.idmap.  When the timeout
+> +is not specified, nfs.idmap will default to 600 seconds.
+>  
+>  id mapper uses for key descriptions:
+>  	  uid:  Find the UID for the given user
+> @@ -39,29 +39,29 @@ would edit your request-key.conf so it look similar to this:
+>  
+>  #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
+>  #======	=======	===============	===============	===============================
+> -create	id_resolver	uid:*	*		/some/other/program  %k %d 600
+> -create	id_resolver	*	*		/usr/sbin/nfs.upcall %k %d 600
+> +create	nfs_idmap	uid:*	*		/some/other/program %k %d 600
+> +create	nfs_idmap	*	*		/usr/sbin/nfs.idmap %k %d 600
+>  
+>  Notice that the new line was added above the line for the generic program.
+>  request-key will find the first matching line and corresponding program.  In
+>  this case, /some/other/program will handle all uid lookups and
+> -/usr/sbin/nfs.upcall will handle gid, user, and group lookups.
+> +/usr/sbin/nfs.idmap will handle gid, user, and group lookups.
+>  
+>  See <file:Documentation/keys-request-keys.txt> for more information about the
+>  request-key function.
+>  
+> 
+> -==========
+> -nfs.upcall
+> -==========
+> -nfs.upcall is designed to be called by request-key, and should not be run "by
+> +=========
+> +nfs.idmap
+> +=========
+> +nfs.idmap is designed to be called by request-key, and should not be run "by
+>  hand".  This program takes two arguments, a serialized key and a key
+>  description.  The serialized key is first converted into a key_serial_t, and
+>  then passed as an argument to keyctl_instantiate (both are part of keyutils.h).
+>  
+> -The actual lookups are performed by functions found in nfsidmap.h.  nfs.upcall
+> +The actual lookups are performed by functions found in nfsidmap.h.  nfs.idmap
+>  determines the correct function to call by looking at the first part of the
+>  description string.  For example, a uid lookup description will appear as
+>  "uid:user@domain".
+>  
+> -nfs.upcall will return 0 if the key was instantiated, and non-zero otherwise.
+> +nfs.idmap will return 0 if the key was instantiated, and non-zero otherwise.
+> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+> index dec47ed..313e878 100644
+> --- a/fs/nfs/idmap.c
+> +++ b/fs/nfs/idmap.c
+> @@ -49,10 +49,10 @@
+>  
+>  #define NFS_UINT_MAXLEN 11
+>  
+> -const struct cred *id_resolver_cache;
+> +const struct cred *nfs_idmap_cache;
+>  
+> -struct key_type key_type_id_resolver = {
+> -	.name		= "id_resolver",
+> +struct key_type key_type_nfs_idmap = {
+> +	.name		= "nfs_idmap",
+>  	.instantiate	= user_instantiate,
+>  	.match		= user_match,
+>  	.revoke		= user_revoke,
+> @@ -67,13 +67,13 @@ int nfs_idmap_init(void)
+>  	struct key *keyring;
+>  	int ret = 0;
+>  
+> -	printk(KERN_NOTICE "Registering the %s key type\n", key_type_id_resolver.name);
+> +	printk(KERN_NOTICE "Registering the %s key type\n", key_type_nfs_idmap.name);
+>  
+>  	cred = prepare_kernel_cred(NULL);
+>  	if (!cred)
+>  		return -ENOMEM;
+>  
+> -	keyring = key_alloc(&key_type_keyring, ".id_resolver", 0, 0, cred,
+> +	keyring = key_alloc(&key_type_keyring, ".nfs_idmap", 0, 0, cred,
+>  			     (KEY_POS_ALL & ~KEY_POS_SETATTR) |
+>  			     KEY_USR_VIEW | KEY_USR_READ,
+>  			     KEY_ALLOC_NOT_IN_QUOTA);
+> @@ -86,13 +86,13 @@ int nfs_idmap_init(void)
+>  	if (ret < 0)
+>  		goto failed_put_key;
+>  
+> -	ret = register_key_type(&key_type_id_resolver);
+> +	ret = register_key_type(&key_type_nfs_idmap);
+>  	if (ret < 0)
+>  		goto failed_put_key;
+>  
+>  	cred->thread_keyring = keyring;
+>  	cred->jit_keyring = KEY_REQKEY_DEFL_THREAD_KEYRING;
+> -	id_resolver_cache = cred;
+> +	nfs_idmap_cache = cred;
+>  	return 0;
+>  
+>  failed_put_key:
+> @@ -104,9 +104,9 @@ failed_put_cred:
+>  
+>  void nfs_idmap_quit(void)
+>  {
+> -	key_revoke(id_resolver_cache->thread_keyring);
+> -	unregister_key_type(&key_type_id_resolver);
+> -	put_cred(id_resolver_cache);
+> +	key_revoke(nfs_idmap_cache->thread_keyring);
+> +	unregister_key_type(&key_type_nfs_idmap);
+> +	put_cred(nfs_idmap_cache);
+>  }
+>  
+>  /*
+> @@ -150,8 +150,8 @@ static ssize_t nfs_idmap_request_key(const char *name, size_t namelen,
+>  	if (ret <= 0)
+>  		goto out;
+>  
+> -	saved_cred = override_creds(id_resolver_cache);
+> -	rkey = request_key(&key_type_id_resolver, desc, "");
+> +	saved_cred = override_creds(nfs_idmap_cache);
+> +	rkey = request_key(&key_type_nfs_idmap, desc, "");
+>  	revert_creds(saved_cred);
+>  	kfree(desc);
+>  	if (IS_ERR(rkey)) {
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+We should _not_ be doing this kind of user space api change after the
+code has been merged by Linus.
 
-Index: linux-2.6/fs/cifs/cifsfs.c
-===================================================================
---- linux-2.6.orig/fs/cifs/cifsfs.c	2010-10-31 07:10:07.636004223 -0400
-+++ linux-2.6/fs/cifs/cifsfs.c	2010-10-31 07:10:10.922004154 -0400
-@@ -625,11 +625,8 @@ static int cifs_setlease(struct file *fi
- 		   knows that the file won't be changed on the server
- 		   by anyone else */
- 		return generic_setlease(file, arg, lease);
--	else {
--		if (arg != F_UNLCK)
--			locks_free_lock(*lease);
-+	else
- 		return -EAGAIN;
--	}
- }
- 
- struct file_system_type cifs_fs_type = {
-Index: linux-2.6/fs/gfs2/file.c
-===================================================================
---- linux-2.6.orig/fs/gfs2/file.c	2010-10-31 07:10:07.643004363 -0400
-+++ linux-2.6/fs/gfs2/file.c	2010-10-31 07:10:10.923003665 -0400
-@@ -629,8 +629,6 @@ static ssize_t gfs2_file_aio_write(struc
- 
- static int gfs2_setlease(struct file *file, long arg, struct file_lock **fl)
- {
--	if (arg != F_UNLCK)
--		locks_free_lock(*fl);
- 	return -EINVAL;
- }
- 
-Index: linux-2.6/fs/locks.c
-===================================================================
---- linux-2.6.orig/fs/locks.c	2010-10-31 07:10:07.649004084 -0400
-+++ linux-2.6/fs/locks.c	2010-10-31 07:34:10.102255587 -0400
-@@ -1428,8 +1425,9 @@ int generic_setlease(struct file *filp,
- 		goto out;
- 
- 	if (my_before != NULL) {
--		*flp = *my_before;
- 		error = lease->fl_lmops->fl_change(my_before, arg);
-+		if (!error)
-+			*flp = *my_before;
- 		goto out;
- 	}
- 
-@@ -1444,8 +1442,6 @@ int generic_setlease(struct file *filp,
- 	return 0;
- 
- out:
--	if (arg != F_UNLCK)
--		locks_free_lock(lease);
- 	return error;
- }
- EXPORT_SYMBOL(generic_setlease);
-@@ -1524,8 +1520,11 @@ static int do_fcntl_add_lease(unsigned i
- 	}
- 	lock_flocks();
- 	error = __vfs_setlease(filp, arg, &fl);
--	if (error)
--		goto out_unlock;
-+	if (error) {
-+		unlock_flocks();
-+		locks_free_lock(fl);
-+		goto out_free_fasync;
-+	}
- 
- 	/*
- 	 * fasync_insert_entry() returns the old entry if any.
-@@ -1541,12 +1540,12 @@ static int do_fcntl_add_lease(unsigned i
- 		fl->fl_type = F_UNLCK | F_INPROGRESS;
- 		fl->fl_break_time = jiffies - 10;
- 		time_out_leases(inode);
--		goto out_unlock;
-+	} else {
-+		error = __f_setown(filp, task_pid(current), PIDTYPE_PID, 0);
- 	}
--
--	error = __f_setown(filp, task_pid(current), PIDTYPE_PID, 0);
--out_unlock:
- 	unlock_flocks();
-+
-+out_free_fasync:
- 	if (new)
- 		fasync_free(new);
- 	return error;
-Index: linux-2.6/fs/nfs/file.c
-===================================================================
---- linux-2.6.orig/fs/nfs/file.c	2010-10-31 07:10:07.658003804 -0400
-+++ linux-2.6/fs/nfs/file.c	2010-10-31 07:10:10.936003734 -0400
-@@ -884,7 +884,5 @@ static int nfs_setlease(struct file *fil
- 	dprintk("NFS: setlease(%s/%s, arg=%ld)\n",
- 			file->f_path.dentry->d_parent->d_name.name,
- 			file->f_path.dentry->d_name.name, arg);
--	if (arg != F_UNLCK)
--		locks_free_lock(*fl);
- 	return -EINVAL;
- }
-Index: linux-2.6/fs/nfsd/nfs4state.c
-===================================================================
---- linux-2.6.orig/fs/nfsd/nfs4state.c	2010-10-31 07:10:07.666004084 -0400
-+++ linux-2.6/fs/nfsd/nfs4state.c	2010-10-31 07:32:56.906254608 -0400
-@@ -2652,6 +2652,7 @@ nfs4_open_delegation(struct svc_fh *fh,
- 	if ((status = vfs_setlease(fl->fl_file, fl->fl_type, &fl))) {
- 		dprintk("NFSD: setlease failed [%d], no delegation\n", status);
- 		dp->dl_flock = NULL;
-+		locks_free_lock(fl);
- 		unhash_delegation(dp);
- 		flag = NFS4_OPEN_DELEGATE_NONE;
- 		goto out;
+I don't mind a patch to the documentation that changes 'nfs.upcall' to
+match the name given in nfs-utils, but it is too late to change the name
+'id_resolver': that should have been done before the merge window.
+
+Cheers
+  Trond
