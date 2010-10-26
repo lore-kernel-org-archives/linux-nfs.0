@@ -1,59 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:64067 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751466Ab0JAUOJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Oct 2010 16:14:09 -0400
-Received: by bwz11 with SMTP id 11so2458204bwz.19
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Oct 2010 13:14:08 -0700 (PDT)
-In-Reply-To: <20101001200747.GA4353@merit.edu>
-References: <4CA5C059.6000805@RedHat.com>
-	<4CA5E744.9010006@desy.de>
-	<4CA63D1A.5070108@RedHat.com>
-	<20101001200747.GA4353@merit.edu>
-Date: Fri, 1 Oct 2010 16:13:57 -0400
-Message-ID: <AANLkTin9+_aWyLMv1xP9ou1YRXfY46dgK7J-to+p5LTb@mail.gmail.com>
-Subject: Re: Updated pNFS Developmental kernel repository
-From: Fred Isaman <iisaman@netapp.com>
-To: Jim Rees <rees@umich.edu>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        peter honeyman <honey@citi.umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:56529 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757774Ab0JZVYh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Oct 2010 17:24:37 -0400
+Date: Tue, 26 Oct 2010 17:24:34 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Arnd Bergmann <arnd@arndb.de>, Bryan Schumaker <bjschuma@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: nfsd changes for 2.6.37
+Message-ID: <20101026212433.GB1842@fieldses.org>
+References: <20101026164549.GD19445@fieldses.org>
+ <201010262218.36940.arnd@arndb.de>
+ <4CC73BA6.1090407@netapp.com>
+ <201010262255.40481.arnd@arndb.de>
+ <AANLkTimPBqafDPxYpZjuym8+-yk4vKYTU15Js-Ux_e6Z@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AANLkTimPBqafDPxYpZjuym8+-yk4vKYTU15Js-Ux_e6Z@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Oct 1, 2010 at 4:07 PM, Jim Rees <rees@umich.edu> wrote:
-> Steve Dickson wrote:
->
->  On 10/01/2010 09:51 AM, Tigran Mkrtchyan wrote:
->  >
->  > Hi Steve,
->  >
->  > thanks for the builds. What I am missing is modprobe configuration file
->  > which I have to add myself.
->  Unfortunately yes... I have not figured out a good way to have
->  the mobprobe done on the client since, in general, init scripts
->  don't run on the client (with the exception of rpc.statd and rpc.gssd).
->
->  I guess I could come up with an pnfs init script..but that
->  seems like a bit overkill just to do a modprobe...
->
-> I've already got an init script for the block layout client that does the
-> modprobe and starts the daemon.  How about we generalize it to modprobe the
-> other modules too, and call it the pnfs init script?
+On Tue, Oct 26, 2010 at 02:02:05PM -0700, Linus Torvalds wrote:
+> On Tue, Oct 26, 2010 at 1:55 PM, Arnd Bergmann <arnd@arndb.de> wrote:
+> >
+> > Finally, we can build fs/locks.c, nfs and nfsd with CONFIG_BKL
+> > disabled.
+> >
+> > *not tested*
+> 
+> Ok, please make this so, so that we finally can effectively get rid of
+> the BKL in this release (I don't really care about the random old
+> drivers that may be "depends on BKL").
+> 
+> But that obviously requires at least some minimal testing by somebody
+> who is using NFS heavily, including locking. I assume that the
+> connectathon tests include file locking? And I presume that the nfs
+> developers run those at least semi-regularly and could do at least
+> that kind of minimal testing?
 
-The current code is designed to request the loading of the module as
-needed.  All that is needed is an alias, of the type
+I did a couple connectathon runs just now with no obvious ill effects
+except for some sleep-within-spinlock warnings in the lease code.
 
-alias nfs-layouttype4-[INTEGER_ID] ACTUAL_MODULE_NAME
+Yeah, connecthon does include lock tests, though they're just basic
+correctness tests.
 
-Fred
-
-
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+--b.
