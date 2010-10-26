@@ -1,53 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43742 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:52600 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751896Ab0JMOzx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Oct 2010 10:55:53 -0400
-Message-ID: <4CB5C876.3030203@RedHat.com>
-Date: Wed, 13 Oct 2010 10:55:50 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 01/15] mountd: Clear mountd registrations at start up
-References: <20101010234836.6667.4057.stgit@ellison.1015granger.net> <20101011000411.6667.17979.stgit@ellison.1015granger.net>
-In-Reply-To: <20101011000411.6667.17979.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset=UTF-8
+	id S1757691Ab0JZWlN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Oct 2010 18:41:13 -0400
+Date: Tue, 26 Oct 2010 18:41:07 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Arnd Bergmann <arnd@arndb.de>, Bryan Schumaker <bjschuma@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: nfsd changes for 2.6.37
+Message-ID: <20101026224107.GE1842@fieldses.org>
+References: <20101026164549.GD19445@fieldses.org>
+ <201010262218.36940.arnd@arndb.de>
+ <4CC73BA6.1090407@netapp.com>
+ <201010262255.40481.arnd@arndb.de>
+ <AANLkTimPBqafDPxYpZjuym8+-yk4vKYTU15Js-Ux_e6Z@mail.gmail.com>
+ <20101026212433.GB1842@fieldses.org>
+ <AANLkTinOd9pDVRYDQ5+dqn8LPf4yoOW=j8NxyCfCQAB6@mail.gmail.com>
+ <20101026214441.GC1842@fieldses.org>
+ <20101026221156.GD1842@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101026221156.GD1842@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-On 10/10/2010 08:04 PM, Chuck Lever wrote:
-> Clear stale MNT registrations before mountd tries to create fresh
-> listeners, to ensure that mountd starts.  This is also what statd
-> does.
+On Tue, Oct 26, 2010 at 06:11:56PM -0400, J. Bruce Fields wrote:
+> On Tue, Oct 26, 2010 at 05:44:41PM -0400, J. Bruce Fields wrote:
+> > On Tue, Oct 26, 2010 at 02:37:26PM -0700, Linus Torvalds wrote:
+> > > On Tue, Oct 26, 2010 at 2:24 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > >
+> > > > I did a couple connectathon runs just now with no obvious ill effects
+> > > > except for some sleep-within-spinlock warnings in the lease code.
+> > > 
+> > > Hmm. Those sleep-within-spinlock warnings are very likely serious
+> > > bugs.
+> > 
+> > Yeah, didn't mean to belittle them.
+> > 
+> > > Can you quote the whole warning with stack trace?
+> > 
+> > It's just obvious allocations in setlease:
+> > 
+> > BUG: sleeping function called from invalid context at mm/slab.c:3101
+> > in_atomic(): 1, irqs_disabled(): 0, pid: 4345, name: lease_tests
+> > 1 lock held by lease_tests/4345:
+> >  #0:  (file_lock_lock){+.+.+.}, at: [<ffffffff81128be5>] lock_flocks+0x15/0x20
+> > Pid: 4345, comm: lease_tests Not tainted 2.6.36-05858-gbd5e20b #1028
+> > Call Trace:
+> >  [<ffffffff8103141d>] __might_sleep+0x10d/0x140
+> >  [<ffffffff810e3ad3>] kmem_cache_alloc+0x1f3/0x230
+> >  [<ffffffff8112a4d2>] generic_setlease+0x112/0x2c0
+> >  [<ffffffff8112a6b5>] __vfs_setlease+0x35/0x40
+> >  [<ffffffff8112acfe>] fcntl_setlease+0xce/0x180
+> >  [<ffffffff810f7c2e>] sys_fcntl+0x2fe/0x630
+> >  [<ffffffff81961999>] ? trace_hardirqs_on_thunk+0x3a/0x3f
+> >  [<ffffffff81002658>] system_call_fastpath+0x16/0x1b
+> > 
+> > I'm testing a patch.
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
+> This works for me.
 > 
->  utils/mountd/mountd.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-> index d309950..7e0cf6a 100644
-> --- a/utils/mountd/mountd.c
-> +++ b/utils/mountd/mountd.c
-> @@ -840,6 +840,7 @@ main(int argc, char **argv)
->  	if (new_cache)
->  		cache_open();
->  
-> +	unregister_services();
->  	if (version2()) {
->  		listeners += nfs_svc_create("mountd", MOUNTPROG,
->  					MOUNTVERS, mount_dispatch, port);
-> 
-Question, since unregister_services() only unregisters version
-that are currently requested, won't it miss unregistering 
-version that are not currently requested, ones that are left over
-from a previous instant of mountd? 
+> I'm not saying it's correct, but it does at least pass my dumb tests
+> without complaining.
 
-The point being all versions need to be unregistered at his point, 
-not just the ones currently being requested. 
+I can't think of any more missing locking, though I did notice this on a
+quick look.
 
-steved.
+--b.
+
+commit fc42117585672abd3cbf247dd311869233d1606a
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Oct 26 18:25:30 2010 -0400
+
+    fix nlmsvc_notify_blocked locking
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 6f1ef00..c462d34 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -700,14 +700,16 @@ nlmsvc_notify_blocked(struct file_lock *fl)
+ 	struct nlm_block	*block;
+ 
+ 	dprintk("lockd: VFS unblock notification for block %p\n", fl);
++	spin_lock(&nlm_blocked_lock);
+ 	list_for_each_entry(block, &nlm_blocked, b_list) {
+ 		if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)) {
+-			nlmsvc_insert_block(block, 0);
++			nlmsvc_insert_block_locked(block, 0);
++			spin_unlock(&nlm_blocked_lock);
+ 			svc_wake_up(block->b_daemon);
+ 			return;
+ 		}
+ 	}
+-
++	spin_unlock(&nlm_blocked_lock);
+ 	printk(KERN_WARNING "lockd: notification for unknown block!\n");
+ }
+ 
