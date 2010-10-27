@@ -1,47 +1,298 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp2.ist.utl.pt ([193.136.128.22]:57403 "EHLO smtp2.ist.utl.pt"
+Received: from mx2.netapp.com ([216.240.18.37]:21893 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753565Ab0JROsQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Oct 2010 10:48:16 -0400
-Date: Mon, 18 Oct 2010 15:48:11 +0100
-From: =?UTF-8?B?Q2zDoXVkaW8=?= Martins <ctpm@ist.utl.pt>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Ian Munsie <imunsie@au1.ibm.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Scott Romanowski <romansc@us.ibm.com>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>
-Subject: Re: NFS sillyrename side effect
-Message-Id: <20101018154811.768baeb5.ctpm@ist.utl.pt>
-In-Reply-To: <20101018101059.574b715a@corrin.poochiereds.net>
-References: <1287362142-sup-777@au1.ibm.com>
-	<20101018101059.574b715a@corrin.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8
+	id S1755903Ab0J0TgC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Oct 2010 15:36:02 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] nfs-utils: add nfs.idmap
+Date: Wed, 27 Oct 2010 15:35:55 -0400
+Message-Id: <1288208156-13874-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1288208156-13874-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1288208156-13874-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-On Mon, 18 Oct 2010 10:10:59 -0400 Jeff Layton <jlayton@redhat.com> wrote:
-> See:
-> 
-> http://nfs.sourceforge.net/
-> 
-> ...section D2. The faq mentions that NFSv4 could do away with it
-> because it's stateful, but that's not really the case either.
-> 
+This patch adds the nfs.idmap program to nfs-utils.  This program is called by
+the nfs idmapper through request-keys to map between uid / user name and
+gid / group name.
 
- Section D2 ends with:
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ aclocal/keyutils.m4           |   11 ++++
+ configure.ac                  |    4 ++
+ utils/Makefile.am             |    1 +
+ utils/nfs.idmap/Makefile.am   |    9 +++
+ utils/nfs.idmap/nfs.idmap.c   |  118 +++++++++++++++++++++++++++++++++++++++++
+ utils/nfs.idmap/nfs.idmap.man |   60 +++++++++++++++++++++
+ 6 files changed, 203 insertions(+), 0 deletions(-)
+ create mode 100644 aclocal/keyutils.m4
+ create mode 100644 utils/nfs.idmap/Makefile.am
+ create mode 100644 utils/nfs.idmap/nfs.idmap.c
+ create mode 100644 utils/nfs.idmap/nfs.idmap.man
 
-"The NFS version 4 protocol is stateful, and could actually support
-delete-on-last-close. Unfortunately there isn't an easy way to do this
-and remain backwards-compatible with version 2 and 3 accessors."
-
- So, theoretically, could one modify the code to selectively disable
-silly rename on a client, when it knows it is talking v4 with the
-server?
-
- Thanks
-
-Cláudio
+diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
+new file mode 100644
+index 0000000..8aea646
+--- /dev/null
++++ b/aclocal/keyutils.m4
+@@ -0,0 +1,11 @@
++dnl Checks for keyutils library and headers
++dnl
++AC_DEFUN([AC_KEYUTILS], [
++
++  dnl Check for libkeyutils; do not add to LIBS if found
++  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
++  AC_SUBST(LIBKEYUTILS)
++
++  AC_CHECK_HEADERS([keyutils.h], ,
++		   [AC_MSG_ERROR([keyutils.h header not found.])])
++])dnl
+diff --git a/configure.ac b/configure.ac
+index 3058be6..0907f72 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
+   dnl check for nfsidmap libraries and headers
+   AC_LIBNFSIDMAP
+ 
++  dnl check for the keyutils libraries and headers
++  AC_KEYUTILS
++
+   dnl librpcsecgss already has a dependency on libgssapi,
+   dnl but we need to make sure we get the right version
+   if test "$enable_gss" = yes; then
+@@ -435,6 +438,7 @@ AC_CONFIG_FILES([
+ 	utils/mountd/Makefile
+ 	utils/nfsd/Makefile
+ 	utils/nfsstat/Makefile
++	utils/nfs.idmap/Makefile
+ 	utils/showmount/Makefile
+ 	utils/statd/Makefile
+ 	tests/Makefile
+diff --git a/utils/Makefile.am b/utils/Makefile.am
+index 8665183..332ecff 100644
+--- a/utils/Makefile.am
++++ b/utils/Makefile.am
+@@ -4,6 +4,7 @@ OPTDIRS =
+ 
+ if CONFIG_NFSV4
+ OPTDIRS += idmapd
++OPTDIRS += nfs.idmap
+ endif
+ 
+ if CONFIG_GSS
+diff --git a/utils/nfs.idmap/Makefile.am b/utils/nfs.idmap/Makefile.am
+new file mode 100644
+index 0000000..29e17af
+--- /dev/null
++++ b/utils/nfs.idmap/Makefile.am
+@@ -0,0 +1,9 @@
++## Process this file with automake to produce Makefile.in
++
++man8_MANS = nfs.idmap.man
++
++sbin_PROGRAMS	= nfs.idmap
++nfs_idmap_SOURCES = nfs.idmap.c
++nfs_idmap_LDADD = -lnfsidmap -lkeyutils
++
++MAINTAINERCLEANFILES = Makefile.in
+diff --git a/utils/nfs.idmap/nfs.idmap.c b/utils/nfs.idmap/nfs.idmap.c
+new file mode 100644
+index 0000000..abbcb65
+--- /dev/null
++++ b/utils/nfs.idmap/nfs.idmap.c
+@@ -0,0 +1,118 @@
++
++#include <stdarg.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include <pwd.h>
++#include <grp.h>
++#include <keyutils.h>
++#include <nfsidmap.h>
++
++#include <syslog.h>
++
++/* gcc nfs.idmap.c -o nfs.idmap -l nfsidmap -l keyutils */
++
++#define MAX_ID_LEN   11
++#define IDMAP_NAMESZ 128
++#define USER  1
++#define GROUP 0
++
++
++/*
++ * Find either a user or group id based on the name@domain string
++ */
++int id_lookup(char *name_at_domain, key_serial_t key, int type)
++{
++	char id[MAX_ID_LEN];
++	uid_t uid = 0;
++	gid_t gid = 0;
++	int rc;
++
++	if (type == USER) {
++		rc = nfs4_owner_to_uid(name_at_domain, &uid);
++		sprintf(id, "%u", uid);
++	} else {
++		rc = nfs4_group_owner_to_gid(name_at_domain, &gid);
++		sprintf(id, "%u", gid);
++	}
++
++	if (rc == 0)
++		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
++
++	return rc;
++}
++
++/*
++ * Find the name@domain string from either a user or group id
++ */
++int name_lookup(char *id, key_serial_t key, int type)
++{
++	char name[IDMAP_NAMESZ];
++	char domain[NFS4_MAX_DOMAIN_LEN];
++	uid_t uid;
++	gid_t gid;
++	int rc;
++
++	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
++	if (rc != 0) {
++		rc = -1;
++		goto out;
++	}
++
++	if (type == USER) {
++		uid = atoi(id);
++		rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
++	} else {
++		gid = atoi(id);
++		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
++	}
++
++	if (rc == 0)
++		rc = keyctl_instantiate(key, &name, strlen(name), 0);
++
++out:
++	return rc;
++}
++
++int main(int argc, char **argv)
++{
++	char *arg;
++	char *value;
++	char *type;
++	int rc = 1;
++	int timeout = 600;
++	key_serial_t key;
++
++	if (argc < 3)
++		return 1;
++
++	arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
++	strcpy(arg, argv[2]);
++	type = strtok(arg, ":");
++	value = strtok(NULL, ":");
++
++	if (argc == 4) {
++		timeout = atoi(argv[3]);
++		if (timeout < 0)
++			timeout = 0;
++	}
++
++	key = strtol(argv[1], NULL, 10);
++
++	if (strcmp(type, "uid") == 0)
++		rc = id_lookup(value, key, USER);
++	else if (strcmp(type, "gid") == 0)
++		rc = id_lookup(value, key, GROUP);
++	else if (strcmp(type, "user") == 0)
++		rc = name_lookup(value, key, USER);
++	else if (strcmp(type, "group") == 0)
++		rc = name_lookup(value, key, GROUP);
++
++	/* Set timeout to 5 (600 seconds) minutes */
++	if (rc == 0)
++		keyctl_set_timeout(key, timeout);
++
++	free(arg);
++	return rc;
++}
+diff --git a/utils/nfs.idmap/nfs.idmap.man b/utils/nfs.idmap/nfs.idmap.man
+new file mode 100644
+index 0000000..3b51b8e
+--- /dev/null
++++ b/utils/nfs.idmap/nfs.idmap.man
+@@ -0,0 +1,60 @@
++.\"
++.\"@(#)nfs.idmap(8) - The NFS idmapper upcall program
++.\"
++.\" Copyright (C) 2010 Bryan Schumaker <bjschuma@netapp.com>
++.TH nfs.idmap 5 "1 October 2010"
++.SH NAME
++nfs.idmap \- The NFS idmapper upcall program
++.SH DESCRIPTION
++The file
++.I /usr/sbin/idmap
++is used by the NFS idmapper to translate user and group ids into names, and to
++translate user and group names into ids. Idmapper uses request-key to perform
++the upcall and cache the result.
++.I /usr/sbin/idmap
++should only be called by request-key, and will perform the translation and
++initialize a key with the resulting information.
++.PP
++NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
++feature.
++.SH CONFIGURING
++The file
++.I /etc/request-key.conf
++will need to be modified so
++.I /sbin/request-key
++can properly direct the upcall. The following line should be added before a call
++to keyctl negate:
++.PP
++create	id_resolver	*	*	/usr/sbin/nfs.idmap %k %d 600
++.PP
++This will direct all nfs_idmap requests to the program
++.I /usr/sbin/nfs.idmap
++The last parameter, 600, defines how many seconds into the future the key will
++expire.  This is an optional parameter for
++.I /usr/sbin/nfs.idmap
++and will default to 600 seconds when not specified.
++.PP
++The idmapper system uses four key descriptions:
++.PP
++	  uid: Find the UID for the given user
++.br
++	  gid: Find the GID for the given group
++.br
++	 user: Find the user name for the given UID
++.br
++	group: Find the group name for the given GID
++.PP
++You can choose to handle any of these individually, rather than using the
++generic upcall program.  If you would like to use your own program for a uid
++lookup then you would edit your request-key.conf so it looks similar to this:
++.PP
++create	id_resolver	uid:*	*	/some/other/program %k %d 600
++.br
++create	id_resolver	*		*	/usr/sbin/nfs.idmap %k %d 600
++.PP
++Notice that the new line was added above the line for the generic program.
++request-key will find the first matching line and run the corresponding program.
++In this case, /some/other/program will handle all uid lookups, and
++/usr/sbin/nfs.idmap will handle gid, user, and group lookups.
++.SH AUTHOR
++Bryan Schumaker, <bjschuma@netapp.com>
+-- 
+1.7.2.3
 
