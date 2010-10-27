@@ -1,16 +1,16 @@
 From: "Dr. Robert William" <pascale.vial-X2lX9bSaArc@public.gmane.org>
 Subject: Yours Faithfully
-Date: Wed, 27 Oct 2010 02:18:09 +0200 (CEST)
-Message-ID: <ea-mime-4cc76fc1-7b5e-6ac86778__14540.997966151$1288138848$gmane$org@webmail.numericable.fr>
+Date: Wed, 27 Oct 2010 02:14:32 +0200 (CEST)
+Message-ID: <ea-mime-4cc76ee8-7cb7-8596c7b__45152.5277727798$1288139199$gmane$org@webmail.numericable.fr>
 Mime-Version: 1.0
 Content-Type: text/plain;
 	charset="UTF-8"
 To: pascale.vial-X2lX9bSaArc@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fb1.tech.numericable.fr ([82.216.111.51]:44736 "EHLO
+Received: from fb1.tech.numericable.fr ([82.216.111.51]:40720 "EHLO
 	fb1.tech.numericable.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752334Ab0J0AU1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Oct 2010 20:20:27 -0400
+	with ESMTP id S1752334Ab0J0A00 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Oct 2010 20:26:26 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
