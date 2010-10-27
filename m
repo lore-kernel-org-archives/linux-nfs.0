@@ -1,159 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53910 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751159Ab0JBTTT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 2 Oct 2010 15:19:19 -0400
-Date: Sat, 2 Oct 2010 15:19:01 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jim Rees <rees@umich.edu>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH v2] nfs4: fix channel attribute sanity-checks
-Message-ID: <20101002191901.GA18079@fieldses.org>
-References: <20100525164224.GC4235@fieldses.org>
- <1274806624.11283.10.camel@heimdal.trondhjem.org>
- <20100525183223.GA6929@fieldses.org>
- <20100907223213.GA24707@fieldses.org>
- <20101002051949.GB18626@fieldses.org>
- <20101002090444.GB17395@merit.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101002090444.GB17395@merit.edu>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:50130 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756560Ab0J0TtU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Oct 2010 15:49:20 -0400
+Received: by eye27 with SMTP id 27so1044950eye.19
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Oct 2010 12:49:18 -0700 (PDT)
+In-Reply-To: <1288203860-26920-1-git-send-email-bhalevy@panasas.com>
+References: <4CC86D96.8020803@panasas.com>
+	<1288203860-26920-1-git-send-email-bhalevy@panasas.com>
+Date: Wed, 27 Oct 2010 15:49:18 -0400
+Message-ID: <AANLkTikKpCO_xYjOpj74AiptyDjtMtJJhQaObksF_+LE@mail.gmail.com>
+Subject: Re: [PATCH 3/3] SQUASHME: pnfs: filelayout: print_ds should use dprintk
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@redhat.com>
+The change to printk was in response to Trond's complaint about
+successive dprintks.
 
-The sanity checks here are incorrect; in the worst case they allow
-values that crash the client.
+Instead, the following would work:
 
-They're also over-reliant on the preprocessor.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfs/nfs4proc.c |   75 +++++++++++++++++++++++++++++------------------------
- 1 files changed, 41 insertions(+), 34 deletions(-)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 5f52e6f..2ce393c 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -585,7 +585,8 @@ filelayout_commit(struct nfs_write_data *data, int sync)
+ 		}
+ 		dprintk("%s: Initiating commit: %llu USE DS:\n",
+ 			__func__, file_offset);
+-		print_ds(ds);
++		ifdebug(FACILITY)
++			print_ds(ds);
 
-On Sat, Oct 02, 2010 at 05:04:44AM -0400, Jim Rees wrote:
-> J. Bruce Fields wrote:
-> 
->   +	 * Our requested max_ops is the minimum we need; we're not
->   +	 * prepared to break up compounds into smaller pieces than that.
->   +	 * So, not point even trying to continue if the server won't
->   +	 * cooperate:
-> 
-> "not" should be "no".
+ 		/* Send COMMIT to data server */
+ 		nfs_initiate_commit(dsdata, clnt, call_ops, sync);
 
-Whoops, fixed.
 
-> Also seems odd that max_ops is actually the minimum, but I guess the code is
-> clear enough.
+Fred
 
-Yeah.  The naming's a little odd, at least; however this field was
-imagined being used when the spec was written, I don't think clients are
-likely to dynamically adjust their compounds somehow to optimize for the
-max_ops that the server gives them.  The linux client behavior seems
-more likely: calculate the length of the longest compound the client
-needs to be able to send, send that as max_ops, error out if the server
-won't give at least much, and ignore the server if it grants more....
-
---b.
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 089da5b..fdc79e5 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4914,49 +4914,56 @@ static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
- 		args->bc_attrs.max_reqs);
- }
- 
--static int _verify_channel_attr(char *chan, char *attr_name, u32 sent, u32 rcvd)
-+static int nfs4_verify_fore_channel_attrs(struct nfs41_create_session_args *args, struct nfs4_session *session)
- {
--	if (rcvd <= sent)
--		return 0;
--	printk(KERN_WARNING "%s: Session INVALID: %s channel %s increased. "
--		"sent=%u rcvd=%u\n", __func__, chan, attr_name, sent, rcvd);
--	return -EINVAL;
-+	struct nfs4_channel_attrs *sent = &args->fc_attrs;
-+	struct nfs4_channel_attrs *rcvd = &session->fc_attrs;
-+
-+	if (rcvd->headerpadsz > sent->headerpadsz)
-+		return -EINVAL;
-+	if (rcvd->max_resp_sz > sent->max_resp_sz)
-+		return -EINVAL;
-+	/*
-+	 * Our requested max_ops is the minimum we need; we're not
-+	 * prepared to break up compounds into smaller pieces than that.
-+	 * So, no point even trying to continue if the server won't
-+	 * cooperate:
-+	 */
-+	if (rcvd->max_ops < sent->max_ops)
-+		return -EINVAL;
-+	if (rcvd->max_reqs == 0)
-+		return -EINVAL;
-+	return 0;
- }
- 
--#define _verify_fore_channel_attr(_name_) \
--	_verify_channel_attr("fore", #_name_, \
--			     args->fc_attrs._name_, \
--			     session->fc_attrs._name_)
-+static int nfs4_verify_back_channel_attrs(struct nfs41_create_session_args *args, struct nfs4_session *session)
-+{
-+	struct nfs4_channel_attrs *sent = &args->bc_attrs;
-+	struct nfs4_channel_attrs *rcvd = &session->bc_attrs;
- 
--#define _verify_back_channel_attr(_name_) \
--	_verify_channel_attr("back", #_name_, \
--			     args->bc_attrs._name_, \
--			     session->bc_attrs._name_)
-+	if (rcvd->max_rqst_sz > sent->max_rqst_sz)
-+		return -EINVAL;
-+	if (rcvd->max_resp_sz < sent->max_resp_sz)
-+		return -EINVAL;
-+	if (rcvd->max_resp_sz_cached > sent->max_resp_sz_cached)
-+		return -EINVAL;
-+	/* These would render the backchannel useless: */
-+	if (rcvd->max_ops  == 0)
-+		return -EINVAL;
-+	if (rcvd->max_reqs == 0)
-+		return -EINVAL;
-+	return 0;
-+}
- 
--/*
-- * The server is not allowed to increase the fore channel header pad size,
-- * maximum response size, or maximum number of operations.
-- *
-- * The back channel attributes are only negotiatied down: We send what the
-- * (back channel) server insists upon.
-- */
- static int nfs4_verify_channel_attrs(struct nfs41_create_session_args *args,
- 				     struct nfs4_session *session)
- {
--	int ret = 0;
--
--	ret |= _verify_fore_channel_attr(headerpadsz);
--	ret |= _verify_fore_channel_attr(max_resp_sz);
--	ret |= _verify_fore_channel_attr(max_ops);
--
--	ret |= _verify_back_channel_attr(headerpadsz);
--	ret |= _verify_back_channel_attr(max_rqst_sz);
--	ret |= _verify_back_channel_attr(max_resp_sz);
--	ret |= _verify_back_channel_attr(max_resp_sz_cached);
--	ret |= _verify_back_channel_attr(max_ops);
--	ret |= _verify_back_channel_attr(max_reqs);
-+	int ret;
- 
--	return ret;
-+	ret = nfs4_verify_fore_channel_attrs(args, session);
-+	if (ret)
-+		return ret;
-+	return nfs4_verify_back_channel_attrs(args, session);
- }
- 
- static int _nfs4_proc_create_session(struct nfs_client *clp)
--- 
-1.7.0.4
-
+On Wed, Oct 27, 2010 at 2:24 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+> rather than printk to prevent printouts in non-debug mode
+> currently happening in filelayout_commit
+>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/nfs4filelayoutdev.c |    9 ++++-----
+>  1 files changed, 4 insertions(+), 5 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+> index 1f0ab62..de47112 100644
+> --- a/fs/nfs/nfs4filelayoutdev.c
+> +++ b/fs/nfs/nfs4filelayoutdev.c
+> @@ -53,10 +53,10 @@ void
+>  print_ds(struct nfs4_pnfs_ds *ds)
+>  {
+>        if (ds == NULL) {
+> -               printk("%s NULL device\n", __func__);
+> +               dprintk("%s NULL device\n", __func__);
+>                return;
+>        }
+> -       printk("        ip_addr %x port %hu\n"
+> +       dprintk("        ip_addr %x port %hu\n"
+>                "        ref count %d\n"
+>                "        client %p\n"
+>                "        cl_exchange_flags %x\n",
+> @@ -71,7 +71,7 @@ print_ds_list(struct nfs4_file_layout_dsaddr *dsaddr)
+>        int i;
+>
+>        ifdebug(FACILITY) {
+> -               printk("%s dsaddr->ds_num %d\n", __func__,
+> +               dprintk("%s dsaddr->ds_num %d\n", __func__,
+>                       dsaddr->ds_num);
+>                for (i = 0; i < dsaddr->ds_num; i++)
+>                        print_ds(dsaddr->ds_list[i]);
+> @@ -211,8 +211,7 @@ static void
+>  destroy_ds(struct nfs4_pnfs_ds *ds)
+>  {
+>        dprintk("--> %s\n", __func__);
+> -       ifdebug(FACILITY)
+> -               print_ds(ds);
+> +       print_ds(ds);
+>
+>        if (ds->ds_clp)
+>                nfs_put_client(ds->ds_clp);
+> --
+> 1.7.2.3
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
