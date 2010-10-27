@@ -1,51 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4159 "EHLO mx1.redhat.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:52250 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758467Ab0J1Ppf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Oct 2010 11:45:35 -0400
-Message-ID: <4CC99A9D.10908@RedHat.com>
-Date: Thu, 28 Oct 2010 11:45:33 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Bryan Schumaker <bjschuma@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs-utils: add nfs.idmap
-References: <4CC6CE30.90105@netapp.com> <4CC70D34.1060600@netapp.com>	 <4CC99463.9000108@RedHat.com>  <4CC9966B.1050103@netapp.com> <1288280405.3194.44.camel@heimdal.trondhjem.org>
-In-Reply-To: <1288280405.3194.44.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1757269Ab0J0VXO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Oct 2010 17:23:14 -0400
+Subject: Re: [PATCH 3/3] SQUASHME: pnfs: filelayout: print_ds should use
+ dprintk
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <4CC892E1.3070703@panasas.com>
+References: <4CC86D96.8020803@panasas.com>
+	 <1288203860-26920-1-git-send-email-bhalevy@panasas.com>
+	 <AANLkTikKpCO_xYjOpj74AiptyDjtMtJJhQaObksF_+LE@mail.gmail.com>
+	 <4CC8863B.3080504@panasas.com>
+	 <AANLkTinsRNKCOQZjH4kYTTou-a+J02dM8nB=WL_xu7Wb@mail.gmail.com>
+	 <4CC892E1.3070703@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 27 Oct 2010 17:23:03 -0400
+Message-ID: <1288214583.13431.19.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-On 10/28/2010 11:40 AM, Trond Myklebust wrote:
-> On Thu, 2010-10-28 at 11:27 -0400, Bryan Schumaker wrote:
->> On 10/28/2010 11:18 AM, Steve Dickson wrote:
->>> Hey Bryan,
->>>
->>> A couple nits.... which I will be more than willing to take of... 
->>>
->>> 1) I would like to change the binary name from nfs.idmap to nfsidmap
->>>    which is consistent with how the rest of the binaries are named.
->>>    (i.e. binary names generally don't have any '.' or '-' in them)
->>>    
->>> 2) Change the source directory from utils/nfs.idmap to 
->>>    utils/idmap which again makes it consistent with what
->>>    is already there. 
->>
->> These both sounds reasonable to me.  I'll make a patch to modify the kernel documentation to reflect this.
->>>
+On Wed, 2010-10-27 at 23:00 +0200, Benny Halevy wrote:
+> On 2010-10-27 22:17, Fred Isaman wrote:
+> > On Wed, Oct 27, 2010 at 4:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+> >> On 2010-10-27 21:49, Fred Isaman wrote:
+> >>> The change to printk was in response to Trond's complaint about
+> >>> successive dprintks.
+> >>>
+> >>> Instead, the following would work:
+> >>>
+> >>>
+> >>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> >>> index 5f52e6f..2ce393c 100644
+> >>> --- a/fs/nfs/nfs4filelayout.c
+> >>> +++ b/fs/nfs/nfs4filelayout.c
+> >>> @@ -585,7 +585,8 @@ filelayout_commit(struct nfs_write_data *data, int sync)
+> >>>               }
+> >>
+> >> If we're going this way, the ifdebug could cover the following
+> >> printout as well...
+> >>
+> > 
+> > Did you mean preceding printout?  By the way - the complaint about
 > 
-> We just sent in one patch to change the name in the kernel docs, now the
-> name is changing again?
-I'll take the blame for that... I should have gotten into the 
-conversation  earlier... sorry about that...
-
+> Yeah, preceding the call to print_ds (following my comment :)
 > 
-> Let's wait with this until an actual nfs-utils release is available, so
-> we can also update the 'Documentation/Changes' file with the new minimal
-> release version number.
-Just to be clear... the kernel changes will be in the 2.6.37 kernel, correct?
+> > successive dprintks was regarding
+> > print_ds_list repeatedly calling print_ds, which at the time used dprintk.
+> 
+> Why do we care to optimize the debug case so much?
+> print_ds_list is already calling print_ds inside ifdebug(FACILITY)
+> so the common, non-debug case is optimized correctly. I.e. we don't
+> repeatedly check the debug flag normally.
 
-steved.
+It's not about optimizing the debug case. It's about avoiding having to
+check ifdebug(FACILITY) all the time when we're _not_ debugging.
+
+Trond
+
