@@ -1,39 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:3753 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:40707 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755637Ab0JEQrX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Oct 2010 12:47:23 -0400
-Message-ID: <4CAB5694.5030400@parallels.com>
-Date: Tue, 05 Oct 2010 20:47:16 +0400
-From: Pavel Emelyanov <xemul@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] sunrpc: Remove useless if (task == NULL) from xprt_reserve_xprt
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1755897Ab0J0Nje (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Oct 2010 09:39:34 -0400
+Date: Wed, 27 Oct 2010 09:39:25 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Arnd Bergmann <arnd@arndb.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: nfsd changes for 2.6.37
+Message-ID: <20101027133924.GB6328@fieldses.org>
+References: <20101026164549.GD19445@fieldses.org>
+ <20101026214441.GC1842@fieldses.org>
+ <20101026221156.GD1842@fieldses.org>
+ <201010270921.37032.arnd@arndb.de>
+ <20101027083924.GA28129@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101027083924.GA28129@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The task in question is dereferenced above (and is actually never NULL).
+Arnd Bergmann wrote:
+> > If you don't hold lock_flocks throughout fcntl_setlease, the flp variable
+> > points to a flock that may get modified by another thread and you call
+> > time_out_leases() without holding lock_flocks, which it requires.
 
-Signed-off-by: Pavel Emelyanov <xemul@openvz.org>
----
- net/sunrpc/xprt.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+Whoops, thanks for catching that.
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 953206d..64a4a94 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -199,8 +199,6 @@ int xprt_reserve_xprt(struct rpc_task *task)
- 	if (test_and_set_bit(XPRT_LOCKED, &xprt->state)) {
- 		if (task == xprt->snd_task)
- 			return 1;
--		if (task == NULL)
--			return 0;
- 		goto out_sleep;
- 	}
- 	xprt->snd_task = task;
--- 
-1.5.5.6
+On Wed, Oct 27, 2010 at 04:39:24AM -0400, Christoph Hellwig wrote:
+> Do locks_alloc_lock and initialization of the heap struct file_lock
+> in the caller.  This also avoids an entirely useless copy of the
+> lock structure.  free the passed in structure if we are modifying
+> an existing lock structure.
 
+That sounds good; I'll give it a try.
+
+--b.
