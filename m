@@ -1,55 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:58359 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756112Ab0JUSCE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Oct 2010 14:02:04 -0400
-Date: Thu, 21 Oct 2010 14:01:50 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        =?utf-8?Q?Cl=C3=A1udio?= Martins <ctpm@ist.utl.pt>,
-        Ian Munsie <imunsie@au1.ibm.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Scott Romanowski <romansc@us.ibm.com>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>
-Subject: Re: NFS sillyrename side effect
-Message-ID: <20101021180150.GB10192@fieldses.org>
-References: <1287362142-sup-777@au1.ibm.com>
- <20101018101059.574b715a@corrin.poochiereds.net>
- <20101018154811.768baeb5.ctpm@ist.utl.pt>
- <20101018155344.6e50dbb9.ctpm@ist.utl.pt>
- <20101018110138.5f5001eb@corrin.poochiereds.net>
- <20101018171015.GB3744@fieldses.org>
- <4CBD3D4E.5080305@panasas.com>
- <1287495168.2969.9.camel@heimdal.trondhjem.org>
- <4CC07D54.7070204@panasas.com>
+Received: from bombadil.infradead.org ([18.85.46.34]:41280 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760949Ab0J0PAD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Oct 2010 11:00:03 -0400
+Date: Wed, 27 Oct 2010 10:59:29 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Arnd Bergmann <arnd@arndb.de>, Christoph Hellwig <hch@infradead.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: nfsd changes for 2.6.37
+Message-ID: <20101027145929.GA5788@infradead.org>
+References: <20101026164549.GD19445@fieldses.org>
+ <20101027083924.GA28129@infradead.org>
+ <20101027133924.GB6328@fieldses.org>
+ <201010271546.09036.arnd@arndb.de>
+ <20101027145538.GC6328@fieldses.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CC07D54.7070204@panasas.com>
+In-Reply-To: <20101027145538.GC6328@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Oct 21, 2010 at 07:50:12PM +0200, Benny Halevy wrote:
-> On 2010-10-19 15:32, Trond Myklebust wrote:
-> > This would require access, directory create, and delete permissions for
-> > the directory '<mountpoint>/', which is not always a given.
-> 
-> Correct. But that's pretty easy to probe :)
->
-> > Besides, what if the server reboots, and my clientid changes?
-> 
-> By <client-id> I meant a unique identifier for the client, not necessarily
-> the nfsv4.x clientid.  The client could just as well use its ip address
-> (to help admins deal with the aftermath in case the client goes away) and its
-> boot time, or even a random string.
+On Wed, Oct 27, 2010 at 10:55:39AM -0400, J. Bruce Fields wrote:
+> Hm, two problems:
+> 	- We introduce the possibility of fcntl(fd, F_SETLEASE, F_UNLCK)
+> 	  failing with ENOMEM.
 
-Like the current sillyrename, it'd help in some cases, but not all.  The
-set of cases where it worked would be a little larger, but also a little
-harder to explain.  There may be diminishing returns to trying to
-perfect this kind of workaround.
+splitt ->setlease into ->add_least and ->delete_lease.  No need to pass
+in a structure for the later.  No need to return one either.
 
-With 4.1 almost actually ready time might be better spent there, as it
-offers the chance of a complete solution.
+> 	- fasync_helper(.,.,1,.) sleeps.  Argh.
 
---b.
+That's not new..
+
