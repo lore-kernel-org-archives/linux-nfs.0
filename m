@@ -1,50 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:38170 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752621Ab0JKAGN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Oct 2010 20:06:13 -0400
-Received: by mail-iw0-f174.google.com with SMTP id 6so2668490iwn.19
-        for <linux-nfs@vger.kernel.org>; Sun, 10 Oct 2010 17:06:13 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 13/15] mount.nfs: mountproto does not support RDMA
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Sun, 10 Oct 2010 20:06:10 -0400
-Message-ID: <20101011000610.6667.50921.stgit@ellison.1015granger.net>
-In-Reply-To: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
-References: <20101010234836.6667.4057.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from bombadil.infradead.org ([18.85.46.34]:60177 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755454Ab0J0PbS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Oct 2010 11:31:18 -0400
+Date: Wed, 27 Oct 2010 11:31:14 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: nfsd changes for 2.6.37
+Message-ID: <20101027153114.GA23126@infradead.org>
+References: <20101026164549.GD19445@fieldses.org>
+ <20101027145538.GC6328@fieldses.org>
+ <20101027145929.GA5788@infradead.org>
+ <201010271723.59734.arnd@arndb.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <201010271723.59734.arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.  Our client does not support the MNT protocol on RDMA.
+On Wed, Oct 27, 2010 at 05:23:59PM +0200, Arnd Bergmann wrote:
+> It comes back to the original problem with Bruce's patch though:
+> fcntl_setlease wants to atomically add a lease or fail. If
+> fasync_helper fails, we want to remove the lease that was
+> just added before anyone can see it. At the very least we need
+> to keep the flock from getting freed in another thread while
+> we call fasync_helper without the lock.
 
-nfs_mount_protocol() isn't invoked for RDMA mounts (they are shunted
-off before nfs_options2pmap() is invoked).  But in case it ever is,
-it should return the expected response.
+a variant of fasync_add_entry that takes a preallocated
+fasync_struct would indeed take care of that.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> locks_delete_lock is also called with lock_flocks held and calls
+> fasync_helper...
 
- utils/mount/network.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
-
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 62973cf..1ebaced 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -1521,7 +1521,11 @@ nfs_mount_protocol(struct mount_options *options, unsigned long *protocol)
- 	 * set @protocol to zero.  The pmap protocol value will
- 	 * be filled in later by an rpcbind query in this case.
- 	 */
--	return nfs_nfs_protocol(options, protocol);
-+	if (!nfs_nfs_protocol(options, protocol))
-+		return 0;
-+	if (*protocol == NFSPROTO_RDMA)
-+		*protocol = IPPROTO_TCP;
-+	return 1;
- }
- 
- /*
+but with on = 0, which calls into fasync_remove_entry, which doesn't
+sleep.
 
