@@ -1,51 +1,40 @@
-From: "Sorin Faibish" <sfaibish@emc.com>
-Subject: Re: [pnfs] kernel panic
-Date: Fri, 03 Sep 2010 08:48:50 -0400
-Message-ID: <op.vigi7olvrwwil4@sfaibish1.corp.emc.com>
-References: <4C80EC83.1030606@desy.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15;
-	format=flowed	delsp=yes
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>,
-	"pNFS Mailing List" <pnfs@linux-nfs.org>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:46925 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751390Ab0ICMr4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Sep 2010 08:47:56 -0400
-In-Reply-To: <4C80EC83.1030606@desy.de>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:50118 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756549Ab0J0UYr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Oct 2010 16:24:47 -0400
+Date: Wed, 27 Oct 2010 16:24:42 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: nfsd changes for 2.6.37
+Message-ID: <20101027202442.GF18974@fieldses.org>
+References: <20101026164549.GD19445@fieldses.org>
+ <201010272148.47376.arnd@arndb.de>
+ <20101027200145.GE18974@fieldses.org>
+ <201010272220.20567.arnd@arndb.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <201010272220.20567.arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-You might want to use linux-nfs@vger.kernel.org list as pnfs was retire=
-d.
+On Wed, Oct 27, 2010 at 10:20:20PM +0200, Arnd Bergmann wrote:
+> On Wednesday 27 October 2010 22:01:45 J. Bruce Fields wrote:
+> > (You're missing Linus's comment fix, though, unless I'm confused.)
+> 
+> Right, I didn't look into the attachment, so I hadn't noticed
+> the new changelog. I've updated the changelog to Linus' version,
+> as it's more verbose than mine.
 
-/Sorin
+He fixed a code comment too, though.  No big deal.
 
-On Fri, 03 Sep 2010 08:39:31 -0400, Tigran Mkrtchyan =20
-<tigran.mkrtchyan@desy.de> wrote:
+> I also checked that the version in your tree is actually the
+> right one, so I left the code untouched.
 
->   FYI
->
-> kernel pnfs-all-2.6.35-2010.08-24 (git
-> fa5a03da84b02026396be0736288b3f4a8143ff2)
->
->
-> Regards,
->      Tigran.
+Yup, looks good.
 
-
-
---=20
-Best Regards
-Sorin Faibish
-Corporate Distinguished Engineer
-Unified Storage Division
-
-        EMC=B2
-where information lives
-
-Phone: 508-435-1000 x 48545
-Cellphone: 617-510-0422
-Email : sfaibish@emc.com
+--b.
