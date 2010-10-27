@@ -1,49 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:7763 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758590Ab0J1Nih (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Oct 2010 09:38:37 -0400
-Date: Thu, 28 Oct 2010 09:38:33 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs-utils: fix default value for --enable-tirpc
-Message-ID: <20101028093833.6541ce21@tlielax.poochiereds.net>
-In-Reply-To: <4CC97970.6010706@RedHat.com>
-References: <1286846991-4876-1-git-send-email-jlayton@redhat.com>
-	<4CC97970.6010706@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from moutng.kundenserver.de ([212.227.17.9]:56266 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933342Ab0J0PYs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Oct 2010 11:24:48 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: Christoph Hellwig <hch@infradead.org>
+Subject: Re: nfsd changes for 2.6.37
+Date: Wed, 27 Oct 2010 17:23:59 +0200
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+References: <20101026164549.GD19445@fieldses.org> <20101027145538.GC6328@fieldses.org> <20101027145929.GA5788@infradead.org>
+In-Reply-To: <20101027145929.GA5788@infradead.org>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Message-Id: <201010271723.59734.arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 28 Oct 2010 09:24:00 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
-
-> Jeff,
+On Wednesday 27 October 2010, Christoph Hellwig wrote:
+> On Wed, Oct 27, 2010 at 10:55:39AM -0400, J. Bruce Fields wrote:
+> > Hm, two problems:
+> > 	- We introduce the possibility of fcntl(fd, F_SETLEASE, F_UNLCK)
+> > 	  failing with ENOMEM.
 > 
-> On 10/11/2010 09:29 PM, Jeff Layton wrote:
-> > The patch I originally proposed to make --enable-tirpc the default had
-> > the default for $enable_tirpc as a blank string. When it was merged
-> > however, that value was changed to a 'yes'. 
-> Which commit or proposal are you talking about? I'm looking at commit 148503a
-> which changed it for no to yes, but I can not seem to find the 
-> proposal you are talking about?
+> splitt ->setlease into ->add_least and ->delete_lease.  No need to pass
+> in a structure for the later.  No need to return one either.
+
+That sounds like a good way to get rid of a lot of special cases, too.
+
+> > 	- fasync_helper(.,.,1,.) sleeps.  Argh.
 > 
-> I'm just trying to figure how the merge broke it so it does
-> not happen again... 
-> 
-> steved.
-> 
+> That's not new..
 
-Here was the original patch posting:
+It comes back to the original problem with Bruce's patch though:
+fcntl_setlease wants to atomically add a lease or fail. If
+fasync_helper fails, we want to remove the lease that was
+just added before anyone can see it. At the very least we need
+to keep the flock from getting freed in another thread while
+we call fasync_helper without the lock.
 
-http://www.spinics.net/lists/linux-nfs/msg07718.html
+locks_delete_lock is also called with lock_flocks held and calls
+fasync_helper...
 
-I checked my mail archives and didn't see emails where we discussed
-this patch specifically around that time. Maybe we did on IRC before
-you merged it and I misunderstood what you intended to change? Hard to
-remember since it was over a year ago...
-
--- 
-Jeff Layton <jlayton@redhat.com>
+	Arnd
