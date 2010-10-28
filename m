@@ -1,84 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from minas.ics.muni.cz ([147.251.4.40]:36791 "EHLO minas.ics.muni.cz"
+Received: from mx1.redhat.com ([209.132.183.28]:2946 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752847Ab0JGQWR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Oct 2010 12:22:17 -0400
-Received: from anubis.ics.muni.cz (anubis.ics.muni.cz [147.251.3.109])
-	(authenticated user=xhejtman@IS.MUNI.CZ bits=0)
-	by minas.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id o97G6rj0020115
-	(version=TLSv1/SSLv3 cipher=AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Thu, 7 Oct 2010 18:06:54 +0200
-Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.72)
-	(envelope-from <xhejtman@anubis.ics.muni.cz>)
-	id 1P3szj-0006hk-JI
-	for linux-nfs@vger.kernel.org; Thu, 07 Oct 2010 18:06:59 +0200
-Date: Thu, 7 Oct 2010 18:06:59 +0200
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-To: linux-nfs@vger.kernel.org
-Subject: NFS bug with utime/file create
-Message-ID: <20101007160659.GP12489@ics.muni.cz>
-Content-Type: text/plain; charset=iso-8859-2
+	id S1751496Ab0J1Tzx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Oct 2010 15:55:53 -0400
+Message-ID: <4CC9D543.4020004@RedHat.com>
+Date: Thu, 28 Oct 2010 15:55:47 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 6/6] nfs(5): Document remount behavior
+References: <20101026155216.19184.36979.stgit@matisse.1015granger.net> <20101026155847.19184.44036.stgit@matisse.1015granger.net> <4CC9BAA8.5000509@RedHat.com> <BFCEEA71-05CB-4D4F-9ED8-64B140E20D2C@oracle.com>
+In-Reply-To: <BFCEEA71-05CB-4D4F-9ED8-64B140E20D2C@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
-
-I noticed an interesing bug in 2.6.26 kernel, not sure whether this has been
-fixed in newer version or not.
-
-I have an application, that does basically the following code:
-int
-main(int argc, char *argv[]) {
-        int fd = open(argv[1], O_WRONLY|O_CREAT|O_TRUNC, 0666);
-        char buff[300];
-        write(fd, buff, 300);
-        while(1) {
-                utime(argv[1], NULL);
-                sleep(30);
-        }
-        return 0;
-}
 
 
-another application that runs on a different client does:
-17:57:30.605304 nanosleep({24, 0}, {24, 0}) = 0
-17:57:54.605526 stat64("/storage/home/xhejtman/gangadir/workspace/xhejtman/LocalXML/0",
-{st_mode=S_IFDIR|0700, st_size=59, ...}) = 0
-17:57:54.606029 mkdir("/storage/home/xhejtman/gangadir/workspace/xhejtman/LocalXML/0/output",
-0777) = -1 EEXIST (File exists)
-17:57:54.606414 open("/storage/home/xhejtman/gangadir/workspace/xhejtman/LocalXML/0/output/__jobstatus__",
-O_RDONLY|O_LARGEFILE) = 3
-17:57:54.607073 fstat64(3, {st_mode=S_IFREG|0644, st_size=300, ...}) = 0
-17:57:54.607230 mmap2(NULL, 1048576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xb74ef000
-17:57:54.607325 _llseek(3, 0, [0], SEEK_CUR) = 0
-17:57:54.607408 read(3, "\0\0\0\0\0\0\0\0\336e\356,\345\177\0\0\0\0\0\0\0\0\0\0"..., 1048576) = 300
-17:57:54.607765 read(3, "", 1048576)    = 0
-17:57:54.607854 close(3)                = 0
-17:57:54.608128 munmap(0xb74ef000, 1048576) = 0
-17:57:54.608224 stat64("/storage/home/xhejtman/gangadir/workspace/xhejtman/LocalXML/0/output/__jobstatus__",
-{st_mode=S_IFREG|0644, st_size=300, ...}) = 0
+On 10/28/2010 02:58 PM, Chuck Lever wrote:
+> 
+> On Oct 28, 2010, at 2:02 PM, Steve Dickson wrote:
+> 
+>> Chuck,
+>>
+>> I'm a bit concern about this patch.... 
+>>
+>> I'm asking myself who is going care how remounts update 
+>> /etc/mtab and what mode is used.
+> 
+> Someone who has done a remount and found that it doesn't behave as they expect. 
+> I've handled bug reports like this.  When customers want to see existing 
+> documentation of strange behavior, it's pretty important to have something to
+> point them to.  Documentation is the first thing I'm asked for by customers 
+> and system engineers who encounter weird NFS behavior.
+Documentation is great! I too get numerous requests for documentation.
+That's why I think are the first 3 paragraphs in "THE REMOUNT OPTION"
+is perfect! Well written and to the point... Its the rest of 
+the section I don't think we needed... that's all... 
+ 
+> 
+>> I just thinking that type of info 
+>> adds a lot verbiage that nobody really care about.
+> 
+> Don't you think that's a bit harsh and even disrespectful? 
+By no means... whatsoever... I was just being honest...
+maybe a bit too brutally... ;-) My apologies if it came 
+off in that manner...  
 
-The first application tries to create a file (something like:
-open("time_elapsed.txt", O_WRONLY|O_CREAT|O_TRUNC, 0666) (*)
+> What criteria do you use to decide that "no-one cares"?
+I can't image anybody caring about how the inners of /etc/mtab
+are being maintained on an NFS umount... As long as the unmount
+works, that's all they care about... 
+> 
+> This patch documents very confusing behavior that is not documented anywhere else.
+> It's not documented elsewhere because other file systems don't have a dependency 
+> on /etc/mtab as we have.  This also documents why replacing /etc/mtab with 
+> /proc/mounts will cause some fuzzy NFS umount behavior (which is exactly the documentation you were looking for last week).
+> 
+> The fact that it took me so long to figure out is evidence enough that this is 
+> not obvious and needs to be written down somewhere.  Where else should we document
+> behavior that is related to /etc/fstab and mount(8), and is NFS specific?
+How about the NFS FAQ? 
 
-at this point, it emits PUTFH, SAVEFH, OPEN, GETFH, GETATTR, RESTOREFH,
-GETATTR compount. The server replies with NFS4ERR_EXPIRED.
+All I'm saying is that type of details information (how mtab is managed) is
+not useful to a system admin trying figure out how to use remount 
+on an NFS file system... So I think its a waste to put in the man page... 
 
-The client tries to RENEW, the server replies NFS4ERR_EXPIRED.
+> 
+>> Plus why are
+>> we documenting something (/etc/mtab) that will be going 
+>> away as soon as humanly possible? 
+> 
+> Do you have a schedule for this?  I've talked very recently with Karel, 
+> and libmount is not even ready to be published.  The work to integrate 
+> libmount into every mount subcommand sounds like it could be a ways in 
+> the future.  (Karel and I even discussed me doing this work for mount.nfs).
+No I don't... but it can come soon enough... IMHO... 
+Cool... Karel is a good guy to work with... 
 
-The client restarts using SETCLIENTID and so on. During this phase, the first
-application emits utime call. It seems that orignial open (*) get lost and system
-deadlocks. 
+> 
+> I expect we will have a dependence on /etc/mtab for a while yet.  And, 
+> it's pretty easy to change these docs once we've transitioned.
+> 
+>> Basically I'm saying the entire "Unmounting after a remount" 
+>> section is not needed. Only the 3 paragraphs in "THE REMOUNT OPTION"
+>> section are needed IMHO... 
+> 
+> 
+> I'll consider recrafting it, but this is important and confusing 
+> behavior that must be documented.  We can argue about how the information 
+> is presented, but just throwing it all out and ignoring it is not an option.
+> 
+Good...
 
-Using NFS debugs, I can see a warning, that the lease is not expired (from the
-client's point of view, but the server is conviced that the lease is expired).
+All I'm saying make the it concise and to the point so its useful
+to a system admin... Like the first 3 paragraphs are... 
 
-I can reliably reproduce it with diane/ganga framework. I cannot fully reproduce it
-just using simple C programs. 
+And maybe I'm wrong...  but... I just don't think an system admin 
+really cares what happens to the mtab after a umount of a 
+remounted mount point... As long as the unmount works... they are
+happy... again... IMHO... 
 
-
-Is there something I could do?
-
--- 
-Luká¹ Hejtmánek
+steved.
