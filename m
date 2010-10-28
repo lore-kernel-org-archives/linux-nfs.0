@@ -1,36 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og112.obsmtp.com ([64.18.0.24]:57476 "HELO
-	exprod5og112.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750916Ab0JYLlJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Oct 2010 07:41:09 -0400
-Message-ID: <4CC56CCE.2050503@panasas.com>
-Date: Mon, 25 Oct 2010 13:41:02 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Jim Rees <rees@umich.edu>, Boaz Harrosh <bharrosh@panasas.com>
-CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH] move include lines out of include file
-References: <20101022005120.GA15788@merit.edu> <4CC4203C.2050600@panasas.com> <20101024153503.GC10769@merit.edu>
-In-Reply-To: <20101024153503.GC10769@merit.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:9458 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755503Ab0J1P1l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Oct 2010 11:27:41 -0400
+Message-ID: <4CC9966B.1050103@netapp.com>
+Date: Thu, 28 Oct 2010 11:27:39 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs-utils: add nfs.idmap
+References: <4CC6CE30.90105@netapp.com> <4CC70D34.1060600@netapp.com> <4CC99463.9000108@RedHat.com>
+In-Reply-To: <4CC99463.9000108@RedHat.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-10-24 17:35, Jim Rees wrote:
-> Boaz Harrosh wrote:
+On 10/28/2010 11:18 AM, Steve Dickson wrote:
+> Hey Bryan,
 > 
->   This patch does *not* break the header's independence. .i.e the header can
->   still be compiled independently without any other includes. Which means
->   some of the includes here are un-needed.
+> A couple nits.... which I will be more than willing to take of... 
 > 
-> Thanks!  I tried removing all the includes but was too lazy to figure out
-> which one was really needed by simple_rpc_pipefs.c.
+> 1) I would like to change the binary name from nfs.idmap to nfsidmap
+>    which is consistent with how the rest of the binaries are named.
+>    (i.e. binary names generally don't have any '.' or '-' in them)
+>    
+> 2) Change the source directory from utils/nfs.idmap to 
+>    utils/idmap which again makes it consistent with what
+>    is already there. 
 
-Yup.
-The self-sustainability approach is the best one, i.e. header files
-should include the minimum number of other header files to satisfy their
-dependencies.
+These both sounds reasonable to me.  I'll make a patch to modify the kernel documentation to reflect this.
+> 
+> 3) The man page talks about a /usr/sbin/idmap file and then
+>    later talks about a /usr/sbin/nfs.idmap program. Can I 
+>    assume those are same binary, since I only see on binary
+>    being installed? Also, maybe we should move the binary to
+>    /sbin so it would be available early in the boot
+> 
+> Comments?
 
-I'll merge both patches squashed together then.
-
-Benny
+Yes, those are the same binary.  I don't know how that slipped through, but thanks for catching it.  Making it available early in the boot sounds like it could be useful.  I'll change this in the kernel documentation, too.
+> 
+> steved.
