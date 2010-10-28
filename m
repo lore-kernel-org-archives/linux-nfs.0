@@ -1,41 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:34481 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752056Ab0JaCEz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Oct 2010 22:04:55 -0400
-Date: Sat, 30 Oct 2010 22:04:31 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Christoph Hellwig <hch@infradead.org>, Arnd Bergmann <arnd@arndb.de>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 4/4] nfsd4: initialize delegation pointer to lease
-Message-ID: <20101031020431.GA29702@infradead.org>
-References: <20101030212500.GE480@fieldses.org>
- <1288474276-14288-4-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1288474276-14288-4-git-send-email-bfields@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:4159 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758467Ab0J1Ppf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Oct 2010 11:45:35 -0400
+Message-ID: <4CC99A9D.10908@RedHat.com>
+Date: Thu, 28 Oct 2010 11:45:33 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Bryan Schumaker <bjschuma@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs-utils: add nfs.idmap
+References: <4CC6CE30.90105@netapp.com> <4CC70D34.1060600@netapp.com>	 <4CC99463.9000108@RedHat.com>  <4CC9966B.1050103@netapp.com> <1288280405.3194.44.camel@heimdal.trondhjem.org>
+In-Reply-To: <1288280405.3194.44.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Oct 30, 2010 at 05:31:16PM -0400, J. Bruce Fields wrote:
-> The NFSv4 server was initializing the dp->dl_flock pointer by the
-> somewhat ridiculous method of a locks_copy_lock callback.
+
+
+On 10/28/2010 11:40 AM, Trond Myklebust wrote:
+> On Thu, 2010-10-28 at 11:27 -0400, Bryan Schumaker wrote:
+>> On 10/28/2010 11:18 AM, Steve Dickson wrote:
+>>> Hey Bryan,
+>>>
+>>> A couple nits.... which I will be more than willing to take of... 
+>>>
+>>> 1) I would like to change the binary name from nfs.idmap to nfsidmap
+>>>    which is consistent with how the rest of the binaries are named.
+>>>    (i.e. binary names generally don't have any '.' or '-' in them)
+>>>    
+>>> 2) Change the source directory from utils/nfs.idmap to 
+>>>    utils/idmap which again makes it consistent with what
+>>>    is already there. 
+>>
+>> These both sounds reasonable to me.  I'll make a patch to modify the kernel documentation to reflect this.
+>>>
 > 
-> Now that setlease uses the passed-in lock instead of doing a copy,
-> dl_flock no longer gets set, resulting in the lock leaking on delegation
-> release, and later possible hangs (among other problems).
+> We just sent in one patch to change the name in the kernel docs, now the
+> name is changing again?
+I'll take the blame for that... I should have gotten into the 
+conversation  earlier... sorry about that...
+
 > 
-> So, initialize dl_flock and get rid of the callback.
+> Let's wait with this until an actual nfs-utils release is available, so
+> we can also update the 'Documentation/Changes' file with the new minimal
+> release version number.
+Just to be clear... the kernel changes will be in the 2.6.37 kernel, correct?
 
->From what I can see this was the only instance of 
-lock_manager_operations.fl_copy_lock.  Please kill it while you're at
-it.
-
-Also lock_manager_operations.fl_release_private has only exact one
-instance in nfs4d which is part of the same abuse scheme.  Please also
-get rid of it.   I recently noticed this while updating
-Documentation/filesystems/Locking for the grand new BKL-less world.
-
+steved.
