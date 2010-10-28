@@ -1,87 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42911 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:7763 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751594Ab0J3Vb2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 30 Oct 2010 17:31:28 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Christoph Hellwig <hch@infradead.org>, Arnd Bergmann <arnd@arndb.de>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/4] nfsd4: initialize delegation pointer to lease
-Date: Sat, 30 Oct 2010 17:31:16 -0400
-Message-Id: <1288474276-14288-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <20101030212500.GE480@fieldses.org>
-References: <20101030212500.GE480@fieldses.org>
+	id S1758590Ab0J1Nih (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Oct 2010 09:38:37 -0400
+Date: Thu, 28 Oct 2010 09:38:33 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils: fix default value for --enable-tirpc
+Message-ID: <20101028093833.6541ce21@tlielax.poochiereds.net>
+In-Reply-To: <4CC97970.6010706@RedHat.com>
+References: <1286846991-4876-1-git-send-email-jlayton@redhat.com>
+	<4CC97970.6010706@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The NFSv4 server was initializing the dp->dl_flock pointer by the
-somewhat ridiculous method of a locks_copy_lock callback.
+On Thu, 28 Oct 2010 09:24:00 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-Now that setlease uses the passed-in lock instead of doing a copy,
-dl_flock no longer gets set, resulting in the lock leaking on delegation
-release, and later possible hangs (among other problems).
+> Jeff,
+> 
+> On 10/11/2010 09:29 PM, Jeff Layton wrote:
+> > The patch I originally proposed to make --enable-tirpc the default had
+> > the default for $enable_tirpc as a blank string. When it was merged
+> > however, that value was changed to a 'yes'. 
+> Which commit or proposal are you talking about? I'm looking at commit 148503a
+> which changed it for no to yes, but I can not seem to find the 
+> proposal you are talking about?
+> 
+> I'm just trying to figure how the merge broke it so it does
+> not happen again... 
+> 
+> steved.
+> 
 
-So, initialize dl_flock and get rid of the callback.
+Here was the original patch posting:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   19 ++-----------------
- 1 files changed, 2 insertions(+), 17 deletions(-)
+http://www.spinics.net/lists/linux-nfs/msg07718.html
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 56347e0..b7f818b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2310,22 +2310,6 @@ void nfsd_release_deleg_cb(struct file_lock *fl)
- }
- 
- /*
-- * Set the delegation file_lock back pointer.
-- *
-- * Called from setlease() with lock_kernel() held.
-- */
--static
--void nfsd_copy_lock_deleg_cb(struct file_lock *new, struct file_lock *fl)
--{
--	struct nfs4_delegation *dp = (struct nfs4_delegation *)new->fl_owner;
--
--	dprintk("NFSD: nfsd_copy_lock_deleg_cb: new fl %p dp %p\n", new, dp);
--	if (!dp)
--		return;
--	dp->dl_flock = new;
--}
--
--/*
-  * Called from setlease() with lock_kernel() held
-  */
- static
-@@ -2355,7 +2339,6 @@ int nfsd_change_deleg_cb(struct file_lock **onlist, int arg)
- static const struct lock_manager_operations nfsd_lease_mng_ops = {
- 	.fl_break = nfsd_break_deleg_cb,
- 	.fl_release_private = nfsd_release_deleg_cb,
--	.fl_copy_lock = nfsd_copy_lock_deleg_cb,
- 	.fl_mylease = nfsd_same_client_deleg_cb,
- 	.fl_change = nfsd_change_deleg_cb,
- };
-@@ -2661,12 +2644,14 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open, struct nfs4_sta
- 	fl->fl_file = find_readable_file(stp->st_file);
- 	BUG_ON(!fl->fl_file);
- 	fl->fl_pid = current->tgid;
-+	dp->dl_flock = fl;
- 
- 	/* vfs_setlease checks to see if delegation should be handed out.
- 	 * the lock_manager callbacks fl_mylease and fl_change are used
- 	 */
- 	if ((status = vfs_setlease(fl->fl_file, fl->fl_type, &fl))) {
- 		dprintk("NFSD: setlease failed [%d], no delegation\n", status);
-+		dp->dl_flock = NULL;
- 		unhash_delegation(dp);
- 		flag = NFS4_OPEN_DELEGATE_NONE;
- 		goto out;
+I checked my mail archives and didn't see emails where we discussed
+this patch specifically around that time. Maybe we did on IRC before
+you merged it and I misunderstood what you intended to change? Hard to
+remember since it was over a year ago...
+
 -- 
-1.7.1
-
+Jeff Layton <jlayton@redhat.com>
