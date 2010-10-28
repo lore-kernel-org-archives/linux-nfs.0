@@ -1,69 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61718 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751518Ab0JYRqo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Oct 2010 13:46:44 -0400
-Date: Mon, 25 Oct 2010 13:46:32 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-        Menyhart Zoltan <Zoltan.Menyhart@bull.net>
-Subject: Re: [PATCH 4/4] svcrpc: svc_tcp_sendto XTP_DEAD check is redundant
-Message-ID: <20101025174632.GA9520@pad.home.fieldses.org>
-References: <20101025010923.GB11470@fieldses.org>
- <1287969693-12340-4-git-send-email-bfields@redhat.com>
- <20101025131024.1addf30d@notabene>
- <20101025150308.GB3233@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101025150308.GB3233@fieldses.org>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.122]:50086 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752648Ab0J1OKj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 10:10:39 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: [PATCH] nfs: handle lock context allocation failures in nfs_create_request
+Date: Thu, 28 Oct 2010 10:10:37 -0400
+Message-Id: <1288275037-22816-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Oct 25, 2010 at 11:03:08AM -0400, J. Bruce Fields wrote:
-> On Mon, Oct 25, 2010 at 01:10:24PM +1100, Neil Brown wrote:
-> > On Sun, 24 Oct 2010 21:21:33 -0400
-> > "J. Bruce Fields" <bfields@redhat.com> wrote:
-> > 
-> > > The only caller (svc_send) has already checked XPT_DEAD.
-> > > 
-> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > > ---
-> > >  net/sunrpc/svcsock.c |    3 ---
-> > >  1 files changed, 0 insertions(+), 3 deletions(-)
-> > > 
-> > > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > > index 1454739..07919e1 100644
-> > > --- a/net/sunrpc/svcsock.c
-> > > +++ b/net/sunrpc/svcsock.c
-> > > @@ -1135,9 +1135,6 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
-> > >  	reclen = htonl(0x80000000|((xbufp->len ) - 4));
-> > >  	memcpy(xbufp->head[0].iov_base, &reclen, 4);
-> > >  
-> > > -	if (test_bit(XPT_DEAD, &rqstp->rq_xprt->xpt_flags))
-> > > -		return -ENOTCONN;
-> > > -
-> > >  	sent = svc_sendto(rqstp, &rqstp->rq_res);
-> > >  	if (sent != xbufp->len) {
-> > >  		printk(KERN_NOTICE
-> > 
-> > 
-> > So after removing all these references to XPT_DEAD, do we need XPT_DEAD at
-> > all???
-> > 
-> > I think it is only used in two other places.
-> > 
-> > 1/ In svc_revisit we don't queue the deferred request to an XPT_DEAD
-> >   transport.
-> >   We could avoid that but changing the 'owner' of a deferred request from the
-> >   service to the xprt, and call cache_clean_deferred in svc_delete_xprt
-> 
-> That use does seem a bit of a hack to me, so I'd be happy to get rid of
-> it.
+nfs_get_lock_context can return NULL on an allocation failure.
 
-Eh, but then don't we end up doing the same check when deferring, to
-prevent deferring a request on a dead xprt?
+Reported-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/pagelist.c |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
 
-Maybe we should leave well enough alone here.
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 9194902..137b549 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -65,6 +65,13 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
+ 	if (req == NULL)
+ 		return ERR_PTR(-ENOMEM);
+ 
++	/* get lock context early so we can deal with alloc failures */
++	req->wb_lock_context = nfs_get_lock_context(ctx);
++	if (req->wb_lock_context == NULL) {
++		nfs_page_free(req);
++		return ERR_PTR(-ENOMEM);
++	}
++
+ 	/* Initialize the request struct. Initially, we assume a
+ 	 * long write-back delay. This will be adjusted in
+ 	 * update_nfs_request below if the region is not locked. */
+@@ -79,7 +86,6 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
+ 	req->wb_pgbase	= offset;
+ 	req->wb_bytes   = count;
+ 	req->wb_context = get_nfs_open_context(ctx);
+-	req->wb_lock_context = nfs_get_lock_context(ctx);
+ 	kref_init(&req->wb_kref);
+ 	return req;
+ }
+-- 
+1.7.2.3
 
---b.
