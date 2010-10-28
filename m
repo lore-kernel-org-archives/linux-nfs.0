@@ -1,84 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-phx2.redhat.com ([209.132.183.24]:46279 "EHLO
-	mx01.colomx.prod.int.phx2.redhat.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1759221Ab0JFP7q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Oct 2010 11:59:46 -0400
-Date: Wed, 6 Oct 2010 11:59:20 -0400 (EDT)
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <26335422.12.1286380757582.JavaMail.sprabhu@dhcp-1-233.fab.redhat.com>
-In-Reply-To: <1286285838.3338.1.camel@heimdal.trondhjem.org>
-Subject: Re: NFS4 clients cannot reclaim locks
-Content-Type: text/plain; charset=utf-8
+Received: from mail1.linzag.at ([195.8.213.221]:21633 "EHLO mail1.linzag.at"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750789Ab0J1JkI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 05:40:08 -0400
+Received: from smtp-o.linzag.at (localhost [127.0.0.1])
+	by smtp-v1.linzag.at (Virusserver I Mailexchange - Linz AG) with ESMTP id C9C2E4BB0D
+	for <linux-nfs@vger.kernel.org>; Thu, 28 Oct 2010 11:40:06 +0200 (CEST)
+Received: from mail-o.ugl.linz.at (unknown [10.216.6.1])
+	by smtp-o.linzag.at (internal Mailexchange - Linz AG) with ESMTP id BDA5E4BAC6
+	for <linux-nfs@vger.kernel.org>; Thu, 28 Oct 2010 11:40:06 +0200 (CEST)
+From: Schobesberger Martin <Martin.Schobesberger@ikt.linz.at>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Thu, 28 Oct 2010 11:40:05 +0200
+Subject: NFS Server / Client Configuration with SLES 11  / SUSE Linux 8
+Message-ID: <A0EB63F3ACD2034DAE7B25DB677DDA6E8AECBDC67E@UGLCL01-MXS.ugl.linz.at>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
------ "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
+I hope this is the rigth mail-list for my question :-)
 
-> Yup. That makes sense. Does the following patch help?
-> 
-> Cheers
->   Trond
-> --------------------------------------------------------------------------------------------------------
-> NFSv4: Fix open recovery
-> 
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> NFSv4 open recovery is currently broken: since we do not clear the
-> state->flags states before attempting recovery, we end up with the
-> 'can_open_cached()' function triggering. This again leads to no OPEN
-> call
-> being put on the wire.
-> 
-> Reported-by: Sachin Prabhu <sprabhu@redhat.com>
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  fs/nfs/nfs4proc.c |    3 +++
->  1 files changed, 3 insertions(+), 0 deletions(-)
-> 
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 089da5b..01b4817 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1120,6 +1120,7 @@ static int nfs4_open_recover(struct
-> nfs4_opendata *opendata, struct nfs4_state *
->  	clear_bit(NFS_DELEGATED_STATE, &state->flags);
->  	smp_rmb();
->  	if (state->n_rdwr != 0) {
-> +		clear_bit(NFS_O_RDWR_STATE, &state->flags);
->  		ret = nfs4_open_recover_helper(opendata, FMODE_READ|FMODE_WRITE,
-> &newstate);
->  		if (ret != 0)
->  			return ret;
-> @@ -1127,6 +1128,7 @@ static int nfs4_open_recover(struct
-> nfs4_opendata *opendata, struct nfs4_state *
->  			return -ESTALE;
->  	}
->  	if (state->n_wronly != 0) {
-> +		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
->  		ret = nfs4_open_recover_helper(opendata, FMODE_WRITE, &newstate);
->  		if (ret != 0)
->  			return ret;
-> @@ -1134,6 +1136,7 @@ static int nfs4_open_recover(struct
-> nfs4_opendata *opendata, struct nfs4_state *
->  			return -ESTALE;
->  	}
->  	if (state->n_rdonly != 0) {
-> +		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
->  		ret = nfs4_open_recover_helper(opendata, FMODE_READ, &newstate);
->  		if (ret != 0)
->  			return ret;
-> 
+Hi Together
+
+With SUSE Linux 8 I had following scenario with 3 Servers, that functioned quite well
+
+Server A: NFS-Exports /test
+Server B: Mounts serverA:/test in /mnt/test
+Server B: NFS-Exports /mnt/test (Same Mountpoint)
+Server C: Mounts serverB:/mnt/test
+
+Works very well
 
 
-Yes. The patch works. 
+Under SLES 11 this constallation doesn't work: when trying to mount from Server C: Errors like "Permission denied"  appears:
 
-As expected, repeated open calls are made with claim-type set to NULL. For each of these calls, a NFS4ERR_GRACE is returned by the server as long as it is in Grace period. Once the grace period has completed, the open call succeeds, a new stateid is set and the write operation continues.
+Used NFS-Client in SLES 11 :
 
-Thank You
-Sachin Prabhu
+lagast01:/mnt/testsamba # modinfo nfs
+filename:       /lib/modules/2.6.27.19-5-default/kernel/fs/nfs/nfs.ko
+license:        GPL
+author:         Olaf Kirch <okir@monad.swb.de>
+srcversion:     D1320014A391481DEE0FA97
+depends:        sunrpc,lockd,nfs_acl
+supported:      yes
+vermagic:       2.6.27.19-5-default SMP mod_unload modversions
+parm:           enable_ino64:bool
+
+lagast01:/mnt/testsamba # modinfo lockd
+filename:       /lib/modules/2.6.27.19-5-default/kernel/fs/lockd/lockd.ko
+license:        GPL
+description:    NFS file locking service version 0.5.
+author:         Olaf Kirch <okir@monad.swb.de>
+srcversion:     3CB3F907F89F9040E2C385F
+depends:        sunrpc
+supported:      yes
+vermagic:       2.6.27.19-5-default SMP mod_unload modversions
+parm:           nsm_use_hostnames:bool
+lagast01:/mnt/testsamba #
+
+
+DO YOU HAVE ANY HINT FOR ME if there is an parameter, which I could use, to get in functional like in SUSE 8 !?
+
+
+
+THANKS a lot
+
+with best regards
+
+martin
+
+
+
+
+Diese Nachricht inklusive aller Anh?nge kann vertrauliche Informationen enthalten. Sie ist ausschlie?lich f?r die adressierten Personen bestimmt. Das unerlaubte Kopieren sowie die unbefugte Weitergabe sind nicht gestattet. Sollten Sie nicht die richtige Adressatin/der richtige Adressat sein, vernichten Sie den gesamten Inhalt (? 93 Abs. 4 Telekommunikationsgesetz 2003) und informieren Sie bitte sofort den/die Absender/in. N?here Regelungen zur elektronischen Kommunikation mit der Stadt Linz finden Sie in den "Allgemeinen Hinweisen und Nutzungsbestimmungen betreffend das E-Government der Stadt Linz (e-linz)" ( http://www.linz.at/images/AGB_egov_2008.pdf )
+
+IKT Linz GmbH, Firmenbuch des Landesgerichtes Linz ++ Firmenbuch-Nummer: 321197z ++ UID-Nummer: ATU64636344
+IKT Linz Infrastruktur GmbH,  Firmenbuch des Landesgerichtes Linz ++ Firmenbuch-Nummer: 321990s  ++ UID-Nummer: ATU64664303
+A-4020 Linz, Gruberstra?e 42, Tel. +43 732 7070 0, Fax: +43 732 7070 54 1555, office@ikt.linz.at, www.linz.at/ikt
