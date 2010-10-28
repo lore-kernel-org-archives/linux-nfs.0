@@ -1,89 +1,310 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:48959 "EHLO mail-out2.uio.no"
+Received: from mx1.redhat.com ([209.132.183.28]:47404 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756986Ab0JQRlJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 17 Oct 2010 13:41:09 -0400
-Subject: Re: Strange behaviour of NFS4ERR_MOVED and referrals
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Pavel Strashkin <pavel.strashkin@nexenta.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <AANLkTikOjYEBGJVHc7fKisNoC7OrJRjePuCcaNtPnHCy@mail.gmail.com>
-References: <AANLkTikOjYEBGJVHc7fKisNoC7OrJRjePuCcaNtPnHCy@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sun, 17 Oct 2010 13:24:01 -0400
-Message-ID: <1287336241.5266.19.camel@heimdal.trondhjem.org>
+	id S1754749Ab0J1PTV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Oct 2010 11:19:21 -0400
+Message-ID: <4CC99463.9000108@RedHat.com>
+Date: Thu, 28 Oct 2010 11:18:59 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs-utils: add nfs.idmap
+References: <4CC6CE30.90105@netapp.com> <4CC70D34.1060600@netapp.com>
+In-Reply-To: <4CC70D34.1060600@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 2010-10-17 at 15:51 +0400, Pavel Strashkin wrote:
-> Hi all,
-> 
-> I'm learning NFS4 "referral" feature.
-> I have 4 machines with installed Ubuntu 10.10 (kernel
-> 2.6.35-22-generic): Server-A, Server-B, Server-C and Client-A.
-> 
-> Server-A is the main server in the "cluster" that provides NFS share
-> "/exports" with a single referral: "/exports/referral".
-> That referral points to 2 servers: Server-B and Server-C.
-> 
-> Client-A is the user of this referral.
-> 
-> When i mount "/exports" NFS share from Server-A on Client-A, i have no
-> issues and i can see "referral" directory. After that Client-A have an
-> access to that "referral" directory and can see files on Server-B
-> because Server-B the first server in referral list. NFS4ERR_MOVED
-> works as expected.
-> 
-> ...now let's switch off Server-B...
-> 
-> When Server-B is down (dont forget, we had 2 servers in referral list)
-> and i'm trying to do "ls -l" for "referral" directory, the operation
-> hangs forever. If i kill -9 "ls" process and remount directory then it
-> automatically switches to Server-C (because Server-B is unreachabel).
-> 
-> The question: why there is no migration (fail-over? switch?) to
-> another server from referral list when share already mounted and
-> current server from referral list is down?
-> 
-> I looked at NFS kernel code and as i understand it keeps information
-> about FIRST valid server from referral list in inode. It keeps single
-> server information, not a whole list of servers (fs_locations). After
-> that all operations related to referral inode will be delegated to
-> that server.
-> 
-> RFC says that if client can not access to the first server in referral
-> list, it should try the next. One thing i dont undertand here - RFC
-> means "try next" when we do mount or when we're working with referral
-> inode?
-> 
-> P.S. i also triend another one situation: i removed referral on
-> Server-A and replace it by real directory called "referral". After
-> that client still trying to access to referral (share on Server-B),
-> but not real directory on Server-A. Seems like invalidation does not
-> work.
+Hey Bryan,
 
-Please don't confuse referrals and migrations; they are very different
-events.
+A couple nits.... which I will be more than willing to take of... 
 
-        A referral is special type of filesystem object that is
-        discovered at LOOKUP time, and basically acts to automount a new
-        filesystem from a different server. This is an easy case to
-        implement, because you are mounting a new filesystem, and so
-        there is no existing file state to worry about.
+1) I would like to change the binary name from nfs.idmap to nfsidmap
+   which is consistent with how the rest of the binaries are named.
+   (i.e. binary names generally don't have any '.' or '-' in them)
+   
+2) Change the source directory from utils/nfs.idmap to 
+   utils/idmap which again makes it consistent with what
+   is already there. 
 
-        A migration is an event that occurs after the client has mounted
-        a filesystem. It means that particular filesystem has been
-        removed from the original server, and should now be mounted
-        through a different server. This is a very difficult case to
-        implement because the NFS protocol does not specify how the
-        migration should occur on the back end (i.e. from server to
-        server). The client therefore may end up having to do a lot of
-        extra work in order to recover filehandles, file open and
-        locking state, without the application discovering what is going
-        on.
+3) The man page talks about a /usr/sbin/idmap file and then
+   later talks about a /usr/sbin/nfs.idmap program. Can I 
+   assume those are same binary, since I only see on binary
+   being installed? Also, maybe we should move the binary to
+   /sbin so it would be available early in the boot
 
-The Linux client supports referrals. It does not yet support migration.
+Comments?
 
-Trond
+steved.
 
+On 10/26/2010 01:17 PM, Bryan Schumaker wrote:
+> Here is an updated patch.
+> -Bryan
+> 
+> 
+> 
+> This patch adds the nfs.idmap program to nfs-utils.  This program is called by
+> the nfs idmapper through request-keys to map between uid / user name and
+> gid / group name.
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+> diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
+> new file mode 100644
+> index 0000000..84bc112
+> --- /dev/null
+> +++ b/aclocal/keyutils.m4
+> @@ -0,0 +1,11 @@
+> +dnl Checks for keyutils library and headers
+> +dnl
+> +AC_DEFUN([AC_KEYUTILS], [
+> +
+> +  dnl Check for libkeyutils; do not add to LIBS if found
+> +  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
+> +  AC_SUBST(LIBKEYUTILS)
+> +
+> +  AC_CHECK_HEADERS([keyutils.h], ,
+> +  		   [AC_MSG_ERROR([keyutils.h header not found.])])
+> +])dnl
+> diff --git a/configure.ac b/configure.ac
+> index 3058be6..0907f72 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
+>    dnl check for nfsidmap libraries and headers
+>    AC_LIBNFSIDMAP
+>  
+> +  dnl check for the keyutils libraries and headers
+> +  AC_KEYUTILS
+> +
+>    dnl librpcsecgss already has a dependency on libgssapi,
+>    dnl but we need to make sure we get the right version
+>    if test "$enable_gss" = yes; then
+> @@ -435,6 +438,7 @@ AC_CONFIG_FILES([
+>  	utils/mountd/Makefile
+>  	utils/nfsd/Makefile
+>  	utils/nfsstat/Makefile
+> +	utils/nfs.idmap/Makefile
+>  	utils/showmount/Makefile
+>  	utils/statd/Makefile
+>  	tests/Makefile
+> diff --git a/utils/Makefile.am b/utils/Makefile.am
+> index 8665183..332ecff 100644
+> --- a/utils/Makefile.am
+> +++ b/utils/Makefile.am
+> @@ -4,6 +4,7 @@ OPTDIRS =
+>  
+>  if CONFIG_NFSV4
+>  OPTDIRS += idmapd
+> +OPTDIRS += nfs.idmap
+>  endif
+>  
+>  if CONFIG_GSS
+> diff --git a/utils/nfs.idmap/Makefile.am b/utils/nfs.idmap/Makefile.am
+> new file mode 100644
+> index 0000000..29e17af
+> --- /dev/null
+> +++ b/utils/nfs.idmap/Makefile.am
+> @@ -0,0 +1,9 @@
+> +## Process this file with automake to produce Makefile.in
+> +
+> +man8_MANS = nfs.idmap.man
+> +
+> +sbin_PROGRAMS	= nfs.idmap
+> +nfs_idmap_SOURCES = nfs.idmap.c
+> +nfs_idmap_LDADD = -lnfsidmap -lkeyutils
+> +
+> +MAINTAINERCLEANFILES = Makefile.in
+> diff --git a/utils/nfs.idmap/nfs.idmap.c b/utils/nfs.idmap/nfs.idmap.c
+> new file mode 100644
+> index 0000000..abbcb65
+> --- /dev/null
+> +++ b/utils/nfs.idmap/nfs.idmap.c
+> @@ -0,0 +1,118 @@
+> +
+> +#include <stdarg.h>
+> +#include <stdio.h>
+> +#include <stdlib.h>
+> +#include <string.h>
+> +
+> +#include <pwd.h>
+> +#include <grp.h>
+> +#include <keyutils.h>
+> +#include <nfsidmap.h>
+> +
+> +#include <syslog.h>
+> +
+> +/* gcc nfs.idmap.c -o nfs.idmap -l nfsidmap -l keyutils */
+> +
+> +#define MAX_ID_LEN   11
+> +#define IDMAP_NAMESZ 128
+> +#define USER  1
+> +#define GROUP 0
+> +
+> +
+> +/*
+> + * Find either a user or group id based on the name@domain string
+> + */
+> +int id_lookup(char *name_at_domain, key_serial_t key, int type)
+> +{
+> +	char id[MAX_ID_LEN];
+> +	uid_t uid = 0;
+> +	gid_t gid = 0;
+> +	int rc;
+> +
+> +	if (type == USER) {
+> +		rc = nfs4_owner_to_uid(name_at_domain, &uid);
+> +		sprintf(id, "%u", uid);
+> +	} else {
+> +		rc = nfs4_group_owner_to_gid(name_at_domain, &gid);
+> +		sprintf(id, "%u", gid);
+> +	}
+> +
+> +	if (rc == 0)
+> +		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
+> +
+> +	return rc;
+> +}
+> +
+> +/*
+> + * Find the name@domain string from either a user or group id
+> + */
+> +int name_lookup(char *id, key_serial_t key, int type)
+> +{
+> +	char name[IDMAP_NAMESZ];
+> +	char domain[NFS4_MAX_DOMAIN_LEN];
+> +	uid_t uid;
+> +	gid_t gid;
+> +	int rc;
+> +
+> +	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
+> +	if (rc != 0) {
+> +		rc = -1;
+> +		goto out;
+> +	}
+> +
+> +	if (type == USER) {
+> +		uid = atoi(id);
+> +		rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
+> +	} else {
+> +		gid = atoi(id);
+> +		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
+> +	}
+> +
+> +	if (rc == 0)
+> +		rc = keyctl_instantiate(key, &name, strlen(name), 0);
+> +
+> +out:
+> +	return rc;
+> +}
+> +
+> +int main(int argc, char **argv)
+> +{
+> +	char *arg;
+> +	char *value;
+> +	char *type;
+> +	int rc = 1;
+> +	int timeout = 600;
+> +	key_serial_t key;
+> +
+> +	if (argc < 3)
+> +		return 1;
+> +
+> +	arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
+> +	strcpy(arg, argv[2]);
+> +	type = strtok(arg, ":");
+> +	value = strtok(NULL, ":");
+> +
+> +	if (argc == 4) {
+> +		timeout = atoi(argv[3]);
+> +		if (timeout < 0)
+> +			timeout = 0;
+> +	}
+> +
+> +	key = strtol(argv[1], NULL, 10);
+> +
+> +	if (strcmp(type, "uid") == 0)
+> +		rc = id_lookup(value, key, USER);
+> +	else if (strcmp(type, "gid") == 0)
+> +		rc = id_lookup(value, key, GROUP);
+> +	else if (strcmp(type, "user") == 0)
+> +		rc = name_lookup(value, key, USER);
+> +	else if (strcmp(type, "group") == 0)
+> +		rc = name_lookup(value, key, GROUP);
+> +
+> +	/* Set timeout to 5 (600 seconds) minutes */
+> +	if (rc == 0)
+> +		keyctl_set_timeout(key, timeout);
+> +
+> +	free(arg);
+> +	return rc;
+> +}
+> diff --git a/utils/nfs.idmap/nfs.idmap.man b/utils/nfs.idmap/nfs.idmap.man
+> new file mode 100644
+> index 0000000..9008dd9
+> --- /dev/null
+> +++ b/utils/nfs.idmap/nfs.idmap.man
+> @@ -0,0 +1,60 @@
+> +.\"
+> +.\"@(#)nfs.idmap(8) - The NFS idmapper upcall program
+> +.\"
+> +.\" Copyright (C) 2010 Bryan Schumaker <bjschuma@netapp.com>
+> +.TH nfs.idmap 5 "1 October 2010"
+> +.SH NAME
+> +nfs.idmap \- The NFS idmapper upcall program
+> +.SH DESCRIPTION
+> +The file
+> +.I /usr/sbin/idmap
+> +is used by the NFS idmapper to translate user and group ids into names, and to
+> +translate user and group names into ids. Idmapper uses request-key to perform
+> +the upcall and cache the result.
+> +.I /usr/sbin/idmap
+I'm assuming this should be 
+> +should only be called by request-key, and will perform the translation and
+> +initialize a key with the resulting information.
+> +.PP
+> +NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
+> +feature.
+> +.SH CONFIGURING
+> +The file
+> +.I /etc/request-key.conf
+> +will need to be modified so
+> +.I /sbin/request-key
+> +can properly direct the upcall. The following line should be added before a call
+> +to keyctl negate:
+> +.PP
+> +create	id_resolver	*	*	/usr/sbin/nfs.idmap %k %d 600
+> +.PP
+> +This will direct all nfs_idmap requests to the program
+> +.I /usr/sbin/nfs.idmap
+> +The last parameter, 600, defines how many seconds into the future the key will
+> +expire.  This is an optional parameter for
+> +.I /usr/sbin/nfs.idmap
+> +and will default to 600 seconds when not specified.
+> +.PP
+> +The idmapper system uses four key descriptions:
+> +.PP
+> +	  uid: Find the UID for the given user
+> +.br
+> +	  gid: Find the GID for the given group
+> +.br
+> +	 user: Find the user name for the given UID
+> +.br
+> +	group: Find the group name for the given GID
+> +.PP
+> +You can choose to handle any of these individually, rather than using the
+> +generic upcall program.  If you would like to use your own program for a uid
+> +lookup then you would edit your request-key.conf so it looks similar to this:
+> +.PP
+> +create	id_resolver	uid:*	*	/some/other/program %k %d 600
+> +.br
+> +create	id_resolver	*		*	/usr/sbin/nfs.idmap %k %d 600
+> +.PP
+> +Notice that the new line was added above the line for the generic program.
+> +request-key will find the first matching line and run the corresponding program.
+> +In this case, /some/other/program will handle all uid lookups, and
+> +/usr/sbin/nfs.idmap will handle gid, user, and group lookups.
+> +.SH AUTHOR
+> +Bryan Schumaker, <bjschuma@netapp.com>
