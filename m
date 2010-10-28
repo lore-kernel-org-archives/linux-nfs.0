@@ -1,45 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25305 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34807 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750714Ab0JEMnV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Oct 2010 08:43:21 -0400
-Received: from int-mx08.intmail.prod.int.phx2.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.21])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id o95ChKfO007510
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 5 Oct 2010 08:43:21 -0400
-Received: from badhat.bos.devel.redhat.com (badhat.boston.devel.redhat.com [10.16.60.49])
-	by int-mx08.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id o95ChKHH030943
-	for <linux-nfs@vger.kernel.org>; Tue, 5 Oct 2010 08:43:20 -0400
-Message-ID: <4CAB1D66.1050807@RedHat.com>
-Date: Tue, 05 Oct 2010 08:43:18 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Updated The pNFS Developmental repository
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1758467Ab0J1PkW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 11:40:22 -0400
+Subject: Re: [PATCH] nfs-utils: add nfs.idmap
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <4CC9966B.1050103@netapp.com>
+References: <4CC6CE30.90105@netapp.com> <4CC70D34.1060600@netapp.com>
+	 <4CC99463.9000108@RedHat.com>  <4CC9966B.1050103@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 28 Oct 2010 11:40:05 -0400
+Message-ID: <1288280405.3194.44.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
+On Thu, 2010-10-28 at 11:27 -0400, Bryan Schumaker wrote:
+> On 10/28/2010 11:18 AM, Steve Dickson wrote:
+> > Hey Bryan,
+> > 
+> > A couple nits.... which I will be more than willing to take of... 
+> > 
+> > 1) I would like to change the binary name from nfs.idmap to nfsidmap
+> >    which is consistent with how the rest of the binaries are named.
+> >    (i.e. binary names generally don't have any '.' or '-' in them)
+> >    
+> > 2) Change the source directory from utils/nfs.idmap to 
+> >    utils/idmap which again makes it consistent with what
+> >    is already there. 
+> 
+> These both sounds reasonable to me.  I'll make a patch to modify the kernel documentation to reflect this.
+> > 
 
-I've just updated the nfs-utils rpms in the pNFS development 
-repository to include:
-    * The latest nfs-utils release (1.2.3)
-    * The latest pnfs nfs-utils bits
+We just sent in one patch to change the name in the kernel docs, now the
+name is changing again?
 
-These rpms will now install the blkmapd init script
-and the /etc/modprobe.d/nfsv41 file which hopeful get the 
-correct modules installed on the client.
+Let's wait with this until an actual nfs-utils release is available, so
+we can also update the 'Documentation/Changes' file with the new minimal
+release version number.
 
-Instructions on how to install and use these kernels are at:
-http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
-
- If/when bugs are found with these rpms please enter them
-in to the NFS Bugzilla Main Page at:
-    https://bugzilla.linux-nfs.org/index.cgi
-
-Please use the "pNFS" keyword.. 
-
-Any question or issues please feel free to contact me... 
-
-steved.
+Trond
