@@ -1,106 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:37630 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757083Ab0JUDZb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Oct 2010 23:25:31 -0400
-Date: Thu, 21 Oct 2010 14:25:18 +1100
-From: Neil Brown <neilb@suse.de>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: chuck.lever@oracle.com, Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
- mounts.
-Message-ID: <20101021142518.3934ae17@notabene>
-In-Reply-To: <20101020204532.2019eb93@corrin.poochiereds.net>
-References: <20101020181701.232dbeea@notabene>
-	<20101020135525.22977d8d@tlielax.poochiereds.net>
-	<20101020151657.42bc53f7@tlielax.poochiereds.net>
-	<20101021074028.44bca336@notabene>
-	<20101020204532.2019eb93@corrin.poochiereds.net>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:57246 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S934088Ab0J1S0Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 14:26:25 -0400
+Date: Thu, 28 Oct 2010 11:25:35 -0700
+From: Andrew Morton <akpm@linux-foundation.org>
+To: Geert Uytterhoeven <geert@linux-m68k.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+        Linux Kernel Development <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] nfs4: The difference of 2 pointers is size_t
+Message-Id: <20101028112535.442f47a7.akpm@linux-foundation.org>
+In-Reply-To: <alpine.DEB.2.00.1010282004390.31018@ayla.of.borg>
+References: <alpine.DEB.2.00.1010282004390.31018@ayla.of.borg>
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 20 Oct 2010 20:45:32 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+On Thu, 28 Oct 2010 20:06:19 +0200 (CEST)
+Geert Uytterhoeven <geert@linux-m68k.org> wrote:
 
-> On Thu, 21 Oct 2010 07:40:28 +1100
-> Neil Brown <neilb@suse.de> wrote:
+> On m68k, which is 32-bit:
 > 
-> > > 
-> > > Then what happens is that xs_tcp_send_request gets called again to try
-> > > to resend the packet. In the EHOSTUNREACH case, that returns
-> > > EHOSTUNREACH which eventually causes an rpc_exit with that error. In
-> > > the ENETUNREACH case that returns EPIPE, which makes the state machine
-> > > move next to call_bind and the whole thing starts over again.
-> > 
-> > This confuses me.  Why would  xs_tcp_send_request (aka ->send_request) get
-> > called before the connect has succeeded?  Can you make sense of that?
-> > 
+> fs/nfs/nfs4proc.c: In function ___nfs41_sequence_done___:
+> fs/nfs/nfs4proc.c:432: warning: format ___%ld___ expects type ___long int___, but argument 3 has type ___int___
+> fs/nfs/nfs4proc.c: In function ___nfs4_setup_sequence___:
+> fs/nfs/nfs4proc.c:576: warning: format ___%ld___ expects type ___long int___, but argument 5 has type ___int___
 > 
-> It confuses me too. I suspect that this may actually be a bug...
+> On 32-bit, size_t is int; on 64-bit, size_t is long.
 > 
-> So EINPROGRESS makes the connect_worker task clear the connecting bit
-> and return. Eventually, the EHOSTUNREACH error is reported to
-> xs_error_report. That function does this:
+> Introduced by commit dfb4f309830359352539919f23accc59a20a3758 ("NFSv4.1: keep
+> seq_res.sr_slot as pointer rather than an index")
 > 
->         xprt_wake_pending_tasks(xprt, -EAGAIN);
+> Signed-off-by: Geert Uytterhoeven <geert@linux-m68k.org>
+> ---
+>  fs/nfs/nfs4proc.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
 > 
-> The task that was waiting on the connect_worker is then woken up.
-> call_connect_status does this:
-> 
->         if (status >= 0 || status == -EAGAIN) {
->                 clnt->cl_stats->netreconn++;
->                 task->tk_action = call_transmit;
->                 return;
->         }
-> 
-> ...and we end up in call_transmit without the socket being connected.
-> 
-> So I understand how this happened, but I don't really understand the
-> design of the connect mechanism well enough to know whether this is
-> by design or not.
-> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 32c8758..80229dc 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -429,7 +429,7 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+>  		 * returned NFS4ERR_DELAY as per Section 2.10.6.2
+>  		 * of RFC5661.
+>  		 */
+> -		dprintk("%s: slot=%ld seq=%d: Operation in progress\n",
+> +		dprintk("%s: slot=%zd seq=%d: Operation in progress\n",
+>  			__func__,
+>  			res->sr_slot - res->sr_session->fc_slot_table.slots,
+>  			res->sr_slot->seq_nr);
+> @@ -573,7 +573,7 @@ int nfs4_setup_sequence(const struct nfs_server *server,
+>  		goto out;
+>  	}
+>  
+> -	dprintk("--> %s clp %p session %p sr_slot %ld\n",
+> +	dprintk("--> %s clp %p session %p sr_slot %zd\n",
+>  		__func__, session->clp, session, res->sr_slot ?
+>  			res->sr_slot - session->fc_slot_table.slots : -1);
+>  
 
-Now that *is* interesting.....
-
-I thought that code in call_connect_status was hard to understand too, so I
-asked git who to blame it on. It said:
-
-commit 2a4919919a97911b0aa4b9f5ac1eab90ba87652b
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Wed Mar 11 14:38:00 2009 -0400
-
-    SUNRPC: Return EAGAIN instead of ENOTCONN when waking up xprt->pending
-    
-    While we should definitely return socket errors to the task that is
-    currently trying to send data, there is no need to propagate the same error
-    to all the other tasks on xprt->pending. Doing so actually slows down
-    recovery, since it causes more than one tasks to attempt socket recovery.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-
-
-That commit not only adds the "status == -EAGAIN" test, but also introduced
-some of the xprtsock.c code that I suggested changing in a previous patch.
-
-So there seem to be some correlation between that commit and the present
-problem.
-
-I tried compiling the kernel just prior to that commit, and 
-  mount -t nfs4 unrouteable.ip.addres:/ /mnt
-
-took 3 seconds to time fail.
-
-I then stepped forward to that commit and the same command took 3 *minutes* to
-time out.  So something isn't right there.  Unfortunately I don't know what.
-
-Trond: can you comment on this - maybe explain the reasoning behind that
-commit better, and suggest how we can get ENOTCONN to fail SOFTCONN
-connections faster without undoing the things this patch tried to achieve?
-
-Thanks,
-
-NeilBrown
+I think it should formally be %t, for a ptrdiff_t.
