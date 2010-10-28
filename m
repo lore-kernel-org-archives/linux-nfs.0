@@ -1,58 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59315 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754836Ab0JZVot (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Oct 2010 17:44:49 -0400
-Date: Tue, 26 Oct 2010 17:44:41 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Arnd Bergmann <arnd@arndb.de>, Bryan Schumaker <bjschuma@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: nfsd changes for 2.6.37
-Message-ID: <20101026214441.GC1842@fieldses.org>
-References: <20101026164549.GD19445@fieldses.org>
- <201010262218.36940.arnd@arndb.de>
- <4CC73BA6.1090407@netapp.com>
- <201010262255.40481.arnd@arndb.de>
- <AANLkTimPBqafDPxYpZjuym8+-yk4vKYTU15Js-Ux_e6Z@mail.gmail.com>
- <20101026212433.GB1842@fieldses.org>
- <AANLkTinOd9pDVRYDQ5+dqn8LPf4yoOW=j8NxyCfCQAB6@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTinOd9pDVRYDQ5+dqn8LPf4yoOW=j8NxyCfCQAB6@mail.gmail.com>
+Received: from 4dicksons.org ([207.22.49.45]:32993 "EHLO
+	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752521Ab0J1MR4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 08:17:56 -0400
+Received: from tophat.home.4dicksons.org ([192.168.62.20])
+	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1PBRQZ-0000nv-1f
+	for linux-nfs@vger.kernel.org; Thu, 28 Oct 2010 08:17:55 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] [bz 192] Fixed Regression in NFS Direct I/O path
+Date: Thu, 28 Oct 2010 08:17:54 -0400
+Message-Id: <1288268274-9444-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Oct 26, 2010 at 02:37:26PM -0700, Linus Torvalds wrote:
-> On Tue, Oct 26, 2010 at 2:24 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >
-> > I did a couple connectathon runs just now with no obvious ill effects
-> > except for some sleep-within-spinlock warnings in the lease code.
-> 
-> Hmm. Those sleep-within-spinlock warnings are very likely serious
-> bugs.
+A typo, introduced by commit f11ac8db, in the nfs_direct_write()
+routine causes writes with O_DIRECT set to fail with a ENOMEM error.
 
-Yeah, didn't mean to belittle them.
+Found-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfs/direct.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-> Can you quote the whole warning with stack trace?
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 064a809..84d3c8b 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -873,7 +873,7 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 	dreq->inode = inode;
+ 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
+ 	dreq->l_ctx = nfs_get_lock_context(dreq->ctx);
+-	if (dreq->l_ctx != NULL)
++	if (dreq->l_ctx == NULL)
+ 		goto out_release;
+ 	if (!is_sync_kiocb(iocb))
+ 		dreq->iocb = iocb;
+-- 
+1.7.2.3
 
-It's just obvious allocations in setlease:
-
-BUG: sleeping function called from invalid context at mm/slab.c:3101
-in_atomic(): 1, irqs_disabled(): 0, pid: 4345, name: lease_tests
-1 lock held by lease_tests/4345:
- #0:  (file_lock_lock){+.+.+.}, at: [<ffffffff81128be5>] lock_flocks+0x15/0x20
-Pid: 4345, comm: lease_tests Not tainted 2.6.36-05858-gbd5e20b #1028
-Call Trace:
- [<ffffffff8103141d>] __might_sleep+0x10d/0x140
- [<ffffffff810e3ad3>] kmem_cache_alloc+0x1f3/0x230
- [<ffffffff8112a4d2>] generic_setlease+0x112/0x2c0
- [<ffffffff8112a6b5>] __vfs_setlease+0x35/0x40
- [<ffffffff8112acfe>] fcntl_setlease+0xce/0x180
- [<ffffffff810f7c2e>] sys_fcntl+0x2fe/0x630
- [<ffffffff81961999>] ? trace_hardirqs_on_thunk+0x3a/0x3f
- [<ffffffff81002658>] system_call_fastpath+0x16/0x1b
-
-I'm testing a patch.
-
---b.
