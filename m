@@ -1,118 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48636 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:3691 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755719Ab0JNRPY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Oct 2010 13:15:24 -0400
-Date: Thu, 14 Oct 2010 13:15:23 -0400
-To: Lyle Seaman <lyleseaman@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Thread scheduling issues
-Message-ID: <20101014171522.GA553@fieldses.org>
-References: <AANLkTin8tXxRFA5G8c9jKLv6aeEM8YLRX54YT5GozxK+@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTin8tXxRFA5G8c9jKLv6aeEM8YLRX54YT5GozxK+@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1758717Ab0J1PeA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Oct 2010 11:34:00 -0400
+Message-ID: <4CC997E7.7080402@netapp.com>
+Date: Thu, 28 Oct 2010 11:33:59 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFS: rename nfs.upcall -> nfsidmap
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Oct 14, 2010 at 11:21:33AM -0400, Lyle Seaman wrote:
-> Ok.  I've been trying to figure out a performance problem with some of
-> my production servers (I'm just not able to get enough simultaneous
-> I/Os queued up to get decent performance out of my disk subsystem),
-> and I have run into something that strikes me as odd.  For reference,
-> the code I'm looking at is from a 2.6.35.22 kernel, and I know there
-> have been some relevant changes since then but I am not seeing the
-> discussion of this in the mailing list archives. If I have to figure
-> out the new source control system to look at the head-of-line code,
-> say so.
-> 
-> in sunrpc/svc_xprt.c:svc_recv() I find this:
-> 
->         /* now allocate needed pages.  If we get a failure, sleep briefly */
->  620        pages = (serv->sv_max_mesg + PAGE_SIZE) / PAGE_SIZE;
->  621        for (i = 0; i < pages ; i++)
->  622                while (rqstp->rq_pages[i] == NULL) {
->  623                        struct page *p = alloc_page(GFP_KERNEL);
->  624                        if (!p) {
->  625                                set_current_state(TASK_INTERRUPTIBLE);
->  626                                if (signalled() || kthread_should_stop()) {
->  627                                        set_current_state(TASK_RUNNING);
->  628                                        return -EINTR;
->  629                                }
->  630                                schedule_timeout(msecs_to_jiffies(500));
->  631                        }
->  632                        rqstp->rq_pages[i] = p;
->  633                }
-> 
-> First of all, 500ms is a long way from "brief".  Second, it seems like
-> a really bad idea to sleep while holding a contended resource.
-> Shouldn't you drop those pages before sleeping?  It's been a long time
-> since I knew anything about the Linux vm system, but presumably the
-> reason that alloc_page has failed is because there aren't 26 pages
-> available*.  So now I'm going to sleep while holding, say, the last 24
-> free pages?  This looks like deadlock city, except for the valiant
-> efforts by the vm system to keep freeing pages, and other adjustments
-> to vary sv_max_mesg depending on the number of threads which mean that
-> in practice, deadlock is unlikely.  But figuring out the interaction
-> of all those other systems requires global knowledge, which is asking
-> for trouble in the long run.  And there are intermediate degrees of
-> cascading interlocked interdependencies that result in poor
-> performance which aren't technically a complete deadlock.
-> 
-> (* I'm going to have to do some more digging here, because in my
-> specific situation, vmstat generally reports between 100M and 600M
-> free, so I'm admittedly not clear on why alloc_page is failing me,
-> unless there is a difference between "free" and "available for nfsd".)
+This patch renames the idmapper upcall program from nfs.upcall to nfsidmap in
+the NFS documentation.  This is because the program has been renamed in the
+nfs-utils source.
 
-OK, I'm more than willing to consider proposals for improvement here,
-but I'm losing the connection to your problem: how do you know that this
-particular alloc_page is failing in your case, and how do you know
-that's the cause of your problem?
-
-> And then there's this, in svc_xprt_enqueue()
-> 
->  360 process:
->  361        /* Work out whether threads are available */
->  362        thread_avail = !list_empty(&pool->sp_threads);  /* threads
-> are asleep */
->  363        if (pool->sp_nwaking >= SVC_MAX_WAKING) {
-> //  == 5 -lws
->  364                /* too many threads are runnable and trying to wake up */
->  365                thread_avail = 0;
->  366                pool->sp_stats.overloads_avoided++;
->  367        }
-
-That strikes me as a more likely cause of your problem.  But it was
-reverted in v2.6.33, and you say you're using v2.6.35.22, so there's
-some confusion here?
-
-But again we're jumping to conclusions: what's your setup, what symptoms
-are you seeing, what did you try to do to fix it, and what were the
-results?
-
-> Now, the sp_nwaking counter is only decremented after that snippet of
-> code earlier, so if I've got five threads that happen to all run into
-> a transient problem getting the pages they need, they're going to
-> sleep for 500 millis and -nothing- is going to happen.
-> 
-> I see that this overloads_avoided branch disappeared in more recent
-> kernels, was there some discussion of it that you can point me to so I
-> don't have to rehash an old topic? I think that removing it actually
-> increases the likelihood of deadlock.
-> 
-> Finally, zero-copy is great, awesome, I love it.  But it seems
-> profligate to allocate an entire 26 pages for every operation when
-> only 9% of them (at least in my workload) are writes.  All the rest of
-> the operations only need a small fraction of that to be preallocated.
-> I don't have a concrete suggestion here, I'd have to do some tinkering
-> with the code first.  I'm just... saying.  Maybe allocate two pages up
-> front, then wait to see if the others are needed and allocate them at
-> that time.  If you're willing to sleep in svc_recv while holding lots
-> of pages, it's no worse to sleep while holding one or two.
-
-Could be.  I think the code was trying to avoid reading an rpc request
-until it was reasonably sure it would have the resources to complete it,
-so we didn't end up with a thread stuck waiting on a half-received rpc.
-
---b.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+diff --git a/Documentation/filesystems/nfs/idmapper.txt b/Documentation/filesystems/nfs/idmapper.txt
+index c385204..18ee6f5 100644
+--- a/Documentation/filesystems/nfs/idmapper.txt
++++ b/Documentation/filesystems/nfs/idmapper.txt
+@@ -6,7 +6,7 @@ Id mapper is used by NFS to translate user and group ids into names, and to
+ translate user and group names into ids.  Part of this translation involves
+ performing an upcall to userspace to request the information.  Id mapper will
+ user request-key to perform this upcall and cache the result.  The program
+-/usr/sbin/nfs.upcall should be called by request-key, and will perform the
++/sbin/nfsidmap should be called by request-key, and will perform the
+ translation and initialize a key with the resulting information.
+ 
+  NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
+@@ -20,12 +20,12 @@ direct the upcall.  The following line should be added:
+ 
+ #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
+ #======	=======	===============	===============	===============================
+-create	id_resolver	*	*		/usr/sbin/nfs.upcall %k %d 600
++create	id_resolver	*	*		/sbin/nfsidmap %k %d 600
+ 
+-This will direct all id_resolver requests to the program /usr/sbin/nfs.upcall.
++This will direct all id_resolver requests to the program /sbin/nfsidmap.
+ The last parameter, 600, defines how many seconds into the future the key will
+-expire.  This parameter is optional for /usr/sbin/nfs.upcall.  When the timeout
+-is not specified, nfs.upcall will default to 600 seconds.
++expire.  This parameter is optional for /sbin/nfsidmap.  When the timeout
++is not specified, nfsidmap will default to 600 seconds.
+ 
+ id mapper uses for key descriptions:
+ 	  uid:  Find the UID for the given user
+@@ -39,29 +39,29 @@ would edit your request-key.conf so it look similar to this:
+ 
+ #OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
+ #======	=======	===============	===============	===============================
+-create	id_resolver	uid:*	*		/some/other/program  %k %d 600
+-create	id_resolver	*	*		/sbin/nfs.upcall %k %d 600
++create	id_resolver	uid:*	*		/some/other/program %k %d 600
++create	id_resolver	*	*		/sbin/nfsidmap %k %d 600
+ 
+ Notice that the new line was added above the line for the generic program.
+ request-key will find the first matching line and corresponding program.  In
+ this case, /some/other/program will handle all uid lookups and
+-/usr/sbin/nfs.upcall will handle gid, user, and group lookups.
++/sbin/nfsidmap will handle gid, user, and group lookups.
+ 
+ See <file:Documentation/keys-request-keys.txt> for more information about the
+ request-key function.
+ 
+ 
+-==========
+-nfs.upcall
+-==========
+-nfs.upcall is designed to be called by request-key, and should not be run "by
++========
++nfsidmap
++========
++nfsidmap is designed to be called by request-key, and should not be run "by
+ hand".  This program takes two arguments, a serialized key and a key
+ description.  The serialized key is first converted into a key_serial_t, and
+ then passed as an argument to keyctl_instantiate (both are part of keyutils.h).
+ 
+-The actual lookups are performed by functions found in nfsidmap.h.  nfs.upcall
++The actual lookups are performed by functions found in nfsidmap.h.  nfsidmap
+ determines the correct function to call by looking at the first part of the
+ description string.  For example, a uid lookup description will appear as
+ "uid:user@domain".
+ 
+-nfs.upcall will return 0 if the key was instantiated, and non-zero otherwise.
++nfsidmap will return 0 if the key was instantiated, and non-zero otherwise.
