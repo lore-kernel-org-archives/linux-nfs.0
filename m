@@ -1,61 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:14464 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752039Ab0JUAox (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Oct 2010 20:44:53 -0400
-Date: Wed, 20 Oct 2010 20:45:32 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Neil Brown <neilb@suse.de>
-Cc: chuck.lever@oracle.com, Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
- mounts.
-Message-ID: <20101020204532.2019eb93@corrin.poochiereds.net>
-In-Reply-To: <20101021074028.44bca336@notabene>
-References: <20101020181701.232dbeea@notabene>
-	<20101020135525.22977d8d@tlielax.poochiereds.net>
-	<20101020151657.42bc53f7@tlielax.poochiereds.net>
-	<20101021074028.44bca336@notabene>
-Content-Type: text/plain; charset=US-ASCII
+Received: from exprod5og108.obsmtp.com ([64.18.0.186]:40876 "HELO
+	exprod5og108.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753333Ab0J1NLe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 09:11:34 -0400
+Message-ID: <4CC97683.2010004@panasas.com>
+Date: Thu, 28 Oct 2010 15:11:31 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] SQUASHME: pnfs: filelayout: print_ds should use dprintk
+References: <4CC86D96.8020803@panasas.com>	 <1288203860-26920-1-git-send-email-bhalevy@panasas.com>	 <AANLkTikKpCO_xYjOpj74AiptyDjtMtJJhQaObksF_+LE@mail.gmail.com>	 <4CC8863B.3080504@panasas.com>	 <AANLkTinsRNKCOQZjH4kYTTou-a+J02dM8nB=WL_xu7Wb@mail.gmail.com>	 <4CC892E1.3070703@panasas.com>	 <1288214583.13431.19.camel@heimdal.trondhjem.org>	 <4CC899B7.3080904@panasas.com> <1288215171.13431.20.camel@heimdal.trondhjem.org> <4CC89CBF.9010801@panasas.com>
+In-Reply-To: <4CC89CBF.9010801@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 21 Oct 2010 07:40:28 +1100
-Neil Brown <neilb@suse.de> wrote:
-
-> > 
-> > Then what happens is that xs_tcp_send_request gets called again to try
-> > to resend the packet. In the EHOSTUNREACH case, that returns
-> > EHOSTUNREACH which eventually causes an rpc_exit with that error. In
-> > the ENETUNREACH case that returns EPIPE, which makes the state machine
-> > move next to call_bind and the whole thing starts over again.
+On 2010-10-27 23:42, Benny Halevy wrote:
+> On 2010-10-27 23:32, Trond Myklebust wrote:
+>> On Wed, 2010-10-27 at 23:29 +0200, Benny Halevy wrote:
+>>> On 2010-10-27 23:23, Trond Myklebust wrote:
+>>>> On Wed, 2010-10-27 at 23:00 +0200, Benny Halevy wrote:
+>>>>> On 2010-10-27 22:17, Fred Isaman wrote:
+>>>>>> On Wed, Oct 27, 2010 at 4:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>>>>>> On 2010-10-27 21:49, Fred Isaman wrote:
+>>>>>>>> The change to printk was in response to Trond's complaint about
+>>>>>>>> successive dprintks.
+>>>>>>>>
+>>>>>>>> Instead, the following would work:
+>>>>>>>>
+>>>>>>>>
+>>>>>>>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>>>>>>>> index 5f52e6f..2ce393c 100644
+>>>>>>>> --- a/fs/nfs/nfs4filelayout.c
+>>>>>>>> +++ b/fs/nfs/nfs4filelayout.c
+>>>>>>>> @@ -585,7 +585,8 @@ filelayout_commit(struct nfs_write_data *data, int sync)
+>>>>>>>>               }
+>>>>>>>
+>>>>>>> If we're going this way, the ifdebug could cover the following
+>>>>>>> printout as well...
+>>>>>>>
+>>>>>>
+>>>>>> Did you mean preceding printout?  By the way - the complaint about
+>>>>>
+>>>>> Yeah, preceding the call to print_ds (following my comment :)
+>>>>>
+>>>>>> successive dprintks was regarding
+>>>>>> print_ds_list repeatedly calling print_ds, which at the time used dprintk.
+>>>>>
+>>>>> Why do we care to optimize the debug case so much?
+>>>>> print_ds_list is already calling print_ds inside ifdebug(FACILITY)
+>>>>> so the common, non-debug case is optimized correctly. I.e. we don't
+>>>>> repeatedly check the debug flag normally.
+>>>>
+>>>> It's not about optimizing the debug case. It's about avoiding having to
+>>>> check ifdebug(FACILITY) all the time when we're _not_ debugging.
+>>>
+>>> Right, and so we do, as the whole loop in print_ds_list is enclosed
+>>> in ifdebug(FACILITY).
+>>
+>> In that case, I agree: the whole thing can be converted to use ordinary
+>> printks...
 > 
-> This confuses me.  Why would  xs_tcp_send_request (aka ->send_request) get
-> called before the connect has succeeded?  Can you make sense of that?
+> The point is it has a singular caller outside of this loop for which
+> the caller needs to check ifdebug(FACILITY) before calling print_ds.
+> Not a big deal, but I think it'd be cleaner if print_ds will do a dprintk
+> to simplify its singular usage, while the cost of that will be extra tests
+> when called, possibly many times, in debug mode from print_ds_list.
+
+Nevermind, I just merged Fred's patch instead.
+No need to spend that much energy on cosmetics in this case :)
+
+Benny
+
 > 
-
-It confuses me too. I suspect that this may actually be a bug...
-
-So EINPROGRESS makes the connect_worker task clear the connecting bit
-and return. Eventually, the EHOSTUNREACH error is reported to
-xs_error_report. That function does this:
-
-        xprt_wake_pending_tasks(xprt, -EAGAIN);
-
-The task that was waiting on the connect_worker is then woken up.
-call_connect_status does this:
-
-        if (status >= 0 || status == -EAGAIN) {
-                clnt->cl_stats->netreconn++;
-                task->tk_action = call_transmit;
-                return;
-        }
-
-...and we end up in call_transmit without the socket being connected.
-
-So I understand how this happened, but I don't really understand the
-design of the connect mechanism well enough to know whether this is
-by design or not.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> Benny
+> 
+>>
+>> Trond
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
