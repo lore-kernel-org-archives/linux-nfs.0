@@ -1,44 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:34674 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751187Ab0JMM5C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Oct 2010 08:57:02 -0400
-Date: Wed, 13 Oct 2010 08:56:56 -0400
-From: Jim Rees <rees@umich.edu>
-To: Valentijn Sessink <valentyn@blub.net>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:54101 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754324Ab0J1M4v convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 08:56:51 -0400
+Received: by ywk9 with SMTP id 9so1178647ywk.19
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Oct 2010 05:56:50 -0700 (PDT)
+In-Reply-To: <4CC92A0C.20704@cea.fr>
+References: <4CC92A0C.20704@cea.fr>
+Date: Thu, 28 Oct 2010 08:56:50 -0400
+Message-ID: <AANLkTikvHmPT-veXmJjwx8W56u0+1LKcxg96ewZ1c9T2@mail.gmail.com>
+Subject: Re: Manpages about functions within libnfsidmap ?
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: DENIEL Philippe <philippe.deniel@cea.fr>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: ipv6 + krb5, server status?
-Message-ID: <20101013125656.GA5197@merit.edu>
-References: <4CB59086.9080108@blub.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CB59086.9080108@blub.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Valentijn Sessink wrote:
+I think the closest thing is the man page for the config file?
 
-  Hello list,
-  
-  I found a lot of information on the subject NFS server, ipv6 + krb5, but
-  not anything conclusive. So I tried it out; I got IPv6 +
-  NFS4 to work, but only with sec=sys.
-  
-  When using sec=krb5, there seemed to be errors in gssd communication.
-  (Ubuntu 10.04 with rpcbind instead of portmap; with nfs-utils-1.2.3 from
-  nfs.sf.net, and with a 2.6.35-020635rc1-generic kernel package).
-  
-  Is this correct, i.e. svcgssd still needs to be adapted to IPv6? Or
-  should NFS-server/IPv6/Kerberos on Linux just work, i.e. should I
-  re-check my configuration?
+http://git.linux-nfs.org/?p=kwc/libnfsidmap.git;a=blob;f=idmapd.conf.5;h=9c7f1ae1bc5686142c6a8a0d71a5cb756daef212;hb=HEAD
 
-I don't know the specific answer to your question, but ipv6 support is still
-a work in progress, and I'm actually a bit surprised it works out of the box
-even with sec=sys.
+There is, of course, the libnfsidmap source code as well...
 
-You may want to try the very latest ipv6 version of nfs-utils, which may
-have some patches that have not yet been merged upstream.  You can get it
-from git://git.linux-nfs.org/projects/cel/nfs-utils.git .  The usual
-warnings apply, this is experimental code, you could lose data, it may not
-work with your 2.6.35 kernel, and if you find bugs you can't necessarily get
-anyone to help you.
+K.C.
+
+
+On Thu, Oct 28, 2010 at 3:45 AM, DENIEL Philippe <philippe.deniel@cea.fr> wrote:
+> Hi,
+>
+> I wondered if documentations about the functions implemented in libnfsidmap
+> exists. For now, I had a look at the rpc.idmapd's source code, but this is
+> no "explicit" docs. Does such a thing exist ? (as manpages, plain text or
+> any other human readable format)
+>
+>   Regards
+>
+>      Philippe
