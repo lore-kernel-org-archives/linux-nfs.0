@@ -1,58 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:9804 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5285 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751744Ab0JMS55 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Oct 2010 14:57:57 -0400
-Date: Wed, 13 Oct 2010 14:58:34 -0400
+	id S1758818Ab0J1NzN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Oct 2010 09:55:13 -0400
+Date: Thu, 28 Oct 2010 09:55:07 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Steve Dickson <steved@redhat.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: whither NFS umount?
-Message-ID: <20101013145834.2eeb3ae6@corrin.poochiereds.net>
-In-Reply-To: <20101013145601.468acc2a@corrin.poochiereds.net>
-References: <678C897C-DECE-49C1-AFC4-B57CF3A09385@oracle.com>
-	<1286903046.24878.13.camel@heimdal.trondhjem.org>
-	<C5614601-A685-4D7A-8DC3-23375F88AF42@oracle.com>
-	<20101012151826.76b75f52@corrin.poochiereds.net>
-	<1286912649.1956.19.camel@heimdal.trondhjem.org>
-	<4CB5EF15.5030003@RedHat.com>
-	<20101013141317.66f23906@corrin.poochiereds.net>
-	<4CB5FE65.3090409@RedHat.com>
-	<20101013145601.468acc2a@corrin.poochiereds.net>
+Subject: Re: [PATCH] [bz 192] Fixed Regression in NFS Direct I/O path
+Message-ID: <20101028095507.3a11ee17@tlielax.poochiereds.net>
+In-Reply-To: <20101028083435.35c990f0@tlielax.poochiereds.net>
+References: <1288268274-9444-1-git-send-email-steved@redhat.com>
+	<20101028083435.35c990f0@tlielax.poochiereds.net>
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 13 Oct 2010 14:56:01 -0400
+On Thu, 28 Oct 2010 08:34:35 -0400
 Jeff Layton <jlayton@redhat.com> wrote:
 
-> On Wed, 13 Oct 2010 14:45:57 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
+> On Thu, 28 Oct 2010 08:17:54 -0400
+> Steve Dickson <steved@redhat.com> wrote:
 > 
-> > I would say send the UMNT, since it does not cause any pain to send it
-> > verses the pain that could be cause by not sending it...
+> > A typo, introduced by commit f11ac8db, in the nfs_direct_write()
+> > routine causes writes with O_DIRECT set to fail with a ENOMEM error.
 > > 
-> > This is a perfect example of fixing something that is not
-> > broken... We can put our energy in better place that worrying
-> > about things like this... IMHO...
+> > Found-by: Jeff Layton <jlayton@redhat.com>
+> > Signed-off-by: Steve Dickson <steved@redhat.com>
+> > ---
+> >  fs/nfs/direct.c |    2 +-
+> >  1 files changed, 1 insertions(+), 1 deletions(-)
+> > 
+> > diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> > index 064a809..84d3c8b 100644
+> > --- a/fs/nfs/direct.c
+> > +++ b/fs/nfs/direct.c
+> > @@ -873,7 +873,7 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
+> >  	dreq->inode = inode;
+> >  	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
+> >  	dreq->l_ctx = nfs_get_lock_context(dreq->ctx);
+> > -	if (dreq->l_ctx != NULL)
+> > +	if (dreq->l_ctx == NULL)
+> >  		goto out_release;
+> >  	if (!is_sync_kiocb(iocb))
+> >  		dreq->iocb = iocb;
 > 
-> But it *is* broken. As Chuck pointed out, the main problem is that mtab
-> handling is broken on remounts. That's a real problem that needs to be
-> fixed.
-> 
-> I agree that our time is better spent elsewhere. I just think that we
-> ought to make that happen by eliminating the unnecessary umount helper.
-> The less code that we need to maintain, the better...
+> Also, since get_lock_context holds references, this prevents the fs
+> from being unmounted. It looks like this bug is in 2.6.36 too, so this
+> may be suitable for stable series as well.
 > 
 
-Sorry, let me clarify... we'll still need to fix -o remount handling in
-mount.nfs. At the same time though, we can reduce our maintenance
-burden by getting rid of umount.nfs.
+Oh...and another thing I noticed too...
 
-I just don't think it serves much of a purpose these days...
+nfs_create_request doesn't check for a NULL return from
+nfs_get_lock_context. If it ever does, it looks like that will likely
+trickle down to an oops in encode_stateid.
 
+It might be good to fix that as well. Maybe something like this
+compile-tested-only patch?
+
+--------------------[snip]---------------------
+
+nfs: handle lock context allocation failures in nfs_create_request
+
+nfs_get_lock_context can return NULL on an allocation failure.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/pagelist.c |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 9194902..137b549 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -65,6 +65,13 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
+ 	if (req == NULL)
+ 		return ERR_PTR(-ENOMEM);
+ 
++	/* get lock context early so we can deal with alloc failures */
++	req->wb_lock_context = nfs_get_lock_context(ctx);
++	if (req->wb_lock_context == NULL) {
++		nfs_page_free(req);
++		return ERR_PTR(-ENOMEM);
++	}
++
+ 	/* Initialize the request struct. Initially, we assume a
+ 	 * long write-back delay. This will be adjusted in
+ 	 * update_nfs_request below if the region is not locked. */
+@@ -79,7 +86,6 @@ nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
+ 	req->wb_pgbase	= offset;
+ 	req->wb_bytes   = count;
+ 	req->wb_context = get_nfs_open_context(ctx);
+-	req->wb_lock_context = nfs_get_lock_context(ctx);
+ 	kref_init(&req->wb_kref);
+ 	return req;
+ }
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.2.3
+
