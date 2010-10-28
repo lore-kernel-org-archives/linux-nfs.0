@@ -1,298 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42299 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:29210 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756107Ab0JZC0d convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Oct 2010 22:26:33 -0400
-Subject: [GIT PULL] Please pull NFSv4.1 and pNFS client changes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 25 Oct 2010 22:25:30 -0400
-Message-ID: <1288059930.19787.6.camel@heimdal.trondhjem.org>
+	id S1758406Ab0J1TKG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Oct 2010 15:10:06 -0400
+Received: from localhost.localdomain (elee16240.hq.netapp.com [10.58.53.47] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id o9SJA27e000482
+	for <linux-nfs@vger.kernel.org>; Thu, 28 Oct 2010 12:10:04 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/6] pnfs-submit: change pnfs_layout_segment refcounting from kref to atomic_t
+Date: Thu, 28 Oct 2010 15:09:57 -0400
+Message-Id: <1288293001-26289-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1288293001-26289-1-git-send-email-iisaman@netapp.com>
+References: <1288293001-26289-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi Linus,
+Preparing for changes in pnfs_clear_lseg_list
 
-Please pull from the "nfs-for-2.6.37" branch of the repository at
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   37 ++++++++++++++-----------------------
+ fs/nfs/pnfs.h |    5 +++--
+ 2 files changed, 17 insertions(+), 25 deletions(-)
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git nfs-for-2.6.37
-
-This will update the following files through the appended changesets.
-
-  Cheers,
-    Trond
-
-----
- Documentation/filesystems/nfs/00-INDEX |    2 +
- Documentation/filesystems/nfs/pnfs.txt |   48 ++
- fs/nfs/Kconfig                         |    8 +-
- fs/nfs/Makefile                        |    4 +
- fs/nfs/callback_proc.c                 |    8 +-
- fs/nfs/client.c                        |   10 +-
- fs/nfs/file.c                          |    5 +
- fs/nfs/inode.c                         |    3 +
- fs/nfs/nfs4filelayout.c                |  280 ++++++++++++
- fs/nfs/nfs4filelayout.h                |   94 ++++
- fs/nfs/nfs4filelayoutdev.c             |  448 ++++++++++++++++++
- fs/nfs/nfs4proc.c                      |  218 ++++++++--
- fs/nfs/nfs4state.c                     |    2 +
- fs/nfs/nfs4xdr.c                       |  360 +++++++++++++++
- fs/nfs/pnfs.c                          |  783 ++++++++++++++++++++++++++++++++
- fs/nfs/pnfs.h                          |  189 ++++++++
- fs/nfs/read.c                          |    3 +
- fs/nfsd/nfs4callback.c                 |    1 -
- include/linux/nfs4.h                   |   62 +++-
- include/linux/nfs_fs.h                 |    5 +
- include/linux/nfs_fs_sb.h              |    3 +
- include/linux/nfs_xdr.h                |   50 ++
- include/linux/sunrpc/xdr.h             |    7 +
- net/sunrpc/auth_gss/gss_krb5_mech.c    |    2 +-
- 24 files changed, 2550 insertions(+), 45 deletions(-)
-
-commit 411b5e05617593efebc06241dbc56f42150f2abe
-Author: Joe Perches <joe@perches.com>
-Date:   Mon Sep 13 12:48:01 2010 -0700
-
-    net/sunrpc: Use static const char arrays
-    
-    Signed-off-by: Joe Perches <joe@perches.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 43c2e885be25311e6289c7da52e8a03c4453ee03
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Sat Oct 2 15:19:01 2010 -0400
-
-    nfs4: fix channel attribute sanity-checks
-    
-    The sanity checks here are incorrect; in the worst case they allow
-    values that crash the client.
-    
-    They're also over-reliant on the preprocessor.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 1c787096fce217b5fdd9806dbce96e738c9345c0
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Thu Oct 21 16:56:48 2010 -0400
-
-    NFSv4.1: Use more sensible names for 'initialize_mountpoint'
-    
-    The initialize_mountpoint/uninitialise_mountpoint functions are really about
-    setting or clearing the layout driver to be used on this filesystem. Change
-    the names to the more descriptive 'set_layoutdriver/clear_layoutdriver'.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 16b374ca439fb406e46e071f75428f5b033056f8
-Author: Andy Adamson <andros@netapp.com>
-Date:   Wed Oct 20 00:18:04 2010 -0400
-
-    NFSv4.1: pnfs: filelayout: add driver's LAYOUTGET and GETDEVICEINFO infrastructure
-    
-    Implement the driver's io_ops->alloc_lseg and free_lseg functions,
-    which integrate into the deviceid cache and calls out to
-    nfs4_proc_getdeviceinfo when necessary.
-    
-    Signed-off-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
-    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-    Signed-off-by: Mike Sager <sager@netapp.com>
-    Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
-    Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
-    Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-    Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-    Signed-off-by: Fred Isaman <iisaman@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit b1f69b754ee312ec75f2c7ead0e6851cd9598cc2
-Author: Andy Adamson <andros@netapp.com>
-Date:   Wed Oct 20 00:18:03 2010 -0400
-
-    NFSv4.1: pnfs: add LAYOUTGET and GETDEVICEINFO infrastructure
-    
-    Add the ability to actually send LAYOUTGET and GETDEVICEINFO.  This also adds
-    in the machinery to handle layout state and the deviceid cache.  Note that
-    GETDEVICEINFO is not called directly by the generic layer.  Instead it
-    is called by the drivers while parsing the LAYOUTGET opaque data in response
-    to an unknown device id embedded therein.  RFC 5661 only encodes
-    device ids within the driver-specific opaque data.
-    
-    Signed-off-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
-    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-    Signed-off-by: Mike Sager <sager@netapp.com>
-    Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
-    Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-    Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-    Signed-off-by: Fred Isaman <iisaman@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 974cec8ca0352eb5d281535b714cf194a606e98f
-Author: Andy Adamson <andros@netapp.com>
-Date:   Wed Oct 20 00:18:02 2010 -0400
-
-    NFS: client needs to maintain list of inodes with active layouts
-    
-    In particular, server reboot will invalidate all layouts.
-    
-    Note that in order to have an active layout, we must get a successful response
-    from the server.  To avoid adding that machinery, this patch just includes a
-    stub that fakes up a successful return.  Since the layout is never referenced
-    for io, this is not a problem.
-    
-    Signed-off-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
-    Signed-off-by: Fred Isaman <iisaman@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit e5e940170b2136ad4d5483ef293ae284b9cc8d53
-Author: Benny Halevy <bhalevy@panasas.com>
-Date:   Wed Oct 20 00:18:01 2010 -0400
-
-    NFS: create and destroy inode's layout cache
-    
-    At the start of the io paths, try to grab the relevant layout
-    information.  This will initiate the inode's layout cache, but
-    stubs ensure the cache stays empty.
-    
-    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
-    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-    Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-    Signed-off-by: Ricardo Labiaga <ricardo.labiaga@netapp.com>
-    Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-    Signed-off-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: Fred Isaman <iisaman@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 7ab672ce312133ee4a5d85b71447b2b334403681
-Author: Dean Hildebrand <dhildebz@umich.edu>
-Date:   Wed Oct 20 00:18:00 2010 -0400
-
-    NFSv4.1: pnfs: filelayout: introduce minimal file layout driver
-    
-    This driver just registers itself and supplies trivial mount/umount functions.
-    
-    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
-    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-    Signed-off-by: Fred Isaman <iisaman@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 02c35fca7cf4ea2dfdc6db279e230cacbbf4b870
-Author: Fred Isaman <iisaman@netapp.com>
-Date:   Wed Oct 20 00:17:59 2010 -0400
-
-    NFSv4.1: pnfs: full mount/umount infrastructure
-    
-    Allow a module implementing a layout type to register, and
-    have its mount/umount routines called for filesystems that
-    the server declares support it.
-    
-    Signed-off-by: Fred Isaman <iisaman@netapp.com>
-    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-    Signed-off-by: Andy Adamson<andros@netapp.com>
-    Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
-    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 85e174ba6b786ad336eb2df105b4f66d0932e70a
-Author: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Date:   Wed Oct 20 00:17:58 2010 -0400
-
-    NFS: set layout driver
-    
-    Put in the infrastructure that uses information returned from the
-    server at mount to select a layout driver module.
-    
-    In this patch, a stub is used that always returns "no driver found".
-    
-    Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
-    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-    Signed-off-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-    Signed-off-by: Fred Isaman <iisaman@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 504913fbc84c00bba7224d73e4aab525c1731f7d
-Author: Andy Adamson <andros@netapp.com>
-Date:   Wed Oct 20 00:17:57 2010 -0400
-
-    NFS: ask for layouttypes during v4 fsinfo call
-    
-    This information will be used to determine which layout driver,
-    if any, to use for subsequent IO on this filesystem.  Each driver
-    is assigned an integer id, with 0 reserved to indicate no driver.
-    
-    The server can in theory return multiple ids.  However, our current
-    client implementation only notes the first entry and ignores the
-    rest.
-    
-    Signed-off-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-    Signed-off-by: Fred Isaman <iisaman@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 9449925273933d19235d7d36c1fd970841d055de
-Author: Alexandros Batsakis <batsakis@netapp.com>
-Date:   Wed Oct 20 00:17:56 2010 -0400
-
-    NFS: change stateid to be a union
-    
-    In NFSv4.1 the stateid consists of the other and seqid fields. For layout
-    processing we need to numerically compare the seqid value of layout stateids.
-    To do so, introduce a union to nfs4_stateid to switch between opaque(16 bytes)
-    and opaque(12 bytes) / __be32
-    
-    Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-    Signed-off-by: Fred Isaman <iisaman@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit c772567d97fa0fca454eea68aeae915ca1bc732b
-Author: Dean Hildebrand <dhildebz@umich.edu>
-Date:   Wed Oct 20 00:17:55 2010 -0400
-
-    NFSv4.1: pnfsd, pnfs: protocol level pnfs constants
-    
-    Use only layoutreturn constant for both returns and recalls.
-    (return_* works better for recall_type rather the other way around)
-    
-    Signed-off-by: Dean Hildebrand <dhildebz@umich.edu>
-    Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-    Signed-off-by: Fred Isaman <iisaman@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 35b61e63323ccf5fdcdd74b11751b58392c9cce1
-Author: Benny Halevy <bhalevy@panasas.com>
-Date:   Wed Oct 20 00:17:54 2010 -0400
-
-    SUNRPC: define xdr_decode_opaque_fixed
-    
-    A helper for decoding a fixed length opaque value.
-    Returns a pointer to the next item in the xdr stream.
-    
-    Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-    Signed-off-by: Fred Isaman <iisaman@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 3c9101a0575f6078191dae6bb91a834c6aac3557
-Author: Andy Adamson <andros@netapp.com>
-Date:   Wed Oct 20 00:17:53 2010 -0400
-
-    NFSD: remove duplicate NFS4_STATEID_SIZE
-    
-    Already accepted by Bruce
-    
-    Signed-off-by: Andy Adamson <andros@netapp.com>
-    Signed-off-by: Fred Isaman <iisaman@netapp.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e14be46..72997b1 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -266,41 +266,32 @@ static void
+ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+ {
+ 	INIT_LIST_HEAD(&lseg->fi_list);
+-	kref_init(&lseg->kref);
++	atomic_set(&lseg->pls_refcount, 1);
++	smp_mb();
+ 	lseg->valid = true;
+ 	lseg->layout = lo;
+ }
+ 
+-/* Called without i_lock held, as the free_lseg call may sleep */
+-static void
+-destroy_lseg(struct kref *kref)
+-{
+-	struct pnfs_layout_segment *lseg =
+-		container_of(kref, struct pnfs_layout_segment, kref);
+-	struct inode *ino = lseg->layout->inode;
+-
+-	dprintk("--> %s\n", __func__);
+-	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+-	/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
+-	put_layout_hdr(ino);
+-}
+-
+ void
+ put_lseg(struct pnfs_layout_segment *lseg)
+ {
+ 	bool do_wake_up;
+-	struct nfs_inode *nfsi;
++	struct inode *ino;
+ 
+ 	if (!lseg)
+ 		return;
+ 
+ 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+-		atomic_read(&lseg->kref.refcount), lseg->valid);
++		atomic_read(&lseg->pls_refcount), lseg->valid);
+ 	do_wake_up = !lseg->valid;
+-	nfsi = NFS_I(lseg->layout->inode);
+-	kref_put(&lseg->kref, destroy_lseg);
++	ino = lseg->layout->inode;
++	if (atomic_dec_and_test(&lseg->pls_refcount)) {
++		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
++		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
++		put_layout_hdr(ino);
++	}
+ 	if (do_wake_up)
+-		rpc_wake_up(&nfsi->lo_rpcwaitq);
++		rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq);
+ }
+ EXPORT_SYMBOL_GPL(put_lseg);
+ 
+@@ -326,7 +317,7 @@ should_free_lseg(struct pnfs_layout_segment *lseg,
+ static bool
+ _pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
+ {
+-	return atomic_read(&lseg->kref.refcount) == 1;
++	return atomic_read(&lseg->pls_refcount) == 1;
+ }
+ 
+ static void
+@@ -595,7 +586,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+ 		if (!_pnfs_can_return_lseg(lseg)) {
+ 			dprintk("%s: wait on lseg %p refcount %d\n",
+ 				__func__, lseg,
+-				atomic_read(&lseg->kref.refcount));
++				atomic_read(&lseg->pls_refcount));
+ 			ret = true;
+ 		}
+ 	}
+@@ -834,7 +825,7 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo,
+ 	}
+ 
+ 	dprintk("%s:Return lseg %p ref %d valid %d\n",
+-		__func__, ret, ret ? atomic_read(&ret->kref.refcount) : 0,
++		__func__, ret, ret ? atomic_read(&ret->pls_refcount) : 0,
+ 		ret ? ret->valid : 0);
+ 	return ret;
+ }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 235709e..5e4c7cc 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -35,7 +35,7 @@
+ struct pnfs_layout_segment {
+ 	struct list_head fi_list;
+ 	struct pnfs_layout_range range;
+-	struct kref kref;
++	atomic_t pls_refcount;
+ 	bool valid;
+ 	struct pnfs_layout_hdr *layout;
+ };
+@@ -233,7 +233,8 @@ static inline void pnfs_invalidate_layout_stateid(struct pnfs_layout_hdr *lo)
+ 
+ static inline void get_lseg(struct pnfs_layout_segment *lseg)
+ {
+-	kref_get(&lseg->kref);
++	atomic_inc(&lseg->pls_refcount);
++	smp_mb__after_atomic_inc();
+ }
+ 
+ /* Return true if a layout driver is being used for this mountpoint */
+-- 
+1.7.2.1
 
