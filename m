@@ -1,66 +1,72 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/6] More fix-ups for nfs-utils-1.2.4
-Date: Thu, 28 Oct 2010 11:39:22 -0400
-Message-ID: <FEC1C1B9-A656-4C05-8111-74D4634384CD@oracle.com>
-References: <20101026155216.19184.36979.stgit@matisse.1015granger.net> <4CC997A8.6060803@RedHat.com>
-Mime-Version: 1.0 (Apple Message framework v1081)
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] nfs4: The difference of 2 pointers is size_t
+Date: Thu, 28 Oct 2010 14:17:14 -0400
+Message-ID: <1288289834.14221.12.camel@heimdal.trondhjem.org>
+References: <alpine.DEB.2.00.1010282004390.31018@ayla.of.borg>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Cc: Benny Halevy <bhalevy@panasas.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-nfs@vger.kernel.org,
+	Linux Kernel Development <linux-kernel@vger.kernel.org>
+To: Geert Uytterhoeven <geert@linux-m68k.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:64505 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758467Ab0J1PkF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 11:40:05 -0400
-In-Reply-To: <4CC997A8.6060803-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mx2.netapp.com ([216.240.18.37]:1706 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755321Ab0J1SSK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Oct 2010 14:18:10 -0400
+In-Reply-To: <alpine.DEB.2.00.1010282004390.31018-97SZ98TBZzA1xEWliksxXw@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2010-10-28 at 20:06 +0200, Geert Uytterhoeven wrote:
+> On m68k, which is 32-bit:
+>=20
+> fs/nfs/nfs4proc.c: In function =E2=80=98nfs41_sequence_done=E2=80=99:
+> fs/nfs/nfs4proc.c:432: warning: format =E2=80=98%ld=E2=80=99 expects =
+type =E2=80=98long int=E2=80=99, but argument 3 has type =E2=80=98int=E2=
+=80=99
+> fs/nfs/nfs4proc.c: In function =E2=80=98nfs4_setup_sequence=E2=80=99:
+> fs/nfs/nfs4proc.c:576: warning: format =E2=80=98%ld=E2=80=99 expects =
+type =E2=80=98long int=E2=80=99, but argument 5 has type =E2=80=98int=E2=
+=80=99
+>=20
+> On 32-bit, size_t is int; on 64-bit, size_t is long.
+>=20
+> Introduced by commit dfb4f309830359352539919f23accc59a20a3758 ("NFSv4=
+=2E1: keep
+> seq_res.sr_slot as pointer rather than an index")
+>=20
+> Signed-off-by: Geert Uytterhoeven <geert@linux-m68k.org>
+> ---
+>  fs/nfs/nfs4proc.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 32c8758..80229dc 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -429,7 +429,7 @@ static int nfs41_sequence_done(struct rpc_task *t=
+ask, struct nfs4_sequence_res *
+>  		 * returned NFS4ERR_DELAY as per Section 2.10.6.2
+>  		 * of RFC5661.
+>  		 */
+> -		dprintk("%s: slot=3D%ld seq=3D%d: Operation in progress\n",
+> +		dprintk("%s: slot=3D%zd seq=3D%d: Operation in progress\n",
+>  			__func__,
+>  			res->sr_slot - res->sr_session->fc_slot_table.slots,
+>  			res->sr_slot->seq_nr);
+> @@ -573,7 +573,7 @@ int nfs4_setup_sequence(const struct nfs_server *=
+server,
+>  		goto out;
+>  	}
+> =20
+> -	dprintk("--> %s clp %p session %p sr_slot %ld\n",
+> +	dprintk("--> %s clp %p session %p sr_slot %zd\n",
+>  		__func__, session->clp, session, res->sr_slot ?
+>  			res->sr_slot - session->fc_slot_table.slots : -1);
+> =20
 
-On Oct 28, 2010, at 11:32 AM, Steve Dickson wrote:
+Thanks! Applied.
 
-> Hey Chuck, 
-> 
-> I'm assuming this 6 patch series should replace (not merge with) 
-> the 4 patch series you sent out earlier... 
-
-Yes, it replaces them.  The 4 patch series was labelled "for review only," so I never intended that series to be merged.
-
-> steved.
-> 
-> On 10/26/2010 11:57 AM, Chuck Lever wrote:
->> Hi Steve-
->> 
->> Here are rather more final versions of the patches I posted here last
->> week for review.  There are a couple of extra clean-ups here as well.
->> I think these are ready to be considered for nfs-utils 1.2.4.
->> 
->> ---
->> 
->> Chuck Lever (6):
->>      nfs(5): Document remount behavior
->>      nfs(5): Grammar and style fixes
->>      mount.nfs: mnt_freq and mnt_pass are always zero
->>      mount.nfs: Fix memory leak in nfs_sys_mount()
->>      mount: Fix compiler warning in nfs_parse_retry_option()
->>      nfs-utils: Remove all uses of AI_ADDRCONFIG
->> 
->> 
->> support/export/hostname.c     |    6 --
->> tests/nsm_client/nsm_client.c |    2 -
->> utils/mount/mount.c           |   34 +++++++------
->> utils/mount/network.c         |    3 -
->> utils/mount/nfs.man           |  107 ++++++++++++++++++++++++++++++++---------
->> utils/mount/stropts.c         |   20 ++++----
->> utils/statd/hostname.c        |    4 --
->> utils/statd/sm-notify.c       |    5 --
->> 8 files changed, 114 insertions(+), 67 deletions(-)
->> 
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Trond
