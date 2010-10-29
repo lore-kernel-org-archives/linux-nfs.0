@@ -1,48 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from filter.openoffice.nl ([217.170.2.175]:44522 "EHLO
-	filter.openoffice.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752277Ab0JMK5N (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Oct 2010 06:57:13 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by filter.openoffice.nl (Postfix) with ESMTP id 1CEC72439F2
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 12:57:13 +0200 (CEST)
-Received: from filter.openoffice.nl ([127.0.0.1])
-	by localhost (post-it.openoffice.nl [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id XMx-fLdN0on1 for <linux-nfs@vger.kernel.org>;
-	Wed, 13 Oct 2010 12:57:11 +0200 (CEST)
-Received: from blub.net (095-097-076-243.static.chello.nl [95.97.76.243])
-	by filter.openoffice.nl (Postfix) with ESMTP id 3E8862439E5
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 12:57:11 +0200 (CEST)
-Received: from stout.kantoor.openoffice.nl (stout.kantoor.openoffice.nl [192.168.112.50])
-	by blub.net (Postfix) with ESMTP id 15E83300050
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Oct 2010 12:57:11 +0200 (CEST)
-Message-ID: <4CB59086.9080108@blub.net>
-Date: Wed, 13 Oct 2010 12:57:10 +0200
-From: Valentijn Sessink <valentyn@blub.net>
-To: linux-nfs@vger.kernel.org
-Subject: ipv6 + krb5, server status?
-Content-Type: text/plain; charset=UTF-8
+Received: from exprod5og112.obsmtp.com ([64.18.0.24]:41280 "HELO
+	exprod5og112.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754907Ab0J2Hdd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Oct 2010 03:33:33 -0400
+Message-ID: <4CCA78C9.5000308@panasas.com>
+Date: Fri, 29 Oct 2010 09:33:29 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Dan Carpenter <error27@gmail.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>, wharms@bfs.de,
+        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
+Subject: Re: [patch] nfs: check kmalloc() return
+References: <20101028044403.GV6062@bicker> <4CC92338.7070304@bfs.de> <1288273273.3194.16.camel@heimdal.trondhjem.org> <4CC98534.40907@panasas.com> <20101028165708.GH6062@bicker>
+In-Reply-To: <20101028165708.GH6062@bicker>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello list,
+On 2010-10-28 18:57, Dan Carpenter wrote:
+> On Thu, Oct 28, 2010 at 04:14:12PM +0200, Benny Halevy wrote:
+>>>>> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+>>>>> index 51fe64a..098113c 100644
+>>>>> --- a/fs/nfs/nfs4filelayoutdev.c
+>>>>> +++ b/fs/nfs/nfs4filelayoutdev.c
+>>>>> @@ -219,6 +219,8 @@ decode_and_add_ds(__be32 **pp, struct inode *inode)
+>>>>>  		goto out_err;
+>>>>>  	}
+>>>>>  	buf = kmalloc(rlen + 1, GFP_KERNEL);
+>>>>> +	if (!buf)
+>>>>> +		goto out_err;
+>>>>>  	buf[rlen] = '\0';
+>>>>>  	memcpy(buf, r_addr, rlen);
+>>>>>  
+>>>>
+>>>> it seems that r_addr is a string, then kstdup() is emulated here.
+>>>>
+>>>> re,
+>>>>  wh
+>>>
+>>> Not quite. kstrdup() requires that the argument be a NUL-terminated
+>>> string. The above code doesn't.
+>>
+>> Right.  kmemdup is the right one.
+>>
+> 
+> We need to duplicate the data and also add a NUL char on the end.
 
-I found a lot of information on the subject NFS server, ipv6 + krb5, but
-not anything conclusive. So I tried it out; I got IPv6 +
-NFS4 to work, but only with sec=sys.
+You're right.
 
-When using sec=krb5, there seemed to be errors in gssd communication.
-(Ubuntu 10.04 with rpcbind instead of portmap; with nfs-utils-1.2.3 from
-nfs.sf.net, and with a 2.6.35-020635rc1-generic kernel package).
+> kmemdup() only does the first bit.  You could copy one char past the end
+> so you have space for the NUL but that's not the right idea.
 
-Is this correct, i.e. svcgssd still needs to be adapted to IPv6? Or
-should NFS-server/IPv6/Kerberos on Linux just work, i.e. should I
-re-check my configuration?
+If rlen is divisible by 4 you can't be sure you'll have an extra character to
+copy.
 
-Best regards,
+So the check you added is probably the simplest solution.
 
-Valentijn Sessink
+Benny
 
-(I hope you don't mind the repost; I did not get any answers on my
-previous posting. If you do mind, please say so off-list).
+> 
+> Anyway, I'm out of here for the next few days.  :)  See you after the
+> weekend.
+> 
+> regards,
+> dan carpenter
+> 
