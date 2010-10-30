@@ -1,52 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:34517 "EHLO lo.gmane.org"
+Received: from mx2.netapp.com ([216.240.18.37]:63856 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758534Ab0JZSZH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Oct 2010 14:25:07 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1PAoCn-00015R-AN
-	for linux-nfs@vger.kernel.org; Tue, 26 Oct 2010 20:25:05 +0200
-Received: from staff.ndchost.com ([204.10.36.76])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Oct 2010 20:25:05 +0200
-Received: from mailinglists by staff.ndchost.com with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Oct 2010 20:25:05 +0200
-To: linux-nfs@vger.kernel.org
-From: ShaunR <mailinglists@unix-scripts.com>
-Subject: NFSv4 and portmap
-Date: Tue, 26 Oct 2010 11:18:26 -0700
-Message-ID: <ia761h$921$1@dough.gmane.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+	id S1755053Ab0J3SUE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Oct 2010 14:20:04 -0400
+Subject: Re: Error: state manager failed on NFSv4 server linux with error
+ 127
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "Brian J. Murrell" <brian@interlinx.bc.ca>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1288461562.32627.151.camel@pc>
+References: <1287334833.4871.6.camel@pc>
+	 <1287340520.5266.70.camel@heimdal.trondhjem.org>
+	 <1288460514.32627.105.camel@pc>
+	 <1288461151.3238.9.camel@heimdal.trondhjem.org>
+	 <1288461562.32627.151.camel@pc>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sat, 30 Oct 2010 14:19:46 -0400
+Message-ID: <1288462786.3238.16.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Everything i keep reading tells me that NFS4 does not need portmap but
-for some reason on the NFS server ( CentOS 5.x ) i cannot get the nfs
-services started unless portmap is running first.
+On Sat, 2010-10-30 at 13:59 -0400, Brian J. Murrell wrote:
+> On Sat, 2010-10-30 at 13:52 -0400, Trond Myklebust wrote: 
+> > 
+> > The processes appeared to be waiting for state recovery to complete, but
+> > your trace didn't contain any evidence that a state recovery thread was
+> > running.
+> 
+> To be clear, the trace was only that of blocked processes (echo w
+> > /proc/sysrq-trigger).  I'm not sure if we should have expected the
+> state recovery thread to have been included (i.e. it was blocked too).
+> 
+> > Did you over-edit the trace output, or was this really all?
+> 
+> Other than the usual post-show-blocked-state output, yes, this really
+> was all there was.
+> 
+> What does the state recovery thread look like in the process table so
+> that I can look for it next time?
 
-On the server i modified /etc/sysconfig/nfs with the following options
-MOUNTD_NFS_V1="no"
-MOUNTD_NFS_V2="no"
-RPCNFSDARGS="-N 2 -N 3 -U"
+It will be running a process with a name of the form "<server IP
+address>-manager", and will be running the function
+nfs4_run_state_manager().
 
-For some reason if i uncomment MOUNTD_NFS_v3="no" i get errors.
+BTW: Do you have the following patches applied?
+  http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=b0ed9dbc24f1fd912b2dd08b995153cafc1d5b1c
+and
+  http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=ae1007d37e00144b72906a4bdc47d517ae91bcc1
 
-On the client, again a CentOS 5.x machine but with a newer custom built
-kernel, If i do not start portmap then when i run mount it takes about 2
-minutes for the filesystem to mount and i see the following messages in
-/var/log/messages
+They are not yet in the stable kernel series, AFAIK, but are slated to
+be merged soon.
 
-Oct 26 10:25:30 host kernel: rpcbind: server localhost not responding,
-timed out
-
-If i start portmap, the mount command completed in a few seconds.
-
-
-My goal here to is run/support NFSv4 Only.
-
-~ShaunR
-
+Cheers
+  Trond
