@@ -1,68 +1,189 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og110.obsmtp.com ([64.18.0.20]:39354 "HELO
-	exprod5og110.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753807Ab0JRRON (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Oct 2010 13:14:13 -0400
-Message-ID: <4CBC805B.60909@panasas.com>
-Date: Mon, 18 Oct 2010 19:14:03 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jesper Krogh <jesper@krogh.cc>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: lsof and open files from the nfs-server
-References: <4CB62095.4010708@krogh.cc> <4CBC74E8.7070801@panasas.com> <20101018170459.GA3744@fieldses.org>
-In-Reply-To: <20101018170459.GA3744@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail.perches.com ([173.55.12.10]:3682 "EHLO mail.perches.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751414Ab0J3VJT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 30 Oct 2010 17:09:19 -0400
+From: Joe Perches <joe@perches.com>
+To: Jiri Kosina <trivial@kernel.org>
+Cc: linux-alpha@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-arm-kernel@lists.infradead.org, linux-omap@vger.kernel.org,
+        linux-tegra@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
+        linux-pm@lists.linux-foundation.org, discuss@x86-64.org,
+        linux-acpi@vger.kernel.org, linux1394-devel@lists.sourceforge.net,
+        dri-devel@lists.freedesktop.org, intel-gfx@lists.freedesktop.org,
+        linux-media@vger.kernel.org, socketcan-core@lists.berlios.de,
+        netdev@vger.kernel.org, linux-usb@vger.kernel.org,
+        linux-wireless@vger.kernel.org, devel@open-fcoe.org,
+        linux-scsi@vger.kernel.org, devel@driverdev.osuosl.org,
+        linux-fbdev@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-arch@vger.kernel.org,
+        linux-mm@kvack.org, alsa-devel@alsa-project.org
+Subject: [PATCH 00/39] Cleanup WARN #defines
+Date: Sat, 30 Oct 2010 14:08:17 -0700
+Message-Id: <cover.1288471897.git.joe@perches.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 10/18/2010 07:04 PM, J. Bruce Fields wrote:
-> On Mon, Oct 18, 2010 at 06:25:12PM +0200, Boaz Harrosh wrote:
->> On 10/13/2010 11:11 PM, Jesper Krogh wrote:
->>> Hi.
->>>
->>> Quite often when you have to umount a fileshare you get the
->>> message "Device or resource busy". Typically I traverse through
->>> the output of lsof | grep mountpoint and stop processes or kill
->>> until I can safely umount.
->>>
->>> But the nfs-kernel-server does not register its open files, so
->>> seen from userspace is it extremely hard to find out that is actually
->>> is the nfs-server that prevents you from being able to umount
->>> the filesystems.
->>>
->>> Would it be possible to register the open files the same place
->>> so administrators can see them?
->>>
->>> ... basically just a feature-request from one who just spend an hour on 
->>> that.
->>>
->>
->> Me to!
->>
->> Also note that even if there are no open files in clients
->> and no client mounts on the server, but there where in the
->> passed. The used to be used super-block is referenced. Only
->> restart of the nfs service will release it.
->>
->> But yes if it could register as a special file for lsof to
->> see it would help a lot.
-> 
-> So what does lsof do, scan /proc/?  Does it make sense to have proc
-> entries for kernel threads?  Is there any other subsystem that does this
-> kind of thing?
-> 
+WARN uses sometimes use KERN_<level> but mostly don't
+have any prefix.
 
-Don't mind if I do ;-)
+Change the WARN macros and the warn_slowpath function to preface
+KERN_WARNING and remove all the KERN_<level> uses from WARN sites.
 
-I don't know about policy here and what it actually means (Lifetime rules,
-module dependency, ...) But it would be nice to have it, as a user.
+Neatening clean up of include/asm-generic/bug.h
 
-If it can not be added to the regular /proc places. Maybe we can patch
-lsof to also look in nfs special places and print those as well.
+Update WARN macros
+Add KERN_WARNING to WARN output
+Remove any KERN_<level> from WARN uses
+Coalesce formats
+Align WARN arguments
+Add some missing newlines to WARN uses
+Add some missing first test argument (1, fmt, args) to WARN uses
 
-> --b.
+Joe Perches (39):
+  include/asm-generic/bug.h: Update WARN macros
+  arch/alpha: Update WARN uses
+  arch/arm: Update WARN uses
+  arch/powerpc: Update WARN uses
+  arch/x86: Update WARN uses
+  drivers/acpi: Update WARN uses
+  drivers/base: Update WARN uses
+  drivers/block: Update WARN uses
+  drivers/cpuidle: Update WARN uses
+  drivers/firewire: Update WARN uses
+  drivers/firmware: Update WARN uses
+  drivers/gpio: Update WARN uses
+  drivers/gpu/drm: Update WARN uses
+  drivers/media/video: Update WARN uses
+  drivers/mfd: Update WARN uses
+  drivers/net/can: Update WARN uses
+  drivers/net/usb: Update WARN uses
+  drivers/net/wireless/iwlwifi: Update WARN uses
+  drivers/regulator: Update WARN uses
+  drivers/scsi/fcoe: Update WARN uses
+  drivers/staging: Update WARN uses
+  drivers/usb/musb: Update WARN uses
+  drivers/video/omap2/dss: Update WARN uses
+  fs/nfsd: Update WARN uses
+  fs/notify/inotify: Update WARN uses
+  fs/sysfs: Update WARN uses
+  fs/proc: Update WARN uses
+  fs: Update WARN uses
+  include/linux/device.h: Update WARN uses
+  kernel/irq: Update WARN uses
+  kernel/panic.c: Update warn_slowpath to use %pV
+  kernel: Update WARN uses
+  lib: Update WARN uses
+  mm: Update WARN uses
+  net/core/dev.c: Update WARN uses
+  net/ipv4/tcp.c: Update WARN uses
+  net/mac80211: Update WARN uses
+  net/rfkill/input.c: Update WARN uses
+  sound/soc/codecs/wm_hubs.c: Update WARN uses
 
-Thanks
-Boaz
+ arch/alpha/kernel/pci-sysfs.c                |   14 ++--
+ arch/arm/mach-davinci/clock.c                |    4 +-
+ arch/arm/mach-davinci/da830.c                |    2 +-
+ arch/arm/mach-davinci/da850.c                |   12 ++--
+ arch/arm/mach-omap2/clkt_clksel.c            |   12 ++--
+ arch/arm/mach-omap2/clock.c                  |   16 ++--
+ arch/arm/mach-omap2/devices.c                |    4 +-
+ arch/arm/mach-omap2/omap_hwmod.c             |   47 +++++++-----
+ arch/arm/mach-omap2/pm34xx.c                 |    7 +-
+ arch/arm/mach-omap2/serial.c                 |    2 +-
+ arch/arm/mach-omap2/timer-gp.c               |    3 +-
+ arch/arm/mach-tegra/clock.c                  |    3 +-
+ arch/arm/mach-tegra/timer.c                  |    2 +-
+ arch/arm/mach-u300/padmux.c                  |   14 +---
+ arch/arm/plat-omap/omap-pm-noop.c            |   10 ++--
+ arch/powerpc/kernel/hw_breakpoint.c          |    4 +-
+ arch/x86/kernel/acpi/boot.c                  |    2 +-
+ arch/x86/kernel/apic/apic.c                  |    2 +-
+ arch/x86/kernel/apic/es7000_32.c             |    2 +-
+ arch/x86/kernel/cpu/perf_event.c             |    4 +-
+ arch/x86/kernel/pci-calgary_64.c             |    4 +-
+ arch/x86/kernel/tsc_sync.c                   |    4 +-
+ arch/x86/kernel/xsave.c                      |    2 +-
+ arch/x86/mm/ioremap.c                        |    5 +-
+ arch/x86/mm/pageattr-test.c                  |    2 +-
+ arch/x86/mm/pageattr.c                       |    5 +-
+ arch/x86/platform/sfi/sfi.c                  |    4 +-
+ drivers/acpi/ec.c                            |    4 +-
+ drivers/base/class.c                         |    4 +-
+ drivers/base/core.c                          |    5 +-
+ drivers/base/memory.c                        |    4 +-
+ drivers/base/sys.c                           |   10 +--
+ drivers/block/floppy.c                       |    2 +-
+ drivers/cpuidle/driver.c                     |    2 +-
+ drivers/firewire/core-transaction.c          |    6 +-
+ drivers/firmware/dmi_scan.c                  |    2 +-
+ drivers/gpio/gpiolib.c                       |    4 +-
+ drivers/gpio/it8761e_gpio.c                  |    2 +-
+ drivers/gpu/drm/drm_crtc_helper.c            |    2 +-
+ drivers/gpu/drm/i915/i915_gem.c              |    3 +-
+ drivers/gpu/drm/radeon/evergreen.c           |    2 +-
+ drivers/gpu/drm/radeon/r100.c                |    4 +-
+ drivers/gpu/drm/radeon/r300.c                |    2 +-
+ drivers/gpu/drm/radeon/r600.c                |    4 +-
+ drivers/gpu/drm/radeon/radeon_fence.c        |    3 +-
+ drivers/gpu/drm/radeon/radeon_ttm.c          |    3 +-
+ drivers/gpu/drm/radeon/rs400.c               |    2 +-
+ drivers/gpu/drm/radeon/rs600.c               |    4 +-
+ drivers/media/video/s5p-fimc/fimc-core.c     |    2 +-
+ drivers/media/video/sr030pc30.c              |    2 +-
+ drivers/mfd/ezx-pcap.c                       |    5 +-
+ drivers/net/can/mscan/mscan.c                |    2 +-
+ drivers/net/usb/ipheth.c                     |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-agn-lib.c   |    3 +-
+ drivers/net/wireless/iwlwifi/iwl-agn-sta.c   |    6 +-
+ drivers/net/wireless/iwlwifi/iwl-tx.c        |    6 +-
+ drivers/net/wireless/iwlwifi/iwl3945-base.c  |    2 +-
+ drivers/regulator/core.c                     |    3 +-
+ drivers/scsi/fcoe/libfcoe.c                  |    2 +-
+ drivers/staging/memrar/memrar_allocator.c    |    2 +-
+ drivers/staging/solo6x10/solo6010-v4l2-enc.c |    2 +-
+ drivers/usb/musb/musb_host.c                 |    6 +-
+ drivers/video/omap2/dss/core.c               |    3 +-
+ fs/bio.c                                     |    2 +-
+ fs/buffer.c                                  |    2 +-
+ fs/nfsd/nfs4state.c                          |    3 +-
+ fs/notify/inotify/inotify_fsnotify.c         |    4 +-
+ fs/proc/generic.c                            |    9 +--
+ fs/super.c                                   |    5 +-
+ fs/sysfs/dir.c                               |    3 +-
+ fs/sysfs/file.c                              |    4 +-
+ fs/sysfs/group.c                             |    4 +-
+ fs/sysfs/symlink.c                           |   10 +--
+ include/asm-generic/bug.h                    |  101 ++++++++++++++++----------
+ include/linux/device.h                       |    2 +-
+ kernel/irq/chip.c                            |    2 +-
+ kernel/irq/manage.c                          |    2 +-
+ kernel/notifier.c                            |    2 +-
+ kernel/panic.c                               |   40 +++++------
+ kernel/pm_qos_params.c                       |    6 +-
+ lib/debugobjects.c                           |   21 +++---
+ lib/iomap.c                                  |    2 +-
+ lib/kobject.c                                |    9 +--
+ lib/kobject_uevent.c                         |    4 +-
+ lib/list_debug.c                             |   24 +++----
+ lib/plist.c                                  |   12 ++--
+ mm/percpu.c                                  |    4 +-
+ mm/vmalloc.c                                 |    5 +-
+ net/core/dev.c                               |    3 +-
+ net/ipv4/tcp.c                               |   16 ++---
+ net/mac80211/agg-tx.c                        |    5 +-
+ net/mac80211/iface.c                         |    4 +-
+ net/mac80211/mlme.c                          |    2 +-
+ net/mac80211/rx.c                            |    4 +-
+ net/mac80211/tx.c                            |    4 +-
+ net/mac80211/util.c                          |    4 +-
+ net/mac80211/work.c                          |    4 +-
+ net/rfkill/input.c                           |    5 +-
+ sound/soc/codecs/wm_hubs.c                   |    2 +-
+ 99 files changed, 319 insertions(+), 330 deletions(-)
+
+-- 
+1.7.3.1.g432b3.dirty
+
