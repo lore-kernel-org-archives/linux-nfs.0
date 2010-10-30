@@ -1,95 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57855 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755181Ab0JUUIA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Oct 2010 16:08:00 -0400
-Date: Thu, 21 Oct 2010 16:08:46 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
- mounts.
-Message-ID: <20101021160846.49f30db3@corrin.poochiereds.net>
-In-Reply-To: <1287690444.9144.88.camel@heimdal.trondhjem.org>
-References: <20101020181701.232dbeea@notabene>
-	<20101020135525.22977d8d@tlielax.poochiereds.net>
-	<20101020151657.42bc53f7@tlielax.poochiereds.net>
-	<20101021074028.44bca336@notabene>
-	<20101020204532.2019eb93@corrin.poochiereds.net>
-	<20101021142518.3934ae17@notabene>
-	<1287669939.3645.12.camel@heimdal.trondhjem.org>
-	<5CF8C718-2D02-481E-9200-8CAA724D9C8C@oracle.com>
-	<1287672124.3645.19.camel@heimdal.trondhjem.org>
-	<20101021154012.48f92cfc@corrin.poochiereds.net>
-	<1287690444.9144.88.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from server.klug.on.ca ([205.189.48.131]:2811 "EHLO
+	server.klug.on.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751493Ab0J3TyA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Oct 2010 15:54:00 -0400
+Received: from linux.interlinx.bc.ca (d67-193-197-208.home3.cgocable.net [67.193.197.208])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by server.klug.on.ca (Postfix) with ESMTP id 451A92803
+	for <linux-nfs@vger.kernel.org>; Sat, 30 Oct 2010 15:53:57 -0400 (EDT)
+Received: from [10.75.22.1] (pc.ilinx [10.75.22.1])
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id B26DF86B0
+	for <linux-nfs@vger.kernel.org>; Sat, 30 Oct 2010 15:53:55 -0400 (EDT)
+Subject: Re: Error: state manager failed on NFSv4 server linux with error
+ 127
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+To: linux-nfs@vger.kernel.org
+In-Reply-To: <1288462786.3238.16.camel@heimdal.trondhjem.org>
+References: <1287334833.4871.6.camel@pc>
+	 <1287340520.5266.70.camel@heimdal.trondhjem.org>
+	 <1288460514.32627.105.camel@pc>
+	 <1288461151.3238.9.camel@heimdal.trondhjem.org>
+	 <1288461562.32627.151.camel@pc>
+	 <1288462786.3238.16.camel@heimdal.trondhjem.org>
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-f2SmxKmv1qV9CpVtuisy"
+Date: Sat, 30 Oct 2010 15:53:55 -0400
+Message-ID: <1288468435.32627.279.camel@pc>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 21 Oct 2010 15:47:24 -0400
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+--=-f2SmxKmv1qV9CpVtuisy
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-> On Thu, 2010-10-21 at 15:40 -0400, Jeff Layton wrote:
-> > On Thu, 21 Oct 2010 10:42:04 -0400
-> > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > 
-> > > On Thu, 2010-10-21 at 10:31 -0400, Chuck Lever wrote:
-> > > > On Oct 21, 2010, at 10:05 AM, Trond Myklebust wrote:
-> > > > > It seems to me that the problem is basically that RPC_IS_SOFTCONN is
-> > > > > poorly defined. IMO, the definition should really be that
-> > > > > 'RPC_IS_SOFTCONN' tasks MUST exit with an error if they ever have to run
-> > > > > call_bind or a call_connect more than once (i.e. if they ever have to
-> > > > > loop back).
-> > > > 
-> > > > I think you are suggesting that we define the places where RPC_IS_SOFTCONN should be tested as exactly those places that might want to restart the RPC call via rpc_force_rebind, tk_action = call_refresh, and so on.  Yes?
-> > > 
-> > > Yes.
-> > > 
-> > > > > With that in mind, I really don't see why the RPC_IS_SOFTCONN case is
-> > > > > being handled in call_transmit_status() instead of in call_status().
-> > > > 
-> > > > I tried it in call_status(), but it didn't work as expected.  My notes aren't specific about the problem.  One thing is for sure, there seems to be some redundant error handling logic in both of those states.  Unraveling it might be more than Neil bargained for, but would help "future generations."
-> > > 
-> > > call_transmit_status() is there basically in order to call
-> > > xprt_end_transmit() in the cases where we want to free up the socket
-> > > write lock (and then possibly sleep).
-> > > 
-> > > Actual state error handling is supposed occur in call_status().
-> > > 
-> > 
-> > This is terribly confusing. So the connect handling is done in
-> > call_transmit?
-> 
-> No. Connection-related _error conditions_ that result from trying to
-> send stuff through a socket that is not connected, are handled in
-> call_status(). Usually, by sending the process back to call_connect().
-> 
+On Sat, 2010-10-30 at 14:19 -0400, Trond Myklebust wrote:=20
+>=20
+> It will be running a process with a name of the form "<server IP
+> address>-manager", and will be running the function
+> nfs4_run_state_manager().
 
-Yep, I get that part...
+I will keep an eye out for that the next time I see this problem.
 
-> > It seems like it would make more sense to have the connect handling
-> > mostly done in call_connect and call_connect_status, and only allow the
-> > tasks to proceed to the call_transmit phase after the connect has
-> > succeeded.
-> 
-> That is the case. However sockets can and do get closed by the _server_
-> in unpredictable ways. This is what may need to be handled after the
-> task has passed the call_connect state.
-> 
+> BTW: Do you have the following patches applied?
+>   http://git.kernel.org/?p=3Dlinux/kernel/git/torvalds/linux-2.6.git&a=3D=
+commitdiff&h=3Db0ed9dbc24f1fd912b2dd08b995153cafc1d5b1c
+> and
+>   http://git.kernel.org/?p=3Dlinux/kernel/git/torvalds/linux-2.6.git&a=3D=
+commitdiff&h=3Dae1007d37e00144b72906a4bdc47d517ae91bcc1
 
-Right, the socket can change state at any time, but the code doesn't
-seem to do what you describe for initial connects.
+Nope.
 
-In the EHOSTDOWN case, kernel_connect returns EINPROGRESS and then
-xs_error_report is called with a socket error of EHOSTDOWN. That wakes
-up the tasks with a status of EAGAIN and call_connect_status sends the
-task to call_transmit even though the socket is still not connected.
+> They are not yet in the stable kernel series,
 
-Having xs_error_report set the status of all tasks with EAGAIN seems
-wrong to me since we're essentially losing the error code that the
-socket layer sent up.
+Which would be why I don't have them.  I am working with a 2.6.35
+kernel.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+> AFAIK, but are slated to
+> be merged soon.
+
+I take that mentioning them in this context means they would be good to
+have?  Safe to apply to 2.6.35.4ish kernel?
+
+b.
+
+
+--=-f2SmxKmv1qV9CpVtuisy
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+
+iEYEABECAAYFAkzMd9MACgkQl3EQlGLyuXCmowCgsYiZQyVvHcWR0Sf8t3BmUTsn
+5koAnjmwYEPpzSTa++Ne1vu51pH4LNgv
+=0es7
+-----END PGP SIGNATURE-----
+
+--=-f2SmxKmv1qV9CpVtuisy--
