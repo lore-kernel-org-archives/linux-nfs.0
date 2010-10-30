@@ -1,29 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from minas.ics.muni.cz ([147.251.4.40]:44597 "EHLO minas.ics.muni.cz"
+Received: from mail-out2.uio.no ([129.240.10.58]:45117 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753545Ab0JUT7z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Oct 2010 15:59:55 -0400
-Date: Thu, 21 Oct 2010 21:59:58 +0200
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751282Ab0J3UYv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 30 Oct 2010 16:24:51 -0400
+Subject: Re: Error: state manager failed on NFSv4 server linux with error
+ 127
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "Brian J. Murrell" <brian@interlinx.bc.ca>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS bug with utime/file create
-Message-ID: <20101021195958.GD11416@ics.muni.cz>
-References: <20101007160659.GP12489@ics.muni.cz>
- <20101021195633.GG10192@fieldses.org>
-Content-Type: text/plain; charset=iso-8859-2
-In-Reply-To: <20101021195633.GG10192@fieldses.org>
+In-Reply-To: <1288468435.32627.279.camel@pc>
+References: <1287334833.4871.6.camel@pc>
+	 <1287340520.5266.70.camel@heimdal.trondhjem.org>
+	 <1288460514.32627.105.camel@pc>
+	 <1288461151.3238.9.camel@heimdal.trondhjem.org>
+	 <1288461562.32627.151.camel@pc>
+	 <1288462786.3238.16.camel@heimdal.trondhjem.org>
+	 <1288468435.32627.279.camel@pc>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sat, 30 Oct 2010 16:24:46 -0400
+Message-ID: <1288470286.3238.17.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Oct 21, 2010 at 03:56:33PM -0400, J. Bruce Fields wrote:
-> There have been a number of fixes to the client state recovery code
-> since then, so it may be worth just retrying with a newer kernel on the
-> client.
+On Sat, 2010-10-30 at 15:53 -0400, Brian J. Murrell wrote:
+> On Sat, 2010-10-30 at 14:19 -0400, Trond Myklebust wrote: 
+> > 
+> > It will be running a process with a name of the form "<server IP
+> > address>-manager", and will be running the function
+> > nfs4_run_state_manager().
+> 
+> I will keep an eye out for that the next time I see this problem.
+> 
+> > BTW: Do you have the following patches applied?
+> >   http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=b0ed9dbc24f1fd912b2dd08b995153cafc1d5b1c
+> > and
+> >   http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git&a=commitdiff&h=ae1007d37e00144b72906a4bdc47d517ae91bcc1
+> 
+> Nope.
+> 
+> > They are not yet in the stable kernel series,
+> 
+> Which would be why I don't have them.  I am working with a 2.6.35
+> kernel.
+> 
+> > AFAIK, but are slated to
+> > be merged soon.
+> 
+> I take that mentioning them in this context means they would be good to
+> have?  Safe to apply to 2.6.35.4ish kernel?
 
-yeah, the problem was caused by endless loop in nfs4_do_open_expired. Already
-fixed in mainline.
+Yes.
 
--- 
-Luká¹ Hejtmánek
