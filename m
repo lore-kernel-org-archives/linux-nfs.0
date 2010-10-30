@@ -1,25 +1,32 @@
-From: Jim Rees <rees@umich.edu>
-Subject: Re: network problems
-Date: Fri, 29 Oct 2010 14:17:26 -0400
-Message-ID: <20101029181726.GB7897@merit.edu>
-References: <92C8EA8B-E98D-4E2B-B53D-71CD66D1EC4D@oracle.com>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: nfsd changes for 2.6.37
+Date: Sat, 30 Oct 2010 23:40:48 +0200
+Message-ID: <201010302340.48311.arnd@arndb.de>
+References: <20101026164549.GD19445@fieldses.org> <20101027145929.GA5788@infradead.org> <20101030212500.GE480@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:42860 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750948Ab0J2SR2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Oct 2010 14:17:28 -0400
-In-Reply-To: <92C8EA8B-E98D-4E2B-B53D-71CD66D1EC4D@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Bryan Schumaker <bjschuma@netapp.com>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20101030212500.GE480@fieldses.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever wrote:
+On Saturday 30 October 2010, J. Bruce Fields wrote:
+> We still need to do this part.  I just did the minimum required to fix
+> the problem--I figure splitting out a separate ->delete_lease method
+> (which I agree would be cleaner) could wait till the next merge window.
+> 
+> Patches follow, tested on top of the merge of Arnd's patches; if they
+> look OK they can go in, or I can commit them on top of a few pending
+> nfsd fixes and send another pull request.
 
-  I'm going to be online very intermittently today.  DSL is not working at
-  home, and I'm stuck waiting for the plumber.
+All four patches look good AFAICT.
 
-That's what you get for cheaping out and getting DSL service from the Water
-Department.  Next time try the phone company.
+Thanks for the follow-up!
+
+	Arnd
