@@ -1,171 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:52992 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751496Ab0JGEaU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Oct 2010 00:30:20 -0400
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Thu, 07 Oct 2010 15:29:46 +1100
-Subject: [PATCH 1/2] sunrpc: Simplify cache_defer_req and related functions.
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20101007042946.26629.7991.stgit@localhost.localdomain>
-In-Reply-To: <20101007042637.26629.60300.stgit@localhost.localdomain>
-References: <20101007042637.26629.60300.stgit@localhost.localdomain>
-Content-Type: text/plain; charset="utf-8"
+Received: from server.klug.on.ca ([205.189.48.131]:1165 "EHLO
+	server.klug.on.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751525Ab0J3V31 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Oct 2010 17:29:27 -0400
+Received: from linux.interlinx.bc.ca (d67-193-197-208.home3.cgocable.net [67.193.197.208])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by server.klug.on.ca (Postfix) with ESMTP id A07A22803
+	for <linux-nfs@vger.kernel.org>; Sat, 30 Oct 2010 17:29:26 -0400 (EDT)
+Received: from [10.75.22.1] (pc.ilinx [10.75.22.1])
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id 6A02386B0
+	for <linux-nfs@vger.kernel.org>; Sat, 30 Oct 2010 17:29:25 -0400 (EDT)
+Subject: Re: Error: state manager failed on NFSv4 server linux with error
+ 127
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+To: linux-nfs@vger.kernel.org
+In-Reply-To: <1288462786.3238.16.camel@heimdal.trondhjem.org>
+References: <1287334833.4871.6.camel@pc>
+	 <1287340520.5266.70.camel@heimdal.trondhjem.org>
+	 <1288460514.32627.105.camel@pc>
+	 <1288461151.3238.9.camel@heimdal.trondhjem.org>
+	 <1288461562.32627.151.camel@pc>
+	 <1288462786.3238.16.camel@heimdal.trondhjem.org>
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-yBCX5hLqS5d53S+hsv+N"
+Date: Sat, 30 Oct 2010 17:29:24 -0400
+Message-ID: <1288474164.32627.383.camel@pc>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The return value from cache_defer_req is somewhat confusing.
-Various different error codes are returned, but the single caller is
-only interested in success or failure.
+--=-yBCX5hLqS5d53S+hsv+N
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-In fact it can measure this success or failure itself by checking
-CACHE_PENDING, which makes the point of the code more explicit.
+On Sat, 2010-10-30 at 14:19 -0400, Trond Myklebust wrote:=20
+>=20
+> BTW: Do you have the following patches applied?
+>   http://git.kernel.org/?p=3Dlinux/kernel/git/torvalds/linux-2.6.git&a=3D=
+commitdiff&h=3Db0ed9dbc24f1fd912b2dd08b995153cafc1d5b1c
+> and
+>   http://git.kernel.org/?p=3Dlinux/kernel/git/torvalds/linux-2.6.git&a=3D=
+commitdiff&h=3Dae1007d37e00144b72906a4bdc47d517ae91bcc1
 
-So change cache_defer_req to return 'void' and test CACHE_PENDING
-after it completes, to see if the request was actually deferred or
-not.
+These patches both deal with recovery issues, which you mentioned seems
+to be the state the previously posted stack traces where in also.
 
-Similarly setup_deferral and cache_wait_req don't need a return value,
-so make them void and remove some code.
+Since the server has not been rebooted or even had its export list
+reread/reexported, I wonder why recovery would have been triggered, to
+cause this client problem.
 
-The call to cache_revisit_request (to guard against a race) is only
-needed for the second call to setup_deferral, so move it out of
-setup_deferral to after that second call.  With the first call the
-race is handled differently (by explicitly calling
-'wait_for_completion').
+Does recovery actually get invoked on the client for events other than
+an outright restart of NFS on the server?  NFS on the server here should
+have been entirely stable over the period of time in which this client
+went bad.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- net/sunrpc/cache.c |   59 ++++++++++++++++++++--------------------------------
- 1 files changed, 23 insertions(+), 36 deletions(-)
-
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 1e72cc9..a438a9c 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -38,7 +38,7 @@
- 
- #define	 RPCDBG_FACILITY RPCDBG_CACHE
- 
--static int cache_defer_req(struct cache_req *req, struct cache_head *item);
-+static void cache_defer_req(struct cache_req *req, struct cache_head *item);
- static void cache_revisit_request(struct cache_head *item);
- 
- static void cache_init(struct cache_head *h)
-@@ -269,7 +269,8 @@ int cache_check(struct cache_detail *detail,
- 	}
- 
- 	if (rv == -EAGAIN) {
--		if (cache_defer_req(rqstp, h) < 0) {
-+		cache_defer_req(rqstp, h);
-+		if (!test_bit(CACHE_PENDING, &h->flags)) {
- 			/* Request is not deferred */
- 			rv = cache_is_valid(detail, h);
- 			if (rv == -EAGAIN)
-@@ -525,7 +526,7 @@ static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_he
- 	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
- }
- 
--static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *item)
-+static void setup_deferral(struct cache_deferred_req *dreq, struct cache_head *item)
- {
- 	struct cache_deferred_req *discard;
- 
-@@ -547,13 +548,6 @@ static int setup_deferral(struct cache_deferred_req *dreq, struct cache_head *it
- 	if (discard)
- 		/* there was one too many */
- 		discard->revisit(discard, 1);
--
--	if (!test_bit(CACHE_PENDING, &item->flags)) {
--		/* must have just been validated... */
--		cache_revisit_request(item);
--		return -EAGAIN;
--	}
--	return 0;
- }
- 
- struct thread_deferred_req {
-@@ -568,18 +562,17 @@ static void cache_restart_thread(struct cache_deferred_req *dreq, int too_many)
- 	complete(&dr->completion);
- }
- 
--static int cache_wait_req(struct cache_req *req, struct cache_head *item)
-+static void cache_wait_req(struct cache_req *req, struct cache_head *item)
- {
- 	struct thread_deferred_req sleeper;
- 	struct cache_deferred_req *dreq = &sleeper.handle;
--	int ret;
- 
- 	sleeper.completion = COMPLETION_INITIALIZER_ONSTACK(sleeper.completion);
- 	dreq->revisit = cache_restart_thread;
- 
--	ret = setup_deferral(dreq, item);
-+	setup_deferral(dreq, item);
- 
--	if (ret ||
-+	if (!test_bit(CACHE_PENDING, &item->flags) ||
- 	    wait_for_completion_interruptible_timeout(
- 		    &sleeper.completion, req->thread_wait) <= 0) {
- 		/* The completion wasn't completed, so we need
-@@ -599,41 +592,35 @@ static int cache_wait_req(struct cache_req *req, struct cache_head *item)
- 			wait_for_completion(&sleeper.completion);
- 		}
- 	}
--	if (test_bit(CACHE_PENDING, &item->flags)) {
--		/* item is still pending, try request
--		 * deferral
--		 */
--		return -ETIMEDOUT;
--	}
--	/* only return success if we actually deferred the
--	 * request.  In this case we waited until it was
--	 * answered so no deferral has happened - rather
--	 * an answer already exists.
--	 */
--	return -EEXIST;
- }
- 
--static int cache_defer_req(struct cache_req *req, struct cache_head *item)
-+static void cache_defer_req(struct cache_req *req, struct cache_head *item)
- {
- 	struct cache_deferred_req *dreq;
--	int ret;
-+	int timeout;
- 
--	if (cache_defer_cnt >= DFR_MAX) {
-+	if (cache_defer_cnt >= DFR_MAX)
- 		/* too much in the cache, randomly drop this one,
- 		 * or continue and drop the oldest
- 		 */
- 		if (net_random()&1)
--			return -ENOMEM;
--	}
-+			return;
-+
-+
- 	if (req->thread_wait) {
--		ret = cache_wait_req(req, item);
--		if (ret != -ETIMEDOUT)
--			return ret;
-+		cache_wait_req(req, item, timeout);
-+		if (!test_bit(CACHE_PENDING, &item->flags))
-+			return;
- 	}
- 	dreq = req->defer(req);
- 	if (dreq == NULL)
--		return -ENOMEM;
--	return setup_deferral(dreq, item);
-+		return;
-+	setup_deferral(dreq, item);
-+	if (!test_bit(CACHE_PENDING, &item->flags))
-+		/* Bit could have been cleared before we managed to
-+		 * set up the deferral, so need to revisit just in case
-+		 */
-+		cache_revisit_request(item);
- }
- 
- static void cache_revisit_request(struct cache_head *item)
+b.
 
 
+--=-yBCX5hLqS5d53S+hsv+N
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+
+iEYEABECAAYFAkzMjjQACgkQl3EQlGLyuXCGRwCgkgUggVhvRyq3C+DdjmPHy7aZ
+UgcAmwe7fXSY5XTg6xH9CyGBIGyvq55/
+=v8ja
+-----END PGP SIGNATURE-----
+
+--=-yBCX5hLqS5d53S+hsv+N--
