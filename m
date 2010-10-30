@@ -1,62 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:52250 "EHLO mail-out2.uio.no"
+Received: from fieldses.org ([174.143.236.118]:42906 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757269Ab0J0VXO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Oct 2010 17:23:14 -0400
-Subject: Re: [PATCH 3/3] SQUASHME: pnfs: filelayout: print_ds should use
- dprintk
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <4CC892E1.3070703@panasas.com>
-References: <4CC86D96.8020803@panasas.com>
-	 <1288203860-26920-1-git-send-email-bhalevy@panasas.com>
-	 <AANLkTikKpCO_xYjOpj74AiptyDjtMtJJhQaObksF_+LE@mail.gmail.com>
-	 <4CC8863B.3080504@panasas.com>
-	 <AANLkTinsRNKCOQZjH4kYTTou-a+J02dM8nB=WL_xu7Wb@mail.gmail.com>
-	 <4CC892E1.3070703@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 27 Oct 2010 17:23:03 -0400
-Message-ID: <1288214583.13431.19.camel@heimdal.trondhjem.org>
+	id S1751594Ab0J3Vb0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 30 Oct 2010 17:31:26 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Christoph Hellwig <hch@infradead.org>, Arnd Bergmann <arnd@arndb.de>,
+        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/4] locks: fix leaks on setlease errors
+Date: Sat, 30 Oct 2010 17:31:14 -0400
+Message-Id: <1288474276-14288-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <20101030212500.GE480@fieldses.org>
+References: <20101030212500.GE480@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2010-10-27 at 23:00 +0200, Benny Halevy wrote:
-> On 2010-10-27 22:17, Fred Isaman wrote:
-> > On Wed, Oct 27, 2010 at 4:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
-> >> On 2010-10-27 21:49, Fred Isaman wrote:
-> >>> The change to printk was in response to Trond's complaint about
-> >>> successive dprintks.
-> >>>
-> >>> Instead, the following would work:
-> >>>
-> >>>
-> >>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> >>> index 5f52e6f..2ce393c 100644
-> >>> --- a/fs/nfs/nfs4filelayout.c
-> >>> +++ b/fs/nfs/nfs4filelayout.c
-> >>> @@ -585,7 +585,8 @@ filelayout_commit(struct nfs_write_data *data, int sync)
-> >>>               }
-> >>
-> >> If we're going this way, the ifdebug could cover the following
-> >> printout as well...
-> >>
-> > 
-> > Did you mean preceding printout?  By the way - the complaint about
-> 
-> Yeah, preceding the call to print_ds (following my comment :)
-> 
-> > successive dprintks was regarding
-> > print_ds_list repeatedly calling print_ds, which at the time used dprintk.
-> 
-> Why do we care to optimize the debug case so much?
-> print_ds_list is already calling print_ds inside ifdebug(FACILITY)
-> so the common, non-debug case is optimized correctly. I.e. we don't
-> repeatedly check the debug flag normally.
+We're depending on setlease to free the passed-in lease on failure.
 
-It's not about optimizing the debug case. It's about avoiding having to
-check ifdebug(FACILITY) all the time when we're _not_ debugging.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/locks.c |   12 +++++++-----
+ 1 files changed, 7 insertions(+), 5 deletions(-)
 
-Trond
+diff --git a/fs/locks.c b/fs/locks.c
+index 06c7773..63fbc41 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1371,20 +1371,22 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
+ 	struct inode *inode = dentry->d_inode;
+ 	int error, rdlease_count = 0, wrlease_count = 0;
+ 
++	lease = *flp;
++
++	error = -EACCES;
+ 	if ((current_fsuid() != inode->i_uid) && !capable(CAP_LEASE))
+-		return -EACCES;
++		goto out;
++	error = -EINVAL;
+ 	if (!S_ISREG(inode->i_mode))
+-		return -EINVAL;
++		goto out;
+ 	error = security_file_lock(filp, arg);
+ 	if (error)
+-		return error;
++		goto out;
+ 
+ 	time_out_leases(inode);
+ 
+ 	BUG_ON(!(*flp)->fl_lmops->fl_break);
+ 
+-	lease = *flp;
+-
+ 	if (arg != F_UNLCK) {
+ 		error = -EAGAIN;
+ 		if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
+-- 
+1.7.1
 
