@@ -1,65 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7689 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55733 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756686Ab0JUS2s convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Oct 2010 14:28:48 -0400
-Subject: Re: NFS sillyrename side effect
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Jeff Layton <jlayton@redhat.com>,
-        =?ISO-8859-1?Q?Cl=E1udio?= Martins <ctpm@ist.utl.pt>,
-        Ian Munsie <imunsie@au1.ibm.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Scott Romanowski <romansc@us.ibm.com>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>
-In-Reply-To: <4CC07D54.7070204@panasas.com>
-References: <1287362142-sup-777@au1.ibm.com>
-	 <20101018101059.574b715a@corrin.poochiereds.net>
-	 <20101018154811.768baeb5.ctpm@ist.utl.pt>
-	 <20101018155344.6e50dbb9.ctpm@ist.utl.pt>
-	 <20101018110138.5f5001eb@corrin.poochiereds.net>
-	 <20101018171015.GB3744@fieldses.org>  <4CBD3D4E.5080305@panasas.com>
-	 <1287495168.2969.9.camel@heimdal.trondhjem.org>
-	 <4CC07D54.7070204@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 21 Oct 2010 14:28:23 -0400
-Message-ID: <1287685703.9144.60.camel@heimdal.trondhjem.org>
+	id S1753261Ab0J3VZY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 30 Oct 2010 17:25:24 -0400
+Date: Sat, 30 Oct 2010 17:25:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Arnd Bergmann <arnd@arndb.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: nfsd changes for 2.6.37
+Message-ID: <20101030212500.GE480@fieldses.org>
+References: <20101026164549.GD19445@fieldses.org>
+ <20101027083924.GA28129@infradead.org>
+ <20101027133924.GB6328@fieldses.org>
+ <201010271546.09036.arnd@arndb.de>
+ <20101027145538.GC6328@fieldses.org>
+ <20101027145929.GA5788@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101027145929.GA5788@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-10-21 at 19:50 +0200, Benny Halevy wrote:
-> On 2010-10-19 15:32, Trond Myklebust wrote:
-> > On Tue, 2010-10-19 at 08:40 +0200, Benny Halevy wrote:
-> >> The clients can do something similar too, like sillyrenaming the
-> >> files onto <mountpoint>/.unlinked_while_opened.<client-id>
-> >> Removing this directory when it empties.
-> > 
-> > This would require access, directory create, and delete permissions for
-> > the directory '<mountpoint>/', which is not always a given.
+I noticed a couple problems with the lease patches.  Also:
+
+On Wed, Oct 27, 2010 at 10:59:29AM -0400, Christoph Hellwig wrote:
+> On Wed, Oct 27, 2010 at 10:55:39AM -0400, J. Bruce Fields wrote:
+> > Hm, two problems:
+> > 	- We introduce the possibility of fcntl(fd, F_SETLEASE, F_UNLCK)
+> > 	  failing with ENOMEM.
 > 
-> Correct. But that's pretty easy to probe :)
+> splitt ->setlease into ->add_least and ->delete_lease.  No need to pass
+> in a structure for the later.  No need to return one either.
 
-Yup, but you'd then need to handle both cases in order to avoid
-regressions.
+We still need to do this part.  I just did the minimum required to fix
+the problem--I figure splitting out a separate ->delete_lease method
+(which I agree would be cleaner) could wait till the next merge window.
 
-You'd also have to deal with more complex locking: avoiding deadlocks
-when creating mountpoint/.unlinked_while_open.<clientid> while still
-holding the directory mutex for the unlink(). That basically requires
-you to take mutexes in the opposite order to that required for a
-cross-directory rename.
+Patches follow, tested on top of the merge of Arnd's patches; if they
+look OK they can go in, or I can commit them on top of a few pending
+nfsd fixes and send another pull request.
 
-IOW: is it really worth the effort?
+It'd be nice if we get this fixed by -rc1, but not the end of the world
+if we don't.
 
-Note also that userland can do exactly the same thing. You are basically
-proposing to do the whole 'trashcan' concept in kernel space...
-
-> > 
-> > Besides, what if the server reboots, and my clientid changes?
-> 
-> By <client-id> I meant a unique identifier for the client, not necessarily
-> the nfsv4.x clientid.  The client could just as well use its ip address
-> (to help admins deal with the aftermath in case the client goes away) and its
-> boot time, or even a random string.
-
-Trond
+--b.
