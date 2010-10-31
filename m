@@ -1,62 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42906 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751594Ab0J3Vb0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 30 Oct 2010 17:31:26 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Christoph Hellwig <hch@infradead.org>, Arnd Bergmann <arnd@arndb.de>,
+Received: from bombadil.infradead.org ([18.85.46.34]:51683 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755507Ab0JaMfe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Oct 2010 08:35:34 -0400
+Date: Sun, 31 Oct 2010 08:35:31 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Arnd Bergmann <arnd@arndb.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
         Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/4] locks: fix leaks on setlease errors
-Date: Sat, 30 Oct 2010 17:31:14 -0400
-Message-Id: <1288474276-14288-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <20101030212500.GE480@fieldses.org>
-References: <20101030212500.GE480@fieldses.org>
+        linux-kernel@vger.kernel.org
+Subject: [PATCH 2/2] locks: remove fl_copy_lock lock_manager operation
+Message-ID: <20101031123531.GB4520@infradead.org>
+References: <20101026164549.GD19445@fieldses.org>
+ <20101027083924.GA28129@infradead.org>
+ <20101027133924.GB6328@fieldses.org>
+ <201010271546.09036.arnd@arndb.de>
+ <20101027145538.GC6328@fieldses.org>
+ <20101027145929.GA5788@infradead.org>
+ <20101030212500.GE480@fieldses.org>
+ <20101031123419.GA4491@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101031123419.GA4491@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-We're depending on setlease to free the passed-in lease on failure.
+This one was only used for a nasty hack in nfsd, which has recently
+been removed.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/locks.c |   12 +++++++-----
- 1 files changed, 7 insertions(+), 5 deletions(-)
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 06c7773..63fbc41 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1371,20 +1371,22 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
- 	struct inode *inode = dentry->d_inode;
- 	int error, rdlease_count = 0, wrlease_count = 0;
+Index: linux-2.6/fs/locks.c
+===================================================================
+--- linux-2.6.orig/fs/locks.c	2010-10-31 07:10:07.649004084 -0400
++++ linux-2.6/fs/locks.c	2010-10-31 07:34:10.102255587 -0400
+@@ -235,11 +235,8 @@ static void locks_copy_private(struct fi
+ 			fl->fl_ops->fl_copy_lock(new, fl);
+ 		new->fl_ops = fl->fl_ops;
+ 	}
+-	if (fl->fl_lmops) {
+-		if (fl->fl_lmops->fl_copy_lock)
+-			fl->fl_lmops->fl_copy_lock(new, fl);
++	if (fl->fl_lmops)
+ 		new->fl_lmops = fl->fl_lmops;
+-	}
+ }
  
-+	lease = *flp;
-+
-+	error = -EACCES;
- 	if ((current_fsuid() != inode->i_uid) && !capable(CAP_LEASE))
--		return -EACCES;
-+		goto out;
-+	error = -EINVAL;
- 	if (!S_ISREG(inode->i_mode))
--		return -EINVAL;
-+		goto out;
- 	error = security_file_lock(filp, arg);
- 	if (error)
--		return error;
-+		goto out;
+ /*
+Index: linux-2.6/Documentation/filesystems/Locking
+===================================================================
+--- linux-2.6.orig/Documentation/filesystems/Locking	2010-10-31 07:34:13.269012536 -0400
++++ linux-2.6/Documentation/filesystems/Locking	2010-10-31 07:34:20.567292713 -0400
+@@ -322,7 +322,6 @@ fl_release_private:	yes	yes
+ prototypes:
+ 	int (*fl_compare_owner)(struct file_lock *, struct file_lock *);
+ 	void (*fl_notify)(struct file_lock *);  /* unblock callback */
+-	void (*fl_copy_lock)(struct file_lock *, struct file_lock *);
+ 	void (*fl_release_private)(struct file_lock *);
+ 	void (*fl_break)(struct file_lock *); /* break_lease callback */
  
- 	time_out_leases(inode);
+@@ -330,7 +329,6 @@ locking rules:
+ 			BKL	may block
+ fl_compare_owner:	yes	no
+ fl_notify:		yes	no
+-fl_copy_lock:		yes	no
+ fl_release_private:	yes	yes
+ fl_break:		yes	no
  
- 	BUG_ON(!(*flp)->fl_lmops->fl_break);
- 
--	lease = *flp;
--
- 	if (arg != F_UNLCK) {
- 		error = -EAGAIN;
- 		if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
--- 
-1.7.1
-
+Index: linux-2.6/include/linux/fs.h
+===================================================================
+--- linux-2.6.orig/include/linux/fs.h	2010-10-31 07:33:13.131262640 -0400
++++ linux-2.6/include/linux/fs.h	2010-10-31 07:33:25.959005833 -0400
+@@ -1056,7 +1056,6 @@ struct lock_manager_operations {
+ 	int (*fl_compare_owner)(struct file_lock *, struct file_lock *);
+ 	void (*fl_notify)(struct file_lock *);	/* unblock callback */
+ 	int (*fl_grant)(struct file_lock *, struct file_lock *, int);
+-	void (*fl_copy_lock)(struct file_lock *, struct file_lock *);
+ 	void (*fl_release_private)(struct file_lock *);
+ 	void (*fl_break)(struct file_lock *);
+ 	int (*fl_mylease)(struct file_lock *, struct file_lock *);
