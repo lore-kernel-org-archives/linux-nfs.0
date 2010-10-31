@@ -1,35 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.187]:61994 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754206Ab0J0SUp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Oct 2010 14:20:45 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: nfsd changes for 2.6.37
-Date: Wed, 27 Oct 2010 20:20:32 +0200
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-References: <20101026164549.GD19445@fieldses.org> <AANLkTinTXoGiFap-vfu0P_SXb5xS+gMsHOwQtN3Hra3r@mail.gmail.com> <20101027174016.GA18974@fieldses.org>
-In-Reply-To: <20101027174016.GA18974@fieldses.org>
-Content-Type: Text/Plain;
-  charset="utf-8"
-Message-Id: <201010272020.33049.arnd@arndb.de>
+Received: from mx2.netapp.com ([216.240.18.37]:28815 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755915Ab0JaQI1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Oct 2010 12:08:27 -0400
+Subject: Re: [PATCH] Regression: fix mounting NFS when NFSv3 support is not
+ compiled
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Paulius Zaleckas <paulius.zaleckas@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+In-Reply-To: <20101031155840.21196.49014.stgit@localhost.localdomain>
+References: <20101031155840.21196.49014.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sun, 31 Oct 2010 12:08:10 -0400
+Message-ID: <1288541290.15171.4.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wednesday 27 October 2010 19:40:16 J. Bruce Fields wrote:
-> Doesn't matter to me.  What I've currently got (Arnd's patches with some
-> minor fixes from me, and your patch, all in a poorly changelogged
-> jumble) is in
+On Sun, 2010-10-31 at 17:58 +0200, Paulius Zaleckas wrote:
+> Trying to mount NFS (root partition in my case) fails if CONFIG_NFS_V3
+> is not selected. nfs_validate_mount_data() returns EPROTONOSUPPORT,
+> because of this check:
 > 
->         git://linux-nfs.org/~bfields/linux-topics.git TMP-BKL-TESTING
+> #ifndef CONFIG_NFS_V3
+> 	if (args->version == 3)
+> 		goto out_v3_not_compiled;
+> #endif /* !CONFIG_NFS_V3 */
 > 
-> You wouldn't want to merge that as is, but it does seem to work.
+> and args->version was always initialized to 3.
+> 
+> It was working in 2.6.36
+> 
+> Signed-off-by: Paulius Zaleckas <paulius.zaleckas@gmail.com>
+> ---
+> 
+>  fs/nfs/super.c |    4 ++++
+>  1 files changed, 4 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 0a42e8f..8737017 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -2277,7 +2277,11 @@ static int nfs_get_sb(struct file_system_type *fs_type,
+>  	};
+>  	int error = -ENOMEM;
+>  
+> +#ifdef CONFIG_NFS_V3
+>  	data = nfs_alloc_parsed_mount_data(3);
+> +#else
+> +	data = nfs_alloc_parsed_mount_data(2);
+> +#endif
+>  	mntfh = nfs_alloc_fhandle();
+>  	if (data == NULL || mntfh == NULL)
+>  		goto out_free_fh;
+> 
 
-Ok, then let's use your tree with proper changelogs. That should be the
-easiest way to make sure that the code you test is the one that gets in.
+Let's do this as
 
-	Arnd
+#ifdef CONFIG_NFS_V3
+#define NFS_DEFAULT_VERSION 3
+#else
+#define NFS_DEFAULT_VERSION 2
+#endif
+
+	data = nfs_alloc_parsed_mount_data(NFS_DEFAULT_VERSION);
+
+instead.
+
+Cheers
+  Trond
