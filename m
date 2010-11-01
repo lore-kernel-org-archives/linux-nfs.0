@@ -1,47 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:31179 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755296Ab0KNLuW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Nov 2010 06:50:22 -0500
-Message-ID: <4CDFCCFB.4000402@panasas.com>
-Date: Sun, 14 Nov 2010 13:50:19 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 16/22] pnfs-submit: rewrite of layout state handling and
- cb_layoutrecall
-References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>	 <1289551724-18575-17-git-send-email-iisaman@netapp.com> <1289639517.3669.9.camel@heimdal.trondhjem.org> <4CDFCB8D.7040209@panasas.com>
-In-Reply-To: <4CDFCB8D.7040209@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from rcsinet10.oracle.com ([148.87.113.121]:18798 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752605Ab0KATpq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Nov 2010 15:45:46 -0400
+Subject: Re: Regression, bisected: sqlite locking failure on nfs
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1288640536.5009.18.camel@heimdal.trondhjem.org>
+Date: Mon, 1 Nov 2010 15:45:17 -0400
+Cc: Nick Bowler <nbowler@elliptictech.com>,
+        LKML Kernel <linux-kernel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <DA1E14E0-DCCD-4A6D-9471-E627D4BF2E85@oracle.com>
+References: <20101101175854.GA3550@elliptictech.com> <D68536EB-6BE9-4DE4-B325-39FEF747092E@oracle.com> <20101101181938.GA3875@elliptictech.com> <187AEE96-9231-4899-9D65-A444503D2758@oracle.com> <1288639376.5009.16.camel@heimdal.trondhjem.org> <1288640536.5009.18.camel@heimdal.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-11-14 13:44, Benny Halevy wrote:
-> On 2010-11-13 11:11, Trond Myklebust wrote:
->> On Fri, 2010-11-12 at 03:48 -0500, Fred Isaman wrote:
->>> +	switch (cb_args->cbl_recall_type) {
->>> +	case RETURN_ALL:
->>> +		return true;
->>> +	case RETURN_FSID:
->>> +		return !memcmp(&NFS_SERVER(ino)->fsid, &cb_args->cbl_fsid,
->>> +			       sizeof(struct nfs_fsid));
->>> +	case RETURN_FILE:
->>> +		return (ino == cb_info->pcl_ino) &&
->>> +			should_free_lseg(range, &cb_args->cbl_range);
->>> +	default:
->>> +		BUG();
->>
->> Why should we BUG() just because the server is screwed up? That's not a
->> client bug.
->>
+
+On Nov 1, 2010, at 3:42 PM, Trond Myklebust wrote:
+
+> On Mon, 2010-11-01 at 15:22 -0400, Trond Myklebust wrote:
+>> I suspect nlmclnt_lookup_host() is to blame. It appears to be the _only_
+>> thing in the kernel that actually sets this 'srcaddr' field, and it sets
+>> it to
+>> 
+>> const struct sockaddr source = {
+>> 	.sa_family      = AF_UNSPEC,
+>> };
+>> 
+>> You triggered the bug by removing the line
+>> 
+>> 	transport->srcaddr.ss_family = family;
+>> 
+>> from xs_create_sock().
+>> 
+>>   Trond
 > 
-> Agreed.  This should be handled earlier in nfs4_callback_layoutrecall
-> or do_callback_layoutrecall so that we can return NFS4ERR_INVALID.
+> Does this fix the regression?
+> 
+> Trond
+> 
+> ----------------------------------------------------------------------------------------------
+> NLM: Fix a regression in lockd
+> 
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> Nick Bowler reports:
+> There are no unusual messages on the client... but I just logged into
+> the server and I see lots of messages of the following form:
+> 
+>  nfsd: request from insecure port (192.168.8.199:35766)!
+>  nfsd: request from insecure port (192.168.8.199:35766)!
+>  nfsd: request from insecure port (192.168.8.199:35766)!
+>  nfsd: request from insecure port (192.168.8.199:35766)!
+>  nfsd: request from insecure port (192.168.8.199:35766)!
+> 
+> Bisected to commit 9247685088398cf21bcb513bd2832b4cd42516c4 (SUNRPC:
+> Properly initialize sock_xprt.srcaddr in all cases)
+> 
+> Apparently, removing the 'transport->srcaddr.ss_family = family' from
+> xs_create_sock() triggers this due to nlmclnt_lookup_host() incorrectly
+> initialising the srcaddr family to AF_UNSPEC.
+> 
+> Reported-by: Nick Bowler <nbowler@elliptictech.com>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> 
+> fs/lockd/host.c |    5 -----
+> 1 files changed, 0 insertions(+), 5 deletions(-)
+> 
+> 
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index 25e21e4..9ff0c0e 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -238,9 +238,6 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
+> 				     const char *hostname,
+> 				     int noresvport)
+> {
+> -	const struct sockaddr source = {
+> -		.sa_family	= AF_UNSPEC,
+> -	};
+> 	struct nlm_lookup_host_info ni = {
+> 		.server		= 0,
+> 		.sap		= sap,
+> @@ -249,8 +246,6 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
+> 		.version	= version,
+> 		.hostname	= hostname,
+> 		.hostname_len	= strlen(hostname),
+> -		.src_sap	= &source,
+> -		.src_len	= sizeof(source),
+> 		.noresvport	= noresvport,
+> 	};
+> 
 > 
 
-Actually NFS4ERR_BADXDR is the right error to return for a
-"value within the input stream that is not valid for the enum"
 
-Benny
+What about that memcpy() in nlm_lookup_host()?  With this patch, wouldn't it be copying garbage into the host's srcaddr field?
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
