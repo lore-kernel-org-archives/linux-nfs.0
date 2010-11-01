@@ -1,45 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:45636 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750821Ab0K3Onh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 09:43:37 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 0/5] Allow the admin to turn off NFSv4 uid/gid mapping
-Date: Tue, 30 Nov 2010 09:43:26 -0500
-Message-Id: <1291128211-7961-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from bombadil.infradead.org ([18.85.46.34]:38187 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752293Ab0KARll (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Nov 2010 13:41:41 -0400
+Date: Mon, 1 Nov 2010 13:41:22 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Arnd Bergmann <arnd@arndb.de>, Bryan Schumaker <bjschuma@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 2/4] locks: fix leaks on setlease errors
+Message-ID: <20101101174122.GA12604@infradead.org>
+References: <20101030212500.GE480@fieldses.org>
+ <1288474276-14288-2-git-send-email-bfields@redhat.com>
+ <20101031111057.GA23760@infradead.org>
+ <20101101172440.GC2340@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101101172440.GC2340@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The following patches allow the admin to turn off NFSv4 uid/gid mapping
-if mounting using AUTH_SYS security.
+On Mon, Nov 01, 2010 at 01:24:40PM -0400, J. Bruce Fields wrote:
+> I also have patches that get rid of fl_release_private, fl_mylease, and
+> (almost done) fl_change.
+> 
+> Unless you've a better suggestion I'll probably send them out for review
+> and then queue them up with other nfsd changes for 2.6.38.
 
-Changes w.r.t. first revision:
- - Added documentation in kernel-parameters.txt
- - Print a warning if an NFSERR_BADOWNER causes us to turn idmapping on again
-
-Changes w.r.t. second revision:
- - Ensure we propagate the NFS4ERR_BADOWNER up to the NFSv4 middle layers
- - Fix a typo in nfs4_handle_exception
-
-Trond Myklebust (5):
-  NFSv4: If the server sends us a numeric uid/gid then accept it
-  NFSv4: Send unmapped uid/gids to the server if the idmapper fails
-  NFSv4: cleanup idmapper functions to take an nfs_server argument
-  NFSv4: Propagate the error NFS4ERR_BADOWNER to nfs4_do_setattr
-  NFSv4: Send unmapped uid/gids to the server when using auth_sys
-
- Documentation/kernel-parameters.txt |    8 +++
- fs/nfs/client.c                     |   16 ++++++
- fs/nfs/idmap.c                      |   87 +++++++++++++++++++++++++++-------
- fs/nfs/nfs4proc.c                   |   15 ++++++-
- fs/nfs/nfs4xdr.c                    |   19 +++----
- include/linux/nfs_fs_sb.h           |    1 +
- include/linux/nfs_idmap.h           |    8 ++--
- 7 files changed, 120 insertions(+), 34 deletions(-)
-
--- 
-1.7.3.2
+Sounds good.  I was also wondering if we can get rid of ->setlease
+entirely.  The file_lock_operations should be enough abstraction to
+reject the leases in theory, but I need to look into it a bit more.
 
