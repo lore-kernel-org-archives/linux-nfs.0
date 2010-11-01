@@ -1,102 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:55018 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751712Ab0KLINd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Nov 2010 03:13:33 -0500
-Received: by iwn10 with SMTP id 10so3202331iwn.19
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:13:32 -0800 (PST)
-In-Reply-To: <4CDBEE06.1050309@panasas.com>
-References: <1289484640-4100-1-git-send-email-andros@netapp.com>
-	<1289484640-4100-2-git-send-email-andros@netapp.com>
-	<1289484640-4100-3-git-send-email-andros@netapp.com>
-	<1289484640-4100-4-git-send-email-andros@netapp.com>
-	<4CDBEE06.1050309@panasas.com>
-Date: Fri, 12 Nov 2010 03:13:32 -0500
-Message-ID: <AANLkTi=55LGD+s+tg5d1wVyMdL9c-SmCguNLW_8veR8X@mail.gmail.com>
-Subject: Re: [PATCH 3/3] pnfs-submit: callbacks cannot use an nfs_client that
- is being freed
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: iisaman@netapp.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:64435 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751613Ab0KATYF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Nov 2010 15:24:05 -0400
+Subject: Re: Regression, bisected: sqlite locking failure on nfs
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Nick Bowler <nbowler@elliptictech.com>,
+        LKML Kernel <linux-kernel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <187AEE96-9231-4899-9D65-A444503D2758@oracle.com>
+References: <20101101175854.GA3550@elliptictech.com>
+	 <D68536EB-6BE9-4DE4-B325-39FEF747092E@oracle.com>
+	 <20101101181938.GA3875@elliptictech.com>
+	 <187AEE96-9231-4899-9D65-A444503D2758@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 01 Nov 2010 15:22:56 -0400
+Message-ID: <1288639376.5009.16.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Nov 11, 2010 at 8:22 AM, Benny Halevy <bhalevy@panasas.com> wrote:
-> On 2010-11-11 16:10, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> Guarantee that the nfs_client exists when referenced to by callback processing
->> by not procssing callbacks on an nfs_client in the process of being freed.
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->>  fs/nfs/client.c |    8 ++++++--
->>  1 files changed, 6 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+On Mon, 2010-11-01 at 14:30 -0400, Chuck Lever wrote:
+> On Nov 1, 2010, at 2:19 PM, Nick Bowler wrote:
+> 
+> > On 2010-11-01 14:07 -0400, Chuck Lever wrote:
+> >> On Nov 1, 2010, at 1:58 PM, Nick Bowler wrote:
+> >>> After installing 2.6.37-rc1, attempting to use sqlite in any capacity on
+> >>> NFS gives a locking error:
+> >>> 
+> >>> % echo 'select * from blah;' | sqlite3 blah.sqlite
+> >>> Error: near line 1: database is locked
+> >>> 
+> >>> % echo 'create table blargh(INT);' | sqlite3 blargh.sqlite
+> >>> Error: near line 1: database is locked
+> >>> 
+> >>> The result is that a lot of high-profile applications which make use of
+> >>> sqlite fail mysteriously.  Bisection reveals the following, and
+> >>> reverting the implicated commit solves the issue:
+> >> 
+> >> Nick, thanks for the report.  Is 2.6.37-rc1 running on your clients or
+> >> on your server?
+> > 
+> > Sorry for not being clear: the client is running 2.6.37-rc1.   The
+> > server is running RHEL 5.5.
+> > 
+> >> Does anything interesting appear in the kernel log when your test case
+> >> fails?
+> > 
+> > There are no unusual messages on the client... but I just logged into
+> > the server and I see lots of messages of the following form:
+> > 
+> >  nfsd: request from insecure port (192.168.8.199:35766)!
+> >  nfsd: request from insecure port (192.168.8.199:35766)!
+> >  nfsd: request from insecure port (192.168.8.199:35766)!
+> >  nfsd: request from insecure port (192.168.8.199:35766)!
+> >  nfsd: request from insecure port (192.168.8.199:35766)!
+> > 
+> > (192.168.8.199 is the address of the failing client).  I can only assume
+> > that these are a result of my recent issues, since I don't have access
+> > to the system log (with timestamps) on that machine.
+> 
+> That's the problem this patch is supposed to prevent.  I'll investigate further.
+> 
 
->> index dbf43e7..86657ee 100644
->> --- a/fs/nfs/client.c
->> +++ b/fs/nfs/client.c
->> @@ -392,7 +392,9 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
->>               if (!nfs_sockaddr_match_ipaddr(addr, clap))
->>                       continue;
->>
->> -             atomic_inc(&clp->cl_count);
->> +             /* Don't return an nfs_client that is being freed */
->> +             if (!atomic_inc_not_zero(&clp->cl_count))
->> +                     continue;
->>               spin_unlock(&nfs_client_lock);
->>               return clp;
->>       }
->> @@ -425,7 +427,9 @@ struct nfs_client *nfs_find_client_next(struct nfs_client *clp)
->>               if (!nfs_sockaddr_match_ipaddr(sap, clap))
->>                       continue;
->>
->> -             atomic_inc(&clp->cl_count);
->> +             /* Don't return an nfs_client that is being freed */
->> +             if (!atomic_inc_not_zero(&clp->cl_count))
->> +                     continue;
->>               spin_unlock(&nfs_client_lock);
->>               return clp;
->>       }
->
-> Hmm, nfs_put_client deletes the client when cl_count reaches zero
-> so how can cl_count be zero while clp is listed?
+I suspect nlmclnt_lookup_host() is to blame. It appears to be the _only_
+thing in the kernel that actually sets this 'srcaddr' field, and it sets
+it to
 
+const struct sockaddr source = {
+	.sa_family      = AF_UNSPEC,
+};
 
-For some reason, I missed the lock part of atomic_dec_and_lock in
-nfs_put_client which removes the nfs_client from the list under the
-lock. We don't need this patch.
+You triggered the bug by removing the line
 
-What's weird about the back channel server processing is that the RPC
-layer pg_authenticate (nfs_callback_authenticate) call in
-svc_process_common finds an nfs_client struct based solely the
-callback client address and so may find the wrong nfs_client struct
-(nfsv4.0 instead of v4.1, or wrong session). So the nfs_client has to
-be put at the end of pg_authenticate and another nfs_find_client call
-is needed in the dispatcher routines after decoding. This means the
-callback server could start processing a callback and have the
-nfs_client struct freed between the pg_authenticate call and the
-dispatcher operation call, or it could have found the wrong nfs_client
-in the first place.
+	transport->srcaddr.ss_family = family;
 
-If the nfs_client is not found in pg_authenticate, the request is
-simply dropped (SVC_DROP). But if an nfs_client is not found in the
-dispatcher routines NFS4ERR_BADSESSION is returned for v4.1 requests
-and NFS4ERR_BADHANDLE for v4.0 requests.
+from xs_create_sock().
 
-I guess there's not much we can do about this.
-
--->Andy
-
-> Benny
->
-> In put_nfs_client
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+   Trond
