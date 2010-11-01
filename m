@@ -1,195 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33432 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752435Ab0KDPWw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Nov 2010 11:22:52 -0400
-Received: from localhost.localdomain (dnsindia.hq.netapp.com [10.58.52.94] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oA4FMYMQ029583
-	for <linux-nfs@vger.kernel.org>; Thu, 4 Nov 2010 08:22:40 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 04/18] pnfs-submit: change layout state seqlock to a spinlock
-Date: Thu,  4 Nov 2010 11:22:17 -0400
-Message-Id: <1288884151-11128-5-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
-References: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:63624 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752160Ab0KATnp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Nov 2010 15:43:45 -0400
+Subject: Re: Regression, bisected: sqlite locking failure on nfs
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1288639376.5009.16.camel@heimdal.trondhjem.org>
+Date: Mon, 1 Nov 2010 15:43:18 -0400
+Cc: Nick Bowler <nbowler@elliptictech.com>,
+        LKML Kernel <linux-kernel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <59BBF1A5-1425-448A-8715-4DD20BCA2ED6@oracle.com>
+References: <20101101175854.GA3550@elliptictech.com> <D68536EB-6BE9-4DE4-B325-39FEF747092E@oracle.com> <20101101181938.GA3875@elliptictech.com> <187AEE96-9231-4899-9D65-A444503D2758@oracle.com> <1288639376.5009.16.camel@heimdal.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This prepares for future changes, where the layout state needs
-to change atomically with several other variables.  In particular,
-it will need to know if lo->segs is empty.  Moreover, the
-layoutstateid is not really a read-mostly structure, as it is
-written on each LAYOUTGET.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/callback_proc.c |    8 +++---
- fs/nfs/nfs4xdr.c       |    2 +
- fs/nfs/pnfs.c          |   55 ++++++++++++++---------------------------------
- fs/nfs/pnfs.h          |    4 +--
- 4 files changed, 24 insertions(+), 45 deletions(-)
+On Nov 1, 2010, at 3:22 PM, Trond Myklebust wrote:
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 84c5a1b..3e022a8 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -135,12 +135,11 @@ static bool
- pnfs_is_next_layout_stateid(const struct pnfs_layout_hdr *lo,
- 			    const nfs4_stateid stateid)
- {
--	int seqlock;
- 	bool res;
- 	u32 oldseqid, newseqid;
- 
--	do {
--		seqlock = read_seqbegin(&lo->seqlock);
-+	spin_lock(&lo->inode->i_lock);
-+	{
- 		oldseqid = be32_to_cpu(lo->stateid.stateid.seqid);
- 		newseqid = be32_to_cpu(stateid.stateid.seqid);
- 		res = !memcmp(lo->stateid.stateid.other,
-@@ -158,7 +157,8 @@ pnfs_is_next_layout_stateid(const struct pnfs_layout_hdr *lo,
- 			if (res)
- 				res = (newseqid == 1);
- 		}
--	} while (read_seqretry(&lo->seqlock, seqlock));
-+	}
-+	spin_unlock(&lo->inode->i_lock);
- 
- 	return res;
- }
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 6d9ef2b..b71a482 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1915,7 +1915,9 @@ encode_layoutreturn(struct xdr_stream *xdr,
- 		p = reserve_space(xdr, 16 + NFS4_STATEID_SIZE);
- 		p = xdr_encode_hyper(p, args->range.offset);
- 		p = xdr_encode_hyper(p, args->range.length);
-+		spin_lock(&args->inode->i_lock);
- 		pnfs_copy_layout_stateid(&stateid, NFS_I(args->inode)->layout);
-+		spin_unlock(&args->inode->i_lock);
- 		p = xdr_encode_opaque_fixed(p, &stateid.data,
- 					    NFS4_STATEID_SIZE);
- 		p = reserve_space(xdr, 4);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 4e5c68b..01ecb95 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -456,7 +456,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 	nfs4_stateid *old = &lo->stateid;
- 	bool overwrite = false;
- 
--	write_seqlock(&lo->seqlock);
-+	assert_spin_locked(&lo->inode->i_lock);
- 	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
- 	    memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
- 		overwrite = true;
-@@ -470,54 +470,34 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 	}
- 	if (overwrite)
- 		memcpy(&old->stateid, &new->stateid, sizeof(new->stateid));
--	write_sequnlock(&lo->seqlock);
--}
--
--static void
--pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
--			      struct nfs4_state *state)
--{
--	int seq;
--
--	dprintk("--> %s\n", __func__);
--	write_seqlock(&lo->seqlock);
--	do {
--		seq = read_seqbegin(&state->seqlock);
--		memcpy(lo->stateid.data, state->stateid.data,
--		       sizeof(state->stateid.data));
--	} while (read_seqretry(&state->seqlock, seq));
--	set_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
--	write_sequnlock(&lo->seqlock);
--	dprintk("<-- %s\n", __func__);
- }
- 
- /* Layoutreturn may use an invalid stateid, just copy what is there */
- void pnfs_copy_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo)
- {
--	int seq;
--
--	do {
--		seq = read_seqbegin(&lo->seqlock);
--		memcpy(dst->data, lo->stateid.data, sizeof(lo->stateid.data));
--	} while (read_seqretry(&lo->seqlock, seq));
-+	assert_spin_locked(&lo->inode->i_lock);
-+	memcpy(dst->data, lo->stateid.data, sizeof(lo->stateid.data));
- }
- 
- void
- pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 			struct nfs4_state *open_state)
- {
--	int seq;
--
- 	dprintk("--> %s\n", __func__);
--	do {
--		seq = read_seqbegin(&lo->seqlock);
--		if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state)) {
--			/* This will trigger retry of the read */
--			pnfs_layout_from_open_stateid(lo, open_state);
--		} else
--			memcpy(dst->data, lo->stateid.data,
--			       sizeof(lo->stateid.data));
--	} while (read_seqretry(&lo->seqlock, seq));
-+	spin_lock(&lo->inode->i_lock);
-+	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state)) {
-+		int seq;
-+
-+		do {
-+			seq = read_seqbegin(&open_state->seqlock);
-+			memcpy(dst->data, open_state->stateid.data,
-+			       sizeof(open_state->stateid.data));
-+		} while (read_seqretry(&open_state->seqlock, seq));
-+		set_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
-+	} else
-+		memcpy(dst->data, lo->stateid.data,
-+		       sizeof(lo->stateid.data));
-+	spin_unlock(&lo->inode->i_lock);
- 	dprintk("<-- %s\n", __func__);
- }
- 
-@@ -791,7 +771,6 @@ alloc_init_layout_hdr(struct inode *ino)
- 	lo->refcount = 1;
- 	INIT_LIST_HEAD(&lo->layouts);
- 	INIT_LIST_HEAD(&lo->segs);
--	seqlock_init(&lo->seqlock);
- 	lo->inode = ino;
- 	return lo;
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 000acf0..de4eaa8 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -96,7 +96,6 @@ struct pnfs_layout_hdr {
- 	struct list_head	layouts;   /* other client layouts */
- 	struct list_head	segs;      /* layout segments list */
- 	int			roc_iomode;/* return on close iomode, 0=none */
--	seqlock_t		seqlock;   /* Protects the stateid */
- 	nfs4_stateid		stateid;
- 	unsigned long		state;
- 	struct rpc_cred		*cred;     /* layoutcommit credential */
-@@ -224,9 +223,8 @@ static inline int lo_fail_bit(u32 iomode)
- 
- static inline void pnfs_invalidate_layout_stateid(struct pnfs_layout_hdr *lo)
- {
--	write_seqlock(&lo->seqlock);
-+	assert_spin_locked(&lo->inode->i_lock);
- 	clear_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
--	write_sequnlock(&lo->seqlock);
- }
- 
- static inline void get_lseg(struct pnfs_layout_segment *lseg)
+> On Mon, 2010-11-01 at 14:30 -0400, Chuck Lever wrote:
+>> On Nov 1, 2010, at 2:19 PM, Nick Bowler wrote:
+>> 
+>>> On 2010-11-01 14:07 -0400, Chuck Lever wrote:
+>>>> On Nov 1, 2010, at 1:58 PM, Nick Bowler wrote:
+>>>>> After installing 2.6.37-rc1, attempting to use sqlite in any capacity on
+>>>>> NFS gives a locking error:
+>>>>> 
+>>>>> % echo 'select * from blah;' | sqlite3 blah.sqlite
+>>>>> Error: near line 1: database is locked
+>>>>> 
+>>>>> % echo 'create table blargh(INT);' | sqlite3 blargh.sqlite
+>>>>> Error: near line 1: database is locked
+>>>>> 
+>>>>> The result is that a lot of high-profile applications which make use of
+>>>>> sqlite fail mysteriously.  Bisection reveals the following, and
+>>>>> reverting the implicated commit solves the issue:
+>>>> 
+>>>> Nick, thanks for the report.  Is 2.6.37-rc1 running on your clients or
+>>>> on your server?
+>>> 
+>>> Sorry for not being clear: the client is running 2.6.37-rc1.   The
+>>> server is running RHEL 5.5.
+>>> 
+>>>> Does anything interesting appear in the kernel log when your test case
+>>>> fails?
+>>> 
+>>> There are no unusual messages on the client... but I just logged into
+>>> the server and I see lots of messages of the following form:
+>>> 
+>>> nfsd: request from insecure port (192.168.8.199:35766)!
+>>> nfsd: request from insecure port (192.168.8.199:35766)!
+>>> nfsd: request from insecure port (192.168.8.199:35766)!
+>>> nfsd: request from insecure port (192.168.8.199:35766)!
+>>> nfsd: request from insecure port (192.168.8.199:35766)!
+>>> 
+>>> (192.168.8.199 is the address of the failing client).  I can only assume
+>>> that these are a result of my recent issues, since I don't have access
+>>> to the system log (with timestamps) on that machine.
+>> 
+>> That's the problem this patch is supposed to prevent.  I'll investigate further.
+>> 
+> 
+> I suspect nlmclnt_lookup_host() is to blame. It appears to be the _only_
+> thing in the kernel that actually sets this 'srcaddr' field, and it sets
+> it to
+> 
+> const struct sockaddr source = {
+> 	.sa_family      = AF_UNSPEC,
+> };
+> 
+> You triggered the bug by removing the line
+> 
+> 	transport->srcaddr.ss_family = family;
+> 
+> from xs_create_sock().
+
+Thanks.  Actually that line was added by Bruce very recently because Pavel's patches changed xs_bind() so it can't tolerate an AF_UNSPEC address.  My patch attempts to replace the workaround with something more permanent... but looks like I didn't find all the places that needed to be fixed.
+
 -- 
-1.7.2.1
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
