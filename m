@@ -1,40 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:56784 "EHLO mail-out2.uio.no"
+Received: from fieldses.org ([174.143.236.118]:43803 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751055Ab0KVSoM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Nov 2010 13:44:12 -0500
-Subject: Re: [PATCH] lockd: release memory for non-normal situation
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Wengang Wang <wen.gang.wang@oracle.com>, linux-nfs@vger.kernel.org,
-        greg.marsden@oracle.com, joe.jin@oracle.com
-In-Reply-To: <86295CE6-C2D8-4186-BF51-455A5C190F3A@oracle.com>
-References: <201011221243.oAM931FO003822@rcsinet13.oracle.com>
-	 <86295CE6-C2D8-4186-BF51-455A5C190F3A@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 22 Nov 2010 13:44:07 -0500
-Message-ID: <1290451447.2909.6.camel@heimdal.trondhjem.org>
+	id S1751817Ab0KASfH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Nov 2010 14:35:07 -0400
+Date: Mon, 1 Nov 2010 14:34:57 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Arnd Bergmann <arnd@arndb.de>, Bryan Schumaker <bjschuma@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 2/4] locks: fix leaks on setlease errors
+Message-ID: <20101101183457.GF2340@fieldses.org>
+References: <20101030212500.GE480@fieldses.org>
+ <1288474276-14288-2-git-send-email-bfields@redhat.com>
+ <20101031111057.GA23760@infradead.org>
+ <20101101172440.GC2340@fieldses.org>
+ <20101101174122.GA12604@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101101174122.GA12604@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-11-22 at 12:15 -0500, Chuck Lever wrote:
-> Hi-
+On Mon, Nov 01, 2010 at 01:41:22PM -0400, Christoph Hellwig wrote:
+> On Mon, Nov 01, 2010 at 01:24:40PM -0400, J. Bruce Fields wrote:
+> > I also have patches that get rid of fl_release_private, fl_mylease, and
+> > (almost done) fl_change.
+> > 
+> > Unless you've a better suggestion I'll probably send them out for review
+> > and then queue them up with other nfsd changes for 2.6.38.
 > 
-> On Nov 22, 2010, at 7:40 AM, Wengang Wang wrote:
-> 
-> > nlmclnt_proc() is neither releasing nlm_rqst nor dropping the ref on nlm_host.
-> > Do the release work though I am not sure if it can really hit the situation.
-> 
-> Based on casual code review, the only case where this is a possibility is the "out_unlock" label in nlmclnt_lock().  Otherwise, this patch introduces a double release in other cases, doesn't it?
+> Sounds good.  I was also wondering if we can get rid of ->setlease
+> entirely.  The file_lock_operations should be enough abstraction to
+> reject the leases in theory, but I need to look into it a bit more.
 
-No. It only occurs if !IS_GETLK(cmd) && !IS_SETLK(cmd) && !
-IS_SETLKW(cmd). The VFS should ensure this never happens, so I don't
-think this is an exploitable bug.
+Note that cifs has a real lease operation now.  No idea how it works or
+if it's really correct.
 
-The question therefore is: do we add this fix, or do we just remove the
--EINVAL error condition and replace it by a BUG()?
-
-Cheers
-  Trond
-
+--b.
