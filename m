@@ -1,77 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:38720 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753628Ab0KMLxP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Nov 2010 06:53:15 -0500
-In-Reply-To: <20101112184353.GA32745@fieldses.org>
-References: <20101112184353.GA32745@fieldses.org>
-Date: Sat, 13 Nov 2010 22:53:12 +1100
-Message-ID: <AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
-Subject: Re: lifetime of DCACHE_DISCONECTED dentries
-From: Nick Piggin <npiggin@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from magus.merit.edu ([198.108.1.13]:45939 "EHLO magus.merit.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751081Ab0KBUKN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Nov 2010 16:10:13 -0400
+Date: Tue, 2 Nov 2010 16:09:35 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 2/6] blkmapd: don't rescan periodically
+Message-ID: <13bf26e754c4a6c923c360f131f05a6ef858e99e.1288726186.git.rees@umich.edu>
+References: <cover.1288726186.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1288726186.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Nov 13, 2010 at 5:43 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> DCACHE_DISCONECTED dentries aren't always getting destroyed as soon as
-> I'd have expected in the NFSv4 case.
->
-> I'm not sure what the right fix is; any ideas?  The below at least
-> demonstrates the problem.
->
-> --b.
->
-> commit bb125ffbe5fc3f80ac7a5b20f51cc542c175cd49
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Thu Nov 11 19:22:00 2010 -0500
->
->    dput: free DCACHE_DISCONNECTED dentries sooner
->
->    DCACHE_DISCONECTED dentries are normally left around for the benefit of
->    future nfsd operations.  But there's no point keeping them around once
->    the inode has been deleted.
->
->    Without this patch
->
->        client$ mount -tnfs4 server:/export/ /mnt/
->        client$ tail -f /mnt/FOO
->        ...
->        server$ df -i /export
->        server$ rm /export/FOO
->        (^C the tail -f)
->        server$ df -i /export
->        server$ echo 2 >/proc/sys/vm/drop_caches
->        server$ df -i /export
->
->    the df's will show that the inode is not freed on the filesystem until
->    the last step, when it could have been freed after killing the client's
->    tail -f.  On-disk data won't be deallocated either, leading to possible
->    spurious ENOSPC.
->
->    This occurs because when the client does the close, it arrives in a
->    compound with a putfh and a close, processed like:
->
->        - putfh: look up the filehandle.  The only alias found for the
->          inode will be DCACHE_UNHASHED alias referenced by the filp
->          associated with the nfsd open.  d_obtain_alias() doesn't like
->          this, so it creates a new DCACHE_DISCONECTED dentry and
->          returns that instead.
+Periodic device rescanning is always going to be wrong, since the interval
+will either be too long and miss an important change, or too short and waste
+resources.  It's not even needed in the normal case, only when the devices
+change during the life of a layout.  For now, just rescan when the kernel
+asks for a layout.  A later patch will re-introduce rescanning during the
+life of a layout, but will be triggered by configuration change
+notifications from udev, rather than by expiration of an arbitrary time
+interval.
 
-This seems to be where the thing goes wrong. It isn't a hashed dentry at
-this point here, so d_obtain_alias should not be making one.
+Signed-off-by: Jim Rees <rees@umich.edu>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ utils/blkmapd/device-discovery.c |   14 ++++++++++----
+ utils/blkmapd/device-discovery.h |    2 --
+ 2 files changed, 10 insertions(+), 6 deletions(-)
 
-I think the inode i_nlink games are much more appropriate on this side of
-the equation, rather than the dput side (after all, d_obtain_alias is setting
-up an alias for the inode).
+diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
+index 0fc8fd3..71b4d48 100644
+--- a/utils/blkmapd/device-discovery.c
++++ b/utils/blkmapd/device-discovery.c
+@@ -308,6 +308,15 @@ int bl_disk_inquiry_process(int fd)
+ 	head->status = BL_DEVICE_REQUEST_PROC;
+ 	switch (head->type) {
+ 	case BL_DEVICE_MOUNT:
++		/*
++		 * It shouldn't be necessary to discover devices here, since
++		 * process_deviceinfo() will re-discover if it can't find
++		 * the devices it needs.  But in the case of multipath
++		 * devices (ones that appear more than once, for example an
++		 * active and a standby LUN), this will re-order them in the
++		 * correct priority.
++		 */
++		bl_discover_devices();
+ 		if (!process_deviceinfo(buf, buflen, &major, &minor)) {
+ 			head->status = BL_DEVICE_REQUEST_ERR;
+ 			goto out;
+@@ -329,7 +338,6 @@ int bl_disk_inquiry_process(int fd)
+ 	case BL_DEVICE_UMOUNT:
+ 		if (!dm_device_remove_all((uint64_t *) buf))
+ 			head->status = BL_DEVICE_REQUEST_ERR;
+-		bl_discover_devices();
+ 		break;
+ 	default:
+ 		head->status = BL_DEVICE_REQUEST_ERR;
+@@ -357,7 +365,6 @@ unsigned int bl_process_stop;
+ int bl_run_disk_inquiry_process(int fd)
+ {
+ 	fd_set rset;
+-	struct timeval tv;
+ 	int ret;
+ 
+ 	bl_process_stop = 0;
+@@ -368,8 +375,7 @@ int bl_run_disk_inquiry_process(int fd)
+ 		FD_ZERO(&rset);
+ 		FD_SET(fd, &rset);
+ 		ret = 0;
+-		tv.tv_sec = BL_DEVICE_DISCOVERY_INTERVAL;
+-		switch (select(fd + 1, &rset, NULL, NULL, &tv)) {
++		switch (select(fd + 1, &rset, NULL, NULL, NULL)) {
+ 		case -1:
+ 			if (errno == EINTR)
+ 				continue;
+diff --git a/utils/blkmapd/device-discovery.h b/utils/blkmapd/device-discovery.h
+index 71c0748..b8d26a6 100644
+--- a/utils/blkmapd/device-discovery.h
++++ b/utils/blkmapd/device-discovery.h
+@@ -27,8 +27,6 @@
+ #ifndef BL_DEVICE_DISCOVERY_H
+ #define BL_DEVICE_DISCOVERY_H
+ 
+-#define BL_DEVICE_DISCOVERY_INTERVAL 60
+-
+ #include <stdint.h>
+ #include <syslog.h>
+ 
+-- 
+1.7.1
 
-Can you even put the link check into __d_find_alias?
-
--               if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
-+               if (S_ISDIR(inode->i_mode) || !inode->i_nlink ||
-!d_unhashed(alias)) {
-
-Something like that?
