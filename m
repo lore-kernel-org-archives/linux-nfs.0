@@ -1,59 +1,86 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH] Return failure from bl_initialize_mountpoint if we can't
- get the device for the disk list.
-Date: Wed, 03 Nov 2010 17:49:22 +0200
-Message-ID: <4CD18482.7090809@panasas.com>
-References: <20101101174001.GA6731@merit.edu>
+From: "fibreraid@gmail.com" <fibreraid@gmail.com>
+Subject: Re: Streaming perf problem on 10g
+Date: Wed, 3 Nov 2010 11:47:37 -0700
+Message-ID: <AANLkTimxDBwjOZ+jmSap+-qDsGZpSGOewYtbfUk60D=G@mail.gmail.com>
+References: <766909857.700951.1288807081999.JavaMail.root@mb2>
+	<4CD1AAE2.3020003@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, sfaibish <sfaibish@emc.com>,
-	peter honeyman <honey@citi.umich.edu>
-To: Jim Rees <rees@umich.edu>
+Cc: Shehjar Tikoo <shehjart-+FkPdpiNhgJBDgjK7y7TUQ@public.gmane.org>, linux-nfs@vger.kernel.org
+To: Joe Landman <joe.landman@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og110.obsmtp.com ([64.18.0.20]:39136 "HELO
-	exprod5og110.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754073Ab0KCPt1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Nov 2010 11:49:27 -0400
-In-Reply-To: <20101101174001.GA6731-8f4Pc2RrbJmHXe+LvDLADg@public.gmane.org>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:65014 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752743Ab0KCSrj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Nov 2010 14:47:39 -0400
+Received: by wwe15 with SMTP id 15so999840wwe.1
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Nov 2010 11:47:38 -0700 (PDT)
+In-Reply-To: <4CD1AAE2.3020003@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2010-11-01 19:40, Jim Rees wrote:
-> Signed-off-by: Jim Rees <rees@umich.edu>
+Hi Shehjar,
 
-Merged in pnfs-all-2.6.37-rc1-2010-11-03 (function renamed to bl_set_layoutdriver)
-and in pnfs-all-2.6.36-2010-11-03.
+Can you provide the exact dd command you are running both locally and
+for the NFS mount?
 
-Thanks!
+-Tommy
 
-Benny
-
-> ---
->  fs/nfs/blocklayout/blocklayout.c |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index 57a7f04..b3ab4cb 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -677,7 +677,7 @@ static void free_blk_mountid(struct block_mount_id *mid)
->  	}
->  }
->  
-> -/* This is mostly copied form the filelayout's get_device_info function.
-> +/* This is mostly copied from the filelayout's get_device_info function.
->   * It seems much of this should be at the generic pnfs level.
->   */
->  static struct pnfs_block_dev *
-> @@ -796,8 +796,10 @@ bl_initialize_mountpoint(struct nfs_server *server, const struct nfs_fh *fh)
->  			bdev = nfs4_blk_get_deviceinfo(server, fh,
->  						     &dlist->dev_id[i],
->  						     &block_disklist);
-> -			if (!bdev)
-> +			if (!bdev) {
-> +				status = -ENODEV;
->  				goto out_error;
-> +			}
->  			spin_lock(&b_mt_id->bm_lock);
->  			list_add(&bdev->bm_node, &b_mt_id->bm_devlist);
->  			spin_unlock(&b_mt_id->bm_lock);
+On Wed, Nov 3, 2010 at 11:33 AM, Joe Landman <joe.landman@gmail.com> wr=
+ote:
+> On 11/03/2010 01:58 PM, Shehjar Tikoo wrote:
+>>
+>> Hi All,
+>>
+>> I am running into a performance problem with 2.6.32-23 Ubuntu lucid =
+on
+>> both client and server.
+>>
+>> The disk is an SSD performing at 1.4 - 1.6Gbps for a dd of a 6gb fil=
+e in
+>> 64k blocks.
+>>
+>
+> If the size of this file is comparable to or smaller than the client =
+or
+> server ram, this number is meaningless.
+>
+>> The network is performing fine with many Gbps of iperf throughput.
+>>
+>
+> GbE gets you 1 Gbps. =A010GbE may get you from 3-10 Gbps, depending u=
+pon many
+> things. =A0What are =A0your numbers?
+>
+>> Yet, the dd write performance over the nfs mount point ranges from 9=
+6-105
+>> Mbps for a 6gb file in 64k blocks.
+>>
+>
+> Sounds like you are writing over the gigabit, and not the 10GbE inter=
+face.
+>
+>> I've tried changing the tcp_slot_table_entries and the wsize but the=
+re is
+>> negligible gain from these.
+>>
+>> Does it sound like a client side inefficiency?
+>>
+>
+> Nope.
+>
+> --
+> Joseph Landman, Ph.D
+> Founder and CEO
+> Scalable Informatics Inc.
+> email: landman-nyOC7EYE20mM0MU9lROt9DlRY1/6cnIP@public.gmane.org
+> web : http://scalableinformatics.com
+> phone: +1 734 786 8423 x121
+> fax : +1 866 888 3112
+> cell : +1 734 612 4615
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
