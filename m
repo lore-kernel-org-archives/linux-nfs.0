@@ -1,82 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64435 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751613Ab0KATYF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Nov 2010 15:24:05 -0400
-Subject: Re: Regression, bisected: sqlite locking failure on nfs
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Nick Bowler <nbowler@elliptictech.com>,
-        LKML Kernel <linux-kernel@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <187AEE96-9231-4899-9D65-A444503D2758@oracle.com>
-References: <20101101175854.GA3550@elliptictech.com>
-	 <D68536EB-6BE9-4DE4-B325-39FEF747092E@oracle.com>
-	 <20101101181938.GA3875@elliptictech.com>
-	 <187AEE96-9231-4899-9D65-A444503D2758@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 01 Nov 2010 15:22:56 -0400
-Message-ID: <1288639376.5009.16.camel@heimdal.trondhjem.org>
+Received: from mail-qy0-f181.google.com ([209.85.216.181]:53897 "EHLO
+	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752818Ab0KCSa6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Nov 2010 14:30:58 -0400
+Received: by qyk10 with SMTP id 10so361851qyk.19
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Nov 2010 11:30:57 -0700 (PDT)
+Message-ID: <4CD1AAE2.3020003@gmail.com>
+Date: Wed, 03 Nov 2010 14:33:06 -0400
+From: Joe Landman <joe.landman@gmail.com>
+To: Shehjar Tikoo <shehjart@gluster.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Streaming perf problem on 10g
+References: <766909857.700951.1288807081999.JavaMail.root@mb2>
+In-Reply-To: <766909857.700951.1288807081999.JavaMail.root@mb2>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-11-01 at 14:30 -0400, Chuck Lever wrote:
-> On Nov 1, 2010, at 2:19 PM, Nick Bowler wrote:
-> 
-> > On 2010-11-01 14:07 -0400, Chuck Lever wrote:
-> >> On Nov 1, 2010, at 1:58 PM, Nick Bowler wrote:
-> >>> After installing 2.6.37-rc1, attempting to use sqlite in any capacity on
-> >>> NFS gives a locking error:
-> >>> 
-> >>> % echo 'select * from blah;' | sqlite3 blah.sqlite
-> >>> Error: near line 1: database is locked
-> >>> 
-> >>> % echo 'create table blargh(INT);' | sqlite3 blargh.sqlite
-> >>> Error: near line 1: database is locked
-> >>> 
-> >>> The result is that a lot of high-profile applications which make use of
-> >>> sqlite fail mysteriously.  Bisection reveals the following, and
-> >>> reverting the implicated commit solves the issue:
-> >> 
-> >> Nick, thanks for the report.  Is 2.6.37-rc1 running on your clients or
-> >> on your server?
-> > 
-> > Sorry for not being clear: the client is running 2.6.37-rc1.   The
-> > server is running RHEL 5.5.
-> > 
-> >> Does anything interesting appear in the kernel log when your test case
-> >> fails?
-> > 
-> > There are no unusual messages on the client... but I just logged into
-> > the server and I see lots of messages of the following form:
-> > 
-> >  nfsd: request from insecure port (192.168.8.199:35766)!
-> >  nfsd: request from insecure port (192.168.8.199:35766)!
-> >  nfsd: request from insecure port (192.168.8.199:35766)!
-> >  nfsd: request from insecure port (192.168.8.199:35766)!
-> >  nfsd: request from insecure port (192.168.8.199:35766)!
-> > 
-> > (192.168.8.199 is the address of the failing client).  I can only assume
-> > that these are a result of my recent issues, since I don't have access
-> > to the system log (with timestamps) on that machine.
-> 
-> That's the problem this patch is supposed to prevent.  I'll investigate further.
-> 
+On 11/03/2010 01:58 PM, Shehjar Tikoo wrote:
+> Hi All,
+>
+> I am running into a performance problem with 2.6.32-23 Ubuntu lucid on both client and server.
+>
+> The disk is an SSD performing at 1.4 - 1.6Gbps for a dd of a 6gb file in 64k blocks.
+>    
 
-I suspect nlmclnt_lookup_host() is to blame. It appears to be the _only_
-thing in the kernel that actually sets this 'srcaddr' field, and it sets
-it to
+If the size of this file is comparable to or smaller than the client or 
+server ram, this number is meaningless.
 
-const struct sockaddr source = {
-	.sa_family      = AF_UNSPEC,
-};
+> The network is performing fine with many Gbps of iperf throughput.
+>    
 
-You triggered the bug by removing the line
+GbE gets you 1 Gbps.  10GbE may get you from 3-10 Gbps, depending upon 
+many things.  What are  your numbers?
 
-	transport->srcaddr.ss_family = family;
+> Yet, the dd write performance over the nfs mount point ranges from 96-105 Mbps for a 6gb file in 64k blocks.
+>    
 
-from xs_create_sock().
+Sounds like you are writing over the gigabit, and not the 10GbE interface.
 
-   Trond
+> I've tried changing the tcp_slot_table_entries and the wsize but there is negligible gain from these.
+>
+> Does it sound like a client side inefficiency?
+>    
+
+Nope.
+
+-- 
+Joseph Landman, Ph.D
+Founder and CEO
+Scalable Informatics Inc.
+email: landman@scalableinformatics.com
+web : http://scalableinformatics.com
+phone: +1 734 786 8423 x121
+fax : +1 866 888 3112
+cell : +1 734 612 4615
