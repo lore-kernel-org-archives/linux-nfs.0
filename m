@@ -1,81 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:15714 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758504Ab0KQRlt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:41:49 -0500
-From: Benny Halevy <bhalevy@panasas.com>
+Received: from mb2.zcs.datasyncintra.net ([208.88.241.40]:43917 "EHLO
+	mb2.zcs.datasyncintra.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753674Ab0KCSIx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Nov 2010 14:08:53 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by mb2.zcs.datasyncintra.net (Postfix) with ESMTP id B30C5BE079
+	for <linux-nfs@vger.kernel.org>; Wed,  3 Nov 2010 12:58:02 -0500 (CDT)
+Received: from mb2.zcs.datasyncintra.net ([127.0.0.1])
+	by localhost (mb2.zcs.datasyncintra.net [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id 5OQQQLmSfu86 for <linux-nfs@vger.kernel.org>;
+	Wed,  3 Nov 2010 12:58:02 -0500 (CDT)
+Received: from mb2.zcs.datasyncintra.net (mb2.zcs.datasyncintra.net [172.16.0.67])
+	by mb2.zcs.datasyncintra.net (Postfix) with ESMTP id 1B6D4BE073
+	for <linux-nfs@vger.kernel.org>; Wed,  3 Nov 2010 12:58:02 -0500 (CDT)
+Date: Wed, 3 Nov 2010 11:58:02 -0600 (CST)
+From: Shehjar Tikoo <shehjart@gluster.com>
 To: linux-nfs@vger.kernel.org
-Cc: Andy Adamson <andros@netapp.com>
-Subject: [PATCH] SQUASHME: pnfs: move synchronize_rcu out side of spin_lock
-Date: Wed, 17 Nov 2010 19:41:44 +0200
-Message-Id: <1290015704-6221-1-git-send-email-bhalevy@panasas.com>
+Message-ID: <766909857.700951.1288807081999.JavaMail.root@mb2>
+Subject: Streaming perf problem on 10g
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-squash into 4a28356  pnfs: CB_NOTIFY_DEVICEID
+Hi All,
 
-We currently call pnfs_unhash_deviceid under spin_lock c->dc_lock
-But pnfs_unhash_deviceid calls synchronize_rcu which may sched.
-This resulted in the following BUG with the cthon tests:
+I am running into a performance problem with 2.6.32-23 Ubuntu lucid on both client and server.
 
-Nov 17 18:54:56 tl1 kernel: BUG: spinlock wrong CPU on CPU#1, test5/2170
-Nov 17 18:54:56 tl1 kernel: lock: ffff880070559ff0, .magic: dead4ead, .owner: test5/2170, .owner_cpu: 0
-Nov 17 18:54:56 tl1 kernel: Pid: 2170, comm: test5 Not tainted 2.6.37-rc2-pnfs #167
-Nov 17 18:54:56 tl1 kernel: Call Trace:
-Nov 17 18:54:56 tl1 kernel: [<ffffffff8122cfc5>] spin_bug+0x9c/0xa3
-Nov 17 18:54:56 tl1 kernel: [<ffffffff8122d042>] do_raw_spin_unlock+0x76/0x8d
-Nov 17 18:54:56 tl1 kernel: [<ffffffff814534ea>] _raw_spin_unlock+0x2b/0x30
-Nov 17 18:54:56 tl1 kernel: [<ffffffffa03c62fc>] pnfs_put_deviceid+0x59/0x64 [nfs]
-Nov 17 18:54:56 tl1 kernel: [<ffffffffa0018551>] filelayout_free_lseg+0x5a/0x6f [nfs_layout_nfsv41_files]
-Nov 17 18:54:56 tl1 kernel: [<ffffffffa03c6ea8>] pnfs_free_lseg_list+0x4e/0x8b [nfs]
-Nov 17 18:54:56 tl1 kernel: [<ffffffffa03c85a4>] _pnfs_return_layout+0xe3/0x213 [nfs]
-Nov 17 18:54:56 tl1 kernel: [<ffffffffa039bcb2>] nfs4_evict_inode+0x41/0x74 [nfs]
-Nov 17 18:54:56 tl1 kernel: [<ffffffff8112cab6>] evict+0x27/0x97
-Nov 17 18:54:56 tl1 kernel: [<ffffffff8112d051>] iput+0x20c/0x243
-Nov 17 18:54:56 tl1 kernel: [<ffffffff8112476c>] do_unlinkat+0x11c/0x16f
-Nov 17 18:54:56 tl1 kernel: [<ffffffff81118750>] ? fsnotify_modify+0x66/0x6e
-Nov 17 18:54:56 tl1 kernel: [<ffffffff81452cbe>] ? lockdep_sys_exit_thunk+0x35/0x67
-Nov 17 18:54:56 tl1 kernel: [<ffffffff810a0b51>] ? audit_syscall_entry+0x11e/0x14a
-Nov 17 18:54:56 tl1 kernel: [<ffffffff811247d5>] sys_unlink+0x16/0x18
-Nov 17 18:54:56 tl1 kernel: [<ffffffff8100acf2>] system_call_fastpath+0x16/0x1b
+The disk is an SSD performing at 1.4 - 1.6Gbps for a dd of a 6gb file in 64k blocks.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs.c |    5 ++---
- 1 files changed, 2 insertions(+), 3 deletions(-)
+The network is performing fine with many Gbps of iperf throughput.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 559fcce..39c7d9f 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1651,7 +1651,6 @@ pnfs_unhash_deviceid(struct pnfs_deviceid_cache *c,
- 	hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[h], de_node)
- 		if (!memcmp(&d->de_id, id, sizeof(*id))) {
- 			hlist_del_rcu(&d->de_node);
--			synchronize_rcu();
- 			return d;
- 		}
- 
-@@ -1672,7 +1671,7 @@ pnfs_put_deviceid(struct pnfs_deviceid_cache *c,
- 
- 	pnfs_unhash_deviceid(c, &devid->de_id);
- 	spin_unlock(&c->dc_lock);
--
-+	synchronize_rcu();
- 	c->dc_free_callback(devid);
- }
- EXPORT_SYMBOL_GPL(pnfs_put_deviceid);
-@@ -1686,7 +1685,7 @@ pnfs_delete_deviceid(struct pnfs_deviceid_cache *c,
- 	spin_lock(&c->dc_lock);
- 	devid = pnfs_unhash_deviceid(c, id);
- 	spin_unlock(&c->dc_lock);
--
-+	synchronize_rcu();
- 	dprintk("%s [%d]\n", __func__, atomic_read(&devid->de_ref));
- 	if (atomic_dec_and_test(&devid->de_ref))
- 		c->dc_free_callback(devid);
--- 
-1.7.2.3
+Yet, the dd write performance over the nfs mount point ranges from 96-105 Mbps for a 6gb file in 64k blocks.
 
+I've tried changing the tcp_slot_table_entries and the wsize but there is negligible gain from these.
+
+Does it sound like a client side inefficiency?
+
+Thanks
+-Shehjar
