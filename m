@@ -1,125 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:35684 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754299Ab0K2XaU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 18:30:20 -0500
-Received: by ywl5 with SMTP id 5so2387962ywl.19
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Nov 2010 15:30:19 -0800 (PST)
-From: "Spencer Shepler" <spencer.shepler@gmail.com>
-To: "'Trond Myklebust'" <Trond.Myklebust@netapp.com>
-Cc: <Daniel.Muntz@emc.com>, <spelic@shiftmail.org>,
-        <linux-nfs@vger.kernel.org>
-References: <1291054975.12784.17.camel@heimdal.trondhjem.org> <DE966DA98A4ABE438D726BDF1699CF610437B188C9@MX05A.corp.emc.com> <067101cb9018$d70ba2f0$8522e8d0$@gmail.com> <1291072571.20567.26.camel@heimdal.trondhjem.org> <1291073174.20567.31.camel@heimdal.trondhjem.org>
-In-Reply-To: <1291073174.20567.31.camel@heimdal.trondhjem.org>
-Subject: RE: NFSv4 behaviour on unknown users
-Date: Mon, 29 Nov 2010 15:30:14 -0800
-Message-ID: <068901cb901d$61395630$23ac0290$@gmail.com>
-Content-Type: text/plain;
-	charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:33432 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752478Ab0KDPWy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Nov 2010 11:22:54 -0400
+Received: from localhost.localdomain (dnsindia.hq.netapp.com [10.58.52.94] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oA4FMYMW029583
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Nov 2010 08:22:44 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 10/18] pnfs-submit: argument to should_free_lseg changed from lseg to range
+Date: Thu,  4 Nov 2010 11:22:23 -0400
+Message-Id: <1288884151-11128-11-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
+References: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+We only use lseg->range, and we will need the function for
+the callback code, where we have only the range, and
+not an enclosing lseg.
 
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
 
-> -----Original Message-----
-> From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
-> Sent: Monday, November 29, 2010 3:26 PM
-> To: Spencer Shepler
-> Cc: Daniel.Muntz@emc.com; spelic@shiftmail.org; linux-nfs@vger.kernel.org
-> Subject: RE: NFSv4 behaviour on unknown users
-> 
-> On Mon, 2010-11-29 at 18:16 -0500, Trond Myklebust wrote:
-> > On Mon, 2010-11-29 at 14:57 -0800, Spencer Shepler wrote:
-> > > Dan,
-> > >
-> > > A change to the NFSv4.0 and NFSv4.1 RFCs is unnecessary.
-> > > What you suggest can be implemented today and still adhere to the
-> > > RFC text.  From RFC3530 (section 4.8) and RFC5661 (section 5.9) the
-> > > following text is quoted:
-> > >
-> > > "  In the case where there is no translation available to the client
-> or
-> > >    server, the attribute value will be constructed without the "@".
-> > >    Therefore, the absence of the @ from the owner or owner_group
-> > >    attribute signifies that no translation was available at the sender
-> > >    and that the receiver of the attribute should not use that string
-> as
-> > >    a basis for translation into its own internal format.  Even though
-> > >    the attribute value cannot be translated, it may still be useful.
-> In
-> > >    the case of a client, the attribute string may be used for local
-> > >    display of ownership.
-> > >
-> > >    To provide a greater degree of compatibility with NFSv3, which
-> > >    identified users and groups by 32-bit unsigned user identifiers and
-> > >    group identifiers, owner and group strings that consist of decimal
-> > >    numeric values with no leading zeros can be given a special
-> > >    interpretation by clients and servers that choose to provide such
-> > >    support.  The receiver may treat such a user or group string as
-> > >    representing the same user as would be represented by an NFSv3 uid
-> or
-> > >    gid having the corresponding numeric value.  A server is not
-> > >    obligated to accept such a string, but may return an
-> NFS4ERR_BADOWNER
-> > >    instead.  To avoid this mechanism being used to subvert user and
-> > >    group translation, so that a client might pass all of the owners
-> and
-> > >    groups in numeric form, a server SHOULD return an NFS4ERR_BADOWNER
-> > >    error when there is a valid translation for the user or owner
-> > >    designated in this way.  In that case, the client must use the
-> > >    appropriate name@domain string and not the special form for
-> > >    compatibility."
-> > >
-> > >
-> > > I read this that if the implementation or administrator chooses to
-> > > op-out of the user@domain mapping, it may do so and the client and
-> > > server have a method available to them to communicate traditiona
-> > > uid/gid.
-> > >
-> > > So, all that is needed now it seems is some code to provide the
-> > > option to the admin or as you suggest, change the default.
-> > >
-> > > Spencer
-> >
-> > It is way too late to change the default. All known existing NFSv4
-> > servers would spit at you because they have been coded to match the
-> > above normative "SHOULD".
-> >
-> > Without that option, you will also need a mechanism to allow the
-> > client and server to agree on a convention. Otherwise, admins have to
-> > go in and manually set the correct site default on all their clients and
-> servers.
-> 
-> The other problem is that when you use the naked uid or gid you are losing
-> information about which domain the user belongs to.
-> 
-> While that may be fine when you are authenticating using the AUTH_SYS
-> security flavour, it is just plain wrong when you are authenticating using
-> RPCSEC_GSS principals (which is what the NFSv4 spec assumes that you will
-> use).
-
-Then the administrator will not use that option.
-
-The use case that was presented did not use Kerberos (at least in my quick reading).
-
-I agree that users that use Kerberos will be unhappy and that they should
-use something that maps more in align with their Kerberos realms but that
-is not the pain point under discussion.  A variation of the id mapping work
-under discussion by Andy would/could address Kerberos and other deployment
-scenarios.  But for the original "works for NFSv3 and doesn't for NFSv4" crowd
-something simple will suffice and they will be happy and stop bitching
-about this and move onto the next thing that pisses them off. :-)
-
-Spencer
-
-> 
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index d9a867f..ca8be8d 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -346,11 +346,11 @@ EXPORT_SYMBOL_GPL(put_lseg);
+  * READ		RW	false
+  */
+ static int
+-should_free_lseg(struct pnfs_layout_segment *lseg,
+-		   struct pnfs_layout_range *range)
++should_free_lseg(struct pnfs_layout_range *lseg_range,
++		 struct pnfs_layout_range *recall_range)
+ {
+-	return (range->iomode == IOMODE_ANY ||
+-		lseg->range.iomode == range->iomode);
++	return (recall_range->iomode == IOMODE_ANY ||
++		lseg_range->iomode == recall_range->iomode);
+ }
+ 
+ static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+@@ -378,7 +378,7 @@ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list,
+ 
+ 	assert_spin_locked(&lo->inode->i_lock);
+ 	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list)
+-		if (should_free_lseg(lseg, range)) {
++		if (should_free_lseg(&lseg->range, range)) {
+ 			dprintk("%s: freeing lseg %p iomode %d "
+ 				"offset %llu length %llu\n", __func__,
+ 				lseg, lseg->range.iomode, lseg->range.offset,
+@@ -564,7 +564,7 @@ has_layout_to_return(struct pnfs_layout_hdr *lo,
+ 
+ 	assert_spin_locked(&lo->inode->i_lock);
+ 	list_for_each_entry(lseg, &lo->segs, fi_list)
+-		if (should_free_lseg(lseg, range)) {
++		if (should_free_lseg(&lseg->range, range)) {
+ 			out = lseg;
+ 			break;
+ 		}
+@@ -586,7 +586,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+ 
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	list_for_each_entry_safe(lseg, tmp, &nfsi->layout->segs, fi_list)
+-		if (should_free_lseg(lseg, range)) {
++		if (should_free_lseg(&lseg->range, range)) {
+ 			ret = true;
+ 			break;
+ 		}
+@@ -662,7 +662,7 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 		}
+ 
+ 		list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
+-			if (should_free_lseg(lseg, &arg))
++			if (should_free_lseg(&lseg->range, &arg))
+ 				mark_lseg_invalid(lseg, &tmp_list);
+ 		/* Reference matched in nfs4_layoutreturn_release */
+ 		get_layout_hdr(lo);
+-- 
+1.7.2.1
 
