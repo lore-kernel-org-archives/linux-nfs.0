@@ -1,361 +1,176 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:62210 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33439 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751089Ab0KJE0s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Nov 2010 23:26:48 -0500
-Subject: Re: [PATCH] nfs-utils: nfsstat: has_stats() does not function
- correctly for NFSv4 client stats
-From: Harshula Jayasuriya <harshula@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org, Steve Dickson <steved@redhat.com>
-In-Reply-To: <33A5EC88-8770-4E5D-809A-28926ED3C5EC@oracle.com>
-References: <1289328603.9490.18.camel@serendib>
-	 <33A5EC88-8770-4E5D-809A-28926ED3C5EC@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 10 Nov 2010 15:26:40 +1100
-Message-ID: <1289363200.9490.24.camel@serendib>
+	id S1752449Ab0KDPWw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Nov 2010 11:22:52 -0400
+Received: from localhost.localdomain (dnsindia.hq.netapp.com [10.58.52.94] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oA4FMYMR029583
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Nov 2010 08:22:41 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 05/18] pnfs-submit: layoutreturn' rpc_call_op functions need to handle bulk returns
+Date: Thu,  4 Nov 2010 11:22:18 -0400
+Message-Id: <1288884151-11128-6-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
+References: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi Chuck,
+nfs4_proc_layoutreturn and its descendants were assuming that
+inode and lo were always available, but that is not true in the
+case of a bulk return.
 
-Are you referring to /proc/self/mountstats? I didn't know about it.
-nfsstat's get_stats() would have to be re-written. I can add that to my
-TODO list, but not sure when I'll get to it. In the meantime, this patch
-will fix the previously mentioned bugs and make the existing code a
-little clearer.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/callback_proc.c  |    1 +
+ fs/nfs/nfs4proc.c       |   37 ++++++++++++++++++-------------------
+ fs/nfs/pnfs.c           |    4 +++-
+ include/linux/nfs_xdr.h |    1 +
+ 4 files changed, 23 insertions(+), 20 deletions(-)
 
-cya,
-#
-
-On Tue, 2010-11-09 at 14:29 -0500, Chuck Lever wrote:
-> Hi-
-> 
-> Why not use mountstats?  The /proc/net/rpc/nfs is destined for deprecation, I thought.
-> 
-> On Nov 9, 2010, at 1:50 PM, Harshula Jayasuriya wrote:
-> 
-> > Hi,
-> > 
-> > The NFSv4 client procs/ops in "struct rpc_procinfo nfs4_procedures" is
-> > used to generate the NFS client stats interface:
-> > ------------------------------------------------------------
-> > # cat /proc/net/rpc/nfs 
-> > net 0 0 0 0
-> > rpc 15 0 0
-> > proc2 18 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-> > proc3 22 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 2 1 0
-> > proc4 42 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0
-> > 0 0 0
-> > 0 0 0 0 0 0 0
-> > ------------------------------------------------------------
-> > Note, for proc4, the number 42. That is the number of stats that follow
-> > on the same line. Currently nfsstat's has_stats() relies on this number
-> > to be equal to CLTPROC4_SZ. Unfortunately this is not the case. I have
-> > changed has_stats() not to rely on these two values being equal. This
-> > should also allow nfsstat to work with different kernel versions that
-> > expose a different number of NFS client ops.
-> > 
-> > * Fix has_stats()
-> > * Stop print_clnt_list() printing server stats!
-> > * Describe the option -3 and -4 completely in the nfsstat manpage.
-> > 
-> > Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
-> > ---
-> > utils/nfsstat/nfsstat.c   |  124 ++++++++++++++++++++-------------------------
-> > utils/nfsstat/nfsstat.man |    6 ++-
-> > 2 files changed, 59 insertions(+), 71 deletions(-)
-> > 
-> > diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-> > index bacef8e..f31bb81 100644
-> > --- a/utils/nfsstat/nfsstat.c
-> > +++ b/utils/nfsstat/nfsstat.c
-> > @@ -46,7 +46,7 @@ static unsigned int	cltproc3info[CLTPROC3_SZ+2],
-> > static unsigned int	srvproc4info[SRVPROC4_SZ+2],
-> > 			srvproc4info_old[SRVPROC4_SZ+2];	/* NFSv4 call counts ([0] == 2) */
-> > static unsigned int	cltproc4info[CLTPROC4_SZ+2],
-> > -			cltproc4info_old[CLTPROC4_SZ+2];	/* NFSv4 call counts ([0] == 48) */
-> > +			cltproc4info_old[CLTPROC4_SZ+2];	/* NFSv4 call counts ([0] == 49) */
-> > static unsigned int	srvproc4opsinfo[SRVPROC4OPS_SZ+2],
-> > 			srvproc4opsinfo_old[SRVPROC4OPS_SZ+2];	/* NFSv4 call counts ([0] == 59) */
-> > static unsigned int	srvnetinfo[5], srvnetinfo_old[5];	/* 0  # of received packets
-> > @@ -221,8 +221,8 @@ DECLARE_CLT(cltinfo);
-> > DECLARE_CLT(cltinfo, _old);
-> > 
-> > static void		print_all_stats(int, int, int);
-> > -static void		print_server_stats(int, int);
-> > -static void		print_client_stats(int, int);
-> > +static void		print_server_stats(int);
-> > +static void		print_client_stats(int);
-> > static void		print_stats_list(int, int, int);
-> > static void		print_numbers(const char *, unsigned int *,
-> > 					unsigned int);
-> > @@ -239,7 +239,7 @@ static int		mounts(const char *);
-> > 
-> > static void		get_stats(const char *, struct statinfo *, int *, int,
-> > 					int);
-> > -static int		has_stats(const unsigned int *);
-> > +static int		has_stats(const unsigned int *, int);
-> > static int		has_rpcstats(const unsigned int *, int);
-> > static void 		diff_stats(struct statinfo *, struct statinfo *, int);
-> > static void 		unpause(int);
-> > @@ -468,7 +468,7 @@ main(int argc, char **argv)
-> > 		pause();
-> > 	}
-> > 
-> > -	if (opt_since || opt_sleep) {
-> > +	if (opt_since || (opt_sleep && !sleep_time)) {
-> > 		if (opt_srv) {
-> > 			get_stats(NFSSRVSTAT, serverinfo_tmp, &opt_srv, opt_clt, 1);
-> > 			diff_stats(serverinfo_tmp, serverinfo, 1);
-> > @@ -516,16 +516,16 @@ main(int argc, char **argv)
-> > static void
-> > print_all_stats (int opt_srv, int opt_clt, int opt_prt)
-> > {
-> > -	print_server_stats(opt_srv, opt_prt);
-> > -	print_client_stats(opt_clt, opt_prt);
-> > +	if (opt_srv)
-> > +		print_server_stats(opt_prt);
-> > +
-> > +	if (opt_clt)
-> > +		print_client_stats(opt_prt);
-> > }
-> > 
-> > static void 
-> > -print_server_stats(int opt_srv, int opt_prt) 
-> > +print_server_stats(int opt_prt) 
-> > {
-> > -	if (!opt_srv)
-> > -		return;
-> > -
-> > 	if (opt_prt & PRNT_NET) {
-> > 		if (opt_sleep && !has_rpcstats(srvnetinfo, 4)) {
-> > 		} else {
-> > @@ -582,31 +582,29 @@ print_server_stats(int opt_srv, int opt_prt)
-> > 		printf("\n");
-> > 	}
-> > 	if (opt_prt & PRNT_CALLS) {
-> > +		int has_v2_stats = has_stats(srvproc2info, SRVPROC2_SZ+2);
-> > +		int has_v3_stats = has_stats(srvproc3info, SRVPROC3_SZ+2);
-> > +		int has_v4_stats = has_stats(srvproc4info, SRVPROC4_SZ+2);
-> > +
-> > 		if ((opt_prt & PRNT_V2) || 
-> > -				((opt_prt & PRNT_AUTO) && has_stats(srvproc2info))) {
-> > -			if (opt_sleep && !has_stats(srvproc2info)) {
-> > -				;
-> > -			} else {
-> > +				((opt_prt & PRNT_AUTO) && has_v2_stats)) {
-> > +			if (!opt_sleep || has_v2_stats) {
-> > 				print_callstats(LABEL_srvproc2,
-> > 					nfsv2name, srvproc2info + 1, 
-> > 					sizeof(nfsv2name)/sizeof(char *));
-> > 			}
-> > 		}
-> > 		if ((opt_prt & PRNT_V3) || 
-> > -				((opt_prt & PRNT_AUTO) && has_stats(srvproc3info))) {
-> > -			if (opt_sleep && !has_stats(srvproc3info)) {
-> > -				;
-> > -			} else {
-> > +				((opt_prt & PRNT_AUTO) && has_v3_stats)) {
-> > +			if (!opt_sleep || has_v3_stats) {
-> > 				print_callstats(LABEL_srvproc3,
-> > 					nfsv3name, srvproc3info + 1, 
-> > 					sizeof(nfsv3name)/sizeof(char *));
-> > 			}
-> > 		}
-> > 		if ((opt_prt & PRNT_V4) || 
-> > -				((opt_prt & PRNT_AUTO) && has_stats(srvproc4info))) {
-> > -			if (opt_sleep && !has_stats(srvproc4info)) {
-> > -				;
-> > -			} else {
-> > +				((opt_prt & PRNT_AUTO) && has_v4_stats)) {
-> > +			if (!opt_sleep || has_v4_stats) {
-> > 				print_callstats( LABEL_srvproc4,
-> > 					nfssrvproc4name, srvproc4info + 1, 
-> > 					sizeof(nfssrvproc4name)/sizeof(char *));
-> > @@ -618,11 +616,8 @@ print_server_stats(int opt_srv, int opt_prt)
-> > 	}
-> > }
-> > static void
-> > -print_client_stats(int opt_clt, int opt_prt) 
-> > +print_client_stats(int opt_prt) 
-> > {
-> > -	if (!opt_clt)
-> > -		return;
-> > -
-> > 	if (opt_prt & PRNT_NET) {
-> > 		if (opt_sleep && !has_rpcstats(cltnetinfo, 4)) {
-> > 			;
-> > @@ -644,31 +639,28 @@ print_client_stats(int opt_clt, int opt_prt)
-> > 		}
-> > 	}
-> > 	if (opt_prt & PRNT_CALLS) {
-> > +		int has_v2_stats = has_stats(cltproc2info, CLTPROC2_SZ+2);
-> > +		int has_v3_stats = has_stats(cltproc3info, CLTPROC3_SZ+2);
-> > +		int has_v4_stats = has_stats(cltproc4info, CLTPROC4_SZ+2);
-> > 		if ((opt_prt & PRNT_V2) || 
-> > -				((opt_prt & PRNT_AUTO) && has_stats(cltproc2info))) {
-> > -			if (opt_sleep && !has_stats(cltproc2info)) {
-> > -				;
-> > -			} else {
-> > +				((opt_prt & PRNT_AUTO) && has_v2_stats)) {
-> > +			if (!opt_sleep || has_v2_stats) {
-> > 				print_callstats(LABEL_cltproc2,
-> > 					nfsv2name, cltproc2info + 1,  
-> > 					sizeof(nfsv2name)/sizeof(char *));
-> > 			}
-> > 		}
-> > 		if ((opt_prt & PRNT_V3) || 
-> > -				((opt_prt & PRNT_AUTO) && has_stats(cltproc3info))) {
-> > -			if (opt_sleep && !has_stats(cltproc3info)) {
-> > -				;
-> > -			} else {
-> > +				((opt_prt & PRNT_AUTO) && has_v3_stats)) {
-> > +			if (!opt_sleep || has_v3_stats) {
-> > 				print_callstats(LABEL_cltproc3,
-> > 					nfsv3name, cltproc3info + 1, 
-> > 					sizeof(nfsv3name)/sizeof(char *));
-> > 			}
-> > 		}
-> > 		if ((opt_prt & PRNT_V4) || 
-> > -				((opt_prt & PRNT_AUTO) && has_stats(cltproc4info))) {
-> > -			if (opt_sleep && !has_stats(cltproc4info)) {
-> > -				;
-> > -			} else {
-> > +				((opt_prt & PRNT_AUTO) && has_v4_stats)) {
-> > +			if (!opt_sleep || has_v4_stats) {
-> > 				print_callstats(LABEL_cltproc4,
-> > 					nfscltproc4name, cltproc4info + 1,  
-> > 					sizeof(nfscltproc4name)/sizeof(char *));
-> > @@ -681,34 +673,28 @@ static void
-> > print_clnt_list(int opt_prt) 
-> > {
-> > 	if (opt_prt & PRNT_CALLS) {
-> > +		int has_v2_stats = has_stats(cltproc2info, CLTPROC2_SZ+2);
-> > +		int has_v3_stats = has_stats(cltproc3info, CLTPROC3_SZ+2);
-> > +		int has_v4_stats = has_stats(cltproc4info, CLTPROC4_SZ+2);
-> > 		if ((opt_prt & PRNT_V2) || 
-> > -				((opt_prt & PRNT_AUTO) && has_stats(cltproc2info))) {
-> > -			if (opt_sleep && !has_stats(cltproc2info)) {
-> > -				;
-> > -			} else {
-> > +				((opt_prt & PRNT_AUTO) && has_v2_stats)) {
-> > +			if (!opt_sleep || has_v2_stats) {
-> > 				print_callstats_list("nfs v2 client",
-> > 					nfsv2name, cltproc2info + 1,  
-> > 					sizeof(nfsv2name)/sizeof(char *));
-> > 			}
-> > 		}
-> > 		if ((opt_prt & PRNT_V3) || 
-> > -				((opt_prt & PRNT_AUTO) && has_stats(cltproc3info))) {
-> > -			if (opt_sleep && !has_stats(cltproc3info)) {
-> > -				;
-> > -			} else { 
-> > +				((opt_prt & PRNT_AUTO) && has_v3_stats)) {
-> > +			if (!opt_sleep || has_v3_stats) {
-> > 				print_callstats_list("nfs v3 client",
-> > 					nfsv3name, cltproc3info + 1, 
-> > 					sizeof(nfsv3name)/sizeof(char *));
-> > 			}
-> > 		}
-> > 		if ((opt_prt & PRNT_V4) || 
-> > -				((opt_prt & PRNT_AUTO) && has_stats(cltproc4info))) {
-> > -			if (opt_sleep && !has_stats(cltproc4info)) {
-> > -				;
-> > -			} else {
-> > -				print_callstats_list("nfs v4 ops",
-> > -					nfssrvproc4opname, srvproc4opsinfo + 1, 
-> > -					sizeof(nfssrvproc4opname)/sizeof(char *));
-> > +				((opt_prt & PRNT_AUTO) && has_v4_stats)) {
-> > +			if (!opt_sleep || has_v4_stats) {
-> > 				print_callstats_list("nfs v4 client",
-> > 					nfscltproc4name, cltproc4info + 1,  
-> > 					sizeof(nfscltproc4name)/sizeof(char *));
-> > @@ -720,32 +706,32 @@ static void
-> > print_serv_list(int opt_prt) 
-> > {
-> > 	if (opt_prt & PRNT_CALLS) {
-> > +		int has_v2_stats = has_stats(srvproc2info, SRVPROC2_SZ+2);
-> > +		int has_v3_stats = has_stats(srvproc3info, SRVPROC3_SZ+2);
-> > +		int has_v4_stats = has_stats(srvproc4info, SRVPROC4_SZ+2);
-> > 		if ((opt_prt & PRNT_V2) || 
-> > -				((opt_prt & PRNT_AUTO) && has_stats(srvproc2info))) {
-> > -			if (opt_sleep && !has_stats(srvproc2info)) {
-> > -				;
-> > -			} else {
-> > +				((opt_prt & PRNT_AUTO) && has_v2_stats)) {
-> > +			if (!opt_sleep || has_v2_stats) {
-> > 				print_callstats_list("nfs v2 server",
-> > 					nfsv2name, srvproc2info + 1, 
-> > 					sizeof(nfsv2name)/sizeof(char *));
-> > 			}
-> > 		}
-> > 		if ((opt_prt & PRNT_V3) || 
-> > -				((opt_prt & PRNT_AUTO) && has_stats(srvproc3info))) {
-> > -			if (opt_sleep && !has_stats(srvproc3info)) {
-> > -				;
-> > -			} else {
-> > +				((opt_prt & PRNT_AUTO) && has_v3_stats)) {
-> > +			if (!opt_sleep || has_v3_stats) {
-> > 				print_callstats_list("nfs v3 server",
-> > 					nfsv3name, srvproc3info + 1, 
-> > 					sizeof(nfsv3name)/sizeof(char *));
-> > 			}
-> > 		}
-> > 		if ((opt_prt & PRNT_V4) || 
-> > -				((opt_prt & PRNT_AUTO) && has_stats(srvproc4opsinfo))) {
-> > -			if (opt_sleep && !has_stats(srvproc4info)) {
-> > -				;
-> > -			} else {
-> > -				print_callstats_list("nfs v4 ops",
-> > +				((opt_prt & PRNT_AUTO) && has_v4_stats)) {
-> > +			if (!opt_sleep || has_v4_stats) {
-> > +				print_callstats_list("nfs v4 server",
-> > +					nfssrvproc4name, srvproc4info + 1, 
-> > +					sizeof(nfssrvproc4name)/sizeof(char *));
-> > +				print_callstats_list("nfs v4 servop",
-> > 					nfssrvproc4opname, srvproc4opsinfo + 1, 
-> > 					sizeof(nfssrvproc4opname)/sizeof(char *));
-> > 			}
-> > @@ -1054,9 +1040,9 @@ out:
-> >  * there are stats if the sum's greater than the entry-count.
-> >  */
-> > static int
-> > -has_stats(const unsigned int *info)
-> > +has_stats(const unsigned int *info, int nr)
-> > {
-> > -	return (info[0] && info[info[0] + 1] > info[0]);
-> > +	return (info[0] && info[nr-1] > info[0]);
-> > }
-> > static int
-> > has_rpcstats(const unsigned int *info, int size)
-> > diff --git a/utils/nfsstat/nfsstat.man b/utils/nfsstat/nfsstat.man
-> > index 52215a9..cd573b0 100644
-> > --- a/utils/nfsstat/nfsstat.man
-> > +++ b/utils/nfsstat/nfsstat.man
-> > @@ -30,10 +30,12 @@ Print only NFS v2 statistics. The default is to only print information
-> > about the versions of \fBNFS\fR that have non-zero counts.
-> > .TP
-> > .B \-3
-> > -Print only NFS v3 statistics. 
-> > +Print only NFS v3 statistics. The default is to only print information
-> > +about the versions of \fBNFS\fR that have non-zero counts.
-> > .TP
-> > .B \-4
-> > -Print only NFS v4 statistics. 
-> > +Print only NFS v4 statistics. The default is to only print information
-> > +about the versions of \fBNFS\fR that have non-zero counts.
-> > .TP
-> > .B \-m, \-\-mounts
-> > Print information about each of the mounted \fBNFS\fR file systems.
-> > -- 
-> > 1.7.3.2
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 3e022a8..53a85648 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -284,6 +284,7 @@ static int pnfs_recall_layout(void *data)
+ 	lrp->args.reclaim = 0;
+ 	lrp->args.layout_type = rl.cbl_layout_type;
+ 	lrp->args.return_type = rl.cbl_recall_type;
++	lrp->clp = clp;
+ 	lrp->args.range = rl.cbl_seg;
+ 	lrp->args.inode = inode;
+ 	nfs4_proc_layoutreturn(lrp, true);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 73bd44e..8d3965c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5557,23 +5557,23 @@ static void
+ nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_layoutreturn *lrp = calldata;
+-	struct inode *ino = lrp->args.inode;
+-	struct nfs_inode *nfsi = NFS_I(ino);
+-	struct nfs_server *server = NFS_SERVER(ino);
+ 
+ 	dprintk("--> %s\n", __func__);
+-	if ((lrp->args.return_type == RETURN_FILE) &&
+-	    pnfs_return_layout_barrier(nfsi, &lrp->args.range)) {
+-		dprintk("%s: waiting on barrier\n", __func__);
+-		rpc_sleep_on(&nfsi->lo_rpcwaitq, task, NULL);
+-		return;
++	if (lrp->args.return_type == RETURN_FILE) {
++		struct nfs_inode *nfsi = NFS_I(lrp->args.inode);
++
++		if (pnfs_return_layout_barrier(nfsi, &lrp->args.range)) {
++			dprintk("%s: waiting on barrier\n", __func__);
++			rpc_sleep_on(&nfsi->lo_rpcwaitq, task, NULL);
++			return;
++		}
+ 	}
+ 	if (lrp->stateid) {
+ 		/* Forget the layout, without sending the return */
+ 		rpc_exit(task, 0);
+ 		return;
+ 	}
+-	if (nfs4_setup_sequence(server, NULL, &lrp->args.seq_args,
++	if (nfs41_setup_sequence(lrp->clp->cl_session, &lrp->args.seq_args,
+ 				&lrp->res.seq_res, 0, task))
+ 		return;
+ 	rpc_call_start(task);
+@@ -5582,8 +5582,7 @@ nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
+ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_layoutreturn *lrp = calldata;
+-	struct inode *ino = lrp->args.inode;
+-	struct nfs_server *server = NFS_SERVER(ino);
++	struct nfs_server *server;
+ 
+ 	dprintk("--> %s\n", __func__);
+ 
+@@ -5593,8 +5592,12 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ 	if (RPC_ASSASSINATED(task))
+ 		return;
+ 
+-	if (nfs4_async_handle_error(task, server, NULL, NULL) == -EAGAIN)
+-		nfs_restart_rpc(task, server->nfs_client);
++	if (lrp->args.return_type == RETURN_FILE)
++		server = NFS_SERVER(lrp->args.inode);
++	else
++		server = NULL;
++	if (nfs4_async_handle_error(task, server, NULL, lrp->clp) == -EAGAIN)
++		nfs_restart_rpc(task, lrp->clp);
+ 
+ 	dprintk("<-- %s\n", __func__);
+ }
+@@ -5602,10 +5605,8 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ static void nfs4_layoutreturn_release(void *calldata)
+ {
+ 	struct nfs4_layoutreturn *lrp = calldata;
+-	struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
+ 
+-	dprintk("--> %s return_type %d lo %p\n", __func__,
+-		lrp->args.return_type, lo);
++	dprintk("--> %s return_type %d\n", __func__, lrp->args.return_type);
+ 
+ 	pnfs_layoutreturn_release(lrp);
+ 	kfree(calldata);
+@@ -5620,8 +5621,6 @@ static const struct rpc_call_ops nfs4_layoutreturn_call_ops = {
+ 
+ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool issync)
+ {
+-	struct inode *ino = lrp->args.inode;
+-	struct nfs_server *server = NFS_SERVER(ino);
+ 	struct rpc_task *task;
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTRETURN],
+@@ -5629,7 +5628,7 @@ int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool issync)
+ 		.rpc_resp = &lrp->res,
+ 	};
+ 	struct rpc_task_setup task_setup_data = {
+-		.rpc_client = server->client,
++		.rpc_client = lrp->clp->cl_rpcclient,
+ 		.rpc_message = &msg,
+ 		.callback_ops = &nfs4_layoutreturn_call_ops,
+ 		.callback_data = lrp,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 01ecb95..34f6914 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -590,10 +590,11 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+ void
+ pnfs_layoutreturn_release(struct nfs4_layoutreturn *lrp)
+ {
+-	struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
++	struct pnfs_layout_hdr *lo;
+ 
+ 	if (lrp->args.return_type != RETURN_FILE)
+ 		return;
++	lo = NFS_I(lrp->args.inode)->layout;
+ 	spin_lock(&lrp->args.inode->i_lock);
+ 	if (!lrp->res.valid)
+ 		;	/* forgetful model internal release */
+@@ -630,6 +631,7 @@ return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 	lrp->args.range = *range;
+ 	lrp->args.inode = ino;
+ 	lrp->stateid = stateid;
++	lrp->clp = server->nfs_client;
+ 
+ 	status = nfs4_proc_layoutreturn(lrp, wait);
+ out:
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 1ff6cb0..0ee7cce 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -280,6 +280,7 @@ struct nfs4_layoutreturn {
+ 	struct nfs4_layoutreturn_res res;
+ 	struct rpc_cred *cred;
+ 	const nfs4_stateid *stateid;
++	struct nfs_client *clp;
+ 	int rpc_status;
+ };
+ 
+-- 
+1.7.2.1
 
