@@ -1,224 +1,320 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42871 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:33429 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932089Ab0KLTAK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Nov 2010 14:00:10 -0500
-Date: Fri, 12 Nov 2010 14:00:03 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Neil Brown <neilb@suse.de>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        Menyhart Zoltan <Zoltan.Menyhart@bull.net>
-Subject: Re: [PATCH 1/4] svcrpc: never clear XPT_BUSY on dead xprt
-Message-ID: <20101112190002.GB32745@fieldses.org>
-References: <20101025202155.GD13523@fieldses.org>
- <20101026095836.61bf6a38@notabene>
- <20101025230331.GF13523@fieldses.org>
- <20101026105447.264b690e@notabene>
- <20101026001145.GG13523@fieldses.org>
- <20101026002858.GH13523@fieldses.org>
- <20101026003008.GI13523@fieldses.org>
- <20101026122820.1518ec7e@notabene>
- <20101026125947.GA19445@fieldses.org>
- <20101026160517.GC19445@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101026160517.GC19445@fieldses.org>
+	id S1752415Ab0KDPWv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Nov 2010 11:22:51 -0400
+Received: from localhost.localdomain (dnsindia.hq.netapp.com [10.58.52.94] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oA4FMYMP029583
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Nov 2010 08:22:40 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 03/18] pnfs-submit: remove _pnfs_can_return_lseg call from pnfs_clear_lseg_list
+Date: Thu,  4 Nov 2010 11:22:16 -0400
+Message-Id: <1288884151-11128-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
+References: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Oct 26, 2010 at 12:05:17PM -0400, J. Bruce Fields wrote:
-> On Tue, Oct 26, 2010 at 08:59:47AM -0400, J. Bruce Fields wrote:
-> > On Tue, Oct 26, 2010 at 12:28:20PM +1100, Neil Brown wrote:
-> > > On Mon, 25 Oct 2010 20:30:08 -0400
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > 
-> > > >     svcrpc: simplify svc_close_xprt, fix minor race
-> > > >     
-> > > >     We're assuming that in the XPT_BUSY case, somebody else will take care
-> > > >     of the close.  But that's not necessarily the case (e.g. if
-> > > >     svc_xprt_enqueue() exits due to a lack of write space).  So the close
-> > > >     could in theory be delayed indefinitely.  We should be calling
-> > > >     svc_xprt_enqueue() after every set of XPT_CLOSE.
-> > > >     
-> > > >     Also with svc_close_all() no longer relying on svc_close, it no longer
-> > > >     needs to be able to immediately do the svc_delete_xprt() itself.
-> > > >     
-> > > >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > > > 
-> > > > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> > > > index 8c018df..dfee123 100644
-> > > > --- a/net/sunrpc/svc_xprt.c
-> > > > +++ b/net/sunrpc/svc_xprt.c
-> > > > @@ -928,11 +928,7 @@ void svc_delete_xprt(struct svc_xprt *xprt)
-> > > >  void svc_close_xprt(struct svc_xprt *xprt)
-> > > >  {
-> > > >  	set_bit(XPT_CLOSE, &xprt->xpt_flags);
-> > > > -	if (test_and_set_bit(XPT_BUSY, &xprt->xpt_flags))
-> > > > -		/* someone else will have to effect the close */
-> > > > -		return;
-> > > > -
-> > > > -	svc_delete_xprt(xprt);
-> > > > +	svc_xprt_enqueue(xprt);
-> > > >  }
-> > > >  EXPORT_SYMBOL_GPL(svc_close_xprt);
-> > > >  
-> > > 
-> > > I'm not quite so sure about this one.
-> > > 
-> > > svc_close_xprt gets called when user-space writes some magic string to some
-> > > magic file.  This could be done when there are no active nfsd threads.
-> > > It is a bit far fetched, but you could tell nfsd to open a socket, then tell
-> > > it to close it, before telling it to start any threads.
-> > > 
-> > > In that case the socket would stay open until the first thread was started.
-> > 
-> > Thanks, that's an odd case, but I think you're right.  OK:
-> 
-> Actually.... I think the real race here is the fault of the write-space
-> check: once we've taken XPT_BUSY, we really do need to guarantee that
-> we'll arrange to have svc_xprt_enqueue() called again after clearing
-> XPT_BUSY, to avoid missing any events that arrived while we were
-> processing ours.  So putting the wspace check after taking XPT_BUSY in
-> svc_xprt_enqueue looks to me like a bug that could cause processing to
-> stall unnecessarily in some unlikely cases.
+Instead, have mark_invalid function that marks lseg invalid and
+removes the reference that holds it in the list.  Now when io is finished,
+the lseg will automatically be removed from the list.  This is
+at the heart of many of the upcoming cb_layoutrecall changes.
 
-I'm going to apply this for 2.6.38 if you can't think of a reason not
-to.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4xdr.c |    3 +-
+ fs/nfs/pnfs.c    |  145 ++++++++++++++++++++++++++++++++++-------------------
+ fs/nfs/pnfs.h    |    1 +
+ 3 files changed, 95 insertions(+), 54 deletions(-)
 
-(My one last-minute worry was whether there was some reason xpo_wspace()
-needed to be called with XPT_BUSY held; but I can't see any.)
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 238eeb2..6d9ef2b 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1915,8 +1915,7 @@ encode_layoutreturn(struct xdr_stream *xdr,
+ 		p = reserve_space(xdr, 16 + NFS4_STATEID_SIZE);
+ 		p = xdr_encode_hyper(p, args->range.offset);
+ 		p = xdr_encode_hyper(p, args->range.length);
+-		pnfs_get_layout_stateid(&stateid, NFS_I(args->inode)->layout,
+-					NULL);
++		pnfs_copy_layout_stateid(&stateid, NFS_I(args->inode)->layout);
+ 		p = xdr_encode_opaque_fixed(p, &stateid.data,
+ 					    NFS4_STATEID_SIZE);
+ 		p = reserve_space(xdr, 4);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3bbe3be..4e5c68b 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -272,10 +272,42 @@ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+ 	lseg->layout = lo;
+ }
+ 
++static void
++_put_lseg_common(struct pnfs_layout_segment *lseg)
++{
++	BUG_ON(lseg->valid == true);
++	list_del(&lseg->fi_list);
++	if (list_empty(&lseg->layout->segs)) {
++		struct nfs_client *clp;
++
++		clp = NFS_SERVER(lseg->layout->inode)->nfs_client;
++		spin_lock(&clp->cl_lock);
++		/* List does not take a reference, so no need for put here */
++		list_del_init(&lseg->layout->layouts);
++		spin_unlock(&clp->cl_lock);
++		pnfs_invalidate_layout_stateid(lseg->layout);
++	}
++	rpc_wake_up(&NFS_I(lseg->layout->inode)->lo_rpcwaitq);
++}
++
++/* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
++ * could sleep, so must be called outside of the lock.
++ */
++static void
++put_lseg_locked(struct pnfs_layout_segment *lseg,
++		struct list_head *tmp_list)
++{
++	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
++		atomic_read(&lseg->pls_refcount), lseg->valid);
++	if (atomic_dec_and_test(&lseg->pls_refcount)) {
++		_put_lseg_common(lseg);
++		list_add(&lseg->fi_list, tmp_list);
++	}
++}
++
+ void
+ put_lseg(struct pnfs_layout_segment *lseg)
+ {
+-	bool do_wake_up;
+ 	struct inode *ino;
+ 
+ 	if (!lseg)
+@@ -283,15 +315,14 @@ put_lseg(struct pnfs_layout_segment *lseg)
+ 
+ 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+ 		atomic_read(&lseg->pls_refcount), lseg->valid);
+-	do_wake_up = !lseg->valid;
+ 	ino = lseg->layout->inode;
+-	if (atomic_dec_and_test(&lseg->pls_refcount)) {
++	if (atomic_dec_and_lock(&lseg->pls_refcount, &ino->i_lock)) {
++		_put_lseg_common(lseg);
++		spin_unlock(&ino->i_lock);
+ 		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+ 		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
+ 		put_layout_hdr(ino);
+ 	}
+-	if (do_wake_up)
+-		rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq);
+ }
+ EXPORT_SYMBOL_GPL(put_lseg);
+ 
+@@ -314,10 +345,18 @@ should_free_lseg(struct pnfs_layout_segment *lseg,
+ 		lseg->range.iomode == range->iomode);
+ }
+ 
+-static bool
+-_pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
++static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
++			      struct list_head *tmp_list)
+ {
+-	return atomic_read(&lseg->pls_refcount) == 1;
++	assert_spin_locked(&lseg->layout->inode->i_lock);
++	if (lseg->valid) {
++		lseg->valid = false;
++		/* Remove the reference keeping the lseg in the
++		 * list.  It will now be removed when all
++		 * outstanding io is finished.
++		 */
++		put_lseg_locked(lseg, tmp_list);
++	}
+ }
+ 
+ static void
+@@ -330,42 +369,31 @@ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list,
+ 		__func__, lo, range->offset, range->length, range->iomode);
+ 
+ 	assert_spin_locked(&lo->inode->i_lock);
+-	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list) {
+-		if (!should_free_lseg(lseg, range) ||
+-		    !_pnfs_can_return_lseg(lseg))
+-			continue;
+-		dprintk("%s: freeing lseg %p iomode %d "
+-			"offset %llu length %llu\n", __func__,
+-			lseg, lseg->range.iomode, lseg->range.offset,
+-			lseg->range.length);
+-		list_move(&lseg->fi_list, tmp_list);
+-	}
+-	if (list_empty(&lo->segs)) {
+-		struct nfs_client *clp;
+-
+-		clp = NFS_SERVER(lo->inode)->nfs_client;
+-		spin_lock(&clp->cl_lock);
+-		/* List does not take a reference, so no need for put here */
+-		list_del_init(&lo->layouts);
+-		spin_unlock(&clp->cl_lock);
+-		pnfs_invalidate_layout_stateid(lo);
+-	}
+-
++	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list)
++		if (should_free_lseg(lseg, range)) {
++			dprintk("%s: freeing lseg %p iomode %d "
++				"offset %llu length %llu\n", __func__,
++				lseg, lseg->range.iomode, lseg->range.offset,
++				lseg->range.length);
++			mark_lseg_invalid(lseg, tmp_list);
++		}
+ 	dprintk("%s:Return\n", __func__);
+ }
+ 
+ static void
+-pnfs_free_lseg_list(struct list_head *tmp_list)
++pnfs_free_lseg_list(struct list_head *free_me)
+ {
+-	struct pnfs_layout_segment *lseg;
++	struct pnfs_layout_segment *lseg, *tmp;
++	struct inode *ino;
+ 
+-	while (!list_empty(tmp_list)) {
+-		lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
+-				fi_list);
+-		dprintk("%s calling put_lseg on %p\n", __func__, lseg);
+-		list_del(&lseg->fi_list);
+-		put_lseg(lseg);
++	list_for_each_entry_safe(lseg, tmp, free_me, fi_list) {
++		BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
++		ino = lseg->layout->inode;
++		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
++		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
++		put_layout_hdr(ino);
+ 	}
++	INIT_LIST_HEAD(free_me);
+ }
+ 
+ void
+@@ -463,6 +491,17 @@ pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
+ 	dprintk("<-- %s\n", __func__);
+ }
+ 
++/* Layoutreturn may use an invalid stateid, just copy what is there */
++void pnfs_copy_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo)
++{
++	int seq;
++
++	do {
++		seq = read_seqbegin(&lo->seqlock);
++		memcpy(dst->data, lo->stateid.data, sizeof(lo->stateid.data));
++	} while (read_seqretry(&lo->seqlock, seq));
++}
++
+ void
+ pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+ 			struct nfs4_state *open_state)
+@@ -546,25 +585,23 @@ has_layout_to_return(struct pnfs_layout_hdr *lo,
+ 	return out;
+ }
+ 
++/* Return true if there is layout based io in progress in the given range.
++ * Assumes range has already been marked invalid, and layout marked to
++ * prevent any new lseg from being inserted.
++ */
+ bool
+ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+ 			   struct pnfs_layout_range *range)
+ {
+-	struct pnfs_layout_segment *lseg;
++	struct pnfs_layout_segment *lseg, *tmp;
+ 	bool ret = false;
+ 
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+-	list_for_each_entry(lseg, &nfsi->layout->segs, fi_list) {
+-		if (!should_free_lseg(lseg, range))
+-			continue;
+-		lseg->valid = false;
+-		if (!_pnfs_can_return_lseg(lseg)) {
+-			dprintk("%s: wait on lseg %p refcount %d\n",
+-				__func__, lseg,
+-				atomic_read(&lseg->pls_refcount));
++	list_for_each_entry_safe(lseg, tmp, &nfsi->layout->segs, fi_list)
++		if (should_free_lseg(lseg, range)) {
+ 			ret = true;
++			break;
+ 		}
+-	}
+ 	spin_unlock(&nfsi->vfs_inode.i_lock);
+ 	dprintk("%s:Return %d\n", __func__, ret);
+ 	return ret;
+@@ -574,12 +611,10 @@ void
+ pnfs_layoutreturn_release(struct nfs4_layoutreturn *lrp)
+ {
+ 	struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
+-	LIST_HEAD(tmp_list);
+ 
+ 	if (lrp->args.return_type != RETURN_FILE)
+ 		return;
+ 	spin_lock(&lrp->args.inode->i_lock);
+-	pnfs_clear_lseg_list(lo, &tmp_list, &lrp->args.range);
+ 	if (!lrp->res.valid)
+ 		;	/* forgetful model internal release */
+ 	else if (!lrp->res.lrs_present)
+@@ -588,7 +623,6 @@ pnfs_layoutreturn_release(struct nfs4_layoutreturn *lrp)
+ 		pnfs_set_layout_stateid(lo, &lrp->res.stateid);
+ 	put_layout_hdr_locked(lo); /* Matched in _pnfs_return_layout */
+ 	spin_unlock(&lrp->args.inode->i_lock);
+-	pnfs_free_lseg_list(&tmp_list);
+ }
+ 
+ static int
+@@ -641,7 +675,11 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 	arg.offset = 0;
+ 	arg.length = NFS4_MAX_UINT64;
+ 
++	/* probably should BUGON if type != RETURN_FILE */
+ 	if (type == RETURN_FILE) {
++		LIST_HEAD(tmp_list);
++		struct pnfs_layout_segment *lseg, *tmp;
++
+ 		spin_lock(&ino->i_lock);
+ 		lo = nfsi->layout;
+ 		if (lo && !has_layout_to_return(lo, &arg))
+@@ -652,10 +690,13 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 			goto out;
+ 		}
+ 
++		list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
++			if (should_free_lseg(lseg, &arg))
++				mark_lseg_invalid(lseg, &tmp_list);
+ 		/* Reference matched in pnfs_layoutreturn_release */
+ 		get_layout_hdr_locked(lo);
+-
+ 		spin_unlock(&ino->i_lock);
++		pnfs_free_lseg_list(&tmp_list);
+ 
+ 		if (layoutcommit_needed(nfsi)) {
+ 			if (stateid && !wait) { /* callback */
+@@ -1171,7 +1212,7 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ 	nfsi->layout->write_end_pos = 0;
+ 	nfsi->layout->cred = NULL;
+ 	__clear_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->state);
+-	pnfs_get_layout_stateid(&data->args.stateid, nfsi->layout, NULL);
++	pnfs_copy_layout_stateid(&data->args.stateid, nfsi->layout);
+ 
+ 	/* Reference for layoutcommit matched in pnfs_layoutcommit_release */
+ 	get_layout_hdr_locked(NFS_I(inode)->layout);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 05dd5e0..000acf0 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -206,6 +206,7 @@ void pnfs_layoutreturn_release(struct nfs4_layoutreturn *lpr);
+ void pnfs_destroy_layout(struct nfs_inode *);
+ void pnfs_destroy_all_layouts(struct nfs_client *);
+ void put_layout_hdr(struct inode *inode);
++void pnfs_copy_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo);
+ void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+ 			     struct nfs4_state *open_state);
+ 
+-- 
+1.7.2.1
 
---b.
-
-> 
-> --b.
-> 
-> commit cf501cb479873d6e77abba131ea40c11aa924d72
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue Oct 26 11:32:03 2010 -0400
-> 
->     svcrpc: fix wspace-checking race
->     
->     We call svc_xprt_enqueue() after something happens which we think may
->     require handling from a server thread.  To avoid such events being lost,
->     svc_xprt_enqueue() must guarantee that there will be a svc_serv() call
->     from a server thread following any such event.  It does that by either
->     waking up a server thread itself, or checking that XPT_BUSY is set (in
->     which case somebody else is doing it).
->     
->     But the check of XPT_BUSY could occur just as someone finishes
->     processing some other event, and just before they clear XPT_BUSY.
->     
->     Therefore it's important not to clear XPT_BUSY without subsequently
->     doing another svc_export_enqueue() to check whether the xprt should be
->     requeued.
->     
->     The xpo_wspace() check in svc_xprt_enqueue() breaks this rule, allowing
->     an event to be missed in situations like:
->     
->     	data arrives
->     	call svc_tcp_data_ready():
->     	call svc_xprt_enqueue():
->     	set BUSY
->     	find no write space
->     				svc_reserve():
->     				free up write space
->     				call svc_enqueue():
->     				test BUSY
->     	clear BUSY
->     
->     So, instead, check wspace in the same places that the state flags are
->     checked: before taking BUSY, and in svc_receive().
->     
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> index d2261fe..9c690fa 100644
-> --- a/include/linux/sunrpc/svc_xprt.h
-> +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -92,12 +92,17 @@ static inline void unregister_xpt_user(struct svc_xprt *xpt, struct svc_xpt_user
->  static inline int register_xpt_user(struct svc_xprt *xpt, struct svc_xpt_user *u)
->  {
->  	spin_lock(&xpt->xpt_lock);
-> -	list_add(&u->list, &xpt->xpt_users);
-> -	spin_unlock(&xpt->xpt_lock);
->  	if (test_bit(XPT_CLOSE, &xpt->xpt_flags)) {
-> -		unregister_xpt_user(xpt, u);
-> +		/*
-> +		 * The connection is about to be deleted soon (or,
-> +		 * worse, may already be deleted--in which case we've
-> +		 * already notified the xpt_users).
-> +		 */
-> +		spin_unlock(&xpt->xpt_lock);
->  		return -ENOTCONN;
->  	}
-> +	list_add(&u->list, &xpt->xpt_users);
-> +	spin_unlock(&xpt->xpt_lock);
->  	return 0;
->  }
->  
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 99996ad..04238a9 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -302,6 +302,15 @@ static void svc_thread_dequeue(struct svc_pool *pool, struct svc_rqst *rqstp)
->  	list_del(&rqstp->rq_list);
->  }
->  
-> +static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
-> +{
-> +	if (xprt->xpt_flags & ((1<<XPT_CONN)|(1<<XPT_CLOSE)))
-> +		return true;
-> +	if (xprt->xpt_flags & ((1<<XPT_DATA)|(1<<XPT_DEFERRED)))
-> +		return xprt->xpt_ops->xpo_has_wspace(xprt);
-> +	return false;
-> +}
-> +
->  /*
->   * Queue up a transport with data pending. If there are idle nfsd
->   * processes, wake 'em up.
-> @@ -314,8 +323,7 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
->  	struct svc_rqst	*rqstp;
->  	int cpu;
->  
-> -	if (!(xprt->xpt_flags &
-> -	      ((1<<XPT_CONN)|(1<<XPT_DATA)|(1<<XPT_CLOSE)|(1<<XPT_DEFERRED))))
-> +	if (!svc_xprt_has_something_to_do(xprt))
->  		return;
->  
->  	cpu = get_cpu();
-> @@ -345,25 +353,6 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
->  	BUG_ON(xprt->xpt_pool != NULL);
->  	xprt->xpt_pool = pool;
->  
-> -	/* Handle pending connection */
-> -	if (test_bit(XPT_CONN, &xprt->xpt_flags))
-> -		goto process;
-> -
-> -	/* Handle close in-progress */
-> -	if (test_bit(XPT_CLOSE, &xprt->xpt_flags))
-> -		goto process;
-> -
-> -	/* Check if we have space to reply to a request */
-> -	if (!xprt->xpt_ops->xpo_has_wspace(xprt)) {
-> -		/* Don't enqueue while not enough space for reply */
-> -		dprintk("svc: no write space, transport %p  not enqueued\n",
-> -			xprt);
-> -		xprt->xpt_pool = NULL;
-> -		clear_bit(XPT_BUSY, &xprt->xpt_flags);
-> -		goto out_unlock;
-> -	}
-> -
-> - process:
->  	if (!list_empty(&pool->sp_threads)) {
->  		rqstp = list_entry(pool->sp_threads.next,
->  				   struct svc_rqst,
-> @@ -744,7 +733,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
->  			spin_unlock_bh(&serv->sv_lock);
->  			svc_xprt_received(newxpt);
->  		}
-> -	} else {
-> +	} else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {
->  		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
->  			rqstp, pool->sp_id, xprt,
->  			atomic_read(&xprt->xpt_ref.refcount));
