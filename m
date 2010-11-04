@@ -1,56 +1,303 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from netnation.com ([204.174.223.2]:47087 "EHLO peace.netnation.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751890Ab0KUGnB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 21 Nov 2010 01:43:01 -0500
-Date: Sat, 20 Nov 2010 22:43:01 -0800
-From: Simon Kirby <sim@hostway.ca>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS client/sunrpc getting stuck on 2.6.36
-Message-ID: <20101121064301.GB3285@hostway.ca>
-References: <20101111023520.GH16939@hostway.ca> <1289452967.4062.10.camel@heimdal.trondhjem.org> <20101119202004.GA3270@hostway.ca> <1290201888.3135.61.camel@heimdal.trondhjem.org> <20101119220356.GB3270@hostway.ca> <1290205039.3135.74.camel@heimdal.trondhjem.org> <20101119225803.GC3270@hostway.ca> <1290208645.3135.88.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1290208645.3135.88.camel@heimdal.trondhjem.org>
+Received: from mx2.netapp.com ([216.240.18.37]:33432 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752355Ab0KDPWz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Nov 2010 11:22:55 -0400
+Received: from localhost.localdomain (dnsindia.hq.netapp.com [10.58.52.94] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oA4FMYMc029583
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Nov 2010 08:22:49 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 16/18] pnfs-submit refactor layoutcommit xdr structures
+Date: Thu,  4 Nov 2010 11:22:29 -0400
+Message-Id: <1288884151-11128-17-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
+References: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Nov 19, 2010 at 06:17:25PM -0500, Trond Myklebust wrote:
+From: Andy Adamson <andros@netapp.com>
 
-> On Fri, 2010-11-19 at 14:58 -0800, Simon Kirby wrote:
-> > On Fri, Nov 19, 2010 at 05:17:19PM -0500, Trond Myklebust wrote:
-> > > So what were all the 
-> > > 
-> > > 'lockd: server 10.10.52.xxx not responding, still trying'
-> > > 
-> > > messages all about? There were quite a few of them for a number of
-> > > different servers in the moments leading up to the hang. Could it be a
-> > > problem with the switch these clients are attached to?
-> > 
-> > If it were a switch problem, would we see port 2049 socket backlogs with
-> > netstat -tan or ss -tan?  I haven't seen this at all when the problem
-> > occurs.  All of the sockets are idle (and usually it seems to close them
-> > all except the one server that all of the slots are stuck on).  tcpdump
-> > shows no problems, just very slow requests rates that match the rpc/nfs
-> > debugging.
-> 
-> No retransmits that might indicate dropped packets at the switch? How
-> fast are the tcp ACKs from the server being returned?
+Separate the layoutcommit operation args from the layoutcommit compound args
+in preparation to add the layoutcommit operation to the close compound
+when return-on-close set and layoutcommit is needed prior to the layoutreturn.
 
-That tcpdump I sent included the ACKs, which all looked normal.
-Unfortunately, we haven't seen the problem again yet.  Is your "Fix an
-infinite loop in call_refresh/call_refreshresult" patch possibly related?
+ - Move pnfs_layoutcommit_arg inode to pnfs_layoutcommit_data because it is
+not needed for encode_layoutcommit.
 
-> > If the rpc slots are stuck full, would that cause lockd to print those
-> > timeouts?
-> 
-> Yes. That would be the only kind of event that would trigger these
-> messages.
+ - Move pnfs_layoutcommit_data rpc_cred to pnfs_layoutcommit_arg so that
+pnfs_layoutcommit_setup can be called with pnfs_layoutcommit_arg only.
 
-and in this case, rpcinto -t and -u should look normal, I would assume,
-unless there is a switch/network issue?
+ - Move layoutcommit operation fields from pnfs_layoutcommit_arg to a new
+struct nfs_layoutcommit_op_args which is passed to encode_layoutcommit.
 
-Still waiting for it to occur again to try those commands.
+This new structure will also be used for embedded layoutcommit calls.
 
-Simon-
+Remove unused fields:
+ - Remove unused pnfs_layoutcommit_data rpc_task.
+ - Remove unused  pnfs_layoutcommit_arg time_modify_changed and time_modify.
+ - Remove unused pnfs_layoutcommit_arg void layoutdriver_data which will be
+restored for the block layoutdriver.
+ - Remove unused sizechanged and newsize from pnfs_layoutcommit_res.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4proc.c       |   23 +++++++++++------------
+ fs/nfs/nfs4xdr.c        |   27 ++++++++++-----------------
+ fs/nfs/pnfs.c           |   21 +++++++++------------
+ include/linux/nfs_xdr.h |   19 +++++++++----------
+ 4 files changed, 39 insertions(+), 51 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f9b210e..bf179bb 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5516,7 +5516,7 @@ static void nfs4_layoutcommit_prepare(struct rpc_task *task, void *data)
+ {
+ 	struct nfs4_layoutcommit_data *ldata =
+ 		(struct nfs4_layoutcommit_data *)data;
+-	struct nfs_server *server = NFS_SERVER(ldata->args.inode);
++	struct nfs_server *server = NFS_SERVER(ldata->inode);
+ 
+ 	if (nfs4_setup_sequence(server, NULL, &ldata->args.seq_args,
+ 				&ldata->res.seq_res, 1, task))
+@@ -5529,7 +5529,7 @@ nfs4_layoutcommit_done(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_layoutcommit_data *data =
+ 		(struct nfs4_layoutcommit_data *)calldata;
+-	struct nfs_server *server = NFS_SERVER(data->args.inode);
++	struct nfs_server *server = NFS_SERVER(data->inode);
+ 
+ 	if (!nfs4_sequence_done(task, &data->res.seq_res))
+ 		return;
+@@ -5546,8 +5546,8 @@ static void nfs4_layoutcommit_release(void *lcdata)
+ 		(struct nfs4_layoutcommit_data *)lcdata;
+ 
+ 	/* Matched by get_layout in pnfs_layoutcommit_inode */
+-	put_layout_hdr(data->args.inode);
+-	put_rpccred(data->cred);
++	put_layout_hdr(data->inode);
++	put_rpccred(data->args.cred);
+ 	kfree(lcdata);
+ }
+ 
+@@ -5565,11 +5565,11 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int issync)
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTCOMMIT],
+ 		.rpc_argp = &data->args,
+ 		.rpc_resp = &data->res,
+-		.rpc_cred = data->cred,
++		.rpc_cred = data->args.cred,
+ 	};
+ 	struct rpc_task_setup task_setup_data = {
+ 		.task = &data->task,
+-		.rpc_client = NFS_CLIENT(data->args.inode),
++		.rpc_client = NFS_CLIENT(data->inode),
+ 		.rpc_message = &msg,
+ 		.callback_ops = &nfs4_layoutcommit_ops,
+ 		.callback_data = data,
+@@ -5578,13 +5578,12 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int issync)
+ 	struct rpc_task *task;
+ 	int status = 0;
+ 
+-	dprintk("NFS: %4d initiating layoutcommit call. %llu@%llu lbw: %llu "
++	dprintk("NFS: initiating layoutcommit call. %llu@%llu lbw: %llu "
+ 		"type: %d issync %d\n",
+-		data->task.tk_pid,
+-		data->args.range.length,
+-		data->args.range.offset,
+-		data->args.lastbytewritten,
+-		data->args.layout_type, issync);
++		data->args.op.range.length,
++		data->args.op.range.offset,
++		data->args.op.lastbytewritten,
++		data->args.op.layout_type, issync);
+ 
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5c7ee03..1c8a3c4 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1868,7 +1868,7 @@ encode_layoutget(struct xdr_stream *xdr,
+ 
+ static int
+ encode_layoutcommit(struct xdr_stream *xdr,
+-		    const struct nfs4_layoutcommit_args *args,
++		    const struct nfs4_layoutcommit_op_args *args,
+ 		    struct compound_hdr *hdr)
+ {
+ 	__be32 *p;
+@@ -1885,14 +1885,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
+ 	*p++ = cpu_to_be32(1);     /* newoffset = TRUE */
+ 	p = xdr_encode_hyper(p, args->lastbytewritten);
+-	*p = cpu_to_be32(args->time_modify_changed != 0);
+-	if (args->time_modify_changed) {
+-		p = reserve_space(xdr, 12);
+-		*p++ = cpu_to_be32(0);
+-		*p++ = cpu_to_be32(args->time_modify.tv_sec);
+-		*p = cpu_to_be32(args->time_modify.tv_nsec);
+-	}
+-
++	*p = cpu_to_be32(0); /* nt_timechanged = FALSE */
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(args->layout_type);
+ 
+@@ -2818,7 +2811,7 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req, uint32_t *p,
+ 	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_sequence(&xdr, &args->seq_args, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+-	encode_layoutcommit(&xdr, args, &hdr);
++	encode_layoutcommit(&xdr, &args->op, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
+ 	return 0;
+@@ -5307,10 +5300,10 @@ out_overflow:
+ 	return -EIO;
+ }
+ 
+-static int decode_layoutcommit(struct xdr_stream *xdr,
+-				    struct rpc_rqst *req,
+-				    struct nfs4_layoutcommit_res *res)
++static int decode_layoutcommit(struct xdr_stream *xdr)
+ {
++	u32 sizechanged;
++	u64 newsize;
+ 	__be32 *p;
+ 	int status;
+ 
+@@ -5321,13 +5314,13 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
+ 	p = xdr_inline_decode(xdr, 4);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+-	res->sizechanged = be32_to_cpup(p);
++	sizechanged = be32_to_cpup(p);
+ 
+-	if (res->sizechanged) {
++	if (sizechanged) {
+ 		p = xdr_inline_decode(xdr, 8);
+ 		if (unlikely(!p))
+ 			goto out_overflow;
+-		xdr_decode_hyper(p, &res->newsize);
++		xdr_decode_hyper(p, &newsize);
+ 	}
+ 	return 0;
+ out_overflow:
+@@ -6462,7 +6455,7 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp, uint32_t *p,
+ 	status = decode_putfh(&xdr);
+ 	if (status)
+ 		goto out;
+-	status = decode_layoutcommit(&xdr, rqstp, res);
++	status = decode_layoutcommit(&xdr);
+ 	if (status)
+ 		goto out;
+ 	decode_getfattr(&xdr, res->fattr, res->server,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 2072522..0d5d95c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1264,21 +1264,18 @@ pnfs_layoutcommit_setup(struct inode *inode,
+ 
+ 	dprintk("--> %s\n", __func__);
+ 
+-	data->args.inode = inode;
++	data->inode = inode;
+ 	data->args.fh = NFS_FH(inode);
+-	data->args.layout_type = nfss->pnfs_curr_ld->id;
++	data->args.op.layout_type = nfss->pnfs_curr_ld->id;
+ 	data->res.fattr = &data->fattr;
+ 	nfs_fattr_init(&data->fattr);
+ 
+-	/* TODO: Need to determine the correct values */
+-	data->args.time_modify_changed = 0;
+-
+ 	/* Set values from inode so it can be reset
+ 	 */
+-	data->args.range.iomode = IOMODE_RW;
+-	data->args.range.offset = write_begin_pos;
+-	data->args.range.length = write_end_pos - write_begin_pos + 1;
+-	data->args.lastbytewritten =  min(write_end_pos,
++	data->args.op.range.iomode = IOMODE_RW;
++	data->args.op.range.offset = write_begin_pos;
++	data->args.op.range.length = write_end_pos - write_begin_pos + 1;
++	data->args.op.lastbytewritten =  min(write_end_pos,
+ 					  i_size_read(inode) - 1);
+ 	data->args.bitmask = nfss->attr_bitmask;
+ 	data->res.server = nfss;
+@@ -1318,12 +1315,12 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ 	 */
+ 	write_begin_pos = nfsi->layout->write_begin_pos;
+ 	write_end_pos = nfsi->layout->write_end_pos;
+-	data->cred = nfsi->layout->cred;
++	data->args.cred = nfsi->layout->cred;
+ 	nfsi->layout->write_begin_pos = 0;
+ 	nfsi->layout->write_end_pos = 0;
+ 	nfsi->layout->cred = NULL;
+ 	__clear_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->plh_flags);
+-	pnfs_copy_layout_stateid(&data->args.stateid, nfsi->layout);
++	pnfs_copy_layout_stateid(&data->args.op.stateid, nfsi->layout);
+ 
+ 	/* Reference for layoutcommit matched in pnfs_layoutcommit_release */
+ 	get_layout_hdr(NFS_I(inode)->layout);
+@@ -1335,7 +1332,7 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ 					 write_end_pos);
+ 	if (status) {
+ 		/* The layout driver failed to setup the layoutcommit */
+-		put_rpccred(data->cred);
++		put_rpccred(data->args.cred);
+ 		put_layout_hdr(inode);
+ 		goto out_free;
+ 	}
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 6c4ba71..851b09f 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -225,25 +225,24 @@ struct nfs4_layoutget {
+ 	struct pnfs_layout_segment **lsegpp;
+ };
+ 
+-struct nfs4_layoutcommit_args {
++struct nfs4_layoutcommit_op_args {
+ 	nfs4_stateid stateid;
+ 	__u64 lastbytewritten;
+-	__u32 time_modify_changed;
+-	struct timespec time_modify;
+-	const u32 *bitmask;
+-	struct nfs_fh *fh;
+-	struct inode *inode;
+ 
+ 	/* Values set by layout driver */
+ 	struct pnfs_layout_range range;
+ 	__u32 layout_type;
+-	void *layoutdriver_data;
++};
++
++struct nfs4_layoutcommit_args {
++	struct nfs4_layoutcommit_op_args op;
++	const u32 *bitmask;
++	struct nfs_fh *fh;
++	struct rpc_cred *cred;
+ 	struct nfs4_sequence_args seq_args;
+ };
+ 
+ struct nfs4_layoutcommit_res {
+-	__u32 sizechanged;
+-	__u64 newsize;
+ 	struct nfs_fattr *fattr;
+ 	const struct nfs_server *server;
+ 	struct nfs4_sequence_res seq_res;
+@@ -251,7 +250,7 @@ struct nfs4_layoutcommit_res {
+ 
+ struct nfs4_layoutcommit_data {
+ 	struct rpc_task task;
+-	struct rpc_cred *cred;
++	struct inode *inode;
+ 	struct nfs_fattr fattr;
+ 	struct nfs4_layoutcommit_args args;
+ 	struct nfs4_layoutcommit_res res;
+-- 
+1.7.2.1
+
