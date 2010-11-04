@@ -1,155 +1,200 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:44637 "EHLO mail-out2.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:33439 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751407Ab0KKFWy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Nov 2010 00:22:54 -0500
-Subject: Re: NFS client/sunrpc getting stuck on 2.6.36
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Simon Kirby <sim@hostway.ca>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20101111023520.GH16939@hostway.ca>
-References: <20101111023520.GH16939@hostway.ca>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 11 Nov 2010 13:22:47 +0800
-Message-ID: <1289452967.4062.10.camel@heimdal.trondhjem.org>
+	id S1752358Ab0KDPWz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Nov 2010 11:22:55 -0400
+Received: from localhost.localdomain (dnsindia.hq.netapp.com [10.58.52.94] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oA4FMYMd029583
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Nov 2010 08:22:50 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 17/18] pnfs-submit refactor pnfs_layoutcommit_setup
+Date: Thu,  4 Nov 2010 11:22:30 -0400
+Message-Id: <1288884151-11128-18-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
+References: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2010-11-10 at 18:35 -0800, Simon Kirby wrote:
-> Still seeing all sorts of boxes fall over with 2.6.35 and 2.6.36 NFS.
-> Unfortunately, it doesn't happen all the time...only certain load
-> patterns seem to start it off.  Once it starts, I can't find a way to
-> make it recover without rebooting.
-> 
-> In this case, tcpdump and rpc/nfs debug logs show a repeating command,
-> but only 3-4 commands are being sent per second, even though all slots
-> are in use, there is a backlog, 300 processes in rpc_wait_bit_killable,
-> and the debug logs show that responses are coming back immediately. 
-> Weird congestion/backoff issue?
-> 
-> Over a few seconds, the only numbers changing from "nfsstat" are "calls",
-> "authrefresh", and "getattr".  Debug level 1 for nfs and rpc show this
-> repeating:
-> 
->  NFS: permission(0:4c/5284877), mask=0x1, res=0
->  RPC:  5778 reserved req ffff88012ae042d0 xid 64030e74
->  RPC:  5778 xprt_prepare_transmit
->  RPC:  5778 xprt_transmit(96)
->  RPC:  5778 xmit complete
->  RPC:  5778 xid 64030e74 complete (112 bytes received)
->  RPC:  5778 release request ffff88012ae042d0
->  NFS: nfs_update_inode(0:4c/3247737045 ct=1 info=0x7e7f)
->  NFS: permission(0:4c/3247737045), mask=0x24, res=0
->  NFS: dentry_delete(tmp/t.sh, 8)
->  NFS: dentry_delete(tmp/9040-16697.done, 8)
->  NFS: dentry_delete(tmp/9040-29371.done, 8)
-> 
-> The only thing that changes between repeats are the pid and xid.
-> 
-> Debug level 255 for nfs and rpc:
-> 
-> NFS call  getattr
-> RPC:       new task initialized, procpid 15460
-> RPC:       allocated task ffff8800c09f7e00
-> RPC:  5321 __rpc_execute flags=0x80
-> RPC:  5321 call_start nfs3 proc GETATTR (sync)
-> RPC:  5321 call_reserve (status 0)
-> RPC:  5321 reserved req ffff88012ae042d0 xid 9e010e74
-> RPC:  5321 call_reserveresult (status 0)
-> RPC:  5321 call_refresh (status 0)
-> RPC:  5321 looking up UNIX cred
-> RPC:       looking up UNIX cred
-> RPC:  5321 refreshing UNIX cred ffff880011ec1300
-> RPC:  5321 call_refreshresult (status 0)
-> RPC:  5321 call_allocate (status 0)
-> RPC:  5321 allocated buffer of size 552 at ffff880129b1d000
-> RPC:  5321 call_bind (status 0)
-> RPC:  5321 call_connect xprt ffff88012a74d000 is connected
-> RPC:  5321 call_transmit (status 0)
-> RPC:  5321 xprt_prepare_transmit
-> RPC:  5321 rpc_xdr_encode (status 0)
-> RPC:  5321 marshaling UNIX cred ffff880011ec1300
-> RPC:  5321 using AUTH_UNIX cred ffff880011ec1300 to wrap rpc data
-> RPC:  5321 xprt_transmit(96)
-> RPC:       xs_tcp_send_request(96) = 96
-> RPC:  5321 xmit complete
-> RPC:  5321 sleep_on(queue "xprt_pending" time 4494861481)
-> RPC:       xs_tcp_data_ready...
-> RPC:       xs_tcp_data_recv started
-> RPC:       reading TCP record fragment of length 112
-> RPC:       reading XID (4 bytes)
-> RPC:       reading reply for XID 9e010e74
-> RPC:       reading CALL/REPLY flag (4 bytes)
-> RPC:       read reply XID 9e010e74
-> RPC:  5321 added to queue ffff88012a74d3f8 "xprt_pending"
-> RPC:  5321 setting alarm for 900 ms
-> RPC:       XID 9e010e74 read 104 bytes
-> RPC:       xprt = ffff88012a74d000, tcp_copied = 112, tcp_offset = 112, tcp_reclen = 112
-> RPC:  5321 xid 9e010e74 complete (112 bytes received)
-> RPC:  5321 __rpc_wake_up_task (now 4494861481)
-> RPC:  5321 disabling timer
-> RPC:  5321 removed from queue ffff88012a74d3f8 "xprt_pending"
-> RPC:       __rpc_wake_up_task done
-> RPC:       xs_tcp_data_recv done
-> RPC:       wake_up_next(ffff88012a74d2e8 "xprt_resend")
-> RPC:       wake_up_next(ffff88012a74d1d8 "xprt_sending")
-> RPC:  5321 call_status (status 112)
-> RPC:  5321 call_decode (status 112)
-> RPC:  5321 validating UNIX cred ffff880011ec1300
-> RPC:  5321 using AUTH_UNIX cred ffff880011ec1300 to unwrap rpc data
-> RPC:  5321 call_decode result 0
-> RPC:  5321 return 0, status 0
-> RPC:  5321 release task
-> RPC:       freeing buffer of size 552 at ffff880129b1d000
-> RPC:  5321 release request ffff88012ae042d0
-> RPC:       wake_up_next(ffff88012a74d508 "xprt_backlog")
-> RPC:       rpc_release_client(ffff88012016e400)
-> RPC:  5321 freeing task
-> NFS reply getattr: 0
-> NFS: nfs_update_inode(0:4c/3247737045 ct=1 info=0x7e7f)
-> NFS: (0:4c/3247737045) revalidation complete
-> NFS: nfs_lookup_revalidate(HWD/tmp) is valid
-> RPC:       looking up Generic cred
-> NFS: permission(0:4c/3247737045), mask=0x24, res=0
-> NFS: open dir(HWD/tmp)
-> RPC:       looking up Generic cred
-> NFS: readdir(HWD/tmp) starting at cookie 0
-> NFS: readdir_search_pagecache() searching for offset 0
-> NFS: find_dirent_page: searching page 0 for target 0
-> NFS: found cookie 4 at index 0
-> NFS: find_dirent_page: returns 0
-> NFS: readdir_search_pagecache: returns 0
-> NFS: nfs_do_filldir() filling starting @ cookie 4
-> NFS: dentry_delete(tmp/t.sh, 8)
-> NFS: dentry_delete(tmp/9040-16697.done, 8)
-> NFS: dentry_delete(tmp/9040-29371.done, 8)
-> NFS: nfs_do_filldir() filling ended @ cookie 512; returning = 0
-> NFS: readdir(HWD/tmp) returns 0
-> NFS: readdir(HWD/tmp) starting at cookie 5
-> NFS: readdir_search_pagecache() searching for cookie 512
-> NFS: find_dirent_page: searching page 0 for target 512
-> NFS: find_dirent: examining cookie 4
-> NFS: find_dirent: examining cookie 6
-> NFS: find_dirent: examining cookie 11
-> NFS: find_dirent: examining cookie 18
-> NFS: find_dirent: examining cookie 512
-> NFS: find_dirent_page: returns -523
-> NFS: readdir_search_pagecache: returns -523
-> NFS: readdir(HWD/tmp) returns 0
-> RPC:       looking up Generic cred
-> NFS: permission(0:4c/5284877), mask=0x1, res=0
-> NFS: revalidating (0:4c/3247737045)
-> 
-> 900ms matches the probably-silly nfs mount settings we're currently using:
-> 
-> rw,hard,intr,tcp,timeo=9,retrans=3,rsize=8192,wsize=8192
-> 
-> Full kernel log here: http://0x.ca/sim/ref/2.6.36_stuck_nfs/
+From: Andy Adamson <andros@netapp.com>
 
-timeo=9 is a completely insane retransmit value for a tcp connection.
-Please use the default timeo=600, and all will work correctly.
+Prepare for adding the layoutcommit operation to the close compound on
+return-on-close.
+Have pnfs_layoutcommit_setup handle all the layoutcommit operation setup.
+Have pnfs_layoutcommit_inode handle all the layoutcommit compound setup.
 
-Cheers
-  Trond
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |  104 ++++++++++++++++++++++++++-------------------------------
+ fs/nfs/pnfs.h |    3 ++
+ 2 files changed, 50 insertions(+), 57 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 0d5d95c..521ee9d 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1252,97 +1252,87 @@ pnfs_try_to_commit(struct nfs_write_data *data,
+ }
+ 
+ /*
+- * Set up the argument/result storage required for the RPC call.
++ * Set up the arguments required for the RPC call.
+  */
+-static int
++void
+ pnfs_layoutcommit_setup(struct inode *inode,
+-			struct nfs4_layoutcommit_data *data,
+-			loff_t write_begin_pos, loff_t write_end_pos)
++			struct nfs4_layoutcommit_op_args *args, bool use_cred)
+ {
+-	struct nfs_server *nfss = NFS_SERVER(inode);
+-	int result = 0;
++	struct nfs_inode *nfsi = NFS_I(inode);
++	loff_t write_begin_pos, write_end_pos;
+ 
+ 	dprintk("--> %s\n", __func__);
+ 
+-	data->inode = inode;
+-	data->args.fh = NFS_FH(inode);
+-	data->args.op.layout_type = nfss->pnfs_curr_ld->id;
+-	data->res.fattr = &data->fattr;
+-	nfs_fattr_init(&data->fattr);
++	assert_spin_locked(&inode->i_lock);
+ 
+-	/* Set values from inode so it can be reset
++	/*
++	 * Clear layoutcommit properties in the inode so
++	 * new layoutcommit info can be generated
+ 	 */
+-	data->args.op.range.iomode = IOMODE_RW;
+-	data->args.op.range.offset = write_begin_pos;
+-	data->args.op.range.length = write_end_pos - write_begin_pos + 1;
+-	data->args.op.lastbytewritten =  min(write_end_pos,
+-					  i_size_read(inode) - 1);
+-	data->args.bitmask = nfss->attr_bitmask;
+-	data->res.server = nfss;
+-
+-	dprintk("<-- %s Status %d\n", __func__, result);
+-	return result;
++	write_begin_pos = nfsi->layout->write_begin_pos;
++	write_end_pos = nfsi->layout->write_end_pos;
++	nfsi->layout->write_begin_pos = 0;
++	nfsi->layout->write_end_pos = 0;
++	/* In the true case, caller has passed on the cred to another struct */
++	if (use_cred == false)
++		put_rpccred(nfsi->layout->cred);
++	nfsi->layout->cred = NULL;
++	__clear_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->plh_flags);
++	/* FIXME: figure out what to do here */
++	pnfs_copy_layout_stateid(&args->stateid, nfsi->layout);
++
++	args->layout_type = NFS_SERVER(inode)->pnfs_curr_ld->id;
++
++	args->range.iomode = IOMODE_RW;
++	args->range.offset = write_begin_pos;
++	args->range.length = write_end_pos - write_begin_pos + 1;
++	args->lastbytewritten =  min(write_end_pos, i_size_read(inode) - 1);
+ }
+ 
+-/* Issue a async layoutcommit for an inode.
++/*
++ * Issue a async layoutcommit for an inode.
++ * Returns 0 on success, negative value for error
+  */
+ int
+ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ {
+ 	struct nfs4_layoutcommit_data *data;
+-	struct nfs_inode *nfsi = NFS_I(inode);
+-	loff_t write_begin_pos;
+-	loff_t write_end_pos;
+-
+-	int status = 0;
++	int status = -ENOMEM;
+ 
+ 	dprintk("%s Begin (sync:%d)\n", __func__, sync);
+ 
+-	BUG_ON(!has_layout(nfsi));
+-
+ 	data = kzalloc(sizeof(*data), GFP_NOFS);
+ 	if (!data)
+-		return -ENOMEM;
++		goto out;
+ 
++	status = 0;
+ 	spin_lock(&inode->i_lock);
+-	if (!layoutcommit_needed(nfsi)) {
++	if (!layoutcommit_needed(NFS_I(inode))) {
+ 		spin_unlock(&inode->i_lock);
+-		goto out_free;
++		kfree(data);
++		goto out;
+ 	}
++	/* Use the layoutcommit cred */
++	data->args.cred = NFS_I(inode)->layout->cred;
+ 
+-	/* Clear layoutcommit properties in the inode so
+-	 * new lc info can be generated
+-	 */
+-	write_begin_pos = nfsi->layout->write_begin_pos;
+-	write_end_pos = nfsi->layout->write_end_pos;
+-	data->args.cred = nfsi->layout->cred;
+-	nfsi->layout->write_begin_pos = 0;
+-	nfsi->layout->write_end_pos = 0;
+-	nfsi->layout->cred = NULL;
+-	__clear_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->plh_flags);
+-	pnfs_copy_layout_stateid(&data->args.op.stateid, nfsi->layout);
++	/* Set up layoutcommit operation args */
++	pnfs_layoutcommit_setup(inode, &data->args.op, true);
+ 
+ 	/* Reference for layoutcommit matched in pnfs_layoutcommit_release */
+ 	get_layout_hdr(NFS_I(inode)->layout);
+-
+ 	spin_unlock(&inode->i_lock);
+ 
+-	/* Set up layout commit args */
+-	status = pnfs_layoutcommit_setup(inode, data, write_begin_pos,
+-					 write_end_pos);
+-	if (status) {
+-		/* The layout driver failed to setup the layoutcommit */
+-		put_rpccred(data->args.cred);
+-		put_layout_hdr(inode);
+-		goto out_free;
+-	}
++	data->args.fh = NFS_FH(inode);
++	data->args.bitmask = NFS_SERVER(inode)->attr_bitmask;
++
++	data->inode = inode;
++	data->res.server = NFS_SERVER(inode);
++	data->res.fattr = &data->fattr;
++	nfs_fattr_init(&data->fattr);
+ 	status = nfs4_proc_layoutcommit(data, sync);
+ out:
+ 	dprintk("%s end (err:%d)\n", __func__, status);
+ 	return status;
+-out_free:
+-	kfree(data);
+-	goto out;
+ }
+ 
+ /*
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 3e04da8..a244b27 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -236,6 +236,9 @@ void nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
+ 				int notify_bit, atomic_t *notify_count,
+ 				struct list_head *tmp_list);
+ bool pnfs_roc(struct nfs4_closedata *data);
++void pnfs_layoutcommit_setup(struct inode *inode,
++			     struct nfs4_layoutcommit_op_args *args,
++			     bool use_cred);
+ 
+ static inline bool
+ has_layout(struct nfs_inode *nfsi)
+-- 
+1.7.2.1
 
