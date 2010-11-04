@@ -1,195 +1,165 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48021 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33429 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757797Ab0KQVQP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Nov 2010 16:16:15 -0500
-From: andros@netapp.com
-To: benny@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/3] NFS add minorversion to nfs_find_client search
-Date: Tue, 16 Nov 2010 22:36:28 -0500
-Message-Id: <1289964990-4480-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1289964990-4480-1-git-send-email-andros@netapp.com>
-References: <1289964990-4480-1-git-send-email-andros@netapp.com>
+	id S1752431Ab0KDPWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Nov 2010 11:22:53 -0400
+Received: from localhost.localdomain (dnsindia.hq.netapp.com [10.58.52.94] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oA4FMYMS029583
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Nov 2010 08:22:42 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 06/18] pnfs_submit: nfs4_layoutreturn_release should not reference results
+Date: Thu,  4 Nov 2010 11:22:19 -0400
+Message-Id: <1288884151-11128-7-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
+References: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Since the release function may be called without sending any RPC,
+it must should not refer to any of the result fields.  This is
+better accomplished in the rpc_done function.
 
-The v4.0 and v4.1 callback threads share a pg_authenticate method.
-Minorversions do not share an nfs_client.
+In the process, this basically reverts the commit
+"pnfs: do not change layout stateid when dropping layouts."
 
-Respond with an rpc auth error (SVC_DENIED) if the nfs_client matching the
-server address, nfs version, and minorversion is not found.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/callback.c      |   19 +++++++++++++------
- fs/nfs/callback.h      |    4 ++--
- fs/nfs/callback_proc.c |    8 ++++----
- fs/nfs/client.c        |   16 +++++++++++-----
- fs/nfs/internal.h      |    2 +-
- 5 files changed, 31 insertions(+), 18 deletions(-)
+ fs/nfs/nfs4proc.c       |   17 ++++++++++++++---
+ fs/nfs/nfs4xdr.c        |    1 -
+ fs/nfs/pnfs.c           |   23 ++---------------------
+ fs/nfs/pnfs.h           |    3 ++-
+ include/linux/nfs_xdr.h |    1 -
+ 5 files changed, 18 insertions(+), 27 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index aeec017..962c5de 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -17,9 +17,7 @@
- #include <linux/freezer.h>
- #include <linux/kthread.h>
- #include <linux/sunrpc/svcauth_gss.h>
--#if defined(CONFIG_NFS_V4_1)
- #include <linux/sunrpc/bc_xprt.h>
--#endif
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8d3965c..de3ed2f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5596,9 +5596,20 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ 		server = NFS_SERVER(lrp->args.inode);
+ 	else
+ 		server = NULL;
+-	if (nfs4_async_handle_error(task, server, NULL, lrp->clp) == -EAGAIN)
++	if (nfs4_async_handle_error(task, server, NULL, lrp->clp) == -EAGAIN) {
+ 		nfs_restart_rpc(task, lrp->clp);
++		return;
++	}
++	if ((task->tk_status == 0) && (lrp->args.return_type == RETURN_FILE)) {
++		struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
  
- #include <net/inet_sock.h>
- 
-@@ -346,19 +344,28 @@ static int check_gss_callback_principal(struct nfs_client *clp,
- 	return SVC_OK;
++		spin_lock(&lo->inode->i_lock);
++		if (lrp->res.lrs_present)
++			pnfs_set_layout_stateid(lo, &lrp->res.stateid);
++		else
++			pnfs_invalidate_layout_stateid(lo);
++		spin_unlock(&lo->inode->i_lock);
++	}
+ 	dprintk("<-- %s\n", __func__);
  }
  
-+/*
-+ * Lookup the nfs_client that corresponds to this backchannel request.
-+ *
-+ * We only support NFSv4.1 callbacks on the fore channel connection, so
-+ * the svc_is_backchannel test indicates which minorversion nfs_client we are
-+ * searching for.
-+ */
- static int nfs_callback_authenticate(struct svc_rqst *rqstp)
- {
- 	struct nfs_client *clp;
- 	RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
-+	u32 minorversion = svc_is_backchannel(rqstp) ? 1 : 0;
- 	int ret = SVC_OK;
+@@ -5607,8 +5618,8 @@ static void nfs4_layoutreturn_release(void *calldata)
+ 	struct nfs4_layoutreturn *lrp = calldata;
  
- 	/* Don't talk to strangers */
--	clp = nfs_find_client(svc_addr(rqstp), 4);
-+	clp = nfs_find_client(svc_addr(rqstp), 4, minorversion);
- 	if (clp == NULL)
--		return SVC_DROP;
-+		return SVC_DENIED;
- 
--	dprintk("%s: %s NFSv4 callback!\n", __func__,
--			svc_print_addr(rqstp, buf, sizeof(buf)));
-+	dprintk("%s: %s NFSv4 callback! minorversion %d\n", __func__,
-+			svc_print_addr(rqstp, buf, sizeof(buf)),
-+			clp->cl_minorversion);
- 
- 	switch (rqstp->rq_authop->flavour) {
- 		case RPC_AUTH_NULL:
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index b16dd1f..b69bec5 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -177,7 +177,7 @@ static inline void put_session_client(struct nfs4_session *session)
- static inline struct nfs_client *
- find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
- {
--	return cps->session ? cps->session->clp : nfs_find_client(addr, 4);
-+	return cps->session ? cps->session->clp : nfs_find_client(addr, 4, 0);
+ 	dprintk("--> %s return_type %d\n", __func__, lrp->args.return_type);
+-
+-	pnfs_layoutreturn_release(lrp);
++	if (lrp->args.return_type == RETURN_FILE)
++		put_layout_hdr(lrp->args.inode);
+ 	kfree(calldata);
+ 	dprintk("<-- %s\n", __func__);
  }
- 
- #else /* CONFIG_NFS_V4_1 */
-@@ -189,7 +189,7 @@ static inline void nfs_client_return_layouts(struct nfs_client *clp)
- static inline struct nfs_client *
- find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
- {
--	return nfs_find_client(addr, 4);
-+	return nfs_find_client(addr, 4, 0);
- }
- 
- static inline void put_session_client(struct nfs4_session *session)
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index b4c68e9..69d085a 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -505,13 +505,13 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
-  * Returns NULL if there are no connections with sessions, or if no session
-  * matches the one of interest.
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index b71a482..10a6f4a 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5286,7 +5286,6 @@ static int decode_layoutreturn(struct xdr_stream *xdr,
+ 	p = xdr_inline_decode(xdr, 4);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+-	res->valid = true;
+ 	res->lrs_present = be32_to_cpup(p);
+ 	if (res->lrs_present)
+ 		status = decode_stateid(xdr, &res->stateid);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 34f6914..44f4f30 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -449,7 +449,7 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+  *
+  * lo->stateid could be the open stateid, in which case we just use what given.
   */
-- static struct nfs_client *find_client_with_session(
--	const struct sockaddr *addr, u32 nfsversion,
--	struct nfs4_sessionid *sessionid)
-+static struct nfs_client *
-+find_client_with_session(const struct sockaddr *addr, u32 nfsversion,
-+			 struct nfs4_sessionid *sessionid)
+-static void
++void
+ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 			const nfs4_stateid *new)
  {
- 	struct nfs_client *clp;
- 
--	clp = nfs_find_client(addr, 4);
-+	clp = nfs_find_client(addr, 4, 1);
- 	if (clp == NULL)
- 		return NULL;
- 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index dbf43e7..ba7712c 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -371,7 +371,8 @@ EXPORT_SYMBOL(nfs_sockaddr_cmp);
-  * Find a client by IP address and protocol version
-  * - returns NULL if no such client
-  */
--struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
-+struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion,
-+				   u32 minorversion)
- {
- 	struct nfs_client *clp;
- 
-@@ -385,7 +386,8 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
- 			continue;
- 
- 		/* Different NFS versions cannot share the same nfs_client */
--		if (clp->rpc_ops->version != nfsversion)
-+		if (clp->rpc_ops->version != nfsversion ||
-+		    clp->cl_minorversion != minorversion)
- 			continue;
- 
- 		/* Match only the IP address, not the port number */
-@@ -401,13 +403,16 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
+@@ -587,25 +587,6 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+ 	return ret;
  }
  
- /*
-- * Find a client by IP address and protocol version
-- * - returns NULL if no such client
-+ * Callback service RPC layer pg_authenticate method.
-+ *
-+ * Find a client by IP address, protocol version, and minorversion.
-+ * Returns NULL if no such client
-  */
- struct nfs_client *nfs_find_client_next(struct nfs_client *clp)
- {
- 	struct sockaddr *sap = (struct sockaddr *)&clp->cl_addr;
- 	u32 nfsvers = clp->rpc_ops->version;
-+	u32 minorversion = clp->cl_minorversion;
+-void
+-pnfs_layoutreturn_release(struct nfs4_layoutreturn *lrp)
+-{
+-	struct pnfs_layout_hdr *lo;
+-
+-	if (lrp->args.return_type != RETURN_FILE)
+-		return;
+-	lo = NFS_I(lrp->args.inode)->layout;
+-	spin_lock(&lrp->args.inode->i_lock);
+-	if (!lrp->res.valid)
+-		;	/* forgetful model internal release */
+-	else if (!lrp->res.lrs_present)
+-		pnfs_invalidate_layout_stateid(lo);
+-	else 
+-		pnfs_set_layout_stateid(lo, &lrp->res.stateid);
+-	put_layout_hdr_locked(lo); /* Matched in _pnfs_return_layout */
+-	spin_unlock(&lrp->args.inode->i_lock);
+-}
+-
+ static int
+ return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 	      enum pnfs_layoutreturn_type type, struct pnfs_layout_hdr *lo,
+@@ -675,7 +656,7 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 		list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
+ 			if (should_free_lseg(lseg, &arg))
+ 				mark_lseg_invalid(lseg, &tmp_list);
+-		/* Reference matched in pnfs_layoutreturn_release */
++		/* Reference matched in nfs4_layoutreturn_release */
+ 		get_layout_hdr_locked(lo);
+ 		spin_unlock(&ino->i_lock);
+ 		pnfs_free_lseg_list(&tmp_list);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index de4eaa8..f0232f5 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -201,10 +201,11 @@ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
+ 			   struct nfs_open_context *, struct list_head *);
+ void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+-void pnfs_layoutreturn_release(struct nfs4_layoutreturn *lpr);
+ void pnfs_destroy_layout(struct nfs_inode *);
+ void pnfs_destroy_all_layouts(struct nfs_client *);
+ void put_layout_hdr(struct inode *inode);
++void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
++			     const nfs4_stateid *new);
+ void pnfs_copy_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo);
+ void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+ 			     struct nfs4_state *open_state);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 0ee7cce..ebe11d3 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -270,7 +270,6 @@ struct nfs4_layoutreturn_args {
  
- 	spin_lock(&nfs_client_lock);
- 	list_for_each_entry_continue(clp, &nfs_client_list, cl_share_link) {
-@@ -418,7 +423,8 @@ struct nfs_client *nfs_find_client_next(struct nfs_client *clp)
- 			continue;
- 
- 		/* Different NFS versions cannot share the same nfs_client */
--		if (clp->rpc_ops->version != nfsvers)
-+		if (clp->rpc_ops->version != nfsvers ||
-+		    clp->cl_minorversion != minorversion)
- 			continue;
- 
- 		/* Match only the IP address, not the port number */
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 0a9ea58..d89aded 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -131,7 +131,7 @@ extern void nfs_umount(const struct nfs_mount_request *info);
- extern struct rpc_program nfs_program;
- 
- extern void nfs_put_client(struct nfs_client *);
--extern struct nfs_client *nfs_find_client(const struct sockaddr *, u32);
-+extern struct nfs_client *nfs_find_client(const struct sockaddr *, u32, u32);
- extern struct nfs_client *nfs_find_client_next(struct nfs_client *);
- extern struct nfs_server *nfs_create_server(
- 					const struct nfs_parsed_mount_data *,
+ struct nfs4_layoutreturn_res {
+ 	struct nfs4_sequence_res seq_res;
+-	bool valid;	/* internal, true if received reply */
+ 	u32 lrs_present;
+ 	nfs4_stateid stateid;
+ };
 -- 
-1.6.6
+1.7.2.1
 
