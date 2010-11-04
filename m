@@ -1,135 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out-2.desy.de ([131.169.56.85]:48355 "EHLO
-	smtp-out-2.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755763Ab0KJNfT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 08:35:19 -0500
-Received: from smtp-map-2.desy.de (smtp-map-2.desy.de [131.169.56.67])
-	by smtp-out-2.desy.de (DESY_OUT_1) with ESMTP id D6C92CB7
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Nov 2010 14:35:17 +0100 (MET)
-Received: from adserv72.win.desy.de (adserv72.win.desy.de [131.169.97.58])
-	by smtp-map-2.desy.de (DESY_MAP_2) with ESMTP id CF2F0CA8
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Nov 2010 14:35:17 +0100 (MET)
-Received: from smtp-intra-3.desy.de (lb-40-26.desy.de) by adserv72.win.desy.de
- (Clearswift SMTPRS 5.3.4) with ESMTP id <T99429f11d983a9613afa8@adserv72.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Wed, 10 Nov 2010 14:35:17 +0100
-Received: from adxf4.win.desy.de (adxf4.win.desy.de [131.169.69.187])
-	by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id 6096D1166
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Nov 2010 14:35:17 +0100 (MET)
-Message-ID: <4CDA9F8F.2080601@desy.de>
-Date: Wed, 10 Nov 2010 14:35:11 +0100
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: kernel panic with 2.6.37-rc1 +pnfs
-References: <4CD95DB5.2030006@desy.de> <4CDA74F5.90700@panasas.com> <4CDA9812.5060906@panasas.com>
-In-Reply-To: <4CDA9812.5060906@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from dsl-67-204-24-19.acanac.net ([67.204.24.19]:50313 "EHLO
+	mail.ellipticsemi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751857Ab0KDS6F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Nov 2010 14:58:05 -0400
+Date: Thu, 4 Nov 2010 14:57:05 -0400
+From: Nick Bowler <nbowler@elliptictech.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Andi Kleen <andi@firstfloor.org>, bjschuma@netapp.com,
+        torvalds@linux-foundation.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [regression] NFS readdir change break fully cached nfs root
+Message-ID: <20101104185705.GA3778@elliptictech.com>
+References: <20101102180051.GA26089@basil.fritz.box>
+ <1288731930.534.1.camel@heimdal.trondhjem.org>
+ <20101103162423.GA3797@elliptictech.com>
+ <1288886814.3285.5.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1288886814.3285.5.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I already have merged with corresponding commit and in the process of
-building.
+On 2010-11-04 12:06 -0400, Trond Myklebust wrote:
+> On Wed, 2010-11-03 at 12:24 -0400, Nick Bowler wrote:
+> > I applied this patch, and it solves the lockups, but there's a new
+> > problem: the directory list sometimes comes back _empty_!
+[...]
+> I found a couple more issues. Can you try this revision of the same
+> patch?
+[...]
+> NFS: Fix a couple of regressions in readdir.
 
-Thanks.
+Unfortunately, I still have the same problem (listing comes back empty
+after running the script) with the new patch.
 
-On 11/10/2010 02:03 PM, Boaz Harrosh wrote:
-> On 11/10/2010 12:33 PM, Benny Halevy wrote:
->> On 2010-11-09 16:41, Tigran Mkrtchyan wrote:
->>>
->>>
->>> pnfs-all-2.6.37-rc1-2010-11-03 from Banny's tree (git 
->>> 6a1df873544d146fcdc493034b170879985909e8)
->>> I am not sure that this is NFS code issue, but anyway. With NFS IO  
->>> minutes machine becomes unresponcive.
->>> This prevents us to update our cluster with latest code base.
->>>
->>> Tigran.
->>>
->>> [  293.145013] general protection fault: 0000 [#1] SMP
->>> [  293.145017] last sysfs file: 
->>> /sys/devices/pci0000:00/0000:00:0d.0/resource
->>> [  293.145019] CPU 0
->>> [  293.145021] Modules linked in: ipv6 af_packet binfmt_misc dm_mirror 
->>> dm_multipath scsi_dh video output thermal sbs sbshc pci_slot fan 
->>> container battery lp sg option usb_wwan ac usbserial button thermal_sys 
->>> parport_pc serio_raw parport tpm_tis tpm tpm_bios e1000 i2c_piix4 
->>> pata_mpiix dm_region_hash dm_log dm_mod [last unloaded: mperf]
->>> [  293.145042]
->>> [  293.145045] Pid: 1953, comm: sadc Not tainted 2.6.37-rc1.pnfs.1 #1 
->>> /VirtualBox
->>> [  293.145047] RIP: 0010:[<ffffffff811a2cfa>]  [<ffffffff811a2cfa>] 
->>> strnlen+0xa/0x30
->>> [  293.145054] RSP: 0018:ffff88002d4cfcd0  EFLAGS: 00010297
->>> [  293.145056] RAX: ffffffff814d5cfa RBX: ffffffffffffffff RCX: 
->>> ffffffffffffffff
->>> [  293.145058] RDX: fffffffffffffffe RSI: ffffffffffffffff RDI: 
->>> 9a81ffffffff814d
->>> [  293.145060] RBP: 9a81ffffffff814d R08: 0000000000000000 R09: 
->>> ffffffff8165c4a8
->>> [  293.145062] R10: 00007f73dd7243fb R11: 0000000000000246 R12: 
->>> 0000000000000000
->>> [  293.145064] R13: ffff88002d47d000 R14: ffff88002d47c000 R15: 
->>> 00000000ffffffff
->>> [  293.145071] FS:  00007f73dd70b6e0(0000) GS:ffff88003fc00000(0000) 
->>> knlGS:0000000000000000
->>> [  293.145074] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->>> [  293.145076] CR2: 00007f73dd724000 CR3: 000000002d4a6000 CR4: 
->>> 00000000000006f0
->>> [  293.145083] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 
->>> 0000000000000000
->>> [  293.145085] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 
->>> 0000000000000400
->>> [  293.145088] Process sadc (pid: 1953, threadinfo ffff88002d4ce000, 
->>> task ffff88003d5a51f0)
->>> [  293.145091] Stack:
->>> [  293.145093]  ffffffff811a46bc ffff88002d41e840 ffffffff814d98f9 
->>> 0000000000000002
->>> [  293.145096]  ffff88002d47c000 ffff88002d4cfd78 ffff88002d47d000 
->>> ffffffff814d98fb
->>> [  293.145100]  ffffffff811a5488 0000000000001000 ffff88002d47c000 
->>> ffffffffff0a0004
->>> [  293.145104] Call Trace:
->>> [  293.145107]  [<ffffffff811a46bc>] ? string+0x4c/0x100
->>> [  293.145110]  [<ffffffff811a5488>] ? vsnprintf+0x218/0x560
->>> [  293.145114]  [<ffffffff810efac7>] ? seq_printf+0x67/0xa0
->>> [  293.145118]  [<ffffffff81043d32>] ? get_online_cpus+0x22/0x50
->>> [  293.145121]  [<ffffffff81043d82>] ? put_online_cpus+0x22/0x70
->>> [  293.145125]  [<ffffffff810ac71f>] ? vmstat_start+0x7f/0xa0
->>> [  293.145128]  [<ffffffff810abeb3>] ? vmstat_show+0x23/0x30
->>> [  293.145130]  [<ffffffff810eff2f>] ? seq_read+0xaf/0x3a0
->>> [  293.145134]  [<ffffffff8111e223>] ? proc_reg_read+0x73/0xb0
->>> [  293.145138]  [<ffffffff810d43ed>] ? vfs_read+0xcd/0x170
->>> [  293.145141]  [<ffffffff810d4633>] ? sys_read+0x53/0x90
->>> [  293.145144]  [<ffffffff81002c6b>] ? system_call_fastpath+0x16/0x1b
->>> [  293.145146] Code: 01 e8 38 10 74 0b 48 83 e8 01 48 39 c5 76 f3 31 c0 
->>> 5b 5d c3 66 0f 1f 44 00 00 0f 1f 80 00 00 00 00 48 8d 56 ff 48 83 fa ff 
->>> 74 21 <80> 3f 00 74 1c 48 89 f8 eb 05 80 38 00 74 0e 48 83 ea 01 48 83
->>> [  293.145171] RIP  [<ffffffff811a2cfa>] strnlen+0xa/0x30
->>> [  293.145174]  RSP <ffff88002d4cfcd0>
->>> [  293.145177] ---[ end trace 63b42edd98a8dea9 ]---
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->> I guess that ff8b16d vmstat: fix offset calculation on void*
->> could fix this problem.  It's currently in Linus's master branch
->> and he hasn't released 2.6.37-rc2 yet.
->> Can you please try to reproduce the problem you saw with this patch?
->>
-> 
-> You can just merge linus master ontop of the pnfs-all-latest
-> []$ git checkout pnfs-all-latest
-> []$ git remote add -f linus git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
-> []$ git merge linus/master
-> (Hopefully no merge conflicts with nfs bug fixes)
-> 
-> Cheers
-> 
->> Benny
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+-- 
+Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
