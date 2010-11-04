@@ -1,113 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48836 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:60061 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752519Ab0KATsv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Nov 2010 15:48:51 -0400
-Subject: Re: Regression, bisected: sqlite locking failure on nfs
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Nick Bowler <nbowler@elliptictech.com>,
-        LKML Kernel <linux-kernel@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <DA1E14E0-DCCD-4A6D-9471-E627D4BF2E85@oracle.com>
-References: <20101101175854.GA3550@elliptictech.com>
-	 <D68536EB-6BE9-4DE4-B325-39FEF747092E@oracle.com>
-	 <20101101181938.GA3875@elliptictech.com>
-	 <187AEE96-9231-4899-9D65-A444503D2758@oracle.com>
-	 <1288639376.5009.16.camel@heimdal.trondhjem.org>
-	 <1288640536.5009.18.camel@heimdal.trondhjem.org>
-	 <DA1E14E0-DCCD-4A6D-9471-E627D4BF2E85@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 01 Nov 2010 15:48:08 -0400
-Message-ID: <1288640888.5009.19.camel@heimdal.trondhjem.org>
+	id S1754294Ab0KDBkf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Nov 2010 21:40:35 -0400
+Date: Wed, 3 Nov 2010 21:40:24 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Arnd Bergmann <arnd@arndb.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/2] locks: let the caller free file_lock on ->setlease
+ failure
+Message-ID: <20101104014024.GA22498@fieldses.org>
+References: <20101026164549.GD19445@fieldses.org>
+ <20101027083924.GA28129@infradead.org>
+ <20101027133924.GB6328@fieldses.org>
+ <201010271546.09036.arnd@arndb.de>
+ <20101027145538.GC6328@fieldses.org>
+ <20101027145929.GA5788@infradead.org>
+ <20101030212500.GE480@fieldses.org>
+ <20101031123419.GA4491@infradead.org>
+ <20101031123510.GA4520@infradead.org>
+ <20101103204147.GA6777@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101103204147.GA6777@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-11-01 at 15:45 -0400, Chuck Lever wrote:
-> On Nov 1, 2010, at 3:42 PM, Trond Myklebust wrote:
+On Wed, Nov 03, 2010 at 04:41:48PM -0400, J. Bruce Fields wrote:
+> On Sun, Oct 31, 2010 at 08:35:10AM -0400, Christoph Hellwig wrote:
+> > Index: linux-2.6/fs/locks.c
+> > ===================================================================
+> > --- linux-2.6.orig/fs/locks.c	2010-10-31 07:10:07.649004084 -0400
+> > +++ linux-2.6/fs/locks.c	2010-10-31 07:34:10.102255587 -0400
+> > @@ -1428,8 +1425,9 @@ int generic_setlease(struct file *filp,
+> >  		goto out;
+> >  
+> >  	if (my_before != NULL) {
+> > -		*flp = *my_before;
+> >  		error = lease->fl_lmops->fl_change(my_before, arg);
+> > +		if (!error)
+> > +			*flp = *my_before;
 > 
-> > On Mon, 2010-11-01 at 15:22 -0400, Trond Myklebust wrote:
-> >> I suspect nlmclnt_lookup_host() is to blame. It appears to be the _only_
-> >> thing in the kernel that actually sets this 'srcaddr' field, and it sets
-> >> it to
-> >> 
-> >> const struct sockaddr source = {
-> >> 	.sa_family      = AF_UNSPEC,
-> >> };
-> >> 
-> >> You triggered the bug by removing the line
-> >> 
-> >> 	transport->srcaddr.ss_family = family;
-> >> 
-> >> from xs_create_sock().
-> >> 
-> >>   Trond
-> > 
-> > Does this fix the regression?
-> > 
-> > Trond
-> > 
-> > ----------------------------------------------------------------------------------------------
-> > NLM: Fix a regression in lockd
-> > 
-> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > 
-> > Nick Bowler reports:
-> > There are no unusual messages on the client... but I just logged into
-> > the server and I see lots of messages of the following form:
-> > 
-> >  nfsd: request from insecure port (192.168.8.199:35766)!
-> >  nfsd: request from insecure port (192.168.8.199:35766)!
-> >  nfsd: request from insecure port (192.168.8.199:35766)!
-> >  nfsd: request from insecure port (192.168.8.199:35766)!
-> >  nfsd: request from insecure port (192.168.8.199:35766)!
-> > 
-> > Bisected to commit 9247685088398cf21bcb513bd2832b4cd42516c4 (SUNRPC:
-> > Properly initialize sock_xprt.srcaddr in all cases)
-> > 
-> > Apparently, removing the 'transport->srcaddr.ss_family = family' from
-> > xs_create_sock() triggers this due to nlmclnt_lookup_host() incorrectly
-> > initialising the srcaddr family to AF_UNSPEC.
-> > 
-> > Reported-by: Nick Bowler <nbowler@elliptictech.com>
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> > 
-> > fs/lockd/host.c |    5 -----
-> > 1 files changed, 0 insertions(+), 5 deletions(-)
-> > 
-> > 
-> > diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> > index 25e21e4..9ff0c0e 100644
-> > --- a/fs/lockd/host.c
-> > +++ b/fs/lockd/host.c
-> > @@ -238,9 +238,6 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
-> > 				     const char *hostname,
-> > 				     int noresvport)
-> > {
-> > -	const struct sockaddr source = {
-> > -		.sa_family	= AF_UNSPEC,
-> > -	};
-> > 	struct nlm_lookup_host_info ni = {
-> > 		.server		= 0,
-> > 		.sap		= sap,
-> > @@ -249,8 +246,6 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
-> > 		.version	= version,
-> > 		.hostname	= hostname,
-> > 		.hostname_len	= strlen(hostname),
-> > -		.src_sap	= &source,
-> > -		.src_len	= sizeof(source),
-> > 		.noresvport	= noresvport,
-> > 	};
-> > 
-> > 
-> 
-> 
-> What about that memcpy() in nlm_lookup_host()?  With this patch, wouldn't it be copying garbage into the host's srcaddr field?
-> 
+> Argh, missed this: we're leaking the passed-in lease in this case.
 
-It shouldn't. ni->src_len is now zero.
+We could do something like this.
 
-Trond
+The irritating thing is that the only lease user I understand is the
+nfsd code, and it doesn't want this lease-merging behavior; the only
+reason that fl_change is there is so it can just turn this case into an
+error every time.
+
+And I have no idea what the requirements are of any other users: do
+leases behave like this on purpose, or was it just an arbitrary choice,
+and does anyone depend on it now?
+
+In the end maybe it would be better just to leave leases as they are and
+define a new lock type for nfsd.
+
+We'd probably have to do that eventually anyway, and it'd save me trying
+to guess what the lease semantics are supposed to be....
+
+--b.
+
+>From f5c6d51ae638af213d8bda31504f4b2287b8a801 Mon Sep 17 00:00:00 2001
+From: J. Bruce Fields <bfields@redhat.com>
+Date: Wed, 3 Nov 2010 16:49:44 -0400
+Subject: [PATCH 1/2] locks: fix leak on merging leases
+
+We must also free the passed-in lease in the case it wasn't used because
+an existing lease was upgrade/downgraded or already existed.
+
+Note the nfsd caller doesn't care because it's fl_change callback
+returns an error in those cases.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/locks.c |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/fs/locks.c b/fs/locks.c
+index 65765cb..61c22f7 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1504,7 +1504,7 @@ static int do_fcntl_delete_lease(struct file *filp)
+ 
+ static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
+ {
+-	struct file_lock *fl;
++	struct file_lock *fl, *ret;
+ 	struct fasync_struct *new;
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
+ 	int error;
+@@ -1518,6 +1518,7 @@ static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
+ 		locks_free_lock(fl);
+ 		return -ENOMEM;
+ 	}
++	ret = fl;
+ 	lock_flocks();
+ 	error = __vfs_setlease(filp, arg, &fl);
+ 	if (error) {
+@@ -1525,6 +1526,8 @@ static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
+ 		locks_free_lock(fl);
+ 		goto out_free_fasync;
+ 	}
++	if (ret != fl)
++		locks_free_lock(fl);
+ 
+ 	/*
+ 	 * fasync_insert_entry() returns the old entry if any.
+@@ -1532,7 +1535,7 @@ static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
+ 	 * inserted it into the fasync list. Clear new so that
+ 	 * we don't release it here.
+ 	 */
+-	if (!fasync_insert_entry(fd, filp, &fl->fl_fasync, new))
++	if (!fasync_insert_entry(fd, filp, &ret->fl_fasync, new))
+ 		new = NULL;
+ 
+ 	if (error < 0) {
+-- 
+1.7.1
+
