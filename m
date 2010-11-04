@@ -1,104 +1,162 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from netnation.com ([204.174.223.2]:39445 "EHLO peace.netnation.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754041Ab0K3Ia4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 03:30:56 -0500
-Date: Tue, 30 Nov 2010 00:30:51 -0800
-From: Simon Kirby <sim@hostway.ca>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Guennadi Liakhovetski <g.liakhovetski@gmx.de>, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Bryan Schumaker <bjschuma@netapp.com>, rees@umich.edu
-Subject: Re: [REGRESSION] git commit d1bacf9e "NFS: add readdir cache
-	array" is bad
-Message-ID: <20101130083051.GD31403@hostway.ca>
-References: <Pine.LNX.4.64.1011261255260.16655@axis700.grange> <1290794726.4905.8.camel@heimdal.trondhjem.org> <20101127002548.GA20008@hostway.ca> <20101127102732.GD12175@hostway.ca> <1290882240.3415.5.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1290882240.3415.5.camel@heimdal.trondhjem.org>
+Received: from mx2.netapp.com ([216.240.18.37]:33429 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752435Ab0KDPWy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Nov 2010 11:22:54 -0400
+Received: from localhost.localdomain (dnsindia.hq.netapp.com [10.58.52.94] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oA4FMYMV029583
+	for <linux-nfs@vger.kernel.org>; Thu, 4 Nov 2010 08:22:44 -0700 (PDT)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 09/18] pnfs-submit: change pnfs_layout_hdr refcount to atomic_t
+Date: Thu,  4 Nov 2010 11:22:22 -0400
+Message-Id: <1288884151-11128-10-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
+References: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Sat, Nov 27, 2010 at 01:24:00PM -0500, Trond Myklebust wrote:
+This is needed because we need to increment the refcount outside
+of the i_lock.  In particular, we will need to scan cl_layouts
+while holding cl_lock, and grab reference of each lo found.
 
-> On Sat, 2010-11-27 at 02:27 -0800, Simon Kirby wrote:
-> > Ok, so I tracked them down, and they didn't seem to be particularly
-> > unusual, so I tried a not-particularly-unusual thing that I figured might
-> > work, and reproduced it:
-> > 
-> > server: echo test > a
-> > client: ls -l
-> > server: echo test > b ; mv b a
-> > client: ls -l
-> > 
-> > That's it.  The kernel (2.6.37-rc3), on the final "ls -l", says:
-> > 
-> > [12814.611197] NFS: server 10.10.52.228 error: fileid changed
-> > [12814.611200] fsid 0:3f: expected fileid 0x122efbf1, got 0x122efc15
-> > 
-> > "ls -li" shows the inode updated, so maybe this isn't even a bug?
-> 
-> Ah! I think I see it now, and yes it is a bug...
-> 
-> Does the following patch fix it?
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   50 +++++++++++++++++++++++++++++---------------------
+ fs/nfs/pnfs.h |    2 +-
+ 2 files changed, 30 insertions(+), 22 deletions(-)
 
-Indeed, it does!  I verified that I can reproduce it on 2.6.37-rc3
-without this patch, and I can no longer reproduce it with this patch.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index a2d8d3f..d9a867f 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -232,34 +232,42 @@ EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
+  * pNFS client layout cache
+  */
+ 
++/* Need to hold i_lock if caller does not already hold reference */
+ static void
+-get_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++get_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+-	assert_spin_locked(&lo->inode->i_lock);
+-	lo->refcount++;
++	atomic_inc(&lo->plh_refcount);
++	smp_mb__after_atomic_inc();
++}
++
++static void
++destroy_layout_hdr(struct pnfs_layout_hdr *lo)
++{
++	dprintk("%s: freeing layout cache %p\n", __func__, lo);
++	BUG_ON(!list_empty(&lo->layouts));
++	NFS_I(lo->inode)->layout = NULL;
++	kfree(lo);
+ }
+ 
+ static void
+ put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
+ {
+ 	assert_spin_locked(&lo->inode->i_lock);
+-	BUG_ON(lo->refcount == 0);
+-
+-	lo->refcount--;
+-	if (!lo->refcount) {
+-		dprintk("%s: freeing layout cache %p\n", __func__, lo);
+-		BUG_ON(!list_empty(&lo->layouts));
+-		NFS_I(lo->inode)->layout = NULL;
+-		kfree(lo);
+-	}
++	BUG_ON(atomic_read(&lo->plh_refcount) == 0);
++	if (atomic_dec_and_test(&lo->plh_refcount))
++		destroy_layout_hdr(lo);
+ }
+ 
+ void
+ put_layout_hdr(struct inode *inode)
+ {
+-	spin_lock(&inode->i_lock);
+-	put_layout_hdr_locked(NFS_I(inode)->layout);
+-	spin_unlock(&inode->i_lock);
++	struct pnfs_layout_hdr *lo = NFS_I(inode)->layout;
++
++	BUG_ON(atomic_read(&lo->plh_refcount) == 0);
++	if (atomic_dec_and_lock(&lo->plh_refcount, &inode->i_lock)) {
++		destroy_layout_hdr(lo);
++		spin_unlock(&inode->i_lock);
++	}
+ }
+ 
+ static void
+@@ -413,7 +421,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 		pnfs_clear_lseg_list(lo, &tmp_list, &range);
+ 		WARN_ON(!list_empty(&nfsi->layout->segs));
+ 		WARN_ON(!list_empty(&nfsi->layout->layouts));
+-		WARN_ON(nfsi->layout->refcount != 1);
++		WARN_ON(atomic_read(&nfsi->layout->plh_refcount) != 1);
+ 
+ 		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
+ 		put_layout_hdr_locked(lo);
+@@ -657,7 +665,7 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 			if (should_free_lseg(lseg, &arg))
+ 				mark_lseg_invalid(lseg, &tmp_list);
+ 		/* Reference matched in nfs4_layoutreturn_release */
+-		get_layout_hdr_locked(lo);
++		get_layout_hdr(lo);
+ 		spin_unlock(&ino->i_lock);
+ 		pnfs_free_lseg_list(&tmp_list);
+ 
+@@ -738,7 +746,7 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 			__func__, lseg, lseg->range.iomode,
+ 			lseg->range.offset, lseg->range.length);
+ 	}
+-	get_layout_hdr_locked(lo);
++	get_layout_hdr(lo);
+ 
+ 	dprintk("%s:Return\n", __func__);
+ }
+@@ -751,7 +759,7 @@ alloc_init_layout_hdr(struct inode *ino)
+ 	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
+ 	if (!lo)
+ 		return NULL;
+-	lo->refcount = 1;
++	atomic_set(&lo->plh_refcount, 1);
+ 	INIT_LIST_HEAD(&lo->layouts);
+ 	INIT_LIST_HEAD(&lo->segs);
+ 	lo->inode = ino;
+@@ -875,7 +883,7 @@ pnfs_update_layout(struct inode *ino,
+ 	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
+ 		goto out_unlock;
+ 
+-	get_layout_hdr_locked(lo); /* Matched in pnfs_layoutget_release */
++	get_layout_hdr(lo); /* Matched in pnfs_layoutget_release */
+ 	spin_unlock(&ino->i_lock);
+ 
+ 	lseg = send_layoutget(lo, ctx, &arg);
+@@ -1177,7 +1185,7 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ 	pnfs_copy_layout_stateid(&data->args.stateid, nfsi->layout);
+ 
+ 	/* Reference for layoutcommit matched in pnfs_layoutcommit_release */
+-	get_layout_hdr_locked(NFS_I(inode)->layout);
++	get_layout_hdr(NFS_I(inode)->layout);
+ 
+ 	spin_unlock(&inode->i_lock);
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 96af66f..e631487 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -92,7 +92,7 @@ struct pnfs_layoutdriver_type {
+ };
+ 
+ struct pnfs_layout_hdr {
+-	unsigned long		refcount;
++	atomic_t		plh_refcount;
+ 	struct list_head	layouts;   /* other client layouts */
+ 	struct list_head	segs;      /* layout segments list */
+ 	int			roc_iomode;/* return on close iomode, 0=none */
+-- 
+1.7.2.1
 
-Thanks muchly!
-
-Tested-by: Simon Kirby <sim@hostway.ca>
-
-Simon-
-
-> Cheers
->   Trond
-> -------------------------------------------------------------------------------------
-> NFS: Fix a readdirplus bug
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> When comparing filehandles in the helper nfs_same_file(), we should not be
-> using 'strncmp()': filehandles are not null terminated strings.
-> 
-> Instead, we should just use the existing helper nfs_compare_fh().
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  fs/nfs/dir.c |    6 +-----
->  1 files changed, 1 insertions(+), 5 deletions(-)
-> 
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 8ea4a41..f0a384e 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -395,13 +395,9 @@ int xdr_decode(nfs_readdir_descriptor_t *desc, struct nfs_entry *entry, struct x
->  static
->  int nfs_same_file(struct dentry *dentry, struct nfs_entry *entry)
->  {
-> -	struct nfs_inode *node;
->  	if (dentry->d_inode == NULL)
->  		goto different;
-> -	node = NFS_I(dentry->d_inode);
-> -	if (node->fh.size != entry->fh->size)
-> -		goto different;
-> -	if (strncmp(node->fh.data, entry->fh->data, node->fh.size) != 0)
-> +	if (nfs_compare_fh(entry->fh, NFS_FH(dentry->d_inode)) != 0)
->  		goto different;
->  	return 1;
->  different:
-> 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
