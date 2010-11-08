@@ -1,52 +1,118 @@
-From: TH Chew <teonghan@gmail.com>
-Subject: Re: Unable to unlock nfs4 mounted file
-Date: Mon, 8 Nov 2010 11:01:38 +0800
-Message-ID: <AANLkTi=hGbfqVGQGqwnfdOAnfqG=7eL5+EzFhi38qn=a@mail.gmail.com>
-References: <1288962385.3936.6.camel@aikhan-laptop>
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+Subject: Re: [PATCH] Revert "nfsd4: distinguish expired from stale stateids"
+Date: Mon, 08 Nov 2010 16:52:36 +0800
+Message-ID: <4CD7BA54.2050403@cn.fujitsu.com>
+References: <20100518233746.GC26911@fieldses.org> <4C563CE5.1010101@cn.fujitsu.com> <20100802135036.GA12637@fieldses.org> <4C57DD66.1070001@cn.fujitsu.com> <20100922193933.GJ26903@fieldses.org> <20101002224954.GD18079@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=Shift_JIS
 Cc: linux-nfs@vger.kernel.org
-To: "Dr. Md. Aminul Islam Khan" <aikhan_lab-jH00EaABlX1eoWH0uzbU5w@public.gmane.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:50323 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753074Ab0KHDBl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Nov 2010 22:01:41 -0500
-Received: by eye27 with SMTP id 27so2560208eye.19
-        for <linux-nfs@vger.kernel.org>; Sun, 07 Nov 2010 19:01:40 -0800 (PST)
-In-Reply-To: <1288962385.3936.6.camel@aikhan-laptop>
+Received: from cn.fujitsu.com ([222.73.24.84]:54936 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752224Ab0KHJCZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Nov 2010 04:02:25 -0500
+In-Reply-To: <20101002224954.GD18079@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Maybe you can provide us with your /etc/exports content?
-
-On Fri, Nov 5, 2010 at 9:06 PM, Dr. Md. Aminul Islam Khan
-<aikhan_lab-jH00EaABlX1eoWH0uzbU5w@public.gmane.org> wrote:
->
-> Hi,
-> My nfs server is on Debian lenny.
-> Using nfs clients a, b and c on Ubuntu 9.04
-> Client a opened nfs4 served file "xxx.odt" and closed it.
-> Client a tries to open the file, message is:
-> Document file 'xxx.odt' is locked for editing by:
-> khan (16.04.2010 21:08)
-> Open document read-only or open a copy of the document for editing.
->
-> Help in unlocking the file is highly appreciated
->
->
-> Regards
->
-> aikhan
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
 
 
+J. Bruce Fields wrote:
+> On Wed, Sep 22, 2010 at 03:39:33PM -0400, J. Bruce Fields wrote:
+>> On Tue, Aug 03, 2010 at 05:12:06PM +0800, Bian Naimeng wrote:
+>>>   As i see, this question is difficult to slove. Freebsd looks like nerver return 
+>>>   the NFSERR_EXPIRED error.  And solaris more than happy to return NFSERR_EXPIRED 
+>>>   rather than NFSERR_BAD_STATEID when the stateid is not found at server.
+>>>
+>>>   I mean it's difficult to distinguish expired_stateid and bad_stateid(they are not
+>>>   exist at server), so maybe we have not a exactly solution to solve it.
+>>>
+>>>   Maybe we should choose which error we are more needed, NFSERR_EXPIRED  or NFSERR_BAD_STATEID?
+>> Yes, that would probably be simplest.
+> 
+> So, like this?
 
---
-Regards,
-THChew
+  Hi bruce,
+
+     I'm sorry to reply it so later, it looks good to me. ^_^
+
+  Best Regards
+    Bian
+
+> 
+> --b.
+> 
+> commit 3d5bdf44f73f2e4136d27fe7bd45b9ca6674e590
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Sat Oct 2 18:42:39 2010 -0400
+> 
+>     nfsd4: return expired on unfound stateid's
+>     
+>     Commit 78155ed75f470710f2aecb3e75e3d97107ba8374 "nfsd4: distinguish
+>     expired from stale stateids" attempted to distinguish expired and stale
+>     stateid's using time information that may not have been completely
+>     reliable, so I reverted it.
+>     
+>     That was throwing out the baby with the bathwater; we still do want to
+>     return expired, but let's do that using the simpler approach of just
+>     assuming any stateid is expired if it looks like it was given out by the
+>     current server instance, but we can't find it any more.
+>     
+>     This may help clients that are recovering from network partitions.
+>     
+>     Reported-by: Bian Naimeng <biannm@cn.fujitsu.com>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 596702e..02c23b7 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3046,7 +3046,11 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+>  	if (STALE_STATEID(stateid)) 
+>  		goto out;
+>  
+> -	status = nfserr_bad_stateid;
+> +	/*
+> +	 * We assume that any stateid that has the current boot time,
+> +	 * but that we can't find, is expired:
+> +	 */
+> +	status = nfserr_expired;
+>  	if (is_delegation_stateid(stateid)) {
+>  		dp = find_delegation_stateid(ino, stateid);
+>  		if (!dp)
+> @@ -3066,6 +3070,7 @@ nfs4_preprocess_stateid_op(struct nfsd4_compound_state *cstate,
+>  		stp = find_stateid(stateid, flags);
+>  		if (!stp)
+>  			goto out;
+> +		status = nfserr_bad_stateid;
+>  		if (nfs4_check_fh(current_fh, stp))
+>  			goto out;
+>  		if (!stp->st_stateowner->so_confirmed)
+> @@ -3140,8 +3145,9 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+>  		 * a replayed close:
+>  		 */
+>  		sop = search_close_lru(stateid->si_stateownerid, flags);
+> +		/* It's not stale; let's assume it's expired: */
+>  		if (sop == NULL)
+> -			return nfserr_bad_stateid;
+> +			return nfserr_expired;
+>  		*sopp = sop;
+>  		goto check_replay;
+>  	}
+> @@ -3406,6 +3412,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	status = nfserr_bad_stateid;
+>  	if (!is_delegation_stateid(stateid))
+>  		goto out;
+> +	status = nfserr_expired;
+>  	dp = find_delegation_stateid(inode, stateid);
+>  	if (!dp)
+>  		goto out;
+> 
+> 
+> 
+
+-- 
+Regards
+Bian Naimeng
+
