@@ -1,39 +1,52 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/2] locks: let the caller free file_lock on ->setlease
- failure
-Date: Sat, 6 Nov 2010 15:03:58 -0400
-Message-ID: <20101106190358.GB15850@infradead.org>
-References: <20101027133924.GB6328@fieldses.org>
- <201010271546.09036.arnd@arndb.de>
- <20101027145538.GC6328@fieldses.org>
- <20101027145929.GA5788@infradead.org>
- <20101030212500.GE480@fieldses.org>
- <20101031123419.GA4491@infradead.org>
- <20101031123510.GA4520@infradead.org>
- <20101103204147.GA6777@fieldses.org>
- <20101104014024.GA22498@fieldses.org>
- <20101104014128.GB22498@fieldses.org>
+From: TH Chew <teonghan@gmail.com>
+Subject: Re: Unable to unlock nfs4 mounted file
+Date: Mon, 8 Nov 2010 11:01:38 +0800
+Message-ID: <AANLkTi=hGbfqVGQGqwnfdOAnfqG=7eL5+EzFhi38qn=a@mail.gmail.com>
+References: <1288962385.3936.6.camel@aikhan-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Arnd Bergmann <arnd@arndb.de>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Bryan Schumaker <bjschuma@netapp.com>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: "Dr. Md. Aminul Islam Khan" <aikhan_lab-jH00EaABlX1eoWH0uzbU5w@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:60099 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752612Ab0KFTEB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Nov 2010 15:04:01 -0400
-In-Reply-To: <20101104014128.GB22498@fieldses.org>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:50323 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753074Ab0KHDBl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Nov 2010 22:01:41 -0500
+Received: by eye27 with SMTP id 27so2560208eye.19
+        for <linux-nfs@vger.kernel.org>; Sun, 07 Nov 2010 19:01:40 -0800 (PST)
+In-Reply-To: <1288962385.3936.6.camel@aikhan-laptop>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> A minor oversight from f7347ce4ee7c65415f84be915c018473e7076f31,
-> "fasync: re-organize fasync entry insertion to allow it under a
-> spinlock": this cleanup-on-error was only needed to handle -ENOMEM.  Now
-> that we're preallocating it's unneeded.
+Maybe you can provide us with your /etc/exports content?
 
-Looks good to me, too.
+On Fri, Nov 5, 2010 at 9:06 PM, Dr. Md. Aminul Islam Khan
+<aikhan_lab-jH00EaABlX1eoWH0uzbU5w@public.gmane.org> wrote:
+>
+> Hi,
+> My nfs server is on Debian lenny.
+> Using nfs clients a, b and c on Ubuntu 9.04
+> Client a opened nfs4 served file "xxx.odt" and closed it.
+> Client a tries to open the file, message is:
+> Document file 'xxx.odt' is locked for editing by:
+> khan (16.04.2010 21:08)
+> Open document read-only or open a copy of the document for editing.
+>
+> Help in unlocking the file is highly appreciated
+>
+>
+> Regards
+>
+> aikhan
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
 
+
+
+--
+Regards,
+THChew
