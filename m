@@ -1,303 +1,352 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47184 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756041Ab0KLIt1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Nov 2010 03:49:27 -0500
-Received: from localhost.localdomain (hess01-lxp.hq.netapp.com [10.58.60.52] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAC8n7fT025967
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:49:21 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 19/22] pnfs-submit refactor layoutcommit xdr structures
-Date: Fri, 12 Nov 2010 03:48:41 -0500
-Message-Id: <1289551724-18575-20-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
-References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:37053 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753714Ab0KITac convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Nov 2010 14:30:32 -0500
+Subject: Re: [PATCH] nfs-utils: nfsstat: has_stats() does not function correctly for NFSv4 client stats
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1289328603.9490.18.camel@serendib>
+Date: Tue, 9 Nov 2010 14:29:50 -0500
+Cc: linux-nfs@vger.kernel.org, Steve Dickson <steved@redhat.com>
+Message-Id: <33A5EC88-8770-4E5D-809A-28926ED3C5EC@oracle.com>
+References: <1289328603.9490.18.camel@serendib>
+To: Harshula Jayasuriya <harshula@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Hi-
 
-Separate the layoutcommit operation args from the layoutcommit compound args
-in preparation to add the layoutcommit operation to the close compound
-when return-on-close set and layoutcommit is needed prior to the layoutreturn.
+Why not use mountstats?  The /proc/net/rpc/nfs is destined for deprecation, I thought.
 
- - Move pnfs_layoutcommit_arg inode to pnfs_layoutcommit_data because it is
-not needed for encode_layoutcommit.
+On Nov 9, 2010, at 1:50 PM, Harshula Jayasuriya wrote:
 
- - Move pnfs_layoutcommit_data rpc_cred to pnfs_layoutcommit_arg so that
-pnfs_layoutcommit_setup can be called with pnfs_layoutcommit_arg only.
+> Hi,
+> 
+> The NFSv4 client procs/ops in "struct rpc_procinfo nfs4_procedures" is
+> used to generate the NFS client stats interface:
+> ------------------------------------------------------------
+> # cat /proc/net/rpc/nfs 
+> net 0 0 0 0
+> rpc 15 0 0
+> proc2 18 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+> proc3 22 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 2 1 0
+> proc4 42 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0
+> 0 0 0
+> 0 0 0 0 0 0 0
+> ------------------------------------------------------------
+> Note, for proc4, the number 42. That is the number of stats that follow
+> on the same line. Currently nfsstat's has_stats() relies on this number
+> to be equal to CLTPROC4_SZ. Unfortunately this is not the case. I have
+> changed has_stats() not to rely on these two values being equal. This
+> should also allow nfsstat to work with different kernel versions that
+> expose a different number of NFS client ops.
+> 
+> * Fix has_stats()
+> * Stop print_clnt_list() printing server stats!
+> * Describe the option -3 and -4 completely in the nfsstat manpage.
+> 
+> Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+> ---
+> utils/nfsstat/nfsstat.c   |  124 ++++++++++++++++++++-------------------------
+> utils/nfsstat/nfsstat.man |    6 ++-
+> 2 files changed, 59 insertions(+), 71 deletions(-)
+> 
+> diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
+> index bacef8e..f31bb81 100644
+> --- a/utils/nfsstat/nfsstat.c
+> +++ b/utils/nfsstat/nfsstat.c
+> @@ -46,7 +46,7 @@ static unsigned int	cltproc3info[CLTPROC3_SZ+2],
+> static unsigned int	srvproc4info[SRVPROC4_SZ+2],
+> 			srvproc4info_old[SRVPROC4_SZ+2];	/* NFSv4 call counts ([0] == 2) */
+> static unsigned int	cltproc4info[CLTPROC4_SZ+2],
+> -			cltproc4info_old[CLTPROC4_SZ+2];	/* NFSv4 call counts ([0] == 48) */
+> +			cltproc4info_old[CLTPROC4_SZ+2];	/* NFSv4 call counts ([0] == 49) */
+> static unsigned int	srvproc4opsinfo[SRVPROC4OPS_SZ+2],
+> 			srvproc4opsinfo_old[SRVPROC4OPS_SZ+2];	/* NFSv4 call counts ([0] == 59) */
+> static unsigned int	srvnetinfo[5], srvnetinfo_old[5];	/* 0  # of received packets
+> @@ -221,8 +221,8 @@ DECLARE_CLT(cltinfo);
+> DECLARE_CLT(cltinfo, _old);
+> 
+> static void		print_all_stats(int, int, int);
+> -static void		print_server_stats(int, int);
+> -static void		print_client_stats(int, int);
+> +static void		print_server_stats(int);
+> +static void		print_client_stats(int);
+> static void		print_stats_list(int, int, int);
+> static void		print_numbers(const char *, unsigned int *,
+> 					unsigned int);
+> @@ -239,7 +239,7 @@ static int		mounts(const char *);
+> 
+> static void		get_stats(const char *, struct statinfo *, int *, int,
+> 					int);
+> -static int		has_stats(const unsigned int *);
+> +static int		has_stats(const unsigned int *, int);
+> static int		has_rpcstats(const unsigned int *, int);
+> static void 		diff_stats(struct statinfo *, struct statinfo *, int);
+> static void 		unpause(int);
+> @@ -468,7 +468,7 @@ main(int argc, char **argv)
+> 		pause();
+> 	}
+> 
+> -	if (opt_since || opt_sleep) {
+> +	if (opt_since || (opt_sleep && !sleep_time)) {
+> 		if (opt_srv) {
+> 			get_stats(NFSSRVSTAT, serverinfo_tmp, &opt_srv, opt_clt, 1);
+> 			diff_stats(serverinfo_tmp, serverinfo, 1);
+> @@ -516,16 +516,16 @@ main(int argc, char **argv)
+> static void
+> print_all_stats (int opt_srv, int opt_clt, int opt_prt)
+> {
+> -	print_server_stats(opt_srv, opt_prt);
+> -	print_client_stats(opt_clt, opt_prt);
+> +	if (opt_srv)
+> +		print_server_stats(opt_prt);
+> +
+> +	if (opt_clt)
+> +		print_client_stats(opt_prt);
+> }
+> 
+> static void 
+> -print_server_stats(int opt_srv, int opt_prt) 
+> +print_server_stats(int opt_prt) 
+> {
+> -	if (!opt_srv)
+> -		return;
+> -
+> 	if (opt_prt & PRNT_NET) {
+> 		if (opt_sleep && !has_rpcstats(srvnetinfo, 4)) {
+> 		} else {
+> @@ -582,31 +582,29 @@ print_server_stats(int opt_srv, int opt_prt)
+> 		printf("\n");
+> 	}
+> 	if (opt_prt & PRNT_CALLS) {
+> +		int has_v2_stats = has_stats(srvproc2info, SRVPROC2_SZ+2);
+> +		int has_v3_stats = has_stats(srvproc3info, SRVPROC3_SZ+2);
+> +		int has_v4_stats = has_stats(srvproc4info, SRVPROC4_SZ+2);
+> +
+> 		if ((opt_prt & PRNT_V2) || 
+> -				((opt_prt & PRNT_AUTO) && has_stats(srvproc2info))) {
+> -			if (opt_sleep && !has_stats(srvproc2info)) {
+> -				;
+> -			} else {
+> +				((opt_prt & PRNT_AUTO) && has_v2_stats)) {
+> +			if (!opt_sleep || has_v2_stats) {
+> 				print_callstats(LABEL_srvproc2,
+> 					nfsv2name, srvproc2info + 1, 
+> 					sizeof(nfsv2name)/sizeof(char *));
+> 			}
+> 		}
+> 		if ((opt_prt & PRNT_V3) || 
+> -				((opt_prt & PRNT_AUTO) && has_stats(srvproc3info))) {
+> -			if (opt_sleep && !has_stats(srvproc3info)) {
+> -				;
+> -			} else {
+> +				((opt_prt & PRNT_AUTO) && has_v3_stats)) {
+> +			if (!opt_sleep || has_v3_stats) {
+> 				print_callstats(LABEL_srvproc3,
+> 					nfsv3name, srvproc3info + 1, 
+> 					sizeof(nfsv3name)/sizeof(char *));
+> 			}
+> 		}
+> 		if ((opt_prt & PRNT_V4) || 
+> -				((opt_prt & PRNT_AUTO) && has_stats(srvproc4info))) {
+> -			if (opt_sleep && !has_stats(srvproc4info)) {
+> -				;
+> -			} else {
+> +				((opt_prt & PRNT_AUTO) && has_v4_stats)) {
+> +			if (!opt_sleep || has_v4_stats) {
+> 				print_callstats( LABEL_srvproc4,
+> 					nfssrvproc4name, srvproc4info + 1, 
+> 					sizeof(nfssrvproc4name)/sizeof(char *));
+> @@ -618,11 +616,8 @@ print_server_stats(int opt_srv, int opt_prt)
+> 	}
+> }
+> static void
+> -print_client_stats(int opt_clt, int opt_prt) 
+> +print_client_stats(int opt_prt) 
+> {
+> -	if (!opt_clt)
+> -		return;
+> -
+> 	if (opt_prt & PRNT_NET) {
+> 		if (opt_sleep && !has_rpcstats(cltnetinfo, 4)) {
+> 			;
+> @@ -644,31 +639,28 @@ print_client_stats(int opt_clt, int opt_prt)
+> 		}
+> 	}
+> 	if (opt_prt & PRNT_CALLS) {
+> +		int has_v2_stats = has_stats(cltproc2info, CLTPROC2_SZ+2);
+> +		int has_v3_stats = has_stats(cltproc3info, CLTPROC3_SZ+2);
+> +		int has_v4_stats = has_stats(cltproc4info, CLTPROC4_SZ+2);
+> 		if ((opt_prt & PRNT_V2) || 
+> -				((opt_prt & PRNT_AUTO) && has_stats(cltproc2info))) {
+> -			if (opt_sleep && !has_stats(cltproc2info)) {
+> -				;
+> -			} else {
+> +				((opt_prt & PRNT_AUTO) && has_v2_stats)) {
+> +			if (!opt_sleep || has_v2_stats) {
+> 				print_callstats(LABEL_cltproc2,
+> 					nfsv2name, cltproc2info + 1,  
+> 					sizeof(nfsv2name)/sizeof(char *));
+> 			}
+> 		}
+> 		if ((opt_prt & PRNT_V3) || 
+> -				((opt_prt & PRNT_AUTO) && has_stats(cltproc3info))) {
+> -			if (opt_sleep && !has_stats(cltproc3info)) {
+> -				;
+> -			} else {
+> +				((opt_prt & PRNT_AUTO) && has_v3_stats)) {
+> +			if (!opt_sleep || has_v3_stats) {
+> 				print_callstats(LABEL_cltproc3,
+> 					nfsv3name, cltproc3info + 1, 
+> 					sizeof(nfsv3name)/sizeof(char *));
+> 			}
+> 		}
+> 		if ((opt_prt & PRNT_V4) || 
+> -				((opt_prt & PRNT_AUTO) && has_stats(cltproc4info))) {
+> -			if (opt_sleep && !has_stats(cltproc4info)) {
+> -				;
+> -			} else {
+> +				((opt_prt & PRNT_AUTO) && has_v4_stats)) {
+> +			if (!opt_sleep || has_v4_stats) {
+> 				print_callstats(LABEL_cltproc4,
+> 					nfscltproc4name, cltproc4info + 1,  
+> 					sizeof(nfscltproc4name)/sizeof(char *));
+> @@ -681,34 +673,28 @@ static void
+> print_clnt_list(int opt_prt) 
+> {
+> 	if (opt_prt & PRNT_CALLS) {
+> +		int has_v2_stats = has_stats(cltproc2info, CLTPROC2_SZ+2);
+> +		int has_v3_stats = has_stats(cltproc3info, CLTPROC3_SZ+2);
+> +		int has_v4_stats = has_stats(cltproc4info, CLTPROC4_SZ+2);
+> 		if ((opt_prt & PRNT_V2) || 
+> -				((opt_prt & PRNT_AUTO) && has_stats(cltproc2info))) {
+> -			if (opt_sleep && !has_stats(cltproc2info)) {
+> -				;
+> -			} else {
+> +				((opt_prt & PRNT_AUTO) && has_v2_stats)) {
+> +			if (!opt_sleep || has_v2_stats) {
+> 				print_callstats_list("nfs v2 client",
+> 					nfsv2name, cltproc2info + 1,  
+> 					sizeof(nfsv2name)/sizeof(char *));
+> 			}
+> 		}
+> 		if ((opt_prt & PRNT_V3) || 
+> -				((opt_prt & PRNT_AUTO) && has_stats(cltproc3info))) {
+> -			if (opt_sleep && !has_stats(cltproc3info)) {
+> -				;
+> -			} else { 
+> +				((opt_prt & PRNT_AUTO) && has_v3_stats)) {
+> +			if (!opt_sleep || has_v3_stats) {
+> 				print_callstats_list("nfs v3 client",
+> 					nfsv3name, cltproc3info + 1, 
+> 					sizeof(nfsv3name)/sizeof(char *));
+> 			}
+> 		}
+> 		if ((opt_prt & PRNT_V4) || 
+> -				((opt_prt & PRNT_AUTO) && has_stats(cltproc4info))) {
+> -			if (opt_sleep && !has_stats(cltproc4info)) {
+> -				;
+> -			} else {
+> -				print_callstats_list("nfs v4 ops",
+> -					nfssrvproc4opname, srvproc4opsinfo + 1, 
+> -					sizeof(nfssrvproc4opname)/sizeof(char *));
+> +				((opt_prt & PRNT_AUTO) && has_v4_stats)) {
+> +			if (!opt_sleep || has_v4_stats) {
+> 				print_callstats_list("nfs v4 client",
+> 					nfscltproc4name, cltproc4info + 1,  
+> 					sizeof(nfscltproc4name)/sizeof(char *));
+> @@ -720,32 +706,32 @@ static void
+> print_serv_list(int opt_prt) 
+> {
+> 	if (opt_prt & PRNT_CALLS) {
+> +		int has_v2_stats = has_stats(srvproc2info, SRVPROC2_SZ+2);
+> +		int has_v3_stats = has_stats(srvproc3info, SRVPROC3_SZ+2);
+> +		int has_v4_stats = has_stats(srvproc4info, SRVPROC4_SZ+2);
+> 		if ((opt_prt & PRNT_V2) || 
+> -				((opt_prt & PRNT_AUTO) && has_stats(srvproc2info))) {
+> -			if (opt_sleep && !has_stats(srvproc2info)) {
+> -				;
+> -			} else {
+> +				((opt_prt & PRNT_AUTO) && has_v2_stats)) {
+> +			if (!opt_sleep || has_v2_stats) {
+> 				print_callstats_list("nfs v2 server",
+> 					nfsv2name, srvproc2info + 1, 
+> 					sizeof(nfsv2name)/sizeof(char *));
+> 			}
+> 		}
+> 		if ((opt_prt & PRNT_V3) || 
+> -				((opt_prt & PRNT_AUTO) && has_stats(srvproc3info))) {
+> -			if (opt_sleep && !has_stats(srvproc3info)) {
+> -				;
+> -			} else {
+> +				((opt_prt & PRNT_AUTO) && has_v3_stats)) {
+> +			if (!opt_sleep || has_v3_stats) {
+> 				print_callstats_list("nfs v3 server",
+> 					nfsv3name, srvproc3info + 1, 
+> 					sizeof(nfsv3name)/sizeof(char *));
+> 			}
+> 		}
+> 		if ((opt_prt & PRNT_V4) || 
+> -				((opt_prt & PRNT_AUTO) && has_stats(srvproc4opsinfo))) {
+> -			if (opt_sleep && !has_stats(srvproc4info)) {
+> -				;
+> -			} else {
+> -				print_callstats_list("nfs v4 ops",
+> +				((opt_prt & PRNT_AUTO) && has_v4_stats)) {
+> +			if (!opt_sleep || has_v4_stats) {
+> +				print_callstats_list("nfs v4 server",
+> +					nfssrvproc4name, srvproc4info + 1, 
+> +					sizeof(nfssrvproc4name)/sizeof(char *));
+> +				print_callstats_list("nfs v4 servop",
+> 					nfssrvproc4opname, srvproc4opsinfo + 1, 
+> 					sizeof(nfssrvproc4opname)/sizeof(char *));
+> 			}
+> @@ -1054,9 +1040,9 @@ out:
+>  * there are stats if the sum's greater than the entry-count.
+>  */
+> static int
+> -has_stats(const unsigned int *info)
+> +has_stats(const unsigned int *info, int nr)
+> {
+> -	return (info[0] && info[info[0] + 1] > info[0]);
+> +	return (info[0] && info[nr-1] > info[0]);
+> }
+> static int
+> has_rpcstats(const unsigned int *info, int size)
+> diff --git a/utils/nfsstat/nfsstat.man b/utils/nfsstat/nfsstat.man
+> index 52215a9..cd573b0 100644
+> --- a/utils/nfsstat/nfsstat.man
+> +++ b/utils/nfsstat/nfsstat.man
+> @@ -30,10 +30,12 @@ Print only NFS v2 statistics. The default is to only print information
+> about the versions of \fBNFS\fR that have non-zero counts.
+> .TP
+> .B \-3
+> -Print only NFS v3 statistics. 
+> +Print only NFS v3 statistics. The default is to only print information
+> +about the versions of \fBNFS\fR that have non-zero counts.
+> .TP
+> .B \-4
+> -Print only NFS v4 statistics. 
+> +Print only NFS v4 statistics. The default is to only print information
+> +about the versions of \fBNFS\fR that have non-zero counts.
+> .TP
+> .B \-m, \-\-mounts
+> Print information about each of the mounted \fBNFS\fR file systems.
+> -- 
+> 1.7.3.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
- - Move layoutcommit operation fields from pnfs_layoutcommit_arg to a new
-struct nfs_layoutcommit_op_args which is passed to encode_layoutcommit.
-
-This new structure will also be used for embedded layoutcommit calls.
-
-Remove unused fields:
- - Remove unused pnfs_layoutcommit_data rpc_task.
- - Remove unused  pnfs_layoutcommit_arg time_modify_changed and time_modify.
- - Remove unused pnfs_layoutcommit_arg void layoutdriver_data which will be
-restored for the block layoutdriver.
- - Remove unused sizechanged and newsize from pnfs_layoutcommit_res.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4proc.c       |   23 +++++++++++------------
- fs/nfs/nfs4xdr.c        |   27 ++++++++++-----------------
- fs/nfs/pnfs.c           |   21 +++++++++------------
- include/linux/nfs_xdr.h |   19 +++++++++----------
- 4 files changed, 39 insertions(+), 51 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2b47c59..09ed784 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5516,7 +5516,7 @@ static void nfs4_layoutcommit_prepare(struct rpc_task *task, void *data)
- {
- 	struct nfs4_layoutcommit_data *ldata =
- 		(struct nfs4_layoutcommit_data *)data;
--	struct nfs_server *server = NFS_SERVER(ldata->args.inode);
-+	struct nfs_server *server = NFS_SERVER(ldata->inode);
- 
- 	if (nfs4_setup_sequence(server, NULL, &ldata->args.seq_args,
- 				&ldata->res.seq_res, 1, task))
-@@ -5529,7 +5529,7 @@ nfs4_layoutcommit_done(struct rpc_task *task, void *calldata)
- {
- 	struct nfs4_layoutcommit_data *data =
- 		(struct nfs4_layoutcommit_data *)calldata;
--	struct nfs_server *server = NFS_SERVER(data->args.inode);
-+	struct nfs_server *server = NFS_SERVER(data->inode);
- 
- 	if (!nfs4_sequence_done(task, &data->res.seq_res))
- 		return;
-@@ -5546,8 +5546,8 @@ static void nfs4_layoutcommit_release(void *lcdata)
- 		(struct nfs4_layoutcommit_data *)lcdata;
- 
- 	/* Matched by get_layout in pnfs_layoutcommit_inode */
--	put_layout_hdr(data->args.inode);
--	put_rpccred(data->cred);
-+	put_layout_hdr(data->inode);
-+	put_rpccred(data->args.cred);
- 	kfree(lcdata);
- }
- 
-@@ -5565,11 +5565,11 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int issync)
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTCOMMIT],
- 		.rpc_argp = &data->args,
- 		.rpc_resp = &data->res,
--		.rpc_cred = data->cred,
-+		.rpc_cred = data->args.cred,
- 	};
- 	struct rpc_task_setup task_setup_data = {
- 		.task = &data->task,
--		.rpc_client = NFS_CLIENT(data->args.inode),
-+		.rpc_client = NFS_CLIENT(data->inode),
- 		.rpc_message = &msg,
- 		.callback_ops = &nfs4_layoutcommit_ops,
- 		.callback_data = data,
-@@ -5578,13 +5578,12 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int issync)
- 	struct rpc_task *task;
- 	int status = 0;
- 
--	dprintk("NFS: %4d initiating layoutcommit call. %llu@%llu lbw: %llu "
-+	dprintk("NFS: initiating layoutcommit call. %llu@%llu lbw: %llu "
- 		"type: %d issync %d\n",
--		data->task.tk_pid,
--		data->args.range.length,
--		data->args.range.offset,
--		data->args.lastbytewritten,
--		data->args.layout_type, issync);
-+		data->args.op.range.length,
-+		data->args.op.range.offset,
-+		data->args.op.lastbytewritten,
-+		data->args.op.layout_type, issync);
- 
- 	task = rpc_run_task(&task_setup_data);
- 	if (IS_ERR(task))
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index adb4c47..f11870e 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1868,7 +1868,7 @@ encode_layoutget(struct xdr_stream *xdr,
- 
- static int
- encode_layoutcommit(struct xdr_stream *xdr,
--		    const struct nfs4_layoutcommit_args *args,
-+		    const struct nfs4_layoutcommit_op_args *args,
- 		    struct compound_hdr *hdr)
- {
- 	__be32 *p;
-@@ -1885,14 +1885,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
- 	*p++ = cpu_to_be32(1);     /* newoffset = TRUE */
- 	p = xdr_encode_hyper(p, args->lastbytewritten);
--	*p = cpu_to_be32(args->time_modify_changed != 0);
--	if (args->time_modify_changed) {
--		p = reserve_space(xdr, 12);
--		*p++ = cpu_to_be32(0);
--		*p++ = cpu_to_be32(args->time_modify.tv_sec);
--		*p = cpu_to_be32(args->time_modify.tv_nsec);
--	}
--
-+	*p = cpu_to_be32(0); /* nt_timechanged = FALSE */
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(args->layout_type);
- 
-@@ -2819,7 +2812,7 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req, uint32_t *p,
- 	encode_compound_hdr(&xdr, req, &hdr);
- 	encode_sequence(&xdr, &args->seq_args, &hdr);
- 	encode_putfh(&xdr, args->fh, &hdr);
--	encode_layoutcommit(&xdr, args, &hdr);
-+	encode_layoutcommit(&xdr, &args->op, &hdr);
- 	encode_getfattr(&xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- 	return 0;
-@@ -5308,10 +5301,10 @@ out_overflow:
- 	return -EIO;
- }
- 
--static int decode_layoutcommit(struct xdr_stream *xdr,
--				    struct rpc_rqst *req,
--				    struct nfs4_layoutcommit_res *res)
-+static int decode_layoutcommit(struct xdr_stream *xdr)
- {
-+	u32 sizechanged;
-+	u64 newsize;
- 	__be32 *p;
- 	int status;
- 
-@@ -5322,13 +5315,13 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	res->sizechanged = be32_to_cpup(p);
-+	sizechanged = be32_to_cpup(p);
- 
--	if (res->sizechanged) {
-+	if (sizechanged) {
- 		p = xdr_inline_decode(xdr, 8);
- 		if (unlikely(!p))
- 			goto out_overflow;
--		xdr_decode_hyper(p, &res->newsize);
-+		xdr_decode_hyper(p, &newsize);
- 	}
- 	return 0;
- out_overflow:
-@@ -6463,7 +6456,7 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp, uint32_t *p,
- 	status = decode_putfh(&xdr);
- 	if (status)
- 		goto out;
--	status = decode_layoutcommit(&xdr, rqstp, res);
-+	status = decode_layoutcommit(&xdr);
- 	if (status)
- 		goto out;
- 	decode_getfattr(&xdr, res->fattr, res->server,
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 76cfb11..b3f1946 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1257,21 +1257,18 @@ pnfs_layoutcommit_setup(struct inode *inode,
- 
- 	dprintk("--> %s\n", __func__);
- 
--	data->args.inode = inode;
-+	data->inode = inode;
- 	data->args.fh = NFS_FH(inode);
--	data->args.layout_type = nfss->pnfs_curr_ld->id;
-+	data->args.op.layout_type = nfss->pnfs_curr_ld->id;
- 	data->res.fattr = &data->fattr;
- 	nfs_fattr_init(&data->fattr);
- 
--	/* TODO: Need to determine the correct values */
--	data->args.time_modify_changed = 0;
--
- 	/* Set values from inode so it can be reset
- 	 */
--	data->args.range.iomode = IOMODE_RW;
--	data->args.range.offset = write_begin_pos;
--	data->args.range.length = write_end_pos - write_begin_pos + 1;
--	data->args.lastbytewritten =  min(write_end_pos,
-+	data->args.op.range.iomode = IOMODE_RW;
-+	data->args.op.range.offset = write_begin_pos;
-+	data->args.op.range.length = write_end_pos - write_begin_pos + 1;
-+	data->args.op.lastbytewritten =  min(write_end_pos,
- 					  i_size_read(inode) - 1);
- 	data->args.bitmask = nfss->attr_bitmask;
- 	data->res.server = nfss;
-@@ -1311,12 +1308,12 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
- 	 */
- 	write_begin_pos = nfsi->layout->write_begin_pos;
- 	write_end_pos = nfsi->layout->write_end_pos;
--	data->cred = nfsi->layout->cred;
-+	data->args.cred = nfsi->layout->cred;
- 	nfsi->layout->write_begin_pos = 0;
- 	nfsi->layout->write_end_pos = 0;
- 	nfsi->layout->cred = NULL;
- 	__clear_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->plh_flags);
--	memcpy(data->args.stateid.data, nfsi->layout->stateid.data,
-+	memcpy(data->args.op.stateid.data, nfsi->layout->stateid.data,
- 	       NFS4_STATEID_SIZE);
- 
- 	/* Reference for layoutcommit matched in pnfs_layoutcommit_release */
-@@ -1329,7 +1326,7 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
- 					 write_end_pos);
- 	if (status) {
- 		/* The layout driver failed to setup the layoutcommit */
--		put_rpccred(data->cred);
-+		put_rpccred(data->args.cred);
- 		put_layout_hdr(inode);
- 		goto out_free;
- 	}
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 6c4ba71..851b09f 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -225,25 +225,24 @@ struct nfs4_layoutget {
- 	struct pnfs_layout_segment **lsegpp;
- };
- 
--struct nfs4_layoutcommit_args {
-+struct nfs4_layoutcommit_op_args {
- 	nfs4_stateid stateid;
- 	__u64 lastbytewritten;
--	__u32 time_modify_changed;
--	struct timespec time_modify;
--	const u32 *bitmask;
--	struct nfs_fh *fh;
--	struct inode *inode;
- 
- 	/* Values set by layout driver */
- 	struct pnfs_layout_range range;
- 	__u32 layout_type;
--	void *layoutdriver_data;
-+};
-+
-+struct nfs4_layoutcommit_args {
-+	struct nfs4_layoutcommit_op_args op;
-+	const u32 *bitmask;
-+	struct nfs_fh *fh;
-+	struct rpc_cred *cred;
- 	struct nfs4_sequence_args seq_args;
- };
- 
- struct nfs4_layoutcommit_res {
--	__u32 sizechanged;
--	__u64 newsize;
- 	struct nfs_fattr *fattr;
- 	const struct nfs_server *server;
- 	struct nfs4_sequence_res seq_res;
-@@ -251,7 +250,7 @@ struct nfs4_layoutcommit_res {
- 
- struct nfs4_layoutcommit_data {
- 	struct rpc_task task;
--	struct rpc_cred *cred;
-+	struct inode *inode;
- 	struct nfs_fattr fattr;
- 	struct nfs4_layoutcommit_args args;
- 	struct nfs4_layoutcommit_res res;
 -- 
-1.7.2.1
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
