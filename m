@@ -1,208 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:27488 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757345Ab0KOTBC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Nov 2010 14:01:02 -0500
-Received: from localhost.localdomain (vpn2ntap-136191.hq.netapp.com [10.58.56.111])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAFJ0f4d028248
-	for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2010 11:00:42 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/4] pnfs-submit: remove type argument from pnfs_return_layout
-Date: Mon, 15 Nov 2010 14:00:36 -0500
-Message-Id: <1289847638-12175-2-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1289847638-12175-1-git-send-email-iisaman@netapp.com>
-References: <1289847638-12175-1-git-send-email-iisaman@netapp.com>
+Received: from smtp-out-2.desy.de ([131.169.56.85]:36560 "EHLO
+	smtp-out-2.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751446Ab0KIOOE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Nov 2010 09:14:04 -0500
+Received: from smtp-map-2.desy.de (smtp-map-2.desy.de [131.169.56.67])
+	by smtp-out-2.desy.de (DESY_OUT_1) with ESMTP id 1FFE6D4C
+	for <linux-nfs@vger.kernel.org>; Tue,  9 Nov 2010 14:44:02 +0100 (MET)
+Received: from adserv71.win.desy.de (adserv71.win.desy.de [131.169.97.57])
+	by smtp-map-2.desy.de (DESY_MAP_2) with ESMTP id 10177D4A
+	for <linux-nfs@vger.kernel.org>; Tue,  9 Nov 2010 14:44:01 +0100 (MET)
+Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by adserv71.win.desy.de
+ (Clearswift SMTPRS 5.3.4) with ESMTP id <T993d80b6cc83a96139140@adserv71.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Tue, 9 Nov 2010 14:44:01 +0100
+Received: from [131.169.185.68] (anahit.desy.de [131.169.185.68])
+	by smtp-intra-1.desy.de (DESY-INTRA-1) with ESMTP id D13083E901
+	for <linux-nfs@vger.kernel.org>; Tue,  9 Nov 2010 14:43:57 +0100 (MET)
+Message-ID: <4CD95DB5.2030006@desy.de>
+Date: Tue, 09 Nov 2010 15:41:57 +0100
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: kernel panic with 2.6.37-rc1 +pnfs
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-pnfs_return_layout is only called with type=RETURN_FILE, so remove as argument
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/inode.c |    2 +-
- fs/nfs/pnfs.c  |   76 ++++++++++++++++++++++++-------------------------------
- fs/nfs/pnfs.h  |   10 ++-----
- 3 files changed, 37 insertions(+), 51 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 3bf7a42..bbeb337 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1419,7 +1419,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
-  */
- void nfs4_evict_inode(struct inode *inode)
- {
--	pnfs_return_layout(inode, NULL, RETURN_FILE, true);
-+	pnfs_return_layout(inode, NULL, true);
- 	truncate_inode_pages(&inode->i_data, 0);
- 	end_writeback(inode);
- 	pnfs_destroy_layout(NFS_I(inode));
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a62f518..eefa440 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -691,9 +691,7 @@ out_nolayout:
- }
- 
- static int
--return_layout(struct inode *ino, struct pnfs_layout_range *range,
--	      enum pnfs_layoutreturn_type type, struct pnfs_layout_hdr *lo,
--	      bool wait)
-+return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wait)
- {
- 	struct nfs4_layoutreturn *lrp;
- 	struct nfs_server *server = NFS_SERVER(ino);
-@@ -701,17 +699,14 @@ return_layout(struct inode *ino, struct pnfs_layout_range *range,
- 
- 	dprintk("--> %s\n", __func__);
- 
--	BUG_ON(type != RETURN_FILE);
--
- 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
- 	if (lrp == NULL) {
--		if (lo && (type == RETURN_FILE))
--			put_layout_hdr(lo->inode);
-+		put_layout_hdr(ino);
- 		goto out;
- 	}
- 	lrp->args.reclaim = 0;
- 	lrp->args.layout_type = server->pnfs_curr_ld->id;
--	lrp->args.return_type = type;
-+	lrp->args.return_type = RETURN_FILE;
- 	lrp->args.range = *range;
- 	lrp->args.inode = ino;
- 	lrp->clp = server->nfs_client;
-@@ -722,58 +717,53 @@ out:
- 	return status;
- }
- 
-+/* Initiates a LAYOUTRETURN(FILE) */
- int
- _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
--		    enum pnfs_layoutreturn_type type,
- 		    bool wait)
- {
- 	struct pnfs_layout_hdr *lo = NULL;
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct pnfs_layout_range arg;
-+	LIST_HEAD(tmp_list);
-+	struct pnfs_layout_segment *lseg, *tmp;
- 	int status = 0;
- 
--	dprintk("--> %s type %d\n", __func__, type);
--
-+	dprintk("--> %s\n", __func__);
- 
- 	arg.iomode = range ? range->iomode : IOMODE_ANY;
- 	arg.offset = 0;
- 	arg.length = NFS4_MAX_UINT64;
- 
--	/* probably should BUGON if type != RETURN_FILE */
--	if (type == RETURN_FILE) {
--		LIST_HEAD(tmp_list);
--		struct pnfs_layout_segment *lseg, *tmp;
-+	spin_lock(&ino->i_lock);
-+	lo = nfsi->layout;
-+	if (lo && !has_layout_to_return(lo, &arg))
-+		lo = NULL;
-+	if (!lo) {
-+		spin_unlock(&ino->i_lock);
-+		dprintk("%s: no layout segments to return\n", __func__);
-+		goto out;
-+	}
- 
--		spin_lock(&ino->i_lock);
--		lo = nfsi->layout;
--		if (lo && !has_layout_to_return(lo, &arg))
--			lo = NULL;
--		if (!lo) {
--			spin_unlock(&ino->i_lock);
--			dprintk("%s: no layout segments to return\n", __func__);
--			goto out;
--		}
-+	lo->plh_block_lgets++;
-+	list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
-+		if (should_free_lseg(&lseg->range, &arg))
-+			mark_lseg_invalid(lseg, &tmp_list);
-+	/* Reference matched in nfs4_layoutreturn_release */
-+	get_layout_hdr(lo);
-+	spin_unlock(&ino->i_lock);
-+	pnfs_free_lseg_list(&tmp_list);
- 
--		lo->plh_block_lgets++;
--		list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
--			if (should_free_lseg(&lseg->range, &arg))
--				mark_lseg_invalid(lseg, &tmp_list);
--		/* Reference matched in nfs4_layoutreturn_release */
--		get_layout_hdr(lo);
--		spin_unlock(&ino->i_lock);
--		pnfs_free_lseg_list(&tmp_list);
--
--		if (layoutcommit_needed(nfsi)) {
--			status = pnfs_layoutcommit_inode(ino, wait);
--			if (status) {
--				/* Return layout even if layoutcommit fails */
--				dprintk("%s: layoutcommit failed, status=%d. "
--					"Returning layout anyway\n",
--					__func__, status);
--			}
-+	if (layoutcommit_needed(nfsi)) {
-+		status = pnfs_layoutcommit_inode(ino, wait);
-+		if (status) {
-+			/* Return layout even if layoutcommit fails */
-+			dprintk("%s: layoutcommit failed, status=%d. "
-+				"Returning layout anyway\n",
-+				__func__, status);
- 		}
--		status = return_layout(ino, &arg, type, lo, wait);
- 	}
-+	status = return_layout(ino, &arg, wait);
- out:
- 	dprintk("<-- %s status: %d\n", __func__, status);
- 	return status;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 46dab34..a124ad2 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -204,8 +204,7 @@ struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
- 		   enum pnfs_iomode access_type);
- bool pnfs_return_layout_barrier(struct nfs_inode *, struct pnfs_layout_range *);
--int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *,
--			enum pnfs_layoutreturn_type, bool wait);
-+int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *, bool wait);
- void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
- void unset_pnfs_layoutdriver(struct nfs_server *);
- enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
-@@ -278,15 +277,13 @@ pnfs_layout_roc_iomode(struct nfs_inode *nfsi)
- 
- static inline int pnfs_return_layout(struct inode *ino,
- 				     struct pnfs_layout_range *range,
--				     enum pnfs_layoutreturn_type type,
- 				     bool wait)
- {
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct nfs_server *nfss = NFS_SERVER(ino);
- 
--	if (pnfs_enabled_sb(nfss) &&
--	    (type != RETURN_FILE || has_layout(nfsi)))
--		return _pnfs_return_layout(ino, range, type, wait);
-+	if (pnfs_enabled_sb(nfss) && has_layout(nfsi))
-+		return _pnfs_return_layout(ino, range, wait);
- 
- 	return 0;
- }
-@@ -381,7 +378,6 @@ pnfs_layout_roc_iomode(struct nfs_inode *nfsi)
- 
- static inline int pnfs_return_layout(struct inode *ino,
- 				     struct pnfs_layout_range *range,
--				     enum pnfs_layoutreturn_type type,
- 				     bool wait)
- {
- 	return 0;
--- 
-1.7.2.1
+pnfs-all-2.6.37-rc1-2010-11-03 from Banny's tree (git 
+6a1df873544d146fcdc493034b170879985909e8)
+I am not sure that this is NFS code issue, but anyway. With NFS IO  
+minutes machine becomes unresponcive.
+This prevents us to update our cluster with latest code base.
+
+Tigran.
+
+[  293.145013] general protection fault: 0000 [#1] SMP
+[  293.145017] last sysfs file: 
+/sys/devices/pci0000:00/0000:00:0d.0/resource
+[  293.145019] CPU 0
+[  293.145021] Modules linked in: ipv6 af_packet binfmt_misc dm_mirror 
+dm_multipath scsi_dh video output thermal sbs sbshc pci_slot fan 
+container battery lp sg option usb_wwan ac usbserial button thermal_sys 
+parport_pc serio_raw parport tpm_tis tpm tpm_bios e1000 i2c_piix4 
+pata_mpiix dm_region_hash dm_log dm_mod [last unloaded: mperf]
+[  293.145042]
+[  293.145045] Pid: 1953, comm: sadc Not tainted 2.6.37-rc1.pnfs.1 #1 
+/VirtualBox
+[  293.145047] RIP: 0010:[<ffffffff811a2cfa>]  [<ffffffff811a2cfa>] 
+strnlen+0xa/0x30
+[  293.145054] RSP: 0018:ffff88002d4cfcd0  EFLAGS: 00010297
+[  293.145056] RAX: ffffffff814d5cfa RBX: ffffffffffffffff RCX: 
+ffffffffffffffff
+[  293.145058] RDX: fffffffffffffffe RSI: ffffffffffffffff RDI: 
+9a81ffffffff814d
+[  293.145060] RBP: 9a81ffffffff814d R08: 0000000000000000 R09: 
+ffffffff8165c4a8
+[  293.145062] R10: 00007f73dd7243fb R11: 0000000000000246 R12: 
+0000000000000000
+[  293.145064] R13: ffff88002d47d000 R14: ffff88002d47c000 R15: 
+00000000ffffffff
+[  293.145071] FS:  00007f73dd70b6e0(0000) GS:ffff88003fc00000(0000) 
+knlGS:0000000000000000
+[  293.145074] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  293.145076] CR2: 00007f73dd724000 CR3: 000000002d4a6000 CR4: 
+00000000000006f0
+[  293.145083] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 
+0000000000000000
+[  293.145085] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 
+0000000000000400
+[  293.145088] Process sadc (pid: 1953, threadinfo ffff88002d4ce000, 
+task ffff88003d5a51f0)
+[  293.145091] Stack:
+[  293.145093]  ffffffff811a46bc ffff88002d41e840 ffffffff814d98f9 
+0000000000000002
+[  293.145096]  ffff88002d47c000 ffff88002d4cfd78 ffff88002d47d000 
+ffffffff814d98fb
+[  293.145100]  ffffffff811a5488 0000000000001000 ffff88002d47c000 
+ffffffffff0a0004
+[  293.145104] Call Trace:
+[  293.145107]  [<ffffffff811a46bc>] ? string+0x4c/0x100
+[  293.145110]  [<ffffffff811a5488>] ? vsnprintf+0x218/0x560
+[  293.145114]  [<ffffffff810efac7>] ? seq_printf+0x67/0xa0
+[  293.145118]  [<ffffffff81043d32>] ? get_online_cpus+0x22/0x50
+[  293.145121]  [<ffffffff81043d82>] ? put_online_cpus+0x22/0x70
+[  293.145125]  [<ffffffff810ac71f>] ? vmstat_start+0x7f/0xa0
+[  293.145128]  [<ffffffff810abeb3>] ? vmstat_show+0x23/0x30
+[  293.145130]  [<ffffffff810eff2f>] ? seq_read+0xaf/0x3a0
+[  293.145134]  [<ffffffff8111e223>] ? proc_reg_read+0x73/0xb0
+[  293.145138]  [<ffffffff810d43ed>] ? vfs_read+0xcd/0x170
+[  293.145141]  [<ffffffff810d4633>] ? sys_read+0x53/0x90
+[  293.145144]  [<ffffffff81002c6b>] ? system_call_fastpath+0x16/0x1b
+[  293.145146] Code: 01 e8 38 10 74 0b 48 83 e8 01 48 39 c5 76 f3 31 c0 
+5b 5d c3 66 0f 1f 44 00 00 0f 1f 80 00 00 00 00 48 8d 56 ff 48 83 fa ff 
+74 21 <80> 3f 00 74 1c 48 89 f8 eb 05 80 38 00 74 0e 48 83 ea 01 48 83
+[  293.145171] RIP  [<ffffffff811a2cfa>] strnlen+0xa/0x30
+[  293.145174]  RSP <ffff88002d4cfcd0>
+[  293.145177] ---[ end trace 63b42edd98a8dea9 ]---
 
