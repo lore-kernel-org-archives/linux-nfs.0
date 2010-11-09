@@ -1,98 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([122.248.162.2]:49716 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750962Ab0KLGXd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Nov 2010 01:23:33 -0500
-Received: from d28relay01.in.ibm.com (d28relay01.in.ibm.com [9.184.220.58])
-	by e28smtp02.in.ibm.com (8.14.4/8.13.1) with ESMTP id oAC6NU1l012906
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 11:53:30 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay01.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oAC6NTvn1192176
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 11:53:29 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oAC6NTq5021307
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 11:53:29 +0530
-From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Trond Myklebust <trond.myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 ACL set and inode attribute cache
-In-Reply-To: <m3eiatvwpc.fsf@linux.vnet.ibm.com>
-References: <m3hbfpvz0k.fsf@linux.vnet.ibm.com> <m3eiatvwpc.fsf@linux.vnet.ibm.com>
-Date: Fri, 12 Nov 2010 11:53:20 +0530
-Message-ID: <m31v6rrrfr.fsf@linux.vnet.ibm.com>
-Content-Type: text/plain
+Received: from netnation.com ([204.174.223.2]:57810 "EHLO peace.netnation.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754431Ab0KIScn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Nov 2010 13:32:43 -0500
+Received: from sim by peace.netnation.com with local (Exim 4.69)
+	(envelope-from <sim@netnation.com>)
+	id 1PFszq-0000Fm-3a
+	for linux-nfs@vger.kernel.org; Tue, 09 Nov 2010 10:32:42 -0800
+Date: Tue, 9 Nov 2010 10:32:42 -0800
+From: Simon Kirby <sim@hostway.ca>
+To: linux-nfs@vger.kernel.org
+Subject: rpcauth_lookup_credcache hash size
+Message-ID: <20101109183242.GA29915@hostway.ca>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 11 Nov 2010 00:21:27 +0530, "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> On Wed, 10 Nov 2010 23:31:31 +0530, Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> > 
-> > Hi,
-> > 
-> > I guess we are not marking the inode attribute as invalid when we set
-> > the ACL value. For ex:
-> > 
-> > /d# mkdir sub3
-> > /d# ls -dl sub3
-> > drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
-> > /d# nfs4_setfacl -s A:fd:EVERYONE@:rwax sub3
-> > /d# ls -dl sub3
-> > drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
-> > /d# 
-> > 
-> > 
-> > On the server i have the mode bits as
-> > /d# ls -dl sub3
-> > drwxrwxrwx 2 root root 4096 Nov 10 17:56 sub3
-> > /d# 
-> 
-> We also have similar issue other way round. ie setting the mode bits
-> don't result in ACL values being invalidated. But a second request get
-> the right value of ACL as show below.
-> 
-> /d# nfs4_getfacl  x
-> A::OWNER@:rw
-> A::GROUP@:rw
-> A::EVERYONE@:r
-> /d# chmod 600 x
-> /d# nfs4_getfacl  x
-> A::OWNER@:rw
-> A::GROUP@:rw
-> A::EVERYONE@:r
-> /d#
-> 
-> Expected value is
-> 
-> /d# nfs4_getfacl  x
-> A::OWNER@:rw
-> 
+Hello!
 
-The below patch fix the problem for me. If this is the right way
-to fix, I can send a proper patch with commit message and s-o-b.
+Just decided to run "perf top" on a web server which seemed to be
+CPU-bound and saw this at the top:
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0f24cdf..666a48b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3359,6 +3359,8 @@ static ssize_t nfs4_proc_get_acl(struct inode *inode, void *buf, size_t buflen)
- 	ret = nfs_revalidate_inode(server, inode);
- 	if (ret < 0)
- 		return ret;
-+	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
-+		nfs_zap_acl_cache(inode);
- 	ret = nfs4_read_cached_acl(inode, buf, buflen);
- 	if (ret != -ENOENT)
- 		return ret;
-@@ -3387,6 +3389,11 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 	nfs_inode_return_delegation(inode);
- 	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
- 	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	/*
-+	 * Acl update can result in inode attribute update.
-+	 * so mark the attribute cache invalid.
-+	 */
-+	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;
- 	nfs_access_zap_cache(inode);
- 	nfs_zap_acl_cache(inode);
- 	return ret;
+             samples  pcnt function                 DSO
+             _______ _____ ________________________ __________________
+
+             5261.00 11.9% rpcauth_lookup_credcache [kernel.kallsyms]
+             2429.00  5.5% lex_scan                 php4
+             2184.00  5.0% thread_group_cputime     [kernel.kallsyms]
+             1505.00  3.4% established_get_next     [kernel.kallsyms]
+             1083.00  2.5% zendparse                php4
+             1055.00  2.4% zend_hash_find           php4
+              958.00  2.2% lex_scan                 php5
+              905.00  2.1% execute                  php4
+              890.00  2.0% memcpy                   /lib/libc-2.7.so
+
+I see this just became configurable, but probably 4 bits (16 buckets?) is
+probably a bit small for the default, no?  (hlist_head is just a pointer,
+4 or 8 bytes per bucket, so the default is 128 bytes on x64 :))
+
+I guess it really needs to auto-scale...
+
+Simon-
