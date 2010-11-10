@@ -1,138 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:65354 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755705Ab0KLItY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Nov 2010 03:49:24 -0500
-Received: from localhost.localdomain (hess01-lxp.hq.netapp.com [10.58.60.52] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAC8n7fJ025967
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:49:13 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 09/22] pnfs-submit: change pnfs_layout_segment refcounting from kref to atomic_t
-Date: Fri, 12 Nov 2010 03:48:31 -0500
-Message-Id: <1289551724-18575-10-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
-References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+Received: from exprod5og106.obsmtp.com ([64.18.0.182]:38724 "HELO
+	exprod5og106.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755943Ab0KJNDX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 08:03:23 -0500
+Message-ID: <4CDA9812.5060906@panasas.com>
+Date: Wed, 10 Nov 2010 15:03:14 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: kernel panic with 2.6.37-rc1 +pnfs
+References: <4CD95DB5.2030006@desy.de> <4CDA74F5.90700@panasas.com>
+In-Reply-To: <4CDA74F5.90700@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Preparing for changes in pnfs_clear_lseg_list
+On 11/10/2010 12:33 PM, Benny Halevy wrote:
+> On 2010-11-09 16:41, Tigran Mkrtchyan wrote:
+>>
+>>
+>> pnfs-all-2.6.37-rc1-2010-11-03 from Banny's tree (git 
+>> 6a1df873544d146fcdc493034b170879985909e8)
+>> I am not sure that this is NFS code issue, but anyway. With NFS IO  
+>> minutes machine becomes unresponcive.
+>> This prevents us to update our cluster with latest code base.
+>>
+>> Tigran.
+>>
+>> [  293.145013] general protection fault: 0000 [#1] SMP
+>> [  293.145017] last sysfs file: 
+>> /sys/devices/pci0000:00/0000:00:0d.0/resource
+>> [  293.145019] CPU 0
+>> [  293.145021] Modules linked in: ipv6 af_packet binfmt_misc dm_mirror 
+>> dm_multipath scsi_dh video output thermal sbs sbshc pci_slot fan 
+>> container battery lp sg option usb_wwan ac usbserial button thermal_sys 
+>> parport_pc serio_raw parport tpm_tis tpm tpm_bios e1000 i2c_piix4 
+>> pata_mpiix dm_region_hash dm_log dm_mod [last unloaded: mperf]
+>> [  293.145042]
+>> [  293.145045] Pid: 1953, comm: sadc Not tainted 2.6.37-rc1.pnfs.1 #1 
+>> /VirtualBox
+>> [  293.145047] RIP: 0010:[<ffffffff811a2cfa>]  [<ffffffff811a2cfa>] 
+>> strnlen+0xa/0x30
+>> [  293.145054] RSP: 0018:ffff88002d4cfcd0  EFLAGS: 00010297
+>> [  293.145056] RAX: ffffffff814d5cfa RBX: ffffffffffffffff RCX: 
+>> ffffffffffffffff
+>> [  293.145058] RDX: fffffffffffffffe RSI: ffffffffffffffff RDI: 
+>> 9a81ffffffff814d
+>> [  293.145060] RBP: 9a81ffffffff814d R08: 0000000000000000 R09: 
+>> ffffffff8165c4a8
+>> [  293.145062] R10: 00007f73dd7243fb R11: 0000000000000246 R12: 
+>> 0000000000000000
+>> [  293.145064] R13: ffff88002d47d000 R14: ffff88002d47c000 R15: 
+>> 00000000ffffffff
+>> [  293.145071] FS:  00007f73dd70b6e0(0000) GS:ffff88003fc00000(0000) 
+>> knlGS:0000000000000000
+>> [  293.145074] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>> [  293.145076] CR2: 00007f73dd724000 CR3: 000000002d4a6000 CR4: 
+>> 00000000000006f0
+>> [  293.145083] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 
+>> 0000000000000000
+>> [  293.145085] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 
+>> 0000000000000400
+>> [  293.145088] Process sadc (pid: 1953, threadinfo ffff88002d4ce000, 
+>> task ffff88003d5a51f0)
+>> [  293.145091] Stack:
+>> [  293.145093]  ffffffff811a46bc ffff88002d41e840 ffffffff814d98f9 
+>> 0000000000000002
+>> [  293.145096]  ffff88002d47c000 ffff88002d4cfd78 ffff88002d47d000 
+>> ffffffff814d98fb
+>> [  293.145100]  ffffffff811a5488 0000000000001000 ffff88002d47c000 
+>> ffffffffff0a0004
+>> [  293.145104] Call Trace:
+>> [  293.145107]  [<ffffffff811a46bc>] ? string+0x4c/0x100
+>> [  293.145110]  [<ffffffff811a5488>] ? vsnprintf+0x218/0x560
+>> [  293.145114]  [<ffffffff810efac7>] ? seq_printf+0x67/0xa0
+>> [  293.145118]  [<ffffffff81043d32>] ? get_online_cpus+0x22/0x50
+>> [  293.145121]  [<ffffffff81043d82>] ? put_online_cpus+0x22/0x70
+>> [  293.145125]  [<ffffffff810ac71f>] ? vmstat_start+0x7f/0xa0
+>> [  293.145128]  [<ffffffff810abeb3>] ? vmstat_show+0x23/0x30
+>> [  293.145130]  [<ffffffff810eff2f>] ? seq_read+0xaf/0x3a0
+>> [  293.145134]  [<ffffffff8111e223>] ? proc_reg_read+0x73/0xb0
+>> [  293.145138]  [<ffffffff810d43ed>] ? vfs_read+0xcd/0x170
+>> [  293.145141]  [<ffffffff810d4633>] ? sys_read+0x53/0x90
+>> [  293.145144]  [<ffffffff81002c6b>] ? system_call_fastpath+0x16/0x1b
+>> [  293.145146] Code: 01 e8 38 10 74 0b 48 83 e8 01 48 39 c5 76 f3 31 c0 
+>> 5b 5d c3 66 0f 1f 44 00 00 0f 1f 80 00 00 00 00 48 8d 56 ff 48 83 fa ff 
+>> 74 21 <80> 3f 00 74 1c 48 89 f8 eb 05 80 38 00 74 0e 48 83 ea 01 48 83
+>> [  293.145171] RIP  [<ffffffff811a2cfa>] strnlen+0xa/0x30
+>> [  293.145174]  RSP <ffff88002d4cfcd0>
+>> [  293.145177] ---[ end trace 63b42edd98a8dea9 ]---
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> I guess that ff8b16d vmstat: fix offset calculation on void*
+> could fix this problem.  It's currently in Linus's master branch
+> and he hasn't released 2.6.37-rc2 yet.
+> Can you please try to reproduce the problem you saw with this patch?
+> 
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c |   37 ++++++++++++++-----------------------
- fs/nfs/pnfs.h |    5 +++--
- 2 files changed, 17 insertions(+), 25 deletions(-)
+You can just merge linus master ontop of the pnfs-all-latest
+[]$ git checkout pnfs-all-latest
+[]$ git remote add -f linus git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
+[]$ git merge linus/master
+(Hopefully no merge conflicts with nfs bug fixes)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 519055d..8e699fd 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -266,41 +266,32 @@ static void
- init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- {
- 	INIT_LIST_HEAD(&lseg->fi_list);
--	kref_init(&lseg->kref);
-+	atomic_set(&lseg->pls_refcount, 1);
-+	smp_mb();
- 	lseg->valid = true;
- 	lseg->layout = lo;
- }
- 
--/* Called without i_lock held, as the free_lseg call may sleep */
--static void
--destroy_lseg(struct kref *kref)
--{
--	struct pnfs_layout_segment *lseg =
--		container_of(kref, struct pnfs_layout_segment, kref);
--	struct inode *ino = lseg->layout->inode;
--
--	dprintk("--> %s\n", __func__);
--	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
--	/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
--	put_layout_hdr(ino);
--}
--
- void
- put_lseg(struct pnfs_layout_segment *lseg)
- {
- 	bool do_wake_up;
--	struct nfs_inode *nfsi;
-+	struct inode *ino;
- 
- 	if (!lseg)
- 		return;
- 
- 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
--		atomic_read(&lseg->kref.refcount), lseg->valid);
-+		atomic_read(&lseg->pls_refcount), lseg->valid);
- 	do_wake_up = !lseg->valid;
--	nfsi = NFS_I(lseg->layout->inode);
--	kref_put(&lseg->kref, destroy_lseg);
-+	ino = lseg->layout->inode;
-+	if (atomic_dec_and_test(&lseg->pls_refcount)) {
-+		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
-+		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
-+		put_layout_hdr(ino);
-+	}
- 	if (do_wake_up)
--		rpc_wake_up(&nfsi->lo_rpcwaitq);
-+		rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq);
- }
- EXPORT_SYMBOL_GPL(put_lseg);
- 
-@@ -326,7 +317,7 @@ should_free_lseg(struct pnfs_layout_range *lseg_range,
- static bool
- _pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
- {
--	return atomic_read(&lseg->kref.refcount) == 1;
-+	return atomic_read(&lseg->pls_refcount) == 1;
- }
- 
- static void
-@@ -554,7 +545,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
- 		if (!_pnfs_can_return_lseg(lseg)) {
- 			dprintk("%s: wait on lseg %p refcount %d\n",
- 				__func__, lseg,
--				atomic_read(&lseg->kref.refcount));
-+				atomic_read(&lseg->pls_refcount));
- 			ret = true;
- 		}
- 	}
-@@ -812,7 +803,7 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo,
- 	}
- 
- 	dprintk("%s:Return lseg %p ref %d valid %d\n",
--		__func__, ret, ret ? atomic_read(&ret->kref.refcount) : 0,
-+		__func__, ret, ret ? atomic_read(&ret->pls_refcount) : 0,
- 		ret ? ret->valid : 0);
- 	return ret;
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index fdcfb9b..ee5a752 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -35,7 +35,7 @@
- struct pnfs_layout_segment {
- 	struct list_head fi_list;
- 	struct pnfs_layout_range range;
--	struct kref kref;
-+	atomic_t pls_refcount;
- 	bool valid;
- 	struct pnfs_layout_hdr *layout;
- };
-@@ -228,7 +228,8 @@ static inline void pnfs_invalidate_layout_stateid(struct pnfs_layout_hdr *lo)
- 
- static inline void get_lseg(struct pnfs_layout_segment *lseg)
- {
--	kref_get(&lseg->kref);
-+	atomic_inc(&lseg->pls_refcount);
-+	smp_mb__after_atomic_inc();
- }
- 
- /* Return true if a layout driver is being used for this mountpoint */
--- 
-1.7.2.1
+Cheers
+
+> Benny
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
