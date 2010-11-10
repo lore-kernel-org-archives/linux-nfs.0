@@ -1,44 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:55304 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753875Ab0KIBee (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Nov 2010 20:34:34 -0500
-Message-ID: <4CD8A5CF.4050007@cn.fujitsu.com>
-Date: Tue, 09 Nov 2010 09:37:19 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: SteveD@redhat.com
-CC: NFSv3 list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] libnfs.a: fix a bug when parse section's arg
-References: <4CD36FE7.1010100@cn.fujitsu.com>
-In-Reply-To: <4CD36FE7.1010100@cn.fujitsu.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from exprod5og101.obsmtp.com ([64.18.0.141]:34183 "HELO
+	exprod5og101.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753290Ab0KJJh7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 04:37:59 -0500
+Message-ID: <4CDA67F5.6040207@panasas.com>
+Date: Wed, 10 Nov 2010 11:37:57 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Jim Rees <rees@umich.edu>
+CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH] add blkmapd and spnfsd to list of build targets to ignore
+References: <20101104173233.GA1681@merit.edu>
+In-Reply-To: <20101104173233.GA1681@merit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-When parsing section's arg at configure file, the pointer 
-should stop when fetch ']', and give the warning message.
+I split this patch for spnfs and for blkmapd and
+released at pnfs-nfs-utils-1-2-4-rc1-2010-11-04.
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- support/nfs/conffile.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index 24640f4..798e5f3 100644
---- a/support/nfs/conffile.c
-+++ b/support/nfs/conffile.c
-@@ -271,9 +271,9 @@ conf_parse_line(int trans, char *line, size_t sz)
- 		if (ptr == NULL)
- 			return;
- 		line = ++ptr;
--		while (*ptr && *ptr != '"')
-+		while (*ptr && *ptr != '"' && *ptr != ']')
- 			ptr++;
--		if (*ptr == '\0') {
-+		if (*ptr == '\0' || *ptr == ']') {
- 			xlog_warn("config file error: line %d: "
-  				"non-matched '\"', ignoring until next section", ln);
- 		}  else {
--- 1.7.0.1 
-
+Benny
+On 2010-11-04 19:32, Jim Rees wrote:
+> Signed-off-by: Jim Rees <rees@umich.edu>
+> ---
+>  .gitignore |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+> diff --git a/.gitignore b/.gitignore
+> index 4bff9e3..6530ae0 100644
+> --- a/.gitignore
+> +++ b/.gitignore
+> @@ -36,6 +36,7 @@ support/include/stamp-h1
+>  lib*.a
+>  tools/rpcgen/rpcgen
+>  tools/rpcdebug/rpcdebug
+> +utils/blkmapd/blkmapd
+>  utils/exportfs/exportfs
+>  utils/idmapd/idmapd
+>  utils/lockd/lockd
+> @@ -48,6 +49,7 @@ utils/rquotad/rquotad
+>  utils/rquotad/rquota.h
+>  utils/rquotad/rquota_xdr.c
+>  utils/showmount/showmount
+> +utils/spnfsd/spnfsd
+>  utils/statd/statd
+>  tools/locktest/testlk
+>  tools/getiversion/getiversion
