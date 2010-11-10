@@ -1,84 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:64718 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758544Ab0KQQHY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 11:07:24 -0500
-Subject: Re: Strange rpc.svcgssd behavior
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <AANLkTinJyFHom5JQg5s+yX+6NRBw01S6a9gbwtk5WaLB@mail.gmail.com>
-Date: Wed, 17 Nov 2010 11:05:21 -0500
-Cc: Steve Dickson <SteveD@redhat.com>, Jim Rees <rees@umich.edu>,
-        Valentijn Sessink <valentyn@blub.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <013E9F9C-F4F8-47E6-939D-1B0D893B6988@oracle.com>
-References: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com> <4CE2AA3B.6070302@openoffice.nl> <4CE2DF2D.9070603@blub.net> <20101116201753.GB4482@merit.edu> <577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com> <20101116205436.GA4595@merit.edu> <44C0977F-DBD6-4F87-B3A5-B2B66C784312@oracle.com> <4CE3F249.8050301@RedHat.com> <C2312B32-B190-41C4-A4C8-C29231DBA305@oracle.com> <AANLkTinJyFHom5JQg5s+yX+6NRBw01S6a9gbwtk5WaLB@mail.gmail.com>
-To: Kevin Coffman <kwc@citi.umich.edu>
+Received: from swampdragon.chaosbits.net ([90.184.90.115]:15679 "EHLO
+	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756993Ab0KJVo0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 16:44:26 -0500
+Date: Wed, 10 Nov 2010 22:32:44 +0100 (CET)
+From: Jesper Juhl <jj@chaosbits.net>
+To: linux-kernel@vger.kernel.org
+cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] SUNRPC: Simplify rpc_alloc_iostats by removing pointless
+ local variable
+In-Reply-To: <alpine.LNX.2.00.1011072205370.26247@swampdragon.chaosbits.net>
+Message-ID: <alpine.LNX.2.00.1011102229370.625@swampdragon.chaosbits.net>
+References: <alpine.LNX.2.00.1011072205370.26247@swampdragon.chaosbits.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Sun, 7 Nov 2010, Jesper Juhl wrote:
 
-On Nov 17, 2010, at 10:54 AM, Kevin Coffman wrote:
-
-> On Wed, Nov 17, 2010 at 10:30 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> Hey-
->> 
->> On Nov 17, 2010, at 10:18 AM, Steve Dickson wrote:
->> 
->>> Sorry for the delayed response... I had my
->>> head down for last couple of days...
->>> 
->>> On 11/16/2010 04:42 PM, Chuck Lever wrote:
->>>> 
->>>> On Nov 16, 2010, at 3:54 PM, Jim Rees wrote:
->>>> 
->>>>> Chuck Lever wrote:
->>>>> 
->>>>> Before we go too far down the NM path of no return, I was under the
->>>>> impression that some applications require the host's name on the localhost
->>>>> entries in /etc/hosts.  That's why NM puts it there.
->>>>> 
->>>>> There's nothing invalid about having a hostname on the localhost entries
->>>>> in /etc/hosts, is there?
->>>>> 
->>>>> So I wonder if removing NM is really the solution here.
->>>>> 
->>>>> No, it's not.  I just like to complain about NM.
->>>>> 
->>>>> The original problem was that rpc.svcgssd couldn't figure out the correct
->>>>> kerberos realm.  The fix in this particular case, I think, is to set the
->>>>> realm explicitly in /etc/idmapd.conf.
->>>> 
->>>> It's having trouble determining the NFS server's hostname.  It needs to find the right nfs/your.host key in /etc/krb5.keytab.
->>>> 
->>>> I don't know if realm self-discovery is an issue too.
->>> I think the problem is a reverse lookup is done on hostname that
->>> is found in the /etc/krb5.keytab. Instead of the FQDN being
->>> returned, localhost is returned because the FQDN was added to
->>> the localhost line in /etc/hosts.
->>> 
->>> Actually I didn't realize it was NM doing that... I thought
->>> it was the installer...
->> 
->> No matter who does it, I think there are applications
->> (gdm?  rusty recollection) that require this network configuration
->> in /etc/hosts, so our best bet IMO is to fix rpc.svcgssd, or more
->> likely the gss library it depends on, to get it right in this situation.
->> If we all agree this is a bug (and sounds like we do) then I can
->> create a bug report on bugzilla.linux-nfs.org, as a starting point.
+> Hi,
 > 
-> Hi Chuck and Steve,
-> This issue affects gss authentication in sshd as well.  I believe this
-> is all the way down in the Kerberos code, which has been this way for
-> years.  I'm not sure what needs to be changed to "get it right".
+> We can simplify net/sunrpc/stats.c::rpc_alloc_iostats() a bit by getting 
+> rid of the unneeded local variable 'new'.
+> 
+> 
+> Please CC me on replies.
+> 
+> 
+> Signed-off-by: Jesper Juhl <jj@chaosbits.net>
+> ---
+>  stats.c |    4 +---
+>  1 file changed, 1 insertion(+), 3 deletions(-)
+> 
+> diff --git 
+> a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+> index f71a731..80df89d 100644
+> --- a/net/sunrpc/stats.c
+> +++ b/net/sunrpc/stats.c
+> @@ -115,9 +115,7 @@ EXPORT_SYMBOL_GPL(svc_seq_show);
+>   */
+>  struct rpc_iostats *rpc_alloc_iostats(struct rpc_clnt *clnt)
+>  {
+> -	struct rpc_iostats *new;
+> -	new = kcalloc(clnt->cl_maxproc, sizeof(struct rpc_iostats), GFP_KERNEL);
+> -	return new;
+> +	return kcalloc(clnt->cl_maxproc, sizeof(struct rpc_iostats), GFP_KERNEL);
+>  }
+>  EXPORT_SYMBOL_GPL(rpc_alloc_iostats);
+>  
+> 
+> 
 
-I was afraid of that.  Do you know if this has this ever been brought up with the upstream Kerberos maintainers?
+Ok, no response to this for a couple of days.
+Is there some problem or did it just get missed?
+Could someone merge this and push it up-stream, please, if there are no 
+problems with it...
+ 
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Jesper Juhl <jj@chaosbits.net>             http://www.chaosbits.net/
+Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
+Plain text mails only, please.
 
