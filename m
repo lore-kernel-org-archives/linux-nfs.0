@@ -1,44 +1,42 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH] nfs-utils: Remove blkmapd config file, which is no longer
- used.
-Date: Wed, 10 Nov 2010 11:46:31 +0200
-Message-ID: <4CDA69F7.4020706@panasas.com>
-References: <20101109203949.GA8466@merit.edu>
+Subject: Re: kernel panic with 2.6.37-rc1 +pnfs
+Date: Wed, 10 Nov 2010 16:06:49 +0200
+Message-ID: <4CDAA6F9.7080305@panasas.com>
+References: <4CD95DB5.2030006@desy.de> <4CDA74F5.90700@panasas.com> <4CDAA47C.2040705@desy.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-To: Jim Rees <rees@umich.edu>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og103.obsmtp.com ([64.18.0.145]:60164 "HELO
-	exprod5og103.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753196Ab0KJJqe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 04:46:34 -0500
-In-Reply-To: <20101109203949.GA8466-8f4Pc2RrbJmHXe+LvDLADg@public.gmane.org>
+Received: from exprod5og101.obsmtp.com ([64.18.0.141]:49676 "HELO
+	exprod5og101.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755816Ab0KJOGw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 09:06:52 -0500
+In-Reply-To: <4CDAA47C.2040705@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Merged at pnfs-nfs-utils-1-2-4-rc1-2010-11-04
-
-On 2010-11-09 22:39, Jim Rees wrote:
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> ---
->  utils/blkmapd/etc/blkmapd.conf |   10 ----------
->  1 files changed, 0 insertions(+), 10 deletions(-)
->  delete mode 100644 utils/blkmapd/etc/blkmapd.conf
+On 2010-11-10 15:56, Tigran Mkrtchyan wrote:
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>> I guess that ff8b16d vmstat: fix offset calculation on void*
+>> could fix this problem.  It's currently in Linus's master branch
+>> and he hasn't released 2.6.37-rc2 yet.
+>> Can you please try to reproduce the problem you saw with this patch?
 > 
-> diff --git a/utils/blkmapd/etc/blkmapd.conf b/utils/blkmapd/etc/blkmapd.conf
-> deleted file mode 100644
-> index da70d94..0000000
-> --- a/utils/blkmapd/etc/blkmapd.conf
-> +++ /dev/null
-> @@ -1,10 +0,0 @@
-> -# This is an example config file
-> -
-> -# Look at all /dev/sd* devices
-> -# /dev/sd or /dev/sd*
-> -/dev/sd*
-> -
-> -# Look at all /dev/mapper/* devices
-> -# /dev/mapper/* or
-> -# /dev/mapper/
-> -/dev/mapper/*
+> Yes, that was the fix! I will update our cluster and re-run productions jobs
+> with new kernel.
+
+Cool.  I'm glad it helped!
+
+Benny
+
+> 
+> Thanks,
+>    TIgran.
+> 
+>>
+>> Benny
