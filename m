@@ -1,47 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.perches.com ([173.55.12.10]:4348 "EHLO mail.perches.com"
+Received: from mail.perches.com ([173.55.12.10]:4939 "EHLO mail.perches.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753984Ab0KEXMm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Nov 2010 19:12:42 -0400
+	id S1757166Ab0KJXBZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Nov 2010 18:01:25 -0500
+Subject: Re: [PATCH 0/9] treewide: convert vprintk uses to %pV
 From: Joe Perches <joe@perches.com>
-To: Jiri Kosina <trivial@kernel.org>
-Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
-        cluster-devel@redhat.com, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-Subject: [PATCH 0/7] Convert sprintf_symbol uses to %p[Ss]
-Date: Fri,  5 Nov 2010 16:12:33 -0700
-Message-Id: <1288998760-11775-1-git-send-email-joe@perches.com>
+To: "Luis R. Rodriguez" <mcgrof@gmail.com>
+Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org,
+        netdev@vger.kernel.org, linux-wireless@vger.kernel.org,
+        cluster-devel@redhat.com, linux-nilfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <AANLkTinhcbdm8YQOrFVdONODo6K6PcxHYtx5vqnap_3T@mail.gmail.com>
+References: <cover.1289348757.git.joe@perches.com>
+	 <AANLkTinhcbdm8YQOrFVdONODo6K6PcxHYtx5vqnap_3T@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 10 Nov 2010 15:01:23 -0800
+Message-ID: <1289430083.15905.106.camel@Joe-Laptop>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Remove unnecessary declarations of temporary buffers.
-Use %pS or %ps as appropriate.
-Minor reformatting in a couple of places.
+On Wed, 2010-11-10 at 14:48 -0800, Luis R. Rodriguez wrote:
+> When was this added upstream BTW? I ask for backport considerations.
 
-Compiled, but otherwise untested.
+commit 7db6f5fb65a82af03229eef104dc9899c5eecf33
+Author: Joe Perches <joe@perches.com>
+Date:   Sun Jun 27 01:02:33 2010 +0000
 
-Joe Perches (7):
-  arch/arm/kernel/traps.c: Convert sprintf_symbol to %pS
-  arch/x86/kernel/pci-iommu_table.c: Convert sprintf_symbol to %pS
-  fs/gfs2/glock.c: Convert sprintf_symbol to %pS
-  fs/proc/base.c kernel/latencytop.c: Convert sprintf_symbol to %ps
-  kernel/lockdep_proc.c: Convert sprintf_symbol to %pS
-  mm: Convert sprintf_symbol to %pS
-  net/sunrpc/clnt.c: Convert sprintf_symbol to %ps
+    vsprintf: Recursive vsnprintf: Add "%pV", struct va_format
+    
+    Add the ability to print a format and va_list from a structure pointer
+    
+    Allows __dev_printk to be implemented as a single printk while
+    minimizing string space duplication.
+    
+    %pV should not be used without some mechanism to verify the
+    format and argument use ala __attribute__(format (printf(...))).
+    
+    Signed-off-by: Joe Perches <joe@perches.com>
+    Acked-by: Greg Kroah-Hartman <gregkh@suse.de>
+    Signed-off-by: David S. Miller <davem@davemloft.net>
 
- arch/arm/kernel/traps.c           |    5 +----
- arch/x86/kernel/pci-iommu_table.c |   18 ++++--------------
- fs/gfs2/glock.c                   |   15 +++++++--------
- fs/proc/base.c                    |   22 ++++++++--------------
- kernel/latencytop.c               |   23 +++++++++--------------
- kernel/lockdep_proc.c             |   16 ++++++----------
- mm/slub.c                         |   11 ++++-------
- mm/vmalloc.c                      |    9 ++-------
- net/sunrpc/clnt.c                 |   12 ++----------
- 9 files changed, 43 insertions(+), 88 deletions(-)
-
--- 
-1.7.3.2.146.gca209
 
