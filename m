@@ -1,37 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46970 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754716Ab0KPSaw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Nov 2010 13:30:52 -0500
-Date: Tue, 16 Nov 2010 13:30:50 -0500
-To: Valentijn Sessink <valentyn@blub.net>
+Received: from e28smtp05.in.ibm.com ([122.248.162.5]:49700 "EHLO
+	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755280Ab0KJSBq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 13:01:46 -0500
+Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
+	by e28smtp05.in.ibm.com (8.14.4/8.13.1) with ESMTP id oAAI1igo028714
+	for <linux-nfs@vger.kernel.org>; Wed, 10 Nov 2010 23:31:44 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oAAI1eYS1630334
+	for <linux-nfs@vger.kernel.org>; Wed, 10 Nov 2010 23:31:40 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oAAI1d7Y024185
+	for <linux-nfs@vger.kernel.org>; Thu, 11 Nov 2010 05:01:39 +1100
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Trond Myklebust <trond.myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: no_root_squash (and valid KRB root-ticket)
-Message-ID: <20101116183050.GC3971@fieldses.org>
-References: <4CE294DD.6010508@blub.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CE294DD.6010508@blub.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: NFSv4 ACL set and inode attribute cache
+Date: Wed, 10 Nov 2010 23:31:31 +0530
+Message-ID: <m3hbfpvz0k.fsf@linux.vnet.ibm.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Nov 16, 2010 at 03:27:41PM +0100, Valentijn Sessink wrote:
-> Hello list,
-> 
-> I found that having "no_root_squash" on the server, having a valid
-> Kerberos ticket for root@DOMAIN, does still not give you root rights on
-> a share. Looking further, I found
-> http://www.unix-info.org/nfsV4_howto_.txt that says that there is "no
-> proper mapping between root and the GSSAuthName"; but I could not find
-> the status of this document.
-> 
-> Could any of you comment on this? Is this still the case (I suppose so)?
 
-This is between a linux client and server?
+Hi,
 
-Are other kerberos principals mapped as you'd expect?
+I guess we are not marking the inode attribute as invalid when we set
+the ACL value. For ex:
 
-I don't recall the code treating root specially, but I haven't checked.
+/d# mkdir sub3
+/d# ls -dl sub3
+drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
+/d# nfs4_setfacl -s A:fd:EVERYONE@:rwax sub3
+/d# ls -dl sub3
+drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
+/d# 
 
---b.
+
+On the server i have the mode bits as
+/d# ls -dl sub3
+drwxrwxrwx 2 root root 4096 Nov 10 17:56 sub3
+/d# 
+
+
+-aneesh
