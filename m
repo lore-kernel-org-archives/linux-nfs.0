@@ -1,260 +1,177 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og105.obsmtp.com ([64.18.0.180]:55297 "HELO
-	exprod5og105.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753303Ab0KCHbS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Nov 2010 03:31:18 -0400
-Message-ID: <4CD10FC3.7080707@panasas.com>
-Date: Wed, 03 Nov 2010 09:31:15 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Andi Kleen <andi@firstfloor.org>, bjschuma@netapp.com,
-        torvalds@linux-foundation.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [regression] NFS readdir change break fully cached nfs root
-References: <20101102180051.GA26089@basil.fritz.box> <1288731930.534.1.camel@heimdal.trondhjem.org>
-In-Reply-To: <1288731930.534.1.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from server.klug.on.ca ([205.189.48.131]:2078 "EHLO
+	server.klug.on.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755600Ab0KJNnO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 08:43:14 -0500
+Received: from linux.interlinx.bc.ca (d67-193-197-208.home3.cgocable.net [67.193.197.208])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by server.klug.on.ca (Postfix) with ESMTP id 3D7502803
+	for <linux-nfs@vger.kernel.org>; Wed, 10 Nov 2010 08:43:13 -0500 (EST)
+Received: from [10.75.22.1] (pc.ilinx [10.75.22.1])
+	by linux.interlinx.bc.ca (Postfix) with ESMTP id 15BB58034
+	for <linux-nfs@vger.kernel.org>; Wed, 10 Nov 2010 08:43:12 -0500 (EST)
+Subject: Re: Error: state manager failed on NFSv4 server linux with error
+ 127
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+To: linux-nfs@vger.kernel.org
+In-Reply-To: <1288477327.8621.5.camel@heimdal.trondhjem.org>
+References: <1287334833.4871.6.camel@pc>
+	 <1287340520.5266.70.camel@heimdal.trondhjem.org>
+	 <1288460514.32627.105.camel@pc>
+	 <1288461151.3238.9.camel@heimdal.trondhjem.org>
+	 <1288461562.32627.151.camel@pc>
+	 <1288462786.3238.16.camel@heimdal.trondhjem.org>
+	 <1288474164.32627.383.camel@pc>
+	 <1288474886.8621.3.camel@heimdal.trondhjem.org>
+	 <1288475215.32627.406.camel@pc>
+	 <1288477327.8621.5.camel@heimdal.trondhjem.org>
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-Ul5QJjrXX/6/s4iSFW9p"
+Date: Wed, 10 Nov 2010 08:43:11 -0500
+Message-ID: <1289396591.21879.4.camel@pc>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-11-02 23:05, Trond Myklebust wrote:
-> On Tue, 2010-11-02 at 19:00 +0100, Andi Kleen wrote:
->> My NFS root test systems stopped booting with 2.6.37-rc1. It just
->> hangs after entering user space.
->>
->> The NFS root setup uses a slightly fancy parameter setup to minimize 
->> network traffic:
->>
->> nfsroot=10.23.204.1:/home/nfsroot/edwin,nocto,acregmin=86400,acregmax=86400,acdirmin=86400,acdirmax=86400 root=/dev/nfs
->>
->> I bisected it down to this commit from Bryan.
->>
->> Unfortunately it's not trivially revertable because that conflicts
->> with later patches.
-> 
-> Does the following patch help?
+--=-Ul5QJjrXX/6/s4iSFW9p
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-This patch helps me too with an infinite readdir loop I've seen
-with 2.6.37-rc1.
+On Sat, 2010-10-30 at 18:22 -0400, Trond Myklebust wrote:=20
+>=20
+> How about something like the following patch? It should allow you to log
+> only the errors that lead to a state recovery situation.
 
-I'll queue it up in the linux-pnfs tree until it hits upstream.
+So, I came to find my machine looking locked up this morning however
+eventually it seemed to release itself.  Looking in dmesg I can see:
 
-Benny
+[350230.265829] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350230.297307] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350235.269660] nfs4_warn_keyexpired: 2075 callbacks suppressed
+[350235.269665] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350235.290167] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350240.272110] nfs4_warn_keyexpired: 2093 callbacks suppressed
+[350240.272115] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350240.293239] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350245.276176] nfs4_warn_keyexpired: 2121 callbacks suppressed
+[350245.276181] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350245.299625] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350250.280834] nfs4_warn_keyexpired: 2082 callbacks suppressed
+[350250.280839] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350250.302470] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350255.285567] nfs4_warn_keyexpired: 2110 callbacks suppressed
+[350255.285572] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350255.307410] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350260.290107] nfs4_warn_keyexpired: 2118 callbacks suppressed
+[350260.290111] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350260.315070] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350265.296668] nfs4_warn_keyexpired: 2107 callbacks suppressed
+[350265.296673] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350265.317877] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350270.302257] nfs4_warn_keyexpired: 2128 callbacks suppressed
+[350270.302262] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350270.323727] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350275.310073] nfs4_warn_keyexpired: 2100 callbacks suppressed
+[350275.310078] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350275.332569] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350280.316868] nfs4_warn_keyexpired: 2085 callbacks suppressed
+[350280.316873] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350280.338332] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350285.322043] nfs4_warn_keyexpired: 2119 callbacks suppressed
+[350285.322049] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350285.343702] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350290.328213] nfs4_warn_keyexpired: 2088 callbacks suppressed
+[350290.328218] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350290.350477] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350295.332510] nfs4_warn_keyexpired: 2122 callbacks suppressed
+[350295.332515] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350295.352991] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350300.337953] nfs4_warn_keyexpired: 2077 callbacks suppressed
+[350300.337959] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350300.359669] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350305.345596] nfs4_warn_keyexpired: 2094 callbacks suppressed
+[350305.345602] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350305.380263] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350310.352954] nfs4_warn_keyexpired: 2081 callbacks suppressed
+[350310.352959] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350310.373999] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350315.357615] nfs4_warn_keyexpired: 2087 callbacks suppressed
+[350315.357620] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350315.380362] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+[350320.362030] nfs4_warn_keyexpired: 2048 callbacks suppressed
+[350320.362035] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
+repeated 8 more times
+[350320.383488] Error: state manager encountered RPCSEC_GSS session expired=
+ against NFSv4 server linux.
 
-> 
-> Cheers
->   Trond
-> ------------------------------------------------------------------------
-> NFS: Fix a couple of regressions in readdir.
-> 
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> Fix up the issue that array->eof_index needs to be able to be set
-> even if array->size == 0.
-> 
-> Ensure that we catch all important memory allocation error conditions
-> and/or kmap() failures.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> 
->  fs/nfs/dir.c |   73 ++++++++++++++++++++++++++++++++++++++--------------------
->  1 files changed, 48 insertions(+), 25 deletions(-)
-> 
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 07ac384..8c22d60 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -194,9 +194,13 @@ typedef struct {
->  static
->  struct nfs_cache_array *nfs_readdir_get_array(struct page *page)
->  {
-> +	void *ptr;
->  	if (page == NULL)
->  		return ERR_PTR(-EIO);
-> -	return (struct nfs_cache_array *)kmap(page);
-> +	ptr = kmap(page);
-> +	if (ptr == NULL)
-> +		return ERR_PTR(-ENOMEM);
-> +	return ptr;
->  }
->  
->  static
-> @@ -213,6 +217,9 @@ int nfs_readdir_clear_array(struct page *page, gfp_t mask)
->  {
->  	struct nfs_cache_array *array = nfs_readdir_get_array(page);
->  	int i;
-> +
-> +	if (IS_ERR(array))
-> +		return PTR_ERR(array);
->  	for (i = 0; i < array->size; i++)
->  		kfree(array->array[i].string.name);
->  	nfs_readdir_release_array(page);
-> @@ -244,7 +251,7 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
->  
->  	if (IS_ERR(array))
->  		return PTR_ERR(array);
-> -	ret = -EIO;
-> +	ret = -ENOSPC;
->  	if (array->size >= MAX_READDIR_ARRAY)
->  		goto out;
->  
-> @@ -255,9 +262,9 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
->  	if (ret)
->  		goto out;
->  	array->last_cookie = entry->cookie;
-> +	array->size++;
->  	if (entry->eof == 1)
->  		array->eof_index = array->size;
-> -	array->size++;
->  out:
->  	nfs_readdir_release_array(page);
->  	return ret;
-> @@ -272,7 +279,7 @@ int nfs_readdir_search_for_pos(struct nfs_cache_array *array, nfs_readdir_descri
->  	if (diff < 0)
->  		goto out_eof;
->  	if (diff >= array->size) {
-> -		if (array->eof_index > 0)
-> +		if (array->eof_index >= 0)
->  			goto out_eof;
->  		desc->current_index += array->size;
->  		return -EAGAIN;
-> @@ -281,8 +288,6 @@ int nfs_readdir_search_for_pos(struct nfs_cache_array *array, nfs_readdir_descri
->  	index = (unsigned int)diff;
->  	*desc->dir_cookie = array->array[index].cookie;
->  	desc->cache_entry_index = index;
-> -	if (index == array->eof_index)
-> -		desc->eof = 1;
->  	return 0;
->  out_eof:
->  	desc->eof = 1;
-> @@ -296,17 +301,17 @@ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_des
->  	int status = -EAGAIN;
->  
->  	for (i = 0; i < array->size; i++) {
-> -		if (i == array->eof_index) {
-> -			desc->eof = 1;
-> -			status = -EBADCOOKIE;
-> -		}
->  		if (array->array[i].cookie == *desc->dir_cookie) {
->  			desc->cache_entry_index = i;
->  			status = 0;
-> -			break;
-> +			goto out;
->  		}
->  	}
-> -
-> +	if (i == array->eof_index) {
-> +		desc->eof = 1;
-> +		status = -EBADCOOKIE;
-> +	}
-> +out:
->  	return status;
->  }
->  
-> @@ -449,7 +454,7 @@ out:
->  
->  /* Perform conversion from xdr to cache array */
->  static
-> -void nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *entry,
-> +int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *entry,
->  				void *xdr_page, struct page *page, unsigned int buflen)
->  {
->  	struct xdr_stream stream;
-> @@ -471,21 +476,29 @@ void nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *e
->  
->  	do {
->  		status = xdr_decode(desc, entry, &stream);
-> -		if (status != 0)
-> +		if (status != 0) {
-> +			if (status == -EAGAIN)
-> +				status = 0;
->  			break;
-> +		}
->  
-> -		if (nfs_readdir_add_to_array(entry, page) == -1)
-> -			break;
->  		if (desc->plus == 1)
->  			nfs_prime_dcache(desc->file->f_path.dentry, entry);
-> +
-> +		status = nfs_readdir_add_to_array(entry, page);
-> +		if (status != 0)
-> +			break;
->  	} while (!entry->eof);
->  
->  	if (status == -EBADCOOKIE && entry->eof) {
->  		array = nfs_readdir_get_array(page);
-> -		array->eof_index = array->size - 1;
-> -		status = 0;
-> -		nfs_readdir_release_array(page);
-> +		if (!IS_ERR(array)) {
-> +			array->eof_index = array->size;
-> +			status = 0;
-> +			nfs_readdir_release_array(page);
-> +		}
->  	}
-> +	return status;
->  }
->  
->  static
-> @@ -549,9 +562,14 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
->  		goto out;
->  
->  	array = nfs_readdir_get_array(page);
-> +	if (IS_ERR(array)) {
-> +		status = PTR_ERR(array);
-> +		goto out;
-> +	}
->  	memset(array, 0, sizeof(struct nfs_cache_array));
->  	array->eof_index = -1;
->  
-> +	status = -ENOMEM;
->  	pages_ptr = nfs_readdir_large_page(pages, array_size);
->  	if (!pages_ptr)
->  		goto out_release_array;
-> @@ -560,8 +578,13 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
->  
->  		if (status < 0)
->  			break;
-> -		nfs_readdir_page_filler(desc, &entry, pages_ptr, page, array_size * PAGE_SIZE);
-> -	} while (array->eof_index < 0 && array->size < MAX_READDIR_ARRAY);
-> +		status = nfs_readdir_page_filler(desc, &entry, pages_ptr, page, array_size * PAGE_SIZE);
-> +		if (status < 0) {
-> +			if (status == -ENOSPC)
-> +				status = 0;
-> +			break;
-> +		}
-> +	} while (array->eof_index < 0);
->  
->  	nfs_readdir_free_large_page(pages_ptr, pages, array_size);
->  out_release_array:
-> @@ -670,6 +693,8 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
->  	struct dentry *dentry = NULL;
->  
->  	array = nfs_readdir_get_array(desc->page);
-> +	if (IS_ERR(array))
-> +		return PTR_ERR(array);
->  
->  	for (i = desc->cache_entry_index; i < array->size; i++) {
->  		d_type = DT_UNKNOWN;
-> @@ -685,11 +710,9 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
->  			*desc->dir_cookie = array->array[i+1].cookie;
->  		else
->  			*desc->dir_cookie = array->last_cookie;
-> -		if (i == array->eof_index) {
-> -			desc->eof = 1;
-> -			break;
-> -		}
->  	}
-> +	if (i == array->eof_index)
-> +		desc->eof = 1;
->  
->  	nfs_readdir_release_array(desc->page);
->  	cache_page_release(desc);
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+b.
+
+
+--=-Ul5QJjrXX/6/s4iSFW9p
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+
+iEYEABECAAYFAkzaoW8ACgkQl3EQlGLyuXDXKwCfTRBbFwPaQN6+uE7ntq7b3oH7
+QesAn2/X7Ds7VJVuWJ7DHg2NHmJarOHa
+=Qe1L
+-----END PGP SIGNATURE-----
+
+--=-Ul5QJjrXX/6/s4iSFW9p--
