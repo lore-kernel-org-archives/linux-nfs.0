@@ -1,105 +1,371 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:58218 "EHLO mail-out1.uio.no"
+Received: from mx1.redhat.com ([209.132.183.28]:2826 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758501Ab0KROqJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Nov 2010 09:46:09 -0500
-Subject: Re: [PATCH 1/3] NFS add minorversion to nfs_find_client search
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Cc: benny@panasas.com, linux-nfs@vger.kernel.org
-In-Reply-To: <AANLkTi=9RvncYzh1pRUNH1vZ9gwDxczc=5A7CeNvf=w-@mail.gmail.com>
-References: <1289964990-4480-1-git-send-email-andros@netapp.com>
-	 <1289964990-4480-2-git-send-email-andros@netapp.com>
-	 <1290035454.3070.15.camel@heimdal.trondhjem.org>
-	 <AANLkTi=9RvncYzh1pRUNH1vZ9gwDxczc=5A7CeNvf=w-@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 18 Nov 2010 09:46:02 -0500
-Message-ID: <1290091562.3187.16.camel@heimdal.trondhjem.org>
+	id S1756366Ab0KJPIZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Nov 2010 10:08:25 -0500
+Message-ID: <4CDAB565.40404@RedHat.com>
+Date: Wed, 10 Nov 2010 10:08:21 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Harshula Jayasuriya <harshula@redhat.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils: nfsstat: has_stats() does not function correctly
+ for NFSv4 client stats
+References: <1289328603.9490.18.camel@serendib>	 <33A5EC88-8770-4E5D-809A-28926ED3C5EC@oracle.com> <1289363200.9490.24.camel@serendib>
+In-Reply-To: <1289363200.9490.24.camel@serendib>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-11-18 at 09:11 -0500, William A. (Andy) Adamson wrote:
-> On Wed, Nov 17, 2010 at 6:10 PM, Trond Myklebust
-> <trond.myklebust@fys.uio.no> wrote:
-> > On Tue, 2010-11-16 at 22:36 -0500, andros@netapp.com wrote:
-> >>  static int nfs_callback_authenticate(struct svc_rqst *rqstp)
-> >>  {
-> >>       struct nfs_client *clp;
-> >>       RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
-> >> +     u32 minorversion = svc_is_backchannel(rqstp) ? 1 : 0;
-> >
-> > Hmm... Nope. minorversion == CB_COMPOUND4args->minorversion.
+
+
+On 11/09/2010 11:26 PM, Harshula Jayasuriya wrote:
+> Are you referring to /proc/self/mountstats? I didn't know about it.
+Take a look at the nfsiostat and mountstats commands... they know 
+how to read the /proc/self/mountstats   file.. 
+
+> nfsstat's get_stats() would have to be re-written. I can add that to my
+> TODO list, but not sure when I'll get to it. In the meantime, this patch
+> will fix the previously mentioned bugs and make the existing code a
+> little clearer.
+This is pretty much legacy code... I would not waste the time
+on teaching nfsstat how to read the mountstats file... I would
+rather see the time and effort be put into making nfsiostat and 
+mountstats more useful... maybe even sometime type of GUI... 
+
+steved.
+
 > 
-> Nope. We are in the pg_authenticate method called from
-> svc_process_common in the RPC layer. We know nothing in the NFS layer.
-> We won't know what CB_COMPOUND4args says until after decode.
-
-My point is we shouldn't call it 'minorversion', 'cos it isn't...
-
-> What's ugly is that the session information really belongs in the RPC layer.
+> cya,
+> #
 > 
-> The other way I was thinking of coding this is to not share the
-> svc_program for v4 and v4.1 callback services. Each svc_program can
-> then declare it's own pg_authenticate method which will know if it's
-> v4.0 or v4.1.
-
-As I said below: you _know_ which socket this came from, so you know if
-it is a session backchannel or not. That's all you care about here.
-
-> >
-> >>       int ret = SVC_OK;
-> >>
-> >>       /* Don't talk to strangers */
-> >> -     clp = nfs_find_client(svc_addr(rqstp), 4);
-> >> +     clp = nfs_find_client(svc_addr(rqstp), 4, minorversion);
-> >
-> > Why do we need this at all in the NFSv4.1 case? Unlike minor version ==
-> > 0, we _know_ that it arrived on a socket that is associated to a
-> > specific session. Can't we find a way to pass that information down to
-> > the callback server thread?
+> On Tue, 2010-11-09 at 14:29 -0500, Chuck Lever wrote:
+>> Hi-
+>>
+>> Why not use mountstats?  The /proc/net/rpc/nfs is destined for deprecation, I thought.
+>>
+>> On Nov 9, 2010, at 1:50 PM, Harshula Jayasuriya wrote:
+>>
+>>> Hi,
+>>>
+>>> The NFSv4 client procs/ops in "struct rpc_procinfo nfs4_procedures" is
+>>> used to generate the NFS client stats interface:
+>>> ------------------------------------------------------------
+>>> # cat /proc/net/rpc/nfs 
+>>> net 0 0 0 0
+>>> rpc 15 0 0
+>>> proc2 18 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+>>> proc3 22 0 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 2 1 0
+>>> proc4 42 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0
+>>> 0 0 0
+>>> 0 0 0 0 0 0 0
+>>> ------------------------------------------------------------
+>>> Note, for proc4, the number 42. That is the number of stats that follow
+>>> on the same line. Currently nfsstat's has_stats() relies on this number
+>>> to be equal to CLTPROC4_SZ. Unfortunately this is not the case. I have
+>>> changed has_stats() not to rely on these two values being equal. This
+>>> should also allow nfsstat to work with different kernel versions that
+>>> expose a different number of NFS client ops.
+>>>
+>>> * Fix has_stats()
+>>> * Stop print_clnt_list() printing server stats!
+>>> * Describe the option -3 and -4 completely in the nfsstat manpage.
+>>>
+>>> Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+>>> ---
+>>> utils/nfsstat/nfsstat.c   |  124 ++++++++++++++++++++-------------------------
+>>> utils/nfsstat/nfsstat.man |    6 ++-
+>>> 2 files changed, 59 insertions(+), 71 deletions(-)
+>>>
+>>> diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
+>>> index bacef8e..f31bb81 100644
+>>> --- a/utils/nfsstat/nfsstat.c
+>>> +++ b/utils/nfsstat/nfsstat.c
+>>> @@ -46,7 +46,7 @@ static unsigned int	cltproc3info[CLTPROC3_SZ+2],
+>>> static unsigned int	srvproc4info[SRVPROC4_SZ+2],
+>>> 			srvproc4info_old[SRVPROC4_SZ+2];	/* NFSv4 call counts ([0] == 2) */
+>>> static unsigned int	cltproc4info[CLTPROC4_SZ+2],
+>>> -			cltproc4info_old[CLTPROC4_SZ+2];	/* NFSv4 call counts ([0] == 48) */
+>>> +			cltproc4info_old[CLTPROC4_SZ+2];	/* NFSv4 call counts ([0] == 49) */
+>>> static unsigned int	srvproc4opsinfo[SRVPROC4OPS_SZ+2],
+>>> 			srvproc4opsinfo_old[SRVPROC4OPS_SZ+2];	/* NFSv4 call counts ([0] == 59) */
+>>> static unsigned int	srvnetinfo[5], srvnetinfo_old[5];	/* 0  # of received packets
+>>> @@ -221,8 +221,8 @@ DECLARE_CLT(cltinfo);
+>>> DECLARE_CLT(cltinfo, _old);
+>>>
+>>> static void		print_all_stats(int, int, int);
+>>> -static void		print_server_stats(int, int);
+>>> -static void		print_client_stats(int, int);
+>>> +static void		print_server_stats(int);
+>>> +static void		print_client_stats(int);
+>>> static void		print_stats_list(int, int, int);
+>>> static void		print_numbers(const char *, unsigned int *,
+>>> 					unsigned int);
+>>> @@ -239,7 +239,7 @@ static int		mounts(const char *);
+>>>
+>>> static void		get_stats(const char *, struct statinfo *, int *, int,
+>>> 					int);
+>>> -static int		has_stats(const unsigned int *);
+>>> +static int		has_stats(const unsigned int *, int);
+>>> static int		has_rpcstats(const unsigned int *, int);
+>>> static void 		diff_stats(struct statinfo *, struct statinfo *, int);
+>>> static void 		unpause(int);
+>>> @@ -468,7 +468,7 @@ main(int argc, char **argv)
+>>> 		pause();
+>>> 	}
+>>>
+>>> -	if (opt_since || opt_sleep) {
+>>> +	if (opt_since || (opt_sleep && !sleep_time)) {
+>>> 		if (opt_srv) {
+>>> 			get_stats(NFSSRVSTAT, serverinfo_tmp, &opt_srv, opt_clt, 1);
+>>> 			diff_stats(serverinfo_tmp, serverinfo, 1);
+>>> @@ -516,16 +516,16 @@ main(int argc, char **argv)
+>>> static void
+>>> print_all_stats (int opt_srv, int opt_clt, int opt_prt)
+>>> {
+>>> -	print_server_stats(opt_srv, opt_prt);
+>>> -	print_client_stats(opt_clt, opt_prt);
+>>> +	if (opt_srv)
+>>> +		print_server_stats(opt_prt);
+>>> +
+>>> +	if (opt_clt)
+>>> +		print_client_stats(opt_prt);
+>>> }
+>>>
+>>> static void 
+>>> -print_server_stats(int opt_srv, int opt_prt) 
+>>> +print_server_stats(int opt_prt) 
+>>> {
+>>> -	if (!opt_srv)
+>>> -		return;
+>>> -
+>>> 	if (opt_prt & PRNT_NET) {
+>>> 		if (opt_sleep && !has_rpcstats(srvnetinfo, 4)) {
+>>> 		} else {
+>>> @@ -582,31 +582,29 @@ print_server_stats(int opt_srv, int opt_prt)
+>>> 		printf("\n");
+>>> 	}
+>>> 	if (opt_prt & PRNT_CALLS) {
+>>> +		int has_v2_stats = has_stats(srvproc2info, SRVPROC2_SZ+2);
+>>> +		int has_v3_stats = has_stats(srvproc3info, SRVPROC3_SZ+2);
+>>> +		int has_v4_stats = has_stats(srvproc4info, SRVPROC4_SZ+2);
+>>> +
+>>> 		if ((opt_prt & PRNT_V2) || 
+>>> -				((opt_prt & PRNT_AUTO) && has_stats(srvproc2info))) {
+>>> -			if (opt_sleep && !has_stats(srvproc2info)) {
+>>> -				;
+>>> -			} else {
+>>> +				((opt_prt & PRNT_AUTO) && has_v2_stats)) {
+>>> +			if (!opt_sleep || has_v2_stats) {
+>>> 				print_callstats(LABEL_srvproc2,
+>>> 					nfsv2name, srvproc2info + 1, 
+>>> 					sizeof(nfsv2name)/sizeof(char *));
+>>> 			}
+>>> 		}
+>>> 		if ((opt_prt & PRNT_V3) || 
+>>> -				((opt_prt & PRNT_AUTO) && has_stats(srvproc3info))) {
+>>> -			if (opt_sleep && !has_stats(srvproc3info)) {
+>>> -				;
+>>> -			} else {
+>>> +				((opt_prt & PRNT_AUTO) && has_v3_stats)) {
+>>> +			if (!opt_sleep || has_v3_stats) {
+>>> 				print_callstats(LABEL_srvproc3,
+>>> 					nfsv3name, srvproc3info + 1, 
+>>> 					sizeof(nfsv3name)/sizeof(char *));
+>>> 			}
+>>> 		}
+>>> 		if ((opt_prt & PRNT_V4) || 
+>>> -				((opt_prt & PRNT_AUTO) && has_stats(srvproc4info))) {
+>>> -			if (opt_sleep && !has_stats(srvproc4info)) {
+>>> -				;
+>>> -			} else {
+>>> +				((opt_prt & PRNT_AUTO) && has_v4_stats)) {
+>>> +			if (!opt_sleep || has_v4_stats) {
+>>> 				print_callstats( LABEL_srvproc4,
+>>> 					nfssrvproc4name, srvproc4info + 1, 
+>>> 					sizeof(nfssrvproc4name)/sizeof(char *));
+>>> @@ -618,11 +616,8 @@ print_server_stats(int opt_srv, int opt_prt)
+>>> 	}
+>>> }
+>>> static void
+>>> -print_client_stats(int opt_clt, int opt_prt) 
+>>> +print_client_stats(int opt_prt) 
+>>> {
+>>> -	if (!opt_clt)
+>>> -		return;
+>>> -
+>>> 	if (opt_prt & PRNT_NET) {
+>>> 		if (opt_sleep && !has_rpcstats(cltnetinfo, 4)) {
+>>> 			;
+>>> @@ -644,31 +639,28 @@ print_client_stats(int opt_clt, int opt_prt)
+>>> 		}
+>>> 	}
+>>> 	if (opt_prt & PRNT_CALLS) {
+>>> +		int has_v2_stats = has_stats(cltproc2info, CLTPROC2_SZ+2);
+>>> +		int has_v3_stats = has_stats(cltproc3info, CLTPROC3_SZ+2);
+>>> +		int has_v4_stats = has_stats(cltproc4info, CLTPROC4_SZ+2);
+>>> 		if ((opt_prt & PRNT_V2) || 
+>>> -				((opt_prt & PRNT_AUTO) && has_stats(cltproc2info))) {
+>>> -			if (opt_sleep && !has_stats(cltproc2info)) {
+>>> -				;
+>>> -			} else {
+>>> +				((opt_prt & PRNT_AUTO) && has_v2_stats)) {
+>>> +			if (!opt_sleep || has_v2_stats) {
+>>> 				print_callstats(LABEL_cltproc2,
+>>> 					nfsv2name, cltproc2info + 1,  
+>>> 					sizeof(nfsv2name)/sizeof(char *));
+>>> 			}
+>>> 		}
+>>> 		if ((opt_prt & PRNT_V3) || 
+>>> -				((opt_prt & PRNT_AUTO) && has_stats(cltproc3info))) {
+>>> -			if (opt_sleep && !has_stats(cltproc3info)) {
+>>> -				;
+>>> -			} else {
+>>> +				((opt_prt & PRNT_AUTO) && has_v3_stats)) {
+>>> +			if (!opt_sleep || has_v3_stats) {
+>>> 				print_callstats(LABEL_cltproc3,
+>>> 					nfsv3name, cltproc3info + 1, 
+>>> 					sizeof(nfsv3name)/sizeof(char *));
+>>> 			}
+>>> 		}
+>>> 		if ((opt_prt & PRNT_V4) || 
+>>> -				((opt_prt & PRNT_AUTO) && has_stats(cltproc4info))) {
+>>> -			if (opt_sleep && !has_stats(cltproc4info)) {
+>>> -				;
+>>> -			} else {
+>>> +				((opt_prt & PRNT_AUTO) && has_v4_stats)) {
+>>> +			if (!opt_sleep || has_v4_stats) {
+>>> 				print_callstats(LABEL_cltproc4,
+>>> 					nfscltproc4name, cltproc4info + 1,  
+>>> 					sizeof(nfscltproc4name)/sizeof(char *));
+>>> @@ -681,34 +673,28 @@ static void
+>>> print_clnt_list(int opt_prt) 
+>>> {
+>>> 	if (opt_prt & PRNT_CALLS) {
+>>> +		int has_v2_stats = has_stats(cltproc2info, CLTPROC2_SZ+2);
+>>> +		int has_v3_stats = has_stats(cltproc3info, CLTPROC3_SZ+2);
+>>> +		int has_v4_stats = has_stats(cltproc4info, CLTPROC4_SZ+2);
+>>> 		if ((opt_prt & PRNT_V2) || 
+>>> -				((opt_prt & PRNT_AUTO) && has_stats(cltproc2info))) {
+>>> -			if (opt_sleep && !has_stats(cltproc2info)) {
+>>> -				;
+>>> -			} else {
+>>> +				((opt_prt & PRNT_AUTO) && has_v2_stats)) {
+>>> +			if (!opt_sleep || has_v2_stats) {
+>>> 				print_callstats_list("nfs v2 client",
+>>> 					nfsv2name, cltproc2info + 1,  
+>>> 					sizeof(nfsv2name)/sizeof(char *));
+>>> 			}
+>>> 		}
+>>> 		if ((opt_prt & PRNT_V3) || 
+>>> -				((opt_prt & PRNT_AUTO) && has_stats(cltproc3info))) {
+>>> -			if (opt_sleep && !has_stats(cltproc3info)) {
+>>> -				;
+>>> -			} else { 
+>>> +				((opt_prt & PRNT_AUTO) && has_v3_stats)) {
+>>> +			if (!opt_sleep || has_v3_stats) {
+>>> 				print_callstats_list("nfs v3 client",
+>>> 					nfsv3name, cltproc3info + 1, 
+>>> 					sizeof(nfsv3name)/sizeof(char *));
+>>> 			}
+>>> 		}
+>>> 		if ((opt_prt & PRNT_V4) || 
+>>> -				((opt_prt & PRNT_AUTO) && has_stats(cltproc4info))) {
+>>> -			if (opt_sleep && !has_stats(cltproc4info)) {
+>>> -				;
+>>> -			} else {
+>>> -				print_callstats_list("nfs v4 ops",
+>>> -					nfssrvproc4opname, srvproc4opsinfo + 1, 
+>>> -					sizeof(nfssrvproc4opname)/sizeof(char *));
+>>> +				((opt_prt & PRNT_AUTO) && has_v4_stats)) {
+>>> +			if (!opt_sleep || has_v4_stats) {
+>>> 				print_callstats_list("nfs v4 client",
+>>> 					nfscltproc4name, cltproc4info + 1,  
+>>> 					sizeof(nfscltproc4name)/sizeof(char *));
+>>> @@ -720,32 +706,32 @@ static void
+>>> print_serv_list(int opt_prt) 
+>>> {
+>>> 	if (opt_prt & PRNT_CALLS) {
+>>> +		int has_v2_stats = has_stats(srvproc2info, SRVPROC2_SZ+2);
+>>> +		int has_v3_stats = has_stats(srvproc3info, SRVPROC3_SZ+2);
+>>> +		int has_v4_stats = has_stats(srvproc4info, SRVPROC4_SZ+2);
+>>> 		if ((opt_prt & PRNT_V2) || 
+>>> -				((opt_prt & PRNT_AUTO) && has_stats(srvproc2info))) {
+>>> -			if (opt_sleep && !has_stats(srvproc2info)) {
+>>> -				;
+>>> -			} else {
+>>> +				((opt_prt & PRNT_AUTO) && has_v2_stats)) {
+>>> +			if (!opt_sleep || has_v2_stats) {
+>>> 				print_callstats_list("nfs v2 server",
+>>> 					nfsv2name, srvproc2info + 1, 
+>>> 					sizeof(nfsv2name)/sizeof(char *));
+>>> 			}
+>>> 		}
+>>> 		if ((opt_prt & PRNT_V3) || 
+>>> -				((opt_prt & PRNT_AUTO) && has_stats(srvproc3info))) {
+>>> -			if (opt_sleep && !has_stats(srvproc3info)) {
+>>> -				;
+>>> -			} else {
+>>> +				((opt_prt & PRNT_AUTO) && has_v3_stats)) {
+>>> +			if (!opt_sleep || has_v3_stats) {
+>>> 				print_callstats_list("nfs v3 server",
+>>> 					nfsv3name, srvproc3info + 1, 
+>>> 					sizeof(nfsv3name)/sizeof(char *));
+>>> 			}
+>>> 		}
+>>> 		if ((opt_prt & PRNT_V4) || 
+>>> -				((opt_prt & PRNT_AUTO) && has_stats(srvproc4opsinfo))) {
+>>> -			if (opt_sleep && !has_stats(srvproc4info)) {
+>>> -				;
+>>> -			} else {
+>>> -				print_callstats_list("nfs v4 ops",
+>>> +				((opt_prt & PRNT_AUTO) && has_v4_stats)) {
+>>> +			if (!opt_sleep || has_v4_stats) {
+>>> +				print_callstats_list("nfs v4 server",
+>>> +					nfssrvproc4name, srvproc4info + 1, 
+>>> +					sizeof(nfssrvproc4name)/sizeof(char *));
+>>> +				print_callstats_list("nfs v4 servop",
+>>> 					nfssrvproc4opname, srvproc4opsinfo + 1, 
+>>> 					sizeof(nfssrvproc4opname)/sizeof(char *));
+>>> 			}
+>>> @@ -1054,9 +1040,9 @@ out:
+>>>  * there are stats if the sum's greater than the entry-count.
+>>>  */
+>>> static int
+>>> -has_stats(const unsigned int *info)
+>>> +has_stats(const unsigned int *info, int nr)
+>>> {
+>>> -	return (info[0] && info[info[0] + 1] > info[0]);
+>>> +	return (info[0] && info[nr-1] > info[0]);
+>>> }
+>>> static int
+>>> has_rpcstats(const unsigned int *info, int size)
+>>> diff --git a/utils/nfsstat/nfsstat.man b/utils/nfsstat/nfsstat.man
+>>> index 52215a9..cd573b0 100644
+>>> --- a/utils/nfsstat/nfsstat.man
+>>> +++ b/utils/nfsstat/nfsstat.man
+>>> @@ -30,10 +30,12 @@ Print only NFS v2 statistics. The default is to only print information
+>>> about the versions of \fBNFS\fR that have non-zero counts.
+>>> .TP
+>>> .B \-3
+>>> -Print only NFS v3 statistics. 
+>>> +Print only NFS v3 statistics. The default is to only print information
+>>> +about the versions of \fBNFS\fR that have non-zero counts.
+>>> .TP
+>>> .B \-4
+>>> -Print only NFS v4 statistics. 
+>>> +Print only NFS v4 statistics. The default is to only print information
+>>> +about the versions of \fBNFS\fR that have non-zero counts.
+>>> .TP
+>>> .B \-m, \-\-mounts
+>>> Print information about each of the mounted \fBNFS\fR file systems.
+>>> -- 
+>>> 1.7.3.2
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
 > 
-> As long as we only support a single session to a server, and a single
-> back channel using the fore channel connection, doesn't using the
-> minorversion has the same effect? I believe there is only one
-> nfs_client struct associated with the <rqstp->rq_addr, nfsversion,
-> minorversion> tuple.  By adding the minorversion, nfs_find_client now
-> uses the same criteria as nfs_match_client which decides when to
-> create a new nfs_client or use an existing one.
-
-The 'as long as we only support' bit is exactly the problem. We
-shouldn't assume that we have 1 session per server because in the
-long-term that isn't going to be the case.
-
-> Knowing which session is associated with the callback thread won't do
-> us any good here where we have yet to decode the request session from
-> CB_SEQUENCE.
-
-Then we shouldn't be caring too much about whether or not the server is
-talking minor version 0 or 1 here. Do it when we know more about the
-CB_COMPOUND.
-
-> >
-> >>       if (clp == NULL)
-> >> -             return SVC_DROP;
-> >> +             return SVC_DENIED;
-> >
-> > Nope. SVC_DROP is correct. We shouldn't reply to unsolicited callbacks
-> > at all...
 > 
-> Should nfsd also do the same? In nfsd's pg_authenticate routine
-> svcauth_gss_set_client, if the auth domain is not found - which I
-> think is the same as not finding a matching nfs_client in the callback
-> server, SVC_DENIED is returned.   The other nfsd pg_authenticate
-> routine, svcauth_unix_set_client,  also returns SVC_DENIED when the
-> ip_map_cache or lookup fails. So, nfsd replys with an rpc auth error
-> to unsolicited requests.
-
-I can see why the NFS server would care to let the client quickly
-whether or not the RPC request is denied, but why do we care on the
-backchannel case? If a server is sending us callbacks, and we don't
-recognise that server, why should we waste computing and networking
-cycles by replying at all?
-
-Trond
-
