@@ -1,138 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:54851 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753121Ab0LABBr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 20:01:47 -0500
-Message-ID: <4CF59E79.7070009@cn.fujitsu.com>
-Date: Wed, 01 Dec 2010 09:01:45 +0800
-From: Bian Naimeng <biannm@cn.fujitsu.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <SteveD@redhat.com>, Mi Jinlong <mijinlong@cn.fujitsu.com>,
-        NFSv3 list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mount: avoid po_destroy to modify errno what we really
- want
-References: <4CEE357D.2030007@cn.fujitsu.com> <9C08C339-281F-4CD4-B8C1-70441869E2F6@oracle.com> <4CF3C4D2.2060607@RedHat.com> <4CF45BD9.20908@cn.fujitsu.com> <D05BF4A3-1BD5-4FC3-8921-A9D9DC5D8634@oracle.com>
-In-Reply-To: <D05BF4A3-1BD5-4FC3-8921-A9D9DC5D8634@oracle.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:49016 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756414Ab0KJOxb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 09:53:31 -0500
+Received: by bwz15 with SMTP id 15so827331bwz.19
+        for <linux-nfs@vger.kernel.org>; Wed, 10 Nov 2010 06:53:29 -0800 (PST)
+In-Reply-To: <1289396514-23034-1-git-send-email-bhalevy@panasas.com>
+References: <4CDAA02D.20204@panasas.com>
+	<1289396514-23034-1-git-send-email-bhalevy@panasas.com>
+Date: Wed, 10 Nov 2010 09:53:29 -0500
+Message-ID: <AANLkTimZ6o+b2R9ySH_goDJ7wuAwNXSqe5=6YpjXmven@mail.gmail.com>
+Subject: Re: [PATCH] SQUASHME: pnfs-submit: fixups for nfsv4.1 callbacks
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Looks good to me.
 
+Fred
 
-Chuck Lever wrote:
-> Hi Bian
-> 
-> On Nov 29, 2010, at 9:05 PM, Bian Naimeng wrote:
-> 
->>
->> Steve Dickson wrote:
->>> On 11/29/2010 09:45 AM, Chuck Lever wrote:
->>>> On Nov 25, 2010, at 5:07 AM, Mi Jinlong wrote:
->>>>
->>>>> We should return the errno that was set before po_destroy,
->>>>> rather than the errno that was set at po_destroy.
->>>>>
->>>>> Because the po_destroy function don't affect the return value,
->>>>> this patch just revert the saved errno after po_destroy.
->>>> The only library function used in po_destroy() is free(3).  
->>>> Does free(3) change the value of errno?
->>> Looking at the man page and taking a look a the 
->>> glibc code it appears the answer is no. free(3)
->>> does not set errno.
->>>
->>> Bian, what was the problem you were seeing that this
->>> patch fixed? 
->>>
->> Actually, there's no problem now. But this's not a good style, po_destroy
->> maybe change the errno later on such as adding a printf.
->> So if somebady want modify the po_destroy, he must be careful of it. :)
->>
->> And, i don't think it's a good idea that explicitly set errno, it maybe make
->> some trouble in the future. It's better returning error in nfs_do_mount_v3v2,
->> or save the error in a input parameter. :)
-> 
-> Perhaps it isn't good style, but I'd rather see all of stropts.c updated to pass errno as an explicit parameter than to have it changed piecemeal.  I agree that we run into trouble everywhere in mount with errno.
-> 
-> I think this particular patch is unnecessary until we have a need for it.  Basically it confuses a reviewer who sees that we've gone to the trouble here to save and restore errno, but nowhere else, and besides po_destroy() doesn't even alter errno.  Why are we bothering?
-> 
-
-  Well, it's okay to me.
-
-Thanks
-  Bian
-
->>> steved.
->>>
->>>>> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
->>>>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->>>>> ---
->>>>> utils/mount/stropts.c |    8 ++++++--
->>>>> 1 files changed, 6 insertions(+), 2 deletions(-)
->>>>>
->>>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->>>>> index 50a1a2a..d554877 100644
->>>>> --- a/utils/mount/stropts.c
->>>>> +++ b/utils/mount/stropts.c
->>>>> @@ -592,7 +592,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
->>>>> 		struct sockaddr *sap, socklen_t salen)
->>>>> {
->>>>> 	struct mount_options *options = po_dup(mi->options);
->>>>> -	int result = 0;
->>>>> +	int result = 0, save = 0;
->>>>>
->>>>> 	if (!options) {
->>>>> 		errno = ENOMEM;
->>>>> @@ -637,7 +637,9 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
->>>>> 	result = nfs_sys_mount(mi, options);
->>>>>
->>>>> out_fail:
->>>>> +	save = errno;
->>>>> 	po_destroy(options);
->>>>> +	errno = save;
->>>>> 	return result;
->>>>> }
->>>>>
->>>>> @@ -673,7 +675,7 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
->>>>> 		struct sockaddr *sap, socklen_t salen)
->>>>> {
->>>>> 	struct mount_options *options = po_dup(mi->options);
->>>>> -	int result = 0;
->>>>> +	int result = 0, save = 0;
->>>>>
->>>>> 	if (!options) {
->>>>> 		errno = ENOMEM;
->>>>> @@ -724,7 +726,9 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
->>>>> 	result = nfs_sys_mount(mi, options);
->>>>>
->>>>> out_fail:
->>>>> +	save = errno;
->>>>> 	po_destroy(options);
->>>>> +	errno = save;
->>>>> 	return result;
->>>>> }
->>>>>
->>>>> -- 
->>>>> 1.7.3.2
->>>>>
->>>>>
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>>
->> -- 
->> Regards
->> Bian Naimeng
->>
-> 
-
--- 
-Regards
-Bian Naimeng
-
+On Wed, Nov 10, 2010 at 8:41 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfs/callback_proc.c |   53 +++++++++++++++++++++--------------------------
+>  1 files changed, 24 insertions(+), 29 deletions(-)
+>
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index 6e21add..3a19cec 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -21,6 +21,12 @@
+>  #define NFSDBG_FACILITY NFSDBG_CALLBACK
+>  #endif
+>
+> +static struct nfs_client *
+> +find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
+> +{
+> +       return cps->session ? cps->session->clp : nfs_find_client(addr, 4);
+> +}
+> +
+>  __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+>                             struct cb_getattrres *res,
+>                             struct cb_process_state *cps)
+> @@ -32,13 +38,9 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+>
+>        res->bitmap[0] = res->bitmap[1] = 0;
+>        res->status = htonl(NFS4ERR_BADHANDLE);
+> -       if (cps->session) { /* set in cb_sequence */
+> -               clp = cps->session->clp;
+> -       } else {
+> -               clp = nfs_find_client(args->addr, 4);
+> -               if (clp == NULL)
+> -                       goto out;
+> -       }
+> +       clp = find_client_from_cps(cps, args->addr);
+> +       if (clp == NULL)
+> +               goto out;
+>
+>        dprintk("NFS: GETATTR callback request from %s\n",
+>                rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+> @@ -81,13 +83,9 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
+>        __be32 res;
+>
+>        res = htonl(NFS4ERR_BADHANDLE);
+> -       if (cps->session) { /* set in cb_sequence */
+> -               clp = cps->session->clp;
+> -       } else {
+> -               clp = nfs_find_client(args->addr, 4);
+> -               if (clp == NULL)
+> -                       goto out;
+> -       }
+> +       clp = find_client_from_cps(cps, args->addr);
+> +       if (clp == NULL)
+> +               goto out;
+>
+>        dprintk("NFS: RECALL callback request from %s\n",
+>                rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+> @@ -111,11 +109,11 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
+>                        }
+>                        iput(inode);
+>                }
+> -               if (!cps->session) {
+> -                       clp = nfs_find_client_next(prev);
+> -                       nfs_put_client(prev);
+> -               }
+> -       } while (!cps->session && clp != NULL);
+> +               if (cps->session)
+> +                       break;
+> +               clp = nfs_find_client_next(prev);
+> +               nfs_put_client(prev);
+> +       } while (clp != NULL);
+>  out:
+>        dprintk("%s: exit with status = %d\n", __func__, ntohl(res));
+>        return res;
+> @@ -420,11 +418,7 @@ __be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
+>                res = NFS4ERR_OP_NOT_IN_SESSION;
+>                goto out;
+>        }
+> -       /* the callback must come from the MDS personality */
+> -       if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS)) {
+> -               res = NFS4ERR_INVAL;
+> -               goto out;
+> -       }
+> +
+>        res = do_callback_layoutrecall(clp, args);
+>  out:
+>        dprintk("%s: exit with status = %d\n", __func__, res);
+> @@ -623,6 +617,12 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+>        if (status)
+>                goto out_putclient;
+>
+> +       /* The callback must come from the MDS personality */
+> +       if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS)) {
+> +               status = htonl(NFS4ERR_INVAL);
+> +               goto out_putclient;
+> +       }
+> +
+>        /*
+>         * Check for pending referring calls.  If a match is found, a
+>         * related callback was received before the response to the original
+> @@ -702,11 +702,6 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+>        dprintk("NFS: RECALL_ANY callback request from %s\n",
+>                rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+>
+> -       /* the callback must come from the MDS personality */
+> -       status = cpu_to_be32(NFS4ERR_NOTSUPP);
+> -       if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
+> -               goto out;
+> -
+>        status = cpu_to_be32(NFS4ERR_INVAL);
+>        if (!validate_bitmap_values((const unsigned long *)
+>                                    &args->craa_type_mask))
+> --
+> 1.7.2.3
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
