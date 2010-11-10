@@ -1,198 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-px0-f174.google.com ([209.85.212.174]:62760 "EHLO
-	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754391Ab0K2XZm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 18:25:42 -0500
-Received: by pxi15 with SMTP id 15so788825pxi.19
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Nov 2010 15:25:41 -0800 (PST)
-From: "Spencer Shepler" <spencer.shepler@gmail.com>
-To: "'Trond Myklebust'" <Trond.Myklebust@netapp.com>
-Cc: <Daniel.Muntz@emc.com>, <spelic@shiftmail.org>,
-        <linux-nfs@vger.kernel.org>
-References: <1291054975.12784.17.camel@heimdal.trondhjem.org> <DE966DA98A4ABE438D726BDF1699CF610437B188C9@MX05A.corp.emc.com> <067101cb9018$d70ba2f0$8522e8d0$@gmail.com> <1291072571.20567.26.camel@heimdal.trondhjem.org>
-In-Reply-To: <1291072571.20567.26.camel@heimdal.trondhjem.org>
-Subject: RE: NFSv4 behaviour on unknown users
-Date: Mon, 29 Nov 2010 15:25:37 -0800
-Message-ID: <068501cb901c$bbcbf0e0$3363d2a0$@gmail.com>
-Content-Type: text/plain;
-	charset="utf-8"
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:49021 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753769Ab0KJVYb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 16:24:31 -0500
+In-Reply-To: <4CDAFE4B.1060408@netapp.com>
+References: <1289412737.4513.80.camel@e102109-lin.cambridge.arm.com>
+	<4CDAFE4B.1060408@netapp.com>
+Date: Wed, 10 Nov 2010 21:24:31 +0000
+Message-ID: <AANLkTin4OtWZf_uWdFfCMqVyZoR_xm3-jmt0e7f04xc_@mail.gmail.com>
+Subject: Re: Memory leak via nfs_readdir_make_qstr
+From: Catalin Marinas <catalin.marinas@arm.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 10 November 2010 20:19, Bryan Schumaker <bjschuma@netapp.com> wrote:
+> On 11/10/2010 01:12 PM, Catalin Marinas wrote:
+>> I tested the 2.6.37-rc1 on an ARM platform with nfsroot filesystem.
+>> Kmemleak reports quite a lot (> 150) of leaks like below. You seem to
+>> have made changes recently to this area.
+>>
+> <snip>
+>>
+>> Any quick thoughts? I'll have a look tomorrow as well.
+>
+> My first thought is that this is because of how we are caching the result of a readdir now.  We are storing the name of each directory entry as part of the cache, and this requires allocating memory for each string.  These are freed on unmount (see nfs_readdir_clear_array() in fs/nfs/dir.c), but you probably don't want to unmount your root filesytem...
 
+Ah, I got it now. It seems to be a kmemleak false positive since
+kmemleak doesn't scan page cache pages. The easiest thing is to mark
+the leak with kmemleak_not_leak(), with the disadvantage that if at
+some point we get a real leak from the same place it will be missed.
 
-> -----Original Message-----
-> From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
-> Sent: Monday, November 29, 2010 3:16 PM
-> To: Spencer Shepler
-> Cc: Daniel.Muntz@emc.com; spelic@shiftmail.org; linux-nfs@vger.kernel.org
-> Subject: RE: NFSv4 behaviour on unknown users
-> 
-> On Mon, 2010-11-29 at 14:57 -0800, Spencer Shepler wrote:
-> > Dan,
-> >
-> > A change to the NFSv4.0 and NFSv4.1 RFCs is unnecessary.
-> > What you suggest can be implemented today and still adhere to the RFC
-> > text.  From RFC3530 (section 4.8) and RFC5661 (section 5.9) the
-> > following text is quoted:
-> >
-> > "  In the case where there is no translation available to the client or
-> >    server, the attribute value will be constructed without the "@".
-> >    Therefore, the absence of the @ from the owner or owner_group
-> >    attribute signifies that no translation was available at the sender
-> >    and that the receiver of the attribute should not use that string as
-> >    a basis for translation into its own internal format.  Even though
-> >    the attribute value cannot be translated, it may still be useful.  In
-> >    the case of a client, the attribute string may be used for local
-> >    display of ownership.
-> >
-> >    To provide a greater degree of compatibility with NFSv3, which
-> >    identified users and groups by 32-bit unsigned user identifiers and
-> >    group identifiers, owner and group strings that consist of decimal
-> >    numeric values with no leading zeros can be given a special
-> >    interpretation by clients and servers that choose to provide such
-> >    support.  The receiver may treat such a user or group string as
-> >    representing the same user as would be represented by an NFSv3 uid or
-> >    gid having the corresponding numeric value.  A server is not
-> >    obligated to accept such a string, but may return an NFS4ERR_BADOWNER
-> >    instead.  To avoid this mechanism being used to subvert user and
-> >    group translation, so that a client might pass all of the owners and
-> >    groups in numeric form, a server SHOULD return an NFS4ERR_BADOWNER
-> >    error when there is a valid translation for the user or owner
-> >    designated in this way.  In that case, the client must use the
-> >    appropriate name@domain string and not the special form for
-> >    compatibility."
-> >
-> >
-> > I read this that if the implementation or administrator chooses to
-> > op-out of the user@domain mapping, it may do so and the client and
-> > server have a method available to them to communicate traditiona
-> > uid/gid.
-> >
-> > So, all that is needed now it seems is some code to provide the option
-> > to the admin or as you suggest, change the default.
-> >
-> > Spencer
-> 
-> It is way too late to change the default. All known existing NFSv4 servers
-> would spit at you because they have been coded to match the above
-> normative "SHOULD".
+If there is a function that gets called only once for each array
+before it is populated (maybe nfs_do_filldir?), we could inform
+kmemleak about this page so that it can scan it.
 
-The intent of my email was to state that a change of the RFCs was
-not required to build a solution that addresses the deployment
-described.
+Thanks,
 
-It may be that the servers in question can be changed as easily
-as the clients and therefore a solution is quite possible.
-
-So, it is possible.  Now the question of probable is in play.
-
-> 
-> Without that option, you will also need a mechanism to allow the client
-> and server to agree on a convention. Otherwise, admins have to go in and
-> manually set the correct site default on all their clients and servers.
-
-IIRC, the Solaris implementation will encode the uid/gid as
-a simple "stringified" uid/gid without the "@".  Seems simple
-enough and quite portable.  If the linux implementation were
-to choose that as the default, others will follow.
-
-Spencer
-
-> 
-> Trond
-> 
-> 
-> > > -----Original Message-----
-> > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > > owner@vger.kernel.org] On Behalf Of Daniel.Muntz@emc.com
-> > > Sent: Monday, November 29, 2010 2:09 PM
-> > > To: Trond.Myklebust@netapp.com; spelic@shiftmail.org
-> > > Cc: linux-nfs@vger.kernel.org
-> > > Subject: RE: NFSv4 behaviour on unknown users
-> > >
-> > > Looks like it's time for my annual numeric uid rant...
-> > >
-> > > IMHO this was the silliest decision in the v4 spec, and a frequent
-> > > hindrance to users wanting to move from v3.  Once again, I'm going
-> > > to suggest that the v4.x series officially support numeric uid/gid
-> > > strings as first-class user identifiers, rather than trying to force
-> > > "name@domain" on systems that do not need this functionality, and
-> > > are worse off for having to support it.  The fact that every OS
-> > > needs different configuration to get it working just adds to the
-> > > insanity.  Supply something that works (numeric id strings) as the
-> > > default, but allow the name@domain "enhancement" for those who want
-> > > it.  Then, everything just works, people seamlessly migrate to v4.x,
-> > > and world peace is achieved.  There could even be an option to
-> > > disable numeric id string support for those vehemently opposed to
-> > > its existence, but at least in this case sysadmins have to go out of
-> > > their way to make their system return nobody/nogroup for all users,
-> rather than being the default behavior.
-> > >
-> > >   -Dan
-> > >
-> > > -----Original Message-----
-> > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > > owner@vger.kernel.org] On Behalf Of Trond Myklebust
-> > > Sent: Monday, November 29, 2010 10:23 AM
-> > > To: Spelic
-> > > Cc: linux-nfs@vger.kernel.org
-> > > Subject: Re: NFSv4 behaviour on unknown users
-> > >
-> > > On Mon, 2010-11-29 at 19:12 +0100, Spelic wrote:
-> > > > Hello all
-> > > > we recently moved to nfsv4 from v3.
-> > > >
-> > > > I'm currently using idmapd and not kerberos.
-> > > >
-> > > > I noticed that now, with idmapd (and with idmapd is the only way I
-> > > > know for configuring nfsv4 for now), users that are not known at
-> > > > server side are squashed to nobody / nogroup  (65534 / 65534).
-> > > > And a chown by root from the client fails if the user is not known
-> > > > at server side.
-> > > >
-> > > > That's a problem... now we need ldap everywhere...
-> > > >
-> > > > We were often using NFS for exporting some diskspace to machines
-> > > > on an as-needed basis, so this new behaviour complicates the
-> > > > things greatly for us :-/ It's almost easier to setup iSCSI
-> > > > targets now :-((
-> > > >
-> > > > Is there a way to have nfsv4 with the behaviour of users of nfsv3,
-> > > > that is, using numeric IDs instead of the names, like: "nfsserver,
-> > > > don't care if you don't know the user, just give me the numeric ID
-> > > > for
-> > > the file..."
-> > >
-> > > No. That is not allowed by the spec.
-> > >
-> > > Trond
-> > > --
-> > > Trond Myklebust
-> > > Linux NFS client maintainer
-> > >
-> > > NetApp
-> > > Trond.Myklebust@netapp.com
-> > > www.netapp.com
-> > >
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> > > in the body of a message to majordomo@vger.kernel.org More majordomo
-> > > info at http://vger.kernel.org/majordomo-info.html
-> > >
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> > > in the body of a message to majordomo@vger.kernel.org More majordomo
-> > > info at http://vger.kernel.org/majordomo-info.html
-> >
-> 
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-
-
+Catalin
