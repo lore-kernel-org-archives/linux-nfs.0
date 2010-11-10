@@ -1,39 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:38453 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753306Ab0K2WJj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 17:09:39 -0500
-Received: by vws3 with SMTP id 3so151633vws.19
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Nov 2010 14:09:39 -0800 (PST)
-Message-ID: <4CF4249F.9070400@garzik.org>
-Date: Mon, 29 Nov 2010 17:09:35 -0500
-From: Jeff Garzik <jeff@garzik.org>
-To: Jim Rees <rees@umich.edu>
-CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>,
-        sfaibish <sfaibish@emc.com>
-Subject: Re: Block layout rpm
-References: <20101129210708.GA21682@merit.edu>
-In-Reply-To: <20101129210708.GA21682@merit.edu>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from exprod5og103.obsmtp.com ([64.18.0.145]:34333 "HELO
+	exprod5og103.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755768Ab0KJNl7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 08:41:59 -0500
+From: Benny Halevy <bhalevy@panasas.com>
+To: Andy Adamson <andros@netapp.com>, Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH] SQUASHME: pnfs-submit: fixups for nfsv4.1 callbacks
+Date: Wed, 10 Nov 2010 15:41:54 +0200
+Message-Id: <1289396514-23034-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4CDAA02D.20204@panasas.com>
+References: <4CDAA02D.20204@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 11/29/2010 04:07 PM, Jim Rees wrote:
-> I have released a developer's snapshot Fedora rpm of nfs-utils for the pnfs
-> block layout client, at:
-> http://www.citi.umich.edu/projects/nfsv4/pnfs/block/
->
-> Instructions, as always, are on the wiki:
-> http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/callback_proc.c |   53 +++++++++++++++++++++--------------------------
+ 1 files changed, 24 insertions(+), 29 deletions(-)
 
-"pNFS will work with 32-bit linux and lesser hardware, but the you will 
-not obtain the performance benefits of pNFS."
-
-That's just silly, and, I might even go so far as to say "wrong".  The 
-benefits of direct-to-storage access, without an MDS middle-man, are 
-quite noticable even for 32-bit, underpowered, and/or embedded clients.
-
-	Jeff
-
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 6e21add..3a19cec 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -21,6 +21,12 @@
+ #define NFSDBG_FACILITY NFSDBG_CALLBACK
+ #endif
+ 
++static struct nfs_client *
++find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
++{
++	return cps->session ? cps->session->clp : nfs_find_client(addr, 4);
++}
++
+ __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+ 			     struct cb_getattrres *res,
+ 			     struct cb_process_state *cps)
+@@ -32,13 +38,9 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+ 
+ 	res->bitmap[0] = res->bitmap[1] = 0;
+ 	res->status = htonl(NFS4ERR_BADHANDLE);
+-	if (cps->session) { /* set in cb_sequence */
+-		clp = cps->session->clp;
+-	} else {
+-		clp = nfs_find_client(args->addr, 4);
+-		if (clp == NULL)
+-			goto out;
+-	}
++	clp = find_client_from_cps(cps, args->addr);
++	if (clp == NULL)
++		goto out;
+ 
+ 	dprintk("NFS: GETATTR callback request from %s\n",
+ 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+@@ -81,13 +83,9 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
+ 	__be32 res;
+ 	
+ 	res = htonl(NFS4ERR_BADHANDLE);
+-	if (cps->session) { /* set in cb_sequence */
+-		clp = cps->session->clp;
+-	} else {
+-		clp = nfs_find_client(args->addr, 4);
+-		if (clp == NULL)
+-			goto out;
+-	}
++	clp = find_client_from_cps(cps, args->addr);
++	if (clp == NULL)
++		goto out;
+ 
+ 	dprintk("NFS: RECALL callback request from %s\n",
+ 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+@@ -111,11 +109,11 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
+ 			}
+ 			iput(inode);
+ 		}
+-		if (!cps->session) {
+-			clp = nfs_find_client_next(prev);
+-			nfs_put_client(prev);
+-		}
+-	} while (!cps->session && clp != NULL);
++		if (cps->session)
++			break;
++		clp = nfs_find_client_next(prev);
++		nfs_put_client(prev);
++	} while (clp != NULL);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(res));
+ 	return res;
+@@ -420,11 +418,7 @@ __be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
+ 		res = NFS4ERR_OP_NOT_IN_SESSION;
+ 		goto out;
+ 	}
+-	/* the callback must come from the MDS personality */
+-	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS)) {
+-		res = NFS4ERR_INVAL;
+-		goto out;
+-	}
++
+ 	res = do_callback_layoutrecall(clp, args);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, res);
+@@ -623,6 +617,12 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 	if (status)
+ 		goto out_putclient;
+ 
++	/* The callback must come from the MDS personality */
++	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS)) {
++		status = htonl(NFS4ERR_INVAL);
++		goto out_putclient;
++	}
++
+ 	/*
+ 	 * Check for pending referring calls.  If a match is found, a
+ 	 * related callback was received before the response to the original
+@@ -702,11 +702,6 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+ 	dprintk("NFS: RECALL_ANY callback request from %s\n",
+ 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+ 
+-	/* the callback must come from the MDS personality */
+-	status = cpu_to_be32(NFS4ERR_NOTSUPP);
+-	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
+-		goto out;
+-
+ 	status = cpu_to_be32(NFS4ERR_INVAL);
+ 	if (!validate_bitmap_values((const unsigned long *)
+ 				    &args->craa_type_mask))
+-- 
+1.7.2.3
 
