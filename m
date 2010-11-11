@@ -1,79 +1,197 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48528 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754109Ab0K3W04 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 17:26:56 -0500
-Date: Tue, 30 Nov 2010 17:26:51 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Steve Dickson <SteveD@redhat.com>, Spelic <spelic@shiftmail.org>,
-        linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 behaviour on unknown users
-Message-ID: <20101130222651.GB5054@fieldses.org>
-References: <4CF3ED05.3070401@shiftmail.org>
- <1291054975.12784.17.camel@heimdal.trondhjem.org>
- <4CF3F326.4060608@shiftmail.org>
- <20101129190122.GA31843@fieldses.org>
- <1291057747.12784.38.camel@heimdal.trondhjem.org>
- <4CF519F2.8080900@RedHat.com>
- <1291155578.2998.38.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1291155578.2998.38.camel@heimdal.trondhjem.org>
+Received: from exprod5og112.obsmtp.com ([64.18.0.24]:47422 "HELO
+	exprod5og112.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753741Ab0KKPAa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Nov 2010 10:00:30 -0500
+Message-ID: <4CDC0500.90805@panasas.com>
+Date: Thu, 11 Nov 2010 17:00:16 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 04/18] pnfs-submit: change layout state seqlock to a spinlock
+References: <1288884151-11128-1-git-send-email-iisaman@netapp.com> <1288884151-11128-5-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1288884151-11128-5-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Nov 30, 2010 at 05:19:38PM -0500, Trond Myklebust wrote:
-> On Tue, 2010-11-30 at 10:36 -0500, Steve Dickson wrote:
-> > 
-> > On 11/29/2010 02:09 PM, Trond Myklebust wrote:
-> > > On Mon, 2010-11-29 at 14:01 -0500, J. Bruce Fields wrote:
-> > >> On Mon, Nov 29, 2010 at 07:38:30PM +0100, Spelic wrote:
-> > >>> On 11/29/2010 07:22 PM, Trond Myklebust wrote:
-> > >>>> On Mon, 2010-11-29 at 19:12 +0100, Spelic wrote:
-> > >>>> No. That is not allowed by the spec.
-> > >>>>
-> > >>>> Trond
-> > >>>
-> > >>> Too bad!! :-((
-> > >>> Was that spec decision really wise? :-/
-> > >>>
-> > >>>
-> > >>> BTW:
-> > >>> I've just noticed two discussions dated a few months ago in this ML
-> > >>> regarding this.
-> > >>> the thread named 'numeric UIDs'
-> > >>
-> > >> There's also a reference to the spec language there--we'd be violating a
-> > >> "SHOULD", but I think it would be acceptable if it smooths the v3->v4
-> > >> upgrade path for users in your situation.
-> > >>
-> > >> I think steved's changes still need to be ported to libnfsidmap?
-> > > 
-> > > I don't see how steved's changes will fix this problem. If the client
-> > > has a mapping, it will (MUST) send the mapped uid/gid and the server
-> > > still has to make sense of that. Ditto if the server has a mapping, and
-> > > the client does not.
-> > I actually thought it did... 
+On 2010-11-04 17:22, Fred Isaman wrote:
+> This prepares for future changes, where the layout state needs
+> to change atomically with several other variables.  In particular,
+> it will need to know if lo->segs is empty.  Moreover, the
+> layoutstateid is not really a read-mostly structure, as it is
+> written on each LAYOUTGET.
 > 
-> How? The userland library has no concept of whether or not the server
-> accepts unmapped uids and gids.
+> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+> ---
+>  fs/nfs/callback_proc.c |    8 +++---
+>  fs/nfs/nfs4xdr.c       |    2 +
+>  fs/nfs/pnfs.c          |   55 ++++++++++++++---------------------------------
+>  fs/nfs/pnfs.h          |    4 +--
+>  4 files changed, 24 insertions(+), 45 deletions(-)
 > 
-> > Now that the libnfsidmap maintainership has been handed over to me 
-> > and I'm about to enable the new nfsidmapper when I commit the 
-> > "libnfsidmap: Add numerical string translation" patch... Its 
-> > probably time I take a second look at those patches to see
-> > if we can ease some of this pain...
-> 
-> Some reasons for doing this in the kernel are:
-> 
-> 1) it is easy to do so.
-> 2) it allows the kernel to take action to recover
-> 3) it fixes the nfsroot problem, provided that the server also sends
-> uids/gids in this situation.
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index 84c5a1b..3e022a8 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -135,12 +135,11 @@ static bool
+>  pnfs_is_next_layout_stateid(const struct pnfs_layout_hdr *lo,
+>  			    const nfs4_stateid stateid)
+>  {
+> -	int seqlock;
+>  	bool res;
+>  	u32 oldseqid, newseqid;
+>  
+> -	do {
+> -		seqlock = read_seqbegin(&lo->seqlock);
+> +	spin_lock(&lo->inode->i_lock);
+> +	{
+>  		oldseqid = be32_to_cpu(lo->stateid.stateid.seqid);
+>  		newseqid = be32_to_cpu(stateid.stateid.seqid);
+>  		res = !memcmp(lo->stateid.stateid.other,
+> @@ -158,7 +157,8 @@ pnfs_is_next_layout_stateid(const struct pnfs_layout_hdr *lo,
+>  			if (res)
+>  				res = (newseqid == 1);
+>  		}
+> -	} while (read_seqretry(&lo->seqlock, seqlock));
+> +	}
+> +	spin_unlock(&lo->inode->i_lock);
+>  
+>  	return res;
+>  }
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 6d9ef2b..b71a482 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -1915,7 +1915,9 @@ encode_layoutreturn(struct xdr_stream *xdr,
+>  		p = reserve_space(xdr, 16 + NFS4_STATEID_SIZE);
+>  		p = xdr_encode_hyper(p, args->range.offset);
+>  		p = xdr_encode_hyper(p, args->range.length);
+> +		spin_lock(&args->inode->i_lock);
+>  		pnfs_copy_layout_stateid(&stateid, NFS_I(args->inode)->layout);
+> +		spin_unlock(&args->inode->i_lock);
+>  		p = xdr_encode_opaque_fixed(p, &stateid.data,
+>  					    NFS4_STATEID_SIZE);
+>  		p = reserve_space(xdr, 4);
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 4e5c68b..01ecb95 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -456,7 +456,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+>  	nfs4_stateid *old = &lo->stateid;
+>  	bool overwrite = false;
+>  
+> -	write_seqlock(&lo->seqlock);
+> +	assert_spin_locked(&lo->inode->i_lock);
+>  	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
+>  	    memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
+>  		overwrite = true;
+> @@ -470,54 +470,34 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+>  	}
+>  	if (overwrite)
+>  		memcpy(&old->stateid, &new->stateid, sizeof(new->stateid));
+> -	write_sequnlock(&lo->seqlock);
+> -}
+> -
+> -static void
+> -pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
+> -			      struct nfs4_state *state)
+> -{
+> -	int seq;
+> -
+> -	dprintk("--> %s\n", __func__);
+> -	write_seqlock(&lo->seqlock);
+> -	do {
+> -		seq = read_seqbegin(&state->seqlock);
+> -		memcpy(lo->stateid.data, state->stateid.data,
+> -		       sizeof(state->stateid.data));
+> -	} while (read_seqretry(&state->seqlock, seq));
+> -	set_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
+> -	write_sequnlock(&lo->seqlock);
+> -	dprintk("<-- %s\n", __func__);
+>  }
+>  
+>  /* Layoutreturn may use an invalid stateid, just copy what is there */
+>  void pnfs_copy_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo)
+>  {
+> -	int seq;
+> -
+> -	do {
+> -		seq = read_seqbegin(&lo->seqlock);
+> -		memcpy(dst->data, lo->stateid.data, sizeof(lo->stateid.data));
+> -	} while (read_seqretry(&lo->seqlock, seq));
+> +	assert_spin_locked(&lo->inode->i_lock);
+> +	memcpy(dst->data, lo->stateid.data, sizeof(lo->stateid.data));
 
-Makes sense to me.
+This function is just redundant now.
+Let's just open code its two users.
 
-The server side might still be easiest to do in idmapd/libnfsidmap.
+Benny
 
---b.
+>  }
+>  
+>  void
+>  pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+>  			struct nfs4_state *open_state)
+>  {
+> -	int seq;
+> -
+>  	dprintk("--> %s\n", __func__);
+> -	do {
+> -		seq = read_seqbegin(&lo->seqlock);
+> -		if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state)) {
+> -			/* This will trigger retry of the read */
+> -			pnfs_layout_from_open_stateid(lo, open_state);
+> -		} else
+> -			memcpy(dst->data, lo->stateid.data,
+> -			       sizeof(lo->stateid.data));
+> -	} while (read_seqretry(&lo->seqlock, seq));
+> +	spin_lock(&lo->inode->i_lock);
+> +	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state)) {
+> +		int seq;
+> +
+> +		do {
+> +			seq = read_seqbegin(&open_state->seqlock);
+> +			memcpy(dst->data, open_state->stateid.data,
+> +			       sizeof(open_state->stateid.data));
+> +		} while (read_seqretry(&open_state->seqlock, seq));
+> +		set_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
+> +	} else
+> +		memcpy(dst->data, lo->stateid.data,
+> +		       sizeof(lo->stateid.data));
+> +	spin_unlock(&lo->inode->i_lock);
+>  	dprintk("<-- %s\n", __func__);
+>  }
+>  
+> @@ -791,7 +771,6 @@ alloc_init_layout_hdr(struct inode *ino)
+>  	lo->refcount = 1;
+>  	INIT_LIST_HEAD(&lo->layouts);
+>  	INIT_LIST_HEAD(&lo->segs);
+> -	seqlock_init(&lo->seqlock);
+>  	lo->inode = ino;
+>  	return lo;
+>  }
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 000acf0..de4eaa8 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -96,7 +96,6 @@ struct pnfs_layout_hdr {
+>  	struct list_head	layouts;   /* other client layouts */
+>  	struct list_head	segs;      /* layout segments list */
+>  	int			roc_iomode;/* return on close iomode, 0=none */
+> -	seqlock_t		seqlock;   /* Protects the stateid */
+>  	nfs4_stateid		stateid;
+>  	unsigned long		state;
+>  	struct rpc_cred		*cred;     /* layoutcommit credential */
+> @@ -224,9 +223,8 @@ static inline int lo_fail_bit(u32 iomode)
+>  
+>  static inline void pnfs_invalidate_layout_stateid(struct pnfs_layout_hdr *lo)
+>  {
+> -	write_seqlock(&lo->seqlock);
+> +	assert_spin_locked(&lo->inode->i_lock);
+>  	clear_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
+> -	write_sequnlock(&lo->seqlock);
+>  }
+>  
+>  static inline void get_lseg(struct pnfs_layout_segment *lseg)
