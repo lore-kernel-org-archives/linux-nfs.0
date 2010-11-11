@@ -1,112 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:60827 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934871Ab0KQRoG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:44:06 -0500
-Received: by ywg8 with SMTP id 8so1254693ywg.19
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 09:44:06 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/17] NFS: Update xdr_encode_foo() functions that we're
-	keeping
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 17 Nov 2010 12:44:02 -0500
-Message-ID: <20101117174402.29177.20391.stgit@matisse.1015granger.net>
-In-Reply-To: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
-References: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from cn.fujitsu.com ([222.73.24.84]:65358 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S932074Ab0KKBSN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Nov 2010 20:18:13 -0500
+Message-ID: <4CDB4516.1040707@cn.fujitsu.com>
+Date: Thu, 11 Nov 2010 09:21:26 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFSv3 list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4.1: Make sure nfsd can decode SP4_SSV correctly
+ at exchange_id
+References: <4CD3B362.8070302@cn.fujitsu.com> <4CD8A64B.20905@cn.fujitsu.com> <20101110193425.GB27237@fieldses.org>
+In-Reply-To: <20101110193425.GB27237@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
 
-The new helper functions are kept in order by section of RFC 1094.
-Move the two timestamp encoders we're keeping, update their coding
-style, and refresh their documenting comments.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: J. Bruce Fields <bfields@redhat.com>
----
+J. Bruce Fields :
+> On Tue, Nov 09, 2010 at 09:39:23AM +0800, Mi Jinlong wrote:
+>> According to RFC, the argument of ssv_sp_parms4 is:
+>>
+>>    struct ssv_sp_parms4 {
+>>            state_protect_ops4      ssp_ops;
+>>            sec_oid4                ssp_hash_algs<>;
+>>            sec_oid4                ssp_encr_algs<>;
+>>            uint32_t                ssp_window;
+>>            uint32_t                ssp_num_gss_handles;
+>>    };
+>>
+>> If client send a exchange_id with SP4_SSV, server cann't decode
+>> the SP4_SSV's ssp_hash_algs and ssp_encr_algs arguments correctly.
+>>
+>> Because the kernel treat the two arguments as a signal 
+>> sec_oid4 struct, but should be a set of sec_oid4 struct.
+> 
+> That looks correct, thanks.
+> 
+> (How are you testing this?)
 
- fs/nfs/nfs2xdr.c |   59 ++++++++++++++++++++++++++++++------------------------
- 1 files changed, 33 insertions(+), 26 deletions(-)
+  I use the pynfs41 test site at your git tree. (EID50)
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 0110108..53db70e 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -91,32 +91,6 @@ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
- }
- 
- static inline __be32*
--xdr_encode_time(__be32 *p, const struct timespec *timep)
--{
--	*p++ = htonl(timep->tv_sec);
--	/* Convert nanoseconds into microseconds */
--	*p++ = htonl(timep->tv_nsec ? timep->tv_nsec / 1000 : 0);
--	return p;
--}
--
--static inline __be32*
--xdr_encode_current_server_time(__be32 *p, const struct timespec *timep)
--{
--	/*
--	 * Passing the invalid value useconds=1000000 is a
--	 * Sun convention for "set to current server time".
--	 * It's needed to make permissions checks for the
--	 * "touch" program across v2 mounts to Solaris and
--	 * Irix boxes work correctly. See description of
--	 * sattr in section 6.1 of "NFS Illustrated" by
--	 * Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5
--	 */
--	*p++ = htonl(timep->tv_sec);
--	*p++ = htonl(1000000);
--	return p;
--}
--
--static inline __be32*
- xdr_decode_time(__be32 *p, struct timespec *timep)
- {
- 	timep->tv_sec = ntohl(*p++);
-@@ -179,6 +153,39 @@ static void encode_fhandle(struct xdr_stream *xdr, const struct nfs_fh *fh)
- }
- 
- /*
-+ * 2.3.4.  timeval
-+ *
-+ *	struct timeval {
-+ *		unsigned int seconds;
-+ *		unsigned int useconds;
-+ *	};
-+ */
-+static __be32 *xdr_encode_time(__be32 *p, const struct timespec *timep)
-+{
-+	*p++ = cpu_to_be32(timep->tv_sec);
-+	if (timep->tv_nsec != 0)
-+		*p++ = cpu_to_be32(timep->tv_nsec / NSEC_PER_USEC);
-+	else
-+		*p++ = cpu_to_be32(0);
-+	return p;
-+}
-+
-+/*
-+ * Passing the invalid value useconds=1000000 is a Sun convention for
-+ * "set to current server time".  It's needed to make permissions checks
-+ * for the "touch" program across v2 mounts to Solaris and Irix servers
-+ * work correctly.  See description of sattr in section 6.1 of "NFS
-+ * Illustrated" by Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5.
-+ */
-+static __be32 *xdr_encode_current_server_time(__be32 *p,
-+					      const struct timespec *timep)
-+{
-+	*p++ = cpu_to_be32(timep->tv_sec);
-+	*p++ = cpu_to_be32(1000000);
-+	return p;
-+}
-+
-+/*
-  * 2.3.6.  sattr
-  *
-  *	struct sattr {
+thanks,
+Mi Jinlong
+
+> 
+> --b.
+> 
+>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>> ---
+>>  fs/nfsd/nfs4xdr.c |   22 +++++++++++++++-------
+>>  1 files changed, 15 insertions(+), 7 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index f35a94a..71d7d33 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -1005,7 +1005,7 @@ static __be32
+>>  nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
+>>  			 struct nfsd4_exchange_id *exid)
+>>  {
+>> -	int dummy;
+>> +	int dummy, tmp;
+>>  	DECODE_HEAD;
+>>  
+>>  	READ_BUF(NFS4_VERIFIER_SIZE);
+>> @@ -1053,15 +1053,23 @@ nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
+>>  
+>>  		/* ssp_hash_algs<> */
+>>  		READ_BUF(4);
+>> -		READ32(dummy);
+>> -		READ_BUF(dummy);
+>> -		p += XDR_QUADLEN(dummy);
+>> +		READ32(tmp);
+>> +		while (tmp--) {
+>> +			READ_BUF(4);
+>> +			READ32(dummy);
+>> +			READ_BUF(dummy);
+>> +			p += XDR_QUADLEN(dummy);
+>> +		}
+>>  
+>>  		/* ssp_encr_algs<> */
+>>  		READ_BUF(4);
+>> -		READ32(dummy);
+>> -		READ_BUF(dummy);
+>> -		p += XDR_QUADLEN(dummy);
+>> +		READ32(tmp);
+>> +		while (tmp--) {
+>> +			READ_BUF(4);
+>> +			READ32(dummy);
+>> +			READ_BUF(dummy);
+>> +			p += XDR_QUADLEN(dummy);
+>> +		}
+>>  
+>>  		/* ssp_window and ssp_num_gss_handles */
+>>  		READ_BUF(8);
+>> -- 1.7.0.1 
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+
+-- 
+----
+Regards
+Mi Jinlong
 
