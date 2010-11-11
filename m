@@ -1,47 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp05.in.ibm.com ([122.248.162.5]:49700 "EHLO
-	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755280Ab0KJSBq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 13:01:46 -0500
-Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
-	by e28smtp05.in.ibm.com (8.14.4/8.13.1) with ESMTP id oAAI1igo028714
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Nov 2010 23:31:44 +0530
-Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
-	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oAAI1eYS1630334
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Nov 2010 23:31:40 +0530
-Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
-	by d28av05.in.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oAAI1d7Y024185
-	for <linux-nfs@vger.kernel.org>; Thu, 11 Nov 2010 05:01:39 +1100
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Trond Myklebust <trond.myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: NFSv4 ACL set and inode attribute cache
-Date: Wed, 10 Nov 2010 23:31:31 +0530
-Message-ID: <m3hbfpvz0k.fsf@linux.vnet.ibm.com>
-Content-Type: text/plain
+Received: from cam-admin0.cambridge.arm.com ([217.140.96.50]:46175 "EHLO
+	cam-admin0.cambridge.arm.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756316Ab0KKMyb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Nov 2010 07:54:31 -0500
+From: Catalin Marinas <catalin.marinas@arm.com>
+To: linux-nfs@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH] nfs: Ignore kmemleak false positive in nfs_readdir_make_qstr
+Date: Thu, 11 Nov 2010 12:53:47 +0000
+Message-Id: <1289480027-7361-1-git-send-email-catalin.marinas@arm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Strings allocated via kmemdup() in nfs_readdir_make_qstr() are
+referenced from the nfs_cache_array which is stored in a page cache
+page. Kmemleak does not scan such pages and it reports several false
+positives. This patch annotates the string->name pointer so that
+kmemleak does not consider it a real leak.
 
-Hi,
+Signed-off-by: Catalin Marinas <catalin.marinas@arm.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
 
-I guess we are not marking the inode attribute as invalid when we set
-the ACL value. For ex:
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 07ac384..a9f9e14 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -34,6 +34,7 @@
+ #include <linux/mount.h>
+ #include <linux/sched.h>
+ #include <linux/vmalloc.h>
++#include <linux/kmemleak.h>
+ 
+ #include "delegation.h"
+ #include "iostat.h"
+@@ -231,6 +232,11 @@ int nfs_readdir_make_qstr(struct qstr *string, const char *name, unsigned int le
+ 	string->name = kmemdup(name, len, GFP_KERNEL);
+ 	if (string->name == NULL)
+ 		return -ENOMEM;
++	/*
++	 * Avoid a kmemleak false positive. The pointer to the name is stored
++	 * in a page cache page which kmemleak does not scan.
++	 */
++	kmemleak_not_leak(string->name);
+ 	string->hash = full_name_hash(name, len);
+ 	return 0;
+ }
+-- 
+1.7.3.GIT
 
-/d# mkdir sub3
-/d# ls -dl sub3
-drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
-/d# nfs4_setfacl -s A:fd:EVERYONE@:rwax sub3
-/d# ls -dl sub3
-drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
-/d# 
-
-
-On the server i have the mode bits as
-/d# ls -dl sub3
-drwxrwxrwx 2 root root 4096 Nov 10 17:56 sub3
-/d# 
-
-
--aneesh
