@@ -1,44 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:49021 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753769Ab0KJVYb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 16:24:31 -0500
-In-Reply-To: <4CDAFE4B.1060408@netapp.com>
-References: <1289412737.4513.80.camel@e102109-lin.cambridge.arm.com>
-	<4CDAFE4B.1060408@netapp.com>
-Date: Wed, 10 Nov 2010 21:24:31 +0000
-Message-ID: <AANLkTin4OtWZf_uWdFfCMqVyZoR_xm3-jmt0e7f04xc_@mail.gmail.com>
-Subject: Re: Memory leak via nfs_readdir_make_qstr
-From: Catalin Marinas <catalin.marinas@arm.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
+Received: from exprod5og110.obsmtp.com ([64.18.0.20]:54796 "HELO
+	exprod5og110.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755146Ab0KKNWQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Nov 2010 08:22:16 -0500
+Message-ID: <4CDBEE06.1050309@panasas.com>
+Date: Thu, 11 Nov 2010 15:22:14 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: andros@netapp.com
+CC: iisaman@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] pnfs-submit: callbacks cannot use an nfs_client that
+ is being freed
+References: <1289484640-4100-1-git-send-email-andros@netapp.com> <1289484640-4100-2-git-send-email-andros@netapp.com> <1289484640-4100-3-git-send-email-andros@netapp.com> <1289484640-4100-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1289484640-4100-4-git-send-email-andros@netapp.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 10 November 2010 20:19, Bryan Schumaker <bjschuma@netapp.com> wrote:
-> On 11/10/2010 01:12 PM, Catalin Marinas wrote:
->> I tested the 2.6.37-rc1 on an ARM platform with nfsroot filesystem.
->> Kmemleak reports quite a lot (> 150) of leaks like below. You seem to
->> have made changes recently to this area.
->>
-> <snip>
->>
->> Any quick thoughts? I'll have a look tomorrow as well.
->
-> My first thought is that this is because of how we are caching the result of a readdir now.  We are storing the name of each directory entry as part of the cache, and this requires allocating memory for each string.  These are freed on unmount (see nfs_readdir_clear_array() in fs/nfs/dir.c), but you probably don't want to unmount your root filesytem...
+On 2010-11-11 16:10, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Guarantee that the nfs_client exists when referenced to by callback processing
+> by not procssing callbacks on an nfs_client in the process of being freed.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/client.c |    8 ++++++--
+>  1 files changed, 6 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index dbf43e7..86657ee 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -392,7 +392,9 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
+>  		if (!nfs_sockaddr_match_ipaddr(addr, clap))
+>  			continue;
+>  
+> -		atomic_inc(&clp->cl_count);
+> +		/* Don't return an nfs_client that is being freed */
+> +		if (!atomic_inc_not_zero(&clp->cl_count))
+> +			continue;
+>  		spin_unlock(&nfs_client_lock);
+>  		return clp;
+>  	}
+> @@ -425,7 +427,9 @@ struct nfs_client *nfs_find_client_next(struct nfs_client *clp)
+>  		if (!nfs_sockaddr_match_ipaddr(sap, clap))
+>  			continue;
+>  
+> -		atomic_inc(&clp->cl_count);
+> +		/* Don't return an nfs_client that is being freed */
+> +		if (!atomic_inc_not_zero(&clp->cl_count))
+> +			continue;
+>  		spin_unlock(&nfs_client_lock);
+>  		return clp;
+>  	}
 
-Ah, I got it now. It seems to be a kmemleak false positive since
-kmemleak doesn't scan page cache pages. The easiest thing is to mark
-the leak with kmemleak_not_leak(), with the disadvantage that if at
-some point we get a real leak from the same place it will be missed.
+Hmm, nfs_put_client deletes the client when cl_count reaches zero
+so how can cl_count be zero while clp is listed?
 
-If there is a function that gets called only once for each array
-before it is populated (maybe nfs_do_filldir?), we could inform
-kmemleak about this page so that it can scan it.
+Benny
 
-Thanks,
-
-Catalin
+In put_nfs_client 
