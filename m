@@ -1,157 +1,294 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47184 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755870Ab0KLItZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Nov 2010 03:49:25 -0500
-Received: from localhost.localdomain (hess01-lxp.hq.netapp.com [10.58.60.52] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAC8n7fK025967
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:49:13 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 10/22] pnfs-submit: Have LAYOUTGETS wait when lo->plh_block_lgets is set
-Date: Fri, 12 Nov 2010 03:48:32 -0500
-Message-Id: <1289551724-18575-11-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
-References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+Received: from exprod5og111.obsmtp.com ([64.18.0.22]:52381 "HELO
+	exprod5og111.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755386Ab0KKOjo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Nov 2010 09:39:44 -0500
+Message-ID: <4CDC002D.7050303@panasas.com>
+Date: Thu, 11 Nov 2010 16:39:41 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 03/18] pnfs-submit: remove _pnfs_can_return_lseg call
+ from pnfs_clear_lseg_list
+References: <1288884151-11128-1-git-send-email-iisaman@netapp.com>	<1288884151-11128-4-git-send-email-iisaman@netapp.com>	<4CDAADAE.80109@panasas.com>	<AANLkTikLNKs2boXsvBVyurv4WPf=zJEQeZ33Sx_0b-KK@mail.gmail.com>	<4CDB94AA.3020508@panasas.com> <AANLkTik69Y1+qmxF2QPKXM_4-VQsseRQ672S+u23h4nX@mail.gmail.com>
+In-Reply-To: <AANLkTik69Y1+qmxF2QPKXM_4-VQsseRQ672S+u23h4nX@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Preparing for changes to come, change blocking mechanism of LAYOUTGET.
+On 2010-11-11 15:52, Fred Isaman wrote:
+> On Thu, Nov 11, 2010 at 2:00 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> On 2010-11-10 16:46, Fred Isaman wrote:
+>>> On Wed, Nov 10, 2010 at 9:35 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>>>> On 2010-11-04 17:22, Fred Isaman wrote:
+>>>>> Instead, have mark_invalid function that marks lseg invalid and
+>>>>> removes the reference that holds it in the list.  Now when io is finished,
+>>>>> the lseg will automatically be removed from the list.  This is
+>>>>> at the heart of many of the upcoming cb_layoutrecall changes.
+>>>>>
+>>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>>>> ---
+>>>>>  fs/nfs/nfs4xdr.c |    3 +-
+>>>>>  fs/nfs/pnfs.c    |  145 ++++++++++++++++++++++++++++++++++-------------------
+>>>>>  fs/nfs/pnfs.h    |    1 +
+>>>>>  3 files changed, 95 insertions(+), 54 deletions(-)
+>>>>>
+>>>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>>>>> index 238eeb2..6d9ef2b 100644
+>>>>> --- a/fs/nfs/nfs4xdr.c
+>>>>> +++ b/fs/nfs/nfs4xdr.c
+>>>>> @@ -1915,8 +1915,7 @@ encode_layoutreturn(struct xdr_stream *xdr,
+>>>>>               p = reserve_space(xdr, 16 + NFS4_STATEID_SIZE);
+>>>>>               p = xdr_encode_hyper(p, args->range.offset);
+>>>>>               p = xdr_encode_hyper(p, args->range.length);
+>>>>> -             pnfs_get_layout_stateid(&stateid, NFS_I(args->inode)->layout,
+>>>>> -                                     NULL);
+>>>>> +             pnfs_copy_layout_stateid(&stateid, NFS_I(args->inode)->layout);
+>>>>>               p = xdr_encode_opaque_fixed(p, &stateid.data,
+>>>>>                                           NFS4_STATEID_SIZE);
+>>>>>               p = reserve_space(xdr, 4);
+>>>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>>>> index 3bbe3be..4e5c68b 100644
+>>>>> --- a/fs/nfs/pnfs.c
+>>>>> +++ b/fs/nfs/pnfs.c
+>>>>> @@ -272,10 +272,42 @@ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+>>>>>       lseg->layout = lo;
+>>>>>  }
+>>>>>
+>>>>> +static void
+>>>>> +_put_lseg_common(struct pnfs_layout_segment *lseg)
+>>>>> +{
+>>>>> +     BUG_ON(lseg->valid == true);
+>>>>> +     list_del(&lseg->fi_list);
+>>>>> +     if (list_empty(&lseg->layout->segs)) {
+>>>>> +             struct nfs_client *clp;
+>>>>> +
+>>>>> +             clp = NFS_SERVER(lseg->layout->inode)->nfs_client;
+>>>>> +             spin_lock(&clp->cl_lock);
+>>>>> +             /* List does not take a reference, so no need for put here */
+>>>>> +             list_del_init(&lseg->layout->layouts);
+>>>>> +             spin_unlock(&clp->cl_lock);
+>>>>> +             pnfs_invalidate_layout_stateid(lseg->layout);
+>>>>> +     }
+>>>>> +     rpc_wake_up(&NFS_I(lseg->layout->inode)->lo_rpcwaitq);
+>>>>> +}
+>>>>> +
+>>>>> +/* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
+>>>>> + * could sleep, so must be called outside of the lock.
+>>>>> + */
+>>>>> +static void
+>>>>> +put_lseg_locked(struct pnfs_layout_segment *lseg,
+>>>>> +             struct list_head *tmp_list)
+>>>>> +{
+>>>>> +     dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+>>>>> +             atomic_read(&lseg->pls_refcount), lseg->valid);
+>>>>> +     if (atomic_dec_and_test(&lseg->pls_refcount)) {
+>>>>> +             _put_lseg_common(lseg);
+>>>>> +             list_add(&lseg->fi_list, tmp_list);
+>>>>> +     }
+>>>>> +}
+>>>>> +
+>>>>>  void
+>>>>>  put_lseg(struct pnfs_layout_segment *lseg)
+>>>>>  {
+>>>>> -     bool do_wake_up;
+>>>>>       struct inode *ino;
+>>>>>
+>>>>>       if (!lseg)
+>>>>> @@ -283,15 +315,14 @@ put_lseg(struct pnfs_layout_segment *lseg)
+>>>>>
+>>>>>       dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+>>>>>               atomic_read(&lseg->pls_refcount), lseg->valid);
+>>>>> -     do_wake_up = !lseg->valid;
+>>>>>       ino = lseg->layout->inode;
+>>>>> -     if (atomic_dec_and_test(&lseg->pls_refcount)) {
+>>>>> +     if (atomic_dec_and_lock(&lseg->pls_refcount, &ino->i_lock)) {
+>>>>> +             _put_lseg_common(lseg);
+>>>>> +             spin_unlock(&ino->i_lock);
+>>>>>               NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+>>>>>               /* Matched by get_layout_hdr_locked in pnfs_insert_layout */
+>>>>>               put_layout_hdr(ino);
+>>>>>       }
+>>>>> -     if (do_wake_up)
+>>>>> -             rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq);
+>>>>>  }
+>>>>>  EXPORT_SYMBOL_GPL(put_lseg);
+>>>>>
+>>>>> @@ -314,10 +345,18 @@ should_free_lseg(struct pnfs_layout_segment *lseg,
+>>>>>               lseg->range.iomode == range->iomode);
+>>>>>  }
+>>>>>
+>>>>> -static bool
+>>>>> -_pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
+>>>>> +static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+>>>>> +                           struct list_head *tmp_list)
+>>>>>  {
+>>>>> -     return atomic_read(&lseg->pls_refcount) == 1;
+>>>>> +     assert_spin_locked(&lseg->layout->inode->i_lock);
+>>>>> +     if (lseg->valid) {
+>>>>> +             lseg->valid = false;
+>>>>> +             /* Remove the reference keeping the lseg in the
+>>>>> +              * list.  It will now be removed when all
+>>>>> +              * outstanding io is finished.
+>>>>> +              */
+>>>>> +             put_lseg_locked(lseg, tmp_list);
+>>>>> +     }
+>>>>>  }
+>>>>>
+>>>>>  static void
+>>>>> @@ -330,42 +369,31 @@ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list,
+>>>>>               __func__, lo, range->offset, range->length, range->iomode);
+>>>>>
+>>>>>       assert_spin_locked(&lo->inode->i_lock);
+>>>>> -     list_for_each_entry_safe(lseg, next, &lo->segs, fi_list) {
+>>>>> -             if (!should_free_lseg(lseg, range) ||
+>>>>> -                 !_pnfs_can_return_lseg(lseg))
+>>>>> -                     continue;
+>>>>> -             dprintk("%s: freeing lseg %p iomode %d "
+>>>>> -                     "offset %llu length %llu\n", __func__,
+>>>>> -                     lseg, lseg->range.iomode, lseg->range.offset,
+>>>>> -                     lseg->range.length);
+>>>>> -             list_move(&lseg->fi_list, tmp_list);
+>>>>> -     }
+>>>>> -     if (list_empty(&lo->segs)) {
+>>>>> -             struct nfs_client *clp;
+>>>>> -
+>>>>> -             clp = NFS_SERVER(lo->inode)->nfs_client;
+>>>>> -             spin_lock(&clp->cl_lock);
+>>>>> -             /* List does not take a reference, so no need for put here */
+>>>>> -             list_del_init(&lo->layouts);
+>>>>> -             spin_unlock(&clp->cl_lock);
+>>>>> -             pnfs_invalidate_layout_stateid(lo);
+>>>>> -     }
+>>>>> -
+>>>>> +     list_for_each_entry_safe(lseg, next, &lo->segs, fi_list)
+>>>>> +             if (should_free_lseg(lseg, range)) {
+>>>>> +                     dprintk("%s: freeing lseg %p iomode %d "
+>>>>> +                             "offset %llu length %llu\n", __func__,
+>>>>> +                             lseg, lseg->range.iomode, lseg->range.offset,
+>>>>> +                             lseg->range.length);
+>>>>> +                     mark_lseg_invalid(lseg, tmp_list);
+>>>>> +             }
+>>>>>       dprintk("%s:Return\n", __func__);
+>>>>>  }
+>>>>>
+>>>>>  static void
+>>>>> -pnfs_free_lseg_list(struct list_head *tmp_list)
+>>>>> +pnfs_free_lseg_list(struct list_head *free_me)
+>>>>>  {
+>>>>> -     struct pnfs_layout_segment *lseg;
+>>>>> +     struct pnfs_layout_segment *lseg, *tmp;
+>>>>> +     struct inode *ino;
+>>>>>
+>>>>> -     while (!list_empty(tmp_list)) {
+>>>>> -             lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
+>>>>> -                             fi_list);
+>>>>> -             dprintk("%s calling put_lseg on %p\n", __func__, lseg);
+>>>>> -             list_del(&lseg->fi_list);
+>>>>> -             put_lseg(lseg);
+>>>>> +     list_for_each_entry_safe(lseg, tmp, free_me, fi_list) {
+>>>>> +             BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
+>>>>> +             ino = lseg->layout->inode;
+>>>>> +             NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+>>>>> +             /* Matched by get_layout_hdr_locked in pnfs_insert_layout */
+>>>>> +             put_layout_hdr(ino);
+>>>>>       }
+>>>>> +     INIT_LIST_HEAD(free_me);
+>>>>>  }
+>>>>>
+>>>>>  void
+>>>>> @@ -463,6 +491,17 @@ pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
+>>>>>       dprintk("<-- %s\n", __func__);
+>>>>>  }
+>>>>>
+>>>>> +/* Layoutreturn may use an invalid stateid, just copy what is there */
+>>>>> +void pnfs_copy_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo)
+>>>>> +{
+>>>>> +     int seq;
+>>>>> +
+>>>>> +     do {
+>>>>> +             seq = read_seqbegin(&lo->seqlock);
+>>>>> +             memcpy(dst->data, lo->stateid.data, sizeof(lo->stateid.data));
+>>>>> +     } while (read_seqretry(&lo->seqlock, seq));
+>>>>> +}
+>>>>> +
+>>>>>  void
+>>>>>  pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+>>>>>                       struct nfs4_state *open_state)
+>>>>> @@ -546,25 +585,23 @@ has_layout_to_return(struct pnfs_layout_hdr *lo,
+>>>>>       return out;
+>>>>>  }
+>>>>>
+>>>>> +/* Return true if there is layout based io in progress in the given range.
+>>>>> + * Assumes range has already been marked invalid, and layout marked to
+>>>>> + * prevent any new lseg from being inserted.
+>>>>> + */
+>>>>>  bool
+>>>>>  pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+>>>>>                          struct pnfs_layout_range *range)
+>>>>>  {
+>>>>> -     struct pnfs_layout_segment *lseg;
+>>>>> +     struct pnfs_layout_segment *lseg, *tmp;
+>>>>>       bool ret = false;
+>>>>>
+>>>>>       spin_lock(&nfsi->vfs_inode.i_lock);
+>>>>> -     list_for_each_entry(lseg, &nfsi->layout->segs, fi_list) {
+>>>>> -             if (!should_free_lseg(lseg, range))
+>>>>> -                     continue;
+>>>>> -             lseg->valid = false;
+>>>>> -             if (!_pnfs_can_return_lseg(lseg)) {
+>>>>> -                     dprintk("%s: wait on lseg %p refcount %d\n",
+>>>>> -                             __func__, lseg,
+>>>>> -                             atomic_read(&lseg->pls_refcount));
+>>>>> +     list_for_each_entry_safe(lseg, tmp, &nfsi->layout->segs, fi_list)
+>>>>
+>>>> Why do you need the safe version here while the inode is locked?
+>>>>
+>>>
+>>> We don't.
+>>
+>> OK. I'll fix that then :)
+>>
+>>>
+>>>
+>>>>> +             if (should_free_lseg(lseg, range)) {
+>>>>>                       ret = true;
+>>>>
+>>>> But this will always return "true" if there's any lseg to return,
+>>>> not only if (!_pnfs_can_return_lseg(lseg)).
+>>>>
+>>>> What am I missing? :)
+>>>>
+>>>
+>>> A return of "true" means the caller should wait.  So if there is any
+>>> lseg still left to return, we should return true.  The refcounting has
+>>> changed so that once the pending IO is finished, the lseg will
+>>> automatically be removed from the list.  I suspect that what you are
+>>> missing is that...the refcount in the invalid case is one less than
+>>> what it used to be.
+>>
+>> Thanks. I see what you mean now.
+>>
+>> What's missing is plh_block_lgets which is introduced only
+>> in [PATCH 13/18] pnfs-submit: rewrite of layout state handling and cb_layoutrecall
+>> Otherwise, new lsegs can be inserted into the list in between.
+>>
+>> Benny
+>>
+> 
+> Hmmm, you're right.  Let me see if I can tease out enough of the
+> blocking code from patch 13 to make it work. 
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/inode.c         |    3 ++-
- fs/nfs/nfs4proc.c      |   23 ++++++-----------------
- fs/nfs/pnfs.c          |   11 +++++++++++
- fs/nfs/pnfs.h          |    2 ++
- include/linux/nfs_fs.h |    1 +
- 5 files changed, 22 insertions(+), 18 deletions(-)
+Thanks!
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 72f27cc..8727ade 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1459,7 +1459,8 @@ static inline void nfs4_init_once(struct nfs_inode *nfsi)
- 	nfsi->delegation = NULL;
- 	nfsi->delegation_state = 0;
- 	init_rwsem(&nfsi->rwsem);
--	rpc_init_wait_queue(&nfsi->lo_rpcwaitq, "pNFS Layout");
-+	rpc_init_wait_queue(&nfsi->lo_rpcwaitq, "pNFS Layoutreturn");
-+	rpc_init_wait_queue(&nfsi->lo_rpcwaitq_stateid, "pNFS Layoutstateid");
- 	nfsi->layout = NULL;
- #endif
- }
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8dbd711..5ccde2a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5346,30 +5346,19 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
- 	struct inode *ino = lgp->args.inode;
- 	struct nfs_inode *nfsi = NFS_I(ino);
- 	struct nfs_server *server = NFS_SERVER(ino);
--	struct pnfs_layout_segment *lseg;
- 
- 	dprintk("--> %s\n", __func__);
- 	spin_lock(&ino->i_lock);
--	lseg = pnfs_has_layout(nfsi->layout, &lgp->args.range);
--	if (likely(!lseg)) {
-+	if (pnfs_layoutgets_blocked(nfsi->layout)) {
-+		rpc_sleep_on(&nfsi->lo_rpcwaitq_stateid, task, NULL);
- 		spin_unlock(&ino->i_lock);
--		dprintk("%s: no lseg found, proceeding\n", __func__);
--		if (!nfs4_setup_sequence(server, NULL, &lgp->args.seq_args,
--					 &lgp->res.seq_res, 0, task))
--			rpc_call_start(task);
- 		return;
- 	}
--	if (!lseg->valid) {
--		spin_unlock(&ino->i_lock);
--		dprintk("%s: invalid lseg found, waiting\n", __func__);
--		rpc_sleep_on(&nfsi->lo_rpcwaitq, task, NULL);
--		return;
--	}
--	get_lseg(lseg);
--	*lgp->lsegpp = lseg;
- 	spin_unlock(&ino->i_lock);
--	dprintk("%s: valid lseg found, no rpc required\n", __func__);
--	rpc_exit(task, NFS4_OK);
-+	if (nfs4_setup_sequence(server, NULL, &lgp->args.seq_args,
-+				&lgp->res.seq_res, 0, task))
-+		return;
-+	rpc_call_start(task);
- }
- 
- static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 8e699fd..120590b 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -565,6 +565,9 @@ pnfs_layoutreturn_release(struct nfs4_layoutreturn *lrp)
- 	lo = NFS_I(lrp->args.inode)->layout;
- 	spin_lock(&lrp->args.inode->i_lock);
- 	pnfs_clear_lseg_list(lo, &tmp_list, &lrp->args.range);
-+	lo->plh_block_lgets--;
-+	if (!pnfs_layoutgets_blocked(lo))
-+		rpc_wake_up(&NFS_I(lo->inode)->lo_rpcwaitq_stateid);
- 	if (!lrp->res.valid)
- 		;	/* forgetful model internal release */
- 	else if (!lrp->res.lrs_present)
-@@ -638,6 +641,7 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
- 			goto out;
- 		}
- 
-+		lo->plh_block_lgets++;
- 		/* Reference matched in pnfs_layoutreturn_release */
- 		get_layout_hdr_locked(lo);
- 
-@@ -870,6 +874,13 @@ out_unlock:
- 	goto out;
- }
- 
-+bool
-+pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo)
-+{
-+	assert_spin_locked(&lo->inode->i_lock);
-+	return lo->plh_block_lgets;
-+}
-+
- int
- pnfs_layout_process(struct nfs4_layoutget *lgp)
- {
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index ee5a752..a9a3bea 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -97,6 +97,7 @@ struct pnfs_layout_hdr {
- 	struct list_head	segs;      /* layout segments list */
- 	int			roc_iomode;/* return on close iomode, 0=none */
- 	nfs4_stateid		stateid;
-+	unsigned long		plh_block_lgets; /* block LAYOUTGET if >0 */
- 	unsigned long		state;
- 	struct rpc_cred		*cred;     /* layoutcommit credential */
- 	/* DH: These vars keep track of the maximum write range
-@@ -200,6 +201,7 @@ enum pnfs_try_status pnfs_try_to_commit(struct nfs_write_data *,
- void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
- 			   struct nfs_open_context *, struct list_head *);
- void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
-+bool pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo);
- int pnfs_layout_process(struct nfs4_layoutget *lgp);
- void pnfs_layoutreturn_release(struct nfs4_layoutreturn *lpr);
- void pnfs_destroy_layout(struct nfs_inode *);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index d8bfa42..061d81a 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -191,6 +191,7 @@ struct nfs_inode {
- 
- 	/* pNFS layout information */
- 	struct rpc_wait_queue lo_rpcwaitq;
-+	struct rpc_wait_queue	lo_rpcwaitq_stateid;
- 	struct pnfs_layout_hdr *layout;
- #endif /* CONFIG_NFS_V4*/
- #ifdef CONFIG_NFS_FSCACHE
--- 
-1.7.2.1
+> The other option is to
+> just merge the two patches together.
 
+This can work too if the former is too complicated. :)
+
+benny
+
+> 
+> Fred
+> 
