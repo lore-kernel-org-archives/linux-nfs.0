@@ -1,46 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:53275 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753656Ab0K3W3I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 17:29:08 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 5/5] NFS RPC_AUTH_GSS unsupported on v4.1 back channel
-Date: Tue, 30 Nov 2010 15:31:11 -0500
-Message-Id: <1291149071-2026-6-git-send-email-andros@netapp.com>
-In-Reply-To: <1291149071-2026-5-git-send-email-andros@netapp.com>
-References: <1291149071-2026-1-git-send-email-andros@netapp.com>
- <1291149071-2026-2-git-send-email-andros@netapp.com>
- <1291149071-2026-3-git-send-email-andros@netapp.com>
- <1291149071-2026-4-git-send-email-andros@netapp.com>
- <1291149071-2026-5-git-send-email-andros@netapp.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:40693 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753593Ab0KKLBZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Nov 2010 06:01:25 -0500
+In-Reply-To: <AANLkTin4OtWZf_uWdFfCMqVyZoR_xm3-jmt0e7f04xc_@mail.gmail.com>
+References: <1289412737.4513.80.camel@e102109-lin.cambridge.arm.com>
+	<4CDAFE4B.1060408@netapp.com>
+	<AANLkTin4OtWZf_uWdFfCMqVyZoR_xm3-jmt0e7f04xc_@mail.gmail.com>
+Date: Thu, 11 Nov 2010 11:01:24 +0000
+Message-ID: <AANLkTinUjnWfs4vSDvQ24zw0pbpnfsnEo1aCRZQo0DJW@mail.gmail.com>
+Subject: Re: Memory leak via nfs_readdir_make_qstr
+From: Catalin Marinas <catalin.marinas@arm.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On 10 November 2010 21:24, Catalin Marinas <catalin.marinas@arm.com> wrote:
+> On 10 November 2010 20:19, Bryan Schumaker <bjschuma@netapp.com> wrote:
+>> On 11/10/2010 01:12 PM, Catalin Marinas wrote:
+>>> I tested the 2.6.37-rc1 on an ARM platform with nfsroot filesystem.
+>>> Kmemleak reports quite a lot (> 150) of leaks like below. You seem to
+>>> have made changes recently to this area.
+>>>
+>> <snip>
+>>>
+>>> Any quick thoughts? I'll have a look tomorrow as well.
+>>
+>> My first thought is that this is because of how we are caching the result of a readdir now.  We are storing the name of each directory entry as part of the cache, and this requires allocating memory for each string.  These are freed on unmount (see nfs_readdir_clear_array() in fs/nfs/dir.c), but you probably don't want to unmount your root filesytem...
+>
+> Ah, I got it now. It seems to be a kmemleak false positive since
+> kmemleak doesn't scan page cache pages. The easiest thing is to mark
+> the leak with kmemleak_not_leak(), with the disadvantage that if at
+> some point we get a real leak from the same place it will be missed.
+>
+> If there is a function that gets called only once for each array
+> before it is populated (maybe nfs_do_filldir?), we could inform
+> kmemleak about this page so that it can scan it.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/callback.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+These pages may be highmem and kmemleak doesn't do any kmap, therefore
+not possible to scan the nfs_cache_array. I'll send a separate patch
+to annotate the false positive.
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 7c21824..dc2ead1 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -360,6 +360,9 @@ static int check_gss_callback_principal(struct nfs_client *clp,
- 	struct rpc_clnt *r = clp->cl_rpcclient;
- 	char *p = svc_gss_principal(rqstp);
- 
-+	/* No RPC_AUTH_GSS on NFSv4.1 back channel yet */
-+	if (clp->cl_minorversion != 0)
-+		return SVC_DENIED;
- 	/*
- 	 * It might just be a normal user principal, in which case
- 	 * userspace won't bother to tell us the name at all.
+Thanks.
+
 -- 
-1.6.6
-
+Catalin
