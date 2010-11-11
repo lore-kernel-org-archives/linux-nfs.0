@@ -1,122 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:47902 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754011Ab0K2U7l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Nov 2010 15:59:41 -0500
-Date: Mon, 29 Nov 2010 15:59:35 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Neil Brown <neilb@suse.de>
-Cc: Mark Hills <mark@pogo.org.uk>, linux-nfs@vger.kernel.org
-Subject: Re: Listen backlog set to 64
-Message-ID: <20101129205935.GD9897@fieldses.org>
-References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz>
- <20101116182026.GA3971@fieldses.org>
- <20101117090826.4b2724da@notabene.brown>
+Received: from netnation.com ([204.174.223.2]:40521 "EHLO peace.netnation.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S932281Ab0KKCfW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Nov 2010 21:35:22 -0500
+Received: from sim by peace.netnation.com with local (Exim 4.69)
+	(envelope-from <sim@netnation.com>)
+	id 1PGN0S-0004Hh-SP
+	for linux-nfs@vger.kernel.org; Wed, 10 Nov 2010 18:35:20 -0800
+Date: Wed, 10 Nov 2010 18:35:20 -0800
+From: Simon Kirby <sim@hostway.ca>
+To: linux-nfs@vger.kernel.org
+Subject: NFS client/sunrpc getting stuck on 2.6.36
+Message-ID: <20101111023520.GH16939@hostway.ca>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101117090826.4b2724da@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Nov 17, 2010 at 09:08:26AM +1100, Neil Brown wrote:
-> On Tue, 16 Nov 2010 13:20:26 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Mon, Nov 15, 2010 at 06:43:52PM +0000, Mark Hills wrote:
-> > > I am looking into an issue of hanging clients to a set of NFS servers, on 
-> > > a large HPC cluster.
-> > > 
-> > > My investigation took me to the RPC code, svc_create_socket().
-> > > 
-> > > 	if (protocol == IPPROTO_TCP) {
-> > > 		if ((error = kernel_listen(sock, 64)) < 0)
-> > > 			goto bummer;
-> > > 	}
-> > > 
-> > > A fixed backlog of 64 connections at the server seems like it could be too 
-> > > low on a cluster like this, particularly when the protocol opens and 
-> > > closes the TCP connection.
-> > > 
-> > > I wondered what is the rationale is behind this number, particuarly as it 
-> > > is a fixed value. Perhaps there is a reason why this has no effect on 
-> > > nfsd, or is this a FAQ for people on large systems?
-> > > 
-> > > The servers show overflow of a listening queue, which I imagine is 
-> > > related.
-> > > 
-> > >   $ netstat -s
-> > >   [...]
-> > >   TcpExt:
-> > >     6475 times the listen queue of a socket overflowed
-> > >     6475 SYNs to LISTEN sockets ignored
-> > > 
-> > > The affected servers are old, kernel 2.6.9. But this limit of 64 is 
-> > > consistent across that and the latest kernel source.
-> > 
-> > Looks like the last time that was touched was 8 years ago, by Neil (below, from
-> > historical git archive).
-> > 
-> > I'd be inclined to just keep doubling it until people don't complain,
-> > unless it's very expensive.  (How much memory (or whatever else) does a
-> > pending connection tie up?)
-> 
-> Surely we should "keep multiplying by 13" as that is what I did :-)
-> 
-> There is a sysctl 'somaxconn' which limits what a process can ask for in the
-> listen() system call, but as we bypass this syscall it doesn't directly
-> affect nfsd.
-> It defaults to SOMAXCONN == 128 but can be raised arbitrarily by the sysadmin.
-> 
-> There is another sysctl 'max_syn_backlog' which looks like a system-wide
-> limit to the connect backlog.
-> This defaults to 256.  The comment says it is
-> adjusted between 128 and 1024 based on memory size, though that isn't clear
-> in the code (to me at least).
+Still seeing all sorts of boxes fall over with 2.6.35 and 2.6.36 NFS.
+Unfortunately, it doesn't happen all the time...only certain load
+patterns seem to start it off.  Once it starts, I can't find a way to
+make it recover without rebooting.
 
-This comment?:
+In this case, tcpdump and rpc/nfs debug logs show a repeating command,
+but only 3-4 commands are being sent per second, even though all slots
+are in use, there is a backlog, 300 processes in rpc_wait_bit_killable,
+and the debug logs show that responses are coming back immediately. 
+Weird congestion/backoff issue?
 
-/*
- * Maximum number of SYN_RECV sockets in queue per LISTEN socket.
- * One SYN_RECV socket costs about 80bytes on a 32bit machine.
- * It would be better to replace it with a global counter for all sockets
- * but then some measure against one socket starving all other sockets
- * would be needed.
- *
- * It was 128 by default. Experiments with real servers show, that
- * it is absolutely not enough even at 100conn/sec. 256 cures most
- * of problems. This value is adjusted to 128 for very small machines
- * (<=32Mb of memory) and to 1024 on normal or better ones (>=256Mb).
- * Note : Dont forget somaxconn that may limit backlog too.
- */
-int sysctl_max_syn_backlog = 256;
+Over a few seconds, the only numbers changing from "nfsstat" are "calls",
+"authrefresh", and "getattr".  Debug level 1 for nfs and rpc show this
+repeating:
 
-Looks like net/ipv4/tcp.c:tcp_init() does the memory-based calculation.
+ NFS: permission(0:4c/5284877), mask=0x1, res=0
+ RPC:  5778 reserved req ffff88012ae042d0 xid 64030e74
+ RPC:  5778 xprt_prepare_transmit
+ RPC:  5778 xprt_transmit(96)
+ RPC:  5778 xmit complete
+ RPC:  5778 xid 64030e74 complete (112 bytes received)
+ RPC:  5778 release request ffff88012ae042d0
+ NFS: nfs_update_inode(0:4c/3247737045 ct=1 info=0x7e7f)
+ NFS: permission(0:4c/3247737045), mask=0x24, res=0
+ NFS: dentry_delete(tmp/t.sh, 8)
+ NFS: dentry_delete(tmp/9040-16697.done, 8)
+ NFS: dentry_delete(tmp/9040-29371.done, 8)
 
-80 bytes sounds small.
+The only thing that changes between repeats are the pid and xid.
 
-> So we could:
->   - hard code a new number
->   - make this another sysctl configurable
->   - auto-adjust it so that it "just works".
-> 
-> I would prefer the latter if it is possible.   Possibly we could adjust it
-> based on the number of nfsd threads, like we do for receive buffer space.
-> Maybe something arbitrary like:
->    min(16 + 2 * number of threads, sock_net(sk)->core.sysctl_somaxconn)
-> 
-> which would get the current 64 at 24 threads, and can easily push up to 128
-> and beyond with more threads.
-> 
-> Or is that too arbitrary?
+Debug level 255 for nfs and rpc:
 
-I kinda like the idea of piggybacking on an existing constant like
-sysctl_max_syn_backlog.  Somebody else hopefully keeps it set to something
-reasonable, and we as a last resort it gives you a knob to twiddle.
+NFS call  getattr
+RPC:       new task initialized, procpid 15460
+RPC:       allocated task ffff8800c09f7e00
+RPC:  5321 __rpc_execute flags=0x80
+RPC:  5321 call_start nfs3 proc GETATTR (sync)
+RPC:  5321 call_reserve (status 0)
+RPC:  5321 reserved req ffff88012ae042d0 xid 9e010e74
+RPC:  5321 call_reserveresult (status 0)
+RPC:  5321 call_refresh (status 0)
+RPC:  5321 looking up UNIX cred
+RPC:       looking up UNIX cred
+RPC:  5321 refreshing UNIX cred ffff880011ec1300
+RPC:  5321 call_refreshresult (status 0)
+RPC:  5321 call_allocate (status 0)
+RPC:  5321 allocated buffer of size 552 at ffff880129b1d000
+RPC:  5321 call_bind (status 0)
+RPC:  5321 call_connect xprt ffff88012a74d000 is connected
+RPC:  5321 call_transmit (status 0)
+RPC:  5321 xprt_prepare_transmit
+RPC:  5321 rpc_xdr_encode (status 0)
+RPC:  5321 marshaling UNIX cred ffff880011ec1300
+RPC:  5321 using AUTH_UNIX cred ffff880011ec1300 to wrap rpc data
+RPC:  5321 xprt_transmit(96)
+RPC:       xs_tcp_send_request(96) = 96
+RPC:  5321 xmit complete
+RPC:  5321 sleep_on(queue "xprt_pending" time 4494861481)
+RPC:       xs_tcp_data_ready...
+RPC:       xs_tcp_data_recv started
+RPC:       reading TCP record fragment of length 112
+RPC:       reading XID (4 bytes)
+RPC:       reading reply for XID 9e010e74
+RPC:       reading CALL/REPLY flag (4 bytes)
+RPC:       read reply XID 9e010e74
+RPC:  5321 added to queue ffff88012a74d3f8 "xprt_pending"
+RPC:  5321 setting alarm for 900 ms
+RPC:       XID 9e010e74 read 104 bytes
+RPC:       xprt = ffff88012a74d000, tcp_copied = 112, tcp_offset = 112, tcp_reclen = 112
+RPC:  5321 xid 9e010e74 complete (112 bytes received)
+RPC:  5321 __rpc_wake_up_task (now 4494861481)
+RPC:  5321 disabling timer
+RPC:  5321 removed from queue ffff88012a74d3f8 "xprt_pending"
+RPC:       __rpc_wake_up_task done
+RPC:       xs_tcp_data_recv done
+RPC:       wake_up_next(ffff88012a74d2e8 "xprt_resend")
+RPC:       wake_up_next(ffff88012a74d1d8 "xprt_sending")
+RPC:  5321 call_status (status 112)
+RPC:  5321 call_decode (status 112)
+RPC:  5321 validating UNIX cred ffff880011ec1300
+RPC:  5321 using AUTH_UNIX cred ffff880011ec1300 to unwrap rpc data
+RPC:  5321 call_decode result 0
+RPC:  5321 return 0, status 0
+RPC:  5321 release task
+RPC:       freeing buffer of size 552 at ffff880129b1d000
+RPC:  5321 release request ffff88012ae042d0
+RPC:       wake_up_next(ffff88012a74d508 "xprt_backlog")
+RPC:       rpc_release_client(ffff88012016e400)
+RPC:  5321 freeing task
+NFS reply getattr: 0
+NFS: nfs_update_inode(0:4c/3247737045 ct=1 info=0x7e7f)
+NFS: (0:4c/3247737045) revalidation complete
+NFS: nfs_lookup_revalidate(HWD/tmp) is valid
+RPC:       looking up Generic cred
+NFS: permission(0:4c/3247737045), mask=0x24, res=0
+NFS: open dir(HWD/tmp)
+RPC:       looking up Generic cred
+NFS: readdir(HWD/tmp) starting at cookie 0
+NFS: readdir_search_pagecache() searching for offset 0
+NFS: find_dirent_page: searching page 0 for target 0
+NFS: found cookie 4 at index 0
+NFS: find_dirent_page: returns 0
+NFS: readdir_search_pagecache: returns 0
+NFS: nfs_do_filldir() filling starting @ cookie 4
+NFS: dentry_delete(tmp/t.sh, 8)
+NFS: dentry_delete(tmp/9040-16697.done, 8)
+NFS: dentry_delete(tmp/9040-29371.done, 8)
+NFS: nfs_do_filldir() filling ended @ cookie 512; returning = 0
+NFS: readdir(HWD/tmp) returns 0
+NFS: readdir(HWD/tmp) starting at cookie 5
+NFS: readdir_search_pagecache() searching for cookie 512
+NFS: find_dirent_page: searching page 0 for target 512
+NFS: find_dirent: examining cookie 4
+NFS: find_dirent: examining cookie 6
+NFS: find_dirent: examining cookie 11
+NFS: find_dirent: examining cookie 18
+NFS: find_dirent: examining cookie 512
+NFS: find_dirent_page: returns -523
+NFS: readdir_search_pagecache: returns -523
+NFS: readdir(HWD/tmp) returns 0
+RPC:       looking up Generic cred
+NFS: permission(0:4c/5284877), mask=0x1, res=0
+NFS: revalidating (0:4c/3247737045)
 
-But number of threads would work OK too.
+900ms matches the probably-silly nfs mount settings we're currently using:
 
-At a minimum we should make sure we solve the original problem....
-Mark, have you had a chance to check whether increasing that number to
-128 or more is enough to solve your problem?
+rw,hard,intr,tcp,timeo=9,retrans=3,rsize=8192,wsize=8192
 
---b.
+Full kernel log here: http://0x.ca/sim/ref/2.6.36_stuck_nfs/
+
+Simon-
