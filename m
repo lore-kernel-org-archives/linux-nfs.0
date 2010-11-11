@@ -1,125 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17286 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755953Ab0KLItY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Nov 2010 03:49:24 -0500
-Received: from localhost.localdomain (hess01-lxp.hq.netapp.com [10.58.60.52] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAC8n7fI025967
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:49:12 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 08/22] SQUASHME: allow cb_sequence changes to compile without v4.1
-Date: Fri, 12 Nov 2010 03:48:30 -0500
-Message-Id: <1289551724-18575-9-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
-References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:56017 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753583Ab0KKKAT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Nov 2010 05:00:19 -0500
+Message-ID: <4CDBBF7C.90108@cn.fujitsu.com>
+Date: Thu, 11 Nov 2010 18:03:40 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFSv3 list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFS4.1: Fix bug server don't reply the right fore_channel
+ to client at create_session
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/callback.h      |   26 ++++++++++++++++++++++++++
- fs/nfs/callback_proc.c |    6 ------
- fs/nfs/callback_xdr.c  |    3 +--
- fs/nfs/internal.h      |    4 ++++
- 4 files changed, 31 insertions(+), 8 deletions(-)
+At the latest kernel(2.6.37-rc1), server just initialize the forechannel
+at init_forechannel_attrs, but don't reflect it to reply.
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 89fee05..0b1f3c4 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -8,6 +8,8 @@
- #ifndef __LINUX_FS_NFS_CALLBACK_H
- #define __LINUX_FS_NFS_CALLBACK_H
+After initialize the session success, we should copy the forechannel info
+to nfsd4_create_session struct.
+
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ fs/nfsd/nfs4state.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f1e5ec6..3876a9c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1556,6 +1556,8 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 	status = nfs_ok;
+ 	memcpy(cr_ses->sessionid.data, new->se_sessionid.data,
+ 	       NFS4_MAX_SESSIONID_LEN);
++	memcpy(&cr_ses->fore_channel, &new->se_fchannel,
++		sizeof(struct nfsd4_channel_attrs));
+ 	cs_slot->sl_seqid++;
+ 	cr_ses->seqid = cs_slot->sl_seqid;
  
-+#include "internal.h"
-+
- #define NFS4_CALLBACK 0x40000000
- #define NFS4_CALLBACK_XDRSIZE 2048
- #define NFS4_CALLBACK_BUFSIZE (1024 + NFS4_CALLBACK_XDRSIZE)
-@@ -158,6 +160,30 @@ extern unsigned nfs4_callback_layoutrecall(
- 	struct cb_layoutrecallargs *args,
- 	void *dummy, struct cb_process_state *cps);
- 
-+static inline void put_session_client(struct nfs4_session *session)
-+{
-+	if (session)  /* matched by cb_sequence find_client_with_session */
-+		nfs_put_client(session->clp);
-+}
-+
-+static inline struct nfs_client *
-+find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
-+{
-+	return cps->session ? cps->session->clp : nfs_find_client(addr, 4);
-+}
-+
-+#else
-+
-+static inline struct nfs_client *
-+find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
-+{
-+	return nfs_find_client(addr, 4);
-+}
-+
-+static inline void put_session_client(struct nfs4_session *session)
-+{
-+}
-+
- #endif /* CONFIG_NFS_V4_1 */
- 
- extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 2e62155..d02997a 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -21,12 +21,6 @@
- #define NFSDBG_FACILITY NFSDBG_CALLBACK
- #endif
- 
--static struct nfs_client *
--find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
--{
--	return cps->session ? cps->session->clp : nfs_find_client(addr, 4);
--}
--
- __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
- 			     struct cb_getattrres *res,
- 			     struct cb_process_state *cps)
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 1650ab0..01688ce 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -770,8 +770,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 
- 	*hdr_res.status = status;
- 	*hdr_res.nops = htonl(nops);
--	if (cps.session) /* matched by cb_sequence find_client_with_session */
--		nfs_put_client(cps.session->clp);
-+	put_session_client(cps.session);
- 	dprintk("%s: done, status = %u\n", __func__, ntohl(status));
- 	return rpc_success;
- }
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 755e555..6f14089 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -2,6 +2,8 @@
-  * NFS internal definitions
-  */
- 
-+#ifndef __LINUX_FS_NFS_INTERNAL_H
-+#define __LINUX_FS_NFS_INTERNAL_H
- #include "nfs4_fs.h"
- #include <linux/mount.h>
- #include <linux/security.h>
-@@ -415,3 +417,5 @@ static inline int nfs_restart_rpc(struct rpc_task *task, const struct nfs_client
- 		return rpc_restart_call_prepare(task);
- 	return rpc_restart_call(task);
- }
-+
-+#endif /* __LINUX_FS_NFS_INTERNAL_H */
 -- 
-1.7.2.1
+1.7.0.1
+
 
