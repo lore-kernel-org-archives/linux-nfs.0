@@ -1,303 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33432 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:17286 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752355Ab0KDPWz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Nov 2010 11:22:55 -0400
-Received: from localhost.localdomain (dnsindia.hq.netapp.com [10.58.52.94] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oA4FMYMc029583
-	for <linux-nfs@vger.kernel.org>; Thu, 4 Nov 2010 08:22:49 -0700 (PDT)
+	id S1755953Ab0KLItY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Nov 2010 03:49:24 -0500
+Received: from localhost.localdomain (hess01-lxp.hq.netapp.com [10.58.60.52] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAC8n7fI025967
+	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:49:12 -0800 (PST)
 From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 16/18] pnfs-submit refactor layoutcommit xdr structures
-Date: Thu,  4 Nov 2010 11:22:29 -0400
-Message-Id: <1288884151-11128-17-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
-References: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 08/22] SQUASHME: allow cb_sequence changes to compile without v4.1
+Date: Fri, 12 Nov 2010 03:48:30 -0500
+Message-Id: <1289551724-18575-9-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
-
-Separate the layoutcommit operation args from the layoutcommit compound args
-in preparation to add the layoutcommit operation to the close compound
-when return-on-close set and layoutcommit is needed prior to the layoutreturn.
-
- - Move pnfs_layoutcommit_arg inode to pnfs_layoutcommit_data because it is
-not needed for encode_layoutcommit.
-
- - Move pnfs_layoutcommit_data rpc_cred to pnfs_layoutcommit_arg so that
-pnfs_layoutcommit_setup can be called with pnfs_layoutcommit_arg only.
-
- - Move layoutcommit operation fields from pnfs_layoutcommit_arg to a new
-struct nfs_layoutcommit_op_args which is passed to encode_layoutcommit.
-
-This new structure will also be used for embedded layoutcommit calls.
-
-Remove unused fields:
- - Remove unused pnfs_layoutcommit_data rpc_task.
- - Remove unused  pnfs_layoutcommit_arg time_modify_changed and time_modify.
- - Remove unused pnfs_layoutcommit_arg void layoutdriver_data which will be
-restored for the block layoutdriver.
- - Remove unused sizechanged and newsize from pnfs_layoutcommit_res.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/nfs4proc.c       |   23 +++++++++++------------
- fs/nfs/nfs4xdr.c        |   27 ++++++++++-----------------
- fs/nfs/pnfs.c           |   21 +++++++++------------
- include/linux/nfs_xdr.h |   19 +++++++++----------
- 4 files changed, 39 insertions(+), 51 deletions(-)
+ fs/nfs/callback.h      |   26 ++++++++++++++++++++++++++
+ fs/nfs/callback_proc.c |    6 ------
+ fs/nfs/callback_xdr.c  |    3 +--
+ fs/nfs/internal.h      |    4 ++++
+ 4 files changed, 31 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f9b210e..bf179bb 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5516,7 +5516,7 @@ static void nfs4_layoutcommit_prepare(struct rpc_task *task, void *data)
- {
- 	struct nfs4_layoutcommit_data *ldata =
- 		(struct nfs4_layoutcommit_data *)data;
--	struct nfs_server *server = NFS_SERVER(ldata->args.inode);
-+	struct nfs_server *server = NFS_SERVER(ldata->inode);
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index 89fee05..0b1f3c4 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -8,6 +8,8 @@
+ #ifndef __LINUX_FS_NFS_CALLBACK_H
+ #define __LINUX_FS_NFS_CALLBACK_H
  
- 	if (nfs4_setup_sequence(server, NULL, &ldata->args.seq_args,
- 				&ldata->res.seq_res, 1, task))
-@@ -5529,7 +5529,7 @@ nfs4_layoutcommit_done(struct rpc_task *task, void *calldata)
- {
- 	struct nfs4_layoutcommit_data *data =
- 		(struct nfs4_layoutcommit_data *)calldata;
--	struct nfs_server *server = NFS_SERVER(data->args.inode);
-+	struct nfs_server *server = NFS_SERVER(data->inode);
- 
- 	if (!nfs4_sequence_done(task, &data->res.seq_res))
- 		return;
-@@ -5546,8 +5546,8 @@ static void nfs4_layoutcommit_release(void *lcdata)
- 		(struct nfs4_layoutcommit_data *)lcdata;
- 
- 	/* Matched by get_layout in pnfs_layoutcommit_inode */
--	put_layout_hdr(data->args.inode);
--	put_rpccred(data->cred);
-+	put_layout_hdr(data->inode);
-+	put_rpccred(data->args.cred);
- 	kfree(lcdata);
- }
- 
-@@ -5565,11 +5565,11 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int issync)
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTCOMMIT],
- 		.rpc_argp = &data->args,
- 		.rpc_resp = &data->res,
--		.rpc_cred = data->cred,
-+		.rpc_cred = data->args.cred,
- 	};
- 	struct rpc_task_setup task_setup_data = {
- 		.task = &data->task,
--		.rpc_client = NFS_CLIENT(data->args.inode),
-+		.rpc_client = NFS_CLIENT(data->inode),
- 		.rpc_message = &msg,
- 		.callback_ops = &nfs4_layoutcommit_ops,
- 		.callback_data = data,
-@@ -5578,13 +5578,12 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int issync)
- 	struct rpc_task *task;
- 	int status = 0;
- 
--	dprintk("NFS: %4d initiating layoutcommit call. %llu@%llu lbw: %llu "
-+	dprintk("NFS: initiating layoutcommit call. %llu@%llu lbw: %llu "
- 		"type: %d issync %d\n",
--		data->task.tk_pid,
--		data->args.range.length,
--		data->args.range.offset,
--		data->args.lastbytewritten,
--		data->args.layout_type, issync);
-+		data->args.op.range.length,
-+		data->args.op.range.offset,
-+		data->args.op.lastbytewritten,
-+		data->args.op.layout_type, issync);
- 
- 	task = rpc_run_task(&task_setup_data);
- 	if (IS_ERR(task))
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 5c7ee03..1c8a3c4 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1868,7 +1868,7 @@ encode_layoutget(struct xdr_stream *xdr,
- 
- static int
- encode_layoutcommit(struct xdr_stream *xdr,
--		    const struct nfs4_layoutcommit_args *args,
-+		    const struct nfs4_layoutcommit_op_args *args,
- 		    struct compound_hdr *hdr)
- {
- 	__be32 *p;
-@@ -1885,14 +1885,7 @@ encode_layoutcommit(struct xdr_stream *xdr,
- 	p = xdr_encode_opaque_fixed(p, args->stateid.data, NFS4_STATEID_SIZE);
- 	*p++ = cpu_to_be32(1);     /* newoffset = TRUE */
- 	p = xdr_encode_hyper(p, args->lastbytewritten);
--	*p = cpu_to_be32(args->time_modify_changed != 0);
--	if (args->time_modify_changed) {
--		p = reserve_space(xdr, 12);
--		*p++ = cpu_to_be32(0);
--		*p++ = cpu_to_be32(args->time_modify.tv_sec);
--		*p = cpu_to_be32(args->time_modify.tv_nsec);
--	}
--
-+	*p = cpu_to_be32(0); /* nt_timechanged = FALSE */
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(args->layout_type);
- 
-@@ -2818,7 +2811,7 @@ static int nfs4_xdr_enc_layoutcommit(struct rpc_rqst *req, uint32_t *p,
- 	encode_compound_hdr(&xdr, req, &hdr);
- 	encode_sequence(&xdr, &args->seq_args, &hdr);
- 	encode_putfh(&xdr, args->fh, &hdr);
--	encode_layoutcommit(&xdr, args, &hdr);
-+	encode_layoutcommit(&xdr, &args->op, &hdr);
- 	encode_getfattr(&xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- 	return 0;
-@@ -5307,10 +5300,10 @@ out_overflow:
- 	return -EIO;
- }
- 
--static int decode_layoutcommit(struct xdr_stream *xdr,
--				    struct rpc_rqst *req,
--				    struct nfs4_layoutcommit_res *res)
-+static int decode_layoutcommit(struct xdr_stream *xdr)
- {
-+	u32 sizechanged;
-+	u64 newsize;
- 	__be32 *p;
- 	int status;
- 
-@@ -5321,13 +5314,13 @@ static int decode_layoutcommit(struct xdr_stream *xdr,
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	res->sizechanged = be32_to_cpup(p);
-+	sizechanged = be32_to_cpup(p);
- 
--	if (res->sizechanged) {
-+	if (sizechanged) {
- 		p = xdr_inline_decode(xdr, 8);
- 		if (unlikely(!p))
- 			goto out_overflow;
--		xdr_decode_hyper(p, &res->newsize);
-+		xdr_decode_hyper(p, &newsize);
- 	}
- 	return 0;
- out_overflow:
-@@ -6462,7 +6455,7 @@ static int nfs4_xdr_dec_layoutcommit(struct rpc_rqst *rqstp, uint32_t *p,
- 	status = decode_putfh(&xdr);
- 	if (status)
- 		goto out;
--	status = decode_layoutcommit(&xdr, rqstp, res);
-+	status = decode_layoutcommit(&xdr);
- 	if (status)
- 		goto out;
- 	decode_getfattr(&xdr, res->fattr, res->server,
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2072522..0d5d95c 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1264,21 +1264,18 @@ pnfs_layoutcommit_setup(struct inode *inode,
- 
- 	dprintk("--> %s\n", __func__);
- 
--	data->args.inode = inode;
-+	data->inode = inode;
- 	data->args.fh = NFS_FH(inode);
--	data->args.layout_type = nfss->pnfs_curr_ld->id;
-+	data->args.op.layout_type = nfss->pnfs_curr_ld->id;
- 	data->res.fattr = &data->fattr;
- 	nfs_fattr_init(&data->fattr);
- 
--	/* TODO: Need to determine the correct values */
--	data->args.time_modify_changed = 0;
--
- 	/* Set values from inode so it can be reset
- 	 */
--	data->args.range.iomode = IOMODE_RW;
--	data->args.range.offset = write_begin_pos;
--	data->args.range.length = write_end_pos - write_begin_pos + 1;
--	data->args.lastbytewritten =  min(write_end_pos,
-+	data->args.op.range.iomode = IOMODE_RW;
-+	data->args.op.range.offset = write_begin_pos;
-+	data->args.op.range.length = write_end_pos - write_begin_pos + 1;
-+	data->args.op.lastbytewritten =  min(write_end_pos,
- 					  i_size_read(inode) - 1);
- 	data->args.bitmask = nfss->attr_bitmask;
- 	data->res.server = nfss;
-@@ -1318,12 +1315,12 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
- 	 */
- 	write_begin_pos = nfsi->layout->write_begin_pos;
- 	write_end_pos = nfsi->layout->write_end_pos;
--	data->cred = nfsi->layout->cred;
-+	data->args.cred = nfsi->layout->cred;
- 	nfsi->layout->write_begin_pos = 0;
- 	nfsi->layout->write_end_pos = 0;
- 	nfsi->layout->cred = NULL;
- 	__clear_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->plh_flags);
--	pnfs_copy_layout_stateid(&data->args.stateid, nfsi->layout);
-+	pnfs_copy_layout_stateid(&data->args.op.stateid, nfsi->layout);
- 
- 	/* Reference for layoutcommit matched in pnfs_layoutcommit_release */
- 	get_layout_hdr(NFS_I(inode)->layout);
-@@ -1335,7 +1332,7 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
- 					 write_end_pos);
- 	if (status) {
- 		/* The layout driver failed to setup the layoutcommit */
--		put_rpccred(data->cred);
-+		put_rpccred(data->args.cred);
- 		put_layout_hdr(inode);
- 		goto out_free;
- 	}
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 6c4ba71..851b09f 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -225,25 +225,24 @@ struct nfs4_layoutget {
- 	struct pnfs_layout_segment **lsegpp;
- };
- 
--struct nfs4_layoutcommit_args {
-+struct nfs4_layoutcommit_op_args {
- 	nfs4_stateid stateid;
- 	__u64 lastbytewritten;
--	__u32 time_modify_changed;
--	struct timespec time_modify;
--	const u32 *bitmask;
--	struct nfs_fh *fh;
--	struct inode *inode;
- 
- 	/* Values set by layout driver */
- 	struct pnfs_layout_range range;
- 	__u32 layout_type;
--	void *layoutdriver_data;
-+};
++#include "internal.h"
 +
-+struct nfs4_layoutcommit_args {
-+	struct nfs4_layoutcommit_op_args op;
-+	const u32 *bitmask;
-+	struct nfs_fh *fh;
-+	struct rpc_cred *cred;
- 	struct nfs4_sequence_args seq_args;
- };
+ #define NFS4_CALLBACK 0x40000000
+ #define NFS4_CALLBACK_XDRSIZE 2048
+ #define NFS4_CALLBACK_BUFSIZE (1024 + NFS4_CALLBACK_XDRSIZE)
+@@ -158,6 +160,30 @@ extern unsigned nfs4_callback_layoutrecall(
+ 	struct cb_layoutrecallargs *args,
+ 	void *dummy, struct cb_process_state *cps);
  
- struct nfs4_layoutcommit_res {
--	__u32 sizechanged;
--	__u64 newsize;
- 	struct nfs_fattr *fattr;
- 	const struct nfs_server *server;
- 	struct nfs4_sequence_res seq_res;
-@@ -251,7 +250,7 @@ struct nfs4_layoutcommit_res {
++static inline void put_session_client(struct nfs4_session *session)
++{
++	if (session)  /* matched by cb_sequence find_client_with_session */
++		nfs_put_client(session->clp);
++}
++
++static inline struct nfs_client *
++find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
++{
++	return cps->session ? cps->session->clp : nfs_find_client(addr, 4);
++}
++
++#else
++
++static inline struct nfs_client *
++find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
++{
++	return nfs_find_client(addr, 4);
++}
++
++static inline void put_session_client(struct nfs4_session *session)
++{
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
  
- struct nfs4_layoutcommit_data {
- 	struct rpc_task task;
--	struct rpc_cred *cred;
-+	struct inode *inode;
- 	struct nfs_fattr fattr;
- 	struct nfs4_layoutcommit_args args;
- 	struct nfs4_layoutcommit_res res;
+ extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 2e62155..d02997a 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -21,12 +21,6 @@
+ #define NFSDBG_FACILITY NFSDBG_CALLBACK
+ #endif
+ 
+-static struct nfs_client *
+-find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
+-{
+-	return cps->session ? cps->session->clp : nfs_find_client(addr, 4);
+-}
+-
+ __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+ 			     struct cb_getattrres *res,
+ 			     struct cb_process_state *cps)
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 1650ab0..01688ce 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -770,8 +770,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 
+ 	*hdr_res.status = status;
+ 	*hdr_res.nops = htonl(nops);
+-	if (cps.session) /* matched by cb_sequence find_client_with_session */
+-		nfs_put_client(cps.session->clp);
++	put_session_client(cps.session);
+ 	dprintk("%s: done, status = %u\n", __func__, ntohl(status));
+ 	return rpc_success;
+ }
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 755e555..6f14089 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -2,6 +2,8 @@
+  * NFS internal definitions
+  */
+ 
++#ifndef __LINUX_FS_NFS_INTERNAL_H
++#define __LINUX_FS_NFS_INTERNAL_H
+ #include "nfs4_fs.h"
+ #include <linux/mount.h>
+ #include <linux/security.h>
+@@ -415,3 +417,5 @@ static inline int nfs_restart_rpc(struct rpc_task *task, const struct nfs_client
+ 		return rpc_restart_call_prepare(task);
+ 	return rpc_restart_call(task);
+ }
++
++#endif /* __LINUX_FS_NFS_INTERNAL_H */
 -- 
 1.7.2.1
 
