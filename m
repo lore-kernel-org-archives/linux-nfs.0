@@ -1,83 +1,249 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:57570 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751246Ab0KEHad (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Nov 2010 03:30:33 -0400
-Message-ID: <4CD3B362.8070302@cn.fujitsu.com>
-Date: Fri, 05 Nov 2010 15:33:54 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "Trond Myklebust(netapp)" <Trond.Myklebust@netapp.com>,
-        NFSv3 list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFSv4.1: Make sure nfsd can decode SP4_SSV correctly at exchange_id
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mx2.netapp.com ([216.240.18.37]:17286 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756026Ab0KLIt0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Nov 2010 03:49:26 -0500
+Received: from localhost.localdomain (hess01-lxp.hq.netapp.com [10.58.60.52] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAC8n7fR025967
+	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:49:19 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 17/22] pnfs-submit: increase number of outstanding CB_LAYOUTRECALLS we can handle
+Date: Fri, 12 Nov 2010 03:48:39 -0500
+Message-Id: <1289551724-18575-18-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-According to RFC, the argument of ssv_sp_parms4 is:
-
-   struct ssv_sp_parms4 {
-           state_protect_ops4      ssp_ops;
-           sec_oid4                ssp_hash_algs<>;
-           sec_oid4                ssp_encr_algs<>;
-           uint32_t                ssp_window;
-           uint32_t                ssp_num_gss_handles;
-   };
-
-If client send a exchange_id with SP4_SSV, server cann't decode
-the SP4_SSV's ssp_hash_algs and ssp_encr_algs arguments correctly.
-
-Because the kernel treat the two arguments as a signal 
-sec_oid4 struct, but should be a set of sec_oid4 struct.
-
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfsd/nfs4xdr.c |   22 +++++++++++++++-------
- 1 files changed, 15 insertions(+), 7 deletions(-)
+ fs/nfs/callback.h         |    1 +
+ fs/nfs/callback_proc.c    |   35 +++++++++++++++++++++++++++++------
+ fs/nfs/pnfs.c             |   24 +++++++++---------------
+ fs/nfs/pnfs.h             |    7 +++----
+ include/linux/nfs_fs_sb.h |    3 ++-
+ 5 files changed, 44 insertions(+), 26 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f35a94a..71d7d33 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1005,7 +1005,7 @@ static __be32
- nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
- 			 struct nfsd4_exchange_id *exid)
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index 4a9905b..218490c 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -165,6 +165,7 @@ extern unsigned nfs4_callback_layoutrecall(
+ 	void *dummy, struct cb_process_state *cps);
+ extern bool matches_outstanding_recall(struct inode *ino,
+ 				       struct pnfs_layout_range *range);
++extern void notify_drained(struct nfs_client *clp, u64 mask);
+ extern void nfs_client_return_layouts(struct nfs_client *clp);
+ 
+ static inline void put_session_client(struct nfs4_session *session)
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index af405cf..752b593 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -220,16 +220,28 @@ void nfs_client_return_layouts(struct nfs_client *clp)
+ 		/* Removing from the list unblocks LAYOUTGETs */
+ 		list_del(&cb_info->pcl_list);
+ 		clp->cl_cb_lrecall_count--;
++		clp->cl_drain_notification[1 << cb_info->pcl_notify_bit] = NULL;
+ 		rpc_wake_up(&clp->cl_rpcwaitq_recall);
+ 		kfree(cb_info);
+ 	}
+ }
+ 
+-void notify_drained(struct pnfs_cb_lrecall_info *d)
++void notify_drained(struct nfs_client *clp, u64 mask)
  {
--	int dummy;
-+	int dummy, tmp;
- 	DECODE_HEAD;
+-	if (d && atomic_dec_and_test(&d->pcl_count)) {
+-		set_bit(NFS4CLNT_LAYOUT_RECALL, &d->pcl_clp->cl_state);
+-		nfs4_schedule_state_manager(d->pcl_clp);
++	atomic_t **ptr = clp->cl_drain_notification;
++	bool done = false;
++
++	/* clp lock not needed except to remove used up entries */
++	/* Should probably use functions defined in bitmap.h */
++	while (mask) {
++		if ((mask & 1) && (atomic_dec_and_test(*ptr)))
++			done = true;
++		mask >>= 1;
++		ptr++;
++	}
++	if (done) {
++		set_bit(NFS4CLNT_LAYOUT_RECALL, &clp->cl_state);
++		nfs4_schedule_state_manager(clp);
+ 	}
+ }
  
- 	READ_BUF(NFS4_VERIFIER_SIZE);
-@@ -1053,15 +1053,23 @@ nfsd4_decode_exchange_id(struct nfsd4_compoundargs *argp,
+@@ -270,7 +282,9 @@ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
+ 		if (rv == NFS4_OK) {
+ 			lo->plh_block_lgets++;
+ 			nfs4_asynch_forget_layouts(lo, &args->cbl_range,
+-						   cb_info, &free_me_list);
++						   cb_info->pcl_notify_bit,
++						   &cb_info->pcl_count,
++						   &free_me_list);
+ 		}
+ 		pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
+ 		spin_unlock(&lo->inode->i_lock);
+@@ -306,7 +320,9 @@ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
+ 					 &recall_list, plh_bulk_recall) {
+ 			spin_lock(&lo->inode->i_lock);
+ 			set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
+-			nfs4_asynch_forget_layouts(lo, &range, cb_info,
++			nfs4_asynch_forget_layouts(lo, &range,
++						   cb_info->pcl_notify_bit,
++						   &cb_info->pcl_count,
+ 						   &free_me_list);
+ 			list_del_init(&lo->plh_bulk_recall);
+ 			spin_unlock(&lo->inode->i_lock);
+@@ -322,6 +338,8 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
+ 				    struct cb_layoutrecallargs *args)
+ {
+ 	struct pnfs_cb_lrecall_info *new;
++	atomic_t **ptr;
++	int bit_num;
+ 	u32 res;
  
- 		/* ssp_hash_algs<> */
- 		READ_BUF(4);
--		READ32(dummy);
--		READ_BUF(dummy);
--		p += XDR_QUADLEN(dummy);
-+		READ32(tmp);
-+		while (tmp--) {
-+			READ_BUF(4);
-+			READ32(dummy);
-+			READ_BUF(dummy);
-+			p += XDR_QUADLEN(dummy);
-+		}
+ 	dprintk("%s enter, type=%i\n", __func__, args->cbl_recall_type);
+@@ -344,12 +362,17 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
+ 	clp->cl_cb_lrecall_count++;
+ 	/* Adding to the list will block conflicting LGET activity */
+ 	list_add_tail(&new->pcl_list, &clp->cl_layoutrecalls);
++	for (bit_num = 0, ptr = clp->cl_drain_notification; *ptr; ptr++)
++		bit_num++;
++	*ptr = &new->pcl_count;
++	new->pcl_notify_bit = bit_num;
+ 	spin_unlock(&clp->cl_lock);
+ 	res = initiate_layout_draining(new);
+ 	if (res || atomic_dec_and_test(&new->pcl_count)) {
+ 		spin_lock(&clp->cl_lock);
+ 		list_del(&new->pcl_list);
+ 		clp->cl_cb_lrecall_count--;
++		clp->cl_drain_notification[1 << bit_num] = NULL;
+ 		rpc_wake_up(&clp->cl_rpcwaitq_recall);
+ 		spin_unlock(&clp->cl_lock);
+ 		if (res == NFS4_OK) {
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 2d817be..22abf83 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -278,7 +278,7 @@ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+ 	smp_mb();
+ 	lseg->valid = true;
+ 	lseg->layout = lo;
+-	lseg->drain_notification = NULL;
++	lseg->pls_notify_mask = 0;
+ }
  
- 		/* ssp_encr_algs<> */
- 		READ_BUF(4);
--		READ32(dummy);
--		READ_BUF(dummy);
--		p += XDR_QUADLEN(dummy);
-+		READ32(tmp);
-+		while (tmp--) {
-+			READ_BUF(4);
-+			READ32(dummy);
-+			READ_BUF(dummy);
-+			p += XDR_QUADLEN(dummy);
-+		}
+ static void
+@@ -330,12 +330,12 @@ put_lseg(struct pnfs_layout_segment *lseg)
+ 		atomic_read(&lseg->pls_refcount), lseg->valid);
+ 	ino = lseg->layout->inode;
+ 	if (atomic_dec_and_lock(&lseg->pls_refcount, &ino->i_lock)) {
+-		struct pnfs_cb_lrecall_info *drain_info = lseg->drain_notification;
++		u64 mask = lseg->pls_notify_mask;
  
- 		/* ssp_window and ssp_num_gss_handles */
- 		READ_BUF(8);
+ 		_put_lseg_common(lseg);
+ 		spin_unlock(&ino->i_lock);
+ 		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+-		notify_drained(drain_info);
++		notify_drained(NFS_SERVER(ino)->nfs_client, mask);
+ 		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
+ 		put_layout_hdr(ino);
+ 	}
+@@ -401,14 +401,14 @@ pnfs_free_lseg_list(struct list_head *free_me)
+ {
+ 	struct pnfs_layout_segment *lseg, *tmp;
+ 	struct inode *ino;
+-	struct pnfs_cb_lrecall_info *drain_info;
++	u64 mask;
+ 
+ 	list_for_each_entry_safe(lseg, tmp, free_me, fi_list) {
+ 		BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
+ 		ino = lseg->layout->inode;
+-		drain_info = lseg->drain_notification;
++		mask = lseg->pls_notify_mask;
+ 		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+-		notify_drained(drain_info);
++		notify_drained(NFS_SERVER(ino)->nfs_client, mask);
+ 		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
+ 		put_layout_hdr(ino);
+ 	}
+@@ -587,7 +587,7 @@ has_layout_to_return(struct pnfs_layout_hdr *lo,
+ 
+ void nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
+ 				struct pnfs_layout_range *range,
+-				struct pnfs_cb_lrecall_info *drain_info,
++				int notify_bit, atomic_t *notify_count,
+ 				struct list_head *tmp_list)
+ {
+ 	struct pnfs_layout_segment *lseg, *tmp;
+@@ -595,14 +595,8 @@ void nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
+ 	assert_spin_locked(&lo->inode->i_lock);
+ 	list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
+ 		if (should_free_lseg(&lseg->range, range)) {
+-			/* FIXME - need to change to something like a
+-			 * notification bitmap to remove the restriction
+-			 * of only being able to process a single
+-			 * CB_LAYOUTRECALL at a time.
+-			 */
+-			BUG_ON(lseg->drain_notification);
+-			lseg->drain_notification = drain_info;
+-			atomic_inc(&drain_info->pcl_count);
++			lseg->pls_notify_mask |= (1 << notify_bit);
++			atomic_inc(notify_count);
+ 			mark_lseg_invalid(lseg, tmp_list);
+ 		}
+ }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 7ea121f..7fd1f5d 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -39,7 +39,7 @@ struct pnfs_layout_segment {
+ 	atomic_t pls_refcount;
+ 	bool valid;
+ 	struct pnfs_layout_hdr *layout;
+-	struct pnfs_cb_lrecall_info *drain_notification;
++	u64 pls_notify_mask;
+ };
+ 
+ enum pnfs_try_status {
+@@ -126,6 +126,7 @@ struct pnfs_device {
+ struct pnfs_cb_lrecall_info {
+ 	struct list_head	pcl_list; /* hook into cl_layoutrecalls list */
+ 	atomic_t		pcl_count;
++	int			pcl_notify_bit;
+ 	struct nfs_client	*pcl_clp;
+ 	struct inode		*pcl_ino;
+ 	struct cb_layoutrecallargs pcl_args;
+@@ -231,10 +232,8 @@ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ 				  struct nfs4_state *open_state);
+ void nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
+ 				struct pnfs_layout_range *range,
+-				struct pnfs_cb_lrecall_info *drain_info,
++				int notify_bit, atomic_t *notify_count,
+ 				struct list_head *tmp_list);
+-/* FIXME - this should be in callback.h, but pnfs_cb_lrecall_info needs to be there too */
+-extern void notify_drained(struct pnfs_cb_lrecall_info *d);
+ 
+ static inline bool
+ has_layout(struct nfs_inode *nfsi)
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 80dcc00..295d449 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -85,7 +85,8 @@ struct nfs_client {
+ 	struct list_head	cl_layouts;
+ 	struct list_head	cl_layoutrecalls;
+ 	unsigned long		cl_cb_lrecall_count;
+-#define PNFS_MAX_CB_LRECALLS (1)
++#define PNFS_MAX_CB_LRECALLS (64)
++	atomic_t		*cl_drain_notification[PNFS_MAX_CB_LRECALLS];
+ 	struct rpc_wait_queue	cl_rpcwaitq_recall;
+ 	struct pnfs_deviceid_cache *cl_devid_cache; /* pNFS deviceid cache */
+ #endif /* CONFIG_NFS_V4_1 */
 -- 
-1.7.0.1
-
+1.7.2.1
 
