@@ -1,75 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:45413 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1755909Ab0KSRjG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Nov 2010 12:39:06 -0500
-Received: from tophat.home.4dicksons.org ([192.168.62.20])
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1PJUvR-0005fG-3h
-	for linux-nfs@vger.kernel.org; Fri, 19 Nov 2010 12:39:05 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] Enable nfsidmap to compile
-Date: Fri, 19 Nov 2010 12:39:03 -0500
-Message-Id: <1290188343-10579-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1290188343-10579-1-git-send-email-steved@redhat.com>
-References: <1290188343-10579-1-git-send-email-steved@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:17286 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756014Ab0KLItZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Nov 2010 03:49:25 -0500
+Received: from localhost.localdomain (hess01-lxp.hq.netapp.com [10.58.60.52] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAC8n7fO025967
+	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:49:16 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 14/22] pnfs-submit: rename lo->state to lo->plh_flags
+Date: Fri, 12 Nov 2010 03:48:36 -0500
+Message-Id: <1289551724-18575-15-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Only enable the compilation of nfsidmap when libnfsidmap support it.
+Preparing for change in stateid code, and want to avoid name confusion.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- aclocal/libnfsidmap.m4 |    4 ++++
- configure.ac           |    3 +++
- utils/Makefile.am      |    3 +++
- 3 files changed, 10 insertions(+), 0 deletions(-)
+ fs/nfs/pnfs.c |   18 +++++++++---------
+ fs/nfs/pnfs.h |    6 +++---
+ 2 files changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/aclocal/libnfsidmap.m4 b/aclocal/libnfsidmap.m4
-index cfcde2f..e636604 100644
---- a/aclocal/libnfsidmap.m4
-+++ b/aclocal/libnfsidmap.m4
-@@ -14,4 +14,8 @@ AC_DEFUN([AC_LIBNFSIDMAP], [
-                [AC_DEFINE([HAVE_NFS4_SET_DEBUG], 1,
-                           [Define to 1 if you have the `nfs4_set_debug' function.])])
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 353c674..5227d51 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -81,10 +81,10 @@ pnfs_need_layoutcommit(struct nfs_inode *nfsi, struct nfs_open_context *ctx)
+ 	dprintk("%s: has_layout=%d ctx=%p\n", __func__, has_layout(nfsi), ctx);
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	if (has_layout(nfsi) &&
+-	    !test_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->state)) {
++	    !test_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->plh_flags)) {
+ 		nfsi->layout->cred = get_rpccred(ctx->state->owner->so_cred);
+ 		__set_bit(NFS_LAYOUT_NEED_LCOMMIT,
+-			  &nfsi->layout->state);
++			  &nfsi->layout->plh_flags);
+ 		nfsi->change_attr++;
+ 		spin_unlock(&nfsi->vfs_inode.i_lock);
+ 		dprintk("%s: Set layoutcommit\n", __func__);
+@@ -457,7 +457,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 	bool overwrite = false;
  
-+  dnl only enable nfsidmap when libnfsidmap supports it
-+  AC_CHECK_LIB([nfsidmap], [nfs4_owner_to_uid], [enable_nfsidmap=1],
-+               [enable_nfsidmap=0])
-+
- ])dnl
-diff --git a/configure.ac b/configure.ac
-index b39dbcd..92833e3 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
-   dnl check for nfsidmap libraries and headers
-   AC_LIBNFSIDMAP
+ 	assert_spin_locked(&lo->inode->i_lock);
+-	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
++	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags) ||
+ 	    memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
+ 		overwrite = true;
+ 	else {
+@@ -478,7 +478,7 @@ pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+ {
+ 	dprintk("--> %s\n", __func__);
+ 	spin_lock(&lo->inode->i_lock);
+-	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state)) {
++	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags)) {
+ 		int seq;
  
-+  dnl enable nfsidmap when its support by libnfsidmap
-+  AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$enable_nfsidmap" = "yes"])
-+
-   dnl check for the keyutils libraries and headers
-   AC_KEYUTILS
+ 		do {
+@@ -486,7 +486,7 @@ pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+ 			memcpy(dst->data, open_state->stateid.data,
+ 			       sizeof(open_state->stateid.data));
+ 		} while (read_seqretry(&open_state->seqlock, seq));
+-		set_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
++		set_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags);
+ 	} else
+ 		memcpy(dst->data, lo->stateid.data,
+ 		       sizeof(lo->stateid.data));
+@@ -534,7 +534,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 	nfs4_proc_layoutget(lgp);
+ 	if (!lseg) {
+ 		/* remember that LAYOUTGET failed and suspend trying */
+-		set_bit(lo_fail_bit(range->iomode), &lo->state);
++		set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
+ 	}
+ 	return lseg;
+ }
+@@ -866,7 +866,7 @@ pnfs_update_layout(struct inode *ino,
+ 	}
  
-diff --git a/utils/Makefile.am b/utils/Makefile.am
-index 8665183..a0ea116 100644
---- a/utils/Makefile.am
-+++ b/utils/Makefile.am
-@@ -4,6 +4,9 @@ OPTDIRS =
+ 	/* if LAYOUTGET already failed once we don't try again */
+-	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->state))
++	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
+ 		goto out_unlock;
  
- if CONFIG_NFSV4
- OPTDIRS += idmapd
-+if CONFIG_NFSIDMAP
-+OPTDIRS += nfsidmap
-+endif
- endif
+ 	get_layout_hdr_locked(lo); /* Matched in pnfs_layoutget_release */
+@@ -875,7 +875,7 @@ pnfs_update_layout(struct inode *ino,
+ 	lseg = send_layoutget(lo, ctx, &arg);
+ out:
+ 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+-		nfsi->layout->state, lseg);
++		nfsi->layout->plh_flags, lseg);
+ 	return lseg;
+ out_unlock:
+ 	spin_unlock(&ino->i_lock);
+@@ -1174,7 +1174,7 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ 	nfsi->layout->write_begin_pos = 0;
+ 	nfsi->layout->write_end_pos = 0;
+ 	nfsi->layout->cred = NULL;
+-	__clear_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->state);
++	__clear_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->plh_flags);
+ 	memcpy(data->args.stateid.data, nfsi->layout->stateid.data,
+ 	       NFS4_STATEID_SIZE);
  
- if CONFIG_GSS
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 4f2c541..dabf03e 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -98,7 +98,7 @@ struct pnfs_layout_hdr {
+ 	int			roc_iomode;/* return on close iomode, 0=none */
+ 	nfs4_stateid		stateid;
+ 	unsigned long		plh_block_lgets; /* block LAYOUTGET if >0 */
+-	unsigned long		state;
++	unsigned long		plh_flags;
+ 	struct rpc_cred		*cred;     /* layoutcommit credential */
+ 	/* DH: These vars keep track of the maximum write range
+ 	 * so the values can be used for layoutcommit.
+@@ -226,7 +226,7 @@ static inline int lo_fail_bit(u32 iomode)
+ static inline void pnfs_invalidate_layout_stateid(struct pnfs_layout_hdr *lo)
+ {
+ 	assert_spin_locked(&lo->inode->i_lock);
+-	clear_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
++	clear_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags);
+ }
+ 
+ static inline void get_lseg(struct pnfs_layout_segment *lseg)
+@@ -269,7 +269,7 @@ static inline bool
+ layoutcommit_needed(struct nfs_inode *nfsi)
+ {
+ 	return has_layout(nfsi) &&
+-	       test_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->state);
++	       test_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->plh_flags);
+ }
+ 
+ #else  /* CONFIG_NFS_V4_1 */
 -- 
-1.7.3.2
+1.7.2.1
 
