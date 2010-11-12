@@ -1,290 +1,235 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 4dicksons.org ([207.22.49.45]:45414 "EHLO
-	Dobby.Home.4dicksons.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1755658Ab0KSRjH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Nov 2010 12:39:07 -0500
-Received: from tophat.home.4dicksons.org ([192.168.62.20])
-	by Dobby.Home.4dicksons.org with esmtp (Exim 4.63)
-	(envelope-from <steved@redhat.com>)
-	id 1PJUvQ-0005fG-Lb
-	for linux-nfs@vger.kernel.org; Fri, 19 Nov 2010 12:39:05 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2] Add the new nfsidmap program
-Date: Fri, 19 Nov 2010 12:39:02 -0500
-Message-Id: <1290188343-10579-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1290188343-10579-1-git-send-email-steved@redhat.com>
-References: <1290188343-10579-1-git-send-email-steved@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:47184 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756052Ab0KLIt1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Nov 2010 03:49:27 -0500
+Received: from localhost.localdomain (hess01-lxp.hq.netapp.com [10.58.60.52] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAC8n7fW025967
+	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:49:23 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 22/22] SQUASHME: make roc patches compile without v4.1
+Date: Fri, 12 Nov 2010 03:48:44 -0500
+Message-Id: <1289551724-18575-23-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-This patch adds the nfsidmap program to nfs-utils.  This program is
-called by the nfs idmapper through request-keys to map between
-uid / user name and gid / group name.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- aclocal/keyutils.m4         |   11 ++++
- configure.ac                |    4 ++
- utils/nfsidmap/Makefile.am  |    9 +++
- utils/nfsidmap/nfsidmap.c   |  118 +++++++++++++++++++++++++++++++++++++++++++
- utils/nfsidmap/nfsidmap.man |   60 ++++++++++++++++++++++
- 5 files changed, 202 insertions(+), 0 deletions(-)
- create mode 100644 aclocal/keyutils.m4
- create mode 100644 utils/nfsidmap/Makefile.am
- create mode 100644 utils/nfsidmap/nfsidmap.c
- create mode 100644 utils/nfsidmap/nfsidmap.man
+ fs/nfs/nfs4proc.c |   55 ++++++++++++++++++++--------------------------------
+ fs/nfs/nfs4xdr.c  |   34 ++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h     |   24 +++++++++++++++++++++++
+ 3 files changed, 79 insertions(+), 34 deletions(-)
 
-diff --git a/aclocal/keyutils.m4 b/aclocal/keyutils.m4
-new file mode 100644
-index 0000000..84bc112
---- /dev/null
-+++ b/aclocal/keyutils.m4
-@@ -0,0 +1,11 @@
-+dnl Checks for keyutils library and headers
-+dnl
-+AC_DEFUN([AC_KEYUTILS], [
-+
-+  dnl Check for libkeyutils; do not add to LIBS if found
-+  AC_CHECK_LIB([keyutils], [keyctl_instantiate], [LIBKEYUTILS=-lkeyutils], ,)
-+  AC_SUBST(LIBKEYUTILS)
-+
-+  AC_CHECK_HEADERS([keyutils.h], ,
-+  		   [AC_MSG_ERROR([keyutils.h header not found.])])
-+])dnl
-diff --git a/configure.ac b/configure.ac
-index 5408e85..b39dbcd 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -247,6 +247,9 @@ if test "$enable_nfsv4" = yes; then
-   dnl check for nfsidmap libraries and headers
-   AC_LIBNFSIDMAP
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 09ed784..fabeae2 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -74,8 +74,6 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			    struct nfs_fattr *fattr, struct iattr *sattr,
+ 			    struct nfs4_state *state);
+-static void nfs4_layoutreturn_set_stateid(struct inode *ino,
+-					  struct nfs4_layoutreturn_res *res);
  
-+  dnl check for the keyutils libraries and headers
-+  AC_KEYUTILS
+ /* Prevent leaks of NFSv4 errors into userland */
+ static int nfs4_map_errors(int err)
+@@ -1832,17 +1830,8 @@ static void nfs4_free_closedata(void *data)
+ 	nfs_free_seqid(calldata->arg.seqid);
+ 	nfs4_put_state_owner(sp);
+ 	path_put(&calldata->path);
+-	if (calldata->res.op_bitmask & NFS4_HAS_LAYOUTRETURN) {
+-		struct pnfs_layout_hdr *lo = NFS_I(calldata->inode)->layout;
+-
+-		spin_lock(&lo->inode->i_lock);
+-		lo->plh_block_lgets--;
+-		lo->plh_outstanding--;
+-		if (!pnfs_layoutgets_blocked(lo, NULL))
+-			rpc_wake_up(&NFS_I(lo->inode)->lo_rpcwaitq_stateid);
+-		spin_unlock(&lo->inode->i_lock);
+-		put_layout_hdr(lo->inode);
+-	}
++	if (calldata->res.op_bitmask & NFS4_HAS_LAYOUTRETURN)
++		nfs4_layoutreturn_file_release(calldata->inode);
+ 	kfree(calldata);
+ }
+ 
+@@ -1931,18 +1920,13 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 		/* Are there layout segments to return on close? */
+ 		if (pnfs_roc(calldata)) {
+ 			struct nfs_inode *nfsi = NFS_I(calldata->inode);
 +
-   dnl librpcsecgss already has a dependency on libgssapi,
-   dnl but we need to make sure we get the right version
-   if test "$enable_gss" = yes; then
-@@ -435,6 +438,7 @@ AC_CONFIG_FILES([
- 	utils/mountd/Makefile
- 	utils/nfsd/Makefile
- 	utils/nfsstat/Makefile
-+	utils/nfsidmap/Makefile
- 	utils/showmount/Makefile
- 	utils/statd/Makefile
- 	tests/Makefile
-diff --git a/utils/nfsidmap/Makefile.am b/utils/nfsidmap/Makefile.am
-new file mode 100644
-index 0000000..f837b91
---- /dev/null
-+++ b/utils/nfsidmap/Makefile.am
-@@ -0,0 +1,9 @@
-+## Process this file with automake to produce Makefile.in
-+
-+man8_MANS = nfsidmap.man
-+
-+sbin_PROGRAMS	= nfsidmap
-+nfsidmap_SOURCES = nfsidmap.c
-+nfsidmap_LDADD = -lnfsidmap -lkeyutils
-+
-+MAINTAINERCLEANFILES = Makefile.in
-diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-new file mode 100644
-index 0000000..2d87381
---- /dev/null
-+++ b/utils/nfsidmap/nfsidmap.c
-@@ -0,0 +1,118 @@
-+
-+#include <stdarg.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+
-+#include <pwd.h>
-+#include <grp.h>
-+#include <keyutils.h>
-+#include <nfsidmap.h>
-+
-+#include <syslog.h>
-+
-+/* gcc nfsidmap.c -o nfsidmap -l nfsidmap -l keyutils */
-+
-+#define MAX_ID_LEN   11
-+#define IDMAP_NAMESZ 128
-+#define USER  1
-+#define GROUP 0
-+
-+
-+/*
-+ * Find either a user or group id based on the name@domain string
-+ */
-+int id_lookup(char *name_at_domain, key_serial_t key, int type)
+ 			if (pnfs_return_layout_barrier(nfsi,
+ 						&calldata->arg.lr_args.range)) {
+ 				dprintk("%s: waiting on barrier\n", __func__);
+ 				/* FIXME race with wake here */
+ 				rpc_sleep_on(&nfsi->lo_rpcwaitq, task, NULL);
+-				spin_lock(&calldata->inode->i_lock);
+-				nfsi->layout->plh_block_lgets--;
+-				nfsi->layout->plh_outstanding--;
+-				if (!pnfs_layoutgets_blocked(nfsi->layout, NULL))
+-					rpc_wake_up(&nfsi->lo_rpcwaitq_stateid);
+-				spin_unlock(&calldata->inode->i_lock);
+-				put_layout_hdr(calldata->inode);
++				nfs4_layoutreturn_file_release(calldata->inode);
+ 				return;
+ 			}
+ 		}
+@@ -5627,8 +5611,8 @@ nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
+ 	rpc_call_start(task);
+ }
+ 
+-static void nfs4_layoutreturn_set_stateid(struct inode *ino,
+-					  struct nfs4_layoutreturn_res *res)
++void nfs4_layoutreturn_set_stateid(struct inode *ino,
++				   struct nfs4_layoutreturn_res *res)
+ {
+ 	struct pnfs_layout_hdr *lo = NFS_I(ino)->layout;
+ 
+@@ -5663,23 +5647,26 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ 	dprintk("<-- %s\n", __func__);
+ }
+ 
++void nfs4_layoutreturn_file_release(struct inode *ino)
 +{
-+	char id[MAX_ID_LEN];
-+	uid_t uid = 0;
-+	gid_t gid = 0;
-+	int rc;
++	struct pnfs_layout_hdr *lo = NFS_I(ino)->layout;
 +
-+	if (type == USER) {
-+		rc = nfs4_owner_to_uid(name_at_domain, &uid);
-+		sprintf(id, "%u", uid);
-+	} else {
-+		rc = nfs4_group_owner_to_gid(name_at_domain, &gid);
-+		sprintf(id, "%u", gid);
-+	}
-+
-+	if (rc == 0)
-+		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
-+
-+	return rc;
++	spin_lock(&ino->i_lock);
++	lo->plh_block_lgets--;
++	lo->plh_outstanding--;
++	if (!pnfs_layoutgets_blocked(lo, NULL))
++		rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq_stateid);
++	spin_unlock(&ino->i_lock);
++	put_layout_hdr(ino);
 +}
 +
-+/*
-+ * Find the name@domain string from either a user or group id
-+ */
-+int name_lookup(char *id, key_serial_t key, int type)
+ static void nfs4_layoutreturn_release(void *calldata)
+ {
+ 	struct nfs4_layoutreturn *lrp = calldata;
+ 
+ 	dprintk("--> %s return_type %d\n", __func__, lrp->args.return_type);
+-	if (lrp->args.return_type == RETURN_FILE) {
+-		struct inode *ino = lrp->args.inode;
+-		struct pnfs_layout_hdr *lo = NFS_I(ino)->layout;
+-
+-		spin_lock(&ino->i_lock);
+-		lo->plh_block_lgets--;
+-		lo->plh_outstanding--;
+-		if (!pnfs_layoutgets_blocked(lo, NULL))
+-			rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq_stateid);
+-		spin_unlock(&ino->i_lock);
+-		put_layout_hdr(ino);
+-	}
++	if (lrp->args.return_type == RETURN_FILE)
++		nfs4_layoutreturn_file_release(lrp->args.inode);
+ 	kfree(calldata);
+ 	dprintk("<-- %s\n", __func__);
+ }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index b016ec8..1804f35 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -338,6 +338,10 @@ static int nfs4_stat_to_errno(int);
+ #else /* CONFIG_NFS_V4_1 */
+ #define encode_sequence_maxsz	0
+ #define decode_sequence_maxsz	0
++#define encode_layoutcommit_maxsz 0
++#define decode_layoutcommit_maxsz 0
++#define encode_layoutreturn_maxsz 0
++#define decode_layoutreturn_maxsz 0
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #define NFS4_enc_compound_sz	(1024)  /* XXX: large enough? */
+@@ -1929,6 +1933,22 @@ encode_layoutreturn(struct xdr_stream *xdr,
+ 	hdr->nops++;
+ 	hdr->replen += decode_layoutreturn_maxsz;
+ }
++#else
++static int
++encode_layoutcommit(struct xdr_stream *xdr,
++		    const struct nfs4_layoutcommit_op_args *args,
++		    struct compound_hdr *hdr)
 +{
-+	char name[IDMAP_NAMESZ];
-+	char domain[NFS4_MAX_DOMAIN_LEN];
-+	uid_t uid;
-+	gid_t gid;
-+	int rc;
-+
-+	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
-+	if (rc != 0) {
-+		rc = -1;
-+		goto out;
-+	}
-+
-+	if (type == USER) {
-+		uid = atoi(id);
-+		rc = nfs4_uid_to_name(uid, domain, name, IDMAP_NAMESZ);
-+	} else {
-+		gid = atoi(id);
-+		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
-+	}
-+
-+	if (rc == 0)
-+		rc = keyctl_instantiate(key, &name, strlen(name), 0);
-+
-+out:
-+	return rc;
++	return 0;
 +}
 +
-+int main(int argc, char **argv)
++static void
++encode_layoutreturn(struct xdr_stream *xdr,
++		    const struct nfs4_layoutreturn_args *args,
++		    struct compound_hdr *hdr)
 +{
-+	char *arg;
-+	char *value;
-+	char *type;
-+	int rc = 1;
-+	int timeout = 600;
-+	key_serial_t key;
-+
-+	if (argc < 3)
-+		return 1;
-+
-+	arg = malloc(sizeof(char) * strlen(argv[2]) + 1);
-+	strcpy(arg, argv[2]);
-+	type = strtok(arg, ":");
-+	value = strtok(NULL, ":");
-+
-+	if (argc == 4) {
-+		timeout = atoi(argv[3]);
-+		if (timeout < 0)
-+			timeout = 0;
-+	}
-+
-+	key = strtol(argv[1], NULL, 10);
-+
-+	if (strcmp(type, "uid") == 0)
-+		rc = id_lookup(value, key, USER);
-+	else if (strcmp(type, "gid") == 0)
-+		rc = id_lookup(value, key, GROUP);
-+	else if (strcmp(type, "user") == 0)
-+		rc = name_lookup(value, key, USER);
-+	else if (strcmp(type, "group") == 0)
-+		rc = name_lookup(value, key, GROUP);
-+
-+	/* Set timeout to 5 (600 seconds) minutes */
-+	if (rc == 0)
-+		keyctl_set_timeout(key, timeout);
-+
-+	free(arg);
-+	return rc;
 +}
-diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
-new file mode 100644
-index 0000000..6c1a2d4
---- /dev/null
-+++ b/utils/nfsidmap/nfsidmap.man
-@@ -0,0 +1,60 @@
-+.\"
-+.\"@(#)nfsidmap(8) - The NFS idmapper upcall program
-+.\"
-+.\" Copyright (C) 2010 Bryan Schumaker <bjschuma@netapp.com>
-+.TH nfsidmap 5 "1 October 2010"
-+.SH NAME
-+nfsidmap \- The NFS idmapper upcall program
-+.SH DESCRIPTION
-+The file
-+.I /usr/sbin/nfsidmap
-+is used by the NFS idmapper to translate user and group ids into names, and to
-+translate user and group names into ids. Idmapper uses request-key to perform
-+the upcall and cache the result.
-+.I /usr/sbin/nfsidmap
-+should only be called by request-key, and will perform the translation and
-+initialize a key with the resulting information.
-+.PP
-+NFS_USE_NEW_IDMAPPER must be selected when configuring the kernel to use this
-+feature.
-+.SH CONFIGURING
-+The file
-+.I /etc/request-key.conf
-+will need to be modified so
-+.I /sbin/request-key
-+can properly direct the upcall. The following line should be added before a call
-+to keyctl negate:
-+.PP
-+create	nfs_idmap	*	*	/usr/sbin/nfsidmap %k %d 600
-+.PP
-+This will direct all nfs_idmap requests to the program
-+.I /usr/sbin/nfsidmap
-+The last parameter, 600, defines how many seconds into the future the key will
-+expire.  This is an optional parameter for
-+.I /usr/sbin/nfsidmap
-+and will default to 600 seconds when not specified.
-+.PP
-+The idmapper system uses four key descriptions:
-+.PP
-+	  uid: Find the UID for the given user
-+.br
-+	  gid: Find the GID for the given group
-+.br
-+	 user: Find the user name for the given UID
-+.br
-+	group: Find the group name for the given GID
-+.PP
-+You can choose to handle any of these individually, rather than using the
-+generic upcall program.  If you would like to use your own program for a uid
-+lookup then you would edit your request-key.conf so it looks similar to this:
-+.PP
-+create	nfs_idmap	uid:*	*	/some/other/program %k %d 600
-+.br
-+create	nfs_idmap	*		*	/usr/sbin/nfsidmap %k %d 600
-+.PP
-+Notice that the new line was added above the line for the generic program.
-+request-key will find the first matching line and run the corresponding program.
-+In this case, /some/other/program will handle all uid lookups, and
-+/usr/sbin/nfsidmap will handle gid, user, and group lookups.
-+.SH AUTHOR
-+Bryan Schumaker, <bjschuma@netapp.com>
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ /*
+@@ -5332,6 +5352,20 @@ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+ 	return -EIO;
+ }
++
++#else
++
++static int decode_layoutcommit(struct xdr_stream *xdr)
++{
++	return 0;
++}
++
++static int decode_layoutreturn(struct xdr_stream *xdr,
++			       struct nfs4_layoutreturn_res *res)
++{
++	return 0;
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ /*
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 4812288..e553311 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -188,6 +188,9 @@ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
+ extern int nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data,
+ 				   int issync);
+ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool wait);
++extern void nfs4_layoutreturn_file_release(struct inode *ino);
++extern void nfs4_layoutreturn_set_stateid(struct inode *ino,
++					  struct nfs4_layoutreturn_res *res);
+ 
+ /* pnfs.c */
+ void get_layout_hdr(struct pnfs_layout_hdr *lo);
+@@ -399,6 +402,27 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *ino)
+ 	pgio->pg_lseg = NULL;
+ }
+ 
++static inline void nfs4_layoutreturn_file_release(struct inode *ino)
++{
++}
++
++static inline bool pnfs_roc(struct nfs4_closedata *data)
++{
++	return false;
++}
++
++static inline bool pnfs_return_layout_barrier(struct nfs_inode *nfsi,
++					      struct pnfs_layout_range *range)
++{
++	BUG();
++	return false;
++}
++
++static inline void nfs4_layoutreturn_set_stateid(struct inode *ino,
++				struct nfs4_layoutreturn_res *res)
++{
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #endif /* FS_NFS_PNFS_H */
 -- 
-1.7.3.2
+1.7.2.1
 
