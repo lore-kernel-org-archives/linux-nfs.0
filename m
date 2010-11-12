@@ -1,87 +1,165 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34722 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:47184 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752193Ab0K3Sjn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 13:39:43 -0500
-Date: Tue, 30 Nov 2010 13:39:41 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Nick Piggin <npiggin@gmail.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: lifetime of DCACHE_DISCONECTED dentries
-Message-ID: <20101130183941.GB29091@fieldses.org>
-References: <20101112184353.GA32745@fieldses.org>
- <AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
- <20101115174837.GB10044@fieldses.org>
- <AANLkTim1QjTwOZ4SHdMy8Y6TOAnaOYtTwgwHXfH5H5Xn@mail.gmail.com>
- <AANLkTinMq1W1vx-jZnf7cb1cAnh9OyoVRYtVS7zpujfs@mail.gmail.com>
- <20101129193248.GA9897@fieldses.org>
- <AANLkTikwzDJ_q65==uxDsAhp3h8bU7Rkt7U9gVgRAK0D@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <AANLkTikwzDJ_q65==uxDsAhp3h8bU7Rkt7U9gVgRAK0D@mail.gmail.com>
+	id S1756011Ab0KLItZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Nov 2010 03:49:25 -0500
+Received: from localhost.localdomain (hess01-lxp.hq.netapp.com [10.58.60.52] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAC8n7fN025967
+	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:49:16 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 13/22] pnfs-submit: reorganize struct cb_layoutrecallargs
+Date: Fri, 12 Nov 2010 03:48:35 -0500
+Message-Id: <1289551724-18575-14-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Nov 30, 2010 at 12:00:16PM +1100, Nick Piggin wrote:
-> On Tue, Nov 30, 2010 at 6:32 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Mon, Nov 29, 2010 at 02:56:22PM +1100, Nick Piggin wrote:
-> >> On Tue, Nov 16, 2010 at 5:45 PM, Nick Piggin <npiggin@gmail.com> wrote:
-> >> > On Tue, Nov 16, 2010 at 4:48 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> >> On Sat, Nov 13, 2010 at 10:53:12PM +1100, Nick Piggin wrote:
-> >> >>> On Sat, Nov 13, 2010 at 5:43 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> >
-> >> >>> >        - putfh: look up the filehandle.  The only alias found for the
-> >> >>> >          inode will be DCACHE_UNHASHED alias referenced by the filp
-> >> >>> >          associated with the nfsd open.  d_obtain_alias() doesn't like
-> >> >>> >          this, so it creates a new DCACHE_DISCONECTED dentry and
-> >> >>> >          returns that instead.
-> >> >>>
-> >> >>> This seems to be where the thing goes wrong. It isn't a hashed dentry at
-> >> >>> this point here, so d_obtain_alias should not be making one.
-> >> >>
-> >> >> Sounds sensible.  (But can you think of any actual bugs that will result
-> >> >> from trying to add a new hashed dentry in this case?)
-> >> >
-> >> > Well, this one? :)
-> >> >
-> >> >
-> >> >>> I think the inode i_nlink games are much more appropriate on this side of
-> >> >>> the equation, rather than the dput side (after all, d_obtain_alias is setting
-> >> >>> up an alias for the inode).
-> >> >>>
-> >> >>> Can you even put the link check into __d_find_alias?
-> >> >>>
-> >> >>> -               if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
-> >> >>> +               if (S_ISDIR(inode->i_mode) || !inode->i_nlink ||
-> >> >>> !d_unhashed(alias)) {
-> >> >>>
-> >> >>> Something like that?
-> >> >>
-> >> >> The immediate result of that would be for the close rpc (or any rpc's
-> >> >> sent after the file was unlinked) to fail with ESTALE.
-> >> >
-> >> > Why is that? Seems like it would be a bug, because a hashed dentry may
-> >> > be unhashed at any time concurrently to nfsd operation, so it should be
-> >> > able to tolerate that so long as it has a ref on the inode?
-> >>
-> >> Ping? Did you work out why nfs fails with ESTALE in that case? It seems
-> >> to work in my testing (and do the right thing with freeing the inode).
-> >
-> > Bah, sorry, I read too quickly, got the sense of the test backwards, and
-> > thought you were suggesting __d_find_alias() shouldn't return an alias
-> > in the i_nlink == 0 case!
-> >
-> > Yes, agreed, that should solve my problem.
-> 
-> OK, good.
-> 
-> > But what's the reason for the d_unhashed() check now?  Could we get rid
-> > of it entirely?
-> 
-> Well when the inode still has links I think we actually do want any new
-> references to go to hashed dentries. Definitely for d_splice_alias.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/callback.h      |   12 ++++++++----
+ fs/nfs/callback_proc.c |   16 ++++++++--------
+ fs/nfs/callback_xdr.c  |   21 ++++++++++++---------
+ 3 files changed, 28 insertions(+), 21 deletions(-)
 
-OK, makes sense.  Should we stick a changelog on it and pass it along to
-someone?
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index 0b1f3c4..cea58cc 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -147,13 +147,17 @@ extern unsigned nfs4_callback_recallslot(struct cb_recallslotargs *args,
+ 
+ struct cb_layoutrecallargs {
+ 	struct sockaddr		*cbl_addr;
+-	struct nfs_fh		cbl_fh;
+-	struct pnfs_layout_range cbl_seg;
+-	struct nfs_fsid		cbl_fsid;
+ 	uint32_t		cbl_recall_type;
+ 	uint32_t		cbl_layout_type;
+ 	uint32_t		cbl_layoutchanged;
+-	nfs4_stateid		cbl_stateid;
++	union {
++		struct {
++			struct nfs_fh		cbl_fh;
++			struct pnfs_layout_range cbl_range;
++			nfs4_stateid		cbl_stateid;
++		};
++		struct nfs_fsid		cbl_fsid;
++	};
+ };
+ 
+ extern unsigned nfs4_callback_layoutrecall(
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index d02997a..6e0fc40 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -233,13 +233,13 @@ static int pnfs_recall_layout(void *data)
+ 	rl = *args->rl;
+ 
+ 	/* support whole file layouts only */
+-	rl.cbl_seg.offset = 0;
+-	rl.cbl_seg.length = NFS4_MAX_UINT64;
++	rl.cbl_range.offset = 0;
++	rl.cbl_range.length = NFS4_MAX_UINT64;
+ 
+ 	if (rl.cbl_recall_type == RETURN_FILE) {
+ 		if (pnfs_is_next_layout_stateid(NFS_I(inode)->layout,
+ 						rl.cbl_stateid))
+-			status = pnfs_return_layout(inode, &rl.cbl_seg,
++			status = pnfs_return_layout(inode, &rl.cbl_range,
+ 						    &rl.cbl_stateid, RETURN_FILE,
+ 						    false);
+ 		else
+@@ -261,7 +261,7 @@ static int pnfs_recall_layout(void *data)
+ 	/* IMPROVEME: This loop is inefficient, running in O(|s_inodes|^2) */
+ 	while ((ino = nfs_layoutrecall_find_inode(clp, &rl)) != NULL) {
+ 		/* FIXME: need to check status on pnfs_return_layout */
+-		pnfs_return_layout(ino, &rl.cbl_seg, NULL, RETURN_FILE, false);
++		pnfs_return_layout(ino, &rl.cbl_range, NULL, RETURN_FILE, false);
+ 		iput(ino);
+ 	}
+ 
+@@ -277,7 +277,7 @@ static int pnfs_recall_layout(void *data)
+ 	lrp->args.layout_type = rl.cbl_layout_type;
+ 	lrp->args.return_type = rl.cbl_recall_type;
+ 	lrp->clp = clp;
+-	lrp->args.range = rl.cbl_seg;
++	lrp->args.range = rl.cbl_range;
+ 	lrp->args.inode = inode;
+ 	nfs4_proc_layoutreturn(lrp, true);
+ 
+@@ -338,9 +338,9 @@ static int pnfs_recall_all_layouts(struct nfs_client *clp)
+ 	int status = 0;
+ 
+ 	rl.cbl_recall_type = RETURN_ALL;
+-	rl.cbl_seg.iomode = IOMODE_ANY;
+-	rl.cbl_seg.offset = 0;
+-	rl.cbl_seg.length = NFS4_MAX_UINT64;
++	rl.cbl_range.iomode = IOMODE_ANY;
++	rl.cbl_range.offset = 0;
++	rl.cbl_range.length = NFS4_MAX_UINT64;
+ 
+ 	/* we need the inode to get the nfs_server struct */
+ 	inode = nfs_layoutrecall_find_inode(clp, &rl);
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 01688ce..b963c58 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -229,6 +229,7 @@ static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
+ {
+ 	__be32 *p;
+ 	__be32 status = 0;
++	uint32_t iomode;
+ 
+ 	args->cbl_addr = svc_addr(rqstp);
+ 	p = read_buf(xdr, 4 * sizeof(uint32_t));
+@@ -238,11 +239,15 @@ static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
+ 	}
+ 
+ 	args->cbl_layout_type = ntohl(*p++);
+-	args->cbl_seg.iomode = ntohl(*p++);
++	/* Depite the spec's xdr, iomode really belongs in the FILE switch,
++	 * as it is unuseable and ignored with the other types.
++	 */
++	iomode = ntohl(*p++);
+ 	args->cbl_layoutchanged = ntohl(*p++);
+ 	args->cbl_recall_type = ntohl(*p++);
+ 
+ 	if (likely(args->cbl_recall_type == RETURN_FILE)) {
++		args->cbl_range.iomode = iomode;
+ 		status = decode_fh(xdr, &args->cbl_fh);
+ 		if (unlikely(status != 0))
+ 			goto out;
+@@ -252,8 +257,8 @@ static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
+ 			status = htonl(NFS4ERR_BADXDR);
+ 			goto out;
+ 		}
+-		p = xdr_decode_hyper(p, &args->cbl_seg.offset);
+-		p = xdr_decode_hyper(p, &args->cbl_seg.length);
++		p = xdr_decode_hyper(p, &args->cbl_range.offset);
++		p = xdr_decode_hyper(p, &args->cbl_range.length);
+ 		status = decode_stateid(xdr, &args->cbl_stateid);
+ 		if (unlikely(status != 0))
+ 			goto out;
+@@ -266,12 +271,10 @@ static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
+ 		p = xdr_decode_hyper(p, &args->cbl_fsid.major);
+ 		p = xdr_decode_hyper(p, &args->cbl_fsid.minor);
+ 	}
+-	dprintk("%s: ltype 0x%x iomode %d changed %d recall_type %d "
+-		"fsid %llx-%llx fhsize %d\n", __func__,
+-		args->cbl_layout_type, args->cbl_seg.iomode,
+-		args->cbl_layoutchanged, args->cbl_recall_type,
+-		args->cbl_fsid.major, args->cbl_fsid.minor,
+-		args->cbl_fh.size);
++	dprintk("%s: ltype 0x%x iomode %d changed %d recall_type %d\n",
++		__func__,
++		args->cbl_layout_type, iomode,
++		args->cbl_layoutchanged, args->cbl_recall_type);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+ 	return status;
+-- 
+1.7.2.1
 
---b.
