@@ -1,193 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:31408 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751149Ab0K3NeO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 08:34:14 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/4] NFSv4: Send unmapped uid/gids to the server when using auth_sys
-Date: Tue, 30 Nov 2010 08:34:03 -0500
-Message-Id: <1291124043-5074-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1291124043-5074-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1291124043-5074-1-git-send-email-Trond.Myklebust@netapp.com>
- <1291124043-5074-2-git-send-email-Trond.Myklebust@netapp.com>
- <1291124043-5074-3-git-send-email-Trond.Myklebust@netapp.com>
- <1291124043-5074-4-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:38720 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753628Ab0KMLxP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Nov 2010 06:53:15 -0500
+In-Reply-To: <20101112184353.GA32745@fieldses.org>
+References: <20101112184353.GA32745@fieldses.org>
+Date: Sat, 13 Nov 2010 22:53:12 +1100
+Message-ID: <AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
+Subject: Re: lifetime of DCACHE_DISCONECTED dentries
+From: Nick Piggin <npiggin@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The new behaviour is enabled using the new module parameter
-'nfs4_disable_idmapping'.
+On Sat, Nov 13, 2010 at 5:43 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> DCACHE_DISCONECTED dentries aren't always getting destroyed as soon as
+> I'd have expected in the NFSv4 case.
+>
+> I'm not sure what the right fix is; any ideas?  The below at least
+> demonstrates the problem.
+>
+> --b.
+>
+> commit bb125ffbe5fc3f80ac7a5b20f51cc542c175cd49
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Thu Nov 11 19:22:00 2010 -0500
+>
+>    dput: free DCACHE_DISCONNECTED dentries sooner
+>
+>    DCACHE_DISCONECTED dentries are normally left around for the benefit of
+>    future nfsd operations.  But there's no point keeping them around once
+>    the inode has been deleted.
+>
+>    Without this patch
+>
+>        client$ mount -tnfs4 server:/export/ /mnt/
+>        client$ tail -f /mnt/FOO
+>        ...
+>        server$ df -i /export
+>        server$ rm /export/FOO
+>        (^C the tail -f)
+>        server$ df -i /export
+>        server$ echo 2 >/proc/sys/vm/drop_caches
+>        server$ df -i /export
+>
+>    the df's will show that the inode is not freed on the filesystem until
+>    the last step, when it could have been freed after killing the client's
+>    tail -f.  On-disk data won't be deallocated either, leading to possible
+>    spurious ENOSPC.
+>
+>    This occurs because when the client does the close, it arrives in a
+>    compound with a putfh and a close, processed like:
+>
+>        - putfh: look up the filehandle.  The only alias found for the
+>          inode will be DCACHE_UNHASHED alias referenced by the filp
+>          associated with the nfsd open.  d_obtain_alias() doesn't like
+>          this, so it creates a new DCACHE_DISCONECTED dentry and
+>          returns that instead.
 
-Note that if the server rejects an unmapped uid or gid, then
-the client will automatically switch back to using the idmapper.
+This seems to be where the thing goes wrong. It isn't a hashed dentry at
+this point here, so d_obtain_alias should not be making one.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- Documentation/kernel-parameters.txt |    8 ++++++++
- fs/nfs/client.c                     |   16 ++++++++++++++++
- fs/nfs/idmap.c                      |   21 +++++++++++++--------
- fs/nfs/nfs4proc.c                   |   13 ++++++++++++-
- include/linux/nfs_fs_sb.h           |    1 +
- 5 files changed, 50 insertions(+), 9 deletions(-)
+I think the inode i_nlink games are much more appropriate on this side of
+the equation, rather than the dput side (after all, d_obtain_alias is setting
+up an alias for the inode).
 
-diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
-index cdd2a6e..51a74a3 100644
---- a/Documentation/kernel-parameters.txt
-+++ b/Documentation/kernel-parameters.txt
-@@ -1573,6 +1573,14 @@ and is between 256 and 4096 characters. It is defined in the file
- 			of returning the full 64-bit number.
- 			The default is to return 64-bit inode numbers.
- 
-+	nfs.nfs4_disable_idmapping=
-+			[NFSv4] When set, this option disables the NFSv4
-+			idmapper on the client, but only if the mount
-+			is using the 'sec=sys' security flavour. This may
-+			make migration from legacy NFSv2/v3 systems easier
-+			provided that the server has the appropriate support.
-+			The default is to always enable NFSv4 idmapping.
-+
- 	nmi_debug=	[KNL,AVR32,SH] Specify one or more actions to take
- 			when a NMI is triggered.
- 			Format: [state][,regs][,debounce][,die]
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 0870d0d..fb84771 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -58,6 +58,11 @@ static LIST_HEAD(nfs_volume_list);
- static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
- 
- /*
-+ * Turn off NFSv4 uid/gid mapping when using AUTH_SYS
-+ */
-+static int nfs4_disable_idmapping = 0;
-+
-+/*
-  * RPC cruft for NFS
-  */
- static struct rpc_version *nfs_version[5] = {
-@@ -1387,6 +1392,13 @@ static int nfs4_init_server(struct nfs_server *server,
- 	if (error < 0)
- 		goto error;
- 
-+	/*
-+	 * Don't use NFS uid/gid mapping if we're using AUTH_SYS or lower
-+	 * authentication.
-+	 */
-+	if (nfs4_disable_idmapping && data->auth_flavors[0] == RPC_AUTH_UNIX)
-+		server->caps |= NFS_CAP_UIDGID_NOMAP;
-+
- 	if (data->rsize)
- 		server->rsize = nfs_block_size(data->rsize, NULL);
- 	if (data->wsize)
-@@ -1808,3 +1820,7 @@ void nfs_fs_proc_exit(void)
- }
- 
- #endif /* CONFIG_PROC_FS */
-+
-+module_param(nfs4_disable_idmapping, bool, 0644);
-+MODULE_PARM_DESC(nfs4_disable_idmapping,
-+		"Turn off NFSv4 idmapping when using 'sec=sys'");
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 114de76..d816bba 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -257,17 +257,20 @@ int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size
- 
- int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
- {
--	int ret;
--	ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
-+	int ret = -EINVAL;
-+
-+	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
-+		ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
- 	if (ret < 0)
- 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
- 	return ret;
- }
- int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf, size_t buflen)
- {
--	int ret;
-+	int ret = -EINVAL;
- 
--	ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
-+	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
-+		ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
- 	if (ret < 0)
- 		ret = nfs_map_numeric_to_string(gid, buf, buflen);
- 	return ret;
-@@ -750,9 +753,10 @@ int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size
- int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
- {
- 	struct idmap *idmap = server->nfs_client->cl_idmap;
--	int ret;
-+	int ret = -EINVAL;
- 
--	ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
-+	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
-+		ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
- 	if (ret < 0)
- 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
- 	return ret;
-@@ -760,9 +764,10 @@ int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, s
- int nfs_map_gid_to_group(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
- {
- 	struct idmap *idmap = server->nfs_client->cl_idmap;
--	int ret;
-+	int ret = -EINVAL;
- 
--	ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
-+	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
-+		ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
- 	if (ret < 0)
- 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
- 	return ret;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 89b0430..8f945a6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -239,7 +239,7 @@ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
- /* This is the error handling routine for processes that are allowed
-  * to sleep.
-  */
--static int nfs4_handle_exception(const struct nfs_server *server, int errorcode, struct nfs4_exception *exception)
-+static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_exception *exception)
- {
- 	struct nfs_client *clp = server->nfs_client;
- 	struct nfs4_state *state = exception->state;
-@@ -290,6 +290,17 @@ static int nfs4_handle_exception(const struct nfs_server *server, int errorcode,
- 				break;
- 		case -NFS4ERR_OLD_STATEID:
- 			exception->retry = 1;
-+			break;
-+		case -NFS4ERR_BADOWNER:
-+			if (server->caps & NFS_CAP_UIDGID_NOMAP) {
-+				server->caps &= ~NFS_CAP_UIDGID_NOMAP;
-+				exception->retry = 1;
-+				printk(KERN_WARNING "NFS: v4 server %s "
-+						"does not accept raw "
-+						"uid/gids. "
-+						"Reenabling the idmapper.\n",
-+						server->client->cl_hostname);
-+			}
- 	}
- 	/* We failed to handle the error */
- 	return nfs4_map_errors(ret);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 452d964..6309262 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -177,6 +177,7 @@ struct nfs_server {
- #define NFS_CAP_CTIME		(1U << 12)
- #define NFS_CAP_MTIME		(1U << 13)
- #define NFS_CAP_POSIX_LOCK	(1U << 14)
-+#define NFS_CAP_UIDGID_NOMAP	(1U << 15)
- 
- 
- /* maximum number of slots to use */
--- 
-1.7.3.2
+Can you even put the link check into __d_find_alias?
 
+-               if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
++               if (S_ISDIR(inode->i_mode) || !inode->i_nlink ||
+!d_unhashed(alias)) {
+
+Something like that?
