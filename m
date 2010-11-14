@@ -1,264 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17286 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756005Ab0KLItZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Nov 2010 03:49:25 -0500
-Received: from localhost.localdomain (hess01-lxp.hq.netapp.com [10.58.60.52] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAC8n7fL025967
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:49:14 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:34847 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756434Ab0KNSMr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Nov 2010 13:12:47 -0500
+From: Benny Halevy <bhalevy@panasas.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 11/22] pnfs-submit: remove _pnfs_can_return_lseg call from pnfs_clear_lseg_list
-Date: Fri, 12 Nov 2010 03:48:33 -0500
-Message-Id: <1289551724-18575-12-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
-References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+Cc: Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 2/2] pnfs-submit: handle NFS4ERR_DELEG_REVOKED for LAYOUTRETURN
+Date: Sun, 14 Nov 2010 20:12:41 +0200
+Message-Id: <1289758361-25204-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <1289744517-27949-1-git-send-email-bhalevy@panasas.com>
+References: <1289744517-27949-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Instead, have mark_invalid function that marks lseg invalid and
-removes the reference that holds it in the list.  Now when io is finished,
-the lseg will automatically be removed from the list.  This is
-at the heart of many of the upcoming cb_layoutrecall changes.
+When getting NFS4ERR_DELEG_REVOKED just clear the lseg list.
+If this was part of a singular LAYOUTRETURN call, simulate success
+(for now).  If this was part of return on close, retry the close
+compound without sending LAYOUTCOMMIT nor LAYOUTRETURN.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/pnfs.c |  130 +++++++++++++++++++++++++++++++++++----------------------
- 1 files changed, 80 insertions(+), 50 deletions(-)
+ fs/nfs/nfs4proc.c |   40 +++++++++++++++++++++++++++++++++++++---
+ fs/nfs/pnfs.c     |    6 ++++--
+ fs/nfs/pnfs.h     |    3 +++
+ 3 files changed, 44 insertions(+), 5 deletions(-)
 
+Untested yet...
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 76b3c7d..7aa902d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1880,6 +1880,17 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 			nfs4_close_clear_stateid_flags(state,
+ 					calldata->arg.fmode);
+ 			break;
++		case -NFS4ERR_DELEG_REVOKED:
++			if (calldata->res.op_bitmask & (NFS4_HAS_LAYOUTCOMMIT |
++							NFS4_HAS_LAYOUTRETURN)) {
++				set_bit(NFS_LAYOUT_REVOKED,
++					&NFS_I(calldata->inode)->layout->plh_flags);
++				/* Retry without layout operations as
++				 * pnfs_roc will find roc_iomode==0 next time around
++				 */
++				rpc_restart_call_prepare(task);
++				break;
++			}
+ 		case -NFS4ERR_STALE_STATEID:
+ 		case -NFS4ERR_OLD_STATEID:
+ 		case -NFS4ERR_BAD_STATEID:
+@@ -5639,6 +5650,7 @@ void nfs4_layoutreturn_set_stateid(struct inode *ino,
+ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_layoutreturn *lrp = calldata;
++	struct inode *ino = lrp->args.inode;
+ 	struct nfs_server *server;
+ 
+ 	dprintk("--> %s\n", __func__);
+@@ -5647,28 +5659,50 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ 		return;
+ 
+ 	if (lrp->args.return_type == RETURN_FILE)
+-		server = NFS_SERVER(lrp->args.inode);
++		server = NFS_SERVER(ino);
+ 	else
+ 		server = NULL;
+ 	if (nfs4_async_handle_error(task, server, NULL, lrp->clp) == -EAGAIN) {
+ 		nfs_restart_rpc(task, lrp->clp);
+ 		return;
+ 	}
+-	if ((task->tk_status == 0) && (lrp->args.return_type == RETURN_FILE))
+-		nfs4_layoutreturn_set_stateid(lrp->args.inode, &lrp->res);
++	switch (task->tk_status) {
++	case -NFS4ERR_DELEG_REVOKED:
++		task->tk_status = 0;	/* TODO: revalidate remaining layouts? */
++		if (lrp->args.return_type == RETURN_FILE)
++			set_bit(NFS_LAYOUT_REVOKED, &NFS_I(ino)->layout->plh_flags);
++		break;
++	case 0:
++		if (lrp->args.return_type == RETURN_FILE)
++			nfs4_layoutreturn_set_stateid(lrp->args.inode, &lrp->res);
++	}
+ 	dprintk("<-- %s\n", __func__);
+ }
+ 
+ void nfs4_layoutreturn_file_release(struct inode *ino)
+ {
+ 	struct pnfs_layout_hdr *lo = NFS_I(ino)->layout;
++	LIST_HEAD(tmp_list);
+ 
+ 	spin_lock(&ino->i_lock);
++	if (test_bit(NFS_LAYOUT_REVOKED, &lo->plh_flags)) {
++		struct pnfs_layout_range range = {
++			.iomode = IOMODE_ANY,
++			.offset = 0,
++			.length = NFS4_MAX_UINT64,
++		};
++
++		/* layout driver's free_lseg may block, hence we don't
++		 * call pnfs_free_lseg_list under the spin_lock */
++		pnfs_clear_lseg_list(lo, &tmp_list, &range);
++		clear_bit(NFS_LAYOUT_REVOKED, &lo->plh_flags);
++	}
+ 	lo->plh_block_lgets--;
+ 	lo->plh_outstanding--;
+ 	if (!pnfs_layoutgets_blocked(lo, NULL))
+ 		rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq_stateid);
+ 	spin_unlock(&ino->i_lock);
++	pnfs_free_lseg_list(&tmp_list);
+ 	put_layout_hdr(ino);
+ }
+ 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 120590b..1147eb3 100644
+index 90a868b..0b7fc1d 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -272,10 +272,42 @@ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- 	lseg->layout = lo;
- }
- 
-+static void
-+_put_lseg_common(struct pnfs_layout_segment *lseg)
-+{
-+	BUG_ON(lseg->valid == true);
-+	list_del(&lseg->fi_list);
-+	if (list_empty(&lseg->layout->segs)) {
-+		struct nfs_client *clp;
-+
-+		clp = NFS_SERVER(lseg->layout->inode)->nfs_client;
-+		spin_lock(&clp->cl_lock);
-+		/* List does not take a reference, so no need for put here */
-+		list_del_init(&lseg->layout->layouts);
-+		spin_unlock(&clp->cl_lock);
-+		pnfs_invalidate_layout_stateid(lseg->layout);
-+	}
-+	rpc_wake_up(&NFS_I(lseg->layout->inode)->lo_rpcwaitq);
-+}
-+
-+/* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
-+ * could sleep, so must be called outside of the lock.
-+ */
-+static void
-+put_lseg_locked(struct pnfs_layout_segment *lseg,
-+		struct list_head *tmp_list)
-+{
-+	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
-+		atomic_read(&lseg->pls_refcount), lseg->valid);
-+	if (atomic_dec_and_test(&lseg->pls_refcount)) {
-+		_put_lseg_common(lseg);
-+		list_add(&lseg->fi_list, tmp_list);
-+	}
-+}
-+
- void
- put_lseg(struct pnfs_layout_segment *lseg)
- {
--	bool do_wake_up;
- 	struct inode *ino;
- 
- 	if (!lseg)
-@@ -283,15 +315,14 @@ put_lseg(struct pnfs_layout_segment *lseg)
- 
- 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
- 		atomic_read(&lseg->pls_refcount), lseg->valid);
--	do_wake_up = !lseg->valid;
- 	ino = lseg->layout->inode;
--	if (atomic_dec_and_test(&lseg->pls_refcount)) {
-+	if (atomic_dec_and_lock(&lseg->pls_refcount, &ino->i_lock)) {
-+		_put_lseg_common(lseg);
-+		spin_unlock(&ino->i_lock);
- 		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
- 		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
- 		put_layout_hdr(ino);
+@@ -375,7 +375,7 @@ static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
  	}
--	if (do_wake_up)
--		rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq);
- }
- EXPORT_SYMBOL_GPL(put_lseg);
- 
-@@ -314,10 +345,18 @@ should_free_lseg(struct pnfs_layout_range *lseg_range,
- 		lseg_range->iomode == recall_range->iomode);
  }
  
--static bool
--_pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
-+static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
-+			      struct list_head *tmp_list)
+-static void
++void
+ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list,
+ 		     struct pnfs_layout_range *range)
  {
--	return atomic_read(&lseg->pls_refcount) == 1;
-+	assert_spin_locked(&lseg->layout->inode->i_lock);
-+	if (lseg->valid) {
-+		lseg->valid = false;
-+		/* Remove the reference keeping the lseg in the
-+		 * list.  It will now be removed when all
-+		 * outstanding io is finished.
-+		 */
-+		put_lseg_locked(lseg, tmp_list);
-+	}
- }
+@@ -644,10 +644,12 @@ pnfs_roc(struct nfs4_closedata *data)
+ 	spin_lock(&data->inode->i_lock);
+ 	lo = NFS_I(data->inode)->layout;
+ 	if (!lo || lo->roc_iomode == 0 ||
+-	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags))
++	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
++	    test_bit(NFS_LAYOUT_REVOKED, &lo->plh_flags))
+ 		goto out_nolayout;
  
- static void
-@@ -330,42 +369,31 @@ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list,
- 		__func__, lo, range->offset, range->length, range->iomode);
+ 	range.iomode = lo->roc_iomode;
++	lo->roc_iomode = 0;
+ 	list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
+ 		if (should_free_lseg(&lseg->range, &range)) {
+ 			mark_lseg_invalid(lseg, &tmp_list);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index e553311..471813a 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -56,6 +56,7 @@ enum {
+ 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
+ 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
+ 	NFS_LAYOUT_NEED_LCOMMIT,	/* LAYOUTCOMMIT needed */
++	NFS_LAYOUT_REVOKED,		/* layout revoked by the server */
+ };
  
- 	assert_spin_locked(&lo->inode->i_lock);
--	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list) {
--		if (!should_free_lseg(&lseg->range, range) ||
--		    !_pnfs_can_return_lseg(lseg))
--			continue;
--		dprintk("%s: freeing lseg %p iomode %d "
--			"offset %llu length %llu\n", __func__,
--			lseg, lseg->range.iomode, lseg->range.offset,
--			lseg->range.length);
--		list_move(&lseg->fi_list, tmp_list);
--	}
--	if (list_empty(&lo->segs)) {
--		struct nfs_client *clp;
--
--		clp = NFS_SERVER(lo->inode)->nfs_client;
--		spin_lock(&clp->cl_lock);
--		/* List does not take a reference, so no need for put here */
--		list_del_init(&lo->layouts);
--		spin_unlock(&clp->cl_lock);
--		pnfs_invalidate_layout_stateid(lo);
--	}
--
-+	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list)
-+		if (should_free_lseg(&lseg->range, range)) {
-+			dprintk("%s: freeing lseg %p iomode %d "
-+				"offset %llu length %llu\n", __func__,
-+				lseg, lseg->range.iomode, lseg->range.offset,
-+				lseg->range.length);
-+			mark_lseg_invalid(lseg, tmp_list);
-+		}
- 	dprintk("%s:Return\n", __func__);
- }
- 
- static void
--pnfs_free_lseg_list(struct list_head *tmp_list)
-+pnfs_free_lseg_list(struct list_head *free_me)
- {
--	struct pnfs_layout_segment *lseg;
-+	struct pnfs_layout_segment *lseg, *tmp;
-+	struct inode *ino;
- 
--	while (!list_empty(tmp_list)) {
--		lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
--				fi_list);
--		dprintk("%s calling put_lseg on %p\n", __func__, lseg);
--		list_del(&lseg->fi_list);
--		put_lseg(lseg);
-+	list_for_each_entry_safe(lseg, tmp, free_me, fi_list) {
-+		BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
-+		ino = lseg->layout->inode;
-+		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
-+		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
-+		put_layout_hdr(ino);
- 	}
-+	INIT_LIST_HEAD(free_me);
- }
- 
- void
-@@ -530,6 +558,10 @@ has_layout_to_return(struct pnfs_layout_hdr *lo,
- 	return out;
- }
- 
-+/* Return true if there is layout based io in progress in the given range.
-+ * Assumes range has already been marked invalid, and layout marked to
-+ * prevent any new lseg from being inserted.
-+ */
- bool
- pnfs_return_layout_barrier(struct nfs_inode *nfsi,
- 			   struct pnfs_layout_range *range)
-@@ -538,17 +570,11 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
- 	bool ret = false;
- 
- 	spin_lock(&nfsi->vfs_inode.i_lock);
--	list_for_each_entry(lseg, &nfsi->layout->segs, fi_list) {
--		if (!should_free_lseg(&lseg->range, range))
--			continue;
--		lseg->valid = false;
--		if (!_pnfs_can_return_lseg(lseg)) {
--			dprintk("%s: wait on lseg %p refcount %d\n",
--				__func__, lseg,
--				atomic_read(&lseg->pls_refcount));
-+	list_for_each_entry(lseg, &nfsi->layout->segs, fi_list)
-+		if (should_free_lseg(&lseg->range, range)) {
- 			ret = true;
-+			break;
- 		}
--	}
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
- 	dprintk("%s:Return %d\n", __func__, ret);
- 	return ret;
-@@ -558,13 +584,11 @@ void
- pnfs_layoutreturn_release(struct nfs4_layoutreturn *lrp)
- {
- 	struct pnfs_layout_hdr *lo;
--	LIST_HEAD(tmp_list);
- 
- 	if (lrp->args.return_type != RETURN_FILE)
- 		return;
- 	lo = NFS_I(lrp->args.inode)->layout;
- 	spin_lock(&lrp->args.inode->i_lock);
--	pnfs_clear_lseg_list(lo, &tmp_list, &lrp->args.range);
- 	lo->plh_block_lgets--;
- 	if (!pnfs_layoutgets_blocked(lo))
- 		rpc_wake_up(&NFS_I(lo->inode)->lo_rpcwaitq_stateid);
-@@ -576,7 +600,6 @@ pnfs_layoutreturn_release(struct nfs4_layoutreturn *lrp)
- 		pnfs_set_layout_stateid(lo, &lrp->res.stateid);
- 	put_layout_hdr_locked(lo); /* Matched in _pnfs_return_layout */
- 	spin_unlock(&lrp->args.inode->i_lock);
--	pnfs_free_lseg_list(&tmp_list);
- }
- 
- static int
-@@ -630,7 +653,11 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
- 	arg.offset = 0;
- 	arg.length = NFS4_MAX_UINT64;
- 
-+	/* probably should BUGON if type != RETURN_FILE */
- 	if (type == RETURN_FILE) {
-+		LIST_HEAD(tmp_list);
-+		struct pnfs_layout_segment *lseg, *tmp;
-+
- 		spin_lock(&ino->i_lock);
- 		lo = nfsi->layout;
- 		if (lo && !has_layout_to_return(lo, &arg))
-@@ -642,10 +669,13 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
- 		}
- 
- 		lo->plh_block_lgets++;
-+		list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
-+			if (should_free_lseg(&lseg->range, &arg))
-+				mark_lseg_invalid(lseg, &tmp_list);
- 		/* Reference matched in pnfs_layoutreturn_release */
- 		get_layout_hdr_locked(lo);
--
- 		spin_unlock(&ino->i_lock);
-+		pnfs_free_lseg_list(&tmp_list);
- 
- 		if (layoutcommit_needed(nfsi)) {
- 			if (stateid && !wait) { /* callback */
+ /* Per-layout driver specific registration structure */
+@@ -223,6 +224,8 @@ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
+ void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
+ bool pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, nfs4_stateid *stateid);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
++void pnfs_clear_lseg_list(struct pnfs_layout_hdr *, struct list_head *tmp_list,
++			  struct pnfs_layout_range *);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+ void pnfs_destroy_layout(struct nfs_inode *);
+ void pnfs_destroy_all_layouts(struct nfs_client *);
 -- 
-1.7.2.1
+1.7.2.3
 
