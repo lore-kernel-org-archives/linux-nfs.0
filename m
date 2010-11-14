@@ -1,69 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from swampdragon.chaosbits.net ([90.184.90.115]:15679 "EHLO
-	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756993Ab0KJVo0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 16:44:26 -0500
-Date: Wed, 10 Nov 2010 22:32:44 +0100 (CET)
-From: Jesper Juhl <jj@chaosbits.net>
-To: linux-kernel@vger.kernel.org
-cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] SUNRPC: Simplify rpc_alloc_iostats by removing pointless
- local variable
-In-Reply-To: <alpine.LNX.2.00.1011072205370.26247@swampdragon.chaosbits.net>
-Message-ID: <alpine.LNX.2.00.1011102229370.625@swampdragon.chaosbits.net>
-References: <alpine.LNX.2.00.1011072205370.26247@swampdragon.chaosbits.net>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from daytona.panasas.com ([67.152.220.89]:30920 "EHLO
+	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755100Ab0KNLJv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Nov 2010 06:09:51 -0500
+Message-ID: <4CDFBFEC.7080802@panasas.com>
+Date: Sun, 14 Nov 2010 12:54:36 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: Re: [PATCH 18/22] pnfs-submit: roc add layoutreturn op to close compound
+References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>	<1289551724-18575-19-git-send-email-iisaman@netapp.com>	<4CDD6BE5.1000502@panasas.com> <AANLkTinCcrzaa0wf0QZ8mB0NuTsO2FuaMKvt8+O_rwG-@mail.gmail.com>
+In-Reply-To: <AANLkTinCcrzaa0wf0QZ8mB0NuTsO2FuaMKvt8+O_rwG-@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 7 Nov 2010, Jesper Juhl wrote:
+On 2010-11-12 18:56, Fred Isaman wrote:
+> On Fri, Nov 12, 2010 at 11:31 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>> On 2010-11-12 10:48, Fred Isaman wrote:
+>>> From: Andy Adamson <andros@netapp.com>
+>>> @@ -2143,6 +2145,8 @@ static int nfs4_xdr_enc_close(struct rpc_rqst *req, __be32 *p, struct nfs_closea
+>>>       encode_putfh(&xdr, args->fh, &hdr);
+>>>       encode_close(&xdr, args, &hdr);
+>>>       encode_getfattr(&xdr, args->bitmask, &hdr);
+>>> +     if (args->op_bitmask & NFS4_HAS_LAYOUTRETURN) /* layoutreturn set */
+>>> +             encode_layoutreturn(&xdr, &args->lr_args, &hdr);
+>>
+>> Sorry, I just noticed, but if there's no object I'll move the layoutreturn op
+>> before close in the compound.
+>>
+>> Benny
+>>
+> 
+> The reason the LAYOUTRETURN was last was so that we could ignore any
+> error on the return.  Otherwise an error on the LAYOUTRETURN stops the
+> CLOSE from being processed.  I'll defer to Andy, but while I see why
+> you would want the reutrn first, moving it will require paying careful
+> attention to how an error is dealt with.  (Actually, we have the same
+> issue with the LAYOUTCOMMIT when it is later added.)
 
-> Hi,
-> 
-> We can simplify net/sunrpc/stats.c::rpc_alloc_iostats() a bit by getting 
-> rid of the unneeded local variable 'new'.
-> 
-> 
-> Please CC me on replies.
-> 
-> 
-> Signed-off-by: Jesper Juhl <jj@chaosbits.net>
-> ---
->  stats.c |    4 +---
->  1 file changed, 1 insertion(+), 3 deletions(-)
-> 
-> diff --git 
-> a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-> index f71a731..80df89d 100644
-> --- a/net/sunrpc/stats.c
-> +++ b/net/sunrpc/stats.c
-> @@ -115,9 +115,7 @@ EXPORT_SYMBOL_GPL(svc_seq_show);
->   */
->  struct rpc_iostats *rpc_alloc_iostats(struct rpc_clnt *clnt)
->  {
-> -	struct rpc_iostats *new;
-> -	new = kcalloc(clnt->cl_maxproc, sizeof(struct rpc_iostats), GFP_KERNEL);
-> -	return new;
-> +	return kcalloc(clnt->cl_maxproc, sizeof(struct rpc_iostats), GFP_KERNEL);
->  }
->  EXPORT_SYMBOL_GPL(rpc_alloc_iostats);
->  
-> 
-> 
+That's true, but the whole point behind doing the layoutreturn on close
+is doing it before CLOSE :)
 
-Ok, no response to this for a couple of days.
-Is there some problem or did it just get missed?
-Could someone merge this and push it up-stream, please, if there are no 
-problems with it...
- 
+As we say in section 18.43:
+   The logr_return_on_close result field is a directive to return the
+   layout before closing the file.
+          ^^^^^^^^^^^^^^^^^^^^^^^^
 
--- 
-Jesper Juhl <jj@chaosbits.net>             http://www.chaosbits.net/
-Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
-Plain text mails only, please.
+Benny
 
+> 
+> Fred
+> 
