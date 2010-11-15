@@ -1,153 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50548 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754012Ab0KCUmF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Nov 2010 16:42:05 -0400
-Date: Wed, 3 Nov 2010 16:41:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Arnd Bergmann <arnd@arndb.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 1/2] locks: let the caller free file_lock on ->setlease
- failure
-Message-ID: <20101103204147.GA6777@fieldses.org>
-References: <20101026164549.GD19445@fieldses.org>
- <20101027083924.GA28129@infradead.org>
- <20101027133924.GB6328@fieldses.org>
- <201010271546.09036.arnd@arndb.de>
- <20101027145538.GC6328@fieldses.org>
- <20101027145929.GA5788@infradead.org>
- <20101030212500.GE480@fieldses.org>
- <20101031123419.GA4491@infradead.org>
- <20101031123510.GA4520@infradead.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101031123510.GA4520@infradead.org>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:47857 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754435Ab0KOOvk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2010 09:51:40 -0500
+Received: by bwz15 with SMTP id 15so5245052bwz.19
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2010 06:51:39 -0800 (PST)
+In-Reply-To: <4CE003A6.2000606@panasas.com>
+References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+	<1289551724-18575-17-git-send-email-iisaman@netapp.com>
+	<4CE003A6.2000606@panasas.com>
+Date: Mon, 15 Nov 2010 09:51:39 -0500
+Message-ID: <AANLkTinMiVuKJB6b6C+nZO9bMevp_jkjwVobFv7di0jq@mail.gmail.com>
+Subject: Re: [PATCH 16/22] pnfs-submit: rewrite of layout state handling and cb_layoutrecall
+From: Fred Isaman <iisaman@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, NFSv4 <nfsv4@ietf.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, Oct 31, 2010 at 08:35:10AM -0400, Christoph Hellwig wrote:
-> The caller allocated it, the caller should free it.  The only issue so
-> far is that we could change the flp pointer even on an error return if
-> the fl_change callback failed.  But we can simply move the flp assignment
-> after the fl_change invocation, as the callers don't care about the
-> flp return value if the setlease call failed.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> 
-> Index: linux-2.6/fs/cifs/cifsfs.c
-> ===================================================================
-> --- linux-2.6.orig/fs/cifs/cifsfs.c	2010-10-31 07:10:07.636004223 -0400
-> +++ linux-2.6/fs/cifs/cifsfs.c	2010-10-31 07:10:10.922004154 -0400
-> @@ -625,11 +625,8 @@ static int cifs_setlease(struct file *fi
->  		   knows that the file won't be changed on the server
->  		   by anyone else */
->  		return generic_setlease(file, arg, lease);
-> -	else {
-> -		if (arg != F_UNLCK)
-> -			locks_free_lock(*lease);
-> +	else
->  		return -EAGAIN;
-> -	}
->  }
->  
->  struct file_system_type cifs_fs_type = {
-> Index: linux-2.6/fs/gfs2/file.c
-> ===================================================================
-> --- linux-2.6.orig/fs/gfs2/file.c	2010-10-31 07:10:07.643004363 -0400
-> +++ linux-2.6/fs/gfs2/file.c	2010-10-31 07:10:10.923003665 -0400
-> @@ -629,8 +629,6 @@ static ssize_t gfs2_file_aio_write(struc
->  
->  static int gfs2_setlease(struct file *file, long arg, struct file_lock **fl)
->  {
-> -	if (arg != F_UNLCK)
-> -		locks_free_lock(*fl);
->  	return -EINVAL;
->  }
->  
-> Index: linux-2.6/fs/locks.c
-> ===================================================================
-> --- linux-2.6.orig/fs/locks.c	2010-10-31 07:10:07.649004084 -0400
-> +++ linux-2.6/fs/locks.c	2010-10-31 07:34:10.102255587 -0400
-> @@ -1428,8 +1425,9 @@ int generic_setlease(struct file *filp,
->  		goto out;
->  
->  	if (my_before != NULL) {
-> -		*flp = *my_before;
->  		error = lease->fl_lmops->fl_change(my_before, arg);
-> +		if (!error)
-> +			*flp = *my_before;
+On Sun, Nov 14, 2010 at 10:43 AM, Benny Halevy <bhalevy@panasas.com> wrote:
+>
+> Using the open stateid after forgetting the layout could be a protocol bug,
+> or at least it falls into undefined territories.
+>
+> The RFC says:
+>
+>   The loga_stateid field specifies a valid stateid.  If a layout is not
+>   currently held by the client, the loga_stateid field represents a
+>   stateid reflecting the correspondingly valid open, byte-range lock,
+>   or delegation stateid.  Once a layout is held on the file by the
+>   client, the loga_stateid field MUST be a stateid as returned from a
+>   previous LAYOUTGET or LAYOUTRETURN operation or provided by a
+>   CB_LAYOUTRECALL operation (see Section 12.5.3).
+>
+> So the question is does the text above refer to the client view of the state or to
+> the server's view.
+> In other words, with the forgetful client model, when the client unilaterally forgets
+> the layout without letting the server know about it (no LAYOUTRETURN was sent),
+> does it mean "a layout is not currently held by the client"?
+>
 
-Argh, missed this: we're leaking the passed-in lease in this case.
+I would argue that yes, this is in fact what it means.
 
---b.
+It seems the server has two options when confronted with an
+openstateid.  Either interpret this as a declaration by the client
+that it has forgotten all previous layouts and behave appropriately
+(wipe any layout state assigned to the file and create a new
+layoutstateid), or assume this is part of parallel spew of
+LAYOUTGET(openstateid) and try to use an existing layout state with
+the appropriate (possibly not one) seqid.  I argue that, as the spec
+stands, the second option is not really a choice, because the first
+option exists.  If a client using the second option encounters a
+server using the first, bad things happen.  The client will issue
+multiple LAYOUTGET(openstateids), the server will, upon seeing each,
+discard any previous state and return a new state with segid=1, with
+the final valid state being that of whichever one was processed last.
+The client will see all the OK returns, and not have any easy method
+of determining which is the one that the server considers valid.
 
->  		goto out;
->  	}
->  
-> @@ -1444,8 +1442,6 @@ int generic_setlease(struct file *filp,
->  	return 0;
->  
->  out:
-> -	if (arg != F_UNLCK)
-> -		locks_free_lock(lease);
->  	return error;
->  }
->  EXPORT_SYMBOL(generic_setlease);
-> @@ -1524,8 +1520,11 @@ static int do_fcntl_add_lease(unsigned i
->  	}
->  	lock_flocks();
->  	error = __vfs_setlease(filp, arg, &fl);
-> -	if (error)
-> -		goto out_unlock;
-> +	if (error) {
-> +		unlock_flocks();
-> +		locks_free_lock(fl);
-> +		goto out_free_fasync;
-> +	}
->  
->  	/*
->  	 * fasync_insert_entry() returns the old entry if any.
-> @@ -1541,12 +1540,12 @@ static int do_fcntl_add_lease(unsigned i
->  		fl->fl_type = F_UNLCK | F_INPROGRESS;
->  		fl->fl_break_time = jiffies - 10;
->  		time_out_leases(inode);
-> -		goto out_unlock;
-> +	} else {
-> +		error = __f_setown(filp, task_pid(current), PIDTYPE_PID, 0);
->  	}
-> -
-> -	error = __f_setown(filp, task_pid(current), PIDTYPE_PID, 0);
-> -out_unlock:
->  	unlock_flocks();
-> +
-> +out_free_fasync:
->  	if (new)
->  		fasync_free(new);
->  	return error;
-> Index: linux-2.6/fs/nfs/file.c
-> ===================================================================
-> --- linux-2.6.orig/fs/nfs/file.c	2010-10-31 07:10:07.658003804 -0400
-> +++ linux-2.6/fs/nfs/file.c	2010-10-31 07:10:10.936003734 -0400
-> @@ -884,7 +884,5 @@ static int nfs_setlease(struct file *fil
->  	dprintk("NFS: setlease(%s/%s, arg=%ld)\n",
->  			file->f_path.dentry->d_parent->d_name.name,
->  			file->f_path.dentry->d_name.name, arg);
-> -	if (arg != F_UNLCK)
-> -		locks_free_lock(*fl);
->  	return -EINVAL;
->  }
-> Index: linux-2.6/fs/nfsd/nfs4state.c
-> ===================================================================
-> --- linux-2.6.orig/fs/nfsd/nfs4state.c	2010-10-31 07:10:07.666004084 -0400
-> +++ linux-2.6/fs/nfsd/nfs4state.c	2010-10-31 07:32:56.906254608 -0400
-> @@ -2652,6 +2652,7 @@ nfs4_open_delegation(struct svc_fh *fh,
->  	if ((status = vfs_setlease(fl->fl_file, fl->fl_type, &fl))) {
->  		dprintk("NFSD: setlease failed [%d], no delegation\n", status);
->  		dp->dl_flock = NULL;
-> +		locks_free_lock(fl);
->  		unhash_delegation(dp);
->  		flag = NFS4_OPEN_DELEGATE_NONE;
->  		goto out;
+Thus I claim that, because of the forgetful model, the client must
+serialize its LAYOUTGET(openstateid) calls.
+
+> The server will see a LAYOUTGET with an open/lock/deleg stateid in this case
+> while it still thinks that the client is holding a layout.
+> Since this could normally happen if the client sends multiple LAYOUTGETs in
+> parallel before it received any layout stateid the server should allow it
+> within the VALID_SEQID_RANGE constraints (see 12.5.5.2.1.4, although it is
+> not explicitly called out there), otherwise, it seems like the server is supposed
+> to return NFS4ERR_OLD_STATEID.
+>
+> Strictly reading the spec, the client should use the most recent layout stateid
+> even in the forgetful model, until it gets a LAYOUTRETURN reply with lrs_present==false
+> or until it replies NFS4ERR_NOMATCHING_LAYOUT to CB_LAYOUTRECALL with
+> clora_iomode==LAYOUTIOMODE4_ANY or other values where the client never dropped
+> a layout (did I say recently how much I hate the forgetful model which introduces
+> more corner cases rather than simplifying the protocol as it was supposed to do? ;-)
+>
+
+Strict reading again depends on whose point of view, client or server...
+
+"Once a client has no more layouts on a file, the layout stateid is no
+longer valid and MUST NOT be used.  Any attempt to use such a layout
+stateid will result in NFS4ERR_BAD_STATEID."
+
+
+Fred
+
+> Benny
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
