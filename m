@@ -1,132 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og103.obsmtp.com ([64.18.0.145]:34333 "HELO
-	exprod5og103.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755768Ab0KJNl7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 08:41:59 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: Andy Adamson <andros@netapp.com>, Fred Isaman <iisaman@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH] SQUASHME: pnfs-submit: fixups for nfsv4.1 callbacks
-Date: Wed, 10 Nov 2010 15:41:54 +0200
-Message-Id: <1289396514-23034-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4CDAA02D.20204@panasas.com>
-References: <4CDAA02D.20204@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:27488 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756630Ab0KOTBC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Nov 2010 14:01:02 -0500
+Received: from localhost.localdomain (vpn2ntap-136191.hq.netapp.com [10.58.56.111])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAFJ0f4c028248
+	for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2010 11:00:41 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/4] pnfs-submit: remove unused stateid argument from pnfs_return_layout
+Date: Mon, 15 Nov 2010 14:00:35 -0500
+Message-Id: <1289847638-12175-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/callback_proc.c |   53 +++++++++++++++++++++--------------------------
- 1 files changed, 24 insertions(+), 29 deletions(-)
+This is a relic from the old CB_LAYOUTRECALL code.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 6e21add..3a19cec 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -21,6 +21,12 @@
- #define NFSDBG_FACILITY NFSDBG_CALLBACK
- #endif
- 
-+static struct nfs_client *
-+find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
-+{
-+	return cps->session ? cps->session->clp : nfs_find_client(addr, 4);
-+}
-+
- __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
- 			     struct cb_getattrres *res,
- 			     struct cb_process_state *cps)
-@@ -32,13 +38,9 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
- 
- 	res->bitmap[0] = res->bitmap[1] = 0;
- 	res->status = htonl(NFS4ERR_BADHANDLE);
--	if (cps->session) { /* set in cb_sequence */
--		clp = cps->session->clp;
--	} else {
--		clp = nfs_find_client(args->addr, 4);
--		if (clp == NULL)
--			goto out;
--	}
-+	clp = find_client_from_cps(cps, args->addr);
-+	if (clp == NULL)
-+		goto out;
- 
- 	dprintk("NFS: GETATTR callback request from %s\n",
- 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
-@@ -81,13 +83,9 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
- 	__be32 res;
- 	
- 	res = htonl(NFS4ERR_BADHANDLE);
--	if (cps->session) { /* set in cb_sequence */
--		clp = cps->session->clp;
--	} else {
--		clp = nfs_find_client(args->addr, 4);
--		if (clp == NULL)
--			goto out;
--	}
-+	clp = find_client_from_cps(cps, args->addr);
-+	if (clp == NULL)
-+		goto out;
- 
- 	dprintk("NFS: RECALL callback request from %s\n",
- 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
-@@ -111,11 +109,11 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
- 			}
- 			iput(inode);
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/inode.c          |    2 +-
+ fs/nfs/nfs4proc.c       |    5 -----
+ fs/nfs/pnfs.c           |   14 ++------------
+ fs/nfs/pnfs.h           |    5 +----
+ include/linux/nfs_xdr.h |    1 -
+ 5 files changed, 4 insertions(+), 23 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 8727ade..3bf7a42 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1419,7 +1419,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+  */
+ void nfs4_evict_inode(struct inode *inode)
+ {
+-	pnfs_return_layout(inode, NULL, NULL, RETURN_FILE, true);
++	pnfs_return_layout(inode, NULL, RETURN_FILE, true);
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	end_writeback(inode);
+ 	pnfs_destroy_layout(NFS_I(inode));
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 55505e4..bd234c4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5622,11 +5622,6 @@ nfs4_layoutreturn_prepare(struct rpc_task *task, void *calldata)
+ 			return;
  		}
--		if (!cps->session) {
--			clp = nfs_find_client_next(prev);
--			nfs_put_client(prev);
--		}
--	} while (!cps->session && clp != NULL);
-+		if (cps->session)
-+			break;
-+		clp = nfs_find_client_next(prev);
-+		nfs_put_client(prev);
-+	} while (clp != NULL);
- out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(res));
- 	return res;
-@@ -420,11 +418,7 @@ __be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
- 		res = NFS4ERR_OP_NOT_IN_SESSION;
- 		goto out;
  	}
--	/* the callback must come from the MDS personality */
--	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS)) {
--		res = NFS4ERR_INVAL;
--		goto out;
+-	if (lrp->stateid) {
+-		/* Forget the layout, without sending the return */
+-		rpc_exit(task, 0);
+-		return;
 -	}
-+
- 	res = do_callback_layoutrecall(clp, args);
+ 	if (nfs41_setup_sequence(lrp->clp->cl_session, &lrp->args.seq_args,
+ 				&lrp->res.seq_res, 0, task))
+ 		return;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 0b7fc1d..a62f518 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -693,7 +693,7 @@ out_nolayout:
+ static int
+ return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 	      enum pnfs_layoutreturn_type type, struct pnfs_layout_hdr *lo,
+-	      bool wait, const nfs4_stateid *stateid)
++	      bool wait)
+ {
+ 	struct nfs4_layoutreturn *lrp;
+ 	struct nfs_server *server = NFS_SERVER(ino);
+@@ -714,7 +714,6 @@ return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 	lrp->args.return_type = type;
+ 	lrp->args.range = *range;
+ 	lrp->args.inode = ino;
+-	lrp->stateid = stateid;
+ 	lrp->clp = server->nfs_client;
+ 
+ 	status = nfs4_proc_layoutreturn(lrp, wait);
+@@ -725,7 +724,6 @@ out:
+ 
+ int
+ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+-		    const nfs4_stateid *stateid, /* optional */
+ 		    enum pnfs_layoutreturn_type type,
+ 		    bool wait)
+ {
+@@ -766,11 +764,6 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 		pnfs_free_lseg_list(&tmp_list);
+ 
+ 		if (layoutcommit_needed(nfsi)) {
+-			if (stateid && !wait) { /* callback */
+-				dprintk("%s: layoutcommit pending\n", __func__);
+-				status = -EAGAIN;
+-				goto out_put;
+-			}
+ 			status = pnfs_layoutcommit_inode(ino, wait);
+ 			if (status) {
+ 				/* Return layout even if layoutcommit fails */
+@@ -779,14 +772,11 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
+ 					__func__, status);
+ 			}
+ 		}
+-		status = return_layout(ino, &arg, type, lo, wait, stateid);
++		status = return_layout(ino, &arg, type, lo, wait);
+ 	}
  out:
- 	dprintk("%s: exit with status = %d\n", __func__, res);
-@@ -623,6 +617,12 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	if (status)
- 		goto out_putclient;
+ 	dprintk("<-- %s status: %d\n", __func__, status);
+ 	return status;
+-out_put:
+-	put_layout_hdr(ino);
+-	goto out;
+ }
  
-+	/* The callback must come from the MDS personality */
-+	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS)) {
-+		status = htonl(NFS4ERR_INVAL);
-+		goto out_putclient;
-+	}
-+
- 	/*
- 	 * Check for pending referring calls.  If a match is found, a
- 	 * related callback was received before the response to the original
-@@ -702,11 +702,6 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
- 	dprintk("NFS: RECALL_ANY callback request from %s\n",
- 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+ /*
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index c5b4282..46dab34 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -205,7 +205,6 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 		   enum pnfs_iomode access_type);
+ bool pnfs_return_layout_barrier(struct nfs_inode *, struct pnfs_layout_range *);
+ int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *,
+-			const nfs4_stateid *stateid, /* optional */
+ 			enum pnfs_layoutreturn_type, bool wait);
+ void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+@@ -279,7 +278,6 @@ pnfs_layout_roc_iomode(struct nfs_inode *nfsi)
  
--	/* the callback must come from the MDS personality */
--	status = cpu_to_be32(NFS4ERR_NOTSUPP);
--	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS))
--		goto out;
--
- 	status = cpu_to_be32(NFS4ERR_INVAL);
- 	if (!validate_bitmap_values((const unsigned long *)
- 				    &args->craa_type_mask))
+ static inline int pnfs_return_layout(struct inode *ino,
+ 				     struct pnfs_layout_range *range,
+-				     const nfs4_stateid *stateid, /* optional */
+ 				     enum pnfs_layoutreturn_type type,
+ 				     bool wait)
+ {
+@@ -288,7 +286,7 @@ static inline int pnfs_return_layout(struct inode *ino,
+ 
+ 	if (pnfs_enabled_sb(nfss) &&
+ 	    (type != RETURN_FILE || has_layout(nfsi)))
+-		return _pnfs_return_layout(ino, range, stateid, type, wait);
++		return _pnfs_return_layout(ino, range, type, wait);
+ 
+ 	return 0;
+ }
+@@ -383,7 +381,6 @@ pnfs_layout_roc_iomode(struct nfs_inode *nfsi)
+ 
+ static inline int pnfs_return_layout(struct inode *ino,
+ 				     struct pnfs_layout_range *range,
+-				     const nfs4_stateid *stateid, /* optional */
+ 				     enum pnfs_layoutreturn_type type,
+ 				     bool wait)
+ {
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index d4c4804..7a19acb 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -276,7 +276,6 @@ struct nfs4_layoutreturn {
+ 	struct nfs4_layoutreturn_args args;
+ 	struct nfs4_layoutreturn_res res;
+ 	struct rpc_cred *cred;
+-	const nfs4_stateid *stateid;
+ 	struct nfs_client *clp;
+ 	int rpc_status;
+ };
 -- 
-1.7.2.3
+1.7.2.1
 
