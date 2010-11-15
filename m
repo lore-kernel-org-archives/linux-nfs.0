@@ -1,82 +1,184 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:41614 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932354Ab0KQPyw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 10:54:52 -0500
-Received: by gwj17 with SMTP id 17so1151809gwj.19
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 07:54:51 -0800 (PST)
-In-Reply-To: <C2312B32-B190-41C4-A4C8-C29231DBA305@oracle.com>
-References: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com>
-	<4CE2AA3B.6070302@openoffice.nl>
-	<4CE2DF2D.9070603@blub.net>
-	<20101116201753.GB4482@merit.edu>
-	<577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com>
-	<20101116205436.GA4595@merit.edu>
-	<44C0977F-DBD6-4F87-B3A5-B2B66C784312@oracle.com>
-	<4CE3F249.8050301@RedHat.com>
-	<C2312B32-B190-41C4-A4C8-C29231DBA305@oracle.com>
-Date: Wed, 17 Nov 2010 10:54:51 -0500
-Message-ID: <AANLkTinJyFHom5JQg5s+yX+6NRBw01S6a9gbwtk5WaLB@mail.gmail.com>
-Subject: Re: Strange rpc.svcgssd behavior
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>
-Cc: Jim Rees <rees@umich.edu>, Valentijn Sessink <valentyn@blub.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.perches.com ([173.55.12.10]:1118 "EHLO mail.perches.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751901Ab0KODF1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 14 Nov 2010 22:05:27 -0500
+From: Joe Perches <joe@perches.com>
+To: Jiri Kosina <trivial@kernel.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
+        linux-tegra@vger.kernel.org, microblaze-uclinux@itee.uq.edu.au,
+        user-mode-linux-devel@lists.sourceforge.net,
+        user-mode-linux-user@lists.sourceforge.net, cpufreq@vger.kernel.org,
+        linux-i2c@vger.kernel.org, netdev@vger.kernel.org,
+        linux-media@vger.kernel.org, linux-mmc@vger.kernel.org,
+        e1000-devel@lists.sourceforge.net, linux-wireless@vger.kernel.org,
+        ath9k-devel@venema.h4ckr.net, platform-driver-x86@vger.kernel.org,
+        ibm-acpi-devel@lists.sourceforge.net, linux-s390@vger.kernel.org,
+        linux-scsi@vger.kernel.org, spi-devel-general@lists.sourceforge.net,
+        devel@driverdev.osuosl.org, linux-usb@vger.kernel.org,
+        xen-devel@lists.xensource.com, virtualization@lists.osdl.org,
+        v9fs-developer@lists.sourceforge.net, ceph-devel@vger.kernel.org,
+        logfs@logfs.org, linux-nfs@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        linux-mtd@lists.infradead.org, linux-mm@kvack.org,
+        alsa-devel@alsa-project.org
+Subject: [PATCH 00/44] remove unnecessary semicolons
+Date: Sun, 14 Nov 2010 19:04:19 -0800
+Message-Id: <cover.1289789604.git.joe@perches.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Nov 17, 2010 at 10:30 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Hey-
->
-> On Nov 17, 2010, at 10:18 AM, Steve Dickson wrote:
->
->> Sorry for the delayed response... I had my
->> head down for last couple of days...
->>
->> On 11/16/2010 04:42 PM, Chuck Lever wrote:
->>>
->>> On Nov 16, 2010, at 3:54 PM, Jim Rees wrote:
->>>
->>>> Chuck Lever wrote:
->>>>
->>>> Before we go too far down the NM path of no return, I was under the
->>>> impression that some applications require the host's name on the localhost
->>>> entries in /etc/hosts.  That's why NM puts it there.
->>>>
->>>> There's nothing invalid about having a hostname on the localhost entries
->>>> in /etc/hosts, is there?
->>>>
->>>> So I wonder if removing NM is really the solution here.
->>>>
->>>> No, it's not.  I just like to complain about NM.
->>>>
->>>> The original problem was that rpc.svcgssd couldn't figure out the correct
->>>> kerberos realm.  The fix in this particular case, I think, is to set the
->>>> realm explicitly in /etc/idmapd.conf.
->>>
->>> It's having trouble determining the NFS server's hostname.  It needs to find the right nfs/your.host key in /etc/krb5.keytab.
->>>
->>> I don't know if realm self-discovery is an issue too.
->> I think the problem is a reverse lookup is done on hostname that
->> is found in the /etc/krb5.keytab. Instead of the FQDN being
->> returned, localhost is returned because the FQDN was added to
->> the localhost line in /etc/hosts.
->>
->> Actually I didn't realize it was NM doing that... I thought
->> it was the installer...
->
-> No matter who does it, I think there are applications
-> (gdm?  rusty recollection) that require this network configuration
-> in /etc/hosts, so our best bet IMO is to fix rpc.svcgssd, or more
-> likely the gss library it depends on, to get it right in this situation.
-> If we all agree this is a bug (and sounds like we do) then I can
-> create a bug report on bugzilla.linux-nfs.org, as a starting point.
+ya trivial series...
 
-Hi Chuck and Steve,
-This issue affects gss authentication in sshd as well.  I believe this
-is all the way down in the Kerberos code, which has been this way for
-years.  I'm not sure what needs to be changed to "get it right".
+Joe Perches (44):
+  arch/arm: Remove unnecessary semicolons
+  arch/microblaze: Remove unnecessary semicolons
+  arch/um: Remove unnecessary semicolons
+  drivers/cpufreq: Remove unnecessary semicolons
+  drivers/gpio: Remove unnecessary semicolons
+  drivers/i2c: Remove unnecessary semicolons
+  drivers/isdn: Remove unnecessary semicolons
+  drivers/leds: Remove unnecessary semicolons
+  drivers/media/video: Remove unnecessary semicolons
+  drivers/misc: Remove unnecessary semicolons
+  drivers/mmc: Remove unnecessary semicolons
+  drivers/net/bnx2x: Remove unnecessary semicolons
+  drivers/net/e1000e: Remove unnecessary semicolons
+  drivers/net/ixgbe: Remove unnecessary semicolons
+  drivers/net/vxge: Remove unnecessary semicolons
+  drivers/net/wireless/ath: Remove unnecessary semicolons
+  drivers/net/wireless/iwlwifi: Remove unnecessary semicolons
+  drivers/net/cnic.c: Remove unnecessary semicolons
+  drivers/platform/x86: Remove unnecessary semicolons
+  drivers/power: Remove unnecessary semicolons
+  drivers/s390/net: Remove unnecessary semicolons
+  drivers/scsi/be2iscsi: Remove unnecessary semicolons
+  drivers/scsi/bfa: Remove unnecessary semicolons
+  drivers/scsi/lpfc: Remove unnecessary semicolons
+  drivers/scsi/pm8001: Remove unnecessary semicolons
+  drivers/scsi/qla2xxx: Remove unnecessary semicolons
+  drivers/serial: Remove unnecessary semicolons
+  drivers/spi: Remove unnecessary semicolons
+  drivers/staging: Remove unnecessary semicolons
+  drivers/usb/gadget: Remove unnecessary semicolons
+  drivers/xen: Remove unnecessary semicolons
+  fs/9p: Remove unnecessary semicolons
+  fs/ceph: Remove unnecessary semicolons
+  fs/logfs: Remove unnecessary semicolons
+  fs/nfs: Remove unnecessary semicolons
+  fs/ocfs2: Remove unnecessary semicolons
+  fs/ubifs: Remove unnecessary semicolons
+  include/linux/if_macvlan.h: Remove unnecessary semicolons
+  include/net/caif/cfctrl.h: Remove unnecessary semicolons
+  mm/hugetlb.c: Remove unnecessary semicolons
+  net/ipv6/mcast.c: Remove unnecessary semicolons
+  net/sunrpc/addr.c: Remove unnecessary semicolons
+  sound/core/pcm_lib.c: Remove unnecessary semicolons
+  sound/soc/codecs: Remove unnecessary semicolons
 
-K.C.
+ arch/arm/mach-at91/at91cap9_devices.c              |    2 +-
+ arch/arm/mach-at91/at91sam9g45_devices.c           |    2 +-
+ arch/arm/mach-at91/at91sam9rl_devices.c            |    2 +-
+ arch/arm/mach-nuc93x/time.c                        |    2 +-
+ arch/arm/mach-tegra/tegra2_clocks.c                |    2 +-
+ arch/arm/mach-w90x900/cpu.c                        |    2 +-
+ arch/arm/plat-mxc/irq.c                            |    2 +-
+ arch/microblaze/lib/memmove.c                      |    2 +-
+ arch/um/drivers/mmapper_kern.c                     |    2 +-
+ drivers/cpufreq/cpufreq_conservative.c             |    2 +-
+ drivers/gpio/langwell_gpio.c                       |    2 +-
+ drivers/i2c/busses/i2c-designware.c                |    2 +-
+ drivers/isdn/hardware/mISDN/mISDNinfineon.c        |    4 ++--
+ drivers/isdn/hardware/mISDN/mISDNisar.c            |    2 +-
+ drivers/leds/leds-mc13783.c                        |    2 +-
+ drivers/media/video/cx88/cx88-blackbird.c          |    2 +-
+ drivers/media/video/davinci/vpfe_capture.c         |    2 +-
+ drivers/media/video/em28xx/em28xx-cards.c          |    2 +-
+ drivers/misc/bmp085.c                              |    2 +-
+ drivers/misc/isl29020.c                            |    2 +-
+ drivers/mmc/host/davinci_mmc.c                     |    2 +-
+ drivers/net/bnx2x/bnx2x_link.c                     |    4 ++--
+ drivers/net/bnx2x/bnx2x_main.c                     |    2 +-
+ drivers/net/cnic.c                                 |    2 +-
+ drivers/net/e1000e/netdev.c                        |    2 +-
+ drivers/net/ixgbe/ixgbe_sriov.c                    |    2 +-
+ drivers/net/vxge/vxge-main.c                       |    2 +-
+ drivers/net/wireless/ath/ath9k/htc.h               |    2 +-
+ drivers/net/wireless/iwlwifi/iwl-agn.c             |    2 +-
+ drivers/platform/x86/classmate-laptop.c            |    2 +-
+ drivers/platform/x86/thinkpad_acpi.c               |    2 +-
+ drivers/power/intel_mid_battery.c                  |    2 +-
+ drivers/s390/net/qeth_core_sys.c                   |    2 +-
+ drivers/scsi/be2iscsi/be_main.c                    |    4 ++--
+ drivers/scsi/bfa/bfa_fcs_lport.c                   |    2 +-
+ drivers/scsi/lpfc/lpfc_bsg.c                       |    2 +-
+ drivers/scsi/pm8001/pm8001_init.c                  |    2 +-
+ drivers/scsi/qla2xxx/qla_isr.c                     |    4 ++--
+ drivers/scsi/qla2xxx/qla_nx.c                      |    2 +-
+ drivers/serial/mrst_max3110.c                      |    2 +-
+ drivers/spi/amba-pl022.c                           |    2 +-
+ drivers/spi/spi_nuc900.c                           |    2 +-
+ .../staging/ath6kl/hif/sdio/linux_sdio/src/hif.c   |    2 +-
+ drivers/staging/ath6kl/os/linux/ar6000_drv.c       |    2 +-
+ drivers/staging/bcm/InterfaceInit.c                |    2 +-
+ drivers/staging/bcm/InterfaceIsr.c                 |    2 +-
+ drivers/staging/bcm/Misc.c                         |    4 ++--
+ .../comedi/drivers/addi-data/APCI1710_Tor.c        |    2 +-
+ .../comedi/drivers/addi-data/hwdrv_apci1500.c      |    2 +-
+ .../comedi/drivers/addi-data/hwdrv_apci1516.c      |    2 +-
+ .../comedi/drivers/addi-data/hwdrv_apci3501.c      |    2 +-
+ drivers/staging/comedi/drivers/amplc_pci230.c      |    2 +-
+ drivers/staging/comedi/drivers/cb_das16_cs.c       |    2 +-
+ drivers/staging/comedi/drivers/comedi_bond.c       |    2 +-
+ drivers/staging/crystalhd/crystalhd_hw.c           |    2 +-
+ drivers/staging/go7007/go7007-driver.c             |    2 +-
+ drivers/staging/iio/accel/lis3l02dq_ring.c         |    2 +-
+ .../staging/intel_sst/intel_sst_drv_interface.c    |    4 ++--
+ drivers/staging/keucr/smilmain.c                   |    4 ++--
+ drivers/staging/keucr/smilsub.c                    |    4 ++--
+ drivers/staging/msm/lcdc_toshiba_wvga_pt.c         |    2 +-
+ drivers/staging/rt2860/common/cmm_data_pci.c       |    4 ++--
+ drivers/staging/rt2860/rt_linux.c                  |    2 +-
+ drivers/staging/rt2860/rtmp.h                      |    2 +-
+ drivers/staging/rtl8192e/ieee80211/ieee80211_tx.c  |    2 +-
+ drivers/staging/rtl8192e/r819xE_phy.c              |    2 +-
+ drivers/staging/rtl8192u/ieee80211/ieee80211_tx.c  |    2 +-
+ drivers/staging/rtl8192u/r8192U_core.c             |    2 +-
+ drivers/staging/rtl8192u/r819xU_phy.c              |    2 +-
+ drivers/staging/rtl8712/rtl8712_efuse.c            |    2 +-
+ drivers/staging/rtl8712/rtl8712_xmit.c             |    2 +-
+ drivers/staging/rtl8712/rtl871x_xmit.c             |    2 +-
+ drivers/staging/tidspbridge/core/tiomap3430.c      |    4 ++--
+ drivers/staging/tidspbridge/rmgr/nldr.c            |    2 +-
+ drivers/staging/vt6655/card.c                      |    2 +-
+ drivers/staging/vt6655/iwctl.c                     |    2 +-
+ drivers/staging/vt6655/wpa2.c                      |    4 ++--
+ drivers/staging/vt6656/baseband.c                  |    2 +-
+ drivers/staging/vt6656/iwctl.c                     |    2 +-
+ drivers/staging/vt6656/power.c                     |    2 +-
+ drivers/staging/vt6656/wpa2.c                      |    4 ++--
+ drivers/usb/gadget/f_fs.c                          |    2 +-
+ drivers/xen/swiotlb-xen.c                          |    2 +-
+ fs/9p/acl.c                                        |    2 +-
+ fs/9p/xattr.c                                      |    2 +-
+ fs/ceph/mds_client.c                               |    2 +-
+ fs/logfs/readwrite.c                               |    2 +-
+ fs/nfs/getroot.c                                   |    2 +-
+ fs/ocfs2/refcounttree.c                            |    2 +-
+ fs/ubifs/scan.c                                    |    2 +-
+ include/linux/if_macvlan.h                         |    2 +-
+ include/net/caif/cfctrl.h                          |    2 +-
+ mm/hugetlb.c                                       |    2 +-
+ net/ipv6/mcast.c                                   |    2 +-
+ net/sunrpc/addr.c                                  |    2 +-
+ sound/core/pcm_lib.c                               |    2 +-
+ sound/soc/codecs/wm8904.c                          |    2 +-
+ sound/soc/codecs/wm8940.c                          |    1 -
+ sound/soc/codecs/wm8993.c                          |    2 +-
+ sound/soc/codecs/wm_hubs.c                         |    2 +-
+ 100 files changed, 111 insertions(+), 112 deletions(-)
+
+-- 
+1.7.3.1.g432b3.dirty
+
