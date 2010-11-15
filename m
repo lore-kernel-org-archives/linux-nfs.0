@@ -1,111 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx.ij.cx ([212.13.201.15]:58129 "EHLO wes.ijneb.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751806Ab0K3Ruz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 12:50:55 -0500
-Date: Tue, 30 Nov 2010 17:50:52 +0000 (GMT)
-From: Mark Hills <mark@pogo.org.uk>
+Received: from cantor2.suse.de ([195.135.220.15]:42906 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756197Ab0KOA2B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 14 Nov 2010 19:28:01 -0500
+From: NeilBrown <neilb@suse.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: Listen backlog set to 64
-In-Reply-To: <20101129205935.GD9897@fieldses.org>
-Message-ID: <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz>
-References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz> <20101116182026.GA3971@fieldses.org> <20101117090826.4b2724da@notabene.brown> <20101129205935.GD9897@fieldses.org>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Date: Mon, 15 Nov 2010 11:27:01 +1100
+Subject: [PATCH 2/2] sunrpc: svc_sock_names should hold ref to socket being
+	closed.
+Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
+Message-ID: <20101115002701.19121.99158.stgit@notabene.brown>
+In-Reply-To: <20101115002634.19121.7027.stgit@notabene.brown>
+References: <20101115002634.19121.7027.stgit@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 29 Nov 2010, J. Bruce Fields wrote:
+Currently svc_sock_names calls svc_close_xprt on a svc_sock to
+which it does not own a reference.
+As soon as svc_close_xprt sets XPT_CLOSE, the socket could be
+freed by a separate thread (though this is a very unlikely race).
 
-> On Wed, Nov 17, 2010 at 09:08:26AM +1100, Neil Brown wrote:
-> > On Tue, 16 Nov 2010 13:20:26 -0500
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Mon, Nov 15, 2010 at 06:43:52PM +0000, Mark Hills wrote:
-> > > > I am looking into an issue of hanging clients to a set of NFS servers, on 
-> > > > a large HPC cluster.
-> > > > 
-> > > > My investigation took me to the RPC code, svc_create_socket().
-> > > > 
-> > > > 	if (protocol == IPPROTO_TCP) {
-> > > > 		if ((error = kernel_listen(sock, 64)) < 0)
-> > > > 			goto bummer;
-> > > > 	}
-> > > > 
-> > > > A fixed backlog of 64 connections at the server seems like it could be too 
-> > > > low on a cluster like this, particularly when the protocol opens and 
-> > > > closes the TCP connection.
-[...] 
-> > So we could:
-> >   - hard code a new number
-> >   - make this another sysctl configurable
-> >   - auto-adjust it so that it "just works".
-> > 
-> > I would prefer the latter if it is possible.   Possibly we could adjust it
-> > based on the number of nfsd threads, like we do for receive buffer space.
-> > Maybe something arbitrary like:
-> >    min(16 + 2 * number of threads, sock_net(sk)->core.sysctl_somaxconn)
-> > 
-> > which would get the current 64 at 24 threads, and can easily push up to 128
-> > and beyond with more threads.
-> > 
-> > Or is that too arbitrary?
-> 
-> I kinda like the idea of piggybacking on an existing constant like
-> sysctl_max_syn_backlog.  Somebody else hopefully keeps it set to something
-> reasonable, and we as a last resort it gives you a knob to twiddle.
-> 
-> But number of threads would work OK too.
-> 
-> At a minimum we should make sure we solve the original problem....
-> Mark, have you had a chance to check whether increasing that number to
-> 128 or more is enough to solve your problem?
+It is safer to hold a reference while calling svc_close_xprt.
 
-I think we can hold off changing the queue size, for now at least. We 
-reduced the reported queue overflows by increasing the number of mountd 
-threads, allowing it to service the queue more quickly. However this did 
-not fix the common problem, and I was hoping to have more information in 
-this follow-up email.
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
 
-Our investigation brings us to rpc.mountd and mount.nfs communicating. In 
-the client log we see messages like:
+ net/sunrpc/svcsock.c |   10 ++++++----
+ 1 files changed, 6 insertions(+), 4 deletions(-)
 
-  Nov 24 12:09:43 nyrd001 automount[3782]: >> mount.nfs: mount to NFS server 'ss1a:/mnt/raid1/banana' failed: timed out, giving up
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 07919e1..52bd113 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -324,19 +324,21 @@ int svc_sock_names(struct svc_serv *serv, char *buf, const size_t buflen,
+ 			len = onelen;
+ 			break;
+ 		}
+-		if (toclose && strcmp(toclose, buf + len) == 0)
++		if (toclose && strcmp(toclose, buf + len) == 0) {
+ 			closesk = svsk;
+-		else
++			svc_xprt_get(&closesk->sk_xprt);
++		} else
+ 			len += onelen;
+ 	}
+ 	spin_unlock_bh(&serv->sv_lock);
+ 
+-	if (closesk)
++	if (closesk) {
+ 		/* Should unregister with portmap, but you cannot
+ 		 * unregister just one protocol...
+ 		 */
+ 		svc_close_xprt(&closesk->sk_xprt);
+-	else if (toclose)
++		svc_xprt_put(&closesk->sk_xprt);
++	} else if (toclose)
+ 		return -ENOENT;
+ 	return len;
+ }
 
-Using strace and isolating one of these, I can see a non-blocking connect 
-has already managed to make a connection and even send/receive some data. 
 
-But soon a timeout of 9999 milliseconds in poll() causes a problem in 
-mount.nfs when waiting for a response of some sort. The socket in question 
-is a connection to mountd:
-
-  26512 futex(0x7ff76affa540, FUTEX_WAKE_PRIVATE, 1) = 0
-  26512 write(3, "\200\0\0(j\212\254\365\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3\0\0\0\0\0\0\0\0"..., 44) = 44
-  26512 poll([{fd=3, events=POLLIN}], 1, 9999 <unfinished ...>
-
-When it returns:
-
-  26512 <... poll resumed> )              = 0 (Timeout)
-  26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
-  26512 rt_sigprocmask(SIG_SETMASK, ~[RTMIN RT_1], [], 8) = 0
-  26512 close(3)                          = 0
-  26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
-  26512 write(2, "mount.nfs: mount to NFS server '"..., 100) = 100
-
-There's no re-try from here, just a failed mount.
-
-What is the source of this 9999 millisecond timeout used by poll() in 
-mount.nfs? It was not clear in an initial search of nfs-utils and glibc, 
-but I need more time to investigate.
-
-If the server is being too slow to respond, what could the cause of this 
-be? Multiple threads are already in use, but it seems like they are not 
-all in use because a thread is able to accept() the connection. I haven't 
-been able to pin this on the forward/reverse DNS lookup used by 
-authentication and logging.
-
-Thanks
-
--- 
-Mark
