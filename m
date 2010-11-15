@@ -1,320 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33429 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:54552 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752415Ab0KDPWv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Nov 2010 11:22:51 -0400
-Received: from localhost.localdomain (dnsindia.hq.netapp.com [10.58.52.94] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oA4FMYMP029583
-	for <linux-nfs@vger.kernel.org>; Thu, 4 Nov 2010 08:22:40 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/18] pnfs-submit: remove _pnfs_can_return_lseg call from pnfs_clear_lseg_list
-Date: Thu,  4 Nov 2010 11:22:16 -0400
-Message-Id: <1288884151-11128-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
-References: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
+	id S1756163Ab0KORsi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Nov 2010 12:48:38 -0500
+Date: Mon, 15 Nov 2010 12:48:37 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Nick Piggin <npiggin@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: lifetime of DCACHE_DISCONECTED dentries
+Message-ID: <20101115174837.GB10044@fieldses.org>
+References: <20101112184353.GA32745@fieldses.org>
+ <AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Instead, have mark_invalid function that marks lseg invalid and
-removes the reference that holds it in the list.  Now when io is finished,
-the lseg will automatically be removed from the list.  This is
-at the heart of many of the upcoming cb_layoutrecall changes.
+On Sat, Nov 13, 2010 at 10:53:12PM +1100, Nick Piggin wrote:
+> On Sat, Nov 13, 2010 at 5:43 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > DCACHE_DISCONECTED dentries aren't always getting destroyed as soon as
+> > I'd have expected in the NFSv4 case.
+> >
+> > I'm not sure what the right fix is; any ideas?  The below at least
+> > demonstrates the problem.
+> >
+> > --b.
+> >
+> > commit bb125ffbe5fc3f80ac7a5b20f51cc542c175cd49
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Thu Nov 11 19:22:00 2010 -0500
+> >
+> >    dput: free DCACHE_DISCONNECTED dentries sooner
+> >
+> >    DCACHE_DISCONECTED dentries are normally left around for the benefit of
+> >    future nfsd operations.  But there's no point keeping them around once
+> >    the inode has been deleted.
+> >
+> >    Without this patch
+> >
+> >        client$ mount -tnfs4 server:/export/ /mnt/
+> >        client$ tail -f /mnt/FOO
+> >        ...
+> >        server$ df -i /export
+> >        server$ rm /export/FOO
+> >        (^C the tail -f)
+> >        server$ df -i /export
+> >        server$ echo 2 >/proc/sys/vm/drop_caches
+> >        server$ df -i /export
+> >
+> >    the df's will show that the inode is not freed on the filesystem until
+> >    the last step, when it could have been freed after killing the client's
+> >    tail -f.  On-disk data won't be deallocated either, leading to possible
+> >    spurious ENOSPC.
+> >
+> >    This occurs because when the client does the close, it arrives in a
+> >    compound with a putfh and a close, processed like:
+> >
+> >        - putfh: look up the filehandle.  The only alias found for the
+> >          inode will be DCACHE_UNHASHED alias referenced by the filp
+> >          associated with the nfsd open.  d_obtain_alias() doesn't like
+> >          this, so it creates a new DCACHE_DISCONECTED dentry and
+> >          returns that instead.
+> 
+> This seems to be where the thing goes wrong. It isn't a hashed dentry at
+> this point here, so d_obtain_alias should not be making one.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4xdr.c |    3 +-
- fs/nfs/pnfs.c    |  145 ++++++++++++++++++++++++++++++++++-------------------
- fs/nfs/pnfs.h    |    1 +
- 3 files changed, 95 insertions(+), 54 deletions(-)
+Sounds sensible.  (But can you think of any actual bugs that will result
+from trying to add a new hashed dentry in this case?)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 238eeb2..6d9ef2b 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1915,8 +1915,7 @@ encode_layoutreturn(struct xdr_stream *xdr,
- 		p = reserve_space(xdr, 16 + NFS4_STATEID_SIZE);
- 		p = xdr_encode_hyper(p, args->range.offset);
- 		p = xdr_encode_hyper(p, args->range.length);
--		pnfs_get_layout_stateid(&stateid, NFS_I(args->inode)->layout,
--					NULL);
-+		pnfs_copy_layout_stateid(&stateid, NFS_I(args->inode)->layout);
- 		p = xdr_encode_opaque_fixed(p, &stateid.data,
- 					    NFS4_STATEID_SIZE);
- 		p = reserve_space(xdr, 4);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 3bbe3be..4e5c68b 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -272,10 +272,42 @@ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- 	lseg->layout = lo;
- }
- 
-+static void
-+_put_lseg_common(struct pnfs_layout_segment *lseg)
-+{
-+	BUG_ON(lseg->valid == true);
-+	list_del(&lseg->fi_list);
-+	if (list_empty(&lseg->layout->segs)) {
-+		struct nfs_client *clp;
-+
-+		clp = NFS_SERVER(lseg->layout->inode)->nfs_client;
-+		spin_lock(&clp->cl_lock);
-+		/* List does not take a reference, so no need for put here */
-+		list_del_init(&lseg->layout->layouts);
-+		spin_unlock(&clp->cl_lock);
-+		pnfs_invalidate_layout_stateid(lseg->layout);
-+	}
-+	rpc_wake_up(&NFS_I(lseg->layout->inode)->lo_rpcwaitq);
-+}
-+
-+/* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
-+ * could sleep, so must be called outside of the lock.
-+ */
-+static void
-+put_lseg_locked(struct pnfs_layout_segment *lseg,
-+		struct list_head *tmp_list)
-+{
-+	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
-+		atomic_read(&lseg->pls_refcount), lseg->valid);
-+	if (atomic_dec_and_test(&lseg->pls_refcount)) {
-+		_put_lseg_common(lseg);
-+		list_add(&lseg->fi_list, tmp_list);
-+	}
-+}
-+
- void
- put_lseg(struct pnfs_layout_segment *lseg)
- {
--	bool do_wake_up;
- 	struct inode *ino;
- 
- 	if (!lseg)
-@@ -283,15 +315,14 @@ put_lseg(struct pnfs_layout_segment *lseg)
- 
- 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
- 		atomic_read(&lseg->pls_refcount), lseg->valid);
--	do_wake_up = !lseg->valid;
- 	ino = lseg->layout->inode;
--	if (atomic_dec_and_test(&lseg->pls_refcount)) {
-+	if (atomic_dec_and_lock(&lseg->pls_refcount, &ino->i_lock)) {
-+		_put_lseg_common(lseg);
-+		spin_unlock(&ino->i_lock);
- 		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
- 		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
- 		put_layout_hdr(ino);
- 	}
--	if (do_wake_up)
--		rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq);
- }
- EXPORT_SYMBOL_GPL(put_lseg);
- 
-@@ -314,10 +345,18 @@ should_free_lseg(struct pnfs_layout_segment *lseg,
- 		lseg->range.iomode == range->iomode);
- }
- 
--static bool
--_pnfs_can_return_lseg(struct pnfs_layout_segment *lseg)
-+static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
-+			      struct list_head *tmp_list)
- {
--	return atomic_read(&lseg->pls_refcount) == 1;
-+	assert_spin_locked(&lseg->layout->inode->i_lock);
-+	if (lseg->valid) {
-+		lseg->valid = false;
-+		/* Remove the reference keeping the lseg in the
-+		 * list.  It will now be removed when all
-+		 * outstanding io is finished.
-+		 */
-+		put_lseg_locked(lseg, tmp_list);
-+	}
- }
- 
- static void
-@@ -330,42 +369,31 @@ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list,
- 		__func__, lo, range->offset, range->length, range->iomode);
- 
- 	assert_spin_locked(&lo->inode->i_lock);
--	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list) {
--		if (!should_free_lseg(lseg, range) ||
--		    !_pnfs_can_return_lseg(lseg))
--			continue;
--		dprintk("%s: freeing lseg %p iomode %d "
--			"offset %llu length %llu\n", __func__,
--			lseg, lseg->range.iomode, lseg->range.offset,
--			lseg->range.length);
--		list_move(&lseg->fi_list, tmp_list);
--	}
--	if (list_empty(&lo->segs)) {
--		struct nfs_client *clp;
--
--		clp = NFS_SERVER(lo->inode)->nfs_client;
--		spin_lock(&clp->cl_lock);
--		/* List does not take a reference, so no need for put here */
--		list_del_init(&lo->layouts);
--		spin_unlock(&clp->cl_lock);
--		pnfs_invalidate_layout_stateid(lo);
--	}
--
-+	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list)
-+		if (should_free_lseg(lseg, range)) {
-+			dprintk("%s: freeing lseg %p iomode %d "
-+				"offset %llu length %llu\n", __func__,
-+				lseg, lseg->range.iomode, lseg->range.offset,
-+				lseg->range.length);
-+			mark_lseg_invalid(lseg, tmp_list);
-+		}
- 	dprintk("%s:Return\n", __func__);
- }
- 
- static void
--pnfs_free_lseg_list(struct list_head *tmp_list)
-+pnfs_free_lseg_list(struct list_head *free_me)
- {
--	struct pnfs_layout_segment *lseg;
-+	struct pnfs_layout_segment *lseg, *tmp;
-+	struct inode *ino;
- 
--	while (!list_empty(tmp_list)) {
--		lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
--				fi_list);
--		dprintk("%s calling put_lseg on %p\n", __func__, lseg);
--		list_del(&lseg->fi_list);
--		put_lseg(lseg);
-+	list_for_each_entry_safe(lseg, tmp, free_me, fi_list) {
-+		BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
-+		ino = lseg->layout->inode;
-+		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
-+		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
-+		put_layout_hdr(ino);
- 	}
-+	INIT_LIST_HEAD(free_me);
- }
- 
- void
-@@ -463,6 +491,17 @@ pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
- 	dprintk("<-- %s\n", __func__);
- }
- 
-+/* Layoutreturn may use an invalid stateid, just copy what is there */
-+void pnfs_copy_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo)
-+{
-+	int seq;
-+
-+	do {
-+		seq = read_seqbegin(&lo->seqlock);
-+		memcpy(dst->data, lo->stateid.data, sizeof(lo->stateid.data));
-+	} while (read_seqretry(&lo->seqlock, seq));
-+}
-+
- void
- pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 			struct nfs4_state *open_state)
-@@ -546,25 +585,23 @@ has_layout_to_return(struct pnfs_layout_hdr *lo,
- 	return out;
- }
- 
-+/* Return true if there is layout based io in progress in the given range.
-+ * Assumes range has already been marked invalid, and layout marked to
-+ * prevent any new lseg from being inserted.
-+ */
- bool
- pnfs_return_layout_barrier(struct nfs_inode *nfsi,
- 			   struct pnfs_layout_range *range)
- {
--	struct pnfs_layout_segment *lseg;
-+	struct pnfs_layout_segment *lseg, *tmp;
- 	bool ret = false;
- 
- 	spin_lock(&nfsi->vfs_inode.i_lock);
--	list_for_each_entry(lseg, &nfsi->layout->segs, fi_list) {
--		if (!should_free_lseg(lseg, range))
--			continue;
--		lseg->valid = false;
--		if (!_pnfs_can_return_lseg(lseg)) {
--			dprintk("%s: wait on lseg %p refcount %d\n",
--				__func__, lseg,
--				atomic_read(&lseg->pls_refcount));
-+	list_for_each_entry_safe(lseg, tmp, &nfsi->layout->segs, fi_list)
-+		if (should_free_lseg(lseg, range)) {
- 			ret = true;
-+			break;
- 		}
--	}
- 	spin_unlock(&nfsi->vfs_inode.i_lock);
- 	dprintk("%s:Return %d\n", __func__, ret);
- 	return ret;
-@@ -574,12 +611,10 @@ void
- pnfs_layoutreturn_release(struct nfs4_layoutreturn *lrp)
- {
- 	struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
--	LIST_HEAD(tmp_list);
- 
- 	if (lrp->args.return_type != RETURN_FILE)
- 		return;
- 	spin_lock(&lrp->args.inode->i_lock);
--	pnfs_clear_lseg_list(lo, &tmp_list, &lrp->args.range);
- 	if (!lrp->res.valid)
- 		;	/* forgetful model internal release */
- 	else if (!lrp->res.lrs_present)
-@@ -588,7 +623,6 @@ pnfs_layoutreturn_release(struct nfs4_layoutreturn *lrp)
- 		pnfs_set_layout_stateid(lo, &lrp->res.stateid);
- 	put_layout_hdr_locked(lo); /* Matched in _pnfs_return_layout */
- 	spin_unlock(&lrp->args.inode->i_lock);
--	pnfs_free_lseg_list(&tmp_list);
- }
- 
- static int
-@@ -641,7 +675,11 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
- 	arg.offset = 0;
- 	arg.length = NFS4_MAX_UINT64;
- 
-+	/* probably should BUGON if type != RETURN_FILE */
- 	if (type == RETURN_FILE) {
-+		LIST_HEAD(tmp_list);
-+		struct pnfs_layout_segment *lseg, *tmp;
-+
- 		spin_lock(&ino->i_lock);
- 		lo = nfsi->layout;
- 		if (lo && !has_layout_to_return(lo, &arg))
-@@ -652,10 +690,13 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
- 			goto out;
- 		}
- 
-+		list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
-+			if (should_free_lseg(lseg, &arg))
-+				mark_lseg_invalid(lseg, &tmp_list);
- 		/* Reference matched in pnfs_layoutreturn_release */
- 		get_layout_hdr_locked(lo);
--
- 		spin_unlock(&ino->i_lock);
-+		pnfs_free_lseg_list(&tmp_list);
- 
- 		if (layoutcommit_needed(nfsi)) {
- 			if (stateid && !wait) { /* callback */
-@@ -1171,7 +1212,7 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
- 	nfsi->layout->write_end_pos = 0;
- 	nfsi->layout->cred = NULL;
- 	__clear_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->state);
--	pnfs_get_layout_stateid(&data->args.stateid, nfsi->layout, NULL);
-+	pnfs_copy_layout_stateid(&data->args.stateid, nfsi->layout);
- 
- 	/* Reference for layoutcommit matched in pnfs_layoutcommit_release */
- 	get_layout_hdr_locked(NFS_I(inode)->layout);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 05dd5e0..000acf0 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -206,6 +206,7 @@ void pnfs_layoutreturn_release(struct nfs4_layoutreturn *lpr);
- void pnfs_destroy_layout(struct nfs_inode *);
- void pnfs_destroy_all_layouts(struct nfs_client *);
- void put_layout_hdr(struct inode *inode);
-+void pnfs_copy_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo);
- void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 			     struct nfs4_state *open_state);
- 
--- 
-1.7.2.1
+> I think the inode i_nlink games are much more appropriate on this side of
+> the equation, rather than the dput side (after all, d_obtain_alias is setting
+> up an alias for the inode).
+> 
+> Can you even put the link check into __d_find_alias?
+> 
+> -               if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
+> +               if (S_ISDIR(inode->i_mode) || !inode->i_nlink ||
+> !d_unhashed(alias)) {
+> 
+> Something like that?
 
+The immediate result of that would be for the close rpc (or any rpc's
+sent after the file was unlinked) to fail with ESTALE.
+
+But nfsd already holds an open file in this case, and you could argue
+that it should be using that from the start.
+
+So, we could modify nfsd to add a hash mapping filehandles to the filp's
+that it knows about, and have nfsd consult that hash before calling
+dentry_to_fh.
+
+--b.
