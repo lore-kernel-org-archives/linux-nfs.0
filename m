@@ -1,56 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.isti.cnr.it ([194.119.192.4]:1627 "EHLO mx2.isti.cnr.it"
+Received: from magus.merit.edu ([198.108.1.13]:57325 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751422Ab0K2Sjl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Nov 2010 13:39:41 -0500
-Received: from SCRIPT-SPFWL-DAEMON.mx.isti.cnr.it by mx.isti.cnr.it
- (PMDF V6.5 #31825) id <01NUU9CJKVLSLKR7U0@mx.isti.cnr.it> for
- linux-nfs@vger.kernel.org; Mon, 29 Nov 2010 19:38:33 +0100 (MET)
-Received: from conversionlocal.isti.cnr.it by mx.isti.cnr.it (PMDF V6.5 #31825)
- id <01NUU9CIV1YOLKRFUR@mx.isti.cnr.it> for linux-nfs@vger.kernel.org; Mon,
- 29 Nov 2010 19:38:31 +0100 (MET)
-Received: from [192.168.7.52] (firewall.itb.cnr.it [155.253.6.254])
- by mx.isti.cnr.it (PMDF V6.5 #31826)
- with ESMTPSA id <01NUU9CITX14LPP8E4@mx.isti.cnr.it> for
- linux-nfs@vger.kernel.org; Mon, 29 Nov 2010 19:38:31 +0100 (MET)
-Date: Mon, 29 Nov 2010 19:38:30 +0100
-From: Spelic <spelic@shiftmail.org>
-Subject: Re: NFSv4 behaviour on unknown users
-In-reply-to: <1291054975.12784.17.camel@heimdal.trondhjem.org>
+	id S932900Ab0KOTPf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Nov 2010 14:15:35 -0500
+Date: Mon, 15 Nov 2010 14:15:33 -0500
+From: Jim Rees <rees@umich.edu>
 To: linux-nfs@vger.kernel.org
-Message-id: <4CF3F326.4060608@shiftmail.org>
-Content-type: text/plain; format=flowed; charset=UTF-8
-References: <4CF3ED05.3070401@shiftmail.org>
- <1291054975.12784.17.camel@heimdal.trondhjem.org>
+Cc: peter honeyman <honey@citi.umich.edu>, sfaibish <sfaibish@emc.com>
+Subject: fileid changed
+Message-ID: <20101115191533.GA31837@merit.edu>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 11/29/2010 07:22 PM, Trond Myklebust wrote:
-> On Mon, 2010-11-29 at 19:12 +0100, Spelic wrote:
->    
-> No. That is not allowed by the spec.
->
-> Trond
->    
+With Benny's pnfs-all-latest kernel of this morning I'm getting this:
 
-Too bad!! :-((
-Was that spec decision really wise? :-/
+NFS: server emc-1 error: fileid changed
+fsid 0:14: expected fileid 0x4c1b59f7, got 0x167
+NFS: server emc-1 error: fileid changed
+fsid 0:14: expected fileid 0x4c891415, got 0x174
+NFS: server emc-1 error: fileid changed
+fsid 0:14: expected fileid 0x174, got 0x4c891415
+NFS: server emc-1 error: fileid changed
+fsid 0:14: expected fileid 0x177, got 0x4ce18474
+[ followed by many similar lines ]
 
-
-BTW:
-I've just noticed two discussions dated a few months ago in this ML 
-regarding this.
-the thread named 'numeric UIDs'
-and more interestingly the thread: "Teach clients to map numeric strings 
-into valid uids and gids."
-http://marc.info/?t=128207393000001&r=1&w=2
-
-Would the patch by Steve Dickson allow us to have numeric UID mapping 
-like in NFSv3?
-(Including ability for a non-squashed-root to do chown towards an UID 
-which is unknown at server side)
-
-And if yes, how come this is not against the specs?
-
-Thank you
+This happens during test5: read and write of Connectathon basic, pnfs block
+layout client, EMC server.  The user process hangs at this point, no oops.
+I can provide more details if needed.  This could easily be my screw-up of
+course, but I haven't changed anything in my code and I wasn't getting this
+with the previous kernel.  So before I dig in I wanted to ask if this rings
+a bell for anyone.
