@@ -1,169 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:28751 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:48606 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754250Ab0KZS4I convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Nov 2010 13:56:08 -0500
-Subject: [GIT PULL] Please pull NFS client bugfixes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 26 Nov 2010 13:56:07 -0500
-Message-ID: <1290797767.4905.11.camel@heimdal.trondhjem.org>
+	id S1755966Ab0KPPEv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Nov 2010 10:04:51 -0500
+Date: Tue, 16 Nov 2010 10:04:50 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Neil Brown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org, Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH 0/2] sunrpc: fix two server-side race problems.
+Message-ID: <20101116150450.GC23781@fieldses.org>
+References: <20101115002634.19121.7027.stgit@notabene.brown>
+ <20101116170720.6dc36154@notabene.brown>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101116170720.6dc36154@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Linus,
+On Tue, Nov 16, 2010 at 05:07:20PM +1100, Neil Brown wrote:
+> On Mon, 15 Nov 2010 11:27:01 +1100
+> NeilBrown <neilb@suse.de> wrote:
+> 
+> > 
+> > Hi Bruce,
+> >  I found these while trying to diagnose why a customer hit the
+> >  	BUG_ON(xprt->xpt_pool != NULL);
+> >  in svc_xprt_enqueue (in a 2.6.27 based kernel).  I don't think either
+> >  of these actually explain the problem, but they seem to be bugs
+> >  none-the-less.
+> > 
+> 
+> And I think I have now found the bug that caused the BUG_ON.
 
-Please pull from the "bugfixes" branch of the repository at
+Ah-hah!  Cool bug.  (By the way, what made you think it's what this
+customer hit?)
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
+> The xprt has been freed and reused for something else so xpt_pool and other
+> things are garbage.
+> 
+> If you could review and apply this patch I would appreciate it.
 
-This will update the following files through the appended changesets.
+Certainly looks sensible to me.
 
-  Cheers,
-    Trond
+Do you think that anything we did recently made this more likely?  Or
+have we never seen this before because the window for this race is so
+small?
 
-----
- fs/nfs/dir.c            |   62 +++++++++++++++++++++++++---------------------
- fs/nfs/direct.c         |    2 +-
- fs/nfs/internal.h       |    9 +++++++
- fs/nfs/nfs2xdr.c        |    4 ++-
- fs/nfs/nfs3xdr.c        |    4 ++-
- fs/nfs/nfs4xdr.c        |    6 ++++-
- include/linux/nfs_xdr.h |    1 +
- net/sunrpc/clnt.c       |   24 +++++++++++-------
- 8 files changed, 71 insertions(+), 41 deletions(-)
+(I'm just wondering whether to aim for 2.6.38, or for 2.6.37 and stable.
+Though I'm sort of inclined to the latter if it's a crash that someone's
+really hit, even if it's not a regression.)
 
-commit 0b26a0bf6ff398185546432420bb772bcfdf8d94
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Sat Nov 20 14:26:44 2010 -0500
+--b.
 
-    NFS: Ensure we return the dirent->d_type when it is known
-    
-    Store the dirent->d_type in the struct nfs_cache_array_entry so that we
-    can use it in getdents() calls.
-    
-    This fixes a regression with the new readdir code.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 3020093f578fb6c9acc6914dfd887a1ebd1db659
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Sat Nov 20 15:18:22 2010 -0500
-
-    NFS: Correct the array bound calculation in nfs_readdir_add_to_array
-    
-    It looks as if the array size calculation in MAX_READDIR_ARRAY does not
-    take the alignment of struct nfs_cache_array_entry into account.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit ece0b4233b6b915d1f63add2bd9f2733aec6317a
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Sat Nov 20 13:55:33 2010 -0500
-
-    NFS: Don't ignore errors from nfs_do_filldir()
-    
-    We should ignore the errors from the filldir callback, and just interpret
-    them as meaning we should exit, however we should definitely pass back
-    ENOMEM errors.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 85f8607e163f8d281fb407357279cb4ac6df12e6
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Sat Nov 20 13:24:49 2010 -0500
-
-    NFS: Fix the error handling in "uncached_readdir()"
-    
-    Currently, uncached_readdir() is broken because if fails to handle
-    the results from nfs_readdir_xdr_to_array() correctly.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 7a8e1dc34f52fd2927dbf7e520d7cd8eadc51336
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Sat Nov 20 13:24:46 2010 -0500
-
-    NFS: Fix a page leak in uncached_readdir()
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit e7c58e974a0318fcca5368e7b3570e10e9ae9028
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Sat Nov 20 13:22:24 2010 -0500
-
-    NFS: Fix a page leak in nfs_do_filldir()
-    
-    nfs_do_filldir() must always free desc->page when it is done, otherwise
-    we end up leaking the page.
-    
-    Also remove unused variable 'dentry'.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 5c346854d8ce6ca91931f8fc9177934257a667d0
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Sat Nov 20 12:43:45 2010 -0500
-
-    NFS: Assume eof if the server returns no readdir records
-    
-    Some servers are known to be buggy w.r.t. this. Deal with them...
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 463a376eae1c92a66c912af539bfd4bbefa37673
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Sat Nov 20 12:22:20 2010 -0500
-
-    NFS: Buffer overflow in ->decode_dirent() should not be fatal
-    
-    Overflowing the buffer in the readdir ->decode_dirent() should not lead to
-    a fatal error, but rather to an attempt to reread the record in question.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit b47d19de2c714020ba8f5545a6e7d4968f37eb45
-Author: Arun Bharadwaj <arun@linux.vnet.ibm.com>
-Date:   Thu Nov 18 10:36:43 2010 +0000
-
-    Pure nfs client performance using odirect.
-    
-    When an application opens a file with O_DIRECT flag, if the size of
-    the data that is written is equal to wsize, the client sends a
-    WRITE RPC with stable flag set to UNSTABLE followed by a single
-    COMMIT RPC rather than sending a single WRITE RPC with the stable
-    flag set to FILE_SYNC. This a bug.
-    
-    Patch to fix this.
-    
-    Signed-off-by: Arun R Bharadwaj <arun@linux.vnet.ibm.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 5fc43978a79e8021c189660ab63249fd29c5fb32
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Sat Nov 20 11:13:31 2010 -0500
-
-    SUNRPC: Fix an infinite loop in call_refresh/call_refreshresult
-    
-    If the rpcauth_refreshcred() call returns an error other than
-    EACCES, ENOMEM or ETIMEDOUT, we currently end up looping forever
-    between call_refresh and call_refreshresult.
-    
-    The correct thing to do here is to exit on all errors except
-    EAGAIN and ETIMEDOUT, for which case we retry 3 times, then
-    return EACCES.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+> 
+> While exploring I noticed something that I thought was odd.
+> In svc_rdma_transport.c, handle_connect_req calls rdma_create_xprt which will
+> return an xprt with XPT_BUSY set.
+> But I cannot see that XPT_BUSY is ever cleared.
+> There is a comment saying that svc_xprt_received() cannot be called for some
+> reason, but as far as I can see the reason is invalid, and svc_xprt_received
+> is exactly what should be called to clear XPT_BUSY.
+> But I don't really know this code so might be missing something important.
+> 
+> Thanks,
+> NeilBrown
+> 
+> From 0edb33a19f415a783d89839efbdf7c572a797043 Mon Sep 17 00:00:00 2001
+> From: NeilBrown <neilb@suse.de>
+> Date: Tue, 16 Nov 2010 16:55:19 +1100
+> Subject: [PATCH] sunrpc: close another server-size race.
+> 
+> When an xprt is created, it has a refcount of 1, and XPT_BUSY
+> is set.
+> The refcount is *not* owned by the thread that created the xprt
+> (as is clear from the fact that creators never put the reference).
+> Rather, it is owned by the absence of XPT_DEAD.  Once XPT_DEAD is set,
+> (And XPT_BUSY is clear) that initial reference is dropped and the xprt
+> can be freed.
+> 
+> So when a creator clears XPT_BUSY it is dropping its only reference and
+> so must not touch the xprt again.
+> 
+> However svc_recv, after calling ->xpo_accept (and so getting an XPT_BUSY
+> reference on a new xprt), calls svc_xprt_recieved.  This clears
+> XPT_BUSY and then svc_xprt_enqueue - this last without owning a reference.
+> This is dangerous and has been seen to leave svc_xprt_enqueue working
+> with an xprt containing garbage.
+> 
+> So we need to hold an extra counted reference over that call to
+> svc_xprt_received.
+> 
+> For safety, any time we clear XPT_BUSY and then use the xprt again, we
+> first get a reference, and the put it again afterwards.
+> 
+> Note that svc_close_all does not need this extra protection as there are
+> no threads running, and the final free can only be called asynchronously
+> from such a thread.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index ec9d8ef..fa249ca 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -213,6 +213,7 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+>  	spin_lock(&svc_xprt_class_lock);
+>  	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
+>  		struct svc_xprt *newxprt;
+> +		unsigned short newport;
+>  
+>  		if (strcmp(xprt_name, xcl->xcl_name))
+>  			continue;
+> @@ -231,8 +232,9 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+>  		spin_lock_bh(&serv->sv_lock);
+>  		list_add(&newxprt->xpt_list, &serv->sv_permsocks);
+>  		spin_unlock_bh(&serv->sv_lock);
+> +		newport = svc_xprt_local_port(newxprt);
+>  		clear_bit(XPT_BUSY, &newxprt->xpt_flags);
+> -		return svc_xprt_local_port(newxprt);
+> +		return newport;
+>  	}
+>   err:
+>  	spin_unlock(&svc_xprt_class_lock);
+> @@ -420,8 +422,13 @@ static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
+>  void svc_xprt_received(struct svc_xprt *xprt)
+>  {
+>  	BUG_ON(!test_bit(XPT_BUSY, &xprt->xpt_flags));
+> +	/* As soon as we clear busy, the xprt could be closed and
+> +	 * 'put', so we need a reference to call svc_xprt_enqueue with
+> +	 */
+> +	svc_xprt_get(xprt);
+>  	clear_bit(XPT_BUSY, &xprt->xpt_flags);
+>  	svc_xprt_enqueue(xprt);
+> +	svc_xprt_put(xprt);
+>  }
+>  EXPORT_SYMBOL_GPL(svc_xprt_received);
+>  
