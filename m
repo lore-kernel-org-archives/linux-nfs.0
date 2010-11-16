@@ -1,48 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39506 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:45905 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751369Ab0KUTVq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 21 Nov 2010 14:21:46 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/8] NFS: Fix the error handling in "uncached_readdir()"
-Date: Sun, 21 Nov 2010 14:21:19 -0500
-Message-Id: <1290367282-5445-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1290367282-5445-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1290367282-5445-1-git-send-email-Trond.Myklebust@netapp.com>
- <1290367282-5445-2-git-send-email-Trond.Myklebust@netapp.com>
- <1290367282-5445-3-git-send-email-Trond.Myklebust@netapp.com>
- <1290367282-5445-4-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756510Ab0KPSU2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Nov 2010 13:20:28 -0500
+Date: Tue, 16 Nov 2010 13:20:26 -0500
+To: Mark Hills <mark@pogo.org.uk>
+Cc: linux-nfs@vger.kernel.org, neilb@suse.de
+Subject: Re: Listen backlog set to 64
+Message-ID: <20101116182026.GA3971@fieldses.org>
+References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Currently, uncached_readdir() is broken because if fails to handle
-the results from nfs_readdir_xdr_to_array() correctly.
+On Mon, Nov 15, 2010 at 06:43:52PM +0000, Mark Hills wrote:
+> I am looking into an issue of hanging clients to a set of NFS servers, on 
+> a large HPC cluster.
+> 
+> My investigation took me to the RPC code, svc_create_socket().
+> 
+> 	if (protocol == IPPROTO_TCP) {
+> 		if ((error = kernel_listen(sock, 64)) < 0)
+> 			goto bummer;
+> 	}
+> 
+> A fixed backlog of 64 connections at the server seems like it could be too 
+> low on a cluster like this, particularly when the protocol opens and 
+> closes the TCP connection.
+> 
+> I wondered what is the rationale is behind this number, particuarly as it 
+> is a fixed value. Perhaps there is a reason why this has no effect on 
+> nfsd, or is this a FAQ for people on large systems?
+> 
+> The servers show overflow of a listening queue, which I imagine is 
+> related.
+> 
+>   $ netstat -s
+>   [...]
+>   TcpExt:
+>     6475 times the listen queue of a socket overflowed
+>     6475 SYNs to LISTEN sockets ignored
+> 
+> The affected servers are old, kernel 2.6.9. But this limit of 64 is 
+> consistent across that and the latest kernel source.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/dir.c |    5 ++---
- 1 files changed, 2 insertions(+), 3 deletions(-)
+Looks like the last time that was touched was 8 years ago, by Neil (below, from
+historical git archive).
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 353f47c..2492bac 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -766,10 +766,9 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
- 	desc->page_index = 0;
- 	desc->page = page;
+I'd be inclined to just keep doubling it until people don't complain,
+unless it's very expensive.  (How much memory (or whatever else) does a
+pending connection tie up?)
+
+The clients should be retrying, though, shouldn't they?
+
+--b.
+
+commit df0afc51f2f74756135c8bc08ec01134eb6de287
+Author: Neil Brown <neilb@cse.unsw.edu.au>
+Date:   Thu Aug 22 21:21:39 2002 -0700
+
+    [PATCH] Fix two problems with multiple concurrent nfs/tcp connects.
+    
+    1/ connect requests would be get lost...
+      As the comment at the top of svcsock.c says when discussing
+      SK_CONN:
+     *          after a set, svc_sock_enqueue must be called.
+    
+      We didn't and so lost conneciton requests.
+    
+    2/ set the max accept backlog to a more reasonable number to cope
+       with bursts of lots of connection requests.
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index ab28937..bbeee09 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -679,6 +679,8 @@ svc_tcp_accept(struct svc_sock *svsk)
+                goto failed;            /* aborted connection or whatever */
+        }
+        set_bit(SK_CONN, &svsk->sk_flags);
++       svc_sock_enqueue(svsk);
++
+        slen = sizeof(sin);
+        err = ops->getname(newsock, (struct sockaddr *) &sin, &slen, 1);
+        if (err < 0) {
+@@ -1220,7 +1222,7 @@ svc_create_socket(struct svc_serv *serv, int protocol, str
+        }
  
--	if (nfs_readdir_xdr_to_array(desc, page, inode) == -1) {
--		status = -EIO;
-+	status = nfs_readdir_xdr_to_array(desc, page, inode);
-+	if (status < 0)
- 		goto out_release;
--	}
- 
- 	status = nfs_do_filldir(desc, dirent, filldir);
- 
--- 
-1.7.3.2
+        if (protocol == IPPROTO_TCP) {
+-               if ((error = sock->ops->listen(sock, 5)) < 0)
++               if ((error = sock->ops->listen(sock, 64)) < 0)
+                        goto bummer;
+        }
 
