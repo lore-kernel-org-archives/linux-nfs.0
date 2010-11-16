@@ -1,68 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from dsl-67-204-24-19.acanac.net ([67.204.24.19]:57109 "EHLO
-	mail.ellipticsemi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755426Ab0KCQYq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Nov 2010 12:24:46 -0400
-Date: Wed, 3 Nov 2010 12:24:23 -0400
-From: Nick Bowler <nbowler@elliptictech.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Andi Kleen <andi@firstfloor.org>, bjschuma@netapp.com,
-        torvalds@linux-foundation.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [regression] NFS readdir change break fully cached nfs root
-Message-ID: <20101103162423.GA3797@elliptictech.com>
-References: <20101102180051.GA26089@basil.fritz.box>
- <1288731930.534.1.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1288731930.534.1.camel@heimdal.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:27454 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933080Ab0KPLND (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 06:13:03 -0500
+Message-ID: <4CE2673B.2010207@panasas.com>
+Date: Tue, 16 Nov 2010 13:12:59 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+        NFSv4 <nfsv4@ietf.org>
+Subject: Re: [nfsv4] [PATCH 16/22] pnfs-submit: rewrite of layout state handling
+ and cb_layoutrecall
+References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>	<1289551724-18575-17-git-send-email-iisaman@netapp.com>	<4CE003A6.2000606@panasas.com>	<AANLkTinMiVuKJB6b6C+nZO9bMevp_jkjwVobFv7di0jq@mail.gmail.com>	<4CE15D32.9070905@panasas.com>	<AANLkTint1tMO28-0+mdQdaRVO-eegBOvQutAuCFCmh1X@mail.gmail.com>	<4CE187D8.4090207@panasas.com> <AANLkTinj+F63q9V6LeuVSsLFziT6iBhudf_uvGB7KFM1@mail.gmail.com> <4CE254DD.808@panasas.com>
+In-Reply-To: <4CE254DD.808@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-11-02 17:05 -0400, Trond Myklebust wrote:
-> On Tue, 2010-11-02 at 19:00 +0100, Andi Kleen wrote:
-> > My NFS root test systems stopped booting with 2.6.37-rc1. It just
-> > hangs after entering user space.
-[...]
-> Does the following patch help?
-[...]
-> NFS: Fix a couple of regressions in readdir.
+On 11/16/2010 11:54 AM, Boaz Harrosh wrote:
+> 
+> It's not clear cut lawyer proof. But the way I understand this sentence is
+> that "If the client does not have a layout state eg. he did not request one
+> or returned all previous layouts"
+> 
 
-I just ran into this issue with git today, where some operations locked
-up permanently (seemed to be an infinite readdir loop as described
-elsewhere in this thread).
+To clarify, above "he did not request one"
+should be "did not successfully received one" with a new layout-stateid
+of course.
 
-I applied this patch, and it solves the lockups, but there's a new
-problem: the directory list sometimes comes back _empty_!
-
-Here's the test script I used:
-
-  #!/bin/sh -e
-  
-  mkdir gittest
-  cd gittest
-  git init
-  
-  for i in `seq 500`
-  do
-  	printf 'Hello\nWorld!\n' > $i.txt
-  done
-  
-  git add ./*.txt
-  git commit -m 'Initial Commit'
-  sed -i 1d ./*.txt
-  git stash
-  git stash pop
-  
-  echo 'Directory listing:'
-  ls
-
-the 'ls' at the end prints nothing when the directory actually contains
-500 files.  If we insert an 'ls' just before the 'git stash pop', that
-one prints the full listing.  Touching the directory afterwards makes
-the listings work again.
-
-The script works fine on 2.6.36.
-
--- 
-Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
+Thanks
+Boaz
