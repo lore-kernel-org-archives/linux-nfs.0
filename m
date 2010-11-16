@@ -1,219 +1,160 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:39110 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935640Ab0KQXLE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Nov 2010 18:11:04 -0500
-Subject: Re: [PATCH 1/3] NFS add minorversion to nfs_find_client search
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: andros@netapp.com
-Cc: benny@panasas.com, linux-nfs@vger.kernel.org
-In-Reply-To: <1289964990-4480-2-git-send-email-andros@netapp.com>
-References: <1289964990-4480-1-git-send-email-andros@netapp.com>
-	 <1289964990-4480-2-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 17 Nov 2010 18:10:54 -0500
-Message-ID: <1290035454.3070.15.camel@heimdal.trondhjem.org>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:40732 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753553Ab0KPXtX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 18:49:23 -0500
+Received: by gyh4 with SMTP id 4so812478gyh.19
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Nov 2010 15:49:22 -0800 (PST)
+In-Reply-To: <20101116185551.GD3971@fieldses.org>
+References: <AANLkTim3GyG4Skr_=0QyELJw1ySjfvhYMD2g4JKztrOx@mail.gmail.com>
+	<20101116185551.GD3971@fieldses.org>
+Date: Tue, 16 Nov 2010 17:49:22 -0600
+Message-ID: <AANLkTimmyOEov1m=Pk=brX1-JGQo2MkirapZHyx66cvj@mail.gmail.com>
+Subject: Re: incorrect EXDEV error occasionally returned for rename over NFS
+From: Joe Habermann <joe.habermann@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-11-16 at 22:36 -0500, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> The v4.0 and v4.1 callback threads share a pg_authenticate method.
-> Minorversions do not share an nfs_client.
-> 
-> Respond with an rpc auth error (SVC_DENIED) if the nfs_client matching the
-> server address, nfs version, and minorversion is not found.
+I did test out the fix and it did avoid the EXDEV problem.  But I see your
+point about it opening up a small security hole.
 
-No. We should simply drop the request.
+The other thought I had was to use checking similar to what's in
+svc_export_match() to see if the two exports were really for the same
+namespace/client domain:
 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/callback.c      |   19 +++++++++++++------
->  fs/nfs/callback.h      |    4 ++--
->  fs/nfs/callback_proc.c |    8 ++++----
->  fs/nfs/client.c        |   16 +++++++++++-----
->  fs/nfs/internal.h      |    2 +-
->  5 files changed, 31 insertions(+), 18 deletions(-)
-> 
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index aeec017..962c5de 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -17,9 +17,7 @@
->  #include <linux/freezer.h>
->  #include <linux/kthread.h>
->  #include <linux/sunrpc/svcauth_gss.h>
-> -#if defined(CONFIG_NFS_V4_1)
->  #include <linux/sunrpc/bc_xprt.h>
-> -#endif
->  
->  #include <net/inet_sock.h>
->  
-> @@ -346,19 +344,28 @@ static int check_gss_callback_principal(struct nfs_client *clp,
->  	return SVC_OK;
->  }
->  
-> +/*
-> + * Lookup the nfs_client that corresponds to this backchannel request.
-> + *
-> + * We only support NFSv4.1 callbacks on the fore channel connection, so
-> + * the svc_is_backchannel test indicates which minorversion nfs_client we are
-> + * searching for.
-> + */
->  static int nfs_callback_authenticate(struct svc_rqst *rqstp)
->  {
->  	struct nfs_client *clp;
->  	RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
-> +	u32 minorversion = svc_is_backchannel(rqstp) ? 1 : 0;
+--- vfs.c.orig  2011-02-10 18:39:30.000000000 -0600
++++ vfs.c       2011-02-10 18:39:46.000000000 -0600
+@@ -1744,8 +1744,12 @@ nfsd_rename(struct svc_rqst *rqstp, stru
+        tdir = tdentry->d_inode;
 
-Hmm... Nope. minorversion == CB_COMPOUND4args->minorversion.
+        err = (rqstp->rq_vers == 2) ? nfserr_acces : nfserr_xdev;
+-       if (ffhp->fh_export != tfhp->fh_export)
++       if (ffhp->fh_export != tfhp->fh_export) {
++           if (ffhp->fh_export->ex_client      != tfhp->fh_export->ex_client ||
++                ffhp->fh_export->ex_path.dentry !=
+tfhp->fh_export->ex_path.dentry ||
++                ffhp->fh_export->ex_path.mnt    !=
+tfhp->fh_export->ex_path.mnt)
+                goto out;
++       }
 
->  	int ret = SVC_OK;
->  
->  	/* Don't talk to strangers */
-> -	clp = nfs_find_client(svc_addr(rqstp), 4);
-> +	clp = nfs_find_client(svc_addr(rqstp), 4, minorversion);
+        err = nfserr_perm;
+        if (!flen || isdotent(fname, flen) || !tlen || isdotent(tname, tlen))
 
-Why do we need this at all in the NFSv4.1 case? Unlike minor version ==
-0, we _know_ that it arrived on a socket that is associated to a
-specific session. Can't we find a way to pass that information down to
-the callback server thread?
+I don't think this is perfect because in the race window, the old export
+could be removed and a new one could enter the cache with a different
+ex_client pointer.
 
->  	if (clp == NULL)
-> -		return SVC_DROP;
-> +		return SVC_DENIED;
+More noodling.
 
-Nope. SVC_DROP is correct. We shouldn't reply to unsolicited callbacks
-at all...
+Thanks, -Joe
 
->  
-> -	dprintk("%s: %s NFSv4 callback!\n", __func__,
-> -			svc_print_addr(rqstp, buf, sizeof(buf)));
-> +	dprintk("%s: %s NFSv4 callback! minorversion %d\n", __func__,
-> +			svc_print_addr(rqstp, buf, sizeof(buf)),
-> +			clp->cl_minorversion);
->  
->  	switch (rqstp->rq_authop->flavour) {
->  		case RPC_AUTH_NULL:
-> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-> index b16dd1f..b69bec5 100644
-> --- a/fs/nfs/callback.h
-> +++ b/fs/nfs/callback.h
-> @@ -177,7 +177,7 @@ static inline void put_session_client(struct nfs4_session *session)
->  static inline struct nfs_client *
->  find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
->  {
-> -	return cps->session ? cps->session->clp : nfs_find_client(addr, 4);
-> +	return cps->session ? cps->session->clp : nfs_find_client(addr, 4, 0);
->  }
-
-This is ugly. If we can save session info in 'struct cb_process_state',
-then why can't we save the NFSv4.0 client too?
-
->  
->  #else /* CONFIG_NFS_V4_1 */
-> @@ -189,7 +189,7 @@ static inline void nfs_client_return_layouts(struct nfs_client *clp)
->  static inline struct nfs_client *
->  find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
->  {
-> -	return nfs_find_client(addr, 4);
-> +	return nfs_find_client(addr, 4, 0);
->  }
->  
->  static inline void put_session_client(struct nfs4_session *session)
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index b4c68e9..69d085a 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -505,13 +505,13 @@ validate_seqid(struct nfs4_slot_table *tbl, struct cb_sequenceargs * args)
->   * Returns NULL if there are no connections with sessions, or if no session
->   * matches the one of interest.
->   */
-> - static struct nfs_client *find_client_with_session(
-> -	const struct sockaddr *addr, u32 nfsversion,
-> -	struct nfs4_sessionid *sessionid)
-> +static struct nfs_client *
-> +find_client_with_session(const struct sockaddr *addr, u32 nfsversion,
-> +			 struct nfs4_sessionid *sessionid)
->  {
->  	struct nfs_client *clp;
->  
-> -	clp = nfs_find_client(addr, 4);
-> +	clp = nfs_find_client(addr, 4, 1);
-
-We pass 'u32 nfsversion' as an argument, yet we hand code the
-nfs_find_client version and minor version arguments?
-
->  	if (clp == NULL)
->  		return NULL;
->  
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index dbf43e7..ba7712c 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -371,7 +371,8 @@ EXPORT_SYMBOL(nfs_sockaddr_cmp);
->   * Find a client by IP address and protocol version
->   * - returns NULL if no such client
->   */
-> -struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
-> +struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion,
-> +				   u32 minorversion)
->  {
->  	struct nfs_client *clp;
->  
-> @@ -385,7 +386,8 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
->  			continue;
->  
->  		/* Different NFS versions cannot share the same nfs_client */
-> -		if (clp->rpc_ops->version != nfsversion)
-> +		if (clp->rpc_ops->version != nfsversion ||
-> +		    clp->cl_minorversion != minorversion)
->  			continue;
->  
->  		/* Match only the IP address, not the port number */
-> @@ -401,13 +403,16 @@ struct nfs_client *nfs_find_client(const struct sockaddr *addr, u32 nfsversion)
->  }
->  
->  /*
-> - * Find a client by IP address and protocol version
-> - * - returns NULL if no such client
-> + * Callback service RPC layer pg_authenticate method.
-> + *
-> + * Find a client by IP address, protocol version, and minorversion.
-> + * Returns NULL if no such client
->   */
->  struct nfs_client *nfs_find_client_next(struct nfs_client *clp)
->  {
->  	struct sockaddr *sap = (struct sockaddr *)&clp->cl_addr;
->  	u32 nfsvers = clp->rpc_ops->version;
-> +	u32 minorversion = clp->cl_minorversion;
->  
->  	spin_lock(&nfs_client_lock);
->  	list_for_each_entry_continue(clp, &nfs_client_list, cl_share_link) {
-> @@ -418,7 +423,8 @@ struct nfs_client *nfs_find_client_next(struct nfs_client *clp)
->  			continue;
->  
->  		/* Different NFS versions cannot share the same nfs_client */
-> -		if (clp->rpc_ops->version != nfsvers)
-> +		if (clp->rpc_ops->version != nfsvers ||
-> +		    clp->cl_minorversion != minorversion)
->  			continue;
->  
->  		/* Match only the IP address, not the port number */
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index 0a9ea58..d89aded 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -131,7 +131,7 @@ extern void nfs_umount(const struct nfs_mount_request *info);
->  extern struct rpc_program nfs_program;
->  
->  extern void nfs_put_client(struct nfs_client *);
-> -extern struct nfs_client *nfs_find_client(const struct sockaddr *, u32);
-> +extern struct nfs_client *nfs_find_client(const struct sockaddr *, u32, u32);
->  extern struct nfs_client *nfs_find_client_next(struct nfs_client *);
->  extern struct nfs_server *nfs_create_server(
->  					const struct nfs_parsed_mount_data *,
-
-
+On Tue, Nov 16, 2010 at 12:55 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Mon, Nov 15, 2010 at 03:46:44PM -0600, Joe Habermann wrote:
+>> When running SVN checkouts over NFSv3, they occasionally fail with an
+>> EXDEV error:
+>>
+>> (etc.)
+>> U    snfs/build/Makefile.hpux
+>> svn: In directory 'snfs/build'
+>> svn: Can't move 'snfs/build/tempfile.tmp' to
+>> 'snfs/build/Makefile.sol': Invalid cross-device link
+>>
+>> I've noticed that other people have reported this problem but it remains
+>> unresolved.  Through some debugging, I believe I have found root cause.
+>> nfsd_rename() contains the following code:
+>>
+>> 1707 /*
+>> 1708  * Rename a file
+>> 1709  * N.B. After this call _both_ ffhp and tfhp need an fh_put 1710  */
+>> 1711 __be32
+>> 1712 nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char
+>> *fname, int flen,
+>> 1713                             struct svc_fh *tfhp, char *tname, int tlen)
+>> 1714 {
+>> 1715         struct dentry   *fdentry, *tdentry, *odentry, *ndentry, *trap;
+>> 1716         struct inode    *fdir, *tdir;
+>> 1717         __be32          err;
+>> 1718         int             host_err;
+>> 1719
+>> 1720         err = fh_verify(rqstp, ffhp, S_IFDIR, NFSD_MAY_REMOVE);
+>> 1721         if (err)
+>> 1722                 goto out;
+>> 1723         err = fh_verify(rqstp, tfhp, S_IFDIR, NFSD_MAY_CREATE);
+>> 1724         if (err)
+>> 1725                 goto out;
+>> 1726
+>> 1727         fdentry = ffhp->fh_dentry;
+>> 1728         fdir = fdentry->d_inode;
+>> 1729
+>> 1730         tdentry = tfhp->fh_dentry;
+>> 1731         tdir = tdentry->d_inode;
+>> 1732
+>> 1733         err = (rqstp->rq_vers == 2) ? nfserr_acces : nfserr_xdev;
+>> 1734         if (ffhp->fh_export != tfhp->fh_export)
+>> 1735                 goto out;
+>>
+>> Line 1734 compares the fh_export pointers in the file handles for
+>> the "from" and "to" directories.  However, this is a bad check since
+>> it's possible these pointers differ yet refer to the same underlying
+>> file system.  Based on code inspection, encached export pointers are
+>> only valid for 30 minutes before they expire and are reinserted through
+>> calls made between the kernel and rpc.mountd.  So a race exists where the
+>> ffhp->fh_export is populated on line 1720, the export cache is updated,
+>> and tfhp->fh_export is set on line 1723 to a different value.
+>>
+>> This window can be cranked wide open by putting an "msleep(10);"
+>> between lines 1722 and 1723 above, recompiling and reinstalling nfsd.ko
+>> etc., and then running SVN checkouts in a loop from an NFS client.
+>> Within 30 minutes, the problem is seen.
+>
+> Good detective work, thanks.  Have you confirmed that applying your
+> change below eliminates the problem?
+>
+>> I'm still very new to the NFS code, but I'm wonder whether the check
+>> needs to be something like this instead:
+>>
+>> --- vfs.c.orig  2010-11-15 14:35:18.000000000 -0600
+>> +++ vfs.c       2010-11-15 14:43:52.000000000 -0600
+>> @@ -1731,7 +1731,7 @@ nfsd_rename(struct svc_rqst *rqstp, stru
+>>    tdir = tdentry->d_inode;
+>>
+>>    err = (rqstp->rq_vers == 2) ? nfserr_acces : nfserr_xdev;
+>> -       if (ffhp->fh_export != tfhp->fh_export)
+>> +       if (fdir->i_sb != tdir->i_sb)
+>>        goto out;
+>>
+>>    err = nfserr_perm;
+>>
+>> Thoughts?  I think it's either that or some locking needs to be put in
+>> to guarantee that the file handles for the "to" and "from" directory
+>> always wind up with the same export pointer when they belong to the
+>> same file system.  I guess the other question is why there is an
+>> EXDEV check at the top of nfsd_rename() instead of putting it in
+>> vfs_rename().
+>
+> The fh_verify call is also responsible for setting the identity of the
+> user, and that may be affected by export options like root_squash.  In
+> the above case if ffhp was on a root_squash export, and tfhp on a
+> no_root_squash export, and we get a request from uid 0, we'd end up
+> with an incoming uid-0 user running as root (since the fh_verify for
+> tfhp was performed last), and might allow renaming from a directory that
+> only root had write permission to.
+>
+> It's a minor hole (especially since it's already easy for a client to
+> circumvent protections that vary from export to export in the default
+> no_subtree_check case).  But we should be able to do better.
+>
+> I'm not sure what to suggest.
+>
+> --b.
+>
+>>
+>> For full disclosure, I'm actually running the SLES11 SP1 kernel,
+>> linux-2.6.32.12-0.7, but I've looked at the latest upstream kernels and
+>> they appear to have the same code and I assume the same issue.
+>
