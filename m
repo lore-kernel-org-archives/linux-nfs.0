@@ -1,123 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61415 "EHLO mx2.netapp.com"
+Received: from magus.merit.edu ([198.108.1.13]:44915 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751497Ab0K2UOM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 15:14:12 -0500
-Subject: Re: NFSv4 ACL set and inode attribute cache
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <m3zkssjuyz.fsf@linux.vnet.ibm.com>
-References: <m3hbfpvz0k.fsf@linux.vnet.ibm.com>
-	 <m3eiatvwpc.fsf@linux.vnet.ibm.com> <m31v6rrrfr.fsf@linux.vnet.ibm.com>
-	 <m3zkssjuyz.fsf@linux.vnet.ibm.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 29 Nov 2010 15:13:50 -0500
-Message-ID: <1291061630.12784.49.camel@heimdal.trondhjem.org>
+	id S1753409Ab0KPUyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Nov 2010 15:54:38 -0500
+Date: Tue, 16 Nov 2010 15:54:36 -0500
+From: Jim Rees <rees@umich.edu>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Valentijn Sessink <valentyn@blub.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Strange rpc.svcgssd behavior
+Message-ID: <20101116205436.GA4595@merit.edu>
+References: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com>
+ <4CE2AA3B.6070302@openoffice.nl>
+ <4CE2DF2D.9070603@blub.net>
+ <20101116201753.GB4482@merit.edu>
+ <577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-11-29 at 15:46 +0530, Aneesh Kumar K. V wrote:
-> On Fri, 12 Nov 2010 11:53:20 +0530, "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> > On Thu, 11 Nov 2010 00:21:27 +0530, "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> > > On Wed, 10 Nov 2010 23:31:31 +0530, Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> > > > 
-> > > > Hi,
-> > > > 
-> > > > I guess we are not marking the inode attribute as invalid when we set
-> > > > the ACL value. For ex:
-> > > > 
-> > > > /d# mkdir sub3
-> > > > /d# ls -dl sub3
-> > > > drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
-> > > > /d# nfs4_setfacl -s A:fd:EVERYONE@:rwax sub3
-> > > > /d# ls -dl sub3
-> > > > drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
-> > > > /d# 
-> > > > 
-> > > > 
-> > > > On the server i have the mode bits as
-> > > > /d# ls -dl sub3
-> > > > drwxrwxrwx 2 root root 4096 Nov 10 17:56 sub3
-> > > > /d# 
-> > > 
-> > > We also have similar issue other way round. ie setting the mode bits
-> > > don't result in ACL values being invalidated. But a second request get
-> > > the right value of ACL as show below.
-> > > 
-> > > /d# nfs4_getfacl  x
-> > > A::OWNER@:rw
-> > > A::GROUP@:rw
-> > > A::EVERYONE@:r
-> > > /d# chmod 600 x
-> > > /d# nfs4_getfacl  x
-> > > A::OWNER@:rw
-> > > A::GROUP@:rw
-> > > A::EVERYONE@:r
-> > > /d#
-> > > 
-> > > Expected value is
-> > > 
-> > > /d# nfs4_getfacl  x
-> > > A::OWNER@:rw
-> > > 
-> > 
-> > The below patch fix the problem for me. If this is the right way
-> > to fix, I can send a proper patch with commit message and s-o-b.
-> > 
-> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > index 0f24cdf..666a48b 100644
-> > --- a/fs/nfs/nfs4proc.c
-> > +++ b/fs/nfs/nfs4proc.c
-> > @@ -3359,6 +3359,8 @@ static ssize_t nfs4_proc_get_acl(struct inode *inode, void *buf, size_t buflen)
-> >  	ret = nfs_revalidate_inode(server, inode);
-> >  	if (ret < 0)
-> >  		return ret;
-> > +	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
-> > +		nfs_zap_acl_cache(inode);
-> >  	ret = nfs4_read_cached_acl(inode, buf, buflen);
-> >  	if (ret != -ENOENT)
-> >  		return ret;
-> > @@ -3387,6 +3389,11 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
-> >  	nfs_inode_return_delegation(inode);
-> >  	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
-> >  	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
-> > +	/*
-> > +	 * Acl update can result in inode attribute update.
-> > +	 * so mark the attribute cache invalid.
-> > +	 */
-> > +	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;
+Chuck Lever wrote:
 
-This needs to be done under the correct spin locks, so please use the
-helper nfs_mark_for_revalidate() instead of attempting to open coding
-it.
+  Before we go too far down the NM path of no return, I was under the
+  impression that some applications require the host's name on the localhost
+  entries in /etc/hosts.  That's why NM puts it there.
+  
+  There's nothing invalid about having a hostname on the localhost entries
+  in /etc/hosts, is there?
+  
+  So I wonder if removing NM is really the solution here.
 
-> >  	nfs_access_zap_cache(inode);
-> >  	nfs_zap_acl_cache(inode);
-> >  	return ret;
-> 
-> 
-> Any update on this ? Another option i figured out today is to make sure
-> we add FATTR4_WORD0_ACL in nfs4_fattr_bitmap for fetching the modified
-> acl value on mode update. Similarly setfacl can be compounded with the
-> getattr request.
+No, it's not.  I just like to complain about NM.
 
-We actually used to compound setacl with a GETATTR(FATTR4_WORD0_ACL) in
-order to ensure that the server sets it correctly. Unfortunately, that
-caused some servers to return NFS4ERR_RESOURCE due to the burden of
-caching all that acl information in the duplicate request queue.
+The original problem was that rpc.svcgssd couldn't figure out the correct
+kerberos realm.  The fix in this particular case, I think, is to set the
+realm explicitly in /etc/idmapd.conf.
 
-I'd be fine with adding an ordinary getattr request, though, as long as
-it is allowed to fail (i.e. the result of __nfs4_proc_set_acl() must
-only depend on the setacl).
+But a more general problem is that if you don't set a realm in
+/etc/idmapd.conf, the fallback is to whatever is returned by gethostname().
+Shouldn't the fallback be to what is in krb5.conf?
 
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+In general, I think it's a mistake to assume that a host's security realm is
+the same as its dns domain, especially given host mobility, the lack of
+security in dns, and the existence of other methods (krb5.conf) to determine
+the security realm.
