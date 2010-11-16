@@ -1,37 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from filter.openoffice.nl ([217.170.2.175]:38315 "EHLO
+Received: from filter.openoffice.nl ([217.170.2.175]:34157 "EHLO
 	filter.openoffice.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753892Ab0KPQJV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 11:09:21 -0500
-Message-ID: <4CE2AA3B.6070302@openoffice.nl>
-Date: Tue, 16 Nov 2010 16:58:51 +0100
-From: Valentijn Sessink <v.sessink@openoffice.nl>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Strange rpc.svcgssd behavior
-References: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com>
-In-Reply-To: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com>
+	with ESMTP id S933144Ab0KPO1u (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 09:27:50 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by filter.openoffice.nl (Postfix) with ESMTP id 11BD22439FB
+	for <linux-nfs@vger.kernel.org>; Tue, 16 Nov 2010 15:27:47 +0100 (CET)
+Received: from filter.openoffice.nl ([127.0.0.1])
+	by localhost (post-it.openoffice.nl [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id s1pjOyehq6HC for <linux-nfs@vger.kernel.org>;
+	Tue, 16 Nov 2010 15:27:42 +0100 (CET)
+Received: from blub.net (mail.blub.net [95.97.76.243])
+	by filter.openoffice.nl (Postfix) with ESMTP id 281352437F3
+	for <linux-nfs@vger.kernel.org>; Tue, 16 Nov 2010 15:27:42 +0100 (CET)
+Received: from stout.kantoor.openoffice.nl (unknown [IPv6:2001:7b8:1529::1234:5678])
+	by blub.net (Postfix) with ESMTP id 0FA813003C5
+	for <linux-nfs@vger.kernel.org>; Tue, 16 Nov 2010 15:27:42 +0100 (CET)
+Message-ID: <4CE294DD.6010508@blub.net>
+Date: Tue, 16 Nov 2010 15:27:41 +0100
+From: Valentijn Sessink <valentyn@blub.net>
+To: linux-nfs@vger.kernel.org
+Subject: no_root_squash (and valid KRB root-ticket)
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Chuck,
+Hello list,
 
-We have been disabling NM for years now because of this. As far as I can
-see from it's behaviour, it sets the hostname all by itself, during
-startup (but I could be wrong here, didn't look in the source code).
+I found that having "no_root_squash" on the server, having a valid
+Kerberos ticket for root@DOMAIN, does still not give you root rights on
+a share. Looking further, I found
+http://www.unix-info.org/nfsV4_howto_.txt that says that there is "no
+proper mapping between root and the GSSAuthName"; but I could not find
+the status of this document.
 
-V.
+Could any of you comment on this? Is this still the case (I suppose so)?
 
-Chuck Lever schreef:
->  ERROR: GSS-API: error in gss_acquire_cred(): Unspecified GSS failure.  Minor code may provide more information - Key table entry not found
->  unable to obtain root (machine) credentials
->  do you have a keytab entry for nfs/<your.host>@<YOUR.REALM> in /etc/krb5.keytab?
-[...]
-> Removing "your.host	your" from the "::1" entry makes this problem go away -- rpc.svcgssd starts up as expected.
-> 
-> Now I reboot, and NetworkManager happily adds "your.host	your" back to the "::1" entry, and rpc.svcgssd fails again.  I haven't tried this, but I suspect if the ::1 entry weren't there, NM would add "your.host.net	your" to the IPv4 loopback entry, and we'd have the same problem.
--- 
-http://www.openoffice.nl/   Open Office - Linux Office Solutions
-Valentijn Sessink  v.sessink@openoffice.nl  +31(0)20-4214059
+Best regards,
+
+Valentijn
