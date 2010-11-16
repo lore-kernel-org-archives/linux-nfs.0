@@ -1,169 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:35769 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934828Ab0KQRor (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:44:47 -0500
-Received: by gyh4 with SMTP id 4so1262325gyh.19
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 09:44:47 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/17] NFS: Move and update xdr_decode_foo() functions that
-	we're keeping
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 17 Nov 2010 12:44:42 -0500
-Message-ID: <20101117174442.29177.24636.stgit@matisse.1015granger.net>
-In-Reply-To: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
-References: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from cantor.suse.de ([195.135.220.2]:39000 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757733Ab0KPGHa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 01:07:30 -0500
+Date: Tue, 16 Nov 2010 17:07:20 +1100
+From: Neil Brown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, Tom Tucker <tom@opengridcomputing.com>
+Subject: Re: [PATCH 0/2] sunrpc: fix two server-side race problems.
+Message-ID: <20101116170720.6dc36154@notabene.brown>
+In-Reply-To: <20101115002634.19121.7027.stgit@notabene.brown>
+References: <20101115002634.19121.7027.stgit@notabene.brown>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
+On Mon, 15 Nov 2010 11:27:01 +1100
+NeilBrown <neilb@suse.de> wrote:
 
-Move the timestamp decoder to match the placement and naming
-conventions of the other helpers.  Fold xdr_decode_fattr() into
-decode_fattr(), which is now it's only user.
+> 
+> Hi Bruce,
+>  I found these while trying to diagnose why a customer hit the
+>  	BUG_ON(xprt->xpt_pool != NULL);
+>  in svc_xprt_enqueue (in a 2.6.27 based kernel).  I don't think either
+>  of these actually explain the problem, but they seem to be bugs
+>  none-the-less.
+> 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: J. Bruce Fields <bfields@redhat.com>
----
+And I think I have now found the bug that caused the BUG_ON.
+The xprt has been freed and reused for something else so xpt_pool and other
+things are garbage.
 
- fs/nfs/nfs2xdr.c |   97 +++++++++++++++++++++++++++++++-----------------------
- 1 files changed, 56 insertions(+), 41 deletions(-)
+If you could review and apply this patch I would appreciate it.
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index bf80c3c..85030b9 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -89,46 +89,6 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+While exploring I noticed something that I thought was odd.
+In svc_rdma_transport.c, handle_connect_req calls rdma_create_xprt which will
+return an xprt with XPT_BUSY set.
+But I cannot see that XPT_BUSY is ever cleared.
+There is a comment saying that svc_xprt_received() cannot be called for some
+reason, but as far as I can see the reason is invalid, and svc_xprt_received
+is exactly what should be called to clear XPT_BUSY.
+But I don't really know this code so might be missing something important.
+
+Thanks,
+NeilBrown
+
+>From 0edb33a19f415a783d89839efbdf7c572a797043 Mon Sep 17 00:00:00 2001
+From: NeilBrown <neilb@suse.de>
+Date: Tue, 16 Nov 2010 16:55:19 +1100
+Subject: [PATCH] sunrpc: close another server-size race.
+
+When an xprt is created, it has a refcount of 1, and XPT_BUSY
+is set.
+The refcount is *not* owned by the thread that created the xprt
+(as is clear from the fact that creators never put the reference).
+Rather, it is owned by the absence of XPT_DEAD.  Once XPT_DEAD is set,
+(And XPT_BUSY is clear) that initial reference is dropped and the xprt
+can be freed.
+
+So when a creator clears XPT_BUSY it is dropping its only reference and
+so must not touch the xprt again.
+
+However svc_recv, after calling ->xpo_accept (and so getting an XPT_BUSY
+reference on a new xprt), calls svc_xprt_recieved.  This clears
+XPT_BUSY and then svc_xprt_enqueue - this last without owning a reference.
+This is dangerous and has been seen to leave svc_xprt_enqueue working
+with an xprt containing garbage.
+
+So we need to hold an extra counted reference over that call to
+svc_xprt_received.
+
+For safety, any time we clear XPT_BUSY and then use the xprt again, we
+first get a reference, and the put it again afterwards.
+
+Note that svc_close_all does not need this extra protection as there are
+no threads running, and the final free can only be called asynchronously
+from such a thread.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index ec9d8ef..fa249ca 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -213,6 +213,7 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+ 	spin_lock(&svc_xprt_class_lock);
+ 	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
+ 		struct svc_xprt *newxprt;
++		unsigned short newport;
  
- 
- /*
-- * Common NFS XDR functions as inlines
-- */
--static inline __be32*
--xdr_decode_time(__be32 *p, struct timespec *timep)
--{
--	timep->tv_sec = ntohl(*p++);
--	/* Convert microseconds into nanoseconds */
--	timep->tv_nsec = ntohl(*p++) * 1000;
--	return p;
--}
--
--static __be32 *
--xdr_decode_fattr(__be32 *p, struct nfs_fattr *fattr)
--{
--	u32 rdev, type;
--	type = ntohl(*p++);
--	fattr->mode = ntohl(*p++);
--	fattr->nlink = ntohl(*p++);
--	fattr->uid = ntohl(*p++);
--	fattr->gid = ntohl(*p++);
--	fattr->size = ntohl(*p++);
--	fattr->du.nfs2.blocksize = ntohl(*p++);
--	rdev = ntohl(*p++);
--	fattr->du.nfs2.blocks = ntohl(*p++);
--	fattr->fsid.major = ntohl(*p++);
--	fattr->fsid.minor = 0;
--	fattr->fileid = ntohl(*p++);
--	p = xdr_decode_time(p, &fattr->atime);
--	p = xdr_decode_time(p, &fattr->mtime);
--	p = xdr_decode_time(p, &fattr->ctime);
--	fattr->valid |= NFS_ATTR_FATTR_V2;
--	fattr->rdev = new_decode_dev(rdev);
--	if (type == NFCHR && rdev == NFS2_FIFO_DEV) {
--		fattr->mode = (fattr->mode & ~S_IFMT) | S_IFIFO;
--		fattr->rdev = 0;
--	}
--	return p;
--}
--
--/*
-  * Encode/decode NFSv2 basic data types
-  *
-  * Basic NFSv2 data types are defined in section 2.3 of RFC 1094:
-@@ -208,6 +168,27 @@ out_overflow:
- }
- 
- /*
-+ * 2.3.2.  ftype
-+ *
-+ *	enum ftype {
-+ *		NFNON = 0,
-+ *		NFREG = 1,
-+ *		NFDIR = 2,
-+ *		NFBLK = 3,
-+ *		NFCHR = 4,
-+ *		NFLNK = 5
-+ *	};
-+ *
-+ */
-+static __be32 *xdr_decode_ftype(__be32 *p, u32 *type)
-+{
-+	*type = be32_to_cpup(p++);
-+	if (unlikely(*type > NF2FIFO))
-+		*type = NFBAD;
-+	return p;
-+}
-+
-+/*
-  * 2.3.3.  fhandle
-  *
-  *	typedef opaque fhandle[FHSIZE];
-@@ -269,6 +250,13 @@ static __be32 *xdr_encode_current_server_time(__be32 *p,
- 	return p;
- }
- 
-+static __be32 *xdr_decode_time(__be32 *p, struct timespec *timep)
-+{
-+	timep->tv_sec = be32_to_cpup(p++);
-+	timep->tv_nsec = be32_to_cpup(p++) * NSEC_PER_USEC;
-+	return p;
-+}
-+
- /*
-  * 2.3.5.  fattr
-  *
-@@ -292,12 +280,39 @@ static __be32 *xdr_encode_current_server_time(__be32 *p,
-  */
- static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ 		if (strcmp(xprt_name, xcl->xcl_name))
+ 			continue;
+@@ -231,8 +232,9 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+ 		spin_lock_bh(&serv->sv_lock);
+ 		list_add(&newxprt->xpt_list, &serv->sv_permsocks);
+ 		spin_unlock_bh(&serv->sv_lock);
++		newport = svc_xprt_local_port(newxprt);
+ 		clear_bit(XPT_BUSY, &newxprt->xpt_flags);
+-		return svc_xprt_local_port(newxprt);
++		return newport;
+ 	}
+  err:
+ 	spin_unlock(&svc_xprt_class_lock);
+@@ -420,8 +422,13 @@ static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
+ void svc_xprt_received(struct svc_xprt *xprt)
  {
-+	u32 rdev, type;
- 	__be32 *p;
+ 	BUG_ON(!test_bit(XPT_BUSY, &xprt->xpt_flags));
++	/* As soon as we clear busy, the xprt could be closed and
++	 * 'put', so we need a reference to call svc_xprt_enqueue with
++	 */
++	svc_xprt_get(xprt);
+ 	clear_bit(XPT_BUSY, &xprt->xpt_flags);
+ 	svc_xprt_enqueue(xprt);
++	svc_xprt_put(xprt);
+ }
+ EXPORT_SYMBOL_GPL(svc_xprt_received);
  
- 	p = xdr_inline_decode(xdr, NFS_fattr_sz << 2);
- 	if (unlikely(p == NULL))
- 		goto out_overflow;
--	xdr_decode_fattr(p, fattr);
-+
-+	fattr->valid |= NFS_ATTR_FATTR_V2;
-+
-+	p = xdr_decode_ftype(p, &type);
-+
-+	fattr->mode = be32_to_cpup(p++);
-+	fattr->nlink = be32_to_cpup(p++);
-+	fattr->uid = be32_to_cpup(p++);
-+	fattr->gid = be32_to_cpup(p++);
-+	fattr->size = be32_to_cpup(p++);
-+	fattr->du.nfs2.blocksize = be32_to_cpup(p++);
-+
-+	rdev = be32_to_cpup(p++);
-+	fattr->rdev = new_decode_dev(rdev);
-+	if (type == (u32)NFCHR && rdev == (u32)NFS2_FIFO_DEV) {
-+		fattr->mode = (fattr->mode & ~S_IFMT) | S_IFIFO;
-+		fattr->rdev = 0;
-+	}
-+
-+	fattr->du.nfs2.blocks = be32_to_cpup(p++);
-+	fattr->fsid.major = be32_to_cpup(p++);
-+	fattr->fsid.minor = 0;
-+	fattr->fileid = be32_to_cpup(p++);
-+
-+	p = xdr_decode_time(p, &fattr->atime);
-+	p = xdr_decode_time(p, &fattr->mtime);
-+	xdr_decode_time(p, &fattr->ctime);
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-
