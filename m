@@ -1,165 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33429 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752431Ab0KDPWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Nov 2010 11:22:53 -0400
-Received: from localhost.localdomain (dnsindia.hq.netapp.com [10.58.52.94] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oA4FMYMS029583
-	for <linux-nfs@vger.kernel.org>; Thu, 4 Nov 2010 08:22:42 -0700 (PDT)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 06/18] pnfs_submit: nfs4_layoutreturn_release should not reference results
-Date: Thu,  4 Nov 2010 11:22:19 -0400
-Message-Id: <1288884151-11128-7-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
-References: <1288884151-11128-1-git-send-email-iisaman@netapp.com>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:47238 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759264Ab0KPGpH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 01:45:07 -0500
+In-Reply-To: <20101115174837.GB10044@fieldses.org>
+References: <20101112184353.GA32745@fieldses.org>
+	<AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
+	<20101115174837.GB10044@fieldses.org>
+Date: Tue, 16 Nov 2010 17:45:03 +1100
+Message-ID: <AANLkTim1QjTwOZ4SHdMy8Y6TOAnaOYtTwgwHXfH5H5Xn@mail.gmail.com>
+Subject: Re: lifetime of DCACHE_DISCONECTED dentries
+From: Nick Piggin <npiggin@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Since the release function may be called without sending any RPC,
-it must should not refer to any of the result fields.  This is
-better accomplished in the rpc_done function.
+On Tue, Nov 16, 2010 at 4:48 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Sat, Nov 13, 2010 at 10:53:12PM +1100, Nick Piggin wrote:
+>> On Sat, Nov 13, 2010 at 5:43 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-In the process, this basically reverts the commit
-"pnfs: do not change layout stateid when dropping layouts."
+>> >        - putfh: look up the filehandle.  The only alias found for the
+>> >          inode will be DCACHE_UNHASHED alias referenced by the filp
+>> >          associated with the nfsd open.  d_obtain_alias() doesn't like
+>> >          this, so it creates a new DCACHE_DISCONECTED dentry and
+>> >          returns that instead.
+>>
+>> This seems to be where the thing goes wrong. It isn't a hashed dentry at
+>> this point here, so d_obtain_alias should not be making one.
+>
+> Sounds sensible.  (But can you think of any actual bugs that will result
+> from trying to add a new hashed dentry in this case?)
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4proc.c       |   17 ++++++++++++++---
- fs/nfs/nfs4xdr.c        |    1 -
- fs/nfs/pnfs.c           |   23 ++---------------------
- fs/nfs/pnfs.h           |    3 ++-
- include/linux/nfs_xdr.h |    1 -
- 5 files changed, 18 insertions(+), 27 deletions(-)
+Well, this one? :)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8d3965c..de3ed2f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5596,9 +5596,20 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
- 		server = NFS_SERVER(lrp->args.inode);
- 	else
- 		server = NULL;
--	if (nfs4_async_handle_error(task, server, NULL, lrp->clp) == -EAGAIN)
-+	if (nfs4_async_handle_error(task, server, NULL, lrp->clp) == -EAGAIN) {
- 		nfs_restart_rpc(task, lrp->clp);
-+		return;
-+	}
-+	if ((task->tk_status == 0) && (lrp->args.return_type == RETURN_FILE)) {
-+		struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
- 
-+		spin_lock(&lo->inode->i_lock);
-+		if (lrp->res.lrs_present)
-+			pnfs_set_layout_stateid(lo, &lrp->res.stateid);
-+		else
-+			pnfs_invalidate_layout_stateid(lo);
-+		spin_unlock(&lo->inode->i_lock);
-+	}
- 	dprintk("<-- %s\n", __func__);
- }
- 
-@@ -5607,8 +5618,8 @@ static void nfs4_layoutreturn_release(void *calldata)
- 	struct nfs4_layoutreturn *lrp = calldata;
- 
- 	dprintk("--> %s return_type %d\n", __func__, lrp->args.return_type);
--
--	pnfs_layoutreturn_release(lrp);
-+	if (lrp->args.return_type == RETURN_FILE)
-+		put_layout_hdr(lrp->args.inode);
- 	kfree(calldata);
- 	dprintk("<-- %s\n", __func__);
- }
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index b71a482..10a6f4a 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5286,7 +5286,6 @@ static int decode_layoutreturn(struct xdr_stream *xdr,
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	res->valid = true;
- 	res->lrs_present = be32_to_cpup(p);
- 	if (res->lrs_present)
- 		status = decode_stateid(xdr, &res->stateid);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 34f6914..44f4f30 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -449,7 +449,7 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
-  *
-  * lo->stateid could be the open stateid, in which case we just use what given.
-  */
--static void
-+void
- pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 			const nfs4_stateid *new)
- {
-@@ -587,25 +587,6 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
- 	return ret;
- }
- 
--void
--pnfs_layoutreturn_release(struct nfs4_layoutreturn *lrp)
--{
--	struct pnfs_layout_hdr *lo;
--
--	if (lrp->args.return_type != RETURN_FILE)
--		return;
--	lo = NFS_I(lrp->args.inode)->layout;
--	spin_lock(&lrp->args.inode->i_lock);
--	if (!lrp->res.valid)
--		;	/* forgetful model internal release */
--	else if (!lrp->res.lrs_present)
--		pnfs_invalidate_layout_stateid(lo);
--	else 
--		pnfs_set_layout_stateid(lo, &lrp->res.stateid);
--	put_layout_hdr_locked(lo); /* Matched in _pnfs_return_layout */
--	spin_unlock(&lrp->args.inode->i_lock);
--}
--
- static int
- return_layout(struct inode *ino, struct pnfs_layout_range *range,
- 	      enum pnfs_layoutreturn_type type, struct pnfs_layout_hdr *lo,
-@@ -675,7 +656,7 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
- 		list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
- 			if (should_free_lseg(lseg, &arg))
- 				mark_lseg_invalid(lseg, &tmp_list);
--		/* Reference matched in pnfs_layoutreturn_release */
-+		/* Reference matched in nfs4_layoutreturn_release */
- 		get_layout_hdr_locked(lo);
- 		spin_unlock(&ino->i_lock);
- 		pnfs_free_lseg_list(&tmp_list);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index de4eaa8..f0232f5 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -201,10 +201,11 @@ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
- 			   struct nfs_open_context *, struct list_head *);
- void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
- int pnfs_layout_process(struct nfs4_layoutget *lgp);
--void pnfs_layoutreturn_release(struct nfs4_layoutreturn *lpr);
- void pnfs_destroy_layout(struct nfs_inode *);
- void pnfs_destroy_all_layouts(struct nfs_client *);
- void put_layout_hdr(struct inode *inode);
-+void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
-+			     const nfs4_stateid *new);
- void pnfs_copy_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo);
- void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 			     struct nfs4_state *open_state);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 0ee7cce..ebe11d3 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -270,7 +270,6 @@ struct nfs4_layoutreturn_args {
- 
- struct nfs4_layoutreturn_res {
- 	struct nfs4_sequence_res seq_res;
--	bool valid;	/* internal, true if received reply */
- 	u32 lrs_present;
- 	nfs4_stateid stateid;
- };
--- 
-1.7.2.1
 
+>> I think the inode i_nlink games are much more appropriate on this side of
+>> the equation, rather than the dput side (after all, d_obtain_alias is setting
+>> up an alias for the inode).
+>>
+>> Can you even put the link check into __d_find_alias?
+>>
+>> -               if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
+>> +               if (S_ISDIR(inode->i_mode) || !inode->i_nlink ||
+>> !d_unhashed(alias)) {
+>>
+>> Something like that?
+>
+> The immediate result of that would be for the close rpc (or any rpc's
+> sent after the file was unlinked) to fail with ESTALE.
+
+Why is that? Seems like it would be a bug, because a hashed dentry may
+be unhashed at any time concurrently to nfsd operation, so it should be
+able to tolerate that so long as it has a ref on the inode?
+
+
+> But nfsd already holds an open file in this case, and you could argue
+> that it should be using that from the start.
+
+Yes.
+
+
+> So, we could modify nfsd to add a hash mapping filehandles to the filp's
+> that it knows about, and have nfsd consult that hash before calling
+> dentry_to_fh.
+
+Could be an option. It would be a pity not just be able to use the alias list.
+What exactly goes wrong when it gets an unhashed alias back?
