@@ -1,42 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from filter.openoffice.nl ([217.170.2.175]:34157 "EHLO
-	filter.openoffice.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933144Ab0KPO1u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 09:27:50 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by filter.openoffice.nl (Postfix) with ESMTP id 11BD22439FB
-	for <linux-nfs@vger.kernel.org>; Tue, 16 Nov 2010 15:27:47 +0100 (CET)
-Received: from filter.openoffice.nl ([127.0.0.1])
-	by localhost (post-it.openoffice.nl [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id s1pjOyehq6HC for <linux-nfs@vger.kernel.org>;
-	Tue, 16 Nov 2010 15:27:42 +0100 (CET)
-Received: from blub.net (mail.blub.net [95.97.76.243])
-	by filter.openoffice.nl (Postfix) with ESMTP id 281352437F3
-	for <linux-nfs@vger.kernel.org>; Tue, 16 Nov 2010 15:27:42 +0100 (CET)
-Received: from stout.kantoor.openoffice.nl (unknown [IPv6:2001:7b8:1529::1234:5678])
-	by blub.net (Postfix) with ESMTP id 0FA813003C5
-	for <linux-nfs@vger.kernel.org>; Tue, 16 Nov 2010 15:27:42 +0100 (CET)
-Message-ID: <4CE294DD.6010508@blub.net>
-Date: Tue, 16 Nov 2010 15:27:41 +0100
-From: Valentijn Sessink <valentyn@blub.net>
-To: linux-nfs@vger.kernel.org
-Subject: no_root_squash (and valid KRB root-ticket)
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:65010 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934635Ab0KQRpT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:45:19 -0500
+Received: by gwj17 with SMTP id 17so1258043gwj.19
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 09:45:18 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 10/17] NFS: Replace old NFSv3 encoder functions with
+	xdr_stream-based ones
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 17 Nov 2010 12:45:14 -0500
+Message-ID: <20101117174514.29177.3646.stgit@matisse.1015granger.net>
+In-Reply-To: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
+References: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello list,
+The naming scheme of the new encoder functions, which follows the
+NFSv4 XDR encoder functions, is slightly different than the scheme
+used for the old functions.  Rename the functions as a separate
+step to keep the patches clean.
 
-I found that having "no_root_squash" on the server, having a valid
-Kerberos ticket for root@DOMAIN, does still not give you root rights on
-a share. Looking further, I found
-http://www.unix-info.org/nfsV4_howto_.txt that says that there is "no
-proper mapping between root and the GSSAuthName"; but I could not find
-the status of this document.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
+---
 
-Could any of you comment on this? Is this still the case (I suppose so)?
+ fs/nfs/nfs3xdr.c |   58 ++++++++++++++++++++++++++++--------------------------
+ 1 files changed, 30 insertions(+), 28 deletions(-)
 
-Best regards,
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 22c1d1c..a3c54da 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -46,10 +46,11 @@
+ #define NFS3_fsinfo_sz		
+ #define NFS3_pathconf_sz		
+ #define NFS3_entry_sz		(NFS3_filename_sz+3)
+-
+-#define NFS3_sattrargs_sz	(NFS3_fh_sz+NFS3_sattr_sz+3)
+ #define NFS3_diropargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
+-#define NFS3_removeargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
++
++#define NFS3_getattrargs_sz	(NFS3_fh_sz)
++#define NFS3_setattrargs_sz	(NFS3_fh_sz+NFS3_sattr_sz+3)
++#define NFS3_lookupargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
+ #define NFS3_accessargs_sz	(NFS3_fh_sz+1)
+ #define NFS3_readlinkargs_sz	(NFS3_fh_sz)
+ #define NFS3_readargs_sz	(NFS3_fh_sz+3)
+@@ -58,6 +59,7 @@
+ #define NFS3_mkdirargs_sz	(NFS3_diropargs_sz+NFS3_sattr_sz)
+ #define NFS3_symlinkargs_sz	(NFS3_diropargs_sz+1+NFS3_sattr_sz)
+ #define NFS3_mknodargs_sz	(NFS3_diropargs_sz+2+NFS3_sattr_sz)
++#define NFS3_removeargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
+ #define NFS3_renameargs_sz	(NFS3_diropargs_sz+NFS3_diropargs_sz)
+ #define NFS3_linkargs_sz		(NFS3_fh_sz+NFS3_diropargs_sz)
+ #define NFS3_readdirargs_sz	(NFS3_fh_sz+NFS3_cookieverf_sz+3)
+@@ -1967,9 +1969,9 @@ nfs3_xdr_setaclres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFS3PROC_##proc] = {							\
+ 	.p_proc      = NFS3PROC_##proc,					\
+-	.p_encode    = (kxdrproc_t) nfs3_xdr_##argtype,			\
++	.p_encode    = (kxdrproc_t)nfs3_xdr_enc_##argtype##3args,	\
+ 	.p_decode    = (kxdrproc_t) nfs3_xdr_##restype,			\
+-	.p_arglen    = NFS3_##argtype##_sz,				\
++	.p_arglen    = NFS3_##argtype##args_sz,				\
+ 	.p_replen    = NFS3_##restype##_sz,				\
+ 	.p_timer     = timer,						\
+ 	.p_statidx   = NFS3PROC_##proc,					\
+@@ -1977,27 +1979,27 @@ nfs3_xdr_setaclres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
+ 	}
+ 
+ struct rpc_procinfo	nfs3_procedures[] = {
+-  PROC(GETATTR,		fhandle,	attrstat, 1),
+-  PROC(SETATTR, 	sattrargs,	wccstat, 0),
+-  PROC(LOOKUP,		diropargs,	lookupres, 2),
+-  PROC(ACCESS,		accessargs,	accessres, 1),
+-  PROC(READLINK,	readlinkargs,	readlinkres, 3),
+-  PROC(READ,		readargs,	readres, 3),
+-  PROC(WRITE,		writeargs,	writeres, 4),
+-  PROC(CREATE,		createargs,	createres, 0),
+-  PROC(MKDIR,		mkdirargs,	createres, 0),
+-  PROC(SYMLINK,		symlinkargs,	createres, 0),
+-  PROC(MKNOD,		mknodargs,	createres, 0),
+-  PROC(REMOVE,		removeargs,	removeres, 0),
+-  PROC(RMDIR,		diropargs,	wccstat, 0),
+-  PROC(RENAME,		renameargs,	renameres, 0),
+-  PROC(LINK,		linkargs,	linkres, 0),
+-  PROC(READDIR,		readdirargs,	readdirres, 3),
+-  PROC(READDIRPLUS,	readdirargs,	readdirres, 3),
+-  PROC(FSSTAT,		fhandle,	fsstatres, 0),
+-  PROC(FSINFO,  	fhandle,	fsinfores, 0),
+-  PROC(PATHCONF,	fhandle,	pathconfres, 0),
+-  PROC(COMMIT,		commitargs,	commitres, 5),
++	PROC(GETATTR,		getattr,	attrstat,	1),
++	PROC(SETATTR,		setattr,	wccstat,	0),
++	PROC(LOOKUP,		lookup,		lookupres,	2),
++	PROC(ACCESS,		access,		accessres,	1),
++	PROC(READLINK,		readlink,	readlinkres,	3),
++	PROC(READ,		read,		readres,	3),
++	PROC(WRITE,		write,		writeres,	4),
++	PROC(CREATE,		create,		createres,	0),
++	PROC(MKDIR,		mkdir,		createres,	0),
++	PROC(SYMLINK,		symlink,	createres,	0),
++	PROC(MKNOD,		mknod,		createres,	0),
++	PROC(REMOVE,		remove,		removeres,	0),
++	PROC(RMDIR,		lookup,		wccstat,	0),
++	PROC(RENAME,		rename,		renameres,	0),
++	PROC(LINK,		link,		linkres,	0),
++	PROC(READDIR,		readdir,	readdirres,	3),
++	PROC(READDIRPLUS,	readdirplus,	readdirres,	3),
++	PROC(FSSTAT,		getattr,	fsstatres,	0),
++	PROC(FSINFO,		getattr,	fsinfores,	0),
++	PROC(PATHCONF,		getattr,	pathconfres,	0),
++	PROC(COMMIT,		commit,		commitres,	5),
+ };
+ 
+ struct rpc_version		nfs_version3 = {
+@@ -2010,7 +2012,7 @@ struct rpc_version		nfs_version3 = {
+ static struct rpc_procinfo	nfs3_acl_procedures[] = {
+ 	[ACLPROC3_GETACL] = {
+ 		.p_proc = ACLPROC3_GETACL,
+-		.p_encode = (kxdrproc_t) nfs3_xdr_getaclargs,
++		.p_encode = (kxdrproc_t)nfs3_xdr_enc_getacl3args,
+ 		.p_decode = (kxdrproc_t) nfs3_xdr_getaclres,
+ 		.p_arglen = ACL3_getaclargs_sz,
+ 		.p_replen = ACL3_getaclres_sz,
+@@ -2019,7 +2021,7 @@ static struct rpc_procinfo	nfs3_acl_procedures[] = {
+ 	},
+ 	[ACLPROC3_SETACL] = {
+ 		.p_proc = ACLPROC3_SETACL,
+-		.p_encode = (kxdrproc_t) nfs3_xdr_setaclargs,
++		.p_encode = (kxdrproc_t)nfs3_xdr_enc_setacl3args,
+ 		.p_decode = (kxdrproc_t) nfs3_xdr_setaclres,
+ 		.p_arglen = ACL3_setaclargs_sz,
+ 		.p_replen = ACL3_setaclres_sz,
 
-Valentijn
