@@ -1,61 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:53237 "EHLO mail-out2.uio.no"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755617Ab0KTXyN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 20 Nov 2010 18:54:13 -0500
-Subject: Re: O_DIRECT, O_SYNC, or fsync() on NFS mounts?
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Kums <kumaran.rajaram@gmail.com>
-Cc: Moazam Raja <moazam@gmail.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <AANLkTi=AV20AsUKOGfVg6M92T8LfPLuuyrG_hQESw_RU@mail.gmail.com>
-References: <AANLkTinX=Obq5LFGQzHYGgG_4s7N34faagsZZy09NwE9@mail.gmail.com>
-	 <1290194699.3135.49.camel@heimdal.trondhjem.org>
-	 <AANLkTi=AV20AsUKOGfVg6M92T8LfPLuuyrG_hQESw_RU@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sat, 20 Nov 2010 18:54:04 -0500
-Message-ID: <1290297244.9269.9.camel@heimdal.trondhjem.org>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:60827 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934871Ab0KQRoG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:44:06 -0500
+Received: by ywg8 with SMTP id 8so1254693ywg.19
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 09:44:06 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/17] NFS: Update xdr_encode_foo() functions that we're
+	keeping
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 17 Nov 2010 12:44:02 -0500
+Message-ID: <20101117174402.29177.20391.stgit@matisse.1015granger.net>
+In-Reply-To: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
+References: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, 2010-11-20 at 09:12 -0700, Kums wrote:
-> On Fri, Nov 19, 2010 at 12:24 PM, Trond Myklebust <
-> trond.myklebust@fys.uio.no> wrote:
-> 
-> > On Thu, 2010-11-18 at 15:34 -0800, Moazam Raja wrote:
-> > > Hi all,
-> > >
-> > > I'm currently exporting a ZFS filesystem on Solaris 11 Express as NFS.
-> > > I have a Linux client mounting that NFS v3 filesystem with the
-> > > proto=tcp option.
-> > >
-> > > My question is, what's the safest and most reliable way to write data
-> > > to this NFS mount on a Linux client? Should my application code use
-> > > O_DIRECT, or O_SYNC? Or should I be doing a write() and a fsync()? I
-> > > want to make sure that data is not lost and is truly committed, while
-> > > keeping decent performance (of course).
-> >
-> > Any one of the above methods will ensure that the data is synced to
-> > disk. In addition, NFS also guarantees that your data is fully synced to
-> > disk when taking/freeing POSIX locks, and when you close() the file.
-> > --
-> >
-> 
-> Instead of enforcing at the application side with O_DIRECT/O_SYNC, what if
-> we mount nfs client with -o sync option as well as exportfs the nfs server
-> with sync option? This way the data from all the application can be
-> guaranteed to be safe?
+Clean up.
 
-???????
+The new helper functions are kept in order by section of RFC 1094.
+Move the two timestamp encoders we're keeping, update their coding
+style, and refresh their documenting comments.
 
-What is your definition of 'safe' here? Do you mean 'everything written
-by my application is guaranteed to hit disk'? If so, then that would be
-a much stronger guarantee than POSIX and local disk give you, and it
-will seriously impact I/O performance (whether you use NFS, local disk
-or whatever).
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
+---
 
-Why do you need this kind of guarantee in the first place? What
-applications are you running?
+ fs/nfs/nfs2xdr.c |   59 ++++++++++++++++++++++++++++++------------------------
+ 1 files changed, 33 insertions(+), 26 deletions(-)
 
-Trond
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 0110108..53db70e 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -91,32 +91,6 @@ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
+ }
+ 
+ static inline __be32*
+-xdr_encode_time(__be32 *p, const struct timespec *timep)
+-{
+-	*p++ = htonl(timep->tv_sec);
+-	/* Convert nanoseconds into microseconds */
+-	*p++ = htonl(timep->tv_nsec ? timep->tv_nsec / 1000 : 0);
+-	return p;
+-}
+-
+-static inline __be32*
+-xdr_encode_current_server_time(__be32 *p, const struct timespec *timep)
+-{
+-	/*
+-	 * Passing the invalid value useconds=1000000 is a
+-	 * Sun convention for "set to current server time".
+-	 * It's needed to make permissions checks for the
+-	 * "touch" program across v2 mounts to Solaris and
+-	 * Irix boxes work correctly. See description of
+-	 * sattr in section 6.1 of "NFS Illustrated" by
+-	 * Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5
+-	 */
+-	*p++ = htonl(timep->tv_sec);
+-	*p++ = htonl(1000000);
+-	return p;
+-}
+-
+-static inline __be32*
+ xdr_decode_time(__be32 *p, struct timespec *timep)
+ {
+ 	timep->tv_sec = ntohl(*p++);
+@@ -179,6 +153,39 @@ static void encode_fhandle(struct xdr_stream *xdr, const struct nfs_fh *fh)
+ }
+ 
+ /*
++ * 2.3.4.  timeval
++ *
++ *	struct timeval {
++ *		unsigned int seconds;
++ *		unsigned int useconds;
++ *	};
++ */
++static __be32 *xdr_encode_time(__be32 *p, const struct timespec *timep)
++{
++	*p++ = cpu_to_be32(timep->tv_sec);
++	if (timep->tv_nsec != 0)
++		*p++ = cpu_to_be32(timep->tv_nsec / NSEC_PER_USEC);
++	else
++		*p++ = cpu_to_be32(0);
++	return p;
++}
++
++/*
++ * Passing the invalid value useconds=1000000 is a Sun convention for
++ * "set to current server time".  It's needed to make permissions checks
++ * for the "touch" program across v2 mounts to Solaris and Irix servers
++ * work correctly.  See description of sattr in section 6.1 of "NFS
++ * Illustrated" by Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5.
++ */
++static __be32 *xdr_encode_current_server_time(__be32 *p,
++					      const struct timespec *timep)
++{
++	*p++ = cpu_to_be32(timep->tv_sec);
++	*p++ = cpu_to_be32(1000000);
++	return p;
++}
++
++/*
+  * 2.3.6.  sattr
+  *
+  *	struct sattr {
 
