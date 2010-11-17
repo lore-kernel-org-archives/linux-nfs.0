@@ -1,96 +1,193 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:45939 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751081Ab0KBUKN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Nov 2010 16:10:13 -0400
-Date: Tue, 2 Nov 2010 16:09:35 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 2/6] blkmapd: don't rescan periodically
-Message-ID: <13bf26e754c4a6c923c360f131f05a6ef858e99e.1288726186.git.rees@umich.edu>
-References: <cover.1288726186.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <cover.1288726186.git.rees@umich.edu>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:52633 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933795Ab0KQSBI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 13:01:08 -0500
+Received: by mail-iw0-f174.google.com with SMTP id 35so2387538iwn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 10:01:07 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 08/12] NSM: Avoid return code checking in NSM XDR encoder
+	functions
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 17 Nov 2010 13:01:04 -0500
+Message-ID: <20101117180104.29429.36095.stgit@matisse.1015granger.net>
+In-Reply-To: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
+References: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Periodic device rescanning is always going to be wrong, since the interval
-will either be too long and miss an important change, or too short and waste
-resources.  It's not even needed in the normal case, only when the devices
-change during the life of a layout.  For now, just rescan when the kernel
-asks for a layout.  A later patch will re-introduce rescanning during the
-life of a layout, but will be triggered by configuration change
-notifications from udev, rather than by expiration of an arbitrary time
-interval.
+Clean up.
 
-Signed-off-by: Jim Rees <rees@umich.edu>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+The trend in the other XDR encoder functions is to BUG() when encoding
+problems occur, since a problem is always due to a local coding error.
+Then, instead of a status, zero is unconditionally returned.
+
+Update the NSM XDR encoders to behave this way.
+
+To finish the update, use the new-style ntohl() and htonl() macros,
+and compute the buffer sizes using raw integers instead of sizeof().
+This matches the conventions used in other XDR functions
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
 ---
- utils/blkmapd/device-discovery.c |   14 ++++++++++----
- utils/blkmapd/device-discovery.h |    2 --
- 2 files changed, 10 insertions(+), 6 deletions(-)
 
-diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-index 0fc8fd3..71b4d48 100644
---- a/utils/blkmapd/device-discovery.c
-+++ b/utils/blkmapd/device-discovery.c
-@@ -308,6 +308,15 @@ int bl_disk_inquiry_process(int fd)
- 	head->status = BL_DEVICE_REQUEST_PROC;
- 	switch (head->type) {
- 	case BL_DEVICE_MOUNT:
-+		/*
-+		 * It shouldn't be necessary to discover devices here, since
-+		 * process_deviceinfo() will re-discover if it can't find
-+		 * the devices it needs.  But in the case of multipath
-+		 * devices (ones that appear more than once, for example an
-+		 * active and a standby LUN), this will re-order them in the
-+		 * correct priority.
-+		 */
-+		bl_discover_devices();
- 		if (!process_deviceinfo(buf, buflen, &major, &minor)) {
- 			head->status = BL_DEVICE_REQUEST_ERR;
- 			goto out;
-@@ -329,7 +338,6 @@ int bl_disk_inquiry_process(int fd)
- 	case BL_DEVICE_UMOUNT:
- 		if (!dm_device_remove_all((uint64_t *) buf))
- 			head->status = BL_DEVICE_REQUEST_ERR;
--		bl_discover_devices();
- 		break;
- 	default:
- 		head->status = BL_DEVICE_REQUEST_ERR;
-@@ -357,7 +365,6 @@ unsigned int bl_process_stop;
- int bl_run_disk_inquiry_process(int fd)
+ fs/lockd/mon.c |   68 +++++++++++++++++++++-----------------------------------
+ 1 files changed, 25 insertions(+), 43 deletions(-)
+
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index e0c9189..d812818 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -401,26 +401,22 @@ void nsm_release(struct nsm_handle *nsm)
+  * Status Monitor wire protocol.
+  */
+ 
+-static int encode_nsm_string(struct xdr_stream *xdr, const char *string)
++static void encode_nsm_string(struct xdr_stream *xdr, const char *string)
  {
- 	fd_set rset;
--	struct timeval tv;
- 	int ret;
+ 	const u32 len = strlen(string);
+ 	__be32 *p;
  
- 	bl_process_stop = 0;
-@@ -368,8 +375,7 @@ int bl_run_disk_inquiry_process(int fd)
- 		FD_ZERO(&rset);
- 		FD_SET(fd, &rset);
- 		ret = 0;
--		tv.tv_sec = BL_DEVICE_DISCOVERY_INTERVAL;
--		switch (select(fd + 1, &rset, NULL, NULL, &tv)) {
-+		switch (select(fd + 1, &rset, NULL, NULL, NULL)) {
- 		case -1:
- 			if (errno == EINTR)
- 				continue;
-diff --git a/utils/blkmapd/device-discovery.h b/utils/blkmapd/device-discovery.h
-index 71c0748..b8d26a6 100644
---- a/utils/blkmapd/device-discovery.h
-+++ b/utils/blkmapd/device-discovery.h
-@@ -27,8 +27,6 @@
- #ifndef BL_DEVICE_DISCOVERY_H
- #define BL_DEVICE_DISCOVERY_H
+-	if (unlikely(len > SM_MAXSTRLEN))
+-		return -EIO;
+-	p = xdr_reserve_space(xdr, sizeof(u32) + len);
+-	if (unlikely(p == NULL))
+-		return -EIO;
++	BUG_ON(len > SM_MAXSTRLEN);
++	p = xdr_reserve_space(xdr, 4 + len);
+ 	xdr_encode_opaque(p, string, len);
+-	return 0;
+ }
  
--#define BL_DEVICE_DISCOVERY_INTERVAL 60
+ /*
+  * "mon_name" specifies the host to be monitored.
+  */
+-static int encode_mon_name(struct xdr_stream *xdr, const struct nsm_args *argp)
++static void encode_mon_name(struct xdr_stream *xdr, const struct nsm_args *argp)
+ {
+-	return encode_nsm_string(xdr, argp->mon_name);
++	encode_nsm_string(xdr, argp->mon_name);
+ }
+ 
+ /*
+@@ -429,35 +425,25 @@ static int encode_mon_name(struct xdr_stream *xdr, const struct nsm_args *argp)
+  * (via the NLMPROC_SM_NOTIFY call) that the state of host "mon_name"
+  * has changed.
+  */
+-static int encode_my_id(struct xdr_stream *xdr, const struct nsm_args *argp)
++static void encode_my_id(struct xdr_stream *xdr, const struct nsm_args *argp)
+ {
+-	int status;
+ 	__be32 *p;
+ 
+-	status = encode_nsm_string(xdr, utsname()->nodename);
+-	if (unlikely(status != 0))
+-		return status;
+-	p = xdr_reserve_space(xdr, 3 * sizeof(u32));
+-	if (unlikely(p == NULL))
+-		return -EIO;
+-	*p++ = htonl(argp->prog);
+-	*p++ = htonl(argp->vers);
+-	*p++ = htonl(argp->proc);
+-	return 0;
++	encode_nsm_string(xdr, utsname()->nodename);
++	p = xdr_reserve_space(xdr, 4 + 4 + 4);
++	*p++ = cpu_to_be32(argp->prog);
++	*p++ = cpu_to_be32(argp->vers);
++	*p = cpu_to_be32(argp->proc);
+ }
+ 
+ /*
+  * The "mon_id" argument specifies the non-private arguments
+  * of an NSMPROC_MON or NSMPROC_UNMON call.
+  */
+-static int encode_mon_id(struct xdr_stream *xdr, const struct nsm_args *argp)
++static void encode_mon_id(struct xdr_stream *xdr, const struct nsm_args *argp)
+ {
+-	int status;
 -
- #include <stdint.h>
- #include <syslog.h>
+-	status = encode_mon_name(xdr, argp);
+-	if (unlikely(status != 0))
+-		return status;
+-	return encode_my_id(xdr, argp);
++	encode_mon_name(xdr, argp);
++	encode_my_id(xdr, argp);
+ }
  
--- 
-1.7.1
+ /*
+@@ -465,28 +451,23 @@ static int encode_mon_id(struct xdr_stream *xdr, const struct nsm_args *argp)
+  * by the NSMPROC_MON call. This information will be supplied in the
+  * NLMPROC_SM_NOTIFY call.
+  */
+-static int encode_priv(struct xdr_stream *xdr, const struct nsm_args *argp)
++static void encode_priv(struct xdr_stream *xdr, const struct nsm_args *argp)
+ {
+ 	__be32 *p;
+ 
+ 	p = xdr_reserve_space(xdr, SM_PRIV_SIZE);
+-	if (unlikely(p == NULL))
+-		return -EIO;
+ 	xdr_encode_opaque_fixed(p, argp->priv->data, SM_PRIV_SIZE);
+-	return 0;
+ }
+ 
+ static int xdr_enc_mon(struct rpc_rqst *req, __be32 *p,
+ 		       const struct nsm_args *argp)
+ {
+ 	struct xdr_stream xdr;
+-	int status;
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	status = encode_mon_id(&xdr, argp);
+-	if (unlikely(status))
+-		return status;
+-	return encode_priv(&xdr, argp);
++	encode_mon_id(&xdr, argp);
++	encode_priv(&xdr, argp);
++	return 0;
+ }
+ 
+ static int xdr_enc_unmon(struct rpc_rqst *req, __be32 *p,
+@@ -495,7 +476,8 @@ static int xdr_enc_unmon(struct rpc_rqst *req, __be32 *p,
+ 	struct xdr_stream xdr;
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	return encode_mon_id(&xdr, argp);
++	encode_mon_id(&xdr, argp);
++	return 0;
+ }
+ 
+ static int xdr_dec_stat_res(struct rpc_rqst *rqstp, __be32 *p,
+@@ -504,11 +486,11 @@ static int xdr_dec_stat_res(struct rpc_rqst *rqstp, __be32 *p,
+ 	struct xdr_stream xdr;
+ 
+ 	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
+-	p = xdr_inline_decode(&xdr, 2 * sizeof(u32));
++	p = xdr_inline_decode(&xdr, 4 + 4);
+ 	if (unlikely(p == NULL))
+ 		return -EIO;
+-	resp->status = ntohl(*p++);
+-	resp->state = ntohl(*p);
++	resp->status = be32_to_cpup(p++);
++	resp->state = be32_to_cpup(p);
+ 
+ 	dprintk("lockd: xdr_dec_stat_res status %d state %d\n",
+ 			resp->status, resp->state);
+@@ -521,10 +503,10 @@ static int xdr_dec_stat(struct rpc_rqst *rqstp, __be32 *p,
+ 	struct xdr_stream xdr;
+ 
+ 	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
+-	p = xdr_inline_decode(&xdr, sizeof(u32));
++	p = xdr_inline_decode(&xdr, 4);
+ 	if (unlikely(p == NULL))
+ 		return -EIO;
+-	resp->state = ntohl(*p);
++	resp->state = be32_to_cpup(p);
+ 
+ 	dprintk("lockd: xdr_dec_stat state %d\n", resp->state);
+ 	return 0;
 
