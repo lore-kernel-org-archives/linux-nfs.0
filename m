@@ -1,137 +1,344 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:18349 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752202Ab0K3PLh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Nov 2010 10:11:37 -0500
-Subject: Re: [PATCH] mount: avoid po_destroy to modify errno what we really want
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:35298 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934871Ab0KQRoh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:44:37 -0500
+Received: by mail-iw0-f174.google.com with SMTP id 35so2372245iwn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 09:44:36 -0800 (PST)
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4CF45BD9.20908@cn.fujitsu.com>
-Date: Tue, 30 Nov 2010 10:11:09 -0500
-Cc: Steve Dickson <SteveD@redhat.com>, Mi Jinlong <mijinlong@cn.fujitsu.com>,
-        NFSv3 list <linux-nfs@vger.kernel.org>
-Message-Id: <D05BF4A3-1BD5-4FC3-8921-A9D9DC5D8634@oracle.com>
-References: <4CEE357D.2030007@cn.fujitsu.com> <9C08C339-281F-4CD4-B8C1-70441869E2F6@oracle.com> <4CF3C4D2.2060607@RedHat.com> <4CF45BD9.20908@cn.fujitsu.com>
-To: Bian Naimeng <biannm@cn.fujitsu.com>
+Subject: [PATCH 06/17] NFS: Replace old NFSv2 decoder functions with
+	xdr_stream-based ones
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 17 Nov 2010 12:44:32 -0500
+Message-ID: <20101117174432.29177.78630.stgit@matisse.1015granger.net>
+In-Reply-To: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
+References: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Bian
+Clean up.  Remove unused legacy result decoder functions, and any
+now unused decoder helper functions.
 
-On Nov 29, 2010, at 9:05 PM, Bian Naimeng wrote:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
+---
 
-> 
-> 
-> Steve Dickson wrote:
->> 
->> On 11/29/2010 09:45 AM, Chuck Lever wrote:
->>> On Nov 25, 2010, at 5:07 AM, Mi Jinlong wrote:
->>> 
->>>> We should return the errno that was set before po_destroy,
->>>> rather than the errno that was set at po_destroy.
->>>> 
->>>> Because the po_destroy function don't affect the return value,
->>>> this patch just revert the saved errno after po_destroy.
->>> The only library function used in po_destroy() is free(3).  
->>> Does free(3) change the value of errno?
->> Looking at the man page and taking a look a the 
->> glibc code it appears the answer is no. free(3)
->> does not set errno.
->> 
->> Bian, what was the problem you were seeing that this
->> patch fixed? 
->> 
-> 
-> Actually, there's no problem now. But this's not a good style, po_destroy
-> maybe change the errno later on such as adding a printf.
-> So if somebady want modify the po_destroy, he must be careful of it. :)
-> 
-> And, i don't think it's a good idea that explicitly set errno, it maybe make
-> some trouble in the future. It's better returning error in nfs_do_mount_v3v2,
-> or save the error in a input parameter. :)
+ fs/nfs/nfs2xdr.c |  251 +-----------------------------------------------------
+ 1 files changed, 4 insertions(+), 247 deletions(-)
 
-Perhaps it isn't good style, but I'd rather see all of stropts.c updated to pass errno as an explicit parameter than to have it changed piecemeal.  I agree that we run into trouble everywhere in mount with errno.
-
-I think this particular patch is unnecessary until we have a need for it.  Basically it confuses a reviewer who sees that we've gone to the trouble here to save and restore errno, but nowhere else, and besides po_destroy() doesn't even alter errno.  Why are we bothering?
-
-> Thanks
->  Bian
-> 
->> steved.
->> 
->>>> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
->>>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->>>> ---
->>>> utils/mount/stropts.c |    8 ++++++--
->>>> 1 files changed, 6 insertions(+), 2 deletions(-)
->>>> 
->>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->>>> index 50a1a2a..d554877 100644
->>>> --- a/utils/mount/stropts.c
->>>> +++ b/utils/mount/stropts.c
->>>> @@ -592,7 +592,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
->>>> 		struct sockaddr *sap, socklen_t salen)
->>>> {
->>>> 	struct mount_options *options = po_dup(mi->options);
->>>> -	int result = 0;
->>>> +	int result = 0, save = 0;
->>>> 
->>>> 	if (!options) {
->>>> 		errno = ENOMEM;
->>>> @@ -637,7 +637,9 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
->>>> 	result = nfs_sys_mount(mi, options);
->>>> 
->>>> out_fail:
->>>> +	save = errno;
->>>> 	po_destroy(options);
->>>> +	errno = save;
->>>> 	return result;
->>>> }
->>>> 
->>>> @@ -673,7 +675,7 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
->>>> 		struct sockaddr *sap, socklen_t salen)
->>>> {
->>>> 	struct mount_options *options = po_dup(mi->options);
->>>> -	int result = 0;
->>>> +	int result = 0, save = 0;
->>>> 
->>>> 	if (!options) {
->>>> 		errno = ENOMEM;
->>>> @@ -724,7 +726,9 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
->>>> 	result = nfs_sys_mount(mi, options);
->>>> 
->>>> out_fail:
->>>> +	save = errno;
->>>> 	po_destroy(options);
->>>> +	errno = save;
->>>> 	return result;
->>>> }
->>>> 
->>>> -- 
->>>> 1.7.3.2
->>>> 
->>>> 
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> 
-> 
-> -- 
-> Regards
-> Bian Naimeng
-> 
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 465d10d..bf80c3c 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -91,15 +91,6 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+ /*
+  * Common NFS XDR functions as inlines
+  */
+-static inline __be32 *
+-xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
+-{
+-	/* NFSv2 handles have a fixed length */
+-	fhandle->size = NFS2_FHSIZE;
+-	memcpy(fhandle->data, p, NFS2_FHSIZE);
+-	return p + XDR_QUADLEN(NFS2_FHSIZE);
+-}
+-
+ static inline __be32*
+ xdr_decode_time(__be32 *p, struct timespec *timep)
+ {
+@@ -642,48 +633,6 @@ static int nfs2_xdr_enc_readargs(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Decode READ reply
+- */
+-static int
+-nfs_xdr_readres(struct rpc_rqst *req, __be32 *p, struct nfs_readres *res)
+-{
+-	struct kvec *iov = req->rq_rcv_buf.head;
+-	size_t hdrlen;
+-	u32 count, recvd;
+-	int status;
+-
+-	if ((status = ntohl(*p++)))
+-		return nfs_stat_to_errno(status);
+-	p = xdr_decode_fattr(p, res->fattr);
+-
+-	count = ntohl(*p++);
+-	res->eof = 0;
+-	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
+-	if (iov->iov_len < hdrlen) {
+-		dprintk("NFS: READ reply header overflowed:"
+-				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
+-		return -errno_NFSERR_IO;
+-	} else if (iov->iov_len != hdrlen) {
+-		dprintk("NFS: READ header is short. iovec will be shifted.\n");
+-		xdr_shift_buf(&req->rq_rcv_buf, iov->iov_len - hdrlen);
+-	}
+-
+-	recvd = req->rq_rcv_buf.len - hdrlen;
+-	if (count > recvd) {
+-		dprintk("NFS: server cheating in read reply: "
+-			"count %u > recvd %u\n", count, recvd);
+-		count = recvd;
+-	}
+-
+-	dprintk("RPC:      readres OK count %u\n", count);
+-	if (count < res->count)
+-		res->count = count;
+-
+-	return count;
+-}
+-
+-
+-/*
+  * 2.2.9.  writeargs
+  *
+  *	struct writeargs {
+@@ -848,103 +797,11 @@ static int nfs2_xdr_enc_readdirargs(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Decode the result of a readdir call.
+- * We're not really decoding anymore, we just leave the buffer untouched
+- * and only check that it is syntactically correct.
+- * The real decoding happens in nfs_decode_entry below, called directly
+- * from nfs_readdir for each entry.
+- */
+-static int
+-nfs_xdr_readdirres(struct rpc_rqst *req, __be32 *p, void *dummy)
+-{
+-	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
+-	struct kvec *iov = rcvbuf->head;
+-	struct page **page;
+-	size_t hdrlen;
+-	unsigned int pglen, recvd;
+-	int status, nr = 0;
+-
+-	if ((status = ntohl(*p++)))
+-		return nfs_stat_to_errno(status);
+-
+-	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
+-	if (iov->iov_len < hdrlen) {
+-		dprintk("NFS: READDIR reply header overflowed:"
+-				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
+-		return -errno_NFSERR_IO;
+-	} else if (iov->iov_len != hdrlen) {
+-		dprintk("NFS: READDIR header is short. iovec will be shifted.\n");
+-		xdr_shift_buf(rcvbuf, iov->iov_len - hdrlen);
+-	}
+-
+-	pglen = rcvbuf->page_len;
+-	recvd = rcvbuf->len - hdrlen;
+-	if (pglen > recvd)
+-		pglen = recvd;
+-	page = rcvbuf->pages;
+-	return nr;
+-}
+-
+-__be32 *
+-nfs_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry, struct nfs_server *server, int plus)
+-{
+-	__be32 *p;
+-	p = xdr_inline_decode(xdr, 4);
+-	if (unlikely(!p))
+-		goto out_overflow;
+-	if (!ntohl(*p++)) {
+-		p = xdr_inline_decode(xdr, 4);
+-		if (unlikely(!p))
+-			goto out_overflow;
+-		if (!ntohl(*p++))
+-			return ERR_PTR(-EAGAIN);
+-		entry->eof = 1;
+-		return ERR_PTR(-EBADCOOKIE);
+-	}
+-
+-	p = xdr_inline_decode(xdr, 8);
+-	if (unlikely(!p))
+-		goto out_overflow;
+-
+-	entry->ino	  = ntohl(*p++);
+-	entry->len	  = ntohl(*p++);
+-
+-	p = xdr_inline_decode(xdr, entry->len + 4);
+-	if (unlikely(!p))
+-		goto out_overflow;
+-	entry->name	  = (const char *) p;
+-	p		 += XDR_QUADLEN(entry->len);
+-	entry->prev_cookie	  = entry->cookie;
+-	entry->cookie	  = ntohl(*p++);
+-
+-	p = xdr_inline_peek(xdr, 8);
+-	if (p != NULL)
+-		entry->eof = !p[0] && p[1];
+-	else
+-		entry->eof = 0;
+-
+-	return p;
+-
+-out_overflow:
+-	print_overflow_msg(__func__, xdr);
+-	return ERR_PTR(-EIO);
+-}
+-
+-/*
+- * NFS XDR decode functions
+- */
+-/*
+- * Decode simple status reply
++ * NFSv2 XDR decode functions
++ *
++ * NFSv2 result types are defined in section 2.2 of RFC 1094:
++ * "NFS: Network File System Protocol Specification".
+  */
+-static int
+-nfs_xdr_stat(struct rpc_rqst *req, __be32 *p, void *dummy)
+-{
+-	int	status;
+-
+-	if ((status = ntohl(*p++)) != 0)
+-		status = nfs_stat_to_errno(status);
+-	return status;
+-}
+ 
+ static int nfs2_xdr_dec_stat(struct rpc_rqst *req, __be32 *p,
+ 			     void *__unused)
+@@ -965,21 +822,6 @@ out_default:
+ 	return nfs_stat_to_errno(status);
+ }
+ 
+-/*
+- * Decode attrstat reply
+- * GETATTR, SETATTR, WRITE
+- */
+-static int
+-nfs_xdr_attrstat(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
+-{
+-	int	status;
+-
+-	if ((status = ntohl(*p++)))
+-		return nfs_stat_to_errno(status);
+-	xdr_decode_fattr(p, fattr);
+-	return 0;
+-}
+-
+ static int nfs2_xdr_dec_attrstat(struct rpc_rqst *req, __be32 *p,
+ 				 struct nfs_fattr *result)
+ {
+@@ -989,22 +831,6 @@ static int nfs2_xdr_dec_attrstat(struct rpc_rqst *req, __be32 *p,
+ 	return decode_attrstat(&xdr, result);
+ }
+ 
+-/*
+- * Decode diropres reply
+- * LOOKUP, CREATE, MKDIR
+- */
+-static int
+-nfs_xdr_diropres(struct rpc_rqst *req, __be32 *p, struct nfs_diropok *res)
+-{
+-	int	status;
+-
+-	if ((status = ntohl(*p++)))
+-		return nfs_stat_to_errno(status);
+-	p = xdr_decode_fhandle(p, res->fh);
+-	xdr_decode_fattr(p, res->fattr);
+-	return 0;
+-}
+-
+ static int nfs2_xdr_dec_diropres(struct rpc_rqst *req, __be32 *p,
+ 				 struct nfs_diropok *result)
+ {
+@@ -1015,46 +841,6 @@ static int nfs2_xdr_dec_diropres(struct rpc_rqst *req, __be32 *p,
+ }
+ 
+ /*
+- * Decode READLINK reply
+- */
+-static int
+-nfs_xdr_readlinkres(struct rpc_rqst *req, __be32 *p, void *dummy)
+-{
+-	struct xdr_buf *rcvbuf = &req->rq_rcv_buf;
+-	struct kvec *iov = rcvbuf->head;
+-	size_t hdrlen;
+-	u32 len, recvd;
+-	int	status;
+-
+-	if ((status = ntohl(*p++)))
+-		return nfs_stat_to_errno(status);
+-	/* Convert length of symlink */
+-	len = ntohl(*p++);
+-	if (len >= rcvbuf->page_len) {
+-		dprintk("nfs: server returned giant symlink!\n");
+-		return -ENAMETOOLONG;
+-	}
+-	hdrlen = (u8 *) p - (u8 *) iov->iov_base;
+-	if (iov->iov_len < hdrlen) {
+-		dprintk("NFS: READLINK reply header overflowed:"
+-				"length %Zu > %Zu\n", hdrlen, iov->iov_len);
+-		return -errno_NFSERR_IO;
+-	} else if (iov->iov_len != hdrlen) {
+-		dprintk("NFS: READLINK header is short. iovec will be shifted.\n");
+-		xdr_shift_buf(rcvbuf, iov->iov_len - hdrlen);
+-	}
+-	recvd = req->rq_rcv_buf.len - hdrlen;
+-	if (recvd < len) {
+-		dprintk("NFS: server cheating in readlink reply: "
+-				"count %u > recvd %u\n", len, recvd);
+-		return -EIO;
+-	}
+-
+-	xdr_terminate_string(rcvbuf, len);
+-	return 0;
+-}
+-
+-/*
+  * 2.2.6.  readlinkres
+  *
+  *	union readlinkres switch (stat status) {
+@@ -1118,16 +904,6 @@ out_default:
+ 	return nfs_stat_to_errno(status);
+ }
+ 
+-/*
+- * Decode WRITE reply
+- */
+-static int
+-nfs_xdr_writeres(struct rpc_rqst *req, __be32 *p, struct nfs_writeres *res)
+-{
+-	res->verf->committed = NFS_FILE_SYNC;
+-	return nfs_xdr_attrstat(req, p, res->fattr);
+-}
+-
+ static int nfs2_xdr_dec_writeres(struct rpc_rqst *req, __be32 *p,
+ 				 struct nfs_writeres *result)
+ {
+@@ -1271,25 +1047,6 @@ out_default:
+ }
+ 
+ /*
+- * Decode STATFS reply
+- */
+-static int
+-nfs_xdr_statfsres(struct rpc_rqst *req, __be32 *p, struct nfs2_fsstat *res)
+-{
+-	int	status;
+-
+-	if ((status = ntohl(*p++)))
+-		return nfs_stat_to_errno(status);
+-
+-	res->tsize  = ntohl(*p++);
+-	res->bsize  = ntohl(*p++);
+-	res->blocks = ntohl(*p++);
+-	res->bfree  = ntohl(*p++);
+-	res->bavail = ntohl(*p++);
+-	return 0;
+-}
+-
+-/*
+  * 2.2.18.  statfsres
+  *
+  *	union statfsres (stat status) {
 
