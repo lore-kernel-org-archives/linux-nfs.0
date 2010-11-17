@@ -1,209 +1,203 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:31408 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751222Ab0K3NeO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 08:34:14 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/4] NFSv4: cleanup idmapper functions to take an nfs_server argument
-Date: Tue, 30 Nov 2010 08:34:02 -0500
-Message-Id: <1291124043-5074-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1291124043-5074-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1291124043-5074-1-git-send-email-Trond.Myklebust@netapp.com>
- <1291124043-5074-2-git-send-email-Trond.Myklebust@netapp.com>
- <1291124043-5074-3-git-send-email-Trond.Myklebust@netapp.com>
+Received: from moutng.kundenserver.de ([212.227.126.187]:63538 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934791Ab0KQP11 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 10:27:27 -0500
+From: Arnd Bergmann <arnd@arndb.de>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>,
+        Nathan Laredo <laredo@gnu.org>, Greg Kroah-Hartman <gregkh@suse.de>,
+        Dave Airlie <airlied@linux.ie>, dri-devel@lists.freedesktop.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        Alessio Igor Bogani <alessioigorbogani@gmail.com>,
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH 0/7] BKL removal follow-up
+Date: Wed, 17 Nov 2010 16:26:52 +0100
+Message-Id: <1290007619-5787-1-git-send-email-arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-...instead of the nfs_client.
+Hi Linus,
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/idmap.c            |   24 ++++++++++++------------
- fs/nfs/nfs4xdr.c          |   18 ++++++++----------
- include/linux/nfs_idmap.h |    8 ++++----
- 3 files changed, 24 insertions(+), 26 deletions(-)
+It seems the v4l and udf code has been worked out now and patches
+to kill the BKL there are finally making it upstream.
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 9bf5921..114de76 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -241,21 +241,21 @@ static int nfs_idmap_lookup_id(const char *name, size_t namelen,
- 	return ret;
- }
- 
--int nfs_map_name_to_uid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
-+int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
- {
- 	if (nfs_map_string_to_numeric(name, namelen, uid))
- 		return 0;
- 	return nfs_idmap_lookup_id(name, namelen, "uid", uid);
- }
- 
--int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *gid)
-+int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *gid)
- {
- 	if (nfs_map_string_to_numeric(name, namelen, gid))
- 		return 0;
- 	return nfs_idmap_lookup_id(name, namelen, "gid", gid);
- }
- 
--int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
-+int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
- {
- 	int ret;
- 	ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
-@@ -263,7 +263,7 @@ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buf
- 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
- 	return ret;
- }
--int nfs_map_gid_to_group(struct nfs_client *clp, __u32 gid, char *buf, size_t buflen)
-+int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf, size_t buflen)
- {
- 	int ret;
- 
-@@ -729,27 +729,27 @@ static unsigned int fnvhash32(const void *buf, size_t buflen)
- 	return hash;
- }
- 
--int nfs_map_name_to_uid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
-+int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
- {
--	struct idmap *idmap = clp->cl_idmap;
-+	struct idmap *idmap = server->nfs_client->cl_idmap;
- 
- 	if (nfs_map_string_to_numeric(name, namelen, uid))
- 		return 0;
- 	return nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
- }
- 
--int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
-+int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
- {
--	struct idmap *idmap = clp->cl_idmap;
-+	struct idmap *idmap = server->nfs_client->cl_idmap;
- 
- 	if (nfs_map_string_to_numeric(name, namelen, uid))
- 		return 0;
- 	return nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, uid);
- }
- 
--int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
-+int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
- {
--	struct idmap *idmap = clp->cl_idmap;
-+	struct idmap *idmap = server->nfs_client->cl_idmap;
- 	int ret;
- 
- 	ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
-@@ -757,9 +757,9 @@ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buf
- 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
- 	return ret;
- }
--int nfs_map_gid_to_group(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
-+int nfs_map_gid_to_group(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
- {
--	struct idmap *idmap = clp->cl_idmap;
-+	struct idmap *idmap = server->nfs_client->cl_idmap;
- 	int ret;
- 
- 	ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 9f1826b..0be0277 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -844,7 +844,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 	if (iap->ia_valid & ATTR_MODE)
- 		len += 4;
- 	if (iap->ia_valid & ATTR_UID) {
--		owner_namelen = nfs_map_uid_to_name(server->nfs_client, iap->ia_uid, owner_name, IDMAP_NAMESZ);
-+		owner_namelen = nfs_map_uid_to_name(server, iap->ia_uid, owner_name, IDMAP_NAMESZ);
- 		if (owner_namelen < 0) {
- 			dprintk("nfs: couldn't resolve uid %d to string\n",
- 					iap->ia_uid);
-@@ -856,7 +856,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 		len += 4 + (XDR_QUADLEN(owner_namelen) << 2);
- 	}
- 	if (iap->ia_valid & ATTR_GID) {
--		owner_grouplen = nfs_map_gid_to_group(server->nfs_client, iap->ia_gid, owner_group, IDMAP_NAMESZ);
-+		owner_grouplen = nfs_map_gid_to_group(server, iap->ia_gid, owner_group, IDMAP_NAMESZ);
- 		if (owner_grouplen < 0) {
- 			dprintk("nfs: couldn't resolve gid %d to string\n",
- 					iap->ia_gid);
-@@ -3460,7 +3460,7 @@ out_overflow:
- }
- 
- static int decode_attr_owner(struct xdr_stream *xdr, uint32_t *bitmap,
--		struct nfs_client *clp, uint32_t *uid, int may_sleep)
-+		const struct nfs_server *server, uint32_t *uid, int may_sleep)
- {
- 	uint32_t len;
- 	__be32 *p;
-@@ -3480,7 +3480,7 @@ static int decode_attr_owner(struct xdr_stream *xdr, uint32_t *bitmap,
- 		if (!may_sleep) {
- 			/* do nothing */
- 		} else if (len < XDR_MAX_NETOBJ) {
--			if (nfs_map_name_to_uid(clp, (char *)p, len, uid) == 0)
-+			if (nfs_map_name_to_uid(server, (char *)p, len, uid) == 0)
- 				ret = NFS_ATTR_FATTR_OWNER;
- 			else
- 				dprintk("%s: nfs_map_name_to_uid failed!\n",
-@@ -3498,7 +3498,7 @@ out_overflow:
- }
- 
- static int decode_attr_group(struct xdr_stream *xdr, uint32_t *bitmap,
--		struct nfs_client *clp, uint32_t *gid, int may_sleep)
-+		const struct nfs_server *server, uint32_t *gid, int may_sleep)
- {
- 	uint32_t len;
- 	__be32 *p;
-@@ -3518,7 +3518,7 @@ static int decode_attr_group(struct xdr_stream *xdr, uint32_t *bitmap,
- 		if (!may_sleep) {
- 			/* do nothing */
- 		} else if (len < XDR_MAX_NETOBJ) {
--			if (nfs_map_group_to_gid(clp, (char *)p, len, gid) == 0)
-+			if (nfs_map_group_to_gid(server, (char *)p, len, gid) == 0)
- 				ret = NFS_ATTR_FATTR_GROUP;
- 			else
- 				dprintk("%s: nfs_map_group_to_gid failed!\n",
-@@ -4017,14 +4017,12 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
- 		goto xdr_error;
- 	fattr->valid |= status;
- 
--	status = decode_attr_owner(xdr, bitmap, server->nfs_client,
--			&fattr->uid, may_sleep);
-+	status = decode_attr_owner(xdr, bitmap, server, &fattr->uid, may_sleep);
- 	if (status < 0)
- 		goto xdr_error;
- 	fattr->valid |= status;
- 
--	status = decode_attr_group(xdr, bitmap, server->nfs_client,
--			&fattr->gid, may_sleep);
-+	status = decode_attr_group(xdr, bitmap, server, &fattr->gid, may_sleep);
- 	if (status < 0)
- 		goto xdr_error;
- 	fattr->valid |= status;
-diff --git a/include/linux/nfs_idmap.h b/include/linux/nfs_idmap.h
-index e8352dc..ee97767 100644
---- a/include/linux/nfs_idmap.h
-+++ b/include/linux/nfs_idmap.h
-@@ -96,10 +96,10 @@ void nfs_idmap_delete(struct nfs_client *);
- 
- #endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
- 
--int nfs_map_name_to_uid(struct nfs_client *, const char *, size_t, __u32 *);
--int nfs_map_group_to_gid(struct nfs_client *, const char *, size_t, __u32 *);
--int nfs_map_uid_to_name(struct nfs_client *, __u32, char *, size_t);
--int nfs_map_gid_to_group(struct nfs_client *, __u32, char *, size_t);
-+int nfs_map_name_to_uid(const struct nfs_server *, const char *, size_t, __u32 *);
-+int nfs_map_group_to_gid(const struct nfs_server *, const char *, size_t, __u32 *);
-+int nfs_map_uid_to_name(const struct nfs_server *, __u32, char *, size_t);
-+int nfs_map_gid_to_group(const struct nfs_server *, __u32, char *, size_t);
- 
- extern unsigned int nfs_idmap_cache_timeout;
- #endif /* __KERNEL__ */
--- 
-1.7.3.2
+As promised, here are the patches I did since the kernel summit
+to turn off the BKL by default. Given that -rc2 is out now, I don't
+know how much of these you still want for 2.6.37, so just pick
+the ones you like and I'll send a pull request for the rest
+once the 2.6.38 merge window opens.
 
+The patches have been in -next for three days, and I fixed up
+the two problems that this has revealed. I would have liked
+to give them more testing and wait until you have pulled the
+UDF patches, but I'm planning to be offline until next Wednesday.
+
+	Arnd
+
+Arnd Bergmann (7):
+  staging/stradis: mark as "depends on BKL"
+  drm/i810: remove the BKL
+  BKL: remove extraneous #include <smp_lock.h>
+  BKL: remove references to lock_kernel from comments
+  BKL: disable by default
+  BKL: mark lock_kernel as deprecated
+  BKL: move CONFIG_BKL to staging
+
+ arch/blackfin/kernel/process.c                     |    1 -
+ arch/frv/kernel/process.c                          |    1 -
+ arch/h8300/kernel/process.c                        |    1 -
+ arch/m68k/kernel/process.c                         |    1 -
+ arch/m68knommu/kernel/process.c                    |    1 -
+ arch/mn10300/kernel/process.c                      |    1 -
+ arch/parisc/hpux/sys_hpux.c                        |    1 -
+ arch/parisc/kernel/sys_parisc32.c                  |    1 -
+ arch/powerpc/kernel/sys_ppc32.c                    |    1 -
+ arch/s390/kernel/compat_linux.c                    |    1 -
+ arch/sparc/kernel/leon_smp.c                       |    1 -
+ arch/sparc/kernel/sys_sparc32.c                    |    1 -
+ arch/sparc/kernel/sys_sparc_32.c                   |    1 -
+ arch/sparc/kernel/unaligned_32.c                   |    1 -
+ arch/sparc/kernel/windows.c                        |    1 -
+ arch/tile/kernel/compat.c                          |    1 -
+ arch/tile/kernel/compat_signal.c                   |    1 -
+ arch/tile/kernel/signal.c                          |    1 -
+ arch/tile/kernel/smpboot.c                         |    1 -
+ arch/tile/kernel/sys.c                             |    1 -
+ arch/tile/mm/fault.c                               |    1 -
+ arch/tile/mm/hugetlbpage.c                         |    1 -
+ arch/um/kernel/exec.c                              |    1 -
+ arch/x86/ia32/sys_ia32.c                           |    1 -
+ arch/x86/kernel/cpuid.c                            |    1 -
+ arch/x86/kernel/msr.c                              |    1 -
+ block/compat_ioctl.c                               |    1 -
+ block/ioctl.c                                      |    1 -
+ drivers/block/drbd/drbd_receiver.c                 |    1 -
+ drivers/block/drbd/drbd_worker.c                   |    1 -
+ drivers/char/agp/frontend.c                        |    1 -
+ drivers/char/amiserial.c                           |    1 -
+ drivers/char/briq_panel.c                          |    1 -
+ drivers/char/hpet.c                                |    1 -
+ drivers/char/hw_random/core.c                      |    1 -
+ drivers/char/istallion.c                           |    1 -
+ drivers/char/serial167.c                           |    1 -
+ drivers/char/specialix.c                           |    1 -
+ drivers/char/stallion.c                            |    1 -
+ drivers/char/sx.c                                  |    1 -
+ drivers/char/uv_mmtimer.c                          |    1 -
+ drivers/gpu/drm/Kconfig                            |    4 ++--
+ drivers/gpu/drm/drm_fops.c                         |    1 -
+ drivers/gpu/drm/i810/i810_dma.c                    |   18 +-----------------
+ drivers/gpu/drm/i810/i810_drv.c                    |    6 +++++-
+ drivers/hid/hidraw.c                               |    1 -
+ drivers/hid/usbhid/hiddev.c                        |    1 -
+ drivers/infiniband/hw/ipath/ipath_file_ops.c       |    1 -
+ drivers/input/input.c                              |    1 -
+ drivers/input/serio/serio_raw.c                    |    1 -
+ drivers/media/dvb/dvb-core/dvb_ca_en50221.c        |    1 -
+ drivers/media/dvb/dvb-core/dvb_frontend.c          |    1 -
+ drivers/media/dvb/ngene/ngene-core.c               |    1 -
+ drivers/media/dvb/ngene/ngene-dvb.c                |    1 -
+ drivers/media/dvb/ngene/ngene-i2c.c                |    1 -
+ drivers/media/radio/radio-mr800.c                  |    1 -
+ drivers/media/radio/si470x/radio-si470x.h          |    1 -
+ drivers/media/video/bt8xx/bttv-driver.c            |    1 -
+ drivers/media/video/cx88/cx88-blackbird.c          |    1 -
+ drivers/media/video/cx88/cx88-video.c              |    1 -
+ drivers/media/video/pwc/pwc-if.c                   |    1 -
+ drivers/media/video/s2255drv.c                     |    1 -
+ drivers/media/video/saa7134/saa7134-empress.c      |    1 -
+ drivers/media/video/saa7164/saa7164.h              |    1 -
+ drivers/media/video/usbvision/usbvision-video.c    |    1 -
+ drivers/media/video/v4l2-compat-ioctl32.c          |    1 -
+ drivers/net/wireless/orinoco/orinoco_usb.c         |    1 -
+ drivers/parisc/eisa_eeprom.c                       |    1 -
+ drivers/pci/proc.c                                 |    1 -
+ drivers/pnp/isapnp/proc.c                          |    1 -
+ drivers/s390/block/dasd_eer.c                      |    1 -
+ drivers/s390/char/fs3270.c                         |    1 -
+ drivers/s390/char/tape_char.c                      |    1 -
+ drivers/s390/char/vmlogrdr.c                       |    1 -
+ drivers/s390/char/vmur.c                           |    1 -
+ drivers/s390/crypto/zcrypt_api.c                   |    1 -
+ drivers/scsi/hpsa.c                                |    1 -
+ drivers/scsi/pm8001/pm8001_sas.h                   |    1 -
+ drivers/scsi/sd.c                                  |    1 -
+ drivers/serial/crisv10.c                           |    1 -
+ drivers/serial/serial_core.c                       |    1 -
+ drivers/staging/Kconfig                            |   11 +++++++++++
+ drivers/staging/cx25821/cx25821.h                  |    1 -
+ drivers/staging/easycap/easycap.h                  |    1 -
+ .../staging/intel_sst/intel_sst_app_interface.c    |    1 -
+ drivers/staging/rtl8712/osdep_service.h            |    1 -
+ drivers/staging/speakup/buffers.c                  |    1 -
+ drivers/staging/stradis/Kconfig                    |    2 +-
+ drivers/usb/core/devices.c                         |    1 -
+ drivers/usb/core/devio.c                           |    1 -
+ drivers/usb/core/file.c                            |    1 -
+ drivers/usb/core/inode.c                           |    1 -
+ drivers/usb/gadget/f_fs.c                          |    1 -
+ drivers/usb/gadget/f_hid.c                         |    1 -
+ drivers/usb/host/isp1362-hcd.c                     |    1 -
+ drivers/usb/host/uhci-debug.c                      |    1 -
+ drivers/usb/mon/mon_bin.c                          |    1 -
+ drivers/usb/mon/mon_stat.c                         |    1 -
+ drivers/usb/serial/usb-serial.c                    |    1 -
+ drivers/video/console/vgacon.c                     |    1 -
+ drivers/xen/xenfs/privcmd.c                        |    1 -
+ drivers/zorro/proc.c                               |    1 -
+ fs/block_dev.c                                     |    1 -
+ fs/ceph/inode.c                                    |    1 -
+ fs/ceph/mds_client.c                               |    1 -
+ fs/compat_ioctl.c                                  |    1 -
+ fs/ecryptfs/super.c                                |    1 -
+ fs/ext3/super.c                                    |    1 -
+ fs/ioctl.c                                         |    1 -
+ fs/lockd/clntlock.c                                |    1 -
+ fs/lockd/clntproc.c                                |    1 -
+ fs/lockd/svc4proc.c                                |    1 -
+ fs/lockd/svclock.c                                 |    1 -
+ fs/lockd/svcproc.c                                 |    1 -
+ fs/locks.c                                         |    1 -
+ fs/namespace.c                                     |    1 -
+ fs/ncpfs/dir.c                                     |    1 -
+ fs/ncpfs/file.c                                    |    1 -
+ fs/ncpfs/inode.c                                   |    1 -
+ fs/ncpfs/ioctl.c                                   |    1 -
+ fs/nfs/callback.c                                  |    1 -
+ fs/nfs/delegation.c                                |    1 -
+ fs/nfs/super.c                                     |    1 -
+ fs/nfsd/nfs4state.c                                |    8 ++++----
+ fs/ocfs2/super.c                                   |    1 -
+ fs/proc/inode.c                                    |    1 -
+ fs/read_write.c                                    |    1 -
+ fs/reiserfs/inode.c                                |    1 -
+ fs/reiserfs/ioctl.c                                |    1 -
+ fs/reiserfs/journal.c                              |    1 -
+ fs/reiserfs/super.c                                |    1 -
+ include/linux/hardirq.h                            |    1 -
+ include/linux/reiserfs_fs.h                        |    1 -
+ include/linux/smp_lock.h                           |   15 ++-------------
+ include/linux/tty.h                                |    1 -
+ init/main.c                                        |    1 -
+ kernel/trace/trace.c                               |    1 -
+ lib/Kconfig.debug                                  |    9 ---------
+ net/irda/af_irda.c                                 |    1 -
+ net/irda/irnet/irnet_ppp.c                         |    1 -
+ net/sunrpc/svc_xprt.c                              |    1 -
+ sound/core/info.c                                  |    1 -
+ sound/core/pcm_native.c                            |    1 -
+ sound/core/sound.c                                 |    1 -
+ sound/sound_core.c                                 |    1 -
+ 145 files changed, 26 insertions(+), 184 deletions(-)
+
+Cc: Nathan Laredo <laredo@gnu.org>
+Cc: Greg Kroah-Hartman <gregkh@suse.de>
+Cc: Dave Airlie <airlied@linux.ie>
+Cc: dri-devel@lists.freedesktop.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Cc: Alessio Igor Bogani <alessioigorbogani@gmail.com>
+Cc: Jan Kara <jack@suse.cz>
