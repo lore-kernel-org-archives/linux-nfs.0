@@ -1,75 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9822 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754384Ab0LADrq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 22:47:46 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-        Nick Bowler <nbowler@elliptictech.com>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] NFS: lock the readdir page while it is in use
-Date: Tue, 30 Nov 2010 22:47:13 -0500
-Message-Id: <1291175234-23824-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1291175234-23824-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1291175234-23824-1-git-send-email-Trond.Myklebust@netapp.com>
- <1291175234-23824-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <AANLkTimg+4EYfYnKqNsoOpvCcDs+Pb=FB+arb4NvFpx_@mail.gmail.com>
-References: <AANLkTimg+4EYfYnKqNsoOpvCcDs+Pb=FB+arb4NvFpx_@mail.gmail.com>
+Received: from mail-px0-f174.google.com ([209.85.212.174]:35343 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933795Ab0KQSB1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 13:01:27 -0500
+Received: by mail-px0-f174.google.com with SMTP id 15so578254pxi.19
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 10:01:27 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 10/12] SUNRPC: Avoid return code checking in rpcbind XDR
+	encoder functions
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 17 Nov 2010 13:01:24 -0500
+Message-ID: <20101117180124.29429.17211.stgit@matisse.1015granger.net>
+In-Reply-To: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
+References: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Otherwise, the VM may end up removing it while we're reading from it.
+Clean up.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+The trend in the other XDR encoder functions is to BUG() when encoding
+problems occur, since a problem is always due to a local coding error.
+
+Then, instead of a status, zero is unconditionally returned.
+
+Update the rpcbind XDR encoders to behave this way.
+
+To finish the update, use the new-style ntohl() and htonl() macros,
+and compute the buffer sizes using raw integers instead of sizeof().
+This matches the conventions used in other XDR functions.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/dir.c |   16 +++++++++++++++-
- 1 files changed, 15 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 4a78d2b..6edef12 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -639,6 +639,7 @@ int nfs_readdir_filler(nfs_readdir_descriptor_t *desc, struct page* page)
- static
- void cache_page_release(nfs_readdir_descriptor_t *desc)
- {
-+	unlock_page(desc->page);
- 	page_cache_release(desc->page);
- 	desc->page = NULL;
+ net/sunrpc/rpcb_clnt.c |   60 +++++++++++++++++-------------------------------
+ 1 files changed, 21 insertions(+), 39 deletions(-)
+
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index fa6d7ca..d2a2ea0 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -705,14 +705,11 @@ static int rpcb_enc_mapping(struct rpc_rqst *req, __be32 *p,
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+ 
+-	p = xdr_reserve_space(&xdr, sizeof(__be32) * RPCB_mappingargs_sz);
+-	if (unlikely(p == NULL))
+-		return -EIO;
+-
+-	*p++ = htonl(rpcb->r_prog);
+-	*p++ = htonl(rpcb->r_vers);
+-	*p++ = htonl(rpcb->r_prot);
+-	*p   = htonl(rpcb->r_port);
++	p = xdr_reserve_space(&xdr, RPCB_mappingargs_sz << 2);
++	*p++ = cpu_to_be32(rpcb->r_prog);
++	*p++ = cpu_to_be32(rpcb->r_vers);
++	*p++ = cpu_to_be32(rpcb->r_prot);
++	*p   = cpu_to_be32(rpcb->r_port);
+ 
+ 	return 0;
  }
-@@ -646,8 +647,20 @@ void cache_page_release(nfs_readdir_descriptor_t *desc)
- static
- struct page *get_cache_page(nfs_readdir_descriptor_t *desc)
- {
--	return read_cache_page(desc->file->f_path.dentry->d_inode->i_mapping,
-+	struct page *page;
-+
-+	for (;;) {
-+		page = read_cache_page(desc->file->f_path.dentry->d_inode->i_mapping,
- 			desc->page_index, (filler_t *)nfs_readdir_filler, desc);
-+		if (IS_ERR(page))
-+			break;
-+		lock_page(page);
-+		if (page->mapping != NULL && PageUptodate(page))
-+			break;
-+		unlock_page(page);
-+		page_cache_release(page);
-+	}
-+	return page;
+@@ -728,11 +725,11 @@ static int rpcb_dec_getport(struct rpc_rqst *req, __be32 *p,
+ 
+ 	rpcb->r_port = 0;
+ 
+-	p = xdr_inline_decode(&xdr, sizeof(__be32));
++	p = xdr_inline_decode(&xdr, 4);
+ 	if (unlikely(p == NULL))
+ 		return -EIO;
+ 
+-	port = ntohl(*p);
++	port = be32_to_cpup(p);
+ 	dprintk("RPC: %5u PMAP_%s result: %lu\n", task->tk_pid,
+ 			task->tk_msg.rpc_proc->p_name, port);
+ 	if (unlikely(port > USHRT_MAX))
+@@ -750,7 +747,7 @@ static int rpcb_dec_set(struct rpc_rqst *req, __be32 *p,
+ 
+ 	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
+ 
+-	p = xdr_inline_decode(&xdr, sizeof(__be32));
++	p = xdr_inline_decode(&xdr, 4);
+ 	if (unlikely(p == NULL))
+ 		return -EIO;
+ 
+@@ -764,24 +761,16 @@ static int rpcb_dec_set(struct rpc_rqst *req, __be32 *p,
+ 	return 0;
  }
  
- /*
-@@ -770,6 +783,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
+-static int encode_rpcb_string(struct xdr_stream *xdr, const char *string,
+-				const u32 maxstrlen)
++static void encode_rpcb_string(struct xdr_stream *xdr, const char *string,
++			       const u32 maxstrlen)
+ {
+-	u32 len;
+ 	__be32 *p;
++	u32 len;
  
- 	desc->page_index = 0;
- 	desc->page = page;
-+	lock_page(page);
+-	if (unlikely(string == NULL))
+-		return -EIO;
+ 	len = strlen(string);
+-	if (unlikely(len > maxstrlen))
+-		return -EIO;
+-
+-	p = xdr_reserve_space(xdr, sizeof(__be32) + len);
+-	if (unlikely(p == NULL))
+-		return -EIO;
++	BUG_ON(len > maxstrlen);
++	p = xdr_reserve_space(xdr, 4 + len);
+ 	xdr_encode_opaque(p, string, len);
+-
+-	return 0;
+ }
  
- 	status = nfs_readdir_xdr_to_array(desc, page, inode);
- 	if (status < 0)
--- 
-1.7.3.2
+ static int rpcb_enc_getaddr(struct rpc_rqst *req, __be32 *p,
+@@ -797,20 +786,13 @@ static int rpcb_enc_getaddr(struct rpc_rqst *req, __be32 *p,
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+ 
+-	p = xdr_reserve_space(&xdr,
+-			sizeof(__be32) * (RPCB_program_sz + RPCB_version_sz));
+-	if (unlikely(p == NULL))
+-		return -EIO;
+-	*p++ = htonl(rpcb->r_prog);
+-	*p = htonl(rpcb->r_vers);
+-
+-	if (encode_rpcb_string(&xdr, rpcb->r_netid, RPCBIND_MAXNETIDLEN))
+-		return -EIO;
+-	if (encode_rpcb_string(&xdr, rpcb->r_addr, RPCBIND_MAXUADDRLEN))
+-		return -EIO;
+-	if (encode_rpcb_string(&xdr, rpcb->r_owner, RPCB_MAXOWNERLEN))
+-		return -EIO;
++	p = xdr_reserve_space(&xdr, (RPCB_program_sz + RPCB_version_sz) << 2);
++	*p++ = cpu_to_be32(rpcb->r_prog);
++	*p = cpu_to_be32(rpcb->r_vers);
+ 
++	encode_rpcb_string(&xdr, rpcb->r_netid, RPCBIND_MAXNETIDLEN);
++	encode_rpcb_string(&xdr, rpcb->r_addr, RPCBIND_MAXUADDRLEN);
++	encode_rpcb_string(&xdr, rpcb->r_owner, RPCB_MAXOWNERLEN);
+ 	return 0;
+ }
+ 
+@@ -827,10 +809,10 @@ static int rpcb_dec_getaddr(struct rpc_rqst *req, __be32 *p,
+ 
+ 	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
+ 
+-	p = xdr_inline_decode(&xdr, sizeof(__be32));
++	p = xdr_inline_decode(&xdr, 4);
+ 	if (unlikely(p == NULL))
+ 		goto out_fail;
+-	len = ntohl(*p);
++	len = be32_to_cpup(p);
+ 
+ 	/*
+ 	 * If the returned universal address is a null string,
 
