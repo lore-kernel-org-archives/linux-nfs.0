@@ -1,37 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:60109 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753056Ab0KFTEx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Nov 2010 15:04:53 -0400
-Date: Sat, 6 Nov 2010 15:04:50 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>, Arnd Bergmann <arnd@arndb.de>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: nfsd changes for 2.6.37
-Message-ID: <20101106190450.GC15850@infradead.org>
-References: <20101026164549.GD19445@fieldses.org>
- <20101027083924.GA28129@infradead.org>
- <20101027133924.GB6328@fieldses.org>
- <201010271546.09036.arnd@arndb.de>
- <20101027145538.GC6328@fieldses.org>
- <20101027145929.GA5788@infradead.org>
- <20101030212500.GE480@fieldses.org>
- <20101031123419.GA4491@infradead.org>
- <20101101150214.GA27029@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101101150214.GA27029@fieldses.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:56951 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758513Ab0KQRnd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:43:33 -0500
+Received: by iwn35 with SMTP id 35so2371514iwn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 09:43:33 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 00/17] Update XDR functions for legacy NFS versions
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 17 Nov 2010 12:43:28 -0500
+Message-ID: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Btw, the nfsd delegation code still has a few comments referring to the
-BKL.  This should probably be cleaned up:
+Hi Trond-
 
-fs/nfsd/nfs4state.c: * Called from break_lease() with lock_kernel() held.
-fs/nfsd/nfs4state.c:    /* only place dl_time is set. protected by lock_kernel*/
-fs/nfsd/nfs4state.c: * Called by locks_free_lock() with lock_kernel() held.
-fs/nfsd/nfs4state.c: * Called from setlease() with lock_kernel() held
+As requested, here are my XDR updates for NFSv2 and v3, and NLM v3
+and v4.  These are ported to 2.6.37-rc2.  I think they are ready for
+linux-next and 2.6.38.
 
+---
+
+Chuck Lever (17):
+      lockd: Introduce new-style XDR functions for NLMv4
+      NFS: Move and update xdr_decode_foo() functions that we're keeping
+      NFS: Remove unused old NFSv3 decoder functions
+      NFS: Switch in new NFSv3 decoder functions
+      NFS: Introduce new-style XDR decoding functions for NFSv2
+      NFS: Update xdr_encode_foo() functions that we're keeping
+      NFS: Remove unused old NFSv3 encoder functions
+      NFS: Replace old NFSv3 encoder functions with xdr_stream-based ones
+      NFS: Introduce new-style XDR encoding functions for NFSv3
+      lockd: Introduce new-style XDR functions for NLMv3
+      NFS: Move and update xdr_decode_foo() functions that we're keeping
+      NFS: Replace old NFSv2 decoder functions with xdr_stream-based ones
+      NFS: Introduce new-style XDR decoding functions for NFSv2
+      NFS: Use the "nfs_stat" enum for nfs_stat_to_errno()'s argument
+      NFS: Update xdr_encode_foo() functions that we're keeping
+      NFS: Remove old NFSv2 encoder functions
+      NFS: Introduce new-style XDR encoding functions for NFSv2
+
+
+ fs/lockd/Makefile    |    6 
+ fs/lockd/clnt4xdr.c  |  621 +++++++++++
+ fs/lockd/clntxdr.c   |  643 +++++++++++
+ fs/lockd/xdr.c       |  258 ----
+ fs/lockd/xdr4.c      |  255 ----
+ fs/nfs/internal.h    |    4 
+ fs/nfs/nfs2xdr.c     | 1294 +++++++++++++++-------
+ fs/nfs/nfs3xdr.c     | 2952 +++++++++++++++++++++++++++++++++++++-------------
+ fs/nfs/proc.c        |    2 
+ include/linux/nfs3.h |    3 
+ 10 files changed, 4320 insertions(+), 1718 deletions(-)
+ create mode 100644 fs/lockd/clnt4xdr.c
+ create mode 100644 fs/lockd/clntxdr.c
+
+-- 
+Chuck Lever
