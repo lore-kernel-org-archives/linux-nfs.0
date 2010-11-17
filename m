@@ -1,160 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:40732 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753553Ab0KPXtX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 18:49:23 -0500
-Received: by gyh4 with SMTP id 4so812478gyh.19
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Nov 2010 15:49:22 -0800 (PST)
-In-Reply-To: <20101116185551.GD3971@fieldses.org>
-References: <AANLkTim3GyG4Skr_=0QyELJw1ySjfvhYMD2g4JKztrOx@mail.gmail.com>
-	<20101116185551.GD3971@fieldses.org>
-Date: Tue, 16 Nov 2010 17:49:22 -0600
-Message-ID: <AANLkTimmyOEov1m=Pk=brX1-JGQo2MkirapZHyx66cvj@mail.gmail.com>
-Subject: Re: incorrect EXDEV error occasionally returned for rename over NFS
-From: Joe Habermann <joe.habermann@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from filter.openoffice.nl ([217.170.2.175]:54449 "EHLO
+	filter.openoffice.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935096Ab0KQSwn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 13:52:43 -0500
+Message-ID: <4CE42474.7020604@blub.net>
+Date: Wed, 17 Nov 2010 19:52:36 +0100
+From: Valentijn Sessink <valentyn@blub.net>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Kevin Coffman <kwc@citi.umich.edu>, Steve Dickson <SteveD@redhat.com>,
+        Jim Rees <rees@umich.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Strange rpc.svcgssd behavior
+References: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com> <4CE2AA3B.6070302@openoffice.nl> <4CE2DF2D.9070603@blub.net> <20101116201753.GB4482@merit.edu> <577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com> <20101116205436.GA4595@merit.edu> <44C0977F-DBD6-4F87-B3A5-B2B66C784312@oracle.com> <4CE3F249.8050301@RedHat.com> <C2312B32-B190-41C4-A4C8-C29231DBA305@oracle.com> <AANLkTinJyFHom5JQg5s+yX+6NRBw01S6a9gbwtk5WaLB@mail.gmail.com> <013E9F9C-F4F8-47E6-939D-1B0D893B6988@oracle.com> <AANLkTi=CgbEAewXEtErN5KxmNyWCL8-Jqc69v67cgZ2J@mail.gmail.com> <6980C086-795B-49EF-8F93-8C49A51E35CF@oracle.com>
+In-Reply-To: <6980C086-795B-49EF-8F93-8C49A51E35CF@oracle.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I did test out the fix and it did avoid the EXDEV problem.  But I see your
-point about it opening up a small security hole.
+Op 17-11-10 18:51, Chuck Lever schreef:
+> The hostname is added to localhost entries in /etc/hosts because some
+> applications require at least one entry with the local host's
+> hostname in /etc/hosts.  When a system comes up with all of its
+> network interfaces offline and without any IP addresses assigned,
+> what else can be done?
 
-The other thought I had was to use checking similar to what's in
-svc_export_match() to see if the two exports were really for the same
-namespace/client domain:
+Read /etc/hostname?
 
---- vfs.c.orig  2011-02-10 18:39:30.000000000 -0600
-+++ vfs.c       2011-02-10 18:39:46.000000000 -0600
-@@ -1744,8 +1744,12 @@ nfsd_rename(struct svc_rqst *rqstp, stru
-        tdir = tdentry->d_inode;
+Adding "localhost" entries to /etc/hosts does nothing for applications 
+that require an entry with the hostname in /etc/hosts, *unless* the 
+hostname is "localhost". Now as Networkmanager (apparently) sets the 
+hostname to "localhost", I can see why Networkmanager wants to add 
+"localhost" to /etc/hosts afterwards. But hey, we might as well set the 
+hostname to everyone.loves.networkmanager, then add *that* to /etc/hosts 
+and run into problems.
 
-        err = (rqstp->rq_vers == 2) ? nfserr_acces : nfserr_xdev;
--       if (ffhp->fh_export != tfhp->fh_export)
-+       if (ffhp->fh_export != tfhp->fh_export) {
-+           if (ffhp->fh_export->ex_client      != tfhp->fh_export->ex_client ||
-+                ffhp->fh_export->ex_path.dentry !=
-tfhp->fh_export->ex_path.dentry ||
-+                ffhp->fh_export->ex_path.mnt    !=
-tfhp->fh_export->ex_path.mnt)
-                goto out;
-+       }
+Please note, that /etc/hosts has nothing to do with the hostname, it's 
+only a way to statically (and locally) add things to the resolver.
+[...]
+> for the host is added to /etc/hosts, and then added back to the
+> localhost entries when all network interfaces are disabled.
 
-        err = nfserr_perm;
-        if (!flen || isdotent(fname, flen) || !tlen || isdotent(tname, tlen))
+I don't think adding or not adding them to /etc/hosts makes any 
+difference. I'd guess that calling sethostname() causes problems.
 
-I don't think this is perfect because in the race window, the old export
-could be removed and a new one could enter the cache with a different
-ex_client pointer.
-
-More noodling.
-
-Thanks, -Joe
-
-On Tue, Nov 16, 2010 at 12:55 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Mon, Nov 15, 2010 at 03:46:44PM -0600, Joe Habermann wrote:
->> When running SVN checkouts over NFSv3, they occasionally fail with an
->> EXDEV error:
->>
->> (etc.)
->> U    snfs/build/Makefile.hpux
->> svn: In directory 'snfs/build'
->> svn: Can't move 'snfs/build/tempfile.tmp' to
->> 'snfs/build/Makefile.sol': Invalid cross-device link
->>
->> I've noticed that other people have reported this problem but it remains
->> unresolved.  Through some debugging, I believe I have found root cause.
->> nfsd_rename() contains the following code:
->>
->> 1707 /*
->> 1708  * Rename a file
->> 1709  * N.B. After this call _both_ ffhp and tfhp need an fh_put 1710  */
->> 1711 __be32
->> 1712 nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char
->> *fname, int flen,
->> 1713                             struct svc_fh *tfhp, char *tname, int tlen)
->> 1714 {
->> 1715         struct dentry   *fdentry, *tdentry, *odentry, *ndentry, *trap;
->> 1716         struct inode    *fdir, *tdir;
->> 1717         __be32          err;
->> 1718         int             host_err;
->> 1719
->> 1720         err = fh_verify(rqstp, ffhp, S_IFDIR, NFSD_MAY_REMOVE);
->> 1721         if (err)
->> 1722                 goto out;
->> 1723         err = fh_verify(rqstp, tfhp, S_IFDIR, NFSD_MAY_CREATE);
->> 1724         if (err)
->> 1725                 goto out;
->> 1726
->> 1727         fdentry = ffhp->fh_dentry;
->> 1728         fdir = fdentry->d_inode;
->> 1729
->> 1730         tdentry = tfhp->fh_dentry;
->> 1731         tdir = tdentry->d_inode;
->> 1732
->> 1733         err = (rqstp->rq_vers == 2) ? nfserr_acces : nfserr_xdev;
->> 1734         if (ffhp->fh_export != tfhp->fh_export)
->> 1735                 goto out;
->>
->> Line 1734 compares the fh_export pointers in the file handles for
->> the "from" and "to" directories.  However, this is a bad check since
->> it's possible these pointers differ yet refer to the same underlying
->> file system.  Based on code inspection, encached export pointers are
->> only valid for 30 minutes before they expire and are reinserted through
->> calls made between the kernel and rpc.mountd.  So a race exists where the
->> ffhp->fh_export is populated on line 1720, the export cache is updated,
->> and tfhp->fh_export is set on line 1723 to a different value.
->>
->> This window can be cranked wide open by putting an "msleep(10);"
->> between lines 1722 and 1723 above, recompiling and reinstalling nfsd.ko
->> etc., and then running SVN checkouts in a loop from an NFS client.
->> Within 30 minutes, the problem is seen.
->
-> Good detective work, thanks.  Have you confirmed that applying your
-> change below eliminates the problem?
->
->> I'm still very new to the NFS code, but I'm wonder whether the check
->> needs to be something like this instead:
->>
->> --- vfs.c.orig  2010-11-15 14:35:18.000000000 -0600
->> +++ vfs.c       2010-11-15 14:43:52.000000000 -0600
->> @@ -1731,7 +1731,7 @@ nfsd_rename(struct svc_rqst *rqstp, stru
->>    tdir = tdentry->d_inode;
->>
->>    err = (rqstp->rq_vers == 2) ? nfserr_acces : nfserr_xdev;
->> -       if (ffhp->fh_export != tfhp->fh_export)
->> +       if (fdir->i_sb != tdir->i_sb)
->>        goto out;
->>
->>    err = nfserr_perm;
->>
->> Thoughts?  I think it's either that or some locking needs to be put in
->> to guarantee that the file handles for the "to" and "from" directory
->> always wind up with the same export pointer when they belong to the
->> same file system.  I guess the other question is why there is an
->> EXDEV check at the top of nfsd_rename() instead of putting it in
->> vfs_rename().
->
-> The fh_verify call is also responsible for setting the identity of the
-> user, and that may be affected by export options like root_squash.  In
-> the above case if ffhp was on a root_squash export, and tfhp on a
-> no_root_squash export, and we get a request from uid 0, we'd end up
-> with an incoming uid-0 user running as root (since the fh_verify for
-> tfhp was performed last), and might allow renaming from a directory that
-> only root had write permission to.
->
-> It's a minor hole (especially since it's already easy for a client to
-> circumvent protections that vary from export to export in the default
-> no_subtree_check case).  But we should be able to do better.
->
-> I'm not sure what to suggest.
->
-> --b.
->
->>
->> For full disclosure, I'm actually running the SLES11 SP1 kernel,
->> linux-2.6.32.12-0.7, but I've looked at the latest upstream kernels and
->> they appear to have the same code and I assume the same issue.
->
+V.
