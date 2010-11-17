@@ -1,51 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:32830 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751047Ab0KARkE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Nov 2010 13:40:04 -0400
-Date: Mon, 1 Nov 2010 13:40:01 -0400
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, sfaibish <sfaibish@emc.com>,
-        peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH] Return failure from bl_initialize_mountpoint if we can't
- get the device for the disk list.
-Message-ID: <20101101174001.GA6731@merit.edu>
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:52633 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935214Ab0KQSA6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 13:00:58 -0500
+Received: by mail-iw0-f174.google.com with SMTP id 35so2387538iwn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 10:00:58 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 07/12] NFS: Squelch compiler warning in decode_getdeviceinfo()
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 17 Nov 2010 13:00:55 -0500
+Message-ID: <20101117180054.29429.21780.stgit@matisse.1015granger.net>
+In-Reply-To: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
+References: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- fs/nfs/blocklayout/blocklayout.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+Clean up.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 57a7f04..b3ab4cb 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -677,7 +677,7 @@ static void free_blk_mountid(struct block_mount_id *mid)
- 	}
- }
+.../linux/nfs-2.6/fs/nfs/nfs4xdr.c: In function ‘decode_getdeviceinfo’:
+.../linux/nfs-2.6/fs/nfs/nfs4xdr.c:5008: warning: comparison between signed and unsigned integer expressions
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
+---
+
+ fs/nfs/nfs4xdr.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index f77b08d..1daff25 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5000,7 +5000,7 @@ static int decode_getdeviceinfo(struct xdr_stream *xdr,
+ 		goto out_overflow;
+ 	len = be32_to_cpup(p);
+ 	if (len) {
+-		int i;
++		uint32_t i;
  
--/* This is mostly copied form the filelayout's get_device_info function.
-+/* This is mostly copied from the filelayout's get_device_info function.
-  * It seems much of this should be at the generic pnfs level.
-  */
- static struct pnfs_block_dev *
-@@ -796,8 +796,10 @@ bl_initialize_mountpoint(struct nfs_server *server, const struct nfs_fh *fh)
- 			bdev = nfs4_blk_get_deviceinfo(server, fh,
- 						     &dlist->dev_id[i],
- 						     &block_disklist);
--			if (!bdev)
-+			if (!bdev) {
-+				status = -ENODEV;
- 				goto out_error;
-+			}
- 			spin_lock(&b_mt_id->bm_lock);
- 			list_add(&bdev->bm_node, &b_mt_id->bm_devlist);
- 			spin_unlock(&b_mt_id->bm_lock);
--- 
-1.7.1
+ 		p = xdr_inline_decode(xdr, 4 * len);
+ 		if (unlikely(!p))
 
