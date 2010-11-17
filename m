@@ -1,44 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13034 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752823Ab0KJSDy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Nov 2010 13:03:54 -0500
-Message-ID: <4CDADE85.6030806@RedHat.com>
-Date: Wed, 10 Nov 2010 13:03:49 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Jim Rees <rees@umich.edu>
-CC: Harshula Jayasuriya <harshula@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs-utils: nfsstat: has_stats() does not function correctly
- for NFSv4 client stats
-References: <1289328603.9490.18.camel@serendib> <33A5EC88-8770-4E5D-809A-28926ED3C5EC@oracle.com> <1289363200.9490.24.camel@serendib> <20101110162703.GA948@merit.edu>
-In-Reply-To: <20101110162703.GA948@merit.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from daytona.panasas.com ([67.152.220.89]:15714 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758504Ab0KQRlt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:41:49 -0500
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Cc: Andy Adamson <andros@netapp.com>
+Subject: [PATCH] SQUASHME: pnfs: move synchronize_rcu out side of spin_lock
+Date: Wed, 17 Nov 2010 19:41:44 +0200
+Message-Id: <1290015704-6221-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+squash into 4a28356  pnfs: CB_NOTIFY_DEVICEID
 
+We currently call pnfs_unhash_deviceid under spin_lock c->dc_lock
+But pnfs_unhash_deviceid calls synchronize_rcu which may sched.
+This resulted in the following BUG with the cthon tests:
 
-On 11/10/2010 11:27 AM, Jim Rees wrote:
-> Harshula Jayasuriya wrote:
-> 
->   On Tue, 2010-11-09 at 14:29 -0500, Chuck Lever wrote:
->   > Hi-
->   > 
->   > Why not use mountstats?  The /proc/net/rpc/nfs is destined for deprecation, I thought.
-> 
->   Are you referring to /proc/self/mountstats? I didn't know about it.
->   nfsstat's get_stats() would have to be re-written. I can add that to my
->   TODO list, but not sure when I'll get to it. In the meantime, this patch
->   will fix the previously mentioned bugs and make the existing code a
->   little clearer.
-> 
-> We should either fix it or remove it.  Leaving it in and broken seems wrong
-> even if the interface is depracated, especially since we have a fix.
-Of course... I was not clear... I'll take the patch to fix the bug
-but I don't think its worth whiled to teach nfsstat how read 
-stats from /proc/self/mountstats... I would rather put the effort into
-improving both the nfsiostat and mountstats command.
+Nov 17 18:54:56 tl1 kernel: BUG: spinlock wrong CPU on CPU#1, test5/2170
+Nov 17 18:54:56 tl1 kernel: lock: ffff880070559ff0, .magic: dead4ead, .owner: test5/2170, .owner_cpu: 0
+Nov 17 18:54:56 tl1 kernel: Pid: 2170, comm: test5 Not tainted 2.6.37-rc2-pnfs #167
+Nov 17 18:54:56 tl1 kernel: Call Trace:
+Nov 17 18:54:56 tl1 kernel: [<ffffffff8122cfc5>] spin_bug+0x9c/0xa3
+Nov 17 18:54:56 tl1 kernel: [<ffffffff8122d042>] do_raw_spin_unlock+0x76/0x8d
+Nov 17 18:54:56 tl1 kernel: [<ffffffff814534ea>] _raw_spin_unlock+0x2b/0x30
+Nov 17 18:54:56 tl1 kernel: [<ffffffffa03c62fc>] pnfs_put_deviceid+0x59/0x64 [nfs]
+Nov 17 18:54:56 tl1 kernel: [<ffffffffa0018551>] filelayout_free_lseg+0x5a/0x6f [nfs_layout_nfsv41_files]
+Nov 17 18:54:56 tl1 kernel: [<ffffffffa03c6ea8>] pnfs_free_lseg_list+0x4e/0x8b [nfs]
+Nov 17 18:54:56 tl1 kernel: [<ffffffffa03c85a4>] _pnfs_return_layout+0xe3/0x213 [nfs]
+Nov 17 18:54:56 tl1 kernel: [<ffffffffa039bcb2>] nfs4_evict_inode+0x41/0x74 [nfs]
+Nov 17 18:54:56 tl1 kernel: [<ffffffff8112cab6>] evict+0x27/0x97
+Nov 17 18:54:56 tl1 kernel: [<ffffffff8112d051>] iput+0x20c/0x243
+Nov 17 18:54:56 tl1 kernel: [<ffffffff8112476c>] do_unlinkat+0x11c/0x16f
+Nov 17 18:54:56 tl1 kernel: [<ffffffff81118750>] ? fsnotify_modify+0x66/0x6e
+Nov 17 18:54:56 tl1 kernel: [<ffffffff81452cbe>] ? lockdep_sys_exit_thunk+0x35/0x67
+Nov 17 18:54:56 tl1 kernel: [<ffffffff810a0b51>] ? audit_syscall_entry+0x11e/0x14a
+Nov 17 18:54:56 tl1 kernel: [<ffffffff811247d5>] sys_unlink+0x16/0x18
+Nov 17 18:54:56 tl1 kernel: [<ffffffff8100acf2>] system_call_fastpath+0x16/0x1b
 
-steved.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/pnfs.c |    5 ++---
+ 1 files changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 559fcce..39c7d9f 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1651,7 +1651,6 @@ pnfs_unhash_deviceid(struct pnfs_deviceid_cache *c,
+ 	hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[h], de_node)
+ 		if (!memcmp(&d->de_id, id, sizeof(*id))) {
+ 			hlist_del_rcu(&d->de_node);
+-			synchronize_rcu();
+ 			return d;
+ 		}
+ 
+@@ -1672,7 +1671,7 @@ pnfs_put_deviceid(struct pnfs_deviceid_cache *c,
+ 
+ 	pnfs_unhash_deviceid(c, &devid->de_id);
+ 	spin_unlock(&c->dc_lock);
+-
++	synchronize_rcu();
+ 	c->dc_free_callback(devid);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_put_deviceid);
+@@ -1686,7 +1685,7 @@ pnfs_delete_deviceid(struct pnfs_deviceid_cache *c,
+ 	spin_lock(&c->dc_lock);
+ 	devid = pnfs_unhash_deviceid(c, id);
+ 	spin_unlock(&c->dc_lock);
+-
++	synchronize_rcu();
+ 	dprintk("%s [%d]\n", __func__, atomic_read(&devid->de_ref));
+ 	if (atomic_dec_and_test(&devid->de_ref))
+ 		c->dc_free_callback(devid);
+-- 
+1.7.2.3
+
