@@ -1,74 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:48021 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756456Ab0KQVQO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Nov 2010 16:16:14 -0500
+	id S1756456Ab0KQVQP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Nov 2010 16:16:15 -0500
 From: andros@netapp.com
 To: benny@panasas.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/3] NFSv4 callback pg_authenticate fix
-Date: Tue, 16 Nov 2010 22:36:27 -0500
-Message-Id: <1289964990-4480-1-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 2/3] SQUASHME: pnfs-submit: fix highest backchannel slot used
+Date: Tue, 16 Nov 2010 22:36:29 -0500
+Message-Id: <1289964990-4480-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1289964990-4480-2-git-send-email-andros@netapp.com>
+References: <1289964990-4480-1-git-send-email-andros@netapp.com>
+ <1289964990-4480-2-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-The back channel server svc_process_common RPC layer pg_authenticate call
-[nfs_callback_authenticate] is shared by both the NFSv4.0 and the NFSv4.1
-callback threads. It authenticates the incoming request by finding (and
-referencing) an nfs_client struct based on the incoming request address
-and the NFS version (4). This is akin to the NFS server which authenticates
-requests by matching the server address to the exports file client list.
+From: Andy Adamson <andros@netapp.com>
 
-Since there is no minorversion in the search, it may find the wrong
-nfs_client struct. For the nfsv4.0 callback service thread, this means it
-could find an NFSv4.1 nfs_client. For the NFSv4.1 callback service thread, it
-could find an NFSv4.0 instead of v4.1, or find an NFSv4.1 nfs_client with the
-wrong session.
+Patch 9225185aa0cd29bf85dabca5978199a6b4a73ca6
+"SQUASHME: pnfs-submit: highest backchannel slot used for !CONFIG_NFS_V4_1"
+removed a check for the session existance.
 
-The nfs_client is dereferenced at the end of pg_authenticate. Another
-nfs_find_client call is done in the per operation  dispatcher routines
-for NFSv4.0 and in the cb_sequence operation dispatcher routine for NFSv4.1
-after decoding.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback_xdr.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-This means the callback server could start processing a callback, passing
-the pg_authenticate test, and have the nfs_client struct freed between the
-pg_authenticate call and the dispatcher operation call. Or, it could have
-found the wrong nfs_client in the pg_authenticate call.
-
-The current code has this behaviour: If the nfs_client is not found in
-pg_authenticate, the request is simply dropped (SVC_DROP). If an nfs_client
-is not found in the dispatcher routines NFS4ERR_BADSESSION is returned for
-v4.1 requests and NFS4ERR_BADHANDLE for v4.0 requests.
-
-The first patch fixes some of these issues. It adds a minorversion to the
-nfs_find_client routine which means that the NFSv4.0 back channel service always
-finds the correct nfs_client struct. The NFSv4.1 back channel service requires
-the sessionid from the CB_SEQUENCE operation to guarantee that the correct
-nfs_client struct is being used.
-
-The minorversion is assigned by checking for the existance of the
-bc_xprt field in the svc_rqst. This method of determining minorversion will
-work until we support stand alone back channels for NFSv4.1.
-
-The SVC_DROP return in pg_authenticate is changed to SVC_DENIED which sends
-an rpc auth error back to the caller. This matches nfsd which returns
-SVC_DENIED if there is no matching client address in the /etc/exports file.
-SVC_DROP is used for a memory allocation error.
-
-0001-NFS-add-minorversion-to-nfs_find_client-search.patch
-0002-SQUASHME-pnfs-submit-fix-highest-backchannel-slot-us.patch
-
-Both NFSv4.0 CB_RECALL and NFSv4.1 CB_LAYOUT_RECALL have been tested.
-
-This third patch is for comment only. It compiles but has not been tested.
-It returns SVC_DENIED if the dispatcher routines fail to find an
-nfs_client struct - replacing the NFS4ERR_BADSESSION and NFS4ERR_BADHANDLE
-currently returned. I'm not fully convinced that this is the behavior we want,
-comments appreciated.
-
-0003-NFS-return-an-rpc-auth-error-on-back-channel.patch
-
--->Andy
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index a77877c..92719f1 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -791,7 +791,8 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
+ 
+ 	*hdr_res.status = status;
+ 	*hdr_res.nops = htonl(nops);
+-	nfs4_callback_free_slot(cps.session);
++	if (cps.session)
++		nfs4_callback_free_slot(cps.session);
+ 	/* matched by cb_sequence find_client_with_session */
+ 	put_session_client(cps.session);
+ 	dprintk("%s: done, status = %u\n", __func__, ntohl(status));
+-- 
+1.6.6
 
