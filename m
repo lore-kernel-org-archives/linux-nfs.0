@@ -1,80 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailout-de.gmx.net ([213.165.64.23]:49612 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-	id S1751798Ab0KZSeE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Nov 2010 13:34:04 -0500
-Date: Fri, 26 Nov 2010 19:34:10 +0100 (CET)
-From: Guennadi Liakhovetski <g.liakhovetski@gmx.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Neil Brown <neilb@suse.de>, Bryan Schumaker <bjschuma@netapp.com>,
-        rees@umich.edu, sim@hostway.ca
-Subject: Re: [REGRESSION] git commit d1bacf9e "NFS: add readdir cache array"
- is bad
-In-Reply-To: <1290794726.4905.8.camel@heimdal.trondhjem.org>
-Message-ID: <Pine.LNX.4.64.1011261923330.16655@axis700.grange>
-References: <Pine.LNX.4.64.1011261255260.16655@axis700.grange>
- <1290794726.4905.8.camel@heimdal.trondhjem.org>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:52633 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933795Ab0KQSA2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 13:00:28 -0500
+Received: by mail-iw0-f174.google.com with SMTP id 35so2387538iwn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 10:00:28 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 04/12] lockd: Move nlmdbg_cookie2a() to svclock.c
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 17 Nov 2010 13:00:24 -0500
+Message-ID: <20101117180024.29429.94497.stgit@matisse.1015granger.net>
+In-Reply-To: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
+References: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Trond
+Clean up.  nlmdbg_cookie2a() is used only in svclock.c.
 
-On Fri, 26 Nov 2010, Trond Myklebust wrote:
-
-> 
-> On Fri, 2010-11-26 at 13:05 +0100, Guennadi Liakhovetski wrote:
-> > Hi all
-> > 
-> > I've bisected the problem, reported several times before:
-> > 
-> > http://www.spinics.net/lists/linux-nfs/msg17208.html
-> > http://www.spinics.net/lists/linux-nfs/msg17298.html
-> > 
-> > (authors cc'ed) and also causing reproducibly problems on my sh7724 SuperH 
-> > and sh7372 ARM Debian systems. Commit
-> > 
-> > commit d1bacf9eb2fd0e7ef870acf84b9e3b157dcfa7dc
-> > Author: Bryan Schumaker <bjschuma@netapp.com>
-> > Date:   Fri Sep 24 14:48:42 2010 -0400
-> > 
-> >     NFS: add readdir cache array
-> > 
-> > can be verified to be the culprit. Would be nice, if the other two 
-> > reporters could also verify this commit. Or is there already a fix 
-> > available?
-> > 
-> 
-> That patch removes readdirplus, and cannot therefore be responsible for
-> the fileid changed error that is reported in the emails below (which
-> does not occur when mounting with -onordirplus). It introduces a bunch
-> of other bugs (most which have been fixed), but not that one.
-> 
-> I've asked Simon for info about which NFS versions he is seeing this
-> with. He has not replied so far, but if you are seeing the same bug,
-> then I'd appreciate the same info.
-> Does the fileid bug occur with NFSv3 and NFSv4 or is it limited to one
-> or the other?
-
-v3 here. As for errors - as I bisected, I didn't specifically watch out 
-for the "fileid" bug. There are a couple of warnings appearing, of which 
-"fileid" is just one. It is quite possible, that as I've found this 
-commit, the actual bug(s) that it introduces are different ones. For me it 
-is just "NFS works before this commit" and "NFS stops working reliably 
-after it." Symptoms vary indeed. Apart from "fileid" I'm also getting 
-warnings like
-
-nfs_update_inode: inode 297450 mode changed, 0100005 to 0120777
-
-Sometimes also there are no warnings, the action, currently in progress 
-(like apt-get or ldconfig) just hangs forever, consuming CPU and thrushing 
-the network.
-
-Thanks
-Guennadi
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
 ---
-Guennadi Liakhovetski, Ph.D.
-Freelance Open-Source Software Developer
-http://www.open-technology.de/
+
+ fs/lockd/svclock.c          |   30 ++++++++++++++++++++++++++++++
+ fs/lockd/xdr.c              |   29 -----------------------------
+ include/linux/lockd/debug.h |   10 ----------
+ 3 files changed, 30 insertions(+), 39 deletions(-)
+
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index c462d34..8e3b5f1 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -47,6 +47,7 @@ static void	nlmsvc_remove_block(struct nlm_block *block);
+ static int nlmsvc_setgrantargs(struct nlm_rqst *call, struct nlm_lock *lock);
+ static void nlmsvc_freegrantargs(struct nlm_rqst *call);
+ static const struct rpc_call_ops nlmsvc_grant_ops;
++static const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie);
+ 
+ /*
+  * The list of blocked locks to retry
+@@ -935,3 +936,32 @@ nlmsvc_retry_blocked(void)
+ 
+ 	return timeout;
+ }
++
++#ifdef RPC_DEBUG
++static const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
++{
++	/*
++	 * We can get away with a static buffer because we're only
++	 * called with BKL held.
++	 */
++	static char buf[2*NLM_MAXCOOKIELEN+1];
++	unsigned int i, len = sizeof(buf);
++	char *p = buf;
++
++	len--;	/* allow for trailing \0 */
++	if (len < 3)
++		return "???";
++	for (i = 0 ; i < cookie->len ; i++) {
++		if (len < 2) {
++			strcpy(p-3, "...");
++			break;
++		}
++		sprintf(p, "%02x", cookie->data[i]);
++		p += 2;
++		len -= 2;
++	}
++	*p = '\0';
++
++	return buf;
++}
++#endif
+diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
+index 0eb694d..964666c 100644
+--- a/fs/lockd/xdr.c
++++ b/fs/lockd/xdr.c
+@@ -341,32 +341,3 @@ nlmsvc_encode_void(struct svc_rqst *rqstp, __be32 *p, void *dummy)
+ {
+ 	return xdr_ressize_check(rqstp, p);
+ }
+-
+-#ifdef RPC_DEBUG
+-const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
+-{
+-	/*
+-	 * We can get away with a static buffer because we're only
+-	 * called with BKL held.
+-	 */
+-	static char buf[2*NLM_MAXCOOKIELEN+1];
+-	unsigned int i, len = sizeof(buf);
+-	char *p = buf;
+-
+-	len--;	/* allow for trailing \0 */
+-	if (len < 3)
+-		return "???";
+-	for (i = 0 ; i < cookie->len ; i++) {
+-		if (len < 2) {
+-			strcpy(p-3, "...");
+-			break;
+-		}
+-		sprintf(p, "%02x", cookie->data[i]);
+-		p += 2;
+-		len -= 2;
+-	}
+-	*p = '\0';
+-
+-	return buf;
+-}
+-#endif
+diff --git a/include/linux/lockd/debug.h b/include/linux/lockd/debug.h
+index 34b2b7f..257d377 100644
+--- a/include/linux/lockd/debug.h
++++ b/include/linux/lockd/debug.h
+@@ -44,14 +44,4 @@
+ #define NLMDBG_XDR		0x0100
+ #define NLMDBG_ALL		0x7fff
+ 
+-
+-/*
+- * Support for printing NLM cookies in dprintk()
+- */
+-#ifdef RPC_DEBUG
+-struct nlm_cookie;
+-/* Call this function with the BKL held (it uses a static buffer) */
+-extern const char *nlmdbg_cookie2a(const struct nlm_cookie *);
+-#endif
+-
+ #endif /* LINUX_LOCKD_DEBUG_H */
+
