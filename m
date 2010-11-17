@@ -1,84 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42938 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750921Ab0K2TJf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 14:09:35 -0500
-Subject: Re: NFSv4 behaviour on unknown users
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Spelic <spelic@shiftmail.org>, linux-nfs@vger.kernel.org
-In-Reply-To: <20101129190122.GA31843@fieldses.org>
-References: <4CF3ED05.3070401@shiftmail.org>
-	 <1291054975.12784.17.camel@heimdal.trondhjem.org>
-	 <4CF3F326.4060608@shiftmail.org>  <20101129190122.GA31843@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 29 Nov 2010 14:09:07 -0500
-Message-ID: <1291057747.12784.38.camel@heimdal.trondhjem.org>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:41614 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932354Ab0KQPyw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 10:54:52 -0500
+Received: by gwj17 with SMTP id 17so1151809gwj.19
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 07:54:51 -0800 (PST)
+In-Reply-To: <C2312B32-B190-41C4-A4C8-C29231DBA305@oracle.com>
+References: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com>
+	<4CE2AA3B.6070302@openoffice.nl>
+	<4CE2DF2D.9070603@blub.net>
+	<20101116201753.GB4482@merit.edu>
+	<577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com>
+	<20101116205436.GA4595@merit.edu>
+	<44C0977F-DBD6-4F87-B3A5-B2B66C784312@oracle.com>
+	<4CE3F249.8050301@RedHat.com>
+	<C2312B32-B190-41C4-A4C8-C29231DBA305@oracle.com>
+Date: Wed, 17 Nov 2010 10:54:51 -0500
+Message-ID: <AANLkTinJyFHom5JQg5s+yX+6NRBw01S6a9gbwtk5WaLB@mail.gmail.com>
+Subject: Re: Strange rpc.svcgssd behavior
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>
+Cc: Jim Rees <rees@umich.edu>, Valentijn Sessink <valentyn@blub.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-11-29 at 14:01 -0500, J. Bruce Fields wrote:
-> On Mon, Nov 29, 2010 at 07:38:30PM +0100, Spelic wrote:
-> > On 11/29/2010 07:22 PM, Trond Myklebust wrote:
-> > >On Mon, 2010-11-29 at 19:12 +0100, Spelic wrote:
-> > >No. That is not allowed by the spec.
-> > >
-> > >Trond
-> > 
-> > Too bad!! :-((
-> > Was that spec decision really wise? :-/
-> > 
-> > 
-> > BTW:
-> > I've just noticed two discussions dated a few months ago in this ML
-> > regarding this.
-> > the thread named 'numeric UIDs'
-> 
-> There's also a reference to the spec language there--we'd be violating a
-> "SHOULD", but I think it would be acceptable if it smooths the v3->v4
-> upgrade path for users in your situation.
-> 
-> I think steved's changes still need to be ported to libnfsidmap?
+On Wed, Nov 17, 2010 at 10:30 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> Hey-
+>
+> On Nov 17, 2010, at 10:18 AM, Steve Dickson wrote:
+>
+>> Sorry for the delayed response... I had my
+>> head down for last couple of days...
+>>
+>> On 11/16/2010 04:42 PM, Chuck Lever wrote:
+>>>
+>>> On Nov 16, 2010, at 3:54 PM, Jim Rees wrote:
+>>>
+>>>> Chuck Lever wrote:
+>>>>
+>>>> Before we go too far down the NM path of no return, I was under the
+>>>> impression that some applications require the host's name on the localhost
+>>>> entries in /etc/hosts.  That's why NM puts it there.
+>>>>
+>>>> There's nothing invalid about having a hostname on the localhost entries
+>>>> in /etc/hosts, is there?
+>>>>
+>>>> So I wonder if removing NM is really the solution here.
+>>>>
+>>>> No, it's not.  I just like to complain about NM.
+>>>>
+>>>> The original problem was that rpc.svcgssd couldn't figure out the correct
+>>>> kerberos realm.  The fix in this particular case, I think, is to set the
+>>>> realm explicitly in /etc/idmapd.conf.
+>>>
+>>> It's having trouble determining the NFS server's hostname.  It needs to find the right nfs/your.host key in /etc/krb5.keytab.
+>>>
+>>> I don't know if realm self-discovery is an issue too.
+>> I think the problem is a reverse lookup is done on hostname that
+>> is found in the /etc/krb5.keytab. Instead of the FQDN being
+>> returned, localhost is returned because the FQDN was added to
+>> the localhost line in /etc/hosts.
+>>
+>> Actually I didn't realize it was NM doing that... I thought
+>> it was the installer...
+>
+> No matter who does it, I think there are applications
+> (gdm?  rusty recollection) that require this network configuration
+> in /etc/hosts, so our best bet IMO is to fix rpc.svcgssd, or more
+> likely the gss library it depends on, to get it right in this situation.
+> If we all agree this is a bug (and sounds like we do) then I can
+> create a bug report on bugzilla.linux-nfs.org, as a starting point.
 
-I don't see how steved's changes will fix this problem. If the client
-has a mapping, it will (MUST) send the mapped uid/gid and the server
-still has to make sense of that. Ditto if the server has a mapping, and
-the client does not.
+Hi Chuck and Steve,
+This issue affects gss authentication in sshd as well.  I believe this
+is all the way down in the Kerberos code, which has been this way for
+years.  I'm not sure what needs to be changed to "get it right".
 
-steved's patches only help if neither the client nor the server can map
-the uid/gids to a name@domain format.
-
-Trond
-
-> --b.
-> 
-> > and more interestingly the thread: "Teach clients to map numeric
-> > strings into valid uids and gids."
-> > http://marc.info/?t=128207393000001&r=1&w=2
-> > 
-> > Would the patch by Steve Dickson allow us to have numeric UID
-> > mapping like in NFSv3?
-> > (Including ability for a non-squashed-root to do chown towards an
-> > UID which is unknown at server side)
-> > 
-> > And if yes, how come this is not against the specs?
-> > 
-> > Thank you
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+K.C.
