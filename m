@@ -1,51 +1,183 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:17288 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933112Ab0KORkk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2010 12:40:40 -0500
-Received: from rcsinet13.oracle.com (rcsinet13.oracle.com [148.87.113.125])
-	by rcsinet10.oracle.com (Switch-3.4.2/Switch-3.4.2) with ESMTP id oAFHecBX024517
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2010 17:40:40 GMT
-Received: from acsmt355.oracle.com (acsmt355.oracle.com [141.146.40.155])
-	by rcsinet13.oracle.com (Switch-3.4.2/Switch-3.4.1) with ESMTP id oAFBOCv0023136
-	for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2010 17:40:37 GMT
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:49866 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934635Ab0KQRpj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:45:39 -0500
+Received: by iwn35 with SMTP id 35so2373733iwn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 09:45:39 -0800 (PST)
 From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: Strange rpc.svcgssd behavior
-Date: Mon, 15 Nov 2010 12:39:49 -0500
-Message-Id: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 12/17] NFS: Update xdr_encode_foo() functions that we're
+	keeping
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 17 Nov 2010 12:45:34 -0500
+Message-ID: <20101117174534.29177.72207.stgit@matisse.1015granger.net>
+In-Reply-To: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
+References: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I've just set up a Linux KDC with a Linux NFS server (Fedora 13 with the latest updates).
+Clean up.  Move the timestamp and the sattr encoder to match the
+placement convention of the other helpers, update their coding style,
+and refresh their documenting comments.
 
-rpc.svcgssd fails to start on the NFS server.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
+---
 
- ERROR: GSS-API: error in gss_acquire_cred(): Unspecified GSS failure.  Minor code may provide more information - Key table entry not found
- unable to obtain root (machine) credentials
- do you have a keytab entry for nfs/<your.host>@<YOUR.REALM> in /etc/krb5.keytab?
+ fs/nfs/nfs3xdr.c |  111 +++++++++++++++++++++++++++---------------------------
+ 1 files changed, 55 insertions(+), 56 deletions(-)
 
-I do have an entry for nfs/<your.host>@<YOUR.REALM> in /etc/krb5.keytab.  The problem is that /etc/hosts looks like this:
-
- 192.168.1.58	your.host	your	# Added by NetworkManager
- 127.0.0.1	localhost.localdomain	localhost
- ::1		your.host your	localhost6.localdomain6 localhost6
-
-Removing "your.host	your" from the "::1" entry makes this problem go away -- rpc.svcgssd starts up as expected.
-
-Now I reboot, and NetworkManager happily adds "your.host	your" back to the "::1" entry, and rpc.svcgssd fails again.  I haven't tried this, but I suspect if the ::1 entry weren't there, NM would add "your.host.net	your" to the IPv4 loopback entry, and we'd have the same problem.
-
-At a glance, it looks like the local hostname is determined in a library, and not in rpc.svcgssd.  This really needs to be more robust.
-
-I see the "-p principal" option in the latest nfs-utils, but it doesn't seem to be supported in Fedora 13's rpc.svcgssd.  Is this the workaround?
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 831a987..1a7e25e 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -167,14 +167,6 @@ out_overflow:
+  * Encode/decode time.
+  */
+ static inline __be32 *
+-xdr_encode_time3(__be32 *p, const struct timespec *timep)
+-{
+-	*p++ = htonl(timep->tv_sec);
+-	*p++ = htonl(timep->tv_nsec);
+-	return p;
+-}
+-
+-static inline __be32 *
+ xdr_decode_time3(__be32 *p, struct timespec *timep)
+ {
+ 	timep->tv_sec = ntohl(*p++);
+@@ -219,52 +211,6 @@ xdr_decode_fattr(__be32 *p, struct nfs_fattr *fattr)
+ }
+ 
+ static inline __be32 *
+-xdr_encode_sattr(__be32 *p, const struct iattr *attr)
+-{
+-	if (attr->ia_valid & ATTR_MODE) {
+-		*p++ = xdr_one;
+-		*p++ = htonl(attr->ia_mode & S_IALLUGO);
+-	} else {
+-		*p++ = xdr_zero;
+-	}
+-	if (attr->ia_valid & ATTR_UID) {
+-		*p++ = xdr_one;
+-		*p++ = htonl(attr->ia_uid);
+-	} else {
+-		*p++ = xdr_zero;
+-	}
+-	if (attr->ia_valid & ATTR_GID) {
+-		*p++ = xdr_one;
+-		*p++ = htonl(attr->ia_gid);
+-	} else {
+-		*p++ = xdr_zero;
+-	}
+-	if (attr->ia_valid & ATTR_SIZE) {
+-		*p++ = xdr_one;
+-		p = xdr_encode_hyper(p, (__u64) attr->ia_size);
+-	} else {
+-		*p++ = xdr_zero;
+-	}
+-	if (attr->ia_valid & ATTR_ATIME_SET) {
+-		*p++ = xdr_two;
+-		p = xdr_encode_time3(p, &attr->ia_atime);
+-	} else if (attr->ia_valid & ATTR_ATIME) {
+-		*p++ = xdr_one;
+-	} else {
+-		*p++ = xdr_zero;
+-	}
+-	if (attr->ia_valid & ATTR_MTIME_SET) {
+-		*p++ = xdr_two;
+-		p = xdr_encode_time3(p, &attr->ia_mtime);
+-	} else if (attr->ia_valid & ATTR_MTIME) {
+-		*p++ = xdr_one;
+-	} else {
+-		*p++ = xdr_zero;
+-	}
+-	return p;
+-}
+-
+-static inline __be32 *
+ xdr_decode_wcc_attr(__be32 *p, struct nfs_fattr *fattr)
+ {
+ 	p = xdr_decode_hyper(p, &fattr->pre_size);
+@@ -453,6 +399,21 @@ static void encode_nfs_fh3(struct xdr_stream *xdr, const struct nfs_fh *fh)
+ }
+ 
+ /*
++ * nfstime3
++ *
++ *	struct nfstime3 {
++ *		uint32	seconds;
++ *		uint32	nseconds;
++ *	};
++ */
++static __be32 *xdr_encode_nfstime3(__be32 *p, const struct timespec *timep)
++{
++	*p++ = cpu_to_be32(timep->tv_sec);
++	*p++ = cpu_to_be32(timep->tv_nsec);
++	return p;
++}
++
++/*
+  * sattr3
+  *
+  *	enum time_how {
+@@ -538,7 +499,45 @@ static void encode_sattr3(struct xdr_stream *xdr, const struct iattr *attr)
+ 		nbytes += 8;
+ 	p = xdr_reserve_space(xdr, nbytes);
+ 
+-	xdr_encode_sattr(p, attr);
++	if (attr->ia_valid & ATTR_MODE) {
++		*p++ = xdr_one;
++		*p++ = cpu_to_be32(attr->ia_mode & S_IALLUGO);
++	} else
++		*p++ = xdr_zero;
++
++	if (attr->ia_valid & ATTR_UID) {
++		*p++ = xdr_one;
++		*p++ = cpu_to_be32(attr->ia_uid);
++	} else
++		*p++ = xdr_zero;
++
++	if (attr->ia_valid & ATTR_GID) {
++		*p++ = xdr_one;
++		*p++ = cpu_to_be32(attr->ia_gid);
++	} else
++		*p++ = xdr_zero;
++
++	if (attr->ia_valid & ATTR_SIZE) {
++		*p++ = xdr_one;
++		p = xdr_encode_hyper(p, (u64)attr->ia_size);
++	} else
++		*p++ = xdr_zero;
++
++	if (attr->ia_valid & ATTR_ATIME_SET) {
++		*p++ = xdr_two;
++		p = xdr_encode_nfstime3(p, &attr->ia_atime);
++	} else if (attr->ia_valid & ATTR_ATIME) {
++		*p++ = xdr_one;
++	} else
++		*p++ = xdr_zero;
++
++	if (attr->ia_valid & ATTR_MTIME_SET) {
++		*p++ = xdr_two;
++		xdr_encode_nfstime3(p, &attr->ia_mtime);
++	} else if (attr->ia_valid & ATTR_MTIME) {
++		*p = xdr_one;
++	} else
++		*p = xdr_zero;
+ }
+ 
+ /*
+@@ -605,7 +604,7 @@ static void encode_sattrguard3(struct xdr_stream *xdr,
+ 	if (args->guard) {
+ 		p = xdr_reserve_space(xdr, 4 + 8);
+ 		*p++ = xdr_one;
+-		xdr_encode_time3(p, &args->guardtime);
++		xdr_encode_nfstime3(p, &args->guardtime);
+ 	} else {
+ 		p = xdr_reserve_space(xdr, 4);
+ 		*p = xdr_zero;
 
