@@ -1,122 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35901 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751833Ab0K3UAR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 15:00:17 -0500
-Date: Tue, 30 Nov 2010 15:00:13 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mark Hills <mark@pogo.org.uk>
-Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: Listen backlog set to 64
-Message-ID: <20101130200013.GA2108@fieldses.org>
-References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz>
- <20101116182026.GA3971@fieldses.org>
- <20101117090826.4b2724da@notabene.brown>
- <20101129205935.GD9897@fieldses.org>
- <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:43313 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935039Ab0KQRw1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:52:27 -0500
+Subject: Re: Strange rpc.svcgssd behavior
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <AANLkTi=CgbEAewXEtErN5KxmNyWCL8-Jqc69v67cgZ2J@mail.gmail.com>
+Date: Wed, 17 Nov 2010 12:51:54 -0500
+Cc: Steve Dickson <SteveD@redhat.com>, Jim Rees <rees@umich.edu>,
+        Valentijn Sessink <valentyn@blub.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <6980C086-795B-49EF-8F93-8C49A51E35CF@oracle.com>
+References: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com> <4CE2AA3B.6070302@openoffice.nl> <4CE2DF2D.9070603@blub.net> <20101116201753.GB4482@merit.edu> <577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com> <20101116205436.GA4595@merit.edu> <44C0977F-DBD6-4F87-B3A5-B2B66C784312@oracle.com> <4CE3F249.8050301@RedHat.com> <C2312B32-B190-41C4-A4C8-C29231DBA305@oracle.com> <AANLkTinJyFHom5JQg5s+yX+6NRBw01S6a9gbwtk5WaLB@mail.gmail.com> <013E9F9C-F4F8-47E6-939D-1B0D893B6988@oracle.com> <AANLkTi=CgbEAewXEtErN5KxmNyWCL8-Jqc69v67cgZ2J@mail.gmail.com>
+To: Kevin Coffman <kwc@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Nov 30, 2010 at 05:50:52PM +0000, Mark Hills wrote:
-> On Mon, 29 Nov 2010, J. Bruce Fields wrote:
-> 
-> > On Wed, Nov 17, 2010 at 09:08:26AM +1100, Neil Brown wrote:
-> > > On Tue, 16 Nov 2010 13:20:26 -0500
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > On Mon, Nov 15, 2010 at 06:43:52PM +0000, Mark Hills wrote:
-> > > > > I am looking into an issue of hanging clients to a set of NFS servers, on 
-> > > > > a large HPC cluster.
-> > > > > 
-> > > > > My investigation took me to the RPC code, svc_create_socket().
-> > > > > 
-> > > > > 	if (protocol == IPPROTO_TCP) {
-> > > > > 		if ((error = kernel_listen(sock, 64)) < 0)
-> > > > > 			goto bummer;
-> > > > > 	}
-> > > > > 
-> > > > > A fixed backlog of 64 connections at the server seems like it could be too 
-> > > > > low on a cluster like this, particularly when the protocol opens and 
-> > > > > closes the TCP connection.
-> [...] 
-> > > So we could:
-> > >   - hard code a new number
-> > >   - make this another sysctl configurable
-> > >   - auto-adjust it so that it "just works".
-> > > 
-> > > I would prefer the latter if it is possible.   Possibly we could adjust it
-> > > based on the number of nfsd threads, like we do for receive buffer space.
-> > > Maybe something arbitrary like:
-> > >    min(16 + 2 * number of threads, sock_net(sk)->core.sysctl_somaxconn)
-> > > 
-> > > which would get the current 64 at 24 threads, and can easily push up to 128
-> > > and beyond with more threads.
-> > > 
-> > > Or is that too arbitrary?
-> > 
-> > I kinda like the idea of piggybacking on an existing constant like
-> > sysctl_max_syn_backlog.  Somebody else hopefully keeps it set to something
-> > reasonable, and we as a last resort it gives you a knob to twiddle.
-> > 
-> > But number of threads would work OK too.
-> > 
-> > At a minimum we should make sure we solve the original problem....
-> > Mark, have you had a chance to check whether increasing that number to
-> > 128 or more is enough to solve your problem?
-> 
-> I think we can hold off changing the queue size, for now at least. We 
-> reduced the reported queue overflows by increasing the number of mountd 
-> threads, allowing it to service the queue more quickly.
 
-Apologies, I should have thought to suggest that at the start.
+On Nov 17, 2010, at 11:26 AM, Kevin Coffman wrote:
 
-> However this did 
-> not fix the common problem, and I was hoping to have more information in 
-> this follow-up email.
+> On Wed, Nov 17, 2010 at 11:05 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>> On Nov 17, 2010, at 10:54 AM, Kevin Coffman wrote:
+>> 
+>>> On Wed, Nov 17, 2010 at 10:30 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>> Hey-
+>>>> 
+>>>> On Nov 17, 2010, at 10:18 AM, Steve Dickson wrote:
+>>>> 
+>>>>> Sorry for the delayed response... I had my
+>>>>> head down for last couple of days...
+>>>>> 
+>>>>> On 11/16/2010 04:42 PM, Chuck Lever wrote:
+>>>>>> 
+>>>>>> On Nov 16, 2010, at 3:54 PM, Jim Rees wrote:
+>>>>>> 
+>>>>>>> Chuck Lever wrote:
+>>>>>>> 
+>>>>>>> Before we go too far down the NM path of no return, I was under the
+>>>>>>> impression that some applications require the host's name on the localhost
+>>>>>>> entries in /etc/hosts.  That's why NM puts it there.
+>>>>>>> 
+>>>>>>> There's nothing invalid about having a hostname on the localhost entries
+>>>>>>> in /etc/hosts, is there?
+>>>>>>> 
+>>>>>>> So I wonder if removing NM is really the solution here.
+>>>>>>> 
+>>>>>>> No, it's not.  I just like to complain about NM.
+>>>>>>> 
+>>>>>>> The original problem was that rpc.svcgssd couldn't figure out the correct
+>>>>>>> kerberos realm.  The fix in this particular case, I think, is to set the
+>>>>>>> realm explicitly in /etc/idmapd.conf.
+>>>>>> 
+>>>>>> It's having trouble determining the NFS server's hostname.  It needs to find the right nfs/your.host key in /etc/krb5.keytab.
+>>>>>> 
+>>>>>> I don't know if realm self-discovery is an issue too.
+>>>>> I think the problem is a reverse lookup is done on hostname that
+>>>>> is found in the /etc/krb5.keytab. Instead of the FQDN being
+>>>>> returned, localhost is returned because the FQDN was added to
+>>>>> the localhost line in /etc/hosts.
+>>>>> 
+>>>>> Actually I didn't realize it was NM doing that... I thought
+>>>>> it was the installer...
+>>>> 
+>>>> No matter who does it, I think there are applications
+>>>> (gdm?  rusty recollection) that require this network configuration
+>>>> in /etc/hosts, so our best bet IMO is to fix rpc.svcgssd, or more
+>>>> likely the gss library it depends on, to get it right in this situation.
+>>>> If we all agree this is a bug (and sounds like we do) then I can
+>>>> create a bug report on bugzilla.linux-nfs.org, as a starting point.
+>>> 
+>>> Hi Chuck and Steve,
+>>> This issue affects gss authentication in sshd as well.  I believe this
+>>> is all the way down in the Kerberos code, which has been this way for
+>>> years.  I'm not sure what needs to be changed to "get it right".
+>> 
+>> I was afraid of that.  Do you know if this has this ever been brought
+>> up with the upstream Kerberos maintainers?
 > 
-> Our investigation brings us to rpc.mountd and mount.nfs communicating. In 
-> the client log we see messages like:
-> 
->   Nov 24 12:09:43 nyrd001 automount[3782]: >> mount.nfs: mount to NFS server 'ss1a:/mnt/raid1/banana' failed: timed out, giving up
-> 
-> Using strace and isolating one of these, I can see a non-blocking connect 
-> has already managed to make a connection and even send/receive some data. 
-> 
-> But soon a timeout of 9999 milliseconds in poll() causes a problem in 
-> mount.nfs when waiting for a response of some sort. The socket in question 
-> is a connection to mountd:
-> 
->   26512 futex(0x7ff76affa540, FUTEX_WAKE_PRIVATE, 1) = 0
->   26512 write(3, "\200\0\0(j\212\254\365\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3\0\0\0\0\0\0\0\0"..., 44) = 44
->   26512 poll([{fd=3, events=POLLIN}], 1, 9999 <unfinished ...>
-> 
-> When it returns:
-> 
->   26512 <... poll resumed> )              = 0 (Timeout)
->   26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
->   26512 rt_sigprocmask(SIG_SETMASK, ~[RTMIN RT_1], [], 8) = 0
->   26512 close(3)                          = 0
->   26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
->   26512 write(2, "mount.nfs: mount to NFS server '"..., 100) = 100
-> 
-> There's no re-try from here, just a failed mount.
+> Not that I am aware of.  Like Valentin, I believe it to be a
+> NetworkManager bug.  (The Kerberos code works fine on all other Unix
+> platforms.)
 
-That does sound wrong.  I'm not at all familiar with automount,
-unfortunately; how is it invoking mount.nfs?
+The hostname is added to localhost entries in /etc/hosts because some applications require at least one entry with the local host's hostname in /etc/hosts.  When a system comes up with all of its network interfaces offline and without any IP addresses assigned, what else can be done?
 
-> What is the source of this 9999 millisecond timeout used by poll() in 
-> mount.nfs? It was not clear in an initial search of nfs-utils and glibc, 
-> but I need more time to investigate.
-> 
-> If the server is being too slow to respond, what could the cause of this 
-> be? Multiple threads are already in use, but it seems like they are not 
-> all in use because a thread is able to accept() the connection. I haven't 
-> been able to pin this on the forward/reverse DNS lookup used by 
-> authentication and logging.
+One way to address this via NetworkManager might be to have the hostname removed from the localhost entries when a real IP address for the host is added to /etc/hosts, and then added back to the localhost entries when all network interfaces are disabled.
 
-Can you tell where the mountd threads are typically waiting?
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
---b.
+
+
+
