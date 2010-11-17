@@ -1,222 +1,246 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:55996 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751749Ab0KUJhd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Nov 2010 04:37:33 -0500
-Message-ID: <4CE8E85A.7010203@panasas.com>
-Date: Sun, 21 Nov 2010 11:37:30 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Andy Adamson <andros@netapp.com>
-CC: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] SQUASHME: pnfs: move synchronize_rcu out side of spin_lock
-References: <1290015704-6221-1-git-send-email-bhalevy@panasas.com> <4CE51FBA.6060806@panasas.com> <4CE55FFE.5070607@panasas.com> <78D70EF0-5A5B-4FE0-9093-7E4B0CC32ED8@netapp.com>
-In-Reply-To: <78D70EF0-5A5B-4FE0-9093-7E4B0CC32ED8@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:49866 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934635Ab0KQRqV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:46:21 -0500
+Received: by mail-iw0-f174.google.com with SMTP id 35so2373733iwn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 09:46:20 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 16/17] NFS: Move and update xdr_decode_foo() functions that
+	we're keeping
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 17 Nov 2010 12:46:17 -0500
+Message-ID: <20101117174617.29177.62730.stgit@matisse.1015granger.net>
+In-Reply-To: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
+References: <20101117174112.29177.69734.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 11/19/2010 05:27 PM, Andy Adamson wrote:
-> 
-> On Nov 18, 2010, at 12:18 PM, Benny Halevy wrote:
-> 
->> On 2010-11-18 14:44, Boaz Harrosh wrote:
->>> On 11/17/2010 07:41 PM, Benny Halevy wrote:
->>>> squash into 4a28356  pnfs: CB_NOTIFY_DEVICEID
->>>>
->>>> We currently call pnfs_unhash_deviceid under spin_lock c->dc_lock
->>>> But pnfs_unhash_deviceid calls synchronize_rcu which may sched.
->>>> This resulted in the following BUG with the cthon tests:
->>>>
->>>> Nov 17 18:54:56 tl1 kernel: BUG: spinlock wrong CPU on CPU#1, test5/2170
->>>> Nov 17 18:54:56 tl1 kernel: lock: ffff880070559ff0, .magic: dead4ead, .owner: test5/2170, .owner_cpu: 0
->>>> Nov 17 18:54:56 tl1 kernel: Pid: 2170, comm: test5 Not tainted 2.6.37-rc2-pnfs #167
->>>> Nov 17 18:54:56 tl1 kernel: Call Trace:
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffff8122cfc5>] spin_bug+0x9c/0xa3
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffff8122d042>] do_raw_spin_unlock+0x76/0x8d
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffff814534ea>] _raw_spin_unlock+0x2b/0x30
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffffa03c62fc>] pnfs_put_deviceid+0x59/0x64 [nfs]
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffffa0018551>] filelayout_free_lseg+0x5a/0x6f [nfs_layout_nfsv41_files]
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffffa03c6ea8>] pnfs_free_lseg_list+0x4e/0x8b [nfs]
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffffa03c85a4>] _pnfs_return_layout+0xe3/0x213 [nfs]
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffffa039bcb2>] nfs4_evict_inode+0x41/0x74 [nfs]
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffff8112cab6>] evict+0x27/0x97
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffff8112d051>] iput+0x20c/0x243
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffff8112476c>] do_unlinkat+0x11c/0x16f
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffff81118750>] ? fsnotify_modify+0x66/0x6e
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffff81452cbe>] ? lockdep_sys_exit_thunk+0x35/0x67
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffff810a0b51>] ? audit_syscall_entry+0x11e/0x14a
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffff811247d5>] sys_unlink+0x16/0x18
->>>> Nov 17 18:54:56 tl1 kernel: [<ffffffff8100acf2>] system_call_fastpath+0x16/0x1b
->>>>
->>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>>> ---
->>>> fs/nfs/pnfs.c |    5 ++---
->>>> 1 files changed, 2 insertions(+), 3 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>>> index 559fcce..39c7d9f 100644
->>>> --- a/fs/nfs/pnfs.c
->>>> +++ b/fs/nfs/pnfs.c
->>>> @@ -1651,7 +1651,6 @@ pnfs_unhash_deviceid(struct pnfs_deviceid_cache *c,
->>>> 	hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[h], de_node)
->>>> 		if (!memcmp(&d->de_id, id, sizeof(*id))) {
->>>> 			hlist_del_rcu(&d->de_node);
->>>> -			synchronize_rcu();
->>>> 			return d;
->>>> 		}
->>>>
->>>> @@ -1672,7 +1671,7 @@ pnfs_put_deviceid(struct pnfs_deviceid_cache *c,
->>>>
->>>> 	pnfs_unhash_deviceid(c, &devid->de_id);
->>>> 	spin_unlock(&c->dc_lock);
->>>> -
->>>> +	synchronize_rcu();
->>>> 	c->dc_free_callback(devid);
->>>> }
->>>> EXPORT_SYMBOL_GPL(pnfs_put_deviceid);
->>>> @@ -1686,7 +1685,7 @@ pnfs_delete_deviceid(struct pnfs_deviceid_cache *c,
->>>> 	spin_lock(&c->dc_lock);
->>>> 	devid = pnfs_unhash_deviceid(c, id);
->>>> 	spin_unlock(&c->dc_lock);
->>>> -
->>>> +	synchronize_rcu();
->>>> 	dprintk("%s [%d]\n", __func__, atomic_read(&devid->de_ref));
->>>> 	if (atomic_dec_and_test(&devid->de_ref))
->>>> 		c->dc_free_callback(devid);
->>>
->>> OK, so I don't like this fix because before we only synchronize_rcu()
->>> after an actual hlist_del_rcu. 
->>>
->>> If we look at the two callers
->>>
->>>  ()
->>> 	if (!atomic_dec_and_lock(&devid->de_ref, &c->dc_lock))
->>> 		return;
->>>
->>> 	pnfs_unhash_deviceid(c, &devid->de_id);
->>> 	spin_unlock(&c->dc_lock);
->>>
->>>  pnfs_delete_deviceid
->>>  	spin_lock(&c->dc_lock);
->>>  	devid = pnfs_unhash_deviceid(c, id);
->>>  	spin_unlock(&c->dc_lock);
->>>
->>>
->>> The pnfs_put_deviceid does an atomic_dec_and_lock so not to race with
->>> pnfs_find_get_deviceid. But in pnfs_find_get_deviceid we do atomic_inc_not_zero
->>> so we don't need that we can change pnfs_put_deviceid to just atomic_dec_and_test
->>> and then take the lock inside pnfs_unhash_deviceid, and remove from callers.
->>> Some thing like below. (Untested, only compiled)
->>
->> OK, that makes sense, BUT
->> If pnfs_find_get_deviceid can see de_ref==0 it's racing with pnfs_put_deviceid
->> which is about to free the structure - i.e. pnfs_find_get_deviceid may cause
->> use after free bugs.
->> So I'm confused if the current scheme works at all.
->>
->> Andy, it seems to me this optimization is a bit premature
->> and we'd be better off reverting to using simple spin locks rather the
->> rcu locks, certainly until we have a good testing infrastructure
->> for cb_notifydeviceid.  I'm not sure how much we're saving anyhow.
-> 
-> from rfc5661
->    NOTIFY4_DEVICEID_DELETE
->       Deletes a device ID from the mappings.  This notification MUST NOT
->       be sent if the client has a layout that refers to the device ID.
->       In other words, if the server is sending a delete device ID
->       notification, one of the following is true for layouts associated
->       with the layout type:
-> 
->       *  The client never had a layout referring to that device ID.
-> 
->       *  The client has returned all layouts referring to that device
->          ID.
-> 
->       *  The server has revoked all layouts referring to that device ID.
-> 
-> In our current implementation, when the client has no layout segments referencing a device ID, it has been removed. So, what is gained by using NOTIFY_DEVICEID_DELETE?
-> 
-> I see NOTIFY_DEVICEID4_CHANGE as useful. But I would treat it as an error case - very unlikely to happen. When it does happen, all I/0  using the deviceID needs to be drained, and new i/o stopped with associated rpc tasks put to sleep.  Same for LAYOUTGETs. Then the state manager should be run to remap the deviceid,  then wake up the rpc tasks. When only the state manager can access the deviceid list, this problem goes away.
-> 
-> The current code - nfs4_callback_devicenotify - tries to remove the deviceid from the list. What it should be doing is checking to make sure that the deviceid is already gone, because the client is not supposed to be holding any layouts that reference it.
-> 
-> -->Andy
-> 
+Clean up.
 
-No!
+Move the timestamp decoder to match the placement and naming
+conventions of the other helpers.  Fold xdr_decode_fattr() into
+decode_fattr3(), which is now it's only user.  Fold
+xdr_decode_wcc_attr() into decode_wcc_attr(), which is now it's only
+user.
 
-I thought you promised me that the release of devices from cache if not referenced
-by a layout will be changed to a better cache policy like for example "only release
-on umount". "The current implementation is only to fix the bugs with the code and
-until we actually do more with the layouts" you said.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
+---
 
-So please don't build any new assumptions on a broken model.
+ fs/nfs/nfs3xdr.c |  136 +++++++++++++++++++++++++++---------------------------
+ 1 files changed, 67 insertions(+), 69 deletions(-)
 
-That said, We still have bugs at hand please lets fix them?
-
-Boaz
-
->>
->> Benny
->>
->>>
->>> ---
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> index 61310c7..5d4e14d 100644
->>> --- a/fs/nfs/pnfs.c
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -1598,16 +1598,21 @@ pnfs_unhash_deviceid(struct pnfs_deviceid_cache *c,
->>> {
->>> 	struct pnfs_deviceid_node *d;
->>> 	struct hlist_node *n;
->>> -	long h = nfs4_deviceid_hash(id);
->>> +	long h;
->>> +
->>> +	spin_lock(&c->dc_lock);
->>> +	h = nfs4_deviceid_hash(id);
->>>
->>> 	dprintk("%s hash %ld\n", __func__, h);
->>> 	hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[h], de_node)
->>> 		if (!memcmp(&d->de_id, id, sizeof(*id))) {
->>> 			hlist_del_rcu(&d->de_node);
->>> +			spin_unlock(&c->dc_lock);
->>> 			synchronize_rcu();
->>> 			return d;
->>> 		}
->>>
->>> +	spin_unlock(&c->dc_lock);
->>> 	return NULL;
->>> }
->>>
->>> @@ -1620,11 +1625,10 @@ pnfs_put_deviceid(struct pnfs_deviceid_cache *c,
->>> 		  struct pnfs_deviceid_node *devid)
->>> {
->>> 	dprintk("%s [%d]\n", __func__, atomic_read(&devid->de_ref));
->>> -	if (!atomic_dec_and_lock(&devid->de_ref, &c->dc_lock))
->>> +	if (!atomic_dec_and_test(&devid->de_ref))
->>> 		return;
->>>
->>> 	pnfs_unhash_deviceid(c, &devid->de_id);
->>> -	spin_unlock(&c->dc_lock);
->>>
->>> 	c->dc_free_callback(devid);
->>> }
->>> @@ -1636,9 +1640,7 @@ pnfs_delete_deviceid(struct pnfs_deviceid_cache *c,
->>> {
->>> 	struct pnfs_deviceid_node *devid;
->>>
->>> -	spin_lock(&c->dc_lock);
->>> 	devid = pnfs_unhash_deviceid(c, id);
->>> -	spin_unlock(&c->dc_lock);
->>>
->>> 	dprintk("%s [%d]\n", __func__, atomic_read(&devid->de_ref));
->>> 	if (atomic_dec_and_test(&devid->de_ref))
->>>
->>>
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 04c7936..b286980 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -127,69 +127,6 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+ 
+ 
+ /*
+- * Common NFS XDR functions as inlines
+- */
+-
+-/*
+- * Encode/decode time.
+- */
+-static inline __be32 *
+-xdr_decode_time3(__be32 *p, struct timespec *timep)
+-{
+-	timep->tv_sec = ntohl(*p++);
+-	timep->tv_nsec = ntohl(*p++);
+-	return p;
+-}
+-
+-static __be32 *
+-xdr_decode_fattr(__be32 *p, struct nfs_fattr *fattr)
+-{
+-	unsigned int	type, major, minor;
+-	umode_t		fmode;
+-
+-	type = ntohl(*p++);
+-	if (type > NF3FIFO)
+-		type = NF3NON;
+-	fmode = nfs_type2fmt[type];
+-	fattr->mode = (ntohl(*p++) & ~S_IFMT) | fmode;
+-	fattr->nlink = ntohl(*p++);
+-	fattr->uid = ntohl(*p++);
+-	fattr->gid = ntohl(*p++);
+-	p = xdr_decode_hyper(p, &fattr->size);
+-	p = xdr_decode_hyper(p, &fattr->du.nfs3.used);
+-
+-	/* Turn remote device info into Linux-specific dev_t */
+-	major = ntohl(*p++);
+-	minor = ntohl(*p++);
+-	fattr->rdev = MKDEV(major, minor);
+-	if (MAJOR(fattr->rdev) != major || MINOR(fattr->rdev) != minor)
+-		fattr->rdev = 0;
+-
+-	p = xdr_decode_hyper(p, &fattr->fsid.major);
+-	fattr->fsid.minor = 0;
+-	p = xdr_decode_hyper(p, &fattr->fileid);
+-	p = xdr_decode_time3(p, &fattr->atime);
+-	p = xdr_decode_time3(p, &fattr->mtime);
+-	p = xdr_decode_time3(p, &fattr->ctime);
+-
+-	/* Update the mode bits */
+-	fattr->valid |= NFS_ATTR_FATTR_V3;
+-	return p;
+-}
+-
+-static inline __be32 *
+-xdr_decode_wcc_attr(__be32 *p, struct nfs_fattr *fattr)
+-{
+-	p = xdr_decode_hyper(p, &fattr->pre_size);
+-	p = xdr_decode_time3(p, &fattr->pre_mtime);
+-	p = xdr_decode_time3(p, &fattr->pre_ctime);
+-	fattr->valid |= NFS_ATTR_FATTR_PRESIZE
+-		| NFS_ATTR_FATTR_PREMTIME
+-		| NFS_ATTR_FATTR_PRECTIME;
+-	return p;
+-}
+-
+-/*
+  * Encode/decode NFSv3 basic data types
+  *
+  * Basic NFSv3 data types are defined in section 2.5 of RFC 1813:
+@@ -239,6 +176,11 @@ out_overflow:
+  *
+  *	typedef uint64 fileid3;
+  */
++static __be32 *xdr_decode_fileid3(__be32 *p, u64 *fileid)
++{
++	return xdr_decode_hyper(p, fileid);
++}
++
+ static int decode_fileid3(struct xdr_stream *xdr, u64 *fileid)
+ {
+ 	return decode_uint64(xdr, fileid);
+@@ -452,6 +394,17 @@ static void encode_ftype3(struct xdr_stream *xdr, const u32 type)
+ 	encode_uint32(xdr, type);
+ }
+ 
++static __be32 *xdr_decode_ftype3(__be32 *p, umode_t *mode)
++{
++	u32 type;
++
++	type = be32_to_cpup(p++);
++	if (type > NF3FIFO)
++		type = NF3NON;
++	*mode = nfs_type2fmt[type];
++	return p;
++}
++
+ /*
+  * specdata3
+  *
+@@ -469,6 +422,18 @@ static void encode_specdata3(struct xdr_stream *xdr, const dev_t rdev)
+ 	*p = cpu_to_be32(MINOR(rdev));
+ }
+ 
++static __be32 *xdr_decode_specdata3(__be32 *p, dev_t *rdev)
++{
++	unsigned int major, minor;
++
++	major = be32_to_cpup(p++);
++	minor = be32_to_cpup(p++);
++	*rdev = MKDEV(major, minor);
++	if (MAJOR(*rdev) != major || MINOR(*rdev) != minor)
++		*rdev = 0;
++	return p;
++}
++
+ /*
+  * nfs_fh3
+  *
+@@ -530,6 +495,13 @@ static __be32 *xdr_encode_nfstime3(__be32 *p, const struct timespec *timep)
+ 	return p;
+ }
+ 
++static __be32 *xdr_decode_nfstime3(__be32 *p, struct timespec *timep)
++{
++	timep->tv_sec = be32_to_cpup(p++);
++	timep->tv_nsec = be32_to_cpup(p++);
++	return p;
++}
++
+ /*
+  * sattr3
+  *
+@@ -678,12 +650,33 @@ static void encode_sattr3(struct xdr_stream *xdr, const struct iattr *attr)
+  */
+ static int decode_fattr3(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ {
++	umode_t fmode;
+ 	__be32 *p;
+ 
+ 	p = xdr_inline_decode(xdr, NFS3_fattr_sz << 2);
+ 	if (unlikely(p == NULL))
+ 		goto out_overflow;
+-	xdr_decode_fattr(p, fattr);
++
++	p = xdr_decode_ftype3(p, &fmode);
++
++	fattr->mode = (be32_to_cpup(p++) & ~S_IFMT) | fmode;
++	fattr->nlink = be32_to_cpup(p++);
++	fattr->uid = be32_to_cpup(p++);
++	fattr->gid = be32_to_cpup(p++);
++
++	p = xdr_decode_size3(p, &fattr->size);
++	p = xdr_decode_size3(p, &fattr->du.nfs3.used);
++	p = xdr_decode_specdata3(p, &fattr->rdev);
++
++	p = xdr_decode_hyper(p, &fattr->fsid.major);
++	fattr->fsid.minor = 0;
++
++	p = xdr_decode_fileid3(p, &fattr->fileid);
++	p = xdr_decode_nfstime3(p, &fattr->atime);
++	p = xdr_decode_nfstime3(p, &fattr->mtime);
++	xdr_decode_nfstime3(p, &fattr->ctime);
++
++	fattr->valid |= NFS_ATTR_FATTR_V3;
+ 	return 0;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+@@ -730,7 +723,15 @@ static int decode_wcc_attr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ 	p = xdr_inline_decode(xdr, NFS3_wcc_attr_sz << 2);
+ 	if (unlikely(p == NULL))
+ 		goto out_overflow;
+-	xdr_decode_wcc_attr(p, fattr);
++
++	fattr->valid |= NFS_ATTR_FATTR_PRESIZE
++		| NFS_ATTR_FATTR_PREMTIME
++		| NFS_ATTR_FATTR_PRECTIME;
++
++	p = xdr_decode_size3(p, &fattr->pre_size);
++	p = xdr_decode_nfstime3(p, &fattr->pre_mtime);
++	xdr_decode_nfstime3(p, &fattr->pre_ctime);
++
+ 	return 0;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+@@ -1009,10 +1010,7 @@ static void encode_write3args(struct xdr_stream *xdr,
+ 	p = xdr_reserve_space(xdr, 8 + 4 + 4 + 4);
+ 	p = xdr_encode_hyper(p, args->offset);
+ 	*p++ = cpu_to_be32(args->count);
+-
+-	BUG_ON(args->stable > NFS_FILE_SYNC);
+ 	*p++ = cpu_to_be32(args->stable);
+-
+ 	*p = cpu_to_be32(args->count);
+ 	xdr_write_pages(xdr, args->pages, args->pgbase, args->count);
+ }
+@@ -2274,7 +2272,7 @@ static int decode_fsinfo3resok(struct xdr_stream *xdr,
+ 	result->wtmult = be32_to_cpup(p++);
+ 	result->dtpref = be32_to_cpup(p++);
+ 	p = xdr_decode_size3(p, &result->maxfilesize);
+-	xdr_decode_time3(p, &result->time_delta);
++	xdr_decode_nfstime3(p, &result->time_delta);
+ 
+ 	/* ignore properties */
+ 	result->lease_time = 0;
 
