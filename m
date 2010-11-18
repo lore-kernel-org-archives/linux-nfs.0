@@ -1,30 +1,56 @@
-From: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH 01/17] NFS: Introduce new-style XDR encoding functions
- for NFSv2
-Date: Thu, 18 Nov 2010 17:28:08 +0200
-Message-ID: <4CE54608.5030707@panasas.com>
-References: <20101117174112.29177.69734.stgit@matisse.1015granger.net> <20101117174339.29177.12341.stgit@matisse.1015granger.net> <4CE52124.6020906@panasas.com> <D42461FE-9105-4D7E-A134-071E21BC7F98@oracle.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Re: Linux pNFS status meeting 11/18/10  CANCELED
+Date: Thu, 18 Nov 2010 08:46:00 -0800
+Message-ID: <OF71697ED4.D5DF909A-ON882577DF.005BFD69-882577DF.005C18A7@us.ibm.com>
+References: <OF43A16D28.D03BB9EB-ON882577DF.0005D227-882577DF.00068DAB@us.ibm.com> <AANLkTimGnJwv3i-396FR4upvw_QBsroheYSUY2DWywMp@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="US-ASCII"
+Cc: linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:45752 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752952Ab0KRP2L (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Nov 2010 10:28:11 -0500
-In-Reply-To: <D42461FE-9105-4D7E-A134-071E21BC7F98@oracle.com>
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:58252 "EHLO e9.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754945Ab0KRQqE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Nov 2010 11:46:04 -0500
+In-Reply-To: <AANLkTimGnJwv3i-396FR4upvw_QBsroheYSUY2DWywMp-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/18/2010 05:24 PM, Chuck Lever wrote:
-> Hi Boaz-
->>
->> Please use cpu_to_beXX like below?
-> 
-> That's almost certainly updated in a later patch in this series.  Probably [03/17]?
-> 
+From:
+"William A. (Andy) Adamson" <androsadamson@gmail.com>
+To:
+Marc Eshel <eshel@almaden.ibm.com>
+Cc:
+linux-nfs@vger.kernel.org
+Date:
+11/18/2010 06:47 AM
+Subject:
+Re: Linux pNFS status meeting 11/18/10
+Sent by:
+linux-nfs-owner@vger.kernel.org
 
-Sorry for the noise. Thanks grate stuff
 
-Boaz
+
+Hi Marc
+
+NetApp has a conflicting meeting....
+
+-->Andy
+
+On Wed, Nov 17, 2010 at 8:11 PM, Marc Eshel <eshel@almaden.ibm.com> wrote:
+> Meeting on Thursday 11/18/10 at 9:30 AM pacific time (12:30 PM UMICH 
+time)
+>
+> Marc.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
