@@ -1,148 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-px0-f174.google.com ([209.85.212.174]:35343 "EHLO
-	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933795Ab0KQSBR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 13:01:17 -0500
-Received: by pxi15 with SMTP id 15so578254pxi.19
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 10:01:17 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/12] NFS: Avoid return code checking in mount XDR encoder
-	functions
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 17 Nov 2010 13:01:14 -0500
-Message-ID: <20101117180114.29429.39517.stgit@matisse.1015granger.net>
-In-Reply-To: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
-References: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:51532 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757422Ab0KRWmQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Nov 2010 17:42:16 -0500
+Subject: Re: Very slow O_DIRECT writes on NFS in .36
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Ben Greear <greearb@candelatech.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <4CE58B54.4090203@candelatech.com>
+References: <4CE58799.1010702@candelatech.com>
+	 <4234EB44-97D5-4212-A52E-983907D2733F@oracle.com>
+	 <4CE58B54.4090203@candelatech.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 18 Nov 2010 17:42:04 -0500
+Message-ID: <1290120124.14909.12.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
+On Thu, 2010-11-18 at 12:23 -0800, Ben Greear wrote:
+> On 11/18/2010 12:17 PM, Chuck Lever wrote:
+> >
+> > On Nov 18, 2010, at 3:07 PM, Ben Greear wrote:
+> >
+> >> I applied the NFS O_DIRECT patch (and all others) from the pending 2.6.36 stable
+> >> queue, and now I can at least use O_DIRECT w/out immediate failure.
+> >>
+> >> However, I notice that when writing 2k chunks with O_DIRECT on
+> >> NFS, it runs extremely slowly (about 300Kbps throughput).  The
+> >> server is a Fedora 13 64-bit system running 2.6.34.7-56.fc13.x86_64
+> >>
+> >> Here's some strace -ttT output for the writer:
+> >>
+> >> 07:03:42.898058 write(9, "\370'\37\345v\230\315\253\3\0\0\0\354\7\0\0\16\1\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 2048) = 2048<0.059402>
+> >> 07:03:42.957649 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout)<0.000266>
+> >> 07:03:42.958148 write(9, "\212$s\327v\230\315\253\3\0\0\0\354\7\0\0\17\1\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 2048) = 2048<0.069295>
+> >> 07:03:43.027524 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout)<0.000011>
+> >>
+> >>
+> >> Writing 64k chunks takes basically the same amount of time per system call:
+> >>
+> >> 07:06:13.537488 write(9, "\5\340\202\262v\230\315\253\3\0\0\0\354\377\0\0\6\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536<0.049462>
+> >> 07:06:13.587083 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout)<0.000035>
+> >> 07:06:13.587410 write(9, "\250\231\377cv\230\315\253\3\0\0\0\354\377\0\0\7\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536<0.058612>
+> >> 07:06:13.646233 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout)<0.000095>
+> >> 07:06:13.646616 write(9, "\5-@\5v\230\315\253\3\0\0\0\354\377\0\0\10\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536<0.050282>
+> >>
+> >>
+> >> Reading is a good deal faster..about 34Mbps with O_DIRECT, NFS and 2k reads.
+> >>
+> >> Any ideas about why the write performance is so bad?
+> >
+> > A network trace will probably show you that the per-write latency is due to the server.
+> >
+> 
+> Looks like you are right.  I don't remember it being this slow before, but
+> maybe it was.  We'll run some tests with older kernels and/or different
+> servers.
+> 
+>    6.700193 192.168.100.173 -> 192.168.100.3 NFS V3 WRITE Call, FH:0x6bc05782 Offset:96256 Len:1024 FILE_SYNC
+>    6.740547 192.168.100.3 -> 192.168.100.173 TCP 2049 > 800 [ACK] Seq=12321 Ack=101729 Win=501 Len=0 TSV=218471603 TSER=1385525
+>    6.769380 192.168.100.3 -> 192.168.100.173 NFS V3 WRITE Reply (Call In 262) Len:1024 FILE_SYNC
+>    6.769609 192.168.100.173 -> 192.168.100.3 NFS V3 WRITE Call, FH:0x6bc05782 Offset:97280 Len:1024 FILE_SYNC
+>    6.809777 192.168.100.3 -> 192.168.100.173 TCP 2049 > 800 [ACK] Seq=12461 Ack=102885 Win=501 Len=0 TSV=218471673 TSER=1385594
+>    6.850373 192.168.100.3 -> 192.168.100.173 NFS V3 WRITE Reply (Call In 265) Len:1024 FILE_SYNC
+>    6.850631 192.168.100.173 -> 192.168.100.3 NFS V3 WRITE Call, FH:0x6bc05782 Offset:98304 Len:1024 FILE_SYNC
+>    6.890845 192.168.100.3 -> 192.168.100.173 TCP 2049 > 800 [ACK] Seq=12601 Ack=104041 Win=501 Len=0 TSV=218471754 TSER=1385675
+>    6.930344 192.168.100.3 -> 192.168.100.173 NFS V3 WRITE Reply (Call In 268) Len:1024 FILE_SYNC
+>    6.930703 192.168.100.173 -> 192.168.100.3 NFS V3 WRITE Call, FH:0x6bc05782 Offset:99328 Len:1024 FILE_SYNC
+>    6.971753 192.168.100.3 -> 192.168.100.173 TCP 2049 > 800 [ACK] Seq=12741 Ack=105197 Win=501 Len=0 TSV=218471834 TSER=1385755
+>    6.980341 192.168.100.3 -> 192.168.100.173 NFS V3 WRITE Reply (Call In 271) Len:1024 FILE_SYNC
 
-The trend in the other XDR encoder functions is to BUG() when encoding
-problems occur, since a problem is always due to a local coding error.
+This is all expected. Doing direct i/o with small chunks is always going
+to be slow, since the kernel is required to ensure all the data has been
+synchronised to disk before the syscall can complete.
 
-Then, instead of a status, zero is unconditionally returned.
+You can significantly speed things up by grouping several writes into a
+single syscall using the vectored write interface (i.e. writev()). That
+allows the kernel to use unstable writes to the server and then issue a
+single COMMIT call to sync all the data from the vector at once.
 
-Update the mount client XDR encoders to behave this way.
+Cheers
+  Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-To finish the update, use the new-style ntohl() and htonl() macros,
-and compute the buffer sizes using raw integers instead of sizeof().
-This matches the conventions used in other XDR functions.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: J. Bruce Fields <bfields@redhat.com>
----
-
- fs/nfs/mount_clnt.c |   35 +++++++++++++++--------------------
- 1 files changed, 15 insertions(+), 20 deletions(-)
-
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index eceafe7..2e238f3 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -280,20 +280,14 @@ out_call_err:
-  * XDR encode/decode functions for MOUNT
-  */
- 
--static int encode_mntdirpath(struct xdr_stream *xdr, const char *pathname)
-+static void encode_mntdirpath(struct xdr_stream *xdr, const char *pathname)
- {
- 	const u32 pathname_len = strlen(pathname);
- 	__be32 *p;
- 
--	if (unlikely(pathname_len > MNTPATHLEN))
--		return -EIO;
--
--	p = xdr_reserve_space(xdr, sizeof(u32) + pathname_len);
--	if (unlikely(p == NULL))
--		return -EIO;
-+	BUG_ON(pathname_len > MNTPATHLEN);
-+	p = xdr_reserve_space(xdr, 4 + pathname_len);
- 	xdr_encode_opaque(p, pathname, pathname_len);
--
--	return 0;
- }
- 
- static int mnt_enc_dirpath(struct rpc_rqst *req, __be32 *p,
-@@ -302,7 +296,8 @@ static int mnt_enc_dirpath(struct rpc_rqst *req, __be32 *p,
- 	struct xdr_stream xdr;
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
--	return encode_mntdirpath(&xdr, dirpath);
-+	encode_mntdirpath(&xdr, dirpath);
-+	return 0;
- }
- 
- /*
-@@ -320,10 +315,10 @@ static int decode_status(struct xdr_stream *xdr, struct mountres *res)
- 	u32 status;
- 	__be32 *p;
- 
--	p = xdr_inline_decode(xdr, sizeof(status));
-+	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(p == NULL))
- 		return -EIO;
--	status = ntohl(*p);
-+	status = be32_to_cpup(p);
- 
- 	for (i = 0; i < ARRAY_SIZE(mnt_errtbl); i++) {
- 		if (mnt_errtbl[i].status == status) {
-@@ -371,10 +366,10 @@ static int decode_fhs_status(struct xdr_stream *xdr, struct mountres *res)
- 	u32 status;
- 	__be32 *p;
- 
--	p = xdr_inline_decode(xdr, sizeof(status));
-+	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(p == NULL))
- 		return -EIO;
--	status = ntohl(*p);
-+	status = be32_to_cpup(p);
- 
- 	for (i = 0; i < ARRAY_SIZE(mnt3_errtbl); i++) {
- 		if (mnt3_errtbl[i].status == status) {
-@@ -394,11 +389,11 @@ static int decode_fhandle3(struct xdr_stream *xdr, struct mountres *res)
- 	u32 size;
- 	__be32 *p;
- 
--	p = xdr_inline_decode(xdr, sizeof(size));
-+	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(p == NULL))
- 		return -EIO;
- 
--	size = ntohl(*p++);
-+	size = be32_to_cpup(p);
- 	if (size > NFS3_FHSIZE || size == 0)
- 		return -EIO;
- 
-@@ -421,15 +416,15 @@ static int decode_auth_flavors(struct xdr_stream *xdr, struct mountres *res)
- 	if (*count == 0)
- 		return 0;
- 
--	p = xdr_inline_decode(xdr, sizeof(entries));
-+	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(p == NULL))
- 		return -EIO;
--	entries = ntohl(*p);
-+	entries = be32_to_cpup(p);
- 	dprintk("NFS: received %u auth flavors\n", entries);
- 	if (entries > NFS_MAX_SECFLAVORS)
- 		entries = NFS_MAX_SECFLAVORS;
- 
--	p = xdr_inline_decode(xdr, sizeof(u32) * entries);
-+	p = xdr_inline_decode(xdr, 4 * entries);
- 	if (unlikely(p == NULL))
- 		return -EIO;
- 
-@@ -437,7 +432,7 @@ static int decode_auth_flavors(struct xdr_stream *xdr, struct mountres *res)
- 		entries = *count;
- 
- 	for (i = 0; i < entries; i++) {
--		flavors[i] = ntohl(*p++);
-+		flavors[i] = be32_to_cpup(p++);
- 		dprintk("NFS:   auth flavor[%u]: %d\n", i, flavors[i]);
- 	}
- 	*count = i;
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
