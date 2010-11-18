@@ -1,44 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.perches.com ([173.55.12.10]:4939 "EHLO mail.perches.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:37504 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757166Ab0KJXBZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Nov 2010 18:01:25 -0500
-Subject: Re: [PATCH 0/9] treewide: convert vprintk uses to %pV
-From: Joe Perches <joe@perches.com>
-To: "Luis R. Rodriguez" <mcgrof@gmail.com>
-Cc: linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org,
-        netdev@vger.kernel.org, linux-wireless@vger.kernel.org,
-        cluster-devel@redhat.com, linux-nilfs@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <AANLkTinhcbdm8YQOrFVdONODo6K6PcxHYtx5vqnap_3T@mail.gmail.com>
-References: <cover.1289348757.git.joe@perches.com>
-	 <AANLkTinhcbdm8YQOrFVdONODo6K6PcxHYtx5vqnap_3T@mail.gmail.com>
+	id S1758796Ab0KRP1r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Nov 2010 10:27:47 -0500
+Subject: Re: Question about nfs_page_async_flush assertion
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Peng Tao <lkml.bergwolf@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+In-Reply-To: <AANLkTimavN8px1k_Y65mFqsAsiLjgCh6vos22ZnZm+3Z@mail.gmail.com>
+References: <AANLkTimavN8px1k_Y65mFqsAsiLjgCh6vos22ZnZm+3Z@mail.gmail.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 10 Nov 2010 15:01:23 -0800
-Message-ID: <1289430083.15905.106.camel@Joe-Laptop>
+Date: Thu, 18 Nov 2010 10:27:43 -0500
+Message-ID: <1290094063.3187.41.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-11-10 at 14:48 -0800, Luis R. Rodriguez wrote:
-> When was this added upstream BTW? I ask for backport considerations.
+On Thu, 2010-11-18 at 18:53 +0800, Peng Tao wrote:
+> Hi, all,
+> 
+> nfs_writepages calls into
+> write_cache_pages()->nfs_writepages_callback()->nfs_do_writepage()->nfs_page_async_flush(),
+> where it asserts BUG_ON(test_bit(PG_CLEAN, &req->wb_flags)).
+> My question is: how do we guarantee the request has PG_CLEAN flag set?
 
-commit 7db6f5fb65a82af03229eef104dc9899c5eecf33
-Author: Joe Perches <joe@perches.com>
-Date:   Sun Jun 27 01:02:33 2010 +0000
+We don't. We guarantee that the request has PG_CLEAN cleared, and that
+is done when we dirty the page (see nfs_try_to_update_request()).
 
-    vsprintf: Recursive vsnprintf: Add "%pV", struct va_format
-    
-    Add the ability to print a format and va_list from a structure pointer
-    
-    Allows __dev_printk to be implemented as a single printk while
-    minimizing string space duplication.
-    
-    %pV should not be used without some mechanism to verify the
-    format and argument use ala __attribute__(format (printf(...))).
-    
-    Signed-off-by: Joe Perches <joe@perches.com>
-    Acked-by: Greg Kroah-Hartman <gregkh@suse.de>
-    Signed-off-by: David S. Miller <davem@davemloft.net>
-
+Cheers
+  Trond
 
