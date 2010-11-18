@@ -1,47 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from filter.openoffice.nl ([217.170.2.175]:54449 "EHLO
-	filter.openoffice.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935096Ab0KQSwn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 13:52:43 -0500
-Message-ID: <4CE42474.7020604@blub.net>
-Date: Wed, 17 Nov 2010 19:52:36 +0100
-From: Valentijn Sessink <valentyn@blub.net>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Kevin Coffman <kwc@citi.umich.edu>, Steve Dickson <SteveD@redhat.com>,
-        Jim Rees <rees@umich.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Strange rpc.svcgssd behavior
-References: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com> <4CE2AA3B.6070302@openoffice.nl> <4CE2DF2D.9070603@blub.net> <20101116201753.GB4482@merit.edu> <577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com> <20101116205436.GA4595@merit.edu> <44C0977F-DBD6-4F87-B3A5-B2B66C784312@oracle.com> <4CE3F249.8050301@RedHat.com> <C2312B32-B190-41C4-A4C8-C29231DBA305@oracle.com> <AANLkTinJyFHom5JQg5s+yX+6NRBw01S6a9gbwtk5WaLB@mail.gmail.com> <013E9F9C-F4F8-47E6-939D-1B0D893B6988@oracle.com> <AANLkTi=CgbEAewXEtErN5KxmNyWCL8-Jqc69v67cgZ2J@mail.gmail.com> <6980C086-795B-49EF-8F93-8C49A51E35CF@oracle.com>
-In-Reply-To: <6980C086-795B-49EF-8F93-8C49A51E35CF@oracle.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail.candelatech.com ([208.74.158.172]:46805 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758180Ab0KRUHy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Nov 2010 15:07:54 -0500
+Received: from [192.168.100.195] (firewall.candelatech.com [70.89.124.249])
+	(authenticated bits=0)
+	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id oAIK7rZK007850
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 18 Nov 2010 12:07:54 -0800
+Message-ID: <4CE58799.1010702@candelatech.com>
+Date: Thu, 18 Nov 2010 12:07:53 -0800
+From: Ben Greear <greearb@candelatech.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Very slow O_DIRECT writes on NFS in .36
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Op 17-11-10 18:51, Chuck Lever schreef:
-> The hostname is added to localhost entries in /etc/hosts because some
-> applications require at least one entry with the local host's
-> hostname in /etc/hosts.  When a system comes up with all of its
-> network interfaces offline and without any IP addresses assigned,
-> what else can be done?
+I applied the NFS O_DIRECT patch (and all others) from the pending 2.6.36 stable
+queue, and now I can at least use O_DIRECT w/out immediate failure.
 
-Read /etc/hostname?
+However, I notice that when writing 2k chunks with O_DIRECT on
+NFS, it runs extremely slowly (about 300Kbps throughput).  The
+server is a Fedora 13 64-bit system running 2.6.34.7-56.fc13.x86_64
 
-Adding "localhost" entries to /etc/hosts does nothing for applications 
-that require an entry with the hostname in /etc/hosts, *unless* the 
-hostname is "localhost". Now as Networkmanager (apparently) sets the 
-hostname to "localhost", I can see why Networkmanager wants to add 
-"localhost" to /etc/hosts afterwards. But hey, we might as well set the 
-hostname to everyone.loves.networkmanager, then add *that* to /etc/hosts 
-and run into problems.
+Here's some strace -ttT output for the writer:
 
-Please note, that /etc/hosts has nothing to do with the hostname, it's 
-only a way to statically (and locally) add things to the resolver.
-[...]
-> for the host is added to /etc/hosts, and then added back to the
-> localhost entries when all network interfaces are disabled.
+07:03:42.898058 write(9, "\370'\37\345v\230\315\253\3\0\0\0\354\7\0\0\16\1\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 2048) = 2048 <0.059402>
+07:03:42.957649 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout) <0.000266>
+07:03:42.958148 write(9, "\212$s\327v\230\315\253\3\0\0\0\354\7\0\0\17\1\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 2048) = 2048 <0.069295>
+07:03:43.027524 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout) <0.000011>
 
-I don't think adding or not adding them to /etc/hosts makes any 
-difference. I'd guess that calling sethostname() causes problems.
 
-V.
+Writing 64k chunks takes basically the same amount of time per system call:
+
+07:06:13.537488 write(9, "\5\340\202\262v\230\315\253\3\0\0\0\354\377\0\0\6\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536 <0.049462>
+07:06:13.587083 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout) <0.000035>
+07:06:13.587410 write(9, "\250\231\377cv\230\315\253\3\0\0\0\354\377\0\0\7\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536 <0.058612>
+07:06:13.646233 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout) <0.000095>
+07:06:13.646616 write(9, "\5-@\5v\230\315\253\3\0\0\0\354\377\0\0\10\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536 <0.050282>
+
+
+Reading is a good deal faster..about 34Mbps with O_DIRECT, NFS and 2k reads.
+
+Any ideas about why the write performance is so bad?
+
+Thanks,
+Ben
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
+
