@@ -1,41 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:53127 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753583Ab0KKKAX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Nov 2010 05:00:23 -0500
-Message-ID: <4CDBBF86.6080800@cn.fujitsu.com>
-Date: Thu, 11 Nov 2010 18:03:50 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFSv3 list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFS4.1: server gets drc mem fail should reply error at create_session
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:47542 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751138Ab0KRF1C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Nov 2010 00:27:02 -0500
+Message-ID: <4CE4B923.6030102@opengridcomputing.com>
+Date: Wed, 17 Nov 2010 23:26:59 -0600
+From: Tom Tucker <tom@opengridcomputing.com>
+To: Or Gerlitz <or.gerlitz@gmail.com>
+CC: Tom Tucker <tom@ogc.us>, bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org
+Subject: Re: [PATCH 1/2] svcrdma: Change DMA mapping logic to avoid the page_address
+ kernel API
+References: <20101012203332.22154.37230.stgit@build.ogc.int>	<20101012203351.22154.42528.stgit@build.ogc.int> <AANLkTik0LkdD-Gm0FAZ-KDS605ZGTewbfejC3GEOK=2x@mail.gmail.com>
+In-Reply-To: <AANLkTik0LkdD-Gm0FAZ-KDS605ZGTewbfejC3GEOK=2x@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-When server gets drc mem fail, it should reply error to client.
+On 11/16/10 1:39 PM, Or Gerlitz wrote:
+>   Tom Tucker<tom@ogc.us>  wrote:
+>
+>> This patch changes the bus mapping logic to avoid page_address() where necessary
+> Hi Tom,
+>
+> Does "when necessary" comes to say that invocations of page_address
+> which remained in the code after this patch was applied are safe and
+> no kmap call is needed?
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- fs/nfsd/nfs4state.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+That's the premise. Please let me know if something looks suspicious.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3876a9c..ea6466c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -745,6 +745,8 @@ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct n
- 	 */
- 	slotsize = nfsd4_sanitize_slot_size(fchan->maxresp_cached);
- 	numslots = nfsd4_get_drc_mem(slotsize, fchan->maxreqs);
-+	if (numslots < 1)
-+		return NULL;
- 
- 	new = alloc_session(slotsize, numslots);
- 	if (!new) {
--- 
-1.7.0.1
+Thanks,
+Tom
 
-
+> Or.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
