@@ -1,57 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cam-admin0.cambridge.arm.com ([217.140.96.50]:46175 "EHLO
-	cam-admin0.cambridge.arm.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756316Ab0KKMyb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Nov 2010 07:54:31 -0500
-From: Catalin Marinas <catalin.marinas@arm.com>
-To: linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH] nfs: Ignore kmemleak false positive in nfs_readdir_make_qstr
-Date: Thu, 11 Nov 2010 12:53:47 +0000
-Message-Id: <1289480027-7361-1-git-send-email-catalin.marinas@arm.com>
+Received: from mail-out2.uio.no ([129.240.10.58]:57925 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757989Ab0KRPFR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Nov 2010 10:05:17 -0500
+Subject: Re: [PATCH 3/3] NFS return an rpc auth error on back channel
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+In-Reply-To: <AANLkTin7frm3PDAD-iU=G==COQJL3NQCaxY6dsT6pwi=@mail.gmail.com>
+References: <1289964990-4480-1-git-send-email-andros@netapp.com>
+	 <1289964990-4480-2-git-send-email-andros@netapp.com>
+	 <1289964990-4480-3-git-send-email-andros@netapp.com>
+	 <1289964990-4480-4-git-send-email-andros@netapp.com>
+	 <1290036369.3070.22.camel@heimdal.trondhjem.org>
+	 <AANLkTin7frm3PDAD-iU=G==COQJL3NQCaxY6dsT6pwi=@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 18 Nov 2010 10:05:10 -0500
+Message-ID: <1290092710.3187.28.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Strings allocated via kmemdup() in nfs_readdir_make_qstr() are
-referenced from the nfs_cache_array which is stored in a page cache
-page. Kmemleak does not scan such pages and it reports several false
-positives. This patch annotates the string->name pointer so that
-kmemleak does not consider it a real leak.
+On Thu, 2010-11-18 at 09:42 -0500, William A. (Andy) Adamson wrote:
+> On Wed, Nov 17, 2010 at 6:26 PM, Trond Myklebust
+> <trond.myklebust@fys.uio.no> wrote:
+> > On Tue, 2010-11-16 at 22:36 -0500, andros@netapp.com wrote:
+> >
+> > In NFSv4.0, you basically want to set the nfs_client in
+> > nfs_callback_compound() (using the server's address and the
+> > 'callback_ident' argument).
+> 
+> And if the nfs_client is not found should we SVC_DROP the request?
+> NFS4ERR_BADHANDLE?
 
-Signed-off-by: Catalin Marinas <catalin.marinas@arm.com>
-Cc: Bryan Schumaker <bjschuma@netapp.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/dir.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
+We can still drop the request in nfs4_callback_compound().
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 07ac384..a9f9e14 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -34,6 +34,7 @@
- #include <linux/mount.h>
- #include <linux/sched.h>
- #include <linux/vmalloc.h>
-+#include <linux/kmemleak.h>
- 
- #include "delegation.h"
- #include "iostat.h"
-@@ -231,6 +232,11 @@ int nfs_readdir_make_qstr(struct qstr *string, const char *name, unsigned int le
- 	string->name = kmemdup(name, len, GFP_KERNEL);
- 	if (string->name == NULL)
- 		return -ENOMEM;
-+	/*
-+	 * Avoid a kmemleak false positive. The pointer to the name is stored
-+	 * in a page cache page which kmemleak does not scan.
-+	 */
-+	kmemleak_not_leak(string->name);
- 	string->hash = full_name_hash(name, len);
- 	return 0;
- }
--- 
-1.7.3.GIT
+> >
+> > In NFSv4.1, you need to set it in the OP_SEQUENCE decode callback, but
+> > there you need to be returning NFS4ERR_BADSESSION and/or
+> > NFS4ERR_CONN_NOT_BOUND_TO_SESSION anyway...
+> 
+> I don't see the difference between not finding the proper nfs_client
+> in the pg_authenticate method and not finding it after decode in
+> CB_SEQUENCE.
+
+In the NFSv4.1 case, the client callback server knows that the
+connection is valid, 'cos we're the ones who set it up. All we care
+about is to make sure the session is still valid. If it isn't, then
+NFS4ERR_BADSESSION is the correct reply.
+
+NFSv4.0 is an altogether different kettle of fish since we need to
+authenticate the connection too.
+
+Trond
 
