@@ -1,44 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from netnation.com ([204.174.223.2]:57810 "EHLO peace.netnation.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754431Ab0KIScn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Nov 2010 13:32:43 -0500
-Received: from sim by peace.netnation.com with local (Exim 4.69)
-	(envelope-from <sim@netnation.com>)
-	id 1PFszq-0000Fm-3a
-	for linux-nfs@vger.kernel.org; Tue, 09 Nov 2010 10:32:42 -0800
-Date: Tue, 9 Nov 2010 10:32:42 -0800
-From: Simon Kirby <sim@hostway.ca>
-To: linux-nfs@vger.kernel.org
-Subject: rpcauth_lookup_credcache hash size
-Message-ID: <20101109183242.GA29915@hostway.ca>
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:54641 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752129Ab0KSQgM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Nov 2010 11:36:12 -0500
+Received: by gwb20 with SMTP id 20so59737gwb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Nov 2010 08:36:12 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] SUNRPC: fix synopsis of rpcproc_encode_null()
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 19 Nov 2010 11:36:08 -0500
+Message-ID: <20101119163415.2262.76340.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello!
+Clean up.
 
-Just decided to run "perf top" on a web server which seemed to be
-CPU-bound and saw this at the top:
+Missed one instance of an encoder returning int instead of void.
 
-             samples  pcnt function                 DSO
-             _______ _____ ________________________ __________________
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-             5261.00 11.9% rpcauth_lookup_credcache [kernel.kallsyms]
-             2429.00  5.5% lex_scan                 php4
-             2184.00  5.0% thread_group_cputime     [kernel.kallsyms]
-             1505.00  3.4% established_get_next     [kernel.kallsyms]
-             1083.00  2.5% zendparse                php4
-             1055.00  2.4% zend_hash_find           php4
-              958.00  2.2% lex_scan                 php5
-              905.00  2.1% execute                  php4
-              890.00  2.0% memcpy                   /lib/libc-2.7.so
+Hi -
 
-I see this just became configurable, but probably 4 bits (16 buckets?) is
-probably a bit small for the default, no?  (hlist_head is just a pointer,
-4 or 8 bytes per bucket, so the default is 128 bytes on x64 :))
+Build-tested only.  This can be squashed into [PATCH 11/12].
 
-I guess it really needs to auto-scale...
 
-Simon-
+ net/sunrpc/clnt.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 85f93c9..78c18fe 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1770,9 +1770,8 @@ out_overflow:
+ 	goto out_garbage;
+ }
+ 
+-static int rpcproc_encode_null(void *rqstp, struct xdr_stream *xdr, void *obj)
++static void rpcproc_encode_null(void *rqstp, struct xdr_stream *xdr, void *obj)
+ {
+-	return 0;
+ }
+ 
+ static int rpcproc_decode_null(void *rqstp, struct xdr_stream *xdr, void *obj)
+
