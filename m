@@ -1,84 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:54621 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754606Ab0K3ACG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 19:02:06 -0500
-Received: by gxk3 with SMTP id 3so25530gxk.19
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Nov 2010 16:02:05 -0800 (PST)
-From: "Spencer Shepler" <spencer.shepler@gmail.com>
-To: "'Trond Myklebust'" <Trond.Myklebust@netapp.com>
-Cc: <Daniel.Muntz@emc.com>, <spelic@shiftmail.org>,
-        <linux-nfs@vger.kernel.org>
-References: <1291054975.12784.17.camel@heimdal.trondhjem.org> <DE966DA98A4ABE438D726BDF1699CF610437B188C9@MX05A.corp.emc.com> <067101cb9018$d70ba2f0$8522e8d0$@gmail.com> <1291072571.20567.26.camel@heimdal.trondhjem.org> <1291073174.20567.31.camel@heimdal.trondhjem.org> <068901cb901d$61395630$23ac0290$@gmail.com> <1291074002.20567.38.camel@heimdal.trondhjem.org>
-In-Reply-To: <1291074002.20567.38.camel@heimdal.trondhjem.org>
-Subject: RE: NFSv4 behaviour on unknown users
-Date: Mon, 29 Nov 2010 16:02:01 -0800
-Message-ID: <068f01cb9021$d1c10700$75431500$@gmail.com>
-Content-Type: text/plain;
-	charset="utf-8"
+Received: from mail-out1.uio.no ([129.240.10.57]:60737 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932211Ab0KSXR3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Nov 2010 18:17:29 -0500
+Subject: Re: NFS client/sunrpc getting stuck on 2.6.36
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Simon Kirby <sim@hostway.ca>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20101119225803.GC3270@hostway.ca>
+References: <20101111023520.GH16939@hostway.ca>
+	 <1289452967.4062.10.camel@heimdal.trondhjem.org>
+	 <20101119202004.GA3270@hostway.ca>
+	 <1290201888.3135.61.camel@heimdal.trondhjem.org>
+	 <20101119220356.GB3270@hostway.ca>
+	 <1290205039.3135.74.camel@heimdal.trondhjem.org>
+	 <20101119225803.GC3270@hostway.ca>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 19 Nov 2010 18:17:25 -0500
+Message-ID: <1290208645.3135.88.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-> -----Original Message-----
-> From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
-
-<trim>
-
-> > > servers.
-> > >
-> > > The other problem is that when you use the naked uid or gid you are
-> > > losing information about which domain the user belongs to.
-> > >
-> > > While that may be fine when you are authenticating using the
-> > > AUTH_SYS security flavour, it is just plain wrong when you are
-> > > authenticating using RPCSEC_GSS principals (which is what the NFSv4
-> > > spec assumes that you will use).
-> >
-> > Then the administrator will not use that option.
-> >
-> > The use case that was presented did not use Kerberos (at least in my
-> quick reading).
-> >
-> > I agree that users that use Kerberos will be unhappy and that they
-> > should use something that maps more in align with their Kerberos
-> > realms but that is not the pain point under discussion.  A variation
-> > of the id mapping work under discussion by Andy would/could address
-> > Kerberos and other deployment scenarios.  But for the original "works
-> > for NFSv3 and doesn't for NFSv4" crowd something simple will suffice
-> > and they will be happy and stop bitching about this and move onto the
-> > next thing that pisses them off. :-)
+On Fri, 2010-11-19 at 14:58 -0800, Simon Kirby wrote:
+> On Fri, Nov 19, 2010 at 05:17:19PM -0500, Trond Myklebust wrote:
+> > So what were all the 
+> > 
+> > 'lockd: server 10.10.52.xxx not responding, still trying'
+> > 
+> > messages all about? There were quite a few of them for a number of
+> > different servers in the moments leading up to the hang. Could it be a
+> > problem with the switch these clients are attached to?
 > 
-> It would not be backwards compatible: the linux server will currently
-> reject any uid/gid usage by the client.
+> If it were a switch problem, would we see port 2049 socket backlogs with
+> netstat -tan or ss -tan?  I haven't seen this at all when the problem
+> occurs.  All of the sockets are idle (and usually it seems to close them
+> all except the one server that all of the slots are stuck on).  tcpdump
+> shows no problems, just very slow requests rates that match the rpc/nfs
+> debugging.
+
+No retransmits that might indicate dropped packets at the switch? How
+fast are the tcp ACKs from the server being returned?
+
+> If the rpc slots are stuck full, would that cause lockd to print those
+> timeouts?
+
+Yes. That would be the only kind of event that would trigger these
+messages.
+
+> Actually, another one just got stuck right now:
 > 
-> That said, I can imagine that for 'sec=sys', we might be able to change
-> the client to use the uid/gid format by default, and then change back to
-> doing name@domain upon receiving the first NFS4ERR_BADOWNER error from the
-> server.
-> It the server changes to match this, then that might suffice solve the
-> current problem that we have with doing nfsroot on NFSv4...
+> [root@lsh1003:/root]# dmesg|tail
+> lockd: server 10.10.52.227 not responding, still trying
+> lockd: server 10.10.52.155 not responding, still trying
+> lockd: server 10.10.52.163 not responding, still trying
+> lockd: server 10.10.52.155 not responding, still trying
+> lockd: server 10.10.52.150 not responding, still trying
+> lockd: server 10.10.52.151 not responding, still trying
+> lockd: server 10.10.52.162 not responding, still trying
+> lockd: server 10.10.52.155 not responding, still trying
+> lockd: server 10.10.52.163 not responding, still trying
+> lockd: server 10.10.52.155 not responding, still trying
+> [root@lsh1003:/root]# netstat -tano | grep 2049
 
-IMO: I wouldn't worry about the mixed scenarios to start with.
-Provide the option on the client and server to use the straight-up
-uid/gid to string mappings and this will satisfy these simple
-deployments that are or will have trouble.  In the mixed environments,
-there is more work but at least there is something available for
-admins to get started with.
+lockd requests don't get sent to port 2049. They go to whatever port the
+server is advertising using the RPC portmapper.
 
-Spencer
+rpcinfo -p <servername> | grep nlockmgr
 
+should tell you on which tcp and udp ports lockd is listening. Then you
+can try probing for service using
 
-> 
-> Trond
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+rpcinfo -t <servername> nlockmgr
+rpcinfo -u <servername> nlockmgr
 
+Trond
 
