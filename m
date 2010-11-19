@@ -1,43 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:57520 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752670Ab0KECmc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Nov 2010 22:42:32 -0400
-Message-ID: <4CD36FE7.1010100@cn.fujitsu.com>
-Date: Fri, 05 Nov 2010 10:45:59 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: SteveD@redhat.com
-CC: NFSv3 list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] libnfs.a: fix a bug when parse section's arg
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mail-out2.uio.no ([129.240.10.58]:35626 "EHLO mail-out2.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755991Ab0KSTZF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Nov 2010 14:25:05 -0500
+Subject: Re: O_DIRECT, O_SYNC, or fsync() on NFS mounts?
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Moazam Raja <moazam@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <AANLkTinX=Obq5LFGQzHYGgG_4s7N34faagsZZy09NwE9@mail.gmail.com>
+References: <AANLkTinX=Obq5LFGQzHYGgG_4s7N34faagsZZy09NwE9@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 19 Nov 2010 14:24:59 -0500
+Message-ID: <1290194699.3135.49.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-When parsing section's arg at configure file, the pointer 
-should stop when fetch ']', and give the warning message.
+On Thu, 2010-11-18 at 15:34 -0800, Moazam Raja wrote:
+> Hi all,
+> 
+> I'm currently exporting a ZFS filesystem on Solaris 11 Express as NFS.
+> I have a Linux client mounting that NFS v3 filesystem with the
+> proto=tcp option.
+> 
+> My question is, what's the safest and most reliable way to write data
+> to this NFS mount on a Linux client? Should my application code use
+> O_DIRECT, or O_SYNC? Or should I be doing a write() and a fsync()? I
+> want to make sure that data is not lost and is truly committed, while
+> keeping decent performance (of course).
 
----
- support/nfs/conffile.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Any one of the above methods will ensure that the data is synced to
+disk. In addition, NFS also guarantees that your data is fully synced to
+disk when taking/freeing POSIX locks, and when you close() the file.
 
-diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index 24640f4..798e5f3 100644
---- a/support/nfs/conffile.c
-+++ b/support/nfs/conffile.c
-@@ -271,9 +271,9 @@ conf_parse_line(int trans, char *line, size_t sz)
- 		if (ptr == NULL)
- 			return;
- 		line = ++ptr;
--		while (*ptr && *ptr != '"')
-+		while (*ptr && *ptr != '"' && *ptr != ']')
- 			ptr++;
--		if (*ptr == '\0') {
-+		if (*ptr == '\0' || *ptr == ']') {
- 			xlog_warn("config file error: line %d: "
-  				"non-matched '\"', ignoring until next section", ln);
- 		}  else {
--- 
-1.7.0.1
+The choice of one method over the other depends on your application
+requirements. Not on your choice of underlying storage.
 
+Trond
 
