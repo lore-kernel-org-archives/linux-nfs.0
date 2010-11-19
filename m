@@ -1,56 +1,39 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Re: Linux pNFS status meeting 11/18/10  CANCELED
-Date: Thu, 18 Nov 2010 08:46:00 -0800
-Message-ID: <OF71697ED4.D5DF909A-ON882577DF.005BFD69-882577DF.005C18A7@us.ibm.com>
-References: <OF43A16D28.D03BB9EB-ON882577DF.0005D227-882577DF.00068DAB@us.ibm.com> <AANLkTimGnJwv3i-396FR4upvw_QBsroheYSUY2DWywMp@mail.gmail.com>
+From: Henrik Grindal Bakken <hgb-6miFZF/5cTBuMpJDpNschA@public.gmane.org>
+Subject: Re: NFS problem after upgrade from 2.6.32 to 2.6.3[3-7]
+Date: Fri, 19 Nov 2010 15:24:07 +0100
+Message-ID: <m3fwux2xyw.fsf@prentice.rd.tandberg.com>
+References: <x2e1v6i7wk2.fsf@anakin.ifi.uio.no>
+	<6B116440-2E1A-4E2A-9D56-EF30DAE5BD7E@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Cc: linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Content-Type: text/plain
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:58252 "EHLO e9.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754945Ab0KRQqE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Nov 2010 11:46:04 -0500
-In-Reply-To: <AANLkTimGnJwv3i-396FR4upvw_QBsroheYSUY2DWywMp-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+Received: from rtp-iport-1.cisco.com ([64.102.122.148]:59051 "EHLO
+	rtp-iport-1.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752918Ab0KSOYL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Nov 2010 09:24:11 -0500
+In-Reply-To: <6B116440-2E1A-4E2A-9D56-EF30DAE5BD7E@oracle.com> (Chuck Lever's
+	message of "Thu, 18 Nov 2010 10:20:48 -0500")
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From:
-"William A. (Andy) Adamson" <androsadamson@gmail.com>
-To:
-Marc Eshel <eshel@almaden.ibm.com>
-Cc:
-linux-nfs@vger.kernel.org
-Date:
-11/18/2010 06:47 AM
-Subject:
-Re: Linux pNFS status meeting 11/18/10
-Sent by:
-linux-nfs-owner@vger.kernel.org
+Chuck Lever <chuck.lever@oracle.com> writes:
 
-
-
-Hi Marc
-
-NetApp has a conflicting meeting....
-
--->Andy
-
-On Wed, Nov 17, 2010 at 8:11 PM, Marc Eshel <eshel@almaden.ibm.com> wrote:
-> Meeting on Thursday 11/18/10 at 9:30 AM pacific time (12:30 PM UMICH 
-time)
+> On Nov 18, 2010, at 5:31 AM, Henrik Grindal Bakken wrote:
 >
-> Marc.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> I've tried to google the error message, to no avail.  The only hits I
+>> get are from commit messages.
 >
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> One thing to note: the kernel uses TCP when performing rpcbind
+> registration upcalls.  You might try adding back the TCP entries in
+> /etc/netconfig to cause rpcbind to create TCP listeners.
+
+That solved it!  Thanks.  I was convinced I had tried that, but
+apparently I hadn't.
 
 
-
+-- 
+Henrik Grindal Bakken <hgb-6miFZF/5cTBuMpJDpNschA@public.gmane.org>
+PGP ID: 8D436E52
+Fingerprint: 131D 9590 F0CF 47EF 7963  02AF 9236 D25A 8D43 6E52
