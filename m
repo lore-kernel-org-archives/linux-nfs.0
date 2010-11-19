@@ -1,55 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:30920 "EHLO
-	daytona.int.panasas.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755100Ab0KNLJv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Nov 2010 06:09:51 -0500
-Message-ID: <4CDFBFEC.7080802@panasas.com>
-Date: Sun, 14 Nov 2010 12:54:36 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: Re: [PATCH 18/22] pnfs-submit: roc add layoutreturn op to close compound
-References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>	<1289551724-18575-19-git-send-email-iisaman@netapp.com>	<4CDD6BE5.1000502@panasas.com> <AANLkTinCcrzaa0wf0QZ8mB0NuTsO2FuaMKvt8+O_rwG-@mail.gmail.com>
-In-Reply-To: <AANLkTinCcrzaa0wf0QZ8mB0NuTsO2FuaMKvt8+O_rwG-@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from netnation.com ([204.174.223.2]:45299 "EHLO peace.netnation.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S932120Ab0KSUUI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Nov 2010 15:20:08 -0500
+Date: Fri, 19 Nov 2010 12:20:05 -0800
+From: Simon Kirby <sim@hostway.ca>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS client/sunrpc getting stuck on 2.6.36
+Message-ID: <20101119202004.GA3270@hostway.ca>
+References: <20101111023520.GH16939@hostway.ca> <1289452967.4062.10.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1289452967.4062.10.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-11-12 18:56, Fred Isaman wrote:
-> On Fri, Nov 12, 2010 at 11:31 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On 2010-11-12 10:48, Fred Isaman wrote:
->>> From: Andy Adamson <andros@netapp.com>
->>> @@ -2143,6 +2145,8 @@ static int nfs4_xdr_enc_close(struct rpc_rqst *req, __be32 *p, struct nfs_closea
->>>       encode_putfh(&xdr, args->fh, &hdr);
->>>       encode_close(&xdr, args, &hdr);
->>>       encode_getfattr(&xdr, args->bitmask, &hdr);
->>> +     if (args->op_bitmask & NFS4_HAS_LAYOUTRETURN) /* layoutreturn set */
->>> +             encode_layoutreturn(&xdr, &args->lr_args, &hdr);
->>
->> Sorry, I just noticed, but if there's no object I'll move the layoutreturn op
->> before close in the compound.
->>
->> Benny
->>
+On Thu, Nov 11, 2010 at 01:22:47PM +0800, Trond Myklebust wrote:
+
+> On Wed, 2010-11-10 at 18:35 -0800, Simon Kirby wrote:
+> > Still seeing all sorts of boxes fall over with 2.6.35 and 2.6.36 NFS.
+> > Unfortunately, it doesn't happen all the time...only certain load
+> > patterns seem to start it off.  Once it starts, I can't find a way to
+> > make it recover without rebooting.
+> >...
+> > NFS: permission(0:4c/5284877), mask=0x1, res=0
+> > NFS: revalidating (0:4c/3247737045)
+> > 
+> > 900ms matches the probably-silly nfs mount settings we're currently using:
+> > 
+> > rw,hard,intr,tcp,timeo=9,retrans=3,rsize=8192,wsize=8192
+> > 
+> > Full kernel log here: http://0x.ca/sim/ref/2.6.36_stuck_nfs/
 > 
-> The reason the LAYOUTRETURN was last was so that we could ignore any
-> error on the return.  Otherwise an error on the LAYOUTRETURN stops the
-> CLOSE from being processed.  I'll defer to Andy, but while I see why
-> you would want the reutrn first, moving it will require paying careful
-> attention to how an error is dealt with.  (Actually, we have the same
-> issue with the LAYOUTCOMMIT when it is later added.)
-
-That's true, but the whole point behind doing the layoutreturn on close
-is doing it before CLOSE :)
-
-As we say in section 18.43:
-   The logr_return_on_close result field is a directive to return the
-   layout before closing the file.
-          ^^^^^^^^^^^^^^^^^^^^^^^^
-
-Benny
-
+> timeo=9 is a completely insane retransmit value for a tcp connection.
 > 
-> Fred
-> 
+> Please use the default timeo=600, and all will work correctly.
+
+Ok, so, we were running with timeo=300 instead on a number of servers,
+and we were still seeing the problem on 2.6.36.  I've uploaded a new
+kernel log (lsh1051) here:
+
+	http://0x.ca/sim/ref/2.6.36_stuck_nfs/
+
+The log starts out with the hung task warnings occurring after
+otherwise-normal operation.  Once I noticed, I set rpc/nfs_debug to 1,
+and then later set it to 255.
+
+Since several servers were stuck at the same time and we were losing
+quorum, I decided to try something more drastic and booted into
+2.6.37-rc2-git3.  This kernel hasn't got stuck yet!  However, it's
+spitting out some new errors which may be worth looking into:
+
+[ 1574.088812] NFS: server 10.10.52.222 error: fileid changed
+[ 1574.088814] fsid 0:18: expected fileid 0x4c081940, got 0x4c081950
+[11340.409447] NFS: server 10.10.52.228 error: fileid changed
+[11340.409450] fsid 0:45: expected fileid 0x696ff82, got 0x16a98bd7
+[20832.579912] NFS: server 10.10.52.225 error: fileid changed
+[20832.579914] fsid 0:2a: expected fileid 0x8c67ebab, got 0x8c6811e5
+[32775.957351] NFS: server 10.10.52.230 error: fileid changed
+[32775.957354] fsid 0:52: expected fileid 0x919041fd, got 0x93f1962d
+
+These are also in the same kernel log.  The error code isn't new, so
+something else seems to have changed to cause it.
+
+Simon-
