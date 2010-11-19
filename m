@@ -1,209 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35111 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51354 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752043Ab0K3C5v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Nov 2010 21:57:51 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] NFSv4: cleanup idmapper functions to take an nfs_server argument
-Date: Mon, 29 Nov 2010 21:57:42 -0500
-Message-Id: <1291085863-3234-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1291085863-3234-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1291085863-3234-1-git-send-email-Trond.Myklebust@netapp.com>
- <1291085863-3234-2-git-send-email-Trond.Myklebust@netapp.com>
- <1291085863-3234-3-git-send-email-Trond.Myklebust@netapp.com>
+	id S932272Ab0KSVsa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Nov 2010 16:48:30 -0500
+Date: Fri, 19 Nov 2010 16:48:27 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
+Cc: Moazam Raja <moazam@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: O_DIRECT, O_SYNC, or fsync() on NFS mounts?
+Message-ID: <20101119214827.GB3143@fieldses.org>
+References: <AANLkTinX=Obq5LFGQzHYGgG_4s7N34faagsZZy09NwE9@mail.gmail.com>
+ <1290194699.3135.49.camel@heimdal.trondhjem.org>
+ <20101119200421.GA3143@fieldses.org>
+ <1290201995.3135.63.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1290201995.3135.63.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-...instead of the nfs_client.
+On Fri, Nov 19, 2010 at 04:26:35PM -0500, Trond Myklebust wrote:
+> On Fri, 2010-11-19 at 15:04 -0500, J. Bruce Fields wrote:
+> > On Fri, Nov 19, 2010 at 02:24:59PM -0500, Trond Myklebust wrote:
+> > > On Thu, 2010-11-18 at 15:34 -0800, Moazam Raja wrote:
+> > > > Hi all,
+> > > > 
+> > > > I'm currently exporting a ZFS filesystem on Solaris 11 Express as NFS.
+> > > > I have a Linux client mounting that NFS v3 filesystem with the
+> > > > proto=tcp option.
+> > > > 
+> > > > My question is, what's the safest and most reliable way to write data
+> > > > to this NFS mount on a Linux client? Should my application code use
+> > > > O_DIRECT, or O_SYNC? Or should I be doing a write() and a fsync()? I
+> > > > want to make sure that data is not lost and is truly committed, while
+> > > > keeping decent performance (of course).
+> > > 
+> > > Any one of the above methods will ensure that the data is synced to
+> > > disk. In addition, NFS also guarantees that your data is fully synced to
+> > > disk when taking/freeing POSIX locks, and when you close() the file.
+> > 
+> > Is the client still doing that in the presence of a write delegation, by
+> > the way?
+> 
+> If the application requests O_DIRECT/O_SYNC or calls fsync(), we are
+> required by POSIX to ensure the data is safe on disk. The presence of an
+> NFS delegation does not change that requirement.
+> 
+> We could potentially relax the sync-to-disk requirements when locking
+> and closing the file since those are only about ensuring close-to-open
+> cache consistency requirements (which is also ensured by the delegation)
+> but we do not do so today.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/idmap.c            |   24 ++++++++++++------------
- fs/nfs/nfs4xdr.c          |   18 ++++++++----------
- include/linux/nfs_idmap.h |    8 ++++----
- 3 files changed, 24 insertions(+), 26 deletions(-)
+OK, that makes sense.
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 9bf5921..114de76 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -241,21 +241,21 @@ static int nfs_idmap_lookup_id(const char *name, size_t namelen,
- 	return ret;
- }
- 
--int nfs_map_name_to_uid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
-+int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
- {
- 	if (nfs_map_string_to_numeric(name, namelen, uid))
- 		return 0;
- 	return nfs_idmap_lookup_id(name, namelen, "uid", uid);
- }
- 
--int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *gid)
-+int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *gid)
- {
- 	if (nfs_map_string_to_numeric(name, namelen, gid))
- 		return 0;
- 	return nfs_idmap_lookup_id(name, namelen, "gid", gid);
- }
- 
--int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
-+int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
- {
- 	int ret;
- 	ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
-@@ -263,7 +263,7 @@ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buf
- 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
- 	return ret;
- }
--int nfs_map_gid_to_group(struct nfs_client *clp, __u32 gid, char *buf, size_t buflen)
-+int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf, size_t buflen)
- {
- 	int ret;
- 
-@@ -729,27 +729,27 @@ static unsigned int fnvhash32(const void *buf, size_t buflen)
- 	return hash;
- }
- 
--int nfs_map_name_to_uid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
-+int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
- {
--	struct idmap *idmap = clp->cl_idmap;
-+	struct idmap *idmap = server->nfs_client->cl_idmap;
- 
- 	if (nfs_map_string_to_numeric(name, namelen, uid))
- 		return 0;
- 	return nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
- }
- 
--int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
-+int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
- {
--	struct idmap *idmap = clp->cl_idmap;
-+	struct idmap *idmap = server->nfs_client->cl_idmap;
- 
- 	if (nfs_map_string_to_numeric(name, namelen, uid))
- 		return 0;
- 	return nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, uid);
- }
- 
--int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
-+int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
- {
--	struct idmap *idmap = clp->cl_idmap;
-+	struct idmap *idmap = server->nfs_client->cl_idmap;
- 	int ret;
- 
- 	ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
-@@ -757,9 +757,9 @@ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buf
- 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
- 	return ret;
- }
--int nfs_map_gid_to_group(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
-+int nfs_map_gid_to_group(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
- {
--	struct idmap *idmap = clp->cl_idmap;
-+	struct idmap *idmap = server->nfs_client->cl_idmap;
- 	int ret;
- 
- 	ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 9f1826b..0be0277 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -844,7 +844,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 	if (iap->ia_valid & ATTR_MODE)
- 		len += 4;
- 	if (iap->ia_valid & ATTR_UID) {
--		owner_namelen = nfs_map_uid_to_name(server->nfs_client, iap->ia_uid, owner_name, IDMAP_NAMESZ);
-+		owner_namelen = nfs_map_uid_to_name(server, iap->ia_uid, owner_name, IDMAP_NAMESZ);
- 		if (owner_namelen < 0) {
- 			dprintk("nfs: couldn't resolve uid %d to string\n",
- 					iap->ia_uid);
-@@ -856,7 +856,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 		len += 4 + (XDR_QUADLEN(owner_namelen) << 2);
- 	}
- 	if (iap->ia_valid & ATTR_GID) {
--		owner_grouplen = nfs_map_gid_to_group(server->nfs_client, iap->ia_gid, owner_group, IDMAP_NAMESZ);
-+		owner_grouplen = nfs_map_gid_to_group(server, iap->ia_gid, owner_group, IDMAP_NAMESZ);
- 		if (owner_grouplen < 0) {
- 			dprintk("nfs: couldn't resolve gid %d to string\n",
- 					iap->ia_gid);
-@@ -3460,7 +3460,7 @@ out_overflow:
- }
- 
- static int decode_attr_owner(struct xdr_stream *xdr, uint32_t *bitmap,
--		struct nfs_client *clp, uint32_t *uid, int may_sleep)
-+		const struct nfs_server *server, uint32_t *uid, int may_sleep)
- {
- 	uint32_t len;
- 	__be32 *p;
-@@ -3480,7 +3480,7 @@ static int decode_attr_owner(struct xdr_stream *xdr, uint32_t *bitmap,
- 		if (!may_sleep) {
- 			/* do nothing */
- 		} else if (len < XDR_MAX_NETOBJ) {
--			if (nfs_map_name_to_uid(clp, (char *)p, len, uid) == 0)
-+			if (nfs_map_name_to_uid(server, (char *)p, len, uid) == 0)
- 				ret = NFS_ATTR_FATTR_OWNER;
- 			else
- 				dprintk("%s: nfs_map_name_to_uid failed!\n",
-@@ -3498,7 +3498,7 @@ out_overflow:
- }
- 
- static int decode_attr_group(struct xdr_stream *xdr, uint32_t *bitmap,
--		struct nfs_client *clp, uint32_t *gid, int may_sleep)
-+		const struct nfs_server *server, uint32_t *gid, int may_sleep)
- {
- 	uint32_t len;
- 	__be32 *p;
-@@ -3518,7 +3518,7 @@ static int decode_attr_group(struct xdr_stream *xdr, uint32_t *bitmap,
- 		if (!may_sleep) {
- 			/* do nothing */
- 		} else if (len < XDR_MAX_NETOBJ) {
--			if (nfs_map_group_to_gid(clp, (char *)p, len, gid) == 0)
-+			if (nfs_map_group_to_gid(server, (char *)p, len, gid) == 0)
- 				ret = NFS_ATTR_FATTR_GROUP;
- 			else
- 				dprintk("%s: nfs_map_group_to_gid failed!\n",
-@@ -4017,14 +4017,12 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
- 		goto xdr_error;
- 	fattr->valid |= status;
- 
--	status = decode_attr_owner(xdr, bitmap, server->nfs_client,
--			&fattr->uid, may_sleep);
-+	status = decode_attr_owner(xdr, bitmap, server, &fattr->uid, may_sleep);
- 	if (status < 0)
- 		goto xdr_error;
- 	fattr->valid |= status;
- 
--	status = decode_attr_group(xdr, bitmap, server->nfs_client,
--			&fattr->gid, may_sleep);
-+	status = decode_attr_group(xdr, bitmap, server, &fattr->gid, may_sleep);
- 	if (status < 0)
- 		goto xdr_error;
- 	fattr->valid |= status;
-diff --git a/include/linux/nfs_idmap.h b/include/linux/nfs_idmap.h
-index e8352dc..ee97767 100644
---- a/include/linux/nfs_idmap.h
-+++ b/include/linux/nfs_idmap.h
-@@ -96,10 +96,10 @@ void nfs_idmap_delete(struct nfs_client *);
- 
- #endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
- 
--int nfs_map_name_to_uid(struct nfs_client *, const char *, size_t, __u32 *);
--int nfs_map_group_to_gid(struct nfs_client *, const char *, size_t, __u32 *);
--int nfs_map_uid_to_name(struct nfs_client *, __u32, char *, size_t);
--int nfs_map_gid_to_group(struct nfs_client *, __u32, char *, size_t);
-+int nfs_map_name_to_uid(const struct nfs_server *, const char *, size_t, __u32 *);
-+int nfs_map_group_to_gid(const struct nfs_server *, const char *, size_t, __u32 *);
-+int nfs_map_uid_to_name(const struct nfs_server *, __u32, char *, size_t);
-+int nfs_map_gid_to_group(const struct nfs_server *, __u32, char *, size_t);
- 
- extern unsigned int nfs_idmap_cache_timeout;
- #endif /* __KERNEL__ */
--- 
-1.7.3.2
+We probably shouldn't say in that case that we "guarantee" the sync on
+close/free, if we consider it a detail of the current implementation
+rather than a requirement.
 
+--b.
