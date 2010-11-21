@@ -1,31 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sj-iport-4.cisco.com ([171.68.10.86]:24901 "EHLO
-	sj-iport-4.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754525Ab0KURKF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Nov 2010 12:10:05 -0500
-From: Roland Dreier <rdreier@cisco.com>
-To: Hiroyuki Sato <hiroysato@gmail.com>
-Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Subject: Re: [Q] I tried to mount nfs_server:/mnt volume, but It mounted another volume.
-References: <AANLkTi=vpRm3MEiQZ39bw5XwfjL6CVbGEkAKWz-ynEp_@mail.gmail.com>
-Date: Sun, 21 Nov 2010 09:10:00 -0800
-In-Reply-To: <AANLkTi=vpRm3MEiQZ39bw5XwfjL6CVbGEkAKWz-ynEp_@mail.gmail.com>
-	(Hiroyuki Sato's message of "Sun, 21 Nov 2010 21:23:31 +0900")
-Message-ID: <adazkt2hac7.fsf@cisco.com>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:39506 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751369Ab0KUTVq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 21 Nov 2010 14:21:46 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/8] NFS: Fix the error handling in "uncached_readdir()"
+Date: Sun, 21 Nov 2010 14:21:19 -0500
+Message-Id: <1290367282-5445-5-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1290367282-5445-4-git-send-email-Trond.Myklebust@netapp.com>
+References: <1290367282-5445-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-4-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Yes, as Boaz said, having two exports with fsid=0 is the problem:
+Currently, uncached_readdir() is broken because if fails to handle
+the results from nfs_readdir_xdr_to_array() correctly.
 
- >   # cat /etc/exports
- >   /nfstest   192.168.100.0/255.255.255.0(fsid=0,rw,async,insecure,no_root_squash)
- >   /mnt       192.168.100.0/255.255.255.0(fsid=0,rw,async,insecure,no_root_squash)
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c |    5 ++---
+ 1 files changed, 2 insertions(+), 3 deletions(-)
 
-you could have seen this in the server log from this:
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 353f47c..2492bac 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -766,10 +766,9 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
+ 	desc->page_index = 0;
+ 	desc->page = page;
+ 
+-	if (nfs_readdir_xdr_to_array(desc, page, inode) == -1) {
+-		status = -EIO;
++	status = nfs_readdir_xdr_to_array(desc, page, inode);
++	if (status < 0)
+ 		goto out_release;
+-	}
+ 
+ 	status = nfs_do_filldir(desc, dirent, filldir);
+ 
+-- 
+1.7.3.2
 
- >   Nov 21 20:47:37 dell1435 mountd[3575]: /nfstest and /mnt have same
- > filehandle for 192.168.100.0/255.255.255.0, using first
-
- - R.
