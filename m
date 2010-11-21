@@ -1,31 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45900 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:49411 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752670Ab0KPPdB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Nov 2010 10:33:01 -0500
-Date: Tue, 16 Nov 2010 10:33:00 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/2] sunrpc: fix two server-side race problems.
-Message-ID: <20101116153259.GD23781@fieldses.org>
-References: <20101115002634.19121.7027.stgit@notabene.brown>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101115002634.19121.7027.stgit@notabene.brown>
+	id S1754872Ab0KUTVq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 21 Nov 2010 14:21:46 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 6/8] NFS: Don't ignore errors from nfs_do_filldir()
+Date: Sun, 21 Nov 2010 14:21:20 -0500
+Message-Id: <1290367282-5445-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1290367282-5445-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1290367282-5445-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Nov 15, 2010 at 11:27:01AM +1100, NeilBrown wrote:
-> 
-> Hi Bruce,
->  I found these while trying to diagnose why a customer hit the
->  	BUG_ON(xprt->xpt_pool != NULL);
->  in svc_xprt_enqueue (in a 2.6.27 based kernel).  I don't think either
->  of these actually explain the problem, but they seem to be bugs
->  none-the-less.
+We should ignore the errors from the filldir callback, and just interpret
+them as meaning we should exit, however we should definitely pass back
+ENOMEM errors.
 
-Yes.  Inclined to queue these up for the next merge window, though, as
-neither seems urgent.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c |   18 +++++++++---------
+ 1 files changed, 9 insertions(+), 9 deletions(-)
 
---b.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 2492bac..ddc2e43 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -709,13 +709,15 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
+ 	}
+ 
+ 	for (i = desc->cache_entry_index; i < array->size; i++) {
++		struct nfs_cache_array_entry *ent;
+ 		d_type = DT_UNKNOWN;
+ 
+-		res = filldir(dirent, array->array[i].string.name,
+-			array->array[i].string.len, file->f_pos,
+-			nfs_compat_user_ino64(array->array[i].ino), d_type);
+-		if (res < 0)
++		ent = &array->array[i];
++		if (filldir(dirent, ent->string.name, ent->string.len,
++		    file->f_pos, nfs_compat_user_ino64(ent->ino), d_type) < 0) {
++			desc->eof = 1;
+ 			break;
++		}
+ 		file->f_pos++;
+ 		desc->cache_entry_index = i;
+ 		if (i < (array->size-1))
+@@ -820,14 +822,14 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+ 		res = readdir_search_pagecache(desc);
+ 
+ 		if (res == -EBADCOOKIE) {
++			res = 0;
+ 			/* This means either end of directory */
+ 			if (*desc->dir_cookie && desc->eof == 0) {
+ 				/* Or that the server has 'lost' a cookie */
+ 				res = uncached_readdir(desc, dirent, filldir);
+-				if (res >= 0)
++				if (res == 0)
+ 					continue;
+ 			}
+-			res = 0;
+ 			break;
+ 		}
+ 		if (res == -ETOOSMALL && desc->plus) {
+@@ -842,10 +844,8 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+ 			break;
+ 
+ 		res = nfs_do_filldir(desc, dirent, filldir);
+-		if (res < 0) {
+-			res = 0;
++		if (res < 0)
+ 			break;
+-		}
+ 	}
+ out:
+ 	nfs_unblock_sillyrename(dentry);
+-- 
+1.7.3.2
+
