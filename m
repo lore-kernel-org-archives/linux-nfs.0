@@ -1,35 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:56998 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754065Ab0KQKoS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 05:44:18 -0500
-From: Andi Kleen <andi@firstfloor.org>
-To: Nick Piggin <npiggin@kernel.dk>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [patch 01/28] fs: d_validate fixes
-References: <20101116140900.039761100@kernel.dk>
-	<20101116142028.254946611@kernel.dk>
-Date: Wed, 17 Nov 2010 11:44:16 +0100
-In-Reply-To: <20101116142028.254946611@kernel.dk> (Nick Piggin's message of
-	"Wed, 17 Nov 2010 01:09:01 +1100")
-Message-ID: <87bp5orzzz.fsf@basil.nowhere.org>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:39506 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754883Ab0KUTVq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 21 Nov 2010 14:21:46 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 7/8] NFS: Correct the array bound calculation in nfs_readdir_add_to_array
+Date: Sun, 21 Nov 2010 14:21:21 -0500
+Message-Id: <1290367282-5445-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1290367282-5445-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1290367282-5445-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-6-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Nick Piggin <npiggin@kernel.dk> writes:
+It looks as if the array size calculation in MAX_READDIR_ARRAY does not
+take the alignment of struct nfs_cache_array_entry into account.
 
-> d_validate has been broken for a long time.
->
-> kmem_ptr_validate does not guarantee that a pointer can be dereferenced
-> if it can go away at any time. Even rcu_read_lock doesn't help, because
-> the pointer might be queued in RCU callbacks but not executed yet.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-I wonder if that is a problem for NFS ... (which I believe is the only
-user). Could these races be used to break the NFS server?
-
--Andi
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index ddc2e43..ced7291 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -171,8 +171,6 @@ struct nfs_cache_array {
+ 	struct nfs_cache_array_entry array[0];
+ };
+ 
+-#define MAX_READDIR_ARRAY ((PAGE_SIZE - sizeof(struct nfs_cache_array)) / sizeof(struct nfs_cache_array_entry))
+-
+ typedef __be32 * (*decode_dirent_t)(struct xdr_stream *, struct nfs_entry *, struct nfs_server *, int);
+ typedef struct {
+ 	struct file	*file;
+@@ -257,11 +255,14 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
+ 
+ 	if (IS_ERR(array))
+ 		return PTR_ERR(array);
++
++	cache_entry = &array->array[array->size];
++
++	/* Check that this entry lies within the page bounds */
+ 	ret = -ENOSPC;
+-	if (array->size >= MAX_READDIR_ARRAY)
++	if ((char *)&cache_entry[1] - (char *)page_address(page) > PAGE_SIZE)
+ 		goto out;
+ 
+-	cache_entry = &array->array[array->size];
+ 	cache_entry->cookie = entry->prev_cookie;
+ 	cache_entry->ino = entry->ino;
+ 	ret = nfs_readdir_make_qstr(&cache_entry->string, entry->name, entry->len);
 -- 
-ak@linux.intel.com -- Speaking for myself only.
+1.7.3.2
+
