@@ -1,69 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:37459 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751458Ab0KRPJH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Nov 2010 10:09:07 -0500
-Received: by iwn35 with SMTP id 35so3603483iwn.19
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Nov 2010 07:09:07 -0800 (PST)
-In-Reply-To: <1290092710.3187.28.camel@heimdal.trondhjem.org>
-References: <1289964990-4480-1-git-send-email-andros@netapp.com>
-	<1289964990-4480-2-git-send-email-andros@netapp.com>
-	<1289964990-4480-3-git-send-email-andros@netapp.com>
-	<1289964990-4480-4-git-send-email-andros@netapp.com>
-	<1290036369.3070.22.camel@heimdal.trondhjem.org>
-	<AANLkTin7frm3PDAD-iU=G==COQJL3NQCaxY6dsT6pwi=@mail.gmail.com>
-	<1290092710.3187.28.camel@heimdal.trondhjem.org>
-Date: Thu, 18 Nov 2010 10:08:57 -0500
-Message-ID: <AANLkTimR-H3Lu9eoOmbxaOCuUz=XvhKJes3Q9XSpk=ES@mail.gmail.com>
-Subject: Re: [PATCH 3/3] NFS return an rpc auth error on back channel
-From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-out1.uio.no ([129.240.10.57]:40770 "EHLO mail-out1.uio.no"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755471Ab0KUTzc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 21 Nov 2010 14:55:32 -0500
+Subject: Re: NFS client/sunrpc getting stuck on 2.6.36
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Simon Kirby <sim@hostway.ca>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20101121064301.GB3285@hostway.ca>
+References: <20101111023520.GH16939@hostway.ca>
+	 <1289452967.4062.10.camel@heimdal.trondhjem.org>
+	 <20101119202004.GA3270@hostway.ca>
+	 <1290201888.3135.61.camel@heimdal.trondhjem.org>
+	 <20101119220356.GB3270@hostway.ca>
+	 <1290205039.3135.74.camel@heimdal.trondhjem.org>
+	 <20101119225803.GC3270@hostway.ca>
+	 <1290208645.3135.88.camel@heimdal.trondhjem.org>
+	 <20101121064301.GB3285@hostway.ca>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sun, 21 Nov 2010 14:55:24 -0500
+Message-ID: <1290369324.5481.19.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Nov 18, 2010 at 10:05 AM, Trond Myklebust
-<trond.myklebust@fys.uio.no> wrote:
-> On Thu, 2010-11-18 at 09:42 -0500, William A. (Andy) Adamson wrote:
->> On Wed, Nov 17, 2010 at 6:26 PM, Trond Myklebust
->> <trond.myklebust@fys.uio.no> wrote:
->> > On Tue, 2010-11-16 at 22:36 -0500, andros@netapp.com wrote:
->> >
->> > In NFSv4.0, you basically want to set the nfs_client in
->> > nfs_callback_compound() (using the server's address and the
->> > 'callback_ident' argument).
->>
->> And if the nfs_client is not found should we SVC_DROP the request?
->> NFS4ERR_BADHANDLE?
->
-> We can still drop the request in nfs4_callback_compound().
+On Sat, 2010-11-20 at 22:43 -0800, Simon Kirby wrote:
+> That tcpdump I sent included the ACKs, which all looked normal.
+> Unfortunately, we haven't seen the problem again yet.  Is your "Fix an
+> infinite loop in call_refresh/call_refreshresult" patch possibly related?
 
-OK
+It might help if the cause is an RPCSEC_GSS ticket expiration.
 
->
->> >
->> > In NFSv4.1, you need to set it in the OP_SEQUENCE decode callback, but
->> > there you need to be returning NFS4ERR_BADSESSION and/or
->> > NFS4ERR_CONN_NOT_BOUND_TO_SESSION anyway...
->>
->> I don't see the difference between not finding the proper nfs_client
->> in the pg_authenticate method and not finding it after decode in
->> CB_SEQUENCE.
->
-> In the NFSv4.1 case, the client callback server knows that the
-> connection is valid, 'cos we're the ones who set it up. All we care
-> about is to make sure the session is still valid. If it isn't, then
-> NFS4ERR_BADSESSION is the correct reply.
->
-> NFSv4.0 is an altogether different kettle of fish since we need to
-> authenticate the connection too.
+Cheers
+  Trond
 
-Got it. I'll put out a version 2.
-
--->Andy
->
-> Trond
->
->
