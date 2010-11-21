@@ -1,50 +1,161 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cam-admin0.cambridge.arm.com ([217.140.96.50]:56579 "EHLO
-	cam-admin0.cambridge.arm.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754871Ab0KJSMV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 13:12:21 -0500
-Subject: Memory leak via nfs_readdir_make_qstr
-From: Catalin Marinas <catalin.marinas@arm.com>
-To: Bryan Schumaker <bjschuma@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 10 Nov 2010 18:12:17 +0000
-Message-ID: <1289412737.4513.80.camel@e102109-lin.cambridge.arm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:49411 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755045Ab0KUTVq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 21 Nov 2010 14:21:46 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 8/8] NFS: Ensure we return the dirent->d_type when it is known
+Date: Sun, 21 Nov 2010 14:21:22 -0500
+Message-Id: <1290367282-5445-8-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1290367282-5445-7-git-send-email-Trond.Myklebust@netapp.com>
+References: <1290367282-5445-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1290367282-5445-7-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi,
+Store the dirent->d_type in the struct nfs_cache_array_entry so that we
+can use it in getdents() calls.
 
-I tested the 2.6.37-rc1 on an ARM platform with nfsroot filesystem.
-Kmemleak reports quite a lot (> 150) of leaks like below. You seem to
-have made changes recently to this area.
+This fixes a regression with the new readdir code.
 
-unreferenced object 0xef3aa600 (size 32):
-  comm "modprobe", pid 480, jiffies 4294938128 (age 1250.660s)
-  hex dump (first 32 bytes):
-    2e 2e 3a ef 00 01 10 00 00 02 20 00 60 f3 93 ef  ..:....... .`...
-    e0 be 82 ef e0 01 00 00 a1 85 48 39 1d 08 44 bb  ..........H9..D.
-  backtrace:
-    [<c00a3351>] create_object+0xbd/0x1bc
-    [<c0272c11>] kmemleak_alloc+0x21/0x40
-    [<c00a1d05>] __kmalloc_track_caller+0x81/0xc4
-    [<c008a491>] kmemdup+0x11/0x20
-    [<c01053db>] nfs_readdir_page_filler+0xef/0x360
-    [<c0105843>] nfs_readdir_xdr_to_array+0x1f7/0x2e4
-    [<c0105941>] nfs_readdir_filler+0x11/0x58
-    [<c007c397>] do_read_cache_page+0x47/0xd8
-    [<c007c459>] read_cache_page_async+0x15/0x18
-    [<c007c463>] read_cache_page+0x7/0xc
-    [<c0105a5d>] nfs_readdir+0xd5/0x398
-    [<c00af433>] vfs_readdir+0x5f/0x74
-    [<c00af50d>] sys_getdents+0x49/0x74
-    [<c0036401>] ret_fast_syscall+0x1/0x44
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c            |    7 ++++---
+ fs/nfs/internal.h       |    9 +++++++++
+ fs/nfs/nfs2xdr.c        |    2 ++
+ fs/nfs/nfs3xdr.c        |    2 ++
+ fs/nfs/nfs4xdr.c        |    4 ++++
+ include/linux/nfs_xdr.h |    1 +
+ 6 files changed, 22 insertions(+), 3 deletions(-)
 
-Any quick thoughts? I'll have a look tomorrow as well.
-
-Thanks,
-
-Catalin
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index ced7291..8ea4a41 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -162,6 +162,7 @@ struct nfs_cache_array_entry {
+ 	u64 cookie;
+ 	u64 ino;
+ 	struct qstr string;
++	unsigned char d_type;
+ };
+ 
+ struct nfs_cache_array {
+@@ -265,6 +266,7 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
+ 
+ 	cache_entry->cookie = entry->prev_cookie;
+ 	cache_entry->ino = entry->ino;
++	cache_entry->d_type = entry->d_type;
+ 	ret = nfs_readdir_make_qstr(&cache_entry->string, entry->name, entry->len);
+ 	if (ret)
+ 		goto out;
+@@ -701,7 +703,6 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
+ 	int i = 0;
+ 	int res = 0;
+ 	struct nfs_cache_array *array = NULL;
+-	unsigned int d_type = DT_UNKNOWN;
+ 
+ 	array = nfs_readdir_get_array(desc->page);
+ 	if (IS_ERR(array)) {
+@@ -711,11 +712,11 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
+ 
+ 	for (i = desc->cache_entry_index; i < array->size; i++) {
+ 		struct nfs_cache_array_entry *ent;
+-		d_type = DT_UNKNOWN;
+ 
+ 		ent = &array->array[i];
+ 		if (filldir(dirent, ent->string.name, ent->string.len,
+-		    file->f_pos, nfs_compat_user_ino64(ent->ino), d_type) < 0) {
++		    file->f_pos, nfs_compat_user_ino64(ent->ino),
++		    ent->d_type) < 0) {
+ 			desc->eof = 1;
+ 			break;
+ 		}
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index db08ff3..e6356b7 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -362,6 +362,15 @@ unsigned int nfs_page_length(struct page *page)
+ }
+ 
+ /*
++ * Convert a umode to a dirent->d_type
++ */
++static inline
++unsigned char nfs_umode_to_dtype(umode_t mode)
++{
++	return (mode >> 12) & 15;
++}
++
++/*
+  * Determine the number of pages in an array of length 'len' and
+  * with a base offset of 'base'
+  */
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index ab59377..5914a19 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -485,6 +485,8 @@ nfs_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry, struct nfs_se
+ 	entry->prev_cookie	  = entry->cookie;
+ 	entry->cookie	  = ntohl(*p++);
+ 
++	entry->d_type = DT_UNKNOWN;
++
+ 	p = xdr_inline_peek(xdr, 8);
+ 	if (p != NULL)
+ 		entry->eof = !p[0] && p[1];
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index e79e4f5..f6cc60f 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -622,11 +622,13 @@ nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry, struct nfs_s
+ 	entry->prev_cookie = entry->cookie;
+ 	p = xdr_decode_hyper(p, &entry->cookie);
+ 
++	entry->d_type = DT_UNKNOWN;
+ 	if (plus) {
+ 		entry->fattr->valid = 0;
+ 		p = xdr_decode_post_op_attr_stream(xdr, entry->fattr);
+ 		if (IS_ERR(p))
+ 			goto out_overflow_exit;
++		entry->d_type = nfs_umode_to_dtype(entry->fattr->mode);
+ 		/* In fact, a post_op_fh3: */
+ 		p = xdr_inline_decode(xdr, 4);
+ 		if (unlikely(!p))
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index a3b39cb..9f1826b 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -6208,6 +6208,10 @@ __be32 *nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 	if (entry->fattr->valid & NFS_ATTR_FATTR_FILEID)
+ 		entry->ino = entry->fattr->fileid;
+ 
++	entry->d_type = DT_UNKNOWN;
++	if (entry->fattr->valid & NFS_ATTR_FATTR_TYPE)
++		entry->d_type = nfs_umode_to_dtype(entry->fattr->mode);
++
+ 	if (verify_attr_len(xdr, p, len) < 0)
+ 		goto out_overflow;
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index ba6cc8f..80f0719 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -483,6 +483,7 @@ struct nfs_entry {
+ 	int			eof;
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	unsigned char		d_type;
+ };
+ 
+ /*
+-- 
+1.7.3.2
 
