@@ -1,67 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:32986 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933648Ab0KOUU5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Nov 2010 15:20:57 -0500
-Received: from localhost.localdomain (trevor-goldfishers-macbook-pro.local [10.58.50.184] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAFKKclF026972
-	for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2010 12:20:38 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] pnfs-submit: prevent bad CB_LAYOUTRECALL from crashing client
-Date: Mon, 15 Nov 2010 15:20:33 -0500
-Message-Id: <1289852433-18323-1-git-send-email-iisaman@netapp.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:63110 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753421Ab0KUOMx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Nov 2010 09:12:53 -0500
+Message-ID: <4CE928DD.2010309@gmail.com>
+Date: Sun, 21 Nov 2010 16:12:45 +0200
+From: Boaz Harrosh <openosd@gmail.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Jan Kara <jack@suse.cz>, Arnd Bergmann <arnd@arndb.de>,
+        linux-kernel@vger.kernel.org, Nathan Laredo <laredo@gnu.org>,
+        Greg Kroah-Hartman <gregkh@suse.de>, Dave Airlie <airlied@linux.ie>,
+        dri-devel@lists.freedesktop.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        Alessio Igor Bogani <alessioigorbogani@gmail.com>
+Subject: Re: [PATCH 0/7] BKL removal follow-up
+References: <1290007619-5787-1-git-send-email-arnd@arndb.de> <20101118233439.GB5004@quack.suse.cz> <AANLkTin0Gm8Xqm-ARGmd4T+fCM4mMA0=PbDA6eSsYUOG@mail.gmail.com>
+In-Reply-To: <AANLkTin0Gm8Xqm-ARGmd4T+fCM4mMA0=PbDA6eSsYUOG@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-An incorrect recall type sent by the server should result in
-the client returning BADXDR, not crashing the client.
+On 11/19/2010 01:40 AM, Linus Torvalds wrote:
+> On Thu, Nov 18, 2010 at 3:34 PM, Jan Kara <jack@suse.cz> wrote:
+>>
+>>  Just for info, UDF BKL removal patches seem to work fine but I want to
+>> give them some final SMP testing on Monday before pushing them to -next.
+>> I'm not sure how much people hurry with disabling the lock so if I should
+>> push them ASAP or whether the next merge window is fine...
+> 
+> I don't think I can reasonably do it in 37, we're late enough in the
+> -rc series. So UDF and really saying 'n' to BKL by default will have
+> to be for the next merge window.
+> 
+> I hate to do it, but I'd be too nervous about it any other way.
+> 
+>                    Linus
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/callback_proc.c |    3 +++
- fs/nfs/callback_xdr.c  |    5 ++++-
- 2 files changed, 7 insertions(+), 1 deletions(-)
+Could it not default to "n" but be SELECTed by the like of UDF. Or
+that too big of a Kconfig change for 37-rcX? I understand it does
+not really buy us anything for distro's with allmodconfig style,
+but it should help with defconfig on all the other ARCH's.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index b4c68e9..2274b6f 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -139,6 +139,9 @@ _recall_matches_lget(struct pnfs_cb_lrecall_info *cb_info,
- 		return (ino == cb_info->pcl_ino) &&
- 			should_free_lseg(range, &cb_args->cbl_range);
- 	default:
-+		/* Should never hit here, as decode_layoutrecall_args()
-+		 * will verify cb_info from server.
-+		 */
- 		BUG();
- 	}
- }
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index a77877c..2e1a33b 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -246,7 +246,7 @@ static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
- 	args->cbl_layoutchanged = ntohl(*p++);
- 	args->cbl_recall_type = ntohl(*p++);
- 
--	if (likely(args->cbl_recall_type == RETURN_FILE)) {
-+	if (args->cbl_recall_type == RETURN_FILE) {
- 		args->cbl_range.iomode = iomode;
- 		status = decode_fh(xdr, &args->cbl_fh);
- 		if (unlikely(status != 0))
-@@ -270,6 +270,9 @@ static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
- 		}
- 		p = xdr_decode_hyper(p, &args->cbl_fsid.major);
- 		p = xdr_decode_hyper(p, &args->cbl_fsid.minor);
-+	} else if (args->cbl_recall_type != RETURN_ALL) {
-+		status = htonl(NFS4ERR_BADXDR);
-+		goto out;
- 	}
- 	dprintk("%s: ltype 0x%x iomode %d changed %d recall_type %d\n",
- 		__func__,
--- 
-1.7.2.1
-
+Thanks
+Boaz
