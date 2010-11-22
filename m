@@ -1,193 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:52633 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933795Ab0KQSBI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 13:01:08 -0500
-Received: by mail-iw0-f174.google.com with SMTP id 35so2387538iwn.19
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 10:01:07 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/12] NSM: Avoid return code checking in NSM XDR encoder
-	functions
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 17 Nov 2010 13:01:04 -0500
-Message-ID: <20101117180104.29429.36095.stgit@matisse.1015granger.net>
-In-Reply-To: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
-References: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from dsl-67-204-24-19.acanac.net ([67.204.24.19]:60614 "EHLO
+	mail.ellipticsemi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752277Ab0KVPRp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Nov 2010 10:17:45 -0500
+Date: Mon, 22 Nov 2010 10:17:23 -0500
+From: Nick Bowler <nbowler@elliptictech.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Boaz Harrosh <openosd@gmail.com>, Jan Kara <jack@suse.cz>,
+        Arnd Bergmann <arnd@arndb.de>, linux-kernel@vger.kernel.org,
+        Nathan Laredo <laredo@gnu.org>, Greg Kroah-Hartman <gregkh@suse.de>,
+        Dave Airlie <airlied@linux.ie>, dri-devel@lists.freedesktop.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        Alessio Igor Bogani <alessioigorbogani@gmail.com>
+Subject: Re: [PATCH 0/7] BKL removal follow-up
+Message-ID: <20101122151723.GA8732@elliptictech.com>
+References: <1290007619-5787-1-git-send-email-arnd@arndb.de>
+ <20101118233439.GB5004@quack.suse.cz>
+ <AANLkTin0Gm8Xqm-ARGmd4T+fCM4mMA0=PbDA6eSsYUOG@mail.gmail.com>
+ <4CE928DD.2010309@gmail.com>
+ <AANLkTi=qvOHwgsbaCO6_Eu2Uik7MP5=C64+WW8R-RR8B@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AANLkTi=qvOHwgsbaCO6_Eu2Uik7MP5=C64+WW8R-RR8B@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
+On 2010-11-21 09:45 -0800, Linus Torvalds wrote:
+> Yes, I'd be ok with UDF doing a "select BKL" along with a "default n"
+> for BKL itself.
+> 
+> I think UDF currently is the only sane reason to have BKL enabled any
+> more, and yes, it would probably make it easier to configure things.
 
-The trend in the other XDR encoder functions is to BUG() when encoding
-problems occur, since a problem is always due to a local coding error.
-Then, instead of a status, zero is unconditionally returned.
+UFS (which I use) also relies on BKL.
 
-Update the NSM XDR encoders to behave this way.
-
-To finish the update, use the new-style ntohl() and htonl() macros,
-and compute the buffer sizes using raw integers instead of sizeof().
-This matches the conventions used in other XDR functions
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: J. Bruce Fields <bfields@redhat.com>
----
-
- fs/lockd/mon.c |   68 +++++++++++++++++++++-----------------------------------
- 1 files changed, 25 insertions(+), 43 deletions(-)
-
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index e0c9189..d812818 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -401,26 +401,22 @@ void nsm_release(struct nsm_handle *nsm)
-  * Status Monitor wire protocol.
-  */
- 
--static int encode_nsm_string(struct xdr_stream *xdr, const char *string)
-+static void encode_nsm_string(struct xdr_stream *xdr, const char *string)
- {
- 	const u32 len = strlen(string);
- 	__be32 *p;
- 
--	if (unlikely(len > SM_MAXSTRLEN))
--		return -EIO;
--	p = xdr_reserve_space(xdr, sizeof(u32) + len);
--	if (unlikely(p == NULL))
--		return -EIO;
-+	BUG_ON(len > SM_MAXSTRLEN);
-+	p = xdr_reserve_space(xdr, 4 + len);
- 	xdr_encode_opaque(p, string, len);
--	return 0;
- }
- 
- /*
-  * "mon_name" specifies the host to be monitored.
-  */
--static int encode_mon_name(struct xdr_stream *xdr, const struct nsm_args *argp)
-+static void encode_mon_name(struct xdr_stream *xdr, const struct nsm_args *argp)
- {
--	return encode_nsm_string(xdr, argp->mon_name);
-+	encode_nsm_string(xdr, argp->mon_name);
- }
- 
- /*
-@@ -429,35 +425,25 @@ static int encode_mon_name(struct xdr_stream *xdr, const struct nsm_args *argp)
-  * (via the NLMPROC_SM_NOTIFY call) that the state of host "mon_name"
-  * has changed.
-  */
--static int encode_my_id(struct xdr_stream *xdr, const struct nsm_args *argp)
-+static void encode_my_id(struct xdr_stream *xdr, const struct nsm_args *argp)
- {
--	int status;
- 	__be32 *p;
- 
--	status = encode_nsm_string(xdr, utsname()->nodename);
--	if (unlikely(status != 0))
--		return status;
--	p = xdr_reserve_space(xdr, 3 * sizeof(u32));
--	if (unlikely(p == NULL))
--		return -EIO;
--	*p++ = htonl(argp->prog);
--	*p++ = htonl(argp->vers);
--	*p++ = htonl(argp->proc);
--	return 0;
-+	encode_nsm_string(xdr, utsname()->nodename);
-+	p = xdr_reserve_space(xdr, 4 + 4 + 4);
-+	*p++ = cpu_to_be32(argp->prog);
-+	*p++ = cpu_to_be32(argp->vers);
-+	*p = cpu_to_be32(argp->proc);
- }
- 
- /*
-  * The "mon_id" argument specifies the non-private arguments
-  * of an NSMPROC_MON or NSMPROC_UNMON call.
-  */
--static int encode_mon_id(struct xdr_stream *xdr, const struct nsm_args *argp)
-+static void encode_mon_id(struct xdr_stream *xdr, const struct nsm_args *argp)
- {
--	int status;
--
--	status = encode_mon_name(xdr, argp);
--	if (unlikely(status != 0))
--		return status;
--	return encode_my_id(xdr, argp);
-+	encode_mon_name(xdr, argp);
-+	encode_my_id(xdr, argp);
- }
- 
- /*
-@@ -465,28 +451,23 @@ static int encode_mon_id(struct xdr_stream *xdr, const struct nsm_args *argp)
-  * by the NSMPROC_MON call. This information will be supplied in the
-  * NLMPROC_SM_NOTIFY call.
-  */
--static int encode_priv(struct xdr_stream *xdr, const struct nsm_args *argp)
-+static void encode_priv(struct xdr_stream *xdr, const struct nsm_args *argp)
- {
- 	__be32 *p;
- 
- 	p = xdr_reserve_space(xdr, SM_PRIV_SIZE);
--	if (unlikely(p == NULL))
--		return -EIO;
- 	xdr_encode_opaque_fixed(p, argp->priv->data, SM_PRIV_SIZE);
--	return 0;
- }
- 
- static int xdr_enc_mon(struct rpc_rqst *req, __be32 *p,
- 		       const struct nsm_args *argp)
- {
- 	struct xdr_stream xdr;
--	int status;
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
--	status = encode_mon_id(&xdr, argp);
--	if (unlikely(status))
--		return status;
--	return encode_priv(&xdr, argp);
-+	encode_mon_id(&xdr, argp);
-+	encode_priv(&xdr, argp);
-+	return 0;
- }
- 
- static int xdr_enc_unmon(struct rpc_rqst *req, __be32 *p,
-@@ -495,7 +476,8 @@ static int xdr_enc_unmon(struct rpc_rqst *req, __be32 *p,
- 	struct xdr_stream xdr;
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
--	return encode_mon_id(&xdr, argp);
-+	encode_mon_id(&xdr, argp);
-+	return 0;
- }
- 
- static int xdr_dec_stat_res(struct rpc_rqst *rqstp, __be32 *p,
-@@ -504,11 +486,11 @@ static int xdr_dec_stat_res(struct rpc_rqst *rqstp, __be32 *p,
- 	struct xdr_stream xdr;
- 
- 	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
--	p = xdr_inline_decode(&xdr, 2 * sizeof(u32));
-+	p = xdr_inline_decode(&xdr, 4 + 4);
- 	if (unlikely(p == NULL))
- 		return -EIO;
--	resp->status = ntohl(*p++);
--	resp->state = ntohl(*p);
-+	resp->status = be32_to_cpup(p++);
-+	resp->state = be32_to_cpup(p);
- 
- 	dprintk("lockd: xdr_dec_stat_res status %d state %d\n",
- 			resp->status, resp->state);
-@@ -521,10 +503,10 @@ static int xdr_dec_stat(struct rpc_rqst *rqstp, __be32 *p,
- 	struct xdr_stream xdr;
- 
- 	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
--	p = xdr_inline_decode(&xdr, sizeof(u32));
-+	p = xdr_inline_decode(&xdr, 4);
- 	if (unlikely(p == NULL))
- 		return -EIO;
--	resp->state = ntohl(*p);
-+	resp->state = be32_to_cpup(p);
- 
- 	dprintk("lockd: xdr_dec_stat state %d\n", resp->state);
- 	return 0;
-
+-- 
+Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
