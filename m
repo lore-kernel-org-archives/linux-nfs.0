@@ -1,57 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:64889 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751238Ab0KPXyR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 18:54:17 -0500
-Received: by iwn35 with SMTP id 35so1427817iwn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Nov 2010 15:54:16 -0800 (PST)
-In-Reply-To: <4CE2E0FF.1080201@blub.net>
-References: <4CE294DD.6010508@blub.net>
-	<20101116183050.GC3971@fieldses.org>
-	<4CE2E0FF.1080201@blub.net>
-Date: Tue, 16 Nov 2010 18:54:15 -0500
-Message-ID: <AANLkTi=pUkc5Dkd1A2fEKMB3Wm-cmtkKyXrt1bN7C=ZQ@mail.gmail.com>
-Subject: Re: no_root_squash (and valid KRB root-ticket)
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: Valentijn Sessink <valentyn@blub.net>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=windows-1252
+Received: from mx2.netapp.com ([216.240.18.37]:60063 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755664Ab0KVSam (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Nov 2010 13:30:42 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] SUNRPC: Fix an infinite loop in call_refresh/call_refreshresult
+Date: Mon, 22 Nov 2010 13:30:37 -0500
+Message-Id: <1290450637-4409-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1290201597.3135.57.camel@heimdal.trondhjem.org>
+References: <1290201597.3135.57.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-I believe the answer is to add a "static" mapping of some principal
-name to be "root" locally on the server machine.
+If the rpcauth_refreshcred() call returns an error other than
+EACCES, ENOMEM or ETIMEDOUT, we currently end up looping forever
+between call_refresh and call_refreshresult.
 
-See the example in the idmap.conf man page (that comes with libnfsidmap).
+The correct thing to do here is to exit on all errors except
+EAGAIN and ETIMEDOUT, for which case we retry 3 times, then
+return EACCES.
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ net/sunrpc/clnt.c |   24 +++++++++++++++---------
+ 1 files changed, 15 insertions(+), 9 deletions(-)
 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 9dab957..92ce94f 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -989,20 +989,26 @@ call_refreshresult(struct rpc_task *task)
+ 	dprint_status(task);
+ 
+ 	task->tk_status = 0;
+-	task->tk_action = call_allocate;
+-	if (status >= 0 && rpcauth_uptodatecred(task))
+-		return;
++	task->tk_action = call_refresh;
+ 	switch (status) {
+-	case -EACCES:
+-		rpc_exit(task, -EACCES);
+-		return;
+-	case -ENOMEM:
+-		rpc_exit(task, -ENOMEM);
++	case 0:
++		if (rpcauth_uptodatecred(task))
++			task->tk_action = call_allocate;
+ 		return;
+ 	case -ETIMEDOUT:
+ 		rpc_delay(task, 3*HZ);
++	case -EAGAIN:
++		status = -EACCES;
++		if (!task->tk_cred_retry)
++			break;
++		task->tk_cred_retry--;
++		dprintk("RPC: %5u %s: retry refresh creds\n",
++				task->tk_pid, __func__);
++		return;
+ 	}
+-	task->tk_action = call_refresh;
++	dprintk("RPC: %5u %s: refresh creds failed with error %d\n",
++				task->tk_pid, __func__, status);
++	rpc_exit(task, status);
+ }
+ 
+ /*
+-- 
+1.7.3.2
 
-On Tue, Nov 16, 2010 at 2:52 PM, Valentijn Sessink <valentyn@blub.net> wrote:
-> Hi,
->
-> Op 16-11-10 19:30, J. Bruce Fields schreef:
->>>
->>> I found that having "no_root_squash" on the server, having a valid
->>> Kerberos ticket for root@DOMAIN, does still not give you root rights on
->>> a share.
->>
->> This is between a linux client and server?
->
-> Yes. Not a really recent one though, must be Ubuntu 10.04 server and client.
->
->> Are other kerberos principals mapped as you'd expect?
->
-> Yes — it's on our production network, user ID's are mapped without a
-> problem. While I'm typing this: I did not check what idmapd says; most of
-> the users are in LDAP, while root is just a local user with a corresponding
-> local user on the server. Can't think of a reason why this should bar root
-> from using the share, but I will check that, tomorrow, just to be sure.
->
-> V.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
