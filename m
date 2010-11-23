@@ -1,58 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:24355 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756702Ab0KRURg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Nov 2010 15:17:36 -0500
-Subject: Re: Very slow O_DIRECT writes on NFS in .36
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4CE58799.1010702@candelatech.com>
-Date: Thu, 18 Nov 2010 15:17:20 -0500
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <4234EB44-97D5-4212-A52E-983907D2733F@oracle.com>
-References: <4CE58799.1010702@candelatech.com>
-To: Ben Greear <greearb@candelatech.com>
+Received: from daytona.panasas.com ([67.152.220.89]:59046 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752627Ab0KWOVj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Nov 2010 09:21:39 -0500
+Message-ID: <4CEBCDF1.4010705@panasas.com>
+Date: Tue, 23 Nov 2010 16:21:37 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: pnfs git tree status pnfs-all-2.6.37-rc3-2010-11-23
+References: <4CD17FC4.6090906@panasas.com> <4CE1604E.1070902@panasas.com>
+In-Reply-To: <4CE1604E.1070902@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+This is a minor update to the linux-pnfs tree.
+Rebased over v2.6.37-rc3, and dropped old version of
+Trond's patch 88ce1e4 NFS: Fix a couple of regressions in readdir.
+in favor of the new version merged in v2.6.37-rc3.
 
-On Nov 18, 2010, at 3:07 PM, Ben Greear wrote:
+On 2010-11-15 18:31, Benny Halevy wrote:
 
-> I applied the NFS O_DIRECT patch (and all others) from the pending 2.6.36 stable
-> queue, and now I can at least use O_DIRECT w/out immediate failure.
-> 
-> However, I notice that when writing 2k chunks with O_DIRECT on
-> NFS, it runs extremely slowly (about 300Kbps throughput).  The
-> server is a Fedora 13 64-bit system running 2.6.34.7-56.fc13.x86_64
-> 
-> Here's some strace -ttT output for the writer:
-> 
-> 07:03:42.898058 write(9, "\370'\37\345v\230\315\253\3\0\0\0\354\7\0\0\16\1\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 2048) = 2048 <0.059402>
-> 07:03:42.957649 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout) <0.000266>
-> 07:03:42.958148 write(9, "\212$s\327v\230\315\253\3\0\0\0\354\7\0\0\17\1\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 2048) = 2048 <0.069295>
-> 07:03:43.027524 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout) <0.000011>
-> 
-> 
-> Writing 64k chunks takes basically the same amount of time per system call:
-> 
-> 07:06:13.537488 write(9, "\5\340\202\262v\230\315\253\3\0\0\0\354\377\0\0\6\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536 <0.049462>
-> 07:06:13.587083 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout) <0.000035>
-> 07:06:13.587410 write(9, "\250\231\377cv\230\315\253\3\0\0\0\354\377\0\0\7\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536 <0.058612>
-> 07:06:13.646233 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout) <0.000095>
-> 07:06:13.646616 write(9, "\5-@\5v\230\315\253\3\0\0\0\354\377\0\0\10\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536 <0.050282>
-> 
-> 
-> Reading is a good deal faster..about 34Mbps with O_DIRECT, NFS and 2k reads.
-> 
-> Any ideas about why the write performance is so bad?
+Cumulative patches can be generated from
+git://linux-nfs.org/~bhalevy/linux-pnfs.git
+using
+git diff v2.6.37-rc3 pnfs-all-2.6.37-rc3-2010-11-23
 
-A network trace will probably show you that the per-write latency is due to the server.
+Or, they can be downloaded from the wiki at:
+http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Latest patches that went in since pnfs-all-2.6.37-rc1-2010-11-03:
 
-
-
-
+pnfs:
+  Benny Halevy     f272cdf SQUASHME: pnfs: move synchronize_rcu out side of spin_lock
