@@ -1,55 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:46805 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758180Ab0KRUHy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Nov 2010 15:07:54 -0500
-Received: from [192.168.100.195] (firewall.candelatech.com [70.89.124.249])
-	(authenticated bits=0)
-	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id oAIK7rZK007850
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Thu, 18 Nov 2010 12:07:54 -0800
-Message-ID: <4CE58799.1010702@candelatech.com>
-Date: Thu, 18 Nov 2010 12:07:53 -0800
-From: Ben Greear <greearb@candelatech.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Very slow O_DIRECT writes on NFS in .36
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from fieldses.org ([174.143.236.118]:40281 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752505Ab0KXPHJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Nov 2010 10:07:09 -0500
+Date: Wed, 24 Nov 2010 10:07:08 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Joe Habermann <joe.habermann@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: incorrect EXDEV error occasionally returned for rename over NFS
+Message-ID: <20101124150707.GA13737@fieldses.org>
+References: <AANLkTim3GyG4Skr_=0QyELJw1ySjfvhYMD2g4JKztrOx@mail.gmail.com>
+ <20101116185551.GD3971@fieldses.org>
+ <AANLkTik=WkedMyy=oVorEuSW96vTdK7vBnneOTe1qgxh@mail.gmail.com>
+ <20101119235717.GE12783@fieldses.org>
+ <AANLkTimvvbDw+YYoK8ZuKt3fJHTjxrJgWhq7r9ucHjwo@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AANLkTimvvbDw+YYoK8ZuKt3fJHTjxrJgWhq7r9ucHjwo@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I applied the NFS O_DIRECT patch (and all others) from the pending 2.6.36 stable
-queue, and now I can at least use O_DIRECT w/out immediate failure.
+On Tue, Nov 23, 2010 at 02:55:24PM -0600, Joe Habermann wrote:
+> Sure, I'll take another look.  I definitely would prefer a more
+> elegant solution.
+> 
+> With regard to the strcmp on ex_client->name(), I'm not sure that's 100% tight.
+> Suppose we have an export such as:
+>     *(rw,sync,no_subtree_check)
+> And during the race window, that export is replaced with:
+>     foo(rw,sync,no_subtree_check)
+> And it's "foo" that's performing the rename.
+> In this case, the export pointers will (generally) be different, as
+> will the auth_domain pointers, as will the string pointed to by
+> ex_client->name ("*" vs. "foo"), incorrectly leading to a failing
+> check.
 
-However, I notice that when writing 2k chunks with O_DIRECT on
-NFS, it runs extremely slowly (about 300Kbps throughput).  The
-server is a Fedora 13 64-bit system running 2.6.34.7-56.fc13.x86_64
+You're devious!  We need you reading more of the NFS code....
 
-Here's some strace -ttT output for the writer:
+But I think we're both being stupid here: both exports are looked up
+using the same auth_domain (rq_client), and it's really the filesystems
+(or filesystem subtrees) that we want to compare anyway.
 
-07:03:42.898058 write(9, "\370'\37\345v\230\315\253\3\0\0\0\354\7\0\0\16\1\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 2048) = 2048 <0.059402>
-07:03:42.957649 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout) <0.000266>
-07:03:42.958148 write(9, "\212$s\327v\230\315\253\3\0\0\0\354\7\0\0\17\1\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 2048) = 2048 <0.069295>
-07:03:43.027524 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout) <0.000011>
+So just ditch the ex_client comparison and compare the two
+(vfsmount,dentry) pairs.
 
+(There may still be an odd race or two; e.g. if someone does
 
-Writing 64k chunks takes basically the same amount of time per system call:
+	mount --bind /export/path /export/path
+	exportfs -f
 
-07:06:13.537488 write(9, "\5\340\202\262v\230\315\253\3\0\0\0\354\377\0\0\6\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536 <0.049462>
-07:06:13.587083 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout) <0.000035>
-07:06:13.587410 write(9, "\250\231\377cv\230\315\253\3\0\0\0\354\377\0\0\7\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536 <0.058612>
-07:06:13.646233 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout) <0.000095>
-07:06:13.646616 write(9, "\5-@\5v\230\315\253\3\0\0\0\354\377\0\0\10\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536 <0.050282>
+between the two export lookups, could we end up with two different
+vfsmounts that really could be treated as the same?  But I don't think
+we need to support that.
 
+Other alternatives would be to compare something like the fs-identifying
+part of the filehandle, or the path. (Probably svc_export_match() should
+be strcmp()'ing paths anyway--paths are what userspace deals in anyway,
+so if we're ever in a situation where it makes a difference, and there
+are two (mnt,dentry) pairs that alias to the same path, then we end up
+with a cache request that userspace can never respond to.))
 
-Reading is a good deal faster..about 34Mbps with O_DIRECT, NFS and 2k reads.
-
-Any ideas about why the write performance is so bad?
-
-Thanks,
-Ben
-
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
+--b.
