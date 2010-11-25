@@ -1,120 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:33501 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751225Ab0K3POo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Nov 2010 10:14:44 -0500
-Subject: Re: [PATCH] mount: make sure mount correctly when kernel not support NFSv4
+Received: from netnation.com ([204.174.223.2]:33016 "EHLO peace.netnation.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751893Ab0KYUE0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Nov 2010 15:04:26 -0500
+Date: Thu, 25 Nov 2010 12:04:24 -0800
+From: Simon Kirby <sim@hostway.ca>
+To: linux-mm@kvack.org, linux-nfs@vger.kernel.org
+Subject: Lock contention from flush processes for NFS mounts take all cpu
+	[2.6.36, NFSv3]
+Message-ID: <20101125200424.GA23598@hostway.ca>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4CF49FBA.2030601@cn.fujitsu.com>
-Date: Tue, 30 Nov 2010 10:13:24 -0500
-Cc: Steve Dickson <SteveD@redhat.com>, NFSv3 list <linux-nfs@vger.kernel.org>,
-        "Trond.Myklebust" <trond.myklebust@fys.uio.no>
-Message-Id: <CFD2C4B0-4B8E-4ED5-8654-796C18D4C054@oracle.com>
-References: <4CEDFA23.5030103@cn.fujitsu.com> <96BE5F60-06F3-4CE9-8C1D-713992D3F246@oracle.com> <4CF49FBA.2030601@cn.fujitsu.com>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hello!
 
-On Nov 30, 2010, at 1:54 AM, Mi Jinlong wrote:
+I'm not sure what triggers this off, but at certain times, we see this on
+shared hosting servers with storage over NFSv3:
 
-> 
-> 
-> Chuck Lever :
->> On Nov 25, 2010, at 12:54 AM, Mi Jinlong wrote:
->> 
->>> When user's nfs client(kernel) don't support NFSv4, maybe they build
->>> kernel without NFSv4, there is a problem.
->>> 
->>> When using command "mount SERVER-IP:/nfsv3 /mnt/" to mount NFSv3
->>> filesystem, mount will fail and get error:
->>> 
->>> "mount.nfs: an incorrect mount option was specified"
->>> 
->>> as above, the mount should success, but it fail.
->>> 
->>> When the mount command without specific NFS version, nfs-utils will
->>> try to mount NFSv4 at first, but the kernel don't support, the kernel
->>> will return with error EINVAL for parsing option (vers=4) fail.
->> 
->> Maybe the kernel should return EOPNOTSUPP in that case?
-> 
->  Yes, what about the following patch.
+top - 13:24:35 up 8 days,  6:47,  2 users,  load average: 69.23, 77.59, 85.53
+Tasks: 1318 total,  11 running, 1303 sleeping,   0 stopped,   4 zombie
+Cpu(s):  2.5%us, 96.6%sy,  0.0%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.9%si,  0.0%st
+Mem:   4055836k total,  3746576k used,   309260k free,    39348k buffers
+Swap:   979960k total,   104868k used,   875092k free,  1558432k cached
 
-Seems logical to me.  Up to Trond...
+  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
+ 5558 root      20   0     0    0    0 R   38  0.0  22:30.23 flush-0:58
+ 5683 root      20   0     0    0    0 R   38  0.0  53:06.24 flush-0:76
+13076 root      20   0     0    0    0 R   38  0.0  30:03.96 flush-0:62
+13265 mysql     20   0 1763m 128m 5632 S   38  3.3   8:21.47 mysqld                                                                                                                                              
+25419 root      20   0     0    0    0 R   38  0.0  12:17.28 flush-0:38
+ 5783 root      20   0     0    0    0 R   32  0.0  43:32.78 flush-0:78
+12725 root      20   0     0    0    0 R   32  0.0  29:45.53 flush-0:72
+ 5676 root      20   0     0    0    0 R   32  0.0  41:18.64 flush-0:82
+24034 root      20   0     0    0    0 R   32  0.0  30:26.86 flush-0:32
+32192 root      20   0     0    0    0 R   32  0.0  24:36.93 flush-0:81
+ 8465 root      20   0     0    0    0 R   31  0.0  19:26.43 flush-0:83
+29379 root      20   0 30228 3076 1560 R    2  0.1   0:00.25 top
 
-> 
-> --
-> thanks
-> Mi Jinlong
-> ---------------------------------------------------------------------------------
-> From 4065f2571362ff301683218546151e19148fa775 Mon Sep 17 00:00:00 2001
-> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> Date: Sat, 30 Oct 2010 10:19:33 +0800
-> Subject: [PATCH] nfs: kernel should return EPROTONOSUPPORT when not support NFSv4
-> 
->  When nfs client(kernel) don't support NFSv4, maybe user build
->  kernel without NFSv4, there is a problem.
-> 
->  Using command "mount SERVER-IP:/nfsv3 /mnt/" to mount NFSv3
->  filesystem, mount should should success, but fail and get error:
-> 
->    "mount.nfs: an incorrect mount option was specified"
-> 
->  System call mount "nfs"(not "nfs4") with "vers=4", 
->  if CONFIG_NFS_V4 is not defined, the "vers=4" will be parsed
->  as invalid argument and kernel return EINVAL to nfs-utils. 
-> 
->  About that, we really want get EPROTONOSUPPORT rather than 
->  EINVAL. This path make sure kernel parses argument success,
->  and return EPROTONOSUPPORT at nfs_validate_mount_data().
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
-> fs/nfs/super.c |    4 ----
-> 1 files changed, 0 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 3c04504..4100630 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -1069,12 +1069,10 @@ static int nfs_parse_mount_options(char *raw,
-> 			mnt->flags |= NFS_MOUNT_VER3;
-> 			mnt->version = 3;
-> 			break;
-> -#ifdef CONFIG_NFS_V4
-> 		case Opt_v4:
-> 			mnt->flags &= ~NFS_MOUNT_VER3;
-> 			mnt->version = 4;
-> 			break;
-> -#endif
-> 		case Opt_udp:
-> 			mnt->flags &= ~NFS_MOUNT_TCP;
-> 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
-> @@ -1286,12 +1284,10 @@ static int nfs_parse_mount_options(char *raw,
-> 				mnt->flags |= NFS_MOUNT_VER3;
-> 				mnt->version = 3;
-> 				break;
-> -#ifdef CONFIG_NFS_V4
-> 			case NFS4_VERSION:
-> 				mnt->flags &= ~NFS_MOUNT_VER3;
-> 				mnt->version = 4;
-> 				break;
-> -#endif
-> 			default:
-> 				goto out_invalid_value;
-> 			}
-> -- 
-> 1.7.3.2
-> 
-> 
+# cat /proc/5676/stack
+[<ffffffff81203fed>] nfs_writepages+0xed/0x160
+[<ffffffff8136b320>] _atomic_dec_and_lock+0x50/0x70
+[<ffffffff8111ac3c>] iput+0x2c/0x2a0
+[<ffffffff8112636e>] writeback_sb_inodes+0xce/0x150
+[<ffffffff81126d1c>] writeback_inodes_wb+0xcc/0x140
+[<ffffffff811270bb>] wb_writeback+0x32b/0x370
+[<ffffffff811271d4>] wb_do_writeback+0xd4/0x1e0
+[<ffffffff811273bb>] bdi_writeback_thread+0xdb/0x240
+[<ffffffff81071ae6>] kthread+0x96/0xb0
+[<ffffffff8100bd24>] kernel_thread_helper+0x4/0x10
+[<ffffffffffffffff>] 0xffffffffffffffff
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+   PerfTop:    3894 irqs/sec  kernel:99.5%  exact:  0.0% [1000Hz cycles],  (all, 4 CPUs)
+----------------------------------------------------------------------------------------
 
+     samples  pcnt function                        DSO
+     _______ _____ _______________________________ _________________
 
+    25466.00 81.1% _raw_spin_lock                  [kernel.kallsyms]          
+      968.00  3.1% nfs_writepages                  [kernel.kallsyms]          
+      704.00  2.2% writeback_sb_inodes             [kernel.kallsyms]          
+      671.00  2.1% writeback_single_inode          [kernel.kallsyms]          
+      636.00  2.0% queue_io                        [kernel.kallsyms]          
+      393.00  1.3% nfs_write_inode                 [kernel.kallsyms]          
+      368.00  1.2% __iget                          [kernel.kallsyms]          
+      360.00  1.1% iput                            [kernel.kallsyms]          
+      334.00  1.1% bit_waitqueue                   [kernel.kallsyms]          
+      293.00  0.9% do_writepages                   [kernel.kallsyms]          
+      206.00  0.7% redirty_tail                    [kernel.kallsyms]          
+      194.00  0.6% __mark_inode_dirty              [kernel.kallsyms]          
+      135.00  0.4% _atomic_dec_and_lock            [kernel.kallsyms]          
+      119.00  0.4% write_cache_pages               [kernel.kallsyms]          
+       65.00  0.2% __wake_up_bit                   [kernel.kallsyms]          
+       62.00  0.2% is_bad_inode                    [kernel.kallsyms]          
+       41.00  0.1% find_get_pages_tag              [kernel.kallsyms]          
+       37.00  0.1% radix_tree_gang_lookup_tag_slot [kernel.kallsyms]          
+       29.00  0.1% wake_up_bit                     [kernel.kallsyms]          
+       17.00  0.1% thread_group_cputime            [kernel.kallsyms]          
+       16.00  0.1% pagevec_lookup_tag              [kernel.kallsyms]          
+       16.00  0.1% radix_tree_tagged               [kernel.kallsyms]          
+       16.00  0.1% _cond_resched                   [kernel.kallsyms]          
+       14.00  0.0% ktime_get                       [kernel.kallsyms]          
+       11.00  0.0% mapping_tagged                  [kernel.kallsyms]          
+	9.00  0.0% nfs_pageio_init                 [kernel.kallsyms]          
+	9.00  0.0% __phys_addr                     [kernel.kallsyms]          
+	8.00  0.0% nfs_pageio_doio                 [kernel.kallsyms]          
+	7.00  0.0% _raw_spin_lock_irqsave          [kernel.kallsyms]          
+	7.00  0.0% dso__load_sym                   /usr/local/bin/perf        
 
+# grep ^nr_ /proc/vmstat
+nr_free_pages 123806
+nr_inactive_anon 52656
+nr_active_anon 192039
+nr_inactive_file 351876
+nr_active_file 92993
+nr_unevictable 0
+nr_mlock 0
+nr_anon_pages 234118
+nr_mapped 4652
+nr_file_pages 457325
+nr_dirty 211
+nr_writeback 0
+nr_slab_reclaimable 79296
+nr_slab_unreclaimable 45221
+nr_page_table_pages 57483
+nr_kernel_stack 2537
+nr_unstable 0
+nr_bounce 0
+nr_vmscan_write 3387227
+nr_writeback_temp 0
+nr_isolated_anon 0
+nr_isolated_file 0
+nr_shmem 144
 
+Looking up flush-major:minor in /proc/self/mountinfo shows that these are
+all NFS mounts from a few different servers.  It doesn't seem like there
+are any large write sor anything going on at this moment -- no processes
+are in D state.  I started a "sync", which ran for another 10 minutes or
+so, and then finally exited, and everything returned to normal.
+
+Simon-
