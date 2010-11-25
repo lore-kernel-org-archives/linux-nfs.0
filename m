@@ -1,70 +1,194 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:26148 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751059Ab0K3NEc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Nov 2010 08:04:32 -0500
-Subject: Re: NFSv4 behaviour on unknown users
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Spelic <spelic@shiftmail.org>
-Cc: Spencer Shepler <spencer.shepler@gmail.com>, Daniel.Muntz@emc.com,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4CF4E38B.4050706@shiftmail.org>
-References: <1291054975.12784.17.camel@heimdal.trondhjem.org>
-	 <DE966DA98A4ABE438D726BDF1699CF610437B188C9@MX05A.corp.emc.com>
-	 <067101cb9018$d70ba2f0$8522e8d0$@gmail.com>
-	 <1291072571.20567.26.camel@heimdal.trondhjem.org>
-	 <1291073174.20567.31.camel@heimdal.trondhjem.org>
-	 <068901cb901d$61395630$23ac0290$@gmail.com>
-	 <1291074002.20567.38.camel@heimdal.trondhjem.org>
-	 <068f01cb9021$d1c10700$75431500$@gmail.com>
-	 <4CF4E38B.4050706@shiftmail.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 30 Nov 2010 08:04:23 -0500
-Message-ID: <1291122263.3204.2.camel@heimdal.trondhjem.org>
+Received: from smtp-out-2.desy.de ([131.169.56.85]:46735 "EHLO
+	smtp-out-2.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753052Ab0KYQQ6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Nov 2010 11:16:58 -0500
+Received: from smtp-map-2.desy.de (smtp-map-2.desy.de [131.169.56.67])
+	by smtp-out-2.desy.de (DESY_OUT_1) with ESMTP id 37F86E39
+	for <linux-nfs@vger.kernel.org>; Thu, 25 Nov 2010 17:16:57 +0100 (MET)
+Received: from adserv70.win.desy.de (adserv70.win.desy.de [131.169.97.56])
+	by smtp-map-2.desy.de (DESY_MAP_2) with ESMTP id 2FD9BDDD
+	for <linux-nfs@vger.kernel.org>; Thu, 25 Nov 2010 17:16:57 +0100 (MET)
+Message-ID: <4CEE8C04.8080304@desy.de>
+Date: Thu, 25 Nov 2010 17:17:08 +0100
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: NFS list <linux-nfs@vger.kernel.org>
+CC: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: 2.6.37-rc1 krash
+References: <4CE54463.7070805@desy.de> <4CE55B5D.3030509@panasas.com> <4CE65F1A.1080600@desy.de> <4CEB8FD4.6060608@panasas.com>
+In-Reply-To: <4CEB8FD4.6060608@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-11-30 at 12:44 +0100, Spelic wrote:
-> On 11/30/2010 01:02 AM, Spencer Shepler wrote:
-> >> It would not be backwards compatible: the linux server will currently
-> >> reject any uid/gid usage by the client.
-> >>
-> >> That said, I can imagine that for 'sec=sys', we might be able to change
-> >> the client to use the uid/gid format by default, and then change back to
-> >> doing name@domain upon receiving the first NFS4ERR_BADOWNER error from the
-> >> server.
-> >> It the server changes to match this, then that might suffice solve the
-> >> current problem that we have with doing nfsroot on NFSv4...
-> >>      
-> > IMO: I wouldn't worry about the mixed scenarios to start with.
-> > Provide the option on the client and server to use the straight-up
-> > uid/gid to string mappings and this will satisfy these simple
-> > deployments that are or will have trouble.
-> >    
-> 
-> +1 for this.  Changing mapping on the fly at the first NFS4ERR_BADOWNER 
-> received does not look very reliable to me: is scarcely controllable by 
-> the sysadmin and is gonna make the thing a headache to debug the first 
-> time it happens unwillingly (maybe the sysadmin was changing some config 
-> on the server and suddenly the everything stops working and he needs to 
-> restart the nfs client to restore things but this is scarcely 
-> intuitive...). +1 for simply providing a clear-upfront option for using 
-> numeric UIDs/GIDs.
-> 
-> Thanks for your understanding :-)
+On 11/23/2010 10:56 AM, Benny Halevy wrote:
+> On 2010-11-19 13:27, Tigran Mkrtchyan wrote:
+>> Hi Benny,
+>>
+>>
+>> On 11/18/2010 05:59 PM, Benny Halevy wrote:
+>>> Hi Tigran, Can you please gdb your nfs.ko module to get the line number of the warning?
+>>> (gdb) list *(pnfs_destroy_layout+0xd6)
+>>> I'm not sure what arch you're using but these offsets don't make sense on
+>>> my x86_64 machine...
+>> here is the corresponding lines:
+>>
+>>           if (lo) {
+>>                   pnfs_clear_lseg_list(lo,&tmp_list,&range);
+>>                   WARN_ON(!list_empty(&nfsi->layout->segs));
+>>                   WARN_ON(!list_empty(&nfsi->layout->layouts));
+>>                   WARN_ON(nfsi->layout->refcount != 1);
+>>
+>>                   /* Matched by refcount set to 1 in alloc_init_layout_hdr */
+>>                   put_layout_hdr_locked(lo);
+>>           }
+> and what line in particular? :)
+>
+>>> By "crashed", you mean these warnings, or is there anything else?
+>>>
+>> after that machine was dead and I have to reset it. This messages I got
+>> from
+>> /var/log/messages and they was the last entries before new boot sequence.
+>>
+>> I will do the same exercise with -rc2 next week.
+Hi Benny,
 
-Sorry, but BADOWNER is an error that means "I don't get it" and the spec
-_is_ adamant about what the client should do. This is a take it or leave
-it: I'm not going to waste a lot of time and effort on this.
+I can't reproduce it with -rc3. Shall I rollback to -rc1?
 
-Trond
+Regards,
+    Tigran.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> Thanks!
+>
+>> Regards,
+>>      Tigran.
+>>
+>>> Benny
+>>>
+>>> On 2010-11-18 17:21, Tigran Mkrtchyan wrote:
+>>>> During dead client recovery procedure you client crashed in did.
+>>>>
+>>>> The procedure was: during IO disconnect network cable. We was testing
+>>>> server cleanup sequence.  Then we have connected  client back. After some
+>>>> time client reconnected...and crashed. The last thing I have seen was
+>>>> BAD_SESSION
+>>>> from the server on READ call:
+>>>>
+>>>>
+>>>>
+>>>> Nov 18 16:04:29 slinux kernel: [  555.385877] Got error -10052 from the
+>>>> server on DESTROY_SESSION. Session has been destroyed regardless...
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395300] ------------[ cut here
+>>>> ]------------
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395321] WARNING: at
+>>>> fs/nfs/pnfs.c:477 pnfs_destroy_layout+0xd6/0x100 [nfs]()
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395323] Hardware name: VirtualBox
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395324] Modules linked in:
+>>>> nfs_layout_nfsv41_files nfs lockd fscache nfs_acl auth_rpcgss sunrpc
+>>>> ipv6 af_packet binfmt_misc dm_mirror dm_multipath scsi_dh video output
+>>>> thermal sbs sbshc pci_slot fan container battery lp sg ac option
+>>>> usb_wwan usbserial thermal_sys button parport_pc tpm_tis tpm serio_raw
+>>>> tpm_bios parport e1000 i2c_piix4 pata_mpiix dm_region_hash dm_log dm_mod
+>>>> [last unloaded: mperf]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395425] Pid: 2259, comm:
+>>>> 131.169.40.35-m Not tainted 2.6.37-rc1.pnfs.1 #1
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395427] Call Trace:
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395434]  [<ffffffffa024a256>] ?
+>>>> pnfs_destroy_layout+0xd6/0x100 [nfs]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395440]  [<ffffffffa024a256>] ?
+>>>> pnfs_destroy_layout+0xd6/0x100 [nfs]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395444]  [<ffffffff81041fbc>] ?
+>>>> warn_slowpath_common+0x8c/0xc0
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395450]  [<ffffffffa024a256>] ?
+>>>> pnfs_destroy_layout+0xd6/0x100 [nfs]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395456]  [<ffffffffa024a302>] ?
+>>>> pnfs_destroy_all_layouts+0x82/0xc0 [nfs]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395462]  [<ffffffffa0242b93>] ?
+>>>> nfs4_run_state_manager+0x4e3/0x540 [nfs]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395469]  [<ffffffffa02426b0>] ?
+>>>> nfs4_run_state_manager+0x0/0x540 [nfs]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395471]  [<ffffffff8105b466>] ?
+>>>> kthread+0x96/0xa0
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395474]  [<ffffffff81003a14>] ?
+>>>> kernel_thread_helper+0x4/0x10
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395476]  [<ffffffff8105b3d0>] ?
+>>>> kthread+0x0/0xa0
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395478]  [<ffffffff81003a10>] ?
+>>>> kernel_thread_helper+0x0/0x10
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395479] ---[ end trace
+>>>> 8f55223a1de06cc6 ]---
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395480] ------------[ cut here
+>>>> ]------------
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395486] WARNING: at
+>>>> fs/nfs/pnfs.c:478 pnfs_destroy_layout+0xfc/0x100 [nfs]()
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395487] Hardware name: VirtualBox
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395488] Modules linked in:
+>>>> nfs_layout_nfsv41_files nfs lockd fscache nfs_acl auth_rpcgss sunrpc
+>>>> ipv6 af_packet binfmt_misc dm_mirror dm_multipath scsi_dh video output
+>>>> thermal sbs sbshc pci_slot fan container battery lp sg ac option
+>>>> usb_wwan usbserial thermal_sys button parport_pc tpm_tis tpm serio_raw
+>>>> tpm_bios parport e1000 i2c_piix4 pata_mpiix dm_region_hash dm_log dm_mod
+>>>> [last unloaded: mperf]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395503] Pid: 2259, comm:
+>>>> 131.169.40.35-m Tainted: G        W   2.6.37-rc1.pnfs.1 #1
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395504] Call Trace:
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395510]  [<ffffffffa024a27c>] ?
+>>>> pnfs_destroy_layout+0xfc/0x100 [nfs]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395516]  [<ffffffffa024a27c>] ?
+>>>> pnfs_destroy_layout+0xfc/0x100 [nfs]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395518]  [<ffffffff81041fbc>] ?
+>>>> warn_slowpath_common+0x8c/0xc0
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395523]  [<ffffffffa024a27c>] ?
+>>>> pnfs_destroy_layout+0xfc/0x100 [nfs]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395529]  [<ffffffffa024a302>] ?
+>>>> pnfs_destroy_all_layouts+0x82/0xc0 [nfs]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395536]  [<ffffffffa0242b93>] ?
+>>>> nfs4_run_state_manager+0x4e3/0x540 [nfs]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395542]  [<ffffffffa02426b0>] ?
+>>>> nfs4_run_state_manager+0x0/0x540 [nfs]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395544]  [<ffffffff8105b466>] ?
+>>>> kthread+0x96/0xa0
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395546]  [<ffffffff81003a14>] ?
+>>>> kernel_thread_helper+0x4/0x10
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395548]  [<ffffffff8105b3d0>] ?
+>>>> kthread+0x0/0xa0
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395550]  [<ffffffff81003a10>] ?
+>>>> kernel_thread_helper+0x0/0x10
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395551] ---[ end trace
+>>>> 8f55223a1de06cc7 ]---
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395552] ------------[ cut here
+>>>> ]------------
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395558] WARNING: at
+>>>> fs/nfs/pnfs.c:479 pnfs_destroy_layout+0xe9/0x100 [nfs]()
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395559] Hardware name: VirtualBox
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395560] Modules linked in:
+>>>> nfs_layout_nfsv41_files nfs lockd fscache nfs_acl auth_rpcgss sunrpc
+>>>> ipv6 af_packet binfmt_misc dm_mirror dm_multipath scsi_dh video output
+>>>> thermal sbs sbshc pci_slot fan container battery lp sg ac option
+>>>> usb_wwan usbserial thermal_sys button parport_pc tpm_tis tpm serio_raw
+>>>> tpm_bios parport e1000 i2c_piix4 pata_mpiix dm_region_hash dm_log dm_mod
+>>>> [last unloaded: mperf]
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395575] Pid: 2259, comm:
+>>>> 131.169.40.35-m Tainted: G        W   2.6.37-rc1.pnfs.1 #1
+>>>> Nov 18 16:04:29 slinux kernel: [  555.395576] Call Trace:
+>>>>
+>>>> this is
+>>>>
+>>>> pnfs-all-2.6.37-rc1-2010-11-03 from Banny's tree (git
+>>>>     6a1df873544d146fcdc493034b170879985909e8) +
+>>>> http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=blobdiff;f=mm/vmstat.c;h=42eac4d33216b81c307a87016e821051bc86146e;hp=cd2e42be7b68f73dc60f40631f2b9f87708d3b47;hb=ff8b16d7e15a8ba2a6086645614a483e048e3fbf;hpb=81a6cff678ecee7cdc0658285d3150660c07cfce
+>>>>
+>>>>
+>>>>
+>>>> Regards,
+>>>>       Tigran.
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
