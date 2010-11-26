@@ -1,76 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:38727 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751572Ab0K2Oke (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 09:40:34 -0500
-Subject: Re: [PATCH] mount: make sure mount correctly when kernel not support NFSv4
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4CEDFA23.5030103@cn.fujitsu.com>
-Date: Mon, 29 Nov 2010 09:40:07 -0500
-Cc: Steve Dickson <SteveD@redhat.com>, NFSv3 list <linux-nfs@vger.kernel.org>
-Message-Id: <96BE5F60-06F3-4CE9-8C1D-713992D3F246@oracle.com>
-References: <4CEDFA23.5030103@cn.fujitsu.com>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Received: from mailout-de.gmx.net ([213.165.64.23]:47268 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+	id S1754372Ab0KZMFq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Nov 2010 07:05:46 -0500
+Date: Fri, 26 Nov 2010 13:05:41 +0100 (CET)
+From: Guennadi Liakhovetski <g.liakhovetski@gmx.de>
+To: linux-nfs@vger.kernel.org
+cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Bryan Schumaker <bjschuma@netapp.com>, rees@umich.edu, sim@hostway.ca
+Subject: [REGRESSION] git commit d1bacf9e "NFS: add readdir cache array" is
+ bad
+Message-ID: <Pine.LNX.4.64.1011261255260.16655@axis700.grange>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hi all
 
-On Nov 25, 2010, at 12:54 AM, Mi Jinlong wrote:
+I've bisected the problem, reported several times before:
 
-> When user's nfs client(kernel) don't support NFSv4, maybe they build
-> kernel without NFSv4, there is a problem.
-> 
-> When using command "mount SERVER-IP:/nfsv3 /mnt/" to mount NFSv3
-> filesystem, mount will fail and get error:
-> 
-> "mount.nfs: an incorrect mount option was specified"
-> 
-> as above, the mount should success, but it fail.
-> 
-> When the mount command without specific NFS version, nfs-utils will
-> try to mount NFSv4 at first, but the kernel don't support, the kernel
-> will return with error EINVAL for parsing option (vers=4) fail.
+http://www.spinics.net/lists/linux-nfs/msg17208.html
+http://www.spinics.net/lists/linux-nfs/msg17298.html
 
-Maybe the kernel should return EOPNOTSUPP in that case?
+(authors cc'ed) and also causing reproducibly problems on my sh7724 SuperH 
+and sh7372 ARM Debian systems. Commit
 
-> nfs-utils should continue to try mounting NFSv3 when meeting that.
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
-> utils/mount/stropts.c |    4 ++++
-> 1 files changed, 4 insertions(+), 0 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 50a1a2a..e880c45 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -788,6 +788,10 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
-> 		/* Linux servers prior to 2.6.25 may return
-> 		 * EPERM when NFS version 4 is not supported. */
-> 		goto fall_back;
-> +	case EINVAL:
-> +		/* If Linux kernel don't support NFSv4, the EINVAL
-> +		 * will be return for parsing option (vers=4) fail. */
-> +		goto fall_back;
-> 	default:
-> 		return result;
-> 	}
-> -- 
-> 1.7.3.2
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+commit d1bacf9eb2fd0e7ef870acf84b9e3b157dcfa7dc
+Author: Bryan Schumaker <bjschuma@netapp.com>
+Date:   Fri Sep 24 14:48:42 2010 -0400
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+    NFS: add readdir cache array
 
+can be verified to be the culprit. Would be nice, if the other two 
+reporters could also verify this commit. Or is there already a fix 
+available?
 
-
-
+Thanks
+Guennadi
+---
+Guennadi Liakhovetski, Ph.D.
+Freelance Open-Source Software Developer
+http://www.open-technology.de/
