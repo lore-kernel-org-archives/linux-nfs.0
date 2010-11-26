@@ -1,119 +1,169 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og106.obsmtp.com ([64.18.0.182]:38724 "HELO
-	exprod5og106.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755943Ab0KJNDX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Nov 2010 08:03:23 -0500
-Message-ID: <4CDA9812.5060906@panasas.com>
-Date: Wed, 10 Nov 2010 15:03:14 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: kernel panic with 2.6.37-rc1 +pnfs
-References: <4CD95DB5.2030006@desy.de> <4CDA74F5.90700@panasas.com>
-In-Reply-To: <4CDA74F5.90700@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:28751 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754250Ab0KZS4I convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Nov 2010 13:56:08 -0500
+Subject: [GIT PULL] Please pull NFS client bugfixes
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 26 Nov 2010 13:56:07 -0500
+Message-ID: <1290797767.4905.11.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 11/10/2010 12:33 PM, Benny Halevy wrote:
-> On 2010-11-09 16:41, Tigran Mkrtchyan wrote:
->>
->>
->> pnfs-all-2.6.37-rc1-2010-11-03 from Banny's tree (git 
->> 6a1df873544d146fcdc493034b170879985909e8)
->> I am not sure that this is NFS code issue, but anyway. With NFS IO  
->> minutes machine becomes unresponcive.
->> This prevents us to update our cluster with latest code base.
->>
->> Tigran.
->>
->> [  293.145013] general protection fault: 0000 [#1] SMP
->> [  293.145017] last sysfs file: 
->> /sys/devices/pci0000:00/0000:00:0d.0/resource
->> [  293.145019] CPU 0
->> [  293.145021] Modules linked in: ipv6 af_packet binfmt_misc dm_mirror 
->> dm_multipath scsi_dh video output thermal sbs sbshc pci_slot fan 
->> container battery lp sg option usb_wwan ac usbserial button thermal_sys 
->> parport_pc serio_raw parport tpm_tis tpm tpm_bios e1000 i2c_piix4 
->> pata_mpiix dm_region_hash dm_log dm_mod [last unloaded: mperf]
->> [  293.145042]
->> [  293.145045] Pid: 1953, comm: sadc Not tainted 2.6.37-rc1.pnfs.1 #1 
->> /VirtualBox
->> [  293.145047] RIP: 0010:[<ffffffff811a2cfa>]  [<ffffffff811a2cfa>] 
->> strnlen+0xa/0x30
->> [  293.145054] RSP: 0018:ffff88002d4cfcd0  EFLAGS: 00010297
->> [  293.145056] RAX: ffffffff814d5cfa RBX: ffffffffffffffff RCX: 
->> ffffffffffffffff
->> [  293.145058] RDX: fffffffffffffffe RSI: ffffffffffffffff RDI: 
->> 9a81ffffffff814d
->> [  293.145060] RBP: 9a81ffffffff814d R08: 0000000000000000 R09: 
->> ffffffff8165c4a8
->> [  293.145062] R10: 00007f73dd7243fb R11: 0000000000000246 R12: 
->> 0000000000000000
->> [  293.145064] R13: ffff88002d47d000 R14: ffff88002d47c000 R15: 
->> 00000000ffffffff
->> [  293.145071] FS:  00007f73dd70b6e0(0000) GS:ffff88003fc00000(0000) 
->> knlGS:0000000000000000
->> [  293.145074] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->> [  293.145076] CR2: 00007f73dd724000 CR3: 000000002d4a6000 CR4: 
->> 00000000000006f0
->> [  293.145083] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 
->> 0000000000000000
->> [  293.145085] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 
->> 0000000000000400
->> [  293.145088] Process sadc (pid: 1953, threadinfo ffff88002d4ce000, 
->> task ffff88003d5a51f0)
->> [  293.145091] Stack:
->> [  293.145093]  ffffffff811a46bc ffff88002d41e840 ffffffff814d98f9 
->> 0000000000000002
->> [  293.145096]  ffff88002d47c000 ffff88002d4cfd78 ffff88002d47d000 
->> ffffffff814d98fb
->> [  293.145100]  ffffffff811a5488 0000000000001000 ffff88002d47c000 
->> ffffffffff0a0004
->> [  293.145104] Call Trace:
->> [  293.145107]  [<ffffffff811a46bc>] ? string+0x4c/0x100
->> [  293.145110]  [<ffffffff811a5488>] ? vsnprintf+0x218/0x560
->> [  293.145114]  [<ffffffff810efac7>] ? seq_printf+0x67/0xa0
->> [  293.145118]  [<ffffffff81043d32>] ? get_online_cpus+0x22/0x50
->> [  293.145121]  [<ffffffff81043d82>] ? put_online_cpus+0x22/0x70
->> [  293.145125]  [<ffffffff810ac71f>] ? vmstat_start+0x7f/0xa0
->> [  293.145128]  [<ffffffff810abeb3>] ? vmstat_show+0x23/0x30
->> [  293.145130]  [<ffffffff810eff2f>] ? seq_read+0xaf/0x3a0
->> [  293.145134]  [<ffffffff8111e223>] ? proc_reg_read+0x73/0xb0
->> [  293.145138]  [<ffffffff810d43ed>] ? vfs_read+0xcd/0x170
->> [  293.145141]  [<ffffffff810d4633>] ? sys_read+0x53/0x90
->> [  293.145144]  [<ffffffff81002c6b>] ? system_call_fastpath+0x16/0x1b
->> [  293.145146] Code: 01 e8 38 10 74 0b 48 83 e8 01 48 39 c5 76 f3 31 c0 
->> 5b 5d c3 66 0f 1f 44 00 00 0f 1f 80 00 00 00 00 48 8d 56 ff 48 83 fa ff 
->> 74 21 <80> 3f 00 74 1c 48 89 f8 eb 05 80 38 00 74 0e 48 83 ea 01 48 83
->> [  293.145171] RIP  [<ffffffff811a2cfa>] strnlen+0xa/0x30
->> [  293.145174]  RSP <ffff88002d4cfcd0>
->> [  293.145177] ---[ end trace 63b42edd98a8dea9 ]---
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> I guess that ff8b16d vmstat: fix offset calculation on void*
-> could fix this problem.  It's currently in Linus's master branch
-> and he hasn't released 2.6.37-rc2 yet.
-> Can you please try to reproduce the problem you saw with this patch?
-> 
+Hi Linus,
 
-You can just merge linus master ontop of the pnfs-all-latest
-[]$ git checkout pnfs-all-latest
-[]$ git remote add -f linus git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
-[]$ git merge linus/master
-(Hopefully no merge conflicts with nfs bug fixes)
+Please pull from the "bugfixes" branch of the repository at
 
-Cheers
+   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
 
-> Benny
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This will update the following files through the appended changesets.
+
+  Cheers,
+    Trond
+
+----
+ fs/nfs/dir.c            |   62 +++++++++++++++++++++++++---------------------
+ fs/nfs/direct.c         |    2 +-
+ fs/nfs/internal.h       |    9 +++++++
+ fs/nfs/nfs2xdr.c        |    4 ++-
+ fs/nfs/nfs3xdr.c        |    4 ++-
+ fs/nfs/nfs4xdr.c        |    6 ++++-
+ include/linux/nfs_xdr.h |    1 +
+ net/sunrpc/clnt.c       |   24 +++++++++++-------
+ 8 files changed, 71 insertions(+), 41 deletions(-)
+
+commit 0b26a0bf6ff398185546432420bb772bcfdf8d94
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Sat Nov 20 14:26:44 2010 -0500
+
+    NFS: Ensure we return the dirent->d_type when it is known
+    
+    Store the dirent->d_type in the struct nfs_cache_array_entry so that we
+    can use it in getdents() calls.
+    
+    This fixes a regression with the new readdir code.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 3020093f578fb6c9acc6914dfd887a1ebd1db659
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Sat Nov 20 15:18:22 2010 -0500
+
+    NFS: Correct the array bound calculation in nfs_readdir_add_to_array
+    
+    It looks as if the array size calculation in MAX_READDIR_ARRAY does not
+    take the alignment of struct nfs_cache_array_entry into account.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit ece0b4233b6b915d1f63add2bd9f2733aec6317a
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Sat Nov 20 13:55:33 2010 -0500
+
+    NFS: Don't ignore errors from nfs_do_filldir()
+    
+    We should ignore the errors from the filldir callback, and just interpret
+    them as meaning we should exit, however we should definitely pass back
+    ENOMEM errors.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 85f8607e163f8d281fb407357279cb4ac6df12e6
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Sat Nov 20 13:24:49 2010 -0500
+
+    NFS: Fix the error handling in "uncached_readdir()"
+    
+    Currently, uncached_readdir() is broken because if fails to handle
+    the results from nfs_readdir_xdr_to_array() correctly.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 7a8e1dc34f52fd2927dbf7e520d7cd8eadc51336
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Sat Nov 20 13:24:46 2010 -0500
+
+    NFS: Fix a page leak in uncached_readdir()
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit e7c58e974a0318fcca5368e7b3570e10e9ae9028
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Sat Nov 20 13:22:24 2010 -0500
+
+    NFS: Fix a page leak in nfs_do_filldir()
+    
+    nfs_do_filldir() must always free desc->page when it is done, otherwise
+    we end up leaking the page.
+    
+    Also remove unused variable 'dentry'.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 5c346854d8ce6ca91931f8fc9177934257a667d0
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Sat Nov 20 12:43:45 2010 -0500
+
+    NFS: Assume eof if the server returns no readdir records
+    
+    Some servers are known to be buggy w.r.t. this. Deal with them...
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 463a376eae1c92a66c912af539bfd4bbefa37673
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Sat Nov 20 12:22:20 2010 -0500
+
+    NFS: Buffer overflow in ->decode_dirent() should not be fatal
+    
+    Overflowing the buffer in the readdir ->decode_dirent() should not lead to
+    a fatal error, but rather to an attempt to reread the record in question.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit b47d19de2c714020ba8f5545a6e7d4968f37eb45
+Author: Arun Bharadwaj <arun@linux.vnet.ibm.com>
+Date:   Thu Nov 18 10:36:43 2010 +0000
+
+    Pure nfs client performance using odirect.
+    
+    When an application opens a file with O_DIRECT flag, if the size of
+    the data that is written is equal to wsize, the client sends a
+    WRITE RPC with stable flag set to UNSTABLE followed by a single
+    COMMIT RPC rather than sending a single WRITE RPC with the stable
+    flag set to FILE_SYNC. This a bug.
+    
+    Patch to fix this.
+    
+    Signed-off-by: Arun R Bharadwaj <arun@linux.vnet.ibm.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+commit 5fc43978a79e8021c189660ab63249fd29c5fb32
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Sat Nov 20 11:13:31 2010 -0500
+
+    SUNRPC: Fix an infinite loop in call_refresh/call_refreshresult
+    
+    If the rpcauth_refreshcred() call returns an error other than
+    EACCES, ENOMEM or ETIMEDOUT, we currently end up looping forever
+    between call_refresh and call_refreshresult.
+    
+    The correct thing to do here is to exit on all errors except
+    EAGAIN and ETIMEDOUT, for which case we retry 3 times, then
+    return EACCES.
+    
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
