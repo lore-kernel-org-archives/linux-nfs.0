@@ -1,73 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx.ij.cx ([212.13.201.15]:55539 "EHLO wes.ijneb.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755192Ab0KPTFs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Nov 2010 14:05:48 -0500
-Date: Tue, 16 Nov 2010 19:05:45 +0000 (GMT)
-From: Mark Hills <mark@pogo.org.uk>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-cc: linux-nfs@vger.kernel.org, neilb@suse.de
-Subject: Re: Listen backlog set to 64
-In-Reply-To: <20101116182026.GA3971@fieldses.org>
-Message-ID: <alpine.NEB.2.01.1011161854580.6298@jrf.vwaro.pbz>
-References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz> <20101116182026.GA3971@fieldses.org>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from netnation.com ([204.174.223.2]:39468 "EHLO peace.netnation.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753243Ab0K0K1j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 27 Nov 2010 05:27:39 -0500
+Date: Sat, 27 Nov 2010 02:27:32 -0800
+From: Simon Kirby <sim@hostway.ca>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Guennadi Liakhovetski <g.liakhovetski@gmx.de>, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Bryan Schumaker <bjschuma@netapp.com>, rees@umich.edu
+Subject: Re: [REGRESSION] git commit d1bacf9e "NFS: add readdir cache
+	array" is bad
+Message-ID: <20101127102732.GD12175@hostway.ca>
+References: <Pine.LNX.4.64.1011261255260.16655@axis700.grange> <1290794726.4905.8.camel@heimdal.trondhjem.org> <20101127002548.GA20008@hostway.ca>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101127002548.GA20008@hostway.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 16 Nov 2010, J. Bruce Fields wrote:
+On Fri, Nov 26, 2010 at 04:25:48PM -0800, Simon Kirby wrote:
 
-> On Mon, Nov 15, 2010 at 06:43:52PM +0000, Mark Hills wrote:
-> > I am looking into an issue of hanging clients to a set of NFS servers, on 
-> > a large HPC cluster.
-> > 
-> > My investigation took me to the RPC code, svc_create_socket().
-> > 
-> > 	if (protocol == IPPROTO_TCP) {
-> > 		if ((error = kernel_listen(sock, 64)) < 0)
-> > 			goto bummer;
-> > 	}
-> > 
-> > A fixed backlog of 64 connections at the server seems like it could be too 
-> > low on a cluster like this, particularly when the protocol opens and 
-> > closes the TCP connection.
-> > 
-> > I wondered what is the rationale is behind this number, particuarly as it 
-> > is a fixed value. Perhaps there is a reason why this has no effect on 
-> > nfsd, or is this a FAQ for people on large systems?
-> > 
-> > The servers show overflow of a listening queue, which I imagine is 
-> > related.
-> > 
-> >   $ netstat -s
-> >   [...]
-> >   TcpExt:
-> >     6475 times the listen queue of a socket overflowed
-> >     6475 SYNs to LISTEN sockets ignored
-> > 
-> > The affected servers are old, kernel 2.6.9. But this limit of 64 is 
-> > consistent across that and the latest kernel source.
+> On Fri, Nov 26, 2010 at 01:05:26PM -0500, Trond Myklebust wrote:
 > 
-> Looks like the last time that was touched was 8 years ago, by Neil (below, from
-> historical git archive).
+> > On Fri, 2010-11-26 at 13:05 +0100, Guennadi Liakhovetski wrote:
+> > > Hi all
+> > > 
+> > > I've bisected the problem, reported several times before:
+> > > 
+> > > http://www.spinics.net/lists/linux-nfs/msg17208.html
+> > > http://www.spinics.net/lists/linux-nfs/msg17298.html
+> > > 
+> > > (authors cc'ed) and also causing reproducibly problems on my sh7724 SuperH 
+> > > and sh7372 ARM Debian systems. Commit
+> > > 
+> > > commit d1bacf9eb2fd0e7ef870acf84b9e3b157dcfa7dc
+> > > Author: Bryan Schumaker <bjschuma@netapp.com>
+> > > Date:   Fri Sep 24 14:48:42 2010 -0400
+> > > 
+> > >     NFS: add readdir cache array
+> > > 
+> > > can be verified to be the culprit. Would be nice, if the other two 
+> > > reporters could also verify this commit. Or is there already a fix 
+> > > available?
+> > > 
+> > 
+> > That patch removes readdirplus, and cannot therefore be responsible for
+> > the fileid changed error that is reported in the emails below (which
+> > does not occur when mounting with -onordirplus). It introduces a bunch
+> > of other bugs (most which have been fixed), but not that one.
+> > 
+> > I've asked Simon for info about which NFS versions he is seeing this
+> > with. He has not replied so far, but if you are seeing the same bug,
+> > then I'd appreciate the same info.
+> > Does the fileid bug occur with NFSv3 and NFSv4 or is it limited to one
+> > or the other?
 > 
-> I'd be inclined to just keep doubling it until people don't complain,
-> unless it's very expensive.  (How much memory (or whatever else) does a
-> pending connection tie up?)
+> Sorry, it's NFSv3.  We still need to fix the ID mapper's ability to work
+> with libnss-mysql-bg before we can try NFSv4.  I went trying to track
+> down the inodes on the server, but didn't get very far.  Would this still
+> be helpful?
 
-Perhaps SOMAXCONN could also be appropriate.
- 
-> The clients should be retrying, though, shouldn't they?
+Ok, so I tracked them down, and they didn't seem to be particularly
+unusual, so I tried a not-particularly-unusual thing that I figured might
+work, and reproduced it:
 
-I think so, but a quick glance at net/sunrpc/clnt.c looks like the 
-timeouts are fixed, not randomised. With nothing to smooth out the load 
-from a large number of (identical) clients, potentially they could 
-continue this process for some time.
+server: echo test > a
+client: ls -l
+server: echo test > b ; mv b a
+client: ls -l
 
-I may be in the wrong client code here though for a client TCP connection, 
-perhaps someone with more experience can comment. I hope to investigate 
-further tomorrow.
+That's it.  The kernel (2.6.37-rc3), on the final "ls -l", says:
 
--- 
-Mark
+[12814.611197] NFS: server 10.10.52.228 error: fileid changed
+[12814.611200] fsid 0:3f: expected fileid 0x122efbf1, got 0x122efc15
+
+"ls -li" shows the inode updated, so maybe this isn't even a bug?
+
+Simon-
