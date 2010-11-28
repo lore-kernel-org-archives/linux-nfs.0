@@ -1,103 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:26569 "EHLO mx2.netapp.com"
+Received: from borg.medozas.de ([188.40.89.202]:43991 "EHLO borg.medozas.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754223Ab0K3W3G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 17:29:06 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 2/5] NFS implement v4.0 callback_ident
-Date: Tue, 30 Nov 2010 15:31:08 -0500
-Message-Id: <1291149071-2026-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1291149071-2026-2-git-send-email-andros@netapp.com>
-References: <1291149071-2026-1-git-send-email-andros@netapp.com>
- <1291149071-2026-2-git-send-email-andros@netapp.com>
+	id S1753805Ab0K1R4i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 28 Nov 2010 12:56:38 -0500
+Date: Sun, 28 Nov 2010 18:56:37 +0100 (CET)
+From: Jan Engelhardt <jengelh@medozas.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS: server error: fileid changed
+In-Reply-To: <20101128160543.GA18889@fieldses.org>
+Message-ID: <alpine.LNX.2.01.1011281853520.7586@obet.zrqbmnf.qr>
+References: <alpine.LNX.2.01.1011281518090.14665@obet.zrqbmnf.qr> <20101128160543.GA18889@fieldses.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
 
-Provide a unique callback identifier per SETCLIENTID call used to identify the
-v4.0 callback service associated with the clientid.
+On Sunday 2010-11-28 17:05, J. Bruce Fields wrote:
+>On Sun, Nov 28, 2010 at 03:23:23PM +0100, Jan Engelhardt wrote:
+>> Sometime between 2.6.33 and 2.6.36 it seems, knfsd has become really 
+>> unreliable, having clients start to emit messages like
+>> 
+>> (nfsv3)
+>> [42306.521225] NFS: server nova error: fileid changed
+>> [42306.521226] fsid 0:10: expected fileid 0x1b007be, got 0x1b006b0
+>> 
+>> On nfsv4, it is even worse, as updates on the server are not immediately 
+>> reflected on the client like it was the case on nfsv3.
+>> Unfortunately, that is all the information I currently have.
+>> (Server is on 2.6.36-rc8, client on 2.6.37-rc1.)
+>
+>Have you really being changing only the server, or have you been
+>changing the client at the same time?
+>
+>See e.g.
+>	http://marc.info/?l=linux-nfs&m=129088225122788&w=2
 
-Do not worry about wrap around. Zero value means unset.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c         |    5 +++++
- fs/nfs/nfs4state.c        |    1 +
- include/linux/nfs_fs_sb.h |    1 +
- include/linux/nfs_xdr.h   |    1 +
- 4 files changed, 8 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6a653ff..a241957 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3461,6 +3461,8 @@ do_state_recovery:
- 	return -EAGAIN;
- }
- 
-+static u32 current_cb_ident = 1;
-+
- int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 		unsigned short port, struct rpc_cred *cred,
- 		struct nfs4_setclientid_res *res)
-@@ -3469,6 +3471,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 	struct nfs4_setclientid setclientid = {
- 		.sc_verifier = &sc_verifier,
- 		.sc_prog = program,
-+		.sc_cb_ident = current_cb_ident++,
- 	};
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SETCLIENTID],
-@@ -3513,6 +3516,8 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 			if (++clp->cl_id_uniquifier == 0)
- 				break;
- 	}
-+	if (status == NFS_OK)
-+		res->cb_ident = setclientid.sc_cb_ident;
- 	return status;
- }
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index f575a31..fe61422 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -79,6 +79,7 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 	if (status != 0)
- 		goto out;
- 	clp->cl_clientid = clid.clientid;
-+	clp->cl_cb_ident = clid.cb_ident;
- 	nfs4_schedule_state_renewal(clp);
- out:
- 	return status;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 452d964..1eaa054 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -71,6 +71,7 @@ struct nfs_client {
- 	 */
- 	char			cl_ipaddr[48];
- 	unsigned char		cl_id_uniquifier;
-+	u32			cl_cb_ident;	/* v4.0 callback identifier */
- 	const struct nfs4_minor_version_ops *cl_mvops;
- #endif /* CONFIG_NFS_V4 */
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 80f0719..24e77a6 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -868,6 +868,7 @@ struct nfs4_setclientid {
- struct nfs4_setclientid_res {
- 	u64				clientid;
- 	nfs4_verifier			confirm;
-+	u32				cb_ident;
- };
- 
- struct nfs4_statfs_arg {
--- 
-1.6.6
-
+For my definition of not touching the server yes. (There may be
+atime updates, but that's about it.)
