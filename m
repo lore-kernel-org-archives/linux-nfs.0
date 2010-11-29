@@ -1,146 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61650 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64207 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758137Ab0KQVQP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Nov 2010 16:16:15 -0500
-From: andros@netapp.com
-To: benny@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 3/3] NFS return an rpc auth error on back channel
-Date: Tue, 16 Nov 2010 22:36:30 -0500
-Message-Id: <1289964990-4480-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1289964990-4480-3-git-send-email-andros@netapp.com>
-References: <1289964990-4480-1-git-send-email-andros@netapp.com>
- <1289964990-4480-2-git-send-email-andros@netapp.com>
- <1289964990-4480-3-git-send-email-andros@netapp.com>
+	id S1754486Ab0K2X0S convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 18:26:18 -0500
+Subject: RE: NFSv4 behaviour on unknown users
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Spencer Shepler <spencer.shepler@gmail.com>
+Cc: Daniel.Muntz@emc.com, spelic@shiftmail.org, linux-nfs@vger.kernel.org
+In-Reply-To: <1291072571.20567.26.camel@heimdal.trondhjem.org>
+References: <1291054975.12784.17.camel@heimdal.trondhjem.org>
+	 <DE966DA98A4ABE438D726BDF1699CF610437B188C9@MX05A.corp.emc.com>
+	 <067101cb9018$d70ba2f0$8522e8d0$@gmail.com>
+	 <1291072571.20567.26.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 29 Nov 2010 18:26:14 -0500
+Message-ID: <1291073174.20567.31.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Mon, 2010-11-29 at 18:16 -0500, Trond Myklebust wrote:
+> On Mon, 2010-11-29 at 14:57 -0800, Spencer Shepler wrote:
+> > Dan,
+> > 
+> > A change to the NFSv4.0 and NFSv4.1 RFCs is unnecessary.
+> > What you suggest can be implemented today and still adhere
+> > to the RFC text.  From RFC3530 (section 4.8) and RFC5661 (section 5.9)
+> > the following text is quoted:
+> > 
+> > "  In the case where there is no translation available to the client or
+> >    server, the attribute value will be constructed without the "@".
+> >    Therefore, the absence of the @ from the owner or owner_group
+> >    attribute signifies that no translation was available at the sender
+> >    and that the receiver of the attribute should not use that string as
+> >    a basis for translation into its own internal format.  Even though
+> >    the attribute value cannot be translated, it may still be useful.  In
+> >    the case of a client, the attribute string may be used for local
+> >    display of ownership.
+> > 
+> >    To provide a greater degree of compatibility with NFSv3, which
+> >    identified users and groups by 32-bit unsigned user identifiers and
+> >    group identifiers, owner and group strings that consist of decimal
+> >    numeric values with no leading zeros can be given a special
+> >    interpretation by clients and servers that choose to provide such
+> >    support.  The receiver may treat such a user or group string as
+> >    representing the same user as would be represented by an NFSv3 uid or
+> >    gid having the corresponding numeric value.  A server is not
+> >    obligated to accept such a string, but may return an NFS4ERR_BADOWNER
+> >    instead.  To avoid this mechanism being used to subvert user and
+> >    group translation, so that a client might pass all of the owners and
+> >    groups in numeric form, a server SHOULD return an NFS4ERR_BADOWNER
+> >    error when there is a valid translation for the user or owner
+> >    designated in this way.  In that case, the client must use the
+> >    appropriate name@domain string and not the special form for
+> >    compatibility."
+> > 
+> > 
+> > I read this that if the implementation or administrator chooses
+> > to op-out of the user@domain mapping, it may do so and the client
+> > and server have a method available to them to communicate traditiona
+> > uid/gid.
+> > 
+> > So, all that is needed now it seems is some code to provide the
+> > option to the admin or as you suggest, change the default.
+> > 
+> > Spencer
+> 
+> It is way too late to change the default. All known existing NFSv4
+> servers would spit at you because they have been coded to match the
+> above normative "SHOULD".
+> 
+> Without that option, you will also need a mechanism to allow the client
+> and server to agree on a convention. Otherwise, admins have to go in and
+> manually set the correct site default on all their clients and servers.
 
-If a matching nfs_client struct is not found in the back channel NFS processing
-return an rpc auth error.
+The other problem is that when you use the naked uid or gid you are
+losing information about which domain the user belongs to.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/callback.h               |    3 +++
- fs/nfs/callback_proc.c          |    7 ++++---
- fs/nfs/callback_xdr.c           |    4 ++++
- include/linux/sunrpc/msg_prot.h |    1 +
- include/linux/sunrpc/xdr.h      |    1 +
- net/sunrpc/svc.c                |    5 +++++
- 6 files changed, 18 insertions(+), 3 deletions(-)
+While that may be fine when you are authenticating using the AUTH_SYS
+security flavour, it is just plain wrong when you are authenticating
+using RPCSEC_GSS principals (which is what the NFSv4 spec assumes that
+you will use).
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index b69bec5..3a54628 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -14,6 +14,9 @@
- #define NFS4_CALLBACK_XDRSIZE 2048
- #define NFS4_CALLBACK_BUFSIZE (1024 + NFS4_CALLBACK_XDRSIZE)
- 
-+/* Internal error for back channel server */
-+#define nfserr_deny_reply          cpu_to_be32(30003)
-+
- enum nfs4_callback_procnum {
- 	CB_NULL = 0,
- 	CB_COMPOUND = 1,
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 69d085a..ec3c84b 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -31,7 +31,7 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
- 	struct inode *inode;
- 
- 	res->bitmap[0] = res->bitmap[1] = 0;
--	res->status = htonl(NFS4ERR_BADHANDLE);
-+	res->status = nfserr_deny_reply;
- 	clp = find_client_from_cps(cps, args->addr);
- 	if (clp == NULL)
- 		goto out;
-@@ -39,6 +39,7 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
- 	dprintk("NFS: GETATTR callback request from %s\n",
- 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
- 
-+	res->status = htonl(NFS4ERR_BADHANDLE);
- 	inode = nfs_delegation_find_inode(clp, &args->fh);
- 	if (inode == NULL)
- 		goto out_putclient;
-@@ -76,7 +77,7 @@ __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
- 	struct inode *inode;
- 	__be32 res;
- 	
--	res = htonl(NFS4ERR_BADHANDLE);
-+	res = nfserr_deny_reply;
- 	clp = find_client_from_cps(cps, args->addr);
- 	if (clp == NULL)
- 		goto out;
-@@ -598,7 +599,7 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 
- 	cps->session = NULL;
- 
--	status = htonl(NFS4ERR_BADSESSION);
-+	status = nfserr_deny_reply;
- 	clp = find_client_with_session(args->csa_addr, 4, &args->csa_sessionid);
- 	if (clp == NULL)
- 		goto out;
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 92719f1..8e17464 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -789,6 +789,10 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 		nops--;
- 	}
- 
-+	/* An nfs_client struct was not found, return an rpc auth error */
-+	if (unlikely(status == nfserr_deny_reply))
-+		status = rpc_deny_reply;
-+
- 	*hdr_res.status = status;
- 	*hdr_res.nops = htonl(nops);
- 	if (cps.session)
-diff --git a/include/linux/sunrpc/msg_prot.h b/include/linux/sunrpc/msg_prot.h
-index 77e6248..9ba9422 100644
---- a/include/linux/sunrpc/msg_prot.h
-+++ b/include/linux/sunrpc/msg_prot.h
-@@ -59,6 +59,7 @@ enum rpc_accept_stat {
- 	RPC_SYSTEM_ERR = 5,
- 	/* internal use only */
- 	RPC_DROP_REPLY = 60000,
-+	RPC_DENY_REPLY = 60001,
- };
- 
- enum rpc_reject_stat {
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 498ab93..9b4645c 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -82,6 +82,7 @@ struct xdr_buf {
- #define	rpc_garbage_args	cpu_to_be32(RPC_GARBAGE_ARGS)
- #define	rpc_system_err		cpu_to_be32(RPC_SYSTEM_ERR)
- #define	rpc_drop_reply		cpu_to_be32(RPC_DROP_REPLY)
-+#define	rpc_deny_reply		cpu_to_be32(RPC_DENY_REPLY)
- 
- #define	rpc_auth_ok		cpu_to_be32(RPC_AUTH_OK)
- #define	rpc_autherr_badcred	cpu_to_be32(RPC_AUTH_BADCRED)
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 6359c42..2c3e428 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1111,6 +1111,11 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- 				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
- 			goto dropit;
- 		}
-+		if (*statp == rpc_deny_reply) {
-+			if (procp->pc_release)
-+				procp->pc_release(rqstp, NULL, rqstp->rq_resp);
-+			goto err_bad_auth;
-+		}
- 		if (*statp == rpc_success &&
- 		    (xdr = procp->pc_encode) &&
- 		    !xdr(rqstp, resv->iov_base+resv->iov_len, rqstp->rq_resp)) {
 -- 
-1.6.6
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
