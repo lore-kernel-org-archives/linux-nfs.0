@@ -1,71 +1,148 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:26569 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753656Ab0K3W3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 17:29:05 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/5] NFSv4 callback find client fix Version 2
-Date: Tue, 30 Nov 2010 15:31:06 -0500
-Message-Id: <1291149071-2026-1-git-send-email-andros@netapp.com>
+Received: from mail-px0-f174.google.com ([209.85.212.174]:57264 "EHLO
+	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755175Ab0K2W5v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 17:57:51 -0500
+Received: by pxi15 with SMTP id 15so785551pxi.19
+        for <linux-nfs@vger.kernel.org>; Mon, 29 Nov 2010 14:57:50 -0800 (PST)
+From: "Spencer Shepler" <spencer.shepler@gmail.com>
+To: <Daniel.Muntz@emc.com>, <Trond.Myklebust@netapp.com>,
+        <spelic@shiftmail.org>
+Cc: <linux-nfs@vger.kernel.org>
+References: <1291054975.12784.17.camel@heimdal.trondhjem.org> <DE966DA98A4ABE438D726BDF1699CF610437B188C9@MX05A.corp.emc.com>
+In-Reply-To: <DE966DA98A4ABE438D726BDF1699CF610437B188C9@MX05A.corp.emc.com>
+Subject: RE: NFSv4 behaviour on unknown users
+Date: Mon, 29 Nov 2010 14:57:45 -0800
+Message-ID: <067101cb9018$d70ba2f0$8522e8d0$@gmail.com>
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
 
-The back channel server svc_process_common RPC layer pg_authenticate call
-[nfs_callback_authenticate] is shared by both the NFSv4.0 and the NFSv4.1
-callback threads. It authenticates the incoming request by finding (and
-referencing) an nfs_client struct based on the incoming request address
-and the NFS version (4). This is akin to the NFS server which authenticates
-requests by matching the server address to the exports file client list.
+Dan,
 
-Since there is no minorversion in the search, it may find the wrong
-nfs_client struct. For the nfsv4.0 callback service thread, this means it
-could find an NFSv4.1 nfs_client. For the NFSv4.1 callback service thread, it
-could find an NFSv4.0 instead of v4.1, or find an NFSv4.1 nfs_client with the
-wrong session.
+A change to the NFSv4.0 and NFSv4.1 RFCs is unnecessary.
+What you suggest can be implemented today and still adhere
+to the RFC text.  From RFC3530 (section 4.8) and RFC5661 (section 5.9)
+the following text is quoted:
 
-The nfs_client is dereferenced at the end of pg_authenticate. Another
-nfs_find_client call is done in the per operation  dispatcher routines
-for NFSv4.0 and in the cb_sequence operation dispatcher routine for NFSv4.1
-after decoding.
+"  In the case where there is no translation available to the client or
+   server, the attribute value will be constructed without the "@".
+   Therefore, the absence of the @ from the owner or owner_group
+   attribute signifies that no translation was available at the sender
+   and that the receiver of the attribute should not use that string as
+   a basis for translation into its own internal format.  Even though
+   the attribute value cannot be translated, it may still be useful.  In
+   the case of a client, the attribute string may be used for local
+   display of ownership.
 
-This means the callback server could start processing a callback, passing
-the pg_authenticate test, and have the nfs_client struct freed between the
-pg_authenticate call and the dispatcher operation call. Or, it could have
-found the wrong nfs_client in the pg_authenticate call.
-
-The current code has this behaviour: If the nfs_client is not found in
-pg_authenticate, the request is simply dropped (SVC_DROP). If an nfs_client
-is not found in the dispatcher routines NFS4ERR_BADSESSION is returned for
-v4.1 requests and NFS4ERR_BADHANDLE for v4.0 requests.
-
-The fix is to implement the v4.0 SETCLIENTID callback_ident and use it to find
-the one and only client for v4.0 callbacks, and to associate the sessionid
-with the sessions based callback service (v4.1) and use it to identify the
-one and only client. This can be done in the NFS layer, in CB_COMPOUND header
-processing for v4.0 and in CB_SEQUENCE processing in v4.1.
-In both cases, a reference to the found client is held across CB_COMPOUND
-processing.
-
-The pg_authenticate method does not have the callback_ident for CB_NULL or
-CB_COMPOUND v4.0 processing, so just the server address, nfsversion and
-minorversion is used for the client search
-
-For sessions based callback service, the sessionID can't be set until the
-return of the CREATE_SESSION call, yet the CB_NULL ping from a server can
-be initiated by the server at the receipt of the CREATE_SESSION call before
-the response is sent. So for CB_NULL, the sessionid is (usually) not set, and
-the sessionid is not used for CB_NULL pg_authenticate client searches.
-
-0001-NFS-dont-free-shared-socket-on-backchannel-put-xprt.patch
-0002-NFS-implement-v4.0-callback_ident.patch
-0003-NFS-associate-sessionid-with-callback-connection.patch
-0004-NFS-reference-nfs_client-across-cb_compound-processi.patch
-0005-NFS-RPC_AUTH_GSS-unsupported-on-v4.1-back-channel.patch
+   To provide a greater degree of compatibility with NFSv3, which
+   identified users and groups by 32-bit unsigned user identifiers and
+   group identifiers, owner and group strings that consist of decimal
+   numeric values with no leading zeros can be given a special
+   interpretation by clients and servers that choose to provide such
+   support.  The receiver may treat such a user or group string as
+   representing the same user as would be represented by an NFSv3 uid or
+   gid having the corresponding numeric value.  A server is not
+   obligated to accept such a string, but may return an NFS4ERR_BADOWNER
+   instead.  To avoid this mechanism being used to subvert user and
+   group translation, so that a client might pass all of the owners and
+   groups in numeric form, a server SHOULD return an NFS4ERR_BADOWNER
+   error when there is a valid translation for the user or owner
+   designated in this way.  In that case, the client must use the
+   appropriate name@domain string and not the special form for
+   compatibility."
 
 
--->Andy
+I read this that if the implementation or administrator chooses
+to op-out of the user@domain mapping, it may do so and the client
+and server have a method available to them to communicate traditiona
+uid/gid.
+
+So, all that is needed now it seems is some code to provide the
+option to the admin or as you suggest, change the default.
+
+Spencer
+
+
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Daniel.Muntz@emc.com
+> Sent: Monday, November 29, 2010 2:09 PM
+> To: Trond.Myklebust@netapp.com; spelic@shiftmail.org
+> Cc: linux-nfs@vger.kernel.org
+> Subject: RE: NFSv4 behaviour on unknown users
+> 
+> Looks like it's time for my annual numeric uid rant...
+> 
+> IMHO this was the silliest decision in the v4 spec, and a frequent
+> hindrance to users wanting to move from v3.  Once again, I'm going to
+> suggest that the v4.x series officially support numeric uid/gid strings as
+> first-class user identifiers, rather than trying to force "name@domain" on
+> systems that do not need this functionality, and are worse off for having
+> to support it.  The fact that every OS needs different configuration to
+> get it working just adds to the insanity.  Supply something that works
+> (numeric id strings) as the default, but allow the name@domain
+> "enhancement" for those who want it.  Then, everything just works, people
+> seamlessly migrate to v4.x, and world peace is achieved.  There could even
+> be an option to disable numeric id string support for those vehemently
+> opposed to its existence, but at least in this case sysadmins have to go
+> out of their way to make their system return nobody/nogroup for all users,
+> rather than being the default behavior.
+> 
+>   -Dan
+> 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Trond Myklebust
+> Sent: Monday, November 29, 2010 10:23 AM
+> To: Spelic
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: NFSv4 behaviour on unknown users
+> 
+> On Mon, 2010-11-29 at 19:12 +0100, Spelic wrote:
+> > Hello all
+> > we recently moved to nfsv4 from v3.
+> >
+> > I'm currently using idmapd and not kerberos.
+> >
+> > I noticed that now, with idmapd (and with idmapd is the only way I
+> > know for configuring nfsv4 for now), users that are not known at
+> > server side are squashed to nobody / nogroup  (65534 / 65534).
+> > And a chown by root from the client fails if the user is not known at
+> > server side.
+> >
+> > That's a problem... now we need ldap everywhere...
+> >
+> > We were often using NFS for exporting some diskspace to machines on an
+> > as-needed basis, so this new behaviour complicates the things greatly
+> > for us :-/ It's almost easier to setup iSCSI targets now :-((
+> >
+> > Is there a way to have nfsv4 with the behaviour of users of nfsv3,
+> > that is, using numeric IDs instead of the names, like: "nfsserver,
+> > don't care if you don't know the user, just give me the numeric ID for
+> the file..."
+> 
+> No. That is not allowed by the spec.
+> 
+> Trond
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org More majordomo info at
+> http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org More majordomo info at
+> http://vger.kernel.org/majordomo-info.html
+
