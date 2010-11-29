@@ -1,76 +1,165 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:52633 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933795Ab0KQR7r (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:59:47 -0500
-Received: by iwn35 with SMTP id 35so2387538iwn.19
-        for <linux-nfs@vger.kernel.org>; Wed, 17 Nov 2010 09:59:47 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/12] Additional XDR clean-up
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 17 Nov 2010 12:59:43 -0500
-Message-ID: <20101117175317.29429.90956.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:8335 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755031Ab0K2XQY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 18:16:24 -0500
+Subject: RE: NFSv4 behaviour on unknown users
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Spencer Shepler <spencer.shepler@gmail.com>
+Cc: Daniel.Muntz@emc.com, spelic@shiftmail.org, linux-nfs@vger.kernel.org
+In-Reply-To: <067101cb9018$d70ba2f0$8522e8d0$@gmail.com>
+References: <1291054975.12784.17.camel@heimdal.trondhjem.org>
+	 <DE966DA98A4ABE438D726BDF1699CF610437B188C9@MX05A.corp.emc.com>
+	 <067101cb9018$d70ba2f0$8522e8d0$@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 29 Nov 2010 18:16:11 -0500
+Message-ID: <1291072571.20567.26.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi-
+On Mon, 2010-11-29 at 14:57 -0800, Spencer Shepler wrote:
+> Dan,
+> 
+> A change to the NFSv4.0 and NFSv4.1 RFCs is unnecessary.
+> What you suggest can be implemented today and still adhere
+> to the RFC text.  From RFC3530 (section 4.8) and RFC5661 (section 5.9)
+> the following text is quoted:
+> 
+> "  In the case where there is no translation available to the client or
+>    server, the attribute value will be constructed without the "@".
+>    Therefore, the absence of the @ from the owner or owner_group
+>    attribute signifies that no translation was available at the sender
+>    and that the receiver of the attribute should not use that string as
+>    a basis for translation into its own internal format.  Even though
+>    the attribute value cannot be translated, it may still be useful.  In
+>    the case of a client, the attribute string may be used for local
+>    display of ownership.
+> 
+>    To provide a greater degree of compatibility with NFSv3, which
+>    identified users and groups by 32-bit unsigned user identifiers and
+>    group identifiers, owner and group strings that consist of decimal
+>    numeric values with no leading zeros can be given a special
+>    interpretation by clients and servers that choose to provide such
+>    support.  The receiver may treat such a user or group string as
+>    representing the same user as would be represented by an NFSv3 uid or
+>    gid having the corresponding numeric value.  A server is not
+>    obligated to accept such a string, but may return an NFS4ERR_BADOWNER
+>    instead.  To avoid this mechanism being used to subvert user and
+>    group translation, so that a client might pass all of the owners and
+>    groups in numeric form, a server SHOULD return an NFS4ERR_BADOWNER
+>    error when there is a valid translation for the user or owner
+>    designated in this way.  In that case, the client must use the
+>    appropriate name@domain string and not the special form for
+>    compatibility."
+> 
+> 
+> I read this that if the implementation or administrator chooses
+> to op-out of the user@domain mapping, it may do so and the client
+> and server have a method available to them to communicate traditiona
+> uid/gid.
+> 
+> So, all that is needed now it seems is some code to provide the
+> option to the admin or as you suggest, change the default.
+> 
+> Spencer
 
-Here are new patches (and a couple of old ones) that continue the XDR
-function clean-up effort.  In addition to a handful of minor fixes,
-this series includes patches that:
+It is way too late to change the default. All known existing NFSv4
+servers would spit at you because they have been coded to match the
+above normative "SHOULD".
 
- o  Remove the READ32/WRITE32 macros from the NFSv4 callback client
- o  Update the rpcbind, MNT, and NSM client XDR functions based on
-    comments since the original clean up
- o  Refactor xdr_init_{en,de}code() out of every XDR function in all
-    kernel clients
+Without that option, you will also need a mechanism to allow the client
+and server to agree on a convention. Otherwise, admins have to go in and
+manually set the correct site default on all their clients and servers.
 
-These have also been tested in Bruce's test environment.  I think
-these are ready for linux-next and 2.6.38.
-
----
-
-Chuck Lever (12):
-      SUNRPC: New xdr_streams XDR decoder API
-      SUNRPC: New xdr_streams XDR encoder API
-      SUNRPC: Avoid return code checking in rpcbind XDR encoder functions
-      NFS: Avoid return code checking in mount XDR encoder functions
-      NSM: Avoid return code checking in NSM XDR encoder functions
-      NFS: Squelch compiler warning in decode_getdeviceinfo()
-      NFS: Simplify ->decode_dirent() calling sequence
-      NFS: Fix hdrlen calculation in NFSv4's decode_read()
-      lockd: Move nlmdbg_cookie2a() to svclock.c
-      NFS: Repair whitespace damage in NFS PROC macro
-      NFSD: Update XDR decoders in NFSv4 callback client
-      NFSD: Update XDR encoders in NFSv4 callback client
+Trond
 
 
- fs/lockd/clnt4xdr.c            |  114 +--
- fs/lockd/clntxdr.c             |  114 +--
- fs/lockd/mon.c                 |  110 +--
- fs/lockd/svclock.c             |   30 +
- fs/lockd/xdr.c                 |   29 -
- fs/nfs/dir.c                   |   15 
- fs/nfs/internal.h              |    9 
- fs/nfs/mount_clnt.c            |   79 +-
- fs/nfs/nfs2xdr.c               |  263 +++-----
- fs/nfs/nfs3xdr.c               |  464 ++++++-------
- fs/nfs/nfs4_fs.h               |    1 
- fs/nfs/nfs4xdr.c               | 1401 +++++++++++++++++++---------------------
- fs/nfsd/nfs4callback.c         |  690 ++++++++++++--------
- include/linux/lockd/debug.h    |   10 
- include/linux/nfs_xdr.h        |    3 
- include/linux/sunrpc/auth.h    |    8 
- include/linux/sunrpc/clnt.h    |    4 
- include/linux/sunrpc/xdr.h     |   10 
- net/sunrpc/auth.c              |   28 +
- net/sunrpc/auth_gss/auth_gss.c |   44 +
- net/sunrpc/clnt.c              |    8 
- net/sunrpc/rpcb_clnt.c         |  137 ++--
- 22 files changed, 1728 insertions(+), 1843 deletions(-)
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > owner@vger.kernel.org] On Behalf Of Daniel.Muntz@emc.com
+> > Sent: Monday, November 29, 2010 2:09 PM
+> > To: Trond.Myklebust@netapp.com; spelic@shiftmail.org
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: RE: NFSv4 behaviour on unknown users
+> > 
+> > Looks like it's time for my annual numeric uid rant...
+> > 
+> > IMHO this was the silliest decision in the v4 spec, and a frequent
+> > hindrance to users wanting to move from v3.  Once again, I'm going to
+> > suggest that the v4.x series officially support numeric uid/gid strings as
+> > first-class user identifiers, rather than trying to force "name@domain" on
+> > systems that do not need this functionality, and are worse off for having
+> > to support it.  The fact that every OS needs different configuration to
+> > get it working just adds to the insanity.  Supply something that works
+> > (numeric id strings) as the default, but allow the name@domain
+> > "enhancement" for those who want it.  Then, everything just works, people
+> > seamlessly migrate to v4.x, and world peace is achieved.  There could even
+> > be an option to disable numeric id string support for those vehemently
+> > opposed to its existence, but at least in this case sysadmins have to go
+> > out of their way to make their system return nobody/nogroup for all users,
+> > rather than being the default behavior.
+> > 
+> >   -Dan
+> > 
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > owner@vger.kernel.org] On Behalf Of Trond Myklebust
+> > Sent: Monday, November 29, 2010 10:23 AM
+> > To: Spelic
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: Re: NFSv4 behaviour on unknown users
+> > 
+> > On Mon, 2010-11-29 at 19:12 +0100, Spelic wrote:
+> > > Hello all
+> > > we recently moved to nfsv4 from v3.
+> > >
+> > > I'm currently using idmapd and not kerberos.
+> > >
+> > > I noticed that now, with idmapd (and with idmapd is the only way I
+> > > know for configuring nfsv4 for now), users that are not known at
+> > > server side are squashed to nobody / nogroup  (65534 / 65534).
+> > > And a chown by root from the client fails if the user is not known at
+> > > server side.
+> > >
+> > > That's a problem... now we need ldap everywhere...
+> > >
+> > > We were often using NFS for exporting some diskspace to machines on an
+> > > as-needed basis, so this new behaviour complicates the things greatly
+> > > for us :-/ It's almost easier to setup iSCSI targets now :-((
+> > >
+> > > Is there a way to have nfsv4 with the behaviour of users of nfsv3,
+> > > that is, using numeric IDs instead of the names, like: "nfsserver,
+> > > don't care if you don't know the user, just give me the numeric ID for
+> > the file..."
+> > 
+> > No. That is not allowed by the spec.
+> > 
+> > Trond
+> > --
+> > Trond Myklebust
+> > Linux NFS client maintainer
+> > 
+> > NetApp
+> > Trond.Myklebust@netapp.com
+> > www.netapp.com
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org More majordomo info at
+> > http://vger.kernel.org/majordomo-info.html
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org More majordomo info at
+> > http://vger.kernel.org/majordomo-info.html
+> 
 
 -- 
-Chuck Lever
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
