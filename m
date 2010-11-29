@@ -1,90 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:63624 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752160Ab0KATnp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Nov 2010 15:43:45 -0400
-Subject: Re: Regression, bisected: sqlite locking failure on nfs
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1288639376.5009.16.camel@heimdal.trondhjem.org>
-Date: Mon, 1 Nov 2010 15:43:18 -0400
-Cc: Nick Bowler <nbowler@elliptictech.com>,
-        LKML Kernel <linux-kernel@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <59BBF1A5-1425-448A-8715-4DD20BCA2ED6@oracle.com>
-References: <20101101175854.GA3550@elliptictech.com> <D68536EB-6BE9-4DE4-B325-39FEF747092E@oracle.com> <20101101181938.GA3875@elliptictech.com> <187AEE96-9231-4899-9D65-A444503D2758@oracle.com> <1288639376.5009.16.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:61415 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751497Ab0K2UOM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 15:14:12 -0500
+Subject: Re: NFSv4 ACL set and inode attribute cache
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <m3zkssjuyz.fsf@linux.vnet.ibm.com>
+References: <m3hbfpvz0k.fsf@linux.vnet.ibm.com>
+	 <m3eiatvwpc.fsf@linux.vnet.ibm.com> <m31v6rrrfr.fsf@linux.vnet.ibm.com>
+	 <m3zkssjuyz.fsf@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 29 Nov 2010 15:13:50 -0500
+Message-ID: <1291061630.12784.49.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Mon, 2010-11-29 at 15:46 +0530, Aneesh Kumar K. V wrote:
+> On Fri, 12 Nov 2010 11:53:20 +0530, "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > On Thu, 11 Nov 2010 00:21:27 +0530, "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > > On Wed, 10 Nov 2010 23:31:31 +0530, Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > > > 
+> > > > Hi,
+> > > > 
+> > > > I guess we are not marking the inode attribute as invalid when we set
+> > > > the ACL value. For ex:
+> > > > 
+> > > > /d# mkdir sub3
+> > > > /d# ls -dl sub3
+> > > > drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
+> > > > /d# nfs4_setfacl -s A:fd:EVERYONE@:rwax sub3
+> > > > /d# ls -dl sub3
+> > > > drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
+> > > > /d# 
+> > > > 
+> > > > 
+> > > > On the server i have the mode bits as
+> > > > /d# ls -dl sub3
+> > > > drwxrwxrwx 2 root root 4096 Nov 10 17:56 sub3
+> > > > /d# 
+> > > 
+> > > We also have similar issue other way round. ie setting the mode bits
+> > > don't result in ACL values being invalidated. But a second request get
+> > > the right value of ACL as show below.
+> > > 
+> > > /d# nfs4_getfacl  x
+> > > A::OWNER@:rw
+> > > A::GROUP@:rw
+> > > A::EVERYONE@:r
+> > > /d# chmod 600 x
+> > > /d# nfs4_getfacl  x
+> > > A::OWNER@:rw
+> > > A::GROUP@:rw
+> > > A::EVERYONE@:r
+> > > /d#
+> > > 
+> > > Expected value is
+> > > 
+> > > /d# nfs4_getfacl  x
+> > > A::OWNER@:rw
+> > > 
+> > 
+> > The below patch fix the problem for me. If this is the right way
+> > to fix, I can send a proper patch with commit message and s-o-b.
+> > 
+> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > index 0f24cdf..666a48b 100644
+> > --- a/fs/nfs/nfs4proc.c
+> > +++ b/fs/nfs/nfs4proc.c
+> > @@ -3359,6 +3359,8 @@ static ssize_t nfs4_proc_get_acl(struct inode *inode, void *buf, size_t buflen)
+> >  	ret = nfs_revalidate_inode(server, inode);
+> >  	if (ret < 0)
+> >  		return ret;
+> > +	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
+> > +		nfs_zap_acl_cache(inode);
+> >  	ret = nfs4_read_cached_acl(inode, buf, buflen);
+> >  	if (ret != -ENOENT)
+> >  		return ret;
+> > @@ -3387,6 +3389,11 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
+> >  	nfs_inode_return_delegation(inode);
+> >  	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
+> >  	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
+> > +	/*
+> > +	 * Acl update can result in inode attribute update.
+> > +	 * so mark the attribute cache invalid.
+> > +	 */
+> > +	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;
 
-On Nov 1, 2010, at 3:22 PM, Trond Myklebust wrote:
+This needs to be done under the correct spin locks, so please use the
+helper nfs_mark_for_revalidate() instead of attempting to open coding
+it.
 
-> On Mon, 2010-11-01 at 14:30 -0400, Chuck Lever wrote:
->> On Nov 1, 2010, at 2:19 PM, Nick Bowler wrote:
->> 
->>> On 2010-11-01 14:07 -0400, Chuck Lever wrote:
->>>> On Nov 1, 2010, at 1:58 PM, Nick Bowler wrote:
->>>>> After installing 2.6.37-rc1, attempting to use sqlite in any capacity on
->>>>> NFS gives a locking error:
->>>>> 
->>>>> % echo 'select * from blah;' | sqlite3 blah.sqlite
->>>>> Error: near line 1: database is locked
->>>>> 
->>>>> % echo 'create table blargh(INT);' | sqlite3 blargh.sqlite
->>>>> Error: near line 1: database is locked
->>>>> 
->>>>> The result is that a lot of high-profile applications which make use of
->>>>> sqlite fail mysteriously.  Bisection reveals the following, and
->>>>> reverting the implicated commit solves the issue:
->>>> 
->>>> Nick, thanks for the report.  Is 2.6.37-rc1 running on your clients or
->>>> on your server?
->>> 
->>> Sorry for not being clear: the client is running 2.6.37-rc1.   The
->>> server is running RHEL 5.5.
->>> 
->>>> Does anything interesting appear in the kernel log when your test case
->>>> fails?
->>> 
->>> There are no unusual messages on the client... but I just logged into
->>> the server and I see lots of messages of the following form:
->>> 
->>> nfsd: request from insecure port (192.168.8.199:35766)!
->>> nfsd: request from insecure port (192.168.8.199:35766)!
->>> nfsd: request from insecure port (192.168.8.199:35766)!
->>> nfsd: request from insecure port (192.168.8.199:35766)!
->>> nfsd: request from insecure port (192.168.8.199:35766)!
->>> 
->>> (192.168.8.199 is the address of the failing client).  I can only assume
->>> that these are a result of my recent issues, since I don't have access
->>> to the system log (with timestamps) on that machine.
->> 
->> That's the problem this patch is supposed to prevent.  I'll investigate further.
->> 
+> >  	nfs_access_zap_cache(inode);
+> >  	nfs_zap_acl_cache(inode);
+> >  	return ret;
 > 
-> I suspect nlmclnt_lookup_host() is to blame. It appears to be the _only_
-> thing in the kernel that actually sets this 'srcaddr' field, and it sets
-> it to
 > 
-> const struct sockaddr source = {
-> 	.sa_family      = AF_UNSPEC,
-> };
-> 
-> You triggered the bug by removing the line
-> 
-> 	transport->srcaddr.ss_family = family;
-> 
-> from xs_create_sock().
+> Any update on this ? Another option i figured out today is to make sure
+> we add FATTR4_WORD0_ACL in nfs4_fattr_bitmap for fetching the modified
+> acl value on mode update. Similarly setfacl can be compounded with the
+> getattr request.
 
-Thanks.  Actually that line was added by Bruce very recently because Pavel's patches changed xs_bind() so it can't tolerate an AF_UNSPEC address.  My patch attempts to replace the workaround with something more permanent... but looks like I didn't find all the places that needed to be fixed.
+We actually used to compound setacl with a GETATTR(FATTR4_WORD0_ACL) in
+order to ensure that the server sets it correctly. Unfortunately, that
+caused some servers to return NFS4ERR_RESOURCE due to the burden of
+caching all that acl information in the duplicate request queue.
 
+I'd be fine with adding an ordinary getattr request, though, as long as
+it is allowed to fail (i.e. the result of __nfs4_proc_set_acl() must
+only depend on the setacl).
+
+Trond
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Trond Myklebust
+Linux NFS client maintainer
 
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
