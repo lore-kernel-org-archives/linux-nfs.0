@@ -1,59 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:59548 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755170Ab0KPVm3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 16:42:29 -0500
-Subject: Re: Strange rpc.svcgssd behavior
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20101116205436.GA4595@merit.edu>
-Date: Tue, 16 Nov 2010 16:42:09 -0500
-Cc: Valentijn Sessink <valentyn@blub.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <44C0977F-DBD6-4F87-B3A5-B2B66C784312@oracle.com>
-References: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com> <4CE2AA3B.6070302@openoffice.nl> <4CE2DF2D.9070603@blub.net> <20101116201753.GB4482@merit.edu> <577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com> <20101116205436.GA4595@merit.edu>
-To: Jim Rees <rees@umich.edu>
+Received: from blade3.isti.cnr.it ([194.119.192.19]:56772 "EHLO
+	BLADE3.ISTI.CNR.IT" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754706Ab0K2Wsh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 17:48:37 -0500
+Received: from SCRIPT-SPFWL-DAEMON.mx.isti.cnr.it by mx.isti.cnr.it
+ (PMDF V6.5 #31825) id <01NUUI24WZOWLKRHSU@mx.isti.cnr.it> for
+ linux-nfs@vger.kernel.org; Mon, 29 Nov 2010 23:47:27 +0100 (MET)
+Received: from conversionlocal.isti.cnr.it by mx.isti.cnr.it (PMDF V6.5 #31825)
+ id <01NUUI23HPSGLS5SU7@mx.isti.cnr.it> for linux-nfs@vger.kernel.org; Mon,
+ 29 Nov 2010 23:47:25 +0100 (MET)
+Received: from [151.82.44.231] by mx.isti.cnr.it (PMDF V6.5 #31826)
+ with ESMTPSA id <01NUUI20AJA2LPPCPJ@mx.isti.cnr.it> for
+ linux-nfs@vger.kernel.org; Mon, 29 Nov 2010 23:47:22 +0100 (MET)
+Date: Mon, 29 Nov 2010 23:47:20 +0100
+From: Spelic <spelic@shiftmail.org>
+Subject: Re: NFSv4 behaviour on unknown users
+In-reply-to: <20101129195010.GA6423@hostway.ca>
+To: linux-nfs@vger.kernel.org
+Message-id: <4CF42D78.3010604@shiftmail.org>
+Content-type: text/plain; format=flowed; charset=ISO-8859-1
+References: <4CF3E3AD.2040502@shiftmail.org> <20101129195010.GA6423@hostway.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 11/29/2010 08:50 PM, Simon Kirby wrote:
+> ...
+> I tried to write the NFSv4 spec people, but didn't get any reply.  I can
+> see maybe why they would want to do this by default, but it's not like
+> people don't already have years of experience with how NFSv3 and earlier
+> worked, and I still think should at least be a way to request that
+> behaviour.
+>    
 
-On Nov 16, 2010, at 3:54 PM, Jim Rees wrote:
+Yeah!!!
+currently it sucks... er...
+I don't understand... never before I came across a "new version" of a 
+software or a protocol which allows to do many fewer things than the 
+older version. This sucks. Lots of use cases for NFS here are totally lost.
 
-> Chuck Lever wrote:
-> 
->  Before we go too far down the NM path of no return, I was under the
->  impression that some applications require the host's name on the localhost
->  entries in /etc/hosts.  That's why NM puts it there.
-> 
->  There's nothing invalid about having a hostname on the localhost entries
->  in /etc/hosts, is there?
-> 
->  So I wonder if removing NM is really the solution here.
-> 
-> No, it's not.  I just like to complain about NM.
-> 
-> The original problem was that rpc.svcgssd couldn't figure out the correct
-> kerberos realm.  The fix in this particular case, I think, is to set the
-> realm explicitly in /etc/idmapd.conf.
+I'm thinking that even if I'd setup LDAP for everything here, things 
+would not be easy, because we have server1 which has certain users and 
+groups, server2+server3 which are for a different project and have 
+different users and groups etc... and now we need to have the NFS server 
+understand all those sets of users simultaneously, but the various 
+servers only need to understand theirs and the other people should not 
+be able to log in!
+Maybe it's possible (I don't know how), but looks like a major headache. 
+And now we probably cannot even have more than one LDAP server any 
+longer: all LDAP probably needs to be centralized on a single machine 
+which is where the NFS server(s) authenticate... it looks like a real 
+problem for the independence of projects... and I really fear to think 
+of what will happen if that machine fails!
 
-It's having trouble determining the NFS server's hostname.  It needs to find the right nfs/your.host key in /etc/krb5.keytab.
+I'd be glad to go back to NFS version 3 but we need nfs on infiniband 
+rdma now, and afaik it's only available in version 4.
 
-I don't know if realm self-discovery is an issue too.
+If it's still possible to change the specs or break them, well... you 
+sure have my vote!
 
-> But a more general problem is that if you don't set a realm in
-> /etc/idmapd.conf, the fallback is to whatever is returned by gethostname().
-> Shouldn't the fallback be to what is in krb5.conf?
-
-> In general, I think it's a mistake to assume that a host's security realm is
-> the same as its dns domain, especially given host mobility, the lack of
-> security in dns, and the existence of other methods (krb5.conf) to determine
-> the security realm.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Thank you
+S.
