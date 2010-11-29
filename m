@@ -1,123 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from netnation.com ([204.174.223.2]:33016 "EHLO peace.netnation.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751893Ab0KYUE0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Nov 2010 15:04:26 -0500
-Date: Thu, 25 Nov 2010 12:04:24 -0800
-From: Simon Kirby <sim@hostway.ca>
-To: linux-mm@kvack.org, linux-nfs@vger.kernel.org
-Subject: Lock contention from flush processes for NFS mounts take all cpu
-	[2.6.36, NFSv3]
-Message-ID: <20101125200424.GA23598@hostway.ca>
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-ww0-f42.google.com ([74.125.82.42]:56096 "EHLO
+	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754510Ab0K2D4Y convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Nov 2010 22:56:24 -0500
+In-Reply-To: <AANLkTim1QjTwOZ4SHdMy8Y6TOAnaOYtTwgwHXfH5H5Xn@mail.gmail.com>
+References: <20101112184353.GA32745@fieldses.org>
+	<AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
+	<20101115174837.GB10044@fieldses.org>
+	<AANLkTim1QjTwOZ4SHdMy8Y6TOAnaOYtTwgwHXfH5H5Xn@mail.gmail.com>
+Date: Mon, 29 Nov 2010 14:56:22 +1100
+Message-ID: <AANLkTinMq1W1vx-jZnf7cb1cAnh9OyoVRYtVS7zpujfs@mail.gmail.com>
+Subject: Re: lifetime of DCACHE_DISCONECTED dentries
+From: Nick Piggin <npiggin@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello!
+On Tue, Nov 16, 2010 at 5:45 PM, Nick Piggin <npiggin@gmail.com> wrote:
+> On Tue, Nov 16, 2010 at 4:48 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> On Sat, Nov 13, 2010 at 10:53:12PM +1100, Nick Piggin wrote:
+>>> On Sat, Nov 13, 2010 at 5:43 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+>>> >        - putfh: look up the filehandle.  The only alias found for the
+>>> >          inode will be DCACHE_UNHASHED alias referenced by the filp
+>>> >          associated with the nfsd open.  d_obtain_alias() doesn't like
+>>> >          this, so it creates a new DCACHE_DISCONECTED dentry and
+>>> >          returns that instead.
+>>>
+>>> This seems to be where the thing goes wrong. It isn't a hashed dentry at
+>>> this point here, so d_obtain_alias should not be making one.
+>>
+>> Sounds sensible.  (But can you think of any actual bugs that will result
+>> from trying to add a new hashed dentry in this case?)
+>
+> Well, this one? :)
+>
+>
+>>> I think the inode i_nlink games are much more appropriate on this side of
+>>> the equation, rather than the dput side (after all, d_obtain_alias is setting
+>>> up an alias for the inode).
+>>>
+>>> Can you even put the link check into __d_find_alias?
+>>>
+>>> -               if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
+>>> +               if (S_ISDIR(inode->i_mode) || !inode->i_nlink ||
+>>> !d_unhashed(alias)) {
+>>>
+>>> Something like that?
+>>
+>> The immediate result of that would be for the close rpc (or any rpc's
+>> sent after the file was unlinked) to fail with ESTALE.
+>
+> Why is that? Seems like it would be a bug, because a hashed dentry may
+> be unhashed at any time concurrently to nfsd operation, so it should be
+> able to tolerate that so long as it has a ref on the inode?
 
-I'm not sure what triggers this off, but at certain times, we see this on
-shared hosting servers with storage over NFSv3:
-
-top - 13:24:35 up 8 days,  6:47,  2 users,  load average: 69.23, 77.59, 85.53
-Tasks: 1318 total,  11 running, 1303 sleeping,   0 stopped,   4 zombie
-Cpu(s):  2.5%us, 96.6%sy,  0.0%ni,  0.0%id,  0.0%wa,  0.0%hi,  0.9%si,  0.0%st
-Mem:   4055836k total,  3746576k used,   309260k free,    39348k buffers
-Swap:   979960k total,   104868k used,   875092k free,  1558432k cached
-
-  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
- 5558 root      20   0     0    0    0 R   38  0.0  22:30.23 flush-0:58
- 5683 root      20   0     0    0    0 R   38  0.0  53:06.24 flush-0:76
-13076 root      20   0     0    0    0 R   38  0.0  30:03.96 flush-0:62
-13265 mysql     20   0 1763m 128m 5632 S   38  3.3   8:21.47 mysqld                                                                                                                                              
-25419 root      20   0     0    0    0 R   38  0.0  12:17.28 flush-0:38
- 5783 root      20   0     0    0    0 R   32  0.0  43:32.78 flush-0:78
-12725 root      20   0     0    0    0 R   32  0.0  29:45.53 flush-0:72
- 5676 root      20   0     0    0    0 R   32  0.0  41:18.64 flush-0:82
-24034 root      20   0     0    0    0 R   32  0.0  30:26.86 flush-0:32
-32192 root      20   0     0    0    0 R   32  0.0  24:36.93 flush-0:81
- 8465 root      20   0     0    0    0 R   31  0.0  19:26.43 flush-0:83
-29379 root      20   0 30228 3076 1560 R    2  0.1   0:00.25 top
-
-# cat /proc/5676/stack
-[<ffffffff81203fed>] nfs_writepages+0xed/0x160
-[<ffffffff8136b320>] _atomic_dec_and_lock+0x50/0x70
-[<ffffffff8111ac3c>] iput+0x2c/0x2a0
-[<ffffffff8112636e>] writeback_sb_inodes+0xce/0x150
-[<ffffffff81126d1c>] writeback_inodes_wb+0xcc/0x140
-[<ffffffff811270bb>] wb_writeback+0x32b/0x370
-[<ffffffff811271d4>] wb_do_writeback+0xd4/0x1e0
-[<ffffffff811273bb>] bdi_writeback_thread+0xdb/0x240
-[<ffffffff81071ae6>] kthread+0x96/0xb0
-[<ffffffff8100bd24>] kernel_thread_helper+0x4/0x10
-[<ffffffffffffffff>] 0xffffffffffffffff
-
-   PerfTop:    3894 irqs/sec  kernel:99.5%  exact:  0.0% [1000Hz cycles],  (all, 4 CPUs)
-----------------------------------------------------------------------------------------
-
-     samples  pcnt function                        DSO
-     _______ _____ _______________________________ _________________
-
-    25466.00 81.1% _raw_spin_lock                  [kernel.kallsyms]          
-      968.00  3.1% nfs_writepages                  [kernel.kallsyms]          
-      704.00  2.2% writeback_sb_inodes             [kernel.kallsyms]          
-      671.00  2.1% writeback_single_inode          [kernel.kallsyms]          
-      636.00  2.0% queue_io                        [kernel.kallsyms]          
-      393.00  1.3% nfs_write_inode                 [kernel.kallsyms]          
-      368.00  1.2% __iget                          [kernel.kallsyms]          
-      360.00  1.1% iput                            [kernel.kallsyms]          
-      334.00  1.1% bit_waitqueue                   [kernel.kallsyms]          
-      293.00  0.9% do_writepages                   [kernel.kallsyms]          
-      206.00  0.7% redirty_tail                    [kernel.kallsyms]          
-      194.00  0.6% __mark_inode_dirty              [kernel.kallsyms]          
-      135.00  0.4% _atomic_dec_and_lock            [kernel.kallsyms]          
-      119.00  0.4% write_cache_pages               [kernel.kallsyms]          
-       65.00  0.2% __wake_up_bit                   [kernel.kallsyms]          
-       62.00  0.2% is_bad_inode                    [kernel.kallsyms]          
-       41.00  0.1% find_get_pages_tag              [kernel.kallsyms]          
-       37.00  0.1% radix_tree_gang_lookup_tag_slot [kernel.kallsyms]          
-       29.00  0.1% wake_up_bit                     [kernel.kallsyms]          
-       17.00  0.1% thread_group_cputime            [kernel.kallsyms]          
-       16.00  0.1% pagevec_lookup_tag              [kernel.kallsyms]          
-       16.00  0.1% radix_tree_tagged               [kernel.kallsyms]          
-       16.00  0.1% _cond_resched                   [kernel.kallsyms]          
-       14.00  0.0% ktime_get                       [kernel.kallsyms]          
-       11.00  0.0% mapping_tagged                  [kernel.kallsyms]          
-	9.00  0.0% nfs_pageio_init                 [kernel.kallsyms]          
-	9.00  0.0% __phys_addr                     [kernel.kallsyms]          
-	8.00  0.0% nfs_pageio_doio                 [kernel.kallsyms]          
-	7.00  0.0% _raw_spin_lock_irqsave          [kernel.kallsyms]          
-	7.00  0.0% dso__load_sym                   /usr/local/bin/perf        
-
-# grep ^nr_ /proc/vmstat
-nr_free_pages 123806
-nr_inactive_anon 52656
-nr_active_anon 192039
-nr_inactive_file 351876
-nr_active_file 92993
-nr_unevictable 0
-nr_mlock 0
-nr_anon_pages 234118
-nr_mapped 4652
-nr_file_pages 457325
-nr_dirty 211
-nr_writeback 0
-nr_slab_reclaimable 79296
-nr_slab_unreclaimable 45221
-nr_page_table_pages 57483
-nr_kernel_stack 2537
-nr_unstable 0
-nr_bounce 0
-nr_vmscan_write 3387227
-nr_writeback_temp 0
-nr_isolated_anon 0
-nr_isolated_file 0
-nr_shmem 144
-
-Looking up flush-major:minor in /proc/self/mountinfo shows that these are
-all NFS mounts from a few different servers.  It doesn't seem like there
-are any large write sor anything going on at this moment -- no processes
-are in D state.  I started a "sync", which ran for another 10 minutes or
-so, and then finally exited, and everything returned to normal.
-
-Simon-
+Ping? Did you work out why nfs fails with ESTALE in that case? It seems
+to work in my testing (and do the right thing with freeing the inode).
