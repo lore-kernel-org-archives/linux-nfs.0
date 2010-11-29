@@ -1,124 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:34329 "EHLO mail-out1.uio.no"
+Received: from fieldses.org ([174.143.236.118]:46645 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751535Ab0KKFTr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Nov 2010 00:19:47 -0500
-Subject: Re: Error: state manager failed on NFSv4 server linux with error
- 127
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: "Brian J. Murrell" <brian@interlinx.bc.ca>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1289396591.21879.4.camel@pc>
-References: <1287334833.4871.6.camel@pc>
-	 <1287340520.5266.70.camel@heimdal.trondhjem.org>
-	 <1288460514.32627.105.camel@pc>
-	 <1288461151.3238.9.camel@heimdal.trondhjem.org>
-	 <1288461562.32627.151.camel@pc>
-	 <1288462786.3238.16.camel@heimdal.trondhjem.org>
-	 <1288474164.32627.383.camel@pc>
-	 <1288474886.8621.3.camel@heimdal.trondhjem.org>
-	 <1288475215.32627.406.camel@pc>
-	 <1288477327.8621.5.camel@heimdal.trondhjem.org>
-	 <1289396591.21879.4.camel@pc>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 11 Nov 2010 13:19:39 +0800
-Message-ID: <1289452779.4062.8.camel@heimdal.trondhjem.org>
+	id S1751168Ab0K2Tct (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Nov 2010 14:32:49 -0500
+Date: Mon, 29 Nov 2010 14:32:48 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Nick Piggin <npiggin@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: lifetime of DCACHE_DISCONECTED dentries
+Message-ID: <20101129193248.GA9897@fieldses.org>
+References: <20101112184353.GA32745@fieldses.org>
+ <AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
+ <20101115174837.GB10044@fieldses.org>
+ <AANLkTim1QjTwOZ4SHdMy8Y6TOAnaOYtTwgwHXfH5H5Xn@mail.gmail.com>
+ <AANLkTinMq1W1vx-jZnf7cb1cAnh9OyoVRYtVS7zpujfs@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <AANLkTinMq1W1vx-jZnf7cb1cAnh9OyoVRYtVS7zpujfs@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-11-10 at 08:43 -0500, Brian J. Murrell wrote:
-> On Sat, 2010-10-30 at 18:22 -0400, Trond Myklebust wrote: 
-> > 
-> > How about something like the following patch? It should allow you to log
-> > only the errors that lead to a state recovery situation.
+On Mon, Nov 29, 2010 at 02:56:22PM +1100, Nick Piggin wrote:
+> On Tue, Nov 16, 2010 at 5:45 PM, Nick Piggin <npiggin@gmail.com> wrote:
+> > On Tue, Nov 16, 2010 at 4:48 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >> On Sat, Nov 13, 2010 at 10:53:12PM +1100, Nick Piggin wrote:
+> >>> On Sat, Nov 13, 2010 at 5:43 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >
+> >>> >        - putfh: look up the filehandle.  The only alias found for the
+> >>> >          inode will be DCACHE_UNHASHED alias referenced by the filp
+> >>> >          associated with the nfsd open.  d_obtain_alias() doesn't like
+> >>> >          this, so it creates a new DCACHE_DISCONECTED dentry and
+> >>> >          returns that instead.
+> >>>
+> >>> This seems to be where the thing goes wrong. It isn't a hashed dentry at
+> >>> this point here, so d_obtain_alias should not be making one.
+> >>
+> >> Sounds sensible.  (But can you think of any actual bugs that will result
+> >> from trying to add a new hashed dentry in this case?)
+> >
+> > Well, this one? :)
+> >
+> >
+> >>> I think the inode i_nlink games are much more appropriate on this side of
+> >>> the equation, rather than the dput side (after all, d_obtain_alias is setting
+> >>> up an alias for the inode).
+> >>>
+> >>> Can you even put the link check into __d_find_alias?
+> >>>
+> >>> -               if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
+> >>> +               if (S_ISDIR(inode->i_mode) || !inode->i_nlink ||
+> >>> !d_unhashed(alias)) {
+> >>>
+> >>> Something like that?
+> >>
+> >> The immediate result of that would be for the close rpc (or any rpc's
+> >> sent after the file was unlinked) to fail with ESTALE.
+> >
+> > Why is that? Seems like it would be a bug, because a hashed dentry may
+> > be unhashed at any time concurrently to nfsd operation, so it should be
+> > able to tolerate that so long as it has a ref on the inode?
 > 
-> So, I came to find my machine looking locked up this morning however
-> eventually it seemed to release itself.  Looking in dmesg I can see:
-> 
-> [350230.265829] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350230.297307] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350235.269660] nfs4_warn_keyexpired: 2075 callbacks suppressed
-> [350235.269665] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350235.290167] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350240.272110] nfs4_warn_keyexpired: 2093 callbacks suppressed
-> [350240.272115] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350240.293239] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350245.276176] nfs4_warn_keyexpired: 2121 callbacks suppressed
-> [350245.276181] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350245.299625] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350250.280834] nfs4_warn_keyexpired: 2082 callbacks suppressed
-> [350250.280839] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350250.302470] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350255.285567] nfs4_warn_keyexpired: 2110 callbacks suppressed
-> [350255.285572] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350255.307410] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350260.290107] nfs4_warn_keyexpired: 2118 callbacks suppressed
-> [350260.290111] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350260.315070] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350265.296668] nfs4_warn_keyexpired: 2107 callbacks suppressed
-> [350265.296673] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350265.317877] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350270.302257] nfs4_warn_keyexpired: 2128 callbacks suppressed
-> [350270.302262] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350270.323727] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350275.310073] nfs4_warn_keyexpired: 2100 callbacks suppressed
-> [350275.310078] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350275.332569] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350280.316868] nfs4_warn_keyexpired: 2085 callbacks suppressed
-> [350280.316873] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350280.338332] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350285.322043] nfs4_warn_keyexpired: 2119 callbacks suppressed
-> [350285.322049] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350285.343702] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350290.328213] nfs4_warn_keyexpired: 2088 callbacks suppressed
-> [350290.328218] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350290.350477] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350295.332510] nfs4_warn_keyexpired: 2122 callbacks suppressed
-> [350295.332515] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350295.352991] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350300.337953] nfs4_warn_keyexpired: 2077 callbacks suppressed
-> [350300.337959] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350300.359669] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350305.345596] nfs4_warn_keyexpired: 2094 callbacks suppressed
-> [350305.345602] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350305.380263] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350310.352954] nfs4_warn_keyexpired: 2081 callbacks suppressed
-> [350310.352959] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350310.373999] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350315.357615] nfs4_warn_keyexpired: 2087 callbacks suppressed
-> [350315.357620] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350315.380362] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> [350320.362030] nfs4_warn_keyexpired: 2048 callbacks suppressed
-> [350320.362035] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> repeated 8 more times
-> [350320.383488] Error: state manager encountered RPCSEC_GSS session expired against NFSv4 server linux.
-> 
-> b.
-> 
+> Ping? Did you work out why nfs fails with ESTALE in that case? It seems
+> to work in my testing (and do the right thing with freeing the inode).
 
-Which simply means that you left your machine and let the kerberos
-ticket expire. When that happened, the machine was unable to recover
-state for the affected applications.
+Bah, sorry, I read too quickly, got the sense of the test backwards, and
+thought you were suggesting __d_find_alias() shouldn't return an alias
+in the i_nlink == 0 case!
 
-Cheers
-  Trond
+Yes, agreed, that should solve my problem.
 
+But what's the reason for the d_unhashed() check now?  Could we get rid
+of it entirely?
+
+--b.
