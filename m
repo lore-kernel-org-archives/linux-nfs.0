@@ -1,48 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:44915 "EHLO magus.merit.edu"
+Received: from fieldses.org ([174.143.236.118]:52685 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753409Ab0KPUyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Nov 2010 15:54:38 -0500
-Date: Tue, 16 Nov 2010 15:54:36 -0500
-From: Jim Rees <rees@umich.edu>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Valentijn Sessink <valentyn@blub.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Strange rpc.svcgssd behavior
-Message-ID: <20101116205436.GA4595@merit.edu>
-References: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com>
- <4CE2AA3B.6070302@openoffice.nl>
- <4CE2DF2D.9070603@blub.net>
- <20101116201753.GB4482@merit.edu>
- <577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com>
+	id S1750998Ab0K2TBY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Nov 2010 14:01:24 -0500
+Date: Mon, 29 Nov 2010 14:01:22 -0500
+To: Spelic <spelic@shiftmail.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 behaviour on unknown users
+Message-ID: <20101129190122.GA31843@fieldses.org>
+References: <4CF3ED05.3070401@shiftmail.org>
+ <1291054975.12784.17.camel@heimdal.trondhjem.org>
+ <4CF3F326.4060608@shiftmail.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com>
+In-Reply-To: <4CF3F326.4060608@shiftmail.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Chuck Lever wrote:
+On Mon, Nov 29, 2010 at 07:38:30PM +0100, Spelic wrote:
+> On 11/29/2010 07:22 PM, Trond Myklebust wrote:
+> >On Mon, 2010-11-29 at 19:12 +0100, Spelic wrote:
+> >No. That is not allowed by the spec.
+> >
+> >Trond
+> 
+> Too bad!! :-((
+> Was that spec decision really wise? :-/
+> 
+> 
+> BTW:
+> I've just noticed two discussions dated a few months ago in this ML
+> regarding this.
+> the thread named 'numeric UIDs'
 
-  Before we go too far down the NM path of no return, I was under the
-  impression that some applications require the host's name on the localhost
-  entries in /etc/hosts.  That's why NM puts it there.
-  
-  There's nothing invalid about having a hostname on the localhost entries
-  in /etc/hosts, is there?
-  
-  So I wonder if removing NM is really the solution here.
+There's also a reference to the spec language there--we'd be violating a
+"SHOULD", but I think it would be acceptable if it smooths the v3->v4
+upgrade path for users in your situation.
 
-No, it's not.  I just like to complain about NM.
+I think steved's changes still need to be ported to libnfsidmap?
 
-The original problem was that rpc.svcgssd couldn't figure out the correct
-kerberos realm.  The fix in this particular case, I think, is to set the
-realm explicitly in /etc/idmapd.conf.
+--b.
 
-But a more general problem is that if you don't set a realm in
-/etc/idmapd.conf, the fallback is to whatever is returned by gethostname().
-Shouldn't the fallback be to what is in krb5.conf?
-
-In general, I think it's a mistake to assume that a host's security realm is
-the same as its dns domain, especially given host mobility, the lack of
-security in dns, and the existence of other methods (krb5.conf) to determine
-the security realm.
+> and more interestingly the thread: "Teach clients to map numeric
+> strings into valid uids and gids."
+> http://marc.info/?t=128207393000001&r=1&w=2
+> 
+> Would the patch by Steve Dickson allow us to have numeric UID
+> mapping like in NFSv3?
+> (Including ability for a non-squashed-root to do chown towards an
+> UID which is unknown at server side)
+> 
+> And if yes, how come this is not against the specs?
+> 
+> Thank you
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
