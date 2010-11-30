@@ -1,143 +1,194 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:26569 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:45636 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754899Ab0K3W3H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 17:29:07 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 3/5] NFS associate sessionid with callback connection
-Date: Tue, 30 Nov 2010 15:31:09 -0500
-Message-Id: <1291149071-2026-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1291149071-2026-3-git-send-email-andros@netapp.com>
-References: <1291149071-2026-1-git-send-email-andros@netapp.com>
- <1291149071-2026-2-git-send-email-andros@netapp.com>
- <1291149071-2026-3-git-send-email-andros@netapp.com>
+	id S1752107Ab0K3Onj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 09:43:39 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 5/5] NFSv4: Send unmapped uid/gids to the server when using auth_sys
+Date: Tue, 30 Nov 2010 09:43:31 -0500
+Message-Id: <1291128211-7961-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1291128211-7961-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291128211-7961-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1291128211-7961-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1291128211-7961-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1291128211-7961-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1291128211-7961-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+The new behaviour is enabled using the new module parameter
+'nfs4_disable_idmapping'.
 
-The sessions based callback service is started prior to the CREATE_SESSION call
-so that it can handle CB_NULL requests which can be sent before the
-CREATE_SESSION call returns and the session ID is known.
+Note that if the server rejects an unmapped uid or gid, then
+the client will automatically switch back to using the idmapper.
 
-Set the callback sessionid after a sucessful CREATE_SESSION.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/callback.c               |   31 +++++++++++++++++++++++++++++++
- fs/nfs/callback.h               |    1 +
- fs/nfs/nfs4state.c              |    6 ++++++
- include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/xprt.c               |    2 ++
- 5 files changed, 41 insertions(+), 0 deletions(-)
+ Documentation/kernel-parameters.txt |    8 ++++++++
+ fs/nfs/client.c                     |   16 ++++++++++++++++
+ fs/nfs/idmap.c                      |   21 +++++++++++++--------
+ fs/nfs/nfs4proc.c                   |   13 ++++++++++++-
+ include/linux/nfs_fs_sb.h           |    1 +
+ 5 files changed, 50 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 023a9eb..558d858 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -137,6 +137,33 @@ out_err:
+diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
+index cdd2a6e..51a74a3 100644
+--- a/Documentation/kernel-parameters.txt
++++ b/Documentation/kernel-parameters.txt
+@@ -1573,6 +1573,14 @@ and is between 256 and 4096 characters. It is defined in the file
+ 			of returning the full 64-bit number.
+ 			The default is to return 64-bit inode numbers.
  
- #if defined(CONFIG_NFS_V4_1)
++	nfs.nfs4_disable_idmapping=
++			[NFSv4] When set, this option disables the NFSv4
++			idmapper on the client, but only if the mount
++			is using the 'sec=sys' security flavour. This may
++			make migration from legacy NFSv2/v3 systems easier
++			provided that the server has the appropriate support.
++			The default is to always enable NFSv4 idmapping.
++
+ 	nmi_debug=	[KNL,AVR32,SH] Specify one or more actions to take
+ 			when a NMI is triggered.
+ 			Format: [state][,regs][,debounce][,die]
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 0870d0d..fb84771 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -58,6 +58,11 @@ static LIST_HEAD(nfs_volume_list);
+ static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
+ 
  /*
-+ *  * CB_SEQUENCE operations will fail until the callback sessionid is set.
-+ *   */
-+int nfs4_set_callback_sessionid(struct nfs_client *clp)
-+{
-+	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
-+	struct nfs4_sessionid *bc_sid;
-+
-+	if (!serv->bc_xprt)
-+		return -EINVAL;
-+
-+	/* on success freed in xprt_free */
-+	bc_sid = kmalloc(sizeof(struct nfs4_sessionid), GFP_KERNEL);
-+	if (!bc_sid)
-+		return -ENOMEM;
-+	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
-+		NFS4_MAX_SESSIONID_LEN);
-+	spin_lock(&serv->sv_cb_lock);
-+	serv->bc_xprt->xpt_bc_sid = bc_sid;
-+	spin_unlock(&serv->sv_cb_lock);
-+	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
-+		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
-+		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
-+		serv->bc_xprt);
-+	return 0;
-+}
++ * Turn off NFSv4 uid/gid mapping when using AUTH_SYS
++ */
++static int nfs4_disable_idmapping = 0;
 +
 +/*
-  * The callback service for NFSv4.1 callbacks
+  * RPC cruft for NFS
   */
- static int
-@@ -236,6 +263,10 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
- 		struct nfs_callback_data *cb_info)
- {
- }
-+int nfs4_set_callback_sessionid(struct nfs_client *clp)
-+{
-+	return 0;
-+}
- #endif /* CONFIG_NFS_V4_1 */
+ static struct rpc_version *nfs_version[5] = {
+@@ -1387,6 +1392,13 @@ static int nfs4_init_server(struct nfs_server *server,
+ 	if (error < 0)
+ 		goto error;
  
- /*
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 85a7cfd..58d61a8 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -137,6 +137,7 @@ extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
- extern void nfs_callback_down(int minorversion);
- extern int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation,
- 					    const nfs4_stateid *stateid);
-+extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
- #endif /* CONFIG_NFS_V4 */
- /*
-  * nfs41: Callbacks are expected to not cause substantial latency,
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index fe61422..11290de 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -193,6 +193,12 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 	status = nfs4_proc_create_session(clp);
- 	if (status != 0)
- 		goto out;
-+	status = nfs4_set_callback_sessionid(clp);
-+	if (status != 0) {
-+		printk(KERN_WARNING "Sessionid not set. No callback service\n");
-+		nfs_callback_down(1);
-+		status = 0;
-+	}
- 	nfs41_setup_state_renewal(clp);
- 	nfs_mark_client_ready(clp, NFS_CS_READY);
- out:
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 600c669..aa15126 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -79,6 +79,7 @@ struct svc_xprt {
- 	size_t			xpt_remotelen;	/* length of address */
- 	struct rpc_wait_queue	xpt_bc_pending;	/* backchannel wait queue */
- 	struct list_head	xpt_users;	/* callbacks on free */
-+	void			*xpt_bc_sid;	/* back channel session ID */
- 
- 	struct net		*xpt_net;
- };
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 4c8f18a..18783cb 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -985,6 +985,8 @@ void xprt_free(struct rpc_xprt *xprt)
- {
- 	put_net(xprt->xprt_net);
- 	kfree(xprt->slot);
-+	if (xprt->bc_xprt)
-+		kfree(xprt->bc_xprt->xpt_bc_sid);
- 	kfree(xprt);
++	/*
++	 * Don't use NFS uid/gid mapping if we're using AUTH_SYS or lower
++	 * authentication.
++	 */
++	if (nfs4_disable_idmapping && data->auth_flavors[0] == RPC_AUTH_UNIX)
++		server->caps |= NFS_CAP_UIDGID_NOMAP;
++
+ 	if (data->rsize)
+ 		server->rsize = nfs_block_size(data->rsize, NULL);
+ 	if (data->wsize)
+@@ -1808,3 +1820,7 @@ void nfs_fs_proc_exit(void)
  }
- EXPORT_SYMBOL_GPL(xprt_free);
+ 
+ #endif /* CONFIG_PROC_FS */
++
++module_param(nfs4_disable_idmapping, bool, 0644);
++MODULE_PARM_DESC(nfs4_disable_idmapping,
++		"Turn off NFSv4 idmapping when using 'sec=sys'");
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 114de76..d816bba 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -257,17 +257,20 @@ int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size
+ 
+ int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
+ {
+-	int ret;
+-	ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
++	int ret = -EINVAL;
++
++	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
++		ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
+ 	if (ret < 0)
+ 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
+ 	return ret;
+ }
+ int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf, size_t buflen)
+ {
+-	int ret;
++	int ret = -EINVAL;
+ 
+-	ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
++	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
++		ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
+ 	if (ret < 0)
+ 		ret = nfs_map_numeric_to_string(gid, buf, buflen);
+ 	return ret;
+@@ -750,9 +753,10 @@ int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size
+ int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
+ {
+ 	struct idmap *idmap = server->nfs_client->cl_idmap;
+-	int ret;
++	int ret = -EINVAL;
+ 
+-	ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
++	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
++		ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
+ 	if (ret < 0)
+ 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
+ 	return ret;
+@@ -760,9 +764,10 @@ int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, s
+ int nfs_map_gid_to_group(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
+ {
+ 	struct idmap *idmap = server->nfs_client->cl_idmap;
+-	int ret;
++	int ret = -EINVAL;
+ 
+-	ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
++	if (!(server->caps & NFS_CAP_UIDGID_NOMAP))
++		ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
+ 	if (ret < 0)
+ 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
+ 	return ret;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e40ab0b..02f028d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -241,7 +241,7 @@ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
+ /* This is the error handling routine for processes that are allowed
+  * to sleep.
+  */
+-static int nfs4_handle_exception(const struct nfs_server *server, int errorcode, struct nfs4_exception *exception)
++static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_exception *exception)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct nfs4_state *state = exception->state;
+@@ -292,6 +292,17 @@ static int nfs4_handle_exception(const struct nfs_server *server, int errorcode,
+ 				break;
+ 		case -NFS4ERR_OLD_STATEID:
+ 			exception->retry = 1;
++			break;
++		case -NFS4ERR_BADOWNER:
++			if (server->caps & NFS_CAP_UIDGID_NOMAP) {
++				server->caps &= ~NFS_CAP_UIDGID_NOMAP;
++				exception->retry = 1;
++				printk(KERN_WARNING "NFS: v4 server %s "
++						"does not accept raw "
++						"uid/gids. "
++						"Reenabling the idmapper.\n",
++						server->nfs_client->cl_hostname);
++			}
+ 	}
+ 	/* We failed to handle the error */
+ 	return nfs4_map_errors(ret);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 452d964..6309262 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -177,6 +177,7 @@ struct nfs_server {
+ #define NFS_CAP_CTIME		(1U << 12)
+ #define NFS_CAP_MTIME		(1U << 13)
+ #define NFS_CAP_POSIX_LOCK	(1U << 14)
++#define NFS_CAP_UIDGID_NOMAP	(1U << 15)
+ 
+ 
+ /* maximum number of slots to use */
 -- 
-1.6.6
+1.7.3.2
 
