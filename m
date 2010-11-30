@@ -1,97 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42482 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4649 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757990Ab0KOTBC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Nov 2010 14:01:02 -0500
-Received: from localhost.localdomain (vpn2ntap-136191.hq.netapp.com [10.58.56.111])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAFJ0f4f028248
-	for <linux-nfs@vger.kernel.org>; Mon, 15 Nov 2010 11:00:43 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/4] pnfs-submit: move get_lseg into pnfs_has_layout, and rename
-Date: Mon, 15 Nov 2010 14:00:38 -0500
-Message-Id: <1289847638-12175-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1289847638-12175-1-git-send-email-iisaman@netapp.com>
-References: <1289847638-12175-1-git-send-email-iisaman@netapp.com>
+	id S1753417Ab0K3WTq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Nov 2010 17:19:46 -0500
+Subject: Re: NFSv4 behaviour on unknown users
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Spelic <spelic@shiftmail.org>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4CF519F2.8080900@RedHat.com>
+References: <4CF3ED05.3070401@shiftmail.org>
+	 <1291054975.12784.17.camel@heimdal.trondhjem.org>
+	 <4CF3F326.4060608@shiftmail.org>  <20101129190122.GA31843@fieldses.org>
+	 <1291057747.12784.38.camel@heimdal.trondhjem.org>
+	 <4CF519F2.8080900@RedHat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 30 Nov 2010 17:19:38 -0500
+Message-ID: <1291155578.2998.38.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-rename pnfs_has_layout to pnfs_find_lseg, and move get_lseg into
-the function, only returning valid lsegs.  Additionally, make the
-function static, as it now has only a single caller.
+On Tue, 2010-11-30 at 10:36 -0500, Steve Dickson wrote:
+> 
+> On 11/29/2010 02:09 PM, Trond Myklebust wrote:
+> > On Mon, 2010-11-29 at 14:01 -0500, J. Bruce Fields wrote:
+> >> On Mon, Nov 29, 2010 at 07:38:30PM +0100, Spelic wrote:
+> >>> On 11/29/2010 07:22 PM, Trond Myklebust wrote:
+> >>>> On Mon, 2010-11-29 at 19:12 +0100, Spelic wrote:
+> >>>> No. That is not allowed by the spec.
+> >>>>
+> >>>> Trond
+> >>>
+> >>> Too bad!! :-((
+> >>> Was that spec decision really wise? :-/
+> >>>
+> >>>
+> >>> BTW:
+> >>> I've just noticed two discussions dated a few months ago in this ML
+> >>> regarding this.
+> >>> the thread named 'numeric UIDs'
+> >>
+> >> There's also a reference to the spec language there--we'd be violating a
+> >> "SHOULD", but I think it would be acceptable if it smooths the v3->v4
+> >> upgrade path for users in your situation.
+> >>
+> >> I think steved's changes still need to be ported to libnfsidmap?
+> > 
+> > I don't see how steved's changes will fix this problem. If the client
+> > has a mapping, it will (MUST) send the mapped uid/gid and the server
+> > still has to make sense of that. Ditto if the server has a mapping, and
+> > the client does not.
+> I actually thought it did... 
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c |   26 +++++++-------------------
- fs/nfs/pnfs.h |    2 --
- 2 files changed, 7 insertions(+), 21 deletions(-)
+How? The userland library has no concept of whether or not the server
+accepts unmapped uids and gids.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index d06bf16..a21debe 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -860,8 +860,8 @@ is_matching_lseg(struct pnfs_layout_segment *lseg,
- /*
-  * lookup range in layout
-  */
--struct pnfs_layout_segment *
--pnfs_has_layout(struct pnfs_layout_hdr *lo,
-+static struct pnfs_layout_segment *
-+pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- 		struct pnfs_layout_range *range)
- {
- 	struct pnfs_layout_segment *lseg, *ret = NULL;
-@@ -870,7 +870,8 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo,
- 
- 	assert_spin_locked(&lo->inode->i_lock);
- 	list_for_each_entry(lseg, &lo->segs, fi_list) {
--		if (is_matching_lseg(lseg, range)) {
-+		if (lseg->valid && is_matching_lseg(lseg, range)) {
-+			get_lseg(lseg);
- 			ret = lseg;
- 			break;
- 		}
-@@ -913,22 +914,9 @@ pnfs_update_layout(struct inode *ino,
- 	}
- 
- 	/* Check to see if the layout for the given range already exists */
--	lseg = pnfs_has_layout(lo, &arg);
--	if (lseg) {
--		if (lseg->valid) {
--			dprintk("%s: Using cached lseg %p for %llu@%llu "
--				"iomode %d)\n",
--				__func__,
--				lseg,
--				arg.length,
--				arg.offset,
--				arg.iomode);
--			get_lseg(lseg);
--			goto out_unlock;
--		}
--		/* someone is cleaning the layout */
--		lseg = NULL;
--	}
-+	lseg = pnfs_find_lseg(lo, &arg);
-+	if (lseg)
-+		goto out_unlock;
- 
- 	/* if LAYOUTGET already failed once we don't try again */
- 	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 3314f64..12fe7ab 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -199,8 +199,6 @@ void put_lseg(struct pnfs_layout_segment *lseg);
- bool should_free_lseg(struct pnfs_layout_range *lseg_range,
- 		      struct pnfs_layout_range *recall_range);
- struct pnfs_layout_segment *
--pnfs_has_layout(struct pnfs_layout_hdr *lo, struct pnfs_layout_range *range);
--struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
- 		   enum pnfs_iomode access_type);
- bool pnfs_return_layout_barrier(struct nfs_inode *, struct pnfs_layout_range *);
+> Now that the libnfsidmap maintainership has been handed over to me 
+> and I'm about to enable the new nfsidmapper when I commit the 
+> "libnfsidmap: Add numerical string translation" patch... Its 
+> probably time I take a second look at those patches to see
+> if we can ease some of this pain...
+
+Some reasons for doing this in the kernel are:
+
+1) it is easy to do so.
+2) it allows the kernel to take action to recover
+3) it fixes the nfsroot problem, provided that the server also sends
+uids/gids in this situation.
+
 -- 
-1.7.2.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
