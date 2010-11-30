@@ -1,47 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:43487 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751014Ab0KPUYI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 15:24:08 -0500
-Subject: Re: Strange rpc.svcgssd behavior
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20101116201753.GB4482@merit.edu>
-Date: Tue, 16 Nov 2010 15:22:04 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com>
-References: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com> <4CE2AA3B.6070302@openoffice.nl> <4CE2DF2D.9070603@blub.net> <20101116201753.GB4482@merit.edu>
-To: Jim Rees <rees@umich.edu>, Valentijn Sessink <valentyn@blub.net>
+Received: from mx2.netapp.com ([216.240.18.37]:45636 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751168Ab0K3Onh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 09:43:37 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 1/5] NFSv4: If the server sends us a numeric uid/gid then accept it
+Date: Tue, 30 Nov 2010 09:43:27 -0500
+Message-Id: <1291128211-7961-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1291128211-7961-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291128211-7961-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/idmap.c |   28 ++++++++++++++++++++++++++--
+ 1 files changed, 26 insertions(+), 2 deletions(-)
 
-On Nov 16, 2010, at 3:17 PM, Jim Rees wrote:
-
-> Valentijn Sessink wrote:
-> 
->  Quoting myself: ...
->  Op 16-11-10 16:58, Valentijn Sessink schreef:
->> We have been disabling NM for years now because of this.
->>> Now I reboot, and NetworkManager happily adds "your.host	your" back to the "::1" entry, and rpc.svcgssd fails again.
-> 
->  ... here's the long standing bug report for Ubuntu:
->  https://bugs.launchpad.net/ubuntu/+source/network-manager/+bug/8980
-> 
->  (Been there since 2004). Nobody uses hostnames anymore, I guess ;)
-> 
-> It corrupts your resolv.conf too.  You should always remove Network Manager
-> except on mobile hosts that really need it.
-
-Before we go too far down the NM path of no return, I was under the impression that some applications require the host's name on the localhost entries in /etc/hosts.  That's why NM puts it there.
-
-There's nothing invalid about having a hostname on the localhost entries in /etc/hosts, is there?
-
-So I wonder if removing NM is really the solution here.
-
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 4e2d9b6..4281da6 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -33,6 +33,24 @@
+  *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
++#include <linux/types.h>
++#include <linux/string.h>
++#include <linux/kernel.h>
++
++static int nfs_map_string_to_numeric(const char *name, size_t namelen, __u32 *res)
++{
++	unsigned long val;
++	char buf[16];
++
++	if (memchr(name, '@', namelen) != NULL || namelen >= sizeof(buf))
++		return 0;
++	memcpy(buf, name, namelen);
++	buf[namelen] = '\0';
++	if (strict_strtoul(buf, 0, &val) != 0)
++		return 0;
++	*res = val;
++	return 1;
++}
+ 
+ #ifdef CONFIG_NFS_USE_NEW_IDMAPPER
+ 
+@@ -42,7 +60,6 @@
+ #include <linux/keyctl.h>
+ #include <linux/key-type.h>
+ #include <linux/rcupdate.h>
+-#include <linux/kernel.h>
+ #include <linux/err.h>
+ 
+ #include <keys/user-type.h>
+@@ -221,11 +238,15 @@ static int nfs_idmap_lookup_id(const char *name, size_t namelen,
+ 
+ int nfs_map_name_to_uid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
+ {
++	if (nfs_map_string_to_numeric(name, namelen, uid))
++		return 0;
+ 	return nfs_idmap_lookup_id(name, namelen, "uid", uid);
+ }
+ 
+ int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *gid)
+ {
++	if (nfs_map_string_to_numeric(name, namelen, gid))
++		return 0;
+ 	return nfs_idmap_lookup_id(name, namelen, "gid", gid);
+ }
+ 
+@@ -243,7 +264,6 @@ int nfs_map_gid_to_group(struct nfs_client *clp, __u32 gid, char *buf, size_t bu
+ #include <linux/module.h>
+ #include <linux/mutex.h>
+ #include <linux/init.h>
+-#include <linux/types.h>
+ #include <linux/slab.h>
+ #include <linux/socket.h>
+ #include <linux/in.h>
+@@ -699,6 +719,8 @@ int nfs_map_name_to_uid(struct nfs_client *clp, const char *name, size_t namelen
+ {
+ 	struct idmap *idmap = clp->cl_idmap;
+ 
++	if (nfs_map_string_to_numeric(name, namelen, uid))
++		return 0;
+ 	return nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
+ }
+ 
+@@ -706,6 +728,8 @@ int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namele
+ {
+ 	struct idmap *idmap = clp->cl_idmap;
+ 
++	if (nfs_map_string_to_numeric(name, namelen, uid))
++		return 0;
+ 	return nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, uid);
+ }
+ 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
+1.7.3.2
 
