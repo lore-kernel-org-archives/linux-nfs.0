@@ -1,42 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42896 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756230Ab0KOA1r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 14 Nov 2010 19:27:47 -0500
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Mon, 15 Nov 2010 11:27:01 +1100
-Subject: [PATCH 0/2] sunrpc: fix two server-side race problems.
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20101115002634.19121.7027.stgit@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
+Received: from rcsinet10.oracle.com ([148.87.113.121]:33501 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751225Ab0K3POo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Nov 2010 10:14:44 -0500
+Subject: Re: [PATCH] mount: make sure mount correctly when kernel not support NFSv4
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4CF49FBA.2030601@cn.fujitsu.com>
+Date: Tue, 30 Nov 2010 10:13:24 -0500
+Cc: Steve Dickson <SteveD@redhat.com>, NFSv3 list <linux-nfs@vger.kernel.org>,
+        "Trond.Myklebust" <trond.myklebust@fys.uio.no>
+Message-Id: <CFD2C4B0-4B8E-4ED5-8654-796C18D4C054@oracle.com>
+References: <4CEDFA23.5030103@cn.fujitsu.com> <96BE5F60-06F3-4CE9-8C1D-713992D3F246@oracle.com> <4CF49FBA.2030601@cn.fujitsu.com>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-Hi Bruce,
- I found these while trying to diagnose why a customer hit the
- 	BUG_ON(xprt->xpt_pool != NULL);
- in svc_xprt_enqueue (in a 2.6.27 based kernel).  I don't think either
- of these actually explain the problem, but they seem to be bugs
- none-the-less.
+On Nov 30, 2010, at 1:54 AM, Mi Jinlong wrote:
 
-NeilBrown
+> 
+> 
+> Chuck Lever :
+>> On Nov 25, 2010, at 12:54 AM, Mi Jinlong wrote:
+>> 
+>>> When user's nfs client(kernel) don't support NFSv4, maybe they build
+>>> kernel without NFSv4, there is a problem.
+>>> 
+>>> When using command "mount SERVER-IP:/nfsv3 /mnt/" to mount NFSv3
+>>> filesystem, mount will fail and get error:
+>>> 
+>>> "mount.nfs: an incorrect mount option was specified"
+>>> 
+>>> as above, the mount should success, but it fail.
+>>> 
+>>> When the mount command without specific NFS version, nfs-utils will
+>>> try to mount NFSv4 at first, but the kernel don't support, the kernel
+>>> will return with error EINVAL for parsing option (vers=4) fail.
+>> 
+>> Maybe the kernel should return EOPNOTSUPP in that case?
+> 
+>  Yes, what about the following patch.
 
+Seems logical to me.  Up to Trond...
 
----
-
-NeilBrown (2):
-      sunrpc: svc_sock_names should hold ref to socket being closed.
-      sunrpc: remove xpt_pool
-
-
- include/linux/sunrpc/svc_xprt.h |    1 -
- net/sunrpc/svc_xprt.c           |    6 ------
- net/sunrpc/svcsock.c            |   10 ++++++----
- 3 files changed, 6 insertions(+), 11 deletions(-)
+> 
+> --
+> thanks
+> Mi Jinlong
+> ---------------------------------------------------------------------------------
+> From 4065f2571362ff301683218546151e19148fa775 Mon Sep 17 00:00:00 2001
+> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> Date: Sat, 30 Oct 2010 10:19:33 +0800
+> Subject: [PATCH] nfs: kernel should return EPROTONOSUPPORT when not support NFSv4
+> 
+>  When nfs client(kernel) don't support NFSv4, maybe user build
+>  kernel without NFSv4, there is a problem.
+> 
+>  Using command "mount SERVER-IP:/nfsv3 /mnt/" to mount NFSv3
+>  filesystem, mount should should success, but fail and get error:
+> 
+>    "mount.nfs: an incorrect mount option was specified"
+> 
+>  System call mount "nfs"(not "nfs4") with "vers=4", 
+>  if CONFIG_NFS_V4 is not defined, the "vers=4" will be parsed
+>  as invalid argument and kernel return EINVAL to nfs-utils. 
+> 
+>  About that, we really want get EPROTONOSUPPORT rather than 
+>  EINVAL. This path make sure kernel parses argument success,
+>  and return EPROTONOSUPPORT at nfs_validate_mount_data().
+> 
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+> fs/nfs/super.c |    4 ----
+> 1 files changed, 0 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 3c04504..4100630 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -1069,12 +1069,10 @@ static int nfs_parse_mount_options(char *raw,
+> 			mnt->flags |= NFS_MOUNT_VER3;
+> 			mnt->version = 3;
+> 			break;
+> -#ifdef CONFIG_NFS_V4
+> 		case Opt_v4:
+> 			mnt->flags &= ~NFS_MOUNT_VER3;
+> 			mnt->version = 4;
+> 			break;
+> -#endif
+> 		case Opt_udp:
+> 			mnt->flags &= ~NFS_MOUNT_TCP;
+> 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
+> @@ -1286,12 +1284,10 @@ static int nfs_parse_mount_options(char *raw,
+> 				mnt->flags |= NFS_MOUNT_VER3;
+> 				mnt->version = 3;
+> 				break;
+> -#ifdef CONFIG_NFS_V4
+> 			case NFS4_VERSION:
+> 				mnt->flags &= ~NFS_MOUNT_VER3;
+> 				mnt->version = 4;
+> 				break;
+> -#endif
+> 			default:
+> 				goto out_invalid_value;
+> 			}
+> -- 
+> 1.7.3.2
+> 
+> 
 
 -- 
-Signature
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
