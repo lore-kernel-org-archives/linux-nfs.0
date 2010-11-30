@@ -1,64 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:65064 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750790Ab0KVRPq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Nov 2010 12:15:46 -0500
-Received: from acsinet15.oracle.com (acsinet15.oracle.com [141.146.126.227])
-	by rcsinet10.oracle.com (Switch-3.4.2/Switch-3.4.2) with ESMTP id oAMHFieI003465
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Nov 2010 17:15:46 GMT
-Received: from acsmt355.oracle.com (acsmt355.oracle.com [141.146.40.155])
-	by acsinet15.oracle.com (Switch-3.4.2/Switch-3.4.1) with ESMTP id oAM5vqHD011416
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Nov 2010 17:15:43 GMT
-Subject: Re: [PATCH] lockd: release memory for non-normal situation
+Received: from fieldses.org ([174.143.236.118]:43643 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754724Ab0K3Wgb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 17:36:31 -0500
+Date: Tue, 30 Nov 2010 17:36:27 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Steve Dickson <SteveD@redhat.com>, Spelic <spelic@shiftmail.org>,
+        linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 behaviour on unknown users
+Message-ID: <20101130223627.GC5054@fieldses.org>
+References: <4CF3ED05.3070401@shiftmail.org>
+ <1291054975.12784.17.camel@heimdal.trondhjem.org>
+ <4CF3F326.4060608@shiftmail.org>
+ <20101129190122.GA31843@fieldses.org>
+ <1291057747.12784.38.camel@heimdal.trondhjem.org>
+ <4CF519F2.8080900@RedHat.com>
+ <1291155578.2998.38.camel@heimdal.trondhjem.org>
+ <20101130222651.GB5054@fieldses.org>
+ <1291156414.4393.2.camel@heimdal.trondhjem.org>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <201011221243.oAM931FO003822@rcsinet13.oracle.com>
-Date: Mon, 22 Nov 2010 12:15:32 -0500
-Cc: linux-nfs@vger.kernel.org, greg.marsden@oracle.com, joe.jin@oracle.com
-Message-Id: <86295CE6-C2D8-4186-BF51-455A5C190F3A@oracle.com>
-References: <201011221243.oAM931FO003822@rcsinet13.oracle.com>
-To: Wengang Wang <wen.gang.wang@oracle.com>
+In-Reply-To: <1291156414.4393.2.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi-
-
-On Nov 22, 2010, at 7:40 AM, Wengang Wang wrote:
-
-> nlmclnt_proc() is neither releasing nlm_rqst nor dropping the ref on nlm_host.
-> Do the release work though I am not sure if it can really hit the situation.
-
-Based on casual code review, the only case where this is a possibility is the "out_unlock" label in nlmclnt_lock().  Otherwise, this patch introduces a double release in other cases, doesn't it?
-
-Is there a reproducer that can demonstrate a leak?
-
-> Signed-off-by: Wengang Wang <wen.gang.wang@oracle.com>
-> ---
-> fs/lockd/clntproc.c |    4 +++-
-> 1 files changed, 3 insertions(+), 1 deletions(-)
+On Tue, Nov 30, 2010 at 05:33:34PM -0500, Trond Myklebust wrote:
+> On Tue, 2010-11-30 at 17:26 -0500, J. Bruce Fields wrote:
+> > On Tue, Nov 30, 2010 at 05:19:38PM -0500, Trond Myklebust wrote:
+> > > On Tue, 2010-11-30 at 10:36 -0500, Steve Dickson wrote:
+> > > > 
+> > > > On 11/29/2010 02:09 PM, Trond Myklebust wrote:
+> > > > > On Mon, 2010-11-29 at 14:01 -0500, J. Bruce Fields wrote:
+> > > > >> On Mon, Nov 29, 2010 at 07:38:30PM +0100, Spelic wrote:
+> > > > >>> On 11/29/2010 07:22 PM, Trond Myklebust wrote:
+> > > > >>>> On Mon, 2010-11-29 at 19:12 +0100, Spelic wrote:
+> > > > >>>> No. That is not allowed by the spec.
+> > > > >>>>
+> > > > >>>> Trond
+> > > > >>>
+> > > > >>> Too bad!! :-((
+> > > > >>> Was that spec decision really wise? :-/
+> > > > >>>
+> > > > >>>
+> > > > >>> BTW:
+> > > > >>> I've just noticed two discussions dated a few months ago in this ML
+> > > > >>> regarding this.
+> > > > >>> the thread named 'numeric UIDs'
+> > > > >>
+> > > > >> There's also a reference to the spec language there--we'd be violating a
+> > > > >> "SHOULD", but I think it would be acceptable if it smooths the v3->v4
+> > > > >> upgrade path for users in your situation.
+> > > > >>
+> > > > >> I think steved's changes still need to be ported to libnfsidmap?
+> > > > > 
+> > > > > I don't see how steved's changes will fix this problem. If the client
+> > > > > has a mapping, it will (MUST) send the mapped uid/gid and the server
+> > > > > still has to make sense of that. Ditto if the server has a mapping, and
+> > > > > the client does not.
+> > > > I actually thought it did... 
+> > > 
+> > > How? The userland library has no concept of whether or not the server
+> > > accepts unmapped uids and gids.
+> > > 
+> > > > Now that the libnfsidmap maintainership has been handed over to me 
+> > > > and I'm about to enable the new nfsidmapper when I commit the 
+> > > > "libnfsidmap: Add numerical string translation" patch... Its 
+> > > > probably time I take a second look at those patches to see
+> > > > if we can ease some of this pain...
+> > > 
+> > > Some reasons for doing this in the kernel are:
+> > > 
+> > > 1) it is easy to do so.
+> > > 2) it allows the kernel to take action to recover
+> > > 3) it fixes the nfsroot problem, provided that the server also sends
+> > > uids/gids in this situation.
+> > 
+> > Makes sense to me.
+> > 
+> > The server side might still be easiest to do in idmapd/libnfsidmap.
 > 
-> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> index 332c54c..ec9f0f5 100644
-> --- a/fs/lockd/clntproc.c
-> +++ b/fs/lockd/clntproc.c
-> @@ -173,8 +173,10 @@ int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl)
-> 			status = nlmclnt_unlock(call, fl);
-> 	} else if (IS_GETLK(cmd))
-> 		status = nlmclnt_test(call, fl);
-> -	else
-> +	else {
-> +		nlm_release_call(call);
-> 		status = -EINVAL;
-> +	}
-> 	fl->fl_ops->fl_release_private(fl);
-> 	fl->fl_ops = NULL;
+> The NFS server has to be able to tell the idmapper which variety of
+> mapping it wants. The reason is, as I said, that we want to handle
+> RPCSEC_GSS based authentication (and possibly AUTH_NULL too) differently
+> from AUTH_SYS. The idmapper by itself has no way to distinguish what
+> authentication the client used.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+I still don't understand what the advantage of that would be: why would
+we want to return different file owners depending on which
+authentication flavor the client's request used?
 
-
-
-
+--b.
