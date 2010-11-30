@@ -1,102 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:42902 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756230Ab0KOA1z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 14 Nov 2010 19:27:55 -0500
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Mon, 15 Nov 2010 11:27:01 +1100
-Subject: [PATCH 1/2] sunrpc: remove xpt_pool
-Cc: linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
-Message-ID: <20101115002701.19121.46414.stgit@notabene.brown>
-In-Reply-To: <20101115002634.19121.7027.stgit@notabene.brown>
-References: <20101115002634.19121.7027.stgit@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
+Received: from e28smtp02.in.ibm.com ([122.248.162.2]:41475 "EHLO
+	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755040Ab0K3SDI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Nov 2010 13:03:08 -0500
+Received: from d28relay03.in.ibm.com (d28relay03.in.ibm.com [9.184.220.60])
+	by e28smtp02.in.ibm.com (8.14.4/8.13.1) with ESMTP id oAUI35uG018368
+	for <linux-nfs@vger.kernel.org>; Tue, 30 Nov 2010 23:33:05 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay03.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oAUI35B14223044
+	for <linux-nfs@vger.kernel.org>; Tue, 30 Nov 2010 23:33:05 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oAUI35Ow009030
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 05:03:05 +1100
+From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 ACL set and inode attribute cache
+In-Reply-To: <1291061630.12784.49.camel@heimdal.trondhjem.org>
+References: <m3hbfpvz0k.fsf@linux.vnet.ibm.com> <m3eiatvwpc.fsf@linux.vnet.ibm.com> <m31v6rrrfr.fsf@linux.vnet.ibm.com> <m3zkssjuyz.fsf@linux.vnet.ibm.com> <1291061630.12784.49.camel@heimdal.trondhjem.org>
+Date: Tue, 30 Nov 2010 23:33:03 +0530
+Message-ID: <m3hbeyzo2w.fsf@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The xpt_pool field is only used for reporting BUGs.
-And it isn't used correctly.
+On Mon, 29 Nov 2010 15:13:50 -0500, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> On Mon, 2010-11-29 at 15:46 +0530, Aneesh Kumar K. V wrote:
+> > On Fri, 12 Nov 2010 11:53:20 +0530, "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > > On Thu, 11 Nov 2010 00:21:27 +0530, "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > > > On Wed, 10 Nov 2010 23:31:31 +0530, Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > > > > 
+> > > > > Hi,
+> > > > > 
+> > > > > I guess we are not marking the inode attribute as invalid when we set
+> > > > > the ACL value. For ex:
+> > > > > 
+> > > > > /d# mkdir sub3
+> > > > > /d# ls -dl sub3
+> > > > > drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
+> > > > > /d# nfs4_setfacl -s A:fd:EVERYONE@:rwax sub3
+> > > > > /d# ls -dl sub3
+> > > > > drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
+> > > > > /d# 
+> > > > > 
+> > > > > 
+> > > > > On the server i have the mode bits as
+> > > > > /d# ls -dl sub3
+> > > > > drwxrwxrwx 2 root root 4096 Nov 10 17:56 sub3
+> > > > > /d# 
+> > > > 
+> > > > We also have similar issue other way round. ie setting the mode bits
+> > > > don't result in ACL values being invalidated. But a second request get
+> > > > the right value of ACL as show below.
+> > > > 
+> > > > /d# nfs4_getfacl  x
+> > > > A::OWNER@:rw
+> > > > A::GROUP@:rw
+> > > > A::EVERYONE@:r
+> > > > /d# chmod 600 x
+> > > > /d# nfs4_getfacl  x
+> > > > A::OWNER@:rw
+> > > > A::GROUP@:rw
+> > > > A::EVERYONE@:r
+> > > > /d#
+> > > > 
+> > > > Expected value is
+> > > > 
+> > > > /d# nfs4_getfacl  x
+> > > > A::OWNER@:rw
+> > > > 
+> > > 
+> > > The below patch fix the problem for me. If this is the right way
+> > > to fix, I can send a proper patch with commit message and s-o-b.
+> > > 
+> > > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > > index 0f24cdf..666a48b 100644
+> > > --- a/fs/nfs/nfs4proc.c
+> > > +++ b/fs/nfs/nfs4proc.c
+> > > @@ -3359,6 +3359,8 @@ static ssize_t nfs4_proc_get_acl(struct inode *inode, void *buf, size_t buflen)
+> > >  	ret = nfs_revalidate_inode(server, inode);
+> > >  	if (ret < 0)
+> > >  		return ret;
+> > > +	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
+> > > +		nfs_zap_acl_cache(inode);
+> > >  	ret = nfs4_read_cached_acl(inode, buf, buflen);
+> > >  	if (ret != -ENOENT)
+> > >  		return ret;
+> > > @@ -3387,6 +3389,11 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
+> > >  	nfs_inode_return_delegation(inode);
+> > >  	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
+> > >  	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
+> > > +	/*
+> > > +	 * Acl update can result in inode attribute update.
+> > > +	 * so mark the attribute cache invalid.
+> > > +	 */
+> > > +	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;
+> 
+> This needs to be done under the correct spin locks, so please use the
+> helper nfs_mark_for_revalidate() instead of attempting to open coding
+> it.
 
-In particular, when it is cleared in svc_xprt_received before
-XPT_BUSY is cleared, there is no guarantee that either the
-compiler or the CPU might not re-order to two assignments, just
-setting xpt_pool to NULL after XPT_BUSY is cleared.
+nfs_mark_for_revalidate mark other fields as invalid. Do we need to do that
+when updating ACL ? If not how about 
 
-If a different cpu were running svc_xprt_enqueue at this moment,
-it might see XPT_BUSY clear and then xpt_pool non-NULL, and
-so BUG.
+	spin_lock(&inode->i_lock);
+        NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;   
+	spin_unlock(&inode->i_lock);
 
-This could be fixed by calling
-  smp_mb__before_clear_bit()
-before the clear_bit.  However as xpt_pool isn't really used,
-it seems safest to simply remove xpt_pool.
+> 
+> > >  	nfs_access_zap_cache(inode);
+> > >  	nfs_zap_acl_cache(inode);
+> > >  	return ret;
+> > 
+> > 
+> > Any update on this ? Another option i figured out today is to make sure
+> > we add FATTR4_WORD0_ACL in nfs4_fattr_bitmap for fetching the modified
+> > acl value on mode update. Similarly setfacl can be compounded with the
+> > getattr request.
+> 
+> We actually used to compound setacl with a GETATTR(FATTR4_WORD0_ACL) in
+> order to ensure that the server sets it correctly. Unfortunately, that
+> caused some servers to return NFS4ERR_RESOURCE due to the burden of
+> caching all that acl information in the duplicate request queue.
 
-Another alternate would be to change the clear_bit to
-clear_bit_unlock, and the test_and_set_bit to test_and_set_bit_lock.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
-
- include/linux/sunrpc/svc_xprt.h |    1 -
- net/sunrpc/svc_xprt.c           |    6 ------
- 2 files changed, 0 insertions(+), 7 deletions(-)
-
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index bbdb680..79baf68 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -63,7 +63,6 @@ struct svc_xprt {
- #define XPT_LISTENER	11		/* listening endpoint */
- #define XPT_CACHE_AUTH	12		/* cache auth info */
- 
--	struct svc_pool		*xpt_pool;	/* current pool iff queued */
- 	struct svc_serv		*xpt_server;	/* service for transport */
- 	atomic_t    	    	xpt_reserved;	/* space on outq that is rsvd */
- 	struct mutex		xpt_mutex;	/* to serialize sending data */
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index c82fe73..ec9d8ef 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -342,8 +342,6 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
- 		dprintk("svc: transport %p busy, not enqueued\n", xprt);
- 		goto out_unlock;
- 	}
--	BUG_ON(xprt->xpt_pool != NULL);
--	xprt->xpt_pool = pool;
- 
- 	/* Handle pending connection */
- 	if (test_bit(XPT_CONN, &xprt->xpt_flags))
-@@ -358,7 +356,6 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
- 		/* Don't enqueue while not enough space for reply */
- 		dprintk("svc: no write space, transport %p  not enqueued\n",
- 			xprt);
--		xprt->xpt_pool = NULL;
- 		clear_bit(XPT_BUSY, &xprt->xpt_flags);
- 		goto out_unlock;
- 	}
-@@ -380,13 +377,11 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
- 		rqstp->rq_reserved = serv->sv_max_mesg;
- 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
- 		pool->sp_stats.threads_woken++;
--		BUG_ON(xprt->xpt_pool != pool);
- 		wake_up(&rqstp->rq_wait);
- 	} else {
- 		dprintk("svc: transport %p put into queue\n", xprt);
- 		list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
- 		pool->sp_stats.sockets_queued++;
--		BUG_ON(xprt->xpt_pool != pool);
- 	}
- 
- out_unlock:
-@@ -425,7 +420,6 @@ static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
- void svc_xprt_received(struct svc_xprt *xprt)
- {
- 	BUG_ON(!test_bit(XPT_BUSY, &xprt->xpt_flags));
--	xprt->xpt_pool = NULL;
- 	clear_bit(XPT_BUSY, &xprt->xpt_flags);
- 	svc_xprt_enqueue(xprt);
- }
+What i was suggesting was to compound setacl with
+GETATTR(FATTR4_WORD1_MODE) so that we get the update mode bits as a part
+of response. Also componding setattr request with GETATTR(FATTR4_WORD0_ACL)
 
 
+> 
+> I'd be fine with adding an ordinary getattr request, though, as long as
+> it is allowed to fail (i.e. the result of __nfs4_proc_set_acl() must
+> only depend on the setacl).
+> 
+
+-aneesh
