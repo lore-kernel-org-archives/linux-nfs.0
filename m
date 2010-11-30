@@ -1,62 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39506 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:53275 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752790Ab0KUTVq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 21 Nov 2010 14:21:46 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/8] NFS: Fix a page leak in nfs_do_filldir()
-Date: Sun, 21 Nov 2010 14:21:17 -0500
-Message-Id: <1290367282-5445-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1290367282-5445-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1290367282-5445-1-git-send-email-Trond.Myklebust@netapp.com>
- <1290367282-5445-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753656Ab0K3W3I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 17:29:08 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 5/5] NFS RPC_AUTH_GSS unsupported on v4.1 back channel
+Date: Tue, 30 Nov 2010 15:31:11 -0500
+Message-Id: <1291149071-2026-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1291149071-2026-5-git-send-email-andros@netapp.com>
+References: <1291149071-2026-1-git-send-email-andros@netapp.com>
+ <1291149071-2026-2-git-send-email-andros@netapp.com>
+ <1291149071-2026-3-git-send-email-andros@netapp.com>
+ <1291149071-2026-4-git-send-email-andros@netapp.com>
+ <1291149071-2026-5-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-nfs_do_filldir() must always free desc->page when it is done, otherwise
-we end up leaking the page.
+From: Andy Adamson <andros@netapp.com>
 
-Also remove unused variable 'dentry'.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/dir.c |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
+ fs/nfs/callback.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 2789cb3..42e66e9 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -701,11 +701,12 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
- 	int res = 0;
- 	struct nfs_cache_array *array = NULL;
- 	unsigned int d_type = DT_UNKNOWN;
--	struct dentry *dentry = NULL;
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 7c21824..dc2ead1 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -360,6 +360,9 @@ static int check_gss_callback_principal(struct nfs_client *clp,
+ 	struct rpc_clnt *r = clp->cl_rpcclient;
+ 	char *p = svc_gss_principal(rqstp);
  
- 	array = nfs_readdir_get_array(desc->page);
--	if (IS_ERR(array))
--		return PTR_ERR(array);
-+	if (IS_ERR(array)) {
-+		res = PTR_ERR(array);
-+		goto out;
-+	}
- 
- 	for (i = desc->cache_entry_index; i < array->size; i++) {
- 		d_type = DT_UNKNOWN;
-@@ -726,9 +727,8 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
- 		desc->eof = 1;
- 
- 	nfs_readdir_release_array(desc->page);
-+out:
- 	cache_page_release(desc);
--	if (dentry != NULL)
--		dput(dentry);
- 	dfprintk(DIRCACHE, "NFS: nfs_do_filldir() filling ended @ cookie %Lu; returning = %d\n",
- 			(unsigned long long)*desc->dir_cookie, res);
- 	return res;
++	/* No RPC_AUTH_GSS on NFSv4.1 back channel yet */
++	if (clp->cl_minorversion != 0)
++		return SVC_DENIED;
+ 	/*
+ 	 * It might just be a normal user principal, in which case
+ 	 * userspace won't bother to tell us the name at all.
 -- 
-1.7.3.2
+1.6.6
 
