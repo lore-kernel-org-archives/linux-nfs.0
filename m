@@ -1,113 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:56400 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756430Ab0KOQR6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Nov 2010 11:17:58 -0500
-Message-ID: <4CE15D32.9070905@panasas.com>
-Date: Mon, 15 Nov 2010 18:17:54 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org, NFSv4 <nfsv4@ietf.org>
-Subject: Re: [PATCH 16/22] pnfs-submit: rewrite of layout state handling and
- cb_layoutrecall
-References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>	<1289551724-18575-17-git-send-email-iisaman@netapp.com>	<4CE003A6.2000606@panasas.com> <AANLkTinMiVuKJB6b6C+nZO9bMevp_jkjwVobFv7di0jq@mail.gmail.com>
-In-Reply-To: <AANLkTinMiVuKJB6b6C+nZO9bMevp_jkjwVobFv7di0jq@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:31408 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751149Ab0K3NeN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 08:34:13 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 2/4] NFSv4: Send unmapped uid/gids to the server if the idmapper fails
+Date: Tue, 30 Nov 2010 08:34:01 -0500
+Message-Id: <1291124043-5074-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1291124043-5074-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291124043-5074-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1291124043-5074-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2010-11-15 16:51, Fred Isaman wrote:
-> On Sun, Nov 14, 2010 at 10:43 AM, Benny Halevy <bhalevy@panasas.com> wrote:
->>
->> Using the open stateid after forgetting the layout could be a protocol bug,
->> or at least it falls into undefined territories.
->>
->> The RFC says:
->>
->>   The loga_stateid field specifies a valid stateid.  If a layout is not
->>   currently held by the client, the loga_stateid field represents a
->>   stateid reflecting the correspondingly valid open, byte-range lock,
->>   or delegation stateid.  Once a layout is held on the file by the
->>   client, the loga_stateid field MUST be a stateid as returned from a
->>   previous LAYOUTGET or LAYOUTRETURN operation or provided by a
->>   CB_LAYOUTRECALL operation (see Section 12.5.3).
->>
->> So the question is does the text above refer to the client view of the state or to
->> the server's view.
->> In other words, with the forgetful client model, when the client unilaterally forgets
->> the layout without letting the server know about it (no LAYOUTRETURN was sent),
->> does it mean "a layout is not currently held by the client"?
->>
-> 
-> I would argue that yes, this is in fact what it means.
-> 
-> It seems the server has two options when confronted with an
-> openstateid.  Either interpret this as a declaration by the client
-> that it has forgotten all previous layouts and behave appropriately
-> (wipe any layout state assigned to the file and create a new
-> layoutstateid), or assume this is part of parallel spew of
-> LAYOUTGET(openstateid) and try to use an existing layout state with
-> the appropriate (possibly not one) seqid.  I argue that, as the spec
-> stands, the second option is not really a choice, because the first
-> option exists.  If a client using the second option encounters a
-> server using the first, bad things happen.  The client will issue
-> multiple LAYOUTGET(openstateids), the server will, upon seeing each,
-> discard any previous state and return a new state with segid=1, with
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/idmap.c |   30 ++++++++++++++++++++++++++----
+ 1 files changed, 26 insertions(+), 4 deletions(-)
 
-Is this the specified behavior?
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 4281da6..9bf5921 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -52,6 +52,11 @@ static int nfs_map_string_to_numeric(const char *name, size_t namelen, __u32 *re
+ 	return 1;
+ }
+ 
++static int nfs_map_numeric_to_string(__u32 id, char *buf, size_t buflen)
++{
++	return snprintf(buf, buflen, "%u", id);
++}
++
+ #ifdef CONFIG_NFS_USE_NEW_IDMAPPER
+ 
+ #include <linux/slab.h>
+@@ -252,11 +257,20 @@ int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namele
+ 
+ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
+ {
+-	return nfs_idmap_lookup_name(uid, "user", buf, buflen);
++	int ret;
++	ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
++	if (ret < 0)
++		ret = nfs_map_numeric_to_string(uid, buf, buflen);
++	return ret;
+ }
+ int nfs_map_gid_to_group(struct nfs_client *clp, __u32 gid, char *buf, size_t buflen)
+ {
+-	return nfs_idmap_lookup_name(gid, "group", buf, buflen);
++	int ret;
++
++	ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
++	if (ret < 0)
++		ret = nfs_map_numeric_to_string(gid, buf, buflen);
++	return ret;
+ }
+ 
+ #else  /* CONFIG_NFS_USE_IDMAPPER not defined */
+@@ -736,14 +750,22 @@ int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namele
+ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
+ {
+ 	struct idmap *idmap = clp->cl_idmap;
++	int ret;
+ 
+-	return nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
++	ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
++	if (ret < 0)
++		ret = nfs_map_numeric_to_string(uid, buf, buflen);
++	return ret;
+ }
+ int nfs_map_gid_to_group(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
+ {
+ 	struct idmap *idmap = clp->cl_idmap;
++	int ret;
+ 
+-	return nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
++	ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
++	if (ret < 0)
++		ret = nfs_map_numeric_to_string(uid, buf, buflen);
++	return ret;
+ }
+ 
+ #endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
+-- 
+1.7.3.2
 
-> the final valid state being that of whichever one was processed last.
-> The client will see all the OK returns, and not have any easy method
-> of determining which is the one that the server considers valid.
-> 
-> Thus I claim that, because of the forgetful model, the client must
-> serialize its LAYOUTGET(openstateid) calls.
-> 
-
-I disagree. LAYOUTGET(openstateid) should be no different than
-any other layout stateid and the client should be able to send multiple
-such LAYOUTGETs *initially* (and only initially).  The server can process
-these as any other LAYOUTGET with the sequenceid rules assuming seqid==0
-(which is disallowed otherwise)
-
->> The server will see a LAYOUTGET with an open/lock/deleg stateid in this case
->> while it still thinks that the client is holding a layout.
->> Since this could normally happen if the client sends multiple LAYOUTGETs in
->> parallel before it received any layout stateid the server should allow it
->> within the VALID_SEQID_RANGE constraints (see 12.5.5.2.1.4, although it is
->> not explicitly called out there), otherwise, it seems like the server is supposed
->> to return NFS4ERR_OLD_STATEID.
->>
->> Strictly reading the spec, the client should use the most recent layout stateid
->> even in the forgetful model, until it gets a LAYOUTRETURN reply with lrs_present==false
->> or until it replies NFS4ERR_NOMATCHING_LAYOUT to CB_LAYOUTRECALL with
->> clora_iomode==LAYOUTIOMODE4_ANY or other values where the client never dropped
->> a layout (did I say recently how much I hate the forgetful model which introduces
->> more corner cases rather than simplifying the protocol as it was supposed to do? ;-)
->>
-> 
-> Strict reading again depends on whose point of view, client or server...
-> 
-> "Once a client has no more layouts on a file, the layout stateid is no
-> longer valid and MUST NOT be used.  Any attempt to use such a layout
-> stateid will result in NFS4ERR_BAD_STATEID."
-
-In NFSv4.1 the server decides about stateids. It's not up to the client
-to throw away the stateid and revert to the initial stateid.
-It must send an appropriate LAYOUTRETURN and get lrs_present==false
-to do that and then it can be sure its layout state for the file is synchronized
-with the server's.
-
-Benny
-
-> 
-> 
-> Fred
-> 
->> Benny
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
