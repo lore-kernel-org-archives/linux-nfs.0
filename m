@@ -1,101 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:6868 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753257Ab0K2PU7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Nov 2010 10:20:59 -0500
-Message-ID: <4CF3C4D2.2060607@RedHat.com>
-Date: Mon, 29 Nov 2010 10:20:50 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Mi Jinlong <mijinlong@cn.fujitsu.com>,
-        NFSv3 list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mount: avoid po_destroy to modify errno what we really
- want
-References: <4CEE357D.2030007@cn.fujitsu.com> <9C08C339-281F-4CD4-B8C1-70441869E2F6@oracle.com>
-In-Reply-To: <9C08C339-281F-4CD4-B8C1-70441869E2F6@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from netnation.com ([204.174.223.2]:39445 "EHLO peace.netnation.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754041Ab0K3Ia4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 03:30:56 -0500
+Date: Tue, 30 Nov 2010 00:30:51 -0800
+From: Simon Kirby <sim@hostway.ca>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Guennadi Liakhovetski <g.liakhovetski@gmx.de>, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Bryan Schumaker <bjschuma@netapp.com>, rees@umich.edu
+Subject: Re: [REGRESSION] git commit d1bacf9e "NFS: add readdir cache
+	array" is bad
+Message-ID: <20101130083051.GD31403@hostway.ca>
+References: <Pine.LNX.4.64.1011261255260.16655@axis700.grange> <1290794726.4905.8.camel@heimdal.trondhjem.org> <20101127002548.GA20008@hostway.ca> <20101127102732.GD12175@hostway.ca> <1290882240.3415.5.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1290882240.3415.5.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Sat, Nov 27, 2010 at 01:24:00PM -0500, Trond Myklebust wrote:
 
+> On Sat, 2010-11-27 at 02:27 -0800, Simon Kirby wrote:
+> > Ok, so I tracked them down, and they didn't seem to be particularly
+> > unusual, so I tried a not-particularly-unusual thing that I figured might
+> > work, and reproduced it:
+> > 
+> > server: echo test > a
+> > client: ls -l
+> > server: echo test > b ; mv b a
+> > client: ls -l
+> > 
+> > That's it.  The kernel (2.6.37-rc3), on the final "ls -l", says:
+> > 
+> > [12814.611197] NFS: server 10.10.52.228 error: fileid changed
+> > [12814.611200] fsid 0:3f: expected fileid 0x122efbf1, got 0x122efc15
+> > 
+> > "ls -li" shows the inode updated, so maybe this isn't even a bug?
+> 
+> Ah! I think I see it now, and yes it is a bug...
+> 
+> Does the following patch fix it?
 
-On 11/29/2010 09:45 AM, Chuck Lever wrote:
-> 
-> On Nov 25, 2010, at 5:07 AM, Mi Jinlong wrote:
-> 
->> We should return the errno that was set before po_destroy,
->> rather than the errno that was set at po_destroy.
->>
->> Because the po_destroy function don't affect the return value,
->> this patch just revert the saved errno after po_destroy.
-> 
-> The only library function used in po_destroy() is free(3).  
-> Does free(3) change the value of errno?
-Looking at the man page and taking a look a the 
-glibc code it appears the answer is no. free(3)
-does not set errno.
+Indeed, it does!  I verified that I can reproduce it on 2.6.37-rc3
+without this patch, and I can no longer reproduce it with this patch.
 
-Bian, what was the problem you were seeing that this
-patch fixed? 
+Thanks muchly!
 
-steved.
+Tested-by: Simon Kirby <sim@hostway.ca>
 
+Simon-
+
+> Cheers
+>   Trond
+> -------------------------------------------------------------------------------------
+> NFS: Fix a readdirplus bug
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
 > 
->> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
->> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->> ---
->> utils/mount/stropts.c |    8 ++++++--
->> 1 files changed, 6 insertions(+), 2 deletions(-)
->>
->> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->> index 50a1a2a..d554877 100644
->> --- a/utils/mount/stropts.c
->> +++ b/utils/mount/stropts.c
->> @@ -592,7 +592,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
->> 		struct sockaddr *sap, socklen_t salen)
->> {
->> 	struct mount_options *options = po_dup(mi->options);
->> -	int result = 0;
->> +	int result = 0, save = 0;
->>
->> 	if (!options) {
->> 		errno = ENOMEM;
->> @@ -637,7 +637,9 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
->> 	result = nfs_sys_mount(mi, options);
->>
->> out_fail:
->> +	save = errno;
->> 	po_destroy(options);
->> +	errno = save;
->> 	return result;
->> }
->>
->> @@ -673,7 +675,7 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
->> 		struct sockaddr *sap, socklen_t salen)
->> {
->> 	struct mount_options *options = po_dup(mi->options);
->> -	int result = 0;
->> +	int result = 0, save = 0;
->>
->> 	if (!options) {
->> 		errno = ENOMEM;
->> @@ -724,7 +726,9 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
->> 	result = nfs_sys_mount(mi, options);
->>
->> out_fail:
->> +	save = errno;
->> 	po_destroy(options);
->> +	errno = save;
->> 	return result;
->> }
->>
->> -- 
->> 1.7.3.2
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> When comparing filehandles in the helper nfs_same_file(), we should not be
+> using 'strncmp()': filehandles are not null terminated strings.
 > 
+> Instead, we should just use the existing helper nfs_compare_fh().
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> 
+>  fs/nfs/dir.c |    6 +-----
+>  1 files changed, 1 insertions(+), 5 deletions(-)
+> 
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 8ea4a41..f0a384e 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -395,13 +395,9 @@ int xdr_decode(nfs_readdir_descriptor_t *desc, struct nfs_entry *entry, struct x
+>  static
+>  int nfs_same_file(struct dentry *dentry, struct nfs_entry *entry)
+>  {
+> -	struct nfs_inode *node;
+>  	if (dentry->d_inode == NULL)
+>  		goto different;
+> -	node = NFS_I(dentry->d_inode);
+> -	if (node->fh.size != entry->fh->size)
+> -		goto different;
+> -	if (strncmp(node->fh.data, entry->fh->data, node->fh.size) != 0)
+> +	if (nfs_compare_fh(entry->fh, NFS_FH(dentry->d_inode)) != 0)
+>  		goto different;
+>  	return 1;
+>  different:
+> 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
