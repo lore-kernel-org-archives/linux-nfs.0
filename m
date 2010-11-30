@@ -1,78 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.candelatech.com ([208.74.158.172]:52193 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758137Ab0KRUXv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Nov 2010 15:23:51 -0500
-Message-ID: <4CE58B54.4090203@candelatech.com>
-Date: Thu, 18 Nov 2010 12:23:48 -0800
-From: Ben Greear <greearb@candelatech.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Very slow O_DIRECT writes on NFS in .36
-References: <4CE58799.1010702@candelatech.com> <4234EB44-97D5-4212-A52E-983907D2733F@oracle.com>
-In-Reply-To: <4234EB44-97D5-4212-A52E-983907D2733F@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:9811 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752042Ab0K3VoS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Nov 2010 16:44:18 -0500
+Subject: Re: NFSv4 ACL set and inode attribute cache
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <m3hbeyzo2w.fsf@linux.vnet.ibm.com>
+References: <m3hbfpvz0k.fsf@linux.vnet.ibm.com>
+	 <m3eiatvwpc.fsf@linux.vnet.ibm.com> <m31v6rrrfr.fsf@linux.vnet.ibm.com>
+	 <m3zkssjuyz.fsf@linux.vnet.ibm.com>
+	 <1291061630.12784.49.camel@heimdal.trondhjem.org>
+	 <m3hbeyzo2w.fsf@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 30 Nov 2010 13:40:14 -0500
+Message-ID: <1291142414.3594.4.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 11/18/2010 12:17 PM, Chuck Lever wrote:
->
-> On Nov 18, 2010, at 3:07 PM, Ben Greear wrote:
->
->> I applied the NFS O_DIRECT patch (and all others) from the pending 2.6.36 stable
->> queue, and now I can at least use O_DIRECT w/out immediate failure.
->>
->> However, I notice that when writing 2k chunks with O_DIRECT on
->> NFS, it runs extremely slowly (about 300Kbps throughput).  The
->> server is a Fedora 13 64-bit system running 2.6.34.7-56.fc13.x86_64
->>
->> Here's some strace -ttT output for the writer:
->>
->> 07:03:42.898058 write(9, "\370'\37\345v\230\315\253\3\0\0\0\354\7\0\0\16\1\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 2048) = 2048<0.059402>
->> 07:03:42.957649 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout)<0.000266>
->> 07:03:42.958148 write(9, "\212$s\327v\230\315\253\3\0\0\0\354\7\0\0\17\1\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 2048) = 2048<0.069295>
->> 07:03:43.027524 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout)<0.000011>
->>
->>
->> Writing 64k chunks takes basically the same amount of time per system call:
->>
->> 07:06:13.537488 write(9, "\5\340\202\262v\230\315\253\3\0\0\0\354\377\0\0\6\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536<0.049462>
->> 07:06:13.587083 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout)<0.000035>
->> 07:06:13.587410 write(9, "\250\231\377cv\230\315\253\3\0\0\0\354\377\0\0\7\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536<0.058612>
->> 07:06:13.646233 poll([{fd=4, events=POLLIN}, {fd=8, events=POLLIN}, {fd=6, events=POLLIN}], 3, 0) = 0 (Timeout)<0.000095>
->> 07:06:13.646616 write(9, "\5-@\5v\230\315\253\3\0\0\0\354\377\0\0\10\0\0\0\0\1\2\3\4\5\6\7\10\t\n\v"..., 65536) = 65536<0.050282>
->>
->>
->> Reading is a good deal faster..about 34Mbps with O_DIRECT, NFS and 2k reads.
->>
->> Any ideas about why the write performance is so bad?
->
-> A network trace will probably show you that the per-write latency is due to the server.
->
+On Tue, 2010-11-30 at 23:33 +0530, Aneesh Kumar K. V wrote: 
+> On Mon, 29 Nov 2010 15:13:50 -0500, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > On Mon, 2010-11-29 at 15:46 +0530, Aneesh Kumar K. V wrote:
+> > > On Fri, 12 Nov 2010 11:53:20 +0530, "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > > > On Thu, 11 Nov 2010 00:21:27 +0530, "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > > > > On Wed, 10 Nov 2010 23:31:31 +0530, Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > > > > > 
+> > > > > > Hi,
+> > > > > > 
+> > > > > > I guess we are not marking the inode attribute as invalid when we set
+> > > > > > the ACL value. For ex:
+> > > > > > 
+> > > > > > /d# mkdir sub3
+> > > > > > /d# ls -dl sub3
+> > > > > > drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
+> > > > > > /d# nfs4_setfacl -s A:fd:EVERYONE@:rwax sub3
+> > > > > > /d# ls -dl sub3
+> > > > > > drwxr-xr-x 2 root root 4096 Nov 10 17:56 sub3
+> > > > > > /d# 
+> > > > > > 
+> > > > > > 
+> > > > > > On the server i have the mode bits as
+> > > > > > /d# ls -dl sub3
+> > > > > > drwxrwxrwx 2 root root 4096 Nov 10 17:56 sub3
+> > > > > > /d# 
+> > > > > 
+> > > > > We also have similar issue other way round. ie setting the mode bits
+> > > > > don't result in ACL values being invalidated. But a second request get
+> > > > > the right value of ACL as show below.
+> > > > > 
+> > > > > /d# nfs4_getfacl  x
+> > > > > A::OWNER@:rw
+> > > > > A::GROUP@:rw
+> > > > > A::EVERYONE@:r
+> > > > > /d# chmod 600 x
+> > > > > /d# nfs4_getfacl  x
+> > > > > A::OWNER@:rw
+> > > > > A::GROUP@:rw
+> > > > > A::EVERYONE@:r
+> > > > > /d#
+> > > > > 
+> > > > > Expected value is
+> > > > > 
+> > > > > /d# nfs4_getfacl  x
+> > > > > A::OWNER@:rw
+> > > > > 
+> > > > 
+> > > > The below patch fix the problem for me. If this is the right way
+> > > > to fix, I can send a proper patch with commit message and s-o-b.
+> > > > 
+> > > > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > > > index 0f24cdf..666a48b 100644
+> > > > --- a/fs/nfs/nfs4proc.c
+> > > > +++ b/fs/nfs/nfs4proc.c
+> > > > @@ -3359,6 +3359,8 @@ static ssize_t nfs4_proc_get_acl(struct inode *inode, void *buf, size_t buflen)
+> > > >  	ret = nfs_revalidate_inode(server, inode);
+> > > >  	if (ret < 0)
+> > > >  		return ret;
+> > > > +	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
+> > > > +		nfs_zap_acl_cache(inode);
+> > > >  	ret = nfs4_read_cached_acl(inode, buf, buflen);
+> > > >  	if (ret != -ENOENT)
+> > > >  		return ret;
+> > > > @@ -3387,6 +3389,11 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
+> > > >  	nfs_inode_return_delegation(inode);
+> > > >  	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
+> > > >  	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
+> > > > +	/*
+> > > > +	 * Acl update can result in inode attribute update.
+> > > > +	 * so mark the attribute cache invalid.
+> > > > +	 */
+> > > > +	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;
+> > 
+> > This needs to be done under the correct spin locks, so please use the
+> > helper nfs_mark_for_revalidate() instead of attempting to open coding
+> > it.
+> 
+> nfs_mark_for_revalidate mark other fields as invalid. Do we need to do that
+> when updating ACL ? If not how about 
 
-Looks like you are right.  I don't remember it being this slow before, but
-maybe it was.  We'll run some tests with older kernels and/or different
-servers.
-
-   6.700193 192.168.100.173 -> 192.168.100.3 NFS V3 WRITE Call, FH:0x6bc05782 Offset:96256 Len:1024 FILE_SYNC
-   6.740547 192.168.100.3 -> 192.168.100.173 TCP 2049 > 800 [ACK] Seq=12321 Ack=101729 Win=501 Len=0 TSV=218471603 TSER=1385525
-   6.769380 192.168.100.3 -> 192.168.100.173 NFS V3 WRITE Reply (Call In 262) Len:1024 FILE_SYNC
-   6.769609 192.168.100.173 -> 192.168.100.3 NFS V3 WRITE Call, FH:0x6bc05782 Offset:97280 Len:1024 FILE_SYNC
-   6.809777 192.168.100.3 -> 192.168.100.173 TCP 2049 > 800 [ACK] Seq=12461 Ack=102885 Win=501 Len=0 TSV=218471673 TSER=1385594
-   6.850373 192.168.100.3 -> 192.168.100.173 NFS V3 WRITE Reply (Call In 265) Len:1024 FILE_SYNC
-   6.850631 192.168.100.173 -> 192.168.100.3 NFS V3 WRITE Call, FH:0x6bc05782 Offset:98304 Len:1024 FILE_SYNC
-   6.890845 192.168.100.3 -> 192.168.100.173 TCP 2049 > 800 [ACK] Seq=12601 Ack=104041 Win=501 Len=0 TSV=218471754 TSER=1385675
-   6.930344 192.168.100.3 -> 192.168.100.173 NFS V3 WRITE Reply (Call In 268) Len:1024 FILE_SYNC
-   6.930703 192.168.100.173 -> 192.168.100.3 NFS V3 WRITE Call, FH:0x6bc05782 Offset:99328 Len:1024 FILE_SYNC
-   6.971753 192.168.100.3 -> 192.168.100.173 TCP 2049 > 800 [ACK] Seq=12741 Ack=105197 Win=501 Len=0 TSV=218471834 TSER=1385755
-   6.980341 192.168.100.3 -> 192.168.100.173 NFS V3 WRITE Reply (Call In 271) Len:1024 FILE_SYNC
 
 
-Thanks,
-Ben
+> 	spin_lock(&inode->i_lock);
+>         NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;   
+> 	spin_unlock(&inode->i_lock);
+
+That's fine as a short term fix. For the long term, let's try to add the
+getattr, as you suggested, so that we can do the inode attribute
+revalidation here.
+
+> > > >  	nfs_access_zap_cache(inode);
+> > > >  	nfs_zap_acl_cache(inode);
+> > > >  	return ret;
+> > > 
+> > > 
+> > > Any update on this ? Another option i figured out today is to make sure
+> > > we add FATTR4_WORD0_ACL in nfs4_fattr_bitmap for fetching the modified
+> > > acl value on mode update. Similarly setfacl can be compounded with the
+> > > getattr request.
+> > 
+> > We actually used to compound setacl with a GETATTR(FATTR4_WORD0_ACL) in
+> > order to ensure that the server sets it correctly. Unfortunately, that
+> > caused some servers to return NFS4ERR_RESOURCE due to the burden of
+> > caching all that acl information in the duplicate request queue.
+> 
+> What i was suggesting was to compound setacl with
+> GETATTR(FATTR4_WORD1_MODE) so that we get the update mode bits as a part
+> of response. Also componding setattr request with GETATTR(FATTR4_WORD0_ACL)
+
+You'd be missing the change attribute and the ctime, both of which are
+also guaranteed to change when the acl is changed.
+
+We might as well just do a full attribute revalidation...
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
 
