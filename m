@@ -1,97 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:43313 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935039Ab0KQRw1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Nov 2010 12:52:27 -0500
-Subject: Re: Strange rpc.svcgssd behavior
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <AANLkTi=CgbEAewXEtErN5KxmNyWCL8-Jqc69v67cgZ2J@mail.gmail.com>
-Date: Wed, 17 Nov 2010 12:51:54 -0500
-Cc: Steve Dickson <SteveD@redhat.com>, Jim Rees <rees@umich.edu>,
-        Valentijn Sessink <valentyn@blub.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <6980C086-795B-49EF-8F93-8C49A51E35CF@oracle.com>
-References: <1C8B051A-5DC1-4871-B9B9-96E571036A9B@oracle.com> <4CE2AA3B.6070302@openoffice.nl> <4CE2DF2D.9070603@blub.net> <20101116201753.GB4482@merit.edu> <577C5BE5-DB69-48E2-9E99-26ACE90C96BF@oracle.com> <20101116205436.GA4595@merit.edu> <44C0977F-DBD6-4F87-B3A5-B2B66C784312@oracle.com> <4CE3F249.8050301@RedHat.com> <C2312B32-B190-41C4-A4C8-C29231DBA305@oracle.com> <AANLkTinJyFHom5JQg5s+yX+6NRBw01S6a9gbwtk5WaLB@mail.gmail.com> <013E9F9C-F4F8-47E6-939D-1B0D893B6988@oracle.com> <AANLkTi=CgbEAewXEtErN5KxmNyWCL8-Jqc69v67cgZ2J@mail.gmail.com>
-To: Kevin Coffman <kwc@citi.umich.edu>
+Received: from fieldses.org ([174.143.236.118]:34722 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752193Ab0K3Sjn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 13:39:43 -0500
+Date: Tue, 30 Nov 2010 13:39:41 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Nick Piggin <npiggin@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: lifetime of DCACHE_DISCONECTED dentries
+Message-ID: <20101130183941.GB29091@fieldses.org>
+References: <20101112184353.GA32745@fieldses.org>
+ <AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
+ <20101115174837.GB10044@fieldses.org>
+ <AANLkTim1QjTwOZ4SHdMy8Y6TOAnaOYtTwgwHXfH5H5Xn@mail.gmail.com>
+ <AANLkTinMq1W1vx-jZnf7cb1cAnh9OyoVRYtVS7zpujfs@mail.gmail.com>
+ <20101129193248.GA9897@fieldses.org>
+ <AANLkTikwzDJ_q65==uxDsAhp3h8bU7Rkt7U9gVgRAK0D@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <AANLkTikwzDJ_q65==uxDsAhp3h8bU7Rkt7U9gVgRAK0D@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Nov 17, 2010, at 11:26 AM, Kevin Coffman wrote:
-
-> On Wed, Nov 17, 2010 at 11:05 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->> On Nov 17, 2010, at 10:54 AM, Kevin Coffman wrote:
->> 
->>> On Wed, Nov 17, 2010 at 10:30 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>> Hey-
->>>> 
->>>> On Nov 17, 2010, at 10:18 AM, Steve Dickson wrote:
->>>> 
->>>>> Sorry for the delayed response... I had my
->>>>> head down for last couple of days...
->>>>> 
->>>>> On 11/16/2010 04:42 PM, Chuck Lever wrote:
->>>>>> 
->>>>>> On Nov 16, 2010, at 3:54 PM, Jim Rees wrote:
->>>>>> 
->>>>>>> Chuck Lever wrote:
->>>>>>> 
->>>>>>> Before we go too far down the NM path of no return, I was under the
->>>>>>> impression that some applications require the host's name on the localhost
->>>>>>> entries in /etc/hosts.  That's why NM puts it there.
->>>>>>> 
->>>>>>> There's nothing invalid about having a hostname on the localhost entries
->>>>>>> in /etc/hosts, is there?
->>>>>>> 
->>>>>>> So I wonder if removing NM is really the solution here.
->>>>>>> 
->>>>>>> No, it's not.  I just like to complain about NM.
->>>>>>> 
->>>>>>> The original problem was that rpc.svcgssd couldn't figure out the correct
->>>>>>> kerberos realm.  The fix in this particular case, I think, is to set the
->>>>>>> realm explicitly in /etc/idmapd.conf.
->>>>>> 
->>>>>> It's having trouble determining the NFS server's hostname.  It needs to find the right nfs/your.host key in /etc/krb5.keytab.
->>>>>> 
->>>>>> I don't know if realm self-discovery is an issue too.
->>>>> I think the problem is a reverse lookup is done on hostname that
->>>>> is found in the /etc/krb5.keytab. Instead of the FQDN being
->>>>> returned, localhost is returned because the FQDN was added to
->>>>> the localhost line in /etc/hosts.
->>>>> 
->>>>> Actually I didn't realize it was NM doing that... I thought
->>>>> it was the installer...
->>>> 
->>>> No matter who does it, I think there are applications
->>>> (gdm?  rusty recollection) that require this network configuration
->>>> in /etc/hosts, so our best bet IMO is to fix rpc.svcgssd, or more
->>>> likely the gss library it depends on, to get it right in this situation.
->>>> If we all agree this is a bug (and sounds like we do) then I can
->>>> create a bug report on bugzilla.linux-nfs.org, as a starting point.
->>> 
->>> Hi Chuck and Steve,
->>> This issue affects gss authentication in sshd as well.  I believe this
->>> is all the way down in the Kerberos code, which has been this way for
->>> years.  I'm not sure what needs to be changed to "get it right".
->> 
->> I was afraid of that.  Do you know if this has this ever been brought
->> up with the upstream Kerberos maintainers?
+On Tue, Nov 30, 2010 at 12:00:16PM +1100, Nick Piggin wrote:
+> On Tue, Nov 30, 2010 at 6:32 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Mon, Nov 29, 2010 at 02:56:22PM +1100, Nick Piggin wrote:
+> >> On Tue, Nov 16, 2010 at 5:45 PM, Nick Piggin <npiggin@gmail.com> wrote:
+> >> > On Tue, Nov 16, 2010 at 4:48 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >> >> On Sat, Nov 13, 2010 at 10:53:12PM +1100, Nick Piggin wrote:
+> >> >>> On Sat, Nov 13, 2010 at 5:43 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >> >
+> >> >>> >        - putfh: look up the filehandle.  The only alias found for the
+> >> >>> >          inode will be DCACHE_UNHASHED alias referenced by the filp
+> >> >>> >          associated with the nfsd open.  d_obtain_alias() doesn't like
+> >> >>> >          this, so it creates a new DCACHE_DISCONECTED dentry and
+> >> >>> >          returns that instead.
+> >> >>>
+> >> >>> This seems to be where the thing goes wrong. It isn't a hashed dentry at
+> >> >>> this point here, so d_obtain_alias should not be making one.
+> >> >>
+> >> >> Sounds sensible.  (But can you think of any actual bugs that will result
+> >> >> from trying to add a new hashed dentry in this case?)
+> >> >
+> >> > Well, this one? :)
+> >> >
+> >> >
+> >> >>> I think the inode i_nlink games are much more appropriate on this side of
+> >> >>> the equation, rather than the dput side (after all, d_obtain_alias is setting
+> >> >>> up an alias for the inode).
+> >> >>>
+> >> >>> Can you even put the link check into __d_find_alias?
+> >> >>>
+> >> >>> -               if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
+> >> >>> +               if (S_ISDIR(inode->i_mode) || !inode->i_nlink ||
+> >> >>> !d_unhashed(alias)) {
+> >> >>>
+> >> >>> Something like that?
+> >> >>
+> >> >> The immediate result of that would be for the close rpc (or any rpc's
+> >> >> sent after the file was unlinked) to fail with ESTALE.
+> >> >
+> >> > Why is that? Seems like it would be a bug, because a hashed dentry may
+> >> > be unhashed at any time concurrently to nfsd operation, so it should be
+> >> > able to tolerate that so long as it has a ref on the inode?
+> >>
+> >> Ping? Did you work out why nfs fails with ESTALE in that case? It seems
+> >> to work in my testing (and do the right thing with freeing the inode).
+> >
+> > Bah, sorry, I read too quickly, got the sense of the test backwards, and
+> > thought you were suggesting __d_find_alias() shouldn't return an alias
+> > in the i_nlink == 0 case!
+> >
+> > Yes, agreed, that should solve my problem.
 > 
-> Not that I am aware of.  Like Valentin, I believe it to be a
-> NetworkManager bug.  (The Kerberos code works fine on all other Unix
-> platforms.)
+> OK, good.
+> 
+> > But what's the reason for the d_unhashed() check now?  Could we get rid
+> > of it entirely?
+> 
+> Well when the inode still has links I think we actually do want any new
+> references to go to hashed dentries. Definitely for d_splice_alias.
 
-The hostname is added to localhost entries in /etc/hosts because some applications require at least one entry with the local host's hostname in /etc/hosts.  When a system comes up with all of its network interfaces offline and without any IP addresses assigned, what else can be done?
+OK, makes sense.  Should we stick a changelog on it and pass it along to
+someone?
 
-One way to address this via NetworkManager might be to have the hostname removed from the localhost entries when a real IP address for the host is added to /etc/hosts, and then added back to the localhost entries when all network interfaces are disabled.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+--b.
