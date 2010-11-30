@@ -1,37 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:48932 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755887Ab0KRXlf convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Nov 2010 18:41:35 -0500
-In-Reply-To: <20101118233439.GB5004@quack.suse.cz>
-References: <1290007619-5787-1-git-send-email-arnd@arndb.de> <20101118233439.GB5004@quack.suse.cz>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Thu, 18 Nov 2010 15:40:56 -0800
-Message-ID: <AANLkTin0Gm8Xqm-ARGmd4T+fCM4mMA0=PbDA6eSsYUOG@mail.gmail.com>
-Subject: Re: [PATCH 0/7] BKL removal follow-up
-To: Jan Kara <jack@suse.cz>
-Cc: Arnd Bergmann <arnd@arndb.de>, linux-kernel@vger.kernel.org,
-        Nathan Laredo <laredo@gnu.org>, Greg Kroah-Hartman <gregkh@suse.de>,
-        Dave Airlie <airlied@linux.ie>, dri-devel@lists.freedesktop.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        Alessio Igor Bogani <alessioigorbogani@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:26148 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751059Ab0K3NEc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Nov 2010 08:04:32 -0500
+Subject: Re: NFSv4 behaviour on unknown users
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Spelic <spelic@shiftmail.org>
+Cc: Spencer Shepler <spencer.shepler@gmail.com>, Daniel.Muntz@emc.com,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4CF4E38B.4050706@shiftmail.org>
+References: <1291054975.12784.17.camel@heimdal.trondhjem.org>
+	 <DE966DA98A4ABE438D726BDF1699CF610437B188C9@MX05A.corp.emc.com>
+	 <067101cb9018$d70ba2f0$8522e8d0$@gmail.com>
+	 <1291072571.20567.26.camel@heimdal.trondhjem.org>
+	 <1291073174.20567.31.camel@heimdal.trondhjem.org>
+	 <068901cb901d$61395630$23ac0290$@gmail.com>
+	 <1291074002.20567.38.camel@heimdal.trondhjem.org>
+	 <068f01cb9021$d1c10700$75431500$@gmail.com>
+	 <4CF4E38B.4050706@shiftmail.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 30 Nov 2010 08:04:23 -0500
+Message-ID: <1291122263.3204.2.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Nov 18, 2010 at 3:34 PM, Jan Kara <jack@suse.cz> wrote:
->
->  Just for info, UDF BKL removal patches seem to work fine but I want to
-> give them some final SMP testing on Monday before pushing them to -next.
-> I'm not sure how much people hurry with disabling the lock so if I should
-> push them ASAP or whether the next merge window is fine...
+On Tue, 2010-11-30 at 12:44 +0100, Spelic wrote:
+> On 11/30/2010 01:02 AM, Spencer Shepler wrote:
+> >> It would not be backwards compatible: the linux server will currently
+> >> reject any uid/gid usage by the client.
+> >>
+> >> That said, I can imagine that for 'sec=sys', we might be able to change
+> >> the client to use the uid/gid format by default, and then change back to
+> >> doing name@domain upon receiving the first NFS4ERR_BADOWNER error from the
+> >> server.
+> >> It the server changes to match this, then that might suffice solve the
+> >> current problem that we have with doing nfsroot on NFSv4...
+> >>      
+> > IMO: I wouldn't worry about the mixed scenarios to start with.
+> > Provide the option on the client and server to use the straight-up
+> > uid/gid to string mappings and this will satisfy these simple
+> > deployments that are or will have trouble.
+> >    
+> 
+> +1 for this.  Changing mapping on the fly at the first NFS4ERR_BADOWNER 
+> received does not look very reliable to me: is scarcely controllable by 
+> the sysadmin and is gonna make the thing a headache to debug the first 
+> time it happens unwillingly (maybe the sysadmin was changing some config 
+> on the server and suddenly the everything stops working and he needs to 
+> restart the nfs client to restore things but this is scarcely 
+> intuitive...). +1 for simply providing a clear-upfront option for using 
+> numeric UIDs/GIDs.
+> 
+> Thanks for your understanding :-)
 
-I don't think I can reasonably do it in 37, we're late enough in the
--rc series. So UDF and really saying 'n' to BKL by default will have
-to be for the next merge window.
+Sorry, but BADOWNER is an error that means "I don't get it" and the spec
+_is_ adamant about what the client should do. This is a take it or leave
+it: I'm not going to waste a lot of time and effort on this.
 
-I hate to do it, but I'd be too nervous about it any other way.
+Trond
 
-                   Linus
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
