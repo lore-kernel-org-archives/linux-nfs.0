@@ -1,249 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17286 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756026Ab0KLIt0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Nov 2010 03:49:26 -0500
-Received: from localhost.localdomain (hess01-lxp.hq.netapp.com [10.58.60.52] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAC8n7fR025967
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:49:19 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 17/22] pnfs-submit: increase number of outstanding CB_LAYOUTRECALLS we can handle
-Date: Fri, 12 Nov 2010 03:48:39 -0500
-Message-Id: <1289551724-18575-18-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
-References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:59065 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1750990Ab0K3CFW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Nov 2010 21:05:22 -0500
+Message-ID: <4CF45BD9.20908@cn.fujitsu.com>
+Date: Tue, 30 Nov 2010 10:05:13 +0800
+From: Bian Naimeng <biannm@cn.fujitsu.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        NFSv3 list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mount: avoid po_destroy to modify errno what we really
+ want
+References: <4CEE357D.2030007@cn.fujitsu.com> <9C08C339-281F-4CD4-B8C1-70441869E2F6@oracle.com> <4CF3C4D2.2060607@RedHat.com>
+In-Reply-To: <4CF3C4D2.2060607@RedHat.com>
+Content-Type: text/plain; charset=Shift_JIS
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/callback.h         |    1 +
- fs/nfs/callback_proc.c    |   35 +++++++++++++++++++++++++++++------
- fs/nfs/pnfs.c             |   24 +++++++++---------------
- fs/nfs/pnfs.h             |    7 +++----
- include/linux/nfs_fs_sb.h |    3 ++-
- 5 files changed, 44 insertions(+), 26 deletions(-)
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 4a9905b..218490c 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -165,6 +165,7 @@ extern unsigned nfs4_callback_layoutrecall(
- 	void *dummy, struct cb_process_state *cps);
- extern bool matches_outstanding_recall(struct inode *ino,
- 				       struct pnfs_layout_range *range);
-+extern void notify_drained(struct nfs_client *clp, u64 mask);
- extern void nfs_client_return_layouts(struct nfs_client *clp);
- 
- static inline void put_session_client(struct nfs4_session *session)
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index af405cf..752b593 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -220,16 +220,28 @@ void nfs_client_return_layouts(struct nfs_client *clp)
- 		/* Removing from the list unblocks LAYOUTGETs */
- 		list_del(&cb_info->pcl_list);
- 		clp->cl_cb_lrecall_count--;
-+		clp->cl_drain_notification[1 << cb_info->pcl_notify_bit] = NULL;
- 		rpc_wake_up(&clp->cl_rpcwaitq_recall);
- 		kfree(cb_info);
- 	}
- }
- 
--void notify_drained(struct pnfs_cb_lrecall_info *d)
-+void notify_drained(struct nfs_client *clp, u64 mask)
- {
--	if (d && atomic_dec_and_test(&d->pcl_count)) {
--		set_bit(NFS4CLNT_LAYOUT_RECALL, &d->pcl_clp->cl_state);
--		nfs4_schedule_state_manager(d->pcl_clp);
-+	atomic_t **ptr = clp->cl_drain_notification;
-+	bool done = false;
-+
-+	/* clp lock not needed except to remove used up entries */
-+	/* Should probably use functions defined in bitmap.h */
-+	while (mask) {
-+		if ((mask & 1) && (atomic_dec_and_test(*ptr)))
-+			done = true;
-+		mask >>= 1;
-+		ptr++;
-+	}
-+	if (done) {
-+		set_bit(NFS4CLNT_LAYOUT_RECALL, &clp->cl_state);
-+		nfs4_schedule_state_manager(clp);
- 	}
- }
- 
-@@ -270,7 +282,9 @@ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
- 		if (rv == NFS4_OK) {
- 			lo->plh_block_lgets++;
- 			nfs4_asynch_forget_layouts(lo, &args->cbl_range,
--						   cb_info, &free_me_list);
-+						   cb_info->pcl_notify_bit,
-+						   &cb_info->pcl_count,
-+						   &free_me_list);
- 		}
- 		pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
- 		spin_unlock(&lo->inode->i_lock);
-@@ -306,7 +320,9 @@ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
- 					 &recall_list, plh_bulk_recall) {
- 			spin_lock(&lo->inode->i_lock);
- 			set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
--			nfs4_asynch_forget_layouts(lo, &range, cb_info,
-+			nfs4_asynch_forget_layouts(lo, &range,
-+						   cb_info->pcl_notify_bit,
-+						   &cb_info->pcl_count,
- 						   &free_me_list);
- 			list_del_init(&lo->plh_bulk_recall);
- 			spin_unlock(&lo->inode->i_lock);
-@@ -322,6 +338,8 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
- 				    struct cb_layoutrecallargs *args)
- {
- 	struct pnfs_cb_lrecall_info *new;
-+	atomic_t **ptr;
-+	int bit_num;
- 	u32 res;
- 
- 	dprintk("%s enter, type=%i\n", __func__, args->cbl_recall_type);
-@@ -344,12 +362,17 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
- 	clp->cl_cb_lrecall_count++;
- 	/* Adding to the list will block conflicting LGET activity */
- 	list_add_tail(&new->pcl_list, &clp->cl_layoutrecalls);
-+	for (bit_num = 0, ptr = clp->cl_drain_notification; *ptr; ptr++)
-+		bit_num++;
-+	*ptr = &new->pcl_count;
-+	new->pcl_notify_bit = bit_num;
- 	spin_unlock(&clp->cl_lock);
- 	res = initiate_layout_draining(new);
- 	if (res || atomic_dec_and_test(&new->pcl_count)) {
- 		spin_lock(&clp->cl_lock);
- 		list_del(&new->pcl_list);
- 		clp->cl_cb_lrecall_count--;
-+		clp->cl_drain_notification[1 << bit_num] = NULL;
- 		rpc_wake_up(&clp->cl_rpcwaitq_recall);
- 		spin_unlock(&clp->cl_lock);
- 		if (res == NFS4_OK) {
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2d817be..22abf83 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -278,7 +278,7 @@ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- 	smp_mb();
- 	lseg->valid = true;
- 	lseg->layout = lo;
--	lseg->drain_notification = NULL;
-+	lseg->pls_notify_mask = 0;
- }
- 
- static void
-@@ -330,12 +330,12 @@ put_lseg(struct pnfs_layout_segment *lseg)
- 		atomic_read(&lseg->pls_refcount), lseg->valid);
- 	ino = lseg->layout->inode;
- 	if (atomic_dec_and_lock(&lseg->pls_refcount, &ino->i_lock)) {
--		struct pnfs_cb_lrecall_info *drain_info = lseg->drain_notification;
-+		u64 mask = lseg->pls_notify_mask;
- 
- 		_put_lseg_common(lseg);
- 		spin_unlock(&ino->i_lock);
- 		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
--		notify_drained(drain_info);
-+		notify_drained(NFS_SERVER(ino)->nfs_client, mask);
- 		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
- 		put_layout_hdr(ino);
- 	}
-@@ -401,14 +401,14 @@ pnfs_free_lseg_list(struct list_head *free_me)
- {
- 	struct pnfs_layout_segment *lseg, *tmp;
- 	struct inode *ino;
--	struct pnfs_cb_lrecall_info *drain_info;
-+	u64 mask;
- 
- 	list_for_each_entry_safe(lseg, tmp, free_me, fi_list) {
- 		BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
- 		ino = lseg->layout->inode;
--		drain_info = lseg->drain_notification;
-+		mask = lseg->pls_notify_mask;
- 		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
--		notify_drained(drain_info);
-+		notify_drained(NFS_SERVER(ino)->nfs_client, mask);
- 		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
- 		put_layout_hdr(ino);
- 	}
-@@ -587,7 +587,7 @@ has_layout_to_return(struct pnfs_layout_hdr *lo,
- 
- void nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
- 				struct pnfs_layout_range *range,
--				struct pnfs_cb_lrecall_info *drain_info,
-+				int notify_bit, atomic_t *notify_count,
- 				struct list_head *tmp_list)
- {
- 	struct pnfs_layout_segment *lseg, *tmp;
-@@ -595,14 +595,8 @@ void nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
- 	assert_spin_locked(&lo->inode->i_lock);
- 	list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
- 		if (should_free_lseg(&lseg->range, range)) {
--			/* FIXME - need to change to something like a
--			 * notification bitmap to remove the restriction
--			 * of only being able to process a single
--			 * CB_LAYOUTRECALL at a time.
--			 */
--			BUG_ON(lseg->drain_notification);
--			lseg->drain_notification = drain_info;
--			atomic_inc(&drain_info->pcl_count);
-+			lseg->pls_notify_mask |= (1 << notify_bit);
-+			atomic_inc(notify_count);
- 			mark_lseg_invalid(lseg, tmp_list);
- 		}
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 7ea121f..7fd1f5d 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -39,7 +39,7 @@ struct pnfs_layout_segment {
- 	atomic_t pls_refcount;
- 	bool valid;
- 	struct pnfs_layout_hdr *layout;
--	struct pnfs_cb_lrecall_info *drain_notification;
-+	u64 pls_notify_mask;
- };
- 
- enum pnfs_try_status {
-@@ -126,6 +126,7 @@ struct pnfs_device {
- struct pnfs_cb_lrecall_info {
- 	struct list_head	pcl_list; /* hook into cl_layoutrecalls list */
- 	atomic_t		pcl_count;
-+	int			pcl_notify_bit;
- 	struct nfs_client	*pcl_clp;
- 	struct inode		*pcl_ino;
- 	struct cb_layoutrecallargs pcl_args;
-@@ -231,10 +232,8 @@ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
- 				  struct nfs4_state *open_state);
- void nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
- 				struct pnfs_layout_range *range,
--				struct pnfs_cb_lrecall_info *drain_info,
-+				int notify_bit, atomic_t *notify_count,
- 				struct list_head *tmp_list);
--/* FIXME - this should be in callback.h, but pnfs_cb_lrecall_info needs to be there too */
--extern void notify_drained(struct pnfs_cb_lrecall_info *d);
- 
- static inline bool
- has_layout(struct nfs_inode *nfsi)
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 80dcc00..295d449 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -85,7 +85,8 @@ struct nfs_client {
- 	struct list_head	cl_layouts;
- 	struct list_head	cl_layoutrecalls;
- 	unsigned long		cl_cb_lrecall_count;
--#define PNFS_MAX_CB_LRECALLS (1)
-+#define PNFS_MAX_CB_LRECALLS (64)
-+	atomic_t		*cl_drain_notification[PNFS_MAX_CB_LRECALLS];
- 	struct rpc_wait_queue	cl_rpcwaitq_recall;
- 	struct pnfs_deviceid_cache *cl_devid_cache; /* pNFS deviceid cache */
- #endif /* CONFIG_NFS_V4_1 */
+
+Steve Dickson wrote:
+> 
+> On 11/29/2010 09:45 AM, Chuck Lever wrote:
+>> On Nov 25, 2010, at 5:07 AM, Mi Jinlong wrote:
+>>
+>>> We should return the errno that was set before po_destroy,
+>>> rather than the errno that was set at po_destroy.
+>>>
+>>> Because the po_destroy function don't affect the return value,
+>>> this patch just revert the saved errno after po_destroy.
+>> The only library function used in po_destroy() is free(3).  
+>> Does free(3) change the value of errno?
+> Looking at the man page and taking a look a the 
+> glibc code it appears the answer is no. free(3)
+> does not set errno.
+> 
+> Bian, what was the problem you were seeing that this
+> patch fixed? 
+> 
+
+ Actually, there's no problem now. But this's not a good style, po_destroy
+maybe change the errno later on such as adding a printf.
+ So if somebady want modify the po_destroy, he must be careful of it. :)
+
+And, i don't think it's a good idea that explicitly set errno, it maybe make
+some trouble in the future. It's better returning error in nfs_do_mount_v3v2,
+or save the error in a input parameter. :)
+
+Thanks
+  Bian
+
+> steved.
+> 
+>>> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+>>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>>> ---
+>>> utils/mount/stropts.c |    8 ++++++--
+>>> 1 files changed, 6 insertions(+), 2 deletions(-)
+>>>
+>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>>> index 50a1a2a..d554877 100644
+>>> --- a/utils/mount/stropts.c
+>>> +++ b/utils/mount/stropts.c
+>>> @@ -592,7 +592,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+>>> 		struct sockaddr *sap, socklen_t salen)
+>>> {
+>>> 	struct mount_options *options = po_dup(mi->options);
+>>> -	int result = 0;
+>>> +	int result = 0, save = 0;
+>>>
+>>> 	if (!options) {
+>>> 		errno = ENOMEM;
+>>> @@ -637,7 +637,9 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+>>> 	result = nfs_sys_mount(mi, options);
+>>>
+>>> out_fail:
+>>> +	save = errno;
+>>> 	po_destroy(options);
+>>> +	errno = save;
+>>> 	return result;
+>>> }
+>>>
+>>> @@ -673,7 +675,7 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
+>>> 		struct sockaddr *sap, socklen_t salen)
+>>> {
+>>> 	struct mount_options *options = po_dup(mi->options);
+>>> -	int result = 0;
+>>> +	int result = 0, save = 0;
+>>>
+>>> 	if (!options) {
+>>> 		errno = ENOMEM;
+>>> @@ -724,7 +726,9 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
+>>> 	result = nfs_sys_mount(mi, options);
+>>>
+>>> out_fail:
+>>> +	save = errno;
+>>> 	po_destroy(options);
+>>> +	errno = save;
+>>> 	return result;
+>>> }
+>>>
+>>> -- 
+>>> 1.7.3.2
+>>>
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+
 -- 
-1.7.2.1
+Regards
+Bian Naimeng
 
