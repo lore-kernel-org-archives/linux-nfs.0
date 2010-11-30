@@ -1,56 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:45134 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758853Ab0KRPxQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Nov 2010 10:53:16 -0500
-Subject: Re: [PATCH][BUG]: Pure nfs client performance using odirect.
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20101118103643.GA13235@linux.vnet.ibm.com>
-Date: Thu, 18 Nov 2010 10:52:35 -0500
-Cc: linux-nfs@vger.kernel.org, ffilz@us.ibm.com, jlayton@redhat.com
-Message-Id: <3A90B9B1-69D0-43A4-8F2F-5358B8A39406@oracle.com>
-References: <20101118103643.GA13235@linux.vnet.ibm.com>
-To: arun@linux.vnet.ibm.com
+Received: from mx.ij.cx ([212.13.201.15]:58129 "EHLO wes.ijneb.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751806Ab0K3Ruz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 12:50:55 -0500
+Date: Tue, 30 Nov 2010 17:50:52 +0000 (GMT)
+From: Mark Hills <mark@pogo.org.uk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: Listen backlog set to 64
+In-Reply-To: <20101129205935.GD9897@fieldses.org>
+Message-ID: <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz>
+References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz> <20101116182026.GA3971@fieldses.org> <20101117090826.4b2724da@notabene.brown> <20101129205935.GD9897@fieldses.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Mon, 29 Nov 2010, J. Bruce Fields wrote:
 
-On Nov 18, 2010, at 5:36 AM, Arun R Bharadwaj wrote:
+> On Wed, Nov 17, 2010 at 09:08:26AM +1100, Neil Brown wrote:
+> > On Tue, 16 Nov 2010 13:20:26 -0500
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Mon, Nov 15, 2010 at 06:43:52PM +0000, Mark Hills wrote:
+> > > > I am looking into an issue of hanging clients to a set of NFS servers, on 
+> > > > a large HPC cluster.
+> > > > 
+> > > > My investigation took me to the RPC code, svc_create_socket().
+> > > > 
+> > > > 	if (protocol == IPPROTO_TCP) {
+> > > > 		if ((error = kernel_listen(sock, 64)) < 0)
+> > > > 			goto bummer;
+> > > > 	}
+> > > > 
+> > > > A fixed backlog of 64 connections at the server seems like it could be too 
+> > > > low on a cluster like this, particularly when the protocol opens and 
+> > > > closes the TCP connection.
+[...] 
+> > So we could:
+> >   - hard code a new number
+> >   - make this another sysctl configurable
+> >   - auto-adjust it so that it "just works".
+> > 
+> > I would prefer the latter if it is possible.   Possibly we could adjust it
+> > based on the number of nfsd threads, like we do for receive buffer space.
+> > Maybe something arbitrary like:
+> >    min(16 + 2 * number of threads, sock_net(sk)->core.sysctl_somaxconn)
+> > 
+> > which would get the current 64 at 24 threads, and can easily push up to 128
+> > and beyond with more threads.
+> > 
+> > Or is that too arbitrary?
+> 
+> I kinda like the idea of piggybacking on an existing constant like
+> sysctl_max_syn_backlog.  Somebody else hopefully keeps it set to something
+> reasonable, and we as a last resort it gives you a knob to twiddle.
+> 
+> But number of threads would work OK too.
+> 
+> At a minimum we should make sure we solve the original problem....
+> Mark, have you had a chance to check whether increasing that number to
+> 128 or more is enough to solve your problem?
 
-> Pure nfs client performance using odirect.
-> 
-> When an application opens a file with O_DIRECT flag, if the size of
-> the data that is written is equal to wsize, the client sends a
-> WRITE RPC with stable flag set to UNSTABLE followed by a single
-> COMMIT RPC rather than sending a single WRITE RPC with the stable
-> flag set to FILE_SYNC. This a bug.
-> 
-> Patch to fix this.
-> 
-> Signed-off-by: Arun R Bharadwaj <arun@linux.vnet.ibm.com>
-> 
-> Index: linux-2.6.36-rc7/fs/nfs/direct.c
-> ===================================================================
-> --- linux-2.6.36-rc7.orig/fs/nfs/direct.c	2010-11-18 15:53:15.904972002 +0530
-> +++ linux-2.6.36-rc7/fs/nfs/direct.c	2010-11-18 15:54:01.184972001 +0530
-> @@ -867,7 +867,7 @@
-> 		goto out;
-> 	nfs_alloc_commit_data(dreq);
-> 
-> -	if (dreq->commit_data == NULL || count < wsize)
-> +	if (dreq->commit_data == NULL || count <= wsize)
-> 		sync = NFS_FILE_SYNC;
-> 
-> 	dreq->inode = inode;
+I think we can hold off changing the queue size, for now at least. We 
+reduced the reported queue overflows by increasing the number of mountd 
+threads, allowing it to service the queue more quickly. However this did 
+not fix the common problem, and I was hoping to have more information in 
+this follow-up email.
 
-This looks reasonable, though I haven't looked closely at the surrounding code.  It's probably been in the code for a very long time.  I'm surprised no-one caught it sooner.
+Our investigation brings us to rpc.mountd and mount.nfs communicating. In 
+the client log we see messages like:
+
+  Nov 24 12:09:43 nyrd001 automount[3782]: >> mount.nfs: mount to NFS server 'ss1a:/mnt/raid1/banana' failed: timed out, giving up
+
+Using strace and isolating one of these, I can see a non-blocking connect 
+has already managed to make a connection and even send/receive some data. 
+
+But soon a timeout of 9999 milliseconds in poll() causes a problem in 
+mount.nfs when waiting for a response of some sort. The socket in question 
+is a connection to mountd:
+
+  26512 futex(0x7ff76affa540, FUTEX_WAKE_PRIVATE, 1) = 0
+  26512 write(3, "\200\0\0(j\212\254\365\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3\0\0\0\0\0\0\0\0"..., 44) = 44
+  26512 poll([{fd=3, events=POLLIN}], 1, 9999 <unfinished ...>
+
+When it returns:
+
+  26512 <... poll resumed> )              = 0 (Timeout)
+  26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
+  26512 rt_sigprocmask(SIG_SETMASK, ~[RTMIN RT_1], [], 8) = 0
+  26512 close(3)                          = 0
+  26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
+  26512 write(2, "mount.nfs: mount to NFS server '"..., 100) = 100
+
+There's no re-try from here, just a failed mount.
+
+What is the source of this 9999 millisecond timeout used by poll() in 
+mount.nfs? It was not clear in an initial search of nfs-utils and glibc, 
+but I need more time to investigate.
+
+If the server is being too slow to respond, what could the cause of this 
+be? Multiple threads are already in use, but it seems like they are not 
+all in use because a thread is able to accept() the connection. I haven't 
+been able to pin this on the forward/reverse DNS lookup used by 
+authentication and logging.
+
+Thanks
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Mark
