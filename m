@@ -1,393 +1,206 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from exprod5og104.obsmtp.com ([64.18.0.178]:59496 "HELO
-	exprod5og104.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752609Ab0KBGey (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Nov 2010 02:34:54 -0400
-Message-ID: <4CCFB107.1090600@panasas.com>
-Date: Tue, 02 Nov 2010 08:34:47 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Jim Rees <rees@umich.edu>
-CC: linux-nfs@vger.kernel.org, Eric Anderle <eanderle@umich.edu>,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH] nfs-utils: Various bug fixes and cleanups to blkmapd
-References: <20101029153637.GA31961@merit.edu>
-In-Reply-To: <20101029153637.GA31961@merit.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from magus.merit.edu ([198.108.1.13]:60190 "EHLO magus.merit.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751202Ab0K3TOG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 14:14:06 -0500
+Date: Tue, 30 Nov 2010 14:14:03 -0500
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 3/5] disk signature fixes
+Message-ID: <87fc19de9a71a12abc58bbad83298cabec55cc91.1291142529.git.rees@umich.edu>
+References: <cover.1291142529.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1291142529.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Jim, Sorry for the late response.
+re-write decode_blk_signature to keep fd open
+pretty print disk signature
+remove unneeded syslog info messages
 
-There are conflicts merging this patch as bldev_read_ap_state
-is already defined (in "Add complex block layout discovery and mapping daemon")
-I'm not sure how, but we seem out of sync, maybe I didn't get an earlier patch
-of yours.
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ utils/blkmapd/device-process.c |  105 +++++++++++++++++++++++-----------------
+ 1 files changed, 60 insertions(+), 45 deletions(-)
 
-I've rebased the nfs-utils tree onto nfs-utils-1-2-4-rc1 and pushed it out
-so please rebase your changes on top of it and resend.
+diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
+index a543769..4482bd5 100644
+--- a/utils/blkmapd/device-process.c
++++ b/utils/blkmapd/device-process.c
+@@ -47,6 +47,21 @@
+ #include <linux/kdev_t.h>
+ #include "device-discovery.h"
+ 
++static char *pretty_sig(char *sig, int siglen)
++{
++	static char rs[100];
++	unsigned int i;
++
++	if (siglen <= 4) {
++		memcpy(&i, sig, sizeof i);
++		sprintf(rs, "0x%0x", i);
++	} else {
++		memcpy(rs, sig, siglen);
++		rs[siglen] = '\0';
++	}
++	return rs;
++}
++
+ uint32_t *blk_overflow(uint32_t * p, uint32_t * end, size_t nbytes)
+ {
+ 	uint32_t *q = p + ((nbytes + 3) >> 2);
+@@ -55,10 +70,10 @@ uint32_t *blk_overflow(uint32_t * p, uint32_t * end, size_t nbytes)
+ 	return p;
+ }
+ 
+-static int decode_blk_signature(uint32_t **pp, uint32_t *end,
++static int decode_blk_signature(uint32_t ** pp, uint32_t * end,
+ 				struct bl_sig *sig)
+ {
+-	int i, tmp;
++	int i, siglen;
+ 	uint32_t *p = *pp;
+ 
+ 	BLK_READBUF(p, end, 4);
+@@ -73,19 +88,21 @@ static int decode_blk_signature(uint32_t **pp, uint32_t *end,
+ 		goto out_err;
+ 	}
+ 	for (i = 0; i < sig->si_num_comps; i++) {
++		struct bl_sig_comp *comp = &sig->si_comps[i];
++
+ 		BLK_READBUF(p, end, 12);
+-		READ64(sig->si_comps[i].bs_offset);
+-		READ32(tmp);
+-		sig->si_comps[i].bs_length = tmp;
+-		BLK_READBUF(p, end, tmp);
++		READ64(comp->bs_offset);
++		READ32(siglen);
++		comp->bs_length = siglen;
++		BLK_READBUF(p, end, siglen);
+ 		/* Note we rely here on fact that sig is used immediately
+ 		 * for mapping, then thrown away.
+ 		 */
+-		sig->si_comps[i].bs_string = (char *)p;
++		comp->bs_string = (char *)p;
+ 		BL_LOG_INFO("%s: si_comps[%d]: bs_length %d, bs_string %s\n",
+-			   __func__, i, sig->si_comps[i].bs_length,
+-			   sig->si_comps[i].bs_string);
+-		p += ((tmp + 3) >> 2);
++			    __func__, i, siglen,
++			    pretty_sig(comp->bs_string, siglen));
++		p += ((siglen + 3) >> 2);
+ 	}
+ 	*pp = p;
+ 	return 0;
+@@ -93,50 +110,45 @@ static int decode_blk_signature(uint32_t **pp, uint32_t *end,
+ 	return -EIO;
+ }
+ 
+-/* Read signature from device
+- * return 0: read successfully
+- * return -1: error
++/*
++ * Read signature from device and compare to sig_comp
++ * return: 0=match, 1=no match, -1=error
+  */
+-int
+-read_cmp_blk_sig(const char *dev_name, struct bl_sig_comp *comp,
+-		 int64_t bs_offset)
++static int
++read_cmp_blk_sig(struct bl_disk *disk, int fd, struct bl_sig_comp *comp)
+ {
+-	int fd, ret = -1;
++	const char *dev_name = disk->valid_path->full_path;
++	int ret = -1;
++	ssize_t siglen = comp->bs_length;
++	int64_t bs_offset = comp->bs_offset;
+ 	char *sig = NULL;
+ 
+-	fd = open(dev_name, O_RDONLY | O_LARGEFILE);
+-	if (fd < 0) {
+-		BL_LOG_ERR("%s could not be opened for read\n", dev_name);
+-		goto error;
+-	}
+-
+-	sig = (char *)malloc(comp->bs_length);
++	sig = (char *)malloc(siglen);
+ 	if (!sig) {
+ 		BL_LOG_ERR("%s: Out of memory\n", __func__);
+-		goto error;
++		goto out;
+ 	}
+ 
++	if (bs_offset < 0)
++		bs_offset += (((int64_t) disk->size) << 9);
+ 	if (lseek64(fd, bs_offset, SEEK_SET) == -1) {
+ 		BL_LOG_ERR("File %s lseek error\n", dev_name);
+-		goto error;
++		goto out;
+ 	}
+ 
+-	if (read(fd, sig, comp->bs_length) != comp->bs_length) {
++	if (read(fd, sig, siglen) != siglen) {
+ 		BL_LOG_ERR("File %s read error\n", dev_name);
+-		goto error;
++		goto out;
+ 	}
+ 
+-	BL_LOG_INFO
+-	    ("%s: %s sig: %s, bs_string: %s, bs_length: %d, bs_offset: %lld\n",
+-	     __func__, dev_name, sig, comp->bs_string, comp->bs_length,
+-	     (long long)bs_offset);
+-	ret = memcmp(sig, comp->bs_string, comp->bs_length);
++	ret = memcmp(sig, comp->bs_string, siglen);
++	if (!ret)
++		BL_LOG_INFO("%s: %s sig %s at %lld\n", __func__, dev_name,
++			    pretty_sig(sig, siglen), (long long)bs_offset);
+ 
+- error:
++ out:
+ 	if (sig)
+ 		free(sig);
+-	if (fd >= 0)
+-		close(fd);
+ 	return ret;
+ }
+ 
+@@ -146,22 +158,25 @@ read_cmp_blk_sig(const char *dev_name, struct bl_sig_comp *comp,
+  */
+ static int verify_sig(struct bl_disk *disk, struct bl_sig *sig)
+ {
++	const char *dev_name = disk->valid_path->full_path;
+ 	struct bl_sig_comp *comp;
+-	int i, ret;
+-	int64_t bs_offset;
++	int fd, i, ret;
++
++	fd = open(dev_name, O_RDONLY | O_LARGEFILE);
++	if (fd < 0) {
++		BL_LOG_ERR("%s could not be opened for read\n", dev_name);
++		return 0;
++	}
+ 
+ 	for (i = 0; i < sig->si_num_comps; i++) {
+ 		comp = &sig->si_comps[i];
+-		bs_offset = comp->bs_offset;
+-		if (bs_offset < 0)
+-			bs_offset += (((int64_t) disk->size) << 9);
+-		BL_LOG_INFO("%s: bs_offset: %lld\n",
+-			   __func__, (long long) bs_offset);
+-		ret = read_cmp_blk_sig(disk->valid_path->full_path,
+-				       comp, bs_offset);
++		ret = read_cmp_blk_sig(disk, fd, comp);
+ 		if (ret)
+ 			return 0;
+ 	}
++
++	if (fd >= 0)
++		close(fd);
+ 	return 1;
+ }
+ 
+-- 
+1.7.1
 
-Thanks,
-
-Benny
-
-On 2010-10-29 17:36, Jim Rees wrote:
-> Add "-d" command line option to just do discovery then exit
-> 
-> Restore active/passive test but ignore passive devices
-> 
-> Don't log EUI errors.  These aren't really errors, since we'll fall back to
-> a different id type, or just use the file name.
-> 
-> Eliminate fd/pidfd confusion
-> 
-> use INFO syslog level instead of ERR for info messages
-> 
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> ---
->  utils/blkmapd/device-discovery.c |   87 ++++++++++++++++++++++---------------
->  utils/blkmapd/device-discovery.h |    2 +
->  utils/blkmapd/device-inq.c       |   35 +++++++++++----
->  utils/blkmapd/device-process.c   |   22 +++-------
->  4 files changed, 86 insertions(+), 60 deletions(-)
-> 
-> diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-> index 271c7ed..0497a11 100644
-> --- a/utils/blkmapd/device-discovery.c
-> +++ b/utils/blkmapd/device-discovery.c
-> @@ -153,6 +153,11 @@ void bl_add_disk(char *filepath)
->  
->  	dev = sb.st_rdev;
->  	serial = bldev_read_serial(fd, filepath);
-> +	ap_state = bldev_read_ap_state(fd);
-> +	close(fd);
-> +
-> +	if (ap_state == BL_PATH_STATE_PASSIVE)
-> +		return;
->  
->  	for (disk = visible_disk_list; disk != NULL; disk = disk->next) {
->  		/* Already scanned or a partition?
-> @@ -165,14 +170,10 @@ void bl_add_disk(char *filepath)
->  		}
->  	}
->  
-> -	if (disk && diskpath) {
-> -		close(fd);
-> +	if (disk && diskpath)
->  		return;
-> -	}
-> -
-> -	close(fd);
->  
-> -	BL_LOG_ERR("%s: %s\n", __func__, filepath);
-> +	BL_LOG_INFO("%s: %s\n", __func__, filepath);
->  
->  	/*
->  	 * Not sure how to identify a pseudo device created by
-> @@ -180,8 +181,6 @@ void bl_add_disk(char *filepath)
->  	 */
->  	if (strncmp(filepath, "/dev/mapper", 11) == 0)
->  		ap_state = BL_PATH_STATE_PSEUDO;
-> -	else
-> -		ap_state = BL_PATH_STATE_ACTIVE;
->  
->  	/* add path */
->  	path = malloc(sizeof(struct bl_disk_path));
-> @@ -321,7 +320,7 @@ int bl_disk_inquiry_process(int fd)
->  		bl_discover_devices();
->  		if (!process_deviceinfo(buf, buflen, &major, &minor)) {
->  			head->status = BL_DEVICE_REQUEST_ERR;
-> -			goto out;
-> +			break;
->  		}
->  		tmp = realloc(head, sizeof(major) + sizeof(minor) +
->  			      sizeof(struct pipefs_hdr));
-> @@ -343,6 +342,7 @@ int bl_disk_inquiry_process(int fd)
->  		break;
->  	default:
->  		head->status = BL_DEVICE_REQUEST_ERR;
-> +		break;
->  	}
->  
->  	head->totallen = sizeof(struct pipefs_hdr) + len;
-> @@ -399,49 +399,61 @@ int bl_run_disk_inquiry_process(int fd)
->  /* Daemon */
->  int main(int argc, char **argv)
->  {
-> -	int fd, opt, fg = 0, ret = 1;
-> +	int fd, pidfd = -1, opt, dflag = 0, fg = 0, ret = 1;
->  	struct stat statbuf;
->  	char pidbuf[64];
->  
-> -	while ((opt = getopt(argc, argv, "f")) != -1) {
-> +	while ((opt = getopt(argc, argv, "df")) != -1) {
->  		switch (opt) {
-> +		case 'd':
-> +			dflag = 1;
-> +			break;
->  		case 'f':
->  			fg = 1;
->  			break;
->  		}
->  	}
->  
-> -	if (!stat(PID_FILE, &statbuf)) {
-> -		fprintf(stderr, "Pid file already existed\n");
-> -		return -1;
-> -	}
-> +	if (fg) {
-> +		openlog("blkmapd", LOG_PERROR, 0);
-> +	} else {
-> +		if (!stat(PID_FILE, &statbuf)) {
-> +			fprintf(stderr, "Pid file %s already existed\n", PID_FILE);
-> +			exit(1);
-> +		}
->  
-> -	if (!fg && daemon(0, 0) != 0) {
-> -		fprintf(stderr, "Daemonize failed\n");
-> -		return -1;
-> -	}
-> +		if (daemon(0, 0) != 0) {
-> +			fprintf(stderr, "Daemonize failed\n");
-> +			exit(1);
-> +		}
->  
-> -	openlog("blkmapd", LOG_PID, 0);
-> -	fd = open(PID_FILE, O_WRONLY | O_CREAT, 0644);
-> -	if (fd < 0) {
-> -		BL_LOG_ERR("Create pid file failed\n");
-> -		return -1;
-> +		openlog("blkmapd", LOG_PID, 0);
-> +		pidfd = open(PID_FILE, O_WRONLY | O_CREAT, 0644);
-> +		if (pidfd < 0) {
-> +			BL_LOG_ERR("Create pid file %s failed\n", PID_FILE);
-> +			exit(1);
-> +		}
-> +
-> +		if (lockf(pidfd, F_TLOCK, 0) < 0) {
-> +			BL_LOG_ERR("Lock pid file %s failed\n", PID_FILE);
-> +			close(pidfd);
-> +			exit(1);
-> +		}
-> +		ftruncate(pidfd, 0);
-> +		sprintf(pidbuf, "%d\n", getpid());
-> +		write(pidfd, pidbuf, strlen(pidbuf));
->  	}
->  
-> -	if (lockf(fd, F_TLOCK, 0) < 0) {
-> -		BL_LOG_ERR("Lock pid file failed\n");
-> -		close(fd);
-> -		return -1;
-> +	if (dflag) {
-> +		bl_discover_devices();
-> +		exit(0);
->  	}
-> -	ftruncate(fd, 0);
-> -	sprintf(pidbuf, "%d\n", getpid());
-> -	write(fd, pidbuf, strlen(pidbuf));
->  
->  	/* open pipe file */
->  	fd = open(BL_PIPE_FILE, O_RDWR);
->  	if (fd < 0) {
-> -		BL_LOG_ERR("open pipe file error\n");
-> -		return -1;
-> +		BL_LOG_ERR("open pipe file %s error\n", BL_PIPE_FILE);
-> +		exit(1);
->  	}
->  
->  	while (1) {
-> @@ -454,6 +466,11 @@ int main(int argc, char **argv)
->  			BL_LOG_ERR("inquiry process return %d\n", ret);
->  		}
->  	}
-> -	close(fd);
-> -	return ret;
-> +
-> +	if (pidfd >= 0) {
-> +		close(pidfd);
-> +		unlink(PID_FILE);
-> +	}
-> +
-> +	exit(ret);
->  }
-> diff --git a/utils/blkmapd/device-discovery.h b/utils/blkmapd/device-discovery.h
-> index 4d12cba..8cf88b8 100644
-> --- a/utils/blkmapd/device-discovery.h
-> +++ b/utils/blkmapd/device-discovery.h
-> @@ -151,8 +151,10 @@ uint64_t process_deviceinfo(const char *dev_addr_buf,
->  extern ssize_t atomicio(ssize_t(*f) (int, void *, size_t),
->  			int fd, void *_s, size_t n);
->  extern struct bl_serial *bldev_read_serial(int fd, const char *filename);
-> +extern enum bl_path_state_e bldev_read_ap_state(int fd);
->  extern int bl_discover_devices(void);
->  
-> +#define BL_LOG_INFO(fmt...)		syslog(LOG_INFO, fmt)
->  #define BL_LOG_WARNING(fmt...)		syslog(LOG_WARNING, fmt)
->  #define BL_LOG_ERR(fmt...)		syslog(LOG_ERR, fmt)
->  #define BL_LOG_DEBUG(fmt...)		syslog(LOG_DEBUG, fmt)
-> diff --git a/utils/blkmapd/device-inq.c b/utils/blkmapd/device-inq.c
-> index c817e72..e1c0128 100644
-> --- a/utils/blkmapd/device-inq.c
-> +++ b/utils/blkmapd/device-inq.c
-> @@ -52,9 +52,10 @@
->  #define DEF_ALLOC_LEN	255
->  #define MX_ALLOC_LEN	(0xc000 + 0x80)
->  
-> -struct bl_serial *bl_create_scsi_string(int len, const char *bytes)
-> +static struct bl_serial *bl_create_scsi_string(int len, const char *bytes)
->  {
->  	struct bl_serial *s;
-> +
->  	s = malloc(sizeof(*s) + len);
->  	if (s) {
->  		s->data = (char *)&s[1];
-> @@ -64,7 +65,7 @@ struct bl_serial *bl_create_scsi_string(int len, const char *bytes)
->  	return s;
->  }
->  
-> -void bl_free_scsi_string(struct bl_serial *str)
-> +static void bl_free_scsi_string(struct bl_serial *str)
->  {
->  	if (str)
->  		free(str);
-> @@ -107,7 +108,7 @@ static int bldev_inquire_page(int fd, int page, char *buffer, int len)
->  	return -1;
->  }
->  
-> -int bldev_inquire_pages(int fd, int page, char **buffer)
-> +static int bldev_inquire_pages(int fd, int page, char **buffer)
->  {
->  	int status = 0;
->  	char *tmp;
-> @@ -149,6 +150,27 @@ int bldev_inquire_pages(int fd, int page, char **buffer)
->  	return status;
->  }
->  
-> +/* For EMC multipath devices, use VPD page (0xc0) to get status.
-> + * For other devices, return ACTIVE for now
-> + */
-> +extern enum bl_path_state_e bldev_read_ap_state(int fd)
-> +{
-> +	int status = 0;
-> +	char *buffer = NULL;
-> +	enum bl_path_state_e ap_state = BL_PATH_STATE_ACTIVE;
-> +
-> +	status = bldev_inquire_pages(fd, 0xc0, &buffer);
-> +	if (status)
-> +		goto out;
-> +
-> +	if (buffer[4] < 0x02)
-> +		ap_state = BL_PATH_STATE_PASSIVE;
-> + out:
-> +	if (buffer)
-> +		free(buffer);
-> +	return ap_state;
-> +}
-> +
->  struct bl_serial *bldev_read_serial(int fd, const char *filename)
->  {
->  	struct bl_serial *serial_out = NULL;
-> @@ -177,11 +199,8 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
->  			 */
->  		case 2:	/* EUI-64 based */
->  			if ((dev_id->len != 8) && (dev_id->len != 12) &&
-> -			    (dev_id->len != 16)) {
-> -				BL_LOG_ERR("EUI-64 only decodes 8, "
-> -					   "12 and 16\n");
-> +			    (dev_id->len != 16))
->  				break;
-> -			}
->  		case 3:	/* NAA */
->  			/* TODO: NAA validity judgement too complicated,
->  			 * so just ingore it here.
-> @@ -198,8 +217,6 @@ struct bl_serial *bldev_read_serial(int fd, const char *filename)
->  			serial_out = bl_create_scsi_string(dev_id->len,
->  							   dev_id->data);
->  			break;
-> -		default:
-> -			break;
->  		}
->  		if (current_id == 3)
->  			break;
-> diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
-> index c4e72ea..51158dd 100644
-> --- a/utils/blkmapd/device-process.c
-> +++ b/utils/blkmapd/device-process.c
-> @@ -82,7 +82,7 @@ static int decode_blk_signature(uint32_t **pp, uint32_t *end,
->  		 * for mapping, then thrown away.
->  		 */
->  		sig->si_comps[i].bs_string = (char *)p;
-> -		BL_LOG_ERR("%s: si_comps[%d]: bs_length %d, bs_string %s\n",
-> +		BL_LOG_INFO("%s: si_comps[%d]: bs_length %d, bs_string %s\n",
->  			   __func__, i, sig->si_comps[i].bs_length,
->  			   sig->si_comps[i].bs_string);
->  		p += ((tmp + 3) >> 2);
-> @@ -126,7 +126,7 @@ read_cmp_blk_sig(const char *dev_name, struct bl_sig_comp *comp,
->  		goto error;
->  	}
->  
-> -	BL_LOG_ERR
-> +	BL_LOG_INFO
->  	    ("%s: %s sig: %s, bs_string: %s, bs_length: %d, bs_offset: %lld\n",
->  	     __func__, dev_name, sig, comp->bs_string, comp->bs_length,
->  	     (long long)bs_offset);
-> @@ -155,7 +155,7 @@ static int verify_sig(struct bl_disk *disk, struct bl_sig *sig)
->  		bs_offset = comp->bs_offset;
->  		if (bs_offset < 0)
->  			bs_offset += (((int64_t) disk->size) << 9);
-> -		BL_LOG_ERR("%s: bs_offset: %lld\n",
-> +		BL_LOG_INFO("%s: bs_offset: %lld\n",
->  			   __func__, (long long) bs_offset);
->  		ret = read_cmp_blk_sig(disk->valid_path->full_path,
->  				       comp, bs_offset);
-> @@ -180,7 +180,7 @@ static int map_sig_to_device(struct bl_sig *sig, struct bl_volume *vol)
->  	struct bl_disk *lolDisk = disk;
->  
->  	while (lolDisk) {
-> -		BL_LOG_ERR("%s: visible_disk_list: %s\n", __func__,
-> +		BL_LOG_INFO("%s: visible_disk_list: %s\n", __func__,
->  			   lolDisk->valid_path->full_path);
->  		lolDisk = lolDisk->next;
->  	}
-> @@ -324,16 +324,14 @@ uint64_t process_deviceinfo(const char *dev_addr_buf,
->  	uint32_t *p, *end;
->  	struct bl_volume *vols = NULL, **arrays = NULL, **arrays_ptr = NULL;
->  	uint64_t dev = 0;
-> -	int tried = 0;
->  
-> - restart:
->  	p = (uint32_t *) dev_addr_buf;
->  	end = (uint32_t *) ((char *)p + dev_addr_len);
->  	/* Decode block volume */
->  	BLK_READBUF(p, end, 4);
->  	READ32(num_vols);
->  	if (num_vols <= 0) {
-> -		BL_LOG_WARNING("Error: number of vols: %d\n", num_vols);
-> +		BL_LOG_ERR("Error: number of vols: %d\n", num_vols);
->  		goto out_err;
->  	}
->  
-> @@ -363,15 +361,6 @@ uint64_t process_deviceinfo(const char *dev_addr_buf,
->  	for (i = 0; i < num_vols; i++) {
->  		vols[i].bv_vols = arrays_ptr;
->  		status = decode_blk_volume(&p, end, vols, i, &count);
-> -		if (status == -ENXIO && (tried <= 5)) {
-> -			sleep(1);
-> -			BL_LOG_DEBUG("%s: discover again!\n", __func__);
-> -			bl_discover_devices();
-> -			tried++;
-> -			free(vols);
-> -			free(arrays);
-> -			goto restart;
-> -		}
->  		if (status)
->  			goto out_err;
->  		arrays_ptr += count;
-> @@ -385,6 +374,7 @@ uint64_t process_deviceinfo(const char *dev_addr_buf,
->  	dev = dm_device_create(vols, num_vols);
->  	*major = MAJOR(dev);
->  	*minor = MINOR(dev);
-> +
->   out_err:
->  	if (vols)
->  		free(vols);
