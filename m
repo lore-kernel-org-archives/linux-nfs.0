@@ -1,119 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:39000 "EHLO mx1.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:26569 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757733Ab0KPGHa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 01:07:30 -0500
-Date: Tue, 16 Nov 2010 17:07:20 +1100
-From: Neil Brown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: [PATCH 0/2] sunrpc: fix two server-side race problems.
-Message-ID: <20101116170720.6dc36154@notabene.brown>
-In-Reply-To: <20101115002634.19121.7027.stgit@notabene.brown>
-References: <20101115002634.19121.7027.stgit@notabene.brown>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753656Ab0K3W3F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 17:29:05 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/5] NFSv4 callback find client fix Version 2
+Date: Tue, 30 Nov 2010 15:31:06 -0500
+Message-Id: <1291149071-2026-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 15 Nov 2010 11:27:01 +1100
-NeilBrown <neilb@suse.de> wrote:
 
-> 
-> Hi Bruce,
->  I found these while trying to diagnose why a customer hit the
->  	BUG_ON(xprt->xpt_pool != NULL);
->  in svc_xprt_enqueue (in a 2.6.27 based kernel).  I don't think either
->  of these actually explain the problem, but they seem to be bugs
->  none-the-less.
-> 
+The back channel server svc_process_common RPC layer pg_authenticate call
+[nfs_callback_authenticate] is shared by both the NFSv4.0 and the NFSv4.1
+callback threads. It authenticates the incoming request by finding (and
+referencing) an nfs_client struct based on the incoming request address
+and the NFS version (4). This is akin to the NFS server which authenticates
+requests by matching the server address to the exports file client list.
 
-And I think I have now found the bug that caused the BUG_ON.
-The xprt has been freed and reused for something else so xpt_pool and other
-things are garbage.
+Since there is no minorversion in the search, it may find the wrong
+nfs_client struct. For the nfsv4.0 callback service thread, this means it
+could find an NFSv4.1 nfs_client. For the NFSv4.1 callback service thread, it
+could find an NFSv4.0 instead of v4.1, or find an NFSv4.1 nfs_client with the
+wrong session.
 
-If you could review and apply this patch I would appreciate it.
+The nfs_client is dereferenced at the end of pg_authenticate. Another
+nfs_find_client call is done in the per operation  dispatcher routines
+for NFSv4.0 and in the cb_sequence operation dispatcher routine for NFSv4.1
+after decoding.
 
-While exploring I noticed something that I thought was odd.
-In svc_rdma_transport.c, handle_connect_req calls rdma_create_xprt which will
-return an xprt with XPT_BUSY set.
-But I cannot see that XPT_BUSY is ever cleared.
-There is a comment saying that svc_xprt_received() cannot be called for some
-reason, but as far as I can see the reason is invalid, and svc_xprt_received
-is exactly what should be called to clear XPT_BUSY.
-But I don't really know this code so might be missing something important.
+This means the callback server could start processing a callback, passing
+the pg_authenticate test, and have the nfs_client struct freed between the
+pg_authenticate call and the dispatcher operation call. Or, it could have
+found the wrong nfs_client in the pg_authenticate call.
 
-Thanks,
-NeilBrown
+The current code has this behaviour: If the nfs_client is not found in
+pg_authenticate, the request is simply dropped (SVC_DROP). If an nfs_client
+is not found in the dispatcher routines NFS4ERR_BADSESSION is returned for
+v4.1 requests and NFS4ERR_BADHANDLE for v4.0 requests.
 
->From 0edb33a19f415a783d89839efbdf7c572a797043 Mon Sep 17 00:00:00 2001
-From: NeilBrown <neilb@suse.de>
-Date: Tue, 16 Nov 2010 16:55:19 +1100
-Subject: [PATCH] sunrpc: close another server-size race.
+The fix is to implement the v4.0 SETCLIENTID callback_ident and use it to find
+the one and only client for v4.0 callbacks, and to associate the sessionid
+with the sessions based callback service (v4.1) and use it to identify the
+one and only client. This can be done in the NFS layer, in CB_COMPOUND header
+processing for v4.0 and in CB_SEQUENCE processing in v4.1.
+In both cases, a reference to the found client is held across CB_COMPOUND
+processing.
 
-When an xprt is created, it has a refcount of 1, and XPT_BUSY
-is set.
-The refcount is *not* owned by the thread that created the xprt
-(as is clear from the fact that creators never put the reference).
-Rather, it is owned by the absence of XPT_DEAD.  Once XPT_DEAD is set,
-(And XPT_BUSY is clear) that initial reference is dropped and the xprt
-can be freed.
+The pg_authenticate method does not have the callback_ident for CB_NULL or
+CB_COMPOUND v4.0 processing, so just the server address, nfsversion and
+minorversion is used for the client search
 
-So when a creator clears XPT_BUSY it is dropping its only reference and
-so must not touch the xprt again.
+For sessions based callback service, the sessionID can't be set until the
+return of the CREATE_SESSION call, yet the CB_NULL ping from a server can
+be initiated by the server at the receipt of the CREATE_SESSION call before
+the response is sent. So for CB_NULL, the sessionid is (usually) not set, and
+the sessionid is not used for CB_NULL pg_authenticate client searches.
 
-However svc_recv, after calling ->xpo_accept (and so getting an XPT_BUSY
-reference on a new xprt), calls svc_xprt_recieved.  This clears
-XPT_BUSY and then svc_xprt_enqueue - this last without owning a reference.
-This is dangerous and has been seen to leave svc_xprt_enqueue working
-with an xprt containing garbage.
+0001-NFS-dont-free-shared-socket-on-backchannel-put-xprt.patch
+0002-NFS-implement-v4.0-callback_ident.patch
+0003-NFS-associate-sessionid-with-callback-connection.patch
+0004-NFS-reference-nfs_client-across-cb_compound-processi.patch
+0005-NFS-RPC_AUTH_GSS-unsupported-on-v4.1-back-channel.patch
 
-So we need to hold an extra counted reference over that call to
-svc_xprt_received.
 
-For safety, any time we clear XPT_BUSY and then use the xprt again, we
-first get a reference, and the put it again afterwards.
-
-Note that svc_close_all does not need this extra protection as there are
-no threads running, and the final free can only be called asynchronously
-from such a thread.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index ec9d8ef..fa249ca 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -213,6 +213,7 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
- 	spin_lock(&svc_xprt_class_lock);
- 	list_for_each_entry(xcl, &svc_xprt_class_list, xcl_list) {
- 		struct svc_xprt *newxprt;
-+		unsigned short newport;
- 
- 		if (strcmp(xprt_name, xcl->xcl_name))
- 			continue;
-@@ -231,8 +232,9 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
- 		spin_lock_bh(&serv->sv_lock);
- 		list_add(&newxprt->xpt_list, &serv->sv_permsocks);
- 		spin_unlock_bh(&serv->sv_lock);
-+		newport = svc_xprt_local_port(newxprt);
- 		clear_bit(XPT_BUSY, &newxprt->xpt_flags);
--		return svc_xprt_local_port(newxprt);
-+		return newport;
- 	}
-  err:
- 	spin_unlock(&svc_xprt_class_lock);
-@@ -420,8 +422,13 @@ static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
- void svc_xprt_received(struct svc_xprt *xprt)
- {
- 	BUG_ON(!test_bit(XPT_BUSY, &xprt->xpt_flags));
-+	/* As soon as we clear busy, the xprt could be closed and
-+	 * 'put', so we need a reference to call svc_xprt_enqueue with
-+	 */
-+	svc_xprt_get(xprt);
- 	clear_bit(XPT_BUSY, &xprt->xpt_flags);
- 	svc_xprt_enqueue(xprt);
-+	svc_xprt_put(xprt);
- }
- EXPORT_SYMBOL_GPL(svc_xprt_received);
- 
+-->Andy
