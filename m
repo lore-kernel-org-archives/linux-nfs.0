@@ -1,62 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from vint.altlinux.org ([194.107.17.35]:34628 "EHLO
-	vint.altlinux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751961Ab0K1VKe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Nov 2010 16:10:34 -0500
-From: Sergey Vlasov <vsu@altlinux.ru>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Alexander Morozov <amorozov@etersoft.ru>,
-        Sergey Vlasov <vsu@altlinux.ru>, <stable@kernel.org>
-Subject: [PATCH] NFS: Fix fcntl F_GETLK not reporting some conflicts
-Date: Mon, 29 Nov 2010 00:04:05 +0300
-Message-Id: <1290978245-14415-1-git-send-email-vsu@altlinux.ru>
+Received: from mx2.netapp.com ([216.240.18.37]:35111 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751464Ab0K3C5v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Nov 2010 21:57:51 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/4] NFSv4: Send unmapped uid/gids to the server if the idmapper fails
+Date: Mon, 29 Nov 2010 21:57:41 -0500
+Message-Id: <1291085863-3234-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1291085863-3234-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291085863-3234-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1291085863-3234-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-The commit 129a84de2347002f09721cda3155ccfd19fade40 (locks: fix F_GETLK
-regression (failure to find conflicts)) fixed the posix_test_lock()
-function by itself, however, its usage in NFS changed by the commit
-9d6a8c5c213e34c475e72b245a8eb709258e968c (locks: give posix_test_lock
-same interface as ->lock) remained broken - subsequent NFS-specific
-locking code received F_UNLCK instead of the user-specified lock type.
-To fix the problem, fl->fl_type needs to be saved before the
-posix_test_lock() call and restored if no local conflicts were reported.
-
-Reference: https://bugzilla.kernel.org/show_bug.cgi?id=23892
-Tested-by: Alexander Morozov <amorozov@etersoft.ru>
-Signed-off-by: Sergey Vlasov <vsu@altlinux.ru>
-Cc: <stable@kernel.org>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/file.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ fs/nfs/idmap.c |   30 ++++++++++++++++++++++++++----
+ 1 files changed, 26 insertions(+), 4 deletions(-)
 
- There seems to be a similar bug in fs/9p/vfs_file.c:v9fs_file_getlock()
- and an even worse confusion in fs/afs/flock.c:afs_do_getlk(), but I
- can't test them.
-
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 60677f9..7bf029e 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -693,6 +693,7 @@ do_getlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 4281da6..9bf5921 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -52,6 +52,11 @@ static int nfs_map_string_to_numeric(const char *name, size_t namelen, __u32 *re
+ 	return 1;
+ }
+ 
++static int nfs_map_numeric_to_string(__u32 id, char *buf, size_t buflen)
++{
++	return snprintf(buf, buflen, "%u", id);
++}
++
+ #ifdef CONFIG_NFS_USE_NEW_IDMAPPER
+ 
+ #include <linux/slab.h>
+@@ -252,11 +257,20 @@ int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namele
+ 
+ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
  {
- 	struct inode *inode = filp->f_mapping->host;
- 	int status = 0;
-+	unsigned int saved_type = fl->fl_type;
+-	return nfs_idmap_lookup_name(uid, "user", buf, buflen);
++	int ret;
++	ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
++	if (ret < 0)
++		ret = nfs_map_numeric_to_string(uid, buf, buflen);
++	return ret;
+ }
+ int nfs_map_gid_to_group(struct nfs_client *clp, __u32 gid, char *buf, size_t buflen)
+ {
+-	return nfs_idmap_lookup_name(gid, "group", buf, buflen);
++	int ret;
++
++	ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
++	if (ret < 0)
++		ret = nfs_map_numeric_to_string(gid, buf, buflen);
++	return ret;
+ }
  
- 	/* Try local locking first */
- 	posix_test_lock(filp, fl);
-@@ -700,6 +701,7 @@ do_getlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- 		/* found a conflict */
- 		goto out;
- 	}
-+	fl->fl_type = saved_type;
+ #else  /* CONFIG_NFS_USE_IDMAPPER not defined */
+@@ -736,14 +750,22 @@ int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namele
+ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
+ {
+ 	struct idmap *idmap = clp->cl_idmap;
++	int ret;
  
- 	if (nfs_have_delegation(inode, FMODE_READ))
- 		goto out_noconflict;
+-	return nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
++	ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
++	if (ret < 0)
++		ret = nfs_map_numeric_to_string(uid, buf, buflen);
++	return ret;
+ }
+ int nfs_map_gid_to_group(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
+ {
+ 	struct idmap *idmap = clp->cl_idmap;
++	int ret;
+ 
+-	return nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
++	ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
++	if (ret < 0)
++		ret = nfs_map_numeric_to_string(uid, buf, buflen);
++	return ret;
+ }
+ 
+ #endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
 -- 
 1.7.3.2
 
