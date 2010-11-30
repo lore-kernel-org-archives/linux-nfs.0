@@ -1,71 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:47238 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759264Ab0KPGpH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Nov 2010 01:45:07 -0500
-In-Reply-To: <20101115174837.GB10044@fieldses.org>
-References: <20101112184353.GA32745@fieldses.org>
-	<AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
-	<20101115174837.GB10044@fieldses.org>
-Date: Tue, 16 Nov 2010 17:45:03 +1100
-Message-ID: <AANLkTim1QjTwOZ4SHdMy8Y6TOAnaOYtTwgwHXfH5H5Xn@mail.gmail.com>
-Subject: Re: lifetime of DCACHE_DISCONECTED dentries
-From: Nick Piggin <npiggin@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:45636 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751168Ab0K3Onj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 09:43:39 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 4/5] NFSv4: Propagate the error NFS4ERR_BADOWNER to nfs4_do_setattr
+Date: Tue, 30 Nov 2010 09:43:30 -0500
+Message-Id: <1291128211-7961-5-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1291128211-7961-4-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291128211-7961-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1291128211-7961-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1291128211-7961-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1291128211-7961-4-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Nov 16, 2010 at 4:48 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Sat, Nov 13, 2010 at 10:53:12PM +1100, Nick Piggin wrote:
->> On Sat, Nov 13, 2010 at 5:43 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+This will be required in order to switch uid/gid mapping back on if the
+admin has tried to disable it.
 
->> >        - putfh: look up the filehandle.  The only alias found for the
->> >          inode will be DCACHE_UNHASHED alias referenced by the filp
->> >          associated with the nfsd open.  d_obtain_alias() doesn't like
->> >          this, so it creates a new DCACHE_DISCONECTED dentry and
->> >          returns that instead.
->>
->> This seems to be where the thing goes wrong. It isn't a hashed dentry at
->> this point here, so d_obtain_alias should not be making one.
->
-> Sounds sensible.  (But can you think of any actual bugs that will result
-> from trying to add a new hashed dentry in this case?)
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c |    2 ++
+ fs/nfs/nfs4xdr.c  |    1 -
+ 2 files changed, 2 insertions(+), 1 deletions(-)
 
-Well, this one? :)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 89b0430..e40ab0b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -83,6 +83,8 @@ static int nfs4_map_errors(int err)
+ 	switch (err) {
+ 	case -NFS4ERR_RESOURCE:
+ 		return -EREMOTEIO;
++	case -NFS4ERR_BADOWNER:
++		return -EINVAL;
+ 	default:
+ 		dprintk("%s could not handle NFSv4 error %d\n",
+ 				__func__, -err);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 0be0277..c52e991 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -6254,7 +6254,6 @@ static struct {
+ 	{ NFS4ERR_DQUOT,	-EDQUOT		},
+ 	{ NFS4ERR_STALE,	-ESTALE		},
+ 	{ NFS4ERR_BADHANDLE,	-EBADHANDLE	},
+-	{ NFS4ERR_BADOWNER,	-EINVAL		},
+ 	{ NFS4ERR_BADNAME,	-EINVAL		},
+ 	{ NFS4ERR_BAD_COOKIE,	-EBADCOOKIE	},
+ 	{ NFS4ERR_NOTSUPP,	-ENOTSUPP	},
+-- 
+1.7.3.2
 
-
->> I think the inode i_nlink games are much more appropriate on this side of
->> the equation, rather than the dput side (after all, d_obtain_alias is setting
->> up an alias for the inode).
->>
->> Can you even put the link check into __d_find_alias?
->>
->> -               if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
->> +               if (S_ISDIR(inode->i_mode) || !inode->i_nlink ||
->> !d_unhashed(alias)) {
->>
->> Something like that?
->
-> The immediate result of that would be for the close rpc (or any rpc's
-> sent after the file was unlinked) to fail with ESTALE.
-
-Why is that? Seems like it would be a bug, because a hashed dentry may
-be unhashed at any time concurrently to nfsd operation, so it should be
-able to tolerate that so long as it has a ref on the inode?
-
-
-> But nfsd already holds an open file in this case, and you could argue
-> that it should be using that from the start.
-
-Yes.
-
-
-> So, we could modify nfsd to add a hash mapping filehandles to the filp's
-> that it knows about, and have nfsd consult that hash before calling
-> dentry_to_fh.
-
-Could be an option. It would be a pity not just be able to use the alias list.
-What exactly goes wrong when it gets an unhashed alias back?
