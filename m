@@ -1,116 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39511 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:35901 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753146Ab0K3Wrf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Nov 2010 17:47:35 -0500
-Subject: Re: NFSv4 behaviour on unknown users
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Steve Dickson <SteveD@redhat.com>, Spelic <spelic@shiftmail.org>,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <20101130223627.GC5054@fieldses.org>
-References: <4CF3ED05.3070401@shiftmail.org>
-	 <1291054975.12784.17.camel@heimdal.trondhjem.org>
-	 <4CF3F326.4060608@shiftmail.org> <20101129190122.GA31843@fieldses.org>
-	 <1291057747.12784.38.camel@heimdal.trondhjem.org>
-	 <4CF519F2.8080900@RedHat.com>
-	 <1291155578.2998.38.camel@heimdal.trondhjem.org>
-	 <20101130222651.GB5054@fieldses.org>
-	 <1291156414.4393.2.camel@heimdal.trondhjem.org>
-	 <20101130223627.GC5054@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 30 Nov 2010 17:47:31 -0500
-Message-ID: <1291157251.4393.11.camel@heimdal.trondhjem.org>
+	id S1751833Ab0K3UAR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 15:00:17 -0500
+Date: Tue, 30 Nov 2010 15:00:13 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mark Hills <mark@pogo.org.uk>
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: Listen backlog set to 64
+Message-ID: <20101130200013.GA2108@fieldses.org>
+References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz>
+ <20101116182026.GA3971@fieldses.org>
+ <20101117090826.4b2724da@notabene.brown>
+ <20101129205935.GD9897@fieldses.org>
+ <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-11-30 at 17:36 -0500, J. Bruce Fields wrote:
-> On Tue, Nov 30, 2010 at 05:33:34PM -0500, Trond Myklebust wrote:
-> > On Tue, 2010-11-30 at 17:26 -0500, J. Bruce Fields wrote:
-> > > On Tue, Nov 30, 2010 at 05:19:38PM -0500, Trond Myklebust wrote:
-> > > > On Tue, 2010-11-30 at 10:36 -0500, Steve Dickson wrote:
-> > > > > 
-> > > > > On 11/29/2010 02:09 PM, Trond Myklebust wrote:
-> > > > > > On Mon, 2010-11-29 at 14:01 -0500, J. Bruce Fields wrote:
-> > > > > >> On Mon, Nov 29, 2010 at 07:38:30PM +0100, Spelic wrote:
-> > > > > >>> On 11/29/2010 07:22 PM, Trond Myklebust wrote:
-> > > > > >>>> On Mon, 2010-11-29 at 19:12 +0100, Spelic wrote:
-> > > > > >>>> No. That is not allowed by the spec.
-> > > > > >>>>
-> > > > > >>>> Trond
-> > > > > >>>
-> > > > > >>> Too bad!! :-((
-> > > > > >>> Was that spec decision really wise? :-/
-> > > > > >>>
-> > > > > >>>
-> > > > > >>> BTW:
-> > > > > >>> I've just noticed two discussions dated a few months ago in this ML
-> > > > > >>> regarding this.
-> > > > > >>> the thread named 'numeric UIDs'
-> > > > > >>
-> > > > > >> There's also a reference to the spec language there--we'd be violating a
-> > > > > >> "SHOULD", but I think it would be acceptable if it smooths the v3->v4
-> > > > > >> upgrade path for users in your situation.
-> > > > > >>
-> > > > > >> I think steved's changes still need to be ported to libnfsidmap?
-> > > > > > 
-> > > > > > I don't see how steved's changes will fix this problem. If the client
-> > > > > > has a mapping, it will (MUST) send the mapped uid/gid and the server
-> > > > > > still has to make sense of that. Ditto if the server has a mapping, and
-> > > > > > the client does not.
-> > > > > I actually thought it did... 
-> > > > 
-> > > > How? The userland library has no concept of whether or not the server
-> > > > accepts unmapped uids and gids.
-> > > > 
-> > > > > Now that the libnfsidmap maintainership has been handed over to me 
-> > > > > and I'm about to enable the new nfsidmapper when I commit the 
-> > > > > "libnfsidmap: Add numerical string translation" patch... Its 
-> > > > > probably time I take a second look at those patches to see
-> > > > > if we can ease some of this pain...
-> > > > 
-> > > > Some reasons for doing this in the kernel are:
-> > > > 
-> > > > 1) it is easy to do so.
-> > > > 2) it allows the kernel to take action to recover
-> > > > 3) it fixes the nfsroot problem, provided that the server also sends
-> > > > uids/gids in this situation.
-> > > 
-> > > Makes sense to me.
-> > > 
-> > > The server side might still be easiest to do in idmapd/libnfsidmap.
-> > 
-> > The NFS server has to be able to tell the idmapper which variety of
-> > mapping it wants. The reason is, as I said, that we want to handle
-> > RPCSEC_GSS based authentication (and possibly AUTH_NULL too) differently
-> > from AUTH_SYS. The idmapper by itself has no way to distinguish what
-> > authentication the client used.
+On Tue, Nov 30, 2010 at 05:50:52PM +0000, Mark Hills wrote:
+> On Mon, 29 Nov 2010, J. Bruce Fields wrote:
 > 
-> I still don't understand what the advantage of that would be: why would
-> we want to return different file owners depending on which
-> authentication flavor the client's request used?
+> > On Wed, Nov 17, 2010 at 09:08:26AM +1100, Neil Brown wrote:
+> > > On Tue, 16 Nov 2010 13:20:26 -0500
+> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > 
+> > > > On Mon, Nov 15, 2010 at 06:43:52PM +0000, Mark Hills wrote:
+> > > > > I am looking into an issue of hanging clients to a set of NFS servers, on 
+> > > > > a large HPC cluster.
+> > > > > 
+> > > > > My investigation took me to the RPC code, svc_create_socket().
+> > > > > 
+> > > > > 	if (protocol == IPPROTO_TCP) {
+> > > > > 		if ((error = kernel_listen(sock, 64)) < 0)
+> > > > > 			goto bummer;
+> > > > > 	}
+> > > > > 
+> > > > > A fixed backlog of 64 connections at the server seems like it could be too 
+> > > > > low on a cluster like this, particularly when the protocol opens and 
+> > > > > closes the TCP connection.
+> [...] 
+> > > So we could:
+> > >   - hard code a new number
+> > >   - make this another sysctl configurable
+> > >   - auto-adjust it so that it "just works".
+> > > 
+> > > I would prefer the latter if it is possible.   Possibly we could adjust it
+> > > based on the number of nfsd threads, like we do for receive buffer space.
+> > > Maybe something arbitrary like:
+> > >    min(16 + 2 * number of threads, sock_net(sk)->core.sysctl_somaxconn)
+> > > 
+> > > which would get the current 64 at 24 threads, and can easily push up to 128
+> > > and beyond with more threads.
+> > > 
+> > > Or is that too arbitrary?
+> > 
+> > I kinda like the idea of piggybacking on an existing constant like
+> > sysctl_max_syn_backlog.  Somebody else hopefully keeps it set to something
+> > reasonable, and we as a last resort it gives you a knob to twiddle.
+> > 
+> > But number of threads would work OK too.
+> > 
+> > At a minimum we should make sure we solve the original problem....
+> > Mark, have you had a chance to check whether increasing that number to
+> > 128 or more is enough to solve your problem?
+> 
+> I think we can hold off changing the queue size, for now at least. We 
+> reduced the reported queue overflows by increasing the number of mountd 
+> threads, allowing it to service the queue more quickly.
 
-If the client uses AUTH_GSS, then the user gets authorised as user@FOO,
-whether or not the server uid matches that of the client. When that user
-creates a file, then the file will be created with the server's notion
-of what the uid is, so you _want_ idmapping in order to translate that
-into a user@foo that the client can translate back into its notion of
-the uid.
+Apologies, I should have thought to suggest that at the start.
 
-If the client uses AUTH_SYS, then the user gets authorised as 'client
-uid' irrespective of what user@foo maps to on the server. Files will be
-created with 'client uid' as the owner. In that case, having the server
-translate the owner to 'userbar@foo' is wrong if userbar@foo has a
-different uid on the client and server.
+> However this did 
+> not fix the common problem, and I was hoping to have more information in 
+> this follow-up email.
+> 
+> Our investigation brings us to rpc.mountd and mount.nfs communicating. In 
+> the client log we see messages like:
+> 
+>   Nov 24 12:09:43 nyrd001 automount[3782]: >> mount.nfs: mount to NFS server 'ss1a:/mnt/raid1/banana' failed: timed out, giving up
+> 
+> Using strace and isolating one of these, I can see a non-blocking connect 
+> has already managed to make a connection and even send/receive some data. 
+> 
+> But soon a timeout of 9999 milliseconds in poll() causes a problem in 
+> mount.nfs when waiting for a response of some sort. The socket in question 
+> is a connection to mountd:
+> 
+>   26512 futex(0x7ff76affa540, FUTEX_WAKE_PRIVATE, 1) = 0
+>   26512 write(3, "\200\0\0(j\212\254\365\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3\0\0\0\0\0\0\0\0"..., 44) = 44
+>   26512 poll([{fd=3, events=POLLIN}], 1, 9999 <unfinished ...>
+> 
+> When it returns:
+> 
+>   26512 <... poll resumed> )              = 0 (Timeout)
+>   26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
+>   26512 rt_sigprocmask(SIG_SETMASK, ~[RTMIN RT_1], [], 8) = 0
+>   26512 close(3)                          = 0
+>   26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
+>   26512 write(2, "mount.nfs: mount to NFS server '"..., 100) = 100
+> 
+> There's no re-try from here, just a failed mount.
 
-Trond
+That does sound wrong.  I'm not at all familiar with automount,
+unfortunately; how is it invoking mount.nfs?
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+> What is the source of this 9999 millisecond timeout used by poll() in 
+> mount.nfs? It was not clear in an initial search of nfs-utils and glibc, 
+> but I need more time to investigate.
+> 
+> If the server is being too slow to respond, what could the cause of this 
+> be? Multiple threads are already in use, but it seems like they are not 
+> all in use because a thread is able to accept() the connection. I haven't 
+> been able to pin this on the forward/reverse DNS lookup used by 
+> authentication and logging.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Can you tell where the mountd threads are typically waiting?
 
+--b.
