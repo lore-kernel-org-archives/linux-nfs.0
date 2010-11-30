@@ -1,176 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:65354 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755825Ab0KLItZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Nov 2010 03:49:25 -0500
-Received: from localhost.localdomain (hess01-lxp.hq.netapp.com [10.58.60.52] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oAC8n7fM025967
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Nov 2010 00:49:15 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 12/22] pnfs_submit: nfs4_layoutreturn_release should not reference results
-Date: Fri, 12 Nov 2010 03:48:34 -0500
-Message-Id: <1289551724-18575-13-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
-References: <1289551724-18575-1-git-send-email-iisaman@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:18349 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752202Ab0K3PLh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Nov 2010 10:11:37 -0500
+Subject: Re: [PATCH] mount: avoid po_destroy to modify errno what we really want
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4CF45BD9.20908@cn.fujitsu.com>
+Date: Tue, 30 Nov 2010 10:11:09 -0500
+Cc: Steve Dickson <SteveD@redhat.com>, Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        NFSv3 list <linux-nfs@vger.kernel.org>
+Message-Id: <D05BF4A3-1BD5-4FC3-8921-A9D9DC5D8634@oracle.com>
+References: <4CEE357D.2030007@cn.fujitsu.com> <9C08C339-281F-4CD4-B8C1-70441869E2F6@oracle.com> <4CF3C4D2.2060607@RedHat.com> <4CF45BD9.20908@cn.fujitsu.com>
+To: Bian Naimeng <biannm@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Since the release function may be called without sending any RPC,
-it must not refer to any of the result fields.  This is
-better accomplished in the rpc_done function.
+Hi Bian
 
-In the process, this basically reimplements the commit
-"pnfs: do not change layout stateid when dropping layouts."
+On Nov 29, 2010, at 9:05 PM, Bian Naimeng wrote:
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4proc.c       |   24 ++++++++++++++++++++++--
- fs/nfs/nfs4xdr.c        |    1 -
- fs/nfs/pnfs.c           |   26 ++------------------------
- fs/nfs/pnfs.h           |    3 ++-
- include/linux/nfs_xdr.h |    1 -
- 5 files changed, 26 insertions(+), 29 deletions(-)
+> 
+> 
+> Steve Dickson wrote:
+>> 
+>> On 11/29/2010 09:45 AM, Chuck Lever wrote:
+>>> On Nov 25, 2010, at 5:07 AM, Mi Jinlong wrote:
+>>> 
+>>>> We should return the errno that was set before po_destroy,
+>>>> rather than the errno that was set at po_destroy.
+>>>> 
+>>>> Because the po_destroy function don't affect the return value,
+>>>> this patch just revert the saved errno after po_destroy.
+>>> The only library function used in po_destroy() is free(3).  
+>>> Does free(3) change the value of errno?
+>> Looking at the man page and taking a look a the 
+>> glibc code it appears the answer is no. free(3)
+>> does not set errno.
+>> 
+>> Bian, what was the problem you were seeing that this
+>> patch fixed? 
+>> 
+> 
+> Actually, there's no problem now. But this's not a good style, po_destroy
+> maybe change the errno later on such as adding a printf.
+> So if somebady want modify the po_destroy, he must be careful of it. :)
+> 
+> And, i don't think it's a good idea that explicitly set errno, it maybe make
+> some trouble in the future. It's better returning error in nfs_do_mount_v3v2,
+> or save the error in a input parameter. :)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5ccde2a..fe79872 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5578,9 +5578,20 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
- 		server = NFS_SERVER(lrp->args.inode);
- 	else
- 		server = NULL;
--	if (nfs4_async_handle_error(task, server, NULL, lrp->clp) == -EAGAIN)
-+	if (nfs4_async_handle_error(task, server, NULL, lrp->clp) == -EAGAIN) {
- 		nfs_restart_rpc(task, lrp->clp);
-+		return;
-+	}
-+	if ((task->tk_status == 0) && (lrp->args.return_type == RETURN_FILE)) {
-+		struct pnfs_layout_hdr *lo = NFS_I(lrp->args.inode)->layout;
- 
-+		spin_lock(&lo->inode->i_lock);
-+		if (lrp->res.lrs_present)
-+			pnfs_set_layout_stateid(lo, &lrp->res.stateid);
-+		else
-+			pnfs_invalidate_layout_stateid(lo);
-+		spin_unlock(&lo->inode->i_lock);
-+	}
- 	dprintk("<-- %s\n", __func__);
- }
- 
-@@ -5589,8 +5600,17 @@ static void nfs4_layoutreturn_release(void *calldata)
- 	struct nfs4_layoutreturn *lrp = calldata;
- 
- 	dprintk("--> %s return_type %d\n", __func__, lrp->args.return_type);
-+	if (lrp->args.return_type == RETURN_FILE) {
-+		struct inode *ino = lrp->args.inode;
-+		struct pnfs_layout_hdr *lo = NFS_I(ino)->layout;
- 
--	pnfs_layoutreturn_release(lrp);
-+		spin_lock(&ino->i_lock);
-+		lo->plh_block_lgets--;
-+		if (!pnfs_layoutgets_blocked(lo))
-+			rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq_stateid);
-+		spin_unlock(&ino->i_lock);
-+		put_layout_hdr(lrp->args.inode);
-+	}
- 	kfree(calldata);
- 	dprintk("<-- %s\n", __func__);
- }
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 550e457..328cca5 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5287,7 +5287,6 @@ static int decode_layoutreturn(struct xdr_stream *xdr,
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	res->valid = true;
- 	res->lrs_present = be32_to_cpup(p);
- 	if (res->lrs_present)
- 		status = decode_stateid(xdr, &res->stateid);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 1147eb3..353c674 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -449,7 +449,7 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
-  *
-  * lo->stateid could be the open stateid, in which case we just use what given.
-  */
--static void
-+void
- pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 			const nfs4_stateid *new)
- {
-@@ -580,28 +580,6 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
- 	return ret;
- }
- 
--void
--pnfs_layoutreturn_release(struct nfs4_layoutreturn *lrp)
--{
--	struct pnfs_layout_hdr *lo;
--
--	if (lrp->args.return_type != RETURN_FILE)
--		return;
--	lo = NFS_I(lrp->args.inode)->layout;
--	spin_lock(&lrp->args.inode->i_lock);
--	lo->plh_block_lgets--;
--	if (!pnfs_layoutgets_blocked(lo))
--		rpc_wake_up(&NFS_I(lo->inode)->lo_rpcwaitq_stateid);
--	if (!lrp->res.valid)
--		;	/* forgetful model internal release */
--	else if (!lrp->res.lrs_present)
--		pnfs_invalidate_layout_stateid(lo);
--	else 
--		pnfs_set_layout_stateid(lo, &lrp->res.stateid);
--	put_layout_hdr_locked(lo); /* Matched in _pnfs_return_layout */
--	spin_unlock(&lrp->args.inode->i_lock);
--}
--
- static int
- return_layout(struct inode *ino, struct pnfs_layout_range *range,
- 	      enum pnfs_layoutreturn_type type, struct pnfs_layout_hdr *lo,
-@@ -672,7 +650,7 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
- 		list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
- 			if (should_free_lseg(&lseg->range, &arg))
- 				mark_lseg_invalid(lseg, &tmp_list);
--		/* Reference matched in pnfs_layoutreturn_release */
-+		/* Reference matched in nfs4_layoutreturn_release */
- 		get_layout_hdr_locked(lo);
- 		spin_unlock(&ino->i_lock);
- 		pnfs_free_lseg_list(&tmp_list);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index a9a3bea..4f2c541 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -203,10 +203,11 @@ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
- void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
- bool pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo);
- int pnfs_layout_process(struct nfs4_layoutget *lgp);
--void pnfs_layoutreturn_release(struct nfs4_layoutreturn *lpr);
- void pnfs_destroy_layout(struct nfs_inode *);
- void pnfs_destroy_all_layouts(struct nfs_client *);
- void put_layout_hdr(struct inode *inode);
-+void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
-+			     const nfs4_stateid *new);
- void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 			     struct nfs4_state *open_state);
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 23a4519..f472405 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -269,7 +269,6 @@ struct nfs4_layoutreturn_args {
- 
- struct nfs4_layoutreturn_res {
- 	struct nfs4_sequence_res seq_res;
--	bool valid;	/* internal, true if received reply */
- 	u32 lrs_present;
- 	nfs4_stateid stateid;
- };
+Perhaps it isn't good style, but I'd rather see all of stropts.c updated to pass errno as an explicit parameter than to have it changed piecemeal.  I agree that we run into trouble everywhere in mount with errno.
+
+I think this particular patch is unnecessary until we have a need for it.  Basically it confuses a reviewer who sees that we've gone to the trouble here to save and restore errno, but nowhere else, and besides po_destroy() doesn't even alter errno.  Why are we bothering?
+
+> Thanks
+>  Bian
+> 
+>> steved.
+>> 
+>>>> Signed-off-by: Bian Naimeng <biannm@cn.fujitsu.com>
+>>>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>>>> ---
+>>>> utils/mount/stropts.c |    8 ++++++--
+>>>> 1 files changed, 6 insertions(+), 2 deletions(-)
+>>>> 
+>>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>>>> index 50a1a2a..d554877 100644
+>>>> --- a/utils/mount/stropts.c
+>>>> +++ b/utils/mount/stropts.c
+>>>> @@ -592,7 +592,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+>>>> 		struct sockaddr *sap, socklen_t salen)
+>>>> {
+>>>> 	struct mount_options *options = po_dup(mi->options);
+>>>> -	int result = 0;
+>>>> +	int result = 0, save = 0;
+>>>> 
+>>>> 	if (!options) {
+>>>> 		errno = ENOMEM;
+>>>> @@ -637,7 +637,9 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+>>>> 	result = nfs_sys_mount(mi, options);
+>>>> 
+>>>> out_fail:
+>>>> +	save = errno;
+>>>> 	po_destroy(options);
+>>>> +	errno = save;
+>>>> 	return result;
+>>>> }
+>>>> 
+>>>> @@ -673,7 +675,7 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
+>>>> 		struct sockaddr *sap, socklen_t salen)
+>>>> {
+>>>> 	struct mount_options *options = po_dup(mi->options);
+>>>> -	int result = 0;
+>>>> +	int result = 0, save = 0;
+>>>> 
+>>>> 	if (!options) {
+>>>> 		errno = ENOMEM;
+>>>> @@ -724,7 +726,9 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
+>>>> 	result = nfs_sys_mount(mi, options);
+>>>> 
+>>>> out_fail:
+>>>> +	save = errno;
+>>>> 	po_destroy(options);
+>>>> +	errno = save;
+>>>> 	return result;
+>>>> }
+>>>> 
+>>>> -- 
+>>>> 1.7.3.2
+>>>> 
+>>>> 
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> 
+> 
+> -- 
+> Regards
+> Bian Naimeng
+> 
+
 -- 
-1.7.2.1
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
