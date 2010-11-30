@@ -1,58 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11713 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:26569 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753083Ab0K3Pg3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Nov 2010 10:36:29 -0500
-Message-ID: <4CF519F2.8080900@RedHat.com>
-Date: Tue, 30 Nov 2010 10:36:18 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, Spelic <spelic@shiftmail.org>,
-        linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 behaviour on unknown users
-References: <4CF3ED05.3070401@shiftmail.org>	 <1291054975.12784.17.camel@heimdal.trondhjem.org>	 <4CF3F326.4060608@shiftmail.org>  <20101129190122.GA31843@fieldses.org> <1291057747.12784.38.camel@heimdal.trondhjem.org>
-In-Reply-To: <1291057747.12784.38.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+	id S1754223Ab0K3W3G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 17:29:06 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 2/5] NFS implement v4.0 callback_ident
+Date: Tue, 30 Nov 2010 15:31:08 -0500
+Message-Id: <1291149071-2026-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1291149071-2026-2-git-send-email-andros@netapp.com>
+References: <1291149071-2026-1-git-send-email-andros@netapp.com>
+ <1291149071-2026-2-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Andy Adamson <andros@netapp.com>
 
+Provide a unique callback identifier per SETCLIENTID call used to identify the
+v4.0 callback service associated with the clientid.
 
-On 11/29/2010 02:09 PM, Trond Myklebust wrote:
-> On Mon, 2010-11-29 at 14:01 -0500, J. Bruce Fields wrote:
->> On Mon, Nov 29, 2010 at 07:38:30PM +0100, Spelic wrote:
->>> On 11/29/2010 07:22 PM, Trond Myklebust wrote:
->>>> On Mon, 2010-11-29 at 19:12 +0100, Spelic wrote:
->>>> No. That is not allowed by the spec.
->>>>
->>>> Trond
->>>
->>> Too bad!! :-((
->>> Was that spec decision really wise? :-/
->>>
->>>
->>> BTW:
->>> I've just noticed two discussions dated a few months ago in this ML
->>> regarding this.
->>> the thread named 'numeric UIDs'
->>
->> There's also a reference to the spec language there--we'd be violating a
->> "SHOULD", but I think it would be acceptable if it smooths the v3->v4
->> upgrade path for users in your situation.
->>
->> I think steved's changes still need to be ported to libnfsidmap?
-> 
-> I don't see how steved's changes will fix this problem. If the client
-> has a mapping, it will (MUST) send the mapped uid/gid and the server
-> still has to make sense of that. Ditto if the server has a mapping, and
-> the client does not.
-I actually thought it did... 
+Do not worry about wrap around. Zero value means unset.
 
-Now that the libnfsidmap maintainership has been handed over to me 
-and I'm about to enable the new nfsidmapper when I commit the 
-"libnfsidmap: Add numerical string translation" patch... Its 
-probably time I take a second look at those patches to see
-if we can ease some of this pain...
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c         |    5 +++++
+ fs/nfs/nfs4state.c        |    1 +
+ include/linux/nfs_fs_sb.h |    1 +
+ include/linux/nfs_xdr.h   |    1 +
+ 4 files changed, 8 insertions(+), 0 deletions(-)
 
-steved.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6a653ff..a241957 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3461,6 +3461,8 @@ do_state_recovery:
+ 	return -EAGAIN;
+ }
+ 
++static u32 current_cb_ident = 1;
++
+ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 		unsigned short port, struct rpc_cred *cred,
+ 		struct nfs4_setclientid_res *res)
+@@ -3469,6 +3471,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 	struct nfs4_setclientid setclientid = {
+ 		.sc_verifier = &sc_verifier,
+ 		.sc_prog = program,
++		.sc_cb_ident = current_cb_ident++,
+ 	};
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SETCLIENTID],
+@@ -3513,6 +3516,8 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 			if (++clp->cl_id_uniquifier == 0)
+ 				break;
+ 	}
++	if (status == NFS_OK)
++		res->cb_ident = setclientid.sc_cb_ident;
+ 	return status;
+ }
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index f575a31..fe61422 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -79,6 +79,7 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ 	if (status != 0)
+ 		goto out;
+ 	clp->cl_clientid = clid.clientid;
++	clp->cl_cb_ident = clid.cb_ident;
+ 	nfs4_schedule_state_renewal(clp);
+ out:
+ 	return status;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 452d964..1eaa054 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -71,6 +71,7 @@ struct nfs_client {
+ 	 */
+ 	char			cl_ipaddr[48];
+ 	unsigned char		cl_id_uniquifier;
++	u32			cl_cb_ident;	/* v4.0 callback identifier */
+ 	const struct nfs4_minor_version_ops *cl_mvops;
+ #endif /* CONFIG_NFS_V4 */
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 80f0719..24e77a6 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -868,6 +868,7 @@ struct nfs4_setclientid {
+ struct nfs4_setclientid_res {
+ 	u64				clientid;
+ 	nfs4_verifier			confirm;
++	u32				cb_ident;
+ };
+ 
+ struct nfs4_statfs_arg {
+-- 
+1.6.6
+
