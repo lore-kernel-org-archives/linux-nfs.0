@@ -1,150 +1,135 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58188 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:56731 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754194Ab0LFT5p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Dec 2010 14:57:45 -0500
-Date: Mon, 6 Dec 2010 14:57:43 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: oops in nfs_flush_incompatible (and possible fix?)
-Message-ID: <20101206145743.4464c79d@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=US-ASCII
+	id S1754059Ab0LAPgz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Dec 2010 10:36:55 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+        Nick Bowler <nbowler@elliptictech.com>
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
+Date: Wed,  1 Dec 2010 10:36:44 -0500
+Message-Id: <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <20101201150428.GA2879@elliptictech.com>
+References: <20101201150428.GA2879@elliptictech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi Trond,
+We need to ensure that the entries in the nfs_cache_array get cleared
+when the page is removed from the page cache. To do so, we use the
+releasepage address_space operation (which also requires us to set
+the Pg_private flag).
 
-I've got a RH bug opened by one of our partners against the RHEL5.6
-development kernel. That kernel got a backported version of the
-lock_context patches that you merged not too long ago. I'm trying to
-get permission to add you to the BZ so you can have a look for yourself
-too.
+Change nfs_readdir_clear_array to use kmap_atomic(), so that the
+function can be safely called from all direct reclaim contexts.
 
-Long story short, they seem to get a reproducible oops like this when
-testing under heavy load:
+Finally, modify the cache_page_release helper to call
+nfs_readdir_clear_array directly, when dealing with an anonymous
+page from 'uncached_readdir'.
 
-Unable to handle kernel NULL pointer dereference at 0000000000000020 RIP:
-[<ffffffff88856222>] :nfs:nfs_flush_incompatible+0x6d/0xd1
-PGD 7d9bc2067 PUD 7d9bbf067 PMD 0
-Oops: 0000 [1] SMP
-last sysfs file: /devices/system/cpu/cpu125/cpufreq/scaling_setspeed
-CPU 126
-Modules linked in: ipmi_devintf ipmi_si ipmi_msghandler tun nfs fscache
-nfs_acl ebtable_nat ebtables ipt_MASQUERADE iptable_nat ip_nat bridge
-autofs4 hidp rfcomm l2cap bluetooth lockd sunrpc acpi_cpufreq freq_table
-mperf ip_conntrack_netbios_ns ipt_REJECT xt_state ip_conntrack nfnetlink
-iptable_filter ip_tables ip6t_REJECT xt_tcpudp ip6table_filter ip6_tables
-x_tables be2iscsi ib_iser rdma_cm ib_cm iw_cm ib_sa ib_mad ib_core ib_addr
-iscsi_tcp bnx2i cnic ipv6 xfrm_nalgo crypto_api uio cxgb3i cxgb3 8021q
-libiscsi_tcp libiscsi2 scsi_transport_iscsi2 scsi_transport_iscsi loop
-dm_multipath scsi_dh video backlight sbs power_meter hwmon i2c_ec dell_wmi
-wmi button battery asus_acpi acpi_memhotplug ac parport_pc lp parport
-ksm(U) kvm_intel(U) kvm(U) joydev sg tpm_tis i2c_i801 tpm cdc_ether pcspkr
-i7core_edac ide_cd i2c_core edac_mc usbnet tpm_bios cdrom bnx2 dm_raid45
-dm_message dm_region_hash dm_mem_cache dm_snapshot dm_zero dm_mirror
-dm_log dm_mod ata_piix libata shpchp mptsas mptscsih mptbase
-scsi_transport_sas sd_mod scsi_mod ext3 jbd uhci_hcd ohci_hcd ehci_hcd
-Pid: 21273, comm: snake.exe Tainted: G      2.6.18-229.el5 #1
-RIP: 0010:[<ffffffff88856222>]  [<ffffffff88856222>]
-:nfs:nfs_flush_incompatible+0x6d/0xd1
-RSP: 0018:ffff810a3daddb48  EFLAGS: 00010246
-RAX: 0000000000000000 RBX: ffff8101a4c05c40 RCX: 0000000000000000
-RDX: 0000000000000000 RSI: 0000000000000001 RDI: ffff8101d27f3ac8
-RBP: 0000000000000000 R08: 0000000000000000 R09: ffff810a3daddc80
-R10: ffff8106896a7c00 R11: 0000000000000048 R12: ffff810a833ebb78
-R13: ffff811213f3f6f0 R14: ffff8110c0a1c9c0 R15: 0000000000000001
-FS:  00002b6188e086e0(0000) GS:ffff811e7f78c940(0000)
-knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000000000020 CR3: 00000007d9bc7000 CR4: 00000000000026e0
-Process snake.exe (pid: 21273, threadinfo ffff810a3dadc000, task
-ffff8107d9b24100)
-Stack:  ffff810a833ebb78 000000000000007e ffff81102e769e80
-0000000000000000
-00000000000014ac ffffffff8884b101 ffff810a3daddc80 0000007e00000000
-ffff811213f3f800 ffffffff8886b8e0 000000000000007e 00000000000014ac
-Call Trace:
-[<ffffffff8884b101>] :nfs:nfs_write_begin+0x65/0xf8
-[<ffffffff8000fda3>] generic_file_buffered_write+0x14b/0x675
-[<ffffffff80062ff0>] thread_return+0x62/0xfe
-[<ffffffff800166e8>] __generic_file_aio_write_nolock+0x369/0x3b6
-[<ffffffff80063c57>] __mutex_lock_slowpath+0x68/0x9b
-[<ffffffff8002187e>] generic_file_aio_write+0x65/0xc1
-[<ffffffff8884b805>] :nfs:nfs_file_write+0xd8/0x14f
-[<ffffffff80018338>] do_sync_write+0xc7/0x104
-[<ffffffff800a2896>] autoremove_wake_function+0x0/0x2e
-[<ffffffff8005a4c5>] hrtimer_cancel+0xc/0x16
-[<ffffffff80016af0>] vfs_write+0xce/0x174
-[<ffffffff800173a8>] sys_write+0x45/0x6e
-[<ffffffff8005d28d>] tracesys+0xd5/0xe0
-
-Code: 48 8b 50 20 65 48 8b 04 25 00 00 00 00 48 3b 90 98 05 00 00
-RIP  [<ffffffff88856222>] :nfs:nfs_flush_incompatible+0x6d/0xd1
-RSP <ffff810a3daddb48>
-CR2: 0000000000000020
-<0>Kernel panic - not syncing: Fatal exception
-
-
-The problem seems to be that the req->wb_lock_context is NULL so it
-dies dereferencing that pointer in nfs_flush_incompatible. The original
-kernel they tested didn't have the check for a NULL return from
-nfs_get_lock_context. I fixed that however and they still saw the bug.
-
-At this point, I'm thinking this is a race that might be fixed by the
-following patch. These bare calls to nfs_clear_request look suspicious
-to me, given that we're not checking the refcount on the request before
-freeing fields in it. I haven't tested the patch yet, but I think it
-looks correct.
-
-Thoughts?
-
------------------------[snip]---------------------------
-
-nfs: remove extraneous and problematic calls to nfs_clear_request
-
-When a nfs_page is freed, nfs_free_request is called which also calls
-nfs_clear_request to clean out the lock and open contexts and free the
-pagecache page.
-
-However, a couple of places in the nfs code call nfs_clear_request
-themselves. What happens here if the refcount on the request is still high?
-We'll be releasing contexts and freeing pointers while the request is
-possibly still in use.
-
-Remove those bare calls to nfs_clear_context. That should only be done when
-the request is being freed.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/read.c  |    1 -
- fs/nfs/write.c |    1 -
- 2 files changed, 0 insertions(+), 2 deletions(-)
+ fs/nfs/dir.c           |   22 +++++++++++++++++-----
+ fs/nfs/inode.c         |    1 +
+ include/linux/nfs_fs.h |    1 +
+ 3 files changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index e4b62c6..aedcaa7 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -152,7 +152,6 @@ static void nfs_readpage_release(struct nfs_page *req)
- 			(long long)NFS_FILEID(req->wb_context->path.dentry->d_inode),
- 			req->wb_bytes,
- 			(long long)req_offset(req));
--	nfs_clear_request(req);
- 	nfs_release_request(req);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 3ec3f1c..4c6319e 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -58,6 +58,7 @@ static int nfs_rename(struct inode *, struct dentry *,
+ static int nfs_fsync_dir(struct file *, int);
+ static loff_t nfs_llseek_dir(struct file *, loff_t, int);
+ static int nfs_readdir_clear_array(struct page*, gfp_t);
++static void nfs_readdir_invalidatepage(struct page*, unsigned long);
+ 
+ const struct file_operations nfs_dir_operations = {
+ 	.llseek		= nfs_llseek_dir,
+@@ -85,6 +86,7 @@ const struct inode_operations nfs_dir_inode_operations = {
+ 
+ const struct address_space_operations nfs_dir_addr_space_ops = {
+ 	.releasepage = nfs_readdir_clear_array,
++	.invalidatepage = nfs_readdir_invalidatepage,
+ };
+ 
+ #ifdef CONFIG_NFS_V3
+@@ -216,15 +218,22 @@ void nfs_readdir_release_array(struct page *page)
+ static
+ int nfs_readdir_clear_array(struct page *page, gfp_t mask)
+ {
+-	struct nfs_cache_array *array = nfs_readdir_get_array(page);
++	struct nfs_cache_array *array;
+ 	int i;
+ 
+-	if (IS_ERR(array))
+-		return PTR_ERR(array);
++	array = kmap_atomic(page, KM_USER0);
+ 	for (i = 0; i < array->size; i++)
+ 		kfree(array->array[i].string.name);
+-	nfs_readdir_release_array(page);
+-	return 0;
++	kunmap_atomic(array, KM_USER0);
++	ClearPageUptodate(page);
++	ClearPagePrivate(page);
++	return 1;
++}
++
++static
++void nfs_readdir_invalidatepage(struct page *page, unsigned long offset)
++{
++	nfs_readdir_clear_array(page, 0);
  }
  
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 4c14c17..c41a435 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -422,7 +422,6 @@ static void nfs_inode_remove_request(struct nfs_page *req)
- 		iput(inode);
- 	} else
- 		spin_unlock(&inode->i_lock);
--	nfs_clear_request(req);
- 	nfs_release_request(req);
- }
+ /*
+@@ -624,6 +633,7 @@ int nfs_readdir_filler(nfs_readdir_descriptor_t *desc, struct page* page)
+ 	if (ret < 0)
+ 		goto error;
+ 	SetPageUptodate(page);
++	SetPagePrivate(page);
  
+ 	if (invalidate_inode_pages2_range(inode->i_mapping, page->index + 1, -1) < 0) {
+ 		/* Should never happen */
+@@ -639,6 +649,8 @@ int nfs_readdir_filler(nfs_readdir_descriptor_t *desc, struct page* page)
+ static
+ void cache_page_release(nfs_readdir_descriptor_t *desc)
+ {
++	if (!desc->page->mapping)
++		nfs_readdir_clear_array(desc->page, GFP_KERNEL);
+ 	unlock_page(desc->page);
+ 	page_cache_release(desc->page);
+ 	desc->page = NULL;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 314f571..0018e07 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -289,6 +289,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		} else if (S_ISDIR(inode->i_mode)) {
+ 			inode->i_op = NFS_SB(sb)->nfs_client->rpc_ops->dir_inode_ops;
+ 			inode->i_fop = &nfs_dir_operations;
++			inode->i_data.a_ops = &nfs_dir_addr_space_ops;
+ 			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS))
+ 				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
+ 			/* Deal with crossing mountpoints */
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index c66fdb7..b5d3ab0 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -401,6 +401,7 @@ extern const struct inode_operations nfs3_file_inode_operations;
+ #endif /* CONFIG_NFS_V3 */
+ extern const struct file_operations nfs_file_operations;
+ extern const struct address_space_operations nfs_file_aops;
++extern const struct address_space_operations nfs_dir_addr_space_ops;
+ 
+ static inline struct nfs_open_context *nfs_file_open_context(struct file *filp)
+ {
 -- 
 1.7.3.2
+
