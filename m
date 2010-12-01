@@ -1,38 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:60237 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751153Ab0LQCJJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Dec 2010 21:09:09 -0500
-Date: Thu, 16 Dec 2010 21:09:06 -0500
-From: Jim Rees <rees@umich.edu>
-To: Mike <debian@good-with-numbers.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs-common needed on NFS-rooted client?
-Message-ID: <20101217020906.GA8853@merit.edu>
-References: <20101216230622.GA23016@adsl-64-142-29-25.sonic.net>
+Received: from dsl-67-204-24-19.acanac.net ([67.204.24.19]:35678 "EHLO
+	mail.ellipticsemi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751736Ab0LAPEo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 10:04:44 -0500
+Date: Wed, 1 Dec 2010 10:04:28 -0500
+From: Nick Bowler <nbowler@elliptictech.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] NFS: Ensure we use the correct cookie in
+ nfs_readdir_xdr_filler
+Message-ID: <20101201150428.GA2879@elliptictech.com>
+References: <AANLkTimg+4EYfYnKqNsoOpvCcDs+Pb=FB+arb4NvFpx_@mail.gmail.com>
+ <1291175234-23824-2-git-send-email-Trond.Myklebust@netapp.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101216230622.GA23016@adsl-64-142-29-25.sonic.net>
+In-Reply-To: <1291175234-23824-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Mike wrote:
+On 2010-11-30 22:47 -0500, Trond Myklebust wrote:
+> We need to use the cookie from the previous array entry, not the
+> actual cookie that we are searching for.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/nfs/dir.c |    9 +++++++--
+>  1 files changed, 7 insertions(+), 2 deletions(-)
 
-  For a client with an NFS root and no other NFS mounts, is it necessary
-  to have the utilities found in the Debian nfs-common package
-  <http://packages.debian.org/squeeze/nfs-common>?  Seems to be working
-  fine without.
+Indeed, my test script passes with this patch on top of Linus' master,
+thanks.  I'll wait for the updated series before trying the other ones.
 
-The only thing you might need is the mount command, mount.nfs.  This isn't
-used by the kernel for the root mount, but might be needed later for a
-remount in user space.  There's also the unmount command, but presumably you
-won't be using that.  And showmount, which isn't essential.  And the nfs(5)
-man page.
+Tested-by: Nick Bowler <nbowler@elliptictech.com>
 
-The mount command also might be needed to update /etc/mtab if you don't have
-it linked to /proc.  Does "mount" return the expected results?
-
-I'm told by an expert that Ubuntu doesn't use the kernel root mount, but
-bounces the initial mount up to user space in the initrd.  So you probably
-do need nfs-common for Ubuntu.  Apparently Debian hasn't done this if it's
-working for you.
+-- 
+Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
