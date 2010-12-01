@@ -1,232 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34632 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752358Ab0LVVut (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Dec 2010 16:50:49 -0500
-Message-ID: <4D1272B6.9000907@netapp.com>
-Date: Wed, 22 Dec 2010 16:50:46 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/5] NFS: call_sync function
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:59863 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755655Ab0LAXhG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 18:37:06 -0500
+Date: Wed, 1 Dec 2010 15:36:08 -0800
+From: Andrew Morton <akpm@linux-foundation.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Hugh Dickins <hughd@google.com>, Nick Piggin <npiggin@kernel.dk>,
+        Nick Bowler <nbowler@elliptictech.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Rik van Riel <riel@redhat.com>,
+        Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>
+Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
+Message-Id: <20101201153608.78b331f9.akpm@linux-foundation.org>
+In-Reply-To: <AANLkTi=x1bz5sJXOGERXh8iRHNZa+_gaYOyDecg3G92+@mail.gmail.com>
+References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
+	<1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
+	<1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
+	<AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
+	<1291229669.6609.24.camel@heimdal.trondhjem.org>
+	<AANLkTinsEeKK9LykVAVq60Lsb3caLDJasnKH8kcgSFVp@mail.gmail.com>
+	<1291234251.6609.39.camel@heimdal.trondhjem.org>
+	<20101201123341.d12ef362.akpm@linux-foundation.org>
+	<alpine.LSU.2.00.1012011258220.18662@tigran.mtv.corp.google.com>
+	<alpine.LSU.2.00.1012011311590.18920@tigran.mtv.corp.google.com>
+	<20101201133831.ea6ba10a.akpm@linux-foundation.org>
+	<1291240272.6609.50.camel@heimdal.trondhjem.org>
+	<20101201141351.8609140b.akpm@linux-foundation.org>
+	<AANLkTimgZPET+T16Qpj_KnpCu==97g-8+_y5dtjNOrxG@mail.gmail.com>
+	<20101201143856.51f4f9d9.akpm@linux-foundation.org>
+	<AANLkTi=x1bz5sJXOGERXh8iRHNZa+_gaYOyDecg3G92+@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, 1 Dec 2010 15:31:11 -0800
+Linus Torvalds <torvalds@linux-foundation.org> wrote:
 
-This patch changes nfs4_call_sync() from a macro into a
-static inline function.
+> On Wed, Dec 1, 2010 at 2:38 PM, Andrew Morton <akpm@linux-foundation.org> wrote:
+> >
+> > OK, the stop_machine() plugs a lot of potential race-vs-module-unload
+> > things. __But Trond is referring to races against vmscan inode reclaim,
+> > unmount, etc.
+> 
+> So?
+> 
+> A filesystem module cannot be unloaded while it's still mounted.
+> 
+> And unmount doesn't succeed until all inodes are gone.
+> 
+> And getting rid of an inode doesn't succeed until all pages associated
+> with it are gone.
+> 
+> And getting rid of the pages involves locking them (whether in
+> truncate or vmscan) and removing them from all lists.
+> 
+> Ergo: vmscan has a locked page leads to the filesystem being
+> guaranteed to not be unmounted.  And that, in turn, guarantees that
+> the module won't be unloaded until the machine has gone through an
+> idle cycle.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c |   53 ++++++++++++++++++++++++++++++-----------------------
- 1 files changed, 30 insertions(+), 23 deletions(-)
+The page isn't attached to the address_space any more:
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 78b0899..4f89a36 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -688,9 +688,16 @@ int _nfs4_call_sync(struct nfs_server *server,
- 	return rpc_call_sync(server->client, msg, 0);
- }
- 
--#define nfs4_call_sync(server, msg, args, res, cache_reply) \
--	(server)->nfs_client->cl_mvops->call_sync((server), (msg), &(args)->seq_args, \
--			&(res)->seq_res, (cache_reply))
-+static inline
-+int nfs4_call_sync(struct nfs_server *server,
-+		   struct rpc_message *msg,
-+		   struct nfs4_sequence_args *args,
-+		   struct nfs4_sequence_res *res,
-+		   int cache_reply)
-+{
-+	return server->nfs_client->cl_mvops->call_sync(server, msg, args,
-+						res, cache_reply);
-+}
- 
- static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
- {
-@@ -1797,7 +1804,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 	} else
- 		memcpy(&arg.stateid, &zero_stateid, sizeof(arg.stateid));
- 
--	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (status == 0 && state != NULL)
- 		renew_lease(server, timestamp);
- 	return status;
-@@ -2039,7 +2046,7 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 	};
- 	int status;
- 
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (status == 0) {
- 		memcpy(server->attr_bitmask, res.attr_bitmask, sizeof(server->attr_bitmask));
- 		server->caps &= ~(NFS_CAP_ACLS|NFS_CAP_HARDLINKS|
-@@ -2109,7 +2116,7 @@ static int _nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	};
- 
- 	nfs_fattr_init(info->fattr);
--	return nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
-@@ -2198,7 +2205,7 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
- 	};
- 	
- 	nfs_fattr_init(fattr);
--	return nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-@@ -2282,7 +2289,7 @@ static int _nfs4_proc_lookupfh(struct nfs_server *server, const struct nfs_fh *d
- 	nfs_fattr_init(fattr);
- 
- 	dprintk("NFS call  lookupfh %s\n", name->name);
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	dprintk("NFS reply lookupfh: %d\n", status);
- 	return status;
- }
-@@ -2370,7 +2377,7 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 	if (res.fattr == NULL)
- 		return -ENOMEM;
- 
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (!status) {
- 		entry->mask = 0;
- 		if (res.access & NFS4_ACCESS_READ)
-@@ -2437,7 +2444,7 @@ static int _nfs4_proc_readlink(struct inode *inode, struct page *page,
- 		.rpc_resp = &res,
- 	};
- 
--	return nfs4_call_sync(NFS_SERVER(inode), &msg, &args, &res, 0);
-+	return nfs4_call_sync(NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_readlink(struct inode *inode, struct page *page,
-@@ -2525,7 +2532,7 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
- 	if (res.dir_attr == NULL)
- 		goto out;
- 
--	status = nfs4_call_sync(server, &msg, &args, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 1);
- 	if (status == 0) {
- 		update_changeattr(dir, &res.cinfo);
- 		nfs_post_op_update_inode(dir, res.dir_attr);
-@@ -2626,7 +2633,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 	if (res.old_fattr == NULL || res.new_fattr == NULL)
- 		goto out;
- 
--	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(old_dir, &res.old_cinfo);
- 		nfs_post_op_update_inode(old_dir, res.old_fattr);
-@@ -2677,7 +2684,7 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
- 	if (res.fattr == NULL || res.dir_attr == NULL)
- 		goto out;
- 
--	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(dir, &res.cinfo);
- 		nfs_post_op_update_inode(dir, res.dir_attr);
-@@ -2741,7 +2748,7 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
- {
- 	int status = nfs4_call_sync(NFS_SERVER(dir), &data->msg,
--				    &data->arg, &data->res, 1);
-+				    &data->arg.seq_args, &data->res.seq_res, 1);
- 	if (status == 0) {
- 		update_changeattr(dir, &data->res.dir_cinfo);
- 		nfs_post_op_update_inode(dir, data->res.dir_fattr);
-@@ -2851,7 +2858,7 @@ static int _nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- 			(unsigned long long)cookie);
- 	nfs4_setup_readdir(cookie, NFS_COOKIEVERF(dir), dentry, &args);
- 	res.pgbase = args.pgbase;
--	status = nfs4_call_sync(NFS_SERVER(dir), &msg, &args, &res, 0);
-+	status = nfs4_call_sync(NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
- 	if (status >= 0) {
- 		memcpy(NFS_COOKIEVERF(dir), res.verifier.data, NFS4_VERIFIER_SIZE);
- 		status += args.pgbase;
-@@ -2941,7 +2948,7 @@ static int _nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
- 	};
- 
- 	nfs_fattr_init(fsstat->fattr);
--	return  nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return  nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsstat *fsstat)
-@@ -2972,7 +2979,7 @@ static int _nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
- 		.rpc_resp = &res,
- 	};
- 
--	return nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsinfo *fsinfo)
-@@ -3017,7 +3024,7 @@ static int _nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle
- 	}
- 
- 	nfs_fattr_init(pathconf->fattr);
--	return nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
-@@ -3317,7 +3324,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 		resp_buf = buf;
- 		buf_to_pages(buf, buflen, args.acl_pages, &args.acl_pgbase);
- 	}
--	ret = nfs4_call_sync(NFS_SERVER(inode), &msg, &args, &res, 0);
-+	ret = nfs4_call_sync(NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
- 	if (ret)
- 		goto out_free;
- 	if (res.acl_len > args.acl_len)
-@@ -3390,7 +3397,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 		return -EOPNOTSUPP;
- 	nfs_inode_return_delegation(inode);
- 	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
--	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	ret = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	/*
- 	 * Acl update can result in inode attribute update.
- 	 * so mark the attribute cache invalid.
-@@ -3743,7 +3750,7 @@ static int _nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock
- 		goto out;
- 	lsp = request->fl_u.nfs4_fl.owner;
- 	arg.lock_owner.id = lsp->ls_id.id;
--	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	switch (status) {
- 		case 0:
- 			request->fl_type = F_UNLCK;
-@@ -4478,7 +4485,7 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 	nfs_fattr_init(&fs_locations->fattr);
- 	fs_locations->server = server;
- 	fs_locations->nlocations = 0;
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	nfs_fixup_referral_attributes(&fs_locations->fattr);
- 	dprintk("%s: returned status = %d\n", __func__, status);
- 	return status;
-@@ -5396,7 +5403,7 @@ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
- 	int status;
- 
- 	dprintk("--> %s\n", __func__);
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	dprintk("<-- %s status=%d\n", __func__, status);
- 
- 	return status;
--- 
-1.7.3.4
+static int __remove_mapping(struct address_space *mapping, struct page *page)
+{
+	...
+		__remove_from_page_cache(page);
+		spin_unlock_irq(&mapping->tree_lock);
+	...
+}
 
