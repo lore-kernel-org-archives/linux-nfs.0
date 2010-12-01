@@ -1,68 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:54931 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:31136 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751293Ab0LOSWR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 13:22:17 -0500
-Subject: Re: System CPU increasing on idle 2.6.36
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org
-In-Reply-To: <20101215180813.GA7773@fieldses.org>
-References: <20101208212505.GA18192@hostway.ca>
-	 <1291845189.3067.31.camel@heimdal.trondhjem.org>
-	 <20101208223622.GA3796@hostway.ca>
-	 <1291869437.2821.6.camel@heimdal.trondhjem.org>
-	 <20101214233843.GB836@hostway.ca> <20101215011021.GA24594@hostway.ca>
-	 <20101215015609.GB24594@hostway.ca>  <20101215180813.GA7773@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 15 Dec 2010 13:22:13 -0500
-Message-ID: <1292437333.3068.14.camel@heimdal.trondhjem.org>
+	id S1753858Ab0LAQfp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Dec 2010 11:35:45 -0500
+Message-ID: <4CF67955.2050808@redhat.com>
+Date: Wed, 01 Dec 2010 11:35:33 -0500
+From: Rik van Riel <riel@redhat.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Nick Bowler <nbowler@elliptictech.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        Hugh Dickins <hughd@google.com>, Christoph Hellwig <hch@lst.de>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
+References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com> <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com> <20101201150428.GA2879@elliptictech.com> <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com> <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com> <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
+In-Reply-To: <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-12-15 at 13:08 -0500, J. Bruce Fields wrote:
-> On Tue, Dec 14, 2010 at 05:56:09PM -0800, Simon Kirby wrote:
-> > On Tue, Dec 14, 2010 at 05:10:21PM -0800, Simon Kirby wrote:
-> > 
-> > > On Tue, Dec 14, 2010 at 03:38:43PM -0800, Simon Kirby wrote:
-> > > 
-> > > > I'm just about to try
-> > > > 2.6.37-rc5-git3 on there plus your NFS fixes (which Linus seems to have
-> > > > half-merged and uploaded as -git3 but not pushed to his public git) 
-> > > 
-> > > Ignore this; I was just confusing myself by having the leak fixes already
-> > > applied.  Otoh, I got this Oops while trying NFSv4.  I'll check my
-> > > merging again.
-> > > 
-> > > Do you have a git branch exposed with the "Allow the admin to turn off
-> > > NFSv4 uid/gid mapping" patches applied?
-> > 
-> > Hm, the fixes were merged for -git4, and it seems to work fine there.
-> > 
-> > As for the nfs4 uid/gid mapping patch, it seems the server side support
-> > for this is still neded?
-> 
-> I'm not convinced that this behavior should depend on the security
-> flavor, so I'm assuming that something like steved's libnfsidmap patches
-> should do the job.
+On 12/01/2010 11:17 AM, Linus Torvalds wrote:
 
-Don't assume.
+> So this is a TOTALLY UNTESTED trivial patch that just adds another
+> callback. Does this work? I dunno. But I get the feeling that instead
+> of having NFS work around the odd semantics that don't actually match
+> what NFS wants, introducing a new callback with much simpler semantics
+> would be simpler for everybody, and avoid the need for subtle code.
 
-Those patches do not fix the problem that if uid(name@server) !=
-uid(name@client), then the client will be creating files with the 'wrong
-username' on the server.
+Surely somebody can have just looked up the page and
+gotten a reference count, right before your ->freepage
+call is invoked?
 
-In that case, everything from setuid applications through open(O_CREAT)
-to 'chown' will be broken because your authentication and authorisation
-models do not match up.
+CPU A				CPU B
 
-Trond
+look up page
+grab refcount
+				->freepage
+
+use contents of page
+
+Am I overlooking something obvious?
+
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+All rights reversed
