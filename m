@@ -1,212 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:23817 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753862Ab0LIDLd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Dec 2010 22:11:33 -0500
-Subject: [GIT PULL] Please pull NFS client fixes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 08 Dec 2010 22:11:30 -0500
-Message-ID: <1291864290.3618.1.camel@heimdal.trondhjem.org>
+Received: from smtp-out.google.com ([216.239.44.51]:42809 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756576Ab0LATXi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 14:23:38 -0500
+Received: from hpaq7.eem.corp.google.com (hpaq7.eem.corp.google.com [172.25.149.7])
+	by smtp-out.google.com with ESMTP id oB1JNbjn007811
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 11:23:37 -0800
+Received: from pxi2 (pxi2.prod.google.com [10.243.27.2])
+	by hpaq7.eem.corp.google.com with ESMTP id oB1JNZix009368
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 11:23:35 -0800
+Received: by pxi2 with SMTP id 2so1465273pxi.12
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Dec 2010 11:23:34 -0800 (PST)
+Date: Wed, 1 Dec 2010 11:23:26 -0800 (PST)
+From: Hugh Dickins <hughd@google.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Nick Bowler <nbowler@elliptictech.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        Rik van Riel <riel@redhat.com>, Christoph Hellwig <hch@lst.de>,
+        Al Viro <viro@zeniv.linux.org.uk>, Nick Piggin <npiggin@kernel.dk>
+Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
+In-Reply-To: <1291229669.6609.24.camel@heimdal.trondhjem.org>
+Message-ID: <alpine.LSU.2.00.1012011058560.16407@tigran.mtv.corp.google.com>
+References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com> <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com> <20101201150428.GA2879@elliptictech.com> <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com> <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com> <1291229669.6609.24.camel@heimdal.trondhjem.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Linus,
+On Wed, 1 Dec 2010, Trond Myklebust wrote:
+> On Wed, 2010-12-01 at 08:17 -0800, Linus Torvalds wrote:
+> > On Wed, Dec 1, 2010 at 7:36 AM, Trond Myklebust
+> > <Trond.Myklebust@netapp.com> wrote:
+> > >
+> > > We need to ensure that the entries in the nfs_cache_array get cleared
+> > > when the page is removed from the page cache. To do so, we use the
+> > > releasepage address_space operation (which also requires us to set
+> > > the Pg_private flag).
+> > 
+> > So I really think that the whole "releasepage" use in NFS is simply
+> > overly complicated and was obviously too subtle.
+> > 
+> > The whole need for odd return values, for the page lock, and for the
+> > addition of clearing the up-to-date bit comes from the fact that this
+> > wasn't really what releasepage was designed for.
+> > 
+> > 'releasepage' was really designed for the filesystem having its own
+> > version of 'try_to_free_buffers()', which is just an optimistic "ok,
+> > we may be releasing this page, so try to get rid of any IO structures
+> > you have cached". It wasn't really a memory management thing.
+> > 
+> > And the thing is, it looks trivial to do the memory management
+> > approach by adding a new callback that gets called after the page is
+> > actually removed from the page cache. If we do that, then there are no
+> > races with any other users, since we remove things from the page cache
+> > atomically wrt page cache lookup. So the need for playing games with
+> > page locking and 'uptodate' simply goes away. As does the PG_private
+> > thing or the interaction with invalidatepage() etc.
+> > 
+> > So this is a TOTALLY UNTESTED trivial patch that just adds another
+> > callback. Does this work? I dunno. But I get the feeling that instead
+> > of having NFS work around the odd semantics that don't actually match
+> > what NFS wants, introducing a new callback with much simpler semantics
+> > would be simpler for everybody, and avoid the need for subtle code.
+> > 
+> > Hmm?
+> > 
+> >                    Linus
+> 
+> 
+> > include/linux/fs.h |    1 +
+> >  mm/vmscan.c        |    3 +++
+> >  2 files changed, 4 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index c9e06cc..090f0ea 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -602,6 +602,7 @@ struct address_space_operations {
+> >         sector_t (*bmap)(struct address_space *, sector_t);
+> >         void (*invalidatepage) (struct page *, unsigned long);
+> >         int (*releasepage) (struct page *, gfp_t);
+> > +       void (*freepage)(struct page *);
+> >         ssize_t (*direct_IO)(int, struct kiocb *, const struct iovec
+> > *iov,
+> >                         loff_t offset, unsigned long nr_segs);
+> >         int (*get_xip_mem)(struct address_space *, pgoff_t, int,
+> > diff --git a/mm/vmscan.c b/mm/vmscan.c
+> > index d31d7ce..1accb01 100644
+> > --- a/mm/vmscan.c
+> > +++ b/mm/vmscan.c
+> > @@ -499,6 +499,9 @@ static int __remove_mapping(struct address_space
+> > *mapping, struct page *page)
+> >                 mem_cgroup_uncharge_cache_page(page);
+> >         }
+> >  
+> > +       if (mapping->a_ops->freepage)
+> > +               mapping->a_ops->freepage(page);
+> 
+> Hmm... Looking again at the problem, it appears that the same callback
+> needs to be added to truncate_complete_page() and
+> invalidate_complete_page2(). Otherwise we end up in a situation where
+> the page can sometimes be removed from the page cache without calling
+> freepage().
+> 
+> > +
+> >         return 1;
+> >  
+> >  cannot_free:
 
-Please pull from the "bugfixes" branch of the repository at
+Yes, I was wondering quite how we would define this ->freepage thing,
+if it gets called from one place that removes from page cache and not
+from others.
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
+Another minor problem with it: it would probably need to take the
+struct address_space *mapping as arg as well as struct page *page:
+because by this time page->mapping has been reset to NULL.
 
-This will update the following files through the appended changesets.
+But I'm not at all keen on adding a calllback in this very special
+frozen-to-0-references place: please let's not do it without an okay
+from Nick Piggin (now Cc'ed).
 
-  Cheers,
-    Trond
+I agree completely with what Linus said originally about how the
+page cannot be freed while there's a reference to it, and it should
+be possible to work this without your additional page locks.
 
-----
- Documentation/filesystems/Locking |    7 +++-
- Documentation/filesystems/vfs.txt |    7 +++
- fs/nfs/dir.c                      |   76 +++++++++++++++++--------------------
- fs/nfs/file.c                     |    2 +
- fs/nfs/inode.c                    |    1 +
- fs/nfs/nfs4proc.c                 |    9 ++++
- fs/nfs/pagelist.c                 |    4 +-
- fs/nfs/read.c                     |    1 -
- fs/nfs/super.c                    |    4 --
- fs/nfs/write.c                    |    3 +-
- include/linux/fs.h                |    1 +
- include/linux/nfs_fs.h            |    1 +
- include/linux/nfs_page.h          |    1 +
- mm/filemap.c                      |    5 ++
- mm/truncate.c                     |    4 ++
- mm/vmscan.c                       |    7 +++
- 16 files changed, 83 insertions(+), 50 deletions(-)
+Your ->releasepage should be able to judge whether the page is likely
+(not certain) to be freed - page_count 3? 1 for the page cache, 1 for
+the page_private reference, 1 for vmscan's reference, I think.  Then
+it can mark !PageUptodate and proceed with freeing the stuff you had
+allocated, undo page_has_private and its reference, and return 1 (or
+return 0 if it decides to hold on to the page).
 
-commit 2df485a774ba59c3f43bfe84107672c1d9b731a0
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Dec 7 22:39:17 2010 -0500
+If something races in and grabs another reference to prevent removal
+from page cache and freeing, then won't read_cache_page(), seeing
+!Uptodate, do the right thing and set up the required info again?
 
-    nfs: remove extraneous and problematic calls to nfs_clear_request
-    
-    When a nfs_page is freed, nfs_free_request is called which also calls
-    nfs_clear_request to clean out the lock and open contexts and free the
-    pagecache page.
-    
-    However, a couple of places in the nfs code call nfs_clear_request
-    themselves. What happens here if the refcount on the request is still high?
-    We'll be releasing contexts and freeing pointers while the request is
-    possibly still in use.
-    
-    Remove those bare calls to nfs_clear_context. That should only be done when
-    the request is being freed.
-    
-    Note that when doing this, we need to watch out for tests of req->wb_page.
-    Previously, nfs_set_page_tag_locked() and nfs_clear_page_tag_locked()
-    would check the value of req->wb_page to figure out if the page is mapped
-    into the nfsi->nfs_page_tree. We now indicate the page is mapped using
-    the new bit PG_MAPPED in req->wb_flags .
-    
-    Reported-by: Jeff Layton <jlayton@redhat.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Or perhaps I haven't looked far enough, and you do have races which
+actually need your page locks, I can see they make it easier to think
+about.
 
-commit 0de1b7e800188782973598158e0acbb9e08e6c99
-Author: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Date:   Sat Oct 30 10:19:33 2010 +0800
+But I'd prefer us not to throw in another callback if it's well
+workable with the ->releasepage we already have.  (If it helps,
+perhaps we could adjust shrink_page_list() to allow for the page
+being removed from page cache inside try_to_release_page() - but
+I don't think that should be necessary.)
 
-    nfs: kernel should return EPROTONOSUPPORT when not support NFSv4
-    
-      When nfs client(kernel) don't support NFSv4, maybe user build
-      kernel without NFSv4, there is a problem.
-    
-      Using command "mount SERVER-IP:/nfsv3 /mnt/" to mount NFSv3
-      filesystem, mount should should success, but fail and get error:
-    
-        "mount.nfs: an incorrect mount option was specified"
-    
-      System call mount "nfs"(not "nfs4") with "vers=4",
-      if CONFIG_NFS_V4 is not defined, the "vers=4" will be parsed
-      as invalid argument and kernel return EINVAL to nfs-utils.
-    
-      About that, we really want get EPROTONOSUPPORT rather than
-      EINVAL. This path make sure kernel parses argument success,
-      and return EPROTONOSUPPORT at nfs_validate_mount_data().
-    
-    Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 21ac19d484a8ffb66f64487846c8d53afef04d2b
-Author: Sergey Vlasov <vsu@altlinux.ru>
-Date:   Sun Nov 28 21:04:05 2010 +0000
-
-    NFS: Fix fcntl F_GETLK not reporting some conflicts
-    
-    The commit 129a84de2347002f09721cda3155ccfd19fade40 (locks: fix F_GETLK
-    regression (failure to find conflicts)) fixed the posix_test_lock()
-    function by itself, however, its usage in NFS changed by the commit
-    9d6a8c5c213e34c475e72b245a8eb709258e968c (locks: give posix_test_lock
-    same interface as ->lock) remained broken - subsequent NFS-specific
-    locking code received F_UNLCK instead of the user-specified lock type.
-    To fix the problem, fl->fl_type needs to be saved before the
-    posix_test_lock() call and restored if no local conflicts were reported.
-    
-    Reference: https://bugzilla.kernel.org/show_bug.cgi?id=23892
-    Tested-by: Alexander Morozov <amorozov@etersoft.ru>
-    Signed-off-by: Sergey Vlasov <vsu@altlinux.ru>
-    Cc: <stable@kernel.org>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 08a22b392a141c201d7ed4d435de942aa853acd3
-Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date:   Wed Dec 1 10:42:16 2010 +0000
-
-    nfs: Discard ACL cache on mode update
-    
-    An update of mode bits can result in ACL value being changed. We need
-    to mark the acl cache invalid when we update mode. Similarly we need
-    to update file attribute when we change ACL value
-    
-    Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 47c716cbf638a16583441d78be3fc24345eab636
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Dec 7 12:44:56 2010 -0500
-
-    NFS: Readdir cleanups
-    
-    No functional changes, but clarify the code.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 18fb5fe40ce7f789b5cfc3aa81ff1e6175b0a5be
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Dec 7 12:41:58 2010 -0500
-
-    NFS: nfs_readdir_search_for_cookie() don't mark as eof if cookie not found
-    
-    If we're searching for a specific cookie, and it isn't found in the page
-    cache, we should try an uncached_readdir(). To do so, we return EBADCOOKIE,
-    but we don't set desc->eof.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 11de3b11e08cac26d59e88efaf4e316701883552
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Wed Dec 1 14:17:06 2010 -0500
-
-    NFS: Fix a memory leak in nfs_readdir
-    
-    We need to ensure that the entries in the nfs_cache_array get cleared
-    when the page is removed from the page cache. To do so, we use the
-    freepage address_space operation.
-    
-    Change nfs_readdir_clear_array to use kmap_atomic(), so that the
-    function can be safely called from all contexts.
-    
-    Finally, modify the cache_page_release helper to call
-    nfs_readdir_clear_array directly, when dealing with an anonymous
-    page from 'uncached_readdir'.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 6072d13c429373c5d63b69dadbbef40a9b035552
-Author: Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Wed Dec 1 13:35:19 2010 -0500
-
-    Call the filesystem back whenever a page is removed from the page cache
-    
-    NFS needs to be able to release objects that are stored in the page
-    cache once the page itself is no longer visible from the page cache.
-    
-    This patch adds a callback to the address space operations that allows
-    filesystems to perform page cleanups once the page has been removed
-    from the page cache.
-    
-    Original patch by: Linus Torvalds <torvalds@linux-foundation.org>
-    [trondmy: cover the cases of invalidate_inode_pages2() and
-              truncate_inode_pages()]
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 0aded708d125a3ff7e5abaea9c2d9c6d7ebbfdcd
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Nov 30 21:56:32 2010 -0500
-
-    NFS: Ensure we use the correct cookie in nfs_readdir_xdr_filler
-    
-    We need to use the cookie from the previous array entry, not the
-    actual cookie that we are searching for (except for the case of
-    uncached_readdir).
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Hugh
