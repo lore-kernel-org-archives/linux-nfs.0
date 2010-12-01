@@ -1,71 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:22253 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755827Ab0LHUpb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Dec 2010 15:45:31 -0500
-Subject: Re: NFSv4: "Viminfo file is not writable" -- stat(2) uid/gid
- incorrect
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: David Flynn <davidf@rd.bbc.co.uk>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20101208202009.GH20844@rd.bbc.co.uk>
-References: <20101208153340.GD20844@rd.bbc.co.uk>
-	 <1291835999.3067.13.camel@heimdal.trondhjem.org>
-	 <20101208202009.GH20844@rd.bbc.co.uk>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 08 Dec 2010 15:45:29 -0500
-Message-ID: <1291841129.3067.22.camel@heimdal.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:59977 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753105Ab0LAQp4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 11:45:56 -0500
+Message-ID: <4CF67BBE.8050303@panasas.com>
+Date: Wed, 01 Dec 2010 18:45:50 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Rik van Riel <riel@redhat.com>
+CC: Linus Torvalds <torvalds@linux-foundation.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Nick Bowler <nbowler@elliptictech.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        Hugh Dickins <hughd@google.com>, Christoph Hellwig <hch@lst.de>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
+References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com> <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com> <20101201150428.GA2879@elliptictech.com> <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com> <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com> <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com> <4CF67955.2050808@redhat.com>
+In-Reply-To: <4CF67955.2050808@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-12-08 at 20:20 +0000, David Flynn wrote:
-> I don't think this is the case. I performed a network trace of the
-> transaction and i can see that for all the calls with a user/group in
-> they refer to me (davidf@rd.bbc.co.uk, rd@rd.bbc.co.uk).
-
-Yes. I saw your trace, and it looked good.
-
-> I also checked the local idmapper to see what it thought of things, and
-> it doesn't get an upcall to map this request, so values have been
-> previously cached.
-
-Have you tried running the idmapper with the '-f -v -v' flags so you can
-log the translation upcalls? The default cache timeout is 10 minutes, so
-you shouldn't have to wait too long.
-
-> Also, the thing about this "race" is that it is very very slow.  its
-> utterly reliable.  running vim on "host-B" does not have to occur while
-> it runs on "host-A", nor does it seem to need to happen soon
-> after/before "host-A" quits/starts vim.
+On 2010-12-01 18:35, Rik van Riel wrote:
+> On 12/01/2010 11:17 AM, Linus Torvalds wrote:
 > 
-> > I've no idea how to check the Solaris idmapper configuration, but on
-> > Linux you want to look at /etc/idmapd.conf (specifically the 'Domain'
-> > line).
+>> So this is a TOTALLY UNTESTED trivial patch that just adds another
+>> callback. Does this work? I dunno. But I get the feeling that instead
+>> of having NFS work around the odd semantics that don't actually match
+>> what NFS wants, introducing a new callback with much simpler semantics
+>> would be simpler for everybody, and avoid the need for subtle code.
 > 
-> That is correct as far as i can tell.  The first part of the transaction
-> is OK, however, it fails as soon as stat() is called after open().
+> Surely somebody can have just looked up the page and
+> gotten a reference count, right before your ->freepage
+> call is invoked?
+> 
+> CPU A				CPU B
+> 
+> look up page
+> grab refcount
+> 				->freepage
+> 
+> use contents of page
+> 
+> Am I overlooking something obvious?
+> 
 
-While the open() call may indeed fail to set the uid/gid (because to do
-so would require an upcall right in the middle of an asynchronous RPC
-call), it should normally mark the inode as requiring revalidation if
-this is the case.
-The ensuing stat() should then trigger a GETATTR call on the wire, which
-will correct the uid/gid.
+The page is not cached any more at this point therefore
+looking it up won't find it.
 
-> I can't see any calls that don't use my textual owner / group.  Can you
-> confirm this?
-
-Agreed.
-
-Cheers
-  Trond
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Benny
