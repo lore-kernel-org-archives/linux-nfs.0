@@ -1,73 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:50365 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752054Ab0LQGrA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Dec 2010 01:47:00 -0500
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:39816 "EHLO
+	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754599Ab0LAKmZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 05:42:25 -0500
 Received: from d23relay04.au.ibm.com (d23relay04.au.ibm.com [202.81.31.246])
-	by e23smtp08.au.ibm.com (8.14.4/8.13.1) with ESMTP id oBH6lAPP007043
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2010 17:47:10 +1100
+	by e23smtp07.au.ibm.com (8.14.4/8.13.1) with ESMTP id oB1AgNqh021238
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 21:42:23 +1100
 Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay04.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oBH6kvnN2220070
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2010 17:46:58 +1100
+	by d23relay04.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oB1AgM8g2129974
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 21:42:23 +1100
 Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oBH6kvLa009500
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2010 17:46:57 +1100
-From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: Set MS_POSIXACL always
-In-Reply-To: <1292521792.2912.49.camel@heimdal.trondhjem.org>
-Date: Fri, 17 Dec 2010 12:10:38 +0530
-Message-ID: <m3fwtw297d.fsf@linux.vnet.ibm.com>
-References: <1291894514-6524-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <m3k4j91vw2.fsf@linux.vnet.ibm.com> <1292521792.2912.49.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
+	by d23av01.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oB1AgMPo031115
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 21:42:22 +1100
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: trond.myklebust@netapp.com, bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] nfs: Discard ACL cache on mode update
+Date: Wed,  1 Dec 2010 16:12:16 +0530
+Message-Id: <1291200136-9982-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 16 Dec 2010 12:49:52 -0500, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2010-12-16 at 22:45 +0530, Aneesh Kumar K. V wrote:
-> > Any update on this ?
-> > 
-> > -aneesh
-> > 
-> > On Thu,  9 Dec 2010 17:05:14 +0530, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> > > We want to skip VFS applying mode for NFS. So set MS_POSIXACL always
-> > > and selectively use umask. Ideally we would want to use umask only
-> > > when we don't have inheritable ACEs set. But NFS currently don't
-> > > allow to send umask to the server. So this is best what we can do
-> > > and this is consistent with NFSv3
-> > > 
-> > > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> > > ---
-> > >  fs/nfs/dir.c      |    3 +--
-> > >  fs/nfs/nfs4proc.c |    5 +++++
-> > >  fs/nfs/super.c    |   10 ++++++++++
-> > >  3 files changed, 16 insertions(+), 2 deletions(-)
-> > > 
-> > > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > > index 3c04504..e57e670 100644
-> > > --- a/fs/nfs/super.c
-> > > +++ b/fs/nfs/super.c
-> > > @@ -2508,6 +2513,11 @@ static void nfs4_fill_super(struct super_block *sb)
-> > >  {
-> > >  	sb->s_time_gran = 1;
-> > >  	sb->s_op = &nfs4_sops;
-> > > +	/*
-> > > +	 * The VFS shouldn't apply the umask to mode bits. We will do
-> > > +	 * so ourselves when necessary.
-> > > +	 */
-> > > +	sb->s_flags  |= MS_POSIXACL;
-> > >  	nfs_initialise_sb(sb);
-> > >  }
-> 
-> Won't this end up possibly turning on ACL checking in
-> acl_permission_check()?
+An update of mode bits can result in ACL value being changed. We need
+to mark the acl cache invalid when we update mode. Similarly we need
+to update file attribute when we change ACL value
 
-acl_permission_check get called only when we don't define an
-inode->permission callback. In case of nfs client we do define 
-nfs_permission callback. In case we don't define a access NFS proto
-callback we are still ok because in that case we want mode based
-validation and we do pass check_acl as NULL 
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/nfs/nfs4proc.c |    9 +++++++++
+ 1 files changed, 9 insertions(+), 0 deletions(-)
 
--aneesh
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 821d4c7..89fb751 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3356,6 +3356,8 @@ ssize_t nfs4_proc_get_acl(struct inode *inode, void *buf, size_t buflen)
+ 	ret = nfs_revalidate_inode(server, inode);
+ 	if (ret < 0)
+ 		return ret;
++	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
++		nfs_zap_acl_cache(inode);
+ 	ret = nfs4_read_cached_acl(inode, buf, buflen);
+ 	if (ret != -ENOENT)
+ 		return ret;
+@@ -3384,6 +3386,13 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
+ 	nfs_inode_return_delegation(inode);
+ 	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
+ 	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
++	/*
++	 * Acl update can result in inode attribute update.
++	 * so mark the attribute cache invalid.
++	 */
++	spin_lock(&inode->i_lock);
++	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;
++	spin_unlock(&inode->i_lock);
+ 	nfs_access_zap_cache(inode);
+ 	nfs_zap_acl_cache(inode);
+ 	return ret;
+-- 
+1.7.1
+
