@@ -1,43 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:35301 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751962Ab0LCUk1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Dec 2010 15:40:27 -0500
-Date: Fri, 3 Dec 2010 15:40:24 -0500
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 1/2] pretty_sig: little-endian
-Message-ID: <20101203204024.GA9814@merit.edu>
-Content-Type: text/plain; charset=us-ascii
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:59485 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756073Ab0LATwj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 14:52:39 -0500
+In-Reply-To: <alpine.LSU.2.00.1012011058560.16407@tigran.mtv.corp.google.com>
+References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
+ <20101201150428.GA2879@elliptictech.com> <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
+ <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
+ <1291229669.6609.24.camel@heimdal.trondhjem.org> <alpine.LSU.2.00.1012011058560.16407@tigran.mtv.corp.google.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Wed, 1 Dec 2010 11:52:17 -0800
+Message-ID: <AANLkTika6iMcX9=WhLrwHSNoSAcWuzAoJ_uX3yvSOwck@mail.gmail.com>
+Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
+To: Hugh Dickins <hughd@google.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Nick Bowler <nbowler@elliptictech.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        Rik van Riel <riel@redhat.com>, Christoph Hellwig <hch@lst.de>,
+        Al Viro <viro@zeniv.linux.org.uk>, Nick Piggin <npiggin@kernel.dk>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Benny Halevy <bhalevy@panasas.com>
+On Wed, Dec 1, 2010 at 11:23 AM, Hugh Dickins <hughd@google.com> wrote:
+>
+> But I'd prefer us not to throw in another callback if it's well
+> workable with the ->releasepage we already have.
 
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- utils/blkmapd/device-process.c |    6 ++----
- 1 files changed, 2 insertions(+), 4 deletions(-)
+The thing is, NFS already really uses releasepage for its "real"
+designed usage, in the form of the fscache case (which the directory
+inodes don't use).
 
-diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
-index ea8b8ec..0d8705f 100644
---- a/utils/blkmapd/device-process.c
-+++ b/utils/blkmapd/device-process.c
-@@ -58,10 +58,8 @@ static char *pretty_sig(char *sig, uint32_t siglen)
- 		int i;
- 
- 		sigval = 0;
--		for (i = 0; i < siglen; i++) {
--			sigval <<= 8;
--			sigval += ((unsigned char *)sig)[i];
--		}
-+		for (i = 0; i < siglen; i++)
-+			sigval |= ((unsigned char *)sig)[i] << (i * 8);
- 		sprintf(rs, "0x%0llx", sigval);
- 	} else {
- 		if (siglen > sizeof rs - 4) {
--- 
-1.7.1
+I really hate mixing things up. The NFS directory case really hasn't
+got anything to do with releasepage, and taking the page lock on the
+read side is just really sad. As is marking the page not up-to-date,
+just so that it will get filled again.
 
+In fact, I don't even know if it's kosher by VFS standards to clear
+the up-to-date bit in the first place after it has already gotten set.
+It absolutely isn't for anything that can be mmap'ed. Obviously, mmap
+doesn't work on the directory cache anyway, but the point is that the
+work-arounds for the semantic gap are really quite ugly.
+
+Certainly much uglier than just adding some much simpler semantics to
+the "now I'm releasing the page" case in the VM.
+
+                                 Linus
