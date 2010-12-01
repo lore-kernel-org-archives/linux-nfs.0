@@ -1,31 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:47672 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:36857 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758540Ab0LNVDL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Dec 2010 16:03:11 -0500
-Date: Tue, 14 Dec 2010 16:03:10 -0500
-To: linux-nfs@vger.kernel.org
-Cc: Tom Tucker <tom@opengridcomputing.com>
-Subject: 4.1 and rdma
-Message-ID: <20101214210310.GI24828@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1752882Ab0LAVvP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 16:51:15 -0500
+Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Hugh Dickins <hughd@google.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Nick Piggin <npiggin@kernel.dk>,
+        Nick Bowler <nbowler@elliptictech.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Rik van Riel <riel@redhat.com>,
+        Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>
+In-Reply-To: <20101201133831.ea6ba10a.akpm@linux-foundation.org>
+References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <20101201150428.GA2879@elliptictech.com>
+	 <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
+	 <1291229669.6609.24.camel@heimdal.trondhjem.org>
+	 <AANLkTinsEeKK9LykVAVq60Lsb3caLDJasnKH8kcgSFVp@mail.gmail.com>
+	 <1291234251.6609.39.camel@heimdal.trondhjem.org>
+	 <20101201123341.d12ef362.akpm@linux-foundation.org>
+	 <alpine.LSU.2.00.1012011258220.18662@tigran.mtv.corp.google.com>
+	 <alpine.LSU.2.00.1012011311590.18920@tigran.mtv.corp.google.com>
+	 <20101201133831.ea6ba10a.akpm@linux-foundation.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 01 Dec 2010 16:51:12 -0500
+Message-ID: <1291240272.6609.50.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I asked Tom Tucker what he thought would be the minimum needed for our
-4.1 implementation to be up-to-spec with regard to RDMA, and he took a
-first look through the spec and made some notes:
+On Wed, 2010-12-01 at 13:38 -0800, Andrew Morton wrote:
+> On Wed, 1 Dec 2010 13:15:07 -0800 (PST)
+> Hugh Dickins <hughd@google.com> wrote:
+> 
+> > On Wed, 1 Dec 2010, Hugh Dickins wrote:
+> > > On Wed, 1 Dec 2010, Andrew Morton wrote:
+> > > > On Wed, 01 Dec 2010 15:10:50 -0500
+> > > > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > > > 
+> > > > > --- a/include/linux/fs.h
+> > > > > +++ b/include/linux/fs.h
+> > > > > @@ -602,6 +602,7 @@ struct address_space_operations {
+> > > > >  	sector_t (*bmap)(struct address_space *, sector_t);
+> > > > >  	void (*invalidatepage) (struct page *, unsigned long);
+> > > > >  	int (*releasepage) (struct page *, gfp_t);
+> > > > > +	void (*freepage)(struct page *);
+> > > > >  	ssize_t (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
+> > > > >  			loff_t offset, unsigned long nr_segs);
+> > > > >  	int (*get_xip_mem)(struct address_space *, pgoff_t, int,
+> > > > 
+> > > > It would be good to think about and then clearly spell out exactly what
+> > > > state the page is in here.  It is locked, and I assume clean and not
+> > > > under writeback.  What about its refcount, freezedness status and
+> > > > eligibility for lookups?
+> > > > 
+> > > > And as Hugh pointed out, some callees might needs the address_space*
+> > > > although we can perhaps defer that until such a callee turns up. 
+> > > > If/when that happens we might have a problem though: if this locked
+> > > > page is no longer attached to the address_space then what now pins the
+> > > > address_space, protecting it from inode reclaim?
+> > > 
+> > > That's an excellent point and trumps mine: it would be actively wrong
+> > > to provide the struct address_space *mapping arg I was asking for.
+> > > (Bet someone then tries stashing it away via page->private though.)
+> > 
+> > Hmm, thinking further along the same lines: can we even guarantee that
+> > the filesystem module is still loaded at that point?  i.e. might
+> > mapping->freepage now be pointing off into the garbage heap?
+> 
+> I don't see anything on the VFS side which would prevent a module
+> unload.  Or, more realistically, a concurrent unmount, freeing of the
+> superblock and everything associated with it.  All we have here is a
+> page*.
+> 
+> Probably on most call paths we'll be OK - if a process is in the middle
+> of a file truncate, holdin a file* ref which holds an inode ref then
+> nobody will be unmounting that fs and hence nobody will be unloading
+> that module.
+> 
+> However on the random_code->alloc_page->vmscan->releasepage path, none
+> of that applies.
 
-	http://wiki.linux-nfs.org/wiki/index.php/4.1_RDMA_issues
+Just out of interest, what ensures that the mapping is still around for
+the 'spin_unlock_irq(&mapping->tree_lock);' in __remove_mapping()?
 
-I don't know any big rush for 4.1/rdma, just wanted to make sure we
-weren't doing anything that would make it hard to do it right later.
+I'm clearly missing whatever mechanism prevents iput_final() from racing
+with vmscan if the latter clears out the last page from the mapping.
 
-On the server side I think the safest thing to do may be just to return
-an error on a CREATE_SESSION that arrives over an rdma connection, at
-least until we figure out what more we'd need to do to support it
-correctly?
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
