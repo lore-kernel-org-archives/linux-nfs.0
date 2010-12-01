@@ -1,169 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50984 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752013Ab0LWXyu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 18:54:50 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 08/15] pnfs: serialize LAYOUTGET(openstateid)
-Date: Thu, 23 Dec 2010 18:54:34 -0500
-Message-Id: <1293148481-28420-9-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
-References: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:42216 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751829Ab0LAQSD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 11:18:03 -0500
+In-Reply-To: <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
+ <20101201150428.GA2879@elliptictech.com> <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Wed, 1 Dec 2010 08:17:38 -0800
+Message-ID: <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
+Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Nick Bowler <nbowler@elliptictech.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        Hugh Dickins <hughd@google.com>, Rik van Riel <riel@redhat.com>,
+        Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>
+Content-Type: multipart/mixed; boundary=00032557542a0c5e6004965ba615
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-We shouldn't send a LAYOUTGET(openstateid) unless all outstanding RPCs
-using the previous stateid are completed.  This requires choosing the
-stateid to encode earlier, so we can abort if one is not available (we
-want to use the open stateid, but a LAYOUTGET is already out using
-it), and adding a count of the number of outstanding rpc calls using
-layout state (which for now consist solely of LAYOUTGETs).
+--00032557542a0c5e6004965ba615
+Content-Type: text/plain; charset=ISO-8859-1
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4proc.c       |    7 ++++++-
- fs/nfs/nfs4xdr.c        |    5 +----
- fs/nfs/pnfs.c           |   24 +++++++++++++++++++-----
- fs/nfs/pnfs.h           |    1 +
- include/linux/nfs_xdr.h |    1 +
- 5 files changed, 28 insertions(+), 10 deletions(-)
+On Wed, Dec 1, 2010 at 7:36 AM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+>
+> We need to ensure that the entries in the nfs_cache_array get cleared
+> when the page is removed from the page cache. To do so, we use the
+> releasepage address_space operation (which also requires us to set
+> the Pg_private flag).
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1609a07..3b059d3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5308,6 +5308,12 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
- 	if (nfs4_setup_sequence(server, &lgp->args.seq_args,
- 				&lgp->res.seq_res, 0, task))
- 		return;
-+	if (pnfs_choose_layoutget_stateid(&lgp->args.stateid,
-+					  NFS_I(lgp->args.inode)->layout,
-+					  lgp->args.ctx->state)) {
-+		rpc_exit(task, NFS4_OK);
-+		return;
-+	}
- 	rpc_call_start(task);
- }
- 
-@@ -5342,7 +5348,6 @@ static void nfs4_layoutget_release(void *calldata)
- 	struct nfs4_layoutget *lgp = calldata;
- 
- 	dprintk("--> %s\n", __func__);
--	put_layout_hdr(lgp->args.inode);
- 	if (lgp->res.layout.buf != NULL)
- 		free_page((unsigned long) lgp->res.layout.buf);
- 	put_nfs_open_context(lgp->args.ctx);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4e28242..3cbdd0c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1787,7 +1787,6 @@ encode_layoutget(struct xdr_stream *xdr,
- 		      const struct nfs4_layoutget_args *args,
- 		      struct compound_hdr *hdr)
- {
--	nfs4_stateid stateid;
- 	__be32 *p;
- 
- 	p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
-@@ -1798,9 +1797,7 @@ encode_layoutget(struct xdr_stream *xdr,
- 	p = xdr_encode_hyper(p, args->range.offset);
- 	p = xdr_encode_hyper(p, args->range.length);
- 	p = xdr_encode_hyper(p, args->minlength);
--	pnfs_choose_layoutget_stateid(&stateid, NFS_I(args->inode)->layout,
--				args->ctx->state);
--	p = xdr_encode_opaque_fixed(p, &stateid.data, NFS4_STATEID_SIZE);
-+	p = xdr_encode_opaque_fixed(p, &args->stateid.data, NFS4_STATEID_SIZE);
- 	*p = cpu_to_be32(args->maxcount);
- 
- 	dprintk("%s: 1st type:0x%x iomode:%d off:%lu len:%lu mc:%d\n",
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 212cbc2..59ed68b 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -371,6 +371,14 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 		memcpy(&lo->plh_stateid, &new->stateid, sizeof(new->stateid));
- }
- 
-+/* lget is set to 1 if called from inside send_layoutget call chain */
-+static bool
-+pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, int lget)
-+{
-+	return (list_empty(&lo->plh_segs) &&
-+		 (atomic_read(&lo->plh_outstanding) > lget));
-+}
-+
- int
- pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 			      struct nfs4_state *open_state)
-@@ -379,7 +387,9 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 
- 	dprintk("--> %s\n", __func__);
- 	spin_lock(&lo->plh_inode->i_lock);
--	if (list_empty(&lo->plh_segs)) {
-+	if (pnfs_layoutgets_blocked(lo, 1)) {
-+		status = -EAGAIN;
-+	} else if (list_empty(&lo->plh_segs)) {
- 		int seq;
- 
- 		do {
-@@ -414,10 +424,8 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 
- 	BUG_ON(ctx == NULL);
- 	lgp = kzalloc(sizeof(*lgp), GFP_KERNEL);
--	if (lgp == NULL) {
--		put_layout_hdr(lo->plh_inode);
-+	if (lgp == NULL)
- 		return NULL;
--	}
- 	lgp->args.minlength = NFS4_MAX_UINT64;
- 	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
- 	lgp->args.range.iomode = iomode;
-@@ -613,10 +621,16 @@ pnfs_update_layout(struct inode *ino,
- 	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
- 		goto out_unlock;
- 
--	get_layout_hdr_locked(lo); /* Matched in nfs4_layoutget_release */
-+	if (pnfs_layoutgets_blocked(lo, 0))
-+		goto out_unlock;
-+	atomic_inc(&lo->plh_outstanding);
-+
-+	get_layout_hdr_locked(lo);
- 	spin_unlock(&ino->i_lock);
- 
- 	lseg = send_layoutget(lo, ctx, iomode);
-+	atomic_dec(&lo->plh_outstanding);
-+	put_layout_hdr(ino);
- out:
- 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
- 		nfsi->layout->plh_flags, lseg);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 787253e..698380d 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -69,6 +69,7 @@ struct pnfs_layout_hdr {
- 	struct list_head	plh_layouts;   /* other client layouts */
- 	struct list_head	plh_segs;      /* layout segments list */
- 	nfs4_stateid		plh_stateid;
-+	atomic_t		plh_outstanding; /* number of RPCs out */
- 	unsigned long		plh_flags;
- 	struct inode		*plh_inode;
- };
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index f923831..0843703 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -208,6 +208,7 @@ struct nfs4_layoutget_args {
- 	struct inode *inode;
- 	struct nfs_open_context *ctx;
- 	struct nfs4_sequence_args seq_args;
-+	nfs4_stateid stateid;
- };
- 
- struct nfs4_layoutget_res {
--- 
-1.7.2.1
+So I really think that the whole "releasepage" use in NFS is simply
+overly complicated and was obviously too subtle.
 
+The whole need for odd return values, for the page lock, and for the
+addition of clearing the up-to-date bit comes from the fact that this
+wasn't really what releasepage was designed for.
+
+'releasepage' was really designed for the filesystem having its own
+version of 'try_to_free_buffers()', which is just an optimistic "ok,
+we may be releasing this page, so try to get rid of any IO structures
+you have cached". It wasn't really a memory management thing.
+
+And the thing is, it looks trivial to do the memory management
+approach by adding a new callback that gets called after the page is
+actually removed from the page cache. If we do that, then there are no
+races with any other users, since we remove things from the page cache
+atomically wrt page cache lookup. So the need for playing games with
+page locking and 'uptodate' simply goes away. As does the PG_private
+thing or the interaction with invalidatepage() etc.
+
+So this is a TOTALLY UNTESTED trivial patch that just adds another
+callback. Does this work? I dunno. But I get the feeling that instead
+of having NFS work around the odd semantics that don't actually match
+what NFS wants, introducing a new callback with much simpler semantics
+would be simpler for everybody, and avoid the need for subtle code.
+
+Hmm?
+
+                   Linus
+
+--00032557542a0c5e6004965ba615
+Content-Type: text/x-patch; charset=US-ASCII; name="patch.diff"
+Content-Disposition: attachment; filename="patch.diff"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_gh6f5ghm0
+
+IGluY2x1ZGUvbGludXgvZnMuaCB8ICAgIDEgKwogbW0vdm1zY2FuLmMgICAgICAgIHwgICAgMyAr
+KysKIDIgZmlsZXMgY2hhbmdlZCwgNCBpbnNlcnRpb25zKCspLCAwIGRlbGV0aW9ucygtKQoKZGlm
+ZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvZnMuaCBiL2luY2x1ZGUvbGludXgvZnMuaAppbmRleCBj
+OWUwNmNjLi4wOTBmMGVhIDEwMDY0NAotLS0gYS9pbmNsdWRlL2xpbnV4L2ZzLmgKKysrIGIvaW5j
+bHVkZS9saW51eC9mcy5oCkBAIC02MDIsNiArNjAyLDcgQEAgc3RydWN0IGFkZHJlc3Nfc3BhY2Vf
+b3BlcmF0aW9ucyB7CiAJc2VjdG9yX3QgKCpibWFwKShzdHJ1Y3QgYWRkcmVzc19zcGFjZSAqLCBz
+ZWN0b3JfdCk7CiAJdm9pZCAoKmludmFsaWRhdGVwYWdlKSAoc3RydWN0IHBhZ2UgKiwgdW5zaWdu
+ZWQgbG9uZyk7CiAJaW50ICgqcmVsZWFzZXBhZ2UpIChzdHJ1Y3QgcGFnZSAqLCBnZnBfdCk7CisJ
+dm9pZCAoKmZyZWVwYWdlKShzdHJ1Y3QgcGFnZSAqKTsKIAlzc2l6ZV90ICgqZGlyZWN0X0lPKShp
+bnQsIHN0cnVjdCBraW9jYiAqLCBjb25zdCBzdHJ1Y3QgaW92ZWMgKmlvdiwKIAkJCWxvZmZfdCBv
+ZmZzZXQsIHVuc2lnbmVkIGxvbmcgbnJfc2Vncyk7CiAJaW50ICgqZ2V0X3hpcF9tZW0pKHN0cnVj
+dCBhZGRyZXNzX3NwYWNlICosIHBnb2ZmX3QsIGludCwKZGlmZiAtLWdpdCBhL21tL3Ztc2Nhbi5j
+IGIvbW0vdm1zY2FuLmMKaW5kZXggZDMxZDdjZS4uMWFjY2IwMSAxMDA2NDQKLS0tIGEvbW0vdm1z
+Y2FuLmMKKysrIGIvbW0vdm1zY2FuLmMKQEAgLTQ5OSw2ICs0OTksOSBAQCBzdGF0aWMgaW50IF9f
+cmVtb3ZlX21hcHBpbmcoc3RydWN0IGFkZHJlc3Nfc3BhY2UgKm1hcHBpbmcsIHN0cnVjdCBwYWdl
+ICpwYWdlKQogCQltZW1fY2dyb3VwX3VuY2hhcmdlX2NhY2hlX3BhZ2UocGFnZSk7CiAJfQogCisJ
+aWYgKG1hcHBpbmctPmFfb3BzLT5mcmVlcGFnZSkKKwkJbWFwcGluZy0+YV9vcHMtPmZyZWVwYWdl
+KHBhZ2UpOworCiAJcmV0dXJuIDE7CiAKIGNhbm5vdF9mcmVlOgo=
+
+--00032557542a0c5e6004965ba615--
