@@ -1,143 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41400 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:52595 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751289Ab0LHAPu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Dec 2010 19:15:50 -0500
-Date: Tue, 7 Dec 2010 19:15:48 -0500
-From: "'J. Bruce Fields'" <bfields@fieldses.org>
-To: Spencer Shepler <spencer.shepler@gmail.com>
-Cc: "'Trond Myklebust'" <Trond.Myklebust@netapp.com>,
-        "'Thomas Haynes'" <thomas@netapp.com>,
-        "'Spelic'" <spelic@shiftmail.org>, linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 behaviour on unknown users
-Message-ID: <20101208001548.GA30196@fieldses.org>
-References: <1291155578.2998.38.camel@heimdal.trondhjem.org>
- <20101130222651.GB5054@fieldses.org>
- <1291156414.4393.2.camel@heimdal.trondhjem.org>
- <20101130223627.GC5054@fieldses.org>
- <20101201135740.0d3b5948@notabene.brown>
- <1291173002.7694.7.camel@heimdal.trondhjem.org>
- <20101201162912.GC6832@fieldses.org>
- <99BBEF51-7EB1-4BAA-9B12-F0F98A629C74@netapp.com>
- <1291331885.2915.1.camel@heimdal.trondhjem.org>
- <03e401cb9278$ad554ad0$07ffe070$@gmail.com>
+	id S1751280Ab0LASg7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Dec 2010 13:36:59 -0500
+Date: Wed, 1 Dec 2010 13:36:56 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mark Hills <mark@pogo.org.uk>
+Cc: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: Listen backlog set to 64
+Message-ID: <20101201183656.GB17142@fieldses.org>
+References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz>
+ <20101116182026.GA3971@fieldses.org>
+ <20101117090826.4b2724da@notabene.brown>
+ <20101129205935.GD9897@fieldses.org>
+ <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz>
+ <20101130200013.GA2108@fieldses.org>
+ <alpine.NEB.2.01.1012011754120.12506@jrf.vwaro.pbz>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <03e401cb9278$ad554ad0$07ffe070$@gmail.com>
+In-Reply-To: <alpine.NEB.2.01.1012011754120.12506@jrf.vwaro.pbz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Dec 02, 2010 at 03:28:48PM -0800, Spencer Shepler wrote:
+On Wed, Dec 01, 2010 at 06:18:17PM +0000, Mark Hills wrote:
+> Here's a trace from mountd. Note the long pause after fdatasync():
 > 
+> 31156 12:09:40 open("/var/lib/nfs/rmtab", O_WRONLY|O_CREAT|O_APPEND, 0666) = 14 <0.000010>
+> 31156 12:09:40 fstat(14, {st_mode=S_IFREG|0644, st_size=62642, ...}) = 0 <0.000005>
+> 31156 12:09:40 mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x2af00c929000 <0.000007>
+> 31156 12:09:40 fstat(14, {st_mode=S_IFREG|0644, st_size=62642, ...}) = 0 <0.000005>
+> 31156 12:09:40 lseek(14, 62642, SEEK_SET) = 62642 <0.000006>
+> 31156 12:09:40 write(14, "192.168.14.165:/mnt/raid1/abcde_"..., 57) = 57 <0.000013>
+> 31156 12:09:40 fdatasync(14)            = 0 <15.413401>
+> 31156 12:09:55 close(14)                = 0 <0.000008>
+> 31156 12:09:55 munmap(0x2af00c929000, 4096) = 0 <0.000083>
+> 31156 12:09:55 close(13)                = 0 <0.000008>
 > 
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > owner@vger.kernel.org] On Behalf Of Trond Myklebust
-> > Sent: Thursday, December 02, 2010 3:18 PM
-> > To: Thomas Haynes
-> > Cc: J. Bruce Fields; Spelic; linux-nfs@vger.kernel.org
-> > Subject: Re: NFSv4 behaviour on unknown users
-> > 
-> > On Thu, 2010-12-02 at 17:10 -0600, Thomas Haynes wrote:
-> > > On Dec 1, 2010, at 10:29 AM, J. Bruce Fields wrote:
-> > >
-> > > > On Tue, Nov 30, 2010 at 10:10:02PM -0500, Trond Myklebust wrote:
-> > > >>
-> > > >> I think you need to take beepy's words in context here: as I
-> > > >> believe I mentioned previously, RFC3530 (and its predecessor
-> > > >> RFC3010) assumed everyone would be using principals for
-> > > >> authenticating, either through RPCSEC_GSS w/ krb5, or through the
-> > > >> SPKM/Lipkey mechanism. So sure was everyone of this, that AUTH_SYS
-> > > >> isn't even mentioned as a valid authentication mechanism, and so
-> > > >> nobody had to worry about the consequences of using it.
-> > > >
-> > > > I also wonder whether the value of a transparent upgrade from NFSv3
-> > > > got a little lost.
-> > > >
-> > > > To me that seems like the first requirement for version n+1 of
-> > > > anything--that we should be able to upgrade people to version n
-> > > > without their noticing.
-> > > >
-> > > > Maybe there are features that are necessarily incompatible, and that
-> > > > merit the downside, but the downside--losing the chance to get new
-> > > > features to every user automatically--seems significant to me.
-> > > >
-> > > >
-> > > > And, perhaps it's a disease, but I have gotten into the habit of
-> > > > thinking of the (krb5 principal)->(id, gid's) mapping as independent
-> > > > of the (NFSv4 user name)<->(uid) and (NFSv4 group name)<->(gid)
-> > mappings.
-> > > >
-> > > > Granted they have to be coordinated on any reasonably complicated
-> > setup.
-> > > > But there are simple cases where they don't necessarily need to be.
-> > > >
-> > > > E.g. on a dumb "cp -ax / /nfs" backup it doesn't really matter "who"
-> > > > does the backup as long as they have sufficient permissions, since
-> > > > the files will all be explicitly chown'd as they're created.  And
-> > > > with krb5 it's simple enough to make that work with a single static
-> > > > mapping from a client-side principal to root on the server.
-> > > >
-> > > > And, again, that's something that works now with NFSv3.
-> > > >
-> > > > --b.
-> > > > --
-> > > > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> > > > in the body of a message to majordomo@vger.kernel.org More majordomo
-> > > > info at  http://vger.kernel.org/majordomo-info.html
-> > >
-> > >
-> > > Another question is whether or not such an approach would be
-> > > appreciated as part of 3530bis?
-> > 
-> > You want to add a discussion about AUTH_SYS support for 3530bis? I'd be OK
-> > with that...
+> This pause exceeds the mysterious 9999 millisecond timeout allowed at the 
+> client.
 > 
-> What would the substance of such a discussion?
+> fdatasync() is happening at every write of rmtab -- a lot. Occasionally it 
+> takes a long time. The syncing of the rmtab seems a reasonable explanation 
+> why more threads does not help -- all mountd threads lock up.
 > 
-> The NFSv4 RFCs do not preclude the use of a variety of RPC authentication types.
-> It asks that implementations treat the RPCSEC_GSS framework and the Kerberos
-> and lipkey types as mandatory to implement.
+> The strace I am analysing here contains 670 calls to fdatasync() in a 16 
+> minute period. All of them take < 1 second, except for this burst:
 > 
-> Given that the user of NFSv4 is not forced to use these or other authentication
-> methods, does the discussion reside in the interaction with these various
-> authentication types and their impact on the content of communicated attributes?
+> 31156 12:09:11 fdatasync(14)            = 0 <0.000010>
+> 31156 12:09:11 fdatasync(15)            = 0 <0.136285>
+> 31156 12:09:12 fdatasync(14)            = 0 <0.000010>
+> 31156 12:09:12 fdatasync(15)            = 0 <14.911323>
+> 31156 12:09:27 fdatasync(14)            = 0 <1.298896>
+> 31156 12:09:29 fdatasync(14)            = 0 <1.159262>
+> 31156 12:09:33 fdatasync(14)            = 0 <1.447169>
+> 31156 12:09:35 fdatasync(14)            = 0 <1.345562>
+> 31156 12:09:40 fdatasync(14)            = 0 <0.000010>
+> 31156 12:09:40 fdatasync(14)            = 0 <15.413401>
+> 31156 12:09:55 fdatasync(17)            = 0 <0.000010>
+> 31156 12:09:55 fdatasync(17)            = 0 <1.068503>
+> 31156 12:09:57 fdatasync(18)            = 0 <0.000010>
+> 31156 12:09:57 fdatasync(18)            = 0 <0.089682>
 > 
-> In any case, I would suggest a treatment of these issues be captured in a
-> separate I-D and ultimately a separate RFC to allow for expediency of
-> publication and application to NFSv4.0 and NFSv4.1.
+> /var/lib/nfs/rmtab[.tmp] is on an ext3 filesystem, the system disk.
+> 
+> The server is only acting as a 'regular' and dedicated file server, but 
+> presumably some other process is causing /var to become erratic. Unless 
+> continual writing and syncing to a small (64KiB) file could cause this to 
+> happen periodically?
+> 
+> In the meantime we have symlink'd /var/lib/nfs/rmtab[.tmp] to a tmpfs 
+> mount to see if that helps, and will leave it running tonight.
 
-The v3->v4 upgrade would be dead-simple if the default (without *any*
-idmapping configuration) was to send and receive purely numeric id's.
+I didn't really follow the controversy earlier this year about fsync
+performance on ext3--is that fixed to some degree on newer kernels?
 
-A client that attempts that with a server that has normal NFSv4
-name-mapping set up will see "nobody" on any "ls" and get BADOWNER on
-any attempt to set anything, but that's more or less the typical
-experience right now, and as a default if anything numeric id's seems
-safer than guessing a domain and assuming local account names map into
-it.
+But in any case, the rmtab file is, as the rpc.mountd man page says,
+"mostly ornamental".  We shouldn't be taking so much care over it.
 
-And as soon as some form of idmapping is set up (even if it's just
-setting a default domain, effectively just a declaration that any local
-account <user> is also an nfsv4 user <user>@<domain>), things work
-normally.
+Hm, the code in question:
 
-I don't see any of this as a violation of the spec, which allows use of
-numeric id's in the absence of a "valid translation" for a user or
-group.
+	if (!have_new_cache) {
+		/*
+		 * If we are using the old caching interface: exportfs
+		 * uses the rmtab to determine what should be exported,
+		 * so it is important that it be up-to-date.
+		 *
+		 * If we are using the new caching interface: the rmtab
+		 * is ignored by exportfs and the fdatasync only serves
+		 * to slow us down.
+		 */
+		fflush(fp);
+		fdatasync(fileno(fp));
+	}
 
-And the mere existance of a local account with a certain name doesn't
-imply the existance of a valid translation into any nfsv4 namespace.
-
-So if that makes sense, then I don't think any change to rfc 3530
-section 5.8 is required beyond possibly some clarification or change in
-emphasis.
-
-(I see AUTH_SYS as a different issue.  It's unfortunately true that
-AUTH_SYS has effectively turned out to be required-to-implement even if
-it wasn't meant to be, so maybe the spec's out of line with reality
-there; but I haven't heard of that causing any practical
-problems--whereas "why does ls show all users as nobody after an upgrade
-to NFSv4" is a FAQ.)
+It's a little odd that you'd be hitting this case.  Do you not have "nfsd"
+mounted?  (What distro is this again?)
 
 --b.
