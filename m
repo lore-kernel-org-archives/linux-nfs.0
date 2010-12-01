@@ -1,88 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9226 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:45492 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754046Ab0LFQ7c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Dec 2010 11:59:32 -0500
+	id S1755407Ab0LAR6U convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 12:58:20 -0500
+Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-        Nick Bowler <nbowler@elliptictech.com>
-Cc: Simon Kirby <sim@hostway.ca>,
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Nick Bowler <nbowler@elliptictech.com>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
         linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-        Hugh Dickins <hughd@google.com>, Nick Piggin <npiggin@kernel.dk>,
-        Rik van Riel <riel@redhat.com>, Christoph Hellwig <hch@lst.de>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Subject: [PATCH v4 1/3] NFS: Ensure we use the correct cookie in nfs_readdir_xdr_filler
-Date: Mon,  6 Dec 2010 11:59:06 -0500
-Message-Id: <1291654748-8921-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1291654748-8921-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1291654748-8921-1-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <AANLkTi=LJaSTREikZg3M=QFkihEcQEGCJLW4wUPsDm9s@mail.gmail.com>
-References: <AANLkTi=LJaSTREikZg3M=QFkihEcQEGCJLW4wUPsDm9s@mail.gmail.com>
+        Hugh Dickins <hughd@google.com>, Rik van Riel <riel@redhat.com>,
+        Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>
+In-Reply-To: <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
+References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <20101201150428.GA2879@elliptictech.com>
+	 <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 01 Dec 2010 12:58:17 -0500
+Message-ID: <1291226297.6609.17.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-We need to use the cookie from the previous array entry, not the
-actual cookie that we are searching for (except for the case of
-uncached_readdir).
+On Wed, 2010-12-01 at 08:17 -0800, Linus Torvalds wrote:
+> On Wed, Dec 1, 2010 at 7:36 AM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> >
+> > We need to ensure that the entries in the nfs_cache_array get cleared
+> > when the page is removed from the page cache. To do so, we use the
+> > releasepage address_space operation (which also requires us to set
+> > the Pg_private flag).
+> 
+> So I really think that the whole "releasepage" use in NFS is simply
+> overly complicated and was obviously too subtle.
+> 
+> The whole need for odd return values, for the page lock, and for the
+> addition of clearing the up-to-date bit comes from the fact that this
+> wasn't really what releasepage was designed for.
+> 
+> 'releasepage' was really designed for the filesystem having its own
+> version of 'try_to_free_buffers()', which is just an optimistic "ok,
+> we may be releasing this page, so try to get rid of any IO structures
+> you have cached". It wasn't really a memory management thing.
+> 
+> And the thing is, it looks trivial to do the memory management
+> approach by adding a new callback that gets called after the page is
+> actually removed from the page cache. If we do that, then there are no
+> races with any other users, since we remove things from the page cache
+> atomically wrt page cache lookup. So the need for playing games with
+> page locking and 'uptodate' simply goes away. As does the PG_private
+> thing or the interaction with invalidatepage() etc.
+> 
+> So this is a TOTALLY UNTESTED trivial patch that just adds another
+> callback. Does this work? I dunno. But I get the feeling that instead
+> of having NFS work around the odd semantics that don't actually match
+> what NFS wants, introducing a new callback with much simpler semantics
+> would be simpler for everybody, and avoid the need for subtle code.
+> 
+> Hmm?
+> 
+>                    Linus
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/dir.c |   10 ++++++++--
- 1 files changed, 8 insertions(+), 2 deletions(-)
+This works for me, and I can code up a patch that uses it if you like...
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index f0a384e..e03537f 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -178,6 +178,7 @@ typedef struct {
- 	struct page	*page;
- 	unsigned long	page_index;
- 	u64		*dir_cookie;
-+	u64		last_cookie;
- 	loff_t		current_index;
- 	decode_dirent_t	decode;
- 
-@@ -344,6 +345,8 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
- 	else
- 		status = nfs_readdir_search_for_cookie(array, desc);
- 
-+	if (status == -EAGAIN)
-+		desc->last_cookie = array->last_cookie;
- 	nfs_readdir_release_array(desc->page);
- out:
- 	return status;
-@@ -563,7 +566,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 	unsigned int array_size = ARRAY_SIZE(pages);
- 
- 	entry.prev_cookie = 0;
--	entry.cookie = *desc->dir_cookie;
-+	entry.cookie = desc->last_cookie;
- 	entry.eof = 0;
- 	entry.fh = nfs_alloc_fhandle();
- 	entry.fattr = nfs_alloc_fattr();
-@@ -672,8 +675,10 @@ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
- {
- 	int res;
- 
--	if (desc->page_index == 0)
-+	if (desc->page_index == 0) {
- 		desc->current_index = 0;
-+		desc->last_cookie = 0;
-+	}
- 	while (1) {
- 		res = find_cache_page(desc);
- 		if (res != -EAGAIN)
-@@ -764,6 +769,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
- 	}
- 
- 	desc->page_index = 0;
-+	desc->last_cookie = *desc->dir_cookie;
- 	desc->page = page;
- 
- 	status = nfs_readdir_xdr_to_array(desc, page, inode);
 -- 
-1.7.3.2
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
