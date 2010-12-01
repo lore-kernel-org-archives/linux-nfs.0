@@ -1,71 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:49543 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757966Ab0LNO7M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:59:12 -0500
-Received: by iwn9 with SMTP id 9so864340iwn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:59:11 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 29/31] SUNRPC: Determine value of "nrprocs" automatically
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 09:59:09 -0500
-Message-ID: <20101214145908.2293.97087.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:56731 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752796Ab0LAPgw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Dec 2010 10:36:52 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+        Nick Bowler <nbowler@elliptictech.com>
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v2 2/3] NFS: lock the readdir page while it is in use
+Date: Wed,  1 Dec 2010 10:36:43 -0500
+Message-Id: <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <20101201150428.GA2879@elliptictech.com>
+References: <20101201150428.GA2879@elliptictech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Clean up.
+Before we can fix the memory leak due to not freeing up the contents
+of the nfs_cache_array when clearing the page cache, we need to
+ensure that shrink_page_list can't just lock the page and
+call try_to_release_page() while we're accessing the array.
 
-Just fixed a panic where the nrprocs field in a different upper layer
-client was set by hand incorrectly.  Use the compiler-generated method
-used by the other upper layer protocols.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/dir.c |   16 +++++++++++++++-
+ 1 files changed, 15 insertions(+), 1 deletions(-)
 
- net/sunrpc/rpcb_clnt.c |   10 +++-------
- 1 files changed, 3 insertions(+), 7 deletions(-)
-
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index d2a2ea0..43838c7 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -57,10 +57,6 @@ enum {
- 	RPCBPROC_GETSTAT,
- };
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e03537f..3ec3f1c 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -639,6 +639,7 @@ int nfs_readdir_filler(nfs_readdir_descriptor_t *desc, struct page* page)
+ static
+ void cache_page_release(nfs_readdir_descriptor_t *desc)
+ {
++	unlock_page(desc->page);
+ 	page_cache_release(desc->page);
+ 	desc->page = NULL;
+ }
+@@ -646,8 +647,20 @@ void cache_page_release(nfs_readdir_descriptor_t *desc)
+ static
+ struct page *get_cache_page(nfs_readdir_descriptor_t *desc)
+ {
+-	return read_cache_page(desc->file->f_path.dentry->d_inode->i_mapping,
++	struct page *page;
++
++	for (;;) {
++		page = read_cache_page(desc->file->f_path.dentry->d_inode->i_mapping,
+ 			desc->page_index, (filler_t *)nfs_readdir_filler, desc);
++		if (IS_ERR(page))
++			break;
++		lock_page(page);
++		if (page->mapping != NULL && PageUptodate(page))
++			break;
++		unlock_page(page);
++		page_cache_release(page);
++	}
++	return page;
+ }
  
--#define RPCB_HIGHPROC_2		RPCBPROC_CALLIT
--#define RPCB_HIGHPROC_3		RPCBPROC_TADDR2UADDR
--#define RPCB_HIGHPROC_4		RPCBPROC_GETSTAT
--
  /*
-  * r_owner
-  *
-@@ -975,19 +971,19 @@ static struct rpcb_info rpcb_next_version6[] = {
+@@ -771,6 +784,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
+ 	desc->page_index = 0;
+ 	desc->last_cookie = *desc->dir_cookie;
+ 	desc->page = page;
++	lock_page(page);
  
- static struct rpc_version rpcb_version2 = {
- 	.number		= RPCBVERS_2,
--	.nrprocs	= RPCB_HIGHPROC_2,
-+	.nrprocs	= ARRAY_SIZE(rpcb_procedures2),
- 	.procs		= rpcb_procedures2
- };
- 
- static struct rpc_version rpcb_version3 = {
- 	.number		= RPCBVERS_3,
--	.nrprocs	= RPCB_HIGHPROC_3,
-+	.nrprocs	= ARRAY_SIZE(rpcb_procedures3),
- 	.procs		= rpcb_procedures3
- };
- 
- static struct rpc_version rpcb_version4 = {
- 	.number		= RPCBVERS_4,
--	.nrprocs	= RPCB_HIGHPROC_4,
-+	.nrprocs	= ARRAY_SIZE(rpcb_procedures4),
- 	.procs		= rpcb_procedures4
- };
- 
+ 	status = nfs_readdir_xdr_to_array(desc, page, inode);
+ 	if (status < 0)
+-- 
+1.7.3.2
 
