@@ -1,185 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:33557 "EHLO shutemov.name"
+Received: from fieldses.org ([174.143.236.118]:35396 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752437Ab0L2NOc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Dec 2010 08:14:32 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v2 02/12] sunrpc: introduce init_rpc_pipefs
-Date: Wed, 29 Dec 2010 15:14:20 +0200
-Message-Id: <1293628470-28386-3-git-send-email-kas@openvz.org>
-In-Reply-To: <1293628470-28386-1-git-send-email-kas@openvz.org>
-References: <1293628470-28386-1-git-send-email-kas@openvz.org>
+	id S1753133Ab0LAQ3c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Dec 2010 11:29:32 -0500
+Date: Wed, 1 Dec 2010 11:29:12 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
+        Spelic <spelic@shiftmail.org>, linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 behaviour on unknown users
+Message-ID: <20101201162912.GC6832@fieldses.org>
+References: <4CF3F326.4060608@shiftmail.org>
+ <20101129190122.GA31843@fieldses.org>
+ <1291057747.12784.38.camel@heimdal.trondhjem.org>
+ <4CF519F2.8080900@RedHat.com>
+ <1291155578.2998.38.camel@heimdal.trondhjem.org>
+ <20101130222651.GB5054@fieldses.org>
+ <1291156414.4393.2.camel@heimdal.trondhjem.org>
+ <20101130223627.GC5054@fieldses.org>
+ <20101201135740.0d3b5948@notabene.brown>
+ <1291173002.7694.7.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1291173002.7694.7.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Introduce global variable init_rpc_pipefs and use it instead of
-rpc_get_mount()/rpc_put_mount().
+On Tue, Nov 30, 2010 at 10:10:02PM -0500, Trond Myklebust wrote:
+> On Wed, 2010-12-01 at 13:57 +1100, Neil Brown wrote:
+> > I have a strong memory from about 7 years ago of Brian Pawlowski saying - or
+> > possibly being quoted as saying - that the user information in NFS requests
+> > (the stuff that idmapper handles) is totally independent of the RPC
+> > authentication mechanism being used (the AUTH_SYS / RPCSEC_GSS stuff).
+> > 
+> > I always thought that was nonsense, but I wasn't in a position to discuss it
+> > at the time for reasons that I really don't recall.
+> > 
+> > If users are being authorised using numbers (AUTH_SYS) then it only (to me)
+> > makes sense to communication all identies as numbers.
+> > And if users are being authenticated as name@domain strings, then it only
+> > make sense to communicate all identities as name@domain.
+> > 
+> > But this path is not the path for NFSv4 followed.
+> > 
+> > I've very glad to see Linux NFS allowing numeric IDs "on the wire" and hope
+> > to see this very sensible approach widely adopted (where AUTH_SYS is used).
+> > I think it would be great if nfsd did the same thing completely in-kernel
+> > without reference to idmapd.  Accepting either numeric or domain-based is
+> > trivial.  Choosing which to send on a per-client basis might be a challenge,
+> > but probably not a big one.
+> > 
+> > 
+> > I wonder if Brian remembers saying anything like that...
+> 
+> I think you need to take beepy's words in context here: as I believe I
+> mentioned previously, RFC3530 (and its predecessor RFC3010) assumed
+> everyone would be using principals for authenticating, either through
+> RPCSEC_GSS w/ krb5, or through the SPKM/Lipkey mechanism. So sure was
+> everyone of this, that AUTH_SYS isn't even mentioned as a valid
+> authentication mechanism, and so nobody had to worry about the
+> consequences of using it.
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
----
- fs/nfs/cache_lib.c                 |    6 +++---
- include/linux/sunrpc/rpc_pipe_fs.h |    4 ++--
- net/sunrpc/clnt.c                  |   10 ++++------
- net/sunrpc/rpc_pipe.c              |   23 ++++++-----------------
- 4 files changed, 15 insertions(+), 28 deletions(-)
+I also wonder whether the value of a transparent upgrade from NFSv3 got
+a little lost.
 
-diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
-index 8469031..dd7ca5f 100644
---- a/fs/nfs/cache_lib.c
-+++ b/fs/nfs/cache_lib.c
-@@ -117,7 +117,7 @@ int nfs_cache_register(struct cache_detail *cd)
- 	struct vfsmount *mnt;
- 	int ret;
- 
--	mnt = rpc_get_mount();
-+	mnt = mntget(init_rpc_pipefs);
- 	if (IS_ERR(mnt))
- 		return PTR_ERR(mnt);
- 	ret = vfs_path_lookup(mnt->mnt_root, mnt, "/cache", 0, &nd);
-@@ -129,13 +129,13 @@ int nfs_cache_register(struct cache_detail *cd)
- 	if (!ret)
- 		return ret;
- err:
--	rpc_put_mount();
-+	mntput(mnt);
- 	return ret;
- }
- 
- void nfs_cache_unregister(struct cache_detail *cd)
- {
- 	sunrpc_cache_unregister_pipefs(cd);
--	rpc_put_mount();
-+	mntput(init_rpc_pipefs);
- }
- 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index cf14db9..b09bfa5 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -44,6 +44,8 @@ RPC_I(struct inode *inode)
- 	return container_of(inode, struct rpc_inode, vfs_inode);
- }
- 
-+extern struct vfsmount *init_rpc_pipefs;
-+
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
-@@ -60,8 +62,6 @@ extern void rpc_remove_cache_dir(struct dentry *);
- extern struct dentry *rpc_mkpipe(struct dentry *, const char *, void *,
- 				 const struct rpc_pipe_ops *, int flags);
- extern int rpc_unlink(struct dentry *);
--extern struct vfsmount *rpc_get_mount(void);
--extern void rpc_put_mount(void);
- extern int register_rpc_pipefs(void);
- extern void unregister_rpc_pipefs(void);
- 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 92ce94f..da2507a 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -112,9 +112,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
- 	if (dir_name == NULL)
- 		return 0;
- 
--	path.mnt = rpc_get_mount();
--	if (IS_ERR(path.mnt))
--		return PTR_ERR(path.mnt);
-+	path.mnt = mntget(init_rpc_pipefs);
- 	error = vfs_path_lookup(path.mnt->mnt_root, path.mnt, dir_name, 0, &nd);
- 	if (error)
- 		goto err;
-@@ -140,7 +138,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
- err_path_put:
- 	path_put(&nd.path);
- err:
--	rpc_put_mount();
-+	mntput(path.mnt);
- 	return error;
- }
- 
-@@ -251,7 +249,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- out_no_auth:
- 	if (!IS_ERR(clnt->cl_path.dentry)) {
- 		rpc_remove_client_dir(clnt->cl_path.dentry);
--		rpc_put_mount();
-+		mntput(clnt->cl_path.mnt);
- 	}
- out_no_path:
- 	kfree(clnt->cl_principal);
-@@ -472,7 +470,7 @@ rpc_free_client(struct rpc_clnt *clnt)
- 			clnt->cl_protname, clnt->cl_server);
- 	if (!IS_ERR(clnt->cl_path.dentry)) {
- 		rpc_remove_client_dir(clnt->cl_path.dentry);
--		rpc_put_mount();
-+		mntput(clnt->cl_path.mnt);
- 	}
- 	if (clnt->cl_parent != clnt) {
- 		rpc_release_client(clnt->cl_parent);
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 7f3fbdd..b1e299b 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -28,9 +28,10 @@
- #include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/sunrpc/cache.h>
- 
--static struct vfsmount *rpc_mnt __read_mostly;
-+struct vfsmount *init_rpc_pipefs __read_mostly;
- 
- static struct file_system_type rpc_pipe_fs_type;
-+EXPORT_SYMBOL_GPL(init_rpc_pipefs);
- 
- 
- static struct kmem_cache *rpc_inode_cachep __read_mostly;
-@@ -412,18 +413,6 @@ struct rpc_filelist {
- 	umode_t mode;
- };
- 
--struct vfsmount *rpc_get_mount(void)
--{
--	return mntget(rpc_mnt);
--}
--EXPORT_SYMBOL_GPL(rpc_get_mount);
--
--void rpc_put_mount(void)
--{
--	mntput(rpc_mnt);
--}
--EXPORT_SYMBOL_GPL(rpc_put_mount);
--
- static int rpc_delete_dentry(struct dentry *dentry)
- {
- 	return 1;
-@@ -1060,9 +1049,9 @@ int register_rpc_pipefs(void)
- 	if (err)
- 		goto destroy_cache;
- 
--	rpc_mnt = kern_mount(&rpc_pipe_fs_type);
--	if (IS_ERR(rpc_mnt)) {
--		err = PTR_ERR(rpc_mnt);
-+	init_rpc_pipefs = kern_mount(&rpc_pipe_fs_type);
-+	if (IS_ERR(init_rpc_pipefs)) {
-+		err = PTR_ERR(init_rpc_pipefs);
- 		goto unregister_fs;
- 	}
- 
-@@ -1077,7 +1066,7 @@ destroy_cache:
- 
- void unregister_rpc_pipefs(void)
- {
--	mntput(rpc_mnt);
-+	mntput(init_rpc_pipefs);
- 	kmem_cache_destroy(rpc_inode_cachep);
- 	unregister_filesystem(&rpc_pipe_fs_type);
- }
--- 
-1.7.3.4
+To me that seems like the first requirement for version n+1 of
+anything--that we should be able to upgrade people to version n without
+their noticing.
 
+Maybe there are features that are necessarily incompatible, and that
+merit the downside, but the downside--losing the chance to get new
+features to every user automatically--seems significant to me.
+
+
+And, perhaps it's a disease, but I have gotten into the habit of
+thinking of the (krb5 principal)->(id, gid's) mapping as independent of
+the (NFSv4 user name)<->(uid) and (NFSv4 group name)<->(gid) mappings.
+
+Granted they have to be coordinated on any reasonably complicated setup.
+But there are simple cases where they don't necessarily need to be.
+
+E.g. on a dumb "cp -ax / /nfs" backup it doesn't really matter "who"
+does the backup as long as they have sufficient permissions, since the
+files will all be explicitly chown'd as they're created.  And with krb5
+it's simple enough to make that work with a single static mapping from a
+client-side principal to root on the server.
+
+And, again, that's something that works now with NFSv3.
+
+--b.
