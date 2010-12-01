@@ -1,65 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e23smtp07.au.ibm.com ([202.81.31.140]:39816 "EHLO
-	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754599Ab0LAKmZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 05:42:25 -0500
-Received: from d23relay04.au.ibm.com (d23relay04.au.ibm.com [202.81.31.246])
-	by e23smtp07.au.ibm.com (8.14.4/8.13.1) with ESMTP id oB1AgNqh021238
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 21:42:23 +1100
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay04.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oB1AgM8g2129974
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 21:42:23 +1100
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oB1AgMPo031115
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 21:42:22 +1100
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: trond.myklebust@netapp.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] nfs: Discard ACL cache on mode update
-Date: Wed,  1 Dec 2010 16:12:16 +0530
-Message-Id: <1291200136-9982-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:62441 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756589Ab0LAXn6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 18:43:58 -0500
+Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>, Hugh Dickins <hughd@google.com>,
+        Nick Piggin <npiggin@kernel.dk>,
+        Nick Bowler <nbowler@elliptictech.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Rik van Riel <riel@redhat.com>,
+        Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>
+In-Reply-To: <AANLkTi=x1bz5sJXOGERXh8iRHNZa+_gaYOyDecg3G92+@mail.gmail.com>
+References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <20101201150428.GA2879@elliptictech.com>
+	 <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
+	 <1291229669.6609.24.camel@heimdal.trondhjem.org>
+	 <AANLkTinsEeKK9LykVAVq60Lsb3caLDJasnKH8kcgSFVp@mail.gmail.com>
+	 <1291234251.6609.39.camel@heimdal.trondhjem.org>
+	 <20101201123341.d12ef362.akpm@linux-foundation.org>
+	 <alpine.LSU.2.00.1012011258220.18662@tigran.mtv.corp.google.com>
+	 <alpine.LSU.2.00.1012011311590.18920@tigran.mtv.corp.google.com>
+	 <20101201133831.ea6ba10a.akpm@linux-foundation.org>
+	 <1291240272.6609.50.camel@heimdal.trondhjem.org>
+	 <20101201141351.8609140b.akpm@linux-foundation.org>
+	 <AANLkTimgZPET+T16Qpj_KnpCu==97g-8+_y5dtjNOrxG@mail.gmail.com>
+	 <20101201143856.51f4f9d9.akpm@linux-foundation.org>
+	 <AANLkTi=x1bz5sJXOGERXh8iRHNZa+_gaYOyDecg3G92+@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 01 Dec 2010 18:43:56 -0500
+Message-ID: <1291247036.6609.76.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-An update of mode bits can result in ACL value being changed. We need
-to mark the acl cache invalid when we update mode. Similarly we need
-to update file attribute when we change ACL value
+On Wed, 2010-12-01 at 15:31 -0800, Linus Torvalds wrote:
+> On Wed, Dec 1, 2010 at 2:38 PM, Andrew Morton <akpm@linux-foundation.org> wrote:
+> >
+> > OK, the stop_machine() plugs a lot of potential race-vs-module-unload
+> > things.  But Trond is referring to races against vmscan inode reclaim,
+> > unmount, etc.
+> 
+> So?
+> 
+> A filesystem module cannot be unloaded while it's still mounted.
+> 
+> And unmount doesn't succeed until all inodes are gone.
+> 
+> And getting rid of an inode doesn't succeed until all pages associated
+> with it are gone.
+> 
+> And getting rid of the pages involves locking them (whether in
+> truncate or vmscan) and removing them from all lists.
+> 
+> Ergo: vmscan has a locked page leads to the filesystem being
+> guaranteed to not be unmounted.  And that, in turn, guarantees that
+> the module won't be unloaded until the machine has gone through an
+> idle cycle.
+> 
+> It really is that simple. There's nothing subtle there. The reason
+> spin_unlock(&mapping->tree_lock) is safe is exactly the above trivial
+> chain of dependencies. And it's also exactly why
+> mapping->a_ops->freepage() would also be safe.
+> 
+> This is pretty much how all the module races are handled. Doing module
+> ref-counts per page (or per packet in flight for things like
+> networking) would be prohibitively expensive. There's no way we can
+> ever do that.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/nfs/nfs4proc.c |    9 +++++++++
- 1 files changed, 9 insertions(+), 0 deletions(-)
+Although the page is locked, it may no longer be visible to the lockless
+page lookup once the radix_tree_delete() completes in
+__remove_from_page_cache.
+Furthermore, if the same routine causes mapping->nr_pages to go to zero
+before iput_final() hits truncate_inode_pages(), then the latter exits
+immediately.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 821d4c7..89fb751 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3356,6 +3356,8 @@ ssize_t nfs4_proc_get_acl(struct inode *inode, void *buf, size_t buflen)
- 	ret = nfs_revalidate_inode(server, inode);
- 	if (ret < 0)
- 		return ret;
-+	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
-+		nfs_zap_acl_cache(inode);
- 	ret = nfs4_read_cached_acl(inode, buf, buflen);
- 	if (ret != -ENOENT)
- 		return ret;
-@@ -3384,6 +3386,13 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 	nfs_inode_return_delegation(inode);
- 	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
- 	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	/*
-+	 * Acl update can result in inode attribute update.
-+	 * so mark the attribute cache invalid.
-+	 */
-+	spin_lock(&inode->i_lock);
-+	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;
-+	spin_unlock(&inode->i_lock);
- 	nfs_access_zap_cache(inode);
- 	nfs_zap_acl_cache(inode);
- 	return ret;
+Both these cases would appear to allow iput_final() to release the inode
+before vmscan gets round to unlocking the mapping->tree_lock since
+truncate_inode_pages() no longer thinks it has any work to do.
+
 -- 
-1.7.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
