@@ -1,101 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9054 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:21565 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751850Ab0LVXfc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2010 18:35:32 -0500
-Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBMNZ8U0001471
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Dec 2010 15:35:17 -0800 (PST)
-Subject: Re: [PATCH 06/15] pnfs: change how lsegs are removed from layout
- list
+	id S1752345Ab0LAOuM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 09:50:12 -0500
+Subject: Re: [PATCH 2/3] NFS: lock the readdir page while it is in use
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <73A41B1B-39EE-422F-8C43-1CBF830524A2@netapp.com>
-References: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
-	 <1292990449-20057-7-git-send-email-iisaman@netapp.com>
-	 <1293054191.6422.16.camel@heimdal.trondhjem.org>
-	 <73A41B1B-39EE-422F-8C43-1CBF830524A2@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Nick Bowler <nbowler@elliptictech.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <AANLkTi=p8mF2=G8TPi7TciEYS8cyDNp8OG+ksrF7b-vf@mail.gmail.com>
+References: <1291175234-23824-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <AANLkTimg+4EYfYnKqNsoOpvCcDs+Pb=FB+arb4NvFpx_@mail.gmail.com>
+	 <1291175234-23824-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1291175234-23824-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <AANLkTin8FSeM8cQ8BWYWjiyGy33EwzpMfFwauK+4j0uT@mail.gmail.com>
+	 <1291177753.7694.17.camel@heimdal.trondhjem.org>
+	 <AANLkTi=p8mF2=G8TPi7TciEYS8cyDNp8OG+ksrF7b-vf@mail.gmail.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 22 Dec 2010 18:35:07 -0500
-Message-ID: <1293060907.6422.31.camel@heimdal.trondhjem.org>
+Date: Wed, 01 Dec 2010 09:49:55 -0500
+Message-ID: <1291214995.6609.10.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-12-22 at 17:08 -0500, Fred Isaman wrote:
-> On Dec 22, 2010, at 4:43 PM, Trond Myklebust wrote:
+On Tue, 2010-11-30 at 21:06 -0800, Linus Torvalds wrote:
+> On Tue, Nov 30, 2010 at 8:29 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> >
+> > I'm not worried about other readdir calls invalidating the page. My
+> > concern is rather about the VM memory reclaimers ejecting the page from
+> > the page cache, and calling nfs_readdir_clear_array while we're
+> > referencing the page.
 > 
-> > On Tue, 2010-12-21 at 23:00 -0500, Fred Isaman wrote:
-> >> This is to prepare the way for sensible io draining.  Instead of just
-> >> removing the lseg from the list, we instead clear the VALID flag
-> >> (preventing new io from grabbing references to the lseg) and remove
-> >> the reference holding it in the list.  Thus the lseg will be removed
-> >> once any io in progress completes and any references still held are
-> >> dropped.
-> >> 
-> >> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> >> ---
-> >> fs/nfs/inode.c |    2 +-
-> >> fs/nfs/pnfs.c  |  121 ++++++++++++++++++++++++++++++++++++-------------------
-> >> fs/nfs/pnfs.h  |    8 +++-
-> >> 3 files changed, 87 insertions(+), 44 deletions(-)
-> >> 
-> >> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> >> index e67e31c..43a69da 100644
-> >> --- a/fs/nfs/inode.c
-> >> +++ b/fs/nfs/inode.c
-> > 
-> >> -/* Called without i_lock held, as the free_lseg call may sleep */
-> >> -static void
-> >> -destroy_lseg(struct kref *kref)
-> >> +static void free_lseg(struct pnfs_layout_segment *lseg)
-> >> {
-> >> -	struct pnfs_layout_segment *lseg =
-> >> -		container_of(kref, struct pnfs_layout_segment, pls_refcount);
-> >> 	struct inode *ino = lseg->pls_layout->plh_inode;
-> >> 
-> >> -	dprintk("--> %s\n", __func__);
-> >> +	BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
-> >> 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
-> >> 	/* Matched by get_layout_hdr in pnfs_insert_layout */
-> >> 	put_layout_hdr(ino);
-> >> }
-> > 
-> > <snip>
-> > 
-> >> static void
-> >> -pnfs_free_lseg_list(struct list_head *tmp_list)
-> >> +pnfs_free_lseg_list(struct list_head *free_me)
-> >> {
-> >> -	struct pnfs_layout_segment *lseg;
-> >> +	struct pnfs_layout_segment *lseg, *tmp;
-> >> 
-> >> -	while (!list_empty(tmp_list)) {
-> >> -		lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
-> >> -				pls_list);
-> >> -		dprintk("%s calling put_lseg on %p\n", __func__, lseg);
-> >> -		list_del(&lseg->pls_list);
-> >> -		put_lseg(lseg);
-> >> -	}
-> >> +	list_for_each_entry_safe(lseg, tmp, free_me, pls_list)
-> >> +		free_lseg(lseg);
-> >> +	INIT_LIST_HEAD(free_me);
-> >> }
-> > 
-> > The above looks very dubious to me. Why is this change needed, and what
-> > guarantees do we have that free_lseg() will do the right thing w.r.t.
-> > removing stuff from the list?
+> I think you're making a fundamental mistake here, and you're confused
+> by a much deeper problem.
 > 
-> Note that this is called with a list of lsegs which already have refcount==0 and have been removed from generic layer lists such that no new reference is coming.  All that is expected of free_lseg is that the layout driver gets a chance to free any resources it has attached to the lseg, and that we release the reference the lseg holds on the layout header itself.
+> The thing is, the ".releasepage" callback gets called _before_ the
+> page actually gets removed from the page cache, and there is no
+> guarantee that it will always be removed at all!
 > 
-> The primary reason for this is that the file layouts ld->free_lseg call can call nfs_put_client, which can sleep.  So this allows the ld->free_lseg to be postponed until we can drop locks, similar to the dispose_list function in fs/inode.c
+> In fact, anybody holding a reference to it will result in
+> page_freeze_refs() not successfully clearing all the refs, and that in
+> turn will abort the actual freeing of the page. So while you hold the
+> page count, your page will NOT be freed. Guaranteed.
+> 
+> But it is true that the ".releasepage()" function may be called. So if
+> your NFS release callback ends up invalidating the data on that page,
+> that page lock thing will make a difference, yes.
+> 
+> But at the same time, are you sure that you are able to then handle
+> the case of that page still existing in the page cache and being used
+> afterwards? Looking at the code, it doesn't look that way to me.
+> 
+> So I think you're confused, and the NFS code totally incorrectly
+> thinks that ".releasepage" is something that happens at the last use
+> of the page. It simply is not so. In fact, you seem to return 0, which
+> I think means "failure to release", so the VM will just mark it busy
+> again afterwards.
+> 
+> Now, I think you do have a few options:
+> 
+>  - keep the current model. BUT! In the page cache release function
+> (nfs_readdir_clear_array), make sure that you also clear the
+> up-to-date bit, so that the page gets read back in since it no longer
+> contains any valid information. And return success for the
+> "releasepage" operatioin.
 
-Sure, but why do these things have to be on the free_me list when you
-call ld->free_lseg(lseg)? Why do you suddenly need the INIT_LIST_HEAD()?
+This is the option I'm attempting for now. I'm quite fine with the page
+only being readable while under the page lock since this is readdir, and
+so we don't have to worry about mmap() and its ilk.
 
-As I said, that all looks very dubious...
+My latest incarnation of the patches has added in all the PagePrivate()
+foo to make try_to_release_page() work, and also adds in an
+invalidatepage() address space operation (I rediscovered that
+truncate_inode_pages() will otherwise call block_invalidatepage, and
+subsequently Oops).
 
+I'm still in the process of testing, but the latest patchset appears to
+be doing all the right things for now. I'll post an update later today
+so that Nick and others can test too.
+
+Cheers
+  Trond
 -- 
 Trond Myklebust
 Linux NFS client maintainer
