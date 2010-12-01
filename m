@@ -1,95 +1,134 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:53996 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753260Ab0L3LFY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Dec 2010 06:05:24 -0500
-In-Reply-To: <20101230104416.GA31824@shutemov.name>
-References: <1293628470-28386-1-git-send-email-kas@openvz.org>
-	<AANLkTi=AXz21wDeE1vPVD-6cEtj6faXN9x09eHDCsTkB@mail.gmail.com>
-	<20101230085139.GA29697@shutemov.name>
-	<4D1C4C7C.6050606@parallels.com>
-	<20101230094433.GB29697@shutemov.name>
-	<4D1C5953.6020200@parallels.com>
-	<20101230104416.GA31824@shutemov.name>
-Date: Thu, 30 Dec 2010 05:05:22 -0600
-Message-ID: <AANLkTim2QrkSW0HufD5wp=-8ikwydN5SUS+fdWK6JHqb@mail.gmail.com>
-Subject: Re: [PATCH v2 00/12] make rpc_pipefs be mountable multiple time
-From: Rob Landley <rob@landley.net>
-To: "Kirill A. Shutemov" <kas@openvz.org>
-Cc: Rob Landley <rlandley@parallels.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:59468 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752882Ab0LASnK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 13:43:10 -0500
+Subject: Re: Listen backlog set to 64
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <alpine.NEB.2.01.1012011754120.12506@jrf.vwaro.pbz>
+Date: Wed, 1 Dec 2010 13:28:40 -0500
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org
+Message-Id: <F5FCB254-E6CE-4B71-ABD9-33F098F9E0BA@oracle.com>
+References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz> <20101116182026.GA3971@fieldses.org> <20101117090826.4b2724da@notabene.brown> <20101129205935.GD9897@fieldses.org> <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz> <20101130200013.GA2108@fieldses.org> <alpine.NEB.2.01.1012011754120.12506@jrf.vwaro.pbz>
+To: Mark Hills <mark@pogo.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Dec 30, 2010 at 4:44 AM, Kirill A. Shutemov <kas@openvz.org> wrote:
-> On Thu, Dec 30, 2010 at 04:05:07AM -0600, Rob Landley wrote:
->> On 12/30/2010 03:44 AM, Kirill A. Shutemov wrote:
->> >>> If no rpcmount mountoption, no rpc_pipefs was found at
->> >>> '/var/lib/nfs/rpc_pipefs' and we are in init's mount namespace, we use
->> >>> init_rpc_pipefs.
->> >>
->> >> It's the "we are in init's mount namespace" that I was wondering about.
->> >>
->> >> So if I naievely chroot, nfs mount stops working the way it did before I
->> >> chrooted unless I do an extra setup step?
->> >
->> > No. It will work as before since you are still in init's mount namespace.
->> > Creating new mount namespace changes rules.
->>
->> Ah, CLONE_NEWNS and then you need /var/lib/nfs/rpc_pipefs.  Got it.
->>
->> I'm kind of surprised that the kernel cares about a specific path under
->> /var/lib.  (Seems like policy in the kernel somehow.)
->
-> Yep. It's bad, but there is way to overwrite the default.
->
-> Other way is to leave 'rpcmount' mountoption without default.
-> get_rpc_pipefs(NULL) in init's mount namespace will always return
-> init_rpc_pipefs, without filesystem lookup.
-> get_rpc_pipefs(NULL) in non-init's mount namespace will always return
-> error.
->
-> So you will have to specify 'rpcmount' mountoption for every nfs mount in
-> container. Hmm, I guess, it may confuse user.
->
-> Or we can try to move the default to userspace. /sbin/mount.nfs?
 
-/proc/sys/kernel/hotplug exists to tell the kernel where to find the hotplug
-binary.  Once upon a time /sys/hotplug was the default value, and that was
-there to overwrite it.  (They changed the default to blank (disabled) not due
-to policy reasons, but due to adding the netlink hotplug notification
-mechanism and making that the default.)
+On Dec 1, 2010, at 1:18 PM, Mark Hills wrote:
 
-I bring that up to point out that the general consensus about policy in the
-kernel seems to be "when you really really can't avoid having any, make a
-sane default the user can override".
+> On Tue, 30 Nov 2010, J. Bruce Fields wrote:
+> 
+>> On Tue, Nov 30, 2010 at 05:50:52PM +0000, Mark Hills wrote:
+> [...]
+>>> Our investigation brings us to rpc.mountd and mount.nfs communicating. In 
+>>> the client log we see messages like:
+>>> 
+>>>  Nov 24 12:09:43 nyrd001 automount[3782]: >> mount.nfs: mount to NFS server 'ss1a:/mnt/raid1/banana' failed: timed out, giving up
+>>> 
+>>> Using strace and isolating one of these, I can see a non-blocking connect 
+>>> has already managed to make a connection and even send/receive some data. 
+>>> 
+>>> But soon a timeout of 9999 milliseconds in poll() causes a problem in 
+>>> mount.nfs when waiting for a response of some sort. The socket in question 
+>>> is a connection to mountd:
+>>> 
+>>>  26512 futex(0x7ff76affa540, FUTEX_WAKE_PRIVATE, 1) = 0
+>>>  26512 write(3, "\200\0\0(j\212\254\365\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3\0\0\0\0\0\0\0\0"..., 44) = 44
+>>>  26512 poll([{fd=3, events=POLLIN}], 1, 9999 <unfinished ...>
+>>> 
+>>> When it returns:
+>>> 
+>>>  26512 <... poll resumed> )              = 0 (Timeout)
+>>>  26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
+>>>  26512 rt_sigprocmask(SIG_SETMASK, ~[RTMIN RT_1], [], 8) = 0
+>>>  26512 close(3)                          = 0
+>>>  26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
+>>>  26512 write(2, "mount.nfs: mount to NFS server '"..., 100) = 100
+>>> 
+>>> There's no re-try from here, just a failed mount.
+>> 
+>> That does sound wrong.  I'm not at all familiar with automount,
+>> unfortunately; how is it invoking mount.nfs?
+>> 
+>>> What is the source of this 9999 millisecond timeout used by poll() in 
+>>> mount.nfs? It was not clear in an initial search of nfs-utils and glibc, 
+>>> but I need more time to investigate.
+>>> 
+>>> If the server is being too slow to respond, what could the cause of this 
+>>> be? Multiple threads are already in use, but it seems like they are not 
+>>> all in use because a thread is able to accept() the connection. I haven't 
+>>> been able to pin this on the forward/reverse DNS lookup used by 
+>>> authentication and logging.
+>> 
+>> Can you tell where the mountd threads are typically waiting?
+> 
+> Here's a trace from mountd. Note the long pause after fdatasync():
+> 
+> 31156 12:09:40 open("/var/lib/nfs/rmtab", O_WRONLY|O_CREAT|O_APPEND, 0666) = 14 <0.000010>
+> 31156 12:09:40 fstat(14, {st_mode=S_IFREG|0644, st_size=62642, ...}) = 0 <0.000005>
+> 31156 12:09:40 mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x2af00c929000 <0.000007>
+> 31156 12:09:40 fstat(14, {st_mode=S_IFREG|0644, st_size=62642, ...}) = 0 <0.000005>
+> 31156 12:09:40 lseek(14, 62642, SEEK_SET) = 62642 <0.000006>
+> 31156 12:09:40 write(14, "192.168.14.165:/mnt/raid1/abcde_"..., 57) = 57 <0.000013>
+> 31156 12:09:40 fdatasync(14)            = 0 <15.413401>
+> 31156 12:09:55 close(14)                = 0 <0.000008>
+> 31156 12:09:55 munmap(0x2af00c929000, 4096) = 0 <0.000083>
+> 31156 12:09:55 close(13)                = 0 <0.000008>
+> 
+> This pause exceeds the mysterious 9999 millisecond timeout allowed at the 
+> client.
+> 
+> fdatasync() is happening at every write of rmtab -- a lot. Occasionally it 
+> takes a long time. The syncing of the rmtab seems a reasonable explanation 
+> why more threads does not help -- all mountd threads lock up.
+> 
+> The strace I am analysing here contains 670 calls to fdatasync() in a 16 
+> minute period. All of them take < 1 second, except for this burst:
+> 
+> 31156 12:09:11 fdatasync(14)            = 0 <0.000010>
+> 31156 12:09:11 fdatasync(15)            = 0 <0.136285>
+> 31156 12:09:12 fdatasync(14)            = 0 <0.000010>
+> 31156 12:09:12 fdatasync(15)            = 0 <14.911323>
+> 31156 12:09:27 fdatasync(14)            = 0 <1.298896>
+> 31156 12:09:29 fdatasync(14)            = 0 <1.159262>
+> 31156 12:09:33 fdatasync(14)            = 0 <1.447169>
+> 31156 12:09:35 fdatasync(14)            = 0 <1.345562>
+> 31156 12:09:40 fdatasync(14)            = 0 <0.000010>
+> 31156 12:09:40 fdatasync(14)            = 0 <15.413401>
+> 31156 12:09:55 fdatasync(17)            = 0 <0.000010>
+> 31156 12:09:55 fdatasync(17)            = 0 <1.068503>
+> 31156 12:09:57 fdatasync(18)            = 0 <0.000010>
+> 31156 12:09:57 fdatasync(18)            = 0 <0.089682>
+> 
+> /var/lib/nfs/rmtab[.tmp] is on an ext3 filesystem, the system disk.
+> 
+> The server is only acting as a 'regular' and dedicated file server, but 
+> presumably some other process is causing /var to become erratic. Unless 
+> continual writing and syncing to a small (64KiB) file could cause this to 
+> happen periodically?
 
-(Of course adding another entry to the crawling horror of /proc may not
-be an improvement.  But individual overrides at the mount -o level seem
-like a non-optimal granularity for this...)
+fdatasync() will write all outstanding dirty data on that partition to persistent storage, not just the dirty data for that file.  If /var is on a partition that has a lot of other activity, then this is the expected outcome, unfortunately.  I would expect such delays to be due to a large amount of outstanding writes, not to periodic synchronous writes.
 
->> Can't it just
->> check the current process's mount list to see if an instance of
->> rpc_pipefs is mounted in the current namespace the way lxc looks for
->> cgroups?  Or are there potential performance/scalability issues with that?
->
-> What should we do if we have several rpc_pipefs mounts in the namespace?
+This problem may be addressed in recent versions of nfs-utils.  I see a commit from Ben Myers on February 12 of this year that seems on point.  nfs-utils-1.2.2 has it, I think?
 
-You mean more than one inside a given process's view of the filesystem, taking
-into account chroot like /proc/mounts does?
+> In the meantime we have symlink'd /var/lib/nfs/rmtab[.tmp] to a tmpfs 
+> mount to see if that helps, and will leave it running tonight.
+> 
+> -- 
+> Mark
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Before this patch series, there was one instance systemwide.  The patch changed
-that to look a fixed location in the filesystem relative to the
-current chroot.  Either
-way, there was one instance available to a given process doing an nfs mount.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-What's the use case for having more than one visible to a given process?
-(NUMA scalability?  Some sort of multipath/VPN routing context?)
 
-Rob
+
+
