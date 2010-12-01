@@ -1,63 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from blade3.isti.cnr.it ([194.119.192.19]:56772 "EHLO
-	BLADE3.ISTI.CNR.IT" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754706Ab0K2Wsh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Nov 2010 17:48:37 -0500
-Received: from SCRIPT-SPFWL-DAEMON.mx.isti.cnr.it by mx.isti.cnr.it
- (PMDF V6.5 #31825) id <01NUUI24WZOWLKRHSU@mx.isti.cnr.it> for
- linux-nfs@vger.kernel.org; Mon, 29 Nov 2010 23:47:27 +0100 (MET)
-Received: from conversionlocal.isti.cnr.it by mx.isti.cnr.it (PMDF V6.5 #31825)
- id <01NUUI23HPSGLS5SU7@mx.isti.cnr.it> for linux-nfs@vger.kernel.org; Mon,
- 29 Nov 2010 23:47:25 +0100 (MET)
-Received: from [151.82.44.231] by mx.isti.cnr.it (PMDF V6.5 #31826)
- with ESMTPSA id <01NUUI20AJA2LPPCPJ@mx.isti.cnr.it> for
- linux-nfs@vger.kernel.org; Mon, 29 Nov 2010 23:47:22 +0100 (MET)
-Date: Mon, 29 Nov 2010 23:47:20 +0100
-From: Spelic <spelic@shiftmail.org>
+Received: from cantor2.suse.de ([195.135.220.15]:57879 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753922Ab0LADYJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 22:24:09 -0500
+Date: Wed, 1 Dec 2010 14:23:59 +1100
+From: Neil Brown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Dickson <SteveD@redhat.com>, Spelic <spelic@shiftmail.org>,
+        linux-nfs@vger.kernel.org
 Subject: Re: NFSv4 behaviour on unknown users
-In-reply-to: <20101129195010.GA6423@hostway.ca>
-To: linux-nfs@vger.kernel.org
-Message-id: <4CF42D78.3010604@shiftmail.org>
-Content-type: text/plain; format=flowed; charset=ISO-8859-1
-References: <4CF3E3AD.2040502@shiftmail.org> <20101129195010.GA6423@hostway.ca>
+Message-ID: <20101201142359.124c9053@notabene.brown>
+In-Reply-To: <1291173002.7694.7.camel@heimdal.trondhjem.org>
+References: <4CF3ED05.3070401@shiftmail.org>
+	<1291054975.12784.17.camel@heimdal.trondhjem.org>
+	<4CF3F326.4060608@shiftmail.org>
+	<20101129190122.GA31843@fieldses.org>
+	<1291057747.12784.38.camel@heimdal.trondhjem.org>
+	<4CF519F2.8080900@RedHat.com>
+	<1291155578.2998.38.camel@heimdal.trondhjem.org>
+	<20101130222651.GB5054@fieldses.org>
+	<1291156414.4393.2.camel@heimdal.trondhjem.org>
+	<20101130223627.GC5054@fieldses.org>
+	<20101201135740.0d3b5948@notabene.brown>
+	<1291173002.7694.7.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 11/29/2010 08:50 PM, Simon Kirby wrote:
-> ...
-> I tried to write the NFSv4 spec people, but didn't get any reply.  I can
-> see maybe why they would want to do this by default, but it's not like
-> people don't already have years of experience with how NFSv3 and earlier
-> worked, and I still think should at least be a way to request that
-> behaviour.
->    
+On Tue, 30 Nov 2010 22:10:02 -0500 Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
 
-Yeah!!!
-currently it sucks... er...
-I don't understand... never before I came across a "new version" of a 
-software or a protocol which allows to do many fewer things than the 
-older version. This sucks. Lots of use cases for NFS here are totally lost.
+> On Wed, 2010-12-01 at 13:57 +1100, Neil Brown wrote:
+> > I have a strong memory from about 7 years ago of Brian Pawlowski saying - or
+> > possibly being quoted as saying - that the user information in NFS requests
+> > (the stuff that idmapper handles) is totally independent of the RPC
+> > authentication mechanism being used (the AUTH_SYS / RPCSEC_GSS stuff).
+> > 
+> > I always thought that was nonsense, but I wasn't in a position to discuss it
+> > at the time for reasons that I really don't recall.
+> > 
+> > If users are being authorised using numbers (AUTH_SYS) then it only (to me)
+> > makes sense to communication all identies as numbers.
+> > And if users are being authenticated as name@domain strings, then it only
+> > make sense to communicate all identities as name@domain.
+> > 
+> > But this path is not the path for NFSv4 followed.
+> > 
+> > I've very glad to see Linux NFS allowing numeric IDs "on the wire" and hope
+> > to see this very sensible approach widely adopted (where AUTH_SYS is used).
+> > I think it would be great if nfsd did the same thing completely in-kernel
+> > without reference to idmapd.  Accepting either numeric or domain-based is
+> > trivial.  Choosing which to send on a per-client basis might be a challenge,
+> > but probably not a big one.
+> > 
+> > 
+> > I wonder if Brian remembers saying anything like that...
+> 
+> I think you need to take beepy's words in context here: as I believe I
+> mentioned previously, RFC3530 (and its predecessor RFC3010) assumed
+> everyone would be using principals for authenticating, either through
+> RPCSEC_GSS w/ krb5, or through the SPKM/Lipkey mechanism. So sure was
+> everyone of this, that AUTH_SYS isn't even mentioned as a valid
+> authentication mechanism, and so nobody had to worry about the
+> consequences of using it.
+> 
+> The fact we still use AUTH_SYS today is, BTW, very much a result of the
+> failure of SPKM/Lipkey to deliver on its promise of strong
+> authentication with no extra infrastructure requirements. If it had, we
+> wouldn't be needing this hack.
 
-I'm thinking that even if I'd setup LDAP for everything here, things 
-would not be easy, because we have server1 which has certain users and 
-groups, server2+server3 which are for a different project and have 
-different users and groups etc... and now we need to have the NFS server 
-understand all those sets of users simultaneously, but the various 
-servers only need to understand theirs and the other people should not 
-be able to log in!
-Maybe it's possible (I don't know how), but looks like a major headache. 
-And now we probably cannot even have more than one LDAP server any 
-longer: all LDAP probably needs to be centralized on a single machine 
-which is where the NFS server(s) authenticate... it looks like a real 
-problem for the independence of projects... and I really fear to think 
-of what will happen if that machine fails!
+Thanks Trond.  You are undoubtedly right, and that does make the comment a
+little less strange.
+Though I still think that LIPKEY and krb5 are different identification
+mechanisms and so assuming that the identities are in the same namespace is
+wrong.  Obviously it is possibly to force them to be in the same namespace,
+but building that into the protocol as an assumption just seems wrong.
 
-I'd be glad to go back to NFS version 3 but we need nfs on infiniband 
-rdma now, and afaik it's only available in version 4.
-
-If it's still possible to change the specs or break them, well... you 
-sure have my vote!
-
-Thank you
-S.
+Thanks,
+NeilBrown
