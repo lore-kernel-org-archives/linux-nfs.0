@@ -1,57 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from swampdragon.chaosbits.net ([90.184.90.115]:22210 "EHLO
-	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753198Ab0KGVWx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Nov 2010 16:22:53 -0500
-Date: Sun, 7 Nov 2010 22:11:34 +0100 (CET)
-From: Jesper Juhl <jj@chaosbits.net>
-To: linux-kernel@vger.kernel.org
-cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>
-Subject: [PATCH] SUNRPC: Simplify rpc_alloc_iostats by removing pointless
- local variable
-Message-ID: <alpine.LNX.2.00.1011072205370.26247@swampdragon.chaosbits.net>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from mx2.netapp.com ([216.240.18.37]:9822 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754536Ab0LADrq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Nov 2010 22:47:46 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+        Nick Bowler <nbowler@elliptictech.com>
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 1/3] NFS: Ensure we use the correct cookie in nfs_readdir_xdr_filler
+Date: Tue, 30 Nov 2010 22:47:12 -0500
+Message-Id: <1291175234-23824-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1291175234-23824-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291175234-23824-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <AANLkTimg+4EYfYnKqNsoOpvCcDs+Pb=FB+arb4NvFpx_@mail.gmail.com>
+References: <AANLkTimg+4EYfYnKqNsoOpvCcDs+Pb=FB+arb4NvFpx_@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi,
+We need to use the cookie from the previous array entry, not the
+actual cookie that we are searching for.
 
-We can simplify net/sunrpc/stats.c::rpc_alloc_iostats() a bit by getting 
-rid of the unneeded local variable 'new'.
-
-
-Please CC me on replies.
-
-
-Signed-off-by: Jesper Juhl <jj@chaosbits.net>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- stats.c |    4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ fs/nfs/dir.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
-diff --git 
-a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-index f71a731..80df89d 100644
---- a/net/sunrpc/stats.c
-+++ b/net/sunrpc/stats.c
-@@ -115,9 +115,7 @@ EXPORT_SYMBOL_GPL(svc_seq_show);
-  */
- struct rpc_iostats *rpc_alloc_iostats(struct rpc_clnt *clnt)
- {
--	struct rpc_iostats *new;
--	new = kcalloc(clnt->cl_maxproc, sizeof(struct rpc_iostats), GFP_KERNEL);
--	return new;
-+	return kcalloc(clnt->cl_maxproc, sizeof(struct rpc_iostats), GFP_KERNEL);
- }
- EXPORT_SYMBOL_GPL(rpc_alloc_iostats);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index f0a384e..4a78d2b 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -178,6 +178,7 @@ typedef struct {
+ 	struct page	*page;
+ 	unsigned long	page_index;
+ 	u64		*dir_cookie;
++	u64		last_cookie;
+ 	loff_t		current_index;
+ 	decode_dirent_t	decode;
  
-
-
+@@ -344,6 +345,8 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
+ 	else
+ 		status = nfs_readdir_search_for_cookie(array, desc);
+ 
++	if (status == -EAGAIN)
++		desc->last_cookie = array->last_cookie;
+ 	nfs_readdir_release_array(desc->page);
+ out:
+ 	return status;
+@@ -563,7 +566,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	unsigned int array_size = ARRAY_SIZE(pages);
+ 
+ 	entry.prev_cookie = 0;
+-	entry.cookie = *desc->dir_cookie;
++	entry.cookie = desc->last_cookie;
+ 	entry.eof = 0;
+ 	entry.fh = nfs_alloc_fhandle();
+ 	entry.fattr = nfs_alloc_fattr();
+@@ -672,8 +675,10 @@ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
+ {
+ 	int res;
+ 
+-	if (desc->page_index == 0)
++	if (desc->page_index == 0) {
+ 		desc->current_index = 0;
++		desc->last_cookie = 0;
++	}
+ 	while (1) {
+ 		res = find_cache_page(desc);
+ 		if (res != -EAGAIN)
 -- 
-Jesper Juhl <jj@chaosbits.net>             http://www.chaosbits.net/
-Don't top-post  http://www.catb.org/~esr/jargon/html/T/top-post.html
-Plain text mails only, please.
+1.7.3.2
 
