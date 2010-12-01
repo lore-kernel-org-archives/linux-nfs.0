@@ -1,67 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64950 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751575Ab0LJGIr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Dec 2010 01:08:47 -0500
-Received: from localhost.localdomain (kozen-lxp.hq.netapp.com [10.58.53.114] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBA68VLl023313
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Dec 2010 22:08:47 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 10/22] pnfs-submit: wave4: fix bug dealing with commit split between DS and MDS
-Date: Thu,  9 Dec 2010 20:22:45 -0500
-Message-Id: <1291944177-7819-11-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:51512 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750807Ab0LAFGW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 00:06:22 -0500
+In-Reply-To: <1291177753.7694.17.camel@heimdal.trondhjem.org>
+References: <1291175234-23824-1-git-send-email-Trond.Myklebust@netapp.com>
+ <AANLkTimg+4EYfYnKqNsoOpvCcDs+Pb=FB+arb4NvFpx_@mail.gmail.com>
+ <1291175234-23824-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1291175234-23824-3-git-send-email-Trond.Myklebust@netapp.com>
+ <AANLkTin8FSeM8cQ8BWYWjiyGy33EwzpMfFwauK+4j0uT@mail.gmail.com> <1291177753.7694.17.camel@heimdal.trondhjem.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Tue, 30 Nov 2010 21:06:00 -0800
+Message-ID: <AANLkTi=p8mF2=G8TPi7TciEYS8cyDNp8OG+ksrF7b-vf@mail.gmail.com>
+Subject: Re: [PATCH 2/3] NFS: lock the readdir page while it is in use
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Nick Bowler <nbowler@elliptictech.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The file layout driver could send the wrong data structure to the MDS
-on a commit split between DS and MDS.
+On Tue, Nov 30, 2010 at 8:29 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+>
+> I'm not worried about other readdir calls invalidating the page. My
+> concern is rather about the VM memory reclaimers ejecting the page from
+> the page cache, and calling nfs_readdir_clear_array while we're
+> referencing the page.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4filelayout.c |   15 +++++++++++++--
- 1 files changed, 13 insertions(+), 2 deletions(-)
+I think you're making a fundamental mistake here, and you're confused
+by a much deeper problem.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 055816a..fb0efda 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -497,6 +497,7 @@ filelayout_commit(struct nfs_write_data *data, int sync)
- 	struct list_head **ds_page_list = NULL;
- 	u16 *indices_used;
- 	int num_indices_seen = 0;
-+	bool used_mds = false;
- 	const struct rpc_call_ops *call_ops;
- 	struct rpc_clnt *clnt;
- 	struct nfs_write_data **clone_list = NULL;
-@@ -546,11 +547,21 @@ filelayout_commit(struct nfs_write_data *data, int sync)
- 	if (!clone_list)
- 		goto mem_error;
- 	for (i = 0; i < num_indices_seen - 1; i++) {
-+		if (indices_used[i] == NFS4_PNFS_MAX_MULTI_CNT) {
-+			used_mds = true;
-+			clone_list[i] = data;
-+		} else {
-+			clone_list[i] = filelayout_clone_write_data(data);
-+			if (!clone_list[i])
-+				goto mem_error;
-+		}
-+	}
-+	if (used_mds) {
- 		clone_list[i] = filelayout_clone_write_data(data);
- 		if (!clone_list[i])
- 			goto mem_error;
--	}
--	clone_list[i] = data;
-+	} else
-+		clone_list[i] = data;
- 	/*
- 	 * Now send off the RPCs to each ds.  Note that it is important
- 	 * that any RPC to the MDS be sent last (or at least after all
--- 
-1.7.2.1
+The thing is, the ".releasepage" callback gets called _before_ the
+page actually gets removed from the page cache, and there is no
+guarantee that it will always be removed at all!
 
+In fact, anybody holding a reference to it will result in
+page_freeze_refs() not successfully clearing all the refs, and that in
+turn will abort the actual freeing of the page. So while you hold the
+page count, your page will NOT be freed. Guaranteed.
+
+But it is true that the ".releasepage()" function may be called. So if
+your NFS release callback ends up invalidating the data on that page,
+that page lock thing will make a difference, yes.
+
+But at the same time, are you sure that you are able to then handle
+the case of that page still existing in the page cache and being used
+afterwards? Looking at the code, it doesn't look that way to me.
+
+So I think you're confused, and the NFS code totally incorrectly
+thinks that ".releasepage" is something that happens at the last use
+of the page. It simply is not so. In fact, you seem to return 0, which
+I think means "failure to release", so the VM will just mark it busy
+again afterwards.
+
+Now, I think you do have a few options:
+
+ - keep the current model. BUT! In the page cache release function
+(nfs_readdir_clear_array), make sure that you also clear the
+up-to-date bit, so that the page gets read back in since it no longer
+contains any valid information. And return success for the
+"releasepage" operatioin.
+
+Alternatively:
+
+ - introduce a callback for the case of the page actually being gone
+from the page cache, which gets called _after_ the removal.
+
+which seems to be what you really want, since for you the releasepage
+thing is about releasing the data structures associated with that
+cache. So you don't want to worry about the page lock, and you don't
+want to worry about the case of "maybe it won't get released at all
+after this because somebody still holds a ref-count".
+
+> As far as I can see, the only way to protect against that is to lock the
+> page, perform the usual tests and then release the page lock when we're
+> done...
+
+I think one of us is confused. And it's possible that it is me. It's
+been a _long_ time since I looked at that code, and I may well be
+missing something. But I get the strong feeling you're mis-using
+'.releasepage' and confused about the semantics.
+
+                 Linus "maybe confused myself" Torvalds
