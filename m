@@ -1,220 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:47293 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754814Ab0LOScT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 13:32:19 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 7/9] Revert "pnfs-submit: wave2: Pull out all recall initiated LAYOUTRETURNS"
-Date: Wed, 15 Dec 2010 20:32:16 +0200
-Message-Id: <1292437936-21908-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4D0908F9.4060208@panasas.com>
-References: <4D0908F9.4060208@panasas.com>
+Message-ID: <4CF73AC6.4020105@suse.de>
+Date: Thu, 02 Dec 2010 11:50:54 +0530
+From: Suresh Jayaraman <sjayaraman@suse.de>
+To: Neil Brown <neilb@suse.de>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: Fix possible BUG_ON firing in set_change_info
+References: <20101202111430.57275603@notabene.brown>
+In-Reply-To: <20101202111430.57275603@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-15
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This reverts commit fea1ffe711454410ba5277115c9aeaf814681f4a.
+On 12/02/2010 05:44 AM, Neil Brown wrote:
+> 
+> If vfs_getattr in fill_post_wcc returns an error, we don't
+> set fh_post_change.
+      ^^^ Did you mean fh_post_saved?
 
-Conflicts:
+> For NFSv4, this can result in set_change_info triggering a BUG_ON.
+> i.e. fh_post_saved being zero isn't really a bug.
+> 
+> So:
+>  - instead of BUGging when fh_post_saved is zero, just clear ->atomic.
+>  - if vfs_getattr fails in fill_post_wcc, take a copy of i_ctime anyway.
+>    This will be used i seg_change_info, but not overly trusted.
+>  - While we are there, remove the pointless 'if' statements in set_change_info.
+>    There is no harm setting all the values.
 
-	fs/nfs/callback_proc.c
----
- fs/nfs/callback.h      |    5 ++
- fs/nfs/callback_proc.c |  103 ++++++++++++++++++++++++++++++++++-------------
- fs/nfs/nfs4_fs.h       |    1 +
- fs/nfs/nfs4state.c     |    4 ++
- 4 files changed, 84 insertions(+), 29 deletions(-)
+The 'if' statement was introduced when ext4 i_version support was added
+via commit c654b8a9. While there is no harm setting all the values, it
+may not really be required.
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 7f55c7e..616c5c1 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -167,6 +167,7 @@ extern unsigned nfs4_callback_layoutrecall(
- extern bool matches_outstanding_recall(struct inode *ino,
- 				       struct pnfs_layout_range *range);
- extern void notify_drained(struct nfs_client *clp, u64 mask);
-+extern void nfs_client_return_layouts(struct nfs_client *clp);
- 
- static inline void put_session_client(struct nfs4_session *session)
- {
-@@ -182,6 +183,10 @@ find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
- 
- #else /* CONFIG_NFS_V4_1 */
- 
-+static inline void nfs_client_return_layouts(struct nfs_client *clp)
-+{
-+}
-+
- static inline struct nfs_client *
- find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
- {
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index a9d162f..b6a2903 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -160,30 +160,88 @@ matches_outstanding_recall(struct inode *ino, struct pnfs_layout_range *range)
- 	return rv;
- }
- 
-+/* Send a synchronous LAYOUTRETURN.  By the time this is called, we know
-+ * all IO has been drained, any matching lsegs deleted, and that no
-+ * overlapping LAYOUTGETs will be sent or processed for the duration
-+ * of this call.
-+ * Note that it is possible that when this is called, the stateid has
-+ * been invalidated.  But will not be cleared, so can still use.
-+ */
-+static int
-+pnfs_send_layoutreturn(struct nfs_client *clp,
-+		       struct pnfs_cb_lrecall_info *cb_info)
-+{
-+	struct cb_layoutrecallargs *args = &cb_info->pcl_args;
-+	struct nfs4_layoutreturn *lrp;
-+
-+	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
-+	if (!lrp)
-+		return -ENOMEM;
-+	lrp->args.reclaim = 0;
-+	lrp->args.layout_type = args->cbl_layout_type;
-+	lrp->args.return_type = args->cbl_recall_type;
-+	lrp->clp = clp;
-+	if (args->cbl_recall_type == RETURN_FILE) {
-+		lrp->args.range = args->cbl_range;
-+		lrp->args.inode = cb_info->pcl_ino;
-+	} else {
-+		lrp->args.range.iomode = IOMODE_ANY;
-+		lrp->args.inode = NULL;
-+	}
-+	return nfs4_proc_layoutreturn(lrp, true);
-+}
-+
-+/* Called by state manager to finish CB_LAYOUTRECALLS initiated by
-+ * nfs4_callback_layoutrecall().
-+ */
-+void nfs_client_return_layouts(struct nfs_client *clp)
-+{
-+	struct pnfs_cb_lrecall_info *cb_info;
-+
-+	spin_lock(&clp->cl_lock);
-+	while (true) {
-+		if (list_empty(&clp->cl_layoutrecalls)) {
-+			spin_unlock(&clp->cl_lock);
-+			break;
-+		}
-+		cb_info = list_first_entry(&clp->cl_layoutrecalls,
-+					   struct pnfs_cb_lrecall_info,
-+					   pcl_list);
-+		spin_unlock(&clp->cl_lock);
-+		if (atomic_read(&cb_info->pcl_count) != 0)
-+			break;
-+		/* What do on error return?  These layoutreturns are
-+		 * required by the protocol.  So if do not get
-+		 * successful reply, probably have to do something
-+		 * more drastic.
-+		 */
-+		pnfs_send_layoutreturn(clp, cb_info);
-+		spin_lock(&clp->cl_lock);
-+		/* Removing from the list unblocks LAYOUTGETs */
-+		list_del(&cb_info->pcl_list);
-+		clp->cl_cb_lrecall_count--;
-+		clp->cl_drain_notification[1 << cb_info->pcl_notify_bit] = NULL;
-+		kfree(cb_info);
-+	}
-+}
-+
- void notify_drained(struct nfs_client *clp, u64 mask)
- {
- 	atomic_t **ptr = clp->cl_drain_notification;
-+	bool done = false;
- 
- 	/* clp lock not needed except to remove used up entries */
- 	/* Should probably use functions defined in bitmap.h */
- 	while (mask) {
--		if ((mask & 1) && (atomic_dec_and_test(*ptr))) {
--			struct pnfs_cb_lrecall_info *cb_info;
--
--			cb_info = container_of(*ptr,
--					       struct pnfs_cb_lrecall_info,
--					       pcl_count);
--			spin_lock(&clp->cl_lock);
--			/* Removing from the list unblocks LAYOUTGETs */
--			list_del(&cb_info->pcl_list);
--			clp->cl_cb_lrecall_count--;
--			clp->cl_drain_notification[1 << cb_info->pcl_notify_bit] = NULL;
--			spin_unlock(&clp->cl_lock);
--			kfree(cb_info);
--		}
-+		if ((mask & 1) && (atomic_dec_and_test(*ptr)))
-+			done = true;
- 		mask >>= 1;
- 		ptr++;
- 	}
-+	if (done) {
-+		set_bit(NFS4CLNT_LAYOUT_RECALL, &clp->cl_state);
-+		nfs4_schedule_state_manager(clp);
-+	}
- }
- 
- static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
-@@ -208,9 +266,8 @@ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
- 				 * does having a layout ref keep ino around?
- 				 *  It should.
- 				 */
--				/* Without this, layout can be freed as soon
--				 * as we release cl_lock.  Matched in
--				 * do_callback_layoutrecall.
-+				/* We need to hold the reference until any
-+				 * potential LAYOUTRETURN is finished.
- 				 */
- 				get_layout_hdr(lo);
- 				cb_info->pcl_ino = lo->inode;
-@@ -329,18 +386,6 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
- 			res = NFS4ERR_NOMATCHING_LAYOUT;
- 		}
- 		kfree(new);
--	} else {
--		/* We are currently using a referenced layout */
--		if (args->cbl_recall_type == RETURN_FILE) {
--			struct pnfs_layout_hdr *lo;
--
--			lo = NFS_I(new->pcl_ino)->layout;
--			spin_lock(&lo->inode->i_lock);
--			lo->plh_block_lgets--;
--			spin_unlock(&lo->inode->i_lock);
--			put_layout_hdr(lo);
--		}
--		res = NFS4ERR_DELAY;
- 	}
- out:
- 	dprintk("%s returning %i\n", __func__, res);
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 15fea61..fe5c07d 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -46,6 +46,7 @@ enum nfs4_client_state {
- 	NFS4CLNT_DELEGRETURN,
- 	NFS4CLNT_SESSION_RESET,
- 	NFS4CLNT_RECALL_SLOT,
-+	NFS4CLNT_LAYOUT_RECALL,
- };
- 
- enum nfs4_session_state {
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index dc62928..acf3e3e 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1577,6 +1577,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 			nfs_client_return_marked_delegations(clp);
- 			continue;
- 		}
-+		if (test_and_clear_bit(NFS4CLNT_LAYOUT_RECALL, &clp->cl_state)) {
-+			nfs_client_return_layouts(clp);
-+			continue;
-+		}
- 		/* Recall session slots */
- 		if (test_and_clear_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state)
- 		   && nfs4_has_session(clp)) {
+>From the spec:
+
+	"For a client to use the change_info4 information
+appropriately and correctly, the server must report the pre- and
+post-operation change attribute values atomically. When the server
+is unable to report the before and after values atomically with
+respect to the directory operation, the server must indicate that
+fact in the change_info4 return value. When the information is not
+atomically reported, the client should not assume that other clients
+have not changed the directory."
+
+Though the spec doesn't talk about the case we have specifically, it
+appears to me that the proposed behavior is the best we could aim for.
+
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> --
+> 
+> If you think the code is clearer with the if() structure, feel free
+> to leave that part unchanged.
+> 
+> NeilBrown
+> 
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index 2a533a0..7e84a85 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -260,9 +260,11 @@ void fill_post_wcc(struct svc_fh *fhp)
+>  	err = vfs_getattr(fhp->fh_export->ex_path.mnt, fhp->fh_dentry,
+>  			&fhp->fh_post_attr);
+>  	fhp->fh_post_change = fhp->fh_dentry->d_inode->i_version;
+> -	if (err)
+> +	if (err) {
+>  		fhp->fh_post_saved = 0;
+> -	else
+> +		/* Grab the ctime anyway - set_change_info might use it */
+> +		fhp->fh_post_attr.ctime = fhp->fh_dentry->d_inode->i_ctime;
+> +	} else
+>  		fhp->fh_post_saved = 1;
+>  }
+>  
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 4d476ff..60fce3d 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -484,18 +484,17 @@ static inline bool nfsd4_not_cached(struct nfsd4_compoundres *resp)
+>  static inline void
+>  set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
+>  {
+> -	BUG_ON(!fhp->fh_pre_saved || !fhp->fh_post_saved);
+> -	cinfo->atomic = 1;
+> +	BUG_ON(!fhp->fh_pre_saved);
+> +	cinfo->atomic = fhp->fh_post_saved;
+>  	cinfo->change_supported = IS_I_VERSION(fhp->fh_dentry->d_inode);
+> -	if (cinfo->change_supported) {
+> -		cinfo->before_change = fhp->fh_pre_change;
+> -		cinfo->after_change = fhp->fh_post_change;
+> -	} else {
+> -		cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
+> -		cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
+> -		cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
+> -		cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
+> -	}
+> +
+> +	cinfo->before_change = fhp->fh_pre_change;
+> +	cinfo->after_change = fhp->fh_post_change;
+> +	cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
+> +	cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
+> +	cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
+> +	cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
+> +
+>  }
+>  
+>  int nfs4svc_encode_voidres(struct svc_rqst *, __be32 *, void *);
+
+
 -- 
-1.7.2.3
-
+Suresh Jayaraman
