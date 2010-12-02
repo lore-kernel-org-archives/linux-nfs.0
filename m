@@ -1,118 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13168 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756112Ab0LASyq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 13:54:46 -0500
-Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Nick Bowler <nbowler@elliptictech.com>,
+Received: from smtp-out.google.com ([74.125.121.35]:37579 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756745Ab0LBDeZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 22:34:25 -0500
+Received: from kpbe19.cbf.corp.google.com (kpbe19.cbf.corp.google.com [172.25.105.83])
+	by smtp-out.google.com with ESMTP id oB23YN37009067
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 19:34:23 -0800
+Received: from pvc22 (pvc22.prod.google.com [10.241.209.150])
+	by kpbe19.cbf.corp.google.com with ESMTP id oB23YLir013160
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 19:34:22 -0800
+Received: by pvc22 with SMTP id 22so4585307pvc.27
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Dec 2010 19:34:21 -0800 (PST)
+Date: Wed, 1 Dec 2010 19:34:11 -0800 (PST)
+From: Hugh Dickins <hughd@google.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Nick Bowler <nbowler@elliptictech.com>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
         linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-        Hugh Dickins <hughd@google.com>, Rik van Riel <riel@redhat.com>,
+        Nick Piggin <npiggin@kernel.dk>, Rik van Riel <riel@redhat.com>,
         Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>
-In-Reply-To: <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
-References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <20101201150428.GA2879@elliptictech.com>
-	 <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 01 Dec 2010 13:54:29 -0500
-Message-ID: <1291229669.6609.24.camel@heimdal.trondhjem.org>
+Subject: Re: [PATCH v3 2/3] Call the filesystem back whenever a page is
+ removed from the page cache
+In-Reply-To: <1291259285-26803-3-git-send-email-Trond.Myklebust@netapp.com>
+Message-ID: <alpine.LSU.2.00.1012011925580.25894@tigran.mtv.corp.google.com>
+References: <1291259285-26803-1-git-send-email-Trond.Myklebust@netapp.com> <1291259285-26803-2-git-send-email-Trond.Myklebust@netapp.com> <1291259285-26803-3-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-12-01 at 08:17 -0800, Linus Torvalds wrote:
-> On Wed, Dec 1, 2010 at 7:36 AM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> >
-> > We need to ensure that the entries in the nfs_cache_array get cleared
-> > when the page is removed from the page cache. To do so, we use the
-> > releasepage address_space operation (which also requires us to set
-> > the Pg_private flag).
+On Wed, 1 Dec 2010, Trond Myklebust wrote:
 > 
-> So I really think that the whole "releasepage" use in NFS is simply
-> overly complicated and was obviously too subtle.
-> 
-> The whole need for odd return values, for the page lock, and for the
-> addition of clearing the up-to-date bit comes from the fact that this
-> wasn't really what releasepage was designed for.
-> 
-> 'releasepage' was really designed for the filesystem having its own
-> version of 'try_to_free_buffers()', which is just an optimistic "ok,
-> we may be releasing this page, so try to get rid of any IO structures
-> you have cached". It wasn't really a memory management thing.
-> 
-> And the thing is, it looks trivial to do the memory management
-> approach by adding a new callback that gets called after the page is
-> actually removed from the page cache. If we do that, then there are no
-> races with any other users, since we remove things from the page cache
-> atomically wrt page cache lookup. So the need for playing games with
-> page locking and 'uptodate' simply goes away. As does the PG_private
-> thing or the interaction with invalidatepage() etc.
-> 
-> So this is a TOTALLY UNTESTED trivial patch that just adds another
-> callback. Does this work? I dunno. But I get the feeling that instead
-> of having NFS work around the odd semantics that don't actually match
-> what NFS wants, introducing a new callback with much simpler semantics
-> would be simpler for everybody, and avoid the need for subtle code.
-> 
-> Hmm?
-> 
->                    Linus
+> --- a/mm/truncate.c
+> +++ b/mm/truncate.c
+> @@ -108,6 +108,10 @@ truncate_complete_page(struct address_space *mapping, struct page *page)
+>  	clear_page_mlock(page);
+>  	remove_from_page_cache(page);
+>  	ClearPageMappedToDisk(page);
+> +
+> +	if (mapping->a_ops->freepage)
+> +		mapping->a_ops->freepage(page);
+> +
+>  	page_cache_release(page);	/* pagecache ref */
+>  	return 0;
+>  }
 
+I think Linus recommended that one be done in remove_from_page_cache()
+to catch all instances: did that get overruled later for some reason?
 
-> include/linux/fs.h |    1 +
->  mm/vmscan.c        |    3 +++
->  2 files changed, 4 insertions(+), 0 deletions(-)
-> 
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index c9e06cc..090f0ea 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -602,6 +602,7 @@ struct address_space_operations {
->         sector_t (*bmap)(struct address_space *, sector_t);
->         void (*invalidatepage) (struct page *, unsigned long);
->         int (*releasepage) (struct page *, gfp_t);
-> +       void (*freepage)(struct page *);
->         ssize_t (*direct_IO)(int, struct kiocb *, const struct iovec
-> *iov,
->                         loff_t offset, unsigned long nr_segs);
->         int (*get_xip_mem)(struct address_space *, pgoff_t, int,
-> diff --git a/mm/vmscan.c b/mm/vmscan.c
-> index d31d7ce..1accb01 100644
 > --- a/mm/vmscan.c
 > +++ b/mm/vmscan.c
-> @@ -499,6 +499,9 @@ static int __remove_mapping(struct address_space
-> *mapping, struct page *page)
->                 mem_cgroup_uncharge_cache_page(page);
->         }
+> @@ -454,6 +454,7 @@ static int __remove_mapping(struct address_space *mapping, struct page *page)
+>  	BUG_ON(!PageLocked(page));
+>  	BUG_ON(mapping != page_mapping(page));
 >  
-> +       if (mapping->a_ops->freepage)
-> +               mapping->a_ops->freepage(page);
-
-Hmm... Looking again at the problem, it appears that the same callback
-needs to be added to truncate_complete_page() and
-invalidate_complete_page2(). Otherwise we end up in a situation where
-the page can sometimes be removed from the page cache without calling
-freepage().
-
+> +	preempt_disable();
+>  	spin_lock_irq(&mapping->tree_lock);
+>  	/*
+>  	 * The non racy check for a busy page.
+> @@ -492,10 +493,19 @@ static int __remove_mapping(struct address_space *mapping, struct page *page)
+>  		swp_entry_t swap = { .val = page_private(page) };
+>  		__delete_from_swap_cache(page);
+>  		spin_unlock_irq(&mapping->tree_lock);
+> +		preempt_enable();
+>  		swapcache_free(swap, page);
+>  	} else {
+> +		void (*freepage)(struct page *);
 > +
->         return 1;
+> +		freepage = mapping->a_ops->freepage;
+> +
+>  		__remove_from_page_cache(page);
+>  		spin_unlock_irq(&mapping->tree_lock);
+> +		if (freepage != NULL)
+> +			freepage(page);
+> +		preempt_enable();
+> +
+>  		mem_cgroup_uncharge_cache_page(page);
+>  	}
+>  
+> @@ -503,6 +513,7 @@ static int __remove_mapping(struct address_space *mapping, struct page *page)
 >  
 >  cannot_free:
+>  	spin_unlock_irq(&mapping->tree_lock);
+> +	preempt_enable();
+>  	return 0;
+>  }
 
-Cheers
-  Trond
+I took his "stop_machine()" explanation ("an idle period for everything.
+And just a preemption reschedule isn't enough for that") to imply that
+there's no need for your preempt_disable/preempt_enable there: they
+don't add anything to the module unload case, and they don't help the
+spin_unlock_irq issue (and you're already being rightly careful to note
+freepage in advance).
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+But maybe I misunderstood.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Hugh
