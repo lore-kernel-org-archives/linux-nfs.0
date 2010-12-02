@@ -1,53 +1,58 @@
-From: Andy Adamson <andros@netapp.com>
-Subject: Re: Linux pNFS status meeting 12/2/10
-Date: Thu, 2 Dec 2010 12:38:32 -0500
-Message-ID: <8DBDDB9C-28C5-4B8D-A7F5-DD39638AD510@netapp.com>
-References: <OF43A16D28.D03BB9EB-ON882577DF.0005D227-882577DF.00068DAB@us.ibm.com>	<AANLkTimGnJwv3i-396FR4upvw_QBsroheYSUY2DWywMp@mail.gmail.com>	<4CF543EA.7070107@gmail.com> <AANLkTi=-2-63vBYFHn=JsPJab3-yRivSwwV6cuDczsvy@mail.gmail.com> <4CF7D944.8020704@gmail.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-To: Dean <seattleplus@gmail.com>
+From: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: [PATCH] (updated) Fix nfs_compat_user_ino64 so it doesn't cause
+	problems if bit 31 or 63 are set in filei
+Date: Thu, 02 Dec 2010 09:58:43 -0800
+Message-ID: <1291312723.5075.25.camel@KPMH461.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain
+Cc: ffilz@us.ibm.com
+To: NFS List <linux-nfs@vger.kernel.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3124 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752999Ab0LBRid convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Dec 2010 12:38:33 -0500
-In-Reply-To: <4CF7D944.8020704@gmail.com>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:40944 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757879Ab0LBR6u (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Dec 2010 12:58:50 -0500
+Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
+	by e34.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id oB2HmR29013170
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Dec 2010 10:48:27 -0700
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oB2HwlC8106634
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Dec 2010 10:58:47 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oB2HwkT6001717
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Dec 2010 10:58:47 -0700
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Well, at least it's good timing - with Bruce and Benny not being able to make the call anyway. Talk with you next week
+The problem was use of an int32, which when converted to a uint64
+is sign extended resulting in a fileid that doesn't fit in 32 bits
+even though the intent of the function is to fit the fileid into
+32 bits.
 
--->Andy
+Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+---
+ fs/nfs/inode.c |    6 +++++-
+ 1 files changed, 5 insertions(+), 1 deletions(-)
 
-On Dec 2, 2010, at 12:37 PM, Dean wrote:
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 314f571..7fe18a0 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -89,7 +89,11 @@ int nfs_wait_bit_killable(void *word)
+  */
+ u64 nfs_compat_user_ino64(u64 fileid)
+ {
+-	int ino;
++#ifdef CONIFG_COMPAT
++	compat_ulong_t ino;
++#else	
++	unsigned long ino;
++#endif
+ 
+ 	if (enable_ino64)
+ 		return fileid;
+-- 
+1.5.5.6
 
-> Yes, I think we are going to have to cancel this week's meeting.  I'm getting conf call errors as well and Marc is on vacation (he would have the new #s).  I think IBM changed their confcall provider last week while we were all on vacation...
-> 
-> I don't want to broadcast any new # to the list, so let's fix this over the coming week and have a call then.
-> 
-> Sorry about this,
-> Dean
-> 
-> 
-> On 12/2/10 9:33 AM, Fred Isaman wrote:
->> I'm getting "that passcode is incorrect" when I try to call in.
->> 
->> Fred
->> 
->> 
->> On Tue, Nov 30, 2010 at 1:35 PM, Dean<seattleplus@gmail.com>  wrote:
->>> Meeting on Thursday 12/2/10 at 9:30 AM PDT (12:30 PM EST)
->>> 
->>> Dean
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 
