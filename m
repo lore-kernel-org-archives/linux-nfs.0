@@ -1,86 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:29169 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756243Ab0LPRhH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 12:37:07 -0500
-Message-ID: <4D0A4E40.2070405@panasas.com>
-Date: Thu, 16 Dec 2010 19:37:04 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/9] Revert "pnfs-submit: wave2: remove forgotten layoutreturn
- struct definitions"
-References: <4D0908F9.4060208@panasas.com> <1292437854-21651-1-git-send-email-bhalevy@panasas.com> <1292437973.3068.15.camel@heimdal.trondhjem.org> <4D090E18.4060205@panasas.com> <1292441468.3068.53.camel@heimdal.trondhjem.org> <1292444651.3068.67.camel@heimdal.trondhjem.org> <4D09BF3F.3070209@panasas.com> <AANLkTikWLE8Z665yf7B4ERXtHKY8y0pRbbCH7Z-QqLwo@mail.gmail.com>
-In-Reply-To: <AANLkTikWLE8Z665yf7B4ERXtHKY8y0pRbbCH7Z-QqLwo@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from e38.co.us.ibm.com ([32.97.110.159]:36974 "EHLO
+	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753195Ab0LBBDP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 20:03:15 -0500
+Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
+	by e38.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id oB21sl3q016981
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 18:54:47 -0700
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oB213Bkx073578
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 18:03:11 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oB2139kY017781
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 18:03:10 -0700
+Subject: [PATCH] NFS client has troubles with fileid with bit 31 (or bit
+	63) set
+From: Frank Filz <ffilzlnx@us.ibm.com>
+To: NFS List <linux-nfs@vger.kernel.org>
+Cc: ffilz@us.ibm.com
+Content-Type: text/plain
+Date: Wed, 01 Dec 2010 17:03:06 -0800
+Message-Id: <1291251786.5075.6.camel@KPMH461.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-12-16 19:21, Peng Tao wrote:
-> Hi, Benny,
-> 
-> On Thu, Dec 16, 2010 at 3:26 PM, Benny Halevy <bhalevy@panasas.com> wrote:
->> On 2010-12-15 22:24, Trond Myklebust wrote:
->>> On Wed, 2010-12-15 at 14:31 -0500, Trond Myklebust wrote:
->>>> On Wed, 2010-12-15 at 20:51 +0200, Benny Halevy wrote:
->>>
->>>>> Eventually, when CB_LAYOUTRECALL is clear to go sending the LAYOUTRETURN
->>>>> or replying with CB_NOMATCHING_LAYOUT (assuming no I/O error to report
->>>>> for pnfs-obj) should be equivalent [note: need errata to clarify the
->>>>> resulting stateid after NOMATCHING_LAYOUT].
->>>>> Is this the serialization "crap" you're talking about?
->>>>> What makes checking the conditions for returning NFS4ERR_DELAY to
->>>>> CB_LAYOUTRECALL so different from implementing a barrier and doing the
->>>>> returns asynchronously with the CB_LAYOUTRECALL?
->>>>
->>>> "CB_LAYOUTRECALL request processing MUST be processed in "seqid" order
->>>> at all times." (section 12.5.3).
->>>>
->>>> In other words, you cannot just 'do the returns asynchronously': the
->>>> CB_LAYOUTRECALL requests are required by the protocol to be processed in
->>>> order, which means that you must serialise those LAYOUTRETURN calls to
->>>> ensure that they all happen in the order the wretched server expects.
->>>
->>> BTW: one consequence of the way the protocol was written is that you
->>> can't just throw out a LAYOUTRETURN for the entire file if the server
->>> just recalls a segment. Instead, you have to first return the segment,
->>> then send the LAYOUTRETURN for the entire file.
->>>
->>
->> It is true that the protocol requires the return of the exact recalled range
->> but why can't the client do return the whole file before returning the recalled
->> range?
-> Just for clarification, do you mean that after client returns more
-> than server recalls, clients still has to do an echoing LAYOUTRETURN?
-> It is barely overhead...
-> Why would server require some behavior like that?
-> 
 
-The reason for that in the protocol was to provide a simple way to
-complete a CB_LAYOUTRECALL "meta operation" when the client returns
-the layout in smaller ranges than recalled. We overlooked this case
-of the client returning a range containing the returned range.
-which is easier to deal with, with further stateid related functionality
-we introduced after specifying how layout recall initially worked...
 
-Benny
 
->>
->>> That part of the protocol is just one insane idea after another...
->>>
->>
->> This was done to ensure that the server and client are in-sync after a
->> CB_LAYOUTRECALL.  I agree that returning the whole layout thus resetting
->> the layout state achieves the same goal and we should consider allowing it
->> in the next version.
->>
->> Benny
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> 
-> 
-> 
+I discovered this problem by accident while doing some testing of the
+Ganesha user space server. It was producing garbage fileids that
+happened to have bit 31 set (0x80000000).
+
+The telldir special test from cthon04 would fail. Investigating, I found
+that it appeared that the getdents() was returning EOVERFLOW. It wasn't
+too hard to track that down to the following code:
+
+static int fillonedir(void * __buf, const char * name, int namlen, loff_t offset,
+                      u64 ino, unsigned int d_type)
+{
+        struct readdir_callback * buf = (struct readdir_callback *) __buf;
+        struct old_linux_dirent __user * dirent;
+        unsigned long d_ino;
+
+        if (buf->result)
+                return -EINVAL;
+        d_ino = ino;
+        if (sizeof(d_ino) < sizeof(ino) && d_ino != ino)
+                return -EOVERFLOW;
+
+It took adding some debug code to track the problem down to this
+function:
+
+u64 nfs_compat_user_ino64(u64 fileid)
+{
+        int ino;
+
+        if (enable_ino64)
+                return fileid;
+        ino = fileid;
+        if (sizeof(ino) < sizeof(fileid))
+                ino ^= fileid >> (sizeof(fileid)-sizeof(ino)) * 8;
+        return ino;
+}
+
+In trying to reduce a 64 bit fileid to 32 bits, it produces a SIGNED 32
+bit int! When this is passed to fillonedir as a uint64, a negative
+number is sign extended. bit 31 of ino will be set if bit 31 OR bit 63
+(but not both) is set in the fileid.
+
+Turns out the fix is simple! Change ino to an unsigned int.
+
+In order to test my fix in an orderly fashion, I used a simple process
+to modify the fileids produced by the kernel server:
+
+u64 warp_fileid(u64 fileid)
+{
+        return (fileid & 0xffffffff7fffffefLL) | ((fileid & 0x10LL) << 27) | ((fileid &0x80000000LL) >> 27);
+}
+
+This means that every 16 inode numbers, bit 31 will be flipped,
+producing plenty of problem fileids. The telldir test case fails with
+this hacked kernel server.
+
+Of course if anyone has a real file system with > 2G inodes, they could
+see the problem for real, but I don't have a big enough file system...
+
+
+
+
+
+Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+---
+diff -X ignore.patcher -ruNp linux-2.6.18-194.el5/fs/nfs/inode.c linux-2.6.18-194.ff/fs/nfs/inode.c
+--- linux-2.6.18-194.el5/fs/nfs/inode.c	2010-12-01 15:52:11.000000000 -0800
++++ linux-2.6.18-194.ff/fs/nfs/inode.c	2010-12-01 16:53:28.000000000 -0800
+@@ -71,7 +71,7 @@ static kmem_cache_t * nfs_inode_cachep;
+  */
+ u64 nfs_compat_user_ino64(u64 fileid)
+ {
+-	int ino;
++	unsigned int ino;
+ 
+ 	if (enable_ino64)
+ 		return fileid;
+
+
