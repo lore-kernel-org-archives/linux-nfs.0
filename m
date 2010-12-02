@@ -1,54 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.uio.no ([129.240.10.57]:37078 "EHLO mail-out1.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:28482 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755569Ab0LHTDk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Dec 2010 14:03:40 -0500
-Subject: Re: [Bug 24302] Kernel crashes when repeatedly trying to mount nfs
- share that is failing
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: bugzilla-daemon@bugzilla.kernel.org
-Cc: "Mr. Charles Edward Lever" <Chuck.Lever@oracle.com>,
+	id S1756836Ab0LBDIO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Dec 2010 22:08:14 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+        Nick Bowler <nbowler@elliptictech.com>
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
         linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-        stefan.bader@canonical.com
-In-Reply-To: <201012081830.oB8IUZ4t027387@demeter2.kernel.org>
-References: <bug-24302-104@https.bugzilla.kernel.org/>
-	 <201012081830.oB8IUZ4t027387@demeter2.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 08 Dec 2010 14:03:30 -0500
-Message-ID: <1291835010.3067.4.camel@heimdal.trondhjem.org>
+        Hugh Dickins <hughd@google.com>, Nick Piggin <npiggin@kernel.dk>,
+        Rik van Riel <riel@redhat.com>, Christoph Hellwig <hch@lst.de>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Subject: [PATCH v3 1/3] NFS: Ensure we use the correct cookie in nfs_readdir_xdr_filler
+Date: Wed,  1 Dec 2010 22:08:03 -0500
+Message-Id: <1291259285-26803-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1291259285-26803-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291259285-26803-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <AANLkTinpvMJsC2XMUyDTaAdozFBLkcdde5_V57Jx-Z4w@mail.gmail.com>
+References: <AANLkTinpvMJsC2XMUyDTaAdozFBLkcdde5_V57Jx-Z4w@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2010-12-08 at 18:30 +0000, bugzilla-daemon@bugzilla.kernel.org
-wrote:
-> https://bugzilla.kernel.org/show_bug.cgi?id=24302
-> 
-> 
-> Andrew Morton <akpm@linux-foundation.org> changed:
-> 
->            What    |Removed                     |Added
-> ----------------------------------------------------------------------------
->           Component|Other                       |NFS
->          AssignedTo|fs_other@kernel-bugs.osdl.o |trond.myklebust@fys.uio.no
->                    |rg                          |
-> 
-> 
-> 
-> 
-> --- Comment #8 from Andrew Morton <akpm@linux-foundation.org>  2010-12-08 18:30:32 ---
-> OK, I reassigned it to NFS.  If that was wrong then at least the NFS guys
-> should be able to help point things in the right direction.
+We need to use the cookie from the previous array entry, not the
+actual cookie that we are searching for (except for the case of
+uncached_readdir).
 
-<Switching to email interface. Please do not edit the bugzilla entry
-directly, since that will lose the above Cc information>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c |   10 ++++++++--
+ 1 files changed, 8 insertions(+), 2 deletions(-)
 
-
-Chuck,
-
-Stefan appears to be hitting a panic in the nfs_umount() call from
-nfs_walk_authlist(). Can you take a look, please?
-
-Cheers
-  Trond
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index f0a384e..e03537f 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -178,6 +178,7 @@ typedef struct {
+ 	struct page	*page;
+ 	unsigned long	page_index;
+ 	u64		*dir_cookie;
++	u64		last_cookie;
+ 	loff_t		current_index;
+ 	decode_dirent_t	decode;
+ 
+@@ -344,6 +345,8 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
+ 	else
+ 		status = nfs_readdir_search_for_cookie(array, desc);
+ 
++	if (status == -EAGAIN)
++		desc->last_cookie = array->last_cookie;
+ 	nfs_readdir_release_array(desc->page);
+ out:
+ 	return status;
+@@ -563,7 +566,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	unsigned int array_size = ARRAY_SIZE(pages);
+ 
+ 	entry.prev_cookie = 0;
+-	entry.cookie = *desc->dir_cookie;
++	entry.cookie = desc->last_cookie;
+ 	entry.eof = 0;
+ 	entry.fh = nfs_alloc_fhandle();
+ 	entry.fattr = nfs_alloc_fattr();
+@@ -672,8 +675,10 @@ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
+ {
+ 	int res;
+ 
+-	if (desc->page_index == 0)
++	if (desc->page_index == 0) {
+ 		desc->current_index = 0;
++		desc->last_cookie = 0;
++	}
+ 	while (1) {
+ 		res = find_cache_page(desc);
+ 		if (res != -EAGAIN)
+@@ -764,6 +769,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
+ 	}
+ 
+ 	desc->page_index = 0;
++	desc->last_cookie = *desc->dir_cookie;
+ 	desc->page = page;
+ 
+ 	status = nfs_readdir_xdr_to_array(desc, page, inode);
+-- 
+1.7.3.2
 
