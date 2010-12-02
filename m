@@ -1,66 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:47993 "EHLO magus.merit.edu"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:36090 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752938Ab0LBQKo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Dec 2010 11:10:44 -0500
-Date: Thu, 2 Dec 2010 11:10:42 -0500
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: Re: [PATCH 4/5] various minor cleanups
-Message-ID: <20101202161042.GA15055@merit.edu>
-References: <cover.1291142529.git.rees@umich.edu>
- <55dae19c431eeee6d4fabf18550fdf976646a9a5.1291142529.git.rees@umich.edu>
- <4CF7A64D.8040802@panasas.com>
- <4CF7A8F9.8010902@panasas.com>
- <20101202144126.GA14604@merit.edu>
- <4CF7B086.6000403@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CF7B086.6000403@panasas.com>
+	id S1755378Ab0LBS1M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Dec 2010 13:27:12 -0500
+Received: from d01dlp01.pok.ibm.com (d01dlp01.pok.ibm.com [9.56.224.56])
+	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id oB2IA4oW014111
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Dec 2010 13:10:10 -0500
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 87EE772AD67
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Dec 2010 12:44:55 -0500 (EST)
+Received: from d03av05.boulder.ibm.com (d03av05.boulder.ibm.com [9.17.195.85])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oB2Hit3Q097892
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Dec 2010 12:44:55 -0500
+Received: from d03av05.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oB2His6j014394
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Dec 2010 10:44:54 -0700
+Subject: Re: [PATCH] NFS client has troubles with fileid with bit 31 (or
+	bit 63) set
+From: Frank Filz <ffilzlnx@us.ibm.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: ffilz@us.ibm.com, NFS List <linux-nfs@vger.kernel.org>
+In-Reply-To: <1291259596.6609.109.camel@heimdal.trondhjem.org>
+References: <1291251786.5075.6.camel@KPMH461.ibm.com>
+	 <1291253786.6609.90.camel@heimdal.trondhjem.org>
+	 <1291258912.5075.10.camel@KPMH461.ibm.com>
+	 <1291259596.6609.109.camel@heimdal.trondhjem.org>
+Content-Type: text/plain
+Date: Thu, 02 Dec 2010 09:44:50 -0800
+Message-Id: <1291311890.5075.23.camel@KPMH461.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Benny Halevy wrote:
 
-  Why can't it always dump the signature in hex, even if it happens to be ASCII?
+On Wed, 2010-12-01 at 22:13 -0500, Trond Myklebust wrote:
+> I'm suggesting it should rather match the compat_ulong_t, since that is
+> what 64-bit kernels will need to deal with if running a 32-bit
+> userspace. For 64-bit kernels that have no 32-bit userspace emulation
+> layer, why would we care about returning a truncated 32-bit fileid?
+> 
+> Conversely, if running a 32-bit kernel, then 'unsigned long' will
+> directly match the types used by fs/readdir.c:filldir()
 
-I need it in ascii because that's how all my other tools print it out.  When
-I mis-place a disk, I start by looking at it on the server:
+Ah, got it now... Sorry for denseness...
 
-[nasadmin@emc-0 ~]$ nas_disk -l
-id   inuse  sizeMB    storageID-devID   type  name          servers
-1     y      11263  APM00064403224-0000 CLSTD root_disk     1,2
-2     y      11263  APM00064403224-0001 CLSTD root_ldisk    1,2
-3     y       2047  APM00064403224-0002 CLSTD d3            1,2
-4     y       2047  APM00064403224-0003 CLSTD d4            1,2
-5     y       2047  APM00064403224-0004 CLSTD d5            1,2
-6     y      32767  APM00064403224-0005 CLSTD d6            1,2
-7     n     451387  APM00064403224-0010 CLSTD d7            1,2
-8     y     451387  APM00064403224-0011 CLSTD d8            1,2
+Hmm, what would be ideal is for nfs_compat_user_ino64() to know if it's
+value will be passed to compat_filldir or filldir. If we use
+compat_ulong_t when CONFIG_COMPAT is defined, and enable_ino64 = 0, it
+will always reduce the fileid to 32 bits, even if being passed to
+filldir on a 64 bit machine which is prepared to take a 64 bit fileid.
+On the other hand, if enable_ino64 = 1, then fileids >= 2^32 will cause
+an error if a 32 bit user space application is being invoked.
 
-Then on the client:
+With enable_ino64 = 1 on a machine otherwise enabled for 64 bit inode
+numbers, it will definitely work like any local file system with 64 bit
+inode numebers.
 
-pdsi7# mpfsinq
-Celerra signature        vendor   product_id        device serial number or pathinfo
-APM000644032240000-0008  DGC      RAID 5            60:06:01:60:80:40:1a:00:be:91:96:89:d5:26:dd:11
-   path = /dev/sdh               Active  SP-b0  /dev/sg7              
-   path = /dev/sdg               Passive SP-a0  /dev/sg6              
-APM000644032240000-0007  DGC      RAID 5            60:06:01:60:55:d1:19:00:1e:12:0e:87:d5:26:dd:11
-   path = /dev/sde               Active  SP-a0  /dev/sg4              
-   path = /dev/sdf               Passive SP-b0  /dev/sg5              
+With enable_ino64 = 0, it will always force fileid into 32 bits if there
+is any 32 bit user space, which I suppose is good behavior.
 
-And finally in the blkmapd log:
+I will submit a revised patch.
 
-blkmapd: process_deviceinfo: 28 vols
-blkmapd: decode_blk_volume: bv_type 0
-blkmapd: decode_blk_signature: si_comps[0]: bs_length 4, bs_string 0x7
-blkmapd: decode_blk_signature: si_comps[1]: bs_length 32, bs_string APM000644032240000
-blkmapd: read_cmp_blk_sig: /dev/sde sig 0x7 at 473313851392
-blkmapd: read_cmp_blk_sig: /dev/sde sig APM000644032240000 at 473313851492
-blkmapd: decode_blk_volume: bv_type 1
-blkmapd: decode_blk_volume: bv_type 0
-blkmapd: decode_blk_signature: si_comps[0]: bs_length 4, bs_string 0x8
-blkmapd: decode_blk_signature: si_comps[1]: bs_length 32, bs_string APM000644032240000
-blkmapd: read_cmp_blk_sig: /dev/sdh sig 0x8 at 473313851392
-blkmapd: read_cmp_blk_sig: /dev/sdh sig APM000644032240000 at 473313851492
+Thanks
+
+Frank
+
