@@ -1,45 +1,33 @@
 From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 2/5] Remove blkmapd config file, which is no longer used.
-Date: Thu, 02 Dec 2010 16:06:07 +0200
-Message-ID: <4CF7A7CF.2020203@panasas.com>
-References: <cover.1291142529.git.rees@umich.edu> <309616ffb6726328d0057891b606a3bc1c909f6c.1291142529.git.rees@umich.edu>
+Subject: Re: Linux pNFS status meeting 12/2/10
+Date: Thu, 02 Dec 2010 18:50:08 +0200
+Message-ID: <4CF7CE40.6060502@panasas.com>
+References: <OF43A16D28.D03BB9EB-ON882577DF.0005D227-882577DF.00068DAB@us.ibm.com> <AANLkTimGnJwv3i-396FR4upvw_QBsroheYSUY2DWywMp@mail.gmail.com> <4CF543EA.7070107@gmail.com> <20101130185628.GC29091@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-To: Jim Rees <rees@umich.edu>
+Cc: Dean <seattleplus@gmail.com>, linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:34468 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:41624 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757620Ab0LBOGJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Dec 2010 09:06:09 -0500
-In-Reply-To: <309616ffb6726328d0057891b606a3bc1c909f6c.1291142529.git.rees@umich.edu>
+	with ESMTP id S1752816Ab0LBQuP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Dec 2010 11:50:15 -0500
+In-Reply-To: <20101130185628.GC29091@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Merged in pnfs-nfs-utils-1-2-4-rc3, thanks!
+Sorry, there's a medical emergency I need to attend to right away
+so I need to skip the call today.
 
 Benny
 
-On 2010-11-30 21:13, Jim Rees wrote:
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> ---
->  utils/blkmapd/etc/blkmapd.conf |   10 ----------
->  1 files changed, 0 insertions(+), 10 deletions(-)
->  delete mode 100644 utils/blkmapd/etc/blkmapd.conf
+On 2010-11-30 20:56, J. Bruce Fields wrote:
+> On Tue, Nov 30, 2010 at 10:35:22AM -0800, Dean wrote:
+>> Meeting on Thursday 12/2/10 at 9:30 AM PDT (12:30 PM EST)
 > 
-> diff --git a/utils/blkmapd/etc/blkmapd.conf b/utils/blkmapd/etc/blkmapd.conf
-> deleted file mode 100644
-> index da70d94..0000000
-> --- a/utils/blkmapd/etc/blkmapd.conf
-> +++ /dev/null
-> @@ -1,10 +0,0 @@
-> -# This is an example config file
-> -
-> -# Look at all /dev/sd* devices
-> -# /dev/sd or /dev/sd*
-> -/dev/sd*
-> -
-> -# Look at all /dev/mapper/* devices
-> -# /dev/mapper/* or
-> -# /dev/mapper/
-> -/dev/mapper/*
+> I have a conflict this week (Doctor's appointment), so probably won't
+> make it.--b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
