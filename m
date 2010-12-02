@@ -1,82 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42494 "EHLO mx2.netapp.com"
+Received: from magus.merit.edu ([198.108.1.13]:45370 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755428Ab0LQSUK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Dec 2010 13:20:10 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V4 3/9] NFS do not clear minor version at nfs_client free
-Date: Fri, 17 Dec 2010 13:20:04 -0500
-Message-Id: <1292610010-19084-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1292610010-19084-3-git-send-email-andros@netapp.com>
-References: <1292610010-19084-1-git-send-email-andros@netapp.com>
- <1292610010-19084-2-git-send-email-andros@netapp.com>
- <1292610010-19084-3-git-send-email-andros@netapp.com>
+	id S1757711Ab0LBQYu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Dec 2010 11:24:50 -0500
+Date: Thu, 2 Dec 2010 11:24:48 -0500
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH] SQUASHME: blkmapd: fix pretty_sig short sig endianess
+ agnosticity
+Message-ID: <20101202162448.GB15055@merit.edu>
+References: <4CF7A64D.8040802@panasas.com>
+ <1291300542-14378-1-git-send-email-bhalevy@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1291300542-14378-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Benny Halevy wrote:
 
-Resetting the client minor version operations causes nfs4_destroy_callback
-to fail to shutdown the NFSv4.1 callback service.
+  Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+  ---
+  
+  How about this?
+  
+  Benny
+  
+   utils/blkmapd/device-process.c |   14 ++++++++++----
+   1 files changed, 10 insertions(+), 4 deletions(-)
+  
+  diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
+  index 0c5060b..0584bf9 100644
+  --- a/utils/blkmapd/device-process.c
+  +++ b/utils/blkmapd/device-process.c
+  @@ -52,11 +52,17 @@
+   static char *pretty_sig(char *sig, uint32_t siglen)
+   {
+   	static char rs[100];
+  -	unsigned long i = 0;
+  +	uint64_t sigval;
+   
+  -	if (siglen <= sizeof i) {
+  -		memcpy(&i, sig, siglen);
+  -		sprintf(rs, "0x%0lx", i);
+  +	if (siglen <= sizeof(sigval)) {
+  +		int i;
+  +
+  +		sigval = 0;
+  +		for (i = 0; i < siglen; i++) {
+  +			sigval <<= 8;
+  +			sigval += ((unsigned char *)sig)[i];
+  +		}
+  +		sprintf(rs, "0x%0llx", sigval);
+   	} else {
+   		if (siglen > sizeof rs - 1)
+   			siglen = sizeof rs - 1;
 
-There is no reason to reset the client minorversion operations when the
-nfs_client struct is being freed.
-
-Remove the minorverion reset and rename the function.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/client.c |   22 +++++++++-------------
- 1 files changed, 9 insertions(+), 13 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 0870d0d..855add6 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -170,21 +170,17 @@ error_0:
- }
- 
- #ifdef CONFIG_NFS_V4
--/*
-- * Clears/puts all minor version specific parts from an nfs_client struct
-- * reverting it to minorversion 0.
-- */
--static void nfs4_clear_client_minor_version(struct nfs_client *clp)
--{
- #ifdef CONFIG_NFS_V4_1
--	if (nfs4_has_session(clp)) {
-+static void nfs4_shutdown_session(struct nfs_client *clp)
-+{
-+	if (nfs4_has_session(clp))
- 		nfs4_destroy_session(clp->cl_session);
--		clp->cl_session = NULL;
--	}
--
--	clp->cl_mvops = nfs_v4_minor_ops[0];
--#endif /* CONFIG_NFS_V4_1 */
- }
-+#else /* CONFIG_NFS_V4_1 */
-+static void nfs4_shutdown_session(struct nfs_client *clp)
-+{
-+}
-+#endif /* CONFIG_NFS_V4_1 */
- 
- /*
-  * Destroy the NFS4 callback service
-@@ -199,7 +195,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
- {
- 	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
- 		nfs4_kill_renewd(clp);
--	nfs4_clear_client_minor_version(clp);
-+	nfs4_shutdown_session(clp);
- 	nfs4_destroy_callback(clp);
- 	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
- 		nfs_idmap_delete(clp);
--- 
-1.6.6
-
+I would prefer to print it as little-endian, since that's how it's supplied
+by the EMC server.
