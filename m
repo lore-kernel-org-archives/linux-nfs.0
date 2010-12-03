@@ -1,21 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17919 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:12779 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758216Ab0LTWKg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Dec 2010 17:10:36 -0500
+	id S1753083Ab0LCQdi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Dec 2010 11:33:38 -0500
 From: andros@netapp.com
 To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V5 05/11] NFS do not clear minor version at nfs_client free
-Date: Mon, 20 Dec 2010 16:04:42 -0500
-Message-Id: <1292879088-7821-6-git-send-email-andros@netapp.com>
-In-Reply-To: <1292879088-7821-5-git-send-email-andros@netapp.com>
-References: <1292879088-7821-1-git-send-email-andros@netapp.com>
- <1292879088-7821-2-git-send-email-andros@netapp.com>
- <1292879088-7821-3-git-send-email-andros@netapp.com>
- <1292879088-7821-4-git-send-email-andros@netapp.com>
- <1292879088-7821-5-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] NFS fix the setting of exchange id flag
+Date: Fri,  3 Dec 2010 11:34:00 -0500
+Message-Id: <1291394040-2993-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
@@ -23,62 +16,70 @@ MIME-Version: 1.0
 
 From: Andy Adamson <andros@netapp.com>
 
-Resetting the client minor version operations causes nfs4_destroy_callback
-to fail to shutdown the NFSv4.1 callback service.
-
-There is no reason to reset the client minorversion operations when the
-nfs_client struct is being freed.
-
-Remove the minorverion reset and rename the function.
+Indicate support for referrals. Do not set any PNFS roles. Check the flags
+returned by the server for validity. Do not use exchange flags from an old
+client ID instance when recovering a client ID.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/client.c |   22 +++++++++-------------
- 1 files changed, 9 insertions(+), 13 deletions(-)
+ fs/nfs/nfs4proc.c |   23 +++++++++++++++++++----
+ 1 files changed, 19 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 0870d0d..855add6 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -170,21 +170,17 @@ error_0:
- }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index c244000..e77a2b9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4494,6 +4494,23 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
  
- #ifdef CONFIG_NFS_V4
--/*
-- * Clears/puts all minor version specific parts from an nfs_client struct
-- * reverting it to minorversion 0.
-- */
--static void nfs4_clear_client_minor_version(struct nfs_client *clp)
--{
  #ifdef CONFIG_NFS_V4_1
--	if (nfs4_has_session(clp)) {
-+static void nfs4_shutdown_session(struct nfs_client *clp)
-+{
-+	if (nfs4_has_session(clp))
- 		nfs4_destroy_session(clp->cl_session);
--		clp->cl_session = NULL;
--	}
--
--	clp->cl_mvops = nfs_v4_minor_ops[0];
--#endif /* CONFIG_NFS_V4_1 */
- }
-+#else /* CONFIG_NFS_V4_1 */
-+static void nfs4_shutdown_session(struct nfs_client *clp)
-+{
-+}
-+#endif /* CONFIG_NFS_V4_1 */
- 
  /*
-  * Destroy the NFS4 callback service
-@@ -199,7 +195,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
- {
- 	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
- 		nfs4_kill_renewd(clp);
--	nfs4_clear_client_minor_version(clp);
-+	nfs4_shutdown_session(clp);
- 	nfs4_destroy_callback(clp);
- 	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
- 		nfs_idmap_delete(clp);
++ * Check the exchange flags returned by the server for invalid flags, having
++ * both PNFS and NON_PNFS flags set, and not having one of NON_PNFS, PNFS, or
++ * DS flags set.
++ */
++static int nfs4_check_cl_exchange_flags(u32 flags)
++{
++	if (flags & ~EXCHGID4_FLAG_MASK_R ||
++	    (flags & EXCHGID4_FLAG_USE_PNFS_MDS &&
++	     flags & EXCHGID4_FLAG_USE_NON_PNFS) ||
++	    (!(flags & (EXCHGID4_FLAG_USE_PNFS_MDS |
++			EXCHGID4_FLAG_USE_NON_PNFS |
++			EXCHGID4_FLAG_USE_PNFS_DS))))
++		return NFS4ERR_INVAL;
++	return NFS_OK;
++}
++
++/*
+  * nfs4_proc_exchange_id()
+  *
+  * Since the clientid has expired, all compounds using sessions
+@@ -4506,7 +4523,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	nfs4_verifier verifier;
+ 	struct nfs41_exchange_id_args args = {
+ 		.client = clp,
+-		.flags = clp->cl_exchange_flags,
++		.flags = EXCHGID4_FLAG_SUPP_MOVED_REFER,
+ 	};
+ 	struct nfs41_exchange_id_res res = {
+ 		.client = clp,
+@@ -4523,9 +4540,6 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	dprintk("--> %s\n", __func__);
+ 	BUG_ON(clp == NULL);
+ 
+-	/* Remove server-only flags */
+-	args.flags &= ~EXCHGID4_FLAG_CONFIRMED_R;
+-
+ 	p = (u32 *)verifier.data;
+ 	*p++ = htonl((u32)clp->cl_boot_time.tv_sec);
+ 	*p = htonl((u32)clp->cl_boot_time.tv_nsec);
+@@ -4551,6 +4565,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 			break;
+ 	}
+ 
++	status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
+ 	dprintk("<-- %s status= %d\n", __func__, status);
+ 	return status;
+ }
 -- 
 1.6.6
 
