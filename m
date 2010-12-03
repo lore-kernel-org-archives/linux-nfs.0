@@ -1,133 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44751 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752908Ab0LQTd0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Dec 2010 14:33:26 -0500
-Date: Fri, 17 Dec 2010 14:33:24 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH_V4 1/9] SUNRPC new transport for the NFSv4.1 shared
- back channel
-Message-ID: <20101217193324.GC14510@fieldses.org>
-References: <1292610010-19084-1-git-send-email-andros@netapp.com>
- <1292610010-19084-2-git-send-email-andros@netapp.com>
- <20101217184047.GD11515@fieldses.org>
- <AANLkTinb3cZjPJZsGs-eNgU-5qMtvbFZMjY_rc=rZExN@mail.gmail.com>
- <AANLkTi=yKirVoRTEsz9s=8nQHPXR0C52DQHK-nz7Q82j@mail.gmail.com>
- <20101217191037.GA14510@fieldses.org>
- <AANLkTinjxeWAqW7p=nReP7jmqfWZi7CS_p+GVdno7zmQ@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <AANLkTinjxeWAqW7p=nReP7jmqfWZi7CS_p+GVdno7zmQ@mail.gmail.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:56074 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752716Ab0LCKEG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Dec 2010 05:04:06 -0500
+Message-ID: <4CF8C19F.20905@cn.fujitsu.com>
+Date: Fri, 03 Dec 2010 18:08:31 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: NFSv3 list <linux-nfs@vger.kernel.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: kernel panic at __rpc_create_common
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Dec 17, 2010 at 02:16:35PM -0500, William A. (Andy) Adamson wrote:
-> On Fri, Dec 17, 2010 at 2:10 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Fri, Dec 17, 2010 at 01:57:50PM -0500, William A. (Andy) Adamson wrote:
-> >> On Fri, Dec 17, 2010 at 1:54 PM, William A. (Andy) Adamson
-> >> <androsadamson@gmail.com> wrote:
-> >> > On Fri, Dec 17, 2010 at 1:40 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> >> On Fri, Dec 17, 2010 at 01:20:02PM -0500, andros@netapp.com wrote:
-> >> >>> From: Andy Adamson <andros@netapp.com>
-> >> >>>
-> >> >>> Create a new transport for the shared back channel.l Move the current sock
-> >> >>> create and destroy routines into the new transport ops.
-> >> >>>
-> >> >>> Reference the back channel transport across message processing (recv/send).
-> >> >>>
-> >> >>> Signed-off-by: Andy Adamson <andros@netapp.com>
-> >> >>> ---
-> >> >>>  include/linux/sunrpc/svcsock.h |    1 +
-> >> >>>  net/sunrpc/svc.c               |   18 +++---
-> >> >>>  net/sunrpc/svcsock.c           |  122 +++++++++++++++++++++++++++++++++-------
-> >> >>>  3 files changed, 112 insertions(+), 29 deletions(-)
-> >> >>>
-> >> >>> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> >> >>> index 1b353a7..3a45a80 100644
-> >> >>> --- a/include/linux/sunrpc/svcsock.h
-> >> >>> +++ b/include/linux/sunrpc/svcsock.h
-> >> >>> @@ -45,6 +45,7 @@ int         svc_sock_names(struct svc_serv *serv, char *buf,
-> >> >>>  int          svc_addsock(struct svc_serv *serv, const int fd,
-> >> >>>                                       char *name_return, const size_t len);
-> >> >>>  void         svc_init_xprt_sock(void);
-> >> >>> +void         svc_init_bc_xprt_sock(void);
-> >> >>>  void         svc_cleanup_xprt_sock(void);
-> >> >>>  struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot);
-> >> >>>  void         svc_sock_destroy(struct svc_xprt *);
-> >> >>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> >> >>> index 6359c42..3520cb3 100644
-> >> >>> --- a/net/sunrpc/svc.c
-> >> >>> +++ b/net/sunrpc/svc.c
-> >> >>> @@ -488,10 +488,6 @@ svc_destroy(struct svc_serv *serv)
-> >> >>>       if (svc_serv_is_pooled(serv))
-> >> >>>               svc_pool_map_put();
-> >> >>>
-> >> >>> -#if defined(CONFIG_NFS_V4_1)
-> >> >>> -     svc_sock_destroy(serv->bc_xprt);
-> >> >>> -#endif /* CONFIG_NFS_V4_1 */
-> >> >>> -
-> >> >>>       svc_unregister(serv);
-> >> >>>       kfree(serv->sv_pools);
-> >> >>>       kfree(serv);
-> >> >>> @@ -1264,7 +1260,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
-> >> >>>  {
-> >> >>>       struct kvec     *argv = &rqstp->rq_arg.head[0];
-> >> >>>       struct kvec     *resv = &rqstp->rq_res.head[0];
-> >> >>> -     int             error;
-> >> >>> +     int             ret;
-> >> >>>
-> >> >>>       /* Build the svc_rqst used by the common processing routine */
-> >> >>>       rqstp->rq_xprt = serv->bc_xprt;
-> >> >>> @@ -1292,12 +1288,16 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
-> >> >>>       svc_getu32(argv);       /* XID */
-> >> >>>       svc_getnl(argv);        /* CALLDIR */
-> >> >>>
-> >> >>> -     error = svc_process_common(rqstp, argv, resv);
-> >> >>> -     if (error <= 0)
-> >> >>> -             return error;
-> >> >>> +     /* Hold a reference to the back channel socket across the call */
-> >> >>> +     svc_xprt_get(serv->bc_xprt);
-> >> >>
-> >> >> Either we already have a reference, in which case this is unnecessary,
-> >> >> or we don't, in which case this is risky.
-> >> >
-> >> > This is done so that when svc_xprt_put is called due to an svc_drop
-> >> > (svc_xprt_release, svc_xprt_put) it is not freed.  It's not risky
-> >> > because AFAICS it's the way the rpc server code is intended to work.
-> >> > Note that svc_recv calls svc_xprt_get, and svc_send calls svc_xprt_put
-> >> > for the same reason.
-> >
-> > The svc_xprt_put()'s in svc_send/svc_drop balance the get in svc_recv().
-> > They're needed because on a normal server connections can come and go
-> > (because clients come and go) during the lifetime of the server.
-> >
-> > As I understand it, the client is just creating a new server for each
-> > backchannel.  So the server will never outlive the one connection it
-> > uses.  So you don't need that stuff.  It's harmless--just leave it
-> > alone--but definitely don't try to add additional reference counting
-> > during the processing.
-> 
-> If I don't add an svc_xprt_get prior to the svc_process_call, the
-> svc_xprt_put called in the svc_drop case will free the bc_xprt, which
-> is not what I want.
+I mount NFSv4 filesystem at 2.6.32, get a kernel *panic* at __rpc_create_common.
+But, at the latest kernel, just get *OOPS* message.
 
-Looking at the code some more....  Oh, right, because the backchannel
-doesn't call svc_recv, it calls its own bc_send, which doesn't do a put.
+If someone have meet this problem??
 
-Oh, yuch, I see: svc_process_common returns "1" to mean send, "0" to
-mean drop, and leaves it up to the caller to do the put in the send
-case.  That's confusing.
+----------------------------------------------------------------
+Code: af 60 01 00 00 89 fa 89 f0 e8 64 cf 89 f0 e8 5c 7c 64 cf 31 c0 8b 5c 24 10 8b 
+74 24 14 8b 7c 24 18 8b 6c 24 1c 83 c4 20 c3 <0f> 0b eb fc 8b 46 28 c7 44 24 08 20
+de ee f0 c7 44 24 04 56 ea 
+EIP:[<f0ee92ea>] __rpc_create_common+0x8a/0xc0 [sunrpc] SS:ESP 0068:eccb5d28
+---[ end trace 8f5606cd08928ed2]---
+Kernel panic - not syncing: Fatal exception
+Pid:7131, comm: mount.nfs4 Tainted: G     D   -------------------2.6.32-71.el6.i686 #1
+Call Trace:
+ [<c080ad18>] ? panic+0x42/0xed
+ [<c080e42c>] ? oops_end+0xbc/0xd0
+ [<c040b090>] ? do_invalid_op+0x0/0x90
+ [<c040b10f>] ? do_invalid_op+0x7f/0x90
+ [<f0ee92ea>] ? __rpc_create_common+0x8a/0xc0[sunrpc]
+ [<f0edc433>] ? rpc_free_task+0x33/0x70[sunrpc]
+ [<f0ed6508>] ? prc_call_sync+0x48/0x60[sunrpc]
+ [<f0ed656e>] ? rpc_ping+0x4e/0x60[sunrpc]
+ [<f0ed6eaf>] ? rpc_create+0x38f/0x4f0[sunrpc]
+ [<c080d80b>] ? error_code+0x73/0x78
+ [<f0ee92ea>] ? __rpc_create_common+0x8a/0xc0[sunrpc]
+ [<c0532bda>] ? d_lookup+0x2a/0x40
+ [<f0ee94b1>] ? rpc_mkpipe+0x111/0x1b0[sunrpc]
+ [<f10a59f4>] ? nfs_create_rpc_client+0xb4/0xf0[nfs]
+ [<f10d6c6d>] ? nfs_fscache_get_client_cookie+0x1d/0x50[nfs]
+ [<f10d3fcb>] ? nfs_idmap_new+0x7b/0x140[nfs]
+ [<c05e76aa>] ? strlcpy+0x3a/0x60
+ [<f10a60ca>] ? nfs4_set_client+0xea/0x2b0[nfs]
+ [<f10a6d0c>] ? nfs4_create_server+0xac/0x1b0[nfs]
+ [<c04f1400>] ? krealloc+0x40/0x50
+ [<f10b0e8b>] ? nfs4_remote_get_sb+0x6b/0x250[nfs]
+ [<c04f14ec>] ? kstrdup+0x3c/0x60
+ [<c0520739>] ? vfs_kern_mount+0x69/0x170
+ [<f10b1a3c>] ? nfs_do_root_mount+0x6c/0xa0[nfs]
+ [<f10b1b47>] ? nfs4_try_mount+0x37/0xa0[nfs]
+ [<f10afe6d>] ? nfs4_validate_text_mount_data+-x7d/0xf0[nfs]
+ [<f10b1c42>] ? nfs4_get_sb+0x92/0x2f0
+ [<c0520739>] ? vfs_kern_mount+0x69/0x170
+ [<c05366d2>] ? get_fs_type+0x32/0xb0
+ [<c052089f>] ? do_kern_mount+0x3f/0xe0
+ [<c053954f>] ? do_mount+0x2ef/0x740
+ [<c0537740>] ? copy_mount_options+0xb0/0x120
+ [<c0539a0e>] ? sys_mount+0x6e/0xa0
 
-Maybe it would be simpler to have the caller be made responsible for
-both cases?  So:
+-- 
+----
+thanks
+Mi Jinlong
 
-	if (svc_process_common(rqstp))
-		send it
-	else
-		drop it
 
-?
-
---b.
