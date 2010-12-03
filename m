@@ -1,61 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50984 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:32812 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751656Ab0LWXyq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 18:54:46 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 02/15] pnfs: remove unnecessary field lgp->status
-Date: Thu, 23 Dec 2010 18:54:28 -0500
-Message-Id: <1293148481-28420-3-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
-References: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
+	id S1751644Ab0LCRLm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Dec 2010 12:11:42 -0500
+Subject: [PATCH] NFS: suppressing showing of default mount port value in /proc
+	fixed
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Fri, 03 Dec 2010 20:11:45 +0300
+Message-ID: <20101203170138.22955.86546.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4proc.c       |    3 +--
- include/linux/nfs_xdr.h |    1 -
- 2 files changed, 1 insertions(+), 3 deletions(-)
+Default value for mount server port is set to NFS_UNSPEC_PORT (-1) and will not
+be changed during parsing mount options for mound data version 6. This default
+value will be showed for mountport in /proc/mounts always since current default
+check is for zero value. This small mistake leads to big problem, because
+during umount.nfs execution from old user-space utils (at least nfs-utils
+1.0.9) this value will be used as the server port to connect to. This request
+will be rejected (since port is 65535) and thus nfs mount point can't be
+unmounted.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index fcf2658..f475516 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5330,7 +5330,6 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
- 			return;
- 		}
- 	}
--	lgp->status = task->tk_status;
- 	dprintk("<-- %s\n", __func__);
- }
+Kernel version affected: 2.6.37-rc4
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+
+---
+ fs/nfs/super.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 6d6e21d..fd4cac8 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -681,7 +681,8 @@ static void nfs_show_mountd_options(struct seq_file *m, struct nfs_server *nfss,
  
-@@ -5386,7 +5385,7 @@ int nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
- 	status = nfs4_wait_for_completion_rpc_task(task);
- 	if (status != 0)
- 		goto out;
--	status = lgp->status;
-+	status = task->tk_status;
- 	if (status != 0)
- 		goto out;
- 	status = pnfs_layout_process(lgp);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index d325def..f923831 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -223,7 +223,6 @@ struct nfs4_layoutget {
- 	struct nfs4_layoutget_args args;
- 	struct nfs4_layoutget_res res;
- 	struct pnfs_layout_segment **lsegpp;
--	int status;
- };
+ 	if (nfss->mountd_version || showdefaults)
+ 		seq_printf(m, ",mountvers=%u", nfss->mountd_version);
+-	if (nfss->mountd_port || showdefaults)
++	if (nfss->mountd_port != (unsigned short)NFS_UNSPEC_PORT ||
++			showdefaults)
+ 		seq_printf(m, ",mountport=%u", nfss->mountd_port);
  
- struct nfs4_getdeviceinfo_args {
--- 
-1.7.2.1
+ 	nfs_show_mountd_netid(m, nfss, showdefaults);
 
