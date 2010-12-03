@@ -1,92 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:47469 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:19420 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755168Ab0LMV24 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Dec 2010 16:28:56 -0500
-Date: Mon, 13 Dec 2010 16:28:55 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
-Subject: nfsd bugfixes for 2.6.37
-Message-ID: <20101213212855.GA9394@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753200Ab0LCSBh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Dec 2010 13:01:37 -0500
+Message-ID: <4CF9307D.9040504@parallels.com>
+Date: Fri, 03 Dec 2010 21:01:33 +0300
+From: Kinsbursky Stanislav <skinsbursky@parallels.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFS: suppressing showing of default mount port value
+ in /proc fixed
+References: <20101203170138.22955.86546.stgit@localhost6.localdomain6> <7AF6FF7E-F57C-493B-8880-25509CC54EDE@oracle.com>
+In-Reply-To: <7AF6FF7E-F57C-493B-8880-25509CC54EDE@oracle.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Two nfsd bugfixes are available in the for-2.6.37 branch at:
+03.12.2010 20:35, Chuck Lever пишет:
+>
+> On Dec 3, 2010, at 12:11 PM, Stanislav Kinsbursky wrote:
+>
+>> Default value for mount server port is set to NFS_UNSPEC_PORT (-1) and will not
+>> be changed during parsing mount options for mound data version 6. This default
+>> value will be showed for mountport in /proc/mounts always since current default
+>> check is for zero value. This small mistake leads to big problem, because
+>> during umount.nfs execution from old user-space utils (at least nfs-utils
+>> 1.0.9) this value will be used as the server port to connect to. This request
+>> will be rejected (since port is 65535) and thus nfs mount point can't be
+>> unmounted.
+>
+> Note: this is only possible if /etc/mtab is a link to /proc/mounts.  Not all systems have this configuration.
+>
 
-  git://linux-nfs.org/~bfields/linux.git for-2.6.37
+I found it on CentOs 5.5 with RHEL6 kernel.
+Actually, the current patch has a specific flaw: if mount port is not passed by nfs utils using mount options version 6, then it will be set to 0 and showed in /proc/mounts as "mountport=0".
+Another fix solution is to call "nfs_set_port(sap, &args->nfs_server.port, 0);" when parsing mount options version 6 (like in done in default casein nfs_validate_mount_data) instead of changing 
+nfs_show_mountd_options().
 
-Huh--Neil needs to decide whether or not there's a space in his name.
 
---b.
+>>
+>> Kernel version affected: 2.6.37-rc4
+>>
+>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>
+>> ---
+>> fs/nfs/super.c |    3 ++-
+>> 1 files changed, 2 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>> index 6d6e21d..fd4cac8 100644
+>> --- a/fs/nfs/super.c
+>> +++ b/fs/nfs/super.c
+>> @@ -681,7 +681,8 @@ static void nfs_show_mountd_options(struct seq_file *m, struct nfs_server *nfss,
+>>
+>> 	if (nfss->mountd_version || showdefaults)
+>> 		seq_printf(m, ",mountvers=%u", nfss->mountd_version);
+>> -	if (nfss->mountd_port || showdefaults)
+>> +	if (nfss->mountd_port != (unsigned short)NFS_UNSPEC_PORT ||
+>> +			showdefaults)
+>> 		seq_printf(m, ",mountport=%u", nfss->mountd_port);
+>>
+>> 	nfs_show_mountd_netid(m, nfss, showdefaults);
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
-Neil Brown (1):
-      nfsd: Fix possible BUG_ON firing in set_change_info
 
-NeilBrown (1):
-      sunrpc: prevent use-after-free on clearing XPT_BUSY
-
- fs/nfsd/nfs3xdr.c     |    6 ++++--
- fs/nfsd/xdr4.h        |   21 ++++++++++-----------
- net/sunrpc/svc_xprt.c |    9 ++++++++-
- 3 files changed, 22 insertions(+), 14 deletions(-)
-
-commit c1ac3ffcd0bc7e9617f62be8c7043d53ab84deac
-Author: Neil Brown <neilb@suse.de>
-Date:   Thu Dec 2 11:14:30 2010 +1100
-
-    nfsd: Fix possible BUG_ON firing in set_change_info
-    
-    If vfs_getattr in fill_post_wcc returns an error, we don't
-    set fh_post_change.
-    For NFSv4, this can result in set_change_info triggering a BUG_ON.
-    i.e. fh_post_saved being zero isn't really a bug.
-    
-    So:
-     - instead of BUGging when fh_post_saved is zero, just clear ->atomic.
-     - if vfs_getattr fails in fill_post_wcc, take a copy of i_ctime anyway.
-       This will be used i seg_change_info, but not overly trusted.
-     - While we are there, remove the pointless 'if' statements in set_change_info.
-       There is no harm setting all the values.
-    
-    Signed-off-by: NeilBrown <neilb@suse.de>
-    Cc: stable@kernel.org
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-commit ed2849d3ecfa339435818eeff28f6c3424300cec
-Author: NeilBrown <neilb@suse.de>
-Date:   Tue Nov 16 16:55:19 2010 +1100
-
-    sunrpc: prevent use-after-free on clearing XPT_BUSY
-    
-    When an xprt is created, it has a refcount of 1, and XPT_BUSY is set.
-    The refcount is *not* owned by the thread that created the xprt
-    (as is clear from the fact that creators never put the reference).
-    Rather, it is owned by the absence of XPT_DEAD.  Once XPT_DEAD is set,
-    (And XPT_BUSY is clear) that initial reference is dropped and the xprt
-    can be freed.
-    
-    So when a creator clears XPT_BUSY it is dropping its only reference and
-    so must not touch the xprt again.
-    
-    However svc_recv, after calling ->xpo_accept (and so getting an XPT_BUSY
-    reference on a new xprt), calls svc_xprt_recieved.  This clears
-    XPT_BUSY and then svc_xprt_enqueue - this last without owning a reference.
-    This is dangerous and has been seen to leave svc_xprt_enqueue working
-    with an xprt containing garbage.
-    
-    So we need to hold an extra counted reference over that call to
-    svc_xprt_received.
-    
-    For safety, any time we clear XPT_BUSY and then use the xprt again, we
-    first get a reference, and the put it again afterwards.
-    
-    Note that svc_close_all does not need this extra protection as there are
-    no threads running, and the final free can only be called asynchronously
-    from such a thread.
-    
-    Signed-off-by: NeilBrown <neilb@suse.de>
-    Cc: stable@kernel.org
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+-- 
+Best regards,
+Stanislav Kinsbursky
