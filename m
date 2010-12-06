@@ -1,183 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:54751 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757664Ab0LNO4Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:56:24 -0500
-Received: by mail-iw0-f174.google.com with SMTP id 9so861488iwn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:56:23 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 12/31] NFS: Update xdr_encode_foo() functions that we're
-	keeping
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 09:56:20 -0500
-Message-ID: <20101214145620.2293.50722.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:9226 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754145Ab0LFQ7e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Dec 2010 11:59:34 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+        Nick Bowler <nbowler@elliptictech.com>
+Cc: Simon Kirby <sim@hostway.ca>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        Hugh Dickins <hughd@google.com>, Nick Piggin <npiggin@kernel.dk>,
+        Rik van Riel <riel@redhat.com>, Christoph Hellwig <hch@lst.de>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Subject: [PATCH v4 3/3] NFS: Fix a memory leak in nfs_readdir
+Date: Mon,  6 Dec 2010 11:59:08 -0500
+Message-Id: <1291654748-8921-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1291654748-8921-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291654748-8921-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1291654748-8921-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1291654748-8921-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <AANLkTi=LJaSTREikZg3M=QFkihEcQEGCJLW4wUPsDm9s@mail.gmail.com>
+References: <AANLkTi=LJaSTREikZg3M=QFkihEcQEGCJLW4wUPsDm9s@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Clean up.  Move the timestamp and the sattr encoder to match the
-placement convention of the other helpers, update their coding style,
-and refresh their documenting comments.
+We need to ensure that the entries in the nfs_cache_array get cleared
+when the page is removed from the page cache. To do so, we use the
+freepage address_space operation.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: J. Bruce Fields <bfields@redhat.com>
+Change nfs_readdir_clear_array to use kmap_atomic(), so that the
+function can be safely called from all contexts.
+
+Finally, modify the cache_page_release helper to call
+nfs_readdir_clear_array directly, when dealing with an anonymous
+page from 'uncached_readdir'.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/dir.c           |   18 +++++++++---------
+ fs/nfs/inode.c         |    1 +
+ include/linux/nfs_fs.h |    1 +
+ 3 files changed, 11 insertions(+), 9 deletions(-)
 
- fs/nfs/nfs3xdr.c |  111 +++++++++++++++++++++++++++---------------------------
- 1 files changed, 55 insertions(+), 56 deletions(-)
-
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index b0af263..119844d 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -167,14 +167,6 @@ out_overflow:
-  * Encode/decode time.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e03537f..d529e0e 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -57,7 +57,7 @@ static int nfs_rename(struct inode *, struct dentry *,
+ 		      struct inode *, struct dentry *);
+ static int nfs_fsync_dir(struct file *, int);
+ static loff_t nfs_llseek_dir(struct file *, loff_t, int);
+-static int nfs_readdir_clear_array(struct page*, gfp_t);
++static void nfs_readdir_clear_array(struct page*);
+ 
+ const struct file_operations nfs_dir_operations = {
+ 	.llseek		= nfs_llseek_dir,
+@@ -83,8 +83,8 @@ const struct inode_operations nfs_dir_inode_operations = {
+ 	.setattr	= nfs_setattr,
+ };
+ 
+-const struct address_space_operations nfs_dir_addr_space_ops = {
+-	.releasepage = nfs_readdir_clear_array,
++const struct address_space_operations nfs_dir_aops = {
++	.freepage = nfs_readdir_clear_array,
+ };
+ 
+ #ifdef CONFIG_NFS_V3
+@@ -214,17 +214,15 @@ void nfs_readdir_release_array(struct page *page)
+  * we are freeing strings created by nfs_add_to_readdir_array()
   */
- static inline __be32 *
--xdr_encode_time3(__be32 *p, const struct timespec *timep)
--{
--	*p++ = htonl(timep->tv_sec);
--	*p++ = htonl(timep->tv_nsec);
--	return p;
--}
--
--static inline __be32 *
- xdr_decode_time3(__be32 *p, struct timespec *timep)
+ static
+-int nfs_readdir_clear_array(struct page *page, gfp_t mask)
++void nfs_readdir_clear_array(struct page *page)
  {
- 	timep->tv_sec = ntohl(*p++);
-@@ -219,52 +211,6 @@ xdr_decode_fattr(__be32 *p, struct nfs_fattr *fattr)
- }
+-	struct nfs_cache_array *array = nfs_readdir_get_array(page);
++	struct nfs_cache_array *array;
+ 	int i;
  
- static inline __be32 *
--xdr_encode_sattr(__be32 *p, const struct iattr *attr)
--{
--	if (attr->ia_valid & ATTR_MODE) {
--		*p++ = xdr_one;
--		*p++ = htonl(attr->ia_mode & S_IALLUGO);
--	} else {
--		*p++ = xdr_zero;
--	}
--	if (attr->ia_valid & ATTR_UID) {
--		*p++ = xdr_one;
--		*p++ = htonl(attr->ia_uid);
--	} else {
--		*p++ = xdr_zero;
--	}
--	if (attr->ia_valid & ATTR_GID) {
--		*p++ = xdr_one;
--		*p++ = htonl(attr->ia_gid);
--	} else {
--		*p++ = xdr_zero;
--	}
--	if (attr->ia_valid & ATTR_SIZE) {
--		*p++ = xdr_one;
--		p = xdr_encode_hyper(p, (__u64) attr->ia_size);
--	} else {
--		*p++ = xdr_zero;
--	}
--	if (attr->ia_valid & ATTR_ATIME_SET) {
--		*p++ = xdr_two;
--		p = xdr_encode_time3(p, &attr->ia_atime);
--	} else if (attr->ia_valid & ATTR_ATIME) {
--		*p++ = xdr_one;
--	} else {
--		*p++ = xdr_zero;
--	}
--	if (attr->ia_valid & ATTR_MTIME_SET) {
--		*p++ = xdr_two;
--		p = xdr_encode_time3(p, &attr->ia_mtime);
--	} else if (attr->ia_valid & ATTR_MTIME) {
--		*p++ = xdr_one;
--	} else {
--		*p++ = xdr_zero;
--	}
--	return p;
--}
--
--static inline __be32 *
- xdr_decode_wcc_attr(__be32 *p, struct nfs_fattr *fattr)
- {
- 	p = xdr_decode_hyper(p, &fattr->pre_size);
-@@ -453,6 +399,21 @@ static void encode_nfs_fh3(struct xdr_stream *xdr, const struct nfs_fh *fh)
+-	if (IS_ERR(array))
+-		return PTR_ERR(array);
++	array = kmap_atomic(page, KM_USER0);
+ 	for (i = 0; i < array->size; i++)
+ 		kfree(array->array[i].string.name);
+-	nfs_readdir_release_array(page);
+-	return 0;
++	kunmap_atomic(array, KM_USER0);
  }
  
  /*
-+ * nfstime3
-+ *
-+ *	struct nfstime3 {
-+ *		uint32	seconds;
-+ *		uint32	nseconds;
-+ *	};
-+ */
-+static __be32 *xdr_encode_nfstime3(__be32 *p, const struct timespec *timep)
-+{
-+	*p++ = cpu_to_be32(timep->tv_sec);
-+	*p++ = cpu_to_be32(timep->tv_nsec);
-+	return p;
-+}
-+
-+/*
-  * sattr3
-  *
-  *	enum time_how {
-@@ -538,7 +499,45 @@ static void encode_sattr3(struct xdr_stream *xdr, const struct iattr *attr)
- 		nbytes += 8;
- 	p = xdr_reserve_space(xdr, nbytes);
- 
--	xdr_encode_sattr(p, attr);
-+	if (attr->ia_valid & ATTR_MODE) {
-+		*p++ = xdr_one;
-+		*p++ = cpu_to_be32(attr->ia_mode & S_IALLUGO);
-+	} else
-+		*p++ = xdr_zero;
-+
-+	if (attr->ia_valid & ATTR_UID) {
-+		*p++ = xdr_one;
-+		*p++ = cpu_to_be32(attr->ia_uid);
-+	} else
-+		*p++ = xdr_zero;
-+
-+	if (attr->ia_valid & ATTR_GID) {
-+		*p++ = xdr_one;
-+		*p++ = cpu_to_be32(attr->ia_gid);
-+	} else
-+		*p++ = xdr_zero;
-+
-+	if (attr->ia_valid & ATTR_SIZE) {
-+		*p++ = xdr_one;
-+		p = xdr_encode_hyper(p, (u64)attr->ia_size);
-+	} else
-+		*p++ = xdr_zero;
-+
-+	if (attr->ia_valid & ATTR_ATIME_SET) {
-+		*p++ = xdr_two;
-+		p = xdr_encode_nfstime3(p, &attr->ia_atime);
-+	} else if (attr->ia_valid & ATTR_ATIME) {
-+		*p++ = xdr_one;
-+	} else
-+		*p++ = xdr_zero;
-+
-+	if (attr->ia_valid & ATTR_MTIME_SET) {
-+		*p++ = xdr_two;
-+		xdr_encode_nfstime3(p, &attr->ia_mtime);
-+	} else if (attr->ia_valid & ATTR_MTIME) {
-+		*p = xdr_one;
-+	} else
-+		*p = xdr_zero;
+@@ -639,6 +637,8 @@ int nfs_readdir_filler(nfs_readdir_descriptor_t *desc, struct page* page)
+ static
+ void cache_page_release(nfs_readdir_descriptor_t *desc)
+ {
++	if (!desc->page->mapping)
++		nfs_readdir_clear_array(desc->page);
+ 	page_cache_release(desc->page);
+ 	desc->page = NULL;
  }
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 314f571..e67e31c 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -289,6 +289,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		} else if (S_ISDIR(inode->i_mode)) {
+ 			inode->i_op = NFS_SB(sb)->nfs_client->rpc_ops->dir_inode_ops;
+ 			inode->i_fop = &nfs_dir_operations;
++			inode->i_data.a_ops = &nfs_dir_aops;
+ 			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS))
+ 				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
+ 			/* Deal with crossing mountpoints */
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index c66fdb7..29d504d 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -401,6 +401,7 @@ extern const struct inode_operations nfs3_file_inode_operations;
+ #endif /* CONFIG_NFS_V3 */
+ extern const struct file_operations nfs_file_operations;
+ extern const struct address_space_operations nfs_file_aops;
++extern const struct address_space_operations nfs_dir_aops;
  
- /*
-@@ -605,7 +604,7 @@ static void encode_sattrguard3(struct xdr_stream *xdr,
- 	if (args->guard) {
- 		p = xdr_reserve_space(xdr, 4 + 8);
- 		*p++ = xdr_one;
--		xdr_encode_time3(p, &args->guardtime);
-+		xdr_encode_nfstime3(p, &args->guardtime);
- 	} else {
- 		p = xdr_reserve_space(xdr, 4);
- 		*p = xdr_zero;
+ static inline struct nfs_open_context *nfs_file_open_context(struct file *filp)
+ {
+-- 
+1.7.3.2
 
