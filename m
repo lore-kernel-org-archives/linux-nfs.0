@@ -1,46 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:8992 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:9226 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753039Ab0LWMry (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 07:47:54 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 00/15] pnfs wave 2 submission, try 3
-Date: Thu, 23 Dec 2010 07:47:31 -0500
-Message-Id: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
+	id S1754046Ab0LFQ7c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Dec 2010 11:59:32 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+        Nick Bowler <nbowler@elliptictech.com>
+Cc: Simon Kirby <sim@hostway.ca>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        Hugh Dickins <hughd@google.com>, Nick Piggin <npiggin@kernel.dk>,
+        Rik van Riel <riel@redhat.com>, Christoph Hellwig <hch@lst.de>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Subject: [PATCH v4 1/3] NFS: Ensure we use the correct cookie in nfs_readdir_xdr_filler
+Date: Mon,  6 Dec 2010 11:59:06 -0500
+Message-Id: <1291654748-8921-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1291654748-8921-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291654748-8921-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <AANLkTi=LJaSTREikZg3M=QFkihEcQEGCJLW4wUPsDm9s@mail.gmail.com>
+References: <AANLkTi=LJaSTREikZg3M=QFkihEcQEGCJLW4wUPsDm9s@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Version 3 of the wave 2 submission.
+We need to use the cookie from the previous array entry, not the
+actual cookie that we are searching for (except for the case of
+uncached_readdir).
 
-changes from version 2:
-- added list_del before each call to free_lseg in pnfs_free_lseg_list
-- removed some BUG_ONs
-- moved rpc_waitq from nfs_inode to nfs_server
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c |   10 ++++++++--
+ 1 files changed, 8 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index f0a384e..e03537f 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -178,6 +178,7 @@ typedef struct {
+ 	struct page	*page;
+ 	unsigned long	page_index;
+ 	u64		*dir_cookie;
++	u64		last_cookie;
+ 	loff_t		current_index;
+ 	decode_dirent_t	decode;
+ 
+@@ -344,6 +345,8 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
+ 	else
+ 		status = nfs_readdir_search_for_cookie(array, desc);
+ 
++	if (status == -EAGAIN)
++		desc->last_cookie = array->last_cookie;
+ 	nfs_readdir_release_array(desc->page);
+ out:
+ 	return status;
+@@ -563,7 +566,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	unsigned int array_size = ARRAY_SIZE(pages);
+ 
+ 	entry.prev_cookie = 0;
+-	entry.cookie = *desc->dir_cookie;
++	entry.cookie = desc->last_cookie;
+ 	entry.eof = 0;
+ 	entry.fh = nfs_alloc_fhandle();
+ 	entry.fattr = nfs_alloc_fattr();
+@@ -672,8 +675,10 @@ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
+ {
+ 	int res;
+ 
+-	if (desc->page_index == 0)
++	if (desc->page_index == 0) {
+ 		desc->current_index = 0;
++		desc->last_cookie = 0;
++	}
+ 	while (1) {
+ 		res = find_cache_page(desc);
+ 		if (res != -EAGAIN)
+@@ -764,6 +769,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
+ 	}
+ 
+ 	desc->page_index = 0;
++	desc->last_cookie = *desc->dir_cookie;
+ 	desc->page = page;
+ 
+ 	status = nfs_readdir_xdr_to_array(desc, page, inode);
+-- 
+1.7.3.2
 
-These patches implement wave 2 of the pnfs submission, which
-encompasses CB_LAYOUTRECALL and its serialization with LAYOUTGET,
-as well as the "forgetful model" in which LAYOUTRETURNs are never
-sent, but instead merely discarded by the client.
-
-Fred
-
-[PATCH 01/15] pnfs: fix incorrect comment in destroy_lseg
-[PATCH 02/15] pnfs: remove unnecessary field lgp->status
-[PATCH 03/15] pnfs: add prefix to struct pnfs_layout_segment fields
-[PATCH 04/15] pnfs: add prefix to struct pnfs_layout_hdr fields
-[PATCH 05/15] pnfs: change layout state seqlock to a spinlock
-[PATCH 06/15] pnfs: change how lsegs are removed from layout list
-[PATCH 07/15] pnfs: layoutget rpc code cleanup
-[PATCH 08/15] pnfs: serialize LAYOUTGET(openstateid)
-[PATCH 09/15] pnfs: add layout to client list before sending rpc
-[PATCH 10/15] pnfs: check that partial LAYOUTGET return is ignored
-[PATCH 11/15] pnfs: change lo refcounting to atomic_t
-[PATCH 12/15] pnfs: CB_LAYOUTRECALL xdr code
-[PATCH 13/15] pnfs: add CB_LAYOUTRECALL handling
-[PATCH 14/15] pnfs: update nfs4_callback_recallany to handle layouts
-[PATCH 15/15] pnfs: layout roc code
