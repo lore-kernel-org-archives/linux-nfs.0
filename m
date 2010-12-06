@@ -1,145 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:33516 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756206Ab0LNO4p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:56:45 -0500
-Received: by mail-iy0-f174.google.com with SMTP id 12so348407iyi.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:56:45 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 14/31] NFS: Switch in new NFSv3 decoder functions
-To: trond.myklebust@netapp.com
+Received: from mx1.redhat.com ([209.132.183.28]:58188 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754194Ab0LFT5p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Dec 2010 14:57:45 -0500
+Date: Mon, 6 Dec 2010 14:57:43 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond.Myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 09:56:42 -0500
-Message-ID: <20101214145642.2293.87330.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Subject: oops in nfs_flush_incompatible (and possible fix?)
+Message-ID: <20101206145743.4464c79d@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The naming scheme of the new decoder functions, which follows the
-NFSv4 XDR decoder functions, is slightly different than the scheme
-used for the old functions.  Rename the functions as a separate
-step to keep the patches clean.
+Hi Trond,
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: J. Bruce Fields <bfields@redhat.com>
+I've got a RH bug opened by one of our partners against the RHEL5.6
+development kernel. That kernel got a backported version of the
+lock_context patches that you merged not too long ago. I'm trying to
+get permission to add you to the BZ so you can have a look for yourself
+too.
+
+Long story short, they seem to get a reproducible oops like this when
+testing under heavy load:
+
+Unable to handle kernel NULL pointer dereference at 0000000000000020 RIP:
+[<ffffffff88856222>] :nfs:nfs_flush_incompatible+0x6d/0xd1
+PGD 7d9bc2067 PUD 7d9bbf067 PMD 0
+Oops: 0000 [1] SMP
+last sysfs file: /devices/system/cpu/cpu125/cpufreq/scaling_setspeed
+CPU 126
+Modules linked in: ipmi_devintf ipmi_si ipmi_msghandler tun nfs fscache
+nfs_acl ebtable_nat ebtables ipt_MASQUERADE iptable_nat ip_nat bridge
+autofs4 hidp rfcomm l2cap bluetooth lockd sunrpc acpi_cpufreq freq_table
+mperf ip_conntrack_netbios_ns ipt_REJECT xt_state ip_conntrack nfnetlink
+iptable_filter ip_tables ip6t_REJECT xt_tcpudp ip6table_filter ip6_tables
+x_tables be2iscsi ib_iser rdma_cm ib_cm iw_cm ib_sa ib_mad ib_core ib_addr
+iscsi_tcp bnx2i cnic ipv6 xfrm_nalgo crypto_api uio cxgb3i cxgb3 8021q
+libiscsi_tcp libiscsi2 scsi_transport_iscsi2 scsi_transport_iscsi loop
+dm_multipath scsi_dh video backlight sbs power_meter hwmon i2c_ec dell_wmi
+wmi button battery asus_acpi acpi_memhotplug ac parport_pc lp parport
+ksm(U) kvm_intel(U) kvm(U) joydev sg tpm_tis i2c_i801 tpm cdc_ether pcspkr
+i7core_edac ide_cd i2c_core edac_mc usbnet tpm_bios cdrom bnx2 dm_raid45
+dm_message dm_region_hash dm_mem_cache dm_snapshot dm_zero dm_mirror
+dm_log dm_mod ata_piix libata shpchp mptsas mptscsih mptbase
+scsi_transport_sas sd_mod scsi_mod ext3 jbd uhci_hcd ohci_hcd ehci_hcd
+Pid: 21273, comm: snake.exe Tainted: G      2.6.18-229.el5 #1
+RIP: 0010:[<ffffffff88856222>]  [<ffffffff88856222>]
+:nfs:nfs_flush_incompatible+0x6d/0xd1
+RSP: 0018:ffff810a3daddb48  EFLAGS: 00010246
+RAX: 0000000000000000 RBX: ffff8101a4c05c40 RCX: 0000000000000000
+RDX: 0000000000000000 RSI: 0000000000000001 RDI: ffff8101d27f3ac8
+RBP: 0000000000000000 R08: 0000000000000000 R09: ffff810a3daddc80
+R10: ffff8106896a7c00 R11: 0000000000000048 R12: ffff810a833ebb78
+R13: ffff811213f3f6f0 R14: ffff8110c0a1c9c0 R15: 0000000000000001
+FS:  00002b6188e086e0(0000) GS:ffff811e7f78c940(0000)
+knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 0000000000000020 CR3: 00000007d9bc7000 CR4: 00000000000026e0
+Process snake.exe (pid: 21273, threadinfo ffff810a3dadc000, task
+ffff8107d9b24100)
+Stack:  ffff810a833ebb78 000000000000007e ffff81102e769e80
+0000000000000000
+00000000000014ac ffffffff8884b101 ffff810a3daddc80 0000007e00000000
+ffff811213f3f800 ffffffff8886b8e0 000000000000007e 00000000000014ac
+Call Trace:
+[<ffffffff8884b101>] :nfs:nfs_write_begin+0x65/0xf8
+[<ffffffff8000fda3>] generic_file_buffered_write+0x14b/0x675
+[<ffffffff80062ff0>] thread_return+0x62/0xfe
+[<ffffffff800166e8>] __generic_file_aio_write_nolock+0x369/0x3b6
+[<ffffffff80063c57>] __mutex_lock_slowpath+0x68/0x9b
+[<ffffffff8002187e>] generic_file_aio_write+0x65/0xc1
+[<ffffffff8884b805>] :nfs:nfs_file_write+0xd8/0x14f
+[<ffffffff80018338>] do_sync_write+0xc7/0x104
+[<ffffffff800a2896>] autoremove_wake_function+0x0/0x2e
+[<ffffffff8005a4c5>] hrtimer_cancel+0xc/0x16
+[<ffffffff80016af0>] vfs_write+0xce/0x174
+[<ffffffff800173a8>] sys_write+0x45/0x6e
+[<ffffffff8005d28d>] tracesys+0xd5/0xe0
+
+Code: 48 8b 50 20 65 48 8b 04 25 00 00 00 00 48 3b 90 98 05 00 00
+RIP  [<ffffffff88856222>] :nfs:nfs_flush_incompatible+0x6d/0xd1
+RSP <ffff810a3daddb48>
+CR2: 0000000000000020
+<0>Kernel panic - not syncing: Fatal exception
+
+
+The problem seems to be that the req->wb_lock_context is NULL so it
+dies dereferencing that pointer in nfs_flush_incompatible. The original
+kernel they tested didn't have the check for a NULL return from
+nfs_get_lock_context. I fixed that however and they still saw the bug.
+
+At this point, I'm thinking this is a race that might be fixed by the
+following patch. These bare calls to nfs_clear_request look suspicious
+to me, given that we're not checking the refcount on the request before
+freeing fields in it. I haven't tested the patch yet, but I think it
+looks correct.
+
+Thoughts?
+
+-----------------------[snip]---------------------------
+
+nfs: remove extraneous and problematic calls to nfs_clear_request
+
+When a nfs_page is freed, nfs_free_request is called which also calls
+nfs_clear_request to clean out the lock and open contexts and free the
+pagecache page.
+
+However, a couple of places in the nfs code call nfs_clear_request
+themselves. What happens here if the refcount on the request is still high?
+We'll be releasing contexts and freeing pointers while the request is
+possibly still in use.
+
+Remove those bare calls to nfs_clear_context. That should only be done when
+the request is being freed.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
+ fs/nfs/read.c  |    1 -
+ fs/nfs/write.c |    1 -
+ 2 files changed, 0 insertions(+), 2 deletions(-)
 
- fs/nfs/nfs3xdr.c |   64 +++++++++++++++++++++++++-----------------------------
- 1 files changed, 30 insertions(+), 34 deletions(-)
-
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 0f07c6d..19c7911 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -38,14 +38,10 @@
- #define NFS3_path_sz		(1+(NFS3_MAXPATHLEN>>2))
- #define NFS3_fattr_sz		(21)
- #define NFS3_cookieverf_sz	(NFS3_COOKIEVERFSIZE>>2)
--#define NFS3_wcc_attr_sz		(6)
-+#define NFS3_wcc_attr_sz	(6)
- #define NFS3_pre_op_attr_sz	(1+NFS3_wcc_attr_sz)
- #define NFS3_post_op_attr_sz	(1+NFS3_fattr_sz)
--#define NFS3_wcc_data_sz		(NFS3_pre_op_attr_sz+NFS3_post_op_attr_sz)
--#define NFS3_fsstat_sz		
--#define NFS3_fsinfo_sz		
--#define NFS3_pathconf_sz		
--#define NFS3_entry_sz		(NFS3_filename_sz+3)
-+#define NFS3_wcc_data_sz	(NFS3_pre_op_attr_sz+NFS3_post_op_attr_sz)
- #define NFS3_diropargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index e4b62c6..aedcaa7 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -152,7 +152,6 @@ static void nfs_readpage_release(struct nfs_page *req)
+ 			(long long)NFS_FILEID(req->wb_context->path.dentry->d_inode),
+ 			req->wb_bytes,
+ 			(long long)req_offset(req));
+-	nfs_clear_request(req);
+ 	nfs_release_request(req);
+ }
  
- #define NFS3_getattrargs_sz	(NFS3_fh_sz)
-@@ -66,9 +62,9 @@
- #define NFS3_readdirplusargs_sz	(NFS3_fh_sz+NFS3_cookieverf_sz+4)
- #define NFS3_commitargs_sz	(NFS3_fh_sz+3)
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 4c14c17..c41a435 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -422,7 +422,6 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ 		iput(inode);
+ 	} else
+ 		spin_unlock(&inode->i_lock);
+-	nfs_clear_request(req);
+ 	nfs_release_request(req);
+ }
  
--#define NFS3_attrstat_sz	(1+NFS3_fattr_sz)
--#define NFS3_wccstat_sz		(1+NFS3_wcc_data_sz)
--#define NFS3_removeres_sz	(NFS3_wccstat_sz)
-+#define NFS3_getattrres_sz	(1+NFS3_fattr_sz)
-+#define NFS3_setattrres_sz	(1+NFS3_wcc_data_sz)
-+#define NFS3_removeres_sz	(NFS3_setattrres_sz)
- #define NFS3_lookupres_sz	(1+NFS3_fh_sz+(2 * NFS3_post_op_attr_sz))
- #define NFS3_accessres_sz	(1+NFS3_post_op_attr_sz+1)
- #define NFS3_readlinkres_sz	(1+NFS3_post_op_attr_sz+1)
-@@ -3017,36 +3013,36 @@ out_default:
- [NFS3PROC_##proc] = {							\
- 	.p_proc      = NFS3PROC_##proc,					\
- 	.p_encode    = (kxdrproc_t)nfs3_xdr_enc_##argtype##3args,	\
--	.p_decode    = (kxdrproc_t) nfs3_xdr_##restype,			\
-+	.p_decode    = (kxdrproc_t)nfs3_xdr_dec_##restype##3res,	\
- 	.p_arglen    = NFS3_##argtype##args_sz,				\
--	.p_replen    = NFS3_##restype##_sz,				\
-+	.p_replen    = NFS3_##restype##res_sz,				\
- 	.p_timer     = timer,						\
- 	.p_statidx   = NFS3PROC_##proc,					\
- 	.p_name      = #proc,						\
- 	}
- 
- struct rpc_procinfo	nfs3_procedures[] = {
--	PROC(GETATTR,		getattr,	attrstat,	1),
--	PROC(SETATTR,		setattr,	wccstat,	0),
--	PROC(LOOKUP,		lookup,		lookupres,	2),
--	PROC(ACCESS,		access,		accessres,	1),
--	PROC(READLINK,		readlink,	readlinkres,	3),
--	PROC(READ,		read,		readres,	3),
--	PROC(WRITE,		write,		writeres,	4),
--	PROC(CREATE,		create,		createres,	0),
--	PROC(MKDIR,		mkdir,		createres,	0),
--	PROC(SYMLINK,		symlink,	createres,	0),
--	PROC(MKNOD,		mknod,		createres,	0),
--	PROC(REMOVE,		remove,		removeres,	0),
--	PROC(RMDIR,		lookup,		wccstat,	0),
--	PROC(RENAME,		rename,		renameres,	0),
--	PROC(LINK,		link,		linkres,	0),
--	PROC(READDIR,		readdir,	readdirres,	3),
--	PROC(READDIRPLUS,	readdirplus,	readdirres,	3),
--	PROC(FSSTAT,		getattr,	fsstatres,	0),
--	PROC(FSINFO,		getattr,	fsinfores,	0),
--	PROC(PATHCONF,		getattr,	pathconfres,	0),
--	PROC(COMMIT,		commit,		commitres,	5),
-+	PROC(GETATTR,		getattr,	getattr,	1),
-+	PROC(SETATTR,		setattr,	setattr,	0),
-+	PROC(LOOKUP,		lookup,		lookup,		2),
-+	PROC(ACCESS,		access,		access,		1),
-+	PROC(READLINK,		readlink,	readlink,	3),
-+	PROC(READ,		read,		read,		3),
-+	PROC(WRITE,		write,		write,		4),
-+	PROC(CREATE,		create,		create,		0),
-+	PROC(MKDIR,		mkdir,		create,		0),
-+	PROC(SYMLINK,		symlink,	create,		0),
-+	PROC(MKNOD,		mknod,		create,		0),
-+	PROC(REMOVE,		remove,		remove,		0),
-+	PROC(RMDIR,		lookup,		setattr,	0),
-+	PROC(RENAME,		rename,		rename,		0),
-+	PROC(LINK,		link,		link,		0),
-+	PROC(READDIR,		readdir,	readdir,	3),
-+	PROC(READDIRPLUS,	readdirplus,	readdir,	3),
-+	PROC(FSSTAT,		getattr,	fsstat,		0),
-+	PROC(FSINFO,		getattr,	fsinfo,		0),
-+	PROC(PATHCONF,		getattr,	pathconf,	0),
-+	PROC(COMMIT,		commit,		commit,		5),
- };
- 
- struct rpc_version		nfs_version3 = {
-@@ -3060,7 +3056,7 @@ static struct rpc_procinfo	nfs3_acl_procedures[] = {
- 	[ACLPROC3_GETACL] = {
- 		.p_proc = ACLPROC3_GETACL,
- 		.p_encode = (kxdrproc_t)nfs3_xdr_enc_getacl3args,
--		.p_decode = (kxdrproc_t) nfs3_xdr_getaclres,
-+		.p_decode = (kxdrproc_t)nfs3_xdr_dec_getacl3res,
- 		.p_arglen = ACL3_getaclargs_sz,
- 		.p_replen = ACL3_getaclres_sz,
- 		.p_timer = 1,
-@@ -3069,7 +3065,7 @@ static struct rpc_procinfo	nfs3_acl_procedures[] = {
- 	[ACLPROC3_SETACL] = {
- 		.p_proc = ACLPROC3_SETACL,
- 		.p_encode = (kxdrproc_t)nfs3_xdr_enc_setacl3args,
--		.p_decode = (kxdrproc_t) nfs3_xdr_setaclres,
-+		.p_decode = (kxdrproc_t)nfs3_xdr_dec_setacl3res,
- 		.p_arglen = ACL3_setaclargs_sz,
- 		.p_replen = ACL3_setaclres_sz,
- 		.p_timer = 0,
-
+-- 
+1.7.3.2
