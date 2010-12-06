@@ -1,84 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:39378 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755862Ab0LNPFg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 10:05:36 -0500
-Received: by mail-yx0-f174.google.com with SMTP id 3so384384yxt.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 07:05:36 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/11] lockd: Add nlm_destroy_host_locked()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 10:05:33 -0500
-Message-ID: <20101214150533.2736.74362.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
-References: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mailhub.sw.ru ([195.214.232.25]:36229 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751368Ab0LFIfg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Dec 2010 03:35:36 -0500
+Message-ID: <4CFCA089.9060206@parallels.com>
+Date: Mon, 06 Dec 2010 11:36:25 +0300
+From: Kinsbursky Stanislav <skinsbursky@parallels.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFS: suppressing showing of default mount port value
+ in /proc fixed
+References: <20101203170138.22955.86546.stgit@localhost6.localdomain6> <7AF6FF7E-F57C-493B-8880-25509CC54EDE@oracle.com> <4CF9307D.9040504@parallels.com> <CE50CA7A-57F5-4441-9F16-2E5951F51228@oracle.com>
+In-Reply-To: <CE50CA7A-57F5-4441-9F16-2E5951F51228@oracle.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Refactor the tail of nlm_gc_hosts() into nlm_destroy_host() so that
-this logic can be used separately from garbage collection.
+03.12.2010 21:17, Chuck Lever пишет:
+>
+> On Dec 3, 2010, at 1:01 PM, Kinsbursky Stanislav wrote:
+>
+>> 03.12.2010 20:35, Chuck Lever пишет:
+>>>
+>>> On Dec 3, 2010, at 12:11 PM, Stanislav Kinsbursky wrote:
+>>>
+>>>> Default value for mount server port is set to NFS_UNSPEC_PORT (-1) and will not
+>>>> be changed during parsing mount options for mound data version 6. This default
+>>>> value will be showed for mountport in /proc/mounts always since current default
+>>>> check is for zero value. This small mistake leads to big problem, because
+>>>> during umount.nfs execution from old user-space utils (at least nfs-utils
+>>>> 1.0.9) this value will be used as the server port to connect to. This request
+>>>> will be rejected (since port is 65535) and thus nfs mount point can't be
+>>>> unmounted.
+>>>
+>>> Note: this is only possible if /etc/mtab is a link to /proc/mounts.  Not all systems have this configuration.
+>>>
+>>
+>> I found it on CentOs 5.5 with RHEL6 kernel.
+>> Actually, the current patch has a specific flaw: if mount port is not passed by nfs utils using mount options version 6, then it will be set to 0 and showed in /proc/mounts as "mountport=0".
+>
+> Right: zero and negative one are both special internal port values that should not be displayed in /proc/mounts.  Why not check if mountport>  0 instead?
+>
 
-Rename it _locked() to document that it must be called with the hosts
-cache mutex held.
+Yep, you right. I'll sent second version.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+>> Another fix solution is to call "nfs_set_port(sap,&args->nfs_server.port, 0);" when parsing mount options version 6 (like in done in default casein nfs_validate_mount_data) instead of changing nfs_show_mountd_options().
+>
+> I'm not sure I follow here.  Why would setting nfsport be the right thing to do?  The default case is for text-based mounts only.
+>
+>> Kernel version affected: 2.6.37-rc4
+>>>>
+>>>> Signed-off-by: Stanislav Kinsbursky<skinsbursky@parallels.com>
+>>>>
+>>>> ---
+>>>> fs/nfs/super.c |    3 ++-
+>>>> 1 files changed, 2 insertions(+), 1 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>>>> index 6d6e21d..fd4cac8 100644
+>>>> --- a/fs/nfs/super.c
+>>>> +++ b/fs/nfs/super.c
+>>>> @@ -681,7 +681,8 @@ static void nfs_show_mountd_options(struct seq_file *m, struct nfs_server *nfss,
+>>>>
+>>>> 	if (nfss->mountd_version || showdefaults)
+>>>> 		seq_printf(m, ",mountvers=%u", nfss->mountd_version);
+>>>> -	if (nfss->mountd_port || showdefaults)
+>>>> +	if (nfss->mountd_port != (unsigned short)NFS_UNSPEC_PORT ||
+>>>> +			showdefaults)
+>>>> 		seq_printf(m, ",mountport=%u", nfss->mountd_port);
+>>>>
+>>>> 	nfs_show_mountd_netid(m, nfss, showdefaults);
+>>>>
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>
+>>
+>> --
+>> Best regards,
+>> Stanislav Kinsbursky
+>
 
- fs/lockd/host.c |   19 +++++++++++--------
- 1 files changed, 11 insertions(+), 8 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 1911f34..e58e142 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -231,16 +231,21 @@ out:
- }
- 
- /*
-- * Destroy a host
-+ * Destroy an nlm_host and free associated resources
-+ *
-+ * Caller must hold nlm_host_mutex.
-  */
--static void
--nlm_destroy_host(struct nlm_host *host)
-+static void nlm_destroy_host_locked(struct nlm_host *host)
- {
- 	struct rpc_clnt	*clnt;
- 
-+	dprintk("lockd: destroy host %s\n", host->h_name);
-+
- 	BUG_ON(!list_empty(&host->h_lockowners));
- 	BUG_ON(atomic_read(&host->h_count));
- 
-+	hlist_del_init(&host->h_hash);
-+
- 	nsm_unmonitor(host);
- 	nsm_release(host->h_nsmhandle);
- 
-@@ -248,6 +253,8 @@ nlm_destroy_host(struct nlm_host *host)
- 	if (clnt != NULL)
- 		rpc_shutdown_client(clnt);
- 	kfree(host);
-+
-+	nrhosts--;
- }
- 
- /**
-@@ -589,11 +596,7 @@ nlm_gc_hosts(void)
- 				host->h_inuse, host->h_expires);
- 			continue;
- 		}
--		dprintk("lockd: delete host %s\n", host->h_name);
--		hlist_del_init(&host->h_hash);
--
--		nlm_destroy_host(host);
--		nrhosts--;
-+		nlm_destroy_host_locked(host);
- 	}
- 
- 	next_gc = jiffies + NLM_HOST_COLLECT;
-
+-- 
+Best regards,
+Stanislav Kinsbursky
