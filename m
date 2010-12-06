@@ -1,135 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:56731 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754059Ab0LAPgz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Dec 2010 10:36:55 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-        Nick Bowler <nbowler@elliptictech.com>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
-Date: Wed,  1 Dec 2010 10:36:44 -0500
-Message-Id: <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
- <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
- <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <20101201150428.GA2879@elliptictech.com>
-References: <20101201150428.GA2879@elliptictech.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:63535 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753772Ab0LFQQA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Dec 2010 11:16:00 -0500
+Received: by yxt3 with SMTP id 3so5560260yxt.19
+        for <linux-nfs@vger.kernel.org>; Mon, 06 Dec 2010 08:15:59 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/3] libnsm.a: sm-notify sometimes ignores monitored hosts
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 06 Dec 2010 11:09:44 -0500
+Message-ID: <20101206160944.18361.28275.stgit@matisse.1015granger.net>
+In-Reply-To: <20101206160206.18361.26178.stgit@matisse.1015granger.net>
+References: <20101206160206.18361.26178.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-We need to ensure that the entries in the nfs_cache_array get cleared
-when the page is removed from the page cache. To do so, we use the
-releasepage address_space operation (which also requires us to set
-the Pg_private flag).
+Monitored host information is stored in files under /var/lib/nfs.
+When visiting entries in the monitored hosts directory, libnsm.a
+examines the value of dirent.d_type to determine if an entry is a
+regular file.
 
-Change nfs_readdir_clear_array to use kmap_atomic(), so that the
-function can be safely called from all direct reclaim contexts.
+According to readdir(3), the d_type field is not supported by all
+file system types.  My root file system happens to be one where d_type
+isn't supported.  Typical installations that use an ext-derived root
+file system are not exposed to this issue, but those who use xfs, for
+instance, are.
 
-Finally, modify the cache_page_release helper to call
-nfs_readdir_clear_array directly, when dealing with an anonymous
-page from 'uncached_readdir'.
+On such file systems, not only are remote peers not notified of
+reboots, but the NSM state number is never incremented.  A statd warm
+restart would not re-monitor any hosts that were monitored before
+the restart.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+When writing support/nsm/file.c, I copied the use of d_type from the
+original statd code, so this has likely been an issue for some time.
+
+Replace the use of d_type in support/nsm/file.c with a call to
+lstat(2).  It's extra code, but is guaranteed to work on all file
+system types.
+
+Note there is a usage of d_type in gssd.  I'll let gssd and rpcpipefs
+experts decide whether that's worth changing.
+
+Fix for:
+
+  https://bugzilla.linux-nfs.org/show_bug.cgi?id=193
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/dir.c           |   22 +++++++++++++++++-----
- fs/nfs/inode.c         |    1 +
- include/linux/nfs_fs.h |    1 +
- 3 files changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 3ec3f1c..4c6319e 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -58,6 +58,7 @@ static int nfs_rename(struct inode *, struct dentry *,
- static int nfs_fsync_dir(struct file *, int);
- static loff_t nfs_llseek_dir(struct file *, loff_t, int);
- static int nfs_readdir_clear_array(struct page*, gfp_t);
-+static void nfs_readdir_invalidatepage(struct page*, unsigned long);
+ support/nsm/file.c |   38 ++++++++++++++++++++++++++++++--------
+ 1 files changed, 30 insertions(+), 8 deletions(-)
+
+diff --git a/support/nsm/file.c b/support/nsm/file.c
+index f4baeb9..ba2a9ce 100644
+--- a/support/nsm/file.c
++++ b/support/nsm/file.c
+@@ -568,11 +568,13 @@ nsm_retire_monitored_hosts(void)
  
- const struct file_operations nfs_dir_operations = {
- 	.llseek		= nfs_llseek_dir,
-@@ -85,6 +86,7 @@ const struct inode_operations nfs_dir_inode_operations = {
+ 	while ((de = readdir(dir)) != NULL) {
+ 		char *src, *dst;
++		struct stat stb;
  
- const struct address_space_operations nfs_dir_addr_space_ops = {
- 	.releasepage = nfs_readdir_clear_array,
-+	.invalidatepage = nfs_readdir_invalidatepage,
- };
+-		if (de->d_type != (unsigned char)DT_REG)
+-			continue;
+-		if (de->d_name[0] == '.')
++		if (de->d_name[0] == '.') {
++			xlog(D_GENERAL, "Skipping dot file %s",
++					de->d_name);
+ 			continue;
++		}
  
- #ifdef CONFIG_NFS_V3
-@@ -216,15 +218,22 @@ void nfs_readdir_release_array(struct page *page)
- static
- int nfs_readdir_clear_array(struct page *page, gfp_t mask)
- {
--	struct nfs_cache_array *array = nfs_readdir_get_array(page);
-+	struct nfs_cache_array *array;
- 	int i;
+ 		src = nsm_make_record_pathname(NSM_MONITOR_DIR, de->d_name);
+ 		if (src == NULL) {
+@@ -580,6 +582,20 @@ nsm_retire_monitored_hosts(void)
+ 			continue;
+ 		}
  
--	if (IS_ERR(array))
--		return PTR_ERR(array);
-+	array = kmap_atomic(page, KM_USER0);
- 	for (i = 0; i < array->size; i++)
- 		kfree(array->array[i].string.name);
--	nfs_readdir_release_array(page);
--	return 0;
-+	kunmap_atomic(array, KM_USER0);
-+	ClearPageUptodate(page);
-+	ClearPagePrivate(page);
-+	return 1;
-+}
++		/* NB: not all file systems fill in d_type correctly */
++		if (lstat(src, &stb) == -1) {
++			xlog_warn("Bad monitor file %s, skipping: %m",
++					de->d_name);
++			free(src);
++			continue;
++		}
++		if (!S_ISREG(stb.st_mode)) {
++			xlog(D_GENERAL, "Skipping non-regular file %s",
++					de->d_name);
++			free(src);
++			continue;
++		}
 +
-+static
-+void nfs_readdir_invalidatepage(struct page *page, unsigned long offset)
-+{
-+	nfs_readdir_clear_array(page, 0);
+ 		dst = nsm_make_record_pathname(NSM_NOTIFY_DIR, de->d_name);
+ 		if (dst == NULL) {
+ 			free(src);
+@@ -846,7 +862,7 @@ nsm_read_line(const char *hostname, const time_t timestamp, char *line,
  }
  
  /*
-@@ -624,6 +633,7 @@ int nfs_readdir_filler(nfs_readdir_descriptor_t *desc, struct page* page)
- 	if (ret < 0)
- 		goto error;
- 	SetPageUptodate(page);
-+	SetPagePrivate(page);
+- * Given a filename, reads data from a file under NSM_MONITOR_DIR
++ * Given a filename, reads data from a file under "directory"
+  * and invokes @func so caller can populate their in-core
+  * database with this data.
+  */
+@@ -863,10 +879,15 @@ nsm_load_host(const char *directory, const char *filename, nsm_populate_t func)
+ 	if (path == NULL)
+ 		goto out_err;
  
- 	if (invalidate_inode_pages2_range(inode->i_mapping, page->index + 1, -1) < 0) {
- 		/* Should never happen */
-@@ -639,6 +649,8 @@ int nfs_readdir_filler(nfs_readdir_descriptor_t *desc, struct page* page)
- static
- void cache_page_release(nfs_readdir_descriptor_t *desc)
- {
-+	if (!desc->page->mapping)
-+		nfs_readdir_clear_array(desc->page, GFP_KERNEL);
- 	unlock_page(desc->page);
- 	page_cache_release(desc->page);
- 	desc->page = NULL;
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 314f571..0018e07 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -289,6 +289,7 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		} else if (S_ISDIR(inode->i_mode)) {
- 			inode->i_op = NFS_SB(sb)->nfs_client->rpc_ops->dir_inode_ops;
- 			inode->i_fop = &nfs_dir_operations;
-+			inode->i_data.a_ops = &nfs_dir_addr_space_ops;
- 			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS))
- 				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
- 			/* Deal with crossing mountpoints */
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index c66fdb7..b5d3ab0 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -401,6 +401,7 @@ extern const struct inode_operations nfs3_file_inode_operations;
- #endif /* CONFIG_NFS_V3 */
- extern const struct file_operations nfs_file_operations;
- extern const struct address_space_operations nfs_file_aops;
-+extern const struct address_space_operations nfs_dir_addr_space_ops;
+-	if (stat(path, &stb) == -1) {
++	if (lstat(path, &stb) == -1) {
+ 		xlog(L_ERROR, "Failed to stat %s: %m", path);
+ 		goto out_freepath;
+ 	}
++	if (!S_ISREG(stb.st_mode)) {
++		xlog(D_GENERAL, "Skipping non-regular file %s",
++				path);
++		goto out_freepath;
++	}
  
- static inline struct nfs_open_context *nfs_file_open_context(struct file *filp)
- {
--- 
-1.7.3.2
+ 	f = fopen(path, "r");
+ 	if (f == NULL) {
+@@ -913,10 +934,11 @@ nsm_load_dir(const char *directory, nsm_populate_t func)
+ 	}
+ 
+ 	while ((de = readdir(dir)) != NULL) {
+-		if (de->d_type != (unsigned char)DT_REG)
+-			continue;
+-		if (de->d_name[0] == '.')
++		if (de->d_name[0] == '.') {
++			xlog(D_GENERAL, "Skipping dot file %s",
++					de->d_name);
+ 			continue;
++		}
+ 
+ 		count += nsm_load_host(directory, de->d_name, func);
+ 	}
 
