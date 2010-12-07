@@ -1,74 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.agmk.net ([91.192.224.71]:50622 "EHLO mail.agmk.net"
+Received: from mx2.netapp.com ([216.240.18.37]:38756 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758534Ab0LNSr2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Dec 2010 13:47:28 -0500
-Received: from localhost (unknown [91.192.224.71])
-	by mail.agmk.net (Postfix) with ESMTP id 73D0D8706EF
-	for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 19:14:59 +0100 (CET)
-Received: from mail.agmk.net ([91.192.224.71])
-	by localhost (agmk.net [91.192.224.71]) (amavisd-new, port 10024)
-	with ESMTP id xWrN4R8JaObb for <linux-nfs@vger.kernel.org>;
-	Tue, 14 Dec 2010 19:14:58 +0100 (CET)
-Received: from vmx.localnet (unknown [89.79.206.92])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mail.agmk.net (Postfix) with ESMTP id B4F682428102
-	for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 19:14:58 +0100 (CET)
-From: =?utf-8?q?Pawe=C5=82_Sikora?= <pluto@agmk.net>
-To: linux-nfs@vger.kernel.org
-Subject: nondeterministic exportfs? /home/users (ext4) does not support NFS export.
-Date: Tue, 14 Dec 2010 19:14:54 +0100
-Content-Type: Text/Plain;
-  charset="utf-8"
-Message-Id: <201012141914.55076.pluto@agmk.net>
+	id S1753685Ab0LGSnY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Dec 2010 13:43:24 -0500
+Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oB7IhAxK028392
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Dec 2010 10:43:10 -0800 (PST)
+Subject: Re: [PATCH 1/1] NFS fix the setting of exchange id flag
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: andros@netapp.com
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1291394040-2993-1-git-send-email-andros@netapp.com>
+References: <1291394040-2993-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 07 Dec 2010 13:43:08 -0500
+Message-ID: <1291747388.3049.11.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+On Fri, 2010-12-03 at 11:34 -0500, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Indicate support for referrals. Do not set any PNFS roles. Check the flags
+> returned by the server for validity. Do not use exchange flags from an old
+> client ID instance when recovering a client ID.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/nfs4proc.c |   23 +++++++++++++++++++----
+>  1 files changed, 19 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index c244000..e77a2b9 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -4494,6 +4494,23 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+>  
+>  #ifdef CONFIG_NFS_V4_1
+>  /*
+> + * Check the exchange flags returned by the server for invalid flags, having
+> + * both PNFS and NON_PNFS flags set, and not having one of NON_PNFS, PNFS, or
+> + * DS flags set.
+> + */
+> +static int nfs4_check_cl_exchange_flags(u32 flags)
+> +{
+> +	if (flags & ~EXCHGID4_FLAG_MASK_R ||
+> +	    (flags & EXCHGID4_FLAG_USE_PNFS_MDS &&
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> +	     flags & EXCHGID4_FLAG_USE_NON_PNFS) ||
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+need brackets.
+> +	    (!(flags & (EXCHGID4_FLAG_USE_PNFS_MDS |
+> +			EXCHGID4_FLAG_USE_NON_PNFS |
+> +			EXCHGID4_FLAG_USE_PNFS_DS))))
+> +		return NFS4ERR_INVAL;
+			^^^^^^^^^^^^^^^ -NFS4ERR_INVAL?
+Can we clean this up a little bit:
 
-i have a new machine with fresh linux distro (2.6.36.2 kernel, nfs-1.2.3)
-and the configured export doesn't work sometimes.
+	if (flags & EXCHGID4_FLAG_MASK_R)
+		goto out_inval;
+	if ((flags & EXCHGID4_FLAG_USE_PNFS_MDS) &&
+	    (flags & EXCHGID4_FLAG_USE_NON_PNFS))
+		goto out_inval;
+	if (....)
+		goto out_inval;
+	return NFS_OK;
+out_inval:
+	return -NFS4ERR_INVAL;
 
-following md1, md2 partitions are mounted and configured for exporting:
 
-Filesystem            Size  Used Avail Use% Mounted on
-/dev/md0              7.6G  1.4G  5.8G  19% /
-/dev/md1              1.9T   42G  1.9T   3% /home/atest
-/dev/md2              798G  116G  682G  15% /home/users
+> +	return NFS_OK;
+> +}
+> +
+> +/*
+>   * nfs4_proc_exchange_id()
+>   *
+>   * Since the clientid has expired, all compounds using sessions
+> @@ -4506,7 +4523,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+>  	nfs4_verifier verifier;
+>  	struct nfs41_exchange_id_args args = {
+>  		.client = clp,
+> -		.flags = clp->cl_exchange_flags,
+> +		.flags = EXCHGID4_FLAG_SUPP_MOVED_REFER,
+>  	};
+>  	struct nfs41_exchange_id_res res = {
+>  		.client = clp,
+> @@ -4523,9 +4540,6 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+>  	dprintk("--> %s\n", __func__);
+>  	BUG_ON(clp == NULL);
+>  
+> -	/* Remove server-only flags */
+> -	args.flags &= ~EXCHGID4_FLAG_CONFIRMED_R;
+> -
+>  	p = (u32 *)verifier.data;
+>  	*p++ = htonl((u32)clp->cl_boot_time.tv_sec);
+>  	*p = htonl((u32)clp->cl_boot_time.tv_nsec);
+> @@ -4551,6 +4565,7 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+>  			break;
+>  	}
+>  
+> +	status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
+>  	dprintk("<-- %s status= %d\n", __func__, status);
+>  	return status;
+>  }
 
-# /etc/rc.d/init.d/nfs status
-Configured NFS exports:
-/home/atest     *(rw,async,no_subtree_check,no_root_squash,insecure_locks)
-/home/users     *(rw,sync,no_wdelay,no_subtree_check,no_root_squash,insecure_locks)
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Active NFS exports:
-/home/atest     <world>(rw,async,wdelay,no_root_squash,no_subtree_check,insecure_locks)
-/home/users     <world>(rw,no_root_squash,no_subtree_check,insecure_locks)
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-rpc.mountd (pid 3195) is running...
-nfsd (pid 3213 3212 3211 3210 3209 3208 3207 3206) is running...
-
-# exportfs -v
-/home/atest     <world>(rw,async,wdelay,no_root_squash,no_subtree_check,insecure_locks)
-/home/users     <world>(rw,no_root_squash,no_subtree_check,insecure_locks)
-
-but the /home/users doesn't work and (bad workaround) re-export is needed.
-
-# exportfs -rv
-exporting *:/home/users
-exportfs: /home/users does not support NFS export
-exporting *:/home/atest
-
-# exportfs -rv
-exporting *:/home/users
-exporting *:/home/atest
-
-/home/atest works fine, /home/users has weird problems.
-
-what's wrong with this /home/users @ ext4 ?
-thanks for any hints.
-
-BR,
-Pawel.
