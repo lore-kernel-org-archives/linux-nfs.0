@@ -1,98 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm14-vm1.bullet.mail.ird.yahoo.com ([77.238.189.91]:32414 "HELO
-	nm14-vm1.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752403Ab0LIQKf convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Dec 2010 11:10:35 -0500
-Message-ID: <616646.45534.qm@web29119.mail.ird.yahoo.com>
-Date: Thu, 9 Dec 2010 16:03:52 +0000 (GMT)
-From: mailing lists <listas.correo@yahoo.es>
-Subject: low NFS performance with small files
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=utf-8
+Received: from magus.merit.edu ([198.108.1.13]:52497 "EHLO magus.merit.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752869Ab0LGAbI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Dec 2010 19:31:08 -0500
+Date: Mon, 6 Dec 2010 19:31:04 -0500
+From: Jim Rees <rees@umich.edu>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] nfsd: fix offset printk's in nfsd3 read/write
+Message-ID: <20101207003104.GA4317@merit.edu>
+References: <1291680566-13980-1-git-send-email-bfields@redhat.com>
+ <1291680566-13980-4-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1291680566-13980-4-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
+J. Bruce Fields wrote:
 
- While trying to debug a low nfs throughput configuration between Linux servers 
-and the NAS/SAN storage system and I was astonished by the low performance. I 
-setup my pc (opensuse 11.3) as a nfs server and mount it through the loopback 
-interface to discard network issues and again the numbers were surprisingly low. 
+  Thanks to dysbr01@ca.com for noticing that the debugging printk in
+  the v3 write procedure can print >2GB offsets as negative numbers:
+  	https://bugzilla.kernel.org/show_bug.cgi?id=23342
+  
+  Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+  ---
+   fs/nfsd/nfs3proc.c |    8 ++++----
+   1 files changed, 4 insertions(+), 4 deletions(-)
+  
+  diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+  index 5b7e302..2247fc9 100644
+  --- a/fs/nfsd/nfs3proc.c
+  +++ b/fs/nfsd/nfs3proc.c
+  @@ -151,10 +151,10 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
+   	__be32	nfserr;
+   	u32	max_blocksize = svc_max_payload(rqstp);
+   
+  -	dprintk("nfsd: READ(3) %s %lu bytes at %lu\n",
+  +	dprintk("nfsd: READ(3) %s %lu bytes at %Lu\n",
 
-
-Let me show you the results, the first test is over /var/lib/xen/images (ext4) 
-and the second test is the same directory exported by nfs (version 3) and 
-mounted on /media/nfs. Changing application blocksize, network buffers or any 
-other parameter (rsize,wsize,relatime,noatime,...) makes no big difference. The 
-final system is for mail queues and mail storage so there will a lot of small 
-files on average.
-
-Any idea about were the bottleneck or misconfiguration could be?
-
-
-#  grep nfs /proc/mounts 
-nfsd /proc/fs/nfsd nfsd rw,relatime 0 0
-localhost:/var/lib/xen/images /media/nfs nfs 
-rw,relatime,vers=3,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=127.0.0.1,mountvers=3,mountport=56451,mountproto=udp,addr=127.0.0.1
- 0 0
-
-pm>show
-Current configuration is:
-The base number of files is 30000
-Transactions: 10
-Files range between 500 bytes and 9.77 kilobytes in size
-Working directory: /var/lib/xen/images
-Block sizes are: read=512 bytes, write=512 bytes
-Biases are: read/append=-1, create/delete=10
-Using Unix buffered file I/O
-Random number generator seed is 42
-Report format is verbose.
-pm>run
-Creating files...Done
-Performing transactions..........Done
-Deleting files...Done
-Time:
-        4 seconds total
-        1 seconds of transactions (10 per second)
-
-Files:
-        30010 created (7502 per second)
-                Creation alone: 30000 files (10000 per second)
-                Mixed with transactions: 10 files (10 per second)
-        0 read (0 per second)
-        0 appended (0 per second)
-        30010 deleted (7502 per second)
-                Deletion alone: 30010 files (30010 per second)
-                Mixed with transactions: 0 files (0 per second)
-
-Data:
-        0.000000 bytes read (0.000000 bytes per second)
-        149.58 megabytes written (37.40 megabytes per second)
-pm>set location /media/nfs
-pm>run
-Creating files...Done
-Performing transactions..........Done
-Deleting files...Done
-Time:
-        1156 seconds total
-        1 seconds of transactions (10 per second)
-
-Files:
-        30010 created (25 per second)
-                Creation alone: 30000 files (26 per second)
-                Mixed with transactions: 10 files (10 per second)
-        0 read (0 per second)
-        0 appended (0 per second)
-        30010 deleted (25 per second)
-                Deletion alone: 30010 files (3751 per second)
-                Mixed with transactions: 0 files (0 per second)
-
-Data:
-        0.000000 bytes read (0.000000 bytes per second)
-        149.58 megabytes written (132.50 kilobytes per second)
-
-
-
-      
+Isn't "llu" preferred over "Lu" these days?
