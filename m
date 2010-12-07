@@ -1,73 +1,179 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:56074 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752716Ab0LCKEG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Dec 2010 05:04:06 -0500
-Message-ID: <4CF8C19F.20905@cn.fujitsu.com>
-Date: Fri, 03 Dec 2010 18:08:31 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: NFSv3 list <linux-nfs@vger.kernel.org>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Steve Dickson <SteveD@redhat.com>
-Subject: kernel panic at __rpc_create_common
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mx2.netapp.com ([216.240.18.37]:25959 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753997Ab0LGWQz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Dec 2010 17:16:55 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Subject: [PATCH 2/2] NFS: Readdir cleanups
+Date: Tue,  7 Dec 2010 17:16:48 -0500
+Message-Id: <1291760208-11251-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1291760208-11251-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1291760208-11251-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-I mount NFSv4 filesystem at 2.6.32, get a kernel *panic* at __rpc_create_common.
-But, at the latest kernel, just get *OOPS* message.
+No functional changes, but clarify the code.
 
-If someone have meet this problem??
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c |   47 +++++++++++++++++------------------------------
+ 1 files changed, 17 insertions(+), 30 deletions(-)
 
-----------------------------------------------------------------
-Code: af 60 01 00 00 89 fa 89 f0 e8 64 cf 89 f0 e8 5c 7c 64 cf 31 c0 8b 5c 24 10 8b 
-74 24 14 8b 7c 24 18 8b 6c 24 1c 83 c4 20 c3 <0f> 0b eb fc 8b 46 28 c7 44 24 08 20
-de ee f0 c7 44 24 04 56 ea 
-EIP:[<f0ee92ea>] __rpc_create_common+0x8a/0xc0 [sunrpc] SS:ESP 0068:eccb5d28
----[ end trace 8f5606cd08928ed2]---
-Kernel panic - not syncing: Fatal exception
-Pid:7131, comm: mount.nfs4 Tainted: G     D   -------------------2.6.32-71.el6.i686 #1
-Call Trace:
- [<c080ad18>] ? panic+0x42/0xed
- [<c080e42c>] ? oops_end+0xbc/0xd0
- [<c040b090>] ? do_invalid_op+0x0/0x90
- [<c040b10f>] ? do_invalid_op+0x7f/0x90
- [<f0ee92ea>] ? __rpc_create_common+0x8a/0xc0[sunrpc]
- [<f0edc433>] ? rpc_free_task+0x33/0x70[sunrpc]
- [<f0ed6508>] ? prc_call_sync+0x48/0x60[sunrpc]
- [<f0ed656e>] ? rpc_ping+0x4e/0x60[sunrpc]
- [<f0ed6eaf>] ? rpc_create+0x38f/0x4f0[sunrpc]
- [<c080d80b>] ? error_code+0x73/0x78
- [<f0ee92ea>] ? __rpc_create_common+0x8a/0xc0[sunrpc]
- [<c0532bda>] ? d_lookup+0x2a/0x40
- [<f0ee94b1>] ? rpc_mkpipe+0x111/0x1b0[sunrpc]
- [<f10a59f4>] ? nfs_create_rpc_client+0xb4/0xf0[nfs]
- [<f10d6c6d>] ? nfs_fscache_get_client_cookie+0x1d/0x50[nfs]
- [<f10d3fcb>] ? nfs_idmap_new+0x7b/0x140[nfs]
- [<c05e76aa>] ? strlcpy+0x3a/0x60
- [<f10a60ca>] ? nfs4_set_client+0xea/0x2b0[nfs]
- [<f10a6d0c>] ? nfs4_create_server+0xac/0x1b0[nfs]
- [<c04f1400>] ? krealloc+0x40/0x50
- [<f10b0e8b>] ? nfs4_remote_get_sb+0x6b/0x250[nfs]
- [<c04f14ec>] ? kstrdup+0x3c/0x60
- [<c0520739>] ? vfs_kern_mount+0x69/0x170
- [<f10b1a3c>] ? nfs_do_root_mount+0x6c/0xa0[nfs]
- [<f10b1b47>] ? nfs4_try_mount+0x37/0xa0[nfs]
- [<f10afe6d>] ? nfs4_validate_text_mount_data+-x7d/0xf0[nfs]
- [<f10b1c42>] ? nfs4_get_sb+0x92/0x2f0
- [<c0520739>] ? vfs_kern_mount+0x69/0x170
- [<c05366d2>] ? get_fs_type+0x32/0xb0
- [<c052089f>] ? do_kern_mount+0x3f/0xe0
- [<c053954f>] ? do_mount+0x2ef/0x740
- [<c0537740>] ? copy_mount_options+0xb0/0x120
- [<c0539a0e>] ? sys_mount+0x6e/0xa0
-
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index ad2fde2..996dd89 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -271,7 +271,7 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
+ 		goto out;
+ 	array->last_cookie = entry->cookie;
+ 	array->size++;
+-	if (entry->eof == 1)
++	if (entry->eof != 0)
+ 		array->eof_index = array->size;
+ out:
+ 	nfs_readdir_release_array(page);
+@@ -311,16 +311,14 @@ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_des
+ 	for (i = 0; i < array->size; i++) {
+ 		if (array->array[i].cookie == *desc->dir_cookie) {
+ 			desc->cache_entry_index = i;
+-			status = 0;
+-			goto out;
++			return 0;
+ 		}
+ 	}
+-	if (i == array->eof_index) {
++	if (array->eof_index >= 0) {
+ 		status = -EBADCOOKIE;
+ 		if (*desc->dir_cookie == array->last_cookie)
+ 			desc->eof = 1;
+ 	}
+-out:
+ 	return status;
+ }
+ 
+@@ -328,10 +326,7 @@ static
+ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
+ {
+ 	struct nfs_cache_array *array;
+-	int status = -EBADCOOKIE;
+-
+-	if (desc->dir_cookie == NULL)
+-		goto out;
++	int status;
+ 
+ 	array = nfs_readdir_get_array(desc->page);
+ 	if (IS_ERR(array)) {
+@@ -344,8 +339,10 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
+ 	else
+ 		status = nfs_readdir_search_for_cookie(array, desc);
+ 
+-	if (status == -EAGAIN)
++	if (status == -EAGAIN) {
+ 		desc->last_cookie = array->last_cookie;
++		desc->page_index++;
++	}
+ 	nfs_readdir_release_array(desc->page);
+ out:
+ 	return status;
+@@ -492,7 +489,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+ 
+ 		count++;
+ 
+-		if (desc->plus == 1)
++		if (desc->plus != 0)
+ 			nfs_prime_dcache(desc->file->f_path.dentry, entry);
+ 
+ 		status = nfs_readdir_add_to_array(entry, page);
+@@ -500,7 +497,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
+ 			break;
+ 	} while (!entry->eof);
+ 
+-	if (count == 0 || (status == -EBADCOOKIE && entry->eof == 1)) {
++	if (count == 0 || (status == -EBADCOOKIE && entry->eof != 0)) {
+ 		array = nfs_readdir_get_array(page);
+ 		if (!IS_ERR(array)) {
+ 			array->eof_index = array->size;
+@@ -664,9 +661,8 @@ int find_cache_page(nfs_readdir_descriptor_t *desc)
+ 		return PTR_ERR(desc->page);
+ 
+ 	res = nfs_readdir_search_array(desc);
+-	if (res == 0)
+-		return 0;
+-	cache_page_release(desc);
++	if (res != 0)
++		cache_page_release(desc);
+ 	return res;
+ }
+ 
+@@ -680,20 +676,12 @@ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
+ 		desc->current_index = 0;
+ 		desc->last_cookie = 0;
+ 	}
+-	while (1) {
++	do {
+ 		res = find_cache_page(desc);
+-		if (res != -EAGAIN)
+-			break;
+-		desc->page_index++;
+-	}
++	} while (res == -EAGAIN);
+ 	return res;
+ }
+ 
+-static inline unsigned int dt_type(struct inode *inode)
+-{
+-	return (inode->i_mode >> 12) & 15;
+-}
+-
+ /*
+  * Once we've found the start of the dirent within a page: fill 'er up...
+  */
+@@ -723,13 +711,12 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
+ 			break;
+ 		}
+ 		file->f_pos++;
+-		desc->cache_entry_index = i;
+ 		if (i < (array->size-1))
+ 			*desc->dir_cookie = array->array[i+1].cookie;
+ 		else
+ 			*desc->dir_cookie = array->last_cookie;
+ 	}
+-	if (i == array->eof_index)
++	if (array->eof_index >= 0)
+ 		desc->eof = 1;
+ 
+ 	nfs_readdir_release_array(desc->page);
+@@ -798,7 +785,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+ 	struct inode	*inode = dentry->d_inode;
+ 	nfs_readdir_descriptor_t my_desc,
+ 			*desc = &my_desc;
+-	int res = -ENOMEM;
++	int res;
+ 
+ 	dfprintk(FILE, "NFS: readdir(%s/%s) starting at cookie %llu\n",
+ 			dentry->d_parent->d_name.name, dentry->d_name.name,
+@@ -823,7 +810,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+ 	if (res < 0)
+ 		goto out;
+ 
+-	while (desc->eof != 1) {
++	do {
+ 		res = readdir_search_pagecache(desc);
+ 
+ 		if (res == -EBADCOOKIE) {
+@@ -851,7 +838,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+ 		res = nfs_do_filldir(desc, dirent, filldir);
+ 		if (res < 0)
+ 			break;
+-	}
++	} while (!desc->eof);
+ out:
+ 	nfs_unblock_sillyrename(dentry);
+ 	if (res > 0)
 -- 
-----
-thanks
-Mi Jinlong
-
+1.7.3.2
 
