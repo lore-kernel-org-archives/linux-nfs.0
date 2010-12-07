@@ -1,22 +1,22 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out.good-with-numbers.com ([64.142.29.24]:2018 "EHLO
-	out.good-with-numbers.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751690Ab0LQDSz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 22:18:55 -0500
-Date: Thu, 16 Dec 2010 19:18:54 -0800
-From: Mike <debian@good-with-numbers.com>
+Received: from fieldses.org ([174.143.236.118]:53640 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753015Ab0LGAJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Dec 2010 19:09:29 -0500
+Received: from bfields by fieldses.org with local (Exim 4.72)
+	(envelope-from <bfields@fieldses.org>)
+	id 1PPl7Y-0003fX-C3
+	for linux-nfs@vger.kernel.org; Mon, 06 Dec 2010 19:09:28 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: Re: nfs-common needed on NFS-rooted client?
-Message-ID: <20101217031854.GA25106@adsl-64-142-29-25.sonic.net>
-References: <20101216230622.GA23016@adsl-64-142-29-25.sonic.net> <20101217020906.GA8853@merit.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101217020906.GA8853@merit.edu>
+Subject: minor fix for 2.6.38
+Date: Mon,  6 Dec 2010 19:09:23 -0500
+Message-Id: <1291680566-13980-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-> The mount command also might be needed to update /etc/mtab if you don't have
-> it linked to /proc.  Does "mount" return the expected results?
+I'm queuing up the following small fixes for 2.6.38 absent any
+objections.--b.
 
-The kernel root mount is in /proc/mounts, but not in "mount"'s output.
-A rootfs at / is present in both.
