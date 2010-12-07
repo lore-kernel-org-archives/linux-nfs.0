@@ -1,44 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:59380 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:41253 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752277Ab0LQTBz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Dec 2010 14:01:55 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/3] nfsd4: 4.1 SECINFO should consume filehandle
-Date: Fri, 17 Dec 2010 14:01:49 -0500
-Message-Id: <1292612511-14203-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1292612511-14203-1-git-send-email-bfields@redhat.com>
-References: <1292612511-14203-1-git-send-email-bfields@redhat.com>
+	id S1753988Ab0LGWjs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Dec 2010 17:39:48 -0500
+Date: Tue, 7 Dec 2010 17:39:45 -0500
+To: Jim Rees <rees@umich.edu>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] nfsd: fix offset printk's in nfsd3 read/write
+Message-ID: <20101207223945.GA28044@fieldses.org>
+References: <1291680566-13980-1-git-send-email-bfields@redhat.com>
+ <1291680566-13980-4-git-send-email-bfields@redhat.com>
+ <20101207003104.GA4317@merit.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101207003104.GA4317@merit.edu>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-See the referenced spec language; an attempt by a 4.1 client to use the
-current filehandle after a secinfo call should result in a NOFILEHANDLE
-error.
+On Mon, Dec 06, 2010 at 07:31:04PM -0500, Jim Rees wrote:
+> J. Bruce Fields wrote:
+> 
+>   Thanks to dysbr01@ca.com for noticing that the debugging printk in
+>   the v3 write procedure can print >2GB offsets as negative numbers:
+>   	https://bugzilla.kernel.org/show_bug.cgi?id=23342
+>   
+>   Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>   ---
+>    fs/nfsd/nfs3proc.c |    8 ++++----
+>    1 files changed, 4 insertions(+), 4 deletions(-)
+>   
+>   diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+>   index 5b7e302..2247fc9 100644
+>   --- a/fs/nfsd/nfs3proc.c
+>   +++ b/fs/nfsd/nfs3proc.c
+>   @@ -151,10 +151,10 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
+>    	__be32	nfserr;
+>    	u32	max_blocksize = svc_max_payload(rqstp);
+>    
+>   -	dprintk("nfsd: READ(3) %s %lu bytes at %lu\n",
+>   +	dprintk("nfsd: READ(3) %s %lu bytes at %Lu\n",
+> 
+> Isn't "llu" preferred over "Lu" these days?
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+Uh, OK, reading sprintf(3), "L" seems to only be meaningful for floating
+point, and "ll" a long long.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 0cdfd02..bad4bf8 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -769,6 +769,9 @@ nfsd4_secinfo(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	} else
- 		secinfo->si_exp = exp;
- 	dput(dentry);
-+	if (cstate->minorversion)
-+		/* See rfc 5661 section 2.6.3.1.1.8 */
-+		fh_put(&cstate->current_fh);
- 	return err;
- }
- 
--- 
-1.7.1
+Looking at the kernel's printk(), "L" seems to be a synomym for "ll".
 
+Both seem to be used all over.
+
+I'm leaving it as is out of laziness and consistency with the one
+preexisting use in this file, unless someone wants to argue otherwise.
+
+--b.
