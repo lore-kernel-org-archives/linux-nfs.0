@@ -1,129 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46091 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:1918 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756290Ab0LHBMl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Dec 2010 20:12:41 -0500
-Date: Tue, 7 Dec 2010 20:12:39 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Suresh Jayaraman <sjayaraman@suse.de>
-Cc: Neil Brown <neilb@suse.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Fix possible BUG_ON firing in set_change_info
-Message-ID: <20101208011239.GB30196@fieldses.org>
-References: <20101202111430.57275603@notabene.brown>
- <4CF73AC6.4020105@suse.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4CF73AC6.4020105@suse.de>
+	id S1754548Ab0LHAaE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Dec 2010 19:30:04 -0500
+Subject: Re: oops in nfs_flush_incompatible (and possible fix?)
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20101207165354.32c863f2@tlielax.poochiereds.net>
+References: <20101206145743.4464c79d@tlielax.poochiereds.net>
+	 <1291758082.3049.42.camel@heimdal.trondhjem.org>
+	 <20101207165354.32c863f2@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 07 Dec 2010 19:30:00 -0500
+Message-ID: <1291768200.3049.51.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Dec 02, 2010 at 11:50:54AM +0530, Suresh Jayaraman wrote:
-> On 12/02/2010 05:44 AM, Neil Brown wrote:
+On Tue, 2010-12-07 at 16:53 -0500, Jeff Layton wrote:
+> On Tue, 07 Dec 2010 16:41:22 -0500
+> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > I've been racking my brain for days now trying to remember why we clear
+> > the request in these cases. I think it was only about ensuring that we
+> > could throw the page out of the cache using invalidate_inode_pages()
+> > (and there is a comment about that in early 2.4.x kernels).
 > > 
-> > If vfs_getattr in fill_post_wcc returns an error, we don't
-> > set fh_post_change.
->       ^^^ Did you mean fh_post_saved?
-> 
-> > For NFSv4, this can result in set_change_info triggering a BUG_ON.
-> > i.e. fh_post_saved being zero isn't really a bug.
+> > As far as I can see, there no longer appear to be any side effects to
+> > deferring releasing the page or open_contexts but I'm still a bit
+> > nervous about doing so.
+> > Can we therefore please give it a good week of pounding upon before I
+> > pass it on to Linus?
 > > 
-> > So:
-> >  - instead of BUGging when fh_post_saved is zero, just clear ->atomic.
-> >  - if vfs_getattr fails in fill_post_wcc, take a copy of i_ctime anyway.
-> >    This will be used i seg_change_info, but not overly trusted.
-> >  - While we are there, remove the pointless 'if' statements in set_change_info.
-> >    There is no harm setting all the values.
+> > Cheers
+> >   Trond
+> > 
 > 
-> The 'if' statement was introduced when ext4 i_version support was added
-> via commit c654b8a9. While there is no harm setting all the values, it
-> may not really be required.
+> Sounds good. I have the reporter of this problem testing a 2.6.18-based
+> kernel with this patch now to see whether it fixes it. We might as well
+> hold off until we have results from that. Their test takes several days
+> to run though so it may be a little while before we know whether this
+> helps. I'll reply once I hear from them.
 
-If you mean that you interpret the spec as allowing us to return garbage
-changeattr values in the non-atomic case, no, I don't agree.
+Looks like I was right to be sceptical. My setup hangs hard on the
+Connectathon test5 (read and write) when this patch is applied.
 
-It's true that a client that tries to use them must be aware of the
-potential pitfalls, but not true that we therefore have license to
-return inaccurate post-op attributes.
+Cheers
+  Trond
 
---b.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-> 
-> >From the spec:
-> 
-> 	"For a client to use the change_info4 information
-> appropriately and correctly, the server must report the pre- and
-> post-operation change attribute values atomically. When the server
-> is unable to report the before and after values atomically with
-> respect to the directory operation, the server must indicate that
-> fact in the change_info4 return value. When the information is not
-> atomically reported, the client should not assume that other clients
-> have not changed the directory."
-> 
-> Though the spec doesn't talk about the case we have specifically, it
-> appears to me that the proposed behavior is the best we could aim for.
-> 
-> > Signed-off-by: NeilBrown <neilb@suse.de>
-> > 
-> > --
-> > 
-> > If you think the code is clearer with the if() structure, feel free
-> > to leave that part unchanged.
-> > 
-> > NeilBrown
-> > 
-> > diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> > index 2a533a0..7e84a85 100644
-> > --- a/fs/nfsd/nfs3xdr.c
-> > +++ b/fs/nfsd/nfs3xdr.c
-> > @@ -260,9 +260,11 @@ void fill_post_wcc(struct svc_fh *fhp)
-> >  	err = vfs_getattr(fhp->fh_export->ex_path.mnt, fhp->fh_dentry,
-> >  			&fhp->fh_post_attr);
-> >  	fhp->fh_post_change = fhp->fh_dentry->d_inode->i_version;
-> > -	if (err)
-> > +	if (err) {
-> >  		fhp->fh_post_saved = 0;
-> > -	else
-> > +		/* Grab the ctime anyway - set_change_info might use it */
-> > +		fhp->fh_post_attr.ctime = fhp->fh_dentry->d_inode->i_ctime;
-> > +	} else
-> >  		fhp->fh_post_saved = 1;
-> >  }
-> >  
-> > diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> > index 4d476ff..60fce3d 100644
-> > --- a/fs/nfsd/xdr4.h
-> > +++ b/fs/nfsd/xdr4.h
-> > @@ -484,18 +484,17 @@ static inline bool nfsd4_not_cached(struct nfsd4_compoundres *resp)
-> >  static inline void
-> >  set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
-> >  {
-> > -	BUG_ON(!fhp->fh_pre_saved || !fhp->fh_post_saved);
-> > -	cinfo->atomic = 1;
-> > +	BUG_ON(!fhp->fh_pre_saved);
-> > +	cinfo->atomic = fhp->fh_post_saved;
-> >  	cinfo->change_supported = IS_I_VERSION(fhp->fh_dentry->d_inode);
-> > -	if (cinfo->change_supported) {
-> > -		cinfo->before_change = fhp->fh_pre_change;
-> > -		cinfo->after_change = fhp->fh_post_change;
-> > -	} else {
-> > -		cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
-> > -		cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
-> > -		cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
-> > -		cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
-> > -	}
-> > +
-> > +	cinfo->before_change = fhp->fh_pre_change;
-> > +	cinfo->after_change = fhp->fh_post_change;
-> > +	cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
-> > +	cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
-> > +	cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
-> > +	cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
-> > +
-> >  }
-> >  
-> >  int nfs4svc_encode_voidres(struct svc_rqst *, __be32 *, void *);
-> 
-> 
-> -- 
-> Suresh Jayaraman
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
