@@ -1,76 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:45492 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755407Ab0LAR6U convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 12:58:20 -0500
-Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Nick Bowler <nbowler@elliptictech.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-        Hugh Dickins <hughd@google.com>, Rik van Riel <riel@redhat.com>,
-        Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>
-In-Reply-To: <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
-References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <20101201150428.GA2879@elliptictech.com>
-	 <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 01 Dec 2010 12:58:17 -0500
-Message-ID: <1291226297.6609.17.camel@heimdal.trondhjem.org>
+Received: from mailout0.thls.bbc.co.uk ([132.185.240.35]:47744 "EHLO
+	mailout0.thls.bbc.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755338Ab0LHPsg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Dec 2010 10:48:36 -0500
+Received: from gateh.kw.bbc.co.uk (gateh.kw.bbc.co.uk [132.185.132.17])
+	by mailout0.thls.bbc.co.uk (8.14.4/8.14.3) with ESMTP id oB8FmXXD000158
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Dec 2010 15:48:33 GMT
+Received: from mailhub.rd.bbc.co.uk ([172.29.120.130])
+	by gateh.kw.bbc.co.uk (8.13.6/8.13.6) with ESMTP id oB8FmXcA003503
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Dec 2010 15:48:33 GMT
+Date: Wed, 8 Dec 2010 15:48:32 +0000
+From: David Flynn <davidf@rd.bbc.co.uk>
+To: linux-nfs@vger.kernel.org
+Cc: David Flynn <davidf@rd.bbc.co.uk>
+Subject: Re: can't dump core on NFSv4 mounts
+Message-ID: <20101208154832.GE20844@rd.bbc.co.uk>
+References: <20101208153340.GD20844@rd.bbc.co.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101208153340.GD20844@rd.bbc.co.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-12-01 at 08:17 -0800, Linus Torvalds wrote:
-> On Wed, Dec 1, 2010 at 7:36 AM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> >
-> > We need to ensure that the entries in the nfs_cache_array get cleared
-> > when the page is removed from the page cache. To do so, we use the
-> > releasepage address_space operation (which also requires us to set
-> > the Pg_private flag).
-> 
-> So I really think that the whole "releasepage" use in NFS is simply
-> overly complicated and was obviously too subtle.
-> 
-> The whole need for odd return values, for the page lock, and for the
-> addition of clearing the up-to-date bit comes from the fact that this
-> wasn't really what releasepage was designed for.
-> 
-> 'releasepage' was really designed for the filesystem having its own
-> version of 'try_to_free_buffers()', which is just an optimistic "ok,
-> we may be releasing this page, so try to get rid of any IO structures
-> you have cached". It wasn't really a memory management thing.
-> 
-> And the thing is, it looks trivial to do the memory management
-> approach by adding a new callback that gets called after the page is
-> actually removed from the page cache. If we do that, then there are no
-> races with any other users, since we remove things from the page cache
-> atomically wrt page cache lookup. So the need for playing games with
-> page locking and 'uptodate' simply goes away. As does the PG_private
-> thing or the interaction with invalidatepage() etc.
-> 
-> So this is a TOTALLY UNTESTED trivial patch that just adds another
-> callback. Does this work? I dunno. But I get the feeling that instead
-> of having NFS work around the odd semantics that don't actually match
-> what NFS wants, introducing a new callback with much simpler semantics
-> would be simpler for everybody, and avoid the need for subtle code.
-> 
-> Hmm?
-> 
->                    Linus
+* David Flynn (davidf@rd.bbc.co.uk) wrote:
+> On an NFS4 client (mounting a solaris ufs export), for a long time i've
+> been experiencing vim complaining when exiting:
+>   E137: Viminfo file is not writable: /home/davidf/.viminfo
 
-This works for me, and I can code up a patch that uses it if you like...
+A similar and possibly related fault that I'm seeing is the inability
+for a process to dump a core file when it segfaults on an nfs4 mount.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+If the filesystem is mounted nfs3, then this issue does not arise.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+using:
+  $ echo 'int main() {return *(int*)0;}' >segfault.c
 
+on an nfs4 mount:
+  host-a$ ~/segfault
+  Segmentation fault
+  host-a$ ls -l
+  total 1
+  -rw------- 1 4294967294 4294967294 0 2010-12-08 15:34 core
+
+a remote system shows:
+  host-b$ ls -l
+  total 1
+  -rw------- 1 davidf rd 0 Dec  8 15:34 core
+
+waiting for the dust to settle:
+  host-a$ ls -l
+  total 1
+  -rw------- 1 davidf rd 0 2010-12-08 15:34 core
+
+Iff, the core file already exists, then the core dump succeeds:
+  host-a$ touch core
+  host-a$ ls -l
+  total 1
+  -rw------- 1 davidf rd 0 2010-12-08 15:42 core
+  host-a$ ~/segfault
+  Segmentation fault (core dumped)
+
+I can reliably reproduce using 2.6.32.11 and 2.6.35
+I can not reproduce on 2.6.26
+
+Kind regards,
+
+..david
