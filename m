@@ -1,179 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:25959 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753997Ab0LGWQz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Dec 2010 17:16:55 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from netnation.com ([204.174.223.2]:41136 "EHLO peace.netnation.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1756091Ab0LHVZH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Dec 2010 16:25:07 -0500
+Received: from sim by peace.netnation.com with local (Exim 4.69)
+	(envelope-from <sim@netnation.com>)
+	id 1PQRVa-0007nV-0D
+	for linux-nfs@vger.kernel.org; Wed, 08 Dec 2010 13:25:06 -0800
+Date: Wed, 8 Dec 2010 13:25:05 -0800
+From: Simon Kirby <sim@hostway.ca>
 To: linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Subject: [PATCH 2/2] NFS: Readdir cleanups
-Date: Tue,  7 Dec 2010 17:16:48 -0500
-Message-Id: <1291760208-11251-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1291760208-11251-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1291760208-11251-1-git-send-email-Trond.Myklebust@netapp.com>
+Subject: System CPU increasing on idle 2.6.36
+Message-ID: <20101208212505.GA18192@hostway.ca>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-No functional changes, but clarify the code.
+Possibly related to the flush-processes-taking-CPU issues I saw
+previously, I thought this was interesting.  I found a log-crunching box
+that does all of its work via NFS and spends most of the day sleeping. 
+It has been using a linearly-increasing amount of system time during the
+time where is sleeping.  munin graph:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/dir.c |   47 +++++++++++++++++------------------------------
- 1 files changed, 17 insertions(+), 30 deletions(-)
+http://0x.ca/sim/ref/2.6.36/cpu_logcrunch_nfs.png
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index ad2fde2..996dd89 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -271,7 +271,7 @@ int nfs_readdir_add_to_array(struct nfs_entry *entry, struct page *page)
- 		goto out;
- 	array->last_cookie = entry->cookie;
- 	array->size++;
--	if (entry->eof == 1)
-+	if (entry->eof != 0)
- 		array->eof_index = array->size;
- out:
- 	nfs_readdir_release_array(page);
-@@ -311,16 +311,14 @@ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_des
- 	for (i = 0; i < array->size; i++) {
- 		if (array->array[i].cookie == *desc->dir_cookie) {
- 			desc->cache_entry_index = i;
--			status = 0;
--			goto out;
-+			return 0;
- 		}
- 	}
--	if (i == array->eof_index) {
-+	if (array->eof_index >= 0) {
- 		status = -EBADCOOKIE;
- 		if (*desc->dir_cookie == array->last_cookie)
- 			desc->eof = 1;
- 	}
--out:
- 	return status;
- }
- 
-@@ -328,10 +326,7 @@ static
- int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
- {
- 	struct nfs_cache_array *array;
--	int status = -EBADCOOKIE;
--
--	if (desc->dir_cookie == NULL)
--		goto out;
-+	int status;
- 
- 	array = nfs_readdir_get_array(desc->page);
- 	if (IS_ERR(array)) {
-@@ -344,8 +339,10 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
- 	else
- 		status = nfs_readdir_search_for_cookie(array, desc);
- 
--	if (status == -EAGAIN)
-+	if (status == -EAGAIN) {
- 		desc->last_cookie = array->last_cookie;
-+		desc->page_index++;
-+	}
- 	nfs_readdir_release_array(desc->page);
- out:
- 	return status;
-@@ -492,7 +489,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
- 
- 		count++;
- 
--		if (desc->plus == 1)
-+		if (desc->plus != 0)
- 			nfs_prime_dcache(desc->file->f_path.dentry, entry);
- 
- 		status = nfs_readdir_add_to_array(entry, page);
-@@ -500,7 +497,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
- 			break;
- 	} while (!entry->eof);
- 
--	if (count == 0 || (status == -EBADCOOKIE && entry->eof == 1)) {
-+	if (count == 0 || (status == -EBADCOOKIE && entry->eof != 0)) {
- 		array = nfs_readdir_get_array(page);
- 		if (!IS_ERR(array)) {
- 			array->eof_index = array->size;
-@@ -664,9 +661,8 @@ int find_cache_page(nfs_readdir_descriptor_t *desc)
- 		return PTR_ERR(desc->page);
- 
- 	res = nfs_readdir_search_array(desc);
--	if (res == 0)
--		return 0;
--	cache_page_release(desc);
-+	if (res != 0)
-+		cache_page_release(desc);
- 	return res;
- }
- 
-@@ -680,20 +676,12 @@ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
- 		desc->current_index = 0;
- 		desc->last_cookie = 0;
- 	}
--	while (1) {
-+	do {
- 		res = find_cache_page(desc);
--		if (res != -EAGAIN)
--			break;
--		desc->page_index++;
--	}
-+	} while (res == -EAGAIN);
- 	return res;
- }
- 
--static inline unsigned int dt_type(struct inode *inode)
--{
--	return (inode->i_mode >> 12) & 15;
--}
--
- /*
-  * Once we've found the start of the dirent within a page: fill 'er up...
-  */
-@@ -723,13 +711,12 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
- 			break;
- 		}
- 		file->f_pos++;
--		desc->cache_entry_index = i;
- 		if (i < (array->size-1))
- 			*desc->dir_cookie = array->array[i+1].cookie;
- 		else
- 			*desc->dir_cookie = array->last_cookie;
- 	}
--	if (i == array->eof_index)
-+	if (array->eof_index >= 0)
- 		desc->eof = 1;
- 
- 	nfs_readdir_release_array(desc->page);
-@@ -798,7 +785,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
- 	struct inode	*inode = dentry->d_inode;
- 	nfs_readdir_descriptor_t my_desc,
- 			*desc = &my_desc;
--	int res = -ENOMEM;
-+	int res;
- 
- 	dfprintk(FILE, "NFS: readdir(%s/%s) starting at cookie %llu\n",
- 			dentry->d_parent->d_name.name, dentry->d_name.name,
-@@ -823,7 +810,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
- 	if (res < 0)
- 		goto out;
- 
--	while (desc->eof != 1) {
-+	do {
- 		res = readdir_search_pagecache(desc);
- 
- 		if (res == -EBADCOOKIE) {
-@@ -851,7 +838,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
- 		res = nfs_do_filldir(desc, dirent, filldir);
- 		if (res < 0)
- 			break;
--	}
-+	} while (!desc->eof);
- out:
- 	nfs_unblock_sillyrename(dentry);
- 	if (res > 0)
--- 
-1.7.3.2
+top shows:
 
+  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
+ 4767 root      20   0     0    0    0 S   16  0.0   2413:29 flush-0:69
+22385 root      20   0     0    0    0 S   10  0.0   1320:23 flush-0:70
+(rest idle)
+
+perf top shows:
+
+-------------------------------------------------------------------------------------------
+   PerfTop:     252 irqs/sec  kernel:97.2%  exact:  0.0% [1000Hz cycles],  (all, 2 CPUs)
+-------------------------------------------------------------------------------------------
+
+     samples  pcnt function                        DSO
+     _______ _____ _______________________________ ___________
+
+      912.00 21.2% _raw_spin_lock                  [kernel]
+      592.00 13.8% nfs_writepages                  [kernel]
+      474.00 11.0% queue_io                        [kernel]
+      428.00 10.0% writeback_single_inode          [kernel]
+      379.00  8.8% writeback_sb_inodes             [kernel]
+      237.00  5.5% bit_waitqueue                   [kernel]
+      184.00  4.3% do_writepages                   [kernel]
+      169.00  3.9% __iget                          [kernel]
+      132.00  3.1% redirty_tail                    [kernel]
+       85.00  2.0% iput                            [kernel]
+       72.00  1.7% _atomic_dec_and_lock            [kernel]
+       67.00  1.6% write_cache_pages               [kernel]
+       63.00  1.5% port_inb                        [ipmi_si]
+       62.00  1.4% __mark_inode_dirty              [kernel]
+       48.00  1.1% __wake_up_bit                   [kernel]
+       32.00  0.7% nfs_write_inode                 [kernel]
+       26.00  0.6% native_read_tsc                 [kernel]
+       25.00  0.6% radix_tree_gang_lookup_tag_slot [kernel]
+       25.00  0.6% schedule                        [kernel]
+       24.00  0.6% wake_up_bit                     [kernel]
+       20.00  0.5% apic_timer_interrupt            [kernel]
+       19.00  0.4% ia32_syscall                    [kernel]
+       16.00  0.4% find_get_pages_tag              [kernel]
+       15.00  0.3% _raw_spin_lock_irqsave          [kernel]
+       15.00  0.3% load_balance                    [kernel]
+       13.00  0.3% ktime_get                       [kernel]
+       12.00  0.3% shrink_icache_memory            [kernel]
+       11.00  0.3% semop                           libc-2.7.so
+	9.00  0.2% nfs_pageio_doio                 [kernel]
+	8.00  0.2% dso__find_symbol                perf
+	8.00  0.2% down_read                       [kernel]
+	7.00  0.2% __switch_to                     [kernel]
+	7.00  0.2% __phys_addr                     [kernel]
+	7.00  0.2% nfs_pageio_init                 [kernel]
+	7.00  0.2% pagevec_lookup_tag              [kernel]
+	7.00  0.2% _cond_resched                   [kernel]
+	7.00  0.2% up_read                         [kernel]
+	6.00  0.1% sched_clock_local               [kernel]
+	5.00  0.1% rb_erase                        [kernel]
+	5.00  0.1% page_fault                      [kernel]
+
+"tcpdump -i any -n port 2049" and "nfsstat" shows this work does not actually result
+in any NFS packets.
+
+Known 2.6.36 issue?  This did not occur on 2.6.35.4, according to the
+munin graphs.  I'll try 2.6.37-rc an see if it changes.
+
+Simon-
