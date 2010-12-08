@@ -1,73 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57375 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:11476 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753718Ab0LMTcU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Dec 2010 14:32:20 -0500
-Message-ID: <4D0674C1.7060309@RedHat.com>
-Date: Mon, 13 Dec 2010 14:32:17 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] libnsm.a: sm-notify sometimes ignores monitored hosts
-References: <20101206160206.18361.26178.stgit@matisse.1015granger.net> <20101206160944.18361.28275.stgit@matisse.1015granger.net> <4D064FB4.1020209@RedHat.com> <F3286C05-D9DC-4EF7-A852-F55AC49185B9@oracle.com>
-In-Reply-To: <F3286C05-D9DC-4EF7-A852-F55AC49185B9@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751782Ab0LHJkm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Dec 2010 04:40:42 -0500
+Subject: [PATCH v3] NFS: suppressing showing of default mount port value in
+	/proc fixed
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        xemul@parallels.com
+Date: Wed, 08 Dec 2010 12:40:13 +0300
+Message-ID: <20101208093311.8223.29784.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hey...
+Update: added check for zero value as it was before (note: can't simply check
+mountd_port for positive value because it's typeof unsigned short)
 
-On 12/13/2010 12:08 PM, Chuck Lever wrote:
+Default value for mount server port is set to NFS_UNSPEC_PORT (-1) and will not
+be changed during parsing mount options for mound data version 6. This default
+value will be showed for mountport in /proc/mounts always since current default
+check is for zero value. This small mistake leads to big problem, because
+during umount.nfs execution from old user-space utils (at least nfs-utils
+1.0.9) this value will be used as the server port to connect to. This request
+will be rejected (since port is 65535) and thus nfs mount point can't be
+unmounted.
 
->>>  */
->>> @@ -863,10 +879,15 @@ nsm_load_host(const char *directory, const char *filename, nsm_populate_t func)
->>> 	if (path == NULL)
->>> 		goto out_err;
->>>
->>> -	if (stat(path, &stb) == -1) {
->>> +	if (lstat(path, &stb) == -1) {
->>> 		xlog(L_ERROR, "Failed to stat %s: %m", path);
->>> 		goto out_freepath;
->>> 	}
->>> +	if (!S_ISREG(stb.st_mode)) {
->>> +		xlog(D_GENERAL, "Skipping non-regular file %s",
->>> +				path);
->> Question, why do we care non-regular files are being ignored?
-> 
-> We probably want to report anything unexpected in 
-> the /var/lib/nfs/statd/sm{,.bak} directories.
-> 
->> I understand logging the lstat() error but logging statements like
->> "ignoring this" or "not doing that" just make the debug output a 
->> bit too noisy IMHO... 
-> 
-> My expectation is that under normal circumstances this message 
-> would never fire.  
-Correct the only way they will be shown is with the "-F -d" flags... 
+Note from Chuck Lever (chuck.lever@oracle.com): this is only possible if
+/etc/mtab is a link to /proc/mounts.  Not all systems have this configuration.
 
-> statd shouldn't put anything in that directory 
-> that isn't a regular file.  If there's something else in there, 
-> we should report it.  Also, if statd (or something else) is broken 
-> and the code thinks the object isn't a regular file, then this 
-> message would point to what is wrong.
-To put this in context, here are the message that come up with
-the patch applied... I added a symlink to /var/lib/nfs/statd/sm/statd
-to generate both messages... 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-statd: Version 1.2.3 starting
-statd: Flags: No-Daemon Log-STDERR TI-RPC 
-sm-notify: Version 1.2.3 starting
-sm-notify: Already notifying clients; Exiting!
-statd: Skipping dot file ..
-statd: Skipping non-regular file /var/lib/nfs/statd/sm/statd
-statd: Skipping dot file .
+---
+ fs/nfs/super.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-I think we both agree the "Skipping dot file" simply not
-needed... The "Skipping non-regular" message... well I have 
-to say it really does not have much meaning... either.. IMHO...
-
-But I do agree, it probably will *never* seen... 
-
-steved.
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 6d6e21d..449024f 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -681,7 +681,9 @@ static void nfs_show_mountd_options(struct seq_file *m, struct nfs_server *nfss,
+ 
+ 	if (nfss->mountd_version || showdefaults)
+ 		seq_printf(m, ",mountvers=%u", nfss->mountd_version);
+-	if (nfss->mountd_port || showdefaults)
++	if ((nfss->mountd_port &&
++		nfss->mountd_port != (unsigned short)NFS_UNSPEC_PORT) || 
++		showdefaults)
+ 		seq_printf(m, ",mountport=%u", nfss->mountd_port);
+ 
+ 	nfs_show_mountd_netid(m, nfss, showdefaults);
 
