@@ -1,60 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:53645 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:47356 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753270Ab0LGAJc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Dec 2010 19:09:32 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/3] nfsd: fix offset printk's in nfsd3 read/write
-Date: Mon,  6 Dec 2010 19:09:26 -0500
-Message-Id: <1291680566-13980-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1291680566-13980-1-git-send-email-bfields@redhat.com>
-References: <1291680566-13980-1-git-send-email-bfields@redhat.com>
+	id S1754953Ab0LHTsR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Dec 2010 14:48:17 -0500
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id oB8JmHgV023622
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Dec 2010 14:48:17 -0500
+Received: from badhat.bos.devel.redhat.com (badhat.boston.devel.redhat.com [10.16.60.49])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id oB8JmHvW028874
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Dec 2010 14:48:17 -0500
+Message-ID: <4CFFE100.8070100@RedHat.com>
+Date: Wed, 08 Dec 2010 14:48:16 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: libnfsidmap-0.24 is available
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Thanks to dysbr01@ca.com for noticing that the debugging printk in
-the v3 write procedure can print >2GB offsets as negative numbers:
-	https://bugzilla.kernel.org/show_bug.cgi?id=23342
+A new version of libnfsidmap is now available from
+http://www.citi.umich.edu/projects/nfsv4/linux/libnfsidmap/libnfsidmap-0.24.tar.gz
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs3proc.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+Changes since libnfsidmap-0.23
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 5b7e302..2247fc9 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -151,10 +151,10 @@ nfsd3_proc_read(struct svc_rqst *rqstp, struct nfsd3_readargs *argp,
- 	__be32	nfserr;
- 	u32	max_blocksize = svc_max_payload(rqstp);
- 
--	dprintk("nfsd: READ(3) %s %lu bytes at %lu\n",
-+	dprintk("nfsd: READ(3) %s %lu bytes at %Lu\n",
- 				SVCFH_fmt(&argp->fh),
- 				(unsigned long) argp->count,
--				(unsigned long) argp->offset);
-+				(unsigned long long) argp->offset);
- 
- 	/* Obtain buffer pointer for payload.
- 	 * 1 (status) + 22 (post_op_attr) + 1 (count) + 1 (eof)
-@@ -191,10 +191,10 @@ nfsd3_proc_write(struct svc_rqst *rqstp, struct nfsd3_writeargs *argp,
- 	__be32	nfserr;
- 	unsigned long cnt = argp->len;
- 
--	dprintk("nfsd: WRITE(3)    %s %d bytes at %ld%s\n",
-+	dprintk("nfsd: WRITE(3)    %s %d bytes at %Lu%s\n",
- 				SVCFH_fmt(&argp->fh),
- 				argp->len,
--				(unsigned long) argp->offset,
-+				(unsigned long long) argp->offset,
- 				argp->stable? " stable" : "");
- 
- 	fh_copy(&resp->fh, &argp->fh);
--- 
-1.7.1
+Added autogen.sh which runs all the autoconfig scripts
+Added a .gitignore file
+
+>From Bryan Schumaker <bjschuma@netapp.com>
+Added nfs4_owner interfaces which are used by the new nfsidmap program
+
+steved.
 
