@@ -1,87 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:28482 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51019 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756836Ab0LBDIO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Dec 2010 22:08:14 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-        Nick Bowler <nbowler@elliptictech.com>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-        Hugh Dickins <hughd@google.com>, Nick Piggin <npiggin@kernel.dk>,
-        Rik van Riel <riel@redhat.com>, Christoph Hellwig <hch@lst.de>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Subject: [PATCH v3 1/3] NFS: Ensure we use the correct cookie in nfs_readdir_xdr_filler
-Date: Wed,  1 Dec 2010 22:08:03 -0500
-Message-Id: <1291259285-26803-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1291259285-26803-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1291259285-26803-1-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <AANLkTinpvMJsC2XMUyDTaAdozFBLkcdde5_V57Jx-Z4w@mail.gmail.com>
-References: <AANLkTinpvMJsC2XMUyDTaAdozFBLkcdde5_V57Jx-Z4w@mail.gmail.com>
+	id S1753896Ab0LHShl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Dec 2010 13:37:41 -0500
+Date: Wed, 8 Dec 2010 13:37:38 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Mark Hills <mark@pogo.org.uk>, Neil Brown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org
+Subject: Re: mount.nfs timeout of 9999ms (was Re: Listen backlog set to 64)
+Message-ID: <20101208183738.GA9996@fieldses.org>
+References: <20101117090826.4b2724da@notabene.brown>
+ <20101129205935.GD9897@fieldses.org>
+ <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz>
+ <20101130200013.GA2108@fieldses.org>
+ <alpine.NEB.2.01.1012011754120.12506@jrf.vwaro.pbz>
+ <F5FCB254-E6CE-4B71-ABD9-33F098F9E0BA@oracle.com>
+ <alpine.NEB.2.01.1012071143080.28772@jrf.vwaro.pbz>
+ <C751B327-E608-4659-A96C-0B99C2C168E1@oracle.com>
+ <alpine.NEB.2.01.1012081701170.11201@jrf.vwaro.pbz>
+ <45243C0D-2158-47DD-91AF-C91AB960F6B4@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <45243C0D-2158-47DD-91AF-C91AB960F6B4@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-We need to use the cookie from the previous array entry, not the
-actual cookie that we are searching for (except for the case of
-uncached_readdir).
+On Wed, Dec 08, 2010 at 01:28:06PM -0500, Chuck Lever wrote:
+> From what I have read, the server's configuration is the immediate problem here: namely that the disk that /var is on is slow, or there are bugs (or not-very-useful behavior) in the file system implementation used on /var, or that rpm should not cause such latency for other applications, or that the multi-threading architecture of mountd is incorrect.  Or some combination of these.
+> 
+> A ten second latency for file system operations is the real issue.
+> 
+> >> IMO adding another mount option would be mistaken.  It adds clutter to 
+> >> the mount user interface to work around what is clearly a problem on the 
+> >> server.
+> > 
+> > I agree that new options can be cluttered.
+> > 
+> > But I think the problem needs attention at both the client and sever side.
+> 
+> It seems reasonable to relax mount.nfs's timeout settings used when performing mount and rpcbind requests.  The question I have is what would be reasonable values to use instead of what we have?  (That question is directed to everyone who is still reading).
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/dir.c |   10 ++++++++--
- 1 files changed, 8 insertions(+), 2 deletions(-)
+What's the behavior you want when the server is just off or unreachable?
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index f0a384e..e03537f 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -178,6 +178,7 @@ typedef struct {
- 	struct page	*page;
- 	unsigned long	page_index;
- 	u64		*dir_cookie;
-+	u64		last_cookie;
- 	loff_t		current_index;
- 	decode_dirent_t	decode;
- 
-@@ -344,6 +345,8 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
- 	else
- 		status = nfs_readdir_search_for_cookie(array, desc);
- 
-+	if (status == -EAGAIN)
-+		desc->last_cookie = array->last_cookie;
- 	nfs_readdir_release_array(desc->page);
- out:
- 	return status;
-@@ -563,7 +566,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 	unsigned int array_size = ARRAY_SIZE(pages);
- 
- 	entry.prev_cookie = 0;
--	entry.cookie = *desc->dir_cookie;
-+	entry.cookie = desc->last_cookie;
- 	entry.eof = 0;
- 	entry.fh = nfs_alloc_fhandle();
- 	entry.fattr = nfs_alloc_fattr();
-@@ -672,8 +675,10 @@ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
- {
- 	int res;
- 
--	if (desc->page_index == 0)
-+	if (desc->page_index == 0) {
- 		desc->current_index = 0;
-+		desc->last_cookie = 0;
-+	}
- 	while (1) {
- 		res = find_cache_page(desc);
- 		if (res != -EAGAIN)
-@@ -764,6 +769,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
- 	}
- 
- 	desc->page_index = 0;
-+	desc->last_cookie = *desc->dir_cookie;
- 	desc->page = page;
- 
- 	status = nfs_readdir_xdr_to_array(desc, page, inode);
--- 
-1.7.3.2
+I'd've thought that there are cases where you just want the mount to
+hang till it's interrupted or the problem is fixed.  (Autofs possibly
+being one of them.)
 
+--b.
