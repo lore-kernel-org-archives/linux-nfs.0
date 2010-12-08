@@ -1,146 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17919 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:50557 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758216Ab0LTWKl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Dec 2010 17:10:41 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V5 11/11] NFS rename client back channel transport field
-Date: Mon, 20 Dec 2010 16:04:48 -0500
-Message-Id: <1292879088-7821-12-git-send-email-andros@netapp.com>
-In-Reply-To: <1292879088-7821-11-git-send-email-andros@netapp.com>
-References: <1292879088-7821-1-git-send-email-andros@netapp.com>
- <1292879088-7821-2-git-send-email-andros@netapp.com>
- <1292879088-7821-3-git-send-email-andros@netapp.com>
- <1292879088-7821-4-git-send-email-andros@netapp.com>
- <1292879088-7821-5-git-send-email-andros@netapp.com>
- <1292879088-7821-6-git-send-email-andros@netapp.com>
- <1292879088-7821-7-git-send-email-andros@netapp.com>
- <1292879088-7821-8-git-send-email-andros@netapp.com>
- <1292879088-7821-9-git-send-email-andros@netapp.com>
- <1292879088-7821-10-git-send-email-andros@netapp.com>
- <1292879088-7821-11-git-send-email-andros@netapp.com>
+	id S1755744Ab0LHCdk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Dec 2010 21:33:40 -0500
+Date: Tue, 7 Dec 2010 21:35:40 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: oops in nfs_flush_incompatible (and possible fix?)
+Message-ID: <20101207213540.441330db@corrin.poochiereds.net>
+In-Reply-To: <20101207200344.68ff29e3@corrin.poochiereds.net>
+References: <20101206145743.4464c79d@tlielax.poochiereds.net>
+	<1291758082.3049.42.camel@heimdal.trondhjem.org>
+	<20101207165354.32c863f2@tlielax.poochiereds.net>
+	<1291768200.3049.51.camel@heimdal.trondhjem.org>
+	<20101207200344.68ff29e3@corrin.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Tue, 7 Dec 2010 20:03:44 -0500
+Jeff Layton <jlayton@redhat.com> wrote:
 
-Differentiate from server backchannel
+> On Tue, 07 Dec 2010 19:30:00 -0500
+> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> 
+> > On Tue, 2010-12-07 at 16:53 -0500, Jeff Layton wrote:
+> > > On Tue, 07 Dec 2010 16:41:22 -0500
+> > > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > > > I've been racking my brain for days now trying to remember why we clear
+> > > > the request in these cases. I think it was only about ensuring that we
+> > > > could throw the page out of the cache using invalidate_inode_pages()
+> > > > (and there is a comment about that in early 2.4.x kernels).
+> > > > 
+> > > > As far as I can see, there no longer appear to be any side effects to
+> > > > deferring releasing the page or open_contexts but I'm still a bit
+> > > > nervous about doing so.
+> > > > Can we therefore please give it a good week of pounding upon before I
+> > > > pass it on to Linus?
+> > > > 
+> > > > Cheers
+> > > >   Trond
+> > > > 
+> > > 
+> > > Sounds good. I have the reporter of this problem testing a 2.6.18-based
+> > > kernel with this patch now to see whether it fixes it. We might as well
+> > > hold off until we have results from that. Their test takes several days
+> > > to run though so it may be a little while before we know whether this
+> > > helps. I'll reply once I hear from them.
+> > 
+> > Looks like I was right to be sceptical. My setup hangs hard on the
+> > Connectathon test5 (read and write) when this patch is applied.
+> > 
+> 
+> Yep, I see this too. I don't however, see this on the RHEL5 kernel
+> where I was testing this so I'm a little confused. Any idea why it
+> would cause this behavior?
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/callback.c              |   12 ++++++------
- include/linux/sunrpc/bc_xprt.h |    4 ++--
- include/linux/sunrpc/svc.h     |    2 +-
- net/sunrpc/svc.c               |    2 +-
- net/sunrpc/svcsock.c           |    2 +-
- 5 files changed, 11 insertions(+), 11 deletions(-)
+The patch below does not cause the hang for me though. Any idea why not
+putting the page in that spot would cause a hang?
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 4a9c517..64d5b21 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -142,7 +142,7 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
- 	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
- 	struct nfs4_sessionid *bc_sid;
- 
--	if (!serv->bc_xprt)
-+	if (!serv->sv_bc_xprt)
- 		return -EINVAL;
- 
- 	/* on success freed in xprt_free */
-@@ -152,12 +152,12 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
- 	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
- 		NFS4_MAX_SESSIONID_LEN);
- 	spin_lock_bh(&serv->sv_cb_lock);
--	serv->bc_xprt->xpt_bc_sid = bc_sid;
-+	serv->sv_bc_xprt->xpt_bc_sid = bc_sid;
- 	spin_unlock_bh(&serv->sv_cb_lock);
--	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
-+	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for sv_bc_xprt %p\n", __func__,
- 		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
- 		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
--		serv->bc_xprt);
-+		serv->sv_bc_xprt);
- 	return 0;
+-------------------------[snip]---------------------------
+
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index e4b62c6..aedcaa7 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -152,7 +152,6 @@ static void nfs_readpage_release(struct nfs_page *req)
+ 			(long long)NFS_FILEID(req->wb_context->path.dentry->d_inode),
+ 			req->wb_bytes,
+ 			(long long)req_offset(req));
+-	nfs_clear_request(req);
+ 	nfs_release_request(req);
  }
  
-@@ -231,8 +231,8 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- 	init_waitqueue_head(&serv->sv_cb_waitq);
- 	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
- 	if (IS_ERR(rqstp)) {
--		svc_xprt_put(serv->bc_xprt);
--		serv->bc_xprt = NULL;
-+		svc_xprt_put(serv->sv_bc_xprt);
-+		serv->sv_bc_xprt = NULL;
- 	}
- out:
- 	dprintk("--> %s return %ld\n", __func__,
-diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
-index 2c60e09..c50b458 100644
---- a/include/linux/sunrpc/bc_xprt.h
-+++ b/include/linux/sunrpc/bc_xprt.h
-@@ -43,7 +43,7 @@ int bc_send(struct rpc_rqst *req);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 4c14c17..04857c0 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -407,14 +407,16 @@ out:
   */
- static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
+ static void nfs_inode_remove_request(struct nfs_page *req)
  {
--	if (rqstp->rq_server->bc_xprt)
-+	if (rqstp->rq_server->sv_bc_xprt)
- 		return 1;
- 	return 0;
++	struct page *page;
+ 	struct inode *inode = req->wb_context->path.dentry->d_inode;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 
+ 	BUG_ON (!NFS_WBACK_BUSY(req));
+ 
+ 	spin_lock(&inode->i_lock);
+-	set_page_private(req->wb_page, 0);
+-	ClearPagePrivate(req->wb_page);
++	page = xchg(&req->wb_page, NULL);
++	set_page_private(page, 0);
++	ClearPagePrivate(page);
+ 	radix_tree_delete(&nfsi->nfs_page_tree, req->wb_index);
+ 	nfsi->npages--;
+ 	if (!nfsi->npages) {
+@@ -422,7 +424,8 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ 		iput(inode);
+ 	} else
+ 		spin_unlock(&inode->i_lock);
+-	nfs_clear_request(req);
++	if (page != NULL)
++		page_cache_release(page);
+ 	nfs_release_request(req);
  }
-@@ -51,7 +51,7 @@ static inline struct nfs4_sessionid *bc_xprt_sid(struct svc_rqst *rqstp)
- {
- 	if (svc_is_backchannel(rqstp))
- 		return (struct nfs4_sessionid *)
--					rqstp->rq_server->bc_xprt->xpt_bc_sid;
-+			rqstp->rq_server->sv_bc_xprt->xpt_bc_sid;
- 	return NULL;
- }
  
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 5a3085b..c81d4d8 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -99,7 +99,7 @@ struct svc_serv {
- 	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
- 	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
- 						 * entries in the svc_cb_list */
--	struct svc_xprt		*bc_xprt;
-+	struct svc_xprt		*sv_bc_xprt;	/* callback on fore channel */
- #endif /* CONFIG_NFS_V4_1 */
- };
- 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 261e2d1..0e659c6 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1262,7 +1262,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
- 	struct kvec	*resv = &rqstp->rq_res.head[0];
- 
- 	/* Build the svc_rqst used by the common processing routine */
--	rqstp->rq_xprt = serv->bc_xprt;
-+	rqstp->rq_xprt = serv->sv_bc_xprt;
- 	rqstp->rq_xid = req->rq_xid;
- 	rqstp->rq_prot = req->rq_xprt->prot;
- 	rqstp->rq_server = serv;
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index bfd9992..ca93294 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1611,7 +1611,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
- 	xprt = &svsk->sk_xprt;
- 	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
- 
--	serv->bc_xprt = xprt;
-+	serv->sv_bc_xprt = xprt;
- 
- 	return xprt;
- }
 -- 
-1.6.6
+1.7.3.2
 
+-- 
+Jeff Layton <jlayton@redhat.com>
