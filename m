@@ -1,103 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:49326 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1757163Ab0LNIyp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Dec 2010 03:54:45 -0500
-Message-ID: <4D0731C1.5090100@cn.fujitsu.com>
-Date: Tue, 14 Dec 2010 16:58:41 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: NFSv3 list <linux-nfs@vger.kernel.org>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>
-Subject: kernel panic when mount NFSv4
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from rcsinet10.oracle.com ([148.87.113.121]:63420 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756041Ab0LHUhC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Dec 2010 15:37:02 -0500
+Subject: Re: [Bug 24302] Kernel crashes when repeatedly trying to mount nfs share that is failing
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <Chuck.Lever@oracle.com>
+In-Reply-To: <1291835010.3067.4.camel@heimdal.trondhjem.org>
+Date: Wed, 8 Dec 2010 15:35:39 -0500
+Cc: bugzilla-daemon@bugzilla.kernel.org, linux-nfs@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>, stefan.bader@canonical.com
+Message-Id: <3F9D016C-9EDF-4B65-AD77-F225D5F1FA66@oracle.com>
+References: <bug-24302-104@https.bugzilla.kernel.org/> <201012081830.oB8IUZ4t027387@demeter2.kernel.org> <1291835010.3067.4.camel@heimdal.trondhjem.org>
+To: Trond Myklebust <trond.myklebust@fys.uio.no>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
 
-When testing NFSv4 at RHEL6 with kernel 2.6.32, I got a kernel panic
-at NFS client's __rpc_create_common function.
+On Dec 8, 2010, at 2:03 PM, Trond Myklebust wrote:
 
-The panic place is:
-  rpc_mkpipe
-    __rpc_lookup_create()          <=== find pipefile *idmap*
-    __rpc_mkpipe()                 <=== pipefile is *idmap*
-      __rpc_create_common()
-       ******  BUG_ON(!d_unhashed(dentry)); ******    *panic*
+> On Wed, 2010-12-08 at 18:30 +0000, bugzilla-daemon@bugzilla.kernel.org
+> wrote:
+>> https://bugzilla.kernel.org/show_bug.cgi?id=24302
+>> 
+>> 
+>> Andrew Morton <akpm@linux-foundation.org> changed:
+>> 
+>>           What    |Removed                     |Added
+>> ----------------------------------------------------------------------------
+>>          Component|Other                       |NFS
+>>         AssignedTo|fs_other@kernel-bugs.osdl.o |trond.myklebust@fys.uio.no
+>>                   |rg                          |
+>> 
+>> 
+>> 
+>> 
+>> --- Comment #8 from Andrew Morton <akpm@linux-foundation.org>  2010-12-08 18:30:32 ---
+>> OK, I reassigned it to NFS.  If that was wrong then at least the NFS guys
+>> should be able to help point things in the right direction.
+> 
+> <Switching to email interface. Please do not edit the bugzilla entry
+> directly, since that will lose the above Cc information>
+> 
+> 
+> Chuck,
+> 
+> Stefan appears to be hitting a panic in the nfs_umount() call from
+> nfs_walk_authlist(). Can you take a look, please?
 
-It means that the dentry's d_flags have be set DCACHE_UNHASHED, 
-but it should not be set here.
+Recv'd.  I'll have a look.
 
-Is someone known this bug? or give me some idea?
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-A reproduce program is append, but it can't reproduce the bug every time.
-the export is: "/nfsroot       *(rw,no_root_squash,fsid=0,insecure)"
-
-And the panic message is append.
-
-============================================================================
-#!/bin/sh
-
-LOOPTOTAL=768
-LOOPCOUNT=0
-ret=0
-
-while [ $LOOPCOUNT -ne $LOOPTOTAL ]
-do
-	((LOOPCOUNT += 1))
-	service nfs restart
-	/usr/sbin/rpc.idmapd
-	mount -t nfs4 127.0.0.1:/ /mnt|| return 1;
-	ls -l /var/lib/nfs/rpc_pipefs/nfs/*/
-	umount /mnt
-	echo $LOOPCOUNT
-done
-
-===============================================================================
-Code: af 60 01 00 00 89 fa 89 f0 e8 64 cf 89 f0 e8 5c 7c 64 cf 31 c0 8b 5c 24 10 8b 
-74 24 14 8b 7c 24 18 8b 6c 24 1c 83 c4 20 c3 <0f> 0b eb fc 8b 46 28 c7 44 24 08 20
-de ee f0 c7 44 24 04 56 ea 
-EIP:[<f0ee92ea>] __rpc_create_common+0x8a/0xc0 [sunrpc] SS:ESP 0068:eccb5d28
----[ end trace 8f5606cd08928ed2]---
-Kernel panic - not syncing: Fatal exception
-Pid:7131, comm: mount.nfs4 Tainted: G     D   -------------------2.6.32 #1
-Call Trace:
- [<c080ad18>] ? panic+0x42/0xed
- [<c080e42c>] ? oops_end+0xbc/0xd0
- [<c040b090>] ? do_invalid_op+0x0/0x90
- [<c040b10f>] ? do_invalid_op+0x7f/0x90
- [<f0ee92ea>] ? __rpc_create_common+0x8a/0xc0[sunrpc]
- [<f0edc433>] ? rpc_free_task+0x33/0x70[sunrpc]
- [<f0ed6508>] ? prc_call_sync+0x48/0x60[sunrpc]
- [<f0ed656e>] ? rpc_ping+0x4e/0x60[sunrpc]
- [<f0ed6eaf>] ? rpc_create+0x38f/0x4f0[sunrpc]
- [<c080d80b>] ? error_code+0x73/0x78
- [<f0ee92ea>] ? __rpc_create_common+0x8a/0xc0[sunrpc]
- [<c0532bda>] ? d_lookup+0x2a/0x40
- [<f0ee94b1>] ? rpc_mkpipe+0x111/0x1b0[sunrpc]
- [<f10a59f4>] ? nfs_create_rpc_client+0xb4/0xf0[nfs]
- [<f10d6c6d>] ? nfs_fscache_get_client_cookie+0x1d/0x50[nfs]
- [<f10d3fcb>] ? nfs_idmap_new+0x7b/0x140[nfs]
- [<c05e76aa>] ? strlcpy+0x3a/0x60
- [<f10a60ca>] ? nfs4_set_client+0xea/0x2b0[nfs]
- [<f10a6d0c>] ? nfs4_create_server+0xac/0x1b0[nfs]
- [<c04f1400>] ? krealloc+0x40/0x50
- [<f10b0e8b>] ? nfs4_remote_get_sb+0x6b/0x250[nfs]
- [<c04f14ec>] ? kstrdup+0x3c/0x60
- [<c0520739>] ? vfs_kern_mount+0x69/0x170
- [<f10b1a3c>] ? nfs_do_root_mount+0x6c/0xa0[nfs]
- [<f10b1b47>] ? nfs4_try_mount+0x37/0xa0[nfs]
- [<f10afe6d>] ? nfs4_validate_text_mount_data+-x7d/0xf0[nfs]
- [<f10b1c42>] ? nfs4_get_sb+0x92/0x2f0
- [<c0520739>] ? vfs_kern_mount+0x69/0x170
- [<c05366d2>] ? get_fs_type+0x32/0xb0
- [<c052089f>] ? do_kern_mount+0x3f/0xe0
- [<c053954f>] ? do_mount+0x2ef/0x740
- [<c0537740>] ? copy_mount_options+0xb0/0x120
- [<c0539a0e>] ? sys_mount+0x6e/0xa0
 
 
 
