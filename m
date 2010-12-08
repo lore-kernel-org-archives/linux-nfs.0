@@ -1,63 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60149 "EHLO fieldses.org"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:54478 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751394Ab0LVW1j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Dec 2010 17:27:39 -0500
-Date: Wed, 22 Dec 2010 17:27:38 -0500
-To: andros@netapp.com
-Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH_V5 09/11] NFS RPC_AUTH_GSS unsupported on v4.1 back
- channel
-Message-ID: <20101222222738.GF13243@fieldses.org>
-References: <1292879088-7821-1-git-send-email-andros@netapp.com>
- <1292879088-7821-2-git-send-email-andros@netapp.com>
- <1292879088-7821-3-git-send-email-andros@netapp.com>
- <1292879088-7821-4-git-send-email-andros@netapp.com>
- <1292879088-7821-5-git-send-email-andros@netapp.com>
- <1292879088-7821-6-git-send-email-andros@netapp.com>
- <1292879088-7821-7-git-send-email-andros@netapp.com>
- <1292879088-7821-8-git-send-email-andros@netapp.com>
- <1292879088-7821-9-git-send-email-andros@netapp.com>
- <1292879088-7821-10-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1292879088-7821-10-git-send-email-andros@netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1755801Ab0LHSJn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Dec 2010 13:09:43 -0500
+Received: from d01dlp01.pok.ibm.com (d01dlp01.pok.ibm.com [9.56.224.56])
+	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id oB8Hq4Ts003848
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Dec 2010 12:52:34 -0500
+Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 4DBC672805B
+	for <linux-nfs@vger.kernel.org>; Wed,  8 Dec 2010 13:09:42 -0500 (EST)
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oB8I9g9V142856
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Dec 2010 13:09:42 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oB8I9fRB003658
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Dec 2010 13:09:41 -0500
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id oB8I9fwe003644
+	for <linux-nfs@vger.kernel.org>; Wed, 8 Dec 2010 13:09:41 -0500
+To: linux-nfs@vger.kernel.org
+Subject: Linux pNFS status meeting 12/09/10 (new number)
+Message-ID: <OFD3BCBD74.7B8500CB-ON882577F3.00638F03-882577F3.0063BE99@us.ibm.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Date: Wed, 8 Dec 2010 10:09:37 -0800
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Dec 20, 2010 at 04:04:46PM -0500, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/callback.c |    3 +++
->  1 files changed, 3 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 541be39..4a9c517 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -368,6 +368,9 @@ static int check_gss_callback_principal(struct nfs_client *clp,
->  	struct rpc_clnt *r = clp->cl_rpcclient;
->  	char *p = svc_gss_principal(rqstp);
->  
-> +	/* No RPC_AUTH_GSS on NFSv4.1 back channel yet */
-> +	if (clp->cl_minorversion != 0)
-> +		return SVC_DENIED;
+Meeting on Thursday 12/09/10 at 9:30 AM pacific time (12:30 PM UMICH time)
 
-May as well just drop in this case, actually, right?  You didn't ask for
-gss in the create_session, so this would be an outright server bug.
+Marc. 
 
---b.
+USA Toll-Free:
 
->  	/*
->  	 * It might just be a normal user principal, in which case
->  	 * userspace won't bother to tell us the name at all.
-> -- 
-> 1.6.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+888-426-6840
+
+USA Caller Paid:
+
+215-861-6239
+
+
+
+
+
+Participant Code:
+
+8792872
+
+
+
+
+For Other Countries:
+
+
+
+
+Israel
+ 
+Toll-Free
+ 
+1-809-417-783
+
+
