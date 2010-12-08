@@ -1,60 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39890 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54713 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754810Ab0LMTrw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Dec 2010 14:47:52 -0500
-Subject: Re: Side effects of having NFSv4 mounted over udp
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Thomas Haynes <thomas@netapp.com>,
-        DENIEL Philippe <philippe.deniel@cea.fr>, linux-nfs@vger.kernel.org
-In-Reply-To: <20101213191634.GB2230@fieldses.org>
-References: <4D05CF50.1010305@cea.fr>
-	 <A9F12BB4-8571-4C58-AC6A-8094FA912B27@netapp.com>
-	 <20101213191634.GB2230@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 13 Dec 2010 14:47:35 -0500
-Message-ID: <1292269655.8795.7.camel@heimdal.trondhjem.org>
+	id S1754117Ab0LHLG7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Dec 2010 06:06:59 -0500
+Date: Wed, 8 Dec 2010 06:06:56 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: oops in nfs_flush_incompatible (and possible fix?)
+Message-ID: <20101208060656.3b462654@tlielax.poochiereds.net>
+In-Reply-To: <1291781972.21760.2.camel@heimdal.trondhjem.org>
+References: <20101206145743.4464c79d@tlielax.poochiereds.net>
+	<1291758082.3049.42.camel@heimdal.trondhjem.org>
+	<20101207165354.32c863f2@tlielax.poochiereds.net>
+	<1291768200.3049.51.camel@heimdal.trondhjem.org>
+	<20101207200344.68ff29e3@corrin.poochiereds.net>
+	<20101207213540.441330db@corrin.poochiereds.net>
+	<1291778228.20468.6.camel@heimdal.trondhjem.org>
+	<1291779950.21760.1.camel@heimdal.trondhjem.org>
+	<1291781972.21760.2.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2010-12-13 at 14:16 -0500, J. Bruce Fields wrote:
-> On Mon, Dec 13, 2010 at 01:04:28PM -0600, Thomas Haynes wrote:
-> > 
-> > On Dec 13, 2010, at 1:46 AM, DENIEL Philippe wrote:
-> > 
-> > > Hi,
+On Tue, 07 Dec 2010 23:19:32 -0500
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+
+> On Tue, 2010-12-07 at 22:45 -0500, Trond Myklebust wrote:
+> > On Tue, 2010-12-07 at 22:17 -0500, Trond Myklebust wrote:
+> > > OK... I think I see why the hang:
 > > > 
-> > > I know NFSv4 is definitely a connection oriented protocol, but noting prevent from using "mount -t nfs4 -o proto=udp <...>". Using TCP instead of UDP could be of great interest, especially in a HPC context where thousands of clients will operate at the same time. If a nfs mount point is made over udp, what would be the side effects ? I tried to run the connectathon on such a udp based mount point and I could find no errors. Is NFSv4/UDP a suitable solution ? Or does it make no sense to use udp ?
+> > > I believe that it is basically due to nfs_clear_page_tag_locked() making
+> > > the assumption that if req->wb_page != NULL, then the corresponding
+> > > nfsi->nfs_page_tree lock tag needs to be cleared.
+> > > 
+> > > Maybe we can do that differently by just setting a flag to indicate
+> > > whether or not this request is mapped into the radix tree...
 > > 
-> > 
-> > You might find that some implementations have UDP disabled and it might then make
-> > it hard to triage what is going on.
-> > 
-> > I believe both NetApp's OnTap and Oracle's Solaris have it turned off.
+> > The following patch is completely untested, but should do the trick....
 > 
-> The Linux server allows it, but I've been considering that a
-> (low-priority) bug, so it wouldn't be safe to assume it will continue
-> working.
+> ...and it appears to work correctly for me.
 > 
-> That aside, if you have a perfect network, NFSv4.0 at least will
-> probably work.  (Not 4.1 since backchannel setup will fail?)
-> 
-> Are you really sure that you can't make tcp scale to thousands of
-> clients?
 
-Maybe SCTP would be the way to go then? We've often talked about it over
-the years, but nobody has yet (to my knowledge) written an ONC RPC
-transport for it.
+Thanks Trond,
 
-Cheers
-  Trond
+I'll test it out too and also backport that patch for RHEL5.
+
+Cheers,
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Jeff Layton <jlayton@redhat.com>
