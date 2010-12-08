@@ -1,46 +1,39 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfs: add missed CONFIG_NFSD_DEPRECATED
-Date: Mon, 13 Dec 2010 19:13:34 -0500
-Message-ID: <20101214001334.GH9394@fieldses.org>
-References: <1292044877-4701-1-git-send-email-bookjovi@gmail.com>
+From: Bill Baker <Bill.Baker-Onf44Ee+mfbQT0dZR+AlfA@public.gmane.org>
+Subject: Connectathon 2011 announcement
+Date: Tue, 07 Dec 2010 18:30:38 -0600
+Message-ID: <4CFED1AE.9040006@Oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: bookjovi@gmail.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1292044877-4701-1-git-send-email-bookjovi@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: nfsv4@linux-nfs.org, nfsv4@ietf.org, linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:41383 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754660Ab0LHAa5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Dec 2010 19:30:57 -0500
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Dec 11, 2010 at 12:21:17AM -0500, bookjovi@gmail.com wrote:
-> these pieces of code only make sense when CONFIG_NFSD_DEPRECATED enabled
-> 
-> Signed-off-by: Jovi Zhang <bookjovi@gmail.com>
 
-OK, thanks; applied for 2.6.38.--b.
+Greetings, all,
 
-> 
->  fs/nfsd/nfsctl.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 4514ebb..6840ec3 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -127,6 +127,7 @@ static ssize_t nfsctl_transaction_write(struct file *file, const char __user *bu
->  
->  static ssize_t nfsctl_transaction_read(struct file *file, char __user *buf, size_t size, loff_t *pos)
->  {
-> +#ifdef CONFIG_NFSD_DEPRECATED
->  	static int warned;
->  	if (file->f_dentry->d_name.name[0] == '.' && !warned) {
->  		printk(KERN_INFO
-> @@ -135,6 +136,7 @@ static ssize_t nfsctl_transaction_read(struct file *file, char __user *buf, size
->  		       current->comm, file->f_dentry->d_name.name);
->  		warned = 1;
->  	}
-> +#endif
->  	if (! file->private_data) {
->  		/* An attempt to read a transaction file without writing
->  		 * causes a 0-byte write so that the file can return
+The Oracle Corporation will be hosting the 25th
+Connecthon at the Network Meeting Center in Santa
+Clara, CA.  The event will begin the morning of February
+21st and close the afternoon of Friday, February 25th.
+This is the week immediately after Fast 2011, which is
+in San Jose.
+
+We will be updating the connectathon.org website with
+more detailed information very shortly.
+
+As in recent years, we will be holding technical sessions
+in the afternoons.  If you have a proposal for a topic,
+please send me a brief abstract.
+
+If you have questions or comments about the event, please
+send them to me.
+
+I'll see you at Connectathon 2011.
+
+-- 
+Bill Baker - Oracle Solaris NFS development
