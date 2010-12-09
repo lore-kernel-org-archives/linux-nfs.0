@@ -1,156 +1,239 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28500 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932234Ab0LMQyQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Dec 2010 11:54:16 -0500
-Message-ID: <4D064FB4.1020209@RedHat.com>
-Date: Mon, 13 Dec 2010 11:54:12 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] libnsm.a: sm-notify sometimes ignores monitored hosts
-References: <20101206160206.18361.26178.stgit@matisse.1015granger.net> <20101206160944.18361.28275.stgit@matisse.1015granger.net>
-In-Reply-To: <20101206160944.18361.28275.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-gw0-f42.google.com ([74.125.83.42]:44188 "EHLO
+	mail-gw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753217Ab0LIQth (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 11:49:37 -0500
+Received: by gwb20 with SMTP id 20so2209519gwb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Dec 2010 08:49:36 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 06/11] lockd: Create client-side nlm_host cache
+To: linux-nfs@vger.kernel.org
+Date: Thu, 09 Dec 2010 11:49:07 -0500
+Message-ID: <20101209164907.4513.70509.stgit@matisse.1015granger.net>
+In-Reply-To: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
+References: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hey Chuck,
+NFS clients don't need the garbage collection processing that is
+performed on nlm_host structures.  The client picks up an nlm_host at
+mount time and holds a reference to it until the file system is
+unmounted.
 
-On 12/06/2010 11:09 AM, Chuck Lever wrote:
-> Monitored host information is stored in files under /var/lib/nfs.
-> When visiting entries in the monitored hosts directory, libnsm.a
-> examines the value of dirent.d_type to determine if an entry is a
-> regular file.
-> 
-> According to readdir(3), the d_type field is not supported by all
-> file system types.  My root file system happens to be one where d_type
-> isn't supported.  Typical installations that use an ext-derived root
-> file system are not exposed to this issue, but those who use xfs, for
-> instance, are.
-> 
-> On such file systems, not only are remote peers not notified of
-> reboots, but the NSM state number is never incremented.  A statd warm
-> restart would not re-monitor any hosts that were monitored before
-> the restart.
-> 
-> When writing support/nsm/file.c, I copied the use of d_type from the
-> original statd code, so this has likely been an issue for some time.
-> 
-> Replace the use of d_type in support/nsm/file.c with a call to
-> lstat(2).  It's extra code, but is guaranteed to work on all file
-> system types.
-> 
-> Note there is a usage of d_type in gssd.  I'll let gssd and rpcpipefs
-> experts decide whether that's worth changing.
-> 
-> Fix for:
-> 
->   https://bugzilla.linux-nfs.org/show_bug.cgi?id=193
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  support/nsm/file.c |   38 ++++++++++++++++++++++++++++++--------
->  1 files changed, 30 insertions(+), 8 deletions(-)
-> 
-> diff --git a/support/nsm/file.c b/support/nsm/file.c
-> index f4baeb9..ba2a9ce 100644
-> --- a/support/nsm/file.c
-> +++ b/support/nsm/file.c
-> @@ -568,11 +568,13 @@ nsm_retire_monitored_hosts(void)
->  
->  	while ((de = readdir(dir)) != NULL) {
->  		char *src, *dst;
-> +		struct stat stb;
->  
-> -		if (de->d_type != (unsigned char)DT_REG)
-> -			continue;
-> -		if (de->d_name[0] == '.')
-> +		if (de->d_name[0] == '.') {
-> +			xlog(D_GENERAL, "Skipping dot file %s",
-> +					de->d_name);
->  			continue;
-> +		}
->  
->  		src = nsm_make_record_pathname(NSM_MONITOR_DIR, de->d_name);
->  		if (src == NULL) {
-> @@ -580,6 +582,20 @@ nsm_retire_monitored_hosts(void)
->  			continue;
->  		}
->  
-> +		/* NB: not all file systems fill in d_type correctly */
-> +		if (lstat(src, &stb) == -1) {
-> +			xlog_warn("Bad monitor file %s, skipping: %m",
-> +					de->d_name);
-> +			free(src);
-> +			continue;
-> +		}
-> +		if (!S_ISREG(stb.st_mode)) {
-> +			xlog(D_GENERAL, "Skipping non-regular file %s",
-> +					de->d_name);
-> +			free(src);
-> +			continue;
-> +		}
-> +
->  		dst = nsm_make_record_pathname(NSM_NOTIFY_DIR, de->d_name);
->  		if (dst == NULL) {
->  			free(src);
-> @@ -846,7 +862,7 @@ nsm_read_line(const char *hostname, const time_t timestamp, char *line,
->  }
->  
->  /*
-> - * Given a filename, reads data from a file under NSM_MONITOR_DIR
-> + * Given a filename, reads data from a file under "directory"
->   * and invokes @func so caller can populate their in-core
->   * database with this data.
->   */
-> @@ -863,10 +879,15 @@ nsm_load_host(const char *directory, const char *filename, nsm_populate_t func)
->  	if (path == NULL)
->  		goto out_err;
->  
-> -	if (stat(path, &stb) == -1) {
-> +	if (lstat(path, &stb) == -1) {
->  		xlog(L_ERROR, "Failed to stat %s: %m", path);
->  		goto out_freepath;
->  	}
-> +	if (!S_ISREG(stb.st_mode)) {
-> +		xlog(D_GENERAL, "Skipping non-regular file %s",
-> +				path);
-Question, why do we care non-regular files are being ignored?
+Servers, on the other hand, don't have a precise way to tell when an
+nlm_host is no longer being used, so zero refcount nlm_host entries
+are left to expire in the cache after a time.
 
-I understand logging the lstat() error but logging statements like
-"ignoring this" or "not doing that" just make the debug output a 
-bit too noisy IMHO... 
+Basically there's nothing holding a reference to an nlm_host between
+individual server-side NLM requests, but we can't afford the expense
+of recreating them for every new NLM request from a client.  The
+nlm_host cache adds some lifetime hysteresis to entries in the cache
+so the next time a particular nlm_host is needed, it's likely to be
+discovered by a lookup rather than created from whole cloth.
 
-I'm thinking it would be better to log the files that 
-are actually being used verses files that are being ignored.
+With the new implementation, client nlm_host cache items are no longer
+garbage collected, and are destroyed directly by a new release
+function specialized for client entries, nlmclnt_release_host().  They
+are cached in their own data structure, and have their own lookup
+logic, simplified and specialized for client nlm_host entries.
 
+However, the client nlm_host cache still shares reboot recovery logic
+with the server nlm_host cache.  The NSM "peer rebooted" downcall for
+clients and servers still come through the same RPC call.  This is a
+legacy formal API that would be difficult to alter, and besides, the
+user space NSM implementation can't tell the difference between peers
+that are clients or servers.
 
-> +		goto out_freepath;
-> +	}
->  
->  	f = fopen(path, "r");
->  	if (f == NULL) {
-> @@ -913,10 +934,11 @@ nsm_load_dir(const char *directory, nsm_populate_t func)
->  	}
->  
->  	while ((de = readdir(dir)) != NULL) {
-> -		if (de->d_type != (unsigned char)DT_REG)
-> -			continue;
-> -		if (de->d_name[0] == '.')
-> +		if (de->d_name[0] == '.') {
-> +			xlog(D_GENERAL, "Skipping dot file %s",
-> +					de->d_name);
-The same goes with this... Do we really care "." and ".." are
-being ignored? Isn't that expected? ;-)
+For this reason, the client cache continues to share the
+nlm_host_mutex (and the reboot recovery logic) with the server cache.
 
-steved.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
->  			continue;
-> +		}
->  
->  		count += nsm_load_host(directory, de->d_name, func);
->  	}
-> 
+ fs/lockd/clntlock.c         |    4 +-
+ fs/lockd/clntproc.c         |    6 ++-
+ fs/lockd/host.c             |   81 ++++++++++++++++++++++++++++++++++++++-----
+ include/linux/lockd/lockd.h |    1 +
+ 4 files changed, 78 insertions(+), 14 deletions(-)
+
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 25509eb..8d4ea83 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -79,7 +79,7 @@ EXPORT_SYMBOL_GPL(nlmclnt_init);
+  */
+ void nlmclnt_done(struct nlm_host *host)
+ {
+-	nlm_release_host(host);
++	nlmclnt_release_host(host);
+ 	lockd_down();
+ }
+ EXPORT_SYMBOL_GPL(nlmclnt_done);
+@@ -273,7 +273,7 @@ restart:
+ 	spin_unlock(&nlm_blocked_lock);
+ 
+ 	/* Release host handle after use */
+-	nlm_release_host(host);
++	nlmclnt_release_host(host);
+ 	lockd_down();
+ 	return 0;
+ }
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index fbc6617..adb45ec 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -58,7 +58,7 @@ static void nlm_put_lockowner(struct nlm_lockowner *lockowner)
+ 		return;
+ 	list_del(&lockowner->list);
+ 	spin_unlock(&lockowner->host->h_lock);
+-	nlm_release_host(lockowner->host);
++	nlmclnt_release_host(lockowner->host);
+ 	kfree(lockowner);
+ }
+ 
+@@ -207,7 +207,7 @@ struct nlm_rqst *nlm_alloc_call(struct nlm_host *host)
+ 		printk("nlm_alloc_call: failed, waiting for memory\n");
+ 		schedule_timeout_interruptible(5*HZ);
+ 	}
+-	nlm_release_host(host);
++	nlmclnt_release_host(host);
+ 	return NULL;
+ }
+ 
+@@ -215,7 +215,7 @@ void nlmclnt_release_call(struct nlm_rqst *call)
+ {
+ 	if (!atomic_dec_and_test(&call->a_count))
+ 		return;
+-	nlm_release_host(call->a_host);
++	nlmclnt_release_host(call->a_host);
+ 	nlmclnt_release_lockargs(call);
+ 	kfree(call);
+ }
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 52e21c3..3aa2497 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -26,6 +26,7 @@
+ #define NLM_HOST_COLLECT	(120 * HZ)
+ 
+ static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
++static struct hlist_head	nlm_client_hosts[NLM_HOST_NRHASH];
+ 
+ #define for_each_host(host, pos, chain, table) \
+ 	for ((chain) = (table); \
+@@ -284,12 +285,76 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
+ 		.hostname_len	= strlen(hostname),
+ 		.noresvport	= noresvport,
+ 	};
++	struct hlist_head *chain;
++	struct hlist_node *pos;
++	struct nlm_host	*host;
++	struct nsm_handle *nsm = NULL;
+ 
+ 	dprintk("lockd: %s(host='%s', vers=%u, proto=%s)\n", __func__,
+ 			(hostname ? hostname : "<none>"), version,
+ 			(protocol == IPPROTO_UDP ? "udp" : "tcp"));
+ 
+-	return nlm_lookup_host(&ni);
++	mutex_lock(&nlm_host_mutex);
++
++	chain = &nlm_client_hosts[nlm_hash_address(sap)];
++	hlist_for_each_entry(host, pos, chain, h_hash) {
++		if (!rpc_cmp_addr(nlm_addr(host), sap))
++			continue;
++
++		/* Same address. Share an NSM handle if we already have one */
++		if (nsm == NULL)
++			nsm = host->h_nsmhandle;
++
++		if (host->h_proto != protocol)
++			continue;
++		if (host->h_version != version)
++			continue;
++
++		nlm_get_host(host);
++		dprintk("lockd: %s found host %s (%s)\n", __func__,
++			host->h_name, host->h_addrbuf);
++		goto out;
++	}
++
++	host = nlm_alloc_host(&ni, nsm);
++	if (unlikely(host == NULL))
++		goto out;
++
++	hlist_add_head(&host->h_hash, chain);
++	nrhosts++;
++
++	dprintk("lockd: %s created host %s (%s)\n", __func__,
++		host->h_name, host->h_addrbuf);
++
++out:
++	mutex_unlock(&nlm_host_mutex);
++	return host;
++}
++
++/**
++ * nlmclnt_release_host - release client nlm_host
++ * @host: nlm_host to release
++ *
++ */
++void nlmclnt_release_host(struct nlm_host *host)
++{
++	if (host == NULL)
++		return;
++
++	dprintk("lockd: release client host %s\n", host->h_name);
++
++	BUG_ON(atomic_read(&host->h_count) < 0);
++	BUG_ON(host->h_server);
++
++	if (atomic_dec_and_test(&host->h_count)) {
++		BUG_ON(!list_empty(&host->h_lockowners));
++		BUG_ON(!list_empty(&host->h_granted));
++		BUG_ON(!list_empty(&host->h_reclaim));
++
++		mutex_lock(&nlm_host_mutex);
++		nlm_destroy_host_locked(host);
++		mutex_unlock(&nlm_host_mutex);
++	}
+ }
+ 
+ /**
+@@ -511,16 +576,14 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
+ 	 * To avoid processing a host several times, we match the nsmstate.
+ 	 */
+ 	while ((host = next_host_state(nlm_hosts, nsm, info)) != NULL) {
+-		if (host->h_server) {
+-			/* We're server for this guy, just ditch
+-			 * all the locks he held. */
+-			nlmsvc_free_host_resources(host);
+-		} else {
+-			/* He's the server, initiate lock recovery. */
+-			nlmclnt_recovery(host);
+-		}
++		nlmsvc_free_host_resources(host);
+ 		nlm_release_host(host);
+ 	}
++	while ((host = next_host_state(nlm_client_hosts, nsm, info)) != NULL) {
++		nlmclnt_recovery(host);
++		nlmclnt_release_host(host);
++	}
++
+ 	nsm_release(nsm);
+ }
+ 
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index a32ba62..6c2a0e2 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -223,6 +223,7 @@ struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
+ 					const u32 version,
+ 					const char *hostname,
+ 					int noresvport);
++void		  nlmclnt_release_host(struct nlm_host *);
+ struct nlm_host  *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 					const char *hostname,
+ 					const size_t hostname_len);
+
