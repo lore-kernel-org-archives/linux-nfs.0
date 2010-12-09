@@ -1,104 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43421 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:54522 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753691Ab0LOOLu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 09:11:50 -0500
-Subject: Re: [PATCH 12/22] pnfs-submit: wave2: rewrite validate_bitmap_values to obey spec
-Content-Type: text/plain; charset=us-ascii
-From: Fred Isaman <iisaman@netapp.com>
-In-Reply-To: <4D08C961.3090702@panasas.com>
-Date: Wed, 15 Dec 2010 09:11:33 -0500
+	id S1750819Ab0LIEhT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Dec 2010 23:37:19 -0500
+Subject: Re: System CPU increasing on idle 2.6.36
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Simon Kirby <sim@hostway.ca>
 Cc: linux-nfs@vger.kernel.org
-Message-Id: <394DBE14-A569-4BEA-99CE-1CB268392449@netapp.com>
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com> <1291944177-7819-13-git-send-email-iisaman@netapp.com> <4D08C961.3090702@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
+In-Reply-To: <20101208223622.GA3796@hostway.ca>
+References: <20101208212505.GA18192@hostway.ca>
+	 <1291845189.3067.31.camel@heimdal.trondhjem.org>
+	 <20101208223622.GA3796@hostway.ca>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 08 Dec 2010 23:37:17 -0500
+Message-ID: <1291869437.2821.6.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Dec 15, 2010, at 8:57 AM, Benny Halevy wrote:
-
-> On 2010-12-10 03:22, Fred Isaman wrote:
->> It was checking that at least one known bit was set.  It needs to check
->> no unknown bit was set.  From RFC5661, section 20.6.3:
->> 
->> When a bit is set in the type mask that corresponds to an undefined
->> type of recallable object, NFS4ERR_INVAL MUST be returned.
->> 
->> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->> ---
->> fs/nfs/callback.h      |    1 +
->> fs/nfs/callback_proc.c |   27 ++++-----------------------
->> 2 files changed, 5 insertions(+), 23 deletions(-)
->> 
->> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
->> index b16dd1f..616c5c1 100644
->> --- a/fs/nfs/callback.h
->> +++ b/fs/nfs/callback.h
->> @@ -126,6 +126,7 @@ extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
->> #define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX  9
->> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
->> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
->> +#define RCA4_TYPE_MASK_ALL 0xf31f
->> 
->> struct cb_recallanyargs {
->> 	struct sockaddr	*craa_addr;
->> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
->> index 61b3c66..d4aec46 100644
->> --- a/fs/nfs/callback_proc.c
->> +++ b/fs/nfs/callback_proc.c
->> @@ -661,28 +661,10 @@ out_putclient:
->> 	goto out;
->> }
->> 
->> -static inline bool
->> -validate_bitmap_values(const unsigned long *mask)
->> +static bool
->> +validate_bitmap_values(unsigned long mask)
->> {
->> -	int i;
->> -
->> -	if (*mask == 0)
->> -		return true;
->> -	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, mask) ||
->> -	    test_bit(RCA4_TYPE_MASK_WDATA_DLG, mask) ||
->> -	    test_bit(RCA4_TYPE_MASK_DIR_DLG, mask) ||
->> -	    test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, mask) ||
->> -	    test_bit(RCA4_TYPE_MASK_BLK_LAYOUT, mask))
->> -		return true;
->> -	for (i = RCA4_TYPE_MASK_OBJ_LAYOUT_MIN;
->> -	     i <= RCA4_TYPE_MASK_OBJ_LAYOUT_MAX; i++)
->> -		if (test_bit(i, mask))
->> -			return true;
->> -	for (i = RCA4_TYPE_MASK_OTHER_LAYOUT_MIN;
->> -	     i <= RCA4_TYPE_MASK_OTHER_LAYOUT_MAX; i++)
->> -		if (test_bit(i, mask))
->> -			return true;
->> -	return false;
->> +	return mask & ~RCA4_TYPE_MASK_ALL;
+On Wed, 2010-12-08 at 14:36 -0800, Simon Kirby wrote:
+> On Wed, Dec 08, 2010 at 04:53:09PM -0500, Trond Myklebust wrote:
 > 
-> Hmm, shouldn't that be
-> 	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
+> > Possibly a side effect of the fs/fs-writeback.c changes in 2.6.36? You
+> > do appear to be hitting a lot of spinlock contention, but I suspect that
+> > a lot of it is coming from writeback_sb_inodes, writeback_single_inode
+> > and queue_io, all of which seem unnaturally high on your stats above.
+> > 
+> > I don't see how you can be seeing no traffic on the wire. You are
+> > certainly hitting some page writeout (0.2% nfs_pageio_doio).
 > 
-> Benny
-> 
+> It really seems to not be doing anything.  I ran nfsstat -Zcv for 5
+> minutes, and the only non-zero counters are rpc calls and authrefrsh,
+> even though perf top shows similar profiles the whole time.
 
-Yes, you are right.
+That sounds like a bug in nfsstat, then. As I said, your trace results
+definitely indicate that you are doing page writeout. I'd cross check
+using wireshark...
 
-Fred
+Cheers
+  Trond
 
->> }
->> 
->> __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
->> @@ -702,8 +684,7 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
->> 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
->> 
->> 	status = cpu_to_be32(NFS4ERR_INVAL);
->> -	if (!validate_bitmap_values((const unsigned long *)
->> -				    &args->craa_type_mask))
->> +	if (!validate_bitmap_values(args->craa_type_mask))
->> 		goto out;
->> 
->> 	status = cpu_to_be32(NFS4_OK);
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
