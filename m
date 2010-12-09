@@ -1,187 +1,348 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57636 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753281Ab0LWRa1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 12:30:27 -0500
-From: Fred Isaman <iisaman@netapp.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:53716 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753217Ab0LIQtp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 11:49:45 -0500
+Received: by ywl5 with SMTP id 5so1495159ywl.19
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Dec 2010 08:49:45 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 07/11] lockd: Clean up nlmsvc_lookup_host()
 To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 12/15] pnfs: CB_LAYOUTRECALL xdr code
-Date: Thu, 23 Dec 2010 12:29:54 -0500
-Message-Id: <1293125397-30088-13-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
-References: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
+Date: Thu, 09 Dec 2010 11:49:42 -0500
+Message-ID: <20101209164942.4513.40461.stgit@matisse.1015granger.net>
+In-Reply-To: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
+References: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This is the xdr decoding for CB_LAYOUTRECALL.
+Clean up.
 
-Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Change nlmsvc_lookup_host() to be purpose-built for server-side
+nlm_host management.  This replaces the generic nlm_lookup_host()
+helper function, just like on the client side.  The lookup logic is
+specialized for server host lookups.
+
+The server side cache also gets its own specialized nlm_release_host()
+function.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/callback.h      |   20 ++++++++++++++
- fs/nfs/callback_proc.c |    6 ++++
- fs/nfs/callback_xdr.c  |   69 +++++++++++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 94 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index b678e3e..19570f4 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -138,6 +138,26 @@ extern __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args,
- 					 void *dummy,
- 					 struct cb_process_state *cps);
- 
-+struct cb_layoutrecallargs {
-+	struct sockaddr		*cbl_addr;
-+	uint32_t		cbl_recall_type;
-+	uint32_t		cbl_layout_type;
-+	uint32_t		cbl_layoutchanged;
-+	union {
-+		struct {
-+			struct nfs_fh		cbl_fh;
-+			struct inode		*cbl_inode;
-+			struct pnfs_layout_range cbl_range;
-+			nfs4_stateid		cbl_stateid;
-+		};
-+		struct nfs_fsid		cbl_fsid;
-+	};
-+};
-+
-+extern unsigned nfs4_callback_layoutrecall(
-+	struct cb_layoutrecallargs *args,
-+	void *dummy, struct cb_process_state *cps);
-+
- extern void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
- extern void nfs4_cb_take_slot(struct nfs_client *clp);
- #endif /* CONFIG_NFS_V4_1 */
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index c1bead2..c1bb157 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -107,6 +107,12 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
- 
- #if defined(CONFIG_NFS_V4_1)
- 
-+__be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
-+				  void *dummy, struct cb_process_state *cps)
-+{
-+	return cpu_to_be32(NFS4ERR_NOTSUPP); /* STUB */
-+}
-+
- int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+ fs/lockd/host.c             |   91 ++++++++++++++++++++++++++++++++++---------
+ fs/lockd/svc4proc.c         |   16 ++++----
+ fs/lockd/svcproc.c          |   18 ++++-----
+ include/linux/lockd/lockd.h |    2 -
+ 4 files changed, 90 insertions(+), 37 deletions(-)
+
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 3aa2497..09286e2 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -379,6 +379,10 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 				    const char *hostname,
+ 				    const size_t hostname_len)
  {
- 	if (delegation == NULL)
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 9dbccf4..1523c99 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -24,6 +24,7 @@
- #define CB_OP_RECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
++	struct hlist_head *chain;
++	struct hlist_node *pos;
++	struct nlm_host	*host = NULL;
++	struct nsm_handle *nsm = NULL;
+ 	struct sockaddr_in sin = {
+ 		.sin_family	= AF_INET,
+ 	};
+@@ -400,6 +404,8 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 			(int)hostname_len, hostname, rqstp->rq_vers,
+ 			(rqstp->rq_prot == IPPROTO_UDP ? "udp" : "tcp"));
  
- #if defined(CONFIG_NFS_V4_1)
-+#define CB_OP_LAYOUTRECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
- #define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
- 					4 + 1 + 3)
- #define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
-@@ -223,6 +224,66 @@ out:
- 
- #if defined(CONFIG_NFS_V4_1)
- 
-+static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
-+				       struct xdr_stream *xdr,
-+				       struct cb_layoutrecallargs *args)
-+{
-+	__be32 *p;
-+	__be32 status = 0;
-+	uint32_t iomode;
++	mutex_lock(&nlm_host_mutex);
 +
-+	args->cbl_addr = svc_addr(rqstp);
-+	p = read_buf(xdr, 4 * sizeof(uint32_t));
-+	if (unlikely(p == NULL)) {
-+		status = htonl(NFS4ERR_BADXDR);
-+		goto out;
-+	}
-+
-+	args->cbl_layout_type = ntohl(*p++);
-+	/* Depite the spec's xdr, iomode really belongs in the FILE switch,
-+	 * as it is unuseable and ignored with the other types.
-+	 */
-+	iomode = ntohl(*p++);
-+	args->cbl_layoutchanged = ntohl(*p++);
-+	args->cbl_recall_type = ntohl(*p++);
-+
-+	if (args->cbl_recall_type == RETURN_FILE) {
-+		args->cbl_range.iomode = iomode;
-+		status = decode_fh(xdr, &args->cbl_fh);
-+		if (unlikely(status != 0))
-+			goto out;
-+
-+		p = read_buf(xdr, 2 * sizeof(uint64_t));
-+		if (unlikely(p == NULL)) {
-+			status = htonl(NFS4ERR_BADXDR);
-+			goto out;
-+		}
-+		p = xdr_decode_hyper(p, &args->cbl_range.offset);
-+		p = xdr_decode_hyper(p, &args->cbl_range.length);
-+		status = decode_stateid(xdr, &args->cbl_stateid);
-+		if (unlikely(status != 0))
-+			goto out;
-+	} else if (args->cbl_recall_type == RETURN_FSID) {
-+		p = read_buf(xdr, 2 * sizeof(uint64_t));
-+		if (unlikely(p == NULL)) {
-+			status = htonl(NFS4ERR_BADXDR);
-+			goto out;
-+		}
-+		p = xdr_decode_hyper(p, &args->cbl_fsid.major);
-+		p = xdr_decode_hyper(p, &args->cbl_fsid.minor);
-+	} else if (args->cbl_recall_type != RETURN_ALL) {
-+		status = htonl(NFS4ERR_BADXDR);
-+		goto out;
-+	}
-+	dprintk("%s: ltype 0x%x iomode %d changed %d recall_type %d\n",
-+		__func__,
-+		args->cbl_layout_type, iomode,
-+		args->cbl_layoutchanged, args->cbl_recall_type);
-+out:
-+	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
-+	return status;
-+}
-+
- static __be32 decode_sessionid(struct xdr_stream *xdr,
- 				 struct nfs4_sessionid *sid)
- {
-@@ -577,10 +638,10 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
- 	case OP_CB_SEQUENCE:
- 	case OP_CB_RECALL_ANY:
- 	case OP_CB_RECALL_SLOT:
-+	case OP_CB_LAYOUTRECALL:
- 		*op = &callback_ops[op_nr];
+ 	switch (ni.sap->sa_family) {
+ 	case AF_INET:
+ 		sin.sin_addr.s_addr = rqstp->rq_daddr.addr.s_addr;
+@@ -410,10 +416,73 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 		ni.src_sap = (struct sockaddr *)&sin6;
  		break;
+ 	default:
+-		return NULL;
++		dprintk("lockd: %s failed; unrecognized address family\n",
++			__func__);
++		goto out;
+ 	}
  
--	case OP_CB_LAYOUTRECALL:
- 	case OP_CB_NOTIFY_DEVICEID:
- 	case OP_CB_NOTIFY:
- 	case OP_CB_PUSH_DELEG:
-@@ -784,6 +845,12 @@ static struct callback_op callback_ops[] = {
- 		.res_maxsize = CB_OP_RECALL_RES_MAXSZ,
- 	},
- #if defined(CONFIG_NFS_V4_1)
-+	[OP_CB_LAYOUTRECALL] = {
-+		.process_op = (callback_process_op_t)nfs4_callback_layoutrecall,
-+		.decode_args =
-+			(callback_decode_arg_t)decode_layoutrecall_args,
-+		.res_maxsize = CB_OP_LAYOUTRECALL_RES_MAXSZ,
-+	},
- 	[OP_CB_SEQUENCE] = {
- 		.process_op = (callback_process_op_t)nfs4_callback_sequence,
- 		.decode_args = (callback_decode_arg_t)decode_cb_sequence_args,
--- 
-1.7.2.1
+-	return nlm_lookup_host(&ni);
++	if (time_after_eq(jiffies, next_gc))
++		nlm_gc_hosts();
++
++	chain = &nlm_hosts[nlm_hash_address(ni.sap)];
++	hlist_for_each_entry(host, pos, chain, h_hash) {
++		if (!rpc_cmp_addr(nlm_addr(host), ni.sap))
++			continue;
++
++		/* Same address. Share an NSM handle if we already have one */
++		if (nsm == NULL)
++			nsm = host->h_nsmhandle;
++
++		if (host->h_proto != ni.protocol)
++			continue;
++		if (host->h_version != ni.version)
++			continue;
++		if (!rpc_cmp_addr(nlm_srcaddr(host), ni.src_sap))
++			continue;
++
++		/* Move to head of hash chain. */
++		hlist_del(&host->h_hash);
++		hlist_add_head(&host->h_hash, chain);
++
++		nlm_get_host(host);
++		dprintk("lockd: %s found host %s (%s)\n",
++			__func__, host->h_name, host->h_addrbuf);
++		goto out;
++	}
++
++	host = nlm_alloc_host(&ni, nsm);
++	if (unlikely(host == NULL))
++		goto out;
++
++	memcpy(nlm_srcaddr(host), ni.src_sap, ni.src_len);
++	host->h_srcaddrlen = ni.src_len;
++	hlist_add_head(&host->h_hash, chain);
++	nrhosts++;
++
++	dprintk("lockd: %s created host %s (%s)\n",
++		__func__, host->h_name, host->h_addrbuf);
++
++out:
++	mutex_unlock(&nlm_host_mutex);
++	return host;
++}
++
++/**
++ * nlmsvc_release_host - release server nlm_host
++ * @host: nlm_host to release
++ *
++ * Host is destroyed later in nlm_gc_host().
++ */
++void nlmsvc_release_host(struct nlm_host *host)
++{
++	if (host == NULL)
++		return;
++
++	dprintk("lockd: release server host %s\n", host->h_name);
++
++	BUG_ON(atomic_read(&host->h_count) < 0);
++	BUG_ON(!host->h_server);
++	atomic_dec(&host->h_count);
+ }
+ 
+ /*
+@@ -513,22 +582,6 @@ struct nlm_host * nlm_get_host(struct nlm_host *host)
+ 	return host;
+ }
+ 
+-/*
+- * Release NLM host after use
+- */
+-void nlm_release_host(struct nlm_host *host)
+-{
+-	if (host != NULL) {
+-		dprintk("lockd: release host %s\n", host->h_name);
+-		BUG_ON(atomic_read(&host->h_count) < 0);
+-		if (atomic_dec_and_test(&host->h_count)) {
+-			BUG_ON(!list_empty(&host->h_lockowners));
+-			BUG_ON(!list_empty(&host->h_granted));
+-			BUG_ON(!list_empty(&host->h_reclaim));
+-		}
+-	}
+-}
+-
+ static struct nlm_host *next_host_state(struct hlist_head *cache,
+ 					struct nsm_handle *nsm,
+ 					const struct nlm_reboot *info)
+@@ -577,7 +630,7 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
+ 	 */
+ 	while ((host = next_host_state(nlm_hosts, nsm, info)) != NULL) {
+ 		nlmsvc_free_host_resources(host);
+-		nlm_release_host(host);
++		nlmsvc_release_host(host);
+ 	}
+ 	while ((host = next_host_state(nlm_client_hosts, nsm, info)) != NULL) {
+ 		nlmclnt_recovery(host);
+diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
+index c187422..9a41fdc 100644
+--- a/fs/lockd/svc4proc.c
++++ b/fs/lockd/svc4proc.c
+@@ -51,7 +51,7 @@ nlm4svc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	return 0;
+ 
+ no_locks:
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+  	if (error)
+ 		return error;	
+ 	return nlm_lck_denied_nolocks;
+@@ -92,7 +92,7 @@ nlm4svc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	else
+ 		dprintk("lockd: TEST4        status %d\n", ntohl(resp->status));
+ 
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	nlm_release_file(file);
+ 	return rc;
+ }
+@@ -134,7 +134,7 @@ nlm4svc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	else
+ 		dprintk("lockd: LOCK         status %d\n", ntohl(resp->status));
+ 
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	nlm_release_file(file);
+ 	return rc;
+ }
+@@ -164,7 +164,7 @@ nlm4svc_proc_cancel(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	resp->status = nlmsvc_cancel_blocked(file, &argp->lock);
+ 
+ 	dprintk("lockd: CANCEL        status %d\n", ntohl(resp->status));
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	nlm_release_file(file);
+ 	return rpc_success;
+ }
+@@ -197,7 +197,7 @@ nlm4svc_proc_unlock(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	resp->status = nlmsvc_unlock(file, &argp->lock);
+ 
+ 	dprintk("lockd: UNLOCK        status %d\n", ntohl(resp->status));
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	nlm_release_file(file);
+ 	return rpc_success;
+ }
+@@ -334,7 +334,7 @@ nlm4svc_proc_share(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	resp->status = nlmsvc_share_file(host, file, argp);
+ 
+ 	dprintk("lockd: SHARE         status %d\n", ntohl(resp->status));
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	nlm_release_file(file);
+ 	return rpc_success;
+ }
+@@ -367,7 +367,7 @@ nlm4svc_proc_unshare(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	resp->status = nlmsvc_unshare_file(host, file, argp);
+ 
+ 	dprintk("lockd: UNSHARE       status %d\n", ntohl(resp->status));
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	nlm_release_file(file);
+ 	return rpc_success;
+ }
+@@ -399,7 +399,7 @@ nlm4svc_proc_free_all(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 		return rpc_success;
+ 
+ 	nlmsvc_free_host_resources(host);
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	return rpc_success;
+ }
+ 
+diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
+index 0df65ec..d27aab1 100644
+--- a/fs/lockd/svcproc.c
++++ b/fs/lockd/svcproc.c
+@@ -80,7 +80,7 @@ nlmsvc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	return 0;
+ 
+ no_locks:
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	if (error)
+ 		return error;
+ 	return nlm_lck_denied_nolocks;
+@@ -122,7 +122,7 @@ nlmsvc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 		dprintk("lockd: TEST          status %d vers %d\n",
+ 			ntohl(resp->status), rqstp->rq_vers);
+ 
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	nlm_release_file(file);
+ 	return rc;
+ }
+@@ -164,7 +164,7 @@ nlmsvc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	else
+ 		dprintk("lockd: LOCK         status %d\n", ntohl(resp->status));
+ 
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	nlm_release_file(file);
+ 	return rc;
+ }
+@@ -194,7 +194,7 @@ nlmsvc_proc_cancel(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	resp->status = cast_status(nlmsvc_cancel_blocked(file, &argp->lock));
+ 
+ 	dprintk("lockd: CANCEL        status %d\n", ntohl(resp->status));
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	nlm_release_file(file);
+ 	return rpc_success;
+ }
+@@ -227,7 +227,7 @@ nlmsvc_proc_unlock(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	resp->status = cast_status(nlmsvc_unlock(file, &argp->lock));
+ 
+ 	dprintk("lockd: UNLOCK        status %d\n", ntohl(resp->status));
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	nlm_release_file(file);
+ 	return rpc_success;
+ }
+@@ -261,7 +261,7 @@ void nlmsvc_release_call(struct nlm_rqst *call)
+ {
+ 	if (!atomic_dec_and_test(&call->a_count))
+ 		return;
+-	nlm_release_host(call->a_host);
++	nlmsvc_release_host(call->a_host);
+ 	kfree(call);
+ }
+ 
+@@ -374,7 +374,7 @@ nlmsvc_proc_share(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	resp->status = cast_status(nlmsvc_share_file(host, file, argp));
+ 
+ 	dprintk("lockd: SHARE         status %d\n", ntohl(resp->status));
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	nlm_release_file(file);
+ 	return rpc_success;
+ }
+@@ -407,7 +407,7 @@ nlmsvc_proc_unshare(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 	resp->status = cast_status(nlmsvc_unshare_file(host, file, argp));
+ 
+ 	dprintk("lockd: UNSHARE       status %d\n", ntohl(resp->status));
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	nlm_release_file(file);
+ 	return rpc_success;
+ }
+@@ -439,7 +439,7 @@ nlmsvc_proc_free_all(struct svc_rqst *rqstp, struct nlm_args *argp,
+ 		return rpc_success;
+ 
+ 	nlmsvc_free_host_resources(host);
+-	nlm_release_host(host);
++	nlmsvc_release_host(host);
+ 	return rpc_success;
+ }
+ 
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 6c2a0e2..ff9abff 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -227,10 +227,10 @@ void		  nlmclnt_release_host(struct nlm_host *);
+ struct nlm_host  *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 					const char *hostname,
+ 					const size_t hostname_len);
++void		  nlmsvc_release_host(struct nlm_host *);
+ struct rpc_clnt * nlm_bind_host(struct nlm_host *);
+ void		  nlm_rebind_host(struct nlm_host *);
+ struct nlm_host * nlm_get_host(struct nlm_host *);
+-void		  nlm_release_host(struct nlm_host *);
+ void		  nlm_shutdown_hosts(void);
+ void		  nlm_host_rebooted(const struct nlm_reboot *);
+ 
 
