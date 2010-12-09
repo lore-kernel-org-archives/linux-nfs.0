@@ -1,74 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57565 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750774Ab0LFQRD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Dec 2010 11:17:03 -0500
-Date: Mon, 6 Dec 2010 11:17:01 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jan Engelhardt <jengelh@medozas.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS: server error: fileid changed
-Message-ID: <20101206161701.GD27096@fieldses.org>
-References: <alpine.LNX.2.01.1011281518090.14665@obet.zrqbmnf.qr>
- <20101128160543.GA18889@fieldses.org>
- <alpine.LNX.2.01.1011281853520.7586@obet.zrqbmnf.qr>
- <20101128181942.GA23535@fieldses.org>
- <alpine.LNX.2.01.1012051540560.7505@obet.zrqbmnf.qr>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.LNX.2.01.1012051540560.7505@obet.zrqbmnf.qr>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:43158 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754495Ab0LIQtz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 11:49:55 -0500
+Received: by yxt3 with SMTP id 3so1488581yxt.19
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Dec 2010 08:49:54 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 08/11] lockd: Rename nlm_hosts
+To: linux-nfs@vger.kernel.org
+Date: Thu, 09 Dec 2010 11:49:52 -0500
+Message-ID: <20101209164952.4513.13794.stgit@matisse.1015granger.net>
+In-Reply-To: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
+References: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, Dec 05, 2010 at 03:41:54PM +0100, Jan Engelhardt wrote:
-> 
-> On Sunday 2010-11-28 19:19, J. Bruce Fields wrote:
-> >> >On Sun, Nov 28, 2010 at 03:23:23PM +0100, Jan Engelhardt wrote:
-> >> >> Sometime between 2.6.33 and 2.6.36 it seems, knfsd has become really 
-> >> >> unreliable, having clients start to emit messages like
-> >> >> 
-> >> >> (nfsv3)
-> >> >> [42306.521225] NFS: server nova error: fileid changed
-> >> >> [42306.521226] fsid 0:10: expected fileid 0x1b007be, got 0x1b006b0
-> >> >> 
-> >> >> On nfsv4, it is even worse, as updates on the server are not immediately 
-> >> >> reflected on the client like it was the case on nfsv3.
-> >> >> Unfortunately, that is all the information I currently have.
-> >> >> (Server is on 2.6.36-rc8, client on 2.6.37-rc1.)
-> >> >
-> >> >Have you really being changing only the server, or have you been
-> >> >changing the client at the same time?
-> >> >
-> >> >See e.g.
-> >> >	http://marc.info/?l=linux-nfs&m=129088225122788&w=2
-> >> 
-> >> For my definition of not touching the server yes. (There may be
-> >> atime updates, but that's about it.)
-> >
-> >I was asking about kernel versions; so:
-> >
-> >	client 2.6.37-rc1, server 2.6.33
-> >
-> >worked, but
-> >
-> >	client 2.6.37-rc1, server 2.6.36-rc8
-> >
-> >didn't?
-> >
-> >It would be worth trying the most recent client patches anyway, as your
-> >symptoms look suspiciously similar to those reported recently, and we'd
-> >like to rule out the known 2.6.37-rc1 client bugs.
-> 
-> So me doing what exactly?
+Clean up.
 
-I don't understand the question.  You may actually want to wait till the
-discussion of the client changes dies down and then try the next -rc.
+Rename nlm_hosts to match convention of client side cache.
 
-(But it would still be helpful to have an answer to my question about
-kernel versions above.)
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> >What filesystem are you exporting?
-> 
-> ext4.
+ fs/lockd/host.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
 
-OK, thanks.--b.
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 09286e2..2b515e2 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -25,7 +25,7 @@
+ #define NLM_HOST_EXPIRE		(300 * HZ)
+ #define NLM_HOST_COLLECT	(120 * HZ)
+ 
+-static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
++static struct hlist_head	nlm_server_hosts[NLM_HOST_NRHASH];
+ static struct hlist_head	nlm_client_hosts[NLM_HOST_NRHASH];
+ 
+ #define for_each_host(host, pos, chain, table) \
+@@ -180,7 +180,7 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
+ 	 * different NLM rpc_clients into one single nlm_host object.
+ 	 * This would allow us to have one nlm_host per address.
+ 	 */
+-	chain = &nlm_hosts[nlm_hash_address(ni->sap)];
++	chain = &nlm_server_hosts[nlm_hash_address(ni->sap)];
+ 	hlist_for_each_entry(host, pos, chain, h_hash) {
+ 		if (!rpc_cmp_addr(nlm_addr(host), ni->sap))
+ 			continue;
+@@ -424,7 +424,7 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 	if (time_after_eq(jiffies, next_gc))
+ 		nlm_gc_hosts();
+ 
+-	chain = &nlm_hosts[nlm_hash_address(ni.sap)];
++	chain = &nlm_server_hosts[nlm_hash_address(ni.sap)];
+ 	hlist_for_each_entry(host, pos, chain, h_hash) {
+ 		if (!rpc_cmp_addr(nlm_addr(host), ni.sap))
+ 			continue;
+@@ -628,7 +628,7 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
+ 	 * lock for this.
+ 	 * To avoid processing a host several times, we match the nsmstate.
+ 	 */
+-	while ((host = next_host_state(nlm_hosts, nsm, info)) != NULL) {
++	while ((host = next_host_state(nlm_server_hosts, nsm, info)) != NULL) {
+ 		nlmsvc_free_host_resources(host);
+ 		nlmsvc_release_host(host);
+ 	}
+@@ -656,7 +656,7 @@ nlm_shutdown_hosts(void)
+ 
+ 	/* First, make all hosts eligible for gc */
+ 	dprintk("lockd: nuking all hosts...\n");
+-	for_each_host(host, pos, chain, nlm_hosts) {
++	for_each_host(host, pos, chain, nlm_server_hosts) {
+ 		host->h_expires = jiffies - 1;
+ 		if (host->h_rpcclnt) {
+ 			rpc_shutdown_client(host->h_rpcclnt);
+@@ -672,7 +672,7 @@ nlm_shutdown_hosts(void)
+ 	if (nrhosts) {
+ 		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
+ 		dprintk("lockd: %d hosts left:\n", nrhosts);
+-		for_each_host(host, pos, chain, nlm_hosts) {
++		for_each_host(host, pos, chain, nlm_server_hosts) {
+ 			dprintk("       %s (cnt %d use %d exp %ld)\n",
+ 				host->h_name, atomic_read(&host->h_count),
+ 				host->h_inuse, host->h_expires);
+@@ -693,13 +693,13 @@ nlm_gc_hosts(void)
+ 	struct nlm_host	*host;
+ 
+ 	dprintk("lockd: host garbage collection\n");
+-	for_each_host(host, pos, chain, nlm_hosts)
++	for_each_host(host, pos, chain, nlm_server_hosts)
+ 		host->h_inuse = 0;
+ 
+ 	/* Mark all hosts that hold locks, blocks or shares */
+ 	nlmsvc_mark_resources();
+ 
+-	for_each_host_safe(host, pos, next, chain, nlm_hosts) {
++	for_each_host_safe(host, pos, next, chain, nlm_server_hosts) {
+ 		if (atomic_read(&host->h_count) || host->h_inuse
+ 		 || time_before(jiffies, host->h_expires)) {
+ 			dprintk("nlm_gc_hosts skipping %s "
+
