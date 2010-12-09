@@ -1,42 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50984 "EHLO mx2.netapp.com"
+Received: from mail.perches.com ([173.55.12.10]:2426 "EHLO mail.perches.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751468Ab0LWXyq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 18:54:46 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 01/15] pnfs: fix incorrect comment in destroy_lseg
-Date: Thu, 23 Dec 2010 18:54:27 -0500
-Message-Id: <1293148481-28420-2-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
-References: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
+	id S1757080Ab0LIUEP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Dec 2010 15:04:15 -0500
+From: Joe Perches <joe@perches.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Jiri Kosina <trivial@kernel.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH 13/15] nfs: Remove duplicate unlikely from IS_ERR
+Date: Thu,  9 Dec 2010 12:04:06 -0800
+Message-Id: <f96c04f4ede30eb824087668a8d8f8de475d8f68.1291923889.git.joe@perches.com>
+In-Reply-To: <1291906801-1389-2-git-send-email-tklauser@distanz.ch>
+References: <1291906801-1389-2-git-send-email-tklauser@distanz.ch>
+In-Reply-To: <cover.1291923888.git.joe@perches.com>
+References: <cover.1291923888.git.joe@perches.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Comment references get_layout_hdr_locked, which never existed in
-submitted code.
+IS_ERR already uses unlikely, remove unlikely from the call sites.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Joe Perches <joe@perches.com>
 ---
- fs/nfs/pnfs.c |    2 +-
+ fs/nfs/mount_clnt.c |    2 +-
  1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index db77342..6e9daff 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -225,7 +225,7 @@ destroy_lseg(struct kref *kref)
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index eceafe7..3f2a6be 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -248,7 +248,7 @@ void nfs_umount(const struct nfs_mount_request *info)
+ 		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
  
- 	dprintk("--> %s\n", __func__);
- 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
--	/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
-+	/* Matched by get_layout_hdr in pnfs_insert_layout */
- 	put_layout_hdr(ino);
- }
+ 	clnt = rpc_create(&args);
+-	if (unlikely(IS_ERR(clnt)))
++	if (IS_ERR(clnt))
+ 		goto out_clnt_err;
  
+ 	dprintk("NFS: sending UMNT request for %s:%s\n",
 -- 
-1.7.2.1
+1.7.3.3.464.gf80b6
 
