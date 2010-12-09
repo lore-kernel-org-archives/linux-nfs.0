@@ -1,71 +1,81 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 1/3] nfsd4: replace unintuitive match_clientid_establishment
-Date: Thu, 09 Dec 2010 15:32:42 +0200
-Message-ID: <4D00DA7A.3010804@panasas.com>
-References: <1291680566-13980-1-git-send-email-bfields@redhat.com> <1291680566-13980-2-git-send-email-bfields@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: "J. Bruce Fields" <bfields@redhat.com>
+From: Joe Perches <joe@perches.com>
+Subject: [trivial PATCH 00/15] remove duplicate unlikely from IS_ERR
+Date: Thu,  9 Dec 2010 12:03:53 -0800
+Message-ID: <cover.1291923888.git.joe__1514.56474927745$1291925296$gmane$org@perches.com>
+References: <1291906801-1389-2-git-send-email-tklauser@distanz.ch>
+Cc: Jiri Kosina <trivial@kernel.org>, dri-devel@lists.freedesktop.org,
+	linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
+	linux-wireless@vger.kernel.org, devel@driverdev.osuosl.org
+To: netdev@vger.kernel.org, uclinux-dist-devel-ZG0+EudsQA8dtHy/vicBwGD2FQJk+8+b@public.gmane.org,
+	rtc-linux-/JYPxA39Uh5TLH3MbocFFw@public.gmane.org, linux-s390@vger.kernel.org,
+	osd-dev@open-osd.org, linux-arm-msm@vger.kernel.org,
+	linux-usb
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:3638 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751198Ab0LINcp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 08:32:45 -0500
-In-Reply-To: <1291680566-13980-2-git-send-email-bfields@redhat.com>
+Received: from mail.perches.com ([173.55.12.10]:2387 "EHLO mail.perches.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756981Ab0LIUEL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Dec 2010 15:04:11 -0500
+In-Reply-To: <1291906801-1389-2-git-send-email-tklauser-93Khv+1bN0NyDzI6CaY1VQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2010-12-07 02:09, J. Bruce Fields wrote:
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Tobias Klauser <tklauser-93Khv+1bN0NyDzI6CaY1VQ@public.gmane.org> sent a patch to remove
+an unnecessary unlikely from drivers/misc/c2port/core.c,
+https://lkml.org/lkml/2010/12/9/199
 
-ACK
+Here are the other instances treewide.
 
-> ---
->  fs/nfsd/nfs4state.c |   14 ++++----------
->  1 files changed, 4 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index afa7525..febb283 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1135,19 +1135,13 @@ find_unconfirmed_client(clientid_t *clid)
->  }
->  
->  /*
-> - * Return 1 iff clp's clientid establishment method matches the use_exchange_id
-> - * parameter. Matching is based on the fact the at least one of the
-> - * EXCHGID4_FLAG_USE_{NON_PNFS,PNFS_MDS,PNFS_DS} flags must be set for v4.1
-> - *
->   * FIXME: we need to unify the clientid namespaces for nfsv4.x
->   * and correctly deal with client upgrade/downgrade in EXCHANGE_ID
->   * and SET_CLIENTID{,_CONFIRM}
->   */
-> -static inline int
-> -match_clientid_establishment(struct nfs4_client *clp, bool use_exchange_id)
-> +static bool clp_used_exchangeid(struct nfs4_client *clp)
->  {
-> -	bool has_exchange_flags = (clp->cl_exchange_flags != 0);
-> -	return use_exchange_id == has_exchange_flags;
-> +	return clp->cl_exchange_flags != 0;
->  }
->  
->  static struct nfs4_client *
-> @@ -1158,7 +1152,7 @@ find_confirmed_client_by_str(const char *dname, unsigned int hashval,
->  
->  	list_for_each_entry(clp, &conf_str_hashtbl[hashval], cl_strhash) {
->  		if (same_name(clp->cl_recdir, dname) &&
-> -		    match_clientid_establishment(clp, use_exchange_id))
-> +		    clp_used_exchangeid(clp) == use_exchange_id)
->  			return clp;
->  	}
->  	return NULL;
-> @@ -1172,7 +1166,7 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval,
->  
->  	list_for_each_entry(clp, &unconf_str_hashtbl[hashval], cl_strhash) {
->  		if (same_name(clp->cl_recdir, dname) &&
-> -		    match_clientid_establishment(clp, use_exchange_id))
-> +		    clp_used_exchangeid(clp) == use_exchange_id)
->  			return clp;
->  	}
->  	return NULL;
+I think it'd be good if people would, when noticing defects in a
+specific subsystem, look for and correct the same defect treewide.
+
+IS_ERR already has an unlikely test so remove unnecessary
+unlikelys from the call sites.
+
+from: include/linux/err.h
+#define IS_ERR_VALUE(x) unlikely((x) >= (unsigned long)-MAX_ERRNO)
+[...]
+static inline long __must_check IS_ERR(const void *ptr)
+{
+	return IS_ERR_VALUE((unsigned long)ptr);
+}
+
+Sending directly to maintainers for now, will resend in a month
+or so only to trivial if not picked up.
+ 
+Joe Perches (15):
+  drm: Remove duplicate unlikely from IS_ERR
+  stmmac: Remove duplicate unlikely from IS_ERR
+  rtc: Remove duplicate unlikely from IS_ERR
+  s390: Remove duplicate unlikely from IS_ERR
+  osd: Remove duplicate unlikely from IS_ERR
+  serial: Remove duplicate unlikely from IS_ERR
+  brcm80211: Remove duplicate unlikely from IS_ERR
+  gadget: Remove duplicate unlikely from IS_ERR
+  exofs: Remove duplicate unlikely from IS_ERR
+  ext2: Remove duplicate unlikely from IS_ERR
+  ext3: Remove duplicate unlikely from IS_ERR
+  ext4: Remove duplicate unlikely from IS_ERR
+  nfs: Remove duplicate unlikely from IS_ERR
+  mm: Remove duplicate unlikely from IS_ERR
+  ipv6: Remove duplicate unlikely from IS_ERR
+
+ drivers/gpu/drm/ttm/ttm_tt.c                     |    4 ++--
+ drivers/net/stmmac/stmmac_main.c                 |    2 +-
+ drivers/rtc/rtc-bfin.c                           |    2 +-
+ drivers/s390/scsi/zfcp_fsf.c                     |    4 ++--
+ drivers/scsi/osd/osd_initiator.c                 |    2 +-
+ drivers/serial/msm_serial.c                      |    2 +-
+ drivers/staging/brcm80211/brcmfmac/wl_cfg80211.c |    2 +-
+ drivers/usb/gadget/f_fs.c                        |    4 ++--
+ fs/exofs/super.c                                 |    2 +-
+ fs/ext2/namei.c                                  |    2 +-
+ fs/ext3/namei.c                                  |    2 +-
+ fs/ext4/namei.c                                  |    2 +-
+ fs/nfs/mount_clnt.c                              |    2 +-
+ mm/vmalloc.c                                     |    2 +-
+ net/ipv6/af_inet6.c                              |    2 +-
+ 15 files changed, 18 insertions(+), 18 deletions(-)
+
+-- 
+1.7.3.3.464.gf80b6
+
