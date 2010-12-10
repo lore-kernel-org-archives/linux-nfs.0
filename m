@@ -1,112 +1,107 @@
 From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: proposed patch to rpcbind to provide finer-grained security controls than offered by the -i option
-Date: Fri, 10 Dec 2010 12:09:13 -0500
-Message-ID: <CCF322CE-AAAC-4B42-9A36-D679AF4D0CA4@oracle.com>
-References: <20101209204913.GA30338@ti93.telemetry-investments.com> <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com> <4D016F44.3020002@RedHat.com> <20101210023847.GB15344@ti93.telemetry-investments.com> <77480D58-4224-4713-A515-F1BCC133F44F@oracle.com> <4D024D70.7040108@RedHat.com> <FD9D05EF-FB57-45FB-BBDC-38E3B92D54AA@oracle.com> <4D025E60.8030204@RedHat.com>
+Date: Fri, 10 Dec 2010 17:18:55 -0500
+Message-ID: <93E231AF-626B-43CF-8BC3-65B5DF007DB0@oracle.com>
+References: <20101209204913.GA30338@ti93.telemetry-investments.com> <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com> <4D016F44.3020002@RedHat.com> <20101210023847.GB15344@ti93.telemetry-investments.com> <77480D58-4224-4713-A515-F1BCC133F44F@oracle.com> <4D024D70.7040108@RedHat.com> <FD9D05EF-FB57-45FB-BBDC-38E3B92D54AA@oracle.com> <20101210171014.GA5280@ti93.telemetry-investments.com> <0F5A7F8B-AA38-4653-BCDC-B192FF790F51@oracle.com> <20101210215758.GA15059@ti93.telemetry-investments.com>
 Mime-Version: 1.0 (Apple Message framework v1082)
 Content-Type: text/plain; charset=us-ascii
-Cc: "Andrew J. Schorr" <ajschorr-zz2rRYioAk8nkiaMHba4zfZ8FUJU4vz8@public.gmane.org>,
-	linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
+	libtirpc-devel-pyega4qmqnRoyOMFzWx49A@public.gmane.org
+To: "Andrew J. Schorr" <ajschorr-zz2rRYioAk8nkiaMHba4zfZ8FUJU4vz8@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:34612 "EHLO
+Received: from rcsinet10.oracle.com ([148.87.113.121]:45565 "EHLO
 	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754667Ab0LJRJx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Dec 2010 12:09:53 -0500
-In-Reply-To: <4D025E60.8030204-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+	with ESMTP id S1751188Ab0LJWTm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Dec 2010 17:19:42 -0500
+In-Reply-To: <20101210215758.GA15059-RxCcQp2DQEZ/AkJ0XP51flIRPycPq0EMEZnpZpl6OOE@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Dec 10, 2010, at 12:07 PM, Steve Dickson wrote:
+On Dec 10, 2010, at 4:57 PM, Andrew J. Schorr wrote:
 
+> Adding CC libtirpc-devel-pyega4qmqnRoyOMFzWx49A@public.gmane.org:
+> 
+> On Fri, Dec 10, 2010 at 12:14:47PM -0500, Chuck Lever wrote:
+>> The libtirpc legacy API should be the same as the glibc RPC API.  If you spot any truly non-ABI compatible changes, or have any other related questions, please let us know.  (we should probably cc libtirpc-devel-pyega4qmqnRoyOMFzWx49A@public.gmane.org).
+>> 
+> 
+> I have not inspected closely yet, but did notice that the XDR structure
+> has changed.  In /usr/include/rpc/xdr.h, there is this:
+> 
+> struct XDR
+>  {
+>    enum xdr_op x_op;           /* operation; fast additional param */
+>    struct xdr_ops
+>      {
+>        bool_t (*x_getlong) (XDR *__xdrs, long *__lp);
+>        /* get a long from underlying stream */
+>        bool_t (*x_putlong) (XDR *__xdrs, __const long *__lp);
+>        /* put a long to " */
+>        bool_t (*x_getbytes) (XDR *__xdrs, caddr_t __addr, u_int __len);
+>        /* get some bytes from " */
+>        bool_t (*x_putbytes) (XDR *__xdrs, __const char *__addr, u_int __len);
+>        /* put some bytes to " */
+>        u_int (*x_getpostn) (__const XDR *__xdrs);
+>        /* returns bytes off from beginning */
+>        bool_t (*x_setpostn) (XDR *__xdrs, u_int __pos);
+>        /* lets you reposition the stream */
+>        int32_t *(*x_inline) (XDR *__xdrs, u_int __len);
+>        /* buf quick ptr to buffered data */
+>        void (*x_destroy) (XDR *__xdrs);
+>        /* free privates of this xdr_stream */
+>        bool_t (*x_getint32) (XDR *__xdrs, int32_t *__ip);
+>        /* get a int from underlying stream */
+>        bool_t (*x_putint32) (XDR *__xdrs, __const int32_t *__ip);
+>        /* put a int to " */
+>      }
+>     *x_ops;
+>    caddr_t x_public;           /* users' data */
+>    caddr_t x_private;          /* pointer to private data */
+>    caddr_t x_base;             /* private used for position info */
+>    u_int x_handy;              /* extra private word */
+>  };
+> 
+> Whereas the new tirpc/rpc/xdr.h has this:
+> 
+> typedef struct __rpc_xdr {
+>        enum xdr_op     x_op;           /* operation; fast additional param */
+>        const struct xdr_ops {
+>                /* get a long from underlying stream */
+>                bool_t  (*x_getlong)(struct __rpc_xdr *, long *);
+>                /* put a long to " */
+>                bool_t  (*x_putlong)(struct __rpc_xdr *, const long *);
+>                /* get some bytes from " */
+>                bool_t  (*x_getbytes)(struct __rpc_xdr *, char *, u_int);
+>                /* put some bytes to " */
+>                bool_t  (*x_putbytes)(struct __rpc_xdr *, const char *, u_int);
+>                /* returns bytes off from beginning */
+>                u_int   (*x_getpostn)(struct __rpc_xdr *);
+>                /* lets you reposition the stream */
+>                bool_t  (*x_setpostn)(struct __rpc_xdr *, u_int);
+>                /* buf quick ptr to buffered data */
+>                int32_t *(*x_inline)(struct __rpc_xdr *, u_int);
+>                /* free privates of this xdr_stream */
+>                void    (*x_destroy)(struct __rpc_xdr *);
+>                bool_t  (*x_control)(struct __rpc_xdr *, int, void *);
+>        } *x_ops;
+>        char *          x_public;       /* users' data */
+>        void *          x_private;      /* pointer to private data */
+>        char *          x_base;         /* private used for position info */
+>        u_int           x_handy;        /* extra private word */
+> } XDR;
 > 
 > 
-> On 12/10/2010 12:01 PM, Chuck Lever wrote:
->> Hi Steve-
->> 
->> On Dec 10, 2010, at 10:55 AM, Steve Dickson wrote:
->> 
->>> On 12/10/2010 10:31 AM, Chuck Lever wrote:
->>>> 
->>>> On Dec 9, 2010, at 9:38 PM, Andrew J. Schorr wrote:
->>>> 
->>>>> On Thu, Dec 09, 2010 at 07:07:32PM -0500, Steve Dickson wrote:
->>>>>> 
->>>>>> 
->>>>>> On 12/09/2010 04:41 PM, Chuck Lever wrote:
->>>>>>> It sounds like your application is trying to use glibc's RPC 
->>>>>>> implementation with rpcbind.  If you build your application with 
->>>>>>> libtirpc instead, it should use an AF_UNIX socket to contact rpcbind 
->>>>>>> instead of loopback.  The AF_UNIX socket carries some authentication 
->>>>>>> information with the registration request.  All users of your 
->>>>>>> application would be allowed to set or unset RPC registrations 
->>>>>>> in that case.
->>>>> 
->>>>> I think you are correct.  This is probably due to some combination
->>>>> of ignorance and stupidity on my part.  I didn't realize that libtirpc
->>>>> was a drop-in replacement for the glibc RPC routines.
->>>>> 
->>>>>> I was under the impression rebuilding the applications was not
->>>>>> possible... but maybe I misunderstood... 
->>>>> 
->>>>> Rebuilding should be possible, I need to look into this.
->>>>> 
->>>>>> But in the end, I guess I'm not against having functionality 
->>>>>> like this... If it make it easier for people to port legacy
->>>>>> applications to Linux, its probably a good thing... 
->>>>> 
->>>>> I think the patch does add more control over rpcbind behavior, but I
->>>>> grant that it may be less interesting if nobody is using IP to connect
->>>>> from local clients.  Nonetheless, it still adds the ability to have
->>>>> separate control over whether to accept remote set/unset calls and
->>>>> whether to honor indirect/callit calls.  Unless I'm mistaken, this is
->>>>> still relevant even if libtirpc is used.
->>>> 
->>>> Not to put to fine a point on it, but we discourage the use of 
->>>> indirect RPC calls.  It's a well-known security hole.  Also, 
->>>> allowing anyone to set and unset RPC registrations is also 
->>>> insecure, and is discouraged.
->>> True... but its been this way for years... and always will be... 
->>> 
->>>> In general we want people to switch to using AF_UNIX for local 
->>>> registrations, as that is secure from remote attack, and allows 
->>>> rpcbind to assign ownership of the registration so that only the 
->>>> user who registered that service may unregister it.
->>> If the option of rebuilding is available, yes, people should
->>> switch to libtirpc... 
->> 
->> Andrew makes a good point.  There would be no "switch to libtirpc" 
->> if distributions had a single RPC implementation.
->> 
->> Is there a good reason we still have the glibc RPC implementation?
-> I would guess for legacy reasons... I guess we could open an
-> Fedora bz asking to disable the code...
-
-Thanks, that would be an excellent first step.
-
-> steved.
+> As you can see, the structure has changed (some methods added and others
+> removed).  As a result, my code to implement a new XDR type no longer compiles,
+> and will require porting (which presumably will not be major).
 > 
->> We've resolved the licensing issue already, so there's nothing 
->> stopping any Linux distribution from adding a libtirpc package.
->> 
->>> 
->>>>> So I would argue that the patch is still a good thing, but I agree that
->>>>> I should relink my code with libtirpc.
->>>> 
->>>> IMO we shouldn't add features that encourage people to configure 
->>>> rpcbind insecurely, especially when there are reasonable alternatives.
->>> The -i is already a securely hole... So if we are concern about it
->>> we should get ride of the -i completely... Or make it a useful 
->>> securely hole... ;-)
->>> 
->>> The point of this patch was to make it easier for people 
->>> to port legacy applications to Linux... If this indeed 
->>> is the case, I think that overrides these (self induced) 
->>> security issues... 
->> 
->> If we go with just the evidence at hand: Andrew says he can rebuild his application.  Thus, so far there is no specific requirement to expand "-i".  IMO we should wait until there is, in the most noble of Linux traditions.
->> 
+> So I claim that tirpc is not fully ABI compatible with the legacy RPC
+> implementation.
+
+Thanks for the report.  We are aware of a handful of other minor instances, so it is true that there is not full ABI compatibility.  For most RPC applications of sufficient complexity, the differences are not significant.  At a guess, the use of RPCL and rpcgen to construct your XDR type might be helpful for avoiding this problem.
+
+The XDR struct is not part of the published RPC API, is it?  See Sun doc 816-1435.
 
 -- 
 Chuck Lever
