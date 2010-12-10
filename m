@@ -1,88 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:20073 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752542Ab0LPOtD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 09:49:03 -0500
-Message-ID: <4D0A26DC.5090908@panasas.com>
-Date: Thu, 16 Dec 2010 16:49:00 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 22/22] pnfs-submit: Turn off layoutcommits
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>	<1291944177-7819-23-git-send-email-iisaman@netapp.com>	<4D0A0A77.9010802@panasas.com> <AANLkTinqnA2Qd68FB=ptoeSxrTd8FD47GezUn_83KtGf@mail.gmail.com>
-In-Reply-To: <AANLkTinqnA2Qd68FB=ptoeSxrTd8FD47GezUn_83KtGf@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:64950 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751300Ab0LJGIl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Dec 2010 01:08:41 -0500
+Received: from localhost.localdomain (kozen-lxp.hq.netapp.com [10.58.53.114] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBA68VLf023313
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Dec 2010 22:08:40 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/22] Revert "pnfs_submit: roc add layoutcommit op to close compound"
+Date: Thu,  9 Dec 2010 20:22:39 -0500
+Message-Id: <1291944177-7819-5-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
+References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 12/16/2010 04:13 PM, Fred Isaman wrote:
-> On Thu, Dec 16, 2010 at 7:47 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->> On 12/10/2010 03:22 AM, Fred Isaman wrote:
->>> Recent changes to close can delay pending layoutcommit until umount,
->>> when the async layoutcommits can come tricklng in after we have destroyed
->>> the session.
->>
->> Then "Recent changes" are broken and should be fixed. It was fine
->> before. New broken code is not acceptable.
->>
->>> Since file does not need them, just turn them off for
->>> the moment.  Non-file layouts will probably have to trigger them in
->>> some fashion at close.
->>>
->>
->> Rrrr. Are we back to this argument. We stand down win an argument
->> and 2 weeks later you are back on it has if we never talked about it.
->>
->> NO!!! only "coherent clustered filesystems" do not need them. It has
->> nothing to do with layout type. A none-clustered aggregated parallel
->> filesystem will need them just the same as blocks and objects.
->>
->> AND THE STD DOES NOT GIVE YOU A CHOICE!!!
-> 
-> You keep saying this, but just repeating it does not convince me.
-> Could you please take the time to explain *why* they are needed.  A
-> separate thread in the ietf list would be great.  Because right now,
-> Andy and I are coding and preparing for submission to Trond under the
-> assumption that they are possibly a nice optimization, but are never
-> actually needed for the file layout.
-> 
-> Fred
-> 
+This reverts commit 361887febfa01e06c5ae7c38cc6867da3e4cf31d.
 
-I have many times. You are being forgetful. Last bakeathon Mike, I think
-or someone, had a proposition talk that "since layoutcommit is use less,
-lets make it optional". And we went into a long argument about that. Until
-finally Trond came to the rescue and explained very clearly. Better then
-I ever could, that if you want to keep current reboot semantics a client
-must send a successful layoutcommit after all successful DS commits before
-it can free it's dirty pages. layoutcommit is the writing of meta data after
-the write of data, and is, just as important, a part of a file.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4xdr.c        |   11 ++---------
+ fs/nfs/pnfs.c           |    9 +--------
+ include/linux/nfs_xdr.h |    2 --
+ 3 files changed, 3 insertions(+), 19 deletions(-)
 
-Consider an spNFS type filesystem that keeps all meta-data on MDS and
-the data on disjoint independent DSs. None of the servers see the same
-data and the MDS is just another client + Meta information. layoutcommit
-is the point data is exposed outside and also the point meta-data is persisted
-(Somewhere). Failing to do layoutcommits will not enable me to do such
-simple, scalable and possibly reliable FSs. The authors of the STD did
-envision such systems and invented the layoutcommit. (There is the issue of
-the changed_attribute of a crashing writing client but this is solvable with
-very simple MDS-to-DS communication, and is another matter)
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index b9fe438..dc63895 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -439,15 +439,13 @@ static int nfs4_stat_to_errno(int);
+ 				 encode_putfh_maxsz + \
+ 				 encode_close_maxsz + \
+ 				 encode_getattr_maxsz + \
+-				 encode_layoutreturn_maxsz + \
+-				 encode_layoutcommit_maxsz)
++				 encode_layoutreturn_maxsz)
+ #define NFS4_dec_close_sz	(compound_decode_hdr_maxsz + \
+ 				 decode_sequence_maxsz + \
+ 				 decode_putfh_maxsz + \
+ 				 decode_close_maxsz + \
+ 				 decode_getattr_maxsz + \
+-				 decode_layoutreturn_maxsz + \
+-				 decode_layoutcommit_maxsz)
++				 decode_layoutreturn_maxsz)
+ #define NFS4_enc_setattr_sz	(compound_encode_hdr_maxsz + \
+ 				 encode_sequence_maxsz + \
+ 				 encode_putfh_maxsz + \
+@@ -2138,8 +2136,6 @@ static int nfs4_xdr_enc_close(struct rpc_rqst *req, __be32 *p, struct nfs_closea
+ 	encode_compound_hdr(&xdr, req, &hdr);
+ 	encode_sequence(&xdr, &args->seq_args, &hdr);
+ 	encode_putfh(&xdr, args->fh, &hdr);
+-	if (args->op_bitmask & NFS4_HAS_LAYOUTCOMMIT) /* layoutcommit set */
+-		encode_layoutcommit(&xdr, &args->lc_args, &hdr);
+ 	encode_close(&xdr, args, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
+ 	if (args->op_bitmask & NFS4_HAS_LAYOUTRETURN) /* layoutreturn set */
+@@ -5709,9 +5705,6 @@ static int nfs4_xdr_dec_close(struct rpc_rqst *rqstp, __be32 *p, struct nfs_clos
+ 	status = decode_putfh(&xdr);
+ 	if (status)
+ 		goto out;
+-	/* We pay no attention to the layoutcommit return */
+-	if (res->op_bitmask & NFS4_HAS_LAYOUTCOMMIT)
+-		decode_layoutcommit(&xdr);
+ 	status = decode_close(&xdr, res);
+ 	if (status != 0)
+ 		goto out;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 1d3c849..4746b20 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -612,6 +612,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+  * Return on close
+  *
+  * No LAYOUTRETURNS can be sent when BULK RECALL flag is set.
++ * FIXME: add layoutcommit operation if layoutcommit_needed is true.
+  */
+ bool
+ pnfs_roc(struct nfs4_closedata *data)
+@@ -639,14 +640,6 @@ pnfs_roc(struct nfs4_closedata *data)
+ 		}
+ 	if (found == false)
+ 		goto out_nolayout;
+-
+-	/* Add layoutcommit operation if needed */
+-	if (layoutcommit_needed(NFS_I(data->inode))) {
+-		pnfs_layoutcommit_setup(data->inode, &data->arg.lc_args, false);
+-		data->res.op_bitmask |= NFS4_HAS_LAYOUTCOMMIT;
+-		data->arg.op_bitmask |= NFS4_HAS_LAYOUTCOMMIT;
+-	}
+-
+ 	/* Stop new and drop response to outstanding LAYOUTGETS */
+ 	lo->plh_block_lgets++;
+ 	lo->plh_outstanding++;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 5ec855b..1b7364f 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -352,7 +352,6 @@ struct nfs_open_confirmres {
+ 
+ /* op_bitmask bits */
+ #define NFS4_HAS_LAYOUTRETURN  0x01
+-#define NFS4_HAS_LAYOUTCOMMIT  0x02
+ 
+ struct nfs_closeargs {
+ 	struct nfs_fh *         fh;
+@@ -361,7 +360,6 @@ struct nfs_closeargs {
+ 	fmode_t			fmode;
+ 	const u32 *		bitmask;
+ 	u32			op_bitmask; /* which optional ops to encode */
+-	struct nfs4_layoutcommit_op_args lc_args; /* optional */
+ 	struct nfs4_layoutreturn_args	lr_args; /* optional */
+ 	struct nfs4_sequence_args	seq_args;
+ };
+-- 
+1.7.2.1
 
-The fact that we had the above talk also proves another thing. That the 
-STD does not make layoutcommit optional, hence the request to make it
-optional.
-
-And nothing of the above is new. I have stated that many times and
-you keep "forgetting".
-
-BTW: An object based filesystem could be implemented just as well
-over files as over objects. Save the RAID5 stuff. Objects being
-partition/objectid numeric file names, and uid/gid games for fencing
-off / access permission. In such a system layoutcommits serve the
-same purpose as in objects, but with a files layout
-
-You can call me and we can talk about it if you need to. But do
-You agree that the current STD text mandates it?
-
-Boaz
