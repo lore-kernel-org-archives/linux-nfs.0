@@ -1,220 +1,196 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e23smtp04.au.ibm.com ([202.81.31.146]:43752 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754461Ab0LILfa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 06:35:30 -0500
-Received: from d23relay05.au.ibm.com (d23relay05.au.ibm.com [202.81.31.247])
-	by e23smtp04.au.ibm.com (8.14.4/8.13.1) with ESMTP id oB9BUO3G015663
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Dec 2010 22:30:24 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay05.au.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oB9BZSpf1916960
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Dec 2010 22:35:28 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oB9BZSqM011800
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Dec 2010 22:35:28 +1100
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: trond.myklebust@netapp.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] nfsv4: Switch to generic xattr handling code
-Date: Thu,  9 Dec 2010 17:05:25 +0530
-Message-Id: <1291894525-6559-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:64950 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751323Ab0LJGIn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Dec 2010 01:08:43 -0500
+Received: from localhost.localdomain (kozen-lxp.hq.netapp.com [10.58.53.114] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBA68VLg023313
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Dec 2010 22:08:41 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 05/22] Revert "pnfs-submit refactor pnfs_layoutcommit_setup"
+Date: Thu,  9 Dec 2010 20:22:40 -0500
+Message-Id: <1291944177-7819-6-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
+References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-This patch make nfsv4 use the generic xattr handling code
-to get the nfsv4 acl. This will help us to add richacl
-support to nfsv4 in later patches
+This reverts commit 536da3e86e791f72b2ef81831391d2f1e9dd38f7.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/dir.c      |    8 ++++--
- fs/nfs/nfs4_fs.h  |    7 +-----
- fs/nfs/nfs4proc.c |   62 +++++++++++++++++++++++++++++-----------------------
- fs/nfs/super.c    |    4 ++-
- 4 files changed, 44 insertions(+), 37 deletions(-)
+ fs/nfs/pnfs.c |  106 +++++++++++++++++++++++++++++++--------------------------
+ fs/nfs/pnfs.h |    3 --
+ 2 files changed, 58 insertions(+), 51 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 070f368..7e0c0be 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -35,6 +35,7 @@
- #include <linux/sched.h>
- #include <linux/vmalloc.h>
- #include <linux/kmemleak.h>
-+#include <linux/xattr.h>
- 
- #include "delegation.h"
- #include "iostat.h"
-@@ -125,9 +126,10 @@ const struct inode_operations nfs4_dir_inode_operations = {
- 	.permission	= nfs_permission,
- 	.getattr	= nfs_getattr,
- 	.setattr	= nfs_setattr,
--	.getxattr       = nfs4_getxattr,
--	.setxattr       = nfs4_setxattr,
--	.listxattr      = nfs4_listxattr,
-+	.getxattr	= generic_getxattr,
-+	.setxattr	= generic_setxattr,
-+	.listxattr	= generic_listxattr,
-+	.removexattr	= generic_removexattr,
- };
- 
- #endif /* CONFIG_NFS_V4 */
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 9fa4963..441fbcd 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -227,12 +227,6 @@ struct nfs4_state_maintenance_ops {
- extern const struct dentry_operations nfs4_dentry_operations;
- extern const struct inode_operations nfs4_dir_inode_operations;
- 
--/* inode.c */
--extern ssize_t nfs4_getxattr(struct dentry *, const char *, void *, size_t);
--extern int nfs4_setxattr(struct dentry *, const char *, const void *, size_t, int);
--extern ssize_t nfs4_listxattr(struct dentry *, char *, size_t);
--
--
- /* nfs4proc.c */
- extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
- extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
-@@ -246,6 +240,7 @@ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fh
- extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 		struct nfs4_fs_locations *fs_locations, struct page *page);
- extern void nfs4_release_lockowner(const struct nfs4_lock_state *);
-+extern const struct xattr_handler *nfs4_xattr_handlers[];
- 
- #if defined(CONFIG_NFS_V4_1)
- static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index c57b4e0..9d4839b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -49,6 +49,7 @@
- #include <linux/mount.h>
- #include <linux/module.h>
- #include <linux/sunrpc/bc_xprt.h>
-+#include <linux/xattr.h>
- 
- #include "nfs4_fs.h"
- #include "delegation.h"
-@@ -4394,42 +4395,36 @@ void nfs4_release_lockowner(const struct nfs4_lock_state *lsp)
- 
- #define XATTR_NAME_NFSV4_ACL "system.nfs4_acl"
- 
--int nfs4_setxattr(struct dentry *dentry, const char *key, const void *buf,
--		size_t buflen, int flags)
-+static int nfs4_xattr_set_nfs4_acl(struct dentry *dentry, const char *key,
-+				   const void *buf, size_t buflen,
-+				   int flags, int type)
- {
--	struct inode *inode = dentry->d_inode;
--
--	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
--		return -EOPNOTSUPP;
-+	if (strcmp(key, "") != 0)
-+		return -EINVAL;
- 
--	return nfs4_proc_set_acl(inode, buf, buflen);
-+	return nfs4_proc_set_acl(dentry->d_inode, buf, buflen);
- }
- 
--/* The getxattr man page suggests returning -ENODATA for unknown attributes,
-- * and that's what we'll do for e.g. user attributes that haven't been set.
-- * But we'll follow ext2/ext3's lead by returning -EOPNOTSUPP for unsupported
-- * attributes in kernel-managed attribute namespaces. */
--ssize_t nfs4_getxattr(struct dentry *dentry, const char *key, void *buf,
--		size_t buflen)
-+static int nfs4_xattr_get_nfs4_acl(struct dentry *dentry, const char *key,
-+				   void *buf, size_t buflen, int type)
- {
--	struct inode *inode = dentry->d_inode;
--
--	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
--		return -EOPNOTSUPP;
-+	if (strcmp(key, "") != 0)
-+		return -EINVAL;
- 
--	return nfs4_proc_get_acl(inode, buf, buflen);
-+	return nfs4_proc_get_acl(dentry->d_inode, buf, buflen);
- }
- 
--ssize_t nfs4_listxattr(struct dentry *dentry, char *buf, size_t buflen)
-+static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
-+				       size_t list_len, const char *name,
-+				       size_t name_len, int type)
- {
--	size_t len = strlen(XATTR_NAME_NFSV4_ACL) + 1;
-+	size_t len = sizeof(XATTR_NAME_NFSV4_ACL);
- 
- 	if (!nfs4_server_supports_acls(NFS_SERVER(dentry->d_inode)))
- 		return 0;
--	if (buf && buflen < len)
--		return -ERANGE;
--	if (buf)
--		memcpy(buf, XATTR_NAME_NFSV4_ACL, len);
-+
-+	if (list && len <= list_len)
-+		memcpy(list, XATTR_NAME_NFSV4_ACL, len);
- 	return len;
- }
- 
-@@ -5500,9 +5495,10 @@ static const struct inode_operations nfs4_file_inode_operations = {
- 	.permission	= nfs_permission,
- 	.getattr	= nfs_getattr,
- 	.setattr	= nfs_setattr,
--	.getxattr	= nfs4_getxattr,
--	.setxattr	= nfs4_setxattr,
--	.listxattr	= nfs4_listxattr,
-+	.getxattr	= generic_getxattr,
-+	.setxattr	= generic_setxattr,
-+	.listxattr	= generic_listxattr,
-+	.removexattr	= generic_removexattr,
- };
- 
- const struct nfs_rpc_ops nfs_v4_clientops = {
-@@ -5547,6 +5543,18 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.open_context	= nfs4_atomic_open,
- };
- 
-+static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
-+	.prefix	= XATTR_NAME_NFSV4_ACL,
-+	.list	= nfs4_xattr_list_nfs4_acl,
-+	.get	= nfs4_xattr_get_nfs4_acl,
-+	.set	= nfs4_xattr_set_nfs4_acl,
-+};
-+
-+const struct xattr_handler *nfs4_xattr_handlers[] = {
-+	&nfs4_xattr_nfs4_acl_handler,
-+	NULL
-+};
-+
- /*
-  * Local variables:
-  *  c-basic-offset: 8
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e57e670..e0f4a9e 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2503,7 +2503,8 @@ static void nfs4_clone_super(struct super_block *sb,
- 	 * so ourselves when necessary.
- 	 */
- 	sb->s_flags  |= MS_POSIXACL;
-- 	nfs_initialise_sb(sb);
-+	sb->s_xattr  = old_sb->s_xattr;
-+	nfs_initialise_sb(sb);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 4746b20..36955e1 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1191,88 +1191,98 @@ pnfs_try_to_commit(struct nfs_write_data *data,
  }
  
  /*
-@@ -2518,6 +2519,7 @@ static void nfs4_fill_super(struct super_block *sb)
- 	 * so ourselves when necessary.
+- * Set up the arguments required for the RPC call.
++ * Set up the argument/result storage required for the RPC call.
+  */
+-void
++static int
+ pnfs_layoutcommit_setup(struct inode *inode,
+-			struct nfs4_layoutcommit_op_args *args, bool use_cred)
++			struct nfs4_layoutcommit_data *data,
++			loff_t write_begin_pos, loff_t write_end_pos)
+ {
+-	struct nfs_inode *nfsi = NFS_I(inode);
+-	loff_t write_begin_pos, write_end_pos;
++	struct nfs_server *nfss = NFS_SERVER(inode);
++	int result = 0;
+ 
+ 	dprintk("--> %s\n", __func__);
+ 
+-	assert_spin_locked(&inode->i_lock);
++	data->inode = inode;
++	data->args.fh = NFS_FH(inode);
++	data->args.op.layout_type = nfss->pnfs_curr_ld->id;
++	data->res.fattr = &data->fattr;
++	nfs_fattr_init(&data->fattr);
+ 
+-	/*
+-	 * Clear layoutcommit properties in the inode so
+-	 * new layoutcommit info can be generated
++	/* Set values from inode so it can be reset
  	 */
- 	sb->s_flags  |= MS_POSIXACL;
-+	sb->s_xattr = nfs4_xattr_handlers;
- 	nfs_initialise_sb(sb);
+-	write_begin_pos = nfsi->layout->write_begin_pos;
+-	write_end_pos = nfsi->layout->write_end_pos;
+-	nfsi->layout->write_begin_pos = 0;
+-	nfsi->layout->write_end_pos = 0;
+-	/* In the true case, caller has passed on the cred to another struct */
+-	if (use_cred == false)
+-		put_rpccred(nfsi->layout->cred);
+-	nfsi->layout->cred = NULL;
+-	__clear_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->plh_flags);
+-	/* FIXME: figure out what to do here */
+-	memcpy(args->stateid.data, nfsi->layout->stateid.data,
+-	       NFS4_STATEID_SIZE);
+-
+-	args->layout_type = NFS_SERVER(inode)->pnfs_curr_ld->id;
+-
+-	args->range.iomode = IOMODE_RW;
+-	args->range.offset = write_begin_pos;
+-	args->range.length = write_end_pos - write_begin_pos + 1;
+-	args->lastbytewritten =  min(write_end_pos, i_size_read(inode) - 1);
++	data->args.op.range.iomode = IOMODE_RW;
++	data->args.op.range.offset = write_begin_pos;
++	data->args.op.range.length = write_end_pos - write_begin_pos + 1;
++	data->args.op.lastbytewritten =  min(write_end_pos,
++					  i_size_read(inode) - 1);
++	data->args.bitmask = nfss->attr_bitmask;
++	data->res.server = nfss;
++
++	dprintk("<-- %s Status %d\n", __func__, result);
++	return result;
  }
  
+-/*
+- * Issue a async layoutcommit for an inode.
+- * Returns 0 on success, negative value for error
++/* Issue a async layoutcommit for an inode.
+  */
+ int
+ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ {
+ 	struct nfs4_layoutcommit_data *data;
+-	int status = -ENOMEM;
++	struct nfs_inode *nfsi = NFS_I(inode);
++	loff_t write_begin_pos;
++	loff_t write_end_pos;
++
++	int status = 0;
+ 
+ 	dprintk("%s Begin (sync:%d)\n", __func__, sync);
+ 
++	BUG_ON(!has_layout(nfsi));
++
+ 	data = kzalloc(sizeof(*data), GFP_NOFS);
+ 	if (!data)
+-		goto out;
++		return -ENOMEM;
+ 
+-	status = 0;
+ 	spin_lock(&inode->i_lock);
+-	if (!layoutcommit_needed(NFS_I(inode))) {
++	if (!layoutcommit_needed(nfsi)) {
+ 		spin_unlock(&inode->i_lock);
+-		kfree(data);
+-		goto out;
++		goto out_free;
+ 	}
+-	/* Use the layoutcommit cred */
+-	data->args.cred = NFS_I(inode)->layout->cred;
+ 
+-	/* Set up layoutcommit operation args */
+-	pnfs_layoutcommit_setup(inode, &data->args.op, true);
++	/* Clear layoutcommit properties in the inode so
++	 * new lc info can be generated
++	 */
++	write_begin_pos = nfsi->layout->write_begin_pos;
++	write_end_pos = nfsi->layout->write_end_pos;
++	data->args.cred = nfsi->layout->cred;
++	nfsi->layout->write_begin_pos = 0;
++	nfsi->layout->write_end_pos = 0;
++	nfsi->layout->cred = NULL;
++	__clear_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->plh_flags);
++	memcpy(data->args.op.stateid.data, nfsi->layout->stateid.data,
++	       NFS4_STATEID_SIZE);
+ 
+ 	/* Reference for layoutcommit matched in pnfs_layoutcommit_release */
+ 	get_layout_hdr(NFS_I(inode)->layout);
+-	spin_unlock(&inode->i_lock);
+ 
+-	data->args.fh = NFS_FH(inode);
+-	data->args.bitmask = NFS_SERVER(inode)->attr_bitmask;
++	spin_unlock(&inode->i_lock);
+ 
+-	data->inode = inode;
+-	data->res.server = NFS_SERVER(inode);
+-	data->res.fattr = &data->fattr;
+-	nfs_fattr_init(&data->fattr);
++	/* Set up layout commit args */
++	status = pnfs_layoutcommit_setup(inode, data, write_begin_pos,
++					 write_end_pos);
++	if (status) {
++		/* The layout driver failed to setup the layoutcommit */
++		put_rpccred(data->args.cred);
++		put_layout_hdr(inode);
++		goto out_free;
++	}
+ 	status = nfs4_proc_layoutcommit(data, sync);
+ out:
+ 	dprintk("%s end (err:%d)\n", __func__, status);
+ 	return status;
++out_free:
++	kfree(data);
++	goto out;
+ }
+ 
+ /*
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 8ef47e9..7029926 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -231,9 +231,6 @@ void nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
+ 				int notify_bit, atomic_t *notify_count,
+ 				struct list_head *tmp_list);
+ bool pnfs_roc(struct nfs4_closedata *data);
+-void pnfs_layoutcommit_setup(struct inode *inode,
+-			     struct nfs4_layoutcommit_op_args *args,
+-			     bool use_cred);
+ 
+ static inline bool
+ has_layout(struct nfs_inode *nfsi)
 -- 
-1.7.1
+1.7.2.1
 
