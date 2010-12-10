@@ -1,196 +1,117 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 12/22] pnfs-submit: wave2: rewrite validate_bitmap_values
- to obey spec
-Date: Wed, 15 Dec 2010 18:48:41 +0200
-Message-ID: <4D08F169.30803@panasas.com>
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com> <1291944177-7819-13-git-send-email-iisaman@netapp.com> <4D08C961.3090702@panasas.com> <394DBE14-A569-4BEA-99CE-1CB268392449@netapp.com> <4D08DED8.9090208@panasas.com> <05BB6938-AA62-4381-B33F-2DDC60466B90@netapp.com> <4D08E52F.4090609@panasas.com> <23310505-F664-499A-A376-0A6F7052212A@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Fred Isaman <iisaman@netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: proposed patch to rpcbind to provide finer-grained security controls than offered by the -i option
+Date: Fri, 10 Dec 2010 12:09:13 -0500
+Message-ID: <CCF322CE-AAAC-4B42-9A36-D679AF4D0CA4@oracle.com>
+References: <20101209204913.GA30338@ti93.telemetry-investments.com> <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com> <4D016F44.3020002@RedHat.com> <20101210023847.GB15344@ti93.telemetry-investments.com> <77480D58-4224-4713-A515-F1BCC133F44F@oracle.com> <4D024D70.7040108@RedHat.com> <FD9D05EF-FB57-45FB-BBDC-38E3B92D54AA@oracle.com> <4D025E60.8030204@RedHat.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Cc: "Andrew J. Schorr" <ajschorr-zz2rRYioAk8nkiaMHba4zfZ8FUJU4vz8@public.gmane.org>,
+	linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:35520 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752651Ab0LOQso (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 11:48:44 -0500
-In-Reply-To: <23310505-F664-499A-A376-0A6F7052212A@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:34612 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754667Ab0LJRJx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Dec 2010 12:09:53 -0500
+In-Reply-To: <4D025E60.8030204-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2010-12-15 17:59, Fred Isaman wrote:
-> 
-> On Dec 15, 2010, at 10:56 AM, Benny Halevy wrote:
-> 
->> On 2010-12-15 17:43, Fred Isaman wrote:
->>>
->>> On Dec 15, 2010, at 10:29 AM, Benny Halevy wrote:
->>>
->>>> On 2010-12-15 16:11, Fred Isaman wrote:
->>>>>
->>>>> On Dec 15, 2010, at 8:57 AM, Benny Halevy wrote:
->>>>>
->>>>>> On 2010-12-10 03:22, Fred Isaman wrote:
->>>>>>> It was checking that at least one known bit was set.  It needs to check
->>>>>>> no unknown bit was set.  From RFC5661, section 20.6.3:
->>>>>>>
->>>>>>> When a bit is set in the type mask that corresponds to an undefined
->>>>>>> type of recallable object, NFS4ERR_INVAL MUST be returned.
->>>>>>>
->>>>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->>>>>>> ---
->>>>>>> fs/nfs/callback.h      |    1 +
->>>>>>> fs/nfs/callback_proc.c |   27 ++++-----------------------
->>>>>>> 2 files changed, 5 insertions(+), 23 deletions(-)
->>>>>>>
->>>>>>> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
->>>>>>> index b16dd1f..616c5c1 100644
->>>>>>> --- a/fs/nfs/callback.h
->>>>>>> +++ b/fs/nfs/callback.h
->>>>>>> @@ -126,6 +126,7 @@ extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
->>>>>>> #define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX  9
->>>>>>> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
->>>>>>> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
->>>>>>> +#define RCA4_TYPE_MASK_ALL 0xf31f
->>>>>>>
->>>>>>> struct cb_recallanyargs {
->>>>>>> 	struct sockaddr	*craa_addr;
->>>>>>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
->>>>>>> index 61b3c66..d4aec46 100644
->>>>>>> --- a/fs/nfs/callback_proc.c
->>>>>>> +++ b/fs/nfs/callback_proc.c
->>>>>>> @@ -661,28 +661,10 @@ out_putclient:
->>>>>>> 	goto out;
->>>>>>> }
->>>>>>>
->>>>>>> -static inline bool
->>>>>>> -validate_bitmap_values(const unsigned long *mask)
->>>>>>> +static bool
->>>>>>> +validate_bitmap_values(unsigned long mask)
->>>>>>> {
->>>>>>> -	int i;
->>>>>>> -
->>>>>>> -	if (*mask == 0)
->>>>>>> -		return true;
->>>>>>> -	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, mask) ||
->>>>>>> -	    test_bit(RCA4_TYPE_MASK_WDATA_DLG, mask) ||
->>>>>>> -	    test_bit(RCA4_TYPE_MASK_DIR_DLG, mask) ||
->>>>>>> -	    test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, mask) ||
->>>>>>> -	    test_bit(RCA4_TYPE_MASK_BLK_LAYOUT, mask))
->>>>>>> -		return true;
->>>>>>> -	for (i = RCA4_TYPE_MASK_OBJ_LAYOUT_MIN;
->>>>>>> -	     i <= RCA4_TYPE_MASK_OBJ_LAYOUT_MAX; i++)
->>>>>>> -		if (test_bit(i, mask))
->>>>>>> -			return true;
->>>>>>> -	for (i = RCA4_TYPE_MASK_OTHER_LAYOUT_MIN;
->>>>>>> -	     i <= RCA4_TYPE_MASK_OTHER_LAYOUT_MAX; i++)
->>>>>>> -		if (test_bit(i, mask))
->>>>>>> -			return true;
->>>>>>> -	return false;
->>>>>>> +	return mask & ~RCA4_TYPE_MASK_ALL;
->>>>>>
->>>>>> Hmm, shouldn't that be
->>>>>> 	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
->>>>>>
->>>>>> Benny
->>>>>>
->>>>>
->>>>> Yes, you are right.
->>>>
->>>> OK. This is fixed in my branch to be released asap.
->>>
->>> Thanks.  I have a bunch more minor code cleanups that I'll send once I see what you have, unless you want them immediately. I'll also have a rebase of the pnfs-submit branch with the wave2 patches pushed down to the bottom shortly after I see your branch.
->>>
->>
->> I prefer that you send them now.
-> 
-> OK, I'll send them in a few minutes.
-> 
 
-Thanks. Got 'em.
+On Dec 10, 2010, at 12:07 PM, Steve Dickson wrote:
 
->>
->>>> I've reverted large parts of this patchset in the post-submit stream
->>>> to restore layoutcommit and layoutreturn, but not their embedding in
->>>> the CLOSE compound.  I also kept the cleanups and bug fixes.
->>>> I'll send out the post-submit when it's ready.
->>>> Some more work will be required to restore the original patches
->>>> author and signoffees.
->>>>
->>>> This is the list as of now:
->>>>
->>>> pick af44531 Revert "pnfs-submit: wave2: remove forgotten layoutreturn struct definitions"
->>>> pick c465549 Revert "pnfs-submit: Turn off layoutcommits"
->>>> pick 0f4ba67 Revert "pnfs-submit: wave2: remove all LAYOUTRETURN code"
->>>> pick 486db47 Revert "pnfs-submit: wave2: Remove LAYOUTRETURN from return on close"
->>>>
->>>> pick 484c935 FIXME: roc should return layout on last close
->>>> (This patch just adds a FIXME comment.)
->>>>
->>>
->>> The above looks good.
->>>
->>>> pick 8698772 Revert "pnfs-submit: wave2: remove cl_layoutrecalls list"
->>>> pick 263879b Revert "pnfs-submit: wave2: Pull out all recall initiated LAYOUTRETURNS"
->>>> pick 693765f Revert "pnfs-submit: wave2: Don't wait in layoutget"
->>>
->>> Just note the Trond was highly resistant to the above.
->>>
->>
->> I understand that in the forgetful client model but eventually returning the layout
->> on close will be more efficient overall vs. having the server poll the client.
->>
->>>> pick de56e11 Revert "pnfs-submit: wave2: check that partial LAYOUTGET return is ignored"
->>>>
->>>
->>> We need some sort of check that we got what we asked for, given that the xdr code can chop the servers reply.
->>
->> The post-submit world is supposed to handle partial layouts correctly, as this is required for 
->> the obj and block layouts so we can't just blindly toss away partial layouts.
->>
->> If the files layout driver won't support partial layouts we can restrict this (sigh, ugly)
->> only for it.
->>
->> Benny
 > 
-> Note the problem right now is that the xdr decoding function will only parse the first array element, and toss the rest.  That is the real reason for the check, and something that needs to be fixed.
 > 
+> On 12/10/2010 12:01 PM, Chuck Lever wrote:
+>> Hi Steve-
+>> 
+>> On Dec 10, 2010, at 10:55 AM, Steve Dickson wrote:
+>> 
+>>> On 12/10/2010 10:31 AM, Chuck Lever wrote:
+>>>> 
+>>>> On Dec 9, 2010, at 9:38 PM, Andrew J. Schorr wrote:
+>>>> 
+>>>>> On Thu, Dec 09, 2010 at 07:07:32PM -0500, Steve Dickson wrote:
+>>>>>> 
+>>>>>> 
+>>>>>> On 12/09/2010 04:41 PM, Chuck Lever wrote:
+>>>>>>> It sounds like your application is trying to use glibc's RPC 
+>>>>>>> implementation with rpcbind.  If you build your application with 
+>>>>>>> libtirpc instead, it should use an AF_UNIX socket to contact rpcbind 
+>>>>>>> instead of loopback.  The AF_UNIX socket carries some authentication 
+>>>>>>> information with the registration request.  All users of your 
+>>>>>>> application would be allowed to set or unset RPC registrations 
+>>>>>>> in that case.
+>>>>> 
+>>>>> I think you are correct.  This is probably due to some combination
+>>>>> of ignorance and stupidity on my part.  I didn't realize that libtirpc
+>>>>> was a drop-in replacement for the glibc RPC routines.
+>>>>> 
+>>>>>> I was under the impression rebuilding the applications was not
+>>>>>> possible... but maybe I misunderstood... 
+>>>>> 
+>>>>> Rebuilding should be possible, I need to look into this.
+>>>>> 
+>>>>>> But in the end, I guess I'm not against having functionality 
+>>>>>> like this... If it make it easier for people to port legacy
+>>>>>> applications to Linux, its probably a good thing... 
+>>>>> 
+>>>>> I think the patch does add more control over rpcbind behavior, but I
+>>>>> grant that it may be less interesting if nobody is using IP to connect
+>>>>> from local clients.  Nonetheless, it still adds the ability to have
+>>>>> separate control over whether to accept remote set/unset calls and
+>>>>> whether to honor indirect/callit calls.  Unless I'm mistaken, this is
+>>>>> still relevant even if libtirpc is used.
+>>>> 
+>>>> Not to put to fine a point on it, but we discourage the use of 
+>>>> indirect RPC calls.  It's a well-known security hole.  Also, 
+>>>> allowing anyone to set and unset RPC registrations is also 
+>>>> insecure, and is discouraged.
+>>> True... but its been this way for years... and always will be... 
+>>> 
+>>>> In general we want people to switch to using AF_UNIX for local 
+>>>> registrations, as that is secure from remote attack, and allows 
+>>>> rpcbind to assign ownership of the registration so that only the 
+>>>> user who registered that service may unregister it.
+>>> If the option of rebuilding is available, yes, people should
+>>> switch to libtirpc... 
+>> 
+>> Andrew makes a good point.  There would be no "switch to libtirpc" 
+>> if distributions had a single RPC implementation.
+>> 
+>> Is there a good reason we still have the glibc RPC implementation?
+> I would guess for legacy reasons... I guess we could open an
+> Fedora bz asking to disable the code...
 
-I agree we need to implement getting an array of lsegs in layoutget response
-but the problem with this solution is that it will ignore also partial layouts
-provided as a single array element. A (more common, I assume) case we need to support too :)
+Thanks, that would be an excellent first step.
 
-Benny
+> steved.
+> 
+>> We've resolved the licensing issue already, so there's nothing 
+>> stopping any Linux distribution from adding a libtirpc package.
+>> 
+>>> 
+>>>>> So I would argue that the patch is still a good thing, but I agree that
+>>>>> I should relink my code with libtirpc.
+>>>> 
+>>>> IMO we shouldn't add features that encourage people to configure 
+>>>> rpcbind insecurely, especially when there are reasonable alternatives.
+>>> The -i is already a securely hole... So if we are concern about it
+>>> we should get ride of the -i completely... Or make it a useful 
+>>> securely hole... ;-)
+>>> 
+>>> The point of this patch was to make it easier for people 
+>>> to port legacy applications to Linux... If this indeed 
+>>> is the case, I think that overrides these (self induced) 
+>>> security issues... 
+>> 
+>> If we go with just the evidence at hand: Andrew says he can rebuild his application.  Thus, so far there is no specific requirement to expand "-i".  IMO we should wait until there is, in the most noble of Linux traditions.
+>> 
 
-> Fred
-> 
->>
->>>
->>> Fred
->>>
->>>> Anything else you had in mind?
->>>>
->>>> Benny
->>>>
->>>>>
->>>>> Fred
->>>>>
->>>>>>> }
->>>>>>>
->>>>>>> __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
->>>>>>> @@ -702,8 +684,7 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
->>>>>>> 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
->>>>>>>
->>>>>>> 	status = cpu_to_be32(NFS4ERR_INVAL);
->>>>>>> -	if (!validate_bitmap_values((const unsigned long *)
->>>>>>> -				    &args->craa_type_mask))
->>>>>>> +	if (!validate_bitmap_values(args->craa_type_mask))
->>>>>>> 		goto out;
->>>>>>>
->>>>>>> 	status = cpu_to_be32(NFS4_OK);
->>>>>
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
-> 
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
