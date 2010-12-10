@@ -1,113 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Message-ID: <4CF73AC6.4020105@suse.de>
-Date: Thu, 02 Dec 2010 11:50:54 +0530
-From: Suresh Jayaraman <sjayaraman@suse.de>
-To: Neil Brown <neilb@suse.de>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Fix possible BUG_ON firing in set_change_info
-References: <20101202111430.57275603@notabene.brown>
-In-Reply-To: <20101202111430.57275603@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-15
+Received: from mx1.redhat.com ([209.132.183.28]:27338 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753408Ab0LJAHk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Dec 2010 19:07:40 -0500
+Message-ID: <4D016F44.3020002@RedHat.com>
+Date: Thu, 09 Dec 2010 19:07:32 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Andrew J. Schorr" <ajschorr@alumni.princeton.edu>,
+        linux-nfs@vger.kernel.org
+Subject: Re: proposed patch to rpcbind to provide finer-grained security controls
+ than offered by the -i option
+References: <20101209204913.GA30338@ti93.telemetry-investments.com> <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com>
+In-Reply-To: <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 12/02/2010 05:44 AM, Neil Brown wrote:
+
+
+On 12/09/2010 04:41 PM, Chuck Lever wrote:
 > 
-> If vfs_getattr in fill_post_wcc returns an error, we don't
-> set fh_post_change.
-      ^^^ Did you mean fh_post_saved?
-
-> For NFSv4, this can result in set_change_info triggering a BUG_ON.
-> i.e. fh_post_saved being zero isn't really a bug.
+> On Dec 9, 2010, at 3:49 PM, Andrew J. Schorr wrote:
 > 
-> So:
->  - instead of BUGging when fh_post_saved is zero, just clear ->atomic.
->  - if vfs_getattr fails in fill_post_wcc, take a copy of i_ctime anyway.
->    This will be used i seg_change_info, but not overly trusted.
->  - While we are there, remove the pointless 'if' statements in set_change_info.
->    There is no harm setting all the values.
-
-The 'if' statement was introduced when ext4 i_version support was added
-via commit c654b8a9. While there is no harm setting all the values, it
-may not really be required.
-
->From the spec:
-
-	"For a client to use the change_info4 information
-appropriately and correctly, the server must report the pre- and
-post-operation change attribute values atomically. When the server
-is unable to report the before and after values atomically with
-respect to the directory operation, the server must indicate that
-fact in the change_info4 return value. When the information is not
-atomically reported, the client should not assume that other clients
-have not changed the directory."
-
-Though the spec doesn't talk about the case we have specifically, it
-appears to me that the proposed behavior is the best we could aim for.
-
-> Signed-off-by: NeilBrown <neilb@suse.de>
+>> Hi,
+>>
+>> The current rpcbind -i option seems to relax 3 different security requirements.
+>> If the user wants to allow any one of the three, he is forced to allow
+>> all 3.
+>>
+>> The attached patch introduces 3 new options (-c, -r, and -u) to break this
+>> down to give the user control of which security requirements to relax.
+>>
+>> This patch compiles, but has not been tested yet.  If there is any
+>> interest in accepting this, I will of course test it. :-)  But it's fairly
+>> basic, so I thought I'd gauge the interest level first.  Steve
+>> Dickson from Redhat suggested that I post here to discuss this issue
+>> regarding https://bugzilla.redhat.com/show_bug.cgi?id=481422
 > 
-> --
+> Looking over the bug...
 > 
-> If you think the code is clearer with the if() structure, feel free
-> to leave that part unchanged.
+> It sounds like your application is trying to use glibc's RPC 
+> implementation with rpcbind.  If you build your application with 
+> libtirpc instead, it should use an AF_UNIX socket to contact rpcbind 
+> instead of loopback.  The AF_UNIX socket carries some authentication 
+> information with the registration request.  All users of your 
+> application would be allowed to set or unset RPC registrations 
+> in that case.
 > 
-> NeilBrown
-> 
-> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> index 2a533a0..7e84a85 100644
-> --- a/fs/nfsd/nfs3xdr.c
-> +++ b/fs/nfsd/nfs3xdr.c
-> @@ -260,9 +260,11 @@ void fill_post_wcc(struct svc_fh *fhp)
->  	err = vfs_getattr(fhp->fh_export->ex_path.mnt, fhp->fh_dentry,
->  			&fhp->fh_post_attr);
->  	fhp->fh_post_change = fhp->fh_dentry->d_inode->i_version;
-> -	if (err)
-> +	if (err) {
->  		fhp->fh_post_saved = 0;
-> -	else
-> +		/* Grab the ctime anyway - set_change_info might use it */
-> +		fhp->fh_post_attr.ctime = fhp->fh_dentry->d_inode->i_ctime;
-> +	} else
->  		fhp->fh_post_saved = 1;
->  }
->  
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 4d476ff..60fce3d 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -484,18 +484,17 @@ static inline bool nfsd4_not_cached(struct nfsd4_compoundres *resp)
->  static inline void
->  set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
->  {
-> -	BUG_ON(!fhp->fh_pre_saved || !fhp->fh_post_saved);
-> -	cinfo->atomic = 1;
-> +	BUG_ON(!fhp->fh_pre_saved);
-> +	cinfo->atomic = fhp->fh_post_saved;
->  	cinfo->change_supported = IS_I_VERSION(fhp->fh_dentry->d_inode);
-> -	if (cinfo->change_supported) {
-> -		cinfo->before_change = fhp->fh_pre_change;
-> -		cinfo->after_change = fhp->fh_post_change;
-> -	} else {
-> -		cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
-> -		cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
-> -		cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
-> -		cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
-> -	}
-> +
-> +	cinfo->before_change = fhp->fh_pre_change;
-> +	cinfo->after_change = fhp->fh_post_change;
-> +	cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
-> +	cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
-> +	cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
-> +	cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
-> +
->  }
->  
->  int nfs4svc_encode_voidres(struct svc_rqst *, __be32 *, void *);
+I was under the impression rebuilding the applications was not
+possible... but maybe I misunderstood... 
 
+But in the end, I guess I'm not against having functionality 
+like this... If it make it easier for people to port legacy
+applications to Linux, its probably a good thing... 
 
--- 
-Suresh Jayaraman
+steved.
