@@ -1,140 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:60343 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752527Ab0LXBc5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Dec 2010 20:32:57 -0500
-Received: by mail-iw0-f174.google.com with SMTP id 9so6655796iwn.19
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Dec 2010 17:32:57 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/4] NFS: Introduce nfs_detach_delegations()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 23 Dec 2010 20:32:54 -0500
-Message-ID: <20101224013254.2445.26108.stgit@matisse.1015granger.net>
-In-Reply-To: <20101224012636.2445.41411.stgit@matisse.1015granger.net>
-References: <20101224012636.2445.41411.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:34496 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756117Ab0LJPzm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Dec 2010 10:55:42 -0500
+Message-ID: <4D024D70.7040108@RedHat.com>
+Date: Fri, 10 Dec 2010 10:55:28 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Andrew J. Schorr" <ajschorr@alumni.princeton.edu>,
+        linux-nfs@vger.kernel.org
+Subject: Re: proposed patch to rpcbind to provide finer-grained security controls
+ than offered by the -i option
+References: <20101209204913.GA30338@ti93.telemetry-investments.com> <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com> <4D016F44.3020002@RedHat.com> <20101210023847.GB15344@ti93.telemetry-investments.com> <77480D58-4224-4713-A515-F1BCC133F44F@oracle.com>
+In-Reply-To: <77480D58-4224-4713-A515-F1BCC133F44F@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up:  Refactor code that takes clp->cl_lock and calls
-nfs_detach_delegations_locked() into its own function.
 
-While we're changing the call sites, get rid of the second parameter
-and the logic in nfs_detach_delegations_locked() that uses it, since
-callers always set that parameter of nfs_detach_delegations_locked()
-to NULL.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+On 12/10/2010 10:31 AM, Chuck Lever wrote:
+> 
+> On Dec 9, 2010, at 9:38 PM, Andrew J. Schorr wrote:
+> 
+>> On Thu, Dec 09, 2010 at 07:07:32PM -0500, Steve Dickson wrote:
+>>>
+>>>
+>>> On 12/09/2010 04:41 PM, Chuck Lever wrote:
+>>>> It sounds like your application is trying to use glibc's RPC 
+>>>> implementation with rpcbind.  If you build your application with 
+>>>> libtirpc instead, it should use an AF_UNIX socket to contact rpcbind 
+>>>> instead of loopback.  The AF_UNIX socket carries some authentication 
+>>>> information with the registration request.  All users of your 
+>>>> application would be allowed to set or unset RPC registrations 
+>>>> in that case.
+>>
+>> I think you are correct.  This is probably due to some combination
+>> of ignorance and stupidity on my part.  I didn't realize that libtirpc
+>> was a drop-in replacement for the glibc RPC routines.
+>>
+>>> I was under the impression rebuilding the applications was not
+>>> possible... but maybe I misunderstood... 
+>>
+>> Rebuilding should be possible, I need to look into this.
+>>
+>>> But in the end, I guess I'm not against having functionality 
+>>> like this... If it make it easier for people to port legacy
+>>> applications to Linux, its probably a good thing... 
+>>
+>> I think the patch does add more control over rpcbind behavior, but I
+>> grant that it may be less interesting if nobody is using IP to connect
+>> from local clients.  Nonetheless, it still adds the ability to have
+>> separate control over whether to accept remote set/unset calls and
+>> whether to honor indirect/callit calls.  Unless I'm mistaken, this is
+>> still relevant even if libtirpc is used.
+> 
+> Not to put to fine a point on it, but we discourage the use of 
+> indirect RPC calls.  It's a well-known security hole.  Also, 
+> allowing anyone to set and unset RPC registrations is also 
+> insecure, and is discouraged.
+True... but its been this way for years... and always will be... 
+ 
+> 
+> In general we want people to switch to using AF_UNIX for local 
+> registrations, as that is secure from remote attack, and allows 
+> rpcbind to assign ownership of the registration so that only the 
+> user who registered that service may unregister it.
+If the option of rebuilding is available, yes, people should
+switch to libtirpc... 
 
- fs/nfs/delegation.c |   41 ++++++++++++++++++++---------------------
- 1 files changed, 20 insertions(+), 21 deletions(-)
+> 
+>> So I would argue that the patch is still a good thing, but I agree that
+>> I should relink my code with libtirpc.
+> 
+> IMO we shouldn't add features that encourage people to configure 
+> rpcbind insecurely, especially when there are reasonable alternatives.
+The -i is already a securely hole... So if we are concern about it
+we should get ride of the -i completely... Or make it a useful 
+securely hole... ;-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 1fd62fc..521d71b 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -175,9 +175,9 @@ static struct inode *nfs_delegation_grab_inode(struct nfs_delegation *delegation
- 	return inode;
- }
- 
--static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfsi,
--							   const nfs4_stateid *stateid,
--							   struct nfs_client *clp)
-+static struct nfs_delegation *
-+nfs_detach_delegation_locked(struct nfs_inode *nfsi,
-+			     struct nfs_client *clp)
- {
- 	struct nfs_delegation *delegation =
- 		rcu_dereference_protected(nfsi->delegation,
-@@ -185,22 +185,29 @@ static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfs
- 
- 	if (delegation == NULL)
- 		goto nomatch;
-+
- 	spin_lock(&delegation->lock);
--	if (stateid != NULL && memcmp(delegation->stateid.data, stateid->data,
--				sizeof(delegation->stateid.data)) != 0)
--		goto nomatch_unlock;
- 	list_del_rcu(&delegation->super_list);
- 	delegation->inode = NULL;
- 	nfsi->delegation_state = 0;
- 	rcu_assign_pointer(nfsi->delegation, NULL);
- 	spin_unlock(&delegation->lock);
- 	return delegation;
--nomatch_unlock:
--	spin_unlock(&delegation->lock);
- nomatch:
- 	return NULL;
- }
- 
-+static struct nfs_delegation *nfs_detach_delegation(struct nfs_inode *nfsi,
-+						    struct nfs_client *clp)
-+{
-+	struct nfs_delegation *delegation;
-+
-+	spin_lock(&clp->cl_lock);
-+	delegation = nfs_detach_delegation_locked(nfsi, clp);
-+	spin_unlock(&clp->cl_lock);
-+	return delegation;
-+}
-+
- /*
-  * Set up a delegation on an inode
-  */
-@@ -246,7 +253,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
- 			delegation = NULL;
- 			goto out;
- 		}
--		freeme = nfs_detach_delegation_locked(nfsi, NULL, clp);
-+		freeme = nfs_detach_delegation_locked(nfsi, clp);
- 	}
- 	list_add_rcu(&delegation->super_list, &clp->cl_delegations);
- 	nfsi->delegation_state = delegation->type;
-@@ -307,9 +314,7 @@ restart:
- 		inode = nfs_delegation_grab_inode(delegation);
- 		if (inode == NULL)
- 			continue;
--		spin_lock(&clp->cl_lock);
--		delegation = nfs_detach_delegation_locked(NFS_I(inode), NULL, clp);
--		spin_unlock(&clp->cl_lock);
-+		delegation = nfs_detach_delegation(NFS_I(inode), clp);
- 		rcu_read_unlock();
- 		if (delegation != NULL) {
- 			filemap_flush(inode->i_mapping);
-@@ -338,9 +343,7 @@ void nfs_inode_return_delegation_noreclaim(struct inode *inode)
- 	struct nfs_delegation *delegation;
- 
- 	if (rcu_access_pointer(nfsi->delegation) != NULL) {
--		spin_lock(&clp->cl_lock);
--		delegation = nfs_detach_delegation_locked(nfsi, NULL, clp);
--		spin_unlock(&clp->cl_lock);
-+		delegation = nfs_detach_delegation(nfsi, clp);
- 		if (delegation != NULL)
- 			nfs_do_return_delegation(inode, delegation, 0);
- 	}
-@@ -354,9 +357,7 @@ int nfs_inode_return_delegation(struct inode *inode)
- 	int err = 0;
- 
- 	if (rcu_access_pointer(nfsi->delegation) != NULL) {
--		spin_lock(&clp->cl_lock);
--		delegation = nfs_detach_delegation_locked(nfsi, NULL, clp);
--		spin_unlock(&clp->cl_lock);
-+		delegation = nfs_detach_delegation(nfsi, clp);
- 		if (delegation != NULL) {
- 			nfs_wb_all(inode);
- 			err = __nfs_inode_return_delegation(inode, delegation, 1);
-@@ -530,9 +531,7 @@ restart:
- 		inode = nfs_delegation_grab_inode(delegation);
- 		if (inode == NULL)
- 			continue;
--		spin_lock(&clp->cl_lock);
--		delegation = nfs_detach_delegation_locked(NFS_I(inode), NULL, clp);
--		spin_unlock(&clp->cl_lock);
-+		delegation = nfs_detach_delegation(NFS_I(inode), clp);
- 		rcu_read_unlock();
- 		if (delegation != NULL)
- 			nfs_free_delegation(delegation);
+The point of this patch was to make it easier for people 
+to port legacy applications to Linux... If this indeed 
+is the case, I think that overrides these (self induced) 
+security issues... 
 
+steved.
+ 
