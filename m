@@ -1,96 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:48071 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756050Ab0LIPZO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 10:25:14 -0500
-Subject: Re: [Bug 24302] Kernel crashes when repeatedly trying to mount nfs share that is failing
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4D00AB9F.3030808@canonical.com>
-Date: Thu, 9 Dec 2010 10:23:58 -0500
-Cc: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>
-Message-Id: <B1576FB0-9865-429A-8053-673DAEE96F88@oracle.com>
-References: <bug-24302-104@https.bugzilla.kernel.org/> <201012081830.oB8IUZ4t027387@demeter2.kernel.org> <1291835010.3067.4.camel@heimdal.trondhjem.org> <3F9D016C-9EDF-4B65-AD77-F225D5F1FA66@oracle.com> <A205A7F2-6E7C-4129-BC3A-D2AE5E38DFE6@oracle.com> <4D00AB9F.3030808@canonical.com>
-To: Stefan Bader <stefan.bader@canonical.com>
+Received: from mx2.netapp.com ([216.240.18.37]:64950 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751618Ab0LJGIu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Dec 2010 01:08:50 -0500
+Received: from localhost.localdomain (kozen-lxp.hq.netapp.com [10.58.53.114] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBA68VLo023313
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Dec 2010 22:08:49 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 13/22] pnfs-submit: wave2: check that partial LAYOUTGET return is ignored
+Date: Thu,  9 Dec 2010 20:22:48 -0500
+Message-Id: <1291944177-7819-14-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
+References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Either a bad server reply, or our ignoring of multiple array segments in
+a reply, can cause a reply to not meet our requirements.  Ensure
+that we ignore such replies.
 
-On Dec 9, 2010, at 5:12 AM, Stefan Bader wrote:
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   11 +++++++++++
+ 1 files changed, 11 insertions(+), 0 deletions(-)
 
-> On 12/09/2010 01:19 AM, Chuck Lever wrote:
->> Hi Stefan-
->> 
->> On Dec 8, 2010, at 3:35 PM, Chuck Lever wrote:
->> 
->>> 
->>> On Dec 8, 2010, at 2:03 PM, Trond Myklebust wrote:
->>> 
->>>> On Wed, 2010-12-08 at 18:30 +0000, bugzilla-daemon@bugzilla.kernel.org 
->>>> wrote:
->>>>> https://bugzilla.kernel.org/show_bug.cgi?id=24302
->>>>> 
->>>>> 
->>>>> Andrew Morton <akpm@linux-foundation.org> changed:
->>>>> 
->>>>> What    |Removed                     |Added 
->>>>> ----------------------------------------------------------------------------
->>>>> 
->>>>> 
-> Component|Other                       |NFS
->>>>> AssignedTo|fs_other@kernel-bugs.osdl.o |trond.myklebust@fys.uio.no |rg
->>>>> |
->>>>> 
->>>>> 
->>>>> 
->>>>> 
->>>>> --- Comment #8 from Andrew Morton <akpm@linux-foundation.org>
->>>>> 2010-12-08 18:30:32 --- OK, I reassigned it to NFS.  If that was wrong
->>>>> then at least the NFS guys should be able to help point things in the
->>>>> right direction.
->>>> 
->>>> <Switching to email interface. Please do not edit the bugzilla entry 
->>>> directly, since that will lose the above Cc information>
-> 
-> Missed to read the above, so I have to duplicate things a bit, sorry. Removed
-> the bugzilla cc, so the report does not get spammed.
-> 
->>>> 
->>>> 
->>>> Chuck,
->>>> 
->>>> Stefan appears to be hitting a panic in the nfs_umount() call from 
->>>> nfs_walk_authlist(). Can you take a look, please?
->>> 
->>> Recv'd.  I'll have a look.
->> 
->> Apologies in advance for the attachment.  There are a few other clean ups
->> that can be done, but this seems to be the minimal fix.  Please try this and
->> let us know if it addresses your panic.
->> 
->> 
->> 
->> 
->> 
->> 
->> The faulty commit went in a while back, so this patch is probably appropriate
->> for stable kernels (back to 2.6.31, where this was likely introduced).
->> 
-> 
-> I can confirm that this was the root cause of the crash. The sha referenced as
-> the causing commit, got in with a 2.6.32-rc so I added the stable info
-> accordingly. I also added my tested-by and slightly modified the bug reference
-> format (Chuck, I hope this is ok).
-
-Looks good to me.  I assume, since Trond still owns the kernel.org bugzilla, that he will close this loop?  Let me know if I need to do anything else.
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3ee9621..2e35706 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -909,6 +909,17 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 	int status = 0;
+ 
++	/* Verify we got what we asked for.
++	 * Note that because the xdr parsing only accepts a single
++	 * element array, this can fail even if the server is behaving
++	 * correctly.
++	 */
++	if (lgp->args.range.iomode > res->range.iomode ||
++	    res->range.offset != 0 ||
++	    res->range.length != NFS4_MAX_UINT64) {
++		status = -EINVAL;
++		goto out;
++	}
+ 	/* Inject layout blob into I/O device driver */
+ 	lseg = NFS_SERVER(ino)->pnfs_curr_ld->alloc_lseg(lo, res);
+ 	if (!lseg || IS_ERR(lseg)) {
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.2.1
 
