@@ -1,111 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f180.google.com ([209.85.161.180]:61018 "EHLO
-	mail-gx0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757715Ab0LNPGp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 10:06:45 -0500
-Received: by gxk19 with SMTP id 19so482684gxk.11
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 07:06:45 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/11] lockd: Remove nlm_lookup_host()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 10:06:41 -0500
-Message-ID: <20101214150641.2736.25812.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
-References: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:56510 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751300Ab0LJGIk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Dec 2010 01:08:40 -0500
+Received: from localhost.localdomain (kozen-lxp.hq.netapp.com [10.58.53.114] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBA68VLd023313
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Dec 2010 22:08:34 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 02/22] Revert "SQUASHME: pnfs-submit: encode layoutreturn on close before close"
+Date: Thu,  9 Dec 2010 20:22:37 -0500
+Message-Id: <1291944177-7819-3-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
+References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Clean up.
+This reverts commit aafe6a6b39b0ddf87496d3912b308bf08ed6b2b9.
 
-Remove the now unused helper nlm_lookup_host().
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
+ fs/nfs/nfs4xdr.c |   35 +++++++++++++++++------------------
+ fs/nfs/pnfs.c    |    1 -
+ 2 files changed, 17 insertions(+), 19 deletions(-)
 
- fs/lockd/host.c |   69 -------------------------------------------------------
- 1 files changed, 0 insertions(+), 69 deletions(-)
-
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 77ec21a..6d4aa8b 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -163,75 +163,6 @@ out:
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index f3aaa21..8dbfbb0 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -441,17 +441,17 @@ static int nfs4_stat_to_errno(int);
+ #define NFS4_enc_close_sz	(compound_encode_hdr_maxsz + \
+ 				 encode_sequence_maxsz + \
+ 				 encode_putfh_maxsz + \
+-				 encode_layoutcommit_maxsz + \
+-				 encode_layoutreturn_maxsz + \
+ 				 encode_close_maxsz + \
+-				 encode_getattr_maxsz)
++				 encode_getattr_maxsz + \
++				 encode_layoutreturn_maxsz + \
++				 encode_layoutcommit_maxsz)
+ #define NFS4_dec_close_sz	(compound_decode_hdr_maxsz + \
+ 				 decode_sequence_maxsz + \
+ 				 decode_putfh_maxsz + \
+-				 decode_layoutcommit_maxsz + \
+-				 decode_layoutreturn_maxsz + \
+ 				 decode_close_maxsz + \
+-				 decode_getattr_maxsz)
++				 decode_getattr_maxsz + \
++				 decode_layoutreturn_maxsz + \
++				 decode_layoutcommit_maxsz)
+ #define NFS4_enc_setattr_sz	(compound_encode_hdr_maxsz + \
+ 				 encode_sequence_maxsz + \
+ 				 encode_putfh_maxsz + \
+@@ -2160,10 +2160,10 @@ static int nfs4_xdr_enc_close(struct rpc_rqst *req, __be32 *p, struct nfs_closea
+ 	encode_putfh(&xdr, args->fh, &hdr);
+ 	if (args->op_bitmask & NFS4_HAS_LAYOUTCOMMIT) /* layoutcommit set */
+ 		encode_layoutcommit(&xdr, &args->lc_args, &hdr);
+-	if (args->op_bitmask & NFS4_HAS_LAYOUTRETURN) /* layoutreturn set */
+-		encode_layoutreturn(&xdr, &args->lr_args, &hdr);
+ 	encode_close(&xdr, args, &hdr);
+ 	encode_getfattr(&xdr, args->bitmask, &hdr);
++	if (args->op_bitmask & NFS4_HAS_LAYOUTRETURN) /* layoutreturn set */
++		encode_layoutreturn(&xdr, &args->lr_args, &hdr);
+ 	encode_nops(&hdr);
+ 	return 0;
  }
- 
- /*
-- * Common host lookup routine for server & client
-- */
--static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
--{
--	struct hlist_head *chain;
--	struct hlist_node *pos;
--	struct nlm_host	*host;
--	struct nsm_handle *nsm = NULL;
--
--	mutex_lock(&nlm_host_mutex);
--
--	if (time_after_eq(jiffies, next_gc))
--		nlm_gc_hosts();
--
--	/* We may keep several nlm_host objects for a peer, because each
--	 * nlm_host is identified by
--	 * (address, protocol, version, server/client)
--	 * We could probably simplify this a little by putting all those
--	 * different NLM rpc_clients into one single nlm_host object.
--	 * This would allow us to have one nlm_host per address.
--	 */
--	chain = &nlm_server_hosts[nlm_hash_address(ni->sap)];
--	hlist_for_each_entry(host, pos, chain, h_hash) {
--		if (!rpc_cmp_addr(nlm_addr(host), ni->sap))
--			continue;
--
--		/* See if we have an NSM handle for this client */
--		if (!nsm)
--			nsm = host->h_nsmhandle;
--
--		if (host->h_proto != ni->protocol)
--			continue;
--		if (host->h_version != ni->version)
--			continue;
--		if (host->h_server != ni->server)
--			continue;
--		if (ni->server && ni->src_len != 0 &&
--		    !rpc_cmp_addr(nlm_srcaddr(host), ni->src_sap))
--			continue;
--
--		/* Move to head of hash chain. */
--		hlist_del(&host->h_hash);
--		hlist_add_head(&host->h_hash, chain);
--
--		nlm_get_host(host);
--		dprintk("lockd: nlm_lookup_host found host %s (%s)\n",
--				host->h_name, host->h_addrbuf);
--		goto out;
+@@ -5743,16 +5743,9 @@ static int nfs4_xdr_dec_close(struct rpc_rqst *rqstp, __be32 *p, struct nfs_clos
+ 	status = decode_putfh(&xdr);
+ 	if (status)
+ 		goto out;
+-	if (res->op_bitmask & NFS4_HAS_LAYOUTCOMMIT) {
+-		status = decode_layoutcommit(&xdr);
+-		if (status)
+-			goto out;
 -	}
--
--	host = nlm_alloc_host(ni, nsm);
--	if (unlikely(host == NULL))
--		goto out;
--
--	memcpy(nlm_srcaddr(host), ni->src_sap, ni->src_len);
--	host->h_srcaddrlen = ni->src_len;
--	hlist_add_head(&host->h_hash, chain);
--
--	nrhosts++;
--
--	dprintk("lockd: nlm_lookup_host created host %s\n",
--			host->h_name);
--
--out:
--	mutex_unlock(&nlm_host_mutex);
--	return host;
--}
--
--/*
-  * Destroy an nlm_host and free associated resources
-  *
-  * Caller must hold nlm_host_mutex.
+-	if (res->op_bitmask & NFS4_HAS_LAYOUTRETURN) {
+-		status = decode_layoutreturn(&xdr, &res->lr_res);
+-		if (status)
+-			goto out;
+-	}
++	/* We pay no attention to the layoutcommit return */
++	if (res->op_bitmask & NFS4_HAS_LAYOUTCOMMIT)
++		decode_layoutcommit(&xdr);
+ 	status = decode_close(&xdr, res);
+ 	if (status != 0)
+ 		goto out;
+@@ -5764,6 +5757,12 @@ static int nfs4_xdr_dec_close(struct rpc_rqst *rqstp, __be32 *p, struct nfs_clos
+ 	 */
+ 	decode_getfattr(&xdr, res->fattr, res->server,
+ 			!RPC_IS_ASYNC(rqstp->rq_task));
++	/*
++	 * With the forgetful model, we pay no attention to the
++	 * layoutreturn status.
++	 */
++	if (res->op_bitmask & NFS4_HAS_LAYOUTRETURN)
++		decode_layoutreturn(&xdr, &res->lr_res);
+ out:
+ 	return status;
+ }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index d3ce095..1d3c849 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -625,7 +625,6 @@ pnfs_roc(struct nfs4_closedata *data)
+ 	LIST_HEAD(tmp_list);
+ 	bool found = false;
+ 
+-	data->arg.op_bitmask = data->res.op_bitmask = 0;
+ 	spin_lock(&data->inode->i_lock);
+ 	lo = NFS_I(data->inode)->layout;
+ 	if (!lo || lo->roc_iomode == 0 ||
+-- 
+1.7.2.1
 
