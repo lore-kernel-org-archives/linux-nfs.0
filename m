@@ -1,174 +1,381 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29270 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64950 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752489Ab0LGVlj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Dec 2010 16:41:39 -0500
-Subject: Re: oops in nfs_flush_incompatible (and possible fix?)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20101206145743.4464c79d@tlielax.poochiereds.net>
-References: <20101206145743.4464c79d@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 07 Dec 2010 16:41:22 -0500
-Message-ID: <1291758082.3049.42.camel@heimdal.trondhjem.org>
+	id S1751514Ab0LJGIv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Dec 2010 01:08:51 -0500
+Received: from localhost.localdomain (kozen-lxp.hq.netapp.com [10.58.53.114] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBA68VLp023313
+	for <linux-nfs@vger.kernel.org>; Thu, 9 Dec 2010 22:08:50 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 14/22] pnfs-submit: wave2: Don't wait in layoutget
+Date: Thu,  9 Dec 2010 20:22:49 -0500
+Message-Id: <1291944177-7819-15-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
+References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 2010-12-06 at 14:57 -0500, Jeff Layton wrote:
-> Hi Trond,
-> 
-> I've got a RH bug opened by one of our partners against the RHEL5.6
-> development kernel. That kernel got a backported version of the
-> lock_context patches that you merged not too long ago. I'm trying to
-> get permission to add you to the BZ so you can have a look for yourself
-> too.
-> 
-> Long story short, they seem to get a reproducible oops like this when
-> testing under heavy load:
-> 
-> Unable to handle kernel NULL pointer dereference at 0000000000000020 RIP:
-> [<ffffffff88856222>] :nfs:nfs_flush_incompatible+0x6d/0xd1
-> PGD 7d9bc2067 PUD 7d9bbf067 PMD 0
-> Oops: 0000 [1] SMP
-> last sysfs file: /devices/system/cpu/cpu125/cpufreq/scaling_setspeed
-> CPU 126
-> Modules linked in: ipmi_devintf ipmi_si ipmi_msghandler tun nfs fscache
-> nfs_acl ebtable_nat ebtables ipt_MASQUERADE iptable_nat ip_nat bridge
-> autofs4 hidp rfcomm l2cap bluetooth lockd sunrpc acpi_cpufreq freq_table
-> mperf ip_conntrack_netbios_ns ipt_REJECT xt_state ip_conntrack nfnetlink
-> iptable_filter ip_tables ip6t_REJECT xt_tcpudp ip6table_filter ip6_tables
-> x_tables be2iscsi ib_iser rdma_cm ib_cm iw_cm ib_sa ib_mad ib_core ib_addr
-> iscsi_tcp bnx2i cnic ipv6 xfrm_nalgo crypto_api uio cxgb3i cxgb3 8021q
-> libiscsi_tcp libiscsi2 scsi_transport_iscsi2 scsi_transport_iscsi loop
-> dm_multipath scsi_dh video backlight sbs power_meter hwmon i2c_ec dell_wmi
-> wmi button battery asus_acpi acpi_memhotplug ac parport_pc lp parport
-> ksm(U) kvm_intel(U) kvm(U) joydev sg tpm_tis i2c_i801 tpm cdc_ether pcspkr
-> i7core_edac ide_cd i2c_core edac_mc usbnet tpm_bios cdrom bnx2 dm_raid45
-> dm_message dm_region_hash dm_mem_cache dm_snapshot dm_zero dm_mirror
-> dm_log dm_mod ata_piix libata shpchp mptsas mptscsih mptbase
-> scsi_transport_sas sd_mod scsi_mod ext3 jbd uhci_hcd ohci_hcd ehci_hcd
-> Pid: 21273, comm: snake.exe Tainted: G      2.6.18-229.el5 #1
-> RIP: 0010:[<ffffffff88856222>]  [<ffffffff88856222>]
-> :nfs:nfs_flush_incompatible+0x6d/0xd1
-> RSP: 0018:ffff810a3daddb48  EFLAGS: 00010246
-> RAX: 0000000000000000 RBX: ffff8101a4c05c40 RCX: 0000000000000000
-> RDX: 0000000000000000 RSI: 0000000000000001 RDI: ffff8101d27f3ac8
-> RBP: 0000000000000000 R08: 0000000000000000 R09: ffff810a3daddc80
-> R10: ffff8106896a7c00 R11: 0000000000000048 R12: ffff810a833ebb78
-> R13: ffff811213f3f6f0 R14: ffff8110c0a1c9c0 R15: 0000000000000001
-> FS:  00002b6188e086e0(0000) GS:ffff811e7f78c940(0000)
-> knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> CR2: 0000000000000020 CR3: 00000007d9bc7000 CR4: 00000000000026e0
-> Process snake.exe (pid: 21273, threadinfo ffff810a3dadc000, task
-> ffff8107d9b24100)
-> Stack:  ffff810a833ebb78 000000000000007e ffff81102e769e80
-> 0000000000000000
-> 00000000000014ac ffffffff8884b101 ffff810a3daddc80 0000007e00000000
-> ffff811213f3f800 ffffffff8886b8e0 000000000000007e 00000000000014ac
-> Call Trace:
-> [<ffffffff8884b101>] :nfs:nfs_write_begin+0x65/0xf8
-> [<ffffffff8000fda3>] generic_file_buffered_write+0x14b/0x675
-> [<ffffffff80062ff0>] thread_return+0x62/0xfe
-> [<ffffffff800166e8>] __generic_file_aio_write_nolock+0x369/0x3b6
-> [<ffffffff80063c57>] __mutex_lock_slowpath+0x68/0x9b
-> [<ffffffff8002187e>] generic_file_aio_write+0x65/0xc1
-> [<ffffffff8884b805>] :nfs:nfs_file_write+0xd8/0x14f
-> [<ffffffff80018338>] do_sync_write+0xc7/0x104
-> [<ffffffff800a2896>] autoremove_wake_function+0x0/0x2e
-> [<ffffffff8005a4c5>] hrtimer_cancel+0xc/0x16
-> [<ffffffff80016af0>] vfs_write+0xce/0x174
-> [<ffffffff800173a8>] sys_write+0x45/0x6e
-> [<ffffffff8005d28d>] tracesys+0xd5/0xe0
-> 
-> Code: 48 8b 50 20 65 48 8b 04 25 00 00 00 00 48 3b 90 98 05 00 00
-> RIP  [<ffffffff88856222>] :nfs:nfs_flush_incompatible+0x6d/0xd1
-> RSP <ffff810a3daddb48>
-> CR2: 0000000000000020
-> <0>Kernel panic - not syncing: Fatal exception
-> 
-> 
-> The problem seems to be that the req->wb_lock_context is NULL so it
-> dies dereferencing that pointer in nfs_flush_incompatible. The original
-> kernel they tested didn't have the check for a NULL return from
-> nfs_get_lock_context. I fixed that however and they still saw the bug.
-> 
-> At this point, I'm thinking this is a race that might be fixed by the
-> following patch. These bare calls to nfs_clear_request look suspicious
-> to me, given that we're not checking the refcount on the request before
-> freeing fields in it. I haven't tested the patch yet, but I think it
-> looks correct.
-> 
-> Thoughts?
-> 
-> -----------------------[snip]---------------------------
-> 
-> nfs: remove extraneous and problematic calls to nfs_clear_request
-> 
-> When a nfs_page is freed, nfs_free_request is called which also calls
-> nfs_clear_request to clean out the lock and open contexts and free the
-> pagecache page.
-> 
-> However, a couple of places in the nfs code call nfs_clear_request
-> themselves. What happens here if the refcount on the request is still high?
-> We'll be releasing contexts and freeing pointers while the request is
-> possibly still in use.
-> 
-> Remove those bare calls to nfs_clear_context. That should only be done when
-> the request is being freed.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfs/read.c  |    1 -
->  fs/nfs/write.c |    1 -
->  2 files changed, 0 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> index e4b62c6..aedcaa7 100644
-> --- a/fs/nfs/read.c
-> +++ b/fs/nfs/read.c
-> @@ -152,7 +152,6 @@ static void nfs_readpage_release(struct nfs_page *req)
->  			(long long)NFS_FILEID(req->wb_context->path.dentry->d_inode),
->  			req->wb_bytes,
->  			(long long)req_offset(req));
-> -	nfs_clear_request(req);
->  	nfs_release_request(req);
->  }
->  
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 4c14c17..c41a435 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -422,7 +422,6 @@ static void nfs_inode_remove_request(struct nfs_page *req)
->  		iput(inode);
->  	} else
->  		spin_unlock(&inode->i_lock);
-> -	nfs_clear_request(req);
->  	nfs_release_request(req);
->  }
->  
+instead, just go direct to MDS.  This simplifies things a lot.  The
+primary problem that initiated this is that plh_outstanding accounting
+was not correct, and there is no easy way to make it correct if it is
+incremented within layoutget_prepare (due to ctrl-c issues).
 
-I've been racking my brain for days now trying to remember why we clear
-the request in these cases. I think it was only about ensuring that we
-could throw the page out of the cache using invalidate_inode_pages()
-(and there is a comment about that in early 2.4.x kernels).
+This patch basically does three things:
+- remove the rpc waitqs
+- push plh_outstanding accounting outside of the layoutget rpc code
+- shift pnfs_layoutgets_blocked() up and make static
 
-As far as I can see, there no longer appear to be any side effects to
-deferring releasing the page or open_contexts but I'm still a bit
-nervous about doing so.
-Can we therefore please give it a good week of pounding upon before I
-pass it on to Linus?
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/callback_proc.c    |    4 ---
+ fs/nfs/client.c           |    2 -
+ fs/nfs/inode.c            |    1 -
+ fs/nfs/nfs4proc.c         |   45 +--------------------------------
+ fs/nfs/pnfs.c             |   59 +++++++++++++++++++++++---------------------
+ fs/nfs/pnfs.h             |    1 -
+ include/linux/nfs_fs.h    |    1 -
+ include/linux/nfs_fs_sb.h |    1 -
+ 8 files changed, 33 insertions(+), 81 deletions(-)
 
-Cheers
-  Trond
-
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index d4aec46..4cd7e84 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -224,7 +224,6 @@ void nfs_client_return_layouts(struct nfs_client *clp)
+ 		list_del(&cb_info->pcl_list);
+ 		clp->cl_cb_lrecall_count--;
+ 		clp->cl_drain_notification[1 << cb_info->pcl_notify_bit] = NULL;
+-		rpc_wake_up(&clp->cl_rpcwaitq_recall);
+ 		kfree(cb_info);
+ 	}
+ }
+@@ -376,7 +375,6 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
+ 		list_del(&new->pcl_list);
+ 		clp->cl_cb_lrecall_count--;
+ 		clp->cl_drain_notification[1 << bit_num] = NULL;
+-		rpc_wake_up(&clp->cl_rpcwaitq_recall);
+ 		spin_unlock(&clp->cl_lock);
+ 		if (res == NFS4_OK) {
+ 			if (args->cbl_recall_type == RETURN_FILE) {
+@@ -385,8 +383,6 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
+ 				lo = NFS_I(new->pcl_ino)->layout;
+ 				spin_lock(&lo->inode->i_lock);
+ 				lo->plh_block_lgets--;
+-				if (!pnfs_layoutgets_blocked(lo, NULL))
+-					rpc_wake_up(&NFS_I(lo->inode)->lo_rpcwaitq_stateid);
+ 				spin_unlock(&lo->inode->i_lock);
+ 				put_layout_hdr(new->pcl_ino);
+ 			}
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 172175f..f8e712f 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -159,8 +159,6 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ #if defined(CONFIG_NFS_V4_1)
+ 	INIT_LIST_HEAD(&clp->cl_layouts);
+ 	INIT_LIST_HEAD(&clp->cl_layoutrecalls);
+-	rpc_init_wait_queue(&clp->cl_rpcwaitq_recall,
+-			    "NFS client CB_LAYOUTRECALLS");
+ #endif
+ 	nfs_fscache_get_client_cookie(clp);
+ 
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index bbeb337..54a2fc7 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1460,7 +1460,6 @@ static inline void nfs4_init_once(struct nfs_inode *nfsi)
+ 	nfsi->delegation_state = 0;
+ 	init_rwsem(&nfsi->rwsem);
+ 	rpc_init_wait_queue(&nfsi->lo_rpcwaitq, "pNFS Layoutreturn");
+-	rpc_init_wait_queue(&nfsi->lo_rpcwaitq_stateid, "pNFS Layoutstateid");
+ 	nfsi->layout = NULL;
+ #endif
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5f6120a..b161393 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5357,43 +5357,17 @@ static void
+ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_layoutget *lgp = calldata;
+-	struct inode *ino = lgp->args.inode;
+-	struct nfs_inode *nfsi = NFS_I(ino);
+-	struct nfs_server *server = NFS_SERVER(ino);
+-	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
++	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+ 
+ 	dprintk("--> %s\n", __func__);
+-	spin_lock(&clp->cl_lock);
+-	if (matches_outstanding_recall(ino, &lgp->args.range)) {
+-		rpc_sleep_on(&clp->cl_rpcwaitq_recall, task, NULL);
+-		spin_unlock(&clp->cl_lock);
+-		return;
+-	}
+-	spin_unlock(&clp->cl_lock);
+ 	/* Note the is a race here, where a CB_LAYOUTRECALL can come in
+ 	 * right now covering the LAYOUTGET we are about to send.
+ 	 * However, that is not so catastrophic, and there seems
+ 	 * to be no way to prevent it completely.
+ 	 */
+-	spin_lock(&ino->i_lock);
+-	if (pnfs_layoutgets_blocked(nfsi->layout, NULL)) {
+-		rpc_sleep_on(&nfsi->lo_rpcwaitq_stateid, task, NULL);
+-		spin_unlock(&ino->i_lock);
+-		return;
+-	}
+-	/* This needs after above check but atomic with it in order to properly
+-	 * serialize openstateid LAYOUTGETs.
+-	 */
+-	nfsi->layout->plh_outstanding++;
+-	spin_unlock(&ino->i_lock);
+-
+ 	if (nfs4_setup_sequence(server, NULL, &lgp->args.seq_args,
+-				&lgp->res.seq_res, 0, task)) {
+-		spin_lock(&ino->i_lock);
+-		nfsi->layout->plh_outstanding--;
+-		spin_unlock(&ino->i_lock);
++				&lgp->res.seq_res, 0, task))
+ 		return;
+-	}
+ 	rpc_call_start(task);
+ }
+ 
+@@ -5422,9 +5396,6 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+ 	default:
+ 		if (nfs4_async_handle_error(task, NFS_SERVER(ino),
+ 					    NULL, NULL) == -EAGAIN) {
+-			spin_lock(&ino->i_lock);
+-			NFS_I(ino)->layout->plh_outstanding--;
+-			spin_unlock(&ino->i_lock);
+ 			rpc_restart_call_prepare(task);
+ 			return;
+ 		}
+@@ -5486,16 +5457,6 @@ int nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
+ 		status = task->tk_status;
+ 	if (status == 0)
+ 		status = pnfs_layout_process(lgp);
+-	else {
+-		struct inode *ino = lgp->args.inode;
+-		struct pnfs_layout_hdr *lo = NFS_I(ino)->layout;
+-
+-		spin_lock(&ino->i_lock);
+-		lo->plh_outstanding--;
+-		if (!pnfs_layoutgets_blocked(lo, NULL))
+-			rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq_stateid);
+-		spin_unlock(&ino->i_lock);
+-	}
+ 	rpc_put_task(task);
+ 	dprintk("<-- %s status=%d\n", __func__, status);
+ 	return status;
+@@ -5654,8 +5615,6 @@ static void nfs4_layoutreturn_release(void *calldata)
+ 		spin_lock(&ino->i_lock);
+ 		lo->plh_block_lgets--;
+ 		lo->plh_outstanding--;
+-		if (!pnfs_layoutgets_blocked(lo, NULL))
+-			rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq_stateid);
+ 		spin_unlock(&ino->i_lock);
+ 		put_layout_hdr(ino);
+ 	}
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 2e35706..abb3eb0 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -297,8 +297,6 @@ _put_lseg_common(struct pnfs_layout_segment *lseg)
+ 		list_del_init(&lseg->layout->layouts);
+ 		spin_unlock(&clp->cl_lock);
+ 		clear_bit(NFS_LAYOUT_BULK_RECALL, &lseg->layout->plh_flags);
+-		if (!pnfs_layoutgets_blocked(lseg->layout, NULL))
+-			rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq_stateid);
+ 	}
+ 	rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq);
+ }
+@@ -496,6 +494,20 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
+ 	}
+ }
+ 
++/* lget is set to 1 if called from inside send_layoutget call chain */
++static bool
++pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, nfs4_stateid *stateid,
++			int lget)
++{
++	assert_spin_locked(&lo->inode->i_lock);
++	if ((stateid) &&
++	    (int)(lo->plh_barrier - be32_to_cpu(stateid->stateid.seqid)) >= 0)
++		return true;
++	return lo->plh_block_lgets ||
++		test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
++		(list_empty(&lo->segs) && (lo->plh_outstanding > lget));
++}
++
+ int
+ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+ 			      struct nfs4_state *open_state)
+@@ -504,8 +516,7 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	spin_lock(&lo->inode->i_lock);
+-	if (lo->plh_block_lgets ||
+-	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
++	if (pnfs_layoutgets_blocked(lo, NULL, 1)) {
+ 		/* We avoid -EAGAIN, as that has special meaning to
+ 		 * some callers.
+ 		 */
+@@ -720,9 +731,6 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 	}
+ 	if (!found) {
+ 		list_add_tail(&lseg->fi_list, &lo->segs);
+-		if (list_is_singular(&lo->segs) &&
+-		    !pnfs_layoutgets_blocked(lo, NULL))
+-			rpc_wake_up(&NFS_I(lo->inode)->lo_rpcwaitq_stateid);
+ 		dprintk("%s: inserted lseg %p "
+ 			"iomode %d offset %llu length %llu at tail\n",
+ 			__func__, lseg, lseg->range.iomode,
+@@ -839,6 +847,13 @@ pnfs_update_layout(struct inode *ino,
+ 
+ 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
+ 		return NULL;
++	spin_lock(&clp->cl_lock);
++	if (matches_outstanding_recall(ino, &arg)) {
++		dprintk("%s matches recall, use MDS\n", __func__);
++		spin_unlock(&clp->cl_lock);
++		return NULL;
++	}
++	spin_unlock(&clp->cl_lock);
+ 	spin_lock(&ino->i_lock);
+ 	lo = pnfs_find_alloc_layout(ino);
+ 	if (lo == NULL) {
+@@ -855,6 +870,10 @@ pnfs_update_layout(struct inode *ino,
+ 	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
+ 		goto out_unlock;
+ 
++	if (pnfs_layoutgets_blocked(lo, NULL, 0))
++		goto out_unlock;
++	lo->plh_outstanding++;
++
+ 	get_layout_hdr(lo); /* Matched in pnfs_layoutget_release */
+ 	if (list_empty(&lo->segs)) {
+ 		/* The lo must be on the clp list if there is any
+@@ -868,16 +887,17 @@ pnfs_update_layout(struct inode *ino,
+ 	spin_unlock(&ino->i_lock);
+ 
+ 	lseg = send_layoutget(lo, ctx, &arg);
++	spin_lock(&ino->i_lock);
+ 	if (!lseg) {
+-		spin_lock(&ino->i_lock);
+ 		if (list_empty(&lo->segs)) {
+ 			spin_lock(&clp->cl_lock);
+ 			list_del_init(&lo->layouts);
+ 			spin_unlock(&clp->cl_lock);
+ 			clear_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
+ 		}
+-		spin_unlock(&ino->i_lock);
+ 	}
++	lo->plh_outstanding--;
++	spin_unlock(&ino->i_lock);
+ out:
+ 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+ 		nfsi->layout->plh_flags, lseg);
+@@ -887,18 +907,6 @@ out_unlock:
+ 	goto out;
+ }
+ 
+-bool
+-pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, nfs4_stateid *stateid)
+-{
+-	assert_spin_locked(&lo->inode->i_lock);
+-	if ((stateid) &&
+-	    (int)(lo->plh_barrier - be32_to_cpu(stateid->stateid.seqid)) >= 0)
+-		return true;
+-	return lo->plh_block_lgets ||
+-		test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
+-		(list_empty(&lo->segs) && lo->plh_outstanding);
+-}
+-
+ int
+ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ {
+@@ -929,13 +937,11 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 			status = PTR_ERR(lseg);
+ 		dprintk("%s: Could not allocate layout: error %d\n",
+ 		       __func__, status);
+-		spin_lock(&ino->i_lock);
+ 		goto out;
+ 	}
+ 
+ 	spin_lock(&ino->i_lock);
+ 	/* decrement needs to be done before call to pnfs_layoutget_blocked */
+-	lo->plh_outstanding--;
+ 	spin_lock(&clp->cl_lock);
+ 	if (matches_outstanding_recall(ino, &res->range)) {
+ 		spin_unlock(&clp->cl_lock);
+@@ -944,7 +950,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+ 
+-	if (pnfs_layoutgets_blocked(lo, &res->stateid)) {
++	if (pnfs_layoutgets_blocked(lo, &res->stateid, 1)) {
+ 		dprintk("%s forget reply due to state\n", __func__);
+ 		goto out_forget_reply;
+ 	}
+@@ -964,17 +970,14 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 
+ 	/* Done processing layoutget. Set the layout stateid */
+ 	pnfs_set_layout_stateid(lo, &res->stateid, false);
+-out:
+-	if (!pnfs_layoutgets_blocked(lo, NULL))
+-		rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq_stateid);
+ 	spin_unlock(&ino->i_lock);
++out:
+ 	return status;
+ 
+ out_forget_reply:
+ 	spin_unlock(&ino->i_lock);
+ 	lseg->layout = lo;
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+-	spin_lock(&ino->i_lock);
+ 	goto out;
+ }
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 4b6065f..8d2ab18 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -214,7 +214,6 @@ enum pnfs_try_status pnfs_try_to_commit(struct nfs_write_data *,
+ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
+ 			   struct nfs_open_context *, struct list_head *);
+ void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
+-bool pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, nfs4_stateid *stateid);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+ void pnfs_destroy_layout(struct nfs_inode *);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index b4bb8d6..caed83e 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -191,7 +191,6 @@ struct nfs_inode {
+ 
+ 	/* pNFS layout information */
+ 	struct rpc_wait_queue lo_rpcwaitq;
+-	struct rpc_wait_queue	lo_rpcwaitq_stateid;
+ 	struct pnfs_layout_hdr *layout;
+ #endif /* CONFIG_NFS_V4*/
+ #ifdef CONFIG_NFS_FSCACHE
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index c3127cc..956a103 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -87,7 +87,6 @@ struct nfs_client {
+ 	unsigned long		cl_cb_lrecall_count;
+ #define PNFS_MAX_CB_LRECALLS (64)
+ 	atomic_t		*cl_drain_notification[PNFS_MAX_CB_LRECALLS];
+-	struct rpc_wait_queue	cl_rpcwaitq_recall;
+ 	struct pnfs_deviceid_cache *cl_devid_cache; /* pNFS deviceid cache */
+ #endif /* CONFIG_NFS_V4_1 */
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.2.1
 
