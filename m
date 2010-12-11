@@ -1,62 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:42727 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757660Ab0LBTno (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Dec 2010 14:43:44 -0500
-Received: from d01dlp01.pok.ibm.com (d01dlp01.pok.ibm.com [9.56.224.56])
-	by e5.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id oB2JKbpl021648
-	for <linux-nfs@vger.kernel.org>; Thu, 2 Dec 2010 14:21:41 -0500
-Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id C7FE5729333
-	for <linux-nfs@vger.kernel.org>; Thu,  2 Dec 2010 14:31:31 -0500 (EST)
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oB2JVQYK1818694
-	for <linux-nfs@vger.kernel.org>; Thu, 2 Dec 2010 14:31:26 -0500
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oB2JVPsa004799
-	for <linux-nfs@vger.kernel.org>; Thu, 2 Dec 2010 17:31:26 -0200
-Subject: [PATCH] (try3-resend) Fix nfs_compat_user_ino64 so it doesn't
-	cause problems if bit 31 or 63 are set in fileid
-From: Frank Filz <ffilzlnx@us.ibm.com>
-To: NFS List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: ffilz@us.ibm.com
-Content-Type: text/plain
-Date: Thu, 02 Dec 2010 11:31:23 -0800
-Message-Id: <1291318283.4140.6.camel@KPMH461.ibm.com>
+Received: from mail-iw0-f170.google.com ([209.85.214.170]:34684 "EHLO
+	mail-iw0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752845Ab0LLNCi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Dec 2010 08:02:38 -0500
+Received: by mail-iw0-f170.google.com with SMTP id 6so7769892iwn.1
+        for <linux-nfs@vger.kernel.org>; Sun, 12 Dec 2010 05:02:37 -0800 (PST)
+From: bookjovi@gmail.com
+To: bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Cc: Jovi Zhang <bookjovi@gmail.com>
+Subject: [PATCH] nfs: add missed CONFIG_NFSD_DEPRECATED
+Date: Sat, 11 Dec 2010 00:21:17 -0500
+Message-Id: <1292044877-4701-1-git-send-email-bookjovi@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-The problem was use of an int32, which when converted to a uint64
-is sign extended resulting in a fileid that doesn't fit in 32 bits
-even though the intent of the function is to fit the fileid into
-32 bits.
+these pieces of code only make sense when CONFIG_NFSD_DEPRECATED enabled
 
-Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
----
- fs/nfs/inode.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
+Signed-off-by: Jovi Zhang <bookjovi@gmail.com>
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 314f571..bc0b938 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -89,7 +89,11 @@ int nfs_wait_bit_killable(void *word)
-  */
- u64 nfs_compat_user_ino64(u64 fileid)
- {
--	int ino;
-+#ifdef CONFIG_COMPAT
-+	compat_ulong_t ino;
-+#else	
-+	unsigned long ino;
-+#endif
+ fs/nfsd/nfsctl.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 4514ebb..6840ec3 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -127,6 +127,7 @@ static ssize_t nfsctl_transaction_write(struct file *file, const char __user *bu
  
- 	if (enable_ino64)
- 		return fileid;
--- 
-1.5.5.6
-
-
-
+ static ssize_t nfsctl_transaction_read(struct file *file, char __user *buf, size_t size, loff_t *pos)
+ {
++#ifdef CONFIG_NFSD_DEPRECATED
+ 	static int warned;
+ 	if (file->f_dentry->d_name.name[0] == '.' && !warned) {
+ 		printk(KERN_INFO
+@@ -135,6 +136,7 @@ static ssize_t nfsctl_transaction_read(struct file *file, char __user *buf, size
+ 		       current->comm, file->f_dentry->d_name.name);
+ 		warned = 1;
+ 	}
++#endif
+ 	if (! file->private_data) {
+ 		/* An attempt to read a transaction file without writing
+ 		 * causes a 0-byte write so that the file can return
