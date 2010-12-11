@@ -1,72 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:47205 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752103Ab0LOSbA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 13:31:00 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/9] Revert "pnfs-submit: wave2: remove forgotten layoutreturn struct definitions"
-Date: Wed, 15 Dec 2010 20:30:54 +0200
-Message-Id: <1292437854-21651-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4D0908F9.4060208@panasas.com>
-References: <4D0908F9.4060208@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:47352 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756378Ab0LKAP7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Dec 2010 19:15:59 -0500
+Date: Fri, 10 Dec 2010 19:15:58 -0500
+From: "J.Bruce Fields" <bfields@fieldses.org>
+To: Neil Brown <neilb@suse.de>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Suresh Jayaraman <sjayaraman@suse.de>
+Subject: Re: [PATCH] nfsd: Fix possible BUG_ON firing in set_change_info
+Message-ID: <20101211001558.GE18141@fieldses.org>
+References: <20101202111430.57275603@notabene.brown>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101202111430.57275603@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This reverts commit 19e1e5ae1ec0a3f5d997a1a5d924d482e147bea2.
----
- include/linux/nfs4.h    |    1 +
- include/linux/nfs_xdr.h |   23 +++++++++++++++++++++++
- 2 files changed, 24 insertions(+), 0 deletions(-)
+On Thu, Dec 02, 2010 at 11:14:30AM +1100, Neil Brown wrote:
+> 
+> If vfs_getattr in fill_post_wcc returns an error, we don't
+> set fh_post_change.
+> For NFSv4, this can result in set_change_info triggering a BUG_ON.
+> i.e. fh_post_saved being zero isn't really a bug.
+> 
+> So:
+>  - instead of BUGging when fh_post_saved is zero, just clear ->atomic.
+>  - if vfs_getattr fails in fill_post_wcc, take a copy of i_ctime anyway.
+>    This will be used i seg_change_info, but not overly trusted.
+>  - While we are there, remove the pointless 'if' statements in set_change_info.
+>    There is no harm setting all the values.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> --
+> 
+> If you think the code is clearer with the if() structure, feel free
+> to leave that part unchanged.
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 8ca7700..55511e8 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -557,6 +557,7 @@ enum {
- 	NFSPROC4_CLNT_RECLAIM_COMPLETE,
- 	NFSPROC4_CLNT_LAYOUTGET,
- 	NFSPROC4_CLNT_LAYOUTCOMMIT,
-+	NFSPROC4_CLNT_LAYOUTRETURN,
- 	NFSPROC4_CLNT_GETDEVICEINFO,
- 	NFSPROC4_CLNT_PNFS_WRITE,
- 	NFSPROC4_CLNT_PNFS_COMMIT,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 9d847ac..a651574 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -258,6 +258,29 @@ struct nfs4_layoutcommit_data {
- 	int status;
- };
- 
-+struct nfs4_layoutreturn_args {
-+	__u32   reclaim;
-+	__u32   layout_type;
-+	__u32   return_type;
-+	struct pnfs_layout_range range;
-+	struct inode *inode;
-+	struct nfs4_sequence_args seq_args;
-+};
-+
-+struct nfs4_layoutreturn_res {
-+	struct nfs4_sequence_res seq_res;
-+	u32 lrs_present;
-+	nfs4_stateid stateid;
-+};
-+
-+struct nfs4_layoutreturn {
-+	struct nfs4_layoutreturn_args args;
-+	struct nfs4_layoutreturn_res res;
-+	struct rpc_cred *cred;
-+	struct nfs_client *clp;
-+	int rpc_status;
-+};
-+
- struct nfs4_getdeviceinfo_args {
- 	struct pnfs_device *pdev;
- 	struct nfs4_sequence_args seq_args;
--- 
-1.7.2.3
+Looks fine to me as-is; planning to submit for 2.6.37 and -stable unless
+I hear otherwise.
 
+--b.
+
+> 
+> NeilBrown
+> 
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index 2a533a0..7e84a85 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -260,9 +260,11 @@ void fill_post_wcc(struct svc_fh *fhp)
+>  	err = vfs_getattr(fhp->fh_export->ex_path.mnt, fhp->fh_dentry,
+>  			&fhp->fh_post_attr);
+>  	fhp->fh_post_change = fhp->fh_dentry->d_inode->i_version;
+> -	if (err)
+> +	if (err) {
+>  		fhp->fh_post_saved = 0;
+> -	else
+> +		/* Grab the ctime anyway - set_change_info might use it */
+> +		fhp->fh_post_attr.ctime = fhp->fh_dentry->d_inode->i_ctime;
+> +	} else
+>  		fhp->fh_post_saved = 1;
+>  }
+>  
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 4d476ff..60fce3d 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -484,18 +484,17 @@ static inline bool nfsd4_not_cached(struct nfsd4_compoundres *resp)
+>  static inline void
+>  set_change_info(struct nfsd4_change_info *cinfo, struct svc_fh *fhp)
+>  {
+> -	BUG_ON(!fhp->fh_pre_saved || !fhp->fh_post_saved);
+> -	cinfo->atomic = 1;
+> +	BUG_ON(!fhp->fh_pre_saved);
+> +	cinfo->atomic = fhp->fh_post_saved;
+>  	cinfo->change_supported = IS_I_VERSION(fhp->fh_dentry->d_inode);
+> -	if (cinfo->change_supported) {
+> -		cinfo->before_change = fhp->fh_pre_change;
+> -		cinfo->after_change = fhp->fh_post_change;
+> -	} else {
+> -		cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
+> -		cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
+> -		cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
+> -		cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
+> -	}
+> +
+> +	cinfo->before_change = fhp->fh_pre_change;
+> +	cinfo->after_change = fhp->fh_post_change;
+> +	cinfo->before_ctime_sec = fhp->fh_pre_ctime.tv_sec;
+> +	cinfo->before_ctime_nsec = fhp->fh_pre_ctime.tv_nsec;
+> +	cinfo->after_ctime_sec = fhp->fh_post_attr.ctime.tv_sec;
+> +	cinfo->after_ctime_nsec = fhp->fh_post_attr.ctime.tv_nsec;
+> +
+>  }
+>  
+>  int nfs4svc_encode_voidres(struct svc_rqst *, __be32 *, void *);
