@@ -1,52 +1,184 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:52226 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:47351 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756684Ab0LJTSC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Dec 2010 14:18:02 -0500
-Date: Fri, 10 Dec 2010 14:17:58 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Thomas Haynes <thomas@netapp.com>
-Cc: Spencer Shepler <spencer.shepler@gmail.com>,
-        "'Trond Myklebust'" <Trond.Myklebust@netapp.com>,
-        "'Spelic'" <spelic@shiftmail.org>, linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 behaviour on unknown users
-Message-ID: <20101210191758.GD5014@fieldses.org>
-References: <1291156414.4393.2.camel@heimdal.trondhjem.org>
- <20101130223627.GC5054@fieldses.org>
- <20101201135740.0d3b5948@notabene.brown>
- <1291173002.7694.7.camel@heimdal.trondhjem.org>
- <20101201162912.GC6832@fieldses.org>
- <99BBEF51-7EB1-4BAA-9B12-F0F98A629C74@netapp.com>
- <1291331885.2915.1.camel@heimdal.trondhjem.org>
- <03e401cb9278$ad554ad0$07ffe070$@gmail.com>
- <20101208001548.GA30196@fieldses.org>
- <3FD238C0-0A97-4EEE-ACE6-A0547E2559AF@netapp.com>
+	id S1756378Ab0LKAOR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 10 Dec 2010 19:14:17 -0500
+Date: Fri, 10 Dec 2010 19:14:14 -0500
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/3] nfsd4: fix mixed 4.0/4.1 handling, 4.1 reboot
+Message-ID: <20101211001413.GD18141@fieldses.org>
+References: <1291680566-13980-1-git-send-email-bfields@redhat.com>
+ <1291680566-13980-3-git-send-email-bfields@redhat.com>
+ <4D00DBA7.7020603@panasas.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <3FD238C0-0A97-4EEE-ACE6-A0547E2559AF@netapp.com>
+In-Reply-To: <4D00DBA7.7020603@panasas.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Dec 10, 2010 at 11:00:08AM -0800, Thomas Haynes wrote:
-> 
-> On Dec 7, 2010, at 4:15 PM, J. Bruce Fields wrote:
-> 
+On Thu, Dec 09, 2010 at 03:37:43PM +0200, Benny Halevy wrote:
+> On 2010-12-07 02:09, J. Bruce Fields wrote:
+> > Instead of failing to find client entries which don't match the
+> > minorversion, we should be finding them, then either erroring out or
+> > expiring them as appropriate.
 > > 
-> > (I see AUTH_SYS as a different issue.  It's unfortunately true that
-> > AUTH_SYS has effectively turned out to be required-to-implement even if
-> > it wasn't meant to be, so maybe the spec's out of line with reality
-> > there; but I haven't heard of that causing any practical
-> > problems--whereas "why does ls show all users as nobody after an upgrade
-> > to NFSv4" is a FAQ.)
+> > This also fixes a problem which would cause the 4.1 server to fail to
+> > recognize clients after a second reboot.
+> > 
+> > Reported-by: Casey Bodley <cbodley@citi.umich.edu>
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/nfsd/nfs4recover.c |    1 -
+> >  fs/nfsd/nfs4state.c   |   37 +++++++++++++++++--------------------
+> >  2 files changed, 17 insertions(+), 21 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> > index 7e26caa..ffb59ef 100644
+> > --- a/fs/nfsd/nfs4recover.c
+> > +++ b/fs/nfsd/nfs4recover.c
+> > @@ -302,7 +302,6 @@ purge_old(struct dentry *parent, struct dentry *child)
+> >  {
+> >  	int status;
+> >  
+> > -	/* note: we currently use this path only for minorversion 0 */
+> >  	if (nfs4_has_reclaimed_state(child->d_name.name, false))
+> >  		return 0;
+> >  
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index febb283..d1e37ba 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -1134,39 +1134,30 @@ find_unconfirmed_client(clientid_t *clid)
+> >  	return NULL;
+> >  }
+> >  
+> > -/*
+> > - * FIXME: we need to unify the clientid namespaces for nfsv4.x
+> > - * and correctly deal with client upgrade/downgrade in EXCHANGE_ID
+> > - * and SET_CLIENTID{,_CONFIRM}
+> > - */
+> >  static bool clp_used_exchangeid(struct nfs4_client *clp)
+> >  {
+> >  	return clp->cl_exchange_flags != 0;
+> > -}
+> > +} 
 > 
-> If everyone were to adopt this approach to solve the FAQ, then wouldn't we
-> want it to be specified to make sure that interoperability was maximized?
+> nit: looks like this line adds a trailing space character...
 
-Sorry for the confusion--that last paragraph was just about AUTH_SYS,
-not about user/group-naming.
+Whoops, thanks.
 
-Sure, I'd be happy to propose changes to the user/group-naming (which is
-all in section 5.8 of 3530, I think, or is there some scattered
-elsewhere?)
+> >  static struct nfs4_client *
+> > -find_confirmed_client_by_str(const char *dname, unsigned int hashval,
+> > -			     bool use_exchange_id)
+> > +find_confirmed_client_by_str(const char *dname, unsigned int hashval)
+> >  {
+> >  	struct nfs4_client *clp;
+> >  
+> >  	list_for_each_entry(clp, &conf_str_hashtbl[hashval], cl_strhash) {
+> > -		if (same_name(clp->cl_recdir, dname) &&
+> > -		    clp_used_exchangeid(clp) == use_exchange_id)
+> > +		if (same_name(clp->cl_recdir, dname))
+> >  			return clp;
+> >  	}
+> >  	return NULL;
+> >  }
+> >  
+> >  static struct nfs4_client *
+> > -find_unconfirmed_client_by_str(const char *dname, unsigned int hashval,
+> > -			       bool use_exchange_id)
+> > +find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
+> >  {
+> >  	struct nfs4_client *clp;
+> >  
+> >  	list_for_each_entry(clp, &unconf_str_hashtbl[hashval], cl_strhash) {
+> > -		if (same_name(clp->cl_recdir, dname) &&
+> > -		    clp_used_exchangeid(clp) == use_exchange_id)
+> > +		if (same_name(clp->cl_recdir, dname))
+> >  			return clp;
+> >  	}
+> >  	return NULL;
+> > @@ -1357,8 +1348,12 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+> >  	nfs4_lock_state();
+> >  	status = nfs_ok;
+> >  
+> > -	conf = find_confirmed_client_by_str(dname, strhashval, true);
+> > +	conf = find_confirmed_client_by_str(dname, strhashval);
+> >  	if (conf) {
+> > +		if (!clp_used_exchangeid(conf)) {
+> > +			status = nfserr_clid_inuse; /* XXX: ? */
+> > +			goto out;
+> > +		}
+> 
+> So if a client host wants to mount a server both over v4.0 and v4.1
+> it should use different client names?
+
+I believe so.
+
+> Just wondering, is that required by RFC5661?
+
+Section 2.4.1 permits a server to compare the 4.0 nfs_clientid_4 with
+the 4.1 client_owner4 in an exchanged_id.  That wouldn't work if a
+client could expect the server to treat the two as independent clients.
+
+Thanks for the review!
 
 --b.
+
+> 
+> Benny
+> 
+> >  		if (!same_verf(&verf, &conf->cl_verifier)) {
+> >  			/* 18.35.4 case 8 */
+> >  			if (exid->flags & EXCHGID4_FLAG_UPD_CONFIRMED_REC_A) {
+> > @@ -1399,7 +1394,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+> >  		goto out;
+> >  	}
+> >  
+> > -	unconf  = find_unconfirmed_client_by_str(dname, strhashval, true);
+> > +	unconf  = find_unconfirmed_client_by_str(dname, strhashval);
+> >  	if (unconf) {
+> >  		/*
+> >  		 * Possible retry or client restart.  Per 18.35.4 case 4,
+> > @@ -1799,10 +1794,12 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  	strhashval = clientstr_hashval(dname);
+> >  
+> >  	nfs4_lock_state();
+> > -	conf = find_confirmed_client_by_str(dname, strhashval, false);
+> > +	conf = find_confirmed_client_by_str(dname, strhashval);
+> >  	if (conf) {
+> >  		/* RFC 3530 14.2.33 CASE 0: */
+> >  		status = nfserr_clid_inuse;
+> > +		if (clp_used_exchangeid(conf))
+> > +			goto out;
+> >  		if (!same_creds(&conf->cl_cred, &rqstp->rq_cred)) {
+> >  			char addr_str[INET6_ADDRSTRLEN];
+> >  			rpc_ntop((struct sockaddr *) &conf->cl_addr, addr_str,
+> > @@ -1817,7 +1814,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  	 * has a description of SETCLIENTID request processing consisting
+> >  	 * of 5 bullet points, labeled as CASE0 - CASE4 below.
+> >  	 */
+> > -	unconf = find_unconfirmed_client_by_str(dname, strhashval, false);
+> > +	unconf = find_unconfirmed_client_by_str(dname, strhashval);
+> >  	status = nfserr_resource;
+> >  	if (!conf) {
+> >  		/*
+> > @@ -1962,7 +1959,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+> >  			unsigned int hash =
+> >  				clientstr_hashval(unconf->cl_recdir);
+> >  			conf = find_confirmed_client_by_str(unconf->cl_recdir,
+> > -							    hash, false);
+> > +							    hash);
+> >  			if (conf) {
+> >  				nfsd4_remove_clid_dir(conf);
+> >  				expire_client(conf);
+> > @@ -4106,7 +4103,7 @@ nfs4_has_reclaimed_state(const char *name, bool use_exchange_id)
+> >  	unsigned int strhashval = clientstr_hashval(name);
+> >  	struct nfs4_client *clp;
+> >  
+> > -	clp = find_confirmed_client_by_str(name, strhashval, use_exchange_id);
+> > +	clp = find_confirmed_client_by_str(name, strhashval);
+> >  	return clp ? 1 : 0;
+> >  }
+> >  
