@@ -1,39 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-px0-f174.google.com ([209.85.212.174]:58984 "EHLO
-	mail-px0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751592Ab0L1RDP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Dec 2010 12:03:15 -0500
-From: Namhyung Kim <namhyung@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] NFS: use ERR_CAST()
-Date: Wed, 29 Dec 2010 02:02:46 +0900
-Message-Id: <1293555766-14333-1-git-send-email-namhyung@gmail.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:47160 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752231Ab0LLDWp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Dec 2010 22:22:45 -0500
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Sat, 11 Dec 2010 19:22:16 -0800
+Message-ID: <AANLkTim4Y+gG+tRdAivZMJ93e2hESvJed5vjkuzv63Rh@mail.gmail.com>
+Subject: Re: [GIT PULL] Please pull xyzzy fixes
+To: Trond Myklebust <Trond.Myklebust@netapp.com>, Len Brown <lenb@kernel.org>,
+        Liam Girdwood <lrg@slimlogic.co.uk>,
+        Mark Brown <broonie@opensource.wolfsonmicro.com>,
+        Alex Elder <aelder@sgi.com>, Tejun Heo <tj@kernel.org>,
+        Hitoshi Mitake <mitake@dcl.info.waseda.ac.jp>,
+        Sage Weil <sage@newdream.net>, Takashi Iwai <tiwai@suse.de>,
+        Borislav Petkov <bp@amd64.org>, Steve French <smfrench@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-pm@lists.linux-foundation.org, xfs@oss.sgi.com,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Use ERR_CAST() intead of wierd-looking cast.
+On Fri, Dec 10, 2010 at 10:05 AM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> Resending pull request after appending Chuck's fix for the nfs_umount() panic.
 
-Signed-off-by: Namhyung Kim <namhyung@gmail.com>
----
- fs/nfs/dir.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+[ .. and other people have other similar pull requests - acpi, ceph,
+cifs, xfs etc ]
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 996dd8989a91..fece122cdd65 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1217,7 +1217,7 @@ static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, stru
- 		goto out_unblock_sillyrename;
- 	}
- 	inode = nfs_fhget(dentry->d_sb, fhandle, fattr);
--	res = (struct dentry *)inode;
-+	res = ERR_CAST(inode);
- 	if (IS_ERR(res))
- 		goto out_unblock_sillyrename;
- 
--- 
-1.7.3.4.600.g982838b0
+Right now I'm traveling without access to my laptop to actually do
+pulls. That was unintentional, but my laptop got co-opted for more
+important stuff (child needed it for school an my other laptop has a
+broken harddisk), so I've just been reading email with my cellphone.
+That allows me to keep up-to-date and mark the stuff that I'm
+scheduling for pulling, but I end up not replying a lot because typing
+is so painful and it does that silly html email thing.
 
+Anyway, this is just a reply to say that I've not lost your emails,
+I'm just effectively partly offline until Monday. I just stole Dirk's
+laptop just to write a reply-to-all (or at least a "reply-to-most").
+
+                                         Linus
