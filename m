@@ -1,50 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:54522 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57375 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750819Ab0LIEhT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Dec 2010 23:37:19 -0500
-Subject: Re: System CPU increasing on idle 2.6.36
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Simon Kirby <sim@hostway.ca>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20101208223622.GA3796@hostway.ca>
-References: <20101208212505.GA18192@hostway.ca>
-	 <1291845189.3067.31.camel@heimdal.trondhjem.org>
-	 <20101208223622.GA3796@hostway.ca>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 08 Dec 2010 23:37:17 -0500
-Message-ID: <1291869437.2821.6.camel@heimdal.trondhjem.org>
+	id S1753718Ab0LMTcU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Dec 2010 14:32:20 -0500
+Message-ID: <4D0674C1.7060309@RedHat.com>
+Date: Mon, 13 Dec 2010 14:32:17 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] libnsm.a: sm-notify sometimes ignores monitored hosts
+References: <20101206160206.18361.26178.stgit@matisse.1015granger.net> <20101206160944.18361.28275.stgit@matisse.1015granger.net> <4D064FB4.1020209@RedHat.com> <F3286C05-D9DC-4EF7-A852-F55AC49185B9@oracle.com>
+In-Reply-To: <F3286C05-D9DC-4EF7-A852-F55AC49185B9@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-12-08 at 14:36 -0800, Simon Kirby wrote:
-> On Wed, Dec 08, 2010 at 04:53:09PM -0500, Trond Myklebust wrote:
+Hey...
+
+On 12/13/2010 12:08 PM, Chuck Lever wrote:
+
+>>>  */
+>>> @@ -863,10 +879,15 @@ nsm_load_host(const char *directory, const char *filename, nsm_populate_t func)
+>>> 	if (path == NULL)
+>>> 		goto out_err;
+>>>
+>>> -	if (stat(path, &stb) == -1) {
+>>> +	if (lstat(path, &stb) == -1) {
+>>> 		xlog(L_ERROR, "Failed to stat %s: %m", path);
+>>> 		goto out_freepath;
+>>> 	}
+>>> +	if (!S_ISREG(stb.st_mode)) {
+>>> +		xlog(D_GENERAL, "Skipping non-regular file %s",
+>>> +				path);
+>> Question, why do we care non-regular files are being ignored?
 > 
-> > Possibly a side effect of the fs/fs-writeback.c changes in 2.6.36? You
-> > do appear to be hitting a lot of spinlock contention, but I suspect that
-> > a lot of it is coming from writeback_sb_inodes, writeback_single_inode
-> > and queue_io, all of which seem unnaturally high on your stats above.
-> > 
-> > I don't see how you can be seeing no traffic on the wire. You are
-> > certainly hitting some page writeout (0.2% nfs_pageio_doio).
+> We probably want to report anything unexpected in 
+> the /var/lib/nfs/statd/sm{,.bak} directories.
 > 
-> It really seems to not be doing anything.  I ran nfsstat -Zcv for 5
-> minutes, and the only non-zero counters are rpc calls and authrefrsh,
-> even though perf top shows similar profiles the whole time.
+>> I understand logging the lstat() error but logging statements like
+>> "ignoring this" or "not doing that" just make the debug output a 
+>> bit too noisy IMHO... 
+> 
+> My expectation is that under normal circumstances this message 
+> would never fire.  
+Correct the only way they will be shown is with the "-F -d" flags... 
 
-That sounds like a bug in nfsstat, then. As I said, your trace results
-definitely indicate that you are doing page writeout. I'd cross check
-using wireshark...
+> statd shouldn't put anything in that directory 
+> that isn't a regular file.  If there's something else in there, 
+> we should report it.  Also, if statd (or something else) is broken 
+> and the code thinks the object isn't a regular file, then this 
+> message would point to what is wrong.
+To put this in context, here are the message that come up with
+the patch applied... I added a symlink to /var/lib/nfs/statd/sm/statd
+to generate both messages... 
 
-Cheers
-  Trond
+statd: Version 1.2.3 starting
+statd: Flags: No-Daemon Log-STDERR TI-RPC 
+sm-notify: Version 1.2.3 starting
+sm-notify: Already notifying clients; Exiting!
+statd: Skipping dot file ..
+statd: Skipping non-regular file /var/lib/nfs/statd/sm/statd
+statd: Skipping dot file .
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+I think we both agree the "Skipping dot file" simply not
+needed... The "Skipping non-regular" message... well I have 
+to say it really does not have much meaning... either.. IMHO...
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+But I do agree, it probably will *never* seen... 
+
+steved.
 
