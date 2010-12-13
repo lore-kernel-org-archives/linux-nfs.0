@@ -1,99 +1,71 @@
 From: Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V3 2/7] NFS implement v4.0 callback_ident
-Date: Mon, 13 Dec 2010 15:19:40 -0500
-Message-ID: <1292271585-3038-3-git-send-email-andros@netapp.com>
+Subject: [PATCH_V3 1/7] NFS dont free shared socket on backchannel put xprt
+Date: Mon, 13 Dec 2010 15:19:39 -0500
+Message-ID: <1292271585-3038-2-git-send-email-andros@netapp.com>
 References: <1292271585-3038-1-git-send-email-andros@netapp.com>
- <1292271585-3038-2-git-send-email-andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
 To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx2.netapp.com ([216.240.18.37]:50067 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755151Ab0LMUT6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1755096Ab0LMUT6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Mon, 13 Dec 2010 15:19:58 -0500
-In-Reply-To: <1292271585-3038-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1292271585-3038-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide a unique callback identifier per SETCLIENTID call used to identify the
-v4.0 callback service associated with the clientid.
-
-Do not worry about wrap around. Zero value means unset.
+Fixes this bug:
+fedora-64 kernel: Invoking bc_svc_procass()
+fedora-64 kernel: nfs_callback_authenticate SVC_DROP
+fedora-64 kernel: BUG: unable to handle kernel NULL pointer dereference at 0000000000000018 IP: [<ffffffffa0156140>] svc_sock_free+0x32/0x56 [sunrpc]
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4proc.c         |    5 +++++
- fs/nfs/nfs4state.c        |    1 +
- include/linux/nfs_fs_sb.h |    1 +
- include/linux/nfs_xdr.h   |    1 +
- 4 files changed, 8 insertions(+), 0 deletions(-)
+ fs/nfs/callback.c               |    3 +++
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ net/sunrpc/svc_xprt.c           |    3 ++-
+ 3 files changed, 6 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4435e5e..ab5a2c4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3470,6 +3470,8 @@ do_state_recovery:
- 	return -EAGAIN;
- }
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 93a8b3b..023a9eb 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -193,6 +193,9 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ 	serv->bc_xprt = bc_xprt;
+ 	xprt->bc_serv = serv;
  
-+static u32 current_cb_ident = 1;
++	/* socket is shared with the fore channel */
++	set_bit(XPT_SHARE_SOCK, &bc_xprt->xpt_flags);
 +
- int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 		unsigned short port, struct rpc_cred *cred,
- 		struct nfs4_setclientid_res *res)
-@@ -3478,6 +3480,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 	struct nfs4_setclientid setclientid = {
- 		.sc_verifier = &sc_verifier,
- 		.sc_prog = program,
-+		.sc_cb_ident = current_cb_ident++,
- 	};
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SETCLIENTID],
-@@ -3522,6 +3525,8 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 			if (++clp->cl_id_uniquifier == 0)
- 				break;
- 	}
-+	if (status == NFS_OK)
-+		res->cb_ident = setclientid.sc_cb_ident;
- 	return status;
+ 	INIT_LIST_HEAD(&serv->sv_cb_list);
+ 	spin_lock_init(&serv->sv_cb_lock);
+ 	init_waitqueue_head(&serv->sv_cb_waitq);
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index aea0d43..600c669 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -62,6 +62,7 @@ struct svc_xprt {
+ #define	XPT_DETACHED	10		/* detached from tempsocks list */
+ #define XPT_LISTENER	11		/* listening endpoint */
+ #define XPT_CACHE_AUTH	12		/* cache auth info */
++#define XPT_SHARE_SOCK	13		/* fore and back channel share socket */
+ 
+ 	struct svc_pool		*xpt_pool;	/* current pool iff queued */
+ 	struct svc_serv		*xpt_server;	/* service for transport */
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index ea2ff78..8c4d9ad 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -128,7 +128,8 @@ static void svc_xprt_free(struct kref *kref)
+ 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
+ 		svcauth_unix_info_release(xprt);
+ 	put_net(xprt->xpt_net);
+-	xprt->xpt_ops->xpo_free(xprt);
++	if (!test_bit(XPT_SHARE_SOCK, &xprt->xpt_flags))
++		xprt->xpt_ops->xpo_free(xprt);
+ 	module_put(owner);
  }
  
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index f575a31..fe61422 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -79,6 +79,7 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 	if (status != 0)
- 		goto out;
- 	clp->cl_clientid = clid.clientid;
-+	clp->cl_cb_ident = clid.cb_ident;
- 	nfs4_schedule_state_renewal(clp);
- out:
- 	return status;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 452d964..1eaa054 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -71,6 +71,7 @@ struct nfs_client {
- 	 */
- 	char			cl_ipaddr[48];
- 	unsigned char		cl_id_uniquifier;
-+	u32			cl_cb_ident;	/* v4.0 callback identifier */
- 	const struct nfs4_minor_version_ops *cl_mvops;
- #endif /* CONFIG_NFS_V4 */
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 80f0719..24e77a6 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -868,6 +868,7 @@ struct nfs4_setclientid {
- struct nfs4_setclientid_res {
- 	u64				clientid;
- 	nfs4_verifier			confirm;
-+	u32				cb_ident;
- };
- 
- struct nfs4_statfs_arg {
 -- 
 1.6.6
 
