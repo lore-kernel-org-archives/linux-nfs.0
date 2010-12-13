@@ -1,118 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20445 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:50067 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933489Ab0LUCVC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Dec 2010 21:21:02 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 13/14] pnfs: wave 2: update nfs4_callback_recallany to handle layouts
-Date: Mon, 20 Dec 2010 21:20:45 -0500
-Message-Id: <1292898046-7336-14-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
-References: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
+	id S1755093Ab0LMUT6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Dec 2010 15:19:58 -0500
+From: Andy Adamson <andros@netapp.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH_V3 0/7] NFSv4 callback find client fix Version 3
+Date: Mon, 13 Dec 2010 15:19:38 -0500
+Message-Id: <1292271585-3038-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Alexandros Batsakis <batsakis@netapp.com>
 
-While here, update the code a bit.
+Version 3 of these patches
+Applies to Tronds nfs-for-next branch
 
-Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/callback.h      |    8 ++++++++
- fs/nfs/callback_proc.c |   29 ++++++++++++++++++++++++++---
- 2 files changed, 34 insertions(+), 3 deletions(-)
+The back channel server svc_process_common RPC layer pg_authenticate call
+[nfs_callback_authenticate] is shared by both the NFSv4.0 and the NFSv4.1
+callback threads. It authenticates the incoming request by finding (and
+referencing) an nfs_client struct based on the incoming request address
+and the NFS version (4). This is akin to the NFS server which authenticates
+requests by matching the server address to the exports file client list.
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 19570f4..70e6435d 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -119,6 +119,14 @@ extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
- 
- #define RCA4_TYPE_MASK_RDATA_DLG	0
- #define RCA4_TYPE_MASK_WDATA_DLG	1
-+#define RCA4_TYPE_MASK_DIR_DLG         2
-+#define RCA4_TYPE_MASK_FILE_LAYOUT     3
-+#define RCA4_TYPE_MASK_BLK_LAYOUT      4
-+#define RCA4_TYPE_MASK_OBJ_LAYOUT_MIN  8
-+#define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX  9
-+#define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
-+#define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
-+#define RCA4_TYPE_MASK_ALL 0xf31f
- 
- struct cb_recallanyargs {
- 	struct sockaddr	*craa_addr;
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 7fb59d9..4049075 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -227,6 +227,17 @@ __be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
- 	return cpu_to_be32(res);
- }
- 
-+static void pnfs_recall_all_layouts(struct nfs_client *clp)
-+{
-+	struct cb_layoutrecallargs args;
-+
-+	/* Pretend we got a CB_LAYOUTRECALL(ALL) */
-+	memset(&args, 0, sizeof(args));
-+	args.cbl_recall_type = RETURN_ALL;
-+	/* FIXME we ignore errors, what should we do? */
-+	do_callback_layoutrecall(clp, &args);
-+}
-+
- int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
- {
- 	if (delegation == NULL)
-@@ -418,29 +429,41 @@ out:
- 	return status;
- }
- 
-+static bool
-+validate_bitmap_values(unsigned long mask)
-+{
-+	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
-+}
-+
- __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
- 			       struct cb_process_state *cps)
- {
- 	__be32 status;
- 	fmode_t flags = 0;
- 
--	status = htonl(NFS4ERR_OP_NOT_IN_SESSION);
-+	status = cpu_to_be32(NFS4ERR_OP_NOT_IN_SESSION);
- 	if (!cps->clp) /* set in cb_sequence */
- 		goto out;
- 
- 	dprintk("NFS: RECALL_ANY callback request from %s\n",
- 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
- 
-+	status = cpu_to_be32(NFS4ERR_INVAL);
-+	if (!validate_bitmap_values(args->craa_type_mask))
-+		goto out;
-+
-+	status = cpu_to_be32(NFS4_OK);
- 	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, (const unsigned long *)
- 		     &args->craa_type_mask))
- 		flags = FMODE_READ;
- 	if (test_bit(RCA4_TYPE_MASK_WDATA_DLG, (const unsigned long *)
- 		     &args->craa_type_mask))
- 		flags |= FMODE_WRITE;
--
-+	if (test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, (const unsigned long *)
-+		     &args->craa_type_mask))
-+		pnfs_recall_all_layouts(cps->clp);
- 	if (flags)
- 		nfs_expire_all_delegation_types(cps->clp, flags);
--	status = htonl(NFS4_OK);
- out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
- 	return status;
--- 
-1.7.2.1
+Since there is no minorversion in the search, it may find the wrong
+nfs_client struct. For the nfsv4.0 callback service thread, this means it
+could find an NFSv4.1 nfs_client. For the NFSv4.1 callback service thread, it
+could find an NFSv4.0 instead of v4.1, or find an NFSv4.1 nfs_client with the
+wrong session.
 
+The nfs_client is dereferenced at the end of pg_authenticate. Another
+nfs_find_client call is done in the NFS layouer per operation dispatcher
+routines for NFSv4.0 and in the cb_sequence operation dispatcher routine for
+NFSv4.1 after decoding.
+
+This means the callback server could start processing a callback, passing
+the pg_authenticate test, and have the nfs_client struct freed between the
+pg_authenticate call and the dispatcher operation call. Or, it could have
+found the wrong nfs_client in the pg_authenticate call.
+
+The current code has this behavior: If the nfs_client is not found in
+pg_authenticate, the request is simply dropped (SVC_DROP). If an nfs_client
+is not found in the dispatcher routines NFS4ERR_BADSESSION is returned for
+v4.1 requests and NFS4ERR_BADHANDLE for v4.0 requests.
+
+The fix is to implement the v4.0 SETCLIENTID callback_ident and use it to find
+the one and only client for v4.0 callbacks, and to associate the sessionid
+with the sessions based callback service (v4.1) and use it to identify the
+one and only client. This can be done in the NFS layer, in CB_COMPOUND header
+processing for v4.0 and in CB_SEQUENCE processing in v4.1.
+In both cases, a reference to the found client is held across CB_COMPOUND
+processing.
+
+The pg_authenticate method does not have the callback_ident for CB_NULL or
+CB_COMPOUND v4.0 processing, so just the server address, nfsversion and
+minorversion is used for the client search
+
+For sessions based callback service, the sessionID can't be set until the
+return of the CREATE_SESSION call, yet the CB_NULL ping from a server can
+be initiated by the server at the receipt of the CREATE_SESSION call before
+the response is sent. So for CB_NULL, the sessionid is (usually) not set, and
+the sessionid is not used for CB_NULL pg_authenticate client searches.
+
+0001-NFS-dont-free-shared-socket-on-backchannel-put-xprt.patch
+0002-NFS-implement-v4.0-callback_ident.patch
+0003-NFS-associate-sessionid-with-callback-connection.patch
+0004-NFS-reference-nfs_client-across-cb_compound-processi.patch
+0005-NFS-RPC_AUTH_GSS-unsupported-on-v4.1-back-channel.patch
+0006-NFS-add-session-back-channel-draining.patch
+0007-NFS-only-set-bc_xprt-upon-success.patch
+
+
+-->Andy
