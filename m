@@ -1,57 +1,99 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 3/3] sm-notify: Make use of AI_NUMERICSERV conditional
-Date: Mon, 13 Dec 2010 15:00:34 -0500
-Message-ID: <4D067B62.5020101@RedHat.com>
-References: <20101206160206.18361.26178.stgit@matisse.1015granger.net> <20101206161002.18361.24632.stgit@matisse.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org
-To: Chuck Lever <chuck.lever@oracle.com>
+From: Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V3 2/7] NFS implement v4.0 callback_ident
+Date: Mon, 13 Dec 2010 15:19:40 -0500
+Message-ID: <1292271585-3038-3-git-send-email-andros@netapp.com>
+References: <1292271585-3038-1-git-send-email-andros@netapp.com>
+ <1292271585-3038-2-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+To: trond.myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56524 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:50067 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754038Ab0LMUAh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Dec 2010 15:00:37 -0500
-In-Reply-To: <20101206161002.18361.24632.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
+	id S1755151Ab0LMUT6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 13 Dec 2010 15:19:58 -0500
+In-Reply-To: <1292271585-3038-2-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Provide a unique callback identifier per SETCLIENTID call used to identify the
+v4.0 callback service associated with the clientid.
 
+Do not worry about wrap around. Zero value means unset.
 
-On 12/06/2010 11:10 AM, Chuck Lever wrote:
-> Gabor Papp reports nfs-utils-1.2.3 doesn't build on his system that
-> uses glibc-2.2.5:
-> 
-> make[3]: Entering directory
-> `/home/gzp/src/nfs-utils-1.2.3/utils/statd'
-> gcc -DHAVE_CONFIG_H -I. -I../../support/include   -D_GNU_SOURCE -Wall
-> 	-Wextra -Wstrict-prototypes  -pipe -g -O2 -MT sm-notify.o -MD
-> 	-MP -MF .deps/sm-notify.Tpo -c -o sm-notify.o sm-notify.c
-> 	sm-notify.c: In function 'smn_bind_address':
-> sm-notify.c:247: error: 'AI_NUMERICSERV' undeclared (first use in this function)
-> sm-notify.c:247: error: (Each undeclared identifier is reported only once
-> sm-notify.c:247: error: for each function it appears in.)
-> make[3]: *** [sm-notify.o] Error 1
-> 
-> According to the getaddrinfo(3) man page, AI_NUMERICSERV is available
-> only since glibc 2.3.4.  getaddrinfo(3) seems to convert strings
-> containing a number to the right port value without the use of
-> AI_NUMERICSERV, so I think we can survive on older glibc's without it.
-> It will allow admins to specify service names as well as port numbers
-> on those versions.
-> 
-> There are uses of AI_NUMERICSERV in gssd and in nfs_svc_create().  The
-> one in nfs_svc_create() is behind HAVE_LIBTIRPC, and the other is a
-> issue only for those who want to deploy Kerberos -- likely in both
-> cases, a more modern glibc will be present.  I'm going to leave those
-> two.
-> 
-> Fix for:
-> 
->   https://bugzilla.linux-nfs.org/show_bug.cgi?id=195
-> 
-> Reported-by: "Gabor Z. Papp" <gzp-2g/1Y3AqmNE@public.gmane.org>
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Committed... 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c         |    5 +++++
+ fs/nfs/nfs4state.c        |    1 +
+ include/linux/nfs_fs_sb.h |    1 +
+ include/linux/nfs_xdr.h   |    1 +
+ 4 files changed, 8 insertions(+), 0 deletions(-)
 
-steved.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4435e5e..ab5a2c4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3470,6 +3470,8 @@ do_state_recovery:
+ 	return -EAGAIN;
+ }
+ 
++static u32 current_cb_ident = 1;
++
+ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 		unsigned short port, struct rpc_cred *cred,
+ 		struct nfs4_setclientid_res *res)
+@@ -3478,6 +3480,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 	struct nfs4_setclientid setclientid = {
+ 		.sc_verifier = &sc_verifier,
+ 		.sc_prog = program,
++		.sc_cb_ident = current_cb_ident++,
+ 	};
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SETCLIENTID],
+@@ -3522,6 +3525,8 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 			if (++clp->cl_id_uniquifier == 0)
+ 				break;
+ 	}
++	if (status == NFS_OK)
++		res->cb_ident = setclientid.sc_cb_ident;
+ 	return status;
+ }
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index f575a31..fe61422 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -79,6 +79,7 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ 	if (status != 0)
+ 		goto out;
+ 	clp->cl_clientid = clid.clientid;
++	clp->cl_cb_ident = clid.cb_ident;
+ 	nfs4_schedule_state_renewal(clp);
+ out:
+ 	return status;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 452d964..1eaa054 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -71,6 +71,7 @@ struct nfs_client {
+ 	 */
+ 	char			cl_ipaddr[48];
+ 	unsigned char		cl_id_uniquifier;
++	u32			cl_cb_ident;	/* v4.0 callback identifier */
+ 	const struct nfs4_minor_version_ops *cl_mvops;
+ #endif /* CONFIG_NFS_V4 */
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 80f0719..24e77a6 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -868,6 +868,7 @@ struct nfs4_setclientid {
+ struct nfs4_setclientid_res {
+ 	u64				clientid;
+ 	nfs4_verifier			confirm;
++	u32				cb_ident;
+ };
+ 
+ struct nfs4_statfs_arg {
+-- 
+1.6.6
+
