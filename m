@@ -1,100 +1,186 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:59387 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754308Ab0LJRCx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Dec 2010 12:02:53 -0500
-Subject: Re: proposed patch to rpcbind to provide finer-grained security controls than offered by the -i option
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:56967 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751934Ab0LNPFG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 10:05:06 -0500
+Received: by mail-gy0-f174.google.com with SMTP id 11so379987gyb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 07:05:06 -0800 (PST)
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4D024D70.7040108@RedHat.com>
-Date: Fri, 10 Dec 2010 12:01:51 -0500
-Cc: "Andrew J. Schorr" <ajschorr@alumni.princeton.edu>,
-        linux-nfs@vger.kernel.org
-Message-Id: <FD9D05EF-FB57-45FB-BBDC-38E3B92D54AA@oracle.com>
-References: <20101209204913.GA30338@ti93.telemetry-investments.com> <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com> <4D016F44.3020002@RedHat.com> <20101210023847.GB15344@ti93.telemetry-investments.com> <77480D58-4224-4713-A515-F1BCC133F44F@oracle.com> <4D024D70.7040108@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Subject: [PATCH 01/11] lockd: define host_for_each{_safe} macros
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 14 Dec 2010 10:05:03 -0500
+Message-ID: <20101214150503.2736.96610.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+References: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Steve-
+From: J. Bruce Fields <bfields@citi.umich.edu>
 
-On Dec 10, 2010, at 10:55 AM, Steve Dickson wrote:
+We've got a lot of loops like this, and I find them a little easier to
+read with the macros.  More such loops are coming.
 
-> On 12/10/2010 10:31 AM, Chuck Lever wrote:
->> 
->> On Dec 9, 2010, at 9:38 PM, Andrew J. Schorr wrote:
->> 
->>> On Thu, Dec 09, 2010 at 07:07:32PM -0500, Steve Dickson wrote:
->>>> 
->>>> 
->>>> On 12/09/2010 04:41 PM, Chuck Lever wrote:
->>>>> It sounds like your application is trying to use glibc's RPC 
->>>>> implementation with rpcbind.  If you build your application with 
->>>>> libtirpc instead, it should use an AF_UNIX socket to contact rpcbind 
->>>>> instead of loopback.  The AF_UNIX socket carries some authentication 
->>>>> information with the registration request.  All users of your 
->>>>> application would be allowed to set or unset RPC registrations 
->>>>> in that case.
->>> 
->>> I think you are correct.  This is probably due to some combination
->>> of ignorance and stupidity on my part.  I didn't realize that libtirpc
->>> was a drop-in replacement for the glibc RPC routines.
->>> 
->>>> I was under the impression rebuilding the applications was not
->>>> possible... but maybe I misunderstood... 
->>> 
->>> Rebuilding should be possible, I need to look into this.
->>> 
->>>> But in the end, I guess I'm not against having functionality 
->>>> like this... If it make it easier for people to port legacy
->>>> applications to Linux, its probably a good thing... 
->>> 
->>> I think the patch does add more control over rpcbind behavior, but I
->>> grant that it may be less interesting if nobody is using IP to connect
->>> from local clients.  Nonetheless, it still adds the ability to have
->>> separate control over whether to accept remote set/unset calls and
->>> whether to honor indirect/callit calls.  Unless I'm mistaken, this is
->>> still relevant even if libtirpc is used.
->> 
->> Not to put to fine a point on it, but we discourage the use of 
->> indirect RPC calls.  It's a well-known security hole.  Also, 
->> allowing anyone to set and unset RPC registrations is also 
->> insecure, and is discouraged.
-> True... but its been this way for years... and always will be... 
-> 
->> In general we want people to switch to using AF_UNIX for local 
->> registrations, as that is secure from remote attack, and allows 
->> rpcbind to assign ownership of the registration so that only the 
->> user who registered that service may unregister it.
-> If the option of rebuilding is available, yes, people should
-> switch to libtirpc... 
+Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+[ cel: Forward-ported to 2.6.37 ]
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Andrew makes a good point.  There would be no "switch to libtirpc" if distributions had a single RPC implementation.
+ fs/lockd/host.c |  107 ++++++++++++++++++++++++++++---------------------------
+ 1 files changed, 55 insertions(+), 52 deletions(-)
 
-Is there a good reason we still have the glibc RPC implementation?  We've resolved the licensing issue already, so there's nothing stopping any Linux distribution from adding a libtirpc package.
-
-> 
->>> So I would argue that the patch is still a good thing, but I agree that
->>> I should relink my code with libtirpc.
->> 
->> IMO we shouldn't add features that encourage people to configure 
->> rpcbind insecurely, especially when there are reasonable alternatives.
-> The -i is already a securely hole... So if we are concern about it
-> we should get ride of the -i completely... Or make it a useful 
-> securely hole... ;-)
-> 
-> The point of this patch was to make it easier for people 
-> to port legacy applications to Linux... If this indeed 
-> is the case, I think that overrides these (self induced) 
-> security issues... 
-
-If we go with just the evidence at hand: Andrew says he can rebuild his application.  Thus, so far there is no specific requirement to expand "-i".  IMO we should wait until there is, in the most noble of Linux traditions.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index ed0c59f..cada3a1 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -26,6 +26,18 @@
+ #define NLM_HOST_COLLECT	(120 * HZ)
+ 
+ static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
++
++#define for_each_host(host, pos, chain, table) \
++	for ((chain) = (table); \
++	     (chain) < (table) + NLM_HOST_NRHASH; ++(chain)) \
++		hlist_for_each_entry((host), (pos), (chain), h_hash)
++
++#define for_each_host_safe(host, pos, next, chain, table) \
++	for ((chain) = (table); \
++	     (chain) < (table) + NLM_HOST_NRHASH; ++(chain)) \
++		hlist_for_each_entry_safe((host), (pos), (next), \
++						(chain), h_hash)
++
+ static unsigned long		next_gc;
+ static int			nrhosts;
+ static DEFINE_MUTEX(nlm_host_mutex);
+@@ -453,28 +465,26 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
+ 	 * To avoid processing a host several times, we match the nsmstate.
+ 	 */
+ again:	mutex_lock(&nlm_host_mutex);
+-	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
+-		hlist_for_each_entry(host, pos, chain, h_hash) {
+-			if (host->h_nsmhandle == nsm
+-			 && host->h_nsmstate != info->state) {
+-				host->h_nsmstate = info->state;
+-				host->h_state++;
+-
+-				nlm_get_host(host);
+-				mutex_unlock(&nlm_host_mutex);
+-
+-				if (host->h_server) {
+-					/* We're server for this guy, just ditch
+-					 * all the locks he held. */
+-					nlmsvc_free_host_resources(host);
+-				} else {
+-					/* He's the server, initiate lock recovery. */
+-					nlmclnt_recovery(host);
+-				}
+-
+-				nlm_release_host(host);
+-				goto again;
++	for_each_host(host, pos, chain, nlm_hosts) {
++		if (host->h_nsmhandle == nsm
++		 && host->h_nsmstate != info->state) {
++			host->h_nsmstate = info->state;
++			host->h_state++;
++
++			nlm_get_host(host);
++			mutex_unlock(&nlm_host_mutex);
++
++			if (host->h_server) {
++				/* We're server for this guy, just ditch
++				 * all the locks he held. */
++				nlmsvc_free_host_resources(host);
++			} else {
++				/* He's the server, initiate lock recovery. */
++				nlmclnt_recovery(host);
+ 			}
++
++			nlm_release_host(host);
++			goto again;
+ 		}
+ 	}
+ 	mutex_unlock(&nlm_host_mutex);
+@@ -497,13 +507,11 @@ nlm_shutdown_hosts(void)
+ 
+ 	/* First, make all hosts eligible for gc */
+ 	dprintk("lockd: nuking all hosts...\n");
+-	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
+-		hlist_for_each_entry(host, pos, chain, h_hash) {
+-			host->h_expires = jiffies - 1;
+-			if (host->h_rpcclnt) {
+-				rpc_shutdown_client(host->h_rpcclnt);
+-				host->h_rpcclnt = NULL;
+-			}
++	for_each_host(host, pos, chain, nlm_hosts) {
++		host->h_expires = jiffies - 1;
++		if (host->h_rpcclnt) {
++			rpc_shutdown_client(host->h_rpcclnt);
++			host->h_rpcclnt = NULL;
+ 		}
+ 	}
+ 
+@@ -515,12 +523,10 @@ nlm_shutdown_hosts(void)
+ 	if (nrhosts) {
+ 		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
+ 		dprintk("lockd: %d hosts left:\n", nrhosts);
+-		for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
+-			hlist_for_each_entry(host, pos, chain, h_hash) {
+-				dprintk("       %s (cnt %d use %d exp %ld)\n",
+-					host->h_name, atomic_read(&host->h_count),
+-					host->h_inuse, host->h_expires);
+-			}
++		for_each_host(host, pos, chain, nlm_hosts) {
++			dprintk("       %s (cnt %d use %d exp %ld)\n",
++				host->h_name, atomic_read(&host->h_count),
++				host->h_inuse, host->h_expires);
+ 		}
+ 	}
+ }
+@@ -538,29 +544,26 @@ nlm_gc_hosts(void)
+ 	struct nlm_host	*host;
+ 
+ 	dprintk("lockd: host garbage collection\n");
+-	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
+-		hlist_for_each_entry(host, pos, chain, h_hash)
+-			host->h_inuse = 0;
+-	}
++	for_each_host(host, pos, chain, nlm_hosts)
++		host->h_inuse = 0;
+ 
+ 	/* Mark all hosts that hold locks, blocks or shares */
+ 	nlmsvc_mark_resources();
+ 
+-	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
+-		hlist_for_each_entry_safe(host, pos, next, chain, h_hash) {
+-			if (atomic_read(&host->h_count) || host->h_inuse
+-			 || time_before(jiffies, host->h_expires)) {
+-				dprintk("nlm_gc_hosts skipping %s (cnt %d use %d exp %ld)\n",
+-					host->h_name, atomic_read(&host->h_count),
+-					host->h_inuse, host->h_expires);
+-				continue;
+-			}
+-			dprintk("lockd: delete host %s\n", host->h_name);
+-			hlist_del_init(&host->h_hash);
+-
+-			nlm_destroy_host(host);
+-			nrhosts--;
++	for_each_host_safe(host, pos, next, chain, nlm_hosts) {
++		if (atomic_read(&host->h_count) || host->h_inuse
++		 || time_before(jiffies, host->h_expires)) {
++			dprintk("nlm_gc_hosts skipping %s "
++				"(cnt %d use %d exp %ld)\n",
++				host->h_name, atomic_read(&host->h_count),
++				host->h_inuse, host->h_expires);
++			continue;
+ 		}
++		dprintk("lockd: delete host %s\n", host->h_name);
++		hlist_del_init(&host->h_hash);
++
++		nlm_destroy_host(host);
++		nrhosts--;
+ 	}
+ 
+ 	next_gc = jiffies + NLM_HOST_COLLECT;
 
