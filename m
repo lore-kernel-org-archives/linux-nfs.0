@@ -1,134 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:59468 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752882Ab0LASnK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 13:43:10 -0500
-Subject: Re: Listen backlog set to 64
+Received: from fieldses.org ([174.143.236.118]:34732 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759164Ab0LNWrQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Dec 2010 17:47:16 -0500
+Date: Tue, 14 Dec 2010 17:47:14 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andy Adamson <andros@netapp.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH_V3 1/7] NFS dont free shared socket on backchannel put
+ xprt
+Message-ID: <20101214224714.GO24828@fieldses.org>
+References: <1292271585-3038-1-git-send-email-andros@netapp.com>
+ <1292271585-3038-2-git-send-email-andros@netapp.com>
+ <20101214181909.GA22950@fieldses.org>
+ <807D3371-AA86-4CEA-B6D0-BD5285439FB6@netapp.com>
+ <20101214215601.GL24828@fieldses.org>
+ <EF7B330F-CC15-4B04-9D70-B209166E4F13@netapp.com>
+ <20101214223631.GN24828@fieldses.org>
+ <EE8BADA8-5D09-47C9-BB09-E906F3EF2728@netapp.com>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <alpine.NEB.2.01.1012011754120.12506@jrf.vwaro.pbz>
-Date: Wed, 1 Dec 2010 13:28:40 -0500
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org
-Message-Id: <F5FCB254-E6CE-4B71-ABD9-33F098F9E0BA@oracle.com>
-References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz> <20101116182026.GA3971@fieldses.org> <20101117090826.4b2724da@notabene.brown> <20101129205935.GD9897@fieldses.org> <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz> <20101130200013.GA2108@fieldses.org> <alpine.NEB.2.01.1012011754120.12506@jrf.vwaro.pbz>
-To: Mark Hills <mark@pogo.org.uk>
+In-Reply-To: <EE8BADA8-5D09-47C9-BB09-E906F3EF2728@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Dec 1, 2010, at 1:18 PM, Mark Hills wrote:
-
-> On Tue, 30 Nov 2010, J. Bruce Fields wrote:
+On Tue, Dec 14, 2010 at 05:40:19PM -0500, Andy Adamson wrote:
 > 
->> On Tue, Nov 30, 2010 at 05:50:52PM +0000, Mark Hills wrote:
-> [...]
->>> Our investigation brings us to rpc.mountd and mount.nfs communicating. In 
->>> the client log we see messages like:
->>> 
->>>  Nov 24 12:09:43 nyrd001 automount[3782]: >> mount.nfs: mount to NFS server 'ss1a:/mnt/raid1/banana' failed: timed out, giving up
->>> 
->>> Using strace and isolating one of these, I can see a non-blocking connect 
->>> has already managed to make a connection and even send/receive some data. 
->>> 
->>> But soon a timeout of 9999 milliseconds in poll() causes a problem in 
->>> mount.nfs when waiting for a response of some sort. The socket in question 
->>> is a connection to mountd:
->>> 
->>>  26512 futex(0x7ff76affa540, FUTEX_WAKE_PRIVATE, 1) = 0
->>>  26512 write(3, "\200\0\0(j\212\254\365\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3\0\0\0\0\0\0\0\0"..., 44) = 44
->>>  26512 poll([{fd=3, events=POLLIN}], 1, 9999 <unfinished ...>
->>> 
->>> When it returns:
->>> 
->>>  26512 <... poll resumed> )              = 0 (Timeout)
->>>  26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
->>>  26512 rt_sigprocmask(SIG_SETMASK, ~[RTMIN RT_1], [], 8) = 0
->>>  26512 close(3)                          = 0
->>>  26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
->>>  26512 write(2, "mount.nfs: mount to NFS server '"..., 100) = 100
->>> 
->>> There's no re-try from here, just a failed mount.
->> 
->> That does sound wrong.  I'm not at all familiar with automount,
->> unfortunately; how is it invoking mount.nfs?
->> 
->>> What is the source of this 9999 millisecond timeout used by poll() in 
->>> mount.nfs? It was not clear in an initial search of nfs-utils and glibc, 
->>> but I need more time to investigate.
->>> 
->>> If the server is being too slow to respond, what could the cause of this 
->>> be? Multiple threads are already in use, but it seems like they are not 
->>> all in use because a thread is able to accept() the connection. I haven't 
->>> been able to pin this on the forward/reverse DNS lookup used by 
->>> authentication and logging.
->> 
->> Can you tell where the mountd threads are typically waiting?
+> On Dec 14, 2010, at 5:36 PM, J. Bruce Fields wrote:
 > 
-> Here's a trace from mountd. Note the long pause after fdatasync():
+> >On Tue, Dec 14, 2010 at 05:28:51PM -0500, Andy Adamson wrote:
+> >>
+> >>On Dec 14, 2010, at 4:56 PM, J. Bruce Fields wrote:
+> >>
+> >>>On Tue, Dec 14, 2010 at 04:44:58PM -0500, Andy Adamson wrote:
+> >>>>
+> >>>>On Dec 14, 2010, at 1:19 PM, J. Bruce Fields wrote:
+> >>>>
+> >>>>>On Mon, Dec 13, 2010 at 03:19:39PM -0500, Andy Adamson wrote:
+> >>>>>>Fixes this bug:
+> >>>>>>fedora-64 kernel: Invoking bc_svc_procass()
+> >>>>>>fedora-64 kernel: nfs_callback_authenticate SVC_DROP
+> >>>>>>fedora-64 kernel: BUG: unable to handle kernel NULL pointer
+> >>>>>>dereference at 0000000000000018 IP: [<ffffffffa0156140>]
+> >>>>>>svc_sock_free+0x32/0x56 [sunrpc]
+> >>>>>>
+> >>>>>>Signed-off-by: Andy Adamson <andros@netapp.com>
+> >>>>>>---
+> >>>>>>fs/nfs/callback.c               |    3 +++
+> >>>>>>include/linux/sunrpc/svc_xprt.h |    1 +
+> >>>>>>net/sunrpc/svc_xprt.c           |    3 ++-
+> >>>>>>3 files changed, 6 insertions(+), 1 deletions(-)
+> >>>>>>
+> >>>>>>diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> >>>>>>index 93a8b3b..023a9eb 100644
+> >>>>>>--- a/fs/nfs/callback.c
+> >>>>>>+++ b/fs/nfs/callback.c
+> >>>>>>@@ -193,6 +193,9 @@ nfs41_callback_up(struct svc_serv *serv,
+> >>>>>>struct rpc_xprt *xprt)
+> >>>>>>	serv->bc_xprt = bc_xprt;
+> >>>>>>	xprt->bc_serv = serv;
+> >>>>>>
+> >>>>>>+	/* socket is shared with the fore channel */
+> >>>>>>+	set_bit(XPT_SHARE_SOCK, &bc_xprt->xpt_flags);
+> >>>>>>+
+> >>>>>>	INIT_LIST_HEAD(&serv->sv_cb_list);
+> >>>>>>	spin_lock_init(&serv->sv_cb_lock);
+> >>>>>>	init_waitqueue_head(&serv->sv_cb_waitq);
+> >>>>>>diff --git a/include/linux/sunrpc/svc_xprt.h
+> >>>>>>b/include/linux/sunrpc/svc_xprt.h
+> >>>>>>index aea0d43..600c669 100644
+> >>>>>>--- a/include/linux/sunrpc/svc_xprt.h
+> >>>>>>+++ b/include/linux/sunrpc/svc_xprt.h
+> >>>>>>@@ -62,6 +62,7 @@ struct svc_xprt {
+> >>>>>>#define	XPT_DETACHED	10		/* detached from tempsocks list */
+> >>>>>>#define XPT_LISTENER	11		/* listening endpoint */
+> >>>>>>#define XPT_CACHE_AUTH	12		/* cache auth info */
+> >>>>>>+#define XPT_SHARE_SOCK	13		/* fore and back channel share
+> >>>>>>socket */
+> >>>>>>
+> >>>>>>	struct svc_pool		*xpt_pool;	/* current pool iff queued */
+> >>>>>>	struct svc_serv		*xpt_server;	/* service for transport */
+> >>>>>>diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> >>>>>>index ea2ff78..8c4d9ad 100644
+> >>>>>>--- a/net/sunrpc/svc_xprt.c
+> >>>>>>+++ b/net/sunrpc/svc_xprt.c
+> >>>>>>@@ -128,7 +128,8 @@ static void svc_xprt_free(struct kref *kref)
+> >>>>>>	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
+> >>>>>>		svcauth_unix_info_release(xprt);
+> >>>>>>	put_net(xprt->xpt_net);
+> >>>>>>-	xprt->xpt_ops->xpo_free(xprt);
+> >>>>>>+	if (!test_bit(XPT_SHARE_SOCK, &xprt->xpt_flags))
+> >>>>>>+		xprt->xpt_ops->xpo_free(xprt);
+> >>>>>
+> >>>>>So when does the svc_xprt get freed if not here?
+> >>>>
+> >>>>svc_sock_destroy frees the bc_xprt, called by svc_destroy on the
+> >>>>serv->bc_xprt.
+> >>>
+> >>>Can you remove the
+> >>>
+> >>>	#if defined(CONFIG_NFS_V4_1)
+> >>>     	svc_sock_destroy(serv->bc_xprt);
+> >>>	#endif /* CONFIG_NFS_V4_1 */
+> >>>
+> >>>from svc_destroy instead?
+> >>
+> >>Instead of what?
+> >
+> >Instead of the patch above.
 > 
-> 31156 12:09:40 open("/var/lib/nfs/rmtab", O_WRONLY|O_CREAT|O_APPEND, 0666) = 14 <0.000010>
-> 31156 12:09:40 fstat(14, {st_mode=S_IFREG|0644, st_size=62642, ...}) = 0 <0.000005>
-> 31156 12:09:40 mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x2af00c929000 <0.000007>
-> 31156 12:09:40 fstat(14, {st_mode=S_IFREG|0644, st_size=62642, ...}) = 0 <0.000005>
-> 31156 12:09:40 lseek(14, 62642, SEEK_SET) = 62642 <0.000006>
-> 31156 12:09:40 write(14, "192.168.14.165:/mnt/raid1/abcde_"..., 57) = 57 <0.000013>
-> 31156 12:09:40 fdatasync(14)            = 0 <15.413401>
-> 31156 12:09:55 close(14)                = 0 <0.000008>
-> 31156 12:09:55 munmap(0x2af00c929000, 4096) = 0 <0.000083>
-> 31156 12:09:55 close(13)                = 0 <0.000008>
-> 
-> This pause exceeds the mysterious 9999 millisecond timeout allowed at the 
-> client.
-> 
-> fdatasync() is happening at every write of rmtab -- a lot. Occasionally it 
-> takes a long time. The syncing of the rmtab seems a reasonable explanation 
-> why more threads does not help -- all mountd threads lock up.
-> 
-> The strace I am analysing here contains 670 calls to fdatasync() in a 16 
-> minute period. All of them take < 1 second, except for this burst:
-> 
-> 31156 12:09:11 fdatasync(14)            = 0 <0.000010>
-> 31156 12:09:11 fdatasync(15)            = 0 <0.136285>
-> 31156 12:09:12 fdatasync(14)            = 0 <0.000010>
-> 31156 12:09:12 fdatasync(15)            = 0 <14.911323>
-> 31156 12:09:27 fdatasync(14)            = 0 <1.298896>
-> 31156 12:09:29 fdatasync(14)            = 0 <1.159262>
-> 31156 12:09:33 fdatasync(14)            = 0 <1.447169>
-> 31156 12:09:35 fdatasync(14)            = 0 <1.345562>
-> 31156 12:09:40 fdatasync(14)            = 0 <0.000010>
-> 31156 12:09:40 fdatasync(14)            = 0 <15.413401>
-> 31156 12:09:55 fdatasync(17)            = 0 <0.000010>
-> 31156 12:09:55 fdatasync(17)            = 0 <1.068503>
-> 31156 12:09:57 fdatasync(18)            = 0 <0.000010>
-> 31156 12:09:57 fdatasync(18)            = 0 <0.089682>
-> 
-> /var/lib/nfs/rmtab[.tmp] is on an ext3 filesystem, the system disk.
-> 
-> The server is only acting as a 'regular' and dedicated file server, but 
-> presumably some other process is causing /var to become erratic. Unless 
-> continual writing and syncing to a small (64KiB) file could cause this to 
-> happen periodically?
+> Sorry, I just don't understand how that will solve the sock_free BUG
+> above.
 
-fdatasync() will write all outstanding dirty data on that partition to persistent storage, not just the dirty data for that file.  If /var is on a partition that has a lot of other activity, then this is the expected outcome, unfortunately.  I would expect such delays to be due to a large amount of outstanding writes, not to periodic synchronous writes.
+It may not, sorry, I'd need to look at it more closely.  Maybe you could
+explain in more detail how the bug happens and why?  (Which pointer is
+it that's null, and why?)
 
-This problem may be addressed in recent versions of nfs-utils.  I see a commit from Ben Myers on February 12 of this year that seems on point.  nfs-utils-1.2.2 has it, I think?
-
-> In the meantime we have symlink'd /var/lib/nfs/rmtab[.tmp] to a tmpfs 
-> mount to see if that helps, and will leave it running tonight.
-> 
-> -- 
-> Mark
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+--b.
