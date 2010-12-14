@@ -1,118 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4053 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752246Ab0LVEBH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Dec 2010 23:01:07 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 14/15] pnfs: update nfs4_callback_recallany to handle layouts
-Date: Tue, 21 Dec 2010 23:00:48 -0500
-Message-Id: <1292990449-20057-15-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
-References: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:49543 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757966Ab0LNO7M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:59:12 -0500
+Received: by iwn9 with SMTP id 9so864340iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:59:11 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 29/31] SUNRPC: Determine value of "nrprocs" automatically
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 14 Dec 2010 09:59:09 -0500
+Message-ID: <20101214145908.2293.97087.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Alexandros Batsakis <batsakis@netapp.com>
+Clean up.
 
-While here, update the code a bit.
+Just fixed a panic where the nrprocs field in a different upper layer
+client was set by hand incorrectly.  Use the compiler-generated method
+used by the other upper layer protocols.
 
-Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/callback.h      |    8 ++++++++
- fs/nfs/callback_proc.c |   29 ++++++++++++++++++++++++++---
- 2 files changed, 34 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 19570f4..70e6435d 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -119,6 +119,14 @@ extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
+ net/sunrpc/rpcb_clnt.c |   10 +++-------
+ 1 files changed, 3 insertions(+), 7 deletions(-)
+
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index d2a2ea0..43838c7 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -57,10 +57,6 @@ enum {
+ 	RPCBPROC_GETSTAT,
+ };
  
- #define RCA4_TYPE_MASK_RDATA_DLG	0
- #define RCA4_TYPE_MASK_WDATA_DLG	1
-+#define RCA4_TYPE_MASK_DIR_DLG         2
-+#define RCA4_TYPE_MASK_FILE_LAYOUT     3
-+#define RCA4_TYPE_MASK_BLK_LAYOUT      4
-+#define RCA4_TYPE_MASK_OBJ_LAYOUT_MIN  8
-+#define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX  9
-+#define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
-+#define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
-+#define RCA4_TYPE_MASK_ALL 0xf31f
- 
- struct cb_recallanyargs {
- 	struct sockaddr	*craa_addr;
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 2f645f9..e748b20 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -227,6 +227,17 @@ __be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
- 	return cpu_to_be32(res);
- }
- 
-+static void pnfs_recall_all_layouts(struct nfs_client *clp)
-+{
-+	struct cb_layoutrecallargs args;
-+
-+	/* Pretend we got a CB_LAYOUTRECALL(ALL) */
-+	memset(&args, 0, sizeof(args));
-+	args.cbl_recall_type = RETURN_ALL;
-+	/* FIXME we ignore errors, what should we do? */
-+	do_callback_layoutrecall(clp, &args);
-+}
-+
- int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
- {
- 	if (delegation == NULL)
-@@ -418,29 +429,41 @@ out:
- 	return status;
- }
- 
-+static bool
-+validate_bitmap_values(unsigned long mask)
-+{
-+	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
-+}
-+
- __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
- 			       struct cb_process_state *cps)
- {
- 	__be32 status;
- 	fmode_t flags = 0;
- 
--	status = htonl(NFS4ERR_OP_NOT_IN_SESSION);
-+	status = cpu_to_be32(NFS4ERR_OP_NOT_IN_SESSION);
- 	if (!cps->clp) /* set in cb_sequence */
- 		goto out;
- 
- 	dprintk("NFS: RECALL_ANY callback request from %s\n",
- 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
- 
-+	status = cpu_to_be32(NFS4ERR_INVAL);
-+	if (!validate_bitmap_values(args->craa_type_mask))
-+		goto out;
-+
-+	status = cpu_to_be32(NFS4_OK);
- 	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, (const unsigned long *)
- 		     &args->craa_type_mask))
- 		flags = FMODE_READ;
- 	if (test_bit(RCA4_TYPE_MASK_WDATA_DLG, (const unsigned long *)
- 		     &args->craa_type_mask))
- 		flags |= FMODE_WRITE;
+-#define RPCB_HIGHPROC_2		RPCBPROC_CALLIT
+-#define RPCB_HIGHPROC_3		RPCBPROC_TADDR2UADDR
+-#define RPCB_HIGHPROC_4		RPCBPROC_GETSTAT
 -
-+	if (test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, (const unsigned long *)
-+		     &args->craa_type_mask))
-+		pnfs_recall_all_layouts(cps->clp);
- 	if (flags)
- 		nfs_expire_all_delegation_types(cps->clp, flags);
--	status = htonl(NFS4_OK);
- out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
- 	return status;
--- 
-1.7.2.1
+ /*
+  * r_owner
+  *
+@@ -975,19 +971,19 @@ static struct rpcb_info rpcb_next_version6[] = {
+ 
+ static struct rpc_version rpcb_version2 = {
+ 	.number		= RPCBVERS_2,
+-	.nrprocs	= RPCB_HIGHPROC_2,
++	.nrprocs	= ARRAY_SIZE(rpcb_procedures2),
+ 	.procs		= rpcb_procedures2
+ };
+ 
+ static struct rpc_version rpcb_version3 = {
+ 	.number		= RPCBVERS_3,
+-	.nrprocs	= RPCB_HIGHPROC_3,
++	.nrprocs	= ARRAY_SIZE(rpcb_procedures3),
+ 	.procs		= rpcb_procedures3
+ };
+ 
+ static struct rpc_version rpcb_version4 = {
+ 	.number		= RPCBVERS_4,
+-	.nrprocs	= RPCB_HIGHPROC_4,
++	.nrprocs	= ARRAY_SIZE(rpcb_procedures4),
+ 	.procs		= rpcb_procedures4
+ };
+ 
 
