@@ -1,175 +1,134 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:60505 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753621Ab0LGHIe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Dec 2010 02:08:34 -0500
-Date: Tue, 7 Dec 2010 18:08:27 +1100
-From: Nick Piggin <npiggin@kernel.dk>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Nick Bowler <nbowler@elliptictech.com>, Simon Kirby <sim@hostway.ca>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-        Hugh Dickins <hughd@google.com>, Nick Piggin <npiggin@kernel.dk>,
-        Rik van Riel <riel@redhat.com>, Christoph Hellwig <hch@lst.de>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [PATCH v4 2/3] Call the filesystem back whenever a page is
- removed from the page cache
-Message-ID: <20101207070827.GC3307@amd>
-References: <AANLkTi=LJaSTREikZg3M=QFkihEcQEGCJLW4wUPsDm9s@mail.gmail.com>
- <1291654748-8921-3-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1291654748-8921-3-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:11394 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758144Ab0LNWDF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Dec 2010 17:03:05 -0500
+Received: from localhost.localdomain (vpn2ntap-71744.hq.netapp.com [10.58.57.236])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBEM32of010255
+	for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 14:03:05 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] pnfs-submit: wave2: make put_layout_hdr have args consistent with related functions
+Date: Tue, 14 Dec 2010 17:03:00 -0500
+Message-Id: <1292364180-28512-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1292364180-28512-1-git-send-email-iisaman@netapp.com>
+References: <1292364180-28512-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Dec 06, 2010 at 11:59:07AM -0500, Trond Myklebust wrote:
-> From: Linus Torvalds <torvalds@linux-foundation.org>
-> 
-> NFS needs to be able to release objects that are stored in the page
-> cache once the page itself is no longer visible from the page cache.
-> 
-> This patch adds a callback to the address space operations that allows
-> filesystems to perform page cleanups once the page has been removed
-> from the page cache.
-> 
-> Original patch by: Linus Torvalds <torvalds@linux-foundation.org>
-> [trondmy: cover the cases of invalidate_inode_pages2() and
->           truncate_inode_pages()]
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  Documentation/filesystems/Locking |    7 ++++++-
->  Documentation/filesystems/vfs.txt |    7 +++++++
->  include/linux/fs.h                |    1 +
->  mm/filemap.c                      |    5 +++++
->  mm/truncate.c                     |    4 ++++
->  mm/vmscan.c                       |    7 +++++++
->  6 files changed, 30 insertions(+), 1 deletions(-)
-> 
-> diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
-> index a91f308..b6426f1 100644
-> --- a/Documentation/filesystems/Locking
-> +++ b/Documentation/filesystems/Locking
-> @@ -173,12 +173,13 @@ prototypes:
->  	sector_t (*bmap)(struct address_space *, sector_t);
->  	int (*invalidatepage) (struct page *, unsigned long);
->  	int (*releasepage) (struct page *, int);
-> +	void (*freepage)(struct page *);
->  	int (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
->  			loff_t offset, unsigned long nr_segs);
->  	int (*launder_page) (struct page *);
->  
->  locking rules:
-> -	All except set_page_dirty may block
-> +	All except set_page_dirty and freepage may block
->  
->  			BKL	PageLocked(page)	i_mutex
->  writepage:		no	yes, unlocks (see below)
-> @@ -193,6 +194,7 @@ perform_write:		no	n/a			yes
->  bmap:			no
->  invalidatepage:		no	yes
->  releasepage:		no	yes
-> +freepage:		no	yes
->  direct_IO:		no
->  launder_page:		no	yes
->  
-> @@ -288,6 +290,9 @@ buffers from the page in preparation for freeing it.  It returns zero to
->  indicate that the buffers are (or may be) freeable.  If ->releasepage is zero,
->  the kernel assumes that the fs has no private interest in the buffers.
->  
-> +	->freepage() is called when the kernel is done dropping the page
-> +from the page cache.
-> +
->  	->launder_page() may be called prior to releasing a page if
->  it is still found to be dirty. It returns zero if the page was successfully
->  cleaned, or an error value if not. Note that in order to prevent the page
-> diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-> index ed7e5ef..3b14a55 100644
-> --- a/Documentation/filesystems/vfs.txt
-> +++ b/Documentation/filesystems/vfs.txt
-> @@ -534,6 +534,7 @@ struct address_space_operations {
->  	sector_t (*bmap)(struct address_space *, sector_t);
->  	int (*invalidatepage) (struct page *, unsigned long);
->  	int (*releasepage) (struct page *, int);
-> +	void (*freepage)(struct page *);
->  	ssize_t (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
->  			loff_t offset, unsigned long nr_segs);
->  	struct page* (*get_xip_page)(struct address_space *, sector_t,
-> @@ -679,6 +680,12 @@ struct address_space_operations {
->          need to ensure this.  Possibly it can clear the PageUptodate
->          bit if it cannot free private data yet.
->  
-> +  freepage: freepage is called once the page is no longer visible in
-> +        the page cache in order to allow the cleanup of any private
-> +	data. Since it may be called by the memory reclaimer, it
-> +	should not assume that the original address_space mapping still
-> +	exists, and it should not block.
+put_layout_hdr_locked() and get_layout_hdr() take lo, not inode,
+as argument.  So make put_layout_hdr do likewise.
 
-Of course we still have bugs in this regard, without inode RCU and
-filesystem deregistration RCU, but when those things are implemented
-for RCU path-walk, this section should be updated somewhat, and we'll
-have to look at RCU protecting the final mapping manipulations after
-a page is removed from pagecache.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/callback_proc.c |    4 ++--
+ fs/nfs/nfs4proc.c      |    2 +-
+ fs/nfs/pnfs.c          |   12 ++++++------
+ fs/nfs/pnfs.h          |    2 +-
+ 4 files changed, 10 insertions(+), 10 deletions(-)
 
-But I'll help work on that after RCU inodes / filesystems is merged.
-
-> +
->    direct_IO: called by the generic read/write routines to perform
->          direct_IO - that is IO requests which bypass the page cache
->          and transfer data directly between the storage and the
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index c9e06cc..090f0ea 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -602,6 +602,7 @@ struct address_space_operations {
->  	sector_t (*bmap)(struct address_space *, sector_t);
->  	void (*invalidatepage) (struct page *, unsigned long);
->  	int (*releasepage) (struct page *, gfp_t);
-> +	void (*freepage)(struct page *);
->  	ssize_t (*direct_IO)(int, struct kiocb *, const struct iovec *iov,
->  			loff_t offset, unsigned long nr_segs);
->  	int (*get_xip_mem)(struct address_space *, pgoff_t, int,
-> diff --git a/mm/filemap.c b/mm/filemap.c
-> index ea89840..6b9aee2 100644
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -143,13 +143,18 @@ void __remove_from_page_cache(struct page *page)
->  void remove_from_page_cache(struct page *page)
->  {
->  	struct address_space *mapping = page->mapping;
-> +	void (*freepage)(struct page *);
->  
->  	BUG_ON(!PageLocked(page));
->  
-> +	freepage = mapping->a_ops->freepage;
->  	spin_lock_irq(&mapping->tree_lock);
->  	__remove_from_page_cache(page);
->  	spin_unlock_irq(&mapping->tree_lock);
->  	mem_cgroup_uncharge_cache_page(page);
-> +
-> +	if (freepage)
-> +		freepage(page);
->  }
->  EXPORT_SYMBOL(remove_from_page_cache);
->  
-> diff --git a/mm/truncate.c b/mm/truncate.c
-> index ba887bf..3c2d5dd 100644
-> --- a/mm/truncate.c
-> +++ b/mm/truncate.c
-> @@ -390,6 +390,10 @@ invalidate_complete_page2(struct address_space *mapping, struct page *page)
->  	__remove_from_page_cache(page);
->  	spin_unlock_irq(&mapping->tree_lock);
->  	mem_cgroup_uncharge_cache_page(page);
-> +
-> +	if (mapping->a_ops->freepage)
-> +		mapping->a_ops->freepage(page);
-> +
->  	page_cache_release(page);	/* pagecache ref */
->  	return 1;
->  failed:
-
-The generic parts of the code look OK to me, but why is there a
-difference in your sequences of loading the freepage function pointer
-here?
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index cbde28e..38d8a23 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -198,7 +198,7 @@ static int initiate_layout_draining(struct nfs_client *clp,
+ 			list_del_init(&lo->plh_bulk_recall);
+ 			spin_unlock(&lo->inode->i_lock);
+ 			trigger_flush(lo->inode);
+-			put_layout_hdr(lo->inode);
++			put_layout_hdr(lo);
+ 			rv = NFS4_OK;
+ 		}
+ 		pnfs_free_lseg_list(&free_me_list);
+@@ -229,7 +229,7 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
+ 		spin_lock(&lo->inode->i_lock);
+ 		lo->plh_block_lgets--;
+ 		spin_unlock(&lo->inode->i_lock);
+-		put_layout_hdr(args->cbl_inode);
++		put_layout_hdr(lo);
+ 	}
+ 	clear_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state);
+ out:
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 224bdfe..ad9c018 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5498,7 +5498,7 @@ static void nfs4_layoutcommit_release(void *lcdata)
+ 		(struct nfs4_layoutcommit_data *)lcdata;
+ 
+ 	/* Matched by get_layout in pnfs_layoutcommit_inode */
+-	put_layout_hdr(data->args.inode);
++	put_layout_hdr(NFS_I(data->args.inode)->layout);
+ 	put_rpccred(data->cred);
+ 	kfree(lcdata);
+ }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index b815e3e..5c6b4fb 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -258,9 +258,9 @@ put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
+ }
+ 
+ void
+-put_layout_hdr(struct inode *inode)
++put_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+-	struct pnfs_layout_hdr *lo = NFS_I(inode)->layout;
++	struct inode *inode = lo->inode;
+ 
+ 	BUG_ON(atomic_read(&lo->plh_refcount) == 0);
+ 	if (atomic_dec_and_lock(&lo->plh_refcount, &inode->i_lock)) {
+@@ -336,7 +336,7 @@ put_lseg(struct pnfs_layout_segment *lseg)
+ 		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+ 		notify_drained(NFS_SERVER(ino)->nfs_client, count);
+ 		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
+-		put_layout_hdr(ino);
++		put_layout_hdr(NFS_I(ino)->layout);
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(put_lseg);
+@@ -412,7 +412,7 @@ pnfs_free_lseg_list(struct list_head *free_me)
+ 		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+ 		notify_drained(NFS_SERVER(ino)->nfs_client, count);
+ 		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
+-		put_layout_hdr(ino);
++		put_layout_hdr(NFS_I(ino)->layout);
+ 	}
+ 	INIT_LIST_HEAD(free_me);
+ }
+@@ -924,7 +924,7 @@ pnfs_update_layout(struct inode *ino,
+ 		spin_unlock(&ino->i_lock);
+ 	}
+ 	atomic_dec(&lo->plh_outstanding);
+-	put_layout_hdr(ino);
++	put_layout_hdr(lo);
+ out:
+ 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+ 		nfsi->layout->plh_flags, lseg);
+@@ -1259,7 +1259,7 @@ pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ 	if (status) {
+ 		/* The layout driver failed to setup the layoutcommit */
+ 		put_rpccred(data->cred);
+-		put_layout_hdr(inode);
++		put_layout_hdr(NFS_I(inode)->layout);
+ 		goto out_free;
+ 	}
+ 	status = nfs4_proc_layoutcommit(data, sync);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 0ddab0d..c413954 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -212,7 +212,7 @@ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+ void pnfs_destroy_layout(struct nfs_inode *);
+ void pnfs_destroy_all_layouts(struct nfs_client *);
+-void put_layout_hdr(struct inode *inode);
++void put_layout_hdr(struct pnfs_layout_hdr *lo);
+ void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 			     const nfs4_stateid *new,
+ 			     bool update_barrier);
+-- 
+1.7.2.1
 
