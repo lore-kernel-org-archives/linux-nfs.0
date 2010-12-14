@@ -1,79 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42898 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751541Ab0LWATV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2010 19:19:21 -0500
-Subject: Re: [PATCH 15/15] pnfs: layout roc code
-Content-Type: text/plain; charset=us-ascii
-From: Fred Isaman <iisaman@netapp.com>
-In-Reply-To: <1293055210.6422.23.camel@heimdal.trondhjem.org>
-Date: Wed, 22 Dec 2010 19:19:19 -0500
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:43928 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757715Ab0LNPGf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 10:06:35 -0500
+Received: by yxt3 with SMTP id 3so385481yxt.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 07:06:34 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 09/11] lockd: Make nrhosts an unsigned long
+To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Message-Id: <8EF8E6E3-D746-4E1E-BFCB-143921A5A76E@netapp.com>
-References: <1292990449-20057-1-git-send-email-iisaman@netapp.com> <1292990449-20057-16-git-send-email-iisaman@netapp.com> <1293055210.6422.23.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Tue, 14 Dec 2010 10:06:32 -0500
+Message-ID: <20101214150632.2736.85687.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+References: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Clean up.
 
-On Dec 22, 2010, at 5:00 PM, Trond Myklebust wrote:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> On Tue, 2010-12-21 at 23:00 -0500, Fred Isaman wrote:
->> A lsyout can request return-on-close.  How this interacts with the
->> forgetful model of never sending LAYOUTRETURNS is a bit ambiguous.
->> We forget any layouts marked roc, and wait for them to be completely
->> forgotten before continuing with the close.  In addition, to compensate
->> for races with any inflight LAYOUTGETs, and the fact that we do not get
->> any layout stateid back from the server, we set the barrier to the worst
->> case scenario of current_seqid + number of outstanding LAYOUTGETS.
->> 
->> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->> ---
->> fs/nfs/inode.c         |    1 +
->> fs/nfs/nfs4_fs.h       |    2 +-
->> fs/nfs/nfs4proc.c      |   21 +++++++++++-
->> fs/nfs/nfs4state.c     |    7 +++-
->> fs/nfs/pnfs.c          |   83 ++++++++++++++++++++++++++++++++++++++++++++++++
->> fs/nfs/pnfs.h          |   28 ++++++++++++++++
->> include/linux/nfs_fs.h |    1 +
->> 7 files changed, 138 insertions(+), 5 deletions(-)
->> 
->> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->> index 43a69da..c64bb40 100644
->> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
->> index 29d504d..90515de 100644
->> --- a/include/linux/nfs_fs.h
->> +++ b/include/linux/nfs_fs.h
->> @@ -190,6 +190,7 @@ struct nfs_inode {
->> 	struct rw_semaphore	rwsem;
->> 
->> 	/* pNFS layout information */
->> +	struct rpc_wait_queue lo_rpcwaitq;
->> 	struct pnfs_layout_hdr *layout;
->> #endif /* CONFIG_NFS_V4*/
->> #ifdef CONFIG_NFS_FSCACHE
-> 
-> I believe that I've asked this before. Why do we need a per-inode
-> rpc_wait_queue just to support pnfs? That's a significant expansion of
-> an already bloated structure.
-> 
-> Can we please either make this a single per-filesystem wait queue, or
-> else possibly a pool of wait queues?
-> 
-> Trond
+ fs/lockd/host.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-This was introduced to avoid deadlocks that were occurring when we had a single wait queue.   However, the deadlocks I remember were due to a combination of the fact that, at the time, we handled EAGAIN errors of IO outside the RPC code, and we sent LAYOUTRETURN on such error.  Since we do neither now, I believe a single per-filesystem wait queue will suffice.  Anyone disagree?
-
-Fred
-
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 87fbde1..77ec21a 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -40,7 +40,7 @@ static struct hlist_head	nlm_client_hosts[NLM_HOST_NRHASH];
+ 						(chain), h_hash)
+ 
+ static unsigned long		next_gc;
+-static int			nrhosts;
++static unsigned long		nrhosts;
+ static DEFINE_MUTEX(nlm_host_mutex);
+ 
+ static void			nlm_gc_hosts(void);
+@@ -673,9 +673,9 @@ nlm_shutdown_hosts(void)
+ 	mutex_unlock(&nlm_host_mutex);
+ 
+ 	/* complain if any hosts are left */
+-	if (nrhosts) {
++	if (nrhosts != 0) {
+ 		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
+-		dprintk("lockd: %d hosts left:\n", nrhosts);
++		dprintk("lockd: %lu hosts left:\n", nrhosts);
+ 		for_each_host(host, pos, chain, nlm_server_hosts) {
+ 			dprintk("       %s (cnt %d use %d exp %ld)\n",
+ 				host->h_name, atomic_read(&host->h_count),
 
