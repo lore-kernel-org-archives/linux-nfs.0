@@ -1,108 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57584 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751887Ab0LVXtO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2010 18:49:14 -0500
-Subject: Re: [PATCH 06/15] pnfs: change how lsegs are removed from layout list
-Content-Type: text/plain; charset=us-ascii
-From: Fred Isaman <iisaman@netapp.com>
-In-Reply-To: <1293060907.6422.31.camel@heimdal.trondhjem.org>
-Date: Wed, 22 Dec 2010 18:49:12 -0500
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:39378 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755862Ab0LNPFg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 10:05:36 -0500
+Received: by mail-yx0-f174.google.com with SMTP id 3so384384yxt.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 07:05:36 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 04/11] lockd: Add nlm_destroy_host_locked()
+To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Message-Id: <ED051814-7DFF-4541-85C7-B988C198EA8E@netapp.com>
-References: <1292990449-20057-1-git-send-email-iisaman@netapp.com> <1292990449-20057-7-git-send-email-iisaman@netapp.com> <1293054191.6422.16.camel@heimdal.trondhjem.org> <73A41B1B-39EE-422F-8C43-1CBF830524A2@netapp.com> <1293060907.6422.31.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Tue, 14 Dec 2010 10:05:33 -0500
+Message-ID: <20101214150533.2736.74362.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+References: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Refactor the tail of nlm_gc_hosts() into nlm_destroy_host() so that
+this logic can be used separately from garbage collection.
 
-On Dec 22, 2010, at 6:35 PM, Trond Myklebust wrote:
+Rename it _locked() to document that it must be called with the hosts
+cache mutex held.
 
-> On Wed, 2010-12-22 at 17:08 -0500, Fred Isaman wrote:
->> On Dec 22, 2010, at 4:43 PM, Trond Myklebust wrote:
->> 
->>> On Tue, 2010-12-21 at 23:00 -0500, Fred Isaman wrote:
->>>> This is to prepare the way for sensible io draining.  Instead of just
->>>> removing the lseg from the list, we instead clear the VALID flag
->>>> (preventing new io from grabbing references to the lseg) and remove
->>>> the reference holding it in the list.  Thus the lseg will be removed
->>>> once any io in progress completes and any references still held are
->>>> dropped.
->>>> 
->>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->>>> ---
->>>> fs/nfs/inode.c |    2 +-
->>>> fs/nfs/pnfs.c  |  121 ++++++++++++++++++++++++++++++++++++-------------------
->>>> fs/nfs/pnfs.h  |    8 +++-
->>>> 3 files changed, 87 insertions(+), 44 deletions(-)
->>>> 
->>>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->>>> index e67e31c..43a69da 100644
->>>> --- a/fs/nfs/inode.c
->>>> +++ b/fs/nfs/inode.c
->>> 
->>>> -/* Called without i_lock held, as the free_lseg call may sleep */
->>>> -static void
->>>> -destroy_lseg(struct kref *kref)
->>>> +static void free_lseg(struct pnfs_layout_segment *lseg)
->>>> {
->>>> -	struct pnfs_layout_segment *lseg =
->>>> -		container_of(kref, struct pnfs_layout_segment, pls_refcount);
->>>> 	struct inode *ino = lseg->pls_layout->plh_inode;
->>>> 
->>>> -	dprintk("--> %s\n", __func__);
->>>> +	BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
->>>> 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
->>>> 	/* Matched by get_layout_hdr in pnfs_insert_layout */
->>>> 	put_layout_hdr(ino);
->>>> }
->>> 
->>> <snip>
->>> 
->>>> static void
->>>> -pnfs_free_lseg_list(struct list_head *tmp_list)
->>>> +pnfs_free_lseg_list(struct list_head *free_me)
->>>> {
->>>> -	struct pnfs_layout_segment *lseg;
->>>> +	struct pnfs_layout_segment *lseg, *tmp;
->>>> 
->>>> -	while (!list_empty(tmp_list)) {
->>>> -		lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
->>>> -				pls_list);
->>>> -		dprintk("%s calling put_lseg on %p\n", __func__, lseg);
->>>> -		list_del(&lseg->pls_list);
->>>> -		put_lseg(lseg);
->>>> -	}
->>>> +	list_for_each_entry_safe(lseg, tmp, free_me, pls_list)
->>>> +		free_lseg(lseg);
->>>> +	INIT_LIST_HEAD(free_me);
->>>> }
->>> 
->>> The above looks very dubious to me. Why is this change needed, and what
->>> guarantees do we have that free_lseg() will do the right thing w.r.t.
->>> removing stuff from the list?
->> 
->> Note that this is called with a list of lsegs which already have refcount==0 and have been removed from generic layer lists such that no new reference is coming.  All that is expected of free_lseg is that the layout driver gets a chance to free any resources it has attached to the lseg, and that we release the reference the lseg holds on the layout header itself.
->> 
->> The primary reason for this is that the file layouts ld->free_lseg call can call nfs_put_client, which can sleep.  So this allows the ld->free_lseg to be postponed until we can drop locks, similar to the dispose_list function in fs/inode.c
-> 
-> Sure, but why do these things have to be on the free_me list when you
-> call ld->free_lseg(lseg)? Why do you suddenly need the INIT_LIST_HEAD()?
-> 
-> As I said, that all looks very dubious...
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-That was my attempt at optimization.  This leaves the free_me list in the same state as if list_del had been called on each entry with a single call.  However, I can just call list_del before calling free_lseg.
+ fs/lockd/host.c |   19 +++++++++++--------
+ 1 files changed, 11 insertions(+), 8 deletions(-)
 
-Fred
-
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 1911f34..e58e142 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -231,16 +231,21 @@ out:
+ }
+ 
+ /*
+- * Destroy a host
++ * Destroy an nlm_host and free associated resources
++ *
++ * Caller must hold nlm_host_mutex.
+  */
+-static void
+-nlm_destroy_host(struct nlm_host *host)
++static void nlm_destroy_host_locked(struct nlm_host *host)
+ {
+ 	struct rpc_clnt	*clnt;
+ 
++	dprintk("lockd: destroy host %s\n", host->h_name);
++
+ 	BUG_ON(!list_empty(&host->h_lockowners));
+ 	BUG_ON(atomic_read(&host->h_count));
+ 
++	hlist_del_init(&host->h_hash);
++
+ 	nsm_unmonitor(host);
+ 	nsm_release(host->h_nsmhandle);
+ 
+@@ -248,6 +253,8 @@ nlm_destroy_host(struct nlm_host *host)
+ 	if (clnt != NULL)
+ 		rpc_shutdown_client(clnt);
+ 	kfree(host);
++
++	nrhosts--;
+ }
+ 
+ /**
+@@ -589,11 +596,7 @@ nlm_gc_hosts(void)
+ 				host->h_inuse, host->h_expires);
+ 			continue;
+ 		}
+-		dprintk("lockd: delete host %s\n", host->h_name);
+-		hlist_del_init(&host->h_hash);
+-
+-		nlm_destroy_host(host);
+-		nrhosts--;
++		nlm_destroy_host_locked(host);
+ 	}
+ 
+ 	next_gc = jiffies + NLM_HOST_COLLECT;
 
