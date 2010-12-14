@@ -1,348 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:53716 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753217Ab0LIQtp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 11:49:45 -0500
-Received: by ywl5 with SMTP id 5so1495159ywl.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Dec 2010 08:49:45 -0800 (PST)
+Received: from mail-gw0-f42.google.com ([74.125.83.42]:64762 "EHLO
+	mail-gw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756594Ab0LNO4D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:56:03 -0500
+Received: by mail-gw0-f42.google.com with SMTP id 20so538996gwb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:56:03 -0800 (PST)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/11] lockd: Clean up nlmsvc_lookup_host()
-To: linux-nfs@vger.kernel.org
-Date: Thu, 09 Dec 2010 11:49:42 -0500
-Message-ID: <20101209164942.4513.40461.stgit@matisse.1015granger.net>
-In-Reply-To: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
-References: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
+Subject: [PATCH 10/31] NFS: Replace old NFSv3 encoder functions with
+	xdr_stream-based ones
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 14 Dec 2010 09:56:01 -0500
+Message-ID: <20101214145600.2293.10471.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
-
-Change nlmsvc_lookup_host() to be purpose-built for server-side
-nlm_host management.  This replaces the generic nlm_lookup_host()
-helper function, just like on the client side.  The lookup logic is
-specialized for server host lookups.
-
-The server side cache also gets its own specialized nlm_release_host()
-function.
+The naming scheme of the new encoder functions, which follows the
+NFSv4 XDR encoder functions, is slightly different than the scheme
+used for the old functions.  Rename the functions as a separate
+step to keep the patches clean.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
 ---
 
- fs/lockd/host.c             |   91 ++++++++++++++++++++++++++++++++++---------
- fs/lockd/svc4proc.c         |   16 ++++----
- fs/lockd/svcproc.c          |   18 ++++-----
- include/linux/lockd/lockd.h |    2 -
- 4 files changed, 90 insertions(+), 37 deletions(-)
+ fs/nfs/nfs3xdr.c |   58 ++++++++++++++++++++++++++++--------------------------
+ 1 files changed, 30 insertions(+), 28 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 3aa2497..09286e2 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -379,6 +379,10 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 				    const char *hostname,
- 				    const size_t hostname_len)
- {
-+	struct hlist_head *chain;
-+	struct hlist_node *pos;
-+	struct nlm_host	*host = NULL;
-+	struct nsm_handle *nsm = NULL;
- 	struct sockaddr_in sin = {
- 		.sin_family	= AF_INET,
- 	};
-@@ -400,6 +404,8 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 			(int)hostname_len, hostname, rqstp->rq_vers,
- 			(rqstp->rq_prot == IPPROTO_UDP ? "udp" : "tcp"));
- 
-+	mutex_lock(&nlm_host_mutex);
-+
- 	switch (ni.sap->sa_family) {
- 	case AF_INET:
- 		sin.sin_addr.s_addr = rqstp->rq_daddr.addr.s_addr;
-@@ -410,10 +416,73 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 		ni.src_sap = (struct sockaddr *)&sin6;
- 		break;
- 	default:
--		return NULL;
-+		dprintk("lockd: %s failed; unrecognized address family\n",
-+			__func__);
-+		goto out;
- 	}
- 
--	return nlm_lookup_host(&ni);
-+	if (time_after_eq(jiffies, next_gc))
-+		nlm_gc_hosts();
-+
-+	chain = &nlm_hosts[nlm_hash_address(ni.sap)];
-+	hlist_for_each_entry(host, pos, chain, h_hash) {
-+		if (!rpc_cmp_addr(nlm_addr(host), ni.sap))
-+			continue;
-+
-+		/* Same address. Share an NSM handle if we already have one */
-+		if (nsm == NULL)
-+			nsm = host->h_nsmhandle;
-+
-+		if (host->h_proto != ni.protocol)
-+			continue;
-+		if (host->h_version != ni.version)
-+			continue;
-+		if (!rpc_cmp_addr(nlm_srcaddr(host), ni.src_sap))
-+			continue;
-+
-+		/* Move to head of hash chain. */
-+		hlist_del(&host->h_hash);
-+		hlist_add_head(&host->h_hash, chain);
-+
-+		nlm_get_host(host);
-+		dprintk("lockd: %s found host %s (%s)\n",
-+			__func__, host->h_name, host->h_addrbuf);
-+		goto out;
-+	}
-+
-+	host = nlm_alloc_host(&ni, nsm);
-+	if (unlikely(host == NULL))
-+		goto out;
-+
-+	memcpy(nlm_srcaddr(host), ni.src_sap, ni.src_len);
-+	host->h_srcaddrlen = ni.src_len;
-+	hlist_add_head(&host->h_hash, chain);
-+	nrhosts++;
-+
-+	dprintk("lockd: %s created host %s (%s)\n",
-+		__func__, host->h_name, host->h_addrbuf);
-+
-+out:
-+	mutex_unlock(&nlm_host_mutex);
-+	return host;
-+}
-+
-+/**
-+ * nlmsvc_release_host - release server nlm_host
-+ * @host: nlm_host to release
-+ *
-+ * Host is destroyed later in nlm_gc_host().
-+ */
-+void nlmsvc_release_host(struct nlm_host *host)
-+{
-+	if (host == NULL)
-+		return;
-+
-+	dprintk("lockd: release server host %s\n", host->h_name);
-+
-+	BUG_ON(atomic_read(&host->h_count) < 0);
-+	BUG_ON(!host->h_server);
-+	atomic_dec(&host->h_count);
- }
- 
- /*
-@@ -513,22 +582,6 @@ struct nlm_host * nlm_get_host(struct nlm_host *host)
- 	return host;
- }
- 
--/*
-- * Release NLM host after use
-- */
--void nlm_release_host(struct nlm_host *host)
--{
--	if (host != NULL) {
--		dprintk("lockd: release host %s\n", host->h_name);
--		BUG_ON(atomic_read(&host->h_count) < 0);
--		if (atomic_dec_and_test(&host->h_count)) {
--			BUG_ON(!list_empty(&host->h_lockowners));
--			BUG_ON(!list_empty(&host->h_granted));
--			BUG_ON(!list_empty(&host->h_reclaim));
--		}
--	}
--}
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 3d1043f..bbda890 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -46,10 +46,11 @@
+ #define NFS3_fsinfo_sz		
+ #define NFS3_pathconf_sz		
+ #define NFS3_entry_sz		(NFS3_filename_sz+3)
 -
- static struct nlm_host *next_host_state(struct hlist_head *cache,
- 					struct nsm_handle *nsm,
- 					const struct nlm_reboot *info)
-@@ -577,7 +630,7 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
- 	 */
- 	while ((host = next_host_state(nlm_hosts, nsm, info)) != NULL) {
- 		nlmsvc_free_host_resources(host);
--		nlm_release_host(host);
-+		nlmsvc_release_host(host);
+-#define NFS3_sattrargs_sz	(NFS3_fh_sz+NFS3_sattr_sz+3)
+ #define NFS3_diropargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
+-#define NFS3_removeargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
++
++#define NFS3_getattrargs_sz	(NFS3_fh_sz)
++#define NFS3_setattrargs_sz	(NFS3_fh_sz+NFS3_sattr_sz+3)
++#define NFS3_lookupargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
+ #define NFS3_accessargs_sz	(NFS3_fh_sz+1)
+ #define NFS3_readlinkargs_sz	(NFS3_fh_sz)
+ #define NFS3_readargs_sz	(NFS3_fh_sz+3)
+@@ -58,6 +59,7 @@
+ #define NFS3_mkdirargs_sz	(NFS3_diropargs_sz+NFS3_sattr_sz)
+ #define NFS3_symlinkargs_sz	(NFS3_diropargs_sz+1+NFS3_sattr_sz)
+ #define NFS3_mknodargs_sz	(NFS3_diropargs_sz+2+NFS3_sattr_sz)
++#define NFS3_removeargs_sz	(NFS3_fh_sz+NFS3_filename_sz)
+ #define NFS3_renameargs_sz	(NFS3_diropargs_sz+NFS3_diropargs_sz)
+ #define NFS3_linkargs_sz		(NFS3_fh_sz+NFS3_diropargs_sz)
+ #define NFS3_readdirargs_sz	(NFS3_fh_sz+NFS3_cookieverf_sz+3)
+@@ -1969,9 +1971,9 @@ nfs3_xdr_setaclres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFS3PROC_##proc] = {							\
+ 	.p_proc      = NFS3PROC_##proc,					\
+-	.p_encode    = (kxdrproc_t) nfs3_xdr_##argtype,			\
++	.p_encode    = (kxdrproc_t)nfs3_xdr_enc_##argtype##3args,	\
+ 	.p_decode    = (kxdrproc_t) nfs3_xdr_##restype,			\
+-	.p_arglen    = NFS3_##argtype##_sz,				\
++	.p_arglen    = NFS3_##argtype##args_sz,				\
+ 	.p_replen    = NFS3_##restype##_sz,				\
+ 	.p_timer     = timer,						\
+ 	.p_statidx   = NFS3PROC_##proc,					\
+@@ -1979,27 +1981,27 @@ nfs3_xdr_setaclres(struct rpc_rqst *req, __be32 *p, struct nfs_fattr *fattr)
  	}
- 	while ((host = next_host_state(nlm_client_hosts, nsm, info)) != NULL) {
- 		nlmclnt_recovery(host);
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index c187422..9a41fdc 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -51,7 +51,7 @@ nlm4svc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	return 0;
  
- no_locks:
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
-  	if (error)
- 		return error;	
- 	return nlm_lck_denied_nolocks;
-@@ -92,7 +92,7 @@ nlm4svc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	else
- 		dprintk("lockd: TEST4        status %d\n", ntohl(resp->status));
+ struct rpc_procinfo	nfs3_procedures[] = {
+-  PROC(GETATTR,		fhandle,	attrstat, 1),
+-  PROC(SETATTR, 	sattrargs,	wccstat, 0),
+-  PROC(LOOKUP,		diropargs,	lookupres, 2),
+-  PROC(ACCESS,		accessargs,	accessres, 1),
+-  PROC(READLINK,	readlinkargs,	readlinkres, 3),
+-  PROC(READ,		readargs,	readres, 3),
+-  PROC(WRITE,		writeargs,	writeres, 4),
+-  PROC(CREATE,		createargs,	createres, 0),
+-  PROC(MKDIR,		mkdirargs,	createres, 0),
+-  PROC(SYMLINK,		symlinkargs,	createres, 0),
+-  PROC(MKNOD,		mknodargs,	createres, 0),
+-  PROC(REMOVE,		removeargs,	removeres, 0),
+-  PROC(RMDIR,		diropargs,	wccstat, 0),
+-  PROC(RENAME,		renameargs,	renameres, 0),
+-  PROC(LINK,		linkargs,	linkres, 0),
+-  PROC(READDIR,		readdirargs,	readdirres, 3),
+-  PROC(READDIRPLUS,	readdirargs,	readdirres, 3),
+-  PROC(FSSTAT,		fhandle,	fsstatres, 0),
+-  PROC(FSINFO,  	fhandle,	fsinfores, 0),
+-  PROC(PATHCONF,	fhandle,	pathconfres, 0),
+-  PROC(COMMIT,		commitargs,	commitres, 5),
++	PROC(GETATTR,		getattr,	attrstat,	1),
++	PROC(SETATTR,		setattr,	wccstat,	0),
++	PROC(LOOKUP,		lookup,		lookupres,	2),
++	PROC(ACCESS,		access,		accessres,	1),
++	PROC(READLINK,		readlink,	readlinkres,	3),
++	PROC(READ,		read,		readres,	3),
++	PROC(WRITE,		write,		writeres,	4),
++	PROC(CREATE,		create,		createres,	0),
++	PROC(MKDIR,		mkdir,		createres,	0),
++	PROC(SYMLINK,		symlink,	createres,	0),
++	PROC(MKNOD,		mknod,		createres,	0),
++	PROC(REMOVE,		remove,		removeres,	0),
++	PROC(RMDIR,		lookup,		wccstat,	0),
++	PROC(RENAME,		rename,		renameres,	0),
++	PROC(LINK,		link,		linkres,	0),
++	PROC(READDIR,		readdir,	readdirres,	3),
++	PROC(READDIRPLUS,	readdirplus,	readdirres,	3),
++	PROC(FSSTAT,		getattr,	fsstatres,	0),
++	PROC(FSINFO,		getattr,	fsinfores,	0),
++	PROC(PATHCONF,		getattr,	pathconfres,	0),
++	PROC(COMMIT,		commit,		commitres,	5),
+ };
  
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rc;
- }
-@@ -134,7 +134,7 @@ nlm4svc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	else
- 		dprintk("lockd: LOCK         status %d\n", ntohl(resp->status));
- 
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rc;
- }
-@@ -164,7 +164,7 @@ nlm4svc_proc_cancel(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	resp->status = nlmsvc_cancel_blocked(file, &argp->lock);
- 
- 	dprintk("lockd: CANCEL        status %d\n", ntohl(resp->status));
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
- }
-@@ -197,7 +197,7 @@ nlm4svc_proc_unlock(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	resp->status = nlmsvc_unlock(file, &argp->lock);
- 
- 	dprintk("lockd: UNLOCK        status %d\n", ntohl(resp->status));
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
- }
-@@ -334,7 +334,7 @@ nlm4svc_proc_share(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	resp->status = nlmsvc_share_file(host, file, argp);
- 
- 	dprintk("lockd: SHARE         status %d\n", ntohl(resp->status));
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
- }
-@@ -367,7 +367,7 @@ nlm4svc_proc_unshare(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	resp->status = nlmsvc_unshare_file(host, file, argp);
- 
- 	dprintk("lockd: UNSHARE       status %d\n", ntohl(resp->status));
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
- }
-@@ -399,7 +399,7 @@ nlm4svc_proc_free_all(struct svc_rqst *rqstp, struct nlm_args *argp,
- 		return rpc_success;
- 
- 	nlmsvc_free_host_resources(host);
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	return rpc_success;
- }
- 
-diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index 0df65ec..d27aab1 100644
---- a/fs/lockd/svcproc.c
-+++ b/fs/lockd/svcproc.c
-@@ -80,7 +80,7 @@ nlmsvc_retrieve_args(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	return 0;
- 
- no_locks:
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	if (error)
- 		return error;
- 	return nlm_lck_denied_nolocks;
-@@ -122,7 +122,7 @@ nlmsvc_proc_test(struct svc_rqst *rqstp, struct nlm_args *argp,
- 		dprintk("lockd: TEST          status %d vers %d\n",
- 			ntohl(resp->status), rqstp->rq_vers);
- 
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rc;
- }
-@@ -164,7 +164,7 @@ nlmsvc_proc_lock(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	else
- 		dprintk("lockd: LOCK         status %d\n", ntohl(resp->status));
- 
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rc;
- }
-@@ -194,7 +194,7 @@ nlmsvc_proc_cancel(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	resp->status = cast_status(nlmsvc_cancel_blocked(file, &argp->lock));
- 
- 	dprintk("lockd: CANCEL        status %d\n", ntohl(resp->status));
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
- }
-@@ -227,7 +227,7 @@ nlmsvc_proc_unlock(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	resp->status = cast_status(nlmsvc_unlock(file, &argp->lock));
- 
- 	dprintk("lockd: UNLOCK        status %d\n", ntohl(resp->status));
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
- }
-@@ -261,7 +261,7 @@ void nlmsvc_release_call(struct nlm_rqst *call)
- {
- 	if (!atomic_dec_and_test(&call->a_count))
- 		return;
--	nlm_release_host(call->a_host);
-+	nlmsvc_release_host(call->a_host);
- 	kfree(call);
- }
- 
-@@ -374,7 +374,7 @@ nlmsvc_proc_share(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	resp->status = cast_status(nlmsvc_share_file(host, file, argp));
- 
- 	dprintk("lockd: SHARE         status %d\n", ntohl(resp->status));
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
- }
-@@ -407,7 +407,7 @@ nlmsvc_proc_unshare(struct svc_rqst *rqstp, struct nlm_args *argp,
- 	resp->status = cast_status(nlmsvc_unshare_file(host, file, argp));
- 
- 	dprintk("lockd: UNSHARE       status %d\n", ntohl(resp->status));
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	nlm_release_file(file);
- 	return rpc_success;
- }
-@@ -439,7 +439,7 @@ nlmsvc_proc_free_all(struct svc_rqst *rqstp, struct nlm_args *argp,
- 		return rpc_success;
- 
- 	nlmsvc_free_host_resources(host);
--	nlm_release_host(host);
-+	nlmsvc_release_host(host);
- 	return rpc_success;
- }
- 
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 6c2a0e2..ff9abff 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -227,10 +227,10 @@ void		  nlmclnt_release_host(struct nlm_host *);
- struct nlm_host  *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 					const char *hostname,
- 					const size_t hostname_len);
-+void		  nlmsvc_release_host(struct nlm_host *);
- struct rpc_clnt * nlm_bind_host(struct nlm_host *);
- void		  nlm_rebind_host(struct nlm_host *);
- struct nlm_host * nlm_get_host(struct nlm_host *);
--void		  nlm_release_host(struct nlm_host *);
- void		  nlm_shutdown_hosts(void);
- void		  nlm_host_rebooted(const struct nlm_reboot *);
- 
+ struct rpc_version		nfs_version3 = {
+@@ -2012,7 +2014,7 @@ struct rpc_version		nfs_version3 = {
+ static struct rpc_procinfo	nfs3_acl_procedures[] = {
+ 	[ACLPROC3_GETACL] = {
+ 		.p_proc = ACLPROC3_GETACL,
+-		.p_encode = (kxdrproc_t) nfs3_xdr_getaclargs,
++		.p_encode = (kxdrproc_t)nfs3_xdr_enc_getacl3args,
+ 		.p_decode = (kxdrproc_t) nfs3_xdr_getaclres,
+ 		.p_arglen = ACL3_getaclargs_sz,
+ 		.p_replen = ACL3_getaclres_sz,
+@@ -2021,7 +2023,7 @@ static struct rpc_procinfo	nfs3_acl_procedures[] = {
+ 	},
+ 	[ACLPROC3_SETACL] = {
+ 		.p_proc = ACLPROC3_SETACL,
+-		.p_encode = (kxdrproc_t) nfs3_xdr_setaclargs,
++		.p_encode = (kxdrproc_t)nfs3_xdr_enc_setacl3args,
+ 		.p_decode = (kxdrproc_t) nfs3_xdr_setaclres,
+ 		.p_arglen = ACL3_setaclargs_sz,
+ 		.p_replen = ACL3_setaclres_sz,
 
