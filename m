@@ -1,108 +1,169 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:58651 "EHLO shutemov.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751291Ab0L3LpP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Dec 2010 06:45:15 -0500
-Date: Thu, 30 Dec 2010 13:45:14 +0200
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Rob Landley <rob@landley.net>
-Cc: "Kirill A. Shutemov" <kas@openvz.org>,
-        Rob Landley <rlandley@parallels.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 00/12] make rpc_pipefs be mountable multiple time
-Message-ID: <20101230114514.GA31976@shutemov.name>
-References: <1293628470-28386-1-git-send-email-kas@openvz.org>
- <AANLkTi=AXz21wDeE1vPVD-6cEtj6faXN9x09eHDCsTkB@mail.gmail.com>
- <20101230085139.GA29697@shutemov.name>
- <4D1C4C7C.6050606@parallels.com>
- <20101230094433.GB29697@shutemov.name>
- <4D1C5953.6020200@parallels.com>
- <20101230104416.GA31824@shutemov.name>
- <AANLkTim2QrkSW0HufD5wp=-8ikwydN5SUS+fdWK6JHqb@mail.gmail.com>
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <AANLkTim2QrkSW0HufD5wp=-8ikwydN5SUS+fdWK6JHqb@mail.gmail.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:50394 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755862Ab0LNPF1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 10:05:27 -0500
+Received: by iwn9 with SMTP id 9so869249iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 07:05:26 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/11] lockd: Add nlm_alloc_host()
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 14 Dec 2010 10:05:23 -0500
+Message-ID: <20101214150523.2736.87862.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+References: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Dec 30, 2010 at 05:05:22AM -0600, Rob Landley wrote:
-> On Thu, Dec 30, 2010 at 4:44 AM, Kirill A. Shutemov <kas@openvz.org> wrote:
-> > On Thu, Dec 30, 2010 at 04:05:07AM -0600, Rob Landley wrote:
-> >> On 12/30/2010 03:44 AM, Kirill A. Shutemov wrote:
-> >> >>> If no rpcmount mountoption, no rpc_pipefs was found at
-> >> >>> '/var/lib/nfs/rpc_pipefs' and we are in init's mount namespace, we use
-> >> >>> init_rpc_pipefs.
-> >> >>
-> >> >> It's the "we are in init's mount namespace" that I was wondering about.
-> >> >>
-> >> >> So if I naievely chroot, nfs mount stops working the way it did before I
-> >> >> chrooted unless I do an extra setup step?
-> >> >
-> >> > No. It will work as before since you are still in init's mount namespace.
-> >> > Creating new mount namespace changes rules.
-> >>
-> >> Ah, CLONE_NEWNS and then you need /var/lib/nfs/rpc_pipefs.  Got it.
-> >>
-> >> I'm kind of surprised that the kernel cares about a specific path under
-> >> /var/lib.  (Seems like policy in the kernel somehow.)
-> >
-> > Yep. It's bad, but there is way to overwrite the default.
-> >
-> > Other way is to leave 'rpcmount' mountoption without default.
-> > get_rpc_pipefs(NULL) in init's mount namespace will always return
-> > init_rpc_pipefs, without filesystem lookup.
-> > get_rpc_pipefs(NULL) in non-init's mount namespace will always return
-> > error.
-> >
-> > So you will have to specify 'rpcmount' mountoption for every nfs mount in
-> > container. Hmm, I guess, it may confuse user.
-> >
-> > Or we can try to move the default to userspace. /sbin/mount.nfs?
-> 
-> /proc/sys/kernel/hotplug exists to tell the kernel where to find the hotplug
-> binary.  Once upon a time /sys/hotplug was the default value, and that was
-> there to overwrite it.  (They changed the default to blank (disabled) not due
-> to policy reasons, but due to adding the netlink hotplug notification
-> mechanism and making that the default.)
-> 
-> I bring that up to point out that the general consensus about policy in the
-> kernel seems to be "when you really really can't avoid having any, make a
-> sane default the user can override".
-> 
-> (Of course adding another entry to the crawling horror of /proc may not
-> be an improvement.  But individual overrides at the mount -o level seem
-> like a non-optimal granularity for this...)
+Refactor nlm_host allocation and initialization into a separate
+function.  This will be the common piece of server and client nlm_host
+lookup logic after the nlm_host cache is split.
 
-Do you propose to implement default as sysctl parameter?
+Small change: use kmalloc() instead of kzalloc(), as we're overwriting
+almost all fields in the new nlm_host struct with non-zero values
+immediately after it is allocated.  An added benefit is we now have an
+explicit reference to each field name where it is initialized (for all
+you cscope fans out there).
 
-> >> Can't it just
-> >> check the current process's mount list to see if an instance of
-> >> rpc_pipefs is mounted in the current namespace the way lxc looks for
-> >> cgroups?  Or are there potential performance/scalability issues with that?
-> >
-> > What should we do if we have several rpc_pipefs mounts in the namespace?
-> 
-> You mean more than one inside a given process's view of the filesystem, taking
-> into account chroot like /proc/mounts does?
-> 
-> Before this patch series, there was one instance systemwide.  The patch changed
-> that to look a fixed location in the filesystem relative to the
-> current chroot.  Either
-> way, there was one instance available to a given process doing an nfs mount.
-> 
-> What's the use case for having more than one visible to a given process?
-> (NUMA scalability?  Some sort of multipath/VPN routing context?)
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-It's no so obvious for me why we should restrict it. ;)
+ fs/lockd/host.c |  110 +++++++++++++++++++++++++++++++++----------------------
+ 1 files changed, 65 insertions(+), 45 deletions(-)
 
-Currently, there is no association between rpc_pipefs and mount namespace,
-so I don't see simple way to restrict number of rpc_pipefs per mount
-namespace. Associating mount namespace with rpc_pipefs is not a good idea,
-I think.
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 2dbf139..1911f34 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -100,6 +100,68 @@ static unsigned int nlm_hash_address(const struct sockaddr *sap)
+ }
+ 
+ /*
++ * Allocate and initialize an nlm_host.  Common to both client and server.
++ */
++static struct nlm_host *nlm_alloc_host(struct nlm_lookup_host_info *ni,
++				       struct nsm_handle *nsm)
++{
++	struct nlm_host *host = NULL;
++	unsigned long now = jiffies;
++
++	if (nsm != NULL)
++		atomic_inc(&nsm->sm_count);
++	else {
++		host = NULL;
++		nsm = nsm_get_handle(ni->sap, ni->salen,
++					ni->hostname, ni->hostname_len);
++		if (unlikely(nsm == NULL)) {
++			dprintk("lockd: %s failed; no nsm handle\n",
++				__func__);
++			goto out;
++		}
++	}
++
++	host = kmalloc(sizeof(*host), GFP_KERNEL);
++	if (unlikely(host == NULL)) {
++		dprintk("lockd: %s failed; no memory\n", __func__);
++		nsm_release(nsm);
++		goto out;
++	}
++
++	memcpy(nlm_addr(host), ni->sap, ni->salen);
++	host->h_addrlen    = ni->salen;
++	rpc_set_port(nlm_addr(host), 0);
++	host->h_srcaddrlen = 0;
++
++	host->h_rpcclnt    = NULL;
++	host->h_name	   = nsm->sm_name;
++	host->h_version    = ni->version;
++	host->h_proto      = ni->protocol;
++	host->h_reclaiming = 0;
++	host->h_server     = ni->server;
++	host->h_noresvport = ni->noresvport;
++	host->h_inuse      = 0;
++	init_waitqueue_head(&host->h_gracewait);
++	init_rwsem(&host->h_rwsem);
++	host->h_state      = 0;
++	host->h_nsmstate   = 0;
++	host->h_pidcount   = 0;
++	atomic_set(&host->h_count, 1);
++	mutex_init(&host->h_mutex);
++	host->h_nextrebind = now + NLM_HOST_REBIND;
++	host->h_expires    = now + NLM_HOST_EXPIRE;
++	INIT_LIST_HEAD(&host->h_lockowners);
++	spin_lock_init(&host->h_lock);
++	INIT_LIST_HEAD(&host->h_granted);
++	INIT_LIST_HEAD(&host->h_reclaim);
++	host->h_nsmhandle  = nsm;
++	host->h_addrbuf    = nsm->sm_addrbuf;
++
++out:
++	return host;
++}
++
++/*
+  * Common host lookup routine for server & client
+  */
+ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
+@@ -150,55 +212,13 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
+ 		goto out;
+ 	}
+ 
+-	/*
+-	 * The host wasn't in our hash table.  If we don't
+-	 * have an NSM handle for it yet, create one.
+-	 */
+-	if (nsm)
+-		atomic_inc(&nsm->sm_count);
+-	else {
+-		host = NULL;
+-		nsm = nsm_get_handle(ni->sap, ni->salen,
+-					ni->hostname, ni->hostname_len);
+-		if (!nsm) {
+-			dprintk("lockd: nlm_lookup_host failed; "
+-				"no nsm handle\n");
+-			goto out;
+-		}
+-	}
+-
+-	host = kzalloc(sizeof(*host), GFP_KERNEL);
+-	if (!host) {
+-		nsm_release(nsm);
+-		dprintk("lockd: nlm_lookup_host failed; no memory\n");
++	host = nlm_alloc_host(ni, nsm);
++	if (unlikely(host == NULL))
+ 		goto out;
+-	}
+-	host->h_name	   = nsm->sm_name;
+-	host->h_addrbuf    = nsm->sm_addrbuf;
+-	memcpy(nlm_addr(host), ni->sap, ni->salen);
+-	host->h_addrlen = ni->salen;
+-	rpc_set_port(nlm_addr(host), 0);
++
+ 	memcpy(nlm_srcaddr(host), ni->src_sap, ni->src_len);
+ 	host->h_srcaddrlen = ni->src_len;
+-	host->h_version    = ni->version;
+-	host->h_proto      = ni->protocol;
+-	host->h_rpcclnt    = NULL;
+-	mutex_init(&host->h_mutex);
+-	host->h_nextrebind = jiffies + NLM_HOST_REBIND;
+-	host->h_expires    = jiffies + NLM_HOST_EXPIRE;
+-	atomic_set(&host->h_count, 1);
+-	init_waitqueue_head(&host->h_gracewait);
+-	init_rwsem(&host->h_rwsem);
+-	host->h_state      = 0;			/* pseudo NSM state */
+-	host->h_nsmstate   = 0;			/* real NSM state */
+-	host->h_nsmhandle  = nsm;
+-	host->h_server	   = ni->server;
+-	host->h_noresvport = ni->noresvport;
+ 	hlist_add_head(&host->h_hash, chain);
+-	INIT_LIST_HEAD(&host->h_lockowners);
+-	spin_lock_init(&host->h_lock);
+-	INIT_LIST_HEAD(&host->h_granted);
+-	INIT_LIST_HEAD(&host->h_reclaim);
+ 
+ 	nrhosts++;
+ 
 
--- 
- Kirill A. Shutemov
