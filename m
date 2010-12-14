@@ -1,119 +1,240 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.isti.cnr.it ([194.119.192.4]:4316 "EHLO mx2.isti.cnr.it"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750709Ab0LFMVO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Dec 2010 07:21:14 -0500
-Received: from SCRIPT-SPFWL-DAEMON.mx.isti.cnr.it by mx.isti.cnr.it
- (PMDF V6.5 #31825) id <01NV3O6KBVIOLS8X2Z@mx.isti.cnr.it> for
- linux-nfs@vger.kernel.org; Mon, 06 Dec 2010 13:19:58 +0100 (MET)
-Received: from conversionlocal.isti.cnr.it by mx.isti.cnr.it (PMDF V6.5 #31825)
- id <01NV3O6JBJIOLVX0OJ@mx.isti.cnr.it> for linux-nfs@vger.kernel.org; Mon,
- 06 Dec 2010 13:19:55 +0100 (MET)
-Date: Mon, 06 Dec 2010 13:20:02 +0100
-From: Spelic <spelic@shiftmail.org>
-Subject: NFS corruption on ENOSPC (was: Re: Bugs in mkfs.xfs, device mapper,
- xfs, and /dev/ram)
-In-reply-to: <20101206040940.GA16103@dastard>
-To: Dave Chinner <david@fromorbit.com>
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        xfs@oss.sgi.com, linux-lvm@redhat.com, linux-nfs@vger.kernel.org
-Message-id: <4CFCD4F2.10300@shiftmail.org>
-Content-type: text/plain; format=flowed; charset=ISO-8859-1
-References: <4CF7A539.1050206@shiftmail.org> <4CF7A9CF.2020904@shiftmail.org>
- <20101202230743.GZ16922@dastard> <4CF8F9BE.6000604@shiftmail.org>
- <20101206040940.GA16103@dastard>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:45794 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756683Ab0LNPGG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 10:06:06 -0500
+Received: by iwn9 with SMTP id 9so869885iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 07:06:05 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 06/11] lockd: Create client-side nlm_host cache
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 14 Dec 2010 10:05:52 -0500
+Message-ID: <20101214150552.2736.86401.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+References: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 12/06/2010 05:09 AM, Dave Chinner wrote:
->> [Files become sparse at nfs-server-side upon hitting ENOSPC if NFS client uses local writeback caching]
->>
->>
->> It's nice that the NFS server does local writeback caching but it
->> should also cache the filesystem's free space (and check it
->> periodically, since nfs-server is presumably not the only process
->> writing in that filesystem) so that it doesn't accept more data than
->> it can really write. Alternatively, when free space drops below 1GB
->> (or a reasonable size based on network speed), nfs-server should
->> turn off filesystem writeback caching.
->>      
-> This isn't a NFS server problem, or one that canbe worked around at
-> the server. it's a NFS _client_ problem in that it does not get
-> synchronous ENOSPC errors when using writeback caching. There is no
-> way for the NFS client to know the server is near ENOSPC conditions
-> prior to writing the data to the server as clients operate
-> independently.
->
-> If you really want your NFS clients to behave correctly when the
-> server goes ENOSPC, turn off writeback caching at the client side,
-> not the server (i.e. use sync mounts on the client side).
-> Write performance will suck, but if you want sane ENOSPC behaviour...
->
->    
+NFS clients don't need the garbage collection processing that is
+performed on nlm_host structures.  The client picks up an nlm_host at
+mount time and holds a reference to it until the file system is
+unmounted.
 
-[adding NFS ML in cc]
+Servers, on the other hand, don't have a precise way to tell when an
+nlm_host is no longer being used, so zero refcount nlm_host entries
+are left to expire in the cache after a time.
 
-Thank you for your very clear explanation.
+Basically there's nothing holding a reference to an nlm_host between
+individual server-side NLM requests, but we can't afford the expense
+of recreating them for every new NLM request from a client.  The
+nlm_host cache adds some lifetime hysteresis to entries in the cache
+so the next time a particular nlm_host is needed, it's likely to be
+discovered by a lookup rather than created from whole cloth.
 
-Going without writeback cache is a problem (write performance sucks as 
-you say), but guaranteeing to never reach ENOSPC also is hardly 
-feasible, especially if humans are logged at client side and they are 
-doing "whatever they want".
+With the new implementation, client nlm_host cache items are no longer
+garbage collected, and are destroyed directly by a new release
+function specialized for client entries, nlmclnt_release_host().  They
+are cached in their own data structure, and have their own lookup
+logic, simplified and specialized for client nlm_host entries.
 
-I would suggest that either be the NFS client to do polling to see if 
-it's near an ENOSPC and if yes disable writeback caching, or be the 
-server to do the polling and if it finds out it's near-ENOSPC condition 
-it sends a specific message to clients to warn them so that they can 
-disable caching.
+However, the client nlm_host cache still shares reboot recovery logic
+with the server nlm_host cache.  The NSM "peer rebooted" downcall for
+clients and servers still come through the same RPC call.  This is a
+legacy formal API that would be difficult to alter, and besides, the
+user space NSM implementation can't tell the difference between peers
+that are clients or servers.
 
-Performed at client side wouldn't change the NFS protocol and can be 
-good enough if one can specify how often freespace should be polled and 
-what is the freespace threshold. Or with just one value: specify what is 
-the max speed at which server disk can fill (next polling period can be 
-inferred from current free space), and maybe also specify a minimum 
-polling period (just in case).
+For this reason, the client cache continues to share the
+nlm_host_mutex (and reboot recovery logic) with the server cache.
 
-Regarding the last part of the email, perhaps I was not clear:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
+ fs/lockd/clntlock.c         |    4 +-
+ fs/lockd/clntproc.c         |    6 ++-
+ fs/lockd/host.c             |   81 ++++++++++++++++++++++++++++++++++++++-----
+ include/linux/lockd/lockd.h |    1 +
+ 4 files changed, 78 insertions(+), 14 deletions(-)
 
-> .....
->    
->> Holes in a random file!
->> This is data corruption, and nobody is notified of this data
->> corruption: no error at client side or server side!
->> Is it good semantics? How could client get notified of this? Some
->> kind of fsync maybe?
->>      
-> Use wireshark to determine if the server sends an ENOSPC to the
-> client when the first background write fails. I bet it does and that
-> your dd write failed with ENOSPC, too. Something stopped it writing
-> at 1.9GB....
->    
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 25509eb..8d4ea83 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -79,7 +79,7 @@ EXPORT_SYMBOL_GPL(nlmclnt_init);
+  */
+ void nlmclnt_done(struct nlm_host *host)
+ {
+-	nlm_release_host(host);
++	nlmclnt_release_host(host);
+ 	lockd_down();
+ }
+ EXPORT_SYMBOL_GPL(nlmclnt_done);
+@@ -273,7 +273,7 @@ restart:
+ 	spin_unlock(&nlm_blocked_lock);
+ 
+ 	/* Release host handle after use */
+-	nlm_release_host(host);
++	nlmclnt_release_host(host);
+ 	lockd_down();
+ 	return 0;
+ }
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index fbc6617..adb45ec 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -58,7 +58,7 @@ static void nlm_put_lockowner(struct nlm_lockowner *lockowner)
+ 		return;
+ 	list_del(&lockowner->list);
+ 	spin_unlock(&lockowner->host->h_lock);
+-	nlm_release_host(lockowner->host);
++	nlmclnt_release_host(lockowner->host);
+ 	kfree(lockowner);
+ }
+ 
+@@ -207,7 +207,7 @@ struct nlm_rqst *nlm_alloc_call(struct nlm_host *host)
+ 		printk("nlm_alloc_call: failed, waiting for memory\n");
+ 		schedule_timeout_interruptible(5*HZ);
+ 	}
+-	nlm_release_host(host);
++	nlmclnt_release_host(host);
+ 	return NULL;
+ }
+ 
+@@ -215,7 +215,7 @@ void nlmclnt_release_call(struct nlm_rqst *call)
+ {
+ 	if (!atomic_dec_and_test(&call->a_count))
+ 		return;
+-	nlm_release_host(call->a_host);
++	nlmclnt_release_host(call->a_host);
+ 	nlmclnt_release_lockargs(call);
+ 	kfree(call);
+ }
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index e58e142..c6942fb 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -26,6 +26,7 @@
+ #define NLM_HOST_COLLECT	(120 * HZ)
+ 
+ static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
++static struct hlist_head	nlm_client_hosts[NLM_HOST_NRHASH];
+ 
+ #define for_each_host(host, pos, chain, table) \
+ 	for ((chain) = (table); \
+@@ -288,12 +289,76 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
+ 		.hostname_len	= strlen(hostname),
+ 		.noresvport	= noresvport,
+ 	};
++	struct hlist_head *chain;
++	struct hlist_node *pos;
++	struct nlm_host	*host;
++	struct nsm_handle *nsm = NULL;
+ 
+ 	dprintk("lockd: %s(host='%s', vers=%u, proto=%s)\n", __func__,
+ 			(hostname ? hostname : "<none>"), version,
+ 			(protocol == IPPROTO_UDP ? "udp" : "tcp"));
+ 
+-	return nlm_lookup_host(&ni);
++	mutex_lock(&nlm_host_mutex);
++
++	chain = &nlm_client_hosts[nlm_hash_address(sap)];
++	hlist_for_each_entry(host, pos, chain, h_hash) {
++		if (!rpc_cmp_addr(nlm_addr(host), sap))
++			continue;
++
++		/* Same address. Share an NSM handle if we already have one */
++		if (nsm == NULL)
++			nsm = host->h_nsmhandle;
++
++		if (host->h_proto != protocol)
++			continue;
++		if (host->h_version != version)
++			continue;
++
++		nlm_get_host(host);
++		dprintk("lockd: %s found host %s (%s)\n", __func__,
++			host->h_name, host->h_addrbuf);
++		goto out;
++	}
++
++	host = nlm_alloc_host(&ni, nsm);
++	if (unlikely(host == NULL))
++		goto out;
++
++	hlist_add_head(&host->h_hash, chain);
++	nrhosts++;
++
++	dprintk("lockd: %s created host %s (%s)\n", __func__,
++		host->h_name, host->h_addrbuf);
++
++out:
++	mutex_unlock(&nlm_host_mutex);
++	return host;
++}
++
++/**
++ * nlmclnt_release_host - release client nlm_host
++ * @host: nlm_host to release
++ *
++ */
++void nlmclnt_release_host(struct nlm_host *host)
++{
++	if (host == NULL)
++		return;
++
++	dprintk("lockd: release client host %s\n", host->h_name);
++
++	BUG_ON(atomic_read(&host->h_count) < 0);
++	BUG_ON(host->h_server);
++
++	if (atomic_dec_and_test(&host->h_count)) {
++		BUG_ON(!list_empty(&host->h_lockowners));
++		BUG_ON(!list_empty(&host->h_granted));
++		BUG_ON(!list_empty(&host->h_reclaim));
++
++		mutex_lock(&nlm_host_mutex);
++		nlm_destroy_host_locked(host);
++		mutex_unlock(&nlm_host_mutex);
++	}
+ }
+ 
+ /**
+@@ -515,16 +580,14 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
+ 	 * To avoid processing a host several times, we match the nsmstate.
+ 	 */
+ 	while ((host = next_host_state(nlm_hosts, nsm, info)) != NULL) {
+-		if (host->h_server) {
+-			/* We're server for this guy, just ditch
+-			 * all the locks he held. */
+-			nlmsvc_free_host_resources(host);
+-		} else {
+-			/* He's the server, initiate lock recovery. */
+-			nlmclnt_recovery(host);
+-		}
++		nlmsvc_free_host_resources(host);
+ 		nlm_release_host(host);
+ 	}
++	while ((host = next_host_state(nlm_client_hosts, nsm, info)) != NULL) {
++		nlmclnt_recovery(host);
++		nlmclnt_release_host(host);
++	}
++
+ 	nsm_release(nsm);
+ }
+ 
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index a32ba62..6c2a0e2 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -223,6 +223,7 @@ struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
+ 					const u32 version,
+ 					const char *hostname,
+ 					int noresvport);
++void		  nlmclnt_release_host(struct nlm_host *);
+ struct nlm_host  *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 					const char *hostname,
+ 					const size_t hostname_len);
 
-No, in that case I had written 15x100MB which was more than the 
-available space but less than available+writeback_cache.
-So "cat" ended by itself and never got an ENOSPC error but data never 
-reached the disk at the other side.
-
-However today I found that by using fsync, the problem is fortunately 
-detected:
-
-# time cat randfile{001..015} | pv -b | dd conv=fsync 
-of=/mnt/nfsram/randfile
-1.46GB
-dd: fsync failed for `/mnt/nfsram/randfile': Input/output error
-3072000+0 records in
-3072000+0 records out
-1572864000 bytes (1.6 GB) copied, 20.9101 s, 75.2 MB/s
-
-real    0m21.364s
-user    0m0.470s
-sys     0m11.440s
-
-
-so ok I understand that processes needing guarantees on written data 
-should use fsync/fdatasync (which is good practice also for a local 
-filesystem actually...)
-
-Thank you
