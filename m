@@ -1,75 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:11394 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:40200 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753328Ab0LNWDE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Dec 2010 17:03:04 -0500
-Received: from localhost.localdomain (vpn2ntap-71744.hq.netapp.com [10.58.57.236])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBEM32od010255
-	for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 14:03:03 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] pnfs-submit: wave2: remove forgotten layoutreturn struct definitions
-Date: Tue, 14 Dec 2010 17:02:58 -0500
-Message-Id: <1292364180-28512-2-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1292364180-28512-1-git-send-email-iisaman@netapp.com>
-References: <1292364180-28512-1-git-send-email-iisaman@netapp.com>
+	id S1751375Ab0LNVo7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Dec 2010 16:44:59 -0500
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <807D3371-AA86-4CEA-B6D0-BD5285439FB6@netapp.com>
+From: Andy Adamson <andros@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20101214181909.GA22950@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: [PATCH_V3 1/7] NFS dont free shared socket on backchannel put xprt
+Date: Tue, 14 Dec 2010 16:44:58 -0500
+References: <1292271585-3038-1-git-send-email-andros@netapp.com> <1292271585-3038-2-git-send-email-andros@netapp.com> <20101214181909.GA22950@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- include/linux/nfs4.h    |    1 -
- include/linux/nfs_xdr.h |   23 -----------------------
- 2 files changed, 0 insertions(+), 24 deletions(-)
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 55511e8..8ca7700 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -557,7 +557,6 @@ enum {
- 	NFSPROC4_CLNT_RECLAIM_COMPLETE,
- 	NFSPROC4_CLNT_LAYOUTGET,
- 	NFSPROC4_CLNT_LAYOUTCOMMIT,
--	NFSPROC4_CLNT_LAYOUTRETURN,
- 	NFSPROC4_CLNT_GETDEVICEINFO,
- 	NFSPROC4_CLNT_PNFS_WRITE,
- 	NFSPROC4_CLNT_PNFS_COMMIT,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index a651574..9d847ac 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -258,29 +258,6 @@ struct nfs4_layoutcommit_data {
- 	int status;
- };
- 
--struct nfs4_layoutreturn_args {
--	__u32   reclaim;
--	__u32   layout_type;
--	__u32   return_type;
--	struct pnfs_layout_range range;
--	struct inode *inode;
--	struct nfs4_sequence_args seq_args;
--};
--
--struct nfs4_layoutreturn_res {
--	struct nfs4_sequence_res seq_res;
--	u32 lrs_present;
--	nfs4_stateid stateid;
--};
--
--struct nfs4_layoutreturn {
--	struct nfs4_layoutreturn_args args;
--	struct nfs4_layoutreturn_res res;
--	struct rpc_cred *cred;
--	struct nfs_client *clp;
--	int rpc_status;
--};
--
- struct nfs4_getdeviceinfo_args {
- 	struct pnfs_device *pdev;
- 	struct nfs4_sequence_args seq_args;
--- 
-1.7.2.1
+On Dec 14, 2010, at 1:19 PM, J. Bruce Fields wrote:
+
+> On Mon, Dec 13, 2010 at 03:19:39PM -0500, Andy Adamson wrote:
+>> Fixes this bug:
+>> fedora-64 kernel: Invoking bc_svc_procass()
+>> fedora-64 kernel: nfs_callback_authenticate SVC_DROP
+>> fedora-64 kernel: BUG: unable to handle kernel NULL pointer  
+>> dereference at 0000000000000018 IP: [<ffffffffa0156140>]  
+>> svc_sock_free+0x32/0x56 [sunrpc]
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfs/callback.c               |    3 +++
+>> include/linux/sunrpc/svc_xprt.h |    1 +
+>> net/sunrpc/svc_xprt.c           |    3 ++-
+>> 3 files changed, 6 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+>> index 93a8b3b..023a9eb 100644
+>> --- a/fs/nfs/callback.c
+>> +++ b/fs/nfs/callback.c
+>> @@ -193,6 +193,9 @@ nfs41_callback_up(struct svc_serv *serv, struct  
+>> rpc_xprt *xprt)
+>> 	serv->bc_xprt = bc_xprt;
+>> 	xprt->bc_serv = serv;
+>>
+>> +	/* socket is shared with the fore channel */
+>> +	set_bit(XPT_SHARE_SOCK, &bc_xprt->xpt_flags);
+>> +
+>> 	INIT_LIST_HEAD(&serv->sv_cb_list);
+>> 	spin_lock_init(&serv->sv_cb_lock);
+>> 	init_waitqueue_head(&serv->sv_cb_waitq);
+>> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/ 
+>> svc_xprt.h
+>> index aea0d43..600c669 100644
+>> --- a/include/linux/sunrpc/svc_xprt.h
+>> +++ b/include/linux/sunrpc/svc_xprt.h
+>> @@ -62,6 +62,7 @@ struct svc_xprt {
+>> #define	XPT_DETACHED	10		/* detached from tempsocks list */
+>> #define XPT_LISTENER	11		/* listening endpoint */
+>> #define XPT_CACHE_AUTH	12		/* cache auth info */
+>> +#define XPT_SHARE_SOCK	13		/* fore and back channel share socket */
+>>
+>> 	struct svc_pool		*xpt_pool;	/* current pool iff queued */
+>> 	struct svc_serv		*xpt_server;	/* service for transport */
+>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+>> index ea2ff78..8c4d9ad 100644
+>> --- a/net/sunrpc/svc_xprt.c
+>> +++ b/net/sunrpc/svc_xprt.c
+>> @@ -128,7 +128,8 @@ static void svc_xprt_free(struct kref *kref)
+>> 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
+>> 		svcauth_unix_info_release(xprt);
+>> 	put_net(xprt->xpt_net);
+>> -	xprt->xpt_ops->xpo_free(xprt);
+>> +	if (!test_bit(XPT_SHARE_SOCK, &xprt->xpt_flags))
+>> +		xprt->xpt_ops->xpo_free(xprt);
+>
+> So when does the svc_xprt get freed if not here?
+
+svc_sock_destroy frees the bc_xprt, called by svc_destroy on the serv- 
+ >bc_xprt.
+
+> And why is it OK to do
+> the put_net() and module_put() but not the xpo_free()?
+
+svc_sock_create()  called only by nfs41_callback_up creates the  
+bc_xprt. It calls svc_xprt_init which calls get_net(), so put_net is  
+needed.
+
+Hmmm. It looks like the module_put is also not needed - the matching  
+module_get is in svc_create_xprt() which is not called for the NFSv4.1  
+callback service. (but is called for the NFSv4.0 callback service ...  
+sheese).
+
+I'll move the module_put so it is also not called when the  
+XPT_SHARE_SOCK flag is set.
+
+>
+> Something feels wrong here....
+
+Yeah - how about naming the server back channel xprt (bc_xprt) the  
+same as the client back channel xprt (bc_xprt)!!! How confusing is  
+THAT! :)
+
+Thanks for the review.
+
+-->Andy
+
+>
+> --b.
+>
+>> 	module_put(owner);
+>> }
+>>
+>> -- 
+>> 1.6.6
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux- 
+>> nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"  
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
