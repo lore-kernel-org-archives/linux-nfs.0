@@ -1,366 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:52587 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752397Ab0LVVuu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Dec 2010 16:50:50 -0500
-Message-ID: <4D1272B7.2020806@netapp.com>
-Date: Wed, 22 Dec 2010 16:50:47 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH 3/5] NFS: Add secinfo procedure
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cn.fujitsu.com ([222.73.24.84]:49326 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1757163Ab0LNIyp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Dec 2010 03:54:45 -0500
+Message-ID: <4D0731C1.5090100@cn.fujitsu.com>
+Date: Tue, 14 Dec 2010 16:58:41 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: NFSv3 list <linux-nfs@vger.kernel.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>
+Subject: kernel panic when mount NFSv4
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hi,
 
-This patch adds the nfs4 operation secinfo as a
-valid nfs rpc operation.
+When testing NFSv4 at RHEL6 with kernel 2.6.32, I got a kernel panic
+at NFS client's __rpc_create_common function.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs3proc.c       |    1 +
- fs/nfs/nfs4proc.c       |   35 +++++++++++++
- fs/nfs/nfs4xdr.c        |  129 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/proc.c           |    1 +
- include/linux/nfs4.h    |    1 +
- include/linux/nfs_xdr.h |   34 ++++++++++++
- 6 files changed, 201 insertions(+), 0 deletions(-)
+The panic place is:
+  rpc_mkpipe
+    __rpc_lookup_create()          <=== find pipefile *idmap*
+    __rpc_mkpipe()                 <=== pipefile is *idmap*
+      __rpc_create_common()
+       ******  BUG_ON(!d_unhashed(dentry)); ******    *panic*
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 2b0e7c8..1237e04 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -885,4 +885,5 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.lock		= nfs3_proc_lock,
- 	.clear_acl_cache = nfs3_forget_cached_acls,
- 	.close_context	= nfs_close_context,
-+	.secinfo	= NULL,
- };
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ccd6adb..37a676f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4500,6 +4500,40 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 	return status;
- }
- 
-+static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
-+{
-+	int status;
-+	struct nfs4_secinfo_arg args = {
-+		.dir_fh = NFS_FH(dir),
-+		.name   = name,
-+	};
-+	struct nfs4_secinfo_res res = {
-+		.flavors     = flavors,
-+	};
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SECINFO],
-+		.rpc_argp = &args,
-+		.rpc_resp = &res,
-+	};
-+
-+	dprintk("NFS call  secinfo %s\n", name->name);
-+	status = nfs4_call_sync(NFS_SERVER(dir)->client, NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
-+	dprintk("NFS reply  secinfo: %d\n", status);
-+	return status;
-+}
-+
-+int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
-+{
-+	struct nfs4_exception exception = { };
-+	int err;
-+	do {
-+		err = nfs4_handle_exception(NFS_SERVER(dir),
-+				_nfs4_proc_secinfo(dir, name, flavors),
-+				&exception);
-+	} while (exception.retry);
-+	return err;
-+}
-+
- #ifdef CONFIG_NFS_V4_1
- /*
-  * nfs4_proc_exchange_id()
-@@ -5565,6 +5599,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.clear_acl_cache = nfs4_zap_acl_attr,
- 	.close_context  = nfs4_close_context,
- 	.open_context	= nfs4_atomic_open,
-+	.secinfo	= nfs4_proc_secinfo,
- };
- 
- /*
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index f3f9915..2d32b3f 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -46,6 +46,7 @@
- #include <linux/kdev_t.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/msg_prot.h>
-+#include <linux/sunrpc/gss_api.h>
- #include <linux/nfs.h>
- #include <linux/nfs4.h>
- #include <linux/nfs_fs.h>
-@@ -253,6 +254,8 @@ static int nfs4_stat_to_errno(int);
- 				(encode_getattr_maxsz)
- #define decode_fs_locations_maxsz \
- 				(0)
-+#define encode_secinfo_maxsz	(op_encode_hdr_maxsz + nfs4_name_maxsz)
-+#define decode_secinfo_maxsz	(op_decode_hdr_maxsz + 4 + (NFS_MAX_SECFLAVORS * (16 + GSS_OID_MAX_LEN)))
- 
- #if defined(CONFIG_NFS_V4_1)
- #define NFS4_MAX_MACHINE_NAME_LEN (64)
-@@ -676,6 +679,14 @@ static int nfs4_stat_to_errno(int);
- 				 decode_putfh_maxsz + \
- 				 decode_lookup_maxsz + \
- 				 decode_fs_locations_maxsz)
-+#define NFS4_enc_secinfo_sz 	(compound_encode_hdr_maxsz + \
-+				encode_sequence_maxsz + \
-+				encode_putfh_maxsz + \
-+				encode_secinfo_maxsz)
-+#define NFS4_dec_secinfo_sz	(compound_decode_hdr_maxsz + \
-+				decode_sequence_maxsz + \
-+				decode_putfh_maxsz + \
-+				decode_secinfo_maxsz)
- #if defined(CONFIG_NFS_V4_1)
- #define NFS4_enc_exchange_id_sz \
- 				(compound_encode_hdr_maxsz + \
-@@ -1614,6 +1625,18 @@ static void encode_delegreturn(struct xdr_stream *xdr, const nfs4_stateid *state
- 	hdr->replen += decode_delegreturn_maxsz;
- }
- 
-+static void encode_secinfo(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
-+{
-+	int len = name->len;
-+	__be32 *p;
-+
-+	p = reserve_space(xdr, 8 + len);
-+	*p++ = cpu_to_be32(OP_SECINFO);
-+	xdr_encode_opaque(p, name->name, len);
-+	hdr->nops++;
-+	hdr->replen += decode_secinfo_maxsz;
-+}
-+
- #if defined(CONFIG_NFS_V4_1)
- /* NFSv4.1 operations */
- static void encode_exchange_id(struct xdr_stream *xdr,
-@@ -2604,6 +2627,26 @@ static void nfs4_xdr_enc_layoutget(struct rpc_rqst *req,
- }
- #endif /* CONFIG_NFS_V4_1 */
- 
-+/*
-+ * Encode SECINFO request
-+ */
-+static int nfs4_xdr_enc_secinfo(struct rpc_rqst *req, uint32_t *p,
-+				struct nfs4_secinfo_arg *args)
-+{
-+	struct xdr_stream xdr;
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
-+
-+	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
-+	encode_compound_hdr(&xdr, req, &hdr);
-+	encode_sequence(&xdr, &args->seq_args, &hdr);
-+	encode_putfh(&xdr, args->dir_fh, &hdr);
-+	encode_secinfo(&xdr, args->name, &hdr);
-+	encode_nops(&hdr);
-+	return 0;
-+}
-+
- static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
- {
- 	dprintk("nfs: %s: prematurely hit end of receive buffer. "
-@@ -4678,6 +4721,63 @@ static int decode_delegreturn(struct xdr_stream *xdr)
- 	return decode_op_hdr(xdr, OP_DELEGRETURN);
- }
- 
-+static int decode_secinfo_gss(struct xdr_stream *xdr, struct nfs4_secinfo_flavor *flavor)
-+{
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+	flavor->gss.sec_oid4.len = be32_to_cpup(p);
-+
-+	p = xdr_inline_decode(xdr, flavor->gss.sec_oid4.len + 8);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+
-+	memcpy(flavor->gss.sec_oid4.data, p, flavor->gss.sec_oid4.len);
-+	p += XDR_QUADLEN(flavor->gss.sec_oid4.len);
-+	flavor->gss.qop4 = be32_to_cpup(p++);
-+	flavor->gss.service = be32_to_cpup(p);
-+
-+	return 0;
-+
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+}
-+
-+static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
-+{
-+	struct nfs4_secinfo_flavor *sec_flavor;
-+	int status;
-+	__be32 *p;
-+	int i;
-+
-+	status = decode_op_hdr(xdr, OP_SECINFO);
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+	res->flavors->num_flavors = be32_to_cpup(p);
-+
-+	for (i = 0; i < res->flavors->num_flavors; i++) {
-+		sec_flavor = &res->flavors->flavors[i];
-+
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p))
-+			goto out_overflow;
-+		sec_flavor->flavor = be32_to_cpup(p);
-+
-+		if (sec_flavor->flavor == RPC_AUTH_GSS)
-+			decode_secinfo_gss(xdr, sec_flavor);
-+	}
-+
-+	return 0;
-+
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+}
-+
- #if defined(CONFIG_NFS_V4_1)
- static int decode_exchange_id(struct xdr_stream *xdr,
- 			      struct nfs41_exchange_id_res *res)
-@@ -6065,6 +6165,34 @@ out:
- }
- #endif /* CONFIG_NFS_V4_1 */
- 
-+/*
-+ * Decode SECINFO response
-+ */
-+static int nfs4_xdr_dec_secinfo(struct rpc_rqst *rqstp, uint32_t *p,
-+				struct nfs4_secinfo_res *res)
-+{
-+	struct xdr_stream xdr;
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
-+	status = decode_compound_hdr(&xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(&xdr, &res->seq_res, rqstp);
-+	if (status)
-+		goto out;
-+	status = decode_putfh(&xdr);
-+	if (status)
-+		goto out;
-+	status = decode_secinfo(&xdr, res);
-+	if (status)
-+		goto out;
-+out:
-+	return status;
-+	return NFS_OK;
-+}
-+
- /**
-  * nfs4_decode_dirent - Decode a single NFSv4 directory entry stored in
-  *                      the local page cache.
-@@ -6266,6 +6394,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
- 	PROC(SETACL,		enc_setacl,		dec_setacl),
- 	PROC(FS_LOCATIONS,	enc_fs_locations,	dec_fs_locations),
- 	PROC(RELEASE_LOCKOWNER,	enc_release_lockowner,	dec_release_lockowner),
-+	PROC(SECINFO,		enc_secinfo,		dec_secinfo),
- #if defined(CONFIG_NFS_V4_1)
- 	PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
- 	PROC(CREATE_SESSION,	enc_create_session,	dec_create_session),
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 504dd25..36f482c 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -740,4 +740,5 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.lock		= nfs_proc_lock,
- 	.lock_check_bounds = nfs_lock_check_bounds,
- 	.close_context	= nfs_close_context,
-+	.secinfo	= NULL,
- };
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 4925b22..b4904b2 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -540,6 +540,7 @@ enum {
- 	NFSPROC4_CLNT_SETACL,
- 	NFSPROC4_CLNT_FS_LOCATIONS,
- 	NFSPROC4_CLNT_RELEASE_LOCKOWNER,
-+	NFSPROC4_CLNT_SECINFO,
- 
- 	/* nfs41 */
- 	NFSPROC4_CLNT_EXCHANGE_ID,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 8630e66..6ad438c 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -3,6 +3,7 @@
- 
- #include <linux/nfsacl.h>
- #include <linux/nfs3.h>
-+#include <linux/sunrpc/gss_api.h>
- 
- /*
-  * To change the maximum rsize and wsize supported by the NFS client, adjust
-@@ -935,6 +936,38 @@ struct nfs4_fs_locations_res {
- 	struct nfs4_sequence_res	seq_res;
- };
- 
-+struct nfs4_secinfo_oid {
-+	unsigned int len;
-+	char data[GSS_OID_MAX_LEN];
-+};
-+
-+struct nfs4_secinfo_gss {
-+	struct nfs4_secinfo_oid sec_oid4;
-+	unsigned int qop4;
-+	unsigned int service;
-+};
-+
-+struct nfs4_secinfo_flavor {
-+	unsigned int 		flavor;
-+	struct nfs4_secinfo_gss	gss;
-+};
-+
-+struct nfs4_secinfo_flavors {
-+	unsigned int num_flavors;
-+	struct nfs4_secinfo_flavor flavors[0];
-+};
-+
-+struct nfs4_secinfo_arg {
-+	const struct nfs_fh		*dir_fh;
-+	const struct qstr		*name;
-+	struct nfs4_sequence_args	seq_args;
-+};
-+
-+struct nfs4_secinfo_res {
-+	struct nfs4_secinfo_flavors	*flavors;
-+	struct nfs4_sequence_res	seq_res;
-+};
-+
- #endif /* CONFIG_NFS_V4 */
- 
- struct nfstime4 {
-@@ -1105,6 +1138,7 @@ struct nfs_rpc_ops {
- 				struct nfs_open_context *ctx,
- 				int open_flags,
- 				struct iattr *iattr);
-+	int	(*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
- };
- 
- /*
--- 
-1.7.3.4
+It means that the dentry's d_flags have be set DCACHE_UNHASHED, 
+but it should not be set here.
+
+Is someone known this bug? or give me some idea?
+
+A reproduce program is append, but it can't reproduce the bug every time.
+the export is: "/nfsroot       *(rw,no_root_squash,fsid=0,insecure)"
+
+And the panic message is append.
+
+============================================================================
+#!/bin/sh
+
+LOOPTOTAL=768
+LOOPCOUNT=0
+ret=0
+
+while [ $LOOPCOUNT -ne $LOOPTOTAL ]
+do
+	((LOOPCOUNT += 1))
+	service nfs restart
+	/usr/sbin/rpc.idmapd
+	mount -t nfs4 127.0.0.1:/ /mnt|| return 1;
+	ls -l /var/lib/nfs/rpc_pipefs/nfs/*/
+	umount /mnt
+	echo $LOOPCOUNT
+done
+
+===============================================================================
+Code: af 60 01 00 00 89 fa 89 f0 e8 64 cf 89 f0 e8 5c 7c 64 cf 31 c0 8b 5c 24 10 8b 
+74 24 14 8b 7c 24 18 8b 6c 24 1c 83 c4 20 c3 <0f> 0b eb fc 8b 46 28 c7 44 24 08 20
+de ee f0 c7 44 24 04 56 ea 
+EIP:[<f0ee92ea>] __rpc_create_common+0x8a/0xc0 [sunrpc] SS:ESP 0068:eccb5d28
+---[ end trace 8f5606cd08928ed2]---
+Kernel panic - not syncing: Fatal exception
+Pid:7131, comm: mount.nfs4 Tainted: G     D   -------------------2.6.32 #1
+Call Trace:
+ [<c080ad18>] ? panic+0x42/0xed
+ [<c080e42c>] ? oops_end+0xbc/0xd0
+ [<c040b090>] ? do_invalid_op+0x0/0x90
+ [<c040b10f>] ? do_invalid_op+0x7f/0x90
+ [<f0ee92ea>] ? __rpc_create_common+0x8a/0xc0[sunrpc]
+ [<f0edc433>] ? rpc_free_task+0x33/0x70[sunrpc]
+ [<f0ed6508>] ? prc_call_sync+0x48/0x60[sunrpc]
+ [<f0ed656e>] ? rpc_ping+0x4e/0x60[sunrpc]
+ [<f0ed6eaf>] ? rpc_create+0x38f/0x4f0[sunrpc]
+ [<c080d80b>] ? error_code+0x73/0x78
+ [<f0ee92ea>] ? __rpc_create_common+0x8a/0xc0[sunrpc]
+ [<c0532bda>] ? d_lookup+0x2a/0x40
+ [<f0ee94b1>] ? rpc_mkpipe+0x111/0x1b0[sunrpc]
+ [<f10a59f4>] ? nfs_create_rpc_client+0xb4/0xf0[nfs]
+ [<f10d6c6d>] ? nfs_fscache_get_client_cookie+0x1d/0x50[nfs]
+ [<f10d3fcb>] ? nfs_idmap_new+0x7b/0x140[nfs]
+ [<c05e76aa>] ? strlcpy+0x3a/0x60
+ [<f10a60ca>] ? nfs4_set_client+0xea/0x2b0[nfs]
+ [<f10a6d0c>] ? nfs4_create_server+0xac/0x1b0[nfs]
+ [<c04f1400>] ? krealloc+0x40/0x50
+ [<f10b0e8b>] ? nfs4_remote_get_sb+0x6b/0x250[nfs]
+ [<c04f14ec>] ? kstrdup+0x3c/0x60
+ [<c0520739>] ? vfs_kern_mount+0x69/0x170
+ [<f10b1a3c>] ? nfs_do_root_mount+0x6c/0xa0[nfs]
+ [<f10b1b47>] ? nfs4_try_mount+0x37/0xa0[nfs]
+ [<f10afe6d>] ? nfs4_validate_text_mount_data+-x7d/0xf0[nfs]
+ [<f10b1c42>] ? nfs4_get_sb+0x92/0x2f0
+ [<c0520739>] ? vfs_kern_mount+0x69/0x170
+ [<c05366d2>] ? get_fs_type+0x32/0xb0
+ [<c052089f>] ? do_kern_mount+0x3f/0xe0
+ [<c053954f>] ? do_mount+0x2ef/0x740
+ [<c0537740>] ? copy_mount_options+0xb0/0x120
+ [<c0539a0e>] ? sys_mount+0x6e/0xa0
+
+
 
