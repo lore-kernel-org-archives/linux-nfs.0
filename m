@@ -1,61 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43672 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751327Ab0LARxu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Dec 2010 12:53:50 -0500
-Date: Wed, 1 Dec 2010 12:53:49 -0500
-To: Trond Myklebust <trond@netapp.com>, linux-nfs@vger.kernel.org
-Subject: backchannel transport
-Message-ID: <20101201175348.GF6832@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:47942 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757415Ab0LNOyy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:54:54 -0500
+Received: by yxt3 with SMTP id 3so376245yxt.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:54:53 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/31] NFS: Update xdr_encode_foo() functions that we're
+	keeping
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 14 Dec 2010 09:54:50 -0500
+Message-ID: <20101214145450.2293.15343.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This is just a small question about the nfsd-side backchannel code that
-touches the rpc client code:
+Clean up.
 
-There's nothing preventing multiple backchannels from sharing the same
-tcp connection, either simultaneously or over time; from rfc 5661
-section 2.10.3.1:
+The new helper functions are kept in order by section of RFC 1094.
+Move the two timestamp encoders we're keeping, update their coding
+style, and refresh their documenting comments.
 
-	A connection's association with a session is not exclusive.  A
-	connection associated with the channel(s) of one session may be
-	simultaneously associated with the channel(s) of other sessions
-	including sessions associated with other client IDs.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
+---
 
-The current code creates a new rpc_xprt every time an rpc client is
-created for a backchannel.
+ fs/nfs/nfs2xdr.c |   59 ++++++++++++++++++++++++++++++------------------------
+ 1 files changed, 33 insertions(+), 26 deletions(-)
 
-But that's wrong: if two sessions share a backchannel, then they don't
-necessarily want to share the same rpc_client, but they *do* need to
-share the same rpc_xprt, to prevent xid reuse at least.
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index f5ea9dc..c799773 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -91,32 +91,6 @@ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
+ }
+ 
+ static inline __be32*
+-xdr_encode_time(__be32 *p, const struct timespec *timep)
+-{
+-	*p++ = htonl(timep->tv_sec);
+-	/* Convert nanoseconds into microseconds */
+-	*p++ = htonl(timep->tv_nsec ? timep->tv_nsec / 1000 : 0);
+-	return p;
+-}
+-
+-static inline __be32*
+-xdr_encode_current_server_time(__be32 *p, const struct timespec *timep)
+-{
+-	/*
+-	 * Passing the invalid value useconds=1000000 is a
+-	 * Sun convention for "set to current server time".
+-	 * It's needed to make permissions checks for the
+-	 * "touch" program across v2 mounts to Solaris and
+-	 * Irix boxes work correctly. See description of
+-	 * sattr in section 6.1 of "NFS Illustrated" by
+-	 * Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5
+-	 */
+-	*p++ = htonl(timep->tv_sec);
+-	*p++ = htonl(1000000);
+-	return p;
+-}
+-
+-static inline __be32*
+ xdr_decode_time(__be32 *p, struct timespec *timep)
+ {
+ 	timep->tv_sec = ntohl(*p++);
+@@ -179,6 +153,39 @@ static void encode_fhandle(struct xdr_stream *xdr, const struct nfs_fh *fh)
+ }
+ 
+ /*
++ * 2.3.4.  timeval
++ *
++ *	struct timeval {
++ *		unsigned int seconds;
++ *		unsigned int useconds;
++ *	};
++ */
++static __be32 *xdr_encode_time(__be32 *p, const struct timespec *timep)
++{
++	*p++ = cpu_to_be32(timep->tv_sec);
++	if (timep->tv_nsec != 0)
++		*p++ = cpu_to_be32(timep->tv_nsec / NSEC_PER_USEC);
++	else
++		*p++ = cpu_to_be32(0);
++	return p;
++}
++
++/*
++ * Passing the invalid value useconds=1000000 is a Sun convention for
++ * "set to current server time".  It's needed to make permissions checks
++ * for the "touch" program across v2 mounts to Solaris and Irix servers
++ * work correctly.  See description of sattr in section 6.1 of "NFS
++ * Illustrated" by Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5.
++ */
++static __be32 *xdr_encode_current_server_time(__be32 *p,
++					      const struct timespec *timep)
++{
++	*p++ = cpu_to_be32(timep->tv_sec);
++	*p++ = cpu_to_be32(1000000);
++	return p;
++}
++
++/*
+  * 2.3.6.  sattr
+  *
+  *	struct sattr {
 
-So I think we should create one rpc_xprt the first time we use a
-connection for a backchannel, and then keep it around as long as the
-connection is open (in case the client reassociates it with a
-backchannel again).
-
-rpc_clone_client() allows clients to share an rpc_xprt.  I could use
-that for example by keeping an nfsd-level data structure allowing me to
-look up rpc_client's by connection.
-
-However, the server- and client- side xprt's already reference each
-other--the client's pointer to the server is used to send requests, and
-the server's pointer to the client is used to match incoming replies
-with requests.
-
-So it would seem simplest to use the already existing pointer from the
-svc_xprt back to the rpc_xprt.
-
-So, that would mean:
-
-	- Allowing nfsd to create a client with the already-existing
-	  rpc_xprt--maybe export rpc_new_client()?  Or allow the
-	  xprt->setup method to find an already-existing transport?
-	- Keeping any backchannel rpc_xprt around somehow as long as the
-	  connection is open.  Maybe let svc_xprt keep a reference on
-	  the client xprt until svc_delete_xprt()??
-
---b.
