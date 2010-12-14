@@ -1,104 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:43158 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754495Ab0LIQtz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 11:49:55 -0500
-Received: by yxt3 with SMTP id 3so1488581yxt.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Dec 2010 08:49:54 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/11] lockd: Rename nlm_hosts
-To: linux-nfs@vger.kernel.org
-Date: Thu, 09 Dec 2010 11:49:52 -0500
-Message-ID: <20101209164952.4513.13794.stgit@matisse.1015granger.net>
-In-Reply-To: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
-References: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:40200 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752407Ab0LNVpD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Dec 2010 16:45:03 -0500
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <AFCAAF2B-8266-42AD-806F-B9B1C24F130B@netapp.com>
+From: Andy Adamson <andros@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20101214182634.GB22950@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: Re: [PATCH_V3 3/7] NFS associate sessionid with callback connection
+Date: Tue, 14 Dec 2010 16:45:02 -0500
+References: <1292271585-3038-1-git-send-email-andros@netapp.com> <1292271585-3038-2-git-send-email-andros@netapp.com> <1292271585-3038-3-git-send-email-andros@netapp.com> <1292271585-3038-4-git-send-email-andros@netapp.com> <20101214182634.GB22950@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
 
-Rename nlm_hosts to match convention of client side cache.
+On Dec 14, 2010, at 1:26 PM, J. Bruce Fields wrote:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> On Mon, Dec 13, 2010 at 03:19:41PM -0500, Andy Adamson wrote:
+>> The sessions based callback service is started prior to the  
+>> CREATE_SESSION call
+>> so that it can handle CB_NULL requests which can be sent before the
+>> CREATE_SESSION call returns and the session ID is known.
+>>
+>> Set the callback sessionid after a sucessful CREATE_SESSION.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfs/callback.c               |   31 +++++++++++++++++++++++++++++ 
+>> ++
+>> fs/nfs/callback.h               |    1 +
+>> fs/nfs/nfs4state.c              |    6 ++++++
+>> include/linux/sunrpc/svc_xprt.h |    1 +
+>> net/sunrpc/xprt.c               |    2 ++
+>> 5 files changed, 41 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+>> index 023a9eb..558d858 100644
+>> --- a/fs/nfs/callback.c
+>> +++ b/fs/nfs/callback.c
+>> @@ -137,6 +137,33 @@ out_err:
+>>
+>> #if defined(CONFIG_NFS_V4_1)
+>> /*
+>> + *  * CB_SEQUENCE operations will fail until the callback  
+>> sessionid is set.
+>> + *   */
+>> +int nfs4_set_callback_sessionid(struct nfs_client *clp)
+>> +{
+>> +	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
+>> +	struct nfs4_sessionid *bc_sid;
+>> +
+>> +	if (!serv->bc_xprt)
+>> +		return -EINVAL;
+>> +
+>> +	/* on success freed in xprt_free */
+>> +	bc_sid = kmalloc(sizeof(struct nfs4_sessionid), GFP_KERNEL);
+>> +	if (!bc_sid)
+>> +		return -ENOMEM;
+>> +	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
+>> +		NFS4_MAX_SESSIONID_LEN);
+>> +	spin_lock(&serv->sv_cb_lock);
+>> +	serv->bc_xprt->xpt_bc_sid = bc_sid;
+>> +	spin_unlock(&serv->sv_cb_lock);
+>> +	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
+>> +		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
+>> +		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
+>> +		serv->bc_xprt);
+>> +	return 0;
+>> +}
+>> +
+>> +/*
+>>  * The callback service for NFSv4.1 callbacks
+>>  */
+>> static int
+>> @@ -236,6 +263,10 @@ static inline void nfs_callback_bc_serv(u32  
+>> minorversion, struct rpc_xprt *xprt,
+>> 		struct nfs_callback_data *cb_info)
+>> {
+>> }
+>> +int nfs4_set_callback_sessionid(struct nfs_client *clp)
+>> +{
+>> +	return 0;
+>> +}
+>> #endif /* CONFIG_NFS_V4_1 */
+>>
+>> /*
+>> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+>> index 85a7cfd..58d61a8 100644
+>> --- a/fs/nfs/callback.h
+>> +++ b/fs/nfs/callback.h
+>> @@ -137,6 +137,7 @@ extern int nfs_callback_up(u32 minorversion,  
+>> struct rpc_xprt *xprt);
+>> extern void nfs_callback_down(int minorversion);
+>> extern int nfs4_validate_delegation_stateid(struct nfs_delegation  
+>> *delegation,
+>> 					    const nfs4_stateid *stateid);
+>> +extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
+>> #endif /* CONFIG_NFS_V4 */
+>> /*
+>>  * nfs41: Callbacks are expected to not cause substantial latency,
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index fe61422..11290de 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -193,6 +193,12 @@ int nfs41_init_clientid(struct nfs_client  
+>> *clp, struct rpc_cred *cred)
+>> 	status = nfs4_proc_create_session(clp);
+>> 	if (status != 0)
+>> 		goto out;
+>> +	status = nfs4_set_callback_sessionid(clp);
+>> +	if (status != 0) {
+>> +		printk(KERN_WARNING "Sessionid not set. No callback service\n");
+>> +		nfs_callback_down(1);
+>> +		status = 0;
+>> +	}
+>> 	nfs41_setup_state_renewal(clp);
+>> 	nfs_mark_client_ready(clp, NFS_CS_READY);
+>> out:
+>> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/ 
+>> svc_xprt.h
+>> index 600c669..aa15126 100644
+>> --- a/include/linux/sunrpc/svc_xprt.h
+>> +++ b/include/linux/sunrpc/svc_xprt.h
+>> @@ -79,6 +79,7 @@ struct svc_xprt {
+>> 	size_t			xpt_remotelen;	/* length of address */
+>> 	struct rpc_wait_queue	xpt_bc_pending;	/* backchannel wait queue */
+>> 	struct list_head	xpt_users;	/* callbacks on free */
+>> +	void			*xpt_bc_sid;	/* back channel session ID */
+>>
+>> 	struct net		*xpt_net;
+>> };
+>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+>> index 4c8f18a..18783cb 100644
+>> --- a/net/sunrpc/xprt.c
+>> +++ b/net/sunrpc/xprt.c
+>> @@ -985,6 +985,8 @@ void xprt_free(struct rpc_xprt *xprt)
+>> {
+>> 	put_net(xprt->xprt_net);
+>> 	kfree(xprt->slot);
+>> +	if (xprt->bc_xprt)
+>> +		kfree(xprt->bc_xprt->xpt_bc_sid);
+>
+> If bc_xprt points to an svc_xprt, shouldn't you be waiting till you  
+> free
+> that svc_xprt before freeing anything it points to?
+>
+> The idea of leaving around that bc_xprt with its xpt_bc_sid field now
+> pointing at freed memory makes me nervous....
 
- fs/lockd/host.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
+You are correct - the xpt_bc_sid should be freed in svc_sock_destroy.
+I'll resend.
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 09286e2..2b515e2 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -25,7 +25,7 @@
- #define NLM_HOST_EXPIRE		(300 * HZ)
- #define NLM_HOST_COLLECT	(120 * HZ)
- 
--static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
-+static struct hlist_head	nlm_server_hosts[NLM_HOST_NRHASH];
- static struct hlist_head	nlm_client_hosts[NLM_HOST_NRHASH];
- 
- #define for_each_host(host, pos, chain, table) \
-@@ -180,7 +180,7 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
- 	 * different NLM rpc_clients into one single nlm_host object.
- 	 * This would allow us to have one nlm_host per address.
- 	 */
--	chain = &nlm_hosts[nlm_hash_address(ni->sap)];
-+	chain = &nlm_server_hosts[nlm_hash_address(ni->sap)];
- 	hlist_for_each_entry(host, pos, chain, h_hash) {
- 		if (!rpc_cmp_addr(nlm_addr(host), ni->sap))
- 			continue;
-@@ -424,7 +424,7 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 	if (time_after_eq(jiffies, next_gc))
- 		nlm_gc_hosts();
- 
--	chain = &nlm_hosts[nlm_hash_address(ni.sap)];
-+	chain = &nlm_server_hosts[nlm_hash_address(ni.sap)];
- 	hlist_for_each_entry(host, pos, chain, h_hash) {
- 		if (!rpc_cmp_addr(nlm_addr(host), ni.sap))
- 			continue;
-@@ -628,7 +628,7 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
- 	 * lock for this.
- 	 * To avoid processing a host several times, we match the nsmstate.
- 	 */
--	while ((host = next_host_state(nlm_hosts, nsm, info)) != NULL) {
-+	while ((host = next_host_state(nlm_server_hosts, nsm, info)) != NULL) {
- 		nlmsvc_free_host_resources(host);
- 		nlmsvc_release_host(host);
- 	}
-@@ -656,7 +656,7 @@ nlm_shutdown_hosts(void)
- 
- 	/* First, make all hosts eligible for gc */
- 	dprintk("lockd: nuking all hosts...\n");
--	for_each_host(host, pos, chain, nlm_hosts) {
-+	for_each_host(host, pos, chain, nlm_server_hosts) {
- 		host->h_expires = jiffies - 1;
- 		if (host->h_rpcclnt) {
- 			rpc_shutdown_client(host->h_rpcclnt);
-@@ -672,7 +672,7 @@ nlm_shutdown_hosts(void)
- 	if (nrhosts) {
- 		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
- 		dprintk("lockd: %d hosts left:\n", nrhosts);
--		for_each_host(host, pos, chain, nlm_hosts) {
-+		for_each_host(host, pos, chain, nlm_server_hosts) {
- 			dprintk("       %s (cnt %d use %d exp %ld)\n",
- 				host->h_name, atomic_read(&host->h_count),
- 				host->h_inuse, host->h_expires);
-@@ -693,13 +693,13 @@ nlm_gc_hosts(void)
- 	struct nlm_host	*host;
- 
- 	dprintk("lockd: host garbage collection\n");
--	for_each_host(host, pos, chain, nlm_hosts)
-+	for_each_host(host, pos, chain, nlm_server_hosts)
- 		host->h_inuse = 0;
- 
- 	/* Mark all hosts that hold locks, blocks or shares */
- 	nlmsvc_mark_resources();
- 
--	for_each_host_safe(host, pos, next, chain, nlm_hosts) {
-+	for_each_host_safe(host, pos, next, chain, nlm_server_hosts) {
- 		if (atomic_read(&host->h_count) || host->h_inuse
- 		 || time_before(jiffies, host->h_expires)) {
- 			dprintk("nlm_gc_hosts skipping %s "
+Thanks for the review!
+
+-->Andy
+
+>
+> --b.
+>
+>> 	kfree(xprt);
+>> }
+>> EXPORT_SYMBOL_GPL(xprt_free);
+>> -- 
+>> 1.6.6
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux- 
+>> nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
