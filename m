@@ -1,193 +1,270 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gy0-f174.google.com ([209.85.160.174]:65049 "EHLO
-	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755862Ab0LNPFq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 10:05:46 -0500
-Received: by gyb11 with SMTP id 11so380746gyb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 07:05:46 -0800 (PST)
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:33897 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757749Ab0LNO5p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:57:45 -0500
+Received: by iyi12 with SMTP id 12so348907iyi.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:57:45 -0800 (PST)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/11] lockd: Split nlm_release_call()
+Subject: [PATCH 20/31] NFS: Repair whitespace damage in NFS PROC macro
 To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 10:05:42 -0500
-Message-ID: <20101214150542.2736.84066.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
-References: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+Date: Tue, 14 Dec 2010 09:57:42 -0500
+Message-ID: <20101214145742.2293.27984.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The nlm_release_call() function is invoked from both the server and
-the client side.  We're about to introduce a distinct server- and
-client-side nlm_release_host(), so nlm_release_call() must first be
-split into a client-side and a server-side version.
+Clean up.
+
+When I was making other changes in this area, checkscript.pl
+complained about the use of leading blanks in the PROC macros in the
+xdr files.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
 ---
 
- fs/lockd/clntproc.c         |   12 ++++++------
- fs/lockd/svc4proc.c         |    4 ++--
- fs/lockd/svclock.c          |    4 ++--
- fs/lockd/svcproc.c          |   12 ++++++++++--
- include/linux/lockd/lockd.h |    3 ++-
- 5 files changed, 22 insertions(+), 13 deletions(-)
+ fs/nfs/nfs2xdr.c       |   30 ++++++++--------
+ fs/nfs/nfs4xdr.c       |   90 ++++++++++++++++++++++++------------------------
+ fs/nfsd/nfs4callback.c |   52 ++++++++++++++--------------
+ 3 files changed, 86 insertions(+), 86 deletions(-)
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 332c54c..fbc6617 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -211,7 +211,7 @@ struct nlm_rqst *nlm_alloc_call(struct nlm_host *host)
- 	return NULL;
- }
- 
--void nlm_release_call(struct nlm_rqst *call)
-+void nlmclnt_release_call(struct nlm_rqst *call)
- {
- 	if (!atomic_dec_and_test(&call->a_count))
- 		return;
-@@ -222,7 +222,7 @@ void nlm_release_call(struct nlm_rqst *call)
- 
- static void nlmclnt_rpc_release(void *data)
- {
--	nlm_release_call(data);
-+	nlmclnt_release_call(data);
- }
- 
- static int nlm_wait_on_grace(wait_queue_head_t *queue)
-@@ -436,7 +436,7 @@ nlmclnt_test(struct nlm_rqst *req, struct file_lock *fl)
- 			status = nlm_stat_to_errno(req->a_res.status);
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 70df08a..0343175 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -1193,21 +1193,21 @@ int nfs_stat_to_errno(enum nfs_stat status)
+ 	.p_name     =  #proc,						\
  	}
- out:
--	nlm_release_call(req);
-+	nlmclnt_release_call(req);
- 	return status;
+ struct rpc_procinfo	nfs_procedures[] = {
+-    PROC(GETATTR,	fhandle,	attrstat, 1),
+-    PROC(SETATTR,	sattrargs,	attrstat, 0),
+-    PROC(LOOKUP,	diropargs,	diropres, 2),
+-    PROC(READLINK,	readlinkargs,	readlinkres, 3),
+-    PROC(READ,		readargs,	readres, 3),
+-    PROC(WRITE,		writeargs,	writeres, 4),
+-    PROC(CREATE,	createargs,	diropres, 0),
+-    PROC(REMOVE,	removeargs,	stat, 0),
+-    PROC(RENAME,	renameargs,	stat, 0),
+-    PROC(LINK,		linkargs,	stat, 0),
+-    PROC(SYMLINK,	symlinkargs,	stat, 0),
+-    PROC(MKDIR,		createargs,	diropres, 0),
+-    PROC(RMDIR,		diropargs,	stat, 0),
+-    PROC(READDIR,	readdirargs,	readdirres, 3),
+-    PROC(STATFS,	fhandle,	statfsres, 0),
++	PROC(GETATTR,	fhandle,	attrstat,	1),
++	PROC(SETATTR,	sattrargs,	attrstat,	0),
++	PROC(LOOKUP,	diropargs,	diropres,	2),
++	PROC(READLINK,	readlinkargs,	readlinkres,	3),
++	PROC(READ,	readargs,	readres,	3),
++	PROC(WRITE,	writeargs,	writeres,	4),
++	PROC(CREATE,	createargs,	diropres,	0),
++	PROC(REMOVE,	removeargs,	stat,		0),
++	PROC(RENAME,	renameargs,	stat,		0),
++	PROC(LINK,	linkargs,	stat,		0),
++	PROC(SYMLINK,	symlinkargs,	stat,		0),
++	PROC(MKDIR,	createargs,	diropres,	0),
++	PROC(RMDIR,	diropargs,	stat,		0),
++	PROC(READDIR,	readdirargs,	readdirres,	3),
++	PROC(STATFS,	fhandle,	statfsres,	0),
+ };
+ 
+ struct rpc_version		nfs_version2 = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 9f1826b..a48a43c 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -6301,8 +6301,8 @@ nfs4_stat_to_errno(int stat)
+ #define PROC(proc, argtype, restype)				\
+ [NFSPROC4_CLNT_##proc] = {					\
+ 	.p_proc   = NFSPROC4_COMPOUND,				\
+-	.p_encode = (kxdrproc_t) nfs4_xdr_##argtype,		\
+-	.p_decode = (kxdrproc_t) nfs4_xdr_##restype,		\
++	.p_encode = (kxdrproc_t)nfs4_xdr_##argtype,		\
++	.p_decode = (kxdrproc_t)nfs4_xdr_##restype,		\
+ 	.p_arglen = NFS4_##argtype##_sz,			\
+ 	.p_replen = NFS4_##restype##_sz,			\
+ 	.p_statidx = NFSPROC4_CLNT_##proc,			\
+@@ -6310,50 +6310,50 @@ nfs4_stat_to_errno(int stat)
  }
  
-@@ -593,7 +593,7 @@ again:
- out_unblock:
- 	nlmclnt_finish_block(block);
- out:
--	nlm_release_call(req);
-+	nlmclnt_release_call(req);
- 	return status;
- out_unlock:
- 	/* Fatal error: ensure that we remove the lock altogether */
-@@ -694,7 +694,7 @@ nlmclnt_unlock(struct nlm_rqst *req, struct file_lock *fl)
- 	/* What to do now? I'm out of my depth... */
- 	status = -ENOLCK;
- out:
--	nlm_release_call(req);
-+	nlmclnt_release_call(req);
- 	return status;
- }
+ struct rpc_procinfo	nfs4_procedures[] = {
+-  PROC(READ,		enc_read,	dec_read),
+-  PROC(WRITE,		enc_write,	dec_write),
+-  PROC(COMMIT,		enc_commit,	dec_commit),
+-  PROC(OPEN,		enc_open,	dec_open),
+-  PROC(OPEN_CONFIRM,	enc_open_confirm,	dec_open_confirm),
+-  PROC(OPEN_NOATTR,	enc_open_noattr,	dec_open_noattr),
+-  PROC(OPEN_DOWNGRADE,	enc_open_downgrade,	dec_open_downgrade),
+-  PROC(CLOSE,		enc_close,	dec_close),
+-  PROC(SETATTR,		enc_setattr,	dec_setattr),
+-  PROC(FSINFO,		enc_fsinfo,	dec_fsinfo),
+-  PROC(RENEW,		enc_renew,	dec_renew),
+-  PROC(SETCLIENTID,	enc_setclientid,	dec_setclientid),
+-  PROC(SETCLIENTID_CONFIRM,	enc_setclientid_confirm,	dec_setclientid_confirm),
+-  PROC(LOCK,            enc_lock,       dec_lock),
+-  PROC(LOCKT,           enc_lockt,      dec_lockt),
+-  PROC(LOCKU,           enc_locku,      dec_locku),
+-  PROC(ACCESS,		enc_access,	dec_access),
+-  PROC(GETATTR,		enc_getattr,	dec_getattr),
+-  PROC(LOOKUP,		enc_lookup,	dec_lookup),
+-  PROC(LOOKUP_ROOT,	enc_lookup_root,	dec_lookup_root),
+-  PROC(REMOVE,		enc_remove,	dec_remove),
+-  PROC(RENAME,		enc_rename,	dec_rename),
+-  PROC(LINK,		enc_link,	dec_link),
+-  PROC(SYMLINK,		enc_symlink,	dec_symlink),
+-  PROC(CREATE,		enc_create,	dec_create),
+-  PROC(PATHCONF,	enc_pathconf,	dec_pathconf),
+-  PROC(STATFS,		enc_statfs,	dec_statfs),
+-  PROC(READLINK,	enc_readlink,	dec_readlink),
+-  PROC(READDIR,		enc_readdir,	dec_readdir),
+-  PROC(SERVER_CAPS,	enc_server_caps, dec_server_caps),
+-  PROC(DELEGRETURN,	enc_delegreturn, dec_delegreturn),
+-  PROC(GETACL,		enc_getacl,	dec_getacl),
+-  PROC(SETACL,		enc_setacl,	dec_setacl),
+-  PROC(FS_LOCATIONS,	enc_fs_locations, dec_fs_locations),
+-  PROC(RELEASE_LOCKOWNER, enc_release_lockowner, dec_release_lockowner),
++	PROC(READ,		enc_read,		dec_read),
++	PROC(WRITE,		enc_write,		dec_write),
++	PROC(COMMIT,		enc_commit,		dec_commit),
++	PROC(OPEN,		enc_open,		dec_open),
++	PROC(OPEN_CONFIRM,	enc_open_confirm,	dec_open_confirm),
++	PROC(OPEN_NOATTR,	enc_open_noattr,	dec_open_noattr),
++	PROC(OPEN_DOWNGRADE,	enc_open_downgrade,	dec_open_downgrade),
++	PROC(CLOSE,		enc_close,		dec_close),
++	PROC(SETATTR,		enc_setattr,		dec_setattr),
++	PROC(FSINFO,		enc_fsinfo,		dec_fsinfo),
++	PROC(RENEW,		enc_renew,		dec_renew),
++	PROC(SETCLIENTID,	enc_setclientid,	dec_setclientid),
++	PROC(SETCLIENTID_CONFIRM, enc_setclientid_confirm, dec_setclientid_confirm),
++	PROC(LOCK,		enc_lock,		dec_lock),
++	PROC(LOCKT,		enc_lockt,		dec_lockt),
++	PROC(LOCKU,		enc_locku,		dec_locku),
++	PROC(ACCESS,		enc_access,		dec_access),
++	PROC(GETATTR,		enc_getattr,		dec_getattr),
++	PROC(LOOKUP,		enc_lookup,		dec_lookup),
++	PROC(LOOKUP_ROOT,	enc_lookup_root,	dec_lookup_root),
++	PROC(REMOVE,		enc_remove,		dec_remove),
++	PROC(RENAME,		enc_rename,		dec_rename),
++	PROC(LINK,		enc_link,		dec_link),
++	PROC(SYMLINK,		enc_symlink,		dec_symlink),
++	PROC(CREATE,		enc_create,		dec_create),
++	PROC(PATHCONF,		enc_pathconf,		dec_pathconf),
++	PROC(STATFS,		enc_statfs,		dec_statfs),
++	PROC(READLINK,		enc_readlink,		dec_readlink),
++	PROC(READDIR,		enc_readdir,		dec_readdir),
++	PROC(SERVER_CAPS,	enc_server_caps,	dec_server_caps),
++	PROC(DELEGRETURN,	enc_delegreturn,	dec_delegreturn),
++	PROC(GETACL,		enc_getacl,		dec_getacl),
++	PROC(SETACL,		enc_setacl,		dec_setacl),
++	PROC(FS_LOCATIONS,	enc_fs_locations,	dec_fs_locations),
++	PROC(RELEASE_LOCKOWNER,	enc_release_lockowner,	dec_release_lockowner),
+ #if defined(CONFIG_NFS_V4_1)
+-  PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
+-  PROC(CREATE_SESSION,	enc_create_session,	dec_create_session),
+-  PROC(DESTROY_SESSION,	enc_destroy_session,	dec_destroy_session),
+-  PROC(SEQUENCE,	enc_sequence,	dec_sequence),
+-  PROC(GET_LEASE_TIME,	enc_get_lease_time,	dec_get_lease_time),
+-  PROC(RECLAIM_COMPLETE, enc_reclaim_complete,  dec_reclaim_complete),
+-  PROC(GETDEVICEINFO, enc_getdeviceinfo, dec_getdeviceinfo),
+-  PROC(LAYOUTGET,  enc_layoutget,     dec_layoutget),
++	PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
++	PROC(CREATE_SESSION,	enc_create_session,	dec_create_session),
++	PROC(DESTROY_SESSION,	enc_destroy_session,	dec_destroy_session),
++	PROC(SEQUENCE,		enc_sequence,		dec_sequence),
++	PROC(GET_LEASE_TIME,	enc_get_lease_time,	dec_get_lease_time),
++	PROC(RECLAIM_COMPLETE,	enc_reclaim_complete,	dec_reclaim_complete),
++	PROC(GETDEVICEINFO,	enc_getdeviceinfo,	dec_getdeviceinfo),
++	PROC(LAYOUTGET,		enc_layoutget,		dec_layoutget),
+ #endif /* CONFIG_NFS_V4_1 */
+ };
  
-@@ -755,7 +755,7 @@ static int nlmclnt_cancel(struct nlm_host *host, int block, struct file_lock *fl
- 			NLMPROC_CANCEL, &nlmclnt_cancel_ops);
- 	if (status == 0 && req->a_res.status == nlm_lck_denied)
- 		status = -ENOLCK;
--	nlm_release_call(req);
-+	nlmclnt_release_call(req);
- 	return status;
- }
- 
-diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
-index 38d2611..c187422 100644
---- a/fs/lockd/svc4proc.c
-+++ b/fs/lockd/svc4proc.c
-@@ -229,7 +229,7 @@ static void nlm4svc_callback_exit(struct rpc_task *task, void *data)
- 
- static void nlm4svc_callback_release(void *data)
- {
--	nlm_release_call(data);
-+	nlmsvc_release_call(data);
- }
- 
- static const struct rpc_call_ops nlm4svc_callback_ops = {
-@@ -261,7 +261,7 @@ static __be32 nlm4svc_callback(struct svc_rqst *rqstp, u32 proc, struct nlm_args
- 
- 	stat = func(rqstp, argp, &call->a_res);
- 	if (stat != 0) {
--		nlm_release_call(call);
-+		nlmsvc_release_call(call);
- 		return stat;
- 	}
- 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 9266c46..6e31695 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -234,7 +234,7 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
- failed_free:
- 	kfree(block);
- failed:
--	nlm_release_call(call);
-+	nlmsvc_release_call(call);
- 	return NULL;
- }
- 
-@@ -267,7 +267,7 @@ static void nlmsvc_free_block(struct kref *kref)
- 	mutex_unlock(&file->f_mutex);
- 
- 	nlmsvc_freegrantargs(block->b_call);
--	nlm_release_call(block->b_call);
-+	nlmsvc_release_call(block->b_call);
- 	nlm_release_file(block->b_file);
- 	kfree(block->b_fl);
- 	kfree(block);
-diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index 0caea53..0df65ec 100644
---- a/fs/lockd/svcproc.c
-+++ b/fs/lockd/svcproc.c
-@@ -257,9 +257,17 @@ static void nlmsvc_callback_exit(struct rpc_task *task, void *data)
- 			-task->tk_status);
- }
- 
-+void nlmsvc_release_call(struct nlm_rqst *call)
-+{
-+	if (!atomic_dec_and_test(&call->a_count))
-+		return;
-+	nlm_release_host(call->a_host);
-+	kfree(call);
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index c3c6a90..6529534 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -580,23 +580,23 @@ out_default:
+ /*
+  * RPC procedure tables
+  */
+-#define PROC(proc, call, argtype, restype)                              \
+-[NFSPROC4_CLNT_##proc] = {                                      	\
+-        .p_proc   = NFSPROC4_CB_##call,					\
+-        .p_encode = (kxdrproc_t) nfs4_xdr_##argtype,                    \
+-        .p_decode = (kxdrproc_t) nfs4_xdr_##restype,                    \
+-        .p_arglen = NFS4_##argtype##_sz,                                \
+-        .p_replen = NFS4_##restype##_sz,                                \
+-        .p_statidx = NFSPROC4_CB_##call,				\
+-	.p_name   = #proc,                                              \
+-}
+-
+-static struct rpc_procinfo     nfs4_cb_procedures[] = {
+-    PROC(CB_NULL,      NULL,     enc_cb_null,     dec_cb_null),
+-    PROC(CB_RECALL,    COMPOUND,   enc_cb_recall,      dec_cb_recall),
++#define PROC(proc, call, argtype, restype)				\
++[NFSPROC4_CLNT_##proc] = {						\
++	.p_proc    = NFSPROC4_CB_##call,				\
++	.p_encode  = (kxdrproc_t)nfs4_xdr_enc_##argtype,		\
++	.p_decode  = (kxdrproc_t)nfs4_xdr_dec_##restype,		\
++	.p_arglen  = NFS4_enc_##argtype##_sz,				\
++	.p_replen  = NFS4_dec_##restype##_sz,				\
++	.p_statidx = NFSPROC4_CB_##call,				\
++	.p_name    = #proc,						\
 +}
 +
- static void nlmsvc_callback_release(void *data)
- {
--	nlm_release_call(data);
-+	nlmsvc_release_call(data);
- }
++static struct rpc_procinfo nfs4_cb_procedures[] = {
++	PROC(CB_NULL,	NULL,		cb_null,	cb_null),
++	PROC(CB_RECALL,	COMPOUND,	cb_recall,	cb_recall),
+ };
  
- static const struct rpc_call_ops nlmsvc_callback_ops = {
-@@ -291,7 +299,7 @@ static __be32 nlmsvc_callback(struct svc_rqst *rqstp, u32 proc, struct nlm_args
- 
- 	stat = func(rqstp, argp, &call->a_res);
- 	if (stat != 0) {
--		nlm_release_call(call);
-+		nlmsvc_release_call(call);
- 		return stat;
- 	}
- 
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 2dee05e..a32ba62 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -202,9 +202,9 @@ extern u32			nsm_local_state;
-  * Lockd client functions
-  */
- struct nlm_rqst * nlm_alloc_call(struct nlm_host *host);
--void		  nlm_release_call(struct nlm_rqst *);
- int		  nlm_async_call(struct nlm_rqst *, u32, const struct rpc_call_ops *);
- int		  nlm_async_reply(struct nlm_rqst *, u32, const struct rpc_call_ops *);
-+void		  nlmclnt_release_call(struct nlm_rqst *);
- struct nlm_wait * nlmclnt_prepare_block(struct nlm_host *host, struct file_lock *fl);
- void		  nlmclnt_finish_block(struct nlm_wait *block);
- int		  nlmclnt_block(struct nlm_wait *block, struct nlm_rqst *req, long timeout);
-@@ -267,6 +267,7 @@ unsigned long	  nlmsvc_retry_blocked(void);
- void		  nlmsvc_traverse_blocks(struct nlm_host *, struct nlm_file *,
- 					nlm_host_match_fn_t match);
- void		  nlmsvc_grant_reply(struct nlm_cookie *, __be32);
-+void		  nlmsvc_release_call(struct nlm_rqst *);
- 
+-static struct rpc_version       nfs_cb_version4 = {
++static struct rpc_version nfs_cb_version4 = {
  /*
-  * File handling for the server personality
+  * Note on the callback rpc program version number: despite language in rfc
+  * 5661 section 18.36.3 requiring servers to use 4 in this field, the
+@@ -604,29 +604,29 @@ static struct rpc_version       nfs_cb_version4 = {
+  * in practice that appears to be what implementations use.  The section
+  * 18.36.3 language is expected to be fixed in an erratum.
+  */
+-        .number                 = 1,
+-        .nrprocs                = ARRAY_SIZE(nfs4_cb_procedures),
+-        .procs                  = nfs4_cb_procedures
++	.number			= 1,
++	.nrprocs		= ARRAY_SIZE(nfs4_cb_procedures),
++	.procs			= nfs4_cb_procedures
+ };
+ 
+-static struct rpc_version *	nfs_cb_version[] = {
++static struct rpc_version *nfs_cb_version[] = {
+ 	&nfs_cb_version4,
+ };
+ 
+ static struct rpc_program cb_program;
+ 
+ static struct rpc_stat cb_stats = {
+-		.program	= &cb_program
++	.program		= &cb_program
+ };
+ 
+ #define NFS4_CALLBACK 0x40000000
+ static struct rpc_program cb_program = {
+-		.name 		= "nfs4_cb",
+-		.number		= NFS4_CALLBACK,
+-		.nrvers		= ARRAY_SIZE(nfs_cb_version),
+-		.version	= nfs_cb_version,
+-		.stats		= &cb_stats,
+-		.pipe_dir_name  = "/nfsd4_cb",
++	.name			= "nfs4_cb",
++	.number			= NFS4_CALLBACK,
++	.nrvers			= ARRAY_SIZE(nfs_cb_version),
++	.version		= nfs_cb_version,
++	.stats			= &cb_stats,
++	.pipe_dir_name		= "/nfsd4_cb",
+ };
+ 
+ static int max_cb_time(void)
 
