@@ -1,66 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48572 "EHLO mx2.netapp.com"
+Received: from mail.agmk.net ([91.192.224.71]:50622 "EHLO mail.agmk.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752041Ab0LGWei convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Dec 2010 17:34:38 -0500
-Subject: Re: [PATCH] nfs: Discard ACL cache on mode update
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-In-Reply-To: <1291200136-9982-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1291200136-9982-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 07 Dec 2010 17:34:36 -0500
-Message-ID: <1291761276.3049.47.camel@heimdal.trondhjem.org>
+	id S1758534Ab0LNSr2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Dec 2010 13:47:28 -0500
+Received: from localhost (unknown [91.192.224.71])
+	by mail.agmk.net (Postfix) with ESMTP id 73D0D8706EF
+	for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 19:14:59 +0100 (CET)
+Received: from mail.agmk.net ([91.192.224.71])
+	by localhost (agmk.net [91.192.224.71]) (amavisd-new, port 10024)
+	with ESMTP id xWrN4R8JaObb for <linux-nfs@vger.kernel.org>;
+	Tue, 14 Dec 2010 19:14:58 +0100 (CET)
+Received: from vmx.localnet (unknown [89.79.206.92])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mail.agmk.net (Postfix) with ESMTP id B4F682428102
+	for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 19:14:58 +0100 (CET)
+From: =?utf-8?q?Pawe=C5=82_Sikora?= <pluto@agmk.net>
+To: linux-nfs@vger.kernel.org
+Subject: nondeterministic exportfs? /home/users (ext4) does not support NFS export.
+Date: Tue, 14 Dec 2010 19:14:54 +0100
+Content-Type: Text/Plain;
+  charset="utf-8"
+Message-Id: <201012141914.55076.pluto@agmk.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-12-01 at 16:12 +0530, Aneesh Kumar K.V wrote:
-> An update of mode bits can result in ACL value being changed. We need
-> to mark the acl cache invalid when we update mode. Similarly we need
-> to update file attribute when we change ACL value
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/nfs/nfs4proc.c |    9 +++++++++
->  1 files changed, 9 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 821d4c7..89fb751 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3356,6 +3356,8 @@ ssize_t nfs4_proc_get_acl(struct inode *inode, void *buf, size_t buflen)
->  	ret = nfs_revalidate_inode(server, inode);
->  	if (ret < 0)
->  		return ret;
-> +	if (NFS_I(inode)->cache_validity & NFS_INO_INVALID_ACL)
-> +		nfs_zap_acl_cache(inode);
->  	ret = nfs4_read_cached_acl(inode, buf, buflen);
->  	if (ret != -ENOENT)
->  		return ret;
-> @@ -3384,6 +3386,13 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
->  	nfs_inode_return_delegation(inode);
->  	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
->  	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
-> +	/*
-> +	 * Acl update can result in inode attribute update.
-> +	 * so mark the attribute cache invalid.
-> +	 */
-> +	spin_lock(&inode->i_lock);
-> +	NFS_I(inode)->cache_validity |= NFS_INO_INVALID_ATTR;
-> +	spin_unlock(&inode->i_lock);
->  	nfs_access_zap_cache(inode);
->  	nfs_zap_acl_cache(inode);
->  	return ret;
+Hi,
 
-Thanks! Applied...
+i have a new machine with fresh linux distro (2.6.36.2 kernel, nfs-1.2.3)
+and the configured export doesn't work sometimes.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+following md1, md2 partitions are mounted and configured for exporting:
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/md0              7.6G  1.4G  5.8G  19% /
+/dev/md1              1.9T   42G  1.9T   3% /home/atest
+/dev/md2              798G  116G  682G  15% /home/users
 
+# /etc/rc.d/init.d/nfs status
+Configured NFS exports:
+/home/atest     *(rw,async,no_subtree_check,no_root_squash,insecure_locks)
+/home/users     *(rw,sync,no_wdelay,no_subtree_check,no_root_squash,insecure_locks)
+
+Active NFS exports:
+/home/atest     <world>(rw,async,wdelay,no_root_squash,no_subtree_check,insecure_locks)
+/home/users     <world>(rw,no_root_squash,no_subtree_check,insecure_locks)
+
+rpc.mountd (pid 3195) is running...
+nfsd (pid 3213 3212 3211 3210 3209 3208 3207 3206) is running...
+
+# exportfs -v
+/home/atest     <world>(rw,async,wdelay,no_root_squash,no_subtree_check,insecure_locks)
+/home/users     <world>(rw,no_root_squash,no_subtree_check,insecure_locks)
+
+but the /home/users doesn't work and (bad workaround) re-export is needed.
+
+# exportfs -rv
+exporting *:/home/users
+exportfs: /home/users does not support NFS export
+exporting *:/home/atest
+
+# exportfs -rv
+exporting *:/home/users
+exporting *:/home/atest
+
+/home/atest works fine, /home/users has weird problems.
+
+what's wrong with this /home/users @ ext4 ?
+thanks for any hints.
+
+BR,
+Pawel.
