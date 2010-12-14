@@ -1,318 +1,569 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:38458 "EHLO shutemov.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757333Ab0LTLyn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Dec 2010 06:54:43 -0500
-From: "Kirill A. Shutsemov" <kirill@shutemov.name>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: [PATCH 06/12] lockd: get rpc_pipefs mount point from callers
-Date: Mon, 20 Dec 2010 13:54:32 +0200
-Message-Id: <1292846078-31793-7-git-send-email-kirill@shutemov.name>
-In-Reply-To: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
-References: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
+Received: from mail-gw0-f42.google.com ([74.125.83.42]:64762 "EHLO
+	mail-gw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755256Ab0LNOye (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:54:34 -0500
+Received: by gwb20 with SMTP id 20so538996gwb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:54:33 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 01/31] NFS: Introduce new-style XDR encoding functions for
+	NFSv2
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 14 Dec 2010 09:54:30 -0500
+Message-ID: <20101214145430.2293.84359.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Kirill A. Shutemov <kirill@shutemov.name>
+We're interested in taking advantage of the safety benefits of
+xdr_streams.  These data structures allow more careful checking for
+buffer overflow while encoding.  More careful type checking is also
+introduced in the new functions.
 
-Signed-off-by: Kirill A. Shutemov <kirill@shutemov.name>
+For efficiency, we also eventually want to be able to pass xdr_streams
+from call_encode() to all XDR encoding functions, rather than building
+an xdr_stream in every XDR encoding function in the kernel.  To do
+this means all encoders must be ready to handle a passed-in
+xdr_stream.
+
+The new encoders follow the modern paradigm for XDR encoders: BUG on
+any error, and always return a zero status code.
+
+Static helper functions are left without the "inline" directive.  This
+allows the compiler to choose automatically how to optimize these for
+size or speed.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/lockd/clntlock.c         |    8 +++++---
- fs/lockd/host.c             |   14 +++++++++++---
- fs/lockd/mon.c              |   15 ++++++++-------
- fs/lockd/svc.c              |    6 ++----
- fs/nfs/client.c             |    1 +
- fs/nfsd/nfssvc.c            |    2 +-
- include/linux/lockd/bind.h  |    3 ++-
- include/linux/lockd/lockd.h |    4 +++-
- 8 files changed, 33 insertions(+), 20 deletions(-)
 
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index 25509eb..1179c18 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -56,13 +56,14 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
- 	u32 nlm_version = (nlm_init->nfs_version == 2) ? 1 : 4;
- 	int status;
+ fs/nfs/nfs2xdr.c |  406 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 403 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 5914a19..869e215 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -61,6 +61,23 @@
+ #define NFS_readdirres_sz	(1)
+ #define NFS_statfsres_sz	(1+NFS_info_sz)
  
--	status = lockd_up();
-+	status = lockd_up(nlm_init->rpcmount);
- 	if (status < 0)
- 		return ERR_PTR(status);
- 
- 	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->addrlen,
- 				   nlm_init->protocol, nlm_version,
--				   nlm_init->hostname, nlm_init->noresvport);
-+				   nlm_init->hostname, nlm_init->noresvport,
-+				   nlm_init->rpcmount);
- 	if (host == NULL) {
- 		lockd_down();
- 		return ERR_PTR(-ENOLCK);
-@@ -223,7 +224,8 @@ reclaimer(void *ptr)
- 	allow_signal(SIGKILL);
- 
- 	down_write(&host->h_rwsem);
--	lockd_up();	/* note: this cannot fail as lockd is already running */
-+	/* note: this cannot fail as lockd is already running */
-+	lockd_up(host->h_rpcmount);
- 
- 	dprintk("lockd: reclaiming locks for host %s\n", host->h_name);
- 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index b033a2d..757d1d3 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -14,9 +14,9 @@
- #include <linux/in6.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc.h>
--#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/lockd/lockd.h>
- #include <linux/mutex.h>
-+#include <linux/mount.h>
- 
- #include <net/ipv6.h>
- 
-@@ -44,6 +44,7 @@ struct nlm_lookup_host_info {
- 	const struct sockaddr	*src_sap;	/* our address (optional) */
- 	const size_t		src_len;	/* it's length */
- 	const int		noresvport;	/* use non-priv port */
-+	struct vfsmount		*rpcmount;	/* rpc_pipefs mount point */
- };
- 
++
++/*
++ * While encoding arguments, set up the reply buffer in advance to
++ * receive reply data directly into the page cache.
++ */
++static void prepare_reply_buffer(struct rpc_rqst *req, struct page **pages,
++				 unsigned int base, unsigned int len,
++				 unsigned int bufsize)
++{
++	struct rpc_auth	*auth = req->rq_cred->cr_auth;
++	unsigned int replen;
++
++	replen = RPC_REPHDRSIZE + auth->au_rslack + bufsize;
++	xdr_inline_pages(&req->rq_rcv_buf, replen << 2, pages, base, len);
++}
++
++
  /*
-@@ -128,6 +129,8 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
- 		if (ni->server && ni->src_len != 0 &&
- 		    !rpc_cmp_addr(nlm_srcaddr(host), ni->src_sap))
- 			continue;
-+		if (host->h_rpcmount->mnt_sb != ni->rpcmount->mnt_sb)
-+			continue;
- 
- 		/* Move to head of hash chain. */
- 		hlist_del(&host->h_hash);
-@@ -171,6 +174,7 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
- 	host->h_srcaddrlen = ni->src_len;
- 	host->h_version    = ni->version;
- 	host->h_proto      = ni->protocol;
-+	host->h_rpcmount   = mntget(ni->rpcmount);
- 	host->h_rpcclnt    = NULL;
- 	mutex_init(&host->h_mutex);
- 	host->h_nextrebind = jiffies + NLM_HOST_REBIND;
-@@ -212,6 +216,7 @@ nlm_destroy_host(struct nlm_host *host)
- 
- 	nsm_unmonitor(host);
- 	nsm_release(host->h_nsmhandle);
-+	mntput(host->h_rpcmount);
- 
- 	clnt = host->h_rpcclnt;
- 	if (clnt != NULL)
-@@ -238,7 +243,8 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
- 				     const unsigned short protocol,
- 				     const u32 version,
- 				     const char *hostname,
--				     int noresvport)
-+				     int noresvport,
-+				     struct vfsmount *rpcmount)
- {
- 	struct nlm_lookup_host_info ni = {
- 		.server		= 0,
-@@ -249,6 +255,7 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
- 		.hostname	= hostname,
- 		.hostname_len	= strlen(hostname),
- 		.noresvport	= noresvport,
-+		.rpcmount	= rpcmount,
- 	};
- 
- 	dprintk("lockd: %s(host='%s', vers=%u, proto=%s)\n", __func__,
-@@ -295,6 +302,7 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 		.hostname	= hostname,
- 		.hostname_len	= hostname_len,
- 		.src_len	= rqstp->rq_addrlen,
-+		.rpcmount	= rqstp->rq_server->sv_rpcmount,
- 	};
- 
- 	dprintk("lockd: %s(host='%*s', vers=%u, proto=%s)\n", __func__,
-@@ -361,7 +369,7 @@ nlm_bind_host(struct nlm_host *host)
- 			.authflavor	= RPC_AUTH_UNIX,
- 			.flags		= (RPC_CLNT_CREATE_NOPING |
- 					   RPC_CLNT_CREATE_AUTOBIND),
--			.rpcmount	= init_rpc_pipefs,
-+			.rpcmount	= host->h_rpcmount,
- 		};
- 
- 		/*
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 37e5328..526d486 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -15,7 +15,6 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/xprtsock.h>
- #include <linux/sunrpc/svc.h>
--#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/lockd/lockd.h>
- 
- #include <asm/unaligned.h>
-@@ -63,7 +62,7 @@ static inline struct sockaddr *nsm_addr(const struct nsm_handle *nsm)
- 	return (struct sockaddr *)&nsm->sm_addr;
- }
- 
--static struct rpc_clnt *nsm_create(void)
-+static struct rpc_clnt *nsm_create(struct vfsmount *rpcmount)
- {
- 	struct sockaddr_in sin = {
- 		.sin_family		= AF_INET,
-@@ -79,13 +78,14 @@ static struct rpc_clnt *nsm_create(void)
- 		.version		= NSM_VERSION,
- 		.authflavor		= RPC_AUTH_NULL,
- 		.flags			= RPC_CLNT_CREATE_NOPING,
--		.rpcmount		= init_rpc_pipefs,
-+		.rpcmount		= rpcmount,
- 	};
- 
- 	return rpc_create(&args);
- }
- 
--static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
-+static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
-+		struct vfsmount *rpcmount)
- {
- 	struct rpc_clnt	*clnt;
- 	int		status;
-@@ -101,7 +101,7 @@ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
- 		.rpc_resp	= res,
- 	};
- 
--	clnt = nsm_create();
-+	clnt = nsm_create(rpcmount);
- 	if (IS_ERR(clnt)) {
- 		status = PTR_ERR(clnt);
- 		dprintk("lockd: failed to create NSM upcall transport, "
-@@ -151,7 +151,7 @@ int nsm_monitor(const struct nlm_host *host)
- 	 */
- 	nsm->sm_mon_name = nsm_use_hostnames ? nsm->sm_name : nsm->sm_addrbuf;
- 
--	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res);
-+	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res, host->h_rpcmount);
- 	if (unlikely(res.status != 0))
- 		status = -EIO;
- 	if (unlikely(status < 0)) {
-@@ -185,7 +185,8 @@ void nsm_unmonitor(const struct nlm_host *host)
- 	 && nsm->sm_monitored && !nsm->sm_sticky) {
- 		dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
- 
--		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res);
-+		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res,
-+				host->h_rpcmount);
- 		if (res.status != 0)
- 			status = -EIO;
- 		if (status < 0)
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 32310b1..7387b04 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -31,7 +31,6 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/svcsock.h>
--#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <net/ip.h>
- #include <linux/lockd/lockd.h>
- #include <linux/nfs.h>
-@@ -249,7 +248,7 @@ out_err:
- /*
-  * Bring up the lockd process if it's not already up.
+  * Common NFS XDR functions as inlines
   */
--int lockd_up(void)
-+int lockd_up(struct vfsmount *rpcmount)
+@@ -81,7 +98,7 @@ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
+ }
+ 
+ static inline __be32*
+-xdr_encode_time(__be32 *p, struct timespec *timep)
++xdr_encode_time(__be32 *p, const struct timespec *timep)
  {
- 	struct svc_serv *serv;
- 	int		error = 0;
-@@ -270,8 +269,7 @@ int lockd_up(void)
- 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
+ 	*p++ = htonl(timep->tv_sec);
+ 	/* Convert nanoseconds into microseconds */
+@@ -90,7 +107,7 @@ xdr_encode_time(__be32 *p, struct timespec *timep)
+ }
  
- 	error = -ENOMEM;
--	serv = svc_create(&nlmsvc_program, init_rpc_pipefs, LOCKD_BUFSIZE,
--			NULL);
-+	serv = svc_create(&nlmsvc_program, rpcmount, LOCKD_BUFSIZE, NULL);
- 	if (!serv) {
- 		printk(KERN_WARNING "lockd_up: create service failed\n");
- 		goto out;
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index e041f39..fbc013d 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -661,6 +661,7 @@ static int nfs_start_lockd(struct nfs_server *server)
- 		.nfs_version	= clp->rpc_ops->version,
- 		.noresvport	= server->flags & NFS_MOUNT_NORESVPORT ?
- 					1 : 0,
-+		.rpcmount	= init_rpc_pipefs,
- 	};
- 
- 	if (nlm_init.nfs_version > 3)
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index d96c32b..17d78d3 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -220,7 +220,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
- 	ret = nfsd_init_socks(port);
- 	if (ret)
- 		goto out_racache;
--	ret = lockd_up();
-+	ret = lockd_up(init_rpc_pipefs);
- 	if (ret)
- 		goto out_racache;
- 	ret = nfs4_state_start();
-diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-index fbc48f8..97cd4bf 100644
---- a/include/linux/lockd/bind.h
-+++ b/include/linux/lockd/bind.h
-@@ -42,6 +42,7 @@ struct nlmclnt_initdata {
- 	unsigned short		protocol;
- 	u32			nfs_version;
- 	int			noresvport;
-+	struct vfsmount		*rpcmount;
- };
+ static inline __be32*
+-xdr_encode_current_server_time(__be32 *p, struct timespec *timep)
++xdr_encode_current_server_time(__be32 *p, const struct timespec *timep)
+ {
+ 	/*
+ 	 * Passing the invalid value useconds=1000000 is a
+@@ -174,6 +191,136 @@ xdr_encode_sattr(__be32 *p, struct iattr *attr)
+ }
  
  /*
-@@ -53,7 +54,7 @@ extern void	nlmclnt_done(struct nlm_host *host);
++ * Encode/decode NFSv2 basic data types
++ *
++ * Basic NFSv2 data types are defined in section 2.3 of RFC 1094:
++ * "NFS: Network File System Protocol Specification".
++ *
++ * Not all basic data types have their own encoding and decoding
++ * functions.  For run-time efficiency, some data types are encoded
++ * or decoded inline.
++ */
++
++/*
++ * 2.3.3.  fhandle
++ *
++ *	typedef opaque fhandle[FHSIZE];
++ */
++static void encode_fhandle(struct xdr_stream *xdr, const struct nfs_fh *fh)
++{
++	__be32 *p;
++
++	BUG_ON(fh->size != NFS2_FHSIZE);
++	p = xdr_reserve_space(xdr, NFS2_FHSIZE);
++	memcpy(p, fh->data, NFS2_FHSIZE);
++}
++
++/*
++ * 2.3.6.  sattr
++ *
++ *	struct sattr {
++ *		unsigned int	mode;
++ *		unsigned int	uid;
++ *		unsigned int	gid;
++ *		unsigned int	size;
++ *		timeval		atime;
++ *		timeval		mtime;
++ *	};
++ */
++
++#define NFS2_SATTR_NOT_SET	(0xffffffff)
++
++static __be32 *xdr_time_not_set(__be32 *p)
++{
++	*p++ = cpu_to_be32(NFS2_SATTR_NOT_SET);
++	*p++ = cpu_to_be32(NFS2_SATTR_NOT_SET);
++	return p;
++}
++
++static void encode_sattr(struct xdr_stream *xdr, const struct iattr *attr)
++{
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, NFS_sattr_sz << 2);
++
++	if (attr->ia_valid & ATTR_MODE)
++		*p++ = cpu_to_be32(attr->ia_mode);
++	else
++		*p++ = cpu_to_be32(NFS2_SATTR_NOT_SET);
++	if (attr->ia_valid & ATTR_UID)
++		*p++ = cpu_to_be32(attr->ia_uid);
++	else
++		*p++ = cpu_to_be32(NFS2_SATTR_NOT_SET);
++	if (attr->ia_valid & ATTR_GID)
++		*p++ = cpu_to_be32(attr->ia_gid);
++	else
++		*p++ = cpu_to_be32(NFS2_SATTR_NOT_SET);
++	if (attr->ia_valid & ATTR_SIZE)
++		*p++ = cpu_to_be32((u32)attr->ia_size);
++	else
++		*p++ = cpu_to_be32(NFS2_SATTR_NOT_SET);
++
++	if (attr->ia_valid & ATTR_ATIME_SET)
++		p = xdr_encode_time(p, &attr->ia_atime);
++	else if (attr->ia_valid & ATTR_ATIME)
++		p = xdr_encode_current_server_time(p, &attr->ia_atime);
++	else
++		p = xdr_time_not_set(p);
++	if (attr->ia_valid & ATTR_MTIME_SET)
++		xdr_encode_time(p, &attr->ia_mtime);
++	else if (attr->ia_valid & ATTR_MTIME)
++		xdr_encode_current_server_time(p, &attr->ia_mtime);
++	else
++		xdr_time_not_set(p);
++}
++
++/*
++ * 2.3.7.  filename
++ *
++ *	typedef string filename<MAXNAMLEN>;
++ */
++static void encode_filename(struct xdr_stream *xdr,
++			    const char *name, u32 length)
++{
++	__be32 *p;
++
++	BUG_ON(length > NFS2_MAXNAMLEN);
++	p = xdr_reserve_space(xdr, 4 + length);
++	xdr_encode_opaque(p, name, length);
++}
++
++/*
++ * 2.3.8.  path
++ *
++ *	typedef string path<MAXPATHLEN>;
++ */
++static void encode_path(struct xdr_stream *xdr, struct page **pages, u32 length)
++{
++	__be32 *p;
++
++	BUG_ON(length > NFS2_MAXPATHLEN);
++	p = xdr_reserve_space(xdr, 4);
++	*p = cpu_to_be32(length);
++	xdr_write_pages(xdr, pages, 0, length);
++}
++
++/*
++ * 2.3.10.  diropargs
++ *
++ *	struct diropargs {
++ *		fhandle  dir;
++ *		filename name;
++ *	};
++ */
++static void encode_diropargs(struct xdr_stream *xdr, const struct nfs_fh *fh,
++			     const char *name, u32 length)
++{
++	encode_fhandle(xdr, fh);
++	encode_filename(xdr, name, length);
++}
++
++
++/*
+  * NFS encode functions
+  */
+ /*
+@@ -188,6 +335,16 @@ nfs_xdr_fhandle(struct rpc_rqst *req, __be32 *p, struct nfs_fh *fh)
+ 	return 0;
+ }
  
- extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
- 					struct file_lock *fl);
--extern int	lockd_up(void);
-+extern int	lockd_up(struct vfsmount *rpcmount);
- extern void	lockd_down(void);
++static int nfs2_xdr_enc_fhandle(struct rpc_rqst *req, __be32 *p,
++				const struct nfs_fh *fh)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_fhandle(&xdr, fh);
++	return 0;
++}
++
+ /*
+  * Encode SETATTR arguments
+  */
+@@ -201,6 +358,25 @@ nfs_xdr_sattrargs(struct rpc_rqst *req, __be32 *p, struct nfs_sattrargs *args)
+ }
  
- #endif /* LINUX_LOCKD_BIND_H */
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 2dee05e..e30b07d 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -44,6 +44,7 @@ struct nlm_host {
- 	size_t			h_addrlen;
- 	struct sockaddr_storage	h_srcaddr;	/* our address (optional) */
- 	size_t			h_srcaddrlen;
-+	struct vfsmount		*h_rpcmount;	/* rpc_pipefs mount point */
- 	struct rpc_clnt		*h_rpcclnt;	/* RPC client to talk to peer */
- 	char			*h_name;		/* remote hostname */
- 	u32			h_version;	/* interface version */
-@@ -222,7 +223,8 @@ struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
- 					const unsigned short protocol,
- 					const u32 version,
- 					const char *hostname,
--					int noresvport);
-+					int noresvport,
-+					struct vfsmount *rpcmount);
- struct nlm_host  *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 					const char *hostname,
- 					const size_t hostname_len);
--- 
-1.7.3.4
+ /*
++ * 2.2.3.  sattrargs
++ *
++ *	struct sattrargs {
++ *		fhandle file;
++ *		sattr attributes;
++ *	};
++ */
++static int nfs2_xdr_enc_sattrargs(struct rpc_rqst *req, __be32 *p,
++				  const struct nfs_sattrargs *args)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_fhandle(&xdr, args->fh);
++	encode_sattr(&xdr, args->sattr);
++	return 0;
++}
++
++/*
+  * Encode directory ops argument
+  * LOOKUP, RMDIR
+  */
+@@ -213,6 +389,16 @@ nfs_xdr_diropargs(struct rpc_rqst *req, __be32 *p, struct nfs_diropargs *args)
+ 	return 0;
+ }
+ 
++static int nfs2_xdr_enc_diropargs(struct rpc_rqst *req, __be32 *p,
++				  const struct nfs_diropargs *args)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_diropargs(&xdr, args->fh, args->name, args->len);
++	return 0;
++}
++
+ /*
+  * Encode REMOVE argument
+  */
+@@ -225,6 +411,18 @@ nfs_xdr_removeargs(struct rpc_rqst *req, __be32 *p, const struct nfs_removeargs
+ 	return 0;
+ }
+ 
++static int nfs2_xdr_enc_readlinkargs(struct rpc_rqst *req, __be32 *p,
++				     const struct nfs_readlinkargs *args)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_fhandle(&xdr, args->fh);
++	prepare_reply_buffer(req, args->pages, args->pgbase,
++					args->pglen, NFS_readlinkres_sz);
++	return 0;
++}
++
+ /*
+  * Arguments to a READ call. Since we read data directly into the page
+  * cache, we also set up the reply iovec here so that iov[1] points
+@@ -253,6 +451,44 @@ nfs_xdr_readargs(struct rpc_rqst *req, __be32 *p, struct nfs_readargs *args)
+ }
+ 
+ /*
++ * 2.2.7.  readargs
++ *
++ *	struct readargs {
++ *		fhandle file;
++ *		unsigned offset;
++ *		unsigned count;
++ *		unsigned totalcount;
++ *	};
++ */
++static void encode_readargs(struct xdr_stream *xdr,
++			    const struct nfs_readargs *args)
++{
++	u32 offset = args->offset;
++	u32 count = args->count;
++	__be32 *p;
++
++	encode_fhandle(xdr, args->fh);
++
++	p = xdr_reserve_space(xdr, 4 + 4 + 4);
++	*p++ = cpu_to_be32(offset);
++	*p++ = cpu_to_be32(count);
++	*p = cpu_to_be32(count);
++}
++
++static int nfs2_xdr_enc_readargs(struct rpc_rqst *req, __be32 *p,
++				 const struct nfs_readargs *args)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_readargs(&xdr, args);
++	prepare_reply_buffer(req, args->pages, args->pgbase,
++					args->count, NFS_readres_sz);
++	req->rq_rcv_buf.flags |= XDRBUF_READ;
++	return 0;
++}
++
++/*
+  * Decode READ reply
+  */
+ static int
+@@ -318,6 +554,47 @@ nfs_xdr_writeargs(struct rpc_rqst *req, __be32 *p, struct nfs_writeargs *args)
+ }
+ 
+ /*
++ * 2.2.9.  writeargs
++ *
++ *	struct writeargs {
++ *		fhandle file;
++ *		unsigned beginoffset;
++ *		unsigned offset;
++ *		unsigned totalcount;
++ *		nfsdata data;
++ *	};
++ */
++static void encode_writeargs(struct xdr_stream *xdr,
++			     const struct nfs_writeargs *args)
++{
++	u32 offset = args->offset;
++	u32 count = args->count;
++	__be32 *p;
++
++	encode_fhandle(xdr, args->fh);
++
++	p = xdr_reserve_space(xdr, 4 + 4 + 4 + 4);
++	*p++ = cpu_to_be32(offset);
++	*p++ = cpu_to_be32(offset);
++	*p++ = cpu_to_be32(count);
++
++	/* nfsdata */
++	*p = cpu_to_be32(count);
++	xdr_write_pages(xdr, args->pages, args->pgbase, count);
++}
++
++static int nfs2_xdr_enc_writeargs(struct rpc_rqst *req, __be32 *p,
++				  const struct nfs_writeargs *args)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_writeargs(&xdr, args);
++	xdr.buf->flags |= XDRBUF_WRITE;
++	return 0;
++}
++
++/*
+  * Encode create arguments
+  * CREATE, MKDIR
+  */
+@@ -332,6 +609,35 @@ nfs_xdr_createargs(struct rpc_rqst *req, __be32 *p, struct nfs_createargs *args)
+ }
+ 
+ /*
++ * 2.2.10.  createargs
++ *
++ *	struct createargs {
++ *		diropargs where;
++ *		sattr attributes;
++ *	};
++ */
++static int nfs2_xdr_enc_createargs(struct rpc_rqst *req, __be32 *p,
++				   const struct nfs_createargs *args)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_diropargs(&xdr, args->fh, args->name, args->len);
++	encode_sattr(&xdr, args->sattr);
++	return 0;
++}
++
++static int nfs2_xdr_enc_removeargs(struct rpc_rqst *req, __be32 *p,
++				   const struct nfs_removeargs *args)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_diropargs(&xdr, args->fh, args->name.name, args->name.len);
++	return 0;
++}
++
++/*
+  * Encode RENAME arguments
+  */
+ static int
+@@ -346,6 +652,27 @@ nfs_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs_renameargs *args)
+ }
+ 
+ /*
++ * 2.2.12.  renameargs
++ *
++ *	struct renameargs {
++ *		diropargs from;
++ *		diropargs to;
++ *	};
++ */
++static int nfs2_xdr_enc_renameargs(struct rpc_rqst *req, __be32 *p,
++				   const struct nfs_renameargs *args)
++{
++	const struct qstr *old = args->old_name;
++	const struct qstr *new = args->new_name;
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_diropargs(&xdr, args->old_dir, old->name, old->len);
++	encode_diropargs(&xdr, args->new_dir, new->name, new->len);
++	return 0;
++}
++
++/*
+  * Encode LINK arguments
+  */
+ static int
+@@ -359,6 +686,25 @@ nfs_xdr_linkargs(struct rpc_rqst *req, __be32 *p, struct nfs_linkargs *args)
+ }
+ 
+ /*
++ * 2.2.13.  linkargs
++ *
++ *	struct linkargs {
++ *		fhandle from;
++ *		diropargs to;
++ *	};
++ */
++static int nfs2_xdr_enc_linkargs(struct rpc_rqst *req, __be32 *p,
++				 const struct nfs_linkargs *args)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_fhandle(&xdr, args->fromfh);
++	encode_diropargs(&xdr, args->tofh, args->toname, args->tolen);
++	return 0;
++}
++
++/*
+  * Encode SYMLINK arguments
+  */
+ static int
+@@ -388,6 +734,27 @@ nfs_xdr_symlinkargs(struct rpc_rqst *req, __be32 *p, struct nfs_symlinkargs *arg
+ }
+ 
+ /*
++ * 2.2.14.  symlinkargs
++ *
++ *	struct symlinkargs {
++ *		diropargs from;
++ *		path to;
++ *		sattr attributes;
++ *	};
++ */
++static int nfs2_xdr_enc_symlinkargs(struct rpc_rqst *req, __be32 *p,
++				    const struct nfs_symlinkargs *args)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_diropargs(&xdr, args->fromfh, args->fromname, args->fromlen);
++	encode_path(&xdr, args->pages, args->pathlen);
++	encode_sattr(&xdr, args->sattr);
++	return 0;
++}
++
++/*
+  * Encode arguments to readdir call
+  */
+ static int
+@@ -409,6 +776,39 @@ nfs_xdr_readdirargs(struct rpc_rqst *req, __be32 *p, struct nfs_readdirargs *arg
+ }
+ 
+ /*
++ * 2.2.17.  readdirargs
++ *
++ *	struct readdirargs {
++ *		fhandle dir;
++ *		nfscookie cookie;
++ *		unsigned count;
++ *	};
++ */
++static void encode_readdirargs(struct xdr_stream *xdr,
++			       const struct nfs_readdirargs *args)
++{
++	__be32 *p;
++
++	encode_fhandle(xdr, args->fh);
++
++	p = xdr_reserve_space(xdr, 4 + 4);
++	*p++ = cpu_to_be32(args->cookie);
++	*p = cpu_to_be32(args->count);
++}
++
++static int nfs2_xdr_enc_readdirargs(struct rpc_rqst *req, __be32 *p,
++				    const struct nfs_readdirargs *args)
++{
++	struct xdr_stream xdr;
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_readdirargs(&xdr, args);
++	prepare_reply_buffer(req, args->pages, 0,
++					args->count, NFS_readdirres_sz);
++	return 0;
++}
++
++/*
+  * Decode the result of a readdir call.
+  * We're not really decoding anymore, we just leave the buffer untouched
+  * and only check that it is syntactically correct.
+@@ -698,7 +1098,7 @@ nfs_stat_to_errno(int stat)
+ #define PROC(proc, argtype, restype, timer)				\
+ [NFSPROC_##proc] = {							\
+ 	.p_proc	    =  NFSPROC_##proc,					\
+-	.p_encode   =  (kxdrproc_t) nfs_xdr_##argtype,			\
++	.p_encode   =  (kxdrproc_t)nfs2_xdr_enc_##argtype,		\
+ 	.p_decode   =  (kxdrproc_t) nfs_xdr_##restype,			\
+ 	.p_arglen   =  NFS_##argtype##_sz,				\
+ 	.p_replen   =  NFS_##restype##_sz,				\
 
