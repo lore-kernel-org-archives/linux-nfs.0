@@ -1,161 +1,362 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:61011 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755756Ab0LQSUP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Dec 2010 13:20:15 -0500
-From: andros@netapp.com
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:43581 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757744Ab0LNO50 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:57:26 -0500
+Received: by mail-iw0-f174.google.com with SMTP id 9so862488iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:57:25 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 18/31] NFSD: Update XDR encoders in NFSv4 callback client
 To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V4 9/9] NFS rename client back channel transport field
-Date: Fri, 17 Dec 2010 13:20:10 -0500
-Message-Id: <1292610010-19084-10-git-send-email-andros@netapp.com>
-In-Reply-To: <1292610010-19084-9-git-send-email-andros@netapp.com>
-References: <1292610010-19084-1-git-send-email-andros@netapp.com>
- <1292610010-19084-2-git-send-email-andros@netapp.com>
- <1292610010-19084-3-git-send-email-andros@netapp.com>
- <1292610010-19084-4-git-send-email-andros@netapp.com>
- <1292610010-19084-5-git-send-email-andros@netapp.com>
- <1292610010-19084-6-git-send-email-andros@netapp.com>
- <1292610010-19084-7-git-send-email-andros@netapp.com>
- <1292610010-19084-8-git-send-email-andros@netapp.com>
- <1292610010-19084-9-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 14 Dec 2010 09:57:22 -0500
+Message-ID: <20101214145722.2293.88238.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Clean up.
 
-Differentiate from server backchannel
+Remove old-style NFSv4 XDR macros in favor of the style now used in
+fs/nfs/nfs4xdr.c.  These were forgotten during the recent nfs4xdr.c
+rewrite.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/callback.c              |   12 ++++++------
- include/linux/sunrpc/bc_xprt.h |    4 ++--
- include/linux/sunrpc/svc.h     |    2 +-
- net/sunrpc/svc.c               |    6 +++---
- net/sunrpc/svcsock.c           |    2 +-
- 5 files changed, 13 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 52e6695..e9a4453 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -142,7 +142,7 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
- 	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
- 	struct nfs4_sessionid *bc_sid;
- 
--	if (!serv->bc_xprt)
-+	if (!serv->sv_bc_xprt)
- 		return -EINVAL;
- 
- 	/* on success freed in xprt_free */
-@@ -152,12 +152,12 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
- 	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
- 		NFS4_MAX_SESSIONID_LEN);
- 	spin_lock_bh(&serv->sv_cb_lock);
--	serv->bc_xprt->xpt_bc_sid = bc_sid;
-+	serv->sv_bc_xprt->xpt_bc_sid = bc_sid;
- 	spin_unlock_bh(&serv->sv_cb_lock);
--	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
-+	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for sv_bc_xprt %p\n", __func__,
- 		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
- 		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
--		serv->bc_xprt);
-+		serv->sv_bc_xprt);
- 	return 0;
- }
- 
-@@ -233,8 +233,8 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- 	init_waitqueue_head(&serv->sv_cb_waitq);
- 	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
- 	if (IS_ERR(rqstp)) {
--		svc_xprt_put(serv->bc_xprt);
--		serv->bc_xprt = NULL;
-+		svc_xprt_put(serv->sv_bc_xprt);
-+		serv->sv_bc_xprt = NULL;
- 	}
- out:
- 	dprintk("--> %s return %ld\n", __func__, PTR_ERR(rqstp));
-diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
-index 2c60e09..c50b458 100644
---- a/include/linux/sunrpc/bc_xprt.h
-+++ b/include/linux/sunrpc/bc_xprt.h
-@@ -43,7 +43,7 @@ int bc_send(struct rpc_rqst *req);
-  */
- static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
- {
--	if (rqstp->rq_server->bc_xprt)
-+	if (rqstp->rq_server->sv_bc_xprt)
- 		return 1;
- 	return 0;
- }
-@@ -51,7 +51,7 @@ static inline struct nfs4_sessionid *bc_xprt_sid(struct svc_rqst *rqstp)
- {
- 	if (svc_is_backchannel(rqstp))
- 		return (struct nfs4_sessionid *)
--					rqstp->rq_server->bc_xprt->xpt_bc_sid;
-+			rqstp->rq_server->sv_bc_xprt->xpt_bc_sid;
- 	return NULL;
- }
- 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 5a3085b..c81d4d8 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -99,7 +99,7 @@ struct svc_serv {
- 	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
- 	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
- 						 * entries in the svc_cb_list */
--	struct svc_xprt		*bc_xprt;
-+	struct svc_xprt		*sv_bc_xprt;	/* callback on fore channel */
- #endif /* CONFIG_NFS_V4_1 */
+ fs/nfsd/nfs4callback.c |  255 ++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 178 insertions(+), 77 deletions(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 143da2e..d8148cc 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -50,11 +50,6 @@ enum {
+ 	NFSPROC4_CLNT_CB_SEQUENCE,
  };
  
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 3520cb3..5f7397b 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1263,7 +1263,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
- 	int		ret;
+-enum nfs_cb_opnum4 {
+-	OP_CB_RECALL            = 4,
+-	OP_CB_SEQUENCE          = 11,
+-};
+-
+ #define NFS4_MAXTAGLEN		20
  
- 	/* Build the svc_rqst used by the common processing routine */
--	rqstp->rq_xprt = serv->bc_xprt;
-+	rqstp->rq_xprt = serv->sv_bc_xprt;
- 	rqstp->rq_xid = req->rq_xid;
- 	rqstp->rq_prot = req->rq_xprt->prot;
- 	rqstp->rq_server = serv;
-@@ -1289,14 +1289,14 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
- 	svc_getnl(argv);	/* CALLDIR */
+ #define NFS4_enc_cb_null_sz		0
+@@ -80,30 +75,6 @@ enum nfs_cb_opnum4 {
+ 					op_dec_sz)
  
- 	/* Hold a reference to the back channel socket across the call */
--	svc_xprt_get(serv->bc_xprt);
-+	svc_xprt_get(serv->sv_bc_xprt);
- 	ret = svc_process_common(rqstp, argv, resv);
- 	if (ret <= 0)
- 		return ret;
- 
- 	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
- 	ret = bc_send(req);
--	svc_xprt_put(serv->bc_xprt);
-+	svc_xprt_put(serv->sv_bc_xprt);
- 	return ret;
+ /*
+-* Generic encode routines from fs/nfs/nfs4xdr.c
+-*/
+-static inline __be32 *
+-xdr_writemem(__be32 *p, const void *ptr, int nbytes)
+-{
+-	int tmp = XDR_QUADLEN(nbytes);
+-	if (!tmp)
+-		return p;
+-	p[tmp-1] = 0;
+-	memcpy(p, ptr, nbytes);
+-	return p + tmp;
+-}
+-
+-#define WRITE32(n)               *p++ = htonl(n)
+-#define WRITEMEM(ptr,nbytes)     do {                           \
+-	p = xdr_writemem(p, ptr, nbytes);                       \
+-} while (0)
+-#define RESERVE_SPACE(nbytes)   do {                            \
+-	p = xdr_reserve_space(xdr, nbytes);                     \
+-	if (!p) dprintk("NFSD: RESERVE_SPACE(%d) failed in function %s\n", (int) (nbytes), __func__); \
+-	BUG_ON(!p);                                             \
+-} while (0)
+-
+-/*
+  * Generic decode routines from fs/nfs/nfs4xdr.c
+  */
+ #define DECODE_TAIL                             \
+@@ -197,102 +168,232 @@ nfs_cb_stat_to_errno(int stat)
+ 	return stat;
  }
- EXPORT_SYMBOL(bc_svc_process);
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index f8b5ca9..e495a45 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1615,7 +1615,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
- 	xprt = &svsk->sk_xprt;
- 	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
  
--	serv->bc_xprt = xprt;
-+	serv->sv_bc_xprt = xprt;
++static __be32 *xdr_encode_empty_array(__be32 *p)
++{
++	*p++ = xdr_zero;
++	return p;
++}
++
++/*
++ * Encode/decode NFSv4 CB basic data types
++ *
++ * Basic NFSv4 callback data types are defined in section 15 of RFC
++ * 3530: "Network File System (NFS) version 4 Protocol" and section
++ * 20 of RFC 5661: "Network File System (NFS) Version 4 Minor Version
++ * 1 Protocol"
++ */
++
++/*
++ *	nfs_cb_opnum4
++ *
++ *	enum nfs_cb_opnum4 {
++ *		OP_CB_GETATTR		= 3,
++ *		  ...
++ *	};
++ */
++enum nfs_cb_opnum4 {
++	OP_CB_GETATTR			= 3,
++	OP_CB_RECALL			= 4,
++	OP_CB_LAYOUTRECALL		= 5,
++	OP_CB_NOTIFY			= 6,
++	OP_CB_PUSH_DELEG		= 7,
++	OP_CB_RECALL_ANY		= 8,
++	OP_CB_RECALLABLE_OBJ_AVAIL	= 9,
++	OP_CB_RECALL_SLOT		= 10,
++	OP_CB_SEQUENCE			= 11,
++	OP_CB_WANTS_CANCELLED		= 12,
++	OP_CB_NOTIFY_LOCK		= 13,
++	OP_CB_NOTIFY_DEVICEID		= 14,
++	OP_CB_ILLEGAL			= 10044
++};
++
++static void encode_nfs_cb_opnum4(struct xdr_stream *xdr, enum nfs_cb_opnum4 op)
++{
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, 4);
++	*p = cpu_to_be32(op);
++}
++
++/*
++ * nfs_fh4
++ *
++ *	typedef opaque nfs_fh4<NFS4_FHSIZE>;
++ */
++static void encode_nfs_fh4(struct xdr_stream *xdr, const struct knfsd_fh *fh)
++{
++	u32 length = fh->fh_size;
++	__be32 *p;
++
++	BUG_ON(length > NFS4_FHSIZE);
++	p = xdr_reserve_space(xdr, 4 + length);
++	xdr_encode_opaque(p, &fh->fh_base, length);
++}
++
+ /*
+- * XDR encode
++ * stateid4
++ *
++ *	struct stateid4 {
++ *		uint32_t	seqid;
++ *		opaque		other[12];
++ *	};
+  */
++static void encode_stateid4(struct xdr_stream *xdr, const stateid_t *sid)
++{
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, NFS4_STATEID_SIZE);
++	*p++ = cpu_to_be32(sid->si_generation);
++	xdr_encode_opaque_fixed(p, &sid->si_opaque, NFS4_STATEID_OTHER_SIZE);
++}
  
- 	return xprt;
+-static void
+-encode_stateid(struct xdr_stream *xdr, stateid_t *sid)
++/*
++ * sessionid4
++ *
++ *	typedef opaque sessionid4[NFS4_SESSIONID_SIZE];
++ */
++static void encode_sessionid4(struct xdr_stream *xdr,
++			      const struct nfsd4_session *session)
+ {
+ 	__be32 *p;
+ 
+-	RESERVE_SPACE(sizeof(stateid_t));
+-	WRITE32(sid->si_generation);
+-	WRITEMEM(&sid->si_opaque, sizeof(stateid_opaque_t));
++	p = xdr_reserve_space(xdr, NFS4_MAX_SESSIONID_LEN);
++	xdr_encode_opaque_fixed(p, session->se_sessionid.data,
++					NFS4_MAX_SESSIONID_LEN);
  }
--- 
-1.6.6
+ 
+-static void
+-encode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr)
++/*
++ * CB_COMPOUND4args
++ *
++ *	struct CB_COMPOUND4args {
++ *		utf8str_cs	tag;
++ *		uint32_t	minorversion;
++ *		uint32_t	callback_ident;
++ *		nfs_cb_argop4	argarray<>;
++ *	};
++*/
++static void encode_cb_compound4args(struct xdr_stream *xdr,
++				    struct nfs4_cb_compound_hdr *hdr)
+ {
+ 	__be32 * p;
+ 
+-	RESERVE_SPACE(16);
+-	WRITE32(0);            /* tag length is always 0 */
+-	WRITE32(hdr->minorversion);
+-	WRITE32(hdr->ident);
++	p = xdr_reserve_space(xdr, 4 + 4 + 4 + 4);
++	p = xdr_encode_empty_array(p);		/* empty tag */
++	*p++ = cpu_to_be32(hdr->minorversion);
++	*p++ = cpu_to_be32(hdr->ident);
++
+ 	hdr->nops_p = p;
+-	WRITE32(hdr->nops);
++	*p = cpu_to_be32(hdr->nops);		/* argarray element count */
+ }
+ 
++/*
++ * Update argarray element count
++ */
+ static void encode_cb_nops(struct nfs4_cb_compound_hdr *hdr)
+ {
+-	*hdr->nops_p = htonl(hdr->nops);
++	BUG_ON(hdr->nops > NFS4_MAX_BACK_CHANNEL_OPS);
++	*hdr->nops_p = cpu_to_be32(hdr->nops);
+ }
+ 
+-static void
+-encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp,
+-		struct nfs4_cb_compound_hdr *hdr)
++/*
++ * CB_RECALL4args
++ *
++ *	struct CB_RECALL4args {
++ *		stateid4	stateid;
++ *		bool		truncate;
++ *		nfs_fh4		fh;
++ *	};
++ */
++static void encode_cb_recall4args(struct xdr_stream *xdr,
++				  const struct nfs4_delegation *dp,
++				  struct nfs4_cb_compound_hdr *hdr)
+ {
+ 	__be32 *p;
+-	int len = dp->dl_fh.fh_size;
+-
+-	RESERVE_SPACE(4);
+-	WRITE32(OP_CB_RECALL);
+-	encode_stateid(xdr, &dp->dl_stateid);
+-	RESERVE_SPACE(8 + (XDR_QUADLEN(len) << 2));
+-	WRITE32(0); /* truncate optimization not implemented */
+-	WRITE32(len);
+-	WRITEMEM(&dp->dl_fh.fh_base, len);
++
++	encode_nfs_cb_opnum4(xdr, OP_CB_RECALL);
++	encode_stateid4(xdr, &dp->dl_stateid);
++
++	p = xdr_reserve_space(xdr, 4);
++	*p++ = xdr_zero;			/* truncate */
++
++	encode_nfs_fh4(xdr, &dp->dl_fh);
++
+ 	hdr->nops++;
+ }
+ 
+-static void
+-encode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_callback *cb,
+-		   struct nfs4_cb_compound_hdr *hdr)
++/*
++ * CB_SEQUENCE4args
++ *
++ *	struct CB_SEQUENCE4args {
++ *		sessionid4		csa_sessionid;
++ *		sequenceid4		csa_sequenceid;
++ *		slotid4			csa_slotid;
++ *		slotid4			csa_highest_slotid;
++ *		bool			csa_cachethis;
++ *		referring_call_list4	csa_referring_call_lists<>;
++ *	};
++ */
++static void encode_cb_sequence4args(struct xdr_stream *xdr,
++				    const struct nfsd4_callback *cb,
++				    struct nfs4_cb_compound_hdr *hdr)
+ {
++	struct nfsd4_session *session = cb->cb_clp->cl_cb_session;
+ 	__be32 *p;
+-	struct nfsd4_session *ses = cb->cb_clp->cl_cb_session;
+ 
+ 	if (hdr->minorversion == 0)
+ 		return;
+ 
+-	RESERVE_SPACE(1 + NFS4_MAX_SESSIONID_LEN + 20);
++	encode_nfs_cb_opnum4(xdr, OP_CB_SEQUENCE);
++	encode_sessionid4(xdr, session);
++
++	p = xdr_reserve_space(xdr, 4 + 4 + 4 + 4 + 4);
++	*p++ = cpu_to_be32(session->se_cb_seq_nr);	/* csa_sequenceid */
++	*p++ = xdr_zero;			/* csa_slotid */
++	*p++ = xdr_zero;			/* csa_highest_slotid */
++	*p++ = xdr_zero;			/* csa_cachethis */
++	xdr_encode_empty_array(p);		/* csa_referring_call_lists */
+ 
+-	WRITE32(OP_CB_SEQUENCE);
+-	WRITEMEM(ses->se_sessionid.data, NFS4_MAX_SESSIONID_LEN);
+-	WRITE32(ses->se_cb_seq_nr);
+-	WRITE32(0);		/* slotid, always 0 */
+-	WRITE32(0);		/* highest slotid always 0 */
+-	WRITE32(0);		/* cachethis always 0 */
+-	WRITE32(0); /* FIXME: support referring_call_lists */
+ 	hdr->nops++;
+ }
+ 
+-static int
+-nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
++/*
++ * NFSv4.0 and NFSv4.1 XDR encode functions
++ *
++ * NFSv4.0 callback argument types are defined in section 15 of RFC
++ * 3530: "Network File System (NFS) version 4 Protocol" and section 20
++ * of RFC 5661:  "Network File System (NFS) Version 4 Minor Version 1
++ * Protocol".
++ */
++
++/*
++ * NB: Without this zero space reservation, callbacks over krb5p fail
++ */
++static int nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p, void *__unused)
+ {
+ 	struct xdr_stream xdrs, *xdr = &xdrs;
+ 
+ 	xdr_init_encode(&xdrs, &req->rq_snd_buf, p);
+-        RESERVE_SPACE(0);
++	xdr_reserve_space(xdr, 0);
+ 	return 0;
+ }
+ 
+-static int
+-nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p,
+-		struct nfsd4_callback *cb)
++/*
++ * 20.2. Operation 4: CB_RECALL - Recall a Delegation
++ */
++static int nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p,
++				  const struct nfsd4_callback *cb)
+ {
+ 	struct xdr_stream xdr;
+-	struct nfs4_delegation *args = cb->cb_op;
++	const struct nfs4_delegation *args = cb->cb_op;
+ 	struct nfs4_cb_compound_hdr hdr = {
+ 		.ident = cb->cb_clp->cl_cb_ident,
+ 		.minorversion = cb->cb_minorversion,
+ 	};
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+-	encode_cb_compound_hdr(&xdr, &hdr);
+-	encode_cb_sequence(&xdr, cb, &hdr);
+-	encode_cb_recall(&xdr, args, &hdr);
++	encode_cb_compound4args(&xdr, &hdr);
++	encode_cb_sequence4args(&xdr, cb, &hdr);
++	encode_cb_recall4args(&xdr, args, &hdr);
+ 	encode_cb_nops(&hdr);
+ 	return 0;
+ }
 
