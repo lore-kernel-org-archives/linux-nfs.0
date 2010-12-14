@@ -1,76 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50067 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755093Ab0LMUT6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Dec 2010 15:19:58 -0500
-From: Andy Adamson <andros@netapp.com>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:45794 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757715Ab0LNPGZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 10:06:25 -0500
+Received: by mail-iw0-f174.google.com with SMTP id 9so869885iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 07:06:25 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 08/11] lockd: Rename nlm_hosts
 To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH_V3 0/7] NFSv4 callback find client fix Version 3
-Date: Mon, 13 Dec 2010 15:19:38 -0500
-Message-Id: <1292271585-3038-1-git-send-email-andros@netapp.com>
+Date: Tue, 14 Dec 2010 10:06:22 -0500
+Message-ID: <20101214150622.2736.23447.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+References: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+Clean up.
 
-Version 3 of these patches
-Applies to Tronds nfs-for-next branch
+nlm_hosts now contains only server-side entries.  Rename it to match
+convention of client side cache.
 
-The back channel server svc_process_common RPC layer pg_authenticate call
-[nfs_callback_authenticate] is shared by both the NFSv4.0 and the NFSv4.1
-callback threads. It authenticates the incoming request by finding (and
-referencing) an nfs_client struct based on the incoming request address
-and the NFS version (4). This is akin to the NFS server which authenticates
-requests by matching the server address to the exports file client list.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Since there is no minorversion in the search, it may find the wrong
-nfs_client struct. For the nfsv4.0 callback service thread, this means it
-could find an NFSv4.1 nfs_client. For the NFSv4.1 callback service thread, it
-could find an NFSv4.0 instead of v4.1, or find an NFSv4.1 nfs_client with the
-wrong session.
+ fs/lockd/host.c |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
 
-The nfs_client is dereferenced at the end of pg_authenticate. Another
-nfs_find_client call is done in the NFS layouer per operation dispatcher
-routines for NFSv4.0 and in the cb_sequence operation dispatcher routine for
-NFSv4.1 after decoding.
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 0250b0e..87fbde1 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -25,7 +25,7 @@
+ #define NLM_HOST_EXPIRE		(300 * HZ)
+ #define NLM_HOST_COLLECT	(120 * HZ)
+ 
+-static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
++static struct hlist_head	nlm_server_hosts[NLM_HOST_NRHASH];
+ static struct hlist_head	nlm_client_hosts[NLM_HOST_NRHASH];
+ 
+ #define for_each_host(host, pos, chain, table) \
+@@ -184,7 +184,7 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
+ 	 * different NLM rpc_clients into one single nlm_host object.
+ 	 * This would allow us to have one nlm_host per address.
+ 	 */
+-	chain = &nlm_hosts[nlm_hash_address(ni->sap)];
++	chain = &nlm_server_hosts[nlm_hash_address(ni->sap)];
+ 	hlist_for_each_entry(host, pos, chain, h_hash) {
+ 		if (!rpc_cmp_addr(nlm_addr(host), ni->sap))
+ 			continue;
+@@ -428,7 +428,7 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 	if (time_after_eq(jiffies, next_gc))
+ 		nlm_gc_hosts();
+ 
+-	chain = &nlm_hosts[nlm_hash_address(ni.sap)];
++	chain = &nlm_server_hosts[nlm_hash_address(ni.sap)];
+ 	hlist_for_each_entry(host, pos, chain, h_hash) {
+ 		if (!rpc_cmp_addr(nlm_addr(host), ni.sap))
+ 			continue;
+@@ -632,7 +632,7 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
+ 	 * lock for this.
+ 	 * To avoid processing a host several times, we match the nsmstate.
+ 	 */
+-	while ((host = next_host_state(nlm_hosts, nsm, info)) != NULL) {
++	while ((host = next_host_state(nlm_server_hosts, nsm, info)) != NULL) {
+ 		nlmsvc_free_host_resources(host);
+ 		nlmsvc_release_host(host);
+ 	}
+@@ -660,7 +660,7 @@ nlm_shutdown_hosts(void)
+ 
+ 	/* First, make all hosts eligible for gc */
+ 	dprintk("lockd: nuking all hosts...\n");
+-	for_each_host(host, pos, chain, nlm_hosts) {
++	for_each_host(host, pos, chain, nlm_server_hosts) {
+ 		host->h_expires = jiffies - 1;
+ 		if (host->h_rpcclnt) {
+ 			rpc_shutdown_client(host->h_rpcclnt);
+@@ -676,7 +676,7 @@ nlm_shutdown_hosts(void)
+ 	if (nrhosts) {
+ 		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
+ 		dprintk("lockd: %d hosts left:\n", nrhosts);
+-		for_each_host(host, pos, chain, nlm_hosts) {
++		for_each_host(host, pos, chain, nlm_server_hosts) {
+ 			dprintk("       %s (cnt %d use %d exp %ld)\n",
+ 				host->h_name, atomic_read(&host->h_count),
+ 				host->h_inuse, host->h_expires);
+@@ -697,13 +697,13 @@ nlm_gc_hosts(void)
+ 	struct nlm_host	*host;
+ 
+ 	dprintk("lockd: host garbage collection\n");
+-	for_each_host(host, pos, chain, nlm_hosts)
++	for_each_host(host, pos, chain, nlm_server_hosts)
+ 		host->h_inuse = 0;
+ 
+ 	/* Mark all hosts that hold locks, blocks or shares */
+ 	nlmsvc_mark_resources();
+ 
+-	for_each_host_safe(host, pos, next, chain, nlm_hosts) {
++	for_each_host_safe(host, pos, next, chain, nlm_server_hosts) {
+ 		if (atomic_read(&host->h_count) || host->h_inuse
+ 		 || time_before(jiffies, host->h_expires)) {
+ 			dprintk("nlm_gc_hosts skipping %s "
 
-This means the callback server could start processing a callback, passing
-the pg_authenticate test, and have the nfs_client struct freed between the
-pg_authenticate call and the dispatcher operation call. Or, it could have
-found the wrong nfs_client in the pg_authenticate call.
-
-The current code has this behavior: If the nfs_client is not found in
-pg_authenticate, the request is simply dropped (SVC_DROP). If an nfs_client
-is not found in the dispatcher routines NFS4ERR_BADSESSION is returned for
-v4.1 requests and NFS4ERR_BADHANDLE for v4.0 requests.
-
-The fix is to implement the v4.0 SETCLIENTID callback_ident and use it to find
-the one and only client for v4.0 callbacks, and to associate the sessionid
-with the sessions based callback service (v4.1) and use it to identify the
-one and only client. This can be done in the NFS layer, in CB_COMPOUND header
-processing for v4.0 and in CB_SEQUENCE processing in v4.1.
-In both cases, a reference to the found client is held across CB_COMPOUND
-processing.
-
-The pg_authenticate method does not have the callback_ident for CB_NULL or
-CB_COMPOUND v4.0 processing, so just the server address, nfsversion and
-minorversion is used for the client search
-
-For sessions based callback service, the sessionID can't be set until the
-return of the CREATE_SESSION call, yet the CB_NULL ping from a server can
-be initiated by the server at the receipt of the CREATE_SESSION call before
-the response is sent. So for CB_NULL, the sessionid is (usually) not set, and
-the sessionid is not used for CB_NULL pg_authenticate client searches.
-
-0001-NFS-dont-free-shared-socket-on-backchannel-put-xprt.patch
-0002-NFS-implement-v4.0-callback_ident.patch
-0003-NFS-associate-sessionid-with-callback-connection.patch
-0004-NFS-reference-nfs_client-across-cb_compound-processi.patch
-0005-NFS-RPC_AUTH_GSS-unsupported-on-v4.1-back-channel.patch
-0006-NFS-add-session-back-channel-draining.patch
-0007-NFS-only-set-bc_xprt-upon-success.patch
-
-
--->Andy
