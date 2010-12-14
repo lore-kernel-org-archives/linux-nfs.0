@@ -1,273 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:40715 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:36398 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753138Ab0LWMry (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 07:47:54 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 03/15] pnfs: add prefix to struct pnfs_layout_segment fields
-Date: Thu, 23 Dec 2010 07:47:34 -0500
-Message-Id: <1293108466-31768-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
-References: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
+	id S1758119Ab0LNWBM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Dec 2010 17:01:12 -0500
+Date: Tue, 14 Dec 2010 17:01:02 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Nick Piggin <npiggin@kernel.dk>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Nick Piggin <npiggin@gmail.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] nfsd4: allow __d_obtain_alias() to return unhashed
+ dentries
+Message-ID: <20101214220102.GM24828@fieldses.org>
+References: <20101112184353.GA32745@fieldses.org>
+ <AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
+ <20101115174837.GB10044@fieldses.org>
+ <AANLkTim1QjTwOZ4SHdMy8Y6TOAnaOYtTwgwHXfH5H5Xn@mail.gmail.com>
+ <AANLkTinMq1W1vx-jZnf7cb1cAnh9OyoVRYtVS7zpujfs@mail.gmail.com>
+ <20101129193248.GA9897@fieldses.org>
+ <AANLkTikwzDJ_q65==uxDsAhp3h8bU7Rkt7U9gVgRAK0D@mail.gmail.com>
+ <20101203223326.GB28763@fieldses.org>
+ <20101213051944.GA8688@amd>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20101213051944.GA8688@amd>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-While we are renaming all the fields, change lo->state to lo->plh_flags.
+On Mon, Dec 13, 2010 at 04:19:44PM +1100, Nick Piggin wrote:
+> On Fri, Dec 03, 2010 at 05:33:27PM -0500, J. Bruce Fields wrote:
+> > From: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > Without this patch
+> > 
+> >        client$ mount -tnfs4 server:/export/ /mnt/
+> >        client$ tail -f /mnt/FOO
+> >        ...
+> >        server$ df -i /export
+> >        server$ rm /export/FOO
+> >        (^C the tail -f)
+> >        server$ df -i /export
+> >        server$ echo 2 >/proc/sys/vm/drop_caches
+> >        server$ df -i /export
+> > 
+> > the df's will show that the inode is not freed on the filesystem until
+> > the last step, when it could have been freed after killing the client's
+> > tail -f.  On-disk data won't be deallocated either, leading to possible
+> > spurious ENOSPC.
+> > 
+> > This occurs because when the client does the close, it arrives in a
+> > compound with a putfh and a close, processed like:
+> > 
+> >        - putfh: look up the filehandle.  The only alias found for the
+> >          inode will be DCACHE_UNHASHED alias referenced by the filp
+> >          associated with the nfsd open.  d_obtain_alias() doesn't like
+> >          this, so it creates a new DCACHE_DISCONECTED dentry and
+> >          returns that instead.
+> > 
+> > Nick Piggin suggested fixing this by allowing d_obtain_alias to return
+> > the unhashed dentry that is referenced by the filp, instead of making it
+> > create a new dentry.
+> > 
+> > Cc: Nick Piggin <npiggin@gmail.com>
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/dcache.c |    2 +-
+> >  1 files changed, 1 insertions(+), 1 deletions(-)
+> > 
+> > On Tue, Nov 30, 2010 at 12:00:16PM +1100, Nick Piggin wrote:
+> > > On Tue, Nov 30, 2010 at 6:32 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > > On Mon, Nov 29, 2010 at 02:56:22PM +1100, Nick Piggin wrote:
+> > > >> On Tue, Nov 16, 2010 at 5:45 PM, Nick Piggin <npiggin@gmail.com> wrote:
+> > > >> > On Tue, Nov 16, 2010 at 4:48 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > >> >> On Sat, Nov 13, 2010 at 10:53:12PM +1100, Nick Piggin wrote:
+> > > >> >>> Can you even put the link check into __d_find_alias?
+> > > >> >>>
+> > > >> >>> -               if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
+> > > >> >>> +               if (S_ISDIR(inode->i_mode) || !inode->i_nlink ||
+> > > >> >>> !d_unhashed(alias)) {
+> > > >> >>>
+> > > >> >>> Something like that?
+> > > >> >>
+> > > >> >> The immediate result of that would be for the close rpc (or any rpc's
+> > > >> >> sent after the file was unlinked) to fail with ESTALE.
+> > > >> >
+> > > >> > Why is that? Seems like it would be a bug, because a hashed dentry may
+> > > >> > be unhashed at any time concurrently to nfsd operation, so it should be
+> > > >> > able to tolerate that so long as it has a ref on the inode?
+> > > >>
+> > > >> Ping? Did you work out why nfs fails with ESTALE in that case? It seems
+> > > >> to work in my testing (and do the right thing with freeing the inode).
+> > > >
+> > > > Bah, sorry, I read too quickly, got the sense of the test backwards, and
+> > > > thought you were suggesting __d_find_alias() shouldn't return an alias
+> > > > in the i_nlink == 0 case!
+> > > >
+> > > > Yes, agreed, that should solve my problem.
+> > > 
+> > > OK, good.
+> > > 
+> > > > But what's the reason for the d_unhashed() check now?  Could we get rid
+> > > > of it entirely?
+> > > 
+> > > Well when the inode still has links I think we actually do want any new
+> > > references to go to hashed dentries. Definitely for d_splice_alias.
+> > 
+> > So here's a version with a changelog; objections?
+> 
+> Not sure where Al's hiding...
+> 
+> But I would like to update the comments, and perhaps even a new
+> add a new function here (or new flag to __d_find_alias).
+> 
+> AFAIKS, the callers are OK, however I suppose d_splice_alias and
+> d_materialise_unique should not have unlinked inodes at this point,
+> so at least a BUG_ON for them might be a good idea?
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4filelayout.c |    2 +-
- fs/nfs/pnfs.c           |   66 +++++++++++++++++++++++-----------------------
- fs/nfs/pnfs.h           |   10 +++---
- 3 files changed, 39 insertions(+), 39 deletions(-)
+That does sound safer.  I'm pretty confused by the various
+__di_splice_alias callers.  I'll go search through them and see if I can
+understand better....
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 2e92f0d..738d6a4 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -243,7 +243,7 @@ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
- static void
- filelayout_free_lseg(struct pnfs_layout_segment *lseg)
- {
--	struct nfs_server *nfss = NFS_SERVER(lseg->layout->inode);
-+	struct nfs_server *nfss = NFS_SERVER(lseg->pls_layout->inode);
- 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
- 
- 	dprintk("--> %s\n", __func__);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 6e9daff..c3ca5fe 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -210,9 +210,9 @@ put_layout_hdr(struct inode *inode)
- static void
- init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- {
--	INIT_LIST_HEAD(&lseg->fi_list);
--	kref_init(&lseg->kref);
--	lseg->layout = lo;
-+	INIT_LIST_HEAD(&lseg->pls_list);
-+	kref_init(&lseg->pls_refcount);
-+	lseg->pls_layout = lo;
- }
- 
- /* Called without i_lock held, as the free_lseg call may sleep */
-@@ -220,8 +220,8 @@ static void
- destroy_lseg(struct kref *kref)
- {
- 	struct pnfs_layout_segment *lseg =
--		container_of(kref, struct pnfs_layout_segment, kref);
--	struct inode *ino = lseg->layout->inode;
-+		container_of(kref, struct pnfs_layout_segment, pls_refcount);
-+	struct inode *ino = lseg->pls_layout->inode;
- 
- 	dprintk("--> %s\n", __func__);
- 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
-@@ -236,8 +236,8 @@ put_lseg(struct pnfs_layout_segment *lseg)
- 		return;
- 
- 	dprintk("%s: lseg %p ref %d\n", __func__, lseg,
--		atomic_read(&lseg->kref.refcount));
--	kref_put(&lseg->kref, destroy_lseg);
-+		atomic_read(&lseg->pls_refcount.refcount));
-+	kref_put(&lseg->pls_refcount, destroy_lseg);
- }
- 
- static void
-@@ -249,9 +249,9 @@ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list)
- 	dprintk("%s:Begin lo %p\n", __func__, lo);
- 
- 	assert_spin_locked(&lo->inode->i_lock);
--	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list) {
-+	list_for_each_entry_safe(lseg, next, &lo->segs, pls_list) {
- 		dprintk("%s: freeing lseg %p\n", __func__, lseg);
--		list_move(&lseg->fi_list, tmp_list);
-+		list_move(&lseg->pls_list, tmp_list);
- 	}
- 	clp = NFS_SERVER(lo->inode)->nfs_client;
- 	spin_lock(&clp->cl_lock);
-@@ -259,7 +259,7 @@ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list)
- 	list_del_init(&lo->layouts);
- 	spin_unlock(&clp->cl_lock);
- 	write_seqlock(&lo->seqlock);
--	clear_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
-+	clear_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags);
- 	write_sequnlock(&lo->seqlock);
- 
- 	dprintk("%s:Return\n", __func__);
-@@ -272,9 +272,9 @@ pnfs_free_lseg_list(struct list_head *tmp_list)
- 
- 	while (!list_empty(tmp_list)) {
- 		lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
--				fi_list);
-+				pls_list);
- 		dprintk("%s calling put_lseg on %p\n", __func__, lseg);
--		list_del(&lseg->fi_list);
-+		list_del(&lseg->pls_list);
- 		put_lseg(lseg);
- 	}
- }
-@@ -331,7 +331,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 	bool overwrite = false;
- 
- 	write_seqlock(&lo->seqlock);
--	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state) ||
-+	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags) ||
- 	    memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
- 		overwrite = true;
- 	else {
-@@ -360,7 +360,7 @@ pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
- 		memcpy(lo->stateid.data, state->stateid.data,
- 		       sizeof(state->stateid.data));
- 	} while (read_seqretry(&state->seqlock, seq));
--	set_bit(NFS_LAYOUT_STATEID_SET, &lo->state);
-+	set_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags);
- 	write_sequnlock(&lo->seqlock);
- 	dprintk("<-- %s\n", __func__);
- }
-@@ -374,7 +374,7 @@ pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 	dprintk("--> %s\n", __func__);
- 	do {
- 		seq = read_seqbegin(&lo->seqlock);
--		if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->state)) {
-+		if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags)) {
- 			/* This will trigger retry of the read */
- 			pnfs_layout_from_open_stateid(lo, open_state);
- 		} else
-@@ -424,7 +424,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 	nfs4_proc_layoutget(lgp);
- 	if (!lseg) {
- 		/* remember that LAYOUTGET failed and suspend trying */
--		set_bit(lo_fail_bit(iomode), &lo->state);
-+		set_bit(lo_fail_bit(iomode), &lo->plh_flags);
- 	}
- 	return lseg;
- }
-@@ -459,26 +459,26 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
- 		list_add_tail(&lo->layouts, &clp->cl_layouts);
- 		spin_unlock(&clp->cl_lock);
- 	}
--	list_for_each_entry(lp, &lo->segs, fi_list) {
--		if (cmp_layout(lp->range.iomode, lseg->range.iomode) > 0)
-+	list_for_each_entry(lp, &lo->segs, pls_list) {
-+		if (cmp_layout(lp->pls_range.iomode, lseg->pls_range.iomode) > 0)
- 			continue;
--		list_add_tail(&lseg->fi_list, &lp->fi_list);
-+		list_add_tail(&lseg->pls_list, &lp->pls_list);
- 		dprintk("%s: inserted lseg %p "
- 			"iomode %d offset %llu length %llu before "
- 			"lp %p iomode %d offset %llu length %llu\n",
--			__func__, lseg, lseg->range.iomode,
--			lseg->range.offset, lseg->range.length,
--			lp, lp->range.iomode, lp->range.offset,
--			lp->range.length);
-+			__func__, lseg, lseg->pls_range.iomode,
-+			lseg->pls_range.offset, lseg->pls_range.length,
-+			lp, lp->pls_range.iomode, lp->pls_range.offset,
-+			lp->pls_range.length);
- 		found = 1;
- 		break;
- 	}
- 	if (!found) {
--		list_add_tail(&lseg->fi_list, &lo->segs);
-+		list_add_tail(&lseg->pls_list, &lo->segs);
- 		dprintk("%s: inserted lseg %p "
- 			"iomode %d offset %llu length %llu at tail\n",
--			__func__, lseg, lseg->range.iomode,
--			lseg->range.offset, lseg->range.length);
-+			__func__, lseg, lseg->pls_range.iomode,
-+			lseg->pls_range.offset, lseg->pls_range.length);
- 	}
- 	get_layout_hdr_locked(lo);
- 
-@@ -538,7 +538,7 @@ pnfs_find_alloc_layout(struct inode *ino)
- static int
- is_matching_lseg(struct pnfs_layout_segment *lseg, u32 iomode)
- {
--	return (iomode != IOMODE_RW || lseg->range.iomode == IOMODE_RW);
-+	return (iomode != IOMODE_RW || lseg->pls_range.iomode == IOMODE_RW);
- }
- 
- /*
-@@ -552,17 +552,17 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
- 	dprintk("%s:Begin\n", __func__);
- 
- 	assert_spin_locked(&lo->inode->i_lock);
--	list_for_each_entry(lseg, &lo->segs, fi_list) {
-+	list_for_each_entry(lseg, &lo->segs, pls_list) {
- 		if (is_matching_lseg(lseg, iomode)) {
- 			ret = lseg;
- 			break;
- 		}
--		if (cmp_layout(iomode, lseg->range.iomode) > 0)
-+		if (cmp_layout(iomode, lseg->pls_range.iomode) > 0)
- 			break;
- 	}
- 
- 	dprintk("%s:Return lseg %p ref %d\n",
--		__func__, ret, ret ? atomic_read(&ret->kref.refcount) : 0);
-+		__func__, ret, ret ? atomic_read(&ret->pls_refcount.refcount) : 0);
- 	return ret;
- }
- 
-@@ -597,7 +597,7 @@ pnfs_update_layout(struct inode *ino,
- 	}
- 
- 	/* if LAYOUTGET already failed once we don't try again */
--	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->state))
-+	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
- 		goto out_unlock;
- 
- 	get_layout_hdr_locked(lo); /* Matched in nfs4_layoutget_release */
-@@ -606,7 +606,7 @@ pnfs_update_layout(struct inode *ino,
- 	lseg = send_layoutget(lo, ctx, iomode);
- out:
- 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
--		nfsi->layout->state, lseg);
-+		nfsi->layout->plh_flags, lseg);
- 	return lseg;
- out_unlock:
- 	spin_unlock(&ino->i_lock);
-@@ -636,7 +636,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 
- 	spin_lock(&ino->i_lock);
- 	init_lseg(lo, lseg);
--	lseg->range = res->range;
-+	lseg->pls_range = res->range;
- 	*lgp->lsegpp = lseg;
- 	pnfs_insert_layout(lo, lseg);
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index e12367d..6fcc073 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -31,10 +31,10 @@
- #define FS_NFS_PNFS_H
- 
- struct pnfs_layout_segment {
--	struct list_head fi_list;
--	struct pnfs_layout_range range;
--	struct kref kref;
--	struct pnfs_layout_hdr *layout;
-+	struct list_head pls_list;
-+	struct pnfs_layout_range pls_range;
-+	struct kref pls_refcount;
-+	struct pnfs_layout_hdr *pls_layout;
- };
- 
- #ifdef CONFIG_NFS_V4_1
-@@ -65,7 +65,7 @@ struct pnfs_layout_hdr {
- 	struct list_head	segs;      /* layout segments list */
- 	seqlock_t		seqlock;   /* Protects the stateid */
- 	nfs4_stateid		stateid;
--	unsigned long		state;
-+	unsigned long		plh_flags;
- 	struct inode		*inode;
- };
- 
--- 
-1.7.2.1
+--b.
 
+> 
+> > 
+> > --b.
+> > 
+> > diff --git a/fs/dcache.c b/fs/dcache.c
+> > index 23702a9..afa8a0d 100644
+> > --- a/fs/dcache.c
+> > +++ b/fs/dcache.c
+> > @@ -368,7 +368,7 @@ static struct dentry * __d_find_alias(struct inode *inode, int want_discon)
+> >  		next = tmp->next;
+> >  		prefetch(next);
+> >  		alias = list_entry(tmp, struct dentry, d_alias);
+> > - 		if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
+> > +		if (S_ISDIR(inode->i_mode) || !inode->i_nlink || !d_unhashed(alias)) {
+> >  			if (IS_ROOT(alias) &&
+> >  			    (alias->d_flags & DCACHE_DISCONNECTED))
+> >  				discon_alias = alias;
