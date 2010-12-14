@@ -1,63 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:63940 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752816Ab0LBSLQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Dec 2010 13:11:16 -0500
-Subject: Re: nfsroot mount options
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-gw0-f42.google.com ([74.125.83.42]:63603 "EHLO
+	mail-gw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756678Ab0LNO7C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:59:02 -0500
+Received: by gwb20 with SMTP id 20so543664gwb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:59:02 -0800 (PST)
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20101202170915.GB15530@merit.edu>
-Date: Thu, 2 Dec 2010 13:11:09 -0500
+Subject: [PATCH 28/31] SUNRPC: Avoid return code checking in rpcbind XDR
+	encoder functions
+To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Message-Id: <5B25CFFD-16E3-4BAB-A344-4337F0C79862@oracle.com>
-References: <20101202001821.GA12638@merit.edu> <11945697-DC88-4EB3-A9C8-F2A27E0E79BD@oracle.com> <20101202170915.GB15530@merit.edu>
-To: Jim Rees <rees@umich.edu>
+Date: Tue, 14 Dec 2010 09:58:59 -0500
+Message-ID: <20101214145859.2293.84240.stgit@matisse.1015granger.net>
+In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Clean up.
 
-On Dec 2, 2010, at 12:09 PM, Jim Rees wrote:
+The trend in the other XDR encoder functions is to BUG() when encoding
+problems occur, since a problem here is always due to a local coding
+error.  Then, instead of a status, zero is unconditionally returned.
 
-> Chuck Lever wrote:
-> 
->  On Dec 1, 2010, at 7:18 PM, Jim Rees wrote:
-> 
->> If I boot diskless with nfsroot, why is the root file system mounted
->> readonly?  This makes sense for a file system on disk, since it may have to
->> be checked before remounting rw, but I don't see why this is needed for
->> nfsroot.
->> 
->> Also, Documentation/filesystems/nfs/nfsroot.txt says that only nfs options
->> can be given on the kernel nfsroot option, but I've seen a claim that you
->> can also put "rw" here.  Are other generic options possible?  How about the
->> nfs options that aren't listed in the doc?  Should the doc be updated?
-> 
->  What kernel version are you looking at?  I think 2.6.37-rc has some
->  nfsroot updates that allow all NFS options to be used.
-> 
->  Not sure about the generic mount options.  Why not just try them and see?
-> 
-> This is Ubuntu lucid, so 2.6.32.  I'm less concerned about the documentation
-> defect than the question about the default being readonly.  Is there any
-> good reason other than to match the behavior of non-nfs root?
-> 
-> I ask because there has been a bug in ubuntu for a long time (a couple of
-> releases) that prevents nfsroot from working.  Their mountall is broken and
-> can't remount an nfs root rw.  They need to fix this obviously, but it got
-> me to wondering why the remount should be needed at all.
-> 
-> The bug report is here:
-> https://bugs.launchpad.net/ubuntu/+source/mountall/+bug/537133
+Update the rpcbind XDR encoders to behave this way.
 
-OK, Ubuntu doesn't use NFSROOT (the kernel's implementation), it actually does a real mount in user space.  So all the normal NFS and generic mount options ought to work.
+To finish the update, use the new-style be32_to_cpup() and
+cpu_to_be32() macros, and compute the buffer sizes using raw integers
+instead of sizeof().  This matches the conventions used in other XDR
+functions.
 
-However, I worked on the kernel's implementation recently, not Ubuntu's "nfsroot", so that's as far as my expertise goes.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: J. Bruce Fields <bfields@redhat.com>
+---
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+ net/sunrpc/rpcb_clnt.c |   60 +++++++++++++++++-------------------------------
+ 1 files changed, 21 insertions(+), 39 deletions(-)
 
-
-
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index fa6d7ca..d2a2ea0 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -705,14 +705,11 @@ static int rpcb_enc_mapping(struct rpc_rqst *req, __be32 *p,
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+ 
+-	p = xdr_reserve_space(&xdr, sizeof(__be32) * RPCB_mappingargs_sz);
+-	if (unlikely(p == NULL))
+-		return -EIO;
+-
+-	*p++ = htonl(rpcb->r_prog);
+-	*p++ = htonl(rpcb->r_vers);
+-	*p++ = htonl(rpcb->r_prot);
+-	*p   = htonl(rpcb->r_port);
++	p = xdr_reserve_space(&xdr, RPCB_mappingargs_sz << 2);
++	*p++ = cpu_to_be32(rpcb->r_prog);
++	*p++ = cpu_to_be32(rpcb->r_vers);
++	*p++ = cpu_to_be32(rpcb->r_prot);
++	*p   = cpu_to_be32(rpcb->r_port);
+ 
+ 	return 0;
+ }
+@@ -728,11 +725,11 @@ static int rpcb_dec_getport(struct rpc_rqst *req, __be32 *p,
+ 
+ 	rpcb->r_port = 0;
+ 
+-	p = xdr_inline_decode(&xdr, sizeof(__be32));
++	p = xdr_inline_decode(&xdr, 4);
+ 	if (unlikely(p == NULL))
+ 		return -EIO;
+ 
+-	port = ntohl(*p);
++	port = be32_to_cpup(p);
+ 	dprintk("RPC: %5u PMAP_%s result: %lu\n", task->tk_pid,
+ 			task->tk_msg.rpc_proc->p_name, port);
+ 	if (unlikely(port > USHRT_MAX))
+@@ -750,7 +747,7 @@ static int rpcb_dec_set(struct rpc_rqst *req, __be32 *p,
+ 
+ 	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
+ 
+-	p = xdr_inline_decode(&xdr, sizeof(__be32));
++	p = xdr_inline_decode(&xdr, 4);
+ 	if (unlikely(p == NULL))
+ 		return -EIO;
+ 
+@@ -764,24 +761,16 @@ static int rpcb_dec_set(struct rpc_rqst *req, __be32 *p,
+ 	return 0;
+ }
+ 
+-static int encode_rpcb_string(struct xdr_stream *xdr, const char *string,
+-				const u32 maxstrlen)
++static void encode_rpcb_string(struct xdr_stream *xdr, const char *string,
++			       const u32 maxstrlen)
+ {
+-	u32 len;
+ 	__be32 *p;
++	u32 len;
+ 
+-	if (unlikely(string == NULL))
+-		return -EIO;
+ 	len = strlen(string);
+-	if (unlikely(len > maxstrlen))
+-		return -EIO;
+-
+-	p = xdr_reserve_space(xdr, sizeof(__be32) + len);
+-	if (unlikely(p == NULL))
+-		return -EIO;
++	BUG_ON(len > maxstrlen);
++	p = xdr_reserve_space(xdr, 4 + len);
+ 	xdr_encode_opaque(p, string, len);
+-
+-	return 0;
+ }
+ 
+ static int rpcb_enc_getaddr(struct rpc_rqst *req, __be32 *p,
+@@ -797,20 +786,13 @@ static int rpcb_enc_getaddr(struct rpc_rqst *req, __be32 *p,
+ 
+ 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
+ 
+-	p = xdr_reserve_space(&xdr,
+-			sizeof(__be32) * (RPCB_program_sz + RPCB_version_sz));
+-	if (unlikely(p == NULL))
+-		return -EIO;
+-	*p++ = htonl(rpcb->r_prog);
+-	*p = htonl(rpcb->r_vers);
+-
+-	if (encode_rpcb_string(&xdr, rpcb->r_netid, RPCBIND_MAXNETIDLEN))
+-		return -EIO;
+-	if (encode_rpcb_string(&xdr, rpcb->r_addr, RPCBIND_MAXUADDRLEN))
+-		return -EIO;
+-	if (encode_rpcb_string(&xdr, rpcb->r_owner, RPCB_MAXOWNERLEN))
+-		return -EIO;
++	p = xdr_reserve_space(&xdr, (RPCB_program_sz + RPCB_version_sz) << 2);
++	*p++ = cpu_to_be32(rpcb->r_prog);
++	*p = cpu_to_be32(rpcb->r_vers);
+ 
++	encode_rpcb_string(&xdr, rpcb->r_netid, RPCBIND_MAXNETIDLEN);
++	encode_rpcb_string(&xdr, rpcb->r_addr, RPCBIND_MAXUADDRLEN);
++	encode_rpcb_string(&xdr, rpcb->r_owner, RPCB_MAXOWNERLEN);
+ 	return 0;
+ }
+ 
+@@ -827,10 +809,10 @@ static int rpcb_dec_getaddr(struct rpc_rqst *req, __be32 *p,
+ 
+ 	xdr_init_decode(&xdr, &req->rq_rcv_buf, p);
+ 
+-	p = xdr_inline_decode(&xdr, sizeof(__be32));
++	p = xdr_inline_decode(&xdr, 4);
+ 	if (unlikely(p == NULL))
+ 		goto out_fail;
+-	len = ntohl(*p);
++	len = be32_to_cpup(p);
+ 
+ 	/*
+ 	 * If the returned universal address is a null string,
 
