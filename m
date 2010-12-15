@@ -1,91 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42494 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:22050 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755475Ab0LQSUJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Dec 2010 13:20:09 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V4 2/9] NFS use svc_create_xprt for NFSv4.1 callback service
-Date: Fri, 17 Dec 2010 13:20:03 -0500
-Message-Id: <1292610010-19084-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1292610010-19084-2-git-send-email-andros@netapp.com>
-References: <1292610010-19084-1-git-send-email-andros@netapp.com>
- <1292610010-19084-2-git-send-email-andros@netapp.com>
+	id S1751114Ab0LOScz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 13:32:55 -0500
+Subject: Re: [PATCH 1/9] Revert "pnfs-submit: wave2: remove forgotten
+ layoutreturn struct definitions"
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1292437854-21651-1-git-send-email-bhalevy@panasas.com>
+References: <4D0908F9.4060208@panasas.com>
+	 <1292437854-21651-1-git-send-email-bhalevy@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 15 Dec 2010 13:32:53 -0500
+Message-ID: <1292437973.3068.15.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Wed, 2010-12-15 at 20:30 +0200, Benny Halevy wrote:
+> This reverts commit 19e1e5ae1ec0a3f5d997a1a5d924d482e147bea2.
+> ---
+>  include/linux/nfs4.h    |    1 +
+>  include/linux/nfs_xdr.h |   23 +++++++++++++++++++++++
+>  2 files changed, 24 insertions(+), 0 deletions(-)
+> 
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index 8ca7700..55511e8 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -557,6 +557,7 @@ enum {
+>  	NFSPROC4_CLNT_RECLAIM_COMPLETE,
+>  	NFSPROC4_CLNT_LAYOUTGET,
+>  	NFSPROC4_CLNT_LAYOUTCOMMIT,
+> +	NFSPROC4_CLNT_LAYOUTRETURN,
+>  	NFSPROC4_CLNT_GETDEVICEINFO,
+>  	NFSPROC4_CLNT_PNFS_WRITE,
+>  	NFSPROC4_CLNT_PNFS_COMMIT,
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 9d847ac..a651574 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -258,6 +258,29 @@ struct nfs4_layoutcommit_data {
+>  	int status;
+>  };
+>  
+> +struct nfs4_layoutreturn_args {
+> +	__u32   reclaim;
+> +	__u32   layout_type;
+> +	__u32   return_type;
+> +	struct pnfs_layout_range range;
+> +	struct inode *inode;
+> +	struct nfs4_sequence_args seq_args;
+> +};
+> +
+> +struct nfs4_layoutreturn_res {
+> +	struct nfs4_sequence_res seq_res;
+> +	u32 lrs_present;
+> +	nfs4_stateid stateid;
+> +};
+> +
+> +struct nfs4_layoutreturn {
+> +	struct nfs4_layoutreturn_args args;
+> +	struct nfs4_layoutreturn_res res;
+> +	struct rpc_cred *cred;
+> +	struct nfs_client *clp;
+> +	int rpc_status;
+> +};
+> +
+>  struct nfs4_getdeviceinfo_args {
+>  	struct pnfs_device *pdev;
+>  	struct nfs4_sequence_args seq_args;
 
-Fixes a bug where the svc_drop svc_xprt_put() call would try to free the
-bc_xprt where the TCP transport xpo_free routine hits a NULL svc_sock pointer.
-SVC_DROP should release the xprt, but not free it. svc_xprt_free should call
-the back channel free routine.
+Why? We don't need or even want layoutreturn. It adds too much
+serialisation crap.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/callback.c |   30 +++++++++++++++++++++---------
- 1 files changed, 21 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 93a8b3b..06f0ad9 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -177,30 +177,42 @@ nfs41_callback_svc(void *vrqstp)
- struct svc_rqst *
- nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- {
--	struct svc_xprt *bc_xprt;
--	struct svc_rqst *rqstp = ERR_PTR(-ENOMEM);
-+	struct svc_rqst *rqstp;
-+	int ret;
- 
- 	dprintk("--> %s\n", __func__);
--	/* Create a svc_sock for the service */
--	bc_xprt = svc_sock_create(serv, xprt->prot);
--	if (!bc_xprt)
-+
-+	/* register the back channel transport class */
-+	svc_init_bc_xprt_sock();
-+
-+	/*
-+	 * Create an svc_sock for the back channel service that shares the
-+	 * fore channel connection.
-+	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
-+	 */
-+	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
-+			      SVC_SOCK_ANONYMOUS);
-+	if (ret < 0) {
-+		rqstp = ERR_PTR(ret);
- 		goto out;
-+	}
- 
- 	/*
- 	 * Save the svc_serv in the transport so that it can
- 	 * be referenced when the session backchannel is initialized
- 	 */
--	serv->bc_xprt = bc_xprt;
- 	xprt->bc_serv = serv;
- 
- 	INIT_LIST_HEAD(&serv->sv_cb_list);
- 	spin_lock_init(&serv->sv_cb_lock);
- 	init_waitqueue_head(&serv->sv_cb_waitq);
- 	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
--	if (IS_ERR(rqstp))
--		svc_sock_destroy(bc_xprt);
-+	if (IS_ERR(rqstp)) {
-+		svc_xprt_put(serv->bc_xprt);
-+		serv->bc_xprt = NULL;
-+	}
- out:
--	dprintk("--> %s return %p\n", __func__, rqstp);
-+	dprintk("--> %s return %ld\n", __func__, PTR_ERR(rqstp));
- 	return rqstp;
- }
- 
 -- 
-1.6.6
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
