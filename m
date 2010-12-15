@@ -1,112 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:47942 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757415Ab0LNOyy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:54:54 -0500
-Received: by yxt3 with SMTP id 3so376245yxt.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:54:53 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/31] NFS: Update xdr_encode_foo() functions that we're
-	keeping
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 09:54:50 -0500
-Message-ID: <20101214145450.2293.15343.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:2771 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753102Ab0LOQDY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Dec 2010 11:03:24 -0500
+Received: from localhost.localdomain (vpn2ntap-71744.hq.netapp.com [10.58.57.236])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBFG3Lot001580
+	for <linux-nfs@vger.kernel.org>; Wed, 15 Dec 2010 08:03:23 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/11] wave 2: share code between put_lseg and pnfs_free_lseg_list
+Date: Wed, 15 Dec 2010 11:03:04 -0500
+Message-Id: <1292428991-30788-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1292428991-30788-1-git-send-email-iisaman@netapp.com>
+References: <1292428991-30788-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Clean up.
+Create a free_lseg() function from the duplicated code.
 
-The new helper functions are kept in order by section of RFC 1094.
-Move the two timestamp encoders we're keeping, update their coding
-style, and refresh their documenting comments.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
+ fs/nfs/pnfs.c |   34 ++++++++++++++++------------------
+ 1 files changed, 16 insertions(+), 18 deletions(-)
 
- fs/nfs/nfs2xdr.c |   59 ++++++++++++++++++++++++++++++------------------------
- 1 files changed, 33 insertions(+), 26 deletions(-)
-
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index f5ea9dc..c799773 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -91,32 +91,6 @@ xdr_decode_fhandle(__be32 *p, struct nfs_fh *fhandle)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 5c6b4fb..df6561a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -280,6 +280,18 @@ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+ 	lseg->pls_notify_count = 0;
  }
  
- static inline __be32*
--xdr_encode_time(__be32 *p, const struct timespec *timep)
--{
--	*p++ = htonl(timep->tv_sec);
--	/* Convert nanoseconds into microseconds */
--	*p++ = htonl(timep->tv_nsec ? timep->tv_nsec / 1000 : 0);
--	return p;
--}
--
--static inline __be32*
--xdr_encode_current_server_time(__be32 *p, const struct timespec *timep)
--{
--	/*
--	 * Passing the invalid value useconds=1000000 is a
--	 * Sun convention for "set to current server time".
--	 * It's needed to make permissions checks for the
--	 * "touch" program across v2 mounts to Solaris and
--	 * Irix boxes work correctly. See description of
--	 * sattr in section 6.1 of "NFS Illustrated" by
--	 * Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5
--	 */
--	*p++ = htonl(timep->tv_sec);
--	*p++ = htonl(1000000);
--	return p;
--}
--
--static inline __be32*
- xdr_decode_time(__be32 *p, struct timespec *timep)
++static void free_lseg(struct pnfs_layout_segment *lseg)
++{
++	struct inode *ino = lseg->layout->inode;
++	int count = lseg->pls_notify_count;
++
++	BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
++	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
++	notify_drained(NFS_SERVER(ino)->nfs_client, count);
++	/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
++	put_layout_hdr(NFS_I(ino)->layout);
++}
++
+ static void
+ _put_lseg_common(struct pnfs_layout_segment *lseg)
  {
- 	timep->tv_sec = ntohl(*p++);
-@@ -179,6 +153,39 @@ static void encode_fhandle(struct xdr_stream *xdr, const struct nfs_fh *fh)
+@@ -329,14 +341,9 @@ put_lseg(struct pnfs_layout_segment *lseg)
+ 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 	ino = lseg->layout->inode;
+ 	if (atomic_dec_and_lock(&lseg->pls_refcount, &ino->i_lock)) {
+-		int count = lseg->pls_notify_count;
+-
+ 		_put_lseg_common(lseg);
+ 		spin_unlock(&ino->i_lock);
+-		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+-		notify_drained(NFS_SERVER(ino)->nfs_client, count);
+-		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
+-		put_layout_hdr(NFS_I(ino)->layout);
++		free_lseg(lseg);
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(put_lseg);
+@@ -402,18 +409,9 @@ void
+ pnfs_free_lseg_list(struct list_head *free_me)
+ {
+ 	struct pnfs_layout_segment *lseg, *tmp;
+-	struct inode *ino;
+-	int count;
+-
+-	list_for_each_entry_safe(lseg, tmp, free_me, fi_list) {
+-		BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
+-		ino = lseg->layout->inode;
+-		count = lseg->pls_notify_count;
+-		NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+-		notify_drained(NFS_SERVER(ino)->nfs_client, count);
+-		/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
+-		put_layout_hdr(NFS_I(ino)->layout);
+-	}
++
++	list_for_each_entry_safe(lseg, tmp, free_me, fi_list)
++		free_lseg(lseg);
+ 	INIT_LIST_HEAD(free_me);
  }
  
- /*
-+ * 2.3.4.  timeval
-+ *
-+ *	struct timeval {
-+ *		unsigned int seconds;
-+ *		unsigned int useconds;
-+ *	};
-+ */
-+static __be32 *xdr_encode_time(__be32 *p, const struct timespec *timep)
-+{
-+	*p++ = cpu_to_be32(timep->tv_sec);
-+	if (timep->tv_nsec != 0)
-+		*p++ = cpu_to_be32(timep->tv_nsec / NSEC_PER_USEC);
-+	else
-+		*p++ = cpu_to_be32(0);
-+	return p;
-+}
-+
-+/*
-+ * Passing the invalid value useconds=1000000 is a Sun convention for
-+ * "set to current server time".  It's needed to make permissions checks
-+ * for the "touch" program across v2 mounts to Solaris and Irix servers
-+ * work correctly.  See description of sattr in section 6.1 of "NFS
-+ * Illustrated" by Brent Callaghan, Addison-Wesley, ISBN 0-201-32750-5.
-+ */
-+static __be32 *xdr_encode_current_server_time(__be32 *p,
-+					      const struct timespec *timep)
-+{
-+	*p++ = cpu_to_be32(timep->tv_sec);
-+	*p++ = cpu_to_be32(1000000);
-+	return p;
-+}
-+
-+/*
-  * 2.3.6.  sattr
-  *
-  *	struct sattr {
+-- 
+1.7.2.1
 
