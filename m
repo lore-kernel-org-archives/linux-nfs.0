@@ -1,145 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2431 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755428Ab0LQSUM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Dec 2010 13:20:12 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V4 5/9] NFS associate sessionid with callback connection
-Date: Fri, 17 Dec 2010 13:20:06 -0500
-Message-Id: <1292610010-19084-6-git-send-email-andros@netapp.com>
-In-Reply-To: <1292610010-19084-5-git-send-email-andros@netapp.com>
-References: <1292610010-19084-1-git-send-email-andros@netapp.com>
- <1292610010-19084-2-git-send-email-andros@netapp.com>
- <1292610010-19084-3-git-send-email-andros@netapp.com>
- <1292610010-19084-4-git-send-email-andros@netapp.com>
- <1292610010-19084-5-git-send-email-andros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:47205 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752103Ab0LOSbA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 13:31:00 -0500
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/9] Revert "pnfs-submit: wave2: remove forgotten layoutreturn struct definitions"
+Date: Wed, 15 Dec 2010 20:30:54 +0200
+Message-Id: <1292437854-21651-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4D0908F9.4060208@panasas.com>
+References: <4D0908F9.4060208@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
-
-The sessions based callback service is started prior to the CREATE_SESSION call
-so that it can handle CB_NULL requests which can be sent before the
-CREATE_SESSION call returns and the session ID is known.
-
-Set the callback sessionid after a sucessful CREATE_SESSION.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+This reverts commit 19e1e5ae1ec0a3f5d997a1a5d924d482e147bea2.
 ---
- fs/nfs/callback.c               |   31 +++++++++++++++++++++++++++++++
- fs/nfs/callback.h               |    1 +
- fs/nfs/nfs4state.c              |    6 ++++++
- include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/svcsock.c            |    1 +
- 5 files changed, 40 insertions(+), 0 deletions(-)
+ include/linux/nfs4.h    |    1 +
+ include/linux/nfs_xdr.h |   23 +++++++++++++++++++++++
+ 2 files changed, 24 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 06f0ad9..b2fab85 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -137,6 +137,33 @@ out_err:
- 
- #if defined(CONFIG_NFS_V4_1)
- /*
-+ *  * CB_SEQUENCE operations will fail until the callback sessionid is set.
-+ *   */
-+int nfs4_set_callback_sessionid(struct nfs_client *clp)
-+{
-+	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
-+	struct nfs4_sessionid *bc_sid;
-+
-+	if (!serv->bc_xprt)
-+		return -EINVAL;
-+
-+	/* on success freed in xprt_free */
-+	bc_sid = kmalloc(sizeof(struct nfs4_sessionid), GFP_KERNEL);
-+	if (!bc_sid)
-+		return -ENOMEM;
-+	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
-+		NFS4_MAX_SESSIONID_LEN);
-+	spin_lock_bh(&serv->sv_cb_lock);
-+	serv->bc_xprt->xpt_bc_sid = bc_sid;
-+	spin_unlock_bh(&serv->sv_cb_lock);
-+	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
-+		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
-+		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
-+		serv->bc_xprt);
-+	return 0;
-+}
-+
-+/*
-  * The callback service for NFSv4.1 callbacks
-  */
- static int
-@@ -245,6 +272,10 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
- 		struct nfs_callback_data *cb_info)
- {
- }
-+int nfs4_set_callback_sessionid(struct nfs_client *clp)
-+{
-+	return 0;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- /*
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 85a7cfd..58d61a8 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -137,6 +137,7 @@ extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
- extern void nfs_callback_down(int minorversion);
- extern int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation,
- 					    const nfs4_stateid *stateid);
-+extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
- #endif /* CONFIG_NFS_V4 */
- /*
-  * nfs41: Callbacks are expected to not cause substantial latency,
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index fe61422..11290de 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -193,6 +193,12 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 	status = nfs4_proc_create_session(clp);
- 	if (status != 0)
- 		goto out;
-+	status = nfs4_set_callback_sessionid(clp);
-+	if (status != 0) {
-+		printk(KERN_WARNING "Sessionid not set. No callback service\n");
-+		nfs_callback_down(1);
-+		status = 0;
-+	}
- 	nfs41_setup_state_renewal(clp);
- 	nfs_mark_client_ready(clp, NFS_CS_READY);
- out:
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index aea0d43..357da5e 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -78,6 +78,7 @@ struct svc_xprt {
- 	size_t			xpt_remotelen;	/* length of address */
- 	struct rpc_wait_queue	xpt_bc_pending;	/* backchannel wait queue */
- 	struct list_head	xpt_users;	/* callbacks on free */
-+	void			*xpt_bc_sid;	/* back channel session ID */
- 
- 	struct net		*xpt_net;
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 8ca7700..55511e8 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -557,6 +557,7 @@ enum {
+ 	NFSPROC4_CLNT_RECLAIM_COMPLETE,
+ 	NFSPROC4_CLNT_LAYOUTGET,
+ 	NFSPROC4_CLNT_LAYOUTCOMMIT,
++	NFSPROC4_CLNT_LAYOUTRETURN,
+ 	NFSPROC4_CLNT_GETDEVICEINFO,
+ 	NFSPROC4_CLNT_PNFS_WRITE,
+ 	NFSPROC4_CLNT_PNFS_COMMIT,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 9d847ac..a651574 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -258,6 +258,29 @@ struct nfs4_layoutcommit_data {
+ 	int status;
  };
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 5875551..f8b5ca9 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1626,6 +1626,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
- static void svc_bc_sock_free(struct svc_xprt *xprt)
- {
- 	if (xprt)
-+		kfree(xprt->xpt_bc_sid);
- 		kfree(container_of(xprt, struct svc_sock, sk_xprt));
- }
- #endif /* CONFIG_NFS_V4_1 */
+ 
++struct nfs4_layoutreturn_args {
++	__u32   reclaim;
++	__u32   layout_type;
++	__u32   return_type;
++	struct pnfs_layout_range range;
++	struct inode *inode;
++	struct nfs4_sequence_args seq_args;
++};
++
++struct nfs4_layoutreturn_res {
++	struct nfs4_sequence_res seq_res;
++	u32 lrs_present;
++	nfs4_stateid stateid;
++};
++
++struct nfs4_layoutreturn {
++	struct nfs4_layoutreturn_args args;
++	struct nfs4_layoutreturn_res res;
++	struct rpc_cred *cred;
++	struct nfs_client *clp;
++	int rpc_status;
++};
++
+ struct nfs4_getdeviceinfo_args {
+ 	struct pnfs_device *pdev;
+ 	struct nfs4_sequence_args seq_args;
 -- 
-1.6.6
+1.7.2.3
 
