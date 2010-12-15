@@ -1,89 +1,196 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 2/3] net: sunrpc: kill unused macros
-Date: Wed, 15 Dec 2010 10:52:07 -0500
-Message-ID: <20101215155206.GC32559@fieldses.org>
-References: <4D086478.7090106@cn.fujitsu.com>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 12/22] pnfs-submit: wave2: rewrite validate_bitmap_values
+ to obey spec
+Date: Wed, 15 Dec 2010 18:48:41 +0200
+Message-ID: <4D08F169.30803@panasas.com>
+References: <1291944177-7819-1-git-send-email-iisaman@netapp.com> <1291944177-7819-13-git-send-email-iisaman@netapp.com> <4D08C961.3090702@panasas.com> <394DBE14-A569-4BEA-99CE-1CB268392449@netapp.com> <4D08DED8.9090208@panasas.com> <05BB6938-AA62-4381-B33F-2DDC60466B90@netapp.com> <4D08E52F.4090609@panasas.com> <23310505-F664-499A-A376-0A6F7052212A@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: neilb@suse.de, Trond.Myklebust@netapp.com, steved@redhat.com,
-	tj@kernel.org, David Miller <davem@davemloft.net>,
-	linux-nfs@vger.kernel.org,
-	Network-Maillist <netdev@vger.kernel.org>
-To: Shan Wei <shanwei@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+To: Fred Isaman <iisaman@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41614 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753131Ab0LOPw0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Dec 2010 10:52:26 -0500
-In-Reply-To: <4D086478.7090106@cn.fujitsu.com>
+Received: from daytona.panasas.com ([67.152.220.89]:35520 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752651Ab0LOQso (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 11:48:44 -0500
+In-Reply-To: <23310505-F664-499A-A376-0A6F7052212A@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 15, 2010 at 02:47:20PM +0800, Shan Wei wrote:
-> These macros never be used for several years.
+On 2010-12-15 17:59, Fred Isaman wrote:
+> 
+> On Dec 15, 2010, at 10:56 AM, Benny Halevy wrote:
+> 
+>> On 2010-12-15 17:43, Fred Isaman wrote:
+>>>
+>>> On Dec 15, 2010, at 10:29 AM, Benny Halevy wrote:
+>>>
+>>>> On 2010-12-15 16:11, Fred Isaman wrote:
+>>>>>
+>>>>> On Dec 15, 2010, at 8:57 AM, Benny Halevy wrote:
+>>>>>
+>>>>>> On 2010-12-10 03:22, Fred Isaman wrote:
+>>>>>>> It was checking that at least one known bit was set.  It needs to check
+>>>>>>> no unknown bit was set.  From RFC5661, section 20.6.3:
+>>>>>>>
+>>>>>>> When a bit is set in the type mask that corresponds to an undefined
+>>>>>>> type of recallable object, NFS4ERR_INVAL MUST be returned.
+>>>>>>>
+>>>>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>>>>>> ---
+>>>>>>> fs/nfs/callback.h      |    1 +
+>>>>>>> fs/nfs/callback_proc.c |   27 ++++-----------------------
+>>>>>>> 2 files changed, 5 insertions(+), 23 deletions(-)
+>>>>>>>
+>>>>>>> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+>>>>>>> index b16dd1f..616c5c1 100644
+>>>>>>> --- a/fs/nfs/callback.h
+>>>>>>> +++ b/fs/nfs/callback.h
+>>>>>>> @@ -126,6 +126,7 @@ extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
+>>>>>>> #define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX  9
+>>>>>>> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
+>>>>>>> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
+>>>>>>> +#define RCA4_TYPE_MASK_ALL 0xf31f
+>>>>>>>
+>>>>>>> struct cb_recallanyargs {
+>>>>>>> 	struct sockaddr	*craa_addr;
+>>>>>>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+>>>>>>> index 61b3c66..d4aec46 100644
+>>>>>>> --- a/fs/nfs/callback_proc.c
+>>>>>>> +++ b/fs/nfs/callback_proc.c
+>>>>>>> @@ -661,28 +661,10 @@ out_putclient:
+>>>>>>> 	goto out;
+>>>>>>> }
+>>>>>>>
+>>>>>>> -static inline bool
+>>>>>>> -validate_bitmap_values(const unsigned long *mask)
+>>>>>>> +static bool
+>>>>>>> +validate_bitmap_values(unsigned long mask)
+>>>>>>> {
+>>>>>>> -	int i;
+>>>>>>> -
+>>>>>>> -	if (*mask == 0)
+>>>>>>> -		return true;
+>>>>>>> -	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, mask) ||
+>>>>>>> -	    test_bit(RCA4_TYPE_MASK_WDATA_DLG, mask) ||
+>>>>>>> -	    test_bit(RCA4_TYPE_MASK_DIR_DLG, mask) ||
+>>>>>>> -	    test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, mask) ||
+>>>>>>> -	    test_bit(RCA4_TYPE_MASK_BLK_LAYOUT, mask))
+>>>>>>> -		return true;
+>>>>>>> -	for (i = RCA4_TYPE_MASK_OBJ_LAYOUT_MIN;
+>>>>>>> -	     i <= RCA4_TYPE_MASK_OBJ_LAYOUT_MAX; i++)
+>>>>>>> -		if (test_bit(i, mask))
+>>>>>>> -			return true;
+>>>>>>> -	for (i = RCA4_TYPE_MASK_OTHER_LAYOUT_MIN;
+>>>>>>> -	     i <= RCA4_TYPE_MASK_OTHER_LAYOUT_MAX; i++)
+>>>>>>> -		if (test_bit(i, mask))
+>>>>>>> -			return true;
+>>>>>>> -	return false;
+>>>>>>> +	return mask & ~RCA4_TYPE_MASK_ALL;
+>>>>>>
+>>>>>> Hmm, shouldn't that be
+>>>>>> 	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
+>>>>>>
+>>>>>> Benny
+>>>>>>
+>>>>>
+>>>>> Yes, you are right.
+>>>>
+>>>> OK. This is fixed in my branch to be released asap.
+>>>
+>>> Thanks.  I have a bunch more minor code cleanups that I'll send once I see what you have, unless you want them immediately. I'll also have a rebase of the pnfs-submit branch with the wave2 patches pushed down to the bottom shortly after I see your branch.
+>>>
+>>
+>> I prefer that you send them now.
+> 
+> OK, I'll send them in a few minutes.
+> 
 
-Applying for 2.6.38.--b.
+Thanks. Got 'em.
 
+>>
+>>>> I've reverted large parts of this patchset in the post-submit stream
+>>>> to restore layoutcommit and layoutreturn, but not their embedding in
+>>>> the CLOSE compound.  I also kept the cleanups and bug fixes.
+>>>> I'll send out the post-submit when it's ready.
+>>>> Some more work will be required to restore the original patches
+>>>> author and signoffees.
+>>>>
+>>>> This is the list as of now:
+>>>>
+>>>> pick af44531 Revert "pnfs-submit: wave2: remove forgotten layoutreturn struct definitions"
+>>>> pick c465549 Revert "pnfs-submit: Turn off layoutcommits"
+>>>> pick 0f4ba67 Revert "pnfs-submit: wave2: remove all LAYOUTRETURN code"
+>>>> pick 486db47 Revert "pnfs-submit: wave2: Remove LAYOUTRETURN from return on close"
+>>>>
+>>>> pick 484c935 FIXME: roc should return layout on last close
+>>>> (This patch just adds a FIXME comment.)
+>>>>
+>>>
+>>> The above looks good.
+>>>
+>>>> pick 8698772 Revert "pnfs-submit: wave2: remove cl_layoutrecalls list"
+>>>> pick 263879b Revert "pnfs-submit: wave2: Pull out all recall initiated LAYOUTRETURNS"
+>>>> pick 693765f Revert "pnfs-submit: wave2: Don't wait in layoutget"
+>>>
+>>> Just note the Trond was highly resistant to the above.
+>>>
+>>
+>> I understand that in the forgetful client model but eventually returning the layout
+>> on close will be more efficient overall vs. having the server poll the client.
+>>
+>>>> pick de56e11 Revert "pnfs-submit: wave2: check that partial LAYOUTGET return is ignored"
+>>>>
+>>>
+>>> We need some sort of check that we got what we asked for, given that the xdr code can chop the servers reply.
+>>
+>> The post-submit world is supposed to handle partial layouts correctly, as this is required for 
+>> the obj and block layouts so we can't just blindly toss away partial layouts.
+>>
+>> If the files layout driver won't support partial layouts we can restrict this (sigh, ugly)
+>> only for it.
+>>
+>> Benny
 > 
+> Note the problem right now is that the xdr decoding function will only parse the first array element, and toss the rest.  That is the real reason for the check, and something that needs to be fixed.
 > 
-> Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
-> ---
->  net/sunrpc/auth_gss/svcauth_gss.c |    2 --
->  net/sunrpc/svcauth.c              |    1 -
->  net/sunrpc/svcauth_unix.c         |    2 --
->  3 files changed, 0 insertions(+), 5 deletions(-)
+
+I agree we need to implement getting an array of lsegs in layoutget response
+but the problem with this solution is that it will ignore also partial layouts
+provided as a single array element. A (more common, I assume) case we need to support too :)
+
+Benny
+
+> Fred
 > 
-> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-> index dec2a6f..bcdae78 100644
-> --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> @@ -67,7 +67,6 @@ static int netobj_equal(struct xdr_netobj *a, struct xdr_netobj *b)
->  
->  #define	RSI_HASHBITS	6
->  #define	RSI_HASHMAX	(1<<RSI_HASHBITS)
-> -#define	RSI_HASHMASK	(RSI_HASHMAX-1)
->  
->  struct rsi {
->  	struct cache_head	h;
-> @@ -319,7 +318,6 @@ static struct rsi *rsi_update(struct rsi *new, struct rsi *old)
->  
->  #define	RSC_HASHBITS	10
->  #define	RSC_HASHMAX	(1<<RSC_HASHBITS)
-> -#define	RSC_HASHMASK	(RSC_HASHMAX-1)
->  
->  #define GSS_SEQ_WIN	128
->  
-> diff --git a/net/sunrpc/svcauth.c b/net/sunrpc/svcauth.c
-> index 4e9393c..7963569 100644
-> --- a/net/sunrpc/svcauth.c
-> +++ b/net/sunrpc/svcauth.c
-> @@ -118,7 +118,6 @@ EXPORT_SYMBOL_GPL(svc_auth_unregister);
->  
->  #define	DN_HASHBITS	6
->  #define	DN_HASHMAX	(1<<DN_HASHBITS)
-> -#define	DN_HASHMASK	(DN_HASHMAX-1)
->  
->  static struct hlist_head	auth_domain_table[DN_HASHMAX];
->  static spinlock_t	auth_domain_lock =
-> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-> index 560677d..a04ac91 100644
-> --- a/net/sunrpc/svcauth_unix.c
-> +++ b/net/sunrpc/svcauth_unix.c
-> @@ -85,7 +85,6 @@ static void svcauth_unix_domain_release(struct auth_domain *dom)
->   */
->  #define	IP_HASHBITS	8
->  #define	IP_HASHMAX	(1<<IP_HASHBITS)
-> -#define	IP_HASHMASK	(IP_HASHMAX-1)
->  
->  struct ip_map {
->  	struct cache_head	h;
-> @@ -497,7 +496,6 @@ svcauth_unix_info_release(struct svc_xprt *xpt)
->   */
->  #define	GID_HASHBITS	8
->  #define	GID_HASHMAX	(1<<GID_HASHBITS)
-> -#define	GID_HASHMASK	(GID_HASHMAX - 1)
->  
->  struct unix_gid {
->  	struct cache_head	h;
-> -- 
-> 1.6.3.3
+>>
+>>>
+>>> Fred
+>>>
+>>>> Anything else you had in mind?
+>>>>
+>>>> Benny
+>>>>
+>>>>>
+>>>>> Fred
+>>>>>
+>>>>>>> }
+>>>>>>>
+>>>>>>> __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+>>>>>>> @@ -702,8 +684,7 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+>>>>>>> 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+>>>>>>>
+>>>>>>> 	status = cpu_to_be32(NFS4ERR_INVAL);
+>>>>>>> -	if (!validate_bitmap_values((const unsigned long *)
+>>>>>>> -				    &args->craa_type_mask))
+>>>>>>> +	if (!validate_bitmap_values(args->craa_type_mask))
+>>>>>>> 		goto out;
+>>>>>>>
+>>>>>>> 	status = cpu_to_be32(NFS4_OK);
+>>>>>
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+> 
