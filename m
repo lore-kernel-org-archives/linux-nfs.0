@@ -1,174 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:49594 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754669Ab0LPUVa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 15:21:30 -0500
-Received: by qwa26 with SMTP id 26so3640310qwa.19
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Dec 2010 12:21:29 -0800 (PST)
-Message-ID: <4D0A74C5.1040104@gmail.com>
-Date: Thu, 16 Dec 2010 15:21:25 -0500
-From: Ric Wheeler <ricwheeler@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <SteveD@redhat.com>, trond.myklebust@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 00/31] NFS XDR clean up for 2.6.38
-References: <20101214144747.2293.68070.stgit@matisse.1015granger.net> <4D0A6503.7010901@RedHat.com> <CD110562-AF52-4A2F-BF74-D7ABC4D58D24@oracle.com>
-In-Reply-To: <CD110562-AF52-4A2F-BF74-D7ABC4D58D24@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from fieldses.org ([174.143.236.118]:40224 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751364Ab0LOTt6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Dec 2010 14:49:58 -0500
+Date: Wed, 15 Dec 2010 14:49:56 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org
+Subject: Re: System CPU increasing on idle 2.6.36
+Message-ID: <20101215194956.GA9646@fieldses.org>
+References: <1291845189.3067.31.camel@heimdal.trondhjem.org>
+ <20101208223622.GA3796@hostway.ca>
+ <1291869437.2821.6.camel@heimdal.trondhjem.org>
+ <20101214233843.GB836@hostway.ca>
+ <20101215011021.GA24594@hostway.ca>
+ <20101215015609.GB24594@hostway.ca>
+ <20101215180813.GA7773@fieldses.org>
+ <1292437333.3068.14.camel@heimdal.trondhjem.org>
+ <20101215183816.GB7773@fieldses.org>
+ <1292441630.3068.55.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1292441630.3068.55.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 12/16/2010 03:04 PM, Chuck Lever wrote:
-> On Dec 16, 2010, at 2:14 PM, Steve Dickson wrote:
->
->> Hello,
->>
->> I was wondering if it would be possible hold off on committing major
->> cleans ups like this one (and the RFC: Split nlm_host cache series)
->> until pNFS wave3 is committed into either Trond's tree and/or in the
->> mainline kernel.
->>
->> I realize this is a huge request to make, something we've never done
->> before. But talking with the powers to be on this end, include Ric
->> Wheeler, accepting these types of patches before the pNFS bits
->> settle down will make close to impossible for there to be any
->> meaningful pNFS support in the RHEL 6 kernels. We would have
->> to push the support off to RHEL 7.
->>
->> The reasoning is this, which I do agree with, these types of
->> patches, although probably needed, do not added any new features
->> or fix any outstanding bugs.
-> The XDR series does add a new feature, FWIW: it adds buffer overflow protection to the client's reply processing logic.  Says so right in the patch descriptions.
+On Wed, Dec 15, 2010 at 02:33:50PM -0500, Trond Myklebust wrote:
+> On Wed, 2010-12-15 at 13:38 -0500, J. Bruce Fields wrote:
+> > On Wed, Dec 15, 2010 at 01:22:13PM -0500, Trond Myklebust wrote:
+> > > On Wed, 2010-12-15 at 13:08 -0500, J. Bruce Fields wrote:
+> > > > On Tue, Dec 14, 2010 at 05:56:09PM -0800, Simon Kirby wrote:
+> > > > > On Tue, Dec 14, 2010 at 05:10:21PM -0800, Simon Kirby wrote:
+> > > > > 
+> > > > > > On Tue, Dec 14, 2010 at 03:38:43PM -0800, Simon Kirby wrote:
+> > > > > > 
+> > > > > > > I'm just about to try
+> > > > > > > 2.6.37-rc5-git3 on there plus your NFS fixes (which Linus seems to have
+> > > > > > > half-merged and uploaded as -git3 but not pushed to his public git) 
+> > > > > > 
+> > > > > > Ignore this; I was just confusing myself by having the leak fixes already
+> > > > > > applied.  Otoh, I got this Oops while trying NFSv4.  I'll check my
+> > > > > > merging again.
+> > > > > > 
+> > > > > > Do you have a git branch exposed with the "Allow the admin to turn off
+> > > > > > NFSv4 uid/gid mapping" patches applied?
+> > > > > 
+> > > > > Hm, the fixes were merged for -git4, and it seems to work fine there.
+> > > > > 
+> > > > > As for the nfs4 uid/gid mapping patch, it seems the server side support
+> > > > > for this is still neded?
+> > > > 
+> > > > I'm not convinced that this behavior should depend on the security
+> > > > flavor, so I'm assuming that something like steved's libnfsidmap patches
+> > > > should do the job.
+> > > 
+> > > Don't assume.
+> > > 
+> > > Those patches do not fix the problem that if uid(name@server) !=
+> > > uid(name@client), then the client will be creating files with the 'wrong
+> > > username' on the server.
+> > 
+> > I don't see any obviously correct solution in cases where the mapping
+> > disagrees between client and server sides, so prefer to stick to the
+> > NFSv3 behavior.
+> > 
+> > The only reason I see to do this anyway is to provide compatibility with
+> > NFSv3.
+> > 
+> > > In that case, everything from setuid applications through open(O_CREAT)
+> > > to 'chown' will be broken because your authentication and authorisation
+> > > models do not match up.
+> > 
+> > Those are preexisting problems from NFSv3, and it's up to the
+> > administrator to fix them.
+> > 
+> > The best we can do is provide backwards-compatible behavior so that
+> > things that worked before continue working.
+> 
+> No. There are two cases here:
+> 
+> 1) The user is authenticating using uids and gids (AUTH_SYS). In that
+> case, the server is using those uids and gids to authorise user
+> behaviour, and so file/directory creation/access/deletion/... will
+> depend only on the numeric values of those uids and gids. It doesn't
+> matter if the client belongs to a different domain, 'cos AUTH_SYS has no
+> concept of a domain. It doesn't matter whether or mot there exists a
+> name@domain mapping on the client, and server. Only the numbers matter.
+> NFSv2 and NFSv3 got this case right, and NFSv4 got it wrong (or didn't
+> consider it).
+> 
+> 2) The user is authenticating using a principal name@DOMAIN. In this
+> case, either there is a mapping between name@DOMAIN and a owner@domain
+> +groupname@domain on the server, or there isn't. In the latter case, the
+> server treats the principal as the anonymous user. In the former case,
+> then if the client and server map owner@domain and groupname@domain to
+> the same uid and gid, then it is safe to pass uids and gids back and
+> forth. If they don't have identical mappings, then it is still safe to
+> pass owner@domain and groupname@domain,
+ 
+Not necessarily; for example, there could be just a one-off mapping
+between root/client@DOMAIN and root on the server.  And that would be
+sufficient to do something like a dumb
 
-Hi Chuck,
+	cp -ax / /nfs
 
-My concern is one of testing one massive set of changes at a time and trying to 
-get those stable (and through QA) before code refactoring. We have been focused 
-on the pNFS bits for what feels like eons and they seem to be getting *really* 
-close now :)
+backup, where you're just saving/restoring id's using chown/stat.
 
-I certainly do not object to this work, just want to get the pNFS flood absorbed 
-and processed first.
+I don't know if those sorts of cases are common.  But they work under
+v3, and I don't see a reason to break them on upgrade to v4.
 
-The risk of putting it all in the hopper together is that testing and debugging 
-(in upstream, non-vendor distros and vendor distros) gets harder to qa, debug 
-if/when issues arise  and get stable.
+Certainly I don't see any motivation for going out of our way to break
+that case when an administrator explicitly requests numeric id's.
 
-It would certainly help us to stage pulling the XDR clean up work until after we 
-settle the various pNFS "waves" of change, but I can also understand why you 
-would prefer to push them in sooner.
+--b.
 
-Thanks!
-
-Ric
-
->> More likely than not (for a time) they will
->> add some instability due to the lack of usage and testing.  These type of
->> changes are much too large for even our QE group to test and verify and
->> obviously instability is the last thing we can interject into an
->> on going enterprise product stream.
-> The only NFSv4-related changes in this series are limited to refactoring.  No behavior changes are made in the NFSv4 code.  The bulk of the changes effect only NFSv2 and NFSv3, and will have no impact on pNFS (other than a minor API change).
->
-> XDR is straightforward and well understood.  If anything is broken by these patches, I expect it will be exposed quickly.
->
-> The NLM patches also have nothing to do with pNFS, AFAICT, and can likely be skipped for RHEL 6.
->
->> Again, I realize what we are asking and how big this request
->> really is. Its just that we've come so far and are pretty close
->> (IMHO) to have some meaningful  pNFS support in RHEL 6, I
->> figured I'd take a shoot and ask...
-> I don't think these are as world-bending as you believe.  I'm happy to discuss the actual changes with Ric.
->
->> steved.
->>
->> On 12/14/2010 09:54 AM, Chuck Lever wrote:
->>> Trond-
->>>
->>> As requested, here is my latest revision of the XDR patchset for
->>> 2.6.38.
->>>
->>> This converts NFSv2 and v3, all versions of NLM, and the server's
->>> NFSv4 callback client.  It updates the XDR code for rpcbind, NSM, and
->>> MNT as well.
->>>
->>> All encoders and decoders now use xdr_streams.  All encoders now BUG
->>> on any error and return void.
->>>
->>> As a bonus, this series converts the whole kit and kaboodle to a new
->>> calling sequence.  The RPC client's generic encode and decode routines
->>> now invoke xdr_init_{en,de}code before calling the specific XDR
->>> routines.  The xdr_init_{en,de}code call sites are thus removed from
->>> all specific XDR routines in the kernel.
->>>
->>> ---
->>>
->>> Chuck Lever (31):
->>>       SUNRPC: New xdr_streams XDR decoder API
->>>       SUNRPC: New xdr_streams XDR encoder API
->>>       SUNRPC: Determine value of "nrprocs" automatically
->>>       SUNRPC: Avoid return code checking in rpcbind XDR encoder functions
->>>       NFS: Remove unused UMNT response data structure
->>>       NFS: Avoid return code checking in mount XDR encoder functions
->>>       NSM: Avoid return code checking in NSM XDR encoder functions
->>>       NFS: Squelch compiler warning in decode_getdeviceinfo()
->>>       NFS: Simplify ->decode_dirent() calling sequence
->>>       NFS: Fix hdrlen calculation in NFSv4's decode_read()
->>>       lockd: Move nlmdbg_cookie2a() to svclock.c
->>>       NFS: Repair whitespace damage in NFS PROC macro
->>>       NFSD: Update XDR decoders in NFSv4 callback client
->>>       NFSD: Update XDR encoders in NFSv4 callback client
->>>       lockd: Introduce new-style XDR functions for NLMv4
->>>       NFS: Move and update xdr_decode_foo() functions that we're keeping
->>>       NFS: Remove unused old NFSv3 decoder functions
->>>       NFS: Switch in new NFSv3 decoder functions
->>>       NFS: Introduce new-style XDR decoding functions for NFSv2
->>>       NFS: Update xdr_encode_foo() functions that we're keeping
->>>       NFS: Remove unused old NFSv3 encoder functions
->>>       NFS: Replace old NFSv3 encoder functions with xdr_stream-based ones
->>>       NFS: Introduce new-style XDR encoding functions for NFSv3
->>>       lockd: Introduce new-style XDR functions for NLMv3
->>>       NFS: Move and update xdr_decode_foo() functions that we're keeping
->>>       NFS: Replace old NFSv2 decoder functions with xdr_stream-based ones
->>>       NFS: Introduce new-style XDR decoding functions for NFSv2
->>>       NFS: Use the "nfs_stat" enum for nfs_stat_to_errno()'s argument
->>>       NFS: Update xdr_encode_foo() functions that we're keeping
->>>       NFS: Remove old NFSv2 encoder functions
->>>       NFS: Introduce new-style XDR encoding functions for NFSv2
->>>
->>>
->>> fs/lockd/Makefile              |    6
->>> fs/lockd/clnt4xdr.c            |  605 ++++++++
->>> fs/lockd/clntxdr.c             |  627 +++++++++
->>> fs/lockd/mon.c                 |  110 +-
->>> fs/lockd/svclock.c             |   30
->>> fs/lockd/xdr.c                 |  287 ----
->>> fs/lockd/xdr4.c                |  255 ----
->>> fs/nfs/dir.c                   |   15
->>> fs/nfs/internal.h              |   11
->>> fs/nfs/mount_clnt.c            |   81 -
->>> fs/nfs/nfs2xdr.c               | 1297 ++++++++++++------
->>> fs/nfs/nfs3xdr.c               | 2892 +++++++++++++++++++++++++++++-----------
->>> fs/nfs/nfs4_fs.h               |    1
->>> fs/nfs/nfs4xdr.c               | 1401 +++++++++----------
->>> fs/nfs/proc.c                  |    2
->>> fs/nfsd/nfs4callback.c         |  690 ++++++----
->>> include/linux/lockd/debug.h    |   10
->>> include/linux/nfs3.h           |    3
->>> include/linux/nfs_xdr.h        |    3
->>> include/linux/sunrpc/auth.h    |    8
->>> include/linux/sunrpc/clnt.h    |    4
->>> include/linux/sunrpc/xdr.h     |   10
->>> net/sunrpc/auth.c              |   28
->>> net/sunrpc/auth_gss/auth_gss.c |   44 -
->>> net/sunrpc/clnt.c              |    9
->>> net/sunrpc/rpcb_clnt.c         |  147 +-
->>> 26 files changed, 5529 insertions(+), 3047 deletions(-)
->>> create mode 100644 fs/lockd/clnt4xdr.c
->>> create mode 100644 fs/lockd/clntxdr.c
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+> but passing uids and gids is now
+> wrong. NFSv4 gets this case right, but NFSv2/v3 get it wrong.
+> 
+> Trond
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
