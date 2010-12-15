@@ -1,84 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:56731 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:50192 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752090Ab0LAPgv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Dec 2010 10:36:51 -0500
+	id S1754661Ab0LOVtU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 16:49:20 -0500
+Subject: Re: [PATCH 13/31] NFS: Introduce new-style XDR decoding functions
+ for NFSv2
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-        Nick Bowler <nbowler@elliptictech.com>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/3] NFS: Ensure we use the correct cookie in nfs_readdir_xdr_filler
-Date: Wed,  1 Dec 2010 10:36:42 -0500
-Message-Id: <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <20101201150428.GA2879@elliptictech.com>
-References: <20101201150428.GA2879@elliptictech.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20101214145630.2293.21193.stgit@matisse.1015granger.net>
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+	 <20101214145630.2293.21193.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 15 Dec 2010 16:49:07 -0500
+Message-ID: <1292449747.3068.76.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-We need to use the cookie from the previous array entry, not the
-actual cookie that we are searching for (except for the case of
-uncached_readdir).
+On Tue, 2010-12-14 at 09:56 -0500, Chuck Lever wrote:
+> We'd like to prevent local buffer overflows caused by malicious or
+> broken servers.  New xdr_stream style decoders can do that.
+> 
+> For efficiency, we also eventually want to be able to pass xdr_streams
+> from call_decode() to all XDR decoding functions, rather than building
+> an xdr_stream in every XDR decoding function in the kernel.
+> 
+> Static helper functions are left without the "inline" directive.  This
+> allows the compiler to choose automatically how to optimize these for
+> size or speed.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Tested-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+> 
+>  fs/nfs/nfs3xdr.c     | 1534 +++++++++++++++++++++++++++++++++++++++++++++++---
+>  include/linux/nfs3.h |    1 
+>  2 files changed, 1451 insertions(+), 84 deletions(-)
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/dir.c |   10 ++++++++--
- 1 files changed, 8 insertions(+), 2 deletions(-)
+Doesn't look like NFSv2 to me...
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index f0a384e..e03537f 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -178,6 +178,7 @@ typedef struct {
- 	struct page	*page;
- 	unsigned long	page_index;
- 	u64		*dir_cookie;
-+	u64		last_cookie;
- 	loff_t		current_index;
- 	decode_dirent_t	decode;
- 
-@@ -344,6 +345,8 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
- 	else
- 		status = nfs_readdir_search_for_cookie(array, desc);
- 
-+	if (status == -EAGAIN)
-+		desc->last_cookie = array->last_cookie;
- 	nfs_readdir_release_array(desc->page);
- out:
- 	return status;
-@@ -563,7 +566,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 	unsigned int array_size = ARRAY_SIZE(pages);
- 
- 	entry.prev_cookie = 0;
--	entry.cookie = *desc->dir_cookie;
-+	entry.cookie = desc->last_cookie;
- 	entry.eof = 0;
- 	entry.fh = nfs_alloc_fhandle();
- 	entry.fattr = nfs_alloc_fattr();
-@@ -672,8 +675,10 @@ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
- {
- 	int res;
- 
--	if (desc->page_index == 0)
-+	if (desc->page_index == 0) {
- 		desc->current_index = 0;
-+		desc->last_cookie = 0;
-+	}
- 	while (1) {
- 		res = find_cache_page(desc);
- 		if (res != -EAGAIN)
-@@ -764,6 +769,7 @@ int uncached_readdir(nfs_readdir_descriptor_t *desc, void *dirent,
- 	}
- 
- 	desc->page_index = 0;
-+	desc->last_cookie = *desc->dir_cookie;
- 	desc->page = page;
- 
- 	status = nfs_readdir_xdr_to_array(desc, page, inode);
 -- 
-1.7.3.2
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
