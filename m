@@ -1,123 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:25679 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33993 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751857Ab0LJGIy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Dec 2010 01:08:54 -0500
-Received: from localhost.localdomain (kozen-lxp.hq.netapp.com [10.58.53.114] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBA68VLt023313
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Dec 2010 22:08:53 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 18/22] pnfs-submit: wave2: change lseg->valid from bool to a bit flag
-Date: Thu,  9 Dec 2010 20:22:53 -0500
-Message-Id: <1291944177-7819-19-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
+	id S1751077Ab0LOW3b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Dec 2010 17:29:31 -0500
+Date: Wed, 15 Dec 2010 17:29:28 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org
+Subject: Re: System CPU increasing on idle 2.6.36
+Message-ID: <20101215222928.GE9646@fieldses.org>
+References: <20101215180813.GA7773@fieldses.org>
+ <1292437333.3068.14.camel@heimdal.trondhjem.org>
+ <20101215183816.GB7773@fieldses.org>
+ <1292441630.3068.55.camel@heimdal.trondhjem.org>
+ <20101215194956.GA9646@fieldses.org>
+ <1292443028.3068.60.camel@heimdal.trondhjem.org>
+ <20101215201908.GB9646@fieldses.org>
+ <1292445128.3068.71.camel@heimdal.trondhjem.org>
+ <20101215214854.GC9646@fieldses.org>
+ <1292451346.3068.93.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1292451346.3068.93.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This makes way for adding roc bit to lseg
+On Wed, Dec 15, 2010 at 05:15:46PM -0500, Trond Myklebust wrote:
+> On Wed, 2010-12-15 at 16:48 -0500, J. Bruce Fields wrote:
+> > On Wed, Dec 15, 2010 at 03:32:08PM -0500, Trond Myklebust wrote:
+> > > On Wed, 2010-12-15 at 15:19 -0500, J. Bruce Fields wrote:
+> > > 
+> > > > Could you give an example of a case in which all of the following are
+> > > > true?:
+> > > > 	- the administrator explicitly requests numeric id's (for
+> > > > 	  example by setting nfs4_disable_idmapping).
+> > > > 	- numeric id's work as long as the client uses auth_sys.
+> > > > 	- they no longer work if that same client switches to krb5.
+> > > 
+> > > Trivially:
+> > > 
+> > > Server /etc/passwd maps trondmy to uid 1000
+> > > Client /etc/passwd maps trondmy to uid 500
+> > 
+> > I understand that any problematic case would involve different
+> > name<->id mappings on the two sides.
+> > 
+> > What I don't understand--and apologies if I'm being dense!--is what
+> > sequence of operations exactly would work in this situation if we
+> > automatically switch idmapping based on auth flavor, and would not work
+> > without it.
+> > 
+> > Are you imagining a future client that is also able to switch auth
+> > flavors on the fly (say, based on whether a krb5 ticket exists or not),
+> > or just unmounting and remounting to change the security flavor?
+> > 
+> > Are you thinking of creating a file under one flavor and accessing it
+> > under another?
+> 
+> Neither.
+> 
+> I'm quite happy to accept that my user may map to completely different
+> identities on the server as I switch authentication schemes. Fixing that
+> is indeed the administrator's problem.
+> 
+> I'm thinking of the simple case of creating a file, and then expecting
+> to see that file appear labelled with the correct user id when I do 'ls
+> -l'. That should work irrespectively of the authentication scheme that I
+> choose.
+> 
+> In other words, if I authenticate as 'trond' on my client or to the
+> kerberos server, then do
+> 
+>         touch foo
+>         ls -l foo
+> 
+> I should see a file that is owned by 'trond'.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c |   18 ++++++++++--------
- fs/nfs/pnfs.h |    6 +++++-
- 2 files changed, 15 insertions(+), 9 deletions(-)
+Thanks, understood; but then, this isn't about behavior that occurs when
+a user *changes* authentication flavors.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 27a1973..69f5e7b 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -276,7 +276,7 @@ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- 	INIT_LIST_HEAD(&lseg->fi_list);
- 	atomic_set(&lseg->pls_refcount, 1);
- 	smp_mb();
--	lseg->valid = true;
-+	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
- 	lseg->layout = lo;
- 	lseg->pls_notify_count = 0;
- }
-@@ -286,7 +286,7 @@ _put_lseg_common(struct pnfs_layout_segment *lseg)
- {
- 	struct inode *ino = lseg->layout->inode;
- 
--	BUG_ON(lseg->valid == true);
-+	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	list_del(&lseg->fi_list);
- 	if (list_empty(&lseg->layout->segs)) {
- 		struct nfs_client *clp;
-@@ -309,7 +309,8 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
- 		struct list_head *tmp_list)
- {
- 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
--		atomic_read(&lseg->pls_refcount), lseg->valid);
-+		atomic_read(&lseg->pls_refcount),
-+		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	if (atomic_dec_and_test(&lseg->pls_refcount)) {
- 		_put_lseg_common(lseg);
- 		list_add(&lseg->fi_list, tmp_list);
-@@ -325,7 +326,8 @@ put_lseg(struct pnfs_layout_segment *lseg)
- 		return;
- 
- 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
--		atomic_read(&lseg->pls_refcount), lseg->valid);
-+		atomic_read(&lseg->pls_refcount),
-+		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	ino = lseg->layout->inode;
- 	if (atomic_dec_and_lock(&lseg->pls_refcount, &ino->i_lock)) {
- 		int count = lseg->pls_notify_count;
-@@ -363,8 +365,7 @@ static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- 			      struct list_head *tmp_list)
- {
- 	assert_spin_locked(&lseg->layout->inode->i_lock);
--	if (lseg->valid) {
--		lseg->valid = false;
-+	if (test_and_clear_bit(NFS_LSEG_VALID, &lseg->pls_flags)) {
- 		/* Remove the reference keeping the lseg in the
- 		 * list.  It will now be removed when all
- 		 * outstanding io is finished.
-@@ -809,7 +810,8 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- 
- 	assert_spin_locked(&lo->inode->i_lock);
- 	list_for_each_entry(lseg, &lo->segs, fi_list) {
--		if (lseg->valid && is_matching_lseg(lseg, range)) {
-+		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
-+		    is_matching_lseg(lseg, range)) {
- 			get_lseg(lseg);
- 			ret = lseg;
- 			break;
-@@ -820,7 +822,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- 
- 	dprintk("%s:Return lseg %p ref %d valid %d\n",
- 		__func__, ret, ret ? atomic_read(&ret->pls_refcount) : 0,
--		ret ? ret->valid : 0);
-+		ret ? test_bit(NFS_LSEG_VALID, &ret->pls_flags) : 0);
- 	return ret;
- }
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index b5a30b8..82b9a7e 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -33,11 +33,15 @@
- #include <linux/nfs_page.h>
- #include "callback.h" /* for cb_layoutrecallargs */
- 
-+enum {
-+	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
-+};
-+
- struct pnfs_layout_segment {
- 	struct list_head fi_list;
- 	struct pnfs_layout_range range;
- 	atomic_t pls_refcount;
--	bool valid;
-+	unsigned long pls_flags;
- 	struct pnfs_layout_hdr *layout;
- 	int pls_notify_count;
- };
--- 
-1.7.2.1
+It's about what happens when someone sets nfs4_disable_idmapping but
+shouldn't have.
 
+Is that an important case to care about?
+
+--b.
