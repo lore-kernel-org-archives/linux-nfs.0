@@ -1,133 +1,220 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51439 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754591Ab0LHPin (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Dec 2010 10:38:43 -0500
-Date: Wed, 8 Dec 2010 10:38:38 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mark Hills <mark@pogo.org.uk>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org
-Subject: Re: mount.nfs timeout of 9999ms (was Re: Listen backlog set to 64)
-Message-ID: <20101208153838.GD32305@fieldses.org>
-References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz>
- <20101116182026.GA3971@fieldses.org>
- <20101117090826.4b2724da@notabene.brown>
- <20101129205935.GD9897@fieldses.org>
- <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz>
- <20101130200013.GA2108@fieldses.org>
- <alpine.NEB.2.01.1012011754120.12506@jrf.vwaro.pbz>
- <F5FCB254-E6CE-4B71-ABD9-33F098F9E0BA@oracle.com>
- <alpine.NEB.2.01.1012071143080.28772@jrf.vwaro.pbz>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.NEB.2.01.1012071143080.28772@jrf.vwaro.pbz>
+Received: from daytona.panasas.com ([67.152.220.89]:47293 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754814Ab0LOScT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 13:32:19 -0500
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 7/9] Revert "pnfs-submit: wave2: Pull out all recall initiated LAYOUTRETURNS"
+Date: Wed, 15 Dec 2010 20:32:16 +0200
+Message-Id: <1292437936-21908-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4D0908F9.4060208@panasas.com>
+References: <4D0908F9.4060208@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Dec 08, 2010 at 02:45:40PM +0000, Mark Hills wrote:
-> On Wed, 1 Dec 2010, Chuck Lever wrote:
-> 
-> > On Dec 1, 2010, at 1:18 PM, Mark Hills wrote:
-> > 
-> > > On Tue, 30 Nov 2010, J. Bruce Fields wrote:
-> > > 
-> > >> On Tue, Nov 30, 2010 at 05:50:52PM +0000, Mark Hills wrote:
-> > > [...]
-> > >>> Our investigation brings us to rpc.mountd and mount.nfs communicating. In 
-> > >>> the client log we see messages like:
-> > >>> 
-> > >>>  Nov 24 12:09:43 nyrd001 automount[3782]: >> mount.nfs: mount to NFS server 'ss1a:/mnt/raid1/banana' failed: timed out, giving up
-> > >>> 
-> > >>> Using strace and isolating one of these, I can see a non-blocking connect 
-> > >>> has already managed to make a connection and even send/receive some data. 
-> > >>> 
-> > >>> But soon a timeout of 9999 milliseconds in poll() causes a problem in 
-> > >>> mount.nfs when waiting for a response of some sort. The socket in question 
-> > >>> is a connection to mountd:
-> > >>> 
-> > >>>  26512 futex(0x7ff76affa540, FUTEX_WAKE_PRIVATE, 1) = 0
-> > >>>  26512 write(3, "\200\0\0(j\212\254\365\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3\0\0\0\0\0\0\0\0"..., 44) = 44
-> > >>>  26512 poll([{fd=3, events=POLLIN}], 1, 9999 <unfinished ...>
-> > >>> 
-> > >>> When it returns:
-> > >>> 
-> > >>>  26512 <... poll resumed> )              = 0 (Timeout)
-> > >>>  26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
-> > >>>  26512 rt_sigprocmask(SIG_SETMASK, ~[RTMIN RT_1], [], 8) = 0
-> > >>>  26512 close(3)                          = 0
-> > >>>  26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
-> > >>>  26512 write(2, "mount.nfs: mount to NFS server '"..., 100) = 100
-> > >>> 
-> > >>> There's no re-try from here, just a failed mount.
-> [...]
-> > >> Can you tell where the mountd threads are typically waiting?
-> > > 
-> > > Here's a trace from mountd. Note the long pause after fdatasync():
-> > > 
-> > > 31156 12:09:40 open("/var/lib/nfs/rmtab", O_WRONLY|O_CREAT|O_APPEND, 0666) = 14 <0.000010>
-> > > 31156 12:09:40 fstat(14, {st_mode=S_IFREG|0644, st_size=62642, ...}) = 0 <0.000005>
-> > > 31156 12:09:40 mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x2af00c929000 <0.000007>
-> > > 31156 12:09:40 fstat(14, {st_mode=S_IFREG|0644, st_size=62642, ...}) = 0 <0.000005>
-> > > 31156 12:09:40 lseek(14, 62642, SEEK_SET) = 62642 <0.000006>
-> > > 31156 12:09:40 write(14, "192.168.14.165:/mnt/raid1/abcde_"..., 57) = 57 <0.000013>
-> > > 31156 12:09:40 fdatasync(14)            = 0 <15.413401>
-> [...]
-> > fdatasync() will write all outstanding dirty data on that partition to 
-> > persistent storage, not just the dirty data for that file.  If /var is 
-> > on a partition that has a lot of other activity, then this is the 
-> > expected outcome, unfortunately.  I would expect such delays to be due 
-> > to a large amount of outstanding writes, not to periodic synchronous 
-> > writes.
-> 
-> Moving rmtab to a tmpfs, this moved the problem to another bottleneck 
-> writing to /var, this time via syslog.
-> 
-> We identified a crontab entry which uses RPM to apply updates to the 
-> server OS at randomised times which was blocking /var for 10 seconds or 
-> so.
+This reverts commit fea1ffe711454410ba5277115c9aeaf814681f4a.
 
-So is the problem that mountd ends up waiting on a synchronous write of
-one of those "authenticated mount request" log messages?
+Conflicts:
 
-Maybe we should downgrade those messages?  On a server with a lot of
-clients a log on every mount call seems obnoxious.  Doing it
-synchronously even more so (though I guess that's a problem for the
-syslog configuration.)
+	fs/nfs/callback_proc.c
+---
+ fs/nfs/callback.h      |    5 ++
+ fs/nfs/callback_proc.c |  103 ++++++++++++++++++++++++++++++++++-------------
+ fs/nfs/nfs4_fs.h       |    1 +
+ fs/nfs/nfs4state.c     |    4 ++
+ 4 files changed, 84 insertions(+), 29 deletions(-)
 
-> This returns the issue to giving up after the 9999 millisecond timeout 
-> above, which I think is making the client overly sensitive.
-> 
-> The affected clients are Fedora 12 distribution: nfs-utils-1.2.1-4.fc12. 
-> We are using mount.nfs for a v3 mount over TCP.
-> 
-> Locating this timeout wasn't easy. There's no '9999' in any of the 
-> nfs-utils or glibc's rpc code.
-> 
-> It turns out that the timeout originates in 
-> nfs-utils/support/nfs/rpc_socket.c as
-> 
->   #define NFSRPC_TIMEOUT_TCP	(10)
-> 
-> This is used to populate a struct timeval *timeout which is used and 
-> updated by nfs_connect_nb(). Then the remaining timeout of 9999 
-> milliseconds is used in an RPC clnt_call operation.
-> 
-> 10 seconds over TCP is simply too short to be reliable here; it's not a 
-> long period of time for a fatal timeout. I will attempt to test on our 
-> cluster with an extended timeout.
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index 7f55c7e..616c5c1 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -167,6 +167,7 @@ extern unsigned nfs4_callback_layoutrecall(
+ extern bool matches_outstanding_recall(struct inode *ino,
+ 				       struct pnfs_layout_range *range);
+ extern void notify_drained(struct nfs_client *clp, u64 mask);
++extern void nfs_client_return_layouts(struct nfs_client *clp);
+ 
+ static inline void put_session_client(struct nfs4_session *session)
+ {
+@@ -182,6 +183,10 @@ find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
+ 
+ #else /* CONFIG_NFS_V4_1 */
+ 
++static inline void nfs_client_return_layouts(struct nfs_client *clp)
++{
++}
++
+ static inline struct nfs_client *
+ find_client_from_cps(struct cb_process_state *cps, struct sockaddr *addr)
+ {
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index a9d162f..b6a2903 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -160,30 +160,88 @@ matches_outstanding_recall(struct inode *ino, struct pnfs_layout_range *range)
+ 	return rv;
+ }
+ 
++/* Send a synchronous LAYOUTRETURN.  By the time this is called, we know
++ * all IO has been drained, any matching lsegs deleted, and that no
++ * overlapping LAYOUTGETs will be sent or processed for the duration
++ * of this call.
++ * Note that it is possible that when this is called, the stateid has
++ * been invalidated.  But will not be cleared, so can still use.
++ */
++static int
++pnfs_send_layoutreturn(struct nfs_client *clp,
++		       struct pnfs_cb_lrecall_info *cb_info)
++{
++	struct cb_layoutrecallargs *args = &cb_info->pcl_args;
++	struct nfs4_layoutreturn *lrp;
++
++	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
++	if (!lrp)
++		return -ENOMEM;
++	lrp->args.reclaim = 0;
++	lrp->args.layout_type = args->cbl_layout_type;
++	lrp->args.return_type = args->cbl_recall_type;
++	lrp->clp = clp;
++	if (args->cbl_recall_type == RETURN_FILE) {
++		lrp->args.range = args->cbl_range;
++		lrp->args.inode = cb_info->pcl_ino;
++	} else {
++		lrp->args.range.iomode = IOMODE_ANY;
++		lrp->args.inode = NULL;
++	}
++	return nfs4_proc_layoutreturn(lrp, true);
++}
++
++/* Called by state manager to finish CB_LAYOUTRECALLS initiated by
++ * nfs4_callback_layoutrecall().
++ */
++void nfs_client_return_layouts(struct nfs_client *clp)
++{
++	struct pnfs_cb_lrecall_info *cb_info;
++
++	spin_lock(&clp->cl_lock);
++	while (true) {
++		if (list_empty(&clp->cl_layoutrecalls)) {
++			spin_unlock(&clp->cl_lock);
++			break;
++		}
++		cb_info = list_first_entry(&clp->cl_layoutrecalls,
++					   struct pnfs_cb_lrecall_info,
++					   pcl_list);
++		spin_unlock(&clp->cl_lock);
++		if (atomic_read(&cb_info->pcl_count) != 0)
++			break;
++		/* What do on error return?  These layoutreturns are
++		 * required by the protocol.  So if do not get
++		 * successful reply, probably have to do something
++		 * more drastic.
++		 */
++		pnfs_send_layoutreturn(clp, cb_info);
++		spin_lock(&clp->cl_lock);
++		/* Removing from the list unblocks LAYOUTGETs */
++		list_del(&cb_info->pcl_list);
++		clp->cl_cb_lrecall_count--;
++		clp->cl_drain_notification[1 << cb_info->pcl_notify_bit] = NULL;
++		kfree(cb_info);
++	}
++}
++
+ void notify_drained(struct nfs_client *clp, u64 mask)
+ {
+ 	atomic_t **ptr = clp->cl_drain_notification;
++	bool done = false;
+ 
+ 	/* clp lock not needed except to remove used up entries */
+ 	/* Should probably use functions defined in bitmap.h */
+ 	while (mask) {
+-		if ((mask & 1) && (atomic_dec_and_test(*ptr))) {
+-			struct pnfs_cb_lrecall_info *cb_info;
+-
+-			cb_info = container_of(*ptr,
+-					       struct pnfs_cb_lrecall_info,
+-					       pcl_count);
+-			spin_lock(&clp->cl_lock);
+-			/* Removing from the list unblocks LAYOUTGETs */
+-			list_del(&cb_info->pcl_list);
+-			clp->cl_cb_lrecall_count--;
+-			clp->cl_drain_notification[1 << cb_info->pcl_notify_bit] = NULL;
+-			spin_unlock(&clp->cl_lock);
+-			kfree(cb_info);
+-		}
++		if ((mask & 1) && (atomic_dec_and_test(*ptr)))
++			done = true;
+ 		mask >>= 1;
+ 		ptr++;
+ 	}
++	if (done) {
++		set_bit(NFS4CLNT_LAYOUT_RECALL, &clp->cl_state);
++		nfs4_schedule_state_manager(clp);
++	}
+ }
+ 
+ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
+@@ -208,9 +266,8 @@ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
+ 				 * does having a layout ref keep ino around?
+ 				 *  It should.
+ 				 */
+-				/* Without this, layout can be freed as soon
+-				 * as we release cl_lock.  Matched in
+-				 * do_callback_layoutrecall.
++				/* We need to hold the reference until any
++				 * potential LAYOUTRETURN is finished.
+ 				 */
+ 				get_layout_hdr(lo);
+ 				cb_info->pcl_ino = lo->inode;
+@@ -329,18 +386,6 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
+ 			res = NFS4ERR_NOMATCHING_LAYOUT;
+ 		}
+ 		kfree(new);
+-	} else {
+-		/* We are currently using a referenced layout */
+-		if (args->cbl_recall_type == RETURN_FILE) {
+-			struct pnfs_layout_hdr *lo;
+-
+-			lo = NFS_I(new->pcl_ino)->layout;
+-			spin_lock(&lo->inode->i_lock);
+-			lo->plh_block_lgets--;
+-			spin_unlock(&lo->inode->i_lock);
+-			put_layout_hdr(lo);
+-		}
+-		res = NFS4ERR_DELAY;
+ 	}
+ out:
+ 	dprintk("%s returning %i\n", __func__, res);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 15fea61..fe5c07d 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -46,6 +46,7 @@ enum nfs4_client_state {
+ 	NFS4CLNT_DELEGRETURN,
+ 	NFS4CLNT_SESSION_RESET,
+ 	NFS4CLNT_RECALL_SLOT,
++	NFS4CLNT_LAYOUT_RECALL,
+ };
+ 
+ enum nfs4_session_state {
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index dc62928..acf3e3e 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1577,6 +1577,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			nfs_client_return_marked_delegations(clp);
+ 			continue;
+ 		}
++		if (test_and_clear_bit(NFS4CLNT_LAYOUT_RECALL, &clp->cl_state)) {
++			nfs_client_return_layouts(clp);
++			continue;
++		}
+ 		/* Recall session slots */
+ 		if (test_and_clear_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state)
+ 		   && nfs4_has_session(clp)) {
+-- 
+1.7.2.3
 
-Should this be tied to some mount option?
-
-Chuck probably knows how this is supposed to work....
-
---b.
-
-> 
-> I presume that the bug is that the timeout is too short, and not that the 
-> timeout should cause a retry in a layer above -- because re-sending the 
-> request over reliable TCP would not make sense.
-> 
-> For UDP the retries are handled inside the RPC call, clntudp_call(). In 
-> which case, what is the reason the UDP timeout differs from TCP? And is it 
-> also too small?
