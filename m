@@ -1,240 +1,173 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:45794 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756683Ab0LNPGG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 10:06:06 -0500
-Received: by iwn9 with SMTP id 9so869885iwn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 07:06:05 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/11] lockd: Create client-side nlm_host cache
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 10:05:52 -0500
-Message-ID: <20101214150552.2736.86401.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
-References: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:32356 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753170Ab0LOP4g (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 10:56:36 -0500
+Message-ID: <4D08E52F.4090609@panasas.com>
+Date: Wed, 15 Dec 2010 17:56:31 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 12/22] pnfs-submit: wave2: rewrite validate_bitmap_values
+ to obey spec
+References: <1291944177-7819-1-git-send-email-iisaman@netapp.com> <1291944177-7819-13-git-send-email-iisaman@netapp.com> <4D08C961.3090702@panasas.com> <394DBE14-A569-4BEA-99CE-1CB268392449@netapp.com> <4D08DED8.9090208@panasas.com> <05BB6938-AA62-4381-B33F-2DDC60466B90@netapp.com>
+In-Reply-To: <05BB6938-AA62-4381-B33F-2DDC60466B90@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-NFS clients don't need the garbage collection processing that is
-performed on nlm_host structures.  The client picks up an nlm_host at
-mount time and holds a reference to it until the file system is
-unmounted.
+On 2010-12-15 17:43, Fred Isaman wrote:
+> 
+> On Dec 15, 2010, at 10:29 AM, Benny Halevy wrote:
+> 
+>> On 2010-12-15 16:11, Fred Isaman wrote:
+>>>
+>>> On Dec 15, 2010, at 8:57 AM, Benny Halevy wrote:
+>>>
+>>>> On 2010-12-10 03:22, Fred Isaman wrote:
+>>>>> It was checking that at least one known bit was set.  It needs to check
+>>>>> no unknown bit was set.  From RFC5661, section 20.6.3:
+>>>>>
+>>>>> When a bit is set in the type mask that corresponds to an undefined
+>>>>> type of recallable object, NFS4ERR_INVAL MUST be returned.
+>>>>>
+>>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>>>> ---
+>>>>> fs/nfs/callback.h      |    1 +
+>>>>> fs/nfs/callback_proc.c |   27 ++++-----------------------
+>>>>> 2 files changed, 5 insertions(+), 23 deletions(-)
+>>>>>
+>>>>> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+>>>>> index b16dd1f..616c5c1 100644
+>>>>> --- a/fs/nfs/callback.h
+>>>>> +++ b/fs/nfs/callback.h
+>>>>> @@ -126,6 +126,7 @@ extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
+>>>>> #define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX  9
+>>>>> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
+>>>>> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
+>>>>> +#define RCA4_TYPE_MASK_ALL 0xf31f
+>>>>>
+>>>>> struct cb_recallanyargs {
+>>>>> 	struct sockaddr	*craa_addr;
+>>>>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+>>>>> index 61b3c66..d4aec46 100644
+>>>>> --- a/fs/nfs/callback_proc.c
+>>>>> +++ b/fs/nfs/callback_proc.c
+>>>>> @@ -661,28 +661,10 @@ out_putclient:
+>>>>> 	goto out;
+>>>>> }
+>>>>>
+>>>>> -static inline bool
+>>>>> -validate_bitmap_values(const unsigned long *mask)
+>>>>> +static bool
+>>>>> +validate_bitmap_values(unsigned long mask)
+>>>>> {
+>>>>> -	int i;
+>>>>> -
+>>>>> -	if (*mask == 0)
+>>>>> -		return true;
+>>>>> -	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, mask) ||
+>>>>> -	    test_bit(RCA4_TYPE_MASK_WDATA_DLG, mask) ||
+>>>>> -	    test_bit(RCA4_TYPE_MASK_DIR_DLG, mask) ||
+>>>>> -	    test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, mask) ||
+>>>>> -	    test_bit(RCA4_TYPE_MASK_BLK_LAYOUT, mask))
+>>>>> -		return true;
+>>>>> -	for (i = RCA4_TYPE_MASK_OBJ_LAYOUT_MIN;
+>>>>> -	     i <= RCA4_TYPE_MASK_OBJ_LAYOUT_MAX; i++)
+>>>>> -		if (test_bit(i, mask))
+>>>>> -			return true;
+>>>>> -	for (i = RCA4_TYPE_MASK_OTHER_LAYOUT_MIN;
+>>>>> -	     i <= RCA4_TYPE_MASK_OTHER_LAYOUT_MAX; i++)
+>>>>> -		if (test_bit(i, mask))
+>>>>> -			return true;
+>>>>> -	return false;
+>>>>> +	return mask & ~RCA4_TYPE_MASK_ALL;
+>>>>
+>>>> Hmm, shouldn't that be
+>>>> 	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
+>>>>
+>>>> Benny
+>>>>
+>>>
+>>> Yes, you are right.
+>>
+>> OK. This is fixed in my branch to be released asap.
+> 
+> Thanks.  I have a bunch more minor code cleanups that I'll send once I see what you have, unless you want them immediately. I'll also have a rebase of the pnfs-submit branch with the wave2 patches pushed down to the bottom shortly after I see your branch.
+> 
 
-Servers, on the other hand, don't have a precise way to tell when an
-nlm_host is no longer being used, so zero refcount nlm_host entries
-are left to expire in the cache after a time.
+I prefer that you send them now.
 
-Basically there's nothing holding a reference to an nlm_host between
-individual server-side NLM requests, but we can't afford the expense
-of recreating them for every new NLM request from a client.  The
-nlm_host cache adds some lifetime hysteresis to entries in the cache
-so the next time a particular nlm_host is needed, it's likely to be
-discovered by a lookup rather than created from whole cloth.
+>> I've reverted large parts of this patchset in the post-submit stream
+>> to restore layoutcommit and layoutreturn, but not their embedding in
+>> the CLOSE compound.  I also kept the cleanups and bug fixes.
+>> I'll send out the post-submit when it's ready.
+>> Some more work will be required to restore the original patches
+>> author and signoffees.
+>>
+>> This is the list as of now:
+>>
+>> pick af44531 Revert "pnfs-submit: wave2: remove forgotten layoutreturn struct definitions"
+>> pick c465549 Revert "pnfs-submit: Turn off layoutcommits"
+>> pick 0f4ba67 Revert "pnfs-submit: wave2: remove all LAYOUTRETURN code"
+>> pick 486db47 Revert "pnfs-submit: wave2: Remove LAYOUTRETURN from return on close"
+>>
+>> pick 484c935 FIXME: roc should return layout on last close
+>> (This patch just adds a FIXME comment.)
+>>
+> 
+> The above looks good.
+> 
+>> pick 8698772 Revert "pnfs-submit: wave2: remove cl_layoutrecalls list"
+>> pick 263879b Revert "pnfs-submit: wave2: Pull out all recall initiated LAYOUTRETURNS"
+>> pick 693765f Revert "pnfs-submit: wave2: Don't wait in layoutget"
+> 
+> Just note the Trond was highly resistant to the above.
+> 
 
-With the new implementation, client nlm_host cache items are no longer
-garbage collected, and are destroyed directly by a new release
-function specialized for client entries, nlmclnt_release_host().  They
-are cached in their own data structure, and have their own lookup
-logic, simplified and specialized for client nlm_host entries.
+I understand that in the forgetful client model but eventually returning the layout
+on close will be more efficient overall vs. having the server poll the client.
 
-However, the client nlm_host cache still shares reboot recovery logic
-with the server nlm_host cache.  The NSM "peer rebooted" downcall for
-clients and servers still come through the same RPC call.  This is a
-legacy formal API that would be difficult to alter, and besides, the
-user space NSM implementation can't tell the difference between peers
-that are clients or servers.
+>> pick de56e11 Revert "pnfs-submit: wave2: check that partial LAYOUTGET return is ignored"
+>>
+> 
+> We need some sort of check that we got what we asked for, given that the xdr code can chop the servers reply.
 
-For this reason, the client cache continues to share the
-nlm_host_mutex (and reboot recovery logic) with the server cache.
+The post-submit world is supposed to handle partial layouts correctly, as this is required for 
+the obj and block layouts so we can't just blindly toss away partial layouts.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+If the files layout driver won't support partial layouts we can restrict this (sigh, ugly)
+only for it.
 
- fs/lockd/clntlock.c         |    4 +-
- fs/lockd/clntproc.c         |    6 ++-
- fs/lockd/host.c             |   81 ++++++++++++++++++++++++++++++++++++++-----
- include/linux/lockd/lockd.h |    1 +
- 4 files changed, 78 insertions(+), 14 deletions(-)
+Benny
 
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index 25509eb..8d4ea83 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -79,7 +79,7 @@ EXPORT_SYMBOL_GPL(nlmclnt_init);
-  */
- void nlmclnt_done(struct nlm_host *host)
- {
--	nlm_release_host(host);
-+	nlmclnt_release_host(host);
- 	lockd_down();
- }
- EXPORT_SYMBOL_GPL(nlmclnt_done);
-@@ -273,7 +273,7 @@ restart:
- 	spin_unlock(&nlm_blocked_lock);
- 
- 	/* Release host handle after use */
--	nlm_release_host(host);
-+	nlmclnt_release_host(host);
- 	lockd_down();
- 	return 0;
- }
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index fbc6617..adb45ec 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -58,7 +58,7 @@ static void nlm_put_lockowner(struct nlm_lockowner *lockowner)
- 		return;
- 	list_del(&lockowner->list);
- 	spin_unlock(&lockowner->host->h_lock);
--	nlm_release_host(lockowner->host);
-+	nlmclnt_release_host(lockowner->host);
- 	kfree(lockowner);
- }
- 
-@@ -207,7 +207,7 @@ struct nlm_rqst *nlm_alloc_call(struct nlm_host *host)
- 		printk("nlm_alloc_call: failed, waiting for memory\n");
- 		schedule_timeout_interruptible(5*HZ);
- 	}
--	nlm_release_host(host);
-+	nlmclnt_release_host(host);
- 	return NULL;
- }
- 
-@@ -215,7 +215,7 @@ void nlmclnt_release_call(struct nlm_rqst *call)
- {
- 	if (!atomic_dec_and_test(&call->a_count))
- 		return;
--	nlm_release_host(call->a_host);
-+	nlmclnt_release_host(call->a_host);
- 	nlmclnt_release_lockargs(call);
- 	kfree(call);
- }
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index e58e142..c6942fb 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -26,6 +26,7 @@
- #define NLM_HOST_COLLECT	(120 * HZ)
- 
- static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
-+static struct hlist_head	nlm_client_hosts[NLM_HOST_NRHASH];
- 
- #define for_each_host(host, pos, chain, table) \
- 	for ((chain) = (table); \
-@@ -288,12 +289,76 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
- 		.hostname_len	= strlen(hostname),
- 		.noresvport	= noresvport,
- 	};
-+	struct hlist_head *chain;
-+	struct hlist_node *pos;
-+	struct nlm_host	*host;
-+	struct nsm_handle *nsm = NULL;
- 
- 	dprintk("lockd: %s(host='%s', vers=%u, proto=%s)\n", __func__,
- 			(hostname ? hostname : "<none>"), version,
- 			(protocol == IPPROTO_UDP ? "udp" : "tcp"));
- 
--	return nlm_lookup_host(&ni);
-+	mutex_lock(&nlm_host_mutex);
-+
-+	chain = &nlm_client_hosts[nlm_hash_address(sap)];
-+	hlist_for_each_entry(host, pos, chain, h_hash) {
-+		if (!rpc_cmp_addr(nlm_addr(host), sap))
-+			continue;
-+
-+		/* Same address. Share an NSM handle if we already have one */
-+		if (nsm == NULL)
-+			nsm = host->h_nsmhandle;
-+
-+		if (host->h_proto != protocol)
-+			continue;
-+		if (host->h_version != version)
-+			continue;
-+
-+		nlm_get_host(host);
-+		dprintk("lockd: %s found host %s (%s)\n", __func__,
-+			host->h_name, host->h_addrbuf);
-+		goto out;
-+	}
-+
-+	host = nlm_alloc_host(&ni, nsm);
-+	if (unlikely(host == NULL))
-+		goto out;
-+
-+	hlist_add_head(&host->h_hash, chain);
-+	nrhosts++;
-+
-+	dprintk("lockd: %s created host %s (%s)\n", __func__,
-+		host->h_name, host->h_addrbuf);
-+
-+out:
-+	mutex_unlock(&nlm_host_mutex);
-+	return host;
-+}
-+
-+/**
-+ * nlmclnt_release_host - release client nlm_host
-+ * @host: nlm_host to release
-+ *
-+ */
-+void nlmclnt_release_host(struct nlm_host *host)
-+{
-+	if (host == NULL)
-+		return;
-+
-+	dprintk("lockd: release client host %s\n", host->h_name);
-+
-+	BUG_ON(atomic_read(&host->h_count) < 0);
-+	BUG_ON(host->h_server);
-+
-+	if (atomic_dec_and_test(&host->h_count)) {
-+		BUG_ON(!list_empty(&host->h_lockowners));
-+		BUG_ON(!list_empty(&host->h_granted));
-+		BUG_ON(!list_empty(&host->h_reclaim));
-+
-+		mutex_lock(&nlm_host_mutex);
-+		nlm_destroy_host_locked(host);
-+		mutex_unlock(&nlm_host_mutex);
-+	}
- }
- 
- /**
-@@ -515,16 +580,14 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
- 	 * To avoid processing a host several times, we match the nsmstate.
- 	 */
- 	while ((host = next_host_state(nlm_hosts, nsm, info)) != NULL) {
--		if (host->h_server) {
--			/* We're server for this guy, just ditch
--			 * all the locks he held. */
--			nlmsvc_free_host_resources(host);
--		} else {
--			/* He's the server, initiate lock recovery. */
--			nlmclnt_recovery(host);
--		}
-+		nlmsvc_free_host_resources(host);
- 		nlm_release_host(host);
- 	}
-+	while ((host = next_host_state(nlm_client_hosts, nsm, info)) != NULL) {
-+		nlmclnt_recovery(host);
-+		nlmclnt_release_host(host);
-+	}
-+
- 	nsm_release(nsm);
- }
- 
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index a32ba62..6c2a0e2 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -223,6 +223,7 @@ struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
- 					const u32 version,
- 					const char *hostname,
- 					int noresvport);
-+void		  nlmclnt_release_host(struct nlm_host *);
- struct nlm_host  *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 					const char *hostname,
- 					const size_t hostname_len);
-
+> 
+> Fred
+> 
+>> Anything else you had in mind?
+>>
+>> Benny
+>>
+>>>
+>>> Fred
+>>>
+>>>>> }
+>>>>>
+>>>>> __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+>>>>> @@ -702,8 +684,7 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+>>>>> 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+>>>>>
+>>>>> 	status = cpu_to_be32(NFS4ERR_INVAL);
+>>>>> -	if (!validate_bitmap_values((const unsigned long *)
+>>>>> -				    &args->craa_type_mask))
+>>>>> +	if (!validate_bitmap_values(args->craa_type_mask))
+>>>>> 		goto out;
+>>>>>
+>>>>> 	status = cpu_to_be32(NFS4_OK);
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
