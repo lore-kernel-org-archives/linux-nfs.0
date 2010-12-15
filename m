@@ -1,91 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from netnation.com ([204.174.223.2]:41136 "EHLO peace.netnation.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1756091Ab0LHVZH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Dec 2010 16:25:07 -0500
-Received: from sim by peace.netnation.com with local (Exim 4.69)
-	(envelope-from <sim@netnation.com>)
-	id 1PQRVa-0007nV-0D
-	for linux-nfs@vger.kernel.org; Wed, 08 Dec 2010 13:25:06 -0800
-Date: Wed, 8 Dec 2010 13:25:05 -0800
-From: Simon Kirby <sim@hostway.ca>
-To: linux-nfs@vger.kernel.org
-Subject: System CPU increasing on idle 2.6.36
-Message-ID: <20101208212505.GA18192@hostway.ca>
-Content-Type: text/plain; charset=us-ascii
+Received: from daytona.panasas.com ([67.152.220.89]:30829 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752855Ab0LOP3b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 10:29:31 -0500
+Message-ID: <4D08DED8.9090208@panasas.com>
+Date: Wed, 15 Dec 2010 17:29:28 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 12/22] pnfs-submit: wave2: rewrite validate_bitmap_values
+ to obey spec
+References: <1291944177-7819-1-git-send-email-iisaman@netapp.com> <1291944177-7819-13-git-send-email-iisaman@netapp.com> <4D08C961.3090702@panasas.com> <394DBE14-A569-4BEA-99CE-1CB268392449@netapp.com>
+In-Reply-To: <394DBE14-A569-4BEA-99CE-1CB268392449@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Possibly related to the flush-processes-taking-CPU issues I saw
-previously, I thought this was interesting.  I found a log-crunching box
-that does all of its work via NFS and spends most of the day sleeping. 
-It has been using a linearly-increasing amount of system time during the
-time where is sleeping.  munin graph:
+On 2010-12-15 16:11, Fred Isaman wrote:
+> 
+> On Dec 15, 2010, at 8:57 AM, Benny Halevy wrote:
+> 
+>> On 2010-12-10 03:22, Fred Isaman wrote:
+>>> It was checking that at least one known bit was set.  It needs to check
+>>> no unknown bit was set.  From RFC5661, section 20.6.3:
+>>>
+>>> When a bit is set in the type mask that corresponds to an undefined
+>>> type of recallable object, NFS4ERR_INVAL MUST be returned.
+>>>
+>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>> ---
+>>> fs/nfs/callback.h      |    1 +
+>>> fs/nfs/callback_proc.c |   27 ++++-----------------------
+>>> 2 files changed, 5 insertions(+), 23 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+>>> index b16dd1f..616c5c1 100644
+>>> --- a/fs/nfs/callback.h
+>>> +++ b/fs/nfs/callback.h
+>>> @@ -126,6 +126,7 @@ extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
+>>> #define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX  9
+>>> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
+>>> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
+>>> +#define RCA4_TYPE_MASK_ALL 0xf31f
+>>>
+>>> struct cb_recallanyargs {
+>>> 	struct sockaddr	*craa_addr;
+>>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+>>> index 61b3c66..d4aec46 100644
+>>> --- a/fs/nfs/callback_proc.c
+>>> +++ b/fs/nfs/callback_proc.c
+>>> @@ -661,28 +661,10 @@ out_putclient:
+>>> 	goto out;
+>>> }
+>>>
+>>> -static inline bool
+>>> -validate_bitmap_values(const unsigned long *mask)
+>>> +static bool
+>>> +validate_bitmap_values(unsigned long mask)
+>>> {
+>>> -	int i;
+>>> -
+>>> -	if (*mask == 0)
+>>> -		return true;
+>>> -	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, mask) ||
+>>> -	    test_bit(RCA4_TYPE_MASK_WDATA_DLG, mask) ||
+>>> -	    test_bit(RCA4_TYPE_MASK_DIR_DLG, mask) ||
+>>> -	    test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, mask) ||
+>>> -	    test_bit(RCA4_TYPE_MASK_BLK_LAYOUT, mask))
+>>> -		return true;
+>>> -	for (i = RCA4_TYPE_MASK_OBJ_LAYOUT_MIN;
+>>> -	     i <= RCA4_TYPE_MASK_OBJ_LAYOUT_MAX; i++)
+>>> -		if (test_bit(i, mask))
+>>> -			return true;
+>>> -	for (i = RCA4_TYPE_MASK_OTHER_LAYOUT_MIN;
+>>> -	     i <= RCA4_TYPE_MASK_OTHER_LAYOUT_MAX; i++)
+>>> -		if (test_bit(i, mask))
+>>> -			return true;
+>>> -	return false;
+>>> +	return mask & ~RCA4_TYPE_MASK_ALL;
+>>
+>> Hmm, shouldn't that be
+>> 	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
+>>
+>> Benny
+>>
+> 
+> Yes, you are right.
 
-http://0x.ca/sim/ref/2.6.36/cpu_logcrunch_nfs.png
+OK. This is fixed in my branch to be released asap.
+I've reverted large parts of this patchset in the post-submit stream
+to restore layoutcommit and layoutreturn, but not their embedding in
+the CLOSE compound.  I also kept the cleanups and bug fixes.
+I'll send out the post-submit when it's ready.
+Some more work will be required to restore the original patches
+author and signoffees.
 
-top shows:
+This is the list as of now:
 
-  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
- 4767 root      20   0     0    0    0 S   16  0.0   2413:29 flush-0:69
-22385 root      20   0     0    0    0 S   10  0.0   1320:23 flush-0:70
-(rest idle)
+pick af44531 Revert "pnfs-submit: wave2: remove forgotten layoutreturn struct definitions"
+pick c465549 Revert "pnfs-submit: Turn off layoutcommits"
+pick 0f4ba67 Revert "pnfs-submit: wave2: remove all LAYOUTRETURN code"
+pick 486db47 Revert "pnfs-submit: wave2: Remove LAYOUTRETURN from return on close"
 
-perf top shows:
+pick 484c935 FIXME: roc should return layout on last close
+(This patch just adds a FIXME comment.)
 
--------------------------------------------------------------------------------------------
-   PerfTop:     252 irqs/sec  kernel:97.2%  exact:  0.0% [1000Hz cycles],  (all, 2 CPUs)
--------------------------------------------------------------------------------------------
+pick 8698772 Revert "pnfs-submit: wave2: remove cl_layoutrecalls list"
+pick 263879b Revert "pnfs-submit: wave2: Pull out all recall initiated LAYOUTRETURNS"
+pick 693765f Revert "pnfs-submit: wave2: Don't wait in layoutget"
+pick de56e11 Revert "pnfs-submit: wave2: check that partial LAYOUTGET return is ignored"
 
-     samples  pcnt function                        DSO
-     _______ _____ _______________________________ ___________
+Anything else you had in mind?
 
-      912.00 21.2% _raw_spin_lock                  [kernel]
-      592.00 13.8% nfs_writepages                  [kernel]
-      474.00 11.0% queue_io                        [kernel]
-      428.00 10.0% writeback_single_inode          [kernel]
-      379.00  8.8% writeback_sb_inodes             [kernel]
-      237.00  5.5% bit_waitqueue                   [kernel]
-      184.00  4.3% do_writepages                   [kernel]
-      169.00  3.9% __iget                          [kernel]
-      132.00  3.1% redirty_tail                    [kernel]
-       85.00  2.0% iput                            [kernel]
-       72.00  1.7% _atomic_dec_and_lock            [kernel]
-       67.00  1.6% write_cache_pages               [kernel]
-       63.00  1.5% port_inb                        [ipmi_si]
-       62.00  1.4% __mark_inode_dirty              [kernel]
-       48.00  1.1% __wake_up_bit                   [kernel]
-       32.00  0.7% nfs_write_inode                 [kernel]
-       26.00  0.6% native_read_tsc                 [kernel]
-       25.00  0.6% radix_tree_gang_lookup_tag_slot [kernel]
-       25.00  0.6% schedule                        [kernel]
-       24.00  0.6% wake_up_bit                     [kernel]
-       20.00  0.5% apic_timer_interrupt            [kernel]
-       19.00  0.4% ia32_syscall                    [kernel]
-       16.00  0.4% find_get_pages_tag              [kernel]
-       15.00  0.3% _raw_spin_lock_irqsave          [kernel]
-       15.00  0.3% load_balance                    [kernel]
-       13.00  0.3% ktime_get                       [kernel]
-       12.00  0.3% shrink_icache_memory            [kernel]
-       11.00  0.3% semop                           libc-2.7.so
-	9.00  0.2% nfs_pageio_doio                 [kernel]
-	8.00  0.2% dso__find_symbol                perf
-	8.00  0.2% down_read                       [kernel]
-	7.00  0.2% __switch_to                     [kernel]
-	7.00  0.2% __phys_addr                     [kernel]
-	7.00  0.2% nfs_pageio_init                 [kernel]
-	7.00  0.2% pagevec_lookup_tag              [kernel]
-	7.00  0.2% _cond_resched                   [kernel]
-	7.00  0.2% up_read                         [kernel]
-	6.00  0.1% sched_clock_local               [kernel]
-	5.00  0.1% rb_erase                        [kernel]
-	5.00  0.1% page_fault                      [kernel]
+Benny
 
-"tcpdump -i any -n port 2049" and "nfsstat" shows this work does not actually result
-in any NFS packets.
-
-Known 2.6.36 issue?  This did not occur on 2.6.35.4, according to the
-munin graphs.  I'll try 2.6.37-rc an see if it changes.
-
-Simon-
+> 
+> Fred
+> 
+>>> }
+>>>
+>>> __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+>>> @@ -702,8 +684,7 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+>>> 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+>>>
+>>> 	status = cpu_to_be32(NFS4ERR_INVAL);
+>>> -	if (!validate_bitmap_values((const unsigned long *)
+>>> -				    &args->craa_type_mask))
+>>> +	if (!validate_bitmap_values(args->craa_type_mask))
+>>> 		goto out;
+>>>
+>>> 	status = cpu_to_be32(NFS4_OK);
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
