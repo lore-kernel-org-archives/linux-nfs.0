@@ -1,120 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64950 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:35690 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751300Ab0LJGIl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Dec 2010 01:08:41 -0500
-Received: from localhost.localdomain (kozen-lxp.hq.netapp.com [10.58.53.114] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBA68VLf023313
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Dec 2010 22:08:40 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 04/22] Revert "pnfs_submit: roc add layoutcommit op to close compound"
-Date: Thu,  9 Dec 2010 20:22:39 -0500
-Message-Id: <1291944177-7819-5-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
+	id S1755063Ab0LOUTM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Dec 2010 15:19:12 -0500
+Date: Wed, 15 Dec 2010 15:19:08 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org
+Subject: Re: System CPU increasing on idle 2.6.36
+Message-ID: <20101215201908.GB9646@fieldses.org>
+References: <1291869437.2821.6.camel@heimdal.trondhjem.org>
+ <20101214233843.GB836@hostway.ca>
+ <20101215011021.GA24594@hostway.ca>
+ <20101215015609.GB24594@hostway.ca>
+ <20101215180813.GA7773@fieldses.org>
+ <1292437333.3068.14.camel@heimdal.trondhjem.org>
+ <20101215183816.GB7773@fieldses.org>
+ <1292441630.3068.55.camel@heimdal.trondhjem.org>
+ <20101215194956.GA9646@fieldses.org>
+ <1292443028.3068.60.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1292443028.3068.60.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This reverts commit 361887febfa01e06c5ae7c38cc6867da3e4cf31d.
+On Wed, Dec 15, 2010 at 02:57:08PM -0500, Trond Myklebust wrote:
+> On Wed, 2010-12-15 at 14:49 -0500, J. Bruce Fields wrote:
+> > On Wed, Dec 15, 2010 at 02:33:50PM -0500, Trond Myklebust wrote:
+> > > 1) The user is authenticating using uids and gids (AUTH_SYS). In that
+> > > case, the server is using those uids and gids to authorise user
+> > > behaviour, and so file/directory creation/access/deletion/... will
+> > > depend only on the numeric values of those uids and gids. It doesn't
+> > > matter if the client belongs to a different domain, 'cos AUTH_SYS has no
+> > > concept of a domain. It doesn't matter whether or mot there exists a
+> > > name@domain mapping on the client, and server. Only the numbers matter.
+> > > NFSv2 and NFSv3 got this case right, and NFSv4 got it wrong (or didn't
+> > > consider it).
+> > > 
+> > > 2) The user is authenticating using a principal name@DOMAIN. In this
+> > > case, either there is a mapping between name@DOMAIN and a owner@domain
+> > > +groupname@domain on the server, or there isn't. In the latter case, the
+> > > server treats the principal as the anonymous user. In the former case,
+> > > then if the client and server map owner@domain and groupname@domain to
+> > > the same uid and gid, then it is safe to pass uids and gids back and
+> > > forth. If they don't have identical mappings, then it is still safe to
+> > > pass owner@domain and groupname@domain,
+> >  
+> > Not necessarily; for example, there could be just a one-off mapping
+> > between root/client@DOMAIN and root on the server.  And that would be
+> > sufficient to do something like a dumb
+> > 
+> > 	cp -ax / /nfs
+> > 
+> > backup, where you're just saving/restoring id's using chown/stat.
+> > 
+> > I don't know if those sorts of cases are common.  But they work under
+> > v3, and I don't see a reason to break them on upgrade to v4.
+> 
+> See above. It's about fixing what is broken with NFSv3.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4xdr.c        |   11 ++---------
- fs/nfs/pnfs.c           |    9 +--------
- include/linux/nfs_xdr.h |    2 --
- 3 files changed, 3 insertions(+), 19 deletions(-)
+The practical result in this particular example would be to break
+something under NFSv4 that worked under NFSv3.
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index b9fe438..dc63895 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -439,15 +439,13 @@ static int nfs4_stat_to_errno(int);
- 				 encode_putfh_maxsz + \
- 				 encode_close_maxsz + \
- 				 encode_getattr_maxsz + \
--				 encode_layoutreturn_maxsz + \
--				 encode_layoutcommit_maxsz)
-+				 encode_layoutreturn_maxsz)
- #define NFS4_dec_close_sz	(compound_decode_hdr_maxsz + \
- 				 decode_sequence_maxsz + \
- 				 decode_putfh_maxsz + \
- 				 decode_close_maxsz + \
- 				 decode_getattr_maxsz + \
--				 decode_layoutreturn_maxsz + \
--				 decode_layoutcommit_maxsz)
-+				 decode_layoutreturn_maxsz)
- #define NFS4_enc_setattr_sz	(compound_encode_hdr_maxsz + \
- 				 encode_sequence_maxsz + \
- 				 encode_putfh_maxsz + \
-@@ -2138,8 +2136,6 @@ static int nfs4_xdr_enc_close(struct rpc_rqst *req, __be32 *p, struct nfs_closea
- 	encode_compound_hdr(&xdr, req, &hdr);
- 	encode_sequence(&xdr, &args->seq_args, &hdr);
- 	encode_putfh(&xdr, args->fh, &hdr);
--	if (args->op_bitmask & NFS4_HAS_LAYOUTCOMMIT) /* layoutcommit set */
--		encode_layoutcommit(&xdr, &args->lc_args, &hdr);
- 	encode_close(&xdr, args, &hdr);
- 	encode_getfattr(&xdr, args->bitmask, &hdr);
- 	if (args->op_bitmask & NFS4_HAS_LAYOUTRETURN) /* layoutreturn set */
-@@ -5709,9 +5705,6 @@ static int nfs4_xdr_dec_close(struct rpc_rqst *rqstp, __be32 *p, struct nfs_clos
- 	status = decode_putfh(&xdr);
- 	if (status)
- 		goto out;
--	/* We pay no attention to the layoutcommit return */
--	if (res->op_bitmask & NFS4_HAS_LAYOUTCOMMIT)
--		decode_layoutcommit(&xdr);
- 	status = decode_close(&xdr, res);
- 	if (status != 0)
- 		goto out;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 1d3c849..4746b20 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -612,6 +612,7 @@ pnfs_return_layout_barrier(struct nfs_inode *nfsi,
-  * Return on close
-  *
-  * No LAYOUTRETURNS can be sent when BULK RECALL flag is set.
-+ * FIXME: add layoutcommit operation if layoutcommit_needed is true.
-  */
- bool
- pnfs_roc(struct nfs4_closedata *data)
-@@ -639,14 +640,6 @@ pnfs_roc(struct nfs4_closedata *data)
- 		}
- 	if (found == false)
- 		goto out_nolayout;
--
--	/* Add layoutcommit operation if needed */
--	if (layoutcommit_needed(NFS_I(data->inode))) {
--		pnfs_layoutcommit_setup(data->inode, &data->arg.lc_args, false);
--		data->res.op_bitmask |= NFS4_HAS_LAYOUTCOMMIT;
--		data->arg.op_bitmask |= NFS4_HAS_LAYOUTCOMMIT;
--	}
--
- 	/* Stop new and drop response to outstanding LAYOUTGETS */
- 	lo->plh_block_lgets++;
- 	lo->plh_outstanding++;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 5ec855b..1b7364f 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -352,7 +352,6 @@ struct nfs_open_confirmres {
- 
- /* op_bitmask bits */
- #define NFS4_HAS_LAYOUTRETURN  0x01
--#define NFS4_HAS_LAYOUTCOMMIT  0x02
- 
- struct nfs_closeargs {
- 	struct nfs_fh *         fh;
-@@ -361,7 +360,6 @@ struct nfs_closeargs {
- 	fmode_t			fmode;
- 	const u32 *		bitmask;
- 	u32			op_bitmask; /* which optional ops to encode */
--	struct nfs4_layoutcommit_op_args lc_args; /* optional */
- 	struct nfs4_layoutreturn_args	lr_args; /* optional */
- 	struct nfs4_sequence_args	seq_args;
- };
--- 
-1.7.2.1
+Could you give an example of a case in which all of the following are
+true?:
+	- the administrator explicitly requests numeric id's (for
+	  example by setting nfs4_disable_idmapping).
+	- numeric id's work as long as the client uses auth_sys.
+	- they no longer work if that same client switches to krb5.
 
+If so, that would help me to understand why switching automatically from
+numeric to string-based uid's in this case would be useful.
+
+> > Certainly I don't see any motivation for going out of our way to break
+> > that case when an administrator explicitly requests numeric id's.
+> 
+> What do you mean by 'explicitly requests numeric ids'?
+
+For example, if they set "nfs4_disable_idmapping".
+
+> If you mean 'decides to use NFSv3' then that works today.
+> 
+> What is the point of bending over backwards to make NFSv4 bug-compatible
+> with NFSv3?
+
+The advantage of supporting numeric user id's would be that it would
+allow upgrades from NFSv3 to NFSv4 which would be transparent to the
+user in more cases.
+
+> If people want NFSv3 they can use it. You can even mount an
+> NFSv3 partition while someone else is using NFSv4 on the same machine.
+
+NFSv4 also has other advantages, which we would like to be able to bring
+to people without requiring them to jump through unnecessary hoops.
+
+--b.
