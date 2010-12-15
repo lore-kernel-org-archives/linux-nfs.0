@@ -1,93 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:35104 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:46875 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750828Ab0LUNp5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Dec 2010 08:45:57 -0500
-Date: Tue, 21 Dec 2010 08:45:56 -0500
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: lock warning in pnfs-all
-Message-ID: <20101221134556.GA4408@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
+	id S1752096Ab0LOWzH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Dec 2010 17:55:07 -0500
+Date: Wed, 15 Dec 2010 17:55:01 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org
+Subject: Re: System CPU increasing on idle 2.6.36
+Message-ID: <20101215225501.GF9646@fieldses.org>
+References: <1292437333.3068.14.camel@heimdal.trondhjem.org>
+ <20101215183816.GB7773@fieldses.org>
+ <1292441630.3068.55.camel@heimdal.trondhjem.org>
+ <20101215194956.GA9646@fieldses.org>
+ <1292443028.3068.60.camel@heimdal.trondhjem.org>
+ <20101215201908.GB9646@fieldses.org>
+ <1292445128.3068.71.camel@heimdal.trondhjem.org>
+ <20101215214854.GC9646@fieldses.org>
+ <1292451346.3068.93.camel@heimdal.trondhjem.org>
+ <20101215222928.GE9646@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101215222928.GE9646@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Tests otherwise complete fine.  This may also be in upstream, I haven't
-checked.
+On Wed, Dec 15, 2010 at 05:29:28PM -0500, J. Bruce Fields wrote:
+> On Wed, Dec 15, 2010 at 05:15:46PM -0500, Trond Myklebust wrote:
+> > On Wed, 2010-12-15 at 16:48 -0500, J. Bruce Fields wrote:
+> > > On Wed, Dec 15, 2010 at 03:32:08PM -0500, Trond Myklebust wrote:
+> > > > On Wed, 2010-12-15 at 15:19 -0500, J. Bruce Fields wrote:
+> > > > 
+> > > > > Could you give an example of a case in which all of the following are
+> > > > > true?:
+> > > > > 	- the administrator explicitly requests numeric id's (for
+> > > > > 	  example by setting nfs4_disable_idmapping).
+> > > > > 	- numeric id's work as long as the client uses auth_sys.
+> > > > > 	- they no longer work if that same client switches to krb5.
+> > > > 
+> > > > Trivially:
+> > > > 
+> > > > Server /etc/passwd maps trondmy to uid 1000
+> > > > Client /etc/passwd maps trondmy to uid 500
+> > > 
+> > > I understand that any problematic case would involve different
+> > > name<->id mappings on the two sides.
+> > > 
+> > > What I don't understand--and apologies if I'm being dense!--is what
+> > > sequence of operations exactly would work in this situation if we
+> > > automatically switch idmapping based on auth flavor, and would not work
+> > > without it.
+> > > 
+> > > Are you imagining a future client that is also able to switch auth
+> > > flavors on the fly (say, based on whether a krb5 ticket exists or not),
+> > > or just unmounting and remounting to change the security flavor?
+> > > 
+> > > Are you thinking of creating a file under one flavor and accessing it
+> > > under another?
+> > 
+> > Neither.
+> > 
+> > I'm quite happy to accept that my user may map to completely different
+> > identities on the server as I switch authentication schemes. Fixing that
+> > is indeed the administrator's problem.
+> > 
+> > I'm thinking of the simple case of creating a file, and then expecting
+> > to see that file appear labelled with the correct user id when I do 'ls
+> > -l'. That should work irrespectively of the authentication scheme that I
+> > choose.
+> > 
+> > In other words, if I authenticate as 'trond' on my client or to the
+> > kerberos server, then do
+> > 
+> >         touch foo
+> >         ls -l foo
+> > 
+> > I should see a file that is owned by 'trond'.
+> 
+> Thanks, understood; but then, this isn't about behavior that occurs when
+> a user *changes* authentication flavors.
+> 
+> It's about what happens when someone sets nfs4_disable_idmapping but
+> shouldn't have.
+
+In other words, to make sure I understand:
+
+	- Is this switching-on-auth flavor *just* there to protect
+	  confused administrators against themselves?
+	- Or is there some reasons someone who knew what they were doing
+	  would actually *need* that behavior?
 
 --b.
-
-Dec 21 04:17:33 plink2 kernel: =================================
-Dec 21 04:17:33 plink2 kernel: [ INFO: inconsistent lock state ]
-Dec 21 04:17:33 plink2 kernel: 2.6.37-rc5-pnfs-00434-g89c4ccf #2000
-Dec 21 04:17:33 plink2 kernel: ---------------------------------
-Dec 21 04:17:33 plink2 kernel: inconsistent {IN-SOFTIRQ-W} -> {SOFTIRQ-ON-W} usage.
-Dec 21 04:17:33 plink2 kernel: 192.168.122.101/7686 [HC0[0]:SC0[0]:HE1:SE1] takes:
-Dec 21 04:17:33 plink2 kernel: (&(&serv->sv_cb_lock)->rlock){+.?...}, at: [<ffffffff8125adb1>] nfs4_set_callback_sessionid+0xb1/0x190
-Dec 21 04:17:33 plink2 kernel: {IN-SOFTIRQ-W} state was registered at:
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff8106de76>] __lock_acquire+0xba6/0x1c20
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff8106ef82>] lock_acquire+0x92/0x180
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff819d2cfb>] _raw_spin_lock+0x3b/0x50
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff8196d280>] xs_tcp_data_recv+0x650/0xba0
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff818e4396>] tcp_read_sock+0x116/0x240
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff8196c8e2>] xs_tcp_data_ready+0x72/0xb0
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff818eb37f>] tcp_data_queue+0x8cf/0xe80
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff818ee766>] tcp_rcv_established+0xf6/0x6b0
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff818f5d9d>] tcp_v4_do_rcv+0xcd/0x250
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff818f679e>] tcp_v4_rcv+0x87e/0xae0
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff818d51e9>] ip_local_deliver_finish+0xa9/0x270
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff818d5448>] ip_local_deliver+0x98/0xa0
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff818d4b48>] ip_rcv_finish+0x128/0x450
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff818d5075>] ip_rcv+0x205/0x2d0
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff818a5ee2>] __netif_receive_skb+0x2e2/0x3d0
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff818a6176>] netif_receive_skb+0x46/0x50
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff8176f755>] virtnet_poll+0x535/0x6b0
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff818a64f5>] net_rx_action+0xc5/0x260
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff81040ee4>] __do_softirq+0xe4/0x280
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff810032ea>] call_softirq+0x1a/0x50
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff8100440d>] do_softirq+0x8d/0xc0
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff81040185>] irq_exit+0x55/0x70
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff819da8f3>] do_IRQ+0x63/0xd0
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff819d3cd3>] ret_from_intr+0x0/0xe
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff8100176b>] cpu_idle+0x6b/0x120
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff819bcaaf>] rest_init+0xcf/0xe0
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff81ed6c08>] start_kernel+0x358/0x363
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff81ed6321>] x86_64_start_reservations+0x131/0x135
-Dec 21 04:17:33 plink2 kernel:  [<ffffffff81ed6417>] x86_64_start_kernel+0xf2/0xf9
-Dec 21 04:17:33 plink2 kernel: irq event stamp: 187
-Dec 21 04:17:33 plink2 kernel: hardirqs last  enabled at (187): [<ffffffff810e5585>] kmem_cache_alloc_notrace+0x125/0x1b0
-Dec 21 04:17:33 plink2 kernel: hardirqs last disabled at (186): [<ffffffff810e54e7>] kmem_cache_alloc_notrace+0x87/0x1b0
-Dec 21 04:17:33 plink2 kernel: softirqs last  enabled at (176): [<ffffffff8196e713>] rpc_wake_up_next+0x103/0x1e0
-Dec 21 04:17:33 plink2 kernel: softirqs last disabled at (174): [<ffffffff819d2fd6>] _raw_spin_lock_bh+0x16/0x50
-Dec 21 04:17:33 plink2 kernel:
-Dec 21 04:17:33 plink2 kernel: other info that might help us debug this:
-Dec 21 04:17:33 plink2 kernel: no locks held by 192.168.122.101/7686.
-Dec 21 04:17:33 plink2 kernel:
-Dec 21 04:17:33 plink2 kernel: stack backtrace:
-Dec 21 04:17:33 plink2 kernel: Pid: 7686, comm: 192.168.122.101 Not tainted 2.6.37-rc5-pnfs-00434-g89c4ccf #2000
-Dec 21 04:17:33 plink2 kernel: Call Trace:
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8106b2d2>] print_usage_bug+0x182/0x1d0
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8106b73b>] mark_lock+0x41b/0x630
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8106deec>] __lock_acquire+0xc1c/0x1c20
-Dec 21 04:17:33 plink2 kernel: [<ffffffff810b2107>] ? mempool_free_slab+0x17/0x20
-Dec 21 04:17:33 plink2 kernel: [<ffffffff810b21bd>] ? mempool_free+0x8d/0xa0
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8196d8b0>] ? rpc_free_task+0x50/0x80
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8106ef82>] lock_acquire+0x92/0x180
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8125adb1>] ? nfs4_set_callback_sessionid+0xb1/0x190
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8125ad6c>] ? nfs4_set_callback_sessionid+0x6c/0x190
-Dec 21 04:17:33 plink2 kernel: [<ffffffff810314d1>] ? get_parent_ip+0x11/0x50
-Dec 21 04:17:33 plink2 kernel: [<ffffffff819d2cfb>] _raw_spin_lock+0x3b/0x50
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8125adb1>] ? nfs4_set_callback_sessionid+0xb1/0x190
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8125adb1>] nfs4_set_callback_sessionid+0xb1/0x190
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8124a78f>] ? nfs4_proc_create_session+0x15f/0x210
-Dec 21 04:17:33 plink2 kernel: [<ffffffff81257c37>] nfs41_init_clientid+0x67/0xf0
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8125731d>] nfs4_run_state_manager+0x27d/0x5a0
-Dec 21 04:17:33 plink2 kernel: [<ffffffff812570a0>] ? nfs4_run_state_manager+0x0/0x5a0
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8105ab56>] kthread+0x96/0xa0
-Dec 21 04:17:33 plink2 kernel: [<ffffffff810031f4>] kernel_thread_helper+0x4/0x10
-Dec 21 04:17:33 plink2 kernel: [<ffffffff81033221>] ? finish_task_switch.clone.3+0x81/0xe0
-Dec 21 04:17:33 plink2 kernel: [<ffffffff819d3d7e>] ? restore_args+0x0/0x30
-Dec 21 04:17:33 plink2 kernel: [<ffffffff8105aac0>] ? kthread+0x0/0xa0
-Dec 21 04:17:33 plink2 kernel: [<ffffffff810031f0>] ? kernel_thread_helper+0x0/0x10
