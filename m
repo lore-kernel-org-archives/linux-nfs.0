@@ -1,107 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e38.co.us.ibm.com ([32.97.110.159]:36974 "EHLO
-	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753195Ab0LBBDP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 20:03:15 -0500
-Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
-	by e38.co.us.ibm.com (8.14.4/8.13.1) with ESMTP id oB21sl3q016981
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 18:54:47 -0700
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oB213Bkx073578
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 18:03:11 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oB2139kY017781
-	for <linux-nfs@vger.kernel.org>; Wed, 1 Dec 2010 18:03:10 -0700
-Subject: [PATCH] NFS client has troubles with fileid with bit 31 (or bit
-	63) set
-From: Frank Filz <ffilzlnx@us.ibm.com>
-To: NFS List <linux-nfs@vger.kernel.org>
-Cc: ffilz@us.ibm.com
-Content-Type: text/plain
-Date: Wed, 01 Dec 2010 17:03:06 -0800
-Message-Id: <1291251786.5075.6.camel@KPMH461.ibm.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:57029 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752704Ab0LOGtK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Dec 2010 01:49:10 -0500
+Message-ID: <4D086478.7090106@cn.fujitsu.com>
+Date: Wed, 15 Dec 2010 14:47:20 +0800
+From: Shan Wei <shanwei@cn.fujitsu.com>
+To: bfields@fieldses.org, neilb@suse.de, Trond.Myklebust@netapp.com,
+        steved@redhat.com, tj@kernel.org
+CC: David Miller <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        Network-Maillist <netdev@vger.kernel.org>
+Subject: [PATCH 2/3] net: sunrpc: kill unused macros
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+These macros never be used for several years.
 
 
-
-I discovered this problem by accident while doing some testing of the
-Ganesha user space server. It was producing garbage fileids that
-happened to have bit 31 set (0x80000000).
-
-The telldir special test from cthon04 would fail. Investigating, I found
-that it appeared that the getdents() was returning EOVERFLOW. It wasn't
-too hard to track that down to the following code:
-
-static int fillonedir(void * __buf, const char * name, int namlen, loff_t offset,
-                      u64 ino, unsigned int d_type)
-{
-        struct readdir_callback * buf = (struct readdir_callback *) __buf;
-        struct old_linux_dirent __user * dirent;
-        unsigned long d_ino;
-
-        if (buf->result)
-                return -EINVAL;
-        d_ino = ino;
-        if (sizeof(d_ino) < sizeof(ino) && d_ino != ino)
-                return -EOVERFLOW;
-
-It took adding some debug code to track the problem down to this
-function:
-
-u64 nfs_compat_user_ino64(u64 fileid)
-{
-        int ino;
-
-        if (enable_ino64)
-                return fileid;
-        ino = fileid;
-        if (sizeof(ino) < sizeof(fileid))
-                ino ^= fileid >> (sizeof(fileid)-sizeof(ino)) * 8;
-        return ino;
-}
-
-In trying to reduce a 64 bit fileid to 32 bits, it produces a SIGNED 32
-bit int! When this is passed to fillonedir as a uint64, a negative
-number is sign extended. bit 31 of ino will be set if bit 31 OR bit 63
-(but not both) is set in the fileid.
-
-Turns out the fix is simple! Change ino to an unsigned int.
-
-In order to test my fix in an orderly fashion, I used a simple process
-to modify the fileids produced by the kernel server:
-
-u64 warp_fileid(u64 fileid)
-{
-        return (fileid & 0xffffffff7fffffefLL) | ((fileid & 0x10LL) << 27) | ((fileid &0x80000000LL) >> 27);
-}
-
-This means that every 16 inode numbers, bit 31 will be flipped,
-producing plenty of problem fileids. The telldir test case fails with
-this hacked kernel server.
-
-Of course if anyone has a real file system with > 2G inodes, they could
-see the problem for real, but I don't have a big enough file system...
-
-
-
-
-
-Signed-off-by: Frank Filz <ffilzlnx@us.ibm.com>
+Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
 ---
-diff -X ignore.patcher -ruNp linux-2.6.18-194.el5/fs/nfs/inode.c linux-2.6.18-194.ff/fs/nfs/inode.c
---- linux-2.6.18-194.el5/fs/nfs/inode.c	2010-12-01 15:52:11.000000000 -0800
-+++ linux-2.6.18-194.ff/fs/nfs/inode.c	2010-12-01 16:53:28.000000000 -0800
-@@ -71,7 +71,7 @@ static kmem_cache_t * nfs_inode_cachep;
-  */
- u64 nfs_compat_user_ino64(u64 fileid)
- {
--	int ino;
-+	unsigned int ino;
+ net/sunrpc/auth_gss/svcauth_gss.c |    2 --
+ net/sunrpc/svcauth.c              |    1 -
+ net/sunrpc/svcauth_unix.c         |    2 --
+ 3 files changed, 0 insertions(+), 5 deletions(-)
+
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index dec2a6f..bcdae78 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -67,7 +67,6 @@ static int netobj_equal(struct xdr_netobj *a, struct xdr_netobj *b)
  
- 	if (enable_ino64)
- 		return fileid;
-
-
+ #define	RSI_HASHBITS	6
+ #define	RSI_HASHMAX	(1<<RSI_HASHBITS)
+-#define	RSI_HASHMASK	(RSI_HASHMAX-1)
+ 
+ struct rsi {
+ 	struct cache_head	h;
+@@ -319,7 +318,6 @@ static struct rsi *rsi_update(struct rsi *new, struct rsi *old)
+ 
+ #define	RSC_HASHBITS	10
+ #define	RSC_HASHMAX	(1<<RSC_HASHBITS)
+-#define	RSC_HASHMASK	(RSC_HASHMAX-1)
+ 
+ #define GSS_SEQ_WIN	128
+ 
+diff --git a/net/sunrpc/svcauth.c b/net/sunrpc/svcauth.c
+index 4e9393c..7963569 100644
+--- a/net/sunrpc/svcauth.c
++++ b/net/sunrpc/svcauth.c
+@@ -118,7 +118,6 @@ EXPORT_SYMBOL_GPL(svc_auth_unregister);
+ 
+ #define	DN_HASHBITS	6
+ #define	DN_HASHMAX	(1<<DN_HASHBITS)
+-#define	DN_HASHMASK	(DN_HASHMAX-1)
+ 
+ static struct hlist_head	auth_domain_table[DN_HASHMAX];
+ static spinlock_t	auth_domain_lock =
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 560677d..a04ac91 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -85,7 +85,6 @@ static void svcauth_unix_domain_release(struct auth_domain *dom)
+  */
+ #define	IP_HASHBITS	8
+ #define	IP_HASHMAX	(1<<IP_HASHBITS)
+-#define	IP_HASHMASK	(IP_HASHMAX-1)
+ 
+ struct ip_map {
+ 	struct cache_head	h;
+@@ -497,7 +496,6 @@ svcauth_unix_info_release(struct svc_xprt *xpt)
+  */
+ #define	GID_HASHBITS	8
+ #define	GID_HASHMAX	(1<<GID_HASHBITS)
+-#define	GID_HASHMASK	(GID_HASHMAX - 1)
+ 
+ struct unix_gid {
+ 	struct cache_head	h;
+-- 
+1.6.3.3
