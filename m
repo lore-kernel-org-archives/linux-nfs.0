@@ -1,157 +1,367 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:11307 "EHLO
+Received: from daytona.panasas.com ([67.152.220.89]:47257 "EHLO
 	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751110Ab0LPHPe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 02:15:34 -0500
-Message-ID: <4D09BC93.9020502@panasas.com>
-Date: Thu, 16 Dec 2010 09:15:31 +0200
+	with ESMTP id S1751857Ab0LOSbh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 13:31:37 -0500
 From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/9] Revert "pnfs-submit: wave2: remove forgotten layoutreturn
- struct definitions"
-References: <4D0908F9.4060208@panasas.com>	 <1292437854-21651-1-git-send-email-bhalevy@panasas.com>	 <1292437973.3068.15.camel@heimdal.trondhjem.org>	 <4D090E18.4060205@panasas.com> <1292441468.3068.53.camel@heimdal.trondhjem.org>
-In-Reply-To: <1292441468.3068.53.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 4/9] Revert "pnfs-submit: wave2: Remove LAYOUTRETURN from return on close"
+Date: Wed, 15 Dec 2010 20:31:35 +0200
+Message-Id: <1292437895-21782-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4D0908F9.4060208@panasas.com>
+References: <4D0908F9.4060208@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2010-12-15 21:31, Trond Myklebust wrote:
-> On Wed, 2010-12-15 at 20:51 +0200, Benny Halevy wrote:
->> On 2010-12-15 20:32, Trond Myklebust wrote:
->>> On Wed, 2010-12-15 at 20:30 +0200, Benny Halevy wrote:
->>>> This reverts commit 19e1e5ae1ec0a3f5d997a1a5d924d482e147bea2.
->>>> ---
->>>>  include/linux/nfs4.h    |    1 +
->>>>  include/linux/nfs_xdr.h |   23 +++++++++++++++++++++++
->>>>  2 files changed, 24 insertions(+), 0 deletions(-)
->>>>
->>>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
->>>> index 8ca7700..55511e8 100644
->>>> --- a/include/linux/nfs4.h
->>>> +++ b/include/linux/nfs4.h
->>>> @@ -557,6 +557,7 @@ enum {
->>>>  	NFSPROC4_CLNT_RECLAIM_COMPLETE,
->>>>  	NFSPROC4_CLNT_LAYOUTGET,
->>>>  	NFSPROC4_CLNT_LAYOUTCOMMIT,
->>>> +	NFSPROC4_CLNT_LAYOUTRETURN,
->>>>  	NFSPROC4_CLNT_GETDEVICEINFO,
->>>>  	NFSPROC4_CLNT_PNFS_WRITE,
->>>>  	NFSPROC4_CLNT_PNFS_COMMIT,
->>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->>>> index 9d847ac..a651574 100644
->>>> --- a/include/linux/nfs_xdr.h
->>>> +++ b/include/linux/nfs_xdr.h
->>>> @@ -258,6 +258,29 @@ struct nfs4_layoutcommit_data {
->>>>  	int status;
->>>>  };
->>>>  
->>>> +struct nfs4_layoutreturn_args {
->>>> +	__u32   reclaim;
->>>> +	__u32   layout_type;
->>>> +	__u32   return_type;
->>>> +	struct pnfs_layout_range range;
->>>> +	struct inode *inode;
->>>> +	struct nfs4_sequence_args seq_args;
->>>> +};
->>>> +
->>>> +struct nfs4_layoutreturn_res {
->>>> +	struct nfs4_sequence_res seq_res;
->>>> +	u32 lrs_present;
->>>> +	nfs4_stateid stateid;
->>>> +};
->>>> +
->>>> +struct nfs4_layoutreturn {
->>>> +	struct nfs4_layoutreturn_args args;
->>>> +	struct nfs4_layoutreturn_res res;
->>>> +	struct rpc_cred *cred;
->>>> +	struct nfs_client *clp;
->>>> +	int rpc_status;
->>>> +};
->>>> +
->>>>  struct nfs4_getdeviceinfo_args {
->>>>  	struct pnfs_device *pdev;
->>>>  	struct nfs4_sequence_args seq_args;
->>>
->>> Why? We don't need or even want layoutreturn. It adds too much
->>> serialisation crap.
->>
->> Define "we" :)
-> 
-> Definition: "We who will be forced to maintain whatever is merged
-> upstream."
-> 
->> First, the object layout driver relies on layout return for returning I/O error
->> information.  On the common, successful path, with return_on_close (that Panasas
->> uses but others may not) I agree that CLOSE with the implicit layoutreturn
->> semantics we discussed should do a good job too (accompanied with a respective
->> LAYOUTCOMMIT if needed).
->>
->> Then, when there's a large number of outstanding layout segments (again
->> prob. non-files layout presuming server implementations are going to utilize
->> whole-file layouts) proactive layoutreturn comes handy in capping the
->> state both the client and server keep - reducing time wasted on walking long
->> lists of items.
-> 
-> That assumes that you have a good policy for implementing a 'proactive
-> layoutreturn'. What knowledge does either the client or the server have
-> w.r.t. whether or not part of a layout is likely to be used in the near
-> future other than 'file is open' or 'file is closed'?
-> 
+This reverts commit 5611feb54b4c0225f0924c6b059f281d45915b24.
+---
+ fs/nfs/nfs4_fs.h   |    2 +-
+ fs/nfs/nfs4proc.c  |   16 ++-------
+ fs/nfs/nfs4state.c |   16 +++++++-
+ fs/nfs/pnfs.c      |  103 +++++-----------------------------------------------
+ fs/nfs/pnfs.h      |   38 ++++++-------------
+ 5 files changed, 39 insertions(+), 136 deletions(-)
 
-The client can cache layout segments using a least recently used policy.
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index d58a130..a917872 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -242,7 +242,7 @@ extern int nfs4_proc_async_renew(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_proc_renew(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+-extern int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc);
++extern int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait);
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+ extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 		struct nfs4_fs_locations *fs_locations, struct page *page);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 35af296..5331f28 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1841,8 +1841,6 @@ struct nfs4_closedata {
+ 	struct nfs_closeres res;
+ 	struct nfs_fattr fattr;
+ 	unsigned long timestamp;
+-	bool roc;
+-	u32 roc_barrier;
+ };
+ 
+ static void nfs4_free_closedata(void *data)
+@@ -1850,7 +1848,6 @@ static void nfs4_free_closedata(void *data)
+ 	struct nfs4_closedata *calldata = data;
+ 	struct nfs4_state_owner *sp = calldata->state->owner;
+ 
+-	pnfs_roc_release(calldata->roc, calldata->state->inode);
+ 	nfs4_put_open_state(calldata->state);
+ 	nfs_free_seqid(calldata->arg.seqid);
+ 	nfs4_put_state_owner(sp);
+@@ -1883,8 +1880,6 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 	 */
+ 	switch (task->tk_status) {
+ 		case 0:
+-			pnfs_roc_set_barrier(calldata->roc, state->inode,
+-					     calldata->roc_barrier);
+ 			nfs_set_open_stateid(state, &calldata->res.stateid, 0);
+ 			renew_lease(server, calldata->timestamp);
+ 			nfs4_close_clear_stateid_flags(state,
+@@ -1937,11 +1932,8 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 		return;
+ 	}
+ 
+-	if (calldata->arg.fmode == 0) {
++	if (calldata->arg.fmode == 0)
+ 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLOSE];
+-		pnfs_roc_drain(calldata->roc, state->inode,
+-			       &calldata->roc_barrier, task);
+-	}
+ 
+ 	nfs_fattr_init(calldata->res.fattr);
+ 	calldata->timestamp = jiffies;
+@@ -1969,7 +1961,7 @@ static const struct rpc_call_ops nfs4_close_ops = {
+  *
+  * NOTE: Caller must be holding the sp->so_owner semaphore!
+  */
+-int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc)
++int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait)
+ {
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 	struct nfs4_closedata *calldata;
+@@ -2004,7 +1996,6 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, i
+ 	calldata->res.fattr = &calldata->fattr;
+ 	calldata->res.seqid = calldata->arg.seqid;
+ 	calldata->res.server = server;
+-	calldata->roc = roc;
+ 	path_get(path);
+ 	calldata->path = *path;
+ 
+@@ -2022,7 +2013,6 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, i
+ out_free_calldata:
+ 	kfree(calldata);
+ out:
+-	pnfs_roc_release(roc, state->inode);
+ 	nfs4_put_open_state(state);
+ 	nfs4_put_state_owner(sp);
+ 	return status;
+@@ -5619,7 +5609,7 @@ static void nfs4_layoutreturn_release(void *calldata)
+ 		lo->plh_block_lgets--;
+ 		atomic_dec(&lo->plh_outstanding);
+ 		spin_unlock(&ino->i_lock);
+-		put_layout_hdr(ino);
++		put_layout_hdr(lo);
+ 	}
+ 	kfree(calldata);
+ 	dprintk("<-- %s\n", __func__);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index bca8386..6a1eb41 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -619,9 +619,21 @@ static void __nfs4_close(struct path *path, struct nfs4_state *state,
+ 		nfs4_put_open_state(state);
+ 		nfs4_put_state_owner(owner);
+ 	} else {
+-		bool roc = pnfs_roc(state->inode);
++		u32 roc_iomode;
++		struct nfs_inode *nfsi = NFS_I(state->inode);
++
++		if (has_layout(nfsi) &&
++		    (roc_iomode = pnfs_layout_roc_iomode(nfsi)) != 0) {
++			struct pnfs_layout_range range = {
++				.iomode = roc_iomode,
++				.offset = 0,
++				.length = NFS4_MAX_UINT64,
++			};
++
++			pnfs_return_layout(state->inode, &range, wait);
++		}
+ 
+-		nfs4_do_close(path, state, gfp_mask, wait, roc);
++		nfs4_do_close(path, state, gfp_mask, wait);
+ 	}
+ }
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 904c110..1899dc6 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -465,12 +465,9 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
+ 	newseq = be32_to_cpu(new->stateid.seqid);
+ 	if ((int)(newseq - oldseq) > 0) {
+ 		memcpy(&lo->stateid, &new->stateid, sizeof(new->stateid));
+-		if (update_barrier) {
+-			u32 new_barrier = be32_to_cpu(new->stateid.seqid);
+-
+-			if ((int)(new_barrier - lo->plh_barrier))
+-				lo->plh_barrier = new_barrier;
+-		} else {
++		if (update_barrier)
++			lo->plh_barrier = be32_to_cpu(new->stateid.seqid);
++		else {
+ 			/* Because of wraparound, we want to keep the barrier
+ 			 * "close" to the current seqids.  It needs to be
+ 			 * within 2**31 to count as "behind", so if it
+@@ -618,7 +615,7 @@ return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wait)
+ 
+ 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
+ 	if (lrp == NULL) {
+-		put_layout_hdr(ino);
++		put_layout_hdr(NFS_I(ino)->layout);
+ 		goto out;
+ 	}
+ 	lrp->args.reclaim = 0;
+@@ -679,91 +676,6 @@ out:
+ 	return status;
+ }
+ 
+-bool pnfs_roc(struct inode *ino)
+-{
+-	struct pnfs_layout_hdr *lo;
+-	struct pnfs_layout_segment *lseg, *tmp;
+-	LIST_HEAD(tmp_list);
+-	bool found = false;
+-
+-	spin_lock(&ino->i_lock);
+-	lo = NFS_I(ino)->layout;
+-	if (!lo || !test_and_clear_bit(NFS_LAYOUT_ROC, &lo->plh_flags) ||
+-	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags))
+-		goto out_nolayout;
+-	list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
+-		if (test_bit(NFS_LSEG_ROC, &lseg->pls_flags)) {
+-			mark_lseg_invalid(lseg, &tmp_list);
+-			found = true;
+-		}
+-	if (!found)
+-		goto out_nolayout;
+-	lo->plh_block_lgets++;
+-	get_layout_hdr(lo); /* matched in pnfs_roc_release */
+-	spin_unlock(&ino->i_lock);
+-	pnfs_free_lseg_list(&tmp_list);
+-	return true;
+-
+-out_nolayout:
+-	spin_unlock(&ino->i_lock);
+-	return false;
+-}
+-
+-void pnfs_roc_release(bool needed, struct inode *ino)
+-{
+-	if (needed) {
+-		struct pnfs_layout_hdr *lo;
+-
+-		spin_lock(&ino->i_lock);
+-		lo = NFS_I(ino)->layout;
+-		lo->plh_block_lgets--;
+-		put_layout_hdr_locked(lo);
+-		spin_unlock(&ino->i_lock);
+-	}
+-}
+-
+-void pnfs_roc_set_barrier(bool needed, struct inode *ino, u32 barrier)
+-{
+-	if (needed) {
+-		struct pnfs_layout_hdr *lo;
+-
+-		spin_lock(&ino->i_lock);
+-		lo = NFS_I(ino)->layout;
+-		if ((int)(barrier - lo->plh_barrier) > 0)
+-			lo->plh_barrier = barrier;
+-		spin_unlock(&ino->i_lock);
+-	}
+-}
+-
+-void pnfs_roc_drain(bool needed, struct inode *ino, u32 *barrier,
+-		    struct rpc_task *task)
+-{
+-	struct nfs_inode *nfsi = NFS_I(ino);
+-	struct pnfs_layout_segment *lseg;
+-	bool found = false;
+-
+-	if (!needed)
+-		return;
+-	spin_lock(&ino->i_lock);
+-	list_for_each_entry(lseg, &nfsi->layout->segs, fi_list)
+-		if (test_bit(NFS_LSEG_ROC, &lseg->pls_flags)) {
+-			rpc_sleep_on(&NFS_I(ino)->lo_rpcwaitq, task, NULL);
+-			found = true;
+-			break;
+-		}
+-	if (!found) {
+-		struct pnfs_layout_hdr *lo = nfsi->layout;
+-		u32 current_seqid = be32_to_cpu(lo->stateid.stateid.seqid);
+-
+-		/* Since close does not return a layout stateid for use as
+-		 * a barrier, we choose the worst-case barrier.
+-		 */
+-		*barrier = current_seqid + atomic_read(&lo->plh_outstanding);
+-	}
+-	spin_unlock(&ino->i_lock);
+-	return;
+-}
+-
+ /*
+  * Compare two layout segments for sorting into layout cache.
+  * We want to preferentially return RW over RO layouts, so ensure those
+@@ -1032,8 +944,11 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	pnfs_insert_layout(lo, lseg);
+ 
+ 	if (res->return_on_close) {
+-		set_bit(NFS_LSEG_ROC, &lseg->pls_flags);
+-		set_bit(NFS_LAYOUT_ROC, &lo->plh_flags);
++		/* FI: This needs to be re-examined.  At lo level,
++		 * all it needs is a bit indicating whether any of
++		 * the lsegs in the list have the flags set.
++		 */
++		lo->roc_iomode |= res->range.iomode;
+ 	}
+ 
+ 	/* Done processing layoutget. Set the layout stateid */
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index bbafee0..59eb0e8 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -34,7 +34,6 @@
+ 
+ enum {
+ 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
+-	NFS_LSEG_ROC,		/* roc bit received from server */
+ };
+ 
+ struct pnfs_layout_segment {
+@@ -60,7 +59,6 @@ enum {
+ 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
+ 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
+ 	NFS_LAYOUT_NEED_LCOMMIT,	/* LAYOUTCOMMIT needed */
+-	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
+ };
+ 
+ /* Per-layout driver specific registration structure */
+@@ -103,6 +101,7 @@ struct pnfs_layout_hdr {
+ 	struct list_head	layouts;   /* other client layouts */
+ 	struct list_head	plh_bulk_recall; /* clnt list of bulk recalls */
+ 	struct list_head	segs;      /* layout segments list */
++	int			roc_iomode;/* return on close iomode, 0=none */
+ 	nfs4_stateid		stateid;
+ 	atomic_t		plh_outstanding; /* number of RPCs out */
+ 	unsigned long		plh_block_lgets; /* block LAYOUTGET if >0 */
+@@ -223,11 +222,6 @@ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ void nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
+ 				struct pnfs_layout_range *range,
+ 				struct list_head *tmp_list);
+-bool pnfs_roc(struct inode *ino);
+-void pnfs_roc_release(bool needed, struct inode *ino);
+-void pnfs_roc_set_barrier(bool needed, struct inode *ino, u32 barrier);
+-void pnfs_roc_drain(bool needed, struct inode *ino, u32 *barrier,
+-		    struct rpc_task *task);
+ 
+ static inline bool
+ has_layout(struct nfs_inode *nfsi)
+@@ -253,6 +247,14 @@ static inline int pnfs_enabled_sb(struct nfs_server *nfss)
+ 	return nfss->pnfs_curr_ld != NULL;
+ }
+ 
++/* Should the pNFS client commit and return the layout on close
++ */
++static inline int
++pnfs_layout_roc_iomode(struct nfs_inode *nfsi)
++{
++	return nfsi->layout->roc_iomode;
++}
++
+ static inline int pnfs_return_layout(struct inode *ino,
+ 				     struct pnfs_layout_range *range,
+ 				     bool wait)
+@@ -336,26 +338,10 @@ static inline int pnfs_layoutcommit_inode(struct inode *inode, int sync)
+ 	return 0;
+ }
+ 
+-static inline bool
+-pnfs_roc(struct inode *ino)
+-{
+-	return false;
+-}
+-
+-static inline void
+-pnfs_roc_release(bool needed, struct inode *ino)
+-{
+-}
+-
+-static inline void
+-pnfs_roc_set_barrier(bool needed, struct inode *ino, u32 barrier)
+-{
+-}
+-
+-static inline void
+-pnfs_roc_drain(bool needed, struct inode *ino, u32 *barrier,
+-	       struct rpc_task *task)
++static inline int
++pnfs_layout_roc_iomode(struct nfs_inode *nfsi)
+ {
++	return 0;
+ }
+ 
+ static inline int pnfs_return_layout(struct inode *ino,
+-- 
+1.7.2.3
 
-> What is the advantage to the client w.r.t. sending LAYOUTRETURN rather
-> than just forgetting the layout or layout segment? If the server needs
-> it returned, it can send a recall. If not, we are wasting processing
-> time by sending an unnecessary RPC call.
-> 
-
-The client can know better than the server which layout segments is is more
-likely to reuse since the MDS does not see the layout usage activity
-(as it goes to the DS's).
-
-Similarly, for CB_RECALL_ANY, the client chooses what layouts to return.
-Rather than dropping all the layouts it should return only the least likely
-to be reused.
-
->> For CB_LAYOUTRECALL response the heart of the debate is around synchronizing
->> with layouts in-use and in-flight layoutgets.  There, having the server poll
->> the client, who's retuning NFS4ERR_DELAY should essentially work but may be
->> inefficient and unreliable in use cases where contention is likely enough.
-> 
-> Define these use cases. Otherwise we're just talking generalities and
-> presenting circular arguments again.
-> 
-
-The most common for Panasas is write sharing where multiple clients
-collaboratively write into a file in parallel.  Although different clients
-write into disjoint byte ranges in the file they cross RAID stripe boundaries
-(which they're not aware of) and since only one client is allowed to write
-into a RAID stripe at a time, the layout is being recalled whenever the
-server detects a conflict.
-
->> Eventually, when CB_LAYOUTRECALL is clear to go sending the LAYOUTRETURN
->> or replying with CB_NOMATCHING_LAYOUT (assuming no I/O error to report
->> for pnfs-obj) should be equivalent [note: need errata to clarify the
->> resulting stateid after NOMATCHING_LAYOUT].
->> Is this the serialization "crap" you're talking about?
->> What makes checking the conditions for returning NFS4ERR_DELAY to
->> CB_LAYOUTRECALL so different from implementing a barrier and doing the
->> returns asynchronously with the CB_LAYOUTRECALL?
-> 
-> "CB_LAYOUTRECALL request processing MUST be processed in "seqid" order
-> at all times." (section 12.5.3).
-> 
-> In other words, you cannot just 'do the returns asynchronously': the
-> CB_LAYOUTRECALL requests are required by the protocol to be processed in
-> order, which means that you must serialise those LAYOUTRETURN calls to
-> ensure that they all happen in the order the wretched server expects.
-> 
-> 
-
-To simplify this (presumably rare) case what I had in mind is returning
-NFS4ERR_DELAY if there's a conflicting layout recall in progress.
-
-Benny
