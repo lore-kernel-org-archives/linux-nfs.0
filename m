@@ -1,20 +1,89 @@
-From: Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 0/3] pnfs: additional wave2 patches
-Date: Tue, 14 Dec 2010 17:02:57 -0500
-Message-ID: <1292364180-28512-1-git-send-email-iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 2/3] net: sunrpc: kill unused macros
+Date: Wed, 15 Dec 2010 10:52:07 -0500
+Message-ID: <20101215155206.GC32559@fieldses.org>
+References: <4D086478.7090106@cn.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: neilb@suse.de, Trond.Myklebust@netapp.com, steved@redhat.com,
+	tj@kernel.org, David Miller <davem@davemloft.net>,
+	linux-nfs@vger.kernel.org,
+	Network-Maillist <netdev@vger.kernel.org>
+To: Shan Wei <shanwei@cn.fujitsu.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:11394 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41614 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752784Ab0LNWDD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Dec 2010 17:03:03 -0500
-Received: from localhost.localdomain (vpn2ntap-71744.hq.netapp.com [10.58.57.236])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBEM32oc010255
-	for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 14:03:03 -0800 (PST)
+	id S1753131Ab0LOPw0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Dec 2010 10:52:26 -0500
+In-Reply-To: <4D086478.7090106@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These are on top of the previous 22 patches, and fix a few more issues from review.
+On Wed, Dec 15, 2010 at 02:47:20PM +0800, Shan Wei wrote:
+> These macros never be used for several years.
 
-Fred
+Applying for 2.6.38.--b.
 
+> 
+> 
+> Signed-off-by: Shan Wei <shanwei@cn.fujitsu.com>
+> ---
+>  net/sunrpc/auth_gss/svcauth_gss.c |    2 --
+>  net/sunrpc/svcauth.c              |    1 -
+>  net/sunrpc/svcauth_unix.c         |    2 --
+>  3 files changed, 0 insertions(+), 5 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> index dec2a6f..bcdae78 100644
+> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> @@ -67,7 +67,6 @@ static int netobj_equal(struct xdr_netobj *a, struct xdr_netobj *b)
+>  
+>  #define	RSI_HASHBITS	6
+>  #define	RSI_HASHMAX	(1<<RSI_HASHBITS)
+> -#define	RSI_HASHMASK	(RSI_HASHMAX-1)
+>  
+>  struct rsi {
+>  	struct cache_head	h;
+> @@ -319,7 +318,6 @@ static struct rsi *rsi_update(struct rsi *new, struct rsi *old)
+>  
+>  #define	RSC_HASHBITS	10
+>  #define	RSC_HASHMAX	(1<<RSC_HASHBITS)
+> -#define	RSC_HASHMASK	(RSC_HASHMAX-1)
+>  
+>  #define GSS_SEQ_WIN	128
+>  
+> diff --git a/net/sunrpc/svcauth.c b/net/sunrpc/svcauth.c
+> index 4e9393c..7963569 100644
+> --- a/net/sunrpc/svcauth.c
+> +++ b/net/sunrpc/svcauth.c
+> @@ -118,7 +118,6 @@ EXPORT_SYMBOL_GPL(svc_auth_unregister);
+>  
+>  #define	DN_HASHBITS	6
+>  #define	DN_HASHMAX	(1<<DN_HASHBITS)
+> -#define	DN_HASHMASK	(DN_HASHMAX-1)
+>  
+>  static struct hlist_head	auth_domain_table[DN_HASHMAX];
+>  static spinlock_t	auth_domain_lock =
+> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+> index 560677d..a04ac91 100644
+> --- a/net/sunrpc/svcauth_unix.c
+> +++ b/net/sunrpc/svcauth_unix.c
+> @@ -85,7 +85,6 @@ static void svcauth_unix_domain_release(struct auth_domain *dom)
+>   */
+>  #define	IP_HASHBITS	8
+>  #define	IP_HASHMAX	(1<<IP_HASHBITS)
+> -#define	IP_HASHMASK	(IP_HASHMAX-1)
+>  
+>  struct ip_map {
+>  	struct cache_head	h;
+> @@ -497,7 +496,6 @@ svcauth_unix_info_release(struct svc_xprt *xpt)
+>   */
+>  #define	GID_HASHBITS	8
+>  #define	GID_HASHMAX	(1<<GID_HASHBITS)
+> -#define	GID_HASHMASK	(GID_HASHMAX - 1)
+>  
+>  struct unix_gid {
+>  	struct cache_head	h;
+> -- 
+> 1.6.3.3
