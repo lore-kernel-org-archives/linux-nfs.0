@@ -1,121 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp09.in.ibm.com ([122.248.162.9]:53084 "EHLO
-	e28smtp09.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755884Ab0LPRQM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 12:16:12 -0500
-Received: from d28relay03.in.ibm.com (d28relay03.in.ibm.com [9.184.220.60])
-	by e28smtp09.in.ibm.com (8.14.4/8.13.1) with ESMTP id oBGGcmRq030650
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Dec 2010 22:08:48 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay03.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oBGHG8lK4010156
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Dec 2010 22:46:08 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oBGHG7ZK030526
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Dec 2010 22:46:07 +0530
-From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-To: trond.myklebust@netapp.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: Set MS_POSIXACL always
-In-Reply-To: <1291894514-6524-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1291894514-6524-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Date: Thu, 16 Dec 2010 22:45:57 +0530
-Message-ID: <m3k4j91vw2.fsf@linux.vnet.ibm.com>
-Content-Type: text/plain; charset=us-ascii
+Received: from daytona.panasas.com ([67.152.220.89]:48365 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753299Ab0LOSvH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 13:51:07 -0500
+Message-ID: <4D090E18.4060205@panasas.com>
+Date: Wed, 15 Dec 2010 20:51:04 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/9] Revert "pnfs-submit: wave2: remove forgotten layoutreturn
+ struct definitions"
+References: <4D0908F9.4060208@panasas.com>	 <1292437854-21651-1-git-send-email-bhalevy@panasas.com> <1292437973.3068.15.camel@heimdal.trondhjem.org>
+In-Reply-To: <1292437973.3068.15.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 2010-12-15 20:32, Trond Myklebust wrote:
+> On Wed, 2010-12-15 at 20:30 +0200, Benny Halevy wrote:
+>> This reverts commit 19e1e5ae1ec0a3f5d997a1a5d924d482e147bea2.
+>> ---
+>>  include/linux/nfs4.h    |    1 +
+>>  include/linux/nfs_xdr.h |   23 +++++++++++++++++++++++
+>>  2 files changed, 24 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+>> index 8ca7700..55511e8 100644
+>> --- a/include/linux/nfs4.h
+>> +++ b/include/linux/nfs4.h
+>> @@ -557,6 +557,7 @@ enum {
+>>  	NFSPROC4_CLNT_RECLAIM_COMPLETE,
+>>  	NFSPROC4_CLNT_LAYOUTGET,
+>>  	NFSPROC4_CLNT_LAYOUTCOMMIT,
+>> +	NFSPROC4_CLNT_LAYOUTRETURN,
+>>  	NFSPROC4_CLNT_GETDEVICEINFO,
+>>  	NFSPROC4_CLNT_PNFS_WRITE,
+>>  	NFSPROC4_CLNT_PNFS_COMMIT,
+>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>> index 9d847ac..a651574 100644
+>> --- a/include/linux/nfs_xdr.h
+>> +++ b/include/linux/nfs_xdr.h
+>> @@ -258,6 +258,29 @@ struct nfs4_layoutcommit_data {
+>>  	int status;
+>>  };
+>>  
+>> +struct nfs4_layoutreturn_args {
+>> +	__u32   reclaim;
+>> +	__u32   layout_type;
+>> +	__u32   return_type;
+>> +	struct pnfs_layout_range range;
+>> +	struct inode *inode;
+>> +	struct nfs4_sequence_args seq_args;
+>> +};
+>> +
+>> +struct nfs4_layoutreturn_res {
+>> +	struct nfs4_sequence_res seq_res;
+>> +	u32 lrs_present;
+>> +	nfs4_stateid stateid;
+>> +};
+>> +
+>> +struct nfs4_layoutreturn {
+>> +	struct nfs4_layoutreturn_args args;
+>> +	struct nfs4_layoutreturn_res res;
+>> +	struct rpc_cred *cred;
+>> +	struct nfs_client *clp;
+>> +	int rpc_status;
+>> +};
+>> +
+>>  struct nfs4_getdeviceinfo_args {
+>>  	struct pnfs_device *pdev;
+>>  	struct nfs4_sequence_args seq_args;
+> 
+> Why? We don't need or even want layoutreturn. It adds too much
+> serialisation crap.
 
-Any update on this ?
+Define "we" :)
 
--aneesh
+First, the object layout driver relies on layout return for returning I/O error
+information.  On the common, successful path, with return_on_close (that Panasas
+uses but others may not) I agree that CLOSE with the implicit layoutreturn
+semantics we discussed should do a good job too (accompanied with a respective
+LAYOUTCOMMIT if needed).
 
-On Thu,  9 Dec 2010 17:05:14 +0530, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> We want to skip VFS applying mode for NFS. So set MS_POSIXACL always
-> and selectively use umask. Ideally we would want to use umask only
-> when we don't have inheritable ACEs set. But NFS currently don't
-> allow to send umask to the server. So this is best what we can do
-> and this is consistent with NFSv3
+Then, when there's a large number of outstanding layout segments (again
+prob. non-files layout presuming server implementations are going to utilize
+whole-file layouts) proactive layoutreturn comes handy in capping the
+state both the client and server keep - reducing time wasted on walking long
+lists of items.
+
+For CB_LAYOUTRECALL response the heart of the debate is around synchronizing
+with layouts in-use and in-flight layoutgets.  There, having the server poll
+the client, who's retuning NFS4ERR_DELAY should essentially work but may be
+inefficient and unreliable in use cases where contention is likely enough.
+Eventually, when CB_LAYOUTRECALL is clear to go sending the LAYOUTRETURN
+or replying with CB_NOMATCHING_LAYOUT (assuming no I/O error to report
+for pnfs-obj) should be equivalent [note: need errata to clarify the
+resulting stateid after NOMATCHING_LAYOUT].
+Is this the serialization "crap" you're talking about?
+What makes checking the conditions for returning NFS4ERR_DELAY to
+CB_LAYOUTRECALL so different from implementing a barrier and doing the
+returns asynchronously with the CB_LAYOUTRECALL?
+
+Benny
+
 > 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/nfs/dir.c      |    3 +--
->  fs/nfs/nfs4proc.c |    5 +++++
->  fs/nfs/super.c    |   10 ++++++++++
->  3 files changed, 16 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 8ea4a41..070f368 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -1361,8 +1361,7 @@ static struct dentry *nfs_atomic_lookup(struct inode *dir, struct dentry *dentry
->  	if (nd->flags & LOOKUP_CREATE) {
->  		attr.ia_mode = nd->intent.open.create_mode;
->  		attr.ia_valid = ATTR_MODE;
-> -		if (!IS_POSIXACL(dir))
-> -			attr.ia_mode &= ~current_umask();
-> +		attr.ia_mode &= ~current_umask();
->  	} else {
->  		open_flags &= ~(O_EXCL | O_CREAT);
->  		attr.ia_valid = 0;
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 6a653ff..c57b4e0 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2486,6 +2486,7 @@ nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
->  		path = &ctx->path;
->  		fmode = ctx->mode;
->  	}
-> +	sattr->ia_mode &= ~current_umask();
->  	state = nfs4_do_open(dir, path, fmode, flags, sattr, cred);
->  	d_drop(dentry);
->  	if (IS_ERR(state)) {
-> @@ -2816,6 +2817,8 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
->  {
->  	struct nfs4_exception exception = { };
->  	int err;
-> +
-> +	sattr->ia_mode &= ~current_umask();
->  	do {
->  		err = nfs4_handle_exception(NFS_SERVER(dir),
->  				_nfs4_proc_mkdir(dir, dentry, sattr),
-> @@ -2916,6 +2919,8 @@ static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
->  {
->  	struct nfs4_exception exception = { };
->  	int err;
-> +
-> +	sattr->ia_mode &= ~current_umask();
->  	do {
->  		err = nfs4_handle_exception(NFS_SERVER(dir),
->  				_nfs4_proc_mknod(dir, dentry, sattr, rdev),
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 3c04504..e57e670 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -2498,6 +2498,11 @@ static void nfs4_clone_super(struct super_block *sb,
->  	sb->s_maxbytes = old_sb->s_maxbytes;
->  	sb->s_time_gran = 1;
->  	sb->s_op = old_sb->s_op;
-> +	/*
-> +	 * The VFS shouldn't apply the umask to mode bits. We will do
-> +	 * so ourselves when necessary.
-> +	 */
-> +	sb->s_flags  |= MS_POSIXACL;
->   	nfs_initialise_sb(sb);
->  }
-> 
-> @@ -2508,6 +2513,11 @@ static void nfs4_fill_super(struct super_block *sb)
->  {
->  	sb->s_time_gran = 1;
->  	sb->s_op = &nfs4_sops;
-> +	/*
-> +	 * The VFS shouldn't apply the umask to mode bits. We will do
-> +	 * so ourselves when necessary.
-> +	 */
-> +	sb->s_flags  |= MS_POSIXACL;
->  	nfs_initialise_sb(sb);
->  }
-> 
-> -- 
-> 1.7.1
 > 
