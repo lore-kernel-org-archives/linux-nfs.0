@@ -1,362 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:43581 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757744Ab0LNO50 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:57:26 -0500
-Received: by mail-iw0-f174.google.com with SMTP id 9so862488iwn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:57:25 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 18/31] NFSD: Update XDR encoders in NFSv4 callback client
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 09:57:22 -0500
-Message-ID: <20101214145722.2293.88238.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from daytona.panasas.com ([67.152.220.89]:20073 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752542Ab0LPOtD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 09:49:03 -0500
+Message-ID: <4D0A26DC.5090908@panasas.com>
+Date: Thu, 16 Dec 2010 16:49:00 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 22/22] pnfs-submit: Turn off layoutcommits
+References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>	<1291944177-7819-23-git-send-email-iisaman@netapp.com>	<4D0A0A77.9010802@panasas.com> <AANLkTinqnA2Qd68FB=ptoeSxrTd8FD47GezUn_83KtGf@mail.gmail.com>
+In-Reply-To: <AANLkTinqnA2Qd68FB=ptoeSxrTd8FD47GezUn_83KtGf@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
+On 12/16/2010 04:13 PM, Fred Isaman wrote:
+> On Thu, Dec 16, 2010 at 7:47 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>> On 12/10/2010 03:22 AM, Fred Isaman wrote:
+>>> Recent changes to close can delay pending layoutcommit until umount,
+>>> when the async layoutcommits can come tricklng in after we have destroyed
+>>> the session.
+>>
+>> Then "Recent changes" are broken and should be fixed. It was fine
+>> before. New broken code is not acceptable.
+>>
+>>> Since file does not need them, just turn them off for
+>>> the moment.  Non-file layouts will probably have to trigger them in
+>>> some fashion at close.
+>>>
+>>
+>> Rrrr. Are we back to this argument. We stand down win an argument
+>> and 2 weeks later you are back on it has if we never talked about it.
+>>
+>> NO!!! only "coherent clustered filesystems" do not need them. It has
+>> nothing to do with layout type. A none-clustered aggregated parallel
+>> filesystem will need them just the same as blocks and objects.
+>>
+>> AND THE STD DOES NOT GIVE YOU A CHOICE!!!
+> 
+> You keep saying this, but just repeating it does not convince me.
+> Could you please take the time to explain *why* they are needed.  A
+> separate thread in the ietf list would be great.  Because right now,
+> Andy and I are coding and preparing for submission to Trond under the
+> assumption that they are possibly a nice optimization, but are never
+> actually needed for the file layout.
+> 
+> Fred
+> 
 
-Remove old-style NFSv4 XDR macros in favor of the style now used in
-fs/nfs/nfs4xdr.c.  These were forgotten during the recent nfs4xdr.c
-rewrite.
+I have many times. You are being forgetful. Last bakeathon Mike, I think
+or someone, had a proposition talk that "since layoutcommit is use less,
+lets make it optional". And we went into a long argument about that. Until
+finally Trond came to the rescue and explained very clearly. Better then
+I ever could, that if you want to keep current reboot semantics a client
+must send a successful layoutcommit after all successful DS commits before
+it can free it's dirty pages. layoutcommit is the writing of meta data after
+the write of data, and is, just as important, a part of a file.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: J. Bruce Fields <bfields@redhat.com>
----
+Consider an spNFS type filesystem that keeps all meta-data on MDS and
+the data on disjoint independent DSs. None of the servers see the same
+data and the MDS is just another client + Meta information. layoutcommit
+is the point data is exposed outside and also the point meta-data is persisted
+(Somewhere). Failing to do layoutcommits will not enable me to do such
+simple, scalable and possibly reliable FSs. The authors of the STD did
+envision such systems and invented the layoutcommit. (There is the issue of
+the changed_attribute of a crashing writing client but this is solvable with
+very simple MDS-to-DS communication, and is another matter)
 
- fs/nfsd/nfs4callback.c |  255 ++++++++++++++++++++++++++++++++++--------------
- 1 files changed, 178 insertions(+), 77 deletions(-)
+The fact that we had the above talk also proves another thing. That the 
+STD does not make layoutcommit optional, hence the request to make it
+optional.
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 143da2e..d8148cc 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -50,11 +50,6 @@ enum {
- 	NFSPROC4_CLNT_CB_SEQUENCE,
- };
- 
--enum nfs_cb_opnum4 {
--	OP_CB_RECALL            = 4,
--	OP_CB_SEQUENCE          = 11,
--};
--
- #define NFS4_MAXTAGLEN		20
- 
- #define NFS4_enc_cb_null_sz		0
-@@ -80,30 +75,6 @@ enum nfs_cb_opnum4 {
- 					op_dec_sz)
- 
- /*
--* Generic encode routines from fs/nfs/nfs4xdr.c
--*/
--static inline __be32 *
--xdr_writemem(__be32 *p, const void *ptr, int nbytes)
--{
--	int tmp = XDR_QUADLEN(nbytes);
--	if (!tmp)
--		return p;
--	p[tmp-1] = 0;
--	memcpy(p, ptr, nbytes);
--	return p + tmp;
--}
--
--#define WRITE32(n)               *p++ = htonl(n)
--#define WRITEMEM(ptr,nbytes)     do {                           \
--	p = xdr_writemem(p, ptr, nbytes);                       \
--} while (0)
--#define RESERVE_SPACE(nbytes)   do {                            \
--	p = xdr_reserve_space(xdr, nbytes);                     \
--	if (!p) dprintk("NFSD: RESERVE_SPACE(%d) failed in function %s\n", (int) (nbytes), __func__); \
--	BUG_ON(!p);                                             \
--} while (0)
--
--/*
-  * Generic decode routines from fs/nfs/nfs4xdr.c
-  */
- #define DECODE_TAIL                             \
-@@ -197,102 +168,232 @@ nfs_cb_stat_to_errno(int stat)
- 	return stat;
- }
- 
-+static __be32 *xdr_encode_empty_array(__be32 *p)
-+{
-+	*p++ = xdr_zero;
-+	return p;
-+}
-+
-+/*
-+ * Encode/decode NFSv4 CB basic data types
-+ *
-+ * Basic NFSv4 callback data types are defined in section 15 of RFC
-+ * 3530: "Network File System (NFS) version 4 Protocol" and section
-+ * 20 of RFC 5661: "Network File System (NFS) Version 4 Minor Version
-+ * 1 Protocol"
-+ */
-+
-+/*
-+ *	nfs_cb_opnum4
-+ *
-+ *	enum nfs_cb_opnum4 {
-+ *		OP_CB_GETATTR		= 3,
-+ *		  ...
-+ *	};
-+ */
-+enum nfs_cb_opnum4 {
-+	OP_CB_GETATTR			= 3,
-+	OP_CB_RECALL			= 4,
-+	OP_CB_LAYOUTRECALL		= 5,
-+	OP_CB_NOTIFY			= 6,
-+	OP_CB_PUSH_DELEG		= 7,
-+	OP_CB_RECALL_ANY		= 8,
-+	OP_CB_RECALLABLE_OBJ_AVAIL	= 9,
-+	OP_CB_RECALL_SLOT		= 10,
-+	OP_CB_SEQUENCE			= 11,
-+	OP_CB_WANTS_CANCELLED		= 12,
-+	OP_CB_NOTIFY_LOCK		= 13,
-+	OP_CB_NOTIFY_DEVICEID		= 14,
-+	OP_CB_ILLEGAL			= 10044
-+};
-+
-+static void encode_nfs_cb_opnum4(struct xdr_stream *xdr, enum nfs_cb_opnum4 op)
-+{
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, 4);
-+	*p = cpu_to_be32(op);
-+}
-+
-+/*
-+ * nfs_fh4
-+ *
-+ *	typedef opaque nfs_fh4<NFS4_FHSIZE>;
-+ */
-+static void encode_nfs_fh4(struct xdr_stream *xdr, const struct knfsd_fh *fh)
-+{
-+	u32 length = fh->fh_size;
-+	__be32 *p;
-+
-+	BUG_ON(length > NFS4_FHSIZE);
-+	p = xdr_reserve_space(xdr, 4 + length);
-+	xdr_encode_opaque(p, &fh->fh_base, length);
-+}
-+
- /*
-- * XDR encode
-+ * stateid4
-+ *
-+ *	struct stateid4 {
-+ *		uint32_t	seqid;
-+ *		opaque		other[12];
-+ *	};
-  */
-+static void encode_stateid4(struct xdr_stream *xdr, const stateid_t *sid)
-+{
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, NFS4_STATEID_SIZE);
-+	*p++ = cpu_to_be32(sid->si_generation);
-+	xdr_encode_opaque_fixed(p, &sid->si_opaque, NFS4_STATEID_OTHER_SIZE);
-+}
- 
--static void
--encode_stateid(struct xdr_stream *xdr, stateid_t *sid)
-+/*
-+ * sessionid4
-+ *
-+ *	typedef opaque sessionid4[NFS4_SESSIONID_SIZE];
-+ */
-+static void encode_sessionid4(struct xdr_stream *xdr,
-+			      const struct nfsd4_session *session)
- {
- 	__be32 *p;
- 
--	RESERVE_SPACE(sizeof(stateid_t));
--	WRITE32(sid->si_generation);
--	WRITEMEM(&sid->si_opaque, sizeof(stateid_opaque_t));
-+	p = xdr_reserve_space(xdr, NFS4_MAX_SESSIONID_LEN);
-+	xdr_encode_opaque_fixed(p, session->se_sessionid.data,
-+					NFS4_MAX_SESSIONID_LEN);
- }
- 
--static void
--encode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr)
-+/*
-+ * CB_COMPOUND4args
-+ *
-+ *	struct CB_COMPOUND4args {
-+ *		utf8str_cs	tag;
-+ *		uint32_t	minorversion;
-+ *		uint32_t	callback_ident;
-+ *		nfs_cb_argop4	argarray<>;
-+ *	};
-+*/
-+static void encode_cb_compound4args(struct xdr_stream *xdr,
-+				    struct nfs4_cb_compound_hdr *hdr)
- {
- 	__be32 * p;
- 
--	RESERVE_SPACE(16);
--	WRITE32(0);            /* tag length is always 0 */
--	WRITE32(hdr->minorversion);
--	WRITE32(hdr->ident);
-+	p = xdr_reserve_space(xdr, 4 + 4 + 4 + 4);
-+	p = xdr_encode_empty_array(p);		/* empty tag */
-+	*p++ = cpu_to_be32(hdr->minorversion);
-+	*p++ = cpu_to_be32(hdr->ident);
-+
- 	hdr->nops_p = p;
--	WRITE32(hdr->nops);
-+	*p = cpu_to_be32(hdr->nops);		/* argarray element count */
- }
- 
-+/*
-+ * Update argarray element count
-+ */
- static void encode_cb_nops(struct nfs4_cb_compound_hdr *hdr)
- {
--	*hdr->nops_p = htonl(hdr->nops);
-+	BUG_ON(hdr->nops > NFS4_MAX_BACK_CHANNEL_OPS);
-+	*hdr->nops_p = cpu_to_be32(hdr->nops);
- }
- 
--static void
--encode_cb_recall(struct xdr_stream *xdr, struct nfs4_delegation *dp,
--		struct nfs4_cb_compound_hdr *hdr)
-+/*
-+ * CB_RECALL4args
-+ *
-+ *	struct CB_RECALL4args {
-+ *		stateid4	stateid;
-+ *		bool		truncate;
-+ *		nfs_fh4		fh;
-+ *	};
-+ */
-+static void encode_cb_recall4args(struct xdr_stream *xdr,
-+				  const struct nfs4_delegation *dp,
-+				  struct nfs4_cb_compound_hdr *hdr)
- {
- 	__be32 *p;
--	int len = dp->dl_fh.fh_size;
--
--	RESERVE_SPACE(4);
--	WRITE32(OP_CB_RECALL);
--	encode_stateid(xdr, &dp->dl_stateid);
--	RESERVE_SPACE(8 + (XDR_QUADLEN(len) << 2));
--	WRITE32(0); /* truncate optimization not implemented */
--	WRITE32(len);
--	WRITEMEM(&dp->dl_fh.fh_base, len);
-+
-+	encode_nfs_cb_opnum4(xdr, OP_CB_RECALL);
-+	encode_stateid4(xdr, &dp->dl_stateid);
-+
-+	p = xdr_reserve_space(xdr, 4);
-+	*p++ = xdr_zero;			/* truncate */
-+
-+	encode_nfs_fh4(xdr, &dp->dl_fh);
-+
- 	hdr->nops++;
- }
- 
--static void
--encode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_callback *cb,
--		   struct nfs4_cb_compound_hdr *hdr)
-+/*
-+ * CB_SEQUENCE4args
-+ *
-+ *	struct CB_SEQUENCE4args {
-+ *		sessionid4		csa_sessionid;
-+ *		sequenceid4		csa_sequenceid;
-+ *		slotid4			csa_slotid;
-+ *		slotid4			csa_highest_slotid;
-+ *		bool			csa_cachethis;
-+ *		referring_call_list4	csa_referring_call_lists<>;
-+ *	};
-+ */
-+static void encode_cb_sequence4args(struct xdr_stream *xdr,
-+				    const struct nfsd4_callback *cb,
-+				    struct nfs4_cb_compound_hdr *hdr)
- {
-+	struct nfsd4_session *session = cb->cb_clp->cl_cb_session;
- 	__be32 *p;
--	struct nfsd4_session *ses = cb->cb_clp->cl_cb_session;
- 
- 	if (hdr->minorversion == 0)
- 		return;
- 
--	RESERVE_SPACE(1 + NFS4_MAX_SESSIONID_LEN + 20);
-+	encode_nfs_cb_opnum4(xdr, OP_CB_SEQUENCE);
-+	encode_sessionid4(xdr, session);
-+
-+	p = xdr_reserve_space(xdr, 4 + 4 + 4 + 4 + 4);
-+	*p++ = cpu_to_be32(session->se_cb_seq_nr);	/* csa_sequenceid */
-+	*p++ = xdr_zero;			/* csa_slotid */
-+	*p++ = xdr_zero;			/* csa_highest_slotid */
-+	*p++ = xdr_zero;			/* csa_cachethis */
-+	xdr_encode_empty_array(p);		/* csa_referring_call_lists */
- 
--	WRITE32(OP_CB_SEQUENCE);
--	WRITEMEM(ses->se_sessionid.data, NFS4_MAX_SESSIONID_LEN);
--	WRITE32(ses->se_cb_seq_nr);
--	WRITE32(0);		/* slotid, always 0 */
--	WRITE32(0);		/* highest slotid always 0 */
--	WRITE32(0);		/* cachethis always 0 */
--	WRITE32(0); /* FIXME: support referring_call_lists */
- 	hdr->nops++;
- }
- 
--static int
--nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p)
-+/*
-+ * NFSv4.0 and NFSv4.1 XDR encode functions
-+ *
-+ * NFSv4.0 callback argument types are defined in section 15 of RFC
-+ * 3530: "Network File System (NFS) version 4 Protocol" and section 20
-+ * of RFC 5661:  "Network File System (NFS) Version 4 Minor Version 1
-+ * Protocol".
-+ */
-+
-+/*
-+ * NB: Without this zero space reservation, callbacks over krb5p fail
-+ */
-+static int nfs4_xdr_enc_cb_null(struct rpc_rqst *req, __be32 *p, void *__unused)
- {
- 	struct xdr_stream xdrs, *xdr = &xdrs;
- 
- 	xdr_init_encode(&xdrs, &req->rq_snd_buf, p);
--        RESERVE_SPACE(0);
-+	xdr_reserve_space(xdr, 0);
- 	return 0;
- }
- 
--static int
--nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p,
--		struct nfsd4_callback *cb)
-+/*
-+ * 20.2. Operation 4: CB_RECALL - Recall a Delegation
-+ */
-+static int nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p,
-+				  const struct nfsd4_callback *cb)
- {
- 	struct xdr_stream xdr;
--	struct nfs4_delegation *args = cb->cb_op;
-+	const struct nfs4_delegation *args = cb->cb_op;
- 	struct nfs4_cb_compound_hdr hdr = {
- 		.ident = cb->cb_clp->cl_cb_ident,
- 		.minorversion = cb->cb_minorversion,
- 	};
- 
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
--	encode_cb_compound_hdr(&xdr, &hdr);
--	encode_cb_sequence(&xdr, cb, &hdr);
--	encode_cb_recall(&xdr, args, &hdr);
-+	encode_cb_compound4args(&xdr, &hdr);
-+	encode_cb_sequence4args(&xdr, cb, &hdr);
-+	encode_cb_recall4args(&xdr, args, &hdr);
- 	encode_cb_nops(&hdr);
- 	return 0;
- }
+And nothing of the above is new. I have stated that many times and
+you keep "forgetting".
 
+BTW: An object based filesystem could be implemented just as well
+over files as over objects. Save the RAID5 stuff. Objects being
+partition/objectid numeric file names, and uid/gid games for fencing
+off / access permission. In such a system layoutcommits serve the
+same purpose as in objects, but with a files layout
+
+You can call me and we can talk about it if you need to. But do
+You agree that the current STD text mandates it?
+
+Boaz
