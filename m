@@ -1,47 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7880 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751455Ab0LVEAz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Dec 2010 23:00:55 -0500
-From: Fred Isaman <iisaman@netapp.com>
+Received: from smtp2.cc.ic.ac.uk ([155.198.5.156]:48235 "EHLO
+	smtp2.cc.ic.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756277Ab0LPWD5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 17:03:57 -0500
+Received: from warpfield01.dionic.net ([81.2.78.46] helo=[10.0.1.55])
+	by smtp2.cc.ic.ac.uk with esmtpsa (TLSv1:AES256-SHA:256)
+	(Exim 4.72)
+	(envelope-from <t.watts@imperial.ac.uk>)
+	id 1PTLvW-0003Pn-Jh
+	for linux-nfs@vger.kernel.org; Thu, 16 Dec 2010 22:03:54 +0000
+Message-ID: <4D0A8CC9.9050306@imperial.ac.uk>
+Date: Thu, 16 Dec 2010 22:03:53 +0000
+From: Tim Watts <t.watts@imperial.ac.uk>
 To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 00/15] pnfs wave 2 submission, try 2
-Date: Tue, 21 Dec 2010 23:00:34 -0500
-Message-Id: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
+Subject: Re: NooB Assitance with debugging NFSv4 client requested
+References: <4D024A8E.50407@imperial.ac.uk>
+In-Reply-To: <4D024A8E.50407@imperial.ac.uk>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Version 2 of the wave 2 submission.
+On 10/12/10 15:43, Tim Watts wrote:
+> Hi,
+>
+> I have an NFSv4 client set up on Ubuntu 10.04.1 LTS x86. The NFSv4
+> server is running Centos 5.5 and we use MIT kerberos and LDAP for
+> users/groups. This seems to work well with Centos 5.5 clients
+>
+> All works fine with my Ubuntu client, except after a while my client
+> acts like it loses its authentication - symptom: home directory mount
+> drops to "nobody" - I see the mount as "other" - no write access, can
+> read files that have world read bit set etc.
+>
+> This can happen anytime between 48 hours and 2 hours after a full client
+> reboot. It seems to be triggered by active use of thunderbird via the
+> NFSv4 mounted home dir which suggests it may be load sensitive.
+>
+> When it happens, if I unmount my home dir (killing the desktop of
+> course) , then remount the fault is cleared and I can work again.
+>
+> What doesn't work is just doing a kinit -f or restarting idmapd or gssd.
+>
+> I have run rpc.gssd in foreground debug mode and that doesn't say much
+> during the problem times, ditto idmapd. We are using openldap for passwd
+> and group lookups cached locally with nscd.
+>
+> I have tried upping kernel debugging:
+>
+> rpcdebug -m nfs -s vfs dircache lookupcache pagecache proc xdr file root
+> callback client mount all
+>
+> but I'm not sure what I'm looking for.
+>
+> The symptoms feel like the kernel is losing the ticket or timing it out
+> or possibly the ID mapping is failing - is there any way to examining
+> the state of the kernel ticket cache or anything else I could be looking
+> for?
+>
+> I am tempted to say this is a bug, possibly in the Ubuntu build, but I
+> would like to investigate further.
+>
+> Any pointers much appreciated as to how I might isolate the fault further.
+>
+> Cheers
+>
+> Tim
 
-changes from version 1:
-- Rebased onto Andy's patches on top of Trond's new nfs-for-2.6.38 branch.
-- prefix all fields in struct pnfs_layout_hdr and struct pnfs_layout_segment
-- to accommodate changes in RPC code, move stateid selection from encode to prepare callback
-- fix wait bug with pnfs_roc_drain
+Right - thanks for all the discussions...
 
+The security (krb tickets) seem stable now I have renamed my root 
+principle cache file to /tmp/kerberos5cc_tjw_root rather than 
+/tmp/krb5cc_myuid_root
 
-These patches implement wave 2 of the pnfs submission, which
-encompasses CB_LAYOUTRECALL and its serialization with LAYOUTGET,
-as well as the "forgetful model" in which LAYOUTRETURNs are never
-sent, but instead merely discarded by the client.
+idmap seems still unstable - often my file groups go to nobody despite 
+my file owners being correct.
 
-Fred
+Our LDAP server setup is new (replaced NIS) and we see sometimes that 
+other servers (eg the mailserver) occasionally don't get an LDAP query 
+through in a timely manner once in a blue moon.
 
-[PATCH 01/15] pnfs: fix incorrect comment in destroy_lseg
-[PATCH 02/15] pnfs: remove unnecessary field lgp->status
-[PATCH 03/15] pnfs: add prefix to struct pnfs_layout_segment fields
-[PATCH 04/15] pnfs: add prefix to struct pnfs_layout_hdr fields
-[PATCH 05/15] pnfs: change layout state seqlock to a spinlock
-[PATCH 06/15] pnfs: change how lsegs are removed from layout list
-[PATCH 07/15] pnfs: layoutget rpc code cleanup
-[PATCH 08/15] pnfs: serialize LAYOUTGET(openstateid)
-[PATCH 09/15] pnfs: add layout to client list before sending rpc
-[PATCH 10/15] pnfs: check that partial LAYOUTGET return is ignored
-[PATCH 11/15] pnfs: change lo refcounting to atomic_t
-[PATCH 12/15] pnfs: CB_LAYOUTRECALL xdr code
-[PATCH 13/15] pnfs: add CB_LAYOUTRECALL handling
-[PATCH 14/15] pnfs: update nfs4_callback_recallany to handle layouts
-[PATCH 15/15] pnfs: layout roc code
+I would like to see idmapd try a bit harder and/or not cache bad/missing 
+answers for so long but I think that is roughly where the other problem 
+lies - thus is debuggable and soluable.
+
+Thanks for the help guys!
+
+Cheers
+
+Tim
+
+-- 
+
+Tim Watts
+Linux Sysadmin, High Energy Physics, Imperial College London
+Tel: 020 759 47809
