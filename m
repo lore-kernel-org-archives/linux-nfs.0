@@ -1,155 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42662 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60859 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752193Ab0LOPn3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 10:43:29 -0500
-Subject: Re: [PATCH 12/22] pnfs-submit: wave2: rewrite validate_bitmap_values to obey spec
-Content-Type: text/plain; charset=us-ascii
-From: Fred Isaman <iisaman@netapp.com>
-In-Reply-To: <4D08DED8.9090208@panasas.com>
-Date: Wed, 15 Dec 2010 10:43:27 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <05BB6938-AA62-4381-B33F-2DDC60466B90@netapp.com>
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com> <1291944177-7819-13-git-send-email-iisaman@netapp.com> <4D08C961.3090702@panasas.com> <394DBE14-A569-4BEA-99CE-1CB268392449@netapp.com> <4D08DED8.9090208@panasas.com>
+	id S1752078Ab0LPSOn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 13:14:43 -0500
+Subject: Re: [PATCH 1/9] Revert "pnfs-submit: wave2: remove forgotten
+ layoutreturn struct definitions"
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <4D0A4F9F.4040300@panasas.com>
+References: <4D0908F9.4060208@panasas.com>
+	 <1292437854-21651-1-git-send-email-bhalevy@panasas.com>
+	 <1292437973.3068.15.camel@heimdal.trondhjem.org>
+	 <4D090E18.4060205@panasas.com>
+	 <1292441468.3068.53.camel@heimdal.trondhjem.org>
+	 <4D09BC93.9020502@panasas.com>
+	 <1292514922.2912.32.camel@heimdal.trondhjem.org>
+	 <4D0A3D44.2000101@panasas.com>
+	 <1292520916.2912.45.camel@heimdal.trondhjem.org>
+	 <4D0A4F9F.4040300@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 16 Dec 2010 13:14:41 -0500
+Message-ID: <1292523281.2912.62.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Dec 15, 2010, at 10:29 AM, Benny Halevy wrote:
-
-> On 2010-12-15 16:11, Fred Isaman wrote:
->> 
->> On Dec 15, 2010, at 8:57 AM, Benny Halevy wrote:
->> 
->>> On 2010-12-10 03:22, Fred Isaman wrote:
->>>> It was checking that at least one known bit was set.  It needs to check
->>>> no unknown bit was set.  From RFC5661, section 20.6.3:
->>>> 
->>>> When a bit is set in the type mask that corresponds to an undefined
->>>> type of recallable object, NFS4ERR_INVAL MUST be returned.
->>>> 
->>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->>>> ---
->>>> fs/nfs/callback.h      |    1 +
->>>> fs/nfs/callback_proc.c |   27 ++++-----------------------
->>>> 2 files changed, 5 insertions(+), 23 deletions(-)
->>>> 
->>>> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
->>>> index b16dd1f..616c5c1 100644
->>>> --- a/fs/nfs/callback.h
->>>> +++ b/fs/nfs/callback.h
->>>> @@ -126,6 +126,7 @@ extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
->>>> #define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX  9
->>>> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
->>>> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
->>>> +#define RCA4_TYPE_MASK_ALL 0xf31f
->>>> 
->>>> struct cb_recallanyargs {
->>>> 	struct sockaddr	*craa_addr;
->>>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
->>>> index 61b3c66..d4aec46 100644
->>>> --- a/fs/nfs/callback_proc.c
->>>> +++ b/fs/nfs/callback_proc.c
->>>> @@ -661,28 +661,10 @@ out_putclient:
->>>> 	goto out;
->>>> }
->>>> 
->>>> -static inline bool
->>>> -validate_bitmap_values(const unsigned long *mask)
->>>> +static bool
->>>> +validate_bitmap_values(unsigned long mask)
->>>> {
->>>> -	int i;
->>>> -
->>>> -	if (*mask == 0)
->>>> -		return true;
->>>> -	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, mask) ||
->>>> -	    test_bit(RCA4_TYPE_MASK_WDATA_DLG, mask) ||
->>>> -	    test_bit(RCA4_TYPE_MASK_DIR_DLG, mask) ||
->>>> -	    test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, mask) ||
->>>> -	    test_bit(RCA4_TYPE_MASK_BLK_LAYOUT, mask))
->>>> -		return true;
->>>> -	for (i = RCA4_TYPE_MASK_OBJ_LAYOUT_MIN;
->>>> -	     i <= RCA4_TYPE_MASK_OBJ_LAYOUT_MAX; i++)
->>>> -		if (test_bit(i, mask))
->>>> -			return true;
->>>> -	for (i = RCA4_TYPE_MASK_OTHER_LAYOUT_MIN;
->>>> -	     i <= RCA4_TYPE_MASK_OTHER_LAYOUT_MAX; i++)
->>>> -		if (test_bit(i, mask))
->>>> -			return true;
->>>> -	return false;
->>>> +	return mask & ~RCA4_TYPE_MASK_ALL;
->>> 
->>> Hmm, shouldn't that be
->>> 	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
->>> 
->>> Benny
->>> 
->> 
->> Yes, you are right.
+On Thu, 2010-12-16 at 19:42 +0200, Benny Halevy wrote:
+> On 2010-12-16 19:35, Trond Myklebust wrote:
+> > On Thu, 2010-12-16 at 18:24 +0200, Benny Halevy wrote:
+> >> On 2010-12-16 17:55, Trond Myklebust wrote:
+> >>> OK, so why not just go the whole hog and do that for all rare cases,
+> >>> including the one where the server recalls a layout segment that we
+> >>> happen to be doing I/O to?
+> >>>
+> >>> The case we should be optimising for is the one where the layout is
+> >>> recalled, and no I/O to that segment is in progress. For that case,
+> >>> returning OK, then doing the LAYOUTRETURN instead of just returning
+> >>> NOMATCHING_LAYOUT is clearly wrong: it adds a completely unnecessary
+> >>> round trip to the server. Agreed?
+> >>
+> >> I agree that if the client can free the recalled layout synchronously
+> >> and if it need not send a LAYOUTCOMMIT or LAYOUTRETURN (e.g. in the objects case)
+> >> it can simply return NFS4ERR_NOMATCHING_LAYOUT.
+> > 
+> > Objects and blocks != wave 2. We can cross that bridge when we get to
+> > it.
+> > 
 > 
-> OK. This is fixed in my branch to be released asap.
+> Right.  This patchset is destined as post wave2.
 
-Thanks.  I have a bunch more minor code cleanups that I'll send once I see what you have, unless you want them immediately. I'll also have a rebase of the pnfs-submit branch with the wave2 patches pushed down to the bottom shortly after I see your branch.
+In that case it has a very confusing title (which certainly caught me by
+surprise).
 
-> I've reverted large parts of this patchset in the post-submit stream
-> to restore layoutcommit and layoutreturn, but not their embedding in
-> the CLOSE compound.  I also kept the cleanups and bug fixes.
-> I'll send out the post-submit when it's ready.
-> Some more work will be required to restore the original patches
-> author and signoffees.
 > 
-> This is the list as of now:
+> >>>
+> >>> As for the much rarer case of a recall of a layout that is in use, how
+> >>> does LAYOUTRETURN speed things up? As far as I can see, the MDS is still
+> >>> going to return NFS4ERR_DELAY to the client that requested the
+> >>> conflicting LAYOUTGET. That client then has to resend this LAYOUTGET
+> >>> request, at a time when the first client may or may not have returned
+> >>> its layout segment. So how is LAYOUTRETURN going to make all this a fast
+> >>> and scalable process?
+> >>>
+> >>
+> >> First, the server does not have to poll the client and waste cpu and network
+> >> resources on that.
+> > 
+> > ...but this is a ____rare____ case. If you are seeing noticeable effects
+> > on the network from this, then something is wrong. If that is ever the
+> > case, then you should be writing through the MDS anyway.
+> > 
+> > Furthermore, the MDS does need to be able to cope with NFS4ERR_DELAY
+> > anyway, so why add the extra complexity to the client?
+> > 
+> >> Second, for the competing client, with notifications, it too does not have
+> >> to poll the server and can wait on getting the notification when the
+> >> layout becomes available.
+> > 
+> > There is no notification of layout availability in RFC5661. Lock
+> > notification is for byte range locks, and device id notification is for
+> > device ids. The rest is for directory notifications.
+> > 
 > 
-> pick af44531 Revert "pnfs-submit: wave2: remove forgotten layoutreturn struct definitions"
-> pick c465549 Revert "pnfs-submit: Turn off layoutcommits"
-> pick 0f4ba67 Revert "pnfs-submit: wave2: remove all LAYOUTRETURN code"
-> pick 486db47 Revert "pnfs-submit: wave2: Remove LAYOUTRETURN from return on close"
-> 
-> pick 484c935 FIXME: roc should return layout on last close
-> (This patch just adds a FIXME comment.)
-> 
+> Hmm, CB_RECALLABLE_OBJ_AVAIL in response to loga_signal_layout_avail...
 
-The above looks good.
+Hmm indeed. Section 12.3 states:
 
-> pick 8698772 Revert "pnfs-submit: wave2: remove cl_layoutrecalls list"
-> pick 263879b Revert "pnfs-submit: wave2: Pull out all recall initiated LAYOUTRETURNS"
-> pick 693765f Revert "pnfs-submit: wave2: Don't wait in layoutget"
+"CB_RECALLABLE_OBJ_AVAIL  (Section 20.7) tells a client that a
+recallable object that it was denied (in case of pNFS, a layout denied
+by LAYOUTGET) due to resource exhaustion is now available."
 
-Just note the Trond was highly resistant to the above.
+and 18.43.3 states:
 
-> pick de56e11 Revert "pnfs-submit: wave2: check that partial LAYOUTGET return is ignored"
-> 
+"If client sets loga_signal_layout_avail to TRUE, then it is registering
+with the client a "want" for a layout in the event the layout cannot be
+obtained due to resource exhaustion."
 
-We need some sort of check that we got what we asked for, given that the xdr code can chop the servers reply.
+I can't see how that is relevant to the case where a specific LAYOUTGET
+requires a layout recall from another client. That's not resource
+exhaustion.
 
-Fred
 
-> Anything else you had in mind?
-> 
-> Benny
-> 
->> 
->> Fred
->> 
->>>> }
->>>> 
->>>> __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
->>>> @@ -702,8 +684,7 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
->>>> 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
->>>> 
->>>> 	status = cpu_to_be32(NFS4ERR_INVAL);
->>>> -	if (!validate_bitmap_values((const unsigned long *)
->>>> -				    &args->craa_type_mask))
->>>> +	if (!validate_bitmap_values(args->craa_type_mask))
->>>> 		goto out;
->>>> 
->>>> 	status = cpu_to_be32(NFS4_OK);
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
