@@ -1,59 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27338 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753408Ab0LJAHk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Dec 2010 19:07:40 -0500
-Message-ID: <4D016F44.3020002@RedHat.com>
-Date: Thu, 09 Dec 2010 19:07:32 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Andrew J. Schorr" <ajschorr@alumni.princeton.edu>,
-        linux-nfs@vger.kernel.org
-Subject: Re: proposed patch to rpcbind to provide finer-grained security controls
- than offered by the -i option
-References: <20101209204913.GA30338@ti93.telemetry-investments.com> <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com>
-In-Reply-To: <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from bombadil.infradead.org ([18.85.46.34]:41022 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752289Ab0LPXQ3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 18:16:29 -0500
+Date: Thu, 16 Dec 2010 18:16:26 -0500
+From: Christoph Hellwig <hch@infradead.org>
+To: Ric Wheeler <ricwheeler@gmail.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Steve Dickson <SteveD@redhat.com>,
+        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/31] NFS XDR clean up for 2.6.38
+Message-ID: <20101216231626.GA24880@infradead.org>
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+ <4D0A6503.7010901@RedHat.com>
+ <20101216230524.GA16760@infradead.org>
+ <4D0A9D5A.1070708@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D0A9D5A.1070708@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Thu, Dec 16, 2010 at 06:14:34PM -0500, Ric Wheeler wrote:
+> This is not us trying to block anything, just do an orderly testing of changes.
+> 
+> Why do three "waves" of pNFS related changes and refactor code all at once?
 
-
-On 12/09/2010 04:41 PM, Chuck Lever wrote:
-> 
-> On Dec 9, 2010, at 3:49 PM, Andrew J. Schorr wrote:
-> 
->> Hi,
->>
->> The current rpcbind -i option seems to relax 3 different security requirements.
->> If the user wants to allow any one of the three, he is forced to allow
->> all 3.
->>
->> The attached patch introduces 3 new options (-c, -r, and -u) to break this
->> down to give the user control of which security requirements to relax.
->>
->> This patch compiles, but has not been tested yet.  If there is any
->> interest in accepting this, I will of course test it. :-)  But it's fairly
->> basic, so I thought I'd gauge the interest level first.  Steve
->> Dickson from Redhat suggested that I post here to discuss this issue
->> regarding https://bugzilla.redhat.com/show_bug.cgi?id=481422
-> 
-> Looking over the bug...
-> 
-> It sounds like your application is trying to use glibc's RPC 
-> implementation with rpcbind.  If you build your application with 
-> libtirpc instead, it should use an AF_UNIX socket to contact rpcbind 
-> instead of loopback.  The AF_UNIX socket carries some authentication 
-> information with the registration request.  All users of your 
-> application would be allowed to set or unset RPC registrations 
-> in that case.
-> 
-I was under the impression rebuilding the applications was not
-possible... but maybe I misunderstood... 
-
-But in the end, I guess I'm not against having functionality 
-like this... If it make it easier for people to port legacy
-applications to Linux, its probably a good thing... 
-
-steved.
+Because some forces seem to force pnfs into the kernel despite neither
+beeing ready nor overly useful.  If you look at the userbase of the
+Linux NFS client a robust XDR encode/decoder without buffer overflows is
+a lot more important than a partially working pNFS client.
