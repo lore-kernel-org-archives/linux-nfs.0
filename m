@@ -1,184 +1,53 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2874 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751979Ab0LOQAK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 11:00:10 -0500
-Subject: Re: [PATCH 12/22] pnfs-submit: wave2: rewrite validate_bitmap_values to obey spec
-Content-Type: text/plain; charset=us-ascii
-From: Fred Isaman <iisaman@netapp.com>
-In-Reply-To: <4D08E52F.4090609@panasas.com>
-Date: Wed, 15 Dec 2010 10:59:59 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <23310505-F664-499A-A376-0A6F7052212A@netapp.com>
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com> <1291944177-7819-13-git-send-email-iisaman@netapp.com> <4D08C961.3090702@panasas.com> <394DBE14-A569-4BEA-99CE-1CB268392449@netapp.com> <4D08DED8.9090208@panasas.com> <05BB6938-AA62-4381-B33F-2DDC60466B90@netapp.com> <4D08E52F.4090609@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@ietf.org>
+Date: Thu, 16 Dec 2010 11:21:21 -0500 (EST)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
+To: Fred Isaman <iisaman@netapp.com>
+Message-ID: <1740153586.34.1292516481789.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <978693366.32.1292516428080.JavaMail.root@thunderbeast.private.linuxbox.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, Boaz Harrosh <bharrosh@panasas.com>,
+        linux-nfs@vger.kernel.org, nfsv4@ietf.org
+Subject: Re: [nfsv4] layoutcommits and file layout
+List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+Content-Type: text/plain; charset="utf-8"
+Sender: nfsv4-bounces@ietf.org
+Errors-To: nfsv4-bounces@ietf.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Dec 15, 2010, at 10:56 AM, Benny Halevy wrote:
-
-> On 2010-12-15 17:43, Fred Isaman wrote:
->> 
->> On Dec 15, 2010, at 10:29 AM, Benny Halevy wrote:
->> 
->>> On 2010-12-15 16:11, Fred Isaman wrote:
->>>> 
->>>> On Dec 15, 2010, at 8:57 AM, Benny Halevy wrote:
->>>> 
->>>>> On 2010-12-10 03:22, Fred Isaman wrote:
->>>>>> It was checking that at least one known bit was set.  It needs to check
->>>>>> no unknown bit was set.  From RFC5661, section 20.6.3:
->>>>>> 
->>>>>> When a bit is set in the type mask that corresponds to an undefined
->>>>>> type of recallable object, NFS4ERR_INVAL MUST be returned.
->>>>>> 
->>>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->>>>>> ---
->>>>>> fs/nfs/callback.h      |    1 +
->>>>>> fs/nfs/callback_proc.c |   27 ++++-----------------------
->>>>>> 2 files changed, 5 insertions(+), 23 deletions(-)
->>>>>> 
->>>>>> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
->>>>>> index b16dd1f..616c5c1 100644
->>>>>> --- a/fs/nfs/callback.h
->>>>>> +++ b/fs/nfs/callback.h
->>>>>> @@ -126,6 +126,7 @@ extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
->>>>>> #define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX  9
->>>>>> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
->>>>>> #define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
->>>>>> +#define RCA4_TYPE_MASK_ALL 0xf31f
->>>>>> 
->>>>>> struct cb_recallanyargs {
->>>>>> 	struct sockaddr	*craa_addr;
->>>>>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
->>>>>> index 61b3c66..d4aec46 100644
->>>>>> --- a/fs/nfs/callback_proc.c
->>>>>> +++ b/fs/nfs/callback_proc.c
->>>>>> @@ -661,28 +661,10 @@ out_putclient:
->>>>>> 	goto out;
->>>>>> }
->>>>>> 
->>>>>> -static inline bool
->>>>>> -validate_bitmap_values(const unsigned long *mask)
->>>>>> +static bool
->>>>>> +validate_bitmap_values(unsigned long mask)
->>>>>> {
->>>>>> -	int i;
->>>>>> -
->>>>>> -	if (*mask == 0)
->>>>>> -		return true;
->>>>>> -	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, mask) ||
->>>>>> -	    test_bit(RCA4_TYPE_MASK_WDATA_DLG, mask) ||
->>>>>> -	    test_bit(RCA4_TYPE_MASK_DIR_DLG, mask) ||
->>>>>> -	    test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, mask) ||
->>>>>> -	    test_bit(RCA4_TYPE_MASK_BLK_LAYOUT, mask))
->>>>>> -		return true;
->>>>>> -	for (i = RCA4_TYPE_MASK_OBJ_LAYOUT_MIN;
->>>>>> -	     i <= RCA4_TYPE_MASK_OBJ_LAYOUT_MAX; i++)
->>>>>> -		if (test_bit(i, mask))
->>>>>> -			return true;
->>>>>> -	for (i = RCA4_TYPE_MASK_OTHER_LAYOUT_MIN;
->>>>>> -	     i <= RCA4_TYPE_MASK_OTHER_LAYOUT_MAX; i++)
->>>>>> -		if (test_bit(i, mask))
->>>>>> -			return true;
->>>>>> -	return false;
->>>>>> +	return mask & ~RCA4_TYPE_MASK_ALL;
->>>>> 
->>>>> Hmm, shouldn't that be
->>>>> 	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
->>>>> 
->>>>> Benny
->>>>> 
->>>> 
->>>> Yes, you are right.
->>> 
->>> OK. This is fixed in my branch to be released asap.
->> 
->> Thanks.  I have a bunch more minor code cleanups that I'll send once I see what you have, unless you want them immediately. I'll also have a rebase of the pnfs-submit branch with the wave2 patches pushed down to the bottom shortly after I see your branch.
->> 
-> 
-> I prefer that you send them now.
-
-OK, I'll send them in a few minutes.
-
-> 
->>> I've reverted large parts of this patchset in the post-submit stream
->>> to restore layoutcommit and layoutreturn, but not their embedding in
->>> the CLOSE compound.  I also kept the cleanups and bug fixes.
->>> I'll send out the post-submit when it's ready.
->>> Some more work will be required to restore the original patches
->>> author and signoffees.
->>> 
->>> This is the list as of now:
->>> 
->>> pick af44531 Revert "pnfs-submit: wave2: remove forgotten layoutreturn struct definitions"
->>> pick c465549 Revert "pnfs-submit: Turn off layoutcommits"
->>> pick 0f4ba67 Revert "pnfs-submit: wave2: remove all LAYOUTRETURN code"
->>> pick 486db47 Revert "pnfs-submit: wave2: Remove LAYOUTRETURN from return on close"
->>> 
->>> pick 484c935 FIXME: roc should return layout on last close
->>> (This patch just adds a FIXME comment.)
->>> 
->> 
->> The above looks good.
->> 
->>> pick 8698772 Revert "pnfs-submit: wave2: remove cl_layoutrecalls list"
->>> pick 263879b Revert "pnfs-submit: wave2: Pull out all recall initiated LAYOUTRETURNS"
->>> pick 693765f Revert "pnfs-submit: wave2: Don't wait in layoutget"
->> 
->> Just note the Trond was highly resistant to the above.
->> 
-> 
-> I understand that in the forgetful client model but eventually returning the layout
-> on close will be more efficient overall vs. having the server poll the client.
-> 
->>> pick de56e11 Revert "pnfs-submit: wave2: check that partial LAYOUTGET return is ignored"
->>> 
->> 
->> We need some sort of check that we got what we asked for, given that the xdr code can chop the servers reply.
-> 
-> The post-submit world is supposed to handle partial layouts correctly, as this is required for 
-> the obj and block layouts so we can't just blindly toss away partial layouts.
-> 
-> If the files layout driver won't support partial layouts we can restrict this (sigh, ugly)
-> only for it.
-> 
-> Benny
-
-Note the problem right now is that the xdr decoding function will only parse the first array element, and toss the rest.  That is the real reason for the check, and something that needs to be fixed.
-
-Fred
-
-> 
->> 
->> Fred
->> 
->>> Anything else you had in mind?
->>> 
->>> Benny
->>> 
->>>> 
->>>> Fred
->>>> 
->>>>>> }
->>>>>> 
->>>>>> __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
->>>>>> @@ -702,8 +684,7 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
->>>>>> 		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
->>>>>> 
->>>>>> 	status = cpu_to_be32(NFS4ERR_INVAL);
->>>>>> -	if (!validate_bitmap_values((const unsigned long *)
->>>>>> -				    &args->craa_type_mask))
->>>>>> +	if (!validate_bitmap_values(args->craa_type_mask))
->>>>>> 		goto out;
->>>>>> 
->>>>>> 	status = cpu_to_be32(NFS4_OK);
->>>> 
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-
+SGksCgpXZSBoYXZlIGEgZmlsZXMgaW1wbGVtZW50YXRpb24gd2hpY2ggd2FudHMgdG8gcmVjZWl2
+ZSBMQVlPVVRDT01NSVQgd2hlbiBhIGNsaWVudCBpcyBmaW5pc2hlZCB3aXRoIGEgbGF5b3V0LiAg
+SXQgd2FzIG15IGNsZWFyIHVuZGVyc3RhbmRpbmcgZnJvbSByZmM1NjYxIHRoYXQgd2UgY291bGQg
+ZXhwZWN0IHRoaXMgYmVoYXZpb3IuCgpJIHdvdWxkIGhhdmUgbm8gaXNzdWUgYXQgYWxsIHdpdGgg
+YWxsb3dpbmcgdGhlIGltcGxlbWVudGF0aW9uIHRvIGluZGljYXRlIHRvIGNsaWVudHMgdGhhdCBp
+dCBkb2Vzbid0IGNhcmUgdG8gb3IgbmVlZCB0byByZWNlaXZlIExBWU9VVENPTU1JVCwgYXMgSSBi
+ZWxpZXZlIERhdmlkIE5vdmVjayBwcm9wb3NlZC4gIEl0IGNyZWF0ZXMgYSByZWFsIHByb2JsZW0g
+aWYgTEFZT1VUQ09NTUlUIGlzIHNpbXBseSByYXRpb25hbGlzZWQgb3V0IG9mIHRoZSBzcGVjaWZp
+Y2F0aW9uIGJ5IGZpbGVzeXN0ZW1zIHdoaWNoIGhhdmUgb3RoZXIgbWVhbnMgdG8gZWZmaWNpZW50
+bHkgZW5zdXJlIHNlbWFudGljcyB3aGljaCBtYXkgbm90IGJlIGVmZmljaWVudCBvciByZWFzb25h
+YmxlIGZvciBvdXJzLgoKTWF0dAoKLS0tLS0gIkZyZWQgSXNhbWFuIiA8aWlzYW1hbkBuZXRhcHAu
+Y29tPiB3cm90ZToKCj4gPj4+IE9uIDEyLzEwLzIwMTAgMDM6MjIgQU0sIEZyZWQgSXNhbWFuIHdy
+b3RlOgo+ID4+Pj4gU2luY2UgZmlsZSBkb2VzIG5vdCBuZWVkIHRoZW0sIGp1c3QgdHVybiB0aGVt
+IG9mZiBmb3IKPiA+Pj4+IHRoZSBtb21lbnQuIMKgTm9uLWZpbGUgbGF5b3V0cyB3aWxsIHByb2Jh
+Ymx5IGhhdmUgdG8gdHJpZ2dlciB0aGVtCj4gaW4KPiA+Pj4+IHNvbWUgZmFzaGlvbiBhdCBjbG9z
+ZS4KPiA+Pj4+Cj4gPj4+Cj4gPj4+IFJycnIuIEFyZSB3ZSBiYWNrIHRvIHRoaXMgYXJndW1lbnQu
+IFdlIHN0YW5kIGRvd24gd2luIGFuIGFyZ3VtZW50Cj4gPj4+IGFuZCAyIHdlZWtzIGxhdGVyIHlv
+dSBhcmUgYmFjayBvbiBpdCBoYXMgaWYgd2UgbmV2ZXIgdGFsa2VkIGFib3V0Cj4gaXQuCj4gPj4+
+Cj4gPj4+IE5PISEhIG9ubHkgImNvaGVyZW50IGNsdXN0ZXJlZCBmaWxlc3lzdGVtcyIgZG8gbm90
+IG5lZWQgdGhlbS4gSXQKPiBoYXMKPiA+Pj4gbm90aGluZyB0byBkbyB3aXRoIGxheW91dCB0eXBl
+LiBBIG5vbmUtY2x1c3RlcmVkIGFnZ3JlZ2F0ZWQKPiBwYXJhbGxlbAo+ID4+PiBmaWxlc3lzdGVt
+IHdpbGwgbmVlZCB0aGVtIGp1c3QgdGhlIHNhbWUgYXMgYmxvY2tzIGFuZCBvYmplY3RzLgo+ID4+
+Pgo+ID4+PiBBTkQgVEhFIFNURCBET0VTIE5PVCBHSVZFIFlPVSBBIENIT0lDRSEhIQo+ID4+Cj4g
+Pj4gWW91IGtlZXAgc2F5aW5nIHRoaXMsIGJ1dCBqdXN0IHJlcGVhdGluZyBpdCBkb2VzIG5vdCBj
+b252aW5jZSBtZS4KPiA+PiBDb3VsZCB5b3UgcGxlYXNlIHRha2UgdGhlIHRpbWUgdG8gZXhwbGFp
+biAqd2h5KiB0aGV5IGFyZSBuZWVkZWQuCgotLSAKCk1hdHQgQmVuamFtaW4KClRoZSBMaW51eCBC
+b3gKMjA2IFNvdXRoIEZpZnRoIEF2ZS4gU3VpdGUgMTUwCkFubiBBcmJvciwgTUkgIDQ4MTA0Cgpo
+dHRwOi8vbGludXhib3guY29tCgp0ZWwuIDczNC03NjEtNDY4OQpmYXguIDczNC03NjktODkzOApj
+ZWwuIDczNC0yMTYtNTMwOQpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fXwpuZnN2NCBtYWlsaW5nIGxpc3QKbmZzdjRAaWV0Zi5vcmcKaHR0cHM6Ly93d3cuaWV0
+Zi5vcmcvbWFpbG1hbi9saXN0aW5mby9uZnN2NAo=
