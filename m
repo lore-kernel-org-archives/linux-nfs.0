@@ -1,58 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:51919 "EHLO fieldses.org"
+Received: from shutemov.name ([188.40.19.243]:46270 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754661Ab0LOVs5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Dec 2010 16:48:57 -0500
-Date: Wed, 15 Dec 2010 16:48:55 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org
-Subject: Re: System CPU increasing on idle 2.6.36
-Message-ID: <20101215214854.GC9646@fieldses.org>
-References: <20101215011021.GA24594@hostway.ca>
- <20101215015609.GB24594@hostway.ca>
- <20101215180813.GA7773@fieldses.org>
- <1292437333.3068.14.camel@heimdal.trondhjem.org>
- <20101215183816.GB7773@fieldses.org>
- <1292441630.3068.55.camel@heimdal.trondhjem.org>
- <20101215194956.GA9646@fieldses.org>
- <1292443028.3068.60.camel@heimdal.trondhjem.org>
- <20101215201908.GB9646@fieldses.org>
- <1292445128.3068.71.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1292445128.3068.71.camel@heimdal.trondhjem.org>
+	id S1752043Ab0LPN0H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Dec 2010 08:26:07 -0500
+From: "Kirill A. Shutsemov" <kirill@shutemov.name>
+To: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill@shutemov.name>
+Subject: [PATCH] nfsd: declare several functions of nfs4callback as static
+Date: Thu, 16 Dec 2010 15:25:54 +0200
+Message-Id: <1292505954-26290-1-git-send-email-kirill@shutemov.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Dec 15, 2010 at 03:32:08PM -0500, Trond Myklebust wrote:
-> On Wed, 2010-12-15 at 15:19 -0500, J. Bruce Fields wrote:
-> 
-> > Could you give an example of a case in which all of the following are
-> > true?:
-> > 	- the administrator explicitly requests numeric id's (for
-> > 	  example by setting nfs4_disable_idmapping).
-> > 	- numeric id's work as long as the client uses auth_sys.
-> > 	- they no longer work if that same client switches to krb5.
-> 
-> Trivially:
-> 
-> Server /etc/passwd maps trondmy to uid 1000
-> Client /etc/passwd maps trondmy to uid 500
+From: Kirill A. Shutemov <kirill@shutemov.name>
 
-I understand that any problematic case would involve different
-name<->id mappings on the two sides.
+setup_callback_client(), nfsd4_release_cb() and nfsd4_process_cb_update()
+do not have users outside the translation unit. Let's declare it as
+static.
 
-What I don't understand--and apologies if I'm being dense!--is what
-sequence of operations exactly would work in this situation if we
-automatically switch idmapping based on auth flavor, and would not work
-without it.
+Signed-off-by: Kirill A. Shutemov <kirill@shutemov.name>
+---
+ fs/nfsd/nfs4callback.c |    7 ++++---
+ 1 files changed, 4 insertions(+), 3 deletions(-)
 
-Are you imagining a future client that is also able to switch auth
-flavors on the fly (say, based on whether a krb5 ticket exists or not),
-or just unmounting and remounting to change the security flavor?
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index a95150d..515a9b1 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -474,7 +474,8 @@ static int max_cb_time(void)
+ /* Reference counting, callback cleanup, etc., all look racy as heck.
+  * And why is cl_cb_set an atomic? */
+ 
+-int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
++static int setup_callback_client(struct nfs4_client *clp,
++		struct nfs4_cb_conn *conn)
+ {
+ 	struct rpc_timeout	timeparms = {
+ 		.to_initval	= max_cb_time(),
+@@ -750,13 +751,13 @@ void nfsd4_shutdown_callback(struct nfs4_client *clp)
+ 	flush_workqueue(callback_wq);
+ }
+ 
+-void nfsd4_release_cb(struct nfsd4_callback *cb)
++static void nfsd4_release_cb(struct nfsd4_callback *cb)
+ {
+ 	if (cb->cb_ops->rpc_release)
+ 		cb->cb_ops->rpc_release(cb);
+ }
+ 
+-void nfsd4_process_cb_update(struct nfsd4_callback *cb)
++static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ {
+ 	struct nfs4_cb_conn conn;
+ 	struct nfs4_client *clp = cb->cb_clp;
+-- 
+1.7.3.3
 
-Are you thinking of creating a file under one flavor and accessing it
-under another?
-
---b.
