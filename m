@@ -1,193 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47852 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751318Ab0LJGIk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Dec 2010 01:08:40 -0500
-Received: from localhost.localdomain (kozen-lxp.hq.netapp.com [10.58.53.114] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBA68VLc023313
-	for <linux-nfs@vger.kernel.org>; Thu, 9 Dec 2010 22:08:33 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 01/22] Revert "pnfs-submit: handle NFS4ERR_DELEG_REVOKED for LAYOUTRETURN"
-Date: Thu,  9 Dec 2010 20:22:36 -0500
-Message-Id: <1291944177-7819-2-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:45561 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754551Ab0LPUFQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 15:05:16 -0500
+Subject: Re: [PATCH 00/31] NFS XDR clean up for 2.6.38
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4D0A6503.7010901@RedHat.com>
+Date: Thu, 16 Dec 2010 15:04:34 -0500
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <CD110562-AF52-4A2F-BF74-D7ABC4D58D24@oracle.com>
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net> <4D0A6503.7010901@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This reverts commit ed527fc7fba08f0665cc6b59d9130a6bd09a2659.
 
-Conflicts:
+On Dec 16, 2010, at 2:14 PM, Steve Dickson wrote:
 
-	fs/nfs/pnfs.c
-	fs/nfs/pnfs.h
+> Hello,
+> 
+> I was wondering if it would be possible hold off on committing major 
+> cleans ups like this one (and the RFC: Split nlm_host cache series) 
+> until pNFS wave3 is committed into either Trond's tree and/or in the
+> mainline kernel. 
+> 
+> I realize this is a huge request to make, something we've never done
+> before. But talking with the powers to be on this end, include Ric 
+> Wheeler, accepting these types of patches before the pNFS bits 
+> settle down will make close to impossible for there to be any 
+> meaningful pNFS support in the RHEL 6 kernels. We would have 
+> to push the support off to RHEL 7.
+> 
+> The reasoning is this, which I do agree with, these types of 
+> patches, although probably needed, do not added any new features 
+> or fix any outstanding bugs.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4proc.c |   39 +++------------------------------------
- fs/nfs/pnfs.c     |    6 ++----
- fs/nfs/pnfs.h     |   14 --------------
- 3 files changed, 5 insertions(+), 54 deletions(-)
+The XDR series does add a new feature, FWIW: it adds buffer overflow protection to the client's reply processing logic.  Says so right in the patch descriptions.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2811d97..dbe518c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1880,16 +1880,6 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 			nfs4_close_clear_stateid_flags(state,
- 					calldata->arg.fmode);
- 			break;
--		case -NFS4ERR_DELEG_REVOKED:
--			if (calldata->res.op_bitmask & (NFS4_HAS_LAYOUTCOMMIT |
--							NFS4_HAS_LAYOUTRETURN)) {
--				pnfs_mark_layout_revoked(calldata->inode);
--				/* Retry without layout operations as
--				 * pnfs_roc will find roc_iomode==0 next time around
--				 */
--				rpc_restart_call_prepare(task);
--				break;
--			}
- 		case -NFS4ERR_STALE_STATEID:
- 		case -NFS4ERR_OLD_STATEID:
- 		case -NFS4ERR_BAD_STATEID:
-@@ -5646,7 +5636,6 @@ void nfs4_layoutreturn_set_stateid(struct inode *ino,
- static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
- {
- 	struct nfs4_layoutreturn *lrp = calldata;
--	struct inode *ino = lrp->args.inode;
- 	struct nfs_server *server;
- 
- 	dprintk("--> %s\n", __func__);
-@@ -5655,50 +5644,28 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
- 		return;
- 
- 	if (lrp->args.return_type == RETURN_FILE)
--		server = NFS_SERVER(ino);
-+		server = NFS_SERVER(lrp->args.inode);
- 	else
- 		server = NULL;
- 	if (nfs4_async_handle_error(task, server, NULL, lrp->clp) == -EAGAIN) {
- 		nfs_restart_rpc(task, lrp->clp);
- 		return;
- 	}
--	switch (task->tk_status) {
--	case -NFS4ERR_DELEG_REVOKED:
--		task->tk_status = 0;	/* TODO: revalidate remaining layouts? */
--		if (lrp->args.return_type == RETURN_FILE)
--			pnfs_mark_layout_revoked(ino);
--		break;
--	case 0:
--		if (lrp->args.return_type == RETURN_FILE)
--			nfs4_layoutreturn_set_stateid(lrp->args.inode, &lrp->res);
--	}
-+	if ((task->tk_status == 0) && (lrp->args.return_type == RETURN_FILE))
-+		nfs4_layoutreturn_set_stateid(lrp->args.inode, &lrp->res);
- 	dprintk("<-- %s\n", __func__);
- }
- 
- void nfs4_layoutreturn_file_release(struct inode *ino)
- {
- 	struct pnfs_layout_hdr *lo = NFS_I(ino)->layout;
--	LIST_HEAD(tmp_list);
- 
- 	spin_lock(&ino->i_lock);
--	if (test_bit(NFS_LAYOUT_REVOKED, &lo->plh_flags)) {
--		struct pnfs_layout_range range = {
--			.iomode = IOMODE_ANY,
--			.offset = 0,
--			.length = NFS4_MAX_UINT64,
--		};
--
--		/* layout driver's free_lseg may block, hence we don't
--		 * call pnfs_free_lseg_list under the spin_lock */
--		pnfs_clear_lseg_list(lo, &tmp_list, &range);
--		clear_bit(NFS_LAYOUT_REVOKED, &lo->plh_flags);
--	}
- 	lo->plh_block_lgets--;
- 	lo->plh_outstanding--;
- 	if (!pnfs_layoutgets_blocked(lo, NULL))
- 		rpc_wake_up(&NFS_I(ino)->lo_rpcwaitq_stateid);
- 	spin_unlock(&ino->i_lock);
--	pnfs_free_lseg_list(&tmp_list);
- 	put_layout_hdr(ino);
- }
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a21debe..d3ce095 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -376,7 +376,7 @@ static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- }
- 
- /* Returns false if there was nothing to do, true otherwise */
--bool
-+static bool
- pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list,
- 		     struct pnfs_layout_range *range)
- {
-@@ -629,12 +629,10 @@ pnfs_roc(struct nfs4_closedata *data)
- 	spin_lock(&data->inode->i_lock);
- 	lo = NFS_I(data->inode)->layout;
- 	if (!lo || lo->roc_iomode == 0 ||
--	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
--	    test_bit(NFS_LAYOUT_REVOKED, &lo->plh_flags))
-+	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags))
- 		goto out_nolayout;
- 
- 	range.iomode = lo->roc_iomode;
--	lo->roc_iomode = 0;
- 	list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
- 		if (should_free_lseg(&lseg->range, &range)) {
- 			mark_lseg_invalid(lseg, &tmp_list);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 12fe7ab..c527e55 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -56,7 +56,6 @@ enum {
- 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
- 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
- 	NFS_LAYOUT_NEED_LCOMMIT,	/* LAYOUTCOMMIT needed */
--	NFS_LAYOUT_REVOKED,		/* layout revoked by the server */
- };
- 
- /* Per-layout driver specific registration structure */
-@@ -220,8 +219,6 @@ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
- void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
- bool pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, nfs4_stateid *stateid);
- int pnfs_layout_process(struct nfs4_layoutget *lgp);
--bool pnfs_clear_lseg_list(struct pnfs_layout_hdr *, struct list_head *tmp_list,
--			  struct pnfs_layout_range *);
- void pnfs_free_lseg_list(struct list_head *tmp_list);
- void pnfs_destroy_layout(struct nfs_inode *);
- void pnfs_destroy_all_layouts(struct nfs_client *);
-@@ -293,12 +290,6 @@ layoutcommit_needed(struct nfs_inode *nfsi)
- 	       test_bit(NFS_LAYOUT_NEED_LCOMMIT, &nfsi->layout->plh_flags);
- }
- 
--static inline void
--pnfs_mark_layout_revoked(struct inode *ino)
--{
--	set_bit(NFS_LAYOUT_REVOKED, &NFS_I(ino)->layout->plh_flags);
--}
--
- #else  /* CONFIG_NFS_V4_1 */
- 
- static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
-@@ -423,11 +414,6 @@ static inline void nfs4_layoutreturn_set_stateid(struct inode *ino,
- {
- }
- 
--static inline void
--pnfs_mark_layout_revoked(struct inode *ino)
--{
--}
--
- #endif /* CONFIG_NFS_V4_1 */
- 
- #endif /* FS_NFS_PNFS_H */
+> More likely than not (for a time) they will 
+> add some instability due to the lack of usage and testing.  These type of 
+> changes are much too large for even our QE group to test and verify and
+> obviously instability is the last thing we can interject into an 
+> on going enterprise product stream.
+
+The only NFSv4-related changes in this series are limited to refactoring.  No behavior changes are made in the NFSv4 code.  The bulk of the changes effect only NFSv2 and NFSv3, and will have no impact on pNFS (other than a minor API change).
+
+XDR is straightforward and well understood.  If anything is broken by these patches, I expect it will be exposed quickly.
+
+The NLM patches also have nothing to do with pNFS, AFAICT, and can likely be skipped for RHEL 6.
+
+> Again, I realize what we are asking and how big this request
+> really is. Its just that we've come so far and are pretty close 
+> (IMHO) to have some meaningful  pNFS support in RHEL 6, I 
+> figured I'd take a shoot and ask... 
+
+I don't think these are as world-bending as you believe.  I'm happy to discuss the actual changes with Ric.
+
+> steved.
+> 
+> On 12/14/2010 09:54 AM, Chuck Lever wrote:
+>> Trond-
+>> 
+>> As requested, here is my latest revision of the XDR patchset for
+>> 2.6.38.
+>> 
+>> This converts NFSv2 and v3, all versions of NLM, and the server's
+>> NFSv4 callback client.  It updates the XDR code for rpcbind, NSM, and
+>> MNT as well.
+>> 
+>> All encoders and decoders now use xdr_streams.  All encoders now BUG
+>> on any error and return void.
+>> 
+>> As a bonus, this series converts the whole kit and kaboodle to a new
+>> calling sequence.  The RPC client's generic encode and decode routines
+>> now invoke xdr_init_{en,de}code before calling the specific XDR
+>> routines.  The xdr_init_{en,de}code call sites are thus removed from
+>> all specific XDR routines in the kernel.
+>> 
+>> ---
+>> 
+>> Chuck Lever (31):
+>>      SUNRPC: New xdr_streams XDR decoder API
+>>      SUNRPC: New xdr_streams XDR encoder API
+>>      SUNRPC: Determine value of "nrprocs" automatically
+>>      SUNRPC: Avoid return code checking in rpcbind XDR encoder functions
+>>      NFS: Remove unused UMNT response data structure
+>>      NFS: Avoid return code checking in mount XDR encoder functions
+>>      NSM: Avoid return code checking in NSM XDR encoder functions
+>>      NFS: Squelch compiler warning in decode_getdeviceinfo()
+>>      NFS: Simplify ->decode_dirent() calling sequence
+>>      NFS: Fix hdrlen calculation in NFSv4's decode_read()
+>>      lockd: Move nlmdbg_cookie2a() to svclock.c
+>>      NFS: Repair whitespace damage in NFS PROC macro
+>>      NFSD: Update XDR decoders in NFSv4 callback client
+>>      NFSD: Update XDR encoders in NFSv4 callback client
+>>      lockd: Introduce new-style XDR functions for NLMv4
+>>      NFS: Move and update xdr_decode_foo() functions that we're keeping
+>>      NFS: Remove unused old NFSv3 decoder functions
+>>      NFS: Switch in new NFSv3 decoder functions
+>>      NFS: Introduce new-style XDR decoding functions for NFSv2
+>>      NFS: Update xdr_encode_foo() functions that we're keeping
+>>      NFS: Remove unused old NFSv3 encoder functions
+>>      NFS: Replace old NFSv3 encoder functions with xdr_stream-based ones
+>>      NFS: Introduce new-style XDR encoding functions for NFSv3
+>>      lockd: Introduce new-style XDR functions for NLMv3
+>>      NFS: Move and update xdr_decode_foo() functions that we're keeping
+>>      NFS: Replace old NFSv2 decoder functions with xdr_stream-based ones
+>>      NFS: Introduce new-style XDR decoding functions for NFSv2
+>>      NFS: Use the "nfs_stat" enum for nfs_stat_to_errno()'s argument
+>>      NFS: Update xdr_encode_foo() functions that we're keeping
+>>      NFS: Remove old NFSv2 encoder functions
+>>      NFS: Introduce new-style XDR encoding functions for NFSv2
+>> 
+>> 
+>> fs/lockd/Makefile              |    6 
+>> fs/lockd/clnt4xdr.c            |  605 ++++++++
+>> fs/lockd/clntxdr.c             |  627 +++++++++
+>> fs/lockd/mon.c                 |  110 +-
+>> fs/lockd/svclock.c             |   30 
+>> fs/lockd/xdr.c                 |  287 ----
+>> fs/lockd/xdr4.c                |  255 ----
+>> fs/nfs/dir.c                   |   15 
+>> fs/nfs/internal.h              |   11 
+>> fs/nfs/mount_clnt.c            |   81 -
+>> fs/nfs/nfs2xdr.c               | 1297 ++++++++++++------
+>> fs/nfs/nfs3xdr.c               | 2892 +++++++++++++++++++++++++++++-----------
+>> fs/nfs/nfs4_fs.h               |    1 
+>> fs/nfs/nfs4xdr.c               | 1401 +++++++++----------
+>> fs/nfs/proc.c                  |    2 
+>> fs/nfsd/nfs4callback.c         |  690 ++++++----
+>> include/linux/lockd/debug.h    |   10 
+>> include/linux/nfs3.h           |    3 
+>> include/linux/nfs_xdr.h        |    3 
+>> include/linux/sunrpc/auth.h    |    8 
+>> include/linux/sunrpc/clnt.h    |    4 
+>> include/linux/sunrpc/xdr.h     |   10 
+>> net/sunrpc/auth.c              |   28 
+>> net/sunrpc/auth_gss/auth_gss.c |   44 -
+>> net/sunrpc/clnt.c              |    9 
+>> net/sunrpc/rpcb_clnt.c         |  147 +-
+>> 26 files changed, 5529 insertions(+), 3047 deletions(-)
+>> create mode 100644 fs/lockd/clnt4xdr.c
+>> create mode 100644 fs/lockd/clntxdr.c
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.2.1
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
