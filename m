@@ -1,108 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:48365 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753299Ab0LOSvH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 13:51:07 -0500
-Message-ID: <4D090E18.4060205@panasas.com>
-Date: Wed, 15 Dec 2010 20:51:04 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/9] Revert "pnfs-submit: wave2: remove forgotten layoutreturn
- struct definitions"
-References: <4D0908F9.4060208@panasas.com>	 <1292437854-21651-1-git-send-email-bhalevy@panasas.com> <1292437973.3068.15.camel@heimdal.trondhjem.org>
-In-Reply-To: <1292437973.3068.15.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-bw0-f45.google.com ([209.85.214.45]:38194 "EHLO
+	mail-bw0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753857Ab0LPONN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 09:13:13 -0500
+Received: by bwz16 with SMTP id 16so3605966bwz.4
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Dec 2010 06:13:11 -0800 (PST)
+In-Reply-To: <4D0A0A77.9010802@panasas.com>
+References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
+	<1291944177-7819-23-git-send-email-iisaman@netapp.com>
+	<4D0A0A77.9010802@panasas.com>
+Date: Thu, 16 Dec 2010 09:13:11 -0500
+Message-ID: <AANLkTinqnA2Qd68FB=ptoeSxrTd8FD47GezUn_83KtGf@mail.gmail.com>
+Subject: Re: [PATCH 22/22] pnfs-submit: Turn off layoutcommits
+From: Fred Isaman <iisaman@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2010-12-15 20:32, Trond Myklebust wrote:
-> On Wed, 2010-12-15 at 20:30 +0200, Benny Halevy wrote:
->> This reverts commit 19e1e5ae1ec0a3f5d997a1a5d924d482e147bea2.
->> ---
->>  include/linux/nfs4.h    |    1 +
->>  include/linux/nfs_xdr.h |   23 +++++++++++++++++++++++
->>  2 files changed, 24 insertions(+), 0 deletions(-)
+On Thu, Dec 16, 2010 at 7:47 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> On 12/10/2010 03:22 AM, Fred Isaman wrote:
+>> Recent changes to close can delay pending layoutcommit until umount,
+>> when the async layoutcommits can come tricklng in after we have destroyed
+>> the session.
+>
+> Then "Recent changes" are broken and should be fixed. It was fine
+> before. New broken code is not acceptable.
+>
+>> Since file does not need them, just turn them off for
+>> the moment.  Non-file layouts will probably have to trigger them in
+>> some fashion at close.
 >>
->> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
->> index 8ca7700..55511e8 100644
->> --- a/include/linux/nfs4.h
->> +++ b/include/linux/nfs4.h
->> @@ -557,6 +557,7 @@ enum {
->>  	NFSPROC4_CLNT_RECLAIM_COMPLETE,
->>  	NFSPROC4_CLNT_LAYOUTGET,
->>  	NFSPROC4_CLNT_LAYOUTCOMMIT,
->> +	NFSPROC4_CLNT_LAYOUTRETURN,
->>  	NFSPROC4_CLNT_GETDEVICEINFO,
->>  	NFSPROC4_CLNT_PNFS_WRITE,
->>  	NFSPROC4_CLNT_PNFS_COMMIT,
->> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->> index 9d847ac..a651574 100644
->> --- a/include/linux/nfs_xdr.h
->> +++ b/include/linux/nfs_xdr.h
->> @@ -258,6 +258,29 @@ struct nfs4_layoutcommit_data {
->>  	int status;
->>  };
->>  
->> +struct nfs4_layoutreturn_args {
->> +	__u32   reclaim;
->> +	__u32   layout_type;
->> +	__u32   return_type;
->> +	struct pnfs_layout_range range;
->> +	struct inode *inode;
->> +	struct nfs4_sequence_args seq_args;
->> +};
->> +
->> +struct nfs4_layoutreturn_res {
->> +	struct nfs4_sequence_res seq_res;
->> +	u32 lrs_present;
->> +	nfs4_stateid stateid;
->> +};
->> +
->> +struct nfs4_layoutreturn {
->> +	struct nfs4_layoutreturn_args args;
->> +	struct nfs4_layoutreturn_res res;
->> +	struct rpc_cred *cred;
->> +	struct nfs_client *clp;
->> +	int rpc_status;
->> +};
->> +
->>  struct nfs4_getdeviceinfo_args {
->>  	struct pnfs_device *pdev;
->>  	struct nfs4_sequence_args seq_args;
-> 
-> Why? We don't need or even want layoutreturn. It adds too much
-> serialisation crap.
+>
+> Rrrr. Are we back to this argument. We stand down win an argument
+> and 2 weeks later you are back on it has if we never talked about it.
+>
+> NO!!! only "coherent clustered filesystems" do not need them. It has
+> nothing to do with layout type. A none-clustered aggregated parallel
+> filesystem will need them just the same as blocks and objects.
+>
+> AND THE STD DOES NOT GIVE YOU A CHOICE!!!
 
-Define "we" :)
+You keep saying this, but just repeating it does not convince me.
+Could you please take the time to explain *why* they are needed.  A
+separate thread in the ietf list would be great.  Because right now,
+Andy and I are coding and preparing for submission to Trond under the
+assumption that they are possibly a nice optimization, but are never
+actually needed for the file layout.
 
-First, the object layout driver relies on layout return for returning I/O error
-information.  On the common, successful path, with return_on_close (that Panasas
-uses but others may not) I agree that CLOSE with the implicit layoutreturn
-semantics we discussed should do a good job too (accompanied with a respective
-LAYOUTCOMMIT if needed).
+Fred
 
-Then, when there's a large number of outstanding layout segments (again
-prob. non-files layout presuming server implementations are going to utilize
-whole-file layouts) proactive layoutreturn comes handy in capping the
-state both the client and server keep - reducing time wasted on walking long
-lists of items.
-
-For CB_LAYOUTRECALL response the heart of the debate is around synchronizing
-with layouts in-use and in-flight layoutgets.  There, having the server poll
-the client, who's retuning NFS4ERR_DELAY should essentially work but may be
-inefficient and unreliable in use cases where contention is likely enough.
-Eventually, when CB_LAYOUTRECALL is clear to go sending the LAYOUTRETURN
-or replying with CB_NOMATCHING_LAYOUT (assuming no I/O error to report
-for pnfs-obj) should be equivalent [note: need errata to clarify the
-resulting stateid after NOMATCHING_LAYOUT].
-Is this the serialization "crap" you're talking about?
-What makes checking the conditions for returning NFS4ERR_DELAY to
-CB_LAYOUTRECALL so different from implementing a barrier and doing the
-returns asynchronously with the CB_LAYOUTRECALL?
-
-Benny
-
-> 
-> 
+>
+>> A better solution is to just push all the layoutcommit code outside
+>> of the pnfs-submit branch.  This is really just a stop gap until code
+>> is rearranged to make that easier.
+>>
+>
+> Than all this is not finished. Please keep it in the shops until the
+> final solution is presented and we can actually see the new compared
+> to the old system. Until then we should keep what worked and was tested.
+>
+> Boaz
+>
+>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>> ---
+>>  fs/nfs/nfs4proc.c |    1 -
+>>  1 files changed, 0 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 9b15535..224bdfe 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -3098,7 +3098,6 @@ static void pnfs4_update_write_done(struct nfs_inode *nfsi, struct nfs_write_dat
+>>  {
+>>  #ifdef CONFIG_NFS_V4_1
+>>       pnfs_update_last_write(nfsi, data->args.offset, data->res.count);
+>> -     pnfs_need_layoutcommit(nfsi, data->args.context);
+>>  #endif /* CONFIG_NFS_V4_1 */
+>>  }
+>>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
