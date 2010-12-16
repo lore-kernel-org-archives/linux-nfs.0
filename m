@@ -1,152 +1,157 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.parallels.com ([64.131.90.16]:49727 "EHLO mx2.parallels.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750786Ab0L3Mws (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Dec 2010 07:52:48 -0500
-Message-ID: <4D1C809B.30405@parallels.com>
-Date: Thu, 30 Dec 2010 06:52:43 -0600
-From: Rob Landley <rlandley@parallels.com>
-To: "Kirill A. Shutemov" <kas@openvz.org>
-CC: Rob Landley <rob@landley.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Pavel Emelyanov <xemul@parallels.com>, <linux-nfs@vger.kernel.org>,
-        "David S. Miller" <davem@davemloft.net>, <netdev@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH v2 00/12] make rpc_pipefs be mountable multiple time
-References: <1293628470-28386-1-git-send-email-kas@openvz.org> <AANLkTi=AXz21wDeE1vPVD-6cEtj6faXN9x09eHDCsTkB@mail.gmail.com> <20101230085139.GA29697@shutemov.name> <4D1C4C7C.6050606@parallels.com> <20101230094433.GB29697@shutemov.name> <4D1C5953.6020200@parallels.com> <20101230104416.GA31824@shutemov.name> <AANLkTim2QrkSW0HufD5wp=-8ikwydN5SUS+fdWK6JHqb@mail.gmail.com> <20101230114514.GA31976@shutemov.name>
-In-Reply-To: <20101230114514.GA31976@shutemov.name>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Received: from daytona.panasas.com ([67.152.220.89]:11307 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751110Ab0LPHPe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 02:15:34 -0500
+Message-ID: <4D09BC93.9020502@panasas.com>
+Date: Thu, 16 Dec 2010 09:15:31 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/9] Revert "pnfs-submit: wave2: remove forgotten layoutreturn
+ struct definitions"
+References: <4D0908F9.4060208@panasas.com>	 <1292437854-21651-1-git-send-email-bhalevy@panasas.com>	 <1292437973.3068.15.camel@heimdal.trondhjem.org>	 <4D090E18.4060205@panasas.com> <1292441468.3068.53.camel@heimdal.trondhjem.org>
+In-Reply-To: <1292441468.3068.53.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 12/30/2010 05:45 AM, Kirill A. Shutemov wrote:
-> On Thu, Dec 30, 2010 at 05:05:22AM -0600, Rob Landley wrote:
->> On Thu, Dec 30, 2010 at 4:44 AM, Kirill A. Shutemov<kas@openvz.org>  wrote:
->>> On Thu, Dec 30, 2010 at 04:05:07AM -0600, Rob Landley wrote:
->>>> On 12/30/2010 03:44 AM, Kirill A. Shutemov wrote:
->>>>>>> If no rpcmount mountoption, no rpc_pipefs was found at
->>>>>>> '/var/lib/nfs/rpc_pipefs' and we are in init's mount namespace, we use
->>>>>>> init_rpc_pipefs.
->>>>>>
->>>>>> It's the "we are in init's mount namespace" that I was wondering about.
->>>>>>
->>>>>> So if I naievely chroot, nfs mount stops working the way it did before I
->>>>>> chrooted unless I do an extra setup step?
->>>>>
->>>>> No. It will work as before since you are still in init's mount namespace.
->>>>> Creating new mount namespace changes rules.
+On 2010-12-15 21:31, Trond Myklebust wrote:
+> On Wed, 2010-12-15 at 20:51 +0200, Benny Halevy wrote:
+>> On 2010-12-15 20:32, Trond Myklebust wrote:
+>>> On Wed, 2010-12-15 at 20:30 +0200, Benny Halevy wrote:
+>>>> This reverts commit 19e1e5ae1ec0a3f5d997a1a5d924d482e147bea2.
+>>>> ---
+>>>>  include/linux/nfs4.h    |    1 +
+>>>>  include/linux/nfs_xdr.h |   23 +++++++++++++++++++++++
+>>>>  2 files changed, 24 insertions(+), 0 deletions(-)
 >>>>
->>>> Ah, CLONE_NEWNS and then you need /var/lib/nfs/rpc_pipefs.  Got it.
->>>>
->>>> I'm kind of surprised that the kernel cares about a specific path under
->>>> /var/lib.  (Seems like policy in the kernel somehow.)
+>>>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+>>>> index 8ca7700..55511e8 100644
+>>>> --- a/include/linux/nfs4.h
+>>>> +++ b/include/linux/nfs4.h
+>>>> @@ -557,6 +557,7 @@ enum {
+>>>>  	NFSPROC4_CLNT_RECLAIM_COMPLETE,
+>>>>  	NFSPROC4_CLNT_LAYOUTGET,
+>>>>  	NFSPROC4_CLNT_LAYOUTCOMMIT,
+>>>> +	NFSPROC4_CLNT_LAYOUTRETURN,
+>>>>  	NFSPROC4_CLNT_GETDEVICEINFO,
+>>>>  	NFSPROC4_CLNT_PNFS_WRITE,
+>>>>  	NFSPROC4_CLNT_PNFS_COMMIT,
+>>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>>>> index 9d847ac..a651574 100644
+>>>> --- a/include/linux/nfs_xdr.h
+>>>> +++ b/include/linux/nfs_xdr.h
+>>>> @@ -258,6 +258,29 @@ struct nfs4_layoutcommit_data {
+>>>>  	int status;
+>>>>  };
+>>>>  
+>>>> +struct nfs4_layoutreturn_args {
+>>>> +	__u32   reclaim;
+>>>> +	__u32   layout_type;
+>>>> +	__u32   return_type;
+>>>> +	struct pnfs_layout_range range;
+>>>> +	struct inode *inode;
+>>>> +	struct nfs4_sequence_args seq_args;
+>>>> +};
+>>>> +
+>>>> +struct nfs4_layoutreturn_res {
+>>>> +	struct nfs4_sequence_res seq_res;
+>>>> +	u32 lrs_present;
+>>>> +	nfs4_stateid stateid;
+>>>> +};
+>>>> +
+>>>> +struct nfs4_layoutreturn {
+>>>> +	struct nfs4_layoutreturn_args args;
+>>>> +	struct nfs4_layoutreturn_res res;
+>>>> +	struct rpc_cred *cred;
+>>>> +	struct nfs_client *clp;
+>>>> +	int rpc_status;
+>>>> +};
+>>>> +
+>>>>  struct nfs4_getdeviceinfo_args {
+>>>>  	struct pnfs_device *pdev;
+>>>>  	struct nfs4_sequence_args seq_args;
 >>>
->>> Yep. It's bad, but there is way to overwrite the default.
->>>
->>> Other way is to leave 'rpcmount' mountoption without default.
->>> get_rpc_pipefs(NULL) in init's mount namespace will always return
->>> init_rpc_pipefs, without filesystem lookup.
->>> get_rpc_pipefs(NULL) in non-init's mount namespace will always return
->>> error.
->>>
->>> So you will have to specify 'rpcmount' mountoption for every nfs mount in
->>> container. Hmm, I guess, it may confuse user.
->>>
->>> Or we can try to move the default to userspace. /sbin/mount.nfs?
+>>> Why? We don't need or even want layoutreturn. It adds too much
+>>> serialisation crap.
 >>
->> /proc/sys/kernel/hotplug exists to tell the kernel where to find the hotplug
->> binary.  Once upon a time /sys/hotplug was the default value, and that was
->> there to overwrite it.  (They changed the default to blank (disabled) not due
->> to policy reasons, but due to adding the netlink hotplug notification
->> mechanism and making that the default.)
+>> Define "we" :)
+> 
+> Definition: "We who will be forced to maintain whatever is merged
+> upstream."
+> 
+>> First, the object layout driver relies on layout return for returning I/O error
+>> information.  On the common, successful path, with return_on_close (that Panasas
+>> uses but others may not) I agree that CLOSE with the implicit layoutreturn
+>> semantics we discussed should do a good job too (accompanied with a respective
+>> LAYOUTCOMMIT if needed).
 >>
->> I bring that up to point out that the general consensus about policy in the
->> kernel seems to be "when you really really can't avoid having any, make a
->> sane default the user can override".
->>
->> (Of course adding another entry to the crawling horror of /proc may not
->> be an improvement.  But individual overrides at the mount -o level seem
->> like a non-optimal granularity for this...)
->
-> Do you propose to implement default as sysctl parameter?
+>> Then, when there's a large number of outstanding layout segments (again
+>> prob. non-files layout presuming server implementations are going to utilize
+>> whole-file layouts) proactive layoutreturn comes handy in capping the
+>> state both the client and server keep - reducing time wasted on walking long
+>> lists of items.
+> 
+> That assumes that you have a good policy for implementing a 'proactive
+> layoutreturn'. What knowledge does either the client or the server have
+> w.r.t. whether or not part of a layout is likely to be used in the near
+> future other than 'file is open' or 'file is closed'?
+> 
 
-I was pointing out it's been done before.
+The client can cache layout segments using a least recently used policy.
 
-I'd prefer autodetecting it so new namespaces and the base namespace 
-don't have magic policy _or_ require different mount invocations.  An 
-ability to change the default for a value is less appealing than not 
-needing the value in the first place.
+> What is the advantage to the client w.r.t. sending LAYOUTRETURN rather
+> than just forgetting the layout or layout segment? If the server needs
+> it returned, it can send a recall. If not, we are wasting processing
+> time by sending an unnecessary RPC call.
+> 
 
-And changing the default would probably have to be per-container anyway 
-to be useful.  (Which isn't _quite_ the same as per-namespace since you 
-can chroot without CLONE_NEWNS.)
+The client can know better than the server which layout segments is is more
+likely to reuse since the MDS does not see the layout usage activity
+(as it goes to the DS's).
 
-(I keep thinking back to web service providers offering cheap web 
-hosting "with root access" via openvz containers and such.  They're 
-administering their own boxes, but aren't big iron guys.  This is yet 
-another thing for them to understand that didn't apply to the linux box 
-they have at home, and I'm just wondering if there's a way they don't 
-have to.)
+Similarly, for CB_RECALL_ANY, the client chooses what layouts to return.
+Rather than dropping all the layouts it should return only the least likely
+to be reused.
 
->>>> Can't it just
->>>> check the current process's mount list to see if an instance of
->>>> rpc_pipefs is mounted in the current namespace the way lxc looks for
->>>> cgroups?  Or are there potential performance/scalability issues with that?
->>>
->>> What should we do if we have several rpc_pipefs mounts in the namespace?
->>
->> You mean more than one inside a given process's view of the filesystem, taking
->> into account chroot like /proc/mounts does?
->>
->> Before this patch series, there was one instance systemwide.  The patch changed
->> that to look a fixed location in the filesystem relative to the
->> current chroot.  Either
->> way, there was one instance available to a given process doing an nfs mount.
->>
->> What's the use case for having more than one visible to a given process?
->> (NUMA scalability?  Some sort of multipath/VPN routing context?)
->
-> It's no so obvious for me why we should restrict it. ;)
+>> For CB_LAYOUTRECALL response the heart of the debate is around synchronizing
+>> with layouts in-use and in-flight layoutgets.  There, having the server poll
+>> the client, who's retuning NFS4ERR_DELAY should essentially work but may be
+>> inefficient and unreliable in use cases where contention is likely enough.
+> 
+> Define these use cases. Otherwise we're just talking generalities and
+> presenting circular arguments again.
+> 
 
-You can still provide a specific location with "-o rpcmount=/blah", 
-correct?  So this isn't restricting it, this is autodetecting the 
-default value, using the visible mount point of the appropriate type.
+The most common for Panasas is write sharing where multiple clients
+collaboratively write into a file in parallel.  Although different clients
+write into disjoint byte ranges in the file they cross RAID stripe boundaries
+(which they're not aware of) and since only one client is allowed to write
+into a RAID stripe at a time, the layout is being recalled whenever the
+server detects a conflict.
 
-> Currently, there is no association between rpc_pipefs and mount namespace,
+>> Eventually, when CB_LAYOUTRECALL is clear to go sending the LAYOUTRETURN
+>> or replying with CB_NOMATCHING_LAYOUT (assuming no I/O error to report
+>> for pnfs-obj) should be equivalent [note: need errata to clarify the
+>> resulting stateid after NOMATCHING_LAYOUT].
+>> Is this the serialization "crap" you're talking about?
+>> What makes checking the conditions for returning NFS4ERR_DELAY to
+>> CB_LAYOUTRECALL so different from implementing a barrier and doing the
+>> returns asynchronously with the CB_LAYOUTRECALL?
+> 
+> "CB_LAYOUTRECALL request processing MUST be processed in "seqid" order
+> at all times." (section 12.5.3).
+> 
+> In other words, you cannot just 'do the returns asynchronously': the
+> CB_LAYOUTRECALL requests are required by the protocol to be processed in
+> order, which means that you must serialise those LAYOUTRETURN calls to
+> ensure that they all happen in the order the wretched server expects.
+> 
+> 
 
-There is in that the root context doesn't need to have this mounted, and 
-new namespaces do.  So there's an existing association between a LACK of 
-a namespace and a different default behavior.
+To simplify this (presumably rare) case what I had in mind is returning
+NFS4ERR_DELAY if there's a conflicting layout recall in progress.
 
-My understanding (correct me if I'm wrong) is that the historical 
-behavior is that there's only one, and it doesn't actually live anywhere 
-in the filesystem tree.  You're adding a special location.  I'm 
-wondering if there's any way for that location not to be special.
-
-> so I don't see simple way to restrict number of rpc_pipefs per mount
-> namespace. Associating mount namespace with rpc_pipefs is not a good idea,
-> I think.
-
-I'm talking about associating a default rpc_pipefs instance with a 
-namespace, which it seems to me you're already doing by emulating the 
-legacy behavior.  Before you CLONE_NEWNS you get a magic default mount 
-that doesn't exist in the tree.  After you CLONE_NEWNS you get something 
-like -EINVAL unless you supply your own default.  (I'm actually not sure 
-why new namespaces don't fall back to the magic global one...)
-
-I'm suggesting that if the user doesn't specify -o rpcmount then the 
-default could be the first rpc_pipefs mount visible to the current 
-process context, rather than a specific path.  Logic to do that exists 
-in the proc/self/mounts code (which I'm reading through now...).
-
-(Your 00/12 post doesn't actually explain what can be _different_ about 
-the various instances of rpc_pipefs, and hence why you'd want to mount 
-it multiple times.  I'm still coming up to speed on the guts of NFS. 
-The use case I'm trying to fix involves containers with different 
-network routing than the host, and this looks like potentially part of 
-the solution to that, but I'm still putting together enough context to 
-work out how....)
-
-Rob
+Benny
