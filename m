@@ -1,516 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:39536 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757744Ab0LNO5g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:57:36 -0500
-Received: by ywl5 with SMTP id 5so375659ywl.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:57:35 -0800 (PST)
+Received: from rcsinet10.oracle.com ([148.87.113.121]:29609 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753475Ab0LPPy3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 10:54:29 -0500
+Subject: Re: [PATCH] nfs4: set source address when callback is generated
+Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 19/31] NFSD: Update XDR decoders in NFSv4 callback client
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 09:57:32 -0500
-Message-ID: <20101214145732.2293.76925.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20101216034945.GH9646@fieldses.org>
+Date: Thu, 16 Dec 2010 10:54:00 -0500
+Cc: Takuma Umeya <tumeya@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Message-Id: <A4BB9763-B67F-4559-B3FF-F7BC2DBD3B3A@oracle.com>
+References: <20101215050901.GB13532@redhat.com> <20101216034945.GH9646@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
 
-Remove old-style NFSv4 XDR macros in favor of the style now used in
-fs/nfs/nfs4xdr.c.  These were forgotten during the recent nfs4xdr.c
-rewrite.
+On Dec 15, 2010, at 10:49 PM, J. Bruce Fields wrote:
 
-Additional whitespace cleanup adds to the size of this patch.
+> On Wed, Dec 15, 2010 at 02:09:01PM +0900, Takuma Umeya wrote:
+>> when callback is generated in NFSv4 server, it doesn't set the source
+>> address. When an alias IP is utilized on NFSv4 server and suppose the 
+>> client is accessing via that alias IP (e.g. eth0:0), the client invokes 
+>> the callback to the IP address that is set on the original device (e.g.
+>> eth0). This behavior results in timeout of xprt. 
+>> The patch sets the IP address that the client should invoke callback to. 
+>> 
+>> Signed-off-by: Takuma Umeya <tumeya@redhat.com>
+>> 
+>> 
+>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+>> index 143da2e..bb5de7f 100644
+>> --- a/fs/nfsd/nfs4callback.c
+>> +++ b/fs/nfsd/nfs4callback.c
+>> @@ -483,6 +483,7 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
+>>                .net            = &init_net,
+>>                .address        = (struct sockaddr *) &conn->cb_addr,
+>>                .addrsize       = conn->cb_addrlen,
+>> +               .saddress       = (struct sockaddr *) &conn->cb_saddr,
+>>                .timeout        = &timeparms,
+>>                .program        = &cb_program,
+>>                .version        = 0,
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 116cab9..c7d3171 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -1177,9 +1177,11 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval,
+>> }
+>> 
+>> static void
+>> -gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
+>> +gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, 
+>> +                                       u32 scopeid, struct svc_rqst *rqstp)
+>> {
+>>        struct nfs4_cb_conn *conn = &clp->cl_cb_conn;
+>> +       struct sockaddr s_sa;
+>>        unsigned short expected_family;
+>> 
+>>        /* Currently, we only support tcp and tcp6 for the callback channel */
+>> @@ -1205,6 +1207,19 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
+>> 
+>>        conn->cb_prog = se->se_callback_prog;
+>>        conn->cb_ident = se->se_callback_ident;
+>> +       switch(expected_family){
+>> +               case AF_INET:
+>> +                       ((struct sockaddr_in *)&s_sa)->sin_family = AF_INET;
+>> +                       ((struct sockaddr_in *)&s_sa)->sin_addr = rqstp->
+>> +                                                               rq_daddr.addr;
+>> +                        break;
+>> +               case AF_INET6:
+>> +                       ((struct sockaddr_in6 *)&s_sa)->sin6_family = AF_INET6;
+>> +                       ((struct sockaddr_in6 *)&s_sa)->sin6_addr = rqstp->
+>> +                                                               rq_daddr.addr6;
+>> +                       break;
+>> +       }
+>> +       rpc_copy_addr((struct sockaddr *)&conn->cb_saddr, &s_sa);
+> 
+> Chuck, is there any reason we use this special svc_addr_u union and not
+> a struct sockaddr_storage?  This seems more verbose than necessary....
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: J. Bruce Fields <bfields@redhat.com>
----
+I don't recall creating svc_addr_u, but I'll take a stab at a guess.
 
- fs/nfsd/nfs4callback.c |  415 ++++++++++++++++++++++++++++--------------------
- 1 files changed, 239 insertions(+), 176 deletions(-)
+It looks like someone thought that we should retain the idea of storing just the address part of the socket address, and not the other stuff (like the family and port, since this code doesn't appear to need that additional information).  It greatly reduces the size of the field.  A full sockaddr_storage is more than 128 bytes, since it has to be able to store an AF_UNIX pathname.
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index d8148cc..c3c6a90 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -74,37 +74,6 @@ enum {
- 					cb_sequence_dec_sz +            \
- 					op_dec_sz)
- 
--/*
-- * Generic decode routines from fs/nfs/nfs4xdr.c
-- */
--#define DECODE_TAIL                             \
--	status = 0;                             \
--out:                                            \
--	return status;                          \
--xdr_error:                                      \
--	dprintk("NFSD: xdr error! (%s:%d)\n", __FILE__, __LINE__); \
--	status = -EIO;                          \
--	goto out
--
--#define READ32(x)         (x) = ntohl(*p++)
--#define READ64(x)         do {                  \
--	(x) = (u64)ntohl(*p++) << 32;           \
--	(x) |= ntohl(*p++);                     \
--} while (0)
--#define READTIME(x)       do {                  \
--	p++;                                    \
--	(x.tv_sec) = ntohl(*p++);               \
--	(x.tv_nsec) = ntohl(*p++);              \
--} while (0)
--#define READ_BUF(nbytes)  do { \
--	p = xdr_inline_decode(xdr, nbytes); \
--	if (!p) { \
--		dprintk("NFSD: %s: reply buffer overflowed in line %d.\n", \
--			__func__, __LINE__); \
--		return -EIO; \
--	} \
--} while (0)
--
- struct nfs4_cb_compound_hdr {
- 	/* args */
- 	u32		ident;	/* minorversion 0 only */
-@@ -115,57 +84,14 @@ struct nfs4_cb_compound_hdr {
- 	int		status;
- };
- 
--static struct {
--int stat;
--int errno;
--} nfs_cb_errtbl[] = {
--	{ NFS4_OK,		0               },
--	{ NFS4ERR_PERM,		EPERM           },
--	{ NFS4ERR_NOENT,	ENOENT          },
--	{ NFS4ERR_IO,		EIO             },
--	{ NFS4ERR_NXIO,		ENXIO           },
--	{ NFS4ERR_ACCESS,	EACCES          },
--	{ NFS4ERR_EXIST,	EEXIST          },
--	{ NFS4ERR_XDEV,		EXDEV           },
--	{ NFS4ERR_NOTDIR,	ENOTDIR         },
--	{ NFS4ERR_ISDIR,	EISDIR          },
--	{ NFS4ERR_INVAL,	EINVAL          },
--	{ NFS4ERR_FBIG,		EFBIG           },
--	{ NFS4ERR_NOSPC,	ENOSPC          },
--	{ NFS4ERR_ROFS,		EROFS           },
--	{ NFS4ERR_MLINK,	EMLINK          },
--	{ NFS4ERR_NAMETOOLONG,	ENAMETOOLONG    },
--	{ NFS4ERR_NOTEMPTY,	ENOTEMPTY       },
--	{ NFS4ERR_DQUOT,	EDQUOT          },
--	{ NFS4ERR_STALE,	ESTALE          },
--	{ NFS4ERR_BADHANDLE,	EBADHANDLE      },
--	{ NFS4ERR_BAD_COOKIE,	EBADCOOKIE      },
--	{ NFS4ERR_NOTSUPP,	ENOTSUPP        },
--	{ NFS4ERR_TOOSMALL,	ETOOSMALL       },
--	{ NFS4ERR_SERVERFAULT,	ESERVERFAULT    },
--	{ NFS4ERR_BADTYPE,	EBADTYPE        },
--	{ NFS4ERR_LOCKED,	EAGAIN          },
--	{ NFS4ERR_RESOURCE,	EREMOTEIO       },
--	{ NFS4ERR_SYMLINK,	ELOOP           },
--	{ NFS4ERR_OP_ILLEGAL,	EOPNOTSUPP      },
--	{ NFS4ERR_DEADLOCK,	EDEADLK         },
--	{ -1,                   EIO             }
--};
--
--static int
--nfs_cb_stat_to_errno(int stat)
-+/*
-+ * Handle decode buffer overflows out-of-line.
-+ */
-+static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
- {
--	int i;
--	for (i = 0; nfs_cb_errtbl[i].stat != -1; i++) {
--		if (nfs_cb_errtbl[i].stat == stat)
--			return nfs_cb_errtbl[i].errno;
--	}
--	/* If we cannot translate the error, the recovery routines should
--	* handle it.
--	* Note: remaining NFSv4 error codes have values > 10000, so should
--	* not conflict with native Linux error codes.
--	*/
--	return stat;
-+	dprintk("NFS: %s prematurely hit the end of our receive buffer. "
-+		"Remaining buffer length is %tu words.\n",
-+		func, xdr->end - xdr->p);
- }
- 
- static __be32 *xdr_encode_empty_array(__be32 *p)
-@@ -263,6 +189,89 @@ static void encode_sessionid4(struct xdr_stream *xdr,
- }
- 
- /*
-+ * nfsstat4
-+ */
-+static const struct {
-+	int stat;
-+	int errno;
-+} nfs_cb_errtbl[] = {
-+	{ NFS4_OK,		0		},
-+	{ NFS4ERR_PERM,		-EPERM		},
-+	{ NFS4ERR_NOENT,	-ENOENT		},
-+	{ NFS4ERR_IO,		-EIO		},
-+	{ NFS4ERR_NXIO,		-ENXIO		},
-+	{ NFS4ERR_ACCESS,	-EACCES		},
-+	{ NFS4ERR_EXIST,	-EEXIST		},
-+	{ NFS4ERR_XDEV,		-EXDEV		},
-+	{ NFS4ERR_NOTDIR,	-ENOTDIR	},
-+	{ NFS4ERR_ISDIR,	-EISDIR		},
-+	{ NFS4ERR_INVAL,	-EINVAL		},
-+	{ NFS4ERR_FBIG,		-EFBIG		},
-+	{ NFS4ERR_NOSPC,	-ENOSPC		},
-+	{ NFS4ERR_ROFS,		-EROFS		},
-+	{ NFS4ERR_MLINK,	-EMLINK		},
-+	{ NFS4ERR_NAMETOOLONG,	-ENAMETOOLONG	},
-+	{ NFS4ERR_NOTEMPTY,	-ENOTEMPTY	},
-+	{ NFS4ERR_DQUOT,	-EDQUOT		},
-+	{ NFS4ERR_STALE,	-ESTALE		},
-+	{ NFS4ERR_BADHANDLE,	-EBADHANDLE	},
-+	{ NFS4ERR_BAD_COOKIE,	-EBADCOOKIE	},
-+	{ NFS4ERR_NOTSUPP,	-ENOTSUPP	},
-+	{ NFS4ERR_TOOSMALL,	-ETOOSMALL	},
-+	{ NFS4ERR_SERVERFAULT,	-ESERVERFAULT	},
-+	{ NFS4ERR_BADTYPE,	-EBADTYPE	},
-+	{ NFS4ERR_LOCKED,	-EAGAIN		},
-+	{ NFS4ERR_RESOURCE,	-EREMOTEIO	},
-+	{ NFS4ERR_SYMLINK,	-ELOOP		},
-+	{ NFS4ERR_OP_ILLEGAL,	-EOPNOTSUPP	},
-+	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
-+	{ -1,			-EIO		}
-+};
-+
-+/*
-+ * If we cannot translate the error, the recovery routines should
-+ * handle it.
-+ *
-+ * Note: remaining NFSv4 error codes have values > 10000, so should
-+ * not conflict with native Linux error codes.
-+ */
-+static int nfs_cb_stat_to_errno(int status)
-+{
-+	int i;
-+
-+	for (i = 0; nfs_cb_errtbl[i].stat != -1; i++) {
-+		if (nfs_cb_errtbl[i].stat == status)
-+			return nfs_cb_errtbl[i].errno;
-+	}
-+
-+	dprintk("NFSD: Unrecognized NFS CB status value: %u\n", status);
-+	return -status;
-+}
-+
-+static int decode_cb_op_status(struct xdr_stream *xdr, enum nfs_opnum4 expected,
-+			       enum nfsstat4 *status)
-+{
-+	__be32 *p;
-+	u32 op;
-+
-+	p = xdr_inline_decode(xdr, 4 + 4);
-+	if (unlikely(p == NULL))
-+		goto out_overflow;
-+	op = be32_to_cpup(p++);
-+	if (unlikely(op != expected))
-+		goto out_unexpected;
-+	*status = be32_to_cpup(p);
-+	return 0;
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+out_unexpected:
-+	dprintk("NFSD: Callback server returned operation %d but "
-+		"we issued a request for %d\n", op, expected);
-+	return -EIO;
-+}
-+
-+/*
-  * CB_COMPOUND4args
-  *
-  *	struct CB_COMPOUND4args {
-@@ -296,6 +305,37 @@ static void encode_cb_nops(struct nfs4_cb_compound_hdr *hdr)
- }
- 
- /*
-+ * CB_COMPOUND4res
-+ *
-+ *	struct CB_COMPOUND4res {
-+ *		nfsstat4	status;
-+ *		utf8str_cs	tag;
-+ *		nfs_cb_resop4	resarray<>;
-+ *	};
-+ */
-+static int decode_cb_compound4res(struct xdr_stream *xdr,
-+				  struct nfs4_cb_compound_hdr *hdr)
-+{
-+	u32 length;
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 4 + 4);
-+	if (unlikely(p == NULL))
-+		goto out_overflow;
-+	hdr->status = be32_to_cpup(p++);
-+	/* Ignore the tag */
-+	length = be32_to_cpup(p++);
-+	p = xdr_inline_decode(xdr, length + 4);
-+	if (unlikely(p == NULL))
-+		goto out_overflow;
-+	hdr->nops = be32_to_cpup(p);
-+	return 0;
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+}
-+
-+/*
-  * CB_RECALL4args
-  *
-  *	struct CB_RECALL4args {
-@@ -357,6 +397,97 @@ static void encode_cb_sequence4args(struct xdr_stream *xdr,
- }
- 
- /*
-+ * CB_SEQUENCE4resok
-+ *
-+ *	struct CB_SEQUENCE4resok {
-+ *		sessionid4	csr_sessionid;
-+ *		sequenceid4	csr_sequenceid;
-+ *		slotid4		csr_slotid;
-+ *		slotid4		csr_highest_slotid;
-+ *		slotid4		csr_target_highest_slotid;
-+ *	};
-+ *
-+ *	union CB_SEQUENCE4res switch (nfsstat4 csr_status) {
-+ *	case NFS4_OK:
-+ *		CB_SEQUENCE4resok	csr_resok4;
-+ *	default:
-+ *		void;
-+ *	};
-+ *
-+ * Our current back channel implmentation supports a single backchannel
-+ * with a single slot.
-+ */
-+static int decode_cb_sequence4resok(struct xdr_stream *xdr,
-+				    struct nfsd4_callback *cb)
-+{
-+	struct nfsd4_session *session = cb->cb_clp->cl_cb_session;
-+	struct nfs4_sessionid id;
-+	int status;
-+	__be32 *p;
-+	u32 dummy;
-+
-+	status = -ESERVERFAULT;
-+
-+	/*
-+	 * If the server returns different values for sessionID, slotID or
-+	 * sequence number, the server is looney tunes.
-+	 */
-+	p = xdr_inline_decode(xdr, NFS4_MAX_SESSIONID_LEN + 4 + 4);
-+	if (unlikely(p == NULL))
-+		goto out_overflow;
-+	memcpy(id.data, p, NFS4_MAX_SESSIONID_LEN);
-+	if (memcmp(id.data, session->se_sessionid.data,
-+					NFS4_MAX_SESSIONID_LEN) != 0) {
-+		dprintk("NFS: %s Invalid session id\n", __func__);
-+		goto out;
-+	}
-+	p += XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN);
-+
-+	dummy = be32_to_cpup(p++);
-+	if (dummy != session->se_cb_seq_nr) {
-+		dprintk("NFS: %s Invalid sequence number\n", __func__);
-+		goto out;
-+	}
-+
-+	dummy = be32_to_cpup(p++);
-+	if (dummy != 0) {
-+		dprintk("NFS: %s Invalid slotid\n", __func__);
-+		goto out;
-+	}
-+
-+	/*
-+	 * FIXME: process highest slotid and target highest slotid
-+	 */
-+	status = 0;
-+out:
-+	return status;
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
-+}
-+
-+static int decode_cb_sequence4res(struct xdr_stream *xdr,
-+				  struct nfsd4_callback *cb)
-+{
-+	enum nfsstat4 nfserr;
-+	int status;
-+
-+	if (cb->cb_minorversion == 0)
-+		return 0;
-+
-+	status = decode_cb_op_status(xdr, OP_CB_SEQUENCE, &nfserr);
-+	if (unlikely(status))
-+		goto out;
-+	if (unlikely(nfserr != NFS4_OK))
-+		goto out_default;
-+	status = decode_cb_sequence4resok(xdr, cb);
-+out:
-+	return status;
-+out_default:
-+	return nfs_cb_stat_to_errno(status);
-+}
-+
-+/*
-  * NFSv4.0 and NFSv4.1 XDR encode functions
-  *
-  * NFSv4.0 callback argument types are defined in section 15 of RFC
-@@ -399,119 +530,51 @@ static int nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, __be32 *p,
- }
- 
- 
--static int
--decode_cb_compound_hdr(struct xdr_stream *xdr, struct nfs4_cb_compound_hdr *hdr){
--        __be32 *p;
--	u32 taglen;
--
--        READ_BUF(8);
--        READ32(hdr->status);
--	/* We've got no use for the tag; ignore it: */
--        READ32(taglen);
--        READ_BUF(taglen + 4);
--        p += XDR_QUADLEN(taglen);
--        READ32(hdr->nops);
--        return 0;
--}
--
--static int
--decode_cb_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
--{
--	__be32 *p;
--	u32 op;
--	int32_t nfserr;
--
--	READ_BUF(8);
--	READ32(op);
--	if (op != expected) {
--		dprintk("NFSD: decode_cb_op_hdr: Callback server returned "
--		         " operation %d but we issued a request for %d\n",
--		         op, expected);
--		return -EIO;
--	}
--	READ32(nfserr);
--	if (nfserr != NFS_OK)
--		return -nfs_cb_stat_to_errno(nfserr);
--	return 0;
--}
--
- /*
-- * Our current back channel implmentation supports a single backchannel
-- * with a single slot.
-+ * NFSv4.0 and NFSv4.1 XDR decode functions
-+ *
-+ * NFSv4.0 callback result types are defined in section 15 of RFC
-+ * 3530: "Network File System (NFS) version 4 Protocol" and section 20
-+ * of RFC 5661:  "Network File System (NFS) Version 4 Minor Version 1
-+ * Protocol".
-  */
--static int
--decode_cb_sequence(struct xdr_stream *xdr, struct nfsd4_callback *cb,
--		   struct rpc_rqst *rqstp)
--{
--	struct nfsd4_session *ses = cb->cb_clp->cl_cb_session;
--	struct nfs4_sessionid id;
--	int status;
--	u32 dummy;
--	__be32 *p;
--
--	if (cb->cb_minorversion == 0)
--		return 0;
--
--	status = decode_cb_op_hdr(xdr, OP_CB_SEQUENCE);
--	if (status)
--		return status;
--
--	/*
--	 * If the server returns different values for sessionID, slotID or
--	 * sequence number, the server is looney tunes.
--	 */
--	status = -ESERVERFAULT;
--
--	READ_BUF(NFS4_MAX_SESSIONID_LEN + 16);
--	memcpy(id.data, p, NFS4_MAX_SESSIONID_LEN);
--	p += XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN);
--	if (memcmp(id.data, ses->se_sessionid.data, NFS4_MAX_SESSIONID_LEN)) {
--		dprintk("%s Invalid session id\n", __func__);
--		goto out;
--	}
--	READ32(dummy);
--	if (dummy != ses->se_cb_seq_nr) {
--		dprintk("%s Invalid sequence number\n", __func__);
--		goto out;
--	}
--	READ32(dummy); 	/* slotid must be 0 */
--	if (dummy != 0) {
--		dprintk("%s Invalid slotid\n", __func__);
--		goto out;
--	}
--	/* FIXME: process highest slotid and target highest slotid */
--	status = 0;
--out:
--	return status;
--}
--
- 
--static int
--nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p)
-+static int nfs4_xdr_dec_cb_null(struct rpc_rqst *req, __be32 *p, void *__unused)
- {
- 	return 0;
- }
- 
--static int
--nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p,
--		struct nfsd4_callback *cb)
-+/*
-+ * 20.2. Operation 4: CB_RECALL - Recall a Delegation
-+ */
-+static int nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp, __be32 *p,
-+				  struct nfsd4_callback *cb)
- {
- 	struct xdr_stream xdr;
- 	struct nfs4_cb_compound_hdr hdr;
-+	enum nfsstat4 nfserr;
- 	int status;
- 
- 	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
--	status = decode_cb_compound_hdr(&xdr, &hdr);
--	if (status)
-+	status = decode_cb_compound4res(&xdr, &hdr);
-+	if (unlikely(status))
- 		goto out;
--	if (cb) {
--		status = decode_cb_sequence(&xdr, cb, rqstp);
--		if (status)
-+
-+	if (cb != NULL) {
-+		status = decode_cb_sequence4res(&xdr, cb);
-+		if (unlikely(status))
- 			goto out;
- 	}
--	status = decode_cb_op_hdr(&xdr, OP_CB_RECALL);
-+
-+	status = decode_cb_op_status(&xdr, OP_CB_RECALL, &nfserr);
-+	if (unlikely(status))
-+		goto out;
-+	if (unlikely(nfserr != NFS4_OK))
-+		goto out_default;
- out:
- 	return status;
-+out_default:
-+	return nfs_cb_stat_to_errno(status);
- }
- 
- /*
+Doing this, there is a lot less data to keep around, but an IPv6 socket address has other items outside of in6_addr that can be used to form a full address.  We decided at some point we could copy this information from the other address storage field in the rqstp.
+
+But the result of this space savings means we must construct a full socket address when needed, using logic such as the above.
+
+> 
+> --b.
+> 
+>>        return;
+>> out_err:
+>>        conn->cb_addr.ss_family = AF_UNSPEC;
+>> @@ -1876,7 +1891,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>         * for consistent minorversion use throughout:
+>>         */
+>>        new->cl_minorversion = 0;
+>> -       gen_callback(new, setclid, rpc_get_scope_id(sa));
+>> +       gen_callback(new, setclid, rpc_get_scope_id(sa), rqstp);
+>>        add_to_unconfirmed(new, strhashval);
+>>        setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
+>>        setclid->se_clientid.cl_id = new->cl_clientid.cl_id;
+>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+>> index 39adc27..0cee03d 100644
+>> --- a/fs/nfsd/state.h
+>> +++ b/fs/nfsd/state.h
+>> @@ -95,6 +95,7 @@ struct nfs4_delegation {
+>> struct nfs4_cb_conn {
+>>        /* SETCLIENTID info */
+>>        struct sockaddr_storage cb_addr;
+>> +       struct sockaddr_storage cb_saddr;
+>>        size_t                  cb_addrlen;
+>>        u32                     cb_prog; /* used only in 4.0 case;
+>>                                            per-session otherwise */
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> Please read the FAQ at  http://www.tux.org/lkml/
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
