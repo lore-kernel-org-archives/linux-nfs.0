@@ -1,146 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:47889 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751880Ab0LXRBK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Dec 2010 12:01:10 -0500
-Date: Fri, 24 Dec 2010 12:01:06 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>, bfields@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH_V5 01/11] SUNRPC move svc_drop to caller of
- svc_process_common
-Message-ID: <20101224170106.GB2889@fieldses.org>
-References: <1292879088-7821-1-git-send-email-andros@netapp.com>
- <1292879088-7821-2-git-send-email-andros@netapp.com>
- <20101221182305.GA19349@fieldses.org>
- <273FE88A07F5D445824060902F7003440E68B924@SACMVEXC1-PRD.hq.netapp.com>
+Received: from bombadil.infradead.org ([18.85.46.34]:50768 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753262Ab0LPXlC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 18:41:02 -0500
+Date: Thu, 16 Dec 2010 18:40:58 -0500
+From: Christoph Hellwig <hch@infradead.org>
+To: Ric Wheeler <ricwheeler@gmail.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Steve Dickson <SteveD@redhat.com>,
+        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/31] NFS XDR clean up for 2.6.38
+Message-ID: <20101216234058.GA17940@infradead.org>
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
+ <4D0A6503.7010901@RedHat.com>
+ <20101216230524.GA16760@infradead.org>
+ <4D0AA11A.2010307@gmail.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <273FE88A07F5D445824060902F7003440E68B924@SACMVEXC1-PRD.hq.netapp.com>
+In-Reply-To: <4D0AA11A.2010307@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Dec 23, 2010 at 07:43:07PM -0800, Labiaga, Ricardo wrote:
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > Sent: Tuesday, December 21, 2010 10:23 AM
-> > To: Adamson, Andy
-> > Cc: Myklebust, Trond; bfields@redhat.com; linux-nfs@vger.kernel.org
-> > Subject: Re: [PATCH_V5 01/11] SUNRPC move svc_drop to caller of
-> > svc_process_common
-> > 
-> > On Mon, Dec 20, 2010 at 04:04:38PM -0500, andros@netapp.com wrote:
-> > > From: Andy Adamson <andros@netapp.com>
-> > >
-> > > The NFSv4.1 shared back channel does not need to call svc_drop
-> > because the
-> > > callback service never outlives the single connection it services,
-> > and it
-> > > reuses it's buffers and keeps the trasport.
-> > 
-> > Looks better....
-> > 
-> > > Signed-off-by: Andy Adamson <andros@netapp.com>
-> > > ---
-> > >  net/sunrpc/svc.c |   30 ++++++++++++++++--------------
-> > >  1 files changed, 16 insertions(+), 14 deletions(-)
-> > >
-> > > diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> > > index 6359c42..606d182 100644
-> > > --- a/net/sunrpc/svc.c
-> > > +++ b/net/sunrpc/svc.c
-> > > @@ -1147,7 +1147,6 @@ svc_process_common(struct svc_rqst *rqstp,
-> > struct kvec *argv, struct kvec *resv)
-> > >   dropit:
-> > >  	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
-> > >  	dprintk("svc: svc_process dropit\n");
-> > > -	svc_drop(rqstp);
-> > >  	return 0;
-> > >
-> > >  err_short_len:
-> > > @@ -1218,7 +1217,6 @@ svc_process(struct svc_rqst *rqstp)
-> > >  	struct kvec		*resv = &rqstp->rq_res.head[0];
-> > >  	struct svc_serv		*serv = rqstp->rq_server;
-> > >  	u32			dir;
-> > > -	int			error;
-> > >
-> > >  	/*
-> > >  	 * Setup response xdr_buf.
-> > > @@ -1246,11 +1244,13 @@ svc_process(struct svc_rqst *rqstp)
-> > >  		return 0;
-> > >  	}
-> > >
-> > > -	error = svc_process_common(rqstp, argv, resv);
-> > > -	if (error <= 0)
-> > 
-> > Oh, and that was pretty ugly, seeing as svc_process_common never
-> > returned <0.  Thanks for cleaning that up.
-> > 
-> > > -		return error;
-> > > -
-> > > -	return svc_send(rqstp);
-> > > +	/* Returns 1 for send, 0 for drop */
-> > > +	if (svc_process_common(rqstp, argv, resv))
-> > > +		return svc_send(rqstp);
-> > > +	else {
-> > > +		svc_drop(rqstp);
-> > > +		return 0;
-> > > +	}
-> > >  }
-> > >
-> > >  #if defined(CONFIG_NFS_V4_1)
-> > > @@ -1264,7 +1264,6 @@ bc_svc_process(struct svc_serv *serv, struct
-> > rpc_rqst *req,
-> > >  {
-> > >  	struct kvec	*argv = &rqstp->rq_arg.head[0];
-> > >  	struct kvec	*resv = &rqstp->rq_res.head[0];
-> > > -	int 		error;
-> > >
-> > >  	/* Build the svc_rqst used by the common processing routine */
-> > >  	rqstp->rq_xprt = serv->bc_xprt;
-> > > @@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct
-> > rpc_rqst *req,
-> > >  	svc_getu32(argv);	/* XID */
-> > >  	svc_getnl(argv);	/* CALLDIR */
-> > >
-> > > -	error = svc_process_common(rqstp, argv, resv);
-> > > -	if (error <= 0)
-> > > -		return error;
-> > > -
-> > > -	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req-
-> > >rq_snd_buf));
-> > > -	return bc_send(req);
-> > > +	/* Returns 1 for send, 0 for drop */
-> > > +	if (svc_process_common(rqstp, argv, resv)) {
-> > > +		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
-> > > +
-> sizeof(req->rq_snd_buf));
-> > > +		return bc_send(req);
-> > > +	} else {
-> > > +		/* Nothing to do to drop request */
-> > > +		return 0;
-> > 
-> > The one thing that bothers me is the svc_reserve stuff.  Which you
-> have
-> > no use for, I guess.  But svc_reserve_auth() is called from
-> > svc_process_common(); I wonder if that can get us into trouble?  I'll
-> > look a little closer.
-> > 	
+On Thu, Dec 16, 2010 at 06:30:34PM -0500, Ric Wheeler wrote:
+> This has nothing to do with shame or conspiracy, it has to do with
+> doing changes in an orderly way so we can test and stabilize things
+> in the upstream kernel.
 > 
-> The callback request arrives on the backchannel and is placed in a
-> preallocated 'struct rpc_rqst'.  bc_svc_process() is then called, which
-> populates the 'struct svc_rqst' rq_arg and rq_res from the 'struct
-> rpc_rqst' send and receive buffers.  So the reply buffer is independent
-> of any other request on the forechannel or backchannel.
-> 
-> The space reserved for the 'struct svc_rqst' will be 0 when
-> svc_reserve() is called, so it should not call svc_xprt_enqueue().
-> 
-> So I think we're okay, but I'm not sure what has you concerned.
+> Changing both at once is not good for upstream or distros  in my opinion,
 
-No, I think you're right, if rq_reserved is initialized to zero then I
-can't see what would go wrong.
+Steve's mail reads pretty different from that.
 
---b.
+But it doesn't really matter as it doesn't make any sense - as Chuck
+has explained theres zero overlap between the XDR decoder changes and
+pnfs features anyway.  And if there was it's pretty clear something that
+the about 98% of the userbase that's using NFSv3 uses should have more
+priority over the 0.5% that are planning to maybe possibly use pnfs in
+the next decade.
