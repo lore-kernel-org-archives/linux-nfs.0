@@ -1,181 +1,171 @@
 From: Fred Isaman <iisaman@netapp.com>
-Subject: Re: [PATCH 11/15] pnfs: change lo refcounting to atomic_t
-Date: Wed, 22 Dec 2010 17:08:49 -0500
-Message-ID: <3E271F0F-FC13-4A7B-B901-02ECAC6B0B2E@netapp.com>
-References: <1292990449-20057-1-git-send-email-iisaman@netapp.com> <1292990449-20057-12-git-send-email-iisaman@netapp.com> <1293054479.6422.18.camel@heimdal.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 20/22] pnfs-submit: wave2: remove all LAYOUTRETURN code
+Date: Thu, 16 Dec 2010 09:04:22 -0500
+Message-ID: <AANLkTi=G8x9M9QmKRY3wzLPD-49O9VwxFZ8sUCEPDiHk@mail.gmail.com>
+References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
+	<1291944177-7819-21-git-send-email-iisaman@netapp.com>
+	<4D0A0A6D.5060807@panasas.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
+To: Boaz Harrosh <bharrosh@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:56233 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751345Ab0LVWIu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2010 17:08:50 -0500
-In-Reply-To: <1293054479.6422.18.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+Received: from mail-bw0-f45.google.com ([209.85.214.45]:43583 "EHLO
+	mail-bw0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755914Ab0LPOEY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 09:04:24 -0500
+Received: by bwz16 with SMTP id 16so3595550bwz.4
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Dec 2010 06:04:23 -0800 (PST)
+In-Reply-To: <4D0A0A6D.5060807@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Dec 22, 2010, at 4:47 PM, Trond Myklebust wrote:
-
-> On Tue, 2010-12-21 at 23:00 -0500, Fred Isaman wrote:
->> This will be required to allow us to grab reference outside of i_lock.
->> While we are at it, make put_layout_hdr take the same argument as all the
->> related functions.
->> 
->> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->> ---
->> fs/nfs/pnfs.c |   50 ++++++++++++++++++++++++++++----------------------
->> fs/nfs/pnfs.h |    4 ++--
->> 2 files changed, 30 insertions(+), 24 deletions(-)
->> 
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 970cc3b..53a0184 100644
+On Thu, Dec 16, 2010 at 7:47 AM, Boaz Harrosh <bharrosh@panasas.com> wr=
+ote:
+> On 12/10/2010 03:22 AM, Fred Isaman wrote:
+>
 >> --- a/fs/nfs/pnfs.c
 >> +++ b/fs/nfs/pnfs.c
->> @@ -177,34 +177,40 @@ EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
->>  * pNFS client layout cache
->>  */
->> 
->> +/* Need to hold i_lock if caller does not already hold reference */
->> static void
->> -get_layout_hdr_locked(struct pnfs_layout_hdr *lo)
->> +get_layout_hdr(struct pnfs_layout_hdr *lo)
->> {
->> -	assert_spin_locked(&lo->plh_inode->i_lock);
->> -	lo->plh_refcount++;
->> +	atomic_inc(&lo->plh_refcount);
->> }
->> 
->> static void
->> -put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
->> +destroy_layout_hdr(struct pnfs_layout_hdr *lo)
->> {
->> -	assert_spin_locked(&lo->plh_inode->i_lock);
->> -	BUG_ON(lo->plh_refcount == 0);
->> +	dprintk("%s: freeing layout cache %p\n", __func__, lo);
->> +	BUG_ON(!list_empty(&lo->plh_layouts));
->> +	NFS_I(lo->plh_inode)->layout = NULL;
->> +	kfree(lo);
->> +}
->> 
->> -	lo->plh_refcount--;
->> -	if (!lo->plh_refcount) {
->> -		dprintk("%s: freeing layout cache %p\n", __func__, lo);
->> -		BUG_ON(!list_empty(&lo->plh_layouts));
->> -		NFS_I(lo->plh_inode)->layout = NULL;
->> -		kfree(lo);
->> -	}
->> +static void
->> +put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
->> +{
->> +	BUG_ON(atomic_read(&lo->plh_refcount) == 0);
-> 
-> Isn't this debugged by now?
-> 
->> +	if (atomic_dec_and_test(&lo->plh_refcount))
->> +		destroy_layout_hdr(lo);
->> }
->> 
->> void
->> -put_layout_hdr(struct inode *inode)
->> +put_layout_hdr(struct pnfs_layout_hdr *lo)
->> {
->> -	spin_lock(&inode->i_lock);
->> -	put_layout_hdr_locked(NFS_I(inode)->layout);
->> -	spin_unlock(&inode->i_lock);
->> +	struct inode *inode = lo->plh_inode;
->> +
->> +	BUG_ON(atomic_read(&lo->plh_refcount) == 0);
-> Ditto....
+>> @@ -599,55 +599,6 @@ void nfs4_asynch_forget_layouts(struct pnfs_lay=
+out_hdr *lo,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+>> =A0}
+>>
+>> -/* Return true if there is layout based io in progress in the given=
+ range.
+>> - * Assumes range has already been marked invalid, and layout marked=
+ to
+>> - * prevent any new lseg from being inserted.
+>> - */
+>> -bool
+>> -pnfs_return_layout_barrier(struct nfs_inode *nfsi,
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0struct pnfs_layout_=
+range *range)
+>> -{
+>> - =A0 =A0 struct pnfs_layout_segment *lseg;
+>> - =A0 =A0 bool ret =3D false;
+>> -
+>> - =A0 =A0 spin_lock(&nfsi->vfs_inode.i_lock);
+>> - =A0 =A0 list_for_each_entry(lseg, &nfsi->layout->segs, fi_list)
+>> - =A0 =A0 =A0 =A0 =A0 =A0 if (should_free_lseg(&lseg->range, range))=
+ {
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ret =3D true;
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 break;
+>> - =A0 =A0 =A0 =A0 =A0 =A0 }
+>> - =A0 =A0 spin_unlock(&nfsi->vfs_inode.i_lock);
+>> - =A0 =A0 dprintk("%s:Return %d\n", __func__, ret);
+>> - =A0 =A0 return ret;
+>> -}
+>> -
+>> -static int
+>> -return_layout(struct inode *ino, struct pnfs_layout_range *range, b=
+ool wait)
+>> -{
+>> - =A0 =A0 struct nfs4_layoutreturn *lrp;
+>> - =A0 =A0 struct nfs_server *server =3D NFS_SERVER(ino);
+>> - =A0 =A0 int status =3D -ENOMEM;
+>> -
+>> - =A0 =A0 dprintk("--> %s\n", __func__);
+>> -
+>> - =A0 =A0 lrp =3D kzalloc(sizeof(*lrp), GFP_KERNEL);
+>> - =A0 =A0 if (lrp =3D=3D NULL) {
+>> - =A0 =A0 =A0 =A0 =A0 =A0 put_layout_hdr(ino);
+>> - =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+>> - =A0 =A0 }
+>> - =A0 =A0 lrp->args.reclaim =3D 0;
+>> - =A0 =A0 lrp->args.layout_type =3D server->pnfs_curr_ld->id;
+>> - =A0 =A0 lrp->args.return_type =3D RETURN_FILE;
+>> - =A0 =A0 lrp->args.range =3D *range;
+>> - =A0 =A0 lrp->args.inode =3D ino;
+>> - =A0 =A0 lrp->clp =3D server->nfs_client;
+>> -
+>> - =A0 =A0 status =3D nfs4_proc_layoutreturn(lrp, wait);
+>> -out:
+>> - =A0 =A0 dprintk("<-- %s status: %d\n", __func__, status);
+>> - =A0 =A0 return status;
+>> -}
+>> -
+>> =A0/* Initiates a LAYOUTRETURN(FILE) */
+>> =A0int
+>> =A0_pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *=
+range,
+>> @@ -673,21 +624,10 @@ _pnfs_return_layout(struct inode *ino, struct =
+pnfs_layout_range *range,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto out;
+>> =A0 =A0 =A0 }
+>> =A0 =A0 =A0 lo->plh_block_lgets++;
+>> - =A0 =A0 /* Reference matched in nfs4_layoutreturn_release */
+>> - =A0 =A0 get_layout_hdr(lo);
+>> =A0 =A0 =A0 spin_unlock(&ino->i_lock);
+>> =A0 =A0 =A0 pnfs_free_lseg_list(&tmp_list);
+>>
+>> - =A0 =A0 if (layoutcommit_needed(nfsi)) {
+>> - =A0 =A0 =A0 =A0 =A0 =A0 status =3D pnfs_layoutcommit_inode(ino, wa=
+it);
+>> - =A0 =A0 =A0 =A0 =A0 =A0 if (status) {
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* Return layout even if l=
+ayoutcommit fails */
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 dprintk("%s: layoutcommit =
+failed, status=3D%d. "
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 "Returning=
+ layout anyway\n",
+>> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 __func__, =
+status);
+>> - =A0 =A0 =A0 =A0 =A0 =A0 }
+>> - =A0 =A0 }
+>> - =A0 =A0 status =3D return_layout(ino, &arg, wait);
+>
+>
+> You are also removing the layoutcommit.
+> 1. You have not stated it anywhere, and snacked it in silently
+> 2. If you are removing layoutcommit please do that in a different
+> =A0 patch with it's own comment and explanation.
+> 3. How come? forgetful or not layoutcommits are a different issue
+> =A0 and must be done correctly when writing !!!?!
+>
+> Boaz
 
-OK, I'll remove those.
+You are right, that should have been a separate patch.
 
-Fred
+=46red
 
-> 
->> +	if (atomic_dec_and_lock(&lo->plh_refcount, &inode->i_lock)) {
->> +		destroy_layout_hdr(lo);
->> +		spin_unlock(&inode->i_lock);
->> +	}
->> }
->> 
->> static void
->> @@ -224,7 +230,7 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
->> 	BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
->> 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
->> 	/* Matched by get_layout_hdr in pnfs_insert_layout */
->> -	put_layout_hdr(ino);
->> +	put_layout_hdr(NFS_I(ino)->layout);
->> }
->> 
->> /* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
->> @@ -481,7 +487,7 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
->> 			__func__, lseg, lseg->pls_range.iomode,
->> 			lseg->pls_range.offset, lseg->pls_range.length);
->> 	}
->> -	get_layout_hdr_locked(lo);
->> +	get_layout_hdr(lo);
->> 
->> 	dprintk("%s:Return\n", __func__);
->> }
->> @@ -494,7 +500,7 @@ alloc_init_layout_hdr(struct inode *ino)
->> 	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
->> 	if (!lo)
->> 		return NULL;
->> -	lo->plh_refcount = 1;
->> +	atomic_set(&lo->plh_refcount, 1);
->> 	INIT_LIST_HEAD(&lo->plh_layouts);
->> 	INIT_LIST_HEAD(&lo->plh_segs);
->> 	lo->plh_inode = ino;
->> @@ -609,7 +615,7 @@ pnfs_update_layout(struct inode *ino,
->> 		goto out_unlock;
->> 	atomic_inc(&lo->plh_outstanding);
->> 
->> -	get_layout_hdr_locked(lo);
->> +	get_layout_hdr(lo);
->> 	if (list_empty(&lo->plh_segs)) {
->> 		/* The lo must be on the clp list if there is any
->> 		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
->> @@ -632,7 +638,7 @@ pnfs_update_layout(struct inode *ino,
->> 		spin_unlock(&ino->i_lock);
->> 	}
->> 	atomic_dec(&lo->plh_outstanding);
->> -	put_layout_hdr(ino);
->> +	put_layout_hdr(lo);
->> out:
->> 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
->> 		nfsi->layout->plh_flags, lseg);
+>> + =A0 =A0 /* Don't need to wait since this is followed by call to en=
+d_writeback */
+>> =A0out:
+>> =A0 =A0 =A0 dprintk("<-- %s status: %d\n", __func__, status);
+>> =A0 =A0 =A0 return status;
 >> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->> index 698380d..8aaab56 100644
+>> index d999e38..0ddab0d 100644
 >> --- a/fs/nfs/pnfs.h
 >> +++ b/fs/nfs/pnfs.h
->> @@ -65,7 +65,7 @@ struct pnfs_layoutdriver_type {
->> };
->> 
->> struct pnfs_layout_hdr {
->> -	unsigned long		plh_refcount;
->> +	atomic_t		plh_refcount;
->> 	struct list_head	plh_layouts;   /* other client layouts */
->> 	struct list_head	plh_segs;      /* layout segments list */
->> 	nfs4_stateid		plh_stateid;
->> @@ -147,7 +147,7 @@ void unset_pnfs_layoutdriver(struct nfs_server *);
->> int pnfs_layout_process(struct nfs4_layoutget *lgp);
->> void pnfs_destroy_layout(struct nfs_inode *);
->> void pnfs_destroy_all_layouts(struct nfs_client *);
->> -void put_layout_hdr(struct inode *inode);
->> +void put_layout_hdr(struct pnfs_layout_hdr *lo);
->> int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
->> 				  struct pnfs_layout_hdr *lo,
->> 				  struct nfs4_state *open_state);
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-
+>> @@ -183,7 +183,6 @@ extern int nfs4_proc_getdeviceinfo(struct nfs_se=
+rver *server,
+>> =A0extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
+>> =A0extern int nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *=
+data,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0i=
+nt issync);
+>> -extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bo=
+ol wait);
+>>
+>> =A0/* pnfs.c */
+>> =A0void get_layout_hdr(struct pnfs_layout_hdr *lo);
+>> @@ -193,7 +192,6 @@ bool should_free_lseg(struct pnfs_layout_range *=
+lseg_range,
+>> =A0struct pnfs_layout_segment *
+>> =A0pnfs_update_layout(struct inode *ino, struct nfs_open_context *ct=
+x,
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0enum pnfs_iomode access_type);
+>> -bool pnfs_return_layout_barrier(struct nfs_inode *, struct pnfs_lay=
+out_range *);
+>> =A0int _pnfs_return_layout(struct inode *, struct pnfs_layout_range =
+*, bool wait);
+>> =A0void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+>> =A0void unset_pnfs_layoutdriver(struct nfs_server *);
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
