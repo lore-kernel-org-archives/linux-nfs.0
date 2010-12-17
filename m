@@ -1,175 +1,161 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29092 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:61011 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758949Ab0LNW3G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Dec 2010 17:29:06 -0500
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <EF7B330F-CC15-4B04-9D70-B209166E4F13@netapp.com>
-From: Andy Adamson <andros@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <20101214215601.GL24828@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: Re: [PATCH_V3 1/7] NFS dont free shared socket on backchannel put xprt
-Date: Tue, 14 Dec 2010 17:28:51 -0500
-References: <1292271585-3038-1-git-send-email-andros@netapp.com> <1292271585-3038-2-git-send-email-andros@netapp.com> <20101214181909.GA22950@fieldses.org> <807D3371-AA86-4CEA-B6D0-BD5285439FB6@netapp.com> <20101214215601.GL24828@fieldses.org>
+	id S1755756Ab0LQSUP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Dec 2010 13:20:15 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V4 9/9] NFS rename client back channel transport field
+Date: Fri, 17 Dec 2010 13:20:10 -0500
+Message-Id: <1292610010-19084-10-git-send-email-andros@netapp.com>
+In-Reply-To: <1292610010-19084-9-git-send-email-andros@netapp.com>
+References: <1292610010-19084-1-git-send-email-andros@netapp.com>
+ <1292610010-19084-2-git-send-email-andros@netapp.com>
+ <1292610010-19084-3-git-send-email-andros@netapp.com>
+ <1292610010-19084-4-git-send-email-andros@netapp.com>
+ <1292610010-19084-5-git-send-email-andros@netapp.com>
+ <1292610010-19084-6-git-send-email-andros@netapp.com>
+ <1292610010-19084-7-git-send-email-andros@netapp.com>
+ <1292610010-19084-8-git-send-email-andros@netapp.com>
+ <1292610010-19084-9-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Andy Adamson <andros@netapp.com>
 
-On Dec 14, 2010, at 4:56 PM, J. Bruce Fields wrote:
+Differentiate from server backchannel
 
-> On Tue, Dec 14, 2010 at 04:44:58PM -0500, Andy Adamson wrote:
->>
->> On Dec 14, 2010, at 1:19 PM, J. Bruce Fields wrote:
->>
->>> On Mon, Dec 13, 2010 at 03:19:39PM -0500, Andy Adamson wrote:
->>>> Fixes this bug:
->>>> fedora-64 kernel: Invoking bc_svc_procass()
->>>> fedora-64 kernel: nfs_callback_authenticate SVC_DROP
->>>> fedora-64 kernel: BUG: unable to handle kernel NULL pointer
->>>> dereference at 0000000000000018 IP: [<ffffffffa0156140>]
->>>> svc_sock_free+0x32/0x56 [sunrpc]
->>>>
->>>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>>> ---
->>>> fs/nfs/callback.c               |    3 +++
->>>> include/linux/sunrpc/svc_xprt.h |    1 +
->>>> net/sunrpc/svc_xprt.c           |    3 ++-
->>>> 3 files changed, 6 insertions(+), 1 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
->>>> index 93a8b3b..023a9eb 100644
->>>> --- a/fs/nfs/callback.c
->>>> +++ b/fs/nfs/callback.c
->>>> @@ -193,6 +193,9 @@ nfs41_callback_up(struct svc_serv *serv,
->>>> struct rpc_xprt *xprt)
->>>> 	serv->bc_xprt = bc_xprt;
->>>> 	xprt->bc_serv = serv;
->>>>
->>>> +	/* socket is shared with the fore channel */
->>>> +	set_bit(XPT_SHARE_SOCK, &bc_xprt->xpt_flags);
->>>> +
->>>> 	INIT_LIST_HEAD(&serv->sv_cb_list);
->>>> 	spin_lock_init(&serv->sv_cb_lock);
->>>> 	init_waitqueue_head(&serv->sv_cb_waitq);
->>>> diff --git a/include/linux/sunrpc/svc_xprt.h
->>>> b/include/linux/sunrpc/svc_xprt.h
->>>> index aea0d43..600c669 100644
->>>> --- a/include/linux/sunrpc/svc_xprt.h
->>>> +++ b/include/linux/sunrpc/svc_xprt.h
->>>> @@ -62,6 +62,7 @@ struct svc_xprt {
->>>> #define	XPT_DETACHED	10		/* detached from tempsocks list */
->>>> #define XPT_LISTENER	11		/* listening endpoint */
->>>> #define XPT_CACHE_AUTH	12		/* cache auth info */
->>>> +#define XPT_SHARE_SOCK	13		/* fore and back channel share socket  
->>>> */
->>>>
->>>> 	struct svc_pool		*xpt_pool;	/* current pool iff queued */
->>>> 	struct svc_serv		*xpt_server;	/* service for transport */
->>>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
->>>> index ea2ff78..8c4d9ad 100644
->>>> --- a/net/sunrpc/svc_xprt.c
->>>> +++ b/net/sunrpc/svc_xprt.c
->>>> @@ -128,7 +128,8 @@ static void svc_xprt_free(struct kref *kref)
->>>> 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
->>>> 		svcauth_unix_info_release(xprt);
->>>> 	put_net(xprt->xpt_net);
->>>> -	xprt->xpt_ops->xpo_free(xprt);
->>>> +	if (!test_bit(XPT_SHARE_SOCK, &xprt->xpt_flags))
->>>> +		xprt->xpt_ops->xpo_free(xprt);
->>>
->>> So when does the svc_xprt get freed if not here?
->>
->> svc_sock_destroy frees the bc_xprt, called by svc_destroy on the
->> serv->bc_xprt.
->
-> Can you remove the
->
-> 	#if defined(CONFIG_NFS_V4_1)
->        	svc_sock_destroy(serv->bc_xprt);
-> 	#endif /* CONFIG_NFS_V4_1 */
->
-> from svc_destroy instead?
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback.c              |   12 ++++++------
+ include/linux/sunrpc/bc_xprt.h |    4 ++--
+ include/linux/sunrpc/svc.h     |    2 +-
+ net/sunrpc/svc.c               |    6 +++---
+ net/sunrpc/svcsock.c           |    2 +-
+ 5 files changed, 13 insertions(+), 13 deletions(-)
 
-Instead of what? Where do you want svc_sock_destroy to be called? From  
-svc_xprt_free?
-
->
->>> And why is it OK to do
->>> the put_net() and module_put() but not the xpo_free()?
->>
->> svc_sock_create()  called only by nfs41_callback_up creates the
->> bc_xprt. It calls svc_xprt_init which calls get_net(), so put_net is
->> needed.
->>
->> Hmmm. It looks like the module_put is also not needed - the matching
->> module_get is in svc_create_xprt() which is not called for the
->> NFSv4.1 callback service. (but is called for the NFSv4.0 callback
->> service ... sheese).
->>
->> I'll move the module_put so it is also not called when the
->> XPT_SHARE_SOCK flag is set.
->
-> The xpt_net reference counting doesn't look right either.
-
-I'm not familiar with the xpt_net reference counting.
-
->
-> I think we shouldn't need XPT_SHARE_SOCK if we just get the  
-> reference counting
-> on the svc_xprt right instead.
-
-At the end of the day svc_xprt_free will be called on this svc_xprt.   
-At that time, xpo_free can not be called because xpo_create was not  
-used to create it. svc_sock_destroy needs to be called to free the  
-storage kzalloc'ed in svc_sock_create.
-
-I don't get what you are suggesting.....
-
->
->>
->>>
->>> Something feels wrong here....
->>
->> Yeah - how about naming the server back channel xprt (bc_xprt) the
->> same as the client back channel xprt (bc_xprt)!!! How confusing is
->> THAT! :)
->
-> Well, and it's also the name of a field in svc_serv.  If nothing  
-> else, would
-> you mind renaming that to sv_bc_xprt?
-
-I can clean up the naming after we figure out the above.
-
--->Andy
-
->
-> --b.
->
->>
->> Thanks for the review.
->>
->> -->Andy
->>
->>>
->>> --b.
->>>
->>>> 	module_put(owner);
->>>> }
->>>>
->>>> -- 
->>>> 1.6.6
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-
->>>> nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe
->>> linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 52e6695..e9a4453 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -142,7 +142,7 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
+ 	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
+ 	struct nfs4_sessionid *bc_sid;
+ 
+-	if (!serv->bc_xprt)
++	if (!serv->sv_bc_xprt)
+ 		return -EINVAL;
+ 
+ 	/* on success freed in xprt_free */
+@@ -152,12 +152,12 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
+ 	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
+ 		NFS4_MAX_SESSIONID_LEN);
+ 	spin_lock_bh(&serv->sv_cb_lock);
+-	serv->bc_xprt->xpt_bc_sid = bc_sid;
++	serv->sv_bc_xprt->xpt_bc_sid = bc_sid;
+ 	spin_unlock_bh(&serv->sv_cb_lock);
+-	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
++	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for sv_bc_xprt %p\n", __func__,
+ 		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
+ 		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
+-		serv->bc_xprt);
++		serv->sv_bc_xprt);
+ 	return 0;
+ }
+ 
+@@ -233,8 +233,8 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ 	init_waitqueue_head(&serv->sv_cb_waitq);
+ 	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
+ 	if (IS_ERR(rqstp)) {
+-		svc_xprt_put(serv->bc_xprt);
+-		serv->bc_xprt = NULL;
++		svc_xprt_put(serv->sv_bc_xprt);
++		serv->sv_bc_xprt = NULL;
+ 	}
+ out:
+ 	dprintk("--> %s return %ld\n", __func__, PTR_ERR(rqstp));
+diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
+index 2c60e09..c50b458 100644
+--- a/include/linux/sunrpc/bc_xprt.h
++++ b/include/linux/sunrpc/bc_xprt.h
+@@ -43,7 +43,7 @@ int bc_send(struct rpc_rqst *req);
+  */
+ static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
+ {
+-	if (rqstp->rq_server->bc_xprt)
++	if (rqstp->rq_server->sv_bc_xprt)
+ 		return 1;
+ 	return 0;
+ }
+@@ -51,7 +51,7 @@ static inline struct nfs4_sessionid *bc_xprt_sid(struct svc_rqst *rqstp)
+ {
+ 	if (svc_is_backchannel(rqstp))
+ 		return (struct nfs4_sessionid *)
+-					rqstp->rq_server->bc_xprt->xpt_bc_sid;
++			rqstp->rq_server->sv_bc_xprt->xpt_bc_sid;
+ 	return NULL;
+ }
+ 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 5a3085b..c81d4d8 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -99,7 +99,7 @@ struct svc_serv {
+ 	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
+ 	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
+ 						 * entries in the svc_cb_list */
+-	struct svc_xprt		*bc_xprt;
++	struct svc_xprt		*sv_bc_xprt;	/* callback on fore channel */
+ #endif /* CONFIG_NFS_V4_1 */
+ };
+ 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 3520cb3..5f7397b 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1263,7 +1263,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ 	int		ret;
+ 
+ 	/* Build the svc_rqst used by the common processing routine */
+-	rqstp->rq_xprt = serv->bc_xprt;
++	rqstp->rq_xprt = serv->sv_bc_xprt;
+ 	rqstp->rq_xid = req->rq_xid;
+ 	rqstp->rq_prot = req->rq_xprt->prot;
+ 	rqstp->rq_server = serv;
+@@ -1289,14 +1289,14 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ 	svc_getnl(argv);	/* CALLDIR */
+ 
+ 	/* Hold a reference to the back channel socket across the call */
+-	svc_xprt_get(serv->bc_xprt);
++	svc_xprt_get(serv->sv_bc_xprt);
+ 	ret = svc_process_common(rqstp, argv, resv);
+ 	if (ret <= 0)
+ 		return ret;
+ 
+ 	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
+ 	ret = bc_send(req);
+-	svc_xprt_put(serv->bc_xprt);
++	svc_xprt_put(serv->sv_bc_xprt);
+ 	return ret;
+ }
+ EXPORT_SYMBOL(bc_svc_process);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index f8b5ca9..e495a45 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1615,7 +1615,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+ 	xprt = &svsk->sk_xprt;
+ 	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
+ 
+-	serv->bc_xprt = xprt;
++	serv->sv_bc_xprt = xprt;
+ 
+ 	return xprt;
+ }
+-- 
+1.6.6
 
