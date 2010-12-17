@@ -1,47 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:25533 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751541Ab0LWATY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2010 19:19:24 -0500
-Subject: Re: [PATCH 1/5] NFS: call_sync function
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1293063267.6422.53.camel@heimdal.trondhjem.org>
-Date: Wed, 22 Dec 2010 19:18:21 -0500
-Cc: Jim Rees <rees@umich.edu>, Bryan Schumaker <bjschuma@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <01AD75A8-BF38-44C7-9B44-C192FA062858@oracle.com>
-References: <4D1272B6.9000907@netapp.com> <20101222235447.GA25778@merit.edu> <1293063267.6422.53.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:3132 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755740Ab0LQSUN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Dec 2010 13:20:13 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V4 7/9] NFS RPC_AUTH_GSS unsupported on v4.1 back channel
+Date: Fri, 17 Dec 2010 13:20:08 -0500
+Message-Id: <1292610010-19084-8-git-send-email-andros@netapp.com>
+In-Reply-To: <1292610010-19084-7-git-send-email-andros@netapp.com>
+References: <1292610010-19084-1-git-send-email-andros@netapp.com>
+ <1292610010-19084-2-git-send-email-andros@netapp.com>
+ <1292610010-19084-3-git-send-email-andros@netapp.com>
+ <1292610010-19084-4-git-send-email-andros@netapp.com>
+ <1292610010-19084-5-git-send-email-andros@netapp.com>
+ <1292610010-19084-6-git-send-email-andros@netapp.com>
+ <1292610010-19084-7-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Andy Adamson <andros@netapp.com>
 
-On Dec 22, 2010, at 7:14 PM, Trond Myklebust wrote:
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-> On Wed, 2010-12-22 at 18:54 -0500, Jim Rees wrote:
->> Bryan Schumaker wrote:
->> 
->>  This patch changes nfs4_call_sync() from a macro into a
->>  static inline function.
->> 
->> Makes sense, but why change the arguments?
-> 
-> Not sure I understand. Do you mean the change from untyped args and res
-> to nfs4_sequence_args and nfs4_sequence_res? That would be to enable
-> proper type checking.
-> 
-> That part of the macro was always a dirty hack which relied on the
-> sequence related arguments always having the same names, and which only
-> served to avoid having to type those 8 characters per argument...
-
-It would be nice to document that improvement in the patch description.
-
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 1033eae..52e6695 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -369,6 +369,9 @@ static int check_gss_callback_principal(struct nfs_client *clp,
+ 	struct rpc_clnt *r = clp->cl_rpcclient;
+ 	char *p = svc_gss_principal(rqstp);
+ 
++	/* No RPC_AUTH_GSS on NFSv4.1 back channel yet */
++	if (clp->cl_minorversion != 0)
++		return SVC_DENIED;
+ 	/*
+ 	 * It might just be a normal user principal, in which case
+ 	 * userspace won't bother to tell us the name at all.
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.6.6
 
