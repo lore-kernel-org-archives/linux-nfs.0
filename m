@@ -1,50 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50192 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754661Ab0LOVtU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 16:49:20 -0500
-Subject: Re: [PATCH 13/31] NFS: Introduce new-style XDR decoding functions
- for NFSv2
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20101214145630.2293.21193.stgit@matisse.1015granger.net>
-References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-	 <20101214145630.2293.21193.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 15 Dec 2010 16:49:07 -0500
-Message-ID: <1292449747.3068.76.camel@heimdal.trondhjem.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:45983 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754454Ab0LQTzM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Dec 2010 14:55:12 -0500
+Received: by iwn9 with SMTP id 9so1078277iwn.19
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2010 11:55:11 -0800 (PST)
+In-Reply-To: <20101217193324.GC14510@fieldses.org>
+References: <1292610010-19084-1-git-send-email-andros@netapp.com>
+	<1292610010-19084-2-git-send-email-andros@netapp.com>
+	<20101217184047.GD11515@fieldses.org>
+	<AANLkTinb3cZjPJZsGs-eNgU-5qMtvbFZMjY_rc=rZExN@mail.gmail.com>
+	<AANLkTi=yKirVoRTEsz9s=8nQHPXR0C52DQHK-nz7Q82j@mail.gmail.com>
+	<20101217191037.GA14510@fieldses.org>
+	<AANLkTinjxeWAqW7p=nReP7jmqfWZi7CS_p+GVdno7zmQ@mail.gmail.com>
+	<20101217193324.GC14510@fieldses.org>
+Date: Fri, 17 Dec 2010 14:55:11 -0500
+Message-ID: <AANLkTinHUSkV4LApqmwk+mU7OS5ro0u859PMtQ39qFPC@mail.gmail.com>
+Subject: Re: [PATCH_V4 1/9] SUNRPC new transport for the NFSv4.1 shared back channel
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-12-14 at 09:56 -0500, Chuck Lever wrote:
-> We'd like to prevent local buffer overflows caused by malicious or
-> broken servers.  New xdr_stream style decoders can do that.
-> 
-> For efficiency, we also eventually want to be able to pass xdr_streams
-> from call_decode() to all XDR decoding functions, rather than building
-> an xdr_stream in every XDR decoding function in the kernel.
-> 
-> Static helper functions are left without the "inline" directive.  This
-> allows the compiler to choose automatically how to optimize these for
-> size or speed.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Tested-by: J. Bruce Fields <bfields@redhat.com>
-> ---
-> 
->  fs/nfs/nfs3xdr.c     | 1534 +++++++++++++++++++++++++++++++++++++++++++++++---
->  include/linux/nfs3.h |    1 
->  2 files changed, 1451 insertions(+), 84 deletions(-)
+On Fri, Dec 17, 2010 at 2:33 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Fri, Dec 17, 2010 at 02:16:35PM -0500, William A. (Andy) Adamson wrote:
+>> On Fri, Dec 17, 2010 at 2:10 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> > On Fri, Dec 17, 2010 at 01:57:50PM -0500, William A. (Andy) Adamson wrote:
+>> >> On Fri, Dec 17, 2010 at 1:54 PM, William A. (Andy) Adamson
+>> >> <androsadamson@gmail.com> wrote:
+>> >> > On Fri, Dec 17, 2010 at 1:40 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> >> >> On Fri, Dec 17, 2010 at 01:20:02PM -0500, andros@netapp.com wrote:
+>> >> >>> From: Andy Adamson <andros@netapp.com>
+>> >> >>>
+>> >> >>> Create a new transport for the shared back channel.l Move the current sock
+>> >> >>> create and destroy routines into the new transport ops.
+>> >> >>>
+>> >> >>> Reference the back channel transport across message processing (recv/send).
+>> >> >>>
+>> >> >>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> >> >>> ---
+>> >> >>>  include/linux/sunrpc/svcsock.h |    1 +
+>> >> >>>  net/sunrpc/svc.c               |   18 +++---
+>> >> >>>  net/sunrpc/svcsock.c           |  122 +++++++++++++++++++++++++++++++++-------
+>> >> >>>  3 files changed, 112 insertions(+), 29 deletions(-)
+>> >> >>>
+>> >> >>> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+>> >> >>> index 1b353a7..3a45a80 100644
+>> >> >>> --- a/include/linux/sunrpc/svcsock.h
+>> >> >>> +++ b/include/linux/sunrpc/svcsock.h
+>> >> >>> @@ -45,6 +45,7 @@ int         svc_sock_names(struct svc_serv *serv, char *buf,
+>> >> >>>  int          svc_addsock(struct svc_serv *serv, const int fd,
+>> >> >>>                                       char *name_return, const size_t len);
+>> >> >>>  void         svc_init_xprt_sock(void);
+>> >> >>> +void         svc_init_bc_xprt_sock(void);
+>> >> >>>  void         svc_cleanup_xprt_sock(void);
+>> >> >>>  struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot);
+>> >> >>>  void         svc_sock_destroy(struct svc_xprt *);
+>> >> >>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+>> >> >>> index 6359c42..3520cb3 100644
+>> >> >>> --- a/net/sunrpc/svc.c
+>> >> >>> +++ b/net/sunrpc/svc.c
+>> >> >>> @@ -488,10 +488,6 @@ svc_destroy(struct svc_serv *serv)
+>> >> >>>       if (svc_serv_is_pooled(serv))
+>> >> >>>               svc_pool_map_put();
+>> >> >>>
+>> >> >>> -#if defined(CONFIG_NFS_V4_1)
+>> >> >>> -     svc_sock_destroy(serv->bc_xprt);
+>> >> >>> -#endif /* CONFIG_NFS_V4_1 */
+>> >> >>> -
+>> >> >>>       svc_unregister(serv);
+>> >> >>>       kfree(serv->sv_pools);
+>> >> >>>       kfree(serv);
+>> >> >>> @@ -1264,7 +1260,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>> >> >>>  {
+>> >> >>>       struct kvec     *argv = &rqstp->rq_arg.head[0];
+>> >> >>>       struct kvec     *resv = &rqstp->rq_res.head[0];
+>> >> >>> -     int             error;
+>> >> >>> +     int             ret;
+>> >> >>>
+>> >> >>>       /* Build the svc_rqst used by the common processing routine */
+>> >> >>>       rqstp->rq_xprt = serv->bc_xprt;
+>> >> >>> @@ -1292,12 +1288,16 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>> >> >>>       svc_getu32(argv);       /* XID */
+>> >> >>>       svc_getnl(argv);        /* CALLDIR */
+>> >> >>>
+>> >> >>> -     error = svc_process_common(rqstp, argv, resv);
+>> >> >>> -     if (error <= 0)
+>> >> >>> -             return error;
+>> >> >>> +     /* Hold a reference to the back channel socket across the call */
+>> >> >>> +     svc_xprt_get(serv->bc_xprt);
+>> >> >>
+>> >> >> Either we already have a reference, in which case this is unnecessary,
+>> >> >> or we don't, in which case this is risky.
+>> >> >
+>> >> > This is done so that when svc_xprt_put is called due to an svc_drop
+>> >> > (svc_xprt_release, svc_xprt_put) it is not freed.  It's not risky
+>> >> > because AFAICS it's the way the rpc server code is intended to work.
+>> >> > Note that svc_recv calls svc_xprt_get, and svc_send calls svc_xprt_put
+>> >> > for the same reason.
+>> >
+>> > The svc_xprt_put()'s in svc_send/svc_drop balance the get in svc_recv().
+>> > They're needed because on a normal server connections can come and go
+>> > (because clients come and go) during the lifetime of the server.
+>> >
+>> > As I understand it, the client is just creating a new server for each
+>> > backchannel.  So the server will never outlive the one connection it
+>> > uses.  So you don't need that stuff.  It's harmless--just leave it
+>> > alone--but definitely don't try to add additional reference counting
+>> > during the processing.
+>>
+>> If I don't add an svc_xprt_get prior to the svc_process_call, the
+>> svc_xprt_put called in the svc_drop case will free the bc_xprt, which
+>> is not what I want.
+>
+> Looking at the code some more....  Oh, right, because the backchannel
+> doesn't call svc_recv, it calls its own bc_send, which doesn't do a put.
+>
+> Oh, yuch, I see: svc_process_common returns "1" to mean send, "0" to
+> mean drop, and leaves it up to the caller to do the put in the send
+> case.  That's confusing.
+>
+> Maybe it would be simpler to have the caller be made responsible for
+> both cases?  So:
+>
+>        if (svc_process_common(rqstp))
+>                send it
+>        else
+>                drop it
 
-Doesn't look like NFSv2 to me...
+That would work well. I'll send a patch
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+-->Andy
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+>
+> ?
+>
+> --b.
+>
