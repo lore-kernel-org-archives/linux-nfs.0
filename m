@@ -1,53 +1,146 @@
-Return-Path: <nfsv4-bounces@ietf.org>
-Date: Thu, 16 Dec 2010 11:21:21 -0500 (EST)
-From: "Matt W. Benjamin" <matt@linuxbox.com>
-To: Fred Isaman <iisaman@netapp.com>
-Message-ID: <1740153586.34.1292516481789.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <978693366.32.1292516428080.JavaMail.root@thunderbeast.private.linuxbox.com>
-Cc: Benny Halevy <bhalevy@panasas.com>, Boaz Harrosh <bharrosh@panasas.com>,
-        linux-nfs@vger.kernel.org, nfsv4@ietf.org
-Subject: Re: [nfsv4] layoutcommits and file layout
-List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Content-Type: text/plain; charset="utf-8"
-Sender: nfsv4-bounces@ietf.org
-Errors-To: nfsv4-bounces@ietf.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:59385 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752299Ab0LQTB5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Dec 2010 14:01:57 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/3] nfsd4: implement secinfo_no_name
+Date: Fri, 17 Dec 2010 14:01:51 -0500
+Message-Id: <1292612511-14203-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1292612511-14203-1-git-send-email-bfields@redhat.com>
+References: <1292612511-14203-1-git-send-email-bfields@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
+MIME-Version: 1.0
 
-SGksCgpXZSBoYXZlIGEgZmlsZXMgaW1wbGVtZW50YXRpb24gd2hpY2ggd2FudHMgdG8gcmVjZWl2
-ZSBMQVlPVVRDT01NSVQgd2hlbiBhIGNsaWVudCBpcyBmaW5pc2hlZCB3aXRoIGEgbGF5b3V0LiAg
-SXQgd2FzIG15IGNsZWFyIHVuZGVyc3RhbmRpbmcgZnJvbSByZmM1NjYxIHRoYXQgd2UgY291bGQg
-ZXhwZWN0IHRoaXMgYmVoYXZpb3IuCgpJIHdvdWxkIGhhdmUgbm8gaXNzdWUgYXQgYWxsIHdpdGgg
-YWxsb3dpbmcgdGhlIGltcGxlbWVudGF0aW9uIHRvIGluZGljYXRlIHRvIGNsaWVudHMgdGhhdCBp
-dCBkb2Vzbid0IGNhcmUgdG8gb3IgbmVlZCB0byByZWNlaXZlIExBWU9VVENPTU1JVCwgYXMgSSBi
-ZWxpZXZlIERhdmlkIE5vdmVjayBwcm9wb3NlZC4gIEl0IGNyZWF0ZXMgYSByZWFsIHByb2JsZW0g
-aWYgTEFZT1VUQ09NTUlUIGlzIHNpbXBseSByYXRpb25hbGlzZWQgb3V0IG9mIHRoZSBzcGVjaWZp
-Y2F0aW9uIGJ5IGZpbGVzeXN0ZW1zIHdoaWNoIGhhdmUgb3RoZXIgbWVhbnMgdG8gZWZmaWNpZW50
-bHkgZW5zdXJlIHNlbWFudGljcyB3aGljaCBtYXkgbm90IGJlIGVmZmljaWVudCBvciByZWFzb25h
-YmxlIGZvciBvdXJzLgoKTWF0dAoKLS0tLS0gIkZyZWQgSXNhbWFuIiA8aWlzYW1hbkBuZXRhcHAu
-Y29tPiB3cm90ZToKCj4gPj4+IE9uIDEyLzEwLzIwMTAgMDM6MjIgQU0sIEZyZWQgSXNhbWFuIHdy
-b3RlOgo+ID4+Pj4gU2luY2UgZmlsZSBkb2VzIG5vdCBuZWVkIHRoZW0sIGp1c3QgdHVybiB0aGVt
-IG9mZiBmb3IKPiA+Pj4+IHRoZSBtb21lbnQuIMKgTm9uLWZpbGUgbGF5b3V0cyB3aWxsIHByb2Jh
-Ymx5IGhhdmUgdG8gdHJpZ2dlciB0aGVtCj4gaW4KPiA+Pj4+IHNvbWUgZmFzaGlvbiBhdCBjbG9z
-ZS4KPiA+Pj4+Cj4gPj4+Cj4gPj4+IFJycnIuIEFyZSB3ZSBiYWNrIHRvIHRoaXMgYXJndW1lbnQu
-IFdlIHN0YW5kIGRvd24gd2luIGFuIGFyZ3VtZW50Cj4gPj4+IGFuZCAyIHdlZWtzIGxhdGVyIHlv
-dSBhcmUgYmFjayBvbiBpdCBoYXMgaWYgd2UgbmV2ZXIgdGFsa2VkIGFib3V0Cj4gaXQuCj4gPj4+
-Cj4gPj4+IE5PISEhIG9ubHkgImNvaGVyZW50IGNsdXN0ZXJlZCBmaWxlc3lzdGVtcyIgZG8gbm90
-IG5lZWQgdGhlbS4gSXQKPiBoYXMKPiA+Pj4gbm90aGluZyB0byBkbyB3aXRoIGxheW91dCB0eXBl
-LiBBIG5vbmUtY2x1c3RlcmVkIGFnZ3JlZ2F0ZWQKPiBwYXJhbGxlbAo+ID4+PiBmaWxlc3lzdGVt
-IHdpbGwgbmVlZCB0aGVtIGp1c3QgdGhlIHNhbWUgYXMgYmxvY2tzIGFuZCBvYmplY3RzLgo+ID4+
-Pgo+ID4+PiBBTkQgVEhFIFNURCBET0VTIE5PVCBHSVZFIFlPVSBBIENIT0lDRSEhIQo+ID4+Cj4g
-Pj4gWW91IGtlZXAgc2F5aW5nIHRoaXMsIGJ1dCBqdXN0IHJlcGVhdGluZyBpdCBkb2VzIG5vdCBj
-b252aW5jZSBtZS4KPiA+PiBDb3VsZCB5b3UgcGxlYXNlIHRha2UgdGhlIHRpbWUgdG8gZXhwbGFp
-biAqd2h5KiB0aGV5IGFyZSBuZWVkZWQuCgotLSAKCk1hdHQgQmVuamFtaW4KClRoZSBMaW51eCBC
-b3gKMjA2IFNvdXRoIEZpZnRoIEF2ZS4gU3VpdGUgMTUwCkFubiBBcmJvciwgTUkgIDQ4MTA0Cgpo
-dHRwOi8vbGludXhib3guY29tCgp0ZWwuIDczNC03NjEtNDY4OQpmYXguIDczNC03NjktODkzOApj
-ZWwuIDczNC0yMTYtNTMwOQpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fXwpuZnN2NCBtYWlsaW5nIGxpc3QKbmZzdjRAaWV0Zi5vcmcKaHR0cHM6Ly93d3cuaWV0
-Zi5vcmcvbWFpbG1hbi9saXN0aW5mby9uZnN2NAo=
+Implementation of this operation is mandatory for NFSv4.1.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c   |   27 +++++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c    |   15 +++++++++++++--
+ fs/nfsd/xdr4.h       |    5 +++++
+ include/linux/nfs4.h |    3 +++
+ 4 files changed, 48 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 095431a..f80c399 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -780,6 +780,29 @@ nfsd4_secinfo(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ }
+ 
+ static __be32
++nfsd4_secinfo_no_name(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++	      struct nfsd4_secinfo_no_name *sin)
++{
++	__be32 err;
++
++	switch (sin->sin_style) {
++	case NFS4_SECINFO_STYLE4_CURRENT_FH:
++		break;
++	case NFS4_SECINFO_STYLE4_PARENT:
++		err = nfsd4_do_lookupp(rqstp, &cstate->current_fh);
++		if (err)
++			return err;
++		break;
++	default:
++		return nfserr_inval;
++	}
++	exp_get(cstate->current_fh.fh_export);
++	sin->sin_exp = cstate->current_fh.fh_export;
++	fh_put(&cstate->current_fh);
++	return nfs_ok;
++}
++
++static __be32
+ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	      struct nfsd4_setattr *setattr)
+ {
+@@ -1327,6 +1350,10 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = ALLOWED_WITHOUT_FH,
+ 		.op_name = "OP_RECLAIM_COMPLETE",
+ 	},
++	[OP_SECINFO_NO_NAME] = {
++		.op_func = (nfsd4op_func)nfsd4_secinfo_no_name,
++		.op_name = "OP_SECINFO_NO_NAME",
++	},
+ };
+ 
+ static const char *nfsd4_op_name(unsigned opnum)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 71d7d33..b543b24 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -847,6 +847,17 @@ nfsd4_decode_secinfo(struct nfsd4_compoundargs *argp,
+ }
+ 
+ static __be32
++nfsd4_decode_secinfo_no_name(struct nfsd4_compoundargs *argp,
++		     struct nfsd4_secinfo_no_name *sin)
++{
++	DECODE_HEAD;
++
++	READ_BUF(4);
++	READ32(sin->sin_style);
++	DECODE_TAIL;
++}
++
++static __be32
+ nfsd4_decode_setattr(struct nfsd4_compoundargs *argp, struct nfsd4_setattr *setattr)
+ {
+ 	__be32 status;
+@@ -1358,7 +1369,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
+ 	[OP_LAYOUTCOMMIT]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTGET]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTRETURN]	= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_SECINFO_NO_NAME]	= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_SECINFO_NO_NAME]	= (nfsd4_dec)nfsd4_decode_secinfo_no_name,
+ 	[OP_SEQUENCE]		= (nfsd4_dec)nfsd4_decode_sequence,
+ 	[OP_SET_SSV]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_TEST_STATEID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+@@ -3162,7 +3173,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ 	[OP_LAYOUTCOMMIT]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_LAYOUTGET]		= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_LAYOUTRETURN]	= (nfsd4_enc)nfsd4_encode_noop,
+-	[OP_SECINFO_NO_NAME]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_SECINFO_NO_NAME]	= (nfsd4_enc)nfsd4_encode_secinfo,
+ 	[OP_SEQUENCE]		= (nfsd4_enc)nfsd4_encode_sequence,
+ 	[OP_SET_SSV]		= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_TEST_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 60fce3d..799c30c 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -311,6 +311,11 @@ struct nfsd4_secinfo {
+ 	struct svc_export *si_exp;			/* response */
+ };
+ 
++struct nfsd4_secinfo_no_name {
++	u32 sin_style;					/* request */
++	struct svc_export *sin_exp;			/* response */
++};
++
+ struct nfsd4_setattr {
+ 	stateid_t	sa_stateid;         /* request */
+ 	u32		sa_bmval[3];        /* request */
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 4925b22..26afa30 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -136,6 +136,9 @@
+ #define SEQ4_STATUS_CB_PATH_DOWN_SESSION	0x00000200
+ #define SEQ4_STATUS_BACKCHANNEL_FAULT		0x00000400
+ 
++#define NFS4_SECINFO_STYLE4_CURRENT_FH	0
++#define NFS4_SECINFO_STYLE4_PARENT	1
++
+ #define NFS4_MAX_UINT64	(~(u64)0)
+ 
+ /* An NFS4 sessions server must support at least NFS4_MAX_OPS operations.
+-- 
+1.7.1
+
