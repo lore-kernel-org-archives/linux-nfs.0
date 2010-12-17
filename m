@@ -1,248 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:23358 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:42494 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751617Ab0LJSFz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Dec 2010 13:05:55 -0500
-Subject: [GIT PULL] Please pull NFS client fixes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 10 Dec 2010 13:05:52 -0500
-Message-ID: <1292004352.4052.2.camel@heimdal.trondhjem.org>
+	id S1755428Ab0LQSUK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Dec 2010 13:20:10 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V4 3/9] NFS do not clear minor version at nfs_client free
+Date: Fri, 17 Dec 2010 13:20:04 -0500
+Message-Id: <1292610010-19084-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1292610010-19084-3-git-send-email-andros@netapp.com>
+References: <1292610010-19084-1-git-send-email-andros@netapp.com>
+ <1292610010-19084-2-git-send-email-andros@netapp.com>
+ <1292610010-19084-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Resending pull request after appending Chuck's fix for the nfs_umount() panic.
+From: Andy Adamson <andros@netapp.com>
 
------------------------------------------------------------------------------
+Resetting the client minor version operations causes nfs4_destroy_callback
+to fail to shutdown the NFSv4.1 callback service.
 
-Hi Linus,
+There is no reason to reset the client minorversion operations when the
+nfs_client struct is being freed.
 
-Please pull from the "bugfixes" branch of the repository at
+Remove the minorverion reset and rename the function.
 
-   git pull git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git bugfixes
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c |   22 +++++++++-------------
+ 1 files changed, 9 insertions(+), 13 deletions(-)
 
-This will update the following files through the appended changesets.
-
-  Cheers,
-    Trond
-
-----
- Documentation/filesystems/Locking |    7 +++-
- Documentation/filesystems/vfs.txt |    7 +++
- fs/nfs/dir.c                      |   76 +++++++++++++++++--------------------
- fs/nfs/file.c                     |    2 +
- fs/nfs/inode.c                    |    1 +
- fs/nfs/mount_clnt.c               |    4 +-
- fs/nfs/nfs4proc.c                 |    9 ++++
- fs/nfs/pagelist.c                 |    4 +-
- fs/nfs/read.c                     |    1 -
- fs/nfs/super.c                    |    4 --
- fs/nfs/write.c                    |    3 +-
- include/linux/fs.h                |    1 +
- include/linux/nfs_fs.h            |    1 +
- include/linux/nfs_page.h          |    1 +
- mm/filemap.c                      |    5 ++
- mm/truncate.c                     |    4 ++
- mm/vmscan.c                       |    7 +++
- 17 files changed, 85 insertions(+), 52 deletions(-)
-
-commit 5b362ac3799ff4225c40935500f520cad4d7ed66
-Author: Chuck Lever <chuck.lever@oracle.com>
-Date:   Fri Dec 10 12:31:14 2010 -0500
-
-    NFS: Fix panic after nfs_umount()
-    
-    After a few unsuccessful NFS mount attempts in which the client and
-    server cannot agree on an authentication flavor both support, the
-    client panics.  nfs_umount() is invoked in the kernel in this case.
-    
-    Turns out nfs_umount()'s UMNT RPC invocation causes the RPC client to
-    write off the end of the rpc_clnt's iostat array.  This is because the
-    mount client's nrprocs field is initialized with the count of defined
-    procedures (two: MNT and UMNT), rather than the size of the client's
-    proc array (four).
-    
-    The fix is to use the same initialization technique used by most other
-    upper layer clients in the kernel.
-    
-    Introduced by commit 0b524123, which failed to update nrprocs when
-    support was added for UMNT in the kernel.
-    
-    BugLink: https://bugzilla.kernel.org/show_bug.cgi?id=24302
-    BugLink: http://bugs.launchpad.net/bugs/683938
-    
-    Reported-by: Stefan Bader <stefan.bader@canonical.com>
-    Tested-by: Stefan Bader <stefan.bader@canonical.com>
-    Cc: stable@kernel.org # >= 2.6.32
-    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 2df485a774ba59c3f43bfe84107672c1d9b731a0
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Dec 7 22:39:17 2010 -0500
-
-    nfs: remove extraneous and problematic calls to nfs_clear_request
-    
-    When a nfs_page is freed, nfs_free_request is called which also calls
-    nfs_clear_request to clean out the lock and open contexts and free the
-    pagecache page.
-    
-    However, a couple of places in the nfs code call nfs_clear_request
-    themselves. What happens here if the refcount on the request is still high?
-    We'll be releasing contexts and freeing pointers while the request is
-    possibly still in use.
-    
-    Remove those bare calls to nfs_clear_context. That should only be done when
-    the request is being freed.
-    
-    Note that when doing this, we need to watch out for tests of req->wb_page.
-    Previously, nfs_set_page_tag_locked() and nfs_clear_page_tag_locked()
-    would check the value of req->wb_page to figure out if the page is mapped
-    into the nfsi->nfs_page_tree. We now indicate the page is mapped using
-    the new bit PG_MAPPED in req->wb_flags .
-    
-    Reported-by: Jeff Layton <jlayton@redhat.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 0de1b7e800188782973598158e0acbb9e08e6c99
-Author: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Date:   Sat Oct 30 10:19:33 2010 +0800
-
-    nfs: kernel should return EPROTONOSUPPORT when not support NFSv4
-    
-      When nfs client(kernel) don't support NFSv4, maybe user build
-      kernel without NFSv4, there is a problem.
-    
-      Using command "mount SERVER-IP:/nfsv3 /mnt/" to mount NFSv3
-      filesystem, mount should should success, but fail and get error:
-    
-        "mount.nfs: an incorrect mount option was specified"
-    
-      System call mount "nfs"(not "nfs4") with "vers=4",
-      if CONFIG_NFS_V4 is not defined, the "vers=4" will be parsed
-      as invalid argument and kernel return EINVAL to nfs-utils.
-    
-      About that, we really want get EPROTONOSUPPORT rather than
-      EINVAL. This path make sure kernel parses argument success,
-      and return EPROTONOSUPPORT at nfs_validate_mount_data().
-    
-    Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 21ac19d484a8ffb66f64487846c8d53afef04d2b
-Author: Sergey Vlasov <vsu@altlinux.ru>
-Date:   Sun Nov 28 21:04:05 2010 +0000
-
-    NFS: Fix fcntl F_GETLK not reporting some conflicts
-    
-    The commit 129a84de2347002f09721cda3155ccfd19fade40 (locks: fix F_GETLK
-    regression (failure to find conflicts)) fixed the posix_test_lock()
-    function by itself, however, its usage in NFS changed by the commit
-    9d6a8c5c213e34c475e72b245a8eb709258e968c (locks: give posix_test_lock
-    same interface as ->lock) remained broken - subsequent NFS-specific
-    locking code received F_UNLCK instead of the user-specified lock type.
-    To fix the problem, fl->fl_type needs to be saved before the
-    posix_test_lock() call and restored if no local conflicts were reported.
-    
-    Reference: https://bugzilla.kernel.org/show_bug.cgi?id=23892
-    Tested-by: Alexander Morozov <amorozov@etersoft.ru>
-    Signed-off-by: Sergey Vlasov <vsu@altlinux.ru>
-    Cc: <stable@kernel.org>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 08a22b392a141c201d7ed4d435de942aa853acd3
-Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date:   Wed Dec 1 10:42:16 2010 +0000
-
-    nfs: Discard ACL cache on mode update
-    
-    An update of mode bits can result in ACL value being changed. We need
-    to mark the acl cache invalid when we update mode. Similarly we need
-    to update file attribute when we change ACL value
-    
-    Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 47c716cbf638a16583441d78be3fc24345eab636
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Dec 7 12:44:56 2010 -0500
-
-    NFS: Readdir cleanups
-    
-    No functional changes, but clarify the code.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 18fb5fe40ce7f789b5cfc3aa81ff1e6175b0a5be
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Dec 7 12:41:58 2010 -0500
-
-    NFS: nfs_readdir_search_for_cookie() don't mark as eof if cookie not found
-    
-    If we're searching for a specific cookie, and it isn't found in the page
-    cache, we should try an uncached_readdir(). To do so, we return EBADCOOKIE,
-    but we don't set desc->eof.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 11de3b11e08cac26d59e88efaf4e316701883552
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Wed Dec 1 14:17:06 2010 -0500
-
-    NFS: Fix a memory leak in nfs_readdir
-    
-    We need to ensure that the entries in the nfs_cache_array get cleared
-    when the page is removed from the page cache. To do so, we use the
-    freepage address_space operation.
-    
-    Change nfs_readdir_clear_array to use kmap_atomic(), so that the
-    function can be safely called from all contexts.
-    
-    Finally, modify the cache_page_release helper to call
-    nfs_readdir_clear_array directly, when dealing with an anonymous
-    page from 'uncached_readdir'.
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 6072d13c429373c5d63b69dadbbef40a9b035552
-Author: Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Wed Dec 1 13:35:19 2010 -0500
-
-    Call the filesystem back whenever a page is removed from the page cache
-    
-    NFS needs to be able to release objects that are stored in the page
-    cache once the page itself is no longer visible from the page cache.
-    
-    This patch adds a callback to the address space operations that allows
-    filesystems to perform page cleanups once the page has been removed
-    from the page cache.
-    
-    Original patch by: Linus Torvalds <torvalds@linux-foundation.org>
-    [trondmy: cover the cases of invalidate_inode_pages2() and
-              truncate_inode_pages()]
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-commit 0aded708d125a3ff7e5abaea9c2d9c6d7ebbfdcd
-Author: Trond Myklebust <Trond.Myklebust@netapp.com>
-Date:   Tue Nov 30 21:56:32 2010 -0500
-
-    NFS: Ensure we use the correct cookie in nfs_readdir_xdr_filler
-    
-    We need to use the cookie from the previous array entry, not the
-    actual cookie that we are searching for (except for the case of
-    uncached_readdir).
-    
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 0870d0d..855add6 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -170,21 +170,17 @@ error_0:
+ }
+ 
+ #ifdef CONFIG_NFS_V4
+-/*
+- * Clears/puts all minor version specific parts from an nfs_client struct
+- * reverting it to minorversion 0.
+- */
+-static void nfs4_clear_client_minor_version(struct nfs_client *clp)
+-{
+ #ifdef CONFIG_NFS_V4_1
+-	if (nfs4_has_session(clp)) {
++static void nfs4_shutdown_session(struct nfs_client *clp)
++{
++	if (nfs4_has_session(clp))
+ 		nfs4_destroy_session(clp->cl_session);
+-		clp->cl_session = NULL;
+-	}
+-
+-	clp->cl_mvops = nfs_v4_minor_ops[0];
+-#endif /* CONFIG_NFS_V4_1 */
+ }
++#else /* CONFIG_NFS_V4_1 */
++static void nfs4_shutdown_session(struct nfs_client *clp)
++{
++}
++#endif /* CONFIG_NFS_V4_1 */
+ 
+ /*
+  * Destroy the NFS4 callback service
+@@ -199,7 +195,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
+ {
+ 	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
+ 		nfs4_kill_renewd(clp);
+-	nfs4_clear_client_minor_version(clp);
++	nfs4_shutdown_session(clp);
+ 	nfs4_destroy_callback(clp);
+ 	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
+ 		nfs_idmap_delete(clp);
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.6.6
 
