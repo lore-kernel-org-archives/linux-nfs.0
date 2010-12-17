@@ -1,65 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:54478 "EHLO e4.ny.us.ibm.com"
+Received: from fieldses.org ([174.143.236.118]:59379 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755801Ab0LHSJn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Dec 2010 13:09:43 -0500
-Received: from d01dlp01.pok.ibm.com (d01dlp01.pok.ibm.com [9.56.224.56])
-	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id oB8Hq4Ts003848
-	for <linux-nfs@vger.kernel.org>; Wed, 8 Dec 2010 12:52:34 -0500
-Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 4DBC672805B
-	for <linux-nfs@vger.kernel.org>; Wed,  8 Dec 2010 13:09:42 -0500 (EST)
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id oB8I9g9V142856
-	for <linux-nfs@vger.kernel.org>; Wed, 8 Dec 2010 13:09:42 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id oB8I9fRB003658
-	for <linux-nfs@vger.kernel.org>; Wed, 8 Dec 2010 13:09:41 -0500
-Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id oB8I9fwe003644
-	for <linux-nfs@vger.kernel.org>; Wed, 8 Dec 2010 13:09:41 -0500
+	id S1752277Ab0LQTBx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Dec 2010 14:01:53 -0500
+Received: from bfields by fieldses.org with local (Exim 4.72)
+	(envelope-from <bfields@fieldses.org>)
+	id 1PTfYu-0003lV-VH
+	for linux-nfs@vger.kernel.org; Fri, 17 Dec 2010 14:01:53 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: Linux pNFS status meeting 12/09/10 (new number)
-Message-ID: <OFD3BCBD74.7B8500CB-ON882577F3.00638F03-882577F3.0063BE99@us.ibm.com>
-From: Marc Eshel <eshel@almaden.ibm.com>
-Date: Wed, 8 Dec 2010 10:09:37 -0800
-Content-Type: text/plain; charset="US-ASCII"
+Subject: 4.1 secinfo patches
+Date: Fri, 17 Dec 2010 14:01:48 -0500
+Message-Id: <1292612511-14203-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Meeting on Thursday 12/09/10 at 9:30 AM pacific time (12:30 PM UMICH time)
+The following patches implement secinfo_no_name and update secinfo to
+meet a 4.1 requirement.
 
-Marc. 
+I'll apply them for 2.6.38 if nobody sees a problem.
 
-USA Toll-Free:
+They look simple enough.  But I don't have a test for them.  So they're
+probably wrong.  Two pynfs41 tests would do it:
 
-888-426-6840
+	- send PUTROOTFH+SECINFO_NO_NAME, check that you get back a
+	  legal result.
+	- send PUTROOTFH+SECINFO+GETFH, and/or
+	  PUTROOTFH+SECINFO_NO_NAME+GETFH, check that the GETFH returns
+	  NOFILEHANDLE.
 
-USA Caller Paid:
+I'll get around to it some day if nobody volunteers.
 
-215-861-6239
+There are plenty of little things like this that could use doing or
+testing before server-side 4.1 is correct; see:
 
+	http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues
 
-
-
-
-Participant Code:
-
-8792872
-
-
-
-
-For Other Countries:
-
-
-
-
-Israel
- 
-Toll-Free
- 
-1-809-417-783
-
-
+--b.
