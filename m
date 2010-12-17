@@ -1,52 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54713 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:52438 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754117Ab0LHLG7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Dec 2010 06:06:59 -0500
-Date: Wed, 8 Dec 2010 06:06:56 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: oops in nfs_flush_incompatible (and possible fix?)
-Message-ID: <20101208060656.3b462654@tlielax.poochiereds.net>
-In-Reply-To: <1291781972.21760.2.camel@heimdal.trondhjem.org>
-References: <20101206145743.4464c79d@tlielax.poochiereds.net>
-	<1291758082.3049.42.camel@heimdal.trondhjem.org>
-	<20101207165354.32c863f2@tlielax.poochiereds.net>
-	<1291768200.3049.51.camel@heimdal.trondhjem.org>
-	<20101207200344.68ff29e3@corrin.poochiereds.net>
-	<20101207213540.441330db@corrin.poochiereds.net>
-	<1291778228.20468.6.camel@heimdal.trondhjem.org>
-	<1291779950.21760.1.camel@heimdal.trondhjem.org>
-	<1291781972.21760.2.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1755156Ab0LQRx7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Dec 2010 12:53:59 -0500
+Date: Fri, 17 Dec 2010 12:53:55 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Nick Piggin <npiggin@kernel.dk>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Nick Piggin <npiggin@gmail.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH] fs/dcache: use standard list macro for d_find_alias
+Message-ID: <20101217175355.GA11515@fieldses.org>
+References: <20101112184353.GA32745@fieldses.org>
+ <AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
+ <20101115174837.GB10044@fieldses.org>
+ <AANLkTim1QjTwOZ4SHdMy8Y6TOAnaOYtTwgwHXfH5H5Xn@mail.gmail.com>
+ <AANLkTinMq1W1vx-jZnf7cb1cAnh9OyoVRYtVS7zpujfs@mail.gmail.com>
+ <20101129193248.GA9897@fieldses.org>
+ <AANLkTikwzDJ_q65==uxDsAhp3h8bU7Rkt7U9gVgRAK0D@mail.gmail.com>
+ <20101203223326.GB28763@fieldses.org>
+ <20101213051944.GA8688@amd>
+ <20101214220102.GM24828@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101214220102.GM24828@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 07 Dec 2010 23:19:32 -0500
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+From: J. Bruce Fields <bfields@redhat.com>
 
-> On Tue, 2010-12-07 at 22:45 -0500, Trond Myklebust wrote:
-> > On Tue, 2010-12-07 at 22:17 -0500, Trond Myklebust wrote:
-> > > OK... I think I see why the hang:
-> > > 
-> > > I believe that it is basically due to nfs_clear_page_tag_locked() making
-> > > the assumption that if req->wb_page != NULL, then the corresponding
-> > > nfsi->nfs_page_tree lock tag needs to be cleared.
-> > > 
-> > > Maybe we can do that differently by just setting a flag to indicate
-> > > whether or not this request is mapped into the radix tree...
-> > 
-> > The following patch is completely untested, but should do the trick....
-> 
-> ...and it appears to work correctly for me.
-> 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/dcache.c |    9 +--------
+ 1 files changed, 1 insertions(+), 8 deletions(-)
 
-Thanks Trond,
+While I'm here....  Am I overlooking some reason we're not doing this
+the easy way?
 
-I'll test it out too and also backport that patch for RHEL5.
-
-Cheers,
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 23702a9..5ed93cd 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -358,16 +358,9 @@ EXPORT_SYMBOL(dget_locked);
+ 
+ static struct dentry * __d_find_alias(struct inode *inode, int want_discon)
+ {
+-	struct list_head *head, *next, *tmp;
+ 	struct dentry *alias, *discon_alias=NULL;
+ 
+-	head = &inode->i_dentry;
+-	next = inode->i_dentry.next;
+-	while (next != head) {
+-		tmp = next;
+-		next = tmp->next;
+-		prefetch(next);
+-		alias = list_entry(tmp, struct dentry, d_alias);
++	list_for_each_entry(alias, &inode->i_dentry, d_alias) {
+  		if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
+ 			if (IS_ROOT(alias) &&
+ 			    (alias->d_flags & DCACHE_DISCONNECTED))
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.1
+
