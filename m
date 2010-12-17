@@ -1,52 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48914 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:42494 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751335Ab0LAXVe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 18:21:34 -0500
-Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Hugh Dickins <hughd@google.com>, Nick Piggin <npiggin@kernel.dk>,
-        Nick Bowler <nbowler@elliptictech.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, Rik van Riel <riel@redhat.com>,
-        Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>
-In-Reply-To: <1291243633.6609.59.camel@heimdal.trondhjem.org>
-References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <20101201150428.GA2879@elliptictech.com>
-	 <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
-	 <1291229669.6609.24.camel@heimdal.trondhjem.org>
-	 <AANLkTinsEeKK9LykVAVq60Lsb3caLDJasnKH8kcgSFVp@mail.gmail.com>
-	 <1291234251.6609.39.camel@heimdal.trondhjem.org>
-	 <20101201123341.d12ef362.akpm@linux-foundation.org>
-	 <alpine.LSU.2.00.1012011258220.18662@tigran.mtv.corp.google.com>
-	 <alpine.LSU.2.00.1012011311590.18920@tigran.mtv.corp.google.com>
-	 <20101201133831.ea6ba10a.akpm@linux-foundation.org>
-	 <1291240272.6609.50.camel@heimdal.trondhjem.org>
-	 <20101201141351.8609140b.akpm@linux-foundation.org>
-	 <AANLkTimgZPET+T16Qpj_KnpCu==97g-8+_y5dtjNOrxG@mail.gmail.com>
-	 <20101201143856.51f4f9d9.akpm@linux-foundation.org>
-	 <1291243633.6609.59.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 01 Dec 2010 18:21:16 -0500
-Message-ID: <1291245676.6609.62.camel@heimdal.trondhjem.org>
+	id S1755414Ab0LQSUI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Dec 2010 13:20:08 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH_V4 0/9] NFSv4 callback find client fix Version 4 
+Date: Fri, 17 Dec 2010 13:20:01 -0500
+Message-Id: <1292610010-19084-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2010-12-01 at 17:47 -0500, Trond Myklebust wrote:
-> However, Linus' explanation appears to answer one of Hugh's objections:
-> we can apparently use a preempt-disable() in order to ensure that the
-> module containing the mapping->a_ops is not unloaded until after the
-> ->freepage() call is complete.
-> 
-> That would imply that ->freepage() cannot sleep, but I don't think that
-> is too nasty a restriction.
 
-Revised patch would be as follows...
+Version 4 of these patches
+Applies to Tronds nfs-for-next branch
 
-----------------------------------------------------------------------------------------
+The back channel server svc_process_common RPC layer pg_authenticate call
+[nfs_callback_authenticate] is shared by both the NFSv4.0 and the NFSv4.1
+callback threads. It authenticates the incoming request by finding (and
+referencing) an nfs_client struct based on the incoming request address
+and the NFS version (4). This is akin to the NFS server which authenticates
+requests by matching the server address to the exports file client list.
+
+Since there is no minorversion in the search, it may find the wrong
+nfs_client struct. For the nfsv4.0 callback service thread, this means it
+could find an NFSv4.1 nfs_client. For the NFSv4.1 callback service thread, it
+could find an NFSv4.0 instead of v4.1, or find an NFSv4.1 nfs_client with the
+wrong session.
+
+The nfs_client is dereferenced at the end of pg_authenticate. Another
+nfs_find_client call is done in the NFS layouer per operation dispatcher
+routines for NFSv4.0 and in the cb_sequence operation dispatcher routine for
+NFSv4.1 after decoding.
+
+This means the callback server could start processing a callback, passing
+the pg_authenticate test, and have the nfs_client struct freed between the
+pg_authenticate call and the dispatcher operation call. Or, it could have
+found the wrong nfs_client in the pg_authenticate call.
+
+The current code has this behavior: If the nfs_client is not found in
+pg_authenticate, the request is simply dropped (SVC_DROP). If an nfs_client
+is not found in the dispatcher routines NFS4ERR_BADSESSION is returned for
+v4.1 requests and NFS4ERR_BADHANDLE for v4.0 requests.
+
+The fix is to implement the v4.0 SETCLIENTID callback_ident and use it to find
+the one and only client for v4.0 callbacks, and to associate the sessionid
+with the sessions based callback service (v4.1) and use it to identify the
+one and only client. This can be done in the NFS layer, in CB_COMPOUND header
+processing for v4.0 and in CB_SEQUENCE processing in v4.1.
+In both cases, a reference to the found client is held across CB_COMPOUND
+processing.
+
+The pg_authenticate method does not have the callback_ident for CB_NULL or
+CB_COMPOUND v4.0 processing, so just the server address, nfsversion and
+minorversion is used for the client search
+
+For sessions based callback service, the sessionID can't be set until the
+return of the CREATE_SESSION call, yet the CB_NULL ping from a server can
+be initiated by the server at the receipt of the CREATE_SESSION call before
+the response is sent. So for CB_NULL, the sessionid is (usually) not set, and
+the sessionid is not used for CB_NULL pg_authenticate client searches.
+
+BUG fixes
+0001-SUNRPC-new-transport-for-the-NFSv4.1-shared-back-cha.patch
+0002-NFS-use-svc_create_xprt-for-NFSv4.1-callback-service.patch
+0003-NFS-do-not-clear-minor-version-at-nfs_client-free.patch
+
+New callback functionality
+0004-NFS-implement-v4.0-callback_ident.patch
+0005-NFS-associate-sessionid-with-callback-connection.patch
+0006-NFS-reference-nfs_client-across-cb_compound-processi.patch
+0007-NFS-RPC_AUTH_GSS-unsupported-on-v4.1-back-channel.patch
+
+Rename
+0008-NFS-add-session-back-channel-draining.patch
+0009-NFS-rename-client-back-channel-transport-field.patch
+
+-->Andy
+
