@@ -1,88 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20685 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:50239 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752695Ab0LITRy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 14:17:54 -0500
-Subject: Re: oops in nfs_flush_incompatible (and possible fix?)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20101209140135.2d02579d@barsoom.rdu.redhat.com>
-References: <20101206145743.4464c79d@tlielax.poochiereds.net>
-	 <1291758082.3049.42.camel@heimdal.trondhjem.org>
-	 <20101207165354.32c863f2@tlielax.poochiereds.net>
-	 <1291768200.3049.51.camel@heimdal.trondhjem.org>
-	 <20101207200344.68ff29e3@corrin.poochiereds.net>
-	 <20101207213540.441330db@corrin.poochiereds.net>
-	 <1291778228.20468.6.camel@heimdal.trondhjem.org>
-	 <1291779950.21760.1.camel@heimdal.trondhjem.org>
-	 <1291781972.21760.2.camel@heimdal.trondhjem.org>
-	 <20101209140135.2d02579d@barsoom.rdu.redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 09 Dec 2010 14:17:52 -0500
-Message-ID: <1291922272.6419.7.camel@heimdal.trondhjem.org>
+	id S1754883Ab0LQSAZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Dec 2010 13:00:25 -0500
+Date: Fri, 17 Dec 2010 13:00:23 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Nick Piggin <npiggin@kernel.dk>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Nick Piggin <npiggin@gmail.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH 2/2] fs/dcache: allow __d_obtain_alias() to return unhashed
+ dentries
+Message-ID: <20101217180022.GB11515@fieldses.org>
+References: <20101112184353.GA32745@fieldses.org>
+ <AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
+ <20101115174837.GB10044@fieldses.org>
+ <AANLkTim1QjTwOZ4SHdMy8Y6TOAnaOYtTwgwHXfH5H5Xn@mail.gmail.com>
+ <AANLkTinMq1W1vx-jZnf7cb1cAnh9OyoVRYtVS7zpujfs@mail.gmail.com>
+ <20101129193248.GA9897@fieldses.org>
+ <AANLkTikwzDJ_q65==uxDsAhp3h8bU7Rkt7U9gVgRAK0D@mail.gmail.com>
+ <20101203223326.GB28763@fieldses.org>
+ <20101213051944.GA8688@amd>
+ <20101214220102.GM24828@fieldses.org>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20101214220102.GM24828@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-12-09 at 14:01 -0500, Jeff Layton wrote:
-> On Tue, 07 Dec 2010 23:19:32 -0500
-> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Tue, 2010-12-07 at 22:45 -0500, Trond Myklebust wrote:
-> > > On Tue, 2010-12-07 at 22:17 -0500, Trond Myklebust wrote:
-> > > > OK... I think I see why the hang:
-> > > > 
-> > > > I believe that it is basically due to nfs_clear_page_tag_locked() making
-> > > > the assumption that if req->wb_page != NULL, then the corresponding
-> > > > nfsi->nfs_page_tree lock tag needs to be cleared.
-> > > > 
-> > > > Maybe we can do that differently by just setting a flag to indicate
-> > > > whether or not this request is mapped into the radix tree...
-> > > 
-> > > The following patch is completely untested, but should do the trick....
+From: J. Bruce Fields <bfields@redhat.com>
+
+Without this patch
+
+       client$ mount -tnfs4 server:/export/ /mnt/
+       client$ tail -f /mnt/FOO
+       ...
+       server$ df -i /export
+       server$ rm /export/FOO
+       (^C the tail -f)
+       server$ df -i /export
+       server$ echo 2 >/proc/sys/vm/drop_caches
+       server$ df -i /export
+
+the df's will show that the inode is not freed on the filesystem until
+the last step, when it could have been freed after killing the client's
+tail -f.  On-disk data won't be deallocated either, leading to possible
+spurious ENOSPC.
+
+This occurs because when the client does the close, it arrives in a
+compound with a putfh and a close, processed like:
+
+       - putfh: look up the filehandle.  The only alias found for the
+         inode will be DCACHE_UNHASHED alias referenced by the filp
+         associated with the nfsd open.  d_obtain_alias() doesn't like
+         this, so it creates a new DCACHE_DISCONECTED dentry and
+         returns that instead.
+
+Nick Piggin suggested fixing this by allowing d_obtain_alias to return
+the unhashed dentry that is referenced by the filp, instead of making it
+create a new dentry.
+
+Leave __d_find_alias() alone to avoid changing behavior of other
+callers.
+
+Also nfsd doesn't need all the checks of __d_find_alias(); any dentry,
+hashed or unhashed, disconnected or not, should work.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/dcache.c |   26 ++++++++++++++++++++++++--
+ 1 files changed, 24 insertions(+), 2 deletions(-)
+
+On Tue, Dec 14, 2010 at 05:01:02PM -0500, J. Bruce Fields wrote:
+> On Mon, Dec 13, 2010 at 04:19:44PM +1100, Nick Piggin wrote:
+> > Not sure where Al's hiding...
 > > 
-> > ...and it appears to work correctly for me.
+> > But I would like to update the comments, and perhaps even a new
+> > add a new function here (or new flag to __d_find_alias).
 > > 
+> > AFAIKS, the callers are OK, however I suppose d_splice_alias and
+> > d_materialise_unique should not have unlinked inodes at this point,
+> > so at least a BUG_ON for them might be a good idea?
 > 
-> Hi Trond,
-> 
-> I've gotten some preliminary results with the patch that I backported
-> to RHEL5:
-> 
-> -----------------------[snip]------------------
-> 
-> FYI, this version has been running now for about 18 hours on
-> the same [host] where I originally observed this problem.  A full run takes 48
-> hours, but this is well beyond the normal point of failure so I thought
-> I'd share preliminary results.
-> 
-> -----------------------[snip]------------------
-> 
-> So, it looks good so far. If you like, you can add my. I'll let you
-> know once the run is done.
-> 
-> Reviewed-by: Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> That does sound safer.  I'm pretty confused by the various
+> __di_splice_alias callers.  I'll go search through them and see if I can
+> understand better....
 
-Thanks!
+I think a new __d_find_alias flag would just make it more confusing.
+And it looks like all d_obtain_alias needs is something much simpler.
+This works for me.
 
-BTW: the reason why the PG_MAPPER is not critical in the RHEL-5 back
-port is because the BKL keeps you safe w.r.t. races between the tests in
-nfs_flush_incompatible() and the nfs_clear_request call in
-nfs_inode_remove_request().
+--b.
 
-Cheers
-  Trond
-
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 5ed93cd..d5f9da4 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -1135,6 +1135,28 @@ static inline struct hlist_head *d_hash(struct dentry *parent,
+ 	return dentry_hashtable + (hash & D_HASHMASK);
+ }
+ 
++static struct dentry * __d_find_any_alias(struct inode *inode)
++{
++	struct dentry *alias;
++
++	if (list_empty(&inode->i_dentry))
++		return NULL;
++	alias = list_first_entry(&inode->i_dentry, struct dentry, d_alias);
++	__dget_locked(alias);
++	return alias;
++}
++
++static struct dentry * d_find_any_alias(struct inode *inode)
++{
++	struct dentry *de;
++
++	spin_lock(&dcache_lock);
++	de = __d_find_alias(inode, 0);
++	spin_unlock(&dcache_lock);
++	return de;
++}
++
++
+ /**
+  * d_obtain_alias - find or allocate a dentry for a given inode
+  * @inode: inode to allocate the dentry for
+@@ -1164,7 +1186,7 @@ struct dentry *d_obtain_alias(struct inode *inode)
+ 	if (IS_ERR(inode))
+ 		return ERR_CAST(inode);
+ 
+-	res = d_find_alias(inode);
++	res = d_find_any_alias(inode);
+ 	if (res)
+ 		goto out_iput;
+ 
+@@ -1176,7 +1198,7 @@ struct dentry *d_obtain_alias(struct inode *inode)
+ 	tmp->d_parent = tmp; /* make sure dput doesn't croak */
+ 
+ 	spin_lock(&dcache_lock);
+-	res = __d_find_alias(inode, 0);
++	res = __d_find_any_alias(inode);
+ 	if (res) {
+ 		spin_unlock(&dcache_lock);
+ 		dput(tmp);
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.1
 
