@@ -1,263 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:8992 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64582 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753196Ab0LWMrz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 07:47:55 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 06/15] pnfs: change how lsegs are removed from layout list
-Date: Thu, 23 Dec 2010 07:47:37 -0500
-Message-Id: <1293108466-31768-7-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
-References: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
+	id S1754861Ab0LQO5H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Dec 2010 09:57:07 -0500
+Message-ID: <4D0B7A3B.20403@RedHat.com>
+Date: Fri, 17 Dec 2010 09:56:59 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Christoph Hellwig <hch@infradead.org>, Ric Wheeler <ricwheeler@gmail.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/31] NFS XDR clean up for 2.6.38
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>	 <4D0A6503.7010901@RedHat.com> <20101216230524.GA16760@infradead.org>	 <4D0AA11A.2010307@gmail.com>  <20101216234058.GA17940@infradead.org> <1292556764.2895.41.camel@heimdal.trondhjem.org>
+In-Reply-To: <1292556764.2895.41.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This is to prepare the way for sensible io draining.  Instead of just
-removing the lseg from the list, we instead clear the VALID flag
-(preventing new io from grabbing references to the lseg) and remove
-the reference holding it in the list.  Thus the lseg will be removed
-once any io in progress completes and any references still held are
-dropped.
+Hello
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/inode.c |    2 +-
- fs/nfs/pnfs.c  |  117 +++++++++++++++++++++++++++++++++++++-------------------
- fs/nfs/pnfs.h  |    8 +++-
- 3 files changed, 85 insertions(+), 42 deletions(-)
+On 12/16/2010 10:32 PM, Trond Myklebust wrote:
+> On Thu, 2010-12-16 at 18:40 -0500, Christoph Hellwig wrote:
+>> On Thu, Dec 16, 2010 at 06:30:34PM -0500, Ric Wheeler wrote:
+>>> This has nothing to do with shame or conspiracy, it has to do with
+>>> doing changes in an orderly way so we can test and stabilize things
+>>> in the upstream kernel.
+>>>
+>>> Changing both at once is not good for upstream or distros  in my opinion,
+>>
+>> Steve's mail reads pretty different from that.
+>>
+>> But it doesn't really matter as it doesn't make any sense - as Chuck
+>> has explained theres zero overlap between the XDR decoder changes and
+>> pnfs features anyway.  And if there was it's pretty clear something that
+>> the about 98% of the userbase that's using NFSv3 uses should have more
+>> priority over the 0.5% that are planning to maybe possibly use pnfs in
+>> the next decade.
+> 
+> Hi guys,
+> 
+> I agree 100% with the basic premise that we should not have to deal with
+> compatibility issues for NFSv4.1/pnfs backports when deciding what to
+> merge upstream.
+Cool...
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e67e31c..43a69da 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1410,9 +1410,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
-  */
- void nfs4_evict_inode(struct inode *inode)
- {
-+	pnfs_destroy_layout(NFS_I(inode));
- 	truncate_inode_pages(&inode->i_data, 0);
- 	end_writeback(inode);
--	pnfs_destroy_layout(NFS_I(inode));
- 	/* If we are holding a delegation, return it! */
- 	nfs_inode_return_delegation_noreclaim(inode);
- 	/* First call standard NFS clear_inode() code */
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 08313f53..bbca2e5 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -211,68 +211,100 @@ static void
- init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- {
- 	INIT_LIST_HEAD(&lseg->pls_list);
--	kref_init(&lseg->pls_refcount);
-+	atomic_set(&lseg->pls_refcount, 1);
-+	smp_mb();
-+	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
- 	lseg->pls_layout = lo;
- }
- 
--/* Called without i_lock held, as the free_lseg call may sleep */
--static void
--destroy_lseg(struct kref *kref)
-+static void free_lseg(struct pnfs_layout_segment *lseg)
- {
--	struct pnfs_layout_segment *lseg =
--		container_of(kref, struct pnfs_layout_segment, pls_refcount);
- 	struct inode *ino = lseg->pls_layout->plh_inode;
- 
--	dprintk("--> %s\n", __func__);
- 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
- 	/* Matched by get_layout_hdr in pnfs_insert_layout */
- 	put_layout_hdr(ino);
- }
- 
-+/* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
-+ * could sleep, so must be called outside of the lock.
-+ */
- static void
--put_lseg(struct pnfs_layout_segment *lseg)
-+put_lseg_locked(struct pnfs_layout_segment *lseg,
-+		struct list_head *tmp_list)
- {
--	if (!lseg)
--		return;
-+	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
-+		atomic_read(&lseg->pls_refcount),
-+		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+	if (atomic_dec_and_test(&lseg->pls_refcount)) {
-+		struct inode *ino = lseg->pls_layout->plh_inode;
- 
--	dprintk("%s: lseg %p ref %d\n", __func__, lseg,
--		atomic_read(&lseg->pls_refcount.refcount));
--	kref_put(&lseg->pls_refcount, destroy_lseg);
-+		BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+		list_del(&lseg->pls_list);
-+		if (list_empty(&lseg->pls_layout->plh_segs)) {
-+			struct nfs_client *clp;
-+
-+			clp = NFS_SERVER(ino)->nfs_client;
-+			spin_lock(&clp->cl_lock);
-+			/* List does not take a reference, so no need for put here */
-+			list_del_init(&lseg->pls_layout->plh_layouts);
-+			spin_unlock(&clp->cl_lock);
-+		}
-+		list_add(&lseg->pls_list, tmp_list);
-+	}
- }
- 
--static void
--pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list)
-+static bool
-+should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
-+{
-+	return (recall_iomode == IOMODE_ANY ||
-+		lseg_iomode == recall_iomode);
-+}
-+
-+static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
-+			      struct list_head *tmp_list)
-+{
-+	if (test_and_clear_bit(NFS_LSEG_VALID, &lseg->pls_flags)) {
-+		/* Remove the reference keeping the lseg in the
-+		 * list.  It will now be removed when all
-+		 * outstanding io is finished.
-+		 */
-+		put_lseg_locked(lseg, tmp_list);
-+	}
-+}
-+
-+/* Returns false if no lsegs match, true otherwise */
-+static bool
-+mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
-+			    struct list_head *tmp_list,
-+			    u32 iomode)
- {
- 	struct pnfs_layout_segment *lseg, *next;
--	struct nfs_client *clp;
-+	bool rv = false;
- 
- 	dprintk("%s:Begin lo %p\n", __func__, lo);
- 
--	assert_spin_locked(&lo->plh_inode->i_lock);
--	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list) {
--		dprintk("%s: freeing lseg %p\n", __func__, lseg);
--		list_move(&lseg->pls_list, tmp_list);
--	}
--	clp = NFS_SERVER(lo->plh_inode)->nfs_client;
--	spin_lock(&clp->cl_lock);
--	/* List does not take a reference, so no need for put here */
--	list_del_init(&lo->plh_layouts);
--	spin_unlock(&clp->cl_lock);
--
-+	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
-+		if (should_free_lseg(lseg->pls_range.iomode, iomode)) {
-+			dprintk("%s: freeing lseg %p iomode %d "
-+				"offset %llu length %llu\n", __func__,
-+				lseg, lseg->pls_range.iomode, lseg->pls_range.offset,
-+				lseg->pls_range.length);
-+			mark_lseg_invalid(lseg, tmp_list);
-+			rv = true;
-+		}
- 	dprintk("%s:Return\n", __func__);
-+	return rv;
- }
- 
- static void
--pnfs_free_lseg_list(struct list_head *tmp_list)
-+pnfs_free_lseg_list(struct list_head *free_me)
- {
--	struct pnfs_layout_segment *lseg;
-+	struct pnfs_layout_segment *lseg, *tmp;
- 
--	while (!list_empty(tmp_list)) {
--		lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
--				pls_list);
--		dprintk("%s calling put_lseg on %p\n", __func__, lseg);
-+	list_for_each_entry_safe(lseg, tmp, free_me, pls_list) {
- 		list_del(&lseg->pls_list);
--		put_lseg(lseg);
-+		free_lseg(lseg);
- 	}
- }
- 
-@@ -285,7 +317,8 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
- 	spin_lock(&nfsi->vfs_inode.i_lock);
- 	lo = nfsi->layout;
- 	if (lo) {
--		pnfs_clear_lseg_list(lo, &tmp_list);
-+		set_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags);
-+		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
- 		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
- 		put_layout_hdr_locked(lo);
- 	}
-@@ -477,9 +510,12 @@ pnfs_find_alloc_layout(struct inode *ino)
- 	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
- 
- 	assert_spin_locked(&ino->i_lock);
--	if (nfsi->layout)
--		return nfsi->layout;
--
-+	if (nfsi->layout) {
-+		if (test_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags))
-+			return NULL;
-+		else
-+			return nfsi->layout;
-+	}
- 	spin_unlock(&ino->i_lock);
- 	new = alloc_init_layout_hdr(ino);
- 	spin_lock(&ino->i_lock);
-@@ -520,7 +556,8 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
- 
- 	assert_spin_locked(&lo->plh_inode->i_lock);
- 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
--		if (is_matching_lseg(lseg, iomode)) {
-+		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
-+		    is_matching_lseg(lseg, iomode)) {
- 			ret = lseg;
- 			break;
- 		}
-@@ -529,7 +566,7 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
- 	}
- 
- 	dprintk("%s:Return lseg %p ref %d\n",
--		__func__, ret, ret ? atomic_read(&ret->pls_refcount.refcount) : 0);
-+		__func__, ret, ret ? atomic_read(&ret->pls_refcount) : 0);
- 	return ret;
- }
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 1093720..787253e 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -30,10 +30,15 @@
- #ifndef FS_NFS_PNFS_H
- #define FS_NFS_PNFS_H
- 
-+enum {
-+	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
-+};
-+
- struct pnfs_layout_segment {
- 	struct list_head pls_list;
- 	struct pnfs_layout_range pls_range;
--	struct kref pls_refcount;
-+	atomic_t pls_refcount;
-+	unsigned long pls_flags;
- 	struct pnfs_layout_hdr *pls_layout;
- };
- 
-@@ -44,6 +49,7 @@ struct pnfs_layout_segment {
- enum {
- 	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
- 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
-+	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
- };
- 
- /* Per-layout driver specific registration structure */
--- 
-1.7.2.1
+> That said: as far as I can see, pretty much all these changes are
+> confined to the NFSv2 and NFSv3 XDR code. I can quite understand why
+> distros like Red Hat, SuSE, Debian, and others might want to avoid
+> having to back port changes, given that the NFSv2 and NFSv3 code bases
+> are supposed to be fully stable and frozen.
+> 
+> So my questions to Steve and Ric are:
+> 
+>      1. Specifically, which part of these changes are causing
+>         backporting headaches for the RHEL-6 code base? Note that when
+>         asking that question I am assuming that Red Hat will triage and
+>         reject patches that conflict with their stability goals.
+As of the 2.6.32 kernel we have been pulling in all the NFS (both 
+client and server) changes from every major release. Meaning at 
+this point the RHEL6.1 NFS code will be bug for bug compatible with 
+the NFS code in the 2.6.37 mainline kernel. So no, we have not been 
+reject many patches. 
+
+The reason we have been pulling in the entire releases is because
+when the pNFS bits are ready, we just want to pull them in and 
+not have a backport from hell, basically forking from upstream.
+Think of what has changed between the 2.6.32 and 2.6.37 kernels.
+Backports like that are basically forks, IMHO... 
+
+Keeping with this theory, when 2.6.38 is release we would pull
+in the pNFS bits but also all the changes to parts of the code that
+doesn't seem to be broken. 
+
+The problem for us is RHEL6 has been released so the days of me 
+pushing in hundreds and hundreds of patches that change parts 
+of the code that, again, are not broken are gone. We simply do 
+not have the resources to QA that amount of changes. 
+
+Finally, history has shown, backporting large chucks of code out of 
+a major release basically turns into a fork as well, which will 
+not help us or more importantly not help this community.   
+
+
+>      2. Could we set up some minimal set of patches that would allow the
+>         pNFS backport while avoiding the need for a full backport of
+>         Chuck's patches for NFSv2/v3? If so, what features do we need,
+>         and what is not needed?
+> 
+> IOW: how can we refactor these patches so as to avoid tying the set of
+> NFSv2/v3 changes to any pNFS interests?
+I don't know... We could look into something like this, but from an 
+upstream perspective, would it be worth it? Does it make sense? 
+Again I don't know 
+
+Trond, it will not be the end of the world if RHEL6 does not have
+pNFS support... Again I think it would help the community by 
+move the technology forward sooner verse later, but if it 
+does not work out... so be it.. 
+
+We will just move the support to RHEL 7 and move on... Heck that 
+would make my life much easier (which I'm *always* a fan of ;-) ) 
+and we always have Fedora... 
+
+Its just when I heard, in this week's pNFS meeting, how close we were
+of having some meaningful pNFS bits (i.e. wave2), we decided to make
+this highly unusual (some call it shameful) request of asking to 
+minimize changes until the pNFS bits stabilize... 
+
+Thank you for even considering it... 
+
+steved.
 
