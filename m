@@ -1,55 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:32983 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755632Ab0LAUTs convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Dec 2010 15:19:48 -0500
-In-Reply-To: <1291234251.6609.39.camel@heimdal.trondhjem.org>
-References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
- <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
- <20101201150428.GA2879@elliptictech.com> <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
- <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
- <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
- <1291229669.6609.24.camel@heimdal.trondhjem.org> <AANLkTinsEeKK9LykVAVq60Lsb3caLDJasnKH8kcgSFVp@mail.gmail.com>
- <1291234251.6609.39.camel@heimdal.trondhjem.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Wed, 1 Dec 2010 12:18:58 -0800
-Message-ID: <AANLkTi=Spd1OvdijN7kEJBBdYdTRuVnwPUqZvAUUiaKF@mail.gmail.com>
-Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Nick Bowler <nbowler@elliptictech.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-        Hugh Dickins <hughd@google.com>, Rik van Riel <riel@redhat.com>,
-        Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:42494 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755591Ab0LQSUL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Dec 2010 13:20:11 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V4 4/9] NFS implement v4.0 callback_ident
+Date: Fri, 17 Dec 2010 13:20:05 -0500
+Message-Id: <1292610010-19084-5-git-send-email-andros@netapp.com>
+In-Reply-To: <1292610010-19084-4-git-send-email-andros@netapp.com>
+References: <1292610010-19084-1-git-send-email-andros@netapp.com>
+ <1292610010-19084-2-git-send-email-andros@netapp.com>
+ <1292610010-19084-3-git-send-email-andros@netapp.com>
+ <1292610010-19084-4-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Dec 1, 2010 at 12:10 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
->
-> Something like the following then?
-> diff --git a/mm/truncate.c b/mm/truncate.c
-> index ba887bf..76ab2a8 100644
-> --- a/mm/truncate.c
-> +++ b/mm/truncate.c
-> @@ -108,6 +108,10 @@ truncate_complete_page(struct address_space *mapping, struct page *page)
->        clear_page_mlock(page);
->        remove_from_page_cache(page);
->        ClearPageMappedToDisk(page);
-> +
-> +       if (mapping->a_ops->freepage)
-> +               mapping->a_ops->freepage(page);
-> +
->        page_cache_release(page);       /* pagecache ref */
->        return 0;
->  }
+From: Andy Adamson <andros@netapp.com>
 
-I'd do this in "remove_from_page_cache()" instead of in
-"truncate_complete_page()". Otherwise it will miss any other callers
-that use "remove_from_page_cache()" (not that there are many, and I
-doubt NFS cares about the ones that do exists, but..)
+Provide a unique callback identifier per SETCLIENTID call used to identify the
+v4.0 callback service associated with the clientid.
 
-                 Linus
+Do not worry about wrap around. Zero value means unset.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c         |    5 +++++
+ fs/nfs/nfs4state.c        |    1 +
+ include/linux/nfs_fs_sb.h |    1 +
+ include/linux/nfs_xdr.h   |    1 +
+ 4 files changed, 8 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4435e5e..ab5a2c4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3470,6 +3470,8 @@ do_state_recovery:
+ 	return -EAGAIN;
+ }
+ 
++static u32 current_cb_ident = 1;
++
+ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 		unsigned short port, struct rpc_cred *cred,
+ 		struct nfs4_setclientid_res *res)
+@@ -3478,6 +3480,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 	struct nfs4_setclientid setclientid = {
+ 		.sc_verifier = &sc_verifier,
+ 		.sc_prog = program,
++		.sc_cb_ident = current_cb_ident++,
+ 	};
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SETCLIENTID],
+@@ -3522,6 +3525,8 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 			if (++clp->cl_id_uniquifier == 0)
+ 				break;
+ 	}
++	if (status == NFS_OK)
++		res->cb_ident = setclientid.sc_cb_ident;
+ 	return status;
+ }
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index f575a31..fe61422 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -79,6 +79,7 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ 	if (status != 0)
+ 		goto out;
+ 	clp->cl_clientid = clid.clientid;
++	clp->cl_cb_ident = clid.cb_ident;
+ 	nfs4_schedule_state_renewal(clp);
+ out:
+ 	return status;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 452d964..1eaa054 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -71,6 +71,7 @@ struct nfs_client {
+ 	 */
+ 	char			cl_ipaddr[48];
+ 	unsigned char		cl_id_uniquifier;
++	u32			cl_cb_ident;	/* v4.0 callback identifier */
+ 	const struct nfs4_minor_version_ops *cl_mvops;
+ #endif /* CONFIG_NFS_V4 */
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 80f0719..24e77a6 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -868,6 +868,7 @@ struct nfs4_setclientid {
+ struct nfs4_setclientid_res {
+ 	u64				clientid;
+ 	nfs4_verifier			confirm;
++	u32				cb_ident;
+ };
+ 
+ struct nfs4_statfs_arg {
+-- 
+1.6.6
+
