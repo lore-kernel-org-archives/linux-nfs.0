@@ -1,87 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43748 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:14215 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751701Ab0LXRnT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Dec 2010 12:43:19 -0500
-Date: Fri, 24 Dec 2010 12:43:07 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: andros@netapp.com
-Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH_V5 03/11] SUNRPC new transport for the NFSv4.1 shared
- back channel
-Message-ID: <20101224174307.GD2889@fieldses.org>
-References: <1292879088-7821-1-git-send-email-andros@netapp.com>
- <1292879088-7821-2-git-send-email-andros@netapp.com>
- <1292879088-7821-3-git-send-email-andros@netapp.com>
- <1292879088-7821-4-git-send-email-andros@netapp.com>
- <20101222222414.GD13243@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101222222414.GD13243@fieldses.org>
+	id S1753214Ab0LQMRT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Dec 2010 07:17:19 -0500
+Message-ID: <4D0B54AD.1080702@RedHat.com>
+Date: Fri, 17 Dec 2010 07:16:45 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/31] NFS XDR clean up for 2.6.38
+References: <20101214144747.2293.68070.stgit@matisse.1015granger.net> <4D0A6503.7010901@RedHat.com> <20101216230524.GA16760@infradead.org>
+In-Reply-To: <20101216230524.GA16760@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Dec 22, 2010 at 05:24:14PM -0500, bfields wrote:
-> On Mon, Dec 20, 2010 at 04:04:40PM -0500, andros@netapp.com wrote:
-> > From: Andy Adamson <andros@netapp.com>
-> > 
-> > Move the current sock create and destroy routines into the new transport ops.
-> > Back channel socket will be destroyed by the svc_closs_all call in svc_destroy.
+
+
+On 12/16/2010 06:05 PM, Christoph Hellwig wrote:
+> Steve,
 > 
-> Also note you're adding UDP check?
+> I think it's totally out of place to try to put back large work on the
+> whole nfs client for vendor interest in an absolute fringe feature.
+All I was asking for is put more priority on the pNFS work than other
+major work... Basically put the pNFS work in front of everything else..
+ 
+> 
+> I think you should at least be a bit ashamed for even putting this
+> forward.
+> 
+No... I am not and will not be ashamed of trying to help this 
+community, which I have been a member for a very long time, 
+set priorities on work that will make the community even
+stronger... 
 
-Oh, and a minor nit there:
+steved.
 
-> > +		printk(KERN_WARNING "svc: only and TCP sockets"
-					       ^^^
-
-Just fix that message.  Other than that, everything looks OK to me.
-
---b.
-
-> > +			" supported on shared back channel\n");
-> > +		return ERR_PTR(-EINVAL);
-> > +	}
-> >  
-> > -	dprintk("svc: %s\n", __func__);
-> >  	svsk = kzalloc(sizeof(*svsk), GFP_KERNEL);
-> >  	if (!svsk)
-> > -		goto out;
-> > +		return ERR_PTR(-ENOMEM);
-> >  
-> >  	xprt = &svsk->sk_xprt;
-> > -	if (prot == IPPROTO_TCP)
-> > -		svc_xprt_init(&svc_tcp_class, xprt, serv);
-> > -	else if (prot == IPPROTO_UDP)
-> > -		svc_xprt_init(&svc_udp_class, xprt, serv);
-> > -	else
-> > -		BUG();
-> > -out:
-> > -	dprintk("svc: %s return %p\n", __func__, xprt);
-> > +	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
-> > +
-> > +	serv->bc_xprt = xprt;
-> > +
-> >  	return xprt;
-> >  }
-> > -EXPORT_SYMBOL_GPL(svc_sock_create);
-> >  
-> >  /*
-> > - * Destroy a svc_sock.
-> > + * Free a back channel svc_sock.
-> >   */
-> > -void svc_sock_destroy(struct svc_xprt *xprt)
-> > +static void svc_bc_sock_free(struct svc_xprt *xprt)
-> >  {
-> >  	if (xprt)
-> >  		kfree(container_of(xprt, struct svc_sock, sk_xprt));
-> >  }
-> > -EXPORT_SYMBOL_GPL(svc_sock_destroy);
-> > +#endif /* CONFIG_NFS_V4_1 */
-> > -- 
-> > 1.6.6
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
