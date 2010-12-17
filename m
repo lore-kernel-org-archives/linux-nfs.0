@@ -1,124 +1,318 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57584 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751296Ab0LMSzP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 13 Dec 2010 13:55:15 -0500
-Date: Mon, 13 Dec 2010 13:55:14 -0500
-To: Tim Watts <t.watts@imperial.ac.uk>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NooB Assitance with debugging NFSv4 client requested
-Message-ID: <20101213185514.GA2230@fieldses.org>
-References: <4D024A8E.50407@imperial.ac.uk>
- <4D05F3E2.6090902@imperial.ac.uk>
- <4D0606D0.4010702@imperial.ac.uk>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D0606D0.4010702@imperial.ac.uk>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:44037 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753720Ab0LQTQh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Dec 2010 14:16:37 -0500
+Received: by iwn9 with SMTP id 9so1037966iwn.19
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Dec 2010 11:16:36 -0800 (PST)
+In-Reply-To: <20101217191037.GA14510@fieldses.org>
+References: <1292610010-19084-1-git-send-email-andros@netapp.com>
+	<1292610010-19084-2-git-send-email-andros@netapp.com>
+	<20101217184047.GD11515@fieldses.org>
+	<AANLkTinb3cZjPJZsGs-eNgU-5qMtvbFZMjY_rc=rZExN@mail.gmail.com>
+	<AANLkTi=yKirVoRTEsz9s=8nQHPXR0C52DQHK-nz7Q82j@mail.gmail.com>
+	<20101217191037.GA14510@fieldses.org>
+Date: Fri, 17 Dec 2010 14:16:35 -0500
+Message-ID: <AANLkTinjxeWAqW7p=nReP7jmqfWZi7CS_p+GVdno7zmQ@mail.gmail.com>
+Subject: Re: [PATCH_V4 1/9] SUNRPC new transport for the NFSv4.1 shared back channel
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Dec 13, 2010 at 11:43:12AM +0000, Tim Watts wrote:
-> Hmm,
-> 
-> Wonder if this is a clue (not noticed this before, but running
-> idmapd in the foreground, it just whined):
-> 
-> rpc.idmapd: nfscb: read(/var/lib/nfs/rpc_pipefs/nfs/clnt0/idmap): No
-> such file or directory
-> 
-> (Repeated several times).
-> 
-> I'm veering towards this issue being an idmap problem.
+On Fri, Dec 17, 2010 at 2:10 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Fri, Dec 17, 2010 at 01:57:50PM -0500, William A. (Andy) Adamson wrote:
+>> On Fri, Dec 17, 2010 at 1:54 PM, William A. (Andy) Adamson
+>> <androsadamson@gmail.com> wrote:
+>> > On Fri, Dec 17, 2010 at 1:40 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> >> On Fri, Dec 17, 2010 at 01:20:02PM -0500, andros@netapp.com wrote:
+>> >>> From: Andy Adamson <andros@netapp.com>
+>> >>>
+>> >>> Create a new transport for the shared back channel.l Move the current sock
+>> >>> create and destroy routines into the new transport ops.
+>> >>>
+>> >>> Reference the back channel transport across message processing (recv/send).
+>> >>>
+>> >>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> >>> ---
+>> >>>  include/linux/sunrpc/svcsock.h |    1 +
+>> >>>  net/sunrpc/svc.c               |   18 +++---
+>> >>>  net/sunrpc/svcsock.c           |  122 +++++++++++++++++++++++++++++++++-------
+>> >>>  3 files changed, 112 insertions(+), 29 deletions(-)
+>> >>>
+>> >>> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+>> >>> index 1b353a7..3a45a80 100644
+>> >>> --- a/include/linux/sunrpc/svcsock.h
+>> >>> +++ b/include/linux/sunrpc/svcsock.h
+>> >>> @@ -45,6 +45,7 @@ int         svc_sock_names(struct svc_serv *serv, char *buf,
+>> >>>  int          svc_addsock(struct svc_serv *serv, const int fd,
+>> >>>                                       char *name_return, const size_t len);
+>> >>>  void         svc_init_xprt_sock(void);
+>> >>> +void         svc_init_bc_xprt_sock(void);
+>> >>>  void         svc_cleanup_xprt_sock(void);
+>> >>>  struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot);
+>> >>>  void         svc_sock_destroy(struct svc_xprt *);
+>> >>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+>> >>> index 6359c42..3520cb3 100644
+>> >>> --- a/net/sunrpc/svc.c
+>> >>> +++ b/net/sunrpc/svc.c
+>> >>> @@ -488,10 +488,6 @@ svc_destroy(struct svc_serv *serv)
+>> >>>       if (svc_serv_is_pooled(serv))
+>> >>>               svc_pool_map_put();
+>> >>>
+>> >>> -#if defined(CONFIG_NFS_V4_1)
+>> >>> -     svc_sock_destroy(serv->bc_xprt);
+>> >>> -#endif /* CONFIG_NFS_V4_1 */
+>> >>> -
+>> >>>       svc_unregister(serv);
+>> >>>       kfree(serv->sv_pools);
+>> >>>       kfree(serv);
+>> >>> @@ -1264,7 +1260,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>> >>>  {
+>> >>>       struct kvec     *argv = &rqstp->rq_arg.head[0];
+>> >>>       struct kvec     *resv = &rqstp->rq_res.head[0];
+>> >>> -     int             error;
+>> >>> +     int             ret;
+>> >>>
+>> >>>       /* Build the svc_rqst used by the common processing routine */
+>> >>>       rqstp->rq_xprt = serv->bc_xprt;
+>> >>> @@ -1292,12 +1288,16 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>> >>>       svc_getu32(argv);       /* XID */
+>> >>>       svc_getnl(argv);        /* CALLDIR */
+>> >>>
+>> >>> -     error = svc_process_common(rqstp, argv, resv);
+>> >>> -     if (error <= 0)
+>> >>> -             return error;
+>> >>> +     /* Hold a reference to the back channel socket across the call */
+>> >>> +     svc_xprt_get(serv->bc_xprt);
+>> >>
+>> >> Either we already have a reference, in which case this is unnecessary,
+>> >> or we don't, in which case this is risky.
+>> >
+>> > This is done so that when svc_xprt_put is called due to an svc_drop
+>> > (svc_xprt_release, svc_xprt_put) it is not freed.  It's not risky
+>> > because AFAICS it's the way the rpc server code is intended to work.
+>> > Note that svc_recv calls svc_xprt_get, and svc_send calls svc_xprt_put
+>> > for the same reason.
+>
+> The svc_xprt_put()'s in svc_send/svc_drop balance the get in svc_recv().
+> They're needed because on a normal server connections can come and go
+> (because clients come and go) during the lifetime of the server.
+>
+> As I understand it, the client is just creating a new server for each
+> backchannel.  So the server will never outlive the one connection it
+> uses.  So you don't need that stuff.  It's harmless--just leave it
+> alone--but definitely don't try to add additional reference counting
+> during the processing.
 
-All permissions are enforced on the server side--the effect of an
-idmapper failure should just be that "ls -l" shows bad results (e.g.,
-"nobody" as the owner of every file) and that commands like "chown"
-fail.
+If I don't add an svc_xprt_get prior to the svc_process_call, the
+svc_xprt_put called in the svc_drop case will free the bc_xprt, which
+is not what I want.
 
-If you're actually being prevented from performing normal filesystem
-operations, then the most likely culprit is with gssd and krb5.
-
-Might be worth filing a bug with ubuntu.
-
-rpc.gssd debugging you've tried.  Sniffing client/server and client/kdc
-traffic with wireshark might also show some more information.
-
-I dunno.  Maybe strace rpc.gssd during the failure?
-
---b.
-
-> 
-> Cheers
-> 
-> tim
-> 
-> On 13/12/10 10:22, Tim Watts wrote:
-> >Bump - anyone :)
-> >
-> >Please note - I'm not requesting anyone fix a deeply obscure problem.
-> >I'm a sysadmin - I'd just be really grateful for some pointers to help
-> >me continue debugging this myself...
-> >
-> >Ta,
-> >
-> >Tim
-> >
-> >On 10/12/10 15:43, Tim Watts wrote:
-> >>Hi,
-> >>
-> >>I have an NFSv4 client set up on Ubuntu 10.04.1 LTS x86. The NFSv4
-> >>server is running Centos 5.5 and we use MIT kerberos and LDAP for
-> >>users/groups. This seems to work well with Centos 5.5 clients
-> >>
-> >>All works fine with my Ubuntu client, except after a while my client
-> >>acts like it loses its authentication - symptom: home directory mount
-> >>drops to "nobody" - I see the mount as "other" - no write access, can
-> >>read files that have world read bit set etc.
-> >>
-> >>This can happen anytime between 48 hours and 2 hours after a full client
-> >>reboot. It seems to be triggered by active use of thunderbird via the
-> >>NFSv4 mounted home dir which suggests it may be load sensitive.
-> >>
-> >>When it happens, if I unmount my home dir (killing the desktop of
-> >>course) , then remount the fault is cleared and I can work again.
-> >>
-> >>What doesn't work is just doing a kinit -f or restarting idmapd or gssd.
-> >>
-> >>I have run rpc.gssd in foreground debug mode and that doesn't say much
-> >>during the problem times, ditto idmapd. We are using openldap for passwd
-> >>and group lookups cached locally with nscd.
-> >>
-> >>I have tried upping kernel debugging:
-> >>
-> >>rpcdebug -m nfs -s vfs dircache lookupcache pagecache proc xdr file root
-> >>callback client mount all
-> >>
-> >>but I'm not sure what I'm looking for.
-> >>
-> >>The symptoms feel like the kernel is losing the ticket or timing it out
-> >>or possibly the ID mapping is failing - is there any way to examining
-> >>the state of the kernel ticket cache or anything else I could be looking
-> >>for?
-> >>
-> >>I am tempted to say this is a bug, possibly in the Ubuntu build, but I
-> >>would like to investigate further.
-> >>
-> >>Any pointers much appreciated as to how I might isolate the fault
-> >>further.
-> >>
-> >>Cheers
-> >>
-> >>Tim
-> >
-> >
-> 
-> 
-> -- 
-> Tim Watts
-> Linux Sysadmin, High Energy Physics, Imperial College London
-> Tel: 020 759 47809
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-->Andy
+>
+> --b.
+>
+>>
+>> I take it back - as written, it might be risky :) Perhaps I should
+>> make sure that the xpt_ref = 1 before returning from bc_svc_process.
+>>
+>> -->Andy
+>> >
+>> >> The nfs client code knows when it wants to create and destroy the
+>> >> backchannel, so I think all you want is to create the svc_xprt when you
+>> >> create the backchannel and then put it once when you bring it down.
+>> >
+>> > Correct, and without the references in bc_svc_process, svc_drop == freeing.
+>> >
+>> > -->Andy
+>> >>
+>> >> --b.
+>> >>
+>> >>> +     ret = svc_process_common(rqstp, argv, resv);
+>> >>> +     if (ret <= 0)
+>> >>> +             return ret;
+>> >>>
+>> >>>       memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
+>> >>> -     return bc_send(req);
+>> >>> +     ret = bc_send(req);
+>> >>> +     svc_xprt_put(serv->bc_xprt);
+>> >>> +     return ret;
+>> >>>  }
+>> >>>  EXPORT_SYMBOL(bc_svc_process);
+>> >>>  #endif /* CONFIG_NFS_V4_1 */
+>> >>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+>> >>> index 07919e1..5875551 100644
+>> >>> --- a/net/sunrpc/svcsock.c
+>> >>> +++ b/net/sunrpc/svcsock.c
+>> >>> @@ -66,6 +66,13 @@ static void                svc_sock_free(struct svc_xprt *);
+>> >>>  static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
+>> >>>                                         struct net *, struct sockaddr *,
+>> >>>                                         int, int);
+>> >>> +#if defined(CONFIG_NFS_V4_1)
+>> >>> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
+>> >>> +                                          struct net *, struct sockaddr *,
+>> >>> +                                          int, int);
+>> >>> +static void svc_bc_sock_free(struct svc_xprt *xprt);
+>> >>> +#endif /* CONFIG_NFS_V4_1 */
+>> >>> +
+>> >>>  #ifdef CONFIG_DEBUG_LOCK_ALLOC
+>> >>>  static struct lock_class_key svc_key[2];
+>> >>>  static struct lock_class_key svc_slock_key[2];
+>> >>> @@ -1184,6 +1191,79 @@ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
+>> >>>       return svc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
+>> >>>  }
+>> >>>
+>> >>> +#if defined(CONFIG_NFS_V4_1)
+>> >>> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
+>> >>> +                                          struct net *, struct sockaddr *,
+>> >>> +                                          int, int);
+>> >>> +static void svc_bc_sock_free(struct svc_xprt *xprt);
+>> >>> +
+>> >>> +static struct svc_xprt *svc_bc_tcp_create(struct svc_serv *serv,
+>> >>> +                                    struct net *net,
+>> >>> +                                    struct sockaddr *sa, int salen,
+>> >>> +                                    int flags)
+>> >>> +{
+>> >>> +     return svc_bc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
+>> >>> +}
+>> >>> +
+>> >>> +static void svc_bc_tcp_sock_detach(struct svc_xprt *xprt)
+>> >>> +{
+>> >>> +}
+>> >>> +
+>> >>> +/* These bc ops are never called. The shared fore channel is used instead */
+>> >>> +static int svc_bc_tcp_recvfrom(struct svc_rqst *rqstp)
+>> >>> +{
+>> >>> +     return 0;
+>> >>> +}
+>> >>> +
+>> >>> +static int svc_bc_tcp_sendto(struct svc_rqst *rqstp)
+>> >>> +{
+>> >>> +     return 0;
+>> >>> +}
+>> >>> +
+>> >>> +static void svc_bc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
+>> >>> +{
+>> >>> +}
+>> >>> +
+>> >>> +static void svc_bc_release_skb(struct svc_rqst *rqstp)
+>> >>> +{
+>> >>> +}
+>> >>> +
+>> >>> +static int svc_bc_tcp_has_wspace(struct svc_xprt *xprt)
+>> >>> +{
+>> >>> +     return 0;
+>> >>> +}
+>> >>> +
+>> >>> +static struct svc_xprt *svc_bc_tcp_accept(struct svc_xprt *xprt)
+>> >>> +{
+>> >>> +     return NULL;
+>> >>> +}
+>> >>> +
+>> >>> +static struct svc_xprt_ops svc_tcp_bc_ops = {
+>> >>> +     .xpo_create = svc_bc_tcp_create,
+>> >>> +     .xpo_recvfrom = svc_bc_tcp_recvfrom,
+>> >>> +     .xpo_sendto = svc_bc_tcp_sendto,
+>> >>> +     .xpo_release_rqst = svc_bc_release_skb,
+>> >>> +     .xpo_detach = svc_bc_tcp_sock_detach,
+>> >>> +     .xpo_free = svc_bc_sock_free,
+>> >>> +     .xpo_prep_reply_hdr = svc_bc_tcp_prep_reply_hdr,
+>> >>> +     .xpo_has_wspace = svc_bc_tcp_has_wspace,
+>> >>> +     .xpo_accept = svc_bc_tcp_accept,
+>> >>> +};
+>> >>> +
+>> >>> +static struct svc_xprt_class svc_tcp_bc_class = {
+>> >>> +     .xcl_name = "tcp-bc",
+>> >>> +     .xcl_owner = THIS_MODULE,
+>> >>> +     .xcl_ops = &svc_tcp_bc_ops,
+>> >>> +     .xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+>> >>> +};
+>> >>> +
+>> >>> +void svc_init_bc_xprt_sock(void)
+>> >>> +{
+>> >>> +     svc_reg_xprt_class(&svc_tcp_bc_class);
+>> >>> +}
+>> >>> +EXPORT_SYMBOL_GPL(svc_init_bc_xprt_sock);
+>> >>> +#endif /* CONFIG_NFS_V4_1 */
+>> >>> +
+>> >>>  static struct svc_xprt_ops svc_tcp_ops = {
+>> >>>       .xpo_create = svc_tcp_create,
+>> >>>       .xpo_recvfrom = svc_tcp_recvfrom,
+>> >>> @@ -1509,41 +1589,43 @@ static void svc_sock_free(struct svc_xprt *xprt)
+>> >>>       kfree(svsk);
+>> >>>  }
+>> >>>
+>> >>> +#if defined(CONFIG_NFS_V4_1)
+>> >>>  /*
+>> >>> - * Create a svc_xprt.
+>> >>> - *
+>> >>> - * For internal use only (e.g. nfsv4.1 backchannel).
+>> >>> - * Callers should typically use the xpo_create() method.
+>> >>> + * Create a back channel svc_xprt which shares the fore channel socket.
+>> >>>   */
+>> >>> -struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot)
+>> >>> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+>> >>> +                                          int protocol,
+>> >>> +                                          struct net *net,
+>> >>> +                                          struct sockaddr *sin, int len,
+>> >>> +                                          int flags)
+>> >>>  {
+>> >>>       struct svc_sock *svsk;
+>> >>> -     struct svc_xprt *xprt = NULL;
+>> >>> +     struct svc_xprt *xprt;
+>> >>> +
+>> >>> +     if (protocol != IPPROTO_TCP) {
+>> >>> +             printk(KERN_WARNING "svc: only and TCP sockets"
+>> >>> +                     " supported on shared back channel\n");
+>> >>> +             return ERR_PTR(-EINVAL);
+>> >>> +     }
+>> >>>
+>> >>> -     dprintk("svc: %s\n", __func__);
+>> >>>       svsk = kzalloc(sizeof(*svsk), GFP_KERNEL);
+>> >>>       if (!svsk)
+>> >>> -             goto out;
+>> >>> +             return ERR_PTR(-ENOMEM);
+>> >>>
+>> >>>       xprt = &svsk->sk_xprt;
+>> >>> -     if (prot == IPPROTO_TCP)
+>> >>> -             svc_xprt_init(&svc_tcp_class, xprt, serv);
+>> >>> -     else if (prot == IPPROTO_UDP)
+>> >>> -             svc_xprt_init(&svc_udp_class, xprt, serv);
+>> >>> -     else
+>> >>> -             BUG();
+>> >>> -out:
+>> >>> -     dprintk("svc: %s return %p\n", __func__, xprt);
+>> >>> +     svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
+>> >>> +
+>> >>> +     serv->bc_xprt = xprt;
+>> >>> +
+>> >>>       return xprt;
+>> >>>  }
+>> >>> -EXPORT_SYMBOL_GPL(svc_sock_create);
+>> >>>
+>> >>>  /*
+>> >>> - * Destroy a svc_sock.
+>> >>> + * Free a back channel svc_sock.
+>> >>>   */
+>> >>> -void svc_sock_destroy(struct svc_xprt *xprt)
+>> >>> +static void svc_bc_sock_free(struct svc_xprt *xprt)
+>> >>>  {
+>> >>>       if (xprt)
+>> >>>               kfree(container_of(xprt, struct svc_sock, sk_xprt));
+>> >>>  }
+>> >>> -EXPORT_SYMBOL_GPL(svc_sock_destroy);
+>> >>> +#endif /* CONFIG_NFS_V4_1 */
+>> >>> --
+>> >>> 1.6.6
+>> >>>
+>> >> --
+>> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> >> the body of a message to majordomo@vger.kernel.org
+>> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> >>
+>> >
+>
