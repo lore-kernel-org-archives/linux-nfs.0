@@ -1,250 +1,267 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21165 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:46769 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753170Ab0LCQ2l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Dec 2010 11:28:41 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFS add session back channel draining
-Date: Fri,  3 Dec 2010 11:29:01 -0500
-Message-Id: <1291393741-2851-1-git-send-email-andros@netapp.com>
+	id S1755156Ab0LQSku (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Dec 2010 13:40:50 -0500
+Date: Fri, 17 Dec 2010 13:40:47 -0500
+To: andros@netapp.com
+Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH_V4 1/9] SUNRPC new transport for the NFSv4.1 shared
+ back channel
+Message-ID: <20101217184047.GD11515@fieldses.org>
+References: <1292610010-19084-1-git-send-email-andros@netapp.com>
+ <1292610010-19084-2-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1292610010-19084-2-git-send-email-andros@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Fri, Dec 17, 2010 at 01:20:02PM -0500, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Create a new transport for the shared back channel.l Move the current sock
+> create and destroy routines into the new transport ops.
+> 
+> Reference the back channel transport across message processing (recv/send).
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  include/linux/sunrpc/svcsock.h |    1 +
+>  net/sunrpc/svc.c               |   18 +++---
+>  net/sunrpc/svcsock.c           |  122 +++++++++++++++++++++++++++++++++-------
+>  3 files changed, 112 insertions(+), 29 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+> index 1b353a7..3a45a80 100644
+> --- a/include/linux/sunrpc/svcsock.h
+> +++ b/include/linux/sunrpc/svcsock.h
+> @@ -45,6 +45,7 @@ int		svc_sock_names(struct svc_serv *serv, char *buf,
+>  int		svc_addsock(struct svc_serv *serv, const int fd,
+>  					char *name_return, const size_t len);
+>  void		svc_init_xprt_sock(void);
+> +void		svc_init_bc_xprt_sock(void);
+>  void		svc_cleanup_xprt_sock(void);
+>  struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot);
+>  void		svc_sock_destroy(struct svc_xprt *);
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 6359c42..3520cb3 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -488,10 +488,6 @@ svc_destroy(struct svc_serv *serv)
+>  	if (svc_serv_is_pooled(serv))
+>  		svc_pool_map_put();
+>  
+> -#if defined(CONFIG_NFS_V4_1)
+> -	svc_sock_destroy(serv->bc_xprt);
+> -#endif /* CONFIG_NFS_V4_1 */
+> -
+>  	svc_unregister(serv);
+>  	kfree(serv->sv_pools);
+>  	kfree(serv);
+> @@ -1264,7 +1260,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>  {
+>  	struct kvec	*argv = &rqstp->rq_arg.head[0];
+>  	struct kvec	*resv = &rqstp->rq_res.head[0];
+> -	int 		error;
+> +	int		ret;
+>  
+>  	/* Build the svc_rqst used by the common processing routine */
+>  	rqstp->rq_xprt = serv->bc_xprt;
+> @@ -1292,12 +1288,16 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>  	svc_getu32(argv);	/* XID */
+>  	svc_getnl(argv);	/* CALLDIR */
+>  
+> -	error = svc_process_common(rqstp, argv, resv);
+> -	if (error <= 0)
+> -		return error;
+> +	/* Hold a reference to the back channel socket across the call */
+> +	svc_xprt_get(serv->bc_xprt);
 
-Currently session draining only drains the fore channel.
-The back channel processing must also be drained.
+Either we already have a reference, in which case this is unnecessary,
+or we don't, in which case this is risky.
 
-Use the back channel highest_slot_used to indicate that a callback is being
-processed by the callback thread.  Move the session complete to be per channel.
+The nfs client code knows when it wants to create and destroy the
+backchannel, so I think all you want is to create the svc_xprt when you
+create the backchannel and then put it once when you bring it down.
 
-When the session is draininig, wait for any current back channel processing
-to complete and stop all new back channel processing by returning NFS4ERR_DELAY
-to the back channel client.
+--b.
 
-Drain the back channel, then the fore channel.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/callback_proc.c    |    6 ++++++
- fs/nfs/callback_xdr.c     |   19 +++++++++++++++++++
- fs/nfs/internal.h         |    1 +
- fs/nfs/nfs4proc.c         |   26 +++++++++++++++++++-------
- fs/nfs/nfs4state.c        |   29 +++++++++++++++++++++++++----
- include/linux/nfs_fs_sb.h |    2 +-
- 6 files changed, 71 insertions(+), 12 deletions(-)
-
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index aa62342..bcad3c1 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -251,6 +251,12 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	if (clp == NULL)
- 		goto out;
- 
-+	/* state manager is resetting the session */
-+	if (test_bit(NFS4_SESSION_DRAINING, &clp->cl_session->session_state)) {
-+		status = NFS4ERR_DELAY;
-+		goto err_putclient;
-+	}
-+
- 	status = validate_seqid(&clp->cl_session->bc_slot_table, args);
- 	if (status)
- 		goto err_putclient;
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 85cbb8f..d21f17c 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -596,6 +596,22 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
- 	return htonl(NFS_OK);
- }
- 
-+static void nfs4_callback_free_slot(struct nfs4_session *session)
-+{
-+	struct nfs4_slot_table *tbl = &session->bc_slot_table;
-+
-+	spin_lock(&tbl->slot_tbl_lock);
-+	/*
-+	 * Let the state manager know callback processing done.
-+	 * A single slot, so highest used slotid is either 0 or -1
-+	 */
-+	tbl->highest_used_slotid--;
-+	nfs4_check_drain_bc_complete(session);
-+	spin_unlock(&tbl->slot_tbl_lock);
-+	dprintk("%s highest_used_slotid %d\n", __func__,
-+	tbl->highest_used_slotid);
-+}
-+
- #else /* CONFIG_NFS_V4_1 */
- 
- static __be32
-@@ -604,6 +620,9 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
- 	return htonl(NFS4ERR_MINOR_VERS_MISMATCH);
- }
- 
-+static void nfs4_callback_free_slot(struct nfs4_session *session)
-+{
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- static __be32
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index f65602c..0b5d99e 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -281,6 +281,7 @@ extern int _nfs4_call_sync_session(struct nfs_server *server,
- 				   struct nfs4_sequence_res *res,
- 				   int cache_reply);
- 
-+void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
- /*
-  * Determine the device name as a string
-  */
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a241957..c244000 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -355,9 +355,9 @@ nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *free_slot)
- }
- 
- /*
-- * Signal state manager thread if session is drained
-+ * Signal state manager thread if session fore channel is drained
-  */
--static void nfs41_check_drain_session_complete(struct nfs4_session *ses)
-+static void nfs4_check_drain_fc_complete(struct nfs4_session *ses)
- {
- 	struct rpc_task *task;
- 
-@@ -371,8 +371,20 @@ static void nfs41_check_drain_session_complete(struct nfs4_session *ses)
- 	if (ses->fc_slot_table.highest_used_slotid != -1)
- 		return;
- 
--	dprintk("%s COMPLETE: Session Drained\n", __func__);
--	complete(&ses->complete);
-+	dprintk("%s COMPLETE: Session Fore Channel Drained\n", __func__);
-+	complete(&ses->fc_slot_table.complete);
-+}
-+
-+/*
-+ * Signal state manager thread if session back channel is drained
-+ */
-+void nfs4_check_drain_bc_complete(struct nfs4_session *ses)
-+{
-+	if (!test_bit(NFS4_SESSION_DRAINING, &ses->session_state) ||
-+	    ses->bc_slot_table.highest_used_slotid != -1)
-+		return;
-+	dprintk("%s COMPLETE: Session Back Channel Drained\n", __func__);
-+	complete(&ses->bc_slot_table.complete);
- }
- 
- static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
-@@ -389,7 +401,7 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
- 
- 	spin_lock(&tbl->slot_tbl_lock);
- 	nfs4_free_slot(tbl, res->sr_slot);
--	nfs41_check_drain_session_complete(res->sr_session);
-+	nfs4_check_drain_fc_complete(res->sr_session);
- 	spin_unlock(&tbl->slot_tbl_lock);
- 	res->sr_slot = NULL;
- }
-@@ -4772,17 +4784,17 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
- 	if (!session)
- 		return NULL;
- 
--	init_completion(&session->complete);
--
- 	tbl = &session->fc_slot_table;
- 	tbl->highest_used_slotid = -1;
- 	spin_lock_init(&tbl->slot_tbl_lock);
- 	rpc_init_priority_wait_queue(&tbl->slot_tbl_waitq, "ForeChannel Slot table");
-+	init_completion(&tbl->complete);
- 
- 	tbl = &session->bc_slot_table;
- 	tbl->highest_used_slotid = -1;
- 	spin_lock_init(&tbl->slot_tbl_lock);
- 	rpc_init_wait_queue(&tbl->slot_tbl_waitq, "BackChannel Slot table");
-+	init_completion(&tbl->complete);
- 
- 	session->session_state = 1<<NFS4_SESSION_INITING;
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 11290de..3445b01 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -143,6 +143,11 @@ static int nfs41_setup_state_renewal(struct nfs_client *clp)
- 	return status;
- }
- 
-+/*
-+ * Back channel returns NFS4ERR_DELAY for new requests when
-+ * NFS4_SESSION_DRAINING is set so there is no work to be done when draining
-+ * is ended.
-+ */
- static void nfs4_end_drain_session(struct nfs_client *clp)
- {
- 	struct nfs4_session *ses = clp->cl_session;
-@@ -170,16 +175,32 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
- {
- 	struct nfs4_session *ses = clp->cl_session;
- 	struct nfs4_slot_table *tbl = &ses->fc_slot_table;
-+	int ret = 0;
- 
--	spin_lock(&tbl->slot_tbl_lock);
- 	set_bit(NFS4_SESSION_DRAINING, &ses->session_state);
-+	/* back channel */
-+	tbl = &ses->bc_slot_table;
-+	spin_lock(&tbl->slot_tbl_lock);
- 	if (tbl->highest_used_slotid != -1) {
--		INIT_COMPLETION(ses->complete);
-+		INIT_COMPLETION(tbl->complete);
- 		spin_unlock(&tbl->slot_tbl_lock);
--		return wait_for_completion_interruptible(&ses->complete);
-+		ret = wait_for_completion_interruptible(&tbl->complete);
-+		if (ret)
-+			goto out;
-+		goto forechannel;
- 	}
- 	spin_unlock(&tbl->slot_tbl_lock);
--	return 0;
-+forechannel:
-+	/* fore channel */
-+	spin_lock(&tbl->slot_tbl_lock);
-+	if (tbl->highest_used_slotid != -1) {
-+		INIT_COMPLETION(tbl->complete);
-+		spin_unlock(&tbl->slot_tbl_lock);
-+		return wait_for_completion_interruptible(&tbl->complete);
-+	}
-+	spin_unlock(&tbl->slot_tbl_lock);
-+out:
-+	return ret;
- }
- 
- int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 1eaa054..e93ada0 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -197,6 +197,7 @@ struct nfs4_slot_table {
- 						 * op for dynamic resizing */
- 	int		target_max_slots;	/* Set by CB_RECALL_SLOT as
- 						 * the new max_slots */
-+	struct completion complete;
- };
- 
- static inline int slot_idx(struct nfs4_slot_table *tbl, struct nfs4_slot *sp)
-@@ -213,7 +214,6 @@ struct nfs4_session {
- 	unsigned long			session_state;
- 	u32				hash_alg;
- 	u32				ssv_len;
--	struct completion		complete;
- 
- 	/* The fore and back channel */
- 	struct nfs4_channel_attrs	fc_attrs;
--- 
-1.6.6
-
+> +	ret = svc_process_common(rqstp, argv, resv);
+> +	if (ret <= 0)
+> +		return ret;
+>  
+>  	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
+> -	return bc_send(req);
+> +	ret = bc_send(req);
+> +	svc_xprt_put(serv->bc_xprt);
+> +	return ret;
+>  }
+>  EXPORT_SYMBOL(bc_svc_process);
+>  #endif /* CONFIG_NFS_V4_1 */
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 07919e1..5875551 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -66,6 +66,13 @@ static void		svc_sock_free(struct svc_xprt *);
+>  static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
+>  					  struct net *, struct sockaddr *,
+>  					  int, int);
+> +#if defined(CONFIG_NFS_V4_1)
+> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
+> +					     struct net *, struct sockaddr *,
+> +					     int, int);
+> +static void svc_bc_sock_free(struct svc_xprt *xprt);
+> +#endif /* CONFIG_NFS_V4_1 */
+> +
+>  #ifdef CONFIG_DEBUG_LOCK_ALLOC
+>  static struct lock_class_key svc_key[2];
+>  static struct lock_class_key svc_slock_key[2];
+> @@ -1184,6 +1191,79 @@ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
+>  	return svc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
+>  }
+>  
+> +#if defined(CONFIG_NFS_V4_1)
+> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
+> +					     struct net *, struct sockaddr *,
+> +					     int, int);
+> +static void svc_bc_sock_free(struct svc_xprt *xprt);
+> +
+> +static struct svc_xprt *svc_bc_tcp_create(struct svc_serv *serv,
+> +				       struct net *net,
+> +				       struct sockaddr *sa, int salen,
+> +				       int flags)
+> +{
+> +	return svc_bc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
+> +}
+> +
+> +static void svc_bc_tcp_sock_detach(struct svc_xprt *xprt)
+> +{
+> +}
+> +
+> +/* These bc ops are never called. The shared fore channel is used instead */
+> +static int svc_bc_tcp_recvfrom(struct svc_rqst *rqstp)
+> +{
+> +	return 0;
+> +}
+> +
+> +static int svc_bc_tcp_sendto(struct svc_rqst *rqstp)
+> +{
+> +	return 0;
+> +}
+> +
+> +static void svc_bc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
+> +{
+> +}
+> +
+> +static void svc_bc_release_skb(struct svc_rqst *rqstp)
+> +{
+> +}
+> +
+> +static int svc_bc_tcp_has_wspace(struct svc_xprt *xprt)
+> +{
+> +	return 0;
+> +}
+> +
+> +static struct svc_xprt *svc_bc_tcp_accept(struct svc_xprt *xprt)
+> +{
+> +	return NULL;
+> +}
+> +
+> +static struct svc_xprt_ops svc_tcp_bc_ops = {
+> +	.xpo_create = svc_bc_tcp_create,
+> +	.xpo_recvfrom = svc_bc_tcp_recvfrom,
+> +	.xpo_sendto = svc_bc_tcp_sendto,
+> +	.xpo_release_rqst = svc_bc_release_skb,
+> +	.xpo_detach = svc_bc_tcp_sock_detach,
+> +	.xpo_free = svc_bc_sock_free,
+> +	.xpo_prep_reply_hdr = svc_bc_tcp_prep_reply_hdr,
+> +	.xpo_has_wspace = svc_bc_tcp_has_wspace,
+> +	.xpo_accept = svc_bc_tcp_accept,
+> +};
+> +
+> +static struct svc_xprt_class svc_tcp_bc_class = {
+> +	.xcl_name = "tcp-bc",
+> +	.xcl_owner = THIS_MODULE,
+> +	.xcl_ops = &svc_tcp_bc_ops,
+> +	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+> +};
+> +
+> +void svc_init_bc_xprt_sock(void)
+> +{
+> +	svc_reg_xprt_class(&svc_tcp_bc_class);
+> +}
+> +EXPORT_SYMBOL_GPL(svc_init_bc_xprt_sock);
+> +#endif /* CONFIG_NFS_V4_1 */
+> +
+>  static struct svc_xprt_ops svc_tcp_ops = {
+>  	.xpo_create = svc_tcp_create,
+>  	.xpo_recvfrom = svc_tcp_recvfrom,
+> @@ -1509,41 +1589,43 @@ static void svc_sock_free(struct svc_xprt *xprt)
+>  	kfree(svsk);
+>  }
+>  
+> +#if defined(CONFIG_NFS_V4_1)
+>  /*
+> - * Create a svc_xprt.
+> - *
+> - * For internal use only (e.g. nfsv4.1 backchannel).
+> - * Callers should typically use the xpo_create() method.
+> + * Create a back channel svc_xprt which shares the fore channel socket.
+>   */
+> -struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot)
+> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+> +					     int protocol,
+> +					     struct net *net,
+> +					     struct sockaddr *sin, int len,
+> +					     int flags)
+>  {
+>  	struct svc_sock *svsk;
+> -	struct svc_xprt *xprt = NULL;
+> +	struct svc_xprt *xprt;
+> +
+> +	if (protocol != IPPROTO_TCP) {
+> +		printk(KERN_WARNING "svc: only and TCP sockets"
+> +			" supported on shared back channel\n");
+> +		return ERR_PTR(-EINVAL);
+> +	}
+>  
+> -	dprintk("svc: %s\n", __func__);
+>  	svsk = kzalloc(sizeof(*svsk), GFP_KERNEL);
+>  	if (!svsk)
+> -		goto out;
+> +		return ERR_PTR(-ENOMEM);
+>  
+>  	xprt = &svsk->sk_xprt;
+> -	if (prot == IPPROTO_TCP)
+> -		svc_xprt_init(&svc_tcp_class, xprt, serv);
+> -	else if (prot == IPPROTO_UDP)
+> -		svc_xprt_init(&svc_udp_class, xprt, serv);
+> -	else
+> -		BUG();
+> -out:
+> -	dprintk("svc: %s return %p\n", __func__, xprt);
+> +	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
+> +
+> +	serv->bc_xprt = xprt;
+> +
+>  	return xprt;
+>  }
+> -EXPORT_SYMBOL_GPL(svc_sock_create);
+>  
+>  /*
+> - * Destroy a svc_sock.
+> + * Free a back channel svc_sock.
+>   */
+> -void svc_sock_destroy(struct svc_xprt *xprt)
+> +static void svc_bc_sock_free(struct svc_xprt *xprt)
+>  {
+>  	if (xprt)
+>  		kfree(container_of(xprt, struct svc_sock, sk_xprt));
+>  }
+> -EXPORT_SYMBOL_GPL(svc_sock_destroy);
+> +#endif /* CONFIG_NFS_V4_1 */
+> -- 
+> 1.6.6
+> 
