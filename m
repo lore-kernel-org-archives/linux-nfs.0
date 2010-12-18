@@ -1,113 +1,155 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64582 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754861Ab0LQO5H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Dec 2010 09:57:07 -0500
-Message-ID: <4D0B7A3B.20403@RedHat.com>
-Date: Fri, 17 Dec 2010 09:56:59 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Christoph Hellwig <hch@infradead.org>, Ric Wheeler <ricwheeler@gmail.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 00/31] NFS XDR clean up for 2.6.38
-References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>	 <4D0A6503.7010901@RedHat.com> <20101216230524.GA16760@infradead.org>	 <4D0AA11A.2010307@gmail.com>  <20101216234058.GA17940@infradead.org> <1292556764.2895.41.camel@heimdal.trondhjem.org>
-In-Reply-To: <1292556764.2895.41.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:60555 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756907Ab0LRCBZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Dec 2010 21:01:25 -0500
+Date: Sat, 18 Dec 2010 13:01:18 +1100
+From: Nick Piggin <npiggin@kernel.dk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Nick Piggin <npiggin@kernel.dk>, Alexander Viro <viro@zeniv.linux.org.uk>,
+        Nick Piggin <npiggin@gmail.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 2/2] fs/dcache: allow __d_obtain_alias() to return
+ unhashed  dentries
+Message-ID: <20101218020118.GA3179@amd>
+References: <AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
+ <20101115174837.GB10044@fieldses.org>
+ <AANLkTim1QjTwOZ4SHdMy8Y6TOAnaOYtTwgwHXfH5H5Xn@mail.gmail.com>
+ <AANLkTinMq1W1vx-jZnf7cb1cAnh9OyoVRYtVS7zpujfs@mail.gmail.com>
+ <20101129193248.GA9897@fieldses.org>
+ <AANLkTikwzDJ_q65==uxDsAhp3h8bU7Rkt7U9gVgRAK0D@mail.gmail.com>
+ <20101203223326.GB28763@fieldses.org>
+ <20101213051944.GA8688@amd>
+ <20101214220102.GM24828@fieldses.org>
+ <20101217180022.GB11515@fieldses.org>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20101217180022.GB11515@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello
-
-On 12/16/2010 10:32 PM, Trond Myklebust wrote:
-> On Thu, 2010-12-16 at 18:40 -0500, Christoph Hellwig wrote:
->> On Thu, Dec 16, 2010 at 06:30:34PM -0500, Ric Wheeler wrote:
->>> This has nothing to do with shame or conspiracy, it has to do with
->>> doing changes in an orderly way so we can test and stabilize things
->>> in the upstream kernel.
->>>
->>> Changing both at once is not good for upstream or distros  in my opinion,
->>
->> Steve's mail reads pretty different from that.
->>
->> But it doesn't really matter as it doesn't make any sense - as Chuck
->> has explained theres zero overlap between the XDR decoder changes and
->> pnfs features anyway.  And if there was it's pretty clear something that
->> the about 98% of the userbase that's using NFSv3 uses should have more
->> priority over the 0.5% that are planning to maybe possibly use pnfs in
->> the next decade.
+On Fri, Dec 17, 2010 at 01:00:23PM -0500, J. Bruce Fields wrote:
+> From: J. Bruce Fields <bfields@redhat.com>
 > 
-> Hi guys,
+> Without this patch
 > 
-> I agree 100% with the basic premise that we should not have to deal with
-> compatibility issues for NFSv4.1/pnfs backports when deciding what to
-> merge upstream.
-Cool...
-
-> That said: as far as I can see, pretty much all these changes are
-> confined to the NFSv2 and NFSv3 XDR code. I can quite understand why
-> distros like Red Hat, SuSE, Debian, and others might want to avoid
-> having to back port changes, given that the NFSv2 and NFSv3 code bases
-> are supposed to be fully stable and frozen.
+>        client$ mount -tnfs4 server:/export/ /mnt/
+>        client$ tail -f /mnt/FOO
+>        ...
+>        server$ df -i /export
+>        server$ rm /export/FOO
+>        (^C the tail -f)
+>        server$ df -i /export
+>        server$ echo 2 >/proc/sys/vm/drop_caches
+>        server$ df -i /export
 > 
-> So my questions to Steve and Ric are:
+> the df's will show that the inode is not freed on the filesystem until
+> the last step, when it could have been freed after killing the client's
+> tail -f.  On-disk data won't be deallocated either, leading to possible
+> spurious ENOSPC.
 > 
->      1. Specifically, which part of these changes are causing
->         backporting headaches for the RHEL-6 code base? Note that when
->         asking that question I am assuming that Red Hat will triage and
->         reject patches that conflict with their stability goals.
-As of the 2.6.32 kernel we have been pulling in all the NFS (both 
-client and server) changes from every major release. Meaning at 
-this point the RHEL6.1 NFS code will be bug for bug compatible with 
-the NFS code in the 2.6.37 mainline kernel. So no, we have not been 
-reject many patches. 
-
-The reason we have been pulling in the entire releases is because
-when the pNFS bits are ready, we just want to pull them in and 
-not have a backport from hell, basically forking from upstream.
-Think of what has changed between the 2.6.32 and 2.6.37 kernels.
-Backports like that are basically forks, IMHO... 
-
-Keeping with this theory, when 2.6.38 is release we would pull
-in the pNFS bits but also all the changes to parts of the code that
-doesn't seem to be broken. 
-
-The problem for us is RHEL6 has been released so the days of me 
-pushing in hundreds and hundreds of patches that change parts 
-of the code that, again, are not broken are gone. We simply do 
-not have the resources to QA that amount of changes. 
-
-Finally, history has shown, backporting large chucks of code out of 
-a major release basically turns into a fork as well, which will 
-not help us or more importantly not help this community.   
-
-
->      2. Could we set up some minimal set of patches that would allow the
->         pNFS backport while avoiding the need for a full backport of
->         Chuck's patches for NFSv2/v3? If so, what features do we need,
->         and what is not needed?
+> This occurs because when the client does the close, it arrives in a
+> compound with a putfh and a close, processed like:
 > 
-> IOW: how can we refactor these patches so as to avoid tying the set of
-> NFSv2/v3 changes to any pNFS interests?
-I don't know... We could look into something like this, but from an 
-upstream perspective, would it be worth it? Does it make sense? 
-Again I don't know 
+>        - putfh: look up the filehandle.  The only alias found for the
+>          inode will be DCACHE_UNHASHED alias referenced by the filp
+>          associated with the nfsd open.  d_obtain_alias() doesn't like
+>          this, so it creates a new DCACHE_DISCONECTED dentry and
+>          returns that instead.
+> 
+> Nick Piggin suggested fixing this by allowing d_obtain_alias to return
+> the unhashed dentry that is referenced by the filp, instead of making it
+> create a new dentry.
+> 
+> Leave __d_find_alias() alone to avoid changing behavior of other
+> callers.
+> 
+> Also nfsd doesn't need all the checks of __d_find_alias(); any dentry,
+> hashed or unhashed, disconnected or not, should work.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/dcache.c |   26 ++++++++++++++++++++++++--
+>  1 files changed, 24 insertions(+), 2 deletions(-)
+> 
+> On Tue, Dec 14, 2010 at 05:01:02PM -0500, J. Bruce Fields wrote:
+> > On Mon, Dec 13, 2010 at 04:19:44PM +1100, Nick Piggin wrote:
+> > > Not sure where Al's hiding...
+> > > 
+> > > But I would like to update the comments, and perhaps even a new
+> > > add a new function here (or new flag to __d_find_alias).
+> > > 
+> > > AFAIKS, the callers are OK, however I suppose d_splice_alias and
+> > > d_materialise_unique should not have unlinked inodes at this point,
+> > > so at least a BUG_ON for them might be a good idea?
+> > 
+> > That does sound safer.  I'm pretty confused by the various
+> > __di_splice_alias callers.  I'll go search through them and see if I can
+> > understand better....
+> 
+> I think a new __d_find_alias flag would just make it more confusing.
+> And it looks like all d_obtain_alias needs is something much simpler.
+> This works for me.
 
-Trond, it will not be the end of the world if RHEL6 does not have
-pNFS support... Again I think it would help the community by 
-move the technology forward sooner verse later, but if it 
-does not work out... so be it.. 
+Well I don't really know if this is clearer. By convention,
+__ prefix version should be same as non prefix version but just
+take fewer locks. Why do you have the new d_find_any_alias()?
 
-We will just move the support to RHEL 7 and move on... Heck that 
-would make my life much easier (which I'm *always* a fan of ;-) ) 
-and we always have Fedora... 
 
-Its just when I heard, in this week's pNFS meeting, how close we were
-of having some meaningful pNFS bits (i.e. wave2), we decided to make
-this highly unusual (some call it shameful) request of asking to 
-minimize changes until the pNFS bits stabilize... 
 
-Thank you for even considering it... 
-
-steved.
-
+> 
+> --b.
+> 
+> diff --git a/fs/dcache.c b/fs/dcache.c
+> index 5ed93cd..d5f9da4 100644
+> --- a/fs/dcache.c
+> +++ b/fs/dcache.c
+> @@ -1135,6 +1135,28 @@ static inline struct hlist_head *d_hash(struct dentry *parent,
+>  	return dentry_hashtable + (hash & D_HASHMASK);
+>  }
+>  
+> +static struct dentry * __d_find_any_alias(struct inode *inode)
+> +{
+> +	struct dentry *alias;
+> +
+> +	if (list_empty(&inode->i_dentry))
+> +		return NULL;
+> +	alias = list_first_entry(&inode->i_dentry, struct dentry, d_alias);
+> +	__dget_locked(alias);
+> +	return alias;
+> +}
+> +
+> +static struct dentry * d_find_any_alias(struct inode *inode)
+> +{
+> +	struct dentry *de;
+> +
+> +	spin_lock(&dcache_lock);
+> +	de = __d_find_alias(inode, 0);
+> +	spin_unlock(&dcache_lock);
+> +	return de;
+> +}
+> +
+> +
+>  /**
+>   * d_obtain_alias - find or allocate a dentry for a given inode
+>   * @inode: inode to allocate the dentry for
+> @@ -1164,7 +1186,7 @@ struct dentry *d_obtain_alias(struct inode *inode)
+>  	if (IS_ERR(inode))
+>  		return ERR_CAST(inode);
+>  
+> -	res = d_find_alias(inode);
+> +	res = d_find_any_alias(inode);
+>  	if (res)
+>  		goto out_iput;
+>  
+> @@ -1176,7 +1198,7 @@ struct dentry *d_obtain_alias(struct inode *inode)
+>  	tmp->d_parent = tmp; /* make sure dput doesn't croak */
+>  
+>  	spin_lock(&dcache_lock);
+> -	res = __d_find_alias(inode, 0);
+> +	res = __d_find_any_alias(inode);
+>  	if (res) {
+>  		spin_unlock(&dcache_lock);
+>  		dput(tmp);
+> -- 
+> 1.7.1
