@@ -1,169 +1,214 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57636 "EHLO mx2.netapp.com"
+Received: from shutemov.name ([188.40.19.243]:38440 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753281Ab0LWRaY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 12:30:24 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 08/15] pnfs: serialize LAYOUTGET(openstateid)
-Date: Thu, 23 Dec 2010 12:29:50 -0500
-Message-Id: <1293125397-30088-9-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
-References: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
+	id S1757257Ab0LTLym (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Dec 2010 06:54:42 -0500
+From: "Kirill A. Shutsemov" <kirill@shutemov.name>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill@shutemov.name>
+Subject: [PATCH 03/12] sunrpc: push init_rpc_pipefs up to rpc_create() callers
+Date: Mon, 20 Dec 2010 13:54:29 +0200
+Message-Id: <1292846078-31793-4-git-send-email-kirill@shutemov.name>
+In-Reply-To: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
+References: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-We shouldn't send a LAYOUTGET(openstateid) unless all outstanding RPCs
-using the previous stateid are completed.  This requires choosing the
-stateid to encode earlier, so we can abort if one is not available (we
-want to use the open stateid, but a LAYOUTGET is already out using
-it), and adding a count of the number of outstanding rpc calls using
-layout state (which for now consist solely of LAYOUTGETs).
+From: Kirill A. Shutemov <kirill@shutemov.name>
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Kirill A. Shutemov <kirill@shutemov.name>
 ---
- fs/nfs/nfs4proc.c       |    7 ++++++-
- fs/nfs/nfs4xdr.c        |    5 +----
- fs/nfs/pnfs.c           |   24 +++++++++++++++++++-----
- fs/nfs/pnfs.h           |    1 +
- include/linux/nfs_xdr.h |    1 +
- 5 files changed, 28 insertions(+), 10 deletions(-)
+ fs/lockd/host.c             |    2 ++
+ fs/lockd/mon.c              |    2 ++
+ fs/nfs/client.c             |    2 ++
+ fs/nfs/mount_clnt.c         |    2 ++
+ fs/nfsd/nfs4callback.c      |    2 ++
+ include/linux/sunrpc/clnt.h |    1 +
+ net/sunrpc/clnt.c           |   11 +++++++----
+ net/sunrpc/rpcb_clnt.c      |    2 ++
+ 8 files changed, 20 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1609a07..3b059d3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5308,6 +5308,12 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
- 	if (nfs4_setup_sequence(server, &lgp->args.seq_args,
- 				&lgp->res.seq_res, 0, task))
- 		return;
-+	if (pnfs_choose_layoutget_stateid(&lgp->args.stateid,
-+					  NFS_I(lgp->args.inode)->layout,
-+					  lgp->args.ctx->state)) {
-+		rpc_exit(task, NFS4_OK);
-+		return;
-+	}
- 	rpc_call_start(task);
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index ed0c59f..b033a2d 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -14,6 +14,7 @@
+ #include <linux/in6.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/svc.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/lockd/lockd.h>
+ #include <linux/mutex.h>
+ 
+@@ -360,6 +361,7 @@ nlm_bind_host(struct nlm_host *host)
+ 			.authflavor	= RPC_AUTH_UNIX,
+ 			.flags		= (RPC_CLNT_CREATE_NOPING |
+ 					   RPC_CLNT_CREATE_AUTOBIND),
++			.rpcmount	= init_rpc_pipefs,
+ 		};
+ 
+ 		/*
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index e0c9189..37e5328 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -15,6 +15,7 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/xprtsock.h>
+ #include <linux/sunrpc/svc.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/lockd/lockd.h>
+ 
+ #include <asm/unaligned.h>
+@@ -78,6 +79,7 @@ static struct rpc_clnt *nsm_create(void)
+ 		.version		= NSM_VERSION,
+ 		.authflavor		= RPC_AUTH_NULL,
+ 		.flags			= RPC_CLNT_CREATE_NOPING,
++		.rpcmount		= init_rpc_pipefs,
+ 	};
+ 
+ 	return rpc_create(&args);
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 0870d0d..e041f39 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -25,6 +25,7 @@
+ #include <linux/sunrpc/metrics.h>
+ #include <linux/sunrpc/xprtsock.h>
+ #include <linux/sunrpc/xprtrdma.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_mount.h>
+ #include <linux/nfs4_mount.h>
+@@ -614,6 +615,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
+ 		.program	= &nfs_program,
+ 		.version	= clp->rpc_ops->version,
+ 		.authflavor	= flavor,
++		.rpcmount	= init_rpc_pipefs,
+ 	};
+ 
+ 	if (discrtry)
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index 4f981f1..67b4b8d 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -13,6 +13,7 @@
+ #include <linux/in.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/nfs_fs.h>
+ #include "internal.h"
+ 
+@@ -161,6 +162,7 @@ int nfs_mount(struct nfs_mount_request *info)
+ 		.program	= &mnt_program,
+ 		.version	= info->version,
+ 		.authflavor	= RPC_AUTH_UNIX,
++		.rpcmount	= init_rpc_pipefs,
+ 	};
+ 	struct rpc_clnt		*mnt_clnt;
+ 	int			status;
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 143da2e..a95150d 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -33,6 +33,7 @@
+ 
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/svc_xprt.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/slab.h>
+ #include "nfsd.h"
+ #include "state.h"
+@@ -488,6 +489,7 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
+ 		.version	= 0,
+ 		.authflavor	= clp->cl_flavor,
+ 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
++		.rpcmount	= init_rpc_pipefs,
+ 	};
+ 	struct rpc_clnt *client;
+ 
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index a5a55f2..f052712 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -116,6 +116,7 @@ struct rpc_create_args {
+ 	unsigned long		flags;
+ 	char			*client_name;
+ 	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
++	struct vfsmount		*rpcmount;
+ };
+ 
+ /* Values for "flags" field */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index da2507a..6d88fb7 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -96,7 +96,8 @@ static void rpc_unregister_client(struct rpc_clnt *clnt)
  }
  
-@@ -5342,7 +5348,6 @@ static void nfs4_layoutget_release(void *calldata)
- 	struct nfs4_layoutget *lgp = calldata;
- 
- 	dprintk("--> %s\n", __func__);
--	put_layout_hdr(lgp->args.inode);
- 	if (lgp->res.layout.buf != NULL)
- 		free_page((unsigned long) lgp->res.layout.buf);
- 	put_nfs_open_context(lgp->args.ctx);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4e28242..3cbdd0c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1787,7 +1787,6 @@ encode_layoutget(struct xdr_stream *xdr,
- 		      const struct nfs4_layoutget_args *args,
- 		      struct compound_hdr *hdr)
+ static int
+-rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
++rpc_setup_pipedir(struct rpc_clnt *clnt, struct vfsmount *rpcmount,
++		char *dir_name)
  {
--	nfs4_stateid stateid;
- 	__be32 *p;
+ 	static uint32_t clntid;
+ 	struct nameidata nd;
+@@ -112,7 +113,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
+ 	if (dir_name == NULL)
+ 		return 0;
  
- 	p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
-@@ -1798,9 +1797,7 @@ encode_layoutget(struct xdr_stream *xdr,
- 	p = xdr_encode_hyper(p, args->range.offset);
- 	p = xdr_encode_hyper(p, args->range.length);
- 	p = xdr_encode_hyper(p, args->minlength);
--	pnfs_choose_layoutget_stateid(&stateid, NFS_I(args->inode)->layout,
--				args->ctx->state);
--	p = xdr_encode_opaque_fixed(p, &stateid.data, NFS4_STATEID_SIZE);
-+	p = xdr_encode_opaque_fixed(p, &args->stateid.data, NFS4_STATEID_SIZE);
- 	*p = cpu_to_be32(args->maxcount);
+-	path.mnt = mntget(init_rpc_pipefs);
++	path.mnt = mntget(rpcmount);
+ 	error = vfs_path_lookup(path.mnt->mnt_root, path.mnt, dir_name, 0, &nd);
+ 	if (error)
+ 		goto err;
+@@ -226,7 +227,8 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
  
- 	dprintk("%s: 1st type:0x%x iomode:%d off:%lu len:%lu mc:%d\n",
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index bbca2e5..60fbd41 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -362,6 +362,14 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 		memcpy(&lo->plh_stateid, &new->stateid, sizeof(new->stateid));
- }
+ 	atomic_set(&clnt->cl_count, 1);
  
-+/* lget is set to 1 if called from inside send_layoutget call chain */
-+static bool
-+pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, int lget)
-+{
-+	return (list_empty(&lo->plh_segs) &&
-+		 (atomic_read(&lo->plh_outstanding) > lget));
-+}
-+
- int
- pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 			      struct nfs4_state *open_state)
-@@ -370,7 +378,9 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+-	err = rpc_setup_pipedir(clnt, program->pipe_dir_name);
++	BUG_ON(!args->rpcmount);
++	err = rpc_setup_pipedir(clnt, args->rpcmount, program->pipe_dir_name);
+ 	if (err < 0)
+ 		goto out_no_path;
  
- 	dprintk("--> %s\n", __func__);
- 	spin_lock(&lo->plh_inode->i_lock);
--	if (list_empty(&lo->plh_segs)) {
-+	if (pnfs_layoutgets_blocked(lo, 1)) {
-+		status = -EAGAIN;
-+	} else if (list_empty(&lo->plh_segs)) {
- 		int seq;
+@@ -390,7 +392,8 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 			goto out_no_principal;
+ 	}
+ 	atomic_set(&new->cl_count, 1);
+-	err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
++	err = rpc_setup_pipedir(new, clnt->cl_path.mnt,
++			clnt->cl_program->pipe_dir_name);
+ 	if (err != 0)
+ 		goto out_no_path;
+ 	if (new->cl_auth)
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index fa6d7ca..732adef 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -27,6 +27,7 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/xprtsock.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
  
- 		do {
-@@ -405,10 +415,8 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 
- 	BUG_ON(ctx == NULL);
- 	lgp = kzalloc(sizeof(*lgp), GFP_KERNEL);
--	if (lgp == NULL) {
--		put_layout_hdr(lo->plh_inode);
-+	if (lgp == NULL)
- 		return NULL;
--	}
- 	lgp->args.minlength = NFS4_MAX_UINT64;
- 	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
- 	lgp->args.range.iomode = iomode;
-@@ -604,10 +612,16 @@ pnfs_update_layout(struct inode *ino,
- 	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
- 		goto out_unlock;
- 
--	get_layout_hdr_locked(lo); /* Matched in nfs4_layoutget_release */
-+	if (pnfs_layoutgets_blocked(lo, 0))
-+		goto out_unlock;
-+	atomic_inc(&lo->plh_outstanding);
-+
-+	get_layout_hdr_locked(lo);
- 	spin_unlock(&ino->i_lock);
- 
- 	lseg = send_layoutget(lo, ctx, iomode);
-+	atomic_dec(&lo->plh_outstanding);
-+	put_layout_hdr(ino);
- out:
- 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
- 		nfsi->layout->plh_flags, lseg);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 787253e..698380d 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -69,6 +69,7 @@ struct pnfs_layout_hdr {
- 	struct list_head	plh_layouts;   /* other client layouts */
- 	struct list_head	plh_segs;      /* layout segments list */
- 	nfs4_stateid		plh_stateid;
-+	atomic_t		plh_outstanding; /* number of RPCs out */
- 	unsigned long		plh_flags;
- 	struct inode		*plh_inode;
- };
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index f923831..0843703 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -208,6 +208,7 @@ struct nfs4_layoutget_args {
- 	struct inode *inode;
- 	struct nfs_open_context *ctx;
- 	struct nfs4_sequence_args seq_args;
-+	nfs4_stateid stateid;
- };
- 
- struct nfs4_layoutget_res {
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_BIND
+@@ -186,6 +187,7 @@ static int rpcb_create_local(void)
+ 		.version	= RPCBVERS_2,
+ 		.authflavor	= RPC_AUTH_UNIX,
+ 		.flags		= RPC_CLNT_CREATE_NOPING,
++		.rpcmount	= init_rpc_pipefs,
+ 	};
+ 	struct rpc_clnt *clnt, *clnt4;
+ 	int result = 0;
 -- 
-1.7.2.1
+1.7.3.4
 
