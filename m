@@ -1,87 +1,188 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57636 "EHLO mx2.netapp.com"
+Received: from shutemov.name ([188.40.19.243]:38436 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753398Ab0LWRaZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 12:30:25 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 09/15] pnfs: add layout to client list before sending rpc
-Date: Thu, 23 Dec 2010 12:29:51 -0500
-Message-Id: <1293125397-30088-10-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
-References: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
+	id S1757247Ab0LTLym (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Dec 2010 06:54:42 -0500
+From: "Kirill A. Shutsemov" <kirill@shutemov.name>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill@shutemov.name>
+Subject: [PATCH 02/12] sunrpc: introduce init_rpc_pipefs
+Date: Mon, 20 Dec 2010 13:54:28 +0200
+Message-Id: <1292846078-31793-3-git-send-email-kirill@shutemov.name>
+In-Reply-To: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
+References: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Since this list will be used to search for layouts to recall,
-this is necessary to avoid a race where the recall comes in,
-sees there is nothing in the client list, and prepares to return
-NOMATCHING, while the LAYOUTGET gets processed before the recall
-updates the stateid.
+From: Kirill A. Shutemov <kirill@shutemov.name>
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Introduce global variable init_rpc_pipefs and use it instead of
+rpc_get_mount()/rpc_put_mount().
+
+Signed-off-by: Kirill A. Shutemov <kirill@shutemov.name>
 ---
- fs/nfs/pnfs.c |   27 +++++++++++++++++++--------
- 1 files changed, 19 insertions(+), 8 deletions(-)
+ fs/nfs/cache_lib.c                 |    6 +++---
+ include/linux/sunrpc/rpc_pipe_fs.h |    4 ++--
+ net/sunrpc/clnt.c                  |   10 ++++------
+ net/sunrpc/rpc_pipe.c              |   23 ++++++-----------------
+ 4 files changed, 15 insertions(+), 28 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 60fbd41..b11b46a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -460,14 +460,6 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
- 	dprintk("%s:Begin\n", __func__);
+diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
+index 8469031..dd7ca5f 100644
+--- a/fs/nfs/cache_lib.c
++++ b/fs/nfs/cache_lib.c
+@@ -117,7 +117,7 @@ int nfs_cache_register(struct cache_detail *cd)
+ 	struct vfsmount *mnt;
+ 	int ret;
  
- 	assert_spin_locked(&lo->plh_inode->i_lock);
--	if (list_empty(&lo->plh_segs)) {
--		struct nfs_client *clp = NFS_SERVER(lo->plh_inode)->nfs_client;
--
--		spin_lock(&clp->cl_lock);
--		BUG_ON(!list_empty(&lo->plh_layouts));
--		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
--		spin_unlock(&clp->cl_lock);
--	}
- 	list_for_each_entry(lp, &lo->plh_segs, pls_list) {
- 		if (cmp_layout(lp->pls_range.iomode, lseg->pls_range.iomode) > 0)
- 			continue;
-@@ -588,6 +580,7 @@ pnfs_update_layout(struct inode *ino,
- 		   enum pnfs_iomode iomode)
+-	mnt = rpc_get_mount();
++	mnt = mntget(init_rpc_pipefs);
+ 	if (IS_ERR(mnt))
+ 		return PTR_ERR(mnt);
+ 	ret = vfs_path_lookup(mnt->mnt_root, mnt, "/cache", 0, &nd);
+@@ -129,13 +129,13 @@ int nfs_cache_register(struct cache_detail *cd)
+ 	if (!ret)
+ 		return ret;
+ err:
+-	rpc_put_mount();
++	mntput(mnt);
+ 	return ret;
+ }
+ 
+ void nfs_cache_unregister(struct cache_detail *cd)
  {
- 	struct nfs_inode *nfsi = NFS_I(ino);
-+	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
- 	struct pnfs_layout_hdr *lo;
- 	struct pnfs_layout_segment *lseg = NULL;
+ 	sunrpc_cache_unregister_pipefs(cd);
+-	rpc_put_mount();
++	mntput(init_rpc_pipefs);
+ }
  
-@@ -617,9 +610,27 @@ pnfs_update_layout(struct inode *ino,
- 	atomic_inc(&lo->plh_outstanding);
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index cf14db9..b09bfa5 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -44,6 +44,8 @@ RPC_I(struct inode *inode)
+ 	return container_of(inode, struct rpc_inode, vfs_inode);
+ }
  
- 	get_layout_hdr_locked(lo);
-+	if (list_empty(&lo->plh_segs)) {
-+		/* The lo must be on the clp list if there is any
-+		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
-+		 */
-+		spin_lock(&clp->cl_lock);
-+		BUG_ON(!list_empty(&lo->plh_layouts));
-+		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
-+		spin_unlock(&clp->cl_lock);
-+	}
- 	spin_unlock(&ino->i_lock);
++extern struct vfsmount *init_rpc_pipefs;
++
+ extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
  
- 	lseg = send_layoutget(lo, ctx, iomode);
-+	if (!lseg) {
-+		spin_lock(&ino->i_lock);
-+		if (list_empty(&lo->plh_segs)) {
-+			spin_lock(&clp->cl_lock);
-+			list_del_init(&lo->plh_layouts);
-+			spin_unlock(&clp->cl_lock);
-+		}
-+		spin_unlock(&ino->i_lock);
-+	}
- 	atomic_dec(&lo->plh_outstanding);
- 	put_layout_hdr(ino);
- out:
+ struct rpc_clnt;
+@@ -60,8 +62,6 @@ extern void rpc_remove_cache_dir(struct dentry *);
+ extern struct dentry *rpc_mkpipe(struct dentry *, const char *, void *,
+ 				 const struct rpc_pipe_ops *, int flags);
+ extern int rpc_unlink(struct dentry *);
+-extern struct vfsmount *rpc_get_mount(void);
+-extern void rpc_put_mount(void);
+ extern int register_rpc_pipefs(void);
+ extern void unregister_rpc_pipefs(void);
+ 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 92ce94f..da2507a 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -112,9 +112,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
+ 	if (dir_name == NULL)
+ 		return 0;
+ 
+-	path.mnt = rpc_get_mount();
+-	if (IS_ERR(path.mnt))
+-		return PTR_ERR(path.mnt);
++	path.mnt = mntget(init_rpc_pipefs);
+ 	error = vfs_path_lookup(path.mnt->mnt_root, path.mnt, dir_name, 0, &nd);
+ 	if (error)
+ 		goto err;
+@@ -140,7 +138,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
+ err_path_put:
+ 	path_put(&nd.path);
+ err:
+-	rpc_put_mount();
++	mntput(path.mnt);
+ 	return error;
+ }
+ 
+@@ -251,7 +249,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ out_no_auth:
+ 	if (!IS_ERR(clnt->cl_path.dentry)) {
+ 		rpc_remove_client_dir(clnt->cl_path.dentry);
+-		rpc_put_mount();
++		mntput(clnt->cl_path.mnt);
+ 	}
+ out_no_path:
+ 	kfree(clnt->cl_principal);
+@@ -472,7 +470,7 @@ rpc_free_client(struct rpc_clnt *clnt)
+ 			clnt->cl_protname, clnt->cl_server);
+ 	if (!IS_ERR(clnt->cl_path.dentry)) {
+ 		rpc_remove_client_dir(clnt->cl_path.dentry);
+-		rpc_put_mount();
++		mntput(clnt->cl_path.mnt);
+ 	}
+ 	if (clnt->cl_parent != clnt) {
+ 		rpc_release_client(clnt->cl_parent);
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 7f3fbdd..b1e299b 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -28,9 +28,10 @@
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/sunrpc/cache.h>
+ 
+-static struct vfsmount *rpc_mnt __read_mostly;
++struct vfsmount *init_rpc_pipefs __read_mostly;
+ 
+ static struct file_system_type rpc_pipe_fs_type;
++EXPORT_SYMBOL_GPL(init_rpc_pipefs);
+ 
+ 
+ static struct kmem_cache *rpc_inode_cachep __read_mostly;
+@@ -412,18 +413,6 @@ struct rpc_filelist {
+ 	umode_t mode;
+ };
+ 
+-struct vfsmount *rpc_get_mount(void)
+-{
+-	return mntget(rpc_mnt);
+-}
+-EXPORT_SYMBOL_GPL(rpc_get_mount);
+-
+-void rpc_put_mount(void)
+-{
+-	mntput(rpc_mnt);
+-}
+-EXPORT_SYMBOL_GPL(rpc_put_mount);
+-
+ static int rpc_delete_dentry(struct dentry *dentry)
+ {
+ 	return 1;
+@@ -1060,9 +1049,9 @@ int register_rpc_pipefs(void)
+ 	if (err)
+ 		goto destroy_cache;
+ 
+-	rpc_mnt = kern_mount(&rpc_pipe_fs_type);
+-	if (IS_ERR(rpc_mnt)) {
+-		err = PTR_ERR(rpc_mnt);
++	init_rpc_pipefs = kern_mount(&rpc_pipe_fs_type);
++	if (IS_ERR(init_rpc_pipefs)) {
++		err = PTR_ERR(init_rpc_pipefs);
+ 		goto unregister_fs;
+ 	}
+ 
+@@ -1077,7 +1066,7 @@ destroy_cache:
+ 
+ void unregister_rpc_pipefs(void)
+ {
+-	mntput(rpc_mnt);
++	mntput(init_rpc_pipefs);
+ 	kmem_cache_destroy(rpc_inode_cachep);
+ 	unregister_filesystem(&rpc_pipe_fs_type);
+ }
 -- 
-1.7.2.1
+1.7.3.4
 
