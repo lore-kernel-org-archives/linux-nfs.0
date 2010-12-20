@@ -1,101 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:58304 "EHLO mx1.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:17919 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755523Ab0LAXCL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Dec 2010 18:02:11 -0500
-Date: Thu, 2 Dec 2010 10:01:58 +1100
-From: Neil Brown <neilb@suse.de>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Hugh Dickins <hughd@google.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Nick Bowler <nbowler@elliptictech.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, Rik van Riel <riel@redhat.com>,
-        Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>,
-        Nick Piggin <npiggin@kernel.dk>
-Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
-Message-ID: <20101202100158.3387566c@notabene.brown>
-In-Reply-To: <20101201144314.6a827f8d.akpm@linux-foundation.org>
-References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
-	<1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
-	<20101201150428.GA2879@elliptictech.com>
-	<1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
-	<1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
-	<AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
-	<1291229669.6609.24.camel@heimdal.trondhjem.org>
-	<alpine.LSU.2.00.1012011058560.16407@tigran.mtv.corp.google.com>
-	<1291233938.6609.37.camel@heimdal.trondhjem.org>
-	<20101201123929.ab7cef1d.akpm@linux-foundation.org>
-	<20101202082913.7cb98444@notabene.brown>
-	<20101201144314.6a827f8d.akpm@linux-foundation.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1758216Ab0LTWKg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Dec 2010 17:10:36 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V5 05/11] NFS do not clear minor version at nfs_client free
+Date: Mon, 20 Dec 2010 16:04:42 -0500
+Message-Id: <1292879088-7821-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1292879088-7821-5-git-send-email-andros@netapp.com>
+References: <1292879088-7821-1-git-send-email-andros@netapp.com>
+ <1292879088-7821-2-git-send-email-andros@netapp.com>
+ <1292879088-7821-3-git-send-email-andros@netapp.com>
+ <1292879088-7821-4-git-send-email-andros@netapp.com>
+ <1292879088-7821-5-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 1 Dec 2010 14:43:14 -0800 Andrew Morton <akpm@linux-foundation.org>
-wrote:
+From: Andy Adamson <andros@netapp.com>
 
-> On Thu, 2 Dec 2010 08:29:13 +1100
-> Neil Brown <neilb@suse.de> wrote:
-> 
-> > > > 
-> > > > However, while reading Documentation/filesystems/vfs.txt (in order to
-> > > > add documentation for freepage) I was surprised to read that the
-> > > > ->releasepage() is itself supposed to be allowed to actually remove the
-> > > > page from the address space if it so desires.
-> > > 
-> > > That doesn't sound right.  It came from Neil in 2006.
-> > > 
-> > > Neil, what were you thinking there?   Did you find such a ->releasepage()?
-> > 
-> > Nope, no idea, sorry.
-> > 
-> > No releasepage functions do anything like that, and no call sites suggest it
-> > could be a possibility.  Quite the reverse - they are likely to remove the
-> > page from the mapping without checking that it is still in the mapping.
-> > 
-> > So that sentence should be deleted.
-> 
-> This?
+Resetting the client minor version operations causes nfs4_destroy_callback
+to fail to shutdown the NFSv4.1 callback service.
 
-Perfect, thanks.
+There is no reason to reset the client minorversion operations when the
+nfs_client struct is being freed.
 
-NeilBrown
+Remove the minorverion reset and rename the function.
 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c |   22 +++++++++-------------
+ 1 files changed, 9 insertions(+), 13 deletions(-)
 
-> 
-> From: Andrew Morton <akpm@linux-foundation.org>
-> 
-> ->releasepage() does not remove the page from the mapping.
-> 
-> Cc: Neil Brown <neilb@suse.de>
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-> ---
-> 
->  Documentation/filesystems/vfs.txt |    9 ++++-----
->  1 file changed, 4 insertions(+), 5 deletions(-)
-> 
-> diff -puN Documentation/filesystems/vfs.txt~documentation-filesystems-vfstxt-fix-repeasepage-description Documentation/filesystems/vfs.txt
-> --- a/Documentation/filesystems/vfs.txt~documentation-filesystems-vfstxt-fix-repeasepage-description
-> +++ a/Documentation/filesystems/vfs.txt
-> @@ -660,11 +660,10 @@ struct address_space_operations {
->    releasepage: releasepage is called on PagePrivate pages to indicate
->          that the page should be freed if possible.  ->releasepage
->          should remove any private data from the page and clear the
-> -        PagePrivate flag.  It may also remove the page from the
-> -        address_space.  If this fails for some reason, it may indicate
-> -        failure with a 0 return value.
-> -	This is used in two distinct though related cases.  The first
-> -        is when the VM finds a clean page with no active users and
-> +        PagePrivate flag. If releasepage() fails for some reason, it must
-> +	indicate failure with a 0 return value.
-> +	releasepage() is used in two distinct though related cases.  The
-> +	first is when the VM finds a clean page with no active users and
->          wants to make it a free page.  If ->releasepage succeeds, the
->          page will be removed from the address_space and become free.
->  
-> _
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 0870d0d..855add6 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -170,21 +170,17 @@ error_0:
+ }
+ 
+ #ifdef CONFIG_NFS_V4
+-/*
+- * Clears/puts all minor version specific parts from an nfs_client struct
+- * reverting it to minorversion 0.
+- */
+-static void nfs4_clear_client_minor_version(struct nfs_client *clp)
+-{
+ #ifdef CONFIG_NFS_V4_1
+-	if (nfs4_has_session(clp)) {
++static void nfs4_shutdown_session(struct nfs_client *clp)
++{
++	if (nfs4_has_session(clp))
+ 		nfs4_destroy_session(clp->cl_session);
+-		clp->cl_session = NULL;
+-	}
+-
+-	clp->cl_mvops = nfs_v4_minor_ops[0];
+-#endif /* CONFIG_NFS_V4_1 */
+ }
++#else /* CONFIG_NFS_V4_1 */
++static void nfs4_shutdown_session(struct nfs_client *clp)
++{
++}
++#endif /* CONFIG_NFS_V4_1 */
+ 
+ /*
+  * Destroy the NFS4 callback service
+@@ -199,7 +195,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
+ {
+ 	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
+ 		nfs4_kill_renewd(clp);
+-	nfs4_clear_client_minor_version(clp);
++	nfs4_shutdown_session(clp);
+ 	nfs4_destroy_callback(clp);
+ 	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
+ 		nfs_idmap_delete(clp);
+-- 
+1.6.6
 
