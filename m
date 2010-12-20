@@ -1,87 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7880 "EHLO mx2.netapp.com"
+Received: from shutemov.name ([188.40.19.243]:38432 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751455Ab0LVEBE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Dec 2010 23:01:04 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 09/15] pnfs: add layout to client list before sending rpc
-Date: Tue, 21 Dec 2010 23:00:43 -0500
-Message-Id: <1292990449-20057-10-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
-References: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
+	id S1755489Ab0LTLyl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Dec 2010 06:54:41 -0500
+From: "Kirill A. Shutsemov" <kirill@shutemov.name>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill@shutemov.name>
+Subject: [PATCH 01/12] sunrpc: mount rpc_pipefs on initialization
+Date: Mon, 20 Dec 2010 13:54:27 +0200
+Message-Id: <1292846078-31793-2-git-send-email-kirill@shutemov.name>
+In-Reply-To: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
+References: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Since this list will be used to search for layouts to recall,
-this is necessary to avoid a race where the recall comes in,
-sees there is nothing in the client list, and prepares to return
-NOMATCHING, while the LAYOUTGET gets processed before the recall
-updates the stateid.
+From: Kirill A. Shutemov <kirill@shutemov.name>
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Mount rpc_pipefs on register_rpc_pipefs() and replace
+rpc_get_mount()/rpc_put_mount() implementation with mntget()/mntput().
+
+Signed-off-by: Kirill A. Shutemov <kirill@shutemov.name>
 ---
- fs/nfs/pnfs.c |   27 +++++++++++++++++++--------
- 1 files changed, 19 insertions(+), 8 deletions(-)
+ net/sunrpc/rpc_pipe.c |   27 ++++++++++++++++-----------
+ 1 files changed, 16 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 809bd0a..a563329 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -460,14 +460,6 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
- 	dprintk("%s:Begin\n", __func__);
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 10a17a3..7f3fbdd 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -29,7 +29,6 @@
+ #include <linux/sunrpc/cache.h>
  
- 	assert_spin_locked(&lo->plh_inode->i_lock);
--	if (list_empty(&lo->plh_segs)) {
--		struct nfs_client *clp = NFS_SERVER(lo->plh_inode)->nfs_client;
--
--		spin_lock(&clp->cl_lock);
--		BUG_ON(!list_empty(&lo->plh_layouts));
--		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
--		spin_unlock(&clp->cl_lock);
--	}
- 	list_for_each_entry(lp, &lo->plh_segs, pls_list) {
- 		if (cmp_layout(lp->pls_range.iomode, lseg->pls_range.iomode) > 0)
- 			continue;
-@@ -588,6 +580,7 @@ pnfs_update_layout(struct inode *ino,
- 		   enum pnfs_iomode iomode)
+ static struct vfsmount *rpc_mnt __read_mostly;
+-static int rpc_mount_count;
+ 
+ static struct file_system_type rpc_pipe_fs_type;
+ 
+@@ -415,18 +414,13 @@ struct rpc_filelist {
+ 
+ struct vfsmount *rpc_get_mount(void)
  {
- 	struct nfs_inode *nfsi = NFS_I(ino);
-+	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
- 	struct pnfs_layout_hdr *lo;
- 	struct pnfs_layout_segment *lseg = NULL;
+-	int err;
+-
+-	err = simple_pin_fs(&rpc_pipe_fs_type, &rpc_mnt, &rpc_mount_count);
+-	if (err != 0)
+-		return ERR_PTR(err);
+-	return rpc_mnt;
++	return mntget(rpc_mnt);
+ }
+ EXPORT_SYMBOL_GPL(rpc_get_mount);
  
-@@ -617,9 +610,27 @@ pnfs_update_layout(struct inode *ino,
- 	atomic_inc(&lo->plh_outstanding);
+ void rpc_put_mount(void)
+ {
+-	simple_release_fs(&rpc_mnt, &rpc_mount_count);
++	mntput(rpc_mnt);
+ }
+ EXPORT_SYMBOL_GPL(rpc_put_mount);
  
- 	get_layout_hdr_locked(lo);
-+	if (list_empty(&lo->plh_segs)) {
-+		/* The lo must be on the clp list if there is any
-+		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
-+		 */
-+		spin_lock(&clp->cl_lock);
-+		BUG_ON(!list_empty(&lo->plh_layouts));
-+		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
-+		spin_unlock(&clp->cl_lock);
-+	}
- 	spin_unlock(&ino->i_lock);
+@@ -1063,16 +1057,27 @@ int register_rpc_pipefs(void)
+ 	if (!rpc_inode_cachep)
+ 		return -ENOMEM;
+ 	err = register_filesystem(&rpc_pipe_fs_type);
+-	if (err) {
+-		kmem_cache_destroy(rpc_inode_cachep);
+-		return err;
++	if (err)
++		goto destroy_cache;
++
++	rpc_mnt = kern_mount(&rpc_pipe_fs_type);
++	if (IS_ERR(rpc_mnt)) {
++		err = PTR_ERR(rpc_mnt);
++		goto unregister_fs;
+ 	}
  
- 	lseg = send_layoutget(lo, ctx, iomode);
-+	if (!lseg) {
-+		spin_lock(&ino->i_lock);
-+		if (list_empty(&lo->plh_segs)) {
-+			spin_lock(&clp->cl_lock);
-+			list_del_init(&lo->plh_layouts);
-+			spin_unlock(&clp->cl_lock);
-+		}
-+		spin_unlock(&ino->i_lock);
-+	}
- 	atomic_dec(&lo->plh_outstanding);
- 	put_layout_hdr(ino);
- out:
+ 	return 0;
++
++unregister_fs:
++	unregister_filesystem(&rpc_pipe_fs_type);
++destroy_cache:
++	kmem_cache_destroy(rpc_inode_cachep);
++	return err;
+ }
+ 
+ void unregister_rpc_pipefs(void)
+ {
++	mntput(rpc_mnt);
+ 	kmem_cache_destroy(rpc_inode_cachep);
+ 	unregister_filesystem(&rpc_pipe_fs_type);
+ }
 -- 
-1.7.2.1
+1.7.3.4
 
