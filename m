@@ -1,44 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17919 "EHLO mx2.netapp.com"
+Received: from shutemov.name ([188.40.19.243]:38492 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758214Ab0LTWKf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Dec 2010 17:10:35 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V5 02/11] SUNRPC fix bc_send print
-Date: Mon, 20 Dec 2010 16:04:39 -0500
-Message-Id: <1292879088-7821-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1292879088-7821-2-git-send-email-andros@netapp.com>
-References: <1292879088-7821-1-git-send-email-andros@netapp.com>
- <1292879088-7821-2-git-send-email-andros@netapp.com>
+	id S1757412Ab0LTLyo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Dec 2010 06:54:44 -0500
+From: "Kirill A. Shutsemov" <kirill@shutemov.name>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill@shutemov.name>
+Subject: [PATCH 12/12] sunrpc: make rpc_pipefs be mountable multiple times
+Date: Mon, 20 Dec 2010 13:54:38 +0200
+Message-Id: <1292846078-31793-13-git-send-email-kirill@shutemov.name>
+In-Reply-To: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
+References: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+From: Kirill A. Shutemov <kirill@shutemov.name>
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+To support containers, allow multiple independent instances of
+rpc_pipefs. Use '-o newinstance' to create new of the filesystem.
+The same semantics as with devpts.
+
+Signed-off-by: Kirill A. Shutemov <kirill@shutemov.name>
 ---
- net/sunrpc/bc_svc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ net/sunrpc/rpc_pipe.c |   80 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 79 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
-index 7dcfe0c..1dd1a68 100644
---- a/net/sunrpc/bc_svc.c
-+++ b/net/sunrpc/bc_svc.c
-@@ -59,8 +59,8 @@ int bc_send(struct rpc_rqst *req)
- 		ret = task->tk_status;
- 		rpc_put_task(task);
- 	}
--	return ret;
- 	dprintk("RPC:       bc_send ret= %d\n", ret);
-+	return ret;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index c48f7a5..836e725 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -16,6 +16,7 @@
+ #include <linux/namei.h>
+ #include <linux/fsnotify.h>
+ #include <linux/kernel.h>
++#include <linux/parser.h>
+ 
+ #include <asm/ioctls.h>
+ #include <linux/fs.h>
+@@ -38,6 +39,49 @@ static struct kmem_cache *rpc_inode_cachep __read_mostly;
+ 
+ #define RPC_UPCALL_TIMEOUT (30*HZ)
+ 
++struct rpc_mount_opts {
++	int newinstance;
++};
++
++enum {
++	Opt_newinstance,
++
++	Opt_err
++};
++
++static const match_table_t tokens = {
++	{Opt_newinstance, "newinstance"},
++
++	{Opt_err, NULL}
++};
++
++static int
++parse_mount_options(char *data, struct rpc_mount_opts *opts)
++{
++	char *p;
++
++	opts->newinstance = 0;
++
++	while ((p = strsep(&data, ",")) != NULL) {
++		substring_t args[MAX_OPT_ARGS];
++		int token;
++
++		if (!*p)
++			continue;
++
++		token = match_token(p, tokens, args);
++		switch (token) {
++		case Opt_newinstance:
++			opts->newinstance = 1;
++			break;
++		default:
++			return -EINVAL;
++		}
++	}
++
++	return 0;
++}
++
+ static void rpc_purge_list(struct rpc_inode *rpci, struct list_head *head,
+ 		void (*destroy_msg)(struct rpc_pipe_msg *), int err)
+ {
+@@ -1025,11 +1069,45 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 	return 0;
  }
  
- #endif /* CONFIG_NFS_V4_1 */
++static int
++compare_rpc_mnt_sb(struct super_block *s, void *p)
++{
++	if (init_rpc_pipefs)
++		return init_rpc_pipefs->mnt_sb == s;
++	return 0;
++}
++
+ static struct dentry *
+ rpc_mount(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *data)
+ {
+-	return mount_single(fs_type, flags, data, rpc_fill_super);
++	int error;
++	struct rpc_mount_opts opts;
++	struct super_block *s;
++
++	error = parse_mount_options(data, &opts);
++	if (error)
++		return ERR_PTR(error);
++
++	if (opts.newinstance)
++		s = sget(fs_type, NULL, set_anon_super, NULL);
++	else
++		s = sget(fs_type, compare_rpc_mnt_sb, set_anon_super, NULL);
++
++	if (IS_ERR(s))
++		return ERR_CAST(s);
++
++	if (!s->s_root) {
++		s->s_flags = flags;
++		error = rpc_fill_super(s, data, flags & MS_SILENT ? 1 : 0);
++		if (error) {
++			deactivate_locked_super(s);
++			return ERR_PTR(error);
++		}
++		s->s_flags |= MS_ACTIVE;
++	}
++
++	return dget(s->s_root);
+ }
+ 
+ static struct file_system_type rpc_pipe_fs_type = {
 -- 
-1.6.6
+1.7.3.4
 
