@@ -1,199 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:7880 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:17919 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751455Ab0LVEA7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Dec 2010 23:00:59 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 05/15] pnfs: change layout state seqlock to a spinlock
-Date: Tue, 21 Dec 2010 23:00:39 -0500
-Message-Id: <1292990449-20057-6-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
-References: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
+	id S1758218Ab0LTWKg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Dec 2010 17:10:36 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V5 06/11] NFS implement v4.0 callback_ident
+Date: Mon, 20 Dec 2010 16:04:43 -0500
+Message-Id: <1292879088-7821-7-git-send-email-andros@netapp.com>
+In-Reply-To: <1292879088-7821-6-git-send-email-andros@netapp.com>
+References: <1292879088-7821-1-git-send-email-andros@netapp.com>
+ <1292879088-7821-2-git-send-email-andros@netapp.com>
+ <1292879088-7821-3-git-send-email-andros@netapp.com>
+ <1292879088-7821-4-git-send-email-andros@netapp.com>
+ <1292879088-7821-5-git-send-email-andros@netapp.com>
+ <1292879088-7821-6-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-This prepares for future changes, where the layout state needs
-to change atomically with several other variables.  In particular,
-it will need to know if lo->segs is empty, as we test that instead
-of manipulating the NFS_LAYOUT_STATEID_SET bit.  Moreover, the
-layoutstateid is not really a read-mostly structure, as it is
-written almost as often as it is read.
+From: Andy Adamson <andros@netapp.com>
 
-The behavior of pnfs_get_layout_stateid is also slightly changed, so that
-it no longer changes the stateid.  Its name is changed to +pnfs_choose_layoutget_stateid.
+Provide a unique callback identifier per SETCLIENTID call used to identify the
+v4.0 callback service associated with the clientid.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Do not worry about wrap around. Zero value means unset.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs4xdr.c |    2 +-
- fs/nfs/pnfs.c    |   79 +++++++++++++++--------------------------------------
- fs/nfs/pnfs.h    |    7 ++---
- 3 files changed, 27 insertions(+), 61 deletions(-)
+ fs/nfs/nfs4proc.c         |    5 +++++
+ fs/nfs/nfs4state.c        |    1 +
+ include/linux/nfs_fs_sb.h |    1 +
+ include/linux/nfs_xdr.h   |    1 +
+ 4 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index f3f9915..4e28242 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1798,7 +1798,7 @@ encode_layoutget(struct xdr_stream *xdr,
- 	p = xdr_encode_hyper(p, args->range.offset);
- 	p = xdr_encode_hyper(p, args->range.length);
- 	p = xdr_encode_hyper(p, args->minlength);
--	pnfs_get_layout_stateid(&stateid, NFS_I(args->inode)->layout,
-+	pnfs_choose_layoutget_stateid(&stateid, NFS_I(args->inode)->layout,
- 				args->ctx->state);
- 	p = xdr_encode_opaque_fixed(p, &stateid.data, NFS4_STATEID_SIZE);
- 	*p = cpu_to_be32(args->maxcount);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 6736f9e..08313f53 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -258,9 +258,6 @@ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list)
- 	/* List does not take a reference, so no need for put here */
- 	list_del_init(&lo->plh_layouts);
- 	spin_unlock(&clp->cl_lock);
--	write_seqlock(&lo->plh_seqlock);
--	clear_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags);
--	write_sequnlock(&lo->plh_seqlock);
- 
- 	dprintk("%s:Return\n", __func__);
- }
-@@ -319,69 +316,40 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
- 	}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4435e5e..ab5a2c4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3470,6 +3470,8 @@ do_state_recovery:
+ 	return -EAGAIN;
  }
  
--/* update lo->plh_stateid with new if is more recent
-- *
-- * lo->plh_stateid could be the open stateid, in which case we just use what given.
-- */
-+/* update lo->plh_stateid with new if is more recent */
- static void
- pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 			const nfs4_stateid *new)
- {
--	nfs4_stateid *old = &lo->plh_stateid;
--	bool overwrite = false;
--
--	write_seqlock(&lo->plh_seqlock);
--	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags) ||
--	    memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
--		overwrite = true;
--	else {
--		u32 oldseq, newseq;
--
--		oldseq = be32_to_cpu(old->stateid.seqid);
--		newseq = be32_to_cpu(new->stateid.seqid);
--		if ((int)(newseq - oldseq) > 0)
--			overwrite = true;
--	}
--	if (overwrite)
--		memcpy(&old->stateid, &new->stateid, sizeof(new->stateid));
--	write_sequnlock(&lo->plh_seqlock);
--}
--
--static void
--pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
--			      struct nfs4_state *state)
--{
--	int seq;
-+	u32 oldseq, newseq;
- 
--	dprintk("--> %s\n", __func__);
--	write_seqlock(&lo->plh_seqlock);
--	do {
--		seq = read_seqbegin(&state->seqlock);
--		memcpy(lo->plh_stateid.data, state->stateid.data,
--		       sizeof(state->stateid.data));
--	} while (read_seqretry(&state->seqlock, seq));
--	set_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags);
--	write_sequnlock(&lo->plh_seqlock);
--	dprintk("<-- %s\n", __func__);
-+	oldseq = be32_to_cpu(lo->plh_stateid.stateid.seqid);
-+	newseq = be32_to_cpu(new->stateid.seqid);
-+	if ((int)(newseq - oldseq) > 0)
-+		memcpy(&lo->plh_stateid, &new->stateid, sizeof(new->stateid));
- }
- 
--void
--pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
--			struct nfs4_state *open_state)
-+int
-+pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
-+			      struct nfs4_state *open_state)
- {
--	int seq;
-+	int status = 0;
- 
- 	dprintk("--> %s\n", __func__);
--	do {
--		seq = read_seqbegin(&lo->plh_seqlock);
--		if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags)) {
--			/* This will trigger retry of the read */
--			pnfs_layout_from_open_stateid(lo, open_state);
--		} else
--			memcpy(dst->data, lo->plh_stateid.data,
--			       sizeof(lo->plh_stateid.data));
--	} while (read_seqretry(&lo->plh_seqlock, seq));
-+	spin_lock(&lo->plh_inode->i_lock);
-+	if (list_empty(&lo->plh_segs)) {
-+		int seq;
++static u32 current_cb_ident = 1;
 +
-+		do {
-+			seq = read_seqbegin(&open_state->seqlock);
-+			memcpy(dst->data, open_state->stateid.data,
-+			       sizeof(open_state->stateid.data));
-+		} while (read_seqretry(&open_state->seqlock, seq));
-+	} else
-+		memcpy(dst->data, lo->plh_stateid.data, sizeof(lo->plh_stateid.data));
-+	spin_unlock(&lo->plh_inode->i_lock);
- 	dprintk("<-- %s\n", __func__);
-+	return status;
+ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 		unsigned short port, struct rpc_cred *cred,
+ 		struct nfs4_setclientid_res *res)
+@@ -3478,6 +3480,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 	struct nfs4_setclientid setclientid = {
+ 		.sc_verifier = &sc_verifier,
+ 		.sc_prog = program,
++		.sc_cb_ident = current_cb_ident++,
+ 	};
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SETCLIENTID],
+@@ -3522,6 +3525,8 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 			if (++clp->cl_id_uniquifier == 0)
+ 				break;
+ 	}
++	if (status == NFS_OK)
++		res->cb_ident = setclientid.sc_cb_ident;
+ 	return status;
  }
  
- /*
-@@ -496,7 +464,6 @@ alloc_init_layout_hdr(struct inode *ino)
- 	lo->plh_refcount = 1;
- 	INIT_LIST_HEAD(&lo->plh_layouts);
- 	INIT_LIST_HEAD(&lo->plh_segs);
--	seqlock_init(&lo->plh_seqlock);
- 	lo->plh_inode = ino;
- 	return lo;
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index c2f1086..1093720 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -44,7 +44,6 @@ struct pnfs_layout_segment {
- enum {
- 	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
- 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
--	NFS_LAYOUT_STATEID_SET,		/* have a valid layout stateid */
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index f575a31..fe61422 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -79,6 +79,7 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ 	if (status != 0)
+ 		goto out;
+ 	clp->cl_clientid = clid.clientid;
++	clp->cl_cb_ident = clid.cb_ident;
+ 	nfs4_schedule_state_renewal(clp);
+ out:
+ 	return status;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 452d964..1eaa054 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -71,6 +71,7 @@ struct nfs_client {
+ 	 */
+ 	char			cl_ipaddr[48];
+ 	unsigned char		cl_id_uniquifier;
++	u32			cl_cb_ident;	/* v4.0 callback identifier */
+ 	const struct nfs4_minor_version_ops *cl_mvops;
+ #endif /* CONFIG_NFS_V4 */
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 80f0719..24e77a6 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -868,6 +868,7 @@ struct nfs4_setclientid {
+ struct nfs4_setclientid_res {
+ 	u64				clientid;
+ 	nfs4_verifier			confirm;
++	u32				cb_ident;
  };
  
- /* Per-layout driver specific registration structure */
-@@ -63,7 +62,6 @@ struct pnfs_layout_hdr {
- 	unsigned long		plh_refcount;
- 	struct list_head	plh_layouts;   /* other client layouts */
- 	struct list_head	plh_segs;      /* layout segments list */
--	seqlock_t		plh_seqlock;   /* Protects the stateid */
- 	nfs4_stateid		plh_stateid;
- 	unsigned long		plh_flags;
- 	struct inode		*plh_inode;
-@@ -143,8 +141,9 @@ int pnfs_layout_process(struct nfs4_layoutget *lgp);
- void pnfs_destroy_layout(struct nfs_inode *);
- void pnfs_destroy_all_layouts(struct nfs_client *);
- void put_layout_hdr(struct inode *inode);
--void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
--			     struct nfs4_state *open_state);
-+int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
-+				  struct pnfs_layout_hdr *lo,
-+				  struct nfs4_state *open_state);
- 
- 
- static inline int lo_fail_bit(u32 iomode)
+ struct nfs4_statfs_arg {
 -- 
-1.7.2.1
+1.6.6
 
