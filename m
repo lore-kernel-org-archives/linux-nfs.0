@@ -1,74 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:29543 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752842Ab0LPRm5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 12:42:57 -0500
-Message-ID: <4D0A4F9F.4040300@panasas.com>
-Date: Thu, 16 Dec 2010 19:42:55 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/9] Revert "pnfs-submit: wave2: remove forgotten layoutreturn
- struct definitions"
-References: <4D0908F9.4060208@panasas.com>	 <1292437854-21651-1-git-send-email-bhalevy@panasas.com>	 <1292437973.3068.15.camel@heimdal.trondhjem.org>	 <4D090E18.4060205@panasas.com>	 <1292441468.3068.53.camel@heimdal.trondhjem.org>	 <4D09BC93.9020502@panasas.com>	 <1292514922.2912.32.camel@heimdal.trondhjem.org>	 <4D0A3D44.2000101@panasas.com> <1292520916.2912.45.camel@heimdal.trondhjem.org>
-In-Reply-To: <1292520916.2912.45.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from shutemov.name ([188.40.19.243]:38474 "EHLO shutemov.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757366Ab0LTLyn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Dec 2010 06:54:43 -0500
+From: "Kirill A. Shutsemov" <kirill@shutemov.name>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        "Kirill A. Shutemov" <kirill@shutemov.name>
+Subject: [PATCH 10/12] sunrpc: introduce get_rpc_pipefs()
+Date: Mon, 20 Dec 2010 13:54:36 +0200
+Message-Id: <1292846078-31793-11-git-send-email-kirill@shutemov.name>
+In-Reply-To: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
+References: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2010-12-16 19:35, Trond Myklebust wrote:
-> On Thu, 2010-12-16 at 18:24 +0200, Benny Halevy wrote:
->> On 2010-12-16 17:55, Trond Myklebust wrote:
->>> OK, so why not just go the whole hog and do that for all rare cases,
->>> including the one where the server recalls a layout segment that we
->>> happen to be doing I/O to?
->>>
->>> The case we should be optimising for is the one where the layout is
->>> recalled, and no I/O to that segment is in progress. For that case,
->>> returning OK, then doing the LAYOUTRETURN instead of just returning
->>> NOMATCHING_LAYOUT is clearly wrong: it adds a completely unnecessary
->>> round trip to the server. Agreed?
->>
->> I agree that if the client can free the recalled layout synchronously
->> and if it need not send a LAYOUTCOMMIT or LAYOUTRETURN (e.g. in the objects case)
->> it can simply return NFS4ERR_NOMATCHING_LAYOUT.
-> 
-> Objects and blocks != wave 2. We can cross that bridge when we get to
-> it.
-> 
+From: Kirill A. Shutemov <kirill@shutemov.name>
 
-Right.  This patchset is destined as post wave2.
+Get rpc_pipefs mount point by path.
 
->>>
->>> As for the much rarer case of a recall of a layout that is in use, how
->>> does LAYOUTRETURN speed things up? As far as I can see, the MDS is still
->>> going to return NFS4ERR_DELAY to the client that requested the
->>> conflicting LAYOUTGET. That client then has to resend this LAYOUTGET
->>> request, at a time when the first client may or may not have returned
->>> its layout segment. So how is LAYOUTRETURN going to make all this a fast
->>> and scalable process?
->>>
->>
->> First, the server does not have to poll the client and waste cpu and network
->> resources on that.
-> 
-> ...but this is a ____rare____ case. If you are seeing noticeable effects
-> on the network from this, then something is wrong. If that is ever the
-> case, then you should be writing through the MDS anyway.
-> 
-> Furthermore, the MDS does need to be able to cope with NFS4ERR_DELAY
-> anyway, so why add the extra complexity to the client?
-> 
->> Second, for the competing client, with notifications, it too does not have
->> to poll the server and can wait on getting the notification when the
->> layout becomes available.
-> 
-> There is no notification of layout availability in RFC5661. Lock
-> notification is for byte range locks, and device id notification is for
-> device ids. The rest is for directory notifications.
-> 
+Signed-off-by: Kirill A. Shutemov <kirill@shutemov.name>
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |    2 ++
+ net/sunrpc/rpc_pipe.c              |   24 ++++++++++++++++++++++++
+ 2 files changed, 26 insertions(+), 0 deletions(-)
 
-Hmm, CB_RECALLABLE_OBJ_AVAIL in response to loga_signal_layout_avail...
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index b09bfa5..922057c 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -46,6 +46,8 @@ RPC_I(struct inode *inode)
+ 
+ extern struct vfsmount *init_rpc_pipefs;
+ 
++struct vfsmount *get_rpc_pipefs(const char *path);
++
+ extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
+ 
+ struct rpc_clnt;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index b1e299b..c48f7a5 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -931,6 +931,30 @@ static const struct super_operations s_ops = {
+ 
+ #define RPCAUTH_GSSMAGIC 0x67596969
+ 
++struct vfsmount *get_rpc_pipefs(const char *p)
++{
++	int error;
++	struct vfsmount *rpcmount;
++	struct path path;
++
++	if (!p)
++		return mntget(init_rpc_pipefs);
++
++	error = kern_path(p, LOOKUP_FOLLOW | LOOKUP_DIRECTORY, &path);
++	if (error)
++		return ERR_PTR(error);
++
++	if (path.mnt->mnt_sb->s_magic != RPCAUTH_GSSMAGIC) {
++		path_put(&path);
++		return ERR_PTR(-EINVAL);
++	}
++
++	rpcmount = mntget(path.mnt);
++	path_put(&path);
++
++	return rpcmount;
++}
++
+ /*
+  * We have a single directory with 1 node in it.
+  */
+-- 
+1.7.3.4
 
-Benny
