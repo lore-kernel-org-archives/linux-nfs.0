@@ -1,31 +1,41 @@
-From: Benny Halevy <bhalevy@panasas.com>
+From: Fred Isaman <iisaman@netapp.com>
 Subject: Re: [PATCH 00/14] pnfs wave 2 submission
-Date: Tue, 21 Dec 2010 17:38:38 +0200
-Message-ID: <4D10C9FE.9040200@panasas.com>
-References: <1292898046-7336-1-git-send-email-iisaman@netapp.com> <20101221152006.GA30248@infradead.org>
+Date: Tue, 21 Dec 2010 10:40:06 -0500
+Message-ID: <AANLkTi=xey35F3QpyQPd3707MRR84b1qqaNOLsZZGNhh@mail.gmail.com>
+References: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
+	<20101221152006.GA30248@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org,
+Cc: linux-nfs@vger.kernel.org,
 	Trond Myklebust <Trond.Myklebust@netapp.com>
 To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:47207 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751020Ab0LUPik (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Dec 2010 10:38:40 -0500
+Received: from mail-ew0-f45.google.com ([209.85.215.45]:62966 "EHLO
+	mail-ew0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750943Ab0LUPkI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Dec 2010 10:40:08 -0500
+Received: by ewy10 with SMTP id 10so2084949ewy.4
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Dec 2010 07:40:07 -0800 (PST)
 In-Reply-To: <20101221152006.GA30248@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2010-12-21 17:20, Christoph Hellwig wrote:
-> 
-> I don't think the wave 2 in the subject lines of the patches is overly useful,
+On Tue, Dec 21, 2010 at 10:20 AM, Christoph Hellwig <hch@infradead.org>=
+ wrote:
+>
+> I don't think the wave 2 in the subject lines of the patches is overl=
+y useful,
 > care to remove it?
+>
 
-Agreed.
 
-> 
+Sure.
+
+=46red
+
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
 > the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
