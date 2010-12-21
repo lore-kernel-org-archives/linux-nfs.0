@@ -1,75 +1,172 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:12327 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752281Ab0LXPHT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Dec 2010 10:07:19 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id oBOF7J7L009191
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Dec 2010 10:07:19 -0500
-Received: from tlielax.poochiereds.net (vpn-8-9.rdu.redhat.com [10.11.8.9])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id oBOF7Iof020028
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Dec 2010 10:07:19 -0500
-Date: Fri, 24 Dec 2010 10:07:17 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: machine won't suspend with nfs4 mount mounted
-Message-ID: <20101224100717.79895965@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=US-ASCII
+Received: from cn.fujitsu.com ([222.73.24.84]:49776 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751268Ab0LUFeX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Dec 2010 00:34:23 -0500
+Message-ID: <4D103D64.30700@cn.fujitsu.com>
+Date: Tue, 21 Dec 2010 13:38:44 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: NFSv3 list <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: kernel panic when mount NFSv4
+References: <4D0731C1.5090100@cn.fujitsu.com> <1292879966.7744.4.camel@heimdal.trondhjem.org>
+In-Reply-To: <1292879966.7744.4.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I upgraded one of my machines to a very recent fedora rawhide kernel
-today (2.6.37-0.rc7.git0.2.fc15.x86_64). When I tried to suspend it, it
-failed, and I got this:
 
-[  387.811334] Freezing user space processes ... 
-[  407.821049] Freezing of tasks failed after 20.00 seconds (1 tasks refusing to freeze, wq_busy=0):
-[  407.821115] umount        D 00000001000150d5     0  8656   8637 0x00800084
-[  407.821120]  ffff8801d3657968 0000000000000082 ffff8801d36578d0 ffffffff00000000
-[  407.821125]  0000000000013780 0000000000013780 0000000000013780 ffff8801d37bdc80
-[  407.821130]  0000000000013780 ffff8801d3657fd8 0000000000013780 0000000000013780
-[  407.821134] Call Trace:
-[  407.821153]  [<ffffffffa04443db>] ? rpc_wait_bit_killable+0x0/0x38 [sunrpc]
-[  407.821163]  [<ffffffffa044440f>] rpc_wait_bit_killable+0x34/0x38 [sunrpc]
-[  407.821168]  [<ffffffff8147672a>] __wait_on_bit+0x48/0x7b
-[  407.821173]  [<ffffffff810564d4>] ? _local_bh_enable_ip.clone.6+0x25/0x8e
-[  407.821177]  [<ffffffff814767cb>] out_of_line_wait_on_bit+0x6e/0x79
-[  407.821186]  [<ffffffffa04443db>] ? rpc_wait_bit_killable+0x0/0x38 [sunrpc]
-[  407.821191]  [<ffffffff8106ad90>] ? wake_bit_function+0x0/0x31
-[  407.821194]  [<ffffffff810564d4>] ? _local_bh_enable_ip.clone.6+0x25/0x8e
-[  407.821203]  [<ffffffffa0445017>] __rpc_execute+0xff/0x1e1 [sunrpc]
-[  407.821212]  [<ffffffffa0445169>] rpc_execute+0x42/0x46 [sunrpc]
-[  407.821219]  [<ffffffffa043efc7>] rpc_run_task+0xed/0xf8 [sunrpc]
-[  407.821226]  [<ffffffffa043f0bc>] rpc_call_sync+0x42/0x63 [sunrpc]
-[  407.821245]  [<ffffffffa051caab>] _nfs4_call_sync+0x22/0x24 [nfs]
-[  407.821258]  [<ffffffffa051c29f>] _nfs4_proc_access+0x104/0x161 [nfs]
-[  407.821272]  [<ffffffffa051de6a>] nfs4_proc_access+0x34/0x60 [nfs]
-[  407.821280]  [<ffffffffa05049ab>] nfs_do_access+0x15f/0x3a6 [nfs]
-[  407.821289]  [<ffffffffa0446961>] ? generic_lookup_cred+0x15/0x17 [sunrpc]
-[  407.821299]  [<ffffffffa0445f21>] ? rpcauth_lookupcred+0x93/0xb0 [sunrpc]
-[  407.821307]  [<ffffffffa0504cc1>] nfs_permission+0xcf/0x16b [nfs]
-[  407.821312]  [<ffffffff81128bd4>] exec_permission+0x26/0x78
-[  407.821316]  [<ffffffff81129fc0>] link_path_walk+0x70/0x490
-[  407.821319]  [<ffffffff8112a4d1>] path_walk+0x4f/0x9f
-[  407.821322]  [<ffffffff81129a66>] ? path_init+0x88/0x14d
-[  407.821326]  [<ffffffff8112a5fa>] do_path_lookup+0x2f/0x7b
-[  407.821329]  [<ffffffff8112b2be>] user_path_at+0x54/0x91
-[  407.821333]  [<ffffffff810fa4b4>] ? do_brk+0x245/0x299
-[  407.821336]  [<ffffffff810f8864>] ? remove_vma+0x7f/0x87
-[  407.821339]  [<ffffffff81124270>] sys_readlinkat+0x30/0x98
-[  407.821342]  [<ffffffff811242f3>] sys_readlink+0x1b/0x1d
-[  407.821346]  [<ffffffff8100acc2>] system_call_fastpath+0x16/0x1b
-[  407.821350] 
-[  407.821351] Restarting tasks ... done.
 
-I had a nfsv4 mount mounted at the time and I seem to be able to
-reproduce this at will by making sure a nfs mount is mounted and trying
-to suspend the machine.
+Trond Myklebust 写道:
+> On Tue, 2010-12-14 at 16:58 +0800, Mi Jinlong wrote:
+>> Hi,
+>>
+>> When testing NFSv4 at RHEL6 with kernel 2.6.32, I got a kernel panic
+>> at NFS client's __rpc_create_common function.
+>>
+>> The panic place is:
+>>   rpc_mkpipe
+>>     __rpc_lookup_create()          <=== find pipefile *idmap*
+>>     __rpc_mkpipe()                 <=== pipefile is *idmap*
+>>       __rpc_create_common()
+>>        ******  BUG_ON(!d_unhashed(dentry)); ******    *panic*
+>>
+>> It means that the dentry's d_flags have be set DCACHE_UNHASHED, 
+>> but it should not be set here.
+>>
+>> Is someone known this bug? or give me some idea?
+>>
+>> A reproduce program is append, but it can't reproduce the bug every time.
+>> the export is: "/nfsroot       *(rw,no_root_squash,fsid=0,insecure)"
+>>
+>> And the panic message is append.
+>>
+>> ============================================================================
+>> #!/bin/sh
+>>
+>> LOOPTOTAL=768
+>> LOOPCOUNT=0
+>> ret=0
+>>
+>> while [ $LOOPCOUNT -ne $LOOPTOTAL ]
+>> do
+>> 	((LOOPCOUNT += 1))
+>> 	service nfs restart
+>> 	/usr/sbin/rpc.idmapd
+>> 	mount -t nfs4 127.0.0.1:/ /mnt|| return 1;
+>> 	ls -l /var/lib/nfs/rpc_pipefs/nfs/*/
+>> 	umount /mnt
+>> 	echo $LOOPCOUNT
+>> done
+>>
+>> ===============================================================================
+>> Code: af 60 01 00 00 89 fa 89 f0 e8 64 cf 89 f0 e8 5c 7c 64 cf 31 c0 8b 5c 24 10 8b 
+>> 74 24 14 8b 7c 24 18 8b 6c 24 1c 83 c4 20 c3 <0f> 0b eb fc 8b 46 28 c7 44 24 08 20
+>> de ee f0 c7 44 24 04 56 ea 
+>> EIP:[<f0ee92ea>] __rpc_create_common+0x8a/0xc0 [sunrpc] SS:ESP 0068:eccb5d28
+>> ---[ end trace 8f5606cd08928ed2]---
+>> Kernel panic - not syncing: Fatal exception
+>> Pid:7131, comm: mount.nfs4 Tainted: G     D   -------------------2.6.32 #1
+>> Call Trace:
+>>  [<c080ad18>] ? panic+0x42/0xed
+>>  [<c080e42c>] ? oops_end+0xbc/0xd0
+>>  [<c040b090>] ? do_invalid_op+0x0/0x90
+>>  [<c040b10f>] ? do_invalid_op+0x7f/0x90
+>>  [<f0ee92ea>] ? __rpc_create_common+0x8a/0xc0[sunrpc]
+>>  [<f0edc433>] ? rpc_free_task+0x33/0x70[sunrpc]
+>>  [<f0ed6508>] ? prc_call_sync+0x48/0x60[sunrpc]
+>>  [<f0ed656e>] ? rpc_ping+0x4e/0x60[sunrpc]
+>>  [<f0ed6eaf>] ? rpc_create+0x38f/0x4f0[sunrpc]
+>>  [<c080d80b>] ? error_code+0x73/0x78
+>>  [<f0ee92ea>] ? __rpc_create_common+0x8a/0xc0[sunrpc]
+>>  [<c0532bda>] ? d_lookup+0x2a/0x40
+>>  [<f0ee94b1>] ? rpc_mkpipe+0x111/0x1b0[sunrpc]
+>>  [<f10a59f4>] ? nfs_create_rpc_client+0xb4/0xf0[nfs]
+>>  [<f10d6c6d>] ? nfs_fscache_get_client_cookie+0x1d/0x50[nfs]
+>>  [<f10d3fcb>] ? nfs_idmap_new+0x7b/0x140[nfs]
+>>  [<c05e76aa>] ? strlcpy+0x3a/0x60
+>>  [<f10a60ca>] ? nfs4_set_client+0xea/0x2b0[nfs]
+>>  [<f10a6d0c>] ? nfs4_create_server+0xac/0x1b0[nfs]
+>>  [<c04f1400>] ? krealloc+0x40/0x50
+>>  [<f10b0e8b>] ? nfs4_remote_get_sb+0x6b/0x250[nfs]
+>>  [<c04f14ec>] ? kstrdup+0x3c/0x60
+>>  [<c0520739>] ? vfs_kern_mount+0x69/0x170
+>>  [<f10b1a3c>] ? nfs_do_root_mount+0x6c/0xa0[nfs]
+>>  [<f10b1b47>] ? nfs4_try_mount+0x37/0xa0[nfs]
+>>  [<f10afe6d>] ? nfs4_validate_text_mount_data+-x7d/0xf0[nfs]
+>>  [<f10b1c42>] ? nfs4_get_sb+0x92/0x2f0
+>>  [<c0520739>] ? vfs_kern_mount+0x69/0x170
+>>  [<c05366d2>] ? get_fs_type+0x32/0xb0
+>>  [<c052089f>] ? do_kern_mount+0x3f/0xe0
+>>  [<c053954f>] ? do_mount+0x2ef/0x740
+>>  [<c0537740>] ? copy_mount_options+0xb0/0x120
+>>  [<c0539a0e>] ? sys_mount+0x6e/0xa0
+> 
+> Hi,
+> 
+> Does the following patch fix the problem?
 
-It seems likely that the network interface had gone offline before the
-call could complete. Anyone have  thoughts on ways to deal with this?
+  Thanks Trond.
+
+  After this patch, NFS client runs correctly.
+
+> 
+> Cheers
+>   Trond
+> 
+> --------------------------
+> SUNRPC: Fix a BUG in __rpc_create_common
+> 
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> Mi Jinlong reports:
+> 
+> 
+> When testing NFSv4 at RHEL6 with kernel 2.6.32, I got a kernel panic
+> at NFS client's __rpc_create_common function.
+> 
+> The panic place is:
+>   rpc_mkpipe
+>       __rpc_lookup_create()          <=== find pipefile *idmap*
+>       __rpc_mkpipe()                 <=== pipefile is *idmap*
+>         __rpc_create_common()
+>          ******  BUG_ON(!d_unhashed(dentry)); ****** *panic*
+> 
+> The test is wrong: we can find ourselves with a hashed negative dentry here
+> if the idmapper tried to look up the file before we got round to creating
+> it.
+> 
+> Just replace the BUG_ON() with a d_drop(dentry).
+> 
+> Reported-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> 
+>  net/sunrpc/rpc_pipe.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> 
+> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> index 10a17a3..5356d95 100644
+> --- a/net/sunrpc/rpc_pipe.c
+> +++ b/net/sunrpc/rpc_pipe.c
+> @@ -466,7 +466,7 @@ static int __rpc_create_common(struct inode *dir, struct dentry *dentry,
+>  {
+>  	struct inode *inode;
+>  
+> -	BUG_ON(!d_unhashed(dentry));
+> +	d_drop(dentry);
+>  	inode = rpc_get_inode(dir->i_sb, mode);
+>  	if (!inode)
+>  		goto out_err;
+> 
+> 
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+----
+thanks
+Mi Jinlong
+
