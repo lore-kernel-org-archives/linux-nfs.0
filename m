@@ -1,69 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:54103 "EHLO shutemov.name"
+Received: from mx2.netapp.com ([216.240.18.37]:20445 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752890Ab0L3KoR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Dec 2010 05:44:17 -0500
-Date: Thu, 30 Dec 2010 12:44:16 +0200
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Rob Landley <rlandley@parallels.com>
-Cc: "Kirill A. Shutemov" <kas@openvz.org>, Rob Landley <rob@landley.net>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 00/12] make rpc_pipefs be mountable multiple time
-Message-ID: <20101230104416.GA31824@shutemov.name>
-References: <1293628470-28386-1-git-send-email-kas@openvz.org>
- <AANLkTi=AXz21wDeE1vPVD-6cEtj6faXN9x09eHDCsTkB@mail.gmail.com>
- <20101230085139.GA29697@shutemov.name>
- <4D1C4C7C.6050606@parallels.com>
- <20101230094433.GB29697@shutemov.name>
- <4D1C5953.6020200@parallels.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D1C5953.6020200@parallels.com>
+	id S933472Ab0LUCU6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Dec 2010 21:20:58 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 08/14] pnfs: wave 2: Add layout to client list before sending rpc
+Date: Mon, 20 Dec 2010 21:20:40 -0500
+Message-Id: <1292898046-7336-9-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
+References: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Dec 30, 2010 at 04:05:07AM -0600, Rob Landley wrote:
-> On 12/30/2010 03:44 AM, Kirill A. Shutemov wrote:
-> >>> If no rpcmount mountoption, no rpc_pipefs was found at
-> >>> '/var/lib/nfs/rpc_pipefs' and we are in init's mount namespace, we use
-> >>> init_rpc_pipefs.
-> >>
-> >> It's the "we are in init's mount namespace" that I was wondering about.
-> >>
-> >> So if I naievely chroot, nfs mount stops working the way it did before I
-> >> chrooted unless I do an extra setup step?
-> >
-> > No. It will work as before since you are still in init's mount namespace.
-> > Creating new mount namespace changes rules.
-> 
-> Ah, CLONE_NEWNS and then you need /var/lib/nfs/rpc_pipefs.  Got it.
-> 
-> I'm kind of surprised that the kernel cares about a specific path under 
-> /var/lib.  (Seems like policy in the kernel somehow.)
+Since this list will be used to search for layouts to recall,
+this is necessary to avoid a race where the recall comes in,
+sees there is nothing in the client list, and prepares to return
+NOMATCHING, while the LAYOUTGET gets processed before the recall
+updates the stateid.
 
-Yep. It's bad, but there is way to overwrite the default.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   27 +++++++++++++++++++--------
+ 1 files changed, 19 insertions(+), 8 deletions(-)
 
-Other way is to leave 'rpcmount' mountoption without default.
-get_rpc_pipefs(NULL) in init's mount namespace will always return
-init_rpc_pipefs, without filesystem lookup.
-get_rpc_pipefs(NULL) in non-init's mount namespace will always return
-error.
-
-So you will have to specify 'rpcmount' mountoption for every nfs mount in
-container. Hmm, I guess, it may confuse user.
-
-Or we can try to move the default to userspace. /sbin/mount.nfs?
-
-> Can't it just 
-> check the current process's mount list to see if an instance of 
-> rpc_pipefs is mounted in the current namespace the way lxc looks for 
-> cgroups?  Or are there potential performance/scalability issues with that?
-
-What should we do if we have several rpc_pipefs mounts in the namespace?
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 25b67bd..1531cf2 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -463,14 +463,6 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 	dprintk("%s:Begin\n", __func__);
+ 
+ 	assert_spin_locked(&lo->inode->i_lock);
+-	if (list_empty(&lo->segs)) {
+-		struct nfs_client *clp = NFS_SERVER(lo->inode)->nfs_client;
+-
+-		spin_lock(&clp->cl_lock);
+-		BUG_ON(!list_empty(&lo->layouts));
+-		list_add_tail(&lo->layouts, &clp->cl_layouts);
+-		spin_unlock(&clp->cl_lock);
+-	}
+ 	list_for_each_entry(lp, &lo->segs, fi_list) {
+ 		if (cmp_layout(lp->range.iomode, lseg->range.iomode) > 0)
+ 			continue;
+@@ -591,6 +583,7 @@ pnfs_update_layout(struct inode *ino,
+ 		   enum pnfs_iomode iomode)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
++	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg = NULL;
+ 
+@@ -620,9 +613,27 @@ pnfs_update_layout(struct inode *ino,
+ 	atomic_inc(&lo->plh_outstanding);
+ 
+ 	get_layout_hdr_locked(lo);
++	if (list_empty(&lo->segs)) {
++		/* The lo must be on the clp list if there is any
++		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
++		 */
++		spin_lock(&clp->cl_lock);
++		BUG_ON(!list_empty(&lo->layouts));
++		list_add_tail(&lo->layouts, &clp->cl_layouts);
++		spin_unlock(&clp->cl_lock);
++	}
+ 	spin_unlock(&ino->i_lock);
+ 
+ 	lseg = send_layoutget(lo, ctx, iomode);
++	if (!lseg) {
++		spin_lock(&ino->i_lock);
++		if (list_empty(&lo->segs)) {
++			spin_lock(&clp->cl_lock);
++			list_del_init(&lo->layouts);
++			spin_unlock(&clp->cl_lock);
++		}
++		spin_unlock(&ino->i_lock);
++	}
+ 	atomic_dec(&lo->plh_outstanding);
+ 	put_layout_hdr(ino);
+ out:
 -- 
- Kirill A. Shutemov
+1.7.2.1
+
