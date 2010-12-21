@@ -1,114 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:21123 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753138Ab0LJWXV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Dec 2010 17:23:21 -0500
-Subject: Re: proposed patch to rpcbind to provide finer-grained security controls than offered by the -i option
+Received: from fieldses.org ([174.143.236.118]:36990 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752437Ab0LUSXI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Dec 2010 13:23:08 -0500
+Date: Tue, 21 Dec 2010 13:23:05 -0500
+To: andros@netapp.com
+Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH_V5 01/11] SUNRPC move svc_drop to caller of
+ svc_process_common
+Message-ID: <20101221182305.GA19349@fieldses.org>
+References: <1292879088-7821-1-git-send-email-andros@netapp.com>
+ <1292879088-7821-2-git-send-email-andros@netapp.com>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20101210215758.GA15059@ti93.telemetry-investments.com>
-Date: Fri, 10 Dec 2010 17:22:43 -0500
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        libtirpc <libtirpc-devel@lists.sourceforge.net>
-Message-Id: <56D846C6-C941-4ACC-9A8B-DFDC9296C2CE@oracle.com>
-References: <20101209204913.GA30338@ti93.telemetry-investments.com> <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com> <4D016F44.3020002@RedHat.com> <20101210023847.GB15344@ti93.telemetry-investments.com> <77480D58-4224-4713-A515-F1BCC133F44F@oracle.com> <4D024D70.7040108@RedHat.com> <FD9D05EF-FB57-45FB-BBDC-38E3B92D54AA@oracle.com> <20101210171014.GA5280@ti93.telemetry-investments.com> <0F5A7F8B-AA38-4653-BCDC-B192FF790F51@oracle.com> <20101210215758.GA15059@ti93.telemetry-investments.com>
-To: "Andrew J. Schorr" <ajschorr@alumni.princeton.edu>
+In-Reply-To: <1292879088-7821-2-git-send-email-andros@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Correcting the Cc:, apologies.
+On Mon, Dec 20, 2010 at 04:04:38PM -0500, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> The NFSv4.1 shared back channel does not need to call svc_drop because the
+> callback service never outlives the single connection it services, and it
+> reuses it's buffers and keeps the trasport.
 
-On Dec 10, 2010, at 4:57 PM, Andrew J. Schorr wrote:
+Looks better....
 
-> Adding CC libtirpc-devel@sourceforge.net:
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  net/sunrpc/svc.c |   30 ++++++++++++++++--------------
+>  1 files changed, 16 insertions(+), 14 deletions(-)
 > 
-> On Fri, Dec 10, 2010 at 12:14:47PM -0500, Chuck Lever wrote:
->> The libtirpc legacy API should be the same as the glibc RPC API.  If you spot any truly non-ABI compatible changes, or have any other related questions, please let us know.  (we should probably cc libtirpc-devel@sourceforge.net).
->> 
-> 
-> I have not inspected closely yet, but did notice that the XDR structure
-> has changed.  In /usr/include/rpc/xdr.h, there is this:
-> 
-> struct XDR
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 6359c42..606d182 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1147,7 +1147,6 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+>   dropit:
+>  	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+>  	dprintk("svc: svc_process dropit\n");
+> -	svc_drop(rqstp);
+>  	return 0;
+>  
+>  err_short_len:
+> @@ -1218,7 +1217,6 @@ svc_process(struct svc_rqst *rqstp)
+>  	struct kvec		*resv = &rqstp->rq_res.head[0];
+>  	struct svc_serv		*serv = rqstp->rq_server;
+>  	u32			dir;
+> -	int			error;
+>  
+>  	/*
+>  	 * Setup response xdr_buf.
+> @@ -1246,11 +1244,13 @@ svc_process(struct svc_rqst *rqstp)
+>  		return 0;
+>  	}
+>  
+> -	error = svc_process_common(rqstp, argv, resv);
+> -	if (error <= 0)
+
+Oh, and that was pretty ugly, seeing as svc_process_common never
+returned <0.  Thanks for cleaning that up.
+
+> -		return error;
+> -
+> -	return svc_send(rqstp);
+> +	/* Returns 1 for send, 0 for drop */
+> +	if (svc_process_common(rqstp, argv, resv))
+> +		return svc_send(rqstp);
+> +	else {
+> +		svc_drop(rqstp);
+> +		return 0;
+> +	}
+>  }
+>  
+>  #if defined(CONFIG_NFS_V4_1)
+> @@ -1264,7 +1264,6 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
 >  {
->    enum xdr_op x_op;           /* operation; fast additional param */
->    struct xdr_ops
->      {
->        bool_t (*x_getlong) (XDR *__xdrs, long *__lp);
->        /* get a long from underlying stream */
->        bool_t (*x_putlong) (XDR *__xdrs, __const long *__lp);
->        /* put a long to " */
->        bool_t (*x_getbytes) (XDR *__xdrs, caddr_t __addr, u_int __len);
->        /* get some bytes from " */
->        bool_t (*x_putbytes) (XDR *__xdrs, __const char *__addr, u_int __len);
->        /* put some bytes to " */
->        u_int (*x_getpostn) (__const XDR *__xdrs);
->        /* returns bytes off from beginning */
->        bool_t (*x_setpostn) (XDR *__xdrs, u_int __pos);
->        /* lets you reposition the stream */
->        int32_t *(*x_inline) (XDR *__xdrs, u_int __len);
->        /* buf quick ptr to buffered data */
->        void (*x_destroy) (XDR *__xdrs);
->        /* free privates of this xdr_stream */
->        bool_t (*x_getint32) (XDR *__xdrs, int32_t *__ip);
->        /* get a int from underlying stream */
->        bool_t (*x_putint32) (XDR *__xdrs, __const int32_t *__ip);
->        /* put a int to " */
->      }
->     *x_ops;
->    caddr_t x_public;           /* users' data */
->    caddr_t x_private;          /* pointer to private data */
->    caddr_t x_base;             /* private used for position info */
->    u_int x_handy;              /* extra private word */
->  };
-> 
-> Whereas the new tirpc/rpc/xdr.h has this:
-> 
-> typedef struct __rpc_xdr {
->        enum xdr_op     x_op;           /* operation; fast additional param */
->        const struct xdr_ops {
->                /* get a long from underlying stream */
->                bool_t  (*x_getlong)(struct __rpc_xdr *, long *);
->                /* put a long to " */
->                bool_t  (*x_putlong)(struct __rpc_xdr *, const long *);
->                /* get some bytes from " */
->                bool_t  (*x_getbytes)(struct __rpc_xdr *, char *, u_int);
->                /* put some bytes to " */
->                bool_t  (*x_putbytes)(struct __rpc_xdr *, const char *, u_int);
->                /* returns bytes off from beginning */
->                u_int   (*x_getpostn)(struct __rpc_xdr *);
->                /* lets you reposition the stream */
->                bool_t  (*x_setpostn)(struct __rpc_xdr *, u_int);
->                /* buf quick ptr to buffered data */
->                int32_t *(*x_inline)(struct __rpc_xdr *, u_int);
->                /* free privates of this xdr_stream */
->                void    (*x_destroy)(struct __rpc_xdr *);
->                bool_t  (*x_control)(struct __rpc_xdr *, int, void *);
->        } *x_ops;
->        char *          x_public;       /* users' data */
->        void *          x_private;      /* pointer to private data */
->        char *          x_base;         /* private used for position info */
->        u_int           x_handy;        /* extra private word */
-> } XDR;
-> 
-> 
-> As you can see, the structure has changed (some methods added and others
-> removed).  As a result, my code to implement a new XDR type no longer compiles,
-> and will require porting (which presumably will not be major).
-> 
-> So I claim that tirpc is not fully ABI compatible with the legacy RPC
-> implementation.
+>  	struct kvec	*argv = &rqstp->rq_arg.head[0];
+>  	struct kvec	*resv = &rqstp->rq_res.head[0];
+> -	int 		error;
+>  
+>  	/* Build the svc_rqst used by the common processing routine */
+>  	rqstp->rq_xprt = serv->bc_xprt;
+> @@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>  	svc_getu32(argv);	/* XID */
+>  	svc_getnl(argv);	/* CALLDIR */
+>  
+> -	error = svc_process_common(rqstp, argv, resv);
+> -	if (error <= 0)
+> -		return error;
+> -
+> -	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
+> -	return bc_send(req);
+> +	/* Returns 1 for send, 0 for drop */
+> +	if (svc_process_common(rqstp, argv, resv)) {
+> +		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
+> +						sizeof(req->rq_snd_buf));
+> +		return bc_send(req);
+> +	} else {
+> +		/* Nothing to do to drop request */
+> +		return 0;
 
-Thanks for the report.  We are aware of a handful of other minor instances, so it is true that there is not full ABI compatibility.  For most RPC applications of sufficient complexity, the differences are not significant.  At a guess, the use of RPCL and rpcgen to construct your XDR type might be helpful for avoiding this problem.
+The one thing that bothers me is the svc_reserve stuff.  Which you have
+no use for, I guess.  But svc_reserve_auth() is called from
+svc_process_common(); I wonder if that can get us into trouble?  I'll
+look a little closer.
 
-The XDR struct is not part of the published RPC API, is it?  See Sun doc 816-1435.
+--b.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> +	}
+>  }
+>  EXPORT_SYMBOL(bc_svc_process);
+>  #endif /* CONFIG_NFS_V4_1 */
