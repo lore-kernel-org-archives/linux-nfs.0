@@ -1,492 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:54751 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757652Ab0LNO4O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:56:14 -0500
-Received: by iwn9 with SMTP id 9so861488iwn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:56:13 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/31] NFS: Remove unused old NFSv3 encoder functions
-To: trond.myklebust@netapp.com
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:62070 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751006Ab0LUUbY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Dec 2010 15:31:24 -0500
+Received: by qwa26 with SMTP id 26so4397605qwa.19
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Dec 2010 12:31:23 -0800 (PST)
+In-Reply-To: <20101218010801.GE28367@hostway.ca>
+References: <20101208212505.GA18192@hostway.ca>
+	<20101218010801.GE28367@hostway.ca>
+Date: Tue, 21 Dec 2010 12:31:21 -0800
+Message-ID: <AANLkTikSBAjk7EDPQ7isC1GDXiBqO4Rq33H3S58Q82i_@mail.gmail.com>
+Subject: Re: System CPU increasing on idle 2.6.36
+From: Mark Moseley <moseleymark@gmail.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 09:56:10 -0500
-Message-ID: <20101214145610.2293.98386.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=ISO-8859-1
+To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.  Remove unused legacy argument encoder functions, and any
-now unused encoder helper functions.
+On Fri, Dec 17, 2010 at 5:08 PM, Simon Kirby <sim@hostway.ca> wrote:
+> On Wed, Dec 08, 2010 at 01:25:05PM -0800, Simon Kirby wrote:
+>
+>> Possibly related to the flush-processes-taking-CPU issues I saw
+>> previously, I thought this was interesting.  I found a log-crunching box
+>> that does all of its work via NFS and spends most of the day sleeping.
+>> It has been using a linearly-increasing amount of system time during the
+>> time where is sleeping.  munin graph:
+>>
+>> http://0x.ca/sim/ref/2.6.36/cpu_logcrunch_nfs.png
+>>...
+>> Known 2.6.36 issue?  This did not occur on 2.6.35.4, according to the
+>> munin graphs.  I'll try 2.6.37-rc an see if it changes.
+>
+> So, back on this topic,
+>
+> It seems that system CPU from "flush" processes is still increasing
+> during and after periods of NFS activity, even with 2.6.37-rc5-git4:
+>
+>        http://0x.ca/sim/ref/2.6.37/cpu_nfs.png
+>
+> Something is definitely going on while NFS is active, and then keeps
+> happening in the idle periods.  top and perf top look the same as in
+> 2.6.36.  No userland activity at all, but the kernel keeps doing stuff.
+>
+> I could bisect this, but I have to wait a day for each build, unless I
+> can come up with a way to reproduce it more quickly.  The mount points
+> for which the flush processes are active are the two mount points where
+> the logs are read from, rotated, compressed, and unlinked, and where the
+> reports are written, running in parallel under an xargs -P 15.
+>
+> I'm pretty sure the only syscalls that are reproducing this are read(),
+> readdir(), lstat(), write(), rename(), unlink(), and close().  There's
+> nothing special happening here...
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: J. Bruce Fields <bfields@redhat.com>
----
+I'm running 2.6.36 on a number of mail servers that do a great deal of
+write I/O to NFS (all Netapps, NFSv3, UDP). I've seen this exact same
+behaviour a number of times since moving to 2.6.36. I just had to
+powercycle a box a minute ago doing the same thing. Any time I've seen
+this, the only remedy is reboot. These boxes were last running a
+2.6.32.x kernel and had no such behaviour. I didn't think to check
+nfsstat before rebooting but I can next time if it'd be useful.
 
- fs/nfs/nfs3xdr.c |  328 +-----------------------------------------------------
- 1 files changed, 4 insertions(+), 324 deletions(-)
+'top' consistently showed 6 flush threads tying up 100% total of the CPU:
 
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index bbda890..b0af263 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -131,12 +131,6 @@ static void prepare_reply_buffer(struct rpc_rqst *req, struct page **pages,
-  * Common NFS XDR functions as inlines
-  */
- static inline __be32 *
--xdr_encode_fhandle(__be32 *p, const struct nfs_fh *fh)
--{
--	return xdr_encode_array(p, fh->data, fh->size);
--}
--
--static inline __be32 *
- xdr_decode_fhandle(__be32 *p, struct nfs_fh *fh)
- {
- 	if ((fh->size = ntohl(*p++)) <= NFS3_FHSIZE) {
-@@ -564,21 +558,13 @@ static void encode_diropargs3(struct xdr_stream *xdr, const struct nfs_fh *fh,
- 
- 
- /*
-- * NFS encode functions
-+ * NFSv3 XDR encode functions
-+ *
-+ * NFSv3 argument types are defined in section 3.3 of RFC 1813:
-+ * "NFS Version 3 Protocol Specification".
-  */
- 
- /*
-- * Encode file handle argument
-- */
--static int
--nfs3_xdr_fhandle(struct rpc_rqst *req, __be32 *p, struct nfs_fh *fh)
--{
--	p = xdr_encode_fhandle(p, fh);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 3.3.1  GETATTR3args
-  *
-  *	struct GETATTR3args {
-@@ -596,21 +582,6 @@ static int nfs3_xdr_enc_getattr3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode SETATTR arguments
-- */
--static int
--nfs3_xdr_sattrargs(struct rpc_rqst *req, __be32 *p, struct nfs3_sattrargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_sattr(p, args->sattr);
--	*p++ = htonl(args->guard);
--	if (args->guard)
--		p = xdr_encode_time3(p, &args->guardtime);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 3.3.2  SETATTR3args
-  *
-  *	union sattrguard3 switch (bool check) {
-@@ -654,18 +625,6 @@ static int nfs3_xdr_enc_setattr3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode directory ops argument
-- */
--static int
--nfs3_xdr_diropargs(struct rpc_rqst *req, __be32 *p, struct nfs3_diropargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_array(p, args->name, args->len);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 3.3.3  LOOKUP3args
-  *
-  *	struct LOOKUP3args {
-@@ -683,30 +642,6 @@ static int nfs3_xdr_enc_lookup3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode REMOVE argument
-- */
--static int
--nfs3_xdr_removeargs(struct rpc_rqst *req, __be32 *p, const struct nfs_removeargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_array(p, args->name.name, args->name.len);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-- * Encode access() argument
-- */
--static int
--nfs3_xdr_accessargs(struct rpc_rqst *req, __be32 *p, struct nfs3_accessargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fh);
--	*p++ = htonl(args->access);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 3.3.4  ACCESS3args
-  *
-  *	struct ACCESS3args {
-@@ -751,31 +686,6 @@ static int nfs3_xdr_enc_readlink3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Arguments to a READ call. Since we read data directly into the page
-- * cache, we also set up the reply iovec here so that iov[1] points
-- * exactly to the page we want to fetch.
-- */
--static int
--nfs3_xdr_readargs(struct rpc_rqst *req, __be32 *p, struct nfs_readargs *args)
--{
--	struct rpc_auth	*auth = req->rq_cred->cr_auth;
--	unsigned int replen;
--	u32 count = args->count;
--
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_hyper(p, args->offset);
--	*p++ = htonl(count);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--
--	/* Inline the page array */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS3_readres_sz) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen,
--			 args->pages, args->pgbase, count);
--	req->rq_rcv_buf.flags |= XDRBUF_READ;
--	return 0;
--}
--
--/*
-  * 3.3.6  READ3args
-  *
-  *	struct READ3args {
-@@ -810,28 +720,6 @@ static int nfs3_xdr_enc_read3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Write arguments. Splice the buffer to be written into the iovec.
-- */
--static int
--nfs3_xdr_writeargs(struct rpc_rqst *req, __be32 *p, struct nfs_writeargs *args)
--{
--	struct xdr_buf *sndbuf = &req->rq_snd_buf;
--	u32 count = args->count;
--
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_hyper(p, args->offset);
--	*p++ = htonl(count);
--	*p++ = htonl(args->stable);
--	*p++ = htonl(count);
--	sndbuf->len = xdr_adjust_iovec(sndbuf->head, p);
--
--	/* Copy the page array */
--	xdr_encode_pages(sndbuf, args->pages, args->pgbase, count);
--	sndbuf->flags |= XDRBUF_WRITE;
--	return 0;
--}
--
--/*
-  * 3.3.7  WRITE3args
-  *
-  *	enum stable_how {
-@@ -878,26 +766,6 @@ static int nfs3_xdr_enc_write3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode CREATE arguments
-- */
--static int
--nfs3_xdr_createargs(struct rpc_rqst *req, __be32 *p, struct nfs3_createargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_array(p, args->name, args->len);
--
--	*p++ = htonl(args->createmode);
--	if (args->createmode == NFS3_CREATE_EXCLUSIVE) {
--		*p++ = args->verifier[0];
--		*p++ = args->verifier[1];
--	} else
--		p = xdr_encode_sattr(p, args->sattr);
--
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 3.3.8  CREATE3args
-  *
-  *	enum createmode3 {
-@@ -948,19 +816,6 @@ static int nfs3_xdr_enc_create3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode MKDIR arguments
-- */
--static int
--nfs3_xdr_mkdirargs(struct rpc_rqst *req, __be32 *p, struct nfs3_mkdirargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_array(p, args->name, args->len);
--	p = xdr_encode_sattr(p, args->sattr);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 3.3.9  MKDIR3args
-  *
-  *	struct MKDIR3args {
-@@ -980,23 +835,6 @@ static int nfs3_xdr_enc_mkdir3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode SYMLINK arguments
-- */
--static int
--nfs3_xdr_symlinkargs(struct rpc_rqst *req, __be32 *p, struct nfs3_symlinkargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fromfh);
--	p = xdr_encode_array(p, args->fromname, args->fromlen);
--	p = xdr_encode_sattr(p, args->sattr);
--	*p++ = htonl(args->pathlen);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--
--	/* Copy the page */
--	xdr_encode_pages(&req->rq_snd_buf, args->pages, 0, args->pathlen);
--	return 0;
--}
--
--/*
-  * 3.3.10  SYMLINK3args
-  *
-  *	struct symlinkdata3 {
-@@ -1028,25 +866,6 @@ static int nfs3_xdr_enc_symlink3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode MKNOD arguments
-- */
--static int
--nfs3_xdr_mknodargs(struct rpc_rqst *req, __be32 *p, struct nfs3_mknodargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_array(p, args->name, args->len);
--	*p++ = htonl(args->type);
--	p = xdr_encode_sattr(p, args->sattr);
--	if (args->type == NF3CHR || args->type == NF3BLK) {
--		*p++ = htonl(MAJOR(args->rdev));
--		*p++ = htonl(MINOR(args->rdev));
--	}
--
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 3.3.11  MKNOD3args
-  *
-  *	struct devicedata3 {
-@@ -1127,20 +946,6 @@ static int nfs3_xdr_enc_remove3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode RENAME arguments
-- */
--static int
--nfs3_xdr_renameargs(struct rpc_rqst *req, __be32 *p, struct nfs_renameargs *args)
--{
--	p = xdr_encode_fhandle(p, args->old_dir);
--	p = xdr_encode_array(p, args->old_name->name, args->old_name->len);
--	p = xdr_encode_fhandle(p, args->new_dir);
--	p = xdr_encode_array(p, args->new_name->name, args->new_name->len);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 3.3.14  RENAME3args
-  *
-  *	struct RENAME3args {
-@@ -1162,19 +967,6 @@ static int nfs3_xdr_enc_rename3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode LINK arguments
-- */
--static int
--nfs3_xdr_linkargs(struct rpc_rqst *req, __be32 *p, struct nfs3_linkargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fromfh);
--	p = xdr_encode_fhandle(p, args->tofh);
--	p = xdr_encode_array(p, args->toname, args->tolen);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 3.3.15  LINK3args
-  *
-  *	struct LINK3args {
-@@ -1194,34 +986,6 @@ static int nfs3_xdr_enc_link3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- /*
-- * Encode arguments to readdir call
-- */
--static int
--nfs3_xdr_readdirargs(struct rpc_rqst *req, __be32 *p, struct nfs3_readdirargs *args)
--{
--	struct rpc_auth	*auth = req->rq_cred->cr_auth;
--	unsigned int replen;
--	u32 count = args->count;
--
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_hyper(p, args->cookie);
--	*p++ = args->verf[0];
--	*p++ = args->verf[1];
--	if (args->plus) {
--		/* readdirplus: need dircount + buffer size.
--		 * We just make sure we make dircount big enough */
--		*p++ = htonl(count >> 3);
--	}
--	*p++ = htonl(count);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--
--	/* Inline the page array */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS3_readdirres_sz) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, 0, count);
--	return 0;
--}
--
--/*
-  * 3.3.16  READDIR3args
-  *
-  *	struct READDIR3args {
-@@ -1418,19 +1182,6 @@ out_overflow_exit:
- }
- 
- /*
-- * Encode COMMIT arguments
-- */
--static int
--nfs3_xdr_commitargs(struct rpc_rqst *req, __be32 *p, struct nfs_writeargs *args)
--{
--	p = xdr_encode_fhandle(p, args->fh);
--	p = xdr_encode_hyper(p, args->offset);
--	*p++ = htonl(args->count);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	return 0;
--}
--
--/*
-  * 3.3.21  COMMIT3args
-  *
-  *	struct COMMIT3args {
-@@ -1462,29 +1213,6 @@ static int nfs3_xdr_enc_commit3args(struct rpc_rqst *req, __be32 *p,
- }
- 
- #ifdef CONFIG_NFS_V3_ACL
--/*
-- * Encode GETACL arguments
-- */
--static int
--nfs3_xdr_getaclargs(struct rpc_rqst *req, __be32 *p,
--		    struct nfs3_getaclargs *args)
--{
--	struct rpc_auth	*auth = req->rq_cred->cr_auth;
--	unsigned int replen;
--
--	p = xdr_encode_fhandle(p, args->fh);
--	*p++ = htonl(args->mask);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--
--	if (args->mask & (NFS_ACL | NFS_DFACL)) {
--		/* Inline the page array */
--		replen = (RPC_REPHDRSIZE + auth->au_rslack +
--			  ACL3_getaclres_sz) << 2;
--		xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, 0,
--				 NFSACL_MAXPAGES << PAGE_SHIFT);
--	}
--	return 0;
--}
- 
- static int nfs3_xdr_enc_getacl3args(struct rpc_rqst *req, __be32 *p,
- 				    const struct nfs3_getaclargs *args)
-@@ -1501,39 +1229,6 @@ static int nfs3_xdr_enc_getacl3args(struct rpc_rqst *req, __be32 *p,
- 	return 0;
- }
- 
--/*
-- * Encode SETACL arguments
-- */
--static int
--nfs3_xdr_setaclargs(struct rpc_rqst *req, __be32 *p,
--                   struct nfs3_setaclargs *args)
--{
--	struct xdr_buf *buf = &req->rq_snd_buf;
--	unsigned int base;
--	int err;
--
--	p = xdr_encode_fhandle(p, NFS_FH(args->inode));
--	*p++ = htonl(args->mask);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--	base = req->rq_slen;
--
--	if (args->npages != 0)
--		xdr_encode_pages(buf, args->pages, 0, args->len);
--	else
--		req->rq_slen = xdr_adjust_iovec(req->rq_svec,
--				p + XDR_QUADLEN(args->len));
--
--	err = nfsacl_encode(buf, base, args->inode,
--			    (args->mask & NFS_ACL) ?
--			    args->acl_access : NULL, 1, 0);
--	if (err > 0)
--		err = nfsacl_encode(buf, base + err, args->inode,
--				    (args->mask & NFS_DFACL) ?
--				    args->acl_default : NULL, 1,
--				    NFS_ACL_DEFAULT);
--	return (err > 0) ? 0 : err;
--}
--
- static int nfs3_xdr_enc_setacl3args(struct rpc_rqst *req, __be32 *p,
- 				    const struct nfs3_setaclargs *args)
- {
-@@ -1635,21 +1330,6 @@ nfs3_xdr_accessres(struct rpc_rqst *req, __be32 *p, struct nfs3_accessres *res)
- 	return 0;
- }
- 
--static int
--nfs3_xdr_readlinkargs(struct rpc_rqst *req, __be32 *p, struct nfs3_readlinkargs *args)
--{
--	struct rpc_auth	*auth = req->rq_cred->cr_auth;
--	unsigned int replen;
--
--	p = xdr_encode_fhandle(p, args->fh);
--	req->rq_slen = xdr_adjust_iovec(req->rq_svec, p);
--
--	/* Inline the page array */
--	replen = (RPC_REPHDRSIZE + auth->au_rslack + NFS3_readlinkres_sz) << 2;
--	xdr_inline_pages(&req->rq_rcv_buf, replen, args->pages, args->pgbase, args->pglen);
--	return 0;
--}
--
- /*
-  * Decode READLINK reply
-  */
+  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
+ 4853 root      20   0     0    0    0 R   33  0.0  36:47.13
+flush-0:26
+ 4854 root      20   0     0    0    0 R   33  0.0  38:56.89
+flush-0:27
+ 4855 root      20   0     0    0    0 R   33  0.0  38:35.01
+flush-0:28
+ 4856 root      20   0     0    0    0 R   33  0.0  39:00.11
+flush-0:29
+ 4857 root      20   0     0    0    0 R   33  0.0  37:39.08
+flush-0:30
+ 4858 root      20   0     0    0    0 R   31  0.0  37:04.30 flush-0:31
 
+
+perf top consistently showed _raw_spin_lock at over 50% (these boxes
+are only 2 cores though). shrink_icache_memory was usually near the
+top and nfs_writepages hung around the top 5 or 6. Looking at tcpdump,
+there was no actual packets getting sent to those Netapps (I was
+looking at all ports too, not just 2049). This 'perf top' is fairly
+representative of what I was seeing:
+
+------------------------------------------------------------------------------
+   PerfTop:   23638 irqs/sec  kernel:97.3% [100000 cycles],  (all, 2 CPUs)
+------------------------------------------------------------------------------
+
+             samples    pcnt         RIP          kernel function
+  ______     _______   _____   ________________   _______________
+
+           330867.00 - 62.5% - 00000000003cc97a : _raw_spin_lock
+            19496.00 -  3.7% - 00000000000c83e8 : shrink_icache_memory
+            13634.00 -  2.6% - 00000000003cc12c : down_read
+            12064.00 -  2.3% - 000000000004d817 : up_read
+             7807.00 -  1.5% - 0000000000022c38 : kunmap_atomic_notypecheck
+             7496.00 -  1.4% - 0000000000168258 : nfs_writepages
+             7343.00 -  1.4% - 00000000000d0244 : writeback_single_inode
+             5528.00 -  1.0% - 0000000000022d36 : kmap_atomic_prot
+             4915.00 -  0.9% - 00000000000c75c4 : __iget
+             3933.00 -  0.7% - 00000000000d0708 : writeback_sb_inodes
+             3793.00 -  0.7% - 0000000000049d27 : wake_up_bit
+             3579.00 -  0.7% - 00000000000c805c : dispose_list
+             3487.00 -  0.7% - 00000000000d08cf : __mark_inode_dirty
+             3144.00 -  0.6% - 00000000003cd890 : page_fault
+             2539.00 -  0.5% - 00000000001d6afc : _atomic_dec_and_lock
