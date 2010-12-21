@@ -1,134 +1,434 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:65018 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753385Ab0LHQpx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Dec 2010 11:45:53 -0500
-Subject: Re: mount.nfs timeout of 9999ms (was Re: Listen backlog set to 64)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <alpine.NEB.2.01.1012071143080.28772@jrf.vwaro.pbz>
-Date: Wed, 8 Dec 2010 11:45:27 -0500
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org
-Message-Id: <C751B327-E608-4659-A96C-0B99C2C168E1@oracle.com>
-References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz> <20101116182026.GA3971@fieldses.org> <20101117090826.4b2724da@notabene.brown> <20101129205935.GD9897@fieldses.org> <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz> <20101130200013.GA2108@fieldses.org> <alpine.NEB.2.01.1012011754120.12506@jrf.vwaro.pbz> <F5FCB254-E6CE-4B71-ABD9-33F098F9E0BA@oracle.com> <alpine.NEB.2.01.1012071143080.28772@jrf.vwaro.pbz>
-To: Mark Hills <mark@pogo.org.uk>
+Received: from mx2.netapp.com ([216.240.18.37]:51925 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933486Ab0LUCVC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Dec 2010 21:21:02 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 12/14] pnfs: wave 2: add CB_LAYOUTRECALL handling
+Date: Mon, 20 Dec 2010 21:20:44 -0500
+Message-Id: <1292898046-7336-13-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
+References: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+This is the heart of the wave 2 submission.  Add the code to trigger
+drain and forget of any afected layouts.  In addition, we set a
+"barrier", below which any LAYOUTGET reply is ignored.  This is to
+compensate for the fact that we do not wait for outstanding LAYOUTGETs
+to complete as per section 12.5.5.2.1 of RFC 5661.
 
-On Dec 8, 2010, at 9:45 AM, Mark Hills wrote:
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/callback_proc.c |  116 +++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4_fs.h       |    1 +
+ fs/nfs/pnfs.c          |   84 +++++++++++++++++++++++++++--------
+ fs/nfs/pnfs.h          |   12 +++++
+ 4 files changed, 193 insertions(+), 20 deletions(-)
 
-> On Wed, 1 Dec 2010, Chuck Lever wrote:
-> 
->> On Dec 1, 2010, at 1:18 PM, Mark Hills wrote:
->> 
->>> On Tue, 30 Nov 2010, J. Bruce Fields wrote:
->>> 
->>>> On Tue, Nov 30, 2010 at 05:50:52PM +0000, Mark Hills wrote:
->>> [...]
->>>>> Our investigation brings us to rpc.mountd and mount.nfs communicating. In 
->>>>> the client log we see messages like:
->>>>> 
->>>>> Nov 24 12:09:43 nyrd001 automount[3782]: >> mount.nfs: mount to NFS server 'ss1a:/mnt/raid1/banana' failed: timed out, giving up
->>>>> 
->>>>> Using strace and isolating one of these, I can see a non-blocking connect 
->>>>> has already managed to make a connection and even send/receive some data. 
->>>>> 
->>>>> But soon a timeout of 9999 milliseconds in poll() causes a problem in 
->>>>> mount.nfs when waiting for a response of some sort. The socket in question 
->>>>> is a connection to mountd:
->>>>> 
->>>>> 26512 futex(0x7ff76affa540, FUTEX_WAKE_PRIVATE, 1) = 0
->>>>> 26512 write(3, "\200\0\0(j\212\254\365\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3\0\0\0\0\0\0\0\0"..., 44) = 44
->>>>> 26512 poll([{fd=3, events=POLLIN}], 1, 9999 <unfinished ...>
->>>>> 
->>>>> When it returns:
->>>>> 
->>>>> 26512 <... poll resumed> )              = 0 (Timeout)
->>>>> 26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
->>>>> 26512 rt_sigprocmask(SIG_SETMASK, ~[RTMIN RT_1], [], 8) = 0
->>>>> 26512 close(3)                          = 0
->>>>> 26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
->>>>> 26512 write(2, "mount.nfs: mount to NFS server '"..., 100) = 100
->>>>> 
->>>>> There's no re-try from here, just a failed mount.
-> [...]
->>>> Can you tell where the mountd threads are typically waiting?
->>> 
->>> Here's a trace from mountd. Note the long pause after fdatasync():
->>> 
->>> 31156 12:09:40 open("/var/lib/nfs/rmtab", O_WRONLY|O_CREAT|O_APPEND, 0666) = 14 <0.000010>
->>> 31156 12:09:40 fstat(14, {st_mode=S_IFREG|0644, st_size=62642, ...}) = 0 <0.000005>
->>> 31156 12:09:40 mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x2af00c929000 <0.000007>
->>> 31156 12:09:40 fstat(14, {st_mode=S_IFREG|0644, st_size=62642, ...}) = 0 <0.000005>
->>> 31156 12:09:40 lseek(14, 62642, SEEK_SET) = 62642 <0.000006>
->>> 31156 12:09:40 write(14, "192.168.14.165:/mnt/raid1/abcde_"..., 57) = 57 <0.000013>
->>> 31156 12:09:40 fdatasync(14)            = 0 <15.413401>
-> [...]
->> fdatasync() will write all outstanding dirty data on that partition to 
->> persistent storage, not just the dirty data for that file.  If /var is 
->> on a partition that has a lot of other activity, then this is the 
->> expected outcome, unfortunately.  I would expect such delays to be due 
->> to a large amount of outstanding writes, not to periodic synchronous 
->> writes.
-> 
-> Moving rmtab to a tmpfs, this moved the problem to another bottleneck 
-> writing to /var, this time via syslog.
-> 
-> We identified a crontab entry which uses RPM to apply updates to the 
-> server OS at randomised times which was blocking /var for 10 seconds or 
-> so.
-
-I think this is closer to the root cause than the mount.nfs connect timeout.  I might consider RPM or syslog to be the final culprit, but I wonder why a multi-threaded mountd would stop servicing TCP connects because it couldn't write to /var or to syslog?
-
-> This returns the issue to giving up after the 9999 millisecond timeout 
-> above, which I think is making the client overly sensitive.
-> 
-> The affected clients are Fedora 12 distribution: nfs-utils-1.2.1-4.fc12. 
-> We are using mount.nfs for a v3 mount over TCP.
-> 
-> Locating this timeout wasn't easy. There's no '9999' in any of the 
-> nfs-utils or glibc's rpc code.
-> 
-> It turns out that the timeout originates in 
-> nfs-utils/support/nfs/rpc_socket.c as
-> 
->  #define NFSRPC_TIMEOUT_TCP	(10)
-> 
-> This is used to populate a struct timeval *timeout which is used and 
-> updated by nfs_connect_nb(). Then the remaining timeout of 9999 
-> milliseconds is used in an RPC clnt_call operation.
-> 
-> 10 seconds over TCP is simply too short to be reliable here; it's not a 
-> long period of time for a fatal timeout. I will attempt to test on our 
-> cluster with an extended timeout.
-
-This is a TCP connect timeout, not a RPC retransmit timeout.  Waiting 10 seconds for a TCP connect is really not that obnoxious.  The reason this is short is because we want mount.nfs to realize quickly that it's making no progress on stuck servers.
-
-> I presume that the bug is that the timeout is too short, and not that the 
-> timeout should cause a retry in a layer above -- because re-sending the 
-> request over reliable TCP would not make sense.
-
-The upper layer wouldn't resend the request, since the underlying transport never connected.
-
-> For UDP the retries are handled inside the RPC call, clntudp_call(). In 
-> which case, what is the reason the UDP timeout differs from TCP? And is it 
-> also too small?
-
-RPC over UDP doesn't have to connect to the server.  I wonder what would happen if you specified "mountproto=udp" when mounting exports on this overloaded server.
-
-We could consider making the TCP connect timeout value larger, but the price would be a mount.nfs command that is less responsive to hung servers.  For example, the legacy get_socket() code uses a 20 second TCP connect timeout for the pmap query, and a 30 second TCP connect timeout for the mount request.
-
-But how large would be large enough?  If we chose a TCP connect timeout of 25 seconds, what would happen if your server required, say, 30 seconds to accept a new TCP connection?  I think we would agree that the server side should be fixed in that case.
-
-IMO adding another mount option would be mistaken.  It adds clutter to the mount user interface to work around what is clearly a problem on the server.
-
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index c1bb157..7fb59d9 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -12,6 +12,7 @@
+ #include "callback.h"
+ #include "delegation.h"
+ #include "internal.h"
++#include "pnfs.h"
+ 
+ #ifdef NFS_DEBUG
+ #define NFSDBG_FACILITY NFSDBG_CALLBACK
+@@ -107,10 +108,123 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ 
++static int initiate_layout_draining(struct nfs_client *clp,
++				    struct cb_layoutrecallargs *args)
++{
++	struct pnfs_layout_hdr *lo;
++	int rv = NFS4ERR_NOMATCHING_LAYOUT;
++
++	if (args->cbl_recall_type == RETURN_FILE) {
++		LIST_HEAD(free_me_list);
++
++		args->cbl_inode = NULL;
++		spin_lock(&clp->cl_lock);
++		list_for_each_entry(lo, &clp->cl_layouts, layouts) {
++			if (nfs_compare_fh(&args->cbl_fh,
++					   &NFS_I(lo->inode)->fh))
++				continue;
++			if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags))
++				rv = NFS4ERR_DELAY;
++			else {
++				/* Without this, layout can be freed as soon
++				 * as we release cl_lock.  Matched in
++				 * do_callback_layoutrecall.
++				 */
++				get_layout_hdr(lo);
++				args->cbl_inode = lo->inode;
++				rv = NFS4_OK;
++			}
++			break;
++		}
++		spin_unlock(&clp->cl_lock);
++
++		spin_lock(&lo->inode->i_lock);
++		if (rv == NFS4_OK) {
++			lo->plh_block_lgets++;
++			mark_matching_lsegs_invalid(lo, &free_me_list,
++						    args->cbl_range.iomode);
++		}
++		pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
++		spin_unlock(&lo->inode->i_lock);
++		pnfs_free_lseg_list(&free_me_list);
++	} else {
++		struct pnfs_layout_hdr *tmp;
++		LIST_HEAD(recall_list);
++		LIST_HEAD(free_me_list);
++		struct pnfs_layout_range range = {
++			.iomode = IOMODE_ANY,
++			.offset = 0,
++			.length = NFS4_MAX_UINT64,
++		};
++
++		spin_lock(&clp->cl_lock);
++		list_for_each_entry(lo, &clp->cl_layouts, layouts) {
++			if ((args->cbl_recall_type == RETURN_FSID) &&
++			    memcmp(&NFS_SERVER(lo->inode)->fsid,
++				   &args->cbl_fsid, sizeof(struct nfs_fsid)))
++				continue;
++			get_layout_hdr(lo);
++			BUG_ON(!list_empty(&lo->plh_bulk_recall));
++			list_add(&lo->plh_bulk_recall, &recall_list);
++		}
++		spin_unlock(&clp->cl_lock);
++		list_for_each_entry_safe(lo, tmp,
++					 &recall_list, plh_bulk_recall) {
++			spin_lock(&lo->inode->i_lock);
++			set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
++			mark_matching_lsegs_invalid(lo, &free_me_list, range.iomode);
++			list_del_init(&lo->plh_bulk_recall);
++			spin_unlock(&lo->inode->i_lock);
++			put_layout_hdr(lo);
++			rv = NFS4_OK;
++		}
++		pnfs_free_lseg_list(&free_me_list);
++	}
++	return rv;
++}
++
++static u32 do_callback_layoutrecall(struct nfs_client *clp,
++				    struct cb_layoutrecallargs *args)
++{
++	u32 status, res = NFS4ERR_DELAY;
++
++	dprintk("%s enter, type=%i\n", __func__, args->cbl_recall_type);
++	if (test_and_set_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state))
++		goto out;
++	status = initiate_layout_draining(clp, args);
++	if (status)
++		res = status;
++	else if (args->cbl_recall_type == RETURN_FILE) {
++		struct pnfs_layout_hdr *lo;
++
++		lo = NFS_I(args->cbl_inode)->layout;
++		spin_lock(&lo->inode->i_lock);
++		lo->plh_block_lgets--;
++		spin_unlock(&lo->inode->i_lock);
++		put_layout_hdr(lo);
++		res = NFS4ERR_DELAY;
++	}
++	clear_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state);
++out:
++	dprintk("%s returning %i\n", __func__, res);
++	return res;
++
++}
++
+ __be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
+ 				  void *dummy, struct cb_process_state *cps)
+ {
+-	return cpu_to_be32(NFS4ERR_NOTSUPP); /* STUB */
++	u32 res;
++
++	dprintk("%s: -->\n", __func__);
++
++	if (cps->clp)
++		res = do_callback_layoutrecall(cps->clp, args);
++	else
++		res = NFS4ERR_OP_NOT_IN_SESSION;
++
++	dprintk("%s: exit with status = %d\n", __func__, res);
++	return cpu_to_be32(res);
+ }
+ 
+ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 9fa4963..426e887 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -44,6 +44,7 @@ enum nfs4_client_state {
+ 	NFS4CLNT_RECLAIM_REBOOT,
+ 	NFS4CLNT_RECLAIM_NOGRACE,
+ 	NFS4CLNT_DELEGRETURN,
++	NFS4CLNT_LAYOUTRECALL,
+ 	NFS4CLNT_SESSION_RESET,
+ 	NFS4CLNT_RECALL_SLOT,
+ };
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index f49d288..531d98c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -178,7 +178,7 @@ EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
+  */
+ 
+ /* Need to hold i_lock if caller does not already hold reference */
+-static void
++void
+ get_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+ 	atomic_inc(&lo->plh_refcount);
+@@ -256,6 +256,7 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
+ 			/* List does not take a reference, so no need for put here */
+ 			list_del_init(&lseg->layout->layouts);
+ 			spin_unlock(&clp->cl_lock);
++			clear_bit(NFS_LAYOUT_BULK_RECALL, &lseg->layout->plh_flags);
+ 		}
+ 		list_add(&lseg->fi_list, tmp_list);
+ 	}
+@@ -281,7 +282,7 @@ static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ }
+ 
+ /* Returns false if no lsegs match, true otherwise */
+-static bool
++bool
+ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 			    struct list_head *tmp_list,
+ 			    u32 iomode)
+@@ -304,7 +305,7 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 	return rv;
+ }
+ 
+-static void
++void
+ pnfs_free_lseg_list(struct list_head *free_me)
+ {
+ 	struct pnfs_layout_segment *lseg, *tmp;
+@@ -356,23 +357,46 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+ }
+ 
+ /* update lo->stateid with new if is more recent */
+-static void
+-pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+-			const nfs4_stateid *new)
++void
++pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
++			bool update_barrier)
+ {
+ 	u32 oldseq, newseq;
+ 
+ 	oldseq = be32_to_cpu(lo->stateid.stateid.seqid);
+ 	newseq = be32_to_cpu(new->stateid.seqid);
+-	if ((int)(newseq - oldseq) > 0)
++	if ((int)(newseq - oldseq) > 0) {
+ 		memcpy(&lo->stateid, &new->stateid, sizeof(new->stateid));
++		if (update_barrier) {
++			u32 new_barrier = be32_to_cpu(new->stateid.seqid);
++
++			if ((int)(new_barrier - lo->plh_barrier))
++				lo->plh_barrier = new_barrier;
++		} else {
++			/* Because of wraparound, we want to keep the barrier
++			 * "close" to the current seqids.  It needs to be
++			 * within 2**31 to count as "behind", so if it
++			 * gets too near that limit, give us a litle leeway
++			 * and bring it to within 2**30.
++			 * NOTE - and yes, this is all unsigned arithmetic.
++			 */
++			if (unlikely((newseq - lo->plh_barrier) > (3 << 29)))
++				lo->plh_barrier = newseq - (1 << 30);
++		}
++	}
+ }
+ 
+ /* lget is set to 1 if called from inside send_layoutget call chain */
+ static bool
+-pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, int lget)
+-{
+-	return (list_empty(&lo->segs) &&
++pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, nfs4_stateid *stateid,
++			int lget)
++{
++	if ((stateid) &&
++	    (int)(lo->plh_barrier - be32_to_cpu(stateid->stateid.seqid)) >= 0)
++		return true;
++	return lo->plh_block_lgets ||
++		test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
++		(list_empty(&lo->segs) &&
+ 		 (atomic_read(&lo->plh_outstanding) > lget));
+ }
+ 
+@@ -384,7 +408,7 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	spin_lock(&lo->inode->i_lock);
+-	if (pnfs_layoutgets_blocked(lo, 1)) {
++	if (pnfs_layoutgets_blocked(lo, NULL, 1)) {
+ 		/* We avoid -EAGAIN, as that has special meaning to
+ 		 * some callers.
+ 		 */
+@@ -506,6 +530,7 @@ alloc_init_layout_hdr(struct inode *ino)
+ 	atomic_set(&lo->plh_refcount, 1);
+ 	INIT_LIST_HEAD(&lo->layouts);
+ 	INIT_LIST_HEAD(&lo->segs);
++	INIT_LIST_HEAD(&lo->plh_bulk_recall);
+ 	lo->inode = ino;
+ 	return lo;
+ }
+@@ -557,7 +582,7 @@ is_matching_lseg(struct pnfs_layout_segment *lseg, u32 iomode)
+  * lookup range in layout
+  */
+ static struct pnfs_layout_segment *
+-pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
++pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
+ {
+ 	struct pnfs_layout_segment *lseg, *ret = NULL;
+ 
+@@ -602,19 +627,22 @@ pnfs_update_layout(struct inode *ino,
+ 		goto out_unlock;
+ 	}
+ 
+-	/* Check to see if the layout for the given range already exists */
+-	lseg = pnfs_has_layout(lo, iomode);
+-	if (lseg) {
+-		dprintk("%s: Using cached lseg %p for iomode %d)\n",
+-			__func__, lseg, iomode);
++	/* Do we even need to bother with this? */
++	if (test_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state) ||
++	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
++		dprintk("%s matches recall, use MDS\n", __func__);
+ 		goto out_unlock;
+ 	}
++	/* Check to see if the layout for the given range already exists */
++	lseg = pnfs_find_lseg(lo, iomode);
++	if (lseg)
++		goto out_unlock;
+ 
+ 	/* if LAYOUTGET already failed once we don't try again */
+ 	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
+ 		goto out_unlock;
+ 
+-	if (pnfs_layoutgets_blocked(lo, 0))
++	if (pnfs_layoutgets_blocked(lo, NULL, 0))
+ 		goto out_unlock;
+ 	atomic_inc(&lo->plh_outstanding);
+ 
+@@ -637,6 +665,7 @@ pnfs_update_layout(struct inode *ino,
+ 			spin_lock(&clp->cl_lock);
+ 			list_del_init(&lo->layouts);
+ 			spin_unlock(&clp->cl_lock);
++			clear_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
+ 		}
+ 		spin_unlock(&ino->i_lock);
+ 	}
+@@ -658,6 +687,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	struct nfs4_layoutget_res *res = &lgp->res;
+ 	struct pnfs_layout_segment *lseg;
+ 	struct inode *ino = lo->inode;
++	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 	int status = 0;
+ 
+ 	/* Verify we got what we asked for.
+@@ -684,16 +714,32 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	}
+ 
+ 	spin_lock(&ino->i_lock);
++	if (test_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state) ||
++	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
++		dprintk("%s forget reply due to recall\n", __func__);
++		goto out_forget_reply;
++	}
++
++	if (pnfs_layoutgets_blocked(lo, &res->stateid, 1)) {
++		dprintk("%s forget reply due to state\n", __func__);
++		goto out_forget_reply;
++	}
+ 	init_lseg(lo, lseg);
+ 	lseg->range = res->range;
+ 	*lgp->lsegpp = lseg;
+ 	pnfs_insert_layout(lo, lseg);
+ 
+ 	/* Done processing layoutget. Set the layout stateid */
+-	pnfs_set_layout_stateid(lo, &res->stateid);
++	pnfs_set_layout_stateid(lo, &res->stateid, false);
+ 	spin_unlock(&ino->i_lock);
+ out:
+ 	return status;
++
++out_forget_reply:
++	spin_unlock(&ino->i_lock);
++	lseg->layout = lo;
++	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
++	goto out;
+ }
+ 
+ /*
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 3cf6856..4c66a97 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -49,6 +49,7 @@ struct pnfs_layout_segment {
+ enum {
+ 	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
+ 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
++	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
+ 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+ };
+ 
+@@ -67,9 +68,12 @@ struct pnfs_layoutdriver_type {
+ struct pnfs_layout_hdr {
+ 	atomic_t		plh_refcount;
+ 	struct list_head	layouts;   /* other client layouts */
++	struct list_head	plh_bulk_recall; /* clnt list of bulk recalls */
+ 	struct list_head	segs;      /* layout segments list */
+ 	nfs4_stateid		stateid;
+ 	atomic_t		plh_outstanding; /* number of RPCs out */
++	unsigned long		plh_block_lgets; /* block LAYOUTGET if >0 */
++	u32			plh_barrier; /* ignore lower seqids */
+ 	unsigned long		plh_flags;
+ 	struct inode		*inode;
+ };
+@@ -139,18 +143,26 @@ extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
+ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
+ 
+ /* pnfs.c */
++void get_layout_hdr(struct pnfs_layout_hdr *lo);
+ struct pnfs_layout_segment *
+ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 		   enum pnfs_iomode access_type);
+ void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
++void pnfs_free_lseg_list(struct list_head *tmp_list);
+ void pnfs_destroy_layout(struct nfs_inode *);
+ void pnfs_destroy_all_layouts(struct nfs_client *);
+ void put_layout_hdr(struct pnfs_layout_hdr *lo);
++void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
++			     const nfs4_stateid *new,
++			     bool update_barrier);
+ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ 				  struct pnfs_layout_hdr *lo,
+ 				  struct nfs4_state *open_state);
++bool mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
++				 struct list_head *tmp_list,
++				 u32 iomode);
+ 
+ 
+ static inline int lo_fail_bit(u32 iomode)
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.2.1
 
