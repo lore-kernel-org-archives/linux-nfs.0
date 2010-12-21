@@ -1,96 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:26734 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753603Ab0LON5z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 08:57:55 -0500
-Message-ID: <4D08C961.3090702@panasas.com>
-Date: Wed, 15 Dec 2010 15:57:53 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 12/22] pnfs-submit: wave2: rewrite validate_bitmap_values
- to obey spec
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com> <1291944177-7819-13-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1291944177-7819-13-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:20445 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933481Ab0LUCU7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Dec 2010 21:20:59 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 09/14] pnfs: wave 2: check that partial LAYOUTGET return is ignored
+Date: Mon, 20 Dec 2010 21:20:41 -0500
+Message-Id: <1292898046-7336-10-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
+References: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2010-12-10 03:22, Fred Isaman wrote:
-> It was checking that at least one known bit was set.  It needs to check
-> no unknown bit was set.  From RFC5661, section 20.6.3:
-> 
-> When a bit is set in the type mask that corresponds to an undefined
-> type of recallable object, NFS4ERR_INVAL MUST be returned.
-> 
-> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> ---
->  fs/nfs/callback.h      |    1 +
->  fs/nfs/callback_proc.c |   27 ++++-----------------------
->  2 files changed, 5 insertions(+), 23 deletions(-)
-> 
-> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-> index b16dd1f..616c5c1 100644
-> --- a/fs/nfs/callback.h
-> +++ b/fs/nfs/callback.h
-> @@ -126,6 +126,7 @@ extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
->  #define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX  9
->  #define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
->  #define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
-> +#define RCA4_TYPE_MASK_ALL 0xf31f
->  
->  struct cb_recallanyargs {
->  	struct sockaddr	*craa_addr;
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index 61b3c66..d4aec46 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -661,28 +661,10 @@ out_putclient:
->  	goto out;
->  }
->  
-> -static inline bool
-> -validate_bitmap_values(const unsigned long *mask)
-> +static bool
-> +validate_bitmap_values(unsigned long mask)
->  {
-> -	int i;
-> -
-> -	if (*mask == 0)
-> -		return true;
-> -	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, mask) ||
-> -	    test_bit(RCA4_TYPE_MASK_WDATA_DLG, mask) ||
-> -	    test_bit(RCA4_TYPE_MASK_DIR_DLG, mask) ||
-> -	    test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, mask) ||
-> -	    test_bit(RCA4_TYPE_MASK_BLK_LAYOUT, mask))
-> -		return true;
-> -	for (i = RCA4_TYPE_MASK_OBJ_LAYOUT_MIN;
-> -	     i <= RCA4_TYPE_MASK_OBJ_LAYOUT_MAX; i++)
-> -		if (test_bit(i, mask))
-> -			return true;
-> -	for (i = RCA4_TYPE_MASK_OTHER_LAYOUT_MIN;
-> -	     i <= RCA4_TYPE_MASK_OTHER_LAYOUT_MAX; i++)
-> -		if (test_bit(i, mask))
-> -			return true;
-> -	return false;
-> +	return mask & ~RCA4_TYPE_MASK_ALL;
+Either a bad server reply, or our ignoring of multiple array segments in
+a reply, can cause a reply to not meet our requirements.  Ensure
+that we ignore such replies.
 
-Hmm, shouldn't that be
-	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   11 +++++++++++
+ 1 files changed, 11 insertions(+), 0 deletions(-)
 
-Benny
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 1531cf2..8dbe90c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -654,6 +654,17 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	struct inode *ino = lo->inode;
+ 	int status = 0;
+ 
++	/* Verify we got what we asked for.
++	 * Note that because the xdr parsing only accepts a single
++	 * element array, this can fail even if the server is behaving
++	 * correctly.
++	 */
++	if (lgp->args.range.iomode > res->range.iomode ||
++	    res->range.offset != 0 ||
++	    res->range.length != NFS4_MAX_UINT64) {
++		status = -EINVAL;
++		goto out;
++	}
+ 	/* Inject layout blob into I/O device driver */
+ 	lseg = NFS_SERVER(ino)->pnfs_curr_ld->alloc_lseg(lo, res);
+ 	if (!lseg || IS_ERR(lseg)) {
+-- 
+1.7.2.1
 
->  }
->  
->  __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
-> @@ -702,8 +684,7 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
->  		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
->  
->  	status = cpu_to_be32(NFS4ERR_INVAL);
-> -	if (!validate_bitmap_values((const unsigned long *)
-> -				    &args->craa_type_mask))
-> +	if (!validate_bitmap_values(args->craa_type_mask))
->  		goto out;
->  
->  	status = cpu_to_be32(NFS4_OK);
