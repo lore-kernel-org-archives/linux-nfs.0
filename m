@@ -1,267 +1,266 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46769 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:65130 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755156Ab0LQSku (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Dec 2010 13:40:50 -0500
-Date: Fri, 17 Dec 2010 13:40:47 -0500
-To: andros@netapp.com
-Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH_V4 1/9] SUNRPC new transport for the NFSv4.1 shared
- back channel
-Message-ID: <20101217184047.GD11515@fieldses.org>
-References: <1292610010-19084-1-git-send-email-andros@netapp.com>
- <1292610010-19084-2-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1292610010-19084-2-git-send-email-andros@netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S933425Ab0LUCU4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Dec 2010 21:20:56 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 05/14] pnfs: wave 2: change how lsegs are removed from layout list
+Date: Mon, 20 Dec 2010 21:20:37 -0500
+Message-Id: <1292898046-7336-6-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
+References: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Dec 17, 2010 at 01:20:02PM -0500, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Create a new transport for the shared back channel.l Move the current sock
-> create and destroy routines into the new transport ops.
-> 
-> Reference the back channel transport across message processing (recv/send).
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  include/linux/sunrpc/svcsock.h |    1 +
->  net/sunrpc/svc.c               |   18 +++---
->  net/sunrpc/svcsock.c           |  122 +++++++++++++++++++++++++++++++++-------
->  3 files changed, 112 insertions(+), 29 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> index 1b353a7..3a45a80 100644
-> --- a/include/linux/sunrpc/svcsock.h
-> +++ b/include/linux/sunrpc/svcsock.h
-> @@ -45,6 +45,7 @@ int		svc_sock_names(struct svc_serv *serv, char *buf,
->  int		svc_addsock(struct svc_serv *serv, const int fd,
->  					char *name_return, const size_t len);
->  void		svc_init_xprt_sock(void);
-> +void		svc_init_bc_xprt_sock(void);
->  void		svc_cleanup_xprt_sock(void);
->  struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot);
->  void		svc_sock_destroy(struct svc_xprt *);
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 6359c42..3520cb3 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -488,10 +488,6 @@ svc_destroy(struct svc_serv *serv)
->  	if (svc_serv_is_pooled(serv))
->  		svc_pool_map_put();
->  
-> -#if defined(CONFIG_NFS_V4_1)
-> -	svc_sock_destroy(serv->bc_xprt);
-> -#endif /* CONFIG_NFS_V4_1 */
-> -
->  	svc_unregister(serv);
->  	kfree(serv->sv_pools);
->  	kfree(serv);
-> @@ -1264,7 +1260,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
->  {
->  	struct kvec	*argv = &rqstp->rq_arg.head[0];
->  	struct kvec	*resv = &rqstp->rq_res.head[0];
-> -	int 		error;
-> +	int		ret;
->  
->  	/* Build the svc_rqst used by the common processing routine */
->  	rqstp->rq_xprt = serv->bc_xprt;
-> @@ -1292,12 +1288,16 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
->  	svc_getu32(argv);	/* XID */
->  	svc_getnl(argv);	/* CALLDIR */
->  
-> -	error = svc_process_common(rqstp, argv, resv);
-> -	if (error <= 0)
-> -		return error;
-> +	/* Hold a reference to the back channel socket across the call */
-> +	svc_xprt_get(serv->bc_xprt);
+This is to prepare the way for sensible io draining.  Instead of just
+removing the lseg from the list, we instead clear the VALID flag
+(preventing new io from grabbing references to the lseg) and remove
+the reference holding it in the list.  Thus the lseg will be removed
+once any io in progress completes and any references still held are
+dropped.
 
-Either we already have a reference, in which case this is unnecessary,
-or we don't, in which case this is risky.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/inode.c |    2 +-
+ fs/nfs/pnfs.c  |  121 ++++++++++++++++++++++++++++++++++++-------------------
+ fs/nfs/pnfs.h  |    8 +++-
+ 3 files changed, 87 insertions(+), 44 deletions(-)
 
-The nfs client code knows when it wants to create and destroy the
-backchannel, so I think all you want is to create the svc_xprt when you
-create the backchannel and then put it once when you bring it down.
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index e67e31c..43a69da 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1410,9 +1410,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+  */
+ void nfs4_evict_inode(struct inode *inode)
+ {
++	pnfs_destroy_layout(NFS_I(inode));
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	end_writeback(inode);
+-	pnfs_destroy_layout(NFS_I(inode));
+ 	/* If we are holding a delegation, return it! */
+ 	nfs_inode_return_delegation_noreclaim(inode);
+ 	/* First call standard NFS clear_inode() code */
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 7e4ad2a..49591e4 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -211,69 +211,101 @@ static void
+ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+ {
+ 	INIT_LIST_HEAD(&lseg->fi_list);
+-	kref_init(&lseg->kref);
++	atomic_set(&lseg->pls_refcount, 1);
++	smp_mb();
++	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
+ 	lseg->layout = lo;
+ }
+ 
+-/* Called without i_lock held, as the free_lseg call may sleep */
+-static void
+-destroy_lseg(struct kref *kref)
++static void free_lseg(struct pnfs_layout_segment *lseg)
+ {
+-	struct pnfs_layout_segment *lseg =
+-		container_of(kref, struct pnfs_layout_segment, kref);
+ 	struct inode *ino = lseg->layout->inode;
+ 
+-	dprintk("--> %s\n", __func__);
++	BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+ 	/* Matched by get_layout_hdr in pnfs_insert_layout */
+ 	put_layout_hdr(ino);
+ }
+ 
++/* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
++ * could sleep, so must be called outside of the lock.
++ */
+ static void
+-put_lseg(struct pnfs_layout_segment *lseg)
++put_lseg_locked(struct pnfs_layout_segment *lseg,
++		struct list_head *tmp_list)
+ {
+-	if (!lseg)
+-		return;
++	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
++		atomic_read(&lseg->pls_refcount),
++		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
++	if (atomic_dec_and_test(&lseg->pls_refcount)) {
++		struct inode *ino = lseg->layout->inode;
++
++		BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
++		list_del(&lseg->fi_list);
++		if (list_empty(&lseg->layout->segs)) {
++			struct nfs_client *clp;
++
++			clp = NFS_SERVER(ino)->nfs_client;
++			spin_lock(&clp->cl_lock);
++			/* List does not take a reference, so no need for put here */
++			list_del_init(&lseg->layout->layouts);
++			spin_unlock(&clp->cl_lock);
++		}
++		list_add(&lseg->fi_list, tmp_list);
++	}
++}
+ 
+-	dprintk("%s: lseg %p ref %d\n", __func__, lseg,
+-		atomic_read(&lseg->kref.refcount));
+-	kref_put(&lseg->kref, destroy_lseg);
++static bool
++should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
++{
++	return (recall_iomode == IOMODE_ANY ||
++		lseg_iomode == recall_iomode);
+ }
+ 
+-static void
+-pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list)
++static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
++			      struct list_head *tmp_list)
++{
++	if (test_and_clear_bit(NFS_LSEG_VALID, &lseg->pls_flags)) {
++		/* Remove the reference keeping the lseg in the
++		 * list.  It will now be removed when all
++		 * outstanding io is finished.
++		 */
++		put_lseg_locked(lseg, tmp_list);
++	}
++}
++
++/* Returns false if no lsegs match, true otherwise */
++static bool
++mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
++			    struct list_head *tmp_list,
++			    u32 iomode)
+ {
+ 	struct pnfs_layout_segment *lseg, *next;
+-	struct nfs_client *clp;
++	bool rv = false;
+ 
+ 	dprintk("%s:Begin lo %p\n", __func__, lo);
+ 
+-	assert_spin_locked(&lo->inode->i_lock);
+-	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list) {
+-		dprintk("%s: freeing lseg %p\n", __func__, lseg);
+-		list_move(&lseg->fi_list, tmp_list);
+-	}
+-	clp = NFS_SERVER(lo->inode)->nfs_client;
+-	spin_lock(&clp->cl_lock);
+-	/* List does not take a reference, so no need for put here */
+-	list_del_init(&lo->layouts);
+-	spin_unlock(&clp->cl_lock);
+-
++	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list)
++		if (should_free_lseg(lseg->range.iomode, iomode)) {
++			dprintk("%s: freeing lseg %p iomode %d "
++				"offset %llu length %llu\n", __func__,
++				lseg, lseg->range.iomode, lseg->range.offset,
++				lseg->range.length);
++			mark_lseg_invalid(lseg, tmp_list);
++			rv = true;
++		}
+ 	dprintk("%s:Return\n", __func__);
++	return rv;
+ }
+ 
+ static void
+-pnfs_free_lseg_list(struct list_head *tmp_list)
++pnfs_free_lseg_list(struct list_head *free_me)
+ {
+-	struct pnfs_layout_segment *lseg;
++	struct pnfs_layout_segment *lseg, *tmp;
+ 
+-	while (!list_empty(tmp_list)) {
+-		lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
+-				fi_list);
+-		dprintk("%s calling put_lseg on %p\n", __func__, lseg);
+-		list_del(&lseg->fi_list);
+-		put_lseg(lseg);
+-	}
++	list_for_each_entry_safe(lseg, tmp, free_me, fi_list)
++		free_lseg(lseg);
++	INIT_LIST_HEAD(free_me);
+ }
+ 
+ void
+@@ -285,7 +317,8 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	lo = nfsi->layout;
+ 	if (lo) {
+-		pnfs_clear_lseg_list(lo, &tmp_list);
++		set_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags);
++		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
+ 		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
+ 		put_layout_hdr_locked(lo);
+ 	}
+@@ -477,9 +510,12 @@ pnfs_find_alloc_layout(struct inode *ino)
+ 	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
+ 
+ 	assert_spin_locked(&ino->i_lock);
+-	if (nfsi->layout)
+-		return nfsi->layout;
+-
++	if (nfsi->layout) {
++		if (test_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags))
++			return NULL;
++		else
++			return nfsi->layout;
++	}
+ 	spin_unlock(&ino->i_lock);
+ 	new = alloc_init_layout_hdr(ino);
+ 	spin_lock(&ino->i_lock);
+@@ -520,7 +556,8 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
+ 
+ 	assert_spin_locked(&lo->inode->i_lock);
+ 	list_for_each_entry(lseg, &lo->segs, fi_list) {
+-		if (is_matching_lseg(lseg, iomode)) {
++		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
++		    is_matching_lseg(lseg, iomode)) {
+ 			ret = lseg;
+ 			break;
+ 		}
+@@ -529,7 +566,7 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
+ 	}
+ 
+ 	dprintk("%s:Return lseg %p ref %d\n",
+-		__func__, ret, ret ? atomic_read(&ret->kref.refcount) : 0);
++		__func__, ret, ret ? atomic_read(&ret->pls_refcount) : 0);
+ 	return ret;
+ }
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 89eedf41..96b23bc 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -30,10 +30,15 @@
+ #ifndef FS_NFS_PNFS_H
+ #define FS_NFS_PNFS_H
+ 
++enum {
++	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
++};
++
+ struct pnfs_layout_segment {
+ 	struct list_head fi_list;
+ 	struct pnfs_layout_range range;
+-	struct kref kref;
++	atomic_t pls_refcount;
++	unsigned long pls_flags;
+ 	struct pnfs_layout_hdr *layout;
+ };
+ 
+@@ -44,6 +49,7 @@ struct pnfs_layout_segment {
+ enum {
+ 	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
+ 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
++	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+ };
+ 
+ /* Per-layout driver specific registration structure */
+-- 
+1.7.2.1
 
---b.
-
-> +	ret = svc_process_common(rqstp, argv, resv);
-> +	if (ret <= 0)
-> +		return ret;
->  
->  	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
-> -	return bc_send(req);
-> +	ret = bc_send(req);
-> +	svc_xprt_put(serv->bc_xprt);
-> +	return ret;
->  }
->  EXPORT_SYMBOL(bc_svc_process);
->  #endif /* CONFIG_NFS_V4_1 */
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 07919e1..5875551 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -66,6 +66,13 @@ static void		svc_sock_free(struct svc_xprt *);
->  static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
->  					  struct net *, struct sockaddr *,
->  					  int, int);
-> +#if defined(CONFIG_NFS_V4_1)
-> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
-> +					     struct net *, struct sockaddr *,
-> +					     int, int);
-> +static void svc_bc_sock_free(struct svc_xprt *xprt);
-> +#endif /* CONFIG_NFS_V4_1 */
-> +
->  #ifdef CONFIG_DEBUG_LOCK_ALLOC
->  static struct lock_class_key svc_key[2];
->  static struct lock_class_key svc_slock_key[2];
-> @@ -1184,6 +1191,79 @@ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
->  	return svc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
->  }
->  
-> +#if defined(CONFIG_NFS_V4_1)
-> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
-> +					     struct net *, struct sockaddr *,
-> +					     int, int);
-> +static void svc_bc_sock_free(struct svc_xprt *xprt);
-> +
-> +static struct svc_xprt *svc_bc_tcp_create(struct svc_serv *serv,
-> +				       struct net *net,
-> +				       struct sockaddr *sa, int salen,
-> +				       int flags)
-> +{
-> +	return svc_bc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
-> +}
-> +
-> +static void svc_bc_tcp_sock_detach(struct svc_xprt *xprt)
-> +{
-> +}
-> +
-> +/* These bc ops are never called. The shared fore channel is used instead */
-> +static int svc_bc_tcp_recvfrom(struct svc_rqst *rqstp)
-> +{
-> +	return 0;
-> +}
-> +
-> +static int svc_bc_tcp_sendto(struct svc_rqst *rqstp)
-> +{
-> +	return 0;
-> +}
-> +
-> +static void svc_bc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
-> +{
-> +}
-> +
-> +static void svc_bc_release_skb(struct svc_rqst *rqstp)
-> +{
-> +}
-> +
-> +static int svc_bc_tcp_has_wspace(struct svc_xprt *xprt)
-> +{
-> +	return 0;
-> +}
-> +
-> +static struct svc_xprt *svc_bc_tcp_accept(struct svc_xprt *xprt)
-> +{
-> +	return NULL;
-> +}
-> +
-> +static struct svc_xprt_ops svc_tcp_bc_ops = {
-> +	.xpo_create = svc_bc_tcp_create,
-> +	.xpo_recvfrom = svc_bc_tcp_recvfrom,
-> +	.xpo_sendto = svc_bc_tcp_sendto,
-> +	.xpo_release_rqst = svc_bc_release_skb,
-> +	.xpo_detach = svc_bc_tcp_sock_detach,
-> +	.xpo_free = svc_bc_sock_free,
-> +	.xpo_prep_reply_hdr = svc_bc_tcp_prep_reply_hdr,
-> +	.xpo_has_wspace = svc_bc_tcp_has_wspace,
-> +	.xpo_accept = svc_bc_tcp_accept,
-> +};
-> +
-> +static struct svc_xprt_class svc_tcp_bc_class = {
-> +	.xcl_name = "tcp-bc",
-> +	.xcl_owner = THIS_MODULE,
-> +	.xcl_ops = &svc_tcp_bc_ops,
-> +	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
-> +};
-> +
-> +void svc_init_bc_xprt_sock(void)
-> +{
-> +	svc_reg_xprt_class(&svc_tcp_bc_class);
-> +}
-> +EXPORT_SYMBOL_GPL(svc_init_bc_xprt_sock);
-> +#endif /* CONFIG_NFS_V4_1 */
-> +
->  static struct svc_xprt_ops svc_tcp_ops = {
->  	.xpo_create = svc_tcp_create,
->  	.xpo_recvfrom = svc_tcp_recvfrom,
-> @@ -1509,41 +1589,43 @@ static void svc_sock_free(struct svc_xprt *xprt)
->  	kfree(svsk);
->  }
->  
-> +#if defined(CONFIG_NFS_V4_1)
->  /*
-> - * Create a svc_xprt.
-> - *
-> - * For internal use only (e.g. nfsv4.1 backchannel).
-> - * Callers should typically use the xpo_create() method.
-> + * Create a back channel svc_xprt which shares the fore channel socket.
->   */
-> -struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot)
-> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
-> +					     int protocol,
-> +					     struct net *net,
-> +					     struct sockaddr *sin, int len,
-> +					     int flags)
->  {
->  	struct svc_sock *svsk;
-> -	struct svc_xprt *xprt = NULL;
-> +	struct svc_xprt *xprt;
-> +
-> +	if (protocol != IPPROTO_TCP) {
-> +		printk(KERN_WARNING "svc: only and TCP sockets"
-> +			" supported on shared back channel\n");
-> +		return ERR_PTR(-EINVAL);
-> +	}
->  
-> -	dprintk("svc: %s\n", __func__);
->  	svsk = kzalloc(sizeof(*svsk), GFP_KERNEL);
->  	if (!svsk)
-> -		goto out;
-> +		return ERR_PTR(-ENOMEM);
->  
->  	xprt = &svsk->sk_xprt;
-> -	if (prot == IPPROTO_TCP)
-> -		svc_xprt_init(&svc_tcp_class, xprt, serv);
-> -	else if (prot == IPPROTO_UDP)
-> -		svc_xprt_init(&svc_udp_class, xprt, serv);
-> -	else
-> -		BUG();
-> -out:
-> -	dprintk("svc: %s return %p\n", __func__, xprt);
-> +	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
-> +
-> +	serv->bc_xprt = xprt;
-> +
->  	return xprt;
->  }
-> -EXPORT_SYMBOL_GPL(svc_sock_create);
->  
->  /*
-> - * Destroy a svc_sock.
-> + * Free a back channel svc_sock.
->   */
-> -void svc_sock_destroy(struct svc_xprt *xprt)
-> +static void svc_bc_sock_free(struct svc_xprt *xprt)
->  {
->  	if (xprt)
->  		kfree(container_of(xprt, struct svc_sock, sk_xprt));
->  }
-> -EXPORT_SYMBOL_GPL(svc_sock_destroy);
-> +#endif /* CONFIG_NFS_V4_1 */
-> -- 
-> 1.6.6
-> 
