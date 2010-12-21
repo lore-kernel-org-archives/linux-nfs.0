@@ -1,185 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f180.google.com ([209.85.161.180]:59801 "EHLO
-	mail-gx0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751807Ab0LIQsW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 11:48:22 -0500
-Received: by gxk19 with SMTP id 19so1559138gxk.11
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Dec 2010 08:48:21 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/11] lockd: define host_for_each{_safe} macros
-To: linux-nfs@vger.kernel.org
-Date: Thu, 09 Dec 2010 11:48:19 -0500
-Message-ID: <20101209164819.4513.71032.stgit@matisse.1015granger.net>
-In-Reply-To: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
-References: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:27534 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757288Ab0LUAwX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Dec 2010 19:52:23 -0500
+Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBL0q132005542
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Dec 2010 16:52:01 -0800 (PST)
+Subject: Re: [PATCH 1/1] nfs: change end of line commas to semicolons
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1292891998-10153-1-git-send-email-iisaman@netapp.com>
+References: <1292891998-10153-1-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 20 Dec 2010 19:47:13 -0500
+Message-ID: <1292892433.7744.36.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@citi.umich.edu>
+On Mon, 2010-12-20 at 19:39 -0500, Fred Isaman wrote:
+> Fix a copy-paste error from a previous code reorg.
+> 
+> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 
-We've got a lot of loops like this, and I find them a little easier to
-read with the macros.  More such loops are coming.
+Yes. I'm aware of those bugs, and have already committed the following
+patch:
 
-Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
-[ cel: Forward-ported to 2.6.37 ]
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+-------------------------------------------------------------------------------
+NFSv4: Convert a few commas into semicolons...
+
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- fs/lockd/host.c |  107 ++++++++++++++++++++++++++++---------------------------
- 1 files changed, 55 insertions(+), 52 deletions(-)
+ fs/nfs/nfs4proc.c |   16 ++++++++--------
+ fs/nfs/unlink.c   |    2 +-
+ 2 files changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index ed0c59f..cada3a1 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -26,6 +26,18 @@
- #define NLM_HOST_COLLECT	(120 * HZ)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a742433..aa29046 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1984,8 +1984,8 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, i
+ 	path_get(path);
+ 	calldata->path = *path;
  
- static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
-+
-+#define for_each_host(host, pos, chain, table) \
-+	for ((chain) = (table); \
-+	     (chain) < (table) + NLM_HOST_NRHASH; ++(chain)) \
-+		hlist_for_each_entry((host), (pos), (chain), h_hash)
-+
-+#define for_each_host_safe(host, pos, next, chain, table) \
-+	for ((chain) = (table); \
-+	     (chain) < (table) + NLM_HOST_NRHASH; ++(chain)) \
-+		hlist_for_each_entry_safe((host), (pos), (next), \
-+						(chain), h_hash)
-+
- static unsigned long		next_gc;
- static int			nrhosts;
- static DEFINE_MUTEX(nlm_host_mutex);
-@@ -453,28 +465,26 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
- 	 * To avoid processing a host several times, we match the nsmstate.
- 	 */
- again:	mutex_lock(&nlm_host_mutex);
--	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
--		hlist_for_each_entry(host, pos, chain, h_hash) {
--			if (host->h_nsmhandle == nsm
--			 && host->h_nsmstate != info->state) {
--				host->h_nsmstate = info->state;
--				host->h_state++;
--
--				nlm_get_host(host);
--				mutex_unlock(&nlm_host_mutex);
--
--				if (host->h_server) {
--					/* We're server for this guy, just ditch
--					 * all the locks he held. */
--					nlmsvc_free_host_resources(host);
--				} else {
--					/* He's the server, initiate lock recovery. */
--					nlmclnt_recovery(host);
--				}
--
--				nlm_release_host(host);
--				goto again;
-+	for_each_host(host, pos, chain, nlm_hosts) {
-+		if (host->h_nsmhandle == nsm
-+		 && host->h_nsmstate != info->state) {
-+			host->h_nsmstate = info->state;
-+			host->h_state++;
-+
-+			nlm_get_host(host);
-+			mutex_unlock(&nlm_host_mutex);
-+
-+			if (host->h_server) {
-+				/* We're server for this guy, just ditch
-+				 * all the locks he held. */
-+				nlmsvc_free_host_resources(host);
-+			} else {
-+				/* He's the server, initiate lock recovery. */
-+				nlmclnt_recovery(host);
- 			}
-+
-+			nlm_release_host(host);
-+			goto again;
- 		}
- 	}
- 	mutex_unlock(&nlm_host_mutex);
-@@ -497,13 +507,11 @@ nlm_shutdown_hosts(void)
+-	msg.rpc_argp = &calldata->arg,
+-	msg.rpc_resp = &calldata->res,
++	msg.rpc_argp = &calldata->arg;
++	msg.rpc_resp = &calldata->res;
+ 	task_setup_data.callback_data = calldata;
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+@@ -3663,8 +3663,8 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
+ 	data->rpc_status = 0;
  
- 	/* First, make all hosts eligible for gc */
- 	dprintk("lockd: nuking all hosts...\n");
--	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
--		hlist_for_each_entry(host, pos, chain, h_hash) {
--			host->h_expires = jiffies - 1;
--			if (host->h_rpcclnt) {
--				rpc_shutdown_client(host->h_rpcclnt);
--				host->h_rpcclnt = NULL;
--			}
-+	for_each_host(host, pos, chain, nlm_hosts) {
-+		host->h_expires = jiffies - 1;
-+		if (host->h_rpcclnt) {
-+			rpc_shutdown_client(host->h_rpcclnt);
-+			host->h_rpcclnt = NULL;
- 		}
+ 	task_setup_data.callback_data = data;
+-	msg.rpc_argp = &data->args,
+-	msg.rpc_resp = &data->res,
++	msg.rpc_argp = &data->args;
++	msg.rpc_resp = &data->res;
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
+@@ -3909,8 +3909,8 @@ static struct rpc_task *nfs4_do_unlck(struct file_lock *fl,
+ 		return ERR_PTR(-ENOMEM);
  	}
  
-@@ -515,12 +523,10 @@ nlm_shutdown_hosts(void)
- 	if (nrhosts) {
- 		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
- 		dprintk("lockd: %d hosts left:\n", nrhosts);
--		for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
--			hlist_for_each_entry(host, pos, chain, h_hash) {
--				dprintk("       %s (cnt %d use %d exp %ld)\n",
--					host->h_name, atomic_read(&host->h_count),
--					host->h_inuse, host->h_expires);
--			}
-+		for_each_host(host, pos, chain, nlm_hosts) {
-+			dprintk("       %s (cnt %d use %d exp %ld)\n",
-+				host->h_name, atomic_read(&host->h_count),
-+				host->h_inuse, host->h_expires);
- 		}
- 	}
+-	msg.rpc_argp = &data->arg,
+-	msg.rpc_resp = &data->res,
++	msg.rpc_argp = &data->arg;
++	msg.rpc_resp = &data->res;
+ 	task_setup_data.callback_data = data;
+ 	return rpc_run_task(&task_setup_data);
  }
-@@ -538,29 +544,26 @@ nlm_gc_hosts(void)
- 	struct nlm_host	*host;
- 
- 	dprintk("lockd: host garbage collection\n");
--	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
--		hlist_for_each_entry(host, pos, chain, h_hash)
--			host->h_inuse = 0;
--	}
-+	for_each_host(host, pos, chain, nlm_hosts)
-+		host->h_inuse = 0;
- 
- 	/* Mark all hosts that hold locks, blocks or shares */
- 	nlmsvc_mark_resources();
- 
--	for (chain = nlm_hosts; chain < nlm_hosts + NLM_HOST_NRHASH; ++chain) {
--		hlist_for_each_entry_safe(host, pos, next, chain, h_hash) {
--			if (atomic_read(&host->h_count) || host->h_inuse
--			 || time_before(jiffies, host->h_expires)) {
--				dprintk("nlm_gc_hosts skipping %s (cnt %d use %d exp %ld)\n",
--					host->h_name, atomic_read(&host->h_count),
--					host->h_inuse, host->h_expires);
--				continue;
--			}
--			dprintk("lockd: delete host %s\n", host->h_name);
--			hlist_del_init(&host->h_hash);
--
--			nlm_destroy_host(host);
--			nrhosts--;
-+	for_each_host_safe(host, pos, next, chain, nlm_hosts) {
-+		if (atomic_read(&host->h_count) || host->h_inuse
-+		 || time_before(jiffies, host->h_expires)) {
-+			dprintk("nlm_gc_hosts skipping %s "
-+				"(cnt %d use %d exp %ld)\n",
-+				host->h_name, atomic_read(&host->h_count),
-+				host->h_inuse, host->h_expires);
-+			continue;
- 		}
-+		dprintk("lockd: delete host %s\n", host->h_name);
-+		hlist_del_init(&host->h_hash);
-+
-+		nlm_destroy_host(host);
-+		nrhosts--;
+@@ -4147,8 +4147,8 @@ static int _nfs4_do_setlk(struct nfs4_state *state, int cmd, struct file_lock *f
+ 			data->arg.reclaim = NFS_LOCK_RECLAIM;
+ 		task_setup_data.callback_ops = &nfs4_recover_lock_ops;
  	}
+-	msg.rpc_argp = &data->arg,
+-	msg.rpc_resp = &data->res,
++	msg.rpc_argp = &data->arg;
++	msg.rpc_resp = &data->res;
+ 	task_setup_data.callback_data = data;
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 7bdec85..3bf1e53 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -429,7 +429,7 @@ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
+ 	data = kzalloc(sizeof(*data), GFP_KERNEL);
+ 	if (data == NULL)
+ 		return ERR_PTR(-ENOMEM);
+-	task_setup_data.callback_data = data,
++	task_setup_data.callback_data = data;
  
- 	next_gc = jiffies + NLM_HOST_COLLECT;
+ 	data->cred = rpc_lookup_cred();
+ 	if (IS_ERR(data->cred)) {
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
