@@ -1,106 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:45794 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757715Ab0LNPGZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 10:06:25 -0500
-Received: by mail-iw0-f174.google.com with SMTP id 9so869885iwn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 07:06:25 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/11] lockd: Rename nlm_hosts
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 10:06:22 -0500
-Message-ID: <20101214150622.2736.23447.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
-References: <20101214150036.2736.98254.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:53618 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751791Ab0LVWS2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Dec 2010 17:18:28 -0500
+Date: Wed, 22 Dec 2010 17:18:26 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andy Adamson <andros@netapp.com>
+Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH_V5 01/11] SUNRPC move svc_drop to caller of
+ svc_process_common
+Message-ID: <20101222221826.GC13243@fieldses.org>
+References: <1292879088-7821-1-git-send-email-andros@netapp.com>
+ <1292879088-7821-2-git-send-email-andros@netapp.com>
+ <20101221182305.GA19349@fieldses.org>
+ <C591F94F-FFFA-4C4B-AF0A-F70A0FC890AD@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <C591F94F-FFFA-4C4B-AF0A-F70A0FC890AD@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
+On Wed, Dec 22, 2010 at 05:00:05PM -0500, Andy Adamson wrote:
+> 
+> On Dec 21, 2010, at 1:23 PM, J. Bruce Fields wrote:
+> 
+> > On Mon, Dec 20, 2010 at 04:04:38PM -0500, andros@netapp.com wrote:
+> >> @@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+> >> 	svc_getu32(argv);	/* XID */
+> >> 	svc_getnl(argv);	/* CALLDIR */
+> >> 
+> >> -	error = svc_process_common(rqstp, argv, resv);
+> >> -	if (error <= 0)
+> >> -		return error;
+> >> -
+> >> -	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
+> >> -	return bc_send(req);
+> >> +	/* Returns 1 for send, 0 for drop */
+> >> +	if (svc_process_common(rqstp, argv, resv)) {
+> >> +		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
+> >> +						sizeof(req->rq_snd_buf));
+> >> +		return bc_send(req);
+> >> +	} else {
+> >> +		/* Nothing to do to drop request */
+> >> +		return 0;
+> > 
+> > The one thing that bothers me is the svc_reserve stuff.  Which you have
+> > no use for, I guess.  But svc_reserve_auth() is called from
+> > svc_process_common(); I wonder if that can get us into trouble?  I'll
+> > look a little closer.
+> 
+> Hmmm. This is triggered by the svc_proceedure pc_xdrressize being set. It's my guess we can set this to 0 and avoid the svc_reserve call.
 
-nlm_hosts now contains only server-side entries.  Rename it to match
-convention of client side cache.
+Yipes.  That's ugly, but you're right, this is the only place where I
+can see xdrressize actually used.  Maybe that's the right thing to do.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+In any case, this particular patch doesn't make that reserved-space
+accounting any worse that I can see--it was already broken before, if in
+a slightly different patch.  So
 
- fs/lockd/host.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
+	Acked-by: J. Bruce Fields <bfields@redhat.com>
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 0250b0e..87fbde1 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -25,7 +25,7 @@
- #define NLM_HOST_EXPIRE		(300 * HZ)
- #define NLM_HOST_COLLECT	(120 * HZ)
- 
--static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
-+static struct hlist_head	nlm_server_hosts[NLM_HOST_NRHASH];
- static struct hlist_head	nlm_client_hosts[NLM_HOST_NRHASH];
- 
- #define for_each_host(host, pos, chain, table) \
-@@ -184,7 +184,7 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
- 	 * different NLM rpc_clients into one single nlm_host object.
- 	 * This would allow us to have one nlm_host per address.
- 	 */
--	chain = &nlm_hosts[nlm_hash_address(ni->sap)];
-+	chain = &nlm_server_hosts[nlm_hash_address(ni->sap)];
- 	hlist_for_each_entry(host, pos, chain, h_hash) {
- 		if (!rpc_cmp_addr(nlm_addr(host), ni->sap))
- 			continue;
-@@ -428,7 +428,7 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 	if (time_after_eq(jiffies, next_gc))
- 		nlm_gc_hosts();
- 
--	chain = &nlm_hosts[nlm_hash_address(ni.sap)];
-+	chain = &nlm_server_hosts[nlm_hash_address(ni.sap)];
- 	hlist_for_each_entry(host, pos, chain, h_hash) {
- 		if (!rpc_cmp_addr(nlm_addr(host), ni.sap))
- 			continue;
-@@ -632,7 +632,7 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
- 	 * lock for this.
- 	 * To avoid processing a host several times, we match the nsmstate.
- 	 */
--	while ((host = next_host_state(nlm_hosts, nsm, info)) != NULL) {
-+	while ((host = next_host_state(nlm_server_hosts, nsm, info)) != NULL) {
- 		nlmsvc_free_host_resources(host);
- 		nlmsvc_release_host(host);
- 	}
-@@ -660,7 +660,7 @@ nlm_shutdown_hosts(void)
- 
- 	/* First, make all hosts eligible for gc */
- 	dprintk("lockd: nuking all hosts...\n");
--	for_each_host(host, pos, chain, nlm_hosts) {
-+	for_each_host(host, pos, chain, nlm_server_hosts) {
- 		host->h_expires = jiffies - 1;
- 		if (host->h_rpcclnt) {
- 			rpc_shutdown_client(host->h_rpcclnt);
-@@ -676,7 +676,7 @@ nlm_shutdown_hosts(void)
- 	if (nrhosts) {
- 		printk(KERN_WARNING "lockd: couldn't shutdown host module!\n");
- 		dprintk("lockd: %d hosts left:\n", nrhosts);
--		for_each_host(host, pos, chain, nlm_hosts) {
-+		for_each_host(host, pos, chain, nlm_server_hosts) {
- 			dprintk("       %s (cnt %d use %d exp %ld)\n",
- 				host->h_name, atomic_read(&host->h_count),
- 				host->h_inuse, host->h_expires);
-@@ -697,13 +697,13 @@ nlm_gc_hosts(void)
- 	struct nlm_host	*host;
- 
- 	dprintk("lockd: host garbage collection\n");
--	for_each_host(host, pos, chain, nlm_hosts)
-+	for_each_host(host, pos, chain, nlm_server_hosts)
- 		host->h_inuse = 0;
- 
- 	/* Mark all hosts that hold locks, blocks or shares */
- 	nlmsvc_mark_resources();
- 
--	for_each_host_safe(host, pos, next, chain, nlm_hosts) {
-+	for_each_host_safe(host, pos, next, chain, nlm_server_hosts) {
- 		if (atomic_read(&host->h_count) || host->h_inuse
- 		 || time_before(jiffies, host->h_expires)) {
- 			dprintk("nlm_gc_hosts skipping %s "
+for this patch, and then give the callback server a way to opt out of
+the reserved-space accounting (possibly but just setting pc_xdrressize
+to 0, OK) in another patch.
 
+--b.
