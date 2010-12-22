@@ -1,41 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cirse-out.extra.cea.fr ([132.167.195.14]:40861 "EHLO
-	cirse-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750870Ab0LMIPj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Dec 2010 03:15:39 -0500
-Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
-	by cirse.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.0) with ESMTP id oBD7kO9I030268
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Mon, 13 Dec 2010 08:46:25 +0100
-Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
-	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id oBD7kOrf032103
-	for <linux-nfs@vger.kernel.org>; Mon, 13 Dec 2010 08:46:24 +0100
-	(envelope-from philippe.deniel@cea.fr)
-Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
-	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id oBD7kOw3030293
-	for <linux-nfs@vger.kernel.org>; Mon, 13 Dec 2010 08:46:24 +0100
-Message-ID: <4D05CF50.1010305@cea.fr>
-Date: Mon, 13 Dec 2010 08:46:24 +0100
-From: DENIEL Philippe <philippe.deniel@cea.fr>
-To: linux-nfs@vger.kernel.org
-Subject: Side effects of having NFSv4 mounted over udp
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:9989 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751637Ab0LVWIM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2010 17:08:12 -0500
+Subject: Re: [PATCH 06/15] pnfs: change how lsegs are removed from layout list
+Content-Type: text/plain; charset=us-ascii
+From: Fred Isaman <iisaman@netapp.com>
+In-Reply-To: <1293054191.6422.16.camel@heimdal.trondhjem.org>
+Date: Wed, 22 Dec 2010 17:08:10 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <73A41B1B-39EE-422F-8C43-1CBF830524A2@netapp.com>
+References: <1292990449-20057-1-git-send-email-iisaman@netapp.com> <1292990449-20057-7-git-send-email-iisaman@netapp.com> <1293054191.6422.16.camel@heimdal.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
 
-I know NFSv4 is definitely a connection oriented protocol, but noting 
-prevent from using "mount -t nfs4 -o proto=udp <...>". Using TCP instead 
-of UDP could be of great interest, especially in a HPC context where 
-thousands of clients will operate at the same time. If a nfs mount point 
-is made over udp, what would be the side effects ? I tried to run the 
-connectathon on such a udp based mount point and I could find no errors. 
-Is NFSv4/UDP a suitable solution ? Or does it make no sense to use udp ?
+On Dec 22, 2010, at 4:43 PM, Trond Myklebust wrote:
 
-Thanks in advance for your answer.
+> On Tue, 2010-12-21 at 23:00 -0500, Fred Isaman wrote:
+>> This is to prepare the way for sensible io draining.  Instead of just
+>> removing the lseg from the list, we instead clear the VALID flag
+>> (preventing new io from grabbing references to the lseg) and remove
+>> the reference holding it in the list.  Thus the lseg will be removed
+>> once any io in progress completes and any references still held are
+>> dropped.
+>> 
+>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>> ---
+>> fs/nfs/inode.c |    2 +-
+>> fs/nfs/pnfs.c  |  121 ++++++++++++++++++++++++++++++++++++-------------------
+>> fs/nfs/pnfs.h  |    8 +++-
+>> 3 files changed, 87 insertions(+), 44 deletions(-)
+>> 
+>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>> index e67e31c..43a69da 100644
+>> --- a/fs/nfs/inode.c
+>> +++ b/fs/nfs/inode.c
+> 
+>> -/* Called without i_lock held, as the free_lseg call may sleep */
+>> -static void
+>> -destroy_lseg(struct kref *kref)
+>> +static void free_lseg(struct pnfs_layout_segment *lseg)
+>> {
+>> -	struct pnfs_layout_segment *lseg =
+>> -		container_of(kref, struct pnfs_layout_segment, pls_refcount);
+>> 	struct inode *ino = lseg->pls_layout->plh_inode;
+>> 
+>> -	dprintk("--> %s\n", __func__);
+>> +	BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
+>> 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+>> 	/* Matched by get_layout_hdr in pnfs_insert_layout */
+>> 	put_layout_hdr(ino);
+>> }
+> 
+> <snip>
+> 
+>> static void
+>> -pnfs_free_lseg_list(struct list_head *tmp_list)
+>> +pnfs_free_lseg_list(struct list_head *free_me)
+>> {
+>> -	struct pnfs_layout_segment *lseg;
+>> +	struct pnfs_layout_segment *lseg, *tmp;
+>> 
+>> -	while (!list_empty(tmp_list)) {
+>> -		lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
+>> -				pls_list);
+>> -		dprintk("%s calling put_lseg on %p\n", __func__, lseg);
+>> -		list_del(&lseg->pls_list);
+>> -		put_lseg(lseg);
+>> -	}
+>> +	list_for_each_entry_safe(lseg, tmp, free_me, pls_list)
+>> +		free_lseg(lseg);
+>> +	INIT_LIST_HEAD(free_me);
+>> }
+> 
+> The above looks very dubious to me. Why is this change needed, and what
+> guarantees do we have that free_lseg() will do the right thing w.r.t.
+> removing stuff from the list?
 
-    Regards
+Note that this is called with a list of lsegs which already have refcount==0 and have been removed from generic layer lists such that no new reference is coming.  All that is expected of free_lseg is that the layout driver gets a chance to free any resources it has attached to the lseg, and that we release the reference the lseg holds on the layout header itself.
 
-       Philippe
+The primary reason for this is that the file layouts ld->free_lseg call can call nfs_put_client, which can sleep.  So this allows the ld->free_lseg to be postponed until we can drop locks, similar to the dispose_list function in fs/inode.c
+
+Fred
+
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+
