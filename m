@@ -1,133 +1,266 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39085 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:7880 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755231Ab0LOT5K convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 14:57:10 -0500
-Subject: Re: System CPU increasing on idle 2.6.36
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org
-In-Reply-To: <20101215194956.GA9646@fieldses.org>
-References: <1291845189.3067.31.camel@heimdal.trondhjem.org>
-	 <20101208223622.GA3796@hostway.ca>
-	 <1291869437.2821.6.camel@heimdal.trondhjem.org>
-	 <20101214233843.GB836@hostway.ca> <20101215011021.GA24594@hostway.ca>
-	 <20101215015609.GB24594@hostway.ca> <20101215180813.GA7773@fieldses.org>
-	 <1292437333.3068.14.camel@heimdal.trondhjem.org>
-	 <20101215183816.GB7773@fieldses.org>
-	 <1292441630.3068.55.camel@heimdal.trondhjem.org>
-	 <20101215194956.GA9646@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 15 Dec 2010 14:57:08 -0500
-Message-ID: <1292443028.3068.60.camel@heimdal.trondhjem.org>
+	id S1752201Ab0LVEBA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Dec 2010 23:01:00 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 06/15] pnfs: change how lsegs are removed from layout list
+Date: Tue, 21 Dec 2010 23:00:40 -0500
+Message-Id: <1292990449-20057-7-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
+References: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2010-12-15 at 14:49 -0500, J. Bruce Fields wrote:
-> On Wed, Dec 15, 2010 at 02:33:50PM -0500, Trond Myklebust wrote:
-> > On Wed, 2010-12-15 at 13:38 -0500, J. Bruce Fields wrote:
-> > > On Wed, Dec 15, 2010 at 01:22:13PM -0500, Trond Myklebust wrote:
-> > > > On Wed, 2010-12-15 at 13:08 -0500, J. Bruce Fields wrote:
-> > > > > On Tue, Dec 14, 2010 at 05:56:09PM -0800, Simon Kirby wrote:
-> > > > > > On Tue, Dec 14, 2010 at 05:10:21PM -0800, Simon Kirby wrote:
-> > > > > > 
-> > > > > > > On Tue, Dec 14, 2010 at 03:38:43PM -0800, Simon Kirby wrote:
-> > > > > > > 
-> > > > > > > > I'm just about to try
-> > > > > > > > 2.6.37-rc5-git3 on there plus your NFS fixes (which Linus seems to have
-> > > > > > > > half-merged and uploaded as -git3 but not pushed to his public git) 
-> > > > > > > 
-> > > > > > > Ignore this; I was just confusing myself by having the leak fixes already
-> > > > > > > applied.  Otoh, I got this Oops while trying NFSv4.  I'll check my
-> > > > > > > merging again.
-> > > > > > > 
-> > > > > > > Do you have a git branch exposed with the "Allow the admin to turn off
-> > > > > > > NFSv4 uid/gid mapping" patches applied?
-> > > > > > 
-> > > > > > Hm, the fixes were merged for -git4, and it seems to work fine there.
-> > > > > > 
-> > > > > > As for the nfs4 uid/gid mapping patch, it seems the server side support
-> > > > > > for this is still neded?
-> > > > > 
-> > > > > I'm not convinced that this behavior should depend on the security
-> > > > > flavor, so I'm assuming that something like steved's libnfsidmap patches
-> > > > > should do the job.
-> > > > 
-> > > > Don't assume.
-> > > > 
-> > > > Those patches do not fix the problem that if uid(name@server) !=
-> > > > uid(name@client), then the client will be creating files with the 'wrong
-> > > > username' on the server.
-> > > 
-> > > I don't see any obviously correct solution in cases where the mapping
-> > > disagrees between client and server sides, so prefer to stick to the
-> > > NFSv3 behavior.
-> > > 
-> > > The only reason I see to do this anyway is to provide compatibility with
-> > > NFSv3.
-> > > 
-> > > > In that case, everything from setuid applications through open(O_CREAT)
-> > > > to 'chown' will be broken because your authentication and authorisation
-> > > > models do not match up.
-> > > 
-> > > Those are preexisting problems from NFSv3, and it's up to the
-> > > administrator to fix them.
-> > > 
-> > > The best we can do is provide backwards-compatible behavior so that
-> > > things that worked before continue working.
-> > 
-> > No. There are two cases here:
-> > 
-> > 1) The user is authenticating using uids and gids (AUTH_SYS). In that
-> > case, the server is using those uids and gids to authorise user
-> > behaviour, and so file/directory creation/access/deletion/... will
-> > depend only on the numeric values of those uids and gids. It doesn't
-> > matter if the client belongs to a different domain, 'cos AUTH_SYS has no
-> > concept of a domain. It doesn't matter whether or mot there exists a
-> > name@domain mapping on the client, and server. Only the numbers matter.
-> > NFSv2 and NFSv3 got this case right, and NFSv4 got it wrong (or didn't
-> > consider it).
-> > 
-> > 2) The user is authenticating using a principal name@DOMAIN. In this
-> > case, either there is a mapping between name@DOMAIN and a owner@domain
-> > +groupname@domain on the server, or there isn't. In the latter case, the
-> > server treats the principal as the anonymous user. In the former case,
-> > then if the client and server map owner@domain and groupname@domain to
-> > the same uid and gid, then it is safe to pass uids and gids back and
-> > forth. If they don't have identical mappings, then it is still safe to
-> > pass owner@domain and groupname@domain,
->  
-> Not necessarily; for example, there could be just a one-off mapping
-> between root/client@DOMAIN and root on the server.  And that would be
-> sufficient to do something like a dumb
-> 
-> 	cp -ax / /nfs
-> 
-> backup, where you're just saving/restoring id's using chown/stat.
-> 
-> I don't know if those sorts of cases are common.  But they work under
-> v3, and I don't see a reason to break them on upgrade to v4.
+This is to prepare the way for sensible io draining.  Instead of just
+removing the lseg from the list, we instead clear the VALID flag
+(preventing new io from grabbing references to the lseg) and remove
+the reference holding it in the list.  Thus the lseg will be removed
+once any io in progress completes and any references still held are
+dropped.
 
-See above. It's about fixing what is broken with NFSv3.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/inode.c |    2 +-
+ fs/nfs/pnfs.c  |  121 ++++++++++++++++++++++++++++++++++++-------------------
+ fs/nfs/pnfs.h  |    8 +++-
+ 3 files changed, 87 insertions(+), 44 deletions(-)
 
-> Certainly I don't see any motivation for going out of our way to break
-> that case when an administrator explicitly requests numeric id's.
-
-What do you mean by 'explicitly requests numeric ids'? If you mean
-'decides to use NFSv3' then that works today.
-
-What is the point of bending over backwards to make NFSv4 bug-compatible
-with NFSv3? If people want NFSv3 they can use it. You can even mount an
-NFSv3 partition while someone else is using NFSv4 on the same machine.
-
-Trond
-
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index e67e31c..43a69da 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1410,9 +1410,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+  */
+ void nfs4_evict_inode(struct inode *inode)
+ {
++	pnfs_destroy_layout(NFS_I(inode));
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	end_writeback(inode);
+-	pnfs_destroy_layout(NFS_I(inode));
+ 	/* If we are holding a delegation, return it! */
+ 	nfs_inode_return_delegation_noreclaim(inode);
+ 	/* First call standard NFS clear_inode() code */
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 08313f53..a4bedf2 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -211,69 +211,101 @@ static void
+ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+ {
+ 	INIT_LIST_HEAD(&lseg->pls_list);
+-	kref_init(&lseg->pls_refcount);
++	atomic_set(&lseg->pls_refcount, 1);
++	smp_mb();
++	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
+ 	lseg->pls_layout = lo;
+ }
+ 
+-/* Called without i_lock held, as the free_lseg call may sleep */
+-static void
+-destroy_lseg(struct kref *kref)
++static void free_lseg(struct pnfs_layout_segment *lseg)
+ {
+-	struct pnfs_layout_segment *lseg =
+-		container_of(kref, struct pnfs_layout_segment, pls_refcount);
+ 	struct inode *ino = lseg->pls_layout->plh_inode;
+ 
+-	dprintk("--> %s\n", __func__);
++	BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+ 	/* Matched by get_layout_hdr in pnfs_insert_layout */
+ 	put_layout_hdr(ino);
+ }
+ 
++/* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
++ * could sleep, so must be called outside of the lock.
++ */
+ static void
+-put_lseg(struct pnfs_layout_segment *lseg)
++put_lseg_locked(struct pnfs_layout_segment *lseg,
++		struct list_head *tmp_list)
+ {
+-	if (!lseg)
+-		return;
++	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
++		atomic_read(&lseg->pls_refcount),
++		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
++	if (atomic_dec_and_test(&lseg->pls_refcount)) {
++		struct inode *ino = lseg->pls_layout->plh_inode;
++
++		BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
++		list_del(&lseg->pls_list);
++		if (list_empty(&lseg->pls_layout->plh_segs)) {
++			struct nfs_client *clp;
++
++			clp = NFS_SERVER(ino)->nfs_client;
++			spin_lock(&clp->cl_lock);
++			/* List does not take a reference, so no need for put here */
++			list_del_init(&lseg->pls_layout->plh_layouts);
++			spin_unlock(&clp->cl_lock);
++		}
++		list_add(&lseg->pls_list, tmp_list);
++	}
++}
+ 
+-	dprintk("%s: lseg %p ref %d\n", __func__, lseg,
+-		atomic_read(&lseg->pls_refcount.refcount));
+-	kref_put(&lseg->pls_refcount, destroy_lseg);
++static bool
++should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
++{
++	return (recall_iomode == IOMODE_ANY ||
++		lseg_iomode == recall_iomode);
+ }
+ 
+-static void
+-pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list)
++static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
++			      struct list_head *tmp_list)
++{
++	if (test_and_clear_bit(NFS_LSEG_VALID, &lseg->pls_flags)) {
++		/* Remove the reference keeping the lseg in the
++		 * list.  It will now be removed when all
++		 * outstanding io is finished.
++		 */
++		put_lseg_locked(lseg, tmp_list);
++	}
++}
++
++/* Returns false if no lsegs match, true otherwise */
++static bool
++mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
++			    struct list_head *tmp_list,
++			    u32 iomode)
+ {
+ 	struct pnfs_layout_segment *lseg, *next;
+-	struct nfs_client *clp;
++	bool rv = false;
+ 
+ 	dprintk("%s:Begin lo %p\n", __func__, lo);
+ 
+-	assert_spin_locked(&lo->plh_inode->i_lock);
+-	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list) {
+-		dprintk("%s: freeing lseg %p\n", __func__, lseg);
+-		list_move(&lseg->pls_list, tmp_list);
+-	}
+-	clp = NFS_SERVER(lo->plh_inode)->nfs_client;
+-	spin_lock(&clp->cl_lock);
+-	/* List does not take a reference, so no need for put here */
+-	list_del_init(&lo->plh_layouts);
+-	spin_unlock(&clp->cl_lock);
+-
++	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
++		if (should_free_lseg(lseg->pls_range.iomode, iomode)) {
++			dprintk("%s: freeing lseg %p iomode %d "
++				"offset %llu length %llu\n", __func__,
++				lseg, lseg->pls_range.iomode, lseg->pls_range.offset,
++				lseg->pls_range.length);
++			mark_lseg_invalid(lseg, tmp_list);
++			rv = true;
++		}
+ 	dprintk("%s:Return\n", __func__);
++	return rv;
+ }
+ 
+ static void
+-pnfs_free_lseg_list(struct list_head *tmp_list)
++pnfs_free_lseg_list(struct list_head *free_me)
+ {
+-	struct pnfs_layout_segment *lseg;
++	struct pnfs_layout_segment *lseg, *tmp;
+ 
+-	while (!list_empty(tmp_list)) {
+-		lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
+-				pls_list);
+-		dprintk("%s calling put_lseg on %p\n", __func__, lseg);
+-		list_del(&lseg->pls_list);
+-		put_lseg(lseg);
+-	}
++	list_for_each_entry_safe(lseg, tmp, free_me, pls_list)
++		free_lseg(lseg);
++	INIT_LIST_HEAD(free_me);
+ }
+ 
+ void
+@@ -285,7 +317,8 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	lo = nfsi->layout;
+ 	if (lo) {
+-		pnfs_clear_lseg_list(lo, &tmp_list);
++		set_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags);
++		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
+ 		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
+ 		put_layout_hdr_locked(lo);
+ 	}
+@@ -477,9 +510,12 @@ pnfs_find_alloc_layout(struct inode *ino)
+ 	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
+ 
+ 	assert_spin_locked(&ino->i_lock);
+-	if (nfsi->layout)
+-		return nfsi->layout;
+-
++	if (nfsi->layout) {
++		if (test_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags))
++			return NULL;
++		else
++			return nfsi->layout;
++	}
+ 	spin_unlock(&ino->i_lock);
+ 	new = alloc_init_layout_hdr(ino);
+ 	spin_lock(&ino->i_lock);
+@@ -520,7 +556,8 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
+ 
+ 	assert_spin_locked(&lo->plh_inode->i_lock);
+ 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
+-		if (is_matching_lseg(lseg, iomode)) {
++		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
++		    is_matching_lseg(lseg, iomode)) {
+ 			ret = lseg;
+ 			break;
+ 		}
+@@ -529,7 +566,7 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
+ 	}
+ 
+ 	dprintk("%s:Return lseg %p ref %d\n",
+-		__func__, ret, ret ? atomic_read(&ret->pls_refcount.refcount) : 0);
++		__func__, ret, ret ? atomic_read(&ret->pls_refcount) : 0);
+ 	return ret;
+ }
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 1093720..787253e 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -30,10 +30,15 @@
+ #ifndef FS_NFS_PNFS_H
+ #define FS_NFS_PNFS_H
+ 
++enum {
++	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
++};
++
+ struct pnfs_layout_segment {
+ 	struct list_head pls_list;
+ 	struct pnfs_layout_range pls_range;
+-	struct kref pls_refcount;
++	atomic_t pls_refcount;
++	unsigned long pls_flags;
+ 	struct pnfs_layout_hdr *pls_layout;
+ };
+ 
+@@ -44,6 +49,7 @@ struct pnfs_layout_segment {
+ enum {
+ 	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
+ 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
++	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+ };
+ 
+ /* Per-layout driver specific registration structure */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.2.1
 
