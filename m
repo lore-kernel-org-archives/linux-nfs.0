@@ -1,187 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:40898 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752246Ab0LVEBF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Dec 2010 23:01:05 -0500
-From: Fred Isaman <iisaman@netapp.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:52422 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751717Ab0LVDgm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Dec 2010 22:36:42 -0500
+Received: from tang.cn.fujitsu.com (tang.cn.fujitsu.com [10.167.250.3])
+	by song.cn.fujitsu.com (Postfix) with ESMTP id 7E1C117070B
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Dec 2010 11:36:40 +0800 (CST)
+Received: from mailserver.fnst.cn.fujitus.com (tang.cn.fujitsu.com [127.0.0.1])
+	by tang.cn.fujitsu.com (8.14.3/8.13.1) with ESMTP id oBM3VjPP008615
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Dec 2010 11:31:47 +0800
+Message-ID: <4D11E4B0.3020302@cn.fujitsu.com>
+Date: Wed, 22 Dec 2010 19:44:48 +0800
+From: fuliankun <fuliankun@cn.fujitsu.com>
 To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 12/15] pnfs: CB_LAYOUTRECALL xdr code
-Date: Tue, 21 Dec 2010 23:00:46 -0500
-Message-Id: <1292990449-20057-13-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
-References: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
+Subject: nfsv4 read delegation issue
+Content-Type: text/plain; charset=GB2312
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This is the xdr decoding for CB_LAYOUTRECALL.
+Open read delegation and file locks implementation in the kernel 
+2.6.37-rc1 are not consistent with the RFC3530.
 
-Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/callback.h      |   20 ++++++++++++++
- fs/nfs/callback_proc.c |    6 ++++
- fs/nfs/callback_xdr.c  |   69 +++++++++++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 94 insertions(+), 1 deletions(-)
+In the kernel 2.6.37-rc1:
+1.NFS client mount NFS filesytem with nfsv4.
+2.The client open a NFS file with O_RDONLY,then the server may return
+  a read delegation to the client.
+3.for some reasons, the network between client and server is partition.
+4.the client lock the opened file with F_RDLCK again.If the client has 
+  the read delegation at the step 2,it will return ture.In fact,the
+  client doesn't send the read lock request to the NFS service.It does
+  operate the request at local.
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index b678e3e..19570f4 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -138,6 +138,26 @@ extern __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args,
- 					 void *dummy,
- 					 struct cb_process_state *cps);
- 
-+struct cb_layoutrecallargs {
-+	struct sockaddr		*cbl_addr;
-+	uint32_t		cbl_recall_type;
-+	uint32_t		cbl_layout_type;
-+	uint32_t		cbl_layoutchanged;
-+	union {
-+		struct {
-+			struct nfs_fh		cbl_fh;
-+			struct inode		*cbl_inode;
-+			struct pnfs_layout_range cbl_range;
-+			nfs4_stateid		cbl_stateid;
-+		};
-+		struct nfs_fsid		cbl_fsid;
-+	};
-+};
-+
-+extern unsigned nfs4_callback_layoutrecall(
-+	struct cb_layoutrecallargs *args,
-+	void *dummy, struct cb_process_state *cps);
-+
- extern void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
- extern void nfs4_cb_take_slot(struct nfs_client *clp);
- #endif /* CONFIG_NFS_V4_1 */
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index c1bead2..c1bb157 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -107,6 +107,12 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
- 
- #if defined(CONFIG_NFS_V4_1)
- 
-+__be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
-+				  void *dummy, struct cb_process_state *cps)
-+{
-+	return cpu_to_be32(NFS4ERR_NOTSUPP); /* STUB */
-+}
-+
- int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
- {
- 	if (delegation == NULL)
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 9dbccf4..1523c99 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -24,6 +24,7 @@
- #define CB_OP_RECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
- 
- #if defined(CONFIG_NFS_V4_1)
-+#define CB_OP_LAYOUTRECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
- #define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
- 					4 + 1 + 3)
- #define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
-@@ -223,6 +224,66 @@ out:
- 
- #if defined(CONFIG_NFS_V4_1)
- 
-+static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
-+				       struct xdr_stream *xdr,
-+				       struct cb_layoutrecallargs *args)
-+{
-+	__be32 *p;
-+	__be32 status = 0;
-+	uint32_t iomode;
-+
-+	args->cbl_addr = svc_addr(rqstp);
-+	p = read_buf(xdr, 4 * sizeof(uint32_t));
-+	if (unlikely(p == NULL)) {
-+		status = htonl(NFS4ERR_BADXDR);
-+		goto out;
-+	}
-+
-+	args->cbl_layout_type = ntohl(*p++);
-+	/* Depite the spec's xdr, iomode really belongs in the FILE switch,
-+	 * as it is unuseable and ignored with the other types.
-+	 */
-+	iomode = ntohl(*p++);
-+	args->cbl_layoutchanged = ntohl(*p++);
-+	args->cbl_recall_type = ntohl(*p++);
-+
-+	if (args->cbl_recall_type == RETURN_FILE) {
-+		args->cbl_range.iomode = iomode;
-+		status = decode_fh(xdr, &args->cbl_fh);
-+		if (unlikely(status != 0))
-+			goto out;
-+
-+		p = read_buf(xdr, 2 * sizeof(uint64_t));
-+		if (unlikely(p == NULL)) {
-+			status = htonl(NFS4ERR_BADXDR);
-+			goto out;
-+		}
-+		p = xdr_decode_hyper(p, &args->cbl_range.offset);
-+		p = xdr_decode_hyper(p, &args->cbl_range.length);
-+		status = decode_stateid(xdr, &args->cbl_stateid);
-+		if (unlikely(status != 0))
-+			goto out;
-+	} else if (args->cbl_recall_type == RETURN_FSID) {
-+		p = read_buf(xdr, 2 * sizeof(uint64_t));
-+		if (unlikely(p == NULL)) {
-+			status = htonl(NFS4ERR_BADXDR);
-+			goto out;
-+		}
-+		p = xdr_decode_hyper(p, &args->cbl_fsid.major);
-+		p = xdr_decode_hyper(p, &args->cbl_fsid.minor);
-+	} else if (args->cbl_recall_type != RETURN_ALL) {
-+		status = htonl(NFS4ERR_BADXDR);
-+		goto out;
-+	}
-+	dprintk("%s: ltype 0x%x iomode %d changed %d recall_type %d\n",
-+		__func__,
-+		args->cbl_layout_type, iomode,
-+		args->cbl_layoutchanged, args->cbl_recall_type);
-+out:
-+	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
-+	return status;
-+}
-+
- static __be32 decode_sessionid(struct xdr_stream *xdr,
- 				 struct nfs4_sessionid *sid)
- {
-@@ -577,10 +638,10 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
- 	case OP_CB_SEQUENCE:
- 	case OP_CB_RECALL_ANY:
- 	case OP_CB_RECALL_SLOT:
-+	case OP_CB_LAYOUTRECALL:
- 		*op = &callback_ops[op_nr];
- 		break;
- 
--	case OP_CB_LAYOUTRECALL:
- 	case OP_CB_NOTIFY_DEVICEID:
- 	case OP_CB_NOTIFY:
- 	case OP_CB_PUSH_DELEG:
-@@ -784,6 +845,12 @@ static struct callback_op callback_ops[] = {
- 		.res_maxsize = CB_OP_RECALL_RES_MAXSZ,
- 	},
- #if defined(CONFIG_NFS_V4_1)
-+	[OP_CB_LAYOUTRECALL] = {
-+		.process_op = (callback_process_op_t)nfs4_callback_layoutrecall,
-+		.decode_args =
-+			(callback_decode_arg_t)decode_layoutrecall_args,
-+		.res_maxsize = CB_OP_LAYOUTRECALL_RES_MAXSZ,
-+	},
- 	[OP_CB_SEQUENCE] = {
- 		.process_op = (callback_process_op_t)nfs4_callback_sequence,
- 		.decode_args = (callback_decode_arg_t)decode_cb_sequence_args,
--- 
-1.7.2.1
+But the RFC3530 descripts as:
+9.4.2.  Open Delegation and File Locks
 
+   When a client holds a write open delegation, lock operations may be
+   performed locally.  This includes those required for mandatory file
+   locking.  This can be done since the delegation implies that there
+   can be no conflicting locks.  Similarly, all of the revalidations
+   that would normally be associated with obtaining locks and the
+   flushing of data associated with the releasing of locks need not be
+   done.
+
+   When a client holds a read open delegation, lock operations are not
+   performed locally.  All lock operations, including those requesting
+   non-exclusive locks, are sent to the server for resolution.
+
+Is this a bug or  the kernel have other considerations When it implements
+this function?
