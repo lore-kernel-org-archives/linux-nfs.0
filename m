@@ -1,69 +1,169 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:59924 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:48962 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754050Ab0LGWaW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Dec 2010 17:30:22 -0500
-Subject: Re: [PATCH v2] NFS: suppressing showing of default mount port
- value in /proc fixed
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-In-Reply-To: <20101206085553.2172.24863.stgit@localhost6.localdomain6>
-References: <20101206085553.2172.24863.stgit@localhost6.localdomain6>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 07 Dec 2010 17:30:11 -0500
-Message-ID: <1291761011.3049.46.camel@heimdal.trondhjem.org>
+	id S1752264Ab0LVEBS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Dec 2010 23:01:18 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 08/15] pnfs: serialize LAYOUTGET(openstateid)
+Date: Tue, 21 Dec 2010 23:00:42 -0500
+Message-Id: <1292990449-20057-9-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
+References: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 2010-12-06 at 12:00 +0300, Stanislav Kinsbursky wrote:
-> Update: added check for zero value as it was before (note: can't simply check
-> mountd_port for positive value because it's typeof unsigned short)
-> 
-> Default value for mount server port is set to NFS_UNSPEC_PORT (-1) and will not
-> be changed during parsing mount options for mound data version 6. This default
-> value will be showed for mountport in /proc/mounts always since current default
-> check is for zero value. This small mistake leads to big problem, because
-> during umount.nfs execution from old user-space utils (at least nfs-utils
-> 1.0.9) this value will be used as the server port to connect to. This request
-> will be rejected (since port is 65535) and thus nfs mount point can't be
-> unmounted.
-> 
-> Note from Chuck Lever (chuck.lever@oracle.com): this is only possible if
-> /etc/mtab is a link to /proc/mounts.  Not all systems have this configuration.
-> 
-> ---
->  fs/nfs/super.c |    4 +++-
->  1 files changed, 3 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 6d6e21d..449024f 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -681,7 +681,9 @@ static void nfs_show_mountd_options(struct seq_file *m, struct nfs_server *nfss,
->  
->  	if (nfss->mountd_version || showdefaults)
->  		seq_printf(m, ",mountvers=%u", nfss->mountd_version);
-> -	if (nfss->mountd_port || showdefaults)
-> +	if ((nfss->mountd_port &&
-> +		nfss->mountd_port != (unsigned short)NFS_UNSPEC_PORT) || 
-> +		showdefaults)
->  		seq_printf(m, ",mountport=%u", nfss->mountd_port);
->  
->  	nfs_show_mountd_netid(m, nfss, showdefaults);
-> 
+We shouldn't send a LAYOUTGET(openstateid) unless all outstanding RPCs
+using the previous stateid are completed.  This requires choosing the
+stateid to encode earlier, so we can abort if one is not available (we
+want to use the open stateid, but a LAYOUTGET is already out using
+it), and adding a count of the number of outstanding rpc calls using
+layout state (which for now consist solely of LAYOUTGETs).
 
-This patch needs a 'Signed-off-by:' before I can apply it.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4proc.c       |    7 ++++++-
+ fs/nfs/nfs4xdr.c        |    5 +----
+ fs/nfs/pnfs.c           |   24 +++++++++++++++++++-----
+ fs/nfs/pnfs.h           |    1 +
+ include/linux/nfs_xdr.h |    1 +
+ 5 files changed, 28 insertions(+), 10 deletions(-)
 
-Cheers
-  Trond
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1609a07..3b059d3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5308,6 +5308,12 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
+ 	if (nfs4_setup_sequence(server, &lgp->args.seq_args,
+ 				&lgp->res.seq_res, 0, task))
+ 		return;
++	if (pnfs_choose_layoutget_stateid(&lgp->args.stateid,
++					  NFS_I(lgp->args.inode)->layout,
++					  lgp->args.ctx->state)) {
++		rpc_exit(task, NFS4_OK);
++		return;
++	}
+ 	rpc_call_start(task);
+ }
+ 
+@@ -5342,7 +5348,6 @@ static void nfs4_layoutget_release(void *calldata)
+ 	struct nfs4_layoutget *lgp = calldata;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	put_layout_hdr(lgp->args.inode);
+ 	if (lgp->res.layout.buf != NULL)
+ 		free_page((unsigned long) lgp->res.layout.buf);
+ 	put_nfs_open_context(lgp->args.ctx);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4e28242..3cbdd0c 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1787,7 +1787,6 @@ encode_layoutget(struct xdr_stream *xdr,
+ 		      const struct nfs4_layoutget_args *args,
+ 		      struct compound_hdr *hdr)
+ {
+-	nfs4_stateid stateid;
+ 	__be32 *p;
+ 
+ 	p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
+@@ -1798,9 +1797,7 @@ encode_layoutget(struct xdr_stream *xdr,
+ 	p = xdr_encode_hyper(p, args->range.offset);
+ 	p = xdr_encode_hyper(p, args->range.length);
+ 	p = xdr_encode_hyper(p, args->minlength);
+-	pnfs_choose_layoutget_stateid(&stateid, NFS_I(args->inode)->layout,
+-				args->ctx->state);
+-	p = xdr_encode_opaque_fixed(p, &stateid.data, NFS4_STATEID_SIZE);
++	p = xdr_encode_opaque_fixed(p, &args->stateid.data, NFS4_STATEID_SIZE);
+ 	*p = cpu_to_be32(args->maxcount);
+ 
+ 	dprintk("%s: 1st type:0x%x iomode:%d off:%lu len:%lu mc:%d\n",
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index a4bedf2..809bd0a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -362,6 +362,14 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 		memcpy(&lo->plh_stateid, &new->stateid, sizeof(new->stateid));
+ }
+ 
++/* lget is set to 1 if called from inside send_layoutget call chain */
++static bool
++pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, int lget)
++{
++	return (list_empty(&lo->plh_segs) &&
++		 (atomic_read(&lo->plh_outstanding) > lget));
++}
++
+ int
+ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+ 			      struct nfs4_state *open_state)
+@@ -370,7 +378,9 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	spin_lock(&lo->plh_inode->i_lock);
+-	if (list_empty(&lo->plh_segs)) {
++	if (pnfs_layoutgets_blocked(lo, 1)) {
++		status = -EAGAIN;
++	} else if (list_empty(&lo->plh_segs)) {
+ 		int seq;
+ 
+ 		do {
+@@ -405,10 +415,8 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 
+ 	BUG_ON(ctx == NULL);
+ 	lgp = kzalloc(sizeof(*lgp), GFP_KERNEL);
+-	if (lgp == NULL) {
+-		put_layout_hdr(lo->plh_inode);
++	if (lgp == NULL)
+ 		return NULL;
+-	}
+ 	lgp->args.minlength = NFS4_MAX_UINT64;
+ 	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
+ 	lgp->args.range.iomode = iomode;
+@@ -604,10 +612,16 @@ pnfs_update_layout(struct inode *ino,
+ 	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
+ 		goto out_unlock;
+ 
+-	get_layout_hdr_locked(lo); /* Matched in nfs4_layoutget_release */
++	if (pnfs_layoutgets_blocked(lo, 0))
++		goto out_unlock;
++	atomic_inc(&lo->plh_outstanding);
++
++	get_layout_hdr_locked(lo);
+ 	spin_unlock(&ino->i_lock);
+ 
+ 	lseg = send_layoutget(lo, ctx, iomode);
++	atomic_dec(&lo->plh_outstanding);
++	put_layout_hdr(ino);
+ out:
+ 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+ 		nfsi->layout->plh_flags, lseg);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 787253e..698380d 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -69,6 +69,7 @@ struct pnfs_layout_hdr {
+ 	struct list_head	plh_layouts;   /* other client layouts */
+ 	struct list_head	plh_segs;      /* layout segments list */
+ 	nfs4_stateid		plh_stateid;
++	atomic_t		plh_outstanding; /* number of RPCs out */
+ 	unsigned long		plh_flags;
+ 	struct inode		*plh_inode;
+ };
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index f923831..0843703 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -208,6 +208,7 @@ struct nfs4_layoutget_args {
+ 	struct inode *inode;
+ 	struct nfs_open_context *ctx;
+ 	struct nfs4_sequence_args seq_args;
++	nfs4_stateid stateid;
+ };
+ 
+ struct nfs4_layoutget_res {
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.2.1
 
