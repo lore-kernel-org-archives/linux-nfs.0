@@ -1,105 +1,160 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28351 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:40898 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754472Ab0LJRHw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Dec 2010 12:07:52 -0500
-Message-ID: <4D025E60.8030204@RedHat.com>
-Date: Fri, 10 Dec 2010 12:07:44 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Andrew J. Schorr" <ajschorr@alumni.princeton.edu>,
-        linux-nfs@vger.kernel.org
-Subject: Re: proposed patch to rpcbind to provide finer-grained security controls
- than offered by the -i option
-References: <20101209204913.GA30338@ti93.telemetry-investments.com> <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com> <4D016F44.3020002@RedHat.com> <20101210023847.GB15344@ti93.telemetry-investments.com> <77480D58-4224-4713-A515-F1BCC133F44F@oracle.com> <4D024D70.7040108@RedHat.com> <FD9D05EF-FB57-45FB-BBDC-38E3B92D54AA@oracle.com>
-In-Reply-To: <FD9D05EF-FB57-45FB-BBDC-38E3B92D54AA@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752220Ab0LVEBF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Dec 2010 23:01:05 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 11/15] pnfs: change lo refcounting to atomic_t
+Date: Tue, 21 Dec 2010 23:00:45 -0500
+Message-Id: <1292990449-20057-12-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
+References: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+This will be required to allow us to grab reference outside of i_lock.
+While we are at it, make put_layout_hdr take the same argument as all the
+related functions.
 
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   50 ++++++++++++++++++++++++++++----------------------
+ fs/nfs/pnfs.h |    4 ++--
+ 2 files changed, 30 insertions(+), 24 deletions(-)
 
-On 12/10/2010 12:01 PM, Chuck Lever wrote:
-> Hi Steve-
-> 
-> On Dec 10, 2010, at 10:55 AM, Steve Dickson wrote:
-> 
->> On 12/10/2010 10:31 AM, Chuck Lever wrote:
->>>
->>> On Dec 9, 2010, at 9:38 PM, Andrew J. Schorr wrote:
->>>
->>>> On Thu, Dec 09, 2010 at 07:07:32PM -0500, Steve Dickson wrote:
->>>>>
->>>>>
->>>>> On 12/09/2010 04:41 PM, Chuck Lever wrote:
->>>>>> It sounds like your application is trying to use glibc's RPC 
->>>>>> implementation with rpcbind.  If you build your application with 
->>>>>> libtirpc instead, it should use an AF_UNIX socket to contact rpcbind 
->>>>>> instead of loopback.  The AF_UNIX socket carries some authentication 
->>>>>> information with the registration request.  All users of your 
->>>>>> application would be allowed to set or unset RPC registrations 
->>>>>> in that case.
->>>>
->>>> I think you are correct.  This is probably due to some combination
->>>> of ignorance and stupidity on my part.  I didn't realize that libtirpc
->>>> was a drop-in replacement for the glibc RPC routines.
->>>>
->>>>> I was under the impression rebuilding the applications was not
->>>>> possible... but maybe I misunderstood... 
->>>>
->>>> Rebuilding should be possible, I need to look into this.
->>>>
->>>>> But in the end, I guess I'm not against having functionality 
->>>>> like this... If it make it easier for people to port legacy
->>>>> applications to Linux, its probably a good thing... 
->>>>
->>>> I think the patch does add more control over rpcbind behavior, but I
->>>> grant that it may be less interesting if nobody is using IP to connect
->>>> from local clients.  Nonetheless, it still adds the ability to have
->>>> separate control over whether to accept remote set/unset calls and
->>>> whether to honor indirect/callit calls.  Unless I'm mistaken, this is
->>>> still relevant even if libtirpc is used.
->>>
->>> Not to put to fine a point on it, but we discourage the use of 
->>> indirect RPC calls.  It's a well-known security hole.  Also, 
->>> allowing anyone to set and unset RPC registrations is also 
->>> insecure, and is discouraged.
->> True... but its been this way for years... and always will be... 
->>
->>> In general we want people to switch to using AF_UNIX for local 
->>> registrations, as that is secure from remote attack, and allows 
->>> rpcbind to assign ownership of the registration so that only the 
->>> user who registered that service may unregister it.
->> If the option of rebuilding is available, yes, people should
->> switch to libtirpc... 
-> 
-> Andrew makes a good point.  There would be no "switch to libtirpc" 
-> if distributions had a single RPC implementation.
-> 
-> Is there a good reason we still have the glibc RPC implementation?
-I would guess for legacy reasons... I guess we could open an
-Fedora bz asking to disable the code...
-
-steved.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 970cc3b..53a0184 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -177,34 +177,40 @@ EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
+  * pNFS client layout cache
+  */
  
-> We've resolved the licensing issue already, so there's nothing 
-> stopping any Linux distribution from adding a libtirpc package.
-> 
->>
->>>> So I would argue that the patch is still a good thing, but I agree that
->>>> I should relink my code with libtirpc.
->>>
->>> IMO we shouldn't add features that encourage people to configure 
->>> rpcbind insecurely, especially when there are reasonable alternatives.
->> The -i is already a securely hole... So if we are concern about it
->> we should get ride of the -i completely... Or make it a useful 
->> securely hole... ;-)
->>
->> The point of this patch was to make it easier for people 
->> to port legacy applications to Linux... If this indeed 
->> is the case, I think that overrides these (self induced) 
->> security issues... 
-> 
-> If we go with just the evidence at hand: Andrew says he can rebuild his application.  Thus, so far there is no specific requirement to expand "-i".  IMO we should wait until there is, in the most noble of Linux traditions.
-> 
++/* Need to hold i_lock if caller does not already hold reference */
+ static void
+-get_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++get_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+-	assert_spin_locked(&lo->plh_inode->i_lock);
+-	lo->plh_refcount++;
++	atomic_inc(&lo->plh_refcount);
+ }
+ 
+ static void
+-put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++destroy_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+-	assert_spin_locked(&lo->plh_inode->i_lock);
+-	BUG_ON(lo->plh_refcount == 0);
++	dprintk("%s: freeing layout cache %p\n", __func__, lo);
++	BUG_ON(!list_empty(&lo->plh_layouts));
++	NFS_I(lo->plh_inode)->layout = NULL;
++	kfree(lo);
++}
+ 
+-	lo->plh_refcount--;
+-	if (!lo->plh_refcount) {
+-		dprintk("%s: freeing layout cache %p\n", __func__, lo);
+-		BUG_ON(!list_empty(&lo->plh_layouts));
+-		NFS_I(lo->plh_inode)->layout = NULL;
+-		kfree(lo);
+-	}
++static void
++put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++{
++	BUG_ON(atomic_read(&lo->plh_refcount) == 0);
++	if (atomic_dec_and_test(&lo->plh_refcount))
++		destroy_layout_hdr(lo);
+ }
+ 
+ void
+-put_layout_hdr(struct inode *inode)
++put_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+-	spin_lock(&inode->i_lock);
+-	put_layout_hdr_locked(NFS_I(inode)->layout);
+-	spin_unlock(&inode->i_lock);
++	struct inode *inode = lo->plh_inode;
++
++	BUG_ON(atomic_read(&lo->plh_refcount) == 0);
++	if (atomic_dec_and_lock(&lo->plh_refcount, &inode->i_lock)) {
++		destroy_layout_hdr(lo);
++		spin_unlock(&inode->i_lock);
++	}
+ }
+ 
+ static void
+@@ -224,7 +230,7 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
+ 	BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+ 	/* Matched by get_layout_hdr in pnfs_insert_layout */
+-	put_layout_hdr(ino);
++	put_layout_hdr(NFS_I(ino)->layout);
+ }
+ 
+ /* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
+@@ -481,7 +487,7 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 			__func__, lseg, lseg->pls_range.iomode,
+ 			lseg->pls_range.offset, lseg->pls_range.length);
+ 	}
+-	get_layout_hdr_locked(lo);
++	get_layout_hdr(lo);
+ 
+ 	dprintk("%s:Return\n", __func__);
+ }
+@@ -494,7 +500,7 @@ alloc_init_layout_hdr(struct inode *ino)
+ 	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
+ 	if (!lo)
+ 		return NULL;
+-	lo->plh_refcount = 1;
++	atomic_set(&lo->plh_refcount, 1);
+ 	INIT_LIST_HEAD(&lo->plh_layouts);
+ 	INIT_LIST_HEAD(&lo->plh_segs);
+ 	lo->plh_inode = ino;
+@@ -609,7 +615,7 @@ pnfs_update_layout(struct inode *ino,
+ 		goto out_unlock;
+ 	atomic_inc(&lo->plh_outstanding);
+ 
+-	get_layout_hdr_locked(lo);
++	get_layout_hdr(lo);
+ 	if (list_empty(&lo->plh_segs)) {
+ 		/* The lo must be on the clp list if there is any
+ 		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
+@@ -632,7 +638,7 @@ pnfs_update_layout(struct inode *ino,
+ 		spin_unlock(&ino->i_lock);
+ 	}
+ 	atomic_dec(&lo->plh_outstanding);
+-	put_layout_hdr(ino);
++	put_layout_hdr(lo);
+ out:
+ 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+ 		nfsi->layout->plh_flags, lseg);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 698380d..8aaab56 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -65,7 +65,7 @@ struct pnfs_layoutdriver_type {
+ };
+ 
+ struct pnfs_layout_hdr {
+-	unsigned long		plh_refcount;
++	atomic_t		plh_refcount;
+ 	struct list_head	plh_layouts;   /* other client layouts */
+ 	struct list_head	plh_segs;      /* layout segments list */
+ 	nfs4_stateid		plh_stateid;
+@@ -147,7 +147,7 @@ void unset_pnfs_layoutdriver(struct nfs_server *);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_destroy_layout(struct nfs_inode *);
+ void pnfs_destroy_all_layouts(struct nfs_client *);
+-void put_layout_hdr(struct inode *inode);
++void put_layout_hdr(struct pnfs_layout_hdr *lo);
+ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ 				  struct pnfs_layout_hdr *lo,
+ 				  struct nfs4_state *open_state);
+-- 
+1.7.2.1
+
