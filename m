@@ -1,79 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:38644 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60331 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751077Ab0LOWPr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 17:15:47 -0500
-Subject: Re: System CPU increasing on idle 2.6.36
+	id S1751593Ab0LVWAX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2010 17:00:23 -0500
+Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBMM0Co3011306
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Dec 2010 14:00:23 -0800 (PST)
+Subject: Re: [PATCH 15/15] pnfs: layout roc code
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org
-In-Reply-To: <20101215214854.GC9646@fieldses.org>
-References: <20101215011021.GA24594@hostway.ca>
-	 <20101215015609.GB24594@hostway.ca> <20101215180813.GA7773@fieldses.org>
-	 <1292437333.3068.14.camel@heimdal.trondhjem.org>
-	 <20101215183816.GB7773@fieldses.org>
-	 <1292441630.3068.55.camel@heimdal.trondhjem.org>
-	 <20101215194956.GA9646@fieldses.org>
-	 <1292443028.3068.60.camel@heimdal.trondhjem.org>
-	 <20101215201908.GB9646@fieldses.org>
-	 <1292445128.3068.71.camel@heimdal.trondhjem.org>
-	 <20101215214854.GC9646@fieldses.org>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1292990449-20057-16-git-send-email-iisaman@netapp.com>
+References: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
+	 <1292990449-20057-16-git-send-email-iisaman@netapp.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 15 Dec 2010 17:15:46 -0500
-Message-ID: <1292451346.3068.93.camel@heimdal.trondhjem.org>
+Date: Wed, 22 Dec 2010 17:00:10 -0500
+Message-ID: <1293055210.6422.23.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-12-15 at 16:48 -0500, J. Bruce Fields wrote:
-> On Wed, Dec 15, 2010 at 03:32:08PM -0500, Trond Myklebust wrote:
-> > On Wed, 2010-12-15 at 15:19 -0500, J. Bruce Fields wrote:
-> > 
-> > > Could you give an example of a case in which all of the following are
-> > > true?:
-> > > 	- the administrator explicitly requests numeric id's (for
-> > > 	  example by setting nfs4_disable_idmapping).
-> > > 	- numeric id's work as long as the client uses auth_sys.
-> > > 	- they no longer work if that same client switches to krb5.
-> > 
-> > Trivially:
-> > 
-> > Server /etc/passwd maps trondmy to uid 1000
-> > Client /etc/passwd maps trondmy to uid 500
+On Tue, 2010-12-21 at 23:00 -0500, Fred Isaman wrote:
+> A lsyout can request return-on-close.  How this interacts with the
+> forgetful model of never sending LAYOUTRETURNS is a bit ambiguous.
+> We forget any layouts marked roc, and wait for them to be completely
+> forgotten before continuing with the close.  In addition, to compensate
+> for races with any inflight LAYOUTGETs, and the fact that we do not get
+> any layout stateid back from the server, we set the barrier to the worst
+> case scenario of current_seqid + number of outstanding LAYOUTGETS.
 > 
-> I understand that any problematic case would involve different
-> name<->id mappings on the two sides.
+> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+> ---
+>  fs/nfs/inode.c         |    1 +
+>  fs/nfs/nfs4_fs.h       |    2 +-
+>  fs/nfs/nfs4proc.c      |   21 +++++++++++-
+>  fs/nfs/nfs4state.c     |    7 +++-
+>  fs/nfs/pnfs.c          |   83 ++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfs/pnfs.h          |   28 ++++++++++++++++
+>  include/linux/nfs_fs.h |    1 +
+>  7 files changed, 138 insertions(+), 5 deletions(-)
 > 
-> What I don't understand--and apologies if I'm being dense!--is what
-> sequence of operations exactly would work in this situation if we
-> automatically switch idmapping based on auth flavor, and would not work
-> without it.
-> 
-> Are you imagining a future client that is also able to switch auth
-> flavors on the fly (say, based on whether a krb5 ticket exists or not),
-> or just unmounting and remounting to change the security flavor?
-> 
-> Are you thinking of creating a file under one flavor and accessing it
-> under another?
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 43a69da..c64bb40 100644
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index 29d504d..90515de 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -190,6 +190,7 @@ struct nfs_inode {
+>  	struct rw_semaphore	rwsem;
+>  
+>  	/* pNFS layout information */
+> +	struct rpc_wait_queue lo_rpcwaitq;
+>  	struct pnfs_layout_hdr *layout;
+>  #endif /* CONFIG_NFS_V4*/
+>  #ifdef CONFIG_NFS_FSCACHE
 
-Neither.
+I believe that I've asked this before. Why do we need a per-inode
+rpc_wait_queue just to support pnfs? That's a significant expansion of
+an already bloated structure.
 
-I'm quite happy to accept that my user may map to completely different
-identities on the server as I switch authentication schemes. Fixing that
-is indeed the administrator's problem.
-
-I'm thinking of the simple case of creating a file, and then expecting
-to see that file appear labelled with the correct user id when I do 'ls
--l'. That should work irrespectively of the authentication scheme that I
-choose.
-
-In other words, if I authenticate as 'trond' on my client or to the
-kerberos server, then do
-
-        touch foo
-        ls -l foo
-
-I should see a file that is owned by 'trond'.
+Can we please either make this a single per-filesystem wait queue, or
+else possibly a pool of wait queues?
 
 Trond
 
