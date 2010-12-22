@@ -1,52 +1,170 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41967 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:35386 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754733Ab0LOUYV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 15:24:21 -0500
-Subject: Re: [PATCH 1/9] Revert "pnfs-submit: wave2: remove forgotten
- layoutreturn struct definitions"
+	id S1752377Ab0LVVsB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2010 16:48:01 -0500
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBMLm07N018779
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Dec 2010 13:48:00 -0800 (PST)
+Subject: Re: [PATCH 11/15] pnfs: change lo refcounting to atomic_t
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1292441468.3068.53.camel@heimdal.trondhjem.org>
-References: <4D0908F9.4060208@panasas.com>
-	 <1292437854-21651-1-git-send-email-bhalevy@panasas.com>
-	 <1292437973.3068.15.camel@heimdal.trondhjem.org>
-	 <4D090E18.4060205@panasas.com>
-	 <1292441468.3068.53.camel@heimdal.trondhjem.org>
+In-Reply-To: <1292990449-20057-12-git-send-email-iisaman@netapp.com>
+References: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
+	 <1292990449-20057-12-git-send-email-iisaman@netapp.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 15 Dec 2010 15:24:11 -0500
-Message-ID: <1292444651.3068.67.camel@heimdal.trondhjem.org>
+Date: Wed, 22 Dec 2010 16:47:59 -0500
+Message-ID: <1293054479.6422.18.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-12-15 at 14:31 -0500, Trond Myklebust wrote:
-> On Wed, 2010-12-15 at 20:51 +0200, Benny Halevy wrote:
-
-> > Eventually, when CB_LAYOUTRECALL is clear to go sending the LAYOUTRETURN
-> > or replying with CB_NOMATCHING_LAYOUT (assuming no I/O error to report
-> > for pnfs-obj) should be equivalent [note: need errata to clarify the
-> > resulting stateid after NOMATCHING_LAYOUT].
-> > Is this the serialization "crap" you're talking about?
-> > What makes checking the conditions for returning NFS4ERR_DELAY to
-> > CB_LAYOUTRECALL so different from implementing a barrier and doing the
-> > returns asynchronously with the CB_LAYOUTRECALL?
+On Tue, 2010-12-21 at 23:00 -0500, Fred Isaman wrote:
+> This will be required to allow us to grab reference outside of i_lock.
+> While we are at it, make put_layout_hdr take the same argument as all the
+> related functions.
 > 
-> "CB_LAYOUTRECALL request processing MUST be processed in "seqid" order
-> at all times." (section 12.5.3).
+> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+> ---
+>  fs/nfs/pnfs.c |   50 ++++++++++++++++++++++++++++----------------------
+>  fs/nfs/pnfs.h |    4 ++--
+>  2 files changed, 30 insertions(+), 24 deletions(-)
 > 
-> In other words, you cannot just 'do the returns asynchronously': the
-> CB_LAYOUTRECALL requests are required by the protocol to be processed in
-> order, which means that you must serialise those LAYOUTRETURN calls to
-> ensure that they all happen in the order the wretched server expects.
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 970cc3b..53a0184 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -177,34 +177,40 @@ EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
+>   * pNFS client layout cache
+>   */
+>  
+> +/* Need to hold i_lock if caller does not already hold reference */
+>  static void
+> -get_layout_hdr_locked(struct pnfs_layout_hdr *lo)
+> +get_layout_hdr(struct pnfs_layout_hdr *lo)
+>  {
+> -	assert_spin_locked(&lo->plh_inode->i_lock);
+> -	lo->plh_refcount++;
+> +	atomic_inc(&lo->plh_refcount);
+>  }
+>  
+>  static void
+> -put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
+> +destroy_layout_hdr(struct pnfs_layout_hdr *lo)
+>  {
+> -	assert_spin_locked(&lo->plh_inode->i_lock);
+> -	BUG_ON(lo->plh_refcount == 0);
+> +	dprintk("%s: freeing layout cache %p\n", __func__, lo);
+> +	BUG_ON(!list_empty(&lo->plh_layouts));
+> +	NFS_I(lo->plh_inode)->layout = NULL;
+> +	kfree(lo);
+> +}
+>  
+> -	lo->plh_refcount--;
+> -	if (!lo->plh_refcount) {
+> -		dprintk("%s: freeing layout cache %p\n", __func__, lo);
+> -		BUG_ON(!list_empty(&lo->plh_layouts));
+> -		NFS_I(lo->plh_inode)->layout = NULL;
+> -		kfree(lo);
+> -	}
+> +static void
+> +put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
+> +{
+> +	BUG_ON(atomic_read(&lo->plh_refcount) == 0);
 
-BTW: one consequence of the way the protocol was written is that you
-can't just throw out a LAYOUTRETURN for the entire file if the server
-just recalls a segment. Instead, you have to first return the segment,
-then send the LAYOUTRETURN for the entire file.
+Isn't this debugged by now?
 
-That part of the protocol is just one insane idea after another...
+> +	if (atomic_dec_and_test(&lo->plh_refcount))
+> +		destroy_layout_hdr(lo);
+>  }
+>  
+>  void
+> -put_layout_hdr(struct inode *inode)
+> +put_layout_hdr(struct pnfs_layout_hdr *lo)
+>  {
+> -	spin_lock(&inode->i_lock);
+> -	put_layout_hdr_locked(NFS_I(inode)->layout);
+> -	spin_unlock(&inode->i_lock);
+> +	struct inode *inode = lo->plh_inode;
+> +
+> +	BUG_ON(atomic_read(&lo->plh_refcount) == 0);
+Ditto....
+
+> +	if (atomic_dec_and_lock(&lo->plh_refcount, &inode->i_lock)) {
+> +		destroy_layout_hdr(lo);
+> +		spin_unlock(&inode->i_lock);
+> +	}
+>  }
+>  
+>  static void
+> @@ -224,7 +230,7 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
+>  	BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
+>  	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+>  	/* Matched by get_layout_hdr in pnfs_insert_layout */
+> -	put_layout_hdr(ino);
+> +	put_layout_hdr(NFS_I(ino)->layout);
+>  }
+>  
+>  /* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
+> @@ -481,7 +487,7 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+>  			__func__, lseg, lseg->pls_range.iomode,
+>  			lseg->pls_range.offset, lseg->pls_range.length);
+>  	}
+> -	get_layout_hdr_locked(lo);
+> +	get_layout_hdr(lo);
+>  
+>  	dprintk("%s:Return\n", __func__);
+>  }
+> @@ -494,7 +500,7 @@ alloc_init_layout_hdr(struct inode *ino)
+>  	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
+>  	if (!lo)
+>  		return NULL;
+> -	lo->plh_refcount = 1;
+> +	atomic_set(&lo->plh_refcount, 1);
+>  	INIT_LIST_HEAD(&lo->plh_layouts);
+>  	INIT_LIST_HEAD(&lo->plh_segs);
+>  	lo->plh_inode = ino;
+> @@ -609,7 +615,7 @@ pnfs_update_layout(struct inode *ino,
+>  		goto out_unlock;
+>  	atomic_inc(&lo->plh_outstanding);
+>  
+> -	get_layout_hdr_locked(lo);
+> +	get_layout_hdr(lo);
+>  	if (list_empty(&lo->plh_segs)) {
+>  		/* The lo must be on the clp list if there is any
+>  		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
+> @@ -632,7 +638,7 @@ pnfs_update_layout(struct inode *ino,
+>  		spin_unlock(&ino->i_lock);
+>  	}
+>  	atomic_dec(&lo->plh_outstanding);
+> -	put_layout_hdr(ino);
+> +	put_layout_hdr(lo);
+>  out:
+>  	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+>  		nfsi->layout->plh_flags, lseg);
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 698380d..8aaab56 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -65,7 +65,7 @@ struct pnfs_layoutdriver_type {
+>  };
+>  
+>  struct pnfs_layout_hdr {
+> -	unsigned long		plh_refcount;
+> +	atomic_t		plh_refcount;
+>  	struct list_head	plh_layouts;   /* other client layouts */
+>  	struct list_head	plh_segs;      /* layout segments list */
+>  	nfs4_stateid		plh_stateid;
+> @@ -147,7 +147,7 @@ void unset_pnfs_layoutdriver(struct nfs_server *);
+>  int pnfs_layout_process(struct nfs4_layoutget *lgp);
+>  void pnfs_destroy_layout(struct nfs_inode *);
+>  void pnfs_destroy_all_layouts(struct nfs_client *);
+> -void put_layout_hdr(struct inode *inode);
+> +void put_layout_hdr(struct pnfs_layout_hdr *lo);
+>  int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+>  				  struct pnfs_layout_hdr *lo,
+>  				  struct nfs4_state *open_state);
 
 -- 
 Trond Myklebust
