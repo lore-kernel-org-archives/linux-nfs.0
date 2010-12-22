@@ -1,113 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:60859 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52587 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752078Ab0LPSOn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 13:14:43 -0500
-Subject: Re: [PATCH 1/9] Revert "pnfs-submit: wave2: remove forgotten
- layoutreturn struct definitions"
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <4D0A4F9F.4040300@panasas.com>
-References: <4D0908F9.4060208@panasas.com>
-	 <1292437854-21651-1-git-send-email-bhalevy@panasas.com>
-	 <1292437973.3068.15.camel@heimdal.trondhjem.org>
-	 <4D090E18.4060205@panasas.com>
-	 <1292441468.3068.53.camel@heimdal.trondhjem.org>
-	 <4D09BC93.9020502@panasas.com>
-	 <1292514922.2912.32.camel@heimdal.trondhjem.org>
-	 <4D0A3D44.2000101@panasas.com>
-	 <1292520916.2912.45.camel@heimdal.trondhjem.org>
-	 <4D0A4F9F.4040300@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 16 Dec 2010 13:14:41 -0500
-Message-ID: <1292523281.2912.62.camel@heimdal.trondhjem.org>
+	id S1752565Ab0LVVuu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Dec 2010 16:50:50 -0500
+Message-ID: <4D1272B8.5010202@netapp.com>
+Date: Wed, 22 Dec 2010 16:50:48 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH 5/5] NFS: Determine initial mount security
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-12-16 at 19:42 +0200, Benny Halevy wrote:
-> On 2010-12-16 19:35, Trond Myklebust wrote:
-> > On Thu, 2010-12-16 at 18:24 +0200, Benny Halevy wrote:
-> >> On 2010-12-16 17:55, Trond Myklebust wrote:
-> >>> OK, so why not just go the whole hog and do that for all rare cases,
-> >>> including the one where the server recalls a layout segment that we
-> >>> happen to be doing I/O to?
-> >>>
-> >>> The case we should be optimising for is the one where the layout is
-> >>> recalled, and no I/O to that segment is in progress. For that case,
-> >>> returning OK, then doing the LAYOUTRETURN instead of just returning
-> >>> NOMATCHING_LAYOUT is clearly wrong: it adds a completely unnecessary
-> >>> round trip to the server. Agreed?
-> >>
-> >> I agree that if the client can free the recalled layout synchronously
-> >> and if it need not send a LAYOUTCOMMIT or LAYOUTRETURN (e.g. in the objects case)
-> >> it can simply return NFS4ERR_NOMATCHING_LAYOUT.
-> > 
-> > Objects and blocks != wave 2. We can cross that bridge when we get to
-> > it.
-> > 
-> 
-> Right.  This patchset is destined as post wave2.
 
-In that case it has a very confusing title (which certainly caught me by
-surprise).
+When sec=<something> is not presented as a mount option,
+we should attempt to determine what security flavor the
+server is using.
 
-> 
-> >>>
-> >>> As for the much rarer case of a recall of a layout that is in use, how
-> >>> does LAYOUTRETURN speed things up? As far as I can see, the MDS is still
-> >>> going to return NFS4ERR_DELAY to the client that requested the
-> >>> conflicting LAYOUTGET. That client then has to resend this LAYOUTGET
-> >>> request, at a time when the first client may or may not have returned
-> >>> its layout segment. So how is LAYOUTRETURN going to make all this a fast
-> >>> and scalable process?
-> >>>
-> >>
-> >> First, the server does not have to poll the client and waste cpu and network
-> >> resources on that.
-> > 
-> > ...but this is a ____rare____ case. If you are seeing noticeable effects
-> > on the network from this, then something is wrong. If that is ever the
-> > case, then you should be writing through the MDS anyway.
-> > 
-> > Furthermore, the MDS does need to be able to cope with NFS4ERR_DELAY
-> > anyway, so why add the extra complexity to the client?
-> > 
-> >> Second, for the competing client, with notifications, it too does not have
-> >> to poll the server and can wait on getting the notification when the
-> >> layout becomes available.
-> > 
-> > There is no notification of layout availability in RFC5661. Lock
-> > notification is for byte range locks, and device id notification is for
-> > device ids. The rest is for directory notifications.
-> > 
-> 
-> Hmm, CB_RECALLABLE_OBJ_AVAIL in response to loga_signal_layout_avail...
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4proc.c                     |   33 +++++++++++++++++++++++++++++++--
+ include/linux/sunrpc/gss_api.h        |    3 +++
+ net/sunrpc/auth_gss/gss_mech_switch.c |   16 ++++++++++++++++
+ 3 files changed, 50 insertions(+), 2 deletions(-)
 
-Hmm indeed. Section 12.3 states:
-
-"CB_RECALLABLE_OBJ_AVAIL  (Section 20.7) tells a client that a
-recallable object that it was denied (in case of pNFS, a layout denied
-by LAYOUTGET) due to resource exhaustion is now available."
-
-and 18.43.3 states:
-
-"If client sets loga_signal_layout_avail to TRUE, then it is registering
-with the client a "want" for a layout in the event the layout cannot be
-obtained due to resource exhaustion."
-
-I can't see how that is relevant to the case where a specific LAYOUTGET
-requires a layout recall from another client. That's not resource
-exhaustion.
-
-
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2d4a923..1ea4532 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -41,6 +41,7 @@
+ #include <linux/string.h>
+ #include <linux/slab.h>
+ #include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/gss_api.h>
+ #include <linux/nfs.h>
+ #include <linux/nfs4.h>
+ #include <linux/nfs_fs.h>
+@@ -2141,15 +2142,43 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	return err;
+ }
+ 
++static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
++				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
++{
++	struct rpc_auth *auth;
++	int ret;
++
++	auth = rpcauth_create(flavor, server->client);
++	if (!auth) {
++		ret = -EIO;
++		goto out;
++	}
++	ret = nfs4_lookup_root(server, fhandle, info);
++	if (ret < 0)
++		ret = -EAGAIN;
++out:
++	return ret;
++}
++
+ /*
+  * get the file handle for the "/" directory on the server
+  */
+ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			      struct nfs_fsinfo *info)
+ {
+-	int status;
++	int i, len, status = 0;
++	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS + 2];
+ 
+-	status = nfs4_lookup_root(server, fhandle, info);
++	flav_array[0] = RPC_AUTH_UNIX;
++	len = gss_mech_list_pseudoflavors(&flav_array[1]);
++	flav_array[1+len] = RPC_AUTH_NULL;
++	len += 2;
++
++	for (i = 0; i < len; i++) {
++		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
++		if (status == 0)
++			break;
++	}
+ 	if (status == 0)
+ 		status = nfs4_server_capabilities(server, fhandle);
+ 	if (status == 0)
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index 5d8048b..332da61 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -126,6 +126,9 @@ struct gss_api_mech *gss_mech_get_by_name(const char *);
+ /* Similar, but get by pseudoflavor. */
+ struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
+ 
++/* Fill in an array with a list of supported pseudoflavors */
++int gss_mech_list_pseudoflavors(u32 *);
++
+ /* Just increments the mechanism's reference count and returns its input: */
+ struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
+ 
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index 6c844b0..e3c36a2 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -215,6 +215,22 @@ gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
+ 
+ EXPORT_SYMBOL_GPL(gss_mech_get_by_pseudoflavor);
+ 
++int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr)
++{
++	struct gss_api_mech *pos = NULL;
++	int i = 0;
++
++	spin_lock(&registered_mechs_lock);
++	list_for_each_entry(pos, &registered_mechs, gm_list) {
++		array_ptr[i] = pos->gm_pfs->pseudoflavor;
++		i++;
++	}
++	spin_unlock(&registered_mechs_lock);
++	return i;
++}
++
++EXPORT_SYMBOL_GPL(gss_mech_list_pseudoflavors);
++
+ u32
+ gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
+ {
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
