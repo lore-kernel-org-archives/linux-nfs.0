@@ -1,148 +1,374 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f180.google.com ([209.85.161.180]:60246 "EHLO
-	mail-gx0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756678Ab0LNO6n (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Dec 2010 09:58:43 -0500
-Received: by gxk19 with SMTP id 19so474921gxk.11
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 06:58:43 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 26/31] NFS: Avoid return code checking in mount XDR encoder
-	functions
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 14 Dec 2010 09:58:40 -0500
-Message-ID: <20101214145840.2293.20221.stgit@matisse.1015granger.net>
-In-Reply-To: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:34632 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752553Ab0LVVuu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Dec 2010 16:50:50 -0500
+Message-ID: <4D1272B8.3050409@netapp.com>
+Date: Wed, 22 Dec 2010 16:50:48 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH 4/5] NFS: use secinfo when crossing mountpoints
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.
 
-The trend in the other XDR encoder functions is to BUG() when encoding
-problems occur, since a problem here is always due to a local coding
-error.  Then, instead of a status, zero is unconditionally returned.
+A submount may use different security than the parent
+mount does.  We should figure out what sec flavor the
+submount uses at mount time.
 
-Update the mount client XDR encoders to behave this way.
-
-To finish the update, use the new-style be32_to_cpup() and
-cpu_to_be32() macros, and compute the buffer sizes using raw integers
-instead of sizeof().  This matches the conventions used in other XDR
-functions.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
+ fs/nfs/inode.c                        |    8 ++-
+ fs/nfs/internal.h                     |    6 ++
+ fs/nfs/namespace.c                    |  102 ++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4proc.c                     |   14 +++++
+ fs/nfs/nfs4xdr.c                      |   12 ++--
+ include/linux/nfs_xdr.h               |    1 +
+ net/sunrpc/auth_gss/gss_mech_switch.c |   22 +++++++
+ 7 files changed, 154 insertions(+), 11 deletions(-)
 
- fs/nfs/mount_clnt.c |   35 +++++++++++++++--------------------
- 1 files changed, 15 insertions(+), 20 deletions(-)
-
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index 4f981f1..c82547e 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -280,20 +280,14 @@ out_call_err:
-  * XDR encode/decode functions for MOUNT
-  */
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index e67e31c..c1531e6 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -249,7 +249,9 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 	struct inode *inode = ERR_PTR(-ENOENT);
+ 	unsigned long hash;
  
--static int encode_mntdirpath(struct xdr_stream *xdr, const char *pathname)
-+static void encode_mntdirpath(struct xdr_stream *xdr, const char *pathname)
- {
- 	const u32 pathname_len = strlen(pathname);
- 	__be32 *p;
- 
--	if (unlikely(pathname_len > MNTPATHLEN))
--		return -EIO;
--
--	p = xdr_reserve_space(xdr, sizeof(u32) + pathname_len);
--	if (unlikely(p == NULL))
--		return -EIO;
-+	BUG_ON(pathname_len > MNTPATHLEN);
-+	p = xdr_reserve_space(xdr, 4 + pathname_len);
- 	xdr_encode_opaque(p, pathname, pathname_len);
--
--	return 0;
+-	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0)
++	nfs_attr_check_mountpoint(sb, fattr);
++
++	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0 && (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT) == 0)
+ 		goto out_no_inode;
+ 	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) == 0)
+ 		goto out_no_inode;
+@@ -293,8 +295,8 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS))
+ 				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
+ 			/* Deal with crossing mountpoints */
+-			if ((fattr->valid & NFS_ATTR_FATTR_FSID)
+-					&& !nfs_fsid_equal(&NFS_SB(sb)->fsid, &fattr->fsid)) {
++			if (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT ||
++					fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
+ 				if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
+ 					inode->i_op = &nfs_referral_inode_operations;
+ 				else
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 2f676a9..ba68af1 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -39,6 +39,12 @@ static inline int nfs4_has_persistent_session(const struct nfs_client *clp)
+ 	return 0;
  }
  
- static int mnt_enc_dirpath(struct rpc_rqst *req, __be32 *p,
-@@ -302,7 +296,8 @@ static int mnt_enc_dirpath(struct rpc_rqst *req, __be32 *p,
- 	struct xdr_stream xdr;
++static inline void nfs_attr_check_mountpoint(struct super_block *parent, struct nfs_fattr *fattr)
++{
++	if (!nfs_fsid_equal(&NFS_SB(parent)->fsid, &fattr->fsid))
++		fattr->valid |= NFS_ATTR_FATTR_MOUNTPOINT;
++}
++
+ struct nfs_clone_mount {
+ 	const struct super_block *sb;
+ 	const struct dentry *dentry;
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 3c361f8..8d335b7 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -15,6 +15,7 @@
+ #include <linux/string.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/vfs.h>
++#include <linux/sunrpc/gss_api.h>
+ #include "internal.h"
  
- 	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
--	return encode_mntdirpath(&xdr, dirpath);
-+	encode_mntdirpath(&xdr, dirpath);
-+	return 0;
- }
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+@@ -28,7 +29,8 @@ int nfs_mountpoint_expiry_timeout = 500 * HZ;
+ static struct vfsmount *nfs_do_submount(const struct vfsmount *mnt_parent,
+ 					const struct dentry *dentry,
+ 					struct nfs_fh *fh,
+-					struct nfs_fattr *fattr);
++					struct nfs_fattr *fattr,
++					rpc_authflavor_t authflavor);
  
  /*
-@@ -320,10 +315,10 @@ static int decode_status(struct xdr_stream *xdr, struct mountres *res)
- 	u32 status;
- 	__be32 *p;
+  * nfs_path - reconstruct the path given an arbitrary dentry
+@@ -87,6 +89,90 @@ Elong:
+ 	return ERR_PTR(-ENAMETOOLONG);
+ }
  
--	p = xdr_inline_decode(xdr, sizeof(status));
-+	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(p == NULL))
- 		return -EIO;
--	status = ntohl(*p);
-+	status = be32_to_cpup(p);
++rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors, struct inode *inode)
++{
++	struct gss_api_mech *mech;
++	struct xdr_netobj oid;
++	int i;
++	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
++
++	for (i = 0; i < flavors->num_flavors; i++) {
++		struct nfs4_secinfo_flavor *flavor;
++		flavor = &flavors->flavors[i];
++
++		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
++			pseudoflavor = flavor->flavor;
++			break;
++		} else if (flavor->flavor == RPC_AUTH_GSS) {
++			oid.len  = flavor->gss.sec_oid4.len;
++			oid.data = flavor->gss.sec_oid4.data;
++			mech = gss_mech_get_by_OID(&oid);
++			if (!mech)
++				continue;
++			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
++			gss_mech_put(mech);
++			break;
++		}
++	}
++
++	return pseudoflavor;
++}
++
++rpc_authflavor_t nfs_negotiate_security(const struct dentry *parent, const struct dentry *dentry)
++{
++	int status = 0;
++	struct page *page;
++	struct nfs4_secinfo_flavors *flavors;
++	int (*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
++	rpc_authflavor_t flavor = RPC_AUTH_UNIX;
++
++	secinfo = NFS_PROTO(parent->d_inode)->secinfo;
++	if (secinfo != NULL) {
++		page = alloc_page(GFP_KERNEL);
++		if (!page) {
++			status = -ENOMEM;
++			goto out;
++		}
++		flavors = page_address(page);
++		status = secinfo(parent->d_inode, &dentry->d_name, flavors);
++		flavor = nfs_find_best_sec(flavors, dentry->d_inode);
++		put_page(page);
++	}
++
++	return flavor;
++
++out:
++	status = -ENOMEM;
++	return status;
++}
++
++rpc_authflavor_t nfs_lookup_with_sec(struct nfs_server *server, struct dentry *parent,
++				     struct dentry *dentry, struct nameidata *nd,
++				     struct nfs_fh *fh, struct nfs_fattr *fattr)
++{
++	rpc_authflavor_t flavor;
++	struct rpc_clnt *clone;
++	struct rpc_auth *auth;
++	int err;
++
++	flavor = nfs_negotiate_security(parent, nd->path.dentry);
++	if (flavor < 0)
++		goto out;
++	clone  = rpc_clone_client(server->client);
++	auth   = rpcauth_create(flavor, clone);
++	if (!auth) {
++		flavor = -EIO;
++		goto out;
++	}
++	err = server->nfs_client->rpc_ops->lookup(clone, parent->d_inode,
++						  &nd->path.dentry->d_name,
++						  fh, fattr);
++	if (err < 0)
++		flavor = err;
++out:
++	return flavor;
++}
++
+ /*
+  * nfs_follow_mountpoint - handle crossing a mountpoint on the server
+  * @dentry - dentry of mountpoint
+@@ -108,6 +194,7 @@ static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
+ 	struct nfs_fh *fh = NULL;
+ 	struct nfs_fattr *fattr = NULL;
+ 	int err;
++	rpc_authflavor_t flavor = 1;
  
- 	for (i = 0; i < ARRAY_SIZE(mnt_errtbl); i++) {
- 		if (mnt_errtbl[i].status == status) {
-@@ -371,10 +366,10 @@ static int decode_fhs_status(struct xdr_stream *xdr, struct mountres *res)
- 	u32 status;
- 	__be32 *p;
+ 	dprintk("--> nfs_follow_mountpoint()\n");
  
--	p = xdr_inline_decode(xdr, sizeof(status));
-+	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(p == NULL))
- 		return -EIO;
--	status = ntohl(*p);
-+	status = be32_to_cpup(p);
+@@ -130,6 +217,13 @@ static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
+ 	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
+ 						  &nd->path.dentry->d_name,
+ 						  fh, fattr);
++	if (err == -EPERM) {
++		flavor = nfs_lookup_with_sec(server, parent, dentry, nd, fh, fattr);
++		if (flavor < 0)
++			err = flavor;
++		else
++			err = 0;
++	}
+ 	dput(parent);
+ 	if (err != 0)
+ 		goto out_err;
+@@ -138,7 +232,7 @@ static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
+ 		mnt = nfs_do_refmount(nd->path.mnt, nd->path.dentry);
+ 	else
+ 		mnt = nfs_do_submount(nd->path.mnt, nd->path.dentry, fh,
+-				      fattr);
++				      fattr, flavor);
+ 	err = PTR_ERR(mnt);
+ 	if (IS_ERR(mnt))
+ 		goto out_err;
+@@ -232,13 +326,15 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
+ static struct vfsmount *nfs_do_submount(const struct vfsmount *mnt_parent,
+ 					const struct dentry *dentry,
+ 					struct nfs_fh *fh,
+-					struct nfs_fattr *fattr)
++					struct nfs_fattr *fattr,
++					rpc_authflavor_t authflavor)
+ {
+ 	struct nfs_clone_mount mountdata = {
+ 		.sb = mnt_parent->mnt_sb,
+ 		.dentry = dentry,
+ 		.fh = fh,
+ 		.fattr = fattr,
++		.authflavor = authflavor,
+ 	};
+ 	struct vfsmount *mnt = ERR_PTR(-ENOMEM);
+ 	char *page = (char *) __get_free_page(GFP_USER);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 37a676f..2d4a923 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -85,6 +85,8 @@ static int nfs4_map_errors(int err)
+ 	switch (err) {
+ 	case -NFS4ERR_RESOURCE:
+ 		return -EREMOTEIO;
++	case -NFS4ERR_WRONGSEC:
++		return -EPERM;
+ 	default:
+ 		dprintk("%s could not handle NFSv4 error %d\n",
+ 				__func__, -err);
+@@ -2333,6 +2335,16 @@ static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
+ 	return status;
+ }
  
- 	for (i = 0; i < ARRAY_SIZE(mnt3_errtbl); i++) {
- 		if (mnt3_errtbl[i].status == status) {
-@@ -394,11 +389,11 @@ static int decode_fhandle3(struct xdr_stream *xdr, struct mountres *res)
- 	u32 size;
- 	__be32 *p;
++void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr, struct nfs_fh *fh)
++{
++	memset(fh, 0, sizeof(struct nfs_fh));
++	fattr->fsid.major = 1;
++	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
++		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_FSID | NFS_ATTR_FATTR_MOUNTPOINT;
++	fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
++	fattr->nlink = 2;
++}
++
+ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
+ 			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ {
+@@ -2342,6 +2354,8 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
+ 		err = nfs4_handle_exception(NFS_SERVER(dir),
+ 				_nfs4_proc_lookup(clnt, dir, name, fhandle, fattr),
+ 				&exception);
++		if (err == -EPERM)
++			nfs_fixup_secinfo_attributes(fattr, fhandle);
+ 	} while (exception.retry);
+ 	return err;
+ }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 2d32b3f..b6ed050 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -61,6 +61,7 @@
+ #define errno_NFSERR_IO		EIO
  
--	p = xdr_inline_decode(xdr, sizeof(size));
-+	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(p == NULL))
- 		return -EIO;
+ static int nfs4_stat_to_errno(int);
++void nfs_fixup_secinfo_attributes(struct nfs_fattr *, struct nfs_fh *);
  
--	size = ntohl(*p++);
-+	size = be32_to_cpup(p);
- 	if (size > NFS3_FHSIZE || size == 0)
- 		return -EIO;
- 
-@@ -421,15 +416,15 @@ static int decode_auth_flavors(struct xdr_stream *xdr, struct mountres *res)
- 	if (*count == 0)
- 		return 0;
- 
--	p = xdr_inline_decode(xdr, sizeof(entries));
-+	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(p == NULL))
- 		return -EIO;
--	entries = ntohl(*p);
-+	entries = be32_to_cpup(p);
- 	dprintk("NFS: received %u auth flavors\n", entries);
- 	if (entries > NFS_MAX_SECFLAVORS)
- 		entries = NFS_MAX_SECFLAVORS;
- 
--	p = xdr_inline_decode(xdr, sizeof(u32) * entries);
-+	p = xdr_inline_decode(xdr, 4 * entries);
- 	if (unlikely(p == NULL))
- 		return -EIO;
- 
-@@ -437,7 +432,7 @@ static int decode_auth_flavors(struct xdr_stream *xdr, struct mountres *res)
- 		entries = *count;
- 
- 	for (i = 0; i < entries; i++) {
--		flavors[i] = ntohl(*p++);
-+		flavors[i] = be32_to_cpup(p++);
- 		dprintk("NFS:   auth flavor[%u]: %d\n", i, flavors[i]);
+ /* NFSv4 COMPOUND tags are only wanted for debugging purposes */
+ #ifdef DEBUG
+@@ -113,7 +114,7 @@ static int nfs4_stat_to_errno(int);
+ #define encode_restorefh_maxsz  (op_encode_hdr_maxsz)
+ #define decode_restorefh_maxsz  (op_decode_hdr_maxsz)
+ #define encode_fsinfo_maxsz	(encode_getattr_maxsz)
+-#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 11)
++#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 15)
+ #define encode_renew_maxsz	(op_encode_hdr_maxsz + 3)
+ #define decode_renew_maxsz	(op_decode_hdr_maxsz)
+ #define encode_setclientid_maxsz \
+@@ -2964,6 +2965,7 @@ static int decode_attr_error(struct xdr_stream *xdr, uint32_t *bitmap)
+ 		if (unlikely(!p))
+ 			goto out_overflow;
+ 		bitmap[0] &= ~FATTR4_WORD0_RDATTR_ERROR;
++		return -be32_to_cpup(p);
  	}
- 	*count = i;
+ 	return 0;
+ out_overflow:
+@@ -3951,6 +3953,10 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
+ 	fattr->valid |= status;
+ 
+ 	status = decode_attr_error(xdr, bitmap);
++	if (status == -NFS4ERR_WRONGSEC) {
++		nfs_fixup_secinfo_attributes(fattr, fh);
++		status = 0;
++	}
+ 	if (status < 0)
+ 		goto xdr_error;
+ 
+@@ -6316,10 +6322,6 @@ static struct {
+ 	{ NFS4ERR_SYMLINK,	-ELOOP		},
+ 	{ NFS4ERR_OP_ILLEGAL,	-EOPNOTSUPP	},
+ 	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
+-	{ NFS4ERR_WRONGSEC,	-EPERM		}, /* FIXME: this needs
+-						    * to be handled by a
+-						    * middle-layer.
+-						    */
+ 	{ -1,			-EIO		}
+ };
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 6ad438c..6fc7d99 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -79,6 +79,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_CHANGE		(1U << 17)
+ #define NFS_ATTR_FATTR_PRECHANGE	(1U << 18)
+ #define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 19)	/* NFSv4 referral */
++#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 20)	/* Treat as mountpoint */
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index 8b40610..6c844b0 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -160,6 +160,28 @@ gss_mech_get_by_name(const char *name)
+ 
+ EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
+ 
++struct gss_api_mech *
++gss_mech_get_by_OID(struct xdr_netobj *obj)
++{
++	struct gss_api_mech	*pos, *gm = NULL;
++
++	spin_lock(&registered_mechs_lock);
++	list_for_each_entry(pos, &registered_mechs, gm_list) {
++		if (obj->len == pos->gm_oid.len) {
++			if (0 == memcmp(obj->data, pos->gm_oid.data, obj->len)) {
++				if (try_module_get(pos->gm_owner))
++					gm = pos;
++				break;
++			}
++		}
++	}
++	spin_unlock(&registered_mechs_lock);
++	return gm;
++
++}
++
++EXPORT_SYMBOL_GPL(gss_mech_get_by_OID);
++
+ static inline int
+ mech_supports_pseudoflavor(struct gss_api_mech *gm, u32 pseudoflavor)
+ {
+-- 
+1.7.3.4
 
