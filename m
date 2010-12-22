@@ -1,115 +1,232 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx.ij.cx ([212.13.201.15]:51361 "EHLO wes.ijneb.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753526Ab0LHOpq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Dec 2010 09:45:46 -0500
-Date: Wed, 8 Dec 2010 14:45:40 +0000 (GMT)
-From: Mark Hills <mark@pogo.org.uk>
-To: Chuck Lever <chuck.lever@oracle.com>
-cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org
-Subject: mount.nfs timeout of 9999ms (was Re: Listen backlog set to 64)
-In-Reply-To: <F5FCB254-E6CE-4B71-ABD9-33F098F9E0BA@oracle.com>
-Message-ID: <alpine.NEB.2.01.1012071143080.28772@jrf.vwaro.pbz>
-References: <alpine.NEB.2.01.1011151822270.17883@jrf.vwaro.pbz> <20101116182026.GA3971@fieldses.org> <20101117090826.4b2724da@notabene.brown> <20101129205935.GD9897@fieldses.org> <alpine.NEB.2.01.1011301705220.26378@jrf.vwaro.pbz> <20101130200013.GA2108@fieldses.org>
- <alpine.NEB.2.01.1012011754120.12506@jrf.vwaro.pbz> <F5FCB254-E6CE-4B71-ABD9-33F098F9E0BA@oracle.com>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from mx2.netapp.com ([216.240.18.37]:34632 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752358Ab0LVVut (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Dec 2010 16:50:49 -0500
+Message-ID: <4D1272B6.9000907@netapp.com>
+Date: Wed, 22 Dec 2010 16:50:46 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/5] NFS: call_sync function
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 1 Dec 2010, Chuck Lever wrote:
 
-> On Dec 1, 2010, at 1:18 PM, Mark Hills wrote:
-> 
-> > On Tue, 30 Nov 2010, J. Bruce Fields wrote:
-> > 
-> >> On Tue, Nov 30, 2010 at 05:50:52PM +0000, Mark Hills wrote:
-> > [...]
-> >>> Our investigation brings us to rpc.mountd and mount.nfs communicating. In 
-> >>> the client log we see messages like:
-> >>> 
-> >>>  Nov 24 12:09:43 nyrd001 automount[3782]: >> mount.nfs: mount to NFS server 'ss1a:/mnt/raid1/banana' failed: timed out, giving up
-> >>> 
-> >>> Using strace and isolating one of these, I can see a non-blocking connect 
-> >>> has already managed to make a connection and even send/receive some data. 
-> >>> 
-> >>> But soon a timeout of 9999 milliseconds in poll() causes a problem in 
-> >>> mount.nfs when waiting for a response of some sort. The socket in question 
-> >>> is a connection to mountd:
-> >>> 
-> >>>  26512 futex(0x7ff76affa540, FUTEX_WAKE_PRIVATE, 1) = 0
-> >>>  26512 write(3, "\200\0\0(j\212\254\365\0\0\0\0\0\0\0\2\0\1\206\245\0\0\0\3\0\0\0\0\0\0\0\0"..., 44) = 44
-> >>>  26512 poll([{fd=3, events=POLLIN}], 1, 9999 <unfinished ...>
-> >>> 
-> >>> When it returns:
-> >>> 
-> >>>  26512 <... poll resumed> )              = 0 (Timeout)
-> >>>  26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
-> >>>  26512 rt_sigprocmask(SIG_SETMASK, ~[RTMIN RT_1], [], 8) = 0
-> >>>  26512 close(3)                          = 0
-> >>>  26512 rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
-> >>>  26512 write(2, "mount.nfs: mount to NFS server '"..., 100) = 100
-> >>> 
-> >>> There's no re-try from here, just a failed mount.
-[...]
-> >> Can you tell where the mountd threads are typically waiting?
-> > 
-> > Here's a trace from mountd. Note the long pause after fdatasync():
-> > 
-> > 31156 12:09:40 open("/var/lib/nfs/rmtab", O_WRONLY|O_CREAT|O_APPEND, 0666) = 14 <0.000010>
-> > 31156 12:09:40 fstat(14, {st_mode=S_IFREG|0644, st_size=62642, ...}) = 0 <0.000005>
-> > 31156 12:09:40 mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x2af00c929000 <0.000007>
-> > 31156 12:09:40 fstat(14, {st_mode=S_IFREG|0644, st_size=62642, ...}) = 0 <0.000005>
-> > 31156 12:09:40 lseek(14, 62642, SEEK_SET) = 62642 <0.000006>
-> > 31156 12:09:40 write(14, "192.168.14.165:/mnt/raid1/abcde_"..., 57) = 57 <0.000013>
-> > 31156 12:09:40 fdatasync(14)            = 0 <15.413401>
-[...]
-> fdatasync() will write all outstanding dirty data on that partition to 
-> persistent storage, not just the dirty data for that file.  If /var is 
-> on a partition that has a lot of other activity, then this is the 
-> expected outcome, unfortunately.  I would expect such delays to be due 
-> to a large amount of outstanding writes, not to periodic synchronous 
-> writes.
+This patch changes nfs4_call_sync() from a macro into a
+static inline function.
 
-Moving rmtab to a tmpfs, this moved the problem to another bottleneck 
-writing to /var, this time via syslog.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   53 ++++++++++++++++++++++++++++++-----------------------
+ 1 files changed, 30 insertions(+), 23 deletions(-)
 
-We identified a crontab entry which uses RPM to apply updates to the 
-server OS at randomised times which was blocking /var for 10 seconds or 
-so.
-
-This returns the issue to giving up after the 9999 millisecond timeout 
-above, which I think is making the client overly sensitive.
-
-The affected clients are Fedora 12 distribution: nfs-utils-1.2.1-4.fc12. 
-We are using mount.nfs for a v3 mount over TCP.
-
-Locating this timeout wasn't easy. There's no '9999' in any of the 
-nfs-utils or glibc's rpc code.
-
-It turns out that the timeout originates in 
-nfs-utils/support/nfs/rpc_socket.c as
-
-  #define NFSRPC_TIMEOUT_TCP	(10)
-
-This is used to populate a struct timeval *timeout which is used and 
-updated by nfs_connect_nb(). Then the remaining timeout of 9999 
-milliseconds is used in an RPC clnt_call operation.
-
-10 seconds over TCP is simply too short to be reliable here; it's not a 
-long period of time for a fatal timeout. I will attempt to test on our 
-cluster with an extended timeout.
-
-I presume that the bug is that the timeout is too short, and not that the 
-timeout should cause a retry in a layer above -- because re-sending the 
-request over reliable TCP would not make sense.
-
-For UDP the retries are handled inside the RPC call, clntudp_call(). In 
-which case, what is the reason the UDP timeout differs from TCP? And is it 
-also too small?
-
-Thanks
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 78b0899..4f89a36 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -688,9 +688,16 @@ int _nfs4_call_sync(struct nfs_server *server,
+ 	return rpc_call_sync(server->client, msg, 0);
+ }
+ 
+-#define nfs4_call_sync(server, msg, args, res, cache_reply) \
+-	(server)->nfs_client->cl_mvops->call_sync((server), (msg), &(args)->seq_args, \
+-			&(res)->seq_res, (cache_reply))
++static inline
++int nfs4_call_sync(struct nfs_server *server,
++		   struct rpc_message *msg,
++		   struct nfs4_sequence_args *args,
++		   struct nfs4_sequence_res *res,
++		   int cache_reply)
++{
++	return server->nfs_client->cl_mvops->call_sync(server, msg, args,
++						res, cache_reply);
++}
+ 
+ static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
+ {
+@@ -1797,7 +1804,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	} else
+ 		memcpy(&arg.stateid, &zero_stateid, sizeof(arg.stateid));
+ 
+-	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
++	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (status == 0 && state != NULL)
+ 		renew_lease(server, timestamp);
+ 	return status;
+@@ -2039,7 +2046,7 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
+ 	};
+ 	int status;
+ 
+-	status = nfs4_call_sync(server, &msg, &args, &res, 0);
++	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (status == 0) {
+ 		memcpy(server->attr_bitmask, res.attr_bitmask, sizeof(server->attr_bitmask));
+ 		server->caps &= ~(NFS_CAP_ACLS|NFS_CAP_HARDLINKS|
+@@ -2109,7 +2116,7 @@ static int _nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	};
+ 
+ 	nfs_fattr_init(info->fattr);
+-	return nfs4_call_sync(server, &msg, &args, &res, 0);
++	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+@@ -2198,7 +2205,7 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	};
+ 	
+ 	nfs_fattr_init(fattr);
+-	return nfs4_call_sync(server, &msg, &args, &res, 0);
++	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+ static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+@@ -2282,7 +2289,7 @@ static int _nfs4_proc_lookupfh(struct nfs_server *server, const struct nfs_fh *d
+ 	nfs_fattr_init(fattr);
+ 
+ 	dprintk("NFS call  lookupfh %s\n", name->name);
+-	status = nfs4_call_sync(server, &msg, &args, &res, 0);
++	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	dprintk("NFS reply lookupfh: %d\n", status);
+ 	return status;
+ }
+@@ -2370,7 +2377,7 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 	if (res.fattr == NULL)
+ 		return -ENOMEM;
+ 
+-	status = nfs4_call_sync(server, &msg, &args, &res, 0);
++	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (!status) {
+ 		entry->mask = 0;
+ 		if (res.access & NFS4_ACCESS_READ)
+@@ -2437,7 +2444,7 @@ static int _nfs4_proc_readlink(struct inode *inode, struct page *page,
+ 		.rpc_resp = &res,
+ 	};
+ 
+-	return nfs4_call_sync(NFS_SERVER(inode), &msg, &args, &res, 0);
++	return nfs4_call_sync(NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+ static int nfs4_proc_readlink(struct inode *inode, struct page *page,
+@@ -2525,7 +2532,7 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
+ 	if (res.dir_attr == NULL)
+ 		goto out;
+ 
+-	status = nfs4_call_sync(server, &msg, &args, &res, 1);
++	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 1);
+ 	if (status == 0) {
+ 		update_changeattr(dir, &res.cinfo);
+ 		nfs_post_op_update_inode(dir, res.dir_attr);
+@@ -2626,7 +2633,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 	if (res.old_fattr == NULL || res.new_fattr == NULL)
+ 		goto out;
+ 
+-	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
++	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(old_dir, &res.old_cinfo);
+ 		nfs_post_op_update_inode(old_dir, res.old_fattr);
+@@ -2677,7 +2684,7 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
+ 	if (res.fattr == NULL || res.dir_attr == NULL)
+ 		goto out;
+ 
+-	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
++	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(dir, &res.cinfo);
+ 		nfs_post_op_update_inode(dir, res.dir_attr);
+@@ -2741,7 +2748,7 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
+ {
+ 	int status = nfs4_call_sync(NFS_SERVER(dir), &data->msg,
+-				    &data->arg, &data->res, 1);
++				    &data->arg.seq_args, &data->res.seq_res, 1);
+ 	if (status == 0) {
+ 		update_changeattr(dir, &data->res.dir_cinfo);
+ 		nfs_post_op_update_inode(dir, data->res.dir_fattr);
+@@ -2851,7 +2858,7 @@ static int _nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
+ 			(unsigned long long)cookie);
+ 	nfs4_setup_readdir(cookie, NFS_COOKIEVERF(dir), dentry, &args);
+ 	res.pgbase = args.pgbase;
+-	status = nfs4_call_sync(NFS_SERVER(dir), &msg, &args, &res, 0);
++	status = nfs4_call_sync(NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (status >= 0) {
+ 		memcpy(NFS_COOKIEVERF(dir), res.verifier.data, NFS4_VERIFIER_SIZE);
+ 		status += args.pgbase;
+@@ -2941,7 +2948,7 @@ static int _nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	};
+ 
+ 	nfs_fattr_init(fsstat->fattr);
+-	return  nfs4_call_sync(server, &msg, &args, &res, 0);
++	return  nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+ static int nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsstat *fsstat)
+@@ -2972,7 +2979,7 @@ static int _nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
+ 		.rpc_resp = &res,
+ 	};
+ 
+-	return nfs4_call_sync(server, &msg, &args, &res, 0);
++	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+ static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsinfo *fsinfo)
+@@ -3017,7 +3024,7 @@ static int _nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle
+ 	}
+ 
+ 	nfs_fattr_init(pathconf->fattr);
+-	return nfs4_call_sync(server, &msg, &args, &res, 0);
++	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+ static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
+@@ -3317,7 +3324,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+ 		resp_buf = buf;
+ 		buf_to_pages(buf, buflen, args.acl_pages, &args.acl_pgbase);
+ 	}
+-	ret = nfs4_call_sync(NFS_SERVER(inode), &msg, &args, &res, 0);
++	ret = nfs4_call_sync(NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (ret)
+ 		goto out_free;
+ 	if (res.acl_len > args.acl_len)
+@@ -3390,7 +3397,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
+ 		return -EOPNOTSUPP;
+ 	nfs_inode_return_delegation(inode);
+ 	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
+-	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
++	ret = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	/*
+ 	 * Acl update can result in inode attribute update.
+ 	 * so mark the attribute cache invalid.
+@@ -3743,7 +3750,7 @@ static int _nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock
+ 		goto out;
+ 	lsp = request->fl_u.nfs4_fl.owner;
+ 	arg.lock_owner.id = lsp->ls_id.id;
+-	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
++	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	switch (status) {
+ 		case 0:
+ 			request->fl_type = F_UNLCK;
+@@ -4478,7 +4485,7 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 	nfs_fattr_init(&fs_locations->fattr);
+ 	fs_locations->server = server;
+ 	fs_locations->nlocations = 0;
+-	status = nfs4_call_sync(server, &msg, &args, &res, 0);
++	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	nfs_fixup_referral_attributes(&fs_locations->fattr);
+ 	dprintk("%s: returned status = %d\n", __func__, status);
+ 	return status;
+@@ -5396,7 +5403,7 @@ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
+ 	int status;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	status = nfs4_call_sync(server, &msg, &args, &res, 0);
++	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	dprintk("<-- %s status=%d\n", __func__, status);
+ 
+ 	return status;
 -- 
-Mark
+1.7.3.4
+
