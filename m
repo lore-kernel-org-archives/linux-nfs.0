@@ -1,132 +1,201 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:16558 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753571Ab0LPMrp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 07:47:45 -0500
-Message-ID: <4D0A0A6D.5060807@panasas.com>
-Date: Thu, 16 Dec 2010 14:47:41 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>, Benny Halevy <bhalevy@panasas.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 20/22] pnfs-submit: wave2: remove all LAYOUTRETURN code
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com> <1291944177-7819-21-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1291944177-7819-21-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from quartz.orcorp.ca ([139.142.54.143]:41747 "EHLO quartz.orcorp.ca"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750835Ab0LVTW3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Dec 2010 14:22:29 -0500
+Received: from [10.0.0.11] (helo=jggl.edm.orcorp.ca)
+	by quartz.orcorp.ca with esmtps (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	(envelope-from <jgunthorpe@obsidianresearch.com>)
+	id 1PVUGa-0005W0-3r
+	for linux-nfs@vger.kernel.org; Wed, 22 Dec 2010 12:22:28 -0700
+Received: from jgg by jggl.edm.orcorp.ca with local (Exim 4.72)
+	(envelope-from <jgunthorpe@obsidianresearch.com>)
+	id 1PVUGZ-0008Bn-PD
+	for linux-nfs@vger.kernel.org; Wed, 22 Dec 2010 12:22:27 -0700
+Date: Wed, 22 Dec 2010 12:22:27 -0700
+From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] Support AD style kerberos automatically in rpc.gss
+Message-ID: <20101222192227.GA31112@obsidianresearch.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 12/10/2010 03:22 AM, Fred Isaman wrote:
+An Active Directory KDC will only grant a TGT for UPNs, getting
+a TGT for SPNs is not possible:
 
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -599,55 +599,6 @@ void nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
->  		}
->  }
->  
-> -/* Return true if there is layout based io in progress in the given range.
-> - * Assumes range has already been marked invalid, and layout marked to
-> - * prevent any new lseg from being inserted.
-> - */
-> -bool
-> -pnfs_return_layout_barrier(struct nfs_inode *nfsi,
-> -			   struct pnfs_layout_range *range)
-> -{
-> -	struct pnfs_layout_segment *lseg;
-> -	bool ret = false;
-> -
-> -	spin_lock(&nfsi->vfs_inode.i_lock);
-> -	list_for_each_entry(lseg, &nfsi->layout->segs, fi_list)
-> -		if (should_free_lseg(&lseg->range, range)) {
-> -			ret = true;
-> -			break;
-> -		}
-> -	spin_unlock(&nfsi->vfs_inode.i_lock);
-> -	dprintk("%s:Return %d\n", __func__, ret);
-> -	return ret;
-> -}
-> -
-> -static int
-> -return_layout(struct inode *ino, struct pnfs_layout_range *range, bool wait)
-> -{
-> -	struct nfs4_layoutreturn *lrp;
-> -	struct nfs_server *server = NFS_SERVER(ino);
-> -	int status = -ENOMEM;
-> -
-> -	dprintk("--> %s\n", __func__);
-> -
-> -	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
-> -	if (lrp == NULL) {
-> -		put_layout_hdr(ino);
-> -		goto out;
-> -	}
-> -	lrp->args.reclaim = 0;
-> -	lrp->args.layout_type = server->pnfs_curr_ld->id;
-> -	lrp->args.return_type = RETURN_FILE;
-> -	lrp->args.range = *range;
-> -	lrp->args.inode = ino;
-> -	lrp->clp = server->nfs_client;
-> -
-> -	status = nfs4_proc_layoutreturn(lrp, wait);
-> -out:
-> -	dprintk("<-- %s status: %d\n", __func__, status);
-> -	return status;
-> -}
-> -
->  /* Initiates a LAYOUTRETURN(FILE) */
->  int
->  _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
-> @@ -673,21 +624,10 @@ _pnfs_return_layout(struct inode *ino, struct pnfs_layout_range *range,
->  		goto out;
->  	}
->  	lo->plh_block_lgets++;
-> -	/* Reference matched in nfs4_layoutreturn_release */
-> -	get_layout_hdr(lo);
->  	spin_unlock(&ino->i_lock);
->  	pnfs_free_lseg_list(&tmp_list);
->  
-> -	if (layoutcommit_needed(nfsi)) {
-> -		status = pnfs_layoutcommit_inode(ino, wait);
-> -		if (status) {
-> -			/* Return layout even if layoutcommit fails */
-> -			dprintk("%s: layoutcommit failed, status=%d. "
-> -				"Returning layout anyway\n",
-> -				__func__, status);
-> -		}
-> -	}
-> -	status = return_layout(ino, &arg, wait);
+$ kinit -k host/ib5@ADS.ORCORP.CA
+kinit: Client not found in Kerberos database while getting initial credentials
 
+The correct thing to do for machine credentials is to get a TGT
+for the computer UPN <HOSTNAME>$@REALM:
+$ kinit -k IB5\$
+$ klist
+12/22/10 11:43:47  12/22/10 21:43:47  krbtgt/ADS.ORCORP.CA@ADS.ORCORP.CA
 
-You are also removing the layoutcommit.
-1. You have not stated it anywhere, and snacked it in silently
-2. If you are removing layoutcommit please do that in a different
-   patch with it's own comment and explanation.
-3. How come? forgetful or not layoutcommits are a different issue
-   and must be done correctly when writing !!!?!
+Samba automatically creates /etc/krb5.keytab entry for the computer UPN,
+this patch makes gssd_refresh_krb5_machine_credential prefer it above
+the SPNs if it is present.
 
-Boaz
-> +	/* Don't need to wait since this is followed by call to end_writeback */
->  out:
->  	dprintk("<-- %s status: %d\n", __func__, status);
->  	return status;
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index d999e38..0ddab0d 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -183,7 +183,6 @@ extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
->  extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
->  extern int nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data,
->  				   int issync);
-> -extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool wait);
->  
->  /* pnfs.c */
->  void get_layout_hdr(struct pnfs_layout_hdr *lo);
-> @@ -193,7 +192,6 @@ bool should_free_lseg(struct pnfs_layout_range *lseg_range,
->  struct pnfs_layout_segment *
->  pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
->  		   enum pnfs_iomode access_type);
-> -bool pnfs_return_layout_barrier(struct nfs_inode *, struct pnfs_layout_range *);
->  int _pnfs_return_layout(struct inode *, struct pnfs_layout_range *, bool wait);
->  void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
->  void unset_pnfs_layoutdriver(struct nfs_server *);
+The net result is that nfs client works automatically out of the box
+if samba has been used to setup kerberos via 'net ads join' 'net ads
+keytab create'
+
+Tested using Windows Server 2003 R2 as the AD server.
+
+Signed-off-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+---
+ utils/gssd/gssd.man    |    5 ++++
+ utils/gssd/krb5_util.c |   62 ++++++++++++++++++++++++++++++++++--------------
+ 2 files changed, 49 insertions(+), 18 deletions(-)
+
+I'm still looking into what to do for AD in the server case when
+process_krb5_upcall is called with service == nfs. Some references
+suggest setting AD's userPrincipalName to the nfs SPN, but it would be
+really nice if that wasn't necessary.
+
+Shouldn't it be possible to use the a ticket provided from the client
+to send back an unsolicted reply??
+
+Thanks,
+Jason
+
+diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+index 0a23cd6..073379d 100644
+--- a/utils/gssd/gssd.man
++++ b/utils/gssd/gssd.man
+@@ -53,6 +53,8 @@ To be more consistent with other implementations, we now look for
+ specific keytab entries.  The search order for keytabs to be used
+ for "machine credentials" is now:
+ .br
++  <HOSTNAME>$@<REALM>
++.br
+   root/<hostname>@<REALM>
+ .br
+   nfs/<hostname>@<REALM>
+@@ -64,6 +66,9 @@ for "machine credentials" is now:
+   nfs/<anyname>@<REALM>
+ .br
+   host/<anyname>@<REALM>
++.IP
++If this search order does not use the correct key then provide a
++keytab file that contains only correct keys.
+ .TP
+ .B -p path
+ Tells
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index f071600..4b13fa1 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -768,6 +768,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+ 	krb5_error_code code;
+ 	char **realmnames = NULL;
+ 	char myhostname[NI_MAXHOST], targethostname[NI_MAXHOST];
++	char myhostad[NI_MAXHOST+1];
+ 	int i, j, retval;
+ 	char *default_realm = NULL;
+ 	char *realm;
+@@ -789,6 +790,14 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+ 		printerr(1, "%s while getting local hostname\n", k5err);
+ 		goto out;
+ 	}
++
++	/* Compute the active directory machine name HOST$ */
++	strcpy(myhostad, myhostname);
++	for (i = 0; myhostad[i] != 0; ++i)
++		myhostad[i] = toupper(myhostad[i]);
++	myhostad[i] = '$';
++	myhostad[i+1] = 0;
++
+ 	retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
+ 	if (retval)
+ 		goto out;
+@@ -833,32 +842,47 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+ 		if (strcmp(realm, default_realm) == 0)
+ 			tried_default = 1;
+ 		for (j = 0; svcnames[j] != NULL; j++) {
+-			code = krb5_build_principal_ext(context, &princ,
+-							strlen(realm),
+-							realm,
+-							strlen(svcnames[j]),
+-							svcnames[j],
+-							strlen(myhostname),
+-							myhostname,
+-							NULL);
++			char spn[300];
++
++			/*
++			 * The special svcname "$" means 'try the active
++			 * directory machine account'
++			 */
++			if (strcmp(svcnames[j],"$") == 0) {
++				snprintf(spn, sizeof(spn), "%s@%s", myhostad, realm);
++				code = krb5_build_principal_ext(context, &princ,
++								strlen(realm),
++								realm,
++								strlen(myhostad),
++								myhostad,
++								NULL);
++			} else {
++				snprintf(spn, sizeof(spn), "%s/%s@%s",
++					 svcnames[j], myhostname, realm);
++				code = krb5_build_principal_ext(context, &princ,
++								strlen(realm),
++								realm,
++								strlen(svcnames[j]),
++								svcnames[j],
++								strlen(myhostname),
++								myhostname,
++								NULL);
++			}
++
+ 			if (code) {
+ 				k5err = gssd_k5_err_msg(context, code);
+-				printerr(1, "%s while building principal for "
+-					 "'%s/%s@%s'\n", k5err, svcnames[j],
+-					 myhostname, realm);
++				printerr(1, "%s while building principal for '%s'\n",
++					 k5err, spn);
+ 				continue;
+ 			}
+ 			code = krb5_kt_get_entry(context, kt, princ, 0, 0, kte);
+ 			krb5_free_principal(context, princ);
+ 			if (code) {
+ 				k5err = gssd_k5_err_msg(context, code);
+-				printerr(3, "%s while getting keytab entry for "
+-					 "'%s/%s@%s'\n", k5err, svcnames[j],
+-					 myhostname, realm);
++				printerr(3, "%s while getting keytab entry for '%s'\n",
++					 k5err, spn);
+ 			} else {
+-				printerr(3, "Success getting keytab entry for "
+-					 "'%s/%s@%s'\n",
+-					 svcnames[j], myhostname, realm);
++				printerr(3, "Success getting keytab entry for '%s'\n",spn);
+ 				retval = 0;
+ 				goto out;
+ 			}
+@@ -870,6 +894,8 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+ 		 */
+ 		for (j = 0; svcnames[j] != NULL; j++) {
+ 			int found = 0;
++			if (strcmp(svcnames[j],"$") == 0)
++				continue;
+ 			code = gssd_search_krb5_keytab(context, kt, realm,
+ 						       svcnames[j], &found, kte);
+ 			if (!code && found) {
+@@ -1160,7 +1186,7 @@ gssd_refresh_krb5_machine_credential(char *hostname,
+ 	krb5_keytab kt = NULL;;
+ 	int retval = 0;
+ 	char *k5err = NULL;
+-	const char *svcnames[4] = { "root", "nfs", "host", NULL };
++	const char *svcnames[5] = { "$", "root", "nfs", "host", NULL };
+ 
+ 	/*
+ 	 * If a specific service name was specified, use it.
+-- 
+1.7.1
+
 
