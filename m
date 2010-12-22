@@ -1,266 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:65130 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60331 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933425Ab0LUCU4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Dec 2010 21:20:56 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 05/14] pnfs: wave 2: change how lsegs are removed from layout list
-Date: Mon, 20 Dec 2010 21:20:37 -0500
-Message-Id: <1292898046-7336-6-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
-References: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
+	id S1751791Ab0LVWAY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2010 17:00:24 -0500
+Subject: Re: [PATCH_V5 01/11] SUNRPC move svc_drop to caller of svc_process_common
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <20101221182305.GA19349@fieldses.org>
+Date: Wed, 22 Dec 2010 17:00:05 -0500
+Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
+Message-Id: <C591F94F-FFFA-4C4B-AF0A-F70A0FC890AD@netapp.com>
+References: <1292879088-7821-1-git-send-email-andros@netapp.com> <1292879088-7821-2-git-send-email-andros@netapp.com> <20101221182305.GA19349@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This is to prepare the way for sensible io draining.  Instead of just
-removing the lseg from the list, we instead clear the VALID flag
-(preventing new io from grabbing references to the lseg) and remove
-the reference holding it in the list.  Thus the lseg will be removed
-once any io in progress completes and any references still held are
-dropped.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/inode.c |    2 +-
- fs/nfs/pnfs.c  |  121 ++++++++++++++++++++++++++++++++++++-------------------
- fs/nfs/pnfs.h  |    8 +++-
- 3 files changed, 87 insertions(+), 44 deletions(-)
+On Dec 21, 2010, at 1:23 PM, J. Bruce Fields wrote:
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e67e31c..43a69da 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1410,9 +1410,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
-  */
- void nfs4_evict_inode(struct inode *inode)
- {
-+	pnfs_destroy_layout(NFS_I(inode));
- 	truncate_inode_pages(&inode->i_data, 0);
- 	end_writeback(inode);
--	pnfs_destroy_layout(NFS_I(inode));
- 	/* If we are holding a delegation, return it! */
- 	nfs_inode_return_delegation_noreclaim(inode);
- 	/* First call standard NFS clear_inode() code */
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7e4ad2a..49591e4 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -211,69 +211,101 @@ static void
- init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- {
- 	INIT_LIST_HEAD(&lseg->fi_list);
--	kref_init(&lseg->kref);
-+	atomic_set(&lseg->pls_refcount, 1);
-+	smp_mb();
-+	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
- 	lseg->layout = lo;
- }
- 
--/* Called without i_lock held, as the free_lseg call may sleep */
--static void
--destroy_lseg(struct kref *kref)
-+static void free_lseg(struct pnfs_layout_segment *lseg)
- {
--	struct pnfs_layout_segment *lseg =
--		container_of(kref, struct pnfs_layout_segment, kref);
- 	struct inode *ino = lseg->layout->inode;
- 
--	dprintk("--> %s\n", __func__);
-+	BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
- 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
- 	/* Matched by get_layout_hdr in pnfs_insert_layout */
- 	put_layout_hdr(ino);
- }
- 
-+/* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
-+ * could sleep, so must be called outside of the lock.
-+ */
- static void
--put_lseg(struct pnfs_layout_segment *lseg)
-+put_lseg_locked(struct pnfs_layout_segment *lseg,
-+		struct list_head *tmp_list)
- {
--	if (!lseg)
--		return;
-+	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
-+		atomic_read(&lseg->pls_refcount),
-+		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+	if (atomic_dec_and_test(&lseg->pls_refcount)) {
-+		struct inode *ino = lseg->layout->inode;
-+
-+		BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+		list_del(&lseg->fi_list);
-+		if (list_empty(&lseg->layout->segs)) {
-+			struct nfs_client *clp;
-+
-+			clp = NFS_SERVER(ino)->nfs_client;
-+			spin_lock(&clp->cl_lock);
-+			/* List does not take a reference, so no need for put here */
-+			list_del_init(&lseg->layout->layouts);
-+			spin_unlock(&clp->cl_lock);
-+		}
-+		list_add(&lseg->fi_list, tmp_list);
-+	}
-+}
- 
--	dprintk("%s: lseg %p ref %d\n", __func__, lseg,
--		atomic_read(&lseg->kref.refcount));
--	kref_put(&lseg->kref, destroy_lseg);
-+static bool
-+should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
-+{
-+	return (recall_iomode == IOMODE_ANY ||
-+		lseg_iomode == recall_iomode);
- }
- 
--static void
--pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list)
-+static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
-+			      struct list_head *tmp_list)
-+{
-+	if (test_and_clear_bit(NFS_LSEG_VALID, &lseg->pls_flags)) {
-+		/* Remove the reference keeping the lseg in the
-+		 * list.  It will now be removed when all
-+		 * outstanding io is finished.
-+		 */
-+		put_lseg_locked(lseg, tmp_list);
-+	}
-+}
-+
-+/* Returns false if no lsegs match, true otherwise */
-+static bool
-+mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
-+			    struct list_head *tmp_list,
-+			    u32 iomode)
- {
- 	struct pnfs_layout_segment *lseg, *next;
--	struct nfs_client *clp;
-+	bool rv = false;
- 
- 	dprintk("%s:Begin lo %p\n", __func__, lo);
- 
--	assert_spin_locked(&lo->inode->i_lock);
--	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list) {
--		dprintk("%s: freeing lseg %p\n", __func__, lseg);
--		list_move(&lseg->fi_list, tmp_list);
--	}
--	clp = NFS_SERVER(lo->inode)->nfs_client;
--	spin_lock(&clp->cl_lock);
--	/* List does not take a reference, so no need for put here */
--	list_del_init(&lo->layouts);
--	spin_unlock(&clp->cl_lock);
--
-+	list_for_each_entry_safe(lseg, next, &lo->segs, fi_list)
-+		if (should_free_lseg(lseg->range.iomode, iomode)) {
-+			dprintk("%s: freeing lseg %p iomode %d "
-+				"offset %llu length %llu\n", __func__,
-+				lseg, lseg->range.iomode, lseg->range.offset,
-+				lseg->range.length);
-+			mark_lseg_invalid(lseg, tmp_list);
-+			rv = true;
-+		}
- 	dprintk("%s:Return\n", __func__);
-+	return rv;
- }
- 
- static void
--pnfs_free_lseg_list(struct list_head *tmp_list)
-+pnfs_free_lseg_list(struct list_head *free_me)
- {
--	struct pnfs_layout_segment *lseg;
-+	struct pnfs_layout_segment *lseg, *tmp;
- 
--	while (!list_empty(tmp_list)) {
--		lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
--				fi_list);
--		dprintk("%s calling put_lseg on %p\n", __func__, lseg);
--		list_del(&lseg->fi_list);
--		put_lseg(lseg);
--	}
-+	list_for_each_entry_safe(lseg, tmp, free_me, fi_list)
-+		free_lseg(lseg);
-+	INIT_LIST_HEAD(free_me);
- }
- 
- void
-@@ -285,7 +317,8 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
- 	spin_lock(&nfsi->vfs_inode.i_lock);
- 	lo = nfsi->layout;
- 	if (lo) {
--		pnfs_clear_lseg_list(lo, &tmp_list);
-+		set_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags);
-+		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
- 		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
- 		put_layout_hdr_locked(lo);
- 	}
-@@ -477,9 +510,12 @@ pnfs_find_alloc_layout(struct inode *ino)
- 	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
- 
- 	assert_spin_locked(&ino->i_lock);
--	if (nfsi->layout)
--		return nfsi->layout;
--
-+	if (nfsi->layout) {
-+		if (test_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags))
-+			return NULL;
-+		else
-+			return nfsi->layout;
-+	}
- 	spin_unlock(&ino->i_lock);
- 	new = alloc_init_layout_hdr(ino);
- 	spin_lock(&ino->i_lock);
-@@ -520,7 +556,8 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
- 
- 	assert_spin_locked(&lo->inode->i_lock);
- 	list_for_each_entry(lseg, &lo->segs, fi_list) {
--		if (is_matching_lseg(lseg, iomode)) {
-+		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
-+		    is_matching_lseg(lseg, iomode)) {
- 			ret = lseg;
- 			break;
- 		}
-@@ -529,7 +566,7 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
- 	}
- 
- 	dprintk("%s:Return lseg %p ref %d\n",
--		__func__, ret, ret ? atomic_read(&ret->kref.refcount) : 0);
-+		__func__, ret, ret ? atomic_read(&ret->pls_refcount) : 0);
- 	return ret;
- }
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 89eedf41..96b23bc 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -30,10 +30,15 @@
- #ifndef FS_NFS_PNFS_H
- #define FS_NFS_PNFS_H
- 
-+enum {
-+	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
-+};
-+
- struct pnfs_layout_segment {
- 	struct list_head fi_list;
- 	struct pnfs_layout_range range;
--	struct kref kref;
-+	atomic_t pls_refcount;
-+	unsigned long pls_flags;
- 	struct pnfs_layout_hdr *layout;
- };
- 
-@@ -44,6 +49,7 @@ struct pnfs_layout_segment {
- enum {
- 	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
- 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
-+	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
- };
- 
- /* Per-layout driver specific registration structure */
--- 
-1.7.2.1
+> On Mon, Dec 20, 2010 at 04:04:38PM -0500, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> The NFSv4.1 shared back channel does not need to call svc_drop because the
+>> callback service never outlives the single connection it services, and it
+>> reuses it's buffers and keeps the trasport.
+> 
+> Looks better....
+> 
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> net/sunrpc/svc.c |   30 ++++++++++++++++--------------
+>> 1 files changed, 16 insertions(+), 14 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+>> index 6359c42..606d182 100644
+>> --- a/net/sunrpc/svc.c
+>> +++ b/net/sunrpc/svc.c
+>> @@ -1147,7 +1147,6 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+>>  dropit:
+>> 	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+>> 	dprintk("svc: svc_process dropit\n");
+>> -	svc_drop(rqstp);
+>> 	return 0;
+>> 
+>> err_short_len:
+>> @@ -1218,7 +1217,6 @@ svc_process(struct svc_rqst *rqstp)
+>> 	struct kvec		*resv = &rqstp->rq_res.head[0];
+>> 	struct svc_serv		*serv = rqstp->rq_server;
+>> 	u32			dir;
+>> -	int			error;
+>> 
+>> 	/*
+>> 	 * Setup response xdr_buf.
+>> @@ -1246,11 +1244,13 @@ svc_process(struct svc_rqst *rqstp)
+>> 		return 0;
+>> 	}
+>> 
+>> -	error = svc_process_common(rqstp, argv, resv);
+>> -	if (error <= 0)
+> 
+> Oh, and that was pretty ugly, seeing as svc_process_common never
+> returned <0.  Thanks for cleaning that up.
+
+It was your idea, and a good one. :)
+
+> 
+>> -		return error;
+>> -
+>> -	return svc_send(rqstp);
+>> +	/* Returns 1 for send, 0 for drop */
+>> +	if (svc_process_common(rqstp, argv, resv))
+>> +		return svc_send(rqstp);
+>> +	else {
+>> +		svc_drop(rqstp);
+>> +		return 0;
+>> +	}
+>> }
+>> 
+>> #if defined(CONFIG_NFS_V4_1)
+>> @@ -1264,7 +1264,6 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>> {
+>> 	struct kvec	*argv = &rqstp->rq_arg.head[0];
+>> 	struct kvec	*resv = &rqstp->rq_res.head[0];
+>> -	int 		error;
+>> 
+>> 	/* Build the svc_rqst used by the common processing routine */
+>> 	rqstp->rq_xprt = serv->bc_xprt;
+>> @@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>> 	svc_getu32(argv);	/* XID */
+>> 	svc_getnl(argv);	/* CALLDIR */
+>> 
+>> -	error = svc_process_common(rqstp, argv, resv);
+>> -	if (error <= 0)
+>> -		return error;
+>> -
+>> -	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
+>> -	return bc_send(req);
+>> +	/* Returns 1 for send, 0 for drop */
+>> +	if (svc_process_common(rqstp, argv, resv)) {
+>> +		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
+>> +						sizeof(req->rq_snd_buf));
+>> +		return bc_send(req);
+>> +	} else {
+>> +		/* Nothing to do to drop request */
+>> +		return 0;
+> 
+> The one thing that bothers me is the svc_reserve stuff.  Which you have
+> no use for, I guess.  But svc_reserve_auth() is called from
+> svc_process_common(); I wonder if that can get us into trouble?  I'll
+> look a little closer.
+
+Hmmm. This is triggered by the svc_proceedure pc_xdrressize being set. It's my guess we can set this to 0 and avoid the svc_reserve call.
+
+-->Andy
+
+> 
+> --b.
+> 
+>> +	}
+>> }
+>> EXPORT_SYMBOL(bc_svc_process);
+>> #endif /* CONFIG_NFS_V4_1 */
 
