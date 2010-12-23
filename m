@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:36393 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:57636 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753237Ab0LWMr7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 07:47:59 -0500
+	id S1753476Ab0LWRa1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 12:30:27 -0500
 From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
 Subject: [PATCH 11/15] pnfs: change lo refcounting to atomic_t
-Date: Thu, 23 Dec 2010 07:47:42 -0500
-Message-Id: <1293108466-31768-12-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
-References: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
+Date: Thu, 23 Dec 2010 12:29:53 -0500
+Message-Id: <1293125397-30088-12-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
+References: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
