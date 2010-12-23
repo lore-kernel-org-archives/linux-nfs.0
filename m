@@ -1,89 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f45.google.com ([209.85.214.45]:38194 "EHLO
-	mail-bw0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753857Ab0LPONN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 09:13:13 -0500
-Received: by bwz16 with SMTP id 16so3605966bwz.4
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Dec 2010 06:13:11 -0800 (PST)
-In-Reply-To: <4D0A0A77.9010802@panasas.com>
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com>
-	<1291944177-7819-23-git-send-email-iisaman@netapp.com>
-	<4D0A0A77.9010802@panasas.com>
-Date: Thu, 16 Dec 2010 09:13:11 -0500
-Message-ID: <AANLkTinqnA2Qd68FB=ptoeSxrTd8FD47GezUn_83KtGf@mail.gmail.com>
-Subject: Re: [PATCH 22/22] pnfs-submit: Turn off layoutcommits
+Received: from mx2.netapp.com ([216.240.18.37]:57636 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753281Ab0LWRa0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 12:30:26 -0500
 From: Fred Isaman <iisaman@netapp.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 10/15] pnfs: check that partial LAYOUTGET return is ignored
+Date: Thu, 23 Dec 2010 12:29:52 -0500
+Message-Id: <1293125397-30088-11-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
+References: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Dec 16, 2010 at 7:47 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 12/10/2010 03:22 AM, Fred Isaman wrote:
->> Recent changes to close can delay pending layoutcommit until umount,
->> when the async layoutcommits can come tricklng in after we have destroyed
->> the session.
->
-> Then "Recent changes" are broken and should be fixed. It was fine
-> before. New broken code is not acceptable.
->
->> Since file does not need them, just turn them off for
->> the moment.  Non-file layouts will probably have to trigger them in
->> some fashion at close.
->>
->
-> Rrrr. Are we back to this argument. We stand down win an argument
-> and 2 weeks later you are back on it has if we never talked about it.
->
-> NO!!! only "coherent clustered filesystems" do not need them. It has
-> nothing to do with layout type. A none-clustered aggregated parallel
-> filesystem will need them just the same as blocks and objects.
->
-> AND THE STD DOES NOT GIVE YOU A CHOICE!!!
+Either a bad server reply, or our ignoring of multiple array segments in
+a reply, can cause a reply to not meet our requirements.  Ensure
+that we ignore such replies.
 
-You keep saying this, but just repeating it does not convince me.
-Could you please take the time to explain *why* they are needed.  A
-separate thread in the ietf list would be great.  Because right now,
-Andy and I are coding and preparing for submission to Trond under the
-assumption that they are possibly a nice optimization, but are never
-actually needed for the file layout.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   11 +++++++++++
+ 1 files changed, 11 insertions(+), 0 deletions(-)
 
-Fred
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index b11b46a..18f9ddc 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -651,6 +651,17 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	struct inode *ino = lo->plh_inode;
+ 	int status = 0;
+ 
++	/* Verify we got what we asked for.
++	 * Note that because the xdr parsing only accepts a single
++	 * element array, this can fail even if the server is behaving
++	 * correctly.
++	 */
++	if (lgp->args.range.iomode > res->range.iomode ||
++	    res->range.offset != 0 ||
++	    res->range.length != NFS4_MAX_UINT64) {
++		status = -EINVAL;
++		goto out;
++	}
+ 	/* Inject layout blob into I/O device driver */
+ 	lseg = NFS_SERVER(ino)->pnfs_curr_ld->alloc_lseg(lo, res);
+ 	if (!lseg || IS_ERR(lseg)) {
+-- 
+1.7.2.1
 
->
->> A better solution is to just push all the layoutcommit code outside
->> of the pnfs-submit branch.  This is really just a stop gap until code
->> is rearranged to make that easier.
->>
->
-> Than all this is not finished. Please keep it in the shops until the
-> final solution is presented and we can actually see the new compared
-> to the old system. Until then we should keep what worked and was tested.
->
-> Boaz
->
->> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->> ---
->>  fs/nfs/nfs4proc.c |    1 -
->>  1 files changed, 0 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 9b15535..224bdfe 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -3098,7 +3098,6 @@ static void pnfs4_update_write_done(struct nfs_inode *nfsi, struct nfs_write_dat
->>  {
->>  #ifdef CONFIG_NFS_V4_1
->>       pnfs_update_last_write(nfsi, data->args.offset, data->res.count);
->> -     pnfs_need_layoutcommit(nfsi, data->args.context);
->>  #endif /* CONFIG_NFS_V4_1 */
->>  }
->>
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
