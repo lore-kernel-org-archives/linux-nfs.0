@@ -1,335 +1,199 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55931 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:40715 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757234Ab0LKAUP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Dec 2010 19:20:15 -0500
-Date: Fri, 10 Dec 2010 19:20:13 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: backchannel transport
-Message-ID: <20101211002013.GF18141@fieldses.org>
-References: <20101201175348.GF6832@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101201175348.GF6832@fieldses.org>
+	id S1753184Ab0LWMrz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 07:47:55 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 05/15] pnfs: change layout state seqlock to a spinlock
+Date: Thu, 23 Dec 2010 07:47:36 -0500
+Message-Id: <1293108466-31768-6-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
+References: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Dec 01, 2010 at 12:53:49PM -0500, bfields wrote:
-> This is just a small question about the nfsd-side backchannel code that
-> touches the rpc client code:
-> 
-> There's nothing preventing multiple backchannels from sharing the same
-> tcp connection, either simultaneously or over time; from rfc 5661
-> section 2.10.3.1:
-> 
-> 	A connection's association with a session is not exclusive.  A
-> 	connection associated with the channel(s) of one session may be
-> 	simultaneously associated with the channel(s) of other sessions
-> 	including sessions associated with other client IDs.
-> 
-> The current code creates a new rpc_xprt every time an rpc client is
-> created for a backchannel.
-> 
-> But that's wrong: if two sessions share a backchannel, then they don't
-> necessarily want to share the same rpc_client, but they *do* need to
-> share the same rpc_xprt, to prevent xid reuse at least.
-> 
-> So I think we should create one rpc_xprt the first time we use a
-> connection for a backchannel, and then keep it around as long as the
-> connection is open (in case the client reassociates it with a
-> backchannel again).
-> 
-> rpc_clone_client() allows clients to share an rpc_xprt.  I could use
-> that for example by keeping an nfsd-level data structure allowing me to
-> look up rpc_client's by connection.
-> 
-> However, the server- and client- side xprt's already reference each
-> other--the client's pointer to the server is used to send requests, and
-> the server's pointer to the client is used to match incoming replies
-> with requests.
-> 
-> So it would seem simplest to use the already existing pointer from the
-> svc_xprt back to the rpc_xprt.
-> 
-> So, that would mean:
-> 
-> 	- Allowing nfsd to create a client with the already-existing
-> 	  rpc_xprt--maybe export rpc_new_client()?  Or allow the
-> 	  xprt->setup method to find an already-existing transport?
-> 	- Keeping any backchannel rpc_xprt around somehow as long as the
-> 	  connection is open.  Maybe let svc_xprt keep a reference on
-> 	  the client xprt until svc_delete_xprt()??
+This prepares for future changes, where the layout state needs
+to change atomically with several other variables.  In particular,
+it will need to know if lo->segs is empty, as we test that instead
+of manipulating the NFS_LAYOUT_STATEID_SET bit.  Moreover, the
+layoutstateid is not really a read-mostly structure, as it is
+written almost as often as it is read.
 
-So that would be something like the following.
+The behavior of pnfs_get_layout_stateid is also slightly changed, so that
+it no longer changes the stateid.  Its name is changed to +pnfs_choose_layoutget_stateid.
 
-?
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4xdr.c |    2 +-
+ fs/nfs/pnfs.c    |   79 +++++++++++++++--------------------------------------
+ fs/nfs/pnfs.h    |    7 ++---
+ 3 files changed, 27 insertions(+), 61 deletions(-)
 
---b.
-
-commit 1eb4f46889940b861805742d67ba114e5de7ddf0
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Nov 30 19:15:01 2010 -0500
-
-    rpc: move sk_bc_xprt to svc_xprt
-    
-    This seems obviously transport-level information even if it's currently
-    used only by the server socket code.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index aea0d43..92ac407 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -80,6 +80,7 @@ struct svc_xprt {
- 	struct list_head	xpt_users;	/* callbacks on free */
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index f3f9915..4e28242 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1798,7 +1798,7 @@ encode_layoutget(struct xdr_stream *xdr,
+ 	p = xdr_encode_hyper(p, args->range.offset);
+ 	p = xdr_encode_hyper(p, args->range.length);
+ 	p = xdr_encode_hyper(p, args->minlength);
+-	pnfs_get_layout_stateid(&stateid, NFS_I(args->inode)->layout,
++	pnfs_choose_layoutget_stateid(&stateid, NFS_I(args->inode)->layout,
+ 				args->ctx->state);
+ 	p = xdr_encode_opaque_fixed(p, &stateid.data, NFS4_STATEID_SIZE);
+ 	*p = cpu_to_be32(args->maxcount);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 6736f9e..08313f53 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -258,9 +258,6 @@ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list)
+ 	/* List does not take a reference, so no need for put here */
+ 	list_del_init(&lo->plh_layouts);
+ 	spin_unlock(&clp->cl_lock);
+-	write_seqlock(&lo->plh_seqlock);
+-	clear_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags);
+-	write_sequnlock(&lo->plh_seqlock);
  
- 	struct net		*xpt_net;
-+	struct rpc_xprt		*xpt_bc_xprt;	/* NFSv4.1 backchannel */
- };
+ 	dprintk("%s:Return\n", __func__);
+ }
+@@ -319,69 +316,40 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+ 	}
+ }
  
- static inline void unregister_xpt_user(struct svc_xprt *xpt, struct svc_xpt_user *u)
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 1b353a7..04dba23 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -28,7 +28,6 @@ struct svc_sock {
- 	/* private TCP part */
- 	u32			sk_reclen;	/* length of record */
- 	u32			sk_tcplen;	/* current read length */
--	struct rpc_xprt		*sk_bc_xprt;	/* NFSv4.1 backchannel xprt */
- };
+-/* update lo->plh_stateid with new if is more recent
+- *
+- * lo->plh_stateid could be the open stateid, in which case we just use what given.
+- */
++/* update lo->plh_stateid with new if is more recent */
+ static void
+ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 			const nfs4_stateid *new)
+ {
+-	nfs4_stateid *old = &lo->plh_stateid;
+-	bool overwrite = false;
+-
+-	write_seqlock(&lo->plh_seqlock);
+-	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags) ||
+-	    memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
+-		overwrite = true;
+-	else {
+-		u32 oldseq, newseq;
+-
+-		oldseq = be32_to_cpu(old->stateid.seqid);
+-		newseq = be32_to_cpu(new->stateid.seqid);
+-		if ((int)(newseq - oldseq) > 0)
+-			overwrite = true;
+-	}
+-	if (overwrite)
+-		memcpy(&old->stateid, &new->stateid, sizeof(new->stateid));
+-	write_sequnlock(&lo->plh_seqlock);
+-}
+-
+-static void
+-pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
+-			      struct nfs4_state *state)
+-{
+-	int seq;
++	u32 oldseq, newseq;
+ 
+-	dprintk("--> %s\n", __func__);
+-	write_seqlock(&lo->plh_seqlock);
+-	do {
+-		seq = read_seqbegin(&state->seqlock);
+-		memcpy(lo->plh_stateid.data, state->stateid.data,
+-		       sizeof(state->stateid.data));
+-	} while (read_seqretry(&state->seqlock, seq));
+-	set_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags);
+-	write_sequnlock(&lo->plh_seqlock);
+-	dprintk("<-- %s\n", __func__);
++	oldseq = be32_to_cpu(lo->plh_stateid.stateid.seqid);
++	newseq = be32_to_cpu(new->stateid.seqid);
++	if ((int)(newseq - oldseq) > 0)
++		memcpy(&lo->plh_stateid, &new->stateid, sizeof(new->stateid));
+ }
+ 
+-void
+-pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+-			struct nfs4_state *open_state)
++int
++pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
++			      struct nfs4_state *open_state)
+ {
+-	int seq;
++	int status = 0;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	do {
+-		seq = read_seqbegin(&lo->plh_seqlock);
+-		if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags)) {
+-			/* This will trigger retry of the read */
+-			pnfs_layout_from_open_stateid(lo, open_state);
+-		} else
+-			memcpy(dst->data, lo->plh_stateid.data,
+-			       sizeof(lo->plh_stateid.data));
+-	} while (read_seqretry(&lo->plh_seqlock, seq));
++	spin_lock(&lo->plh_inode->i_lock);
++	if (list_empty(&lo->plh_segs)) {
++		int seq;
++
++		do {
++			seq = read_seqbegin(&open_state->seqlock);
++			memcpy(dst->data, open_state->stateid.data,
++			       sizeof(open_state->stateid.data));
++		} while (read_seqretry(&open_state->seqlock, seq));
++	} else
++		memcpy(dst->data, lo->plh_stateid.data, sizeof(lo->plh_stateid.data));
++	spin_unlock(&lo->plh_inode->i_lock);
+ 	dprintk("<-- %s\n", __func__);
++	return status;
+ }
  
  /*
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 07919e1..5a27d09 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -985,15 +985,17 @@ static int svc_process_calldir(struct svc_sock *svsk, struct svc_rqst *rqstp,
- 		vec[0] = rqstp->rq_arg.head[0];
- 	} else {
- 		/* REPLY */
--		if (svsk->sk_bc_xprt)
--			req = xprt_lookup_rqst(svsk->sk_bc_xprt, xid);
-+		struct rpc_xprt *bc_xprt = svsk->sk_xprt.xpt_bc_xprt;
-+
-+		if (bc_xprt)
-+			req = xprt_lookup_rqst(bc_xprt, xid);
- 
- 		if (!req) {
- 			printk(KERN_NOTICE
- 				"%s: Got unrecognized reply: "
--				"calldir 0x%x sk_bc_xprt %p xid %08x\n",
-+				"calldir 0x%x xpt_bc_xprt %p xid %08x\n",
- 				__func__, ntohl(calldir),
--				svsk->sk_bc_xprt, xid);
-+				bc_xprt, xid);
- 			vec[0] = rqstp->rq_arg.head[0];
- 			goto out;
- 		}
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index dfcab5a..18dc42e 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2379,9 +2379,9 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 	 * The backchannel uses the same socket connection as the
- 	 * forechannel
- 	 */
-+	args->bc_xprt->xpt_bc_xprt = xprt;
- 	xprt->bc_xprt = args->bc_xprt;
- 	bc_sock = container_of(args->bc_xprt, struct svc_sock, sk_xprt);
--	bc_sock->sk_bc_xprt = xprt;
- 	transport->sock = bc_sock->sk_sock;
- 	transport->inet = bc_sock->sk_sk;
- 
-
-commit 218a5c9b8fb3e9f33a3ef761dfaff2f9387686c4
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Dec 8 12:45:44 2010 -0500
-
-    rpc: keep backchannel xprt as long as server connection
-    
-    Multiple backchannels can share the same tcp connection; from rfc 5661
-    section 2.10.3.1:
-    
-    	A connection's association with a session is not exclusive.  A
-    	connection associated with the channel(s) of one session may be
-    	simultaneously associated with the channel(s) of other sessions
-    	including sessions associated with other client IDs.
-    
-    However, multiple backchannels share a connection, they must all share
-    the same xid stream (hence the same rpc_xprt); the only way we have to
-    match replies with calls at the rpc layer is using the xid.
-    
-    So, keep the rpc_xprt around as long as the connection lasts, in case
-    we're asked to use the connection as a backchannel again.
-    
-    Requests to create new backchannel clients over a given server
-    connection should results in creating new clients that reuse the
-    existing rpc_xprt.
-    
-    But to start, just reject attempts to associate multiple rpc_xprt's with
-    the same underlying bc_xprt.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index ea2ff78..597c79c 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -13,6 +13,7 @@
- #include <linux/sunrpc/stats.h>
- #include <linux/sunrpc/svc_xprt.h>
- #include <linux/sunrpc/svcsock.h>
-+#include <linux/sunrpc/xprt.h>
- 
- #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
- 
-@@ -128,6 +129,9 @@ static void svc_xprt_free(struct kref *kref)
- 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
- 		svcauth_unix_info_release(xprt);
- 	put_net(xprt->xpt_net);
-+	/* See comment on corresponding get in xs_setup_bc_tcp(): */
-+	if (xprt->xpt_bc_xprt)
-+		xprt_put(xprt->xpt_bc_xprt);
- 	xprt->xpt_ops->xpo_free(xprt);
- 	module_put(owner);
+@@ -496,7 +464,6 @@ alloc_init_layout_hdr(struct inode *ino)
+ 	lo->plh_refcount = 1;
+ 	INIT_LIST_HEAD(&lo->plh_layouts);
+ 	INIT_LIST_HEAD(&lo->plh_segs);
+-	seqlock_init(&lo->plh_seqlock);
+ 	lo->plh_inode = ino;
+ 	return lo;
  }
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 4c8f18a..749ad15 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -965,6 +965,7 @@ struct rpc_xprt *xprt_alloc(struct net *net, int size, int max_req)
- 	xprt = kzalloc(size, GFP_KERNEL);
- 	if (xprt == NULL)
- 		goto out;
-+	kref_init(&xprt->kref);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index c2f1086..1093720 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -44,7 +44,6 @@ struct pnfs_layout_segment {
+ enum {
+ 	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
+ 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
+-	NFS_LAYOUT_STATEID_SET,		/* have a valid layout stateid */
+ };
  
- 	xprt->max_reqs = max_req;
- 	xprt->slot = kcalloc(max_req, sizeof(struct rpc_rqst), GFP_KERNEL);
-@@ -1102,7 +1103,6 @@ found:
- 		return xprt;
- 	}
+ /* Per-layout driver specific registration structure */
+@@ -63,7 +62,6 @@ struct pnfs_layout_hdr {
+ 	unsigned long		plh_refcount;
+ 	struct list_head	plh_layouts;   /* other client layouts */
+ 	struct list_head	plh_segs;      /* layout segments list */
+-	seqlock_t		plh_seqlock;   /* Protects the stateid */
+ 	nfs4_stateid		plh_stateid;
+ 	unsigned long		plh_flags;
+ 	struct inode		*plh_inode;
+@@ -143,8 +141,9 @@ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_destroy_layout(struct nfs_inode *);
+ void pnfs_destroy_all_layouts(struct nfs_client *);
+ void put_layout_hdr(struct inode *inode);
+-void pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+-			     struct nfs4_state *open_state);
++int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
++				  struct pnfs_layout_hdr *lo,
++				  struct nfs4_state *open_state);
  
--	kref_init(&xprt->kref);
- 	spin_lock_init(&xprt->transport_lock);
- 	spin_lock_init(&xprt->reserve_lock);
  
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 18dc42e..0ef4dd4 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2375,16 +2375,6 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 	xprt->reestablish_timeout = 0;
- 	xprt->idle_timeout = 0;
- 
--	/*
--	 * The backchannel uses the same socket connection as the
--	 * forechannel
--	 */
--	args->bc_xprt->xpt_bc_xprt = xprt;
--	xprt->bc_xprt = args->bc_xprt;
--	bc_sock = container_of(args->bc_xprt, struct svc_sock, sk_xprt);
--	transport->sock = bc_sock->sk_sock;
--	transport->inet = bc_sock->sk_sk;
--
- 	xprt->ops = &bc_tcp_ops;
- 
- 	switch (addr->sa_family) {
-@@ -2407,6 +2397,29 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 			xprt->address_strings[RPC_DISPLAY_PROTO]);
- 
- 	/*
-+	 * The backchannel uses the same socket connection as the
-+	 * forechannel
-+	 */
-+	if (args->bc_xprt->xpt_bc_xprt) {
-+		/* XXX: actually, want to catch this case... */
-+		ret = ERR_PTR(-EINVAL);
-+		goto out_err;
-+	}
-+	/*
-+	 * Once we've associated a backchannel xprt with a connection,
-+	 * we want to keep it around as long as long as the connection
-+	 * lasts, in case we need to start using it for a backchannel
-+	 * again; this reference won't be dropped until bc_xprt is
-+	 * destroyed.
-+	 */
-+	xprt_get(xprt);
-+	args->bc_xprt->xpt_bc_xprt = xprt;
-+	xprt->bc_xprt = args->bc_xprt;
-+	bc_sock = container_of(args->bc_xprt, struct svc_sock, sk_xprt);
-+	transport->sock = bc_sock->sk_sock;
-+	transport->inet = bc_sock->sk_sk;
-+
-+	/*
- 	 * Since we don't want connections for the backchannel, we set
- 	 * the xprt status to connected
- 	 */
-@@ -2415,6 +2428,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 
- 	if (try_module_get(THIS_MODULE))
- 		return xprt;
-+	xprt_put(xprt);
- 	ret = ERR_PTR(-EINVAL);
- out_err:
- 	xprt_free(xprt);
+ static inline int lo_fail_bit(u32 iomode)
+-- 
+1.7.2.1
 
-commit ba7febf8e1ff482a6dc535e08e550053d9e34a74
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Dec 8 13:48:19 2010 -0500
-
-    rpc: allow xprt_class->setup to return a preexisting xprt
-    
-    This allows us to reuse the xprt associated with a server connection if
-    one has already been set up.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 89d10d2..bef0f53 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -321,6 +321,7 @@ void			xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie);
- #define XPRT_CLOSING		(6)
- #define XPRT_CONNECTION_ABORT	(7)
- #define XPRT_CONNECTION_CLOSE	(8)
-+#define XPRT_INITIALIZED	(9)
- 
- static inline void xprt_set_connected(struct rpc_xprt *xprt)
- {
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 749ad15..856274d 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1102,6 +1102,9 @@ found:
- 				-PTR_ERR(xprt));
- 		return xprt;
- 	}
-+	if (test_and_set_bit(XPRT_INITIALIZED, &xprt->state))
-+		/* ->setup returned a pre-initialized xprt: */
-+		return xprt;
- 
- 	spin_lock_init(&xprt->transport_lock);
- 	spin_lock_init(&xprt->reserve_lock);
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 0ef4dd4..4aced17 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2359,6 +2359,15 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 	struct svc_sock *bc_sock;
- 	struct rpc_xprt *ret;
- 
-+	if (args->bc_xprt->xpt_bc_xprt) {
-+		/*
-+		 * This server connection already has a backchannel
-+		 * export; we can't create a new one, as we wouldn't be
-+		 * able to match replies based on xid any more.  So,
-+		 * reuse the already-existing one:
-+		 */
-+		 return args->bc_xprt->xpt_bc_xprt;
-+	}
- 	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries);
- 	if (IS_ERR(xprt))
- 		return xprt;
