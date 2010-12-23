@@ -1,239 +1,187 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f42.google.com ([74.125.83.42]:44188 "EHLO
-	mail-gw0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753217Ab0LIQth (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 11:49:37 -0500
-Received: by gwb20 with SMTP id 20so2209519gwb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Dec 2010 08:49:36 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 06/11] lockd: Create client-side nlm_host cache
+Received: from mx2.netapp.com ([216.240.18.37]:57636 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753281Ab0LWRa1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 12:30:27 -0500
+From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Date: Thu, 09 Dec 2010 11:49:07 -0500
-Message-ID: <20101209164907.4513.70509.stgit@matisse.1015granger.net>
-In-Reply-To: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
-References: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 12/15] pnfs: CB_LAYOUTRECALL xdr code
+Date: Thu, 23 Dec 2010 12:29:54 -0500
+Message-Id: <1293125397-30088-13-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
+References: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-NFS clients don't need the garbage collection processing that is
-performed on nlm_host structures.  The client picks up an nlm_host at
-mount time and holds a reference to it until the file system is
-unmounted.
+This is the xdr decoding for CB_LAYOUTRECALL.
 
-Servers, on the other hand, don't have a precise way to tell when an
-nlm_host is no longer being used, so zero refcount nlm_host entries
-are left to expire in the cache after a time.
-
-Basically there's nothing holding a reference to an nlm_host between
-individual server-side NLM requests, but we can't afford the expense
-of recreating them for every new NLM request from a client.  The
-nlm_host cache adds some lifetime hysteresis to entries in the cache
-so the next time a particular nlm_host is needed, it's likely to be
-discovered by a lookup rather than created from whole cloth.
-
-With the new implementation, client nlm_host cache items are no longer
-garbage collected, and are destroyed directly by a new release
-function specialized for client entries, nlmclnt_release_host().  They
-are cached in their own data structure, and have their own lookup
-logic, simplified and specialized for client nlm_host entries.
-
-However, the client nlm_host cache still shares reboot recovery logic
-with the server nlm_host cache.  The NSM "peer rebooted" downcall for
-clients and servers still come through the same RPC call.  This is a
-legacy formal API that would be difficult to alter, and besides, the
-user space NSM implementation can't tell the difference between peers
-that are clients or servers.
-
-For this reason, the client cache continues to share the
-nlm_host_mutex (and the reboot recovery logic) with the server cache.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
+ fs/nfs/callback.h      |   20 ++++++++++++++
+ fs/nfs/callback_proc.c |    6 ++++
+ fs/nfs/callback_xdr.c  |   69 +++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 94 insertions(+), 1 deletions(-)
 
- fs/lockd/clntlock.c         |    4 +-
- fs/lockd/clntproc.c         |    6 ++-
- fs/lockd/host.c             |   81 ++++++++++++++++++++++++++++++++++++++-----
- include/linux/lockd/lockd.h |    1 +
- 4 files changed, 78 insertions(+), 14 deletions(-)
-
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index 25509eb..8d4ea83 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -79,7 +79,7 @@ EXPORT_SYMBOL_GPL(nlmclnt_init);
-  */
- void nlmclnt_done(struct nlm_host *host)
- {
--	nlm_release_host(host);
-+	nlmclnt_release_host(host);
- 	lockd_down();
- }
- EXPORT_SYMBOL_GPL(nlmclnt_done);
-@@ -273,7 +273,7 @@ restart:
- 	spin_unlock(&nlm_blocked_lock);
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index b678e3e..19570f4 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -138,6 +138,26 @@ extern __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args,
+ 					 void *dummy,
+ 					 struct cb_process_state *cps);
  
- 	/* Release host handle after use */
--	nlm_release_host(host);
-+	nlmclnt_release_host(host);
- 	lockd_down();
- 	return 0;
- }
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index fbc6617..adb45ec 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -58,7 +58,7 @@ static void nlm_put_lockowner(struct nlm_lockowner *lockowner)
- 		return;
- 	list_del(&lockowner->list);
- 	spin_unlock(&lockowner->host->h_lock);
--	nlm_release_host(lockowner->host);
-+	nlmclnt_release_host(lockowner->host);
- 	kfree(lockowner);
- }
++struct cb_layoutrecallargs {
++	struct sockaddr		*cbl_addr;
++	uint32_t		cbl_recall_type;
++	uint32_t		cbl_layout_type;
++	uint32_t		cbl_layoutchanged;
++	union {
++		struct {
++			struct nfs_fh		cbl_fh;
++			struct inode		*cbl_inode;
++			struct pnfs_layout_range cbl_range;
++			nfs4_stateid		cbl_stateid;
++		};
++		struct nfs_fsid		cbl_fsid;
++	};
++};
++
++extern unsigned nfs4_callback_layoutrecall(
++	struct cb_layoutrecallargs *args,
++	void *dummy, struct cb_process_state *cps);
++
+ extern void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
+ extern void nfs4_cb_take_slot(struct nfs_client *clp);
+ #endif /* CONFIG_NFS_V4_1 */
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index c1bead2..c1bb157 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -107,6 +107,12 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
  
-@@ -207,7 +207,7 @@ struct nlm_rqst *nlm_alloc_call(struct nlm_host *host)
- 		printk("nlm_alloc_call: failed, waiting for memory\n");
- 		schedule_timeout_interruptible(5*HZ);
- 	}
--	nlm_release_host(host);
-+	nlmclnt_release_host(host);
- 	return NULL;
- }
+ #if defined(CONFIG_NFS_V4_1)
  
-@@ -215,7 +215,7 @@ void nlmclnt_release_call(struct nlm_rqst *call)
- {
- 	if (!atomic_dec_and_test(&call->a_count))
- 		return;
--	nlm_release_host(call->a_host);
-+	nlmclnt_release_host(call->a_host);
- 	nlmclnt_release_lockargs(call);
- 	kfree(call);
- }
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 52e21c3..3aa2497 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -26,6 +26,7 @@
- #define NLM_HOST_COLLECT	(120 * HZ)
- 
- static struct hlist_head	nlm_hosts[NLM_HOST_NRHASH];
-+static struct hlist_head	nlm_client_hosts[NLM_HOST_NRHASH];
- 
- #define for_each_host(host, pos, chain, table) \
- 	for ((chain) = (table); \
-@@ -284,12 +285,76 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
- 		.hostname_len	= strlen(hostname),
- 		.noresvport	= noresvport,
- 	};
-+	struct hlist_head *chain;
-+	struct hlist_node *pos;
-+	struct nlm_host	*host;
-+	struct nsm_handle *nsm = NULL;
- 
- 	dprintk("lockd: %s(host='%s', vers=%u, proto=%s)\n", __func__,
- 			(hostname ? hostname : "<none>"), version,
- 			(protocol == IPPROTO_UDP ? "udp" : "tcp"));
- 
--	return nlm_lookup_host(&ni);
-+	mutex_lock(&nlm_host_mutex);
-+
-+	chain = &nlm_client_hosts[nlm_hash_address(sap)];
-+	hlist_for_each_entry(host, pos, chain, h_hash) {
-+		if (!rpc_cmp_addr(nlm_addr(host), sap))
-+			continue;
-+
-+		/* Same address. Share an NSM handle if we already have one */
-+		if (nsm == NULL)
-+			nsm = host->h_nsmhandle;
-+
-+		if (host->h_proto != protocol)
-+			continue;
-+		if (host->h_version != version)
-+			continue;
-+
-+		nlm_get_host(host);
-+		dprintk("lockd: %s found host %s (%s)\n", __func__,
-+			host->h_name, host->h_addrbuf);
-+		goto out;
-+	}
-+
-+	host = nlm_alloc_host(&ni, nsm);
-+	if (unlikely(host == NULL))
-+		goto out;
-+
-+	hlist_add_head(&host->h_hash, chain);
-+	nrhosts++;
-+
-+	dprintk("lockd: %s created host %s (%s)\n", __func__,
-+		host->h_name, host->h_addrbuf);
-+
-+out:
-+	mutex_unlock(&nlm_host_mutex);
-+	return host;
++__be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
++				  void *dummy, struct cb_process_state *cps)
++{
++	return cpu_to_be32(NFS4ERR_NOTSUPP); /* STUB */
 +}
 +
-+/**
-+ * nlmclnt_release_host - release client nlm_host
-+ * @host: nlm_host to release
-+ *
-+ */
-+void nlmclnt_release_host(struct nlm_host *host)
+ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+ {
+ 	if (delegation == NULL)
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 9dbccf4..1523c99 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -24,6 +24,7 @@
+ #define CB_OP_RECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+ 
+ #if defined(CONFIG_NFS_V4_1)
++#define CB_OP_LAYOUTRECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+ #define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
+ 					4 + 1 + 3)
+ #define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+@@ -223,6 +224,66 @@ out:
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ 
++static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
++				       struct xdr_stream *xdr,
++				       struct cb_layoutrecallargs *args)
 +{
-+	if (host == NULL)
-+		return;
++	__be32 *p;
++	__be32 status = 0;
++	uint32_t iomode;
 +
-+	dprintk("lockd: release client host %s\n", host->h_name);
-+
-+	BUG_ON(atomic_read(&host->h_count) < 0);
-+	BUG_ON(host->h_server);
-+
-+	if (atomic_dec_and_test(&host->h_count)) {
-+		BUG_ON(!list_empty(&host->h_lockowners));
-+		BUG_ON(!list_empty(&host->h_granted));
-+		BUG_ON(!list_empty(&host->h_reclaim));
-+
-+		mutex_lock(&nlm_host_mutex);
-+		nlm_destroy_host_locked(host);
-+		mutex_unlock(&nlm_host_mutex);
-+	}
- }
- 
- /**
-@@ -511,16 +576,14 @@ void nlm_host_rebooted(const struct nlm_reboot *info)
- 	 * To avoid processing a host several times, we match the nsmstate.
- 	 */
- 	while ((host = next_host_state(nlm_hosts, nsm, info)) != NULL) {
--		if (host->h_server) {
--			/* We're server for this guy, just ditch
--			 * all the locks he held. */
--			nlmsvc_free_host_resources(host);
--		} else {
--			/* He's the server, initiate lock recovery. */
--			nlmclnt_recovery(host);
--		}
-+		nlmsvc_free_host_resources(host);
- 		nlm_release_host(host);
- 	}
-+	while ((host = next_host_state(nlm_client_hosts, nsm, info)) != NULL) {
-+		nlmclnt_recovery(host);
-+		nlmclnt_release_host(host);
++	args->cbl_addr = svc_addr(rqstp);
++	p = read_buf(xdr, 4 * sizeof(uint32_t));
++	if (unlikely(p == NULL)) {
++		status = htonl(NFS4ERR_BADXDR);
++		goto out;
 +	}
 +
- 	nsm_release(nsm);
- }
++	args->cbl_layout_type = ntohl(*p++);
++	/* Depite the spec's xdr, iomode really belongs in the FILE switch,
++	 * as it is unuseable and ignored with the other types.
++	 */
++	iomode = ntohl(*p++);
++	args->cbl_layoutchanged = ntohl(*p++);
++	args->cbl_recall_type = ntohl(*p++);
++
++	if (args->cbl_recall_type == RETURN_FILE) {
++		args->cbl_range.iomode = iomode;
++		status = decode_fh(xdr, &args->cbl_fh);
++		if (unlikely(status != 0))
++			goto out;
++
++		p = read_buf(xdr, 2 * sizeof(uint64_t));
++		if (unlikely(p == NULL)) {
++			status = htonl(NFS4ERR_BADXDR);
++			goto out;
++		}
++		p = xdr_decode_hyper(p, &args->cbl_range.offset);
++		p = xdr_decode_hyper(p, &args->cbl_range.length);
++		status = decode_stateid(xdr, &args->cbl_stateid);
++		if (unlikely(status != 0))
++			goto out;
++	} else if (args->cbl_recall_type == RETURN_FSID) {
++		p = read_buf(xdr, 2 * sizeof(uint64_t));
++		if (unlikely(p == NULL)) {
++			status = htonl(NFS4ERR_BADXDR);
++			goto out;
++		}
++		p = xdr_decode_hyper(p, &args->cbl_fsid.major);
++		p = xdr_decode_hyper(p, &args->cbl_fsid.minor);
++	} else if (args->cbl_recall_type != RETURN_ALL) {
++		status = htonl(NFS4ERR_BADXDR);
++		goto out;
++	}
++	dprintk("%s: ltype 0x%x iomode %d changed %d recall_type %d\n",
++		__func__,
++		args->cbl_layout_type, iomode,
++		args->cbl_layoutchanged, args->cbl_recall_type);
++out:
++	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
++	return status;
++}
++
+ static __be32 decode_sessionid(struct xdr_stream *xdr,
+ 				 struct nfs4_sessionid *sid)
+ {
+@@ -577,10 +638,10 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
+ 	case OP_CB_SEQUENCE:
+ 	case OP_CB_RECALL_ANY:
+ 	case OP_CB_RECALL_SLOT:
++	case OP_CB_LAYOUTRECALL:
+ 		*op = &callback_ops[op_nr];
+ 		break;
  
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index a32ba62..6c2a0e2 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -223,6 +223,7 @@ struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
- 					const u32 version,
- 					const char *hostname,
- 					int noresvport);
-+void		  nlmclnt_release_host(struct nlm_host *);
- struct nlm_host  *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 					const char *hostname,
- 					const size_t hostname_len);
+-	case OP_CB_LAYOUTRECALL:
+ 	case OP_CB_NOTIFY_DEVICEID:
+ 	case OP_CB_NOTIFY:
+ 	case OP_CB_PUSH_DELEG:
+@@ -784,6 +845,12 @@ static struct callback_op callback_ops[] = {
+ 		.res_maxsize = CB_OP_RECALL_RES_MAXSZ,
+ 	},
+ #if defined(CONFIG_NFS_V4_1)
++	[OP_CB_LAYOUTRECALL] = {
++		.process_op = (callback_process_op_t)nfs4_callback_layoutrecall,
++		.decode_args =
++			(callback_decode_arg_t)decode_layoutrecall_args,
++		.res_maxsize = CB_OP_LAYOUTRECALL_RES_MAXSZ,
++	},
+ 	[OP_CB_SEQUENCE] = {
+ 		.process_op = (callback_process_op_t)nfs4_callback_sequence,
+ 		.decode_args = (callback_decode_arg_t)decode_cb_sequence_args,
+-- 
+1.7.2.1
 
