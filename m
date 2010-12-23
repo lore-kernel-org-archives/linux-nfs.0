@@ -1,87 +1,212 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:33993 "EHLO fieldses.org"
+Received: from mx06.aalto.fi ([130.233.222.105]:34020 "EHLO mx06.aalto.fi"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751077Ab0LOW3b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Dec 2010 17:29:31 -0500
-Date: Wed, 15 Dec 2010 17:29:28 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org
-Subject: Re: System CPU increasing on idle 2.6.36
-Message-ID: <20101215222928.GE9646@fieldses.org>
-References: <20101215180813.GA7773@fieldses.org>
- <1292437333.3068.14.camel@heimdal.trondhjem.org>
- <20101215183816.GB7773@fieldses.org>
- <1292441630.3068.55.camel@heimdal.trondhjem.org>
- <20101215194956.GA9646@fieldses.org>
- <1292443028.3068.60.camel@heimdal.trondhjem.org>
- <20101215201908.GB9646@fieldses.org>
- <1292445128.3068.71.camel@heimdal.trondhjem.org>
- <20101215214854.GC9646@fieldses.org>
- <1292451346.3068.93.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1292451346.3068.93.camel@heimdal.trondhjem.org>
+	id S1752455Ab0LWKzS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 05:55:18 -0500
+Date: Thu, 23 Dec 2010 12:55:16 +0200
+From: Timo Aaltonen <timo.aaltonen@aalto.fi>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Support AD style kerberos automatically in rpc.gss
+In-Reply-To: <20101222192227.GA31112@obsidianresearch.com>
+Message-ID: <alpine.DEB.2.00.1012231240220.20516@kosh.org.aalto.fi>
+References: <20101222192227.GA31112@obsidianresearch.com>
+Content-Type: text/plain; format=flowed; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Dec 15, 2010 at 05:15:46PM -0500, Trond Myklebust wrote:
-> On Wed, 2010-12-15 at 16:48 -0500, J. Bruce Fields wrote:
-> > On Wed, Dec 15, 2010 at 03:32:08PM -0500, Trond Myklebust wrote:
-> > > On Wed, 2010-12-15 at 15:19 -0500, J. Bruce Fields wrote:
-> > > 
-> > > > Could you give an example of a case in which all of the following are
-> > > > true?:
-> > > > 	- the administrator explicitly requests numeric id's (for
-> > > > 	  example by setting nfs4_disable_idmapping).
-> > > > 	- numeric id's work as long as the client uses auth_sys.
-> > > > 	- they no longer work if that same client switches to krb5.
-> > > 
-> > > Trivially:
-> > > 
-> > > Server /etc/passwd maps trondmy to uid 1000
-> > > Client /etc/passwd maps trondmy to uid 500
-> > 
-> > I understand that any problematic case would involve different
-> > name<->id mappings on the two sides.
-> > 
-> > What I don't understand--and apologies if I'm being dense!--is what
-> > sequence of operations exactly would work in this situation if we
-> > automatically switch idmapping based on auth flavor, and would not work
-> > without it.
-> > 
-> > Are you imagining a future client that is also able to switch auth
-> > flavors on the fly (say, based on whether a krb5 ticket exists or not),
-> > or just unmounting and remounting to change the security flavor?
-> > 
-> > Are you thinking of creating a file under one flavor and accessing it
-> > under another?
-> 
-> Neither.
-> 
-> I'm quite happy to accept that my user may map to completely different
-> identities on the server as I switch authentication schemes. Fixing that
-> is indeed the administrator's problem.
-> 
-> I'm thinking of the simple case of creating a file, and then expecting
-> to see that file appear labelled with the correct user id when I do 'ls
-> -l'. That should work irrespectively of the authentication scheme that I
-> choose.
-> 
-> In other words, if I authenticate as 'trond' on my client or to the
-> kerberos server, then do
-> 
->         touch foo
->         ls -l foo
-> 
-> I should see a file that is owned by 'trond'.
+On Wed, 22 Dec 2010, Jason Gunthorpe wrote:
 
-Thanks, understood; but then, this isn't about behavior that occurs when
-a user *changes* authentication flavors.
+> An Active Directory KDC will only grant a TGT for UPNs, getting
+> a TGT for SPNs is not possible:
+>
+> $ kinit -k host/ib5@ADS.ORCORP.CA
+> kinit: Client not found in Kerberos database while getting initial credentials
+>
+> The correct thing to do for machine credentials is to get a TGT
+> for the computer UPN <HOSTNAME>$@REALM:
+> $ kinit -k IB5\$
+> $ klist
+> 12/22/10 11:43:47  12/22/10 21:43:47  krbtgt/ADS.ORCORP.CA@ADS.ORCORP.CA
+>
+> Samba automatically creates /etc/krb5.keytab entry for the computer UPN,
+> this patch makes gssd_refresh_krb5_machine_credential prefer it above
+> the SPNs if it is present.
+>
+> The net result is that nfs client works automatically out of the box
+> if samba has been used to setup kerberos via 'net ads join' 'net ads
+> keytab create'
+>
+> Tested using Windows Server 2003 R2 as the AD server.
 
-It's about what happens when someone sets nfs4_disable_idmapping but
-shouldn't have.
+This is basically what I did earlier, see:
 
-Is that an important case to care about?
+http://marc.info/?l=linux-nfs&m=128108638228797&w=2
 
---b.
+though I still haven't cleaned it up as promised..
+
+
+> Signed-off-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+> ---
+> utils/gssd/gssd.man    |    5 ++++
+> utils/gssd/krb5_util.c |   62 ++++++++++++++++++++++++++++++++++--------------
+> 2 files changed, 49 insertions(+), 18 deletions(-)
+>
+> I'm still looking into what to do for AD in the server case when
+> process_krb5_upcall is called with service == nfs. Some references
+> suggest setting AD's userPrincipalName to the nfs SPN, but it would be
+> really nice if that wasn't necessary.
+>
+> Shouldn't it be possible to use the a ticket provided from the client
+> to send back an unsolicted reply??
+>
+> Thanks,
+> Jason
+>
+> diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+> index 0a23cd6..073379d 100644
+> --- a/utils/gssd/gssd.man
+> +++ b/utils/gssd/gssd.man
+> @@ -53,6 +53,8 @@ To be more consistent with other implementations, we now look for
+> specific keytab entries.  The search order for keytabs to be used
+> for "machine credentials" is now:
+> .br
+> +  <HOSTNAME>$@<REALM>
+> +.br
+>   root/<hostname>@<REALM>
+> .br
+>   nfs/<hostname>@<REALM>
+> @@ -64,6 +66,9 @@ for "machine credentials" is now:
+>   nfs/<anyname>@<REALM>
+> .br
+>   host/<anyname>@<REALM>
+> +.IP
+> +If this search order does not use the correct key then provide a
+> +keytab file that contains only correct keys.
+> .TP
+> .B -p path
+> Tells
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index f071600..4b13fa1 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -768,6 +768,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+> 	krb5_error_code code;
+> 	char **realmnames = NULL;
+> 	char myhostname[NI_MAXHOST], targethostname[NI_MAXHOST];
+> +	char myhostad[NI_MAXHOST+1];
+> 	int i, j, retval;
+> 	char *default_realm = NULL;
+> 	char *realm;
+> @@ -789,6 +790,14 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+> 		printerr(1, "%s while getting local hostname\n", k5err);
+> 		goto out;
+> 	}
+> +
+> +	/* Compute the active directory machine name HOST$ */
+> +	strcpy(myhostad, myhostname);
+> +	for (i = 0; myhostad[i] != 0; ++i)
+> +		myhostad[i] = toupper(myhostad[i]);
+> +	myhostad[i] = '$';
+> +	myhostad[i+1] = 0;
+> +
+> 	retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
+> 	if (retval)
+> 		goto out;
+> @@ -833,32 +842,47 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+> 		if (strcmp(realm, default_realm) == 0)
+> 			tried_default = 1;
+> 		for (j = 0; svcnames[j] != NULL; j++) {
+> -			code = krb5_build_principal_ext(context, &princ,
+> -							strlen(realm),
+> -							realm,
+> -							strlen(svcnames[j]),
+> -							svcnames[j],
+> -							strlen(myhostname),
+> -							myhostname,
+> -							NULL);
+> +			char spn[300];
+> +
+> +			/*
+> +			 * The special svcname "$" means 'try the active
+> +			 * directory machine account'
+> +			 */
+> +			if (strcmp(svcnames[j],"$") == 0) {
+> +				snprintf(spn, sizeof(spn), "%s@%s", myhostad, realm);
+> +				code = krb5_build_principal_ext(context, &princ,
+> +								strlen(realm),
+> +								realm,
+> +								strlen(myhostad),
+> +								myhostad,
+> +								NULL);
+> +			} else {
+> +				snprintf(spn, sizeof(spn), "%s/%s@%s",
+> +					 svcnames[j], myhostname, realm);
+> +				code = krb5_build_principal_ext(context, &princ,
+> +								strlen(realm),
+> +								realm,
+> +								strlen(svcnames[j]),
+> +								svcnames[j],
+> +								strlen(myhostname),
+> +								myhostname,
+> +								NULL);
+> +			}
+> +
+> 			if (code) {
+> 				k5err = gssd_k5_err_msg(context, code);
+> -				printerr(1, "%s while building principal for "
+> -					 "'%s/%s@%s'\n", k5err, svcnames[j],
+> -					 myhostname, realm);
+> +				printerr(1, "%s while building principal for '%s'\n",
+> +					 k5err, spn);
+> 				continue;
+> 			}
+> 			code = krb5_kt_get_entry(context, kt, princ, 0, 0, kte);
+> 			krb5_free_principal(context, princ);
+> 			if (code) {
+> 				k5err = gssd_k5_err_msg(context, code);
+> -				printerr(3, "%s while getting keytab entry for "
+> -					 "'%s/%s@%s'\n", k5err, svcnames[j],
+> -					 myhostname, realm);
+> +				printerr(3, "%s while getting keytab entry for '%s'\n",
+> +					 k5err, spn);
+> 			} else {
+> -				printerr(3, "Success getting keytab entry for "
+> -					 "'%s/%s@%s'\n",
+> -					 svcnames[j], myhostname, realm);
+> +				printerr(3, "Success getting keytab entry for '%s'\n",spn);
+> 				retval = 0;
+> 				goto out;
+> 			}
+> @@ -870,6 +894,8 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+> 		 */
+> 		for (j = 0; svcnames[j] != NULL; j++) {
+> 			int found = 0;
+> +			if (strcmp(svcnames[j],"$") == 0)
+> +				continue;
+> 			code = gssd_search_krb5_keytab(context, kt, realm,
+> 						       svcnames[j], &found, kte);
+> 			if (!code && found) {
+> @@ -1160,7 +1186,7 @@ gssd_refresh_krb5_machine_credential(char *hostname,
+> 	krb5_keytab kt = NULL;;
+> 	int retval = 0;
+> 	char *k5err = NULL;
+> -	const char *svcnames[4] = { "root", "nfs", "host", NULL };
+> +	const char *svcnames[5] = { "$", "root", "nfs", "host", NULL };
+>
+> 	/*
+> 	 * If a specific service name was specified, use it.
+> -- 
+> 1.7.1
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
+-- 
+Timo Aaltonen
+Systems Specialist, Aalto IT
