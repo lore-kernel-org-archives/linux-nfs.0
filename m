@@ -1,69 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:16564 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753571Ab0LPMrx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 07:47:53 -0500
-Message-ID: <4D0A0A77.9010802@panasas.com>
-Date: Thu, 16 Dec 2010 14:47:51 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>, Benny Halevy <bhalevy@panasas.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 22/22] pnfs-submit: Turn off layoutcommits
-References: <1291944177-7819-1-git-send-email-iisaman@netapp.com> <1291944177-7819-23-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1291944177-7819-23-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:42898 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751541Ab0LWATV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2010 19:19:21 -0500
+Subject: Re: [PATCH 15/15] pnfs: layout roc code
+Content-Type: text/plain; charset=us-ascii
+From: Fred Isaman <iisaman@netapp.com>
+In-Reply-To: <1293055210.6422.23.camel@heimdal.trondhjem.org>
+Date: Wed, 22 Dec 2010 19:19:19 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <8EF8E6E3-D746-4E1E-BFCB-143921A5A76E@netapp.com>
+References: <1292990449-20057-1-git-send-email-iisaman@netapp.com> <1292990449-20057-16-git-send-email-iisaman@netapp.com> <1293055210.6422.23.camel@heimdal.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 12/10/2010 03:22 AM, Fred Isaman wrote:
-> Recent changes to close can delay pending layoutcommit until umount,
-> when the async layoutcommits can come tricklng in after we have destroyed
-> the session.  
 
-Then "Recent changes" are broken and should be fixed. It was fine
-before. New broken code is not acceptable.
+On Dec 22, 2010, at 5:00 PM, Trond Myklebust wrote:
 
-> Since file does not need them, just turn them off for
-> the moment.  Non-file layouts will probably have to trigger them in
-> some fashion at close.
+> On Tue, 2010-12-21 at 23:00 -0500, Fred Isaman wrote:
+>> A lsyout can request return-on-close.  How this interacts with the
+>> forgetful model of never sending LAYOUTRETURNS is a bit ambiguous.
+>> We forget any layouts marked roc, and wait for them to be completely
+>> forgotten before continuing with the close.  In addition, to compensate
+>> for races with any inflight LAYOUTGETs, and the fact that we do not get
+>> any layout stateid back from the server, we set the barrier to the worst
+>> case scenario of current_seqid + number of outstanding LAYOUTGETS.
+>> 
+>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>> ---
+>> fs/nfs/inode.c         |    1 +
+>> fs/nfs/nfs4_fs.h       |    2 +-
+>> fs/nfs/nfs4proc.c      |   21 +++++++++++-
+>> fs/nfs/nfs4state.c     |    7 +++-
+>> fs/nfs/pnfs.c          |   83 ++++++++++++++++++++++++++++++++++++++++++++++++
+>> fs/nfs/pnfs.h          |   28 ++++++++++++++++
+>> include/linux/nfs_fs.h |    1 +
+>> 7 files changed, 138 insertions(+), 5 deletions(-)
+>> 
+>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>> index 43a69da..c64bb40 100644
+>> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+>> index 29d504d..90515de 100644
+>> --- a/include/linux/nfs_fs.h
+>> +++ b/include/linux/nfs_fs.h
+>> @@ -190,6 +190,7 @@ struct nfs_inode {
+>> 	struct rw_semaphore	rwsem;
+>> 
+>> 	/* pNFS layout information */
+>> +	struct rpc_wait_queue lo_rpcwaitq;
+>> 	struct pnfs_layout_hdr *layout;
+>> #endif /* CONFIG_NFS_V4*/
+>> #ifdef CONFIG_NFS_FSCACHE
 > 
-
-Rrrr. Are we back to this argument. We stand down win an argument
-and 2 weeks later you are back on it has if we never talked about it.
-
-NO!!! only "coherent clustered filesystems" do not need them. It has
-nothing to do with layout type. A none-clustered aggregated parallel
-filesystem will need them just the same as blocks and objects.
-
-AND THE STD DOES NOT GIVE YOU A CHOICE!!!
-
-> A better solution is to just push all the layoutcommit code outside
-> of the pnfs-submit branch.  This is really just a stop gap until code
-> is rearranged to make that easier.
+> I believe that I've asked this before. Why do we need a per-inode
+> rpc_wait_queue just to support pnfs? That's a significant expansion of
+> an already bloated structure.
 > 
-
-Than all this is not finished. Please keep it in the shops until the
-final solution is presented and we can actually see the new compared
-to the old system. Until then we should keep what worked and was tested.
-
-Boaz
-
-> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> ---
->  fs/nfs/nfs4proc.c |    1 -
->  1 files changed, 0 insertions(+), 1 deletions(-)
+> Can we please either make this a single per-filesystem wait queue, or
+> else possibly a pool of wait queues?
 > 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 9b15535..224bdfe 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3098,7 +3098,6 @@ static void pnfs4_update_write_done(struct nfs_inode *nfsi, struct nfs_write_dat
->  {
->  #ifdef CONFIG_NFS_V4_1
->  	pnfs_update_last_write(nfsi, data->args.offset, data->res.count);
-> -	pnfs_need_layoutcommit(nfsi, data->args.context);
->  #endif /* CONFIG_NFS_V4_1 */
->  }
->  
+> Trond
+
+This was introduced to avoid deadlocks that were occurring when we had a single wait queue.   However, the deadlocks I remember were due to a combination of the fact that, at the time, we handled EAGAIN errors of IO outside the RPC code, and we sent LAYOUTRETURN on such error.  Since we do neither now, I believe a single per-filesystem wait queue will suffice.  Anyone disagree?
+
+Fred
+
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
 
