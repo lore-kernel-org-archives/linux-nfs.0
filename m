@@ -1,156 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55229 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:57636 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757116Ab0LNS0g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Dec 2010 13:26:36 -0500
-Date: Tue, 14 Dec 2010 13:26:34 -0500
-To: Andy Adamson <andros@netapp.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH_V3 3/7] NFS associate sessionid with callback connection
-Message-ID: <20101214182634.GB22950@fieldses.org>
-References: <1292271585-3038-1-git-send-email-andros@netapp.com>
- <1292271585-3038-2-git-send-email-andros@netapp.com>
- <1292271585-3038-3-git-send-email-andros@netapp.com>
- <1292271585-3038-4-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1292271585-3038-4-git-send-email-andros@netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753398Ab0LWRaZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 12:30:25 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 09/15] pnfs: add layout to client list before sending rpc
+Date: Thu, 23 Dec 2010 12:29:51 -0500
+Message-Id: <1293125397-30088-10-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
+References: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Dec 13, 2010 at 03:19:41PM -0500, Andy Adamson wrote:
-> The sessions based callback service is started prior to the CREATE_SESSION call
-> so that it can handle CB_NULL requests which can be sent before the
-> CREATE_SESSION call returns and the session ID is known.
-> 
-> Set the callback sessionid after a sucessful CREATE_SESSION.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/callback.c               |   31 +++++++++++++++++++++++++++++++
->  fs/nfs/callback.h               |    1 +
->  fs/nfs/nfs4state.c              |    6 ++++++
->  include/linux/sunrpc/svc_xprt.h |    1 +
->  net/sunrpc/xprt.c               |    2 ++
->  5 files changed, 41 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 023a9eb..558d858 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -137,6 +137,33 @@ out_err:
->  
->  #if defined(CONFIG_NFS_V4_1)
->  /*
-> + *  * CB_SEQUENCE operations will fail until the callback sessionid is set.
-> + *   */
-> +int nfs4_set_callback_sessionid(struct nfs_client *clp)
-> +{
-> +	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
-> +	struct nfs4_sessionid *bc_sid;
-> +
-> +	if (!serv->bc_xprt)
-> +		return -EINVAL;
-> +
-> +	/* on success freed in xprt_free */
-> +	bc_sid = kmalloc(sizeof(struct nfs4_sessionid), GFP_KERNEL);
-> +	if (!bc_sid)
-> +		return -ENOMEM;
-> +	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
-> +		NFS4_MAX_SESSIONID_LEN);
-> +	spin_lock(&serv->sv_cb_lock);
-> +	serv->bc_xprt->xpt_bc_sid = bc_sid;
-> +	spin_unlock(&serv->sv_cb_lock);
-> +	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
-> +		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
-> +		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
-> +		serv->bc_xprt);
-> +	return 0;
-> +}
-> +
-> +/*
->   * The callback service for NFSv4.1 callbacks
->   */
->  static int
-> @@ -236,6 +263,10 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
->  		struct nfs_callback_data *cb_info)
->  {
->  }
-> +int nfs4_set_callback_sessionid(struct nfs_client *clp)
-> +{
-> +	return 0;
-> +}
->  #endif /* CONFIG_NFS_V4_1 */
->  
->  /*
-> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-> index 85a7cfd..58d61a8 100644
-> --- a/fs/nfs/callback.h
-> +++ b/fs/nfs/callback.h
-> @@ -137,6 +137,7 @@ extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
->  extern void nfs_callback_down(int minorversion);
->  extern int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation,
->  					    const nfs4_stateid *stateid);
-> +extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
->  #endif /* CONFIG_NFS_V4 */
->  /*
->   * nfs41: Callbacks are expected to not cause substantial latency,
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index fe61422..11290de 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -193,6 +193,12 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
->  	status = nfs4_proc_create_session(clp);
->  	if (status != 0)
->  		goto out;
-> +	status = nfs4_set_callback_sessionid(clp);
-> +	if (status != 0) {
-> +		printk(KERN_WARNING "Sessionid not set. No callback service\n");
-> +		nfs_callback_down(1);
-> +		status = 0;
-> +	}
->  	nfs41_setup_state_renewal(clp);
->  	nfs_mark_client_ready(clp, NFS_CS_READY);
->  out:
-> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> index 600c669..aa15126 100644
-> --- a/include/linux/sunrpc/svc_xprt.h
-> +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -79,6 +79,7 @@ struct svc_xprt {
->  	size_t			xpt_remotelen;	/* length of address */
->  	struct rpc_wait_queue	xpt_bc_pending;	/* backchannel wait queue */
->  	struct list_head	xpt_users;	/* callbacks on free */
-> +	void			*xpt_bc_sid;	/* back channel session ID */
->  
->  	struct net		*xpt_net;
->  };
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index 4c8f18a..18783cb 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -985,6 +985,8 @@ void xprt_free(struct rpc_xprt *xprt)
->  {
->  	put_net(xprt->xprt_net);
->  	kfree(xprt->slot);
-> +	if (xprt->bc_xprt)
-> +		kfree(xprt->bc_xprt->xpt_bc_sid);
+Since this list will be used to search for layouts to recall,
+this is necessary to avoid a race where the recall comes in,
+sees there is nothing in the client list, and prepares to return
+NOMATCHING, while the LAYOUTGET gets processed before the recall
+updates the stateid.
 
-If bc_xprt points to an svc_xprt, shouldn't you be waiting till you free
-that svc_xprt before freeing anything it points to?
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   27 +++++++++++++++++++--------
+ 1 files changed, 19 insertions(+), 8 deletions(-)
 
-The idea of leaving around that bc_xprt with its xpt_bc_sid field now
-pointing at freed memory makes me nervous....
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 60fbd41..b11b46a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -460,14 +460,6 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 	dprintk("%s:Begin\n", __func__);
+ 
+ 	assert_spin_locked(&lo->plh_inode->i_lock);
+-	if (list_empty(&lo->plh_segs)) {
+-		struct nfs_client *clp = NFS_SERVER(lo->plh_inode)->nfs_client;
+-
+-		spin_lock(&clp->cl_lock);
+-		BUG_ON(!list_empty(&lo->plh_layouts));
+-		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
+-		spin_unlock(&clp->cl_lock);
+-	}
+ 	list_for_each_entry(lp, &lo->plh_segs, pls_list) {
+ 		if (cmp_layout(lp->pls_range.iomode, lseg->pls_range.iomode) > 0)
+ 			continue;
+@@ -588,6 +580,7 @@ pnfs_update_layout(struct inode *ino,
+ 		   enum pnfs_iomode iomode)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
++	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg = NULL;
+ 
+@@ -617,9 +610,27 @@ pnfs_update_layout(struct inode *ino,
+ 	atomic_inc(&lo->plh_outstanding);
+ 
+ 	get_layout_hdr_locked(lo);
++	if (list_empty(&lo->plh_segs)) {
++		/* The lo must be on the clp list if there is any
++		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
++		 */
++		spin_lock(&clp->cl_lock);
++		BUG_ON(!list_empty(&lo->plh_layouts));
++		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
++		spin_unlock(&clp->cl_lock);
++	}
+ 	spin_unlock(&ino->i_lock);
+ 
+ 	lseg = send_layoutget(lo, ctx, iomode);
++	if (!lseg) {
++		spin_lock(&ino->i_lock);
++		if (list_empty(&lo->plh_segs)) {
++			spin_lock(&clp->cl_lock);
++			list_del_init(&lo->plh_layouts);
++			spin_unlock(&clp->cl_lock);
++		}
++		spin_unlock(&ino->i_lock);
++	}
+ 	atomic_dec(&lo->plh_outstanding);
+ 	put_layout_hdr(ino);
+ out:
+-- 
+1.7.2.1
 
---b.
-
->  	kfree(xprt);
->  }
->  EXPORT_SYMBOL_GPL(xprt_free);
-> -- 
-> 1.6.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
