@@ -1,96 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from adelie.canonical.com ([91.189.90.139]:35149 "EHLO
-	adelie.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755528Ab0LIRZg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 12:25:36 -0500
-Message-ID: <4D011109.7050505@canonical.com>
-Date: Thu, 09 Dec 2010 18:25:29 +0100
-From: Stefan Bader <stefan.bader@canonical.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [Bug 24302] Kernel crashes when repeatedly trying to mount nfs
- share that is failing
-References: <bug-24302-104@https.bugzilla.kernel.org/> <201012081830.oB8IUZ4t027387@demeter2.kernel.org> <1291835010.3067.4.camel@heimdal.trondhjem.org> <3F9D016C-9EDF-4B65-AD77-F225D5F1FA66@oracle.com> <A205A7F2-6E7C-4129-BC3A-D2AE5E38DFE6@oracle.com> <4D00AB9F.3030808@canonical.com> <B1576FB0-9865-429A-8053-673DAEE96F88@oracle.com>
-In-Reply-To: <B1576FB0-9865-429A-8053-673DAEE96F88@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:50984 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751656Ab0LWXyw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 18:54:52 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 11/15] pnfs: change lo refcounting to atomic_t
+Date: Thu, 23 Dec 2010 18:54:37 -0500
+Message-Id: <1293148481-28420-12-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
+References: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 12/09/2010 04:23 PM, Chuck Lever wrote:
-> 
-> On Dec 9, 2010, at 5:12 AM, Stefan Bader wrote:
-> 
->> On 12/09/2010 01:19 AM, Chuck Lever wrote:
->>> Hi Stefan-
->>>
->>> On Dec 8, 2010, at 3:35 PM, Chuck Lever wrote:
->>>
->>>>
->>>> On Dec 8, 2010, at 2:03 PM, Trond Myklebust wrote:
->>>>
->>>>> On Wed, 2010-12-08 at 18:30 +0000, bugzilla-daemon@bugzilla.kernel.org 
->>>>> wrote:
->>>>>> https://bugzilla.kernel.org/show_bug.cgi?id=24302
->>>>>>
->>>>>>
->>>>>> Andrew Morton <akpm@linux-foundation.org> changed:
->>>>>>
->>>>>> What    |Removed                     |Added 
->>>>>> ----------------------------------------------------------------------------
->>>>>>
->>>>>>
->> Component|Other                       |NFS
->>>>>> AssignedTo|fs_other@kernel-bugs.osdl.o |trond.myklebust@fys.uio.no |rg
->>>>>> |
->>>>>>
->>>>>>
->>>>>>
->>>>>>
->>>>>> --- Comment #8 from Andrew Morton <akpm@linux-foundation.org>
->>>>>> 2010-12-08 18:30:32 --- OK, I reassigned it to NFS.  If that was wrong
->>>>>> then at least the NFS guys should be able to help point things in the
->>>>>> right direction.
->>>>>
->>>>> <Switching to email interface. Please do not edit the bugzilla entry 
->>>>> directly, since that will lose the above Cc information>
->>
->> Missed to read the above, so I have to duplicate things a bit, sorry. Removed
->> the bugzilla cc, so the report does not get spammed.
->>
->>>>>
->>>>>
->>>>> Chuck,
->>>>>
->>>>> Stefan appears to be hitting a panic in the nfs_umount() call from 
->>>>> nfs_walk_authlist(). Can you take a look, please?
->>>>
->>>> Recv'd.  I'll have a look.
->>>
->>> Apologies in advance for the attachment.  There are a few other clean ups
->>> that can be done, but this seems to be the minimal fix.  Please try this and
->>> let us know if it addresses your panic.
->>>
->>>
->>>
->>>
->>>
->>>
->>> The faulty commit went in a while back, so this patch is probably appropriate
->>> for stable kernels (back to 2.6.31, where this was likely introduced).
->>>
->>
->> I can confirm that this was the root cause of the crash. The sha referenced as
->> the causing commit, got in with a 2.6.32-rc so I added the stable info
->> accordingly. I also added my tested-by and slightly modified the bug reference
->> format (Chuck, I hope this is ok).
-> 
-> Looks good to me.  I assume, since Trond still owns the kernel.org bugzilla, that he will close this loop?  Let me know if I need to do anything else.
-> 
-Actually someone spotted that the second array_size should probably use
-mnt_procedures3 instead of mnt_procedures. They happen to be the same size,
-so testing is ok.
+This will be required to allow us to grab reference outside of i_lock.
+While we are at it, make put_layout_hdr take the same argument as all the
+related functions.
 
--Stefan
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   48 ++++++++++++++++++++++++++----------------------
+ fs/nfs/pnfs.h |    4 ++--
+ 2 files changed, 28 insertions(+), 24 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index cd99064..32b6646 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -177,34 +177,38 @@ EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
+  * pNFS client layout cache
+  */
+ 
++/* Need to hold i_lock if caller does not already hold reference */
+ static void
+-get_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++get_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+-	assert_spin_locked(&lo->plh_inode->i_lock);
+-	lo->plh_refcount++;
++	atomic_inc(&lo->plh_refcount);
+ }
+ 
+ static void
+-put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++destroy_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+-	assert_spin_locked(&lo->plh_inode->i_lock);
+-	BUG_ON(lo->plh_refcount == 0);
++	dprintk("%s: freeing layout cache %p\n", __func__, lo);
++	BUG_ON(!list_empty(&lo->plh_layouts));
++	NFS_I(lo->plh_inode)->layout = NULL;
++	kfree(lo);
++}
+ 
+-	lo->plh_refcount--;
+-	if (!lo->plh_refcount) {
+-		dprintk("%s: freeing layout cache %p\n", __func__, lo);
+-		BUG_ON(!list_empty(&lo->plh_layouts));
+-		NFS_I(lo->plh_inode)->layout = NULL;
+-		kfree(lo);
+-	}
++static void
++put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++{
++	if (atomic_dec_and_test(&lo->plh_refcount))
++		destroy_layout_hdr(lo);
+ }
+ 
+ void
+-put_layout_hdr(struct inode *inode)
++put_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+-	spin_lock(&inode->i_lock);
+-	put_layout_hdr_locked(NFS_I(inode)->layout);
+-	spin_unlock(&inode->i_lock);
++	struct inode *inode = lo->plh_inode;
++
++	if (atomic_dec_and_lock(&lo->plh_refcount, &inode->i_lock)) {
++		destroy_layout_hdr(lo);
++		spin_unlock(&inode->i_lock);
++	}
+ }
+ 
+ static void
+@@ -223,7 +227,7 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
+ 
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+ 	/* Matched by get_layout_hdr in pnfs_insert_layout */
+-	put_layout_hdr(ino);
++	put_layout_hdr(NFS_I(ino)->layout);
+ }
+ 
+ /* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
+@@ -490,7 +494,7 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 			__func__, lseg, lseg->pls_range.iomode,
+ 			lseg->pls_range.offset, lseg->pls_range.length);
+ 	}
+-	get_layout_hdr_locked(lo);
++	get_layout_hdr(lo);
+ 
+ 	dprintk("%s:Return\n", __func__);
+ }
+@@ -503,7 +507,7 @@ alloc_init_layout_hdr(struct inode *ino)
+ 	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
+ 	if (!lo)
+ 		return NULL;
+-	lo->plh_refcount = 1;
++	atomic_set(&lo->plh_refcount, 1);
+ 	INIT_LIST_HEAD(&lo->plh_layouts);
+ 	INIT_LIST_HEAD(&lo->plh_segs);
+ 	lo->plh_inode = ino;
+@@ -618,7 +622,7 @@ pnfs_update_layout(struct inode *ino,
+ 		goto out_unlock;
+ 	atomic_inc(&lo->plh_outstanding);
+ 
+-	get_layout_hdr_locked(lo);
++	get_layout_hdr(lo);
+ 	if (list_empty(&lo->plh_segs)) {
+ 		/* The lo must be on the clp list if there is any
+ 		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
+@@ -641,7 +645,7 @@ pnfs_update_layout(struct inode *ino,
+ 		spin_unlock(&ino->i_lock);
+ 	}
+ 	atomic_dec(&lo->plh_outstanding);
+-	put_layout_hdr(ino);
++	put_layout_hdr(lo);
+ out:
+ 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+ 		nfsi->layout->plh_flags, lseg);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 698380d..8aaab56 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -65,7 +65,7 @@ struct pnfs_layoutdriver_type {
+ };
+ 
+ struct pnfs_layout_hdr {
+-	unsigned long		plh_refcount;
++	atomic_t		plh_refcount;
+ 	struct list_head	plh_layouts;   /* other client layouts */
+ 	struct list_head	plh_segs;      /* layout segments list */
+ 	nfs4_stateid		plh_stateid;
+@@ -147,7 +147,7 @@ void unset_pnfs_layoutdriver(struct nfs_server *);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_destroy_layout(struct nfs_inode *);
+ void pnfs_destroy_all_layouts(struct nfs_client *);
+-void put_layout_hdr(struct inode *inode);
++void put_layout_hdr(struct pnfs_layout_hdr *lo);
+ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ 				  struct pnfs_layout_hdr *lo,
+ 				  struct nfs4_state *open_state);
+-- 
+1.7.2.1
+
