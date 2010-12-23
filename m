@@ -1,119 +1,361 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34732 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:36393 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759164Ab0LNWrQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Dec 2010 17:47:16 -0500
-Date: Tue, 14 Dec 2010 17:47:14 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andy Adamson <andros@netapp.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH_V3 1/7] NFS dont free shared socket on backchannel put
- xprt
-Message-ID: <20101214224714.GO24828@fieldses.org>
-References: <1292271585-3038-1-git-send-email-andros@netapp.com>
- <1292271585-3038-2-git-send-email-andros@netapp.com>
- <20101214181909.GA22950@fieldses.org>
- <807D3371-AA86-4CEA-B6D0-BD5285439FB6@netapp.com>
- <20101214215601.GL24828@fieldses.org>
- <EF7B330F-CC15-4B04-9D70-B209166E4F13@netapp.com>
- <20101214223631.GN24828@fieldses.org>
- <EE8BADA8-5D09-47C9-BB09-E906F3EF2728@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <EE8BADA8-5D09-47C9-BB09-E906F3EF2728@netapp.com>
+	id S1753138Ab0LWMsC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 07:48:02 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 15/15] pnfs: layout roc code
+Date: Thu, 23 Dec 2010 07:47:46 -0500
+Message-Id: <1293108466-31768-16-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
+References: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Dec 14, 2010 at 05:40:19PM -0500, Andy Adamson wrote:
-> 
-> On Dec 14, 2010, at 5:36 PM, J. Bruce Fields wrote:
-> 
-> >On Tue, Dec 14, 2010 at 05:28:51PM -0500, Andy Adamson wrote:
-> >>
-> >>On Dec 14, 2010, at 4:56 PM, J. Bruce Fields wrote:
-> >>
-> >>>On Tue, Dec 14, 2010 at 04:44:58PM -0500, Andy Adamson wrote:
-> >>>>
-> >>>>On Dec 14, 2010, at 1:19 PM, J. Bruce Fields wrote:
-> >>>>
-> >>>>>On Mon, Dec 13, 2010 at 03:19:39PM -0500, Andy Adamson wrote:
-> >>>>>>Fixes this bug:
-> >>>>>>fedora-64 kernel: Invoking bc_svc_procass()
-> >>>>>>fedora-64 kernel: nfs_callback_authenticate SVC_DROP
-> >>>>>>fedora-64 kernel: BUG: unable to handle kernel NULL pointer
-> >>>>>>dereference at 0000000000000018 IP: [<ffffffffa0156140>]
-> >>>>>>svc_sock_free+0x32/0x56 [sunrpc]
-> >>>>>>
-> >>>>>>Signed-off-by: Andy Adamson <andros@netapp.com>
-> >>>>>>---
-> >>>>>>fs/nfs/callback.c               |    3 +++
-> >>>>>>include/linux/sunrpc/svc_xprt.h |    1 +
-> >>>>>>net/sunrpc/svc_xprt.c           |    3 ++-
-> >>>>>>3 files changed, 6 insertions(+), 1 deletions(-)
-> >>>>>>
-> >>>>>>diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> >>>>>>index 93a8b3b..023a9eb 100644
-> >>>>>>--- a/fs/nfs/callback.c
-> >>>>>>+++ b/fs/nfs/callback.c
-> >>>>>>@@ -193,6 +193,9 @@ nfs41_callback_up(struct svc_serv *serv,
-> >>>>>>struct rpc_xprt *xprt)
-> >>>>>>	serv->bc_xprt = bc_xprt;
-> >>>>>>	xprt->bc_serv = serv;
-> >>>>>>
-> >>>>>>+	/* socket is shared with the fore channel */
-> >>>>>>+	set_bit(XPT_SHARE_SOCK, &bc_xprt->xpt_flags);
-> >>>>>>+
-> >>>>>>	INIT_LIST_HEAD(&serv->sv_cb_list);
-> >>>>>>	spin_lock_init(&serv->sv_cb_lock);
-> >>>>>>	init_waitqueue_head(&serv->sv_cb_waitq);
-> >>>>>>diff --git a/include/linux/sunrpc/svc_xprt.h
-> >>>>>>b/include/linux/sunrpc/svc_xprt.h
-> >>>>>>index aea0d43..600c669 100644
-> >>>>>>--- a/include/linux/sunrpc/svc_xprt.h
-> >>>>>>+++ b/include/linux/sunrpc/svc_xprt.h
-> >>>>>>@@ -62,6 +62,7 @@ struct svc_xprt {
-> >>>>>>#define	XPT_DETACHED	10		/* detached from tempsocks list */
-> >>>>>>#define XPT_LISTENER	11		/* listening endpoint */
-> >>>>>>#define XPT_CACHE_AUTH	12		/* cache auth info */
-> >>>>>>+#define XPT_SHARE_SOCK	13		/* fore and back channel share
-> >>>>>>socket */
-> >>>>>>
-> >>>>>>	struct svc_pool		*xpt_pool;	/* current pool iff queued */
-> >>>>>>	struct svc_serv		*xpt_server;	/* service for transport */
-> >>>>>>diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> >>>>>>index ea2ff78..8c4d9ad 100644
-> >>>>>>--- a/net/sunrpc/svc_xprt.c
-> >>>>>>+++ b/net/sunrpc/svc_xprt.c
-> >>>>>>@@ -128,7 +128,8 @@ static void svc_xprt_free(struct kref *kref)
-> >>>>>>	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
-> >>>>>>		svcauth_unix_info_release(xprt);
-> >>>>>>	put_net(xprt->xpt_net);
-> >>>>>>-	xprt->xpt_ops->xpo_free(xprt);
-> >>>>>>+	if (!test_bit(XPT_SHARE_SOCK, &xprt->xpt_flags))
-> >>>>>>+		xprt->xpt_ops->xpo_free(xprt);
-> >>>>>
-> >>>>>So when does the svc_xprt get freed if not here?
-> >>>>
-> >>>>svc_sock_destroy frees the bc_xprt, called by svc_destroy on the
-> >>>>serv->bc_xprt.
-> >>>
-> >>>Can you remove the
-> >>>
-> >>>	#if defined(CONFIG_NFS_V4_1)
-> >>>     	svc_sock_destroy(serv->bc_xprt);
-> >>>	#endif /* CONFIG_NFS_V4_1 */
-> >>>
-> >>>from svc_destroy instead?
-> >>
-> >>Instead of what?
-> >
-> >Instead of the patch above.
-> 
-> Sorry, I just don't understand how that will solve the sock_free BUG
-> above.
+A layout can request return-on-close.  How this interacts with the
+forgetful model of never sending LAYOUTRETURNS is a bit ambiguous.
+We forget any layouts marked roc, and wait for them to be completely
+forgotten before continuing with the close.  In addition, to compensate
+for races with any inflight LAYOUTGETs, and the fact that we do not get
+any layout stateid back from the server, we set the barrier to the worst
+case scenario of current_seqid + number of outstanding LAYOUTGETS.
 
-It may not, sorry, I'd need to look at it more closely.  Maybe you could
-explain in more detail how the bug happens and why?  (Which pointer is
-it that's null, and why?)
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/client.c           |   13 +++++++
+ fs/nfs/nfs4_fs.h          |    2 +-
+ fs/nfs/nfs4proc.c         |   21 ++++++++++-
+ fs/nfs/nfs4state.c        |    7 +++-
+ fs/nfs/pnfs.c             |   83 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h             |   28 +++++++++++++++
+ include/linux/nfs_fs_sb.h |    1 +
+ 7 files changed, 150 insertions(+), 5 deletions(-)
 
---b.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 17bfc25..a5cf28a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -202,10 +202,21 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
+ 
+ 	rpc_destroy_wait_queue(&clp->cl_rpcwaitq);
+ }
++
++static void pnfs_init_server(struct nfs_server *server)
++{
++	rpc_init_wait_queue(&server->roc_rpcwaitq, "pNFS ROC");
++}
++
+ #else
+ static void nfs4_shutdown_client(struct nfs_client *clp)
+ {
+ }
++
++static void pnfs_init_server(struct nfs_server *server)
++{
++}
++
+ #endif /* CONFIG_NFS_V4 */
+ 
+ /*
+@@ -973,6 +984,8 @@ static struct nfs_server *nfs_alloc_server(void)
+ 		return NULL;
+ 	}
+ 
++	pnfs_init_server(server);
++
+ 	return server;
+ }
+ 
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index d927251..e0c3cea 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -242,7 +242,7 @@ extern int nfs4_proc_async_renew(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_proc_renew(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+-extern int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait);
++extern int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc);
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+ extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 		struct nfs4_fs_locations *fs_locations, struct page *page);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3b059d3..b234642 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1838,6 +1838,8 @@ struct nfs4_closedata {
+ 	struct nfs_closeres res;
+ 	struct nfs_fattr fattr;
+ 	unsigned long timestamp;
++	bool roc;
++	u32 roc_barrier;
+ };
+ 
+ static void nfs4_free_closedata(void *data)
+@@ -1845,6 +1847,8 @@ static void nfs4_free_closedata(void *data)
+ 	struct nfs4_closedata *calldata = data;
+ 	struct nfs4_state_owner *sp = calldata->state->owner;
+ 
++	if (calldata->roc)
++		pnfs_roc_release(calldata->state->inode);
+ 	nfs4_put_open_state(calldata->state);
+ 	nfs_free_seqid(calldata->arg.seqid);
+ 	nfs4_put_state_owner(sp);
+@@ -1877,6 +1881,9 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 	 */
+ 	switch (task->tk_status) {
+ 		case 0:
++			if (calldata->roc)
++				pnfs_roc_set_barrier(state->inode,
++						     calldata->roc_barrier);
+ 			nfs_set_open_stateid(state, &calldata->res.stateid, 0);
+ 			renew_lease(server, calldata->timestamp);
+ 			nfs4_close_clear_stateid_flags(state,
+@@ -1929,8 +1936,15 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 		return;
+ 	}
+ 
+-	if (calldata->arg.fmode == 0)
++	if (calldata->arg.fmode == 0) {
+ 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLOSE];
++		if (calldata->roc &&
++		    pnfs_roc_drain(calldata->inode, &calldata->roc_barrier)) {
++			rpc_sleep_on(&NFS_SERVER(calldata->inode)->roc_rpcwaitq,
++				     task, NULL);
++			return;
++		}
++	}
+ 
+ 	nfs_fattr_init(calldata->res.fattr);
+ 	calldata->timestamp = jiffies;
+@@ -1958,7 +1972,7 @@ static const struct rpc_call_ops nfs4_close_ops = {
+  *
+  * NOTE: Caller must be holding the sp->so_owner semaphore!
+  */
+-int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait)
++int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc)
+ {
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 	struct nfs4_closedata *calldata;
+@@ -1993,6 +2007,7 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, i
+ 	calldata->res.fattr = &calldata->fattr;
+ 	calldata->res.seqid = calldata->arg.seqid;
+ 	calldata->res.server = server;
++	calldata->roc = roc;
+ 	path_get(path);
+ 	calldata->path = *path;
+ 
+@@ -2010,6 +2025,8 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, i
+ out_free_calldata:
+ 	kfree(calldata);
+ out:
++	if (roc)
++		pnfs_roc_release(state->inode);
+ 	nfs4_put_open_state(state);
+ 	nfs4_put_state_owner(sp);
+ 	return status;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index fb23a32..a472b7c 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -607,8 +607,11 @@ static void __nfs4_close(struct path *path, struct nfs4_state *state,
+ 	if (!call_close) {
+ 		nfs4_put_open_state(state);
+ 		nfs4_put_state_owner(owner);
+-	} else
+-		nfs4_do_close(path, state, gfp_mask, wait);
++	} else {
++		bool roc = pnfs_roc(state->inode);
++
++		nfs4_do_close(path, state, gfp_mask, wait, roc);
++	}
+ }
+ 
+ void nfs4_close_state(struct path *path, struct nfs4_state *state, fmode_t fmode)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 83f92fe..dd45249 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -255,6 +255,7 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
+ 			spin_unlock(&clp->cl_lock);
+ 			clear_bit(NFS_LAYOUT_BULK_RECALL, &lseg->pls_layout->plh_flags);
+ 		}
++		rpc_wake_up(&NFS_SERVER(ino)->roc_rpcwaitq);
+ 		list_add(&lseg->pls_list, tmp_list);
+ 	}
+ }
+@@ -466,6 +467,83 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 	return lseg;
+ }
+ 
++bool pnfs_roc(struct inode *ino)
++{
++	struct pnfs_layout_hdr *lo;
++	struct pnfs_layout_segment *lseg, *tmp;
++	LIST_HEAD(tmp_list);
++	bool found = false;
++
++	spin_lock(&ino->i_lock);
++	lo = NFS_I(ino)->layout;
++	if (!lo || !test_and_clear_bit(NFS_LAYOUT_ROC, &lo->plh_flags) ||
++	    test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags))
++		goto out_nolayout;
++	list_for_each_entry_safe(lseg, tmp, &lo->plh_segs, pls_list)
++		if (test_bit(NFS_LSEG_ROC, &lseg->pls_flags)) {
++			mark_lseg_invalid(lseg, &tmp_list);
++			found = true;
++		}
++	if (!found)
++		goto out_nolayout;
++	lo->plh_block_lgets++;
++	get_layout_hdr(lo); /* matched in pnfs_roc_release */
++	spin_unlock(&ino->i_lock);
++	pnfs_free_lseg_list(&tmp_list);
++	return true;
++
++out_nolayout:
++	spin_unlock(&ino->i_lock);
++	return false;
++}
++
++void pnfs_roc_release(struct inode *ino)
++{
++	struct pnfs_layout_hdr *lo;
++
++	spin_lock(&ino->i_lock);
++	lo = NFS_I(ino)->layout;
++	lo->plh_block_lgets--;
++	put_layout_hdr_locked(lo);
++	spin_unlock(&ino->i_lock);
++}
++
++void pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
++{
++	struct pnfs_layout_hdr *lo;
++
++	spin_lock(&ino->i_lock);
++	lo = NFS_I(ino)->layout;
++	if ((int)(barrier - lo->plh_barrier) > 0)
++		lo->plh_barrier = barrier;
++	spin_unlock(&ino->i_lock);
++}
++
++bool pnfs_roc_drain(struct inode *ino, u32 *barrier)
++{
++	struct nfs_inode *nfsi = NFS_I(ino);
++	struct pnfs_layout_segment *lseg;
++	bool found = false;
++
++	spin_lock(&ino->i_lock);
++	list_for_each_entry(lseg, &nfsi->layout->plh_segs, pls_list)
++		if (test_bit(NFS_LSEG_ROC, &lseg->pls_flags)) {
++			found = true;
++			break;
++		}
++	if (!found) {
++		struct pnfs_layout_hdr *lo = nfsi->layout;
++		u32 current_seqid = be32_to_cpu(lo->plh_stateid.stateid.seqid);
++
++		/* Since close does not return a layout stateid for use as
++		 * a barrier, we choose the worst-case barrier.
++		 */
++		*barrier = current_seqid + atomic_read(&lo->plh_outstanding);
++	}
++	spin_unlock(&ino->i_lock);
++	return found;
++}
++
+ /*
+  * Compare two layout segments for sorting into layout cache.
+  * We want to preferentially return RW over RO layouts, so ensure those
+@@ -724,6 +802,11 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	*lgp->lsegpp = lseg;
+ 	pnfs_insert_layout(lo, lseg);
+ 
++	if (res->return_on_close) {
++		set_bit(NFS_LSEG_ROC, &lseg->pls_flags);
++		set_bit(NFS_LAYOUT_ROC, &lo->plh_flags);
++	}
++
+ 	/* Done processing layoutget. Set the layout stateid */
+ 	pnfs_set_layout_stateid(lo, &res->stateid, false);
+ 	spin_unlock(&ino->i_lock);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 9c81d82..ab4c011 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -32,6 +32,7 @@
+ 
+ enum {
+ 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
++	NFS_LSEG_ROC,		/* roc bit received from server */
+ };
+ 
+ struct pnfs_layout_segment {
+@@ -50,6 +51,7 @@ enum {
+ 	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
+ 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
+ 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
++	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
+ 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+ };
+ 
+@@ -163,6 +165,10 @@ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ bool mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 				 struct list_head *tmp_list,
+ 				 u32 iomode);
++bool pnfs_roc(struct inode *ino);
++void pnfs_roc_release(struct inode *ino);
++void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
++bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ 
+ 
+ static inline int lo_fail_bit(u32 iomode)
+@@ -194,6 +200,28 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 	return NULL;
+ }
+ 
++static inline bool
++pnfs_roc(struct inode *ino)
++{
++	return false;
++}
++
++static inline void
++pnfs_roc_release(struct inode *ino)
++{
++}
++
++static inline void
++pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
++{
++}
++
++static inline bool
++pnfs_roc_drain(struct inode *ino, u32 *barrier)
++{
++	return false;
++}
++
+ static inline void set_pnfs_layoutdriver(struct nfs_server *s, u32 id)
+ {
+ }
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index e93ada0..7f20c0b 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -149,6 +149,7 @@ struct nfs_server {
+ 						   that are supported on this
+ 						   filesystem */
+ 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
++	struct rpc_wait_queue	roc_rpcwaitq;
+ #endif
+ 	void (*destroy)(struct nfs_server *);
+ 
+-- 
+1.7.2.1
+
