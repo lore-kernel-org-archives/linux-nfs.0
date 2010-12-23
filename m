@@ -1,87 +1,193 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:62441 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3097 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756589Ab0LAXn6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Dec 2010 18:43:58 -0500
-Subject: Re: [PATCH v2 3/3] NFS: Fix a memory leak in nfs_readdir
+	id S1751418Ab0LWTZ2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Dec 2010 14:25:28 -0500
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBNJPPpr009875
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Dec 2010 11:25:25 -0800 (PST)
+Subject: Re: [PATCH 13/15] pnfs: add CB_LAYOUTRECALL handling
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Hugh Dickins <hughd@google.com>,
-        Nick Piggin <npiggin@kernel.dk>,
-        Nick Bowler <nbowler@elliptictech.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, Rik van Riel <riel@redhat.com>,
-        Christoph Hellwig <hch@lst.de>, Al Viro <viro@zeniv.linux.org.uk>
-In-Reply-To: <AANLkTi=x1bz5sJXOGERXh8iRHNZa+_gaYOyDecg3G92+@mail.gmail.com>
-References: <1291217804-11257-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1291217804-11257-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <20101201150428.GA2879@elliptictech.com>
-	 <1291217804-11257-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1291217804-11257-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <AANLkTi=C8UtWwctEgBY2584d8fDV3OHpf+mGNnQO8ZJt@mail.gmail.com>
-	 <1291229669.6609.24.camel@heimdal.trondhjem.org>
-	 <AANLkTinsEeKK9LykVAVq60Lsb3caLDJasnKH8kcgSFVp@mail.gmail.com>
-	 <1291234251.6609.39.camel@heimdal.trondhjem.org>
-	 <20101201123341.d12ef362.akpm@linux-foundation.org>
-	 <alpine.LSU.2.00.1012011258220.18662@tigran.mtv.corp.google.com>
-	 <alpine.LSU.2.00.1012011311590.18920@tigran.mtv.corp.google.com>
-	 <20101201133831.ea6ba10a.akpm@linux-foundation.org>
-	 <1291240272.6609.50.camel@heimdal.trondhjem.org>
-	 <20101201141351.8609140b.akpm@linux-foundation.org>
-	 <AANLkTimgZPET+T16Qpj_KnpCu==97g-8+_y5dtjNOrxG@mail.gmail.com>
-	 <20101201143856.51f4f9d9.akpm@linux-foundation.org>
-	 <AANLkTi=x1bz5sJXOGERXh8iRHNZa+_gaYOyDecg3G92+@mail.gmail.com>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1293125397-30088-14-git-send-email-iisaman@netapp.com>
+References: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
+	 <1293125397-30088-14-git-send-email-iisaman@netapp.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 01 Dec 2010 18:43:56 -0500
-Message-ID: <1291247036.6609.76.camel@heimdal.trondhjem.org>
+Date: Thu, 23 Dec 2010 14:25:24 -0500
+Message-ID: <1293132324.2938.47.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2010-12-01 at 15:31 -0800, Linus Torvalds wrote:
-> On Wed, Dec 1, 2010 at 2:38 PM, Andrew Morton <akpm@linux-foundation.org> wrote:
-> >
-> > OK, the stop_machine() plugs a lot of potential race-vs-module-unload
-> > things.  But Trond is referring to races against vmscan inode reclaim,
-> > unmount, etc.
+On Thu, 2010-12-23 at 12:29 -0500, Fred Isaman wrote:
+> This is the heart of the wave 2 submission.  Add the code to trigger
+> drain and forget of any afected layouts.  In addition, we set a
+> "barrier", below which any LAYOUTGET reply is ignored.  This is to
+> compensate for the fact that we do not wait for outstanding LAYOUTGETs
+> to complete as per section 12.5.5.2.1 of RFC 5661.
 > 
-> So?
+> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+> ---
+>  fs/nfs/callback_proc.c |  119 +++++++++++++++++++++++++++++++++++++++++++++++-
+>  fs/nfs/nfs4_fs.h       |    1 +
+>  fs/nfs/pnfs.c          |   84 ++++++++++++++++++++++++++--------
+>  fs/nfs/pnfs.h          |   12 +++++
+>  4 files changed, 196 insertions(+), 20 deletions(-)
 > 
-> A filesystem module cannot be unloaded while it's still mounted.
-> 
-> And unmount doesn't succeed until all inodes are gone.
-> 
-> And getting rid of an inode doesn't succeed until all pages associated
-> with it are gone.
-> 
-> And getting rid of the pages involves locking them (whether in
-> truncate or vmscan) and removing them from all lists.
-> 
-> Ergo: vmscan has a locked page leads to the filesystem being
-> guaranteed to not be unmounted.  And that, in turn, guarantees that
-> the module won't be unloaded until the machine has gone through an
-> idle cycle.
-> 
-> It really is that simple. There's nothing subtle there. The reason
-> spin_unlock(&mapping->tree_lock) is safe is exactly the above trivial
-> chain of dependencies. And it's also exactly why
-> mapping->a_ops->freepage() would also be safe.
-> 
-> This is pretty much how all the module races are handled. Doing module
-> ref-counts per page (or per packet in flight for things like
-> networking) would be prohibitively expensive. There's no way we can
-> ever do that.
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index c1bb157..a8e8e20 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -12,6 +12,7 @@
+>  #include "callback.h"
+>  #include "delegation.h"
+>  #include "internal.h"
+> +#include "pnfs.h"
+>  
+>  #ifdef NFS_DEBUG
+>  #define NFSDBG_FACILITY NFSDBG_CALLBACK
+> @@ -107,10 +108,126 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
+>  
+>  #if defined(CONFIG_NFS_V4_1)
+>  
+> +static int initiate_layout_draining(struct nfs_client *clp,
+          ^^^ u32
 
-Although the page is locked, it may no longer be visible to the lockless
-page lookup once the radix_tree_delete() completes in
-__remove_from_page_cache.
-Furthermore, if the same routine causes mapping->nr_pages to go to zero
-before iput_final() hits truncate_inode_pages(), then the latter exits
-immediately.
+> +				    struct cb_layoutrecallargs *args)
+> +{
+> +	struct pnfs_layout_hdr *lo;
+> +	int rv = NFS4ERR_NOMATCHING_LAYOUT;
+          ^^^ u32
 
-Both these cases would appear to allow iput_final() to release the inode
-before vmscan gets round to unlocking the mapping->tree_lock since
-truncate_inode_pages() no longer thinks it has any work to do.
+> +
+> +	if (args->cbl_recall_type == RETURN_FILE) {
+> +		LIST_HEAD(free_me_list);
+> +
+> +		args->cbl_inode = NULL;
+> +		spin_lock(&clp->cl_lock);
+> +		list_for_each_entry(lo, &clp->cl_layouts, plh_layouts) {
+> +			if (nfs_compare_fh(&args->cbl_fh,
+> +					   &NFS_I(lo->plh_inode)->fh))
+> +				continue;
+> +			if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags))
+> +				rv = NFS4ERR_DELAY;
+> +			else {
+> +				/* Without this, layout can be freed as soon
+> +				 * as we release cl_lock.  Matched in
+> +				 * do_callback_layoutrecall.
+> +				 */
+> +				get_layout_hdr(lo);
+> +				args->cbl_inode = lo->plh_inode;
+> +				rv = NFS4_OK;
+> +			}
+> +			break;
+> +		}
+> +		spin_unlock(&clp->cl_lock);
+> +
+> +		spin_lock(&lo->plh_inode->i_lock);
+
+What guarantees do you have that the inode still exists here? Does the
+layout segment hold a reference to it?
+
+Also, How do you know that (!test_bit(NFS_LAYOUT_BULK_RECALL,
+&lo->plh_flags)) is still valid when you get here?
+
+> +		if (rv == NFS4_OK) {
+> +			lo->plh_block_lgets++;
+> +			mark_matching_lsegs_invalid(lo, &free_me_list,
+> +						    args->cbl_range.iomode);
+> +			if (list_empty(&lo->plh_segs))
+> +				rv = NFS4ERR_NOMATCHING_LAYOUT;
+> +		}
+> +		pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
+> +		spin_unlock(&lo->plh_inode->i_lock);
+> +		pnfs_free_lseg_list(&free_me_list);
+> +	} else {
+> +		struct pnfs_layout_hdr *tmp;
+> +		LIST_HEAD(recall_list);
+> +		LIST_HEAD(free_me_list);
+> +		struct pnfs_layout_range range = {
+> +			.iomode = IOMODE_ANY,
+> +			.offset = 0,
+> +			.length = NFS4_MAX_UINT64,
+> +		};
+> +
+> +		spin_lock(&clp->cl_lock);
+> +		list_for_each_entry(lo, &clp->cl_layouts, plh_layouts) {
+> +			if ((args->cbl_recall_type == RETURN_FSID) &&
+> +			    memcmp(&NFS_SERVER(lo->plh_inode)->fsid,
+> +				   &args->cbl_fsid, sizeof(struct nfs_fsid)))
+> +				continue;
+> +			get_layout_hdr(lo);
+> +			BUG_ON(!list_empty(&lo->plh_bulk_recall));
+> +			list_add(&lo->plh_bulk_recall, &recall_list);
+> +		}
+> +		spin_unlock(&clp->cl_lock);
+> +		list_for_each_entry_safe(lo, tmp,
+> +					 &recall_list, plh_bulk_recall) {
+> +			spin_lock(&lo->plh_inode->i_lock);
+
+Ditto. What guarantees that the inode still exists here, and how do you
+avoid races with a file return request?
+
+> +			set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
+> +			mark_matching_lsegs_invalid(lo, &free_me_list, range.iomode);
+> +			list_del_init(&lo->plh_bulk_recall);
+> +			if (!list_empty(&lo->plh_segs))
+> +				rv = NFS4_OK;
+> +			spin_unlock(&lo->plh_inode->i_lock);
+> +			put_layout_hdr(lo);
+> +		}
+> +		pnfs_free_lseg_list(&free_me_list);
+> +	}
+> +	return rv;
+> +}
+
+Shouldn't the above really be 2 different functions? One for file
+return, and the other for bulk layout returns?
+
+> +static u32 do_callback_layoutrecall(struct nfs_client *clp,
+> +				    struct cb_layoutrecallargs *args)
+> +{
+> +	u32 status, res = NFS4ERR_DELAY;
+> +
+> +	dprintk("%s enter, type=%i\n", __func__, args->cbl_recall_type);
+> +	if (test_and_set_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state))
+> +		goto out;
+> +	status = initiate_layout_draining(clp, args);
+> +	if (status)
+          ^^^^^^^^^^^
+If you are going to insist on spelling out 'rv = NFS4_OK' instead of 'rv
+= 0' in initiate_layout_draining(), then shouldn't the above test be 'if
+(status != NFS4_OK)'?
+
+Please just dump all these NFS4_OK references, and replace them with 'rv
+= 0' so that tests like the above make sense. That's consistent with the
+rest of the NFS code.
+
+> +		res = status;
+> +	else if (args->cbl_recall_type == RETURN_FILE) {
+> +		struct pnfs_layout_hdr *lo;
+> +
+> +		lo = NFS_I(args->cbl_inode)->layout;
+> +		spin_lock(&lo->plh_inode->i_lock);
+> +		lo->plh_block_lgets--;
+> +		spin_unlock(&lo->plh_inode->i_lock);
+> +		put_layout_hdr(lo);
+> +		res = NFS4ERR_DELAY;
+
+Eh? Why doesn't this belong in (the split up version of)
+initiate_layout_draining()?
+
+> +	}
+> +	clear_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state);
+> +out:
+> +	dprintk("%s returning %i\n", __func__, res);
+> +	return res;
+> +
+> +}
+> +
 
 -- 
 Trond Myklebust
