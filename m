@@ -1,84 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:33545 "EHLO shutemov.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752301Ab0L2NOc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Dec 2010 08:14:32 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v2 00/12] make rpc_pipefs be mountable multiple time
-Date: Wed, 29 Dec 2010 15:14:18 +0200
-Message-Id: <1293628470-28386-1-git-send-email-kas@openvz.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:56099 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751658Ab0LWVyi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Dec 2010 16:54:38 -0500
+Received: by mail-iw0-f174.google.com with SMTP id 9so6550865iwn.19
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Dec 2010 13:54:37 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 3/4] NFS: Introduce nfs_detach_delegations()
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 23 Dec 2010 16:54:35 -0500
+Message-ID: <20101223215435.2344.77114.stgit@matisse.1015granger.net>
+In-Reply-To: <20101223214503.2344.79300.stgit@matisse.1015granger.net>
+References: <20101223214503.2344.79300.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Prepare nfs/sunrpc stack to use multiple instances of rpc_pipefs.
-Only for client for now.
+Clean up:  Refactor code that takes clp->cl_lock and calls
+nfs_detach_delegations_locked() into its own function.
 
-Changelog:
+While we're changing the call sites, get rid of the second parameter
+and the logic in nfs_detach_delegations_locked() that uses it, since
+callers always set that parameter of nfs_detach_delegations_locked()
+to NULL.
 
- v2:
-  - one of rpc_create() calls was missed initially, fixed;
-  - change logic for get_rpc_pipefs(NULL);
-  - export get_rpc_pipefs() to be able to use from modules
-    (tnx J. Bruce Field);
-  - change "From:" and "Signed-off-by:" addresses.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
- v1:
-  - initial revision of the patchset.
+ fs/nfs/delegation.c |   41 ++++++++++++++++++++---------------------
+ 1 files changed, 20 insertions(+), 21 deletions(-)
 
-Kirill A. Shutemov (12):
-  sunrpc: mount rpc_pipefs on initialization
-  sunrpc: introduce init_rpc_pipefs
-  sunrpc: push init_rpc_pipefs up to rpc_create() callers
-  sunrpc: tag svc_serv with rpc_pipefs mount point
-  sunrpc: get rpc_pipefs mount point for svc_serv from callers
-  lockd: get rpc_pipefs mount point from callers
-  sunrpc: get rpc_pipefs mount point for rpcb_create[_local] from callers
-  sunrpc: tag pipefs field of cache_detail with rpc_pipefs mount point
-  nfs: per-rpc_pipefs dns cache
-  sunrpc: introduce get_rpc_pipefs()
-  nfs: introduce mount option 'rpcmount'
-  sunrpc: make rpc_pipefs be mountable multiple times
-
- fs/lockd/clntlock.c                |    8 +-
- fs/lockd/host.c                    |   12 +++-
- fs/lockd/mon.c                     |   13 ++-
- fs/lockd/svc.c                     |    4 +-
- fs/nfs/cache_lib.c                 |   18 +---
- fs/nfs/cache_lib.h                 |    3 +-
- fs/nfs/callback.c                  |    6 +-
- fs/nfs/callback.h                  |    3 +-
- fs/nfs/client.c                    |   45 +++++++++--
- fs/nfs/dns_resolve.c               |  128 +++++++++++++++++++++++------
- fs/nfs/dns_resolve.h               |    8 +--
- fs/nfs/inode.c                     |    8 +--
- fs/nfs/internal.h                  |   10 ++-
- fs/nfs/mount_clnt.c                |    1 +
- fs/nfs/namespace.c                 |    3 +-
- fs/nfs/nfs4namespace.c             |   20 +++--
- fs/nfs/super.c                     |   20 +++++
- fs/nfsd/nfs4callback.c             |    2 +
- fs/nfsd/nfssvc.c                   |    8 +-
- include/linux/lockd/bind.h         |    3 +-
- include/linux/lockd/lockd.h        |    4 +-
- include/linux/nfs_fs_sb.h          |    1 +
- include/linux/sunrpc/cache.h       |    9 +--
- include/linux/sunrpc/clnt.h        |    5 +-
- include/linux/sunrpc/rpc_pipe_fs.h |    6 +-
- include/linux/sunrpc/svc.h         |    9 +-
- net/sunrpc/cache.c                 |   16 +++--
- net/sunrpc/clnt.c                  |   19 +++--
- net/sunrpc/rpc_pipe.c              |  156 ++++++++++++++++++++++++++++++-----
- net/sunrpc/rpcb_clnt.c             |   19 +++--
- net/sunrpc/svc.c                   |   52 ++++++++-----
- 31 files changed, 448 insertions(+), 171 deletions(-)
-
--- 
-1.7.3.4
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 1fd62fc..521d71b 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -175,9 +175,9 @@ static struct inode *nfs_delegation_grab_inode(struct nfs_delegation *delegation
+ 	return inode;
+ }
+ 
+-static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfsi,
+-							   const nfs4_stateid *stateid,
+-							   struct nfs_client *clp)
++static struct nfs_delegation *
++nfs_detach_delegation_locked(struct nfs_inode *nfsi,
++			     struct nfs_client *clp)
+ {
+ 	struct nfs_delegation *delegation =
+ 		rcu_dereference_protected(nfsi->delegation,
+@@ -185,22 +185,29 @@ static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfs
+ 
+ 	if (delegation == NULL)
+ 		goto nomatch;
++
+ 	spin_lock(&delegation->lock);
+-	if (stateid != NULL && memcmp(delegation->stateid.data, stateid->data,
+-				sizeof(delegation->stateid.data)) != 0)
+-		goto nomatch_unlock;
+ 	list_del_rcu(&delegation->super_list);
+ 	delegation->inode = NULL;
+ 	nfsi->delegation_state = 0;
+ 	rcu_assign_pointer(nfsi->delegation, NULL);
+ 	spin_unlock(&delegation->lock);
+ 	return delegation;
+-nomatch_unlock:
+-	spin_unlock(&delegation->lock);
+ nomatch:
+ 	return NULL;
+ }
+ 
++static struct nfs_delegation *nfs_detach_delegation(struct nfs_inode *nfsi,
++						    struct nfs_client *clp)
++{
++	struct nfs_delegation *delegation;
++
++	spin_lock(&clp->cl_lock);
++	delegation = nfs_detach_delegation_locked(nfsi, clp);
++	spin_unlock(&clp->cl_lock);
++	return delegation;
++}
++
+ /*
+  * Set up a delegation on an inode
+  */
+@@ -246,7 +253,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
+ 			delegation = NULL;
+ 			goto out;
+ 		}
+-		freeme = nfs_detach_delegation_locked(nfsi, NULL, clp);
++		freeme = nfs_detach_delegation_locked(nfsi, clp);
+ 	}
+ 	list_add_rcu(&delegation->super_list, &clp->cl_delegations);
+ 	nfsi->delegation_state = delegation->type;
+@@ -307,9 +314,7 @@ restart:
+ 		inode = nfs_delegation_grab_inode(delegation);
+ 		if (inode == NULL)
+ 			continue;
+-		spin_lock(&clp->cl_lock);
+-		delegation = nfs_detach_delegation_locked(NFS_I(inode), NULL, clp);
+-		spin_unlock(&clp->cl_lock);
++		delegation = nfs_detach_delegation(NFS_I(inode), clp);
+ 		rcu_read_unlock();
+ 		if (delegation != NULL) {
+ 			filemap_flush(inode->i_mapping);
+@@ -338,9 +343,7 @@ void nfs_inode_return_delegation_noreclaim(struct inode *inode)
+ 	struct nfs_delegation *delegation;
+ 
+ 	if (rcu_access_pointer(nfsi->delegation) != NULL) {
+-		spin_lock(&clp->cl_lock);
+-		delegation = nfs_detach_delegation_locked(nfsi, NULL, clp);
+-		spin_unlock(&clp->cl_lock);
++		delegation = nfs_detach_delegation(nfsi, clp);
+ 		if (delegation != NULL)
+ 			nfs_do_return_delegation(inode, delegation, 0);
+ 	}
+@@ -354,9 +357,7 @@ int nfs_inode_return_delegation(struct inode *inode)
+ 	int err = 0;
+ 
+ 	if (rcu_access_pointer(nfsi->delegation) != NULL) {
+-		spin_lock(&clp->cl_lock);
+-		delegation = nfs_detach_delegation_locked(nfsi, NULL, clp);
+-		spin_unlock(&clp->cl_lock);
++		delegation = nfs_detach_delegation(nfsi, clp);
+ 		if (delegation != NULL) {
+ 			nfs_wb_all(inode);
+ 			err = __nfs_inode_return_delegation(inode, delegation, 1);
+@@ -530,9 +531,7 @@ restart:
+ 		inode = nfs_delegation_grab_inode(delegation);
+ 		if (inode == NULL)
+ 			continue;
+-		spin_lock(&clp->cl_lock);
+-		delegation = nfs_detach_delegation_locked(NFS_I(inode), NULL, clp);
+-		spin_unlock(&clp->cl_lock);
++		delegation = nfs_detach_delegation(NFS_I(inode), clp);
+ 		rcu_read_unlock();
+ 		if (delegation != NULL)
+ 			nfs_free_delegation(delegation);
 
