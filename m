@@ -1,46 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f170.google.com ([209.85.214.170]:34684 "EHLO
-	mail-iw0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752845Ab0LLNCi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 12 Dec 2010 08:02:38 -0500
-Received: by mail-iw0-f170.google.com with SMTP id 6so7769892iwn.1
-        for <linux-nfs@vger.kernel.org>; Sun, 12 Dec 2010 05:02:37 -0800 (PST)
-From: bookjovi@gmail.com
-To: bfields@fieldses.org, neilb@suse.de, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Cc: Jovi Zhang <bookjovi@gmail.com>
-Subject: [PATCH] nfs: add missed CONFIG_NFSD_DEPRECATED
-Date: Sat, 11 Dec 2010 00:21:17 -0500
-Message-Id: <1292044877-4701-1-git-send-email-bookjovi@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:36393 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753212Ab0LWMr5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 07:47:57 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 09/15] pnfs: add layout to client list before sending rpc
+Date: Thu, 23 Dec 2010 07:47:40 -0500
+Message-Id: <1293108466-31768-10-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
+References: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-these pieces of code only make sense when CONFIG_NFSD_DEPRECATED enabled
+Since this list will be used to search for layouts to recall,
+this is necessary to avoid a race where the recall comes in,
+sees there is nothing in the client list, and prepares to return
+NOMATCHING, while the LAYOUTGET gets processed before the recall
+updates the stateid.
 
-Signed-off-by: Jovi Zhang <bookjovi@gmail.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   27 +++++++++++++++++++--------
+ 1 files changed, 19 insertions(+), 8 deletions(-)
 
- fs/nfsd/nfsctl.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 4514ebb..6840ec3 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -127,6 +127,7 @@ static ssize_t nfsctl_transaction_write(struct file *file, const char __user *bu
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 60fbd41..b11b46a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -460,14 +460,6 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 	dprintk("%s:Begin\n", __func__);
  
- static ssize_t nfsctl_transaction_read(struct file *file, char __user *buf, size_t size, loff_t *pos)
+ 	assert_spin_locked(&lo->plh_inode->i_lock);
+-	if (list_empty(&lo->plh_segs)) {
+-		struct nfs_client *clp = NFS_SERVER(lo->plh_inode)->nfs_client;
+-
+-		spin_lock(&clp->cl_lock);
+-		BUG_ON(!list_empty(&lo->plh_layouts));
+-		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
+-		spin_unlock(&clp->cl_lock);
+-	}
+ 	list_for_each_entry(lp, &lo->plh_segs, pls_list) {
+ 		if (cmp_layout(lp->pls_range.iomode, lseg->pls_range.iomode) > 0)
+ 			continue;
+@@ -588,6 +580,7 @@ pnfs_update_layout(struct inode *ino,
+ 		   enum pnfs_iomode iomode)
  {
-+#ifdef CONFIG_NFSD_DEPRECATED
- 	static int warned;
- 	if (file->f_dentry->d_name.name[0] == '.' && !warned) {
- 		printk(KERN_INFO
-@@ -135,6 +136,7 @@ static ssize_t nfsctl_transaction_read(struct file *file, char __user *buf, size
- 		       current->comm, file->f_dentry->d_name.name);
- 		warned = 1;
- 	}
-+#endif
- 	if (! file->private_data) {
- 		/* An attempt to read a transaction file without writing
- 		 * causes a 0-byte write so that the file can return
+ 	struct nfs_inode *nfsi = NFS_I(ino);
++	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg = NULL;
+ 
+@@ -617,9 +610,27 @@ pnfs_update_layout(struct inode *ino,
+ 	atomic_inc(&lo->plh_outstanding);
+ 
+ 	get_layout_hdr_locked(lo);
++	if (list_empty(&lo->plh_segs)) {
++		/* The lo must be on the clp list if there is any
++		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
++		 */
++		spin_lock(&clp->cl_lock);
++		BUG_ON(!list_empty(&lo->plh_layouts));
++		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
++		spin_unlock(&clp->cl_lock);
++	}
+ 	spin_unlock(&ino->i_lock);
+ 
+ 	lseg = send_layoutget(lo, ctx, iomode);
++	if (!lseg) {
++		spin_lock(&ino->i_lock);
++		if (list_empty(&lo->plh_segs)) {
++			spin_lock(&clp->cl_lock);
++			list_del_init(&lo->plh_layouts);
++			spin_unlock(&clp->cl_lock);
++		}
++		spin_unlock(&ino->i_lock);
++	}
+ 	atomic_dec(&lo->plh_outstanding);
+ 	put_layout_hdr(ino);
+ out:
+-- 
+1.7.2.1
+
