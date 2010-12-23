@@ -1,164 +1,220 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43580 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:48005 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752284Ab0LOVzA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Dec 2010 16:55:00 -0500
-Date: Wed, 15 Dec 2010 16:54:59 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andy Adamson <andros@netapp.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH_V3 1/7] NFS dont free shared socket on backchannel put
- xprt
-Message-ID: <20101215215459.GD9646@fieldses.org>
-References: <1292271585-3038-1-git-send-email-andros@netapp.com>
- <1292271585-3038-2-git-send-email-andros@netapp.com>
- <20101214181909.GA22950@fieldses.org>
- <807D3371-AA86-4CEA-B6D0-BD5285439FB6@netapp.com>
- <20101214215601.GL24828@fieldses.org>
- <EF7B330F-CC15-4B04-9D70-B209166E4F13@netapp.com>
- <20101214223631.GN24828@fieldses.org>
- <EE8BADA8-5D09-47C9-BB09-E906F3EF2728@netapp.com>
- <20101214224714.GO24828@fieldses.org>
- <F2E2B248-C319-4CB3-AA89-C6F5117DF5D8@netapp.com>
+	id S1751931Ab0LWUI1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Dec 2010 15:08:27 -0500
+Subject: Re: [PATCH 13/15] pnfs: add CB_LAYOUTRECALL handling
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <F2E2B248-C319-4CB3-AA89-C6F5117DF5D8@netapp.com>
+From: Fred Isaman <iisaman@netapp.com>
+In-Reply-To: <1293132324.2938.47.camel@heimdal.trondhjem.org>
+Date: Thu, 23 Dec 2010 15:08:25 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <035D666D-8867-444D-B0BE-8F2C87D766E1@netapp.com>
+References: <1293125397-30088-1-git-send-email-iisaman@netapp.com> <1293125397-30088-14-git-send-email-iisaman@netapp.com> <1293132324.2938.47.camel@heimdal.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Dec 15, 2010 at 03:32:23PM -0500, Andy Adamson wrote:
-> 
-> On Dec 14, 2010, at 5:47 PM, J. Bruce Fields wrote:
-> 
-> >On Tue, Dec 14, 2010 at 05:40:19PM -0500, Andy Adamson wrote:
-> >>
-> >>On Dec 14, 2010, at 5:36 PM, J. Bruce Fields wrote:
-> >>
-> >>>On Tue, Dec 14, 2010 at 05:28:51PM -0500, Andy Adamson wrote:
-> >>>>
-> >>>>On Dec 14, 2010, at 4:56 PM, J. Bruce Fields wrote:
-> >>>>
-> >>>>>On Tue, Dec 14, 2010 at 04:44:58PM -0500, Andy Adamson wrote:
-> >>>>>>
-> >>>>>>On Dec 14, 2010, at 1:19 PM, J. Bruce Fields wrote:
-> >>>>>>
-> >>>>>>>On Mon, Dec 13, 2010 at 03:19:39PM -0500, Andy Adamson wrote:
-> >>>>>>>>Fixes this bug:
-> >>>>>>>>fedora-64 kernel: Invoking bc_svc_procass()
-> >>>>>>>>fedora-64 kernel: nfs_callback_authenticate SVC_DROP
-> >>>>>>>>fedora-64 kernel: BUG: unable to handle kernel NULL pointer
-> >>>>>>>>dereference at 0000000000000018 IP: [<ffffffffa0156140>]
-> >>>>>>>>svc_sock_free+0x32/0x56 [sunrpc]
-> >>>>>>>>
-> >>>>>>>>Signed-off-by: Andy Adamson <andros@netapp.com>
-> >>>>>>>>---
-> >>>>>>>>fs/nfs/callback.c               |    3 +++
-> >>>>>>>>include/linux/sunrpc/svc_xprt.h |    1 +
-> >>>>>>>>net/sunrpc/svc_xprt.c           |    3 ++-
-> >>>>>>>>3 files changed, 6 insertions(+), 1 deletions(-)
-> >>>>>>>>
-> >>>>>>>>diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> >>>>>>>>index 93a8b3b..023a9eb 100644
-> >>>>>>>>--- a/fs/nfs/callback.c
-> >>>>>>>>+++ b/fs/nfs/callback.c
-> >>>>>>>>@@ -193,6 +193,9 @@ nfs41_callback_up(struct svc_serv *serv,
-> >>>>>>>>struct rpc_xprt *xprt)
-> >>>>>>>>	serv->bc_xprt = bc_xprt;
-> >>>>>>>>	xprt->bc_serv = serv;
-> >>>>>>>>
-> >>>>>>>>+	/* socket is shared with the fore channel */
-> >>>>>>>>+	set_bit(XPT_SHARE_SOCK, &bc_xprt->xpt_flags);
-> >>>>>>>>+
-> >>>>>>>>	INIT_LIST_HEAD(&serv->sv_cb_list);
-> >>>>>>>>	spin_lock_init(&serv->sv_cb_lock);
-> >>>>>>>>	init_waitqueue_head(&serv->sv_cb_waitq);
-> >>>>>>>>diff --git a/include/linux/sunrpc/svc_xprt.h
-> >>>>>>>>b/include/linux/sunrpc/svc_xprt.h
-> >>>>>>>>index aea0d43..600c669 100644
-> >>>>>>>>--- a/include/linux/sunrpc/svc_xprt.h
-> >>>>>>>>+++ b/include/linux/sunrpc/svc_xprt.h
-> >>>>>>>>@@ -62,6 +62,7 @@ struct svc_xprt {
-> >>>>>>>>#define	XPT_DETACHED	10		/* detached from tempsocks list */
-> >>>>>>>>#define XPT_LISTENER	11		/* listening endpoint */
-> >>>>>>>>#define XPT_CACHE_AUTH	12		/* cache auth info */
-> >>>>>>>>+#define XPT_SHARE_SOCK	13		/* fore and back channel share
-> >>>>>>>>socket */
-> >>>>>>>>
-> >>>>>>>>	struct svc_pool		*xpt_pool;	/* current pool iff queued */
-> >>>>>>>>	struct svc_serv		*xpt_server;	/* service for transport */
-> >>>>>>>>diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> >>>>>>>>index ea2ff78..8c4d9ad 100644
-> >>>>>>>>--- a/net/sunrpc/svc_xprt.c
-> >>>>>>>>+++ b/net/sunrpc/svc_xprt.c
-> >>>>>>>>@@ -128,7 +128,8 @@ static void svc_xprt_free(struct
-> >>>>>>>>kref *kref)
-> >>>>>>>>	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
-> >>>>>>>>		svcauth_unix_info_release(xprt);
-> >>>>>>>>	put_net(xprt->xpt_net);
-> >>>>>>>>-	xprt->xpt_ops->xpo_free(xprt);
-> >>>>>>>>+	if (!test_bit(XPT_SHARE_SOCK, &xprt->xpt_flags))
-> >>>>>>>>+		xprt->xpt_ops->xpo_free(xprt);
-> >>>>>>>
-> >>>>>>>So when does the svc_xprt get freed if not here?
-> >>>>>>
-> >>>>>>svc_sock_destroy frees the bc_xprt, called by svc_destroy on the
-> >>>>>>serv->bc_xprt.
-> >>>>>
-> >>>>>Can you remove the
-> >>>>>
-> >>>>>	#if defined(CONFIG_NFS_V4_1)
-> >>>>>   	svc_sock_destroy(serv->bc_xprt);
-> >>>>>	#endif /* CONFIG_NFS_V4_1 */
-> >>>>>
-> >>>>>from svc_destroy instead?
-> >>>>
-> >>>>Instead of what?
-> >>>
-> >>>Instead of the patch above.
-> >>
-> >>Sorry, I just don't understand how that will solve the sock_free BUG
-> >>above.
-> >
-> >It may not, sorry, I'd need to look at it more closely.  Maybe you
-> >could
-> >explain in more detail how the bug happens and why?  (Which pointer is
-> >it that's null, and why?)
-> 
-> I force an SVC_DROP in nfs_callback_authenticate. svc_process_comon
-> then calls svc_drop -> svc_xprt_release  -> svc_xprt_put ->
-> svc_xprt_free ->  bc_xprt-> xpt_ops->xpt_free -> svc_sock_free where
-> the svc_sock->sk_sock pointer is NULL - set that way at creation.
-> 
-> After more investigation,  the bc_xprt.xpt_ref is not incremented
-> across svc processing, so if there is an error such as svc_drop,
-> svc_xprt_put call ends up trying to free the bc_xprt.
-> 
-> What we want is to look at the single bc_xprt as the "pool" of
-> svc_xprts for the back channel. It should have a lifetime equal to
-> that of the svc_serv. If we take a reference on the bc_xprt across
-> processing (e.g. "recv" takes a reference, and upon no error, drop
-> the reference after "send" then we will keep the bc_xprt around.
 
-That's starting to make more sense to me now, thanks!
+On Dec 23, 2010, at 2:25 PM, Trond Myklebust wrote:
 
-> I'm thinking of doing the following:
-> - svc_xprt_get to bc_svc_process, and an svc_xprt_put at the end of
-> bc_send.
-> - look into creating an svc_xprt_ops for the back channel and
-> perhaps adding a module_get on the xpt_class->xcl_owner in
-> nfs41_callback_up so that svc_xprt_put works correctly.
-> - calling svc_xprt_put instead of svc_sock_destroy in svc_destroy.
+> On Thu, 2010-12-23 at 12:29 -0500, Fred Isaman wrote:
+>> This is the heart of the wave 2 submission.  Add the code to trigger
+>> drain and forget of any afected layouts.  In addition, we set a
+>> "barrier", below which any LAYOUTGET reply is ignored.  This is to
+>> compensate for the fact that we do not wait for outstanding LAYOUTGETs
+>> to complete as per section 12.5.5.2.1 of RFC 5661.
+>> 
+>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>> ---
+>> fs/nfs/callback_proc.c |  119 +++++++++++++++++++++++++++++++++++++++++++++++-
+>> fs/nfs/nfs4_fs.h       |    1 +
+>> fs/nfs/pnfs.c          |   84 ++++++++++++++++++++++++++--------
+>> fs/nfs/pnfs.h          |   12 +++++
+>> 4 files changed, 196 insertions(+), 20 deletions(-)
+>> 
+>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+>> index c1bb157..a8e8e20 100644
+>> --- a/fs/nfs/callback_proc.c
+>> +++ b/fs/nfs/callback_proc.c
+>> @@ -12,6 +12,7 @@
+>> #include "callback.h"
+>> #include "delegation.h"
+>> #include "internal.h"
+>> +#include "pnfs.h"
+>> 
+>> #ifdef NFS_DEBUG
+>> #define NFSDBG_FACILITY NFSDBG_CALLBACK
+>> @@ -107,10 +108,126 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
+>> 
+>> #if defined(CONFIG_NFS_V4_1)
+>> 
+>> +static int initiate_layout_draining(struct nfs_client *clp,
+>          ^^^ u32
 > 
-> Does this sound like a good plan?
+>> +				    struct cb_layoutrecallargs *args)
+>> +{
+>> +	struct pnfs_layout_hdr *lo;
+>> +	int rv = NFS4ERR_NOMATCHING_LAYOUT;
+>          ^^^ u32
+> 
 
-I haven't thought it through, but yes, something like that sounds
-better.
+OK
 
-> I note that svc_destroy is not even called because for some reason,
-> nfs_callback_down gets an nfs_client struct with the cl_mvop-
-> >minor_version set to 0, so svc_exit_thread is not even called. I'll
-> figure this out as well.
+>> +
+>> +	if (args->cbl_recall_type == RETURN_FILE) {
+>> +		LIST_HEAD(free_me_list);
+>> +
+>> +		args->cbl_inode = NULL;
+>> +		spin_lock(&clp->cl_lock);
+>> +		list_for_each_entry(lo, &clp->cl_layouts, plh_layouts) {
+>> +			if (nfs_compare_fh(&args->cbl_fh,
+>> +					   &NFS_I(lo->plh_inode)->fh))
+>> +				continue;
+>> +			if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags))
+>> +				rv = NFS4ERR_DELAY;
+>> +			else {
+>> +				/* Without this, layout can be freed as soon
+>> +				 * as we release cl_lock.  Matched in
+>> +				 * do_callback_layoutrecall.
+>> +				 */
+>> +				get_layout_hdr(lo);
+>> +				args->cbl_inode = lo->plh_inode;
+>> +				rv = NFS4_OK;
+>> +			}
+>> +			break;
+>> +		}
+>> +		spin_unlock(&clp->cl_lock);
+>> +
+>> +		spin_lock(&lo->plh_inode->i_lock);
+> 
+> What guarantees do you have that the inode still exists here? Does the
+> layout segment hold a reference to it?
+> 
 
-Hm, OK, thanks for looking into this more closely!
+This section is why I once asked about whether the layout needs to reference the inode.  I believe the answer is nothing.  The lseg/layout definitely does not hold direct references.  I assume doing grab/put of inode here and below is acceptable?
 
---b.
+> Also, How do you know that (!test_bit(NFS_LAYOUT_BULK_RECALL,
+> &lo->plh_flags)) is still valid when you get here?
+> 
+
+Because it can not be set elsewhere while the NFS4CLNT_LAYOUTRECALL bit is set.
+
+
+>> +		if (rv == NFS4_OK) {
+>> +			lo->plh_block_lgets++;
+>> +			mark_matching_lsegs_invalid(lo, &free_me_list,
+>> +						    args->cbl_range.iomode);
+>> +			if (list_empty(&lo->plh_segs))
+>> +				rv = NFS4ERR_NOMATCHING_LAYOUT;
+>> +		}
+>> +		pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
+>> +		spin_unlock(&lo->plh_inode->i_lock);
+>> +		pnfs_free_lseg_list(&free_me_list);
+>> +	} else {
+>> +		struct pnfs_layout_hdr *tmp;
+>> +		LIST_HEAD(recall_list);
+>> +		LIST_HEAD(free_me_list);
+>> +		struct pnfs_layout_range range = {
+>> +			.iomode = IOMODE_ANY,
+>> +			.offset = 0,
+>> +			.length = NFS4_MAX_UINT64,
+>> +		};
+>> +
+>> +		spin_lock(&clp->cl_lock);
+>> +		list_for_each_entry(lo, &clp->cl_layouts, plh_layouts) {
+>> +			if ((args->cbl_recall_type == RETURN_FSID) &&
+>> +			    memcmp(&NFS_SERVER(lo->plh_inode)->fsid,
+>> +				   &args->cbl_fsid, sizeof(struct nfs_fsid)))
+>> +				continue;
+>> +			get_layout_hdr(lo);
+>> +			BUG_ON(!list_empty(&lo->plh_bulk_recall));
+>> +			list_add(&lo->plh_bulk_recall, &recall_list);
+>> +		}
+>> +		spin_unlock(&clp->cl_lock);
+>> +		list_for_each_entry_safe(lo, tmp,
+>> +					 &recall_list, plh_bulk_recall) {
+>> +			spin_lock(&lo->plh_inode->i_lock);
+> 
+> Ditto. What guarantees that the inode still exists here, and how do you
+> avoid races with a file return request?
+> 
+>> +			set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
+>> +			mark_matching_lsegs_invalid(lo, &free_me_list, range.iomode);
+>> +			list_del_init(&lo->plh_bulk_recall);
+>> +			if (!list_empty(&lo->plh_segs))
+>> +				rv = NFS4_OK;
+>> +			spin_unlock(&lo->plh_inode->i_lock);
+>> +			put_layout_hdr(lo);
+>> +		}
+>> +		pnfs_free_lseg_list(&free_me_list);
+>> +	}
+>> +	return rv;
+>> +}
+> 
+> Shouldn't the above really be 2 different functions? One for file
+> return, and the other for bulk layout returns?
+> 
+
+OK
+
+>> +static u32 do_callback_layoutrecall(struct nfs_client *clp,
+>> +				    struct cb_layoutrecallargs *args)
+>> +{
+>> +	u32 status, res = NFS4ERR_DELAY;
+>> +
+>> +	dprintk("%s enter, type=%i\n", __func__, args->cbl_recall_type);
+>> +	if (test_and_set_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state))
+>> +		goto out;
+>> +	status = initiate_layout_draining(clp, args);
+>> +	if (status)
+>          ^^^^^^^^^^^
+> If you are going to insist on spelling out 'rv = NFS4_OK' instead of 'rv
+> = 0' in initiate_layout_draining(), then shouldn't the above test be 'if
+> (status != NFS4_OK)'?
+> 
+> Please just dump all these NFS4_OK references, and replace them with 'rv
+> = 0' so that tests like the above make sense. That's consistent with the
+> rest of the NFS code.
+
+OK
+
+> 
+>> +		res = status;
+>> +	else if (args->cbl_recall_type == RETURN_FILE) {
+>> +		struct pnfs_layout_hdr *lo;
+>> +
+>> +		lo = NFS_I(args->cbl_inode)->layout;
+>> +		spin_lock(&lo->plh_inode->i_lock);
+>> +		lo->plh_block_lgets--;
+>> +		spin_unlock(&lo->plh_inode->i_lock);
+>> +		put_layout_hdr(lo);
+>> +		res = NFS4ERR_DELAY;
+> 
+> Eh? Why doesn't this belong in (the split up version of)
+> initiate_layout_draining()?
+
+You're right.  This is an artifact from when LAYOUTRETURN was sent. I'll split initiate_layout_draining and add this hunk in.
+
+Fred
+
+> 
+>> +	}
+>> +	clear_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state);
+>> +out:
+>> +	dprintk("%s returning %i\n", __func__, res);
+>> +	return res;
+>> +
+>> +}
+>> +
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+
