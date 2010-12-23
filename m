@@ -1,37 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:47269 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750810Ab0LOSbt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 13:31:49 -0500
-From: Benny Halevy <bhalevy@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:36393 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753230Ab0LWMr6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 07:47:58 -0500
+From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/9] FIXME: roc should return layout on last close
-Date: Wed, 15 Dec 2010 20:31:47 +0200
-Message-Id: <1292437907-21823-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4D0908F9.4060208@panasas.com>
-References: <4D0908F9.4060208@panasas.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 10/15] pnfs: check that partial LAYOUTGET return is ignored
+Date: Thu, 23 Dec 2010 07:47:41 -0500
+Message-Id: <1293108466-31768-11-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
+References: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-rather than on any close.
----
- fs/nfs/nfs4state.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+Either a bad server reply, or our ignoring of multiple array segments in
+a reply, can cause a reply to not meet our requirements.  Ensure
+that we ignore such replies.
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 6a1eb41..dc62928 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -622,6 +622,7 @@ static void __nfs4_close(struct path *path, struct nfs4_state *state,
- 		u32 roc_iomode;
- 		struct nfs_inode *nfsi = NFS_I(state->inode);
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   11 +++++++++++
+ 1 files changed, 11 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index b11b46a..18f9ddc 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -651,6 +651,17 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	struct inode *ino = lo->plh_inode;
+ 	int status = 0;
  
-+		/* FIXME: should return the layout only on last close */
- 		if (has_layout(nfsi) &&
- 		    (roc_iomode = pnfs_layout_roc_iomode(nfsi)) != 0) {
- 			struct pnfs_layout_range range = {
++	/* Verify we got what we asked for.
++	 * Note that because the xdr parsing only accepts a single
++	 * element array, this can fail even if the server is behaving
++	 * correctly.
++	 */
++	if (lgp->args.range.iomode > res->range.iomode ||
++	    res->range.offset != 0 ||
++	    res->range.length != NFS4_MAX_UINT64) {
++		status = -EINVAL;
++		goto out;
++	}
+ 	/* Inject layout blob into I/O device driver */
+ 	lseg = NFS_SERVER(ino)->pnfs_curr_ld->alloc_lseg(lo, res);
+ 	if (!lseg || IS_ERR(lseg)) {
 -- 
-1.7.2.3
+1.7.2.1
 
