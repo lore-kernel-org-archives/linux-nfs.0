@@ -1,74 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:60331 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:50984 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751593Ab0LVWAX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2010 17:00:23 -0500
-Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBMM0Co3011306
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Dec 2010 14:00:23 -0800 (PST)
-Subject: Re: [PATCH 15/15] pnfs: layout roc code
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1292990449-20057-16-git-send-email-iisaman@netapp.com>
-References: <1292990449-20057-1-git-send-email-iisaman@netapp.com>
-	 <1292990449-20057-16-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 22 Dec 2010 17:00:10 -0500
-Message-ID: <1293055210.6422.23.camel@heimdal.trondhjem.org>
+	id S1752030Ab0LWXyv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 18:54:51 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 09/15] pnfs: add layout to client list before sending rpc
+Date: Thu, 23 Dec 2010 18:54:35 -0500
+Message-Id: <1293148481-28420-10-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
+References: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, 2010-12-21 at 23:00 -0500, Fred Isaman wrote:
-> A lsyout can request return-on-close.  How this interacts with the
-> forgetful model of never sending LAYOUTRETURNS is a bit ambiguous.
-> We forget any layouts marked roc, and wait for them to be completely
-> forgotten before continuing with the close.  In addition, to compensate
-> for races with any inflight LAYOUTGETs, and the fact that we do not get
-> any layout stateid back from the server, we set the barrier to the worst
-> case scenario of current_seqid + number of outstanding LAYOUTGETS.
-> 
-> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> ---
->  fs/nfs/inode.c         |    1 +
->  fs/nfs/nfs4_fs.h       |    2 +-
->  fs/nfs/nfs4proc.c      |   21 +++++++++++-
->  fs/nfs/nfs4state.c     |    7 +++-
->  fs/nfs/pnfs.c          |   83 ++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfs/pnfs.h          |   28 ++++++++++++++++
->  include/linux/nfs_fs.h |    1 +
->  7 files changed, 138 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 43a69da..c64bb40 100644
-> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-> index 29d504d..90515de 100644
-> --- a/include/linux/nfs_fs.h
-> +++ b/include/linux/nfs_fs.h
-> @@ -190,6 +190,7 @@ struct nfs_inode {
->  	struct rw_semaphore	rwsem;
->  
->  	/* pNFS layout information */
-> +	struct rpc_wait_queue lo_rpcwaitq;
->  	struct pnfs_layout_hdr *layout;
->  #endif /* CONFIG_NFS_V4*/
->  #ifdef CONFIG_NFS_FSCACHE
+Since this list will be used to search for layouts to recall,
+this is necessary to avoid a race where the recall comes in,
+sees there is nothing in the client list, and prepares to return
+NOMATCHING, while the LAYOUTGET gets processed before the recall
+updates the stateid.
 
-I believe that I've asked this before. Why do we need a per-inode
-rpc_wait_queue just to support pnfs? That's a significant expansion of
-an already bloated structure.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   27 +++++++++++++++++++--------
+ 1 files changed, 19 insertions(+), 8 deletions(-)
 
-Can we please either make this a single per-filesystem wait queue, or
-else possibly a pool of wait queues?
-
-Trond
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 59ed68b..c00b673 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -469,14 +469,6 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 	dprintk("%s:Begin\n", __func__);
+ 
+ 	assert_spin_locked(&lo->plh_inode->i_lock);
+-	if (list_empty(&lo->plh_segs)) {
+-		struct nfs_client *clp = NFS_SERVER(lo->plh_inode)->nfs_client;
+-
+-		spin_lock(&clp->cl_lock);
+-		BUG_ON(!list_empty(&lo->plh_layouts));
+-		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
+-		spin_unlock(&clp->cl_lock);
+-	}
+ 	list_for_each_entry(lp, &lo->plh_segs, pls_list) {
+ 		if (cmp_layout(lp->pls_range.iomode, lseg->pls_range.iomode) > 0)
+ 			continue;
+@@ -597,6 +589,7 @@ pnfs_update_layout(struct inode *ino,
+ 		   enum pnfs_iomode iomode)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
++	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg = NULL;
+ 
+@@ -626,9 +619,27 @@ pnfs_update_layout(struct inode *ino,
+ 	atomic_inc(&lo->plh_outstanding);
+ 
+ 	get_layout_hdr_locked(lo);
++	if (list_empty(&lo->plh_segs)) {
++		/* The lo must be on the clp list if there is any
++		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
++		 */
++		spin_lock(&clp->cl_lock);
++		BUG_ON(!list_empty(&lo->plh_layouts));
++		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
++		spin_unlock(&clp->cl_lock);
++	}
+ 	spin_unlock(&ino->i_lock);
+ 
+ 	lseg = send_layoutget(lo, ctx, iomode);
++	if (!lseg) {
++		spin_lock(&ino->i_lock);
++		if (list_empty(&lo->plh_segs)) {
++			spin_lock(&clp->cl_lock);
++			list_del_init(&lo->plh_layouts);
++			spin_unlock(&clp->cl_lock);
++		}
++		spin_unlock(&ino->i_lock);
++	}
+ 	atomic_dec(&lo->plh_outstanding);
+ 	put_layout_hdr(ino);
+ out:
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.2.1
 
