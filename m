@@ -1,83 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:38474 "EHLO shutemov.name"
+Received: from mx2.netapp.com ([216.240.18.37]:30991 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757366Ab0LTLyn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Dec 2010 06:54:43 -0500
-From: "Kirill A. Shutsemov" <kirill@shutemov.name>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: [PATCH 10/12] sunrpc: introduce get_rpc_pipefs()
-Date: Mon, 20 Dec 2010 13:54:36 +0200
-Message-Id: <1292846078-31793-11-git-send-email-kirill@shutemov.name>
-In-Reply-To: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
-References: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
+	id S1751541Ab0LWAOb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Dec 2010 19:14:31 -0500
+Subject: Re: [PATCH 1/5] NFS: call_sync function
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
+Cc: Bryan Schumaker <bjschuma@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <20101222235447.GA25778@merit.edu>
+References: <4D1272B6.9000907@netapp.com> <20101222235447.GA25778@merit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 22 Dec 2010 19:14:27 -0500
+Message-ID: <1293063267.6422.53.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Kirill A. Shutemov <kirill@shutemov.name>
+On Wed, 2010-12-22 at 18:54 -0500, Jim Rees wrote:
+> Bryan Schumaker wrote:
+> 
+>   This patch changes nfs4_call_sync() from a macro into a
+>   static inline function.
+> 
+> Makes sense, but why change the arguments?
 
-Get rpc_pipefs mount point by path.
+Not sure I understand. Do you mean the change from untyped args and res
+to nfs4_sequence_args and nfs4_sequence_res? That would be to enable
+proper type checking.
 
-Signed-off-by: Kirill A. Shutemov <kirill@shutemov.name>
----
- include/linux/sunrpc/rpc_pipe_fs.h |    2 ++
- net/sunrpc/rpc_pipe.c              |   24 ++++++++++++++++++++++++
- 2 files changed, 26 insertions(+), 0 deletions(-)
+That part of the macro was always a dirty hack which relied on the
+sequence related arguments always having the same names, and which only
+served to avoid having to type those 8 characters per argument...
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index b09bfa5..922057c 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -46,6 +46,8 @@ RPC_I(struct inode *inode)
- 
- extern struct vfsmount *init_rpc_pipefs;
- 
-+struct vfsmount *get_rpc_pipefs(const char *path);
-+
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index b1e299b..c48f7a5 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -931,6 +931,30 @@ static const struct super_operations s_ops = {
- 
- #define RPCAUTH_GSSMAGIC 0x67596969
- 
-+struct vfsmount *get_rpc_pipefs(const char *p)
-+{
-+	int error;
-+	struct vfsmount *rpcmount;
-+	struct path path;
-+
-+	if (!p)
-+		return mntget(init_rpc_pipefs);
-+
-+	error = kern_path(p, LOOKUP_FOLLOW | LOOKUP_DIRECTORY, &path);
-+	if (error)
-+		return ERR_PTR(error);
-+
-+	if (path.mnt->mnt_sb->s_magic != RPCAUTH_GSSMAGIC) {
-+		path_put(&path);
-+		return ERR_PTR(-EINVAL);
-+	}
-+
-+	rpcmount = mntget(path.mnt);
-+	path_put(&path);
-+
-+	return rpcmount;
-+}
-+
- /*
-  * We have a single directory with 1 node in it.
-  */
 -- 
-1.7.3.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
