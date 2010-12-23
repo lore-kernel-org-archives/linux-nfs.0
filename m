@@ -1,193 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:29968 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754219Ab0LIRHU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 12:07:20 -0500
-Subject: Re: [PATCH 03/11] lockd: Add nlm_alloc_host()
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:40784 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751621Ab0LWVyT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Dec 2010 16:54:19 -0500
+Received: by iyi12 with SMTP id 12so5352460iyi.19
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Dec 2010 13:54:18 -0800 (PST)
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1291913887.2931.1.camel@heimdal.trondhjem.org>
-Date: Thu, 9 Dec 2010 12:06:49 -0500
+Subject: [PATCH 1/4] NFS: Allow walking nfs_client.cl_superblocks list outside
+	client.c
+To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Message-Id: <DA51E3C7-7F41-417E-99A2-B7DD58B1962F@oracle.com>
-References: <20101209163555.4513.94435.stgit@matisse.1015granger.net> <20101209164838.4513.72502.stgit@matisse.1015granger.net> <1291913887.2931.1.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Thu, 23 Dec 2010 16:54:15 -0500
+Message-ID: <20101223215415.2344.19433.stgit@matisse.1015granger.net>
+In-Reply-To: <20101223214503.2344.79300.stgit@matisse.1015granger.net>
+References: <20101223214503.2344.79300.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+We're about to move some fields from struct nfs_client to struct
+nfs_server.  There is a many-to-one relationship between nfs_servers
+and nfs_clients.  After these fields are moved to the nfs_server
+struct, to visit all of the data in these fields that is owned by one
+nfs_client, code will need to visit each nfs_server on the
+cl_superblocks list for that nfs_client.
 
-On Dec 9, 2010, at 11:58 AM, Trond Myklebust wrote:
+To serialize changes to the cl_superblocks list during these little
+expeditions, protect the list with RCU.
 
-> On Thu, 2010-12-09 at 11:48 -0500, Chuck Lever wrote:
->> Refactor nlm_host allocation and initialization to a separate function.
->> This will be the common piece of server and client nlm_host lookup
->> logic after the nlm_host cache is split.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
->> fs/lockd/host.c |  106 ++++++++++++++++++++++++++++++++-----------------------
->> 1 files changed, 61 insertions(+), 45 deletions(-)
->> 
->> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
->> index 2dbf139..ed1895a 100644
->> --- a/fs/lockd/host.c
->> +++ b/fs/lockd/host.c
->> @@ -100,6 +100,64 @@ static unsigned int nlm_hash_address(const struct sockaddr *sap)
->> }
->> 
->> /*
->> + * Allocate and initialize an nlm_host.  Common to both client and server.
->> + */
->> +static struct nlm_host *nlm_alloc_host(struct nlm_lookup_host_info *ni,
->> +				       struct nsm_handle *nsm)
->> +{
->> +	struct nlm_host *host = NULL;
->> +	unsigned long now = jiffies;
->> +
->> +	if (nsm != NULL)
->> +		atomic_inc(&nsm->sm_count);
->> +	else {
->> +		host = NULL;
->> +		nsm = nsm_get_handle(ni->sap, ni->salen,
->> +					ni->hostname, ni->hostname_len);
->> +		if (unlikely(nsm == NULL)) {
->> +			dprintk("lockd: %s failed; no nsm handle\n",
->> +				__func__);
->> +			goto out;
->> +		}
->> +	}
->> +
->> +	host = kzalloc(sizeof(*host), GFP_KERNEL);
->> +	if (unlikely(host == NULL)) {
->> +		dprintk("lockd: %s failed; no memory\n", __func__);
->> +		nsm_release(nsm);
->> +		goto out;
->> +	}
->> +
->> +	memcpy(nlm_addr(host), ni->sap, ni->salen);
->> +	host->h_addrlen    = ni->salen;
->> +	rpc_set_port(nlm_addr(host), 0);
->> +
->> +	host->h_rpcclnt    = NULL;
-> 
-> OK. I'm at a complete loss to explain why you would want to kzalloc()
-> the storage, and then afterwards explicitly initialise these fields to
-> zero.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-This copies the old code, which also does this.  See below.
+ fs/nfs/client.c     |   44 +++++++++++++++++++++++++-------------------
+ fs/nfs/nfs4renewd.c |    9 +++++++--
+ 2 files changed, 32 insertions(+), 21 deletions(-)
 
-> Please choose to do one or the other, but not both...
-
-Since we are initializing most of the fields anyway, I think we can do without kzalloc().
-
->> +	host->h_name	   = nsm->sm_name;
->> +	host->h_version    = ni->version;
->> +	host->h_proto      = ni->protocol;
->> +	host->h_server     = ni->server;
->> +	host->h_noresvport = ni->noresvport;
->> +	init_waitqueue_head(&host->h_gracewait);
->> +	init_rwsem(&host->h_rwsem);
->> +	host->h_state      = 0;
->> +	host->h_nsmstate   = 0;
->> +	atomic_set(&host->h_count, 1);
->> +	mutex_init(&host->h_mutex);
->> +	host->h_nextrebind = now + NLM_HOST_REBIND;
->> +	host->h_expires    = now + NLM_HOST_EXPIRE;
->> +	INIT_LIST_HEAD(&host->h_lockowners);
->> +	spin_lock_init(&host->h_lock);
->> +	INIT_LIST_HEAD(&host->h_granted);
->> +	INIT_LIST_HEAD(&host->h_reclaim);
->> +	host->h_nsmhandle  = nsm;
->> +	host->h_addrbuf    = nsm->sm_addrbuf;
->> +
->> +out:
->> +	return host;
->> +}
->> +
->> +/*
->>  * Common host lookup routine for server & client
->>  */
->> static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
->> @@ -150,55 +208,13 @@ static struct nlm_host *nlm_lookup_host(struct nlm_lookup_host_info *ni)
->> 		goto out;
->> 	}
->> 
->> -	/*
->> -	 * The host wasn't in our hash table.  If we don't
->> -	 * have an NSM handle for it yet, create one.
->> -	 */
->> -	if (nsm)
->> -		atomic_inc(&nsm->sm_count);
->> -	else {
->> -		host = NULL;
->> -		nsm = nsm_get_handle(ni->sap, ni->salen,
->> -					ni->hostname, ni->hostname_len);
->> -		if (!nsm) {
->> -			dprintk("lockd: nlm_lookup_host failed; "
->> -				"no nsm handle\n");
->> -			goto out;
->> -		}
->> -	}
->> -
->> -	host = kzalloc(sizeof(*host), GFP_KERNEL);
->> -	if (!host) {
->> -		nsm_release(nsm);
->> -		dprintk("lockd: nlm_lookup_host failed; no memory\n");
->> +	host = nlm_alloc_host(ni, nsm);
->> +	if (unlikely(host == NULL))
->> 		goto out;
->> -	}
->> -	host->h_name	   = nsm->sm_name;
->> -	host->h_addrbuf    = nsm->sm_addrbuf;
->> -	memcpy(nlm_addr(host), ni->sap, ni->salen);
->> -	host->h_addrlen = ni->salen;
->> -	rpc_set_port(nlm_addr(host), 0);
->> +
->> 	memcpy(nlm_srcaddr(host), ni->src_sap, ni->src_len);
->> 	host->h_srcaddrlen = ni->src_len;
->> -	host->h_version    = ni->version;
->> -	host->h_proto      = ni->protocol;
->> -	host->h_rpcclnt    = NULL;
->> -	mutex_init(&host->h_mutex);
->> -	host->h_nextrebind = jiffies + NLM_HOST_REBIND;
->> -	host->h_expires    = jiffies + NLM_HOST_EXPIRE;
->> -	atomic_set(&host->h_count, 1);
->> -	init_waitqueue_head(&host->h_gracewait);
->> -	init_rwsem(&host->h_rwsem);
->> -	host->h_state      = 0;			/* pseudo NSM state */
->> -	host->h_nsmstate   = 0;			/* real NSM state */
->> -	host->h_nsmhandle  = nsm;
->> -	host->h_server	   = ni->server;
->> -	host->h_noresvport = ni->noresvport;
->> 	hlist_add_head(&host->h_hash, chain);
->> -	INIT_LIST_HEAD(&host->h_lockowners);
->> -	spin_lock_init(&host->h_lock);
->> -	INIT_LIST_HEAD(&host->h_granted);
->> -	INIT_LIST_HEAD(&host->h_reclaim);
->> 
->> 	nrhosts++;
->> 
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 0870d0d..05e2ee2 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -988,6 +988,27 @@ static void nfs_server_copy_userdata(struct nfs_server *target, struct nfs_serve
+ 	target->options = source->options;
+ }
+ 
++static void nfs_server_insert_lists(struct nfs_server *server)
++{
++	struct nfs_client *clp = server->nfs_client;
++
++	spin_lock(&nfs_client_lock);
++	list_add_tail_rcu(&server->client_link, &clp->cl_superblocks);
++	list_add_tail(&server->master_link, &nfs_volume_list);
++	spin_unlock(&nfs_client_lock);
++
++}
++
++static void nfs_server_remove_lists(struct nfs_server *server)
++{
++	spin_lock(&nfs_client_lock);
++	list_del_rcu(&server->client_link);
++	list_del(&server->master_link);
++	spin_unlock(&nfs_client_lock);
++
++	synchronize_rcu();
++}
++
+ /*
+  * Allocate and initialise a server record
+  */
+@@ -1029,11 +1050,8 @@ void nfs_free_server(struct nfs_server *server)
+ {
+ 	dprintk("--> nfs_free_server()\n");
+ 
++	nfs_server_remove_lists(server);
+ 	unset_pnfs_layoutdriver(server);
+-	spin_lock(&nfs_client_lock);
+-	list_del(&server->client_link);
+-	list_del(&server->master_link);
+-	spin_unlock(&nfs_client_lock);
+ 
+ 	if (server->destroy != NULL)
+ 		server->destroy(server);
+@@ -1108,11 +1126,7 @@ struct nfs_server *nfs_create_server(const struct nfs_parsed_mount_data *data,
+ 		(unsigned long long) server->fsid.major,
+ 		(unsigned long long) server->fsid.minor);
+ 
+-	spin_lock(&nfs_client_lock);
+-	list_add_tail(&server->client_link, &server->nfs_client->cl_superblocks);
+-	list_add_tail(&server->master_link, &nfs_volume_list);
+-	spin_unlock(&nfs_client_lock);
+-
++	nfs_server_insert_lists(server);
+ 	server->mount_time = jiffies;
+ 	nfs_free_fattr(fattr);
+ 	return server;
+@@ -1342,11 +1356,7 @@ static int nfs4_server_common_setup(struct nfs_server *server,
+ 	if (server->namelen == 0 || server->namelen > NFS4_MAXNAMLEN)
+ 		server->namelen = NFS4_MAXNAMLEN;
+ 
+-	spin_lock(&nfs_client_lock);
+-	list_add_tail(&server->client_link, &server->nfs_client->cl_superblocks);
+-	list_add_tail(&server->master_link, &nfs_volume_list);
+-	spin_unlock(&nfs_client_lock);
+-
++	nfs_server_insert_lists(server);
+ 	server->mount_time = jiffies;
+ out:
+ 	nfs_free_fattr(fattr);
+@@ -1551,11 +1561,7 @@ struct nfs_server *nfs_clone_server(struct nfs_server *source,
+ 	if (error < 0)
+ 		goto out_free_server;
+ 
+-	spin_lock(&nfs_client_lock);
+-	list_add_tail(&server->client_link, &server->nfs_client->cl_superblocks);
+-	list_add_tail(&server->master_link, &nfs_volume_list);
+-	spin_unlock(&nfs_client_lock);
+-
++	nfs_server_insert_lists(server);
+ 	server->mount_time = jiffies;
+ 
+ 	nfs_free_fattr(fattr_fsinfo);
+diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
+index 72b6c58..cde5650 100644
+--- a/fs/nfs/nfs4renewd.c
++++ b/fs/nfs/nfs4renewd.c
+@@ -63,9 +63,14 @@ nfs4_renew_state(struct work_struct *work)
+ 
+ 	ops = clp->cl_mvops->state_renewal_ops;
+ 	dprintk("%s: start\n", __func__);
+-	/* Are there any active superblocks? */
+-	if (list_empty(&clp->cl_superblocks))
++
++	rcu_read_lock();
++	if (list_empty(&clp->cl_superblocks)) {
++		rcu_read_unlock();
+ 		goto out;
++	}
++	rcu_read_unlock();
++
+ 	spin_lock(&clp->cl_lock);
+ 	lease = clp->cl_lease_time;
+ 	last = clp->cl_last_renewal;
 
