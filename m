@@ -1,73 +1,318 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34280 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:8992 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752051Ab0LQDdC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Dec 2010 22:33:02 -0500
-Subject: Re: [PATCH 00/31] NFS XDR clean up for 2.6.38
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Ric Wheeler <ricwheeler@gmail.com>, Steve Dickson <SteveD@redhat.com>,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <20101216234058.GA17940@infradead.org>
-References: <20101214144747.2293.68070.stgit@matisse.1015granger.net>
-	 <4D0A6503.7010901@RedHat.com> <20101216230524.GA16760@infradead.org>
-	 <4D0AA11A.2010307@gmail.com>  <20101216234058.GA17940@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 16 Dec 2010 22:32:44 -0500
-Message-ID: <1292556764.2895.41.camel@heimdal.trondhjem.org>
+	id S1753179Ab0LWMry (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 07:47:54 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 04/15] pnfs: add prefix to struct pnfs_layout_hdr fields
+Date: Thu, 23 Dec 2010 07:47:35 -0500
+Message-Id: <1293108466-31768-5-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
+References: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2010-12-16 at 18:40 -0500, Christoph Hellwig wrote:
-> On Thu, Dec 16, 2010 at 06:30:34PM -0500, Ric Wheeler wrote:
-> > This has nothing to do with shame or conspiracy, it has to do with
-> > doing changes in an orderly way so we can test and stabilize things
-> > in the upstream kernel.
-> > 
-> > Changing both at once is not good for upstream or distros  in my opinion,
-> 
-> Steve's mail reads pretty different from that.
-> 
-> But it doesn't really matter as it doesn't make any sense - as Chuck
-> has explained theres zero overlap between the XDR decoder changes and
-> pnfs features anyway.  And if there was it's pretty clear something that
-> the about 98% of the userbase that's using NFSv3 uses should have more
-> priority over the 0.5% that are planning to maybe possibly use pnfs in
-> the next decade.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |    6 +-
+ fs/nfs/pnfs.c           |   94 +++++++++++++++++++++++-----------------------
+ fs/nfs/pnfs.h           |   12 +++---
+ 3 files changed, 56 insertions(+), 56 deletions(-)
 
-Hi guys,
-
-I agree 100% with the basic premise that we should not have to deal with
-compatibility issues for NFSv4.1/pnfs backports when deciding what to
-merge upstream.
-That said: as far as I can see, pretty much all these changes are
-confined to the NFSv2 and NFSv3 XDR code. I can quite understand why
-distros like Red Hat, SuSE, Debian, and others might want to avoid
-having to back port changes, given that the NFSv2 and NFSv3 code bases
-are supposed to be fully stable and frozen.
-
-So my questions to Steve and Ric are:
-
-     1. Specifically, which part of these changes are causing
-        backporting headaches for the RHEL-6 code base? Note that when
-        asking that question I am assuming that Red Hat will triage and
-        reject patches that conflict with their stability goals.
-     2. Could we set up some minimal set of patches that would allow the
-        pNFS backport while avoiding the need for a full backport of
-        Chuck's patches for NFSv2/v3? If so, what features do we need,
-        and what is not needed?
-
-IOW: how can we refactor these patches so as to avoid tying the set of
-NFSv2/v3 changes to any pNFS interests?
-
-Cheers
-  Trond
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 738d6a4..23f930c 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -82,7 +82,7 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ {
+ 	struct nfs4_file_layout_dsaddr *dsaddr;
+ 	int status = -EINVAL;
+-	struct nfs_server *nfss = NFS_SERVER(lo->inode);
++	struct nfs_server *nfss = NFS_SERVER(lo->plh_inode);
+ 
+ 	dprintk("--> %s\n", __func__);
+ 
+@@ -101,7 +101,7 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 	/* find and reference the deviceid */
+ 	dsaddr = nfs4_fl_find_get_deviceid(nfss->nfs_client, id);
+ 	if (dsaddr == NULL) {
+-		dsaddr = get_device_info(lo->inode, id);
++		dsaddr = get_device_info(lo->plh_inode, id);
+ 		if (dsaddr == NULL)
+ 			goto out;
+ 	}
+@@ -243,7 +243,7 @@ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
+ static void
+ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
+ {
+-	struct nfs_server *nfss = NFS_SERVER(lseg->pls_layout->inode);
++	struct nfs_server *nfss = NFS_SERVER(lseg->pls_layout->plh_inode);
+ 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
+ 
+ 	dprintk("--> %s\n", __func__);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index c3ca5fe..6736f9e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -180,21 +180,21 @@ EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
+ static void
+ get_layout_hdr_locked(struct pnfs_layout_hdr *lo)
+ {
+-	assert_spin_locked(&lo->inode->i_lock);
+-	lo->refcount++;
++	assert_spin_locked(&lo->plh_inode->i_lock);
++	lo->plh_refcount++;
+ }
+ 
+ static void
+ put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
+ {
+-	assert_spin_locked(&lo->inode->i_lock);
+-	BUG_ON(lo->refcount == 0);
++	assert_spin_locked(&lo->plh_inode->i_lock);
++	BUG_ON(lo->plh_refcount == 0);
+ 
+-	lo->refcount--;
+-	if (!lo->refcount) {
++	lo->plh_refcount--;
++	if (!lo->plh_refcount) {
+ 		dprintk("%s: freeing layout cache %p\n", __func__, lo);
+-		BUG_ON(!list_empty(&lo->layouts));
+-		NFS_I(lo->inode)->layout = NULL;
++		BUG_ON(!list_empty(&lo->plh_layouts));
++		NFS_I(lo->plh_inode)->layout = NULL;
+ 		kfree(lo);
+ 	}
+ }
+@@ -221,7 +221,7 @@ destroy_lseg(struct kref *kref)
+ {
+ 	struct pnfs_layout_segment *lseg =
+ 		container_of(kref, struct pnfs_layout_segment, pls_refcount);
+-	struct inode *ino = lseg->pls_layout->inode;
++	struct inode *ino = lseg->pls_layout->plh_inode;
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+@@ -248,19 +248,19 @@ pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list)
+ 
+ 	dprintk("%s:Begin lo %p\n", __func__, lo);
+ 
+-	assert_spin_locked(&lo->inode->i_lock);
+-	list_for_each_entry_safe(lseg, next, &lo->segs, pls_list) {
++	assert_spin_locked(&lo->plh_inode->i_lock);
++	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list) {
+ 		dprintk("%s: freeing lseg %p\n", __func__, lseg);
+ 		list_move(&lseg->pls_list, tmp_list);
+ 	}
+-	clp = NFS_SERVER(lo->inode)->nfs_client;
++	clp = NFS_SERVER(lo->plh_inode)->nfs_client;
+ 	spin_lock(&clp->cl_lock);
+ 	/* List does not take a reference, so no need for put here */
+-	list_del_init(&lo->layouts);
++	list_del_init(&lo->plh_layouts);
+ 	spin_unlock(&clp->cl_lock);
+-	write_seqlock(&lo->seqlock);
++	write_seqlock(&lo->plh_seqlock);
+ 	clear_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags);
+-	write_sequnlock(&lo->seqlock);
++	write_sequnlock(&lo->plh_seqlock);
+ 
+ 	dprintk("%s:Return\n", __func__);
+ }
+@@ -312,25 +312,25 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
+ 
+ 	while (!list_empty(&tmp_list)) {
+ 		lo = list_entry(tmp_list.next, struct pnfs_layout_hdr,
+-				layouts);
++				plh_layouts);
+ 		dprintk("%s freeing layout for inode %lu\n", __func__,
+-			lo->inode->i_ino);
+-		pnfs_destroy_layout(NFS_I(lo->inode));
++			lo->plh_inode->i_ino);
++		pnfs_destroy_layout(NFS_I(lo->plh_inode));
+ 	}
+ }
+ 
+-/* update lo->stateid with new if is more recent
++/* update lo->plh_stateid with new if is more recent
+  *
+- * lo->stateid could be the open stateid, in which case we just use what given.
++ * lo->plh_stateid could be the open stateid, in which case we just use what given.
+  */
+ static void
+ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 			const nfs4_stateid *new)
+ {
+-	nfs4_stateid *old = &lo->stateid;
++	nfs4_stateid *old = &lo->plh_stateid;
+ 	bool overwrite = false;
+ 
+-	write_seqlock(&lo->seqlock);
++	write_seqlock(&lo->plh_seqlock);
+ 	if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags) ||
+ 	    memcmp(old->stateid.other, new->stateid.other, sizeof(new->stateid.other)))
+ 		overwrite = true;
+@@ -344,7 +344,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 	}
+ 	if (overwrite)
+ 		memcpy(&old->stateid, &new->stateid, sizeof(new->stateid));
+-	write_sequnlock(&lo->seqlock);
++	write_sequnlock(&lo->plh_seqlock);
+ }
+ 
+ static void
+@@ -354,14 +354,14 @@ pnfs_layout_from_open_stateid(struct pnfs_layout_hdr *lo,
+ 	int seq;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	write_seqlock(&lo->seqlock);
++	write_seqlock(&lo->plh_seqlock);
+ 	do {
+ 		seq = read_seqbegin(&state->seqlock);
+-		memcpy(lo->stateid.data, state->stateid.data,
++		memcpy(lo->plh_stateid.data, state->stateid.data,
+ 		       sizeof(state->stateid.data));
+ 	} while (read_seqretry(&state->seqlock, seq));
+ 	set_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags);
+-	write_sequnlock(&lo->seqlock);
++	write_sequnlock(&lo->plh_seqlock);
+ 	dprintk("<-- %s\n", __func__);
+ }
+ 
+@@ -373,14 +373,14 @@ pnfs_get_layout_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	do {
+-		seq = read_seqbegin(&lo->seqlock);
++		seq = read_seqbegin(&lo->plh_seqlock);
+ 		if (!test_bit(NFS_LAYOUT_STATEID_SET, &lo->plh_flags)) {
+ 			/* This will trigger retry of the read */
+ 			pnfs_layout_from_open_stateid(lo, open_state);
+ 		} else
+-			memcpy(dst->data, lo->stateid.data,
+-			       sizeof(lo->stateid.data));
+-	} while (read_seqretry(&lo->seqlock, seq));
++			memcpy(dst->data, lo->plh_stateid.data,
++			       sizeof(lo->plh_stateid.data));
++	} while (read_seqretry(&lo->plh_seqlock, seq));
+ 	dprintk("<-- %s\n", __func__);
+ }
+ 
+@@ -395,7 +395,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 	   struct nfs_open_context *ctx,
+ 	   u32 iomode)
+ {
+-	struct inode *ino = lo->inode;
++	struct inode *ino = lo->plh_inode;
+ 	struct nfs_server *server = NFS_SERVER(ino);
+ 	struct nfs4_layoutget *lgp;
+ 	struct pnfs_layout_segment *lseg = NULL;
+@@ -405,7 +405,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 	BUG_ON(ctx == NULL);
+ 	lgp = kzalloc(sizeof(*lgp), GFP_KERNEL);
+ 	if (lgp == NULL) {
+-		put_layout_hdr(lo->inode);
++		put_layout_hdr(lo->plh_inode);
+ 		return NULL;
+ 	}
+ 	lgp->args.minlength = NFS4_MAX_UINT64;
+@@ -450,16 +450,16 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 
+ 	dprintk("%s:Begin\n", __func__);
+ 
+-	assert_spin_locked(&lo->inode->i_lock);
+-	if (list_empty(&lo->segs)) {
+-		struct nfs_client *clp = NFS_SERVER(lo->inode)->nfs_client;
++	assert_spin_locked(&lo->plh_inode->i_lock);
++	if (list_empty(&lo->plh_segs)) {
++		struct nfs_client *clp = NFS_SERVER(lo->plh_inode)->nfs_client;
+ 
+ 		spin_lock(&clp->cl_lock);
+-		BUG_ON(!list_empty(&lo->layouts));
+-		list_add_tail(&lo->layouts, &clp->cl_layouts);
++		BUG_ON(!list_empty(&lo->plh_layouts));
++		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+-	list_for_each_entry(lp, &lo->segs, pls_list) {
++	list_for_each_entry(lp, &lo->plh_segs, pls_list) {
+ 		if (cmp_layout(lp->pls_range.iomode, lseg->pls_range.iomode) > 0)
+ 			continue;
+ 		list_add_tail(&lseg->pls_list, &lp->pls_list);
+@@ -474,7 +474,7 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 		break;
+ 	}
+ 	if (!found) {
+-		list_add_tail(&lseg->pls_list, &lo->segs);
++		list_add_tail(&lseg->pls_list, &lo->plh_segs);
+ 		dprintk("%s: inserted lseg %p "
+ 			"iomode %d offset %llu length %llu at tail\n",
+ 			__func__, lseg, lseg->pls_range.iomode,
+@@ -493,11 +493,11 @@ alloc_init_layout_hdr(struct inode *ino)
+ 	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
+ 	if (!lo)
+ 		return NULL;
+-	lo->refcount = 1;
+-	INIT_LIST_HEAD(&lo->layouts);
+-	INIT_LIST_HEAD(&lo->segs);
+-	seqlock_init(&lo->seqlock);
+-	lo->inode = ino;
++	lo->plh_refcount = 1;
++	INIT_LIST_HEAD(&lo->plh_layouts);
++	INIT_LIST_HEAD(&lo->plh_segs);
++	seqlock_init(&lo->plh_seqlock);
++	lo->plh_inode = ino;
+ 	return lo;
+ }
+ 
+@@ -551,8 +551,8 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
+ 
+ 	dprintk("%s:Begin\n", __func__);
+ 
+-	assert_spin_locked(&lo->inode->i_lock);
+-	list_for_each_entry(lseg, &lo->segs, pls_list) {
++	assert_spin_locked(&lo->plh_inode->i_lock);
++	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
+ 		if (is_matching_lseg(lseg, iomode)) {
+ 			ret = lseg;
+ 			break;
+@@ -619,7 +619,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	struct pnfs_layout_hdr *lo = NFS_I(lgp->args.inode)->layout;
+ 	struct nfs4_layoutget_res *res = &lgp->res;
+ 	struct pnfs_layout_segment *lseg;
+-	struct inode *ino = lo->inode;
++	struct inode *ino = lo->plh_inode;
+ 	int status = 0;
+ 
+ 	/* Inject layout blob into I/O device driver */
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 6fcc073..c2f1086 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -60,13 +60,13 @@ struct pnfs_layoutdriver_type {
+ };
+ 
+ struct pnfs_layout_hdr {
+-	unsigned long		refcount;
+-	struct list_head	layouts;   /* other client layouts */
+-	struct list_head	segs;      /* layout segments list */
+-	seqlock_t		seqlock;   /* Protects the stateid */
+-	nfs4_stateid		stateid;
++	unsigned long		plh_refcount;
++	struct list_head	plh_layouts;   /* other client layouts */
++	struct list_head	plh_segs;      /* layout segments list */
++	seqlock_t		plh_seqlock;   /* Protects the stateid */
++	nfs4_stateid		plh_stateid;
+ 	unsigned long		plh_flags;
+-	struct inode		*inode;
++	struct inode		*plh_inode;
+ };
+ 
+ struct pnfs_device {
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.2.1
 
