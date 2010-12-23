@@ -1,89 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34496 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4145 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756117Ab0LJPzm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Dec 2010 10:55:42 -0500
-Message-ID: <4D024D70.7040108@RedHat.com>
-Date: Fri, 10 Dec 2010 10:55:28 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Andrew J. Schorr" <ajschorr@alumni.princeton.edu>,
-        linux-nfs@vger.kernel.org
-Subject: Re: proposed patch to rpcbind to provide finer-grained security controls
- than offered by the -i option
-References: <20101209204913.GA30338@ti93.telemetry-investments.com> <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com> <4D016F44.3020002@RedHat.com> <20101210023847.GB15344@ti93.telemetry-investments.com> <77480D58-4224-4713-A515-F1BCC133F44F@oracle.com>
-In-Reply-To: <77480D58-4224-4713-A515-F1BCC133F44F@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752040Ab0LWXyz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Dec 2010 18:54:55 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 14/15] pnfs: update nfs4_callback_recallany to handle layouts
+Date: Thu, 23 Dec 2010 18:54:40 -0500
+Message-Id: <1293148481-28420-15-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
+References: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Alexandros Batsakis <batsakis@netapp.com>
 
+While here, update the code a bit.
 
-On 12/10/2010 10:31 AM, Chuck Lever wrote:
-> 
-> On Dec 9, 2010, at 9:38 PM, Andrew J. Schorr wrote:
-> 
->> On Thu, Dec 09, 2010 at 07:07:32PM -0500, Steve Dickson wrote:
->>>
->>>
->>> On 12/09/2010 04:41 PM, Chuck Lever wrote:
->>>> It sounds like your application is trying to use glibc's RPC 
->>>> implementation with rpcbind.  If you build your application with 
->>>> libtirpc instead, it should use an AF_UNIX socket to contact rpcbind 
->>>> instead of loopback.  The AF_UNIX socket carries some authentication 
->>>> information with the registration request.  All users of your 
->>>> application would be allowed to set or unset RPC registrations 
->>>> in that case.
->>
->> I think you are correct.  This is probably due to some combination
->> of ignorance and stupidity on my part.  I didn't realize that libtirpc
->> was a drop-in replacement for the glibc RPC routines.
->>
->>> I was under the impression rebuilding the applications was not
->>> possible... but maybe I misunderstood... 
->>
->> Rebuilding should be possible, I need to look into this.
->>
->>> But in the end, I guess I'm not against having functionality 
->>> like this... If it make it easier for people to port legacy
->>> applications to Linux, its probably a good thing... 
->>
->> I think the patch does add more control over rpcbind behavior, but I
->> grant that it may be less interesting if nobody is using IP to connect
->> from local clients.  Nonetheless, it still adds the ability to have
->> separate control over whether to accept remote set/unset calls and
->> whether to honor indirect/callit calls.  Unless I'm mistaken, this is
->> still relevant even if libtirpc is used.
-> 
-> Not to put to fine a point on it, but we discourage the use of 
-> indirect RPC calls.  It's a well-known security hole.  Also, 
-> allowing anyone to set and unset RPC registrations is also 
-> insecure, and is discouraged.
-True... but its been this way for years... and always will be... 
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/callback.h      |    8 ++++++++
+ fs/nfs/callback_proc.c |   29 ++++++++++++++++++++++++++---
+ 2 files changed, 34 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index f6768ac..d3b44f9 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -119,6 +119,14 @@ extern int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation,
  
-> 
-> In general we want people to switch to using AF_UNIX for local 
-> registrations, as that is secure from remote attack, and allows 
-> rpcbind to assign ownership of the registration so that only the 
-> user who registered that service may unregister it.
-If the option of rebuilding is available, yes, people should
-switch to libtirpc... 
-
-> 
->> So I would argue that the patch is still a good thing, but I agree that
->> I should relink my code with libtirpc.
-> 
-> IMO we shouldn't add features that encourage people to configure 
-> rpcbind insecurely, especially when there are reasonable alternatives.
-The -i is already a securely hole... So if we are concern about it
-we should get ride of the -i completely... Or make it a useful 
-securely hole... ;-)
-
-The point of this patch was to make it easier for people 
-to port legacy applications to Linux... If this indeed 
-is the case, I think that overrides these (self induced) 
-security issues... 
-
-steved.
+ #define RCA4_TYPE_MASK_RDATA_DLG	0
+ #define RCA4_TYPE_MASK_WDATA_DLG	1
++#define RCA4_TYPE_MASK_DIR_DLG         2
++#define RCA4_TYPE_MASK_FILE_LAYOUT     3
++#define RCA4_TYPE_MASK_BLK_LAYOUT      4
++#define RCA4_TYPE_MASK_OBJ_LAYOUT_MIN  8
++#define RCA4_TYPE_MASK_OBJ_LAYOUT_MAX  9
++#define RCA4_TYPE_MASK_OTHER_LAYOUT_MIN 12
++#define RCA4_TYPE_MASK_OTHER_LAYOUT_MAX 15
++#define RCA4_TYPE_MASK_ALL 0xf31f
  
+ struct cb_recallanyargs {
+ 	struct sockaddr	*craa_addr;
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 6619c05..4bb91cb 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -230,6 +230,17 @@ __be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
+ 	return cpu_to_be32(res);
+ }
+ 
++static void pnfs_recall_all_layouts(struct nfs_client *clp)
++{
++	struct cb_layoutrecallargs args;
++
++	/* Pretend we got a CB_LAYOUTRECALL(ALL) */
++	memset(&args, 0, sizeof(args));
++	args.cbl_recall_type = RETURN_ALL;
++	/* FIXME we ignore errors, what should we do? */
++	do_callback_layoutrecall(clp, &args);
++}
++
+ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+ {
+ 	if (delegation == NULL)
+@@ -421,29 +432,41 @@ out:
+ 	return status;
+ }
+ 
++static bool
++validate_bitmap_values(unsigned long mask)
++{
++	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
++}
++
+ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+ 			       struct cb_process_state *cps)
+ {
+ 	__be32 status;
+ 	fmode_t flags = 0;
+ 
+-	status = htonl(NFS4ERR_OP_NOT_IN_SESSION);
++	status = cpu_to_be32(NFS4ERR_OP_NOT_IN_SESSION);
+ 	if (!cps->clp) /* set in cb_sequence */
+ 		goto out;
+ 
+ 	dprintk("NFS: RECALL_ANY callback request from %s\n",
+ 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR));
+ 
++	status = cpu_to_be32(NFS4ERR_INVAL);
++	if (!validate_bitmap_values(args->craa_type_mask))
++		goto out;
++
++	status = cpu_to_be32(NFS4_OK);
+ 	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, (const unsigned long *)
+ 		     &args->craa_type_mask))
+ 		flags = FMODE_READ;
+ 	if (test_bit(RCA4_TYPE_MASK_WDATA_DLG, (const unsigned long *)
+ 		     &args->craa_type_mask))
+ 		flags |= FMODE_WRITE;
+-
++	if (test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, (const unsigned long *)
++		     &args->craa_type_mask))
++		pnfs_recall_all_layouts(cps->clp);
+ 	if (flags)
+ 		nfs_expire_all_delegation_types(cps->clp, flags);
+-	status = htonl(NFS4_OK);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+ 	return status;
+-- 
+1.7.2.1
+
