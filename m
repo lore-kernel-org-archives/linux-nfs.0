@@ -1,37 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:55140 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753795Ab0LHDpy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Dec 2010 22:45:54 -0500
-Subject: Re: oops in nfs_flush_incompatible (and possible fix?)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:37720 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752634Ab0LXBc0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Dec 2010 20:32:26 -0500
+Received: by iyi12 with SMTP id 12so5460337iyi.19
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Dec 2010 17:32:25 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/4] Refactor data structures to support NFSv4 migration (2)
+To: trond.myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1291778228.20468.6.camel@heimdal.trondhjem.org>
-References: <20101206145743.4464c79d@tlielax.poochiereds.net>
-	 <1291758082.3049.42.camel@heimdal.trondhjem.org>
-	 <20101207165354.32c863f2@tlielax.poochiereds.net>
-	 <1291768200.3049.51.camel@heimdal.trondhjem.org>
-	 <20101207200344.68ff29e3@corrin.poochiereds.net>
-	 <20101207213540.441330db@corrin.poochiereds.net>
-	 <1291778228.20468.6.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 07 Dec 2010 22:45:50 -0500
-Message-ID: <1291779950.21760.1.camel@heimdal.trondhjem.org>
+Date: Thu, 23 Dec 2010 20:32:20 -0500
+Message-ID: <20101224012636.2445.41411.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-12-07 at 22:17 -0500, Trond Myklebust wrote:
-> OK... I think I see why the hang:
-> 
-> I believe that it is basically due to nfs_clear_page_tag_locked() making
-> the assumption that if req->wb_page != NULL, then the corresponding
-> nfsi->nfs_page_tree lock tag needs to be cleared.
-> 
-> Maybe we can do that differently by just setting a flag to indicate
-> whether or not this request is mapped into the radix tree...
+Trond-
 
-The following patch is completely untested, but should do the trick....
+Here are four patches that move fields related to NFSv4 state from the
+nfs_client struct to the nfs_server struct.  This change facilitates
+the eventual implementation of NFSv4 migration.
 
-----------------------------------------------------------------------------------------
+This series passes simple tests:  Full Cthon suite passes over NFSv4
+against an OpenSolaris 2009.6 NFS server, and a full "allmodconfig"
+-j3 kernel build completes on NFSv4 without hangs or lockdep splats
+on a two-way client.
+
+Since the first series:
+
+ .  Make the new server->delegations unconditionally compiled in
+ .  In fs/nfs/nfs4state.c, where possible, take cl_lock after invoking
+    rcu_read_lock() instead of before invoking it
+
+---
+
+Chuck Lever (4):
+      NFS: Move cl_delegations to the nfs_server struct
+      NFS: Introduce nfs_detach_delegations()
+      NFS: Move cl_state_owners and related fields to the nfs_server struct
+      NFS: Allow walking nfs_client.cl_superblocks list outside client.c
+
+
+ fs/nfs/client.c           |   46 +++---
+ fs/nfs/delegation.c       |  362 ++++++++++++++++++++++++++++++++-------------
+ fs/nfs/delegation.h       |    1 
+ fs/nfs/nfs4_fs.h          |    2 
+ fs/nfs/nfs4renewd.c       |   11 +
+ fs/nfs/nfs4state.c        |  251 ++++++++++++++++++++++---------
+ include/linux/nfs_fs_sb.h |   11 +
+ 7 files changed, 481 insertions(+), 203 deletions(-)
+
+-- 
+Chuck Lever
