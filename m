@@ -1,50 +1,152 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50144 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:59107 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752862Ab0LUXth (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Dec 2010 18:49:37 -0500
-Date: Tue, 21 Dec 2010 18:49:34 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "Kirill A. Shutemov" <kas@openvz.org>, Neil Brown <neilb@suse.de>,
-        Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH] nfs: fix mispelling of idmap CONFIG symbol
-Message-ID: <20101221234934.GB30525@fieldses.org>
-References: <1292846078-31793-1-git-send-email-kirill@shutemov.name>
- <20101220144644.GC20643@fieldses.org>
- <20101221233215.GC7092@shutemov.name>
- <1292975008.16674.2.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1292975008.16674.2.camel@heimdal.trondhjem.org>
+	id S1753200Ab0LXDnZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Dec 2010 22:43:25 -0500
+Content-Type: text/plain;
+	charset="us-ascii"
+Subject: RE: [PATCH_V5 01/11] SUNRPC move svc_drop to caller of svc_process_common
+Date: Thu, 23 Dec 2010 19:43:07 -0800
+Message-ID: <273FE88A07F5D445824060902F7003440E68B924@SACMVEXC1-PRD.hq.netapp.com>
+In-Reply-To: <20101221182305.GA19349@fieldses.org>
+References: <1292879088-7821-1-git-send-email-andros@netapp.com> <1292879088-7821-2-git-send-email-andros@netapp.com> <20101221182305.GA19349@fieldses.org>
+From: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Adamson, Andy" <William.Adamson@netapp.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, <bfields@redhat.com>,
+        <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@redhat.com>
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Tuesday, December 21, 2010 10:23 AM
+> To: Adamson, Andy
+> Cc: Myklebust, Trond; bfields@redhat.com; linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH_V5 01/11] SUNRPC move svc_drop to caller of
+> svc_process_common
+> 
+> On Mon, Dec 20, 2010 at 04:04:38PM -0500, andros@netapp.com wrote:
+> > From: Andy Adamson <andros@netapp.com>
+> >
+> > The NFSv4.1 shared back channel does not need to call svc_drop
+> because the
+> > callback service never outlives the single connection it services,
+> and it
+> > reuses it's buffers and keeps the trasport.
+> 
+> Looks better....
+> 
+> > Signed-off-by: Andy Adamson <andros@netapp.com>
+> > ---
+> >  net/sunrpc/svc.c |   30 ++++++++++++++++--------------
+> >  1 files changed, 16 insertions(+), 14 deletions(-)
+> >
+> > diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> > index 6359c42..606d182 100644
+> > --- a/net/sunrpc/svc.c
+> > +++ b/net/sunrpc/svc.c
+> > @@ -1147,7 +1147,6 @@ svc_process_common(struct svc_rqst *rqstp,
+> struct kvec *argv, struct kvec *resv)
+> >   dropit:
+> >  	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+> >  	dprintk("svc: svc_process dropit\n");
+> > -	svc_drop(rqstp);
+> >  	return 0;
+> >
+> >  err_short_len:
+> > @@ -1218,7 +1217,6 @@ svc_process(struct svc_rqst *rqstp)
+> >  	struct kvec		*resv = &rqstp->rq_res.head[0];
+> >  	struct svc_serv		*serv = rqstp->rq_server;
+> >  	u32			dir;
+> > -	int			error;
+> >
+> >  	/*
+> >  	 * Setup response xdr_buf.
+> > @@ -1246,11 +1244,13 @@ svc_process(struct svc_rqst *rqstp)
+> >  		return 0;
+> >  	}
+> >
+> > -	error = svc_process_common(rqstp, argv, resv);
+> > -	if (error <= 0)
+> 
+> Oh, and that was pretty ugly, seeing as svc_process_common never
+> returned <0.  Thanks for cleaning that up.
+> 
+> > -		return error;
+> > -
+> > -	return svc_send(rqstp);
+> > +	/* Returns 1 for send, 0 for drop */
+> > +	if (svc_process_common(rqstp, argv, resv))
+> > +		return svc_send(rqstp);
+> > +	else {
+> > +		svc_drop(rqstp);
+> > +		return 0;
+> > +	}
+> >  }
+> >
+> >  #if defined(CONFIG_NFS_V4_1)
+> > @@ -1264,7 +1264,6 @@ bc_svc_process(struct svc_serv *serv, struct
+> rpc_rqst *req,
+> >  {
+> >  	struct kvec	*argv = &rqstp->rq_arg.head[0];
+> >  	struct kvec	*resv = &rqstp->rq_res.head[0];
+> > -	int 		error;
+> >
+> >  	/* Build the svc_rqst used by the common processing routine */
+> >  	rqstp->rq_xprt = serv->bc_xprt;
+> > @@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct
+> rpc_rqst *req,
+> >  	svc_getu32(argv);	/* XID */
+> >  	svc_getnl(argv);	/* CALLDIR */
+> >
+> > -	error = svc_process_common(rqstp, argv, resv);
+> > -	if (error <= 0)
+> > -		return error;
+> > -
+> > -	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req-
+> >rq_snd_buf));
+> > -	return bc_send(req);
+> > +	/* Returns 1 for send, 0 for drop */
+> > +	if (svc_process_common(rqstp, argv, resv)) {
+> > +		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
+> > +
+sizeof(req->rq_snd_buf));
+> > +		return bc_send(req);
+> > +	} else {
+> > +		/* Nothing to do to drop request */
+> > +		return 0;
+> 
+> The one thing that bothers me is the svc_reserve stuff.  Which you
+have
+> no use for, I guess.  But svc_reserve_auth() is called from
+> svc_process_common(); I wonder if that can get us into trouble?  I'll
+> look a little closer.
+> 	
 
-Trivial, but confusing when you're trying to grep through this
-code....
+The callback request arrives on the backchannel and is placed in a
+preallocated 'struct rpc_rqst'.  bc_svc_process() is then called, which
+populates the 'struct svc_rqst' rq_arg and rq_res from the 'struct
+rpc_rqst' send and receive buffers.  So the reply buffer is independent
+of any other request on the forechannel or backchannel.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfs/idmap.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+The space reserved for the 'struct svc_rqst' will be 0 when
+svc_reserve() is called, so it should not call svc_xprt_enqueue().
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 4e2d9b6..1869688 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -238,7 +238,7 @@ int nfs_map_gid_to_group(struct nfs_client *clp, __u32 gid, char *buf, size_t bu
- 	return nfs_idmap_lookup_name(gid, "group", buf, buflen);
- }
- 
--#else  /* CONFIG_NFS_USE_IDMAPPER not defined */
-+#else  /* CONFIG_NFS_USE_NEW_IDMAPPER not defined */
- 
- #include <linux/module.h>
- #include <linux/mutex.h>
--- 
-1.7.1
+So I think we're okay, but I'm not sure what has you concerned.
 
+- ricardo
+
+
+> --b.
+> 
+> > +	}
+> >  }
+> >  EXPORT_SYMBOL(bc_svc_process);
+> >  #endif /* CONFIG_NFS_V4_1 */
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
