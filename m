@@ -1,166 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41072 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:47889 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933189Ab0LTVTo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Dec 2010 16:19:44 -0500
-Subject: Re: kernel panic when mount NFSv4
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFSv3 list <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4D0731C1.5090100@cn.fujitsu.com>
-References: <4D0731C1.5090100@cn.fujitsu.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 20 Dec 2010 16:19:26 -0500
-Message-ID: <1292879966.7744.4.camel@heimdal.trondhjem.org>
+	id S1751880Ab0LXRBK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Dec 2010 12:01:10 -0500
+Date: Fri, 24 Dec 2010 12:01:06 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Labiaga, Ricardo" <Ricardo.Labiaga@netapp.com>
+Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>, bfields@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH_V5 01/11] SUNRPC move svc_drop to caller of
+ svc_process_common
+Message-ID: <20101224170106.GB2889@fieldses.org>
+References: <1292879088-7821-1-git-send-email-andros@netapp.com>
+ <1292879088-7821-2-git-send-email-andros@netapp.com>
+ <20101221182305.GA19349@fieldses.org>
+ <273FE88A07F5D445824060902F7003440E68B924@SACMVEXC1-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <273FE88A07F5D445824060902F7003440E68B924@SACMVEXC1-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2010-12-14 at 16:58 +0800, Mi Jinlong wrote:
-> Hi,
+On Thu, Dec 23, 2010 at 07:43:07PM -0800, Labiaga, Ricardo wrote:
+> > -----Original Message-----
+> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > Sent: Tuesday, December 21, 2010 10:23 AM
+> > To: Adamson, Andy
+> > Cc: Myklebust, Trond; bfields@redhat.com; linux-nfs@vger.kernel.org
+> > Subject: Re: [PATCH_V5 01/11] SUNRPC move svc_drop to caller of
+> > svc_process_common
+> > 
+> > On Mon, Dec 20, 2010 at 04:04:38PM -0500, andros@netapp.com wrote:
+> > > From: Andy Adamson <andros@netapp.com>
+> > >
+> > > The NFSv4.1 shared back channel does not need to call svc_drop
+> > because the
+> > > callback service never outlives the single connection it services,
+> > and it
+> > > reuses it's buffers and keeps the trasport.
+> > 
+> > Looks better....
+> > 
+> > > Signed-off-by: Andy Adamson <andros@netapp.com>
+> > > ---
+> > >  net/sunrpc/svc.c |   30 ++++++++++++++++--------------
+> > >  1 files changed, 16 insertions(+), 14 deletions(-)
+> > >
+> > > diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> > > index 6359c42..606d182 100644
+> > > --- a/net/sunrpc/svc.c
+> > > +++ b/net/sunrpc/svc.c
+> > > @@ -1147,7 +1147,6 @@ svc_process_common(struct svc_rqst *rqstp,
+> > struct kvec *argv, struct kvec *resv)
+> > >   dropit:
+> > >  	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+> > >  	dprintk("svc: svc_process dropit\n");
+> > > -	svc_drop(rqstp);
+> > >  	return 0;
+> > >
+> > >  err_short_len:
+> > > @@ -1218,7 +1217,6 @@ svc_process(struct svc_rqst *rqstp)
+> > >  	struct kvec		*resv = &rqstp->rq_res.head[0];
+> > >  	struct svc_serv		*serv = rqstp->rq_server;
+> > >  	u32			dir;
+> > > -	int			error;
+> > >
+> > >  	/*
+> > >  	 * Setup response xdr_buf.
+> > > @@ -1246,11 +1244,13 @@ svc_process(struct svc_rqst *rqstp)
+> > >  		return 0;
+> > >  	}
+> > >
+> > > -	error = svc_process_common(rqstp, argv, resv);
+> > > -	if (error <= 0)
+> > 
+> > Oh, and that was pretty ugly, seeing as svc_process_common never
+> > returned <0.  Thanks for cleaning that up.
+> > 
+> > > -		return error;
+> > > -
+> > > -	return svc_send(rqstp);
+> > > +	/* Returns 1 for send, 0 for drop */
+> > > +	if (svc_process_common(rqstp, argv, resv))
+> > > +		return svc_send(rqstp);
+> > > +	else {
+> > > +		svc_drop(rqstp);
+> > > +		return 0;
+> > > +	}
+> > >  }
+> > >
+> > >  #if defined(CONFIG_NFS_V4_1)
+> > > @@ -1264,7 +1264,6 @@ bc_svc_process(struct svc_serv *serv, struct
+> > rpc_rqst *req,
+> > >  {
+> > >  	struct kvec	*argv = &rqstp->rq_arg.head[0];
+> > >  	struct kvec	*resv = &rqstp->rq_res.head[0];
+> > > -	int 		error;
+> > >
+> > >  	/* Build the svc_rqst used by the common processing routine */
+> > >  	rqstp->rq_xprt = serv->bc_xprt;
+> > > @@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct
+> > rpc_rqst *req,
+> > >  	svc_getu32(argv);	/* XID */
+> > >  	svc_getnl(argv);	/* CALLDIR */
+> > >
+> > > -	error = svc_process_common(rqstp, argv, resv);
+> > > -	if (error <= 0)
+> > > -		return error;
+> > > -
+> > > -	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req-
+> > >rq_snd_buf));
+> > > -	return bc_send(req);
+> > > +	/* Returns 1 for send, 0 for drop */
+> > > +	if (svc_process_common(rqstp, argv, resv)) {
+> > > +		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
+> > > +
+> sizeof(req->rq_snd_buf));
+> > > +		return bc_send(req);
+> > > +	} else {
+> > > +		/* Nothing to do to drop request */
+> > > +		return 0;
+> > 
+> > The one thing that bothers me is the svc_reserve stuff.  Which you
+> have
+> > no use for, I guess.  But svc_reserve_auth() is called from
+> > svc_process_common(); I wonder if that can get us into trouble?  I'll
+> > look a little closer.
+> > 	
 > 
-> When testing NFSv4 at RHEL6 with kernel 2.6.32, I got a kernel panic
-> at NFS client's __rpc_create_common function.
+> The callback request arrives on the backchannel and is placed in a
+> preallocated 'struct rpc_rqst'.  bc_svc_process() is then called, which
+> populates the 'struct svc_rqst' rq_arg and rq_res from the 'struct
+> rpc_rqst' send and receive buffers.  So the reply buffer is independent
+> of any other request on the forechannel or backchannel.
 > 
-> The panic place is:
->   rpc_mkpipe
->     __rpc_lookup_create()          <=== find pipefile *idmap*
->     __rpc_mkpipe()                 <=== pipefile is *idmap*
->       __rpc_create_common()
->        ******  BUG_ON(!d_unhashed(dentry)); ******    *panic*
+> The space reserved for the 'struct svc_rqst' will be 0 when
+> svc_reserve() is called, so it should not call svc_xprt_enqueue().
 > 
-> It means that the dentry's d_flags have be set DCACHE_UNHASHED, 
-> but it should not be set here.
-> 
-> Is someone known this bug? or give me some idea?
-> 
-> A reproduce program is append, but it can't reproduce the bug every time.
-> the export is: "/nfsroot       *(rw,no_root_squash,fsid=0,insecure)"
-> 
-> And the panic message is append.
-> 
-> ============================================================================
-> #!/bin/sh
-> 
-> LOOPTOTAL=768
-> LOOPCOUNT=0
-> ret=0
-> 
-> while [ $LOOPCOUNT -ne $LOOPTOTAL ]
-> do
-> 	((LOOPCOUNT += 1))
-> 	service nfs restart
-> 	/usr/sbin/rpc.idmapd
-> 	mount -t nfs4 127.0.0.1:/ /mnt|| return 1;
-> 	ls -l /var/lib/nfs/rpc_pipefs/nfs/*/
-> 	umount /mnt
-> 	echo $LOOPCOUNT
-> done
-> 
-> ===============================================================================
-> Code: af 60 01 00 00 89 fa 89 f0 e8 64 cf 89 f0 e8 5c 7c 64 cf 31 c0 8b 5c 24 10 8b 
-> 74 24 14 8b 7c 24 18 8b 6c 24 1c 83 c4 20 c3 <0f> 0b eb fc 8b 46 28 c7 44 24 08 20
-> de ee f0 c7 44 24 04 56 ea 
-> EIP:[<f0ee92ea>] __rpc_create_common+0x8a/0xc0 [sunrpc] SS:ESP 0068:eccb5d28
-> ---[ end trace 8f5606cd08928ed2]---
-> Kernel panic - not syncing: Fatal exception
-> Pid:7131, comm: mount.nfs4 Tainted: G     D   -------------------2.6.32 #1
-> Call Trace:
->  [<c080ad18>] ? panic+0x42/0xed
->  [<c080e42c>] ? oops_end+0xbc/0xd0
->  [<c040b090>] ? do_invalid_op+0x0/0x90
->  [<c040b10f>] ? do_invalid_op+0x7f/0x90
->  [<f0ee92ea>] ? __rpc_create_common+0x8a/0xc0[sunrpc]
->  [<f0edc433>] ? rpc_free_task+0x33/0x70[sunrpc]
->  [<f0ed6508>] ? prc_call_sync+0x48/0x60[sunrpc]
->  [<f0ed656e>] ? rpc_ping+0x4e/0x60[sunrpc]
->  [<f0ed6eaf>] ? rpc_create+0x38f/0x4f0[sunrpc]
->  [<c080d80b>] ? error_code+0x73/0x78
->  [<f0ee92ea>] ? __rpc_create_common+0x8a/0xc0[sunrpc]
->  [<c0532bda>] ? d_lookup+0x2a/0x40
->  [<f0ee94b1>] ? rpc_mkpipe+0x111/0x1b0[sunrpc]
->  [<f10a59f4>] ? nfs_create_rpc_client+0xb4/0xf0[nfs]
->  [<f10d6c6d>] ? nfs_fscache_get_client_cookie+0x1d/0x50[nfs]
->  [<f10d3fcb>] ? nfs_idmap_new+0x7b/0x140[nfs]
->  [<c05e76aa>] ? strlcpy+0x3a/0x60
->  [<f10a60ca>] ? nfs4_set_client+0xea/0x2b0[nfs]
->  [<f10a6d0c>] ? nfs4_create_server+0xac/0x1b0[nfs]
->  [<c04f1400>] ? krealloc+0x40/0x50
->  [<f10b0e8b>] ? nfs4_remote_get_sb+0x6b/0x250[nfs]
->  [<c04f14ec>] ? kstrdup+0x3c/0x60
->  [<c0520739>] ? vfs_kern_mount+0x69/0x170
->  [<f10b1a3c>] ? nfs_do_root_mount+0x6c/0xa0[nfs]
->  [<f10b1b47>] ? nfs4_try_mount+0x37/0xa0[nfs]
->  [<f10afe6d>] ? nfs4_validate_text_mount_data+-x7d/0xf0[nfs]
->  [<f10b1c42>] ? nfs4_get_sb+0x92/0x2f0
->  [<c0520739>] ? vfs_kern_mount+0x69/0x170
->  [<c05366d2>] ? get_fs_type+0x32/0xb0
->  [<c052089f>] ? do_kern_mount+0x3f/0xe0
->  [<c053954f>] ? do_mount+0x2ef/0x740
->  [<c0537740>] ? copy_mount_options+0xb0/0x120
->  [<c0539a0e>] ? sys_mount+0x6e/0xa0
+> So I think we're okay, but I'm not sure what has you concerned.
 
-Hi,
+No, I think you're right, if rq_reserved is initialized to zero then I
+can't see what would go wrong.
 
-Does the following patch fix the problem?
-
-Cheers
-  Trond
-
---------------------------
-SUNRPC: Fix a BUG in __rpc_create_common
-
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-Mi Jinlong reports:
-
-
-When testing NFSv4 at RHEL6 with kernel 2.6.32, I got a kernel panic
-at NFS client's __rpc_create_common function.
-
-The panic place is:
-  rpc_mkpipe
-      __rpc_lookup_create()          <=== find pipefile *idmap*
-      __rpc_mkpipe()                 <=== pipefile is *idmap*
-        __rpc_create_common()
-         ******  BUG_ON(!d_unhashed(dentry)); ****** *panic*
-
-The test is wrong: we can find ourselves with a hashed negative dentry here
-if the idmapper tried to look up the file before we got round to creating
-it.
-
-Just replace the BUG_ON() with a d_drop(dentry).
-
-Reported-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-
- net/sunrpc/rpc_pipe.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 10a17a3..5356d95 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -466,7 +466,7 @@ static int __rpc_create_common(struct inode *dir, struct dentry *dentry,
- {
- 	struct inode *inode;
- 
--	BUG_ON(!d_unhashed(dentry));
-+	d_drop(dentry);
- 	inode = rpc_get_inode(dir->i_sb, mode);
- 	if (!inode)
- 		goto out_err;
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+--b.
