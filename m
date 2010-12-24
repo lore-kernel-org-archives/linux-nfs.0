@@ -1,56 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from netnation.com ([204.174.223.2]:55799 "EHLO peace.netnation.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1756737Ab0LRBIC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Dec 2010 20:08:02 -0500
-Received: from sim by peace.netnation.com with local (Exim 4.69)
-	(envelope-from <sim@netnation.com>)
-	id 1PTlHF-0006Av-AU
-	for linux-nfs@vger.kernel.org; Fri, 17 Dec 2010 17:08:01 -0800
-Date: Fri, 17 Dec 2010 17:08:01 -0800
-From: Simon Kirby <sim@hostway.ca>
-To: linux-nfs@vger.kernel.org
-Subject: Re: System CPU increasing on idle 2.6.36
-Message-ID: <20101218010801.GE28367@hostway.ca>
-References: <20101208212505.GA18192@hostway.ca>
+Received: from fieldses.org ([174.143.236.118]:43748 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751701Ab0LXRnT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Dec 2010 12:43:19 -0500
+Date: Fri, 24 Dec 2010 12:43:07 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: andros@netapp.com
+Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH_V5 03/11] SUNRPC new transport for the NFSv4.1 shared
+ back channel
+Message-ID: <20101224174307.GD2889@fieldses.org>
+References: <1292879088-7821-1-git-send-email-andros@netapp.com>
+ <1292879088-7821-2-git-send-email-andros@netapp.com>
+ <1292879088-7821-3-git-send-email-andros@netapp.com>
+ <1292879088-7821-4-git-send-email-andros@netapp.com>
+ <20101222222414.GD13243@fieldses.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20101208212505.GA18192@hostway.ca>
+In-Reply-To: <20101222222414.GD13243@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Dec 08, 2010 at 01:25:05PM -0800, Simon Kirby wrote:
-
-> Possibly related to the flush-processes-taking-CPU issues I saw
-> previously, I thought this was interesting.  I found a log-crunching box
-> that does all of its work via NFS and spends most of the day sleeping. 
-> It has been using a linearly-increasing amount of system time during the
-> time where is sleeping.  munin graph:
+On Wed, Dec 22, 2010 at 05:24:14PM -0500, bfields wrote:
+> On Mon, Dec 20, 2010 at 04:04:40PM -0500, andros@netapp.com wrote:
+> > From: Andy Adamson <andros@netapp.com>
+> > 
+> > Move the current sock create and destroy routines into the new transport ops.
+> > Back channel socket will be destroyed by the svc_closs_all call in svc_destroy.
 > 
-> http://0x.ca/sim/ref/2.6.36/cpu_logcrunch_nfs.png
->...
-> Known 2.6.36 issue?  This did not occur on 2.6.35.4, according to the
-> munin graphs.  I'll try 2.6.37-rc an see if it changes.
+> Also note you're adding UDP check?
 
-So, back on this topic,
+Oh, and a minor nit there:
 
-It seems that system CPU from "flush" processes is still increasing
-during and after periods of NFS activity, even with 2.6.37-rc5-git4:
-        
-        http://0x.ca/sim/ref/2.6.37/cpu_nfs.png
+> > +		printk(KERN_WARNING "svc: only and TCP sockets"
+					       ^^^
 
-Something is definitely going on while NFS is active, and then keeps
-happening in the idle periods.  top and perf top look the same as in
-2.6.36.  No userland activity at all, but the kernel keeps doing stuff.
+Just fix that message.  Other than that, everything looks OK to me.
 
-I could bisect this, but I have to wait a day for each build, unless I
-can come up with a way to reproduce it more quickly.  The mount points
-for which the flush processes are active are the two mount points where
-the logs are read from, rotated, compressed, and unlinked, and where the
-reports are written, running in parallel under an xargs -P 15.
+--b.
 
-I'm pretty sure the only syscalls that are reproducing this are read(),
-readdir(), lstat(), write(), rename(), unlink(), and close().  There's
-nothing special happening here...
-
-Simon-
+> > +			" supported on shared back channel\n");
+> > +		return ERR_PTR(-EINVAL);
+> > +	}
+> >  
+> > -	dprintk("svc: %s\n", __func__);
+> >  	svsk = kzalloc(sizeof(*svsk), GFP_KERNEL);
+> >  	if (!svsk)
+> > -		goto out;
+> > +		return ERR_PTR(-ENOMEM);
+> >  
+> >  	xprt = &svsk->sk_xprt;
+> > -	if (prot == IPPROTO_TCP)
+> > -		svc_xprt_init(&svc_tcp_class, xprt, serv);
+> > -	else if (prot == IPPROTO_UDP)
+> > -		svc_xprt_init(&svc_udp_class, xprt, serv);
+> > -	else
+> > -		BUG();
+> > -out:
+> > -	dprintk("svc: %s return %p\n", __func__, xprt);
+> > +	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
+> > +
+> > +	serv->bc_xprt = xprt;
+> > +
+> >  	return xprt;
+> >  }
+> > -EXPORT_SYMBOL_GPL(svc_sock_create);
+> >  
+> >  /*
+> > - * Destroy a svc_sock.
+> > + * Free a back channel svc_sock.
+> >   */
+> > -void svc_sock_destroy(struct svc_xprt *xprt)
+> > +static void svc_bc_sock_free(struct svc_xprt *xprt)
+> >  {
+> >  	if (xprt)
+> >  		kfree(container_of(xprt, struct svc_sock, sk_xprt));
+> >  }
+> > -EXPORT_SYMBOL_GPL(svc_sock_destroy);
+> > +#endif /* CONFIG_NFS_V4_1 */
+> > -- 
+> > 1.6.6
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
