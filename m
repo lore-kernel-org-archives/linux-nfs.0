@@ -1,39 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:15485 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:54376 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752342Ab0LJTAS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Dec 2010 14:00:18 -0500
-Subject: Re: NFSv4 behaviour on unknown users
+	id S1752584Ab0LXS1Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Dec 2010 13:27:16 -0500
+Date: Fri, 24 Dec 2010 13:27:14 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Nix <nix@esperi.org.uk>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: persistent, quasi-random -ESTALE at mount time
+Message-ID: <20101224182714.GA8899@fieldses.org>
+References: <87mxra6duq.fsf@spindle.srvr.nix>
+ <20100922155235.GE15560@fieldses.org>
+ <8762xwqijb.fsf@spindle.srvr.nix>
+ <20101001220018.GE1472@fieldses.org>
+ <87zkux5ye1.fsf@spindle.srvr.nix>
+ <20101001231144.GB12203@fieldses.org>
+ <878vzo5dsh.fsf@spindle.srvr.nix>
 Content-Type: text/plain; charset=us-ascii
-From: Thomas Haynes <thomas@netapp.com>
-In-Reply-To: <20101208001548.GA30196@fieldses.org>
-Date: Fri, 10 Dec 2010 11:00:08 -0800
-Cc: Spencer Shepler <spencer.shepler@gmail.com>,
-        "'Trond Myklebust'" <Trond.Myklebust@netapp.com>,
-        "'Spelic'" <spelic@shiftmail.org>, linux-nfs@vger.kernel.org
-Message-Id: <3FD238C0-0A97-4EEE-ACE6-A0547E2559AF@netapp.com>
-References: <1291155578.2998.38.camel@heimdal.trondhjem.org> <20101130222651.GB5054@fieldses.org> <1291156414.4393.2.camel@heimdal.trondhjem.org> <20101130223627.GC5054@fieldses.org> <20101201135740.0d3b5948@notabene.brown> <1291173002.7694.7.camel@heimdal.trondhjem.org> <20101201162912.GC6832@fieldses.org> <99BBEF51-7EB1-4BAA-9B12-F0F98A629C74@netapp.com> <1291331885.2915.1.camel@heimdal.trondhjem.org> <03e401cb9278$ad554ad0$07ffe070$@gmail.com> <20101208001548.GA30196@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <878vzo5dsh.fsf@spindle.srvr.nix>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Fri, Dec 17, 2010 at 08:45:34PM +0000, Nix wrote:
+> On 2 Oct 2010, J. Bruce Fields stated:
+> 
+> > On Fri, Oct 01, 2010 at 11:41:42PM +0100, Nix wrote:
+> >> I mean, yes, we can work around it by killing rpc.mountd and restarting
+> >> it as soon as the server has booted, but, well, yuck, no thanks, too
+> >> much of a kludge. I'll have a concentrated hunt for the bug soon (once I
+> >> can reproduce it without rebooting the single largest machine I have
+> >> root on!)
+> >
+> > OK, thanks for the persistence, and apologies that I can't think of
+> > anything off the top of my head (and haven't had the time to try and
+> > look more closely).  I'll look forward to anything more you can figure
+> > out....
+> 
+> This is still happening. Just by chance (while checking to see if adding
+> unique fsids to every line fixed it: no) I spotted something
+> interesting, which I think points to the cause.
+> 
+> You don't need to repeatedly kill rpc.mountd and restart it at all to
+> fix things. You just have to run exportfs many times!
+> 
+> Here are dumps of /proc/fs/nfs/exports on boot (after a single exportfs -ra),
+> then after a subsequent one, then another:
+...
+> If exportfs is not correctly exporting everything to the kernel when
+> run, that would pretty much explain the cause of spontaneous -ESTALEs on
+> reboot, because rebooting clears the mount table: if a single exportfs
+> is failing to properly refill it, mountd is going to say -ESTALE about
+> everything it forgot to put back in.
 
-On Dec 7, 2010, at 4:15 PM, J. Bruce Fields wrote:
+Note that the contents of /proc/fs/nfs/exports represent the kernel's
+cached view of the exports, *not* the entire export table; when a client
+requests an export which the kernel does not know about, the kernel
+makes an upcall to mountd to get the relevant export entry.  All
+exportfs does is clear the kernel's cache so that subsequent upcalls
+will get the new information.
+
+So it's normal that the contents of /porc/fs/nfs/exports would be
+incomplete immediately after running exportfs.
+
+--b.
 
 > 
-> (I see AUTH_SYS as a different issue.  It's unfortunately true that
-> AUTH_SYS has effectively turned out to be required-to-implement even if
-> it wasn't meant to be, so maybe the spec's out of line with reality
-> there; but I haven't heard of that causing any practical
-> problems--whereas "why does ls show all users as nobody after an upgrade
-> to NFSv4" is a FAQ.)
 > 
-> --b.
-
-
-
-If everyone were to adopt this approach to solve the FAQ, then wouldn't we
-want it to be specified to make sure that interoperability was maximized?
-
-
+> I'll scatter debugging through exportfs and try to see what it's doing
+> wrong.
