@@ -1,87 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20445 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:40888 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933472Ab0LUCU6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Dec 2010 21:20:58 -0500
+	id S1752114Ab0LZN6u convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Dec 2010 08:58:50 -0500
+Subject: Re: [PATCH 15/15] pnfs: layout roc code
+Content-Type: text/plain; charset=us-ascii
 From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 08/14] pnfs: wave 2: Add layout to client list before sending rpc
-Date: Mon, 20 Dec 2010 21:20:40 -0500
-Message-Id: <1292898046-7336-9-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
-References: <1292898046-7336-1-git-send-email-iisaman@netapp.com>
+In-Reply-To: <4D16FF91.3020206@panasas.com>
+Date: Sun, 26 Dec 2010 08:58:33 -0500
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Message-Id: <7362C7BD-F988-4F05-A3CA-145AD92C628F@netapp.com>
+References: <1292990449-20057-1-git-send-email-iisaman@netapp.com> <1292990449-20057-16-git-send-email-iisaman@netapp.com> <1293055210.6422.23.camel@heimdal.trondhjem.org> <8EF8E6E3-D746-4E1E-BFCB-143921A5A76E@netapp.com> <4D16FF91.3020206@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Since this list will be used to search for layouts to recall,
-this is necessary to avoid a race where the recall comes in,
-sees there is nothing in the client list, and prepares to return
-NOMATCHING, while the LAYOUTGET gets processed before the recall
-updates the stateid.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c |   27 +++++++++++++++++++--------
- 1 files changed, 19 insertions(+), 8 deletions(-)
+On Dec 26, 2010, at 3:40 AM, Benny Halevy wrote:
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 25b67bd..1531cf2 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -463,14 +463,6 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
- 	dprintk("%s:Begin\n", __func__);
- 
- 	assert_spin_locked(&lo->inode->i_lock);
--	if (list_empty(&lo->segs)) {
--		struct nfs_client *clp = NFS_SERVER(lo->inode)->nfs_client;
--
--		spin_lock(&clp->cl_lock);
--		BUG_ON(!list_empty(&lo->layouts));
--		list_add_tail(&lo->layouts, &clp->cl_layouts);
--		spin_unlock(&clp->cl_lock);
--	}
- 	list_for_each_entry(lp, &lo->segs, fi_list) {
- 		if (cmp_layout(lp->range.iomode, lseg->range.iomode) > 0)
- 			continue;
-@@ -591,6 +583,7 @@ pnfs_update_layout(struct inode *ino,
- 		   enum pnfs_iomode iomode)
- {
- 	struct nfs_inode *nfsi = NFS_I(ino);
-+	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
- 	struct pnfs_layout_hdr *lo;
- 	struct pnfs_layout_segment *lseg = NULL;
- 
-@@ -620,9 +613,27 @@ pnfs_update_layout(struct inode *ino,
- 	atomic_inc(&lo->plh_outstanding);
- 
- 	get_layout_hdr_locked(lo);
-+	if (list_empty(&lo->segs)) {
-+		/* The lo must be on the clp list if there is any
-+		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
-+		 */
-+		spin_lock(&clp->cl_lock);
-+		BUG_ON(!list_empty(&lo->layouts));
-+		list_add_tail(&lo->layouts, &clp->cl_layouts);
-+		spin_unlock(&clp->cl_lock);
-+	}
- 	spin_unlock(&ino->i_lock);
- 
- 	lseg = send_layoutget(lo, ctx, iomode);
-+	if (!lseg) {
-+		spin_lock(&ino->i_lock);
-+		if (list_empty(&lo->segs)) {
-+			spin_lock(&clp->cl_lock);
-+			list_del_init(&lo->layouts);
-+			spin_unlock(&clp->cl_lock);
-+		}
-+		spin_unlock(&ino->i_lock);
-+	}
- 	atomic_dec(&lo->plh_outstanding);
- 	put_layout_hdr(ino);
- out:
--- 
-1.7.2.1
+> On 2010-12-23 02:19, Fred Isaman wrote:
+>> 
+>> On Dec 22, 2010, at 5:00 PM, Trond Myklebust wrote:
+>> 
+>>> On Tue, 2010-12-21 at 23:00 -0500, Fred Isaman wrote:
+>>>> A lsyout can request return-on-close.  How this interacts with the
+>>>> forgetful model of never sending LAYOUTRETURNS is a bit ambiguous.
+>>>> We forget any layouts marked roc, and wait for them to be completely
+>>>> forgotten before continuing with the close.  In addition, to compensate
+>>>> for races with any inflight LAYOUTGETs, and the fact that we do not get
+>>>> any layout stateid back from the server, we set the barrier to the worst
+>>>> case scenario of current_seqid + number of outstanding LAYOUTGETS.
+>>>> 
+>>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>>> ---
+>>>> fs/nfs/inode.c         |    1 +
+>>>> fs/nfs/nfs4_fs.h       |    2 +-
+>>>> fs/nfs/nfs4proc.c      |   21 +++++++++++-
+>>>> fs/nfs/nfs4state.c     |    7 +++-
+>>>> fs/nfs/pnfs.c          |   83 ++++++++++++++++++++++++++++++++++++++++++++++++
+>>>> fs/nfs/pnfs.h          |   28 ++++++++++++++++
+>>>> include/linux/nfs_fs.h |    1 +
+>>>> 7 files changed, 138 insertions(+), 5 deletions(-)
+>>>> 
+>>>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>>>> index 43a69da..c64bb40 100644
+>>>> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+>>>> index 29d504d..90515de 100644
+>>>> --- a/include/linux/nfs_fs.h
+>>>> +++ b/include/linux/nfs_fs.h
+>>>> @@ -190,6 +190,7 @@ struct nfs_inode {
+>>>> 	struct rw_semaphore	rwsem;
+>>>> 
+>>>> 	/* pNFS layout information */
+>>>> +	struct rpc_wait_queue lo_rpcwaitq;
+>>>> 	struct pnfs_layout_hdr *layout;
+>>>> #endif /* CONFIG_NFS_V4*/
+>>>> #ifdef CONFIG_NFS_FSCACHE
+>>> 
+>>> I believe that I've asked this before. Why do we need a per-inode
+>>> rpc_wait_queue just to support pnfs? That's a significant expansion of
+>>> an already bloated structure.
+>>> 
+>>> Can we please either make this a single per-filesystem wait queue, or
+>>> else possibly a pool of wait queues?
+>>> 
+>>> Trond
+>> 
+>> This was introduced to avoid deadlocks that were occurring when we had a single wait queue.   However, the deadlocks I remember were due to a combination of the fact that, at the time, we handled EAGAIN errors of IO outside the RPC code, and we sent LAYOUTRETURN on such error.  Since we do neither now, I believe a single per-filesystem wait queue will suffice.  Anyone disagree?
+> 
+> The dead locks were also because we didn't use rpc wait queue but rather a thread based one.
+> Doing the serialization in the rpc prepare phase using a shared queue should cause dead locks.
+> 
+> Benny
+> 
+
+In the revised code, we use a per-fs rpc waitq to wait for IO to drain before sending CLOSE to the MDS.  For a deadlock to occur, we would have to have an IO thread get stuck waiting for the CLOSE to complete. At least for the file layout driver, I don't see anyplace that is likely to happen.
+
+Fred
+
+>> 
+>> Fred
+>> 
+>>> 
+>>> -- 
+>>> Trond Myklebust
+>>> Linux NFS client maintainer
+>>> 
+>>> NetApp
+>>> Trond.Myklebust@netapp.com
+>>> www.netapp.com
+>>> 
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
