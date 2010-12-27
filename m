@@ -1,37 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pw0-f46.google.com ([209.85.160.46]:55776 "EHLO
-	mail-pw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752061Ab0LOGMi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Dec 2010 01:12:38 -0500
-Received: by pwj3 with SMTP id 3so182023pwj.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Dec 2010 22:12:38 -0800 (PST)
-Message-ID: <4D085C4F.4040108@gmail.com>
-Date: Tue, 14 Dec 2010 22:12:31 -0800
-From: Dean <seattleplus@gmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: Linux pNFS status meeting 12/16/10
-References: <OF43A16D28.D03BB9EB-ON882577DF.0005D227-882577DF.00068DAB@us.ibm.com> <AANLkTimGnJwv3i-396FR4upvw_QBsroheYSUY2DWywMp@mail.gmail.com>
-In-Reply-To: <AANLkTimGnJwv3i-396FR4upvw_QBsroheYSUY2DWywMp@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:40327 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752068Ab0L0XkT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Dec 2010 18:40:19 -0500
+Received: by gyb11 with SMTP id 11so3612926gyb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 27 Dec 2010 15:40:18 -0800 (PST)
+Date: Mon, 27 Dec 2010 18:32:20 -0500
+Message-ID: <AANLkTi=67a4C7Wx1zhoB-gAV_uXyzizenLmaEnbruy9i@mail.gmail.com>
+Subject: NFS and firewalls
+From: Jeff Hanson <jhansonxi@gmail.com>
+To: Linux NFS <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Meeting on Thursday 12/16/10 at 9:30 AM PDT (12:30 PM EST)
+The random port usage of NFS makes it difficult to use with NAT/firewalls.
 
+The common workaround is to configure statd, mountd, lockd, and quotad
+to static ports. Since there isn't any standard (IANA registered) port
+assignments this breaks on many networks that use dynamic or different
+static ports.
 
-USA Toll-Free: 888-426-6840
-USA Caller Paid: 215-861-6239
+This makes it difficult to use the "standard" network file sharing
+protocol with mobile devices which often use firewalls.
 
-Israel Toll-Free: 1-809-417-783
+Saned, Samba (netbios), and FTP all have conntrack modules to handle
+dynamic port usage.  Has there been any attempt to write one for NFS?
 
-Participant Code: 8792872
-
-
-Dean
-
-
-
-
-
-
+I filed a bug with Ubuntu about it (#688446), mostly for psychological
+benefit as it's probably something they're not going to get involved
+with.
