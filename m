@@ -1,140 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:56099 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751658Ab0LWVyi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Dec 2010 16:54:38 -0500
-Received: by mail-iw0-f174.google.com with SMTP id 9so6550865iwn.19
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Dec 2010 13:54:37 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/4] NFS: Introduce nfs_detach_delegations()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 23 Dec 2010 16:54:35 -0500
-Message-ID: <20101223215435.2344.77114.stgit@matisse.1015granger.net>
-In-Reply-To: <20101223214503.2344.79300.stgit@matisse.1015granger.net>
-References: <20101223214503.2344.79300.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:54027 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752068Ab0L0Xqv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Dec 2010 18:46:51 -0500
+Date: Mon, 27 Dec 2010 18:46:41 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: [PATCH] fs/dcache: allow __d_obtain_alias() to return unhashed
+ dentries
+Message-ID: <20101227234641.GA22248@fieldses.org>
+References: <AANLkTinMq1W1vx-jZnf7cb1cAnh9OyoVRYtVS7zpujfs@mail.gmail.com>
+ <20101129193248.GA9897@fieldses.org>
+ <AANLkTikwzDJ_q65==uxDsAhp3h8bU7Rkt7U9gVgRAK0D@mail.gmail.com>
+ <20101203223326.GB28763@fieldses.org>
+ <20101213051944.GA8688@amd>
+ <20101214220102.GM24828@fieldses.org>
+ <20101217180022.GB11515@fieldses.org>
+ <20101218020118.GA3179@amd>
+ <20101218161609.GA22150@fieldses.org>
+ <AANLkTingRv_gtRSctGzMfYrKg02M_sKj97HSQPRm_mA_@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <AANLkTingRv_gtRSctGzMfYrKg02M_sKj97HSQPRm_mA_@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up:  Refactor code that takes clp->cl_lock and calls
-nfs_detach_delegations_locked() into its own function.
+From: J. Bruce Fields <bfields@redhat.com>
 
-While we're changing the call sites, get rid of the second parameter
-and the logic in nfs_detach_delegations_locked() that uses it, since
-callers always set that parameter of nfs_detach_delegations_locked()
-to NULL.
+Without this patch, inodes are not promptly freed on last close of an
+unlinked file by an nfs client:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+	client$ mount -tnfs4 server:/export/ /mnt/
+	client$ tail -f /mnt/FOO
+	...
+	server$ df -i /export
+	server$ rm /export/FOO
+	(^C the tail -f)
+	server$ df -i /export
+	server$ echo 2 >/proc/sys/vm/drop_caches
+	server$ df -i /export
+
+the df's will show that the inode is not freed on the filesystem until
+the last step, when it could have been freed after killing the client's
+tail -f.  On-disk data won't be deallocated either, leading to possible
+spurious ENOSPC.
+
+This occurs because when the client does the close, it arrives in a
+compound with a putfh and a close, processed like:
+
+	- putfh: look up the filehandle.  The only alias found for the
+	  inode will be DCACHE_UNHASHED alias referenced by the filp
+	  this, so it creates a new DCACHE_DISCONECTED dentry and
+	  returns that instead.
+	- close: closes the existing filp, which is destroyed
+	  immediately by dput() since it's DCACHE_UNHASHED.
+	- end of the compound: release the reference
+	  to the current filehandle, and dput() the new
+	  DCACHE_DISCONECTED dentry, which gets put on the
+	  unused list instead of being destroyed immediately.
+
+Nick Piggin suggested fixing this by allowing d_obtain_alias to return
+the unhashed dentry that is referenced by the filp, instead of making it
+create a new dentry.
+
+Leave __d_find_alias() alone to avoid changing behavior of other
+callers.
+
+Also nfsd doesn't need all the checks of __d_find_alias(); any dentry,
+hashed or unhashed, disconnected or not, should work.
+
+Acked-by: Nick Piggin <npiggin@kernel.dk>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/dcache.c |   26 ++++++++++++++++++++++++--
+ 1 files changed, 24 insertions(+), 2 deletions(-)
 
- fs/nfs/delegation.c |   41 ++++++++++++++++++++---------------------
- 1 files changed, 20 insertions(+), 21 deletions(-)
+On Mon, Dec 20, 2010 at 01:53:10AM +1100, Nick Piggin wrote:
+> On Sun, Dec 19, 2010 at 3:16 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Sat, Dec 18, 2010 at 01:01:18PM +1100, Nick Piggin wrote:
+> >> Well I don't really know if this is clearer. By convention,
+> >> __ prefix version should be same as non prefix version but just
+> >> take fewer locks. Why do you have the new d_find_any_alias()?
+> >
+> > Argh, apologies; with typo fixed.
+> 
+> OK that makes a lot more sense :)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 1fd62fc..521d71b 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -175,9 +175,9 @@ static struct inode *nfs_delegation_grab_inode(struct nfs_delegation *delegation
- 	return inode;
+Thanks very much for your help!--b.
+
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 5ed93cd..5c014a5 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -1135,6 +1135,28 @@ static inline struct hlist_head *d_hash(struct dentry *parent,
+ 	return dentry_hashtable + (hash & D_HASHMASK);
  }
  
--static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfsi,
--							   const nfs4_stateid *stateid,
--							   struct nfs_client *clp)
-+static struct nfs_delegation *
-+nfs_detach_delegation_locked(struct nfs_inode *nfsi,
-+			     struct nfs_client *clp)
- {
- 	struct nfs_delegation *delegation =
- 		rcu_dereference_protected(nfsi->delegation,
-@@ -185,22 +185,29 @@ static struct nfs_delegation *nfs_detach_delegation_locked(struct nfs_inode *nfs
- 
- 	if (delegation == NULL)
- 		goto nomatch;
-+
- 	spin_lock(&delegation->lock);
--	if (stateid != NULL && memcmp(delegation->stateid.data, stateid->data,
--				sizeof(delegation->stateid.data)) != 0)
--		goto nomatch_unlock;
- 	list_del_rcu(&delegation->super_list);
- 	delegation->inode = NULL;
- 	nfsi->delegation_state = 0;
- 	rcu_assign_pointer(nfsi->delegation, NULL);
- 	spin_unlock(&delegation->lock);
- 	return delegation;
--nomatch_unlock:
--	spin_unlock(&delegation->lock);
- nomatch:
- 	return NULL;
- }
- 
-+static struct nfs_delegation *nfs_detach_delegation(struct nfs_inode *nfsi,
-+						    struct nfs_client *clp)
++static struct dentry * __d_find_any_alias(struct inode *inode)
 +{
-+	struct nfs_delegation *delegation;
++	struct dentry *alias;
 +
-+	spin_lock(&clp->cl_lock);
-+	delegation = nfs_detach_delegation_locked(nfsi, clp);
-+	spin_unlock(&clp->cl_lock);
-+	return delegation;
++	if (list_empty(&inode->i_dentry))
++		return NULL;
++	alias = list_first_entry(&inode->i_dentry, struct dentry, d_alias);
++	__dget_locked(alias);
++	return alias;
 +}
 +
- /*
-  * Set up a delegation on an inode
-  */
-@@ -246,7 +253,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
- 			delegation = NULL;
- 			goto out;
- 		}
--		freeme = nfs_detach_delegation_locked(nfsi, NULL, clp);
-+		freeme = nfs_detach_delegation_locked(nfsi, clp);
- 	}
- 	list_add_rcu(&delegation->super_list, &clp->cl_delegations);
- 	nfsi->delegation_state = delegation->type;
-@@ -307,9 +314,7 @@ restart:
- 		inode = nfs_delegation_grab_inode(delegation);
- 		if (inode == NULL)
- 			continue;
--		spin_lock(&clp->cl_lock);
--		delegation = nfs_detach_delegation_locked(NFS_I(inode), NULL, clp);
--		spin_unlock(&clp->cl_lock);
-+		delegation = nfs_detach_delegation(NFS_I(inode), clp);
- 		rcu_read_unlock();
- 		if (delegation != NULL) {
- 			filemap_flush(inode->i_mapping);
-@@ -338,9 +343,7 @@ void nfs_inode_return_delegation_noreclaim(struct inode *inode)
- 	struct nfs_delegation *delegation;
++static struct dentry * d_find_any_alias(struct inode *inode)
++{
++	struct dentry *de;
++
++	spin_lock(&dcache_lock);
++	de = __d_find_any_alias(inode);
++	spin_unlock(&dcache_lock);
++	return de;
++}
++
++
+ /**
+  * d_obtain_alias - find or allocate a dentry for a given inode
+  * @inode: inode to allocate the dentry for
+@@ -1164,7 +1186,7 @@ struct dentry *d_obtain_alias(struct inode *inode)
+ 	if (IS_ERR(inode))
+ 		return ERR_CAST(inode);
  
- 	if (rcu_access_pointer(nfsi->delegation) != NULL) {
--		spin_lock(&clp->cl_lock);
--		delegation = nfs_detach_delegation_locked(nfsi, NULL, clp);
--		spin_unlock(&clp->cl_lock);
-+		delegation = nfs_detach_delegation(nfsi, clp);
- 		if (delegation != NULL)
- 			nfs_do_return_delegation(inode, delegation, 0);
- 	}
-@@ -354,9 +357,7 @@ int nfs_inode_return_delegation(struct inode *inode)
- 	int err = 0;
+-	res = d_find_alias(inode);
++	res = d_find_any_alias(inode);
+ 	if (res)
+ 		goto out_iput;
  
- 	if (rcu_access_pointer(nfsi->delegation) != NULL) {
--		spin_lock(&clp->cl_lock);
--		delegation = nfs_detach_delegation_locked(nfsi, NULL, clp);
--		spin_unlock(&clp->cl_lock);
-+		delegation = nfs_detach_delegation(nfsi, clp);
- 		if (delegation != NULL) {
- 			nfs_wb_all(inode);
- 			err = __nfs_inode_return_delegation(inode, delegation, 1);
-@@ -530,9 +531,7 @@ restart:
- 		inode = nfs_delegation_grab_inode(delegation);
- 		if (inode == NULL)
- 			continue;
--		spin_lock(&clp->cl_lock);
--		delegation = nfs_detach_delegation_locked(NFS_I(inode), NULL, clp);
--		spin_unlock(&clp->cl_lock);
-+		delegation = nfs_detach_delegation(NFS_I(inode), clp);
- 		rcu_read_unlock();
- 		if (delegation != NULL)
- 			nfs_free_delegation(delegation);
+@@ -1176,7 +1198,7 @@ struct dentry *d_obtain_alias(struct inode *inode)
+ 	tmp->d_parent = tmp; /* make sure dput doesn't croak */
+ 
+ 	spin_lock(&dcache_lock);
+-	res = __d_find_alias(inode, 0);
++	res = __d_find_any_alias(inode);
+ 	if (res) {
+ 		spin_unlock(&dcache_lock);
+ 		dput(tmp);
+-- 
+1.7.3.4
 
