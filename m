@@ -1,44 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:34940 "EHLO shutemov.name"
+Received: from magus.merit.edu ([198.108.1.13]:50019 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753177Ab0L3Ivk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Dec 2010 03:51:40 -0500
-Date: Thu, 30 Dec 2010 10:51:39 +0200
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Rob Landley <rob@landley.net>
-Cc: "Kirill A. Shutemov" <kas@openvz.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 00/12] make rpc_pipefs be mountable multiple time
-Message-ID: <20101230085139.GA29697@shutemov.name>
-References: <1293628470-28386-1-git-send-email-kas@openvz.org>
- <AANLkTi=AXz21wDeE1vPVD-6cEtj6faXN9x09eHDCsTkB@mail.gmail.com>
+	id S1752988Ab0L1D0f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Dec 2010 22:26:35 -0500
+Date: Mon, 27 Dec 2010 22:26:32 -0500
+From: Jim Rees <rees@umich.edu>
+To: Jeff Hanson <jhansonxi@gmail.com>
+Cc: Linux NFS <linux-nfs@vger.kernel.org>
+Subject: Re: NFS and firewalls
+Message-ID: <20101228032632.GA10718@merit.edu>
+References: <AANLkTi=67a4C7Wx1zhoB-gAV_uXyzizenLmaEnbruy9i@mail.gmail.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTi=AXz21wDeE1vPVD-6cEtj6faXN9x09eHDCsTkB@mail.gmail.com>
+In-Reply-To: <AANLkTi=67a4C7Wx1zhoB-gAV_uXyzizenLmaEnbruy9i@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Dec 29, 2010 at 08:13:50PM -0600, Rob Landley wrote:
-> On Wed, Dec 29, 2010 at 7:14 AM, Kirill A. Shutemov <kas@openvz.org> wrote:
-> >
-> > Prepare nfs/sunrpc stack to use multiple instances of rpc_pipefs.
-> > Only for client for now.
-> 
-> What would a test case for this look like?  (Is there some way to tell
-> an nfs mount to use a specific instance of rpc_pipefs or something?)
+Jeff Hanson wrote:
 
-You can create a new instance of rpc_pipefs using 'newinstance'
-mountoption.
+  The random port usage of NFS makes it difficult to use with NAT/firewalls.
 
-Then you can specify which rpc_pipefs to use with 'rpcmount' mountoption
-of nfs mount. If none specifed, '/var/lib/nfs/rpc_pipefs' uses by default.
-If no rpcmount mountoption, no rpc_pipefs was found at
-'/var/lib/nfs/rpc_pipefs' and we are in init's mount namespace, we use
-init_rpc_pipefs.
+Assuming you mean v3, I've done this by setting nolock in the mount options
+and bypassing the mount protocol by configuring the root file handle on the
+client manually.
 
--- 
- Kirill A. Shutemov
+Others have noted that v4 solves this problem.  IPv6 eliminates the need for
+NAT, if your client and server support it and your network will pass the
+packets.
