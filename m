@@ -1,183 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:33581 "EHLO shutemov.name"
+Received: from mail-out1.uio.no ([129.240.10.57]:42696 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752678Ab0L2NOe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Dec 2010 08:14:34 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v2 05/12] sunrpc: get rpc_pipefs mount point for svc_serv from callers
-Date: Wed, 29 Dec 2010 15:14:23 +0200
-Message-Id: <1293628470-28386-6-git-send-email-kas@openvz.org>
-In-Reply-To: <1293628470-28386-1-git-send-email-kas@openvz.org>
-References: <1293628470-28386-1-git-send-email-kas@openvz.org>
+	id S1752465Ab0L1AMy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Dec 2010 19:12:54 -0500
+Subject: Re: NFS and firewalls
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Jeff Hanson <jhansonxi@gmail.com>
+Cc: Linux NFS <linux-nfs@vger.kernel.org>
+In-Reply-To: <AANLkTi=67a4C7Wx1zhoB-gAV_uXyzizenLmaEnbruy9i@mail.gmail.com>
+References: <AANLkTi=67a4C7Wx1zhoB-gAV_uXyzizenLmaEnbruy9i@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 27 Dec 2010 19:12:50 -0500
+Message-ID: <1293495170.9774.7.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
----
- fs/lockd/svc.c             |    4 +++-
- fs/nfs/callback.c          |    4 +++-
- fs/nfsd/nfssvc.c           |    6 ++++--
- include/linux/sunrpc/svc.h |    8 ++++----
- net/sunrpc/svc.c           |   18 +++++++++---------
- 5 files changed, 23 insertions(+), 17 deletions(-)
+On Mon, 2010-12-27 at 18:32 -0500, Jeff Hanson wrote:
+> The random port usage of NFS makes it difficult to use with NAT/firewalls.
+> 
+> The common workaround is to configure statd, mountd, lockd, and quotad
+> to static ports. Since there isn't any standard (IANA registered) port
+> assignments this breaks on many networks that use dynamic or different
+> static ports.
+> 
+> This makes it difficult to use the "standard" network file sharing
+> protocol with mobile devices which often use firewalls.
+> 
+> Saned, Samba (netbios), and FTP all have conntrack modules to handle
+> dynamic port usage.  Has there been any attempt to write one for NFS?
+> 
+> I filed a bug with Ubuntu about it (#688446), mostly for psychological
+> benefit as it's probably something they're not going to get involved
+> with.
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index abfff9d..32310b1 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -31,6 +31,7 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/svcsock.h>
-+#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <net/ip.h>
- #include <linux/lockd/lockd.h>
- #include <linux/nfs.h>
-@@ -269,7 +270,8 @@ int lockd_up(void)
- 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
- 
- 	error = -ENOMEM;
--	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, NULL);
-+	serv = svc_create(&nlmsvc_program, init_rpc_pipefs, LOCKD_BUFSIZE,
-+			NULL);
- 	if (!serv) {
- 		printk(KERN_WARNING "lockd_up: create service failed\n");
- 		goto out;
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 93a8b3b..bef6abd 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -16,6 +16,7 @@
- #include <linux/freezer.h>
- #include <linux/kthread.h>
- #include <linux/sunrpc/svcauth_gss.h>
-+#include <linux/sunrpc/rpc_pipe_fs.h>
- #if defined(CONFIG_NFS_V4_1)
- #include <linux/sunrpc/bc_xprt.h>
- #endif
-@@ -253,7 +254,8 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 		nfs_callback_bc_serv(minorversion, xprt, cb_info);
- 		goto out;
- 	}
--	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
-+	serv = svc_create(&nfs4_callback_program, init_rpc_pipefs,
-+			NFS4_CALLBACK_BUFSIZE, NULL);
- 	if (!serv) {
- 		ret = -ENOMEM;
- 		goto out_err;
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 2bae1d8..d96c32b 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -13,6 +13,7 @@
- 
- #include <linux/sunrpc/stats.h>
- #include <linux/sunrpc/svcsock.h>
-+#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/lockd/bind.h>
- #include <linux/nfsacl.h>
- #include <linux/seq_file.h>
-@@ -331,8 +332,9 @@ int nfsd_create_serv(void)
- 	}
- 	nfsd_reset_versions();
- 
--	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
--				      nfsd_last_thread, nfsd, THIS_MODULE);
-+	nfsd_serv = svc_create_pooled(&nfsd_program, init_rpc_pipefs,
-+				      nfsd_max_blksize, nfsd_last_thread, nfsd,
-+				      THIS_MODULE);
- 	if (nfsd_serv == NULL)
- 		return -ENOMEM;
- 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 3b6b26c..7f09411 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -400,13 +400,13 @@ struct svc_procedure {
- /*
-  * Function prototypes.
-  */
--struct svc_serv *svc_create(struct svc_program *, unsigned int,
--			    void (*shutdown)(struct svc_serv *));
-+struct svc_serv *svc_create(struct svc_program *, struct vfsmount *,
-+			    unsigned int, void (*shutdown)(struct svc_serv *));
- struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
- 					struct svc_pool *pool);
- void		   svc_exit_thread(struct svc_rqst *);
--struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
--			void (*shutdown)(struct svc_serv *),
-+struct svc_serv *  svc_create_pooled(struct svc_program *, struct vfsmount *,
-+			unsigned int, void (*shutdown)(struct svc_serv *),
- 			svc_thread_fn, struct module *);
- int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
- int		   svc_pool_stats_open(struct svc_serv *serv, struct file *file);
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index d2f7c03..0bd6088 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -28,7 +28,6 @@
- #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/bc_xprt.h>
--#include <linux/sunrpc/rpc_pipe_fs.h>
- 
- #define RPCDBG_FACILITY	RPCDBG_SVCDSP
- 
-@@ -361,7 +360,8 @@ svc_pool_for_cpu(struct svc_serv *serv, int cpu)
-  * Create an RPC service
-  */
- static struct svc_serv *
--__svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-+__svc_create(struct svc_program *prog, struct vfsmount *rpcmount,
-+	     unsigned int bufsize, int npools,
- 	     void (*shutdown)(struct svc_serv *serv))
- {
- 	struct svc_serv	*serv;
-@@ -373,7 +373,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 		return NULL;
- 	serv->sv_name      = prog->pg_name;
- 	serv->sv_program   = prog;
--	serv->sv_rpcmount  = mntget(init_rpc_pipefs);
-+	serv->sv_rpcmount  = mntget(rpcmount);
- 	serv->sv_nrthreads = 1;
- 	serv->sv_stats     = prog->pg_stats;
- 	if (bufsize > RPCSVC_MAXPAYLOAD)
-@@ -429,22 +429,22 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- }
- 
- struct svc_serv *
--svc_create(struct svc_program *prog, unsigned int bufsize,
--	   void (*shutdown)(struct svc_serv *serv))
-+svc_create(struct svc_program *prog, struct vfsmount *rpcmount,
-+	   unsigned int bufsize, void (*shutdown)(struct svc_serv *serv))
- {
--	return __svc_create(prog, bufsize, /*npools*/1, shutdown);
-+	return __svc_create(prog, rpcmount, bufsize, /*npools*/1, shutdown);
- }
- EXPORT_SYMBOL_GPL(svc_create);
- 
- struct svc_serv *
--svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
--		  void (*shutdown)(struct svc_serv *serv),
-+svc_create_pooled(struct svc_program *prog, struct vfsmount *rpcmount,
-+		  unsigned int bufsize, void (*shutdown)(struct svc_serv *serv),
- 		  svc_thread_fn func, struct module *mod)
- {
- 	struct svc_serv *serv;
- 	unsigned int npools = svc_pool_map_get();
- 
--	serv = __svc_create(prog, bufsize, npools, shutdown);
-+	serv = __svc_create(prog, rpcmount, bufsize, npools, shutdown);
- 
- 	if (serv != NULL) {
- 		serv->sv_function = func;
--- 
-1.7.3.4
+Neither am I.
+
+NFSv4.1 fully solves this problem. All connections to the server are
+initiated by the client, including for callback paths. The only port
+that needs to be accessible on the server side is port 2049.
+
+NFSv4 also solves the problem, with the one caveat that callbacks won't
+work behind a NAT (which basically means you won't get delegations).
+
+NFSv3 is the only protocol that actually has the problem you describe
+above. We're working to deprecate it...
+
+Cheers
+  Trond
 
