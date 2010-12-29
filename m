@@ -1,87 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:36393 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753212Ab0LWMr5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 07:47:57 -0500
-From: Fred Isaman <iisaman@netapp.com>
+Received: from netnation.com ([204.174.223.2]:47413 "EHLO peace.netnation.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753970Ab0L2WDO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Dec 2010 17:03:14 -0500
+Date: Wed, 29 Dec 2010 14:03:13 -0800
+From: Simon Kirby <sim@hostway.ca>
 To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 09/15] pnfs: add layout to client list before sending rpc
-Date: Thu, 23 Dec 2010 07:47:40 -0500
-Message-Id: <1293108466-31768-10-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
-References: <1293108466-31768-1-git-send-email-iisaman@netapp.com>
+Cc: linux-kernel@vger.kernel.org
+Subject: Re: System CPU increasing on idle 2.6.36
+Message-ID: <20101229220313.GA13688@hostway.ca>
+References: <20101208212505.GA18192@hostway.ca> <20101218010801.GE28367@hostway.ca>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101218010801.GE28367@hostway.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Since this list will be used to search for layouts to recall,
-this is necessary to avoid a race where the recall comes in,
-sees there is nothing in the client list, and prepares to return
-NOMATCHING, while the LAYOUTGET gets processed before the recall
-updates the stateid.
+On Fri, Dec 17, 2010 at 05:08:01PM -0800, Simon Kirby wrote:
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c |   27 +++++++++++++++++++--------
- 1 files changed, 19 insertions(+), 8 deletions(-)
+> On Wed, Dec 08, 2010 at 01:25:05PM -0800, Simon Kirby wrote:
+> 
+> > Possibly related to the flush-processes-taking-CPU issues I saw
+> > previously, I thought this was interesting.  I found a log-crunching box
+> > that does all of its work via NFS and spends most of the day sleeping. 
+> > It has been using a linearly-increasing amount of system time during the
+> > time where is sleeping.  munin graph:
+> > 
+> > http://0x.ca/sim/ref/2.6.36/cpu_logcrunch_nfs.png
+> >...
+> > Known 2.6.36 issue?  This did not occur on 2.6.35.4, according to the
+> > munin graphs.  I'll try 2.6.37-rc an see if it changes.
+> 
+> So, back on this topic,
+> 
+> It seems that system CPU from "flush" processes is still increasing
+> during and after periods of NFS activity, even with 2.6.37-rc5-git4:
+>         
+>         http://0x.ca/sim/ref/2.6.37/cpu_nfs.png
+> 
+> Something is definitely going on while NFS is active, and then keeps
+> happening in the idle periods.  top and perf top look the same as in
+> 2.6.36.  No userland activity at all, but the kernel keeps doing stuff.
+> 
+> I could bisect this, but I have to wait a day for each build, unless I
+> can come up with a way to reproduce it more quickly.  The mount points
+> for which the flush processes are active are the two mount points where
+> the logs are read from, rotated, compressed, and unlinked, and where the
+> reports are written, running in parallel under an xargs -P 15.
+> 
+> I'm pretty sure the only syscalls that are reproducing this are read(),
+> readdir(), lstat(), write(), rename(), unlink(), and close().  There's
+> nothing special happening here...
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 60fbd41..b11b46a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -460,14 +460,6 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
- 	dprintk("%s:Begin\n", __func__);
- 
- 	assert_spin_locked(&lo->plh_inode->i_lock);
--	if (list_empty(&lo->plh_segs)) {
--		struct nfs_client *clp = NFS_SERVER(lo->plh_inode)->nfs_client;
--
--		spin_lock(&clp->cl_lock);
--		BUG_ON(!list_empty(&lo->plh_layouts));
--		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
--		spin_unlock(&clp->cl_lock);
--	}
- 	list_for_each_entry(lp, &lo->plh_segs, pls_list) {
- 		if (cmp_layout(lp->pls_range.iomode, lseg->pls_range.iomode) > 0)
- 			continue;
-@@ -588,6 +580,7 @@ pnfs_update_layout(struct inode *ino,
- 		   enum pnfs_iomode iomode)
- {
- 	struct nfs_inode *nfsi = NFS_I(ino);
-+	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
- 	struct pnfs_layout_hdr *lo;
- 	struct pnfs_layout_segment *lseg = NULL;
- 
-@@ -617,9 +610,27 @@ pnfs_update_layout(struct inode *ino,
- 	atomic_inc(&lo->plh_outstanding);
- 
- 	get_layout_hdr_locked(lo);
-+	if (list_empty(&lo->plh_segs)) {
-+		/* The lo must be on the clp list if there is any
-+		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
-+		 */
-+		spin_lock(&clp->cl_lock);
-+		BUG_ON(!list_empty(&lo->plh_layouts));
-+		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
-+		spin_unlock(&clp->cl_lock);
-+	}
- 	spin_unlock(&ino->i_lock);
- 
- 	lseg = send_layoutget(lo, ctx, iomode);
-+	if (!lseg) {
-+		spin_lock(&ino->i_lock);
-+		if (list_empty(&lo->plh_segs)) {
-+			spin_lock(&clp->cl_lock);
-+			list_del_init(&lo->plh_layouts);
-+			spin_unlock(&clp->cl_lock);
-+		}
-+		spin_unlock(&ino->i_lock);
-+	}
- 	atomic_dec(&lo->plh_outstanding);
- 	put_layout_hdr(ino);
- out:
--- 
-1.7.2.1
+I've noticed nfs_inode_cache is ever-increasing as well with 2.6.37:
 
+  OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME
+2562514 2541520  99%    0.95K  78739       33   2519648K nfs_inode_cache
+467200 285110  61%    0.02K   1825      256      7300K kmalloc-16
+299397 242350  80%    0.19K  14257       21     57028K dentry
+217434 131978  60%    0.55K   7767       28    124272K radix_tree_node
+215232  81522  37%    0.06K   3363       64     13452K kmalloc-64
+183027 136802  74%    0.10K   4693       39     18772K buffer_head
+101120  71184  70%    0.03K    790      128      3160K kmalloc-32
+ 79616  59713  75%    0.12K   2488       32      9952K kmalloc-128
+ 66560  41257  61%    0.01K    130      512       520K kmalloc-8
+ 42126  26650  63%    0.75K   2006       21     32096K ext3_inode_cache
+
+http://0x.ca/sim/ref/2.6.37/inodes_nfs.png
+http://0x.ca/sim/ref/2.6.37/cpu2_nfs.png
+
+Perhaps I could bisect just fs/nfs changes between 2.6.35 and 2.6.36 to
+try to track this down without having to wait too long, unless somebody
+can see what is happening here.
+
+Simon-
