@@ -1,91 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17919 "EHLO mx2.netapp.com"
+Received: from shutemov.name ([188.40.19.243]:33550 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758205Ab0LTWKg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Dec 2010 17:10:36 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V5 04/11] NFS use svc_create_xprt for NFSv4.1 callback service
-Date: Mon, 20 Dec 2010 16:04:41 -0500
-Message-Id: <1292879088-7821-5-git-send-email-andros@netapp.com>
-In-Reply-To: <1292879088-7821-4-git-send-email-andros@netapp.com>
-References: <1292879088-7821-1-git-send-email-andros@netapp.com>
- <1292879088-7821-2-git-send-email-andros@netapp.com>
- <1292879088-7821-3-git-send-email-andros@netapp.com>
- <1292879088-7821-4-git-send-email-andros@netapp.com>
+	id S1752377Ab0L2NOc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Dec 2010 08:14:32 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v2 01/12] sunrpc: mount rpc_pipefs on initialization
+Date: Wed, 29 Dec 2010 15:14:19 +0200
+Message-Id: <1293628470-28386-2-git-send-email-kas@openvz.org>
+In-Reply-To: <1293628470-28386-1-git-send-email-kas@openvz.org>
+References: <1293628470-28386-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Mount rpc_pipefs on register_rpc_pipefs() and replace
+rpc_get_mount()/rpc_put_mount() implementation with mntget()/mntput().
 
-The new back channel transport means we call the normal creation routine as
-well as svc_xprt_put.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
 ---
- fs/nfs/callback.c |   31 +++++++++++++++++++++----------
- 1 files changed, 21 insertions(+), 10 deletions(-)
+ net/sunrpc/rpc_pipe.c |   27 ++++++++++++++++-----------
+ 1 files changed, 16 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 93a8b3b..343d543 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -177,30 +177,41 @@ nfs41_callback_svc(void *vrqstp)
- struct svc_rqst *
- nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 10a17a3..7f3fbdd 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -29,7 +29,6 @@
+ #include <linux/sunrpc/cache.h>
+ 
+ static struct vfsmount *rpc_mnt __read_mostly;
+-static int rpc_mount_count;
+ 
+ static struct file_system_type rpc_pipe_fs_type;
+ 
+@@ -415,18 +414,13 @@ struct rpc_filelist {
+ 
+ struct vfsmount *rpc_get_mount(void)
  {
--	struct svc_xprt *bc_xprt;
--	struct svc_rqst *rqstp = ERR_PTR(-ENOMEM);
-+	struct svc_rqst *rqstp;
-+	int ret;
+-	int err;
+-
+-	err = simple_pin_fs(&rpc_pipe_fs_type, &rpc_mnt, &rpc_mount_count);
+-	if (err != 0)
+-		return ERR_PTR(err);
+-	return rpc_mnt;
++	return mntget(rpc_mnt);
+ }
+ EXPORT_SYMBOL_GPL(rpc_get_mount);
  
--	dprintk("--> %s\n", __func__);
--	/* Create a svc_sock for the service */
--	bc_xprt = svc_sock_create(serv, xprt->prot);
--	if (!bc_xprt)
-+	/* register the back channel transport class */
-+	svc_init_bc_xprt_sock();
+ void rpc_put_mount(void)
+ {
+-	simple_release_fs(&rpc_mnt, &rpc_mount_count);
++	mntput(rpc_mnt);
+ }
+ EXPORT_SYMBOL_GPL(rpc_put_mount);
+ 
+@@ -1063,16 +1057,27 @@ int register_rpc_pipefs(void)
+ 	if (!rpc_inode_cachep)
+ 		return -ENOMEM;
+ 	err = register_filesystem(&rpc_pipe_fs_type);
+-	if (err) {
+-		kmem_cache_destroy(rpc_inode_cachep);
+-		return err;
++	if (err)
++		goto destroy_cache;
 +
-+	/*
-+	 * Create an svc_sock for the back channel service that shares the
-+	 * fore channel connection.
-+	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
-+	 */
-+	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
-+			      SVC_SOCK_ANONYMOUS);
-+	if (ret < 0) {
-+		rqstp = ERR_PTR(ret);
- 		goto out;
-+	}
++	rpc_mnt = kern_mount(&rpc_pipe_fs_type);
++	if (IS_ERR(rpc_mnt)) {
++		err = PTR_ERR(rpc_mnt);
++		goto unregister_fs;
+ 	}
  
- 	/*
- 	 * Save the svc_serv in the transport so that it can
- 	 * be referenced when the session backchannel is initialized
- 	 */
--	serv->bc_xprt = bc_xprt;
- 	xprt->bc_serv = serv;
- 
- 	INIT_LIST_HEAD(&serv->sv_cb_list);
- 	spin_lock_init(&serv->sv_cb_lock);
- 	init_waitqueue_head(&serv->sv_cb_waitq);
- 	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
--	if (IS_ERR(rqstp))
--		svc_sock_destroy(bc_xprt);
-+	if (IS_ERR(rqstp)) {
-+		svc_xprt_put(serv->bc_xprt);
-+		serv->bc_xprt = NULL;
-+	}
- out:
--	dprintk("--> %s return %p\n", __func__, rqstp);
-+	dprintk("--> %s return %ld\n", __func__,
-+		IS_ERR(rqstp) ? PTR_ERR(rqstp) : 0);
- 	return rqstp;
+ 	return 0;
++
++unregister_fs:
++	unregister_filesystem(&rpc_pipe_fs_type);
++destroy_cache:
++	kmem_cache_destroy(rpc_inode_cachep);
++	return err;
  }
  
+ void unregister_rpc_pipefs(void)
+ {
++	mntput(rpc_mnt);
+ 	kmem_cache_destroy(rpc_inode_cachep);
+ 	unregister_filesystem(&rpc_pipe_fs_type);
+ }
 -- 
-1.6.6
+1.7.3.4
 
