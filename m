@@ -1,71 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58263 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:48838 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750827Ab0LaEdI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Dec 2010 23:33:08 -0500
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: George Spelvin <linux@horizon.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-In-Reply-To: <20101231031748.5006.qmail@science.horizon.com>
-References: <20101231031748.5006.qmail@science.horizon.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 30 Dec 2010 23:32:48 -0500
-Message-ID: <1293769968.32633.19.camel@heimdal.trondhjem.org>
+	id S1752897Ab0L2U7n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Dec 2010 15:59:43 -0500
+Date: Wed, 29 Dec 2010 15:59:42 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
+Cc: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
+Message-ID: <20101229205942.GD12218@fieldses.org>
+References: <20101229204752.GC12218@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101229204752.GC12218@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2010-12-30 at 22:17 -0500, George Spelvin wrote: 
-> > Uncached_readdir is not really a problem. The real problem is
-> > filesystems that generate "infinite directories" by producing looping
-> > combinations of cookies.
-> > 
-> > IOW: I've seen servers that generate cookies in a sequence of a form
-> > vaguely resembling
-> > 
-> > 1 2 3 4 5 6 7 8 9 10 11 12 3...
-> > 
-> > (with possibly a thousand or so entries between the first and second
-> > copy of '3')
-> > 
-> > The kernel won't loop forever with something like that (because
-> > eventually filldir() will declare it is out of buffer space), but
-> > userland has a halting problem: it needs to detect that every
-> > sys_getdents() call it is making is generating another copy of the
-> > sequence associated with '4 5 6 7 8 9 10 11 12 3'...
+On Wed, Dec 29, 2010 at 03:47:52PM -0500, bfields wrote:
+> From: J. Bruce Fields <bfields@redhat.com>
 > 
-> Huh?  This is not only an easy problem, it's a well-known problem.
-> http://en.wikipedia.org/wiki/Cycle_detection
+> Once a sunrpc cache entry is non-NEGATIVE, we should be replacing it
+> (and allowing any concurrent users to destroy it on last put) instead of
+> trying to update it in place.
 > 
-> 	Here's Brent's algorithm:
+> Otherwise someone referencing the ip_map we're modifying here could try
+> to use the m_client just as we're putting the last reference.
 > 
-> 	n = 0;
-> 	saved_cookie = <invalid>
-> 	For each cookie {
-> 		if (n && cookie == saved_cookie)
-> 			die("Loop detected!");
-> 		if (++n is a power of 2)
-> 			saved_cookie = cookie;
-> 	}
+> The bug should only be seen by users of the legacy nfsd interfaces.
 > 
-> You can tweak the performance with other exponentially-growing
-> functions, saving k > 1 old cookies for comparison, etc., but the
-> above will work very well.
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  net/sunrpc/svcauth_unix.c |   18 ++++++++++++++++--
+>  1 files changed, 16 insertions(+), 2 deletions(-)
+> 
+> Intended to apply for 2.6.38 if this looks right....
 
+Also noticed while trying to track down an rhel5 oops in
+svcauth_unix_set_client():
 
-...and your point would be that an exponentially increasing addition to
-the existing number of tests is an acceptable tradeoff in a situation
-where the >99.999999999999999% case is that of sane servers with no
-looping? I don't think so...
+	- cache_check() can set an entry negative in place, which if
+	  nothing else must cause a leak in some cases.  (Because when
+	  the entry is eventually destroyed, it will be assumed to not
+	  have any contents.)  I suppose the fix is again to try to
+	  adding a new negative entry instead.
 
-Trond
+	- since cache_check() doesn't use any locking, I can't see what
+	  guarantees that when it sees the CACHE_VALID bit set and
+	  CACHE_NEGATIVE cleared, it must necessarily see the new
+	  contents.   I think that'd be fixed by a wmb() before setting
+	  those bits and a rmb() after checking them.  I don't know if
+	  it's actually possible to hit that bug....
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+--b.
