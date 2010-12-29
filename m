@@ -1,83 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f180.google.com ([209.85.161.180]:59801 "EHLO
-	mail-gx0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751807Ab0LIQsu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 11:48:50 -0500
-Received: by mail-gx0-f180.google.com with SMTP id 19so1559138gxk.11
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Dec 2010 08:48:50 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/11] lockd: Add nlm_destroy_host_locked()
-To: linux-nfs@vger.kernel.org
-Date: Thu, 09 Dec 2010 11:48:47 -0500
-Message-ID: <20101209164847.4513.15855.stgit@matisse.1015granger.net>
-In-Reply-To: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
-References: <20101209163555.4513.94435.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from shutemov.name ([188.40.19.243]:33567 "EHLO shutemov.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752547Ab0L2NOc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Dec 2010 08:14:32 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v2 04/12] sunrpc: tag svc_serv with rpc_pipefs mount point
+Date: Wed, 29 Dec 2010 15:14:22 +0200
+Message-Id: <1293628470-28386-5-git-send-email-kas@openvz.org>
+In-Reply-To: <1293628470-28386-1-git-send-email-kas@openvz.org>
+References: <1293628470-28386-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Refactor the tail of nlm_gc_hosts() into nlm_destroy_host() so that
-this logic can be used separately from garbage collection.
-
-Rename it _locked() to document that it must be called with the hosts
-cache mutex held.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
 ---
+ include/linux/sunrpc/svc.h |    1 +
+ net/sunrpc/svc.c           |    4 ++++
+ 2 files changed, 5 insertions(+), 0 deletions(-)
 
- fs/lockd/host.c |   19 +++++++++++--------
- 1 files changed, 11 insertions(+), 8 deletions(-)
-
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index ed1895a..52e21c3 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -227,16 +227,21 @@ out:
- }
- 
- /*
-- * Destroy a host
-+ * Destroy an nlm_host and free associated resources
-+ *
-+ * Caller must hold nlm_host_mutex.
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 5a3085b..3b6b26c 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -64,6 +64,7 @@ struct svc_pool {
   */
--static void
--nlm_destroy_host(struct nlm_host *host)
-+static void nlm_destroy_host_locked(struct nlm_host *host)
- {
- 	struct rpc_clnt	*clnt;
+ struct svc_serv {
+ 	struct svc_program *	sv_program;	/* RPC program */
++	struct vfsmount *	sv_rpcmount;	/* rpc_pipefs mount point*/
+ 	struct svc_stat *	sv_stats;	/* RPC statistics */
+ 	spinlock_t		sv_lock;
+ 	unsigned int		sv_nrthreads;	/* # of server threads */
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 6359c42..d2f7c03 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -20,6 +20,7 @@
+ #include <linux/module.h>
+ #include <linux/kthread.h>
+ #include <linux/slab.h>
++#include <linux/mount.h>
  
-+	dprintk("lockd: destroy host %s\n", host->h_name);
-+
- 	BUG_ON(!list_empty(&host->h_lockowners));
- 	BUG_ON(atomic_read(&host->h_count));
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/xdr.h>
+@@ -27,6 +28,7 @@
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/bc_xprt.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
  
-+	hlist_del_init(&host->h_hash);
-+
- 	nsm_unmonitor(host);
- 	nsm_release(host->h_nsmhandle);
+ #define RPCDBG_FACILITY	RPCDBG_SVCDSP
  
-@@ -244,6 +249,8 @@ nlm_destroy_host(struct nlm_host *host)
- 	if (clnt != NULL)
- 		rpc_shutdown_client(clnt);
- 	kfree(host);
-+
-+	nrhosts--;
- }
+@@ -371,6 +373,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 		return NULL;
+ 	serv->sv_name      = prog->pg_name;
+ 	serv->sv_program   = prog;
++	serv->sv_rpcmount  = mntget(init_rpc_pipefs);
+ 	serv->sv_nrthreads = 1;
+ 	serv->sv_stats     = prog->pg_stats;
+ 	if (bufsize > RPCSVC_MAXPAYLOAD)
+@@ -492,6 +495,7 @@ svc_destroy(struct svc_serv *serv)
+ 	svc_sock_destroy(serv->bc_xprt);
+ #endif /* CONFIG_NFS_V4_1 */
  
- /**
-@@ -585,11 +592,7 @@ nlm_gc_hosts(void)
- 				host->h_inuse, host->h_expires);
- 			continue;
- 		}
--		dprintk("lockd: delete host %s\n", host->h_name);
--		hlist_del_init(&host->h_hash);
--
--		nlm_destroy_host(host);
--		nrhosts--;
-+		nlm_destroy_host_locked(host);
- 	}
- 
- 	next_gc = jiffies + NLM_HOST_COLLECT;
++	mntput(serv->sv_rpcmount);
+ 	svc_unregister(serv);
+ 	kfree(serv->sv_pools);
+ 	kfree(serv);
+-- 
+1.7.3.4
 
