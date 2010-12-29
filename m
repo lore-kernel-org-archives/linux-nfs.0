@@ -1,47 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:50579 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754145Ab0LIVlp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Dec 2010 16:41:45 -0500
-Subject: Re: proposed patch to rpcbind to provide finer-grained security controls than offered by the -i option
+Received: from fieldses.org ([174.143.236.118]:51072 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753752Ab0L2Tfx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Dec 2010 14:35:53 -0500
+Date: Wed, 29 Dec 2010 14:35:52 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFSv3 list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS4.1: Fix bug server don't reply the right
+ fore_channel to client at create_session
+Message-ID: <20101229193551.GB12218@fieldses.org>
+References: <4CDBBF7C.90108@cn.fujitsu.com>
+ <20101112204554.GF32745@fieldses.org>
+ <4CE0EB7B.5060509@cn.fujitsu.com>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20101209204913.GA30338@ti93.telemetry-investments.com>
-Date: Thu, 9 Dec 2010 16:41:35 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <DFA85276-FD83-47A6-A9CD-B0F0A11D6086@oracle.com>
-References: <20101209204913.GA30338@ti93.telemetry-investments.com>
-To: "Andrew J. Schorr" <ajschorr@alumni.princeton.edu>
+In-Reply-To: <4CE0EB7B.5060509@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Dec 9, 2010, at 3:49 PM, Andrew J. Schorr wrote:
-
-> Hi,
+On Mon, Nov 15, 2010 at 04:12:43PM +0800, Mi Jinlong wrote:
 > 
-> The current rpcbind -i option seems to relax 3 different security requirements.
-> If the user wants to allow any one of the three, he is forced to allow
-> all 3.
 > 
-> The attached patch introduces 3 new options (-c, -r, and -u) to break this
-> down to give the user control of which security requirements to relax.
+> J. Bruce Fields:
+> > On Thu, Nov 11, 2010 at 06:03:40PM +0800, Mi Jinlong wrote:
+> >> At the latest kernel(2.6.37-rc1), server just initialize the forechannel
+> >> at init_forechannel_attrs, but don't reflect it to reply.
+> >>
+> >> After initialize the session success, we should copy the forechannel info
+> >> to nfsd4_create_session struct.
+> > 
+> > Thanks!
+> > 
+> > Is there a chance you could write a pynfs test for this?
 > 
-> This patch compiles, but has not been tested yet.  If there is any
-> interest in accepting this, I will of course test it. :-)  But it's fairly
-> basic, so I thought I'd gauge the interest level first.  Steve
-> Dickson from Redhat suggested that I post here to discuss this issue
-> regarding https://bugzilla.redhat.com/show_bug.cgi?id=481422
+> Maybe the following one is OK.
 
-Looking over the bug...
+Yes, thanks very much.  But could we use a larger MAX_SLOTS_PER_SESSION
+value, to increase the chances this test will make sense for any
+server?
 
-It sounds like your application is trying to use glibc's RPC implementation with rpcbind.  If you build your application with libtirpc instead, it should use an AF_UNIX socket to contact rpcbind instead of loopback.  The AF_UNIX socket carries some authentication information with the registration request.  All users of your application would be allowed to set or unset RPC registrations in that case.
+Also, this is a "reply", not a "replay", test, so move it a little
+later; how about the following?
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--b.
 
+commit bf41254ab3583f6e41c96b1861956dd31595928d
+Author: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Date:   Mon Nov 15 16:12:43 2010 +0800
 
+    SRVR: Can server return fore_channel maxreqs correctly
+    
+    When client set the fore_channel maxreqs larger than server's
+    NFSD_MAX_SLOTS_PER_SESSION at create_session, the fore_channel
+    maxreqs at the reply must less than NFSD_MAX_SLOTS_PER_SESSION.
+    
+    At 2.6.37-rc1, the NFSD_MAX_SLOTS_PER_SESSION is 160.
+    
+    Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-
+diff --git a/nfs4.1/server41tests/st_create_session.py b/nfs4.1/server41tests/st_create_session.py
+index 5f425d4..efb2641 100644
+--- a/nfs4.1/server41tests/st_create_session.py
++++ b/nfs4.1/server41tests/st_create_session.py
+@@ -363,3 +363,23 @@ def testCallbackVersion(t, env):
+                  (cb_occurred.low, cb_occurred.hi, cb_occurred.vers))
+     finally:
+         env.c1._check_version = orig
++
++def testMaxreqs(t, env):
++    """A CREATE_SESSION with maxreqs too large should return
++       a modified value
++
++    FLAGS: create_session all
++    CODE: CSESS22
++    """
++    # Assuming this is too large for any server; increase if necessary:
++    TOO_MANY_SLOTS = 1000000
++
++    c = env.c1.new_client(env.testname(t))
++    # CREATE_SESSION with fore_channel = TOO_MANY_SLOTS
++    chan_attrs = channel_attrs4(0,8192,8192,8192,128, TOO_MANY_SLOTS, [])
++    sess1 = c.create_session(fore_attrs=chan_attrs)
++
++    if nfs4lib.test_equal(sess1.fore_channel.maxrequests,
++                          chan_attrs.ca_maxrequests, "count4"):
++        fail("Server allows surprisingly large fore_channel maxreqs");
