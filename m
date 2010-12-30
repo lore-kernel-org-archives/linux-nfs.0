@@ -1,108 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:61229 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754781Ab0L3DLy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Dec 2010 22:11:54 -0500
-Message-ID: <4D1BF99C.6030702@cn.fujitsu.com>
-Date: Thu, 30 Dec 2010 11:16:44 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFSv3 list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS4.1: Fix bug server don't reply the right fore_channel
- to client at create_session
-References: <4CDBBF7C.90108@cn.fujitsu.com> <20101112204554.GF32745@fieldses.org> <4CE0EB7B.5060509@cn.fujitsu.com> <20101229193551.GB12218@fieldses.org>
-In-Reply-To: <20101229193551.GB12218@fieldses.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:51846 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755041Ab0L3UDT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Dec 2010 15:03:19 -0500
+In-Reply-To: <1293737115.4919.47.camel@heimdal.trondhjem.org>
+References: <AANLkTi=-dNeeDjcSoznKtwcaNyw1mMXSqepFY89R2i+2@mail.gmail.com>
+ <20101230171453.GA5787@pengutronix.de> <AANLkTikvZF6Q1k0rETLHUffkUT3grxAh3FoB_0vs96B8@mail.gmail.com>
+ <1293733460.4919.21.camel@heimdal.trondhjem.org> <AANLkTi=sO9M8m1Fpntu_YscVU4SrppKfxBf2eRZ2Dr+L@mail.gmail.com>
+ <1293737115.4919.47.camel@heimdal.trondhjem.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Thu, 30 Dec 2010 12:02:23 -0800
+Message-ID: <AANLkTinaQJVyY2wm+q-jh6Sr-QpbhRO0p+Sp0obdcqxE@mail.gmail.com>
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: =?ISO-8859-1?Q?Uwe_Kleine=2DK=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-kernel@vger.kernel.org,
+        linux-arm-kernel@lists.infradead.org, Arnd Bergmann <arnd@arndb.de>,
+        linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Bruce:
+On Thu, Dec 30, 2010 at 11:25 AM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+>
+> uncached_readdir is not really a problem. The real problem is
+> filesystems that generate "infinite directories" by producing looping
+> combinations of cookies.
 
-J. Bruce Fields:
-> On Mon, Nov 15, 2010 at 04:12:43PM +0800, Mi Jinlong wrote:
->>
->> J. Bruce Fields:
->>> On Thu, Nov 11, 2010 at 06:03:40PM +0800, Mi Jinlong wrote:
->>>> At the latest kernel(2.6.37-rc1), server just initialize the forechannel
->>>> at init_forechannel_attrs, but don't reflect it to reply.
->>>>
->>>> After initialize the session success, we should copy the forechannel info
->>>> to nfsd4_create_session struct.
->>> Thanks!
->>>
->>> Is there a chance you could write a pynfs test for this?
->> Maybe the following one is OK.
-> 
-> Yes, thanks very much.  But could we use a larger MAX_SLOTS_PER_SESSION
-> value, to increase the chances this test will make sense for any
-> server?
+But if we don't have any lseek's, the readdir cache should trivially
+take care of this by just incrementing the page_index, and we should
+return to user space the (eventually ending) sequence, even if there
+are duplicate numbers.
 
-  Yes, but we can't use a huge value as 1000000 for that the test site
-  will allocate replay_cache for each fore_channel.maxrequests when get
-  the reply of CREATE_SESSION. If setting to 1000000 or more huger, 
-  when the test case fail, the test site will eat many memory. 
+(Also, I suspect that "page_index" should not be a page index, but a
+position, and then you the "search_for_pos()" should use that instead
+of the file_pos/current_index thing, but that's a detail that would
+show up only when you have duplicate cookies within one page worth of
+directory caches)
 
-  So, we should set it less than 1000 and add an explain.
+And if the server really sends us an infinite stream of entries, then
+that's fine - at least we give to user space the infinite entries that
+were given to us, instead of _generating_ an infinite stream from what
+was a finite - but broken - stream).
 
-> 
-> Also, this is a "reply", not a "replay", test, so move it a little
-> later; how about the following?
+So it seems wrong that the directory caching code resets page_index to
+the start when it then does an uncached readdir. That seems wrong.
 
-  Sorry for that, it's a typo. ^_^
+I'm sure there's some reason for it, but wouldn't it be nice if the
+rule for page_index was that it starts off at zero, and only gets
+reset by lseek?
 
-  Maybe we should set the TOO_MANY_SLOTS less than 1000, after testing,
-  the patch is as following:
+> IOW: I've seen servers that generate cookies in a sequence of a form
+> vaguely resembling
+>
+> 1 2 3 4 5 6 7 8 9 10 11 12 3...
+>
+> (with possibly a thousand or so entries between the first and second
+> copy of '3')
 
-  Ps: delete the semicolon at the latest line.
+Ok, so that' obviously broken, but it's then _doubly_ broken to turn
+that long broken sequence into an _endless_ broken sequence.
 
->From 2f544fcef0eef7ac1d59bc428be3436ad7d1bbde Mon Sep 17 00:00:00 2001
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Date: Wed, 29 Dec 2010 16:06:30 +0800
-Subject: [PATCH] SRVR: Can server return fore_channel maxreqs correctly
+And I agree that when user space sees such an endless broken sequence,
+it's a real stopping problem for user space. But in the absense of
+lseek, it should _never_ be a problem for the kernel itself, afaik.
+The kernel should happily return just the broken sequence. No?
 
-    SRVR: Can server return fore_channel maxreqs correctly
-    
-    When client set the fore_channel maxreqs larger than server's
-    NFSD_MAX_SLOTS_PER_SESSION at create_session, the fore_channel
-    maxreqs at the reply must less than NFSD_MAX_SLOTS_PER_SESSION.
-    
-    At 2.6.37-rc1, the NFSD_MAX_SLOTS_PER_SESSION is 160.
-    
-    Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+So then perhaps the solution is to just remove the resetting of
+page_index in the uncached_readdir() function? Make sure that the
+page_index is monotonically increasing for any readdir(), and you
+protect against turning a bad sequence into an endless sequence.
 
----
- nfs4.1/server41tests/st_create_session.py |   19 +++++++++++++++++++
- 1 files changed, 19 insertions(+), 0 deletions(-)
+Of course, lseek() will have to reset page_index to zero, and if
+somebody does an lseek() on the directory, then the duplicate '3"
+entry in the cookie sequence will inevitably be ambiguous, but that
+really is unavoidable. And rare. People who use lseek() on directories
+are odd and we know they'll break on other filesystems too under
+certain circumstances.
 
-diff --git a/nfs4.1/server41tests/st_create_session.py b/nfs4.1/server41tests/st_create_session.py
-index 5f425d4..5cfac14 100644
---- a/nfs4.1/server41tests/st_create_session.py
-+++ b/nfs4.1/server41tests/st_create_session.py
-@@ -363,3 +363,22 @@ def testCallbackVersion(t, env):
-                  (cb_occurred.low, cb_occurred.hi, cb_occurred.vers))
-     finally:
-         env.c1._check_version = orig
-+
-+def testMaxreqs(t, env):
-+    """A CREATE_SESSION with maxreqs too large should return
-+       a modified value
-+
-+    FLAGS: create_session all
-+    CODE: CSESS22
-+    """
-+    # Assuming this is too large for any server; increase if necessary:
-+    # but too huge will eat many memory for replay_cache, becareful it!
-+    TOO_MANY_SLOTS = 500
-+
-+    c = env.c1.new_client(env.testname(t))
-+    # CREATE_SESSION with fore_channel = TOO_MANY_SLOTS
-+    chan_attrs = channel_attrs4(0,8192,8192,8192,128, TOO_MANY_SLOTS, [])
-+    sess1 = c.create_session(fore_attrs=chan_attrs)
-+    if nfs4lib.test_equal(sess1.fore_channel.maxrequests,
-+                          chan_attrs.ca_maxrequests, "count4"):
-+        fail("Server allows surprisingly large fore_channel maxreqs")
--- 
-1.7.3.3
-
+                         Linus
