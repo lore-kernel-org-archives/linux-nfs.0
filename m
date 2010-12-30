@@ -1,140 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36398 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:49802 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758119Ab0LNWBM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Dec 2010 17:01:12 -0500
-Date: Tue, 14 Dec 2010 17:01:02 -0500
+	id S1754189Ab0L3B5W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Dec 2010 20:57:22 -0500
+Date: Wed, 29 Dec 2010 20:57:20 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Nick Piggin <npiggin@kernel.dk>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Nick Piggin <npiggin@gmail.com>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] nfsd4: allow __d_obtain_alias() to return unhashed
- dentries
-Message-ID: <20101214220102.GM24828@fieldses.org>
-References: <20101112184353.GA32745@fieldses.org>
- <AANLkTinOSGtrW1S3LKWXarJF-=ZKgh_GMKuPA2ppu-P4@mail.gmail.com>
- <20101115174837.GB10044@fieldses.org>
- <AANLkTim1QjTwOZ4SHdMy8Y6TOAnaOYtTwgwHXfH5H5Xn@mail.gmail.com>
- <AANLkTinMq1W1vx-jZnf7cb1cAnh9OyoVRYtVS7zpujfs@mail.gmail.com>
- <20101129193248.GA9897@fieldses.org>
- <AANLkTikwzDJ_q65==uxDsAhp3h8bU7Rkt7U9gVgRAK0D@mail.gmail.com>
- <20101203223326.GB28763@fieldses.org>
- <20101213051944.GA8688@amd>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20101213051944.GA8688@amd>
+To: Neil Brown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
+Message-ID: <20101230015719.GA27614@fieldses.org>
+References: <20101229204752.GC12218@fieldses.org>
+ <20101229205942.GD12218@fieldses.org>
+ <20101230121940.3f48223a@notabene.brown>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101230121940.3f48223a@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Dec 13, 2010 at 04:19:44PM +1100, Nick Piggin wrote:
-> On Fri, Dec 03, 2010 at 05:33:27PM -0500, J. Bruce Fields wrote:
-> > From: J. Bruce Fields <bfields@redhat.com>
-> > 
-> > Without this patch
-> > 
-> >        client$ mount -tnfs4 server:/export/ /mnt/
-> >        client$ tail -f /mnt/FOO
-> >        ...
-> >        server$ df -i /export
-> >        server$ rm /export/FOO
-> >        (^C the tail -f)
-> >        server$ df -i /export
-> >        server$ echo 2 >/proc/sys/vm/drop_caches
-> >        server$ df -i /export
-> > 
-> > the df's will show that the inode is not freed on the filesystem until
-> > the last step, when it could have been freed after killing the client's
-> > tail -f.  On-disk data won't be deallocated either, leading to possible
-> > spurious ENOSPC.
-> > 
-> > This occurs because when the client does the close, it arrives in a
-> > compound with a putfh and a close, processed like:
-> > 
-> >        - putfh: look up the filehandle.  The only alias found for the
-> >          inode will be DCACHE_UNHASHED alias referenced by the filp
-> >          associated with the nfsd open.  d_obtain_alias() doesn't like
-> >          this, so it creates a new DCACHE_DISCONECTED dentry and
-> >          returns that instead.
-> > 
-> > Nick Piggin suggested fixing this by allowing d_obtain_alias to return
-> > the unhashed dentry that is referenced by the filp, instead of making it
-> > create a new dentry.
-> > 
-> > Cc: Nick Piggin <npiggin@gmail.com>
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/dcache.c |    2 +-
-> >  1 files changed, 1 insertions(+), 1 deletions(-)
-> > 
-> > On Tue, Nov 30, 2010 at 12:00:16PM +1100, Nick Piggin wrote:
-> > > On Tue, Nov 30, 2010 at 6:32 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > > > On Mon, Nov 29, 2010 at 02:56:22PM +1100, Nick Piggin wrote:
-> > > >> On Tue, Nov 16, 2010 at 5:45 PM, Nick Piggin <npiggin@gmail.com> wrote:
-> > > >> > On Tue, Nov 16, 2010 at 4:48 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > > >> >> On Sat, Nov 13, 2010 at 10:53:12PM +1100, Nick Piggin wrote:
-> > > >> >>> Can you even put the link check into __d_find_alias?
-> > > >> >>>
-> > > >> >>> -               if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
-> > > >> >>> +               if (S_ISDIR(inode->i_mode) || !inode->i_nlink ||
-> > > >> >>> !d_unhashed(alias)) {
-> > > >> >>>
-> > > >> >>> Something like that?
-> > > >> >>
-> > > >> >> The immediate result of that would be for the close rpc (or any rpc's
-> > > >> >> sent after the file was unlinked) to fail with ESTALE.
-> > > >> >
-> > > >> > Why is that? Seems like it would be a bug, because a hashed dentry may
-> > > >> > be unhashed at any time concurrently to nfsd operation, so it should be
-> > > >> > able to tolerate that so long as it has a ref on the inode?
-> > > >>
-> > > >> Ping? Did you work out why nfs fails with ESTALE in that case? It seems
-> > > >> to work in my testing (and do the right thing with freeing the inode).
-> > > >
-> > > > Bah, sorry, I read too quickly, got the sense of the test backwards, and
-> > > > thought you were suggesting __d_find_alias() shouldn't return an alias
-> > > > in the i_nlink == 0 case!
-> > > >
-> > > > Yes, agreed, that should solve my problem.
-> > > 
-> > > OK, good.
-> > > 
-> > > > But what's the reason for the d_unhashed() check now?  Could we get rid
-> > > > of it entirely?
-> > > 
-> > > Well when the inode still has links I think we actually do want any new
-> > > references to go to hashed dentries. Definitely for d_splice_alias.
-> > 
-> > So here's a version with a changelog; objections?
+On Thu, Dec 30, 2010 at 12:19:40PM +1100, Neil Brown wrote:
+> On Wed, 29 Dec 2010 15:59:42 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
 > 
-> Not sure where Al's hiding...
+> > On Wed, Dec 29, 2010 at 03:47:52PM -0500, bfields wrote:
+> > > From: J. Bruce Fields <bfields@redhat.com>
+> > > 
+> > > Once a sunrpc cache entry is non-NEGATIVE, we should be replacing it
+> > > (and allowing any concurrent users to destroy it on last put) instead of
+> > > trying to update it in place.
+> > > 
+> > > Otherwise someone referencing the ip_map we're modifying here could try
+> > > to use the m_client just as we're putting the last reference.
+> > > 
+> > > The bug should only be seen by users of the legacy nfsd interfaces.
+> > > 
+> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > ---
+> > >  net/sunrpc/svcauth_unix.c |   18 ++++++++++++++++--
+> > >  1 files changed, 16 insertions(+), 2 deletions(-)
+> > > 
+> > > Intended to apply for 2.6.38 if this looks right....
+> > 
+> > Also noticed while trying to track down an rhel5 oops in
+> > svcauth_unix_set_client():
+> > 
+> > 	- cache_check() can set an entry negative in place, which if
+> > 	  nothing else must cause a leak in some cases.  (Because when
+> > 	  the entry is eventually destroyed, it will be assumed to not
+> > 	  have any contents.)  I suppose the fix is again to try to
+> > 	  adding a new negative entry instead.
 > 
-> But I would like to update the comments, and perhaps even a new
-> add a new function here (or new flag to __d_find_alias).
-> 
-> AFAIKS, the callers are OK, however I suppose d_splice_alias and
-> d_materialise_unique should not have unlinked inodes at this point,
-> so at least a BUG_ON for them might be a good idea?
+> cache_check should only set an entry 'negative' if it is not already valid
+> (rv == -EAGAIN) and there is no up-call pending.
 
-That does sound safer.  I'm pretty confused by the various
-__di_splice_alias callers.  I'll go search through them and see if I can
-understand better....
+I don't think anything keeps VALID from being set after the
+cache_is_valid check but before the code that does the
+set_bit(CACHE_NEGATIVE).
+
+> Maybe we should check CACHE_VALID again after the test_and_set of
+> CACHE_PENDING, but is a very unlikely race (if it is actually a race at all)
+> 
+> > 
+> > 	- since cache_check() doesn't use any locking, I can't see what
+> > 	  guarantees that when it sees the CACHE_VALID bit set and
+> > 	  CACHE_NEGATIVE cleared, it must necessarily see the new
+> > 	  contents.   I think that'd be fixed by a wmb() before setting
+> > 	  those bits and a rmb() after checking them.  I don't know if
+> > 	  it's actually possible to hit that bug....
+> 
+> Yes, we probably want a set_bit_lock in cache_fresh_locked() though I don't
+> think that exists, so we could use test_and_set_bit_locked() instead.
+> 
+> But it does feel like maybe we should add some locking to cache_check.
+> Take the lock at the the start, and release it after the
+> test_and_set_bit(CACHE_PENDING) or once we have decided not to do that ???
+
+Maybe so.
 
 --b.
 
 > 
+> I think when I wrote this I might have thought that bit ops implied memory
+> ordering ... or maybe I just didn't think through the issues properly at all.
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
 > > 
 > > --b.
-> > 
-> > diff --git a/fs/dcache.c b/fs/dcache.c
-> > index 23702a9..afa8a0d 100644
-> > --- a/fs/dcache.c
-> > +++ b/fs/dcache.c
-> > @@ -368,7 +368,7 @@ static struct dentry * __d_find_alias(struct inode *inode, int want_discon)
-> >  		next = tmp->next;
-> >  		prefetch(next);
-> >  		alias = list_entry(tmp, struct dentry, d_alias);
-> > - 		if (S_ISDIR(inode->i_mode) || !d_unhashed(alias)) {
-> > +		if (S_ISDIR(inode->i_mode) || !inode->i_nlink || !d_unhashed(alias)) {
-> >  			if (IS_ROOT(alias) &&
-> >  			    (alias->d_flags & DCACHE_DISCONNECTED))
-> >  				discon_alias = alias;
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
