@@ -1,52 +1,44 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57636 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753281Ab0LWRa0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 12:30:26 -0500
-From: Fred Isaman <iisaman@netapp.com>
+From: Bill Baker <bill.baker@oracle.com>
+Subject: Connectathon 2011, (slight) venue change
+Date: Thu, 30 Dec 2010 09:32:21 -0600
+Message-ID: <4D1CA605.4090003@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: CONNECTATHON2011_WW@oracle.com
 To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 10/15] pnfs: check that partial LAYOUTGET return is ignored
-Date: Thu, 23 Dec 2010 12:29:52 -0500
-Message-Id: <1293125397-30088-11-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
-References: <1293125397-30088-1-git-send-email-iisaman@netapp.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:21593 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754601Ab0L3Pc1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Dec 2010 10:32:27 -0500
+Received: from acsinet15.oracle.com (acsinet15.oracle.com [141.146.126.227])
+	by rcsinet10.oracle.com (Switch-3.4.2/Switch-3.4.2) with ESMTP id oBUFWQMR014526
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Dec 2010 15:32:27 GMT
+Received: from acsmt354.oracle.com (acsmt354.oracle.com [141.146.40.154])
+	by acsinet15.oracle.com (Switch-3.4.2/Switch-3.4.1) with ESMTP id oBUFWPbI027049
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Dec 2010 15:32:25 GMT
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
-MIME-Version: 1.0
 
-Either a bad server reply, or our ignoring of multiple array segments in
-a reply, can cause a reply to not meet our requirements.  Ensure
-that we ignore such replies.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c |   11 +++++++++++
- 1 files changed, 11 insertions(+), 0 deletions(-)
+Seasons Greetings, all,
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index b11b46a..18f9ddc 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -651,6 +651,17 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	struct inode *ino = lo->plh_inode;
- 	int status = 0;
- 
-+	/* Verify we got what we asked for.
-+	 * Note that because the xdr parsing only accepts a single
-+	 * element array, this can fail even if the server is behaving
-+	 * correctly.
-+	 */
-+	if (lgp->args.range.iomode > res->range.iomode ||
-+	    res->range.offset != 0 ||
-+	    res->range.length != NFS4_MAX_UINT64) {
-+		status = -EINVAL;
-+		goto out;
-+	}
- 	/* Inject layout blob into I/O device driver */
- 	lseg = NFS_SERVER(ino)->pnfs_curr_ld->alloc_lseg(lo, res);
- 	if (!lseg || IS_ERR(lseg)) {
+In order to provide for a more affordable connectathon
+experience, we've decided to move the event onto Oracle's
+Santa Clara campus, in the historic Agnews auditorium.
+
+http://www.nps.gov/nr/travel/santaclara/agn.htm
+
+The dates and times of the event are unchanged,
+February 21st through February 25th.
+
+I've updated http://www.connectathon.org to reflect the
+new information.  Registration details will be posted shortly.
+
+Questions?  Comments?  CONNECTATHON2011_WW@oracle.com
+
+I'll see you at Connectathon 2011.
+
 -- 
-1.7.2.1
-
+Bill Baker - Oracle Solaris NFS development
