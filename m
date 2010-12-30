@@ -1,68 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50984 "EHLO mx2.netapp.com"
+Received: from shutemov.name ([188.40.19.243]:34940 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751844Ab0LWXyu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Dec 2010 18:54:50 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 07/15] pnfs: layoutget rpc code cleanup
-Date: Thu, 23 Dec 2010 18:54:33 -0500
-Message-Id: <1293148481-28420-8-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
-References: <1293148481-28420-1-git-send-email-iisaman@netapp.com>
+	id S1753177Ab0L3Ivk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Dec 2010 03:51:40 -0500
+Date: Thu, 30 Dec 2010 10:51:39 +0200
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Rob Landley <rob@landley.net>
+Cc: "Kirill A. Shutemov" <kas@openvz.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 00/12] make rpc_pipefs be mountable multiple time
+Message-ID: <20101230085139.GA29697@shutemov.name>
+References: <1293628470-28386-1-git-send-email-kas@openvz.org>
+ <AANLkTi=AXz21wDeE1vPVD-6cEtj6faXN9x09eHDCsTkB@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AANLkTi=AXz21wDeE1vPVD-6cEtj6faXN9x09eHDCsTkB@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-No functional changes, just some code minor code rearrangement and
-comments.
+On Wed, Dec 29, 2010 at 08:13:50PM -0600, Rob Landley wrote:
+> On Wed, Dec 29, 2010 at 7:14 AM, Kirill A. Shutemov <kas@openvz.org> wrote:
+> >
+> > Prepare nfs/sunrpc stack to use multiple instances of rpc_pipefs.
+> > Only for client for now.
+> 
+> What would a test case for this look like?  (Is there some way to tell
+> an nfs mount to use a specific instance of rpc_pipefs or something?)
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4proc.c |   19 ++++++++++---------
- 1 files changed, 10 insertions(+), 9 deletions(-)
+You can create a new instance of rpc_pipefs using 'newinstance'
+mountoption.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f475516..1609a07 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5297,10 +5297,14 @@ static void
- nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs4_layoutget *lgp = calldata;
--	struct inode *ino = lgp->args.inode;
--	struct nfs_server *server = NFS_SERVER(ino);
-+	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
- 
- 	dprintk("--> %s\n", __func__);
-+	/* Note the is a race here, where a CB_LAYOUTRECALL can come in
-+	 * right now covering the LAYOUTGET we are about to send.
-+	 * However, that is not so catastrophic, and there seems
-+	 * to be no way to prevent it completely.
-+	 */
- 	if (nfs4_setup_sequence(server, &lgp->args.seq_args,
- 				&lgp->res.seq_res, 0, task))
- 		return;
-@@ -5383,13 +5387,10 @@ int nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
- 	status = nfs4_wait_for_completion_rpc_task(task);
--	if (status != 0)
--		goto out;
--	status = task->tk_status;
--	if (status != 0)
--		goto out;
--	status = pnfs_layout_process(lgp);
--out:
-+	if (status == 0)
-+		status = task->tk_status;
-+	if (status == 0)
-+		status = pnfs_layout_process(lgp);
- 	rpc_put_task(task);
- 	dprintk("<-- %s status=%d\n", __func__, status);
- 	return status;
+Then you can specify which rpc_pipefs to use with 'rpcmount' mountoption
+of nfs mount. If none specifed, '/var/lib/nfs/rpc_pipefs' uses by default.
+If no rpcmount mountoption, no rpc_pipefs was found at
+'/var/lib/nfs/rpc_pipefs' and we are in init's mount namespace, we use
+init_rpc_pipefs.
+
 -- 
-1.7.2.1
-
+ Kirill A. Shutemov
