@@ -1,112 +1,233 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2771 "EHLO mx2.netapp.com"
+Received: from shutemov.name ([188.40.19.243]:55322 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753319Ab0LOQDZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Dec 2010 11:03:25 -0500
-Received: from localhost.localdomain (vpn2ntap-71744.hq.netapp.com [10.58.57.236])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id oBFG3Lov001580
-	for <linux-nfs@vger.kernel.org>; Wed, 15 Dec 2010 08:03:24 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 06/11] wave 2: rename notify fields
-Date: Wed, 15 Dec 2010 11:03:06 -0500
-Message-Id: <1292428991-30788-6-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1292428991-30788-1-git-send-email-iisaman@netapp.com>
-References: <1292428991-30788-1-git-send-email-iisaman@netapp.com>
+	id S1753435Ab0LaNDa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Dec 2010 08:03:30 -0500
+Date: Fri, 31 Dec 2010 15:03:29 +0200
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Rob Landley <rlandley@parallels.com>
+Cc: "Kirill A. Shutemov" <kas@openvz.org>, Rob Landley <rob@landley.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 00/12] make rpc_pipefs be mountable multiple time
+Message-ID: <20101231130329.GA3610@shutemov.name>
+References: <1293628470-28386-1-git-send-email-kas@openvz.org>
+ <AANLkTi=AXz21wDeE1vPVD-6cEtj6faXN9x09eHDCsTkB@mail.gmail.com>
+ <20101230085139.GA29697@shutemov.name>
+ <4D1C4C7C.6050606@parallels.com>
+ <20101230094433.GB29697@shutemov.name>
+ <4D1C5953.6020200@parallels.com>
+ <20101230104416.GA31824@shutemov.name>
+ <AANLkTim2QrkSW0HufD5wp=-8ikwydN5SUS+fdWK6JHqb@mail.gmail.com>
+ <20101230114514.GA31976@shutemov.name>
+ <4D1C809B.30405@parallels.com>
+Content-Type: multipart/mixed; boundary="24zk1gE8NUlDmwG9"
+In-Reply-To: <4D1C809B.30405@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Due to code changes, these no longer are involved in any notification.
-Instead, they are just counts, so name appropriately.
+--24zk1gE8NUlDmwG9
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/callback_proc.c    |    4 ++--
- fs/nfs/pnfs.c             |   10 +++++-----
- fs/nfs/pnfs.h             |    2 +-
- include/linux/nfs_fs_sb.h |    2 +-
- 4 files changed, 9 insertions(+), 9 deletions(-)
+On Thu, Dec 30, 2010 at 06:52:43AM -0600, Rob Landley wrote:
+> On 12/30/2010 05:45 AM, Kirill A. Shutemov wrote:
+> > Currently, there is no association between rpc_pipefs and mount namespace,
+> 
+> There is in that the root context doesn't need to have this mounted, and 
+> new namespaces do.  So there's an existing association between a LACK of 
+> a namespace and a different default behavior.
+>
+> My understanding (correct me if I'm wrong) is that the historical 
+> behavior is that there's only one, and it doesn't actually live anywhere 
+> in the filesystem tree.  You're adding a special location.  I'm 
+> wondering if there's any way for that location not to be special.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index a5fa786..918d6c5 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -202,9 +202,9 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
- 	dprintk("%s enter, type=%i\n", __func__, args->cbl_recall_type);
- 	if (test_and_set_bit(NFS4CLNT_LAYOUTRECALL, &clp->cl_state))
- 		goto out;
--	atomic_inc(&clp->cl_drain_notify);
-+	atomic_inc(&clp->cl_recall_count);
- 	status = initiate_layout_draining(clp, args);
--	if (atomic_dec_and_test(&clp->cl_drain_notify))
-+	if (atomic_dec_and_test(&clp->cl_recall_count))
- 		res = NFS4ERR_NOMATCHING_LAYOUT;
- 	else
- 		res = NFS4ERR_DELAY;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index dadc113..f2360af 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -277,17 +277,17 @@ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- 	smp_mb();
- 	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
- 	lseg->layout = lo;
--	lseg->pls_notify_count = 0;
-+	lseg->pls_recall_count = 0;
- }
+/var/lib/net/rpc_pipefs is default path where userspace part of NFS stack
+(gssd, idmapd) want to see rpc_pipefs
+
+> > so I don't see simple way to restrict number of rpc_pipefs per mount
+> > namespace. Associating mount namespace with rpc_pipefs is not a good idea,
+> > I think.
+> 
+> I'm talking about associating a default rpc_pipefs instance with a 
+> namespace, which it seems to me you're already doing by emulating the 
+> legacy behavior.  Before you CLONE_NEWNS you get a magic default mount 
+> that doesn't exist in the tree.  After you CLONE_NEWNS you get something 
+> like -EINVAL unless you supply your own default.
+
+Root namespace is special. In case of nfsroot you need rpc_pipefs before
+root available.
+
+> (I'm actually not sure 
+> why new namespaces don't fall back to the magic global one...)
+
+It breaks isolation. Container should not use host's rpc_pipefs without
+host's permission.
  
- static void free_lseg(struct pnfs_layout_segment *lseg)
- {
- 	struct inode *ino = lseg->layout->inode;
--	int count = lseg->pls_notify_count;
-+	int count = lseg->pls_recall_count;
- 
- 	BUG_ON(atomic_read(&lseg->pls_refcount) != 0);
- 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
--	atomic_sub(count, &NFS_SERVER(ino)->nfs_client->cl_drain_notify);
-+	atomic_sub(count, &NFS_SERVER(ino)->nfs_client->cl_recall_count);
- 	/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
- 	put_layout_hdr(NFS_I(ino)->layout);
- }
-@@ -590,8 +590,8 @@ void nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
- 	assert_spin_locked(&lo->inode->i_lock);
- 	list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
- 		if (should_free_lseg(&lseg->range, range)) {
--			lseg->pls_notify_count++;
--			atomic_inc(&NFS_SERVER(lo->inode)->nfs_client->cl_drain_notify);
-+			lseg->pls_recall_count++;
-+			atomic_inc(&NFS_SERVER(lo->inode)->nfs_client->cl_recall_count);
- 			mark_lseg_invalid(lseg, tmp_list);
- 		}
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index f77a35b..deedcca 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -44,7 +44,7 @@ struct pnfs_layout_segment {
- 	atomic_t pls_refcount;
- 	unsigned long pls_flags;
- 	struct pnfs_layout_hdr *layout;
--	int pls_notify_count;
-+	int pls_recall_count;
- };
- 
- enum pnfs_try_status {
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 7162c88..e0739a5 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -84,7 +84,7 @@ struct nfs_client {
- 	u32			cl_exchange_flags;
- 	struct nfs4_session	*cl_session; 	/* sharred session */
- 	struct list_head	cl_layouts;
--	atomic_t		cl_drain_notify;
-+	atomic_t		cl_recall_count; /* no. of lsegs in recall */
- 	struct pnfs_deviceid_cache *cl_devid_cache; /* pNFS deviceid cache */
- #endif /* CONFIG_NFS_V4_1 */
- 
+> I'm suggesting that if the user doesn't specify -o rpcmount then the 
+> default could be the first rpc_pipefs mount visible to the current 
+> process context, rather than a specific path.  Logic to do that exists 
+> in the proc/self/mounts code (which I'm reading through now...).
+
+static int check_rpc_pipefs(struct vfsmount *mnt, void *arg)
+{
+        struct vfsmount **rpcmount = arg;
+        struct path path = {
+                .mnt = mnt,
+                .dentry = mnt->mnt_root,
+        };
+
+        if (!mnt->mnt_sb)
+                return 0;
+        if (mnt->mnt_sb->s_magic != RPCAUTH_GSSMAGIC)
+                return 0;
+
+        if (!path_is_under(&path, &current->fs->root))
+                return 0;
+
+        *rpcmount = mntget(mnt);
+        return 1;
+}
+
+struct vfsmount *get_rpc_pipefs(const char *p)
+{
+        int error;
+        struct vfsmount *rpcmount = ERR_PTR(-EINVAL);
+        struct path path;
+
+        if (!p) {
+                iterate_mounts(check_rpc_pipefs, &rpcmount,
+                                current->nsproxy->mnt_ns->root);
+
+                if (IS_ERR(rpcmount) && (current->nsproxy->mnt_ns ==
+                                        init_task.nsproxy->mnt_ns))
+                        return mntget(init_rpc_pipefs);
+
+                return rpcmount;
+        }
+
+        error = kern_path(p, LOOKUP_FOLLOW | LOOKUP_DIRECTORY, &path);
+        if (error)
+                return ERR_PTR(error);
+
+        check_rpc_pipefs(path.mnt, &rpcmount);
+        path_put(&path);
+
+        return rpcmount;
+}
+EXPORT_SYMBOL_GPL(get_rpc_pipefs);
+
+Something like this? Patch to replace patch #10 attached.
+
 -- 
-1.7.2.1
+ Kirill A. Shutemov
 
+--24zk1gE8NUlDmwG9
+Content-Type: text/plain; charset=us-ascii; name="sunrpc-introduce-get_rpc_pipefs.patch"
+Content-Disposition: attachment; filename="sunrpc-introduce-get_rpc_pipefs.patch"
+
+>From 36bdb502360461a8426821a37728aef3a3b8c738 Mon Sep 17 00:00:00 2001
+From: Kirill A. Shutemov <kas@openvz.org>
+Date: Mon, 20 Dec 2010 04:03:52 +0200
+Subject: [PATCH] sunrpc: introduce get_rpc_pipefs()
+
+Get rpc_pipefs mount point by path.
+
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |    2 +
+ net/sunrpc/rpc_pipe.c              |   51 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 53 insertions(+), 0 deletions(-)
+
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index b09bfa5..922057c 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -46,6 +46,8 @@ RPC_I(struct inode *inode)
+ 
+ extern struct vfsmount *init_rpc_pipefs;
+ 
++struct vfsmount *get_rpc_pipefs(const char *path);
++
+ extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
+ 
+ struct rpc_clnt;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index b1e299b..4e09a90 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -16,6 +16,9 @@
+ #include <linux/namei.h>
+ #include <linux/fsnotify.h>
+ #include <linux/kernel.h>
++#include <linux/nsproxy.h>
++#include <linux/mnt_namespace.h>
++#include <linux/fs_struct.h>
+ 
+ #include <asm/ioctls.h>
+ #include <linux/fs.h>
+@@ -931,6 +934,54 @@ static const struct super_operations s_ops = {
+ 
+ #define RPCAUTH_GSSMAGIC 0x67596969
+ 
++static int check_rpc_pipefs(struct vfsmount *mnt, void *arg)
++{
++	struct vfsmount **rpcmount = arg;
++	struct path path = {
++		.mnt = mnt,
++		.dentry = mnt->mnt_root,
++	};
++
++	if (!mnt->mnt_sb)
++		return 0;
++	if (mnt->mnt_sb->s_magic != RPCAUTH_GSSMAGIC)
++		return 0;
++
++	if (!path_is_under(&path, &current->fs->root))
++		return 0;
++
++	*rpcmount = mntget(mnt);
++	return 1;
++}
++
++struct vfsmount *get_rpc_pipefs(const char *p)
++{
++	int error;
++	struct vfsmount *rpcmount = ERR_PTR(-EINVAL);
++	struct path path;
++
++	if (!p) {
++		iterate_mounts(check_rpc_pipefs, &rpcmount,
++				current->nsproxy->mnt_ns->root);
++
++		if (IS_ERR(rpcmount) && (current->nsproxy->mnt_ns ==
++					init_task.nsproxy->mnt_ns))
++			return mntget(init_rpc_pipefs);
++
++		return rpcmount;
++	}
++
++	error = kern_path(p, LOOKUP_FOLLOW | LOOKUP_DIRECTORY, &path);
++	if (error)
++		return ERR_PTR(error);
++
++	check_rpc_pipefs(path.mnt, &rpcmount);
++	path_put(&path);
++
++	return rpcmount;
++}
++EXPORT_SYMBOL_GPL(get_rpc_pipefs);
++
+ /*
+  * We have a single directory with 1 node in it.
+  */
+-- 
+1.7.3.4
+
+
+--24zk1gE8NUlDmwG9--
