@@ -1,50 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:59491 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754039Ab1A1TKc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Jan 2011 14:10:32 -0500
-Subject: Re: [PATCH 2/2] NFS: NFSv4 readdir loses entries
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1296240348.5464.20.camel@heimdal.trondhjem.org>
-Date: Fri, 28 Jan 2011 14:09:25 -0500
-Cc: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
-Message-Id: <F2D9DF83-FC13-400B-B1FE-4107AD35DCF1@oracle.com>
-References: <20110128173624.3235.74504.stgit@matisse.1015granger.net> <20110128174105.3235.21014.stgit@matisse.1015granger.net> <4D430DFA.90708@netapp.com> <1296240348.5464.20.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from science.horizon.com ([71.41.210.146]:29784 "HELO
+	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750851Ab1AAFoh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Jan 2011 00:44:37 -0500
+Date: 1 Jan 2011 00:44:35 -0500
+Message-ID: <20110101054435.29395.qmail@science.horizon.com>
+From: "George Spelvin" <linux@horizon.com>
+To: linux@horizon.com, Trond.Myklebust@netapp.com
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+In-Reply-To: <1293844690.22964.10.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+>> 1) Look again; it's O(1) work per entry, or O(n) work for an n-entry
+>>    directory.  And O(1) space.  With very small constant factors,
 
-On Jan 28, 2011, at 1:45 PM, Trond Myklebust wrote:
+> Yes. I was thinking about it this morning (after coffee).
 
-> On Fri, 2011-01-28 at 13:42 -0500, Bryan Schumaker wrote: 
->> On 01/28/2011 12:41 PM, Chuck Lever wrote:
->>> On recent 2.6.38-rc kernels, connectathon basic test 6 fails on
->>> NFSv4 mounts of OpenSolaris with something like:
->>> 
->>>> ./test6: readdir
->>>> 	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.12' dir entry, pass 0
->>>> 	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.82' dir entry, pass 0
->>>> 	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.164' dir entry, pass 0
->>>> 	./test6: (/mnt/klimt/matisse.test) Test failed with 3 errors
->>>> basic tests failed
->>>> Tests failed, leaving /mnt/klimt mounted
->>>> [cel@matisse cthon04]$
->>> 
->>> I narrowed the problem down to nfs4_decode_direct() reporting that the
->> 
->> I'm guessing that should be nfs4_decode_dirent()?
-> 
-> I've fixed that up in the version I applied to the 'bugfixes' branch.
+Thank you for the second look.
 
-Thanks.  I make that typo nearly every time I type "decode_dirent".
+> One variant on those algorithms that might make sense here is to save
+> the current cookie each time we see that the result of a cookie search
+> is a filp->f_pos offset < the current filp->f_pos offset. That means we
+> will in general only detect the loop after going through an entire
+> cycle, but that should be sufficient...
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+All of these low-overhead algorithms can take a couple of loop iterations
+before they detect it; their job is to achieve a reasonably low constant
+factor in time using O(1) space.
 
+The worst case for the power-of-two algorithm is when the loop is n = 2^k+1
+items long.  When you get to item 2^(k+1), you'll be comparing to item
+2^k, which is a mismatch.  Then you'll save the cookie from 2^(k+1)
+and have to go to 2^(k+1) + 2^k + 1, or about 3*n, before detecting
+it.
 
+I don't consider this a problem, because it wastes a few seconds of
+computer time, to be followed by wasting a few hours trying to pass
+a bug report upstream about the broken NFS server...
 
+I don't quite follow how your proposed variant works.  Pardon my ignorance
+of NFS, but is the f->pos something that comes from the server, or
+something that is synthesized locally?  Obviously, if you keep a record
+of all the server cookies, you can detect loops quite easily.
+
+If it comes from the server, there's a risk that there might be two
+backward jumps in the cycle, and thus you'll never notice it.
 
