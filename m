@@ -1,99 +1,65 @@
-Return-Path: <nfsv4-bounces@ietf.org>
-Date: Thu, 6 Jan 2011 16:20:01 -0500
-Message-ID: <BF3BB6D12298F54B89C8DCC1E4073D8002C47E40@CORPUSMX50A.corp.emc.com>
-In-Reply-To: <4D21D71D.8030907@panasas.com>
-References: <4D0E2E01.5020609@panasas.com>,
-	<fed0592.55ef.12cfee2b158.Coremail.wolf0805@163.com>,
-	<18c0c0f3.1adea.12d0e4252bd.Coremail.wolf0805@163.com><201012301048485665083@163.com>
-	<4D21D71D.8030907@panasas.com>
-From: <david.noveck@emc.com>
-To: <bhalevy@panasas.com>, <wolf0805@163.com>
-Cc: linux-nfs@vger.kernel.org, nfsv4@ietf.org
-Subject: Re: [nfsv4] Questions on pNFS
-List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Content-Type: text/plain; charset="gb2312"
-Sender: nfsv4-bounces@ietf.org
-Errors-To: nfsv4-bounces@ietf.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:38661 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750695Ab1ACW0H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Jan 2011 17:26:07 -0500
+Date: Mon, 3 Jan 2011 17:26:05 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
+Cc: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
+Message-ID: <20110103222605.GA24811@fieldses.org>
+References: <20101229204752.GC12218@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20101229204752.GC12218@fieldses.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-SSdtIHZlcnkgY29uZnVzZWQgYnkgdGhpcyBpbnRlcmNoYW5nZS4KCj4gPiBJIGZvdW5kIHRoZXJl
-IHdhc24ndCBhbnkgYnl0ZS1yYW5nZSBsb2NrIGFzIHNwZWNpZmllZCBpbiB0aGUgaWV0Zi1uZnN2
-NC1kcmFmdCBwcm90b2NvbC4KCj4gQ29ycmVjdC4KCkh1aD8KClRoZSBuZnN2NCBwcm90b2NvbCBk
-b2VzIGhhdmUgYnl0ZS1yYW5nZSBsb2Nrcy4gIEl0IGlzIG9wdGlvbmFsIHdoZXRoZXIgdGhleSBh
-cmUgYWR2aXNvcnkgb3IgbWFuZGF0b3J5LCBidXQgdGhleSBkbyBleGlzdC4KCkNvdWxkIEJlbm55
-IG1lYW4gdGhhdCB0aGV5IGRvbid0IHdvcmsgaW4gaGlzIHNlcnZlcj8gIEl0IGRvZXNuJ3Qgc2Vl
-bSBzbyBiZWNhdXNlIGhlIGFkdmlzZXMgWmhhbmd5dSB0byB1c2UgbG9ja2luZy4gCgpUaGUgb25s
-eSBmb3JtIG9mIG1hbmRhdG9yeSBsb2NraW5nIGluIE5GU3Y0IGFyZSBzaGFyZSByZXNlcnZhdGlv
-bnMuICBXYWl0aW5nIHRvIGVkaXQgeW91ciBmaWxlIG1heSBiZSBkcmFnIGJ1dCBpdCBpcyBiZXR0
-ZXIgdGhhbiB0dXJuaW5nIGl0IGludG8gYSBtZXNzLgoKSSd2ZSBuZXZlciBzZWVuIGFuIGVkaXRv
-ciB0aGF0IGFsbG93ZWQgbXVsdGlwbGUgdXNlcnMgdG8gZWRpdCBhIGZpbGUgYW5kIHVzZWQgYnl0
-ZS1yYW5nZSBsb2NrcyB0byBzeW5jaHJvbml6ZS4gIEl0IHNlZW1zIGxpa2UgYSBmdW4gcHJvamVj
-dCBhcyBsb25nIGFzIHRoZXJlIHdhcyBubyBkZWxpdmVyeSBzY2hlZHVsZS4KCiAKCi0tLS0tT3Jp
-Z2luYWwgTWVzc2FnZS0tLS0tCkZyb206IG5mc3Y0LWJvdW5jZXNAaWV0Zi5vcmcgW21haWx0bzpu
-ZnN2NC1ib3VuY2VzQGlldGYub3JnXSBPbiBCZWhhbGYgT2YgQmVubnkgSGFsZXZ5ClNlbnQ6IE1v
-bmRheSwgSmFudWFyeSAwMywgMjAxMSA5OjAzIEFNClRvOiBaaGFuZ3l1CkNjOiBsaW51eC1uZnM7
-IG5mc3Y0ClN1YmplY3Q6IFJlOiBbbmZzdjRdIFF1ZXN0aW9ucyBvbiBwTkZTCgpbdHJpbW1lZCBt
-YWlsaW5nIGxpc3RzIG9uIHRoZSBDY10KCk9uIDIwMTAtMTItMzAgMDQ6NDgsIFpoYW5neXUgd3Jv
-dGU6Cj4gSGksCj4gCj4gSSBoYXZlIHN1Y2Nlc3NmdWxseSBpbnN0YWxsZWQgdGhlIHBORlMgYW5k
-IGl0IHdvcmtzIHdlbGwuCgpHcmVhdCEKCj4gSG93ZXZlciwgSSBhbSBpbnRlcmVzdGVkIGluIHRo
-ZSBwYXJhbGxlbCBhY2Nlc3MgY29udHJvbCBtZWNoYW5pc20gb2YgcE5GUy4KPiBJIHRyaWVkIHRv
-IGVkaXQgdGhlIHNhbWUgZmlsZSBvbiB0d28gZGlmZmVyZW50IGNsaWVudHMsCj4gSSBmb3VuZCB0
-aGVyZSB3YXNuJ3QgYW55IGJ5dGUtcmFuZ2UgbG9jayBhcyBzcGVjaWZpZWQgaW4gdGhlIGlldGYt
-bmZzdjQtZHJhZnQgcHJvdG9jb2wuCgpDb3JyZWN0LgoKPiBIb3cgaXMgdGhlIHBhcmFsbGVsIGFj
-Y2VzcyBjb250cm9sIGltcGxlbWVudGVkPyBXaGljaCBzb3VyY2UgY29kZSBmaWxlIGRvZXMgaXQg
-bG9jYXRlZCBpbj8gCj4gCgpUaGVyZSBpcyBub25lIGJ5IGRlZmluaXRpb24uClRoZSBwTkZTIGZl
-YXR1cmUgaXMgb3J0aG9nb25hbCB0byBzeW5jaHJvbml6YXRpb24gcHJpbWl0aXZlcyBzbwpkaWZm
-ZXJlbnQgY2xpZW50cyB0aGF0IG5lZWQgdG8gc2VyaWFsaXplIHRoZWlyIGFjY2VzcyBzaG91bGQg
-dXNlIGxvY2tpbmcKdG8gZG8gdGhhdC4KClNvbWUgc2VydmVycyBtYXkgaW1wbGVtZW50IHN5bmNo
-cm9uaXphdGlvbiBhdCB0aGUgcG5mcyBsYXlvdXQgbGV2ZWwsCmJ1dCB0aGUgbGludXggc2VydmVy
-IGhhcyBubyBzdWNoIGZlYXR1cmUuCgo+IEFkZGl0aW9uYWxseSwgSSBmb3VuZCB0aGF0IHdoZW4g
-d3JpdGluZyBhIGZpbGUgdG8gdGhlIERTLCBuZXR3b3JrIGZsb3cgaXMgaGlnaGVyIGJvdGgKPiBv
-biBNRFMgYW5kIERTLiBEb2VzIGl0IG1lYW4gdGhhdCB0aGUgZGF0YSBpcyBkZWxpdmVyZWQgdGhy
-b3VnaCBNRFM/Cj4gSSB0aGluayB0aGUgZGF0YSBzaG91bGQgYmUgd3JpdHRlbiBkaXJlY3RseSB0
-byBEUywgaXMgaXQgcmlnaHQ/CgpUcnVlLiAgSWYgeW91ciBzZXR1cCBpcyBjb25maWd1cmVkIGNv
-cnJlY3RseSB0aGVyZSBzaG91bGQgYmUgbm8KSS9PIGRpcmVjdGVkIGF0IHRoZSBNRFMuCkNhbiB5
-b3UgY2FwdHVyZSBhIG5ldHdvcmsgdHJhY2UgdG8gdGhlIE1EUyBhbmQgdG8gdGhlIERTIHRvIHNl
-ZSB3aGF0IGV4YWN0bHkKaXMgc2VudCBvbiB0aGUgbGluZT8KCkJlbm55Cgo+IAo+IFRoYW5rcyAm
-IFJlZ2FyZHMsCj4gWXUgWmhhbmcgCj4gCj4gMjAxMC0xMi0zMCAKPiAKPiAKPiAKPiBaaGFuZ3l1
-IAo+IAo+IAo+IAo+ILeivP7Iy6O6IEJlbm55IEhhbGV2eSAKPiC3osvNyrG85KO6IDIwMTAtMTIt
-MjYgIDE2OjI3OjU1IAo+IMrVvP7Iy6O6IHdvbGYwODA1IAo+ILOty82juiBORlMgbGlzdCAKPiDW
-98zio7ogUmU6IEVycm9ycyBvbiBwTkZTIAo+ICAKPiBbQWRkaW5nIHRoZSBsaW51eC1uZnMgbWFp
-bGluZyBsaXN0IHRvIHRoZSBDYwo+IHBsZWFzZSBrZWVwIHRoZSBmb2xrcyBvbiB0aGUgbGlzdCBw
-b3N0ZWQgYXMgdGhleSBhcmUgaW50ZXJlc3RlZAo+IGluIHRoZSBpc3N1ZXMgeW91IGVuY291bnRl
-ciBhcyB3ZWxsIGFzIHRoZSBzb2x1dGlvbnNdCj4gT24gMjAxMC0xMi0yMiAxNToyNiwgd29sZjA4
-MDUgd3JvdGU6Cj4+IEhpIEJlbm55LAo+Pgo+PiBJIGhhdmUgaW5zdGFsbGVkIHBORlMga2VybmVs
-IGFuZCBwbmZzLW5mcy11dGlscyBvbiB0aHJlZSBtYWNoaW5lcyhjbGllbnQsbWRzLGRzKS4KPj4g
-QnV0IHdoZW4gSSB0cmllZCB0byBsb2FkIHRoZSBsYXlvdXRkcml2ZXIsIGl0IGdpdmVzIGVycm9y
-IDogIkZhdGFsIC0gbW9kdWxlIG5mc2xheW91dGRyaXZlciBub3QgZm91bmQuIgo+IFNvcnJ5LCB0
-aGUgbGF5b3V0IGRyaXZlciB3YXMgcmVuYW1lZCB0byBuZnNfbGF5b3V0X25mc3Y0MV9maWxlcy4K
-PiBJJ3ZlIHVwZGF0ZWQgaHR0cDovL3dpa2kubGludXgtbmZzLm9yZy93aWtpL2luZGV4LnBocC9D
-b25maWd1cmluZ19wTkZTL3NwbmZzZAo+IHRvIHJlZmxlY3QgdGhhdC4KPiBCZW5ueQo+PiBJIGFt
-IHVzaW5nIEZlZG9yYSAxNCB3aXRoIHRoZSB1bmFtZSAtYSBzYXlpbmcgIkxpbnV4IGxvY2FsaG9z
-dC5sb2NhbGRvbWFpbiAKPj4gMi42LjM2LTEucG5mc19hbGxfMjAxMF8xMV8wMy5mYzE1Lmk2ODYu
-UEFFICMxIFNNUCBUdWUgTm92IDkgMTg6MzI6MjAgVVRDIDIwMTAgaTY4NiBpNjg2IGkzODYgR05V
-L0xpbnV4Ii4KPj4gSXQgc2VlbXMgdGhlIGtlcm5lbCBpcyBwbmZzIGVuYWJsZWQsIGJ1dCB3aGVy
-ZSBpcyB0aGUgcHJvYmxlbT8KPj4KPj4gVGhlIGRzIGlwLWFkZHIgaXMgWFguWVkuWlouQUEsIG1k
-cydzIGlzIFhYLllZLlpaLkJCLCBhbmQgY2xpZW50J3MgaXMgWFguWVkuWlouQ0MuIAo+Pgo+PiBU
-aGUgL2V0Yy9leHBvcnRzIG9uIGRzIGxvb2tzIGFzOiAvZXhwb3J0L3NwbmZzICoocncsc3luYyxm
-c2lkPTAsaW5zZWN1cmUsbm9fc3VidHJlZV9jaGVjayxwbmZzLG5vX3Jvb3Rfc3F1YXNoKQo+Pgo+
-PiBUaGUgL2V0Yy9leHBvcnRzIG9uIG1kcyA6IC9leHBvcnQgKihydyxzeW5jLGZzaWQ9MCxpbnNl
-Y3VyZSxub19zdWJ0cmVlX2NoZWNrLHBuZnMsbm9fcm9vdF8hCj4+ICBzcXVhc2gpCj4+Cj4+IC9l
-dGMvZnN0YWIgb24gbWRzOiAgWFguWVkuWlouQUE6LyAgICAgICAvc3BuZnMvWFguWVkuWlouQSAg
-IG5mczQgICAgbWlub3J2ZXJzaW9uPTEgICAgICAgIDAgMAo+Pgo+PiBUaGVuIEkgbW91bnRlZCBN
-RFMgZnJvbSBjbGllbnQgdXNpbmcgOiBtb3VudCAtdCBuZnM0IC1vIG1pbm9ydmVyc2lvbj0xIFhY
-LllZLlpaLkJCOi8gL21udAo+Pgo+PiBJIGZvdW5kIHRoYXQgb25seSBtZHMgYW5kIGNsaWVudCBh
-cmUgbW91bnRlZCwgaXQgc2VlbXMgZHMgaXMgbGVmdCBhbG9uZS4gSXMgdGhlcmUgYW55IG1pc3Rh
-a2VzIGluIHRoZXNlIGNvbmZpZ3VyZSBmaWxlcz8gCj4+Cj4+IEkgaG9wZSB0aGVzZSBoZWxwcy4K
-Pj4KPj4gQmVzdCByZWdhcmRzLAo+Pgo+PiBZdSBaaGFuZwo+Pgo+Pgo+Pgo+IC4KX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KbmZzdjQgbWFpbGluZyBsaXN0
-Cm5mc3Y0QGlldGYub3JnCmh0dHBzOi8vd3d3LmlldGYub3JnL21haWxtYW4vbGlzdGluZm8vbmZz
-djQKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KbmZzdjQg
-bWFpbGluZyBsaXN0Cm5mc3Y0QGlldGYub3JnCmh0dHBzOi8vd3d3LmlldGYub3JnL21haWxtYW4v
-bGlzdGluZm8vbmZzdjQK
+On Wed, Dec 29, 2010 at 03:47:52PM -0500, bfields wrote:
+> From: J. Bruce Fields <bfields@redhat.com>
+> 
+> Once a sunrpc cache entry is non-NEGATIVE, we should be replacing it
+> (and allowing any concurrent users to destroy it on last put) instead of
+> trying to update it in place.
+
+Or the following seems simpler.
+
+(And I was thinking it was necessary to ensure that the right thing
+happened to the cached xprt->xpt_auth_cache entry--though on a second
+look I see that sunrpc_cache_update also expires the replaced entry
+immediately.  Still, this seems simpler if it also works.)
+
+--b.
+
+commit 20771de3185bf0031aa767d3b19f3e744a465a0c
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Fri Dec 24 14:03:38 2010 -0500
+
+    svcrpc: modifying valid sunrpc cache entries is racy
+    
+    Once a sunrpc cache entry is non-NEGATIVE, we shouldn't attempt to
+    modify it in place.  Otherwise someone referencing the ip_map we're
+    modifying here could try to use the m_client just as we're putting the
+    last reference.
+    
+    Instead, just set the expiry time so it expires immediately.
+    
+    The bug should only be seen by users of the legacy nfsd interfaces.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index a04ac91..5edc147 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -401,8 +401,7 @@ struct auth_domain *auth_unix_lookup(struct net *net, struct in6_addr *addr)
+ 		return NULL;
+ 
+ 	if ((ipm->m_client->addr_changes - ipm->m_add_change) >0) {
+-		if (test_and_set_bit(CACHE_NEGATIVE, &ipm->h.flags) == 0)
+-			auth_domain_put(&ipm->m_client->h);
++		ipm->h.expiry_time = 0;
+ 		rv = NULL;
+ 	} else {
+ 		rv = &ipm->m_client->h;
