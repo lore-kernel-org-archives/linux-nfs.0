@@ -1,129 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from somacoma.net ([62.75.137.225]:50613 "EHLO vs137225.vserver.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751386Ab1AILlS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 9 Jan 2011 06:41:18 -0500
-Subject: Re: Problem with sharing /home
-From: Daniel Stodden <daniel.stodden@citrix.com>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Cc: nfs <linux-nfs@vger.kernel.org>
-In-Reply-To: <874334.779.qm@web111720.mail.gq1.yahoo.com>
-References: <965737.12090.qm@web111718.mail.gq1.yahoo.com>
-	 <1294565607.30270.14.camel@ramone>
-	 <874334.779.qm@web111720.mail.gq1.yahoo.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sun, 09 Jan 2011 03:41:14 -0800
-Message-ID: <1294573274.30270.35.camel@ramone>
+Received: from e28smtp06.in.ibm.com ([122.248.162.6]:54617 "EHLO
+	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932181Ab1ACQEa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jan 2011 11:04:30 -0500
+Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
+	by e28smtp06.in.ibm.com (8.14.4/8.13.1) with ESMTP id p03G4SEa005841
+	for <linux-nfs@vger.kernel.org>; Mon, 3 Jan 2011 21:34:28 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p03G4Rlf2387990
+	for <linux-nfs@vger.kernel.org>; Mon, 3 Jan 2011 21:34:27 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p03G4Q8c020910
+	for <linux-nfs@vger.kernel.org>; Tue, 4 Jan 2011 03:04:27 +1100
+From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: Set MS_POSIXACL always
+In-Reply-To: <m3fwtw297d.fsf@linux.vnet.ibm.com>
+References: <1291894514-6524-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <m3k4j91vw2.fsf@linux.vnet.ibm.com> <1292521792.2912.49.camel@heimdal.trondhjem.org> <m3fwtw297d.fsf@linux.vnet.ibm.com>
+Date: Mon, 03 Jan 2011 21:34:23 +0530
+Message-ID: <877hemdldk.fsf@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 2011-01-09 at 04:46 -0500, Mahmood Naderan wrote:
-> >Edit passwd andgroup to fix it.
-> I forgot to ask should I edit those files on server or worker?
+On Fri, 17 Dec 2010 12:10:38 +0530, "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> On Thu, 16 Dec 2010 12:49:52 -0500, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > On Thu, 2010-12-16 at 22:45 +0530, Aneesh Kumar K. V wrote:
+> > > Any update on this ?
+> > > 
+> > > -aneesh
+> > > 
+> > > On Thu,  9 Dec 2010 17:05:14 +0530, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > > > We want to skip VFS applying mode for NFS. So set MS_POSIXACL always
+> > > > and selectively use umask. Ideally we would want to use umask only
+> > > > when we don't have inheritable ACEs set. But NFS currently don't
+> > > > allow to send umask to the server. So this is best what we can do
+> > > > and this is consistent with NFSv3
+> > > > 
+> > > > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> > > > ---
+> > > >  fs/nfs/dir.c      |    3 +--
+> > > >  fs/nfs/nfs4proc.c |    5 +++++
+> > > >  fs/nfs/super.c    |   10 ++++++++++
+> > > >  3 files changed, 16 insertions(+), 2 deletions(-)
+> > > > 
+> > > > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> > > > index 3c04504..e57e670 100644
+> > > > --- a/fs/nfs/super.c
+> > > > +++ b/fs/nfs/super.c
+> > > > @@ -2508,6 +2513,11 @@ static void nfs4_fill_super(struct super_block *sb)
+> > > >  {
+> > > >  	sb->s_time_gran = 1;
+> > > >  	sb->s_op = &nfs4_sops;
+> > > > +	/*
+> > > > +	 * The VFS shouldn't apply the umask to mode bits. We will do
+> > > > +	 * so ourselves when necessary.
+> > > > +	 */
+> > > > +	sb->s_flags  |= MS_POSIXACL;
+> > > >  	nfs_initialise_sb(sb);
+> > > >  }
+> > 
+> > Won't this end up possibly turning on ACL checking in
+> > acl_permission_check()?
+> 
+> acl_permission_check get called only when we don't define an
+> inode->permission callback. In case of nfs client we do define 
+> nfs_permission callback. In case we don't define a access NFS proto
+> callback we are still ok because in that case we want mode based
+> validation and we do pass check_acl as NULL 
+> 
 
-Ideally on the worker.
+Can we get this upstream ?
 
-The reason is that wherever you have to change the user account on the
-server, you will need to recursively fix the permissions on her home
-directory. That's more work. If necessary, check your favorite unix
-manual for details.
-
-See 'man 5 passwd' for info on the passwd file.
-
-Daniel
-
-> // Naderan *Mahmood;
-> 
-> 
-> 
-> ----- Original Message ----
-> From: Daniel Stodden <daniel.stodden@citrix.com>
-> To: Mahmood Naderan <nt_mahmood@yahoo.com>
-> Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-> Sent: Sun, January 9, 2011 1:03:27 PM
-> Subject: Re: Problem with sharing /home
-> 
-> 
-> User names are meaningless to the filesystem. Numbers matter. Make sure
-> that the name->uid map is identical in all passwd files.
-> 
-> In the case below, user1 can't write to /home/user1 because on worker
-> she's got a different uid than on server. Likewise, user3 there appears
-> to own /home/user1 because the uid in question was given to user3.
-> 
-> Try the 'id' and 'ls -n' commands to figure it out. Edit passwd and
-> group to fix it.
-> 
-> Daniel
-> 
-> On Sun, 2011-01-09 at 02:41 -0500, Mahmood Naderan wrote:
-> > Hi,
-> > I have a server (192.168.1.1) and worker (192.168.1.2) stations and want to 
-> > share /home which is belong to the server. This is the content of my 
-> > /etc/exports:
-> > /home                192.168.1.2(rw,sync,no_root_squash)
-> > 
-> > Before sharing, the list of users on both stations are:
-> > server: root, mahmood, user1, user2
-> > worker: root, mahmood, user3, user4
-> > 
-> > As you can see two users are common. Then I opened /etc/fstab on worker and 
-> > commnet the original /home line and added this line:
-> > server:/home  /home  nfs defaults 0 0
-> >  
-> > Then I ran "sudo exportfs -a" on server and "sudo mount -a" on the worker. 
-> > Please look at the output of "ls -l" command on both server and worker:
-> > mahmood@server:home$ ls -l
-> > total 36
-> > drwxr-xr-x 28 user1       users    4096 2011-01-08 21:49 user1
-> > drwxr-xr-x  4 user2        users    4096 2011-01-08 21:55 user2
-> > drwx------  2 root       root    16384 2010-10-24 17:23 lost+found
-> > drwxr-xr-x 26 mahmood    mahmood  4096 2011-01-09 10:49 mahmood
-> > 
-> > mahmood@worker:home$ ls -l
-> > total 36
-> > drwxr-xr-x  4 user3  users    4096 2011-01-08 21:55 user1
-> > drwxr-xr-x  9 user4 users    4096 2011-01-08 23:05 user2
-> > drwx------  2 root    root    16384 2010-10-24 17:23 lost+found
-> > drwxr-xr-x 26 mahmood mahmood  4096 2011-01-09 10:49 mahmood
-> > drwxrwxrwx  5 root    root     4096 2011-01-05 21:27 shared
-> > 
-> > As you can see, the permission of user1 and user2 home direcoties are granted 
-> >to 
-> >
-> > user3 and user4. But since "mahmood" and "root" have separate account on both 
-> > stations, there is no problem with their access. 
-> > 
-> >  
-> > The effect of this anomaly is that when user1 want to ssh from server to 
-> >wroker, 
-> >
-> > he can not write anything in his home direcotry:
-> > user1@server:~$ mkdir a
-> > user1@server:~$ ssh worker
-> > enter password....
-> > user1@worker:~$ mkdir b
-> > mkdir: cannot create directory `b': Permission denied
-> > user1@worker:~$
-> > 
-> > How can I fix that?
-> > 
-> > Thanks,
-> > // Naderan *Mahmood;
-> > 
-> > 
-> >      
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
->       
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+-aneesh
