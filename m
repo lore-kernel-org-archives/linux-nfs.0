@@ -1,76 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13852 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:56799 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752291Ab1ANCkk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 21:40:40 -0500
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Andy Isaacson <adi@hexapodia.org>
-Cc: Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>,
-        Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        linux-nfs@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>
-In-Reply-To: <20110114022554.GA17397@hexapodia.org>
-References: <20101230171453.GA5787@pengutronix.de>
-	 <1293731992.4919.5.camel@heimdal.trondhjem.org>
-	 <20101230191846.GB14221@pengutronix.de>
-	 <20110103213850.GC25121@pengutronix.de>
-	 <1294100558.25100.8.camel@heimdal.trondhjem.org>
-	 <20110105084014.GN25121@pengutronix.de>
-	 <20110105110517.GQ25121@pengutronix.de>
-	 <20110105112701.GA8638@n2100.arm.linux.org.uk>
-	 <20110105134045.GS25121@pengutronix.de>
-	 <1294239193.3014.9.camel@heimdal.trondhjem.org>
-	 <20110114022554.GA17397@hexapodia.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 13 Jan 2011 21:40:23 -0500
-Message-ID: <1294972823.2841.2.camel@heimdal.trondhjem.org>
+	id S1752764Ab1ACSbA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Jan 2011 13:31:00 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Neil Brown <neilb@suse.de>
+Subject: [PATCH 2/5] nfsd4: avoid double reply caused by deferral race
+Date: Mon,  3 Jan 2011 13:30:51 -0500
+Message-Id: <1294079454-17891-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1294079454-17891-1-git-send-email-bfields@redhat.com>
+References: <1294079454-17891-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-01-13 at 18:25 -0800, Andy Isaacson wrote: 
-> On Wed, Jan 05, 2011 at 09:53:13AM -0500, Trond Myklebust wrote:
-> > > There was a bug in at least -rc5[1] that was considered already fixed in
-> > > -rc4[2]. The later announcements didn't mention it anymore. 
-> > > 
-> > > > I don't know why it's stopped producing the errors, although once it
-> > > > went I never investigated it any further (was far too busy trying to
-> > > > get AMBA DMA support working.)
-> > > It seems it was fixed for most users though. Trond?
-> > 
-> > As I said, I can't reproduce it.
-> > 
-> > I'm seeing a lot of mention of ARM above. Is anyone seeing this bug on
-> > x86, or does it appear to be architecture-specific?
-> 
-> I'm seeing processes stuck in D with "fileid changed" in dmesg, on
-> x86_64 (both server and client).  The repro testcase is to run an
-> executable off of NFS, recompile it on the server, and then try to tab
-> complete the executable name.  The client prints
-> 
->     NFS: server <hostname> error: fileid changed
->     fsid 0:18: expected fileid 0x107aa4a, got 0x107ad3e
-> 
-> and /bin/zsh hangs in D.
-> 
-> My server is running 2.6.36.1, filesystem is ext3 on sda3 on AHCI,
-> client is currently running 2.6.37-rc1.  I'm assuming that 37a09f will
-> fix it.
+Commit d29068c431599fa "sunrpc: Simplify cache_defer_req and related
+functions." asserted that cache_check() could determine success or
+failure of cache_defer_req() by checking the CACHE_PENDING bit.
 
-Why are you sticking to 2.6.37-rc1 when the final 2.6.37 is out? There
-have been several readdir bugfixes merged in the months since -rc1 came
-out.
+This isn't quite right.
 
-Trond
+We need to know whether cache_defer_req() created a deferred request,
+in which case sending an rpc reply has become the responsibility of the
+deferred request, and it is important that we not send our own reply,
+resulting in two different replies to the same request.
+
+And the CACHE_PENDING bit doesn't tell us that; we could have
+succesfully created a deferred request at the same time as another
+thread cleared the CACHE_PENDING bit.
+
+So, partially revert that commit, to ensure that cache_check() returns
+-EAGAIN if and only if a deferred request has been created.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Cc: Neil Brown <neilb@suse.de>
+---
+ net/sunrpc/cache.c |   18 +++++++++++-------
+ 1 files changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index e433e75..0d6002f 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -37,7 +37,7 @@
+ 
+ #define	 RPCDBG_FACILITY RPCDBG_CACHE
+ 
+-static void cache_defer_req(struct cache_req *req, struct cache_head *item);
++static bool cache_defer_req(struct cache_req *req, struct cache_head *item);
+ static void cache_revisit_request(struct cache_head *item);
+ 
+ static void cache_init(struct cache_head *h)
+@@ -268,9 +268,11 @@ int cache_check(struct cache_detail *detail,
+ 	}
+ 
+ 	if (rv == -EAGAIN) {
+-		cache_defer_req(rqstp, h);
+-		if (!test_bit(CACHE_PENDING, &h->flags)) {
+-			/* Request is not deferred */
++		if (!cache_defer_req(rqstp, h)) {
++			/*
++			 * Request was not deferred; handle it as best
++			 * we can ourselves:
++			 */
+ 			rv = cache_is_valid(detail, h);
+ 			if (rv == -EAGAIN)
+ 				rv = -ETIMEDOUT;
+@@ -618,18 +620,19 @@ static void cache_limit_defers(void)
+ 		discard->revisit(discard, 1);
+ }
+ 
+-static void cache_defer_req(struct cache_req *req, struct cache_head *item)
++/* Return true if and only if a deferred request is queued. */
++static bool cache_defer_req(struct cache_req *req, struct cache_head *item)
+ {
+ 	struct cache_deferred_req *dreq;
+ 
+ 	if (req->thread_wait) {
+ 		cache_wait_req(req, item);
+ 		if (!test_bit(CACHE_PENDING, &item->flags))
+-			return;
++			return false;
+ 	}
+ 	dreq = req->defer(req);
+ 	if (dreq == NULL)
+-		return;
++		return false;
+ 	setup_deferral(dreq, item, 1);
+ 	if (!test_bit(CACHE_PENDING, &item->flags))
+ 		/* Bit could have been cleared before we managed to
+@@ -638,6 +641,7 @@ static void cache_defer_req(struct cache_req *req, struct cache_head *item)
+ 		cache_revisit_request(item);
+ 
+ 	cache_limit_defers();
++	return true;
+ }
+ 
+ static void cache_revisit_request(struct cache_head *item)
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.1
 
