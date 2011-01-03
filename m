@@ -1,35 +1,58 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:51857 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754387Ab1AUQxP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Jan 2011 11:53:15 -0500
-Date: Fri, 21 Jan 2011 11:53:09 -0500
-From: Jim Rees <rees@umich.edu>
+Return-Path: <nfsv4-bounces@ietf.org>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
 To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH 0/3] nfs-utils: blkmapd
-Message-ID: <cover.1295627825.git.rees@umich.edu>
-Content-Type: text/plain; charset=us-ascii
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+In-Reply-To: <4D21DB53.9050104@panasas.com>
+References: <978693366.32.1292516428080.JavaMail.root@thunderbeast.private.linuxbox.com>
+	<1740153586.34.1292516481789.JavaMail.root@thunderbeast.private.linuxbox.com>
+	<20101216230707.GB16760@infradead.org> <4D21DB53.9050104@panasas.com>
+Date: Mon, 03 Jan 2011 09:40:11 -0500
+Message-ID: <1294065611.16812.8.camel@heimdal.trondhjem.org>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        nfsv4@ietf.org
+Subject: Re: [nfsv4] layoutcommits and file layout
+List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@ietf.org
+Errors-To: nfsv4-bounces@ietf.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-This set of patches fixes various bugs in stripe size calculation turned up
-in testing.  I believe blkmapd will now handle any layout that is allowed by
-the spec and can be constructed by device-mapper.
+On Mon, 2011-01-03 at 16:21 +0200, Benny Halevy wrote: 
+> On 2010-12-17 01:07, Christoph Hellwig wrote:
+> > On Thu, Dec 16, 2010 at 11:21:21AM -0500, Matt W. Benjamin wrote:
+> >> Hi,
+> >>
+> >> We have a files implementation which wants to receive LAYOUTCOMMIT when a client is finished with a layout.  It was my clear understanding from rfc5661 that we could expect this behavior.
+> > 
+> > Care to post it to the list?
+> > 
+> 
+> I don't know what Matt's server is doing but the fundamental problem is
+> manifested with extending a file with parallel DS writes.
+> Assuming that the DS writes are executed in arbitrary order,
+> exposing the file length before LAYOUTCOMMIT can cause
+> a concurrent reader to read a hole.  Although locking can
+> solve this case, day-to-day applications that work well over
+> local filesystem and legacy NFS may break because of this.
 
-If a striped device is not a multiple of both the number of constituent
-devices and the stripe width, blkmapd will truncate the device so that
-device-mapper can handle it.
+...and this differs from ordinary NFS writes exactly how?
 
-Jim Rees (3):
-  change device offset to signed to match the spec
-  Fix calculation of stripe device and unit sizes
-  Various improvements to comments and syslog messages
+Both cached and uncached (i.e. O_DIRECT) writes can and will be flushed
+to disk in entirely random order when writing to the MDS. If you have a
+parallel reader on another client (or even on the same client in the
+case of O_DIRECT), and want it to see accurate data, then use locking.
+If not, you will see holes and other strangeness.
 
- utils/blkmapd/device-discovery.c |    2 -
- utils/blkmapd/device-discovery.h |    4 +-
- utils/blkmapd/device-process.c   |   50 +++++++++++++++++++------------------
- utils/blkmapd/dm-device.c        |   28 ++++++++++++++++-----
- 4 files changed, 49 insertions(+), 35 deletions(-)
+IOW: There are no 'day-to-day applications that work well over legacy
+NFS' that rely on this behaviour.
 
+_______________________________________________
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www.ietf.org/mailman/listinfo/nfsv4
