@@ -1,31 +1,156 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:53541 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:42409 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750892Ab1AXWTY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jan 2011 17:19:24 -0500
-Received: from sacrsexc2-prd.hq.netapp.com (sacrsexc2-prd.hq.netapp.com [10.99.115.28])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p0OMJKQN026688
-	for <linux-nfs@vger.kernel.org>; Mon, 24 Jan 2011 14:19:20 -0800 (PST)
-From: Thomas Haynes <thomas@netapp.com>
+	id S1754239Ab1ACUzR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Jan 2011 15:55:17 -0500
+Date: Mon, 3 Jan 2011 15:55:14 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Neil Brown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
+Message-ID: <20110103205514.GB18056@fieldses.org>
+References: <20101229204752.GC12218@fieldses.org>
+ <20101229205942.GD12218@fieldses.org>
+ <20101230121940.3f48223a@notabene.brown>
+ <20101230015719.GA27614@fieldses.org>
 Content-Type: text/plain; charset=us-ascii
-Subject: Patched up cthon source?
-Date: Mon, 24 Jan 2011 16:19:17 -0600
-Message-Id: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com>
-To: linux-nfs@vger.kernel.org
+In-Reply-To: <20101230015719.GA27614@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I'm being evil here on purpose. :->
+On Wed, Dec 29, 2010 at 08:57:19PM -0500, J. Bruce Fields wrote:
+> On Thu, Dec 30, 2010 at 12:19:40PM +1100, Neil Brown wrote:
+> > On Wed, 29 Dec 2010 15:59:42 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+> > wrote:
+> > > Also noticed while trying to track down an rhel5 oops in
+> > > svcauth_unix_set_client():
+> > > 
+> > > 	- cache_check() can set an entry negative in place, which if
+> > > 	  nothing else must cause a leak in some cases.  (Because when
+> > > 	  the entry is eventually destroyed, it will be assumed to not
+> > > 	  have any contents.)  I suppose the fix is again to try to
+> > > 	  adding a new negative entry instead.
+> > 
+> > cache_check should only set an entry 'negative' if it is not already valid
+> > (rv == -EAGAIN) and there is no up-call pending.
+> 
+> I don't think anything keeps VALID from being set after the
+> cache_is_valid check but before the code that does the
+> set_bit(CACHE_NEGATIVE).
+> 
+> > Maybe we should check CACHE_VALID again after the test_and_set of
+> > CACHE_PENDING, but is a very unlikely race (if it is actually a race at all)
+> > 
+> > > 
+> > > 	- since cache_check() doesn't use any locking, I can't see what
+> > > 	  guarantees that when it sees the CACHE_VALID bit set and
+> > > 	  CACHE_NEGATIVE cleared, it must necessarily see the new
+> > > 	  contents.   I think that'd be fixed by a wmb() before setting
+> > > 	  those bits and a rmb() after checking them.  I don't know if
+> > > 	  it's actually possible to hit that bug....
+> > 
+> > Yes, we probably want a set_bit_lock in cache_fresh_locked() though I don't
+> > think that exists, so we could use test_and_set_bit_locked() instead.
+> > 
+> > But it does feel like maybe we should add some locking to cache_check.
+> > Take the lock at the the start, and release it after the
+> > test_and_set_bit(CACHE_PENDING) or once we have decided not to do that ???
+> 
+> Maybe so.
 
-I'm trying to run cthon04 as downloaded from the connectathon.org repository
-and I'm getting this:
+Here's one attempt.
 
+--b.
 
-Nroff
-./stat: no data in nroff.time
-general tests failed
-Tests failed, leaving /cthon04/loghyr mounted
+commit 55563023f85d01698ccf72325c87e3a7039a189b
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Mon Jan 3 15:10:27 2011 -0500
 
+    svcrpc: take locks to fix cache_check races
+    
+    There are at least a couple races in cache_check:
+    
+    	- We attempt to turn a cache entry negative in place.  But that
+    	  entry may already have been filled in by some other task since
+    	  we last checked whether it was valid, so we could be modifying
+    	  an already-valid entry.  If nothing else there's a likely leak
+    	  in such a case when the entry is eventually put() and contents
+    	  are not freed because it has CACHE_NEGATIVE set.
+    	- If cache_check races with an update that is turning the entry
+    	  CACHE_VALID, then it's possible that the CACHE_VALID bit could
+    	  become visible on this CPU before the actual contents do, so
+    	  we could tell the caller this entry is ready to use when in
+    	  fact the caller could still get invalid contents.
+    
+    Some memory barriers might be sufficient to fix at least the latter; but
+    for now let's keep things simple and take the hash_lock when we turn an
+    entry negative or check the CACHE_VALID bit.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-As I kinda recall several people fixing this already, where would I go to get patches?
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 0d6002f..2105b40 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -200,8 +200,9 @@ static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h)
+ 	return cd->cache_upcall(cd, h);
+ }
+ 
+-static inline int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
++static int __cache_is_valid(struct cache_detail *detail, struct cache_head *h)
+ {
++
+ 	if (!test_bit(CACHE_VALID, &h->flags))
+ 		return -EAGAIN;
+ 	else {
+@@ -213,6 +214,33 @@ static inline int cache_is_valid(struct cache_detail *detail, struct cache_head
+ 	}
+ }
+ 
++static int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
++{
++	int rv;
++
++	read_lock(&detail->hash_lock);
++	rv = __cache_is_valid(detail, h);
++	read_unlock(&detail->hash_lock);
++	return rv;
++}
++
++static int try_to_negate_entry(struct cache_detail *detail, struct cache_head *h)
++{
++	int rv;
++
++	write_lock(&detail->hash_lock);
++	rv = __cache_is_valid(detail, h);
++	if (rv != -EAGAIN) {
++		write_unlock(&detail->hash_lock);
++		return rv;
++	}
++	set_bit(CACHE_NEGATIVE, &h->flags);
++	cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
++	write_unlock(&detail->hash_lock);
++	cache_fresh_unlocked(h, detail);
++	return -ENOENT;
++}
++
+ /*
+  * This is the generic cache management routine for all
+  * the authentication caches.
+@@ -251,14 +279,8 @@ int cache_check(struct cache_detail *detail,
+ 			case -EINVAL:
+ 				clear_bit(CACHE_PENDING, &h->flags);
+ 				cache_revisit_request(h);
+-				if (rv == -EAGAIN) {
+-					set_bit(CACHE_NEGATIVE, &h->flags);
+-					cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
+-					cache_fresh_unlocked(h, detail);
+-					rv = -ENOENT;
+-				}
++				rv = try_to_negate_entry(detail, h);
+ 				break;
+-
+ 			case -EAGAIN:
+ 				clear_bit(CACHE_PENDING, &h->flags);
+ 				cache_revisit_request(h);
