@@ -1,59 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:14404 "EHLO mx2.netapp.com"
+Received: from mx2.parallels.com ([64.131.90.16]:46499 "EHLO mx2.parallels.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751315Ab1AHQuE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Jan 2011 11:50:04 -0500
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: James Bottomley <James.Bottomley@HansenPartnership.com>
-Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Marc Kleine-Budde <mkl@pengutronix.de>,
-        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
-        linux-arm-kernel@lists.infradead.org,
-        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
-In-Reply-To: <1294427467.4895.66.camel@mulgrave.site>
-References: <20110105210448.GM8638@n2100.arm.linux.org.uk>
-	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
-	 <1294262208.2952.4.camel@heimdal.trondhjem.org>
-	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
-	 <1294268808.2952.18.camel@heimdal.trondhjem.org>
-	 <1294270104.16957.73.camel@mulgrave.site>
-	 <1294335614.22825.154.camel@mulgrave.site>
-	 <1294336054.2905.1.camel@heimdal.trondhjem.org>
-	 <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>
-	 <1294426405.2929.23.camel@heimdal.trondhjem.org>
-	 <20110107190229.GX31708@n2100.arm.linux.org.uk>
-	 <1294427467.4895.66.camel@mulgrave.site>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sat, 08 Jan 2011 11:49:44 -0500
-Message-ID: <1294505384.4181.14.camel@heimdal.trondhjem.org>
+	id S1751285Ab1ACUs6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Jan 2011 15:48:58 -0500
+Message-ID: <4D22362F.2040604@parallels.com>
+Date: Mon, 3 Jan 2011 14:48:47 -0600
+From: Rob Landley <rlandley@parallels.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: "Kirill A. Shutemov" <kas@openvz.org>, Rob Landley <rob@landley.net>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Pavel Emelyanov <xemul@parallels.com>, <linux-nfs@vger.kernel.org>,
+        "David S. Miller" <davem@davemloft.net>, <netdev@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH v2 00/12] make rpc_pipefs be mountable multiple time
+References: <1293628470-28386-1-git-send-email-kas@openvz.org>	 <AANLkTi=AXz21wDeE1vPVD-6cEtj6faXN9x09eHDCsTkB@mail.gmail.com>	 <20101230085139.GA29697@shutemov.name> <4D1C4C7C.6050606@parallels.com>	 <20101230094433.GB29697@shutemov.name>  <4D1C5953.6020200@parallels.com> <1293814441.2980.4.camel@heimdal.trondhjem.org>
+In-Reply-To: <1293814441.2980.4.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-01-07 at 13:11 -0600, James Bottomley wrote: 
-> On the other hand, the xdr routines, since they take the pages anyway,
-> could use a scatterlist approach to writing through the kernel mapping
-> instead of using vmap ... we have all the machinery for this in
-> lib/scatterlist.c ... it's not designed for this case, since it's
-> designed to allow arbitrary linear reads and writes on a block
-> scatterlist, but the principle is the same ... it looks like it would be
-> rather a big patch, though ... 
+On 12/31/2010 10:54 AM, Trond Myklebust wrote:
+>> I'm kind of surprised that the kernel cares about a specific path under
+>> /var/lib.  (Seems like policy in the kernel somehow.)  Can't it just
+>> check the current process's mount list to see if an instance of
+>> rpc_pipefs is mounted in the current namespace the way lxc looks for
+>> cgroups?  Or are there potential performance/scalability issues with that?
+>
+> The kernel doesn't give a damn about the /var/lib/nfs/rpc_pipefs bit.
+> That's all for the benefit of the userland utilities.
 
-The following alternative seems to work for me, but has only been
-lightly tested so far. It's a bit large for a stable patch, but not too
-ungainly.
+Are you saying that if you go into a container and that mount point 
+doesn't exist, the kernel will still be able to find and use rpc_pipefs? 
+  Without userspace creating a specific magic path and mounting a 
+filesystem on it?
 
-It modifies xdr_stream, adding the ability to iterate through page data.
-To avoid kmap()/kunmap(), it does require that pages be allocated in
-lowmem, but since the only use case here is when using page arrays as
-temporary buffers, that seems like an acceptable compromise.
+If so, I misread the patch...
 
-Cheers
-  Trond
+Rob
 
---------------------------------------------------------------------------------- 
