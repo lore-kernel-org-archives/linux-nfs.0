@@ -1,49 +1,46 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:58437 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751577Ab1AUUmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Jan 2011 15:42:12 -0500
-Date: Fri, 21 Jan 2011 15:42:06 -0500
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH] blocklayout: fix blocklayoutdev.c for new
- blkdev_get_by_dev()
-Message-ID: <20110121204206.GA3479@merit.edu>
-Content-Type: text/plain; charset=us-ascii
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@ietf.org>
+Message-ID: <4D21DB53.9050104@panasas.com>
+Date: Mon, 03 Jan 2011 16:21:07 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Christoph Hellwig <hch@infradead.org>
+References: <978693366.32.1292516428080.JavaMail.root@thunderbeast.private.linuxbox.com>
+	<1740153586.34.1292516481789.JavaMail.root@thunderbeast.private.linuxbox.com>
+	<20101216230707.GB16760@infradead.org>
+In-Reply-To: <20101216230707.GB16760@infradead.org>
+Cc: linux-nfs@vger.kernel.org, nfsv4@ietf.org
+Subject: Re: [nfsv4] layoutcommits and file layout
+List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: nfsv4-bounces@ietf.org
+Errors-To: nfsv4-bounces@ietf.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-blkdev_get has been replaced by blkdev_get_by_dev, which now handles
-exclusive use too (which we don't use).  Fix uses in blocklayout to match.
+On 2010-12-17 01:07, Christoph Hellwig wrote:
+> On Thu, Dec 16, 2010 at 11:21:21AM -0500, Matt W. Benjamin wrote:
+>> Hi,
+>>
+>> We have a files implementation which wants to receive LAYOUTCOMMIT when a client is finished with a layout.  It was my clear understanding from rfc5661 that we could expect this behavior.
+> 
+> Care to post it to the list?
+> 
 
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- fs/nfs/blocklayout/blocklayoutdev.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+I don't know what Matt's server is doing but the fundamental problem is
+manifested with extending a file with parallel DS writes.
+Assuming that the DS writes are executed in arbitrary order,
+exposing the file length before LAYOUTCOMMIT can cause
+a concurrent reader to read a hole.  Although locking can
+solve this case, day-to-day applications that work well over
+local filesystem and legacy NFS may break because of this.
 
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index 17bd25a..23469e3 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -55,7 +55,7 @@ struct block_device *nfs4_blkdev_get(dev_t dev)
- 	struct block_device *bd;
- 
- 	dprintk("%s enter\n", __func__);
--	bd = open_by_devnum(dev, FMODE_READ);
-+	bd = blkdev_get_by_dev(dev, FMODE_READ, NULL);
- 	if (IS_ERR(bd))
- 		goto fail;
- 	return bd;
-@@ -72,7 +72,6 @@ int nfs4_blkdev_put(struct block_device *bdev)
- {
- 	dprintk("%s for device %d:%d\n", __func__, MAJOR(bdev->bd_dev),
- 			MINOR(bdev->bd_dev));
--	bd_release(bdev);
- 	return blkdev_put(bdev, FMODE_READ);
- }
- 
--- 
-1.7.1
-
+Benny
+_______________________________________________
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www.ietf.org/mailman/listinfo/nfsv4
