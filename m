@@ -1,373 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:53323 "EHLO shutemov.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757543Ab1ANNtj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Jan 2011 08:49:39 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Rob Landley <rlandley@parallels.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v3 10/16] nfs: per-rpc_pipefs dns cache
-Date: Fri, 14 Jan 2011 15:49:08 +0200
-Message-Id: <1295012954-7769-11-git-send-email-kas@openvz.org>
-In-Reply-To: <1295012954-7769-1-git-send-email-kas@openvz.org>
-References: <1295012954-7769-1-git-send-email-kas@openvz.org>
+Received: from earth.cora.nwra.com ([65.44.101.180]:53533 "EHLO
+	earth.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751941Ab1ADRhm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jan 2011 12:37:42 -0500
+Received: from [192.168.0.39] (orca.cora.nwra.com [192.168.0.39])
+	(authenticated bits=0)
+	by earth.cora.nwra.com (8.13.8/8.13.8) with ESMTP id p04HRtMU008517
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 4 Jan 2011 10:27:58 -0700
+Message-ID: <4D23589B.6030409@cora.nwra.com>
+Date: Tue, 04 Jan 2011 10:27:55 -0700
+From: Orion Poplawski <orion@cora.nwra.com>
+To: linux-nfs@vger.kernel.org
+Subject: Trouble mounting from EL5.5 server on Fedora 14 - gss_kerberos_mech:
+ unsupported algorithm 6
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Lazy initialization of dns cache: on first call nfs_dns_resolve_name().
-Every rpc_pipefs has separate dns cache now.
+I'm trying to get kerberized NFSv4 setup for the first time (have had 
+non-secure v4 up for a while).  Client is Fedora 14, server is CentOS 5.5.  I 
+get the following in the server log:
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
----
- fs/nfs/cache_lib.c     |   17 ++-----
- fs/nfs/cache_lib.h     |    3 +-
- fs/nfs/dns_resolve.c   |  137 +++++++++++++++++++++++++++++++++++++-----------
- fs/nfs/dns_resolve.h   |   15 +-----
- fs/nfs/inode.c         |    9 +---
- fs/nfs/nfs4namespace.c |    4 +-
- 6 files changed, 117 insertions(+), 68 deletions(-)
+kernel: gss_kerberos_mech: unsupported algorithm 6
 
-diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
-index 0944d4e..9b99d9e 100644
---- a/fs/nfs/cache_lib.c
-+++ b/fs/nfs/cache_lib.c
-@@ -12,7 +12,6 @@
- #include <linux/namei.h>
- #include <linux/slab.h>
- #include <linux/sunrpc/cache.h>
--#include <linux/sunrpc/rpc_pipe_fs.h>
- 
- #include "cache_lib.h"
- 
-@@ -111,25 +110,17 @@ int nfs_cache_wait_for_upcall(struct nfs_cache_defer_req *dreq)
- 	return 0;
- }
- 
--int nfs_cache_register(struct cache_detail *cd)
-+int nfs_cache_register(struct cache_detail *cd, struct vfsmount *rpcmount)
- {
- 	struct nameidata nd;
--	struct vfsmount *mnt;
- 	int ret;
- 
--	mnt = mntget(init_rpc_pipefs);
--	if (IS_ERR(mnt))
--		return PTR_ERR(mnt);
--	ret = vfs_path_lookup(mnt->mnt_root, mnt, "/cache", 0, &nd);
-+	ret = vfs_path_lookup(rpcmount->mnt_root, rpcmount, "/cache", 0, &nd);
- 	if (ret)
--		goto err;
--	ret = sunrpc_cache_register_pipefs(mnt, nd.path.dentry,
-+		return ret;
-+	ret = sunrpc_cache_register_pipefs(rpcmount, nd.path.dentry,
- 			cd->name, 0600, cd);
- 	path_put(&nd.path);
--	if (!ret)
--		return ret;
--err:
--	mntput(mnt);
- 	return ret;
- }
- 
-diff --git a/fs/nfs/cache_lib.h b/fs/nfs/cache_lib.h
-index 76f856e..1d4a0a5 100644
---- a/fs/nfs/cache_lib.h
-+++ b/fs/nfs/cache_lib.h
-@@ -23,5 +23,6 @@ extern struct nfs_cache_defer_req *nfs_cache_defer_req_alloc(void);
- extern void nfs_cache_defer_req_put(struct nfs_cache_defer_req *dreq);
- extern int nfs_cache_wait_for_upcall(struct nfs_cache_defer_req *dreq);
- 
--extern int nfs_cache_register(struct cache_detail *cd);
-+extern int nfs_cache_register(struct cache_detail *cd,
-+		struct vfsmount *rpcmount);
- extern void nfs_cache_unregister(struct cache_detail *cd);
-diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-index a6e711a..a832e64 100644
---- a/fs/nfs/dns_resolve.c
-+++ b/fs/nfs/dns_resolve.c
-@@ -12,7 +12,7 @@
- #include <linux/dns_resolver.h>
- 
- ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
--		struct sockaddr *sa, size_t salen)
-+		struct sockaddr *sa, size_t salen, struct vfsmount *rpcmount)
- {
- 	ssize_t ret;
- 	char *ip_addr = NULL;
-@@ -37,9 +37,11 @@ ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
- #include <linux/socket.h>
- #include <linux/seq_file.h>
- #include <linux/inet.h>
-+#include <linux/mount.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/cache.h>
- #include <linux/sunrpc/svcauth.h>
-+#include <linux/sunrpc/rpc_pipe_fs.h>
- 
- #include "dns_resolve.h"
- #include "cache_lib.h"
-@@ -47,7 +49,13 @@ ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
- #define NFS_DNS_HASHBITS 4
- #define NFS_DNS_HASHTBL_SIZE (1 << NFS_DNS_HASHBITS)
- 
--static struct cache_head *nfs_dns_table[NFS_DNS_HASHTBL_SIZE];
-+static DEFINE_SPINLOCK(nfs_dns_resolve_lock);
-+static LIST_HEAD(nfs_dns_resolve_list);
-+
-+struct nfs_dns_resolve_list {
-+	struct list_head list;
-+	struct cache_detail *cd;
-+};
- 
- struct nfs_dns_ent {
- 	struct cache_head h;
-@@ -259,21 +267,6 @@ out:
- 	return ret;
- }
- 
--static struct cache_detail nfs_dns_resolve = {
--	.owner = THIS_MODULE,
--	.hash_size = NFS_DNS_HASHTBL_SIZE,
--	.hash_table = nfs_dns_table,
--	.name = "dns_resolve",
--	.cache_put = nfs_dns_ent_put,
--	.cache_upcall = nfs_dns_upcall,
--	.cache_parse = nfs_dns_parse,
--	.cache_show = nfs_dns_show,
--	.match = nfs_dns_match,
--	.init = nfs_dns_ent_init,
--	.update = nfs_dns_ent_update,
--	.alloc = nfs_dns_ent_alloc,
--};
--
- static int do_cache_lookup(struct cache_detail *cd,
- 		struct nfs_dns_ent *key,
- 		struct nfs_dns_ent **item,
-@@ -336,37 +329,119 @@ out:
- 	return ret;
- }
- 
-+static struct cache_detail *nfs_alloc_dns_resolve(void)
-+{
-+	struct cache_detail *dns_resolve;
-+	struct cache_head **hash_table;
-+
-+	dns_resolve = kmalloc(sizeof(*dns_resolve), GFP_KERNEL);
-+	if (!dns_resolve)
-+		return NULL;
-+
-+	hash_table = kmalloc(sizeof(*hash_table) * NFS_DNS_HASHTBL_SIZE,
-+			GFP_KERNEL);
-+	if (!hash_table) {
-+		kfree(dns_resolve);
-+		return NULL;
-+	}
-+
-+	dns_resolve->owner = THIS_MODULE;
-+	dns_resolve->hash_size = NFS_DNS_HASHTBL_SIZE;
-+	dns_resolve->hash_table = hash_table;
-+	dns_resolve->name = "dns_resolve";
-+	dns_resolve->cache_put = nfs_dns_ent_put;
-+	dns_resolve->cache_upcall = nfs_dns_upcall;
-+	dns_resolve->cache_parse = nfs_dns_parse;
-+	dns_resolve->cache_show = nfs_dns_show;
-+	dns_resolve->match = nfs_dns_match;
-+	dns_resolve->init = nfs_dns_ent_init;
-+	dns_resolve->update = nfs_dns_ent_update;
-+	dns_resolve->alloc = nfs_dns_ent_alloc;
-+
-+	return dns_resolve;
-+}
-+
-+static void nfs_free_dns_resolve(struct cache_detail *dns_resolve)
-+{
-+	kfree(dns_resolve->hash_table);
-+	kfree(dns_resolve);
-+}
-+
-+static struct cache_detail *nfs_get_dns_resolve(struct vfsmount *rpcmount)
-+{
-+	struct nfs_dns_resolve_list *dns_resolve;
-+	int error = 0;
-+
-+	spin_lock(&nfs_dns_resolve_lock);
-+	list_for_each_entry(dns_resolve, &nfs_dns_resolve_list, list) {
-+		if (dns_resolve->cd->u.pipefs.mnt->mnt_sb != rpcmount->mnt_sb)
-+			continue;
-+
-+		spin_unlock(&nfs_dns_resolve_lock);
-+		return dns_resolve->cd;
-+	}
-+
-+	dns_resolve = kmalloc(sizeof(*dns_resolve), GFP_KERNEL);
-+	if (dns_resolve)
-+		dns_resolve->cd = nfs_alloc_dns_resolve();
-+	if (!dns_resolve || !dns_resolve->cd) {
-+		error = -ENOMEM;
-+		goto err;
-+	}
-+
-+	error = nfs_cache_register(dns_resolve->cd, rpcmount);
-+	if (error)
-+		goto err;
-+
-+	INIT_LIST_HEAD(&dns_resolve->list);
-+	list_add(&dns_resolve->list, &nfs_dns_resolve_list);
-+	spin_unlock(&nfs_dns_resolve_lock);
-+
-+	return dns_resolve->cd;
-+err:
-+	spin_unlock(&nfs_dns_resolve_lock);
-+	if (dns_resolve)
-+		kfree(dns_resolve->cd);
-+	kfree(dns_resolve);
-+	return dns_resolve->cd;
-+}
-+
-+static void nfs_dns_resolver_destroy(void *data)
-+{
-+	struct nfs_dns_resolve_list *dns_resolve = data;
-+
-+	spin_lock(&nfs_dns_resolve_lock);
-+	nfs_cache_unregister(dns_resolve->cd);
-+	nfs_free_dns_resolve(dns_resolve->cd);
-+	list_del(&dns_resolve->list);
-+	kfree(dns_resolve);
-+	spin_unlock(&nfs_dns_resolve_lock);
-+}
-+
- ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
--		struct sockaddr *sa, size_t salen)
-+		struct sockaddr *sa, size_t salen, struct vfsmount *rpcmount)
- {
- 	struct nfs_dns_ent key = {
- 		.hostname = name,
- 		.namelen = namelen,
- 	};
-+	struct cache_detail *dns_resolve;
- 	struct nfs_dns_ent *item = NULL;
- 	ssize_t ret;
- 
--	ret = do_cache_lookup_wait(&nfs_dns_resolve, &key, &item);
-+	dns_resolve = nfs_get_dns_resolve(rpcmount);
-+	ret = do_cache_lookup_wait(dns_resolve, &key, &item);
- 	if (ret == 0) {
- 		if (salen >= item->addrlen) {
- 			memcpy(sa, &item->addr, item->addrlen);
- 			ret = item->addrlen;
- 		} else
- 			ret = -EOVERFLOW;
--		cache_put(&item->h, &nfs_dns_resolve);
-+		cache_put(&item->h, dns_resolve);
-+		rpc_pipefs_add_destroy_cb(rpcmount->mnt_sb,
-+				nfs_dns_resolver_destroy, dns_resolve);
- 	} else if (ret == -ENOENT)
- 		ret = -ESRCH;
- 	return ret;
- }
--
--int nfs_dns_resolver_init(void)
--{
--	return nfs_cache_register(&nfs_dns_resolve);
--}
--
--void nfs_dns_resolver_destroy(void)
--{
--	nfs_cache_unregister(&nfs_dns_resolve);
--}
--
- #endif
-diff --git a/fs/nfs/dns_resolve.h b/fs/nfs/dns_resolve.h
-index 199bb55..74ade60 100644
---- a/fs/nfs/dns_resolve.h
-+++ b/fs/nfs/dns_resolve.h
-@@ -7,20 +7,7 @@
- #define NFS_DNS_HOSTNAME_MAXLEN	(128)
- 
- 
--#ifdef CONFIG_NFS_USE_KERNEL_DNS
--static inline int nfs_dns_resolver_init(void)
--{
--	return 0;
--}
--
--static inline void nfs_dns_resolver_destroy(void)
--{}
--#else
--extern int nfs_dns_resolver_init(void);
--extern void nfs_dns_resolver_destroy(void);
--#endif
--
- extern ssize_t nfs_dns_resolve_name(char *name, size_t namelen,
--		struct sockaddr *sa, size_t salen);
-+		struct sockaddr *sa, size_t salen, struct vfsmount *rpcmount);
- 
- #endif
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index ce00b70..414570b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1535,10 +1535,6 @@ static int __init init_nfs_fs(void)
- 
- 	err = nfs_idmap_init();
- 	if (err < 0)
--		goto out9;
--
--	err = nfs_dns_resolver_init();
--	if (err < 0)
- 		goto out8;
- 
- 	err = nfs_fscache_register();
-@@ -1599,10 +1595,8 @@ out5:
- out6:
- 	nfs_fscache_unregister();
- out7:
--	nfs_dns_resolver_destroy();
--out8:
- 	nfs_idmap_quit();
--out9:
-+out8:
- 	return err;
- }
- 
-@@ -1614,7 +1608,6 @@ static void __exit exit_nfs_fs(void)
- 	nfs_destroy_inodecache();
- 	nfs_destroy_nfspagecache();
- 	nfs_fscache_unregister();
--	nfs_dns_resolver_destroy();
- 	nfs_idmap_quit();
- #ifdef CONFIG_PROC_FS
- 	rpc_proc_unregister("nfs");
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 3c2a172..7a61fdb 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -14,6 +14,7 @@
- #include <linux/slab.h>
- #include <linux/string.h>
- #include <linux/sunrpc/clnt.h>
-+#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/vfs.h>
- #include <linux/inet.h>
- #include "internal.h"
-@@ -104,7 +105,8 @@ static size_t nfs_parse_server_name(char *string, size_t len,
- 
- 	ret = rpc_pton(string, len, sa, salen);
- 	if (ret == 0) {
--		ret = nfs_dns_resolve_name(string, len, sa, salen);
-+		ret = nfs_dns_resolve_name(string, len, sa, salen,
-+				init_rpc_pipefs);
- 		if (ret < 0)
- 			ret = 0;
- 	}
+The mount command returns:
+
+[root@orca ~]# mount -t nfs4 -o sec=krb5 saga:/ /mnt
+mount.nfs4: access denied by server while mounting saga:/
+
+rpc.svcgssd reports:
+
+readline: read 1230 chars into buffer of size 2048:
+\x 
+\x6082026006092a864886f71201020201006e82024f3082024ba003020105a10302010ea20703050020000000a382012e6182012a30820126a003020105a10f1b0d434f52412e4e5752412e434f4da2243022a003020103a11b30191b036e66731b12736167612e636f72612e6e7772612e636f6da381e73081e4a003020110a103020103a281d70481d48767f98fcbdf10bc38542e3ba0c24671c0bcbce028a5711ba7098eabcfeef49280eb91dcb8aa0f3e15f6b5546f637150e4707eb37b48c2126ced175a40b0642d2325cae66e1b45a9469a47577187c5cf50...
+in_handle:
+length 0
+
+in_tok:
+length 612
+
+   0000: 6082 0260 0609 2a86 4886 f712 0102 0201  `..`..*.H.......
+   0010: 006e 8202 4f30 8202 4ba0 0302 0105 a103  .n..O0..K.......
+   0020: 0201 0ea2 0703 0500 2000 0000 a382 012e  ........ .......
+   0030: 6182 012a 3082 0126 a003 0201 05a1 0f1b  a..*0..&........
+   0040: 0d43 4f52 412e 4e57 5241 2e43 4f4d a224  .CORA.NWRA.COM.$
+   0050: 3022 a003 0201 03a1 1b30 191b 036e 6673  0".......0...nfs
+   0060: 1b12 7361 6761 2e63 6f72 612e 6e77 7261  ..saga.cora.nwra
+   0070: 2e63 6f6d a381 e730 81e4 a003 0201 10a1  .com...0........
+   0080: 0302 0103 a281 d704 81d4 8767 f98f cbdf  ...........g....
+   0090: 10bc 3854 2e3b a0c2 4671 c0bc bce0 28a5  ..8T.;..Fq....(.
+   00a0: 711b a709 8eab cfee f492 80eb 91dc b8aa  q...............
+   00b0: 0f3e 15f6 b554 6f63 7150 e470 7eb3 7b48  .>...TocqP.p~.{H
+   00c0: c212 6ced 175a 40b0 642d 2325 cae6 6e1b  ..l..Z@.d-#%..n.
+   00d0: 45a9 469a 4757 7187 c5cf 50c2 7e13 e712  E.F.GWq...P.~...
+   00e0: d8b9 9d74 7a7b 6c5f e898 129a 6c48 e197  ...tz{l_....lH..
+   00f0: 4bc7 f25a cc13 09f2 d969 50a2 df5f 883e  K..Z.....iP.._.>
+   0100: 8b18 eb67 52b6 186e 47d3 325c 0b77 a6d6  ...gR..nG.2\.w..
+   0110: b7b8 ebdb a2ab 9d05 2a03 a890 2e65 7fdc  ........*....e..
+   0120: 60ac a508 0937 dff1 3a61 01f7 2cc5 7d47  `....7..:a..,.}G
+   0130: 5dbf 30a1 c784 367d fe1c 607f 9551 bd46  ].0...6}..`..Q.F
+   0140: 292c 974e 9091 7d61 26c6 477b 6591 a01a  ),.N..}a&.G{e...
+   0150: 9f8d 4ede e689 7d94 e017 166a 1da2 a482  ..N...}....j....
+   0160: 0102 3081 ffa0 0302 0110 a281 f704 81f4  ..0.............
+   0170: cceb 0587 7bab 9231 82bd b878 e41e acb2  ....{..1...x....
+   0180: c789 de88 7f46 0822 e291 5e72 d309 2015  .....F."..^r.. .
+   0190: 7722 0ca0 4b64 a10f cdc2 e913 e730 5596  w"..Kd.......0U.
+   01a0: c219 494a 92a2 d3be 367e 02d7 382d 8069  ..IJ....6~..8-.i
+   01b0: 4d27 5c84 2ada 0b37 1751 f2c6 eaac 5b60  M'\.*..7.Q....[`
+   01c0: 3a9b 622f 59d9 e045 ccda 9661 fd48 b5ae  :.b/Y..E...a.H..
+   01d0: d107 924a bee4 f201 f14b 11d9 5175 cb55  ...J.....K..Qu.U
+   01e0: 9238 1b4b bdb1 bdc6 bd2f dcb1 15b7 34d7  .8.K...../....4.
+   01f0: e40e 9264 d7d5 24f2 fb3e cce4 416a 4304  ...d..$..>..AjC.
+   0200: d044 16c8 7856 a78a cc5f 1220 62ee cde6  .D..xV..._. b...
+   0210: 9a03 2b7e 160d 22d9 32e7 c497 4526 d9c1  ..+~..".2...E&..
+   0220: d5e9 ec1f c906 e8fe eba5 ceda d517 24e5  ..............$.
+   0230: dba5 1dc3 d282 423e e010 0eeb 0a0b dbab  ......B>........
+   0240: 5251 4f7f a95c da1e 6d31 cd40 631c 7c5c  RQO..\..m1.@c.|\
+   0250: 423e 9803 9036 f012 3f65 1998 9ce0 7218  B>...6..?e....r.
+   0260: 29e2 6cd4                                ).l.
+sname = nfs/orca.cora.nwra.com@CORA.NWRA.COM
+DEBUG: serialize_krb5_ctx: lucid version!
+prepare_krb5_rfc1964_buffer: serializing keys with enctype 6 and length 24
+doing downcall
+\x02000000 2147483647 -1 -1 0 krb5 
+\x0000000000000000a49323b0ff7f00000c298fe6f72a000004000000020000001ba3244d66258e35090000002a864886f712010202060000001800000075d5d316ba3746528af4943d45cb0891f15ef7bfaec257a70600000018000000852523e64ac7b6a27a0464cdb53bf86101ae074f5e32a757 
+
+sending null reply
+writing message: \x 
+\x6082026006092a864886f71201020201006e82024f3082024ba003020105a10302010ea20703050020000000a382012e6182012a30820126a003020105a10f1b0d434f52412e4e5752412e434f4da2243022a003020103a11b30191b036e66731b12736167612e636f72612e6e7772612e636f6da381e73081e4a003020110a103020103a281d70481d48767f98fcbdf10bc38542e3ba0c24671c0bcbce028a5711ba7098eabcfeef49280eb91dcb8aa0f3e15f6b5546f637150e4707eb37b48c2126ced175a40b0642d2325cae66e1b45a9469a47577187c5cf50c27e13e712d8b99d747a7b6c5fe898129a6...
+
+
+keytabs on server and client are like:
+
+    3 nfs/orca.cora.nwra.com@CORA.NWRA.COM (Triple DES cbc mode with HMAC/sha1)
+    3 nfs/orca.cora.nwra.com@CORA.NWRA.COM (ArcFour with HMAC/md5)
+    3 nfs/orca.cora.nwra.com@CORA.NWRA.COM (DES with HMAC/sha1)
+    3 nfs/orca.cora.nwra.com@CORA.NWRA.COM (DES cbc mode with RSA-MD5)
+
+Any ideas?
+
 -- 
-1.7.3.4
-
+Orion Poplawski
+Technical Manager                     303-415-9701 x222
+NWRA/CoRA Division                    FAX: 303-415-9702
+3380 Mitchell Lane                  orion@cora.nwra.com
+Boulder, CO 80301              http://www.cora.nwra.com
