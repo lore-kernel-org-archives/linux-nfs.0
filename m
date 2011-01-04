@@ -1,69 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:50734 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752857Ab1ANVxQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jan 2011 16:53:16 -0500
-In-Reply-To: <4E70BD9B-DB23-42EC-B28D-998E16FEC189@oracle.com>
-References: <AANLkTinjkvVySCA93F+p66KrTuqMfMF064ggNSg0yauX@mail.gmail.com>
-	<4E70BD9B-DB23-42EC-B28D-998E16FEC189@oracle.com>
-Date: Sat, 15 Jan 2011 08:48:24 +1100
-Message-ID: <AANLkTikE8CT=6XQn550Cw6V0B7GWezpeUrhctFN8vSE7@mail.gmail.com>
-Subject: Re: NFS dio aio bug
-From: Nick Piggin <npiggin@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:50133 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751027Ab1ADXXf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 18:23:35 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/4] nfsd4: return nfs errno from name_to_id functions
+Date: Tue,  4 Jan 2011 18:23:30 -0500
+Message-Id: <1294183410-14688-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1294178391.5896.31.camel@heimdal.trondhjem.org>
+References: <1294178391.5896.31.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Sat, Jan 15, 2011 at 3:08 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Hi Nick-
->
-> On Jan 13, 2011, at 8:29 PM, Nick Piggin wrote:
->
->> Hi Trond,
->>
->> I'm getting use after frees in aio code in NFS
->
-> Can you describe how to reproduce this?
+This avoids the need for the confusing ESRCH mapping.
 
-It was with the aio-dio stress code from xfstests, #207 I think
-or 208.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/idmap.h     |    4 ++--
+ fs/nfsd/nfs4idmap.c |   13 +++++++------
+ fs/nfsd/nfs4xdr.c   |   10 +++++-----
+ fs/nfsd/nfsproc.c   |    1 -
+ 4 files changed, 14 insertions(+), 14 deletions(-)
 
-Running it for a short time and then ^C ing it would tend to
-trigger it.
+diff --git a/fs/nfsd/idmap.h b/fs/nfsd/idmap.h
+index 5147589..2f3be13 100644
+--- a/fs/nfsd/idmap.h
++++ b/fs/nfsd/idmap.h
+@@ -54,8 +54,8 @@ static inline void nfsd_idmap_shutdown(void)
+ }
+ #endif
+ 
+-int nfsd_map_name_to_uid(struct svc_rqst *, const char *, size_t, __u32 *);
+-int nfsd_map_name_to_gid(struct svc_rqst *, const char *, size_t, __u32 *);
++__be32 nfsd_map_name_to_uid(struct svc_rqst *, const char *, size_t, __u32 *);
++__be32 nfsd_map_name_to_gid(struct svc_rqst *, const char *, size_t, __u32 *);
+ int nfsd_map_uid_to_name(struct svc_rqst *, __u32, char *);
+ int nfsd_map_gid_to_name(struct svc_rqst *, __u32, char *);
+ 
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index cbd5997..6d2c397 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -37,6 +37,7 @@
+ #include <linux/sched.h>
+ #include <linux/slab.h>
+ #include "idmap.h"
++#include "nfsd.h"
+ 
+ /*
+  * Cache entry
+@@ -514,7 +515,7 @@ rqst_authname(struct svc_rqst *rqstp)
+ 	return clp->name;
+ }
+ 
+-static int
++static __be32
+ idmap_name_to_id(struct svc_rqst *rqstp, int type, const char *name, u32 namelen,
+ 		uid_t *id)
+ {
+@@ -524,15 +525,15 @@ idmap_name_to_id(struct svc_rqst *rqstp, int type, const char *name, u32 namelen
+ 	int ret;
+ 
+ 	if (namelen + 1 > sizeof(key.name))
+-		return -ESRCH; /* nfserr_badowner */
++		return nfserr_badowner;
+ 	memcpy(key.name, name, namelen);
+ 	key.name[namelen] = '\0';
+ 	strlcpy(key.authname, rqst_authname(rqstp), sizeof(key.authname));
+ 	ret = idmap_lookup(rqstp, nametoid_lookup, &key, &nametoid_cache, &item);
+ 	if (ret == -ENOENT)
+-		ret = -ESRCH; /* nfserr_badowner */
++		return nfserr_badowner;
+ 	if (ret)
+-		return ret;
++		return nfserrno(ret);
+ 	*id = item->id;
+ 	cache_put(&item->h, &nametoid_cache);
+ 	return 0;
+@@ -560,14 +561,14 @@ idmap_id_to_name(struct svc_rqst *rqstp, int type, uid_t id, char *name)
+ 	return ret;
+ }
+ 
+-int
++__be32
+ nfsd_map_name_to_uid(struct svc_rqst *rqstp, const char *name, size_t namelen,
+ 		__u32 *id)
+ {
+ 	return idmap_name_to_id(rqstp, IDMAP_TYPE_USER, name, namelen, id);
+ }
+ 
+-int
++__be32
+ nfsd_map_name_to_gid(struct svc_rqst *rqstp, const char *name, size_t namelen,
+ 		__u32 *id)
+ {
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 2a0814d..ca37869 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -289,17 +289,17 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 			len += XDR_QUADLEN(dummy32) << 2;
+ 			READMEM(buf, dummy32);
+ 			ace->whotype = nfs4_acl_get_whotype(buf, dummy32);
+-			host_err = 0;
++			status = nfs_ok;
+ 			if (ace->whotype != NFS4_ACL_WHO_NAMED)
+ 				ace->who = 0;
+ 			else if (ace->flag & NFS4_ACE_IDENTIFIER_GROUP)
+-				host_err = nfsd_map_name_to_gid(argp->rqstp,
++				status = nfsd_map_name_to_gid(argp->rqstp,
+ 						buf, dummy32, &ace->who);
+ 			else
+-				host_err = nfsd_map_name_to_uid(argp->rqstp,
++				status = nfsd_map_name_to_uid(argp->rqstp,
+ 						buf, dummy32, &ace->who);
+-			if (host_err)
+-				goto out_nfserr;
++			if (status)
++				return status;
+ 		}
+ 	} else
+ 		*acl = NULL;
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 8f05dcd..e15dc45 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -738,7 +738,6 @@ nfserrno (int errno)
+ 		{ nfserr_jukebox, -EAGAIN },
+ 		{ nfserr_jukebox, -EWOULDBLOCK },
+ 		{ nfserr_jukebox, -ENOMEM },
+-		{ nfserr_badowner, -ESRCH },
+ 		{ nfserr_io, -ETXTBSY },
+ 		{ nfserr_notsupp, -EOPNOTSUPP },
+ 		{ nfserr_toosmall, -ETOOSMALL },
+-- 
+1.7.1
 
-I'll have to get you more details after I come back from
-travelling in a week's time.
-
->
->> [ 2703.396766] Call Trace:
->> [ 2703.396858]  [<ffffffff8100b057>] ? native_sched_clock+0x27/0x80
->> [ 2703.396959]  [<ffffffff8108509e>] ? put_lock_stats+0xe/0x40
->> [ 2703.397058]  [<ffffffff81088348>] ? lock_release_holdtime+0xa8/0x140
->> [ 2703.397159]  [<ffffffff8108a2a5>] lock_acquire+0x95/0x1b0
->> [ 2703.397260]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
->> [ 2703.397361]  [<ffffffff81039701>] ? get_parent_ip+0x11/0x50
->> [ 2703.397464]  [<ffffffff81612a31>] _raw_spin_lock_irq+0x41/0x80
->> [ 2703.397564]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
->> [ 2703.397662]  [<ffffffff811627db>] aio_put_req+0x2b/0x60
->> [ 2703.397761]  [<ffffffff811647fe>] do_io_submit+0x2be/0x7c0
->> [ 2703.397895]  [<ffffffff81164d0b>] sys_io_submit+0xb/0x10
->> [ 2703.397995]  [<ffffffff8100307b>] system_call_fastpath+0x16/0x1b
->>
->> Adding some tracing, it is due to nfs completing the request then
->> returning something other than -EIOCBQUEUED, so aio.c
->> also completes the request.
->
-> Is this with reads, writes, or both?  Are the I/O requests smaller than, equal to, or larger than rsize or wsize?
->
-> We have a related bug report: hitting the BUG at fs/aio.c:552 (OEL5) and similar for more recent kernels.  Looks like dreq refcounting is faulty somehow.
-
-I only saw it with writes. The request was being completed
-in nfs direct write path when I added some tracing. It was
-very easy to reproduce, I just didn't have time to bisect it,
-but I can do that when I get back if you don't have it solved
-by then.
