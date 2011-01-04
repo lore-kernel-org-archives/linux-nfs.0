@@ -1,70 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47971 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:38456 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752838Ab1ASX5H convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 18:57:07 -0500
-Subject: Re: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Nick Piggin <npiggin@gmail.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-fsdevel@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Wengang Wang <wen.gang.wang@oracle.com>
-In-Reply-To: <AANLkTinyfESY_JZATKmfAy-gUUmnLfVOBSKNZscawyad@mail.gmail.com>
-References: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
-	 <1295479517.22151.16.camel@heimdal.trondhjem.org>
-	 <AANLkTikRX8nxh-gp=Fdr21dg-DLmUb2FxYXrM2A0hfN0@mail.gmail.com>
-	 <1295479900.22151.19.camel@heimdal.trondhjem.org>
-	 <AANLkTiknrso7mQbTiXNF3MLz+RPi52M1s+DV1XaxciO=@mail.gmail.com>
-	 <1CB6BE0E-01BA-47E6-BBD1-298F62735DF6@oracle.com>
-	 <AANLkTinyfESY_JZATKmfAy-gUUmnLfVOBSKNZscawyad@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 19 Jan 2011 18:56:14 -0500
-Message-ID: <1295481374.22151.28.camel@heimdal.trondhjem.org>
+	id S1751423Ab1ADUnn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 15:43:43 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V7 07/12] NFS implement v4.0 callback_ident
+Date: Tue,  4 Jan 2011 15:42:41 -0500
+Message-Id: <1294173766-5573-8-git-send-email-andros@netapp.com>
+In-Reply-To: <1294173766-5573-7-git-send-email-andros@netapp.com>
+References: <1294173766-5573-1-git-send-email-andros@netapp.com>
+ <1294173766-5573-2-git-send-email-andros@netapp.com>
+ <1294173766-5573-3-git-send-email-andros@netapp.com>
+ <1294173766-5573-4-git-send-email-andros@netapp.com>
+ <1294173766-5573-5-git-send-email-andros@netapp.com>
+ <1294173766-5573-6-git-send-email-andros@netapp.com>
+ <1294173766-5573-7-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-01-20 at 10:42 +1100, Nick Piggin wrote: 
-> On Thu, Jan 20, 2011 at 10:39 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> >
-> > On Jan 19, 2011, at 6:37 PM, Nick Piggin wrote:
-> >
-> >> On Thu, Jan 20, 2011 at 10:31 AM, Trond Myklebust
-> >> <Trond.Myklebust@netapp.com> wrote:
-> >>> On Thu, 2011-01-20 at 10:26 +1100, Nick Piggin wrote:
-> >>>> On Thu, Jan 20, 2011 at 10:25 AM, Trond Myklebust
-> >>
-> >>>>> Also, why is EIO the correct reply when no bytes were read/written? Why
-> >>>>> shouldn't the VFS aio code be able to cope with a zero byte reply?
-> >>>>
-> >>>> What would it do?
-> >>>
-> >>> Just return that zero byte reply to userland.
-> >>>
-> >>> zero bytes is a valid reply for ordinary read() and write(), so why
-> >>> should we have to do anything different for aio_read()/aio_write()?
-> >>
-> >> It doesn't give userspace much to do. zero reply from read means
-> >> EOF. Zero reply from write is pretty useless, I don't think we do it
-> >> in the buffered write path -- we either ensure we write at least
-> >> something or have a meaningful error to return.
-> >
-> > I think in this case, the zero-length requests are already shunted off.  No zero-length requests make it down here, IIRC.  So we expect that either some bytes are started, or an error occurs.  If zero bytes were started and no error occurred, that's just... wrong.
-> 
-> Right. So in this case you should have an error to return.
+From: Andy Adamson <andros@netapp.com>
 
-So, which error??? What is going wrong that ensures that we don't start
-any I/O. Is it the pages that are failing to fault in, is it the RPC
-call that is failing to start (if so, why)?
+Provide a unique callback identifier per SETCLIENTID call used to identify the
+v4.0 callback service associated with the clientid.
 
-I don't like to be returning EIO if a more specific (and useful) error
-exists.
+Do not worry about wrap around. Zero value means unset.
 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c         |    5 +++++
+ fs/nfs/nfs4state.c        |    1 +
+ include/linux/nfs_fs_sb.h |    1 +
+ include/linux/nfs_xdr.h   |    1 +
+ 4 files changed, 8 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 78b0899..6652e39 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3470,6 +3470,8 @@ do_state_recovery:
+ 	return -EAGAIN;
+ }
+ 
++static u32 current_cb_ident = 1;
++
+ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 		unsigned short port, struct rpc_cred *cred,
+ 		struct nfs4_setclientid_res *res)
+@@ -3478,6 +3480,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 	struct nfs4_setclientid setclientid = {
+ 		.sc_verifier = &sc_verifier,
+ 		.sc_prog = program,
++		.sc_cb_ident = current_cb_ident++,
+ 	};
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SETCLIENTID],
+@@ -3522,6 +3525,8 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 			if (++clp->cl_id_uniquifier == 0)
+ 				break;
+ 	}
++	if (status == NFS_OK)
++		res->cb_ident = setclientid.sc_cb_ident;
+ 	return status;
+ }
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index f575a31..fe61422 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -79,6 +79,7 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ 	if (status != 0)
+ 		goto out;
+ 	clp->cl_clientid = clid.clientid;
++	clp->cl_cb_ident = clid.cb_ident;
+ 	nfs4_schedule_state_renewal(clp);
+ out:
+ 	return status;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 452d964..1eaa054 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -71,6 +71,7 @@ struct nfs_client {
+ 	 */
+ 	char			cl_ipaddr[48];
+ 	unsigned char		cl_id_uniquifier;
++	u32			cl_cb_ident;	/* v4.0 callback identifier */
+ 	const struct nfs4_minor_version_ops *cl_mvops;
+ #endif /* CONFIG_NFS_V4 */
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 236e7e4..d325def 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -869,6 +869,7 @@ struct nfs4_setclientid {
+ struct nfs4_setclientid_res {
+ 	u64				clientid;
+ 	nfs4_verifier			confirm;
++	u32				cb_ident;
+ };
+ 
+ struct nfs4_statfs_arg {
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.6.6
 
