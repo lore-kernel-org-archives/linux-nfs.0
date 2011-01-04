@@ -1,126 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:60040 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751698Ab1ARWW0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 17:22:26 -0500
-Subject: Re: [PATCH 2/2] NFSD: do common error handling in decode_cb_op_status
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1294910741-18407-1-git-send-email-bhalevy@panasas.com>
-Date: Tue, 18 Jan 2011 17:20:41 -0500
-Cc: " J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <A454C748-0AA0-4380-961C-57ACD35F39BC@oracle.com>
-References: <4D2EC4AC.9090205@panasas.com> <1294910741-18407-1-git-send-email-bhalevy@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:9530 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751342Ab1ADRLG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 12:11:06 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH_V6] NFSv4 callback find client fix Version 6 
+Date: Tue,  4 Jan 2011 12:10:17 -0500
+Message-Id: <1294161028-4499-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
 
-On Jan 13, 2011, at 4:25 AM, Benny Halevy wrote:
+Version 6 of these patches
+Applies to Tronds nfs-for-next branch
 
-> Rather than handling the cb operation status in each and every
-> decode_cb_op_status's caller, just put the common code there.
-> 
-> If need be, and some caller really needs to see the original status
-> this patch can be reverted but right now there's no real need for the
-> abstract functionality.
+Responded to Version 5 comments.
 
-a) all the other new status decoders do it the generic way, so this would be a special case.  We already know it's not needed here at this point, but it is consistent with the other decoders.
+The back channel server svc_process_common RPC layer pg_authenticate call
+[nfs_callback_authenticate] is shared by both the NFSv4.0 and the NFSv4.1
+callback threads. It authenticates the incoming request by finding (and
+referencing) an nfs_client struct based on the incoming request address
+and the NFS version (4). This is akin to the NFS server which authenticates
+requests by matching the server address to the exports file client list.
 
-b) we lose the distinction between a returned status code and a decoding error.  I recall finding a few bugs in the other decoders where the two are conflated.
+Since there is no minorversion in the search, it may find the wrong
+nfs_client struct. For the nfsv4.0 callback service thread, this means it
+could find an NFSv4.1 nfs_client. For the NFSv4.1 callback service thread, it
+could find an NFSv4.0 instead of v4.1, or find an NFSv4.1 nfs_client with the
+wrong session.
 
-I'd rather not apply this one.  I think it's premature and unneeded optimization.  I'm sure I'll be voted down, though.
+The nfs_client is dereferenced at the end of pg_authenticate. Another
+nfs_find_client call is done in the NFS layouer per operation dispatcher
+routines for NFSv4.0 and in the cb_sequence operation dispatcher routine for
+NFSv4.1 after decoding.
 
-> 
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
-> fs/nfsd/nfs4callback.c |   22 +++++++---------------
-> 1 files changed, 7 insertions(+), 15 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 5a6dcf8..6f69645 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -248,11 +248,11 @@ static int nfs_cb_stat_to_errno(int status)
-> 	return -status;
-> }
-> 
-> -static int decode_cb_op_status(struct xdr_stream *xdr, enum nfs_opnum4 expected,
-> -			       enum nfsstat4 *status)
-> +static int decode_cb_op_status(struct xdr_stream *xdr, enum nfs_opnum4 expected)
-> {
-> 	__be32 *p;
-> 	u32 op;
-> +	enum nfsstat4 status;
-> 
-> 	p = xdr_inline_decode(xdr, 4 + 4);
-> 	if (unlikely(p == NULL))
-> @@ -260,7 +260,9 @@ static int decode_cb_op_status(struct xdr_stream *xdr, enum nfs_opnum4 expected,
-> 	op = be32_to_cpup(p++);
-> 	if (unlikely(op != expected))
-> 		goto out_unexpected;
-> -	*status = be32_to_cpup(p);
-> +	status = be32_to_cpup(p);
-> +	if (unlikely(status != NFS4_OK))
-> +		return nfs_cb_stat_to_errno(status);
-> 	return 0;
-> out_overflow:
-> 	print_overflow_msg(__func__, xdr);
-> @@ -469,22 +471,17 @@ out_overflow:
-> static int decode_cb_sequence4res(struct xdr_stream *xdr,
-> 				  struct nfsd4_callback *cb)
-> {
-> -	enum nfsstat4 nfserr;
-> 	int status;
-> 
-> 	if (cb->cb_minorversion == 0)
-> 		return 0;
-> 
-> -	status = decode_cb_op_status(xdr, OP_CB_SEQUENCE, &nfserr);
-> +	status = decode_cb_op_status(xdr, OP_CB_SEQUENCE);
-> 	if (unlikely(status))
-> 		goto out;
-> -	if (unlikely(nfserr != NFS4_OK))
-> -		goto out_default;
-> 	status = decode_cb_sequence4resok(xdr, cb);
-> out:
-> 	return status;
-> -out_default:
-> -	return nfs_cb_stat_to_errno(nfserr);
-> }
-> 
-> /*
-> @@ -547,7 +544,6 @@ static int nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp,
-> 				  struct nfsd4_callback *cb)
-> {
-> 	struct nfs4_cb_compound_hdr hdr;
-> -	enum nfsstat4 nfserr;
-> 	int status;
-> 
-> 	status = decode_cb_compound4res(xdr, &hdr);
-> @@ -560,11 +556,7 @@ static int nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp,
-> 			goto out;
-> 	}
-> 
-> -	status = decode_cb_op_status(xdr, OP_CB_RECALL, &nfserr);
-> -	if (unlikely(status))
-> -		goto out;
-> -	if (unlikely(nfserr != NFS4_OK))
-> -		status = nfs_cb_stat_to_errno(nfserr);
-> +	status = decode_cb_op_status(xdr, OP_CB_RECALL);
-> out:
-> 	return status;
-> }
-> -- 
-> 1.7.3.4
-> 
+This means the callback server could start processing a callback, passing
+the pg_authenticate test, and have the nfs_client struct freed between the
+pg_authenticate call and the dispatcher operation call. Or, it could have
+found the wrong nfs_client in the pg_authenticate call.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+The current code has this behavior: If the nfs_client is not found in
+pg_authenticate, the request is simply dropped (SVC_DROP). If an nfs_client
+is not found in the dispatcher routines NFS4ERR_BADSESSION is returned for
+v4.1 requests and NFS4ERR_BADHANDLE for v4.0 requests.
 
+The fix is to implement the v4.0 SETCLIENTID callback_ident and use it to find
+the one and only client for v4.0 callbacks, and to associate the sessionid
+with the sessions based callback service (v4.1) and use it to identify the
+one and only client. This can be done in the NFS layer, in CB_COMPOUND header
+processing for v4.0 and in CB_SEQUENCE processing in v4.1.
+In both cases, a reference to the found client is held across CB_COMPOUND
+processing.
+The pg_authenticate method does not have the callback_ident for CB_NULL or
+CB_COMPOUND v4.0 processing, so just the server address, nfsversion and
+minorversion is used for the client search
 
+For sessions based callback service, the sessionID can't be set until the
+return of the CREATE_SESSION call, yet the CB_NULL ping from a server can
+be initiated by the server at the receipt of the CREATE_SESSION call before
+the response is sent. So for CB_NULL, the sessionid is (usually) not set, and
+the sessionid is not used for CB_NULL pg_authenticate client searches.
 
+New transport for back channel and bug fixes
+0001-SUNRPC-move-svc_drop-to-caller-of-svc_process_common.patch
+0002-SUNRPC-fix-bc_send-print.patch
+0003-SUNRPC-new-transport-for-the-NFSv4.1-shared-back-cha.patch
+0004-NFS-use-svc_create_xprt-for-NFSv4.1-callback-service.patch
+0005-NFS-do-not-clear-minor-version-at-nfs_client-free.patch
+
+New callback functionality
+0006-NFS-implement-v4.0-callback_ident.patch
+0007-NFS-associate-sessionid-with-callback-connection.patch
+0008-NFS-refactor-nfs_find_client-and-reference-nfs_clien.patch
+0009-NFS-RPC_AUTH_GSS-unsupported-on-v4.1-back-channel.patch
+0010-NFS-add-session-back-channel-draining.patch
+
+Rename
+0011-NFS-rename-client-back-channel-transport-field.patch
+
+-->Andy
 
