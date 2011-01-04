@@ -1,135 +1,190 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mumba.upf.edu ([193.145.56.85]:48660 "EHLO mumba.upf.edu"
+Received: from cantor.suse.de ([195.135.220.2]:41037 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757224Ab1AMRZO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Jan 2011 12:25:14 -0500
-Received: from mumba.upf.edu (localhost [127.0.0.1])
-	by mumba.upf.edu (8.13.6/8.13.6) with ESMTP id p0DHPCah031055
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 18:25:12 +0100
-Message-ID: <4D2F3583.8090502@upf.edu>
-Date: Thu, 13 Jan 2011 18:25:23 +0100
-From: Txema Heredia Genestar <txema.heredia@upf.edu>
+	id S1750720Ab1ADFCA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 00:02:00 -0500
+Date: Tue, 4 Jan 2011 16:01:52 +1100
+From: NeilBrown <neilb@suse.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 memory allocation bug?
-References: <4D2DE18D.40604@upf.edu> <20110112183557.GB11718@fieldses.org> <4D2F1ECA.50703@upf.edu> <20110113161913.GG20946@fieldses.org>
-In-Reply-To: <20110113161913.GG20946@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
+Message-ID: <20110104160152.602a3c44@notabene.brown>
+In-Reply-To: <20110103205514.GB18056@fieldses.org>
+References: <20101229204752.GC12218@fieldses.org>
+	<20101229205942.GD12218@fieldses.org>
+	<20101230121940.3f48223a@notabene.brown>
+	<20101230015719.GA27614@fieldses.org>
+	<20110103205514.GB18056@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-  El 13/01/11 17:19, J. Bruce Fields escribió:
-> On Thu, Jan 13, 2011 at 04:48:26PM +0100, Txema Heredia Genestar wrote:
->>   Hi Bruce, thanks for your answer
->>
->>
->> El 12/01/11 19:35, J. Bruce Fields escribió:
->>> On Wed, Jan 12, 2011 at 06:14:53PM +0100, Txema Heredia Genestar wrote:
->>>> Additionally, I have checked tcpdump and found, when mounting an
->>>> NFS4 drive from a working storage-system:
->>>> ...
->>>> 12:38:06.372303 IP client.907>   storage.nfs: . ack 29 win 46
->>>> <nop,nop,timestamp 4063464822 174132214>
->>>> 12:38:06.372429 IP client.2364980656>   storage.nfs: 148 getattr [|nfs]
->>>> 12:38:06.372792 IP storage.nfs>   client.2364980656: reply ok 248
->>>> getattr [|nfs]
->>>> 12:38:06.372958 IP client.2381757872>   storage.nfs: 172 getattr [|nfs]
->>>> 12:38:06.373132 IP storage.nfs>   client.2381757872: reply ok 88
->>>> getattr [|nfs]
->>>> 12:38:06.373157 IP client.2398535088>   storage.nfs: 176 getattr [|nfs]
->>>> 12:38:06.373316 IP storage.nfs>   client.2398535088: reply ok 100
->>>> getattr [|nfs]
->>>> 12:38:06.373339 IP client.2415312304>   storage.nfs: 172 getattr [|nfs]
->>>>
->>>>
->>>> But when I mount from the same client, the NFS4 share from my server
->>>> gets stuck on the "getattr" call
->>>> ...
->>>> 12:36:37.051840 IP client.926>   server.nfs: . ack 29 win 140
->>>> <nop,nop,timestamp 4063375488 434039929>
->>>> 12:36:37.051903 IP client.1734362088>   server.nfs: 148 getattr [|nfs]
->>>> 12:36:37.090274 IP server.nfs>   client.926: . ack 192 win 4742
->>>> <nop,nop,timestamp 434039939 4063375488>
->>>> ---silence---
->>> Something like wireshark would give a few more details.
->> I have wiresharked it and I don't see any differences between the
->> "getattr" packages in both cases. Do you want me to paste them in a
->> specific format?
-> I'm curious which attributes were requested.  In particular, is the
-> unreplied-to getattr the *first* time that the client requests the owner
-> or owner_group attributes?
->
+On Mon, 3 Jan 2011 15:55:14 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-Yes, the "unreplied-to" getattr call is the very first (and only) time 
-it those are requested:
-
-Network File System
-     [Program Version: 4]
-     [V4 Procedure: COMPOUND (1)]
-     Tag: <EMPTY>
-         length: 0
-         contents: <EMPTY>
-     minorversion: 0
-     Operations (count: 3)
-         Opcode: PUTROOTFH (24)
-         Opcode: GETFH (10)
-         Opcode: GETATTR (9)
-             GETATTR4args
-                 attr_request
-                     bitmap[0] = 0x0010011a
-                         [5 attributes requested]
-                         mand_attr: FATTR4_TYPE (1)
-                         mand_attr: FATTR4_CHANGE (3)
-                         mand_attr: FATTR4_SIZE (4)
-                         mand_attr: FATTR4_FSID (8)
-                         recc_attr: FATTR4_FILEID (20)
-                     bitmap[1] = 0x0030a23a
-                         [9 attributes requested]
-                         recc_attr: FATTR4_MODE (33)
-                         recc_attr: FATTR4_NUMLINKS (35)
-                         *recc_attr: FATTR4_OWNER (36)*
-                         *recc_attr: FATTR4_OWNER_GROUP (37)*
-                         recc_attr: FATTR4_RAWDEV (41)
-                         recc_attr: FATTR4_SPACE_USED (45)
-                         recc_attr: FATTR4_TIME_ACCESS (47)
-                         recc_attr: FATTR4_TIME_METADATA (52)
-                         recc_attr: FATTR4_TIME_MODIFY (53)
-
->> My server kernel is 2.6.16.60-0.39.3
->> # uname -a
->> Linux bhsrv2 2.6.16.60-0.39.3-smp #1 SMP Mon May 11 11:46:34 UTC
->> 2009 x86_64 x86_64 x86_64 GNU/Linux
->>
->>
->> I'm positive idmapd is running in both, server and client:
->>
->> server
->> # ps -ef | grep idmap
->> root     11254     1  0 Jan12 ?        00:00:00 /usr/sbin/rpc.idmapd
-> OK.
->
->> client
->> # ps -ef | grep idmap
->> root      3262     1  0  2010 ?        00:00:02 rpc.idmapd
->>
->> but it doesn't appear in rpcinfo -p, should it?
-> No, it just handles requests from the kernel, not from the network.
->
-> Might also be worth looking at the nfs4.idtoname cache contents after
-> the hang:
->
-> 	rpcdebug -m rpc -s cache
-> 	cat /proc/net/rpc/nfs4.idtoname/content
->
-> I seem to recall c9b6cbe56d3ac471e6cd72a59ec9e324b3417016 or
-> 0a725fc4d3bfc4734164863d6c50208b109ca5c7 being possible causes of hangs.
->
+> On Wed, Dec 29, 2010 at 08:57:19PM -0500, J. Bruce Fields wrote:
+> > On Thu, Dec 30, 2010 at 12:19:40PM +1100, Neil Brown wrote:
+> > > On Wed, 29 Dec 2010 15:59:42 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+> > > wrote:
+> > > > Also noticed while trying to track down an rhel5 oops in
+> > > > svcauth_unix_set_client():
+> > > > 
+> > > > 	- cache_check() can set an entry negative in place, which if
+> > > > 	  nothing else must cause a leak in some cases.  (Because when
+> > > > 	  the entry is eventually destroyed, it will be assumed to not
+> > > > 	  have any contents.)  I suppose the fix is again to try to
+> > > > 	  adding a new negative entry instead.
+> > > 
+> > > cache_check should only set an entry 'negative' if it is not already valid
+> > > (rv == -EAGAIN) and there is no up-call pending.
+> > 
+> > I don't think anything keeps VALID from being set after the
+> > cache_is_valid check but before the code that does the
+> > set_bit(CACHE_NEGATIVE).
+> > 
+> > > Maybe we should check CACHE_VALID again after the test_and_set of
+> > > CACHE_PENDING, but is a very unlikely race (if it is actually a race at all)
+> > > 
+> > > > 
+> > > > 	- since cache_check() doesn't use any locking, I can't see what
+> > > > 	  guarantees that when it sees the CACHE_VALID bit set and
+> > > > 	  CACHE_NEGATIVE cleared, it must necessarily see the new
+> > > > 	  contents.   I think that'd be fixed by a wmb() before setting
+> > > > 	  those bits and a rmb() after checking them.  I don't know if
+> > > > 	  it's actually possible to hit that bug....
+> > > 
+> > > Yes, we probably want a set_bit_lock in cache_fresh_locked() though I don't
+> > > think that exists, so we could use test_and_set_bit_locked() instead.
+> > > 
+> > > But it does feel like maybe we should add some locking to cache_check.
+> > > Take the lock at the the start, and release it after the
+> > > test_and_set_bit(CACHE_PENDING) or once we have decided not to do that ???
+> > 
+> > Maybe so.
+> 
+> Here's one attempt.
+> 
 > --b.
+> 
+> commit 55563023f85d01698ccf72325c87e3a7039a189b
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Mon Jan 3 15:10:27 2011 -0500
+> 
+>     svcrpc: take locks to fix cache_check races
+>     
+>     There are at least a couple races in cache_check:
+>     
+>     	- We attempt to turn a cache entry negative in place.  But that
+>     	  entry may already have been filled in by some other task since
+>     	  we last checked whether it was valid, so we could be modifying
+>     	  an already-valid entry.  If nothing else there's a likely leak
+>     	  in such a case when the entry is eventually put() and contents
+>     	  are not freed because it has CACHE_NEGATIVE set.
+>     	- If cache_check races with an update that is turning the entry
+>     	  CACHE_VALID, then it's possible that the CACHE_VALID bit could
+>     	  become visible on this CPU before the actual contents do, so
+>     	  we could tell the caller this entry is ready to use when in
+>     	  fact the caller could still get invalid contents.
+>     
+>     Some memory barriers might be sufficient to fix at least the latter; but
+>     for now let's keep things simple and take the hash_lock when we turn an
+>     entry negative or check the CACHE_VALID bit.
+>     
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index 0d6002f..2105b40 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -200,8 +200,9 @@ static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h)
+>  	return cd->cache_upcall(cd, h);
+>  }
+>  
+> -static inline int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
+> +static int __cache_is_valid(struct cache_detail *detail, struct cache_head *h)
+>  {
+> +
+>  	if (!test_bit(CACHE_VALID, &h->flags))
+>  		return -EAGAIN;
+>  	else {
+> @@ -213,6 +214,33 @@ static inline int cache_is_valid(struct cache_detail *detail, struct cache_head
+>  	}
+>  }
+>  
+> +static int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
+> +{
+> +	int rv;
+> +
+> +	read_lock(&detail->hash_lock);
+> +	rv = __cache_is_valid(detail, h);
+> +	read_unlock(&detail->hash_lock);
+> +	return rv;
+> +}
 
-Unfortunately, rpcdebug is not present in this server. So my 
-/proc/net/rpc/nfs4.idtoname/content file is empty.
+I don't think there is anything in __cache_is_valid that needs to be
+protected.
+The compiler will almost certainly produce code which loads f->flags once and
+then performs 1 or 2 bit tests against the value in the register and produces
+one of 3 possible return values based on the result.
+There is absolutely no value in putting locking around that, especially as
+CACHE_VALID is never cleared.
 
-May this command be of any use?
-"echo "65535" > /proc/sys/sunrpc/rpc_debug"
+Maybe you imagine a re-ordering of setting CACHE_NEGATIVE and CACHE_VALID,
+but as they are in the same cache line (and in fact in the same byte) they
+cannot be re-ordered.  We always set CACHE_NEGATIVE before CACHE_VALID and
+there is no way those two could get to memory in the wrong order.
+
+
+
+> +
+> +static int try_to_negate_entry(struct cache_detail *detail, struct cache_head *h)
+> +{
+> +	int rv;
+> +
+> +	write_lock(&detail->hash_lock);
+> +	rv = __cache_is_valid(detail, h);
+> +	if (rv != -EAGAIN) {
+> +		write_unlock(&detail->hash_lock);
+> +		return rv;
+> +	}
+> +	set_bit(CACHE_NEGATIVE, &h->flags);
+> +	cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
+> +	write_unlock(&detail->hash_lock);
+> +	cache_fresh_unlocked(h, detail);
+> +	return -ENOENT;
+> +}
+> +
+>  /*
+>   * This is the generic cache management routine for all
+>   * the authentication caches.
+> @@ -251,14 +279,8 @@ int cache_check(struct cache_detail *detail,
+>  			case -EINVAL:
+>  				clear_bit(CACHE_PENDING, &h->flags);
+>  				cache_revisit_request(h);
+> -				if (rv == -EAGAIN) {
+> -					set_bit(CACHE_NEGATIVE, &h->flags);
+> -					cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
+> -					cache_fresh_unlocked(h, detail);
+> -					rv = -ENOENT;
+> -				}
+> +				rv = try_to_negate_entry(detail, h);
+>  				break;
+
+This bit looks good those.  It feels much better having an 'unlock' between
+'cache_fresh_locked' and 'cache_fresh_unlocked' !!
+
+Thanks,
+
+NeilBrown
+
+
+> -
+>  			case -EAGAIN:
+>  				clear_bit(CACHE_PENDING, &h->flags);
+>  				cache_revisit_request(h);
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
