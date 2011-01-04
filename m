@@ -1,58 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:36523 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:38456 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754465Ab1AZX7L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jan 2011 18:59:11 -0500
-Subject: Re: 2.6.38-rc2... NFS sillyrename is broken...
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Nick Piggin <npiggin@gmail.com>
-Cc: "J. R. Okajima" <hooanon05@yahoo.co.jp>, linux-nfs@vger.kernel.org,
-        Linux Filesystem Development <linux-fsdevel@vger.kernel.org>
-In-Reply-To: <AANLkTik2JJt4vcX8mMJmz+uwJU01vpMwF0UjQ+3QFAtp@mail.gmail.com>
-References: <1295998215.6867.22.camel@heimdal.trondhjem.org>
-	 <21515.1296030022@jrobl> <1296072867.7127.26.camel@heimdal.trondhjem.org>
-	 <1296074585.7127.33.camel@heimdal.trondhjem.org>
-	 <AANLkTik2JJt4vcX8mMJmz+uwJU01vpMwF0UjQ+3QFAtp@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 26 Jan 2011 18:59:09 -0500
-Message-ID: <1296086349.7127.55.camel@heimdal.trondhjem.org>
+	id S1751005Ab1ADUnm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 15:43:42 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V7 01/12] SUNRPC move svc_drop to caller of svc_process_common
+Date: Tue,  4 Jan 2011 15:42:35 -0500
+Message-Id: <1294173766-5573-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1294173766-5573-1-git-send-email-andros@netapp.com>
+References: <1294173766-5573-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-01-27 at 10:50 +1100, Nick Piggin wrote: 
-> On Thu, Jan 27, 2011 at 7:43 AM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Wed, 2011-01-26 at 15:14 -0500, Trond Myklebust wrote:
-> >> The alternative would be to add a callback that can be called after
-> >> dentry_iput() if DCACHE_NFSFS_RENAMED is true, and that takes the parent
-> >> and (negative) dentry as the arguments.
-> >> sillyrename doesn't need the inode as an argument, but it definitely
-> >> needs the parent dentry so that it can check for races with
-> >> ->lookup()...
-> >
-> > The following (compile tested only!) patch illustrates what I mean.
-> 
-> We could do this. CEPH also want a way to get d_parent in the inode
-> unlink path.
-> 
-> I think I can actually check for dentry->d_count == 0 rather than
-> dentry->d_parent == NULL here, and avoid clearing d_parent
-> entirely. That might be the better solution for 2.6.38, because other
-> code I've missed might be expecting to use d_parent.
+From: Andy Adamson <andros@netapp.com>
 
-I'm not sure I understand. By the time we hit d_kill() we know that
-dentry->d_count == 0. The only thing we need here is the ability to
-unlink the file if it has been sillyrenamed previously. The reason for
-needing the parent dentry is to allow the filesystem to guard against
-races with lookup without requiring the vfs to take the
-parent->d_inode->i_mutex in the dput() path...
+The NFSv4.1 shared back channel does not need to call svc_drop because the
+callback service never outlives the single connection it services, and it
+reuses it's buffers and keeps the trasport.
 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ net/sunrpc/svc.c |   30 ++++++++++++++++--------------
+ 1 files changed, 16 insertions(+), 14 deletions(-)
+
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 6359c42..606d182 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1147,7 +1147,6 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+  dropit:
+ 	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+ 	dprintk("svc: svc_process dropit\n");
+-	svc_drop(rqstp);
+ 	return 0;
+ 
+ err_short_len:
+@@ -1218,7 +1217,6 @@ svc_process(struct svc_rqst *rqstp)
+ 	struct kvec		*resv = &rqstp->rq_res.head[0];
+ 	struct svc_serv		*serv = rqstp->rq_server;
+ 	u32			dir;
+-	int			error;
+ 
+ 	/*
+ 	 * Setup response xdr_buf.
+@@ -1246,11 +1244,13 @@ svc_process(struct svc_rqst *rqstp)
+ 		return 0;
+ 	}
+ 
+-	error = svc_process_common(rqstp, argv, resv);
+-	if (error <= 0)
+-		return error;
+-
+-	return svc_send(rqstp);
++	/* Returns 1 for send, 0 for drop */
++	if (svc_process_common(rqstp, argv, resv))
++		return svc_send(rqstp);
++	else {
++		svc_drop(rqstp);
++		return 0;
++	}
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
+@@ -1264,7 +1264,6 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ {
+ 	struct kvec	*argv = &rqstp->rq_arg.head[0];
+ 	struct kvec	*resv = &rqstp->rq_res.head[0];
+-	int 		error;
+ 
+ 	/* Build the svc_rqst used by the common processing routine */
+ 	rqstp->rq_xprt = serv->bc_xprt;
+@@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ 	svc_getu32(argv);	/* XID */
+ 	svc_getnl(argv);	/* CALLDIR */
+ 
+-	error = svc_process_common(rqstp, argv, resv);
+-	if (error <= 0)
+-		return error;
+-
+-	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
+-	return bc_send(req);
++	/* Returns 1 for send, 0 for drop */
++	if (svc_process_common(rqstp, argv, resv)) {
++		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
++						sizeof(req->rq_snd_buf));
++		return bc_send(req);
++	} else {
++		/* Nothing to do to drop request */
++		return 0;
++	}
+ }
+ EXPORT_SYMBOL(bc_svc_process);
+ #endif /* CONFIG_NFS_V4_1 */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.6.6
 
