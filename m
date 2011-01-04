@@ -1,181 +1,192 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:36415 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751231Ab1AERTg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 12:19:36 -0500
-Subject: Re: [PATCH] nfs4: set source address when callback is generated
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20110105171111.GC13000@fieldses.org>
-Date: Wed, 5 Jan 2011 12:18:37 -0500
-Cc: Takuma Umeya <tumeya@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Message-Id: <3443745A-607D-4FD8-BA93-622669A09EAF@oracle.com>
-References: <20101215050901.GB13532@redhat.com> <20101216034945.GH9646@fieldses.org> <A4BB9763-B67F-4559-B3FF-F7BC2DBD3B3A@oracle.com> <20110105005835.GA14744@fieldses.org> <F369CCC7-285D-4F4D-80D4-EEAC273E561C@oracle.com> <20110105171111.GC13000@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:38456 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751398Ab1ADUnm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 15:43:42 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V7 03/12] SUNRPC new transport for the NFSv4.1 shared back channel
+Date: Tue,  4 Jan 2011 15:42:37 -0500
+Message-Id: <1294173766-5573-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1294173766-5573-3-git-send-email-andros@netapp.com>
+References: <1294173766-5573-1-git-send-email-andros@netapp.com>
+ <1294173766-5573-2-git-send-email-andros@netapp.com>
+ <1294173766-5573-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Andy Adamson <andros@netapp.com>
 
-On Jan 5, 2011, at 12:11 PM, J. Bruce Fields wrote:
+Move the current sock create and destroy routines into the new transport ops.
+Back channel socket will be destroyed by the svc_closs_all call in svc_destroy.
 
-> On Wed, Jan 05, 2011 at 12:06:04PM -0500, Chuck Lever wrote:
->> 
->> On Jan 4, 2011, at 7:58 PM, J. Bruce Fields wrote:
->> 
->>> On Thu, Dec 16, 2010 at 10:54:00AM -0500, Chuck Lever wrote:
->>>> I don't recall creating svc_addr_u, but I'll take a stab at a guess.
->>>> 
->>>> It looks like someone thought that we should retain the idea of storing just the address part of the socket address, and not the other stuff (like the family and port, since this code doesn't appear to need that additional information).  It greatly reduces the size of the field.  A full sockaddr_storage is more than 128 bytes, since it has to be able to store an AF_UNIX pathname.
->>>> 
->>>> Doing this, there is a lot less data to keep around, but an IPv6 socket address has other items outside of in6_addr that can be used to form a full address.  We decided at some point we could copy this information from the other address storage field in the rqstp.
->>>> 
->>>> But the result of this space savings means we must construct a full socket address when needed, using logic such as the above.
->>> 
->>> Seems to me we should either just waste the extra 100 bytes or define
->>> something that would be useful elsewhere as well....
->> 
->> In nfs-utils, we define:
->> 
->> 	union nfs_sockaddr {
->> 		struct sockaddr_in	s4;
->> 		struct sockaddr_in6	s6;
->> 		struct sockaddr		sa;
->> 	};
->> 
->> A variable of this type is large enough to hold a full IPv6 sockaddr, but is significantly smaller than a sockaddr_storage.
->> 
->> The addition of the "struct sockaddr" element is to enable access to such variables via a "struct sockaddr *" without type punning.  This seems to be preferred by gcc over type casting in order to handle optimizations involving address aliasing.  It also allows more precise type checking.
-> 
-> Sounds reasonable to me.
-> 
->> 
->> A full conversion to use such a construct in kernel RPC and NFS components is, I fear, too late for 2.6.38, but might be considered for a future release if there is consensus on this approach.
-> 
-> OK; I suppose for now I'll apply my revision of Takuma Umeya's patch
-> below (if I didn't screw it up).
+Added check: only TCP supported on shared back channel.
 
-My thinking cap is still on vacation.  I don't see anything immediately wrong with this as a temporary fix.  Has anyone tested this with a multi-homed IPv6 server?  How about link-local IPv6 addresses?
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ include/linux/sunrpc/svcsock.h |    1 +
+ net/sunrpc/svc.c               |    4 --
+ net/sunrpc/svcsock.c           |   87 ++++++++++++++++++++++++++++++---------
+ 3 files changed, 68 insertions(+), 24 deletions(-)
 
-> --b.
-> 
->> 
->>> But if we do it this way we can at least simplify a little.
->>> 
->>> --b.
->>> 
->>> commit 6f3d772fb8a039de8f21d725f5e38c252b4c0efd
->>> Author: Takuma Umeya <tumeya@redhat.com>
->>> Date:   Wed Dec 15 14:09:01 2010 +0900
->>> 
->>>   nfs4: set source address when callback is generated
->>> 
->>>   when callback is generated in NFSv4 server, it doesn't set the source
->>>   address. When an alias IP is utilized on NFSv4 server and suppose the
->>>   client is accessing via that alias IP (e.g. eth0:0), the client invokes
->>>   the callback to the IP address that is set on the original device (e.g.
->>>   eth0). This behavior results in timeout of xprt.
->>>   The patch sets the IP address that the client should invoke callback to.
->>> 
->>>   Signed-off-by: Takuma Umeya <tumeya@redhat.com>
->>>   [bfields@redhat.com: Simplify gen_callback arguments, use helper function]
->>>   Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->>> 
->>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
->>> index a085805..dd183af 100644
->>> --- a/fs/nfsd/nfs4callback.c
->>> +++ b/fs/nfsd/nfs4callback.c
->>> @@ -484,6 +484,7 @@ static int setup_callback_client(struct nfs4_client *clp,
->>> 		.net		= &init_net,
->>> 		.address	= (struct sockaddr *) &conn->cb_addr,
->>> 		.addrsize	= conn->cb_addrlen,
->>> +		.saddress	= (struct sockaddr *) &conn->cb_saddr,
->>> 		.timeout	= &timeparms,
->>> 		.program	= &cb_program,
->>> 		.version	= 0,
->>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>> index 87d4c48..b583e4e 100644
->>> --- a/fs/nfsd/nfs4state.c
->>> +++ b/fs/nfsd/nfs4state.c
->>> @@ -1163,10 +1163,26 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
->>> 	return NULL;
->>> }
->>> 
->>> +static void rpc_svcaddr2sockaddr(struct sockaddr *sa, unsigned short family, union svc_addr_u *svcaddr)
->>> +{
->>> +	switch (family) {
->>> +	case AF_INET:
->>> +		((struct sockaddr_in *)sa)->sin_family = AF_INET;
->>> +		((struct sockaddr_in *)sa)->sin_addr = svcaddr->addr;
->>> +		return;
->>> +	case AF_INET6:
->>> +		((struct sockaddr_in6 *)sa)->sin6_family = AF_INET6;
->>> +		((struct sockaddr_in6 *)sa)->sin6_addr = svcaddr->addr6;
->>> +		return;
->>> +	}
->>> +}
->>> +
->>> static void
->>> -gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
->>> +gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_rqst *rqstp)
->>> {
->>> 	struct nfs4_cb_conn *conn = &clp->cl_cb_conn;
->>> +	struct sockaddr	*sa = svc_addr(rqstp);
->>> +	u32 scopeid = rpc_get_scope_id(sa);
->>> 	unsigned short expected_family;
->>> 
->>> 	/* Currently, we only support tcp and tcp6 for the callback channel */
->>> @@ -1192,6 +1208,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
->>> 
->>> 	conn->cb_prog = se->se_callback_prog;
->>> 	conn->cb_ident = se->se_callback_ident;
->>> +	rpc_svcaddr2sockaddr((struct sockaddr *)&conn->cb_saddr, expected_family, &rqstp->rq_daddr);
->>> 	return;
->>> out_err:
->>> 	conn->cb_addr.ss_family = AF_UNSPEC;
->>> @@ -1768,7 +1785,6 @@ __be32
->>> nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>> 		  struct nfsd4_setclientid *setclid)
->>> {
->>> -	struct sockaddr		*sa = svc_addr(rqstp);
->>> 	struct xdr_netobj 	clname = { 
->>> 		.len = setclid->se_namelen,
->>> 		.data = setclid->se_name,
->>> @@ -1871,7 +1887,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>> 	 * for consistent minorversion use throughout:
->>> 	 */
->>> 	new->cl_minorversion = 0;
->>> -	gen_callback(new, setclid, rpc_get_scope_id(sa));
->>> +	gen_callback(new, setclid, rqstp);
->>> 	add_to_unconfirmed(new, strhashval);
->>> 	setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
->>> 	setclid->se_clientid.cl_id = new->cl_clientid.cl_id;
->>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
->>> index 84b2302..cf6dc83 100644
->>> --- a/fs/nfsd/state.h
->>> +++ b/fs/nfsd/state.h
->>> @@ -96,6 +96,7 @@ struct nfs4_delegation {
->>> struct nfs4_cb_conn {
->>> 	/* SETCLIENTID info */
->>> 	struct sockaddr_storage	cb_addr;
->>> +	struct sockaddr_storage	cb_saddr;
->>> 	size_t			cb_addrlen;
->>> 	u32                     cb_prog; /* used only in 4.0 case;
->>> 					    per-session otherwise */
->> 
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
-
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 1b353a7..3a45a80 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -45,6 +45,7 @@ int		svc_sock_names(struct svc_serv *serv, char *buf,
+ int		svc_addsock(struct svc_serv *serv, const int fd,
+ 					char *name_return, const size_t len);
+ void		svc_init_xprt_sock(void);
++void		svc_init_bc_xprt_sock(void);
+ void		svc_cleanup_xprt_sock(void);
+ struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot);
+ void		svc_sock_destroy(struct svc_xprt *);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 606d182..261e2d1 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -488,10 +488,6 @@ svc_destroy(struct svc_serv *serv)
+ 	if (svc_serv_is_pooled(serv))
+ 		svc_pool_map_put();
+ 
+-#if defined(CONFIG_NFS_V4_1)
+-	svc_sock_destroy(serv->bc_xprt);
+-#endif /* CONFIG_NFS_V4_1 */
+-
+ 	svc_unregister(serv);
+ 	kfree(serv->sv_pools);
+ 	kfree(serv);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 07919e1..d08a0f6 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -66,6 +66,13 @@ static void		svc_sock_free(struct svc_xprt *);
+ static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
+ 					  struct net *, struct sockaddr *,
+ 					  int, int);
++#if defined(CONFIG_NFS_V4_1)
++static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
++					     struct net *, struct sockaddr *,
++					     int, int);
++static void svc_bc_sock_free(struct svc_xprt *xprt);
++#endif /* CONFIG_NFS_V4_1 */
++
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ static struct lock_class_key svc_key[2];
+ static struct lock_class_key svc_slock_key[2];
+@@ -1184,6 +1191,44 @@ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
+ 	return svc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
+ }
+ 
++#if defined(CONFIG_NFS_V4_1)
++static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
++					     struct net *, struct sockaddr *,
++					     int, int);
++static void svc_bc_sock_free(struct svc_xprt *xprt);
++
++static struct svc_xprt *svc_bc_tcp_create(struct svc_serv *serv,
++				       struct net *net,
++				       struct sockaddr *sa, int salen,
++				       int flags)
++{
++	return svc_bc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
++}
++
++static void svc_bc_tcp_sock_detach(struct svc_xprt *xprt)
++{
++}
++
++static struct svc_xprt_ops svc_tcp_bc_ops = {
++	.xpo_create = svc_bc_tcp_create,
++	.xpo_recvfrom = NULL,
++	.xpo_sendto = NULL,
++	.xpo_release_rqst = NULL,
++	.xpo_detach = svc_bc_tcp_sock_detach,
++	.xpo_free = svc_bc_sock_free,
++	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
++	.xpo_has_wspace = NULL,
++	.xpo_accept = NULL,
++};
++
++static struct svc_xprt_class svc_tcp_bc_class = {
++	.xcl_name = "tcp-bc",
++	.xcl_owner = THIS_MODULE,
++	.xcl_ops = &svc_tcp_bc_ops,
++	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
++};
++#endif /* CONFIG_NFS_V4_1 */
++
+ static struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_create = svc_tcp_create,
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+@@ -1509,41 +1554,43 @@ static void svc_sock_free(struct svc_xprt *xprt)
+ 	kfree(svsk);
+ }
+ 
++#if defined(CONFIG_NFS_V4_1)
+ /*
+- * Create a svc_xprt.
+- *
+- * For internal use only (e.g. nfsv4.1 backchannel).
+- * Callers should typically use the xpo_create() method.
++ * Create a back channel svc_xprt which shares the fore channel socket.
+  */
+-struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot)
++static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
++					     int protocol,
++					     struct net *net,
++					     struct sockaddr *sin, int len,
++					     int flags)
+ {
+ 	struct svc_sock *svsk;
+-	struct svc_xprt *xprt = NULL;
++	struct svc_xprt *xprt;
++
++	if (protocol != IPPROTO_TCP) {
++		printk(KERN_WARNING "svc: only TCP sockets"
++			" supported on shared back channel\n");
++		return ERR_PTR(-EINVAL);
++	}
+ 
+-	dprintk("svc: %s\n", __func__);
+ 	svsk = kzalloc(sizeof(*svsk), GFP_KERNEL);
+ 	if (!svsk)
+-		goto out;
++		return ERR_PTR(-ENOMEM);
+ 
+ 	xprt = &svsk->sk_xprt;
+-	if (prot == IPPROTO_TCP)
+-		svc_xprt_init(&svc_tcp_class, xprt, serv);
+-	else if (prot == IPPROTO_UDP)
+-		svc_xprt_init(&svc_udp_class, xprt, serv);
+-	else
+-		BUG();
+-out:
+-	dprintk("svc: %s return %p\n", __func__, xprt);
++	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
++
++	serv->bc_xprt = xprt;
++
+ 	return xprt;
+ }
+-EXPORT_SYMBOL_GPL(svc_sock_create);
+ 
+ /*
+- * Destroy a svc_sock.
++ * Free a back channel svc_sock.
+  */
+-void svc_sock_destroy(struct svc_xprt *xprt)
++static void svc_bc_sock_free(struct svc_xprt *xprt)
+ {
+ 	if (xprt)
+ 		kfree(container_of(xprt, struct svc_sock, sk_xprt));
+ }
+-EXPORT_SYMBOL_GPL(svc_sock_destroy);
++#endif /* CONFIG_NFS_V4_1 */
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.6.6
 
