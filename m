@@ -1,52 +1,41 @@
 From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH_V7 0/12] NFSv4 find client fix Version 7
-Date: Tue, 4 Jan 2011 16:06:38 -0500
-Message-ID: <20110104210637.GD7908@fieldses.org>
-References: <1294173766-5573-1-git-send-email-andros@netapp.com>
- <20110104205713.GA7908@fieldses.org>
- <EF4E9447-046D-4840-B7F1-5D5391A97F67@netapp.com>
+Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
+Date: Tue, 4 Jan 2011 16:15:32 -0500
+Message-ID: <20110104211532.GE7908@fieldses.org>
+References: <20101229204752.GC12218@fieldses.org>
+ <20101229205942.GD12218@fieldses.org>
+ <20101230121940.3f48223a@notabene.brown>
+ <20101230015719.GA27614@fieldses.org>
+ <20110103205514.GB18056@fieldses.org>
+ <20110104160152.602a3c44@notabene.brown>
+ <20110104152231.GA27889@fieldses.org>
+ <20110104192350.GE2308@fieldses.org>
+ <20110105081031.220bfbc9@notabene.brown>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: trond.myklebust@netapp.com, bfields@redhat.com,
-	linux-nfs@vger.kernel.org
-To: Andy Adamson <andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+To: NeilBrown <neilb@suse.de>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49985 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:52852 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751002Ab1ADVGk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 16:06:40 -0500
-In-Reply-To: <EF4E9447-046D-4840-B7F1-5D5391A97F67@netapp.com>
+	id S1751005Ab1ADVPd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 16:15:33 -0500
+In-Reply-To: <20110105081031.220bfbc9-wvvUuzkyo1EYVZTmpyfIwg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 04, 2011 at 04:01:16PM -0500, Andy Adamson wrote:
+On Wed, Jan 05, 2011 at 08:10:31AM +1100, NeilBrown wrote:
+> On Tue, 4 Jan 2011 14:23:51 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
 > 
-> On Jan 4, 2011, at 3:57 PM, J. Bruce Fields wrote:
+> > So, that being the real problem, perhaps it's clearer to use explicit
+> > memory barriers instead of more locking, and add some comments.  Also
+> > split this into a separate patch, as in the following.
 > 
-> > On Tue, Jan 04, 2011 at 03:42:34PM -0500, andros@netapp.com wrote:
-> >> 
-> >> 
-> >> Version 7 of these patches
-> >> Applies to Tronds nfs-for-next branch
-> >> 
-> >> Already acked by bfields
-> >> ------------------------
-> >> 0001-SUNRPC-move-svc_drop-to-caller-of-svc_process_common.patch
-> >> 0002-SUNRPC-fix-bc_send-print.patch
-> >> 0010-NFS-RPC_AUTH_GSS-unsupported-on-v4.1-back-channel.patch
-> >> 0012-NFS-rename-client-back-channel-transport-field.patch
-> > 
-> > In future, if you don't mind actually adding the "Acked-by"'s to those
-> > patches with your signed-off-by's, that'll help remind me which ones
-> > I've read before as I'm looking through them....
-> > 
-> > (Well, unless you've changed them in some non-trivial way and want me to
-> > reread them.)
+> Me likie.
 > 
-> Sure.
-> 
-> -->Andy
+> Two separate patches is good, and nice comments next to the memory barriers
+> is good.
+> Reviewed-by: NeilBrown <neilb@suse.de>
 
-And thanks for the fast turnaround.  I think that's it for my comments.
-
---b.
+Good, thanks--queueing up for 2.6.38.--b.
