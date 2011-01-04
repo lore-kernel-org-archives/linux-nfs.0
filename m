@@ -1,125 +1,44 @@
-From: "Kirill A. Shutemov" <kas@openvz.org>
-Subject: Re: [PATCH v2 00/12] make rpc_pipefs be mountable multiple time
-Date: Mon, 3 Jan 2011 18:53:57 +0200
-Message-ID: <20110103165357.GA32196@shutemov.name>
-References: <AANLkTi=AXz21wDeE1vPVD-6cEtj6faXN9x09eHDCsTkB@mail.gmail.com>
- <20101230085139.GA29697@shutemov.name>
- <4D1C4C7C.6050606@parallels.com>
- <20101230094433.GB29697@shutemov.name>
- <4D1C5953.6020200@parallels.com>
- <20101230104416.GA31824@shutemov.name>
- <AANLkTim2QrkSW0HufD5wp=-8ikwydN5SUS+fdWK6JHqb@mail.gmail.com>
- <20101230114514.GA31976@shutemov.name>
- <4D1C809B.30405@parallels.com>
- <20101231130329.GA3610@shutemov.name>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] libnsm.a: modify return value to false from 0 at nsm_drop_privileges()
+Date: Tue, 04 Jan 2011 11:19:09 -0500
+Message-ID: <4D23487D.2030804@RedHat.com>
+References: <4D142BDA.6080809@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Rob Landley <rlandley@parallels.com>,
-	Rob Landley <rob@landley.net>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	"J. Bruce Fields" <bfields@fieldses.org>,
-	Neil Brown <neilb@suse.de>,
-	Pavel Emelyanov <xemul@parallels.com>,
-	linux-nfs@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Kirill A. Shutemov" <kas@openvz.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20101231130329.GA3610@shutemov.name>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=ISO-2022-JP
+Cc: NFSv3 list <linux-nfs@vger.kernel.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:38518 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750954Ab1ADQTQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 11:19:16 -0500
+In-Reply-To: <4D142BDA.6080809@cn.fujitsu.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 31, 2010 at 03:03:29PM +0200, Kirill A. Shutemov wrote:
-> On Thu, Dec 30, 2010 at 06:52:43AM -0600, Rob Landley wrote:
-> > On 12/30/2010 05:45 AM, Kirill A. Shutemov wrote:
-> > > Currently, there is no association between rpc_pipefs and mount namespace,
-> > 
-> > There is in that the root context doesn't need to have this mounted, and 
-> > new namespaces do.  So there's an existing association between a LACK of 
-> > a namespace and a different default behavior.
-> >
-> > My understanding (correct me if I'm wrong) is that the historical 
-> > behavior is that there's only one, and it doesn't actually live anywhere 
-> > in the filesystem tree.  You're adding a special location.  I'm 
-> > wondering if there's any way for that location not to be special.
+
+
+On 12/24/2010 12:12 AM, Mi Jinlong wrote:
+> At nsm_drop_privileges(), for improving readability, unify
+> the return value.
 > 
-> /var/lib/net/rpc_pipefs is default path where userspace part of NFS stack
-> (gssd, idmapd) want to see rpc_pipefs
+> ---
+>  support/nsm/file.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> > > so I don't see simple way to restrict number of rpc_pipefs per mount
-> > > namespace. Associating mount namespace with rpc_pipefs is not a good idea,
-> > > I think.
-> > 
-> > I'm talking about associating a default rpc_pipefs instance with a 
-> > namespace, which it seems to me you're already doing by emulating the 
-> > legacy behavior.  Before you CLONE_NEWNS you get a magic default mount 
-> > that doesn't exist in the tree.  After you CLONE_NEWNS you get something 
-> > like -EINVAL unless you supply your own default.
-> 
-> Root namespace is special. In case of nfsroot you need rpc_pipefs before
-> root available.
-> 
-> > (I'm actually not sure 
-> > why new namespaces don't fall back to the magic global one...)
-> 
-> It breaks isolation. Container should not use host's rpc_pipefs without
-> host's permission.
+> diff --git a/support/nsm/file.c b/support/nsm/file.c
+> index e21c7d4..98b47bf 100644
+> --- a/support/nsm/file.c
+> +++ b/support/nsm/file.c
+> @@ -421,7 +421,7 @@ nsm_drop_privileges(const int pidfd)
+>  	 */
+>          if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) == -1) {
+>                  xlog(L_ERROR, "prctl(PR_SET_KEEPCAPS) failed: %m");
+> -		return 0;
+> +		return false;
+>  	}
 >  
-> > I'm suggesting that if the user doesn't specify -o rpcmount then the 
-> > default could be the first rpc_pipefs mount visible to the current 
-> > process context, rather than a specific path.  Logic to do that exists 
-> > in the proc/self/mounts code (which I'm reading through now...).
-> 
-> static int check_rpc_pipefs(struct vfsmount *mnt, void *arg)
-> {
->         struct vfsmount **rpcmount = arg;
->         struct path path = {
->                 .mnt = mnt,
->                 .dentry = mnt->mnt_root,
->         };
-> 
->         if (!mnt->mnt_sb)
->                 return 0;
->         if (mnt->mnt_sb->s_magic != RPCAUTH_GSSMAGIC)
->                 return 0;
-> 
->         if (!path_is_under(&path, &current->fs->root))
->                 return 0;
-> 
->         *rpcmount = mntget(mnt);
->         return 1;
-> }
-> 
-> struct vfsmount *get_rpc_pipefs(const char *p)
-> {
->         int error;
->         struct vfsmount *rpcmount = ERR_PTR(-EINVAL);
->         struct path path;
-> 
->         if (!p) {
->                 iterate_mounts(check_rpc_pipefs, &rpcmount,
->                                 current->nsproxy->mnt_ns->root);
-> 
->                 if (IS_ERR(rpcmount) && (current->nsproxy->mnt_ns ==
->                                         init_task.nsproxy->mnt_ns))
->                         return mntget(init_rpc_pipefs);
-> 
->                 return rpcmount;
->         }
-> 
->         error = kern_path(p, LOOKUP_FOLLOW | LOOKUP_DIRECTORY, &path);
->         if (error)
->                 return ERR_PTR(error);
-> 
->         check_rpc_pipefs(path.mnt, &rpcmount);
->         path_put(&path);
-> 
->         return rpcmount;
-> }
-> EXPORT_SYMBOL_GPL(get_rpc_pipefs);
-> 
-> Something like this? Patch to replace patch #10 attached.
+>  	if (setgroups(0, NULL) == -1) {
+Committed... Thanks!
 
-Any comments?
-
--- 
- Kirill A. Shutemov
+steved
