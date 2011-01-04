@@ -1,129 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47011 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:34277 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752850Ab1ASOFS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 09:05:18 -0500
-Subject: RE: 4.1 no-pnfs mount option?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Daniel.Muntz@emc.com
-Cc: matt@linuxbox.com, rees@umich.edu, androsadamson@gmail.com,
-        linux-nfs@vger.kernel.org, bhalevy@panasas.com
-In-Reply-To: <DE966DA98A4ABE438D726BDF1699CF61043985B65A@MX05A.corp.emc.com>
-References: <DE966DA98A4ABE438D726BDF1699CF61043985B644@MX05A.corp.emc.com>
-	 <1295405796.2919.2.camel@heimdal.trondhjem.org>
-	 <DE966DA98A4ABE438D726BDF1699CF61043985B65A@MX05A.corp.emc.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 19 Jan 2011 09:05:12 -0500
-Message-ID: <1295445912.3444.10.camel@heimdal.trondhjem.org>
+	id S1750980Ab1ADTXw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 14:23:52 -0500
+Date: Tue, 4 Jan 2011 14:23:51 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
+Message-ID: <20110104192350.GE2308@fieldses.org>
+References: <20101229204752.GC12218@fieldses.org>
+ <20101229205942.GD12218@fieldses.org>
+ <20101230121940.3f48223a@notabene.brown>
+ <20101230015719.GA27614@fieldses.org>
+ <20110103205514.GB18056@fieldses.org>
+ <20110104160152.602a3c44@notabene.brown>
+ <20110104152231.GA27889@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110104152231.GA27889@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-01-19 at 00:54 -0500, Daniel.Muntz@emc.com wrote: 
-> 
-> > -----Original Message-----
-> > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com] 
-> > Sent: Tuesday, January 18, 2011 6:57 PM
-> > To: Muntz, Daniel
-> > Cc: matt@linuxbox.com; rees@umich.edu; 
-> > androsadamson@gmail.com; linux-nfs@vger.kernel.org; 
-> > bhalevy@panasas.com
-> > Subject: RE: 4.1 no-pnfs mount option?
+On Tue, Jan 04, 2011 at 10:22:31AM -0500, J. Bruce Fields wrote:
+> On Tue, Jan 04, 2011 at 04:01:52PM +1100, NeilBrown wrote:
+> > On Mon, 3 Jan 2011 15:55:14 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+> > wrote:
+> > > @@ -213,6 +214,33 @@ static inline int cache_is_valid(struct cache_detail *detail, struct cache_head
+> > >  	}
+> > >  }
+> > >  
+> > > +static int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
+> > > +{
+> > > +	int rv;
+> > > +
+> > > +	read_lock(&detail->hash_lock);
+> > > +	rv = __cache_is_valid(detail, h);
+> > > +	read_unlock(&detail->hash_lock);
+> > > +	return rv;
+> > > +}
 > > 
-> > On Tue, 2011-01-18 at 21:29 -0500, Daniel.Muntz@emc.com wrote: 
-> > > 
-> > > > -----Original Message-----
-> > > > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com] 
-> > > > Sent: Tuesday, January 18, 2011 5:45 PM
-> > > > To: Muntz, Daniel
-> > > > Cc: matt@linuxbox.com; rees@umich.edu; 
-> > > > androsadamson@gmail.com; linux-nfs@vger.kernel.org; 
-> > > > bhalevy@panasas.com
-> > > > Subject: RE: 4.1 no-pnfs mount option?
-> > > > 
-> > > > On Tue, 2011-01-18 at 19:53 -0500, Daniel.Muntz@emc.com wrote: 
-> > > > > 
-> > > > > > -----Original Message-----
-> > > > > > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com] 
-> > > > > > Sent: Tuesday, January 18, 2011 11:15 AM
-> > > > > > To: Matt W. Benjamin
-> > > > > > Cc: Muntz, Daniel; rees@umich.edu; androsadamson@gmail.com; 
-> > > > > > linux-nfs@vger.kernel.org; Benny Halevy
-> > > > > > Subject: Re: 4.1 no-pnfs mount option?
-> > > > > > 
-> > > > > > On Tue, 2011-01-18 at 13:46 -0500, Matt W. Benjamin wrote: 
-> > > > > > > Hi,
-> > > > > > > 
-> > > > > > > Isn't by mount a plausible way to select for pnfs 
-> > > > > > independent of debugging?  Is it assured that a client 
-> > > > > > administrator would never reasonably wish to do this?
-> > > > > > 
-> > > > > > "Why would an administrator never want to do this?" is 
-> > > > not a helpful
-> > > > > > question.
-> > > > > > 
-> > > > > > A more useful question is "what reason would you 
-> > possibly have for
-> > > > > > overriding the server's request that you do pNFS when 
-> > > > your client has
-> > > > > > pNFS support?" What makes pNFS so special that we must allow
-> > > > > > administrators to do this on a per-mount basis?
-> > > > > 
-> > > > > By the same logic, why should a user be allowed to select 
-> > > > which version of NFS they use for mounting when the server 
-> > > > has a perfectly reasonable way of negotiating it?  Getting to 
-> > > > choose v2 vs. v3 vs. v4 seems like much less of a distinction 
-> > > > than choosing between pNFS and no pNFS.  Frankly, it never 
-> > > > even occurred to me that there wouldn't be a mount option to 
-> > > > make this choice.  Enabling/disabling the layout driver 
-> > > > doesn't fit the existing model of choosing mount behavior, 
-> > > > and is a big hammer--it's all or nothing.
-> > > > > 
-> > > > > Anyway, here's a use case: I'm working at an 
-> > > > HPC/gas+oil/satellite data site.  We have an awesome pNFS 
-> > > > server for our big data and I want to access my big data with 
-> > > > pNFS.  We have another server for homedirs, some big data, 
-> > > > and other stuff.  Some mounts are fine with pNFS, others are 
-> > > > abysmal.  So, I want to mount some directories with pNFS, and 
-> > > > some without pNFS, on the same client, independent of the 
-> > > > server configuration.
-> > > > 
-> > > > mount -t nfs -overs=4,minorversion=0 foo:/ /bar
-> > > > 
-> > > > Done... Any more questions?
-> > > 
-> > > Several, but I'll stick to one rhetorical.  Does NFSv4.1 
-> > have any features, other than pNFS, that are not in 4.0?
+> > I don't think there is anything in __cache_is_valid that needs to be
+> > protected.
+> > The compiler will almost certainly produce code which loads f->flags once and
+> > then performs 1 or 2 bit tests against the value in the register and produces
+> > one of 3 possible return values based on the result.
+> > There is absolutely no value in putting locking around that, especially as
+> > CACHE_VALID is never cleared.
 > > 
-> > Why stop now, when you were batting 100? I told you what the criteria
-> > were for adding more mount options, and you start whining about not
-> > being able to conceive of a world without mount options.
-> > 
-> > The point is that NFSv4.1 was supposed to let the _server_ tell the
-> > client when to use pNFS. The reason why you let the _server_ 
-> > do this, is
-> > because pNFS is about enabling _server_ scalability. It is not about
-> > faster clients...
-> > If you don't want the client to use pNFS, then fix the _server_
-> > settings...
+> > Maybe you imagine a re-ordering of setting CACHE_NEGATIVE and CACHE_VALID,
+> > but as they are in the same cache line (and in fact in the same byte) they
+> > cannot be re-ordered.  We always set CACHE_NEGATIVE before CACHE_VALID and
+> > there is no way those two could get to memory in the wrong order.
 > 
-> I don't miss the kiss-up-kick-down model of software development...
+> The risk would be a reordering of CACHE_VALID with setting of the actual
+> contents in the !NEGATIVE case, so:
 > 
-> The criteria was a use case, so I gave a use case.  I wouldn't rule out the "testing use case" either, as a mount option makes it possible to test mixed pnfs/non-pnfs 4.1 traffic without multiple servers.
+> 	task doing lookup		task doing update
+> 	^^^^^^^^^^^^^^^^^		^^^^^^^^^^^^^^^^^
 > 
-> The point is that pNFS, like everything else, is about the users.
+> 	1. test for CACHE_VALID		3. set item->contents
+> 	   & !CACHE_NEGATIVE
+> 
+> 	2. dereference			4. set CACHE_VALID, clear
+> 	   item->contents->...		   CACHE_NEGATIVE.
+> 
+> As I understand it, if we want to gaurantee that item->contents is good
+> at step 2, then we need a write barrier between 3 and 4, together with a
+> read barrier between 1 and 2.  Taking the spinlock is overkill, but
+> should accomplish the same thing, as it forces 1 to occur before 3 or
+> after 4, and adds any necessary memory barriers.
 
-The criteria was a use case that explains adequately why the client
-needs to be able to override the server settings, not just random 'I
-might want to do this' moments.
+So, that being the real problem, perhaps it's clearer to use explicit
+memory barriers instead of more locking, and add some comments.  Also
+split this into a separate patch, as in the following.
 
-Rhetorical crap like 'it's about the users' isn't helping much either.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+--b.
