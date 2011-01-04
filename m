@@ -1,66 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.parallels.com ([64.131.90.16]:35838 "EHLO mx2.parallels.com"
+Received: from fieldses.org ([174.143.236.118]:40567 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751526Ab1AFHdo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Jan 2011 02:33:44 -0500
-Message-ID: <4D257054.8080807@parallels.com>
-Date: Thu, 6 Jan 2011 01:33:40 -0600
-From: Rob Landley <rlandley@parallels.com>
-To: Daniel Stodden <daniel.stodden@citrix.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Cache flush question.
-References: <1294130649.3529.96.camel@ramone>	 <1294151542.3389.7.camel@heimdal.trondhjem.org> <1294269347.29719.1673.camel@agari.van.xensource.com>
-In-Reply-To: <1294269347.29719.1673.camel@agari.van.xensource.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+	id S1751104Ab1ADSnR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 13:43:17 -0500
+Date: Tue, 4 Jan 2011 13:43:14 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
+Message-ID: <20110104184314.GD2308@fieldses.org>
+References: <20101229204752.GC12218@fieldses.org>
+ <20110103222605.GA24811@fieldses.org>
+ <20110104030805.GA3194@fieldses.org>
+ <20110104155107.0ff2c199@notabene.brown>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110104155107.0ff2c199@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 01/05/2011 05:15 PM, Daniel Stodden wrote:
-> On Tue, 2011-01-04 at 09:32 -0500, Trond Myklebust wrote:
->> On Tue, 2011-01-04 at 00:44 -0800, Daniel Stodden wrote:
->>> Hi anyone.
->>>
->>> If somebody's got a sec to enlighten me, there's some phenomenon I
->>> recently came across and found somewhat counterintuitive first.
->>>
->>> Whenever I
->>>
->>>   1. Dirty a bunch of pages backed by an NFS mount on some server.
->>>
->>>   2. Block the traffic with iptables (TCP, assuming that mattered).
->>>      Still plenty of writeback pending.
->>>
->>>   3. Sync
->>>
->>> I see #3 drive the dirty count in /proc/meminfo drop back to
->>> almost-zero, immediately. The sync itself blocks, though.
->>>
->>> So the pages are called clean the moment the write got queued, not
->>> acked? Leaving the rest just to retransmits by the socket then? Is this
->>> just done so because one can, or would that order rather matter for
->>> consistency?
->>
->> Take a look at the 'Writeback:' count, which should turn non-zero when
->> you hit #3.
->>
->> The VM allows pages to be either dirty or in writeback, but not both at
->> the same time. This is not NFS-specific. The same rule applies to local
->> filesystems.
->
-> Ah. That explains everything. Actually a question then, thanks for the
-> clarification :)
->
-> Rob Landley's comment regarding tx queue size somewhat made a good point
-> too.
+On Tue, Jan 04, 2011 at 03:51:07PM +1100, NeilBrown wrote:
+> On Mon, 3 Jan 2011 22:08:05 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
+> 
+> > On Mon, Jan 03, 2011 at 05:26:05PM -0500, J. Bruce Fields wrote:
+> > > On Wed, Dec 29, 2010 at 03:47:52PM -0500, bfields wrote:
+> > > > From: J. Bruce Fields <bfields@redhat.com>
+> > > > 
+> > > > Once a sunrpc cache entry is non-NEGATIVE, we should be replacing it
+> > > > (and allowing any concurrent users to destroy it on last put) instead of
+> > > > trying to update it in place.
+> > > 
+> > > Or the following seems simpler.
+> > > 
+> > > (And I was thinking it was necessary to ensure that the right thing
+> > > happened to the cached xprt->xpt_auth_cache entry--though on a second
+> > > look I see that sunrpc_cache_update also expires the replaced entry
+> > > immediately.  Still, this seems simpler if it also works.)
+> > 
+> > Eh, on third thoughts: we probably do want a real negative entry created
+> > in the cache, so I think the original patch was correct!
+> 
+> I like your second thought better than your third.
+> I don't see any reason to push this item out of the cache extra quickly.
+> In fact I think it would still be correct to just remove those two lines and
+> not set expiry_time to 0.  auth_unix_lookup will never find that IP address,
+> and so it doesn't matter if it remains in the cache or not.
+> I guess there could result in the cache appearing to contain different data
+> depending on whether you look at it the 'old' way or the 'new' way, but I
+> don't that is a real problem, and setting expiry_time to 0 overcomes that.
+> 
+> What was the substance of your third thought?
 
-Not nearly as good as I thought at the time.
+I had some idea that we could end up with a cache entry stuck in the
+cache forever.
 
- > But, given the rates I see, this queues mostly cache pages on the
-> transport, not copies, right?
+OK, actually I think late last night I reverted into some sort of "maybe
+if I type the first thing that comes to my mind, somebody else will
+think this through for me" state.  Apologies.  Um, did I win?
 
-Easy enough to tell: there's a "Writeback" field in /proc/meminfo.  Add 
-'em up and see what's missing.
+> BTW, you could use sunrpc_invalidate rather than just setting expiry_time to
+> zero, which would hurry it out of the cache a bit faster.
 
-Rob
+Yep, I like that, and I'd forgotten about sunrpc_invalidate, thanks!
+Done....  (As below).
+
+> And this all made me realise that there is more code that can be placed under
+> CONFIG_NFSD_DEPRECTATED.
+
+Yep, applied.
+
+(When do we get to remove all this?  Taking a stab at the 2.6.40 merge
+window....  OK, party at my place in May!)
+
+--b.
+
+commit ab5c05c579b0b37b9bf2c79c9c8f0ef6045ee41d
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Fri Dec 24 14:03:38 2010 -0500
+
+    svcrpc: modifying valid sunrpc cache entries is racy
+    
+    Once a sunrpc cache entry is VALID, we should be replacing it (and
+    allowing any concurrent users to destroy it on last put) instead of
+    trying to update it in place.
+    
+    Otherwise someone referencing the ip_map we're modifying here could try
+    to use the m_client just as we're putting the last reference.
+    
+    The bug should only be seen by users of the legacy nfsd interfaces.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index a04ac91..59a7c52 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -401,8 +401,7 @@ struct auth_domain *auth_unix_lookup(struct net *net, struct in6_addr *addr)
+ 		return NULL;
+ 
+ 	if ((ipm->m_client->addr_changes - ipm->m_add_change) >0) {
+-		if (test_and_set_bit(CACHE_NEGATIVE, &ipm->h.flags) == 0)
+-			auth_domain_put(&ipm->m_client->h);
++		sunrpc_invalidate(&ipm->h, sn->ip_map_cache);
+ 		rv = NULL;
+ 	} else {
+ 		rv = &ipm->m_client->h;
