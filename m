@@ -1,63 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out-1.desy.de ([131.169.56.84]:43458 "EHLO
-	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756691Ab1AMVOa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 16:14:30 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id EFB7B19A2
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 22:14:28 +0100 (MET)
-Received: from adserv70.win.desy.de (adserv70.win.desy.de [131.169.97.56])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id E978113F23
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 22:14:28 +0100 (MET)
-Message-ID: <4D2F6B3D.7080007@desy.de>
-Date: Thu, 13 Jan 2011 22:14:37 +0100
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: NFS list <linux-nfs@vger.kernel.org>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: nfsv4 + readdir == too many requests
-References: <4D2F5FE1.6050509@desy.de> <1294952462.3038.29.camel@heimdal.trondhjem.org>
-In-Reply-To: <1294952462.3038.29.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:38632 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751941Ab1ADRgk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 12:36:40 -0500
+Date: Tue, 4 Jan 2011 12:36:37 -0500
+To: andros@netapp.com
+Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH_V6 01/11] SUNRPC move svc_drop to caller of
+ svc_process_common
+Message-ID: <20110104173637.GC30317@fieldses.org>
+References: <1294161028-4499-1-git-send-email-andros@netapp.com>
+ <1294161028-4499-2-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1294161028-4499-2-git-send-email-andros@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 01/13/2011 10:01 PM, Trond Myklebust wrote:
-> On Thu, 2011-01-13 at 21:26 +0100, Tigran Mkrtchyan wrote: 
->   
->> By running intensive tests I notice that readdir oration over nfsv4.1
->> asks for
->> file attributes in readdir (attr_request) and later on for each file. To
->> me it looks like
->> broken.
->>
->> This 2.6.37 + pnfs-all-latests :
->>
->> git://linux-nfs.org/~bhalevy/linux-pnfs.git
->> 378978453b64bf895de8cd0e68dbcd9e9c0155ce
->>
->> 100% reproducible.
->>     
-> 1) What makes you think this is broken, and not just a case of the
-> attribute cache timing out and/or the directory changing?
->   
+On Tue, Jan 04, 2011 at 12:10:18PM -0500, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> The NFSv4.1 shared back channel does not need to call svc_drop because the
+> callback service never outlives the single connection it services, and it
+> reuses it's buffers and keeps the trasport.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
 
-The directory does not changed. I issue 'ls -l' and with wireshak can
-see READDIR requests
-followed by GETATTR. looks like cache is ignored or too small.
-> 2) Can you produce a testcase that proves brokenness?
->   
-I will try to come up with something.
-> 3) Can you reproduce on a non-pnfs-all-latests kernel?
->
-> Readdir shouldn't be affected by the stuff in Benny's tree, but I'm
-> always wary of tests on out-of-mainline trees.
->   
-NP. with vanilla 2.6.37 ?
+Looks good to me.
 
-Regards,
-   Tigran.
-> Cheers
->    Trond
->   
+Acked-by: J. Bruce Fields <bfields@redhat.com>
 
+--b.
+
+> ---
+>  net/sunrpc/svc.c |   30 ++++++++++++++++--------------
+>  1 files changed, 16 insertions(+), 14 deletions(-)
+> 
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 6359c42..606d182 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1147,7 +1147,6 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+>   dropit:
+>  	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+>  	dprintk("svc: svc_process dropit\n");
+> -	svc_drop(rqstp);
+>  	return 0;
+>  
+>  err_short_len:
+> @@ -1218,7 +1217,6 @@ svc_process(struct svc_rqst *rqstp)
+>  	struct kvec		*resv = &rqstp->rq_res.head[0];
+>  	struct svc_serv		*serv = rqstp->rq_server;
+>  	u32			dir;
+> -	int			error;
+>  
+>  	/*
+>  	 * Setup response xdr_buf.
+> @@ -1246,11 +1244,13 @@ svc_process(struct svc_rqst *rqstp)
+>  		return 0;
+>  	}
+>  
+> -	error = svc_process_common(rqstp, argv, resv);
+> -	if (error <= 0)
+> -		return error;
+> -
+> -	return svc_send(rqstp);
+> +	/* Returns 1 for send, 0 for drop */
+> +	if (svc_process_common(rqstp, argv, resv))
+> +		return svc_send(rqstp);
+> +	else {
+> +		svc_drop(rqstp);
+> +		return 0;
+> +	}
+>  }
+>  
+>  #if defined(CONFIG_NFS_V4_1)
+> @@ -1264,7 +1264,6 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>  {
+>  	struct kvec	*argv = &rqstp->rq_arg.head[0];
+>  	struct kvec	*resv = &rqstp->rq_res.head[0];
+> -	int 		error;
+>  
+>  	/* Build the svc_rqst used by the common processing routine */
+>  	rqstp->rq_xprt = serv->bc_xprt;
+> @@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+>  	svc_getu32(argv);	/* XID */
+>  	svc_getnl(argv);	/* CALLDIR */
+>  
+> -	error = svc_process_common(rqstp, argv, resv);
+> -	if (error <= 0)
+> -		return error;
+> -
+> -	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
+> -	return bc_send(req);
+> +	/* Returns 1 for send, 0 for drop */
+> +	if (svc_process_common(rqstp, argv, resv)) {
+> +		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
+> +						sizeof(req->rq_snd_buf));
+> +		return bc_send(req);
+> +	} else {
+> +		/* Nothing to do to drop request */
+> +		return 0;
+> +	}
+>  }
+>  EXPORT_SYMBOL(bc_svc_process);
+>  #endif /* CONFIG_NFS_V4_1 */
+> -- 
+> 1.6.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
