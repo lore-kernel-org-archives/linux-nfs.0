@@ -1,57 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29788 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:38456 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752838Ab1ASXtk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 18:49:40 -0500
-Subject: Re: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Nick Piggin <npiggin@gmail.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wen.gang.wang@oracle.com
-In-Reply-To: <AANLkTiknrso7mQbTiXNF3MLz+RPi52M1s+DV1XaxciO=@mail.gmail.com>
-References: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
-	 <1295479517.22151.16.camel@heimdal.trondhjem.org>
-	 <AANLkTikRX8nxh-gp=Fdr21dg-DLmUb2FxYXrM2A0hfN0@mail.gmail.com>
-	 <1295479900.22151.19.camel@heimdal.trondhjem.org>
-	 <AANLkTiknrso7mQbTiXNF3MLz+RPi52M1s+DV1XaxciO=@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 19 Jan 2011 18:49:36 -0500
-Message-ID: <1295480976.22151.23.camel@heimdal.trondhjem.org>
+	id S1751401Ab1ADUnm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 15:43:42 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V7 05/12] NFS use svc_create_xprt for NFSv4.1 callback service
+Date: Tue,  4 Jan 2011 15:42:39 -0500
+Message-Id: <1294173766-5573-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1294173766-5573-5-git-send-email-andros@netapp.com>
+References: <1294173766-5573-1-git-send-email-andros@netapp.com>
+ <1294173766-5573-2-git-send-email-andros@netapp.com>
+ <1294173766-5573-3-git-send-email-andros@netapp.com>
+ <1294173766-5573-4-git-send-email-andros@netapp.com>
+ <1294173766-5573-5-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-01-20 at 10:37 +1100, Nick Piggin wrote: 
-> On Thu, Jan 20, 2011 at 10:31 AM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Thu, 2011-01-20 at 10:26 +1100, Nick Piggin wrote:
-> >> On Thu, Jan 20, 2011 at 10:25 AM, Trond Myklebust
-> 
-> >> > Also, why is EIO the correct reply when no bytes were read/written? Why
-> >> > shouldn't the VFS aio code be able to cope with a zero byte reply?
-> >>
-> >> What would it do?
-> >
-> > Just return that zero byte reply to userland.
-> >
-> > zero bytes is a valid reply for ordinary read() and write(), so why
-> > should we have to do anything different for aio_read()/aio_write()?
-> 
-> It doesn't give userspace much to do. zero reply from read means
-> EOF. Zero reply from write is pretty useless, I don't think we do it
-> in the buffered write path -- we either ensure we write at least
-> something or have a meaningful error to return.
+From: Andy Adamson <andros@netapp.com>
 
-zero reply from read means EOF _or_ user supplied a zero length buffer.
+The new back channel transport means we call the normal creation routine as
+well as svc_xprt_put.
 
-zero reply from write may also be useless, but it is a valid value. It
-can simply mean the user supplied a zero length buffer.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback.c |   28 ++++++++++++++++++----------
+ 1 files changed, 18 insertions(+), 10 deletions(-)
 
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 241ab70..8861d5c 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -177,30 +177,38 @@ nfs41_callback_svc(void *vrqstp)
+ struct svc_rqst *
+ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ {
+-	struct svc_xprt *bc_xprt;
+-	struct svc_rqst *rqstp = ERR_PTR(-ENOMEM);
++	struct svc_rqst *rqstp;
++	int ret;
+ 
+-	dprintk("--> %s\n", __func__);
+-	/* Create a svc_sock for the service */
+-	bc_xprt = svc_sock_create(serv, xprt->prot);
+-	if (!bc_xprt)
++	/*
++	 * Create an svc_sock for the back channel service that shares the
++	 * fore channel connection.
++	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
++	 */
++	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
++			      SVC_SOCK_ANONYMOUS);
++	if (ret < 0) {
++		rqstp = ERR_PTR(ret);
+ 		goto out;
++	}
+ 
+ 	/*
+ 	 * Save the svc_serv in the transport so that it can
+ 	 * be referenced when the session backchannel is initialized
+ 	 */
+-	serv->bc_xprt = bc_xprt;
+ 	xprt->bc_serv = serv;
+ 
+ 	INIT_LIST_HEAD(&serv->sv_cb_list);
+ 	spin_lock_init(&serv->sv_cb_lock);
+ 	init_waitqueue_head(&serv->sv_cb_waitq);
+ 	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
+-	if (IS_ERR(rqstp))
+-		svc_sock_destroy(bc_xprt);
++	if (IS_ERR(rqstp)) {
++		svc_xprt_put(serv->bc_xprt);
++		serv->bc_xprt = NULL;
++	}
+ out:
+-	dprintk("--> %s return %p\n", __func__, rqstp);
++	dprintk("--> %s return %ld\n", __func__,
++		IS_ERR(rqstp) ? PTR_ERR(rqstp) : 0);
+ 	return rqstp;
+ }
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.6.6
 
