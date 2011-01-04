@@ -1,163 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48464 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:35315 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751322Ab1AER33 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 12:29:29 -0500
-Date: Wed, 5 Jan 2011 12:29:17 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] nfsd4: implement secinfo_no_name
-Message-ID: <20110105172916.GD13000@fieldses.org>
-References: <1292612511-14203-1-git-send-email-bfields@redhat.com>
- <1292612511-14203-4-git-send-email-bfields@redhat.com>
- <4D183265.70608@cn.fujitsu.com>
- <20101229185609.GA12218@fieldses.org>
- <4D1C06E7.5060009@cn.fujitsu.com>
- <20110105010507.GC14744@fieldses.org>
- <AANLkTimHAzLWE2ZC+QGtSw3ff6fpQsejDV8M7x8m34dp@mail.gmail.com>
- <20110105153713.GA13000@fieldses.org>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20110105153713.GA13000@fieldses.org>
+	id S1751100Ab1ADVPq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 16:15:46 -0500
+Date: Wed, 5 Jan 2011 08:15:38 +1100
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
+Message-ID: <20110105081538.0779659d@notabene.brown>
+In-Reply-To: <20110104184314.GD2308@fieldses.org>
+References: <20101229204752.GC12218@fieldses.org>
+	<20110103222605.GA24811@fieldses.org>
+	<20110104030805.GA3194@fieldses.org>
+	<20110104155107.0ff2c199@notabene.brown>
+	<20110104184314.GD2308@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jan 05, 2011 at 10:37:13AM -0500, J. Bruce Fields wrote:
-> On Wed, Jan 05, 2011 at 10:15:11AM -0500, Fred Isaman wrote:
-> > On Tue, Jan 4, 2011 at 8:05 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > > On Thu, Dec 30, 2010 at 12:13:27PM +0800, Mi Jinlong wrote:
-> > >>
-> > >>
-> > >> J. Bruce Fields:
-> > >> > On Mon, Dec 27, 2010 at 02:29:57PM +0800, Mi Jinlong wrote:
-> > >> >> When testing this patch, oops appears.
-> > >> >>
-> > >> >> We should implement a nfsd4_encode_secinfo_no_name() instead using
-> > >> >> nfsd4_encode_secinfo().
-> > >> >>
-> > >> >> With the following patch, kernel will run correctly.
-> > >> >
-> > >> > Whoops, yes, you're correct.  I've applied your patch.  Thanks!
-> > >> >
-> > >> > (What are you using for testing?)
-> > >>
-> > >> Hi Bruce:
-> > >>
-> > >>   I test it by the pynfs41 at your tree, and add some simple
-> > >>   test case as following.
-> > >>
-> > >>   I have a question about the op.secinfo_no_name(), should it take
-> > >>   a argument?
-> > >>   Right now, maybe it always request with NFS4_SECINFO_STYLE4_CURRENT_FH,
-> > >>   or I can't find how to set the argument.
-> > >
+On Tue, 4 Jan 2011 13:43:14 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
+
+> On Tue, Jan 04, 2011 at 03:51:07PM +1100, NeilBrown wrote:
+> > On Mon, 3 Jan 2011 22:08:05 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+> > wrote:
 > > 
-> > There was a bug in how the op.secinfo_no_name() function was auto
-> > constructed.  I've pushed a fix to
-> > my tree at git://linux-nfs.org/~iisaman/newpynfs.git.
+> > > On Mon, Jan 03, 2011 at 05:26:05PM -0500, J. Bruce Fields wrote:
+> > > > On Wed, Dec 29, 2010 at 03:47:52PM -0500, bfields wrote:
+> > > > > From: J. Bruce Fields <bfields@redhat.com>
+> > > > > 
+> > > > > Once a sunrpc cache entry is non-NEGATIVE, we should be replacing it
+> > > > > (and allowing any concurrent users to destroy it on last put) instead of
+> > > > > trying to update it in place.
+> > > > 
+> > > > Or the following seems simpler.
+> > > > 
+> > > > (And I was thinking it was necessary to ensure that the right thing
+> > > > happened to the cached xprt->xpt_auth_cache entry--though on a second
+> > > > look I see that sunrpc_cache_update also expires the replaced entry
+> > > > immediately.  Still, this seems simpler if it also works.)
+> > > 
+> > > Eh, on third thoughts: we probably do want a real negative entry created
+> > > in the cache, so I think the original patch was correct!
+> > 
+> > I like your second thought better than your third.
+> > I don't see any reason to push this item out of the cache extra quickly.
+> > In fact I think it would still be correct to just remove those two lines and
+> > not set expiry_time to 0.  auth_unix_lookup will never find that IP address,
+> > and so it doesn't matter if it remains in the cache or not.
+> > I guess there could result in the cache appearing to contain different data
+> > depending on whether you look at it the 'old' way or the 'new' way, but I
+> > don't that is a real problem, and setting expiry_time to 0 overcomes that.
+> > 
+> > What was the substance of your third thought?
 > 
-> Thanks, Fred.  I've pulled that into my repository too.
+> I had some idea that we could end up with a cache entry stuck in the
+> cache forever.
+> 
+> OK, actually I think late last night I reverted into some sort of "maybe
+> if I type the first thing that comes to my mind, somebody else will
+> think this through for me" state.  Apologies.  Um, did I win?
 
-But then these secinfo_no_name tests don't work ("TypeError:
-data.opsecinfo_no_name == None"); Mi Jinlong, would you mind looking
-into that?
+This would be the Andrew Morton method of community involvement:  say
+something obviously wrong as it produces more responses than saying something
+right - and some of them might be useful.... I fall for it all the time!
 
---b.
+
+> 
+> > BTW, you could use sunrpc_invalidate rather than just setting expiry_time to
+> > zero, which would hurry it out of the cache a bit faster.
+> 
+> Yep, I like that, and I'd forgotten about sunrpc_invalidate, thanks!
+> Done....  (As below).
+> 
+> > And this all made me realise that there is more code that can be placed under
+> > CONFIG_NFSD_DEPRECTATED.
+> 
+> Yep, applied.
+> 
+> (When do we get to remove all this?  Taking a stab at the 2.6.40 merge
+> window....
+
+That is what is says in feature-removal-schedule.txt (which no-one reads).
+
+
+>             OK, party at my place in May!)
+
+Will there still be snow?  I'm not coming if there is no snow!
+
+(patch looks good)
+
+NeilBrown
+
+
 
 > 
 > --b.
 > 
-> > 
-> > Fred
-> > 
-> > > Hm, I don't know, I guess I'd look at how arguments are passed to some
-> > > of the other operations when constructing compounds in other tests....
-> > >
-> > > --b.
-> > >
-> > >>
-> > >> thanks,
-> > >> Mi Jinlong
-> > >>
-> > >> >From 31ae25c04295888fa54ea531cdfaa4cfdefbe877 Mon Sep 17 00:00:00 2001
-> > >> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> > >> Date: Wed, 29 Dec 2010 17:23:35 +0800
-> > >> Subject: [PATCH] CLNT: Add some simple secinfo_no_name tests
-> > >>
-> > >>  Add two simple secinfo_no_name tests as Bruce said:
-> > >>     - send PUTROOTFH+SECINFO_NO_NAME, check that you get back a
-> > >>       legal result.
-> > >>     - send PUTROOTFH+SECINFO+GETFH, and/or
-> > >>       PUTROOTFH+SECINFO_NO_NAME+GETFH, check that the GETFH returns
-> > >>       NOFILEHANDLE.
-> > >>
-> > >>  Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> > >> ---
-> > >>  nfs4.1/server41tests/__init__.py           |    1 +
-> > >>  nfs4.1/server41tests/st_secinfo_no_name.py |   35 ++++++++++++++++++++++++++++
-> > >>  2 files changed, 36 insertions(+), 0 deletions(-)
-> > >>  create mode 100644 nfs4.1/server41tests/st_secinfo_no_name.py
-> > >>
-> > >> diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
-> > >> index 22cd664..6aee88e 100644
-> > >> --- a/nfs4.1/server41tests/__init__.py
-> > >> +++ b/nfs4.1/server41tests/__init__.py
-> > >> @@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
-> > >>             "st_compound.py",
-> > >>             "st_create_session.py",
-> > >>             "st_destroy_session.py",
-> > >> +           "st_secinfo_no_name.py",
-> > >>             "st_sequence.py",
-> > >>          "st_trunking.py",
-> > >>             "st_open.py",
-> > >> diff --git a/nfs4.1/server41tests/st_secinfo_no_name.py b/nfs4.1/server41tests/st_secinfo_no_name.py
-> > >> new file mode 100644
-> > >> index 0000000..a4b148d
-> > >> --- /dev/null
-> > >> +++ b/nfs4.1/server41tests/st_secinfo_no_name.py
-> > >> @@ -0,0 +1,35 @@
-> > >> +from st_create_session import create_session
-> > >> +from nfs4_const import *
-> > >> +from environment import check, fail, bad_sessionid, create_file
-> > >> +from nfs4_type import channel_attrs4
-> > >> +import nfs4_ops as op
-> > >> +import nfs4lib
-> > >> +
-> > >> +def testSupported(t, env):
-> > >> +    """Do a simple SECINFO_NO_NAME
-> > >> +       send PUTROOTFH+SECINFO_NO_NAME, check is result legal
-> > >> +
-> > >> +    FLAGS: all
-> > >> +    CODE: SECNN1
-> > >> +    """
-> > >> +    c = env.c1.new_client(env.testname(t))
-> > >> +    sess = c.create_session()
-> > >> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name()])
-> > >> +    check(res);
-> > >> +
-> > >> +def testSupported2(t, env):
-> > >> +    """GETFH after do a SECINFO_NO_NAME or SECINFO
-> > >> +       result in a NOFILEHANDLE error, See rfc 5661 section 2.6.3.1.1.8
-> > >> +
-> > >> +    FLAGS: all
-> > >> +    CODE: SECNN2
-> > >> +    """
-> > >> +    c = env.c1.new_client(env.testname(t))
-> > >> +    sess = c.create_session()
-> > >> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name(), op.getfh()])
-> > >> +    print res
-> > >> +    check(res, NFS4ERR_NOFILEHANDLE);
-> > >> +
-> > >> +    res = sess.compound([op.putrootfh(), op.secinfo("tree"), op.getfh()])
-> > >> +    print res
-> > >> +    check(res, NFS4ERR_NOFILEHANDLE);
-> > >> --
-> > >> 1.7.3.3
-> > >>
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > >
+> commit ab5c05c579b0b37b9bf2c79c9c8f0ef6045ee41d
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Fri Dec 24 14:03:38 2010 -0500
+> 
+>     svcrpc: modifying valid sunrpc cache entries is racy
+>     
+>     Once a sunrpc cache entry is VALID, we should be replacing it (and
+>     allowing any concurrent users to destroy it on last put) instead of
+>     trying to update it in place.
+>     
+>     Otherwise someone referencing the ip_map we're modifying here could try
+>     to use the m_client just as we're putting the last reference.
+>     
+>     The bug should only be seen by users of the legacy nfsd interfaces.
+>     
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+> index a04ac91..59a7c52 100644
+> --- a/net/sunrpc/svcauth_unix.c
+> +++ b/net/sunrpc/svcauth_unix.c
+> @@ -401,8 +401,7 @@ struct auth_domain *auth_unix_lookup(struct net *net, struct in6_addr *addr)
+>  		return NULL;
+>  
+>  	if ((ipm->m_client->addr_changes - ipm->m_add_change) >0) {
+> -		if (test_and_set_bit(CACHE_NEGATIVE, &ipm->h.flags) == 0)
+> -			auth_domain_put(&ipm->m_client->h);
+> +		sunrpc_invalidate(&ipm->h, sn->ip_map_cache);
+>  		rv = NULL;
+>  	} else {
+>  		rv = &ipm->m_client->h;
+
