@@ -1,129 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:34603 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751854Ab1AUDQo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jan 2011 22:16:44 -0500
-Date: Fri, 21 Jan 2011 11:14:42 +0800
-From: Wengang Wang <wen.gang.wang@oracle.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/4] NFS: Fix "kernel BUG at fs/aio.c:554!"
-Message-ID: <20110121031442.GA10987@laptop.uk.oracle.com>
-References: <20110121030314.1056.96774.stgit@matisse.1015granger.net>
- <20110121030508.1056.51625.stgit@matisse.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:33071 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751283Ab1ADSSY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 13:18:24 -0500
+Date: Tue, 4 Jan 2011 13:18:16 -0500
+To: Christoph Hellwig <hch@infradead.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 3/4] locks: eliminate fl_mylease callback
+Message-ID: <20110104181815.GB2308@fieldses.org>
+References: <1294110419-3105-1-git-send-email-bfields@redhat.com>
+ <1294110419-3105-4-git-send-email-bfields@redhat.com>
+ <20110104060723.GA15158@infradead.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110121030508.1056.51625.stgit@matisse.1015granger.net>
+In-Reply-To: <20110104060723.GA15158@infradead.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 11-01-20 22:05, Chuck Lever wrote:
-> Nick Piggin reports:
+On Tue, Jan 04, 2011 at 01:07:23AM -0500, Christoph Hellwig wrote:
+> On Mon, Jan 03, 2011 at 10:06:58PM -0500, J. Bruce Fields wrote:
+> > The nfs server only supports read delegations for now, so we don't care
+> > how conflicts are determined.  All we care is that unlocks are
+> > recognized as matching the leases they are meant to remove.  After the
+> > last patch, a comparison of struct files will work for that purpose.  So
+> > we no longer need this callback.
 > 
-> > I'm getting use after frees in aio code in NFS
-> >
-> > [ 2703.396766] Call Trace:
-> > [ 2703.396858]  [<ffffffff8100b057>] ? native_sched_clock+0x27/0x80
-> > [ 2703.396959]  [<ffffffff8108509e>] ? put_lock_stats+0xe/0x40
-> > [ 2703.397058]  [<ffffffff81088348>] ? lock_release_holdtime+0xa8/0x140
-> > [ 2703.397159]  [<ffffffff8108a2a5>] lock_acquire+0x95/0x1b0
-> > [ 2703.397260]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
-> > [ 2703.397361]  [<ffffffff81039701>] ? get_parent_ip+0x11/0x50
-> > [ 2703.397464]  [<ffffffff81612a31>] _raw_spin_lock_irq+0x41/0x80
-> > [ 2703.397564]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
-> > [ 2703.397662]  [<ffffffff811627db>] aio_put_req+0x2b/0x60
-> > [ 2703.397761]  [<ffffffff811647fe>] do_io_submit+0x2be/0x7c0
-> > [ 2703.397895]  [<ffffffff81164d0b>] sys_io_submit+0xb/0x10
-> > [ 2703.397995]  [<ffffffff8100307b>] system_call_fastpath+0x16/0x1b
-> >
-> > Adding some tracing, it is due to nfs completing the request then
-> > returning something other than -EIOCBQUEUED, so aio.c
-> > also completes the request.
-> 
-> To address this, prevent the NFS direct I/O engine from completing
-> async iocbs when the forward path returns an error without starting
-> any I/O.
-> 
-> This fix appears to survive ^C during both "xfstest no. 208" and "fsx
-> -Z."
-> 
-> It's likely this bug has existed for a very long while, as we are seeing
-> very similar symptoms in OEL 5.  Copying stable.
-> 
-> Cc: Stable <stable@kernel.org>
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  fs/nfs/direct.c |   30 ++++++++++++++++--------------
->  1 files changed, 16 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index e6ace0d..bde25ca 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -407,15 +407,16 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
->  		pos += vec->iov_len;
->  	}
->  
-> +	/*
-> +	 * If no bytes were started, return the error, and let the
-> +	 * generic layer handle the completion.
-> +	 */
-> +	if (requested_bytes == 0)
-> +		return result < 0 ? result : -EIO;
-> +
->  	if (put_dreq(dreq))
->  		nfs_direct_complete(dreq);
+> Please also update Documentation/filesystems/Locking for method
+> removals.
 
-Same comment as I wrote in another thread:
+Whoops, thanks for the reminder.
 
-put_dreq() -> nfs_direct_complete() does more than complete the aio its self.
-It also drops ref on dreq with put_dreq() and does
+Looks like we never added fl_mylease?
 
-complete_all(&dreq->completion);
-nfs_direct_req_release(dreq);
+That leaves the fl_release_private patch, updated as follows.
 
-I think we still needs that called somewhere.
+--b.
 
-regards,
-wengang.
-> -
-> -	if (requested_bytes != 0)
-> -		return 0;
-> -
-> -	if (result < 0)
-> -		return result;
-> -	return -EIO;
-> +	return 0;
->  }
->  
->  static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
-> @@ -841,15 +842,16 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
->  		pos += vec->iov_len;
->  	}
->  
-> +	/*
-> +	 * If no bytes were started, return the error, and let the
-> +	 * generic layer handle the completion.
-> +	 */
-> +	if (requested_bytes == 0)
-> +		return result < 0 ? result : -EIO;
-> +
->  	if (put_dreq(dreq))
->  		nfs_direct_write_complete(dreq, dreq->inode);
-> -
-> -	if (requested_bytes != 0)
-> -		return 0;
-> -
-> -	if (result < 0)
-> -		return result;
-> -	return -EIO;
-> +	return 0;
->  }
->  
->  static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+commit 3d801116bb23a1f446627ce1976950c7a126541e
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Sat Oct 30 17:41:26 2010 -0400
+
+    nfsd4: eliminate lease delete callback
+    
+    nfsd controls the lifetime of the lease, not the lock code, so there's
+    no need for this callback on lease destruction.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
+index b6426f1..075be12 100644
+--- a/Documentation/filesystems/Locking
++++ b/Documentation/filesystems/Locking
+@@ -327,14 +327,12 @@ fl_release_private:	yes	yes
+ prototypes:
+ 	int (*fl_compare_owner)(struct file_lock *, struct file_lock *);
+ 	void (*fl_notify)(struct file_lock *);  /* unblock callback */
+-	void (*fl_release_private)(struct file_lock *);
+ 	void (*fl_break)(struct file_lock *); /* break_lease callback */
+ 
+ locking rules:
+ 			BKL	may block
+ fl_compare_owner:	yes	no
+ fl_notify:		yes	no
+-fl_release_private:	yes	yes
+ fl_break:		yes	no
+ 
+ 	Currently only NFSD and NLM provide instances of this class. None of the
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b82e368..2e44ad2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2296,23 +2296,6 @@ void nfsd_break_deleg_cb(struct file_lock *fl)
+ }
+ 
+ /*
+- * The file_lock is being reapd.
+- *
+- * Called by locks_free_lock() with lock_flocks() held.
+- */
+-static
+-void nfsd_release_deleg_cb(struct file_lock *fl)
+-{
+-	struct nfs4_delegation *dp = (struct nfs4_delegation *)fl->fl_owner;
+-
+-	dprintk("NFSD nfsd_release_deleg_cb: fl %p dp %p dl_count %d\n", fl,dp, atomic_read(&dp->dl_count));
+-
+-	if (!(fl->fl_flags & FL_LEASE) || !dp)
+-		return;
+-	dp->dl_flock = NULL;
+-}
+-
+-/*
+  * Called from setlease() with lock_flocks() held
+  */
+ static
+@@ -2341,7 +2324,6 @@ int nfsd_change_deleg_cb(struct file_lock **onlist, int arg)
+ 
+ static const struct lock_manager_operations nfsd_lease_mng_ops = {
+ 	.fl_break = nfsd_break_deleg_cb,
+-	.fl_release_private = nfsd_release_deleg_cb,
+ 	.fl_mylease = nfsd_same_client_deleg_cb,
+ 	.fl_change = nfsd_change_deleg_cb,
+ };
