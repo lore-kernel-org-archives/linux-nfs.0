@@ -1,70 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:45978 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:38456 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755021Ab1AGTOF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Jan 2011 14:14:05 -0500
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Russell King - ARM Linux <linux@arm.linux.org.uk>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        James Bottomley <James.Bottomley@hansenpartnership.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Marc Kleine-Budde <mkl@pengutronix.de>,
-        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
-        linux-arm-kernel@lists.infradead.org,
-        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
-In-Reply-To: <20110107190229.GX31708@n2100.arm.linux.org.uk>
-References: <20110105210448.GM8638@n2100.arm.linux.org.uk>
-	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
-	 <1294262208.2952.4.camel@heimdal.trondhjem.org>
-	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
-	 <1294268808.2952.18.camel@heimdal.trondhjem.org>
-	 <1294270104.16957.73.camel@mulgrave.site>
-	 <1294335614.22825.154.camel@mulgrave.site>
-	 <1294336054.2905.1.camel@heimdal.trondhjem.org>
-	 <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>
-	 <1294426405.2929.23.camel@heimdal.trondhjem.org>
-	 <20110107190229.GX31708@n2100.arm.linux.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 07 Jan 2011 14:13:48 -0500
-Message-ID: <1294427628.2929.30.camel@heimdal.trondhjem.org>
+	id S1750947Ab1ADUnl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 15:43:41 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH_V7 0/12] NFSv4 find client fix Version 7 
+Date: Tue,  4 Jan 2011 15:42:34 -0500
+Message-Id: <1294173766-5573-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 2011-01-07 at 19:02 +0000, Russell King - ARM Linux wrote: 
-> On Fri, Jan 07, 2011 at 01:53:25PM -0500, Trond Myklebust wrote:
-> > I'd still like to keep the existing code for those architectures that
-> > don't have problems, since that allows us to send 32k READDIR requests
-> > instead of being limited to 4k. For large directories, that is a clear
-> > win.
-> > For the NOMMU case we will just go back to using a single page for
-> > storage (and 4k READDIR requests only). Should I just do the same for
-> > architectures like ARM and PARISC?
-> 
-> I think you said that readdir reads via the vmalloc mapping of the
-> group of pages, but XDR writes to the individual pages.
-> 
-> As I understand NFS, you receive a packet, you then have to use XDR
-> to unpack the data, which you presumably write into the set of
-> struct page *'s using kmap?
 
-No. The socket or RDMA layers place the data directly into the struct
-pages. We then unpack them in the XDR layer using the vmalloc mapping
-and place the resulting processed readdir data into the page cache.
 
-> Isn't a solution to have XDR write directly into the vmalloc mapping
-> rather than using struct page * and kmap?
+Version 7 of these patches
+Applies to Tronds nfs-for-next branch
 
-Unfortunately that isn't possible. :-(
+Already acked by bfields
+------------------------
+0001-SUNRPC-move-svc_drop-to-caller-of-svc_process_common.patch
+0002-SUNRPC-fix-bc_send-print.patch
+0010-NFS-RPC_AUTH_GSS-unsupported-on-v4.1-back-channel.patch
+0012-NFS-rename-client-back-channel-transport-field.patch
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Responded to Version 6 comments from bfields.
+---------------------------------------------
+0003-SUNRPC-new-transport-for-the-NFSv4.1-shared-back-cha.patch
+0004-NFS-register-and-unregister-back-channel-transport.patch
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Unchanged:
+----------
+0005-NFS-use-svc_create_xprt-for-NFSv4.1-callback-service.patch
+0006-NFS-do-not-clear-minor-version-at-nfs_client-free.patch
+0007-NFS-implement-v4.0-callback_ident.patch
+0008-NFS-associate-sessionid-with-callback-connection.patch
+0009-NFS-refactor-nfs_find_client-and-reference-client-ac.patch
+0011-NFS-add-session-back-channel-draining.patch
+
+
+The back channel server svc_process_common RPC layer pg_authenticate call
+[nfs_callback_authenticate] is shared by both the NFSv4.0 and the NFSv4.1
+callback threads. It authenticates the incoming request by finding (and
+referencing) an nfs_client struct based on the incoming request address
+and the NFS version (4). This is akin to the NFS server which authenticates
+requests by matching the server address to the exports file client list.
+
+Since there is no minorversion in the search, it may find the wrong
+nfs_client struct. For the nfsv4.0 callback service thread, this means it
+could find an NFSv4.1 nfs_client. For the NFSv4.1 callback service thread, it
+could find an NFSv4.0 instead of v4.1, or find an NFSv4.1 nfs_client with the
+wrong session.
+
+The nfs_client is dereferenced at the end of pg_authenticate. Another
+nfs_find_client call is done in the NFS layouer per operation dispatcher
+routines for NFSv4.0 and in the cb_sequence operation dispatcher routine for
+NFSv4.1 after decoding.
+
+This means the callback server could start processing a callback, passing
+the pg_authenticate test, and have the nfs_client struct freed between the
+pg_authenticate call and the dispatcher operation call. Or, it could have
+found the wrong nfs_client in the pg_authenticate call.
+
+The current code has this behavior: If the nfs_client is not found in
+pg_authenticate, the request is simply dropped (SVC_DROP). If an nfs_client
+is not found in the dispatcher routines NFS4ERR_BADSESSION is returned for
+v4.1 requests and NFS4ERR_BADHANDLE for v4.0 requests.
+
+The fix is to implement the v4.0 SETCLIENTID callback_ident and use it to find
+the one and only client for v4.0 callbacks, and to associate the sessionid
+with the sessions based callback service (v4.1) and use it to identify the
+one and only client. This can be done in the NFS layer, in CB_COMPOUND header
+processing for v4.0 and in CB_SEQUENCE processing in v4.1.
+In both cases, a reference to the found client is held across CB_COMPOUND
+processing.
+
+The pg_authenticate method does not have the callback_ident for CB_NULL or
+CB_COMPOUND v4.0 processing, so just the server address, nfsversion and
+minorversion is used for the client search
+
+For sessions based callback service, the sessionID can't be set until the
+return of the CREATE_SESSION call, yet the CB_NULL ping from a server can
+be initiated by the server at the receipt of the CREATE_SESSION call before
+the response is sent. So for CB_NULL, the sessionid is (usually) not set, and
+the sessionid is not used for CB_NULL pg_authenticate client searches.
+
+-->Andy
 
