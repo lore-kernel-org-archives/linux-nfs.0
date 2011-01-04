@@ -1,79 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:56637 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55105 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752465Ab1AZAPa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Jan 2011 19:15:30 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFS construct consistent co_ownerid for v4.1
-Date: Tue, 25 Jan 2011 19:15:32 -0500
-Message-Id: <1296000932-2935-1-git-send-email-andros@netapp.com>
+	id S1751205Ab1ADV5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 16:57:35 -0500
+Date: Tue, 4 Jan 2011 16:57:31 -0500
+From: "Dr. J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] NFSv4: Send unmapped uid/gids to the server when
+ using auth_sys
+Message-ID: <20110104215731.GH7908@fieldses.org>
+References: <1291085863-3234-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1291085863-3234-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1291085863-3234-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1291085863-3234-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1291085863-3234-5-git-send-email-Trond.Myklebust@netapp.com>
+ <20110104212504.GG27727@hostway.ca>
+ <1294176792.5896.22.camel@heimdal.trondhjem.org>
+ <20110104214334.GI27727@hostway.ca>
+ <1294177833.5896.26.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1294177833.5896.26.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Tue, Jan 04, 2011 at 04:50:33PM -0500, Trond Myklebust wrote:
+> On Tue, 2011-01-04 at 13:43 -0800, Simon Kirby wrote: 
+> > On Tue, Jan 04, 2011 at 04:33:12PM -0500, Trond Myklebust wrote:
+> > 
+> > > On Tue, 2011-01-04 at 13:25 -0800, Simon Kirby wrote: 
+> > > > I finally got around to setting up idmapd properly with libnss-mysql, and
+> > > > in doing so, I forgot that I had enabled nfs4_disable_idmapping=Y with
+> > > > this patch applied.  With this option set on the client, and the server
+> > > > set up normally, I get EINVAL from chown's fchowna():
+> > > > 
+> > > > # chown testuser:testuser test
+> > > > chown: changing ownership of `test': Invalid argument
+> > > > # echo N > /sys/module/nfs/parameters/nfs4_disable_idmapping
+> > > > # chown testuser:testuser test
+> > > > #
+> > > > 
+> > > > This happened on 2.6.37-rc5-git4, but I just reproduced it with
+> > > > 2.6.37-rc8-git5 as well.  The server idmapd logs:
+> > > > 
+> > > > rpc.idmapd[2987]: nss_getpwnam: name '1009999' does not map into domain 'localdomain'
+> > > > rpc.idmapd[2987]:  Server: (user) name "1009999" -> id "65534"
+> > > > rpc.idmapd[2987]: nfsdcb: authbuf=10.10.52.0/24 authtype=group
+> > > > rpc.idmapd[2987]:  Server: (group) name "1009999" -> id "65534"
+> > > > 
+> > > > (1009999 is the current uid/gid here.)
+> > > > 
+> > > > I think you meant for this to fall back automatically, right?
+> > > 
+> > > Did you remember to apply the patch 'NFSv4: Propagate the error
+> > > NFS4ERR_BADOWNER to nfs4_do_setattr'?
+> > 
+> > Yes, that patch is applied as part of the series. 
+> > 
+> > The -EINVAL is going back to userland's fchownat().  I expected
+> > to see the "Reenabling the idmapper" printk() from within
+> > nfs4_handle_exception(), but this didn't seem to happen.
+> 
+> Hmm... Bruce, does the server actually return NFS4ERR_BADOWNER when it
+> is supposed to? As far as I can see, nfs4idmap will consistently return
+> NFS4ERR_BADNAME, which would be a bug here.
 
-As stated in section 2.4 of RFC 5661, subsequent instances of the client need
-to present the same co_ownerid. Concatinate the client's IP dot address,
-host name, and the rpc_auth pseudoflavor to form the co_ownerid.
+Whoops.  Looking at the spec....  Looks like BADNAME should be reserved
+only for filenames?  I'll fix that now.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c |   30 ++++++++++--------------------
- 1 files changed, 10 insertions(+), 20 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9d992b0..78936a8 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -50,6 +50,7 @@
- #include <linux/module.h>
- #include <linux/sunrpc/bc_xprt.h>
- #include <linux/xattr.h>
-+#include <linux/utsname.h>
- 
- #include "nfs4_fs.h"
- #include "delegation.h"
-@@ -4572,27 +4573,16 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	*p = htonl((u32)clp->cl_boot_time.tv_nsec);
- 	args.verifier = &verifier;
- 
--	while (1) {
--		args.id_len = scnprintf(args.id, sizeof(args.id),
--					"%s/%s %u",
--					clp->cl_ipaddr,
--					rpc_peeraddr2str(clp->cl_rpcclient,
--							 RPC_DISPLAY_ADDR),
--					clp->cl_id_uniquifier);
--
--		status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
--
--		if (status != -NFS4ERR_CLID_INUSE)
--			break;
--
--		if (signalled())
--			break;
--
--		if (++clp->cl_id_uniquifier == 0)
--			break;
--	}
-+	args.id_len = scnprintf(args.id, sizeof(args.id),
-+				"%s/%s.%s/%u",
-+				clp->cl_ipaddr,
-+				init_utsname()->nodename,
-+				init_utsname()->domainname,
-+				clp->cl_rpcclient->cl_auth->au_flavor);
- 
--	status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
-+	status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
-+	if (!status)
-+		status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
- 	dprintk("<-- %s status= %d\n", __func__, status);
- 	return status;
- }
--- 
-1.6.6
-
+--b.
