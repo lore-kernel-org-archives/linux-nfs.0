@@ -1,190 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:41037 "EHLO mx1.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:62796 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750720Ab1ADFCA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 00:02:00 -0500
-Date: Tue, 4 Jan 2011 16:01:52 +1100
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
-Message-ID: <20110104160152.602a3c44@notabene.brown>
-In-Reply-To: <20110103205514.GB18056@fieldses.org>
-References: <20101229204752.GC12218@fieldses.org>
-	<20101229205942.GD12218@fieldses.org>
-	<20101230121940.3f48223a@notabene.brown>
-	<20101230015719.GA27614@fieldses.org>
-	<20110103205514.GB18056@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1752150Ab1ADRMZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 12:12:25 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V6 11/11] NFS rename client back channel transport field
+Date: Tue,  4 Jan 2011 12:11:44 -0500
+Message-Id: <1294161104-4555-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1294161104-4555-3-git-send-email-andros@netapp.com>
+References: <1294161104-4555-1-git-send-email-andros@netapp.com>
+ <1294161104-4555-2-git-send-email-andros@netapp.com>
+ <1294161104-4555-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 3 Jan 2011 15:55:14 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-wrote:
+From: Andy Adamson <andros@netapp.com>
 
-> On Wed, Dec 29, 2010 at 08:57:19PM -0500, J. Bruce Fields wrote:
-> > On Thu, Dec 30, 2010 at 12:19:40PM +1100, Neil Brown wrote:
-> > > On Wed, 29 Dec 2010 15:59:42 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-> > > wrote:
-> > > > Also noticed while trying to track down an rhel5 oops in
-> > > > svcauth_unix_set_client():
-> > > > 
-> > > > 	- cache_check() can set an entry negative in place, which if
-> > > > 	  nothing else must cause a leak in some cases.  (Because when
-> > > > 	  the entry is eventually destroyed, it will be assumed to not
-> > > > 	  have any contents.)  I suppose the fix is again to try to
-> > > > 	  adding a new negative entry instead.
-> > > 
-> > > cache_check should only set an entry 'negative' if it is not already valid
-> > > (rv == -EAGAIN) and there is no up-call pending.
-> > 
-> > I don't think anything keeps VALID from being set after the
-> > cache_is_valid check but before the code that does the
-> > set_bit(CACHE_NEGATIVE).
-> > 
-> > > Maybe we should check CACHE_VALID again after the test_and_set of
-> > > CACHE_PENDING, but is a very unlikely race (if it is actually a race at all)
-> > > 
-> > > > 
-> > > > 	- since cache_check() doesn't use any locking, I can't see what
-> > > > 	  guarantees that when it sees the CACHE_VALID bit set and
-> > > > 	  CACHE_NEGATIVE cleared, it must necessarily see the new
-> > > > 	  contents.   I think that'd be fixed by a wmb() before setting
-> > > > 	  those bits and a rmb() after checking them.  I don't know if
-> > > > 	  it's actually possible to hit that bug....
-> > > 
-> > > Yes, we probably want a set_bit_lock in cache_fresh_locked() though I don't
-> > > think that exists, so we could use test_and_set_bit_locked() instead.
-> > > 
-> > > But it does feel like maybe we should add some locking to cache_check.
-> > > Take the lock at the the start, and release it after the
-> > > test_and_set_bit(CACHE_PENDING) or once we have decided not to do that ???
-> > 
-> > Maybe so.
-> 
-> Here's one attempt.
-> 
-> --b.
-> 
-> commit 55563023f85d01698ccf72325c87e3a7039a189b
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Mon Jan 3 15:10:27 2011 -0500
-> 
->     svcrpc: take locks to fix cache_check races
->     
->     There are at least a couple races in cache_check:
->     
->     	- We attempt to turn a cache entry negative in place.  But that
->     	  entry may already have been filled in by some other task since
->     	  we last checked whether it was valid, so we could be modifying
->     	  an already-valid entry.  If nothing else there's a likely leak
->     	  in such a case when the entry is eventually put() and contents
->     	  are not freed because it has CACHE_NEGATIVE set.
->     	- If cache_check races with an update that is turning the entry
->     	  CACHE_VALID, then it's possible that the CACHE_VALID bit could
->     	  become visible on this CPU before the actual contents do, so
->     	  we could tell the caller this entry is ready to use when in
->     	  fact the caller could still get invalid contents.
->     
->     Some memory barriers might be sufficient to fix at least the latter; but
->     for now let's keep things simple and take the hash_lock when we turn an
->     entry negative or check the CACHE_VALID bit.
->     
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 0d6002f..2105b40 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -200,8 +200,9 @@ static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h)
->  	return cd->cache_upcall(cd, h);
->  }
->  
-> -static inline int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
-> +static int __cache_is_valid(struct cache_detail *detail, struct cache_head *h)
->  {
-> +
->  	if (!test_bit(CACHE_VALID, &h->flags))
->  		return -EAGAIN;
->  	else {
-> @@ -213,6 +214,33 @@ static inline int cache_is_valid(struct cache_detail *detail, struct cache_head
->  	}
->  }
->  
-> +static int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
-> +{
-> +	int rv;
-> +
-> +	read_lock(&detail->hash_lock);
-> +	rv = __cache_is_valid(detail, h);
-> +	read_unlock(&detail->hash_lock);
-> +	return rv;
-> +}
+Differentiate from server backchannel
 
-I don't think there is anything in __cache_is_valid that needs to be
-protected.
-The compiler will almost certainly produce code which loads f->flags once and
-then performs 1 or 2 bit tests against the value in the register and produces
-one of 3 possible return values based on the result.
-There is absolutely no value in putting locking around that, especially as
-CACHE_VALID is never cleared.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback.c              |   12 ++++++------
+ include/linux/sunrpc/bc_xprt.h |    4 ++--
+ include/linux/sunrpc/svc.h     |    2 +-
+ net/sunrpc/svc.c               |    2 +-
+ net/sunrpc/svcsock.c           |    2 +-
+ 5 files changed, 11 insertions(+), 11 deletions(-)
 
-Maybe you imagine a re-ordering of setting CACHE_NEGATIVE and CACHE_VALID,
-but as they are in the same cache line (and in fact in the same byte) they
-cannot be re-ordered.  We always set CACHE_NEGATIVE before CACHE_VALID and
-there is no way those two could get to memory in the wrong order.
-
-
-
-> +
-> +static int try_to_negate_entry(struct cache_detail *detail, struct cache_head *h)
-> +{
-> +	int rv;
-> +
-> +	write_lock(&detail->hash_lock);
-> +	rv = __cache_is_valid(detail, h);
-> +	if (rv != -EAGAIN) {
-> +		write_unlock(&detail->hash_lock);
-> +		return rv;
-> +	}
-> +	set_bit(CACHE_NEGATIVE, &h->flags);
-> +	cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
-> +	write_unlock(&detail->hash_lock);
-> +	cache_fresh_unlocked(h, detail);
-> +	return -ENOENT;
-> +}
-> +
->  /*
->   * This is the generic cache management routine for all
->   * the authentication caches.
-> @@ -251,14 +279,8 @@ int cache_check(struct cache_detail *detail,
->  			case -EINVAL:
->  				clear_bit(CACHE_PENDING, &h->flags);
->  				cache_revisit_request(h);
-> -				if (rv == -EAGAIN) {
-> -					set_bit(CACHE_NEGATIVE, &h->flags);
-> -					cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
-> -					cache_fresh_unlocked(h, detail);
-> -					rv = -ENOENT;
-> -				}
-> +				rv = try_to_negate_entry(detail, h);
->  				break;
-
-This bit looks good those.  It feels much better having an 'unlock' between
-'cache_fresh_locked' and 'cache_fresh_unlocked' !!
-
-Thanks,
-
-NeilBrown
-
-
-> -
->  			case -EAGAIN:
->  				clear_bit(CACHE_PENDING, &h->flags);
->  				cache_revisit_request(h);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 6071afd..2e4ac33 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -142,7 +142,7 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
+ 	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
+ 	struct nfs4_sessionid *bc_sid;
+ 
+-	if (!serv->bc_xprt)
++	if (!serv->sv_bc_xprt)
+ 		return -EINVAL;
+ 
+ 	/* on success freed in xprt_free */
+@@ -152,12 +152,12 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
+ 	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
+ 		NFS4_MAX_SESSIONID_LEN);
+ 	spin_lock_bh(&serv->sv_cb_lock);
+-	serv->bc_xprt->xpt_bc_sid = bc_sid;
++	serv->sv_bc_xprt->xpt_bc_sid = bc_sid;
+ 	spin_unlock_bh(&serv->sv_cb_lock);
+-	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
++	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for sv_bc_xprt %p\n", __func__,
+ 		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
+ 		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
+-		serv->bc_xprt);
++		serv->sv_bc_xprt);
+ 	return 0;
+ }
+ 
+@@ -231,8 +231,8 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ 	init_waitqueue_head(&serv->sv_cb_waitq);
+ 	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
+ 	if (IS_ERR(rqstp)) {
+-		svc_xprt_put(serv->bc_xprt);
+-		serv->bc_xprt = NULL;
++		svc_xprt_put(serv->sv_bc_xprt);
++		serv->sv_bc_xprt = NULL;
+ 	}
+ out:
+ 	dprintk("--> %s return %ld\n", __func__,
+diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
+index 2c60e09..c50b458 100644
+--- a/include/linux/sunrpc/bc_xprt.h
++++ b/include/linux/sunrpc/bc_xprt.h
+@@ -43,7 +43,7 @@ int bc_send(struct rpc_rqst *req);
+  */
+ static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
+ {
+-	if (rqstp->rq_server->bc_xprt)
++	if (rqstp->rq_server->sv_bc_xprt)
+ 		return 1;
+ 	return 0;
+ }
+@@ -51,7 +51,7 @@ static inline struct nfs4_sessionid *bc_xprt_sid(struct svc_rqst *rqstp)
+ {
+ 	if (svc_is_backchannel(rqstp))
+ 		return (struct nfs4_sessionid *)
+-					rqstp->rq_server->bc_xprt->xpt_bc_sid;
++			rqstp->rq_server->sv_bc_xprt->xpt_bc_sid;
+ 	return NULL;
+ }
+ 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 5a3085b..c81d4d8 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -99,7 +99,7 @@ struct svc_serv {
+ 	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
+ 	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
+ 						 * entries in the svc_cb_list */
+-	struct svc_xprt		*bc_xprt;
++	struct svc_xprt		*sv_bc_xprt;	/* callback on fore channel */
+ #endif /* CONFIG_NFS_V4_1 */
+ };
+ 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 261e2d1..0e659c6 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1262,7 +1262,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ 	struct kvec	*resv = &rqstp->rq_res.head[0];
+ 
+ 	/* Build the svc_rqst used by the common processing routine */
+-	rqstp->rq_xprt = serv->bc_xprt;
++	rqstp->rq_xprt = serv->sv_bc_xprt;
+ 	rqstp->rq_xid = req->rq_xid;
+ 	rqstp->rq_prot = req->rq_xprt->prot;
+ 	rqstp->rq_server = serv;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 87e6f28..697f512 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1611,7 +1611,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+ 	xprt = &svsk->sk_xprt;
+ 	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
+ 
+-	serv->bc_xprt = xprt;
++	serv->sv_bc_xprt = xprt;
+ 
+ 	return xprt;
+ }
+-- 
+1.6.6
 
