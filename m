@@ -1,47 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57698 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:40588 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753948Ab1AXSFZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Jan 2011 13:05:25 -0500
-Date: Mon, 24 Jan 2011 13:05:24 -0500
-To: Max Veprinsky <max.veprinsky@livetext.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: releasing space after rapid grwoth
-Message-ID: <20110124180524.GA15056@fieldses.org>
-References: <AANLkTi=R_j3_hZ-7RpSn0_Mee43nU0njPRBSn=DiEf8R@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTi=R_j3_hZ-7RpSn0_Mee43nU0njPRBSn=DiEf8R@mail.gmail.com>
+	id S1751181Ab1ADDIG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Jan 2011 22:08:06 -0500
+Date: Mon, 3 Jan 2011 22:08:05 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
+Cc: Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
+Message-ID: <20110104030805.GA3194@fieldses.org>
+References: <20101229204752.GC12218@fieldses.org>
+ <20110103222605.GA24811@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110103222605.GA24811@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Jan 21, 2011 at 05:06:45PM -0600, Max Veprinsky wrote:
-> Hello all,
+On Mon, Jan 03, 2011 at 05:26:05PM -0500, J. Bruce Fields wrote:
+> On Wed, Dec 29, 2010 at 03:47:52PM -0500, bfields wrote:
+> > From: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > Once a sunrpc cache entry is non-NEGATIVE, we should be replacing it
+> > (and allowing any concurrent users to destroy it on last put) instead of
+> > trying to update it in place.
 > 
-> I'm trying to reclaim disk space on stable storage which was consumed
-> by a crashed apache process at a rate of ~100GB/hour. This issue has
-> happened a few times before and normally resolved by discovering a
-> .nfsXXXXX file, stopping the process on the the application server
-> that was holding the file. Sometimes the used filespace is recovered
-> quickly without manual intervention, other times I had to delete the
-> .nfsXXXX file manually.
+> Or the following seems simpler.
 > 
-> Last time this happened 3 TB of disk space was consumed and no
-> .nfsXXXX file of that size was discovered, nor. I dismounted all of
-> the volumes from the clients 1/2 of the space was recovered.
-> 
-> showmount shows clients connected but there are no network nfs
-> connections open to any client.
+> (And I was thinking it was necessary to ensure that the right thing
+> happened to the cached xprt->xpt_auth_cache entry--though on a second
+> look I see that sunrpc_cache_update also expires the replaced entry
+> immediately.  Still, this seems simpler if it also works.)
 
-And all the clients *have* unmounted, right?
-
-> I have not restarted nfs server
-> service fearing that the used space would not be recovered.
-> 
-> Any suggestion greatly appreciated
-
-More details about the setup?  Are clients and server all Linux, and
-what kernel versions?
+Eh, on third thoughts: we probably do want a real negative entry created
+in the cache, so I think the original patch was correct!
 
 --b.
+
+> 
+> --b.
+> 
+> commit 20771de3185bf0031aa767d3b19f3e744a465a0c
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Fri Dec 24 14:03:38 2010 -0500
+> 
+>     svcrpc: modifying valid sunrpc cache entries is racy
+>     
+>     Once a sunrpc cache entry is non-NEGATIVE, we shouldn't attempt to
+>     modify it in place.  Otherwise someone referencing the ip_map we're
+>     modifying here could try to use the m_client just as we're putting the
+>     last reference.
+>     
+>     Instead, just set the expiry time so it expires immediately.
+>     
+>     The bug should only be seen by users of the legacy nfsd interfaces.
+>     
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+> index a04ac91..5edc147 100644
+> --- a/net/sunrpc/svcauth_unix.c
+> +++ b/net/sunrpc/svcauth_unix.c
+> @@ -401,8 +401,7 @@ struct auth_domain *auth_unix_lookup(struct net *net, struct in6_addr *addr)
+>  		return NULL;
+>  
+>  	if ((ipm->m_client->addr_changes - ipm->m_add_change) >0) {
+> -		if (test_and_set_bit(CACHE_NEGATIVE, &ipm->h.flags) == 0)
+> -			auth_domain_put(&ipm->m_client->h);
+> +		ipm->h.expiry_time = 0;
+>  		rv = NULL;
+>  	} else {
+>  		rv = &ipm->m_client->h;
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
