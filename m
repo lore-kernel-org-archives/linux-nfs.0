@@ -1,69 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from gossamer.nmsrv.com ([208.70.244.21]:39928 "EHLO
-	gossamer.nmsrv.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752936Ab1AYWi0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2011 17:38:26 -0500
-Message-ID: <4D3F50DA.3060208@gt.net>
-Date: Tue, 25 Jan 2011 14:38:18 -0800
-From: Nathan March <nathan@gt.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Stale file not being refreshed automatically?
-References: <4D3F4A8A.7040003@gt.net> <1295994532.6867.12.camel@heimdal.trondhjem.org>
-In-Reply-To: <1295994532.6867.12.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from cantor.suse.de ([195.135.220.2]:41203 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750727Ab1ADFNO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 00:13:14 -0500
+Date: Tue, 4 Jan 2011 16:13:05 +1100
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/5] nfsd4: avoid double reply caused by deferral race
+Message-ID: <20110104161305.10fe07fa@notabene.brown>
+In-Reply-To: <1294079454-17891-3-git-send-email-bfields@redhat.com>
+References: <1294079454-17891-1-git-send-email-bfields@redhat.com>
+	<1294079454-17891-3-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Ah ha, yes, it's using a stat call.
+On Mon,  3 Jan 2011 13:30:51 -0500 "J. Bruce Fields" <bfields@redhat.com>
+wrote:
 
-What would be the proper C call to check the file exists without 
-incurring the stat()?
+> Commit d29068c431599fa "sunrpc: Simplify cache_defer_req and related
+> functions." asserted that cache_check() could determine success or
+> failure of cache_defer_req() by checking the CACHE_PENDING bit.
+> 
+> This isn't quite right.
+> 
+> We need to know whether cache_defer_req() created a deferred request,
+> in which case sending an rpc reply has become the responsibility of the
+> deferred request, and it is important that we not send our own reply,
+> resulting in two different replies to the same request.
+> 
+> And the CACHE_PENDING bit doesn't tell us that; we could have
+> succesfully created a deferred request at the same time as another
+> thread cleared the CACHE_PENDING bit.
+> 
+> So, partially revert that commit, to ensure that cache_check() returns
+> -EAGAIN if and only if a deferred request has been created.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> Cc: Neil Brown <neilb@suse.de>
 
-Thanks!
+Acked-by: NeilBrown <neilb@suse.de>
 
-- Nathan
+I was over-simplifying a bit there, wasn't I?
+And the rest of the series looks good too.
 
-On 1/25/2011 2:28 PM, Trond Myklebust wrote:
-> On Tue, 2011-01-25 at 14:11 -0800, Nathan March wrote:
->> Hi All,
->>
->> Having a strange issue, I've reproduced this both on nfs 3 and 4.
->> Currently using v4 with:
->>
->> exports:
->> /var/home/voyage
->> 10.2.1.0/24(rw,fsid=0,async,wdelay,secure,no_subtree_check,anonuid=1000,anongid=1006)
->>
->> fstab:
->> 10.2.1.1:/ /mnt/voyage nfs4
->> rsize=32768,wsize=32768,noatime,nosuid,rw,bg,hard,intr 0 0
->>
->> Can be produced using these two commands on 2 machines:
->>
->> perl -le '$| = 1 ; while (1) { sleep 1; $res = -e "/home/voyage/test";
->> if ($res) { print "-e : $res"; } else { print "-e : $res ($!)"; } }'
->> -e : 1
->>
->> perl -le '$| = 1 ; while (1) { sleep 5; open(F, ">",
->> "/home/voyage/test.foo"); close F; my $res =
->> rename("/home/voyage/test.foo", "/home/voyage/test"); print "rename
->> ($res)"; }'
->>
->> The first command will occasionally print out: -e :  (Stale NFS file handle)
->>
->> Now according to http://nfs.sourceforge.net/#faq_a10 as of 2.6.12 the
->> vfs should automatically retry when it gets a estale during path
->> resolution. This doesn't appear to be happening though based on the
->> errors I'm seeing.
->>
->> Anyone have any thoughts on what might be happening here? Or am I
->> misinterpreting that faq entry? (This is on ext3 if it matters)
-> Does '-e' in perl only do a lookup, or does it result in a 'stat()'
-> call? If the latter, then your test is flawed: a stat() is a lookup+a
-> getattr, and the latter can definitely return ESTALE when you are
-> constantly replacing the file.
->
-> Cheers
->    Trond
+Thanks,
+NeilBrown
+
+
+> ---
+>  net/sunrpc/cache.c |   18 +++++++++++-------
+>  1 files changed, 11 insertions(+), 7 deletions(-)
+> 
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index e433e75..0d6002f 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -37,7 +37,7 @@
+>  
+>  #define	 RPCDBG_FACILITY RPCDBG_CACHE
+>  
+> -static void cache_defer_req(struct cache_req *req, struct cache_head *item);
+> +static bool cache_defer_req(struct cache_req *req, struct cache_head *item);
+>  static void cache_revisit_request(struct cache_head *item);
+>  
+>  static void cache_init(struct cache_head *h)
+> @@ -268,9 +268,11 @@ int cache_check(struct cache_detail *detail,
+>  	}
+>  
+>  	if (rv == -EAGAIN) {
+> -		cache_defer_req(rqstp, h);
+> -		if (!test_bit(CACHE_PENDING, &h->flags)) {
+> -			/* Request is not deferred */
+> +		if (!cache_defer_req(rqstp, h)) {
+> +			/*
+> +			 * Request was not deferred; handle it as best
+> +			 * we can ourselves:
+> +			 */
+>  			rv = cache_is_valid(detail, h);
+>  			if (rv == -EAGAIN)
+>  				rv = -ETIMEDOUT;
+> @@ -618,18 +620,19 @@ static void cache_limit_defers(void)
+>  		discard->revisit(discard, 1);
+>  }
+>  
+> -static void cache_defer_req(struct cache_req *req, struct cache_head *item)
+> +/* Return true if and only if a deferred request is queued. */
+> +static bool cache_defer_req(struct cache_req *req, struct cache_head *item)
+>  {
+>  	struct cache_deferred_req *dreq;
+>  
+>  	if (req->thread_wait) {
+>  		cache_wait_req(req, item);
+>  		if (!test_bit(CACHE_PENDING, &item->flags))
+> -			return;
+> +			return false;
+>  	}
+>  	dreq = req->defer(req);
+>  	if (dreq == NULL)
+> -		return;
+> +		return false;
+>  	setup_deferral(dreq, item, 1);
+>  	if (!test_bit(CACHE_PENDING, &item->flags))
+>  		/* Bit could have been cleared before we managed to
+> @@ -638,6 +641,7 @@ static void cache_defer_req(struct cache_req *req, struct cache_head *item)
+>  		cache_revisit_request(item);
+>  
+>  	cache_limit_defers();
+> +	return true;
+>  }
+>  
+>  static void cache_revisit_request(struct cache_head *item)
+
