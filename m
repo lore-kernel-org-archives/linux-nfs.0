@@ -1,44 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:53348 "EHLO shutemov.name"
+Received: from mx2.netapp.com ([216.240.18.37]:9530 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757556Ab1ANNtk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Jan 2011 08:49:40 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Rob Landley <rlandley@parallels.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v3 11/16] Export iterate_mounts symbol to be able to use from sunrpc module.
-Date: Fri, 14 Jan 2011 15:49:09 +0200
-Message-Id: <1295012954-7769-12-git-send-email-kas@openvz.org>
-In-Reply-To: <1295012954-7769-1-git-send-email-kas@openvz.org>
-References: <1295012954-7769-1-git-send-email-kas@openvz.org>
+	id S1752532Ab1ADRLH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 12:11:07 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V6 02/11] SUNRPC fix bc_send print
+Date: Tue,  4 Jan 2011 12:10:19 -0500
+Message-Id: <1294161028-4499-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1294161028-4499-2-git-send-email-andros@netapp.com>
+References: <1294161028-4499-1-git-send-email-andros@netapp.com>
+ <1294161028-4499-2-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
----
- fs/namespace.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+From: Andy Adamson <andros@netapp.com>
 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 3ddfd90..f73054d 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -1498,6 +1498,7 @@ int iterate_mounts(int (*f)(struct vfsmount *, void *), void *arg,
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ net/sunrpc/bc_svc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
+index 7dcfe0c..1dd1a68 100644
+--- a/net/sunrpc/bc_svc.c
++++ b/net/sunrpc/bc_svc.c
+@@ -59,8 +59,8 @@ int bc_send(struct rpc_rqst *req)
+ 		ret = task->tk_status;
+ 		rpc_put_task(task);
  	}
- 	return 0;
+-	return ret;
+ 	dprintk("RPC:       bc_send ret= %d\n", ret);
++	return ret;
  }
-+EXPORT_SYMBOL_GPL(iterate_mounts);
  
- static void cleanup_group_ids(struct vfsmount *mnt, struct vfsmount *end)
- {
+ #endif /* CONFIG_NFS_V4_1 */
 -- 
-1.7.3.4
+1.6.6
 
