@@ -1,65 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:52654 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:28423 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750880Ab1ADDHD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Jan 2011 22:07:03 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/4] nfsd4: eliminate lease delete callback
-Date: Mon,  3 Jan 2011 22:06:56 -0500
-Message-Id: <1294110419-3105-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1294110419-3105-1-git-send-email-bfields@redhat.com>
-References: <1294110419-3105-1-git-send-email-bfields@redhat.com>
+	id S1751014Ab1ADVuf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jan 2011 16:50:35 -0500
+Subject: Re: [PATCH 4/4] NFSv4: Send unmapped uid/gids to the server when
+ using auth_sys
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Simon Kirby <sim@hostway.ca>, "Dr. J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20110104214334.GI27727@hostway.ca>
+References: <1291085863-3234-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1291085863-3234-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1291085863-3234-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1291085863-3234-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <1291085863-3234-5-git-send-email-Trond.Myklebust@netapp.com>
+	 <20110104212504.GG27727@hostway.ca>
+	 <1294176792.5896.22.camel@heimdal.trondhjem.org>
+	 <20110104214334.GI27727@hostway.ca>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 04 Jan 2011 16:50:33 -0500
+Message-ID: <1294177833.5896.26.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-nfsd controls the lifetime of the lease, not the lock code, so there's
-no need for this callback on lease destruction.
+On Tue, 2011-01-04 at 13:43 -0800, Simon Kirby wrote: 
+> On Tue, Jan 04, 2011 at 04:33:12PM -0500, Trond Myklebust wrote:
+> 
+> > On Tue, 2011-01-04 at 13:25 -0800, Simon Kirby wrote: 
+> > > I finally got around to setting up idmapd properly with libnss-mysql, and
+> > > in doing so, I forgot that I had enabled nfs4_disable_idmapping=Y with
+> > > this patch applied.  With this option set on the client, and the server
+> > > set up normally, I get EINVAL from chown's fchowna():
+> > > 
+> > > # chown testuser:testuser test
+> > > chown: changing ownership of `test': Invalid argument
+> > > # echo N > /sys/module/nfs/parameters/nfs4_disable_idmapping
+> > > # chown testuser:testuser test
+> > > #
+> > > 
+> > > This happened on 2.6.37-rc5-git4, but I just reproduced it with
+> > > 2.6.37-rc8-git5 as well.  The server idmapd logs:
+> > > 
+> > > rpc.idmapd[2987]: nss_getpwnam: name '1009999' does not map into domain 'localdomain'
+> > > rpc.idmapd[2987]:  Server: (user) name "1009999" -> id "65534"
+> > > rpc.idmapd[2987]: nfsdcb: authbuf=10.10.52.0/24 authtype=group
+> > > rpc.idmapd[2987]:  Server: (group) name "1009999" -> id "65534"
+> > > 
+> > > (1009999 is the current uid/gid here.)
+> > > 
+> > > I think you meant for this to fall back automatically, right?
+> > 
+> > Did you remember to apply the patch 'NFSv4: Propagate the error
+> > NFS4ERR_BADOWNER to nfs4_do_setattr'?
+> 
+> Yes, that patch is applied as part of the series. 
+> 
+> The -EINVAL is going back to userland's fchownat().  I expected
+> to see the "Reenabling the idmapper" printk() from within
+> nfs4_handle_exception(), but this didn't seem to happen.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   18 ------------------
- 1 files changed, 0 insertions(+), 18 deletions(-)
+Hmm... Bruce, does the server actually return NFS4ERR_BADOWNER when it
+is supposed to? As far as I can see, nfs4idmap will consistently return
+NFS4ERR_BADNAME, which would be a bug here.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b82e368..2e44ad2 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2296,23 +2296,6 @@ void nfsd_break_deleg_cb(struct file_lock *fl)
- }
- 
- /*
-- * The file_lock is being reapd.
-- *
-- * Called by locks_free_lock() with lock_flocks() held.
-- */
--static
--void nfsd_release_deleg_cb(struct file_lock *fl)
--{
--	struct nfs4_delegation *dp = (struct nfs4_delegation *)fl->fl_owner;
--
--	dprintk("NFSD nfsd_release_deleg_cb: fl %p dp %p dl_count %d\n", fl,dp, atomic_read(&dp->dl_count));
--
--	if (!(fl->fl_flags & FL_LEASE) || !dp)
--		return;
--	dp->dl_flock = NULL;
--}
--
--/*
-  * Called from setlease() with lock_flocks() held
-  */
- static
-@@ -2341,7 +2324,6 @@ int nfsd_change_deleg_cb(struct file_lock **onlist, int arg)
- 
- static const struct lock_manager_operations nfsd_lease_mng_ops = {
- 	.fl_break = nfsd_break_deleg_cb,
--	.fl_release_private = nfsd_release_deleg_cb,
- 	.fl_mylease = nfsd_same_client_deleg_cb,
- 	.fl_change = nfsd_change_deleg_cb,
- };
 -- 
-1.7.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
