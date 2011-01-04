@@ -1,41 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:35167 "EHLO mx2.suse.de"
+Received: from mx2.parallels.com ([64.131.90.16]:36340 "EHLO mx2.parallels.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750994Ab1ADVKj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 16:10:39 -0500
-Date: Wed, 5 Jan 2011 08:10:31 +1100
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
-Message-ID: <20110105081031.220bfbc9@notabene.brown>
-In-Reply-To: <20110104192350.GE2308@fieldses.org>
-References: <20101229204752.GC12218@fieldses.org>
-	<20101229205942.GD12218@fieldses.org>
-	<20101230121940.3f48223a@notabene.brown>
-	<20101230015719.GA27614@fieldses.org>
-	<20110103205514.GB18056@fieldses.org>
-	<20110104160152.602a3c44@notabene.brown>
-	<20110104152231.GA27889@fieldses.org>
-	<20110104192350.GE2308@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1751452Ab1ADOAQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 09:00:16 -0500
+Message-ID: <4D2327E5.3080106@parallels.com>
+Date: Tue, 4 Jan 2011 08:00:05 -0600
+From: Rob Landley <rlandley@parallels.com>
+To: Daniel Stodden <daniel.stodden@citrix.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Cache flush question.
+References: <1294130649.3529.96.camel@ramone>
+In-Reply-To: <1294130649.3529.96.camel@ramone>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 4 Jan 2011 14:23:51 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-wrote:
+On 01/04/2011 02:44 AM, Daniel Stodden wrote:
+>
+> Hi anyone.
+>
+> If somebody's got a sec to enlighten me, there's some phenomenon I
+> recently came across and found somewhat counterintuitive first.
+>
+> Whenever I
+>
+>   1. Dirty a bunch of pages backed by an NFS mount on some server.
+>
+>   2. Block the traffic with iptables (TCP, assuming that mattered).
+>      Still plenty of writeback pending.
+>
+>   3. Sync
+>
+> I see #3 drive the dirty count in /proc/meminfo drop back to
+> almost-zero, immediately. The sync itself blocks, though.
+>
+> So the pages are called clean the moment the write got queued, not
+> acked? Leaving the rest just to retransmits by the socket then? Is this
+> just done so because one can, or would that order rather matter for
+> consistency?
 
-> So, that being the real problem, perhaps it's clearer to use explicit
-> memory barriers instead of more locking, and add some comments.  Also
-> split this into a separate patch, as in the following.
+At a wild guess, maybe you're experiencing what Jim Gettys dubbed 
+"buffer bloat".
 
-Me likie.
+   http://lwn.net/Articles/419714/
 
-Two separate patches is good, and nice comments next to the memory barriers
-is good.
-Reviewed-by: NeilBrown <neilb@suse.de>
+Specficially, does ifconfig show a txqueuelen of 1000 for your device? 
+That means the device is buffering 1000 outbound packets, for no readily 
+apparent reason (other than to screw up latency).  With an MTU of 1500 
+that's a megabyte and a half of outgoing data constipated in the network 
+layer.
 
-Thanks!
+NFS also has some cacheing of its own I don't understand yet, for 
+"non-idempotent" transactions.  Described in this OLS paper:
 
-NeilBrown
+   http://kernel.org/doc/ols/2006/ols2006v2-pages-59-72.pdf
+
+Rob
