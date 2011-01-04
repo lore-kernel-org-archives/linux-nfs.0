@@ -1,77 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29834 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:9530 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752297Ab1ARTO4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 14:14:56 -0500
-Subject: Re: 4.1 no-pnfs mount option?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-Cc: Daniel Muntz <Daniel.Muntz@emc.com>, rees@umich.edu,
-        androsadamson@gmail.com, linux-nfs@vger.kernel.org,
-        Benny Halevy <bhalevy@panasas.com>
-In-Reply-To: <2129226927.80.1295376390168.JavaMail.root@thunderbeast.private.linuxbox.com>
-References: <2129226927.80.1295376390168.JavaMail.root@thunderbeast.private.linuxbox.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 18 Jan 2011 14:14:35 -0500
-Message-ID: <1295378075.3746.37.camel@heimdal.trondhjem.org>
+	id S1752516Ab1ADRLG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 12:11:06 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V6 01/11] SUNRPC move svc_drop to caller of svc_process_common
+Date: Tue,  4 Jan 2011 12:10:18 -0500
+Message-Id: <1294161028-4499-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1294161028-4499-1-git-send-email-andros@netapp.com>
+References: <1294161028-4499-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, 2011-01-18 at 13:46 -0500, Matt W. Benjamin wrote: 
-> Hi,
-> 
-> Isn't by mount a plausible way to select for pnfs independent of debugging?  Is it assured that a client administrator would never reasonably wish to do this?
+From: Andy Adamson <andros@netapp.com>
 
-"Why would an administrator never want to do this?" is not a helpful
-question.
+The NFSv4.1 shared back channel does not need to call svc_drop because the
+callback service never outlives the single connection it services, and it
+reuses it's buffers and keeps the trasport.
 
-A more useful question is "what reason would you possibly have for
-overriding the server's request that you do pNFS when your client has
-pNFS support?" What makes pNFS so special that we must allow
-administrators to do this on a per-mount basis?
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ net/sunrpc/svc.c |   30 ++++++++++++++++--------------
+ 1 files changed, 16 insertions(+), 14 deletions(-)
 
-Throwing more and more knobs into the kernel is easy. The difficult bit
-is to figure out which are useful knobs, and that is why I want real use
-cases... 
-
-Trond
-
-
-> ----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
-> 
-> > > 
-> > > Such a mount option could be useful for dealing with buggy servers
-> > (pnfs-wise) so you
-> > > could mount one server with pnfs and another without.
-> > 
-> > You can find ways around that. Just use 2 clients: one with pnfs
-> > switched on, and one with it off.
-> > 
-> > I really don't want to introduce mount options upstream unless they
-> > are
-> > useful in the long term. One off usefulness does not pass that test.
-> > 
-> > -- 
-> > Trond Myklebust
-> > Linux NFS client maintainer
-> > 
-> > NetApp
-> > Trond.Myklebust@netapp.com
-> > www.netapp.com
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> > in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 6359c42..606d182 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1147,7 +1147,6 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+  dropit:
+ 	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+ 	dprintk("svc: svc_process dropit\n");
+-	svc_drop(rqstp);
+ 	return 0;
+ 
+ err_short_len:
+@@ -1218,7 +1217,6 @@ svc_process(struct svc_rqst *rqstp)
+ 	struct kvec		*resv = &rqstp->rq_res.head[0];
+ 	struct svc_serv		*serv = rqstp->rq_server;
+ 	u32			dir;
+-	int			error;
+ 
+ 	/*
+ 	 * Setup response xdr_buf.
+@@ -1246,11 +1244,13 @@ svc_process(struct svc_rqst *rqstp)
+ 		return 0;
+ 	}
+ 
+-	error = svc_process_common(rqstp, argv, resv);
+-	if (error <= 0)
+-		return error;
+-
+-	return svc_send(rqstp);
++	/* Returns 1 for send, 0 for drop */
++	if (svc_process_common(rqstp, argv, resv))
++		return svc_send(rqstp);
++	else {
++		svc_drop(rqstp);
++		return 0;
++	}
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
+@@ -1264,7 +1264,6 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ {
+ 	struct kvec	*argv = &rqstp->rq_arg.head[0];
+ 	struct kvec	*resv = &rqstp->rq_res.head[0];
+-	int 		error;
+ 
+ 	/* Build the svc_rqst used by the common processing routine */
+ 	rqstp->rq_xprt = serv->bc_xprt;
+@@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ 	svc_getu32(argv);	/* XID */
+ 	svc_getnl(argv);	/* CALLDIR */
+ 
+-	error = svc_process_common(rqstp, argv, resv);
+-	if (error <= 0)
+-		return error;
+-
+-	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
+-	return bc_send(req);
++	/* Returns 1 for send, 0 for drop */
++	if (svc_process_common(rqstp, argv, resv)) {
++		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
++						sizeof(req->rq_snd_buf));
++		return bc_send(req);
++	} else {
++		/* Nothing to do to drop request */
++		return 0;
++	}
+ }
+ EXPORT_SYMBOL(bc_svc_process);
+ #endif /* CONFIG_NFS_V4_1 */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.6.6
 
