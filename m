@@ -1,130 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:53321 "EHLO shutemov.name"
+Received: from fieldses.org ([174.143.236.118]:47811 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757546Ab1ANNtj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Jan 2011 08:49:39 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Rob Landley <rlandley@parallels.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v3 09/16] sunrpc: introduce rpc_pipefs_add_destroy_cb()
-Date: Fri, 14 Jan 2011 15:49:07 +0200
-Message-Id: <1295012954-7769-10-git-send-email-kas@openvz.org>
-In-Reply-To: <1295012954-7769-1-git-send-email-kas@openvz.org>
-References: <1295012954-7769-1-git-send-email-kas@openvz.org>
+	id S1750886Ab1ADRzO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 12:55:14 -0500
+Date: Tue, 4 Jan 2011 12:55:03 -0500
+To: andros@netapp.com
+Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH_V6 04/11] NFS use svc_create_xprt for NFSv4.1 callback
+ service
+Message-ID: <20110104175503.GE30317@fieldses.org>
+References: <1294161028-4499-1-git-send-email-andros@netapp.com>
+ <1294161028-4499-2-git-send-email-andros@netapp.com>
+ <1294161028-4499-3-git-send-email-andros@netapp.com>
+ <1294161028-4499-4-git-send-email-andros@netapp.com>
+ <1294161028-4499-5-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1294161028-4499-5-git-send-email-andros@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Add facility to do some action on destroying of rpc_pipefs superblock.
+On Tue, Jan 04, 2011 at 12:10:21PM -0500, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> The new back channel transport means we call the normal creation routine as
+> well as svc_xprt_put.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/callback.c |   31 +++++++++++++++++++++----------
+>  1 files changed, 21 insertions(+), 10 deletions(-)
+> 
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 93a8b3b..343d543 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -177,30 +177,41 @@ nfs41_callback_svc(void *vrqstp)
+>  struct svc_rqst *
+>  nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+>  {
+> -	struct svc_xprt *bc_xprt;
+> -	struct svc_rqst *rqstp = ERR_PTR(-ENOMEM);
+> +	struct svc_rqst *rqstp;
+> +	int ret;
+>  
+> -	dprintk("--> %s\n", __func__);
+> -	/* Create a svc_sock for the service */
+> -	bc_xprt = svc_sock_create(serv, xprt->prot);
+> -	if (!bc_xprt)
+> +	/* register the back channel transport class */
+> +	svc_init_bc_xprt_sock();
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
----
- include/linux/sunrpc/rpc_pipe_fs.h |    3 ++
- net/sunrpc/rpc_pipe.c              |   51 ++++++++++++++++++++++++++++++++++-
- 2 files changed, 52 insertions(+), 2 deletions(-)
+We really only need to register the transport class once, not each time
+we set up a new backchannel.
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index b09bfa5..f5216f1 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -46,6 +46,9 @@ RPC_I(struct inode *inode)
- 
- extern struct vfsmount *init_rpc_pipefs;
- 
-+extern int rpc_pipefs_add_destroy_cb(struct super_block *sb,
-+		void (*destroy_cb)(void *data), void *data);
-+
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 484c9a3..39511e3 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -939,6 +939,31 @@ static const struct super_operations s_ops = {
- 
- #define RPCAUTH_GSSMAGIC 0x67596969
- 
-+struct destroy_cb {
-+	struct list_head list;
-+	void (*callback)(void *data);
-+	void *data;
-+};
-+
-+int rpc_pipefs_add_destroy_cb(struct super_block *sb,
-+		void (*destroy_cb)(void *data), void *data)
-+{
-+	struct destroy_cb *dcb;
-+	struct list_head *destroy_cb_list = sb->s_fs_info;
-+
-+	dcb = kmalloc(sizeof(*dcb), GFP_KERNEL);
-+	if (!dcb)
-+		return -ENOMEM;
-+
-+	dcb->callback = destroy_cb;
-+	dcb->data = data;
-+	INIT_LIST_HEAD(&dcb->list);
-+	list_add(&dcb->list, destroy_cb_list);
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(rpc_pipefs_add_destroy_cb);
-+
- /*
-  * We have a single directory with 1 node in it.
-  */
-@@ -1004,8 +1029,16 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 		iput(inode);
- 		return -ENOMEM;
- 	}
--	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
-+	/* List of destroy callbacks */
-+	sb->s_fs_info = kmalloc(sizeof(struct list_head), GFP_KERNEL);
-+	if (!sb->s_fs_info)
-+		return -ENOMEM;
-+	INIT_LIST_HEAD((struct list_head*) &sb->s_fs_info);
-+	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL)) {
-+		kfree(sb->s_fs_info);
- 		return -ENOMEM;
-+	}
-+
- 	return 0;
- }
- 
-@@ -1016,11 +1049,25 @@ rpc_mount(struct file_system_type *fs_type,
- 	return mount_single(fs_type, flags, data, rpc_fill_super);
- }
- 
-+static void rpc_kill_sb(struct super_block *sb)
-+{
-+	struct list_head *destroy_cb_list = sb->s_fs_info;
-+	struct destroy_cb *dcb, *tmp;
-+
-+	list_for_each_entry_safe(dcb, tmp, destroy_cb_list, list) {
-+		dcb->callback(dcb->data);
-+		list_del(&dcb->list);
-+		kfree(dcb);
-+	}
-+	kfree(destroy_cb_list);
-+	kill_litter_super(sb);
-+}
-+
- static struct file_system_type rpc_pipe_fs_type = {
- 	.owner		= THIS_MODULE,
- 	.name		= "rpc_pipefs",
- 	.mount		= rpc_mount,
--	.kill_sb	= kill_litter_super,
-+	.kill_sb	= rpc_kill_sb,
- };
- 
- static void
--- 
-1.7.3.4
+(OK, it's harmless to register it multiple times--the registration
+detects that case and does nothing--but still I'd prefer to register
+just once if possible.)
 
+Also: I think you're forgetting to unregister the transport class?
+
+I think the correct place to put the registration and unregistration may
+be init_nfs_fs() and exit_nfs_fs().
+
+(And define it as a no-op function depending on config options to avoid
+ifdef's in init_nfs_fs/exit_nfs_fs, in the usual way.)
+
+--b.
+
+> +
+> +	/*
+> +	 * Create an svc_sock for the back channel service that shares the
+> +	 * fore channel connection.
+> +	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
+> +	 */
+> +	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
+> +			      SVC_SOCK_ANONYMOUS);
+> +	if (ret < 0) {
+> +		rqstp = ERR_PTR(ret);
+>  		goto out;
+> +	}
+>  
+>  	/*
+>  	 * Save the svc_serv in the transport so that it can
+>  	 * be referenced when the session backchannel is initialized
+>  	 */
+> -	serv->bc_xprt = bc_xprt;
+>  	xprt->bc_serv = serv;
+>  
+>  	INIT_LIST_HEAD(&serv->sv_cb_list);
+>  	spin_lock_init(&serv->sv_cb_lock);
+>  	init_waitqueue_head(&serv->sv_cb_waitq);
+>  	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
+> -	if (IS_ERR(rqstp))
+> -		svc_sock_destroy(bc_xprt);
+> +	if (IS_ERR(rqstp)) {
+> +		svc_xprt_put(serv->bc_xprt);
+> +		serv->bc_xprt = NULL;
+> +	}
+>  out:
+> -	dprintk("--> %s return %p\n", __func__, rqstp);
+> +	dprintk("--> %s return %ld\n", __func__,
+> +		IS_ERR(rqstp) ? PTR_ERR(rqstp) : 0);
+>  	return rqstp;
+>  }
+>  
+> -- 
+> 1.6.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
