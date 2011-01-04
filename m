@@ -1,37 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29560 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:52654 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753117Ab1AYXag convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2011 18:30:36 -0500
-Subject: 2.6.38-rc2... NFS sillyrename is broken...
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org,
-        Linux Filesystem Development <linux-fsdevel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 25 Jan 2011 18:30:15 -0500
-Message-ID: <1295998215.6867.22.camel@heimdal.trondhjem.org>
+	id S1750880Ab1ADDHD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Jan 2011 22:07:03 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/4] nfsd4: eliminate lease delete callback
+Date: Mon,  3 Jan 2011 22:06:56 -0500
+Message-Id: <1294110419-3105-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1294110419-3105-1-git-send-email-bfields@redhat.com>
+References: <1294110419-3105-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Something in the recent VFS churn appears to have broken NFS
-sillyrename.
+nfsd controls the lifetime of the lease, not the lock code, so there's
+no need for this callback on lease destruction.
 
-Currently, when I try to unlink() a file that is being held open by
-another process, I do indeed see that file getting renamed to
-a .nfsxxxxxxx file, but when the file is closed, the .nfsxxxxx file
-sticks around until I unlink() it again.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   18 ------------------
+ 1 files changed, 0 insertions(+), 18 deletions(-)
 
-I'll have a look tomorrow at what is going wrong, but I figured I'd ask
-on the list in case someone has a suspect...
-
-Cheers
-  Trond
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b82e368..2e44ad2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2296,23 +2296,6 @@ void nfsd_break_deleg_cb(struct file_lock *fl)
+ }
+ 
+ /*
+- * The file_lock is being reapd.
+- *
+- * Called by locks_free_lock() with lock_flocks() held.
+- */
+-static
+-void nfsd_release_deleg_cb(struct file_lock *fl)
+-{
+-	struct nfs4_delegation *dp = (struct nfs4_delegation *)fl->fl_owner;
+-
+-	dprintk("NFSD nfsd_release_deleg_cb: fl %p dp %p dl_count %d\n", fl,dp, atomic_read(&dp->dl_count));
+-
+-	if (!(fl->fl_flags & FL_LEASE) || !dp)
+-		return;
+-	dp->dl_flock = NULL;
+-}
+-
+-/*
+  * Called from setlease() with lock_flocks() held
+  */
+ static
+@@ -2341,7 +2324,6 @@ int nfsd_change_deleg_cb(struct file_lock **onlist, int arg)
+ 
+ static const struct lock_manager_operations nfsd_lease_mng_ops = {
+ 	.fl_break = nfsd_break_deleg_cb,
+-	.fl_release_private = nfsd_release_deleg_cb,
+ 	.fl_mylease = nfsd_same_client_deleg_cb,
+ 	.fl_change = nfsd_change_deleg_cb,
+ };
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.1
 
