@@ -1,97 +1,59 @@
 From: Andy Adamson <andros@netapp.com>
-Subject: Re: [PATCH_V7 07/12] NFS implement v4.0 callback_ident
-Date: Tue, 4 Jan 2011 17:11:18 -0500
-Message-ID: <2C2B2E28-594B-4F63-AE7F-2EE9797EF8C0@netapp.com>
-References: <1294173766-5573-1-git-send-email-andros@netapp.com> <1294173766-5573-2-git-send-email-andros@netapp.com> <1294173766-5573-3-git-send-email-andros@netapp.com> <1294173766-5573-4-git-send-email-andros@netapp.com> <1294173766-5573-5-git-send-email-andros@netapp.com> <1294173766-5573-6-git-send-email-andros@netapp.com> <1294173766-5573-7-git-send-email-andros@netapp.com> <1294173766-5573-8-git-send-email-andros@netapp.com> <1294174673.5896.15.camel@heimdal.trondhjem.org> <1294175023.5896.18.camel@heimdal.trondhjem.org> <3C31F40A-A2AD-4814-B0F1-BDEBA99B0EB7@netapp.com> <1294178130.5896.30.camel@heimdal.trondhjem.org>
+Subject: Re: [PATCH_V7 0/12] NFSv4 find client fix Version 7
+Date: Tue, 4 Jan 2011 17:12:58 -0500
+Message-ID: <9D7DA229-428E-4F20-83AE-A5CEA5D39A7B@netapp.com>
+References: <1294173766-5573-1-git-send-email-andros@netapp.com> <20110104205713.GA7908@fieldses.org> <EF4E9447-046D-4840-B7F1-5D5391A97F67@netapp.com> <20110104210637.GD7908@fieldses.org>
 Mime-Version: 1.0 (Apple Message framework v1082)
 Content-Type: text/plain; charset=us-ascii
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: trond.myklebust@netapp.com, bfields@redhat.com,
+	linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:26392 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:58952 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750795Ab1ADWLf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jan 2011 17:11:35 -0500
-In-Reply-To: <1294178130.5896.30.camel-rJ7iovZKK19ZJLDQqaL3InhyD016LWXt@public.gmane.org>
+	id S1750967Ab1ADWNA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jan 2011 17:13:00 -0500
+In-Reply-To: <20110104210637.GD7908@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Jan 4, 2011, at 4:55 PM, Trond Myklebust wrote:
+On Jan 4, 2011, at 4:06 PM, J. Bruce Fields wrote:
 
-> On Tue, 2011-01-04 at 16:47 -0500, Andy Adamson wrote: 
->> On Jan 4, 2011, at 4:03 PM, Trond Myklebust wrote:
+> On Tue, Jan 04, 2011 at 04:01:16PM -0500, Andy Adamson wrote:
 >> 
->>> On Tue, 2011-01-04 at 15:57 -0500, Trond Myklebust wrote: 
->>>> On Tue, 2011-01-04 at 15:42 -0500, andros@netapp.com wrote: 
->>>>> From: Andy Adamson <andros@netapp.com>
->>>>> 
->>>>> Provide a unique callback identifier per SETCLIENTID call used to identify the
->>>>> v4.0 callback service associated with the clientid.
->>>>> 
->>>>> Do not worry about wrap around. Zero value means unset.
->>>>> 
->>>>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>>>> ---
->>>>> fs/nfs/nfs4proc.c         |    5 +++++
->>>>> fs/nfs/nfs4state.c        |    1 +
->>>>> include/linux/nfs_fs_sb.h |    1 +
->>>>> include/linux/nfs_xdr.h   |    1 +
->>>>> 4 files changed, 8 insertions(+), 0 deletions(-)
->>>>> 
->>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>>> index 78b0899..6652e39 100644
->>>>> --- a/fs/nfs/nfs4proc.c
->>>>> +++ b/fs/nfs/nfs4proc.c
->>>>> @@ -3470,6 +3470,8 @@ do_state_recovery:
->>>>> 	return -EAGAIN;
->>>>> }
->>>>> 
->>>>> +static u32 current_cb_ident = 1;
->>>>> +
->>>>> int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
->>>>> 		unsigned short port, struct rpc_cred *cred,
->>>>> 		struct nfs4_setclientid_res *res)
->>>>> @@ -3478,6 +3480,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
->>>>> 	struct nfs4_setclientid setclientid = {
->>>>> 		.sc_verifier = &sc_verifier,
->>>>> 		.sc_prog = program,
->>>>> +		.sc_cb_ident = current_cb_ident++,
+>> On Jan 4, 2011, at 3:57 PM, J. Bruce Fields wrote:
+>> 
+>>> On Tue, Jan 04, 2011 at 03:42:34PM -0500, andros@netapp.com wrote:
 >>>> 
->>>> How about instead using ida_get_new() in order to get a truly unique id
->>>> in the range 1..0x7fffffff?
->> 
->> I remember discussing this one Thursday over a beer - thus the above method :)
-> 
-> I know, but it is always nice to reuse existing tools when we discover
-> them.
-> 
+>>>> 
+>>>> Version 7 of these patches
+>>>> Applies to Tronds nfs-for-next branch
+>>>> 
+>>>> Already acked by bfields
+>>>> ------------------------
+>>>> 0001-SUNRPC-move-svc_drop-to-caller-of-svc_process_common.patch
+>>>> 0002-SUNRPC-fix-bc_send-print.patch
+>>>> 0010-NFS-RPC_AUTH_GSS-unsupported-on-v4.1-back-channel.patch
+>>>> 0012-NFS-rename-client-back-channel-transport-field.patch
 >>> 
->>> ....
+>>> In future, if you don't mind actually adding the "Acked-by"'s to those
+>>> patches with your signed-off-by's, that'll help remind me which ones
+>>> I've read before as I'm looking through them....
 >>> 
->>> Actually, we might want to consider using idr_get_new(), since that
->>> allows us to safely locate the struct nfs_client using idr_find()...
+>>> (Well, unless you've changed them in some non-trivial way and want me to
+>>> reread them.)
 >> 
->> By safely locate - do you mean avoiding wrap-around?
->> How does this help for v4.1 where we do not receive a callback_ident from the wire?
+>> Sure.
+>> 
+>> -->Andy
 > 
-> By 'safely', I mean that it can be made to uniquely translate the
-> callback ident into a valid nfs_client pointer.
-> 
-> I can't see that it will help for v4.1, but then we shouldn't have a
-> need to translate cookies into pointers there.
+> And thanks for the fast turnaround.  I think that's it for my comments.
 
-OK - I'll code it for v4.0
+Thank you as well for your reviews and quick turn around.  You may want to look at the patch in the next series that registers the back channel transport in the rpc layer.
 
 -->Andy
 
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+> --b.
 
