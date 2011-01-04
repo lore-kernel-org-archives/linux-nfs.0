@@ -1,35 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42012 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:35251 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751910Ab1AGSwO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Jan 2011 13:52:14 -0500
-Message-ID: <4D2760D4.1010308@netapp.com>
-Date: Fri, 07 Jan 2011 13:52:04 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: [PATCH v4 0/5] Add secinfo to the NFS client
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751100Ab1ADVql (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 16:46:41 -0500
+Date: Tue, 4 Jan 2011 16:46:39 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
+Message-ID: <20110104214639.GG7908@fieldses.org>
+References: <20101229204752.GC12218@fieldses.org>
+ <20110103222605.GA24811@fieldses.org>
+ <20110104030805.GA3194@fieldses.org>
+ <20110104155107.0ff2c199@notabene.brown>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110104155107.0ff2c199@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Tue, Jan 04, 2011 at 03:51:07PM +1100, NeilBrown wrote:
+> And this all made me realise that there is more code that can be placed under
+> CONFIG_NFSD_DEPRECTATED.
+> 
+> 
+> SUNRPC: Remove more code when NFSD_DEPRECATED is not configured
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
 
-These patches will add the secinfo procedure to the NFS client 
-and do some cleanup along the way.  The final result will should
-be able to cross mountpoints using a different form of security
-and auto-detect the security of an initial NFS v4 mount.
+I did need one change to get a succesful !CONFIG_NFSD_DEPRECATED
+compile.
 
-v4:
- - Properly set the number of security flavors decoded by the client
- - Return an int rather than an rpc_authflavor_t for better error checking
-v3:
- - Check for server returning too many security flavors
- - Check for gss_oid_len > max_gss_oid_len
- - New functions in namespace.c should be static
+--b.
 
-v2:
- - Add more details about the call_sync improvement
- - Don't initialize global constant function pointers to NULL
-
-Bryan
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 46e1cbc..30916b0 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -422,6 +422,7 @@ struct auth_domain *auth_unix_lookup(struct net *net, struct in6_addr *addr)
+ 	return rv;
+ }
+ EXPORT_SYMBOL_GPL(auth_unix_lookup);
++#endif /* CONFIG_NFSD_DEPRECATED */
+ 
+ void svcauth_unix_purge(void)
+ {
+@@ -435,7 +436,6 @@ void svcauth_unix_purge(void)
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(svcauth_unix_purge);
+-#endif /* CONFIG_NFSD_DEPRECATED */
+ 
+ static inline struct ip_map *
+ ip_map_cached_get(struct svc_xprt *xprt)
