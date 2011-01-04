@@ -1,55 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from tur.go2.pl ([193.17.41.50]:34121 "EHLO tur.go2.pl"
+Received: from cantor2.suse.de ([195.135.220.15]:35167 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932891Ab1AMLiS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 06:38:18 -0500
-Received: from moh2-ve3.go2.pl (moh2-ve3.go2.pl [193.17.41.208])
-	by tur.go2.pl (o2.pl Mailer 2.0.1) with ESMTP id 4C1962302C2
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 12:38:17 +0100 (CET)
-Received: from moh2-ve3.go2.pl (unknown [10.0.0.208])
-	by moh2-ve3.go2.pl (Postfix) with ESMTP id 4E3F93701A0
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 12:37:35 +0100 (CET)
-Received: from o2.pl (unknown [10.0.0.120])
-	by moh2-ve3.go2.pl (Postfix) with SMTP
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 12:37:35 +0100 (CET)
-Subject: =?UTF-8?Q?failover_problem?=
-From: =?UTF-8?Q?motyllo8?= <motyllo8@tlen.pl>
-To: linux-nfs@vger.kernel.org
-Message-ID: <64f18899.1305ee97.4d2ee3fe.430ca@tlen.pl>
-Date: Thu, 13 Jan 2011 12:37:34 +0100
-Content-Type: text/plain; charset="UTF-8"
+	id S1750994Ab1ADVKj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 16:10:39 -0500
+Date: Wed, 5 Jan 2011 08:10:31 +1100
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
+Message-ID: <20110105081031.220bfbc9@notabene.brown>
+In-Reply-To: <20110104192350.GE2308@fieldses.org>
+References: <20101229204752.GC12218@fieldses.org>
+	<20101229205942.GD12218@fieldses.org>
+	<20101230121940.3f48223a@notabene.brown>
+	<20101230015719.GA27614@fieldses.org>
+	<20110103205514.GB18056@fieldses.org>
+	<20110104160152.602a3c44@notabene.brown>
+	<20110104152231.GA27889@fieldses.org>
+	<20110104192350.GE2308@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+On Tue, 4 Jan 2011 14:23:51 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-I am currently testing NFS in HA configuration using Heartbeat.
+> So, that being the real problem, perhaps it's clearer to use explicit
+> memory barriers instead of more locking, and add some comments.  Also
+> split this into a separate patch, as in the following.
 
-I am performing following test:
+Me likie.
 
-My client is coping file (about 2GB). During this coping I am rebooting primary node. After it secondary node switches to active mode. Unfortunately my client is not resuming coping. After failback action, this process is being resumed.
+Two separate patches is good, and nice comments next to the memory barriers
+is good.
+Reviewed-by: NeilBrown <neilb@suse.de>
 
-I've noticed after failover on my secondary node following message in dmesg:
+Thanks!
 
-RPC: fragment too large: 0x0008009c
-
-This message occurs a few times - I am wondering what does it mean? Maybe this is the reason of this strange behavior?
-
-A few words about my configuration:
-- Debian based system.
-- kernel 2.6.27-39,
-- nfsutils in version 1.0.10,
-- client mount option:
-mount -t nfs 192.168.0.220:/share /mnt/share
-
-- server side /etc/exports:
-"/share"    *(rw,no_root_squash,async,subtree_check)
-
-Let me know if you need more details connected to my configuration.
-
-Cheers
-Marcus
-
-
-
+NeilBrown
