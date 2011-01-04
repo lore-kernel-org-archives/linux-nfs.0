@@ -1,100 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20683 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:5765 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751967Ab1A0UAa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jan 2011 15:00:30 -0500
-Subject: Re: 2.6.38-rc2 NFS client lockdep splat
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <E4B1CD0A-A45D-4D16-904A-13FCADB20721@oracle.com>
-References: <E4B1CD0A-A45D-4D16-904A-13FCADB20721@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 27 Jan 2011 15:00:26 -0500
-Message-ID: <1296158426.2965.62.camel@heimdal.trondhjem.org>
+	id S1751453Ab1ADUnn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 15:43:43 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V7 12/12] NFS rename client back channel transport field
+Date: Tue,  4 Jan 2011 15:42:46 -0500
+Message-Id: <1294173766-5573-13-git-send-email-andros@netapp.com>
+In-Reply-To: <1294173766-5573-12-git-send-email-andros@netapp.com>
+References: <1294173766-5573-1-git-send-email-andros@netapp.com>
+ <1294173766-5573-2-git-send-email-andros@netapp.com>
+ <1294173766-5573-3-git-send-email-andros@netapp.com>
+ <1294173766-5573-4-git-send-email-andros@netapp.com>
+ <1294173766-5573-5-git-send-email-andros@netapp.com>
+ <1294173766-5573-6-git-send-email-andros@netapp.com>
+ <1294173766-5573-7-git-send-email-andros@netapp.com>
+ <1294173766-5573-8-git-send-email-andros@netapp.com>
+ <1294173766-5573-9-git-send-email-andros@netapp.com>
+ <1294173766-5573-10-git-send-email-andros@netapp.com>
+ <1294173766-5573-11-git-send-email-andros@netapp.com>
+ <1294173766-5573-12-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-01-27 at 14:45 -0500, Chuck Lever wrote: 
-> Jan 27 14:33:04 matisse kernel:
-> Jan 27 14:33:04 matisse kernel: =================================
-> Jan 27 14:33:04 matisse kernel: [ INFO: inconsistent lock state ]
-> Jan 27 14:33:04 matisse kernel: 2.6.38-rc2-00025-gce531fd #10
-> Jan 27 14:33:04 matisse kernel: ---------------------------------
-> Jan 27 14:33:04 matisse kernel: inconsistent {SOFTIRQ-ON-W} -> {IN-SOFTIRQ-W} usage.
-> Jan 27 14:33:04 matisse kernel: swapper/0 [HC0[0]:SC1[1]:HE1:SE0] takes:
-> Jan 27 14:33:04 matisse kernel: (rpc_credcache_lock){+.?...}, at: [<ffffffff8122318d>] _atomic_dec_and_lock+0x2d/0x4c
-> Jan 27 14:33:04 matisse kernel: {SOFTIRQ-ON-W} state was registered at:
-> Jan 27 14:33:04 matisse kernel:  [<ffffffff8107d4d9>] __lock_acquire+0x341/0xd0b
-> Jan 27 14:33:04 matisse kernel:  [<ffffffff8107df86>] lock_acquire+0xe3/0x110
-> Jan 27 14:33:04 matisse kernel:  [<ffffffff8147860f>] _raw_spin_lock+0x31/0x40
-> Jan 27 14:33:04 matisse kernel:  [<ffffffff8122318d>] _atomic_dec_and_lock+0x2d/0x4c
-> Jan 27 14:33:04 matisse kernel:  [<ffffffffa029ac37>] put_rpccred+0x41/0x130 [sunrpc]
-> Jan 27 14:33:04 matisse kernel:  [<ffffffffa0295186>] xprt_release+0xde/0x182 [sunrpc]
-> Jan 27 14:33:04 matisse kernel:  [<ffffffffa02994f6>] rpc_put_task+0x2b/0xad [sunrpc]Jan 27 14:33:04 matisse kernel:  [<ffffffffa0293e17>] rpc_call_sync+0x5c/0x65 [sunrpc]
-> Jan 27 14:33:04 matisse kernel:  [<ffffffffa02a22a1>] rpcb_register_call+0x20/0x55 [sunrpc]Jan 27 14:33:04 matisse kernel:  [<ffffffffa02a2389>] rpcb_v4_register+0xb3/0x170 [sunrpc]
-> Jan 27 14:33:04 matisse kernel:  [<ffffffffa029c9bd>] svc_unregister+0x5b/0xef [sunrpc]Jan 27 14:33:04 matisse kernel:  [<ffffffffa029cec3>] __svc_create+0x1eb/0x1fb [sunrpc]
-> Jan 27 14:33:04 matisse kernel:  [<ffffffffa029d120>] svc_create+0x16/0x18 [sunrpc]Jan 27 14:33:04 matisse kernel:  [<ffffffffa03574fb>] nfs_callback_up+0x92/0x1ed [nfs]
-> Jan 27 14:33:04 matisse kernel:  [<ffffffffa032c7ff>] nfs4_set_client+0x1a2/0x271 [nfs]
-> Jan 27 14:33:04 matisse kernel:  [<ffffffffa032ce67>] nfs4_create_server+0xf7/0x20d [nfs]
-> Jan 27 14:33:04 matisse kernel:  [<ffffffffa0335beb>] nfs4_remote_mount+0x7d/0x1e6 [nfs]
-> Jan 27 14:33:04 matisse kernel:  [<ffffffff8111f7e9>] vfs_kern_mount+0xbd/0x1d9
-> Jan 27 14:33:04 matisse kernel:  [<ffffffffa0335fc0>] nfs_do_root_mount+0x7b/0x9a [nfs]
-> Jan 27 14:33:04 matisse kernel:  [<ffffffffa03363b2>] nfs4_try_mount+0x5b/0xb4 [nfs]
-> Jan 27 14:33:04 matisse kernel:  [<ffffffffa033762d>] nfs_get_sb+0x4c5/0x730 [nfs]
-> Jan 27 14:33:04 matisse kernel:  [<ffffffff8111f81b>] vfs_kern_mount+0xef/0x1d9
-> Jan 27 14:33:04 matisse kernel:  [<ffffffff8111f96d>] do_kern_mount+0x4d/0xdd
-> Jan 27 14:33:04 matisse kernel:  [<ffffffff811374a1>] do_mount+0x72f/0x797
-> Jan 27 14:33:04 matisse kernel:  [<ffffffff81137591>] sys_mount+0x88/0xc2
-> Jan 27 14:33:04 matisse kernel:  [<ffffffff8100abc2>] system_call_fastpath+0x16/0x1bJan 27 14:33:04 matisse kernel: irq event stamp: 2544680
-> Jan 27 14:33:04 matisse kernel: hardirqs last  enabled at (2544680): [<ffffffff81110169>] kmem_cache_free+0xb0/0xfc
-> Jan 27 14:33:04 matisse kernel: hardirqs last disabled at (2544679): [<ffffffff811100fa>] kmem_cache_free+0x41/0xfc
-> Jan 27 14:33:04 matisse kernel: softirqs last  enabled at (2544654): [<ffffffff81056166>] _local_bh_enable+0x13/0x15
-> Jan 27 14:33:04 matisse kernel: softirqs last disabled at (2544655): [<ffffffff8100bb5c>] call_softirq+0x1c/0x30
-> Jan 27 14:33:04 matisse kernel:
-> Jan 27 14:33:04 matisse kernel: other info that might help us debug this:
-> Jan 27 14:33:04 matisse kernel: no locks held by swapper/0.
-> Jan 27 14:33:04 matisse kernel:
-> Jan 27 14:33:04 matisse kernel: stack backtrace:
-> Jan 27 14:33:04 matisse kernel: Pid: 0, comm: swapper Not tainted 2.6.38-rc2-00025-gce531fd #10
-> Jan 27 14:33:04 matisse kernel: Call Trace:
-> Jan 27 14:33:04 matisse kernel: <IRQ>  [<ffffffff8107bfc4>] ? valid_state+0x17f/0x192
-> Jan 27 14:33:04 matisse kernel: [<ffffffff81016716>] ? save_stack_trace+0x2d/0x4a
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8107c8b1>] ? check_usage_forwards+0x0/0x87
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8107c0f1>] ? mark_lock+0x11a/0x235
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8107d465>] ? __lock_acquire+0x2cd/0xd0b
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8110daae>] ? add_partial+0x20/0x58
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8107df86>] ? lock_acquire+0xe3/0x110
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8122318d>] ? _atomic_dec_and_lock+0x2d/0x4c
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8110f3fe>] ? free_debug_processing+0x16a/0x193
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8147860f>] ? _raw_spin_lock+0x31/0x40
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8122318d>] ? _atomic_dec_and_lock+0x2d/0x4c
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8122318d>] ? _atomic_dec_and_lock+0x2d/0x4c
-> Jan 27 14:33:04 matisse kernel: [<ffffffffa029ac37>] ? put_rpccred+0x41/0x130 [sunrpc]
-> Jan 27 14:33:04 matisse kernel: [<ffffffffa0355a3f>] ? nfs_free_delegation_callback+0x23/0x30 [nfs]
-> Jan 27 14:33:04 matisse kernel: [<ffffffff810abbf8>] ? __rcu_process_callbacks+0x1b1/0x2ef
-> Jan 27 14:33:04 matisse kernel: [<ffffffff810abd61>] ? rcu_process_callbacks+0x2b/0xb3
-> Jan 27 14:33:04 matisse kernel: [<ffffffff81056062>] ? __do_softirq+0xe2/0x1d3
-> Jan 27 14:33:04 matisse kernel: [<ffffffff810785f6>] ? tick_program_event+0x1f/0x21
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8100bb5c>] ? call_softirq+0x1c/0x30
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8100d1b3>] ? do_softirq+0x4b/0xa3
-> Jan 27 14:33:04 matisse kernel: [<ffffffff81055dbc>] ? irq_exit+0x4a/0x8c
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8147f9a1>] ? smp_apic_timer_interrupt+0x8d/0x9b
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8100b613>] ? apic_timer_interrupt+0x13/0x20
-> Jan 27 14:33:04 matisse kernel: <EOI>  [<ffffffff8102c6c1>] ? native_safe_halt+0xb/0xd
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8107c50f>] ? trace_hardirqs_on+0xd/0xf
-> Jan 27 14:33:04 matisse kernel: [<ffffffff81012708>] ? default_idle+0x55/0x94
-> Jan 27 14:33:04 matisse kernel: [<ffffffff81009e50>] ? cpu_idle+0xb7/0xed
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8145f723>] ? rest_init+0xb7/0xbe
-> Jan 27 14:33:04 matisse kernel: [<ffffffff8145f66c>] ? rest_init+0x0/0xbe
-> Jan 27 14:33:04 matisse kernel: [<ffffffff81b67df6>] ? start_kernel+0x41b/0x426
-> Jan 27 14:33:04 matisse kernel: [<ffffffff81b672cd>] ? x86_64_start_reservations+0xb8/0xbc
-> Jan 27 14:33:04 matisse kernel: [<ffffffff81b673d7>] ? x86_64_start_kernel+0x106/0x115
+From: Andy Adamson <andros@netapp.com>
 
-The following patch ought to fix it.
+Differentiate from server backchannel
 
-Cheers
-  Trond
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback.c              |   12 ++++++------
+ include/linux/sunrpc/bc_xprt.h |    4 ++--
+ include/linux/sunrpc/svc.h     |    2 +-
+ net/sunrpc/svc.c               |    2 +-
+ net/sunrpc/svcsock.c           |    2 +-
+ 5 files changed, 11 insertions(+), 11 deletions(-)
 
-8<--------------------------------------------------------------------------------------- 
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index b1b09a6..de7f677 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -142,7 +142,7 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
+ 	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
+ 	struct nfs4_sessionid *bc_sid;
+ 
+-	if (!serv->bc_xprt)
++	if (!serv->sv_bc_xprt)
+ 		return -EINVAL;
+ 
+ 	/* on success freed in xprt_free */
+@@ -152,12 +152,12 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
+ 	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
+ 		NFS4_MAX_SESSIONID_LEN);
+ 	spin_lock_bh(&serv->sv_cb_lock);
+-	serv->bc_xprt->xpt_bc_sid = bc_sid;
++	serv->sv_bc_xprt->xpt_bc_sid = bc_sid;
+ 	spin_unlock_bh(&serv->sv_cb_lock);
+-	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
++	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for sv_bc_xprt %p\n", __func__,
+ 		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
+ 		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
+-		serv->bc_xprt);
++		serv->sv_bc_xprt);
+ 	return 0;
+ }
+ 
+@@ -228,8 +228,8 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ 	init_waitqueue_head(&serv->sv_cb_waitq);
+ 	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
+ 	if (IS_ERR(rqstp)) {
+-		svc_xprt_put(serv->bc_xprt);
+-		serv->bc_xprt = NULL;
++		svc_xprt_put(serv->sv_bc_xprt);
++		serv->sv_bc_xprt = NULL;
+ 	}
+ out:
+ 	dprintk("--> %s return %ld\n", __func__,
+diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
+index 2c60e09..c50b458 100644
+--- a/include/linux/sunrpc/bc_xprt.h
++++ b/include/linux/sunrpc/bc_xprt.h
+@@ -43,7 +43,7 @@ int bc_send(struct rpc_rqst *req);
+  */
+ static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
+ {
+-	if (rqstp->rq_server->bc_xprt)
++	if (rqstp->rq_server->sv_bc_xprt)
+ 		return 1;
+ 	return 0;
+ }
+@@ -51,7 +51,7 @@ static inline struct nfs4_sessionid *bc_xprt_sid(struct svc_rqst *rqstp)
+ {
+ 	if (svc_is_backchannel(rqstp))
+ 		return (struct nfs4_sessionid *)
+-					rqstp->rq_server->bc_xprt->xpt_bc_sid;
++			rqstp->rq_server->sv_bc_xprt->xpt_bc_sid;
+ 	return NULL;
+ }
+ 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 5a3085b..c81d4d8 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -99,7 +99,7 @@ struct svc_serv {
+ 	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
+ 	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
+ 						 * entries in the svc_cb_list */
+-	struct svc_xprt		*bc_xprt;
++	struct svc_xprt		*sv_bc_xprt;	/* callback on fore channel */
+ #endif /* CONFIG_NFS_V4_1 */
+ };
+ 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 261e2d1..0e659c6 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1262,7 +1262,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ 	struct kvec	*resv = &rqstp->rq_res.head[0];
+ 
+ 	/* Build the svc_rqst used by the common processing routine */
+-	rqstp->rq_xprt = serv->bc_xprt;
++	rqstp->rq_xprt = serv->sv_bc_xprt;
+ 	rqstp->rq_xid = req->rq_xid;
+ 	rqstp->rq_prot = req->rq_xprt->prot;
+ 	rqstp->rq_server = serv;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 938ff04..377c897 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1593,7 +1593,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+ 	xprt = &svsk->sk_xprt;
+ 	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
+ 
+-	serv->bc_xprt = xprt;
++	serv->sv_bc_xprt = xprt;
+ 
+ 	return xprt;
+ }
+-- 
+1.6.6
+
