@@ -1,68 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34588 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:43304 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752687Ab1AFLgz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Jan 2011 06:36:55 -0500
-From: Fred Isaman <iisaman@netapp.com>
+	id S1750954Ab1AEB56 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 20:57:58 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 07/15] pnfs: layoutget rpc code cleanup
-Date: Thu,  6 Jan 2011 06:36:24 -0500
-Message-Id: <1294313792-14280-8-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
-References: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
+Subject: [PATCH v4 1/5] NFSv4: If the server sends us a numeric uid/gid then accept it
+Date: Tue,  4 Jan 2011 20:57:47 -0500
+Message-Id: <1294192671-18864-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1294192671-18864-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1294192671-18864-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-No functional changes, just some code minor code rearrangement and
-comments.
-
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4proc.c |   19 ++++++++++---------
- 1 files changed, 10 insertions(+), 9 deletions(-)
+ fs/nfs/idmap.c |   28 ++++++++++++++++++++++++++--
+ 1 files changed, 26 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 28e175e..5bee453 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5293,10 +5293,14 @@ static void
- nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs4_layoutget *lgp = calldata;
--	struct inode *ino = lgp->args.inode;
--	struct nfs_server *server = NFS_SERVER(ino);
-+	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 1869688..cbe6e2f 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -33,6 +33,24 @@
+  *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
++#include <linux/types.h>
++#include <linux/string.h>
++#include <linux/kernel.h>
++
++static int nfs_map_string_to_numeric(const char *name, size_t namelen, __u32 *res)
++{
++	unsigned long val;
++	char buf[16];
++
++	if (memchr(name, '@', namelen) != NULL || namelen >= sizeof(buf))
++		return 0;
++	memcpy(buf, name, namelen);
++	buf[namelen] = '\0';
++	if (strict_strtoul(buf, 0, &val) != 0)
++		return 0;
++	*res = val;
++	return 1;
++}
  
- 	dprintk("--> %s\n", __func__);
-+	/* Note the is a race here, where a CB_LAYOUTRECALL can come in
-+	 * right now covering the LAYOUTGET we are about to send.
-+	 * However, that is not so catastrophic, and there seems
-+	 * to be no way to prevent it completely.
-+	 */
- 	if (nfs4_setup_sequence(server, &lgp->args.seq_args,
- 				&lgp->res.seq_res, 0, task))
- 		return;
-@@ -5379,13 +5383,10 @@ int nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
- 	status = nfs4_wait_for_completion_rpc_task(task);
--	if (status != 0)
--		goto out;
--	status = task->tk_status;
--	if (status != 0)
--		goto out;
--	status = pnfs_layout_process(lgp);
--out:
-+	if (status == 0)
-+		status = task->tk_status;
-+	if (status == 0)
-+		status = pnfs_layout_process(lgp);
- 	rpc_put_task(task);
- 	dprintk("<-- %s status=%d\n", __func__, status);
- 	return status;
+ #ifdef CONFIG_NFS_USE_NEW_IDMAPPER
+ 
+@@ -42,7 +60,6 @@
+ #include <linux/keyctl.h>
+ #include <linux/key-type.h>
+ #include <linux/rcupdate.h>
+-#include <linux/kernel.h>
+ #include <linux/err.h>
+ 
+ #include <keys/user-type.h>
+@@ -221,11 +238,15 @@ static int nfs_idmap_lookup_id(const char *name, size_t namelen,
+ 
+ int nfs_map_name_to_uid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
+ {
++	if (nfs_map_string_to_numeric(name, namelen, uid))
++		return 0;
+ 	return nfs_idmap_lookup_id(name, namelen, "uid", uid);
+ }
+ 
+ int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *gid)
+ {
++	if (nfs_map_string_to_numeric(name, namelen, gid))
++		return 0;
+ 	return nfs_idmap_lookup_id(name, namelen, "gid", gid);
+ }
+ 
+@@ -243,7 +264,6 @@ int nfs_map_gid_to_group(struct nfs_client *clp, __u32 gid, char *buf, size_t bu
+ #include <linux/module.h>
+ #include <linux/mutex.h>
+ #include <linux/init.h>
+-#include <linux/types.h>
+ #include <linux/slab.h>
+ #include <linux/socket.h>
+ #include <linux/in.h>
+@@ -699,6 +719,8 @@ int nfs_map_name_to_uid(struct nfs_client *clp, const char *name, size_t namelen
+ {
+ 	struct idmap *idmap = clp->cl_idmap;
+ 
++	if (nfs_map_string_to_numeric(name, namelen, uid))
++		return 0;
+ 	return nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
+ }
+ 
+@@ -706,6 +728,8 @@ int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namele
+ {
+ 	struct idmap *idmap = clp->cl_idmap;
+ 
++	if (nfs_map_string_to_numeric(name, namelen, uid))
++		return 0;
+ 	return nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, uid);
+ }
+ 
 -- 
-1.7.2.1
+1.7.3.4
 
