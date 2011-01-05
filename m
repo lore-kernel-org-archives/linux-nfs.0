@@ -1,89 +1,209 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm11.bullet.mail.sp2.yahoo.com ([98.139.91.81]:24779 "HELO
-	nm11.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752430Ab1ATGz1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jan 2011 01:55:27 -0500
-Message-ID: <164222.10285.qm@web111725.mail.gq1.yahoo.com>
-References: <574433.84174.qm@web111710.mail.gq1.yahoo.com> <AANLkTim8r-MWCytdP7QmhBoe9iM+39sZwmqaEzj64NtS@mail.gmail.com> <146716.56866.qm@web111715.mail.gq1.yahoo.com> <AANLkTi=jXihAzfaCz3BLum97hxsoimC6rSEEv5Uyf3y7@mail.gmail.com>
-Date: Wed, 19 Jan 2011 22:55:25 -0800 (PST)
-From: Mahmood Naderan <nt_mahmood@yahoo.com>
-Subject: Re: high traffic because of loggig
-To: Lyle Seaman <lyleseaman@gmail.com>
-Cc: nfs <linux-nfs@vger.kernel.org>
-In-Reply-To: <AANLkTi=jXihAzfaCz3BLum97hxsoimC6rSEEv5Uyf3y7@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:43304 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751010Ab1AEB57 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 20:57:59 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 3/5] NFSv4: cleanup idmapper functions to take an nfs_server argument
+Date: Tue,  4 Jan 2011 20:57:49 -0500
+Message-Id: <1294192671-18864-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1294192671-18864-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1294192671-18864-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1294192671-18864-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1294192671-18864-3-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
->Try sticking one of these in there before the redirection:  ' | dd bs=8m '
+...instead of the nfs_client.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/idmap.c            |   24 ++++++++++++------------
+ fs/nfs/nfs4xdr.c          |   18 ++++++++----------
+ include/linux/nfs_idmap.h |    8 ++++----
+ 3 files changed, 24 insertions(+), 26 deletions(-)
+
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 8518573..e2d579d 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -241,21 +241,21 @@ static int nfs_idmap_lookup_id(const char *name, size_t namelen,
+ 	return ret;
+ }
  
-Thanks,
-// Naderan *Mahmood;
+-int nfs_map_name_to_uid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
++int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
+ {
+ 	if (nfs_map_string_to_numeric(name, namelen, uid))
+ 		return 0;
+ 	return nfs_idmap_lookup_id(name, namelen, "uid", uid);
+ }
+ 
+-int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *gid)
++int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *gid)
+ {
+ 	if (nfs_map_string_to_numeric(name, namelen, gid))
+ 		return 0;
+ 	return nfs_idmap_lookup_id(name, namelen, "gid", gid);
+ }
+ 
+-int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
++int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
+ {
+ 	int ret;
+ 	ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
+@@ -263,7 +263,7 @@ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buf
+ 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
+ 	return ret;
+ }
+-int nfs_map_gid_to_group(struct nfs_client *clp, __u32 gid, char *buf, size_t buflen)
++int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf, size_t buflen)
+ {
+ 	int ret;
+ 
+@@ -729,27 +729,27 @@ static unsigned int fnvhash32(const void *buf, size_t buflen)
+ 	return hash;
+ }
+ 
+-int nfs_map_name_to_uid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
++int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
+ {
+-	struct idmap *idmap = clp->cl_idmap;
++	struct idmap *idmap = server->nfs_client->cl_idmap;
+ 
+ 	if (nfs_map_string_to_numeric(name, namelen, uid))
+ 		return 0;
+ 	return nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
+ }
+ 
+-int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
++int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
+ {
+-	struct idmap *idmap = clp->cl_idmap;
++	struct idmap *idmap = server->nfs_client->cl_idmap;
+ 
+ 	if (nfs_map_string_to_numeric(name, namelen, uid))
+ 		return 0;
+ 	return nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, uid);
+ }
+ 
+-int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
++int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
+ {
+-	struct idmap *idmap = clp->cl_idmap;
++	struct idmap *idmap = server->nfs_client->cl_idmap;
+ 	int ret;
+ 
+ 	ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
+@@ -757,9 +757,9 @@ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buf
+ 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
+ 	return ret;
+ }
+-int nfs_map_gid_to_group(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
++int nfs_map_gid_to_group(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
+ {
+-	struct idmap *idmap = clp->cl_idmap;
++	struct idmap *idmap = server->nfs_client->cl_idmap;
+ 	int ret;
+ 
+ 	ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 8e49688..bc205ab 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -844,7 +844,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	if (iap->ia_valid & ATTR_MODE)
+ 		len += 4;
+ 	if (iap->ia_valid & ATTR_UID) {
+-		owner_namelen = nfs_map_uid_to_name(server->nfs_client, iap->ia_uid, owner_name, IDMAP_NAMESZ);
++		owner_namelen = nfs_map_uid_to_name(server, iap->ia_uid, owner_name, IDMAP_NAMESZ);
+ 		if (owner_namelen < 0) {
+ 			dprintk("nfs: couldn't resolve uid %d to string\n",
+ 					iap->ia_uid);
+@@ -856,7 +856,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 		len += 4 + (XDR_QUADLEN(owner_namelen) << 2);
+ 	}
+ 	if (iap->ia_valid & ATTR_GID) {
+-		owner_grouplen = nfs_map_gid_to_group(server->nfs_client, iap->ia_gid, owner_group, IDMAP_NAMESZ);
++		owner_grouplen = nfs_map_gid_to_group(server, iap->ia_gid, owner_group, IDMAP_NAMESZ);
+ 		if (owner_grouplen < 0) {
+ 			dprintk("nfs: couldn't resolve gid %d to string\n",
+ 					iap->ia_gid);
+@@ -3382,7 +3382,7 @@ out_overflow:
+ }
+ 
+ static int decode_attr_owner(struct xdr_stream *xdr, uint32_t *bitmap,
+-		struct nfs_client *clp, uint32_t *uid, int may_sleep)
++		const struct nfs_server *server, uint32_t *uid, int may_sleep)
+ {
+ 	uint32_t len;
+ 	__be32 *p;
+@@ -3402,7 +3402,7 @@ static int decode_attr_owner(struct xdr_stream *xdr, uint32_t *bitmap,
+ 		if (!may_sleep) {
+ 			/* do nothing */
+ 		} else if (len < XDR_MAX_NETOBJ) {
+-			if (nfs_map_name_to_uid(clp, (char *)p, len, uid) == 0)
++			if (nfs_map_name_to_uid(server, (char *)p, len, uid) == 0)
+ 				ret = NFS_ATTR_FATTR_OWNER;
+ 			else
+ 				dprintk("%s: nfs_map_name_to_uid failed!\n",
+@@ -3420,7 +3420,7 @@ out_overflow:
+ }
+ 
+ static int decode_attr_group(struct xdr_stream *xdr, uint32_t *bitmap,
+-		struct nfs_client *clp, uint32_t *gid, int may_sleep)
++		const struct nfs_server *server, uint32_t *gid, int may_sleep)
+ {
+ 	uint32_t len;
+ 	__be32 *p;
+@@ -3440,7 +3440,7 @@ static int decode_attr_group(struct xdr_stream *xdr, uint32_t *bitmap,
+ 		if (!may_sleep) {
+ 			/* do nothing */
+ 		} else if (len < XDR_MAX_NETOBJ) {
+-			if (nfs_map_group_to_gid(clp, (char *)p, len, gid) == 0)
++			if (nfs_map_group_to_gid(server, (char *)p, len, gid) == 0)
+ 				ret = NFS_ATTR_FATTR_GROUP;
+ 			else
+ 				dprintk("%s: nfs_map_group_to_gid failed!\n",
+@@ -3939,14 +3939,12 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
+ 		goto xdr_error;
+ 	fattr->valid |= status;
+ 
+-	status = decode_attr_owner(xdr, bitmap, server->nfs_client,
+-			&fattr->uid, may_sleep);
++	status = decode_attr_owner(xdr, bitmap, server, &fattr->uid, may_sleep);
+ 	if (status < 0)
+ 		goto xdr_error;
+ 	fattr->valid |= status;
+ 
+-	status = decode_attr_group(xdr, bitmap, server->nfs_client,
+-			&fattr->gid, may_sleep);
++	status = decode_attr_group(xdr, bitmap, server, &fattr->gid, may_sleep);
+ 	if (status < 0)
+ 		goto xdr_error;
+ 	fattr->valid |= status;
+diff --git a/include/linux/nfs_idmap.h b/include/linux/nfs_idmap.h
+index e8352dc..ee97767 100644
+--- a/include/linux/nfs_idmap.h
++++ b/include/linux/nfs_idmap.h
+@@ -96,10 +96,10 @@ void nfs_idmap_delete(struct nfs_client *);
+ 
+ #endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
+ 
+-int nfs_map_name_to_uid(struct nfs_client *, const char *, size_t, __u32 *);
+-int nfs_map_group_to_gid(struct nfs_client *, const char *, size_t, __u32 *);
+-int nfs_map_uid_to_name(struct nfs_client *, __u32, char *, size_t);
+-int nfs_map_gid_to_group(struct nfs_client *, __u32, char *, size_t);
++int nfs_map_name_to_uid(const struct nfs_server *, const char *, size_t, __u32 *);
++int nfs_map_group_to_gid(const struct nfs_server *, const char *, size_t, __u32 *);
++int nfs_map_uid_to_name(const struct nfs_server *, __u32, char *, size_t);
++int nfs_map_gid_to_group(const struct nfs_server *, __u32, char *, size_t);
+ 
+ extern unsigned int nfs_idmap_cache_timeout;
+ #endif /* __KERNEL__ */
+-- 
+1.7.3.4
 
-
-
------ Original Message ----
-From: Lyle Seaman <lyleseaman@gmail.com>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Sent: Thu, January 20, 2011 1:30:09 AM
-Subject: Re: high traffic because of loggig
-
-Try sticking one of these in there before the redirection:  ' | dd bs=8m '
-
-On Wed, Jan 19, 2011 at 2:58 PM, Mahmood Naderan <nt_mahmood@yahoo.com> wrote:
->>It would depend on the application.
->
-> It uses the standard output redirection '>' which I think every 5KB writes the
-> output. Can I increase that threshold?
->
-> // Naderan *Mahmood;
->
->
->
-> ----- Original Message ----
-> From: Another Sillyname <anothersname@googlemail.com>
-> To: Mahmood Naderan <nt_mahmood@yahoo.com>
-> Sent: Wed, January 19, 2011 10:05:07 PM
-> Subject: Re: high traffic because of loggig
->
-> On 19 January 2011 18:09, Mahmood Naderan <nt_mahmood@yahoo.com> wrote:
->> Hi,
->> In my cluster that /home is shared (from a server and some workers). The
->>problem
->> is when I run my job that has some huge log data, the disk access as well as
->> network traffic is very high. I want to know is there any way so
->> that the worker writes the log locally and at the end, that log is copied 
-from
->> worker's internal hdd to server's hdd (/home)?
->>
->> Hope that I clearly stated the problem.
->> Thanks,
->> // Naderan *Mahmood;
->>
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
-> It would depend on the application.
->
-> If the application doesn't have options to choose the path for the log
-> files you could set up a symbolic link to the path back to the local
-> drive.
->
->
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-
-
-
-      
