@@ -1,86 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9530 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751342Ab1ADRLG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 12:11:06 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH_V6] NFSv4 callback find client fix Version 6 
-Date: Tue,  4 Jan 2011 12:10:17 -0500
-Message-Id: <1294161028-4499-1-git-send-email-andros@netapp.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:46706 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752286Ab1AEUt2 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 15:49:28 -0500
+In-Reply-To: <1294259637.16957.25.camel@mulgrave.site>
+References: <1294254337.16957.13.camel@mulgrave.site> <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
+ <1294256169.16957.18.camel@mulgrave.site> <20110105200008.GJ8638@n2100.arm.linux.org.uk>
+ <1294259637.16957.25.camel@mulgrave.site>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Wed, 5 Jan 2011 12:48:32 -0800
+Message-ID: <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+To: James Bottomley <James.Bottomley@hansenpartnership.com>
+Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        =?ISO-8859-1?Q?Uwe_Kleine=2DK=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+On Wed, Jan 5, 2011 at 12:33 PM, James Bottomley
+<James.Bottomley@hansenpartnership.com> wrote:
+>
+> well, that depends.  For us on parisc, kmap of a user page in !HIGHMEM
+> sets up an inequivalent aliase still ... because the cache colour of the
+> user and kernel virtual addresses are different.  Depending on the
+> return path to userspace, we still usually have to flush to get the user
+> to see the changes the kernel has made.
 
-Version 6 of these patches
-Applies to Tronds nfs-for-next branch
+Umm. Again, that has nothing to do with kmap().
 
-Responded to Version 5 comments.
+This time it's about the user space mapping.
 
-The back channel server svc_process_common RPC layer pg_authenticate call
-[nfs_callback_authenticate] is shared by both the NFSv4.0 and the NFSv4.1
-callback threads. It authenticates the incoming request by finding (and
-referencing) an nfs_client struct based on the incoming request address
-and the NFS version (4). This is akin to the NFS server which authenticates
-requests by matching the server address to the exports file client list.
+Repeat after me: even without the kmap(), the kernel access to that
+mapping would have caused cache aliases.
 
-Since there is no minorversion in the search, it may find the wrong
-nfs_client struct. For the nfsv4.0 callback service thread, this means it
-could find an NFSv4.1 nfs_client. For the NFSv4.1 callback service thread, it
-could find an NFSv4.0 instead of v4.1, or find an NFSv4.1 nfs_client with the
-wrong session.
+See? Once more, the kmap() is entirely innocent. You can have a
+non-highmem mapping that you never use kmap for, and that you map into
+user space, and you'd see exactly the same aliases. Notice? Look ma,
+no kmap().
 
-The nfs_client is dereferenced at the end of pg_authenticate. Another
-nfs_find_client call is done in the NFS layouer per operation dispatcher
-routines for NFSv4.0 and in the cb_sequence operation dispatcher routine for
-NFSv4.1 after decoding.
+So clearly kmap() is not the issue. The issue continues to be a
+totally separate virtual mapping. Whether it's a user mapping or
+vm_map_ram() is obviously immaterial - as far as the CPU is concerned,
+there is no difference between the two (apart from the trivial
+differences of virtual location and permissions).
 
-This means the callback server could start processing a callback, passing
-the pg_authenticate test, and have the nfs_client struct freed between the
-pg_authenticate call and the dispatcher operation call. Or, it could have
-found the wrong nfs_client in the pg_authenticate call.
+(You can also force the problem with vmalloc() an then following the
+kernel page tables, but I hope nobody does that any more. I suspect
+I'm wrong, though, there's probably code that mixes vmalloc and
+physical page accesses in various drivers)
 
-The current code has this behavior: If the nfs_client is not found in
-pg_authenticate, the request is simply dropped (SVC_DROP). If an nfs_client
-is not found in the dispatcher routines NFS4ERR_BADSESSION is returned for
-v4.1 requests and NFS4ERR_BADHANDLE for v4.0 requests.
-
-The fix is to implement the v4.0 SETCLIENTID callback_ident and use it to find
-the one and only client for v4.0 callbacks, and to associate the sessionid
-with the sessions based callback service (v4.1) and use it to identify the
-one and only client. This can be done in the NFS layer, in CB_COMPOUND header
-processing for v4.0 and in CB_SEQUENCE processing in v4.1.
-In both cases, a reference to the found client is held across CB_COMPOUND
-processing.
-The pg_authenticate method does not have the callback_ident for CB_NULL or
-CB_COMPOUND v4.0 processing, so just the server address, nfsversion and
-minorversion is used for the client search
-
-For sessions based callback service, the sessionID can't be set until the
-return of the CREATE_SESSION call, yet the CB_NULL ping from a server can
-be initiated by the server at the receipt of the CREATE_SESSION call before
-the response is sent. So for CB_NULL, the sessionid is (usually) not set, and
-the sessionid is not used for CB_NULL pg_authenticate client searches.
-
-New transport for back channel and bug fixes
-0001-SUNRPC-move-svc_drop-to-caller-of-svc_process_common.patch
-0002-SUNRPC-fix-bc_send-print.patch
-0003-SUNRPC-new-transport-for-the-NFSv4.1-shared-back-cha.patch
-0004-NFS-use-svc_create_xprt-for-NFSv4.1-callback-service.patch
-0005-NFS-do-not-clear-minor-version-at-nfs_client-free.patch
-
-New callback functionality
-0006-NFS-implement-v4.0-callback_ident.patch
-0007-NFS-associate-sessionid-with-callback-connection.patch
-0008-NFS-refactor-nfs_find_client-and-reference-nfs_clien.patch
-0009-NFS-RPC_AUTH_GSS-unsupported-on-v4.1-back-channel.patch
-0010-NFS-add-session-back-channel-draining.patch
-
-Rename
-0011-NFS-rename-client-back-channel-transport-field.patch
-
--->Andy
-
+                    Linus
