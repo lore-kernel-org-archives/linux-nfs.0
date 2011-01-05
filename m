@@ -1,97 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56182 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932363Ab1AKQVn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Jan 2011 11:21:43 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 04/14] rpc: move sk_bc_xprt to svc_xprt
-Date: Tue, 11 Jan 2011 11:21:24 -0500
-Message-Id: <1294762894-21371-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1294762894-21371-1-git-send-email-bfields@redhat.com>
-References: <1294762894-21371-1-git-send-email-bfields@redhat.com>
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:38990 "EHLO
+	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752338Ab1AEX2i (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 18:28:38 -0500
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+In-Reply-To: <1294268808.2952.18.camel@heimdal.trondhjem.org>
+References: <1294254337.16957.13.camel@mulgrave.site>
+	 <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
+	 <1294256169.16957.18.camel@mulgrave.site>
+	 <20110105200008.GJ8638@n2100.arm.linux.org.uk>
+	 <1294259637.16957.25.camel@mulgrave.site>
+	 <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
+	 <20110105210448.GM8638@n2100.arm.linux.org.uk>
+	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
+	 <1294262208.2952.4.camel@heimdal.trondhjem.org>
+	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
+	 <1294268808.2952.18.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 05 Jan 2011 23:28:24 +0000
+Message-ID: <1294270104.16957.73.camel@mulgrave.site>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This seems obviously transport-level information even if it's currently
-used only by the server socket code.
+On Wed, 2011-01-05 at 18:06 -0500, Trond Myklebust wrote:
+> On Wed, 2011-01-05 at 13:30 -0800, Linus Torvalds wrote: 
+> > On Wed, Jan 5, 2011 at 1:16 PM, Trond Myklebust
+> > <Trond.Myklebust@netapp.com> wrote:
+> > >
+> > > So what should be the preferred way to ensure data gets flushed when
+> > > you've written directly to a page, and then want to read through the
+> > > vm_map_ram() virtual range? Should we be adding new semantics to
+> > > flush_kernel_dcache_page()?
+> > 
+> > The "preferred way" is actually simple: "don't do that". IOW, if some
+> > page is accessed through a virtual mapping you've set up, then
+> > _always_ access it through that virtual mapping.
+> > 
+> > Now, when that is impossible (and yes, it sometimes is), then you
+> > should flush after doing all writes. And if you do the write through
+> > the regular kernel mapping, you should use flush_dcache_page(). And if
+> > you did it through the virtual mapping, you should use
+> > "flush_kernel_vmap_range()" or whatever.
+> > 
+> > NOTE! I really didn't look those up very closely, and if the accesses
+> > can happen concurrently you are basically screwed, so you do need to
+> > do locking or something else to guarantee that there is some nice
+> > sequential order.  And maybe I forgot something.  Which is why I do
+> > suggest "don't do that" as a primary approach to the problem if at all
+> > possible.
+> > 
+> > Oh, and you may need to flush before reading too (and many writes do
+> > end up being "read-modify-write" cycles) in case it's possible that
+> > you have stale data from a previous read that was then invalidated by
+> > a write to the aliasing address. Even if that write was flushed out,
+> > the stale read data may exist at the virtual address. I forget what
+> > all we required - in the end the only sane model is "virtual caches
+> > suck so bad that anybody who does them should be laughed at for being
+> > a retard".
+> 
+> Yes. The fix I sent out was a call to invalidate_kernel_vmap_range(),
+> which takes care of invalidating the cache prior to a virtual address
+> read.
+> 
+> My question was specifically about the write through the regular kernel
+> mapping: according to Russell and my reading of the cachetlb.txt
+> documentation, flush_dcache_page() is only guaranteed to have an effect
+> on page cache pages.
+> flush_kernel_dcache_page() (not to be confused with flush_dcache_page)
+> would appear to be the closest fit according to my reading of the
+> documentation, however the ARM implementation appears to be a no-op...
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- include/linux/sunrpc/svc_xprt.h |    1 +
- include/linux/sunrpc/svcsock.h  |    1 -
- net/sunrpc/svcsock.c            |   10 ++++++----
- net/sunrpc/xprtsock.c           |    2 +-
- 4 files changed, 8 insertions(+), 6 deletions(-)
+It depends on exactly what you're doing.  In the worst case, (ping pong
+reads and writes through both aliases) you have to flush and invalidate
+both alias 1 alias 2 each time you access on one and then another.
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index c8f81da..7ad9751 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -79,6 +79,7 @@ struct svc_xprt {
- 	struct list_head	xpt_users;	/* callbacks on free */
- 
- 	struct net		*xpt_net;
-+	struct rpc_xprt		*xpt_bc_xprt;	/* NFSv4.1 backchannel */
- };
- 
- static inline void unregister_xpt_user(struct svc_xprt *xpt, struct svc_xpt_user *u)
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 1b353a7..04dba23 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -28,7 +28,6 @@ struct svc_sock {
- 	/* private TCP part */
- 	u32			sk_reclen;	/* length of record */
- 	u32			sk_tcplen;	/* current read length */
--	struct rpc_xprt		*sk_bc_xprt;	/* NFSv4.1 backchannel xprt */
- };
- 
- /*
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 52bd113..3bb400f 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -987,15 +987,17 @@ static int svc_process_calldir(struct svc_sock *svsk, struct svc_rqst *rqstp,
- 		vec[0] = rqstp->rq_arg.head[0];
- 	} else {
- 		/* REPLY */
--		if (svsk->sk_bc_xprt)
--			req = xprt_lookup_rqst(svsk->sk_bc_xprt, xid);
-+		struct rpc_xprt *bc_xprt = svsk->sk_xprt.xpt_bc_xprt;
-+
-+		if (bc_xprt)
-+			req = xprt_lookup_rqst(bc_xprt, xid);
- 
- 		if (!req) {
- 			printk(KERN_NOTICE
- 				"%s: Got unrecognized reply: "
--				"calldir 0x%x sk_bc_xprt %p xid %08x\n",
-+				"calldir 0x%x xpt_bc_xprt %p xid %08x\n",
- 				__func__, ntohl(calldir),
--				svsk->sk_bc_xprt, xid);
-+				bc_xprt, xid);
- 			vec[0] = rqstp->rq_arg.head[0];
- 			goto out;
- 		}
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index dfcab5a..18dc42e 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2379,9 +2379,9 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 	 * The backchannel uses the same socket connection as the
- 	 * forechannel
- 	 */
-+	args->bc_xprt->xpt_bc_xprt = xprt;
- 	xprt->bc_xprt = args->bc_xprt;
- 	bc_sock = container_of(args->bc_xprt, struct svc_sock, sk_xprt);
--	bc_sock->sk_bc_xprt = xprt;
- 	transport->sock = bc_sock->sk_sock;
- 	transport->inet = bc_sock->sk_sk;
- 
--- 
-1.7.1
+Can you explain how the code works? it looks to me like you read the xdr
+stuff through the vmap region then write it out directly to the pages?
+*if* this is just a conversion, *and* you never need to read the new
+data through the vmap alias, you might be able to get away with a
+flush_dcache_page in nfs_readdir_release_array().  If the access pattern
+is more complex, you'll need more stuff splashed through the loop
+(including vmap invalidation/flushing).
+
+ Is there any way you could just rewrite nfs_readdir_add_to_array() to
+use the vmap address instead of doing a kmap?  That way everything will
+go through a single alias and not end up with this incoherency.
+
+James
+
 
