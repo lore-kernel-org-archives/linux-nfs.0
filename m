@@ -1,103 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from metis.ext.pengutronix.de ([92.198.50.35]:53154 "EHLO
-	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751716Ab1AEMO3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 07:14:29 -0500
-Message-ID: <4D246098.50908@pengutronix.de>
-Date: Wed, 05 Jan 2011 13:14:16 +0100
-From: Marc Kleine-Budde <mkl@pengutronix.de>
-To: Russell King - ARM Linux <linux@arm.linux.org.uk>
-CC: =?ISO-8859-1?Q?Uwe_Kleine-K=F6nig?=
+Received: from mx2.netapp.com ([216.240.18.37]:5844 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751231Ab1AEP3r convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 10:29:47 -0500
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Marc Kleine-Budde <mkl@pengutronix.de>
+Cc: Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
 	<u.kleine-koenig@pengutronix.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Russell King - ARM Linux <linux@arm.linux.org.uk>,
         linux-nfs@vger.kernel.org,
         Linus Torvalds <torvalds@linux-foundation.org>,
         linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
         Marc Kleine-Budde <m.kleine-budde@pengutronix.de>
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-References: <20101230171453.GA5787@pengutronix.de> <1293731992.4919.5.camel@heimdal.trondhjem.org> <20101230191846.GB14221@pengutronix.de> <20110103213850.GC25121@pengutronix.de> <1294100558.25100.8.camel@heimdal.trondhjem.org> <20110105084014.GN25121@pengutronix.de> <20110105110517.GQ25121@pengutronix.de> <20110105112701.GA8638@n2100.arm.linux.org.uk>
-In-Reply-To: <20110105112701.GA8638@n2100.arm.linux.org.uk>
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enig148BA6752573DA54B237FD26"
+In-Reply-To: <1294240457.3014.13.camel@heimdal.trondhjem.org>
+References: <20101230171453.GA5787@pengutronix.de>
+	 <1293731992.4919.5.camel@heimdal.trondhjem.org>
+	 <20101230191846.GB14221@pengutronix.de>
+	 <20110103213850.GC25121@pengutronix.de>
+	 <1294100558.25100.8.camel@heimdal.trondhjem.org>
+	 <20110105084014.GN25121@pengutronix.de>
+	 <20110105110517.GQ25121@pengutronix.de>
+	 <20110105112701.GA8638@n2100.arm.linux.org.uk>
+	 <20110105134045.GS25121@pengutronix.de>
+	 <1294239193.3014.9.camel@heimdal.trondhjem.org>
+	 <4D2487CA.5040501@pengutronix.de>
+	 <1294240457.3014.13.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 05 Jan 2011 10:29:29 -0500
+Message-ID: <1294241369.3014.15.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---------------enig148BA6752573DA54B237FD26
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
+On Wed, 2011-01-05 at 10:14 -0500, Trond Myklebust wrote: 
+> OK. So,the new behaviour in 2.6.37 is that we're writing to a series of
+> pages via the usual kmap_atomic()/kunmap_atomic() and kmap()/kunmap()
+> interfaces, but we can end up reading them via a virtual address range
+> that gets set up via vm_map_ram() (that range gets set up before the
+> write occurs).
+> 
+> Do we perhaps need an invalidate_kernel_vmap_range() before we can read
+> the data on ARM in this kind of scenario?
 
-On 01/05/2011 12:27 PM, Russell King - ARM Linux wrote:
-> On Wed, Jan 05, 2011 at 12:05:17PM +0100, Uwe Kleine-K=F6nig wrote:
->> Hello Trond,
->>
->> On Wed, Jan 05, 2011 at 09:40:14AM +0100, Uwe Kleine-K=F6nig wrote:
->>> On Mon, Jan 03, 2011 at 07:22:38PM -0500, Trond Myklebust wrote:
->>>> The question is whether this is something happening on the server or=
- the
->>>> client. Does an older client kernel boot without any trouble?
->>> I will set up a boot test with 2.6.37 (for statistics) and 2.6.36 to
->>> compare with.  If you don't consider .36 to be old enough let me now.=
+IOW: Does something like the following patch fix the problem?
 
->>> Once the setup is done it should be easy to test .35 (say), too.
->>>
->> Marc (cc'd) saw similar[1] problems with .37, when using .36.2 the
->> problems didn't occur.  This was more reliable to trigger and he was s=
-o
->> kind to bisect the problem.
->>
->> When testing v2.6.36-rc3-51-gafa8ccc init hanged.
->> (babddc72a9468884ce1a23db3c3d54b0afa299f0 is the first bad commit with=
-
->> this hang.)  Commit 56e4ebf877b6043c289bda32a5a7385b80c17dee makes the=
-
->> "init hangs" problem the "fileid changed on tab" problem.
->>
->> I could only reproduce that on armv5 machines (imx27, imx28 and at91)
->> but not on armv6 (imx35).
->=20
-> FYI, I've seen the "fileid changed" problem, and it looked like a 32-bi=
-t
-> truncation of the fileid.  It occurred several times on successive
-> reboots, so I tried to capture a tcpdump trace off the server (Linux
-> 2.6.23-rc8-ga64314e6 - its ancient because I've had issues with buggy
-> IDE drivers trying to move it forward.)  However, for the last couple
-> of weeks I've been unable to reproduce it.
-
-We have the problem with nfs-root. From the kernel command line:
-
-root=3D/dev/nfs
-nfsroot=3D192.168.23.2:/home/mkl/pengutronix/xxx/bsp/OSELAS.BSP-xxx-Grabo=
-wski-trunk/platform-Ronetix-PM9263/root,v3,tcp
-
-/home/mkl/pengutronix is a link which points to a link
-/ptx/work/octopus/mkl (which is a ext3-based) which points to
-WORK_1/mkl which is also ext3-based.
-
-The server is 2.6.32 and has been rebooted yesterday :), nfs-utils are
-1.2.2. I make a tcpdump if needed.
-
-Cheers, Marc
---=20
-Pengutronix e.K.                  | Marc Kleine-Budde           |
-Industrial Linux Solutions        | Phone: +49-231-2826-924     |
-Vertretung West/Dortmund          | Fax:   +49-5121-206917-5555 |
-Amtsgericht Hildesheim, HRA 2686  | http://www.pengutronix.de   |
+------------------------------------------------------------------------------- 
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+NFS: Ensure we clean the TLB cache in nfs_readdir_xdr_to_array
+    
+After calling nfs_readdir_xdr_filler(), we need a call to
+invalidate_kernel_vmap_range() before we can proceed to read
+the data back through the virtual address range.
+    
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 996dd89..4640470 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -587,6 +587,9 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 		if (status < 0)
+ 			break;
+ 		pglen = status;
++
++		invalidate_kernel_vmap_range(pages_ptr, pglen);
++
+ 		status = nfs_readdir_page_filler(desc, &entry, pages_ptr, page, pglen);
+ 		if (status < 0) {
+ 			if (status == -ENOSPC)
 
 
---------------enig148BA6752573DA54B237FD26
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-iEYEARECAAYFAk0kYJsACgkQjTAFq1RaXHNrDgCdHFaAarn9iD+pTgumxo6exnnk
-lqsAn1CJHd1bSdP1T0mj1S31e/Ww7BWj
-=pSkw
------END PGP SIGNATURE-----
-
---------------enig148BA6752573DA54B237FD26--
