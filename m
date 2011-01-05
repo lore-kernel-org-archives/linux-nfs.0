@@ -1,73 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from caramon.arm.linux.org.uk ([78.32.30.218]:46882 "EHLO
-	caramon.arm.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751026Ab1AEPxZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 10:53:25 -0500
-Date: Wed, 5 Jan 2011 15:52:30 +0000
-From: Russell King - ARM Linux <linux@arm.linux.org.uk>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Marc Kleine-Budde <mkl@pengutronix.de>,
-        Uwe =?iso-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>,
-        linux-nfs@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-Message-ID: <20110105155230.GC8638@n2100.arm.linux.org.uk>
-References: <20101230191846.GB14221@pengutronix.de> <20110103213850.GC25121@pengutronix.de> <1294100558.25100.8.camel@heimdal.trondhjem.org> <20110105084014.GN25121@pengutronix.de> <20110105110517.GQ25121@pengutronix.de> <20110105112701.GA8638@n2100.arm.linux.org.uk> <20110105134045.GS25121@pengutronix.de> <1294239193.3014.9.camel@heimdal.trondhjem.org> <4D2487CA.5040501@pengutronix.de> <1294240457.3014.13.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1294240457.3014.13.camel@heimdal.trondhjem.org>
+Received: from mx2.netapp.com ([216.240.18.37]:12006 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752987Ab1AEUvw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 15:51:52 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V8 02/13] SUNRPC fix bc_send print
+Date: Wed,  5 Jan 2011 15:51:20 -0500
+Message-Id: <1294260690-3095-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1294260690-3095-2-git-send-email-andros@netapp.com>
+References: <1294260690-3095-1-git-send-email-andros@netapp.com>
+ <1294260690-3095-2-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Jan 05, 2011 at 10:14:17AM -0500, Trond Myklebust wrote:
-> OK. So,the new behaviour in 2.6.37 is that we're writing to a series of
-> pages via the usual kmap_atomic()/kunmap_atomic() and kmap()/kunmap()
-> interfaces, but we can end up reading them via a virtual address range
-> that gets set up via vm_map_ram() (that range gets set up before the
-> write occurs).
+From: Andy Adamson <andros@netapp.com>
 
-kmap of lowmem pages will always reuses the existing kernel direct
-mapping, so there won't be a problem there.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ net/sunrpc/bc_svc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-> Do we perhaps need an invalidate_kernel_vmap_range() before we can read
-> the data on ARM in this kind of scenario?
+diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
+index 7dcfe0c..1dd1a68 100644
+--- a/net/sunrpc/bc_svc.c
++++ b/net/sunrpc/bc_svc.c
+@@ -59,8 +59,8 @@ int bc_send(struct rpc_rqst *req)
+ 		ret = task->tk_status;
+ 		rpc_put_task(task);
+ 	}
+-	return ret;
+ 	dprintk("RPC:       bc_send ret= %d\n", ret);
++	return ret;
+ }
+ 
+ #endif /* CONFIG_NFS_V4_1 */
+-- 
+1.6.6
 
-Firstly, vm_map_ram() does no cache maintainence of any sort, nor does
-it take care of page colouring - so any architecture where cache aliasing
-can occur will see this problem.  It should not limited to ARM.
-
-Secondly, no, invalidate_kernel_vmap_range() probably isn't sufficient.
-There's two problems here:
-
-	addr = kmap(lowmem_page);
-	*addr = stuff;
-	kunmap(lowmem_page);
-
-Such lowmem pages are accessed through their kernel direct mapping.
-
-	ptr = vm_map_ram(lowmem_page);
-	read = *ptr;
-
-This creates a new mapping which can alias with the kernel direct mapping.
-Now, as this is a new mapping, there should be no cache lines associated
-with it.  (Looking at vm_unmap_ram(), it calls free_unmap_vmap_area_addr(),
-free_unmap_vmap_area(), which then calls flush_cache_vunmap() on the
-region.  vb_free() also calls flush_cache_vunmap() too.)
-
-If the write after kmap() hits an already present cache line, the cache
-line will be updated, but it won't be written back to memory.  So, on
-a subsequent vm_map_ram(), with any kind of aliasing cache, there's
-no guarantee that you'll hit that cache line and read the data just
-written there.
-
-The kernel direct mapping would need to be flushed.
-
-I'm really getting to the point of hating the poliferation of RAM
-remapping interfaces - it's going to (and is) causing nothing but lots
-of pain on virtual cache architectures, needing more and more cache
-flushing interfaces to be created.
-
-Is there any other solution to this?
