@@ -1,64 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:23839 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753284Ab1ARUZv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 15:25:51 -0500
-Message-ID: <4D35F746.1010305@panasas.com>
-Date: Tue, 18 Jan 2011 22:25:42 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Daniel.Muntz@emc.com, rees@umich.edu, androsadamson@gmail.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: 4.1 no-pnfs mount option?
-References: <20110114151945.GA21629@merit.edu>	 <AANLkTimSp6BTgk1YQonXd6HuVS-JEpQUWqsny7JymJsd@mail.gmail.com>	 <20110114153846.GA21766@merit.edu>	 <1295019712.3576.1.camel@heimdal.trondhjem.org>	 <DE966DA98A4ABE438D726BDF1699CF61043985B53F@MX05A.corp.emc.com>	 <1295375309.3746.25.camel@heimdal.trondhjem.org>	 <4D35DD69.2040902@panasas.com> <1295375921.3746.27.camel@heimdal.trondhjem.org>
-In-Reply-To: <1295375921.3746.27.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:60012 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750919Ab1AEBFK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 20:05:10 -0500
+Date: Tue, 4 Jan 2011 20:05:07 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] nfsd4: implement secinfo_no_name
+Message-ID: <20110105010507.GC14744@fieldses.org>
+References: <1292612511-14203-1-git-send-email-bfields@redhat.com>
+ <1292612511-14203-4-git-send-email-bfields@redhat.com>
+ <4D183265.70608@cn.fujitsu.com>
+ <20101229185609.GA12218@fieldses.org>
+ <4D1C06E7.5060009@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D1C06E7.5060009@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-01-18 20:38, Trond Myklebust wrote:
-> On Tue, 2011-01-18 at 20:35 +0200, Benny Halevy wrote: 
->> On 2011-01-18 20:28, Trond Myklebust wrote:
->>> On Tue, 2011-01-18 at 12:44 -0500, Daniel.Muntz@emc.com wrote: 
->>>>
->>>>> -----Original Message-----
->>>>> From: linux-nfs-owner@vger.kernel.org 
->>>>> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Trond Myklebust
->>>>> Sent: Friday, January 14, 2011 7:42 AM
->>>>> To: Jim Rees
->>>>> Cc: William A. (Andy) Adamson; linux-nfs@vger.kernel.org
->>>>> Subject: Re: 4.1 no-pnfs mount option?
->>>>>
->>>>> On Fri, 2011-01-14 at 10:38 -0500, Jim Rees wrote: 
->>>>>> William A. (Andy) Adamson wrote:
->>>>>>
->>>>>>   No mount option - just configure your machine to not load any pnfs
->>>>>>   layoutdriver modules.
->>>>>>
->>>>>> That works, thanks, but I was hoping for a way to have 
->>>>> layout and non-layout
->>>>>> mounts going on at the same time.
->>>>>
->>>>> Different VMs?
->>>>>
->>>>> Trond
->>>>
->>>> Would there be any objections to adding a "nopnfs" mount option to force this behavior?  It could be useful at least for testing, possibly for working around server problems, or if an admin knows that certain clients' usage patterns would be better served by disabling pnfs.
->>>
->>> Yes. Why should we be adding debugging mount options to the upstream
->>> code? Just test the damned pnfs code properly before it goes upstream...
->>>
->>> Trond
->>
->> Such a mount option could be useful for dealing with buggy servers (pnfs-wise) so you
->> could mount one server with pnfs and another without.
+On Thu, Dec 30, 2010 at 12:13:27PM +0800, Mi Jinlong wrote:
 > 
-> You can find ways around that. Just use 2 clients: one with pnfs
-> switched on, and one with it off.
 > 
-> I really don't want to introduce mount options upstream unless they are
-> useful in the long term. One off usefulness does not pass that test.
+> J. Bruce Fields:
+> > On Mon, Dec 27, 2010 at 02:29:57PM +0800, Mi Jinlong wrote:
+> >> When testing this patch, oops appears.
+> >>
+> >> We should implement a nfsd4_encode_secinfo_no_name() instead using 
+> >> nfsd4_encode_secinfo(). 
+> >>
+> >> With the following patch, kernel will run correctly.
+> > 
+> > Whoops, yes, you're correct.  I've applied your patch.  Thanks!
+> > 
+> > (What are you using for testing?)
 > 
+> Hi Bruce:
+> 
+>   I test it by the pynfs41 at your tree, and add some simple
+>   test case as following.
+> 
+>   I have a question about the op.secinfo_no_name(), should it take 
+>   a argument? 
+>   Right now, maybe it always request with NFS4_SECINFO_STYLE4_CURRENT_FH,
+>   or I can't find how to set the argument.
 
-I guess we can live with that for the short term.
+Hm, I don't know, I guess I'd look at how arguments are passed to some
+of the other operations when constructing compounds in other tests....
+
+--b.
+
+> 
+> thanks,
+> Mi Jinlong  
+> 
+> >From 31ae25c04295888fa54ea531cdfaa4cfdefbe877 Mon Sep 17 00:00:00 2001
+> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> Date: Wed, 29 Dec 2010 17:23:35 +0800
+> Subject: [PATCH] CLNT: Add some simple secinfo_no_name tests
+> 
+>  Add two simple secinfo_no_name tests as Bruce said:
+>     - send PUTROOTFH+SECINFO_NO_NAME, check that you get back a
+>       legal result.
+>     - send PUTROOTFH+SECINFO+GETFH, and/or
+>       PUTROOTFH+SECINFO_NO_NAME+GETFH, check that the GETFH returns
+>       NOFILEHANDLE.
+> 
+>  Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+>  nfs4.1/server41tests/__init__.py           |    1 +
+>  nfs4.1/server41tests/st_secinfo_no_name.py |   35 ++++++++++++++++++++++++++++
+>  2 files changed, 36 insertions(+), 0 deletions(-)
+>  create mode 100644 nfs4.1/server41tests/st_secinfo_no_name.py
+> 
+> diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
+> index 22cd664..6aee88e 100644
+> --- a/nfs4.1/server41tests/__init__.py
+> +++ b/nfs4.1/server41tests/__init__.py
+> @@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
+>             "st_compound.py",
+>             "st_create_session.py",
+>             "st_destroy_session.py",
+> +           "st_secinfo_no_name.py",
+>             "st_sequence.py",
+>  	   "st_trunking.py",
+>             "st_open.py",
+> diff --git a/nfs4.1/server41tests/st_secinfo_no_name.py b/nfs4.1/server41tests/st_secinfo_no_name.py
+> new file mode 100644
+> index 0000000..a4b148d
+> --- /dev/null
+> +++ b/nfs4.1/server41tests/st_secinfo_no_name.py
+> @@ -0,0 +1,35 @@
+> +from st_create_session import create_session
+> +from nfs4_const import *
+> +from environment import check, fail, bad_sessionid, create_file
+> +from nfs4_type import channel_attrs4
+> +import nfs4_ops as op
+> +import nfs4lib
+> +
+> +def testSupported(t, env):
+> +    """Do a simple SECINFO_NO_NAME
+> +       send PUTROOTFH+SECINFO_NO_NAME, check is result legal
+> +
+> +    FLAGS: all 
+> +    CODE: SECNN1
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +    sess = c.create_session()
+> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name()])
+> +    check(res);
+> +
+> +def testSupported2(t, env):
+> +    """GETFH after do a SECINFO_NO_NAME or SECINFO
+> +       result in a NOFILEHANDLE error, See rfc 5661 section 2.6.3.1.1.8
+> +
+> +    FLAGS: all
+> +    CODE: SECNN2
+> +    """
+> +    c = env.c1.new_client(env.testname(t))
+> +    sess = c.create_session()
+> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name(), op.getfh()])
+> +    print res
+> +    check(res, NFS4ERR_NOFILEHANDLE);
+> +
+> +    res = sess.compound([op.putrootfh(), op.secinfo("tree"), op.getfh()])
+> +    print res
+> +    check(res, NFS4ERR_NOFILEHANDLE);
+> -- 
+> 1.7.3.3
+> 
