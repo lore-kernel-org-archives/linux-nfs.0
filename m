@@ -1,164 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:51230 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752369Ab1AUDFl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jan 2011 22:05:41 -0500
-Received: by mail-vw0-f46.google.com with SMTP id 16so612009vws.19
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Jan 2011 19:05:41 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 4/4] NFS: Prevent memory allocation failure in nfsacl_encode()
+Received: from mx2.netapp.com ([216.240.18.37]:12006 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753013Ab1AEUvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 15:51:53 -0500
+From: andros@netapp.com
 To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 20 Jan 2011 22:05:38 -0500
-Message-ID: <20110121030538.1056.53327.stgit@matisse.1015granger.net>
-In-Reply-To: <20110121030314.1056.96774.stgit@matisse.1015granger.net>
-References: <20110121030314.1056.96774.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V8 04/13] SUNRPC register and unregister the back channel transport
+Date: Wed,  5 Jan 2011 15:51:22 -0500
+Message-Id: <1294260690-3095-5-git-send-email-andros@netapp.com>
+In-Reply-To: <1294260690-3095-4-git-send-email-andros@netapp.com>
+References: <1294260690-3095-1-git-send-email-andros@netapp.com>
+ <1294260690-3095-2-git-send-email-andros@netapp.com>
+ <1294260690-3095-3-git-send-email-andros@netapp.com>
+ <1294260690-3095-4-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-nfsacl_encode() allocates memory in certain cases.  This of course
-is not guaranteed to work.
+From: Andy Adamson <andros@netapp.com>
 
-Since commit 9f06c719 "SUNRPC: New xdr_streams XDR encoder API", the
-kernel's XDR encoders can't return a result indicating possibly a
-failure, so a memory allocation failure in nfsacl_encode() has become
-fatal (ie, the XDR code Oopses) in some cases.
-
-However, the allocated memory is a tiny fixed amount, on the order
-of 40-50 bytes.  We can easily use a stack-allocated buffer for
-this, with only a wee bit of nose-holding.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
+ include/linux/sunrpc/svcsock.h |    1 -
+ net/sunrpc/svcsock.c           |   20 ++++++++++++++++++++
+ 2 files changed, 20 insertions(+), 1 deletions(-)
 
- fs/nfs/nfs3acl.c          |    4 ++--
- fs/nfs_common/nfsacl.c    |   22 +++++++++++++++-------
- fs/posix_acl.c            |   17 +++++++++++++----
- include/linux/posix_acl.h |    1 +
- 4 files changed, 31 insertions(+), 13 deletions(-)
-
-diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index 9f88c5f..2743427 100644
---- a/fs/nfs/nfs3acl.c
-+++ b/fs/nfs/nfs3acl.c
-@@ -311,8 +311,8 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
- 	if (!nfs_server_capable(inode, NFS_CAP_ACLS))
- 		goto out;
- 
--	/* We are doing this here, because XDR marshalling can only
--	   return -ENOMEM. */
-+	/* We are doing this here because XDR marshalling does not
-+	 * return any results, it BUGs. */
- 	status = -ENOSPC;
- 	if (acl != NULL && acl->a_count > NFS_ACL_MAX_ENTRIES)
- 		goto out;
-diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
-index a3e78bd..84c27d6 100644
---- a/fs/nfs_common/nfsacl.c
-+++ b/fs/nfs_common/nfsacl.c
-@@ -42,6 +42,11 @@ struct nfsacl_encode_desc {
- 	gid_t gid;
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 3a45a80..1b353a7 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -45,7 +45,6 @@ int		svc_sock_names(struct svc_serv *serv, char *buf,
+ int		svc_addsock(struct svc_serv *serv, const int fd,
+ 					char *name_return, const size_t len);
+ void		svc_init_xprt_sock(void);
+-void		svc_init_bc_xprt_sock(void);
+ void		svc_cleanup_xprt_sock(void);
+ struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot);
+ void		svc_sock_destroy(struct svc_xprt *);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 6630f29..e6b66d8 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1222,6 +1222,24 @@ static struct svc_xprt_class svc_tcp_bc_class = {
+ 	.xcl_ops = &svc_tcp_bc_ops,
+ 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
  };
- 
-+struct nfsacl_simple_acl {
-+	struct posix_acl acl;
-+	struct posix_acl_entry ace[4];
-+};
 +
- static int
- xdr_nfsace_encode(struct xdr_array2_desc *desc, void *elem)
- {
-@@ -99,17 +104,22 @@ int nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
- 		.uid = inode->i_uid,
- 		.gid = inode->i_gid,
- 	};
-+	struct nfsacl_simple_acl aclbuf;
- 	int err;
--	struct posix_acl *acl2 = NULL;
- 
- 	if (entries > NFS_ACL_MAX_ENTRIES ||
- 	    xdr_encode_word(buf, base, entries))
- 		return -EINVAL;
- 	if (encode_entries && acl && acl->a_count == 3) {
--		/* Fake up an ACL_MASK entry. */
--		acl2 = posix_acl_alloc(4, GFP_KERNEL);
--		if (!acl2)
--			return -ENOMEM;
-+		struct posix_acl *acl2 = &aclbuf.acl;
-+
-+		/* Avoid the use of posix_acl_alloc().  nfsacl_encode() is
-+		 * invoked in contexts where a memory allocation failure is
-+		 * fatal.  Fortunately this fake ACL is small enough to
-+		 * construct on the stack. */
-+		memset(acl2, 0, sizeof(acl2));
-+		posix_acl_init(acl2, 4);
-+
- 		/* Insert entries in canonical order: other orders seem
- 		 to confuse Solaris VxFS. */
- 		acl2->a_entries[0] = acl->a_entries[0];  /* ACL_USER_OBJ */
-@@ -120,8 +130,6 @@ int nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
- 		nfsacl_desc.acl = acl2;
- 	}
- 	err = xdr_encode_array2(buf, base + 4, &nfsacl_desc.desc);
--	if (acl2)
--		posix_acl_release(acl2);
- 	if (!err)
- 		err = 8 + nfsacl_desc.desc.elem_size *
- 			  nfsacl_desc.desc.array_len;
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index 39df95a..b1cf6bf 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -22,6 +22,7 @@
- 
- #include <linux/errno.h>
- 
-+EXPORT_SYMBOL(posix_acl_init);
- EXPORT_SYMBOL(posix_acl_alloc);
- EXPORT_SYMBOL(posix_acl_clone);
- EXPORT_SYMBOL(posix_acl_valid);
-@@ -32,6 +33,16 @@ EXPORT_SYMBOL(posix_acl_chmod_masq);
- EXPORT_SYMBOL(posix_acl_permission);
- 
- /*
-+ * Init a fresh posix_acl
-+ */
-+void
-+posix_acl_init(struct posix_acl *acl, int count)
++static void svc_init_bc_xprt_sock(void)
 +{
-+	atomic_set(&acl->a_refcount, 1);
-+	acl->a_count = count;
++	svc_reg_xprt_class(&svc_tcp_bc_class);
 +}
 +
-+/*
-  * Allocate a new ACL with the specified number of entries.
-  */
- struct posix_acl *
-@@ -40,10 +51,8 @@ posix_acl_alloc(int count, gfp_t flags)
- 	const size_t size = sizeof(struct posix_acl) +
- 	                    count * sizeof(struct posix_acl_entry);
- 	struct posix_acl *acl = kmalloc(size, flags);
--	if (acl) {
--		atomic_set(&acl->a_refcount, 1);
--		acl->a_count = count;
--	}
-+	if (acl)
-+		posix_acl_init(acl, count);
- 	return acl;
++static void svc_cleanup_bc_xprt_sock(void)
++{
++	svc_unreg_xprt_class(&svc_tcp_bc_class);
++}
++#else /* CONFIG_NFS_V4_1 */
++static void svc_init_bc_xprt_sock(void)
++{
++}
++
++static void svc_cleanup_bc_xprt_sock(void)
++{
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ static struct svc_xprt_ops svc_tcp_ops = {
+@@ -1247,12 +1265,14 @@ void svc_init_xprt_sock(void)
+ {
+ 	svc_reg_xprt_class(&svc_tcp_class);
+ 	svc_reg_xprt_class(&svc_udp_class);
++	svc_init_bc_xprt_sock();
  }
  
-diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
-index d68283a..54211c1 100644
---- a/include/linux/posix_acl.h
-+++ b/include/linux/posix_acl.h
-@@ -71,6 +71,7 @@ posix_acl_release(struct posix_acl *acl)
+ void svc_cleanup_xprt_sock(void)
+ {
+ 	svc_unreg_xprt_class(&svc_tcp_class);
+ 	svc_unreg_xprt_class(&svc_udp_class);
++	svc_cleanup_bc_xprt_sock();
+ }
  
- /* posix_acl.c */
- 
-+extern void posix_acl_init(struct posix_acl *, int);
- extern struct posix_acl *posix_acl_alloc(int, gfp_t);
- extern struct posix_acl *posix_acl_clone(const struct posix_acl *, gfp_t);
- extern int posix_acl_valid(const struct posix_acl *);
+ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
+-- 
+1.6.6
 
