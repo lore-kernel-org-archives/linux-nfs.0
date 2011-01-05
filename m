@@ -1,70 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:63204 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751046Ab1ANGjz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Jan 2011 01:39:55 -0500
-Received: from tang.cn.fujitsu.com (tang.cn.fujitsu.com [10.167.250.3])
-	by song.cn.fujitsu.com (Postfix) with ESMTP id 8E10017012E
-	for <linux-nfs@vger.kernel.org>; Fri, 14 Jan 2011 14:39:52 +0800 (CST)
-Received: from mailserver.fnst.cn.fujitus.com (tang.cn.fujitsu.com [127.0.0.1])
-	by tang.cn.fujitsu.com (8.14.3/8.13.1) with ESMTP id p0E6UdVf014537
-	for <linux-nfs@vger.kernel.org>; Fri, 14 Jan 2011 14:34:37 +0800
-Message-ID: <4D2FF124.7020500@cn.fujitsu.com>
-Date: Fri, 14 Jan 2011 14:45:56 +0800
-From: Fu Liankun <fuliankun@cn.fujitsu.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSV4 :All lock operations should be sent to the server for
- resolution
-Content-Type: text/plain; charset=GB2312
+Received: from fieldses.org ([174.143.236.118]:56427 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750801Ab1AEBAf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 20:00:35 -0500
+Date: Tue, 4 Jan 2011 20:00:34 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFSv3 list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS4.1: Fix bug server don't reply the right
+ fore_channel to client at create_session
+Message-ID: <20110105010034.GB14744@fieldses.org>
+References: <4CDBBF7C.90108@cn.fujitsu.com>
+ <20101112204554.GF32745@fieldses.org>
+ <4CE0EB7B.5060509@cn.fujitsu.com>
+ <20101229193551.GB12218@fieldses.org>
+ <4D1BF99C.6030702@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D1BF99C.6030702@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The RFC3530 describes that the client's all lock operations, including those
-requesting non-exclusive locks, should be sent to the server for resolution,
-even if it holds a read open delegation. But the kernel implements like that
-lock operations can be performed locally when a client holds an open
-delegation.
+On Thu, Dec 30, 2010 at 11:16:44AM +0800, Mi Jinlong wrote:
+> Hi Bruce:
+> 
+> J. Bruce Fields:
+> > On Mon, Nov 15, 2010 at 04:12:43PM +0800, Mi Jinlong wrote:
+> >>
+> >> J. Bruce Fields:
+> >>> On Thu, Nov 11, 2010 at 06:03:40PM +0800, Mi Jinlong wrote:
+> >>>> At the latest kernel(2.6.37-rc1), server just initialize the forechannel
+> >>>> at init_forechannel_attrs, but don't reflect it to reply.
+> >>>>
+> >>>> After initialize the session success, we should copy the forechannel info
+> >>>> to nfsd4_create_session struct.
+> >>> Thanks!
+> >>>
+> >>> Is there a chance you could write a pynfs test for this?
+> >> Maybe the following one is OK.
+> > 
+> > Yes, thanks very much.  But could we use a larger MAX_SLOTS_PER_SESSION
+> > value, to increase the chances this test will make sense for any
+> > server?
+> 
+>   Yes, but we can't use a huge value as 1000000 for that the test site
+>   will allocate replay_cache for each fore_channel.maxrequests when get
+>   the reply of CREATE_SESSION.
 
-The following are the RFC3530 provisions for Open Delegation and File Locks:
+pynfs should only allocate enough for the returned maxrequests, right?
 
-9.4.2.  Open Delegation and File Locks
+> If setting to 1000000 or more huger, 
+>   when the test case fail, the test site will eat many memory. 
+> 
+>   So, we should set it less than 1000 and add an explain.
+> 
+> > 
+> > Also, this is a "reply", not a "replay", test, so move it a little
+> > later; how about the following?
+> 
+>   Sorry for that, it's a typo. ^_^
+> 
+>   Maybe we should set the TOO_MANY_SLOTS less than 1000, after testing,
+>   the patch is as following:
+> 
+>   Ps: delete the semicolon at the latest line.
 
-   When a client holds a write open delegation, lock operations may be
-   performed locally.  This includes those required for mandatory file
-   locking.  This can be done since the delegation implies that there
-   can be no conflicting locks.  Similarly, all of the revalidations
-   that would normally be associated with obtaining locks and the
-   flushing of data associated with the releasing of locks need not be
-   done.
+Whoops, I obviously don't do much python....
 
-   When a client holds a read open delegation, lock operations are not
-   performed locally.  All lock operations, including those requesting
-   non-exclusive locks, are sent to the server for resolution.
+--b.
 
-Signed-off-by: Fu Liankun <fuliankun@cn.fujitsu.com>
----
- fs/nfs/nfs4proc.c |    7 -------
- 1 files changed, 0 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0f24cdf..3bba85b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4215,13 +4215,6 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
- 	if (status < 0)
- 		goto out;
- 	down_read(&nfsi->rwsem);
--	if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
--		/* Yes: cache locks! */
--		/* ...but avoid races with delegation recall... */
--		request->fl_flags = fl_flags & ~FL_SLEEP;
--		status = do_vfs_lock(request->fl_file, request);
--		goto out_unlock;
--	}
- 	status = _nfs4_do_setlk(state, cmd, request, NFS_LOCK_NEW);
- 	if (status != 0)
- 		goto out_unlock;
--- 
-1.7.3.1
-
+> 
+> >From 2f544fcef0eef7ac1d59bc428be3436ad7d1bbde Mon Sep 17 00:00:00 2001
+> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> Date: Wed, 29 Dec 2010 16:06:30 +0800
+> Subject: [PATCH] SRVR: Can server return fore_channel maxreqs correctly
+> 
+>     SRVR: Can server return fore_channel maxreqs correctly
+>     
+>     When client set the fore_channel maxreqs larger than server's
+>     NFSD_MAX_SLOTS_PER_SESSION at create_session, the fore_channel
+>     maxreqs at the reply must less than NFSD_MAX_SLOTS_PER_SESSION.
+>     
+>     At 2.6.37-rc1, the NFSD_MAX_SLOTS_PER_SESSION is 160.
+>     
+>     Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> ---
+>  nfs4.1/server41tests/st_create_session.py |   19 +++++++++++++++++++
+>  1 files changed, 19 insertions(+), 0 deletions(-)
+> 
+> diff --git a/nfs4.1/server41tests/st_create_session.py b/nfs4.1/server41tests/st_create_session.py
+> index 5f425d4..5cfac14 100644
+> --- a/nfs4.1/server41tests/st_create_session.py
+> +++ b/nfs4.1/server41tests/st_create_session.py
+> @@ -363,3 +363,22 @@ def testCallbackVersion(t, env):
+>                   (cb_occurred.low, cb_occurred.hi, cb_occurred.vers))
+>      finally:
+>          env.c1._check_version = orig
+> +
+> +def testMaxreqs(t, env):
+> +    """A CREATE_SESSION with maxreqs too large should return
+> +       a modified value
+> +
+> +    FLAGS: create_session all
+> +    CODE: CSESS22
+> +    """
+> +    # Assuming this is too large for any server; increase if necessary:
+> +    # but too huge will eat many memory for replay_cache, becareful it!
+> +    TOO_MANY_SLOTS = 500
+> +
+> +    c = env.c1.new_client(env.testname(t))
+> +    # CREATE_SESSION with fore_channel = TOO_MANY_SLOTS
+> +    chan_attrs = channel_attrs4(0,8192,8192,8192,128, TOO_MANY_SLOTS, [])
+> +    sess1 = c.create_session(fore_attrs=chan_attrs)
+> +    if nfs4lib.test_equal(sess1.fore_channel.maxrequests,
+> +                          chan_attrs.ca_maxrequests, "count4"):
+> +        fail("Server allows surprisingly large fore_channel maxreqs")
+> -- 
+> 1.7.3.3
+> 
