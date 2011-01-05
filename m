@@ -1,84 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29906 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751400Ab1AYO46 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Jan 2011 09:56:58 -0500
-Date: Tue, 25 Jan 2011 09:56:49 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: Benny Halevy <bhalevy@panasas.com>, Chuck Lever <chuck.lever@oracle.com>,
-        Thomas Haynes <thomas@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: Patched up cthon source?
-Message-ID: <20110125095649.446212fd@tlielax.poochiereds.net>
-In-Reply-To: <4D3ED37D.6020606@netapp.com>
-References: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com>
-	<83EC814B-1043-46B2-8F5E-E1FB1F5B56BF@oracle.com>
-	<4D3DFE40.1070605@panasas.com>
-	<4D3ED37D.6020606@netapp.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet10.oracle.com ([148.87.113.121]:57708 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751129Ab1AERGo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 12:06:44 -0500
+Subject: Re: [PATCH] nfs4: set source address when callback is generated
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20110105005835.GA14744@fieldses.org>
+Date: Wed, 5 Jan 2011 12:06:04 -0500
+Cc: Takuma Umeya <tumeya@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Message-Id: <F369CCC7-285D-4F4D-80D4-EEAC273E561C@oracle.com>
+References: <20101215050901.GB13532@redhat.com> <20101216034945.GH9646@fieldses.org> <A4BB9763-B67F-4559-B3FF-F7BC2DBD3B3A@oracle.com> <20110105005835.GA14744@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 25 Jan 2011 08:43:25 -0500
-Bryan Schumaker <bjschuma@netapp.com> wrote:
 
-> On 01/24/2011 05:33 PM, Benny Halevy wrote:
-> > this is a problem with the version of nroff on newer distributions.
+On Jan 4, 2011, at 7:58 PM, J. Bruce Fields wrote:
+
+> On Thu, Dec 16, 2010 at 10:54:00AM -0500, Chuck Lever wrote:
+>> I don't recall creating svc_addr_u, but I'll take a stab at a guess.
+>> 
+>> It looks like someone thought that we should retain the idea of storing just the address part of the socket address, and not the other stuff (like the family and port, since this code doesn't appear to need that additional information).  It greatly reduces the size of the field.  A full sockaddr_storage is more than 128 bytes, since it has to be able to store an AF_UNIX pathname.
+>> 
+>> Doing this, there is a lot less data to keep around, but an IPv6 socket address has other items outside of in6_addr that can be used to form a full address.  We decided at some point we could copy this information from the other address storage field in the rqstp.
+>> 
+>> But the result of this space savings means we must construct a full socket address when needed, using logic such as the above.
 > 
-> My version of groff (1.21) is splitting the error into two lines, so I am using the following patch.
+> Seems to me we should either just waste the extra 100 bytes or define
+> something that would be useful elsewhere as well....
+
+In nfs-utils, we define:
+
+	union nfs_sockaddr {
+		struct sockaddr_in	s4;
+		struct sockaddr_in6	s6;
+		struct sockaddr		sa;
+	};
+
+A variable of this type is large enough to hold a full IPv6 sockaddr, but is significantly smaller than a sockaddr_storage.
+
+The addition of the "struct sockaddr" element is to enable access to such variables via a "struct sockaddr *" without type punning.  This seems to be preferred by gcc over type casting in order to handle optimizations involving address aliasing.  It also allows more precise type checking.
+
+A full conversion to use such a construct in kernel RPC and NFS components is, I fear, too late for 2.6.38, but might be considered for a future release if there is consensus on this approach.
+
+> But if we do it this way we can at least simplify a little.
 > 
-> Bryan
+> --b.
 > 
+> commit 6f3d772fb8a039de8f21d725f5e38c252b4c0efd
+> Author: Takuma Umeya <tumeya@redhat.com>
+> Date:   Wed Dec 15 14:09:01 2010 +0900
+> 
+>    nfs4: set source address when callback is generated
+> 
+>    when callback is generated in NFSv4 server, it doesn't set the source
+>    address. When an alias IP is utilized on NFSv4 server and suppose the
+>    client is accessing via that alias IP (e.g. eth0:0), the client invokes
+>    the callback to the IP address that is set on the original device (e.g.
+>    eth0). This behavior results in timeout of xprt.
+>    The patch sets the IP address that the client should invoke callback to.
+> 
+>    Signed-off-by: Takuma Umeya <tumeya@redhat.com>
+>    [bfields@redhat.com: Simplify gen_callback arguments, use helper function]
+>    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index a085805..dd183af 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -484,6 +484,7 @@ static int setup_callback_client(struct nfs4_client *clp,
+> 		.net		= &init_net,
+> 		.address	= (struct sockaddr *) &conn->cb_addr,
+> 		.addrsize	= conn->cb_addrlen,
+> +		.saddress	= (struct sockaddr *) &conn->cb_saddr,
+> 		.timeout	= &timeparms,
+> 		.program	= &cb_program,
+> 		.version	= 0,
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 87d4c48..b583e4e 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1163,10 +1163,26 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
+> 	return NULL;
+> }
+> 
+> +static void rpc_svcaddr2sockaddr(struct sockaddr *sa, unsigned short family, union svc_addr_u *svcaddr)
+> +{
+> +	switch (family) {
+> +	case AF_INET:
+> +		((struct sockaddr_in *)sa)->sin_family = AF_INET;
+> +		((struct sockaddr_in *)sa)->sin_addr = svcaddr->addr;
+> +		return;
+> +	case AF_INET6:
+> +		((struct sockaddr_in6 *)sa)->sin6_family = AF_INET6;
+> +		((struct sockaddr_in6 *)sa)->sin6_addr = svcaddr->addr6;
+> +		return;
+> +	}
+> +}
+> +
+> static void
+> -gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
+> +gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_rqst *rqstp)
+> {
+> 	struct nfs4_cb_conn *conn = &clp->cl_cb_conn;
+> +	struct sockaddr	*sa = svc_addr(rqstp);
+> +	u32 scopeid = rpc_get_scope_id(sa);
+> 	unsigned short expected_family;
+> 
+> 	/* Currently, we only support tcp and tcp6 for the callback channel */
+> @@ -1192,6 +1208,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
+> 
+> 	conn->cb_prog = se->se_callback_prog;
+> 	conn->cb_ident = se->se_callback_ident;
+> +	rpc_svcaddr2sockaddr((struct sockaddr *)&conn->cb_saddr, expected_family, &rqstp->rq_daddr);
+> 	return;
+> out_err:
+> 	conn->cb_addr.ss_family = AF_UNSPEC;
+> @@ -1768,7 +1785,6 @@ __be32
+> nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> 		  struct nfsd4_setclientid *setclid)
+> {
+> -	struct sockaddr		*sa = svc_addr(rqstp);
+> 	struct xdr_netobj 	clname = { 
+> 		.len = setclid->se_namelen,
+> 		.data = setclid->se_name,
+> @@ -1871,7 +1887,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> 	 * for consistent minorversion use throughout:
+> 	 */
+> 	new->cl_minorversion = 0;
+> -	gen_callback(new, setclid, rpc_get_scope_id(sa));
+> +	gen_callback(new, setclid, rqstp);
+> 	add_to_unconfirmed(new, strhashval);
+> 	setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
+> 	setclid->se_clientid.cl_id = new->cl_clientid.cl_id;
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 84b2302..cf6dc83 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -96,6 +96,7 @@ struct nfs4_delegation {
+> struct nfs4_cb_conn {
+> 	/* SETCLIENTID info */
+> 	struct sockaddr_storage	cb_addr;
+> +	struct sockaddr_storage	cb_saddr;
+> 	size_t			cb_addrlen;
+> 	u32                     cb_prog; /* used only in 4.0 case;
+> 					    per-session otherwise */
 
-Yep, this workaround stopped working around for me on my rawhide box
-broke yesterday for the same reason.
-
-I think this patch may be a better approach than trying to grep out
-random stuff, but I don't know whether non-GNU tbl programs will barf
-on it. If anyone has a solaris box handy, could you let me know if
-this breaks on it?
-
-----------------------[snip]------------------
-[PATCH] cthon04: add "nowarn" option to nroff.in tables
-
-This prevents the tbl preprocessor from stuffing warnings into the
-resulting file, which subsequently can make nroff spew warnings like
-this on stderr:
-
-    warning: file `nroff.in', around line 47:
-      table wider than line width
-
-Unfortunately, I'm not sure how non-gnu tbl programs will react to
-this option, so YMMV.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- general/nroff.in |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/general/nroff.in b/general/nroff.in
-index 522ac80..a8acb3a 100644
---- a/general/nroff.in
-+++ b/general/nroff.in
-@@ -18,7 +18,7 @@ benchmarks.
- .LP
- I ran the benchmarks on the following configurations:
- .TS
--center;
-+center nowarn;
- l l l l.
- CPU	Unix	Fortran	Memory
- .sp 4p
-@@ -38,7 +38,7 @@ A bubble sort of integers.
- A prime number generator.
- .LP
- .TS
--center;
-+center nowarn;
-  c|c|c s|c s|
-  c|c|c s|c s|
-  c|c|c s|c s|
 -- 
-1.7.3.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
