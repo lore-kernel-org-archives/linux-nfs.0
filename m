@@ -1,121 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:30729 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756941Ab1ANRA7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jan 2011 12:00:59 -0500
-Subject: Re: mac error
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <BF3BB6D12298F54B89C8DCC1E4073D8002CC1D8F@CORPUSMX50A.corp.emc.com>
-Date: Fri, 14 Jan 2011 12:00:39 -0500
-Cc: <webmail.hce@gmail.com>, <linux-nfs@vger.kernel.org>
-Message-Id: <50B5575D-8589-4261-9BC0-C6543CD18632@oracle.com>
-References: <AANLkTin04TeswNAM89ij84YzfeTAR7rsppGyZFfq01qM@mail.gmail.com> <4D2FB6F4.6070304@cn.fujitsu.com> <AANLkTin8PEyLqpdaTorSrS3Zi5sF7VeJRcrCVK9fEyc7@mail.gmail.com> <BB05F812-F3D3-4742-BD54-794FD4BCC0C0@oracle.com> <BF3BB6D12298F54B89C8DCC1E4073D8002CC1D8F@CORPUSMX50A.corp.emc.com>
-To: peter.staubach@emc.com
+Received: from fieldses.org ([174.143.236.118]:41548 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751260Ab1AEPhW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 10:37:22 -0500
+Date: Wed, 5 Jan 2011 10:37:13 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] nfsd4: implement secinfo_no_name
+Message-ID: <20110105153713.GA13000@fieldses.org>
+References: <1292612511-14203-1-git-send-email-bfields@redhat.com>
+ <1292612511-14203-4-git-send-email-bfields@redhat.com>
+ <4D183265.70608@cn.fujitsu.com>
+ <20101229185609.GA12218@fieldses.org>
+ <4D1C06E7.5060009@cn.fujitsu.com>
+ <20110105010507.GC14744@fieldses.org>
+ <AANLkTimHAzLWE2ZC+QGtSw3ff6fpQsejDV8M7x8m34dp@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <AANLkTimHAzLWE2ZC+QGtSw3ff6fpQsejDV8M7x8m34dp@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, Jan 05, 2011 at 10:15:11AM -0500, Fred Isaman wrote:
+> On Tue, Jan 4, 2011 at 8:05 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Thu, Dec 30, 2010 at 12:13:27PM +0800, Mi Jinlong wrote:
+> >>
+> >>
+> >> J. Bruce Fields:
+> >> > On Mon, Dec 27, 2010 at 02:29:57PM +0800, Mi Jinlong wrote:
+> >> >> When testing this patch, oops appears.
+> >> >>
+> >> >> We should implement a nfsd4_encode_secinfo_no_name() instead using
+> >> >> nfsd4_encode_secinfo().
+> >> >>
+> >> >> With the following patch, kernel will run correctly.
+> >> >
+> >> > Whoops, yes, you're correct.  I've applied your patch.  Thanks!
+> >> >
+> >> > (What are you using for testing?)
+> >>
+> >> Hi Bruce:
+> >>
+> >>   I test it by the pynfs41 at your tree, and add some simple
+> >>   test case as following.
+> >>
+> >>   I have a question about the op.secinfo_no_name(), should it take
+> >>   a argument?
+> >>   Right now, maybe it always request with NFS4_SECINFO_STYLE4_CURRENT_FH,
+> >>   or I can't find how to set the argument.
+> >
+> 
+> There was a bug in how the op.secinfo_no_name() function was auto
+> constructed.  I've pushed a fix to
+> my tree at git://linux-nfs.org/~iisaman/newpynfs.git.
 
-On Jan 14, 2011, at 10:55 AM, peter.staubach@emc.com wrote:
+Thanks, Fred.  I've pulled that into my repository too.
 
-> Hi.
-> 
-> Actually, that command should work.  The server should respond with an
-> RPC error indicating which
-> versions of the nlockmgr protocol are supported and then rpcinfo will
-> ping each of them.
-
-Yes, that and the "RPC: Timed out" message suggests that the underlying transport is not even getting through.
-
-I expect lockd to unregister itself with the portmapper when it is shut down cleanly.  The presence of a registration for nlockmgr indicates it should still be running and contactable.
+--b.
 
 > 
-> 		ps
+> Fred
 > 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org
-> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Chuck Lever
-> Sent: Friday, January 14, 2011 10:18 AM
-> To: hce
-> Cc: Linux NFS Mailing List
-> Subject: Re: mac error
-> 
-> 
-> On Jan 13, 2011, at 11:01 PM, hce wrote:
-> 
->> Thanks for your response. I've just found that nlockmgr did not
->> respond when I run following command on the server. Is it a problem or
->> it is normal? Anyway, the NFS is still working fine.
-> 
-> nlockmgr and NFS are two separate RPC services.  So, NFS can work while
-> there might be a problem with nlockmgr.  IMO, nlockmgr should respond in
-> this case.
-> 
->> $ rpcinfo -t linux_server nlockmgr
->> rpcinfo: RPC: Timed out
->> program 100021 version 0 is not available
->> 
->> $ rpcinfo -u linux_server nlockmgr
->> rpcinfo: RPC: Timed out
->> program 100021 version 0 is not available
-> 
-> This is attempting to contact nlockmgr's "version 0" which is not
-> registered (see below).  Versions 1, 3, and 4 are registered.
-> 
-> Try "rpcinfo -u linux_server nlockmgr 3".
-> 
->> $ rpcinfo -p
->>  program vers proto   port
->>   100000    2   tcp    111  portmapper
->>   100000    2   udp    111  portmapper
->>   100024    1   udp    895  status
->>   100024    1   tcp    898  status
->>   100011    1   udp    806  rquotad
->>   100011    2   udp    806  rquotad
->>   100011    1   tcp    809  rquotad
->>   100011    2   tcp    809  rquotad
->>   100003    2   udp   2049  nfs
->>   100003    3   udp   2049  nfs
->>   100003    4   udp   2049  nfs
->>   100021    1   udp  32794  nlockmgr
->>   100021    3   udp  32794  nlockmgr
->>   100021    4   udp  32794  nlockmgr
->>   100003    2   tcp   2049  nfs
->>   100003    3   tcp   2049  nfs
->>   100003    4   tcp   2049  nfs
->>   100021    1   tcp  57164  nlockmgr
->>   100021    3   tcp  57164  nlockmgr
->>   100021    4   tcp  57164  nlockmgr
->>   100005    1   udp    828  mountd
->>   100005    1   tcp    831  mountd
->>   100005    2   udp    828  mountd
->>   100005    2   tcp    831  mountd
->>   100005    3   udp    828  mountd
->>   100005    3   tcp    831  mountd
-> 
-> nlockmgr is registered, so it must have been started at some point.
-> It's a kernel service, so there's no daemon to die.  Do you have some
-> kind of firewall in place that would prevent contacting the NLM service?
-> Does "linux_server" resolve to the IP address you expect it to?
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> > Hm, I don't know, I guess I'd look at how arguments are passed to some
+> > of the other operations when constructing compounds in other tests....
+> >
+> > --b.
+> >
+> >>
+> >> thanks,
+> >> Mi Jinlong
+> >>
+> >> >From 31ae25c04295888fa54ea531cdfaa4cfdefbe877 Mon Sep 17 00:00:00 2001
+> >> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> >> Date: Wed, 29 Dec 2010 17:23:35 +0800
+> >> Subject: [PATCH] CLNT: Add some simple secinfo_no_name tests
+> >>
+> >>  Add two simple secinfo_no_name tests as Bruce said:
+> >>     - send PUTROOTFH+SECINFO_NO_NAME, check that you get back a
+> >>       legal result.
+> >>     - send PUTROOTFH+SECINFO+GETFH, and/or
+> >>       PUTROOTFH+SECINFO_NO_NAME+GETFH, check that the GETFH returns
+> >>       NOFILEHANDLE.
+> >>
+> >>  Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> >> ---
+> >>  nfs4.1/server41tests/__init__.py           |    1 +
+> >>  nfs4.1/server41tests/st_secinfo_no_name.py |   35 ++++++++++++++++++++++++++++
+> >>  2 files changed, 36 insertions(+), 0 deletions(-)
+> >>  create mode 100644 nfs4.1/server41tests/st_secinfo_no_name.py
+> >>
+> >> diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
+> >> index 22cd664..6aee88e 100644
+> >> --- a/nfs4.1/server41tests/__init__.py
+> >> +++ b/nfs4.1/server41tests/__init__.py
+> >> @@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
+> >>             "st_compound.py",
+> >>             "st_create_session.py",
+> >>             "st_destroy_session.py",
+> >> +           "st_secinfo_no_name.py",
+> >>             "st_sequence.py",
+> >>          "st_trunking.py",
+> >>             "st_open.py",
+> >> diff --git a/nfs4.1/server41tests/st_secinfo_no_name.py b/nfs4.1/server41tests/st_secinfo_no_name.py
+> >> new file mode 100644
+> >> index 0000000..a4b148d
+> >> --- /dev/null
+> >> +++ b/nfs4.1/server41tests/st_secinfo_no_name.py
+> >> @@ -0,0 +1,35 @@
+> >> +from st_create_session import create_session
+> >> +from nfs4_const import *
+> >> +from environment import check, fail, bad_sessionid, create_file
+> >> +from nfs4_type import channel_attrs4
+> >> +import nfs4_ops as op
+> >> +import nfs4lib
+> >> +
+> >> +def testSupported(t, env):
+> >> +    """Do a simple SECINFO_NO_NAME
+> >> +       send PUTROOTFH+SECINFO_NO_NAME, check is result legal
+> >> +
+> >> +    FLAGS: all
+> >> +    CODE: SECNN1
+> >> +    """
+> >> +    c = env.c1.new_client(env.testname(t))
+> >> +    sess = c.create_session()
+> >> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name()])
+> >> +    check(res);
+> >> +
+> >> +def testSupported2(t, env):
+> >> +    """GETFH after do a SECINFO_NO_NAME or SECINFO
+> >> +       result in a NOFILEHANDLE error, See rfc 5661 section 2.6.3.1.1.8
+> >> +
+> >> +    FLAGS: all
+> >> +    CODE: SECNN2
+> >> +    """
+> >> +    c = env.c1.new_client(env.testname(t))
+> >> +    sess = c.create_session()
+> >> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name(), op.getfh()])
+> >> +    print res
+> >> +    check(res, NFS4ERR_NOFILEHANDLE);
+> >> +
+> >> +    res = sess.compound([op.putrootfh(), op.secinfo("tree"), op.getfh()])
+> >> +    print res
+> >> +    check(res, NFS4ERR_NOFILEHANDLE);
+> >> --
+> >> 1.7.3.3
+> >>
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
