@@ -1,85 +1,148 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:19640 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754734Ab1AKArI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jan 2011 19:47:08 -0500
-From: <Daniel.Muntz@emc.com>
-To: <shtylman@athenacr.com>, <jlayton@redhat.com>
-CC: <linux-nfs@vger.kernel.org>
-Date: Mon, 10 Jan 2011 19:38:43 -0500
-Subject: RE: question about nfs4 with krb5 behavior
-Message-ID: <DE966DA98A4ABE438D726BDF1699CF61043985AADB@MX05A.corp.emc.com>
-In-Reply-To: <201101101545.21890.shtylman@athenacr.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx2.netapp.com ([216.240.18.37]:19703 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753073Ab1AEUvz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 15:51:55 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V8 12/13] NFS rename client back channel transport field
+Date: Wed,  5 Jan 2011 15:51:30 -0500
+Message-Id: <1294260690-3095-13-git-send-email-andros@netapp.com>
+In-Reply-To: <1294260690-3095-12-git-send-email-andros@netapp.com>
+References: <1294260690-3095-1-git-send-email-andros@netapp.com>
+ <1294260690-3095-2-git-send-email-andros@netapp.com>
+ <1294260690-3095-3-git-send-email-andros@netapp.com>
+ <1294260690-3095-4-git-send-email-andros@netapp.com>
+ <1294260690-3095-5-git-send-email-andros@netapp.com>
+ <1294260690-3095-6-git-send-email-andros@netapp.com>
+ <1294260690-3095-7-git-send-email-andros@netapp.com>
+ <1294260690-3095-8-git-send-email-andros@netapp.com>
+ <1294260690-3095-9-git-send-email-andros@netapp.com>
+ <1294260690-3095-10-git-send-email-andros@netapp.com>
+ <1294260690-3095-11-git-send-email-andros@netapp.com>
+ <1294260690-3095-12-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Best practice for AFS is to only allow one user at a time, especially if users can become root.  You'd also want to delete any "persistent" cache when users change and have a mechanism of validating/replacing kernel and apps.
+From: Andy Adamson <andros@netapp.com>
 
-  -Dan
+Differentiate from server backchannel
 
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Roman Shtylman
-Sent: Monday, January 10, 2011 12:45 PM
-To: Jeff Layton
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: question about nfs4 with krb5 behavior
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Acked-by: Bruce Fields <bfields@redhat.com>
+---
+ fs/nfs/callback.c              |   12 ++++++------
+ include/linux/sunrpc/bc_xprt.h |    4 ++--
+ include/linux/sunrpc/svc.h     |    2 +-
+ net/sunrpc/svc.c               |    2 +-
+ net/sunrpc/svcsock.c           |    2 +-
+ 5 files changed, 11 insertions(+), 11 deletions(-)
 
-
-On Monday, January 10, 2011 03:35:04 pm Jeff Layton wrote:
-> On Mon, 10 Jan 2011 14:55:30 -0500
-> 
-> Roman Shtylman <shtylman@athenacr.com> wrote:
-> > I have setup nfs4 with krb5 server and successfully mounted a client. Two
-> > people can log into the client box and both access their respective
-> > shares and not each other's. However, when one user (who lets say has
-> > root privs) uses root to become the second user (using su) then that
-> > user can now access the info of the user he became.
-> > 
-> > I was under the impression that this should not be possible as the
-> > tickets for access should still be tied to the first user they logged in
-> > as. Is this true? Or do I have an error in my setup?
-> > 
-> > Process:
-> > Login as user A
-> > (User B logs into the machine from another terminal)
-> > sudo su B (to become user B on the machine)
-> > <can now edit files which belong to B>
-> 
-> That's correct, or is at least in accordance with the design. The
-> credcache is (usually) a file in /tmp. The kernel has to upcall to
-> userspace for that information. To do that, it passes along the uid of
-> the owner of the credcache. I think this is governed by the fsuid.
-> 
-> When you "su" to another user, all of the uid's associated with the
-> process are changed (real, effective, fs and saved). So, the uid passed to
-> the upcall in this case is B's and not A's.
-> 
-> This could potentially be "fixable" by moving the krb5 credcache into
-> the per-session keyring and then teach nfs to do keys API upcalls to get
-> the right blob. Not a trivial project, but it's doable. This is
-> something that would be nice for CIFS and maybe AFS too.
-
-AFS does not have this behavior. 
-
-What is a best practice for handling this situation? Prevent "untrusted" 
-machines from connecting to the nfs server? Basically any machine where a 
-normal user can become root would be a potential problem?
-
-Thanks for the quick response.
-
-cheers,
-~Roman
-
-> 
-> > If User B does not login before user A becomes user B, user A is not able
-> > to edit user B's files even after he becomes user B.
-> 
-> I suspect that that's just a negative cache entry that will eventually
-> time out.
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 753a9e3..1990165 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -142,7 +142,7 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
+ 	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
+ 	struct nfs4_sessionid *bc_sid;
+ 
+-	if (!serv->bc_xprt)
++	if (!serv->sv_bc_xprt)
+ 		return -EINVAL;
+ 
+ 	/* on success freed in xprt_free */
+@@ -152,12 +152,12 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
+ 	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
+ 		NFS4_MAX_SESSIONID_LEN);
+ 	spin_lock_bh(&serv->sv_cb_lock);
+-	serv->bc_xprt->xpt_bc_sid = bc_sid;
++	serv->sv_bc_xprt->xpt_bc_sid = bc_sid;
+ 	spin_unlock_bh(&serv->sv_cb_lock);
+-	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
++	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for sv_bc_xprt %p\n", __func__,
+ 		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
+ 		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
+-		serv->bc_xprt);
++		serv->sv_bc_xprt);
+ 	return 0;
+ }
+ 
+@@ -228,8 +228,8 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ 	init_waitqueue_head(&serv->sv_cb_waitq);
+ 	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
+ 	if (IS_ERR(rqstp)) {
+-		svc_xprt_put(serv->bc_xprt);
+-		serv->bc_xprt = NULL;
++		svc_xprt_put(serv->sv_bc_xprt);
++		serv->sv_bc_xprt = NULL;
+ 	}
+ out:
+ 	dprintk("--> %s return %ld\n", __func__,
+diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
+index 2c60e09..c50b458 100644
+--- a/include/linux/sunrpc/bc_xprt.h
++++ b/include/linux/sunrpc/bc_xprt.h
+@@ -43,7 +43,7 @@ int bc_send(struct rpc_rqst *req);
+  */
+ static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
+ {
+-	if (rqstp->rq_server->bc_xprt)
++	if (rqstp->rq_server->sv_bc_xprt)
+ 		return 1;
+ 	return 0;
+ }
+@@ -51,7 +51,7 @@ static inline struct nfs4_sessionid *bc_xprt_sid(struct svc_rqst *rqstp)
+ {
+ 	if (svc_is_backchannel(rqstp))
+ 		return (struct nfs4_sessionid *)
+-					rqstp->rq_server->bc_xprt->xpt_bc_sid;
++			rqstp->rq_server->sv_bc_xprt->xpt_bc_sid;
+ 	return NULL;
+ }
+ 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 5a3085b..c81d4d8 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -99,7 +99,7 @@ struct svc_serv {
+ 	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
+ 	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
+ 						 * entries in the svc_cb_list */
+-	struct svc_xprt		*bc_xprt;
++	struct svc_xprt		*sv_bc_xprt;	/* callback on fore channel */
+ #endif /* CONFIG_NFS_V4_1 */
+ };
+ 
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 261e2d1..0e659c6 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1262,7 +1262,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ 	struct kvec	*resv = &rqstp->rq_res.head[0];
+ 
+ 	/* Build the svc_rqst used by the common processing routine */
+-	rqstp->rq_xprt = serv->bc_xprt;
++	rqstp->rq_xprt = serv->sv_bc_xprt;
+ 	rqstp->rq_xid = req->rq_xid;
+ 	rqstp->rq_prot = req->rq_xprt->prot;
+ 	rqstp->rq_server = serv;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 9456152..89a25ac 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1595,7 +1595,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+ 	xprt = &svsk->sk_xprt;
+ 	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
+ 
+-	serv->bc_xprt = xprt;
++	serv->sv_bc_xprt = xprt;
+ 
+ 	return xprt;
+ }
+-- 
+1.6.6
 
