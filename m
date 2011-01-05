@@ -1,73 +1,38 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Issue in nfs-utils 1.2.3
-Date: Thu, 13 Jan 2011 10:52:20 -0500
-Message-ID: <20110113155220.GE20946@fieldses.org>
-References: <4D2D910F.1080703@onet.eu>
- <4D2DB1D8.8030606@onet.eu>
- <20110112160459.GA6124@fieldses.org>
- <2746C301-E627-4F22-8422-6A4856CF4EC0@oracle.com>
+From: Bryan Schumaker <bjschuma@netapp.com>
+Subject: Re: [PATCH v2 0/5] Add secinfo to the NFS client
+Date: Wed, 05 Jan 2011 16:50:56 -0500
+Message-ID: <4D24E7C0.9010706@netapp.com>
+References: <4D24CB2E.5030207@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: sdrb <sdrb-4Uo9UdwAbX8@public.gmane.org>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Steve Dickson <steved@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+	"Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48939 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:48789 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932979Ab1AMPwX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Jan 2011 10:52:23 -0500
-In-Reply-To: <2746C301-E627-4F22-8422-6A4856CF4EC0@oracle.com>
+	id S1751312Ab1AEVu6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 16:50:58 -0500
+In-Reply-To: <4D24CB2E.5030207@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 13, 2011 at 10:47:42AM -0500, Chuck Lever wrote:
-> 
-> On Jan 12, 2011, at 11:04 AM, J. Bruce Fields wrote:
-> 
-> > On Wed, Jan 12, 2011 at 02:51:20PM +0100, sdrb wrote:
-> >> I've investigated a little the sources and I noticed that probably
-> >> there should be some pointer NULL-ed in mountlist_list() procedure
-> >> like in patch I've attached.
-> >> 
-> >> Anyone can confirm that such a fix is ok?
-> > 
-> > Thanks for the report.
-> > 
-> > I haven't tried to verify that it could cause the backtrace you saw, but
-> > clearly mlist is used after that mountlist_freeall(mlist), so your patch
-> > is necessary.
-> > 
-> > Looks like this was introduced with a8348c2c4 "mountd: Add
-> > mountlist_freeall()".
-> 
-> Is your theory that the introduction of a function call ( mountlist_freeall() ) hides the side-effects of that while loop, leaving the mlist variable in the mountlist_list() scope pointing at freed memory?
+I forgot to mention that these apply on top of Tronds "devel" branch of nfs-2.6.git.
 
-Yup.--b.
+-Bryan
 
+On 01/05/2011 02:49 PM, Bryan Schumaker wrote:
+> These patches will add the secinfo procedure to the NFS client 
+> and do some cleanup along the way.  The final result will should
+> be able to cross mountpoints using a different form of security
+> and auto-detect the security of an initial NFS v4 mount.
 > 
-> > --b.
-> > 
-> >> diff -rNup nfs-utils-1.2.3_orig/utils/mountd/rmtab.c nfs-utils-1.2.3/utils/mountd/rmtab.c
-> >> --- nfs-utils-1.2.3/utils/mountd/rmtab.c	2010-09-28 14:24:16.000000000 +0200
-> >> +++ nfs-utils-1.2.3/utils/mountd/rmtab.c	2011-01-12 14:44:22.320000000 +0100
-> >> @@ -205,6 +205,7 @@ mountlist_list(void)
-> >> 	}
-> >> 	if (stb.st_mtime != last_mtime) {
-> >> 		mountlist_freeall(mlist);
-> >> +		mlist=NULL;
+> v2:
+>  - Add more details about the call_sync improvement
+>  - Don't initialize global constant function pointers to NULL
 > 
-> Nit: Please use white space conventions which match the rest of the file (single blanks around "=").
-> 
-> >> 		last_mtime = stb.st_mtime;
-> >> 
-> >> 		setrmtabent("r");
-> > 
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
+> Bryan
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
