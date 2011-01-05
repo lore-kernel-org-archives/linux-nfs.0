@@ -1,52 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from opensource.wolfsonmicro.com ([80.75.67.52]:56558 "EHLO
-	opensource2.wolfsonmicro.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S932498Ab1AMMIm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 07:08:42 -0500
-Date: Thu, 13 Jan 2011 12:06:27 +0000
-From: Mark Brown <broonie@opensource.wolfsonmicro.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Nick Piggin <npiggin@kernel.dk>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: NFS root lockups with -next 20110113
-Message-ID: <20110113120626.GB30351@opensource.wolfsonmicro.com>
-Content-Type: text/plain; charset=us-ascii
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:56673 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751429Ab1AEVb1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 16:31:27 -0500
+In-Reply-To: <1294262208.2952.4.camel@heimdal.trondhjem.org>
+References: <1294254337.16957.13.camel@mulgrave.site> <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
+ <1294256169.16957.18.camel@mulgrave.site> <20110105200008.GJ8638@n2100.arm.linux.org.uk>
+ <1294259637.16957.25.camel@mulgrave.site> <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
+ <20110105210448.GM8638@n2100.arm.linux.org.uk> <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
+ <1294262208.2952.4.camel@heimdal.trondhjem.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Wed, 5 Jan 2011 13:30:34 -0800
+Message-ID: <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        =?ISO-8859-1?Q?Uwe_Kleine=2DK=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-With -next 20110113 I'm experiencing lockups shortly after userspace
-starts when booting with my root filesystem on NFS, log below.  I can
-boot into /bin/sh but running real userspace triggers this very easily.
-This was introduced sometime this week.
+On Wed, Jan 5, 2011 at 1:16 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+>
+> So what should be the preferred way to ensure data gets flushed when
+> you've written directly to a page, and then want to read through the
+> vm_map_ram() virtual range? Should we be adding new semantics to
+> flush_kernel_dcache_page()?
 
-I've not bisected or otherwise investigated much yet, but I do notice
-code added recently by Nick in "fs: rcu-walk for path lookup" showing up
-in the backtrace so including him in the CCs.
+The "preferred way" is actually simple: "don't do that". IOW, if some
+page is accessed through a virtual mapping you've set up, then
+_always_ access it through that virtual mapping.
 
-Tail of the console log:
+Now, when that is impossible (and yes, it sometimes is), then you
+should flush after doing all writes. And if you do the write through
+the regular kernel mapping, you should use flush_dcache_page(). And if
+you did it through the virtual mapping, you should use
+"flush_kernel_vmap_range()" or whatever.
 
-INIT: version 2.86 booting
-[   15.250000] BUG: spinlock recursion on CPU#0, rc/1151
-[   15.250000]  lock: c74ad678, .magic: dead4ead, .owner: rc/1151, .owner_cpu: 0
-[   15.260000] [<c0035118>] (unwind_backtrace+0x0/0xe4) from [<c0190454>] (do_raw_spin_lock+0x48/0x148)
-[   15.260000] [<c0190454>] (do_raw_spin_lock+0x48/0x148) from [<c00c89f0>] (nameidata_dentry_drop_rcu+0x84/0x180)
-[   15.270000] [<c00c89f0>] (nameidata_dentry_drop_rcu+0x84/0x180) from [<c00c8b1c>] (d_revalidate+0x30/0x58)
-[   15.280000] [<c00c8b1c>] (d_revalidate+0x30/0x58) from [<c00cb82c>] (link_path_walk+0xad8/0xb00)
-[   15.290000] [<c00cb82c>] (link_path_walk+0xad8/0xb00) from [<c00cba4c>] (do_path_lookup+0x44/0xcc)
-[   15.300000] [<c00cba4c>] (do_path_lookup+0x44/0xcc) from [<c00cc3f4>] (user_path_at+0x58/0x90)
-[   15.310000] [<c00cc3f4>] (user_path_at+0x58/0x90) from [<c00c4210>] (vfs_fstatat+0x28/0x54)
-[   15.320000] [<c00c4210>] (vfs_fstatat+0x28/0x54) from [<c00c431c>] (sys_stat64+0x14/0x34)
-[   15.330000] [<c00c431c>] (sys_stat64+0x14/0x34) from [<c002f4e0>] (ret_fast_syscall+0x0/0x30)
-[   25.830000] BUG: spinlock lockup on CPU#0, rc/1151, c74ad678
-[   25.830000] [<c0035118>] (unwind_backtrace+0x0/0xe4) from [<c0190518>] (do_raw_spin_lock+0x10c/0x148)
-[   25.840000] [<c0190518>] (do_raw_spin_lock+0x10c/0x148) from [<c00c89f0>] (nameidata_dentry_drop_rcu+0x84/0x180)
-[   25.850000] [<c00c89f0>] (nameidata_dentry_drop_rcu+0x84/0x180) from [<c00c8b1c>] (d_revalidate+0x30/0x58)
-[   25.860000] [<c00c8b1c>] (d_revalidate+0x30/0x58) from [<c00cb82c>] (link_path_walk+0xad8/0xb00)
-[   25.870000] [<c00cb82c>] (link_path_walk+0xad8/0xb00) from [<c00cba4c>] (do_path_lookup+0x44/0xcc)
-[   25.870000] [<c00cba4c>] (do_path_lookup+0x44/0xcc) from [<c00cc3f4>] (user_path_at+0x58/0x90)
-[   25.880000] [<c00cc3f4>] (user_path_at+0x58/0x90) from [<c00c4210>] (vfs_fstatat+0x28/0x54)
-[   25.890000] [<c00c4210>] (vfs_fstatat+0x28/0x54) from [<c00c431c>] (sys_stat64+0x14/0x34)
-[   25.900000] [<c00c431c>] (sys_stat64+0x14/0x34) from [<c002f4e0>] (ret_fast_syscall+0x0/0x30)
+NOTE! I really didn't look those up very closely, and if the accesses
+can happen concurrently you are basically screwed, so you do need to
+do locking or something else to guarantee that there is some nice
+sequential order.  And maybe I forgot something.  Which is why I do
+suggest "don't do that" as a primary approach to the problem if at all
+possible.
 
+Oh, and you may need to flush before reading too (and many writes do
+end up being "read-modify-write" cycles) in case it's possible that
+you have stale data from a previous read that was then invalidated by
+a write to the aliasing address. Even if that write was flushed out,
+the stale read data may exist at the virtual address. I forget what
+all we required - in the end the only sane model is "virtual caches
+suck so bad that anybody who does them should be laughed at for being
+a retard".
+
+                            Linus
