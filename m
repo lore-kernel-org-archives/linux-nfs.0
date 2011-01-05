@@ -1,98 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:41014 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752486Ab1AXUvA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jan 2011 15:51:00 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NLM: Fix "kernel BUG at fs/lockd/host.c:417!" or
-	".../host.c:283!"
-To: nbowler@elliptictech.com, trond.myklebust@netapp.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Mon, 24 Jan 2011 15:50:26 -0500
-Message-ID: <20110124204332.1878.35846.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:59467 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752671Ab1AEXHD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 18:07:03 -0500
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+In-Reply-To: <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
+References: <1294254337.16957.13.camel@mulgrave.site>
+	 <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
+	 <1294256169.16957.18.camel@mulgrave.site>
+	 <20110105200008.GJ8638@n2100.arm.linux.org.uk>
+	 <1294259637.16957.25.camel@mulgrave.site>
+	 <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
+	 <20110105210448.GM8638@n2100.arm.linux.org.uk>
+	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
+	 <1294262208.2952.4.camel@heimdal.trondhjem.org>
+	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 05 Jan 2011 18:06:48 -0500
+Message-ID: <1294268808.2952.18.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Nick Bowler <nbowler@elliptictech.com> reports:
+On Wed, 2011-01-05 at 13:30 -0800, Linus Torvalds wrote: 
+> On Wed, Jan 5, 2011 at 1:16 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> >
+> > So what should be the preferred way to ensure data gets flushed when
+> > you've written directly to a page, and then want to read through the
+> > vm_map_ram() virtual range? Should we be adding new semantics to
+> > flush_kernel_dcache_page()?
+> 
+> The "preferred way" is actually simple: "don't do that". IOW, if some
+> page is accessed through a virtual mapping you've set up, then
+> _always_ access it through that virtual mapping.
+> 
+> Now, when that is impossible (and yes, it sometimes is), then you
+> should flush after doing all writes. And if you do the write through
+> the regular kernel mapping, you should use flush_dcache_page(). And if
+> you did it through the virtual mapping, you should use
+> "flush_kernel_vmap_range()" or whatever.
+> 
+> NOTE! I really didn't look those up very closely, and if the accesses
+> can happen concurrently you are basically screwed, so you do need to
+> do locking or something else to guarantee that there is some nice
+> sequential order.  And maybe I forgot something.  Which is why I do
+> suggest "don't do that" as a primary approach to the problem if at all
+> possible.
+> 
+> Oh, and you may need to flush before reading too (and many writes do
+> end up being "read-modify-write" cycles) in case it's possible that
+> you have stale data from a previous read that was then invalidated by
+> a write to the aliasing address. Even if that write was flushed out,
+> the stale read data may exist at the virtual address. I forget what
+> all we required - in the end the only sane model is "virtual caches
+> suck so bad that anybody who does them should be laughed at for being
+> a retard".
 
-> We were just having some NFS server troubles, and my client machine
-> running 2.6.38-rc1+ (specifically, commit 2b1caf6ed7b888c95) crashed
-> hard (syslog output appended to this mail).
->
-> I'm not sure what the exact timeline was or how to reproduce this,
-> but the server was rebooted during all this.  Since I've never seen
-> this happen before, it is possibly a regression from previous kernel
-> releases.  However, I recently updated my nfs-utils (on the client) to
-> version 1.2.3, so that might be related as well.
+Yes. The fix I sent out was a call to invalidate_kernel_vmap_range(),
+which takes care of invalidating the cache prior to a virtual address
+read.
 
-  [ BUG output redacted ]
+My question was specifically about the write through the regular kernel
+mapping: according to Russell and my reading of the cachetlb.txt
+documentation, flush_dcache_page() is only guaranteed to have an effect
+on page cache pages.
+flush_kernel_dcache_page() (not to be confused with flush_dcache_page)
+would appear to be the closest fit according to my reading of the
+documentation, however the ARM implementation appears to be a no-op...
 
-When done searching, the for_each_host loop in next_host_state() falls
-through and returns the final host on the host chain without bumping
-it's reference count.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Since the host's ref count is only one at that point, releasing the
-host in nlm_host_rebooted() attempts to destroy the host prematurely,
-and therefore hits a BUG().
-
-Likely, the original intent of the for_each_host behavior in
-next_host_state() was to handle the case when the host chain is empty.
-Searching the chain and finding no suitable host to return needs to be
-handled as well.
-
-Defensively restructure next_host_state() always to return NULL when
-the loop falls through.
-
-Introduced by commit b10e30f6 "lockd: reorganize nlm_host_rebooted".
-
-Cc: J. Bruce Fields <bfields@fieldses.org>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
-I was able to reproduce this BUG on my client running 2.6.38-rc2
-from earlier today.  Here is a proposed fix.  I can't reproduce the
-BUG with this patch applied.
-
-However, my reproducer hit the BUG in nlmsvc_release_host().  Nick hit
-roughly the same BUG in nlmclnt_release_host(), which suggests his
-"client" was also acting as a server.  The symptoms are similar enough
-that I believe this patch should be sufficient to address both cases.
-
-
- fs/lockd/host.c |    9 +++++----
- 1 files changed, 5 insertions(+), 4 deletions(-)
-
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 5f1bcb2..b7c99bf 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -520,7 +520,7 @@ static struct nlm_host *next_host_state(struct hlist_head *cache,
- 					struct nsm_handle *nsm,
- 					const struct nlm_reboot *info)
- {
--	struct nlm_host *host = NULL;
-+	struct nlm_host *host;
- 	struct hlist_head *chain;
- 	struct hlist_node *pos;
- 
-@@ -532,12 +532,13 @@ static struct nlm_host *next_host_state(struct hlist_head *cache,
- 			host->h_state++;
- 
- 			nlm_get_host(host);
--			goto out;
-+			mutex_unlock(&nlm_host_mutex);
-+			return host;
- 		}
- 	}
--out:
-+
- 	mutex_unlock(&nlm_host_mutex);
--	return host;
-+	return NULL;
- }
- 
- /**
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
