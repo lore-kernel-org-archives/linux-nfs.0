@@ -1,103 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:15622 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753481Ab1AFCFE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 21:05:04 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V9 01/12] SUNRPC move svc_drop to caller of svc_process_common
-Date: Wed,  5 Jan 2011 21:04:24 -0500
-Message-Id: <1294279475-8540-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1294279475-8540-1-git-send-email-andros@netapp.com>
-References: <1294279475-8540-1-git-send-email-andros@netapp.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:56528 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751360Ab1AEVJN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 16:09:13 -0500
+In-Reply-To: <20110105210448.GM8638@n2100.arm.linux.org.uk>
+References: <1294254337.16957.13.camel@mulgrave.site> <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
+ <1294256169.16957.18.camel@mulgrave.site> <20110105200008.GJ8638@n2100.arm.linux.org.uk>
+ <1294259637.16957.25.camel@mulgrave.site> <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
+ <20110105210448.GM8638@n2100.arm.linux.org.uk>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Wed, 5 Jan 2011 13:08:48 -0800
+Message-ID: <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+To: Russell King - ARM Linux <linux@arm.linux.org.uk>
+Cc: James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        =?ISO-8859-1?Q?Uwe_Kleine=2DK=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Wed, Jan 5, 2011 at 1:04 PM, Russell King - ARM Linux
+<linux@arm.linux.org.uk> wrote:
+> On Wed, Jan 05, 2011 at 12:48:32PM -0800, Linus Torvalds wrote:
+>> (You can also force the problem with vmalloc() an then following the
+>> kernel page tables, but I hope nobody does that any more. I suspect
+>> I'm wrong, though, there's probably code that mixes vmalloc and
+>> physical page accesses in various drivers)
+>
+> Should vmalloc_to_page() (84 users)/vmalloc_to_pfn() (17 users) be
+> deprecated then? ;)
 
-The NFSv4.1 shared back channel does not need to call svc_drop because the
-callback service never outlives the single connection it services, and it
-reuses it's buffers and keeps the trasport.
+I do think that the "modern" way of doing it is
+"vmap()"/"vm_map_ram()" and friends, and it should be preferred over
+using vmalloc() and then looking up the pages.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Acked-by: Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/svc.c |   30 ++++++++++++++++--------------
- 1 files changed, 16 insertions(+), 14 deletions(-)
+But in the end, the two approaches really are equivalent, so it's not
+like it really matters. So I don't think we need to deprecate things
+officially, but obviously we should make people more aware of the
+whole virtual alias thing that crops up whenever you use any of these
+approaches.
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 6359c42..606d182 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1147,7 +1147,6 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
-  dropit:
- 	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
- 	dprintk("svc: svc_process dropit\n");
--	svc_drop(rqstp);
- 	return 0;
- 
- err_short_len:
-@@ -1218,7 +1217,6 @@ svc_process(struct svc_rqst *rqstp)
- 	struct kvec		*resv = &rqstp->rq_res.head[0];
- 	struct svc_serv		*serv = rqstp->rq_server;
- 	u32			dir;
--	int			error;
- 
- 	/*
- 	 * Setup response xdr_buf.
-@@ -1246,11 +1244,13 @@ svc_process(struct svc_rqst *rqstp)
- 		return 0;
- 	}
- 
--	error = svc_process_common(rqstp, argv, resv);
--	if (error <= 0)
--		return error;
--
--	return svc_send(rqstp);
-+	/* Returns 1 for send, 0 for drop */
-+	if (svc_process_common(rqstp, argv, resv))
-+		return svc_send(rqstp);
-+	else {
-+		svc_drop(rqstp);
-+		return 0;
-+	}
- }
- 
- #if defined(CONFIG_NFS_V4_1)
-@@ -1264,7 +1264,6 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
- {
- 	struct kvec	*argv = &rqstp->rq_arg.head[0];
- 	struct kvec	*resv = &rqstp->rq_res.head[0];
--	int 		error;
- 
- 	/* Build the svc_rqst used by the common processing routine */
- 	rqstp->rq_xprt = serv->bc_xprt;
-@@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
- 	svc_getu32(argv);	/* XID */
- 	svc_getnl(argv);	/* CALLDIR */
- 
--	error = svc_process_common(rqstp, argv, resv);
--	if (error <= 0)
--		return error;
--
--	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
--	return bc_send(req);
-+	/* Returns 1 for send, 0 for drop */
-+	if (svc_process_common(rqstp, argv, resv)) {
-+		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
-+						sizeof(req->rq_snd_buf));
-+		return bc_send(req);
-+	} else {
-+		/* Nothing to do to drop request */
-+		return 0;
-+	}
- }
- EXPORT_SYMBOL(bc_svc_process);
- #endif /* CONFIG_NFS_V4_1 */
--- 
-1.6.6
-
+                           Linus
