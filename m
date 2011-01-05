@@ -1,56 +1,135 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18189 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:56423 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932676Ab1AMTQM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Jan 2011 14:16:12 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] NFS: Fix NFSv3 exclusive open semantics
-Date: Thu, 13 Jan 2011 14:15:50 -0500
-Message-Id: <1294946150-9248-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1750919Ab1AEA6i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 19:58:38 -0500
+Date: Tue, 4 Jan 2011 19:58:35 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Takuma Umeya <tumeya@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfs4: set source address when callback is generated
+Message-ID: <20110105005835.GA14744@fieldses.org>
+References: <20101215050901.GB13532@redhat.com>
+ <20101216034945.GH9646@fieldses.org>
+ <A4BB9763-B67F-4559-B3FF-F7BC2DBD3B3A@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <A4BB9763-B67F-4559-B3FF-F7BC2DBD3B3A@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Commit c0204fd2b8fe047b18b67e07e1bf2a03691240cd (NFS: Clean up
-nfs4_proc_create()) broke NFSv3 exclusive open by removing the code
-that passes the O_EXCL flag down to nfs3_proc_create(). This patch
-reverts that offending hunk from the original commit.
+On Thu, Dec 16, 2010 at 10:54:00AM -0500, Chuck Lever wrote:
+> I don't recall creating svc_addr_u, but I'll take a stab at a guess.
+> 
+> It looks like someone thought that we should retain the idea of storing just the address part of the socket address, and not the other stuff (like the family and port, since this code doesn't appear to need that additional information).  It greatly reduces the size of the field.  A full sockaddr_storage is more than 128 bytes, since it has to be able to store an AF_UNIX pathname.
+> 
+> Doing this, there is a lot less data to keep around, but an IPv6 socket address has other items outside of in6_addr that can be used to form a full address.  We decided at some point we could copy this information from the other address storage field in the rqstp.
+> 
+> But the result of this space savings means we must construct a full socket address when needed, using logic such as the above.
 
-Reported-by: Nick Bowler <nbowler@elliptictech.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: stable@kernel.org    [2.6.37]
-Tested-by: Nick Bowler <nbowler@elliptictech.com>
----
- fs/nfs/dir.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
+Seems to me we should either just waste the extra 100 bytes or define
+something that would be useful elsewhere as well....
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index abe4f0c..f9d6a37 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1583,6 +1583,7 @@ static int nfs_create(struct inode *dir, struct dentry *dentry, int mode,
- {
- 	struct iattr attr;
- 	int error;
-+	int open_flags = 0;
+But if we do it this way we can at least simplify a little.
+
+--b.
+
+commit 6f3d772fb8a039de8f21d725f5e38c252b4c0efd
+Author: Takuma Umeya <tumeya@redhat.com>
+Date:   Wed Dec 15 14:09:01 2010 +0900
+
+    nfs4: set source address when callback is generated
+    
+    when callback is generated in NFSv4 server, it doesn't set the source
+    address. When an alias IP is utilized on NFSv4 server and suppose the
+    client is accessing via that alias IP (e.g. eth0:0), the client invokes
+    the callback to the IP address that is set on the original device (e.g.
+    eth0). This behavior results in timeout of xprt.
+    The patch sets the IP address that the client should invoke callback to.
+    
+    Signed-off-by: Takuma Umeya <tumeya@redhat.com>
+    [bfields@redhat.com: Simplify gen_callback arguments, use helper function]
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index a085805..dd183af 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -484,6 +484,7 @@ static int setup_callback_client(struct nfs4_client *clp,
+ 		.net		= &init_net,
+ 		.address	= (struct sockaddr *) &conn->cb_addr,
+ 		.addrsize	= conn->cb_addrlen,
++		.saddress	= (struct sockaddr *) &conn->cb_saddr,
+ 		.timeout	= &timeparms,
+ 		.program	= &cb_program,
+ 		.version	= 0,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 87d4c48..b583e4e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1163,10 +1163,26 @@ find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
+ 	return NULL;
+ }
  
- 	dfprintk(VFS, "NFS: create(%s/%ld), %s\n",
- 			dir->i_sb->s_id, dir->i_ino, dentry->d_name.name);
-@@ -1590,7 +1591,10 @@ static int nfs_create(struct inode *dir, struct dentry *dentry, int mode,
- 	attr.ia_mode = mode;
- 	attr.ia_valid = ATTR_MODE;
- 
--	error = NFS_PROTO(dir)->create(dir, dentry, &attr, 0, NULL);
-+	if ((nd->flags & LOOKUP_CREATE) != 0)
-+		open_flags = nd->intent.open.flags;
++static void rpc_svcaddr2sockaddr(struct sockaddr *sa, unsigned short family, union svc_addr_u *svcaddr)
++{
++	switch (family) {
++	case AF_INET:
++		((struct sockaddr_in *)sa)->sin_family = AF_INET;
++		((struct sockaddr_in *)sa)->sin_addr = svcaddr->addr;
++		return;
++	case AF_INET6:
++		((struct sockaddr_in6 *)sa)->sin6_family = AF_INET6;
++		((struct sockaddr_in6 *)sa)->sin6_addr = svcaddr->addr6;
++		return;
++	}
++}
 +
-+	error = NFS_PROTO(dir)->create(dir, dentry, &attr, open_flags, NULL);
- 	if (error != 0)
- 		goto out_err;
- 	return 0;
--- 
-1.7.3.4
-
+ static void
+-gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
++gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_rqst *rqstp)
+ {
+ 	struct nfs4_cb_conn *conn = &clp->cl_cb_conn;
++	struct sockaddr	*sa = svc_addr(rqstp);
++	u32 scopeid = rpc_get_scope_id(sa);
+ 	unsigned short expected_family;
+ 
+ 	/* Currently, we only support tcp and tcp6 for the callback channel */
+@@ -1192,6 +1208,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, u32 scopeid)
+ 
+ 	conn->cb_prog = se->se_callback_prog;
+ 	conn->cb_ident = se->se_callback_ident;
++	rpc_svcaddr2sockaddr((struct sockaddr *)&conn->cb_saddr, expected_family, &rqstp->rq_daddr);
+ 	return;
+ out_err:
+ 	conn->cb_addr.ss_family = AF_UNSPEC;
+@@ -1768,7 +1785,6 @@ __be32
+ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		  struct nfsd4_setclientid *setclid)
+ {
+-	struct sockaddr		*sa = svc_addr(rqstp);
+ 	struct xdr_netobj 	clname = { 
+ 		.len = setclid->se_namelen,
+ 		.data = setclid->se_name,
+@@ -1871,7 +1887,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	 * for consistent minorversion use throughout:
+ 	 */
+ 	new->cl_minorversion = 0;
+-	gen_callback(new, setclid, rpc_get_scope_id(sa));
++	gen_callback(new, setclid, rqstp);
+ 	add_to_unconfirmed(new, strhashval);
+ 	setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
+ 	setclid->se_clientid.cl_id = new->cl_clientid.cl_id;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 84b2302..cf6dc83 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -96,6 +96,7 @@ struct nfs4_delegation {
+ struct nfs4_cb_conn {
+ 	/* SETCLIENTID info */
+ 	struct sockaddr_storage	cb_addr;
++	struct sockaddr_storage	cb_saddr;
+ 	size_t			cb_addrlen;
+ 	u32                     cb_prog; /* used only in 4.0 case;
+ 					    per-session otherwise */
