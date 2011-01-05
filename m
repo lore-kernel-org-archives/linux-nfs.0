@@ -1,66 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48730 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:12006 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751431Ab1AOBEK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Jan 2011 20:04:10 -0500
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1PduYr-0007p2-9b
-	for linux-nfs@vger.kernel.org; Fri, 14 Jan 2011 20:04:09 -0500
-Date: Fri, 14 Jan 2011 20:04:09 -0500
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: don't leak dentry count on mnt_want_write failure
-Message-ID: <20110115010409.GE16942@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1752499Ab1AEUvw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 15:51:52 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V8 01/13] SUNRPC move svc_drop to caller of svc_process_common
+Date: Wed,  5 Jan 2011 15:51:19 -0500
+Message-Id: <1294260690-3095-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1294260690-3095-1-git-send-email-andros@netapp.com>
+References: <1294260690-3095-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Just noticed this--seems to be a preexisting problem.
+From: Andy Adamson <andros@netapp.com>
 
---b.
+The NFSv4.1 shared back channel does not need to call svc_drop because the
+callback service never outlives the single connection it services, and it
+reuses it's buffers and keeps the trasport.
 
-commit 66b5bec40bae9648277cc1f708b203181065c007
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Jan 14 20:00:02 2011 -0500
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Acked-by: Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svc.c |   30 ++++++++++++++++--------------
+ 1 files changed, 16 insertions(+), 14 deletions(-)
 
-    nfsd: don't leak dentry count on mnt_want_write failure
-    
-    The exit cleanup isn't quite right here.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index a110adb..56a2b68 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1816,22 +1816,22 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 6359c42..606d182 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1147,7 +1147,6 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+  dropit:
+ 	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+ 	dprintk("svc: svc_process dropit\n");
+-	svc_drop(rqstp);
+ 	return 0;
  
- 	host_err = mnt_want_write(fhp->fh_export->ex_path.mnt);
- 	if (host_err)
--		goto out_nfserr;
-+		goto out_put;
+ err_short_len:
+@@ -1218,7 +1217,6 @@ svc_process(struct svc_rqst *rqstp)
+ 	struct kvec		*resv = &rqstp->rq_res.head[0];
+ 	struct svc_serv		*serv = rqstp->rq_server;
+ 	u32			dir;
+-	int			error;
  
- 	host_err = nfsd_break_lease(rdentry->d_inode);
- 	if (host_err)
--		goto out_put;
-+		goto out_drop_write;
- 	if (type != S_IFDIR)
- 		host_err = vfs_unlink(dirp, rdentry);
- 	else
- 		host_err = vfs_rmdir(dirp, rdentry);
--out_put:
--	dput(rdentry);
+ 	/*
+ 	 * Setup response xdr_buf.
+@@ -1246,11 +1244,13 @@ svc_process(struct svc_rqst *rqstp)
+ 		return 0;
+ 	}
+ 
+-	error = svc_process_common(rqstp, argv, resv);
+-	if (error <= 0)
+-		return error;
 -
- 	if (!host_err)
- 		host_err = commit_metadata(fhp);
+-	return svc_send(rqstp);
++	/* Returns 1 for send, 0 for drop */
++	if (svc_process_common(rqstp, argv, resv))
++		return svc_send(rqstp);
++	else {
++		svc_drop(rqstp);
++		return 0;
++	}
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
+@@ -1264,7 +1264,6 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ {
+ 	struct kvec	*argv = &rqstp->rq_arg.head[0];
+ 	struct kvec	*resv = &rqstp->rq_res.head[0];
+-	int 		error;
+ 
+ 	/* Build the svc_rqst used by the common processing routine */
+ 	rqstp->rq_xprt = serv->bc_xprt;
+@@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
+ 	svc_getu32(argv);	/* XID */
+ 	svc_getnl(argv);	/* CALLDIR */
+ 
+-	error = svc_process_common(rqstp, argv, resv);
+-	if (error <= 0)
+-		return error;
 -
-+out_drop_write:
- 	mnt_drop_write(fhp->fh_export->ex_path.mnt);
-+out_put:
-+	dput(rdentry);
-+
- out_nfserr:
- 	err = nfserrno(host_err);
- out:
+-	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
+-	return bc_send(req);
++	/* Returns 1 for send, 0 for drop */
++	if (svc_process_common(rqstp, argv, resv)) {
++		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
++						sizeof(req->rq_snd_buf));
++		return bc_send(req);
++	} else {
++		/* Nothing to do to drop request */
++		return 0;
++	}
+ }
+ EXPORT_SYMBOL(bc_svc_process);
+ #endif /* CONFIG_NFS_V4_1 */
+-- 
+1.6.6
+
