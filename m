@@ -1,74 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from netnation.com ([204.174.223.2]:60253 "EHLO peace.netnation.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750994Ab1ADVkK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 16:40:10 -0500
-Date: Tue, 4 Jan 2011 13:40:08 -0800
-From: Simon Kirby <sim@hostway.ca>
-To: Mark Moseley <moseleymark@gmail.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: System CPU increasing on idle 2.6.36
-Message-ID: <20110104214008.GH27727@hostway.ca>
-References: <20101208212505.GA18192@hostway.ca> <20101218010801.GE28367@hostway.ca> <20101229220313.GA13688@hostway.ca> <AANLkTinq074Q-B=5B4_aXuBm-3ELwGknsJv+OvS1z1OX@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTinq074Q-B=5B4_aXuBm-3ELwGknsJv+OvS1z1OX@mail.gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:19703 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752987Ab1AEUvy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 15:51:54 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V8 05/13] NFS use svc_create_xprt for NFSv4.1 callback service
+Date: Wed,  5 Jan 2011 15:51:23 -0500
+Message-Id: <1294260690-3095-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1294260690-3095-5-git-send-email-andros@netapp.com>
+References: <1294260690-3095-1-git-send-email-andros@netapp.com>
+ <1294260690-3095-2-git-send-email-andros@netapp.com>
+ <1294260690-3095-3-git-send-email-andros@netapp.com>
+ <1294260690-3095-4-git-send-email-andros@netapp.com>
+ <1294260690-3095-5-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Jan 04, 2011 at 09:42:14AM -0800, Mark Moseley wrote:
+From: Andy Adamson <andros@netapp.com>
 
-> On Wed, Dec 29, 2010 at 2:03 PM, Simon Kirby <sim@hostway.ca> wrote:
->
-> > I've noticed nfs_inode_cache is ever-increasing as well with 2.6.37:
-> >
-> > ?OBJS ACTIVE ?USE OBJ SIZE ?SLABS OBJ/SLAB CACHE SIZE NAME
-> > 2562514 2541520 ?99% ? ?0.95K ?78739 ? ? ? 33 ? 2519648K nfs_inode_cache
-> > 467200 285110 ?61% ? ?0.02K ? 1825 ? ? ?256 ? ? ?7300K kmalloc-16
-> > 299397 242350 ?80% ? ?0.19K ?14257 ? ? ? 21 ? ? 57028K dentry
-> > 217434 131978 ?60% ? ?0.55K ? 7767 ? ? ? 28 ? ?124272K radix_tree_node
-> > 215232 ?81522 ?37% ? ?0.06K ? 3363 ? ? ? 64 ? ? 13452K kmalloc-64
-> > 183027 136802 ?74% ? ?0.10K ? 4693 ? ? ? 39 ? ? 18772K buffer_head
-> > 101120 ?71184 ?70% ? ?0.03K ? ?790 ? ? ?128 ? ? ?3160K kmalloc-32
-> > ?79616 ?59713 ?75% ? ?0.12K ? 2488 ? ? ? 32 ? ? ?9952K kmalloc-128
-> > ?66560 ?41257 ?61% ? ?0.01K ? ?130 ? ? ?512 ? ? ? 520K kmalloc-8
-> > ?42126 ?26650 ?63% ? ?0.75K ? 2006 ? ? ? 21 ? ? 32096K ext3_inode_cache
-> >
-> > http://0x.ca/sim/ref/2.6.37/inodes_nfs.png
-> > http://0x.ca/sim/ref/2.6.37/cpu2_nfs.png
-> >
-> > Perhaps I could bisect just fs/nfs changes between 2.6.35 and 2.6.36 to
-> > try to track this down without having to wait too long, unless somebody
-> > can see what is happening here.
-> 
-> I'll get started bisecting too, since this is something of a
-> show-stopper. Boxes that pre-2.6.36 would stay up for months at a time
-> now have to be powercycled every couple of days (which is about how
-> long it takes for this behavior to show up). This is across-the-board
-> for about 50 boxes, ranging from 2.6.36 to 2.6.36.2.
-> 
-> Simon: It's probably irrelevant since these are kernel threads, but
-> I'm curious what distro your boxes are running. Ours are Debian Lenny,
-> i386, Dell Poweredge 850s. Just trying to figure out any
-> commonalities. I'll get my boxes back on 2.6.36.2 and start watching
-> nfs_inode_cache as well.
+The new back channel transport means we call the normal creation routine as
+well as svc_xprt_put.
 
-Same distro, x86_64, similar servers.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback.c |   28 ++++++++++++++++++----------
+ 1 files changed, 18 insertions(+), 10 deletions(-)
 
-I'm not sure if the two cases I am seeing are exactly the same problem,
-but on the log crunching boxes, system time seems proportional to
-nfs_inode_cache and nfs_inode_cache just keeps growing forever; however,
-if I stop the load and unmount the NFS mount points, all of the
-nfs_inode_cache objects do actually go away (after umount finishes).
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 93a8b3b..0e9fae8 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -177,30 +177,38 @@ nfs41_callback_svc(void *vrqstp)
+ struct svc_rqst *
+ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ {
+-	struct svc_xprt *bc_xprt;
+-	struct svc_rqst *rqstp = ERR_PTR(-ENOMEM);
++	struct svc_rqst *rqstp;
++	int ret;
+ 
+-	dprintk("--> %s\n", __func__);
+-	/* Create a svc_sock for the service */
+-	bc_xprt = svc_sock_create(serv, xprt->prot);
+-	if (!bc_xprt)
++	/*
++	 * Create an svc_sock for the back channel service that shares the
++	 * fore channel connection.
++	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
++	 */
++	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
++			      SVC_SOCK_ANONYMOUS);
++	if (ret < 0) {
++		rqstp = ERR_PTR(ret);
+ 		goto out;
++	}
+ 
+ 	/*
+ 	 * Save the svc_serv in the transport so that it can
+ 	 * be referenced when the session backchannel is initialized
+ 	 */
+-	serv->bc_xprt = bc_xprt;
+ 	xprt->bc_serv = serv;
+ 
+ 	INIT_LIST_HEAD(&serv->sv_cb_list);
+ 	spin_lock_init(&serv->sv_cb_lock);
+ 	init_waitqueue_head(&serv->sv_cb_waitq);
+ 	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
+-	if (IS_ERR(rqstp))
+-		svc_sock_destroy(bc_xprt);
++	if (IS_ERR(rqstp)) {
++		svc_xprt_put(serv->bc_xprt);
++		serv->bc_xprt = NULL;
++	}
+ out:
+-	dprintk("--> %s return %p\n", __func__, rqstp);
++	dprintk("--> %s return %ld\n", __func__,
++		IS_ERR(rqstp) ? PTR_ERR(rqstp) : 0);
+ 	return rqstp;
+ }
+ 
+-- 
+1.6.6
 
-It seems the shrinker callback might not be working as intended here.
-
-On the shared server case, the crazy spinlock contention from all of the
-flusher processes happens suddenly and overloads the boxes for 10-15
-minutes, and then everything recovers.  Over 21 of these boxes, they
-each have about 500k-700k nfs_inode_cache objects.  The log cruncher hit
-3.3 million nfs_inode_cache objects before I unmounted.
-
-Are your boxes repeating this behaviour at any predictable interval?
-
-Simon-
