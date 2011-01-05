@@ -1,94 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56805 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752764Ab1ACSbB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Jan 2011 13:31:01 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/5] nfsd4: remove some unnecessary dropit handling
-Date: Mon,  3 Jan 2011 13:30:54 -0500
-Message-Id: <1294079454-17891-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1294079454-17891-1-git-send-email-bfields@redhat.com>
-References: <1294079454-17891-1-git-send-email-bfields@redhat.com>
+Received: from metis.ext.pengutronix.de ([92.198.50.35]:43102 "EHLO
+	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751972Ab1AELF0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 06:05:26 -0500
+Date: Wed, 5 Jan 2011 12:05:17 +0100
+From: Uwe =?iso-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+Message-ID: <20110105110517.GQ25121@pengutronix.de>
+References: <20101230171453.GA5787@pengutronix.de> <1293731992.4919.5.camel@heimdal.trondhjem.org> <20101230191846.GB14221@pengutronix.de> <20110103213850.GC25121@pengutronix.de> <1294100558.25100.8.camel@heimdal.trondhjem.org> <20110105084014.GN25121@pengutronix.de>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20110105084014.GN25121@pengutronix.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-We no longer need a few of these special cases.
+Hello Trond,
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c  |    4 ----
- fs/nfsd/nfs4state.c |    2 --
- fs/nfsd/nfs4xdr.c   |    2 --
- fs/nfsd/vfs.c       |    4 ----
- 4 files changed, 0 insertions(+), 12 deletions(-)
+On Wed, Jan 05, 2011 at 09:40:14AM +0100, Uwe Kleine-König wrote:
+> On Mon, Jan 03, 2011 at 07:22:38PM -0500, Trond Myklebust wrote:
+> > The question is whether this is something happening on the server or the
+> > client. Does an older client kernel boot without any trouble?
+> I will set up a boot test with 2.6.37 (for statistics) and 2.6.36 to
+> compare with.  If you don't consider .36 to be old enough let me now.
+> Once the setup is done it should be easy to test .35 (say), too.
+> 
+Marc (cc'd) saw similar[1] problems with .37, when using .36.2 the
+problems didn't occur.  This was more reliable to trigger and he was so
+kind to bisect the problem.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index f80c399..fd6694b 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1156,10 +1156,6 @@ encode_op:
- 
- 		nfsd4_increment_op_stats(op->opnum);
- 	}
--	if (!rqstp->rq_usedeferral && status == nfserr_dropit) {
--		dprintk("%s Dropit - send NFS4ERR_DELAY\n", __func__);
--		status = nfserr_jukebox;
--	}
- 
- 	resp->cstate.status = status;
- 	fh_put(&resp->cstate.current_fh);
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 73adcfb..b82e368 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2509,8 +2509,6 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file
- 	if (!fp->fi_fds[oflag]) {
- 		status = nfsd_open(rqstp, cur_fh, S_IFREG, access,
- 			&fp->fi_fds[oflag]);
--		if (status == nfserr_dropit)
--			status = nfserr_jukebox;
- 		if (status)
- 			return status;
- 	}
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 437b462..364aae7 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2328,8 +2328,6 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
- 	case nfserr_resource:
- 		nfserr = nfserr_toosmall;
- 		goto fail;
--	case nfserr_dropit:
--		goto fail;
- 	case nfserr_noent:
- 		goto skip_entry;
- 	default:
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 184938f..6a3af2f 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -380,8 +380,6 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 		 * we need to break all leases.
- 		 */
- 		host_err = break_lease(inode, O_WRONLY | O_NONBLOCK);
--		if (host_err == -EWOULDBLOCK)
--			host_err = -ETIMEDOUT;
- 		if (host_err) /* ENOMEM or EWOULDBLOCK */
- 			goto out_nfserr;
- 
-@@ -752,8 +750,6 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	 */
- 	if (!(access & NFSD_MAY_NOT_BREAK_LEASE))
- 		host_err = break_lease(inode, O_NONBLOCK | ((access & NFSD_MAY_WRITE) ? O_WRONLY : 0));
--	if (host_err == -EWOULDBLOCK)
--		host_err = -ETIMEDOUT;
- 	if (host_err) /* NOMEM or WOULDBLOCK */
- 		goto out_nfserr;
- 
+When testing v2.6.36-rc3-51-gafa8ccc init hanged.
+(babddc72a9468884ce1a23db3c3d54b0afa299f0 is the first bad commit with
+this hang.)  Commit 56e4ebf877b6043c289bda32a5a7385b80c17dee makes the
+"init hangs" problem the "fileid changed on tab" problem.
+
+I could only reproduce that on armv5 machines (imx27, imx28 and at91)
+but not on armv6 (imx35).
+
+Best regards
+Uwe
+
+[1] similar means: not during boot, but when hitting tab to get command
+completion in the shell.
+
 -- 
-1.7.1
-
+Pengutronix e.K.                           | Uwe Kleine-König            |
+Industrial Linux Solutions                 | http://www.pengutronix.de/  |
