@@ -1,108 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:61745 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755105Ab1ASWgi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 17:36:38 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
-To: npiggin@gmail.com
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wen.gang.wang@oracle.com
-Date: Wed, 19 Jan 2011 17:36:33 -0500
-Message-ID: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:40144 "EHLO
+	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751774Ab1AEUeA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 15:34:00 -0500
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+To: Russell King - ARM Linux <linux@arm.linux.org.uk>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+In-Reply-To: <20110105200008.GJ8638@n2100.arm.linux.org.uk>
+References: <1294254337.16957.13.camel@mulgrave.site>
+	 <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
+	 <1294256169.16957.18.camel@mulgrave.site>
+	 <20110105200008.GJ8638@n2100.arm.linux.org.uk>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 05 Jan 2011 14:33:57 -0600
+Message-ID: <1294259637.16957.25.camel@mulgrave.site>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Nick Piggin reports:
+On Wed, 2011-01-05 at 20:00 +0000, Russell King - ARM Linux wrote:
+> On Wed, Jan 05, 2011 at 01:36:09PM -0600, James Bottomley wrote:
+> > On Wed, 2011-01-05 at 11:18 -0800, Linus Torvalds wrote:
+> > > On Wed, Jan 5, 2011 at 11:05 AM, James Bottomley
+> > > <James.Bottomley@hansenpartnership.com> wrote:
+> > > >
+> > > > I think the solution for the kernel direct mapping problem is to take
+> > > > the expected flushes and invalidates into kmap/kunmap[_atomic].
+> > > 
+> > > No, we really can't do that. Most of the time, the kmap() is the only
+> > > way we access the page anyway, so flushing things would just be
+> > > stupid. Why waste time and energy on doing something pointless?
+> > 
+> > It's hardly pointless.  The kmap sets up an inequivalent alias in the
+> > cache.
+> 
+> No it doesn't.  For pages which are inaccessible, it sets up a mapping
+> for those pages.  On aliasing cache architectures, when you tear down
+> such a mapping, you have to flush the cache before you do so (otherwise
+> you can end up with cache lines existing in the cache for inaccessible
+> mappings.)
+> 
+> For lowmem pages, kmap() (should always) bypass the 'setup mapping' stage
+> because all lowmem pages are already accessible.  So kunmap() doesn't
+> do anything - just like the !HIGHMEM implementation for these macros.
 
-> I'm getting use after frees in aio code in NFS
->
-> [ 2703.396766] Call Trace:
-> [ 2703.396858]  [<ffffffff8100b057>] ? native_sched_clock+0x27/0x80
-> [ 2703.396959]  [<ffffffff8108509e>] ? put_lock_stats+0xe/0x40
-> [ 2703.397058]  [<ffffffff81088348>] ? lock_release_holdtime+0xa8/0x140
-> [ 2703.397159]  [<ffffffff8108a2a5>] lock_acquire+0x95/0x1b0
-> [ 2703.397260]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
-> [ 2703.397361]  [<ffffffff81039701>] ? get_parent_ip+0x11/0x50
-> [ 2703.397464]  [<ffffffff81612a31>] _raw_spin_lock_irq+0x41/0x80
-> [ 2703.397564]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
-> [ 2703.397662]  [<ffffffff811627db>] aio_put_req+0x2b/0x60
-> [ 2703.397761]  [<ffffffff811647fe>] do_io_submit+0x2be/0x7c0
-> [ 2703.397895]  [<ffffffff81164d0b>] sys_io_submit+0xb/0x10
-> [ 2703.397995]  [<ffffffff8100307b>] system_call_fastpath+0x16/0x1b
->
-> Adding some tracing, it is due to nfs completing the request then
-> returning something other than -EIOCBQUEUED, so aio.c
-> also completes the request.
+well, that depends.  For us on parisc, kmap of a user page in !HIGHMEM
+sets up an inequivalent aliase still ... because the cache colour of the
+user and kernel virtual addresses are different.  Depending on the
+return path to userspace, we still usually have to flush to get the user
+to see the changes the kernel has made.
 
-To address this, prevent the NFS direct I/O engine from completing
-async iocbs when the forward path returns an error other than
-EIOCBQUEUED.
+James
 
-This appears to survive ^C during both "xfstest no. 208" and "fsx -Z."
+> So, for highmem-enabled systems:
+> 
+> 	low_addr = kmap_atomic(lowmem_page);
+> 	high_addr = kmap_atomic(highmem_page);
+> 
+> results in low_addr in the kernel direct-mapped region, and high_addr
+> in the kmap_atomic region.
 
-Cc: Stable <stable@kernel.org>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
-Here's my take.
-
- fs/nfs/direct.c |   32 +++++++++++++++++---------------
- 1 files changed, 17 insertions(+), 15 deletions(-)
-
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index e6ace0d..c2176f4 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -407,15 +407,16 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 		pos += vec->iov_len;
- 	}
- 
--	if (put_dreq(dreq))
--		nfs_direct_complete(dreq);
--
--	if (requested_bytes != 0)
--		return 0;
-+	/*
-+	 * If no bytes were started, return the error, and let the
-+	 * generic layer handle the completion.
-+	 */
-+	if (requested_bytes == 0)
-+		return result < 0 ? result : -EIO;
- 
--	if (result < 0)
--		return result;
--	return -EIO;
-+	if (put_dreq(dreq))
-+		nfs_direct_write_complete(dreq, dreq->inode);
-+	return 0;
- }
- 
- static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
-@@ -841,15 +842,16 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 		pos += vec->iov_len;
- 	}
- 
-+	/*
-+	 * If no bytes were started, return the error, and let the
-+	 * generic layer handle the completion.
-+	 */
-+	if (requested_bytes == 0)
-+		return result < 0 ? result : -EIO;
-+
- 	if (put_dreq(dreq))
- 		nfs_direct_write_complete(dreq, dreq->inode);
--
--	if (requested_bytes != 0)
--		return 0;
--
--	if (result < 0)
--		return result;
--	return -EIO;
-+	return 0;
- }
- 
- static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
 
