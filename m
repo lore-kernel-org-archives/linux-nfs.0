@@ -1,31 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43984 "EHLO mx1.redhat.com"
+Received: from magus.merit.edu ([198.108.1.13]:35470 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750880Ab1AUPkq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Jan 2011 10:40:46 -0500
-From: David Howells <dhowells@redhat.com>
-To: lsf-pc@lists.linuxfoundation.org
-cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: [LSF/MM TOPIC] Per-directory filesystem configuration
-Date: Fri, 21 Jan 2011 15:40:25 +0000
-Message-ID: <3663.1295624425@redhat.com>
+	id S1751184Ab1AEO3H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 09:29:07 -0500
+Date: Wed, 5 Jan 2011 09:29:02 -0500
+From: Jim Rees <rees@umich.edu>
+To: Uwe =?iso-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>
+Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+Message-ID: <20110105142902.GA9278@merit.edu>
+References: <20101230171453.GA5787@pengutronix.de>
+ <1293731992.4919.5.camel@heimdal.trondhjem.org>
+ <20101230191846.GB14221@pengutronix.de>
+ <20110103213850.GC25121@pengutronix.de>
+ <1294100558.25100.8.camel@heimdal.trondhjem.org>
+ <20110105084014.GN25121@pengutronix.de>
+ <20110105110517.GQ25121@pengutronix.de>
+ <20110105112701.GA8638@n2100.arm.linux.org.uk>
+ <20110105134045.GS25121@pengutronix.de>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20110105134045.GS25121@pengutronix.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+Uwe Kleine-König wrote:
 
-I'd like to propose a discussion topic for the LSF: how best to implement a
-means of configuring filesystems at the directory level?  For instance, with
-NFS, CIFS and AFS it is desirable to be able to adjust caching parameters on a
-per-subtree basis (a directory and everything under it), but it is not
-necessarily possible to store this information on the server, nor is it
-necessarily desirable to use such information retrieved from the server on
-every client.
+  > The "fileid changed" messages popped up after mounting an export with
+  > 'nolock,intr,rsize=4096,soft', and then trying to use bash completion
+  > and 'ls' in a few subdirectories - and entries were missing from the
+  > directory lists without 'ls' reporting any errors (which I think is bad
+  > behaviour in itself.)
+  There was a bug in at least -rc5[1] that was considered already fixed in
+  -rc4[2]. The later announcements didn't mention it anymore. 
+  
+  > I don't know why it's stopped producing the errors, although once it
+  > went I never investigated it any further (was far too busy trying to
+  > get AMBA DMA support working.)
+  It seems it was fixed for most users though. Trond?
 
-Furthermore, this facility could control more than just caching details.  With
-the ability of filesystems to do in-kernel automounting, this could be used to
-give instructions to the filesystem in a way that's not currently possible.
-
-David
+Trond sent a fix to the nfs list on 27 Nov for "fileid changed" but I don't
+know if this is the same bug you're seeing.  The patch was to
+nfs_same_file() and I can send it if you want.  As far as I know the patch
+made it upstream.
