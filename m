@@ -1,90 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51038 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:2988 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752444Ab1AYPie convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2011 10:38:34 -0500
-Subject: Re: Patched up cthon source?
+	id S1751078Ab1AEBmt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jan 2011 20:42:49 -0500
+Subject: Re: flock gives EIO on NFSv4, works on NFSv3
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Bryan Schumaker <bjschuma@netapp.com>, Benny Halevy <bhalevy@panasas.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Thomas Haynes <thomas@netapp.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <20110125095649.446212fd@tlielax.poochiereds.net>
-References: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com>
-	 <83EC814B-1043-46B2-8F5E-E1FB1F5B56BF@oracle.com>
-	 <4D3DFE40.1070605@panasas.com> <4D3ED37D.6020606@netapp.com>
-	 <20110125095649.446212fd@tlielax.poochiereds.net>
+To: Simon Kirby <sim@hostway.ca>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20110104234938.GM27727@hostway.ca>
+References: <20110104234938.GM27727@hostway.ca>
 Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 25 Jan 2011 10:38:32 -0500
-Message-ID: <1295969912.6867.2.camel@heimdal.trondhjem.org>
+Date: Tue, 04 Jan 2011 20:42:45 -0500
+Message-ID: <1294191765.5896.35.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-01-25 at 09:56 -0500, Jeff Layton wrote: 
-> On Tue, 25 Jan 2011 08:43:25 -0500
-> Bryan Schumaker <bjschuma@netapp.com> wrote:
+On Tue, 2011-01-04 at 15:49 -0800, Simon Kirby wrote: 
+> Hello,
 > 
-> > On 01/24/2011 05:33 PM, Benny Halevy wrote:
-> > > this is a problem with the version of nroff on newer distributions.
-> > 
-> > My version of groff (1.21) is splitting the error into two lines, so I am using the following patch.
-> > 
-> > Bryan
-> > 
+> In testing NFSv4, I found that this lock test script fails with EIO:
 > 
-> Yep, this workaround stopped working around for me on my rawhide box
-> broke yesterday for the same reason.
+> #!/usr/bin/perl
 > 
-> I think this patch may be a better approach than trying to grep out
-> random stuff, but I don't know whether non-GNU tbl programs will barf
-> on it. If anyone has a solaris box handy, could you let me know if
-> this breaks on it?
+> $|=1;
+> use Fcntl qw(:DEFAULT :flock);
+> open(IN, "< locktest.pl") or die "open: $!";
+> print "Locking...\n";
+> flock(IN,LOCK_EX) or die "flock $filename: $!";
+> print "Locked.\n";
+> sleep(4);
+> print "Unlocking...\n";
+> close(IN);
+> exit(0);
 > 
-> ----------------------[snip]------------------
-> [PATCH] cthon04: add "nowarn" option to nroff.in tables
+> This just locks itself (assuming it's called locktest.pl).  This works
+> fine over NFSv3, but with NFSv4, I'm seeing:
 > 
-> This prevents the tbl preprocessor from stuffing warnings into the
-> resulting file, which subsequently can make nroff spew warnings like
-> this on stderr:
+> flock(3, LOCK_EX)                       = -1 EIO (Input/output error)
 > 
->     warning: file `nroff.in', around line 47:
->       table wider than line width
-> 
-> Unfortunately, I'm not sure how non-gnu tbl programs will react to
-> this option, so YMMV.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  general/nroff.in |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/general/nroff.in b/general/nroff.in
-> index 522ac80..a8acb3a 100644
-> --- a/general/nroff.in
-> +++ b/general/nroff.in
-> @@ -18,7 +18,7 @@ benchmarks.
->  .LP
->  I ran the benchmarks on the following configurations:
->  .TS
-> -center;
-> +center nowarn;
->  l l l l.
->  CPU	Unix	Fortran	Memory
->  .sp 4p
-> @@ -38,7 +38,7 @@ A bubble sort of integers.
->  A prime number generator.
->  .LP
->  .TS
-> -center;
-> +center nowarn;
->   c|c|c s|c s|
->   c|c|c s|c s|
->   c|c|c s|c s|
+> tcpdump and NFS debugging shows status "10038", which as far as I can
+> tell is "NFS4ERR_OPENMODE".
 
-Here's a radical idea: what say we change the nroff.in file so that it
-no longer tries to fit a 130ish character wide table into an 80
-character wide page?
+That is known and expected behaviour. We have to map flock() onto byte
+range locks (i.e. POSIX locks), and since LOCK_EX has to map to a write
+lock in order to give exclusive semantics, the server will not allow it
+when you only have the file open for reading.
 
 Cheers
    Trond
