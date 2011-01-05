@@ -1,109 +1,163 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:38456 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:48464 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751423Ab1ADUnn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 15:43:43 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V7 07/12] NFS implement v4.0 callback_ident
-Date: Tue,  4 Jan 2011 15:42:41 -0500
-Message-Id: <1294173766-5573-8-git-send-email-andros@netapp.com>
-In-Reply-To: <1294173766-5573-7-git-send-email-andros@netapp.com>
-References: <1294173766-5573-1-git-send-email-andros@netapp.com>
- <1294173766-5573-2-git-send-email-andros@netapp.com>
- <1294173766-5573-3-git-send-email-andros@netapp.com>
- <1294173766-5573-4-git-send-email-andros@netapp.com>
- <1294173766-5573-5-git-send-email-andros@netapp.com>
- <1294173766-5573-6-git-send-email-andros@netapp.com>
- <1294173766-5573-7-git-send-email-andros@netapp.com>
+	id S1751322Ab1AER33 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 12:29:29 -0500
+Date: Wed, 5 Jan 2011 12:29:17 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] nfsd4: implement secinfo_no_name
+Message-ID: <20110105172916.GD13000@fieldses.org>
+References: <1292612511-14203-1-git-send-email-bfields@redhat.com>
+ <1292612511-14203-4-git-send-email-bfields@redhat.com>
+ <4D183265.70608@cn.fujitsu.com>
+ <20101229185609.GA12218@fieldses.org>
+ <4D1C06E7.5060009@cn.fujitsu.com>
+ <20110105010507.GC14744@fieldses.org>
+ <AANLkTimHAzLWE2ZC+QGtSw3ff6fpQsejDV8M7x8m34dp@mail.gmail.com>
+ <20110105153713.GA13000@fieldses.org>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20110105153713.GA13000@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Wed, Jan 05, 2011 at 10:37:13AM -0500, J. Bruce Fields wrote:
+> On Wed, Jan 05, 2011 at 10:15:11AM -0500, Fred Isaman wrote:
+> > On Tue, Jan 4, 2011 at 8:05 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > On Thu, Dec 30, 2010 at 12:13:27PM +0800, Mi Jinlong wrote:
+> > >>
+> > >>
+> > >> J. Bruce Fields:
+> > >> > On Mon, Dec 27, 2010 at 02:29:57PM +0800, Mi Jinlong wrote:
+> > >> >> When testing this patch, oops appears.
+> > >> >>
+> > >> >> We should implement a nfsd4_encode_secinfo_no_name() instead using
+> > >> >> nfsd4_encode_secinfo().
+> > >> >>
+> > >> >> With the following patch, kernel will run correctly.
+> > >> >
+> > >> > Whoops, yes, you're correct.  I've applied your patch.  Thanks!
+> > >> >
+> > >> > (What are you using for testing?)
+> > >>
+> > >> Hi Bruce:
+> > >>
+> > >>   I test it by the pynfs41 at your tree, and add some simple
+> > >>   test case as following.
+> > >>
+> > >>   I have a question about the op.secinfo_no_name(), should it take
+> > >>   a argument?
+> > >>   Right now, maybe it always request with NFS4_SECINFO_STYLE4_CURRENT_FH,
+> > >>   or I can't find how to set the argument.
+> > >
+> > 
+> > There was a bug in how the op.secinfo_no_name() function was auto
+> > constructed.  I've pushed a fix to
+> > my tree at git://linux-nfs.org/~iisaman/newpynfs.git.
+> 
+> Thanks, Fred.  I've pulled that into my repository too.
 
-Provide a unique callback identifier per SETCLIENTID call used to identify the
-v4.0 callback service associated with the clientid.
+But then these secinfo_no_name tests don't work ("TypeError:
+data.opsecinfo_no_name == None"); Mi Jinlong, would you mind looking
+into that?
 
-Do not worry about wrap around. Zero value means unset.
+--b.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c         |    5 +++++
- fs/nfs/nfs4state.c        |    1 +
- include/linux/nfs_fs_sb.h |    1 +
- include/linux/nfs_xdr.h   |    1 +
- 4 files changed, 8 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 78b0899..6652e39 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3470,6 +3470,8 @@ do_state_recovery:
- 	return -EAGAIN;
- }
- 
-+static u32 current_cb_ident = 1;
-+
- int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 		unsigned short port, struct rpc_cred *cred,
- 		struct nfs4_setclientid_res *res)
-@@ -3478,6 +3480,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 	struct nfs4_setclientid setclientid = {
- 		.sc_verifier = &sc_verifier,
- 		.sc_prog = program,
-+		.sc_cb_ident = current_cb_ident++,
- 	};
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SETCLIENTID],
-@@ -3522,6 +3525,8 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 			if (++clp->cl_id_uniquifier == 0)
- 				break;
- 	}
-+	if (status == NFS_OK)
-+		res->cb_ident = setclientid.sc_cb_ident;
- 	return status;
- }
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index f575a31..fe61422 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -79,6 +79,7 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 	if (status != 0)
- 		goto out;
- 	clp->cl_clientid = clid.clientid;
-+	clp->cl_cb_ident = clid.cb_ident;
- 	nfs4_schedule_state_renewal(clp);
- out:
- 	return status;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 452d964..1eaa054 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -71,6 +71,7 @@ struct nfs_client {
- 	 */
- 	char			cl_ipaddr[48];
- 	unsigned char		cl_id_uniquifier;
-+	u32			cl_cb_ident;	/* v4.0 callback identifier */
- 	const struct nfs4_minor_version_ops *cl_mvops;
- #endif /* CONFIG_NFS_V4 */
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 236e7e4..d325def 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -869,6 +869,7 @@ struct nfs4_setclientid {
- struct nfs4_setclientid_res {
- 	u64				clientid;
- 	nfs4_verifier			confirm;
-+	u32				cb_ident;
- };
- 
- struct nfs4_statfs_arg {
--- 
-1.6.6
-
+> 
+> --b.
+> 
+> > 
+> > Fred
+> > 
+> > > Hm, I don't know, I guess I'd look at how arguments are passed to some
+> > > of the other operations when constructing compounds in other tests....
+> > >
+> > > --b.
+> > >
+> > >>
+> > >> thanks,
+> > >> Mi Jinlong
+> > >>
+> > >> >From 31ae25c04295888fa54ea531cdfaa4cfdefbe877 Mon Sep 17 00:00:00 2001
+> > >> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> > >> Date: Wed, 29 Dec 2010 17:23:35 +0800
+> > >> Subject: [PATCH] CLNT: Add some simple secinfo_no_name tests
+> > >>
+> > >>  Add two simple secinfo_no_name tests as Bruce said:
+> > >>     - send PUTROOTFH+SECINFO_NO_NAME, check that you get back a
+> > >>       legal result.
+> > >>     - send PUTROOTFH+SECINFO+GETFH, and/or
+> > >>       PUTROOTFH+SECINFO_NO_NAME+GETFH, check that the GETFH returns
+> > >>       NOFILEHANDLE.
+> > >>
+> > >>  Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> > >> ---
+> > >>  nfs4.1/server41tests/__init__.py           |    1 +
+> > >>  nfs4.1/server41tests/st_secinfo_no_name.py |   35 ++++++++++++++++++++++++++++
+> > >>  2 files changed, 36 insertions(+), 0 deletions(-)
+> > >>  create mode 100644 nfs4.1/server41tests/st_secinfo_no_name.py
+> > >>
+> > >> diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
+> > >> index 22cd664..6aee88e 100644
+> > >> --- a/nfs4.1/server41tests/__init__.py
+> > >> +++ b/nfs4.1/server41tests/__init__.py
+> > >> @@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
+> > >>             "st_compound.py",
+> > >>             "st_create_session.py",
+> > >>             "st_destroy_session.py",
+> > >> +           "st_secinfo_no_name.py",
+> > >>             "st_sequence.py",
+> > >>          "st_trunking.py",
+> > >>             "st_open.py",
+> > >> diff --git a/nfs4.1/server41tests/st_secinfo_no_name.py b/nfs4.1/server41tests/st_secinfo_no_name.py
+> > >> new file mode 100644
+> > >> index 0000000..a4b148d
+> > >> --- /dev/null
+> > >> +++ b/nfs4.1/server41tests/st_secinfo_no_name.py
+> > >> @@ -0,0 +1,35 @@
+> > >> +from st_create_session import create_session
+> > >> +from nfs4_const import *
+> > >> +from environment import check, fail, bad_sessionid, create_file
+> > >> +from nfs4_type import channel_attrs4
+> > >> +import nfs4_ops as op
+> > >> +import nfs4lib
+> > >> +
+> > >> +def testSupported(t, env):
+> > >> +    """Do a simple SECINFO_NO_NAME
+> > >> +       send PUTROOTFH+SECINFO_NO_NAME, check is result legal
+> > >> +
+> > >> +    FLAGS: all
+> > >> +    CODE: SECNN1
+> > >> +    """
+> > >> +    c = env.c1.new_client(env.testname(t))
+> > >> +    sess = c.create_session()
+> > >> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name()])
+> > >> +    check(res);
+> > >> +
+> > >> +def testSupported2(t, env):
+> > >> +    """GETFH after do a SECINFO_NO_NAME or SECINFO
+> > >> +       result in a NOFILEHANDLE error, See rfc 5661 section 2.6.3.1.1.8
+> > >> +
+> > >> +    FLAGS: all
+> > >> +    CODE: SECNN2
+> > >> +    """
+> > >> +    c = env.c1.new_client(env.testname(t))
+> > >> +    sess = c.create_session()
+> > >> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name(), op.getfh()])
+> > >> +    print res
+> > >> +    check(res, NFS4ERR_NOFILEHANDLE);
+> > >> +
+> > >> +    res = sess.compound([op.putrootfh(), op.secinfo("tree"), op.getfh()])
+> > >> +    print res
+> > >> +    check(res, NFS4ERR_NOFILEHANDLE);
+> > >> --
+> > >> 1.7.3.3
+> > >>
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > >
