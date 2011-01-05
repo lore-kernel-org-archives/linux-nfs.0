@@ -1,81 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:64213 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750951Ab1ANITI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Jan 2011 03:19:08 -0500
-Message-ID: <4D3007A1.6030405@cn.fujitsu.com>
-Date: Fri, 14 Jan 2011 16:21:53 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsd: break lease on unlink, link, and rename
-References: <1294853809-10732-1-git-send-email-bfields@redhat.com> <1294853809-10732-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1294853809-10732-3-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=Shift_JIS
+Received: from mx2.netapp.com ([216.240.18.37]:43304 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750954Ab1AEB55 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 20:57:57 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 0/5] Allow the admin to turn off NFSv4 uid/gid mapping
+Date: Tue,  4 Jan 2011 20:57:46 -0500
+Message-Id: <1294192671-18864-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+The following patches allow the admin to turn off NFSv4 uid/gid mapping
+if mounting using AUTH_SYS security.
 
+Minor changes w.r.t. first revision:
+ - Added documentation in kernel-parameters.txt
+ - Print a warning if an NFS4ERR_BADOWNER causes us to turn idmapping on again
 
-J. Bruce Fields:
-> Any change to any of the links pointing to an entry should also break
-> delegations.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/vfs.c |   27 +++++++++++++++++++++++----
->  1 files changed, 23 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 839ed88..f31321a 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -272,6 +272,13 @@ out:
->  	return err;
->  }
->  
-> +static int nfsd_break_lease(struct inode *inode)
-> +{
-> +	if (!S_ISREG(inode->i_mode))
-> +		return 0;
-> +	return break_lease(inode, O_WRONLY | O_NONBLOCK);
+Changes w.r.t. second revision:
+ - Ensure we propagate the NFS4ERR_BADOWNER up to the NFSv4 middle layers
+ - Fix a typo in nfs4_handle_exception
 
-Hi Bruce,
+Changes w.r.t. third revision:
+ - Work around a Linux server bug which causes pre-2.6.37 kernels to return
+   NFS4ERR_BADNAME in cases where it should be returning NFS4ERR_BADOWNER.
 
-break_lease will return -EWOULDBLOCK here if break success, not 0.
-  at __break_lease:
-   
-    1193  */
-    1194 int __break_lease(struct inode *inode, unsigned int mode)
-    1195 {
-         ... ...  
-    1253         if (i_have_this_lease || (mode & O_NONBLOCK)) {
-    1254                 error = -EWOULDBLOCK;
-    1255                 goto out;
-    1256         }
-          ... ... 
-    1283 out:
-    1284         unlock_flocks();
-    1285         if (!IS_ERR(new_fl))
-    1286                 locks_free_lock(new_fl);
-    1287         return error;
-    1288 }
+Trond Myklebust (5):
+  NFSv4: If the server sends us a numeric uid/gid then accept it
+  NFSv4: Send unmapped uid/gids to the server if the idmapper fails
+  NFSv4: cleanup idmapper functions to take an nfs_server argument
+  NFSv4: Propagate the error NFS4ERR_BADOWNER to nfs4_do_setattr
+  NFSv4: Send unmapped uid/gids to the server when using auth_sys
 
-If we just return the error -EWOULDBLOCK (which mapped to -EAGAIN) at
-nfsd_break_lease(), the NFS request will be drop for -EAGAIN is mapped
-to nfserr_dropit at nfserrno(). As that, client will hang up about 60s
-until a retry success.
-
-Maybe we should have a check here as:
-
--       return break_lease(inode, O_WRONLY | O_NONBLOCK);
-+       int status = break_lease(inode, O_WRONLY | O_NONBLOCK);
-+       return -EWOULDBLOCK == status ? 0 : status;
+ Documentation/kernel-parameters.txt |    8 +++
+ fs/nfs/client.c                     |   16 ++++++
+ fs/nfs/idmap.c                      |   87 +++++++++++++++++++++++++++-------
+ fs/nfs/nfs4proc.c                   |   18 +++++++-
+ fs/nfs/nfs4xdr.c                    |   20 +++-----
+ include/linux/nfs_fs_sb.h           |    1 +
+ include/linux/nfs_idmap.h           |    8 ++--
+ 7 files changed, 123 insertions(+), 35 deletions(-)
 
 -- 
-----
-thanks
-Mi Jinlong
-
+1.7.3.4
 
