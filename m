@@ -1,78 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:52286 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751344Ab1AXWdk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jan 2011 17:33:40 -0500
-Message-ID: <4D3DFE40.1070605@panasas.com>
-Date: Mon, 24 Jan 2011 17:33:36 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Thomas Haynes <thomas@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: Patched up cthon source?
-References: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com> <83EC814B-1043-46B2-8F5E-E1FB1F5B56BF@oracle.com>
-In-Reply-To: <83EC814B-1043-46B2-8F5E-E1FB1F5B56BF@oracle.com>
+Received: from mx2.netapp.com ([216.240.18.37]:46912 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751769Ab1AETtK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 14:49:10 -0500
+Message-ID: <4D24CB32.7080509@netapp.com>
+Date: Wed, 05 Jan 2011 14:49:06 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Subject: [PATCH v2 5/5] NFS: Determine initial mount security
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-01-24 17:24, Chuck Lever wrote:
-> 
-> On Jan 24, 2011, at 5:19 PM, Thomas Haynes wrote:
-> 
->> I'm being evil here on purpose. :->
->>
->> I'm trying to run cthon04 as downloaded from the connectathon.org repository
->> and I'm getting this:
->>
->>
->> Nroff
->> ./stat: no data in nroff.time
->> general tests failed
->> Tests failed, leaving /cthon04/loghyr mounted
->>
->>
->> As I kinda recall several people fixing this already, where would I go to get patches?
-> 
-> What are your CFLAGS settings in tests.init?
-> 
 
-this is a problem with the version of nroff on newer distributions.
-The following patch fixed it for me last bakeathon:
+When sec=<something> is not presented as a mount option,
+we should attempt to determine what security flavor the
+server is using.
 
->From f44b150809e43b129fad34e3e4ec288e4dd36e6c Mon Sep 17 00:00:00 2001
-From: Benny Halevy <bhalevy@panasas.com>
-Date: Wed, 6 Oct 2010 11:37:27 -0400
-Subject: [PATCH] cthon nroff general test workaround
-
-Newer versions of nroff spew out a warning that cause the cthon test
-to fail in the following way:
-
-Nroff
-./stat: no data in nroff.time
-general tests failed
-
-The following patch filters out the warning from the output file
-generated during the test.
-
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- general/runtests.wrk |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4proc.c                     |   33 +++++++++++++++++++++++++++++++--
+ include/linux/sunrpc/gss_api.h        |    3 +++
+ net/sunrpc/auth_gss/gss_mech_switch.c |   16 ++++++++++++++++
+ 3 files changed, 50 insertions(+), 2 deletions(-)
 
-diff --git a/general/runtests.wrk b/general/runtests.wrk
-index f3a5a4e..8247e2f 100644
---- a/general/runtests.wrk
-+++ b/general/runtests.wrk
-@@ -89,6 +89,8 @@ $TIME nroff < nroff.tbl > nroff.out 2>> nroff.time || cat nroff.time
- $TIME nroff < nroff.tbl > nroff.out 2>> nroff.time || cat nroff.time
- rm nroff.out nroff.tbl
- set -e
-+egrep -v '^warning:.*$' <nroff.time >nroff.new
-+mv -f nroff.new nroff.time
- ./stat nroff.time
- set +e
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4a1d79e..19ee25d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -41,6 +41,7 @@
+ #include <linux/string.h>
+ #include <linux/slab.h>
+ #include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/gss_api.h>
+ #include <linux/nfs.h>
+ #include <linux/nfs4.h>
+ #include <linux/nfs_fs.h>
+@@ -2171,15 +2172,43 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	return err;
+ }
  
++static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
++				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
++{
++	struct rpc_auth *auth;
++	int ret;
++
++	auth = rpcauth_create(flavor, server->client);
++	if (!auth) {
++		ret = -EIO;
++		goto out;
++	}
++	ret = nfs4_lookup_root(server, fhandle, info);
++	if (ret < 0)
++		ret = -EAGAIN;
++out:
++	return ret;
++}
++
+ /*
+  * get the file handle for the "/" directory on the server
+  */
+ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			      struct nfs_fsinfo *info)
+ {
+-	int status;
++	int i, len, status = 0;
++	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS + 2];
+ 
+-	status = nfs4_lookup_root(server, fhandle, info);
++	flav_array[0] = RPC_AUTH_UNIX;
++	len = gss_mech_list_pseudoflavors(&flav_array[1]);
++	flav_array[1+len] = RPC_AUTH_NULL;
++	len += 2;
++
++	for (i = 0; i < len; i++) {
++		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
++		if (status == 0)
++			break;
++	}
+ 	if (status == 0)
+ 		status = nfs4_server_capabilities(server, fhandle);
+ 	if (status == 0)
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index 5d8048b..332da61 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -126,6 +126,9 @@ struct gss_api_mech *gss_mech_get_by_name(const char *);
+ /* Similar, but get by pseudoflavor. */
+ struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
+ 
++/* Fill in an array with a list of supported pseudoflavors */
++int gss_mech_list_pseudoflavors(u32 *);
++
+ /* Just increments the mechanism's reference count and returns its input: */
+ struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
+ 
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index 6c844b0..e3c36a2 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -215,6 +215,22 @@ gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
+ 
+ EXPORT_SYMBOL_GPL(gss_mech_get_by_pseudoflavor);
+ 
++int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr)
++{
++	struct gss_api_mech *pos = NULL;
++	int i = 0;
++
++	spin_lock(&registered_mechs_lock);
++	list_for_each_entry(pos, &registered_mechs, gm_list) {
++		array_ptr[i] = pos->gm_pfs->pseudoflavor;
++		i++;
++	}
++	spin_unlock(&registered_mechs_lock);
++	return i;
++}
++
++EXPORT_SYMBOL_GPL(gss_mech_list_pseudoflavors);
++
+ u32
+ gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
+ {
 -- 
 1.7.3.4
 
