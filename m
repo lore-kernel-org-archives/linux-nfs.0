@@ -1,104 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56799 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752764Ab1ACSbA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Jan 2011 13:31:00 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>, Neil Brown <neilb@suse.de>
-Subject: [PATCH 2/5] nfsd4: avoid double reply caused by deferral race
-Date: Mon,  3 Jan 2011 13:30:51 -0500
-Message-Id: <1294079454-17891-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1294079454-17891-1-git-send-email-bfields@redhat.com>
-References: <1294079454-17891-1-git-send-email-bfields@redhat.com>
+Received: from metis.ext.pengutronix.de ([92.198.50.35]:33451 "EHLO
+	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751097Ab1AEPj6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 10:39:58 -0500
+Message-ID: <4D2490C3.4000407@pengutronix.de>
+Date: Wed, 05 Jan 2011 16:39:47 +0100
+From: Marc Kleine-Budde <mkl@pengutronix.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: =?UTF-8?B?VXdlIEtsZWluZS1Lw7ZuaWc=?=
+	<u.kleine-koenig@pengutronix.de>,
+        Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        linux-nfs@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>, stable@kernel.org
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+References: <20101230171453.GA5787@pengutronix.de>	 <1293731992.4919.5.camel@heimdal.trondhjem.org>	 <20101230191846.GB14221@pengutronix.de>	 <20110103213850.GC25121@pengutronix.de>	 <1294100558.25100.8.camel@heimdal.trondhjem.org>	 <20110105084014.GN25121@pengutronix.de>	 <20110105110517.GQ25121@pengutronix.de>	 <20110105112701.GA8638@n2100.arm.linux.org.uk>	 <20110105134045.GS25121@pengutronix.de>	 <1294239193.3014.9.camel@heimdal.trondhjem.org>	 <4D2487CA.5040501@pengutronix.de>	 <1294240457.3014.13.camel@heimdal.trondhjem.org> <1294241369.3014.15.camel@heimdal.trondhjem.org>
+In-Reply-To: <1294241369.3014.15.camel@heimdal.trondhjem.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="------------enigB02CF3540C51CE001DA01B7E"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Commit d29068c431599fa "sunrpc: Simplify cache_defer_req and related
-functions." asserted that cache_check() could determine success or
-failure of cache_defer_req() by checking the CACHE_PENDING bit.
+--------------enigB02CF3540C51CE001DA01B7E
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-This isn't quite right.
+On 01/05/2011 04:29 PM, Trond Myklebust wrote:
+> On Wed, 2011-01-05 at 10:14 -0500, Trond Myklebust wrote:=20
+>> OK. So,the new behaviour in 2.6.37 is that we're writing to a series o=
+f
+>> pages via the usual kmap_atomic()/kunmap_atomic() and kmap()/kunmap()
+>> interfaces, but we can end up reading them via a virtual address range=
 
-We need to know whether cache_defer_req() created a deferred request,
-in which case sending an rpc reply has become the responsibility of the
-deferred request, and it is important that we not send our own reply,
-resulting in two different replies to the same request.
+>> that gets set up via vm_map_ram() (that range gets set up before the
+>> write occurs).
+>>
+>> Do we perhaps need an invalidate_kernel_vmap_range() before we can rea=
+d
+>> the data on ARM in this kind of scenario?
+>=20
+> IOW: Does something like the following patch fix the problem?
+>=20
+> -----------------------------------------------------------------------=
+--------=20
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> NFS: Ensure we clean the TLB cache in nfs_readdir_xdr_to_array
+>    =20
+> After calling nfs_readdir_xdr_filler(), we need a call to
+> invalidate_kernel_vmap_range() before we can proceed to read
+> the data back through the virtual address range.
+>    =20
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 996dd89..4640470 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -587,6 +587,9 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor=
+_t *desc, struct page *page,
+>  		if (status < 0)
+>  			break;
+>  		pglen =3D status;
+> +
+> +		invalidate_kernel_vmap_range(pages_ptr, pglen);
+> +
+>  		status =3D nfs_readdir_page_filler(desc, &entry, pages_ptr, page, pg=
+len);
+>  		if (status < 0) {
+>  			if (status =3D=3D -ENOSPC)
 
-And the CACHE_PENDING bit doesn't tell us that; we could have
-succesfully created a deferred request at the same time as another
-thread cleared the CACHE_PENDING bit.
+\o/ - Works for me (at91, armv5)
 
-So, partially revert that commit, to ensure that cache_check() returns
--EAGAIN if and only if a deferred request has been created.
+Tested-by: Marc Kleine-Budde <mkl@pengutronix.de>
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-Cc: Neil Brown <neilb@suse.de>
----
- net/sunrpc/cache.c |   18 +++++++++++-------
- 1 files changed, 11 insertions(+), 7 deletions(-)
+This is a candidate for stable (Cc'd).
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index e433e75..0d6002f 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -37,7 +37,7 @@
- 
- #define	 RPCDBG_FACILITY RPCDBG_CACHE
- 
--static void cache_defer_req(struct cache_req *req, struct cache_head *item);
-+static bool cache_defer_req(struct cache_req *req, struct cache_head *item);
- static void cache_revisit_request(struct cache_head *item);
- 
- static void cache_init(struct cache_head *h)
-@@ -268,9 +268,11 @@ int cache_check(struct cache_detail *detail,
- 	}
- 
- 	if (rv == -EAGAIN) {
--		cache_defer_req(rqstp, h);
--		if (!test_bit(CACHE_PENDING, &h->flags)) {
--			/* Request is not deferred */
-+		if (!cache_defer_req(rqstp, h)) {
-+			/*
-+			 * Request was not deferred; handle it as best
-+			 * we can ourselves:
-+			 */
- 			rv = cache_is_valid(detail, h);
- 			if (rv == -EAGAIN)
- 				rv = -ETIMEDOUT;
-@@ -618,18 +620,19 @@ static void cache_limit_defers(void)
- 		discard->revisit(discard, 1);
- }
- 
--static void cache_defer_req(struct cache_req *req, struct cache_head *item)
-+/* Return true if and only if a deferred request is queued. */
-+static bool cache_defer_req(struct cache_req *req, struct cache_head *item)
- {
- 	struct cache_deferred_req *dreq;
- 
- 	if (req->thread_wait) {
- 		cache_wait_req(req, item);
- 		if (!test_bit(CACHE_PENDING, &item->flags))
--			return;
-+			return false;
- 	}
- 	dreq = req->defer(req);
- 	if (dreq == NULL)
--		return;
-+		return false;
- 	setup_deferral(dreq, item, 1);
- 	if (!test_bit(CACHE_PENDING, &item->flags))
- 		/* Bit could have been cleared before we managed to
-@@ -638,6 +641,7 @@ static void cache_defer_req(struct cache_req *req, struct cache_head *item)
- 		cache_revisit_request(item);
- 
- 	cache_limit_defers();
-+	return true;
- }
- 
- static void cache_revisit_request(struct cache_head *item)
--- 
-1.7.1
+Regards,
+Marc
 
+--=20
+Pengutronix e.K.                  | Marc Kleine-Budde           |
+Industrial Linux Solutions        | Phone: +49-231-2826-924     |
+Vertretung West/Dortmund          | Fax:   +49-5121-206917-5555 |
+Amtsgericht Hildesheim, HRA 2686  | http://www.pengutronix.de   |
+
+
+--------------enigB02CF3540C51CE001DA01B7E
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+
+iEYEARECAAYFAk0kkMYACgkQjTAFq1RaXHPajACffedzEyEWRnmcOeWvtOwT0eYz
+IE0AnjKE3Yl1uIDNmr4RH9Ma1tro+3+r
+=JxJd
+-----END PGP SIGNATURE-----
+
+--------------enigB02CF3540C51CE001DA01B7E--
