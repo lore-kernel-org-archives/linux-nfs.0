@@ -1,30 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:58300 "EHLO magus.merit.edu"
+Received: from mx2.netapp.com ([216.240.18.37]:43304 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754066Ab1ASO14 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Jan 2011 09:27:56 -0500
-Date: Wed, 19 Jan 2011 09:27:52 -0500
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Daniel.Muntz@emc.com, matt@linuxbox.com, androsadamson@gmail.com,
-        linux-nfs@vger.kernel.org, bhalevy@panasas.com
-Subject: Re: 4.1 no-pnfs mount option?
-Message-ID: <20110119142752.GB6026@merit.edu>
-References: <DE966DA98A4ABE438D726BDF1699CF61043985B644@MX05A.corp.emc.com>
- <1295405796.2919.2.camel@heimdal.trondhjem.org>
- <DE966DA98A4ABE438D726BDF1699CF61043985B65A@MX05A.corp.emc.com>
- <1295445912.3444.10.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1295445912.3444.10.camel@heimdal.trondhjem.org>
+	id S1751096Ab1AEB57 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Jan 2011 20:57:59 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 2/5] NFSv4: Send unmapped uid/gids to the server if the idmapper fails
+Date: Tue,  4 Jan 2011 20:57:48 -0500
+Message-Id: <1294192671-18864-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1294192671-18864-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1294192671-18864-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1294192671-18864-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Have we beaten this dead horse to a pulp yet?  I was just asking if there
-was such an option, not advocating for adding one.  It would have been
-useful at the time for my own testing but I can see the argument against
-adding unwanted knobs.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/idmap.c |   30 ++++++++++++++++++++++++++----
+ 1 files changed, 26 insertions(+), 4 deletions(-)
 
-The discussion has been useful in one way.  I will now be spending some time
-making sure the block layout driver falls back gracefully to no-pnfs if, for
-example, an iscsi target can't be contacted.
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index cbe6e2f..8518573 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -52,6 +52,11 @@ static int nfs_map_string_to_numeric(const char *name, size_t namelen, __u32 *re
+ 	return 1;
+ }
+ 
++static int nfs_map_numeric_to_string(__u32 id, char *buf, size_t buflen)
++{
++	return snprintf(buf, buflen, "%u", id);
++}
++
+ #ifdef CONFIG_NFS_USE_NEW_IDMAPPER
+ 
+ #include <linux/slab.h>
+@@ -252,11 +257,20 @@ int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namele
+ 
+ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
+ {
+-	return nfs_idmap_lookup_name(uid, "user", buf, buflen);
++	int ret;
++	ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
++	if (ret < 0)
++		ret = nfs_map_numeric_to_string(uid, buf, buflen);
++	return ret;
+ }
+ int nfs_map_gid_to_group(struct nfs_client *clp, __u32 gid, char *buf, size_t buflen)
+ {
+-	return nfs_idmap_lookup_name(gid, "group", buf, buflen);
++	int ret;
++
++	ret = nfs_idmap_lookup_name(gid, "group", buf, buflen);
++	if (ret < 0)
++		ret = nfs_map_numeric_to_string(gid, buf, buflen);
++	return ret;
+ }
+ 
+ #else  /* CONFIG_NFS_USE_NEW_IDMAPPER not defined */
+@@ -736,14 +750,22 @@ int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namele
+ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
+ {
+ 	struct idmap *idmap = clp->cl_idmap;
++	int ret;
+ 
+-	return nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
++	ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
++	if (ret < 0)
++		ret = nfs_map_numeric_to_string(uid, buf, buflen);
++	return ret;
+ }
+ int nfs_map_gid_to_group(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
+ {
+ 	struct idmap *idmap = clp->cl_idmap;
++	int ret;
+ 
+-	return nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
++	ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
++	if (ret < 0)
++		ret = nfs_map_numeric_to_string(uid, buf, buflen);
++	return ret;
+ }
+ 
+ #endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
+-- 
+1.7.3.4
+
