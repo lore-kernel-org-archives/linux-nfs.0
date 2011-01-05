@@ -1,59 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51067 "EHLO mx1.redhat.com"
+Received: from magus.merit.edu ([198.108.1.13]:38481 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752516Ab1A0Stg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Jan 2011 13:49:36 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id p0RInZlk006563
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2011 13:49:36 -0500
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p0RInZcP018723
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2011 13:49:35 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/3] Connectathon: Remove warning from general tests
-Date: Thu, 27 Jan 2011 13:49:31 -0500
-Message-Id: <1296154174-13076-1-git-send-email-steved@redhat.com>
+	id S1751257Ab1AEPib (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 10:38:31 -0500
+Date: Wed, 5 Jan 2011 10:38:29 -0500
+From: Jim Rees <rees@umich.edu>
+To: Marc Kleine-Budde <mkl@pengutronix.de>
+Cc: Uwe =?iso-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+Message-ID: <20110105153829.GB11608@merit.edu>
+References: <1293731992.4919.5.camel@heimdal.trondhjem.org>
+ <20101230191846.GB14221@pengutronix.de>
+ <20110103213850.GC25121@pengutronix.de>
+ <1294100558.25100.8.camel@heimdal.trondhjem.org>
+ <20110105084014.GN25121@pengutronix.de>
+ <20110105110517.GQ25121@pengutronix.de>
+ <20110105112701.GA8638@n2100.arm.linux.org.uk>
+ <20110105134045.GS25121@pengutronix.de>
+ <20110105142902.GA9278@merit.edu>
+ <4D248343.2000407@pengutronix.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D248343.2000407@pengutronix.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Here are three approaches to removing the 
-    warning: around line 47: table wider than line width
+Marc Kleine-Budde wrote:
 
-that is currently occurring in the general tests.
+  > Trond sent a fix to the nfs list on 27 Nov for "fileid changed" but I don't
+  > know if this is the same bug you're seeing.  The patch was to
+  > nfs_same_file() and I can send it if you want.  As far as I know the patch
+  > made it upstream.
+  
+  Are you sure it's in .37?
 
-The first approach is to make the stat command, which read
-the output time file, ignore lines it does not understand. 
+...
 
-The second approach was to fix the nroff.in file. It turns
-out, the only I could stop that warning was to decrease the
-width of the table. Through my trials and tribulations with
-this, I'm beginning to believe the generating of this warning
-is a bug in the groff command, since I can not find anything
-wrong with the original table definition.
+  Would you please be so kind and send the patch to this thread?
 
-The third and final approach is a patch that Jeff Layton 
-purposed that leaves the table width alone and adds the
-"nowarn" to the global options of the table.
+This is the commit I'm thinking of:
 
-All three seem to do the trick but obviously we don't need
-all three... I am leaning towards the first approach since
-its not dependent on nroff/tbl isms... 
+http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=37a09f07459753e7c98d4e21f1c61e8756923f81
 
-Steve Dickson (2):
-  Make the stat command ignore lines that it is not looking for.
-  Make the tbl table smaller to avoid a warning about line width
+NFS: Fix a readdirplus bug
 
-Jeff Layton (1):
-  cthon04: add "nowarn" option to nroff.in tables
+When comparing filehandles in the helper nfs_same_file(), we should not be
+using 'strncmp()': filehandles are not null terminated strings.
 
- general/nroff.in |    2 +-
- general/stat.c   |    9 +++++++--
- 2 files changed, 8 insertions(+), 3 deletions(-)
+Instead, we should just use the existing helper nfs_compare_fh().
 
--- 
-1.7.3.3
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+---
 
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 8ea4a41..f0a384e 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -395,13 +395,9 @@ int xdr_decode(nfs_readdir_descriptor_t *desc, struct nfs_entry *entry, struct x
+ static
+ int nfs_same_file(struct dentry *dentry, struct nfs_entry *entry)
+ {
+-	struct nfs_inode *node;
+ 	if (dentry->d_inode == NULL)
+ 		goto different;
+-	node = NFS_I(dentry->d_inode);
+-	if (node->fh.size != entry->fh->size)
+-		goto different;
+-	if (strncmp(node->fh.data, entry->fh->data, node->fh.size) != 0)
++	if (nfs_compare_fh(entry->fh, NFS_FH(dentry->d_inode)) != 0)
+ 		goto different;
+ 	return 1;
+ different:
