@@ -1,19 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9530 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:12006 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752516Ab1ADRLI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 12:11:08 -0500
+	id S1753000Ab1AEUvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 15:51:53 -0500
 From: andros@netapp.com
 To: trond.myklebust@netapp.com
 Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
         Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V6 03/11] SUNRPC new transport for the NFSv4.1 shared back channel
-Date: Tue,  4 Jan 2011 12:10:20 -0500
-Message-Id: <1294161028-4499-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1294161028-4499-3-git-send-email-andros@netapp.com>
-References: <1294161028-4499-1-git-send-email-andros@netapp.com>
- <1294161028-4499-2-git-send-email-andros@netapp.com>
- <1294161028-4499-3-git-send-email-andros@netapp.com>
+Subject: [PATCH_V8 03/13] SUNRPC new transport for the NFSv4.1 shared back channel
+Date: Wed,  5 Jan 2011 15:51:21 -0500
+Message-Id: <1294260690-3095-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1294260690-3095-3-git-send-email-andros@netapp.com>
+References: <1294260690-3095-1-git-send-email-andros@netapp.com>
+ <1294260690-3095-2-git-send-email-andros@netapp.com>
+ <1294260690-3095-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
@@ -27,11 +27,12 @@ Back channel socket will be destroyed by the svc_closs_all call in svc_destroy.
 Added check: only TCP supported on shared back channel.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
+Acked-by: Bruce Fields <bfields@redhat.com>
 ---
  include/linux/sunrpc/svcsock.h |    1 +
  net/sunrpc/svc.c               |    4 --
- net/sunrpc/svcsock.c           |  118 +++++++++++++++++++++++++++++++++-------
- 3 files changed, 99 insertions(+), 24 deletions(-)
+ net/sunrpc/svcsock.c           |   82 ++++++++++++++++++++++++++++++----------
+ 3 files changed, 63 insertions(+), 24 deletions(-)
 
 diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
 index 1b353a7..3a45a80 100644
@@ -61,7 +62,7 @@ index 606d182..261e2d1 100644
  	kfree(serv->sv_pools);
  	kfree(serv);
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 07919e1..7c29be6 100644
+index 07919e1..6630f29 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
 @@ -66,6 +66,13 @@ static void		svc_sock_free(struct svc_xprt *);
@@ -78,7 +79,7 @@ index 07919e1..7c29be6 100644
  #ifdef CONFIG_DEBUG_LOCK_ALLOC
  static struct lock_class_key svc_key[2];
  static struct lock_class_key svc_slock_key[2];
-@@ -1184,6 +1191,75 @@ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
+@@ -1184,6 +1191,39 @@ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
  	return svc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
  }
  
@@ -100,41 +101,11 @@ index 07919e1..7c29be6 100644
 +{
 +}
 +
-+/* These bc ops are never called. The shared fore channel is used instead */
-+static int svc_bc_tcp_recvfrom(struct svc_rqst *rqstp)
-+{
-+	return 0;
-+}
-+
-+static int svc_bc_tcp_sendto(struct svc_rqst *rqstp)
-+{
-+	return 0;
-+}
-+
-+static void svc_bc_release_skb(struct svc_rqst *rqstp)
-+{
-+}
-+
-+static int svc_bc_tcp_has_wspace(struct svc_xprt *xprt)
-+{
-+	return 0;
-+}
-+
-+static struct svc_xprt *svc_bc_tcp_accept(struct svc_xprt *xprt)
-+{
-+	return NULL;
-+}
-+
 +static struct svc_xprt_ops svc_tcp_bc_ops = {
 +	.xpo_create = svc_bc_tcp_create,
-+	.xpo_recvfrom = svc_bc_tcp_recvfrom,
-+	.xpo_sendto = svc_bc_tcp_sendto,
-+	.xpo_release_rqst = svc_bc_release_skb,
 +	.xpo_detach = svc_bc_tcp_sock_detach,
 +	.xpo_free = svc_bc_sock_free,
 +	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
-+	.xpo_has_wspace = svc_bc_tcp_has_wspace,
-+	.xpo_accept = svc_bc_tcp_accept,
 +};
 +
 +static struct svc_xprt_class svc_tcp_bc_class = {
@@ -143,18 +114,12 @@ index 07919e1..7c29be6 100644
 +	.xcl_ops = &svc_tcp_bc_ops,
 +	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
 +};
-+
-+void svc_init_bc_xprt_sock(void)
-+{
-+	svc_reg_xprt_class(&svc_tcp_bc_class);
-+}
-+EXPORT_SYMBOL_GPL(svc_init_bc_xprt_sock);
 +#endif /* CONFIG_NFS_V4_1 */
 +
  static struct svc_xprt_ops svc_tcp_ops = {
  	.xpo_create = svc_tcp_create,
  	.xpo_recvfrom = svc_tcp_recvfrom,
-@@ -1509,41 +1585,43 @@ static void svc_sock_free(struct svc_xprt *xprt)
+@@ -1509,41 +1549,43 @@ static void svc_sock_free(struct svc_xprt *xprt)
  	kfree(svsk);
  }
  
