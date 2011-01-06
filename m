@@ -1,82 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56191 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:52372 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756186Ab1AKQVp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Jan 2011 11:21:45 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 08/14] nfsd4: set sequence flag when backchannel is down
-Date: Tue, 11 Jan 2011 11:21:28 -0500
-Message-Id: <1294762894-21371-9-git-send-email-bfields@redhat.com>
-In-Reply-To: <1294762894-21371-1-git-send-email-bfields@redhat.com>
-References: <1294762894-21371-1-git-send-email-bfields@redhat.com>
+	id S1751761Ab1AFNMO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Jan 2011 08:12:14 -0500
+Message-ID: <4D25BFA2.9060002@RedHat.com>
+Date: Thu, 06 Jan 2011 08:12:02 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+CC: Timo Aaltonen <timo.aaltonen@aalto.fi>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Support AD style kerberos automatically in rpc.gss
+References: <20101222192227.GA31112@obsidianresearch.com> <alpine.DEB.2.00.1012231240220.20516@kosh.org.aalto.fi> <20110104213207.GA1211@obsidianresearch.com>
+In-Reply-To: <20110104213207.GA1211@obsidianresearch.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Implement the SEQ4_STATUS_CB_PATH_DOWN flag.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |    6 +++++-
- fs/nfsd/nfs4xdr.c   |    8 ++------
- fs/nfsd/xdr4.h      |    2 +-
- 3 files changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 919ad25..15bd1cc 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1800,8 +1800,12 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- out:
- 	/* Hold a session reference until done processing the compound. */
- 	if (cstate->session) {
-+		struct nfs4_client *clp = session->se_client;
-+
- 		nfsd4_get_session(cstate->session);
--		atomic_inc(&session->se_client->cl_refcount);
-+		atomic_inc(&clp->cl_refcount);
-+		if (clp->cl_cb_state == NFSD4_CB_DOWN)
-+			seq->status_flags |= SEQ4_STATUS_CB_PATH_DOWN;
- 	}
- 	kfree(conn);
- 	spin_unlock(&client_lock);
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 4ff2c9e..956629b 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3137,13 +3137,9 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, int nfserr,
- 	WRITE32(seq->seqid);
- 	WRITE32(seq->slotid);
- 	WRITE32(seq->maxslots);
--	/*
--	 * FIXME: for now:
--	 *   target_maxslots = maxslots
--	 *   status_flags = 0
--	 */
-+	/* For now: target_maxslots = maxslots */
- 	WRITE32(seq->maxslots);
--	WRITE32(0);
-+	WRITE32(seq->status_flags);
- 
- 	ADJUST_ARGS();
- 	resp->cstate.datap = p; /* DRC cache data pointer */
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 3a7aa4d..366401e 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -378,8 +378,8 @@ struct nfsd4_sequence {
- 	u32			cachethis;		/* request */
- #if 0
- 	u32			target_maxslots;	/* response */
--	u32			status_flags;		/* response */
- #endif /* not yet */
-+	u32			status_flags;		/* response */
- };
- 
- struct nfsd4_destroy_session {
--- 
-1.7.1
+On 01/04/2011 04:32 PM, Jason Gunthorpe wrote:
+> On Thu, Dec 23, 2010 at 12:55:16PM +0200, Timo Aaltonen wrote:
+>> On Wed, 22 Dec 2010, Jason Gunthorpe wrote:
+>>
+>>> An Active Directory KDC will only grant a TGT for UPNs, getting
+>>> a TGT for SPNs is not possible:
+>>>
+>>> $ kinit -k host/ib5@ADS.ORCORP.CA
+>>> kinit: Client not found in Kerberos database while getting initial credentials
+>>>
+>>> The correct thing to do for machine credentials is to get a TGT
+>>> for the computer UPN <HOSTNAME>$@REALM:
+>>> $ kinit -k IB5\$
+>>> $ klist
+>>> 12/22/10 11:43:47  12/22/10 21:43:47  krbtgt/ADS.ORCORP.CA@ADS.ORCORP.CA
+>>>
+>>> Samba automatically creates /etc/krb5.keytab entry for the computer UPN,
+>>> this patch makes gssd_refresh_krb5_machine_credential prefer it above
+>>> the SPNs if it is present.
+>>>
+>>> The net result is that nfs client works automatically out of the box
+>>> if samba has been used to setup kerberos via 'net ads join' 'net ads
+>>> keytab create'
+>>>
+>>> Tested using Windows Server 2003 R2 as the AD server.
+>>
+>> This is basically what I did earlier, see:
+>>
+>> http://marc.info/?l=linux-nfs&m=128108638228797&w=2
+>>
+>> though I still haven't cleaned it up as promised..
+> 
+> Right, mine is a bit more complete (man page updated, etc) but it does
+> the same thing.
+> 
+> Maybe we can get a nfs-utils maintainer to comment this time?
+Sorry for the delay.... I'll trying to get to this asap... 
 
+steved.
