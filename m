@@ -1,41 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.parallels.com ([64.131.90.16]:46499 "EHLO mx2.parallels.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751285Ab1ACUs6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Jan 2011 15:48:58 -0500
-Message-ID: <4D22362F.2040604@parallels.com>
-Date: Mon, 3 Jan 2011 14:48:47 -0600
-From: Rob Landley <rlandley@parallels.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:54947 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751510Ab1AFSB0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Jan 2011 13:01:26 -0500
+In-Reply-To: <1294336054.2905.1.camel@heimdal.trondhjem.org>
+References: <1294254337.16957.13.camel@mulgrave.site> <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
+ <1294256169.16957.18.camel@mulgrave.site> <20110105200008.GJ8638@n2100.arm.linux.org.uk>
+ <1294259637.16957.25.camel@mulgrave.site> <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
+ <20110105210448.GM8638@n2100.arm.linux.org.uk> <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
+ <1294262208.2952.4.camel@heimdal.trondhjem.org> <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
+ <1294268808.2952.18.camel@heimdal.trondhjem.org> <1294270104.16957.73.camel@mulgrave.site>
+ <1294335614.22825.154.camel@mulgrave.site> <1294336054.2905.1.camel@heimdal.trondhjem.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Thu, 6 Jan 2011 09:55:30 -0800
+Message-ID: <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: "Kirill A. Shutemov" <kas@openvz.org>, Rob Landley <rob@landley.net>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        Pavel Emelyanov <xemul@parallels.com>, <linux-nfs@vger.kernel.org>,
-        "David S. Miller" <davem@davemloft.net>, <netdev@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH v2 00/12] make rpc_pipefs be mountable multiple time
-References: <1293628470-28386-1-git-send-email-kas@openvz.org>	 <AANLkTi=AXz21wDeE1vPVD-6cEtj6faXN9x09eHDCsTkB@mail.gmail.com>	 <20101230085139.GA29697@shutemov.name> <4D1C4C7C.6050606@parallels.com>	 <20101230094433.GB29697@shutemov.name>  <4D1C5953.6020200@parallels.com> <1293814441.2980.4.camel@heimdal.trondhjem.org>
-In-Reply-To: <1293814441.2980.4.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Cc: James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        =?ISO-8859-1?Q?Uwe_Kleine=2DK=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 12/31/2010 10:54 AM, Trond Myklebust wrote:
->> I'm kind of surprised that the kernel cares about a specific path under
->> /var/lib.  (Seems like policy in the kernel somehow.)  Can't it just
->> check the current process's mount list to see if an instance of
->> rpc_pipefs is mounted in the current namespace the way lxc looks for
->> cgroups?  Or are there potential performance/scalability issues with that?
+On Thu, Jan 6, 2011 at 9:47 AM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
 >
-> The kernel doesn't give a damn about the /var/lib/nfs/rpc_pipefs bit.
-> That's all for the benefit of the userland utilities.
+> Why is this line needed? We're not writing through the virtual mapping.
 
-Are you saying that if you go into a container and that mount point 
-doesn't exist, the kernel will still be able to find and use rpc_pipefs? 
-  Without userspace creating a specific magic path and mounting a 
-filesystem on it?
+I haven't looked at the sequence of accesses, but you need to be
+_very_ aware that "write-through" is absolutely NOT sufficient for
+cache coherency.
 
-If so, I misread the patch...
+In cache coherency, you have three options:
 
-Rob
+ - true coherency (eg physically indexed/tagged caches)
 
+ - exclusion (eg virtual caches, but with an exclusion guarantee that
+guarantees that aliases cannot happen: either by using physical
+tagging or by not allowing cases that could cause virtual aliases)
+
+ - write-through AND non-cached reads (ie "no caching at all").
+
+You seem to be forgetting the "no cached reads" part. It's not
+sufficient to flush after a write - you need to make sure that you
+also don't have a cached copy of the alias for the read.
+
+So "We're not writing through the virtual mapping" is NOT a sufficient
+excuse. If you're reading through the virtual mapping, you need to
+make sure that the virtual mapping is flushed _after_ any writes
+through any other mapping and _before_ any reads through the virtual
+one.
+
+This is why you really really really generally don't want to have
+aliasing. Purely virtual caches are pure crap. Really.
+
+                       Linus
