@@ -1,59 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:63478 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757651Ab1ANQJY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jan 2011 11:09:24 -0500
-Subject: Re: NFS dio aio bug
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <AANLkTinjkvVySCA93F+p66KrTuqMfMF064ggNSg0yauX@mail.gmail.com>
-Date: Fri, 14 Jan 2011 11:08:52 -0500
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <4E70BD9B-DB23-42EC-B28D-998E16FEC189@oracle.com>
-References: <AANLkTinjkvVySCA93F+p66KrTuqMfMF064ggNSg0yauX@mail.gmail.com>
-To: Nick Piggin <npiggin@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:24739 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752680Ab1AFRry convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Jan 2011 12:47:54 -0500
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: James Bottomley <James.Bottomley@HansenPartnership.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+In-Reply-To: <1294335614.22825.154.camel@mulgrave.site>
+References: <1294254337.16957.13.camel@mulgrave.site>
+	 <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
+	 <1294256169.16957.18.camel@mulgrave.site>
+	 <20110105200008.GJ8638@n2100.arm.linux.org.uk>
+	 <1294259637.16957.25.camel@mulgrave.site>
+	 <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
+	 <20110105210448.GM8638@n2100.arm.linux.org.uk>
+	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
+	 <1294262208.2952.4.camel@heimdal.trondhjem.org>
+	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
+	 <1294268808.2952.18.camel@heimdal.trondhjem.org>
+	 <1294270104.16957.73.camel@mulgrave.site>
+	 <1294335614.22825.154.camel@mulgrave.site>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 06 Jan 2011 12:47:34 -0500
+Message-ID: <1294336054.2905.1.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Nick-
-
-On Jan 13, 2011, at 8:29 PM, Nick Piggin wrote:
-
-> Hi Trond,
+On Thu, 2011-01-06 at 11:40 -0600, James Bottomley wrote: 
+> On Wed, 2011-01-05 at 23:28 +0000, James Bottomley wrote:
+> > Can you explain how the code works? it looks to me like you read the xdr
+> > stuff through the vmap region then write it out directly to the pages? 
 > 
-> I'm getting use after frees in aio code in NFS
-
-Can you describe how to reproduce this?
-
-> [ 2703.396766] Call Trace:
-> [ 2703.396858]  [<ffffffff8100b057>] ? native_sched_clock+0x27/0x80
-> [ 2703.396959]  [<ffffffff8108509e>] ? put_lock_stats+0xe/0x40
-> [ 2703.397058]  [<ffffffff81088348>] ? lock_release_holdtime+0xa8/0x140
-> [ 2703.397159]  [<ffffffff8108a2a5>] lock_acquire+0x95/0x1b0
-> [ 2703.397260]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
-> [ 2703.397361]  [<ffffffff81039701>] ? get_parent_ip+0x11/0x50
-> [ 2703.397464]  [<ffffffff81612a31>] _raw_spin_lock_irq+0x41/0x80
-> [ 2703.397564]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
-> [ 2703.397662]  [<ffffffff811627db>] aio_put_req+0x2b/0x60
-> [ 2703.397761]  [<ffffffff811647fe>] do_io_submit+0x2be/0x7c0
-> [ 2703.397895]  [<ffffffff81164d0b>] sys_io_submit+0xb/0x10
-> [ 2703.397995]  [<ffffffff8100307b>] system_call_fastpath+0x16/0x1b
+> OK, I think I see how this is supposed to work:  It's a sequential loop
+> of reading in via the pages (i.e. through the kernel mapping) and then
+> updating those pages via the vmap.  In which case, I think this patch is
+> what you need.
 > 
-> Adding some tracing, it is due to nfs completing the request then
-> returning something other than -EIOCBQUEUED, so aio.c
-> also completes the request.
+> The theory of operation is that the readdir on pages actually uses the
+> network DMA operations to perform, so when it's finished, the underlying
+> page is up to date.  After this you invalidate the vmap range, so we
+> have no cache lines above it (so it picks up the values from the
+> uptodate page).  Finally, after the operation on the vmap region has
+> finished, you flush it so that any updated contents go back to the pages
+> themselves before the next iteration begins.
+> 
+> Does this look right to people?  I've verified it fixes the issues on
+> parisc.
+> 
+> James
+> 
+> ---
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 996dd89..bde1911 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -587,12 +587,16 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+>  		if (status < 0)
+>  			break;
+>  		pglen = status;
+> +
+> +		invalidate_kernel_vmap_range(pages_ptr, pglen);
+> +
+>  		status = nfs_readdir_page_filler(desc, &entry, pages_ptr, page, pglen);
+>  		if (status < 0) {
+>  			if (status == -ENOSPC)
+>  				status = 0;
+>  			break;
+>  		}
+> +		flush_kernel_vmap_range(pages_ptr, pglen);
 
-Is this with reads, writes, or both?  Are the I/O requests smaller than, equal to, or larger than rsize or wsize?
+Why is this line needed? We're not writing through the virtual mapping.
 
-We have a related bug report: hitting the BUG at fs/aio.c:552 (OEL5) and similar for more recent kernels.  Looks like dreq refcounting is faulty somehow.
+We checked using just the invalidate_kernel_vmap_range(), and that
+appeared to suffice to fix the problem on ARM.
 
+Cheers
+  Trond
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Trond Myklebust
+Linux NFS client maintainer
 
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
