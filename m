@@ -1,44 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:36806 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:15622 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751114Ab1AaPnT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Jan 2011 10:43:19 -0500
-Date: Mon, 31 Jan 2011 10:43:18 -0500
-To: =?utf-8?B?xYF1a2FzeiBPbGXFmw==?= <lukasz.oles@open-e.com>
-Cc: linux-nfs@vger.kernel.org, Artur Piechocki <artur.piechocki@open-e.com>
-Subject: Re: Testing sm-notify
-Message-ID: <20110131154318.GC30447@fieldses.org>
-References: <201101311045.02517.lukasz.oles@open-e.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <201101311045.02517.lukasz.oles@open-e.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753798Ab1AFCFI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 21:05:08 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V9 06/12] NFS do not clear minor version at nfs_client free
+Date: Wed,  5 Jan 2011 21:04:29 -0500
+Message-Id: <1294279475-8540-7-git-send-email-andros@netapp.com>
+In-Reply-To: <1294279475-8540-6-git-send-email-andros@netapp.com>
+References: <1294279475-8540-1-git-send-email-andros@netapp.com>
+ <1294279475-8540-2-git-send-email-andros@netapp.com>
+ <1294279475-8540-3-git-send-email-andros@netapp.com>
+ <1294279475-8540-4-git-send-email-andros@netapp.com>
+ <1294279475-8540-5-git-send-email-andros@netapp.com>
+ <1294279475-8540-6-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, Jan 31, 2011 at 10:45:01AM +0100, Łukasz Oleś wrote:
-> Hello,
-> 
-> I am using nfs-utils version 1.2.3. I am trying to test sm-notify, I have 2 
-> test scenarios:
-> 
-> First one:
-> 1 server, 2 clients - client 1 locks file on nfs server, client 2 is trying to 
-> lock the same file and waiting.  I'm restarting client 1, client 2 locks file.
-> Everything works fine
-> 
-> Second:
-> 1 server, 1 client - client locks file. I'm restarting server and  client 
-> should relock file, but I don't know any program which can do it. 
-> 
-> How do you testing this scenario? Can you recommend any program which can 
-> automaticly lock file again?
+From: Andy Adamson <andros@netapp.com>
 
-I don't understand the question.
+Resetting the client minor version operations causes nfs4_destroy_callback
+to fail to shutdown the NFSv4.1 callback service.
 
-One way to test that behavior is correct might be using 2 clients:
-client 1 acquires lock, server reboots, then client 2 requests same
-lock after reboot.  If client 1 managed to reacquire the lock during the
-grace period, then client 2's lock request should continue to block.
+There is no reason to reset the client minorversion operations when the
+nfs_client struct is being freed.
 
---b.
+Remove the minorverion reset and rename the function.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c |   22 +++++++++-------------
+ 1 files changed, 9 insertions(+), 13 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 0870d0d..855add6 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -170,21 +170,17 @@ error_0:
+ }
+ 
+ #ifdef CONFIG_NFS_V4
+-/*
+- * Clears/puts all minor version specific parts from an nfs_client struct
+- * reverting it to minorversion 0.
+- */
+-static void nfs4_clear_client_minor_version(struct nfs_client *clp)
+-{
+ #ifdef CONFIG_NFS_V4_1
+-	if (nfs4_has_session(clp)) {
++static void nfs4_shutdown_session(struct nfs_client *clp)
++{
++	if (nfs4_has_session(clp))
+ 		nfs4_destroy_session(clp->cl_session);
+-		clp->cl_session = NULL;
+-	}
+-
+-	clp->cl_mvops = nfs_v4_minor_ops[0];
+-#endif /* CONFIG_NFS_V4_1 */
+ }
++#else /* CONFIG_NFS_V4_1 */
++static void nfs4_shutdown_session(struct nfs_client *clp)
++{
++}
++#endif /* CONFIG_NFS_V4_1 */
+ 
+ /*
+  * Destroy the NFS4 callback service
+@@ -199,7 +195,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
+ {
+ 	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
+ 		nfs4_kill_renewd(clp);
+-	nfs4_clear_client_minor_version(clp);
++	nfs4_shutdown_session(clp);
+ 	nfs4_destroy_callback(clp);
+ 	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
+ 		nfs_idmap_delete(clp);
+-- 
+1.6.6
+
