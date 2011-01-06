@@ -1,209 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43304 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:13367 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751010Ab1AEB57 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 20:57:59 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+	id S1753279Ab1AFLg5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Jan 2011 06:36:57 -0500
+From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 3/5] NFSv4: cleanup idmapper functions to take an nfs_server argument
-Date: Tue,  4 Jan 2011 20:57:49 -0500
-Message-Id: <1294192671-18864-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1294192671-18864-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1294192671-18864-1-git-send-email-Trond.Myklebust@netapp.com>
- <1294192671-18864-2-git-send-email-Trond.Myklebust@netapp.com>
- <1294192671-18864-3-git-send-email-Trond.Myklebust@netapp.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 11/15] pnfs: change lo refcounting to atomic_t
+Date: Thu,  6 Jan 2011 06:36:28 -0500
+Message-Id: <1294313792-14280-12-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
+References: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-...instead of the nfs_client.
+This will be required to allow us to grab reference outside of i_lock.
+While we are at it, make put_layout_hdr take the same argument as all the
+related functions.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/idmap.c            |   24 ++++++++++++------------
- fs/nfs/nfs4xdr.c          |   18 ++++++++----------
- include/linux/nfs_idmap.h |    8 ++++----
- 3 files changed, 24 insertions(+), 26 deletions(-)
+ fs/nfs/pnfs.c |   48 ++++++++++++++++++++++++++----------------------
+ fs/nfs/pnfs.h |    4 ++--
+ 2 files changed, 28 insertions(+), 24 deletions(-)
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 8518573..e2d579d 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -241,21 +241,21 @@ static int nfs_idmap_lookup_id(const char *name, size_t namelen,
- 	return ret;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index cd99064..32b6646 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -177,34 +177,38 @@ EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
+  * pNFS client layout cache
+  */
+ 
++/* Need to hold i_lock if caller does not already hold reference */
+ static void
+-get_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++get_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+-	assert_spin_locked(&lo->plh_inode->i_lock);
+-	lo->plh_refcount++;
++	atomic_inc(&lo->plh_refcount);
  }
  
--int nfs_map_name_to_uid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
-+int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
+ static void
+-put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++destroy_layout_hdr(struct pnfs_layout_hdr *lo)
  {
- 	if (nfs_map_string_to_numeric(name, namelen, uid))
- 		return 0;
- 	return nfs_idmap_lookup_id(name, namelen, "uid", uid);
+-	assert_spin_locked(&lo->plh_inode->i_lock);
+-	BUG_ON(lo->plh_refcount == 0);
++	dprintk("%s: freeing layout cache %p\n", __func__, lo);
++	BUG_ON(!list_empty(&lo->plh_layouts));
++	NFS_I(lo->plh_inode)->layout = NULL;
++	kfree(lo);
++}
+ 
+-	lo->plh_refcount--;
+-	if (!lo->plh_refcount) {
+-		dprintk("%s: freeing layout cache %p\n", __func__, lo);
+-		BUG_ON(!list_empty(&lo->plh_layouts));
+-		NFS_I(lo->plh_inode)->layout = NULL;
+-		kfree(lo);
+-	}
++static void
++put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
++{
++	if (atomic_dec_and_test(&lo->plh_refcount))
++		destroy_layout_hdr(lo);
  }
  
--int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *gid)
-+int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *gid)
+ void
+-put_layout_hdr(struct inode *inode)
++put_layout_hdr(struct pnfs_layout_hdr *lo)
  {
- 	if (nfs_map_string_to_numeric(name, namelen, gid))
- 		return 0;
- 	return nfs_idmap_lookup_id(name, namelen, "gid", gid);
+-	spin_lock(&inode->i_lock);
+-	put_layout_hdr_locked(NFS_I(inode)->layout);
+-	spin_unlock(&inode->i_lock);
++	struct inode *inode = lo->plh_inode;
++
++	if (atomic_dec_and_lock(&lo->plh_refcount, &inode->i_lock)) {
++		destroy_layout_hdr(lo);
++		spin_unlock(&inode->i_lock);
++	}
  }
  
--int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
-+int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
- {
- 	int ret;
- 	ret = nfs_idmap_lookup_name(uid, "user", buf, buflen);
-@@ -263,7 +263,7 @@ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buf
- 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
- 	return ret;
- }
--int nfs_map_gid_to_group(struct nfs_client *clp, __u32 gid, char *buf, size_t buflen)
-+int nfs_map_gid_to_group(const struct nfs_server *server, __u32 gid, char *buf, size_t buflen)
- {
- 	int ret;
+ static void
+@@ -223,7 +227,7 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
  
-@@ -729,27 +729,27 @@ static unsigned int fnvhash32(const void *buf, size_t buflen)
- 	return hash;
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+ 	/* Matched by get_layout_hdr in pnfs_insert_layout */
+-	put_layout_hdr(ino);
++	put_layout_hdr(NFS_I(ino)->layout);
  }
  
--int nfs_map_name_to_uid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
-+int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
- {
--	struct idmap *idmap = clp->cl_idmap;
-+	struct idmap *idmap = server->nfs_client->cl_idmap;
- 
- 	if (nfs_map_string_to_numeric(name, namelen, uid))
- 		return 0;
- 	return nfs_idmap_id(idmap, &idmap->idmap_user_hash, name, namelen, uid);
- }
- 
--int nfs_map_group_to_gid(struct nfs_client *clp, const char *name, size_t namelen, __u32 *uid)
-+int nfs_map_group_to_gid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
- {
--	struct idmap *idmap = clp->cl_idmap;
-+	struct idmap *idmap = server->nfs_client->cl_idmap;
- 
- 	if (nfs_map_string_to_numeric(name, namelen, uid))
- 		return 0;
- 	return nfs_idmap_id(idmap, &idmap->idmap_group_hash, name, namelen, uid);
- }
- 
--int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
-+int nfs_map_uid_to_name(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
- {
--	struct idmap *idmap = clp->cl_idmap;
-+	struct idmap *idmap = server->nfs_client->cl_idmap;
- 	int ret;
- 
- 	ret = nfs_idmap_name(idmap, &idmap->idmap_user_hash, uid, buf);
-@@ -757,9 +757,9 @@ int nfs_map_uid_to_name(struct nfs_client *clp, __u32 uid, char *buf, size_t buf
- 		ret = nfs_map_numeric_to_string(uid, buf, buflen);
- 	return ret;
- }
--int nfs_map_gid_to_group(struct nfs_client *clp, __u32 uid, char *buf, size_t buflen)
-+int nfs_map_gid_to_group(const struct nfs_server *server, __u32 uid, char *buf, size_t buflen)
- {
--	struct idmap *idmap = clp->cl_idmap;
-+	struct idmap *idmap = server->nfs_client->cl_idmap;
- 	int ret;
- 
- 	ret = nfs_idmap_name(idmap, &idmap->idmap_group_hash, uid, buf);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 8e49688..bc205ab 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -844,7 +844,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 	if (iap->ia_valid & ATTR_MODE)
- 		len += 4;
- 	if (iap->ia_valid & ATTR_UID) {
--		owner_namelen = nfs_map_uid_to_name(server->nfs_client, iap->ia_uid, owner_name, IDMAP_NAMESZ);
-+		owner_namelen = nfs_map_uid_to_name(server, iap->ia_uid, owner_name, IDMAP_NAMESZ);
- 		if (owner_namelen < 0) {
- 			dprintk("nfs: couldn't resolve uid %d to string\n",
- 					iap->ia_uid);
-@@ -856,7 +856,7 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 		len += 4 + (XDR_QUADLEN(owner_namelen) << 2);
+ /* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
+@@ -490,7 +494,7 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 			__func__, lseg, lseg->pls_range.iomode,
+ 			lseg->pls_range.offset, lseg->pls_range.length);
  	}
- 	if (iap->ia_valid & ATTR_GID) {
--		owner_grouplen = nfs_map_gid_to_group(server->nfs_client, iap->ia_gid, owner_group, IDMAP_NAMESZ);
-+		owner_grouplen = nfs_map_gid_to_group(server, iap->ia_gid, owner_group, IDMAP_NAMESZ);
- 		if (owner_grouplen < 0) {
- 			dprintk("nfs: couldn't resolve gid %d to string\n",
- 					iap->ia_gid);
-@@ -3382,7 +3382,7 @@ out_overflow:
+-	get_layout_hdr_locked(lo);
++	get_layout_hdr(lo);
+ 
+ 	dprintk("%s:Return\n", __func__);
  }
+@@ -503,7 +507,7 @@ alloc_init_layout_hdr(struct inode *ino)
+ 	lo = kzalloc(sizeof(struct pnfs_layout_hdr), GFP_KERNEL);
+ 	if (!lo)
+ 		return NULL;
+-	lo->plh_refcount = 1;
++	atomic_set(&lo->plh_refcount, 1);
+ 	INIT_LIST_HEAD(&lo->plh_layouts);
+ 	INIT_LIST_HEAD(&lo->plh_segs);
+ 	lo->plh_inode = ino;
+@@ -618,7 +622,7 @@ pnfs_update_layout(struct inode *ino,
+ 		goto out_unlock;
+ 	atomic_inc(&lo->plh_outstanding);
  
- static int decode_attr_owner(struct xdr_stream *xdr, uint32_t *bitmap,
--		struct nfs_client *clp, uint32_t *uid, int may_sleep)
-+		const struct nfs_server *server, uint32_t *uid, int may_sleep)
- {
- 	uint32_t len;
- 	__be32 *p;
-@@ -3402,7 +3402,7 @@ static int decode_attr_owner(struct xdr_stream *xdr, uint32_t *bitmap,
- 		if (!may_sleep) {
- 			/* do nothing */
- 		} else if (len < XDR_MAX_NETOBJ) {
--			if (nfs_map_name_to_uid(clp, (char *)p, len, uid) == 0)
-+			if (nfs_map_name_to_uid(server, (char *)p, len, uid) == 0)
- 				ret = NFS_ATTR_FATTR_OWNER;
- 			else
- 				dprintk("%s: nfs_map_name_to_uid failed!\n",
-@@ -3420,7 +3420,7 @@ out_overflow:
- }
+-	get_layout_hdr_locked(lo);
++	get_layout_hdr(lo);
+ 	if (list_empty(&lo->plh_segs)) {
+ 		/* The lo must be on the clp list if there is any
+ 		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
+@@ -641,7 +645,7 @@ pnfs_update_layout(struct inode *ino,
+ 		spin_unlock(&ino->i_lock);
+ 	}
+ 	atomic_dec(&lo->plh_outstanding);
+-	put_layout_hdr(ino);
++	put_layout_hdr(lo);
+ out:
+ 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+ 		nfsi->layout->plh_flags, lseg);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 698380d..8aaab56 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -65,7 +65,7 @@ struct pnfs_layoutdriver_type {
+ };
  
- static int decode_attr_group(struct xdr_stream *xdr, uint32_t *bitmap,
--		struct nfs_client *clp, uint32_t *gid, int may_sleep)
-+		const struct nfs_server *server, uint32_t *gid, int may_sleep)
- {
- 	uint32_t len;
- 	__be32 *p;
-@@ -3440,7 +3440,7 @@ static int decode_attr_group(struct xdr_stream *xdr, uint32_t *bitmap,
- 		if (!may_sleep) {
- 			/* do nothing */
- 		} else if (len < XDR_MAX_NETOBJ) {
--			if (nfs_map_group_to_gid(clp, (char *)p, len, gid) == 0)
-+			if (nfs_map_group_to_gid(server, (char *)p, len, gid) == 0)
- 				ret = NFS_ATTR_FATTR_GROUP;
- 			else
- 				dprintk("%s: nfs_map_group_to_gid failed!\n",
-@@ -3939,14 +3939,12 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
- 		goto xdr_error;
- 	fattr->valid |= status;
- 
--	status = decode_attr_owner(xdr, bitmap, server->nfs_client,
--			&fattr->uid, may_sleep);
-+	status = decode_attr_owner(xdr, bitmap, server, &fattr->uid, may_sleep);
- 	if (status < 0)
- 		goto xdr_error;
- 	fattr->valid |= status;
- 
--	status = decode_attr_group(xdr, bitmap, server->nfs_client,
--			&fattr->gid, may_sleep);
-+	status = decode_attr_group(xdr, bitmap, server, &fattr->gid, may_sleep);
- 	if (status < 0)
- 		goto xdr_error;
- 	fattr->valid |= status;
-diff --git a/include/linux/nfs_idmap.h b/include/linux/nfs_idmap.h
-index e8352dc..ee97767 100644
---- a/include/linux/nfs_idmap.h
-+++ b/include/linux/nfs_idmap.h
-@@ -96,10 +96,10 @@ void nfs_idmap_delete(struct nfs_client *);
- 
- #endif /* CONFIG_NFS_USE_NEW_IDMAPPER */
- 
--int nfs_map_name_to_uid(struct nfs_client *, const char *, size_t, __u32 *);
--int nfs_map_group_to_gid(struct nfs_client *, const char *, size_t, __u32 *);
--int nfs_map_uid_to_name(struct nfs_client *, __u32, char *, size_t);
--int nfs_map_gid_to_group(struct nfs_client *, __u32, char *, size_t);
-+int nfs_map_name_to_uid(const struct nfs_server *, const char *, size_t, __u32 *);
-+int nfs_map_group_to_gid(const struct nfs_server *, const char *, size_t, __u32 *);
-+int nfs_map_uid_to_name(const struct nfs_server *, __u32, char *, size_t);
-+int nfs_map_gid_to_group(const struct nfs_server *, __u32, char *, size_t);
- 
- extern unsigned int nfs_idmap_cache_timeout;
- #endif /* __KERNEL__ */
+ struct pnfs_layout_hdr {
+-	unsigned long		plh_refcount;
++	atomic_t		plh_refcount;
+ 	struct list_head	plh_layouts;   /* other client layouts */
+ 	struct list_head	plh_segs;      /* layout segments list */
+ 	nfs4_stateid		plh_stateid;
+@@ -147,7 +147,7 @@ void unset_pnfs_layoutdriver(struct nfs_server *);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_destroy_layout(struct nfs_inode *);
+ void pnfs_destroy_all_layouts(struct nfs_client *);
+-void put_layout_hdr(struct inode *inode);
++void put_layout_hdr(struct pnfs_layout_hdr *lo);
+ int pnfs_choose_layoutget_stateid(nfs4_stateid *dst,
+ 				  struct pnfs_layout_hdr *lo,
+ 				  struct nfs4_state *open_state);
 -- 
-1.7.3.4
+1.7.2.1
 
