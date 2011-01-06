@@ -1,72 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55105 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:13367 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751205Ab1ADV5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 16:57:35 -0500
-Date: Tue, 4 Jan 2011 16:57:31 -0500
-From: "Dr. J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/4] NFSv4: Send unmapped uid/gids to the server when
- using auth_sys
-Message-ID: <20110104215731.GH7908@fieldses.org>
-References: <1291085863-3234-1-git-send-email-Trond.Myklebust@netapp.com>
- <1291085863-3234-2-git-send-email-Trond.Myklebust@netapp.com>
- <1291085863-3234-3-git-send-email-Trond.Myklebust@netapp.com>
- <1291085863-3234-4-git-send-email-Trond.Myklebust@netapp.com>
- <1291085863-3234-5-git-send-email-Trond.Myklebust@netapp.com>
- <20110104212504.GG27727@hostway.ca>
- <1294176792.5896.22.camel@heimdal.trondhjem.org>
- <20110104214334.GI27727@hostway.ca>
- <1294177833.5896.26.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1294177833.5896.26.camel@heimdal.trondhjem.org>
+	id S1752995Ab1AFLg4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Jan 2011 06:36:56 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 09/15] pnfs: add layout to client list before sending rpc
+Date: Thu,  6 Jan 2011 06:36:26 -0500
+Message-Id: <1294313792-14280-10-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
+References: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Jan 04, 2011 at 04:50:33PM -0500, Trond Myklebust wrote:
-> On Tue, 2011-01-04 at 13:43 -0800, Simon Kirby wrote: 
-> > On Tue, Jan 04, 2011 at 04:33:12PM -0500, Trond Myklebust wrote:
-> > 
-> > > On Tue, 2011-01-04 at 13:25 -0800, Simon Kirby wrote: 
-> > > > I finally got around to setting up idmapd properly with libnss-mysql, and
-> > > > in doing so, I forgot that I had enabled nfs4_disable_idmapping=Y with
-> > > > this patch applied.  With this option set on the client, and the server
-> > > > set up normally, I get EINVAL from chown's fchowna():
-> > > > 
-> > > > # chown testuser:testuser test
-> > > > chown: changing ownership of `test': Invalid argument
-> > > > # echo N > /sys/module/nfs/parameters/nfs4_disable_idmapping
-> > > > # chown testuser:testuser test
-> > > > #
-> > > > 
-> > > > This happened on 2.6.37-rc5-git4, but I just reproduced it with
-> > > > 2.6.37-rc8-git5 as well.  The server idmapd logs:
-> > > > 
-> > > > rpc.idmapd[2987]: nss_getpwnam: name '1009999' does not map into domain 'localdomain'
-> > > > rpc.idmapd[2987]:  Server: (user) name "1009999" -> id "65534"
-> > > > rpc.idmapd[2987]: nfsdcb: authbuf=10.10.52.0/24 authtype=group
-> > > > rpc.idmapd[2987]:  Server: (group) name "1009999" -> id "65534"
-> > > > 
-> > > > (1009999 is the current uid/gid here.)
-> > > > 
-> > > > I think you meant for this to fall back automatically, right?
-> > > 
-> > > Did you remember to apply the patch 'NFSv4: Propagate the error
-> > > NFS4ERR_BADOWNER to nfs4_do_setattr'?
-> > 
-> > Yes, that patch is applied as part of the series. 
-> > 
-> > The -EINVAL is going back to userland's fchownat().  I expected
-> > to see the "Reenabling the idmapper" printk() from within
-> > nfs4_handle_exception(), but this didn't seem to happen.
-> 
-> Hmm... Bruce, does the server actually return NFS4ERR_BADOWNER when it
-> is supposed to? As far as I can see, nfs4idmap will consistently return
-> NFS4ERR_BADNAME, which would be a bug here.
+Since this list will be used to search for layouts to recall,
+this is necessary to avoid a race where the recall comes in,
+sees there is nothing in the client list, and prepares to return
+NOMATCHING, while the LAYOUTGET gets processed before the recall
+updates the stateid.
 
-Whoops.  Looking at the spec....  Looks like BADNAME should be reserved
-only for filenames?  I'll fix that now.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |   27 +++++++++++++++++++--------
+ 1 files changed, 19 insertions(+), 8 deletions(-)
 
---b.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 59ed68b..c00b673 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -469,14 +469,6 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
+ 	dprintk("%s:Begin\n", __func__);
+ 
+ 	assert_spin_locked(&lo->plh_inode->i_lock);
+-	if (list_empty(&lo->plh_segs)) {
+-		struct nfs_client *clp = NFS_SERVER(lo->plh_inode)->nfs_client;
+-
+-		spin_lock(&clp->cl_lock);
+-		BUG_ON(!list_empty(&lo->plh_layouts));
+-		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
+-		spin_unlock(&clp->cl_lock);
+-	}
+ 	list_for_each_entry(lp, &lo->plh_segs, pls_list) {
+ 		if (cmp_layout(lp->pls_range.iomode, lseg->pls_range.iomode) > 0)
+ 			continue;
+@@ -597,6 +589,7 @@ pnfs_update_layout(struct inode *ino,
+ 		   enum pnfs_iomode iomode)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
++	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg = NULL;
+ 
+@@ -626,9 +619,27 @@ pnfs_update_layout(struct inode *ino,
+ 	atomic_inc(&lo->plh_outstanding);
+ 
+ 	get_layout_hdr_locked(lo);
++	if (list_empty(&lo->plh_segs)) {
++		/* The lo must be on the clp list if there is any
++		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
++		 */
++		spin_lock(&clp->cl_lock);
++		BUG_ON(!list_empty(&lo->plh_layouts));
++		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
++		spin_unlock(&clp->cl_lock);
++	}
+ 	spin_unlock(&ino->i_lock);
+ 
+ 	lseg = send_layoutget(lo, ctx, iomode);
++	if (!lseg) {
++		spin_lock(&ino->i_lock);
++		if (list_empty(&lo->plh_segs)) {
++			spin_lock(&clp->cl_lock);
++			list_del_init(&lo->plh_layouts);
++			spin_unlock(&clp->cl_lock);
++		}
++		spin_unlock(&ino->i_lock);
++	}
+ 	atomic_dec(&lo->plh_outstanding);
+ 	put_layout_hdr(ino);
+ out:
+-- 
+1.7.2.1
+
