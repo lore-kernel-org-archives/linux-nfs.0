@@ -1,75 +1,188 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from gossamer.nmsrv.com ([208.70.244.21]:54332 "EHLO
-	gossamer.nmsrv.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751827Ab1AYWwT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2011 17:52:19 -0500
-Message-ID: <4D3F541C.50702@gt.net>
-Date: Tue, 25 Jan 2011 14:52:12 -0800
-From: Nathan March <nathan@gt.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Stale file not being refreshed automatically?
-References: <4D3F4A8A.7040003@gt.net>	 <1295994532.6867.12.camel@heimdal.trondhjem.org>  <4D3F50DA.3060208@gt.net> <1295995739.6867.14.camel@heimdal.trondhjem.org>
-In-Reply-To: <1295995739.6867.14.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:15622 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753481Ab1AFCFG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 21:05:06 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V9 03/12] SUNRPC new transport for the NFSv4.1 shared back channel
+Date: Wed,  5 Jan 2011 21:04:26 -0500
+Message-Id: <1294279475-8540-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1294279475-8540-3-git-send-email-andros@netapp.com>
+References: <1294279475-8540-1-git-send-email-andros@netapp.com>
+ <1294279475-8540-2-git-send-email-andros@netapp.com>
+ <1294279475-8540-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Awesome, I'll see about a perl equiv. Thanks again!
+From: Andy Adamson <andros@netapp.com>
 
-- Nathan
+Move the current sock create and destroy routines into the new transport ops.
+Back channel socket will be destroyed by the svc_closs_all call in svc_destroy.
 
-On 1/25/2011 2:48 PM, Trond Myklebust wrote:
-> On Tue, 2011-01-25 at 14:38 -0800, Nathan March wrote:
->> Ah ha, yes, it's using a stat call.
->>
->> What would be the proper C call to check the file exists without
->> incurring the stat()?
-> access("file", F_OK) should do it.
->
-> Cheers
->    Trond
->
->> On 1/25/2011 2:28 PM, Trond Myklebust wrote:
->>> On Tue, 2011-01-25 at 14:11 -0800, Nathan March wrote:
->>>> Hi All,
->>>>
->>>> Having a strange issue, I've reproduced this both on nfs 3 and 4.
->>>> Currently using v4 with:
->>>>
->>>> exports:
->>>> /var/home/voyage
->>>> 10.2.1.0/24(rw,fsid=0,async,wdelay,secure,no_subtree_check,anonuid=1000,anongid=1006)
->>>>
->>>> fstab:
->>>> 10.2.1.1:/ /mnt/voyage nfs4
->>>> rsize=32768,wsize=32768,noatime,nosuid,rw,bg,hard,intr 0 0
->>>>
->>>> Can be produced using these two commands on 2 machines:
->>>>
->>>> perl -le '$| = 1 ; while (1) { sleep 1; $res = -e "/home/voyage/test";
->>>> if ($res) { print "-e : $res"; } else { print "-e : $res ($!)"; } }'
->>>> -e : 1
->>>>
->>>> perl -le '$| = 1 ; while (1) { sleep 5; open(F, ">",
->>>> "/home/voyage/test.foo"); close F; my $res =
->>>> rename("/home/voyage/test.foo", "/home/voyage/test"); print "rename
->>>> ($res)"; }'
->>>>
->>>> The first command will occasionally print out: -e :  (Stale NFS file handle)
->>>>
->>>> Now according to http://nfs.sourceforge.net/#faq_a10 as of 2.6.12 the
->>>> vfs should automatically retry when it gets a estale during path
->>>> resolution. This doesn't appear to be happening though based on the
->>>> errors I'm seeing.
->>>>
->>>> Anyone have any thoughts on what might be happening here? Or am I
->>>> misinterpreting that faq entry? (This is on ext3 if it matters)
->>> Does '-e' in perl only do a lookup, or does it result in a 'stat()'
->>> call? If the latter, then your test is flawed: a stat() is a lookup+a
->>> getattr, and the latter can definitely return ESTALE when you are
->>> constantly replacing the file.
->>>
->>> Cheers
->>>     Trond
+Added check: only TCP supported on shared back channel.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Acked-by: Bruce Fields <bfields@redhat.com>
+---
+ include/linux/sunrpc/svcsock.h |    1 +
+ net/sunrpc/svc.c               |    4 --
+ net/sunrpc/svcsock.c           |   82 ++++++++++++++++++++++++++++++----------
+ 3 files changed, 63 insertions(+), 24 deletions(-)
+
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 1b353a7..3a45a80 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -45,6 +45,7 @@ int		svc_sock_names(struct svc_serv *serv, char *buf,
+ int		svc_addsock(struct svc_serv *serv, const int fd,
+ 					char *name_return, const size_t len);
+ void		svc_init_xprt_sock(void);
++void		svc_init_bc_xprt_sock(void);
+ void		svc_cleanup_xprt_sock(void);
+ struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot);
+ void		svc_sock_destroy(struct svc_xprt *);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 606d182..261e2d1 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -488,10 +488,6 @@ svc_destroy(struct svc_serv *serv)
+ 	if (svc_serv_is_pooled(serv))
+ 		svc_pool_map_put();
+ 
+-#if defined(CONFIG_NFS_V4_1)
+-	svc_sock_destroy(serv->bc_xprt);
+-#endif /* CONFIG_NFS_V4_1 */
+-
+ 	svc_unregister(serv);
+ 	kfree(serv->sv_pools);
+ 	kfree(serv);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 07919e1..6630f29 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -66,6 +66,13 @@ static void		svc_sock_free(struct svc_xprt *);
+ static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
+ 					  struct net *, struct sockaddr *,
+ 					  int, int);
++#if defined(CONFIG_NFS_V4_1)
++static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
++					     struct net *, struct sockaddr *,
++					     int, int);
++static void svc_bc_sock_free(struct svc_xprt *xprt);
++#endif /* CONFIG_NFS_V4_1 */
++
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ static struct lock_class_key svc_key[2];
+ static struct lock_class_key svc_slock_key[2];
+@@ -1184,6 +1191,39 @@ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
+ 	return svc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
+ }
+ 
++#if defined(CONFIG_NFS_V4_1)
++static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
++					     struct net *, struct sockaddr *,
++					     int, int);
++static void svc_bc_sock_free(struct svc_xprt *xprt);
++
++static struct svc_xprt *svc_bc_tcp_create(struct svc_serv *serv,
++				       struct net *net,
++				       struct sockaddr *sa, int salen,
++				       int flags)
++{
++	return svc_bc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
++}
++
++static void svc_bc_tcp_sock_detach(struct svc_xprt *xprt)
++{
++}
++
++static struct svc_xprt_ops svc_tcp_bc_ops = {
++	.xpo_create = svc_bc_tcp_create,
++	.xpo_detach = svc_bc_tcp_sock_detach,
++	.xpo_free = svc_bc_sock_free,
++	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
++};
++
++static struct svc_xprt_class svc_tcp_bc_class = {
++	.xcl_name = "tcp-bc",
++	.xcl_owner = THIS_MODULE,
++	.xcl_ops = &svc_tcp_bc_ops,
++	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
++};
++#endif /* CONFIG_NFS_V4_1 */
++
+ static struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_create = svc_tcp_create,
+ 	.xpo_recvfrom = svc_tcp_recvfrom,
+@@ -1509,41 +1549,43 @@ static void svc_sock_free(struct svc_xprt *xprt)
+ 	kfree(svsk);
+ }
+ 
++#if defined(CONFIG_NFS_V4_1)
+ /*
+- * Create a svc_xprt.
+- *
+- * For internal use only (e.g. nfsv4.1 backchannel).
+- * Callers should typically use the xpo_create() method.
++ * Create a back channel svc_xprt which shares the fore channel socket.
+  */
+-struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot)
++static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
++					     int protocol,
++					     struct net *net,
++					     struct sockaddr *sin, int len,
++					     int flags)
+ {
+ 	struct svc_sock *svsk;
+-	struct svc_xprt *xprt = NULL;
++	struct svc_xprt *xprt;
++
++	if (protocol != IPPROTO_TCP) {
++		printk(KERN_WARNING "svc: only TCP sockets"
++			" supported on shared back channel\n");
++		return ERR_PTR(-EINVAL);
++	}
+ 
+-	dprintk("svc: %s\n", __func__);
+ 	svsk = kzalloc(sizeof(*svsk), GFP_KERNEL);
+ 	if (!svsk)
+-		goto out;
++		return ERR_PTR(-ENOMEM);
+ 
+ 	xprt = &svsk->sk_xprt;
+-	if (prot == IPPROTO_TCP)
+-		svc_xprt_init(&svc_tcp_class, xprt, serv);
+-	else if (prot == IPPROTO_UDP)
+-		svc_xprt_init(&svc_udp_class, xprt, serv);
+-	else
+-		BUG();
+-out:
+-	dprintk("svc: %s return %p\n", __func__, xprt);
++	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
++
++	serv->bc_xprt = xprt;
++
+ 	return xprt;
+ }
+-EXPORT_SYMBOL_GPL(svc_sock_create);
+ 
+ /*
+- * Destroy a svc_sock.
++ * Free a back channel svc_sock.
+  */
+-void svc_sock_destroy(struct svc_xprt *xprt)
++static void svc_bc_sock_free(struct svc_xprt *xprt)
+ {
+ 	if (xprt)
+ 		kfree(container_of(xprt, struct svc_sock, sk_xprt));
+ }
+-EXPORT_SYMBOL_GPL(svc_sock_destroy);
++#endif /* CONFIG_NFS_V4_1 */
+-- 
+1.6.6
+
