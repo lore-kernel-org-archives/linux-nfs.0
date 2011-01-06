@@ -1,166 +1,274 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56628 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:34588 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932191Ab1AKTWg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Jan 2011 14:22:36 -0500
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1Pcjnf-0007Sa-1Z
-	for linux-nfs@vger.kernel.org; Tue, 11 Jan 2011 14:22:35 -0500
-Date: Tue, 11 Jan 2011 14:22:32 -0500
+	id S1752687Ab1AFLg4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Jan 2011 06:36:56 -0500
+From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: don't support msnfs export option
-Message-ID: <20110111192232.GA28537@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 06/15] pnfs: change how lsegs are removed from layout list
+Date: Thu,  6 Jan 2011 06:36:23 -0500
+Message-Id: <1294313792-14280-7-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
+References: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@redhat.com>
+This is to prepare the way for sensible io draining.  Instead of just
+removing the lseg from the list, we instead clear the VALID flag
+(preventing new io from grabbing references to the lseg) and remove
+the reference holding it in the list.  Thus the lseg will be removed
+once any io in progress completes and any references still held are
+dropped.
 
-We've long had these pointless #ifdef MSNFS's sprinkled throughout the
-code--pointless because MSNFS is always defined (and we give no config
-option to make that easy to change).  So we could just remove the
-ifdef's and compile the resulting code unconditionally.
-
-But as long as we're there: why not just rip out this code entirely?
-The only purpose is to implement the "msnfs" export option which turns
-on Windows-like behavior in some cases, and:
-
-	- the export option isn't documented anywhere;
-	- the userland utilities (which would need to be able to parse
-	  "msnfs" in /etc/exports) don't support it;
-	- I don't know how to maintain this, as I don't know what the
-	  proper behavior for a Windows-like NFS server is; and
-	- I can't get google to turn up any evidence that anyone has ever
-	  used this.
-
-?
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfsd/export.c            |    4 ----
- fs/nfsd/vfs.c               |   39 ++-------------------------------------
- include/linux/nfsd/export.h |    2 +-
- 3 files changed, 3 insertions(+), 42 deletions(-)
+ fs/nfs/inode.c |    2 +-
+ fs/nfs/pnfs.c  |  130 ++++++++++++++++++++++++++++++++++++++------------------
+ fs/nfs/pnfs.h  |    8 +++-
+ 3 files changed, 96 insertions(+), 44 deletions(-)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index c0fcb7a..8b31e5f 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1,4 +1,3 @@
--#define MSNFS	/* HACK HACK */
- /*
-  * NFS exporting and validation.
-  *
-@@ -1444,9 +1443,6 @@ static struct flags {
- 	{ NFSEXP_NOSUBTREECHECK, {"no_subtree_check", ""}},
- 	{ NFSEXP_NOAUTHNLM, {"insecure_locks", ""}},
- 	{ NFSEXP_V4ROOT, {"v4root", ""}},
--#ifdef MSNFS
--	{ NFSEXP_MSNFS, {"msnfs", ""}},
--#endif
- 	{ 0, {"", ""}}
- };
- 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index b991125..f8919f5 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1,4 +1,3 @@
--#define MSNFS	/* HACK HACK */
- /*
-  * File operations used by nfsd. Some of these have been ripped from
-  * other parts of the kernel because they weren't exported, others
-@@ -875,15 +874,6 @@ static int nfsd_direct_splice_actor(struct pipe_inode_info *pipe,
- 	return __splice_from_pipe(pipe, sd, nfsd_splice_actor);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index c7782b2..790b786 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1410,9 +1410,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+  */
+ void nfs4_evict_inode(struct inode *inode)
+ {
++	pnfs_destroy_layout(NFS_I(inode));
+ 	truncate_inode_pages(&inode->i_data, 0);
+ 	end_writeback(inode);
+-	pnfs_destroy_layout(NFS_I(inode));
+ 	/* If we are holding a delegation, return it! */
+ 	nfs_inode_return_delegation_noreclaim(inode);
+ 	/* First call standard NFS clear_inode() code */
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 08313f53..212cbc2 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -211,68 +211,109 @@ static void
+ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+ {
+ 	INIT_LIST_HEAD(&lseg->pls_list);
+-	kref_init(&lseg->pls_refcount);
++	atomic_set(&lseg->pls_refcount, 1);
++	smp_mb();
++	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
+ 	lseg->pls_layout = lo;
  }
  
--static inline int svc_msnfs(struct svc_fh *ffhp)
--{
--#ifdef MSNFS
--	return (ffhp->fh_export->ex_flags & NFSEXP_MSNFS);
--#else
--	return 0;
--#endif
--}
+-/* Called without i_lock held, as the free_lseg call may sleep */
+-static void
+-destroy_lseg(struct kref *kref)
++static void free_lseg(struct pnfs_layout_segment *lseg)
+ {
+-	struct pnfs_layout_segment *lseg =
+-		container_of(kref, struct pnfs_layout_segment, pls_refcount);
+ 	struct inode *ino = lseg->pls_layout->plh_inode;
+ 
+-	dprintk("--> %s\n", __func__);
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+ 	/* Matched by get_layout_hdr in pnfs_insert_layout */
+ 	put_layout_hdr(ino);
+ }
+ 
+-static void
+-put_lseg(struct pnfs_layout_segment *lseg)
++/* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
++ * could sleep, so must be called outside of the lock.
++ * Returns 1 if object was removed, otherwise return 0.
++ */
++static int
++put_lseg_locked(struct pnfs_layout_segment *lseg,
++		struct list_head *tmp_list)
+ {
+-	if (!lseg)
+-		return;
++	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
++		atomic_read(&lseg->pls_refcount),
++		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
++	if (atomic_dec_and_test(&lseg->pls_refcount)) {
++		struct inode *ino = lseg->pls_layout->plh_inode;
+ 
+-	dprintk("%s: lseg %p ref %d\n", __func__, lseg,
+-		atomic_read(&lseg->pls_refcount.refcount));
+-	kref_put(&lseg->pls_refcount, destroy_lseg);
++		BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
++		list_del(&lseg->pls_list);
++		if (list_empty(&lseg->pls_layout->plh_segs)) {
++			struct nfs_client *clp;
++
++			clp = NFS_SERVER(ino)->nfs_client;
++			spin_lock(&clp->cl_lock);
++			/* List does not take a reference, so no need for put here */
++			list_del_init(&lseg->pls_layout->plh_layouts);
++			spin_unlock(&clp->cl_lock);
++		}
++		list_add(&lseg->pls_list, tmp_list);
++		return 1;
++	}
++	return 0;
+ }
+ 
+-static void
+-pnfs_clear_lseg_list(struct pnfs_layout_hdr *lo, struct list_head *tmp_list)
++static bool
++should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
+ {
+-	struct pnfs_layout_segment *lseg, *next;
+-	struct nfs_client *clp;
++	return (recall_iomode == IOMODE_ANY ||
++		lseg_iomode == recall_iomode);
++}
+ 
+-	dprintk("%s:Begin lo %p\n", __func__, lo);
++/* Returns 1 if lseg is removed from list, 0 otherwise */
++static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
++			     struct list_head *tmp_list)
++{
++	int rv = 0;
+ 
+-	assert_spin_locked(&lo->plh_inode->i_lock);
+-	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list) {
+-		dprintk("%s: freeing lseg %p\n", __func__, lseg);
+-		list_move(&lseg->pls_list, tmp_list);
++	if (test_and_clear_bit(NFS_LSEG_VALID, &lseg->pls_flags)) {
++		/* Remove the reference keeping the lseg in the
++		 * list.  It will now be removed when all
++		 * outstanding io is finished.
++		 */
++		rv = put_lseg_locked(lseg, tmp_list);
+ 	}
+-	clp = NFS_SERVER(lo->plh_inode)->nfs_client;
+-	spin_lock(&clp->cl_lock);
+-	/* List does not take a reference, so no need for put here */
+-	list_del_init(&lo->plh_layouts);
+-	spin_unlock(&clp->cl_lock);
++	return rv;
++}
+ 
+-	dprintk("%s:Return\n", __func__);
++/* Returns count of number of matching invalid lsegs remaining in list
++ * after call.
++ */
++static int
++mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
++			    struct list_head *tmp_list,
++			    u32 iomode)
++{
++	struct pnfs_layout_segment *lseg, *next;
++	int invalid = 0, removed = 0;
++
++	dprintk("%s:Begin lo %p\n", __func__, lo);
++
++	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
++		if (should_free_lseg(lseg->pls_range.iomode, iomode)) {
++			dprintk("%s: freeing lseg %p iomode %d "
++				"offset %llu length %llu\n", __func__,
++				lseg, lseg->pls_range.iomode, lseg->pls_range.offset,
++				lseg->pls_range.length);
++			invalid++;
++			removed += mark_lseg_invalid(lseg, tmp_list);
++		}
++	dprintk("%s:Return %i\n", __func__, invalid - removed);
++	return invalid - removed;
+ }
+ 
+ static void
+-pnfs_free_lseg_list(struct list_head *tmp_list)
++pnfs_free_lseg_list(struct list_head *free_me)
+ {
+-	struct pnfs_layout_segment *lseg;
++	struct pnfs_layout_segment *lseg, *tmp;
+ 
+-	while (!list_empty(tmp_list)) {
+-		lseg = list_entry(tmp_list->next, struct pnfs_layout_segment,
+-				pls_list);
+-		dprintk("%s calling put_lseg on %p\n", __func__, lseg);
++	list_for_each_entry_safe(lseg, tmp, free_me, pls_list) {
+ 		list_del(&lseg->pls_list);
+-		put_lseg(lseg);
++		free_lseg(lseg);
+ 	}
+ }
+ 
+@@ -285,7 +326,8 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+ 	spin_lock(&nfsi->vfs_inode.i_lock);
+ 	lo = nfsi->layout;
+ 	if (lo) {
+-		pnfs_clear_lseg_list(lo, &tmp_list);
++		set_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags);
++		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
+ 		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
+ 		put_layout_hdr_locked(lo);
+ 	}
+@@ -477,9 +519,12 @@ pnfs_find_alloc_layout(struct inode *ino)
+ 	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
+ 
+ 	assert_spin_locked(&ino->i_lock);
+-	if (nfsi->layout)
+-		return nfsi->layout;
 -
- static __be32
- nfsd_vfs_read(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
-               loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
-@@ -896,9 +886,6 @@ nfsd_vfs_read(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	err = nfserr_perm;
- 	inode = file->f_path.dentry->d_inode;
++	if (nfsi->layout) {
++		if (test_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags))
++			return NULL;
++		else
++			return nfsi->layout;
++	}
+ 	spin_unlock(&ino->i_lock);
+ 	new = alloc_init_layout_hdr(ino);
+ 	spin_lock(&ino->i_lock);
+@@ -520,7 +565,8 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
  
--	if (svc_msnfs(fhp) && !lock_may_read(inode, offset, *count))
--		goto out;
--
- 	if (file->f_op->splice_read && rqstp->rq_splice_ok) {
- 		struct splice_desc sd = {
- 			.len		= 0,
-@@ -988,14 +975,6 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	int			stable = *stablep;
- 	int			use_wgather;
+ 	assert_spin_locked(&lo->plh_inode->i_lock);
+ 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
+-		if (is_matching_lseg(lseg, iomode)) {
++		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
++		    is_matching_lseg(lseg, iomode)) {
+ 			ret = lseg;
+ 			break;
+ 		}
+@@ -529,7 +575,7 @@ pnfs_has_layout(struct pnfs_layout_hdr *lo, u32 iomode)
+ 	}
  
--#ifdef MSNFS
--	err = nfserr_perm;
--
--	if ((fhp->fh_export->ex_flags & NFSEXP_MSNFS) &&
--		(!lock_may_write(file->f_path.dentry->d_inode, offset, *cnt)))
--		goto out;
--#endif
--
- 	dentry = file->f_path.dentry;
- 	inode = dentry->d_inode;
- 	exp   = fhp->fh_export;
-@@ -1751,13 +1730,6 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 	if (ndentry == trap)
- 		goto out_dput_new;
+ 	dprintk("%s:Return lseg %p ref %d\n",
+-		__func__, ret, ret ? atomic_read(&ret->pls_refcount.refcount) : 0);
++		__func__, ret, ret ? atomic_read(&ret->pls_refcount) : 0);
+ 	return ret;
+ }
  
--	if (svc_msnfs(ffhp) &&
--		((atomic_read(&odentry->d_count) > 1)
--		 || (atomic_read(&ndentry->d_count) > 1))) {
--			host_err = -EPERM;
--			goto out_dput_new;
--	}
--
- 	host_err = -EXDEV;
- 	if (ffhp->fh_export->ex_path.mnt != tfhp->fh_export->ex_path.mnt)
- 		goto out_dput_new;
-@@ -1836,17 +1808,10 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	if (host_err)
- 		goto out_nfserr;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 1093720..787253e 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -30,10 +30,15 @@
+ #ifndef FS_NFS_PNFS_H
+ #define FS_NFS_PNFS_H
  
--	if (type != S_IFDIR) { /* It's UNLINK */
--#ifdef MSNFS
--		if ((fhp->fh_export->ex_flags & NFSEXP_MSNFS) &&
--			(atomic_read(&rdentry->d_count) > 1)) {
--			host_err = -EPERM;
--		} else
--#endif
-+	if (type != S_IFDIR)
- 		host_err = vfs_unlink(dirp, rdentry);
--	} else { /* It's RMDIR */
-+	else
- 		host_err = vfs_rmdir(dirp, rdentry);
--	}
++enum {
++	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
++};
++
+ struct pnfs_layout_segment {
+ 	struct list_head pls_list;
+ 	struct pnfs_layout_range pls_range;
+-	struct kref pls_refcount;
++	atomic_t pls_refcount;
++	unsigned long pls_flags;
+ 	struct pnfs_layout_hdr *pls_layout;
+ };
  
- 	dput(rdentry);
+@@ -44,6 +49,7 @@ struct pnfs_layout_segment {
+ enum {
+ 	NFS_LAYOUT_RO_FAILED = 0,	/* get ro layout failed stop trying */
+ 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
++	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+ };
  
-diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
-index 8ae78a6..bd31615 100644
---- a/include/linux/nfsd/export.h
-+++ b/include/linux/nfsd/export.h
-@@ -35,7 +35,7 @@
- #define NFSEXP_NOHIDE		0x0200
- #define NFSEXP_NOSUBTREECHECK	0x0400
- #define	NFSEXP_NOAUTHNLM	0x0800		/* Don't authenticate NLM requests - just trust */
--#define NFSEXP_MSNFS		0x1000	/* do silly things that MS clients expect */
-+#define NFSEXP_MSNFS		0x1000	/* do silly things that MS clients expect; no longer supported */
- #define NFSEXP_FSID		0x2000
- #define	NFSEXP_CROSSMOUNT	0x4000
- #define	NFSEXP_NOACL		0x8000	/* reserved for possible ACL related use */
+ /* Per-layout driver specific registration structure */
 -- 
-1.7.1
+1.7.2.1
 
