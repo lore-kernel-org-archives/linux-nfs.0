@@ -1,51 +1,186 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:56528 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751360Ab1AEVJN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 16:09:13 -0500
-In-Reply-To: <20110105210448.GM8638@n2100.arm.linux.org.uk>
-References: <1294254337.16957.13.camel@mulgrave.site> <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
- <1294256169.16957.18.camel@mulgrave.site> <20110105200008.GJ8638@n2100.arm.linux.org.uk>
- <1294259637.16957.25.camel@mulgrave.site> <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
- <20110105210448.GM8638@n2100.arm.linux.org.uk>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Wed, 5 Jan 2011 13:08:48 -0800
-Message-ID: <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-To: Russell King - ARM Linux <linux@arm.linux.org.uk>
-Cc: James Bottomley <James.Bottomley@hansenpartnership.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Marc Kleine-Budde <mkl@pengutronix.de>,
-        =?ISO-8859-1?Q?Uwe_Kleine=2DK=F6nig?=
-	<u.kleine-koenig@pengutronix.de>,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
-        linux-arm-kernel@lists.infradead.org,
-        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:41441 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752817Ab1AFLg6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Jan 2011 06:36:58 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 12/15] pnfs: CB_LAYOUTRECALL xdr code
+Date: Thu,  6 Jan 2011 06:36:29 -0500
+Message-Id: <1294313792-14280-13-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
+References: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Jan 5, 2011 at 1:04 PM, Russell King - ARM Linux
-<linux@arm.linux.org.uk> wrote:
-> On Wed, Jan 05, 2011 at 12:48:32PM -0800, Linus Torvalds wrote:
->> (You can also force the problem with vmalloc() an then following the
->> kernel page tables, but I hope nobody does that any more. I suspect
->> I'm wrong, though, there's probably code that mixes vmalloc and
->> physical page accesses in various drivers)
->
-> Should vmalloc_to_page() (84 users)/vmalloc_to_pfn() (17 users) be
-> deprecated then? ;)
+This is the xdr decoding for CB_LAYOUTRECALL.
 
-I do think that the "modern" way of doing it is
-"vmap()"/"vm_map_ram()" and friends, and it should be preferred over
-using vmalloc() and then looking up the pages.
+Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/callback.h      |   19 +++++++++++++
+ fs/nfs/callback_proc.c |    6 ++++
+ fs/nfs/callback_xdr.c  |   69 +++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 93 insertions(+), 1 deletions(-)
 
-But in the end, the two approaches really are equivalent, so it's not
-like it really matters. So I don't think we need to deprecate things
-officially, but obviously we should make people more aware of the
-whole virtual alias thing that crops up whenever you use any of these
-approaches.
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index b678e3e..f6768ac 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -138,6 +138,25 @@ extern __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args,
+ 					 void *dummy,
+ 					 struct cb_process_state *cps);
+ 
++struct cb_layoutrecallargs {
++	struct sockaddr		*cbl_addr;
++	uint32_t		cbl_recall_type;
++	uint32_t		cbl_layout_type;
++	uint32_t		cbl_layoutchanged;
++	union {
++		struct {
++			struct nfs_fh		cbl_fh;
++			struct pnfs_layout_range cbl_range;
++			nfs4_stateid		cbl_stateid;
++		};
++		struct nfs_fsid		cbl_fsid;
++	};
++};
++
++extern unsigned nfs4_callback_layoutrecall(
++	struct cb_layoutrecallargs *args,
++	void *dummy, struct cb_process_state *cps);
++
+ extern void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
+ extern void nfs4_cb_take_slot(struct nfs_client *clp);
+ #endif /* CONFIG_NFS_V4_1 */
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index c1bead2..c1bb157 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -107,6 +107,12 @@ int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation, const nf
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ 
++__be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
++				  void *dummy, struct cb_process_state *cps)
++{
++	return cpu_to_be32(NFS4ERR_NOTSUPP); /* STUB */
++}
++
+ int nfs41_validate_delegation_stateid(struct nfs_delegation *delegation, const nfs4_stateid *stateid)
+ {
+ 	if (delegation == NULL)
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index 7a2d6c5..23112c2 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -24,6 +24,7 @@
+ #define CB_OP_RECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+ 
+ #if defined(CONFIG_NFS_V4_1)
++#define CB_OP_LAYOUTRECALL_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+ #define CB_OP_SEQUENCE_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ + \
+ 					4 + 1 + 3)
+ #define CB_OP_RECALLANY_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
+@@ -223,6 +224,66 @@ out:
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ 
++static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
++				       struct xdr_stream *xdr,
++				       struct cb_layoutrecallargs *args)
++{
++	__be32 *p;
++	__be32 status = 0;
++	uint32_t iomode;
++
++	args->cbl_addr = svc_addr(rqstp);
++	p = read_buf(xdr, 4 * sizeof(uint32_t));
++	if (unlikely(p == NULL)) {
++		status = htonl(NFS4ERR_BADXDR);
++		goto out;
++	}
++
++	args->cbl_layout_type = ntohl(*p++);
++	/* Depite the spec's xdr, iomode really belongs in the FILE switch,
++	 * as it is unuseable and ignored with the other types.
++	 */
++	iomode = ntohl(*p++);
++	args->cbl_layoutchanged = ntohl(*p++);
++	args->cbl_recall_type = ntohl(*p++);
++
++	if (args->cbl_recall_type == RETURN_FILE) {
++		args->cbl_range.iomode = iomode;
++		status = decode_fh(xdr, &args->cbl_fh);
++		if (unlikely(status != 0))
++			goto out;
++
++		p = read_buf(xdr, 2 * sizeof(uint64_t));
++		if (unlikely(p == NULL)) {
++			status = htonl(NFS4ERR_BADXDR);
++			goto out;
++		}
++		p = xdr_decode_hyper(p, &args->cbl_range.offset);
++		p = xdr_decode_hyper(p, &args->cbl_range.length);
++		status = decode_stateid(xdr, &args->cbl_stateid);
++		if (unlikely(status != 0))
++			goto out;
++	} else if (args->cbl_recall_type == RETURN_FSID) {
++		p = read_buf(xdr, 2 * sizeof(uint64_t));
++		if (unlikely(p == NULL)) {
++			status = htonl(NFS4ERR_BADXDR);
++			goto out;
++		}
++		p = xdr_decode_hyper(p, &args->cbl_fsid.major);
++		p = xdr_decode_hyper(p, &args->cbl_fsid.minor);
++	} else if (args->cbl_recall_type != RETURN_ALL) {
++		status = htonl(NFS4ERR_BADXDR);
++		goto out;
++	}
++	dprintk("%s: ltype 0x%x iomode %d changed %d recall_type %d\n",
++		__func__,
++		args->cbl_layout_type, iomode,
++		args->cbl_layoutchanged, args->cbl_recall_type);
++out:
++	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
++	return status;
++}
++
+ static __be32 decode_sessionid(struct xdr_stream *xdr,
+ 				 struct nfs4_sessionid *sid)
+ {
+@@ -577,10 +638,10 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
+ 	case OP_CB_SEQUENCE:
+ 	case OP_CB_RECALL_ANY:
+ 	case OP_CB_RECALL_SLOT:
++	case OP_CB_LAYOUTRECALL:
+ 		*op = &callback_ops[op_nr];
+ 		break;
+ 
+-	case OP_CB_LAYOUTRECALL:
+ 	case OP_CB_NOTIFY_DEVICEID:
+ 	case OP_CB_NOTIFY:
+ 	case OP_CB_PUSH_DELEG:
+@@ -783,6 +844,12 @@ static struct callback_op callback_ops[] = {
+ 		.res_maxsize = CB_OP_RECALL_RES_MAXSZ,
+ 	},
+ #if defined(CONFIG_NFS_V4_1)
++	[OP_CB_LAYOUTRECALL] = {
++		.process_op = (callback_process_op_t)nfs4_callback_layoutrecall,
++		.decode_args =
++			(callback_decode_arg_t)decode_layoutrecall_args,
++		.res_maxsize = CB_OP_LAYOUTRECALL_RES_MAXSZ,
++	},
+ 	[OP_CB_SEQUENCE] = {
+ 		.process_op = (callback_process_op_t)nfs4_callback_sequence,
+ 		.decode_args = (callback_decode_arg_t)decode_cb_sequence_args,
+-- 
+1.7.2.1
 
-                           Linus
