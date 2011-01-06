@@ -1,38 +1,77 @@
-From: Bryan Schumaker <bjschuma@netapp.com>
-Subject: Re: [PATCH v2 0/5] Add secinfo to the NFS client
-Date: Wed, 05 Jan 2011 16:50:56 -0500
-Message-ID: <4D24E7C0.9010706@netapp.com>
-References: <4D24CB2E.5030207@netapp.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] libnfsidmap: Added new --with-pluginpath configuration
+ flag
+Date: Thu, 06 Jan 2011 10:42:55 -0500
+Message-ID: <4D25E2FF.6050802@RedHat.com>
+References: <1293044858-23455-1-git-send-email-steved@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+To: Steve Dickson <steved@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:48789 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:24122 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751312Ab1AEVu6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 16:50:58 -0500
-In-Reply-To: <4D24CB2E.5030207@netapp.com>
+	id S1753243Ab1AFPm4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Jan 2011 10:42:56 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id p06FgujJ005965
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 6 Jan 2011 10:42:56 -0500
+In-Reply-To: <1293044858-23455-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I forgot to mention that these apply on top of Tronds "devel" branch of nfs-2.6.git.
 
--Bryan
 
-On 01/05/2011 02:49 PM, Bryan Schumaker wrote:
-> These patches will add the secinfo procedure to the NFS client 
-> and do some cleanup along the way.  The final result will should
-> be able to cross mountpoints using a different form of security
-> and auto-detect the security of an initial NFS v4 mount.
+On 12/22/2010 02:07 PM, Steve Dickson wrote:
+> Added new configuration flage so the plugin path
+> can be redefined when the library is built.
 > 
-> v2:
->  - Add more details about the call_sync improvement
->  - Don't initialize global constant function pointers to NULL
-> 
-> Bryan
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed....
 
+steved.
+
+> ---
+>  configure.in  |   13 +++++++++++++
+>  libnfsidmap.c |    2 ++
+>  2 files changed, 15 insertions(+), 0 deletions(-)
+> 
+> diff --git a/configure.in b/configure.in
+> index c105988..7ad3e5f 100644
+> --- a/configure.in
+> +++ b/configure.in
+> @@ -36,7 +36,20 @@ if test "x$enable_gums" = "xyes" ; then
+>  fi
+>  AM_CONDITIONAL(ENABLE_GUMS, test "x$enable_gums" = "xyes")
+>  
+> +#Where do the Plugins live
+> +AC_ARG_WITH(pluginpath,
+> +    [AS_HELP_STRING([--with-pluginpath=/foo],[Causes the library to look in /foo instead of /usr/lib/libnfsidmap for plugins
+> +    ])],
+> +    path_plugins=$withval,
+> +    path_plugins=""
+> +    )
+> +if test -n "$path_plugins" ; then
+> +	AC_DEFINE_UNQUOTED(PATH_PLUGINS, "$path_plugins",
+> +		[Define this to change the plugins path])
+> +fi
+> +AM_CONDITIONAL(PATH_PLUGINS, test -n "$path_plugins")
+>  
+> +AC_CONFIG_HEADERS([./config.h])
+>  # Checks for header files.
+>  AC_HEADER_STDC
+>  AC_CHECK_HEADERS([stdlib.h string.h unistd.h errno.h])
+> diff --git a/libnfsidmap.c b/libnfsidmap.c
+> index 5dc2652..6415707 100644
+> --- a/libnfsidmap.c
+> +++ b/libnfsidmap.c
+> @@ -36,6 +36,8 @@
+>   *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+>   */
+>  
+> +#include "config.h"
+> +
+>  #include <sys/types.h>
+>  #include <errno.h>
+>  #include <unistd.h>
