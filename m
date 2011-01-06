@@ -1,130 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42012 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752552Ab1AGSwO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Jan 2011 13:52:14 -0500
-Message-ID: <4D2760D9.7070800@netapp.com>
-Date: Fri, 07 Jan 2011 13:52:09 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: [PATCH v4 5/5] NFS: Determine initial mount security
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from netnation.com ([204.174.223.2]:46218 "EHLO peace.netnation.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751906Ab1AFBgK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 20:36:10 -0500
+Date: Wed, 5 Jan 2011 17:36:07 -0800
+From: Simon Kirby <sim@hostway.ca>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: flock gives EIO on NFSv4, works on NFSv3
+Message-ID: <20110106013607.GA22915@hostway.ca>
+References: <20110104234938.GM27727@hostway.ca> <1294191765.5896.35.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1294191765.5896.35.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Tue, Jan 04, 2011 at 08:42:45PM -0500, Trond Myklebust wrote:
 
-When sec=<something> is not presented as a mount option,
-we should attempt to determine what security flavor the
-server is using.
+> On Tue, 2011-01-04 at 15:49 -0800, Simon Kirby wrote: 
+> > Hello,
+> > 
+> > In testing NFSv4, I found that this lock test script fails with EIO:
+> > 
+> > #!/usr/bin/perl
+> > 
+> > $|=1;
+> > use Fcntl qw(:DEFAULT :flock);
+> > open(IN, "< locktest.pl") or die "open: $!";
+> > print "Locking...\n";
+> > flock(IN,LOCK_EX) or die "flock $filename: $!";
+> > print "Locked.\n";
+> > sleep(4);
+> > print "Unlocking...\n";
+> > close(IN);
+> > exit(0);
+> > 
+> > This just locks itself (assuming it's called locktest.pl).  This works
+> > fine over NFSv3, but with NFSv4, I'm seeing:
+> > 
+> > flock(3, LOCK_EX)                       = -1 EIO (Input/output error)
+> > 
+> > tcpdump and NFS debugging shows status "10038", which as far as I can
+> > tell is "NFS4ERR_OPENMODE".
+> 
+> That is known and expected behaviour. We have to map flock() onto byte
+> range locks (i.e. POSIX locks), and since LOCK_EX has to map to a write
+> lock in order to give exclusive semantics, the server will not allow it
+> when you only have the file open for reading.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c                     |   33 +++++++++++++++++++++++++++++++--
- include/linux/sunrpc/gss_api.h        |    3 +++
- net/sunrpc/auth_gss/gss_mech_switch.c |   16 ++++++++++++++++
- 3 files changed, 50 insertions(+), 2 deletions(-)
+So, I tested fcntl(F_SETLKW) with F_RDLCK and F_WRLCK as you describe,
+and the semantics do work there as expected, returning EBADF if the
+descriptor is open O_RDONLY over NFSv3, NFSv4, and locally.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 82d50c4..82c6162 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -41,6 +41,7 @@
- #include <linux/string.h>
- #include <linux/slab.h>
- #include <linux/sunrpc/clnt.h>
-+#include <linux/sunrpc/gss_api.h>
- #include <linux/nfs.h>
- #include <linux/nfs4.h>
- #include <linux/nfs_fs.h>
-@@ -2171,15 +2172,43 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return err;
- }
- 
-+static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-+				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
-+{
-+	struct rpc_auth *auth;
-+	int ret;
-+
-+	auth = rpcauth_create(flavor, server->client);
-+	if (!auth) {
-+		ret = -EIO;
-+		goto out;
-+	}
-+	ret = nfs4_lookup_root(server, fhandle, info);
-+	if (ret < 0)
-+		ret = -EAGAIN;
-+out:
-+	return ret;
-+}
-+
- /*
-  * get the file handle for the "/" directory on the server
-  */
- static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 			      struct nfs_fsinfo *info)
- {
--	int status;
-+	int i, len, status = 0;
-+	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS + 2];
- 
--	status = nfs4_lookup_root(server, fhandle, info);
-+	flav_array[0] = RPC_AUTH_UNIX;
-+	len = gss_mech_list_pseudoflavors(&flav_array[1]);
-+	flav_array[1+len] = RPC_AUTH_NULL;
-+	len += 2;
-+
-+	for (i = 0; i < len; i++) {
-+		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
-+		if (status == 0)
-+			break;
-+	}
- 	if (status == 0)
- 		status = nfs4_server_capabilities(server, fhandle);
- 	if (status == 0)
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index 5d8048b..332da61 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -126,6 +126,9 @@ struct gss_api_mech *gss_mech_get_by_name(const char *);
- /* Similar, but get by pseudoflavor. */
- struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
- 
-+/* Fill in an array with a list of supported pseudoflavors */
-+int gss_mech_list_pseudoflavors(u32 *);
-+
- /* Just increments the mechanism's reference count and returns its input: */
- struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
- 
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 6c844b0..e3c36a2 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -215,6 +215,22 @@ gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
- 
- EXPORT_SYMBOL_GPL(gss_mech_get_by_pseudoflavor);
- 
-+int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr)
-+{
-+	struct gss_api_mech *pos = NULL;
-+	int i = 0;
-+
-+	spin_lock(&registered_mechs_lock);
-+	list_for_each_entry(pos, &registered_mechs, gm_list) {
-+		array_ptr[i] = pos->gm_pfs->pseudoflavor;
-+		i++;
-+	}
-+	spin_unlock(&registered_mechs_lock);
-+	return i;
-+}
-+
-+EXPORT_SYMBOL_GPL(gss_mech_list_pseudoflavors);
-+
- u32
- gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
- {
--- 
-1.7.3.4
+It seems that with NFSv3, the client does the check only in the fcntl()
+F_WRLCK case, and that or the flock() case, passes the lock request the
+same way via NLMv4, where the server does not care how the file handle
+was opened.  With NFSv4, the server is always rejecting write/exclusive
+lock requests on file handles opened O_RDONLY.
 
+It's unfortunate that the flock() interface makes no check itself, though
+this appears intentional, as it is advisory-only.  Meanwhile, we have a
+number of user-uploaded applications which rely on the local and NFSv3
+flock() behaviour on O_RDONLY descriptors, which means that we can't just
+switch to NFSv4 without breaking those applications.
+
+Simon-
+
+
+#!/usr/bin/perl
+
+$|=1;
+use Fcntl;
+open(IN, "+< locktestfcntl.pl") or die "open: $!";
+print "Locking...\n";
+$x = pack('ssllllllll',F_WRLCK,SEEK_SET,0,0,0,0,0,0,0,0);
+fcntl(IN,F_SETLKW,$x) or die "fcntl: $!";
+print "Locked.\n";
+sleep(4);
+print "Unlocking...\n";
+close(IN);
+exit(0);
