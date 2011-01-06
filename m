@@ -1,212 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:53374 "EHLO shutemov.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757571Ab1ANNtm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Jan 2011 08:49:42 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Rob Landley <rlandley@parallels.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v3 16/16] Rework get_rpc_pipefs and introduce put_rpc_pipefs()
-Date: Fri, 14 Jan 2011 15:49:14 +0200
-Message-Id: <1295012954-7769-17-git-send-email-kas@openvz.org>
-In-Reply-To: <1295012954-7769-1-git-send-email-kas@openvz.org>
-References: <1295012954-7769-1-git-send-email-kas@openvz.org>
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:39297 "EHLO
+	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751087Ab1AFRvj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Jan 2011 12:51:39 -0500
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+In-Reply-To: <1294336054.2905.1.camel@heimdal.trondhjem.org>
+References: <1294254337.16957.13.camel@mulgrave.site>
+	 <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
+	 <1294256169.16957.18.camel@mulgrave.site>
+	 <20110105200008.GJ8638@n2100.arm.linux.org.uk>
+	 <1294259637.16957.25.camel@mulgrave.site>
+	 <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
+	 <20110105210448.GM8638@n2100.arm.linux.org.uk>
+	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
+	 <1294262208.2952.4.camel@heimdal.trondhjem.org>
+	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
+	 <1294268808.2952.18.camel@heimdal.trondhjem.org>
+	 <1294270104.16957.73.camel@mulgrave.site>
+	 <1294335614.22825.154.camel@mulgrave.site>
+	 <1294336054.2905.1.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 06 Jan 2011 11:51:35 -0600
+Message-ID: <1294336295.22825.168.camel@mulgrave.site>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Now sunrpc module can be removed normally.
+On Thu, 2011-01-06 at 12:47 -0500, Trond Myklebust wrote:
+> On Thu, 2011-01-06 at 11:40 -0600, James Bottomley wrote: 
+> > On Wed, 2011-01-05 at 23:28 +0000, James Bottomley wrote:
+> > > Can you explain how the code works? it looks to me like you read the xdr
+> > > stuff through the vmap region then write it out directly to the pages? 
+> > 
+> > OK, I think I see how this is supposed to work:  It's a sequential loop
+> > of reading in via the pages (i.e. through the kernel mapping) and then
+> > updating those pages via the vmap.  In which case, I think this patch is
+> > what you need.
+> > 
+> > The theory of operation is that the readdir on pages actually uses the
+> > network DMA operations to perform, so when it's finished, the underlying
+> > page is up to date.  After this you invalidate the vmap range, so we
+> > have no cache lines above it (so it picks up the values from the
+> > uptodate page).  Finally, after the operation on the vmap region has
+> > finished, you flush it so that any updated contents go back to the pages
+> > themselves before the next iteration begins.
+> > 
+> > Does this look right to people?  I've verified it fixes the issues on
+> > parisc.
+> > 
+> > James
+> > 
+> > ---
+> > 
+> > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> > index 996dd89..bde1911 100644
+> > --- a/fs/nfs/dir.c
+> > +++ b/fs/nfs/dir.c
+> > @@ -587,12 +587,16 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+> >  		if (status < 0)
+> >  			break;
+> >  		pglen = status;
+> > +
+> > +		invalidate_kernel_vmap_range(pages_ptr, pglen);
+> > +
+> >  		status = nfs_readdir_page_filler(desc, &entry, pages_ptr, page, pglen);
+> >  		if (status < 0) {
+> >  			if (status == -ENOSPC)
+> >  				status = 0;
+> >  			break;
+> >  		}
+> > +		flush_kernel_vmap_range(pages_ptr, pglen);
+> 
+> Why is this line needed? We're not writing through the virtual mapping.
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
----
- fs/nfs/client.c                    |    4 +-
- fs/nfs/super.c                     |    2 +-
- fs/nfsd/nfs4callback.c             |    2 +-
- fs/nfsd/nfssvc.c                   |    4 +-
- include/linux/sunrpc/rpc_pipe_fs.h |    1 +
- net/sunrpc/rpc_pipe.c              |   51 +++++++++++++++++++++++------------
- 6 files changed, 40 insertions(+), 24 deletions(-)
+If you're not altering it, it isn't ... the problem on parisc is that
+invalidate is a nop for us because flush does it all, but I can fix
+that.
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 8dd0e99..0b8ac12 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -838,7 +838,7 @@ static int nfs_init_server(struct nfs_server *server,
- 
- 	/* Allocate or find a client reference we can use */
- 	clp = nfs_get_client(&cl_init);
--	mntput(cl_init.rpcmount);
-+	put_rpc_pipefs(cl_init.rpcmount);
- 	if (IS_ERR(clp)) {
- 		dprintk("<-- nfs_init_server() = error %ld\n", PTR_ERR(clp));
- 		return PTR_ERR(clp);
-@@ -1533,7 +1533,7 @@ static int nfs4_init_server(struct nfs_server *server,
- 			&timeparms,
- 			data->minorversion,
- 			rpcmount);
--	mntput(rpcmount);
-+	put_rpc_pipefs(rpcmount);
- 	if (error < 0)
- 		goto error;
- 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index be4852b..148843e 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1668,7 +1668,7 @@ static int nfs_try_mount(struct nfs_parsed_mount_data *args,
- 	 * to a file handle.
- 	 */
- 	status = nfs_mount(&request);
--	mntput(request.rpcmount);
-+	put_rpc_pipefs(request.rpcmount);
- 	if (status != 0) {
- 		dfprintk(MOUNT, "NFS: unable to mount server %s, error %d\n",
- 				request.hostname, status);
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 61210b6..4d8383b 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -667,7 +667,7 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
- 		return PTR_ERR(args.rpcmount);
- 	/* Create RPC client */
- 	client = rpc_create(&args);
--	mntput(args.rpcmount);
-+	put_rpc_pipefs(args.rpcmount);
- 	if (IS_ERR(client)) {
- 		dprintk("NFSD: couldn't create callback client: %ld\n",
- 			PTR_ERR(client));
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 7353420..cff49fc 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -227,7 +227,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
- 		goto out_racache;
- 	}
- 	ret = lockd_up(rpcmount);
--	mntput(rpcmount);
-+	put_rpc_pipefs(rpcmount);
- 	if (ret)
- 		goto out_racache;
- 	ret = nfs4_state_start();
-@@ -346,7 +346,7 @@ int nfsd_create_serv(void)
- 	nfsd_serv = svc_create_pooled(&nfsd_program, rpcmount,
- 				      nfsd_max_blksize, nfsd_last_thread, nfsd,
- 				      THIS_MODULE);
--	mntput(rpcmount);
-+	put_rpc_pipefs(rpcmount);
- 	if (nfsd_serv == NULL)
- 		return -ENOMEM;
- 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index a0b9c46..328b3da 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -45,6 +45,7 @@ RPC_I(struct inode *inode)
- }
- 
- extern struct vfsmount *get_rpc_pipefs(const char *path);
-+extern void put_rpc_pipefs(struct vfsmount *rpcmount);
- extern int rpc_pipefs_add_destroy_cb(struct super_block *sb,
- 		void (*destroy_cb)(void *data), void *data);
- 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 96973c0..82feacd 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -33,6 +33,7 @@
- #include <linux/sunrpc/cache.h>
- 
- struct vfsmount *init_rpc_pipefs __read_mostly;
-+static int init_rpc_pipefs_count;
- 
- static struct file_system_type rpc_pipe_fs_type;
- 
-@@ -1005,22 +1006,35 @@ static int check_rpc_pipefs(struct vfsmount *mnt, void *arg)
- 	return 1;
- }
- 
--struct vfsmount *get_rpc_pipefs(const char *p)
-+static struct vfsmount *find_rpc_pipefs(void)
- {
--	int error;
- 	struct vfsmount *rpcmount = ERR_PTR(-EINVAL);
--	struct path path;
-+	int err;
- 
--	if (!p) {
--		iterate_mounts(check_rpc_pipefs, &rpcmount,
--				current->nsproxy->mnt_ns->root);
-+	iterate_mounts(check_rpc_pipefs, &rpcmount,
-+			current->nsproxy->mnt_ns->root);
- 
--		if (IS_ERR(rpcmount) && (current->nsproxy->mnt_ns ==
--					init_task.nsproxy->mnt_ns))
--			return mntget(init_rpc_pipefs);
-+	if (!IS_ERR(rpcmount))
-+		return rpcmount;
- 
-+	if (current->nsproxy->mnt_ns != init_task.nsproxy->mnt_ns)
- 		return rpcmount;
--	}
-+
-+	err = simple_pin_fs(&rpc_pipe_fs_type, &init_rpc_pipefs,
-+			&init_rpc_pipefs_count);
-+	if (err)
-+		return ERR_PTR(err);
-+	return init_rpc_pipefs;
-+}
-+
-+struct vfsmount *get_rpc_pipefs(const char *p)
-+{
-+	int error;
-+	struct vfsmount *rpcmount = ERR_PTR(-EINVAL);
-+	struct path path;
-+
-+	if (!p)
-+		return find_rpc_pipefs();
- 
- 	error = kern_path(p, LOOKUP_FOLLOW | LOOKUP_DIRECTORY, &path);
- 	if (error)
-@@ -1033,6 +1047,15 @@ struct vfsmount *get_rpc_pipefs(const char *p)
- }
- EXPORT_SYMBOL_GPL(get_rpc_pipefs);
- 
-+void put_rpc_pipefs(struct vfsmount *rpcmount)
-+{
-+	if (rpcmount == init_rpc_pipefs)
-+		simple_release_fs(&init_rpc_pipefs, &init_rpc_pipefs_count);
-+	else
-+		mntput(rpcmount);
-+}
-+EXPORT_SYMBOL_GPL(put_rpc_pipefs);
-+
- struct destroy_cb {
- 	struct list_head list;
- 	void (*callback)(void *data);
-@@ -1232,16 +1255,8 @@ int register_rpc_pipefs(void)
- 	if (err)
- 		goto destroy_cache;
- 
--	init_rpc_pipefs = kern_mount(&rpc_pipe_fs_type);
--	if (IS_ERR(init_rpc_pipefs)) {
--		err = PTR_ERR(init_rpc_pipefs);
--		goto unregister_fs;
--	}
--
- 	return 0;
- 
--unregister_fs:
--	unregister_filesystem(&rpc_pipe_fs_type);
- destroy_cache:
- 	kmem_cache_destroy(rpc_inode_cachep);
- 	return err;
--- 
-1.7.3.4
+James
+
+> We checked using just the invalidate_kernel_vmap_range(), and that
+> appeared to suffice to fix the problem on ARM.
+> 
+> Cheers
+>   Trond
+
 
