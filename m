@@ -1,49 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from dsl-67-204-24-19.acanac.net ([67.204.24.19]:56723 "EHLO
-	mail.ellipticsemi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752675Ab1AXVKx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jan 2011 16:10:53 -0500
-Date: Mon, 24 Jan 2011 16:10:38 -0500
-From: Nick Bowler <nbowler@elliptictech.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: trond.myklebust@netapp.com, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] NLM: Fix "kernel BUG at fs/lockd/host.c:417!" or
- ".../host.c:283!"
-Message-ID: <20110124211038.GA22199@elliptictech.com>
-References: <20110124204332.1878.35846.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110124204332.1878.35846.stgit@matisse.1015granger.net>
+Received: from mx2.netapp.com ([216.240.18.37]:6000 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752932Ab1AFLgh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Jan 2011 06:36:37 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 01/15] pnfs: fix incorrect comment in destroy_lseg
+Date: Thu,  6 Jan 2011 06:36:18 -0500
+Message-Id: <1294313792-14280-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
+References: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-01-24 15:50 -0500, Chuck Lever wrote:
-> Nick Bowler <nbowler@elliptictech.com> reports:
-> 
-> > We were just having some NFS server troubles, and my client machine
-> > running 2.6.38-rc1+ (specifically, commit 2b1caf6ed7b888c95) crashed
-> > hard (syslog output appended to this mail).
-[...]
-> I was able to reproduce this BUG on my client running 2.6.38-rc2
-> from earlier today.  Here is a proposed fix.  I can't reproduce the
-> BUG with this patch applied.
-> 
-> However, my reproducer hit the BUG in nlmsvc_release_host().  Nick hit
-> roughly the same BUG in nlmclnt_release_host(), which suggests his
-> "client" was also acting as a server.
+Comment references get_layout_hdr_locked, which never existed in
+submitted code.
 
-Yeah, there are NFS exports on the client machine as well; although
-as nobody had them mounted (and due to the timing of the crash) I hadn't
-considered them.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-> The symptoms are similar enough that I believe this patch should be
-> sufficient to address both cases.
-
-I'll try the patch, but since I don't know how to reproduce the failure
-(rebooting the server just to see if it crashes again isn't an option),
-I'll have to take your word for it.
-
-Thanks,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index db77342..6e9daff 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -225,7 +225,7 @@ destroy_lseg(struct kref *kref)
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+-	/* Matched by get_layout_hdr_locked in pnfs_insert_layout */
++	/* Matched by get_layout_hdr in pnfs_insert_layout */
+ 	put_layout_hdr(ino);
+ }
+ 
 -- 
-Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
+1.7.2.1
+
