@@ -1,231 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp05.in.ibm.com ([122.248.162.5]:52425 "EHLO
-	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932110Ab1ACQEw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jan 2011 11:04:52 -0500
-Received: from d28relay05.in.ibm.com (d28relay05.in.ibm.com [9.184.220.62])
-	by e28smtp05.in.ibm.com (8.14.4/8.13.1) with ESMTP id p03G4mjO029400
-	for <linux-nfs@vger.kernel.org>; Mon, 3 Jan 2011 21:34:48 +0530
-Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
-	by d28relay05.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p03G4m9a2592984
-	for <linux-nfs@vger.kernel.org>; Mon, 3 Jan 2011 21:34:48 +0530
-Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
-	by d28av02.in.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p03G4mQx002240
-	for <linux-nfs@vger.kernel.org>; Tue, 4 Jan 2011 03:04:48 +1100
-From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsv4: Switch to generic xattr handling code
-In-Reply-To: <20101214003328.GI9394@fieldses.org>
-References: <1291894525-6559-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20101214003328.GI9394@fieldses.org>
-Date: Mon, 03 Jan 2011 21:34:45 +0530
-Message-ID: <874o9qdlcy.fsf@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:7565 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751623Ab1AFANH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 19:13:07 -0500
+Subject: Re: [PATCH_V8 08/13] NFS associate sessionid with callback connection
 Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <1294272380.2952.22.camel@heimdal.trondhjem.org>
+Date: Wed, 5 Jan 2011 19:13:05 -0500
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Message-Id: <1ACF7715-723D-4C45-9A37-E155343D0D34@netapp.com>
+References: <1294260690-3095-1-git-send-email-andros@netapp.com> <1294260690-3095-2-git-send-email-andros@netapp.com> <1294260690-3095-3-git-send-email-andros@netapp.com> <1294260690-3095-4-git-send-email-andros@netapp.com> <1294260690-3095-5-git-send-email-andros@netapp.com> <1294260690-3095-6-git-send-email-andros@netapp.com> <1294260690-3095-7-git-send-email-andros@netapp.com> <1294260690-3095-8-git-send-email-andros@netapp.com> <1294260690-3095-9-git-send-email-andros@netapp.com> <1294272380.2952.22.camel@heimdal.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 13 Dec 2010 19:33:28 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Thu, Dec 09, 2010 at 05:05:25PM +0530, Aneesh Kumar K.V wrote:
-> > This patch make nfsv4 use the generic xattr handling code
-> > to get the nfsv4 acl. This will help us to add richacl
-> > support to nfsv4 in later patches
+
+On Jan 5, 2011, at 7:06 PM, Trond Myklebust wrote:
+
+> On Wed, 2011-01-05 at 15:51 -0500, andros@netapp.com wrote: 
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> The sessions based callback service is started prior to the CREATE_SESSION call
+>> so that it can handle CB_NULL requests which can be sent before the
+>> CREATE_SESSION call returns and the session ID is known.
+>> 
+>> Set the callback sessionid after a sucessful CREATE_SESSION.
+>> 
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfs/callback.c               |   31 +++++++++++++++++++++++++++++++
+>> fs/nfs/callback.h               |    1 +
+>> fs/nfs/nfs4state.c              |    6 ++++++
+>> include/linux/sunrpc/svc_xprt.h |    1 +
+>> net/sunrpc/svcsock.c            |    1 +
+>> 5 files changed, 40 insertions(+), 0 deletions(-)
+>> 
+>> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+>> index 0e9fae8..c0b0549 100644
+>> --- a/fs/nfs/callback.c
+>> +++ b/fs/nfs/callback.c
+>> @@ -137,6 +137,33 @@ out_err:
+>> 
+>> #if defined(CONFIG_NFS_V4_1)
+>> /*
+>> + *  * CB_SEQUENCE operations will fail until the callback sessionid is set.
+>> + *   */
+>> +int nfs4_set_callback_sessionid(struct nfs_client *clp)
+>> +{
+>> +	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
+>> +	struct nfs4_sessionid *bc_sid;
+>> +
+>> +	if (!serv->bc_xprt)
+>> +		return -EINVAL;
+>> +
+>> +	/* on success freed in xprt_free */
+>> +	bc_sid = kmalloc(sizeof(struct nfs4_sessionid), GFP_KERNEL);
+>> +	if (!bc_sid)
+>> +		return -ENOMEM;
+>> +	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
+>> +		NFS4_MAX_SESSIONID_LEN);
+>> +	spin_lock_bh(&serv->sv_cb_lock);
+>> +	serv->bc_xprt->xpt_bc_sid = bc_sid;
+>> +	spin_unlock_bh(&serv->sv_cb_lock);
+>> +	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
+>> +		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
+>> +		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
+>> +		serv->bc_xprt);
+>> +	return 0;
+>> +}
+>> +
+>> +/*
+>>  * The callback service for NFSv4.1 callbacks
+>>  */
+>> static int
+>> @@ -241,6 +268,10 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
+>> 		struct nfs_callback_data *cb_info)
+>> {
+>> }
+>> +int nfs4_set_callback_sessionid(struct nfs_client *clp)
+>> +{
+>> +	return 0;
+>> +}
+>> #endif /* CONFIG_NFS_V4_1 */
+>> 
+>> /*
+>> diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+>> index 85a7cfd..58d61a8 100644
+>> --- a/fs/nfs/callback.h
+>> +++ b/fs/nfs/callback.h
+>> @@ -137,6 +137,7 @@ extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
+>> extern void nfs_callback_down(int minorversion);
+>> extern int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation,
+>> 					    const nfs4_stateid *stateid);
+>> +extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
+>> #endif /* CONFIG_NFS_V4 */
+>> /*
+>>  * nfs41: Callbacks are expected to not cause substantial latency,
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index fe61422..11290de 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -193,6 +193,12 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+>> 	status = nfs4_proc_create_session(clp);
+>> 	if (status != 0)
+>> 		goto out;
+>> +	status = nfs4_set_callback_sessionid(clp);
+>> +	if (status != 0) {
+>> +		printk(KERN_WARNING "Sessionid not set. No callback service\n");
+>> +		nfs_callback_down(1);
+>> +		status = 0;
+>> +	}
+>> 	nfs41_setup_state_renewal(clp);
+>> 	nfs_mark_client_ready(clp, NFS_CS_READY);
+>> out:
+>> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+>> index aea0d43..357da5e 100644
+>> --- a/include/linux/sunrpc/svc_xprt.h
+>> +++ b/include/linux/sunrpc/svc_xprt.h
+>> @@ -78,6 +78,7 @@ struct svc_xprt {
+>> 	size_t			xpt_remotelen;	/* length of address */
+>> 	struct rpc_wait_queue	xpt_bc_pending;	/* backchannel wait queue */
+>> 	struct list_head	xpt_users;	/* callbacks on free */
+>> +	void			*xpt_bc_sid;	/* back channel session ID */
+>> 
+>> 	struct net		*xpt_net;
+>> };
+>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+>> index e6b66d8..9456152 100644
+>> --- a/net/sunrpc/svcsock.c
+>> +++ b/net/sunrpc/svcsock.c
+>> @@ -1606,6 +1606,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+>> static void svc_bc_sock_free(struct svc_xprt *xprt)
+>> {
+>> 	if (xprt)
+>> +		kfree(xprt->xpt_bc_sid);
+>> 		kfree(container_of(xprt, struct svc_sock, sk_xprt));
 > 
-> Look OK to me.--b.
+> This looks dubious... Shouldn't there be braces here?
+
+Oops - yes.
+
+-->Andy
+
 > 
-> > 
-> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> > ---
-> >  fs/nfs/dir.c      |    8 ++++--
-> >  fs/nfs/nfs4_fs.h  |    7 +-----
-> >  fs/nfs/nfs4proc.c |   62 +++++++++++++++++++++++++++++-----------------------
-> >  fs/nfs/super.c    |    4 ++-
-> >  4 files changed, 44 insertions(+), 37 deletions(-)
-> > 
-> > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> > index 070f368..7e0c0be 100644
-> > --- a/fs/nfs/dir.c
-> > +++ b/fs/nfs/dir.c
-> > @@ -35,6 +35,7 @@
-> >  #include <linux/sched.h>
-> >  #include <linux/vmalloc.h>
-> >  #include <linux/kmemleak.h>
-> > +#include <linux/xattr.h>
-> >  
-> >  #include "delegation.h"
-> >  #include "iostat.h"
-> > @@ -125,9 +126,10 @@ const struct inode_operations nfs4_dir_inode_operations = {
-> >  	.permission	= nfs_permission,
-> >  	.getattr	= nfs_getattr,
-> >  	.setattr	= nfs_setattr,
-> > -	.getxattr       = nfs4_getxattr,
-> > -	.setxattr       = nfs4_setxattr,
-> > -	.listxattr      = nfs4_listxattr,
-> > +	.getxattr	= generic_getxattr,
-> > +	.setxattr	= generic_setxattr,
-> > +	.listxattr	= generic_listxattr,
-> > +	.removexattr	= generic_removexattr,
-> >  };
-> >  
-> >  #endif /* CONFIG_NFS_V4 */
-> > diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> > index 9fa4963..441fbcd 100644
-> > --- a/fs/nfs/nfs4_fs.h
-> > +++ b/fs/nfs/nfs4_fs.h
-> > @@ -227,12 +227,6 @@ struct nfs4_state_maintenance_ops {
-> >  extern const struct dentry_operations nfs4_dentry_operations;
-> >  extern const struct inode_operations nfs4_dir_inode_operations;
-> >  
-> > -/* inode.c */
-> > -extern ssize_t nfs4_getxattr(struct dentry *, const char *, void *, size_t);
-> > -extern int nfs4_setxattr(struct dentry *, const char *, const void *, size_t, int);
-> > -extern ssize_t nfs4_listxattr(struct dentry *, char *, size_t);
-> > -
-> > -
-> >  /* nfs4proc.c */
-> >  extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
-> >  extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, struct rpc_cred *);
-> > @@ -246,6 +240,7 @@ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fh
-> >  extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
-> >  		struct nfs4_fs_locations *fs_locations, struct page *page);
-> >  extern void nfs4_release_lockowner(const struct nfs4_lock_state *);
-> > +extern const struct xattr_handler *nfs4_xattr_handlers[];
-> >  
-> >  #if defined(CONFIG_NFS_V4_1)
-> >  static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
-> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > index c57b4e0..9d4839b 100644
-> > --- a/fs/nfs/nfs4proc.c
-> > +++ b/fs/nfs/nfs4proc.c
-> > @@ -49,6 +49,7 @@
-> >  #include <linux/mount.h>
-> >  #include <linux/module.h>
-> >  #include <linux/sunrpc/bc_xprt.h>
-> > +#include <linux/xattr.h>
-> >  
-> >  #include "nfs4_fs.h"
-> >  #include "delegation.h"
-> > @@ -4394,42 +4395,36 @@ void nfs4_release_lockowner(const struct nfs4_lock_state *lsp)
-> >  
-> >  #define XATTR_NAME_NFSV4_ACL "system.nfs4_acl"
-> >  
-> > -int nfs4_setxattr(struct dentry *dentry, const char *key, const void *buf,
-> > -		size_t buflen, int flags)
-> > +static int nfs4_xattr_set_nfs4_acl(struct dentry *dentry, const char *key,
-> > +				   const void *buf, size_t buflen,
-> > +				   int flags, int type)
-> >  {
-> > -	struct inode *inode = dentry->d_inode;
-> > -
-> > -	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
-> > -		return -EOPNOTSUPP;
-> > +	if (strcmp(key, "") != 0)
-> > +		return -EINVAL;
-> >  
-> > -	return nfs4_proc_set_acl(inode, buf, buflen);
-> > +	return nfs4_proc_set_acl(dentry->d_inode, buf, buflen);
-> >  }
-> >  
-> > -/* The getxattr man page suggests returning -ENODATA for unknown attributes,
-> > - * and that's what we'll do for e.g. user attributes that haven't been set.
-> > - * But we'll follow ext2/ext3's lead by returning -EOPNOTSUPP for unsupported
-> > - * attributes in kernel-managed attribute namespaces. */
-> > -ssize_t nfs4_getxattr(struct dentry *dentry, const char *key, void *buf,
-> > -		size_t buflen)
-> > +static int nfs4_xattr_get_nfs4_acl(struct dentry *dentry, const char *key,
-> > +				   void *buf, size_t buflen, int type)
-> >  {
-> > -	struct inode *inode = dentry->d_inode;
-> > -
-> > -	if (strcmp(key, XATTR_NAME_NFSV4_ACL) != 0)
-> > -		return -EOPNOTSUPP;
-> > +	if (strcmp(key, "") != 0)
-> > +		return -EINVAL;
-> >  
-> > -	return nfs4_proc_get_acl(inode, buf, buflen);
-> > +	return nfs4_proc_get_acl(dentry->d_inode, buf, buflen);
-> >  }
-> >  
-> > -ssize_t nfs4_listxattr(struct dentry *dentry, char *buf, size_t buflen)
-> > +static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
-> > +				       size_t list_len, const char *name,
-> > +				       size_t name_len, int type)
-> >  {
-> > -	size_t len = strlen(XATTR_NAME_NFSV4_ACL) + 1;
-> > +	size_t len = sizeof(XATTR_NAME_NFSV4_ACL);
-> >  
-> >  	if (!nfs4_server_supports_acls(NFS_SERVER(dentry->d_inode)))
-> >  		return 0;
-> > -	if (buf && buflen < len)
-> > -		return -ERANGE;
-> > -	if (buf)
-> > -		memcpy(buf, XATTR_NAME_NFSV4_ACL, len);
-> > +
-> > +	if (list && len <= list_len)
-> > +		memcpy(list, XATTR_NAME_NFSV4_ACL, len);
-> >  	return len;
-> >  }
-> >  
-> > @@ -5500,9 +5495,10 @@ static const struct inode_operations nfs4_file_inode_operations = {
-> >  	.permission	= nfs_permission,
-> >  	.getattr	= nfs_getattr,
-> >  	.setattr	= nfs_setattr,
-> > -	.getxattr	= nfs4_getxattr,
-> > -	.setxattr	= nfs4_setxattr,
-> > -	.listxattr	= nfs4_listxattr,
-> > +	.getxattr	= generic_getxattr,
-> > +	.setxattr	= generic_setxattr,
-> > +	.listxattr	= generic_listxattr,
-> > +	.removexattr	= generic_removexattr,
-> >  };
-> >  
-> >  const struct nfs_rpc_ops nfs_v4_clientops = {
-> > @@ -5547,6 +5543,18 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
-> >  	.open_context	= nfs4_atomic_open,
-> >  };
-> >  
-> > +static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
-> > +	.prefix	= XATTR_NAME_NFSV4_ACL,
-> > +	.list	= nfs4_xattr_list_nfs4_acl,
-> > +	.get	= nfs4_xattr_get_nfs4_acl,
-> > +	.set	= nfs4_xattr_set_nfs4_acl,
-> > +};
-> > +
-> > +const struct xattr_handler *nfs4_xattr_handlers[] = {
-> > +	&nfs4_xattr_nfs4_acl_handler,
-> > +	NULL
-> > +};
-> > +
-> >  /*
-> >   * Local variables:
-> >   *  c-basic-offset: 8
-> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > index e57e670..e0f4a9e 100644
-> > --- a/fs/nfs/super.c
-> > +++ b/fs/nfs/super.c
-> > @@ -2503,7 +2503,8 @@ static void nfs4_clone_super(struct super_block *sb,
-> >  	 * so ourselves when necessary.
-> >  	 */
-> >  	sb->s_flags  |= MS_POSIXACL;
-> > - 	nfs_initialise_sb(sb);
-> > +	sb->s_xattr  = old_sb->s_xattr;
-> > +	nfs_initialise_sb(sb);
-> >  }
-> >  
-> >  /*
-> > @@ -2518,6 +2519,7 @@ static void nfs4_fill_super(struct super_block *sb)
-> >  	 * so ourselves when necessary.
-> >  	 */
-> >  	sb->s_flags  |= MS_POSIXACL;
-> > +	sb->s_xattr = nfs4_xattr_handlers;
-> >  	nfs_initialise_sb(sb);
-> >  }
-> >  
-> > -- 
-> > 1.7.1
-> > 
+>> }
+>> #endif /* CONFIG_NFS_V4_1 */
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
 
-
-Any update ?
-
--aneesh
