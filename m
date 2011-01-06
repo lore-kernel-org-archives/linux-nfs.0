@@ -1,148 +1,99 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm3.bullet.mail.sp2.yahoo.com ([98.139.91.73]:43801 "HELO
-	nm3.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751077Ab1AIMAB convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 9 Jan 2011 07:00:01 -0500
-Message-ID: <187328.13539.qm@web111708.mail.gq1.yahoo.com>
-References: <965737.12090.qm@web111718.mail.gq1.yahoo.com>  <1294565607.30270.14.camel@ramone>  <874334.779.qm@web111720.mail.gq1.yahoo.com> <1294573274.30270.35.camel@ramone>
-Date: Sun, 9 Jan 2011 03:59:58 -0800 (PST)
-From: Mahmood Naderan <nt_mahmood@yahoo.com>
-Subject: Re: Problem with sharing /home
-To: nfs <linux-nfs@vger.kernel.org>
-In-Reply-To: <1294573274.30270.35.camel@ramone>
-Content-Type: text/plain; charset=iso-8859-1
-Sender: linux-nfs-owner@vger.kernel.org
-List-ID: <linux-nfs.vger.kernel.org>
+Return-Path: <nfsv4-bounces@ietf.org>
+Date: Thu, 6 Jan 2011 16:20:01 -0500
+Message-ID: <BF3BB6D12298F54B89C8DCC1E4073D8002C47E40@CORPUSMX50A.corp.emc.com>
+In-Reply-To: <4D21D71D.8030907@panasas.com>
+References: <4D0E2E01.5020609@panasas.com>,
+	<fed0592.55ef.12cfee2b158.Coremail.wolf0805@163.com>,
+	<18c0c0f3.1adea.12d0e4252bd.Coremail.wolf0805@163.com><201012301048485665083@163.com>
+	<4D21D71D.8030907@panasas.com>
+From: <david.noveck@emc.com>
+To: <bhalevy@panasas.com>, <wolf0805@163.com>
+Cc: linux-nfs@vger.kernel.org, nfsv4@ietf.org
+Subject: Re: [nfsv4] Questions on pNFS
+List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+	<mailto:nfsv4-request@ietf.org?subject=subscribe>
+Content-Type: text/plain; charset="gb2312"
+Sender: nfsv4-bounces@ietf.org
+Errors-To: nfsv4-bounces@ietf.org
 MIME-Version: 1.0
+List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks for that. I changed the UID and GID for users who have conflict with each 
-other. 
-
-One more question. If I add a new user on server, can he ssh to the worker 
-without problem?
-
-Thanks, 
-// Naderan *Mahmood;
-
-
-
------ Original Message ----
-From: Daniel Stodden <daniel.stodden@citrix.com>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Cc: nfs <linux-nfs@vger.kernel.org>
-Sent: Sun, January 9, 2011 3:11:14 PM
-Subject: Re: Problem with sharing /home
-
-On Sun, 2011-01-09 at 04:46 -0500, Mahmood Naderan wrote:
-> >Edit passwd andgroup to fix it.
-> I forgot to ask should I edit those files on server or worker?
-
-Ideally on the worker.
-
-The reason is that wherever you have to change the user account on the
-server, you will need to recursively fix the permissions on her home
-directory. That's more work. If necessary, check your favorite unix
-manual for details.
-
-See 'man 5 passwd' for info on the passwd file.
-
-Daniel
-
-> // Naderan *Mahmood;
-> 
-> 
-> 
-> ----- Original Message ----
-> From: Daniel Stodden <daniel.stodden@citrix.com>
-> To: Mahmood Naderan <nt_mahmood@yahoo.com>
-> Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-> Sent: Sun, January 9, 2011 1:03:27 PM
-> Subject: Re: Problem with sharing /home
-> 
-> 
-> User names are meaningless to the filesystem. Numbers matter. Make sure
-> that the name->uid map is identical in all passwd files.
-> 
-> In the case below, user1 can't write to /home/user1 because on worker
-> she's got a different uid than on server. Likewise, user3 there appears
-> to own /home/user1 because the uid in question was given to user3.
-> 
-> Try the 'id' and 'ls -n' commands to figure it out. Edit passwd and
-> group to fix it.
-> 
-> Daniel
-> 
-> On Sun, 2011-01-09 at 02:41 -0500, Mahmood Naderan wrote:
-> > Hi,
-> > I have a server (192.168.1.1) and worker (192.168.1.2) stations and want to 
-> > share /home which is belong to the server. This is the content of my 
-> > /etc/exports:
-> > /home                192.168.1.2(rw,sync,no_root_squash)
-> > 
-> > Before sharing, the list of users on both stations are:
-> > server: root, mahmood, user1, user2
-> > worker: root, mahmood, user3, user4
-> > 
-> > As you can see two users are common. Then I opened /etc/fstab on worker and 
-> > commnet the original /home line and added this line:
-> > server:/home  /home  nfs defaults 0 0
-> >  
-> > Then I ran "sudo exportfs -a" on server and "sudo mount -a" on the worker. 
-> > Please look at the output of "ls -l" command on both server and worker:
-> > mahmood@server:home$ ls -l
-> > total 36
-> > drwxr-xr-x 28 user1      users    4096 2011-01-08 21:49 user1
-> > drwxr-xr-x  4 user2        users    4096 2011-01-08 21:55 user2
-> > drwx------  2 root      root    16384 2010-10-24 17:23 lost+found
-> > drwxr-xr-x 26 mahmood    mahmood  4096 2011-01-09 10:49 mahmood
-> > 
-> > mahmood@worker:home$ ls -l
-> > total 36
-> > drwxr-xr-x  4 user3  users    4096 2011-01-08 21:55 user1
-> > drwxr-xr-x  9 user4 users    4096 2011-01-08 23:05 user2
-> > drwx------  2 root    root    16384 2010-10-24 17:23 lost+found
-> > drwxr-xr-x 26 mahmood mahmood  4096 2011-01-09 10:49 mahmood
-> > drwxrwxrwx  5 root    root    4096 2011-01-05 21:27 shared
-> > 
-> > As you can see, the permission of user1 and user2 home direcoties are granted 
->
-> >to 
-> >
-> > user3 and user4. But since "mahmood" and "root" have separate account on both 
->
-> > stations, there is no problem with their access. 
-> > 
-> >  
-> > The effect of this anomaly is that when user1 want to ssh from server to 
-> >wroker, 
-> >
-> > he can not write anything in his home direcotry:
-> > user1@server:~$ mkdir a
-> > user1@server:~$ ssh worker
-> > enter password....
-> > user1@worker:~$ mkdir b
-> > mkdir: cannot create directory `b': Permission denied
-> > user1@worker:~$
-> > 
-> > How can I fix that?
-> > 
-> > Thanks,
-> > // Naderan *Mahmood;
-> > 
-> > 
-> >      
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
->      
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-      
+SSdtIHZlcnkgY29uZnVzZWQgYnkgdGhpcyBpbnRlcmNoYW5nZS4KCj4gPiBJIGZvdW5kIHRoZXJl
+IHdhc24ndCBhbnkgYnl0ZS1yYW5nZSBsb2NrIGFzIHNwZWNpZmllZCBpbiB0aGUgaWV0Zi1uZnN2
+NC1kcmFmdCBwcm90b2NvbC4KCj4gQ29ycmVjdC4KCkh1aD8KClRoZSBuZnN2NCBwcm90b2NvbCBk
+b2VzIGhhdmUgYnl0ZS1yYW5nZSBsb2Nrcy4gIEl0IGlzIG9wdGlvbmFsIHdoZXRoZXIgdGhleSBh
+cmUgYWR2aXNvcnkgb3IgbWFuZGF0b3J5LCBidXQgdGhleSBkbyBleGlzdC4KCkNvdWxkIEJlbm55
+IG1lYW4gdGhhdCB0aGV5IGRvbid0IHdvcmsgaW4gaGlzIHNlcnZlcj8gIEl0IGRvZXNuJ3Qgc2Vl
+bSBzbyBiZWNhdXNlIGhlIGFkdmlzZXMgWmhhbmd5dSB0byB1c2UgbG9ja2luZy4gCgpUaGUgb25s
+eSBmb3JtIG9mIG1hbmRhdG9yeSBsb2NraW5nIGluIE5GU3Y0IGFyZSBzaGFyZSByZXNlcnZhdGlv
+bnMuICBXYWl0aW5nIHRvIGVkaXQgeW91ciBmaWxlIG1heSBiZSBkcmFnIGJ1dCBpdCBpcyBiZXR0
+ZXIgdGhhbiB0dXJuaW5nIGl0IGludG8gYSBtZXNzLgoKSSd2ZSBuZXZlciBzZWVuIGFuIGVkaXRv
+ciB0aGF0IGFsbG93ZWQgbXVsdGlwbGUgdXNlcnMgdG8gZWRpdCBhIGZpbGUgYW5kIHVzZWQgYnl0
+ZS1yYW5nZSBsb2NrcyB0byBzeW5jaHJvbml6ZS4gIEl0IHNlZW1zIGxpa2UgYSBmdW4gcHJvamVj
+dCBhcyBsb25nIGFzIHRoZXJlIHdhcyBubyBkZWxpdmVyeSBzY2hlZHVsZS4KCiAKCi0tLS0tT3Jp
+Z2luYWwgTWVzc2FnZS0tLS0tCkZyb206IG5mc3Y0LWJvdW5jZXNAaWV0Zi5vcmcgW21haWx0bzpu
+ZnN2NC1ib3VuY2VzQGlldGYub3JnXSBPbiBCZWhhbGYgT2YgQmVubnkgSGFsZXZ5ClNlbnQ6IE1v
+bmRheSwgSmFudWFyeSAwMywgMjAxMSA5OjAzIEFNClRvOiBaaGFuZ3l1CkNjOiBsaW51eC1uZnM7
+IG5mc3Y0ClN1YmplY3Q6IFJlOiBbbmZzdjRdIFF1ZXN0aW9ucyBvbiBwTkZTCgpbdHJpbW1lZCBt
+YWlsaW5nIGxpc3RzIG9uIHRoZSBDY10KCk9uIDIwMTAtMTItMzAgMDQ6NDgsIFpoYW5neXUgd3Jv
+dGU6Cj4gSGksCj4gCj4gSSBoYXZlIHN1Y2Nlc3NmdWxseSBpbnN0YWxsZWQgdGhlIHBORlMgYW5k
+IGl0IHdvcmtzIHdlbGwuCgpHcmVhdCEKCj4gSG93ZXZlciwgSSBhbSBpbnRlcmVzdGVkIGluIHRo
+ZSBwYXJhbGxlbCBhY2Nlc3MgY29udHJvbCBtZWNoYW5pc20gb2YgcE5GUy4KPiBJIHRyaWVkIHRv
+IGVkaXQgdGhlIHNhbWUgZmlsZSBvbiB0d28gZGlmZmVyZW50IGNsaWVudHMsCj4gSSBmb3VuZCB0
+aGVyZSB3YXNuJ3QgYW55IGJ5dGUtcmFuZ2UgbG9jayBhcyBzcGVjaWZpZWQgaW4gdGhlIGlldGYt
+bmZzdjQtZHJhZnQgcHJvdG9jb2wuCgpDb3JyZWN0LgoKPiBIb3cgaXMgdGhlIHBhcmFsbGVsIGFj
+Y2VzcyBjb250cm9sIGltcGxlbWVudGVkPyBXaGljaCBzb3VyY2UgY29kZSBmaWxlIGRvZXMgaXQg
+bG9jYXRlZCBpbj8gCj4gCgpUaGVyZSBpcyBub25lIGJ5IGRlZmluaXRpb24uClRoZSBwTkZTIGZl
+YXR1cmUgaXMgb3J0aG9nb25hbCB0byBzeW5jaHJvbml6YXRpb24gcHJpbWl0aXZlcyBzbwpkaWZm
+ZXJlbnQgY2xpZW50cyB0aGF0IG5lZWQgdG8gc2VyaWFsaXplIHRoZWlyIGFjY2VzcyBzaG91bGQg
+dXNlIGxvY2tpbmcKdG8gZG8gdGhhdC4KClNvbWUgc2VydmVycyBtYXkgaW1wbGVtZW50IHN5bmNo
+cm9uaXphdGlvbiBhdCB0aGUgcG5mcyBsYXlvdXQgbGV2ZWwsCmJ1dCB0aGUgbGludXggc2VydmVy
+IGhhcyBubyBzdWNoIGZlYXR1cmUuCgo+IEFkZGl0aW9uYWxseSwgSSBmb3VuZCB0aGF0IHdoZW4g
+d3JpdGluZyBhIGZpbGUgdG8gdGhlIERTLCBuZXR3b3JrIGZsb3cgaXMgaGlnaGVyIGJvdGgKPiBv
+biBNRFMgYW5kIERTLiBEb2VzIGl0IG1lYW4gdGhhdCB0aGUgZGF0YSBpcyBkZWxpdmVyZWQgdGhy
+b3VnaCBNRFM/Cj4gSSB0aGluayB0aGUgZGF0YSBzaG91bGQgYmUgd3JpdHRlbiBkaXJlY3RseSB0
+byBEUywgaXMgaXQgcmlnaHQ/CgpUcnVlLiAgSWYgeW91ciBzZXR1cCBpcyBjb25maWd1cmVkIGNv
+cnJlY3RseSB0aGVyZSBzaG91bGQgYmUgbm8KSS9PIGRpcmVjdGVkIGF0IHRoZSBNRFMuCkNhbiB5
+b3UgY2FwdHVyZSBhIG5ldHdvcmsgdHJhY2UgdG8gdGhlIE1EUyBhbmQgdG8gdGhlIERTIHRvIHNl
+ZSB3aGF0IGV4YWN0bHkKaXMgc2VudCBvbiB0aGUgbGluZT8KCkJlbm55Cgo+IAo+IFRoYW5rcyAm
+IFJlZ2FyZHMsCj4gWXUgWmhhbmcgCj4gCj4gMjAxMC0xMi0zMCAKPiAKPiAKPiAKPiBaaGFuZ3l1
+IAo+IAo+IAo+IAo+ILeivP7Iy6O6IEJlbm55IEhhbGV2eSAKPiC3osvNyrG85KO6IDIwMTAtMTIt
+MjYgIDE2OjI3OjU1IAo+IMrVvP7Iy6O6IHdvbGYwODA1IAo+ILOty82juiBORlMgbGlzdCAKPiDW
+98zio7ogUmU6IEVycm9ycyBvbiBwTkZTIAo+ICAKPiBbQWRkaW5nIHRoZSBsaW51eC1uZnMgbWFp
+bGluZyBsaXN0IHRvIHRoZSBDYwo+IHBsZWFzZSBrZWVwIHRoZSBmb2xrcyBvbiB0aGUgbGlzdCBw
+b3N0ZWQgYXMgdGhleSBhcmUgaW50ZXJlc3RlZAo+IGluIHRoZSBpc3N1ZXMgeW91IGVuY291bnRl
+ciBhcyB3ZWxsIGFzIHRoZSBzb2x1dGlvbnNdCj4gT24gMjAxMC0xMi0yMiAxNToyNiwgd29sZjA4
+MDUgd3JvdGU6Cj4+IEhpIEJlbm55LAo+Pgo+PiBJIGhhdmUgaW5zdGFsbGVkIHBORlMga2VybmVs
+IGFuZCBwbmZzLW5mcy11dGlscyBvbiB0aHJlZSBtYWNoaW5lcyhjbGllbnQsbWRzLGRzKS4KPj4g
+QnV0IHdoZW4gSSB0cmllZCB0byBsb2FkIHRoZSBsYXlvdXRkcml2ZXIsIGl0IGdpdmVzIGVycm9y
+IDogIkZhdGFsIC0gbW9kdWxlIG5mc2xheW91dGRyaXZlciBub3QgZm91bmQuIgo+IFNvcnJ5LCB0
+aGUgbGF5b3V0IGRyaXZlciB3YXMgcmVuYW1lZCB0byBuZnNfbGF5b3V0X25mc3Y0MV9maWxlcy4K
+PiBJJ3ZlIHVwZGF0ZWQgaHR0cDovL3dpa2kubGludXgtbmZzLm9yZy93aWtpL2luZGV4LnBocC9D
+b25maWd1cmluZ19wTkZTL3NwbmZzZAo+IHRvIHJlZmxlY3QgdGhhdC4KPiBCZW5ueQo+PiBJIGFt
+IHVzaW5nIEZlZG9yYSAxNCB3aXRoIHRoZSB1bmFtZSAtYSBzYXlpbmcgIkxpbnV4IGxvY2FsaG9z
+dC5sb2NhbGRvbWFpbiAKPj4gMi42LjM2LTEucG5mc19hbGxfMjAxMF8xMV8wMy5mYzE1Lmk2ODYu
+UEFFICMxIFNNUCBUdWUgTm92IDkgMTg6MzI6MjAgVVRDIDIwMTAgaTY4NiBpNjg2IGkzODYgR05V
+L0xpbnV4Ii4KPj4gSXQgc2VlbXMgdGhlIGtlcm5lbCBpcyBwbmZzIGVuYWJsZWQsIGJ1dCB3aGVy
+ZSBpcyB0aGUgcHJvYmxlbT8KPj4KPj4gVGhlIGRzIGlwLWFkZHIgaXMgWFguWVkuWlouQUEsIG1k
+cydzIGlzIFhYLllZLlpaLkJCLCBhbmQgY2xpZW50J3MgaXMgWFguWVkuWlouQ0MuIAo+Pgo+PiBU
+aGUgL2V0Yy9leHBvcnRzIG9uIGRzIGxvb2tzIGFzOiAvZXhwb3J0L3NwbmZzICoocncsc3luYyxm
+c2lkPTAsaW5zZWN1cmUsbm9fc3VidHJlZV9jaGVjayxwbmZzLG5vX3Jvb3Rfc3F1YXNoKQo+Pgo+
+PiBUaGUgL2V0Yy9leHBvcnRzIG9uIG1kcyA6IC9leHBvcnQgKihydyxzeW5jLGZzaWQ9MCxpbnNl
+Y3VyZSxub19zdWJ0cmVlX2NoZWNrLHBuZnMsbm9fcm9vdF8hCj4+ICBzcXVhc2gpCj4+Cj4+IC9l
+dGMvZnN0YWIgb24gbWRzOiAgWFguWVkuWlouQUE6LyAgICAgICAvc3BuZnMvWFguWVkuWlouQSAg
+IG5mczQgICAgbWlub3J2ZXJzaW9uPTEgICAgICAgIDAgMAo+Pgo+PiBUaGVuIEkgbW91bnRlZCBN
+RFMgZnJvbSBjbGllbnQgdXNpbmcgOiBtb3VudCAtdCBuZnM0IC1vIG1pbm9ydmVyc2lvbj0xIFhY
+LllZLlpaLkJCOi8gL21udAo+Pgo+PiBJIGZvdW5kIHRoYXQgb25seSBtZHMgYW5kIGNsaWVudCBh
+cmUgbW91bnRlZCwgaXQgc2VlbXMgZHMgaXMgbGVmdCBhbG9uZS4gSXMgdGhlcmUgYW55IG1pc3Rh
+a2VzIGluIHRoZXNlIGNvbmZpZ3VyZSBmaWxlcz8gCj4+Cj4+IEkgaG9wZSB0aGVzZSBoZWxwcy4K
+Pj4KPj4gQmVzdCByZWdhcmRzLAo+Pgo+PiBZdSBaaGFuZwo+Pgo+Pgo+Pgo+IC4KX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KbmZzdjQgbWFpbGluZyBsaXN0
+Cm5mc3Y0QGlldGYub3JnCmh0dHBzOi8vd3d3LmlldGYub3JnL21haWxtYW4vbGlzdGluZm8vbmZz
+djQKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KbmZzdjQg
+bWFpbGluZyBsaXN0Cm5mc3Y0QGlldGYub3JnCmh0dHBzOi8vd3d3LmlldGYub3JnL21haWxtYW4v
+bGlzdGluZm8vbmZzdjQK
