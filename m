@@ -1,59 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2988 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:15622 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751078Ab1AEBmt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jan 2011 20:42:49 -0500
-Subject: Re: flock gives EIO on NFSv4, works on NFSv3
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Simon Kirby <sim@hostway.ca>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20110104234938.GM27727@hostway.ca>
-References: <20110104234938.GM27727@hostway.ca>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 04 Jan 2011 20:42:45 -0500
-Message-ID: <1294191765.5896.35.camel@heimdal.trondhjem.org>
+	id S1753765Ab1AFCFH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 21:05:07 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V9 04/12] SUNRPC register and unregister the back channel transport
+Date: Wed,  5 Jan 2011 21:04:27 -0500
+Message-Id: <1294279475-8540-5-git-send-email-andros@netapp.com>
+In-Reply-To: <1294279475-8540-4-git-send-email-andros@netapp.com>
+References: <1294279475-8540-1-git-send-email-andros@netapp.com>
+ <1294279475-8540-2-git-send-email-andros@netapp.com>
+ <1294279475-8540-3-git-send-email-andros@netapp.com>
+ <1294279475-8540-4-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, 2011-01-04 at 15:49 -0800, Simon Kirby wrote: 
-> Hello,
-> 
-> In testing NFSv4, I found that this lock test script fails with EIO:
-> 
-> #!/usr/bin/perl
-> 
-> $|=1;
-> use Fcntl qw(:DEFAULT :flock);
-> open(IN, "< locktest.pl") or die "open: $!";
-> print "Locking...\n";
-> flock(IN,LOCK_EX) or die "flock $filename: $!";
-> print "Locked.\n";
-> sleep(4);
-> print "Unlocking...\n";
-> close(IN);
-> exit(0);
-> 
-> This just locks itself (assuming it's called locktest.pl).  This works
-> fine over NFSv3, but with NFSv4, I'm seeing:
-> 
-> flock(3, LOCK_EX)                       = -1 EIO (Input/output error)
-> 
-> tcpdump and NFS debugging shows status "10038", which as far as I can
-> tell is "NFS4ERR_OPENMODE".
+From: Andy Adamson <andros@netapp.com>
 
-That is known and expected behaviour. We have to map flock() onto byte
-range locks (i.e. POSIX locks), and since LOCK_EX has to map to a write
-lock in order to give exclusive semantics, the server will not allow it
-when you only have the file open for reading.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ include/linux/sunrpc/svcsock.h |    1 -
+ net/sunrpc/svcsock.c           |   20 ++++++++++++++++++++
+ 2 files changed, 20 insertions(+), 1 deletions(-)
 
-Cheers
-   Trond
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 3a45a80..1b353a7 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -45,7 +45,6 @@ int		svc_sock_names(struct svc_serv *serv, char *buf,
+ int		svc_addsock(struct svc_serv *serv, const int fd,
+ 					char *name_return, const size_t len);
+ void		svc_init_xprt_sock(void);
+-void		svc_init_bc_xprt_sock(void);
+ void		svc_cleanup_xprt_sock(void);
+ struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot);
+ void		svc_sock_destroy(struct svc_xprt *);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 6630f29..e6b66d8 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1222,6 +1222,24 @@ static struct svc_xprt_class svc_tcp_bc_class = {
+ 	.xcl_ops = &svc_tcp_bc_ops,
+ 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+ };
++
++static void svc_init_bc_xprt_sock(void)
++{
++	svc_reg_xprt_class(&svc_tcp_bc_class);
++}
++
++static void svc_cleanup_bc_xprt_sock(void)
++{
++	svc_unreg_xprt_class(&svc_tcp_bc_class);
++}
++#else /* CONFIG_NFS_V4_1 */
++static void svc_init_bc_xprt_sock(void)
++{
++}
++
++static void svc_cleanup_bc_xprt_sock(void)
++{
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ static struct svc_xprt_ops svc_tcp_ops = {
+@@ -1247,12 +1265,14 @@ void svc_init_xprt_sock(void)
+ {
+ 	svc_reg_xprt_class(&svc_tcp_class);
+ 	svc_reg_xprt_class(&svc_udp_class);
++	svc_init_bc_xprt_sock();
+ }
+ 
+ void svc_cleanup_xprt_sock(void)
+ {
+ 	svc_unreg_xprt_class(&svc_tcp_class);
+ 	svc_unreg_xprt_class(&svc_udp_class);
++	svc_cleanup_bc_xprt_sock();
+ }
+ 
+ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.6.6
 
