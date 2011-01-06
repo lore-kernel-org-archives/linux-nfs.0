@@ -1,91 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx5.sophos.com ([213.31.172.35]:49249 "EHLO mx5.sophos.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3847 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752882Ab1A0ONJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jan 2011 09:13:09 -0500
-Date: Thu, 27 Jan 2011 14:06:10 +0000
-From: Douglas Leeder <douglas.leeder@sophos.com>
-To: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
-CC: Tvrtko Ursulin <tvrtko.ursulin@sophos.com>, <douglas.leeder@gmail.com>,
-        <linux-kernel@vger.kernel.org>
-Subject: kernel BUG while mv files onto an nfs mount with Linus' linux-2.6
- git tree
-Content-Type: text/plain; charset="UTF-8"; format=flowed
-Message-ID: <1c30423a-57bf-44bb-aa2e-4d658f829474@uk-exch1.green.sophos>
+	id S1751988Ab1AFV6u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Jan 2011 16:58:50 -0500
+Message-ID: <4D263B19.7070003@netapp.com>
+Date: Thu, 06 Jan 2011 16:58:49 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Subject: [PATCH v3 5/5] NFS: Determine initial mount security
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
 
-I got the following kernel BUG while moving files onto an nfs mount,
-while running Linus' linux-2.6 git tree (2.6.38-rc2) under VirtualBox.
+When sec=<something> is not presented as a mount option,
+we should attempt to determine what security flavor the
+server is using.
 
-The mv command is now stuck in the D+ state.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4proc.c                     |   33 +++++++++++++++++++++++++++++++--
+ include/linux/sunrpc/gss_api.h        |    3 +++
+ net/sunrpc/auth_gss/gss_mech_switch.c |   16 ++++++++++++++++
+ 3 files changed, 50 insertions(+), 2 deletions(-)
 
-Attempting to ls the mount results in ls being stuck in the D+ state.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 82d50c4..82c6162 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -41,6 +41,7 @@
+ #include <linux/string.h>
+ #include <linux/slab.h>
+ #include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/gss_api.h>
+ #include <linux/nfs.h>
+ #include <linux/nfs4.h>
+ #include <linux/nfs_fs.h>
+@@ -2171,15 +2172,43 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	return err;
+ }
+ 
++static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
++				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
++{
++	struct rpc_auth *auth;
++	int ret;
++
++	auth = rpcauth_create(flavor, server->client);
++	if (!auth) {
++		ret = -EIO;
++		goto out;
++	}
++	ret = nfs4_lookup_root(server, fhandle, info);
++	if (ret < 0)
++		ret = -EAGAIN;
++out:
++	return ret;
++}
++
+ /*
+  * get the file handle for the "/" directory on the server
+  */
+ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			      struct nfs_fsinfo *info)
+ {
+-	int status;
++	int i, len, status = 0;
++	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS + 2];
+ 
+-	status = nfs4_lookup_root(server, fhandle, info);
++	flav_array[0] = RPC_AUTH_UNIX;
++	len = gss_mech_list_pseudoflavors(&flav_array[1]);
++	flav_array[1+len] = RPC_AUTH_NULL;
++	len += 2;
++
++	for (i = 0; i < len; i++) {
++		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
++		if (status == 0)
++			break;
++	}
+ 	if (status == 0)
+ 		status = nfs4_server_capabilities(server, fhandle);
+ 	if (status == 0)
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index 5d8048b..332da61 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -126,6 +126,9 @@ struct gss_api_mech *gss_mech_get_by_name(const char *);
+ /* Similar, but get by pseudoflavor. */
+ struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
+ 
++/* Fill in an array with a list of supported pseudoflavors */
++int gss_mech_list_pseudoflavors(u32 *);
++
+ /* Just increments the mechanism's reference count and returns its input: */
+ struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
+ 
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index 6c844b0..e3c36a2 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -215,6 +215,22 @@ gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
+ 
+ EXPORT_SYMBOL_GPL(gss_mech_get_by_pseudoflavor);
+ 
++int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr)
++{
++	struct gss_api_mech *pos = NULL;
++	int i = 0;
++
++	spin_lock(&registered_mechs_lock);
++	list_for_each_entry(pos, &registered_mechs, gm_list) {
++		array_ptr[i] = pos->gm_pfs->pseudoflavor;
++		i++;
++	}
++	spin_unlock(&registered_mechs_lock);
++	return i;
++}
++
++EXPORT_SYMBOL_GPL(gss_mech_list_pseudoflavors);
++
+ u32
+ gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
+ {
+-- 
+1.7.3.4
 
-The nfs server is an Ubuntu 10.04 box running Ubuntu kernel.
-(2.6.32-28-generic-pae #55-Ubuntu SMP Mon Jan 10 22:34:08 UTC 2011)
-
-I would be happy to provide any more information that is required.
-
-kernel BUG at fs/nfs/nfs3xdr.c:1338!
-invalid opcode: 0000 [#1] SMP
-last sysfs file: /sys/devices/virtual/bdi/0:21/uevent
-Modules linked in: nfsd exportfs nfs lockd fscache nfs_acl auth_rpcgss
-sunrpc psmouse i2c_piix4 serio_raw sr_mod pcnet32 mii
-476034]
-Pid: 3214, comm: mv Not tainted 2.6.38-rc2-custom3dlcl #3 /VirtualBox
-EIP: 0060:[<d8a0d9e8>] EFLAGS: 00010282 CPU: 0
-EIP is at nfs3_xdr_enc_setacl3args+0xb8/0xc0 [nfs]
-EAX: ffffffea EBX: d623bd90 ECX: 00000000 EDX: d623bbd8
-ESI: d623bcac EDI: 00000084 EBP: d623bc88 ESP: d623bc70
-  DS: 007b ES: 007b FS: 00d8 GS: 00e0 SS: 0068
-Process mv (pid: 3214, ti=d623a000 task=d7770ca0 task.ti=d623a000)
-Stack:
-  d6d651a0 00000001 00000000 d623bcac d5ea8000 d8a0d930 d623bcd4 d88d8f16
-  d1828820 d623bcb0 d88d9be7 d1828824 d182884c d7553880 00000000 d1828888
-  d5ea8004 d18289d4 d5ea8004 d623bd10 d5d8d000 d5d8d35c d7553880 d5ea8000
-Call Trace:
-  [<d8a0d930>] ? nfs3_xdr_enc_setacl3args+0x0/0xc0 [nfs]
-  [<d88d8f16>] rpcauth_wrap_req+0x76/0xb0 [sunrpc]
-  [<d88d9be7>] ? unx_marshal+0x47/0xc0 [sunrpc]
-  [<d88d0f7f>] call_transmit+0x14f/0x250 [sunrpc]
-  [<d88d8227>] __rpc_execute+0x67/0x200 [sunrpc]
-  [<c0166d6e>] ? wake_up_bit+0x5e/0x70
-  [<d88d7b92>] ? rpc_make_runnable+0x72/0xa0 [sunrpc]
-  [<d88d83f8>] rpc_execute+0x38/0x40 [sunrpc]
-  [<d88d1d04>] rpc_run_task+0xa4/0xe0 [sunrpc]
-  [<d88d1e3e>] rpc_call_sync+0x3e/0x60 [sunrpc]
-  [<d8a0f4c0>] nfs3_proc_setacls+0x150/0x2e0 [nfs]
-  [<c016ae01>] ? __run_hrtimer+0xa1/0x1c0
-  [<c025c317>] ? posix_acl_alloc+0x17/0x30
-  [<d8a0fdaf>] nfs3_proc_setacl+0x5f/0x100 [nfs]
-  [<c025c48c>] ? posix_acl_from_xattr+0x6c/0x100
-  [<d8a0ff02>] nfs3_setxattr+0x52/0xa0 [nfs]
-  [<d8a0feb0>] ? nfs3_setxattr+0x0/0xa0 [nfs]
-  [<c0237ef1>] __vfs_setxattr_noperm+0x41/0x120
-  [<c030a67c>] ? cap_inode_setxattr+0x2c/0x60
-  [<c0238061>] vfs_setxattr+0x91/0xa0
-  [<c0238128>] setxattr+0xb8/0x110
-  [<c01f8695>] ? handle_pte_fault+0x85/0x920
-  [<c01307cc>] ? kmap_atomic_prot+0x4c/0x100
-  [<c01f8fdc>] ? handle_mm_fault+0xac/0x140
-  [<c05bc772>] ? do_page_fault+0x1b2/0x450
-  [<c02d0500>] ? ext4_listxattr+0x0/0x240
-  [<c023783a>] ? vfs_listxattr+0x3a/0x70
-  [<c0238218>] sys_fsetxattr+0x98/0xb0
-  [<c010301f>] sysenter_do_call+0x12/0x28
-Code: 59 f2 ff 85 c0 78 20 83 c4 0c 5b 5e 5f 5d c3 8d 74 26 00 8b 43 10
-31 c9 8b 53 18 89 04 24 89 f0 e8 0e 38 ed ff eb 80 0f 0b eb fe <0f> 0b
-eb fe 8d 74 26 00 55 89 e5 83 ec 08 89 1c 24 89 74 24 04
-EIP: [<d8a0d9e8>] nfs3_xdr_enc_setacl3args+0xb8/0xc0 [nfs] SS:ESP
-0068:d623bc70
----[ end trace 69c4fc2ce1ae740d ]---
-
---
-Douglas Leeder, Senior Software Engineer
-
-Sophos Limited, The Pentagon, Abingdon Science Park, Abingdon, OX14 3YP, United Kingdom.
-Company Reg No 2096520. VAT Reg No GB 991 2418 08.
