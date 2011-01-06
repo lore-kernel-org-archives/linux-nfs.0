@@ -1,163 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:54556 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:15622 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932378Ab1AKXco (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Jan 2011 18:32:44 -0500
-Date: Tue, 11 Jan 2011 18:32:29 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: Fred Isaman <iisaman@netapp.com>, "J. Bruce Fields" <bfields@redhat.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] nfsd4: implement secinfo_no_name
-Message-ID: <20110111233229.GE28537@fieldses.org>
-References: <1292612511-14203-1-git-send-email-bfields@redhat.com>
- <1292612511-14203-4-git-send-email-bfields@redhat.com>
- <4D183265.70608@cn.fujitsu.com>
- <20101229185609.GA12218@fieldses.org>
- <4D1C06E7.5060009@cn.fujitsu.com>
- <20110105010507.GC14744@fieldses.org>
- <AANLkTimHAzLWE2ZC+QGtSw3ff6fpQsejDV8M7x8m34dp@mail.gmail.com>
- <20110105153713.GA13000@fieldses.org>
- <20110105172916.GD13000@fieldses.org>
- <4D253CDA.30605@cn.fujitsu.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <4D253CDA.30605@cn.fujitsu.com>
+	id S1753481Ab1AFCFI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Jan 2011 21:05:08 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH_V9 05/12] NFS use svc_create_xprt for NFSv4.1 callback service
+Date: Wed,  5 Jan 2011 21:04:28 -0500
+Message-Id: <1294279475-8540-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1294279475-8540-5-git-send-email-andros@netapp.com>
+References: <1294279475-8540-1-git-send-email-andros@netapp.com>
+ <1294279475-8540-2-git-send-email-andros@netapp.com>
+ <1294279475-8540-3-git-send-email-andros@netapp.com>
+ <1294279475-8540-4-git-send-email-andros@netapp.com>
+ <1294279475-8540-5-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Jan 06, 2011 at 11:54:02AM +0800, Mi Jinlong wrote:
-> 
-> 
-> J. Bruce Fields 写道:
-> > On Wed, Jan 05, 2011 at 10:37:13AM -0500, J. Bruce Fields wrote:
-> >> On Wed, Jan 05, 2011 at 10:15:11AM -0500, Fred Isaman wrote:
-> >>> On Tue, Jan 4, 2011 at 8:05 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >>>> On Thu, Dec 30, 2010 at 12:13:27PM +0800, Mi Jinlong wrote:
-> >>>>>
-> >>>>> J. Bruce Fields:
-> >>>>>> On Mon, Dec 27, 2010 at 02:29:57PM +0800, Mi Jinlong wrote:
-> >>>>>>> When testing this patch, oops appears.
-> >>>>>>>
-> >>>>>>> We should implement a nfsd4_encode_secinfo_no_name() instead using
-> >>>>>>> nfsd4_encode_secinfo().
-> >>>>>>>
-> >>>>>>> With the following patch, kernel will run correctly.
-> >>>>>> Whoops, yes, you're correct.  I've applied your patch.  Thanks!
-> >>>>>>
-> >>>>>> (What are you using for testing?)
-> >>>>> Hi Bruce:
-> >>>>>
-> >>>>>   I test it by the pynfs41 at your tree, and add some simple
-> >>>>>   test case as following.
-> >>>>>
-> >>>>>   I have a question about the op.secinfo_no_name(), should it take
-> >>>>>   a argument?
-> >>>>>   Right now, maybe it always request with NFS4_SECINFO_STYLE4_CURRENT_FH,
-> >>>>>   or I can't find how to set the argument.
-> >>> There was a bug in how the op.secinfo_no_name() function was auto
-> >>> constructed.  I've pushed a fix to
-> >>> my tree at git://linux-nfs.org/~iisaman/newpynfs.git.
-> >> Thanks, Fred.  I've pulled that into my repository too.
-> > 
-> > But then these secinfo_no_name tests don't work ("TypeError:
-> > data.opsecinfo_no_name == None"); Mi Jinlong, would you mind looking
-> > into that?
-> 
->   After Fred's patch, we should rebuild the test site at pynfs41 dir 
->   with "python setup.py build".
-> 
->   And update test case, call op.secinfo_no_name() with 0 as following.
+From: Andy Adamson <andros@netapp.com>
 
-Thanks!
+The new back channel transport means we call the normal creation routine as
+well as svc_xprt_put.
 
-Could I ask for a few changes?:
-	- The second half of testSupported2 should go into a separate
-	  test in a separate st_secinfo file.  (It will be a very small
-	  file for now!  But we can port some of the 4.0 tests to it
-	  some day.)
-	- That test should create a file in the same way that e.g. the
-	  st_open tests do instead of assuming a file named "/tree"
-	  exists.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/callback.c |   28 ++++++++++++++++++----------
+ 1 files changed, 18 insertions(+), 10 deletions(-)
 
---b.
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 93a8b3b..0e9fae8 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -177,30 +177,38 @@ nfs41_callback_svc(void *vrqstp)
+ struct svc_rqst *
+ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
+ {
+-	struct svc_xprt *bc_xprt;
+-	struct svc_rqst *rqstp = ERR_PTR(-ENOMEM);
++	struct svc_rqst *rqstp;
++	int ret;
+ 
+-	dprintk("--> %s\n", __func__);
+-	/* Create a svc_sock for the service */
+-	bc_xprt = svc_sock_create(serv, xprt->prot);
+-	if (!bc_xprt)
++	/*
++	 * Create an svc_sock for the back channel service that shares the
++	 * fore channel connection.
++	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
++	 */
++	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
++			      SVC_SOCK_ANONYMOUS);
++	if (ret < 0) {
++		rqstp = ERR_PTR(ret);
+ 		goto out;
++	}
+ 
+ 	/*
+ 	 * Save the svc_serv in the transport so that it can
+ 	 * be referenced when the session backchannel is initialized
+ 	 */
+-	serv->bc_xprt = bc_xprt;
+ 	xprt->bc_serv = serv;
+ 
+ 	INIT_LIST_HEAD(&serv->sv_cb_list);
+ 	spin_lock_init(&serv->sv_cb_lock);
+ 	init_waitqueue_head(&serv->sv_cb_waitq);
+ 	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
+-	if (IS_ERR(rqstp))
+-		svc_sock_destroy(bc_xprt);
++	if (IS_ERR(rqstp)) {
++		svc_xprt_put(serv->bc_xprt);
++		serv->bc_xprt = NULL;
++	}
+ out:
+-	dprintk("--> %s return %p\n", __func__, rqstp);
++	dprintk("--> %s return %ld\n", __func__,
++		IS_ERR(rqstp) ? PTR_ERR(rqstp) : 0);
+ 	return rqstp;
+ }
+ 
+-- 
+1.6.6
 
-> 
-> thanks,
-> Mi Jinlong
-> 
-> >From 344f0ee9a625d43b918be5dfc4fc9df8e8cbac28 Mon Sep 17 00:00:00 2001
-> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> Date: Thu, 30 Dec 2010 12:13:27 +0800
-> Subject: [PATCH] CLNT: Add some simple secinfo_no_name tests
-> 
-> Add two simple secinfo_no_name tests as Bruce said:
->   - send PUTROOTFH+SECINFO_NO_NAME, check that you get back a
->     legal result.
->   - send PUTROOTFH+SECINFO+GETFH, and/or
->     PUTROOTFH+SECINFO_NO_NAME+GETFH, check that the GETFH returns
->     NOFILEHANDLE.
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  nfs4.1/server41tests/__init__.py           |    1 +
->  nfs4.1/server41tests/st_secinfo_no_name.py |   35 ++++++++++++++++++++++++++++
->  2 files changed, 36 insertions(+), 0 deletions(-)
->  create mode 100644 nfs4.1/server41tests/st_secinfo_no_name.py
-> 
-> diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
-> index 22cd664..6aee88e 100644
-> --- a/nfs4.1/server41tests/__init__.py
-> +++ b/nfs4.1/server41tests/__init__.py
-> @@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
->             "st_compound.py",
->             "st_create_session.py",
->             "st_destroy_session.py",
-> +           "st_secinfo_no_name.py",
->             "st_sequence.py",
->  	   "st_trunking.py",
->             "st_open.py",
-> diff --git a/nfs4.1/server41tests/st_secinfo_no_name.py b/nfs4.1/server41tests/st_secinfo_no_name.py
-> new file mode 100644
-> index 0000000..b66fdb6
-> --- /dev/null
-> +++ b/nfs4.1/server41tests/st_secinfo_no_name.py
-> @@ -0,0 +1,35 @@
-> +from st_create_session import create_session
-> +from nfs4_const import *
-> +from environment import check, fail, bad_sessionid, create_file
-> +from nfs4_type import channel_attrs4
-> +import nfs4_ops as op
-> +import nfs4lib
-> +
-> +def testSupported(t, env):
-> +    """Do a simple SECINFO_NO_NAME
-> +       send PUTROOTFH+SECINFO_NO_NAME, check is result legal
-> +
-> +    FLAGS: all
-> +    CODE: SECNN1
-> +    """
-> +    c = env.c1.new_client(env.testname(t))
-> +    sess = c.create_session()
-> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name(0)])
-> +    check(res);
-> +
-> +def testSupported2(t, env):
-> +    """GETFH after do a SECINFO_NO_NAME or SECINFO
-> +       result in a NOFILEHANDLE error, See rfc 5661 section 2.6.3.1.1.8
-> +
-> +    FLAGS: all
-> +    CODE: SECNN2
-> +    """
-> +    c = env.c1.new_client(env.testname(t))
-> +    sess = c.create_session()
-> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name(0), op.getfh()])
-> +    print res
-> +    check(res, NFS4ERR_NOFILEHANDLE);
-> +
-> +    res = sess.compound([op.putrootfh(), op.secinfo("tree"), op.getfh()])
-> +    print res
-> +    check(res, NFS4ERR_NOFILEHANDLE);
-> -- 
-> 1.7.3.4
-> 
