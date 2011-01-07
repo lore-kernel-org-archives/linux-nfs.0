@@ -1,414 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:59142 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752207Ab1ASA5n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Jan 2011 19:57:43 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/4] NFS do not find client in NFSv4 pg_authenticate
-Date: Tue, 18 Jan 2011 19:53:50 -0500
-Message-Id: <1295398433-2759-1-git-send-email-andros@netapp.com>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:59754 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755098Ab1AGSFk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Jan 2011 13:05:40 -0500
+In-Reply-To: <AANLkTim6HoN5+m180-Du+oda+6N49qSaGga6ktMPV4U4@mail.gmail.com>
+References: <20101208212505.GA18192@hostway.ca>
+	<20101218010801.GE28367@hostway.ca>
+	<20101229220313.GA13688@hostway.ca>
+	<AANLkTinq074Q-B=5B4_aXuBm-3ELwGknsJv+OvS1z1OX@mail.gmail.com>
+	<20110104214008.GH27727@hostway.ca>
+	<AANLkTim6HoN5+m180-Du+oda+6N49qSaGga6ktMPV4U4@mail.gmail.com>
+Date: Fri, 7 Jan 2011 10:05:39 -0800
+Message-ID: <AANLkTinLsREtOqNGW2j5m0UYros1AgTu953JHjjJZ-F+@mail.gmail.com>
+Subject: Re: System CPU increasing on idle 2.6.36
+From: Mark Moseley <moseleymark@gmail.com>
+To: Simon Kirby <sim@hostway.ca>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Wed, Jan 5, 2011 at 11:43 AM, Mark Moseley <moseleymark@gmail.com> wrote:
+> On Tue, Jan 4, 2011 at 1:40 PM, Simon Kirby <sim@hostway.ca> wrote:
+>> On Tue, Jan 04, 2011 at 09:42:14AM -0800, Mark Moseley wrote:
+>>
+>>> On Wed, Dec 29, 2010 at 2:03 PM, Simon Kirby <sim@hostway.ca> wrote:
+>>>
+>>> > I've noticed nfs_inode_cache is ever-increasing as well with 2.6.37:
+>>> >
+>>> > ?OBJS ACTIVE ?USE OBJ SIZE ?SLABS OBJ/SLAB CACHE SIZE NAME
+>>> > 2562514 2541520 ?99% ? ?0.95K ?78739 ? ? ? 33 ? 2519648K nfs_inode_cache
+>>> > 467200 285110 ?61% ? ?0.02K ? 1825 ? ? ?256 ? ? ?7300K kmalloc-16
+>>> > 299397 242350 ?80% ? ?0.19K ?14257 ? ? ? 21 ? ? 57028K dentry
+>>> > 217434 131978 ?60% ? ?0.55K ? 7767 ? ? ? 28 ? ?124272K radix_tree_node
+>>> > 215232 ?81522 ?37% ? ?0.06K ? 3363 ? ? ? 64 ? ? 13452K kmalloc-64
+>>> > 183027 136802 ?74% ? ?0.10K ? 4693 ? ? ? 39 ? ? 18772K buffer_head
+>>> > 101120 ?71184 ?70% ? ?0.03K ? ?790 ? ? ?128 ? ? ?3160K kmalloc-32
+>>> > ?79616 ?59713 ?75% ? ?0.12K ? 2488 ? ? ? 32 ? ? ?9952K kmalloc-128
+>>> > ?66560 ?41257 ?61% ? ?0.01K ? ?130 ? ? ?512 ? ? ? 520K kmalloc-8
+>>> > ?42126 ?26650 ?63% ? ?0.75K ? 2006 ? ? ? 21 ? ? 32096K ext3_inode_cache
+>>> >
+>>> > http://0x.ca/sim/ref/2.6.37/inodes_nfs.png
+>>> > http://0x.ca/sim/ref/2.6.37/cpu2_nfs.png
+>>> >
+>>> > Perhaps I could bisect just fs/nfs changes between 2.6.35 and 2.6.36 to
+>>> > try to track this down without having to wait too long, unless somebody
+>>> > can see what is happening here.
+>>>
+>>> I'll get started bisecting too, since this is something of a
+>>> show-stopper. Boxes that pre-2.6.36 would stay up for months at a time
+>>> now have to be powercycled every couple of days (which is about how
+>>> long it takes for this behavior to show up). This is across-the-board
+>>> for about 50 boxes, ranging from 2.6.36 to 2.6.36.2.
+>>>
+>>> Simon: It's probably irrelevant since these are kernel threads, but
+>>> I'm curious what distro your boxes are running. Ours are Debian Lenny,
+>>> i386, Dell Poweredge 850s. Just trying to figure out any
+>>> commonalities. I'll get my boxes back on 2.6.36.2 and start watching
+>>> nfs_inode_cache as well.
+>>
+>> Same distro, x86_64, similar servers.
+>>
+>> I'm not sure if the two cases I am seeing are exactly the same problem,
+>> but on the log crunching boxes, system time seems proportional to
+>> nfs_inode_cache and nfs_inode_cache just keeps growing forever; however,
+>> if I stop the load and unmount the NFS mount points, all of the
+>> nfs_inode_cache objects do actually go away (after umount finishes).
+>>
+>> It seems the shrinker callback might not be working as intended here.
+>>
+>> On the shared server case, the crazy spinlock contention from all of the
+>> flusher processes happens suddenly and overloads the boxes for 10-15
+>> minutes, and then everything recovers.  Over 21 of these boxes, they
+>> each have about 500k-700k nfs_inode_cache objects.  The log cruncher hit
+>> 3.3 million nfs_inode_cache objects before I unmounted.
+>>
+>> Are your boxes repeating this behaviour at any predictable interval?
+>
+> Simon:
+> My boxes definitely fall into the latter category, with spinlock
+> regularly sitting at 60-80% CPU (according to 'perf top'). As far as
+> predictability, not strictly, but it's typically after an uptime of
+> 2-3 days. They take so long to get into this state that I've never
+> seen the actual transition in person, just the after-effects of
+> flush-0:xx gone crazy. These boxes have a number of other NFS mounts,
+> but it's on the flush-0:xx's for the heavily written-to NFS mounts
+> that are spinning wildly, which you'd expect to be the case. The
+> infrequently written-to NFS servers' flush-0:xx isn't to be found in
+> 'top' output.
+>
+> I'd booted into older kernels after my initial reply, so I'm 14 hrs
+> into booting a box back into 2.6.36.2 and another box into a
+> double-bisected 2.6.35-2.6.36 kernel (my first bisect hit compile
+> errors). Both are running normally but that fits with the pattern so
+> far.
+>
+> NFS Guys:
+> Anything else we can be digging up to help debug this? This is a
+> pretty ugly issue.
+>
 
-The information required to find the nfs_client cooresponding to the incoming
-back channel request is contained in the NFS layer. Perform minimal checking
-in the RPC layer pg_authenticate method, and push more detailed checking into the NFS layer where the nfs_client can be found.  There is no longer any need to
-remember which sessionid's the backchannel service is serving.
+NOTE: NFS/Kernel guys: I've left the 2.6.36.2 box still thrashing
+about in case there's something you'd like me to look at.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/callback.c               |  111 ++++++++++----------------------------
- fs/nfs/callback.h               |    4 +-
- fs/nfs/callback_proc.c          |   10 +---
- fs/nfs/callback_xdr.c           |    7 ++-
- fs/nfs/client.c                 |   16 ++----
- fs/nfs/internal.h               |    3 +-
- fs/nfs/nfs4state.c              |    6 --
- include/linux/sunrpc/bc_xprt.h  |   13 -----
- include/linux/sunrpc/svc_xprt.h |    1 -
- net/sunrpc/svcsock.c            |    4 +-
- 10 files changed, 45 insertions(+), 130 deletions(-)
+Ok, both my 2.6.36.2 kernel box and my 2.6.35->2.6.36 bisect box (was
+bisected to ce7db282a3830f57f5b05ec48288c23a5c4d66d5 -- this is my
+first time doing bisect, so I'll preemptively apologize for doing
+anything silly) both went berserk within 15 mins of each other, after
+an uptime of around 63 hours for 2.6.36.2 and 65 hours for the
+bisected box. The 2.6.36.2 one is still running with all the various
+flush-0:xx threads spinning wildly. The bisected box just keeled over
+and died, but is back up now. The only kernel messages logged are just
+of the "task kworker/4:1:359 blocked for more than 120 seconds"
+variety, all with _raw_spin_lock_irq at the top of the stack trace.
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 1990165..445f5ce 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -135,33 +135,6 @@ out_err:
- 
- #if defined(CONFIG_NFS_V4_1)
- /*
-- *  * CB_SEQUENCE operations will fail until the callback sessionid is set.
-- *   */
--int nfs4_set_callback_sessionid(struct nfs_client *clp)
--{
--	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
--	struct nfs4_sessionid *bc_sid;
--
--	if (!serv->sv_bc_xprt)
--		return -EINVAL;
--
--	/* on success freed in xprt_free */
--	bc_sid = kmalloc(sizeof(struct nfs4_sessionid), GFP_KERNEL);
--	if (!bc_sid)
--		return -ENOMEM;
--	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
--		NFS4_MAX_SESSIONID_LEN);
--	spin_lock_bh(&serv->sv_cb_lock);
--	serv->sv_bc_xprt->xpt_bc_sid = bc_sid;
--	spin_unlock_bh(&serv->sv_cb_lock);
--	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for sv_bc_xprt %p\n", __func__,
--		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
--		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
--		serv->sv_bc_xprt);
--	return 0;
--}
--
--/*
-  * The callback service for NFSv4.1 callbacks
-  */
- static int
-@@ -266,10 +239,6 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
- 		struct nfs_callback_data *cb_info)
- {
- }
--int nfs4_set_callback_sessionid(struct nfs_client *clp)
--{
--	return 0;
--}
- #endif /* CONFIG_NFS_V4_1 */
- 
- /*
-@@ -359,78 +328,56 @@ void nfs_callback_down(int minorversion)
- 	mutex_unlock(&nfs_callback_mutex);
- }
- 
--static int check_gss_callback_principal(struct nfs_client *clp,
--					struct svc_rqst *rqstp)
-+/* Boolean check of RPC_AUTH_GSS principal */
-+int
-+check_gss_callback_principal(struct nfs_client *clp, struct svc_rqst *rqstp)
- {
- 	struct rpc_clnt *r = clp->cl_rpcclient;
- 	char *p = svc_gss_principal(rqstp);
- 
-+	if (rqstp->rq_authop->flavour != RPC_AUTH_GSS)
-+		return 1;
-+
- 	/* No RPC_AUTH_GSS on NFSv4.1 back channel yet */
- 	if (clp->cl_minorversion != 0)
--		return SVC_DROP;
-+		return 0;
- 	/*
- 	 * It might just be a normal user principal, in which case
- 	 * userspace won't bother to tell us the name at all.
- 	 */
- 	if (p == NULL)
--		return SVC_DENIED;
-+		return 0;
- 
- 	/* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
- 
- 	if (memcmp(p, "nfs@", 4) != 0)
--		return SVC_DENIED;
-+		return 0;
- 	p += 4;
- 	if (strcmp(p, r->cl_server) != 0)
--		return SVC_DENIED;
--	return SVC_OK;
-+		return 0;
-+	return 1;
- }
- 
--/* pg_authenticate method helper */
--static struct nfs_client *nfs_cb_find_client(struct svc_rqst *rqstp)
--{
--	struct nfs4_sessionid *sessionid = bc_xprt_sid(rqstp);
--	int is_cb_compound = rqstp->rq_proc == CB_COMPOUND ? 1 : 0;
--
--	dprintk("--> %s rq_proc %d\n", __func__, rqstp->rq_proc);
--	if (svc_is_backchannel(rqstp))
--		/* Sessionid (usually) set after CB_NULL ping */
--		return nfs4_find_client_sessionid(svc_addr(rqstp), sessionid,
--						  is_cb_compound);
--	else
--		/* No callback identifier in pg_authenticate */
--		return nfs4_find_client_no_ident(svc_addr(rqstp));
--}
--
--/* pg_authenticate method for nfsv4 callback threads. */
--static int nfs_callback_authenticate(struct svc_rqst *rqstp)
-+/*
-+ * The authflavor has been negotiated, so an incorrect flavor is a server
-+ * bug. Drop packets with incorrect authflavor.
-+ *
-+ * All other checking done after NFS decoding where the nfs_client can be
-+ * found in nfs4_callback_compound
-+ */
-+static int nfs4_bc_pg_authenticate(struct svc_rqst *rqstp)
- {
--	struct nfs_client *clp;
--	RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
--	int ret = SVC_OK;
--
--	/* Don't talk to strangers */
--	clp = nfs_cb_find_client(rqstp);
--	if (clp == NULL)
--		return SVC_DROP;
--
--	dprintk("%s: %s NFSv4 callback!\n", __func__,
--			svc_print_addr(rqstp, buf, sizeof(buf)));
--
- 	switch (rqstp->rq_authop->flavour) {
--		case RPC_AUTH_NULL:
--			if (rqstp->rq_proc != CB_NULL)
--				ret = SVC_DENIED;
--			break;
--		case RPC_AUTH_UNIX:
--			break;
--		case RPC_AUTH_GSS:
--			ret = check_gss_callback_principal(clp, rqstp);
--			break;
--		default:
--			ret = SVC_DENIED;
-+	case RPC_AUTH_NULL:
-+		if (rqstp->rq_proc != CB_NULL)
-+			return SVC_DROP;
-+		break;
-+	case RPC_AUTH_GSS:
-+		/* No RPC_AUTH_GSS support yet in NFSv4.1 */
-+		 if (svc_is_backchannel(rqstp))
-+			return SVC_DROP;
- 	}
--	nfs_put_client(clp);
--	return ret;
-+	return SVC_OK;
- }
- 
- /*
-@@ -450,5 +397,5 @@ static struct svc_program nfs4_callback_program = {
- 	.pg_name = "NFSv4 callback",			/* service name */
- 	.pg_class = "nfs",				/* authentication class */
- 	.pg_stats = &nfs4_callback_stats,
--	.pg_authenticate = nfs_callback_authenticate,
-+	.pg_authenticate = nfs4_bc_pg_authenticate,
- };
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index d3b44f9..46d93ce 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -7,6 +7,7 @@
-  */
- #ifndef __LINUX_FS_NFS_CALLBACK_H
- #define __LINUX_FS_NFS_CALLBACK_H
-+#include <linux/sunrpc/svc.h>
- 
- #define NFS4_CALLBACK 0x40000000
- #define NFS4_CALLBACK_XDRSIZE 2048
-@@ -37,7 +38,6 @@ enum nfs4_callback_opnum {
- struct cb_process_state {
- 	__be32			drc_status;
- 	struct nfs_client	*clp;
--	struct nfs4_sessionid	*svc_sid; /* v4.1 callback service sessionid */
- };
- 
- struct cb_compound_hdr_arg {
-@@ -168,7 +168,7 @@ extern unsigned nfs4_callback_layoutrecall(
- extern void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
- extern void nfs4_cb_take_slot(struct nfs_client *clp);
- #endif /* CONFIG_NFS_V4_1 */
--
-+extern int check_gss_callback_principal(struct nfs_client *, struct svc_rqst *);
- extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
- 				    struct cb_getattrres *res,
- 				    struct cb_process_state *cps);
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 4bb91cb..829f406 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -373,17 +373,11 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- {
- 	struct nfs_client *clp;
- 	int i;
--	__be32 status;
-+	__be32 status = htonl(NFS4ERR_BADSESSION);
- 
- 	cps->clp = NULL;
- 
--	status = htonl(NFS4ERR_BADSESSION);
--	/* Incoming session must match the callback session */
--	if (memcmp(&args->csa_sessionid, cps->svc_sid, NFS4_MAX_SESSIONID_LEN))
--		goto out;
--
--	clp = nfs4_find_client_sessionid(args->csa_addr,
--					 &args->csa_sessionid, 1);
-+	clp = nfs4_find_client_sessionid(args->csa_addr, &args->csa_sessionid);
- 	if (clp == NULL)
- 		goto out;
- 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 23112c2..d4eb5ce 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -792,12 +792,13 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 	if (status == __constant_htonl(NFS4ERR_RESOURCE))
- 		return rpc_garbage_args;
- 
-+
- 	if (hdr_arg.minorversion == 0) {
-+		/* Don't talk to strangers */
- 		cps.clp = nfs4_find_client_ident(hdr_arg.cb_ident);
--		if (!cps.clp)
-+		if (!cps.clp || !check_gss_callback_principal(cps.clp, rqstp))
- 			return rpc_drop_reply;
--	} else
--		cps.svc_sid = bc_xprt_sid(rqstp);
-+	}
- 
- 	hdr_res.taglen = hdr_arg.taglen;
- 	hdr_res.tag = hdr_arg.tag;
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 192f2f8..a124f1d 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1203,19 +1203,15 @@ nfs4_find_client_ident(int cb_ident)
- #if defined(CONFIG_NFS_V4_1)
- /*
-  * NFSv4.1 callback thread helper
-+ *
-  * For CB_COMPOUND calls, find a client by IP address, protocol version,
-  * minorversion, and sessionID
-  *
-- * CREATE_SESSION triggers a CB_NULL ping from servers. The callback service
-- * sessionid can only be set after the CREATE_SESSION return, so a CB_NULL
-- * can arrive before the callback sessionid is set. For CB_NULL calls,
-- * find a client by IP address protocol version, and minorversion.
-- *
-  * Returns NULL if no such client
-  */
- struct nfs_client *
- nfs4_find_client_sessionid(const struct sockaddr *addr,
--			   struct nfs4_sessionid *sid, int is_cb_compound)
-+			   struct nfs4_sessionid *sid)
- {
- 	struct nfs_client *clp;
- 
-@@ -1227,9 +1223,9 @@ nfs4_find_client_sessionid(const struct sockaddr *addr,
- 		if (!nfs4_has_session(clp))
- 			continue;
- 
--		/* Match sessionid unless cb_null call*/
--		if (is_cb_compound && (memcmp(clp->cl_session->sess_id.data,
--		    sid->data, NFS4_MAX_SESSIONID_LEN) != 0))
-+		/* Match sessionid*/
-+		if (memcmp(clp->cl_session->sess_id.data,
-+		    sid->data, NFS4_MAX_SESSIONID_LEN) != 0)
- 			continue;
- 
- 		atomic_inc(&clp->cl_count);
-@@ -1244,7 +1240,7 @@ nfs4_find_client_sessionid(const struct sockaddr *addr,
- 
- struct nfs_client *
- nfs4_find_client_sessionid(const struct sockaddr *addr,
--			   struct nfs4_sessionid *sid, int is_cb_compound)
-+			   struct nfs4_sessionid *sid)
- {
- 	return NULL;
- }
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index bfa3a34..25b734c 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -133,8 +133,7 @@ extern void nfs_put_client(struct nfs_client *);
- extern struct nfs_client *nfs4_find_client_no_ident(const struct sockaddr *);
- extern struct nfs_client *nfs4_find_client_ident(int);
- extern struct nfs_client *
--nfs4_find_client_sessionid(const struct sockaddr *, struct nfs4_sessionid *,
--			   int);
-+nfs4_find_client_sessionid(const struct sockaddr *, struct nfs4_sessionid *);
- extern struct nfs_server *nfs_create_server(
- 					const struct nfs_parsed_mount_data *,
- 					struct nfs_fh *);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 2336d53..e6742b5 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -232,12 +232,6 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 	status = nfs4_proc_create_session(clp);
- 	if (status != 0)
- 		goto out;
--	status = nfs4_set_callback_sessionid(clp);
--	if (status != 0) {
--		printk(KERN_WARNING "Sessionid not set. No callback service\n");
--		nfs_callback_down(1);
--		status = 0;
--	}
- 	nfs41_setup_state_renewal(clp);
- 	nfs_mark_client_ready(clp, NFS_CS_READY);
- out:
-diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
-index c50b458..0828842 100644
---- a/include/linux/sunrpc/bc_xprt.h
-+++ b/include/linux/sunrpc/bc_xprt.h
-@@ -47,14 +47,6 @@ static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
- 		return 1;
- 	return 0;
- }
--static inline struct nfs4_sessionid *bc_xprt_sid(struct svc_rqst *rqstp)
--{
--	if (svc_is_backchannel(rqstp))
--		return (struct nfs4_sessionid *)
--			rqstp->rq_server->sv_bc_xprt->xpt_bc_sid;
--	return NULL;
--}
--
- #else /* CONFIG_NFS_V4_1 */
- static inline int xprt_setup_backchannel(struct rpc_xprt *xprt,
- 					 unsigned int min_reqs)
-@@ -67,11 +59,6 @@ static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
- 	return 0;
- }
- 
--static inline struct nfs4_sessionid *bc_xprt_sid(struct svc_rqst *rqstp)
--{
--	return NULL;
--}
--
- static inline void xprt_free_bc_request(struct rpc_rqst *req)
- {
- }
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 357da5e..aea0d43 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -78,7 +78,6 @@ struct svc_xprt {
- 	size_t			xpt_remotelen;	/* length of address */
- 	struct rpc_wait_queue	xpt_bc_pending;	/* backchannel wait queue */
- 	struct list_head	xpt_users;	/* callbacks on free */
--	void			*xpt_bc_sid;	/* back channel session ID */
- 
- 	struct net		*xpt_net;
- };
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index d265aa7..460655f 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1605,9 +1605,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
-  */
- static void svc_bc_sock_free(struct svc_xprt *xprt)
- {
--	if (xprt) {
--		kfree(xprt->xpt_bc_sid);
-+	if (xprt)
- 		kfree(container_of(xprt, struct svc_sock, sk_xprt));
--	}
- }
- #endif /* CONFIG_NFS_V4_1 */
--- 
-1.6.6
+Looking at slabinfo, specifically, this: stats=$(grep nfs_inode_cache
+/proc/slabinfo | awk '{ print $2, $3 }')
+the active_objs and num_objs both increase to over a million (these
+boxes are delivering mail to NFS-mounted mailboxes, so that's
+perfectly reasonable). On both boxes, looking at sar, things start to
+go awry around 10am today EST. At that time on the 2.6.36.2 box, the
+NFS numbers look like this:
 
+Fri Jan  7 09:58:00 2011: 1079433 1079650
+Fri Jan  7 09:59:00 2011: 1079632 1080300
+Fri Jan  7 10:00:00 2011: 1080196 1080300
+Fri Jan  7 10:01:01 2011: 1080599 1080716
+Fri Jan  7 10:02:01 2011: 1081074 1081288
+
+on the bisected, like this:
+
+Fri Jan  7 09:59:34 2011: 1162786 1165320
+Fri Jan  7 10:00:34 2011: 1163301 1165320
+Fri Jan  7 10:01:34 2011: 1164369 1165450
+Fri Jan  7 10:02:35 2011: 1164179 1165450
+Fri Jan  7 10:03:35 2011: 1165795 1166958
+
+When the bisected box finally died, the last numbers were:
+
+Fri Jan  7 10:40:33 2011: 1177156 1177202
+Fri Jan  7 10:42:21 2011: 1177157 1177306
+Fri Jan  7 10:44:55 2011: 1177201 1177324
+Fri Jan  7 10:45:55 2011: 1177746 1177826
+
+On the still-thrashing 2.6.36.2 box, the highwater mark is:
+
+Fri Jan  7 10:23:30 2011: 1084020 1084070
+
+and once things went awry, the active_objs started falling away and
+the number_objs has stayed at 1084070. Last numbers were:
+
+Fri Jan  7 12:19:34 2011: 826623 1084070
+
+The bisected box had reached 1mil entries (or more significantly
+1048576 entries) by y'day evening. The 2.6.36.2 box hit that by 7am
+EST today. So in neither case was there a big spike in entries.
+
+These boxes have identical workloads. They're not accessible from the
+net, so there's no chance of a DDoS or something. The significance of
+10am EST could be either uptime-related (all these have gone down
+after 2-3 days) or just due to the to-be-expected early morning spike
+in mail flow.
