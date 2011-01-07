@@ -1,81 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:38481 "EHLO magus.merit.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751257Ab1AEPib (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 10:38:31 -0500
-Date: Wed, 5 Jan 2011 10:38:29 -0500
-From: Jim Rees <rees@umich.edu>
-To: Marc Kleine-Budde <mkl@pengutronix.de>
-Cc: Uwe =?iso-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>,
-        Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:56418 "EHLO
+	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755116Ab1AGTLJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Jan 2011 14:11:09 -0500
 Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-Message-ID: <20110105153829.GB11608@merit.edu>
-References: <1293731992.4919.5.camel@heimdal.trondhjem.org>
- <20101230191846.GB14221@pengutronix.de>
- <20110103213850.GC25121@pengutronix.de>
- <1294100558.25100.8.camel@heimdal.trondhjem.org>
- <20110105084014.GN25121@pengutronix.de>
- <20110105110517.GQ25121@pengutronix.de>
- <20110105112701.GA8638@n2100.arm.linux.org.uk>
- <20110105134045.GS25121@pengutronix.de>
- <20110105142902.GA9278@merit.edu>
- <4D248343.2000407@pengutronix.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D248343.2000407@pengutronix.de>
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+To: Russell King - ARM Linux <linux@arm.linux.org.uk>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+In-Reply-To: <20110107190229.GX31708@n2100.arm.linux.org.uk>
+References: <20110105210448.GM8638@n2100.arm.linux.org.uk>
+	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
+	 <1294262208.2952.4.camel@heimdal.trondhjem.org>
+	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
+	 <1294268808.2952.18.camel@heimdal.trondhjem.org>
+	 <1294270104.16957.73.camel@mulgrave.site>
+	 <1294335614.22825.154.camel@mulgrave.site>
+	 <1294336054.2905.1.camel@heimdal.trondhjem.org>
+	 <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>
+	 <1294426405.2929.23.camel@heimdal.trondhjem.org>
+	 <20110107190229.GX31708@n2100.arm.linux.org.uk>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 07 Jan 2011 13:11:07 -0600
+Message-ID: <1294427467.4895.66.camel@mulgrave.site>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Marc Kleine-Budde wrote:
+On Fri, 2011-01-07 at 19:02 +0000, Russell King - ARM Linux wrote:
+> On Fri, Jan 07, 2011 at 01:53:25PM -0500, Trond Myklebust wrote:
+> > I'd still like to keep the existing code for those architectures that
+> > don't have problems, since that allows us to send 32k READDIR requests
+> > instead of being limited to 4k. For large directories, that is a clear
+> > win.
+> > For the NOMMU case we will just go back to using a single page for
+> > storage (and 4k READDIR requests only). Should I just do the same for
+> > architectures like ARM and PARISC?
+> 
+> I think you said that readdir reads via the vmalloc mapping of the
+> group of pages, but XDR writes to the individual pages.
 
-  > Trond sent a fix to the nfs list on 27 Nov for "fileid changed" but I don't
-  > know if this is the same bug you're seeing.  The patch was to
-  > nfs_same_file() and I can send it if you want.  As far as I know the patch
-  > made it upstream.
-  
-  Are you sure it's in .37?
+Actually it's the other way around, but the point still stands.
 
-...
+> As I understand NFS, you receive a packet, you then have to use XDR
+> to unpack the data, which you presumably write into the set of
+> struct page *'s using kmap?
+> 
+> Isn't a solution to have XDR write directly into the vmalloc mapping
+> rather than using struct page * and kmap?
 
-  Would you please be so kind and send the patch to this thread?
+So, unfortuantely, I looked at doing this and we can't.  the ->readdir()
+call takes an array of pages, not a kernel virtual address of the pages,
+so there's no way to tell it to use a different mapping from the usual
+kernel one on them.
 
-This is the commit I'm thinking of:
+On the other hand, the xdr routines, since they take the pages anyway,
+could use a scatterlist approach to writing through the kernel mapping
+instead of using vmap ... we have all the machinery for this in
+lib/scatterlist.c ... it's not designed for this case, since it's
+designed to allow arbitrary linear reads and writes on a block
+scatterlist, but the principle is the same ... it looks like it would be
+rather a big patch, though ... 
 
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=37a09f07459753e7c98d4e21f1c61e8756923f81
+James
 
-NFS: Fix a readdirplus bug
 
-When comparing filehandles in the helper nfs_same_file(), we should not be
-using 'strncmp()': filehandles are not null terminated strings.
-
-Instead, we should just use the existing helper nfs_compare_fh().
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
----
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 8ea4a41..f0a384e 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -395,13 +395,9 @@ int xdr_decode(nfs_readdir_descriptor_t *desc, struct nfs_entry *entry, struct x
- static
- int nfs_same_file(struct dentry *dentry, struct nfs_entry *entry)
- {
--	struct nfs_inode *node;
- 	if (dentry->d_inode == NULL)
- 		goto different;
--	node = NFS_I(dentry->d_inode);
--	if (node->fh.size != entry->fh->size)
--		goto different;
--	if (strncmp(node->fh.data, entry->fh->data, node->fh.size) != 0)
-+	if (nfs_compare_fh(entry->fh, NFS_FH(dentry->d_inode)) != 0)
- 		goto different;
- 	return 1;
- different:
