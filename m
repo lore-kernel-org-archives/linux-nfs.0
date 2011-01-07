@@ -1,93 +1,152 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:37981 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:22040 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751026Ab1AEOxP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 09:53:15 -0500
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>
-Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        linux-nfs@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>
-In-Reply-To: <20110105134045.GS25121@pengutronix.de>
-References: <20101230171453.GA5787@pengutronix.de>
-	 <1293731992.4919.5.camel@heimdal.trondhjem.org>
-	 <20101230191846.GB14221@pengutronix.de>
-	 <20110103213850.GC25121@pengutronix.de>
-	 <1294100558.25100.8.camel@heimdal.trondhjem.org>
-	 <20110105084014.GN25121@pengutronix.de>
-	 <20110105110517.GQ25121@pengutronix.de>
-	 <20110105112701.GA8638@n2100.arm.linux.org.uk>
-	 <20110105134045.GS25121@pengutronix.de>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 05 Jan 2011 09:53:13 -0500
-Message-ID: <1294239193.3014.9.camel@heimdal.trondhjem.org>
+	id S1752870Ab1AGSmP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Jan 2011 13:42:15 -0500
+Message-ID: <4D275E7F.5010704@netapp.com>
+Date: Fri, 07 Jan 2011 13:42:07 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: Andy Adamson <andros@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH v2 5/5] NFS: Determine initial mount security
+References: <4D24CB32.7080509@netapp.com> <8AF961E3-D276-421C-80ED-E91991B48137@netapp.com>
+In-Reply-To: <8AF961E3-D276-421C-80ED-E91991B48137@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-01-05 at 14:40 +0100, Uwe Kleine-König wrote: 
-> Hi Russell,
+On 01/06/2011 07:58 PM, Andy Adamson wrote:
 > 
-> On Wed, Jan 05, 2011 at 11:27:01AM +0000, Russell King - ARM Linux wrote:
-> > On Wed, Jan 05, 2011 at 12:05:17PM +0100, Uwe Kleine-König wrote:
-> > > Hello Trond,
-> > > 
-> > > On Wed, Jan 05, 2011 at 09:40:14AM +0100, Uwe Kleine-König wrote:
-> > > > On Mon, Jan 03, 2011 at 07:22:38PM -0500, Trond Myklebust wrote:
-> > > > > The question is whether this is something happening on the server or the
-> > > > > client. Does an older client kernel boot without any trouble?
-> > > > I will set up a boot test with 2.6.37 (for statistics) and 2.6.36 to
-> > > > compare with.  If you don't consider .36 to be old enough let me now.
-> > > > Once the setup is done it should be easy to test .35 (say), too.
-> > > > 
-> > > Marc (cc'd) saw similar[1] problems with .37, when using .36.2 the
-> > > problems didn't occur.  This was more reliable to trigger and he was so
-> > > kind to bisect the problem.
-> > > 
-> > > When testing v2.6.36-rc3-51-gafa8ccc init hanged.
-> > > (babddc72a9468884ce1a23db3c3d54b0afa299f0 is the first bad commit with
-> > > this hang.)  Commit 56e4ebf877b6043c289bda32a5a7385b80c17dee makes the
-> > > "init hangs" problem the "fileid changed on tab" problem.
-> > > 
-> > > I could only reproduce that on armv5 machines (imx27, imx28 and at91)
-> > > but not on armv6 (imx35).
-> > 
-> > FYI, I've seen the "fileid changed" problem, and it looked like a 32-bit
-> > truncation of the fileid.  It occurred several times on successive
-> > reboots, so I tried to capture a tcpdump trace off the server (Linux
-> > 2.6.23-rc8-ga64314e6 - its ancient because I've had issues with buggy
-> > IDE drivers trying to move it forward.)  However, for the last couple
-> > of weeks I've been unable to reproduce it.
-> > 
-> > The client was based on 2.6.37-rc6.
-> > 
-> > The "fileid changed" messages popped up after mounting an export with
-> > 'nolock,intr,rsize=4096,soft', and then trying to use bash completion
-> > and 'ls' in a few subdirectories - and entries were missing from the
-> > directory lists without 'ls' reporting any errors (which I think is bad
-> > behaviour in itself.)
-> There was a bug in at least -rc5[1] that was considered already fixed in
-> -rc4[2]. The later announcements didn't mention it anymore. 
+> On Jan 5, 2011, at 2:49 PM, Bryan Schumaker wrote:
 > 
-> > I don't know why it's stopped producing the errors, although once it
-> > went I never investigated it any further (was far too busy trying to
-> > get AMBA DMA support working.)
-> It seems it was fixed for most users though. Trond?
+>>
+>> When sec=<something> is not presented as a mount option,
+>> we should attempt to determine what security flavor the
+>> server is using.
+>>
+>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>> ---
+>> fs/nfs/nfs4proc.c                     |   33 +++++++++++++++++++++++++++++++--
+>> include/linux/sunrpc/gss_api.h        |    3 +++
+>> net/sunrpc/auth_gss/gss_mech_switch.c |   16 ++++++++++++++++
+>> 3 files changed, 50 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 4a1d79e..19ee25d 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -41,6 +41,7 @@
+>> #include <linux/string.h>
+>> #include <linux/slab.h>
+>> #include <linux/sunrpc/clnt.h>
+>> +#include <linux/sunrpc/gss_api.h>
+>> #include <linux/nfs.h>
+>> #include <linux/nfs4.h>
+>> #include <linux/nfs_fs.h>
+>> @@ -2171,15 +2172,43 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+>> 	return err;
+>> }
+>>
+>> +static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+>> +				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
+>> +{
+>> +	struct rpc_auth *auth;
+>> +	int ret;
+>> +
+>> +	auth = rpcauth_create(flavor, server->client);
+>> +	if (!auth) {
+>> +		ret = -EIO;
+>> +		goto out;
+>> +	}
+> 
+> Are you leaking rpc_auth's?
+> 
+> -->Andy
+> 
 
-As I said, I can't reproduce it.
+I don't think so... rpcauth_create() should take care of freeing the previous auth struct assigned to the rpc_client.
 
-I'm seeing a lot of mention of ARM above. Is anyone seeing this bug on
-x86, or does it appear to be architecture-specific?
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+- Bryan
+>> +	ret = nfs4_lookup_root(server, fhandle, info);
+>> +	if (ret < 0)
+>> +		ret = -EAGAIN;
+>> +out:
+>> +	return ret;
+>> +}
+>> +
+>> /*
+>>  * get the file handle for the "/" directory on the server
+>>  */
+>> static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
+>> 			      struct nfs_fsinfo *info)
+>> {
+>> -	int status;
+>> +	int i, len, status = 0;
+>> +	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS + 2];
+>>
+>> -	status = nfs4_lookup_root(server, fhandle, info);
+>> +	flav_array[0] = RPC_AUTH_UNIX;
+>> +	len = gss_mech_list_pseudoflavors(&flav_array[1]);
+>> +	flav_array[1+len] = RPC_AUTH_NULL;
+>> +	len += 2;
+>> +
+>> +	for (i = 0; i < len; i++) {
+>> +		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
+>> +		if (status == 0)
+>> +			break;
+>> +	}
+>> 	if (status == 0)
+>> 		status = nfs4_server_capabilities(server, fhandle);
+>> 	if (status == 0)
+>> diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+>> index 5d8048b..332da61 100644
+>> --- a/include/linux/sunrpc/gss_api.h
+>> +++ b/include/linux/sunrpc/gss_api.h
+>> @@ -126,6 +126,9 @@ struct gss_api_mech *gss_mech_get_by_name(const char *);
+>> /* Similar, but get by pseudoflavor. */
+>> struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
+>>
+>> +/* Fill in an array with a list of supported pseudoflavors */
+>> +int gss_mech_list_pseudoflavors(u32 *);
+>> +
+>> /* Just increments the mechanism's reference count and returns its input: */
+>> struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
+>>
+>> diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+>> index 6c844b0..e3c36a2 100644
+>> --- a/net/sunrpc/auth_gss/gss_mech_switch.c
+>> +++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+>> @@ -215,6 +215,22 @@ gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
+>>
+>> EXPORT_SYMBOL_GPL(gss_mech_get_by_pseudoflavor);
+>>
+>> +int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr)
+>> +{
+>> +	struct gss_api_mech *pos = NULL;
+>> +	int i = 0;
+>> +
+>> +	spin_lock(&registered_mechs_lock);
+>> +	list_for_each_entry(pos, &registered_mechs, gm_list) {
+>> +		array_ptr[i] = pos->gm_pfs->pseudoflavor;
+>> +		i++;
+>> +	}
+>> +	spin_unlock(&registered_mechs_lock);
+>> +	return i;
+>> +}
+>> +
+>> +EXPORT_SYMBOL_GPL(gss_mech_list_pseudoflavors);
+>> +
+>> u32
+>> gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
+>> {
+>> -- 
+>> 1.7.3.4
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
