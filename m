@@ -1,84 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:57050 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751423Ab1A0TdV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jan 2011 14:33:21 -0500
-Received: from rcsinet13.oracle.com (rcsinet13.oracle.com [148.87.113.125])
-	by rcsinet10.oracle.com (Switch-3.4.2/Switch-3.4.2) with ESMTP id p0RJXKgv018807
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2011 19:33:21 GMT
-Received: from acsmt354.oracle.com (acsmt354.oracle.com [141.146.40.154])
-	by rcsinet13.oracle.com (Switch-3.4.2/Switch-3.4.1) with ESMTP id p0RJXHsp020315
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2011 19:33:17 GMT
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: Cthon basic test 6 fails over NFS v4
-Date: Thu, 27 Jan 2011 14:32:36 -0500
-Message-Id: <3C315A30-AD48-449B-8756-F5AAEEAB476F@oracle.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:54612 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752429Ab1AGSx3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Jan 2011 13:53:29 -0500
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: James Bottomley <James.Bottomley@hansenpartnership.com>,
+        Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+In-Reply-To: <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>
+References: <1294254337.16957.13.camel@mulgrave.site>
+	 <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
+	 <1294256169.16957.18.camel@mulgrave.site>
+	 <20110105200008.GJ8638@n2100.arm.linux.org.uk>
+	 <1294259637.16957.25.camel@mulgrave.site>
+	 <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
+	 <20110105210448.GM8638@n2100.arm.linux.org.uk>
+	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
+	 <1294262208.2952.4.camel@heimdal.trondhjem.org>
+	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
+	 <1294268808.2952.18.camel@heimdal.trondhjem.org>
+	 <1294270104.16957.73.camel@mulgrave.site>
+	 <1294335614.22825.154.camel@mulgrave.site>
+	 <1294336054.2905.1.camel@heimdal.trondhjem.org>
+	 <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 07 Jan 2011 13:53:25 -0500
+Message-ID: <1294426405.2929.23.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Client: Linux 2.6.38-rc2 x86_64
-Server: OpenSolaris 5.11 snv_134
-NFS version: 4.0
+On Thu, 2011-01-06 at 09:55 -0800, Linus Torvalds wrote: 
+> On Thu, Jan 6, 2011 at 9:47 AM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> >
+> > Why is this line needed? We're not writing through the virtual mapping.
+> 
+> I haven't looked at the sequence of accesses, but you need to be
+> _very_ aware that "write-through" is absolutely NOT sufficient for
+> cache coherency.
+> 
+> In cache coherency, you have three options:
+> 
+>  - true coherency (eg physically indexed/tagged caches)
+> 
+>  - exclusion (eg virtual caches, but with an exclusion guarantee that
+> guarantees that aliases cannot happen: either by using physical
+> tagging or by not allowing cases that could cause virtual aliases)
+> 
+>  - write-through AND non-cached reads (ie "no caching at all").
+> 
+> You seem to be forgetting the "no cached reads" part. It's not
+> sufficient to flush after a write - you need to make sure that you
+> also don't have a cached copy of the alias for the read.
+> 
+> So "We're not writing through the virtual mapping" is NOT a sufficient
+> excuse. If you're reading through the virtual mapping, you need to
+> make sure that the virtual mapping is flushed _after_ any writes
+> through any other mapping and _before_ any reads through the virtual
+> one.
 
-Connectathon basic test 6 fails over NFSv4, but not over NFSv3.
+I'm aware of that. That part should be taken care of by the call to
+invalidate_kernel_vmap_range() which was in both James and my patch.
 
-[cel@matisse cthon04]$ ./server -b
-Start tests on path /mnt/klimt/matisse.test [y/n]? y
+There is already code in the SUNRPC layer that calls flush_dcache_page()
+after writing (although as Russell pointed out earlier, that is
+apparently a no-op for non-page cache pages such as these).
 
-sh ./runtests  -b -t /mnt/klimt/matisse.test
+> This is why you really really really generally don't want to have
+> aliasing. Purely virtual caches are pure crap. Really.
 
-Starting BASIC tests: test directory /mnt/klimt/matisse.test (arg: -t)
+Well, it looks as if NOMMU is giving us problems due to the lack of a
+vm_map_ram() (see https://bugzilla.kernel.org/show_bug.cgi?id=26262).
 
-./test1: File and directory creation test
-	created 155 files 62 directories 5 levels deep in 2.25 seconds
-	./test1 ok.
-
-./test2: File and directory removal test
-	removed 155 files 62 directories 5 levels deep in 1.30 seconds
-	./test2 ok.
-
-./test3: lookups across mount point
-	500 getcwd and stat calls in 0.0  seconds
-	./test3 ok.
-
-./test4: setattr, getattr, and lookup
-	1000 chmods and stats on 10 files in 6.5  seconds
-	./test4 ok.
-
-./test5: read and write
-	wrote 1048576 byte file 10 times in 0.72 seconds (14411197 bytes/sec)
-	read 1048576 byte file 10 times in 0.0  seconds (-2147483648 bytes/sec)
-	./test5 ok.
-
-./test6: readdir
-	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.12' dir entry, pass 0
-	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.82' dir entry, pass 0
-	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.164' dir entry, pass 0
-	./test6: (/mnt/klimt/matisse.test) Test failed with 3 errors
-basic tests failed
-Tests failed, leaving /mnt/klimt mounted
-[cel@matisse cthon04]$
-
-"ls /mnt/klimt/matisse.test" shows the series of test files, missing the three called out above.
-
-"ls /share/test/matisse.test" on the server shows all of the files, including the three called out above.
-
-Unmounting and mounting /mnt/klimt/matisse.test shows the same result (these three missing).  A network trace captured during the "ls" shows that these files are returned by the server.
-
-Unmounting and mounting /mnt/klimt/matisse.test with "vers=3" shows an identical list of files as "ls" on the server, and Cthon test 6 works fine over vers=3.
-
-This failure is 100% reproducible: always three files are missing, but not always the same three.
-
-Evidence suggests a problem with the client's NFSv4 readdir result decoder logic, but I wanted to check to see if anyone has a fix or suggestions about where to look first.
+I'd still like to keep the existing code for those architectures that
+don't have problems, since that allows us to send 32k READDIR requests
+instead of being limited to 4k. For large directories, that is a clear
+win.
+For the NOMMU case we will just go back to using a single page for
+storage (and 4k READDIR requests only). Should I just do the same for
+architectures like ARM and PARISC?
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Trond Myklebust
+Linux NFS client maintainer
 
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
