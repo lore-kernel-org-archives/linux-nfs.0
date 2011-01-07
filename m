@@ -1,374 +1,354 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3847 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33347 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751988Ab1AFV6s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Jan 2011 16:58:48 -0500
-Message-ID: <4D263B17.7090101@netapp.com>
-Date: Thu, 06 Jan 2011 16:58:47 -0500
+	id S1752779Ab1AGSwO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Jan 2011 13:52:14 -0500
+Message-ID: <4D2760D7.3020701@netapp.com>
+Date: Fri, 07 Jan 2011 13:52:07 -0500
 From: Bryan Schumaker <bjschuma@netapp.com>
 To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: [PATCH v3 4/5] NFS: use secinfo when crossing mountpoints
+Subject: [PATCH v4 3/5] NFS: Add secinfo procedure
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-A submount may use different security than the parent
-mount does.  We should figure out what sec flavor the
-submount uses at mount time.
+This patch adds the nfs4 operation secinfo as a
+valid nfs rpc operation.
 
 Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/inode.c                        |    8 ++-
- fs/nfs/internal.h                     |    7 ++
- fs/nfs/namespace.c                    |  102 ++++++++++++++++++++++++++++++++-
- fs/nfs/nfs4proc.c                     |   14 +++++
- fs/nfs/nfs4xdr.c                      |   11 ++--
- include/linux/nfs_xdr.h               |    1 +
- net/sunrpc/auth_gss/gss_mech_switch.c |   22 +++++++
- 7 files changed, 154 insertions(+), 11 deletions(-)
+ fs/nfs/nfs4proc.c       |   35 ++++++++++++
+ fs/nfs/nfs4xdr.c        |  139 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs4.h    |    1 +
+ include/linux/nfs_xdr.h |   34 ++++++++++++
+ 4 files changed, 209 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 790b786..02669c8 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -249,7 +249,9 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 	struct inode *inode = ERR_PTR(-ENOENT);
- 	unsigned long hash;
- 
--	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0)
-+	nfs_attr_check_mountpoint(sb, fattr);
-+
-+	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0 && (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT) == 0)
- 		goto out_no_inode;
- 	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) == 0)
- 		goto out_no_inode;
-@@ -293,8 +295,8 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS))
- 				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
- 			/* Deal with crossing mountpoints */
--			if ((fattr->valid & NFS_ATTR_FATTR_FSID)
--					&& !nfs_fsid_equal(&NFS_SB(sb)->fsid, &fattr->fsid)) {
-+			if (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT ||
-+					fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
- 				if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
- 					inode->i_op = &nfs_referral_inode_operations;
- 				else
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 367d898..04ccc2a 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -39,6 +39,12 @@ static inline int nfs4_has_persistent_session(const struct nfs_client *clp)
- 	return 0;
- }
- 
-+static inline void nfs_attr_check_mountpoint(struct super_block *parent, struct nfs_fattr *fattr)
-+{
-+	if (!nfs_fsid_equal(&NFS_SB(parent)->fsid, &fattr->fsid))
-+		fattr->valid |= NFS_ATTR_FATTR_MOUNTPOINT;
-+}
-+
- struct nfs_clone_mount {
- 	const struct super_block *sb;
- 	const struct dentry *dentry;
-@@ -212,6 +218,7 @@ extern const u32 nfs41_maxwrite_overhead;
- /* nfs4proc.c */
- #ifdef CONFIG_NFS_V4
- extern struct rpc_procinfo nfs4_procedures[];
-+void nfs_fixup_secinfo_attributes(struct nfs_fattr *, struct nfs_fh *);
- #endif
- 
- /* proc.c */
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 3c361f8..7cf77d0 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -15,6 +15,7 @@
- #include <linux/string.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/vfs.h>
-+#include <linux/sunrpc/gss_api.h>
- #include "internal.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
-@@ -28,7 +29,8 @@ int nfs_mountpoint_expiry_timeout = 500 * HZ;
- static struct vfsmount *nfs_do_submount(const struct vfsmount *mnt_parent,
- 					const struct dentry *dentry,
- 					struct nfs_fh *fh,
--					struct nfs_fattr *fattr);
-+					struct nfs_fattr *fattr,
-+					rpc_authflavor_t authflavor);
- 
- /*
-  * nfs_path - reconstruct the path given an arbitrary dentry
-@@ -87,6 +89,90 @@ Elong:
- 	return ERR_PTR(-ENAMETOOLONG);
- }
- 
-+static rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors, struct inode *inode)
-+{
-+	struct gss_api_mech *mech;
-+	struct xdr_netobj oid;
-+	int i;
-+	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
-+
-+	for (i = 0; i < flavors->num_flavors; i++) {
-+		struct nfs4_secinfo_flavor *flavor;
-+		flavor = &flavors->flavors[i];
-+
-+		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
-+			pseudoflavor = flavor->flavor;
-+			break;
-+		} else if (flavor->flavor == RPC_AUTH_GSS) {
-+			oid.len  = flavor->gss.sec_oid4.len;
-+			oid.data = flavor->gss.sec_oid4.data;
-+			mech = gss_mech_get_by_OID(&oid);
-+			if (!mech)
-+				continue;
-+			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
-+			gss_mech_put(mech);
-+			break;
-+		}
-+	}
-+
-+	return pseudoflavor;
-+}
-+
-+static rpc_authflavor_t nfs_negotiate_security(const struct dentry *parent, const struct dentry *dentry)
-+{
-+	int status = 0;
-+	struct page *page;
-+	struct nfs4_secinfo_flavors *flavors;
-+	int (*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
-+	rpc_authflavor_t flavor = RPC_AUTH_UNIX;
-+
-+	secinfo = NFS_PROTO(parent->d_inode)->secinfo;
-+	if (secinfo != NULL) {
-+		page = alloc_page(GFP_KERNEL);
-+		if (!page) {
-+			status = -ENOMEM;
-+			goto out;
-+		}
-+		flavors = page_address(page);
-+		status = secinfo(parent->d_inode, &dentry->d_name, flavors);
-+		flavor = nfs_find_best_sec(flavors, dentry->d_inode);
-+		put_page(page);
-+	}
-+
-+	return flavor;
-+
-+out:
-+	status = -ENOMEM;
-+	return status;
-+}
-+
-+static rpc_authflavor_t nfs_lookup_with_sec(struct nfs_server *server, struct dentry *parent,
-+				     struct dentry *dentry, struct nameidata *nd,
-+				     struct nfs_fh *fh, struct nfs_fattr *fattr)
-+{
-+	rpc_authflavor_t flavor;
-+	struct rpc_clnt *clone;
-+	struct rpc_auth *auth;
-+	int err;
-+
-+	flavor = nfs_negotiate_security(parent, nd->path.dentry);
-+	if (flavor < 0)
-+		goto out;
-+	clone  = rpc_clone_client(server->client);
-+	auth   = rpcauth_create(flavor, clone);
-+	if (!auth) {
-+		flavor = -EIO;
-+		goto out;
-+	}
-+	err = server->nfs_client->rpc_ops->lookup(clone, parent->d_inode,
-+						  &nd->path.dentry->d_name,
-+						  fh, fattr);
-+	if (err < 0)
-+		flavor = err;
-+out:
-+	return flavor;
-+}
-+
- /*
-  * nfs_follow_mountpoint - handle crossing a mountpoint on the server
-  * @dentry - dentry of mountpoint
-@@ -108,6 +194,7 @@ static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
- 	struct nfs_fh *fh = NULL;
- 	struct nfs_fattr *fattr = NULL;
- 	int err;
-+	rpc_authflavor_t flavor = 1;
- 
- 	dprintk("--> nfs_follow_mountpoint()\n");
- 
-@@ -130,6 +217,13 @@ static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
- 	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
- 						  &nd->path.dentry->d_name,
- 						  fh, fattr);
-+	if (err == -EPERM) {
-+		flavor = nfs_lookup_with_sec(server, parent, dentry, nd, fh, fattr);
-+		if (flavor < 0)
-+			err = flavor;
-+		else
-+			err = 0;
-+	}
- 	dput(parent);
- 	if (err != 0)
- 		goto out_err;
-@@ -138,7 +232,7 @@ static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
- 		mnt = nfs_do_refmount(nd->path.mnt, nd->path.dentry);
- 	else
- 		mnt = nfs_do_submount(nd->path.mnt, nd->path.dentry, fh,
--				      fattr);
-+				      fattr, flavor);
- 	err = PTR_ERR(mnt);
- 	if (IS_ERR(mnt))
- 		goto out_err;
-@@ -232,13 +326,15 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
- static struct vfsmount *nfs_do_submount(const struct vfsmount *mnt_parent,
- 					const struct dentry *dentry,
- 					struct nfs_fh *fh,
--					struct nfs_fattr *fattr)
-+					struct nfs_fattr *fattr,
-+					rpc_authflavor_t authflavor)
- {
- 	struct nfs_clone_mount mountdata = {
- 		.sb = mnt_parent->mnt_sb,
- 		.dentry = dentry,
- 		.fh = fh,
- 		.fattr = fattr,
-+		.authflavor = authflavor,
- 	};
- 	struct vfsmount *mnt = ERR_PTR(-ENOMEM);
- 	char *page = (char *) __get_free_page(GFP_USER);
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 92b47d9..82d50c4 100644
+index 53254f9..92b47d9 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -86,6 +86,8 @@ static int nfs4_map_errors(int err)
- 	switch (err) {
- 	case -NFS4ERR_RESOURCE:
- 		return -EREMOTEIO;
-+	case -NFS4ERR_WRONGSEC:
-+		return -EPERM;
- 	default:
- 		dprintk("%s could not handle NFSv4 error %d\n",
- 				__func__, -err);
-@@ -2363,6 +2365,16 @@ static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
+@@ -4533,6 +4533,40 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
  	return status;
  }
  
-+void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr, struct nfs_fh *fh)
++static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
 +{
-+	memset(fh, 0, sizeof(struct nfs_fh));
-+	fattr->fsid.major = 1;
-+	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
-+		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_FSID | NFS_ATTR_FATTR_MOUNTPOINT;
-+	fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
-+	fattr->nlink = 2;
++	int status;
++	struct nfs4_secinfo_arg args = {
++		.dir_fh = NFS_FH(dir),
++		.name   = name,
++	};
++	struct nfs4_secinfo_res res = {
++		.flavors     = flavors,
++	};
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SECINFO],
++		.rpc_argp = &args,
++		.rpc_resp = &res,
++	};
++
++	dprintk("NFS call  secinfo %s\n", name->name);
++	status = nfs4_call_sync(NFS_SERVER(dir)->client, NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
++	dprintk("NFS reply  secinfo: %d\n", status);
++	return status;
 +}
 +
- static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
- 			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
-@@ -2372,6 +2384,8 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
- 				_nfs4_proc_lookup(clnt, dir, name, fhandle, fattr),
- 				&exception);
-+		if (err == -EPERM)
-+			nfs_fixup_secinfo_attributes(fattr, fhandle);
- 	} while (exception.retry);
- 	return err;
- }
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 391a127..4f0a288 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -113,7 +113,7 @@ static int nfs4_stat_to_errno(int);
- #define encode_restorefh_maxsz  (op_encode_hdr_maxsz)
- #define decode_restorefh_maxsz  (op_decode_hdr_maxsz)
- #define encode_fsinfo_maxsz	(encode_getattr_maxsz)
--#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 11)
-+#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 15)
- #define encode_renew_maxsz	(op_encode_hdr_maxsz + 3)
- #define decode_renew_maxsz	(op_decode_hdr_maxsz)
- #define encode_setclientid_maxsz \
-@@ -2963,6 +2963,7 @@ static int decode_attr_error(struct xdr_stream *xdr, uint32_t *bitmap)
- 		if (unlikely(!p))
- 			goto out_overflow;
- 		bitmap[0] &= ~FATTR4_WORD0_RDATTR_ERROR;
-+		return -be32_to_cpup(p);
- 	}
- 	return 0;
- out_overflow:
-@@ -3950,6 +3951,10 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
- 	fattr->valid |= status;
- 
- 	status = decode_attr_error(xdr, bitmap);
-+	if (status == -NFS4ERR_WRONGSEC) {
-+		nfs_fixup_secinfo_attributes(fattr, fh);
-+		status = 0;
-+	}
- 	if (status < 0)
- 		goto xdr_error;
- 
-@@ -6323,10 +6328,6 @@ static struct {
- 	{ NFS4ERR_SYMLINK,	-ELOOP		},
- 	{ NFS4ERR_OP_ILLEGAL,	-EOPNOTSUPP	},
- 	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
--	{ NFS4ERR_WRONGSEC,	-EPERM		}, /* FIXME: this needs
--						    * to be handled by a
--						    * middle-layer.
--						    */
- 	{ -1,			-EIO		}
++int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
++{
++	struct nfs4_exception exception = { };
++	int err;
++	do {
++		err = nfs4_handle_exception(NFS_SERVER(dir),
++				_nfs4_proc_secinfo(dir, name, flavors),
++				&exception);
++	} while (exception.retry);
++	return err;
++}
++
+ #ifdef CONFIG_NFS_V4_1
+ /*
+  * nfs4_proc_exchange_id()
+@@ -5604,6 +5638,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.clear_acl_cache = nfs4_zap_acl_attr,
+ 	.close_context  = nfs4_close_context,
+ 	.open_context	= nfs4_atomic_open,
++	.secinfo	= nfs4_proc_secinfo,
  };
  
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 307a085..5bc8bd3 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -79,6 +79,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_CHANGE		(1U << 17)
- #define NFS_ATTR_FATTR_PRECHANGE	(1U << 18)
- #define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 19)	/* NFSv4 referral */
-+#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 20)	/* Treat as mountpoint */
+ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 8e49688..6af105d 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -46,6 +46,7 @@
+ #include <linux/kdev_t.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/msg_prot.h>
++#include <linux/sunrpc/gss_api.h>
+ #include <linux/nfs.h>
+ #include <linux/nfs4.h>
+ #include <linux/nfs_fs.h>
+@@ -253,6 +254,8 @@ static int nfs4_stat_to_errno(int);
+ 				(encode_getattr_maxsz)
+ #define decode_fs_locations_maxsz \
+ 				(0)
++#define encode_secinfo_maxsz	(op_encode_hdr_maxsz + nfs4_name_maxsz)
++#define decode_secinfo_maxsz	(op_decode_hdr_maxsz + 4 + (NFS_MAX_SECFLAVORS * (16 + GSS_OID_MAX_LEN)))
  
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 8b40610..6c844b0 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -160,6 +160,28 @@ gss_mech_get_by_name(const char *name)
+ #if defined(CONFIG_NFS_V4_1)
+ #define NFS4_MAX_MACHINE_NAME_LEN (64)
+@@ -676,6 +679,14 @@ static int nfs4_stat_to_errno(int);
+ 				 decode_putfh_maxsz + \
+ 				 decode_lookup_maxsz + \
+ 				 decode_fs_locations_maxsz)
++#define NFS4_enc_secinfo_sz 	(compound_encode_hdr_maxsz + \
++				encode_sequence_maxsz + \
++				encode_putfh_maxsz + \
++				encode_secinfo_maxsz)
++#define NFS4_dec_secinfo_sz	(compound_decode_hdr_maxsz + \
++				decode_sequence_maxsz + \
++				decode_putfh_maxsz + \
++				decode_secinfo_maxsz)
+ #if defined(CONFIG_NFS_V4_1)
+ #define NFS4_enc_exchange_id_sz \
+ 				(compound_encode_hdr_maxsz + \
+@@ -1616,6 +1627,18 @@ static void encode_delegreturn(struct xdr_stream *xdr, const nfs4_stateid *state
+ 	hdr->replen += decode_delegreturn_maxsz;
+ }
  
- EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
- 
-+struct gss_api_mech *
-+gss_mech_get_by_OID(struct xdr_netobj *obj)
++static void encode_secinfo(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
 +{
-+	struct gss_api_mech	*pos, *gm = NULL;
++	int len = name->len;
++	__be32 *p;
 +
-+	spin_lock(&registered_mechs_lock);
-+	list_for_each_entry(pos, &registered_mechs, gm_list) {
-+		if (obj->len == pos->gm_oid.len) {
-+			if (0 == memcmp(obj->data, pos->gm_oid.data, obj->len)) {
-+				if (try_module_get(pos->gm_owner))
-+					gm = pos;
-+				break;
-+			}
-+		}
-+	}
-+	spin_unlock(&registered_mechs_lock);
-+	return gm;
-+
++	p = reserve_space(xdr, 8 + len);
++	*p++ = cpu_to_be32(OP_SECINFO);
++	xdr_encode_opaque(p, name->name, len);
++	hdr->nops++;
++	hdr->replen += decode_secinfo_maxsz;
 +}
 +
-+EXPORT_SYMBOL_GPL(gss_mech_get_by_OID);
+ #if defined(CONFIG_NFS_V4_1)
+ /* NFSv4.1 operations */
+ static void encode_exchange_id(struct xdr_stream *xdr,
+@@ -2603,6 +2626,26 @@ static void nfs4_xdr_enc_layoutget(struct rpc_rqst *req,
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++/*
++ * Encode SECINFO request
++ */
++static int nfs4_xdr_enc_secinfo(struct rpc_rqst *req, uint32_t *p,
++				struct nfs4_secinfo_arg *args)
++{
++	struct xdr_stream xdr;
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
 +
- static inline int
- mech_supports_pseudoflavor(struct gss_api_mech *gm, u32 pseudoflavor)
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_compound_hdr(&xdr, req, &hdr);
++	encode_sequence(&xdr, &args->seq_args, &hdr);
++	encode_putfh(&xdr, args->dir_fh, &hdr);
++	encode_secinfo(&xdr, args->name, &hdr);
++	encode_nops(&hdr);
++	return 0;
++}
++
+ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
  {
+ 	dprintk("nfs: %s: prematurely hit end of receive buffer. "
+@@ -4677,6 +4720,73 @@ static int decode_delegreturn(struct xdr_stream *xdr)
+ 	return decode_op_hdr(xdr, OP_DELEGRETURN);
+ }
+ 
++static int decode_secinfo_gss(struct xdr_stream *xdr, struct nfs4_secinfo_flavor *flavor)
++{
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	flavor->gss.sec_oid4.len = be32_to_cpup(p);
++	if (flavor->gss.sec_oid4.len > GSS_OID_MAX_LEN)
++		goto out_err;
++
++	p = xdr_inline_decode(xdr, flavor->gss.sec_oid4.len + 8);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	memcpy(flavor->gss.sec_oid4.data, p, flavor->gss.sec_oid4.len);
++	p += XDR_QUADLEN(flavor->gss.sec_oid4.len);
++	flavor->gss.qop4 = be32_to_cpup(p++);
++	flavor->gss.service = be32_to_cpup(p);
++
++	return 0;
++
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++out_err:
++	return -EINVAL;
++}
++
++static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
++{
++	struct nfs4_secinfo_flavor *sec_flavor;
++	int status;
++	__be32 *p;
++	int i;
++	int num_flavors;
++
++	status = decode_op_hdr(xdr, OP_SECINFO);
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	num_flavors = be32_to_cpup(p);
++
++	for (i = 0; i < num_flavors; i++) {
++		sec_flavor = &res->flavors->flavors[i];
++		if ((char *)&sec_flavor[1] - (char *)res > PAGE_SIZE)
++			break;
++
++		p = xdr_inline_decode(xdr, 4);
++		if (unlikely(!p))
++			break;
++		sec_flavor->flavor = be32_to_cpup(p);
++
++		if (sec_flavor->flavor == RPC_AUTH_GSS) {
++			if (decode_secinfo_gss(xdr, sec_flavor))
++				break;
++		}
++	}
++
++	res->flavors->num_flavors = i;
++	return 0;
++
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
+ #if defined(CONFIG_NFS_V4_1)
+ static int decode_exchange_id(struct xdr_stream *xdr,
+ 			      struct nfs41_exchange_id_res *res)
+@@ -6064,6 +6174,34 @@ out:
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++/*
++ * Decode SECINFO response
++ */
++static int nfs4_xdr_dec_secinfo(struct rpc_rqst *rqstp, uint32_t *p,
++				struct nfs4_secinfo_res *res)
++{
++	struct xdr_stream xdr;
++	struct compound_hdr hdr;
++	int status;
++
++	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
++	status = decode_compound_hdr(&xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(&xdr, &res->seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_putfh(&xdr);
++	if (status)
++		goto out;
++	status = decode_secinfo(&xdr, res);
++	if (status)
++		goto out;
++out:
++	return status;
++	return NFS_OK;
++}
++
+ /**
+  * nfs4_decode_dirent - Decode a single NFSv4 directory entry stored in
+  *                      the local page cache.
+@@ -6265,6 +6403,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ 	PROC(SETACL,		enc_setacl,		dec_setacl),
+ 	PROC(FS_LOCATIONS,	enc_fs_locations,	dec_fs_locations),
+ 	PROC(RELEASE_LOCKOWNER,	enc_release_lockowner,	dec_release_lockowner),
++	PROC(SECINFO,		enc_secinfo,		dec_secinfo),
+ #if defined(CONFIG_NFS_V4_1)
+ 	PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
+ 	PROC(CREATE_SESSION,	enc_create_session,	dec_create_session),
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 4925b22..b4904b2 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -540,6 +540,7 @@ enum {
+ 	NFSPROC4_CLNT_SETACL,
+ 	NFSPROC4_CLNT_FS_LOCATIONS,
+ 	NFSPROC4_CLNT_RELEASE_LOCKOWNER,
++	NFSPROC4_CLNT_SECINFO,
+ 
+ 	/* nfs41 */
+ 	NFSPROC4_CLNT_EXCHANGE_ID,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 74c4e71..307a085 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -3,6 +3,7 @@
+ 
+ #include <linux/nfsacl.h>
+ #include <linux/nfs3.h>
++#include <linux/sunrpc/gss_api.h>
+ 
+ /*
+  * To change the maximum rsize and wsize supported by the NFS client, adjust
+@@ -936,6 +937,38 @@ struct nfs4_fs_locations_res {
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ 
++struct nfs4_secinfo_oid {
++	unsigned int len;
++	char data[GSS_OID_MAX_LEN];
++};
++
++struct nfs4_secinfo_gss {
++	struct nfs4_secinfo_oid sec_oid4;
++	unsigned int qop4;
++	unsigned int service;
++};
++
++struct nfs4_secinfo_flavor {
++	unsigned int 		flavor;
++	struct nfs4_secinfo_gss	gss;
++};
++
++struct nfs4_secinfo_flavors {
++	unsigned int num_flavors;
++	struct nfs4_secinfo_flavor flavors[0];
++};
++
++struct nfs4_secinfo_arg {
++	const struct nfs_fh		*dir_fh;
++	const struct qstr		*name;
++	struct nfs4_sequence_args	seq_args;
++};
++
++struct nfs4_secinfo_res {
++	struct nfs4_secinfo_flavors	*flavors;
++	struct nfs4_sequence_res	seq_res;
++};
++
+ #endif /* CONFIG_NFS_V4 */
+ 
+ struct nfstime4 {
+@@ -1106,6 +1139,7 @@ struct nfs_rpc_ops {
+ 				struct nfs_open_context *ctx,
+ 				int open_flags,
+ 				struct iattr *iattr);
++	int	(*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+ };
+ 
+ /*
 -- 
 1.7.3.4
 
