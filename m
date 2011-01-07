@@ -1,82 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:40919 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752037Ab1AaODP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Jan 2011 09:03:15 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Cc: nfsv4@ietf.org
-Subject: [PATCH 1/2] layout-sim: bump seqid on CB_LAYOUTRECALL re-issue
-Date: Mon, 31 Jan 2011 16:03:07 +0200
-Message-Id: <1296482588-4140-1-git-send-email-bhalevy@panasas.com>
+Received: from caramon.arm.linux.org.uk ([78.32.30.218]:35341 "EHLO
+	caramon.arm.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751590Ab1AGTDF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Jan 2011 14:03:05 -0500
+Date: Fri, 7 Jan 2011 19:02:29 +0000
+From: Russell King - ARM Linux <linux@arm.linux.org.uk>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        James Bottomley <James.Bottomley@hansenpartnership.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        Uwe =?iso-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+Message-ID: <20110107190229.GX31708@n2100.arm.linux.org.uk>
+References: <20110105210448.GM8638@n2100.arm.linux.org.uk> <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com> <1294262208.2952.4.camel@heimdal.trondhjem.org> <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com> <1294268808.2952.18.camel@heimdal.trondhjem.org> <1294270104.16957.73.camel@mulgrave.site> <1294335614.22825.154.camel@mulgrave.site> <1294336054.2905.1.camel@heimdal.trondhjem.org> <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com> <1294426405.2929.23.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1294426405.2929.23.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-the seqid needs to represent the current layout state after NFS4ERR_DELAY
-it is not a mere RPC-level retry.
+On Fri, Jan 07, 2011 at 01:53:25PM -0500, Trond Myklebust wrote:
+> I'd still like to keep the existing code for those architectures that
+> don't have problems, since that allows us to send 32k READDIR requests
+> instead of being limited to 4k. For large directories, that is a clear
+> win.
+> For the NOMMU case we will just go back to using a single page for
+> storage (and 4k READDIR requests only). Should I just do the same for
+> architectures like ARM and PARISC?
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- server.c |   28 +++++++++++++++++++---------
- 1 files changed, 19 insertions(+), 9 deletions(-)
+I think you said that readdir reads via the vmalloc mapping of the
+group of pages, but XDR writes to the individual pages.
 
-diff --git a/server.c b/server.c
-index 19bb85a..b9c90de 100644
---- a/server.c
-+++ b/server.c
-@@ -123,16 +123,33 @@ srv_recv_layoutreturn(struct msg *m)
- }
- 
- static void
-+issue_layout_recall(struct msg *m)
-+{
-+	/* bump server stateid.seq */
-+	srv_layout.stateid.seq++;
-+	m->stateid =  srv_layout.stateid;
-+	m->status = -1;
-+	srv_layout.layout_recall_msg = m;
-+	dump_msg(m);
-+	enqueue(&cl_msg_queue, m);
-+}
-+
-+static void
- srv_recv_cb_layout_recall(struct msg *m)
- {
- 	BUG_ON(m != srv_layout.layout_recall_msg);
- 	dump_msg(m);
- 	switch (m->status) {
- 	case NFS4_OK:
-+		/* CB_LAYOUT_RECALL RPC is done but the meta-operations
-+		 * continues until after receiving the respective terminating
-+		 * LAYOUTRETURN
-+		 */
-+		break;
- 	case NFS4ERR_DELAY:
- 		dprintk(1, "%s: m=%p: layout_recall resent\n",
- 			__func__, srv_layout.layout_recall_msg);
--		enqueue(&cl_msg_queue, srv_layout.layout_recall_msg);
-+		issue_layout_recall(srv_layout.layout_recall_msg);
- 		break;
- 	case NFS4ERR_NOMATCHING_LAYOUT:
- 		layout_delete(&cl_layout, &m->range);
-@@ -190,14 +207,7 @@ srv_recall_layout(void)
- 	m->range.offset = mynrand(MAX_LO_MSG_OFFSET) & ~BLOCK_MASK;
- 	m->range.length = BLOCK_SIZE + mynrand(MAX_LO_MSG_LENGTH - BLOCK_SIZE);
- 	m->range.iomode = IOMODE_READ + mynrand(3);
--	/* bump server stateid.seq */
--	srv_layout.stateid.seq++;
--	m->stateid =  srv_layout.stateid;
--	m->status = -1;
--	srv_layout.layout_recall_msg = m;
--	dump_msg(m);
--
--	enqueue(&cl_msg_queue, m);
-+	issue_layout_recall(m);
- }
- 
- struct rand_event srv_events[] = {
--- 
-1.7.3.4
+As I understand NFS, you receive a packet, you then have to use XDR
+to unpack the data, which you presumably write into the set of
+struct page *'s using kmap?
 
+Isn't a solution to have XDR write directly into the vmalloc mapping
+rather than using struct page * and kmap?
