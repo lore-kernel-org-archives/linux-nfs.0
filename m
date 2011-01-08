@@ -1,46 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from metis.ext.pengutronix.de ([92.198.50.35]:49055 "EHLO
-	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751583Ab1ACVi7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jan 2011 16:38:59 -0500
-Date: Mon, 3 Jan 2011 22:38:50 +0100
-From: Uwe =?iso-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org
+Received: from mx2.netapp.com ([216.240.18.37]:14404 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751315Ab1AHQuE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Jan 2011 11:50:04 -0500
 Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-Message-ID: <20110103213850.GC25121@pengutronix.de>
-References: <20101230171453.GA5787@pengutronix.de> <1293731992.4919.5.camel@heimdal.trondhjem.org> <20101230191846.GB14221@pengutronix.de>
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20101230191846.GB14221@pengutronix.de>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: James Bottomley <James.Bottomley@HansenPartnership.com>
+Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Marc Kleine-Budde <mkl@pengutronix.de>,
+        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+In-Reply-To: <1294427467.4895.66.camel@mulgrave.site>
+References: <20110105210448.GM8638@n2100.arm.linux.org.uk>
+	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
+	 <1294262208.2952.4.camel@heimdal.trondhjem.org>
+	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
+	 <1294268808.2952.18.camel@heimdal.trondhjem.org>
+	 <1294270104.16957.73.camel@mulgrave.site>
+	 <1294335614.22825.154.camel@mulgrave.site>
+	 <1294336054.2905.1.camel@heimdal.trondhjem.org>
+	 <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>
+	 <1294426405.2929.23.camel@heimdal.trondhjem.org>
+	 <20110107190229.GX31708@n2100.arm.linux.org.uk>
+	 <1294427467.4895.66.camel@mulgrave.site>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sat, 08 Jan 2011 11:49:44 -0500
+Message-ID: <1294505384.4181.14.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Dec 30, 2010 at 08:18:46PM +0100, Uwe Kleine-König wrote:
-> On Thu, Dec 30, 2010 at 12:59:52PM -0500, Trond Myklebust wrote:
-> > What filesystem are you exporting on the server? What is the NFS
-> > version? Is this nfsroot, autofs or an ordinary nfs mount?
-> This is an nfsroot of /home/ukl/nfsroot/tx28 which is a symlink to a
-> directory on a different partition.  I don't know the filesystem of my
-> homedir as it resides on a server I have no access to, but I asked the
-> admin, so I can follow up with this info later (I'd suspect ext3, too).
-Yes, it is ext3.
+On Fri, 2011-01-07 at 13:11 -0600, James Bottomley wrote: 
+> On the other hand, the xdr routines, since they take the pages anyway,
+> could use a scatterlist approach to writing through the kernel mapping
+> instead of using vmap ... we have all the machinery for this in
+> lib/scatterlist.c ... it's not designed for this case, since it's
+> designed to allow arbitrary linear reads and writes on a block
+> scatterlist, but the principle is the same ... it looks like it would be
+> rather a big patch, though ... 
 
-> The real root directory is on ext3 (rw,noatime).
-> 
-> The serving nfs-server is Debian's nfs-kernel-server 1:1.2.2-1.
-If that matters, kernel is linux-image-2.6.32-5-amd64 (2.6.32-29)
-provided by Debian.
+The following alternative seems to work for me, but has only been
+lightly tested so far. It's a bit large for a stable patch, but not too
+ungainly.
 
->                                                                I don't
-> know if testing that further would help or just waste of my time, so
-> please let me know if I can help you and how.
-This still applies
+It modifies xdr_stream, adding the ability to iterate through page data.
+To avoid kmap()/kunmap(), it does require that pages be allocated in
+lowmem, but since the only use case here is when using page arrays as
+temporary buffers, that seems like an acceptable compromise.
 
-Uwe
+Cheers
+  Trond
 
--- 
-Pengutronix e.K.                           | Uwe Kleine-König            |
-Industrial Linux Solutions                 | http://www.pengutronix.de/  |
+--------------------------------------------------------------------------------- 
