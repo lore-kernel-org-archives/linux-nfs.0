@@ -1,297 +1,194 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:62796 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752141Ab1ADRMY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 12:12:24 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V6 10/11] NFS add session back channel draining
-Date: Tue,  4 Jan 2011 12:11:43 -0500
-Message-Id: <1294161104-4555-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1294161104-4555-2-git-send-email-andros@netapp.com>
-References: <1294161104-4555-1-git-send-email-andros@netapp.com>
- <1294161104-4555-2-git-send-email-andros@netapp.com>
+Received: from netnation.com ([204.174.223.2]:51806 "EHLO peace.netnation.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751649Ab1AHAwE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Jan 2011 19:52:04 -0500
+Date: Fri, 7 Jan 2011 16:52:03 -0800
+From: Simon Kirby <sim@hostway.ca>
+To: Mark Moseley <moseleymark@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: System CPU increasing on idle 2.6.36
+Message-ID: <20110108005203.GD24433@hostway.ca>
+References: <20101208212505.GA18192@hostway.ca> <20101218010801.GE28367@hostway.ca> <20101229220313.GA13688@hostway.ca> <AANLkTinq074Q-B=5B4_aXuBm-3ELwGknsJv+OvS1z1OX@mail.gmail.com> <20110104214008.GH27727@hostway.ca> <AANLkTim6HoN5+m180-Du+oda+6N49qSaGga6ktMPV4U4@mail.gmail.com> <AANLkTinLsREtOqNGW2j5m0UYros1AgTu953JHjjJZ-F+@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AANLkTinLsREtOqNGW2j5m0UYros1AgTu953JHjjJZ-F+@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Fri, Jan 07, 2011 at 10:05:39AM -0800, Mark Moseley wrote:
 
-Currently session draining only drains the fore channel.
-The back channel processing must also be drained.
+> NOTE: NFS/Kernel guys: I've left the 2.6.36.2 box still thrashing
+> about in case there's something you'd like me to look at.
+> 
+> Ok, both my 2.6.36.2 kernel box and my 2.6.35->2.6.36 bisect box (was
+> bisected to ce7db282a3830f57f5b05ec48288c23a5c4d66d5 -- this is my
+> first time doing bisect, so I'll preemptively apologize for doing
 
-Use the back channel highest_slot_used to indicate that a callback is being
-processed by the callback thread.  Move the session complete to be per channel.
+That's a merge commit, so that doesn't sound right (it doesn't contain
+changes by itself).  How were you running the bisect?  Were you
+definitely seeing a good case since v2.6.35?  Could you post your
+"git bisect log" so I can see if I can follow it?
 
-When the session is draininig, wait for any current back channel processing
-to complete and stop all new back channel processing by returning NFS4ERR_DELAY
-to the back channel client.
+> anything silly) both went berserk within 15 mins of each other, after
+> an uptime of around 63 hours for 2.6.36.2 and 65 hours for the
+> bisected box. The 2.6.36.2 one is still running with all the various
+> flush-0:xx threads spinning wildly. The bisected box just keeled over
+> and died, but is back up now. The only kernel messages logged are just
+> of the "task kworker/4:1:359 blocked for more than 120 seconds"
+> variety, all with _raw_spin_lock_irq at the top of the stack trace.
+> 
+> Looking at slabinfo, specifically, this: stats=$(grep nfs_inode_cache
+> /proc/slabinfo | awk '{ print $2, $3 }')
+> the active_objs and num_objs both increase to over a million (these
+> boxes are delivering mail to NFS-mounted mailboxes, so that's
+> perfectly reasonable). On both boxes, looking at sar, things start to
+> go awry around 10am today EST. At that time on the 2.6.36.2 box, the
+> NFS numbers look like this:
+> 
+> Fri Jan  7 09:58:00 2011: 1079433 1079650
+> Fri Jan  7 09:59:00 2011: 1079632 1080300
+> Fri Jan  7 10:00:00 2011: 1080196 1080300
+> Fri Jan  7 10:01:01 2011: 1080599 1080716
+> Fri Jan  7 10:02:01 2011: 1081074 1081288
+> 
+> on the bisected, like this:
+> 
+> Fri Jan  7 09:59:34 2011: 1162786 1165320
+> Fri Jan  7 10:00:34 2011: 1163301 1165320
+> Fri Jan  7 10:01:34 2011: 1164369 1165450
+> Fri Jan  7 10:02:35 2011: 1164179 1165450
+> Fri Jan  7 10:03:35 2011: 1165795 1166958
+> 
+> When the bisected box finally died, the last numbers were:
+> 
+> Fri Jan  7 10:40:33 2011: 1177156 1177202
+> Fri Jan  7 10:42:21 2011: 1177157 1177306
+> Fri Jan  7 10:44:55 2011: 1177201 1177324
+> Fri Jan  7 10:45:55 2011: 1177746 1177826
 
-Drain the back channel, then the fore channel.
+Yeah, I was seeing load proportional to these, but I don't think their
+growth is anything wrong.  It just seems to be something that is taking
+up CPU from flush proceses as they grow, and something which is causing a
+thundering herd of reclaim with lots of spinlock contention.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/callback.h         |    3 ++-
- fs/nfs/callback_proc.c    |    7 +++++++
- fs/nfs/callback_xdr.c     |   35 +++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c         |   26 +++++++++++++++++++-------
- fs/nfs/nfs4state.c        |   29 ++++++++++++++++++++++-------
- include/linux/nfs_fs_sb.h |    2 +-
- 6 files changed, 86 insertions(+), 16 deletions(-)
+Hmmm.. I tried to see if drop_caches would clear nfs_inode_cache and thus
+the CPU usage.  The top of slabtop before doing anything:
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 25e8802..b678e3e 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -138,6 +138,8 @@ extern __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args,
- 					 void *dummy,
- 					 struct cb_process_state *cps);
- 
-+extern void nfs4_check_drain_bc_complete(struct nfs4_session *ses);
-+extern void nfs4_cb_take_slot(struct nfs_client *clp);
- #endif /* CONFIG_NFS_V4_1 */
- 
- extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
-@@ -145,7 +147,6 @@ extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
- 				    struct cb_process_state *cps);
- extern __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
- 				   struct cb_process_state *cps);
--
- #ifdef CONFIG_NFS_V4
- extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
- extern void nfs_callback_down(int minorversion);
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index b70e46d..c1bead2 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -253,6 +253,12 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	if (clp == NULL)
- 		goto out;
- 
-+	/* state manager is resetting the session */
-+	if (test_bit(NFS4_SESSION_DRAINING, &clp->cl_session->session_state)) {
-+		status = NFS4ERR_DELAY;
-+		goto out;
-+	}
-+
- 	status = validate_seqid(&clp->cl_session->bc_slot_table, args);
- 	if (status)
- 		goto out;
-@@ -273,6 +279,7 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	res->csr_slotid = args->csa_slotid;
- 	res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
- 	res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
-+	nfs4_cb_take_slot(clp);
- 	cps->clp = clp; /* put in nfs4_callback_compound */
- 
- out:
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 85cbb8f..9dbccf4 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -596,6 +596,37 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
- 	return htonl(NFS_OK);
- }
- 
-+static void nfs4_callback_free_slot(struct nfs4_session *session)
-+{
-+	struct nfs4_slot_table *tbl = &session->bc_slot_table;
-+
-+	spin_lock(&tbl->slot_tbl_lock);
-+	/*
-+	 * Let the state manager know callback processing done.
-+	 * A single slot, so highest used slotid is either 0 or -1
-+	 */
-+	tbl->highest_used_slotid--;
-+	nfs4_check_drain_bc_complete(session);
-+	spin_unlock(&tbl->slot_tbl_lock);
-+}
-+
-+static void nfs4_cb_free_slot(struct nfs_client *clp)
-+{
-+	if (clp && clp->cl_session)
-+		nfs4_callback_free_slot(clp->cl_session);
-+}
-+
-+/* A single slot, so highest used slotid is either 0 or -1 */
-+void nfs4_cb_take_slot(struct nfs_client *clp)
-+{
-+	struct nfs4_slot_table *tbl = &clp->cl_session->bc_slot_table;
-+
-+	spin_lock(&tbl->slot_tbl_lock);
-+	tbl->highest_used_slotid++;
-+	BUG_ON(tbl->highest_used_slotid != 0);
-+	spin_unlock(&tbl->slot_tbl_lock);
-+}
-+
- #else /* CONFIG_NFS_V4_1 */
- 
- static __be32
-@@ -604,6 +635,9 @@ preprocess_nfs41_op(int nop, unsigned int op_nr, struct callback_op **op)
- 	return htonl(NFS4ERR_MINOR_VERS_MISMATCH);
- }
- 
-+static void nfs4_cb_free_slot(struct nfs_client *clp)
-+{
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- static __be32
-@@ -725,6 +759,7 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
- 
- 	*hdr_res.status = status;
- 	*hdr_res.nops = htonl(nops);
-+	nfs4_cb_free_slot(cps.clp);
- 	nfs_put_client(cps.clp);
- 	dprintk("%s: done, status = %u\n", __func__, ntohl(status));
- 	return rpc_success;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6652e39..fcf2658 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -355,9 +355,9 @@ nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *free_slot)
- }
- 
- /*
-- * Signal state manager thread if session is drained
-+ * Signal state manager thread if session fore channel is drained
-  */
--static void nfs41_check_drain_session_complete(struct nfs4_session *ses)
-+static void nfs4_check_drain_fc_complete(struct nfs4_session *ses)
- {
- 	struct rpc_task *task;
- 
-@@ -371,8 +371,20 @@ static void nfs41_check_drain_session_complete(struct nfs4_session *ses)
- 	if (ses->fc_slot_table.highest_used_slotid != -1)
- 		return;
- 
--	dprintk("%s COMPLETE: Session Drained\n", __func__);
--	complete(&ses->complete);
-+	dprintk("%s COMPLETE: Session Fore Channel Drained\n", __func__);
-+	complete(&ses->fc_slot_table.complete);
-+}
-+
-+/*
-+ * Signal state manager thread if session back channel is drained
-+ */
-+void nfs4_check_drain_bc_complete(struct nfs4_session *ses)
-+{
-+	if (!test_bit(NFS4_SESSION_DRAINING, &ses->session_state) ||
-+	    ses->bc_slot_table.highest_used_slotid != -1)
-+		return;
-+	dprintk("%s COMPLETE: Session Back Channel Drained\n", __func__);
-+	complete(&ses->bc_slot_table.complete);
- }
- 
- static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
-@@ -389,7 +401,7 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
- 
- 	spin_lock(&tbl->slot_tbl_lock);
- 	nfs4_free_slot(tbl, res->sr_slot);
--	nfs41_check_drain_session_complete(res->sr_session);
-+	nfs4_check_drain_fc_complete(res->sr_session);
- 	spin_unlock(&tbl->slot_tbl_lock);
- 	res->sr_slot = NULL;
- }
-@@ -4781,17 +4793,17 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
- 	if (!session)
- 		return NULL;
- 
--	init_completion(&session->complete);
--
- 	tbl = &session->fc_slot_table;
- 	tbl->highest_used_slotid = -1;
- 	spin_lock_init(&tbl->slot_tbl_lock);
- 	rpc_init_priority_wait_queue(&tbl->slot_tbl_waitq, "ForeChannel Slot table");
-+	init_completion(&tbl->complete);
- 
- 	tbl = &session->bc_slot_table;
- 	tbl->highest_used_slotid = -1;
- 	spin_lock_init(&tbl->slot_tbl_lock);
- 	rpc_init_wait_queue(&tbl->slot_tbl_waitq, "BackChannel Slot table");
-+	init_completion(&tbl->complete);
- 
- 	session->session_state = 1<<NFS4_SESSION_INITING;
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 11290de..fb23a32 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -143,6 +143,11 @@ static int nfs41_setup_state_renewal(struct nfs_client *clp)
- 	return status;
- }
- 
-+/*
-+ * Back channel returns NFS4ERR_DELAY for new requests when
-+ * NFS4_SESSION_DRAINING is set so there is no work to be done when draining
-+ * is ended.
-+ */
- static void nfs4_end_drain_session(struct nfs_client *clp)
- {
- 	struct nfs4_session *ses = clp->cl_session;
-@@ -166,22 +171,32 @@ static void nfs4_end_drain_session(struct nfs_client *clp)
- 	}
- }
- 
--static int nfs4_begin_drain_session(struct nfs_client *clp)
-+static int nfs4_wait_on_slot_tbl(struct nfs4_slot_table *tbl)
- {
--	struct nfs4_session *ses = clp->cl_session;
--	struct nfs4_slot_table *tbl = &ses->fc_slot_table;
--
- 	spin_lock(&tbl->slot_tbl_lock);
--	set_bit(NFS4_SESSION_DRAINING, &ses->session_state);
- 	if (tbl->highest_used_slotid != -1) {
--		INIT_COMPLETION(ses->complete);
-+		INIT_COMPLETION(tbl->complete);
- 		spin_unlock(&tbl->slot_tbl_lock);
--		return wait_for_completion_interruptible(&ses->complete);
-+		return wait_for_completion_interruptible(&tbl->complete);
- 	}
- 	spin_unlock(&tbl->slot_tbl_lock);
- 	return 0;
- }
- 
-+static int nfs4_begin_drain_session(struct nfs_client *clp)
-+{
-+	struct nfs4_session *ses = clp->cl_session;
-+	int ret = 0;
-+
-+	set_bit(NFS4_SESSION_DRAINING, &ses->session_state);
-+	/* back channel */
-+	ret = nfs4_wait_on_slot_tbl(&ses->bc_slot_table);
-+	if (ret)
-+		return ret;
-+	/* fore channel */
-+	return nfs4_wait_on_slot_tbl(&ses->fc_slot_table);
-+}
-+
- int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- {
- 	int status;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 1eaa054..e93ada0 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -197,6 +197,7 @@ struct nfs4_slot_table {
- 						 * op for dynamic resizing */
- 	int		target_max_slots;	/* Set by CB_RECALL_SLOT as
- 						 * the new max_slots */
-+	struct completion complete;
- };
- 
- static inline int slot_idx(struct nfs4_slot_table *tbl, struct nfs4_slot *sp)
-@@ -213,7 +214,6 @@ struct nfs4_session {
- 	unsigned long			session_state;
- 	u32				hash_alg;
- 	u32				ssv_len;
--	struct completion		complete;
- 
- 	/* The fore and back channel */
- 	struct nfs4_channel_attrs	fc_attrs;
--- 
-1.6.6
+  OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME
+1256343 1221799  97%    0.95K  38071       33   1218272K nfs_inode_cache
 
+# echo 2 > /proc/sys/vm/drop_caches
+
+this took about 40 seconds to execute, and perf top showed this for
+pretty much the whole time:
+
+             samples  pcnt function                 DSO
+             _______ _____ ________________________ ___________
+
+             1188.00 45.1% _raw_spin_lock           [kernel]
+              797.00 30.2% rpcauth_cache_shrinker   [kernel]
+              132.00  5.0% shrink_slab              [kernel]
+               60.00  2.3% queue_io                 [kernel]
+               59.00  2.2% _cond_resched            [kernel]
+               44.00  1.7% nfs_writepages           [kernel]
+               35.00  1.3% writeback_single_inode   [kernel]
+               34.00  1.3% writeback_sb_inodes      [kernel]
+               23.00  0.9% do_writepages            [kernel]
+               20.00  0.8% bit_waitqueue            [kernel]
+               15.00  0.6% redirty_tail             [kernel]
+               11.00  0.4% __iget                   [kernel]
+               11.00  0.4% __GI_strstr              libc-2.7.so
+
+slabtop then showed:
+
+  OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME
+1256211 531720  42%    0.95K  38067       33   1218144K nfs_inode_cache
+
+and this doesn't change further with drop_caches=3 or 1.  It's strange
+that most of them were freed, but not all...  We do actually have
+RPC_CREDCACHE_DEFAULT_HASHBITS set to 10 at build time, which might
+explain a bigger credcache and time to free that.  Did you change your
+auth_hashtable_size at all?  Anyway, even with all of that, system CPU
+doesn't change.
+
+Ok, weird, Running "sync" actually caused "vmstat 1" to go from 25% CPU
+spikes every 5 seconds with nfs_writepages in the "perf top" every 5
+seconds to being idle!  /proc/vmstat showed only nr_dirty 8 and
+nr_writeback 0 before I ran "sync".  Either that, or it was just good
+timing.
+
+procs -----------memory---------- ---swap-- -----io---- -system-- ----cpu----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa
+ 0  0      0 6767892   9696  41088    0    0     5   180   15   70 62  7 29  1
+ 0  0      0 6767892   9696  41088    0    0     0     0 1124 1978  0  0 100  0
+ 0  0      0 6767892   9696  41088    0    0     0     0 1105 1967  0  0 100  0
+ 0  0      0 6767892   9696  41088    0    0     0     0 1180 1984  0  2 98  0
+ 2  0      0 6767892   9696  41088    0    0     0     0 2102 1968  0 22 78  0
+ 0  0      0 6767768   9704  41084    0    0     0    52 1504 2022  0  8 91  1
+ 0  0      0 6767768   9704  41084    0    0     0     0 1059 1965  0  0 100  0
+ 0  0      0 6767768   9704  41088    0    0     0     0 1077 1982  0  0 100  0
+ 0  0      0 6767768   9704  41088    0    0     0     0 1166 1972  1  2 97  0
+ 0  0      0 6767768   9704  41088    0    0     0     0 1353 1990  0  6 94  0
+ 0  0      0 6767644   9704  41100    0    0     0     0 2531 2050  0 27 72  0
+ 0  0      0 6767644   9704  41100    0    0     0     0 1065 1974  0  0 100  0
+ 1  0      0 6767644   9704  41100    0    0     0     0 1090 1967  0  0 100  0
+ 0  0      0 6767644   9704  41100    0    0     0     0 1175 1971  0  2 98  0
+ 0  0      0 6767644   9704  41100    0    0     0     0 1321 1967  0  6 94  0
+ 1  0      0 6767644   9712  41100    0    0     0    52 1995 1995  0 18 81  1
+ 0  0      0 6767644   9712  41100    0    0     0     0 1342 1964  0  6 94  0
+ 0  0      0 6767644   9712  41100    0    0     0     0 1064 1974  0  0 100  0
+ 0  0      0 6767644   9712  41100    0    0     0     0 1163 1968  0  2 98  0
+ 0  0      0 6767644   9712  41100    0    0     0     0 1390 1976  1  6 94  0
+ 0  0      0 6767768   9712  41112    0    0     0     0 1282 2018  0  1 99  0
+ 0  0      0 6767768   9712  41112    0    0     0     0 2166 1972  0 24 76  0
+ 0  0      0 6786260   9712  41112    0    0     0     0 1092 1989  0  0 100  0
+ 0  0      0 6786260   9712  41112    0    0     0     0 1039 2003  0  2 98  0
+ 0  0      0 6774588   9712  41112    0    0     0     0 1524 2015  3  9 89  0
+ 0  1      0 6770124   9716  41112    0    0     0    48 1315 1990  3  0 87 11
+ 1  0      0 6769628   9720  41112    0    0     0     4 2196 1966  0 20 79  0
+ 0  0      0 6768364   9724  41108    0    0    36     0 1403 2031  1  5 94  1
+ 0  0      0 6768388   9724  41144    0    0     0     0 1185 1969  0  2 98  0
+ 0  0      0 6768388   9724  41144    0    0     0     0 1351 1975  0  6 94  0
+ 0  0      0 6768140   9724  41156    0    0     0     0 1261 2020  0  1 99  0
+ 0  0      0 6768140   9724  41156    0    0     0     0 1053 1973  0  0 100  0
+ 1  0      0 6768140   9724  41156    0    0     0     0 2194 1971  1 26 73  0
+ 0  0      0 6768140   9732  41148    0    0     0    52 1283 2088  0  4 96  0
+ 2  0      0 6768140   9732  41156    0    0     0     0 1184 1965  0  2 98  0
+ 0  0      0 6786368   9732  41156    0    0     0     0 1297 2000  0  4 97  0
+ 0  0      0 6786384   9732  41156    0    0     0     0  998 1949  0  0 100  0
+(stop vmstat 1, run sync, restart vmstat 1)
+ 1  0      0 6765304   9868  41736    0    0     0     0 1239 1967  0  0 100  0
+ 0  0      0 6765304   9868  41736    0    0     0     0 1174 2035  0  0 100  0
+ 0  0      0 6765304   9868  41736    0    0     0     0 1084 1976  0  0 100  0
+ 1  0      0 6765172   9868  41736    0    0     0     0 1100 1975  0  0 100  0
+ 0  0      0 6765304   9868  41760    0    0     0     0 1501 1997  1  1 98  0
+ 0  0      0 6765304   9868  41760    0    0     0     0 1092 1964  0  0 100  0
+ 1  0      0 6765304   9868  41760    0    0     0     0 1096 1963  0  0 100  0
+ 0  0      0 6765304   9868  41760    0    0     0     0 1083 1967  0  0 100  0
+ 0  0      0 6765304   9876  41752    0    0     0    76 1101 1980  0  0 99  1
+ 0  0      0 6765304   9876  41760    0    0     0     4 1199 2097  0  2 98  0
+ 0  0      0 6765304   9876  41760    0    0     0     0 1055 1964  0  0 100  0
+ 0  0      0 6765304   9876  41760    0    0     0     0 1064 1977  0  0 100  0
+ 0  0      0 6765304   9876  41760    0    0     0     0 1073 1968  0  0 100  0
+ 0  0      0 6765304   9876  41760    0    0     0     0 1080 1976  0  0 100  0
+ 0  0      0 6765156   9884  41772    0    0     0    20 1329 2034  1  1 98  1
+ 0  0      0 6765180   9884  41780    0    0     0     0 1097 1971  0  1 99  0
+ 0  0      0 6765180   9884  41780    0    0     0     0 1073 1960  0  0 100  0
+ 0  0      0 6765180   9884  41780    0    0     0     0 1079 1976  0  0 100  0
+ 0  0      0 6765172   9884  41780    0    0     0     0 1120 1980  0  0 100  0
+ 0  0      0 6765180   9892  41772    0    0     0    60 1097 1982  0  0 100  0
+ 0  0      0 6765180   9892  41780    0    0     0     0 1067 1969  0  0 100  0
+ 0  0      0 6765180   9892  41780    0    0     0     0 1063 1973  0  0 100  0
+ 0  0      0 6765180   9892  41780    0    0     0     0 1064 1969  0  1 100  0
+
+Hmmm.  I'll watch it and see if it climbs back up again.  That would mean
+that for now, echo 2 > /proc/sys/vm/drop_caches ; sync is a workaround
+for the problem we're seeing with system CPU slowly creeping up since
+2.6.36.  I have no idea if this affects the sudden flush process spinlock
+contention and attempted writeback without much progress during normal
+load, but it certainly changes things here.
+
+http://0x.ca/sim/ref/2.6.37/cpu_after_drop_caches_2_and_sync.png
+
+Simon-
