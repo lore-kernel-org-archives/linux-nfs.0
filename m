@@ -1,53 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:35470 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751485Ab1ASXkt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 18:40:49 -0500
-Subject: Re: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
+Received: from nm2-vm0.bullet.mail.ne1.yahoo.com ([98.138.91.39]:22647 "HELO
+	nm2-vm0.bullet.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751000Ab1AIJnL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Jan 2011 04:43:11 -0500
+Message-ID: <502676.48699.qm@web111713.mail.gq1.yahoo.com>
+References: <965737.12090.qm@web111718.mail.gq1.yahoo.com> <1294565607.30270.14.camel@ramone>
+Date: Sun, 9 Jan 2011 01:43:08 -0800 (PST)
+From: Mahmood Naderan <nt_mahmood@yahoo.com>
+Subject: Re: Problem with sharing /home
+To: linux-nfs@vger.kernel.org
+In-Reply-To: <1294565607.30270.14.camel@ramone>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <AANLkTiknrso7mQbTiXNF3MLz+RPi52M1s+DV1XaxciO=@mail.gmail.com>
-Date: Wed, 19 Jan 2011 18:39:16 -0500
-Cc: linux-fsdevel@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Wengang Wang <wen.gang.wang@oracle.com>
-Message-Id: <1CB6BE0E-01BA-47E6-BBD1-298F62735DF6@oracle.com>
-References: <20110119223543.30706.10304.stgit@matisse.1015granger.net> <1295479517.22151.16.camel@heimdal.trondhjem.org> <AANLkTikRX8nxh-gp=Fdr21dg-DLmUb2FxYXrM2A0hfN0@mail.gmail.com> <1295479900.22151.19.camel@heimdal.trondhjem.org> <AANLkTiknrso7mQbTiXNF3MLz+RPi52M1s+DV1XaxciO=@mail.gmail.com>
-To: Nick Piggin <npiggin@gmail.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+>Make sure that the name->uid map is identical in all passwd files.
+> Try the 'id' and 'ls -n' commands to figure it out. Edit passwd andgroup to fix 
+>it.
 
-On Jan 19, 2011, at 6:37 PM, Nick Piggin wrote:
+Can you explain more? "id" shows the UID for each user and "ls -n" shows which 
+UID grant the /home/direcotry.  Which sections of passwd and group have to be 
+changed?
 
-> On Thu, Jan 20, 2011 at 10:31 AM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
->> On Thu, 2011-01-20 at 10:26 +1100, Nick Piggin wrote:
->>> On Thu, Jan 20, 2011 at 10:25 AM, Trond Myklebust
+
+// Naderan *Mahmood;
+
+
+
+----- Original Message ----
+From: Daniel Stodden <daniel.stodden@citrix.com>
+To: Mahmood Naderan <nt_mahmood@yahoo.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Sent: Sun, January 9, 2011 1:03:27 PM
+Subject: Re: Problem with sharing /home
+
+
+User names are meaningless to the filesystem. Numbers matter. Make sure
+that the name->uid map is identical in all passwd files.
+
+In the case below, user1 can't write to /home/user1 because on worker
+she's got a different uid than on server. Likewise, user3 there appears
+to own /home/user1 because the uid in question was given to user3.
+
+Try the 'id' and 'ls -n' commands to figure it out. Edit passwd and
+group to fix it.
+
+Daniel
+
+On Sun, 2011-01-09 at 02:41 -0500, Mahmood Naderan wrote:
+> Hi,
+> I have a server (192.168.1.1) and worker (192.168.1.2) stations and want to 
+> share /home which is belong to the server. This is the content of my 
+> /etc/exports:
+> /home                192.168.1.2(rw,sync,no_root_squash)
 > 
->>>> Also, why is EIO the correct reply when no bytes were read/written? Why
->>>> shouldn't the VFS aio code be able to cope with a zero byte reply?
->>> 
->>> What would it do?
->> 
->> Just return that zero byte reply to userland.
->> 
->> zero bytes is a valid reply for ordinary read() and write(), so why
->> should we have to do anything different for aio_read()/aio_write()?
+> Before sharing, the list of users on both stations are:
+> server: root, mahmood, user1, user2
+> worker: root, mahmood, user3, user4
 > 
-> It doesn't give userspace much to do. zero reply from read means
-> EOF. Zero reply from write is pretty useless, I don't think we do it
-> in the buffered write path -- we either ensure we write at least
-> something or have a meaningful error to return.
+> As you can see two users are common. Then I opened /etc/fstab on worker and 
+> commnet the original /home line and added this line:
+> server:/home  /home  nfs defaults 0 0
+>  
+> Then I ran "sudo exportfs -a" on server and "sudo mount -a" on the worker. 
+> Please look at the output of "ls -l" command on both server and worker:
+> mahmood@server:home$ ls -l
+> total 36
+> drwxr-xr-x 28 user1       users    4096 2011-01-08 21:49 user1
+> drwxr-xr-x  4 user2        users    4096 2011-01-08 21:55 user2
+> drwx------  2 root       root    16384 2010-10-24 17:23 lost+found
+> drwxr-xr-x 26 mahmood    mahmood  4096 2011-01-09 10:49 mahmood
+> 
+> mahmood@worker:home$ ls -l
+> total 36
+> drwxr-xr-x  4 user3  users    4096 2011-01-08 21:55 user1
+> drwxr-xr-x  9 user4 users    4096 2011-01-08 23:05 user2
+> drwx------  2 root    root    16384 2010-10-24 17:23 lost+found
+> drwxr-xr-x 26 mahmood mahmood  4096 2011-01-09 10:49 mahmood
+> drwxrwxrwx  5 root    root     4096 2011-01-05 21:27 shared
+> 
+> As you can see, the permission of user1 and user2 home direcoties are granted 
+>to 
+>
+> user3 and user4. But since "mahmood" and "root" have separate account on both 
+> stations, there is no problem with their access. 
+> 
+>  
+> The effect of this anomaly is that when user1 want to ssh from server to 
+>wroker, 
+>
+> he can not write anything in his home direcotry:
+> user1@server:~$ mkdir a
+> user1@server:~$ ssh worker
+> enter password....
+> user1@worker:~$ mkdir b
+> mkdir: cannot create directory `b': Permission denied
+> user1@worker:~$
+> 
+> How can I fix that?
+> 
+> Thanks,
+> // Naderan *Mahmood;
+> 
+> 
+>      
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I think in this case, the zero-length requests are already shunted off.  No zero-length requests make it down here, IIRC.  So we expect that either some bytes are started, or an error occurs.  If zero bytes were started and no error occurred, that's just... wrong.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+      
