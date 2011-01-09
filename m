@@ -1,80 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:59546 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752651Ab1ASKPH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 05:15:07 -0500
-Received: by wyb28 with SMTP id 28so727296wyb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Jan 2011 02:15:06 -0800 (PST)
-Message-Id: <25AC78CF-2E66-44B1-AAB8-65567DB703A4@gmail.com>
-From: David McGiven <davidmcgivenn@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Subject: NFSv4 client & Netapp Server -> Problem with id mapping
-Date: Wed, 19 Jan 2011 11:15:03 +0100
+Received: from somacoma.net ([62.75.137.225]:59225 "EHLO vs137225.vserver.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751290Ab1AIJdc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 9 Jan 2011 04:33:32 -0500
+Subject: Re: Problem with sharing /home
+From: Daniel Stodden <daniel.stodden@citrix.com>
+To: Mahmood Naderan <nt_mahmood@yahoo.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <965737.12090.qm@web111718.mail.gq1.yahoo.com>
+References: <965737.12090.qm@web111718.mail.gq1.yahoo.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sun, 09 Jan 2011 01:33:27 -0800
+Message-ID: <1294565607.30270.14.camel@ramone>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Dear NFS Users,
 
-I have a Linux client (ubuntu 8.04) that correctly mounts through  
-NFSv3 an NFS share from a NetApp Filer (DataONTAP 7.2.1.1).
+User names are meaningless to the filesystem. Numbers matter. Make sure
+that the name->uid map is identical in all passwd files.
 
-Due to firewall issues, I now need to use NFSv4 instead of v3.  
-However, I'm having the problem of seeing all the files owned by  
-nobody/nogroup.
+In the case below, user1 can't write to /home/user1 because on worker
+she's got a different uid than on server. Likewise, user3 there appears
+to own /home/user1 because the uid in question was given to user3.
 
-Please, could anyone provide some advice ?
+Try the 'id' and 'ls -n' commands to figure it out. Edit passwd and
+group to fix it.
 
-The command I'm using to mount it is :
-mount -t nfs4 -o intr,proto=tcp filer:/vol/people /people/
+Daniel
 
-These are the NetApp options :
-nfs.v4.acl.enable            off
-nfs.v4.enable                on
-nfs.v4.id.domain             localdomain
-nfs.v4.read_delegation       off
-nfs.v4.write_delegation      off
+On Sun, 2011-01-09 at 02:41 -0500, Mahmood Naderan wrote:
+> Hi,
+> I have a server (192.168.1.1) and worker (192.168.1.2) stations and want to 
+> share /home which is belong to the server. This is the content of my 
+> /etc/exports:
+> /home                192.168.1.2(rw,sync,no_root_squash)
+> 
+> Before sharing, the list of users on both stations are:
+> server: root, mahmood, user1, user2
+> worker: root, mahmood, user3, user4
+> 
+> As you can see two users are common. Then I opened /etc/fstab on worker and 
+> commnet the original /home line and added this line:
+> server:/home  /home  nfs defaults 0 0
+>  
+> Then I ran "sudo exportfs -a" on server and "sudo mount -a" on the worker. 
+> Please look at the output of "ls -l" command on both server and worker:
+> mahmood@server:home$ ls -l
+> total 36
+> drwxr-xr-x 28 user1       users    4096 2011-01-08 21:49 user1
+> drwxr-xr-x  4 user2        users    4096 2011-01-08 21:55 user2
+> drwx------  2 root       root    16384 2010-10-24 17:23 lost+found
+> drwxr-xr-x 26 mahmood    mahmood  4096 2011-01-09 10:49 mahmood
+> 
+> mahmood@worker:home$ ls -l
+> total 36
+> drwxr-xr-x  4 user3  users    4096 2011-01-08 21:55 user1
+> drwxr-xr-x  9 user4 users    4096 2011-01-08 23:05 user2
+> drwx------  2 root    root    16384 2010-10-24 17:23 lost+found
+> drwxr-xr-x 26 mahmood mahmood  4096 2011-01-09 10:49 mahmood
+> drwxrwxrwx  5 root    root     4096 2011-01-05 21:27 shared
+> 
+> As you can see, the permission of user1 and user2 home direcoties are granted to 
+> user3 and user4. But since "mahmood" and "root" have separate account on both 
+> stations, there is no problem with their access. 
+> 
+>  
+> The effect of this anomaly is that when user1 want to ssh from server to wroker, 
+> he can not write anything in his home direcotry:
+> user1@server:~$ mkdir a
+> user1@server:~$ ssh worker
+> enter password....
+> user1@worker:~$ mkdir b
+> mkdir: cannot create directory `b': Permission denied
+> user1@worker:~$
+> 
+> How can I fix that?
+> 
+> Thanks,
+> // Naderan *Mahmood;
+> 
+> 
+>       
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-The filer exports are :
 
-/vol/people     -sec=sys,rw=machine1:machine2,root=master
-
-In the linux box I've double checked that /etc/idmpad.conf domain is  
-the same : "localdomain".
-
-Just in case, I'm running the rpc.impad daemon on the linux client.  
-This is the output for a single 'mount' and a single 'ls'
-
-root@machine1:~# /usr/sbin/rpc.idmapd -vvvv -f
-rpc.idmapd: libnfsidmap: using domain: localdomain
-
-rpc.idmapd: libnfsidmap: using translation method: nsswitch
-
-rpc.idmapd: Expiration time is 600 seconds.
-rpc.idmapd: Opened /proc/net/rpc/nfs4.nametoid/channel
-rpc.idmapd: Opened /proc/net/rpc/nfs4.idtoname/channel
-rpc.idmapd: New client: 15
-rpc.idmapd: Opened /var/lib/nfs/rpc_pipefs/nfs/clnt15/idmap
-rpc.idmapd: New client: 16
-rpc.idmapd: nss_getpwnam: name 'root@localdomain' domain  
-'localdomain': resulting localname 'root'
-
-rpc.idmapd: Client 15: (user) name "root@localdomain" -> id "0"
-rpc.idmapd: Client 15: (group) name "nobody" -> id "65534"
-rpc.idmapd: nss_getpwnam: name 'nobody' domain 'localdomain':  
-resulting localname '(null)'
-
-rpc.idmapd: nss_getpwnam: name 'nobody' does not map into domain  
-'localdomain'
-
-rpc.idmapd: Client 15: (user) name "nobody" -> id "65534"
-
-
-Could someone please help me ? I'm puzzled because NFSv3 deals  
-perfectly with user names and groups.
-
-Well, Thanks.
-
-Best,
-David
