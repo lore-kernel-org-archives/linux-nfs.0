@@ -1,84 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9530 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44255 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752532Ab1ADRLJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 12:11:09 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V6 05/11] NFS do not clear minor version at nfs_client free
-Date: Tue,  4 Jan 2011 12:10:22 -0500
-Message-Id: <1294161028-4499-6-git-send-email-andros@netapp.com>
-In-Reply-To: <1294161028-4499-5-git-send-email-andros@netapp.com>
-References: <1294161028-4499-1-git-send-email-andros@netapp.com>
- <1294161028-4499-2-git-send-email-andros@netapp.com>
- <1294161028-4499-3-git-send-email-andros@netapp.com>
- <1294161028-4499-4-git-send-email-andros@netapp.com>
- <1294161028-4499-5-git-send-email-andros@netapp.com>
+	id S1753748Ab1AJQp2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jan 2011 11:45:28 -0500
+Subject: Re: [PATCH v4 3/5] NFS: Add secinfo procedure
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Bryan Schumaker <bjschuma@netapp.com>,
+        "Mr. Steve Dickson" <SteveD@redhat.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <4D2760D7.3020701@netapp.com>
+References: <4D2760D7.3020701@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 10 Jan 2011 11:45:26 -0500
+Message-ID: <1294677926.3349.15.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Fri, 2011-01-07 at 13:52 -0500, Bryan Schumaker wrote: 
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index 4925b22..b4904b2 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -540,6 +540,7 @@ enum {
+>  	NFSPROC4_CLNT_SETACL,
+>  	NFSPROC4_CLNT_FS_LOCATIONS,
+>  	NFSPROC4_CLNT_RELEASE_LOCKOWNER,
+> +	NFSPROC4_CLNT_SECINFO,
+>  
+>  	/* nfs41 */
+>  	NFSPROC4_CLNT_EXCHANGE_ID,
 
-Resetting the client minor version operations causes nfs4_destroy_callback
-to fail to shutdown the NFSv4.1 callback service.
+Unfortunately, this hunk will break nfsstat. Let's give these patches
+one more cycle of testing. I'll carry them in my tree and will follow up
+with SteveD to see what we can do about fixing nfsstat. It is annoying
+that nfsstat should be required to keep a private copy of the client
+operation table, and it keeps biting us every time we want to add some
+new NFSv4.0 operation.
 
-There is no reason to reset the client minorversion operations when the
-nfs_client struct is being freed.
+Cheers
+  Trond
 
-Remove the minorverion reset and rename the function.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/client.c |   22 +++++++++-------------
- 1 files changed, 9 insertions(+), 13 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 0870d0d..855add6 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -170,21 +170,17 @@ error_0:
- }
- 
- #ifdef CONFIG_NFS_V4
--/*
-- * Clears/puts all minor version specific parts from an nfs_client struct
-- * reverting it to minorversion 0.
-- */
--static void nfs4_clear_client_minor_version(struct nfs_client *clp)
--{
- #ifdef CONFIG_NFS_V4_1
--	if (nfs4_has_session(clp)) {
-+static void nfs4_shutdown_session(struct nfs_client *clp)
-+{
-+	if (nfs4_has_session(clp))
- 		nfs4_destroy_session(clp->cl_session);
--		clp->cl_session = NULL;
--	}
--
--	clp->cl_mvops = nfs_v4_minor_ops[0];
--#endif /* CONFIG_NFS_V4_1 */
- }
-+#else /* CONFIG_NFS_V4_1 */
-+static void nfs4_shutdown_session(struct nfs_client *clp)
-+{
-+}
-+#endif /* CONFIG_NFS_V4_1 */
- 
- /*
-  * Destroy the NFS4 callback service
-@@ -199,7 +195,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
- {
- 	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
- 		nfs4_kill_renewd(clp);
--	nfs4_clear_client_minor_version(clp);
-+	nfs4_shutdown_session(clp);
- 	nfs4_destroy_callback(clp);
- 	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
- 		nfs_idmap_delete(clp);
 -- 
-1.6.6
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
