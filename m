@@ -1,108 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:42781 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932610Ab1AMJZo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 04:25:44 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/2] NFSD: do common error handling in decode_cb_op_status
-Date: Thu, 13 Jan 2011 11:25:41 +0200
-Message-Id: <1294910741-18407-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4D2EC4AC.9090205@panasas.com>
-References: <4D2EC4AC.9090205@panasas.com>
+Received: from smurfs.athenacr.com ([64.95.46.209]:36254 "EHLO
+	sprinkles.inp.in.athenacr.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751011Ab1AJUD0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jan 2011 15:03:26 -0500
+Received: from atlanta.localnet (atlanta.em.in.athenacr.com [192.168.14.104])
+	by sprinkles.inp.in.athenacr.com (Postfix) with ESMTPS id 79FAE2BC76
+	for <linux-nfs@vger.kernel.org>; Mon, 10 Jan 2011 14:55:30 -0500 (EST)
+From: Roman Shtylman <shtylman@athenacr.com>
+To: linux-nfs@vger.kernel.org
+Subject: question about nfs4 with krb5 behavior
+Date: Mon, 10 Jan 2011 14:55:30 -0500
+Content-Type: Text/Plain;
+  charset="us-ascii"
+Message-Id: <201101101455.30608.shtylman@athenacr.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Rather than handling the cb operation status in each and every
-decode_cb_op_status's caller, just put the common code there.
+I have setup nfs4 with krb5 server and successfully mounted a client. Two 
+people can log into the client box and both access their respective shares and 
+not each other's. However, when one user (who lets say has root privs) uses 
+root to become the second user (using su) then that user can now access the 
+info of the user he became.
 
-If need be, and some caller really needs to see the original status
-this patch can be reverted but right now there's no real need for the
-abstract functionality.
+I was under the impression that this should not be possible as the tickets for 
+access should still be tied to the first user they logged in as. Is this true? 
+Or do I have an error in my setup?
 
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfsd/nfs4callback.c |   22 +++++++---------------
- 1 files changed, 7 insertions(+), 15 deletions(-)
+Process:
+Login as user A
+(User B logs into the machine from another terminal)
+sudo su B (to become user B on the machine)
+<can now edit files which belong to B>
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 5a6dcf8..6f69645 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -248,11 +248,11 @@ static int nfs_cb_stat_to_errno(int status)
- 	return -status;
- }
- 
--static int decode_cb_op_status(struct xdr_stream *xdr, enum nfs_opnum4 expected,
--			       enum nfsstat4 *status)
-+static int decode_cb_op_status(struct xdr_stream *xdr, enum nfs_opnum4 expected)
- {
- 	__be32 *p;
- 	u32 op;
-+	enum nfsstat4 status;
- 
- 	p = xdr_inline_decode(xdr, 4 + 4);
- 	if (unlikely(p == NULL))
-@@ -260,7 +260,9 @@ static int decode_cb_op_status(struct xdr_stream *xdr, enum nfs_opnum4 expected,
- 	op = be32_to_cpup(p++);
- 	if (unlikely(op != expected))
- 		goto out_unexpected;
--	*status = be32_to_cpup(p);
-+	status = be32_to_cpup(p);
-+	if (unlikely(status != NFS4_OK))
-+		return nfs_cb_stat_to_errno(status);
- 	return 0;
- out_overflow:
- 	print_overflow_msg(__func__, xdr);
-@@ -469,22 +471,17 @@ out_overflow:
- static int decode_cb_sequence4res(struct xdr_stream *xdr,
- 				  struct nfsd4_callback *cb)
- {
--	enum nfsstat4 nfserr;
- 	int status;
- 
- 	if (cb->cb_minorversion == 0)
- 		return 0;
- 
--	status = decode_cb_op_status(xdr, OP_CB_SEQUENCE, &nfserr);
-+	status = decode_cb_op_status(xdr, OP_CB_SEQUENCE);
- 	if (unlikely(status))
- 		goto out;
--	if (unlikely(nfserr != NFS4_OK))
--		goto out_default;
- 	status = decode_cb_sequence4resok(xdr, cb);
- out:
- 	return status;
--out_default:
--	return nfs_cb_stat_to_errno(nfserr);
- }
- 
- /*
-@@ -547,7 +544,6 @@ static int nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp,
- 				  struct nfsd4_callback *cb)
- {
- 	struct nfs4_cb_compound_hdr hdr;
--	enum nfsstat4 nfserr;
- 	int status;
- 
- 	status = decode_cb_compound4res(xdr, &hdr);
-@@ -560,11 +556,7 @@ static int nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp,
- 			goto out;
- 	}
- 
--	status = decode_cb_op_status(xdr, OP_CB_RECALL, &nfserr);
--	if (unlikely(status))
--		goto out;
--	if (unlikely(nfserr != NFS4_OK))
--		status = nfs_cb_stat_to_errno(nfserr);
-+	status = decode_cb_op_status(xdr, OP_CB_RECALL);
- out:
- 	return status;
- }
--- 
-1.7.3.4
+If User B does not login before user A becomes user B, user A is not able to 
+edit user B's files even after he becomes user B.
 
+Kernel version: 2.6.32-24
+
+any clarification on behavior would be appreciated.
+
+cheers,
+~Roman
