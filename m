@@ -1,91 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:38456 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750947Ab1ADUnl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 15:43:41 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH_V7 0/12] NFSv4 find client fix Version 7 
-Date: Tue,  4 Jan 2011 15:42:34 -0500
-Message-Id: <1294173766-5573-1-git-send-email-andros@netapp.com>
+Received: from metis.ext.pengutronix.de ([92.198.50.35]:33049 "EHLO
+	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753727Ab1AJMol (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jan 2011 07:44:41 -0500
+Message-ID: <4D2AFF29.4060008@pengutronix.de>
+Date: Mon, 10 Jan 2011 13:44:25 +0100
+From: Marc Kleine-Budde <mkl@pengutronix.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: James Bottomley <James.Bottomley@HansenPartnership.com>,
+        Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        =?UTF-8?B?VXdlIA==?= =?UTF-8?B?S2xlaW5lLUvDtm5pZw==?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org,
+        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+References: <20110105210448.GM8638@n2100.arm.linux.org.uk>	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>	 <1294262208.2952.4.camel@heimdal.trondhjem.org>	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>	 <1294268808.2952.18.camel@heimdal.trondhjem.org>	 <1294270104.16957.73.camel@mulgrave.site>	 <1294335614.22825.154.camel@mulgrave.site>	 <1294336054.2905.1.camel@heimdal.trondhjem.org>	 <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>	 <1294426405.2929.23.camel@heimdal.trondhjem.org>	 <20110107190229.GX31708@n2100.arm.linux.org.uk>	 <1294427467.4895.66.camel@mulgrave.site>	 <1294505384.4181.14.camel@heimdal.trondhjem.org> <1294528551.4181.19.camel@heimdal.trondhjem.org>
+In-Reply-To: <1294528551.4181.19.camel@heimdal.trondhjem.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="------------enigAA42886BC7558FC86E191B1B"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+--------------enigAA42886BC7558FC86E191B1B
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+On 01/09/2011 12:15 AM, Trond Myklebust wrote:
+> From 8b2e60cef5c65eef41ab61286f62dec6bfb1ac27 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date: Sat, 8 Jan 2011 17:45:38 -0500
+> Subject: [PATCH] NFS: Don't use vm_map_ram() in readdir
+>=20
+> vm_map_ram() is not available on NOMMU platforms, and causes trouble
+> on incoherrent architectures such as ARM when we access the page data
+> through both the direct and the virtual mapping.
+>=20
+> The alternative is to use the direct mapping to access page data
+> for the case when we are not crossing a page boundary, but to copy
+> the data into a linear scratch buffer when we are accessing data
+> that spans page boundaries.
+>=20
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Tested-by: Marc Kleine-Budde <mkl@pengutronix.de>
+
+=2E.on AT91 (armv5)
+
+regards, Marc
+
+--=20
+Pengutronix e.K.                  | Marc Kleine-Budde           |
+Industrial Linux Solutions        | Phone: +49-231-2826-924     |
+Vertretung West/Dortmund          | Fax:   +49-5121-206917-5555 |
+Amtsgericht Hildesheim, HRA 2686  | http://www.pengutronix.de   |
 
 
-Version 7 of these patches
-Applies to Tronds nfs-for-next branch
+--------------enigAA42886BC7558FC86E191B1B
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
 
-Already acked by bfields
-------------------------
-0001-SUNRPC-move-svc_drop-to-caller-of-svc_process_common.patch
-0002-SUNRPC-fix-bc_send-print.patch
-0010-NFS-RPC_AUTH_GSS-unsupported-on-v4.1-back-channel.patch
-0012-NFS-rename-client-back-channel-transport-field.patch
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
 
-Responded to Version 6 comments from bfields.
----------------------------------------------
-0003-SUNRPC-new-transport-for-the-NFSv4.1-shared-back-cha.patch
-0004-NFS-register-and-unregister-back-channel-transport.patch
+iEYEARECAAYFAk0q/ywACgkQjTAFq1RaXHPKVACfSbwPgXZNF3YdnU/W6Auad80e
+/c0An3M92CG7Kp5W7OS1nHc/jof1yoS1
+=1Bum
+-----END PGP SIGNATURE-----
 
-Unchanged:
-----------
-0005-NFS-use-svc_create_xprt-for-NFSv4.1-callback-service.patch
-0006-NFS-do-not-clear-minor-version-at-nfs_client-free.patch
-0007-NFS-implement-v4.0-callback_ident.patch
-0008-NFS-associate-sessionid-with-callback-connection.patch
-0009-NFS-refactor-nfs_find_client-and-reference-client-ac.patch
-0011-NFS-add-session-back-channel-draining.patch
-
-
-The back channel server svc_process_common RPC layer pg_authenticate call
-[nfs_callback_authenticate] is shared by both the NFSv4.0 and the NFSv4.1
-callback threads. It authenticates the incoming request by finding (and
-referencing) an nfs_client struct based on the incoming request address
-and the NFS version (4). This is akin to the NFS server which authenticates
-requests by matching the server address to the exports file client list.
-
-Since there is no minorversion in the search, it may find the wrong
-nfs_client struct. For the nfsv4.0 callback service thread, this means it
-could find an NFSv4.1 nfs_client. For the NFSv4.1 callback service thread, it
-could find an NFSv4.0 instead of v4.1, or find an NFSv4.1 nfs_client with the
-wrong session.
-
-The nfs_client is dereferenced at the end of pg_authenticate. Another
-nfs_find_client call is done in the NFS layouer per operation dispatcher
-routines for NFSv4.0 and in the cb_sequence operation dispatcher routine for
-NFSv4.1 after decoding.
-
-This means the callback server could start processing a callback, passing
-the pg_authenticate test, and have the nfs_client struct freed between the
-pg_authenticate call and the dispatcher operation call. Or, it could have
-found the wrong nfs_client in the pg_authenticate call.
-
-The current code has this behavior: If the nfs_client is not found in
-pg_authenticate, the request is simply dropped (SVC_DROP). If an nfs_client
-is not found in the dispatcher routines NFS4ERR_BADSESSION is returned for
-v4.1 requests and NFS4ERR_BADHANDLE for v4.0 requests.
-
-The fix is to implement the v4.0 SETCLIENTID callback_ident and use it to find
-the one and only client for v4.0 callbacks, and to associate the sessionid
-with the sessions based callback service (v4.1) and use it to identify the
-one and only client. This can be done in the NFS layer, in CB_COMPOUND header
-processing for v4.0 and in CB_SEQUENCE processing in v4.1.
-In both cases, a reference to the found client is held across CB_COMPOUND
-processing.
-
-The pg_authenticate method does not have the callback_ident for CB_NULL or
-CB_COMPOUND v4.0 processing, so just the server address, nfsversion and
-minorversion is used for the client search
-
-For sessions based callback service, the sessionID can't be set until the
-return of the CREATE_SESSION call, yet the CB_NULL ping from a server can
-be initiated by the server at the receipt of the CREATE_SESSION call before
-the response is sent. So for CB_NULL, the sessionid is (usually) not set, and
-the sessionid is not used for CB_NULL pg_authenticate client searches.
-
--->Andy
-
+--------------enigAA42886BC7558FC86E191B1B--
