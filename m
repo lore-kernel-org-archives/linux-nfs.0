@@ -1,62 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43304 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751010Ab1AEB6B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 20:58:01 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 4/5] NFSv4: Propagate the error NFS4ERR_BADOWNER to nfs4_do_setattr
-Date: Tue,  4 Jan 2011 20:57:50 -0500
-Message-Id: <1294192671-18864-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1294192671-18864-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1294192671-18864-1-git-send-email-Trond.Myklebust@netapp.com>
- <1294192671-18864-2-git-send-email-Trond.Myklebust@netapp.com>
- <1294192671-18864-3-git-send-email-Trond.Myklebust@netapp.com>
- <1294192671-18864-4-git-send-email-Trond.Myklebust@netapp.com>
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:48942 "EHLO
+	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754325Ab1AJTbz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jan 2011 14:31:55 -0500
+Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
+	<u.kleine-koenig@pengutronix.de>,
+        Marc Kleine-Budde <mkl@pengutronix.de>, linux-arch@vger.kernel.org,
+        linux-nfs@vger.kernel.org,
+        Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        Parisc List <linux-parisc@vger.kernel.org>,
+        linux-kernel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
+        linux-arm-kernel@lists.infradead.org
+In-Reply-To: <1294687767.3349.28.camel@heimdal.trondhjem.org>
+References: <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>
+	 <1294426405.2929.23.camel@heimdal.trondhjem.org>
+	 <20110107190229.GX31708@n2100.arm.linux.org.uk>
+	 <1294427467.4895.66.camel@mulgrave.site>
+	 <1294505384.4181.14.camel@heimdal.trondhjem.org>
+	 <1294528551.4181.19.camel@heimdal.trondhjem.org>
+	 <20110110105019.GC24920@pengutronix.de>
+	 <1294676734.3349.10.camel@heimdal.trondhjem.org>
+	 <4D2B3D03.8050504@pengutronix.de>
+	 <1294680035.3349.19.camel@heimdal.trondhjem.org>
+	 <20110110192552.GG24920@pengutronix.de>
+	 <1294687767.3349.28.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 10 Jan 2011 22:31:49 +0300
+Message-ID: <1294687909.6706.885.camel@mulgrave.site>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This will be required in order to switch uid/gid mapping back on if the
-admin has tried to disable it.
+On Mon, 2011-01-10 at 14:29 -0500, Trond Myklebust wrote:
+> I usually do this, but there is a slight problem with that approach:
+> Greg gets to do all the work of figuring out to which stable kernels
+> this particular patch applies. In this case, since we're only talking
+> about the 2.6.37 kernel, I prefer to use the mailing lists.
 
-Note that we also propagate NFS4ERR_BADNAME at the same time, in order to
-work around a Linux server bug.
+So the non-standard, but accepted way of doing this is
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c |    3 +++
- fs/nfs/nfs4xdr.c  |    2 --
- 2 files changed, 3 insertions(+), 2 deletions(-)
+Cc: Stable Tree <stable@kernel.org>	[2.6.37]
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2aede9c..39a2e3c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -84,6 +84,9 @@ static int nfs4_map_errors(int err)
- 	switch (err) {
- 	case -NFS4ERR_RESOURCE:
- 		return -EREMOTEIO;
-+	case -NFS4ERR_BADOWNER:
-+	case -NFS4ERR_NAME:
-+		return -EINVAL;
- 	default:
- 		dprintk("%s could not handle NFSv4 error %d\n",
- 				__func__, -err);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index bc205ab..1de6b22 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -6174,8 +6174,6 @@ static struct {
- 	{ NFS4ERR_DQUOT,	-EDQUOT		},
- 	{ NFS4ERR_STALE,	-ESTALE		},
- 	{ NFS4ERR_BADHANDLE,	-EBADHANDLE	},
--	{ NFS4ERR_BADOWNER,	-EINVAL		},
--	{ NFS4ERR_BADNAME,	-EINVAL		},
- 	{ NFS4ERR_BAD_COOKIE,	-EBADCOOKIE	},
- 	{ NFS4ERR_NOTSUPP,	-ENOTSUPP	},
- 	{ NFS4ERR_TOOSMALL,	-ETOOSMALL	},
--- 
-1.7.3.4
+James
+
 
