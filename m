@@ -1,169 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34588 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752817Ab1AFLg4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Jan 2011 06:36:56 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 08/15] pnfs: serialize LAYOUTGET(openstateid)
-Date: Thu,  6 Jan 2011 06:36:25 -0500
-Message-Id: <1294313792-14280-9-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
-References: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:19640 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754734Ab1AKArI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jan 2011 19:47:08 -0500
+From: <Daniel.Muntz@emc.com>
+To: <shtylman@athenacr.com>, <jlayton@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Date: Mon, 10 Jan 2011 19:38:43 -0500
+Subject: RE: question about nfs4 with krb5 behavior
+Message-ID: <DE966DA98A4ABE438D726BDF1699CF61043985AADB@MX05A.corp.emc.com>
+In-Reply-To: <201101101545.21890.shtylman@athenacr.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-We shouldn't send a LAYOUTGET(openstateid) unless all outstanding RPCs
-using the previous stateid are completed.  This requires choosing the
-stateid to encode earlier, so we can abort if one is not available (we
-want to use the open stateid, but a LAYOUTGET is already out using
-it), and adding a count of the number of outstanding rpc calls using
-layout state (which for now consist solely of LAYOUTGETs).
+Best practice for AFS is to only allow one user at a time, especially if users can become root.  You'd also want to delete any "persistent" cache when users change and have a mechanism of validating/replacing kernel and apps.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4proc.c       |    7 ++++++-
- fs/nfs/nfs4xdr.c        |    5 +----
- fs/nfs/pnfs.c           |   24 +++++++++++++++++++-----
- fs/nfs/pnfs.h           |    1 +
- include/linux/nfs_xdr.h |    1 +
- 5 files changed, 28 insertions(+), 10 deletions(-)
+  -Dan
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5bee453..a3549ce 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5304,6 +5304,12 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
- 	if (nfs4_setup_sequence(server, &lgp->args.seq_args,
- 				&lgp->res.seq_res, 0, task))
- 		return;
-+	if (pnfs_choose_layoutget_stateid(&lgp->args.stateid,
-+					  NFS_I(lgp->args.inode)->layout,
-+					  lgp->args.ctx->state)) {
-+		rpc_exit(task, NFS4_OK);
-+		return;
-+	}
- 	rpc_call_start(task);
- }
- 
-@@ -5338,7 +5344,6 @@ static void nfs4_layoutget_release(void *calldata)
- 	struct nfs4_layoutget *lgp = calldata;
- 
- 	dprintk("--> %s\n", __func__);
--	put_layout_hdr(lgp->args.inode);
- 	if (lgp->res.layout.buf != NULL)
- 		free_page((unsigned long) lgp->res.layout.buf);
- 	put_nfs_open_context(lgp->args.ctx);
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4e28242..3cbdd0c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1787,7 +1787,6 @@ encode_layoutget(struct xdr_stream *xdr,
- 		      const struct nfs4_layoutget_args *args,
- 		      struct compound_hdr *hdr)
- {
--	nfs4_stateid stateid;
- 	__be32 *p;
- 
- 	p = reserve_space(xdr, 44 + NFS4_STATEID_SIZE);
-@@ -1798,9 +1797,7 @@ encode_layoutget(struct xdr_stream *xdr,
- 	p = xdr_encode_hyper(p, args->range.offset);
- 	p = xdr_encode_hyper(p, args->range.length);
- 	p = xdr_encode_hyper(p, args->minlength);
--	pnfs_choose_layoutget_stateid(&stateid, NFS_I(args->inode)->layout,
--				args->ctx->state);
--	p = xdr_encode_opaque_fixed(p, &stateid.data, NFS4_STATEID_SIZE);
-+	p = xdr_encode_opaque_fixed(p, &args->stateid.data, NFS4_STATEID_SIZE);
- 	*p = cpu_to_be32(args->maxcount);
- 
- 	dprintk("%s: 1st type:0x%x iomode:%d off:%lu len:%lu mc:%d\n",
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 212cbc2..59ed68b 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -371,6 +371,14 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 		memcpy(&lo->plh_stateid, &new->stateid, sizeof(new->stateid));
- }
- 
-+/* lget is set to 1 if called from inside send_layoutget call chain */
-+static bool
-+pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, int lget)
-+{
-+	return (list_empty(&lo->plh_segs) &&
-+		 (atomic_read(&lo->plh_outstanding) > lget));
-+}
-+
- int
- pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 			      struct nfs4_state *open_state)
-@@ -379,7 +387,9 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 
- 	dprintk("--> %s\n", __func__);
- 	spin_lock(&lo->plh_inode->i_lock);
--	if (list_empty(&lo->plh_segs)) {
-+	if (pnfs_layoutgets_blocked(lo, 1)) {
-+		status = -EAGAIN;
-+	} else if (list_empty(&lo->plh_segs)) {
- 		int seq;
- 
- 		do {
-@@ -414,10 +424,8 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 
- 	BUG_ON(ctx == NULL);
- 	lgp = kzalloc(sizeof(*lgp), GFP_KERNEL);
--	if (lgp == NULL) {
--		put_layout_hdr(lo->plh_inode);
-+	if (lgp == NULL)
- 		return NULL;
--	}
- 	lgp->args.minlength = NFS4_MAX_UINT64;
- 	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
- 	lgp->args.range.iomode = iomode;
-@@ -613,10 +621,16 @@ pnfs_update_layout(struct inode *ino,
- 	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
- 		goto out_unlock;
- 
--	get_layout_hdr_locked(lo); /* Matched in nfs4_layoutget_release */
-+	if (pnfs_layoutgets_blocked(lo, 0))
-+		goto out_unlock;
-+	atomic_inc(&lo->plh_outstanding);
-+
-+	get_layout_hdr_locked(lo);
- 	spin_unlock(&ino->i_lock);
- 
- 	lseg = send_layoutget(lo, ctx, iomode);
-+	atomic_dec(&lo->plh_outstanding);
-+	put_layout_hdr(ino);
- out:
- 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
- 		nfsi->layout->plh_flags, lseg);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 787253e..698380d 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -69,6 +69,7 @@ struct pnfs_layout_hdr {
- 	struct list_head	plh_layouts;   /* other client layouts */
- 	struct list_head	plh_segs;      /* layout segments list */
- 	nfs4_stateid		plh_stateid;
-+	atomic_t		plh_outstanding; /* number of RPCs out */
- 	unsigned long		plh_flags;
- 	struct inode		*plh_inode;
- };
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 8fcc542..83d36d3 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -208,6 +208,7 @@ struct nfs4_layoutget_args {
- 	struct inode *inode;
- 	struct nfs_open_context *ctx;
- 	struct nfs4_sequence_args seq_args;
-+	nfs4_stateid stateid;
- };
- 
- struct nfs4_layoutget_res {
--- 
-1.7.2.1
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Roman Shtylman
+Sent: Monday, January 10, 2011 12:45 PM
+To: Jeff Layton
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: question about nfs4 with krb5 behavior
+
+
+On Monday, January 10, 2011 03:35:04 pm Jeff Layton wrote:
+> On Mon, 10 Jan 2011 14:55:30 -0500
+> 
+> Roman Shtylman <shtylman@athenacr.com> wrote:
+> > I have setup nfs4 with krb5 server and successfully mounted a client. Two
+> > people can log into the client box and both access their respective
+> > shares and not each other's. However, when one user (who lets say has
+> > root privs) uses root to become the second user (using su) then that
+> > user can now access the info of the user he became.
+> > 
+> > I was under the impression that this should not be possible as the
+> > tickets for access should still be tied to the first user they logged in
+> > as. Is this true? Or do I have an error in my setup?
+> > 
+> > Process:
+> > Login as user A
+> > (User B logs into the machine from another terminal)
+> > sudo su B (to become user B on the machine)
+> > <can now edit files which belong to B>
+> 
+> That's correct, or is at least in accordance with the design. The
+> credcache is (usually) a file in /tmp. The kernel has to upcall to
+> userspace for that information. To do that, it passes along the uid of
+> the owner of the credcache. I think this is governed by the fsuid.
+> 
+> When you "su" to another user, all of the uid's associated with the
+> process are changed (real, effective, fs and saved). So, the uid passed to
+> the upcall in this case is B's and not A's.
+> 
+> This could potentially be "fixable" by moving the krb5 credcache into
+> the per-session keyring and then teach nfs to do keys API upcalls to get
+> the right blob. Not a trivial project, but it's doable. This is
+> something that would be nice for CIFS and maybe AFS too.
+
+AFS does not have this behavior. 
+
+What is a best practice for handling this situation? Prevent "untrusted" 
+machines from connecting to the nfs server? Basically any machine where a 
+normal user can become root would be a potential problem?
+
+Thanks for the quick response.
+
+cheers,
+~Roman
+
+> 
+> > If User B does not login before user A becomes user B, user A is not able
+> > to edit user B's files even after he becomes user B.
+> 
+> I suspect that that's just a negative cache entry that will eventually
+> time out.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
