@@ -1,109 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:33071 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:56186 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751644Ab1ASXbu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 18:31:50 -0500
-Subject: Re: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Nick Piggin <npiggin@gmail.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wen.gang.wang@oracle.com
-In-Reply-To: <AANLkTikRX8nxh-gp=Fdr21dg-DLmUb2FxYXrM2A0hfN0@mail.gmail.com>
-References: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
-	 <1295479517.22151.16.camel@heimdal.trondhjem.org>
-	 <AANLkTikRX8nxh-gp=Fdr21dg-DLmUb2FxYXrM2A0hfN0@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 19 Jan 2011 18:31:40 -0500
-Message-ID: <1295479900.22151.19.camel@heimdal.trondhjem.org>
+	id S932364Ab1AKQVn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Jan 2011 11:21:43 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 06/14] rpc: allow xprt_class->setup to return a preexisting xprt
+Date: Tue, 11 Jan 2011 11:21:26 -0500
+Message-Id: <1294762894-21371-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1294762894-21371-1-git-send-email-bfields@redhat.com>
+References: <1294762894-21371-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-01-20 at 10:26 +1100, Nick Piggin wrote: 
-> On Thu, Jan 20, 2011 at 10:25 AM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Wed, 2011-01-19 at 17:36 -0500, Chuck Lever wrote:
-> >> Nick Piggin reports:
-> >>
-> >> > I'm getting use after frees in aio code in NFS
-> >> >
-> >> > [ 2703.396766] Call Trace:
-> >> > [ 2703.396858]  [<ffffffff8100b057>] ? native_sched_clock+0x27/0x80
-> >> > [ 2703.396959]  [<ffffffff8108509e>] ? put_lock_stats+0xe/0x40
-> >> > [ 2703.397058]  [<ffffffff81088348>] ? lock_release_holdtime+0xa8/0x140
-> >> > [ 2703.397159]  [<ffffffff8108a2a5>] lock_acquire+0x95/0x1b0
-> >> > [ 2703.397260]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
-> >> > [ 2703.397361]  [<ffffffff81039701>] ? get_parent_ip+0x11/0x50
-> >> > [ 2703.397464]  [<ffffffff81612a31>] _raw_spin_lock_irq+0x41/0x80
-> >> > [ 2703.397564]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
-> >> > [ 2703.397662]  [<ffffffff811627db>] aio_put_req+0x2b/0x60
-> >> > [ 2703.397761]  [<ffffffff811647fe>] do_io_submit+0x2be/0x7c0
-> >> > [ 2703.397895]  [<ffffffff81164d0b>] sys_io_submit+0xb/0x10
-> >> > [ 2703.397995]  [<ffffffff8100307b>] system_call_fastpath+0x16/0x1b
-> >> >
-> >> > Adding some tracing, it is due to nfs completing the request then
-> >> > returning something other than -EIOCBQUEUED, so aio.c
-> >> > also completes the request.
-> >>
-> >> To address this, prevent the NFS direct I/O engine from completing
-> >> async iocbs when the forward path returns an error other than
-> >> EIOCBQUEUED.
-> >>
-> >> This appears to survive ^C during both "xfstest no. 208" and "fsx -Z."
-> >>
-> >> Cc: Stable <stable@kernel.org>
-> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >> ---
-> >>
-> >> Here's my take.
-> >>
-> >>  fs/nfs/direct.c |   32 +++++++++++++++++---------------
-> >>  1 files changed, 17 insertions(+), 15 deletions(-)
-> >>
-> >> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> >> index e6ace0d..c2176f4 100644
-> >> --- a/fs/nfs/direct.c
-> >> +++ b/fs/nfs/direct.c
-> >> @@ -407,15 +407,16 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
-> >>               pos += vec->iov_len;
-> >>       }
-> >>
-> >> -     if (put_dreq(dreq))
-> >> -             nfs_direct_complete(dreq);
-> >> -
-> >> -     if (requested_bytes != 0)
-> >> -             return 0;
-> >> +     /*
-> >> +      * If no bytes were started, return the error, and let the
-> >> +      * generic layer handle the completion.
-> >> +      */
-> >> +     if (requested_bytes == 0)
-> >> +             return result < 0 ? result : -EIO;
-> >>
-> >> -     if (result < 0)
-> >> -             return result;
-> >> -     return -EIO;
-> >> +     if (put_dreq(dreq))
-> >> +             nfs_direct_write_complete(dreq, dreq->inode);
-> >                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> > In nfs_direct_read_schedule_iovec()? Shouldn't that be
-> >                nfs_direct_complete(dreq);
-> >
-> > Also, why is EIO the correct reply when no bytes were read/written? Why
-> > shouldn't the VFS aio code be able to cope with a zero byte reply?
-> 
-> What would it do?
+This allows us to reuse the xprt associated with a server connection if
+one has already been set up.
 
-Just return that zero byte reply to userland.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ include/linux/sunrpc/xprt.h |    1 +
+ net/sunrpc/xprt.c           |    3 +++
+ net/sunrpc/xprtsock.c       |   18 +++++++++---------
+ 3 files changed, 13 insertions(+), 9 deletions(-)
 
-zero bytes is a valid reply for ordinary read() and write(), so why
-should we have to do anything different for aio_read()/aio_write()?
-
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 89d10d2..bef0f53 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -321,6 +321,7 @@ void			xprt_conditional_disconnect(struct rpc_xprt *xprt, unsigned int cookie);
+ #define XPRT_CLOSING		(6)
+ #define XPRT_CONNECTION_ABORT	(7)
+ #define XPRT_CONNECTION_CLOSE	(8)
++#define XPRT_INITIALIZED	(9)
+ 
+ static inline void xprt_set_connected(struct rpc_xprt *xprt)
+ {
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 749ad15..856274d 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1102,6 +1102,9 @@ found:
+ 				-PTR_ERR(xprt));
+ 		return xprt;
+ 	}
++	if (test_and_set_bit(XPRT_INITIALIZED, &xprt->state))
++		/* ->setup returned a pre-initialized xprt: */
++		return xprt;
+ 
+ 	spin_lock_init(&xprt->transport_lock);
+ 	spin_lock_init(&xprt->reserve_lock);
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 0ef4dd4..ee091c8 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2359,6 +2359,15 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 	struct svc_sock *bc_sock;
+ 	struct rpc_xprt *ret;
+ 
++	if (args->bc_xprt->xpt_bc_xprt) {
++		/*
++		 * This server connection already has a backchannel
++		 * export; we can't create a new one, as we wouldn't be
++		 * able to match replies based on xid any more.  So,
++		 * reuse the already-existing one:
++		 */
++		 return args->bc_xprt->xpt_bc_xprt;
++	}
+ 	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+ 		return xprt;
+@@ -2397,15 +2406,6 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 			xprt->address_strings[RPC_DISPLAY_PROTO]);
+ 
+ 	/*
+-	 * The backchannel uses the same socket connection as the
+-	 * forechannel
+-	 */
+-	if (args->bc_xprt->xpt_bc_xprt) {
+-		/* XXX: actually, want to catch this case... */
+-		ret = ERR_PTR(-EINVAL);
+-		goto out_err;
+-	}
+-	/*
+ 	 * Once we've associated a backchannel xprt with a connection,
+ 	 * we want to keep it around as long as long as the connection
+ 	 * lasts, in case we need to start using it for a backchannel
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.1
 
