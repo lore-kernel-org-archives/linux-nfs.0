@@ -1,60 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6719 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:56193 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751564Ab1ARS2j convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 13:28:39 -0500
-Subject: RE: 4.1 no-pnfs mount option?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Daniel.Muntz@emc.com
-Cc: rees@umich.edu, androsadamson@gmail.com, linux-nfs@vger.kernel.org
-In-Reply-To: <DE966DA98A4ABE438D726BDF1699CF61043985B53F@MX05A.corp.emc.com>
-References: <20110114151945.GA21629@merit.edu>
-	 <AANLkTimSp6BTgk1YQonXd6HuVS-JEpQUWqsny7JymJsd@mail.gmail.com>
-	 <20110114153846.GA21766@merit.edu>
-	 <1295019712.3576.1.camel@heimdal.trondhjem.org>
-	 <DE966DA98A4ABE438D726BDF1699CF61043985B53F@MX05A.corp.emc.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 18 Jan 2011 13:28:29 -0500
-Message-ID: <1295375309.3746.25.camel@heimdal.trondhjem.org>
+	id S1756222Ab1AKQVp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Jan 2011 11:21:45 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 09/14] nfsd4: re-probe callback on connection loss
+Date: Tue, 11 Jan 2011 11:21:29 -0500
+Message-Id: <1294762894-21371-10-git-send-email-bfields@redhat.com>
+In-Reply-To: <1294762894-21371-1-git-send-email-bfields@redhat.com>
+References: <1294762894-21371-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, 2011-01-18 at 12:44 -0500, Daniel.Muntz@emc.com wrote: 
-> 
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org 
-> > [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Trond Myklebust
-> > Sent: Friday, January 14, 2011 7:42 AM
-> > To: Jim Rees
-> > Cc: William A. (Andy) Adamson; linux-nfs@vger.kernel.org
-> > Subject: Re: 4.1 no-pnfs mount option?
-> > 
-> > On Fri, 2011-01-14 at 10:38 -0500, Jim Rees wrote: 
-> > > William A. (Andy) Adamson wrote:
-> > > 
-> > >   No mount option - just configure your machine to not load any pnfs
-> > >   layoutdriver modules.
-> > > 
-> > > That works, thanks, but I was hoping for a way to have 
-> > layout and non-layout
-> > > mounts going on at the same time.
-> > 
-> > Different VMs?
-> > 
-> > Trond
-> 
-> Would there be any objections to adding a "nopnfs" mount option to force this behavior?  It could be useful at least for testing, possibly for working around server problems, or if an admin knows that certain clients' usage patterns would be better served by disabling pnfs.
+This makes sure we set the sequence flag when necessary.
 
-Yes. Why should we be adding debugging mount options to the upstream
-code? Just test the damned pnfs code properly before it goes upstream...
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Trond
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 15bd1cc..b24f19d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -642,7 +642,7 @@ static void nfsd4_conn_lost(struct svc_xpt_user *u)
+ 		free_conn(c);
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+-	/* XXX: mark callback for update, probe callback */
++	nfsd4_probe_callback(clp);
+ }
+ 
+ static struct nfsd4_conn *alloc_conn(struct svc_rqst *rqstp, u32 flags)
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.1
 
