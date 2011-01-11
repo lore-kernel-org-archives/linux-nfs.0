@@ -1,73 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:5034 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753326Ab1A0UhR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jan 2011 15:37:17 -0500
-Message-ID: <4D41D77B.2010605@panasas.com>
-Date: Thu, 27 Jan 2011 22:37:15 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: pnfs git tree status pnfs-all-2.6.37-2011-01-06
-References: <4CD17FC4.6090906@panasas.com> <4CE1604E.1070902@panasas.com> <4CEBCDF1.4010705@panasas.com>
-In-Reply-To: <4CEBCDF1.4010705@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:56184 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932359Ab1AKQVn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Jan 2011 11:21:43 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 05/14] rpc: keep backchannel xprt as long as server connection
+Date: Tue, 11 Jan 2011 11:21:25 -0500
+Message-Id: <1294762894-21371-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1294762894-21371-1-git-send-email-bfields@redhat.com>
+References: <1294762894-21371-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-The pnfs-all-2.6.37 branch, based on v2.6.37, is tagged as pnfs-all-2.6.37-2011-01-06
+Multiple backchannels can share the same tcp connection; from rfc 5661 section
+2.10.3.1:
 
-Cumulative patches can be generated from
-git://linux-nfs.org/~bhalevy/linux-pnfs.git
-using
-git diff v2.6.37 pnfs-all-2.6.37-2011-01-06
+	A connection's association with a session is not exclusive.  A
+	connection associated with the channel(s) of one session may be
+	simultaneously associated with the channel(s) of other sessions
+	including sessions associated with other client IDs.
 
-Or, they can be downloaded from the wiki at:
-http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
+However, multiple backchannels share a connection, they must all share
+the same xid stream (hence the same rpc_xprt); the only way we have to
+match replies with calls at the rpc layer is using the xid.
 
-Latest patches that went in since pnfs-all-2.6.37-rc3-2010-11-23:
+So, keep the rpc_xprt around as long as the connection lasts, in case
+we're asked to use the connection as a backchannel again.
 
-  Andy Adamson     8ec9cf0 NFS dont free shared socket on backchannel put xprt
-  Andy Adamson     1a50e87 NFS implement v4.0 callback_ident
-  Andy Adamson     d54419f NFS associate sessionid with callback connection
-  Andy Adamson     e036acb NFS reference nfs_client across cb_compound processing
-  Andy Adamson     75767b5 NFS RPC_AUTH_GSS unsupported on v4.1 back channel
-  Andy Adamson     1e55cfb NFS add session back channel draining
-  Andy Adamson     c0f97fa NFS only set bc_xprt upon success
-  Andy Adamson     f69846b NFS fix the setting of exchange id flag
-  Fred Isaman      419e6b8 pnfs-submit: wave2: rewrite validate_bitmap_values to obey spec
-  Fred Isaman      a00d5cc pnfs-submit: wave2: NFS4ERR_RESOURCE is not a valid error for CB_LAYOUTRECALL
-  Fred Isaman      8978415 pnfs-submit: wave2: check that partial LAYOUTGET return is ignored
-  Fred Isaman      5d7c2c7 pnfs-submit: wave2: remove cl_layoutrecalls list
-  Fred Isaman      6b90058 pnfs-submit: wave2: change plh_outstanding to atomic_t
-  Fred Isaman      02731c2 pnfs-submit: wave2: change lseg->valid from bool to a bit flag
-  Fred Isaman      d2a0ab1 pnfs-submit: wave2: Remove LAYOUTRETURN from return on close
-  Fred Isaman      25180ca pnfs-submit: wave2: remove all LAYOUTRETURN code
-  Fred Isaman      c23f64a pnfs-submit: wave2: Revert "pnfs_submit: update nfs4_async_handle_error for data server"
-  Fred Isaman      70f4ea3 pnfs-submit: wave2: remove forgotten layoutreturn struct definitions
-  Fred Isaman      b7ec707 pnfs-submit: wave2: Remove smp barrier in get_layout_hdr
-  Fred Isaman      2d87a2c pnfs-submit: wave2: make put_layout_hdr have args consistent with related functions
-  Fred Isaman      7264acc wave 2: restore removed comment in nfs4_evict_inode
-  Fred Isaman      cfed8e0 wave 2: remove gratuitous changes to nfs4_layoutget_done
-  Fred Isaman      233ca9a wave 2: remove pnfs_ld_layoutret_on_setattr()
-  Fred Isaman      84446ae wave 2: share code between put_lseg and pnfs_free_lseg_list
-  Fred Isaman      a851528 wave 2: remove notify_drained
-  Fred Isaman      f38b63f wave 2: rename notify fields
-  Fred Isaman      3f937e3 wave 2: remove trigger_flush
-  Fred Isaman      99f81a6 wave 2: Fix outdated comment above _pnfs_return_layout
-  Fred Isaman      c258f80 wave 2: remove unneeded include from pnfs.h
-  Fred Isaman      362dc1a wave 2: remove unneeded includes from callback_proc.c
-  Fred Isaman      94ee6f7 debug: add assert_spin_locked
-  Fred Isaman      012a2c7 pnfs-submit: wave4: fix bug dealing with commit split between DS and MDS
-  Fred Isaman      447d2e4 pnfs-submit: Turn off layoutcommits
-  Benny Halevy     b53b08c Revert "pnfs-submit: wave2: remove forgotten layoutreturn struct definitions"
-  Benny Halevy     1896997 Revert "pnfs-submit: Turn off layoutcommits"
-  Benny Halevy     5d7a3fc Revert "pnfs-submit: wave2: remove all LAYOUTRETURN code"
-  Benny Halevy     a534dcf Revert "pnfs-submit: wave2: Remove LAYOUTRETURN from return on close"
-  Benny Halevy     3c5e897 FIXME: roc should return layout on last close
-  Benny Halevy     751b783 Revert "pnfs-submit: wave2: remove cl_layoutrecalls list"
-  Benny Halevy     ae5ccc3 Revert "pnfs-submit: wave2: Pull out all recall initiated LAYOUTRETURNS"
-  Benny Halevy     98dba28 Revert "pnfs-submit: wave2: Don't wait in layoutget"
-  Benny Halevy     bd49095 Revert "pnfs-submit: wave2: check that partial LAYOUTGET return is ignored"
-  Benny Halevy     7893f29 SQUASHME: pnfs-obj: fixup layoutcommit methods args
-  Benny Halevy     7f5ffb4 SQUASHME: pnfs-block: fixup layoutcommit methods args
+Requests to create new backchannel clients over a given server
+connection should results in creating new clients that reuse the
+existing rpc_xprt.
+
+But to start, just reject attempts to associate multiple rpc_xprt's with
+the same underlying bc_xprt.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svc_xprt.c |    4 ++++
+ net/sunrpc/xprt.c     |    2 +-
+ net/sunrpc/xprtsock.c |   34 ++++++++++++++++++++++++----------
+ 3 files changed, 29 insertions(+), 11 deletions(-)
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 173f3b9..ab86b79 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -13,6 +13,7 @@
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/svc_xprt.h>
+ #include <linux/sunrpc/svcsock.h>
++#include <linux/sunrpc/xprt.h>
+ 
+ #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+ 
+@@ -128,6 +129,9 @@ static void svc_xprt_free(struct kref *kref)
+ 	if (test_bit(XPT_CACHE_AUTH, &xprt->xpt_flags))
+ 		svcauth_unix_info_release(xprt);
+ 	put_net(xprt->xpt_net);
++	/* See comment on corresponding get in xs_setup_bc_tcp(): */
++	if (xprt->xpt_bc_xprt)
++		xprt_put(xprt->xpt_bc_xprt);
+ 	xprt->xpt_ops->xpo_free(xprt);
+ 	module_put(owner);
+ }
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 4c8f18a..749ad15 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -965,6 +965,7 @@ struct rpc_xprt *xprt_alloc(struct net *net, int size, int max_req)
+ 	xprt = kzalloc(size, GFP_KERNEL);
+ 	if (xprt == NULL)
+ 		goto out;
++	kref_init(&xprt->kref);
+ 
+ 	xprt->max_reqs = max_req;
+ 	xprt->slot = kcalloc(max_req, sizeof(struct rpc_rqst), GFP_KERNEL);
+@@ -1102,7 +1103,6 @@ found:
+ 		return xprt;
+ 	}
+ 
+-	kref_init(&xprt->kref);
+ 	spin_lock_init(&xprt->transport_lock);
+ 	spin_lock_init(&xprt->reserve_lock);
+ 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 18dc42e..0ef4dd4 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2375,16 +2375,6 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 	xprt->reestablish_timeout = 0;
+ 	xprt->idle_timeout = 0;
+ 
+-	/*
+-	 * The backchannel uses the same socket connection as the
+-	 * forechannel
+-	 */
+-	args->bc_xprt->xpt_bc_xprt = xprt;
+-	xprt->bc_xprt = args->bc_xprt;
+-	bc_sock = container_of(args->bc_xprt, struct svc_sock, sk_xprt);
+-	transport->sock = bc_sock->sk_sock;
+-	transport->inet = bc_sock->sk_sk;
+-
+ 	xprt->ops = &bc_tcp_ops;
+ 
+ 	switch (addr->sa_family) {
+@@ -2407,6 +2397,29 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 			xprt->address_strings[RPC_DISPLAY_PROTO]);
+ 
+ 	/*
++	 * The backchannel uses the same socket connection as the
++	 * forechannel
++	 */
++	if (args->bc_xprt->xpt_bc_xprt) {
++		/* XXX: actually, want to catch this case... */
++		ret = ERR_PTR(-EINVAL);
++		goto out_err;
++	}
++	/*
++	 * Once we've associated a backchannel xprt with a connection,
++	 * we want to keep it around as long as long as the connection
++	 * lasts, in case we need to start using it for a backchannel
++	 * again; this reference won't be dropped until bc_xprt is
++	 * destroyed.
++	 */
++	xprt_get(xprt);
++	args->bc_xprt->xpt_bc_xprt = xprt;
++	xprt->bc_xprt = args->bc_xprt;
++	bc_sock = container_of(args->bc_xprt, struct svc_sock, sk_xprt);
++	transport->sock = bc_sock->sk_sock;
++	transport->inet = bc_sock->sk_sk;
++
++	/*
+ 	 * Since we don't want connections for the backchannel, we set
+ 	 * the xprt status to connected
+ 	 */
+@@ -2415,6 +2428,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 
+ 	if (try_module_get(THIS_MODULE))
+ 		return xprt;
++	xprt_put(xprt);
+ 	ret = ERR_PTR(-EINVAL);
+ out_err:
+ 	xprt_free(xprt);
+-- 
+1.7.1
+
