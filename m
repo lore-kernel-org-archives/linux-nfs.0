@@ -1,123 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:16480 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757047Ab1AMPJT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 10:09:19 -0500
-Subject: Re: STMMAC driver: NFS Problem on 2.6.37
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4D2EC133.7010607@st.com>
-Date: Thu, 13 Jan 2011 10:07:08 -0500
-Cc: <Trond.Myklebust@netapp.com>, <netdev@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>,
-        Armando VISCONTI <armando.visconti@st.com>,
-        Shiraz HASHIM <shiraz.hashim@st.com>,
-        Viresh KUMAR <viresh.kumar@st.com>
-Message-Id: <2D04CF75-CA68-4BDC-99A3-FA1DD6113602@oracle.com>
-References: <4D2EC133.7010607@st.com>
-To: deepaksi <deepak.sikri@st.com>
+Received: from fieldses.org ([174.143.236.118]:56204 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932370Ab1AKQVy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Jan 2011 11:21:54 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 13/14] nfsd4: simplify nfsd4_cb_prepare
+Date: Tue, 11 Jan 2011 11:21:33 -0500
+Message-Id: <1294762894-21371-14-git-send-email-bfields@redhat.com>
+In-Reply-To: <1294762894-21371-1-git-send-email-bfields@redhat.com>
+References: <1294762894-21371-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Remove handling for a nonexistant case (status && !-EAGAIN).
 
-On Jan 13, 2011, at 4:09 AM, deepaksi wrote:
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4callback.c |   26 ++++----------------------
+ 1 files changed, 4 insertions(+), 22 deletions(-)
 
-> Hi
-> 
-> I am facing a problem related to nfs boot, while using the stmmac driver
-> ported on 2.6.37 kernel. When we use a JFFS2 file system and mount the kernel,
-> the network driver works fine.
-> 
-> I have been following the mailing list and could find some issues with NFS 
-> on 2.6.37 but I am not too sure whether the kernel crash I am getting is 
-> related to that.
-> 
-> The driver worked fine on 2.6.32 kernel, but while booting the 2.6.37
-> kernel I get the following log messages:
-> 
-> stmmac: Rx Checksum Offload Engine supported
->        TX Checksum insertion supported
-> IP-Config: Complete:
->     device=eth0, addr=192.168.1.10, mask=255.255.255.0, gw=255.255.255.255,
->     host=192.168.1.10, domain=, nis-domain=(none),
->     bootserver=192.168.1.1, rootserver=192.168.1.1, rootpath=
-
-Why is rootpath left undefined?
-
-> VFS: Unable to mount root fs via NFS, trying floppy.
-> VFS: Cannot open root device "nfs" or unknown-block(2,0)
-> Please append a correct "root=" boot option; here are the available
-> partitions:
-> 1f00              64 mtdblock0  (driver?)
-> 1f01             256 mtdblock1  (driver?)
-> 1f02            2816 mtdblock2  (driver?)
-> 1f03            5056 mtdblock3  (driver?)
-> Kernel panic - not syncing: VFS: Unable to mount root fs on
-> unknown-block(2,0)
-> Backtrace:
-> [<c00370f0>] (dump_backtrace+0x0/0x110) from [<c0037234>]
-> (dump_stack+0x18/0x1c)
-> r7:c7b5b000 r6:00000000 r5:c7b5b015 r4:c04296b8
-> [<c003721c>] (dump_stack+0x0/0x1c) from [<c004ebf8>] (panic+0x60/0x180)
-> [<c004eb98>] (panic+0x0/0x180) from [<c0009114>]
-> (mount_block_root+0x1d4/0x214)
-> r3:00000000 r2:00000001 r1:c782bf50 r0:c0394851
-> [<c0008f40>] (mount_block_root+0x0/0x214) from [<c00091fc>]
-> (mount_root+0xa8/0xc8)
-> [<c0009154>] (mount_root+0x0/0xc8) from [<c0009388>]
-> (prepare_namespace+0x16c/0x1d0)
-> r4:c04288c0
-> [<c000921c>] (prepare_namespace+0x0/0x1d0) from [<c0008904>]
-> (kernel_init+0x1cc/0x220)
-> r5:c0402048 r4:c0428860
-> [<c0008738>] (kernel_init+0x0/0x220) from [<c00522a8>] (do_exit+0x0/0x5e0)
-> r7:00000013 r6:c00522a8 r5:c0008738 r4:00000000
-> CPU0: stopping
-> Backtrace:
-> [<c00370f0>] (dump_backtrace+0x0/0x110) from [<c0037234>]
-> (dump_stack+0x18/0x1c)
-> r7:c0405484 r6:00000406 r5:00000000 r4:00000000
-> [<c003721c>] (dump_stack+0x0/0x1c) from [<c002d334>] (do_IPI+0xb4/0x124)
-> [<c002d280>] (do_IPI+0x0/0x124) from [<c0032bb4>] (__irq_svc+0x34/0xc0)
-> Exception stack(0xc03f3f50 to 0xc03f3f98)
-> 3f40:                                     c0402048 00000000 c03f3f98
-> 00000000
-> 3f60: c03f2000 c04288dc c0027290 c0405484 000258e8 411fc091 00000000
-> c03f3fa4
-> 3f80: c03f3fa8 c03f3f98 c0034a24 c0034a28 60000013 ffffffff
-> r5:fc800100 r4:ffffffff
-> [<c00349fc>] (default_idle+0x0/0x30) from [<c0034874>] (cpu_idle+0x80/0xc0)
-> [<c00347f4>] (cpu_idle+0x0/0xc0) from [<c030602c>] (rest_init+0x64/0x7c)
-> r5:c04288dc r4:c04020b0
-> [<c0305fc8>] (rest_init+0x0/0x7c) from [<c0008bd4>]
-> (start_kernel+0x27c/0x2d8)
-> [<c0008958>] (start_kernel+0x0/0x2d8) from [<00008038>] (0x8038)
-> r5:c0401fac r4:10c5387d
-> 
-> I have tried the same over latest source picked from linus tree,
-> 4162cf64973df51fc885825bc9ca4d055891c49f
-> Merge git://git.kernel.org/pub/scm/linux/kernel/git/davem/net-2.6
-> 
-> We are using version 3 of the NFs protocol in kernel's NFS client.
-> 
-> 
-> Regards
-> Deepak
-> ST Microelectronics
-> 
-> .
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index fff96dc..69955e9 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -613,24 +613,14 @@ void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
+  * If the slot is available, then mark it busy.  Otherwise, set the
+  * thread for sleeping on the callback RPC wait queue.
+  */
+-static int nfsd41_cb_setup_sequence(struct nfs4_client *clp,
+-		struct rpc_task *task)
++static bool nfsd41_cb_get_slot(struct nfs4_client *clp, struct rpc_task *task)
+ {
+-	u32 *ptr = (u32 *)clp->cl_cb_session->se_sessionid.data;
+-	int status = 0;
+-
+-	dprintk("%s: %u:%u:%u:%u\n", __func__,
+-		ptr[0], ptr[1], ptr[2], ptr[3]);
+-
+ 	if (test_and_set_bit(0, &clp->cl_cb_slot_busy) != 0) {
+ 		rpc_sleep_on(&clp->cl_cb_waitq, task, NULL);
+ 		dprintk("%s slot is busy\n", __func__);
+-		status = -EAGAIN;
+-		goto out;
++		return false;
+ 	}
+-out:
+-	dprintk("%s status=%d\n", __func__, status);
+-	return status;
++	return true;
+ }
+ 
+ /*
+@@ -643,19 +633,11 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
+ 	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
+ 	struct nfs4_client *clp = dp->dl_client;
+ 	u32 minorversion = clp->cl_minorversion;
+-	int status = 0;
+ 
+ 	cb->cb_minorversion = minorversion;
+ 	if (minorversion) {
+-		status = nfsd41_cb_setup_sequence(clp, task);
+-		if (status) {
+-			if (status != -EAGAIN) {
+-				/* terminate rpc task */
+-				task->tk_status = status;
+-				task->tk_action = NULL;
+-			}
++		if (!nfsd41_cb_get_slot(clp, task))
+ 			return;
+-		}
+ 	}
+ 	rpc_call_start(task);
+ }
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.1
 
