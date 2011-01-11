@@ -1,166 +1,272 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50937 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:56178 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750774Ab1ANUfb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Jan 2011 15:35:31 -0500
-Date: Fri, 14 Jan 2011 15:35:29 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: nfsd for 2.6.38
-Message-ID: <20110114203529.GB16942@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S932360Ab1AKQVm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Jan 2011 11:21:42 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 02/14] nfsd4: support BIND_CONN_TO_SESSION
+Date: Tue, 11 Jan 2011 11:21:22 -0500
+Message-Id: <1294762894-21371-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1294762894-21371-1-git-send-email-bfields@redhat.com>
+References: <1294762894-21371-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Please pull nfsd development for 2.6.38 from:
+Basic xdr and processing for BIND_CONN_TO_SESSION.  This adds a
+connection to the list of connections associated with a session.
 
-  git://linux-nfs.org/~bfields/linux.git for-2.6.38
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c   |    9 ++++++-
+ fs/nfsd/nfs4state.c  |   59 ++++++++++++++++++++++++++++++++++++++++++++-----
+ fs/nfsd/nfs4xdr.c    |   34 +++++++++++++++++++++++++++-
+ fs/nfsd/state.h      |    5 ++++
+ fs/nfsd/xdr4.h       |    2 +
+ include/linux/nfs4.h |    3 ++
+ 6 files changed, 102 insertions(+), 10 deletions(-)
 
-This includes a first implementation of session trunking support and
-secinfo_no_name support, both mandatory features for NFSv4.1.  My list
-of issues that I believe we need fixed before server-side 4.1 can be
-considered minimally correct is at
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index fd6694b..db52546 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1004,8 +1004,8 @@ static const char *nfsd4_op_name(unsigned opnum);
+  * Also note, enforced elsewhere:
+  *	- SEQUENCE other than as first op results in
+  *	  NFS4ERR_SEQUENCE_POS. (Enforced in nfsd4_sequence().)
+- *	- BIND_CONN_TO_SESSION must be the only op in its compound
+- *	  (Will be enforced in nfsd4_bind_conn_to_session().)
++ *	- BIND_CONN_TO_SESSION must be the only op in its compound.
++ *	  (Enforced in nfsd4_bind_conn_to_session().)
+  *	- DESTROY_SESSION must be the final operation in a compound, if
+  *	  sessionid's in SEQUENCE and DESTROY_SESSION are the same.
+  *	  (Enforced in nfsd4_destroy_session().)
+@@ -1326,6 +1326,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_AS_FIRST_OP,
+ 		.op_name = "OP_EXCHANGE_ID",
+ 	},
++	[OP_BIND_CONN_TO_SESSION] = {
++		.op_func = (nfsd4op_func)nfsd4_bind_conn_to_session,
++		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_AS_FIRST_OP,
++		.op_name = "OP_BIND_CONN_TO_SESSION",
++	},
+ 	[OP_CREATE_SESSION] = {
+ 		.op_func = (nfsd4op_func)nfsd4_create_session,
+ 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_AS_FIRST_OP,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3cf9900..956174f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -679,15 +679,12 @@ static int nfsd4_register_conn(struct nfsd4_conn *conn)
+ 	return register_xpt_user(conn->cn_xprt, &conn->cn_xpt_user);
+ }
+ 
+-static __be32 nfsd4_new_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
++static __be32 nfsd4_new_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses, u32 dir)
+ {
+ 	struct nfsd4_conn *conn;
+-	u32 flags = NFS4_CDFC4_FORE;
+ 	int ret;
+ 
+-	if (ses->se_flags & SESSION4_BACK_CHAN)
+-		flags |= NFS4_CDFC4_BACK;
+-	conn = alloc_conn(rqstp, flags);
++	conn = alloc_conn(rqstp, dir);
+ 	if (!conn)
+ 		return nfserr_jukebox;
+ 	nfsd4_hash_conn(conn, ses);
+@@ -698,6 +695,17 @@ static __be32 nfsd4_new_conn(struct svc_rqst *rqstp, struct nfsd4_session *ses)
+ 	return nfs_ok;
+ }
+ 
++static __be32 nfsd4_new_conn_from_crses(struct svc_rqst *rqstp, struct nfsd4_session *ses)
++{
++	u32 dir = NFS4_CDFC4_FORE;
++
++	if (ses->se_flags & SESSION4_BACK_CHAN)
++		dir |= NFS4_CDFC4_BACK;
++
++	return nfsd4_new_conn(rqstp, ses, dir);
++}
++
++/* must be called under client_lock */
+ static void nfsd4_del_conns(struct nfsd4_session *s)
+ {
+ 	struct nfs4_client *clp = s->se_client;
+@@ -776,7 +784,7 @@ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct n
+ 	spin_unlock(&clp->cl_lock);
+ 	spin_unlock(&client_lock);
+ 
+-	status = nfsd4_new_conn(rqstp, new);
++	status = nfsd4_new_conn_from_crses(rqstp, new);
+ 	/* whoops: benny points out, status is ignored! (err, or bogus) */
+ 	if (status) {
+ 		free_session(&new->se_ref);
+@@ -1597,6 +1605,45 @@ static bool nfsd4_last_compound_op(struct svc_rqst *rqstp)
+ 	return argp->opcnt == resp->opcnt;
+ }
+ 
++static __be32 nfsd4_map_bcts_dir(u32 *dir)
++{
++	switch (*dir) {
++	case NFS4_CDFC4_FORE:
++	case NFS4_CDFC4_BACK:
++		return nfs_ok;
++	case NFS4_CDFC4_FORE_OR_BOTH:
++	case NFS4_CDFC4_BACK_OR_BOTH:
++		*dir = NFS4_CDFC4_BOTH;
++		return nfs_ok;
++	};
++	return nfserr_inval;
++}
++
++__be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
++		     struct nfsd4_compound_state *cstate,
++		     struct nfsd4_bind_conn_to_session *bcts)
++{
++	__be32 status;
++
++	if (!nfsd4_last_compound_op(rqstp))
++		return nfserr_not_only_op;
++	spin_lock(&client_lock);
++	cstate->session = find_in_sessionid_hashtbl(&bcts->sessionid);
++	/* Sorta weird: we only need the refcnt'ing because new_conn acquires
++	 * client_lock iself: */
++	if (cstate->session) {
++		nfsd4_get_session(cstate->session);
++		atomic_inc(&cstate->session->se_client->cl_refcount);
++	}
++	spin_unlock(&client_lock);
++	if (!cstate->session)
++		return nfserr_badsession;
++
++	status = nfsd4_map_bcts_dir(&bcts->dir);
++	nfsd4_new_conn(rqstp, cstate->session, bcts->dir);
++	return nfs_ok;
++}
++
+ static bool nfsd4_compound_in_session(struct nfsd4_session *session, struct nfs4_sessionid *sid)
+ {
+ 	if (!session)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index ca37869..4ff2c9e 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -421,6 +421,21 @@ nfsd4_decode_access(struct nfsd4_compoundargs *argp, struct nfsd4_access *access
+ 	DECODE_TAIL;
+ }
+ 
++static __be32 nfsd4_decode_bind_conn_to_session(struct nfsd4_compoundargs *argp, struct nfsd4_bind_conn_to_session *bcts)
++{
++	DECODE_HEAD;
++	u32 dummy;
++
++	READ_BUF(NFS4_MAX_SESSIONID_LEN + 8);
++	COPYMEM(bcts->sessionid.data, NFS4_MAX_SESSIONID_LEN);
++	READ32(bcts->dir);
++	/* XXX: Perhaps Tom Tucker could help us figure out how we
++	 * should be using ctsa_use_conn_in_rdma_mode: */
++	READ32(dummy);
++
++	DECODE_TAIL;
++}
++
+ static __be32
+ nfsd4_decode_close(struct nfsd4_compoundargs *argp, struct nfsd4_close *close)
+ {
+@@ -1359,7 +1374,7 @@ static nfsd4_dec nfsd41_dec_ops[] = {
+ 
+ 	/* new operations for NFSv4.1 */
+ 	[OP_BACKCHANNEL_CTL]	= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_BIND_CONN_TO_SESSION]= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_BIND_CONN_TO_SESSION]= (nfsd4_dec)nfsd4_decode_bind_conn_to_session,
+ 	[OP_EXCHANGE_ID]	= (nfsd4_dec)nfsd4_decode_exchange_id,
+ 	[OP_CREATE_SESSION]	= (nfsd4_dec)nfsd4_decode_create_session,
+ 	[OP_DESTROY_SESSION]	= (nfsd4_dec)nfsd4_decode_destroy_session,
+@@ -2383,6 +2398,21 @@ nfsd4_encode_access(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+ 	return nfserr;
+ }
+ 
++static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_bind_conn_to_session *bcts)
++{
++	__be32 *p;
++
++	if (!nfserr) {
++		RESERVE_SPACE(NFS4_MAX_SESSIONID_LEN + 8);
++		WRITEMEM(bcts->sessionid.data, NFS4_MAX_SESSIONID_LEN);
++		WRITE32(bcts->dir);
++		/* XXX: ? */
++		WRITE32(0);
++		ADJUST_ARGS();
++	}
++	return nfserr;
++}
++
+ static __be32
+ nfsd4_encode_close(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_close *close)
+ {
+@@ -3174,7 +3204,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ 
+ 	/* NFSv4.1 operations */
+ 	[OP_BACKCHANNEL_CTL]	= (nfsd4_enc)nfsd4_encode_noop,
+-	[OP_BIND_CONN_TO_SESSION] = (nfsd4_enc)nfsd4_encode_noop,
++	[OP_BIND_CONN_TO_SESSION] = (nfsd4_enc)nfsd4_encode_bind_conn_to_session,
+ 	[OP_EXCHANGE_ID]	= (nfsd4_enc)nfsd4_encode_exchange_id,
+ 	[OP_CREATE_SESSION]	= (nfsd4_enc)nfsd4_encode_create_session,
+ 	[OP_DESTROY_SESSION]	= (nfsd4_enc)nfsd4_encode_destroy_session,
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index cf6dc83..442f6d8 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -148,6 +148,11 @@ struct nfsd4_create_session {
+ 	u32				gid;
+ };
+ 
++struct nfsd4_bind_conn_to_session {
++	struct nfs4_sessionid		sessionid;
++	u32				dir;
++};
++
+ /* The single slot clientid cache structure */
+ struct nfsd4_clid_slot {
+ 	u32				sl_seqid;
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 799c30c..3a7aa4d 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -427,6 +427,7 @@ struct nfsd4_op {
+ 
+ 		/* NFSv4.1 */
+ 		struct nfsd4_exchange_id	exchange_id;
++		struct nfsd4_bind_conn_to_session bind_conn_to_session;
+ 		struct nfsd4_create_session	create_session;
+ 		struct nfsd4_destroy_session	destroy_session;
+ 		struct nfsd4_sequence		sequence;
+@@ -523,6 +524,7 @@ extern __be32 nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 		struct nfsd4_sequence *seq);
+ extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_exchange_id *);
++extern __be32 nfsd4_bind_conn_to_session(struct svc_rqst *, struct nfsd4_compound_state *, struct nfsd4_bind_conn_to_session *);
+ extern __be32 nfsd4_create_session(struct svc_rqst *,
+ 		struct nfsd4_compound_state *,
+ 		struct nfsd4_create_session *);
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 26afa30..a591893 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -65,6 +65,9 @@
+ 
+ #define NFS4_CDFC4_FORE	0x1
+ #define NFS4_CDFC4_BACK 0x2
++#define NFS4_CDFC4_BOTH 0x3
++#define NFS4_CDFC4_FORE_OR_BOTH 0x3
++#define NFS4_CDFC4_BACK_OR_BOTH 0x7
+ 
+ #define NFS4_SET_TO_SERVER_TIME	0
+ #define NFS4_SET_TO_CLIENT_TIME	1
+-- 
+1.7.1
 
-  http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues
-
-I want to see that list done before we start merging optional 4.1
-features such as pNFS.  At my current rate I'm not sure when we'll get
-there--not soon.
-
-Also included is a stopgap measure to fix a longstanding failure to
-revoke delegations in all the cases we should.  It still leaves some
-races (and doesn't deal with local or Samba conflicts), so I hope to
-have a more complete solution ready for 2.6.39.
-
-And some other miscellaneous cleanup and bugfixing.  Thanks especially
-to Mi Jinlong at Fujitsu, who has been writing tests and catching bugs
-in the new 4.1 code.
-
---b.
-
-
-Dan Carpenter (1):
-      nfsd: fix NULL dereference in setattr()
-
-J. Bruce Fields (52):
-      svcrpc: don't set then immediately clear XPT_DEFERRED
-      nfsd4: centralize more calls to svc_xprt_received
-      svcrpc: simplify svc_close_all
-      svcrpc: svc_close_xprt comment
-      svcrpc: fix wspace-checking race
-      nfsd4: return serverfault on request for ssv
-      Merge commit 'v2.6.37-rc6' into for-2.6.38
-      nfsd4: replace unintuitive match_clientid_establishment
-      nfsd4: fix mixed 4.0/4.1 handling, 4.1 reboot
-      nfsd: fix offset printk's in nfsd3 read/write
-      nfsd4: 4.1 SECINFO should consume filehandle
-      nfsd4: move guts of nfsd4_lookupp into helper
-      nfsd4: implement secinfo_no_name
-      svcrpc: modifying valid sunrpc cache entries is racy
-      SUNRPC: Remove more code when NFSD_DEPRECATED is not configured
-      nfsd: don't drop requests on -ENOMEM
-      svcrpc: avoid double reply caused by deferral race
-      svcrpc: simpler request dropping
-      nfsd: stop translating EAGAIN to nfserr_dropit
-      nfsd: remove some unnecessary dropit handling
-      svcrpc: take lock on turning entry NEGATIVE in cache_check
-      svcrpc: ensure cache_check caller sees updated entry
-      nfsd4: eliminate lease delete callback
-      nfsd4: use a single struct file for delegations
-      locks: eliminate fl_mylease callback
-      locks: minor setlease cleanup
-      nfsd4: name->id mapping should fail with BADOWNER not BADNAME
-      nfsd4: move idmap and acl header files into fs/nfsd
-      nfsd4: remove outdated pathname-comments
-      nfsd4: return nfs errno from name_to_id functions
-      Documentation: don't remove lock manager fl_release_private
-      Merge commit 'v2.6.37' into for-2.6.38-incoming
-      Documentation: fl_mylease no longer exists
-      nfsd4: modify session list under cl_lock
-      nfsd4: support BIND_CONN_TO_SESSION
-      nfsd4: allow backchannel recovery
-      rpc: move sk_bc_xprt to svc_xprt
-      rpc: keep backchannel xprt as long as server connection
-      rpc: allow xprt_class->setup to return a preexisting xprt
-      nfsd4: keep finer-grained callback status
-      nfsd4: set sequence flag when backchannel is down
-      nfsd4: re-probe callback on connection loss
-      nfsd4: make sure sequence flags are set after destroy_session
-      nfsd4: add helper function to run callbacks
-      nfsd4: give out delegations more quickly in 4.1 case
-      nfsd4: simplify nfsd4_cb_prepare
-      nfsd4: allow restarting callbacks
-      nfsd4: initialize cb_per_client
-      nfsd: don't support msnfs export option
-      nfsd4: break lease on nfsd setattr
-      nfsd: break lease on unlink, link, and rename
-      nfsd4: fix callback restarting
-
-Joe Perches (1):
-      net/sunrpc/auth_gss/gss_krb5_crypto.c: Use normal negative error value return
-
-Kirill A. Shutemov (1):
-      nfsd: declare several functions of nfs4callback as static
-
-Mi Jinlong (4):
-      NFSv4.1: Make sure nfsd can decode SP4_SSV correctly at exchange_id
-      NFS4.1: server gets drc mem fail should reply error at create_session
-      NFS4.1: Fix bug server don't reply the right fore_channel to client at create_session
-      nfsd4: fix oops on secinfo_no_name result encoding
-
-NeilBrown (2):
-      sunrpc: remove xpt_pool
-      sunrpc: svc_sock_names should hold ref to socket being closed.
-
-Shan Wei (1):
-      net: sunrpc: kill unused macros
-
-Takuma Umeya (1):
-      nfs4: set source address when callback is generated
-
-bookjovi@gmail.com (1):
-      nfs: add missed CONFIG_NFSD_DEPRECATED
-
- Documentation/filesystems/Locking             |    2 -
- fs/locks.c                                    |    8 +-
- include/linux/nfs4_acl.h => fs/nfsd/acl.h     |    2 -
- fs/nfsd/export.c                              |    4 -
- include/linux/nfsd_idmap.h => fs/nfsd/idmap.h |    6 +-
- fs/nfsd/nfs3proc.c                            |    8 +-
- fs/nfsd/nfs4acl.c                             |    2 +-
- fs/nfsd/nfs4callback.c                        |  151 ++++++++++------
- fs/nfsd/nfs4idmap.c                           |   15 +-
- fs/nfsd/nfs4proc.c                            |   59 +++++--
- fs/nfsd/nfs4recover.c                         |    1 -
- fs/nfsd/nfs4state.c                           |  243 +++++++++++++++----------
- fs/nfsd/nfs4xdr.c                             |  115 +++++++++---
- fs/nfsd/nfsctl.c                              |    4 +-
- fs/nfsd/nfsd.h                                |    1 +
- fs/nfsd/nfsproc.c                             |    6 +-
- fs/nfsd/nfssvc.c                              |    2 +-
- fs/nfsd/state.h                               |   16 ++-
- fs/nfsd/vfs.c                                 |   86 +++------
- fs/nfsd/xdr4.h                                |    9 +-
- include/linux/fs.h                            |    1 -
- include/linux/nfs4.h                          |    6 +
- include/linux/nfsd/export.h                   |    2 +-
- include/linux/sunrpc/cache.h                  |    3 +
- include/linux/sunrpc/svc.h                    |    1 +
- include/linux/sunrpc/svc_xprt.h               |    2 +-
- include/linux/sunrpc/svcsock.h                |    1 -
- include/linux/sunrpc/xprt.h                   |    1 +
- net/sunrpc/auth_gss/gss_krb5_crypto.c         |    2 +-
- net/sunrpc/auth_gss/svcauth_gss.c             |    2 -
- net/sunrpc/cache.c                            |   54 ++++--
- net/sunrpc/svc.c                              |    3 +-
- net/sunrpc/svc_xprt.c                         |   97 +++++-----
- net/sunrpc/svcauth.c                          |    1 -
- net/sunrpc/svcauth_unix.c                     |   17 ++-
- net/sunrpc/svcsock.c                          |   20 ++-
- net/sunrpc/xprt.c                             |    5 +-
- net/sunrpc/xprtsock.c                         |   34 +++-
- 38 files changed, 608 insertions(+), 384 deletions(-)
- rename include/linux/nfs4_acl.h => fs/nfsd/acl.h (98%)
- rename include/linux/nfsd_idmap.h => fs/nfsd/idmap.h (92%)
