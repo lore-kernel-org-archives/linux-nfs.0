@@ -1,86 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:38436 "EHLO
-	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753213Ab1AFVID (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Jan 2011 16:08:03 -0500
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-To: Russell King - ARM Linux <linux@arm.linux.org.uk>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Marc Kleine-Budde <mkl@pengutronix.de>,
-        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
-        linux-arm-kernel@lists.infradead.org,
-        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
-In-Reply-To: <1294338341.22825.216.camel@mulgrave.site>
-References: <20110105200008.GJ8638@n2100.arm.linux.org.uk>
-	 <1294259637.16957.25.camel@mulgrave.site>
-	 <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
-	 <20110105210448.GM8638@n2100.arm.linux.org.uk>
-	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
-	 <1294262208.2952.4.camel@heimdal.trondhjem.org>
-	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
-	 <1294268808.2952.18.camel@heimdal.trondhjem.org>
-	 <1294270104.16957.73.camel@mulgrave.site>
-	 <1294335614.22825.154.camel@mulgrave.site>
-	 <20110106180530.GI31708@n2100.arm.linux.org.uk>
-	 <1294337670.22825.199.camel@mulgrave.site>
-	 <1294338341.22825.216.camel@mulgrave.site>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 06 Jan 2011 15:07:58 -0600
-Message-ID: <1294348078.22825.346.camel@mulgrave.site>
+Received: from smtpo13.poczta.onet.pl ([213.180.142.144]:42350 "EHLO
+	smtpo13.poczta.onet.pl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750722Ab1ALNvp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jan 2011 08:51:45 -0500
+Received: from localhost.localdomain (unknown [83.238.22.2])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	(Authenticated sender: sdrb@onet.eu)
+	by smtp.poczta.onet.pl (Onet) with ESMTPSA id C78E320088B03
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Jan 2011 14:52:03 +0100 (CET)
+Message-ID: <4D2DB1D8.8030606@onet.eu>
+Date: Wed, 12 Jan 2011 14:51:20 +0100
+From: sdrb <sdrb@onet.eu>
+To: linux-nfs@vger.kernel.org
+Subject: Re: Issue in nfs-utils 1.2.3
+References: <4D2D910F.1080703@onet.eu>
+In-Reply-To: <4D2D910F.1080703@onet.eu>
+Content-Type: multipart/mixed;
+ boundary="------------020308070404000209040409"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-01-06 at 12:25 -0600, James Bottomley wrote:
-> OK, so thinking about this, it seems that the only danger is actually
-> what NFS is doing: reading cache pages via a vmap.  In that case, since
-> the requirement is to invalidate the vmap range to prepare for read, we
-> could have invalidate_kernel_vmap_range loop over the underlying pages
-> and flush them through the kernel alias if the architecture specific
-> flag indicates their contents might be dirty.
-> 
-> The loop adds expense that is probably largely unnecessary to
-> invalidate_kernel_vmap_range() but the alternative is adding to the API
-> proliferation with something that only flushes the kernel pages if the
-> arch specific flag says they're dirty.
+--------------020308070404000209040409
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-This is what I think the arm patch would look like (example only: I
-can't compile it).  Is something like this too expensive? the loop can't
-be optimised away because of the need to check the pages (and
-vmalloc_to_page is a three level page table lookup).
+On 01/12/2011 12:31 PM, sdrb wrote:
+> Hello,
+>
+>
+> Recently I tried to upgrade nfs-utils to the newest nfs-utils 1.2.3.
+> During tests I noticed that in some circumstances rpc.mountd
+> crashes with segmentation fault.
+> I'm testing it with 2.6.36 linux kernel.
+>
+>
+> Configuration of nfs-server:
+>
+> server# cat /etc/exports
+> /export *(rw)
+> /tmp/nfs *(rw)
+>
+>
+> The scenario how to reproduce the issue:
+>
+> server# rpc.mountd -F -d all
+> server# showmount -a 127.0.0.1
+> host# umount /mnt/nfs2 ; mount -t nfs server:/tmp/nfs /mnt/nfs2 -o
+> nfsvers=3,nolock
+> server# showmount -a 127.0.0.1
+>
+>
+> and after spawning showmount for the second time I got two segmentation
+> faults: at showmount and at rpc.mountd.
+>
+> Here is output from rpc.mountd:
+> rpc.mountd: Received DUMP request from 127.0.0.1
+> rpc.mountd: Received NULL request from host
+> rpc.mountd: Received UMNT(/tmp/nfs) request from host
+> rpc.mountd: authenticated unmount request from host:844 for /tmp/nfs
+> (/tmp/nfs)
+> rpc.mountd: Received NULL request from host
+> rpc.mountd: Received NULL request from host
+> rpc.mountd: Received MNT3(/tmp/nfs) request from host
+> rpc.mountd: authenticated mount request from host:729 for /tmp/nfs
+> (/tmp/nfs)
+> rpc.mountd: nfsd_fh: inbuf '* 7
+> \x0ab4100000000000dd2efb04e753f0980000000000000000'
+> rpc.mountd: nfsd_fh: found 0x1f13380 path /tmp/nfs
+> rpc.mountd: Received DUMP request from 127.0.0.1
+> Segmentation fault
+> .
+>
+>
+> To gather more info I run rpc.mountd in gdb:
+>
+>
+> Starting program: /usr/sbin/rpc.mountd -F
+>
+> Program received signal SIGSEGV, Segmentation fault.
+> 0x00007ffff7b6f7a2 in xdr_string_internal () from /lib64/libc.so.6
+>
+> #0 0x00007ffff7b6f7a2 in xdr_string_internal () from /lib64/libc.so.6
+> #1 0x0000000000409eee in xdr_name (xdrs=<value optimized out>,
+> objp=<value optimized out>) at mount_xdr.c:83
+> (...)
+>
+> Seems like two procedures (xdr_mountlist and xdr_mountbody) call one
+> another infinitely until they fill the stack completely and then
+> segfault occures.
+>
+> Is it known problem?
+> Maybe I misconfigured or missed something?
 
-James
+I've investigated a little the sources and I noticed that probably there 
+should be some pointer NULL-ed in mountlist_list() procedure like in 
+patch I've attached.
 
----
+Anyone can confirm that such a fix is ok?
 
-diff --git a/arch/arm/include/asm/cacheflush.h b/arch/arm/include/asm/cacheflush.h
-index 3acd8fa..34469ca 100644
---- a/arch/arm/include/asm/cacheflush.h
-+++ b/arch/arm/include/asm/cacheflush.h
-@@ -414,8 +414,17 @@ static inline void flush_kernel_vmap_range(void *addr, int size)
- }
- static inline void invalidate_kernel_vmap_range(void *addr, int size)
- {
--	if ((cache_is_vivt() || cache_is_vipt_aliasing()))
--	  __cpuc_flush_dcache_area(addr, (size_t)size);
-+	if ((cache_is_vivt() || cache_is_vipt_aliasing())) {
-+		void *cursor = addr;
-+
-+		for ( ; cursor < addr + size; cursor += PAGE_SIZE) {
-+			struct page *page = vmalloc_to_page(cursor);
-+
-+			if (!test_and_set_bit(PG_dcache_clean, &page->flags))
-+				__flush_dcache_page(page_mapping(page), page);
-+		}
-+		__cpuc_flush_dcache_area(addr, (size_t)size);
-+	}
- }
+--------------020308070404000209040409
+Content-Type: text/x-patch;
+ name="d1.diff"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="d1.diff"
+
+diff -rNup nfs-utils-1.2.3_orig/utils/mountd/rmtab.c nfs-utils-1.2.3/utils/mountd/rmtab.c
+--- nfs-utils-1.2.3/utils/mountd/rmtab.c	2010-09-28 14:24:16.000000000 +0200
++++ nfs-utils-1.2.3/utils/mountd/rmtab.c	2011-01-12 14:44:22.320000000 +0100
+@@ -205,6 +205,7 @@ mountlist_list(void)
+ 	}
+ 	if (stb.st_mtime != last_mtime) {
+ 		mountlist_freeall(mlist);
++		mlist=NULL;
+ 		last_mtime = stb.st_mtime;
  
- #define ARCH_HAS_FLUSH_ANON_PAGE
+ 		setrmtabent("r");
 
-
+--------------020308070404000209040409--
