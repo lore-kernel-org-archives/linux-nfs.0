@@ -1,41 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:42016 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753599Ab1ASXhi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 18:37:38 -0500
-In-Reply-To: <1295479900.22151.19.camel@heimdal.trondhjem.org>
-References: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
-	<1295479517.22151.16.camel@heimdal.trondhjem.org>
-	<AANLkTikRX8nxh-gp=Fdr21dg-DLmUb2FxYXrM2A0hfN0@mail.gmail.com>
-	<1295479900.22151.19.camel@heimdal.trondhjem.org>
-Date: Thu, 20 Jan 2011 10:37:35 +1100
-Message-ID: <AANLkTiknrso7mQbTiXNF3MLz+RPi52M1s+DV1XaxciO=@mail.gmail.com>
-Subject: Re: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
-From: Nick Piggin <npiggin@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wen.gang.wang@oracle.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:47790 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755396Ab1ALRgx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Jan 2011 12:36:53 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/2] nfsd: break lease on unlink, link, and rename
+Date: Wed, 12 Jan 2011 12:36:49 -0500
+Message-Id: <1294853809-10732-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1294853809-10732-1-git-send-email-bfields@redhat.com>
+References: <1294853809-10732-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Jan 20, 2011 at 10:31 AM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2011-01-20 at 10:26 +1100, Nick Piggin wrote:
->> On Thu, Jan 20, 2011 at 10:25 AM, Trond Myklebust
+Any change to any of the links pointing to an entry should also break
+delegations.
 
->> > Also, why is EIO the correct reply when no bytes were read/written? Why
->> > shouldn't the VFS aio code be able to cope with a zero byte reply?
->>
->> What would it do?
->
-> Just return that zero byte reply to userland.
->
-> zero bytes is a valid reply for ordinary read() and write(), so why
-> should we have to do anything different for aio_read()/aio_write()?
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/vfs.c |   27 +++++++++++++++++++++++----
+ 1 files changed, 23 insertions(+), 4 deletions(-)
 
-It doesn't give userspace much to do. zero reply from read means
-EOF. Zero reply from write is pretty useless, I don't think we do it
-in the buffered write path -- we either ensure we write at least
-something or have a meaningful error to return.
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 839ed88..f31321a 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -272,6 +272,13 @@ out:
+ 	return err;
+ }
+ 
++static int nfsd_break_lease(struct inode *inode)
++{
++	if (!S_ISREG(inode->i_mode))
++		return 0;
++	return break_lease(inode, O_WRONLY | O_NONBLOCK);
++}
++
+ /*
+  * Commit metadata changes to stable storage.
+  */
+@@ -414,7 +421,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+ 
+ 	err = nfserr_notsync;
+ 	if (!check_guard || guardtime == inode->i_ctime.tv_sec) {
+-		host_err = break_lease(inode, O_WRONLY | O_NONBLOCK);
++		host_err = nfsd_break_lease(inode);
+ 		if (host_err)
+ 			goto out_nfserr;
+ 		fh_lock(fhp);
+@@ -1641,6 +1648,12 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+ 		err = nfserrno(host_err);
+ 		goto out_dput;
+ 	}
++	err = nfserr_noent;
++	if (!dold->d_inode)
++		goto out_drop_write;
++	host_err = nfsd_break_lease(dold->d_inode);
++	if (host_err)
++		goto out_drop_write;
+ 	host_err = vfs_link(dold, dirp, dnew);
+ 	if (!host_err) {
+ 		err = nfserrno(commit_metadata(ffhp));
+@@ -1652,6 +1665,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+ 		else
+ 			err = nfserrno(host_err);
+ 	}
++out_drop_write:
+ 	mnt_drop_write(tfhp->fh_export->ex_path.mnt);
+ out_dput:
+ 	dput(dnew);
+@@ -1733,15 +1747,17 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 	if (host_err)
+ 		goto out_dput_new;
+ 
++	host_err = nfsd_break_lease(odentry->d_inode);
++	if (host_err)
++		goto out_drop_write;
+ 	host_err = vfs_rename(fdir, odentry, tdir, ndentry);
+ 	if (!host_err) {
+ 		host_err = commit_metadata(tfhp);
+ 		if (!host_err)
+ 			host_err = commit_metadata(ffhp);
+ 	}
+-
++out_drop_write:
+ 	mnt_drop_write(ffhp->fh_export->ex_path.mnt);
+-
+  out_dput_new:
+ 	dput(ndentry);
+  out_dput_old:
+@@ -1804,11 +1820,14 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
+ 	if (host_err)
+ 		goto out_nfserr;
+ 
++	host_err = nfsd_break_lease(rdentry->d_inode);
++	if (host_err)
++		goto out_put;
+ 	if (type != S_IFDIR)
+ 		host_err = vfs_unlink(dirp, rdentry);
+ 	else
+ 		host_err = vfs_rmdir(dirp, rdentry);
+-
++out_put:
+ 	dput(rdentry);
+ 
+ 	if (!host_err)
+-- 
+1.7.1
+
