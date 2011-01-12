@@ -1,99 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:50566 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755455Ab1ATMU3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jan 2011 07:20:29 -0500
-Received: by bwz15 with SMTP id 15so470069bwz.19
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Jan 2011 04:20:28 -0800 (PST)
-In-Reply-To: <1266699969-21920-1-git-send-email-bhalevy@panasas.com>
-References: <4B804E57.4010507@panasas.com>
-	<1266699969-21920-1-git-send-email-bhalevy@panasas.com>
-Date: Thu, 20 Jan 2011 07:20:28 -0500
-Message-ID: <AANLkTi=AGegTKbsA7oA6yNO-Y4f=6g8ynCA2BdV9wzBY@mail.gmail.com>
-Subject: Re: [pnfs] [PATCH 1/2] pnfs: trim write count to wsize when retrying
- via MDS
-From: Fred Isaman <iisaman@citi.umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:13574 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753748Ab1ALTPD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jan 2011 14:15:03 -0500
+Subject: Re: state manager failed on NFSv4 server
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <20110112185843.GA14207@merit.edu>
+Date: Wed, 12 Jan 2011 14:15:01 -0500
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Message-Id: <39E61C37-0696-4D55-A9EF-B2C3D7E2592D@netapp.com>
+References: <20110112185843.GA14207@merit.edu>
+To: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I'm going over the write code carefully preparing for wave4, and came
-across some code I traced to this patch.
+Hi Jim
 
-Why is this needed?  Why doesn't the pg_bsize check in
-nfs_pageio_do_add_request() prevent this from ever being invoked?
+The EMC server is returning exchange_id flags = 0x00070000 which is illegal - it's claming the NON_PNFS, PNFS and DS roles. 
 
-Fred
+#define EXCHGID4_FLAG_USE_NON_PNFS              0x00010000
+#define EXCHGID4_FLAG_USE_PNFS_MDS              0x00020000
+#define EXCHGID4_FLAG_USE_PNFS_DS               0x00040000
+#define EXCHGID4_FLAG_MASK_PNFS                 0x00070000
 
-On Sat, Feb 20, 2010 at 4:06 PM, Benny Halevy <bhalevy@panasas.com> wrote:
-> We coalesce pages based on the strip size that may be bigger
-> than the server can handle in one write (and even exceed the
-> maximum RPC message size on the server)
->
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/nfs4proc.c       |    7 +++++++
->  fs/nfs/write.c          |    8 ++++++++
->  include/linux/nfs_xdr.h |    1 +
->  3 files changed, 16 insertions(+), 0 deletions(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 8132a96..93b1963 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3180,6 +3180,13 @@ static int pnfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
->        struct nfs_client *client = mds_svr->nfs_client;
->        int status = task->tk_status >= 0 ? 0 : task->tk_status;
->
-> +       /* restore original count after retry? */
-> +       if (data->pdata.orig_count) {
-> +               dprintk("%s: restoring original count %u\n", __func__,
-> +                       data->pdata.orig_count);
-> +               data->args.count = data->pdata.orig_count;
-> +       }
-> +
->        if (data->pdata.pnfsflags & PNFS_NO_RPC)
->                return 0;
->
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 90ce78e..fee6f00 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1108,6 +1108,14 @@ void nfs_write_prepare(struct rpc_task *task, void *calldata)
->  #ifdef CONFIG_PNFS
->        if (data->fldata.ds_nfs_client)
->                clp = data->fldata.ds_nfs_client;
-> +       else if (data->args.count > NFS_SERVER(data->inode)->wsize) {
-> +               /* retrying via MDS? */
-> +               data->pdata.orig_count = data->args.count;
-> +               data->args.count = NFS_SERVER(data->inode)->wsize;
-> +               dprintk("%s: trimmed count %u to wsize %u\n", __func__,
-> +                       data->pdata.orig_count, data->args.count);
-> +       } else
-> +               data->pdata.orig_count = 0;
->  #endif /* CONFIG_PNFS */
->
->        if (nfs4_setup_sequence(clp, &data->args.seq_args,
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index efc4ca0..13ccd48 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -970,6 +970,7 @@ struct nfs_page;
->  struct pnfs_call_data {
->        struct pnfs_layout_segment *lseg;
->        const struct rpc_call_ops *call_ops;
-> +       u32                     orig_count;     /* for retry via MDS */
->        int                     pnfs_error;
->        u8                      pnfsflags;
->        u8                      how;            /* for FLUSH_STABLE */
+See Section 13.1 of RFC 5661
+
+-->Andy 
+
+On Jan 12, 2011, at 1:58 PM, Jim Rees wrote:
+
+> A kernel built from Benny's pnfs-all-latest can no longer mount the EMC
+> server because nfs4_state_manager() fails.  I suspect it doesn't like
+> something about the EXCHANGE_ID reply.  This worked before Benny's last
+> update (late Dec?), and I can bisect if necessary, but wondered if someone
+> here can take a look and see if there is something obviously wrong.
+> 
+> I put a dump of the call and reply here:
+> http://www.citi.umich.edu/projects/nfsv4/pnfs/block/emc-ng-state-mgr
+> 
+> I can of course provide more info if that would help.
 > --
-> 1.6.4.4
->
-> _______________________________________________
-> pNFS mailing list
-> pNFS@linux-nfs.org
-> http://linux-nfs.org/cgi-bin/mailman/listinfo/pnfs
->
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
