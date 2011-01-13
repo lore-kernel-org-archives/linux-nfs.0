@@ -1,116 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:41203 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750727Ab1ADFNO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 00:13:14 -0500
-Date: Tue, 4 Jan 2011 16:13:05 +1100
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/5] nfsd4: avoid double reply caused by deferral race
-Message-ID: <20110104161305.10fe07fa@notabene.brown>
-In-Reply-To: <1294079454-17891-3-git-send-email-bfields@redhat.com>
-References: <1294079454-17891-1-git-send-email-bfields@redhat.com>
-	<1294079454-17891-3-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from smtp-out-1.desy.de ([131.169.56.84]:43458 "EHLO
+	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756691Ab1AMVOa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 16:14:30 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id EFB7B19A2
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 22:14:28 +0100 (MET)
+Received: from adserv70.win.desy.de (adserv70.win.desy.de [131.169.97.56])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id E978113F23
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 22:14:28 +0100 (MET)
+Message-ID: <4D2F6B3D.7080007@desy.de>
+Date: Thu, 13 Jan 2011 22:14:37 +0100
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: NFS list <linux-nfs@vger.kernel.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: nfsv4 + readdir == too many requests
+References: <4D2F5FE1.6050509@desy.de> <1294952462.3038.29.camel@heimdal.trondhjem.org>
+In-Reply-To: <1294952462.3038.29.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon,  3 Jan 2011 13:30:51 -0500 "J. Bruce Fields" <bfields@redhat.com>
-wrote:
+On 01/13/2011 10:01 PM, Trond Myklebust wrote:
+> On Thu, 2011-01-13 at 21:26 +0100, Tigran Mkrtchyan wrote: 
+>   
+>> By running intensive tests I notice that readdir oration over nfsv4.1
+>> asks for
+>> file attributes in readdir (attr_request) and later on for each file. To
+>> me it looks like
+>> broken.
+>>
+>> This 2.6.37 + pnfs-all-latests :
+>>
+>> git://linux-nfs.org/~bhalevy/linux-pnfs.git
+>> 378978453b64bf895de8cd0e68dbcd9e9c0155ce
+>>
+>> 100% reproducible.
+>>     
+> 1) What makes you think this is broken, and not just a case of the
+> attribute cache timing out and/or the directory changing?
+>   
 
-> Commit d29068c431599fa "sunrpc: Simplify cache_defer_req and related
-> functions." asserted that cache_check() could determine success or
-> failure of cache_defer_req() by checking the CACHE_PENDING bit.
-> 
-> This isn't quite right.
-> 
-> We need to know whether cache_defer_req() created a deferred request,
-> in which case sending an rpc reply has become the responsibility of the
-> deferred request, and it is important that we not send our own reply,
-> resulting in two different replies to the same request.
-> 
-> And the CACHE_PENDING bit doesn't tell us that; we could have
-> succesfully created a deferred request at the same time as another
-> thread cleared the CACHE_PENDING bit.
-> 
-> So, partially revert that commit, to ensure that cache_check() returns
-> -EAGAIN if and only if a deferred request has been created.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> Cc: Neil Brown <neilb@suse.de>
+The directory does not changed. I issue 'ls -l' and with wireshak can
+see READDIR requests
+followed by GETATTR. looks like cache is ignored or too small.
+> 2) Can you produce a testcase that proves brokenness?
+>   
+I will try to come up with something.
+> 3) Can you reproduce on a non-pnfs-all-latests kernel?
+>
+> Readdir shouldn't be affected by the stuff in Benny's tree, but I'm
+> always wary of tests on out-of-mainline trees.
+>   
+NP. with vanilla 2.6.37 ?
 
-Acked-by: NeilBrown <neilb@suse.de>
-
-I was over-simplifying a bit there, wasn't I?
-And the rest of the series looks good too.
-
-Thanks,
-NeilBrown
-
-
-> ---
->  net/sunrpc/cache.c |   18 +++++++++++-------
->  1 files changed, 11 insertions(+), 7 deletions(-)
-> 
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index e433e75..0d6002f 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -37,7 +37,7 @@
->  
->  #define	 RPCDBG_FACILITY RPCDBG_CACHE
->  
-> -static void cache_defer_req(struct cache_req *req, struct cache_head *item);
-> +static bool cache_defer_req(struct cache_req *req, struct cache_head *item);
->  static void cache_revisit_request(struct cache_head *item);
->  
->  static void cache_init(struct cache_head *h)
-> @@ -268,9 +268,11 @@ int cache_check(struct cache_detail *detail,
->  	}
->  
->  	if (rv == -EAGAIN) {
-> -		cache_defer_req(rqstp, h);
-> -		if (!test_bit(CACHE_PENDING, &h->flags)) {
-> -			/* Request is not deferred */
-> +		if (!cache_defer_req(rqstp, h)) {
-> +			/*
-> +			 * Request was not deferred; handle it as best
-> +			 * we can ourselves:
-> +			 */
->  			rv = cache_is_valid(detail, h);
->  			if (rv == -EAGAIN)
->  				rv = -ETIMEDOUT;
-> @@ -618,18 +620,19 @@ static void cache_limit_defers(void)
->  		discard->revisit(discard, 1);
->  }
->  
-> -static void cache_defer_req(struct cache_req *req, struct cache_head *item)
-> +/* Return true if and only if a deferred request is queued. */
-> +static bool cache_defer_req(struct cache_req *req, struct cache_head *item)
->  {
->  	struct cache_deferred_req *dreq;
->  
->  	if (req->thread_wait) {
->  		cache_wait_req(req, item);
->  		if (!test_bit(CACHE_PENDING, &item->flags))
-> -			return;
-> +			return false;
->  	}
->  	dreq = req->defer(req);
->  	if (dreq == NULL)
-> -		return;
-> +		return false;
->  	setup_deferral(dreq, item, 1);
->  	if (!test_bit(CACHE_PENDING, &item->flags))
->  		/* Bit could have been cleared before we managed to
-> @@ -638,6 +641,7 @@ static void cache_defer_req(struct cache_req *req, struct cache_head *item)
->  		cache_revisit_request(item);
->  
->  	cache_limit_defers();
-> +	return true;
->  }
->  
->  static void cache_revisit_request(struct cache_head *item)
+Regards,
+   Tigran.
+> Cheers
+>    Trond
+>   
 
