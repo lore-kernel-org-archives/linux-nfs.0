@@ -1,108 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9530 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752051Ab1ADRLK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 12:11:10 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V6 06/11] NFS implement v4.0 callback_ident
-Date: Tue,  4 Jan 2011 12:10:23 -0500
-Message-Id: <1294161028-4499-7-git-send-email-andros@netapp.com>
-In-Reply-To: <1294161028-4499-6-git-send-email-andros@netapp.com>
-References: <1294161028-4499-1-git-send-email-andros@netapp.com>
- <1294161028-4499-2-git-send-email-andros@netapp.com>
- <1294161028-4499-3-git-send-email-andros@netapp.com>
- <1294161028-4499-4-git-send-email-andros@netapp.com>
- <1294161028-4499-5-git-send-email-andros@netapp.com>
- <1294161028-4499-6-git-send-email-andros@netapp.com>
+Received: from na3sys009aog112.obsmtp.com ([74.125.149.207]:52901 "EHLO
+	na3sys009aog112.obsmtp.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751498Ab1AMN2l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 08:28:41 -0500
+From: Santosh Shilimkar <santosh.shilimkar@ti.com>
+References: <20110113120626.GB30351@opensource.wolfsonmicro.com> <8138.1294924927@jrobl>
+In-Reply-To: <8138.1294924927@jrobl>
+Date: Thu, 13 Jan 2011 18:58:37 +0530
+Message-ID: <676f5c24375e1cc2aa14fe6630ef1324@mail.gmail.com>
+Subject: RE: NFS root lockups with -next 20110113
+To: "J. R. Okajima" <hooanon05@yahoo.co.jp>,
+        Mark Brown <broonie@opensource.wolfsonmicro.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+> -----Original Message-----
+> From: J. R. Okajima [mailto:hooanon05@yahoo.co.jp]
+> Sent: Thursday, January 13, 2011 6:52 PM
+> To: Mark Brown
+> Cc: Trond Myklebust; Santosh Shilimkar; Nick Piggin; linux-
+> nfs@vger.kernel.org; linux-kernel@vger.kernel.org; linux-
+> fsdevel@vger.kernel.org
+> Subject: Re: NFS root lockups with -next 20110113
+>
+>
+> Mark Brown:
+> > With -next 20110113 I'm experiencing lockups shortly after
+> userspace
+> > starts when booting with my root filesystem on NFS, log below.  I
+> can
+> > boot into /bin/sh but running real userspace triggers this very
+> easily.
+> > This was introduced sometime this week.
+> >
+> > I've not bisected or otherwise investigated much yet, but I do
+> notice
+> > code added recently by Nick in "fs: rcu-walk for path lookup"
+> showing up
+> > in the backtrace so including him in the CCs.
+>
+> This and a report from Santosh Shilimkar look like the same problem
+> which I reported, and I am testing this patch. If you can, please
+> try it
+> too.
+> Note: Of course this is not offcial fix.
+>
 
-Provide a unique callback identifier per SETCLIENTID call used to identify the
-v4.0 callback service associated with the clientid.
+It works. My board booted with NFS with below patch
 
-Do not worry about wrap around. Zero value means unset.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c         |    5 +++++
- fs/nfs/nfs4state.c        |    1 +
- include/linux/nfs_fs_sb.h |    1 +
- include/linux/nfs_xdr.h   |    1 +
- 4 files changed, 8 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 78b0899..6652e39 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3470,6 +3470,8 @@ do_state_recovery:
- 	return -EAGAIN;
- }
- 
-+static u32 current_cb_ident = 1;
-+
- int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 		unsigned short port, struct rpc_cred *cred,
- 		struct nfs4_setclientid_res *res)
-@@ -3478,6 +3480,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 	struct nfs4_setclientid setclientid = {
- 		.sc_verifier = &sc_verifier,
- 		.sc_prog = program,
-+		.sc_cb_ident = current_cb_ident++,
- 	};
- 	struct rpc_message msg = {
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SETCLIENTID],
-@@ -3522,6 +3525,8 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 			if (++clp->cl_id_uniquifier == 0)
- 				break;
- 	}
-+	if (status == NFS_OK)
-+		res->cb_ident = setclientid.sc_cb_ident;
- 	return status;
- }
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index f575a31..fe61422 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -79,6 +79,7 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 	if (status != 0)
- 		goto out;
- 	clp->cl_clientid = clid.clientid;
-+	clp->cl_cb_ident = clid.cb_ident;
- 	nfs4_schedule_state_renewal(clp);
- out:
- 	return status;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 452d964..1eaa054 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -71,6 +71,7 @@ struct nfs_client {
- 	 */
- 	char			cl_ipaddr[48];
- 	unsigned char		cl_id_uniquifier;
-+	u32			cl_cb_ident;	/* v4.0 callback identifier */
- 	const struct nfs4_minor_version_ops *cl_mvops;
- #endif /* CONFIG_NFS_V4 */
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 236e7e4..d325def 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -869,6 +869,7 @@ struct nfs4_setclientid {
- struct nfs4_setclientid_res {
- 	u64				clientid;
- 	nfs4_verifier			confirm;
-+	u32				cb_ident;
- };
- 
- struct nfs4_statfs_arg {
--- 
-1.6.6
-
+>
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 5bb7588..51d052f 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -480,6 +480,7 @@ static int nameidata_dentry_drop_rcu(struct
+> nameidata *nd, struct dentry *dentry
+>  {
+>  	struct fs_struct *fs = current->fs;
+>  	struct dentry *parent = nd->path.dentry;
+> +	int isroot;
+>
+>  	BUG_ON(!(nd->flags & LOOKUP_RCU));
+>  	if (nd->root.mnt) {
+> @@ -489,18 +490,22 @@ static int nameidata_dentry_drop_rcu(struct
+> nameidata *nd, struct dentry *dentry
+>  			goto err_root;
+>  	}
+>  	spin_lock(&parent->d_lock);
+> -	spin_lock_nested(&dentry->d_lock, DENTRY_D_LOCK_NESTED);
+> -	if (!__d_rcu_to_refcount(dentry, nd->seq))
+> -		goto err;
+> +	isroot = IS_ROOT(dentry);
+> +	if (!isroot) {
+> +		spin_lock_nested(&dentry->d_lock, DENTRY_D_LOCK_NESTED);
+> +		if (!__d_rcu_to_refcount(dentry, nd->seq))
+> +			goto err;
+> +	}
+>  	/*
+>  	 * If the sequence check on the child dentry passed, then the
+> child has
+>  	 * not been removed from its parent. This means the parent
+> dentry must
+>  	 * be valid and able to take a reference at this point.
+>  	 */
+> -	BUG_ON(!IS_ROOT(dentry) && dentry->d_parent != parent);
+> +	BUG_ON(!isroot && dentry->d_parent != parent);
+>  	BUG_ON(!parent->d_count);
+>  	parent->d_count++;
+> -	spin_unlock(&dentry->d_lock);
+> +	if (!isroot)
+> +		spin_unlock(&dentry->d_lock);
+>  	spin_unlock(&parent->d_lock);
+>  	if (nd->root.mnt) {
+>  		path_get(&nd->root);
+> @@ -513,7 +518,8 @@ static int nameidata_dentry_drop_rcu(struct
+> nameidata *nd, struct dentry *dentry
+>  	nd->flags &= ~LOOKUP_RCU;
+>  	return 0;
+>  err:
+> -	spin_unlock(&dentry->d_lock);
+> +	if (!isroot)
+> +		spin_unlock(&dentry->d_lock);
+>  	spin_unlock(&parent->d_lock);
+>  err_root:
+>  	if (nd->root.mnt)
