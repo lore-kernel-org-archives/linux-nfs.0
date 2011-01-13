@@ -1,147 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9530 "EHLO mx2.netapp.com"
+Received: from tur.go2.pl ([193.17.41.50]:34121 "EHLO tur.go2.pl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752532Ab1ADRLL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 12:11:11 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V6 07/11] NFS associate sessionid with callback connection
-Date: Tue,  4 Jan 2011 12:10:24 -0500
-Message-Id: <1294161028-4499-8-git-send-email-andros@netapp.com>
-In-Reply-To: <1294161028-4499-7-git-send-email-andros@netapp.com>
-References: <1294161028-4499-1-git-send-email-andros@netapp.com>
- <1294161028-4499-2-git-send-email-andros@netapp.com>
- <1294161028-4499-3-git-send-email-andros@netapp.com>
- <1294161028-4499-4-git-send-email-andros@netapp.com>
- <1294161028-4499-5-git-send-email-andros@netapp.com>
- <1294161028-4499-6-git-send-email-andros@netapp.com>
- <1294161028-4499-7-git-send-email-andros@netapp.com>
+	id S932891Ab1AMLiS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 06:38:18 -0500
+Received: from moh2-ve3.go2.pl (moh2-ve3.go2.pl [193.17.41.208])
+	by tur.go2.pl (o2.pl Mailer 2.0.1) with ESMTP id 4C1962302C2
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 12:38:17 +0100 (CET)
+Received: from moh2-ve3.go2.pl (unknown [10.0.0.208])
+	by moh2-ve3.go2.pl (Postfix) with ESMTP id 4E3F93701A0
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 12:37:35 +0100 (CET)
+Received: from o2.pl (unknown [10.0.0.120])
+	by moh2-ve3.go2.pl (Postfix) with SMTP
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 12:37:35 +0100 (CET)
+Subject: =?UTF-8?Q?failover_problem?=
+From: =?UTF-8?Q?motyllo8?= <motyllo8@tlen.pl>
+To: linux-nfs@vger.kernel.org
+Message-ID: <64f18899.1305ee97.4d2ee3fe.430ca@tlen.pl>
+Date: Thu, 13 Jan 2011 12:37:34 +0100
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Hi,
 
-The sessions based callback service is started prior to the CREATE_SESSION call
-so that it can handle CB_NULL requests which can be sent before the
-CREATE_SESSION call returns and the session ID is known.
+I am currently testing NFS in HA configuration using Heartbeat.
 
-Set the callback sessionid after a sucessful CREATE_SESSION.
+I am performing following test:
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/callback.c               |   31 +++++++++++++++++++++++++++++++
- fs/nfs/callback.h               |    1 +
- fs/nfs/nfs4state.c              |    6 ++++++
- include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/svcsock.c            |    1 +
- 5 files changed, 40 insertions(+), 0 deletions(-)
+My client is coping file (about 2GB). During this coping I am rebooting primary node. After it secondary node switches to active mode. Unfortunately my client is not resuming coping. After failback action, this process is being resumed.
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 343d543..8353c4a 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -137,6 +137,33 @@ out_err:
- 
- #if defined(CONFIG_NFS_V4_1)
- /*
-+ *  * CB_SEQUENCE operations will fail until the callback sessionid is set.
-+ *   */
-+int nfs4_set_callback_sessionid(struct nfs_client *clp)
-+{
-+	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
-+	struct nfs4_sessionid *bc_sid;
-+
-+	if (!serv->bc_xprt)
-+		return -EINVAL;
-+
-+	/* on success freed in xprt_free */
-+	bc_sid = kmalloc(sizeof(struct nfs4_sessionid), GFP_KERNEL);
-+	if (!bc_sid)
-+		return -ENOMEM;
-+	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
-+		NFS4_MAX_SESSIONID_LEN);
-+	spin_lock_bh(&serv->sv_cb_lock);
-+	serv->bc_xprt->xpt_bc_sid = bc_sid;
-+	spin_unlock_bh(&serv->sv_cb_lock);
-+	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
-+		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
-+		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
-+		serv->bc_xprt);
-+	return 0;
-+}
-+
-+/*
-  * The callback service for NFSv4.1 callbacks
-  */
- static int
-@@ -244,6 +271,10 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
- 		struct nfs_callback_data *cb_info)
- {
- }
-+int nfs4_set_callback_sessionid(struct nfs_client *clp)
-+{
-+	return 0;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- /*
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 85a7cfd..58d61a8 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -137,6 +137,7 @@ extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
- extern void nfs_callback_down(int minorversion);
- extern int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation,
- 					    const nfs4_stateid *stateid);
-+extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
- #endif /* CONFIG_NFS_V4 */
- /*
-  * nfs41: Callbacks are expected to not cause substantial latency,
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index fe61422..11290de 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -193,6 +193,12 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 	status = nfs4_proc_create_session(clp);
- 	if (status != 0)
- 		goto out;
-+	status = nfs4_set_callback_sessionid(clp);
-+	if (status != 0) {
-+		printk(KERN_WARNING "Sessionid not set. No callback service\n");
-+		nfs_callback_down(1);
-+		status = 0;
-+	}
- 	nfs41_setup_state_renewal(clp);
- 	nfs_mark_client_ready(clp, NFS_CS_READY);
- out:
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index aea0d43..357da5e 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -78,6 +78,7 @@ struct svc_xprt {
- 	size_t			xpt_remotelen;	/* length of address */
- 	struct rpc_wait_queue	xpt_bc_pending;	/* backchannel wait queue */
- 	struct list_head	xpt_users;	/* callbacks on free */
-+	void			*xpt_bc_sid;	/* back channel session ID */
- 
- 	struct net		*xpt_net;
- };
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 7c29be6..87e6f28 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1622,6 +1622,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
- static void svc_bc_sock_free(struct svc_xprt *xprt)
- {
- 	if (xprt)
-+		kfree(xprt->xpt_bc_sid);
- 		kfree(container_of(xprt, struct svc_sock, sk_xprt));
- }
- #endif /* CONFIG_NFS_V4_1 */
--- 
-1.6.6
+I've noticed after failover on my secondary node following message in dmesg:
+
+RPC: fragment too large: 0x0008009c
+
+This message occurs a few times - I am wondering what does it mean? Maybe this is the reason of this strange behavior?
+
+A few words about my configuration:
+- Debian based system.
+- kernel 2.6.27-39,
+- nfsutils in version 1.0.10,
+- client mount option:
+mount -t nfs 192.168.0.220:/share /mnt/share
+
+- server side /etc/exports:
+"/share"    *(rw,no_root_squash,async,subtree_check)
+
+Let me know if you need more details connected to my configuration.
+
+Cheers
+Marcus
+
+
 
