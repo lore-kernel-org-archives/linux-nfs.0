@@ -1,102 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:38456 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751005Ab1ADUnm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 15:43:42 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V7 01/12] SUNRPC move svc_drop to caller of svc_process_common
-Date: Tue,  4 Jan 2011 15:42:35 -0500
-Message-Id: <1294173766-5573-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1294173766-5573-1-git-send-email-andros@netapp.com>
-References: <1294173766-5573-1-git-send-email-andros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:42759 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932610Ab1AMJYC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 04:24:02 -0500
+Message-ID: <4D2EC4AC.9090205@panasas.com>
+Date: Thu, 13 Jan 2011 11:23:56 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/2] decode_cb_op_status fix
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Chuck, it looks like the following patch introduced a couple in
+handling of the operation status.
 
-The NFSv4.1 shared back channel does not need to call svc_drop because the
-callback service never outlives the single connection it services, and it
-reuses it's buffers and keeps the trasport.
+85a5648 NFSD: Update XDR decoders in NFSv4 callback client
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- net/sunrpc/svc.c |   30 ++++++++++++++++--------------
- 1 files changed, 16 insertions(+), 14 deletions(-)
+The first patch in this series fixes the bugs and the second
+reintroduces the handling of nfserr into decode_cb_op_status
+as it used to be in decode_cb_op_hdr, since I think it's simpler
+with respect to the current usage (vs. theoretical generic use of
+decode_cb_op_status to decode the status and return it in an output var).
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 6359c42..606d182 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1147,7 +1147,6 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
-  dropit:
- 	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
- 	dprintk("svc: svc_process dropit\n");
--	svc_drop(rqstp);
- 	return 0;
- 
- err_short_len:
-@@ -1218,7 +1217,6 @@ svc_process(struct svc_rqst *rqstp)
- 	struct kvec		*resv = &rqstp->rq_res.head[0];
- 	struct svc_serv		*serv = rqstp->rq_server;
- 	u32			dir;
--	int			error;
- 
- 	/*
- 	 * Setup response xdr_buf.
-@@ -1246,11 +1244,13 @@ svc_process(struct svc_rqst *rqstp)
- 		return 0;
- 	}
- 
--	error = svc_process_common(rqstp, argv, resv);
--	if (error <= 0)
--		return error;
--
--	return svc_send(rqstp);
-+	/* Returns 1 for send, 0 for drop */
-+	if (svc_process_common(rqstp, argv, resv))
-+		return svc_send(rqstp);
-+	else {
-+		svc_drop(rqstp);
-+		return 0;
-+	}
- }
- 
- #if defined(CONFIG_NFS_V4_1)
-@@ -1264,7 +1264,6 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
- {
- 	struct kvec	*argv = &rqstp->rq_arg.head[0];
- 	struct kvec	*resv = &rqstp->rq_res.head[0];
--	int 		error;
- 
- 	/* Build the svc_rqst used by the common processing routine */
- 	rqstp->rq_xprt = serv->bc_xprt;
-@@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
- 	svc_getu32(argv);	/* XID */
- 	svc_getnl(argv);	/* CALLDIR */
- 
--	error = svc_process_common(rqstp, argv, resv);
--	if (error <= 0)
--		return error;
--
--	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
--	return bc_send(req);
-+	/* Returns 1 for send, 0 for drop */
-+	if (svc_process_common(rqstp, argv, resv)) {
-+		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
-+						sizeof(req->rq_snd_buf));
-+		return bc_send(req);
-+	} else {
-+		/* Nothing to do to drop request */
-+		return 0;
-+	}
- }
- EXPORT_SYMBOL(bc_svc_process);
- #endif /* CONFIG_NFS_V4_1 */
--- 
-1.6.6
-
+Benny
