@@ -1,98 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51199 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:54482 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751923Ab1ANS3j convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jan 2011 13:29:39 -0500
-Subject: Re: [PATCH] NFSV4 :All lock operations should be sent to the
- server for resolution
+	id S1756434Ab1AMAhU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jan 2011 19:37:20 -0500
+Subject: Re: state manager failed on NFSv4 server
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Fu Liankun <fuliankun@cn.fujitsu.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <20110114181600.GA15352@fieldses.org>
-References: <4D2FF124.7020500@cn.fujitsu.com>
-	 <20110114181600.GA15352@fieldses.org>
+To: Jim Rees <rees@umich.edu>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+In-Reply-To: <20110113003055.GC15353@merit.edu>
+References: <20110112185843.GA14207@merit.edu>
+	 <1294859616.2971.46.camel@heimdal.trondhjem.org>
+	 <20110113000720.GA15353@merit.edu>
+	 <1294877939.15025.42.camel@heimdal.trondhjem.org>
+	 <20110113003055.GC15353@merit.edu>
 Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 14 Jan 2011 13:29:22 -0500
-Message-ID: <1295029762.3576.9.camel@heimdal.trondhjem.org>
+Date: Wed, 12 Jan 2011 19:37:19 -0500
+Message-ID: <1294879039.15025.56.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-01-14 at 13:16 -0500, J. Bruce Fields wrote: 
-> On Fri, Jan 14, 2011 at 02:45:56PM +0800, Fu Liankun wrote:
-> > The RFC3530 describes that the client's all lock operations, including those
-> > requesting non-exclusive locks, should be sent to the server for resolution,
-> > even if it holds a read open delegation. But the kernel implements like that
-> > lock operations can be performed locally when a client holds an open
-> > delegation.
-> > 
-> > The following are the RFC3530 provisions for Open Delegation and File Locks:
-> > 
-> > 9.4.2.  Open Delegation and File Locks
-> > 
-> >    When a client holds a write open delegation, lock operations may be
-> >    performed locally.  This includes those required for mandatory file
-> >    locking.  This can be done since the delegation implies that there
-> >    can be no conflicting locks.  Similarly, all of the revalidations
-> >    that would normally be associated with obtaining locks and the
-> >    flushing of data associated with the releasing of locks need not be
-> >    done.
-> > 
-> >    When a client holds a read open delegation, lock operations are not
-> >    performed locally.  All lock operations, including those requesting
-> >    non-exclusive locks, are sent to the server for resolution.
+On Wed, 2011-01-12 at 19:30 -0500, Jim Rees wrote: 
+> Trond Myklebust wrote:
 > 
-> Weird.  Can the rfc really be right about that?
+>   > But section 13 doesn't apply to the block layout server, does it?
+>   
+>   If you are a block layout server, the only valid return value is
+>   
+>   EXCHGID4_FLAG_USE_PNFS_MDS
+>     
+>   'cos you are clearly not a non-metadata server, and you clearly can't be
+>   a data server.
 > 
-> I guess it does permit servers to allow write-locks on read-open files,
-> but it seems bizarre not to require them to break delegations in that
-> case.
-
-The ability to cache locks is one of the main reasons for holding
-delegations in the first place. Sure, the spec allows for non-posix
-locking, but the Linux client doesn't.
-
-IOW: This patch will not be applied.
-
-Trond
-
-> --b.
+> Sorry to be dense, this is the first time I've thought about this.
 > 
-> > 
-> > Signed-off-by: Fu Liankun <fuliankun@cn.fujitsu.com>
-> > ---
-> >  fs/nfs/nfs4proc.c |    7 -------
-> >  1 files changed, 0 insertions(+), 7 deletions(-)
-> > 
-> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > index 0f24cdf..3bba85b 100644
-> > --- a/fs/nfs/nfs4proc.c
-> > +++ b/fs/nfs/nfs4proc.c
-> > @@ -4215,13 +4215,6 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
-> >  	if (status < 0)
-> >  		goto out;
-> >  	down_read(&nfsi->rwsem);
-> > -	if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
-> > -		/* Yes: cache locks! */
-> > -		/* ...but avoid races with delegation recall... */
-> > -		request->fl_flags = fl_flags & ~FL_SLEEP;
-> > -		status = do_vfs_lock(request->fl_file, request);
-> > -		goto out_unlock;
-> > -	}
-> >  	status = _nfs4_do_setlk(state, cmd, request, NFS_LOCK_NEW);
-> >  	if (status != 0)
-> >  		goto out_unlock;
-> > -- 
-> > 1.7.3.1
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> At the time of the EXCHANGE_ID call, how is the server supposed to know what
+> kind of layout is going to be negotiated?  It doesn't yet know whether the
+> client is even going to ask for a layout, does it?
+
+It doesn't matter. EXCHGID4_FLAG_USE_PNFS_MDS is the server's way of
+advertising to the client that it supports LAYOUTGET and other pNFS
+related operations. The client is free to ignore that message if it so
+desires, and just use read/write through MDS. The point here is to tell
+the client whether or not it should try pNFS if it can.
+
+Cheers
+  Trond
 
 -- 
 Trond Myklebust
