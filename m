@@ -1,52 +1,148 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from metis.ext.pengutronix.de ([92.198.50.35]:43102 "EHLO
-	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751972Ab1AELF0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 06:05:26 -0500
-Date: Wed, 5 Jan 2011 12:05:17 +0100
-From: Uwe =?iso-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-Message-ID: <20110105110517.GQ25121@pengutronix.de>
-References: <20101230171453.GA5787@pengutronix.de> <1293731992.4919.5.camel@heimdal.trondhjem.org> <20101230191846.GB14221@pengutronix.de> <20110103213850.GC25121@pengutronix.de> <1294100558.25100.8.camel@heimdal.trondhjem.org> <20110105084014.GN25121@pengutronix.de>
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20110105084014.GN25121@pengutronix.de>
+Received: from mumba.upf.edu ([193.145.56.85]:56694 "EHLO mumba.upf.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756751Ab1AMPsU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Jan 2011 10:48:20 -0500
+Received: from mumba.upf.edu (localhost [127.0.0.1])
+	by mumba.upf.edu (8.13.6/8.13.6) with ESMTP id p0DFmFBj001863
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 16:48:16 +0100
+Message-ID: <4D2F1ECA.50703@upf.edu>
+Date: Thu, 13 Jan 2011 16:48:26 +0100
+From: Txema Heredia Genestar <txema.heredia@upf.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 memory allocation bug?
+References: <4D2DE18D.40604@upf.edu> <20110112183557.GB11718@fieldses.org>
+In-Reply-To: <20110112183557.GB11718@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello Trond,
+  Hi Bruce, thanks for your answer
 
-On Wed, Jan 05, 2011 at 09:40:14AM +0100, Uwe Kleine-König wrote:
-> On Mon, Jan 03, 2011 at 07:22:38PM -0500, Trond Myklebust wrote:
-> > The question is whether this is something happening on the server or the
-> > client. Does an older client kernel boot without any trouble?
-> I will set up a boot test with 2.6.37 (for statistics) and 2.6.36 to
-> compare with.  If you don't consider .36 to be old enough let me now.
-> Once the setup is done it should be easy to test .35 (say), too.
-> 
-Marc (cc'd) saw similar[1] problems with .37, when using .36.2 the
-problems didn't occur.  This was more reliable to trigger and he was so
-kind to bisect the problem.
 
-When testing v2.6.36-rc3-51-gafa8ccc init hanged.
-(babddc72a9468884ce1a23db3c3d54b0afa299f0 is the first bad commit with
-this hang.)  Commit 56e4ebf877b6043c289bda32a5a7385b80c17dee makes the
-"init hangs" problem the "fileid changed on tab" problem.
+El 12/01/11 19:35, J. Bruce Fields escribió:
+> On Wed, Jan 12, 2011 at 06:14:53PM +0100, Txema Heredia Genestar wrote:
+>> Additionally, I have checked tcpdump and found, when mounting an
+>> NFS4 drive from a working storage-system:
+>> ...
+>> 12:38:06.372303 IP client.907>  storage.nfs: . ack 29 win 46
+>> <nop,nop,timestamp 4063464822 174132214>
+>> 12:38:06.372429 IP client.2364980656>  storage.nfs: 148 getattr [|nfs]
+>> 12:38:06.372792 IP storage.nfs>  client.2364980656: reply ok 248
+>> getattr [|nfs]
+>> 12:38:06.372958 IP client.2381757872>  storage.nfs: 172 getattr [|nfs]
+>> 12:38:06.373132 IP storage.nfs>  client.2381757872: reply ok 88
+>> getattr [|nfs]
+>> 12:38:06.373157 IP client.2398535088>  storage.nfs: 176 getattr [|nfs]
+>> 12:38:06.373316 IP storage.nfs>  client.2398535088: reply ok 100
+>> getattr [|nfs]
+>> 12:38:06.373339 IP client.2415312304>  storage.nfs: 172 getattr [|nfs]
+>>
+>>
+>> But when I mount from the same client, the NFS4 share from my server
+>> gets stuck on the "getattr" call
+>> ...
+>> 12:36:37.051840 IP client.926>  server.nfs: . ack 29 win 140
+>> <nop,nop,timestamp 4063375488 434039929>
+>> 12:36:37.051903 IP client.1734362088>  server.nfs: 148 getattr [|nfs]
+>> 12:36:37.090274 IP server.nfs>  client.926: . ack 192 win 4742
+>> <nop,nop,timestamp 434039939 4063375488>
+>> ---silence---
+> Something like wireshark would give a few more details.
 
-I could only reproduce that on armv5 machines (imx27, imx28 and at91)
-but not on armv6 (imx35).
+I have wiresharked it and I don't see any differences between the 
+"getattr" packages in both cases. Do you want me to paste them in a 
+specific format?
 
-Best regards
-Uwe
 
-[1] similar means: not during boot, but when hitting tab to get command
-completion in the shell.
+>> So I suppose that the "RPC: TCP recvfrom got EAGAIN" on the messages
+>> log corresponds to that "getattr[|nfs]" call.
+>>
+>> I have been searching around and I have found several threads about
+>> either the "malloc failure" message or the "EAGAIN" message. But I
+>> haven't found anything concerning them both at the same time. I have
+>> also checked for this kind of problems in NFS4 and found nothing
+>> useful.
+>>
+>> May this be some kind of (already solved) bug in my nfs
+>> implementation? I'm running a pretty old version (SuSE LES 10.2,
+>> nfs-utils 1.0.7-36.2)
+> What kernel version does that correspond to?
+>
+> My first impulse would be to make sure rpc.idmapd is running.  (If not,
+> the server would do an upcall to idmapd and never get a response, hence
+> fail to respond to a client getattr.)
+>
+> --b.
 
--- 
-Pengutronix e.K.                           | Uwe Kleine-König            |
-Industrial Linux Solutions                 | http://www.pengutronix.de/  |
+My server kernel is 2.6.16.60-0.39.3
+# uname -a
+Linux bhsrv2 2.6.16.60-0.39.3-smp #1 SMP Mon May 11 11:46:34 UTC 2009 
+x86_64 x86_64 x86_64 GNU/Linux
+
+
+I'm positive idmapd is running in both, server and client:
+
+server
+# ps -ef | grep idmap
+root     11254     1  0 Jan12 ?        00:00:00 /usr/sbin/rpc.idmapd
+
+client
+# ps -ef | grep idmap
+root      3262     1  0  2010 ?        00:00:02 rpc.idmapd
+
+but it doesn't appear in rpcinfo -p, should it?
+
+server
+# rpcinfo -p
+    program vers proto   port
+     100000    2   tcp    111  portmapper
+     100000    2   udp    111  portmapper
+     100003    2   udp   2049  nfs
+     100003    3   udp   2049  nfs
+     100003    4   udp   2049  nfs
+     100003    2   tcp   2049  nfs
+     100003    3   tcp   2049  nfs
+     100003    4   tcp   2049  nfs
+     100024    1   udp   2526  status
+     100021    1   udp   2526  nlockmgr
+     100021    3   udp   2526  nlockmgr
+     100021    4   udp   2526  nlockmgr
+     100024    1   tcp   5726  status
+     100021    1   tcp   5726  nlockmgr
+     100021    3   tcp   5726  nlockmgr
+     100021    4   tcp   5726  nlockmgr
+     100005    1   udp    980  mountd
+     100005    1   tcp    980  mountd
+     100005    2   udp    980  mountd
+     100005    2   tcp    980  mountd
+     100005    3   udp    980  mountd
+     100005    3   tcp    980  mountd
+1073741824    1   tcp  13587
+
+and client:
+# rpcinfo -p
+    program vers proto   port
+     100000    2   tcp    111  portmapper
+     100000    2   udp    111  portmapper
+     100024    1   udp    850  status
+     100024    1   tcp    853  status
+     100021    1   tcp  42074  nlockmgr
+     100021    3   tcp  42074  nlockmgr
+     100021    4   tcp  42074  nlockmgr
+     100021    1   udp  45871  nlockmgr
+     100021    3   udp  45871  nlockmgr
+     100021    4   udp  45871  nlockmgr
+1073741824    1   tcp  57121
+
+
+
+
+Thanks for any insight,
+
+Txema
+
+
+
