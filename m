@@ -1,127 +1,73 @@
-From: Santosh Shilimkar <santosh.shilimkar@ti.com>
-Subject: RE: NFS root lockups with -next 20110113
-Date: Thu, 13 Jan 2011 19:11:42 +0530
-Message-ID: <af7e0625d87b3596567f016e2694ffef@mail.gmail.com>
-References: <20110113120626.GB30351@opensource.wolfsonmicro.com>
- <8138.1294924927@jrobl> 676f5c24375e1cc2aa14fe6630ef1324@mail.gmail.com
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Issue in nfs-utils 1.2.3
+Date: Thu, 13 Jan 2011 10:52:20 -0500
+Message-ID: <20110113155220.GE20946@fieldses.org>
+References: <4D2D910F.1080703@onet.eu>
+ <4D2DB1D8.8030606@onet.eu>
+ <20110112160459.GA6124@fieldses.org>
+ <2746C301-E627-4F22-8422-6A4856CF4EC0@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-	Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org
-To: "J. R. Okajima" <hooanon05-/E1597aS9LR3+QwDJ9on6Q@public.gmane.org>,
-	Mark Brown <broonie-yzvPICuk2AATkU/dhu1WVueM+bqZidxxQQ4Iyu8u01E@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: sdrb <sdrb-4Uo9UdwAbX8@public.gmane.org>,
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+	Steve Dickson <steved@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from na3sys009aog101.obsmtp.com ([74.125.149.67]:60698 "EHLO
-	na3sys009aog101.obsmtp.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756707Ab1AMNlq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 08:41:46 -0500
-In-Reply-To: 676f5c24375e1cc2aa14fe6630ef1324-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org
+Received: from fieldses.org ([174.143.236.118]:48939 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932979Ab1AMPwX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Jan 2011 10:52:23 -0500
+In-Reply-To: <2746C301-E627-4F22-8422-6A4856CF4EC0@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-(+ 'linux-arm' since same problem was getting discussed
- in another thread)
+On Thu, Jan 13, 2011 at 10:47:42AM -0500, Chuck Lever wrote:
+> 
+> On Jan 12, 2011, at 11:04 AM, J. Bruce Fields wrote:
+> 
+> > On Wed, Jan 12, 2011 at 02:51:20PM +0100, sdrb wrote:
+> >> I've investigated a little the sources and I noticed that probably
+> >> there should be some pointer NULL-ed in mountlist_list() procedure
+> >> like in patch I've attached.
+> >> 
+> >> Anyone can confirm that such a fix is ok?
+> > 
+> > Thanks for the report.
+> > 
+> > I haven't tried to verify that it could cause the backtrace you saw, but
+> > clearly mlist is used after that mountlist_freeall(mlist), so your patch
+> > is necessary.
+> > 
+> > Looks like this was introduced with a8348c2c4 "mountd: Add
+> > mountlist_freeall()".
+> 
+> Is your theory that the introduction of a function call ( mountlist_freeall() ) hides the side-effects of that while loop, leaving the mlist variable in the mountlist_list() scope pointing at freed memory?
 
-> -----Original Message-----
-> From: Santosh Shilimkar [mailto:santosh.shilimkar@ti.com]
-> Sent: Thursday, January 13, 2011 6:59 PM
-> To: 'J. R. Okajima'; 'Mark Brown'
-> Cc: 'Trond Myklebust'; 'Nick Piggin'; 'linux-nfs@vger.kernel.org';
-> 'linux-kernel@vger.kernel.org'; 'linux-fsdevel@vger.kernel.org'
-> Subject: RE: NFS root lockups with -next 20110113
->
-> > -----Original Message-----
-> > From: J. R. Okajima [mailto:hooanon05-/E1597aS9LR3+QwDJ9on6Q@public.gmane.org]
-> > Sent: Thursday, January 13, 2011 6:52 PM
-> > To: Mark Brown
-> > Cc: Trond Myklebust; Santosh Shilimkar; Nick Piggin; linux-
-> > nfs@vger.kernel.org; linux-kernel@vger.kernel.org; linux-
-> > fsdevel@vger.kernel.org
-> > Subject: Re: NFS root lockups with -next 20110113
-> >
-> >
-> > Mark Brown:
-> > > With -next 20110113 I'm experiencing lockups shortly after
-> > userspace
-> > > starts when booting with my root filesystem on NFS, log below.
-> I
-> > can
-> > > boot into /bin/sh but running real userspace triggers this very
-> > easily.
-> > > This was introduced sometime this week.
-> > >
-> > > I've not bisected or otherwise investigated much yet, but I do
-> > notice
-> > > code added recently by Nick in "fs: rcu-walk for path lookup"
-> > showing up
-> > > in the backtrace so including him in the CCs.
-> >
-> > This and a report from Santosh Shilimkar look like the same
-> problem
-> > which I reported, and I am testing this patch. If you can, please
-> > try it
-> > too.
-> > Note: Of course this is not offcial fix.
-> >
->
-> It works. My board booted with NFS with below patch
->
->
-> >
-> > diff --git a/fs/namei.c b/fs/namei.c
-> > index 5bb7588..51d052f 100644
-> > --- a/fs/namei.c
-> > +++ b/fs/namei.c
-> > @@ -480,6 +480,7 @@ static int nameidata_dentry_drop_rcu(struct
-> > nameidata *nd, struct dentry *dentry
-> >  {
-> >  	struct fs_struct *fs = current->fs;
-> >  	struct dentry *parent = nd->path.dentry;
-> > +	int isroot;
-> >
-> >  	BUG_ON(!(nd->flags & LOOKUP_RCU));
-> >  	if (nd->root.mnt) {
-> > @@ -489,18 +490,22 @@ static int nameidata_dentry_drop_rcu(struct
-> > nameidata *nd, struct dentry *dentry
-> >  			goto err_root;
-> >  	}
-> >  	spin_lock(&parent->d_lock);
-> > -	spin_lock_nested(&dentry->d_lock, DENTRY_D_LOCK_NESTED);
-> > -	if (!__d_rcu_to_refcount(dentry, nd->seq))
-> > -		goto err;
-> > +	isroot = IS_ROOT(dentry);
-> > +	if (!isroot) {
-> > +		spin_lock_nested(&dentry->d_lock, DENTRY_D_LOCK_NESTED);
-> > +		if (!__d_rcu_to_refcount(dentry, nd->seq))
-> > +			goto err;
-> > +	}
-> >  	/*
-> >  	 * If the sequence check on the child dentry passed, then the
-> > child has
-> >  	 * not been removed from its parent. This means the parent
-> > dentry must
-> >  	 * be valid and able to take a reference at this point.
-> >  	 */
-> > -	BUG_ON(!IS_ROOT(dentry) && dentry->d_parent != parent);
-> > +	BUG_ON(!isroot && dentry->d_parent != parent);
-> >  	BUG_ON(!parent->d_count);
-> >  	parent->d_count++;
-> > -	spin_unlock(&dentry->d_lock);
-> > +	if (!isroot)
-> > +		spin_unlock(&dentry->d_lock);
-> >  	spin_unlock(&parent->d_lock);
-> >  	if (nd->root.mnt) {
-> >  		path_get(&nd->root);
-> > @@ -513,7 +518,8 @@ static int nameidata_dentry_drop_rcu(struct
-> > nameidata *nd, struct dentry *dentry
-> >  	nd->flags &= ~LOOKUP_RCU;
-> >  	return 0;
-> >  err:
-> > -	spin_unlock(&dentry->d_lock);
-> > +	if (!isroot)
-> > +		spin_unlock(&dentry->d_lock);
-> >  	spin_unlock(&parent->d_lock);
-> >  err_root:
-> >  	if (nd->root.mnt)
+Yup.--b.
+
+> 
+> > --b.
+> > 
+> >> diff -rNup nfs-utils-1.2.3_orig/utils/mountd/rmtab.c nfs-utils-1.2.3/utils/mountd/rmtab.c
+> >> --- nfs-utils-1.2.3/utils/mountd/rmtab.c	2010-09-28 14:24:16.000000000 +0200
+> >> +++ nfs-utils-1.2.3/utils/mountd/rmtab.c	2011-01-12 14:44:22.320000000 +0100
+> >> @@ -205,6 +205,7 @@ mountlist_list(void)
+> >> 	}
+> >> 	if (stb.st_mtime != last_mtime) {
+> >> 		mountlist_freeall(mlist);
+> >> +		mlist=NULL;
+> 
+> Nit: Please use white space conventions which match the rest of the file (single blanks around "=").
+> 
+> >> 		last_mtime = stb.st_mtime;
+> >> 
+> >> 		setrmtabent("r");
+> > 
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
