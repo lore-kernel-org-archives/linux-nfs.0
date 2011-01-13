@@ -1,394 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24004 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754085Ab1AFWRJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Jan 2011 17:17:09 -0500
-Received: from svlrsexc1-prd.hq.netapp.com (svlrsexc1-prd.hq.netapp.com [10.57.115.30])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p06MH92S028476
-	for <linux-nfs@vger.kernel.org>; Thu, 6 Jan 2011 14:17:09 -0800 (PST)
-Subject: Re: [PATCH v3 4/5] NFS: use secinfo when crossing mountpoints
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <4D263B17.7090101@netapp.com>
-References: <4D263B17.7090101@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 06 Jan 2011 17:17:08 -0500
-Message-ID: <1294352228.3164.23.camel@heimdal.trondhjem.org>
+Received: from mfbichi11.ns.itscom.net ([219.110.2.189]:44791 "EHLO
+	mfbichi11.ns.itscom.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751498Ab1AMNbT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 08:31:19 -0500
+From: "J. R. Okajima" <hooanon05@yahoo.co.jp>
+Subject: Re: NFS root lockups with -next 20110113
+To: Mark Brown <broonie@opensource.wolfsonmicro.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Santosh Shilimkar <santosh.shilimkar@ti.com>,
+        Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+In-Reply-To: <20110113120626.GB30351@opensource.wolfsonmicro.com>
+References: <20110113120626.GB30351@opensource.wolfsonmicro.com>
+Date: Thu, 13 Jan 2011 22:22:07 +0900
+Message-ID: <8138.1294924927@jrobl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-01-06 at 16:58 -0500, Bryan Schumaker wrote: 
-> A submount may use different security than the parent
-> mount does.  We should figure out what sec flavor the
-> submount uses at mount time.
-> 
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
->  fs/nfs/inode.c                        |    8 ++-
->  fs/nfs/internal.h                     |    7 ++
->  fs/nfs/namespace.c                    |  102 ++++++++++++++++++++++++++++++++-
->  fs/nfs/nfs4proc.c                     |   14 +++++
->  fs/nfs/nfs4xdr.c                      |   11 ++--
->  include/linux/nfs_xdr.h               |    1 +
->  net/sunrpc/auth_gss/gss_mech_switch.c |   22 +++++++
->  7 files changed, 154 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 790b786..02669c8 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -249,7 +249,9 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
->  	struct inode *inode = ERR_PTR(-ENOENT);
->  	unsigned long hash;
->  
-> -	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0)
-> +	nfs_attr_check_mountpoint(sb, fattr);
-> +
-> +	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0 && (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT) == 0)
->  		goto out_no_inode;
->  	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) == 0)
->  		goto out_no_inode;
-> @@ -293,8 +295,8 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
->  			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS))
->  				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
->  			/* Deal with crossing mountpoints */
-> -			if ((fattr->valid & NFS_ATTR_FATTR_FSID)
-> -					&& !nfs_fsid_equal(&NFS_SB(sb)->fsid, &fattr->fsid)) {
-> +			if (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT ||
-> +					fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
->  				if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
->  					inode->i_op = &nfs_referral_inode_operations;
->  				else
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index 367d898..04ccc2a 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -39,6 +39,12 @@ static inline int nfs4_has_persistent_session(const struct nfs_client *clp)
->  	return 0;
->  }
->  
-> +static inline void nfs_attr_check_mountpoint(struct super_block *parent, struct nfs_fattr *fattr)
-> +{
-> +	if (!nfs_fsid_equal(&NFS_SB(parent)->fsid, &fattr->fsid))
-> +		fattr->valid |= NFS_ATTR_FATTR_MOUNTPOINT;
-> +}
-> +
->  struct nfs_clone_mount {
->  	const struct super_block *sb;
->  	const struct dentry *dentry;
-> @@ -212,6 +218,7 @@ extern const u32 nfs41_maxwrite_overhead;
->  /* nfs4proc.c */
->  #ifdef CONFIG_NFS_V4
->  extern struct rpc_procinfo nfs4_procedures[];
-> +void nfs_fixup_secinfo_attributes(struct nfs_fattr *, struct nfs_fh *);
->  #endif
->  
->  /* proc.c */
-> diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-> index 3c361f8..7cf77d0 100644
-> --- a/fs/nfs/namespace.c
-> +++ b/fs/nfs/namespace.c
-> @@ -15,6 +15,7 @@
->  #include <linux/string.h>
->  #include <linux/sunrpc/clnt.h>
->  #include <linux/vfs.h>
-> +#include <linux/sunrpc/gss_api.h>
->  #include "internal.h"
->  
->  #define NFSDBG_FACILITY		NFSDBG_VFS
-> @@ -28,7 +29,8 @@ int nfs_mountpoint_expiry_timeout = 500 * HZ;
->  static struct vfsmount *nfs_do_submount(const struct vfsmount *mnt_parent,
->  					const struct dentry *dentry,
->  					struct nfs_fh *fh,
-> -					struct nfs_fattr *fattr);
-> +					struct nfs_fattr *fattr,
-> +					rpc_authflavor_t authflavor);
->  
->  /*
->   * nfs_path - reconstruct the path given an arbitrary dentry
-> @@ -87,6 +89,90 @@ Elong:
->  	return ERR_PTR(-ENAMETOOLONG);
->  }
->  
-> +static rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors, struct inode *inode)
-> +{
-> +	struct gss_api_mech *mech;
-> +	struct xdr_netobj oid;
-> +	int i;
-> +	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
-> +
-> +	for (i = 0; i < flavors->num_flavors; i++) {
-> +		struct nfs4_secinfo_flavor *flavor;
-> +		flavor = &flavors->flavors[i];
-> +
-> +		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
-> +			pseudoflavor = flavor->flavor;
-> +			break;
-> +		} else if (flavor->flavor == RPC_AUTH_GSS) {
-> +			oid.len  = flavor->gss.sec_oid4.len;
-> +			oid.data = flavor->gss.sec_oid4.data;
-> +			mech = gss_mech_get_by_OID(&oid);
-> +			if (!mech)
-> +				continue;
-> +			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
-> +			gss_mech_put(mech);
-> +			break;
-> +		}
-> +	}
-> +
-> +	return pseudoflavor;
-> +}
-> +
-> +static rpc_authflavor_t nfs_negotiate_security(const struct dentry *parent, const struct dentry *dentry)
-> +{
-> +	int status = 0;
-> +	struct page *page;
-> +	struct nfs4_secinfo_flavors *flavors;
-> +	int (*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
-> +	rpc_authflavor_t flavor = RPC_AUTH_UNIX;
-> +
-> +	secinfo = NFS_PROTO(parent->d_inode)->secinfo;
-> +	if (secinfo != NULL) {
-> +		page = alloc_page(GFP_KERNEL);
-> +		if (!page) {
-> +			status = -ENOMEM;
-> +			goto out;
-> +		}
-> +		flavors = page_address(page);
-> +		status = secinfo(parent->d_inode, &dentry->d_name, flavors);
-> +		flavor = nfs_find_best_sec(flavors, dentry->d_inode);
-> +		put_page(page);
-> +	}
-> +
-> +	return flavor;
-> +
-> +out:
-> +	status = -ENOMEM;
-> +	return status;
 
-rpc_authflavor_t is of type 'u32'. It can't ever be negative.
+Mark Brown:
+> With -next 20110113 I'm experiencing lockups shortly after userspace
+> starts when booting with my root filesystem on NFS, log below.  I can
+> boot into /bin/sh but running real userspace triggers this very easily.
+> This was introduced sometime this week.
+>
+> I've not bisected or otherwise investigated much yet, but I do notice
+> code added recently by Nick in "fs: rcu-walk for path lookup" showing up
+> in the backtrace so including him in the CCs.
 
-> +}
-> +
-> +static rpc_authflavor_t nfs_lookup_with_sec(struct nfs_server *server, struct dentry *parent,
-> +				     struct dentry *dentry, struct nameidata *nd,
-> +				     struct nfs_fh *fh, struct nfs_fattr *fattr)
-> +{
-> +	rpc_authflavor_t flavor;
-> +	struct rpc_clnt *clone;
-> +	struct rpc_auth *auth;
-> +	int err;
-> +
-> +	flavor = nfs_negotiate_security(parent, nd->path.dentry);
-> +	if (flavor < 0)
-> +		goto out;
+This and a report from Santosh Shilimkar look like the same problem
+which I reported, and I am testing this patch. If you can, please try it
+too.
+Note: Of course this is not offcial fix.
 
-Ditto
 
-> +	clone  = rpc_clone_client(server->client);
-> +	auth   = rpcauth_create(flavor, clone);
-> +	if (!auth) {
-> +		flavor = -EIO;
-> +		goto out;
-> +	}
-> +	err = server->nfs_client->rpc_ops->lookup(clone, parent->d_inode,
-> +						  &nd->path.dentry->d_name,
-> +						  fh, fattr);
-> +	if (err < 0)
-> +		flavor = err;
-> +out:
-> +	return flavor;
-> +}
-> +
->  /*
->   * nfs_follow_mountpoint - handle crossing a mountpoint on the server
->   * @dentry - dentry of mountpoint
-> @@ -108,6 +194,7 @@ static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
->  	struct nfs_fh *fh = NULL;
->  	struct nfs_fattr *fattr = NULL;
->  	int err;
-> +	rpc_authflavor_t flavor = 1;
->  
->  	dprintk("--> nfs_follow_mountpoint()\n");
->  
-> @@ -130,6 +217,13 @@ static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
->  	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
->  						  &nd->path.dentry->d_name,
->  						  fh, fattr);
-> +	if (err == -EPERM) {
-> +		flavor = nfs_lookup_with_sec(server, parent, dentry, nd, fh, fattr);
-> +		if (flavor < 0)
+J. R. Okajima
 
-Ditto
-
-> +			err = flavor;
-> +		else
-> +			err = 0;
-> +	}
->  	dput(parent);
->  	if (err != 0)
->  		goto out_err;
-> @@ -138,7 +232,7 @@ static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
->  		mnt = nfs_do_refmount(nd->path.mnt, nd->path.dentry);
->  	else
->  		mnt = nfs_do_submount(nd->path.mnt, nd->path.dentry, fh,
-> -				      fattr);
-> +				      fattr, flavor);
->  	err = PTR_ERR(mnt);
->  	if (IS_ERR(mnt))
->  		goto out_err;
-> @@ -232,13 +326,15 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
->  static struct vfsmount *nfs_do_submount(const struct vfsmount *mnt_parent,
->  					const struct dentry *dentry,
->  					struct nfs_fh *fh,
-> -					struct nfs_fattr *fattr)
-> +					struct nfs_fattr *fattr,
-> +					rpc_authflavor_t authflavor)
->  {
->  	struct nfs_clone_mount mountdata = {
->  		.sb = mnt_parent->mnt_sb,
->  		.dentry = dentry,
->  		.fh = fh,
->  		.fattr = fattr,
-> +		.authflavor = authflavor,
->  	};
->  	struct vfsmount *mnt = ERR_PTR(-ENOMEM);
->  	char *page = (char *) __get_free_page(GFP_USER);
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 92b47d9..82d50c4 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -86,6 +86,8 @@ static int nfs4_map_errors(int err)
->  	switch (err) {
->  	case -NFS4ERR_RESOURCE:
->  		return -EREMOTEIO;
-> +	case -NFS4ERR_WRONGSEC:
-> +		return -EPERM;
->  	default:
->  		dprintk("%s could not handle NFSv4 error %d\n",
->  				__func__, -err);
-> @@ -2363,6 +2365,16 @@ static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
->  	return status;
->  }
->  
-> +void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr, struct nfs_fh *fh)
-> +{
-> +	memset(fh, 0, sizeof(struct nfs_fh));
-> +	fattr->fsid.major = 1;
-> +	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
-> +		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_FSID | NFS_ATTR_FATTR_MOUNTPOINT;
-> +	fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
-> +	fattr->nlink = 2;
-> +}
-> +
->  static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
->  			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
->  {
-> @@ -2372,6 +2384,8 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
->  		err = nfs4_handle_exception(NFS_SERVER(dir),
->  				_nfs4_proc_lookup(clnt, dir, name, fhandle, fattr),
->  				&exception);
-> +		if (err == -EPERM)
-> +			nfs_fixup_secinfo_attributes(fattr, fhandle);
->  	} while (exception.retry);
->  	return err;
->  }
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 391a127..4f0a288 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -113,7 +113,7 @@ static int nfs4_stat_to_errno(int);
->  #define encode_restorefh_maxsz  (op_encode_hdr_maxsz)
->  #define decode_restorefh_maxsz  (op_decode_hdr_maxsz)
->  #define encode_fsinfo_maxsz	(encode_getattr_maxsz)
-> -#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 11)
-> +#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 15)
->  #define encode_renew_maxsz	(op_encode_hdr_maxsz + 3)
->  #define decode_renew_maxsz	(op_decode_hdr_maxsz)
->  #define encode_setclientid_maxsz \
-> @@ -2963,6 +2963,7 @@ static int decode_attr_error(struct xdr_stream *xdr, uint32_t *bitmap)
->  		if (unlikely(!p))
->  			goto out_overflow;
->  		bitmap[0] &= ~FATTR4_WORD0_RDATTR_ERROR;
-> +		return -be32_to_cpup(p);
->  	}
->  	return 0;
->  out_overflow:
-> @@ -3950,6 +3951,10 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
->  	fattr->valid |= status;
->  
->  	status = decode_attr_error(xdr, bitmap);
-> +	if (status == -NFS4ERR_WRONGSEC) {
-> +		nfs_fixup_secinfo_attributes(fattr, fh);
-> +		status = 0;
-> +	}
->  	if (status < 0)
->  		goto xdr_error;
->  
-> @@ -6323,10 +6328,6 @@ static struct {
->  	{ NFS4ERR_SYMLINK,	-ELOOP		},
->  	{ NFS4ERR_OP_ILLEGAL,	-EOPNOTSUPP	},
->  	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
-> -	{ NFS4ERR_WRONGSEC,	-EPERM		}, /* FIXME: this needs
-> -						    * to be handled by a
-> -						    * middle-layer.
-> -						    */
->  	{ -1,			-EIO		}
->  };
->  
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 307a085..5bc8bd3 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -79,6 +79,7 @@ struct nfs_fattr {
->  #define NFS_ATTR_FATTR_CHANGE		(1U << 17)
->  #define NFS_ATTR_FATTR_PRECHANGE	(1U << 18)
->  #define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 19)	/* NFSv4 referral */
-> +#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 20)	/* Treat as mountpoint */
->  
->  #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
->  		| NFS_ATTR_FATTR_MODE \
-> diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-> index 8b40610..6c844b0 100644
-> --- a/net/sunrpc/auth_gss/gss_mech_switch.c
-> +++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-> @@ -160,6 +160,28 @@ gss_mech_get_by_name(const char *name)
->  
->  EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
->  
-> +struct gss_api_mech *
-> +gss_mech_get_by_OID(struct xdr_netobj *obj)
-> +{
-> +	struct gss_api_mech	*pos, *gm = NULL;
-> +
-> +	spin_lock(&registered_mechs_lock);
-> +	list_for_each_entry(pos, &registered_mechs, gm_list) {
-> +		if (obj->len == pos->gm_oid.len) {
-> +			if (0 == memcmp(obj->data, pos->gm_oid.data, obj->len)) {
-> +				if (try_module_get(pos->gm_owner))
-> +					gm = pos;
-> +				break;
-> +			}
-> +		}
-> +	}
-> +	spin_unlock(&registered_mechs_lock);
-> +	return gm;
-> +
-> +}
-> +
-> +EXPORT_SYMBOL_GPL(gss_mech_get_by_OID);
-> +
->  static inline int
->  mech_supports_pseudoflavor(struct gss_api_mech *gm, u32 pseudoflavor)
->  {
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+diff --git a/fs/namei.c b/fs/namei.c
+index 5bb7588..51d052f 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -480,6 +480,7 @@ static int nameidata_dentry_drop_rcu(struct nameidata *nd, struct dentry *dentry
+ {
+ 	struct fs_struct *fs = current->fs;
+ 	struct dentry *parent = nd->path.dentry;
++	int isroot;
+ 
+ 	BUG_ON(!(nd->flags & LOOKUP_RCU));
+ 	if (nd->root.mnt) {
+@@ -489,18 +490,22 @@ static int nameidata_dentry_drop_rcu(struct nameidata *nd, struct dentry *dentry
+ 			goto err_root;
+ 	}
+ 	spin_lock(&parent->d_lock);
+-	spin_lock_nested(&dentry->d_lock, DENTRY_D_LOCK_NESTED);
+-	if (!__d_rcu_to_refcount(dentry, nd->seq))
+-		goto err;
++	isroot = IS_ROOT(dentry);
++	if (!isroot) {
++		spin_lock_nested(&dentry->d_lock, DENTRY_D_LOCK_NESTED);
++		if (!__d_rcu_to_refcount(dentry, nd->seq))
++			goto err;
++	}
+ 	/*
+ 	 * If the sequence check on the child dentry passed, then the child has
+ 	 * not been removed from its parent. This means the parent dentry must
+ 	 * be valid and able to take a reference at this point.
+ 	 */
+-	BUG_ON(!IS_ROOT(dentry) && dentry->d_parent != parent);
++	BUG_ON(!isroot && dentry->d_parent != parent);
+ 	BUG_ON(!parent->d_count);
+ 	parent->d_count++;
+-	spin_unlock(&dentry->d_lock);
++	if (!isroot)
++		spin_unlock(&dentry->d_lock);
+ 	spin_unlock(&parent->d_lock);
+ 	if (nd->root.mnt) {
+ 		path_get(&nd->root);
+@@ -513,7 +518,8 @@ static int nameidata_dentry_drop_rcu(struct nameidata *nd, struct dentry *dentry
+ 	nd->flags &= ~LOOKUP_RCU;
+ 	return 0;
+ err:
+-	spin_unlock(&dentry->d_lock);
++	if (!isroot)
++		spin_unlock(&dentry->d_lock);
+ 	spin_unlock(&parent->d_lock);
+ err_root:
+ 	if (nd->root.mnt)
 
