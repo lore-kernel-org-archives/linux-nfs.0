@@ -1,82 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from metis.ext.pengutronix.de ([92.198.50.35]:34279 "EHLO
-	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753503Ab1AJRJK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jan 2011 12:09:10 -0500
-Message-ID: <4D2B3D03.8050504@pengutronix.de>
-Date: Mon, 10 Jan 2011 18:08:19 +0100
-From: Marc Kleine-Budde <mkl@pengutronix.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: =?UTF-8?B?VXdlIEtsZWluZS1Lw7ZuaWc=?=
-	<u.kleine-koenig@pengutronix.de>,
-        James Bottomley <James.Bottomley@HansenPartnership.com>,
-        Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
-        linux-arm-kernel@lists.infradead.org,
-        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-References: <1294268808.2952.18.camel@heimdal.trondhjem.org>	 <1294270104.16957.73.camel@mulgrave.site>	 <1294335614.22825.154.camel@mulgrave.site>	 <1294336054.2905.1.camel@heimdal.trondhjem.org>	 <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>	 <1294426405.2929.23.camel@heimdal.trondhjem.org>	 <20110107190229.GX31708@n2100.arm.linux.org.uk>	 <1294427467.4895.66.camel@mulgrave.site>	 <1294505384.4181.14.camel@heimdal.trondhjem.org>	 <1294528551.4181.19.camel@heimdal.trondhjem.org>	 <20110110105019.GC24920@pengutronix.de> <1294676734.3349.10.camel@heimdal.trondhjem.org>
-In-Reply-To: <1294676734.3349.10.camel@heimdal.trondhjem.org>
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enig534B58FE496CACCAD7436DD7"
+Received: from shutemov.name ([188.40.19.243]:53348 "EHLO shutemov.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757556Ab1ANNtk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Jan 2011 08:49:40 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3 11/16] Export iterate_mounts symbol to be able to use from sunrpc module.
+Date: Fri, 14 Jan 2011 15:49:09 +0200
+Message-Id: <1295012954-7769-12-git-send-email-kas@openvz.org>
+In-Reply-To: <1295012954-7769-1-git-send-email-kas@openvz.org>
+References: <1295012954-7769-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
---------------enig534B58FE496CACCAD7436DD7
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+---
+ fs/namespace.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-On 01/10/2011 05:25 PM, Trond Myklebust wrote:
-> On Mon, 2011-01-10 at 11:50 +0100, Uwe Kleine-K=C3=B6nig wrote:=20
->> Hi Trond,
->>
->> On Sat, Jan 08, 2011 at 06:15:51PM -0500, Trond Myklebust wrote:
->>> ---------------------------------------------------------------------=
---------------=20
->> It would be great if you could add a "8<" in the line above next time.=
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 3ddfd90..f73054d 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -1498,6 +1498,7 @@ int iterate_mounts(int (*f)(struct vfsmount *, void *), void *arg,
+ 	}
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(iterate_mounts);
+ 
+ static void cleanup_group_ids(struct vfsmount *mnt, struct vfsmount *end)
+ {
+-- 
+1.7.3.4
 
->> Then git-am -c does the right thing (at least I think so).
->=20
-> Sorry. I wasn't aware of that particular idiom. So something like
->=20
-> 8<------------------------------------------------------------
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Subject: .....
-
-Yes.
-
-=46rom "man git-mailinfo":
-"A line that mainly consists of scissors (either ">8" or "8<") and
-perforation (dash "-")"
-
-BTW:
-Is this patch a candidate for stable?
-
-regards, Marc
-
---=20
-Pengutronix e.K.                  | Marc Kleine-Budde           |
-Industrial Linux Solutions        | Phone: +49-231-2826-924     |
-Vertretung West/Dortmund          | Fax:   +49-5121-206917-5555 |
-Amtsgericht Hildesheim, HRA 2686  | http://www.pengutronix.de   |
-
-
---------------enig534B58FE496CACCAD7436DD7
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
-
-iEYEARECAAYFAk0rPQYACgkQjTAFq1RaXHP/EQCfbaFRmy8UKv7kl4gfOuQoA60g
-JMMAniTSFmoSq+LmU6ka2ylzC4XZa35c
-=hVyS
------END PGP SIGNATURE-----
-
---------------enig534B58FE496CACCAD7436DD7--
