@@ -1,83 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:16469 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750994Ab1ADV7y convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jan 2011 16:59:54 -0500
-Subject: Re: [PATCH 4/4] NFSv4: Send unmapped uid/gids to the server when
- using auth_sys
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Dr. J. Bruce Fields" <bfields@fieldses.org>
-Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org
-In-Reply-To: <20110104215731.GH7908@fieldses.org>
-References: <1291085863-3234-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1291085863-3234-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <1291085863-3234-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1291085863-3234-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <1291085863-3234-5-git-send-email-Trond.Myklebust@netapp.com>
-	 <20110104212504.GG27727@hostway.ca>
-	 <1294176792.5896.22.camel@heimdal.trondhjem.org>
-	 <20110104214334.GI27727@hostway.ca>
-	 <1294177833.5896.26.camel@heimdal.trondhjem.org>
-	 <20110104215731.GH7908@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 04 Jan 2011 16:59:51 -0500
-Message-ID: <1294178391.5896.31.camel@heimdal.trondhjem.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:63204 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751046Ab1ANGjz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Jan 2011 01:39:55 -0500
+Received: from tang.cn.fujitsu.com (tang.cn.fujitsu.com [10.167.250.3])
+	by song.cn.fujitsu.com (Postfix) with ESMTP id 8E10017012E
+	for <linux-nfs@vger.kernel.org>; Fri, 14 Jan 2011 14:39:52 +0800 (CST)
+Received: from mailserver.fnst.cn.fujitus.com (tang.cn.fujitsu.com [127.0.0.1])
+	by tang.cn.fujitsu.com (8.14.3/8.13.1) with ESMTP id p0E6UdVf014537
+	for <linux-nfs@vger.kernel.org>; Fri, 14 Jan 2011 14:34:37 +0800
+Message-ID: <4D2FF124.7020500@cn.fujitsu.com>
+Date: Fri, 14 Jan 2011 14:45:56 +0800
+From: Fu Liankun <fuliankun@cn.fujitsu.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSV4 :All lock operations should be sent to the server for
+ resolution
+Content-Type: text/plain; charset=GB2312
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-01-04 at 16:57 -0500, Dr. J. Bruce Fields wrote: 
-> On Tue, Jan 04, 2011 at 04:50:33PM -0500, Trond Myklebust wrote:
-> > On Tue, 2011-01-04 at 13:43 -0800, Simon Kirby wrote: 
-> > > On Tue, Jan 04, 2011 at 04:33:12PM -0500, Trond Myklebust wrote:
-> > > 
-> > > > On Tue, 2011-01-04 at 13:25 -0800, Simon Kirby wrote: 
-> > > > > I finally got around to setting up idmapd properly with libnss-mysql, and
-> > > > > in doing so, I forgot that I had enabled nfs4_disable_idmapping=Y with
-> > > > > this patch applied.  With this option set on the client, and the server
-> > > > > set up normally, I get EINVAL from chown's fchowna():
-> > > > > 
-> > > > > # chown testuser:testuser test
-> > > > > chown: changing ownership of `test': Invalid argument
-> > > > > # echo N > /sys/module/nfs/parameters/nfs4_disable_idmapping
-> > > > > # chown testuser:testuser test
-> > > > > #
-> > > > > 
-> > > > > This happened on 2.6.37-rc5-git4, but I just reproduced it with
-> > > > > 2.6.37-rc8-git5 as well.  The server idmapd logs:
-> > > > > 
-> > > > > rpc.idmapd[2987]: nss_getpwnam: name '1009999' does not map into domain 'localdomain'
-> > > > > rpc.idmapd[2987]:  Server: (user) name "1009999" -> id "65534"
-> > > > > rpc.idmapd[2987]: nfsdcb: authbuf=10.10.52.0/24 authtype=group
-> > > > > rpc.idmapd[2987]:  Server: (group) name "1009999" -> id "65534"
-> > > > > 
-> > > > > (1009999 is the current uid/gid here.)
-> > > > > 
-> > > > > I think you meant for this to fall back automatically, right?
-> > > > 
-> > > > Did you remember to apply the patch 'NFSv4: Propagate the error
-> > > > NFS4ERR_BADOWNER to nfs4_do_setattr'?
-> > > 
-> > > Yes, that patch is applied as part of the series. 
-> > > 
-> > > The -EINVAL is going back to userland's fchownat().  I expected
-> > > to see the "Reenabling the idmapper" printk() from within
-> > > nfs4_handle_exception(), but this didn't seem to happen.
-> > 
-> > Hmm... Bruce, does the server actually return NFS4ERR_BADOWNER when it
-> > is supposed to? As far as I can see, nfs4idmap will consistently return
-> > NFS4ERR_BADNAME, which would be a bug here.
-> 
-> Whoops.  Looking at the spec....  Looks like BADNAME should be reserved
-> only for filenames?  I'll fix that now.
+The RFC3530 describes that the client's all lock operations, including those
+requesting non-exclusive locks, should be sent to the server for resolution,
+even if it holds a read open delegation. But the kernel implements like that
+lock operations can be performed locally when a client holds an open
+delegation.
 
-Sigh... I'll fix up the client patches to work around the server bug...
+The following are the RFC3530 provisions for Open Delegation and File Locks:
 
+9.4.2.  Open Delegation and File Locks
+
+   When a client holds a write open delegation, lock operations may be
+   performed locally.  This includes those required for mandatory file
+   locking.  This can be done since the delegation implies that there
+   can be no conflicting locks.  Similarly, all of the revalidations
+   that would normally be associated with obtaining locks and the
+   flushing of data associated with the releasing of locks need not be
+   done.
+
+   When a client holds a read open delegation, lock operations are not
+   performed locally.  All lock operations, including those requesting
+   non-exclusive locks, are sent to the server for resolution.
+
+Signed-off-by: Fu Liankun <fuliankun@cn.fujitsu.com>
+---
+ fs/nfs/nfs4proc.c |    7 -------
+ 1 files changed, 0 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0f24cdf..3bba85b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4215,13 +4215,6 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+ 	if (status < 0)
+ 		goto out;
+ 	down_read(&nfsi->rwsem);
+-	if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+-		/* Yes: cache locks! */
+-		/* ...but avoid races with delegation recall... */
+-		request->fl_flags = fl_flags & ~FL_SLEEP;
+-		status = do_vfs_lock(request->fl_file, request);
+-		goto out_unlock;
+-	}
+ 	status = _nfs4_do_setlk(state, cmd, request, NFS_LOCK_NEW);
+ 	if (status != 0)
+ 		goto out_unlock;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.1
 
