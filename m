@@ -1,97 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:57511 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751751Ab1ASC7I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 21:59:08 -0500
-Date: Wed, 19 Jan 2011 10:56:33 +0800
-From: Wengang Wang <wen.gang.wang@oracle.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Nick Piggin <npiggin@gmail.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFS dio aio bug
-Message-ID: <20110119025633.GA7713@laptop.jp.oracle.com>
-References: <AANLkTinjkvVySCA93F+p66KrTuqMfMF064ggNSg0yauX@mail.gmail.com>
- <4E70BD9B-DB23-42EC-B28D-998E16FEC189@oracle.com>
- <AANLkTikE8CT=6XQn550Cw6V0B7GWezpeUrhctFN8vSE7@mail.gmail.com>
- <D4A3D0CB-DA82-4E2E-BCAD-B03108AA4284@oracle.com>
+Received: from fieldses.org ([174.143.236.118]:60407 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752335Ab1ANSQC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Jan 2011 13:16:02 -0500
+Date: Fri, 14 Jan 2011 13:16:00 -0500
+To: Fu Liankun <fuliankun@cn.fujitsu.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSV4 :All lock operations should be sent to the
+ server for resolution
+Message-ID: <20110114181600.GA15352@fieldses.org>
+References: <4D2FF124.7020500@cn.fujitsu.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <D4A3D0CB-DA82-4E2E-BCAD-B03108AA4284@oracle.com>
+In-Reply-To: <4D2FF124.7020500@cn.fujitsu.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 11-01-18 17:01, Chuck Lever wrote:
+On Fri, Jan 14, 2011 at 02:45:56PM +0800, Fu Liankun wrote:
+> The RFC3530 describes that the client's all lock operations, including those
+> requesting non-exclusive locks, should be sent to the server for resolution,
+> even if it holds a read open delegation. But the kernel implements like that
+> lock operations can be performed locally when a client holds an open
+> delegation.
 > 
-> On Jan 14, 2011, at 4:48 PM, Nick Piggin wrote:
+> The following are the RFC3530 provisions for Open Delegation and File Locks:
 > 
-> > On Sat, Jan 15, 2011 at 3:08 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> >> Hi Nick-
-> >> 
-> >> On Jan 13, 2011, at 8:29 PM, Nick Piggin wrote:
-> >> 
-> >>> Hi Trond,
-> >>> 
-> >>> I'm getting use after frees in aio code in NFS
-> >> 
-> >> Can you describe how to reproduce this?
-> > 
-> > It was with the aio-dio stress code from xfstests, #207 I think
-> > or 208.
-> > 
-> > Running it for a short time and then ^C ing it would tend to
-> > trigger it.
-> > 
-> > I'll have to get you more details after I come back from
-> > travelling in a week's time.
+> 9.4.2.  Open Delegation and File Locks
 > 
-> I can reproduce this fairly reliably here with test 208.  ^C makes it happen almost immediately, but it can also trigger sometimes just by running the test.
+>    When a client holds a write open delegation, lock operations may be
+>    performed locally.  This includes those required for mandatory file
+>    locking.  This can be done since the delegation implies that there
+>    can be no conflicting locks.  Similarly, all of the revalidations
+>    that would normally be associated with obtaining locks and the
+>    flushing of data associated with the releasing of locks need not be
+>    done.
 > 
-> > 
-> >> 
-> >>> [ 2703.396766] Call Trace:
-> >>> [ 2703.396858]  [<ffffffff8100b057>] ? native_sched_clock+0x27/0x80
-> >>> [ 2703.396959]  [<ffffffff8108509e>] ? put_lock_stats+0xe/0x40
-> >>> [ 2703.397058]  [<ffffffff81088348>] ? lock_release_holdtime+0xa8/0x140
-> >>> [ 2703.397159]  [<ffffffff8108a2a5>] lock_acquire+0x95/0x1b0
-> >>> [ 2703.397260]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
-> >>> [ 2703.397361]  [<ffffffff81039701>] ? get_parent_ip+0x11/0x50
-> >>> [ 2703.397464]  [<ffffffff81612a31>] _raw_spin_lock_irq+0x41/0x80
-> >>> [ 2703.397564]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
-> >>> [ 2703.397662]  [<ffffffff811627db>] aio_put_req+0x2b/0x60
-> >>> [ 2703.397761]  [<ffffffff811647fe>] do_io_submit+0x2be/0x7c0
-> >>> [ 2703.397895]  [<ffffffff81164d0b>] sys_io_submit+0xb/0x10
-> >>> [ 2703.397995]  [<ffffffff8100307b>] system_call_fastpath+0x16/0x1b
-> >>> 
-> >>> Adding some tracing, it is due to nfs completing the request then
-> >>> returning something other than -EIOCBQUEUED, so aio.c
-> >>> also completes the request.
-> >> 
-> >> Is this with reads, writes, or both?  Are the I/O requests smaller than, equal to, or larger than rsize or wsize?
-> >> 
-> >> We have a related bug report: hitting the BUG at fs/aio.c:552 (OEL5) and similar for more recent kernels.  Looks like dreq refcounting is faulty somehow.
-> > 
-> > I only saw it with writes. The request was being completed
-> > in nfs direct write path when I added some tracing. It was
-> > very easy to reproduce, I just didn't have time to bisect it,
-> > but I can do that when I get back if you don't have it solved
-> > by then.
+>    When a client holds a read open delegation, lock operations are not
+>    performed locally.  All lock operations, including those requesting
+>    non-exclusive locks, are sent to the server for resolution.
+
+Weird.  Can the rfc really be right about that?
+
+I guess it does permit servers to allow write-locks on read-open files,
+but it seems bizarre not to require them to break delegations in that
+case.
+
+--b.
+
 > 
-> I'm looking at it now.  This looks exactly like the symptoms of our bug.  Thanks for the report and the reproducer.
-
-Yes, there is a fs/aio.c:552 bug filed.
-I can reproduce it as will and it happens with both read and write.
-
-Currently, I have this anylysis(correct me if I am wrong):
-
-In the sys_io_submit path, the vfs doesn't hope the FS under ground drop the
-ki_users in "error" case. Actually it is -ERESTARTSYS, in my test, instead of
--EIOCBQUEUED. But seems the nfs drops ki_users in error case as well as
-successful cases too.
-
-I now have a v1 patch to "fix" it. I will post it later after more
-thinking about it.
-
-thanks,
-wengang. 
+> Signed-off-by: Fu Liankun <fuliankun@cn.fujitsu.com>
+> ---
+>  fs/nfs/nfs4proc.c |    7 -------
+>  1 files changed, 0 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 0f24cdf..3bba85b 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -4215,13 +4215,6 @@ static int _nfs4_proc_setlk(struct nfs4_state *state, int cmd, struct file_lock
+>  	if (status < 0)
+>  		goto out;
+>  	down_read(&nfsi->rwsem);
+> -	if (test_bit(NFS_DELEGATED_STATE, &state->flags)) {
+> -		/* Yes: cache locks! */
+> -		/* ...but avoid races with delegation recall... */
+> -		request->fl_flags = fl_flags & ~FL_SLEEP;
+> -		status = do_vfs_lock(request->fl_file, request);
+> -		goto out_unlock;
+> -	}
+>  	status = _nfs4_do_setlk(state, cmd, request, NFS_LOCK_NEW);
+>  	if (status != 0)
+>  		goto out_unlock;
+> -- 
+> 1.7.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
