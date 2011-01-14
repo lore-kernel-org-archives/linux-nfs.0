@@ -1,57 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:56065 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752139Ab1ARRrt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 12:47:49 -0500
-From: <Daniel.Muntz@emc.com>
-To: <trond.myklebust@fys.uio.no>, <rees@umich.edu>
-CC: <androsadamson@gmail.com>, <linux-nfs@vger.kernel.org>
-Date: Tue, 18 Jan 2011 12:44:40 -0500
-Subject: RE: 4.1 no-pnfs mount option?
-Message-ID: <DE966DA98A4ABE438D726BDF1699CF61043985B53F@MX05A.corp.emc.com>
-References: <20110114151945.GA21629@merit.edu>
-	 <AANLkTimSp6BTgk1YQonXd6HuVS-JEpQUWqsny7JymJsd@mail.gmail.com>
-	 <20110114153846.GA21766@merit.edu>
- <1295019712.3576.1.camel@heimdal.trondhjem.org>
-In-Reply-To: <1295019712.3576.1.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from shutemov.name ([188.40.19.243]:53369 "EHLO shutemov.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757565Ab1ANNtl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Jan 2011 08:49:41 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3 14/16] sunrpc: make rpc_pipefs be mountable multiple times
+Date: Fri, 14 Jan 2011 15:49:12 +0200
+Message-Id: <1295012954-7769-15-git-send-email-kas@openvz.org>
+In-Reply-To: <1295012954-7769-1-git-send-email-kas@openvz.org>
+References: <1295012954-7769-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+To support containers, allow multiple independent instances of
+rpc_pipefs. Use '-o newinstance' to create new of the filesystem.
+The same semantics as with devpts.
+
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+---
+ net/sunrpc/rpc_pipe.c |   80 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 79 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index b72cb01..02416f1 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -19,6 +19,7 @@
+ #include <linux/nsproxy.h>
+ #include <linux/mnt_namespace.h>
+ #include <linux/fs_struct.h>
++#include <linux/parser.h>
  
+ #include <asm/ioctls.h>
+ #include <linux/fs.h>
+@@ -41,6 +42,49 @@ static struct kmem_cache *rpc_inode_cachep __read_mostly;
+ 
+ #define RPC_UPCALL_TIMEOUT (30*HZ)
+ 
++struct rpc_mount_opts {
++	int newinstance;
++};
++
++enum {
++	Opt_newinstance,
++
++	Opt_err
++};
++
++static const match_table_t tokens = {
++	{Opt_newinstance, "newinstance"},
++
++	{Opt_err, NULL}
++};
++
++static int
++parse_mount_options(char *data, struct rpc_mount_opts *opts)
++{
++	char *p;
++
++	opts->newinstance = 0;
++
++	while ((p = strsep(&data, ",")) != NULL) {
++		substring_t args[MAX_OPT_ARGS];
++		int token;
++
++		if (!*p)
++			continue;
++
++		token = match_token(p, tokens, args);
++		switch (token) {
++		case Opt_newinstance:
++			opts->newinstance = 1;
++			break;
++		default:
++			return -EINVAL;
++		}
++	}
++
++	return 0;
++}
++
+ static void rpc_purge_list(struct rpc_inode *rpci, struct list_head *head,
+ 		void (*destroy_msg)(struct rpc_pipe_msg *), int err)
+ {
+@@ -1093,11 +1137,45 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 	return 0;
+ }
+ 
++static int
++compare_rpc_mnt_sb(struct super_block *s, void *p)
++{
++	if (init_rpc_pipefs)
++		return init_rpc_pipefs->mnt_sb == s;
++	return 0;
++}
++
+ static struct dentry *
+ rpc_mount(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *data)
+ {
+-	return mount_single(fs_type, flags, data, rpc_fill_super);
++	int error;
++	struct rpc_mount_opts opts;
++	struct super_block *s;
++
++	error = parse_mount_options(data, &opts);
++	if (error)
++		return ERR_PTR(error);
++
++	if (opts.newinstance)
++		s = sget(fs_type, NULL, set_anon_super, NULL);
++	else
++		s = sget(fs_type, compare_rpc_mnt_sb, set_anon_super, NULL);
++
++	if (IS_ERR(s))
++		return ERR_CAST(s);
++
++	if (!s->s_root) {
++		s->s_flags = flags;
++		error = rpc_fill_super(s, data, flags & MS_SILENT ? 1 : 0);
++		if (error) {
++			deactivate_locked_super(s);
++			return ERR_PTR(error);
++		}
++		s->s_flags |= MS_ACTIVE;
++	}
++
++	return dget(s->s_root);
+ }
+ 
+ static void rpc_kill_sb(struct super_block *sb)
+-- 
+1.7.3.4
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org 
-> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Trond Myklebust
-> Sent: Friday, January 14, 2011 7:42 AM
-> To: Jim Rees
-> Cc: William A. (Andy) Adamson; linux-nfs@vger.kernel.org
-> Subject: Re: 4.1 no-pnfs mount option?
-> 
-> On Fri, 2011-01-14 at 10:38 -0500, Jim Rees wrote: 
-> > William A. (Andy) Adamson wrote:
-> > 
-> >   No mount option - just configure your machine to not load any pnfs
-> >   layoutdriver modules.
-> > 
-> > That works, thanks, but I was hoping for a way to have 
-> layout and non-layout
-> > mounts going on at the same time.
-> 
-> Different VMs?
-> 
-> Trond
-
-Would there be any objections to adding a "nopnfs" mount option to force this behavior?  It could be useful at least for testing, possibly for working around server problems, or if an admin knows that certain clients' usage patterns would be better served by disabling pnfs.
-
-  -Dan
-
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe 
-> linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
