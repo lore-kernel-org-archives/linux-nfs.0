@@ -1,39 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtoichi12.ns.itscom.net ([219.110.2.182]:52708 "EHLO
-	mtoichi12.ns.itscom.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756707Ab1AMNqG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 08:46:06 -0500
-From: "J. R. Okajima" <hooanon05@yahoo.co.jp>
-Subject: Re: NFS root lockups with -next 20110113
-To: Santosh Shilimkar <santosh.shilimkar@ti.com>
-Cc: Mark Brown <broonie@opensource.wolfsonmicro.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-In-Reply-To: <676f5c24375e1cc2aa14fe6630ef1324@mail.gmail.com>
-References: <20110113120626.GB30351@opensource.wolfsonmicro.com> <8138.1294924927@jrobl> <676f5c24375e1cc2aa14fe6630ef1324@mail.gmail.com>
-Date: Thu, 13 Jan 2011 22:45:15 +0900
-Message-ID: <8482.1294926315@jrobl>
+Received: from shutemov.name ([188.40.19.243]:53310 "EHLO shutemov.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757567Ab1ANNtl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Jan 2011 08:49:41 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3 15/16] sunrpc: remove global init_rpc_pipefs
+Date: Fri, 14 Jan 2011 15:49:13 +0200
+Message-Id: <1295012954-7769-16-git-send-email-kas@openvz.org>
+In-Reply-To: <1295012954-7769-1-git-send-email-kas@openvz.org>
+References: <1295012954-7769-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
+Replace remaining init_rpc_pipefs references with get_rpc_pipefs(NULL)
+and make init_rpc_pipefs static.
 
-Santosh Shilimkar:
-> It works. My board booted with NFS with below patch
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+---
+ fs/nfsd/nfs4callback.c             |    5 ++++-
+ fs/nfsd/nfssvc.c                   |   16 ++++++++++++++--
+ include/linux/sunrpc/rpc_pipe_fs.h |    2 --
+ net/sunrpc/rpc_pipe.c              |    1 -
+ 4 files changed, 18 insertions(+), 6 deletions(-)
 
-----------------------------------------
-
-Mark Brown;
-> Seems to do the trick:
->
-> Tested-by: Mark Brown <broonie@opensource.wolsfonmicro.com>
-
-Thank you so quick tests.
-When I post the patch to be mainlined, I will add Tested-by for both of
-you. But Nick Piggin may take another approach.
-
-
-J. R. Okajima
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 9bec643..61210b6 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -647,7 +647,6 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
+ 		.version	= 0,
+ 		.authflavor	= clp->cl_flavor,
+ 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
+-		.rpcmount	= init_rpc_pipefs,
+ 	};
+ 	struct rpc_clnt *client;
+ 
+@@ -663,8 +662,12 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
+ 		args.prognumber = clp->cl_cb_session->se_cb_prog;
+ 		args.protocol = XPRT_TRANSPORT_BC_TCP;
+ 	}
++	args.rpcmount = get_rpc_pipefs(NULL);
++	if (IS_ERR(args.rpcmount))
++		return PTR_ERR(args.rpcmount);
+ 	/* Create RPC client */
+ 	client = rpc_create(&args);
++	mntput(args.rpcmount);
+ 	if (IS_ERR(client)) {
+ 		dprintk("NFSD: couldn't create callback client: %ld\n",
+ 			PTR_ERR(client));
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 17d78d3..7353420 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -206,6 +206,7 @@ static bool nfsd_up = false;
+ static int nfsd_startup(unsigned short port, int nrservs)
+ {
+ 	int ret;
++	struct vfsmount *rpcmount;
+ 
+ 	if (nfsd_up)
+ 		return 0;
+@@ -220,7 +221,13 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	ret = nfsd_init_socks(port);
+ 	if (ret)
+ 		goto out_racache;
+-	ret = lockd_up(init_rpc_pipefs);
++	rpcmount = get_rpc_pipefs(NULL);
++	if (IS_ERR(rpcmount)) {
++		ret = PTR_ERR(rpcmount);
++		goto out_racache;
++	}
++	ret = lockd_up(rpcmount);
++	mntput(rpcmount);
+ 	if (ret)
+ 		goto out_racache;
+ 	ret = nfs4_state_start();
+@@ -308,6 +315,7 @@ static void set_max_drc(void)
+ int nfsd_create_serv(void)
+ {
+ 	int err = 0;
++	struct vfsmount *rpcmount;
+ 
+ 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
+ 	if (nfsd_serv) {
+@@ -332,9 +340,13 @@ int nfsd_create_serv(void)
+ 	}
+ 	nfsd_reset_versions();
+ 
+-	nfsd_serv = svc_create_pooled(&nfsd_program, init_rpc_pipefs,
++	rpcmount = get_rpc_pipefs(NULL);
++	if (IS_ERR(rpcmount))
++		return PTR_ERR(rpcmount);
++	nfsd_serv = svc_create_pooled(&nfsd_program, rpcmount,
+ 				      nfsd_max_blksize, nfsd_last_thread, nfsd,
+ 				      THIS_MODULE);
++	mntput(rpcmount);
+ 	if (nfsd_serv == NULL)
+ 		return -ENOMEM;
+ 
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 4a8830a..a0b9c46 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -44,8 +44,6 @@ RPC_I(struct inode *inode)
+ 	return container_of(inode, struct rpc_inode, vfs_inode);
+ }
+ 
+-extern struct vfsmount *init_rpc_pipefs;
+-
+ extern struct vfsmount *get_rpc_pipefs(const char *path);
+ extern int rpc_pipefs_add_destroy_cb(struct super_block *sb,
+ 		void (*destroy_cb)(void *data), void *data);
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 02416f1..96973c0 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -33,7 +33,6 @@
+ #include <linux/sunrpc/cache.h>
+ 
+ struct vfsmount *init_rpc_pipefs __read_mostly;
+-EXPORT_SYMBOL_GPL(init_rpc_pipefs);
+ 
+ static struct file_system_type rpc_pipe_fs_type;
+ 
+-- 
+1.7.3.4
 
