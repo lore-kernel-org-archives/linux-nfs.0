@@ -1,81 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:44147 "EHLO
-	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755056Ab1AGTFE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Jan 2011 14:05:04 -0500
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Marc Kleine-Budde <mkl@pengutronix.de>,
-        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
-        linux-arm-kernel@lists.infradead.org,
-        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
-In-Reply-To: <1294426405.2929.23.camel@heimdal.trondhjem.org>
-References: <1294254337.16957.13.camel@mulgrave.site>
-	 <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
-	 <1294256169.16957.18.camel@mulgrave.site>
-	 <20110105200008.GJ8638@n2100.arm.linux.org.uk>
-	 <1294259637.16957.25.camel@mulgrave.site>
-	 <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
-	 <20110105210448.GM8638@n2100.arm.linux.org.uk>
-	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
-	 <1294262208.2952.4.camel@heimdal.trondhjem.org>
-	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
-	 <1294268808.2952.18.camel@heimdal.trondhjem.org>
-	 <1294270104.16957.73.camel@mulgrave.site>
-	 <1294335614.22825.154.camel@mulgrave.site>
-	 <1294336054.2905.1.camel@heimdal.trondhjem.org>
-	 <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>
-	 <1294426405.2929.23.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 07 Jan 2011 13:05:00 -0600
-Message-ID: <1294427100.4895.58.camel@mulgrave.site>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:30729 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756941Ab1ANRA7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jan 2011 12:00:59 -0500
+Subject: Re: mac error
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <BF3BB6D12298F54B89C8DCC1E4073D8002CC1D8F@CORPUSMX50A.corp.emc.com>
+Date: Fri, 14 Jan 2011 12:00:39 -0500
+Cc: <webmail.hce@gmail.com>, <linux-nfs@vger.kernel.org>
+Message-Id: <50B5575D-8589-4261-9BC0-C6543CD18632@oracle.com>
+References: <AANLkTin04TeswNAM89ij84YzfeTAR7rsppGyZFfq01qM@mail.gmail.com> <4D2FB6F4.6070304@cn.fujitsu.com> <AANLkTin8PEyLqpdaTorSrS3Zi5sF7VeJRcrCVK9fEyc7@mail.gmail.com> <BB05F812-F3D3-4742-BD54-794FD4BCC0C0@oracle.com> <BF3BB6D12298F54B89C8DCC1E4073D8002CC1D8F@CORPUSMX50A.corp.emc.com>
+To: peter.staubach@emc.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-01-07 at 13:53 -0500, Trond Myklebust wrote:
-> There is already code in the SUNRPC layer that calls flush_dcache_page()
-> after writing (although as Russell pointed out earlier, that is
-> apparently a no-op for non-page cache pages such as these).
 
-Actually (and possibly fortunately) none of our flush_dcache_page()
-implementations do this (check for an actual non page cache page and nop
-if they find one).  Although, they may according to the docs which say
-that flush_dcache_page() is only called on page cache pages.
+On Jan 14, 2011, at 10:55 AM, peter.staubach@emc.com wrote:
 
-But it's definitely using the API outside its documented scope.  We have
-lots of places in the VFS where we don't call flush_dcache_page() even
-after altering a kernel page (even in the page cache) if we know the
-page will never be mapped to userspace.  The assumption here is that the
-kernel never sets up non-user aliases of these pages, so not doing the
-flushing is an optimisation since we only access them through the kernel
-address space.  Of course, setting up vmap areas of these pages within
-the kernel violates this assumption.
-
-> > This is why you really really really generally don't want to have
-> > aliasing. Purely virtual caches are pure crap. Really.
+> Hi.
 > 
-> Well, it looks as if NOMMU is giving us problems due to the lack of a
-> vm_map_ram() (see https://bugzilla.kernel.org/show_bug.cgi?id=26262).
+> Actually, that command should work.  The server should respond with an
+> RPC error indicating which
+> versions of the nlockmgr protocol are supported and then rpcinfo will
+> ping each of them.
+
+Yes, that and the "RPC: Timed out" message suggests that the underlying transport is not even getting through.
+
+I expect lockd to unregister itself with the portmapper when it is shut down cleanly.  The presence of a registration for nlockmgr indicates it should still be running and contactable.
+
 > 
-> I'd still like to keep the existing code for those architectures that
-> don't have problems, since that allows us to send 32k READDIR requests
-> instead of being limited to 4k. For large directories, that is a clear
-> win.
-> For the NOMMU case we will just go back to using a single page for
-> storage (and 4k READDIR requests only). Should I just do the same for
-> architectures like ARM and PARISC?
+> 		ps
+> 
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org
+> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Chuck Lever
+> Sent: Friday, January 14, 2011 10:18 AM
+> To: hce
+> Cc: Linux NFS Mailing List
+> Subject: Re: mac error
+> 
+> 
+> On Jan 13, 2011, at 11:01 PM, hce wrote:
+> 
+>> Thanks for your response. I've just found that nlockmgr did not
+>> respond when I run following command on the server. Is it a problem or
+>> it is normal? Anyway, the NFS is still working fine.
+> 
+> nlockmgr and NFS are two separate RPC services.  So, NFS can work while
+> there might be a problem with nlockmgr.  IMO, nlockmgr should respond in
+> this case.
+> 
+>> $ rpcinfo -t linux_server nlockmgr
+>> rpcinfo: RPC: Timed out
+>> program 100021 version 0 is not available
+>> 
+>> $ rpcinfo -u linux_server nlockmgr
+>> rpcinfo: RPC: Timed out
+>> program 100021 version 0 is not available
+> 
+> This is attempting to contact nlockmgr's "version 0" which is not
+> registered (see below).  Versions 1, 3, and 4 are registered.
+> 
+> Try "rpcinfo -u linux_server nlockmgr 3".
+> 
+>> $ rpcinfo -p
+>>  program vers proto   port
+>>   100000    2   tcp    111  portmapper
+>>   100000    2   udp    111  portmapper
+>>   100024    1   udp    895  status
+>>   100024    1   tcp    898  status
+>>   100011    1   udp    806  rquotad
+>>   100011    2   udp    806  rquotad
+>>   100011    1   tcp    809  rquotad
+>>   100011    2   tcp    809  rquotad
+>>   100003    2   udp   2049  nfs
+>>   100003    3   udp   2049  nfs
+>>   100003    4   udp   2049  nfs
+>>   100021    1   udp  32794  nlockmgr
+>>   100021    3   udp  32794  nlockmgr
+>>   100021    4   udp  32794  nlockmgr
+>>   100003    2   tcp   2049  nfs
+>>   100003    3   tcp   2049  nfs
+>>   100003    4   tcp   2049  nfs
+>>   100021    1   tcp  57164  nlockmgr
+>>   100021    3   tcp  57164  nlockmgr
+>>   100021    4   tcp  57164  nlockmgr
+>>   100005    1   udp    828  mountd
+>>   100005    1   tcp    831  mountd
+>>   100005    2   udp    828  mountd
+>>   100005    2   tcp    831  mountd
+>>   100005    3   udp    828  mountd
+>>   100005    3   tcp    831  mountd
+> 
+> nlockmgr is registered, so it must have been started at some point.
+> It's a kernel service, so there's no daemon to die.  Do you have some
+> kind of firewall in place that would prevent contacting the NLM service?
+> Does "linux_server" resolve to the IP address you expect it to?
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-Well, that would include any VI architecture (like SPARC and others) as
-well.  However, I think we can just make the
-invalidate_kernel_vmap_range() work.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-James
+
 
 
