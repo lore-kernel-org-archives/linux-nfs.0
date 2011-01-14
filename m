@@ -1,487 +1,328 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from metis.ext.pengutronix.de ([92.198.50.35]:53314 "EHLO
-	metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752768Ab1AJKu6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jan 2011 05:50:58 -0500
-Date: Mon, 10 Jan 2011 11:50:19 +0100
-From: Uwe =?iso-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: James Bottomley <James.Bottomley@HansenPartnership.com>,
-        Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Marc Kleine-Budde <mkl@pengutronix.de>,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
-        linux-arm-kernel@lists.infradead.org,
-        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-Message-ID: <20110110105019.GC24920@pengutronix.de>
-References: <1294268808.2952.18.camel@heimdal.trondhjem.org>
- <1294270104.16957.73.camel@mulgrave.site>
- <1294335614.22825.154.camel@mulgrave.site>
- <1294336054.2905.1.camel@heimdal.trondhjem.org>
- <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>
- <1294426405.2929.23.camel@heimdal.trondhjem.org>
- <20110107190229.GX31708@n2100.arm.linux.org.uk>
- <1294427467.4895.66.camel@mulgrave.site>
- <1294505384.4181.14.camel@heimdal.trondhjem.org>
- <1294528551.4181.19.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <1294528551.4181.19.camel@heimdal.trondhjem.org>
+Received: from shutemov.name ([188.40.19.243]:53311 "EHLO shutemov.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757521Ab1ANNtj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Jan 2011 08:49:39 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3 06/16] lockd: get rpc_pipefs mount point from callers
+Date: Fri, 14 Jan 2011 15:49:04 +0200
+Message-Id: <1295012954-7769-7-git-send-email-kas@openvz.org>
+In-Reply-To: <1295012954-7769-1-git-send-email-kas@openvz.org>
+References: <1295012954-7769-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi Trond,
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+---
+ fs/lockd/clntlock.c         |    8 +++++---
+ fs/lockd/host.c             |   17 ++++++++++++++---
+ fs/lockd/mon.c              |   15 ++++++++-------
+ fs/lockd/svc.c              |    6 ++----
+ fs/nfs/client.c             |    1 +
+ fs/nfsd/nfssvc.c            |    2 +-
+ include/linux/lockd/bind.h  |    3 ++-
+ include/linux/lockd/lockd.h |    4 +++-
+ 8 files changed, 36 insertions(+), 20 deletions(-)
 
-On Sat, Jan 08, 2011 at 06:15:51PM -0500, Trond Myklebust wrote:
-> ----------------------------------------------------------------------------------- 
-It would be great if you could add a "8<" in the line above next time.
-Then git-am -c does the right thing (at least I think so).
-
-> From 8b2e60cef5c65eef41ab61286f62dec6bfb1ac27 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Sat, 8 Jan 2011 17:45:38 -0500
-> Subject: [PATCH] NFS: Don't use vm_map_ram() in readdir
-> 
-> vm_map_ram() is not available on NOMMU platforms, and causes trouble
-> on incoherrent architectures such as ARM when we access the page data
-> through both the direct and the virtual mapping.
-> 
-> The alternative is to use the direct mapping to access page data
-> for the case when we are not crossing a page boundary, but to copy
-> the data into a linear scratch buffer when we are accessing data
-> that spans page boundaries.
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Tested-by: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
-
-on tx28.
-
-Thanks
-Uwe
-
-> ---
->  fs/nfs/dir.c               |   44 ++++++-------
->  fs/nfs/nfs2xdr.c           |    6 --
->  fs/nfs/nfs3xdr.c           |    6 --
->  fs/nfs/nfs4xdr.c           |    6 --
->  include/linux/sunrpc/xdr.h |    4 +-
->  net/sunrpc/xdr.c           |  155 +++++++++++++++++++++++++++++++++++---------
->  6 files changed, 148 insertions(+), 73 deletions(-)
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 996dd89..0108cf4 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -33,7 +33,6 @@
->  #include <linux/namei.h>
->  #include <linux/mount.h>
->  #include <linux/sched.h>
-> -#include <linux/vmalloc.h>
->  #include <linux/kmemleak.h>
->  
->  #include "delegation.h"
-> @@ -459,25 +458,26 @@ out:
->  /* Perform conversion from xdr to cache array */
->  static
->  int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *entry,
-> -				void *xdr_page, struct page *page, unsigned int buflen)
-> +				struct page **xdr_pages, struct page *page, unsigned int buflen)
->  {
->  	struct xdr_stream stream;
-> -	struct xdr_buf buf;
-> -	__be32 *ptr = xdr_page;
-> +	struct xdr_buf buf = {
-> +		.pages = xdr_pages,
-> +		.page_len = buflen,
-> +		.buflen = buflen,
-> +		.len = buflen,
-> +	};
-> +	struct page *scratch;
->  	struct nfs_cache_array *array;
->  	unsigned int count = 0;
->  	int status;
->  
-> -	buf.head->iov_base = xdr_page;
-> -	buf.head->iov_len = buflen;
-> -	buf.tail->iov_len = 0;
-> -	buf.page_base = 0;
-> -	buf.page_len = 0;
-> -	buf.buflen = buf.head->iov_len;
-> -	buf.len = buf.head->iov_len;
-> -
-> -	xdr_init_decode(&stream, &buf, ptr);
-> +	scratch = alloc_page(GFP_KERNEL);
-> +	if (scratch == NULL)
-> +		return -ENOMEM;
->  
-> +	xdr_init_decode(&stream, &buf, NULL);
-> +	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
->  
->  	do {
->  		status = xdr_decode(desc, entry, &stream);
-> @@ -506,6 +506,8 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
->  		} else
->  			status = PTR_ERR(array);
->  	}
-> +
-> +	put_page(scratch);
->  	return status;
->  }
->  
-> @@ -521,7 +523,6 @@ static
->  void nfs_readdir_free_large_page(void *ptr, struct page **pages,
->  		unsigned int npages)
->  {
-> -	vm_unmap_ram(ptr, npages);
->  	nfs_readdir_free_pagearray(pages, npages);
->  }
->  
-> @@ -530,9 +531,8 @@ void nfs_readdir_free_large_page(void *ptr, struct page **pages,
->   * to nfs_readdir_free_large_page
->   */
->  static
-> -void *nfs_readdir_large_page(struct page **pages, unsigned int npages)
-> +int nfs_readdir_large_page(struct page **pages, unsigned int npages)
->  {
-> -	void *ptr;
->  	unsigned int i;
->  
->  	for (i = 0; i < npages; i++) {
-> @@ -541,13 +541,11 @@ void *nfs_readdir_large_page(struct page **pages, unsigned int npages)
->  			goto out_freepages;
->  		pages[i] = page;
->  	}
-> +	return 0;
->  
-> -	ptr = vm_map_ram(pages, npages, 0, PAGE_KERNEL);
-> -	if (!IS_ERR_OR_NULL(ptr))
-> -		return ptr;
->  out_freepages:
->  	nfs_readdir_free_pagearray(pages, i);
-> -	return NULL;
-> +	return -ENOMEM;
->  }
->  
->  static
-> @@ -577,8 +575,8 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
->  	memset(array, 0, sizeof(struct nfs_cache_array));
->  	array->eof_index = -1;
->  
-> -	pages_ptr = nfs_readdir_large_page(pages, array_size);
-> -	if (!pages_ptr)
-> +	status = nfs_readdir_large_page(pages, array_size);
-> +	if (status < 0)
->  		goto out_release_array;
->  	do {
->  		unsigned int pglen;
-> @@ -587,7 +585,7 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
->  		if (status < 0)
->  			break;
->  		pglen = status;
-> -		status = nfs_readdir_page_filler(desc, &entry, pages_ptr, page, pglen);
-> +		status = nfs_readdir_page_filler(desc, &entry, pages, page, pglen);
->  		if (status < 0) {
->  			if (status == -ENOSPC)
->  				status = 0;
-> diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-> index 5914a19..b382a1b 100644
-> --- a/fs/nfs/nfs2xdr.c
-> +++ b/fs/nfs/nfs2xdr.c
-> @@ -487,12 +487,6 @@ nfs_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry, struct nfs_se
->  
->  	entry->d_type = DT_UNKNOWN;
->  
-> -	p = xdr_inline_peek(xdr, 8);
-> -	if (p != NULL)
-> -		entry->eof = !p[0] && p[1];
-> -	else
-> -		entry->eof = 0;
-> -
->  	return p;
->  
->  out_overflow:
-> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-> index f6cc60f..ba91236 100644
-> --- a/fs/nfs/nfs3xdr.c
-> +++ b/fs/nfs/nfs3xdr.c
-> @@ -647,12 +647,6 @@ nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry, struct nfs_s
->  			memset((u8*)(entry->fh), 0, sizeof(*entry->fh));
->  	}
->  
-> -	p = xdr_inline_peek(xdr, 8);
-> -	if (p != NULL)
-> -		entry->eof = !p[0] && p[1];
-> -	else
-> -		entry->eof = 0;
-> -
->  	return p;
->  
->  out_overflow:
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 9f1826b..0662a98 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -6215,12 +6215,6 @@ __be32 *nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
->  	if (verify_attr_len(xdr, p, len) < 0)
->  		goto out_overflow;
->  
-> -	p = xdr_inline_peek(xdr, 8);
-> -	if (p != NULL)
-> -		entry->eof = !p[0] && p[1];
-> -	else
-> -		entry->eof = 0;
-> -
->  	return p;
->  
->  out_overflow:
-> diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-> index 498ab93..7783c68 100644
-> --- a/include/linux/sunrpc/xdr.h
-> +++ b/include/linux/sunrpc/xdr.h
-> @@ -201,6 +201,8 @@ struct xdr_stream {
->  
->  	__be32 *end;		/* end of available buffer space */
->  	struct kvec *iov;	/* pointer to the current kvec */
-> +	struct kvec scratch;	/* Scratch buffer */
-> +	struct page **page_ptr;	/* pointer to the current page */
->  };
->  
->  extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
-> @@ -208,7 +210,7 @@ extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
->  extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
->  		unsigned int base, unsigned int len);
->  extern void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
-> -extern __be32 *xdr_inline_peek(struct xdr_stream *xdr, size_t nbytes);
-> +extern void xdr_set_scratch_buffer(struct xdr_stream *xdr, void *buf, size_t buflen);
->  extern __be32 *xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes);
->  extern void xdr_read_pages(struct xdr_stream *xdr, unsigned int len);
->  extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
-> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-> index cd9e841..679cd67 100644
-> --- a/net/sunrpc/xdr.c
-> +++ b/net/sunrpc/xdr.c
-> @@ -552,6 +552,74 @@ void xdr_write_pages(struct xdr_stream *xdr, struct page **pages, unsigned int b
->  }
->  EXPORT_SYMBOL_GPL(xdr_write_pages);
->  
-> +static void xdr_set_iov(struct xdr_stream *xdr, struct kvec *iov,
-> +		__be32 *p, unsigned int len)
-> +{
-> +	if (len > iov->iov_len)
-> +		len = iov->iov_len;
-> +	if (p == NULL)
-> +		p = (__be32*)iov->iov_base;
-> +	xdr->p = p;
-> +	xdr->end = (__be32*)(iov->iov_base + len);
-> +	xdr->iov = iov;
-> +	xdr->page_ptr = NULL;
-> +}
-> +
-> +static int xdr_set_page_base(struct xdr_stream *xdr,
-> +		unsigned int base, unsigned int len)
-> +{
-> +	unsigned int pgnr;
-> +	unsigned int maxlen;
-> +	unsigned int pgoff;
-> +	unsigned int pgend;
-> +	void *kaddr;
-> +
-> +	maxlen = xdr->buf->page_len;
-> +	if (base >= maxlen)
-> +		return -EINVAL;
-> +	maxlen -= base;
-> +	if (len > maxlen)
-> +		len = maxlen;
-> +
-> +	base += xdr->buf->page_base;
-> +
-> +	pgnr = base >> PAGE_SHIFT;
-> +	xdr->page_ptr = &xdr->buf->pages[pgnr];
-> +	kaddr = page_address(*xdr->page_ptr);
-> +
-> +	pgoff = base & ~PAGE_MASK;
-> +	xdr->p = (__be32*)(kaddr + pgoff);
-> +
-> +	pgend = pgoff + len;
-> +	if (pgend > PAGE_SIZE)
-> +		pgend = PAGE_SIZE;
-> +	xdr->end = (__be32*)(kaddr + pgend);
-> +	xdr->iov = NULL;
-> +	return 0;
-> +}
-> +
-> +static void xdr_set_next_page(struct xdr_stream *xdr)
-> +{
-> +	unsigned int newbase;
-> +
-> +	newbase = (1 + xdr->page_ptr - xdr->buf->pages) << PAGE_SHIFT;
-> +	newbase -= xdr->buf->page_base;
-> +
-> +	if (xdr_set_page_base(xdr, newbase, PAGE_SIZE) < 0)
-> +		xdr_set_iov(xdr, xdr->buf->tail, NULL, xdr->buf->len);
-> +}
-> +
-> +static bool xdr_set_next_buffer(struct xdr_stream *xdr)
-> +{
-> +	if (xdr->page_ptr != NULL)
-> +		xdr_set_next_page(xdr);
-> +	else if (xdr->iov == xdr->buf->head) {
-> +		if (xdr_set_page_base(xdr, 0, PAGE_SIZE) < 0)
-> +			xdr_set_iov(xdr, xdr->buf->tail, NULL, xdr->buf->len);
-> +	}
-> +	return xdr->p != xdr->end;
-> +}
-> +
->  /**
->   * xdr_init_decode - Initialize an xdr_stream for decoding data.
->   * @xdr: pointer to xdr_stream struct
-> @@ -560,41 +628,67 @@ EXPORT_SYMBOL_GPL(xdr_write_pages);
->   */
->  void xdr_init_decode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p)
->  {
-> -	struct kvec *iov = buf->head;
-> -	unsigned int len = iov->iov_len;
-> -
-> -	if (len > buf->len)
-> -		len = buf->len;
->  	xdr->buf = buf;
-> -	xdr->iov = iov;
-> -	xdr->p = p;
-> -	xdr->end = (__be32 *)((char *)iov->iov_base + len);
-> +	xdr->scratch.iov_base = NULL;
-> +	xdr->scratch.iov_len = 0;
-> +	if (buf->head[0].iov_len != 0)
-> +		xdr_set_iov(xdr, buf->head, p, buf->len);
-> +	else if (buf->page_len != 0)
-> +		xdr_set_page_base(xdr, 0, buf->len);
->  }
->  EXPORT_SYMBOL_GPL(xdr_init_decode);
->  
-> -/**
-> - * xdr_inline_peek - Allow read-ahead in the XDR data stream
-> - * @xdr: pointer to xdr_stream struct
-> - * @nbytes: number of bytes of data to decode
-> - *
-> - * Check if the input buffer is long enough to enable us to decode
-> - * 'nbytes' more bytes of data starting at the current position.
-> - * If so return the current pointer without updating the current
-> - * pointer position.
-> - */
-> -__be32 * xdr_inline_peek(struct xdr_stream *xdr, size_t nbytes)
-> +static __be32 * __xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes)
->  {
->  	__be32 *p = xdr->p;
->  	__be32 *q = p + XDR_QUADLEN(nbytes);
->  
->  	if (unlikely(q > xdr->end || q < p))
->  		return NULL;
-> +	xdr->p = q;
->  	return p;
->  }
-> -EXPORT_SYMBOL_GPL(xdr_inline_peek);
->  
->  /**
-> - * xdr_inline_decode - Retrieve non-page XDR data to decode
-> + * xdr_set_scratch_buffer - Attach a scratch buffer for decoding data.
-> + * @xdr: pointer to xdr_stream struct
-> + * @buf: pointer to an empty buffer
-> + * @buflen: size of 'buf'
-> + *
-> + * The scratch buffer is used when decoding from an array of pages.
-> + * If an xdr_inline_decode() call spans across page boundaries, then
-> + * we copy the data into the scratch buffer in order to allow linear
-> + * access.
-> + */
-> +void xdr_set_scratch_buffer(struct xdr_stream *xdr, void *buf, size_t buflen)
-> +{
-> +	xdr->scratch.iov_base = buf;
-> +	xdr->scratch.iov_len = buflen;
-> +}
-> +EXPORT_SYMBOL_GPL(xdr_set_scratch_buffer);
-> +
-> +static __be32 *xdr_copy_to_scratch(struct xdr_stream *xdr, size_t nbytes)
-> +{
-> +	__be32 *p;
-> +	void *cpdest = xdr->scratch.iov_base;
-> +	size_t cplen = (char *)xdr->end - (char *)xdr->p;
-> +
-> +	if (nbytes > xdr->scratch.iov_len)
-> +		return NULL;
-> +	memcpy(cpdest, xdr->p, cplen);
-> +	cpdest += cplen;
-> +	nbytes -= cplen;
-> +	if (!xdr_set_next_buffer(xdr))
-> +		return NULL;
-> +	p = __xdr_inline_decode(xdr, nbytes);
-> +	if (p == NULL)
-> +		return NULL;
-> +	memcpy(cpdest, p, nbytes);
-> +	return xdr->scratch.iov_base;
-> +}
-> +
-> +/**
-> + * xdr_inline_decode - Retrieve XDR data to decode
->   * @xdr: pointer to xdr_stream struct
->   * @nbytes: number of bytes of data to decode
->   *
-> @@ -605,13 +699,16 @@ EXPORT_SYMBOL_GPL(xdr_inline_peek);
->   */
->  __be32 * xdr_inline_decode(struct xdr_stream *xdr, size_t nbytes)
->  {
-> -	__be32 *p = xdr->p;
-> -	__be32 *q = p + XDR_QUADLEN(nbytes);
-> +	__be32 *p;
->  
-> -	if (unlikely(q > xdr->end || q < p))
-> +	if (nbytes == 0)
-> +		return xdr->p;
-> +	if (xdr->p == xdr->end && !xdr_set_next_buffer(xdr))
->  		return NULL;
-> -	xdr->p = q;
-> -	return p;
-> +	p = __xdr_inline_decode(xdr, nbytes);
-> +	if (p != NULL)
-> +		return p;
-> +	return xdr_copy_to_scratch(xdr, nbytes);
->  }
->  EXPORT_SYMBOL_GPL(xdr_inline_decode);
->  
-> @@ -671,16 +768,12 @@ EXPORT_SYMBOL_GPL(xdr_read_pages);
->   */
->  void xdr_enter_page(struct xdr_stream *xdr, unsigned int len)
->  {
-> -	char * kaddr = page_address(xdr->buf->pages[0]);
->  	xdr_read_pages(xdr, len);
->  	/*
->  	 * Position current pointer at beginning of tail, and
->  	 * set remaining message length.
->  	 */
-> -	if (len > PAGE_CACHE_SIZE - xdr->buf->page_base)
-> -		len = PAGE_CACHE_SIZE - xdr->buf->page_base;
-> -	xdr->p = (__be32 *)(kaddr + xdr->buf->page_base);
-> -	xdr->end = (__be32 *)((char *)xdr->p + len);
-> +	xdr_set_page_base(xdr, 0, len);
->  }
->  EXPORT_SYMBOL_GPL(xdr_enter_page);
->  
-> -- 
-> 1.7.3.4
-> 
-> 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-> 
-
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 8d4ea83..4664c56 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -56,13 +56,14 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
+ 	u32 nlm_version = (nlm_init->nfs_version == 2) ? 1 : 4;
+ 	int status;
+ 
+-	status = lockd_up();
++	status = lockd_up(nlm_init->rpcmount);
+ 	if (status < 0)
+ 		return ERR_PTR(status);
+ 
+ 	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->addrlen,
+ 				   nlm_init->protocol, nlm_version,
+-				   nlm_init->hostname, nlm_init->noresvport);
++				   nlm_init->hostname, nlm_init->noresvport,
++				   nlm_init->rpcmount);
+ 	if (host == NULL) {
+ 		lockd_down();
+ 		return ERR_PTR(-ENOLCK);
+@@ -223,7 +224,8 @@ reclaimer(void *ptr)
+ 	allow_signal(SIGKILL);
+ 
+ 	down_write(&host->h_rwsem);
+-	lockd_up();	/* note: this cannot fail as lockd is already running */
++	/* note: this cannot fail as lockd is already running */
++	lockd_up(host->h_rpcmount);
+ 
+ 	dprintk("lockd: reclaiming locks for host %s\n", host->h_name);
+ 
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index 7ed06d2..d5ca8f9 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -14,9 +14,10 @@
+ #include <linux/in6.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/svc.h>
+-#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/lockd/lockd.h>
+ #include <linux/mutex.h>
++#include <linux/mount.h>
++
+ 
+ #include <net/ipv6.h>
+ 
+@@ -55,6 +56,7 @@ struct nlm_lookup_host_info {
+ 	const char		*hostname;	/* remote's hostname */
+ 	const size_t		hostname_len;	/* it's length */
+ 	const int		noresvport;	/* use non-priv port */
++	struct vfsmount		*rpcmount;	/* rpc_pipefs mount point */
+ };
+ 
+ /*
+@@ -134,6 +136,7 @@ static struct nlm_host *nlm_alloc_host(struct nlm_lookup_host_info *ni,
+ 	host->h_srcaddrlen = 0;
+ 
+ 	host->h_rpcclnt    = NULL;
++	host->h_rpcmount   = mntget(ni->rpcmount);
+ 	host->h_name	   = nsm->sm_name;
+ 	host->h_version    = ni->version;
+ 	host->h_proto      = ni->protocol;
+@@ -179,6 +182,7 @@ static void nlm_destroy_host_locked(struct nlm_host *host)
+ 
+ 	nsm_unmonitor(host);
+ 	nsm_release(host->h_nsmhandle);
++	mntput(host->h_rpcmount);
+ 
+ 	clnt = host->h_rpcclnt;
+ 	if (clnt != NULL)
+@@ -207,7 +211,8 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
+ 				     const unsigned short protocol,
+ 				     const u32 version,
+ 				     const char *hostname,
+-				     int noresvport)
++				     int noresvport,
++				     struct vfsmount *rpcmount)
+ {
+ 	struct nlm_lookup_host_info ni = {
+ 		.server		= 0,
+@@ -218,6 +223,7 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
+ 		.hostname	= hostname,
+ 		.hostname_len	= strlen(hostname),
+ 		.noresvport	= noresvport,
++		.rpcmount	= rpcmount,
+ 	};
+ 	struct hlist_head *chain;
+ 	struct hlist_node *pos;
+@@ -243,6 +249,8 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
+ 			continue;
+ 		if (host->h_version != version)
+ 			continue;
++		if (host->h_rpcmount->mnt_sb != ni.rpcmount->mnt_sb)
++			continue;
+ 
+ 		nlm_get_host(host);
+ 		dprintk("lockd: %s found host %s (%s)\n", __func__,
+@@ -333,6 +341,7 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 		.version	= rqstp->rq_vers,
+ 		.hostname	= hostname,
+ 		.hostname_len	= hostname_len,
++		.rpcmount	= rqstp->rq_server->sv_rpcmount,
+ 	};
+ 
+ 	dprintk("lockd: %s(host='%*s', vers=%u, proto=%s)\n", __func__,
+@@ -374,6 +383,8 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 			continue;
+ 		if (!rpc_cmp_addr(nlm_srcaddr(host), src_sap))
+ 			continue;
++		if (host->h_rpcmount->mnt_sb != ni.rpcmount->mnt_sb)
++			continue;
+ 
+ 		/* Move to head of hash chain. */
+ 		hlist_del(&host->h_hash);
+@@ -464,7 +475,7 @@ nlm_bind_host(struct nlm_host *host)
+ 			.authflavor	= RPC_AUTH_UNIX,
+ 			.flags		= (RPC_CLNT_CREATE_NOPING |
+ 					   RPC_CLNT_CREATE_AUTOBIND),
+-			.rpcmount	= init_rpc_pipefs,
++			.rpcmount	= host->h_rpcmount,
+ 		};
+ 
+ 		/*
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index 6219026..a121f5e 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -15,7 +15,6 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/xprtsock.h>
+ #include <linux/sunrpc/svc.h>
+-#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/lockd/lockd.h>
+ 
+ #include <asm/unaligned.h>
+@@ -63,7 +62,7 @@ static inline struct sockaddr *nsm_addr(const struct nsm_handle *nsm)
+ 	return (struct sockaddr *)&nsm->sm_addr;
+ }
+ 
+-static struct rpc_clnt *nsm_create(void)
++static struct rpc_clnt *nsm_create(struct vfsmount *rpcmount)
+ {
+ 	struct sockaddr_in sin = {
+ 		.sin_family		= AF_INET,
+@@ -79,13 +78,14 @@ static struct rpc_clnt *nsm_create(void)
+ 		.version		= NSM_VERSION,
+ 		.authflavor		= RPC_AUTH_NULL,
+ 		.flags			= RPC_CLNT_CREATE_NOPING,
+-		.rpcmount		= init_rpc_pipefs,
++		.rpcmount		= rpcmount,
+ 	};
+ 
+ 	return rpc_create(&args);
+ }
+ 
+-static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
++static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
++		struct vfsmount *rpcmount)
+ {
+ 	struct rpc_clnt	*clnt;
+ 	int		status;
+@@ -101,7 +101,7 @@ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
+ 		.rpc_resp	= res,
+ 	};
+ 
+-	clnt = nsm_create();
++	clnt = nsm_create(rpcmount);
+ 	if (IS_ERR(clnt)) {
+ 		status = PTR_ERR(clnt);
+ 		dprintk("lockd: failed to create NSM upcall transport, "
+@@ -151,7 +151,7 @@ int nsm_monitor(const struct nlm_host *host)
+ 	 */
+ 	nsm->sm_mon_name = nsm_use_hostnames ? nsm->sm_name : nsm->sm_addrbuf;
+ 
+-	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res);
++	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res, host->h_rpcmount);
+ 	if (unlikely(res.status != 0))
+ 		status = -EIO;
+ 	if (unlikely(status < 0)) {
+@@ -185,7 +185,8 @@ void nsm_unmonitor(const struct nlm_host *host)
+ 	 && nsm->sm_monitored && !nsm->sm_sticky) {
+ 		dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
+ 
+-		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res);
++		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res,
++				host->h_rpcmount);
+ 		if (res.status != 0)
+ 			status = -EIO;
+ 		if (status < 0)
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 32310b1..7387b04 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -31,7 +31,6 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/svcsock.h>
+-#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <net/ip.h>
+ #include <linux/lockd/lockd.h>
+ #include <linux/nfs.h>
+@@ -249,7 +248,7 @@ out_err:
+ /*
+  * Bring up the lockd process if it's not already up.
+  */
+-int lockd_up(void)
++int lockd_up(struct vfsmount *rpcmount)
+ {
+ 	struct svc_serv *serv;
+ 	int		error = 0;
+@@ -270,8 +269,7 @@ int lockd_up(void)
+ 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
+ 
+ 	error = -ENOMEM;
+-	serv = svc_create(&nlmsvc_program, init_rpc_pipefs, LOCKD_BUFSIZE,
+-			NULL);
++	serv = svc_create(&nlmsvc_program, rpcmount, LOCKD_BUFSIZE, NULL);
+ 	if (!serv) {
+ 		printk(KERN_WARNING "lockd_up: create service failed\n");
+ 		goto out;
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 36847f8..ad3b5e8 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -675,6 +675,7 @@ static int nfs_start_lockd(struct nfs_server *server)
+ 		.nfs_version	= clp->rpc_ops->version,
+ 		.noresvport	= server->flags & NFS_MOUNT_NORESVPORT ?
+ 					1 : 0,
++		.rpcmount	= init_rpc_pipefs,
+ 	};
+ 
+ 	if (nlm_init.nfs_version > 3)
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index d96c32b..17d78d3 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -220,7 +220,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	ret = nfsd_init_socks(port);
+ 	if (ret)
+ 		goto out_racache;
+-	ret = lockd_up();
++	ret = lockd_up(init_rpc_pipefs);
+ 	if (ret)
+ 		goto out_racache;
+ 	ret = nfs4_state_start();
+diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
+index fbc48f8..97cd4bf 100644
+--- a/include/linux/lockd/bind.h
++++ b/include/linux/lockd/bind.h
+@@ -42,6 +42,7 @@ struct nlmclnt_initdata {
+ 	unsigned short		protocol;
+ 	u32			nfs_version;
+ 	int			noresvport;
++	struct vfsmount		*rpcmount;
+ };
+ 
+ /*
+@@ -53,7 +54,7 @@ extern void	nlmclnt_done(struct nlm_host *host);
+ 
+ extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
+ 					struct file_lock *fl);
+-extern int	lockd_up(void);
++extern int	lockd_up(struct vfsmount *rpcmount);
+ extern void	lockd_down(void);
+ 
+ #endif /* LINUX_LOCKD_BIND_H */
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index ff9abff..32dbb7f 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -44,6 +44,7 @@ struct nlm_host {
+ 	size_t			h_addrlen;
+ 	struct sockaddr_storage	h_srcaddr;	/* our address (optional) */
+ 	size_t			h_srcaddrlen;
++	struct vfsmount		*h_rpcmount;	/* rpc_pipefs mount point */
+ 	struct rpc_clnt		*h_rpcclnt;	/* RPC client to talk to peer */
+ 	char			*h_name;		/* remote hostname */
+ 	u32			h_version;	/* interface version */
+@@ -222,7 +223,8 @@ struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
+ 					const unsigned short protocol,
+ 					const u32 version,
+ 					const char *hostname,
+-					int noresvport);
++					int noresvport,
++					struct vfsmount *rpcmount);
+ void		  nlmclnt_release_host(struct nlm_host *);
+ struct nlm_host  *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
+ 					const char *hostname,
 -- 
-Pengutronix e.K.                           | Uwe Kleine-König            |
-Industrial Linux Solutions                 | http://www.pengutronix.de/  |
+1.7.3.4
+
