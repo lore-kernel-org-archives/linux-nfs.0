@@ -1,80 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from eu1sys200aog116.obsmtp.com ([207.126.144.141]:51723 "EHLO
-	eu1sys200aog116.obsmtp.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932891Ab1AMS3M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 13:29:12 -0500
-Message-ID: <4D2F4453.4040400@st.com>
-Date: Thu, 13 Jan 2011 19:28:35 +0100
-From: Armando Visconti <armando.visconti@st.com>
-To: Chuck Lever <chuck.lever@oracle.com>, Deepak SIKRI <deepak.sikri@st.com>
-Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Shiraz HASHIM <shiraz.hashim@st.com>,
-        Viresh KUMAR <viresh.kumar@st.com>,
-        Giuseppe CAVALLARO <peppe.cavallaro@st.com>
-Subject: Re: STMMAC driver: NFS Problem on 2.6.37
-References: <4D2EC133.7010607@st.com> <2D04CF75-CA68-4BDC-99A3-FA1DD6113602@oracle.com>
-In-Reply-To: <2D04CF75-CA68-4BDC-99A3-FA1DD6113602@oracle.com>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Received: from cn.fujitsu.com ([222.73.24.84]:57249 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751939Ab1ANF5Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Jan 2011 00:57:16 -0500
+Message-ID: <4D2FE6E9.5050708@cn.fujitsu.com>
+Date: Fri, 14 Jan 2011 14:02:17 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: hce <webmail.hce@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: mac error
+References: <AANLkTin04TeswNAM89ij84YzfeTAR7rsppGyZFfq01qM@mail.gmail.com>	<4D2FB6F4.6070304@cn.fujitsu.com> <AANLkTin8PEyLqpdaTorSrS3Zi5sF7VeJRcrCVK9fEyc7@mail.gmail.com>
+In-Reply-To: <AANLkTin8PEyLqpdaTorSrS3Zi5sF7VeJRcrCVK9fEyc7@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Chuck Lever wrote:
-> On Jan 13, 2011, at 4:09 AM, deepaksi wrote:
->
->   
->> Hi
+
+
+hce :
+> Thanks for your response. I've just found that nlockmgr did not
+> respond when I run following command on the server. Is it a problem or
+> it is normal? Anyway, the NFS is still working fine.
+
+  No, it's not a problem.
+  It just a lack of NFSv3's file lock, if you try to lock NFSv3 file,
+  you must start the nfslock service both the client and server
+  (maybe other platform don't named nfslock).
+
+  Because your normal NFS operation don't need file lock,
+  so NFSv3 is still working fine.
+
+> 
+> $ rpcinfo -t linux_server nlockmgr
+> rpcinfo: RPC: Timed out
+> program 100021 version 0 is not available
+> 
+> $ rpcinfo -u linux_server nlockmgr
+> rpcinfo: RPC: Timed out
+> program 100021 version 0 is not available
+> 
+> $ rpcinfo -p
+
+  The linux_server and localhost are different machine ?
+
+  linux_server is CentOS?? or MAC?
+  localhost is?
+
+
+-- 
+thanks,
+Mi Jinlong
+
+>    program vers proto   port
+>     100000    2   tcp    111  portmapper
+>     100000    2   udp    111  portmapper
+>     100024    1   udp    895  status
+>     100024    1   tcp    898  status
+>     100011    1   udp    806  rquotad
+>     100011    2   udp    806  rquotad
+>     100011    1   tcp    809  rquotad
+>     100011    2   tcp    809  rquotad
+>     100003    2   udp   2049  nfs
+>     100003    3   udp   2049  nfs
+>     100003    4   udp   2049  nfs
+>     100021    1   udp  32794  nlockmgr
+>     100021    3   udp  32794  nlockmgr
+>     100021    4   udp  32794  nlockmgr
+>     100003    2   tcp   2049  nfs
+>     100003    3   tcp   2049  nfs
+>     100003    4   tcp   2049  nfs
+>     100021    1   tcp  57164  nlockmgr
+>     100021    3   tcp  57164  nlockmgr
+>     100021    4   tcp  57164  nlockmgr
+>     100005    1   udp    828  mountd
+>     100005    1   tcp    831  mountd
+>     100005    2   udp    828  mountd
+>     100005    2   tcp    831  mountd
+>     100005    3   udp    828  mountd
+>     100005    3   tcp    831  mountd
+> 
+> On Fri, Jan 14, 2011 at 1:37 PM, Mi Jinlong <mijinlong@cn.fujitsu.com> wrote:
 >>
->> I am facing a problem related to nfs boot, while using the stmmac driver
->> ported on 2.6.37 kernel. When we use a JFFS2 file system and mount the kernel,
->> the network driver works fine.
+>> hce :
+>>> Hi,
+>>>
+>>> I am running nfs server on a CentOS 5, it works fine for all
+>>> connections from linux, windows clients. Mac clients worked fine for
+>>> coping some regular files, but it could not copy mac packaging file
+>>> with the extension *.dmg, it stuck with an error "nfs server lockd not
+>>> responding", at the same time the server got a log message of
+>>> "rpc.statd[2448]: Can't callback linux_server (100021,4), giving up".
+>>>
+>>> Appreciate advice what could cause that problem and how could fix it?
+>> Hi hce,
 >>
->> I have been following the mailing list and could find some issues with NFS 
->> on 2.6.37 but I am not too sure whether the kernel crash I am getting is 
->> related to that.
+>> You use NFSv3,
+>> the NFSv3's file lock service depend on NLM(Network Lock Manager),
+>> that need a user space program named rpc.statd to support service
+>> like this:
 >>
->> The driver worked fine on 2.6.32 kernel, but while booting the 2.6.37
->> kernel I get the following log messages:
+>>           |     nfs client     |      nfs server
+>> -------------------------------------------------
+>>           |                    |
+>> user space |     rpc.statd    <--->      rpc.statd
+>>           |        ^           |            ^
+>> --------------------|------------------------|----
+>>           |        v           |            v
+>> kernel     |      lockd       <--->       lockd
 >>
->> stmmac: Rx Checksum Offload Engine supported
->>        TX Checksum insertion supported
->> IP-Config: Complete:
->>     device=eth0, addr=192.168.1.10, mask=255.255.255.0, gw=255.255.255.255,
->>     host=192.168.1.10, domain=, nis-domain=(none),
->>     bootserver=192.168.1.1, rootserver=192.168.1.1, rootpath=
->>     
->
-> Why is rootpath left undefined?
->   
-
-Yes, Chuck.
-Good catch.
-
-Deepak,
-Can you possibly verify  your bootargs?
-
-I  see exactly your same problem with kernel 2.6.32 (rc6.3) on my
-board, where the bootargs is defined like this:
-
-bootargs=console=ttyAMA0,115200 mem=128M root=/dev/nfs 
-ip=192.168.1.10:192.168.1
-.1:192.168.1.1:255.255.255.0 nfsroot=192.168.1.1:/home/guest/armv7/target
-
-In fact, rootpath is undefined also in my case...
-
-But if I get the network info from my DHCP server the system is booting 
-correctly.
-(i.e. console=ttyAMA0,115200 mem=128M root=/dev/nfs ip=dhcp)
-
-So, why do we have rootpath undefined in our bootargs?
-I guess we screwed up something someway...
-
-Let's see it tomorrow.
-
-Ciao,
-Arm
-
-
+>> when your nfs client is a MAC, maybe Mac's user space don't support
+>> a program as rpc.statd, or you don't make the program run correctly.
+>>
+>> Maybe you can use NFSv4 to avoid this problem.
+>>
+>>
+>> --
+>> ----
+>> thanks
+>> Mi Jinlong
+>>
+>>
+> 
+> 
 
