@@ -1,44 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12006 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24604 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752987Ab1AEUvw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 15:51:52 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V8 02/13] SUNRPC fix bc_send print
-Date: Wed,  5 Jan 2011 15:51:20 -0500
-Message-Id: <1294260690-3095-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1294260690-3095-2-git-send-email-andros@netapp.com>
-References: <1294260690-3095-1-git-send-email-andros@netapp.com>
- <1294260690-3095-2-git-send-email-andros@netapp.com>
+	id S1752536Ab1ANXqd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jan 2011 18:46:33 -0500
+Subject: Re: NFS OOps  - kernel BUG at fs/nfs/nfs3xdr.c:1338
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Milan Broz <mbroz@redhat.com>,
+        "Mr. Charles Edward Lever" <Chuck.Lever@oracle.com>
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4D30D9D6.2080809@redhat.com>
+References: <4D30D9D6.2080809@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 14 Jan 2011 18:46:31 -0500
+Message-ID: <1295048791.20016.15.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Sat, 2011-01-15 at 00:18 +0100, Milan Broz wrote: 
+> Hi,
+> 
+> on today Linus' tree I get OOps if using nfs.
+> 
+> server (2.6.36) exports dir:
+> /dir   172.16.1.0/24(rw,async,all_squash,no_subtree_check,anonuid=500,anongid=500)
+> 
+> on client it is mounted  in fstab
+> server:/dir  /mnt/tst  nfs  rw,soft 0 0
+> 
+> and these commands OOpses it (simplified from a configure script):
+> 
+> cd /dir
+> touch x
+> install x y
+> 
+> [  105.327701] ------------[ cut here ]------------
+> [  105.327979] kernel BUG at fs/nfs/nfs3xdr.c:1338!
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- net/sunrpc/bc_svc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Chuck, why did you add those BUG_ON()s there? I know that
+nfsacl_encode() is for some unfathomable reason declared as returning an
+unsigned integer, but if you look at the actual code, you will see that
+it returns a number of negative signed error values depending on whether
+or not allocations succeeded, number of entries is valid, etc...
 
-diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
-index 7dcfe0c..1dd1a68 100644
---- a/net/sunrpc/bc_svc.c
-+++ b/net/sunrpc/bc_svc.c
-@@ -59,8 +59,8 @@ int bc_send(struct rpc_rqst *req)
- 		ret = task->tk_status;
- 		rpc_put_task(task);
- 	}
--	return ret;
- 	dprintk("RPC:       bc_send ret= %d\n", ret);
-+	return ret;
- }
- 
- #endif /* CONFIG_NFS_V4_1 */
+IOW: negative values are perfectly allowable here, and should simply
+cause the rpc call to be aborted, not an Oops.
+
+Trond
 -- 
-1.6.6
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
