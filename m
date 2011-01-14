@@ -1,165 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:39442 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751758Ab1ASQKD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 11:10:03 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: Re: [PATCH] nfs: don't drop kiocb->ki_users in error case
-Date: Wed, 19 Jan 2011 11:09:11 -0500
-Message-Id: <D9095AA4-D555-4961-8344-8FBBCE0C670F@oracle.com>
-Cc: Nick Piggin <npiggin@gmail.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:50734 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752857Ab1ANVxQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jan 2011 16:53:16 -0500
+In-Reply-To: <4E70BD9B-DB23-42EC-B28D-998E16FEC189@oracle.com>
+References: <AANLkTinjkvVySCA93F+p66KrTuqMfMF064ggNSg0yauX@mail.gmail.com>
+	<4E70BD9B-DB23-42EC-B28D-998E16FEC189@oracle.com>
+Date: Sat, 15 Jan 2011 08:48:24 +1100
+Message-ID: <AANLkTikE8CT=6XQn550Cw6V0B7GWezpeUrhctFN8vSE7@mail.gmail.com>
+Subject: Re: NFS dio aio bug
+From: Nick Piggin <npiggin@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>, joe.jin@oracle.com,
-        greg.marsden@oracle.com
-To: Wengang Wang <wen.gang.wang@oracle.com>
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Sat, Jan 15, 2011 at 3:08 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> Hi Nick-
+>
+> On Jan 13, 2011, at 8:29 PM, Nick Piggin wrote:
+>
+>> Hi Trond,
+>>
+>> I'm getting use after frees in aio code in NFS
+>
+> Can you describe how to reproduce this?
 
-On Jan 19, 2011, at 7:53 AM, Wengang Wang wrote:
+It was with the aio-dio stress code from xfstests, #207 I think
+or 208.
 
-> I got the crash when test with fio + (ctrl-C). The panic info is like this:
-> 
-> ------------[ cut here ]------------
-> kernel BUG at fs/aio.c:558!
-> invalid opcode: 0000 [#1] SMP
-> last sysfs file: /sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size
-> CPU 0
-> Modules linked in: netconsole(U) configfs(U) hidp(U) l2cap(U) bluetooth(U) rfkill(U) ipv6(U) nfs(U) lockd(U) fscache(U) nfs_acl(U) auth_rpcgss(U) sunrpc(U) cpufreq_ondemand(U) acpi_cpufreq(U) freq_table(U) dm_multipath(U) sbs(U) sbshc(U) lp(U) snd_hda_codec_analog(U) snd_hda_intel(U) snd_hda_codec(U) snd_hwdep(U) snd_seq_dummy(U) snd_seq_oss(U) i915(U) snd_seq_midi_event(U) snd_seq(U) snd_seq_device(U) snd_pcm_oss(U) drm_kms_helper(U) snd_mixer_oss(U) drm(U) tg3(U) snd_pcm(U) snd_timer(U) snd(U) parport_pc(U) i2c_algo_bit(U) i2c_i801(U) serio_raw(U) parport(U) iTCO_wdt(U) shpchp(U) soundcore(U) video(U) i2c_core(U) dcdbas(U) iTCO_vendor_support(U) snd_page_alloc(U) pcspkr(U) output(U) pata_acpi(U) ata_piix(U) ata_generic(U) uhci_hcd(U) ohci_hcd(U) ehci_hcd(U) [last unloaded: netconsole]
-> Pid: 3112, comm: fio Tainted: G        W  2.6.32.21 #3 OptiPlex 745
-> RIP: 0010:[<ffffffff8114eb30>]  [<ffffffff8114eb30>] __aio_put_req+0x6e/0x150
-> RSP: 0018:ffff88006cd7be38  EFLAGS: 00010092
-> RAX: 0000000000000038 RBX: ffff880078f2b9c0 RCX: 0000000000007da3
-> RDX: 0000000000000000 RSI: 0000000000000082 RDI: 0000000000000046
-> RBP: ffff88006cd7be58 R08: 0000000000000001 R09: 0000000000000020
-> R10: ffff88006cd7bdb8 R11: 0000000000000001 R12: ffff880078f2b9c0
-> R13: ffff880037ef3e40 R14: ffff880037ef3e40 R15: 0000000000000000
-> FS:  0000000042eb4940(0063) GS:ffff880001c00000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: 00007fa172484000 CR3: 000000006ce48000 CR4: 00000000000006f0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Process fio (pid: 3112, threadinfo ffff88006cd7a000, task ffff88007a7de040)
-> Stack:
-> ffff880037ef3e40 ffff880037ef3e40 ffff880078f2b9c0 ffff88006cd7bf40
-> <0> ffff88006cd7be88 ffffffff8114ec3d ffff88006bc11ed0 ffff880078f2b9c0
-> <0> ffff88006bc11ed0 ffff880078f2b9c0 ffff88006cd7bf78 ffffffff81150a15
-> Call Trace:
-> [<ffffffff8114ec3d>] aio_put_req+0x2b/0x43
-> [<ffffffff81150a15>] sys_io_submit+0x56a/0x6f1
-> [<ffffffff81011db2>] system_call_fastpath+0x16/0x1b
-> Code: 7f 45 81 e8 a9 8d f0 ff e8 32 6d ec ff 83 7b 18 00 7d 1c 48 89 da 48 c7 c6 58 7f 45 81 48 c7 c7 d4 b1 5d 81 31 c0 e8 86 8d f0 ff <0f> 0b eb fe 74 07 31 c0 e9 cd 00 00 00 4c 8d a3 d8 00 00 00 48
-> RIP  [<ffffffff8114eb30>] __aio_put_req+0x6e/0x150
-> RSP <ffff88006cd7be38>
-> ---[ end trace 52431c8b3d9e71ba ]---
-> Kernel panic - not syncing: Fatal exception
-> 
-> The number 558 should be 552 in original codes. It is the
-> 	BUG_ON(req->ki_users < 0);
-> in __aio_put_req().
-> 
-> My analysis is(correct me):
-> In the sys_io_submit path, the vfs doesn't hope the FS under ground drop the
-> ki_users in "error" case. The error is -ERESTARTSYS, in my test, instead of
-> -EIOCBQUEUED. But seems the nfs drops ki_users in error case as well as
-> in successful cases too.
-> 
-> So my first attempt is coming for discussion.
-> Basically, it makes nfs don't drop(actually it gets then puts) ki_users in error
-> cases.
-> Let the nfs_direct_req.error records the error from get_user_pages() and
-> rpc_run_task() in nfs_direct_read/write path, assuming both the two function
-> returns all error they hit.
+Running it for a short time and then ^C ing it would tend to
+trigger it.
 
-Yes, get_user_pages() is invoked in both the read and write path, and returns -ERESTARTSYS when a signal is pending.  It can return other errors as well, but -ERESTARTSYS seems to be by far the common case.
+I'll have to get you more details after I come back from
+travelling in a week's time.
 
-> And in nfs_direct_complete(), if error occured(per
-> nfs_direct_req.error), take another ref on kiocb->ki_users. (and then drop it in
-> aio_complete in existing codes).
+>
+>> [ 2703.396766] Call Trace:
+>> [ 2703.396858]  [<ffffffff8100b057>] ? native_sched_clock+0x27/0x80
+>> [ 2703.396959]  [<ffffffff8108509e>] ? put_lock_stats+0xe/0x40
+>> [ 2703.397058]  [<ffffffff81088348>] ? lock_release_holdtime+0xa8/0x140
+>> [ 2703.397159]  [<ffffffff8108a2a5>] lock_acquire+0x95/0x1b0
+>> [ 2703.397260]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
+>> [ 2703.397361]  [<ffffffff81039701>] ? get_parent_ip+0x11/0x50
+>> [ 2703.397464]  [<ffffffff81612a31>] _raw_spin_lock_irq+0x41/0x80
+>> [ 2703.397564]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
+>> [ 2703.397662]  [<ffffffff811627db>] aio_put_req+0x2b/0x60
+>> [ 2703.397761]  [<ffffffff811647fe>] do_io_submit+0x2be/0x7c0
+>> [ 2703.397895]  [<ffffffff81164d0b>] sys_io_submit+0xb/0x10
+>> [ 2703.397995]  [<ffffffff8100307b>] system_call_fastpath+0x16/0x1b
+>>
+>> Adding some tracing, it is due to nfs completing the request then
+>> returning something other than -EIOCBQUEUED, so aio.c
+>> also completes the request.
+>
+> Is this with reads, writes, or both?  Are the I/O requests smaller than, equal to, or larger than rsize or wsize?
+>
+> We have a related bug report: hitting the BUG at fs/aio.c:552 (OEL5) and similar for more recent kernels.  Looks like dreq refcounting is faulty somehow.
 
-Reporting error codes via dreq.error is probably a good change for async I/O.
-
-The open-coded equivalent of "aio get iocb" is probably not what we want, however.  By my reading of this logic, nfs_direct_write_schedule_iovec() returns a non-zero value in this case, so nfs_direct_complete() is skipped altogether.  I think your new code would never be executed.
-
-Currently I agree with Nick: nfs_file_direct_{read,write}() are returning the wrong error codes for asynchronous I/O.  Thus the generic aio logic will try to complete a second time NFS I/O that has already failed.
-
-> Signed-off-by: Wengang Wang <wen.gang.wang@oracle.com>
-> ---
-> fs/nfs/direct.c |   21 +++++++++++++++++++--
-> 1 files changed, 19 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index e6ace0d..fa5e5f9 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -219,6 +219,17 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
-> 		long res = (long) dreq->error;
-> 		if (!res)
-> 			res = (long) dreq->count;
-> +		/*
-> +		 * vfs doesn't want us drop kiocb->ki_users in error case.
-> +		 * we get an extra ref on it then later drop it in aio_complete
-> +		 */
-> +		if (dreq->error) {
-> +			struct kioctx *ctx = dreq->iocb->ki_ctx;
-> +
-> +			spin_lock_irq(&ctx->ctx_lock);
-> +			dreq->iocb->ki_users ++;
-> +			spin_unlock_irq(&ctx->ctx_lock);
-> +		}
-> 		aio_complete(dreq->iocb, res, 0);
-> 	}
-> 	complete_all(&dreq->completion);
-> @@ -319,6 +330,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
-> 					data->npages, 1, 0, data->pagevec, NULL);
-> 		up_read(&current->mm->mmap_sem);
-> 		if (result < 0) {
-> +			dreq->error = result;
-> 			nfs_readdata_free(data);
-> 			break;
-> 		}
-> @@ -357,8 +369,10 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_direct_req *dreq,
-> 		NFS_PROTO(inode)->read_setup(data, &msg);
-> 
-> 		task = rpc_run_task(&task_setup_data);
-> -		if (IS_ERR(task))
-> +		if (IS_ERR(task)) {
-> +			dreq->error = PTR_ERR(task);
-> 			break;
-> +		}
-> 		rpc_put_task(task);
-> 
-> 		dprintk("NFS: %5u initiated direct read call "
-> @@ -748,6 +762,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
-> 					data->npages, 0, 0, data->pagevec, NULL);
-> 		up_read(&current->mm->mmap_sem);
-> 		if (result < 0) {
-> +			dreq->error = result;
-> 			nfs_writedata_free(data);
-> 			break;
-> 		}
-> @@ -789,8 +804,10 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_direct_req *dreq,
-> 		NFS_PROTO(inode)->write_setup(data, &msg);
-> 
-> 		task = rpc_run_task(&task_setup_data);
-> -		if (IS_ERR(task))
-> +		if (IS_ERR(task)) {
-> +			dreq->error = PTR_ERR(task);
-> 			break;
-> +		}
-> 		rpc_put_task(task);
-> 
-> 		dprintk("NFS: %5u initiated direct write call "
-> -- 
-> 1.7.2.3
-> 
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+I only saw it with writes. The request was being completed
+in nfs direct write path when I added some tracing. It was
+very easy to reproduce, I just didn't have time to bisect it,
+but I can do that when I get back if you don't have it solved
+by then.
