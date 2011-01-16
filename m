@@ -1,148 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:19703 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753073Ab1AEUvz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 15:51:55 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V8 12/13] NFS rename client back channel transport field
-Date: Wed,  5 Jan 2011 15:51:30 -0500
-Message-Id: <1294260690-3095-13-git-send-email-andros@netapp.com>
-In-Reply-To: <1294260690-3095-12-git-send-email-andros@netapp.com>
-References: <1294260690-3095-1-git-send-email-andros@netapp.com>
- <1294260690-3095-2-git-send-email-andros@netapp.com>
- <1294260690-3095-3-git-send-email-andros@netapp.com>
- <1294260690-3095-4-git-send-email-andros@netapp.com>
- <1294260690-3095-5-git-send-email-andros@netapp.com>
- <1294260690-3095-6-git-send-email-andros@netapp.com>
- <1294260690-3095-7-git-send-email-andros@netapp.com>
- <1294260690-3095-8-git-send-email-andros@netapp.com>
- <1294260690-3095-9-git-send-email-andros@netapp.com>
- <1294260690-3095-10-git-send-email-andros@netapp.com>
- <1294260690-3095-11-git-send-email-andros@netapp.com>
- <1294260690-3095-12-git-send-email-andros@netapp.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:45386 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753995Ab1APWJ3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Jan 2011 17:09:29 -0500
+Received: by fxm20 with SMTP id 20so5221423fxm.19
+        for <linux-nfs@vger.kernel.org>; Sun, 16 Jan 2011 14:09:28 -0800 (PST)
+In-Reply-To: <50B5575D-8589-4261-9BC0-C6543CD18632@oracle.com>
+References: <AANLkTin04TeswNAM89ij84YzfeTAR7rsppGyZFfq01qM@mail.gmail.com>
+	<4D2FB6F4.6070304@cn.fujitsu.com>
+	<AANLkTin8PEyLqpdaTorSrS3Zi5sF7VeJRcrCVK9fEyc7@mail.gmail.com>
+	<BB05F812-F3D3-4742-BD54-794FD4BCC0C0@oracle.com>
+	<BF3BB6D12298F54B89C8DCC1E4073D8002CC1D8F@CORPUSMX50A.corp.emc.com>
+	<50B5575D-8589-4261-9BC0-C6543CD18632@oracle.com>
+Date: Mon, 17 Jan 2011 09:09:27 +1100
+Message-ID: <AANLkTikQk3+09i=Wa4JuHW0x8YCosGJe+MxD94CO0iUj@mail.gmail.com>
+Subject: Re: mac error
+From: hce <webmail.hce@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: peter.staubach@emc.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Sat, Jan 15, 2011 at 4:00 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> On Jan 14, 2011, at 10:55 AM, peter.staubach@emc.com wrote:
+>
+>> Hi.
+>>
+>> Actually, that command should work.  The server should respond with an
+>> RPC error indicating which
+>> versions of the nlockmgr protocol are supported and then rpcinfo will
+>> ping each of them.
+>
+> Yes, that and the "RPC: Timed out" message suggests that the underlying transport is not even getting through.
 
-Differentiate from server backchannel
+The  "rpcinfo -u linux_server nlockmgr 3" was timeout either. That
+server resolving IP address was working fine. As you indicated it
+might have underlying transports problem. I'll have to find it out.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Acked-by: Bruce Fields <bfields@redhat.com>
----
- fs/nfs/callback.c              |   12 ++++++------
- include/linux/sunrpc/bc_xprt.h |    4 ++--
- include/linux/sunrpc/svc.h     |    2 +-
- net/sunrpc/svc.c               |    2 +-
- net/sunrpc/svcsock.c           |    2 +-
- 5 files changed, 11 insertions(+), 11 deletions(-)
+Your comments confirmed my suspicious that the problem of the nlockmgr
+timeout could cause the problem we currently got. I'll follow your
+lead and debug it.
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 753a9e3..1990165 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -142,7 +142,7 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
- 	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
- 	struct nfs4_sessionid *bc_sid;
- 
--	if (!serv->bc_xprt)
-+	if (!serv->sv_bc_xprt)
- 		return -EINVAL;
- 
- 	/* on success freed in xprt_free */
-@@ -152,12 +152,12 @@ int nfs4_set_callback_sessionid(struct nfs_client *clp)
- 	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
- 		NFS4_MAX_SESSIONID_LEN);
- 	spin_lock_bh(&serv->sv_cb_lock);
--	serv->bc_xprt->xpt_bc_sid = bc_sid;
-+	serv->sv_bc_xprt->xpt_bc_sid = bc_sid;
- 	spin_unlock_bh(&serv->sv_cb_lock);
--	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
-+	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for sv_bc_xprt %p\n", __func__,
- 		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
- 		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
--		serv->bc_xprt);
-+		serv->sv_bc_xprt);
- 	return 0;
- }
- 
-@@ -228,8 +228,8 @@ nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
- 	init_waitqueue_head(&serv->sv_cb_waitq);
- 	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
- 	if (IS_ERR(rqstp)) {
--		svc_xprt_put(serv->bc_xprt);
--		serv->bc_xprt = NULL;
-+		svc_xprt_put(serv->sv_bc_xprt);
-+		serv->sv_bc_xprt = NULL;
- 	}
- out:
- 	dprintk("--> %s return %ld\n", __func__,
-diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
-index 2c60e09..c50b458 100644
---- a/include/linux/sunrpc/bc_xprt.h
-+++ b/include/linux/sunrpc/bc_xprt.h
-@@ -43,7 +43,7 @@ int bc_send(struct rpc_rqst *req);
-  */
- static inline int svc_is_backchannel(const struct svc_rqst *rqstp)
- {
--	if (rqstp->rq_server->bc_xprt)
-+	if (rqstp->rq_server->sv_bc_xprt)
- 		return 1;
- 	return 0;
- }
-@@ -51,7 +51,7 @@ static inline struct nfs4_sessionid *bc_xprt_sid(struct svc_rqst *rqstp)
- {
- 	if (svc_is_backchannel(rqstp))
- 		return (struct nfs4_sessionid *)
--					rqstp->rq_server->bc_xprt->xpt_bc_sid;
-+			rqstp->rq_server->sv_bc_xprt->xpt_bc_sid;
- 	return NULL;
- }
- 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 5a3085b..c81d4d8 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -99,7 +99,7 @@ struct svc_serv {
- 	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
- 	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
- 						 * entries in the svc_cb_list */
--	struct svc_xprt		*bc_xprt;
-+	struct svc_xprt		*sv_bc_xprt;	/* callback on fore channel */
- #endif /* CONFIG_NFS_V4_1 */
- };
- 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 261e2d1..0e659c6 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1262,7 +1262,7 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
- 	struct kvec	*resv = &rqstp->rq_res.head[0];
- 
- 	/* Build the svc_rqst used by the common processing routine */
--	rqstp->rq_xprt = serv->bc_xprt;
-+	rqstp->rq_xprt = serv->sv_bc_xprt;
- 	rqstp->rq_xid = req->rq_xid;
- 	rqstp->rq_prot = req->rq_xprt->prot;
- 	rqstp->rq_server = serv;
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 9456152..89a25ac 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1595,7 +1595,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
- 	xprt = &svsk->sk_xprt;
- 	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
- 
--	serv->bc_xprt = xprt;
-+	serv->sv_bc_xprt = xprt;
- 
- 	return xprt;
- }
--- 
-1.6.6
+Thank you all.
 
+> I expect lockd to unregister itself with the portmapper when it is shut down cleanly.  The presence of a registration for nlockmgr indicates it should still be running and contactable.
+>
+>>
+>>               ps
+>>
+>> -----Original Message-----
+>> From: linux-nfs-owner@vger.kernel.org
+>> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Chuck Lever
+>> Sent: Friday, January 14, 2011 10:18 AM
+>> To: hce
+>> Cc: Linux NFS Mailing List
+>> Subject: Re: mac error
+>>
+>>
+>> On Jan 13, 2011, at 11:01 PM, hce wrote:
+>>
+>>> Thanks for your response. I've just found that nlockmgr did not
+>>> respond when I run following command on the server. Is it a problem or
+>>> it is normal? Anyway, the NFS is still working fine.
+>>
+>> nlockmgr and NFS are two separate RPC services.  So, NFS can work while
+>> there might be a problem with nlockmgr.  IMO, nlockmgr should respond in
+>> this case.
+>>
+>>> $ rpcinfo -t linux_server nlockmgr
+>>> rpcinfo: RPC: Timed out
+>>> program 100021 version 0 is not available
+>>>
+>>> $ rpcinfo -u linux_server nlockmgr
+>>> rpcinfo: RPC: Timed out
+>>> program 100021 version 0 is not available
+>>
+>> This is attempting to contact nlockmgr's "version 0" which is not
+>> registered (see below).  Versions 1, 3, and 4 are registered.
+>>
+>> Try "rpcinfo -u linux_server nlockmgr 3".
+>>
+>>> $ rpcinfo -p
+>>>  program vers proto   port
+>>>   100000    2   tcp    111  portmapper
+>>>   100000    2   udp    111  portmapper
+>>>   100024    1   udp    895  status
+>>>   100024    1   tcp    898  status
+>>>   100011    1   udp    806  rquotad
+>>>   100011    2   udp    806  rquotad
+>>>   100011    1   tcp    809  rquotad
+>>>   100011    2   tcp    809  rquotad
+>>>   100003    2   udp   2049  nfs
+>>>   100003    3   udp   2049  nfs
+>>>   100003    4   udp   2049  nfs
+>>>   100021    1   udp  32794  nlockmgr
+>>>   100021    3   udp  32794  nlockmgr
+>>>   100021    4   udp  32794  nlockmgr
+>>>   100003    2   tcp   2049  nfs
+>>>   100003    3   tcp   2049  nfs
+>>>   100003    4   tcp   2049  nfs
+>>>   100021    1   tcp  57164  nlockmgr
+>>>   100021    3   tcp  57164  nlockmgr
+>>>   100021    4   tcp  57164  nlockmgr
+>>>   100005    1   udp    828  mountd
+>>>   100005    1   tcp    831  mountd
+>>>   100005    2   udp    828  mountd
+>>>   100005    2   tcp    831  mountd
+>>>   100005    3   udp    828  mountd
+>>>   100005    3   tcp    831  mountd
+>>
+>> nlockmgr is registered, so it must have been started at some point.
+>> It's a kernel service, so there's no daemon to die.  Do you have some
+>> kind of firewall in place that would prevent contacting the NLM service?
+>> Does "linux_server" resolve to the IP address you expect it to?
+>>
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>>
+>>
+>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
+>
