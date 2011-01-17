@@ -1,51 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:51372 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751606Ab1AJTfj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jan 2011 14:35:39 -0500
-In-Reply-To: <1294687767.3349.28.camel@heimdal.trondhjem.org>
-References: <AANLkTimusF4KCJ4vHPn+T1dUiKxapXaT0QTtFvh8Ykdd@mail.gmail.com>
- <1294426405.2929.23.camel@heimdal.trondhjem.org> <20110107190229.GX31708@n2100.arm.linux.org.uk>
- <1294427467.4895.66.camel@mulgrave.site> <1294505384.4181.14.camel@heimdal.trondhjem.org>
- <1294528551.4181.19.camel@heimdal.trondhjem.org> <20110110105019.GC24920@pengutronix.de>
- <1294676734.3349.10.camel@heimdal.trondhjem.org> <4D2B3D03.8050504@pengutronix.de>
- <1294680035.3349.19.camel@heimdal.trondhjem.org> <20110110192552.GG24920@pengutronix.de>
- <1294687767.3349.28.camel@heimdal.trondhjem.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Mon, 10 Jan 2011 11:34:49 -0800
-Message-ID: <AANLkTinFenq3BEiUQRsxDy6EKwqSM33RcwFG4fs-sXLJ@mail.gmail.com>
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: =?ISO-8859-1?Q?Uwe_Kleine=2DK=F6nig?=
-	<u.kleine-koenig@pengutronix.de>,
-        Marc Kleine-Budde <mkl@pengutronix.de>, linux-arch@vger.kernel.org,
-        linux-nfs@vger.kernel.org,
-        Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        Parisc List <linux-parisc@vger.kernel.org>,
-        linux-kernel@vger.kernel.org,
-        James Bottomley <James.Bottomley@hansenpartnership.com>,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
-        linux-arm-kernel@lists.infradead.org
+Received: from cn.fujitsu.com ([222.73.24.84]:53685 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751479Ab1AQDGr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 16 Jan 2011 22:06:47 -0500
+Message-ID: <4D33B30A.8050507@cn.fujitsu.com>
+Date: Mon, 17 Jan 2011 11:10:02 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: Jesper Juhl <jj@chaosbits.net>
+CC: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] NFS4: Avoid potential NULL pointer dereference in decode_and_add_ds().
+References: <alpine.LNX.2.00.1101162145290.13377@swampdragon.chaosbits.net>
+In-Reply-To: <alpine.LNX.2.00.1101162145290.13377@swampdragon.chaosbits.net>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-2011/1/10 Trond Myklebust <Trond.Myklebust@netapp.com>:
->
-> I usually do this, but there is a slight problem with that approach:
-> Greg gets to do all the work of figuring out to which stable kernels
-> this particular patch applies. In this case, since we're only talking
-> about the 2.6.37 kernel, I prefer to use the mailing lists.
 
-Just do
 
-  Cc: stable@kernel.org  [2.6.37]
+Jesper Juhl:
+> strrchr() can return NULL if nothing is found. If this happens we'll 
+> dereference a NULL pointer in 
+> fs/nfs/nfs4filelayoutdev.c::decode_and_add_ds().
+> 
+> I tried to find some other code that guarantees that this can never 
+> happen but I was unsuccessful. So, unless someone else can point to some 
+> code that ensures this can never be a problem, I believe this patch is 
+> needed.
+> 
+> While I was changing this code I also noticed that all the dprintk() 
+> statements, except one, start with "%s:". The one missing the ":" I added 
+> it to.
 
-or similar. It's quite common.
+  Maybe another one also should be changed at decode_and_add_ds() at line 243:
 
-So EVEN IF you want to email people around about the patch separately,
-do add the "Cc: stable" marker. It's worthwhile information about the
-patch for everybody involved.
+   243  printk("%s Decoded address and port %s\n", __func__, buf);
 
-                     Linus
+-- 
+----
+thanks
+Mi Jinlong
+
+> 
+> Signed-off-by: Jesper Juhl <jj@chaosbits.net>
+> ---
+>  nfs4filelayoutdev.c |    7 ++++++-
+>  1 file changed, 6 insertions(+), 1 deletion(-)
+> 
+>   only compile tested.
+> 
+> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+> index 51fe64a..5a85b8f 100644
+> --- a/fs/nfs/nfs4filelayoutdev.c
+> +++ b/fs/nfs/nfs4filelayoutdev.c
+> @@ -214,7 +214,7 @@ decode_and_add_ds(__be32 **pp, struct inode *inode)
+>  
+>  	/* ipv6 length plus port is legal */
+>  	if (rlen > INET6_ADDRSTRLEN + 8) {
+> -		dprintk("%s Invalid address, length %d\n", __func__,
+> +		dprintk("%s: Invalid address, length %d\n", __func__,
+>  			rlen);
+>  		goto out_err;
+>  	}
+> @@ -225,6 +225,11 @@ decode_and_add_ds(__be32 **pp, struct inode *inode)
+>  	/* replace the port dots with dashes for the in4_pton() delimiter*/
+>  	for (i = 0; i < 2; i++) {
+>  		char *res = strrchr(buf, '.');
+> +		if (!res) {
+> +			dprintk("%s: Failed finding expected dots in port\n",
+> +				__func__);
+> +			goto out_free;
+> +		}
+>  		*res = '-';
+>  	}
+>  
+> 
+
