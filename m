@@ -1,59 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.lsm.gtwy.uscourts.gov ([208.27.203.92]:59936 "EHLO
-	smtp1.lsm.gtwy.uscourts.gov" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752410Ab1ASOba (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 09:31:30 -0500
-In-Reply-To: <20110119002907.GA25400@esri.com>
-References: <20110119002907.GA25400@esri.com>
-Subject: Re: [rhelv6-list] NFSv4 automount - nss_getpwnam name 'user@domain.com' does
- not map into domain 'localdomain'
-To: "Red Hat Enterprise Linux 6 \(Santiago\) discussion mailing-list"
-	<rhelv6-list@redhat.com>
-Cc: linux-nfs@vger.kernel.org, rhelv6-list@redhat.com,
-        rhelv6-list-bounces@redhat.com
-Message-ID: <OF2761AC3A.66844802-ON8625781D.004EE4C7-8625781D.004EE7C9@uscmail.uscourts.gov>
-From: Greg_Swift@aotx.uscourts.gov
-Date: Wed, 19 Jan 2011 08:22:35 -0600
-Content-type: text/plain; charset=US-ASCII
+Received: from cn.fujitsu.com ([222.73.24.84]:52575 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751250Ab1AQCD5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 16 Jan 2011 21:03:57 -0500
+Message-ID: <4D33A4BC.4000103@cn.fujitsu.com>
+Date: Mon, 17 Jan 2011 10:09:00 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsd: break lease on unlink, link, and rename
+References: <1294853809-10732-1-git-send-email-bfields@redhat.com> <1294853809-10732-3-git-send-email-bfields@redhat.com> <4D3007A1.6030405@cn.fujitsu.com> <20110114193327.GA16942@fieldses.org>
+In-Reply-To: <20110114193327.GA16942@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
 
-rhelv6-list-bounces@redhat.com wrote on 01/18/2011 06:29:07 PM:
+J. Bruce Fields :
+> On Fri, Jan 14, 2011 at 04:21:53PM +0800, Mi Jinlong wrote:
+>>
+>> J. Bruce Fields:
+>>> Any change to any of the links pointing to an entry should also break
+>>> delegations.
+>>>
+>>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>>> ---
+>>>  fs/nfsd/vfs.c |   27 +++++++++++++++++++++++----
+>>>  1 files changed, 23 insertions(+), 4 deletions(-)
+>>>
+>>> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+>>> index 839ed88..f31321a 100644
+>>> --- a/fs/nfsd/vfs.c
+>>> +++ b/fs/nfsd/vfs.c
+>>> @@ -272,6 +272,13 @@ out:
+>>>  	return err;
+>>>  }
+>>>  
+>>> +static int nfsd_break_lease(struct inode *inode)
+>>> +{
+>>> +	if (!S_ISREG(inode->i_mode))
+>>> +		return 0;
+>>> +	return break_lease(inode, O_WRONLY | O_NONBLOCK);
+>> Hi Bruce,
+>>
+>> break_lease will return -EWOULDBLOCK here if break success, not 0.
+>>   at __break_lease:
+>>    
+>>     1193  */
+>>     1194 int __break_lease(struct inode *inode, unsigned int mode)
+>>     1195 {
+>>          ... ...  
+>>     1253         if (i_have_this_lease || (mode & O_NONBLOCK)) {
+>>     1254                 error = -EWOULDBLOCK;
+>>     1255                 goto out;
+>>     1256         }
+>>           ... ... 
+>>     1283 out:
+>>     1284         unlock_flocks();
+>>     1285         if (!IS_ERR(new_fl))
+>>     1286                 locks_free_lock(new_fl);
+>>     1287         return error;
+>>     1288 }
+>>
+>> If we just return the error -EWOULDBLOCK (which mapped to -EAGAIN) at
+>> nfsd_break_lease(), the NFS request will be drop for -EAGAIN is mapped
+>> to nfserr_dropit at nfserrno().
+> 
+> See my for-2.6.38-incoming branch (especially 062304a815fe and
+> surrounding).  I was getting tired of needing special handling for
+> EAGAIN and EWOULDBLOCK, so I removed that mapping and am setting a flag
+> on the rqstp instead to indicate the need to drop a request.
+> 
+> Does that look reasonable to you?
 
-> Am doing a kickstart installation of RHEL 6.0 vanilla (no errata
-> applied).
->
-> After reboot, when using the automounter to access NFSv4 shares
-> (running on Fedora 13), we see the following in the logs on the RHEL6
-> client:
->
-> Jan 18 15:56:16 rhel6test rpc.idmapd[1387]: nss_getpwnam: name
-> 'root@esri.com' does not map into domain 'localdomain'
-> Jan 18 15:56:16 rhel6test rpc.idmapd[1387]: nss_getpwnam: name
-> 'ray5147@esri.com' does not map into domain 'localdomain'
->
-> As a result, directories are not mapped to the correct users but
-> instead to 'nobody'.
->
-> This is odd, because per the idmap man pages, the default domain used
-> by rpc.idmapd should be the same as the system domain minus the
-> hostname.  This should be esri.com, and is when I type hostname.
->
-> Thinking that perhaps rpc.idmapd was started before the network
-> subsystem, I restarted it.  Immediately everything worked fine.
->
-> I rebooted the system assuming the problem would return, but it didn't.
-> Maybe there's a cache used by rpc.idmapd (nscd?)?  Is there something
-> else maybe I'm missing?
->
-> Trying to determine if the "right" thing to do is to leave my
-> configuration as default or if I should be modifying /etc/idmapd.conf
-> to set a default domain.
+  I'm sorry for missing those patch you have post before,
+  I just test the two patch at v2.6.37. ^_^
 
+  Those patch is great.
 
-shot in the dark... is your real hostname also mapped to
-localhost.localdomain in /etc/hosts?
+  According to the discussing before, after the two patch for breaking delegation,
+  a race as you said "
+    One problem is that there's a race: nothing I can see stops anyone from
+    getting another lease after may_delete() but before the delete happens."
+  also exist here. We can't make sure that a new delegation don't be granted
+  between nfsd_break_lease() and unlink file complete or rename complete. 
+
+---
+thanks
+Mi Jinlong
 
