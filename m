@@ -1,138 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:53310 "EHLO shutemov.name"
+Received: from mx1.redhat.com ([209.132.183.28]:16069 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757567Ab1ANNtl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Jan 2011 08:49:41 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Rob Landley <rlandley@parallels.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v3 15/16] sunrpc: remove global init_rpc_pipefs
-Date: Fri, 14 Jan 2011 15:49:13 +0200
-Message-Id: <1295012954-7769-16-git-send-email-kas@openvz.org>
-In-Reply-To: <1295012954-7769-1-git-send-email-kas@openvz.org>
-References: <1295012954-7769-1-git-send-email-kas@openvz.org>
+	id S1751210Ab1AQPVA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Jan 2011 10:21:00 -0500
+Date: Mon, 17 Jan 2011 10:20:48 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsd: break lease on unlink, link, and rename
+Message-ID: <20110117152048.GA4796@pad.home.fieldses.org>
+References: <1294853809-10732-1-git-send-email-bfields@redhat.com>
+ <1294853809-10732-3-git-send-email-bfields@redhat.com>
+ <4D3007A1.6030405@cn.fujitsu.com>
+ <20110114193327.GA16942@fieldses.org>
+ <4D33A4BC.4000103@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D33A4BC.4000103@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Replace remaining init_rpc_pipefs references with get_rpc_pipefs(NULL)
-and make init_rpc_pipefs static.
+On Mon, Jan 17, 2011 at 10:09:00AM +0800, Mi Jinlong wrote:
+> 
+> 
+> J. Bruce Fields :
+> > On Fri, Jan 14, 2011 at 04:21:53PM +0800, Mi Jinlong wrote:
+> >>
+> >> J. Bruce Fields:
+> >>> Any change to any of the links pointing to an entry should also break
+> >>> delegations.
+> >>>
+> >>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> >>> ---
+> >>>  fs/nfsd/vfs.c |   27 +++++++++++++++++++++++----
+> >>>  1 files changed, 23 insertions(+), 4 deletions(-)
+> >>>
+> >>> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> >>> index 839ed88..f31321a 100644
+> >>> --- a/fs/nfsd/vfs.c
+> >>> +++ b/fs/nfsd/vfs.c
+> >>> @@ -272,6 +272,13 @@ out:
+> >>>  	return err;
+> >>>  }
+> >>>  
+> >>> +static int nfsd_break_lease(struct inode *inode)
+> >>> +{
+> >>> +	if (!S_ISREG(inode->i_mode))
+> >>> +		return 0;
+> >>> +	return break_lease(inode, O_WRONLY | O_NONBLOCK);
+> >> Hi Bruce,
+> >>
+> >> break_lease will return -EWOULDBLOCK here if break success, not 0.
+> >>   at __break_lease:
+> >>    
+> >>     1193  */
+> >>     1194 int __break_lease(struct inode *inode, unsigned int mode)
+> >>     1195 {
+> >>          ... ...  
+> >>     1253         if (i_have_this_lease || (mode & O_NONBLOCK)) {
+> >>     1254                 error = -EWOULDBLOCK;
+> >>     1255                 goto out;
+> >>     1256         }
+> >>           ... ... 
+> >>     1283 out:
+> >>     1284         unlock_flocks();
+> >>     1285         if (!IS_ERR(new_fl))
+> >>     1286                 locks_free_lock(new_fl);
+> >>     1287         return error;
+> >>     1288 }
+> >>
+> >> If we just return the error -EWOULDBLOCK (which mapped to -EAGAIN) at
+> >> nfsd_break_lease(), the NFS request will be drop for -EAGAIN is mapped
+> >> to nfserr_dropit at nfserrno().
+> > 
+> > See my for-2.6.38-incoming branch (especially 062304a815fe and
+> > surrounding).  I was getting tired of needing special handling for
+> > EAGAIN and EWOULDBLOCK, so I removed that mapping and am setting a flag
+> > on the rqstp instead to indicate the need to drop a request.
+> > 
+> > Does that look reasonable to you?
+> 
+>   I'm sorry for missing those patch you have post before,
+>   I just test the two patch at v2.6.37. ^_^
+> 
+>   Those patch is great.
+> 
+>   According to the discussing before, after the two patch for breaking delegation,
+>   a race as you said "
+>     One problem is that there's a race: nothing I can see stops anyone from
+>     getting another lease after may_delete() but before the delete happens."
+>   also exist here. We can't make sure that a new delegation don't be granted
+>   between nfsd_break_lease() and unlink file complete or rename complete. 
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
----
- fs/nfsd/nfs4callback.c             |    5 ++++-
- fs/nfsd/nfssvc.c                   |   16 ++++++++++++++--
- include/linux/sunrpc/rpc_pipe_fs.h |    2 --
- net/sunrpc/rpc_pipe.c              |    1 -
- 4 files changed, 18 insertions(+), 6 deletions(-)
+That's correct.  There are also at least a couple more preexisting races
+in the lease code that can allow conflicting leases and opens.  Also,
+this patch doesn't address the problem of unlinks and renames not done
+by nfs clients.
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 9bec643..61210b6 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -647,7 +647,6 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
- 		.version	= 0,
- 		.authflavor	= clp->cl_flavor,
- 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
--		.rpcmount	= init_rpc_pipefs,
- 	};
- 	struct rpc_clnt *client;
- 
-@@ -663,8 +662,12 @@ int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
- 		args.prognumber = clp->cl_cb_session->se_cb_prog;
- 		args.protocol = XPRT_TRANSPORT_BC_TCP;
- 	}
-+	args.rpcmount = get_rpc_pipefs(NULL);
-+	if (IS_ERR(args.rpcmount))
-+		return PTR_ERR(args.rpcmount);
- 	/* Create RPC client */
- 	client = rpc_create(&args);
-+	mntput(args.rpcmount);
- 	if (IS_ERR(client)) {
- 		dprintk("NFSD: couldn't create callback client: %ld\n",
- 			PTR_ERR(client));
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 17d78d3..7353420 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -206,6 +206,7 @@ static bool nfsd_up = false;
- static int nfsd_startup(unsigned short port, int nrservs)
- {
- 	int ret;
-+	struct vfsmount *rpcmount;
- 
- 	if (nfsd_up)
- 		return 0;
-@@ -220,7 +221,13 @@ static int nfsd_startup(unsigned short port, int nrservs)
- 	ret = nfsd_init_socks(port);
- 	if (ret)
- 		goto out_racache;
--	ret = lockd_up(init_rpc_pipefs);
-+	rpcmount = get_rpc_pipefs(NULL);
-+	if (IS_ERR(rpcmount)) {
-+		ret = PTR_ERR(rpcmount);
-+		goto out_racache;
-+	}
-+	ret = lockd_up(rpcmount);
-+	mntput(rpcmount);
- 	if (ret)
- 		goto out_racache;
- 	ret = nfs4_state_start();
-@@ -308,6 +315,7 @@ static void set_max_drc(void)
- int nfsd_create_serv(void)
- {
- 	int err = 0;
-+	struct vfsmount *rpcmount;
- 
- 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
- 	if (nfsd_serv) {
-@@ -332,9 +340,13 @@ int nfsd_create_serv(void)
- 	}
- 	nfsd_reset_versions();
- 
--	nfsd_serv = svc_create_pooled(&nfsd_program, init_rpc_pipefs,
-+	rpcmount = get_rpc_pipefs(NULL);
-+	if (IS_ERR(rpcmount))
-+		return PTR_ERR(rpcmount);
-+	nfsd_serv = svc_create_pooled(&nfsd_program, rpcmount,
- 				      nfsd_max_blksize, nfsd_last_thread, nfsd,
- 				      THIS_MODULE);
-+	mntput(rpcmount);
- 	if (nfsd_serv == NULL)
- 		return -ENOMEM;
- 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 4a8830a..a0b9c46 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -44,8 +44,6 @@ RPC_I(struct inode *inode)
- 	return container_of(inode, struct rpc_inode, vfs_inode);
- }
- 
--extern struct vfsmount *init_rpc_pipefs;
--
- extern struct vfsmount *get_rpc_pipefs(const char *path);
- extern int rpc_pipefs_add_destroy_cb(struct super_block *sb,
- 		void (*destroy_cb)(void *data), void *data);
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 02416f1..96973c0 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -33,7 +33,6 @@
- #include <linux/sunrpc/cache.h>
- 
- struct vfsmount *init_rpc_pipefs __read_mostly;
--EXPORT_SYMBOL_GPL(init_rpc_pipefs);
- 
- static struct file_system_type rpc_pipe_fs_type;
- 
--- 
-1.7.3.4
-
+--b.
