@@ -1,71 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:11025 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:10565 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754245Ab1A0A52 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jan 2011 19:57:28 -0500
-Subject: Re: 2.6.38-rc2... NFS sillyrename is broken...
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Nick Piggin <npiggin@gmail.com>
-Cc: "J. R. Okajima" <hooanon05@yahoo.co.jp>, linux-nfs@vger.kernel.org,
-        Linux Filesystem Development <linux-fsdevel@vger.kernel.org>
-In-Reply-To: <AANLkTim1-dwNjTpyCi5qBjCer5vgPo4qSNfK7Htd_vfL@mail.gmail.com>
-References: <1295998215.6867.22.camel@heimdal.trondhjem.org>
-	 <21515.1296030022@jrobl> <1296072867.7127.26.camel@heimdal.trondhjem.org>
-	 <1296074585.7127.33.camel@heimdal.trondhjem.org>
-	 <AANLkTik2JJt4vcX8mMJmz+uwJU01vpMwF0UjQ+3QFAtp@mail.gmail.com>
-	 <1296086349.7127.55.camel@heimdal.trondhjem.org>
-	 <AANLkTim1-dwNjTpyCi5qBjCer5vgPo4qSNfK7Htd_vfL@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 26 Jan 2011 19:57:10 -0500
-Message-ID: <1296089830.25999.1.camel@heimdal.trondhjem.org>
+	id S1751417Ab1AQR5v convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jan 2011 12:57:51 -0500
+Subject: Re: pnfs block build errors in 2.6.38
+Content-Type: text/plain; charset=us-ascii
+From: Fred Isaman <iisaman@netapp.com>
+In-Reply-To: <4D347CDF.2080600@panasas.com>
+Date: Mon, 17 Jan 2011 12:57:34 -0500
+Cc: James Rees <rees@umich.edu>, NFS list <linux-nfs@vger.kernel.org>,
+        Andy Adamson <andros@netapp.com>
+Message-Id: <091DDD0F-1819-45B3-9925-33AF6B318E51@netapp.com>
+References: <4D347CDF.2080600@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-01-27 at 11:44 +1100, Nick Piggin wrote: 
-> On Thu, Jan 27, 2011 at 10:59 AM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Thu, 2011-01-27 at 10:50 +1100, Nick Piggin wrote:
-> >> On Thu, Jan 27, 2011 at 7:43 AM, Trond Myklebust
-> >> <Trond.Myklebust@netapp.com> wrote:
-> >> > On Wed, 2011-01-26 at 15:14 -0500, Trond Myklebust wrote:
-> >> >> The alternative would be to add a callback that can be called after
-> >> >> dentry_iput() if DCACHE_NFSFS_RENAMED is true, and that takes the parent
-> >> >> and (negative) dentry as the arguments.
-> >> >> sillyrename doesn't need the inode as an argument, but it definitely
-> >> >> needs the parent dentry so that it can check for races with
-> >> >> ->lookup()...
-> >> >
-> >> > The following (compile tested only!) patch illustrates what I mean.
-> >>
-> >> We could do this. CEPH also want a way to get d_parent in the inode
-> >> unlink path.
-> >>
-> >> I think I can actually check for dentry->d_count == 0 rather than
-> >> dentry->d_parent == NULL here, and avoid clearing d_parent
-> >> entirely. That might be the better solution for 2.6.38, because other
-> >> code I've missed might be expecting to use d_parent.
-> >
-> > I'm not sure I understand. By the time we hit d_kill() we know that
-> > dentry->d_count == 0.
+
+On Jan 17, 2011, at 12:31 PM, Benny Halevy wrote:
+
+> Jim, I get the following build errors in 2.6.38:
 > 
-> The dcache patch to set d_parent to NULL was done so that when
-> walking the other way up the path we can check that the parent is
-> still valid.
+> /usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/fs/nfs/blocklayout/blocklayoutdev.c: In function 'nfs4_blkdev_get':
+> /usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/fs/nfs/blocklayout/blocklayoutdev.c:58: error: implicit declaration of function 'open_by_devnum'
+> /usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/fs/nfs/blocklayout/blocklayoutdev.c:58: warning: assignment makes pointer from integer without a cast
+> /usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/fs/nfs/blocklayout/blocklayoutdev.c: In function 'nfs4_blkdev_put':
+> /usr0/export/dev/bhalevy/git/linux-pnfs-bh-nfs41/fs/nfs/blocklayout/blocklayoutdev.c:75: error: implicit declaration of function 'bd_release'
 > 
-> But we could just check for d_count != 0 which means the parent has
-> to be valid as well (we have rename protection as well).
+> I pushed the tree to git://git.bhalevy.com/linux-pnfs.git
+> 
+> Mind taking a look at this?
+> 
+> Andy, Fred: you can synchronize with this tree at this point, after the rebase on top
+> of Bruce's latest changes it won't change much, so feel free to go for it :)
+> 
+> Thanks,
+> 
+> Benny
 
-That would certainly be less intrusive. Can you please propose a patch?
+Cool.  Thanks Benny.  Just one note, the pnfs-submit branch should probably point to 56782b15 "pnfs-submit: wave4: fix bug dealing with commit split between DS and MDS" or at least somewhere close to that (before any LAYOUTCOMMIT code).
 
-Cheers
-  Trond
+Fred
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
 
