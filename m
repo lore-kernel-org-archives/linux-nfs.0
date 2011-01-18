@@ -1,92 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42933 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754260Ab1AaWTl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Jan 2011 17:19:41 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: nfs_wcc_update_inode() should set nfsi->attr_gencount
-Date: Mon, 31 Jan 2011 17:19:20 -0500
-Message-Id: <1296512360-15987-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:19857 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752457Ab1ARSf3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 13:35:29 -0500
+Message-ID: <4D35DD69.2040902@panasas.com>
+Date: Tue, 18 Jan 2011 20:35:21 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Daniel.Muntz@emc.com, rees@umich.edu, androsadamson@gmail.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: 4.1 no-pnfs mount option?
+References: <20110114151945.GA21629@merit.edu>	 <AANLkTimSp6BTgk1YQonXd6HuVS-JEpQUWqsny7JymJsd@mail.gmail.com>	 <20110114153846.GA21766@merit.edu>	 <1295019712.3576.1.camel@heimdal.trondhjem.org>	 <DE966DA98A4ABE438D726BDF1699CF61043985B53F@MX05A.corp.emc.com> <1295375309.3746.25.camel@heimdal.trondhjem.org>
+In-Reply-To: <1295375309.3746.25.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-If the call to nfs_wcc_update_inode() results in an attribute update, we
-need to ensure that the inode's attr_gencount gets bumped too, otherwise
-we are not protected against races with other GETATTR calls.
+On 2011-01-18 20:28, Trond Myklebust wrote:
+> On Tue, 2011-01-18 at 12:44 -0500, Daniel.Muntz@emc.com wrote: 
+>>
+>>> -----Original Message-----
+>>> From: linux-nfs-owner@vger.kernel.org 
+>>> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Trond Myklebust
+>>> Sent: Friday, January 14, 2011 7:42 AM
+>>> To: Jim Rees
+>>> Cc: William A. (Andy) Adamson; linux-nfs@vger.kernel.org
+>>> Subject: Re: 4.1 no-pnfs mount option?
+>>>
+>>> On Fri, 2011-01-14 at 10:38 -0500, Jim Rees wrote: 
+>>>> William A. (Andy) Adamson wrote:
+>>>>
+>>>>   No mount option - just configure your machine to not load any pnfs
+>>>>   layoutdriver modules.
+>>>>
+>>>> That works, thanks, but I was hoping for a way to have 
+>>> layout and non-layout
+>>>> mounts going on at the same time.
+>>>
+>>> Different VMs?
+>>>
+>>> Trond
+>>
+>> Would there be any objections to adding a "nopnfs" mount option to force this behavior?  It could be useful at least for testing, possibly for working around server problems, or if an admin knows that certain clients' usage patterns would be better served by disabling pnfs.
+> 
+> Yes. Why should we be adding debugging mount options to the upstream
+> code? Just test the damned pnfs code properly before it goes upstream...
+> 
+> Trond
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/inode.c |   26 +++++++++++++++++---------
- 1 files changed, 17 insertions(+), 9 deletions(-)
+Such a mount option could be useful for dealing with buggy servers (pnfs-wise) so you
+could mount one server with pnfs and another without.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index d851242..1cc600e 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -881,9 +881,10 @@ out:
- 	return ret;
- }
- 
--static void nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr *fattr)
-+static unsigned long nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- {
- 	struct nfs_inode *nfsi = NFS_I(inode);
-+	unsigned long ret = 0;
- 
- 	if ((fattr->valid & NFS_ATTR_FATTR_PRECHANGE)
- 			&& (fattr->valid & NFS_ATTR_FATTR_CHANGE)
-@@ -891,25 +892,32 @@ static void nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 		nfsi->change_attr = fattr->change_attr;
- 		if (S_ISDIR(inode->i_mode))
- 			nfsi->cache_validity |= NFS_INO_INVALID_DATA;
-+		ret |= NFS_INO_INVALID_ATTR;
- 	}
- 	/* If we have atomic WCC data, we may update some attributes */
- 	if ((fattr->valid & NFS_ATTR_FATTR_PRECTIME)
- 			&& (fattr->valid & NFS_ATTR_FATTR_CTIME)
--			&& timespec_equal(&inode->i_ctime, &fattr->pre_ctime))
--			memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
-+			&& timespec_equal(&inode->i_ctime, &fattr->pre_ctime)) {
-+		memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
-+		ret |= NFS_INO_INVALID_ATTR;
-+	}
- 
- 	if ((fattr->valid & NFS_ATTR_FATTR_PREMTIME)
- 			&& (fattr->valid & NFS_ATTR_FATTR_MTIME)
- 			&& timespec_equal(&inode->i_mtime, &fattr->pre_mtime)) {
--			memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
--			if (S_ISDIR(inode->i_mode))
--				nfsi->cache_validity |= NFS_INO_INVALID_DATA;
-+		memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
-+		if (S_ISDIR(inode->i_mode))
-+			nfsi->cache_validity |= NFS_INO_INVALID_DATA;
-+		ret |= NFS_INO_INVALID_ATTR;
- 	}
- 	if ((fattr->valid & NFS_ATTR_FATTR_PRESIZE)
- 			&& (fattr->valid & NFS_ATTR_FATTR_SIZE)
- 			&& i_size_read(inode) == nfs_size_to_loff_t(fattr->pre_size)
--			&& nfsi->npages == 0)
--			i_size_write(inode, nfs_size_to_loff_t(fattr->size));
-+			&& nfsi->npages == 0) {
-+		i_size_write(inode, nfs_size_to_loff_t(fattr->size));
-+		ret |= NFS_INO_INVALID_ATTR;
-+	}
-+	return ret;
- }
- 
- /**
-@@ -1223,7 +1231,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			| NFS_INO_REVAL_PAGECACHE);
- 
- 	/* Do atomic weak cache consistency updates */
--	nfs_wcc_update_inode(inode, fattr);
-+	invalid |= nfs_wcc_update_inode(inode, fattr);
- 
- 	/* More cache consistency checks */
- 	if (fattr->valid & NFS_ATTR_FATTR_CHANGE) {
--- 
-1.7.3.5
-
+Benny
