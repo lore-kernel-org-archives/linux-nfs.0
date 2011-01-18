@@ -1,30 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp11.nmdp.org ([198.175.249.53]:36060 "EHLO
-	mn4s31001.nmdp.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751724Ab1AZPTs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jan 2011 10:19:48 -0500
-From: Dan Burkland <dburklan@NMDP.ORG>
-To: "Red Hat Enterprise Linux 6 (Santiago) discussion mailing-list"
-	<rhelv6-list@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "rhelv6-list-bounces@redhat.com" <rhelv6-list-bounces@redhat.com>
-Date: Wed, 26 Jan 2011 09:02:17 -0600
-Subject: Re: [rhelv6-list] NFSv4 automount - nss_getpwnam name
- 'user@domain.com' does not map into domain 'localdomain'
-Message-ID: <0CC353FB-8FC5-4126-B810-FDBDB6E6531C@nmdp.org>
-References: <20110119002907.GA25400@esri.com>
- <OF2761AC3A.66844802-ON8625781D.004EE4C7-8625781D.004EE7C9@uscmail.uscourts.gov>
- <20110119150450.GA20013@esri.com>
- <OFAB65B798.3724E99D-ON8625781D.0056CEF8-8625781D.0057212F@uscmail.uscourts.gov>
-In-Reply-To: <OFAB65B798.3724E99D-ON8625781D.0056CEF8-8625781D.0057212F@uscmail.uscourts.gov>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx1.redhat.com ([209.132.183.28]:5258 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752133Ab1ARSPz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Jan 2011 13:15:55 -0500
+Message-ID: <4D35D8B3.4030308@redhat.com>
+Date: Tue, 18 Jan 2011 19:15:15 +0100
+From: Milan Broz <mbroz@redhat.com>
+To: Chuck Lever <Chuck.Lever@oracle.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org
+Subject: Re: NFS OOps  - kernel BUG at fs/nfs/nfs3xdr.c:1338
+References: <4D30D9D6.2080809@redhat.com> <1295048791.20016.15.camel@heimdal.trondhjem.org> <BC9E8816-B395-44C1-ACF8-FEC4E80870C1@oracle.com>
+In-Reply-To: <BC9E8816-B395-44C1-ACF8-FEC4E80870C1@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-/etc/idmapd.conf is configured the same way on both the NFSv4 Server & Client correct? (I assume this is correct). I've run into this several times and usually a reboot of the "idmapd" service on the client fixes the issue (make sure that the NFS share is not mounted on the client).
+On 01/18/2011 04:59 PM, Chuck Lever wrote:
 
-Regards,
+>>> [  105.327979] kernel BUG at fs/nfs/nfs3xdr.c:1338!
+> 
+> Milan, I assume the install command is trying to set an ACL on an NFS file.  Can you tell us what the ACL looks like?
 
-Dan
+Hi,
 
+strace returns
+fsetxattr(4, "system.posix_acl_access", "\x02\x00\x00\x00\x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x00\x00\xff\xff\xff\xff \x00\x00\x00\xff\xff\xff\xff", 28, 0) = -1 EOPNOTSUPP (Operation not supported)
+
+and it is reproducible with simple code:
+        int fd = open("x", O_RDWR|O_CREAT, S_IRWXU);
+        fsetxattr(fd, "system.posix_acl_access",
+        "\x02\x00\x00\x00\x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x00\x00\xff\xff\xff\xff \x00\x00\x00\xff\xff\xff\xff", 28, 0);
+
+Milan
