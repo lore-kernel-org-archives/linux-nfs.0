@@ -1,59 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:57550 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751612Ab1ANCck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Jan 2011 21:32:40 -0500
-Message-ID: <4D2FB6F4.6070304@cn.fujitsu.com>
-Date: Fri, 14 Jan 2011 10:37:40 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: hce <webmail.hce@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: mac error
-References: <AANLkTin04TeswNAM89ij84YzfeTAR7rsppGyZFfq01qM@mail.gmail.com>
-In-Reply-To: <AANLkTin04TeswNAM89ij84YzfeTAR7rsppGyZFfq01qM@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:21486 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751541Ab1ARSim convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 13:38:42 -0500
+Subject: Re: 4.1 no-pnfs mount option?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Daniel.Muntz@emc.com, rees@umich.edu, androsadamson@gmail.com,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4D35DD69.2040902@panasas.com>
+References: <20110114151945.GA21629@merit.edu>
+	 <AANLkTimSp6BTgk1YQonXd6HuVS-JEpQUWqsny7JymJsd@mail.gmail.com>
+	 <20110114153846.GA21766@merit.edu>
+	 <1295019712.3576.1.camel@heimdal.trondhjem.org>
+	 <DE966DA98A4ABE438D726BDF1699CF61043985B53F@MX05A.corp.emc.com>
+	 <1295375309.3746.25.camel@heimdal.trondhjem.org>
+	 <4D35DD69.2040902@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 18 Jan 2011 13:38:41 -0500
+Message-ID: <1295375921.3746.27.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-hce :
-> Hi,
+On Tue, 2011-01-18 at 20:35 +0200, Benny Halevy wrote: 
+> On 2011-01-18 20:28, Trond Myklebust wrote:
+> > On Tue, 2011-01-18 at 12:44 -0500, Daniel.Muntz@emc.com wrote: 
+> >>
+> >>> -----Original Message-----
+> >>> From: linux-nfs-owner@vger.kernel.org 
+> >>> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Trond Myklebust
+> >>> Sent: Friday, January 14, 2011 7:42 AM
+> >>> To: Jim Rees
+> >>> Cc: William A. (Andy) Adamson; linux-nfs@vger.kernel.org
+> >>> Subject: Re: 4.1 no-pnfs mount option?
+> >>>
+> >>> On Fri, 2011-01-14 at 10:38 -0500, Jim Rees wrote: 
+> >>>> William A. (Andy) Adamson wrote:
+> >>>>
+> >>>>   No mount option - just configure your machine to not load any pnfs
+> >>>>   layoutdriver modules.
+> >>>>
+> >>>> That works, thanks, but I was hoping for a way to have 
+> >>> layout and non-layout
+> >>>> mounts going on at the same time.
+> >>>
+> >>> Different VMs?
+> >>>
+> >>> Trond
+> >>
+> >> Would there be any objections to adding a "nopnfs" mount option to force this behavior?  It could be useful at least for testing, possibly for working around server problems, or if an admin knows that certain clients' usage patterns would be better served by disabling pnfs.
+> > 
+> > Yes. Why should we be adding debugging mount options to the upstream
+> > code? Just test the damned pnfs code properly before it goes upstream...
+> > 
+> > Trond
 > 
-> I am running nfs server on a CentOS 5, it works fine for all
-> connections from linux, windows clients. Mac clients worked fine for
-> coping some regular files, but it could not copy mac packaging file
-> with the extension *.dmg, it stuck with an error "nfs server lockd not
-> responding", at the same time the server got a log message of
-> "rpc.statd[2448]: Can't callback linux_server (100021,4), giving up".
-> 
-> Appreciate advice what could cause that problem and how could fix it?
+> Such a mount option could be useful for dealing with buggy servers (pnfs-wise) so you
+> could mount one server with pnfs and another without.
 
-Hi hce,
+You can find ways around that. Just use 2 clients: one with pnfs
+switched on, and one with it off.
 
-You use NFSv3, 
-the NFSv3's file lock service depend on NLM(Network Lock Manager),
-that need a user space program named rpc.statd to support service
-like this:
-
-           |     nfs client     |      nfs server 
--------------------------------------------------
-           |                    |
-user space |     rpc.statd    <--->      rpc.statd
-           |        ^           |            ^
---------------------|------------------------|----
-           |        v           |            v
-kernel     |      lockd       <--->       lockd
-
-when your nfs client is a MAC, maybe Mac's user space don't support
-a program as rpc.statd, or you don't make the program run correctly.
-
-Maybe you can use NFSv4 to avoid this problem.
-
+I really don't want to introduce mount options upstream unless they are
+useful in the long term. One off usefulness does not pass that test.
 
 -- 
-----
-thanks
-Mi Jinlong
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
