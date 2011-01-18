@@ -1,35 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:16209 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755760Ab1ATPTU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jan 2011 10:19:20 -0500
-Subject: Re: Callback slot table overflowed
+Received: from rcsinet10.oracle.com ([148.87.113.121]:43864 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751706Ab1ARWOG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 17:14:06 -0500
+Subject: Re: [PATCH 1/2] NFSD: use nfserr for status after decode_cb_op_status
 Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <20110120030707.GA10667@merit.edu>
-Date: Thu, 20 Jan 2011 10:19:03 -0500
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Message-Id: <2CC1D543-3750-4536-A817-3D48B7C994BA@netapp.com>
-References: <20110120030707.GA10667@merit.edu>
-To: Jim Rees <rees@umich.edu>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1294910731-18370-1-git-send-email-bhalevy@panasas.com>
+Date: Tue, 18 Jan 2011 17:13:12 -0500
+Cc: " J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <7BE4C87F-5758-4496-85CC-718F8D0F10E1@oracle.com>
+References: <4D2EC4AC.9090205@panasas.com> <1294910731-18370-1-git-send-email-bhalevy@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Examine the CREATE_SESSION that created the fore channel, the back channel limits are set there.  Also note that since this is the back channel server setting the CREATE_SESSION backchannel attributes that the back channel client (e.g. the server) can not increase any of the limits.
 
--->Andy
+On Jan 13, 2011, at 4:25 AM, Benny Halevy wrote:
 
-On Jan 19, 2011, at 10:07 PM, Jim Rees wrote:
-
-> Is this bad?
-> Jan 19 21:53:27 pdsi7 kernel: Callback slot table overflowed
+> Bugs introduced in 85a56480191ca9f08fc775c129b9eb5c8c1f2c05
+> "NFSD: Update XDR decoders in NFSv4 callback client"
 > 
-> All I can tell from the code is that xprt_alloc_bc_request() failed, and the
-> slots are "preallocated during the backchannel setup".  Is there a hard
-> limit on these slots?  Where is it set?
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Cc: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+> fs/nfsd/nfs4callback.c |    6 ++----
+> 1 files changed, 2 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index 21a63da..5a6dcf8 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -484,7 +484,7 @@ static int decode_cb_sequence4res(struct xdr_stream *xdr,
+> out:
+> 	return status;
+> out_default:
+> -	return nfs_cb_stat_to_errno(status);
+> +	return nfs_cb_stat_to_errno(nfserr);
+
+Good fix.
+
+> }
+> 
+> /*
+> @@ -564,11 +564,9 @@ static int nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp,
+> 	if (unlikely(status))
+> 		goto out;
+> 	if (unlikely(nfserr != NFS4_OK))
+> -		goto out_default;
+> +		status = nfs_cb_stat_to_errno(nfserr);
+> out:
+> 	return status;
+> -out_default:
+> -	return nfs_cb_stat_to_errno(status);
+
+Good fix, but I would rather keep the same style here that every other NFS decoder uses here.  The "goto out_default" -- we want to keep the non-common cases out of the mainline code path.  It is Bruce-preferred (tm) style to branch on error.
+
+> }
+> 
+> /*
+> -- 
+> 1.7.3.4
+> 
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
