@@ -1,53 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mtoichi12.ns.itscom.net ([219.110.2.182]:51913 "EHLO
-	mtoichi12.ns.itscom.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751697Ab1AZIVE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jan 2011 03:21:04 -0500
-From: "J. R. Okajima" <hooanon05@yahoo.co.jp>
-Subject: Re: 2.6.38-rc2... NFS sillyrename is broken...
+Received: from aa.linuxbox.com ([134.215.213.37]:2834 "EHLO aa.linuxbox.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753063Ab1ARTgG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Jan 2011 14:36:06 -0500
+Date: Tue, 18 Jan 2011 14:35:50 -0500 (EST)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Nick Piggin <npiggin@gmail.com>,
-        Linux Filesystem Development <linux-fsdevel@vger.kernel.org>
-In-Reply-To: <1295998215.6867.22.camel@heimdal.trondhjem.org>
-References: <1295998215.6867.22.camel@heimdal.trondhjem.org>
-Date: Wed, 26 Jan 2011 17:20:22 +0900
-Message-ID: <21515.1296030022@jrobl>
+Cc: Daniel Muntz <Daniel.Muntz@emc.com>, rees@umich.edu,
+        androsadamson@gmail.com, linux-nfs@vger.kernel.org,
+        Benny Halevy <bhalevy@panasas.com>
+Message-ID: <559269113.92.1295379350636.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <553185711.90.1295379290216.JavaMail.root@thunderbeast.private.linuxbox.com>
+Subject: Re: 4.1 no-pnfs mount option?
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+Hi,
 
-(CC-ed Nick Piggin)
+----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
 
-Trond Myklebust:
-> Something in the recent VFS churn appears to have broken NFS
-> sillyrename.
->
-> Currently, when I try to unlink() a file that is being held open by
-> another process, I do indeed see that file getting renamed to
-> a .nfsxxxxxxx file, but when the file is closed, the .nfsxxxxx file
-> sticks around until I unlink() it again.
->
-> I'll have a look tomorrow at what is going wrong, but I figured I'd ask
-> on the list in case someone has a suspect...
+> "Why would an administrator never want to do this?" is not a helpful
+> question.
+> 
+> A more useful question is "what reason would you possibly have for
+> overriding the server's request that you do pNFS when your client has
+> pNFS support?" What makes pNFS so special that we must allow
+> administrators to do this on a per-mount basis?
 
-I noticed this issue yesterday and found the change for removing
-dcache_lock is suspicious.
-By the commit 949854d
-	2011-01-07 fs: Use rename lock and RCU for multi-step operations
-dentry->d_parent = NULL;
-is added into the beginning of VFS d_kill().
+Well, I phrased my question the other way because I suspect such cases will be found, but I may not have found all of them.  
 
-Later d_kill() calls dentry_iput(), d_op->d_iput() which is
-nfs_dentry_iput() in NFS.
-Then nfs_dentry_iput() calls nfs_complete_unlink(), nfs_call_unlink().
-Here nfs_call_unlink() calls dget_parent() and when the result is NULL,
-it skips the actual unlink. Finally the "silly-renamed" dentry
-remains.
+Some thoughts on why I might wish to take a hand in the decision:
 
-Can we stop "dentry->d_parent = NULL"
-when (d->flags & DCACHE_NFSFS_RENAMED) is true?
+1. the client doing pnfs might behave badly due to a misconfiguration or outage, yet behave acceptably using ordinary nfsv4?
+2. restricting the client to ordinary nfsv4 might be desirable for non-developer troubleshooting or other configuration work?
 
+I apologize if neither is compelling.
 
-J. R. Okajima
+> 
+> Throwing more and more knobs into the kernel is easy. The difficult
+> bit
+> is to figure out which are useful knobs, and that is why I want real
+> use
+> cases... 
+> 
+> Trond
+> 
+
+Matt
+
+-- 
+
+Matt Benjamin
+
+The Linux Box
+206 South Fifth Ave. Suite 150
+Ann Arbor, MI  48104
+
+http://linuxbox.com
+
+tel. 734-761-4689
+fax. 734-769-8938
+cel. 734-216-5309
