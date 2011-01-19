@@ -1,140 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:45386 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753995Ab1APWJ3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Jan 2011 17:09:29 -0500
-Received: by fxm20 with SMTP id 20so5221423fxm.19
-        for <linux-nfs@vger.kernel.org>; Sun, 16 Jan 2011 14:09:28 -0800 (PST)
-In-Reply-To: <50B5575D-8589-4261-9BC0-C6543CD18632@oracle.com>
-References: <AANLkTin04TeswNAM89ij84YzfeTAR7rsppGyZFfq01qM@mail.gmail.com>
-	<4D2FB6F4.6070304@cn.fujitsu.com>
-	<AANLkTin8PEyLqpdaTorSrS3Zi5sF7VeJRcrCVK9fEyc7@mail.gmail.com>
-	<BB05F812-F3D3-4742-BD54-794FD4BCC0C0@oracle.com>
-	<BF3BB6D12298F54B89C8DCC1E4073D8002CC1D8F@CORPUSMX50A.corp.emc.com>
-	<50B5575D-8589-4261-9BC0-C6543CD18632@oracle.com>
-Date: Mon, 17 Jan 2011 09:09:27 +1100
-Message-ID: <AANLkTikQk3+09i=Wa4JuHW0x8YCosGJe+MxD94CO0iUj@mail.gmail.com>
-Subject: Re: mac error
-From: hce <webmail.hce@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: peter.staubach@emc.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:59546 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752651Ab1ASKPH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 05:15:07 -0500
+Received: by wyb28 with SMTP id 28so727296wyb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Jan 2011 02:15:06 -0800 (PST)
+Message-Id: <25AC78CF-2E66-44B1-AAB8-65567DB703A4@gmail.com>
+From: David McGiven <davidmcgivenn@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
+Subject: NFSv4 client & Netapp Server -> Problem with id mapping
+Date: Wed, 19 Jan 2011 11:15:03 +0100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Jan 15, 2011 at 4:00 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
-> On Jan 14, 2011, at 10:55 AM, peter.staubach@emc.com wrote:
->
->> Hi.
->>
->> Actually, that command should work.  The server should respond with an
->> RPC error indicating which
->> versions of the nlockmgr protocol are supported and then rpcinfo will
->> ping each of them.
->
-> Yes, that and the "RPC: Timed out" message suggests that the underlying transport is not even getting through.
+Dear NFS Users,
 
-The  "rpcinfo -u linux_server nlockmgr 3" was timeout either. That
-server resolving IP address was working fine. As you indicated it
-might have underlying transports problem. I'll have to find it out.
+I have a Linux client (ubuntu 8.04) that correctly mounts through  
+NFSv3 an NFS share from a NetApp Filer (DataONTAP 7.2.1.1).
 
-Your comments confirmed my suspicious that the problem of the nlockmgr
-timeout could cause the problem we currently got. I'll follow your
-lead and debug it.
+Due to firewall issues, I now need to use NFSv4 instead of v3.  
+However, I'm having the problem of seeing all the files owned by  
+nobody/nogroup.
 
-Thank you all.
+Please, could anyone provide some advice ?
 
-> I expect lockd to unregister itself with the portmapper when it is shut down cleanly.  The presence of a registration for nlockmgr indicates it should still be running and contactable.
->
->>
->>               ps
->>
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org
->> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Chuck Lever
->> Sent: Friday, January 14, 2011 10:18 AM
->> To: hce
->> Cc: Linux NFS Mailing List
->> Subject: Re: mac error
->>
->>
->> On Jan 13, 2011, at 11:01 PM, hce wrote:
->>
->>> Thanks for your response. I've just found that nlockmgr did not
->>> respond when I run following command on the server. Is it a problem or
->>> it is normal? Anyway, the NFS is still working fine.
->>
->> nlockmgr and NFS are two separate RPC services.  So, NFS can work while
->> there might be a problem with nlockmgr.  IMO, nlockmgr should respond in
->> this case.
->>
->>> $ rpcinfo -t linux_server nlockmgr
->>> rpcinfo: RPC: Timed out
->>> program 100021 version 0 is not available
->>>
->>> $ rpcinfo -u linux_server nlockmgr
->>> rpcinfo: RPC: Timed out
->>> program 100021 version 0 is not available
->>
->> This is attempting to contact nlockmgr's "version 0" which is not
->> registered (see below).  Versions 1, 3, and 4 are registered.
->>
->> Try "rpcinfo -u linux_server nlockmgr 3".
->>
->>> $ rpcinfo -p
->>>  program vers proto   port
->>>   100000    2   tcp    111  portmapper
->>>   100000    2   udp    111  portmapper
->>>   100024    1   udp    895  status
->>>   100024    1   tcp    898  status
->>>   100011    1   udp    806  rquotad
->>>   100011    2   udp    806  rquotad
->>>   100011    1   tcp    809  rquotad
->>>   100011    2   tcp    809  rquotad
->>>   100003    2   udp   2049  nfs
->>>   100003    3   udp   2049  nfs
->>>   100003    4   udp   2049  nfs
->>>   100021    1   udp  32794  nlockmgr
->>>   100021    3   udp  32794  nlockmgr
->>>   100021    4   udp  32794  nlockmgr
->>>   100003    2   tcp   2049  nfs
->>>   100003    3   tcp   2049  nfs
->>>   100003    4   tcp   2049  nfs
->>>   100021    1   tcp  57164  nlockmgr
->>>   100021    3   tcp  57164  nlockmgr
->>>   100021    4   tcp  57164  nlockmgr
->>>   100005    1   udp    828  mountd
->>>   100005    1   tcp    831  mountd
->>>   100005    2   udp    828  mountd
->>>   100005    2   tcp    831  mountd
->>>   100005    3   udp    828  mountd
->>>   100005    3   tcp    831  mountd
->>
->> nlockmgr is registered, so it must have been started at some point.
->> It's a kernel service, so there's no daemon to die.  Do you have some
->> kind of firewall in place that would prevent contacting the NLM service?
->> Does "linux_server" resolve to the IP address you expect it to?
->>
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->>
->>
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
->
->
+The command I'm using to mount it is :
+mount -t nfs4 -o intr,proto=tcp filer:/vol/people /people/
+
+These are the NetApp options :
+nfs.v4.acl.enable            off
+nfs.v4.enable                on
+nfs.v4.id.domain             localdomain
+nfs.v4.read_delegation       off
+nfs.v4.write_delegation      off
+
+The filer exports are :
+
+/vol/people     -sec=sys,rw=machine1:machine2,root=master
+
+In the linux box I've double checked that /etc/idmpad.conf domain is  
+the same : "localdomain".
+
+Just in case, I'm running the rpc.impad daemon on the linux client.  
+This is the output for a single 'mount' and a single 'ls'
+
+root@machine1:~# /usr/sbin/rpc.idmapd -vvvv -f
+rpc.idmapd: libnfsidmap: using domain: localdomain
+
+rpc.idmapd: libnfsidmap: using translation method: nsswitch
+
+rpc.idmapd: Expiration time is 600 seconds.
+rpc.idmapd: Opened /proc/net/rpc/nfs4.nametoid/channel
+rpc.idmapd: Opened /proc/net/rpc/nfs4.idtoname/channel
+rpc.idmapd: New client: 15
+rpc.idmapd: Opened /var/lib/nfs/rpc_pipefs/nfs/clnt15/idmap
+rpc.idmapd: New client: 16
+rpc.idmapd: nss_getpwnam: name 'root@localdomain' domain  
+'localdomain': resulting localname 'root'
+
+rpc.idmapd: Client 15: (user) name "root@localdomain" -> id "0"
+rpc.idmapd: Client 15: (group) name "nobody" -> id "65534"
+rpc.idmapd: nss_getpwnam: name 'nobody' domain 'localdomain':  
+resulting localname '(null)'
+
+rpc.idmapd: nss_getpwnam: name 'nobody' does not map into domain  
+'localdomain'
+
+rpc.idmapd: Client 15: (user) name "nobody" -> id "65534"
+
+
+Could someone please help me ? I'm puzzled because NFSv3 deals  
+perfectly with user names and groups.
+
+Well, Thanks.
+
+Best,
+David
