@@ -1,92 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38946 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753786Ab1AKPJY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Jan 2011 10:09:24 -0500
-Date: Tue, 11 Jan 2011 10:09:19 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Takuma Umeya <tumeya@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] nfs4: set source address when callback is generated
-Message-ID: <20110111150919.GB15603@fieldses.org>
-References: <20101215050901.GB13532@redhat.com>
- <20101216034945.GH9646@fieldses.org>
- <A4BB9763-B67F-4559-B3FF-F7BC2DBD3B3A@oracle.com>
- <20110105005835.GA14744@fieldses.org>
- <F369CCC7-285D-4F4D-80D4-EEAC273E561C@oracle.com>
- <20110105171111.GC13000@fieldses.org>
- <3443745A-607D-4FD8-BA93-622669A09EAF@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <3443745A-607D-4FD8-BA93-622669A09EAF@oracle.com>
+Received: from nm19.bullet.mail.sp2.yahoo.com ([98.139.91.89]:20817 "HELO
+	nm19.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753166Ab1AST6n convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Jan 2011 14:58:43 -0500
+Message-ID: <146716.56866.qm@web111715.mail.gq1.yahoo.com>
+References: <574433.84174.qm@web111710.mail.gq1.yahoo.com> <AANLkTim8r-MWCytdP7QmhBoe9iM+39sZwmqaEzj64NtS@mail.gmail.com>
+Date: Wed, 19 Jan 2011 11:58:39 -0800 (PST)
+From: Mahmood Naderan <nt_mahmood@yahoo.com>
+Subject: Re: high traffic because of loggig
+To: Another Sillyname <anothersname@googlemail.com>
+Cc: nfs <linux-nfs@vger.kernel.org>
+In-Reply-To: <AANLkTim8r-MWCytdP7QmhBoe9iM+39sZwmqaEzj64NtS@mail.gmail.com>
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jan 05, 2011 at 12:18:37PM -0500, Chuck Lever wrote:
-> 
-> On Jan 5, 2011, at 12:11 PM, J. Bruce Fields wrote:
-> 
-> > On Wed, Jan 05, 2011 at 12:06:04PM -0500, Chuck Lever wrote:
-> >> 
-> >> On Jan 4, 2011, at 7:58 PM, J. Bruce Fields wrote:
-> >> 
-> >>> On Thu, Dec 16, 2010 at 10:54:00AM -0500, Chuck Lever wrote:
-> >>>> I don't recall creating svc_addr_u, but I'll take a stab at a
-> >>>> guess.
-> >>>> 
-> >>>> It looks like someone thought that we should retain the idea of
-> >>>> storing just the address part of the socket address, and not the
-> >>>> other stuff (like the family and port, since this code doesn't
-> >>>> appear to need that additional information).  It greatly reduces
-> >>>> the size of the field.  A full sockaddr_storage is more than 128
-> >>>> bytes, since it has to be able to store an AF_UNIX pathname.
-> >>>> 
-> >>>> Doing this, there is a lot less data to keep around, but an IPv6
-> >>>> socket address has other items outside of in6_addr that can be
-> >>>> used to form a full address.  We decided at some point we could
-> >>>> copy this information from the other address storage field in the
-> >>>> rqstp.
-> >>>> 
-> >>>> But the result of this space savings means we must construct a
-> >>>> full socket address when needed, using logic such as the above.
-> >>> 
-> >>> Seems to me we should either just waste the extra 100 bytes or
-> >>> define something that would be useful elsewhere as well....
-> >> 
-> >> In nfs-utils, we define:
-> >> 
-> >> 	union nfs_sockaddr { struct sockaddr_in	s4; struct sockaddr_in6
-> >> 	s6; struct sockaddr		sa; };
-> >> 
-> >> A variable of this type is large enough to hold a full IPv6
-> >> sockaddr, but is significantly smaller than a sockaddr_storage.
-> >> 
-> >> The addition of the "struct sockaddr" element is to enable access
-> >> to such variables via a "struct sockaddr *" without type punning.
-> >> This seems to be preferred by gcc over type casting in order to
-> >> handle optimizations involving address aliasing.  It also allows
-> >> more precise type checking.
-> > 
-> > Sounds reasonable to me.
-> > 
-> >> 
-> >> A full conversion to use such a construct in kernel RPC and NFS
-> >> components is, I fear, too late for 2.6.38, but might be considered
-> >> for a future release if there is consensus on this approach.
-> > 
-> > OK; I suppose for now I'll apply my revision of Takuma Umeya's patch
-> > below (if I didn't screw it up).
-> 
-> My thinking cap is still on vacation.  I don't see anything
-> immediately wrong with this as a temporary fix.  Has anyone tested
-> this with a multi-homed IPv6 server?  How about link-local IPv6
-> addresses?
+>It would depend on the application.
 
-I believe the original patch was tested with a multi-homed server, but
-probably just IPv4.  It would be useful to retest to make sure I didn't
-introduce a typo on cleanup (my version is pushed to
-git://linux-nfs.org/~bfields/linux.git for-2.6.38 now).  And, yes, the
-IPv6 cases would be good to test as well.
+It uses the standard output redirection '>' which I think every 5KB writes the 
+output. Can I increase that threshold?
+ 
+// Naderan *Mahmood;
 
---b.
+
+
+----- Original Message ----
+From: Another Sillyname <anothersname@googlemail.com>
+To: Mahmood Naderan <nt_mahmood@yahoo.com>
+Sent: Wed, January 19, 2011 10:05:07 PM
+Subject: Re: high traffic because of loggig
+
+On 19 January 2011 18:09, Mahmood Naderan <nt_mahmood@yahoo.com> wrote:
+> Hi,
+> In my cluster that /home is shared (from a server and some workers). The 
+>problem
+> is when I run my job that has some huge log data, the disk access as well as
+> network traffic is very high. I want to know is there any way so
+> that the worker writes the log locally and at the end, that log is copied from
+> worker's internal hdd to server's hdd (/home)?
+>
+> Hope that I clearly stated the problem.
+> Thanks,
+> // Naderan *Mahmood;
+>
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
+It would depend on the application.
+
+If the application doesn't have options to choose the path for the log
+files you could set up a symbolic link to the path back to the local
+drive.
+
+
+
+      
