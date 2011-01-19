@@ -1,91 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:44180 "EHLO
-	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751373Ab1AEVQO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 16:16:14 -0500
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Marc Kleine-Budde <mkl@pengutronix.de>,
-        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
-        linux-arm-kernel@lists.infradead.org,
-        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
-In-Reply-To: <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
-References: <1294254337.16957.13.camel@mulgrave.site>
-	 <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
-	 <1294256169.16957.18.camel@mulgrave.site>
-	 <20110105200008.GJ8638@n2100.arm.linux.org.uk>
-	 <1294259637.16957.25.camel@mulgrave.site>
-	 <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:47011 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752850Ab1ASOFS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 09:05:18 -0500
+Subject: RE: 4.1 no-pnfs mount option?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Daniel.Muntz@emc.com
+Cc: matt@linuxbox.com, rees@umich.edu, androsadamson@gmail.com,
+        linux-nfs@vger.kernel.org, bhalevy@panasas.com
+In-Reply-To: <DE966DA98A4ABE438D726BDF1699CF61043985B65A@MX05A.corp.emc.com>
+References: <DE966DA98A4ABE438D726BDF1699CF61043985B644@MX05A.corp.emc.com>
+	 <1295405796.2919.2.camel@heimdal.trondhjem.org>
+	 <DE966DA98A4ABE438D726BDF1699CF61043985B65A@MX05A.corp.emc.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 05 Jan 2011 15:16:10 -0600
-Message-ID: <1294262170.16957.46.camel@mulgrave.site>
+Date: Wed, 19 Jan 2011 09:05:12 -0500
+Message-ID: <1295445912.3444.10.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-01-05 at 12:48 -0800, Linus Torvalds wrote:
-> On Wed, Jan 5, 2011 at 12:33 PM, James Bottomley
-> <James.Bottomley@hansenpartnership.com> wrote:
-> >
-> > well, that depends.  For us on parisc, kmap of a user page in !HIGHMEM
-> > sets up an inequivalent aliase still ... because the cache colour of the
-> > user and kernel virtual addresses are different.  Depending on the
-> > return path to userspace, we still usually have to flush to get the user
-> > to see the changes the kernel has made.
+On Wed, 2011-01-19 at 00:54 -0500, Daniel.Muntz@emc.com wrote: 
 > 
-> Umm. Again, that has nothing to do with kmap().
+> > -----Original Message-----
+> > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com] 
+> > Sent: Tuesday, January 18, 2011 6:57 PM
+> > To: Muntz, Daniel
+> > Cc: matt@linuxbox.com; rees@umich.edu; 
+> > androsadamson@gmail.com; linux-nfs@vger.kernel.org; 
+> > bhalevy@panasas.com
+> > Subject: RE: 4.1 no-pnfs mount option?
+> > 
+> > On Tue, 2011-01-18 at 21:29 -0500, Daniel.Muntz@emc.com wrote: 
+> > > 
+> > > > -----Original Message-----
+> > > > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com] 
+> > > > Sent: Tuesday, January 18, 2011 5:45 PM
+> > > > To: Muntz, Daniel
+> > > > Cc: matt@linuxbox.com; rees@umich.edu; 
+> > > > androsadamson@gmail.com; linux-nfs@vger.kernel.org; 
+> > > > bhalevy@panasas.com
+> > > > Subject: RE: 4.1 no-pnfs mount option?
+> > > > 
+> > > > On Tue, 2011-01-18 at 19:53 -0500, Daniel.Muntz@emc.com wrote: 
+> > > > > 
+> > > > > > -----Original Message-----
+> > > > > > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com] 
+> > > > > > Sent: Tuesday, January 18, 2011 11:15 AM
+> > > > > > To: Matt W. Benjamin
+> > > > > > Cc: Muntz, Daniel; rees@umich.edu; androsadamson@gmail.com; 
+> > > > > > linux-nfs@vger.kernel.org; Benny Halevy
+> > > > > > Subject: Re: 4.1 no-pnfs mount option?
+> > > > > > 
+> > > > > > On Tue, 2011-01-18 at 13:46 -0500, Matt W. Benjamin wrote: 
+> > > > > > > Hi,
+> > > > > > > 
+> > > > > > > Isn't by mount a plausible way to select for pnfs 
+> > > > > > independent of debugging?  Is it assured that a client 
+> > > > > > administrator would never reasonably wish to do this?
+> > > > > > 
+> > > > > > "Why would an administrator never want to do this?" is 
+> > > > not a helpful
+> > > > > > question.
+> > > > > > 
+> > > > > > A more useful question is "what reason would you 
+> > possibly have for
+> > > > > > overriding the server's request that you do pNFS when 
+> > > > your client has
+> > > > > > pNFS support?" What makes pNFS so special that we must allow
+> > > > > > administrators to do this on a per-mount basis?
+> > > > > 
+> > > > > By the same logic, why should a user be allowed to select 
+> > > > which version of NFS they use for mounting when the server 
+> > > > has a perfectly reasonable way of negotiating it?  Getting to 
+> > > > choose v2 vs. v3 vs. v4 seems like much less of a distinction 
+> > > > than choosing between pNFS and no pNFS.  Frankly, it never 
+> > > > even occurred to me that there wouldn't be a mount option to 
+> > > > make this choice.  Enabling/disabling the layout driver 
+> > > > doesn't fit the existing model of choosing mount behavior, 
+> > > > and is a big hammer--it's all or nothing.
+> > > > > 
+> > > > > Anyway, here's a use case: I'm working at an 
+> > > > HPC/gas+oil/satellite data site.  We have an awesome pNFS 
+> > > > server for our big data and I want to access my big data with 
+> > > > pNFS.  We have another server for homedirs, some big data, 
+> > > > and other stuff.  Some mounts are fine with pNFS, others are 
+> > > > abysmal.  So, I want to mount some directories with pNFS, and 
+> > > > some without pNFS, on the same client, independent of the 
+> > > > server configuration.
+> > > > 
+> > > > mount -t nfs -overs=4,minorversion=0 foo:/ /bar
+> > > > 
+> > > > Done... Any more questions?
+> > > 
+> > > Several, but I'll stick to one rhetorical.  Does NFSv4.1 
+> > have any features, other than pNFS, that are not in 4.0?
+> > 
+> > Why stop now, when you were batting 100? I told you what the criteria
+> > were for adding more mount options, and you start whining about not
+> > being able to conceive of a world without mount options.
+> > 
+> > The point is that NFSv4.1 was supposed to let the _server_ tell the
+> > client when to use pNFS. The reason why you let the _server_ 
+> > do this, is
+> > because pNFS is about enabling _server_ scalability. It is not about
+> > faster clients...
+> > If you don't want the client to use pNFS, then fix the _server_
+> > settings...
 > 
-> This time it's about the user space mapping.
+> I don't miss the kiss-up-kick-down model of software development...
 > 
-> Repeat after me: even without the kmap(), the kernel access to that
-> mapping would have caused cache aliases.
+> The criteria was a use case, so I gave a use case.  I wouldn't rule out the "testing use case" either, as a mount option makes it possible to test mixed pnfs/non-pnfs 4.1 traffic without multiple servers.
 > 
-> See? Once more, the kmap() is entirely innocent. You can have a
-> non-highmem mapping that you never use kmap for, and that you map into
-> user space, and you'd see exactly the same aliases. Notice? Look ma,
-> no kmap().
+> The point is that pNFS, like everything else, is about the users.
 
-Yes, I understand that (we have no highmem on parisc, so kmap is a nop).
-The problem (at least as I see it) is that once something within the
-kernel (well, OK, mostly within drivers) touches a user page via its
-kernel mapping, the flush often gets forgotten (mainly because it always
-works on x86). What I was thinking about is that every time the kernel
-touches a user space page, it has to be within a kmap/kunmap pair
-(because the page might be highmem) ... so it's possible to make
-kmap/kunmap do the flushing for this case so the driver writer can't
-ever forget it.
+The criteria was a use case that explains adequately why the client
+needs to be able to override the server settings, not just random 'I
+might want to do this' moments.
 
-I think the problem case is only really touching scatter/gather elements
-outside of the DMA API (i.e. the driver pio case), so this may be
-overkill.  Russell also pointed out that a lot of the PIO iterators do
-excessive kmap_atomic/kunmap_atomic on the same page, so adding a flush
-could damage performance to the point where the flash root devices on
-arm might not work.  Plus the pio iterators already contain the
-appropriate flush, so perhaps just using them in every case fixes the
-problem.
+Rhetorical crap like 'it's about the users' isn't helping much either.
 
-> So clearly kmap() is not the issue. The issue continues to be a
-> totally separate virtual mapping. Whether it's a user mapping or
-> vm_map_ram() is obviously immaterial - as far as the CPU is concerned,
-> there is no difference between the two (apart from the trivial
-> differences of virtual location and permissions).
-> 
-> (You can also force the problem with vmalloc() an then following the
-> kernel page tables, but I hope nobody does that any more. I suspect
-> I'm wrong, though, there's probably code that mixes vmalloc and
-> physical page accesses in various drivers)
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Yes, unfortunately, we have seen this quite a bit; mainly to get large
-buffers.  Its not just confined to drivers:  xfs used to fail on both
-arm and parisc because it used a vmalloc region for its log buffer which
-it then had to do I/O on.
-
-James
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
