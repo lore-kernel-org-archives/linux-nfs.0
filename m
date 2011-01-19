@@ -1,36 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:53716 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754266Ab1A0BZg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jan 2011 20:25:36 -0500
-In-Reply-To: <1296089830.25999.1.camel@heimdal.trondhjem.org>
-References: <1295998215.6867.22.camel@heimdal.trondhjem.org>
-	<21515.1296030022@jrobl>
-	<1296072867.7127.26.camel@heimdal.trondhjem.org>
-	<1296074585.7127.33.camel@heimdal.trondhjem.org>
-	<AANLkTik2JJt4vcX8mMJmz+uwJU01vpMwF0UjQ+3QFAtp@mail.gmail.com>
-	<1296086349.7127.55.camel@heimdal.trondhjem.org>
-	<AANLkTim1-dwNjTpyCi5qBjCer5vgPo4qSNfK7Htd_vfL@mail.gmail.com>
-	<1296089830.25999.1.camel@heimdal.trondhjem.org>
-Date: Thu, 27 Jan 2011 12:25:35 +1100
-Message-ID: <AANLkTim_JrZkD_D8HWXNr0qxjQ-=LKaAvzcH_w7A_T42@mail.gmail.com>
-Subject: Re: 2.6.38-rc2... NFS sillyrename is broken...
-From: Nick Piggin <npiggin@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "J. R. Okajima" <hooanon05@yahoo.co.jp>, linux-nfs@vger.kernel.org,
-        Linux Filesystem Development <linux-fsdevel@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:35470 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751485Ab1ASXkt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 18:40:49 -0500
+Subject: Re: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <AANLkTiknrso7mQbTiXNF3MLz+RPi52M1s+DV1XaxciO=@mail.gmail.com>
+Date: Wed, 19 Jan 2011 18:39:16 -0500
+Cc: linux-fsdevel@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Wengang Wang <wen.gang.wang@oracle.com>
+Message-Id: <1CB6BE0E-01BA-47E6-BBD1-298F62735DF6@oracle.com>
+References: <20110119223543.30706.10304.stgit@matisse.1015granger.net> <1295479517.22151.16.camel@heimdal.trondhjem.org> <AANLkTikRX8nxh-gp=Fdr21dg-DLmUb2FxYXrM2A0hfN0@mail.gmail.com> <1295479900.22151.19.camel@heimdal.trondhjem.org> <AANLkTiknrso7mQbTiXNF3MLz+RPi52M1s+DV1XaxciO=@mail.gmail.com>
+To: Nick Piggin <npiggin@gmail.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Jan 27, 2011 at 11:57 AM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2011-01-27 at 11:44 +1100, Nick Piggin wrote:
 
->> But we could just check for d_count != 0 which means the parent has
->> to be valid as well (we have rename protection as well).
->
-> That would certainly be less intrusive. Can you please propose a patch?
+On Jan 19, 2011, at 6:37 PM, Nick Piggin wrote:
 
-Yes I'll write something up today.
+> On Thu, Jan 20, 2011 at 10:31 AM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+>> On Thu, 2011-01-20 at 10:26 +1100, Nick Piggin wrote:
+>>> On Thu, Jan 20, 2011 at 10:25 AM, Trond Myklebust
+> 
+>>>> Also, why is EIO the correct reply when no bytes were read/written? Why
+>>>> shouldn't the VFS aio code be able to cope with a zero byte reply?
+>>> 
+>>> What would it do?
+>> 
+>> Just return that zero byte reply to userland.
+>> 
+>> zero bytes is a valid reply for ordinary read() and write(), so why
+>> should we have to do anything different for aio_read()/aio_write()?
+> 
+> It doesn't give userspace much to do. zero reply from read means
+> EOF. Zero reply from write is pretty useless, I don't think we do it
+> in the buffered write path -- we either ensure we write at least
+> something or have a meaningful error to return.
+
+I think in this case, the zero-length requests are already shunted off.  No zero-length requests make it down here, IIRC.  So we expect that either some bytes are started, or an error occurs.  If zero bytes were started and no error occurred, that's just... wrong.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
