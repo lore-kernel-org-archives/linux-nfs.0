@@ -1,57 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:14574 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750854Ab1AETB1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jan 2011 14:01:27 -0500
-Message-ID: <4D24C004.7050202@panasas.com>
-Date: Wed, 05 Jan 2011 21:01:24 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-CC: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        nfsv4@ietf.org
-Subject: Re: [nfsv4] layoutcommits and file layout
-References: <978693366.32.1292516428080.JavaMail.root@thunderbeast.private.linuxbox.com>	 <1740153586.34.1292516481789.JavaMail.root@thunderbeast.private.linuxbox.com>	 <20101216230707.GB16760@infradead.org>  <4D21DB53.9050104@panasas.com> <1294065611.16812.8.camel@heimdal.trondhjem.org>
-In-Reply-To: <1294065611.16812.8.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from magus.merit.edu ([198.108.1.13]:58300 "EHLO magus.merit.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754066Ab1ASO14 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Jan 2011 09:27:56 -0500
+Date: Wed, 19 Jan 2011 09:27:52 -0500
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Daniel.Muntz@emc.com, matt@linuxbox.com, androsadamson@gmail.com,
+        linux-nfs@vger.kernel.org, bhalevy@panasas.com
+Subject: Re: 4.1 no-pnfs mount option?
+Message-ID: <20110119142752.GB6026@merit.edu>
+References: <DE966DA98A4ABE438D726BDF1699CF61043985B644@MX05A.corp.emc.com>
+ <1295405796.2919.2.camel@heimdal.trondhjem.org>
+ <DE966DA98A4ABE438D726BDF1699CF61043985B65A@MX05A.corp.emc.com>
+ <1295445912.3444.10.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1295445912.3444.10.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-01-03 16:40, Trond Myklebust wrote:
-> On Mon, 2011-01-03 at 16:21 +0200, Benny Halevy wrote: 
->> On 2010-12-17 01:07, Christoph Hellwig wrote:
->>> On Thu, Dec 16, 2010 at 11:21:21AM -0500, Matt W. Benjamin wrote:
->>>> Hi,
->>>>
->>>> We have a files implementation which wants to receive LAYOUTCOMMIT when a client is finished with a layout.  It was my clear understanding from rfc5661 that we could expect this behavior.
->>>
->>> Care to post it to the list?
->>>
->>
->> I don't know what Matt's server is doing but the fundamental problem is
->> manifested with extending a file with parallel DS writes.
->> Assuming that the DS writes are executed in arbitrary order,
->> exposing the file length before LAYOUTCOMMIT can cause
->> a concurrent reader to read a hole.  Although locking can
->> solve this case, day-to-day applications that work well over
->> local filesystem and legacy NFS may break because of this.
-> 
-> ...and this differs from ordinary NFS writes exactly how?
-> 
-> Both cached and uncached (i.e. O_DIRECT) writes can and will be flushed
-> to disk in entirely random order when writing to the MDS. If you have a
-> parallel reader on another client (or even on the same client in the
-> case of O_DIRECT), and want it to see accurate data, then use locking.
-> If not, you will see holes and other strangeness.
-> 
-> IOW: There are no 'day-to-day applications that work well over legacy
-> NFS' that rely on this behaviour.
-> 
+Have we beaten this dead horse to a pulp yet?  I was just asking if there
+was such an option, not advocating for adding one.  It would have been
+useful at the time for my own testing but I can see the argument against
+adding unwanted knobs.
 
-Assuming the client writes sequentially (over tcp) the writes will
-practically be processed in order into the server's cache so with
-no crashes in the mix a parallel reader will see no holes.
-I'd really like the following scenario to work over pNFS with
-no hassles:
-	"some app >> foo" on one client, and
-	"tail -f foo" on another
+The discussion has been useful in one way.  I will now be spending some time
+making sure the block layout driver falls back gracefully to no-pnfs if, for
+example, an iscsi target can't be contacted.
