@@ -1,62 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.citrix.com ([66.165.176.89]:63141 "EHLO SMTP.CITRIX.COM"
+Received: from mx2.netapp.com ([216.240.18.37]:63040 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751470Ab1AEX0m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 18:26:42 -0500
-Subject: Re: Cache flush question.
-From: Daniel Stodden <daniel.stodden@citrix.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Rob Landley <rlandley@parallels.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <1294151542.3389.7.camel@heimdal.trondhjem.org>
-References: <1294130649.3529.96.camel@ramone>
-	 <1294151542.3389.7.camel@heimdal.trondhjem.org>
+	id S1751690Ab1ASBps convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 20:45:48 -0500
+Subject: RE: 4.1 no-pnfs mount option?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Daniel.Muntz@emc.com
+Cc: matt@linuxbox.com, rees@umich.edu, androsadamson@gmail.com,
+        linux-nfs@vger.kernel.org, bhalevy@panasas.com
+In-Reply-To: <DE966DA98A4ABE438D726BDF1699CF61043985B639@MX05A.corp.emc.com>
+References: <DE966DA98A4ABE438D726BDF1699CF61043985B639@MX05A.corp.emc.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 5 Jan 2011 15:15:47 -0800
-Message-ID: <1294269347.29719.1673.camel@agari.van.xensource.com>
+Date: Tue, 18 Jan 2011 20:44:45 -0500
+Message-ID: <1295401485.2941.1.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-01-04 at 09:32 -0500, Trond Myklebust wrote:
-> On Tue, 2011-01-04 at 00:44 -0800, Daniel Stodden wrote: 
-> > Hi anyone.
-> > 
-> > If somebody's got a sec to enlighten me, there's some phenomenon I
-> > recently came across and found somewhat counterintuitive first.
-> > 
-> > Whenever I
-> > 
-> >  1. Dirty a bunch of pages backed by an NFS mount on some server.
-> > 
-> >  2. Block the traffic with iptables (TCP, assuming that mattered).
-> >     Still plenty of writeback pending.
-> > 
-> >  3. Sync
-> > 
-> > I see #3 drive the dirty count in /proc/meminfo drop back to
-> > almost-zero, immediately. The sync itself blocks, though.
-> > 
-> > So the pages are called clean the moment the write got queued, not
-> > acked? Leaving the rest just to retransmits by the socket then? Is this
-> > just done so because one can, or would that order rather matter for
-> > consistency?
+On Tue, 2011-01-18 at 19:53 -0500, Daniel.Muntz@emc.com wrote: 
 > 
-> Take a look at the 'Writeback:' count, which should turn non-zero when
-> you hit #3.
+> > -----Original Message-----
+> > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com] 
+> > Sent: Tuesday, January 18, 2011 11:15 AM
+> > To: Matt W. Benjamin
+> > Cc: Muntz, Daniel; rees@umich.edu; androsadamson@gmail.com; 
+> > linux-nfs@vger.kernel.org; Benny Halevy
+> > Subject: Re: 4.1 no-pnfs mount option?
+> > 
+> > On Tue, 2011-01-18 at 13:46 -0500, Matt W. Benjamin wrote: 
+> > > Hi,
+> > > 
+> > > Isn't by mount a plausible way to select for pnfs 
+> > independent of debugging?  Is it assured that a client 
+> > administrator would never reasonably wish to do this?
+> > 
+> > "Why would an administrator never want to do this?" is not a helpful
+> > question.
+> > 
+> > A more useful question is "what reason would you possibly have for
+> > overriding the server's request that you do pNFS when your client has
+> > pNFS support?" What makes pNFS so special that we must allow
+> > administrators to do this on a per-mount basis?
 > 
-> The VM allows pages to be either dirty or in writeback, but not both at
-> the same time. This is not NFS-specific. The same rule applies to local
-> filesystems.
+> By the same logic, why should a user be allowed to select which version of NFS they use for mounting when the server has a perfectly reasonable way of negotiating it?  Getting to choose v2 vs. v3 vs. v4 seems like much less of a distinction than choosing between pNFS and no pNFS.  Frankly, it never even occurred to me that there wouldn't be a mount option to make this choice.  Enabling/disabling the layout driver doesn't fit the existing model of choosing mount behavior, and is a big hammer--it's all or nothing.
+> 
+> Anyway, here's a use case: I'm working at an HPC/gas+oil/satellite data site.  We have an awesome pNFS server for our big data and I want to access my big data with pNFS.  We have another server for homedirs, some big data, and other stuff.  Some mounts are fine with pNFS, others are abysmal.  So, I want to mount some directories with pNFS, and some without pNFS, on the same client, independent of the server configuration.
 
-Ah. That explains everything. Actually a question then, thanks for the
-clarification :)
+mount -t nfs -overs=4,minorversion=0 foo:/ /bar
 
-Rob Landley's comment regarding tx queue size somewhat made a good point
-too. But, given the rates I see, this queues mostly cache pages on the
-transport, not copies, right?
+Done... Any more questions?
 
-Thanks.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Daniel
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
