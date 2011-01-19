@@ -1,44 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vw0-f46.google.com ([209.85.212.46]:51230 "EHLO
-	mail-vw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753046Ab1AUDFC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jan 2011 22:05:02 -0500
-Received: by vws16 with SMTP id 16so612009vws.19
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Jan 2011 19:05:01 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/4] 2.6.38 bug fixes
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 20 Jan 2011 22:04:55 -0500
-Message-ID: <20110121030314.1056.96774.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:32047 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752343Ab1ASPqO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Jan 2011 10:46:14 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id p0JFkEoP023173
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Jan 2011 10:46:14 -0500
+From: Karel Zak <kzak@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Steve Dickson <steved@redhat.com>, Karel Zak <kzak@redhat.com>
+Subject: [PATCH] configure: fix AM_CONDITIONAL(CONFIG_NFSIDMAP)
+Date: Wed, 19 Jan 2011 16:46:03 +0100
+Message-Id: <1295451963-14978-1-git-send-email-kzak@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hey-
+./configure --disable-gss --disable-nfsv4
+[...]
+configure: error: conditional "CONFIG_NFSIDMAP" was never defined.
 
-Here are four patches that address recent issues discovered in 2.6.38.
-They should be ready for inclusion upstream.  I say that because that
-guarantees you will find bugs in them.
-
+Signed-off-by: Karel Zak <kzak@redhat.com>
 ---
+ configure.ac |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-Chuck Lever (4):
-      NFS: Prevent memory allocation failure in nfsacl_encode()
-      NFS: nfsacl_{encode,decode} should return signed integer
-      NFS: Fix "kernel BUG at fs/nfs/nfs3xdr.c:1338!"
-      NFS: Fix "kernel BUG at fs/aio.c:554!"
-
-
- fs/nfs/direct.c           |   30 +++++++++++++------------
- fs/nfs/nfs3acl.c          |    4 ++-
- fs/nfs/nfs3xdr.c          |    5 +++-
- fs/nfs_common/nfsacl.c    |   54 ++++++++++++++++++++++++++++++++++-----------
- fs/posix_acl.c            |   17 +++++++++++---
- include/linux/nfsacl.h    |    4 ++-
- include/linux/posix_acl.h |    1 +
- 7 files changed, 79 insertions(+), 36 deletions(-)
-
+diff --git a/configure.ac b/configure.ac
+index 92833e3..2e074d9 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -247,9 +247,6 @@ if test "$enable_nfsv4" = yes; then
+   dnl check for nfsidmap libraries and headers
+   AC_LIBNFSIDMAP
+ 
+-  dnl enable nfsidmap when its support by libnfsidmap
+-  AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$enable_nfsidmap" = "yes"])
+-
+   dnl check for the keyutils libraries and headers
+   AC_KEYUTILS
+ 
+@@ -260,6 +257,9 @@ if test "$enable_nfsv4" = yes; then
+   fi
+ fi
+ 
++dnl enable nfsidmap when its support by libnfsidmap
++AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$enable_nfsidmap" = "yes"])
++
+ if test "$knfsd_cv_glibc2" = no; then
+     AC_CHECK_LIB(bsd, daemon, [LIBBSD="-lbsd"])
+ fi
 -- 
-Chuck Lever
+1.7.3.3
+
