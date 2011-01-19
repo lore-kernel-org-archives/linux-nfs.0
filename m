@@ -1,45 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:49540 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:47971 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756294Ab1AMATC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jan 2011 19:19:02 -0500
-Subject: Re: state manager failed on NFSv4 server
+	id S1752838Ab1ASX5H convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 18:57:07 -0500
+Subject: Re: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jim Rees <rees@umich.edu>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-In-Reply-To: <20110113000720.GA15353@merit.edu>
-References: <20110112185843.GA14207@merit.edu>
-	 <1294859616.2971.46.camel@heimdal.trondhjem.org>
-	 <20110113000720.GA15353@merit.edu>
+To: Nick Piggin <npiggin@gmail.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-fsdevel@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Wengang Wang <wen.gang.wang@oracle.com>
+In-Reply-To: <AANLkTinyfESY_JZATKmfAy-gUUmnLfVOBSKNZscawyad@mail.gmail.com>
+References: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
+	 <1295479517.22151.16.camel@heimdal.trondhjem.org>
+	 <AANLkTikRX8nxh-gp=Fdr21dg-DLmUb2FxYXrM2A0hfN0@mail.gmail.com>
+	 <1295479900.22151.19.camel@heimdal.trondhjem.org>
+	 <AANLkTiknrso7mQbTiXNF3MLz+RPi52M1s+DV1XaxciO=@mail.gmail.com>
+	 <1CB6BE0E-01BA-47E6-BBD1-298F62735DF6@oracle.com>
+	 <AANLkTinyfESY_JZATKmfAy-gUUmnLfVOBSKNZscawyad@mail.gmail.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 12 Jan 2011 19:18:59 -0500
-Message-ID: <1294877939.15025.42.camel@heimdal.trondhjem.org>
+Date: Wed, 19 Jan 2011 18:56:14 -0500
+Message-ID: <1295481374.22151.28.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-01-12 at 19:07 -0500, Jim Rees wrote: 
-> Trond Myklebust wrote:
+On Thu, 2011-01-20 at 10:42 +1100, Nick Piggin wrote: 
+> On Thu, Jan 20, 2011 at 10:39 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> >
+> > On Jan 19, 2011, at 6:37 PM, Nick Piggin wrote:
+> >
+> >> On Thu, Jan 20, 2011 at 10:31 AM, Trond Myklebust
+> >> <Trond.Myklebust@netapp.com> wrote:
+> >>> On Thu, 2011-01-20 at 10:26 +1100, Nick Piggin wrote:
+> >>>> On Thu, Jan 20, 2011 at 10:25 AM, Trond Myklebust
+> >>
+> >>>>> Also, why is EIO the correct reply when no bytes were read/written? Why
+> >>>>> shouldn't the VFS aio code be able to cope with a zero byte reply?
+> >>>>
+> >>>> What would it do?
+> >>>
+> >>> Just return that zero byte reply to userland.
+> >>>
+> >>> zero bytes is a valid reply for ordinary read() and write(), so why
+> >>> should we have to do anything different for aio_read()/aio_write()?
+> >>
+> >> It doesn't give userspace much to do. zero reply from read means
+> >> EOF. Zero reply from write is pretty useless, I don't think we do it
+> >> in the buffered write path -- we either ensure we write at least
+> >> something or have a meaningful error to return.
+> >
+> > I think in this case, the zero-length requests are already shunted off.  No zero-length requests make it down here, IIRC.  So we expect that either some bytes are started, or an error occurs.  If zero bytes were started and no error occurred, that's just... wrong.
 > 
->   The combination
->   
->           (EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_PNFS_DS |
->           EXCHGID4_FLAG_USE_NON_PNFS)
->   
->   is not listed in the table in section 13.1 of RFC5661 as an acceptable
->   return value.
-> 
-> But section 13 doesn't apply to the block layout server, does it?
+> Right. So in this case you should have an error to return.
 
-If you are a block layout server, the only valid return value is
+So, which error??? What is going wrong that ensures that we don't start
+any I/O. Is it the pages that are failing to fault in, is it the RPC
+call that is failing to start (if so, why)?
 
-EXCHGID4_FLAG_USE_PNFS_MDS
-  
-'cos you are clearly not a non-metadata server, and you clearly can't be
-a data server.
+I don't like to be returning EIO if a more specific (and useful) error
+exists.
 
-Cheers
-  Trond
 -- 
 Trond Myklebust
 Linux NFS client maintainer
