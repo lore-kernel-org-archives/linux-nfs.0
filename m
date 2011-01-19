@@ -1,33 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from somacoma.net ([62.75.137.225]:36270 "EHLO vs137225.vserver.de"
+Received: from esrismtp2.esri.com ([198.102.62.103]:35544 "EHLO esri3.esri.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751077Ab1AILac (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 9 Jan 2011 06:30:32 -0500
-Subject: Re: Problem with sharing /home
-From: Daniel Stodden <daniel.stodden@citrix.com>
-To: Mahmood Naderan <nt_mahmood@yahoo.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <502676.48699.qm@web111713.mail.gq1.yahoo.com>
-References: <965737.12090.qm@web111718.mail.gq1.yahoo.com>
-	 <1294565607.30270.14.camel@ramone>
-	 <502676.48699.qm@web111713.mail.gq1.yahoo.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sun, 09 Jan 2011 03:30:28 -0800
-Message-ID: <1294572628.30270.23.camel@ramone>
+	id S1751446Ab1ASArm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Jan 2011 19:47:42 -0500
+Date: Tue, 18 Jan 2011 16:29:07 -0800
+From: Ray Van Dolson <rvandolson@esri.com>
+To: rhelv6-list@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: NFSv4 automount - nss_getpwnam name 'user@domain.com' does not map
+ into domain 'localdomain'
+Message-ID: <20110119002907.GA25400@esri.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 2011-01-09 at 04:43 -0500, Mahmood Naderan wrote:
-> >Make sure that the name->uid map is identical in all passwd files.
-> > Try the 'id' and 'ls -n' commands to figure it out. Edit passwd andgroup to fix 
-> >it.
-> 
-> Can you explain more? "id" shows the UID for each user and "ls -n" shows which 
-> UID grant the /home/direcotry.  Which sections of passwd and group have to be 
-> changed?
+Am doing a kickstart installation of RHEL 6.0 vanilla (no errata
+applied).
 
-$ man 5 passwd
+After reboot, when using the automounter to access NFSv4 shares
+(running on Fedora 13), we see the following in the logs on the RHEL6
+client:
 
+Jan 18 15:56:16 rhel6test rpc.idmapd[1387]: nss_getpwnam: name 'root@esri.com' does not map into domain 'localdomain'
+Jan 18 15:56:16 rhel6test rpc.idmapd[1387]: nss_getpwnam: name 'ray5147@esri.com' does not map into domain 'localdomain'
 
+As a result, directories are not mapped to the correct users but
+instead to 'nobody'.
 
+This is odd, because per the idmap man pages, the default domain used
+by rpc.idmapd should be the same as the system domain minus the
+hostname.  This should be esri.com, and is when I type hostname.
+
+Thinking that perhaps rpc.idmapd was started before the network
+subsystem, I restarted it.  Immediately everything worked fine.
+
+I rebooted the system assuming the problem would return, but it didn't.
+Maybe there's a cache used by rpc.idmapd (nscd?)?  Is there something
+else maybe I'm missing?
+
+Trying to determine if the "right" thing to do is to leave my
+configuration as default or if I should be modifying /etc/idmapd.conf
+to set a default domain.
+
+Thanks,
+Ray
