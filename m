@@ -1,66 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:40005 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755061Ab1A1Rk6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Jan 2011 12:40:58 -0500
-Received: by qwa26 with SMTP id 26so3545054qwa.19
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Jan 2011 09:40:58 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] NFS: Micro-optimize nfs4_decode_dirent()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 28 Jan 2011 12:40:55 -0500
-Message-ID: <20110128174055.3235.83374.stgit@matisse.1015granger.net>
-In-Reply-To: <20110128173624.3235.74504.stgit@matisse.1015granger.net>
-References: <20110128173624.3235.74504.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:50620 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753300Ab1ASXut (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 18:50:49 -0500
+In-Reply-To: <1295480976.22151.23.camel@heimdal.trondhjem.org>
+References: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
+	<1295479517.22151.16.camel@heimdal.trondhjem.org>
+	<AANLkTikRX8nxh-gp=Fdr21dg-DLmUb2FxYXrM2A0hfN0@mail.gmail.com>
+	<1295479900.22151.19.camel@heimdal.trondhjem.org>
+	<AANLkTiknrso7mQbTiXNF3MLz+RPi52M1s+DV1XaxciO=@mail.gmail.com>
+	<1295480976.22151.23.camel@heimdal.trondhjem.org>
+Date: Thu, 20 Jan 2011 10:50:47 +1100
+Message-ID: <AANLkTimwQJknzWHsMBFMpjiAe7qw5LktXMhXnQrKHoHA@mail.gmail.com>
+Subject: Re: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
+From: Nick Piggin <npiggin@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wen.gang.wang@oracle.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Make the decoding of NFSv4 directory entries slightly more efficient
-by:
+On Thu, Jan 20, 2011 at 10:49 AM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2011-01-20 at 10:37 +1100, Nick Piggin wrote:
+>> On Thu, Jan 20, 2011 at 10:31 AM, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > On Thu, 2011-01-20 at 10:26 +1100, Nick Piggin wrote:
+>> >> On Thu, Jan 20, 2011 at 10:25 AM, Trond Myklebust
+>>
+>> >> > Also, why is EIO the correct reply when no bytes were read/written? Why
+>> >> > shouldn't the VFS aio code be able to cope with a zero byte reply?
+>> >>
+>> >> What would it do?
+>> >
+>> > Just return that zero byte reply to userland.
+>> >
+>> > zero bytes is a valid reply for ordinary read() and write(), so why
+>> > should we have to do anything different for aio_read()/aio_write()?
+>>
+>> It doesn't give userspace much to do. zero reply from read means
+>> EOF. Zero reply from write is pretty useless, I don't think we do it
+>> in the buffered write path -- we either ensure we write at least
+>> something or have a meaningful error to return.
+>
+> zero reply from read means EOF _or_ user supplied a zero length buffer.
+>
+> zero reply from write may also be useless, but it is a valid value. It
+> can simply mean the user supplied a zero length buffer.
 
-  1.  Avoiding unnecessary byte swapping when checking XDR booleans,
-      and
-
-  2.  Not bumping "p" when its value will be immediately replaced by
-      xdr_inline_decode()
-
-This commit makes nfs4_decode_dirent() consistent with similar logic
-in the other two decode_dirent() functions.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/nfs4xdr.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 2ab8e5c..009aef9 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -6086,11 +6086,11 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 	__be32 *p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	if (!ntohl(*p++)) {
-+	if (*p == xdr_zero) {
- 		p = xdr_inline_decode(xdr, 4);
- 		if (unlikely(!p))
- 			goto out_overflow;
--		if (!ntohl(*p++))
-+		if (*p == xdr_zero)
- 			return -EAGAIN;
- 		entry->eof = 1;
- 		return -EBADCOOKIE;
-@@ -6101,7 +6101,7 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 		goto out_overflow;
- 	entry->prev_cookie = entry->cookie;
- 	p = xdr_decode_hyper(p, &entry->cookie);
--	entry->len = ntohl(*p++);
-+	entry->len = be32_to_cpup(p);
- 
- 	p = xdr_inline_decode(xdr, entry->len);
- 	if (unlikely(!p))
-
+OK, yes. I'm ignoring zero length request.
