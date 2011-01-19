@@ -1,398 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50134 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751078Ab1ADXXf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 18:23:35 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Simon Kirby <sim@hostway.ca>, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/4] nfsd4: move idmap and acl header files into fs/nfsd
-Date: Tue,  4 Jan 2011 18:23:28 -0500
-Message-Id: <1294183410-14688-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1294178391.5896.31.camel@heimdal.trondhjem.org>
-References: <1294178391.5896.31.camel@heimdal.trondhjem.org>
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:61745 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755105Ab1ASWgi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 17:36:38 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
+To: npiggin@gmail.com
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        wen.gang.wang@oracle.com
+Date: Wed, 19 Jan 2011 17:36:33 -0500
+Message-ID: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-These are internal nfsd interfaces.
+Nick Piggin reports:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> I'm getting use after frees in aio code in NFS
+>
+> [ 2703.396766] Call Trace:
+> [ 2703.396858]  [<ffffffff8100b057>] ? native_sched_clock+0x27/0x80
+> [ 2703.396959]  [<ffffffff8108509e>] ? put_lock_stats+0xe/0x40
+> [ 2703.397058]  [<ffffffff81088348>] ? lock_release_holdtime+0xa8/0x140
+> [ 2703.397159]  [<ffffffff8108a2a5>] lock_acquire+0x95/0x1b0
+> [ 2703.397260]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
+> [ 2703.397361]  [<ffffffff81039701>] ? get_parent_ip+0x11/0x50
+> [ 2703.397464]  [<ffffffff81612a31>] _raw_spin_lock_irq+0x41/0x80
+> [ 2703.397564]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
+> [ 2703.397662]  [<ffffffff811627db>] aio_put_req+0x2b/0x60
+> [ 2703.397761]  [<ffffffff811647fe>] do_io_submit+0x2be/0x7c0
+> [ 2703.397895]  [<ffffffff81164d0b>] sys_io_submit+0xb/0x10
+> [ 2703.397995]  [<ffffffff8100307b>] system_call_fastpath+0x16/0x1b
+>
+> Adding some tracing, it is due to nfs completing the request then
+> returning something other than -EIOCBQUEUED, so aio.c
+> also completes the request.
+
+To address this, prevent the NFS direct I/O engine from completing
+async iocbs when the forward path returns an error other than
+EIOCBQUEUED.
+
+This appears to survive ^C during both "xfstest no. 208" and "fsx -Z."
+
+Cc: Stable <stable@kernel.org>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/acl.h              |   61 +++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/idmap.h            |   64 ++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4acl.c          |    2 +-
- fs/nfsd/nfs4idmap.c        |    2 +-
- fs/nfsd/nfs4xdr.c          |    5 ++-
- fs/nfsd/nfsctl.c           |    2 +-
- fs/nfsd/vfs.c              |    4 +-
- include/linux/nfs4_acl.h   |   61 -----------------------------------------
- include/linux/nfsd_idmap.h |   64 --------------------------------------------
- 9 files changed, 133 insertions(+), 132 deletions(-)
- create mode 100644 fs/nfsd/acl.h
- create mode 100644 fs/nfsd/idmap.h
- delete mode 100644 include/linux/nfs4_acl.h
- delete mode 100644 include/linux/nfsd_idmap.h
 
-diff --git a/fs/nfsd/acl.h b/fs/nfsd/acl.h
-new file mode 100644
-index 0000000..c9c05a7
---- /dev/null
-+++ b/fs/nfsd/acl.h
-@@ -0,0 +1,61 @@
-+/*
-+ *  include/linux/nfs4_acl.c
-+ *
-+ *  Common NFSv4 ACL handling definitions.
-+ *
-+ *  Copyright (c) 2002 The Regents of the University of Michigan.
-+ *  All rights reserved.
-+ *
-+ *  Marius Aamodt Eriksen <marius@umich.edu>
-+ *
-+ *  Redistribution and use in source and binary forms, with or without
-+ *  modification, are permitted provided that the following conditions
-+ *  are met:
-+ *
-+ *  1. Redistributions of source code must retain the above copyright
-+ *     notice, this list of conditions and the following disclaimer.
-+ *  2. Redistributions in binary form must reproduce the above copyright
-+ *     notice, this list of conditions and the following disclaimer in the
-+ *     documentation and/or other materials provided with the distribution.
-+ *  3. Neither the name of the University nor the names of its
-+ *     contributors may be used to endorse or promote products derived
-+ *     from this software without specific prior written permission.
-+ *
-+ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-+ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-+ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-+ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-+ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-+ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ */
-+
-+#ifndef LINUX_NFS4_ACL_H
-+#define LINUX_NFS4_ACL_H
-+
-+#include <linux/posix_acl.h>
-+
-+/* Maximum ACL we'll accept from client; chosen (somewhat arbitrarily) to
-+ * fit in a page: */
-+#define NFS4_ACL_MAX 170
-+
-+struct nfs4_acl *nfs4_acl_new(int);
-+int nfs4_acl_get_whotype(char *, u32);
-+int nfs4_acl_write_who(int who, char *p);
-+int nfs4_acl_permission(struct nfs4_acl *acl, uid_t owner, gid_t group,
-+		                        uid_t who, u32 mask);
-+
-+#define NFS4_ACL_TYPE_DEFAULT	0x01
-+#define NFS4_ACL_DIR		0x02
-+#define NFS4_ACL_OWNER		0x04
-+
-+struct nfs4_acl *nfs4_acl_posix_to_nfsv4(struct posix_acl *,
-+				struct posix_acl *, unsigned int flags);
-+int nfs4_acl_nfsv4_to_posix(struct nfs4_acl *, struct posix_acl **,
-+				struct posix_acl **, unsigned int flags);
-+
-+#endif /* LINUX_NFS4_ACL_H */
-diff --git a/fs/nfsd/idmap.h b/fs/nfsd/idmap.h
-new file mode 100644
-index 0000000..d4a2ac1
---- /dev/null
-+++ b/fs/nfsd/idmap.h
-@@ -0,0 +1,64 @@
-+/*
-+ *  include/linux/nfsd_idmap.h
-+ *
-+ *  Mapping of UID to name and vice versa.
-+ *
-+ *  Copyright (c) 2002, 2003 The Regents of the University of
-+ *  Michigan.  All rights reserved.
-+> *
-+ *  Marius Aamodt Eriksen <marius@umich.edu>
-+ *
-+ *  Redistribution and use in source and binary forms, with or without
-+ *  modification, are permitted provided that the following conditions
-+ *  are met:
-+ *
-+ *  1. Redistributions of source code must retain the above copyright
-+ *     notice, this list of conditions and the following disclaimer.
-+ *  2. Redistributions in binary form must reproduce the above copyright
-+ *     notice, this list of conditions and the following disclaimer in the
-+ *     documentation and/or other materials provided with the distribution.
-+ *  3. Neither the name of the University nor the names of its
-+ *     contributors may be used to endorse or promote products derived
-+ *     from this software without specific prior written permission.
-+ *
-+ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-+ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-+ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-+ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-+ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-+ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-+ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-+ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+ */
-+
-+#ifndef LINUX_NFSD_IDMAP_H
-+#define LINUX_NFSD_IDMAP_H
-+
-+#include <linux/in.h>
-+#include <linux/sunrpc/svc.h>
-+
-+/* XXX from linux/nfs_idmap.h */
-+#define IDMAP_NAMESZ 128
-+
-+#ifdef CONFIG_NFSD_V4
-+int nfsd_idmap_init(void);
-+void nfsd_idmap_shutdown(void);
-+#else
-+static inline int nfsd_idmap_init(void)
-+{
+Here's my take.
+
+ fs/nfs/direct.c |   32 +++++++++++++++++---------------
+ 1 files changed, 17 insertions(+), 15 deletions(-)
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index e6ace0d..c2176f4 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -407,15 +407,16 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 		pos += vec->iov_len;
+ 	}
+ 
+-	if (put_dreq(dreq))
+-		nfs_direct_complete(dreq);
+-
+-	if (requested_bytes != 0)
+-		return 0;
++	/*
++	 * If no bytes were started, return the error, and let the
++	 * generic layer handle the completion.
++	 */
++	if (requested_bytes == 0)
++		return result < 0 ? result : -EIO;
+ 
+-	if (result < 0)
+-		return result;
+-	return -EIO;
++	if (put_dreq(dreq))
++		nfs_direct_write_complete(dreq, dreq->inode);
 +	return 0;
-+}
-+static inline void nfsd_idmap_shutdown(void)
-+{
-+}
-+#endif
+ }
+ 
+ static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
+@@ -841,15 +842,16 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 		pos += vec->iov_len;
+ 	}
+ 
++	/*
++	 * If no bytes were started, return the error, and let the
++	 * generic layer handle the completion.
++	 */
++	if (requested_bytes == 0)
++		return result < 0 ? result : -EIO;
 +
-+int nfsd_map_name_to_uid(struct svc_rqst *, const char *, size_t, __u32 *);
-+int nfsd_map_name_to_gid(struct svc_rqst *, const char *, size_t, __u32 *);
-+int nfsd_map_uid_to_name(struct svc_rqst *, __u32, char *);
-+int nfsd_map_gid_to_name(struct svc_rqst *, __u32, char *);
-+
-+#endif /* LINUX_NFSD_IDMAP_H */
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index e480526..ad88f1c 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -36,7 +36,7 @@
- 
- #include <linux/slab.h>
- #include <linux/nfs_fs.h>
--#include <linux/nfs4_acl.h>
-+#include "acl.h"
- 
- 
- /* mode bit translations: */
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index 844960f..cbd5997 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -33,10 +33,10 @@
-  */
- 
- #include <linux/module.h>
--#include <linux/nfsd_idmap.h>
- #include <linux/seq_file.h>
- #include <linux/sched.h>
- #include <linux/slab.h>
-+#include "idmap.h"
- 
- /*
-  * Cache entry
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 364aae7..2a0814d 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -44,13 +44,14 @@
- #include <linux/namei.h>
- #include <linux/statfs.h>
- #include <linux/utsname.h>
--#include <linux/nfsd_idmap.h>
--#include <linux/nfs4_acl.h>
- #include <linux/sunrpc/svcauth_gss.h>
- 
-+#include "idmap.h"
-+#include "acl.h"
- #include "xdr4.h"
- #include "vfs.h"
- 
-+
- #define NFSDDBG_FACILITY		NFSDDBG_XDR
- 
- /*
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 6840ec3..33b3e2b 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -8,12 +8,12 @@
- #include <linux/namei.h>
- #include <linux/ctype.h>
- 
--#include <linux/nfsd_idmap.h>
- #include <linux/sunrpc/svcsock.h>
- #include <linux/nfsd/syscall.h>
- #include <linux/lockd/lockd.h>
- #include <linux/sunrpc/clnt.h>
- 
-+#include "idmap.h"
- #include "nfsd.h"
- #include "cache.h"
- 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 6a3af2f..b991125 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -35,8 +35,8 @@
- #endif /* CONFIG_NFSD_V3 */
- 
- #ifdef CONFIG_NFSD_V4
--#include <linux/nfs4_acl.h>
--#include <linux/nfsd_idmap.h>
-+#include "acl.h"
-+#include "idmap.h"
- #endif /* CONFIG_NFSD_V4 */
- 
- #include "nfsd.h"
-diff --git a/include/linux/nfs4_acl.h b/include/linux/nfs4_acl.h
-deleted file mode 100644
-index c9c05a7..0000000
---- a/include/linux/nfs4_acl.h
-+++ /dev/null
-@@ -1,61 +0,0 @@
--/*
-- *  include/linux/nfs4_acl.c
-- *
-- *  Common NFSv4 ACL handling definitions.
-- *
-- *  Copyright (c) 2002 The Regents of the University of Michigan.
-- *  All rights reserved.
-- *
-- *  Marius Aamodt Eriksen <marius@umich.edu>
-- *
-- *  Redistribution and use in source and binary forms, with or without
-- *  modification, are permitted provided that the following conditions
-- *  are met:
-- *
-- *  1. Redistributions of source code must retain the above copyright
-- *     notice, this list of conditions and the following disclaimer.
-- *  2. Redistributions in binary form must reproduce the above copyright
-- *     notice, this list of conditions and the following disclaimer in the
-- *     documentation and/or other materials provided with the distribution.
-- *  3. Neither the name of the University nor the names of its
-- *     contributors may be used to endorse or promote products derived
-- *     from this software without specific prior written permission.
-- *
-- *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-- *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-- *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-- *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-- *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-- *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-- *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-- *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-- */
+ 	if (put_dreq(dreq))
+ 		nfs_direct_write_complete(dreq, dreq->inode);
 -
--#ifndef LINUX_NFS4_ACL_H
--#define LINUX_NFS4_ACL_H
+-	if (requested_bytes != 0)
+-		return 0;
 -
--#include <linux/posix_acl.h>
--
--/* Maximum ACL we'll accept from client; chosen (somewhat arbitrarily) to
-- * fit in a page: */
--#define NFS4_ACL_MAX 170
--
--struct nfs4_acl *nfs4_acl_new(int);
--int nfs4_acl_get_whotype(char *, u32);
--int nfs4_acl_write_who(int who, char *p);
--int nfs4_acl_permission(struct nfs4_acl *acl, uid_t owner, gid_t group,
--		                        uid_t who, u32 mask);
--
--#define NFS4_ACL_TYPE_DEFAULT	0x01
--#define NFS4_ACL_DIR		0x02
--#define NFS4_ACL_OWNER		0x04
--
--struct nfs4_acl *nfs4_acl_posix_to_nfsv4(struct posix_acl *,
--				struct posix_acl *, unsigned int flags);
--int nfs4_acl_nfsv4_to_posix(struct nfs4_acl *, struct posix_acl **,
--				struct posix_acl **, unsigned int flags);
--
--#endif /* LINUX_NFS4_ACL_H */
-diff --git a/include/linux/nfsd_idmap.h b/include/linux/nfsd_idmap.h
-deleted file mode 100644
-index d4a2ac1..0000000
---- a/include/linux/nfsd_idmap.h
-+++ /dev/null
-@@ -1,64 +0,0 @@
--/*
-- *  include/linux/nfsd_idmap.h
-- *
-- *  Mapping of UID to name and vice versa.
-- *
-- *  Copyright (c) 2002, 2003 The Regents of the University of
-- *  Michigan.  All rights reserved.
--> *
-- *  Marius Aamodt Eriksen <marius@umich.edu>
-- *
-- *  Redistribution and use in source and binary forms, with or without
-- *  modification, are permitted provided that the following conditions
-- *  are met:
-- *
-- *  1. Redistributions of source code must retain the above copyright
-- *     notice, this list of conditions and the following disclaimer.
-- *  2. Redistributions in binary form must reproduce the above copyright
-- *     notice, this list of conditions and the following disclaimer in the
-- *     documentation and/or other materials provided with the distribution.
-- *  3. Neither the name of the University nor the names of its
-- *     contributors may be used to endorse or promote products derived
-- *     from this software without specific prior written permission.
-- *
-- *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-- *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-- *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-- *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-- *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-- *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-- *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-- *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-- *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-- *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-- */
--
--#ifndef LINUX_NFSD_IDMAP_H
--#define LINUX_NFSD_IDMAP_H
--
--#include <linux/in.h>
--#include <linux/sunrpc/svc.h>
--
--/* XXX from linux/nfs_idmap.h */
--#define IDMAP_NAMESZ 128
--
--#ifdef CONFIG_NFSD_V4
--int nfsd_idmap_init(void);
--void nfsd_idmap_shutdown(void);
--#else
--static inline int nfsd_idmap_init(void)
--{
--	return 0;
--}
--static inline void nfsd_idmap_shutdown(void)
--{
--}
--#endif
--
--int nfsd_map_name_to_uid(struct svc_rqst *, const char *, size_t, __u32 *);
--int nfsd_map_name_to_gid(struct svc_rqst *, const char *, size_t, __u32 *);
--int nfsd_map_uid_to_name(struct svc_rqst *, __u32, char *);
--int nfsd_map_gid_to_name(struct svc_rqst *, __u32, char *);
--
--#endif /* LINUX_NFSD_IDMAP_H */
--- 
-1.7.1
+-	if (result < 0)
+-		return result;
+-	return -EIO;
++	return 0;
+ }
+ 
+ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
 
