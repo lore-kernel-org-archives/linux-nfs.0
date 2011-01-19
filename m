@@ -1,54 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63040 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33071 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751690Ab1ASBps convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 20:45:48 -0500
-Subject: RE: 4.1 no-pnfs mount option?
+	id S1751644Ab1ASXbu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 18:31:50 -0500
+Subject: Re: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Daniel.Muntz@emc.com
-Cc: matt@linuxbox.com, rees@umich.edu, androsadamson@gmail.com,
-        linux-nfs@vger.kernel.org, bhalevy@panasas.com
-In-Reply-To: <DE966DA98A4ABE438D726BDF1699CF61043985B639@MX05A.corp.emc.com>
-References: <DE966DA98A4ABE438D726BDF1699CF61043985B639@MX05A.corp.emc.com>
+To: Nick Piggin <npiggin@gmail.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wen.gang.wang@oracle.com
+In-Reply-To: <AANLkTikRX8nxh-gp=Fdr21dg-DLmUb2FxYXrM2A0hfN0@mail.gmail.com>
+References: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
+	 <1295479517.22151.16.camel@heimdal.trondhjem.org>
+	 <AANLkTikRX8nxh-gp=Fdr21dg-DLmUb2FxYXrM2A0hfN0@mail.gmail.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 18 Jan 2011 20:44:45 -0500
-Message-ID: <1295401485.2941.1.camel@heimdal.trondhjem.org>
+Date: Wed, 19 Jan 2011 18:31:40 -0500
+Message-ID: <1295479900.22151.19.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-01-18 at 19:53 -0500, Daniel.Muntz@emc.com wrote: 
+On Thu, 2011-01-20 at 10:26 +1100, Nick Piggin wrote: 
+> On Thu, Jan 20, 2011 at 10:25 AM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> > On Wed, 2011-01-19 at 17:36 -0500, Chuck Lever wrote:
+> >> Nick Piggin reports:
+> >>
+> >> > I'm getting use after frees in aio code in NFS
+> >> >
+> >> > [ 2703.396766] Call Trace:
+> >> > [ 2703.396858]  [<ffffffff8100b057>] ? native_sched_clock+0x27/0x80
+> >> > [ 2703.396959]  [<ffffffff8108509e>] ? put_lock_stats+0xe/0x40
+> >> > [ 2703.397058]  [<ffffffff81088348>] ? lock_release_holdtime+0xa8/0x140
+> >> > [ 2703.397159]  [<ffffffff8108a2a5>] lock_acquire+0x95/0x1b0
+> >> > [ 2703.397260]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
+> >> > [ 2703.397361]  [<ffffffff81039701>] ? get_parent_ip+0x11/0x50
+> >> > [ 2703.397464]  [<ffffffff81612a31>] _raw_spin_lock_irq+0x41/0x80
+> >> > [ 2703.397564]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
+> >> > [ 2703.397662]  [<ffffffff811627db>] aio_put_req+0x2b/0x60
+> >> > [ 2703.397761]  [<ffffffff811647fe>] do_io_submit+0x2be/0x7c0
+> >> > [ 2703.397895]  [<ffffffff81164d0b>] sys_io_submit+0xb/0x10
+> >> > [ 2703.397995]  [<ffffffff8100307b>] system_call_fastpath+0x16/0x1b
+> >> >
+> >> > Adding some tracing, it is due to nfs completing the request then
+> >> > returning something other than -EIOCBQUEUED, so aio.c
+> >> > also completes the request.
+> >>
+> >> To address this, prevent the NFS direct I/O engine from completing
+> >> async iocbs when the forward path returns an error other than
+> >> EIOCBQUEUED.
+> >>
+> >> This appears to survive ^C during both "xfstest no. 208" and "fsx -Z."
+> >>
+> >> Cc: Stable <stable@kernel.org>
+> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >> ---
+> >>
+> >> Here's my take.
+> >>
+> >>  fs/nfs/direct.c |   32 +++++++++++++++++---------------
+> >>  1 files changed, 17 insertions(+), 15 deletions(-)
+> >>
+> >> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> >> index e6ace0d..c2176f4 100644
+> >> --- a/fs/nfs/direct.c
+> >> +++ b/fs/nfs/direct.c
+> >> @@ -407,15 +407,16 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+> >>               pos += vec->iov_len;
+> >>       }
+> >>
+> >> -     if (put_dreq(dreq))
+> >> -             nfs_direct_complete(dreq);
+> >> -
+> >> -     if (requested_bytes != 0)
+> >> -             return 0;
+> >> +     /*
+> >> +      * If no bytes were started, return the error, and let the
+> >> +      * generic layer handle the completion.
+> >> +      */
+> >> +     if (requested_bytes == 0)
+> >> +             return result < 0 ? result : -EIO;
+> >>
+> >> -     if (result < 0)
+> >> -             return result;
+> >> -     return -EIO;
+> >> +     if (put_dreq(dreq))
+> >> +             nfs_direct_write_complete(dreq, dreq->inode);
+> >                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> > In nfs_direct_read_schedule_iovec()? Shouldn't that be
+> >                nfs_direct_complete(dreq);
+> >
+> > Also, why is EIO the correct reply when no bytes were read/written? Why
+> > shouldn't the VFS aio code be able to cope with a zero byte reply?
 > 
-> > -----Original Message-----
-> > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com] 
-> > Sent: Tuesday, January 18, 2011 11:15 AM
-> > To: Matt W. Benjamin
-> > Cc: Muntz, Daniel; rees@umich.edu; androsadamson@gmail.com; 
-> > linux-nfs@vger.kernel.org; Benny Halevy
-> > Subject: Re: 4.1 no-pnfs mount option?
-> > 
-> > On Tue, 2011-01-18 at 13:46 -0500, Matt W. Benjamin wrote: 
-> > > Hi,
-> > > 
-> > > Isn't by mount a plausible way to select for pnfs 
-> > independent of debugging?  Is it assured that a client 
-> > administrator would never reasonably wish to do this?
-> > 
-> > "Why would an administrator never want to do this?" is not a helpful
-> > question.
-> > 
-> > A more useful question is "what reason would you possibly have for
-> > overriding the server's request that you do pNFS when your client has
-> > pNFS support?" What makes pNFS so special that we must allow
-> > administrators to do this on a per-mount basis?
-> 
-> By the same logic, why should a user be allowed to select which version of NFS they use for mounting when the server has a perfectly reasonable way of negotiating it?  Getting to choose v2 vs. v3 vs. v4 seems like much less of a distinction than choosing between pNFS and no pNFS.  Frankly, it never even occurred to me that there wouldn't be a mount option to make this choice.  Enabling/disabling the layout driver doesn't fit the existing model of choosing mount behavior, and is a big hammer--it's all or nothing.
-> 
-> Anyway, here's a use case: I'm working at an HPC/gas+oil/satellite data site.  We have an awesome pNFS server for our big data and I want to access my big data with pNFS.  We have another server for homedirs, some big data, and other stuff.  Some mounts are fine with pNFS, others are abysmal.  So, I want to mount some directories with pNFS, and some without pNFS, on the same client, independent of the server configuration.
+> What would it do?
 
-mount -t nfs -overs=4,minorversion=0 foo:/ /bar
+Just return that zero byte reply to userland.
 
-Done... Any more questions?
+zero bytes is a valid reply for ordinary read() and write(), so why
+should we have to do anything different for aio_read()/aio_write()?
 
 -- 
 Trond Myklebust
