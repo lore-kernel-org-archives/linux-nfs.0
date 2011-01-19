@@ -1,56 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:42777 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932835Ab1AMJZg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 04:25:36 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: " J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] NFSD: use nfserr for status after decode_cb_op_status
-Date: Thu, 13 Jan 2011 11:25:31 +0200
-Message-Id: <1294910731-18370-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4D2EC4AC.9090205@panasas.com>
-References: <4D2EC4AC.9090205@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:59142 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752207Ab1ASA5o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Jan 2011 19:57:44 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 4/4] NFS construct consistent co_ownerid for v4.1
+Date: Tue, 18 Jan 2011 19:53:53 -0500
+Message-Id: <1295398433-2759-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1295398433-2759-3-git-send-email-andros@netapp.com>
+References: <1295398433-2759-1-git-send-email-andros@netapp.com>
+ <1295398433-2759-2-git-send-email-andros@netapp.com>
+ <1295398433-2759-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Bugs introduced in 85a56480191ca9f08fc775c129b9eb5c8c1f2c05
-"NFSD: Update XDR decoders in NFSv4 callback client"
+From: Andy Adamson <andros@netapp.com>
 
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+As stated in section 2.4 of RFC 5661, subsequent instances of the client need
+to present the same co_ownerid. Concatenate the clients IP dot address and
+host name to form the co_ownerid.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4callback.c |    6 ++----
- 1 files changed, 2 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4proc.c |   29 +++++++++--------------------
+ 1 files changed, 9 insertions(+), 20 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 21a63da..5a6dcf8 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -484,7 +484,7 @@ static int decode_cb_sequence4res(struct xdr_stream *xdr,
- out:
- 	return status;
- out_default:
--	return nfs_cb_stat_to_errno(status);
-+	return nfs_cb_stat_to_errno(nfserr);
- }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9d992b0..33fc801 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -50,6 +50,7 @@
+ #include <linux/module.h>
+ #include <linux/sunrpc/bc_xprt.h>
+ #include <linux/xattr.h>
++#include <linux/utsname.h>
  
- /*
-@@ -564,11 +564,9 @@ static int nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp,
- 	if (unlikely(status))
- 		goto out;
- 	if (unlikely(nfserr != NFS4_OK))
--		goto out_default;
-+		status = nfs_cb_stat_to_errno(nfserr);
- out:
- 	return status;
--out_default:
--	return nfs_cb_stat_to_errno(status);
- }
+ #include "nfs4_fs.h"
+ #include "delegation.h"
+@@ -4572,27 +4573,15 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	*p = htonl((u32)clp->cl_boot_time.tv_nsec);
+ 	args.verifier = &verifier;
  
- /*
+-	while (1) {
+-		args.id_len = scnprintf(args.id, sizeof(args.id),
+-					"%s/%s %u",
+-					clp->cl_ipaddr,
+-					rpc_peeraddr2str(clp->cl_rpcclient,
+-							 RPC_DISPLAY_ADDR),
+-					clp->cl_id_uniquifier);
+-
+-		status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
+-
+-		if (status != -NFS4ERR_CLID_INUSE)
+-			break;
+-
+-		if (signalled())
+-			break;
+-
+-		if (++clp->cl_id_uniquifier == 0)
+-			break;
+-	}
++	args.id_len = scnprintf(args.id, sizeof(args.id),
++				"%s/%s.%s",
++				clp->cl_ipaddr,
++				init_utsname()->nodename,
++				init_utsname()->domainname);
+ 
+-	status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
++	status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
++	if (!status)
++		status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
+ 	dprintk("<-- %s status= %d\n", __func__, status);
+ 	return status;
+ }
 -- 
-1.7.3.4
+1.6.6
 
