@@ -1,61 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:6000 "EHLO mx2.netapp.com"
+Received: from shutemov.name ([188.40.19.243]:43035 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753222Ab1AFLgi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Jan 2011 06:36:38 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 02/15] pnfs: remove unnecessary field lgp->status
-Date: Thu,  6 Jan 2011 06:36:19 -0500
-Message-Id: <1294313792-14280-3-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
-References: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
+	id S1755254Ab1ATLhW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Jan 2011 06:37:22 -0500
+Date: Thu, 20 Jan 2011 13:37:22 +0200
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v3 09/16] sunrpc: introduce rpc_pipefs_add_destroy_cb()
+Message-ID: <20110120113722.GC24349@shutemov.name>
+References: <1295012954-7769-1-git-send-email-kas@openvz.org>
+ <1295012954-7769-10-git-send-email-kas@openvz.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1295012954-7769-10-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/nfs4proc.c       |    3 +--
- include/linux/nfs_xdr.h |    1 -
- 2 files changed, 1 insertions(+), 3 deletions(-)
+On Fri, Jan 14, 2011 at 03:49:07PM +0200, Kirill A. Shutemov wrote:
+> Add facility to do some action on destroying of rpc_pipefs superblock.
+> 
+> Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+> ---
+>  include/linux/sunrpc/rpc_pipe_fs.h |    3 ++
+>  net/sunrpc/rpc_pipe.c              |   51 ++++++++++++++++++++++++++++++++++-
+>  2 files changed, 52 insertions(+), 2 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+> index b09bfa5..f5216f1 100644
+> --- a/include/linux/sunrpc/rpc_pipe_fs.h
+> +++ b/include/linux/sunrpc/rpc_pipe_fs.h
+> @@ -46,6 +46,9 @@ RPC_I(struct inode *inode)
+>  
+>  extern struct vfsmount *init_rpc_pipefs;
+>  
+> +extern int rpc_pipefs_add_destroy_cb(struct super_block *sb,
+> +		void (*destroy_cb)(void *data), void *data);
+> +
+>  extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
+>  
+>  struct rpc_clnt;
+> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+> index 484c9a3..39511e3 100644
+> --- a/net/sunrpc/rpc_pipe.c
+> +++ b/net/sunrpc/rpc_pipe.c
+> @@ -939,6 +939,31 @@ static const struct super_operations s_ops = {
+>  
+>  #define RPCAUTH_GSSMAGIC 0x67596969
+>  
+> +struct destroy_cb {
+> +	struct list_head list;
+> +	void (*callback)(void *data);
+> +	void *data;
+> +};
+> +
+> +int rpc_pipefs_add_destroy_cb(struct super_block *sb,
+> +		void (*destroy_cb)(void *data), void *data)
+> +{
+> +	struct destroy_cb *dcb;
+> +	struct list_head *destroy_cb_list = sb->s_fs_info;
+> +
+> +	dcb = kmalloc(sizeof(*dcb), GFP_KERNEL);
+> +	if (!dcb)
+> +		return -ENOMEM;
+> +
+> +	dcb->callback = destroy_cb;
+> +	dcb->data = data;
+> +	INIT_LIST_HEAD(&dcb->list);
+> +	list_add(&dcb->list, destroy_cb_list);
+> +
+> +	return 0;
+> +}
+> +EXPORT_SYMBOL_GPL(rpc_pipefs_add_destroy_cb);
+> +
+>  /*
+>   * We have a single directory with 1 node in it.
+>   */
+> @@ -1004,8 +1029,16 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+>  		iput(inode);
+>  		return -ENOMEM;
+>  	}
+> -	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
+> +	/* List of destroy callbacks */
+> +	sb->s_fs_info = kmalloc(sizeof(struct list_head), GFP_KERNEL);
+> +	if (!sb->s_fs_info)
+> +		return -ENOMEM;
+> +	INIT_LIST_HEAD((struct list_head*) &sb->s_fs_info);
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 18a4d5a..28e175e 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5326,7 +5326,6 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
- 			return;
- 		}
- 	}
--	lgp->status = task->tk_status;
- 	dprintk("<-- %s\n", __func__);
- }
- 
-@@ -5382,7 +5381,7 @@ int nfs4_proc_layoutget(struct nfs4_layoutget *lgp)
- 	status = nfs4_wait_for_completion_rpc_task(task);
- 	if (status != 0)
- 		goto out;
--	status = lgp->status;
-+	status = task->tk_status;
- 	if (status != 0)
- 		goto out;
- 	status = pnfs_layout_process(lgp);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 236e7e4..8fcc542 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -223,7 +223,6 @@ struct nfs4_layoutget {
- 	struct nfs4_layoutget_args args;
- 	struct nfs4_layoutget_res res;
- 	struct pnfs_layout_segment **lsegpp;
--	int status;
- };
- 
- struct nfs4_getdeviceinfo_args {
+'&' is by mistake here.
+
+> +	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL)) {
+> +		kfree(sb->s_fs_info);
+>  		return -ENOMEM;
+> +	}
+> +
+>  	return 0;
+>  }
+
 -- 
-1.7.2.1
-
+ Kirill A. Shutemov
