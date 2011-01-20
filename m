@@ -1,74 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:18851 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752548Ab1AYPvX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2011 10:51:23 -0500
-Content-Type: text/plain;
-	charset="UTF-8"
-Subject: RE: Patched up cthon source?
-Date: Tue, 25 Jan 2011 10:46:27 -0500
-Message-ID: <BF3BB6D12298F54B89C8DCC1E4073D8002D91694@CORPUSMX50A.corp.emc.com>
-In-Reply-To: <1295969912.6867.2.camel@heimdal.trondhjem.org>
-References: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com> <83EC814B-1043-46B2-8F5E-E1FB1F5B56BF@oracle.com> <4D3DFE40.1070605@panasas.com> <4D3ED37D.6020606@netapp.com> <20110125095649.446212fd@tlielax.poochiereds.net> <1295969912.6867.2.camel@heimdal.trondhjem.org>
-From: <peter.staubach@emc.com>
-To: <Trond.Myklebust@netapp.com>, <jlayton@redhat.com>
-Cc: <bjschuma@netapp.com>, <bhalevy@panasas.com>, <chuck.lever@oracle.com>,
-        <thomas@netapp.com>, <linux-nfs@vger.kernel.org>
+Received: from nm11.bullet.mail.sp2.yahoo.com ([98.139.91.81]:24779 "HELO
+	nm11.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752430Ab1ATGz1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jan 2011 01:55:27 -0500
+Message-ID: <164222.10285.qm@web111725.mail.gq1.yahoo.com>
+References: <574433.84174.qm@web111710.mail.gq1.yahoo.com> <AANLkTim8r-MWCytdP7QmhBoe9iM+39sZwmqaEzj64NtS@mail.gmail.com> <146716.56866.qm@web111715.mail.gq1.yahoo.com> <AANLkTi=jXihAzfaCz3BLum97hxsoimC6rSEEv5Uyf3y7@mail.gmail.com>
+Date: Wed, 19 Jan 2011 22:55:25 -0800 (PST)
+From: Mahmood Naderan <nt_mahmood@yahoo.com>
+Subject: Re: high traffic because of loggig
+To: Lyle Seaman <lyleseaman@gmail.com>
+Cc: nfs <linux-nfs@vger.kernel.org>
+In-Reply-To: <AANLkTi=jXihAzfaCz3BLum97hxsoimC6rSEEv5Uyf3y7@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-VGhhdCdzIGEgZ3JlYXQgaWRlYS4NCg0KUGVyaGFwcyB3ZSBjb3VsZCBhbHNvIGZpeCB0aGUgc3Rh
-dCBwcm9ncmFtIHRvIGlnbm9yZSBsaW5lcyB0aGF0IGl0IGlzbid0IGxvb2tpbmcgZm9yLi4uDQoN
-CgkJcHMNCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogbGludXgtbmZzLW93
-bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5v
-cmddIE9uIEJlaGFsZiBPZiBUcm9uZCBNeWtsZWJ1c3QNClNlbnQ6IFR1ZXNkYXksIEphbnVhcnkg
-MjUsIDIwMTEgMTA6MzkgQU0NClRvOiBKZWZmIExheXRvbg0KQ2M6IEJyeWFuIFNjaHVtYWtlcjsg
-QmVubnkgSGFsZXZ5OyBDaHVjayBMZXZlcjsgVGhvbWFzIEhheW5lczsgbGludXgtbmZzQHZnZXIu
-a2VybmVsLm9yZw0KU3ViamVjdDogUmU6IFBhdGNoZWQgdXAgY3Rob24gc291cmNlPw0KDQpPbiBU
-dWUsIDIwMTEtMDEtMjUgYXQgMDk6NTYgLTA1MDAsIEplZmYgTGF5dG9uIHdyb3RlOiANCj4gT24g
-VHVlLCAyNSBKYW4gMjAxMSAwODo0MzoyNSAtMDUwMA0KPiBCcnlhbiBTY2h1bWFrZXIgPGJqc2No
-dW1hQG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gPiBPbiAwMS8yNC8yMDExIDA1OjMzIFBNLCBC
-ZW5ueSBIYWxldnkgd3JvdGU6DQo+ID4gPiB0aGlzIGlzIGEgcHJvYmxlbSB3aXRoIHRoZSB2ZXJz
-aW9uIG9mIG5yb2ZmIG9uIG5ld2VyIGRpc3RyaWJ1dGlvbnMuDQo+ID4gDQo+ID4gTXkgdmVyc2lv
-biBvZiBncm9mZiAoMS4yMSkgaXMgc3BsaXR0aW5nIHRoZSBlcnJvciBpbnRvIHR3byBsaW5lcywg
-c28gSSBhbSB1c2luZyB0aGUgZm9sbG93aW5nIHBhdGNoLg0KPiA+IA0KPiA+IEJyeWFuDQo+ID4g
-DQo+IA0KPiBZZXAsIHRoaXMgd29ya2Fyb3VuZCBzdG9wcGVkIHdvcmtpbmcgYXJvdW5kIGZvciBt
-ZSBvbiBteSByYXdoaWRlIGJveA0KPiBicm9rZSB5ZXN0ZXJkYXkgZm9yIHRoZSBzYW1lIHJlYXNv
-bi4NCj4gDQo+IEkgdGhpbmsgdGhpcyBwYXRjaCBtYXkgYmUgYSBiZXR0ZXIgYXBwcm9hY2ggdGhh
-biB0cnlpbmcgdG8gZ3JlcCBvdXQNCj4gcmFuZG9tIHN0dWZmLCBidXQgSSBkb24ndCBrbm93IHdo
-ZXRoZXIgbm9uLUdOVSB0YmwgcHJvZ3JhbXMgd2lsbCBiYXJmDQo+IG9uIGl0LiBJZiBhbnlvbmUg
-aGFzIGEgc29sYXJpcyBib3ggaGFuZHksIGNvdWxkIHlvdSBsZXQgbWUga25vdyBpZg0KPiB0aGlz
-IGJyZWFrcyBvbiBpdD8NCj4gDQo+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS1bc25pcF0tLS0tLS0t
-LS0tLS0tLS0tLS0NCj4gW1BBVENIXSBjdGhvbjA0OiBhZGQgIm5vd2FybiIgb3B0aW9uIHRvIG5y
-b2ZmLmluIHRhYmxlcw0KPiANCj4gVGhpcyBwcmV2ZW50cyB0aGUgdGJsIHByZXByb2Nlc3NvciBm
-cm9tIHN0dWZmaW5nIHdhcm5pbmdzIGludG8gdGhlDQo+IHJlc3VsdGluZyBmaWxlLCB3aGljaCBz
-dWJzZXF1ZW50bHkgY2FuIG1ha2UgbnJvZmYgc3BldyB3YXJuaW5ncyBsaWtlDQo+IHRoaXMgb24g
-c3RkZXJyOg0KPiANCj4gICAgIHdhcm5pbmc6IGZpbGUgYG5yb2ZmLmluJywgYXJvdW5kIGxpbmUg
-NDc6DQo+ICAgICAgIHRhYmxlIHdpZGVyIHRoYW4gbGluZSB3aWR0aA0KPiANCj4gVW5mb3J0dW5h
-dGVseSwgSSdtIG5vdCBzdXJlIGhvdyBub24tZ251IHRibCBwcm9ncmFtcyB3aWxsIHJlYWN0IHRv
-DQo+IHRoaXMgb3B0aW9uLCBzbyBZTU1WLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogSmVmZiBMYXl0
-b24gPGpsYXl0b25AcmVkaGF0LmNvbT4NCj4gLS0tDQo+ICBnZW5lcmFsL25yb2ZmLmluIHwgICAg
-NCArKy0tDQo+ICAxIGZpbGVzIGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMo
-LSkNCj4gDQo+IGRpZmYgLS1naXQgYS9nZW5lcmFsL25yb2ZmLmluIGIvZ2VuZXJhbC9ucm9mZi5p
-bg0KPiBpbmRleCA1MjJhYzgwLi5hOGFjYjNhIDEwMDY0NA0KPiAtLS0gYS9nZW5lcmFsL25yb2Zm
-LmluDQo+ICsrKyBiL2dlbmVyYWwvbnJvZmYuaW4NCj4gQEAgLTE4LDcgKzE4LDcgQEAgYmVuY2ht
-YXJrcy4NCj4gIC5MUA0KPiAgSSByYW4gdGhlIGJlbmNobWFya3Mgb24gdGhlIGZvbGxvd2luZyBj
-b25maWd1cmF0aW9uczoNCj4gIC5UUw0KPiAtY2VudGVyOw0KPiArY2VudGVyIG5vd2FybjsNCj4g
-IGwgbCBsIGwuDQo+ICBDUFUJVW5peAlGb3J0cmFuCU1lbW9yeQ0KPiAgLnNwIDRwDQo+IEBAIC0z
-OCw3ICszOCw3IEBAIEEgYnViYmxlIHNvcnQgb2YgaW50ZWdlcnMuDQo+ICBBIHByaW1lIG51bWJl
-ciBnZW5lcmF0b3IuDQo+ICAuTFANCj4gIC5UUw0KPiAtY2VudGVyOw0KPiArY2VudGVyIG5vd2Fy
-bjsNCj4gICBjfGN8YyBzfGMgc3wNCj4gICBjfGN8YyBzfGMgc3wNCj4gICBjfGN8YyBzfGMgc3wN
-Cg0KSGVyZSdzIGEgcmFkaWNhbCBpZGVhOiB3aGF0IHNheSB3ZSBjaGFuZ2UgdGhlIG5yb2ZmLmlu
-IGZpbGUgc28gdGhhdCBpdA0Kbm8gbG9uZ2VyIHRyaWVzIHRvIGZpdCBhIDEzMGlzaCBjaGFyYWN0
-ZXIgd2lkZSB0YWJsZSBpbnRvIGFuIDgwDQpjaGFyYWN0ZXIgd2lkZSBwYWdlPw0KDQpDaGVlcnMN
-CiAgIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29t
-DQoNCi0tDQpUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5z
-dWJzY3JpYmUgbGludXgtbmZzIiBpbg0KdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9t
-b0B2Z2VyLmtlcm5lbC5vcmcNCk1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtl
-cm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQoT77+977+97Lm7HO+/vSbvv71+77+9Ju+/
-vRjvv73vv70rLe+/ve+/vd22F++/ve+/vXfvv73vv73Lm++/ve+/ve+/vW3vv71i77+977+9Z37I
-p++/vRfvv73vv73cqH3vv73vv73vv73GoHrvv70majordu+/ve+/ve+/vQfvv73vv73vv73vv716
-Wivvv73vv70rembvv73vv73vv71o77+977+977+9fu+/ve+/ve+/ve+/vWnvv73vv73vv71677+9
-Hu+/vXfvv73vv73vv70/77+977+977+977+9Ju+/vSnfohtm
+>Try sticking one of these in there before the redirection:  ' | dd bs=8m '
+ 
+Thanks,
+// Naderan *Mahmood;
+
+
+
+----- Original Message ----
+From: Lyle Seaman <lyleseaman@gmail.com>
+To: Mahmood Naderan <nt_mahmood@yahoo.com>
+Sent: Thu, January 20, 2011 1:30:09 AM
+Subject: Re: high traffic because of loggig
+
+Try sticking one of these in there before the redirection:  ' | dd bs=8m '
+
+On Wed, Jan 19, 2011 at 2:58 PM, Mahmood Naderan <nt_mahmood@yahoo.com> wrote:
+>>It would depend on the application.
+>
+> It uses the standard output redirection '>' which I think every 5KB writes the
+> output. Can I increase that threshold?
+>
+> // Naderan *Mahmood;
+>
+>
+>
+> ----- Original Message ----
+> From: Another Sillyname <anothersname@googlemail.com>
+> To: Mahmood Naderan <nt_mahmood@yahoo.com>
+> Sent: Wed, January 19, 2011 10:05:07 PM
+> Subject: Re: high traffic because of loggig
+>
+> On 19 January 2011 18:09, Mahmood Naderan <nt_mahmood@yahoo.com> wrote:
+>> Hi,
+>> In my cluster that /home is shared (from a server and some workers). The
+>>problem
+>> is when I run my job that has some huge log data, the disk access as well as
+>> network traffic is very high. I want to know is there any way so
+>> that the worker writes the log locally and at the end, that log is copied 
+from
+>> worker's internal hdd to server's hdd (/home)?
+>>
+>> Hope that I clearly stated the problem.
+>> Thanks,
+>> // Naderan *Mahmood;
+>>
+>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
+> It would depend on the application.
+>
+> If the application doesn't have options to choose the path for the log
+> files you could set up a symbolic link to the path back to the local
+> drive.
+>
+>
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
+
+
+      
