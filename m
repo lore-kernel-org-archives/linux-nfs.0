@@ -1,49 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:23287 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932069Ab1ACQBk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jan 2011 11:01:40 -0500
-Subject: Re: [patch -next] lockd: double unlock in next_host_state()
+Received: from magus.merit.edu ([198.108.1.13]:51857 "EHLO magus.merit.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754387Ab1AUQxP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Jan 2011 11:53:15 -0500
+Date: Fri, 21 Jan 2011 11:53:09 -0500
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 0/3] nfs-utils: blkmapd
+Message-ID: <cover.1295627825.git.rees@umich.edu>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20110102202042.GN1886@bicker>
-Date: Mon, 3 Jan 2011 10:59:36 -0500
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
-Message-Id: <001458D4-F513-4959-9BE7-476F8542D009@oracle.com>
-References: <20110102202042.GN1886@bicker>
-To: Dan Carpenter <error27@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+This set of patches fixes various bugs in stripe size calculation turned up
+in testing.  I believe blkmapd will now handle any layout that is allowed by
+the spec and can be constructed by device-mapper.
 
-On Jan 2, 2011, at 3:20 PM, Dan Carpenter wrote:
+If a striped device is not a multiple of both the number of constituent
+devices and the stripe width, blkmapd will truncate the device so that
+device-mapper can handle it.
 
-> We unlock again after we goto out.
-> 
-> Signed-off-by: Dan Carpenter <error27@gmail.com>
-> 
-> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index c106d6a..5f1bcb2 100644
-> --- a/fs/lockd/host.c
-> +++ b/fs/lockd/host.c
-> @@ -532,7 +532,6 @@ static struct nlm_host *next_host_state(struct hlist_head *cache,
-> 			host->h_state++;
-> 
-> 			nlm_get_host(host);
-> -			mutex_unlock(&nlm_host_mutex);
-> 			goto out;
-> 		}
-> 	}
+Jim Rees (3):
+  change device offset to signed to match the spec
+  Fix calculation of stripe device and unit sizes
+  Various improvements to comments and syslog messages
 
-Would it also make sense to replace the "goto out;" with a "break;" ?
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+ utils/blkmapd/device-discovery.c |    2 -
+ utils/blkmapd/device-discovery.h |    4 +-
+ utils/blkmapd/device-process.c   |   50 +++++++++++++++++++------------------
+ utils/blkmapd/dm-device.c        |   28 ++++++++++++++++-----
+ 4 files changed, 49 insertions(+), 35 deletions(-)
 
