@@ -1,150 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18993 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755998Ab1AaP1g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Jan 2011 10:27:36 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 3/3] pnfs: fix pnfs lock inversion of i_lock and cl_lock
-Date: Mon, 31 Jan 2011 10:27:13 -0500
-Message-Id: <1296487633-21057-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1296487633-21057-1-git-send-email-iisaman@netapp.com>
-References: <1296487633-21057-1-git-send-email-iisaman@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:64642 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752605Ab1AUCoj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jan 2011 21:44:39 -0500
+Date: Fri, 21 Jan 2011 10:42:44 +0800
+From: Wengang Wang <wen.gang.wang@oracle.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: npiggin@gmail.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wen.gang.wang@oracle.com
+Subject: Re: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
+Message-ID: <20110121024244.GB9138@laptop.uk.oracle.com>
+References: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The pnfs code was using throughout the lock order i_lock, cl_lock.
-This conflicts with the nfs delegation code.  Rework the pnfs code
-to avoid taking both locks simultaneously.
+On 11-01-19 17:36, Chuck Lever wrote:
+> Nick Piggin reports:
+> 
+> > I'm getting use after frees in aio code in NFS
+> >
+> > [ 2703.396766] Call Trace:
+> > [ 2703.396858]  [<ffffffff8100b057>] ? native_sched_clock+0x27/0x80
+> > [ 2703.396959]  [<ffffffff8108509e>] ? put_lock_stats+0xe/0x40
+> > [ 2703.397058]  [<ffffffff81088348>] ? lock_release_holdtime+0xa8/0x140
+> > [ 2703.397159]  [<ffffffff8108a2a5>] lock_acquire+0x95/0x1b0
+> > [ 2703.397260]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
+> > [ 2703.397361]  [<ffffffff81039701>] ? get_parent_ip+0x11/0x50
+> > [ 2703.397464]  [<ffffffff81612a31>] _raw_spin_lock_irq+0x41/0x80
+> > [ 2703.397564]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
+> > [ 2703.397662]  [<ffffffff811627db>] aio_put_req+0x2b/0x60
+> > [ 2703.397761]  [<ffffffff811647fe>] do_io_submit+0x2be/0x7c0
+> > [ 2703.397895]  [<ffffffff81164d0b>] sys_io_submit+0xb/0x10
+> > [ 2703.397995]  [<ffffffff8100307b>] system_call_fastpath+0x16/0x1b
+> >
+> > Adding some tracing, it is due to nfs completing the request then
+> > returning something other than -EIOCBQUEUED, so aio.c
+> > also completes the request.
+> 
+> To address this, prevent the NFS direct I/O engine from completing
+> async iocbs when the forward path returns an error other than
+> EIOCBQUEUED.
+> 
+> This appears to survive ^C during both "xfstest no. 208" and "fsx -Z."
+> 
+> Cc: Stable <stable@kernel.org>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+> Here's my take.
+> 
+>  fs/nfs/direct.c |   32 +++++++++++++++++---------------
+>  1 files changed, 17 insertions(+), 15 deletions(-)
+> 
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index e6ace0d..c2176f4 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -407,15 +407,16 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+>  		pos += vec->iov_len;
+>  	}
+>  
+> -	if (put_dreq(dreq))
+> -		nfs_direct_complete(dreq);
+> -
+> -	if (requested_bytes != 0)
+> -		return 0;
+> +	/*
+> +	 * If no bytes were started, return the error, and let the
+> +	 * generic layer handle the completion.
+> +	 */
 
-Currently the code takes the double lock to add/remove the layout to a
-nfs_client list, while atomically checking that the list of lsegs is
-empty.  To avoid this, we rely on existing serializations.  When a
-layout is initialized with lseg count equal zero, LAYOUTGET's
-openstateid serialization is in effect, making it safe to assume it
-stays zero unless we change it.  And once a layout's lseg count drops
-to zero, it is set as DESTROYED and so will stay at zero.
+But the put_dreq() -> nfs_direct_complete() does more than complete the
+aio.
+It also drops ref on dreq with put_dreq() and does
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/callback_proc.c |    2 +-
- fs/nfs/pnfs.c          |   50 +++++++++++++++++++++++++++--------------------
- 2 files changed, 30 insertions(+), 22 deletions(-)
+complete_all(&dreq->completion);
+nfs_direct_req_release(dreq);
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 8958757..2f41dcce 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -188,10 +188,10 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
- 			rv = NFS4ERR_DELAY;
- 		list_del_init(&lo->plh_bulk_recall);
- 		spin_unlock(&ino->i_lock);
-+		pnfs_free_lseg_list(&free_me_list);
- 		put_layout_hdr(lo);
- 		iput(ino);
- 	}
--	pnfs_free_lseg_list(&free_me_list);
- 	return rv;
- }
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index f89c3bb..ee6c69a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -247,13 +247,6 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
- 		BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 		list_del(&lseg->pls_list);
- 		if (list_empty(&lseg->pls_layout->plh_segs)) {
--			struct nfs_client *clp;
--
--			clp = NFS_SERVER(ino)->nfs_client;
--			spin_lock(&clp->cl_lock);
--			/* List does not take a reference, so no need for put here */
--			list_del_init(&lseg->pls_layout->plh_layouts);
--			spin_unlock(&clp->cl_lock);
- 			set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
- 			/* Matched by initial refcount set in alloc_init_layout_hdr */
- 			put_layout_hdr_locked(lseg->pls_layout);
-@@ -319,14 +312,30 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 	return invalid - removed;
- }
- 
-+/* note free_me must contain lsegs from a single layout_hdr */
- void
- pnfs_free_lseg_list(struct list_head *free_me)
- {
--	struct pnfs_layout_segment *lseg, *tmp;
-+	if (!list_empty(free_me)) {
-+		struct pnfs_layout_segment *lseg, *tmp;
-+		struct pnfs_layout_hdr *lo;
- 
--	list_for_each_entry_safe(lseg, tmp, free_me, pls_list) {
--		list_del(&lseg->pls_list);
--		free_lseg(lseg);
-+		lo = list_first_entry(free_me,
-+				      struct pnfs_layout_segment,
-+				      pls_list)->pls_layout;
-+
-+		if (test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags)) {
-+			struct nfs_client *clp;
-+
-+			clp = NFS_SERVER(lo->plh_inode)->nfs_client;
-+			spin_lock(&clp->cl_lock);
-+			list_del_init(&lo->plh_layouts);
-+			spin_unlock(&clp->cl_lock);
-+		}
-+		list_for_each_entry_safe(lseg, tmp, free_me, pls_list) {
-+			list_del(&lseg->pls_list);
-+			free_lseg(lseg);
-+		}
- 	}
- }
- 
-@@ -704,6 +713,7 @@ pnfs_update_layout(struct inode *ino,
- 	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
- 	struct pnfs_layout_hdr *lo;
- 	struct pnfs_layout_segment *lseg = NULL;
-+	bool first = false;
- 
- 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
- 		return NULL;
-@@ -734,7 +744,10 @@ pnfs_update_layout(struct inode *ino,
- 	atomic_inc(&lo->plh_outstanding);
- 
- 	get_layout_hdr(lo);
--	if (list_empty(&lo->plh_segs)) {
-+	if (list_empty(&lo->plh_segs))
-+		first = true;
-+	spin_unlock(&ino->i_lock);
-+	if (first) {
- 		/* The lo must be on the clp list if there is any
- 		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
- 		 */
-@@ -743,17 +756,12 @@ pnfs_update_layout(struct inode *ino,
- 		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
- 		spin_unlock(&clp->cl_lock);
- 	}
--	spin_unlock(&ino->i_lock);
- 
- 	lseg = send_layoutget(lo, ctx, iomode);
--	if (!lseg) {
--		spin_lock(&ino->i_lock);
--		if (list_empty(&lo->plh_segs)) {
--			spin_lock(&clp->cl_lock);
--			list_del_init(&lo->plh_layouts);
--			spin_unlock(&clp->cl_lock);
--		}
--		spin_unlock(&ino->i_lock);
-+	if (!lseg && first) {
-+		spin_lock(&clp->cl_lock);
-+		list_del_init(&lo->plh_layouts);
-+		spin_unlock(&clp->cl_lock);
- 	}
- 	atomic_dec(&lo->plh_outstanding);
- 	put_layout_hdr(lo);
--- 
-1.7.2.1
+I think we still needs that called somewhere.
 
+regards,
+wengang.
+
+> +	if (requested_bytes == 0)
+> +		return result < 0 ? result : -EIO;
+>  
+> -	if (result < 0)
+> -		return result;
+> -	return -EIO;
+> +	if (put_dreq(dreq))
+> +		nfs_direct_write_complete(dreq, dreq->inode);
+> +	return 0;
+>  }
+>  
+>  static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
+> @@ -841,15 +842,16 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+>  		pos += vec->iov_len;
+>  	}
+>  
+> +	/*
+> +	 * If no bytes were started, return the error, and let the
+> +	 * generic layer handle the completion.
+> +	 */
+> +	if (requested_bytes == 0)
+> +		return result < 0 ? result : -EIO;
+> +
+>  	if (put_dreq(dreq))
+>  		nfs_direct_write_complete(dreq, dreq->inode);
+> -
+> -	if (requested_bytes != 0)
+> -		return 0;
+> -
+> -	if (result < 0)
+> -		return result;
+> -	return -EIO;
+> +	return 0;
+>  }
+>  
+>  static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
