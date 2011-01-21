@@ -1,52 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34588 "EHLO mx2.netapp.com"
+Received: from magus.merit.edu ([198.108.1.13]:51919 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753201Ab1AFLg5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Jan 2011 06:36:57 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 10/15] pnfs: check that partial LAYOUTGET return is ignored
-Date: Thu,  6 Jan 2011 06:36:27 -0500
-Message-Id: <1294313792-14280-11-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
-References: <1294313792-14280-1-git-send-email-iisaman@netapp.com>
+	id S1754486Ab1AUQx2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Jan 2011 11:53:28 -0500
+Date: Fri, 21 Jan 2011 11:53:21 -0500
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 1/3] change device offset to signed to match the spec
+Message-ID: <9b6eda16d795d78680a409db58713ee683c30f49.1295627825.git.rees@umich.edu>
+References: <cover.1295627825.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1295627825.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Either a bad server reply, or our ignoring of multiple array segments in
-a reply, can cause a reply to not meet our requirements.  Ensure
-that we ignore such replies.
-
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
 ---
- fs/nfs/pnfs.c |   11 +++++++++++
- 1 files changed, 11 insertions(+), 0 deletions(-)
+ utils/blkmapd/device-discovery.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index c00b673..cd99064 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -660,6 +660,17 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	struct inode *ino = lo->plh_inode;
- 	int status = 0;
+diff --git a/utils/blkmapd/device-discovery.h b/utils/blkmapd/device-discovery.h
+index 8fe3b29..a55ccfe 100644
+--- a/utils/blkmapd/device-discovery.h
++++ b/utils/blkmapd/device-discovery.h
+@@ -51,7 +51,7 @@ struct bl_volume {
+ };
  
-+	/* Verify we got what we asked for.
-+	 * Note that because the xdr parsing only accepts a single
-+	 * element array, this can fail even if the server is behaving
-+	 * correctly.
-+	 */
-+	if (lgp->args.range.iomode > res->range.iomode ||
-+	    res->range.offset != 0 ||
-+	    res->range.length != NFS4_MAX_UINT64) {
-+		status = -EINVAL;
-+		goto out;
-+	}
- 	/* Inject layout blob into I/O device driver */
- 	lseg = NFS_SERVER(ino)->pnfs_curr_ld->alloc_lseg(lo, res);
- 	if (!lseg || IS_ERR(lseg)) {
+ struct bl_sig_comp {
+-	uint64_t bs_offset;		/* In bytes */
++	int64_t bs_offset;		/* In bytes */
+ 	uint32_t bs_length;		/* In bytes */
+ 	char *bs_string;
+ };
 -- 
-1.7.2.1
+1.7.1
 
