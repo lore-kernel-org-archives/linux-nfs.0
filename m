@@ -1,63 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:19776 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752754Ab1AYXf7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2011 18:35:59 -0500
-Subject: Re: Stale file not being refreshed automatically?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Nathan March <nathan@gt.net>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <4D3F5CD0.9010204@gt.net>
-References: <4D3F4A8A.7040003@gt.net>
-	 <1295994532.6867.12.camel@heimdal.trondhjem.org>  <4D3F5CD0.9010204@gt.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 25 Jan 2011 18:35:58 -0500
-Message-ID: <1295998558.6867.28.camel@heimdal.trondhjem.org>
+Received: from mail-gy0-f174.google.com ([209.85.160.174]:42506 "EHLO
+	mail-gy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753431Ab1AUJII convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Jan 2011 04:08:08 -0500
+Received: by gyb11 with SMTP id 11so463522gyb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Jan 2011 01:08:07 -0800 (PST)
+From: Giuseppe Gargiuolo <giuseppegargiuolo@gmail.com>
+Date: Fri, 21 Jan 2011 10:07:47 +0100
+Message-ID: <AANLkTinshRCdq_tT=1kYEuByvNZRfYoDoij0m42Oy5Ym@mail.gmail.com>
+Subject: Problem with NFSv3 in inode data transfer
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-01-25 at 15:29 -0800, Nathan March wrote: 
-> On 1/25/2011 2:28 PM, Trond Myklebust wrote:
-> > On Tue, 2011-01-25 at 14:
-> > Does '-e' in perl only do a lookup, or does it result in a 'stat()'
-> > call? If the latter, then your test is flawed: a stat() is a lookup+a
-> > getattr, and the latter can definitely return ESTALE when you are
-> > constantly replacing the file.
-> >
-> > Cheers
-> >    Trond
-> 
-> Hi Trond,
-> 
-> Has any behavior here changed between 2.6.19 and 2.6.32 that you know of?
-> 
-> Testing that perl one liner out with a variety of nfs setups we run:
-> 
-> 2.6.11 client vs 2.6.32 server - no error
-> 2.6.11 client vs netapp - no error
-> 2.6.19 client vs 2.6.19 server - no error
-> 2.6.19 client vs netapp - no error
-> 2.6.32 client vs 2.6.32 server - stale file handles
-> 2.6.32 client vs netapp - stale file handles
-> 
-> So it seems to be a client specific change sometime between 2.6.19 and 
-> 2.6.32....
+We are working on our personal NFS File System version 3 Extension on
+Linux Kernel 2.6.34 and we have a problem.
 
-You are probably seeing an effect due to attribute caching. Newer
-kernels have tighter restrictions on when they are allowed to cache.
+Our problem is:
 
-IOW: I suspect the above is just a timing artefact that would probably
-disappear on a slower machine.
+We want to add four 28-byte-chars to nfs_fattr struct to make my
+client read data in the inode from the server for each file/directory
+so encoded and decoded them in fs/nfs/nfs3xdr.c making them work.
 
-Cheers
-  Trond
+Our patch works. We worked on functions encode_fattr3(), decode_fattr(),
+and in costants:
+nfs3_fattr_sz (21+1+(NFS3_MAXTAGLEN>>2)*4) (located in fs/nfs/nfs3xdr.c),
+#define NFS3_POST_OP_ATTR_WORDS         (22+1+(NFS3_MAXTAGLEN>>2)*4)
+(located in include/linux/nfs3.h).
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+where NFS3_MAXTAGLEN is 28 (max number of chars writable in each field).
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+When trying to list files in our nfs client directory, kernel returns
 
+ls: reading directory . : Input/Output Error
+
+even if from the dmesg log data seem transfering correctly.
+Could be a problem over 20 fields?
+
+We appreciate any help.
+Thanks in advance,
+Best Regards
+Nicola Corriero - Giuseppe Gargiuolo
+HiXOS Group
+University of Bari
+Italy
