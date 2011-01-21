@@ -1,78 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34277 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750980Ab1ADTXw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 14:23:52 -0500
-Date: Tue, 4 Jan 2011 14:23:51 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] svcrpc: modifying positive sunrpc cache entries is racy
-Message-ID: <20110104192350.GE2308@fieldses.org>
-References: <20101229204752.GC12218@fieldses.org>
- <20101229205942.GD12218@fieldses.org>
- <20101230121940.3f48223a@notabene.brown>
- <20101230015719.GA27614@fieldses.org>
- <20110103205514.GB18056@fieldses.org>
- <20110104160152.602a3c44@notabene.brown>
- <20110104152231.GA27889@fieldses.org>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:34603 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751854Ab1AUDQo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jan 2011 22:16:44 -0500
+Date: Fri, 21 Jan 2011 11:14:42 +0800
+From: Wengang Wang <wen.gang.wang@oracle.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/4] NFS: Fix "kernel BUG at fs/aio.c:554!"
+Message-ID: <20110121031442.GA10987@laptop.uk.oracle.com>
+References: <20110121030314.1056.96774.stgit@matisse.1015granger.net>
+ <20110121030508.1056.51625.stgit@matisse.1015granger.net>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110104152231.GA27889@fieldses.org>
+In-Reply-To: <20110121030508.1056.51625.stgit@matisse.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Jan 04, 2011 at 10:22:31AM -0500, J. Bruce Fields wrote:
-> On Tue, Jan 04, 2011 at 04:01:52PM +1100, NeilBrown wrote:
-> > On Mon, 3 Jan 2011 15:55:14 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-> > wrote:
-> > > @@ -213,6 +214,33 @@ static inline int cache_is_valid(struct cache_detail *detail, struct cache_head
-> > >  	}
-> > >  }
-> > >  
-> > > +static int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
-> > > +{
-> > > +	int rv;
-> > > +
-> > > +	read_lock(&detail->hash_lock);
-> > > +	rv = __cache_is_valid(detail, h);
-> > > +	read_unlock(&detail->hash_lock);
-> > > +	return rv;
-> > > +}
-> > 
-> > I don't think there is anything in __cache_is_valid that needs to be
-> > protected.
-> > The compiler will almost certainly produce code which loads f->flags once and
-> > then performs 1 or 2 bit tests against the value in the register and produces
-> > one of 3 possible return values based on the result.
-> > There is absolutely no value in putting locking around that, especially as
-> > CACHE_VALID is never cleared.
-> > 
-> > Maybe you imagine a re-ordering of setting CACHE_NEGATIVE and CACHE_VALID,
-> > but as they are in the same cache line (and in fact in the same byte) they
-> > cannot be re-ordered.  We always set CACHE_NEGATIVE before CACHE_VALID and
-> > there is no way those two could get to memory in the wrong order.
+On 11-01-20 22:05, Chuck Lever wrote:
+> Nick Piggin reports:
 > 
-> The risk would be a reordering of CACHE_VALID with setting of the actual
-> contents in the !NEGATIVE case, so:
+> > I'm getting use after frees in aio code in NFS
+> >
+> > [ 2703.396766] Call Trace:
+> > [ 2703.396858]  [<ffffffff8100b057>] ? native_sched_clock+0x27/0x80
+> > [ 2703.396959]  [<ffffffff8108509e>] ? put_lock_stats+0xe/0x40
+> > [ 2703.397058]  [<ffffffff81088348>] ? lock_release_holdtime+0xa8/0x140
+> > [ 2703.397159]  [<ffffffff8108a2a5>] lock_acquire+0x95/0x1b0
+> > [ 2703.397260]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
+> > [ 2703.397361]  [<ffffffff81039701>] ? get_parent_ip+0x11/0x50
+> > [ 2703.397464]  [<ffffffff81612a31>] _raw_spin_lock_irq+0x41/0x80
+> > [ 2703.397564]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
+> > [ 2703.397662]  [<ffffffff811627db>] aio_put_req+0x2b/0x60
+> > [ 2703.397761]  [<ffffffff811647fe>] do_io_submit+0x2be/0x7c0
+> > [ 2703.397895]  [<ffffffff81164d0b>] sys_io_submit+0xb/0x10
+> > [ 2703.397995]  [<ffffffff8100307b>] system_call_fastpath+0x16/0x1b
+> >
+> > Adding some tracing, it is due to nfs completing the request then
+> > returning something other than -EIOCBQUEUED, so aio.c
+> > also completes the request.
 > 
-> 	task doing lookup		task doing update
-> 	^^^^^^^^^^^^^^^^^		^^^^^^^^^^^^^^^^^
+> To address this, prevent the NFS direct I/O engine from completing
+> async iocbs when the forward path returns an error without starting
+> any I/O.
 > 
-> 	1. test for CACHE_VALID		3. set item->contents
-> 	   & !CACHE_NEGATIVE
+> This fix appears to survive ^C during both "xfstest no. 208" and "fsx
+> -Z."
 > 
-> 	2. dereference			4. set CACHE_VALID, clear
-> 	   item->contents->...		   CACHE_NEGATIVE.
+> It's likely this bug has existed for a very long while, as we are seeing
+> very similar symptoms in OEL 5.  Copying stable.
 > 
-> As I understand it, if we want to gaurantee that item->contents is good
-> at step 2, then we need a write barrier between 3 and 4, together with a
-> read barrier between 1 and 2.  Taking the spinlock is overkill, but
-> should accomplish the same thing, as it forces 1 to occur before 3 or
-> after 4, and adds any necessary memory barriers.
+> Cc: Stable <stable@kernel.org>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/nfs/direct.c |   30 ++++++++++++++++--------------
+>  1 files changed, 16 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index e6ace0d..bde25ca 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -407,15 +407,16 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+>  		pos += vec->iov_len;
+>  	}
+>  
+> +	/*
+> +	 * If no bytes were started, return the error, and let the
+> +	 * generic layer handle the completion.
+> +	 */
+> +	if (requested_bytes == 0)
+> +		return result < 0 ? result : -EIO;
+> +
+>  	if (put_dreq(dreq))
+>  		nfs_direct_complete(dreq);
 
-So, that being the real problem, perhaps it's clearer to use explicit
-memory barriers instead of more locking, and add some comments.  Also
-split this into a separate patch, as in the following.
+Same comment as I wrote in another thread:
 
---b.
+put_dreq() -> nfs_direct_complete() does more than complete the aio its self.
+It also drops ref on dreq with put_dreq() and does
+
+complete_all(&dreq->completion);
+nfs_direct_req_release(dreq);
+
+I think we still needs that called somewhere.
+
+regards,
+wengang.
+> -
+> -	if (requested_bytes != 0)
+> -		return 0;
+> -
+> -	if (result < 0)
+> -		return result;
+> -	return -EIO;
+> +	return 0;
+>  }
+>  
+>  static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
+> @@ -841,15 +842,16 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+>  		pos += vec->iov_len;
+>  	}
+>  
+> +	/*
+> +	 * If no bytes were started, return the error, and let the
+> +	 * generic layer handle the completion.
+> +	 */
+> +	if (requested_bytes == 0)
+> +		return result < 0 ? result : -EIO;
+> +
+>  	if (put_dreq(dreq))
+>  		nfs_direct_write_complete(dreq, dreq->inode);
+> -
+> -	if (requested_bytes != 0)
+> -		return 0;
+> -
+> -	if (result < 0)
+> -		return result;
+> -	return -EIO;
+> +	return 0;
+>  }
+>  
+>  static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
