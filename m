@@ -1,81 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:56204 "EHLO fieldses.org"
+Received: from magus.merit.edu ([198.108.1.13]:52024 "EHLO magus.merit.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932370Ab1AKQVy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Jan 2011 11:21:54 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 13/14] nfsd4: simplify nfsd4_cb_prepare
-Date: Tue, 11 Jan 2011 11:21:33 -0500
-Message-Id: <1294762894-21371-14-git-send-email-bfields@redhat.com>
-In-Reply-To: <1294762894-21371-1-git-send-email-bfields@redhat.com>
-References: <1294762894-21371-1-git-send-email-bfields@redhat.com>
+	id S1754486Ab1AUQx5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Jan 2011 11:53:57 -0500
+Date: Fri, 21 Jan 2011 11:53:53 -0500
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH 2/3] Fix calculation of stripe device and unit sizes
+Message-ID: <6eae3b83b619dc3965e1c0fd1110df2db76b9183.1295627825.git.rees@umich.edu>
+References: <cover.1295627825.git.rees@umich.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <cover.1295627825.git.rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Remove handling for a nonexistant case (status && !-EAGAIN).
+- Total size is size of each individual device times number of devices
+- Stripe unit is in bytes, not sectors
+- Round total device size down to a muliple of the stripe size
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
 ---
- fs/nfsd/nfs4callback.c |   26 ++++----------------------
- 1 files changed, 4 insertions(+), 22 deletions(-)
+ utils/blkmapd/dm-device.c |   24 +++++++++++++++++++-----
+ 1 files changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index fff96dc..69955e9 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -613,24 +613,14 @@ void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *conn)
-  * If the slot is available, then mark it busy.  Otherwise, set the
-  * thread for sleeping on the callback RPC wait queue.
-  */
--static int nfsd41_cb_setup_sequence(struct nfs4_client *clp,
--		struct rpc_task *task)
-+static bool nfsd41_cb_get_slot(struct nfs4_client *clp, struct rpc_task *task)
+diff --git a/utils/blkmapd/dm-device.c b/utils/blkmapd/dm-device.c
+index d720086..ee7d787 100644
+--- a/utils/blkmapd/dm-device.c
++++ b/utils/blkmapd/dm-device.c
+@@ -371,7 +371,7 @@ static int dm_device_exists(char *dev_name)
+ /* TODO: check the value for DM_DEV_NAME_LEN, DM_TYPE_LEN, DM_PARAMS_LEN */
+ uint64_t dm_device_create(struct bl_volume *vols, int num_vols)
  {
--	u32 *ptr = (u32 *)clp->cl_cb_session->se_sessionid.data;
--	int status = 0;
--
--	dprintk("%s: %u:%u:%u:%u\n", __func__,
--		ptr[0], ptr[1], ptr[2], ptr[3]);
--
- 	if (test_and_set_bit(0, &clp->cl_cb_slot_busy) != 0) {
- 		rpc_sleep_on(&clp->cl_cb_waitq, task, NULL);
- 		dprintk("%s slot is busy\n", __func__);
--		status = -EAGAIN;
--		goto out;
-+		return false;
- 	}
--out:
--	dprintk("%s status=%d\n", __func__, status);
--	return status;
-+	return true;
- }
- 
- /*
-@@ -643,19 +633,11 @@ static void nfsd4_cb_prepare(struct rpc_task *task, void *calldata)
- 	struct nfs4_delegation *dp = container_of(cb, struct nfs4_delegation, dl_recall);
- 	struct nfs4_client *clp = dp->dl_client;
- 	u32 minorversion = clp->cl_minorversion;
--	int status = 0;
- 
- 	cb->cb_minorversion = minorversion;
- 	if (minorversion) {
--		status = nfsd41_cb_setup_sequence(clp, task);
--		if (status) {
--			if (status != -EAGAIN) {
--				/* terminate rpc task */
--				task->tk_status = status;
--				task->tk_action = NULL;
--			}
-+		if (!nfsd41_cb_get_slot(clp, task))
- 			return;
--		}
- 	}
- 	rpc_call_start(task);
- }
+-	uint64_t size, dev = 0;
++	uint64_t size, stripe_unit, stripe_size, nstripes, dev = 0;
+ 	unsigned int count = dev_count;
+ 	int volnum, i, pos;
+ 	struct bl_volume *node;
+@@ -416,11 +416,25 @@ uint64_t dm_device_create(struct bl_volume *vols, int num_vols)
+ 			if (!table)
+ 				goto out;
+ 			table->offset = 0;
+-			table->size = node->bv_size;
++			stripe_unit = node->param.bv_stripe_unit << 9;
++			stripe_size = stripe_unit * node->bv_vol_n;
++			nstripes = node->bv_size * node->bv_vol_n / stripe_size;
++			/* Make sure total size is a multiple of stripe size */
++			size = node->bv_size * node->bv_vol_n;
++			if (size % stripe_size != 0) {
++				/* XXX Should this be an error? */
++				BL_LOG_WARNING(
++					"%s: %d units of %llu bytes is not a multiple of %lld stripe size\n",
++					__func__, node->bv_vol_n,
++					(long long unsigned) node->bv_size,
++					(long long unsigned) stripe_size);
++				size = nstripes * stripe_size;
++			}
++			table->size = size;
+ 			strcpy(table->target_type, "striped");
+-			sprintf(table->params, "%d %lu %n", node->bv_vol_n,
+-				node->param.bv_stripe_unit, &pos);
+-			/* Repeatedly copy subdev to params */
++			sprintf(table->params, "%d %llu %n", node->bv_vol_n,
++				(long long unsigned) stripe_unit, &pos);
++			/* Copy subdev major:minor to params */
+ 			tmp = table->params + pos;
+ 			len = DM_PARAMS_LEN - pos;
+ 			for (i = 0; i < node->bv_vol_n; i++) {
 -- 
 1.7.1
 
