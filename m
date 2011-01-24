@@ -1,132 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:60012 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750919Ab1AEBFK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 20:05:10 -0500
-Date: Tue, 4 Jan 2011 20:05:07 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] nfsd4: implement secinfo_no_name
-Message-ID: <20110105010507.GC14744@fieldses.org>
-References: <1292612511-14203-1-git-send-email-bfields@redhat.com>
- <1292612511-14203-4-git-send-email-bfields@redhat.com>
- <4D183265.70608@cn.fujitsu.com>
- <20101229185609.GA12218@fieldses.org>
- <4D1C06E7.5060009@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D1C06E7.5060009@cn.fujitsu.com>
+Received: from daytona.panasas.com ([67.152.220.89]:6669 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752940Ab1AXDBG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Jan 2011 22:01:06 -0500
+Message-ID: <4D3CEB71.4070707@panasas.com>
+Date: Sun, 23 Jan 2011 22:01:05 -0500
+From: Benny Halevy <bhalevy@panasas.com>
+To: Jim Rees <rees@umich.edu>
+CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH 0/3] nfs-utils: blkmapd
+References: <cover.1295627825.git.rees@umich.edu>
+In-Reply-To: <cover.1295627825.git.rees@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Dec 30, 2010 at 12:13:27PM +0800, Mi Jinlong wrote:
-> 
-> 
-> J. Bruce Fields:
-> > On Mon, Dec 27, 2010 at 02:29:57PM +0800, Mi Jinlong wrote:
-> >> When testing this patch, oops appears.
-> >>
-> >> We should implement a nfsd4_encode_secinfo_no_name() instead using 
-> >> nfsd4_encode_secinfo(). 
-> >>
-> >> With the following patch, kernel will run correctly.
-> > 
-> > Whoops, yes, you're correct.  I've applied your patch.  Thanks!
-> > 
-> > (What are you using for testing?)
-> 
-> Hi Bruce:
-> 
->   I test it by the pynfs41 at your tree, and add some simple
->   test case as following.
-> 
->   I have a question about the op.secinfo_no_name(), should it take 
->   a argument? 
->   Right now, maybe it always request with NFS4_SECINFO_STYLE4_CURRENT_FH,
->   or I can't find how to set the argument.
+Thanks. Merged at pnfs-nfs-utils-1-2-4-rc5
 
-Hm, I don't know, I guess I'd look at how arguments are passed to some
-of the other operations when constructing compounds in other tests....
+Benny
 
---b.
-
+On 2011-01-21 11:53, Jim Rees wrote:
+> This set of patches fixes various bugs in stripe size calculation turned up
+> in testing.  I believe blkmapd will now handle any layout that is allowed by
+> the spec and can be constructed by device-mapper.
 > 
-> thanks,
-> Mi Jinlong  
+> If a striped device is not a multiple of both the number of constituent
+> devices and the stripe width, blkmapd will truncate the device so that
+> device-mapper can handle it.
 > 
-> >From 31ae25c04295888fa54ea531cdfaa4cfdefbe877 Mon Sep 17 00:00:00 2001
-> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> Date: Wed, 29 Dec 2010 17:23:35 +0800
-> Subject: [PATCH] CLNT: Add some simple secinfo_no_name tests
+> Jim Rees (3):
+>   change device offset to signed to match the spec
+>   Fix calculation of stripe device and unit sizes
+>   Various improvements to comments and syslog messages
 > 
->  Add two simple secinfo_no_name tests as Bruce said:
->     - send PUTROOTFH+SECINFO_NO_NAME, check that you get back a
->       legal result.
->     - send PUTROOTFH+SECINFO+GETFH, and/or
->       PUTROOTFH+SECINFO_NO_NAME+GETFH, check that the GETFH returns
->       NOFILEHANDLE.
-> 
->  Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  nfs4.1/server41tests/__init__.py           |    1 +
->  nfs4.1/server41tests/st_secinfo_no_name.py |   35 ++++++++++++++++++++++++++++
->  2 files changed, 36 insertions(+), 0 deletions(-)
->  create mode 100644 nfs4.1/server41tests/st_secinfo_no_name.py
-> 
-> diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
-> index 22cd664..6aee88e 100644
-> --- a/nfs4.1/server41tests/__init__.py
-> +++ b/nfs4.1/server41tests/__init__.py
-> @@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
->             "st_compound.py",
->             "st_create_session.py",
->             "st_destroy_session.py",
-> +           "st_secinfo_no_name.py",
->             "st_sequence.py",
->  	   "st_trunking.py",
->             "st_open.py",
-> diff --git a/nfs4.1/server41tests/st_secinfo_no_name.py b/nfs4.1/server41tests/st_secinfo_no_name.py
-> new file mode 100644
-> index 0000000..a4b148d
-> --- /dev/null
-> +++ b/nfs4.1/server41tests/st_secinfo_no_name.py
-> @@ -0,0 +1,35 @@
-> +from st_create_session import create_session
-> +from nfs4_const import *
-> +from environment import check, fail, bad_sessionid, create_file
-> +from nfs4_type import channel_attrs4
-> +import nfs4_ops as op
-> +import nfs4lib
-> +
-> +def testSupported(t, env):
-> +    """Do a simple SECINFO_NO_NAME
-> +       send PUTROOTFH+SECINFO_NO_NAME, check is result legal
-> +
-> +    FLAGS: all 
-> +    CODE: SECNN1
-> +    """
-> +    c = env.c1.new_client(env.testname(t))
-> +    sess = c.create_session()
-> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name()])
-> +    check(res);
-> +
-> +def testSupported2(t, env):
-> +    """GETFH after do a SECINFO_NO_NAME or SECINFO
-> +       result in a NOFILEHANDLE error, See rfc 5661 section 2.6.3.1.1.8
-> +
-> +    FLAGS: all
-> +    CODE: SECNN2
-> +    """
-> +    c = env.c1.new_client(env.testname(t))
-> +    sess = c.create_session()
-> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name(), op.getfh()])
-> +    print res
-> +    check(res, NFS4ERR_NOFILEHANDLE);
-> +
-> +    res = sess.compound([op.putrootfh(), op.secinfo("tree"), op.getfh()])
-> +    print res
-> +    check(res, NFS4ERR_NOFILEHANDLE);
-> -- 
-> 1.7.3.3
+>  utils/blkmapd/device-discovery.c |    2 -
+>  utils/blkmapd/device-discovery.h |    4 +-
+>  utils/blkmapd/device-process.c   |   50 +++++++++++++++++++------------------
+>  utils/blkmapd/dm-device.c        |   28 ++++++++++++++++-----
+>  4 files changed, 49 insertions(+), 35 deletions(-)
 > 
