@@ -1,74 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24370 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751745Ab1ARTpd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 14:45:33 -0500
-Subject: Re: 4.1 no-pnfs mount option?
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-Cc: Daniel Muntz <Daniel.Muntz@emc.com>, rees@umich.edu,
-        androsadamson@gmail.com, linux-nfs@vger.kernel.org,
-        Benny Halevy <bhalevy@panasas.com>
-In-Reply-To: <559269113.92.1295379350636.JavaMail.root@thunderbeast.private.linuxbox.com>
-References: <559269113.92.1295379350636.JavaMail.root@thunderbeast.private.linuxbox.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 18 Jan 2011 14:45:16 -0500
-Message-ID: <1295379916.3746.47.camel@heimdal.trondhjem.org>
+Received: from dsl-67-204-24-19.acanac.net ([67.204.24.19]:56723 "EHLO
+	mail.ellipticsemi.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752675Ab1AXVKx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jan 2011 16:10:53 -0500
+Date: Mon, 24 Jan 2011 16:10:38 -0500
+From: Nick Bowler <nbowler@elliptictech.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: trond.myklebust@netapp.com, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] NLM: Fix "kernel BUG at fs/lockd/host.c:417!" or
+ ".../host.c:283!"
+Message-ID: <20110124211038.GA22199@elliptictech.com>
+References: <20110124204332.1878.35846.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110124204332.1878.35846.stgit@matisse.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-01-18 at 14:35 -0500, Matt W. Benjamin wrote: 
-> Hi,
+On 2011-01-24 15:50 -0500, Chuck Lever wrote:
+> Nick Bowler <nbowler@elliptictech.com> reports:
 > 
-> ----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
+> > We were just having some NFS server troubles, and my client machine
+> > running 2.6.38-rc1+ (specifically, commit 2b1caf6ed7b888c95) crashed
+> > hard (syslog output appended to this mail).
+[...]
+> I was able to reproduce this BUG on my client running 2.6.38-rc2
+> from earlier today.  Here is a proposed fix.  I can't reproduce the
+> BUG with this patch applied.
 > 
-> > "Why would an administrator never want to do this?" is not a helpful
-> > question.
-> > 
-> > A more useful question is "what reason would you possibly have for
-> > overriding the server's request that you do pNFS when your client has
-> > pNFS support?" What makes pNFS so special that we must allow
-> > administrators to do this on a per-mount basis?
-> 
-> Well, I phrased my question the other way because I suspect such cases will be found, but I may not have found all of them.  
-> 
-> Some thoughts on why I might wish to take a hand in the decision:
-> 
-> 1. the client doing pnfs might behave badly due to a misconfiguration or outage, yet behave acceptably using ordinary nfsv4?
+> However, my reproducer hit the BUG in nlmsvc_release_host().  Nick hit
+> roughly the same BUG in nlmclnt_release_host(), which suggests his
+> "client" was also acting as a server.
 
-The client should be automatically falling back to non-pNFS mode when
-this sort of thing happens (and, yes, we are already testing that kind
-of scenario).
-In what cases do we expect the administrator to be able to detect that
-the client is misbehaving without the client itself being able to detect
-it and thus take action?
+Yeah, there are NFS exports on the client machine as well; although
+as nobody had them mounted (and due to the timing of the crash) I hadn't
+considered them.
 
-> 2. restricting the client to ordinary nfsv4 might be desirable for non-developer troubleshooting or other configuration work?
+> The symptoms are similar enough that I believe this patch should be
+> sufficient to address both cases.
 
-That is the one-off testing case. You already have the option of
-removing and disabling the pNFS module to do your testing.
+I'll try the patch, but since I don't know how to reproduce the failure
+(rebooting the server just to see if it crashes again isn't an option),
+I'll have to take your word for it.
 
-> I apologize if neither is compelling.
-> 
-> > 
-> > Throwing more and more knobs into the kernel is easy. The difficult
-> > bit
-> > is to figure out which are useful knobs, and that is why I want real
-> > use
-> > cases... 
-> > 
-> > Trond
-> > 
-> 
-> Matt
-> 
-
+Thanks,
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
