@@ -1,31 +1,20 @@
-From: Marc Eshel <eshel@almaden.ibm.com>
-Subject: Linux pNFS status meeting 01/20/11  - CANCELLED
-Date: Thu, 20 Jan 2011 07:16:45 -0800
-Message-ID: <OF7D6D80FC.FF8E880F-ON8825781E.0053C89B-8825781E.0053E805@us.ibm.com>
-References: <OFD9DAB521.F351E479-ON88257816.005E4155-88257816.005E8214@us.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Cc: linux-nfs@vger.kernel.org
-To: Marc Eshel <eshel@almaden.ibm.com>
+From: Thomas Haynes <thomas@netapp.com>
+Subject: Re: Patched up cthon source?
+Date: Mon, 24 Jan 2011 17:32:53 -0600
+Message-ID: <42D9AB62-CAFB-473B-B3F7-CB3A5A73BF13@netapp.com>
+References: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com> <83EC814B-1043-46B2-8F5E-E1FB1F5B56BF@oracle.com> <4D3DFE40.1070605@panasas.com>
+Mime-Version: 1.0 (Apple Message framework v1082)
+Content-Type: text/plain; charset=us-ascii
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:56554 "EHLO e7.ny.us.ibm.com"
+Received: from mx2.netapp.com ([216.240.18.37]:26416 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755760Ab1ATPTn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Jan 2011 10:19:43 -0500
-Received: from d01dlp01.pok.ibm.com (d01dlp01.pok.ibm.com [9.56.224.56])
-	by e7.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p0KEvCWi030577
-	for <linux-nfs@vger.kernel.org>; Thu, 20 Jan 2011 10:00:31 -0500
-Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 7F9CF72856C
-	for <linux-nfs@vger.kernel.org>; Thu, 20 Jan 2011 10:16:36 -0500 (EST)
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p0KFGaLH131636
-	for <linux-nfs@vger.kernel.org>; Thu, 20 Jan 2011 10:16:36 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p0KFGZbG030531
-	for <linux-nfs@vger.kernel.org>; Thu, 20 Jan 2011 13:16:35 -0200
-In-Reply-To: <OFD9DAB521.F351E479-ON88257816.005E4155-88257816.005E8214@us.ibm.com>
+	id S1753178Ab1AXXc4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Jan 2011 18:32:56 -0500
+In-Reply-To: <4D3DFE40.1070605@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Thanks Benny, it works like a charm now!
 
