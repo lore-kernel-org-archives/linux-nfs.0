@@ -1,84 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:37786 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751014Ab1ADVrf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jan 2011 16:47:35 -0500
-Subject: Re: [PATCH_V7 07/12] NFS implement v4.0 callback_ident
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <1294175023.5896.18.camel@heimdal.trondhjem.org>
-Date: Tue, 4 Jan 2011 16:47:33 -0500
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Message-Id: <3C31F40A-A2AD-4814-B0F1-BDEBA99B0EB7@netapp.com>
-References: <1294173766-5573-1-git-send-email-andros@netapp.com> <1294173766-5573-2-git-send-email-andros@netapp.com> <1294173766-5573-3-git-send-email-andros@netapp.com> <1294173766-5573-4-git-send-email-andros@netapp.com> <1294173766-5573-5-git-send-email-andros@netapp.com> <1294173766-5573-6-git-send-email-andros@netapp.com> <1294173766-5573-7-git-send-email-andros@netapp.com> <1294173766-5573-8-git-send-email-andros@netapp.com> <1294174673.5896.15.camel@heimdal.trondhjem.org> <1294175023.5896.18.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:52286 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751344Ab1AXWdk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jan 2011 17:33:40 -0500
+Message-ID: <4D3DFE40.1070605@panasas.com>
+Date: Mon, 24 Jan 2011 17:33:36 -0500
+From: Benny Halevy <bhalevy@panasas.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Thomas Haynes <thomas@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: Patched up cthon source?
+References: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com> <83EC814B-1043-46B2-8F5E-E1FB1F5B56BF@oracle.com>
+In-Reply-To: <83EC814B-1043-46B2-8F5E-E1FB1F5B56BF@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Jan 4, 2011, at 4:03 PM, Trond Myklebust wrote:
-
-> On Tue, 2011-01-04 at 15:57 -0500, Trond Myklebust wrote: 
->> On Tue, 2011-01-04 at 15:42 -0500, andros@netapp.com wrote: 
->>> From: Andy Adamson <andros@netapp.com>
->>> 
->>> Provide a unique callback identifier per SETCLIENTID call used to identify the
->>> v4.0 callback service associated with the clientid.
->>> 
->>> Do not worry about wrap around. Zero value means unset.
->>> 
->>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>> ---
->>> fs/nfs/nfs4proc.c         |    5 +++++
->>> fs/nfs/nfs4state.c        |    1 +
->>> include/linux/nfs_fs_sb.h |    1 +
->>> include/linux/nfs_xdr.h   |    1 +
->>> 4 files changed, 8 insertions(+), 0 deletions(-)
->>> 
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index 78b0899..6652e39 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -3470,6 +3470,8 @@ do_state_recovery:
->>> 	return -EAGAIN;
->>> }
->>> 
->>> +static u32 current_cb_ident = 1;
->>> +
->>> int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
->>> 		unsigned short port, struct rpc_cred *cred,
->>> 		struct nfs4_setclientid_res *res)
->>> @@ -3478,6 +3480,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
->>> 	struct nfs4_setclientid setclientid = {
->>> 		.sc_verifier = &sc_verifier,
->>> 		.sc_prog = program,
->>> +		.sc_cb_ident = current_cb_ident++,
->> 
->> How about instead using ida_get_new() in order to get a truly unique id
->> in the range 1..0x7fffffff?
-
-I remember discussing this one Thursday over a beer - thus the above method :)
-
+On 2011-01-24 17:24, Chuck Lever wrote:
 > 
-> ....
+> On Jan 24, 2011, at 5:19 PM, Thomas Haynes wrote:
 > 
-> Actually, we might want to consider using idr_get_new(), since that
-> allows us to safely locate the struct nfs_client using idr_find()...
-
-By safely locate - do you mean avoiding wrap-around?
-How does this help for v4.1 where we do not receive a callback_ident from the wire?
-
--->Andy
-
-
+>> I'm being evil here on purpose. :->
+>>
+>> I'm trying to run cthon04 as downloaded from the connectathon.org repository
+>> and I'm getting this:
+>>
+>>
+>> Nroff
+>> ./stat: no data in nroff.time
+>> general tests failed
+>> Tests failed, leaving /cthon04/loghyr mounted
+>>
+>>
+>> As I kinda recall several people fixing this already, where would I go to get patches?
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+> What are your CFLAGS settings in tests.init?
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+
+this is a problem with the version of nroff on newer distributions.
+The following patch fixed it for me last bakeathon:
+
+>From f44b150809e43b129fad34e3e4ec288e4dd36e6c Mon Sep 17 00:00:00 2001
+From: Benny Halevy <bhalevy@panasas.com>
+Date: Wed, 6 Oct 2010 11:37:27 -0400
+Subject: [PATCH] cthon nroff general test workaround
+
+Newer versions of nroff spew out a warning that cause the cthon test
+to fail in the following way:
+
+Nroff
+./stat: no data in nroff.time
+general tests failed
+
+The following patch filters out the warning from the output file
+generated during the test.
+
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ general/runtests.wrk |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/general/runtests.wrk b/general/runtests.wrk
+index f3a5a4e..8247e2f 100644
+--- a/general/runtests.wrk
++++ b/general/runtests.wrk
+@@ -89,6 +89,8 @@ $TIME nroff < nroff.tbl > nroff.out 2>> nroff.time || cat nroff.time
+ $TIME nroff < nroff.tbl > nroff.out 2>> nroff.time || cat nroff.time
+ rm nroff.out nroff.tbl
+ set -e
++egrep -v '^warning:.*$' <nroff.time >nroff.new
++mv -f nroff.new nroff.time
+ ./stat nroff.time
+ set +e
+ 
+-- 
+1.7.3.4
 
