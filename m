@@ -1,188 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12006 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:57698 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753000Ab1AEUvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 15:51:53 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V8 03/13] SUNRPC new transport for the NFSv4.1 shared back channel
-Date: Wed,  5 Jan 2011 15:51:21 -0500
-Message-Id: <1294260690-3095-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1294260690-3095-3-git-send-email-andros@netapp.com>
-References: <1294260690-3095-1-git-send-email-andros@netapp.com>
- <1294260690-3095-2-git-send-email-andros@netapp.com>
- <1294260690-3095-3-git-send-email-andros@netapp.com>
+	id S1753948Ab1AXSFZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Jan 2011 13:05:25 -0500
+Date: Mon, 24 Jan 2011 13:05:24 -0500
+To: Max Veprinsky <max.veprinsky@livetext.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: releasing space after rapid grwoth
+Message-ID: <20110124180524.GA15056@fieldses.org>
+References: <AANLkTi=R_j3_hZ-7RpSn0_Mee43nU0njPRBSn=DiEf8R@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AANLkTi=R_j3_hZ-7RpSn0_Mee43nU0njPRBSn=DiEf8R@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Fri, Jan 21, 2011 at 05:06:45PM -0600, Max Veprinsky wrote:
+> Hello all,
+> 
+> I'm trying to reclaim disk space on stable storage which was consumed
+> by a crashed apache process at a rate of ~100GB/hour. This issue has
+> happened a few times before and normally resolved by discovering a
+> .nfsXXXXX file, stopping the process on the the application server
+> that was holding the file. Sometimes the used filespace is recovered
+> quickly without manual intervention, other times I had to delete the
+> .nfsXXXX file manually.
+> 
+> Last time this happened 3 TB of disk space was consumed and no
+> .nfsXXXX file of that size was discovered, nor. I dismounted all of
+> the volumes from the clients 1/2 of the space was recovered.
+> 
+> showmount shows clients connected but there are no network nfs
+> connections open to any client.
 
-Move the current sock create and destroy routines into the new transport ops.
-Back channel socket will be destroyed by the svc_closs_all call in svc_destroy.
+And all the clients *have* unmounted, right?
 
-Added check: only TCP supported on shared back channel.
+> I have not restarted nfs server
+> service fearing that the used space would not be recovered.
+> 
+> Any suggestion greatly appreciated
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Acked-by: Bruce Fields <bfields@redhat.com>
----
- include/linux/sunrpc/svcsock.h |    1 +
- net/sunrpc/svc.c               |    4 --
- net/sunrpc/svcsock.c           |   82 ++++++++++++++++++++++++++++++----------
- 3 files changed, 63 insertions(+), 24 deletions(-)
+More details about the setup?  Are clients and server all Linux, and
+what kernel versions?
 
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 1b353a7..3a45a80 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -45,6 +45,7 @@ int		svc_sock_names(struct svc_serv *serv, char *buf,
- int		svc_addsock(struct svc_serv *serv, const int fd,
- 					char *name_return, const size_t len);
- void		svc_init_xprt_sock(void);
-+void		svc_init_bc_xprt_sock(void);
- void		svc_cleanup_xprt_sock(void);
- struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot);
- void		svc_sock_destroy(struct svc_xprt *);
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 606d182..261e2d1 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -488,10 +488,6 @@ svc_destroy(struct svc_serv *serv)
- 	if (svc_serv_is_pooled(serv))
- 		svc_pool_map_put();
- 
--#if defined(CONFIG_NFS_V4_1)
--	svc_sock_destroy(serv->bc_xprt);
--#endif /* CONFIG_NFS_V4_1 */
--
- 	svc_unregister(serv);
- 	kfree(serv->sv_pools);
- 	kfree(serv);
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 07919e1..6630f29 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -66,6 +66,13 @@ static void		svc_sock_free(struct svc_xprt *);
- static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
- 					  struct net *, struct sockaddr *,
- 					  int, int);
-+#if defined(CONFIG_NFS_V4_1)
-+static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
-+					     struct net *, struct sockaddr *,
-+					     int, int);
-+static void svc_bc_sock_free(struct svc_xprt *xprt);
-+#endif /* CONFIG_NFS_V4_1 */
-+
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
- static struct lock_class_key svc_key[2];
- static struct lock_class_key svc_slock_key[2];
-@@ -1184,6 +1191,39 @@ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
- 	return svc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
- }
- 
-+#if defined(CONFIG_NFS_V4_1)
-+static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
-+					     struct net *, struct sockaddr *,
-+					     int, int);
-+static void svc_bc_sock_free(struct svc_xprt *xprt);
-+
-+static struct svc_xprt *svc_bc_tcp_create(struct svc_serv *serv,
-+				       struct net *net,
-+				       struct sockaddr *sa, int salen,
-+				       int flags)
-+{
-+	return svc_bc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
-+}
-+
-+static void svc_bc_tcp_sock_detach(struct svc_xprt *xprt)
-+{
-+}
-+
-+static struct svc_xprt_ops svc_tcp_bc_ops = {
-+	.xpo_create = svc_bc_tcp_create,
-+	.xpo_detach = svc_bc_tcp_sock_detach,
-+	.xpo_free = svc_bc_sock_free,
-+	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
-+};
-+
-+static struct svc_xprt_class svc_tcp_bc_class = {
-+	.xcl_name = "tcp-bc",
-+	.xcl_owner = THIS_MODULE,
-+	.xcl_ops = &svc_tcp_bc_ops,
-+	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
-+};
-+#endif /* CONFIG_NFS_V4_1 */
-+
- static struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_create = svc_tcp_create,
- 	.xpo_recvfrom = svc_tcp_recvfrom,
-@@ -1509,41 +1549,43 @@ static void svc_sock_free(struct svc_xprt *xprt)
- 	kfree(svsk);
- }
- 
-+#if defined(CONFIG_NFS_V4_1)
- /*
-- * Create a svc_xprt.
-- *
-- * For internal use only (e.g. nfsv4.1 backchannel).
-- * Callers should typically use the xpo_create() method.
-+ * Create a back channel svc_xprt which shares the fore channel socket.
-  */
--struct svc_xprt *svc_sock_create(struct svc_serv *serv, int prot)
-+static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
-+					     int protocol,
-+					     struct net *net,
-+					     struct sockaddr *sin, int len,
-+					     int flags)
- {
- 	struct svc_sock *svsk;
--	struct svc_xprt *xprt = NULL;
-+	struct svc_xprt *xprt;
-+
-+	if (protocol != IPPROTO_TCP) {
-+		printk(KERN_WARNING "svc: only TCP sockets"
-+			" supported on shared back channel\n");
-+		return ERR_PTR(-EINVAL);
-+	}
- 
--	dprintk("svc: %s\n", __func__);
- 	svsk = kzalloc(sizeof(*svsk), GFP_KERNEL);
- 	if (!svsk)
--		goto out;
-+		return ERR_PTR(-ENOMEM);
- 
- 	xprt = &svsk->sk_xprt;
--	if (prot == IPPROTO_TCP)
--		svc_xprt_init(&svc_tcp_class, xprt, serv);
--	else if (prot == IPPROTO_UDP)
--		svc_xprt_init(&svc_udp_class, xprt, serv);
--	else
--		BUG();
--out:
--	dprintk("svc: %s return %p\n", __func__, xprt);
-+	svc_xprt_init(&svc_tcp_bc_class, xprt, serv);
-+
-+	serv->bc_xprt = xprt;
-+
- 	return xprt;
- }
--EXPORT_SYMBOL_GPL(svc_sock_create);
- 
- /*
-- * Destroy a svc_sock.
-+ * Free a back channel svc_sock.
-  */
--void svc_sock_destroy(struct svc_xprt *xprt)
-+static void svc_bc_sock_free(struct svc_xprt *xprt)
- {
- 	if (xprt)
- 		kfree(container_of(xprt, struct svc_sock, sk_xprt));
- }
--EXPORT_SYMBOL_GPL(svc_sock_destroy);
-+#endif /* CONFIG_NFS_V4_1 */
--- 
-1.6.6
-
+--b.
