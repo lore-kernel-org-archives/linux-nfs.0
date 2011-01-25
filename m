@@ -1,57 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:48143 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751202Ab1AMNXu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jan 2011 08:23:50 -0500
-Message-ID: <4D2EFCDF.8060507@panasas.com>
-Date: Thu, 13 Jan 2011 15:23:43 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Jim Rees <rees@umich.edu>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-Subject: Re: state manager failed on NFSv4 server
-References: <20110112185843.GA14207@merit.edu> <1294859616.2971.46.camel@heimdal.trondhjem.org> <20110113000720.GA15353@merit.edu> <1294877939.15025.42.camel@heimdal.trondhjem.org> <20110113003055.GC15353@merit.edu> <1294879039.15025.56.camel@heimdal.trondhjem.org> <20110113005439.GA15550@merit.edu>
-In-Reply-To: <20110113005439.GA15550@merit.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from gossamer.nmsrv.com ([208.70.244.21]:54332 "EHLO
+	gossamer.nmsrv.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751827Ab1AYWwT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2011 17:52:19 -0500
+Message-ID: <4D3F541C.50702@gt.net>
+Date: Tue, 25 Jan 2011 14:52:12 -0800
+From: Nathan March <nathan@gt.net>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Stale file not being refreshed automatically?
+References: <4D3F4A8A.7040003@gt.net>	 <1295994532.6867.12.camel@heimdal.trondhjem.org>  <4D3F50DA.3060208@gt.net> <1295995739.6867.14.camel@heimdal.trondhjem.org>
+In-Reply-To: <1295995739.6867.14.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-01-13 02:54, Jim Rees wrote:
-> Trond Myklebust wrote:
-> 
->   > At the time of the EXCHANGE_ID call, how is the server supposed to know what
->   > kind of layout is going to be negotiated?  It doesn't yet know whether the
->   > client is even going to ask for a layout, does it?
->   
->   It doesn't matter. EXCHGID4_FLAG_USE_PNFS_MDS is the server's way of
->   advertising to the client that it supports LAYOUTGET and other pNFS
->   related operations. The client is free to ignore that message if it so
->   desires, and just use read/write through MDS. The point here is to tell
->   the client whether or not it should try pNFS if it can.
-> 
-> I guess that makes sense.  But I think section 13 is a bit misleading since
-> it contains requirements for the block layout too.
+Awesome, I'll see about a perl equiv. Thanks again!
 
-True, but section 18.35. Operation 42: EXCHANGE_ID - Instantiate Client ID
-specifically says:
+- Nathan
 
-   The EXCHGID4_FLAG_USE_NON_PNFS, EXCHGID4_FLAG_USE_PNFS_MDS, and
-   EXCHGID4_FLAG_USE_PNFS_DS bits are described in Section 13.1 and
-   convey roles the client ID is to be used for in a pNFS environment.
-   The server MUST set one of the acceptable combinations of these bits
-   (roles) in eir_flags, as specified in Section 13.1.
-
-Benny
-
-> 
-> 13.  NFSv4.1 as a Storage Protocol in pNFS: the File Layout Type
-> 
->    This section describes the semantics and format of NFSv4.1 file-based
->    layouts for pNFS.  NFSv4.1 file-based layouts use the
->    LAYOUT4_NFSV4_1_FILES layout type.  The LAYOUT4_NFSV4_1_FILES type
->    defines striping data across multiple NFSv4.1 data servers.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On 1/25/2011 2:48 PM, Trond Myklebust wrote:
+> On Tue, 2011-01-25 at 14:38 -0800, Nathan March wrote:
+>> Ah ha, yes, it's using a stat call.
+>>
+>> What would be the proper C call to check the file exists without
+>> incurring the stat()?
+> access("file", F_OK) should do it.
+>
+> Cheers
+>    Trond
+>
+>> On 1/25/2011 2:28 PM, Trond Myklebust wrote:
+>>> On Tue, 2011-01-25 at 14:11 -0800, Nathan March wrote:
+>>>> Hi All,
+>>>>
+>>>> Having a strange issue, I've reproduced this both on nfs 3 and 4.
+>>>> Currently using v4 with:
+>>>>
+>>>> exports:
+>>>> /var/home/voyage
+>>>> 10.2.1.0/24(rw,fsid=0,async,wdelay,secure,no_subtree_check,anonuid=1000,anongid=1006)
+>>>>
+>>>> fstab:
+>>>> 10.2.1.1:/ /mnt/voyage nfs4
+>>>> rsize=32768,wsize=32768,noatime,nosuid,rw,bg,hard,intr 0 0
+>>>>
+>>>> Can be produced using these two commands on 2 machines:
+>>>>
+>>>> perl -le '$| = 1 ; while (1) { sleep 1; $res = -e "/home/voyage/test";
+>>>> if ($res) { print "-e : $res"; } else { print "-e : $res ($!)"; } }'
+>>>> -e : 1
+>>>>
+>>>> perl -le '$| = 1 ; while (1) { sleep 5; open(F, ">",
+>>>> "/home/voyage/test.foo"); close F; my $res =
+>>>> rename("/home/voyage/test.foo", "/home/voyage/test"); print "rename
+>>>> ($res)"; }'
+>>>>
+>>>> The first command will occasionally print out: -e :  (Stale NFS file handle)
+>>>>
+>>>> Now according to http://nfs.sourceforge.net/#faq_a10 as of 2.6.12 the
+>>>> vfs should automatically retry when it gets a estale during path
+>>>> resolution. This doesn't appear to be happening though based on the
+>>>> errors I'm seeing.
+>>>>
+>>>> Anyone have any thoughts on what might be happening here? Or am I
+>>>> misinterpreting that faq entry? (This is on ext3 if it matters)
+>>> Does '-e' in perl only do a lookup, or does it result in a 'stat()'
+>>> call? If the latter, then your test is flawed: a stat() is a lookup+a
+>>> getattr, and the latter can definitely return ESTALE when you are
+>>> constantly replacing the file.
+>>>
+>>> Cheers
+>>>     Trond
