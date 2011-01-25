@@ -1,49 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43304 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750954Ab1AEB55 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 20:57:57 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 0/5] Allow the admin to turn off NFSv4 uid/gid mapping
-Date: Tue,  4 Jan 2011 20:57:46 -0500
-Message-Id: <1294192671-18864-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:18851 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752548Ab1AYPvX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2011 10:51:23 -0500
+Content-Type: text/plain;
+	charset="UTF-8"
+Subject: RE: Patched up cthon source?
+Date: Tue, 25 Jan 2011 10:46:27 -0500
+Message-ID: <BF3BB6D12298F54B89C8DCC1E4073D8002D91694@CORPUSMX50A.corp.emc.com>
+In-Reply-To: <1295969912.6867.2.camel@heimdal.trondhjem.org>
+References: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com> <83EC814B-1043-46B2-8F5E-E1FB1F5B56BF@oracle.com> <4D3DFE40.1070605@panasas.com> <4D3ED37D.6020606@netapp.com> <20110125095649.446212fd@tlielax.poochiereds.net> <1295969912.6867.2.camel@heimdal.trondhjem.org>
+From: <peter.staubach@emc.com>
+To: <Trond.Myklebust@netapp.com>, <jlayton@redhat.com>
+Cc: <bjschuma@netapp.com>, <bhalevy@panasas.com>, <chuck.lever@oracle.com>,
+        <thomas@netapp.com>, <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-The following patches allow the admin to turn off NFSv4 uid/gid mapping
-if mounting using AUTH_SYS security.
-
-Minor changes w.r.t. first revision:
- - Added documentation in kernel-parameters.txt
- - Print a warning if an NFS4ERR_BADOWNER causes us to turn idmapping on again
-
-Changes w.r.t. second revision:
- - Ensure we propagate the NFS4ERR_BADOWNER up to the NFSv4 middle layers
- - Fix a typo in nfs4_handle_exception
-
-Changes w.r.t. third revision:
- - Work around a Linux server bug which causes pre-2.6.37 kernels to return
-   NFS4ERR_BADNAME in cases where it should be returning NFS4ERR_BADOWNER.
-
-Trond Myklebust (5):
-  NFSv4: If the server sends us a numeric uid/gid then accept it
-  NFSv4: Send unmapped uid/gids to the server if the idmapper fails
-  NFSv4: cleanup idmapper functions to take an nfs_server argument
-  NFSv4: Propagate the error NFS4ERR_BADOWNER to nfs4_do_setattr
-  NFSv4: Send unmapped uid/gids to the server when using auth_sys
-
- Documentation/kernel-parameters.txt |    8 +++
- fs/nfs/client.c                     |   16 ++++++
- fs/nfs/idmap.c                      |   87 +++++++++++++++++++++++++++-------
- fs/nfs/nfs4proc.c                   |   18 +++++++-
- fs/nfs/nfs4xdr.c                    |   20 +++-----
- include/linux/nfs_fs_sb.h           |    1 +
- include/linux/nfs_idmap.h           |    8 ++--
- 7 files changed, 123 insertions(+), 35 deletions(-)
-
--- 
-1.7.3.4
-
+VGhhdCdzIGEgZ3JlYXQgaWRlYS4NCg0KUGVyaGFwcyB3ZSBjb3VsZCBhbHNvIGZpeCB0aGUgc3Rh
+dCBwcm9ncmFtIHRvIGlnbm9yZSBsaW5lcyB0aGF0IGl0IGlzbid0IGxvb2tpbmcgZm9yLi4uDQoN
+CgkJcHMNCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogbGludXgtbmZzLW93
+bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5v
+cmddIE9uIEJlaGFsZiBPZiBUcm9uZCBNeWtsZWJ1c3QNClNlbnQ6IFR1ZXNkYXksIEphbnVhcnkg
+MjUsIDIwMTEgMTA6MzkgQU0NClRvOiBKZWZmIExheXRvbg0KQ2M6IEJyeWFuIFNjaHVtYWtlcjsg
+QmVubnkgSGFsZXZ5OyBDaHVjayBMZXZlcjsgVGhvbWFzIEhheW5lczsgbGludXgtbmZzQHZnZXIu
+a2VybmVsLm9yZw0KU3ViamVjdDogUmU6IFBhdGNoZWQgdXAgY3Rob24gc291cmNlPw0KDQpPbiBU
+dWUsIDIwMTEtMDEtMjUgYXQgMDk6NTYgLTA1MDAsIEplZmYgTGF5dG9uIHdyb3RlOiANCj4gT24g
+VHVlLCAyNSBKYW4gMjAxMSAwODo0MzoyNSAtMDUwMA0KPiBCcnlhbiBTY2h1bWFrZXIgPGJqc2No
+dW1hQG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gPiBPbiAwMS8yNC8yMDExIDA1OjMzIFBNLCBC
+ZW5ueSBIYWxldnkgd3JvdGU6DQo+ID4gPiB0aGlzIGlzIGEgcHJvYmxlbSB3aXRoIHRoZSB2ZXJz
+aW9uIG9mIG5yb2ZmIG9uIG5ld2VyIGRpc3RyaWJ1dGlvbnMuDQo+ID4gDQo+ID4gTXkgdmVyc2lv
+biBvZiBncm9mZiAoMS4yMSkgaXMgc3BsaXR0aW5nIHRoZSBlcnJvciBpbnRvIHR3byBsaW5lcywg
+c28gSSBhbSB1c2luZyB0aGUgZm9sbG93aW5nIHBhdGNoLg0KPiA+IA0KPiA+IEJyeWFuDQo+ID4g
+DQo+IA0KPiBZZXAsIHRoaXMgd29ya2Fyb3VuZCBzdG9wcGVkIHdvcmtpbmcgYXJvdW5kIGZvciBt
+ZSBvbiBteSByYXdoaWRlIGJveA0KPiBicm9rZSB5ZXN0ZXJkYXkgZm9yIHRoZSBzYW1lIHJlYXNv
+bi4NCj4gDQo+IEkgdGhpbmsgdGhpcyBwYXRjaCBtYXkgYmUgYSBiZXR0ZXIgYXBwcm9hY2ggdGhh
+biB0cnlpbmcgdG8gZ3JlcCBvdXQNCj4gcmFuZG9tIHN0dWZmLCBidXQgSSBkb24ndCBrbm93IHdo
+ZXRoZXIgbm9uLUdOVSB0YmwgcHJvZ3JhbXMgd2lsbCBiYXJmDQo+IG9uIGl0LiBJZiBhbnlvbmUg
+aGFzIGEgc29sYXJpcyBib3ggaGFuZHksIGNvdWxkIHlvdSBsZXQgbWUga25vdyBpZg0KPiB0aGlz
+IGJyZWFrcyBvbiBpdD8NCj4gDQo+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS1bc25pcF0tLS0tLS0t
+LS0tLS0tLS0tLS0NCj4gW1BBVENIXSBjdGhvbjA0OiBhZGQgIm5vd2FybiIgb3B0aW9uIHRvIG5y
+b2ZmLmluIHRhYmxlcw0KPiANCj4gVGhpcyBwcmV2ZW50cyB0aGUgdGJsIHByZXByb2Nlc3NvciBm
+cm9tIHN0dWZmaW5nIHdhcm5pbmdzIGludG8gdGhlDQo+IHJlc3VsdGluZyBmaWxlLCB3aGljaCBz
+dWJzZXF1ZW50bHkgY2FuIG1ha2UgbnJvZmYgc3BldyB3YXJuaW5ncyBsaWtlDQo+IHRoaXMgb24g
+c3RkZXJyOg0KPiANCj4gICAgIHdhcm5pbmc6IGZpbGUgYG5yb2ZmLmluJywgYXJvdW5kIGxpbmUg
+NDc6DQo+ICAgICAgIHRhYmxlIHdpZGVyIHRoYW4gbGluZSB3aWR0aA0KPiANCj4gVW5mb3J0dW5h
+dGVseSwgSSdtIG5vdCBzdXJlIGhvdyBub24tZ251IHRibCBwcm9ncmFtcyB3aWxsIHJlYWN0IHRv
+DQo+IHRoaXMgb3B0aW9uLCBzbyBZTU1WLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogSmVmZiBMYXl0
+b24gPGpsYXl0b25AcmVkaGF0LmNvbT4NCj4gLS0tDQo+ICBnZW5lcmFsL25yb2ZmLmluIHwgICAg
+NCArKy0tDQo+ICAxIGZpbGVzIGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMo
+LSkNCj4gDQo+IGRpZmYgLS1naXQgYS9nZW5lcmFsL25yb2ZmLmluIGIvZ2VuZXJhbC9ucm9mZi5p
+bg0KPiBpbmRleCA1MjJhYzgwLi5hOGFjYjNhIDEwMDY0NA0KPiAtLS0gYS9nZW5lcmFsL25yb2Zm
+LmluDQo+ICsrKyBiL2dlbmVyYWwvbnJvZmYuaW4NCj4gQEAgLTE4LDcgKzE4LDcgQEAgYmVuY2ht
+YXJrcy4NCj4gIC5MUA0KPiAgSSByYW4gdGhlIGJlbmNobWFya3Mgb24gdGhlIGZvbGxvd2luZyBj
+b25maWd1cmF0aW9uczoNCj4gIC5UUw0KPiAtY2VudGVyOw0KPiArY2VudGVyIG5vd2FybjsNCj4g
+IGwgbCBsIGwuDQo+ICBDUFUJVW5peAlGb3J0cmFuCU1lbW9yeQ0KPiAgLnNwIDRwDQo+IEBAIC0z
+OCw3ICszOCw3IEBAIEEgYnViYmxlIHNvcnQgb2YgaW50ZWdlcnMuDQo+ICBBIHByaW1lIG51bWJl
+ciBnZW5lcmF0b3IuDQo+ICAuTFANCj4gIC5UUw0KPiAtY2VudGVyOw0KPiArY2VudGVyIG5vd2Fy
+bjsNCj4gICBjfGN8YyBzfGMgc3wNCj4gICBjfGN8YyBzfGMgc3wNCj4gICBjfGN8YyBzfGMgc3wN
+Cg0KSGVyZSdzIGEgcmFkaWNhbCBpZGVhOiB3aGF0IHNheSB3ZSBjaGFuZ2UgdGhlIG5yb2ZmLmlu
+IGZpbGUgc28gdGhhdCBpdA0Kbm8gbG9uZ2VyIHRyaWVzIHRvIGZpdCBhIDEzMGlzaCBjaGFyYWN0
+ZXIgd2lkZSB0YWJsZSBpbnRvIGFuIDgwDQpjaGFyYWN0ZXIgd2lkZSBwYWdlPw0KDQpDaGVlcnMN
+CiAgIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
+bmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29t
+DQoNCi0tDQpUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5z
+dWJzY3JpYmUgbGludXgtbmZzIiBpbg0KdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9t
+b0B2Z2VyLmtlcm5lbC5vcmcNCk1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtl
+cm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQoT77+977+97Lm7HO+/vSbvv71+77+9Ju+/
+vRjvv73vv70rLe+/ve+/vd22F++/ve+/vXfvv73vv73Lm++/ve+/ve+/vW3vv71i77+977+9Z37I
+p++/vRfvv73vv73cqH3vv73vv73vv73GoHrvv70majordu+/ve+/ve+/vQfvv73vv73vv73vv716
+Wivvv73vv70rembvv73vv73vv71o77+977+977+9fu+/ve+/ve+/ve+/vWnvv73vv73vv71677+9
+Hu+/vXfvv73vv73vv70/77+977+977+977+9Ju+/vSnfohtm
