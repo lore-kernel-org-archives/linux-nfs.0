@@ -1,83 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from netnation.com ([204.174.223.2]:46218 "EHLO peace.netnation.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751906Ab1AFBgK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 20:36:10 -0500
-Date: Wed, 5 Jan 2011 17:36:07 -0800
-From: Simon Kirby <sim@hostway.ca>
+Received: from gossamer.nmsrv.com ([208.70.244.21]:53980 "EHLO
+	gossamer.nmsrv.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751827Ab1AYXZA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2011 18:25:00 -0500
+Message-ID: <4D3F5BC5.7070709@gt.net>
+Date: Tue, 25 Jan 2011 15:24:53 -0800
+From: Nathan March <nathan@gt.net>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: flock gives EIO on NFSv4, works on NFSv3
-Message-ID: <20110106013607.GA22915@hostway.ca>
-References: <20110104234938.GM27727@hostway.ca> <1294191765.5896.35.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1294191765.5896.35.camel@heimdal.trondhjem.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Stale file not being refreshed automatically?
+References: <4D3F4A8A.7040003@gt.net> <1295994532.6867.12.camel@heimdal.trondhjem.org>
+In-Reply-To: <1295994532.6867.12.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Jan 04, 2011 at 08:42:45PM -0500, Trond Myklebust wrote:
+On 1/25/2011 2:28 PM, Trond Myklebust wrote:
+> On Tue, 2011-01-25 at 14:
+> Does '-e' in perl only do a lookup, or does it result in a 'stat()'
+> call? If the latter, then your test is flawed: a stat() is a lookup+a
+> getattr, and the latter can definitely return ESTALE when you are
+> constantly replacing the file.
+>
+> Cheers
+>    Trond
 
-> On Tue, 2011-01-04 at 15:49 -0800, Simon Kirby wrote: 
-> > Hello,
-> > 
-> > In testing NFSv4, I found that this lock test script fails with EIO:
-> > 
-> > #!/usr/bin/perl
-> > 
-> > $|=1;
-> > use Fcntl qw(:DEFAULT :flock);
-> > open(IN, "< locktest.pl") or die "open: $!";
-> > print "Locking...\n";
-> > flock(IN,LOCK_EX) or die "flock $filename: $!";
-> > print "Locked.\n";
-> > sleep(4);
-> > print "Unlocking...\n";
-> > close(IN);
-> > exit(0);
-> > 
-> > This just locks itself (assuming it's called locktest.pl).  This works
-> > fine over NFSv3, but with NFSv4, I'm seeing:
-> > 
-> > flock(3, LOCK_EX)                       = -1 EIO (Input/output error)
-> > 
-> > tcpdump and NFS debugging shows status "10038", which as far as I can
-> > tell is "NFS4ERR_OPENMODE".
-> 
-> That is known and expected behaviour. We have to map flock() onto byte
-> range locks (i.e. POSIX locks), and since LOCK_EX has to map to a write
-> lock in order to give exclusive semantics, the server will not allow it
-> when you only have the file open for reading.
+Hi Trond,
 
-So, I tested fcntl(F_SETLKW) with F_RDLCK and F_WRLCK as you describe,
-and the semantics do work there as expected, returning EBADF if the
-descriptor is open O_RDONLY over NFSv3, NFSv4, and locally.
+Has any behavior here changed between 2.6.19 and 2.6.32 that you know of?
 
-It seems that with NFSv3, the client does the check only in the fcntl()
-F_WRLCK case, and that or the flock() case, passes the lock request the
-same way via NLMv4, where the server does not care how the file handle
-was opened.  With NFSv4, the server is always rejecting write/exclusive
-lock requests on file handles opened O_RDONLY.
+Testing that perl one liner out with a variety of nfs setups we run:
 
-It's unfortunate that the flock() interface makes no check itself, though
-this appears intentional, as it is advisory-only.  Meanwhile, we have a
-number of user-uploaded applications which rely on the local and NFSv3
-flock() behaviour on O_RDONLY descriptors, which means that we can't just
-switch to NFSv4 without breaking those applications.
+2.6.11 client vs 2.6.32 server - no error
+2.6.11 client vs netapp - no error
+2.6.19 client vs 2.6.19 server - no error
+2.6.19 client vs netapp - no error
+2.6.32 client vs 2.6.32 server - stale file handles
+2.6.32 client vs netapp - stale file handles
 
-Simon-
+So it seems to be a client specific change sometime between 2.6.19 and 
+2.6.32....
 
-
-#!/usr/bin/perl
-
-$|=1;
-use Fcntl;
-open(IN, "+< locktestfcntl.pl") or die "open: $!";
-print "Locking...\n";
-$x = pack('ssllllllll',F_WRLCK,SEEK_SET,0,0,0,0,0,0,0,0);
-fcntl(IN,F_SETLKW,$x) or die "fcntl: $!";
-print "Locked.\n";
-sleep(4);
-print "Unlocking...\n";
-close(IN);
-exit(0);
+- Nathan
