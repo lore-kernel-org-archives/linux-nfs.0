@@ -1,55 +1,62 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from netnation.com ([204.174.223.2]:38110 "EHLO peace.netnation.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751249Ab1ADVnf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 16:43:35 -0500
-Date: Tue, 4 Jan 2011 13:43:34 -0800
-From: Simon Kirby <sim@hostway.ca>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/4] NFSv4: Send unmapped uid/gids to the server when
-	using auth_sys
-Message-ID: <20110104214334.GI27727@hostway.ca>
-References: <1291085863-3234-1-git-send-email-Trond.Myklebust@netapp.com> <1291085863-3234-2-git-send-email-Trond.Myklebust@netapp.com> <1291085863-3234-3-git-send-email-Trond.Myklebust@netapp.com> <1291085863-3234-4-git-send-email-Trond.Myklebust@netapp.com> <1291085863-3234-5-git-send-email-Trond.Myklebust@netapp.com> <20110104212504.GG27727@hostway.ca> <1294176792.5896.22.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1294176792.5896.22.camel@heimdal.trondhjem.org>
+From: "Halevy, Benny" <bhalevy@panasas.com>
+Subject: RE: Patched up cthon source?
+Date: Tue, 25 Jan 2011 16:36:24 -0500
+Message-ID: <7225594ED4A1304C9E43D030A886D221F4C9DA@daytona.int.panasas.com>
+References: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com> <4D3F02DD.6000606@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Cc: <linux-nfs@vger.kernel.org>
+To: "Steve Dickson" <SteveD@redhat.com>,
+	"Thomas Haynes" <thomas@netapp.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from daytona.panasas.com ([67.152.220.89]:41410 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752478Ab1AYVgh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2011 16:36:37 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-MIME-Version: 1.0
 
-On Tue, Jan 04, 2011 at 04:33:12PM -0500, Trond Myklebust wrote:
+Great. Thanks!
 
-> On Tue, 2011-01-04 at 13:25 -0800, Simon Kirby wrote: 
-> > I finally got around to setting up idmapd properly with libnss-mysql, and
-> > in doing so, I forgot that I had enabled nfs4_disable_idmapping=Y with
-> > this patch applied.  With this option set on the client, and the server
-> > set up normally, I get EINVAL from chown's fchowna():
-> > 
-> > # chown testuser:testuser test
-> > chown: changing ownership of `test': Invalid argument
-> > # echo N > /sys/module/nfs/parameters/nfs4_disable_idmapping
-> > # chown testuser:testuser test
-> > #
-> > 
-> > This happened on 2.6.37-rc5-git4, but I just reproduced it with
-> > 2.6.37-rc8-git5 as well.  The server idmapd logs:
-> > 
-> > rpc.idmapd[2987]: nss_getpwnam: name '1009999' does not map into domain 'localdomain'
-> > rpc.idmapd[2987]:  Server: (user) name "1009999" -> id "65534"
-> > rpc.idmapd[2987]: nfsdcb: authbuf=10.10.52.0/24 authtype=group
-> > rpc.idmapd[2987]:  Server: (group) name "1009999" -> id "65534"
-> > 
-> > (1009999 is the current uid/gid here.)
-> > 
-> > I think you meant for this to fall back automatically, right?
+Benny
+
+
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org on behalf of Steve Dickson
+Sent: Tue 2011-01-25 19:05
+To: Thomas Haynes
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Patched up cthon source?
+ 
+I just set up a git tree on linux-nfs.org 
+
+    git://linux-nfs.org/~steved/cthon04.git
+
+I'll start applying the patches to that tree so we all
+will have one common place to pull from... At least for now...
+
+steved.
+
+
+On 01/24/2011 05:19 PM, Thomas Haynes wrote:
+> I'm being evil here on purpose. :->
 > 
-> Did you remember to apply the patch 'NFSv4: Propagate the error
-> NFS4ERR_BADOWNER to nfs4_do_setattr'?
+> I'm trying to run cthon04 as downloaded from the connectathon.org repository
+> and I'm getting this:
+> 
+> 
+> Nroff
+> ./stat: no data in nroff.time
+> general tests failed
+> Tests failed, leaving /cthon04/loghyr mounted
+> 
+> 
+> As I kinda recall several people fixing this already, where would I go to get patches?--
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Yes, that patch is applied as part of the series. 
-
-The -EINVAL is going back to userland's fchownat().  I expected
-to see the "Reenabling the idmapper" printk() from within
-nfs4_handle_exception(), but this didn't seem to happen.
-
-Simon-
