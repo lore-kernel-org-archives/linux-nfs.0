@@ -1,56 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:50203 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:29906 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752421Ab1ASTmr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 14:42:47 -0500
-Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p0JJgj02018469
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Jan 2011 11:42:47 -0800 (PST)
-Subject: Re: [PATCH 1/1] NFS: fix handling of malloc failure during
- nfs_flush_multi()
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1295464730-29568-1-git-send-email-iisaman@netapp.com>
-References: <1295464730-29568-1-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 19 Jan 2011 14:42:12 -0500
-Message-ID: <1295466132.3444.47.camel@heimdal.trondhjem.org>
+	id S1751400Ab1AYO46 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Jan 2011 09:56:58 -0500
+Date: Tue, 25 Jan 2011 09:56:49 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, Chuck Lever <chuck.lever@oracle.com>,
+        Thomas Haynes <thomas@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: Patched up cthon source?
+Message-ID: <20110125095649.446212fd@tlielax.poochiereds.net>
+In-Reply-To: <4D3ED37D.6020606@netapp.com>
+References: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com>
+	<83EC814B-1043-46B2-8F5E-E1FB1F5B56BF@oracle.com>
+	<4D3DFE40.1070605@panasas.com>
+	<4D3ED37D.6020606@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-01-19 at 14:18 -0500, Fred Isaman wrote: 
-> Cleanup of the allocated list entries should not call
-> put_nfs_open_context() on each entry, as the context will
-> always be NULL, causing an oops.
-> 
-> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> ---
->  fs/nfs/write.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 10d648e..c8278f4 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -932,7 +932,7 @@ out_bad:
->  	while (!list_empty(&list)) {
->  		data = list_entry(list.next, struct nfs_write_data, pages);
->  		list_del(&data->pages);
-> -		nfs_writedata_release(data);
-> +		nfs_writedata_free(data);
->  	}
->  	nfs_redirty_request(req);
->  	return -ENOMEM;
+On Tue, 25 Jan 2011 08:43:25 -0500
+Bryan Schumaker <bjschuma@netapp.com> wrote:
 
-Yep. That looks like a long standing bug. Will apply...
+> On 01/24/2011 05:33 PM, Benny Halevy wrote:
+> > this is a problem with the version of nroff on newer distributions.
+> 
+> My version of groff (1.21) is splitting the error into two lines, so I am using the following patch.
+> 
+> Bryan
+> 
 
+Yep, this workaround stopped working around for me on my rawhide box
+broke yesterday for the same reason.
+
+I think this patch may be a better approach than trying to grep out
+random stuff, but I don't know whether non-GNU tbl programs will barf
+on it. If anyone has a solaris box handy, could you let me know if
+this breaks on it?
+
+----------------------[snip]------------------
+[PATCH] cthon04: add "nowarn" option to nroff.in tables
+
+This prevents the tbl preprocessor from stuffing warnings into the
+resulting file, which subsequently can make nroff spew warnings like
+this on stderr:
+
+    warning: file `nroff.in', around line 47:
+      table wider than line width
+
+Unfortunately, I'm not sure how non-gnu tbl programs will react to
+this option, so YMMV.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ general/nroff.in |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/general/nroff.in b/general/nroff.in
+index 522ac80..a8acb3a 100644
+--- a/general/nroff.in
++++ b/general/nroff.in
+@@ -18,7 +18,7 @@ benchmarks.
+ .LP
+ I ran the benchmarks on the following configurations:
+ .TS
+-center;
++center nowarn;
+ l l l l.
+ CPU	Unix	Fortran	Memory
+ .sp 4p
+@@ -38,7 +38,7 @@ A bubble sort of integers.
+ A prime number generator.
+ .LP
+ .TS
+-center;
++center nowarn;
+  c|c|c s|c s|
+  c|c|c s|c s|
+  c|c|c s|c s|
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
