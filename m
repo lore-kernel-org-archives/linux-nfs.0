@@ -1,59 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.parallels.com ([64.131.90.16]:36340 "EHLO mx2.parallels.com"
+Received: from mx2.netapp.com ([216.240.18.37]:35056 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751452Ab1ADOAQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 09:00:16 -0500
-Message-ID: <4D2327E5.3080106@parallels.com>
-Date: Tue, 4 Jan 2011 08:00:05 -0600
-From: Rob Landley <rlandley@parallels.com>
-To: Daniel Stodden <daniel.stodden@citrix.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Cache flush question.
-References: <1294130649.3529.96.camel@ramone>
-In-Reply-To: <1294130649.3529.96.camel@ramone>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+	id S1753975Ab1AYW2y convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2011 17:28:54 -0500
+Subject: Re: Stale file not being refreshed automatically?
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Nathan March <nathan@gt.net>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <4D3F4A8A.7040003@gt.net>
+References: <4D3F4A8A.7040003@gt.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 25 Jan 2011 17:28:52 -0500
+Message-ID: <1295994532.6867.12.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 01/04/2011 02:44 AM, Daniel Stodden wrote:
->
-> Hi anyone.
->
-> If somebody's got a sec to enlighten me, there's some phenomenon I
-> recently came across and found somewhat counterintuitive first.
->
-> Whenever I
->
->   1. Dirty a bunch of pages backed by an NFS mount on some server.
->
->   2. Block the traffic with iptables (TCP, assuming that mattered).
->      Still plenty of writeback pending.
->
->   3. Sync
->
-> I see #3 drive the dirty count in /proc/meminfo drop back to
-> almost-zero, immediately. The sync itself blocks, though.
->
-> So the pages are called clean the moment the write got queued, not
-> acked? Leaving the rest just to retransmits by the socket then? Is this
-> just done so because one can, or would that order rather matter for
-> consistency?
+On Tue, 2011-01-25 at 14:11 -0800, Nathan March wrote: 
+> Hi All,
+> 
+> Having a strange issue, I've reproduced this both on nfs 3 and 4. 
+> Currently using v4 with:
+> 
+> exports:
+> /var/home/voyage 
+> 10.2.1.0/24(rw,fsid=0,async,wdelay,secure,no_subtree_check,anonuid=1000,anongid=1006)
+> 
+> fstab:
+> 10.2.1.1:/ /mnt/voyage nfs4 
+> rsize=32768,wsize=32768,noatime,nosuid,rw,bg,hard,intr 0 0
+> 
+> Can be produced using these two commands on 2 machines:
+> 
+> perl -le '$| = 1 ; while (1) { sleep 1; $res = -e "/home/voyage/test"; 
+> if ($res) { print "-e : $res"; } else { print "-e : $res ($!)"; } }'
+> -e : 1
+> 
+> perl -le '$| = 1 ; while (1) { sleep 5; open(F, ">", 
+> "/home/voyage/test.foo"); close F; my $res = 
+> rename("/home/voyage/test.foo", "/home/voyage/test"); print "rename 
+> ($res)"; }'
+> 
+> The first command will occasionally print out: -e :  (Stale NFS file handle)
+> 
+> Now according to http://nfs.sourceforge.net/#faq_a10 as of 2.6.12 the 
+> vfs should automatically retry when it gets a estale during path 
+> resolution. This doesn't appear to be happening though based on the 
+> errors I'm seeing.
+> 
+> Anyone have any thoughts on what might be happening here? Or am I 
+> misinterpreting that faq entry? (This is on ext3 if it matters)
 
-At a wild guess, maybe you're experiencing what Jim Gettys dubbed 
-"buffer bloat".
+Does '-e' in perl only do a lookup, or does it result in a 'stat()'
+call? If the latter, then your test is flawed: a stat() is a lookup+a
+getattr, and the latter can definitely return ESTALE when you are
+constantly replacing the file.
 
-   http://lwn.net/Articles/419714/
+Cheers
+  Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Specficially, does ifconfig show a txqueuelen of 1000 for your device? 
-That means the device is buffering 1000 outbound packets, for no readily 
-apparent reason (other than to screw up latency).  With an MTU of 1500 
-that's a megabyte and a half of outgoing data constipated in the network 
-layer.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-NFS also has some cacheing of its own I don't understand yet, for 
-"non-idempotent" transactions.  Described in this OLS paper:
-
-   http://kernel.org/doc/ols/2006/ols2006v2-pages-59-72.pdf
-
-Rob
