@@ -1,65 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:53170 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751753Ab1ARP76 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 10:59:58 -0500
-Subject: Re: NFS OOps  - kernel BUG at fs/nfs/nfs3xdr.c:1338
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <Chuck.Lever@oracle.com>
-In-Reply-To: <1295048791.20016.15.camel@heimdal.trondhjem.org>
-Date: Tue, 18 Jan 2011 10:59:14 -0500
-Cc: Milan Broz <mbroz@redhat.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Message-Id: <BC9E8816-B395-44C1-ACF8-FEC4E80870C1@oracle.com>
-References: <4D30D9D6.2080809@redhat.com> <1295048791.20016.15.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:16751 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752169Ab1AYRFk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Jan 2011 12:05:40 -0500
+Message-ID: <4D3F02DD.6000606@RedHat.com>
+Date: Tue, 25 Jan 2011 12:05:33 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Thomas Haynes <thomas@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Patched up cthon source?
+References: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com>
+In-Reply-To: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+I just set up a git tree on linux-nfs.org 
 
-On Jan 14, 2011, at 6:46 PM, Trond Myklebust wrote:
+    git://linux-nfs.org/~steved/cthon04.git
 
-> On Sat, 2011-01-15 at 00:18 +0100, Milan Broz wrote: 
->> Hi,
->> 
->> on today Linus' tree I get OOps if using nfs.
->> 
->> server (2.6.36) exports dir:
->> /dir   172.16.1.0/24(rw,async,all_squash,no_subtree_check,anonuid=500,anongid=500)
->> 
->> on client it is mounted  in fstab
->> server:/dir  /mnt/tst  nfs  rw,soft 0 0
->> 
->> and these commands OOpses it (simplified from a configure script):
->> 
->> cd /dir
->> touch x
->> install x y
->> 
->> [  105.327701] ------------[ cut here ]------------
->> [  105.327979] kernel BUG at fs/nfs/nfs3xdr.c:1338!
+I'll start applying the patches to that tree so we all
+will have one common place to pull from... At least for now...
+
+steved.
+
+
+On 01/24/2011 05:19 PM, Thomas Haynes wrote:
+> I'm being evil here on purpose. :->
 > 
-> Chuck, why did you add those BUG_ON()s there? I know that
-> nfsacl_encode() is for some unfathomable reason declared as returning an
-> unsigned integer, but if you look at the actual code, you will see that
-> it returns a number of negative signed error values depending on whether
-> or not allocations succeeded, number of entries is valid, etc...
+> I'm trying to run cthon04 as downloaded from the connectathon.org repository
+> and I'm getting this:
 > 
-> IOW: negative values are perfectly allowable here, and should simply
-> cause the rpc call to be aborted, not an Oops.
-
-XDR encoders no longer return an error code to the generic RPC client code.  The architectural assumption is that the heavy lifting (error checking, resource allocation, etc) is done by the upper layers, and that any problems that occur in the XDR routines are software bugs.  This seems to be the only remaining XDR code that depends on returning an error.  (I recall there may be one spot in the NFSv4 XDR code too).
-
-We should have checked nfsacl_encode() more closely before the recent spate of XDR changes.  However, this bit of layering violation has been a thorn in our side for years.  Perhaps we can use the new xdr_stream scratch buffer to address the allocation failure issues here, and better error checking can be done in the upper layers.
-
-Milan, I assume the install command is trying to set an ACL on an NFS file.  Can you tell us what the ACL looks like?
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> 
+> Nroff
+> ./stat: no data in nroff.time
+> general tests failed
+> Tests failed, leaving /cthon04/loghyr mounted
+> 
+> 
+> As I kinda recall several people fixing this already, where would I go to get patches?--
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
