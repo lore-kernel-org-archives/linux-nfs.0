@@ -1,52 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from science.horizon.com ([71.41.210.146]:29784 "HELO
-	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750851Ab1AAFoh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Jan 2011 00:44:37 -0500
-Date: 1 Jan 2011 00:44:35 -0500
-Message-ID: <20110101054435.29395.qmail@science.horizon.com>
-From: "George Spelvin" <linux@horizon.com>
-To: linux@horizon.com, Trond.Myklebust@netapp.com
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-In-Reply-To: <1293844690.22964.10.camel@heimdal.trondhjem.org>
+Received: from oxalide-out.extra.cea.fr ([132.168.224.1]:33296 "EHLO
+	oxalide-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752650Ab1AYK3a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jan 2011 05:29:30 -0500
+Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
+	by oxalide.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.0) with ESMTP id p0P9kXXE018482
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Jan 2011 10:46:33 +0100
+Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
+	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id p0P9kXeE007360
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Jan 2011 10:46:33 +0100
+	(envelope-from philippe.deniel@cea.fr)
+Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
+	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id p0P9kXRO012928
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Jan 2011 10:46:33 +0100
+Message-ID: <4D3E9BF9.7080406@cea.fr>
+Date: Tue, 25 Jan 2011 10:46:33 +0100
+From: DENIEL Philippe <philippe.deniel@cea.fr>
+To: Thomas Haynes <thomas@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Patched up cthon source?
+References: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com>
+In-Reply-To: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
->> 1) Look again; it's O(1) work per entry, or O(n) work for an n-entry
->>    directory.  And O(1) space.  With very small constant factors,
+Thomas Haynes a écrit :
+> I'm being evil here on purpose. :->
+>
+> I'm trying to run cthon04 as downloaded from the connectathon.org repository
+> and I'm getting this:
+>
+>
+> Nroff
+> ./stat: no data in nroff.time
+> general tests failed
+> Tests failed, leaving /cthon04/loghyr mounted
+>
+>   
+I had a similar behavior and it was a bug on my side that I solved 
+during the past bake-a-thom : the 'nroff' step does lots  of garbage  in 
+the file, so there is a call to 'grep -v' to get rid off all this 
+garbage. The result is sent to a secondary file that is moved to the 
+original file. So there is a 'mv -f a b' were both a and b exist. This 
+should lead to a situation were the original "b" disappears and is 
+replaced by "a". This was the bug I had. May be you are in the same 
+situation. I hope this would help you.
 
-> Yes. I was thinking about it this morning (after coffee).
+    Regards
 
-Thank you for the second look.
-
-> One variant on those algorithms that might make sense here is to save
-> the current cookie each time we see that the result of a cookie search
-> is a filp->f_pos offset < the current filp->f_pos offset. That means we
-> will in general only detect the loop after going through an entire
-> cycle, but that should be sufficient...
-
-All of these low-overhead algorithms can take a couple of loop iterations
-before they detect it; their job is to achieve a reasonably low constant
-factor in time using O(1) space.
-
-The worst case for the power-of-two algorithm is when the loop is n = 2^k+1
-items long.  When you get to item 2^(k+1), you'll be comparing to item
-2^k, which is a mismatch.  Then you'll save the cookie from 2^(k+1)
-and have to go to 2^(k+1) + 2^k + 1, or about 3*n, before detecting
-it.
-
-I don't consider this a problem, because it wastes a few seconds of
-computer time, to be followed by wasting a few hours trying to pass
-a bug report upstream about the broken NFS server...
-
-I don't quite follow how your proposed variant works.  Pardon my ignorance
-of NFS, but is the f->pos something that comes from the server, or
-something that is synthesized locally?  Obviously, if you keep a record
-of all the server cookies, you can detect loops quite easily.
-
-If it comes from the server, there's a risk that there might be two
-backward jumps in the cycle, and thus you'll never notice it.
-
+       Philippe
