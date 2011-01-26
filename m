@@ -1,48 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:24153 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752596Ab1AYPhm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Jan 2011 10:37:42 -0500
-From: andros@netapp.com
-To: trond.myklebuse@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 2/3] NFS fix cb_sequence error processing
-Date: Tue, 25 Jan 2011 10:38:02 -0500
-Message-Id: <1295969883-2100-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1295969883-2100-1-git-send-email-andros@netapp.com>
-References: <1295969883-2100-1-git-send-email-andros@netapp.com>
+Received: from mtoichi12.ns.itscom.net ([219.110.2.182]:51913 "EHLO
+	mtoichi12.ns.itscom.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751697Ab1AZIVE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jan 2011 03:21:04 -0500
+From: "J. R. Okajima" <hooanon05@yahoo.co.jp>
+Subject: Re: 2.6.38-rc2... NFS sillyrename is broken...
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Nick Piggin <npiggin@gmail.com>,
+        Linux Filesystem Development <linux-fsdevel@vger.kernel.org>
+In-Reply-To: <1295998215.6867.22.camel@heimdal.trondhjem.org>
+References: <1295998215.6867.22.camel@heimdal.trondhjem.org>
+Date: Wed, 26 Jan 2011 17:20:22 +0900
+Message-ID: <21515.1296030022@jrobl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
 
-Always assign the cb_process_state nfs_client pointer so a processing error
-in cb_sequence after the nfs_client is found and referenced returns
-a non-NULL cb_process_state nfs_client and the matching nfs_put_client in
-nfs4_callback_compound dereferences the client.
+(CC-ed Nick Piggin)
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/callback_proc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Trond Myklebust:
+> Something in the recent VFS churn appears to have broken NFS
+> sillyrename.
+>
+> Currently, when I try to unlink() a file that is being held open by
+> another process, I do indeed see that file getting renamed to
+> a .nfsxxxxxxx file, but when the file is closed, the .nfsxxxxx file
+> sticks around until I unlink() it again.
+>
+> I'll have a look tomorrow at what is going wrong, but I figured I'd ask
+> on the list in case someone has a suspect...
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 829f406..8958757 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -408,9 +408,9 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
- 	res->csr_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
- 	res->csr_target_highestslotid = NFS41_BC_MAX_CALLBACKS - 1;
- 	nfs4_cb_take_slot(clp);
--	cps->clp = clp; /* put in nfs4_callback_compound */
- 
- out:
-+	cps->clp = clp; /* put in nfs4_callback_compound */
- 	for (i = 0; i < args->csa_nrclists; i++)
- 		kfree(args->csa_rclists[i].rcl_refcalls);
- 	kfree(args->csa_rclists);
--- 
-1.6.6
+I noticed this issue yesterday and found the change for removing
+dcache_lock is suspicious.
+By the commit 949854d
+	2011-01-07 fs: Use rename lock and RCU for multi-step operations
+dentry->d_parent = NULL;
+is added into the beginning of VFS d_kill().
 
+Later d_kill() calls dentry_iput(), d_op->d_iput() which is
+nfs_dentry_iput() in NFS.
+Then nfs_dentry_iput() calls nfs_complete_unlink(), nfs_call_unlink().
+Here nfs_call_unlink() calls dget_parent() and when the result is NULL,
+it skips the actual unlink. Finally the "silly-renamed" dentry
+remains.
+
+Can we stop "dentry->d_parent = NULL"
+when (d->flags & DCACHE_NFSFS_RENAMED) is true?
+
+
+J. R. Okajima
