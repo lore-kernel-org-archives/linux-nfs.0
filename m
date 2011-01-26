@@ -1,80 +1,71 @@
-Return-Path: <nfsv4-bounces@ietf.org>
-Message-ID: <4D21D71D.8030907@panasas.com>
-Date: Mon, 03 Jan 2011 16:03:09 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Zhangyu <wolf0805@163.com>
-References: <4D0E2E01.5020609@panasas.com>,
-	<fed0592.55ef.12cfee2b158.Coremail.wolf0805@163.com>,
-	<18c0c0f3.1adea.12d0e4252bd.Coremail.wolf0805@163.com>
-	<201012301048485665083@163.com>
-In-Reply-To: <201012301048485665083@163.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>, nfsv4 <nfsv4@ietf.org>
-Subject: Re: [nfsv4] Questions on pNFS
-List-Unsubscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=unsubscribe>
-List-Archive: <http://www.ietf.org/mail-archive/web/nfsv4>
-List-Post: <mailto:nfsv4@ietf.org>
-List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
-List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
-	<mailto:nfsv4-request@ietf.org?subject=subscribe>
-Content-Type: text/plain; charset="gb2312"
-Sender: nfsv4-bounces@ietf.org
-Errors-To: nfsv4-bounces@ietf.org
-MIME-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.netapp.com ([216.240.18.37]:16798 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751736Ab1AZUOx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jan 2011 15:14:53 -0500
+Subject: Re: 2.6.38-rc2... NFS sillyrename is broken...
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "J. R. Okajima" <hooanon05@yahoo.co.jp>
+Cc: linux-nfs@vger.kernel.org, Nick Piggin <npiggin@gmail.com>,
+        Linux Filesystem Development <linux-fsdevel@vger.kernel.org>
+In-Reply-To: <21515.1296030022@jrobl>
+References: <1295998215.6867.22.camel@heimdal.trondhjem.org>
+	 <21515.1296030022@jrobl>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 26 Jan 2011 15:14:27 -0500
+Message-ID: <1296072867.7127.26.camel@heimdal.trondhjem.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-W3RyaW1tZWQgbWFpbGluZyBsaXN0cyBvbiB0aGUgQ2NdCgpPbiAyMDEwLTEyLTMwIDA0OjQ4LCBa
-aGFuZ3l1IHdyb3RlOgo+IEhpLAo+IAo+IEkgaGF2ZSBzdWNjZXNzZnVsbHkgaW5zdGFsbGVkIHRo
-ZSBwTkZTIGFuZCBpdCB3b3JrcyB3ZWxsLgoKR3JlYXQhCgo+IEhvd2V2ZXIsIEkgYW0gaW50ZXJl
-c3RlZCBpbiB0aGUgcGFyYWxsZWwgYWNjZXNzIGNvbnRyb2wgbWVjaGFuaXNtIG9mIHBORlMuCj4g
-SSB0cmllZCB0byBlZGl0IHRoZSBzYW1lIGZpbGUgb24gdHdvIGRpZmZlcmVudCBjbGllbnRzLAo+
-IEkgZm91bmQgdGhlcmUgd2Fzbid0IGFueSBieXRlLXJhbmdlIGxvY2sgYXMgc3BlY2lmaWVkIGlu
-IHRoZSBpZXRmLW5mc3Y0LWRyYWZ0IHByb3RvY29sLgoKQ29ycmVjdC4KCj4gSG93IGlzIHRoZSBw
-YXJhbGxlbCBhY2Nlc3MgY29udHJvbCBpbXBsZW1lbnRlZD8gV2hpY2ggc291cmNlIGNvZGUgZmls
-ZSBkb2VzIGl0IGxvY2F0ZWQgaW4/IAo+IAoKVGhlcmUgaXMgbm9uZSBieSBkZWZpbml0aW9uLgpU
-aGUgcE5GUyBmZWF0dXJlIGlzIG9ydGhvZ29uYWwgdG8gc3luY2hyb25pemF0aW9uIHByaW1pdGl2
-ZXMgc28KZGlmZmVyZW50IGNsaWVudHMgdGhhdCBuZWVkIHRvIHNlcmlhbGl6ZSB0aGVpciBhY2Nl
-c3Mgc2hvdWxkIHVzZSBsb2NraW5nCnRvIGRvIHRoYXQuCgpTb21lIHNlcnZlcnMgbWF5IGltcGxl
-bWVudCBzeW5jaHJvbml6YXRpb24gYXQgdGhlIHBuZnMgbGF5b3V0IGxldmVsLApidXQgdGhlIGxp
-bnV4IHNlcnZlciBoYXMgbm8gc3VjaCBmZWF0dXJlLgoKPiBBZGRpdGlvbmFsbHksIEkgZm91bmQg
-dGhhdCB3aGVuIHdyaXRpbmcgYSBmaWxlIHRvIHRoZSBEUywgbmV0d29yayBmbG93IGlzIGhpZ2hl
-ciBib3RoCj4gb24gTURTIGFuZCBEUy4gRG9lcyBpdCBtZWFuIHRoYXQgdGhlIGRhdGEgaXMgZGVs
-aXZlcmVkIHRocm91Z2ggTURTPwo+IEkgdGhpbmsgdGhlIGRhdGEgc2hvdWxkIGJlIHdyaXR0ZW4g
-ZGlyZWN0bHkgdG8gRFMsIGlzIGl0IHJpZ2h0PwoKVHJ1ZS4gIElmIHlvdXIgc2V0dXAgaXMgY29u
-ZmlndXJlZCBjb3JyZWN0bHkgdGhlcmUgc2hvdWxkIGJlIG5vCkkvTyBkaXJlY3RlZCBhdCB0aGUg
-TURTLgpDYW4geW91IGNhcHR1cmUgYSBuZXR3b3JrIHRyYWNlIHRvIHRoZSBNRFMgYW5kIHRvIHRo
-ZSBEUyB0byBzZWUgd2hhdCBleGFjdGx5CmlzIHNlbnQgb24gdGhlIGxpbmU/CgpCZW5ueQoKPiAK
-PiBUaGFua3MgJiBSZWdhcmRzLAo+IFl1IFpoYW5nIAo+IAo+IDIwMTAtMTItMzAgCj4gCj4gCj4g
-Cj4gWmhhbmd5dSAKPiAKPiAKPiAKPiC3orz+yMujuiBCZW5ueSBIYWxldnkgCj4gt6LLzcqxvOSj
-uiAyMDEwLTEyLTI2ICAxNjoyNzo1NSAKPiDK1bz+yMujuiB3b2xmMDgwNSAKPiCzrcvNo7ogTkZT
-IGxpc3QgCj4g1vfM4qO6IFJlOiBFcnJvcnMgb24gcE5GUyAKPiAgCj4gW0FkZGluZyB0aGUgbGlu
-dXgtbmZzIG1haWxpbmcgbGlzdCB0byB0aGUgQ2MKPiBwbGVhc2Uga2VlcCB0aGUgZm9sa3Mgb24g
-dGhlIGxpc3QgcG9zdGVkIGFzIHRoZXkgYXJlIGludGVyZXN0ZWQKPiBpbiB0aGUgaXNzdWVzIHlv
-dSBlbmNvdW50ZXIgYXMgd2VsbCBhcyB0aGUgc29sdXRpb25zXQo+IE9uIDIwMTAtMTItMjIgMTU6
-MjYsIHdvbGYwODA1IHdyb3RlOgo+PiBIaSBCZW5ueSwKPj4KPj4gSSBoYXZlIGluc3RhbGxlZCBw
-TkZTIGtlcm5lbCBhbmQgcG5mcy1uZnMtdXRpbHMgb24gdGhyZWUgbWFjaGluZXMoY2xpZW50LG1k
-cyxkcykuCj4+IEJ1dCB3aGVuIEkgdHJpZWQgdG8gbG9hZCB0aGUgbGF5b3V0ZHJpdmVyLCBpdCBn
-aXZlcyBlcnJvciA6ICJGYXRhbCAtIG1vZHVsZSBuZnNsYXlvdXRkcml2ZXIgbm90IGZvdW5kLiIK
-PiBTb3JyeSwgdGhlIGxheW91dCBkcml2ZXIgd2FzIHJlbmFtZWQgdG8gbmZzX2xheW91dF9uZnN2
-NDFfZmlsZXMuCj4gSSd2ZSB1cGRhdGVkIGh0dHA6Ly93aWtpLmxpbnV4LW5mcy5vcmcvd2lraS9p
-bmRleC5waHAvQ29uZmlndXJpbmdfcE5GUy9zcG5mc2QKPiB0byByZWZsZWN0IHRoYXQuCj4gQmVu
-bnkKPj4gSSBhbSB1c2luZyBGZWRvcmEgMTQgd2l0aCB0aGUgdW5hbWUgLWEgc2F5aW5nICJMaW51
-eCBsb2NhbGhvc3QubG9jYWxkb21haW4gCj4+IDIuNi4zNi0xLnBuZnNfYWxsXzIwMTBfMTFfMDMu
-ZmMxNS5pNjg2LlBBRSAjMSBTTVAgVHVlIE5vdiA5IDE4OjMyOjIwIFVUQyAyMDEwIGk2ODYgaTY4
-NiBpMzg2IEdOVS9MaW51eCIuCj4+IEl0IHNlZW1zIHRoZSBrZXJuZWwgaXMgcG5mcyBlbmFibGVk
-LCBidXQgd2hlcmUgaXMgdGhlIHByb2JsZW0/Cj4+Cj4+IFRoZSBkcyBpcC1hZGRyIGlzIFhYLllZ
-LlpaLkFBLCBtZHMncyBpcyBYWC5ZWS5aWi5CQiwgYW5kIGNsaWVudCdzIGlzIFhYLllZLlpaLkND
-LiAKPj4KPj4gVGhlIC9ldGMvZXhwb3J0cyBvbiBkcyBsb29rcyBhczogL2V4cG9ydC9zcG5mcyAq
-KHJ3LHN5bmMsZnNpZD0wLGluc2VjdXJlLG5vX3N1YnRyZWVfY2hlY2sscG5mcyxub19yb290X3Nx
-dWFzaCkKPj4KPj4gVGhlIC9ldGMvZXhwb3J0cyBvbiBtZHMgOiAvZXhwb3J0ICoocncsc3luYyxm
-c2lkPTAsaW5zZWN1cmUsbm9fc3VidHJlZV9jaGVjayxwbmZzLG5vX3Jvb3RfIQo+PiAgc3F1YXNo
-KQo+Pgo+PiAvZXRjL2ZzdGFiIG9uIG1kczogIFhYLllZLlpaLkFBOi8gICAgICAgL3NwbmZzL1hY
-LllZLlpaLkEgICBuZnM0ICAgIG1pbm9ydmVyc2lvbj0xICAgICAgICAwIDAKPj4KPj4gVGhlbiBJ
-IG1vdW50ZWQgTURTIGZyb20gY2xpZW50IHVzaW5nIDogbW91bnQgLXQgbmZzNCAtbyBtaW5vcnZl
-cnNpb249MSBYWC5ZWS5aWi5CQjovIC9tbnQKPj4KPj4gSSBmb3VuZCB0aGF0IG9ubHkgbWRzIGFu
-ZCBjbGllbnQgYXJlIG1vdW50ZWQsIGl0IHNlZW1zIGRzIGlzIGxlZnQgYWxvbmUuIElzIHRoZXJl
-IGFueSBtaXN0YWtlcyBpbiB0aGVzZSBjb25maWd1cmUgZmlsZXM/IAo+Pgo+PiBJIGhvcGUgdGhl
-c2UgaGVscHMuCj4+Cj4+IEJlc3QgcmVnYXJkcywKPj4KPj4gWXUgWmhhbmcKPj4KPj4KPj4KPiAu
-Cl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCm5mc3Y0IG1h
-aWxpbmcgbGlzdApuZnN2NEBpZXRmLm9yZwpodHRwczovL3d3dy5pZXRmLm9yZy9tYWlsbWFuL2xp
-c3RpbmZvL25mc3Y0Cg==
+On Wed, 2011-01-26 at 17:20 +0900, J. R. Okajima wrote: 
+> (CC-ed Nick Piggin)
+> 
+> Trond Myklebust:
+> > Something in the recent VFS churn appears to have broken NFS
+> > sillyrename.
+> >
+> > Currently, when I try to unlink() a file that is being held open by
+> > another process, I do indeed see that file getting renamed to
+> > a .nfsxxxxxxx file, but when the file is closed, the .nfsxxxxx file
+> > sticks around until I unlink() it again.
+> >
+> > I'll have a look tomorrow at what is going wrong, but I figured I'd ask
+> > on the list in case someone has a suspect...
+> 
+> I noticed this issue yesterday and found the change for removing
+> dcache_lock is suspicious.
+> By the commit 949854d
+> 	2011-01-07 fs: Use rename lock and RCU for multi-step operations
+> dentry->d_parent = NULL;
+> is added into the beginning of VFS d_kill().
+> 
+> Later d_kill() calls dentry_iput(), d_op->d_iput() which is
+> nfs_dentry_iput() in NFS.
+> Then nfs_dentry_iput() calls nfs_complete_unlink(), nfs_call_unlink().
+> Here nfs_call_unlink() calls dget_parent() and when the result is NULL,
+> it skips the actual unlink. Finally the "silly-renamed" dentry
+> remains.
+
+Agreed. That looks like it explains the breakage.
+
+> Can we stop "dentry->d_parent = NULL"
+> when (d->flags & DCACHE_NFSFS_RENAMED) is true?
+
+Nick?
+
+The alternative would be to add a callback that can be called after
+dentry_iput() if DCACHE_NFSFS_RENAMED is true, and that takes the parent
+and (negative) dentry as the arguments.
+sillyrename doesn't need the inode as an argument, but it definitely
+needs the parent dentry so that it can check for races with
+->lookup()...
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
