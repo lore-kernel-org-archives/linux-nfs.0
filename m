@@ -1,51 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from earth.cora.nwra.com ([65.44.101.180]:51495 "EHLO
-	earth.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751226Ab1ADTEj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jan 2011 14:04:39 -0500
-Message-ID: <4D236F43.4040403@cora.nwra.com>
-Date: Tue, 04 Jan 2011 12:04:35 -0700
-From: Orion Poplawski <orion@cora.nwra.com>
-To: Kevin Coffman <kwc@citi.umich.edu>, linux-nfs@vger.kernel.org
-Subject: Re: Trouble mounting from EL5.5 server on Fedora 14 - gss_kerberos_mech:
- unsupported algorithm 6
-References: <4D23589B.6030409@cora.nwra.com> <AANLkTik3XOGSX_X4mRYWP4XA-j8t1DSn7JVrY6gZLaak@mail.gmail.com>
-In-Reply-To: <AANLkTik3XOGSX_X4mRYWP4XA-j8t1DSn7JVrY6gZLaak@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:56637 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752465Ab1AZAPa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Jan 2011 19:15:30 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] NFS construct consistent co_ownerid for v4.1
+Date: Tue, 25 Jan 2011 19:15:32 -0500
+Message-Id: <1296000932-2935-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 01/04/2011 11:37 AM, Kevin Coffman wrote:
-> On Tue, Jan 4, 2011 at 12:27 PM, Orion Poplawski<orion@cora.nwra.com>  wrote:
->> I'm trying to get kerberized NFSv4 setup for the first time (have had
->> non-secure v4 up for a while).  Client is Fedora 14, server is CentOS 5.5.
->>
->> [ ... ]
->>
->> keytabs on server and client are like:
->>
->>    3 nfs/orca.cora.nwra.com@CORA.NWRA.COM (Triple DES cbc mode with
->> HMAC/sha1)
->>    3 nfs/orca.cora.nwra.com@CORA.NWRA.COM (ArcFour with HMAC/md5)
->>    3 nfs/orca.cora.nwra.com@CORA.NWRA.COM (DES with HMAC/sha1)
->>    3 nfs/orca.cora.nwra.com@CORA.NWRA.COM (DES cbc mode with RSA-MD5)
->>
->> Any ideas?
->
-> Only DES is supported for your server's kernel:
->
-> http://www.citi.umich.edu/projects/nfsv4/linux/krb5-setup.html
+From: Andy Adamson <andros@netapp.com>
 
-Indeed, it does work if I limit the keys to DES only 
-(des-hmac-sha1:normal,des-cbc-md5:normal).  Although I had seen at least one 
-report that using ktadd -e des-cbc-crc:normal was no longer necessary as of 5.2:
+As stated in section 2.4 of RFC 5661, subsequent instances of the client need
+to present the same co_ownerid. Concatinate the client's IP dot address,
+host name, and the rpc_auth pseudoflavor to form the co_ownerid.
 
-http://sadiquepp.blogspot.com/2009/02/how-to-configure-nfsv4-with-kerberos-in.html
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   30 ++++++++++--------------------
+ 1 files changed, 10 insertions(+), 20 deletions(-)
 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9d992b0..78936a8 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -50,6 +50,7 @@
+ #include <linux/module.h>
+ #include <linux/sunrpc/bc_xprt.h>
+ #include <linux/xattr.h>
++#include <linux/utsname.h>
+ 
+ #include "nfs4_fs.h"
+ #include "delegation.h"
+@@ -4572,27 +4573,16 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	*p = htonl((u32)clp->cl_boot_time.tv_nsec);
+ 	args.verifier = &verifier;
+ 
+-	while (1) {
+-		args.id_len = scnprintf(args.id, sizeof(args.id),
+-					"%s/%s %u",
+-					clp->cl_ipaddr,
+-					rpc_peeraddr2str(clp->cl_rpcclient,
+-							 RPC_DISPLAY_ADDR),
+-					clp->cl_id_uniquifier);
+-
+-		status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
+-
+-		if (status != -NFS4ERR_CLID_INUSE)
+-			break;
+-
+-		if (signalled())
+-			break;
+-
+-		if (++clp->cl_id_uniquifier == 0)
+-			break;
+-	}
++	args.id_len = scnprintf(args.id, sizeof(args.id),
++				"%s/%s.%s/%u",
++				clp->cl_ipaddr,
++				init_utsname()->nodename,
++				init_utsname()->domainname,
++				clp->cl_rpcclient->cl_auth->au_flavor);
+ 
+-	status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
++	status = rpc_call_sync(clp->cl_rpcclient, &msg, 0);
++	if (!status)
++		status = nfs4_check_cl_exchange_flags(clp->cl_exchange_flags);
+ 	dprintk("<-- %s status= %d\n", __func__, status);
+ 	return status;
+ }
 -- 
-Orion Poplawski
-Technical Manager                     303-415-9701 x222
-NWRA/CoRA Division                    FAX: 303-415-9702
-3380 Mitchell Lane                  orion@cora.nwra.com
-Boulder, CO 80301              http://www.cora.nwra.com
+1.6.6
+
