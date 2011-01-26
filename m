@@ -1,147 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:51306 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750951Ab1ANGYP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jan 2011 01:24:15 -0500
-Received: by fxm20 with SMTP id 20so2458360fxm.19
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Jan 2011 22:24:13 -0800 (PST)
-In-Reply-To: <4D2FE6E9.5050708@cn.fujitsu.com>
-References: <AANLkTin04TeswNAM89ij84YzfeTAR7rsppGyZFfq01qM@mail.gmail.com>
-	<4D2FB6F4.6070304@cn.fujitsu.com>
-	<AANLkTin8PEyLqpdaTorSrS3Zi5sF7VeJRcrCVK9fEyc7@mail.gmail.com>
-	<4D2FE6E9.5050708@cn.fujitsu.com>
-Date: Fri, 14 Jan 2011 17:24:13 +1100
-Message-ID: <AANLkTinOfggDS8CB9eTb7apRcJ_PURr=SSthweO4wJOk@mail.gmail.com>
-Subject: Re: mac error
-From: hce <webmail.hce@gmail.com>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:24146 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752858Ab1AZPfl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jan 2011 10:35:41 -0500
+Subject: Re: Cross-compiling nfs-utils 1.1.4 for ARM
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4D3F7DBE.9030804@RedHat.com>
+Date: Wed, 26 Jan 2011 10:34:16 -0500
+Cc: Patrick Dignan <pdignan@nvidia.com>, Kevin Coffman <kwc@citi.umich.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <9EE9BD4A-97D5-4E21-80E4-D2F79DBB7E23@oracle.com>
+References: <4D3DF9FD.1050800@nvidia.com>	<4D3EC8DC.602@RedHat.com>	<4D3F2AE8.3010303@nvidia.com> <AANLkTi=tnLVwgYgPBgc=BrD5jAbqH7JfMhxOecc7K8cm@mail.gmail.com> <4D3F4DFF.6030808@nvidia.com> <92B00E1A-FBB1-467F-BBBD-63ACAC7C32ED@oracle.com> <4D3F7DBE.9030804@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Jan 14, 2011 at 5:02 PM, Mi Jinlong <mijinlong@cn.fujitsu.com> wrote:
->
->
-> hce :
->> Thanks for your response. I've just found that nlockmgr did not
->> respond when I run following command on the server. Is it a problem or
->> it is normal? Anyway, the NFS is still working fine.
->
->  No, it's not a problem.
->  It just a lack of NFSv3's file lock, if you try to lock NFSv3 file,
->  you must start the nfslock service both the client and server
->  (maybe other platform don't named nfslock).
->
->  Because your normal NFS operation don't need file lock,
->  so NFSv3 is still working fine.
 
-Thanks. Good to know, so I don't need to worry about it.
+On Jan 25, 2011, at 8:49 PM, Steve Dickson wrote:
 
->>
->> $ rpcinfo -t linux_server nlockmgr
->> rpcinfo: RPC: Timed out
->> program 100021 version 0 is not available
->>
->> $ rpcinfo -u linux_server nlockmgr
->> rpcinfo: RPC: Timed out
->> program 100021 version 0 is not available
->>
->> $ rpcinfo -p
->
->  The linux_server and localhost are different machine ?
->
->  linux_server is CentOS?? or MAC?
->  localhost is?
+> 
+> 
+> On 01/25/2011 05:44 PM, Chuck Lever wrote:
+>> 
+>> On Jan 25, 2011, at 5:26 PM, Patrick Dignan wrote:
+>> 
+>>> On 01/25/2011 12:32 PM, Kevin Coffman wrote:
+>>>> On Tue, Jan 25, 2011 at 2:56 PM, Patrick Dignan<pdignan@nvidia.com>  wrote:
+>>>>> On 01/25/2011 04:58 AM, Steve Dickson wrote:
+>>>>>> On 01/24/2011 05:15 PM, Patrick Dignan wrote:
+>>>>>>> Hi,
+>>>>>>> 
+>>>>>>> I'm attempting to cross-compile nfs-utils 1.1.4 for ARM on an x86_64
+>>>>>>> build machine.  I can cross-compile other software, but nfs-utils fails.  I
+>>>>>>> get the following error:
+>>>>>>> 
+>>>>>>> gcc -DHAVE_CONFIG_H -I. -I../../support/include  -D_GNU_SOURCE
+>>>>>>> -D_GNU_SOURCE  -O2 -pipe -I/build/tegra2_seaboard/usr/include/
+>>>>>>> -I/build/tegra2_seaboard/include/ -ggdb -march=armv7-a -mtune=cortex-a8
+>>>>>>> -mfpu=vfpv3-d16 -mfloat-abi=softfp -MT testlk-testlk.o -MD -MP -MF
+>>>>>>> .deps/testlk-testlk.Tpo -c -o testlk-testlk.o `test -f 'testlk.c' || echo
+>>>>>>> './'`testlk.c
+>>>>>>> cc1: error: unrecognized command line option "-mfpu=vfpv3-d16"
+>>>>>>> cc1: error: unrecognized command line option "-mfloat-abi=softfp"
+>>>>>>> testlk.c:1: error: bad value (armv7-a) for -march= switch
+>>>>>>> testlk.c:1: error: bad value (cortex-a8) for -mtune= switch
+>>>>>>> 
+>>>>>>> I'm guessing there's some sort of problem in Makefile.am that's causing
+>>>>>>> it to fail, but I am not sure what changes I need to make.  Does anyone know
+>>>>>>> the solution to this problem or where I might start looking to fix this?
+>>>>>> My guess would be your cross-compiler is added those to the CFLAGS because
+>>>>>> those flags are not set on a "normal" compilation...
+>>>>>> 
+>>>>>> steved.
+>>>>>> 
+>>>>>>> Best,
+>>>>>>> 
+>>>>>>> Patrick Dignan
+>>>>> I believe you are correct, however I think it should be using the ARM
+>>>>> specific compiler when trying to cross-compile.  I don't know enough about
+>>>>> automake and cross-compiling to be sure, but I think that it doesn't set the
+>>>>> CC variable correctly.  It does seem to configure correctly though, since it
+>>>>> shows the proper compiler being found: "checking for
+>>>>> armv7a-cros-linux-gnueabi-gcc... (cached) armv7a-cros-linux-gnueabi-gcc",
+>>>>> but then it uses the normal gcc.
+>>>>> 
+>>>>> Thanks for the help!
+>>>>> 
+>>>>> Best,
+>>>>> 
+>>>>> Patrick Dignan
+>>>> This is just a guess, but I'm suspicious of these lines in
+>>>> tools/locktest/Makefile.am:
+>>>> 
+>>>> CC=$(CC_FOR_BUILD)
+>>>> LIBTOOL = @LIBTOOL@ --tag=CC
+>>>> 
+>>>> This might have been an oversite when the original conversion to
+>>>> automake was done.  What happens if you comment those lines out (and
+>>>> then re-run autogen.sh)?  Note that Makefile.am for rpcgen and
+>>>> rpcdebug also have these lines, but they may not need to be built when
+>>>> cross-compiling?
+>> 
+>> When all is said and done, rpcgen needs to run on the build host, not on the target.
+>> I thought this was here for building on platforms that don't have rpcgen installed...
+>> (I think we should consider removing rpcgen from nfs-utils, in favor of requiring 
+>> the officially installed rpcgen to be available).
+>> 
+>> Does nfs-utils actually install rpcgen on the target?  If it does, then ignore me.
+> Good question... 
+> 
+> It turns out that rpcgen will be built and installed if the --with-rpcgen=internal
+> configure flag is set which is not set in the Red Hat distros... 
+> 
+> This means, when nfs-utils is built on a Red Hat distros, the /usr/bin/rpcgen 
+> command is used which is a part of the glibc-common package...
+> 
+> So I guess the suggestion is to remove the rpcgen bits from nfs-utils
+> and use the ones from glibc-common which I am not against but this
+> really need to be a community wide decision... IMHO... 
 
-The linux_server is a host for NFS server running CentOS. All commands
-were called in the NFS server.
+Agreed.
 
-Anyway, the MAC clients sometime crashed or sometime worked very slow
-when the NFS server got rpc.statd[2448]: Can't callback .... If I
-understand it correct, it should not cause the MAC networking problem,
-then we have to look at the problem in other places.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Thank you.
 
-Kind regards.
 
->
-> --
-> thanks,
-> Mi Jinlong
->
->>    program vers proto   port
->>     100000    2   tcp    111  portmapper
->>     100000    2   udp    111  portmapper
->>     100024    1   udp    895  status
->>     100024    1   tcp    898  status
->>     100011    1   udp    806  rquotad
->>     100011    2   udp    806  rquotad
->>     100011    1   tcp    809  rquotad
->>     100011    2   tcp    809  rquotad
->>     100003    2   udp   2049  nfs
->>     100003    3   udp   2049  nfs
->>     100003    4   udp   2049  nfs
->>     100021    1   udp  32794  nlockmgr
->>     100021    3   udp  32794  nlockmgr
->>     100021    4   udp  32794  nlockmgr
->>     100003    2   tcp   2049  nfs
->>     100003    3   tcp   2049  nfs
->>     100003    4   tcp   2049  nfs
->>     100021    1   tcp  57164  nlockmgr
->>     100021    3   tcp  57164  nlockmgr
->>     100021    4   tcp  57164  nlockmgr
->>     100005    1   udp    828  mountd
->>     100005    1   tcp    831  mountd
->>     100005    2   udp    828  mountd
->>     100005    2   tcp    831  mountd
->>     100005    3   udp    828  mountd
->>     100005    3   tcp    831  mountd
->>
->> On Fri, Jan 14, 2011 at 1:37 PM, Mi Jinlong <mijinlong@cn.fujitsu.com> wrote:
->>>
->>> hce :
->>>> Hi,
->>>>
->>>> I am running nfs server on a CentOS 5, it works fine for all
->>>> connections from linux, windows clients. Mac clients worked fine for
->>>> coping some regular files, but it could not copy mac packaging file
->>>> with the extension *.dmg, it stuck with an error "nfs server lockd not
->>>> responding", at the same time the server got a log message of
->>>> "rpc.statd[2448]: Can't callback linux_server (100021,4), giving up".
->>>>
->>>> Appreciate advice what could cause that problem and how could fix it?
->>> Hi hce,
->>>
->>> You use NFSv3,
->>> the NFSv3's file lock service depend on NLM(Network Lock Manager),
->>> that need a user space program named rpc.statd to support service
->>> like this:
->>>
->>>           |     nfs client     |      nfs server
->>> -------------------------------------------------
->>>           |                    |
->>> user space |     rpc.statd    <--->      rpc.statd
->>>           |        ^           |            ^
->>> --------------------|------------------------|----
->>>           |        v           |            v
->>> kernel     |      lockd       <--->       lockd
->>>
->>> when your nfs client is a MAC, maybe Mac's user space don't support
->>> a program as rpc.statd, or you don't make the program run correctly.
->>>
->>> Maybe you can use NFSv4 to avoid this problem.
->>>
->>>
->>> --
->>> ----
->>> thanks
->>> Mi Jinlong
->>>
->>>
->>
->>
->
->
+
