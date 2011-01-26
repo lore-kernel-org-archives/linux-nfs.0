@@ -1,95 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3027 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:36523 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751751Ab1ASC4w convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jan 2011 21:56:52 -0500
-Subject: RE: 4.1 no-pnfs mount option?
+	id S1754465Ab1AZX7L convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jan 2011 18:59:11 -0500
+Subject: Re: 2.6.38-rc2... NFS sillyrename is broken...
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Daniel.Muntz@emc.com
-Cc: matt@linuxbox.com, rees@umich.edu, androsadamson@gmail.com,
-        linux-nfs@vger.kernel.org, bhalevy@panasas.com
-In-Reply-To: <DE966DA98A4ABE438D726BDF1699CF61043985B644@MX05A.corp.emc.com>
-References: <DE966DA98A4ABE438D726BDF1699CF61043985B644@MX05A.corp.emc.com>
+To: Nick Piggin <npiggin@gmail.com>
+Cc: "J. R. Okajima" <hooanon05@yahoo.co.jp>, linux-nfs@vger.kernel.org,
+        Linux Filesystem Development <linux-fsdevel@vger.kernel.org>
+In-Reply-To: <AANLkTik2JJt4vcX8mMJmz+uwJU01vpMwF0UjQ+3QFAtp@mail.gmail.com>
+References: <1295998215.6867.22.camel@heimdal.trondhjem.org>
+	 <21515.1296030022@jrobl> <1296072867.7127.26.camel@heimdal.trondhjem.org>
+	 <1296074585.7127.33.camel@heimdal.trondhjem.org>
+	 <AANLkTik2JJt4vcX8mMJmz+uwJU01vpMwF0UjQ+3QFAtp@mail.gmail.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 18 Jan 2011 21:56:36 -0500
-Message-ID: <1295405796.2919.2.camel@heimdal.trondhjem.org>
+Date: Wed, 26 Jan 2011 18:59:09 -0500
+Message-ID: <1296086349.7127.55.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-01-18 at 21:29 -0500, Daniel.Muntz@emc.com wrote: 
+On Thu, 2011-01-27 at 10:50 +1100, Nick Piggin wrote: 
+> On Thu, Jan 27, 2011 at 7:43 AM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> > On Wed, 2011-01-26 at 15:14 -0500, Trond Myklebust wrote:
+> >> The alternative would be to add a callback that can be called after
+> >> dentry_iput() if DCACHE_NFSFS_RENAMED is true, and that takes the parent
+> >> and (negative) dentry as the arguments.
+> >> sillyrename doesn't need the inode as an argument, but it definitely
+> >> needs the parent dentry so that it can check for races with
+> >> ->lookup()...
+> >
+> > The following (compile tested only!) patch illustrates what I mean.
 > 
-> > -----Original Message-----
-> > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com] 
-> > Sent: Tuesday, January 18, 2011 5:45 PM
-> > To: Muntz, Daniel
-> > Cc: matt@linuxbox.com; rees@umich.edu; 
-> > androsadamson@gmail.com; linux-nfs@vger.kernel.org; 
-> > bhalevy@panasas.com
-> > Subject: RE: 4.1 no-pnfs mount option?
-> > 
-> > On Tue, 2011-01-18 at 19:53 -0500, Daniel.Muntz@emc.com wrote: 
-> > > 
-> > > > -----Original Message-----
-> > > > From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com] 
-> > > > Sent: Tuesday, January 18, 2011 11:15 AM
-> > > > To: Matt W. Benjamin
-> > > > Cc: Muntz, Daniel; rees@umich.edu; androsadamson@gmail.com; 
-> > > > linux-nfs@vger.kernel.org; Benny Halevy
-> > > > Subject: Re: 4.1 no-pnfs mount option?
-> > > > 
-> > > > On Tue, 2011-01-18 at 13:46 -0500, Matt W. Benjamin wrote: 
-> > > > > Hi,
-> > > > > 
-> > > > > Isn't by mount a plausible way to select for pnfs 
-> > > > independent of debugging?  Is it assured that a client 
-> > > > administrator would never reasonably wish to do this?
-> > > > 
-> > > > "Why would an administrator never want to do this?" is 
-> > not a helpful
-> > > > question.
-> > > > 
-> > > > A more useful question is "what reason would you possibly have for
-> > > > overriding the server's request that you do pNFS when 
-> > your client has
-> > > > pNFS support?" What makes pNFS so special that we must allow
-> > > > administrators to do this on a per-mount basis?
-> > > 
-> > > By the same logic, why should a user be allowed to select 
-> > which version of NFS they use for mounting when the server 
-> > has a perfectly reasonable way of negotiating it?  Getting to 
-> > choose v2 vs. v3 vs. v4 seems like much less of a distinction 
-> > than choosing between pNFS and no pNFS.  Frankly, it never 
-> > even occurred to me that there wouldn't be a mount option to 
-> > make this choice.  Enabling/disabling the layout driver 
-> > doesn't fit the existing model of choosing mount behavior, 
-> > and is a big hammer--it's all or nothing.
-> > > 
-> > > Anyway, here's a use case: I'm working at an 
-> > HPC/gas+oil/satellite data site.  We have an awesome pNFS 
-> > server for our big data and I want to access my big data with 
-> > pNFS.  We have another server for homedirs, some big data, 
-> > and other stuff.  Some mounts are fine with pNFS, others are 
-> > abysmal.  So, I want to mount some directories with pNFS, and 
-> > some without pNFS, on the same client, independent of the 
-> > server configuration.
-> > 
-> > mount -t nfs -overs=4,minorversion=0 foo:/ /bar
-> > 
-> > Done... Any more questions?
+> We could do this. CEPH also want a way to get d_parent in the inode
+> unlink path.
 > 
-> Several, but I'll stick to one rhetorical.  Does NFSv4.1 have any features, other than pNFS, that are not in 4.0?
+> I think I can actually check for dentry->d_count == 0 rather than
+> dentry->d_parent == NULL here, and avoid clearing d_parent
+> entirely. That might be the better solution for 2.6.38, because other
+> code I've missed might be expecting to use d_parent.
 
-Why stop now, when you were batting 100? I told you what the criteria
-were for adding more mount options, and you start whining about not
-being able to conceive of a world without mount options.
-
-The point is that NFSv4.1 was supposed to let the _server_ tell the
-client when to use pNFS. The reason why you let the _server_ do this, is
-because pNFS is about enabling _server_ scalability. It is not about
-faster clients...
-If you don't want the client to use pNFS, then fix the _server_
-settings...
+I'm not sure I understand. By the time we hit d_kill() we know that
+dentry->d_count == 0. The only thing we need here is the ability to
+unlink the file if it has been sillyrenamed previously. The reason for
+needing the parent dentry is to allow the filesystem to guard against
+races with lookup without requiring the vfs to take the
+parent->d_inode->i_mutex in the dput() path...
 
 -- 
 Trond Myklebust
