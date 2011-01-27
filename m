@@ -1,44 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from magus.merit.edu ([198.108.1.13]:38397 "EHLO magus.merit.edu"
+Received: from mx1.redhat.com ([209.132.183.28]:34057 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756571Ab1AMAym (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Jan 2011 19:54:42 -0500
-Date: Wed, 12 Jan 2011 19:54:39 -0500
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: Re: state manager failed on NFSv4 server
-Message-ID: <20110113005439.GA15550@merit.edu>
-References: <20110112185843.GA14207@merit.edu>
- <1294859616.2971.46.camel@heimdal.trondhjem.org>
- <20110113000720.GA15353@merit.edu>
- <1294877939.15025.42.camel@heimdal.trondhjem.org>
- <20110113003055.GC15353@merit.edu>
- <1294879039.15025.56.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1294879039.15025.56.camel@heimdal.trondhjem.org>
+	id S1752636Ab1A0Stg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Jan 2011 13:49:36 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id p0RInafY005750
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2011 13:49:36 -0500
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p0RInZcQ018723
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2011 13:49:36 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/3] Make the stat command ignore lines that it is not looking for.
+Date: Thu, 27 Jan 2011 13:49:32 -0500
+Message-Id: <1296154174-13076-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1296154174-13076-1-git-send-email-steved@redhat.com>
+References: <1296154174-13076-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Trond Myklebust wrote:
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ general/stat.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
-  > At the time of the EXCHANGE_ID call, how is the server supposed to know what
-  > kind of layout is going to be negotiated?  It doesn't yet know whether the
-  > client is even going to ask for a layout, does it?
-  
-  It doesn't matter. EXCHGID4_FLAG_USE_PNFS_MDS is the server's way of
-  advertising to the client that it supports LAYOUTGET and other pNFS
-  related operations. The client is free to ignore that message if it so
-  desires, and just use read/write through MDS. The point here is to tell
-  the client whether or not it should try pNFS if it can.
+diff --git a/general/stat.c b/general/stat.c
+index c4e4fc0..2ce604e 100644
+--- a/general/stat.c
++++ b/general/stat.c
+@@ -30,7 +30,7 @@ main(argc, argv)
+ {
+ 	FILE	*fp;
+ 	int	i, n;
+-	char	c, *fmt;
++	char	c, *fmt, buf[BUFSIZ];
+ 	int	attfmt = 0;	/* set if using att time format */
+ 
+ 	Prog = argv[0];
+@@ -45,6 +45,7 @@ main(argc, argv)
+ 			Prog, File);
+ 		exit(1);
+ 	}
++getnewch:
+ 	if ((i = fgetc(fp)) == EOF) {
+ 		fprintf(stderr, "%s: %s is empty\n",
+ 			Prog, File);
+@@ -53,8 +54,12 @@ main(argc, argv)
+ 	c = i & 0x7f;
+ 	if (c == '\n' || c == '\r' || c == 'r')
+ 		attfmt = 1;
+-	else
++	else if (isdigit(c))
+ 		fmt = "%lf %*s %lf %*s %lf %*s";	/* BSD fmt */
++	else { /* skip the line */
++		fgets(buf, BUFSIZ, fp);
++		goto getnewch;
++	}
+ 	if (ungetc(c, fp) == EOF) {
+ 		fprintf(stderr, "%s: can't push char back to %s\n",
+ 			Prog, File);
+-- 
+1.7.3.3
 
-I guess that makes sense.  But I think section 13 is a bit misleading since
-it contains requirements for the block layout too.
-
-13.  NFSv4.1 as a Storage Protocol in pNFS: the File Layout Type
-
-   This section describes the semantics and format of NFSv4.1 file-based
-   layouts for pNFS.  NFSv4.1 file-based layouts use the
-   LAYOUT4_NFSV4_1_FILES layout type.  The LAYOUT4_NFSV4_1_FILES type
-   defines striping data across multiple NFSv4.1 data servers.
