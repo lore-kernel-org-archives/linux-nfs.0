@@ -1,66 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from esrismtp2.esri.com ([198.102.62.103]:52269 "EHLO esri3.esri.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48239 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754551Ab1ASPFB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Jan 2011 10:05:01 -0500
-Date: Wed, 19 Jan 2011 07:04:50 -0800
-From: Ray Van Dolson <rvandolson@esri.com>
-To: "Red Hat Enterprise Linux 6 (Santiago) discussion mailing-list"
-	<rhelv6-list@redhat.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [rhelv6-list] NFSv4 automount - nss_getpwnam name
- 'user@domain.com' does not map into domain 'localdomain'
-Message-ID: <20110119150450.GA20013@esri.com>
-References: <20110119002907.GA25400@esri.com>
- <OF2761AC3A.66844802-ON8625781D.004EE4C7-8625781D.004EE7C9@uscmail.uscourts.gov>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <OF2761AC3A.66844802-ON8625781D.004EE4C7-8625781D.004EE7C9@uscmail.uscourts.gov>
+	id S1752636Ab1A0Sth (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Jan 2011 13:49:37 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id p0RInbYF006567
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2011 13:49:37 -0500
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p0RInZcS018723
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2011 13:49:36 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 3/3] cthon04: add "nowarn" option to nroff.in tables
+Date: Thu, 27 Jan 2011 13:49:34 -0500
+Message-Id: <1296154174-13076-4-git-send-email-steved@redhat.com>
+In-Reply-To: <1296154174-13076-1-git-send-email-steved@redhat.com>
+References: <1296154174-13076-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Jan 19, 2011 at 06:22:35AM -0800, Greg_Swift@aotx.uscourts.gov wrote:
-> 
-> 
-> rhelv6-list-bounces@redhat.com wrote on 01/18/2011 06:29:07 PM:
-> 
-> > Am doing a kickstart installation of RHEL 6.0 vanilla (no errata
-> > applied).
-> >
-> > After reboot, when using the automounter to access NFSv4 shares
-> > (running on Fedora 13), we see the following in the logs on the RHEL6
-> > client:
-> >
-> > Jan 18 15:56:16 rhel6test rpc.idmapd[1387]: nss_getpwnam: name
-> > 'root@esri.com' does not map into domain 'localdomain'
-> > Jan 18 15:56:16 rhel6test rpc.idmapd[1387]: nss_getpwnam: name
-> > 'ray5147@esri.com' does not map into domain 'localdomain'
-> >
-> > As a result, directories are not mapped to the correct users but
-> > instead to 'nobody'.
-> >
-> > This is odd, because per the idmap man pages, the default domain used
-> > by rpc.idmapd should be the same as the system domain minus the
-> > hostname.  This should be esri.com, and is when I type hostname.
-> >
-> > Thinking that perhaps rpc.idmapd was started before the network
-> > subsystem, I restarted it.  Immediately everything worked fine.
-> >
-> > I rebooted the system assuming the problem would return, but it didn't.
-> > Maybe there's a cache used by rpc.idmapd (nscd?)?  Is there something
-> > else maybe I'm missing?
-> >
-> > Trying to determine if the "right" thing to do is to leave my
-> > configuration as default or if I should be modifying /etc/idmapd.conf
-> > to set a default domain.
-> 
-> shot in the dark... is your real hostname also mapped to
-> localhost.localdomain in /etc/hosts?
+From: Jeff Layton <jlayton@redhat.com>
 
-Yes, it is... I'd stumbled across a similar suggestion, but kinda was
-puzzled that things seemed to start working even without changing the
-entry in /etc/hosts.
+This prevents the tbl preprocessor from stuffing warnings into the
+resulting file, which subsequently can make nroff spew warnings like
+this on stderr:
+    warning: file `nroff.in', around line 47:
+	  table wider than line width
 
-This is what made me think nscd or some caching was involved...
+Unfortunately, I'm not sure how non-gnu tbl programs will react to
+this option, so YMMV.
 
-Ray
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ general/nroff.in |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/general/nroff.in b/general/nroff.in
+index 5722733..ff57200 100644
+--- a/general/nroff.in
++++ b/general/nroff.in
+@@ -38,12 +38,12 @@ A bubble sort of integers.
+ A prime number generator.
+ .LP
+ .TS
+-center;
+- c|c|c s|
+- c|c|c s|
+- c|c|c s|
+- c|c|c s|
+-|l|n|n|n|.
++center nowarn;
++ c|c|c s|c s|
++ c|c|c s|c s|
++ c|c|c s|c s|
++ c|c|c s|c s|
++|l|n|n|n|n|n|.
+ 	_	_	_	_	_
+ .sp 4p
+ 	Matrix Inversion	Bubble Sort	Prime Numbers
+-- 
+1.7.3.3
+
