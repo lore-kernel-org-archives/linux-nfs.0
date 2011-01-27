@@ -1,115 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:47811 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750886Ab1ADRzO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Jan 2011 12:55:14 -0500
-Date: Tue, 4 Jan 2011 12:55:03 -0500
-To: andros@netapp.com
-Cc: trond.myklebust@netapp.com, bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH_V6 04/11] NFS use svc_create_xprt for NFSv4.1 callback
- service
-Message-ID: <20110104175503.GE30317@fieldses.org>
-References: <1294161028-4499-1-git-send-email-andros@netapp.com>
- <1294161028-4499-2-git-send-email-andros@netapp.com>
- <1294161028-4499-3-git-send-email-andros@netapp.com>
- <1294161028-4499-4-git-send-email-andros@netapp.com>
- <1294161028-4499-5-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1294161028-4499-5-git-send-email-andros@netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:41449 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752974Ab1A0AoR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jan 2011 19:44:17 -0500
+In-Reply-To: <1296086349.7127.55.camel@heimdal.trondhjem.org>
+References: <1295998215.6867.22.camel@heimdal.trondhjem.org>
+	<21515.1296030022@jrobl>
+	<1296072867.7127.26.camel@heimdal.trondhjem.org>
+	<1296074585.7127.33.camel@heimdal.trondhjem.org>
+	<AANLkTik2JJt4vcX8mMJmz+uwJU01vpMwF0UjQ+3QFAtp@mail.gmail.com>
+	<1296086349.7127.55.camel@heimdal.trondhjem.org>
+Date: Thu, 27 Jan 2011 11:44:15 +1100
+Message-ID: <AANLkTim1-dwNjTpyCi5qBjCer5vgPo4qSNfK7Htd_vfL@mail.gmail.com>
+Subject: Re: 2.6.38-rc2... NFS sillyrename is broken...
+From: Nick Piggin <npiggin@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "J. R. Okajima" <hooanon05@yahoo.co.jp>, linux-nfs@vger.kernel.org,
+        Linux Filesystem Development <linux-fsdevel@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Jan 04, 2011 at 12:10:21PM -0500, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> The new back channel transport means we call the normal creation routine as
-> well as svc_xprt_put.
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/callback.c |   31 +++++++++++++++++++++----------
->  1 files changed, 21 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 93a8b3b..343d543 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -177,30 +177,41 @@ nfs41_callback_svc(void *vrqstp)
->  struct svc_rqst *
->  nfs41_callback_up(struct svc_serv *serv, struct rpc_xprt *xprt)
->  {
-> -	struct svc_xprt *bc_xprt;
-> -	struct svc_rqst *rqstp = ERR_PTR(-ENOMEM);
-> +	struct svc_rqst *rqstp;
-> +	int ret;
->  
-> -	dprintk("--> %s\n", __func__);
-> -	/* Create a svc_sock for the service */
-> -	bc_xprt = svc_sock_create(serv, xprt->prot);
-> -	if (!bc_xprt)
-> +	/* register the back channel transport class */
-> +	svc_init_bc_xprt_sock();
+On Thu, Jan 27, 2011 at 10:59 AM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2011-01-27 at 10:50 +1100, Nick Piggin wrote:
+>> On Thu, Jan 27, 2011 at 7:43 AM, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > On Wed, 2011-01-26 at 15:14 -0500, Trond Myklebust wrote:
+>> >> The alternative would be to add a callback that can be called after
+>> >> dentry_iput() if DCACHE_NFSFS_RENAMED is true, and that takes the parent
+>> >> and (negative) dentry as the arguments.
+>> >> sillyrename doesn't need the inode as an argument, but it definitely
+>> >> needs the parent dentry so that it can check for races with
+>> >> ->lookup()...
+>> >
+>> > The following (compile tested only!) patch illustrates what I mean.
+>>
+>> We could do this. CEPH also want a way to get d_parent in the inode
+>> unlink path.
+>>
+>> I think I can actually check for dentry->d_count == 0 rather than
+>> dentry->d_parent == NULL here, and avoid clearing d_parent
+>> entirely. That might be the better solution for 2.6.38, because other
+>> code I've missed might be expecting to use d_parent.
+>
+> I'm not sure I understand. By the time we hit d_kill() we know that
+> dentry->d_count == 0.
 
-We really only need to register the transport class once, not each time
-we set up a new backchannel.
+The dcache patch to set d_parent to NULL was done so that when
+walking the other way up the path we can check that the parent is
+still valid.
 
-(OK, it's harmless to register it multiple times--the registration
-detects that case and does nothing--but still I'd prefer to register
-just once if possible.)
-
-Also: I think you're forgetting to unregister the transport class?
-
-I think the correct place to put the registration and unregistration may
-be init_nfs_fs() and exit_nfs_fs().
-
-(And define it as a no-op function depending on config options to avoid
-ifdef's in init_nfs_fs/exit_nfs_fs, in the usual way.)
-
---b.
-
-> +
-> +	/*
-> +	 * Create an svc_sock for the back channel service that shares the
-> +	 * fore channel connection.
-> +	 * Returns the input port (0) and sets the svc_serv bc_xprt on success
-> +	 */
-> +	ret = svc_create_xprt(serv, "tcp-bc", &init_net, PF_INET, 0,
-> +			      SVC_SOCK_ANONYMOUS);
-> +	if (ret < 0) {
-> +		rqstp = ERR_PTR(ret);
->  		goto out;
-> +	}
->  
->  	/*
->  	 * Save the svc_serv in the transport so that it can
->  	 * be referenced when the session backchannel is initialized
->  	 */
-> -	serv->bc_xprt = bc_xprt;
->  	xprt->bc_serv = serv;
->  
->  	INIT_LIST_HEAD(&serv->sv_cb_list);
->  	spin_lock_init(&serv->sv_cb_lock);
->  	init_waitqueue_head(&serv->sv_cb_waitq);
->  	rqstp = svc_prepare_thread(serv, &serv->sv_pools[0]);
-> -	if (IS_ERR(rqstp))
-> -		svc_sock_destroy(bc_xprt);
-> +	if (IS_ERR(rqstp)) {
-> +		svc_xprt_put(serv->bc_xprt);
-> +		serv->bc_xprt = NULL;
-> +	}
->  out:
-> -	dprintk("--> %s return %p\n", __func__, rqstp);
-> +	dprintk("--> %s return %ld\n", __func__,
-> +		IS_ERR(rqstp) ? PTR_ERR(rqstp) : 0);
->  	return rqstp;
->  }
->  
-> -- 
-> 1.6.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+But we could just check for d_count != 0 which means the parent has
+to be valid as well (we have rename protection as well).
