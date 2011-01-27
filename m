@@ -1,145 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:53369 "EHLO shutemov.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757565Ab1ANNtl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Jan 2011 08:49:41 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Rob Landley <rlandley@parallels.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v3 14/16] sunrpc: make rpc_pipefs be mountable multiple times
-Date: Fri, 14 Jan 2011 15:49:12 +0200
-Message-Id: <1295012954-7769-15-git-send-email-kas@openvz.org>
-In-Reply-To: <1295012954-7769-1-git-send-email-kas@openvz.org>
-References: <1295012954-7769-1-git-send-email-kas@openvz.org>
+Received: from daytona.panasas.com ([67.152.220.89]:5034 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753326Ab1A0UhR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jan 2011 15:37:17 -0500
+Message-ID: <4D41D77B.2010605@panasas.com>
+Date: Thu, 27 Jan 2011 22:37:15 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: pnfs git tree status pnfs-all-2.6.37-2011-01-06
+References: <4CD17FC4.6090906@panasas.com> <4CE1604E.1070902@panasas.com> <4CEBCDF1.4010705@panasas.com>
+In-Reply-To: <4CEBCDF1.4010705@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-To support containers, allow multiple independent instances of
-rpc_pipefs. Use '-o newinstance' to create new of the filesystem.
-The same semantics as with devpts.
+The pnfs-all-2.6.37 branch, based on v2.6.37, is tagged as pnfs-all-2.6.37-2011-01-06
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
----
- net/sunrpc/rpc_pipe.c |   80 ++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 79 insertions(+), 1 deletions(-)
+Cumulative patches can be generated from
+git://linux-nfs.org/~bhalevy/linux-pnfs.git
+using
+git diff v2.6.37 pnfs-all-2.6.37-2011-01-06
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index b72cb01..02416f1 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -19,6 +19,7 @@
- #include <linux/nsproxy.h>
- #include <linux/mnt_namespace.h>
- #include <linux/fs_struct.h>
-+#include <linux/parser.h>
- 
- #include <asm/ioctls.h>
- #include <linux/fs.h>
-@@ -41,6 +42,49 @@ static struct kmem_cache *rpc_inode_cachep __read_mostly;
- 
- #define RPC_UPCALL_TIMEOUT (30*HZ)
- 
-+struct rpc_mount_opts {
-+	int newinstance;
-+};
-+
-+enum {
-+	Opt_newinstance,
-+
-+	Opt_err
-+};
-+
-+static const match_table_t tokens = {
-+	{Opt_newinstance, "newinstance"},
-+
-+	{Opt_err, NULL}
-+};
-+
-+static int
-+parse_mount_options(char *data, struct rpc_mount_opts *opts)
-+{
-+	char *p;
-+
-+	opts->newinstance = 0;
-+
-+	while ((p = strsep(&data, ",")) != NULL) {
-+		substring_t args[MAX_OPT_ARGS];
-+		int token;
-+
-+		if (!*p)
-+			continue;
-+
-+		token = match_token(p, tokens, args);
-+		switch (token) {
-+		case Opt_newinstance:
-+			opts->newinstance = 1;
-+			break;
-+		default:
-+			return -EINVAL;
-+		}
-+	}
-+
-+	return 0;
-+}
-+
- static void rpc_purge_list(struct rpc_inode *rpci, struct list_head *head,
- 		void (*destroy_msg)(struct rpc_pipe_msg *), int err)
- {
-@@ -1093,11 +1137,45 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 	return 0;
- }
- 
-+static int
-+compare_rpc_mnt_sb(struct super_block *s, void *p)
-+{
-+	if (init_rpc_pipefs)
-+		return init_rpc_pipefs->mnt_sb == s;
-+	return 0;
-+}
-+
- static struct dentry *
- rpc_mount(struct file_system_type *fs_type,
- 		int flags, const char *dev_name, void *data)
- {
--	return mount_single(fs_type, flags, data, rpc_fill_super);
-+	int error;
-+	struct rpc_mount_opts opts;
-+	struct super_block *s;
-+
-+	error = parse_mount_options(data, &opts);
-+	if (error)
-+		return ERR_PTR(error);
-+
-+	if (opts.newinstance)
-+		s = sget(fs_type, NULL, set_anon_super, NULL);
-+	else
-+		s = sget(fs_type, compare_rpc_mnt_sb, set_anon_super, NULL);
-+
-+	if (IS_ERR(s))
-+		return ERR_CAST(s);
-+
-+	if (!s->s_root) {
-+		s->s_flags = flags;
-+		error = rpc_fill_super(s, data, flags & MS_SILENT ? 1 : 0);
-+		if (error) {
-+			deactivate_locked_super(s);
-+			return ERR_PTR(error);
-+		}
-+		s->s_flags |= MS_ACTIVE;
-+	}
-+
-+	return dget(s->s_root);
- }
- 
- static void rpc_kill_sb(struct super_block *sb)
--- 
-1.7.3.4
+Or, they can be downloaded from the wiki at:
+http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
 
+Latest patches that went in since pnfs-all-2.6.37-rc3-2010-11-23:
+
+  Andy Adamson     8ec9cf0 NFS dont free shared socket on backchannel put xprt
+  Andy Adamson     1a50e87 NFS implement v4.0 callback_ident
+  Andy Adamson     d54419f NFS associate sessionid with callback connection
+  Andy Adamson     e036acb NFS reference nfs_client across cb_compound processing
+  Andy Adamson     75767b5 NFS RPC_AUTH_GSS unsupported on v4.1 back channel
+  Andy Adamson     1e55cfb NFS add session back channel draining
+  Andy Adamson     c0f97fa NFS only set bc_xprt upon success
+  Andy Adamson     f69846b NFS fix the setting of exchange id flag
+  Fred Isaman      419e6b8 pnfs-submit: wave2: rewrite validate_bitmap_values to obey spec
+  Fred Isaman      a00d5cc pnfs-submit: wave2: NFS4ERR_RESOURCE is not a valid error for CB_LAYOUTRECALL
+  Fred Isaman      8978415 pnfs-submit: wave2: check that partial LAYOUTGET return is ignored
+  Fred Isaman      5d7c2c7 pnfs-submit: wave2: remove cl_layoutrecalls list
+  Fred Isaman      6b90058 pnfs-submit: wave2: change plh_outstanding to atomic_t
+  Fred Isaman      02731c2 pnfs-submit: wave2: change lseg->valid from bool to a bit flag
+  Fred Isaman      d2a0ab1 pnfs-submit: wave2: Remove LAYOUTRETURN from return on close
+  Fred Isaman      25180ca pnfs-submit: wave2: remove all LAYOUTRETURN code
+  Fred Isaman      c23f64a pnfs-submit: wave2: Revert "pnfs_submit: update nfs4_async_handle_error for data server"
+  Fred Isaman      70f4ea3 pnfs-submit: wave2: remove forgotten layoutreturn struct definitions
+  Fred Isaman      b7ec707 pnfs-submit: wave2: Remove smp barrier in get_layout_hdr
+  Fred Isaman      2d87a2c pnfs-submit: wave2: make put_layout_hdr have args consistent with related functions
+  Fred Isaman      7264acc wave 2: restore removed comment in nfs4_evict_inode
+  Fred Isaman      cfed8e0 wave 2: remove gratuitous changes to nfs4_layoutget_done
+  Fred Isaman      233ca9a wave 2: remove pnfs_ld_layoutret_on_setattr()
+  Fred Isaman      84446ae wave 2: share code between put_lseg and pnfs_free_lseg_list
+  Fred Isaman      a851528 wave 2: remove notify_drained
+  Fred Isaman      f38b63f wave 2: rename notify fields
+  Fred Isaman      3f937e3 wave 2: remove trigger_flush
+  Fred Isaman      99f81a6 wave 2: Fix outdated comment above _pnfs_return_layout
+  Fred Isaman      c258f80 wave 2: remove unneeded include from pnfs.h
+  Fred Isaman      362dc1a wave 2: remove unneeded includes from callback_proc.c
+  Fred Isaman      94ee6f7 debug: add assert_spin_locked
+  Fred Isaman      012a2c7 pnfs-submit: wave4: fix bug dealing with commit split between DS and MDS
+  Fred Isaman      447d2e4 pnfs-submit: Turn off layoutcommits
+  Benny Halevy     b53b08c Revert "pnfs-submit: wave2: remove forgotten layoutreturn struct definitions"
+  Benny Halevy     1896997 Revert "pnfs-submit: Turn off layoutcommits"
+  Benny Halevy     5d7a3fc Revert "pnfs-submit: wave2: remove all LAYOUTRETURN code"
+  Benny Halevy     a534dcf Revert "pnfs-submit: wave2: Remove LAYOUTRETURN from return on close"
+  Benny Halevy     3c5e897 FIXME: roc should return layout on last close
+  Benny Halevy     751b783 Revert "pnfs-submit: wave2: remove cl_layoutrecalls list"
+  Benny Halevy     ae5ccc3 Revert "pnfs-submit: wave2: Pull out all recall initiated LAYOUTRETURNS"
+  Benny Halevy     98dba28 Revert "pnfs-submit: wave2: Don't wait in layoutget"
+  Benny Halevy     bd49095 Revert "pnfs-submit: wave2: check that partial LAYOUTGET return is ignored"
+  Benny Halevy     7893f29 SQUASHME: pnfs-obj: fixup layoutcommit methods args
+  Benny Halevy     7f5ffb4 SQUASHME: pnfs-block: fixup layoutcommit methods args
