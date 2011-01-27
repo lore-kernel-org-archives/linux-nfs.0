@@ -1,77 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:60543 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752621Ab1ANPTk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jan 2011 10:19:40 -0500
-Subject: Re: mac error
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <AANLkTin8PEyLqpdaTorSrS3Zi5sF7VeJRcrCVK9fEyc7@mail.gmail.com>
-Date: Fri, 14 Jan 2011 10:18:13 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <BB05F812-F3D3-4742-BD54-794FD4BCC0C0@oracle.com>
-References: <AANLkTin04TeswNAM89ij84YzfeTAR7rsppGyZFfq01qM@mail.gmail.com> <4D2FB6F4.6070304@cn.fujitsu.com> <AANLkTin8PEyLqpdaTorSrS3Zi5sF7VeJRcrCVK9fEyc7@mail.gmail.com>
-To: hce <webmail.hce@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:8978 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752516Ab1A0Stg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Jan 2011 13:49:36 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id p0RInan3024794
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2011 13:49:36 -0500
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p0RInZcR018723
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2011 13:49:36 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/3] Make the tbl table smaller to avoid a warning about line width
+Date: Thu, 27 Jan 2011 13:49:33 -0500
+Message-Id: <1296154174-13076-3-git-send-email-steved@redhat.com>
+In-Reply-To: <1296154174-13076-1-git-send-email-steved@redhat.com>
+References: <1296154174-13076-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ general/nroff.in |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
 
-On Jan 13, 2011, at 11:01 PM, hce wrote:
-
-> Thanks for your response. I've just found that nlockmgr did not
-> respond when I run following command on the server. Is it a problem or
-> it is normal? Anyway, the NFS is still working fine.
-
-nlockmgr and NFS are two separate RPC services.  So, NFS can work while there might be a problem with nlockmgr.  IMO, nlockmgr should respond in this case.
-
-> $ rpcinfo -t linux_server nlockmgr
-> rpcinfo: RPC: Timed out
-> program 100021 version 0 is not available
-> 
-> $ rpcinfo -u linux_server nlockmgr
-> rpcinfo: RPC: Timed out
-> program 100021 version 0 is not available
-
-This is attempting to contact nlockmgr's "version 0" which is not registered (see below).  Versions 1, 3, and 4 are registered.
-
-Try "rpcinfo -u linux_server nlockmgr 3".
-
-> $ rpcinfo -p
->   program vers proto   port
->    100000    2   tcp    111  portmapper
->    100000    2   udp    111  portmapper
->    100024    1   udp    895  status
->    100024    1   tcp    898  status
->    100011    1   udp    806  rquotad
->    100011    2   udp    806  rquotad
->    100011    1   tcp    809  rquotad
->    100011    2   tcp    809  rquotad
->    100003    2   udp   2049  nfs
->    100003    3   udp   2049  nfs
->    100003    4   udp   2049  nfs
->    100021    1   udp  32794  nlockmgr
->    100021    3   udp  32794  nlockmgr
->    100021    4   udp  32794  nlockmgr
->    100003    2   tcp   2049  nfs
->    100003    3   tcp   2049  nfs
->    100003    4   tcp   2049  nfs
->    100021    1   tcp  57164  nlockmgr
->    100021    3   tcp  57164  nlockmgr
->    100021    4   tcp  57164  nlockmgr
->    100005    1   udp    828  mountd
->    100005    1   tcp    831  mountd
->    100005    2   udp    828  mountd
->    100005    2   tcp    831  mountd
->    100005    3   udp    828  mountd
->    100005    3   tcp    831  mountd
-
-nlockmgr is registered, so it must have been started at some point.  It's a kernel service, so there's no daemon to die.  Do you have some kind of firewall in place that would prevent contacting the NLM service?  Does "linux_server" resolve to the IP address you expect it to?
-
+diff --git a/general/nroff.in b/general/nroff.in
+index 522ac80..5722733 100644
+--- a/general/nroff.in
++++ b/general/nroff.in
+@@ -39,11 +39,11 @@ A prime number generator.
+ .LP
+ .TS
+ center;
+- c|c|c s|c s|
+- c|c|c s|c s|
+- c|c|c s|c s|
+- c|c|c s|c s|
+-|l|n|n|n|n|n|.
++ c|c|c s|
++ c|c|c s|
++ c|c|c s|
++ c|c|c s|
++|l|n|n|n|.
+ 	_	_	_	_	_
+ .sp 4p
+ 	Matrix Inversion	Bubble Sort	Prime Numbers
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.3.3
 
