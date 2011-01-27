@@ -1,476 +1,363 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:42012 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753136Ab1AGSwO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Jan 2011 13:52:14 -0500
-Message-ID: <4D2760DC.3090006@netapp.com>
-Date: Fri, 07 Jan 2011 13:52:12 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: [PATCH v4 2/5] NFS: lookup supports alternate client
+Received: from daytona.panasas.com ([67.152.220.89]:52222 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751366Ab1A0QtU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jan 2011 11:49:20 -0500
+Message-ID: <4D41A20B.106@panasas.com>
+Date: Thu, 27 Jan 2011 18:49:15 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: Fwd: [PATCH] layout-sim: layout recall callback (forgetful client)
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+[Fixing typo in list address]
 
-A later patch will need to perform a lookup using an
-alternate client with a different security flavor.
-This patch adds support for doing that on NFS v4.
+-------- Original Message --------
+Subject: [PATCH] layout-sim: layout recall callback (forgetful client)
+Date: Thu, 27 Jan 2011 17:06:06 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.com,	nfsv4@ietf.org
+CC: Benny Halevy <bhalevy@panasas.com>
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Simulate cb_layoutrecall with the forget client model.
+The client responds with NFS4ERR_DELAY if there are any calls it needs
+to wait for before processing the callback, or if there I/Os in flight
+(simulated randomally).  When the layout can be returned, the client
+deleted it locally and replies synchronously with NFS4ERR_NOMATCHING_LAYOUT
+instead of sending layout return.
+
+The server sends only one CB_LAYOUT_RECALL at a time and does not process
+any LAYOUTGETs while waiting on it, replying with NFS4ERR_RECALLCONFLICT.
+LAYOUTRETURN stateid sequencing is enforced so that only those sent after
+the client processed the layout recall callback are accepted.
+The layout recall "process" is completed either on NFS4ERR_RECALLCONFLICT
+or on a matching LAYOUTRETURN.
+
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/dir.c            |    6 ++--
- fs/nfs/internal.h       |    6 ++-
- fs/nfs/namespace.c      |    2 +-
- fs/nfs/nfs3proc.c       |    2 +-
- fs/nfs/nfs4_fs.h        |    3 +-
- fs/nfs/nfs4proc.c       |   85 ++++++++++++++++++++++++++---------------------
- fs/nfs/proc.c           |    2 +-
- include/linux/nfs_xdr.h |    2 +-
- 8 files changed, 60 insertions(+), 48 deletions(-)
+ client.c |   37 ++++++++++++++++++++++--
+ layout.c |   21 +++++++++----
+ layout.h |   18 +++++++++++-
+ server.c |   93 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 4 files changed, 150 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 65d5cb4..3330c9c 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1067,7 +1067,7 @@ static int nfs_lookup_revalidate(struct dentry * dentry, struct nameidata *nd)
- 	if (fhandle == NULL || fattr == NULL)
- 		goto out_error;
+diff --git a/client.c b/client.c
+index 61163b5..182db7b 100644
+--- a/client.c
++++ b/client.c
+@@ -171,6 +171,8 @@ _reprocess_queue(void)
+ 	struct msg *m;
  
--	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
-+	error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
- 	if (error)
- 		goto out_bad;
- 	if (nfs_compare_fh(NFS_FH(inode), fhandle))
-@@ -1212,7 +1212,7 @@ static struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, stru
- 	parent = dentry->d_parent;
- 	/* Protect against concurrent sillydeletes */
- 	nfs_block_sillyrename(parent);
--	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
-+	error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
- 	if (error == -ENOENT)
- 		goto no_entry;
- 	if (error < 0) {
-@@ -1545,7 +1545,7 @@ int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fhandle,
- 	if (dentry->d_inode)
- 		goto out;
- 	if (fhandle->size == 0) {
--		error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr);
-+		error = NFS_PROTO(dir)->lookup(NFS_SERVER(dir)->client, dir, &dentry->d_name, fhandle, fattr);
- 		if (error)
- 			goto out_error;
- 	}
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index bfa3a34..367d898 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -274,7 +274,8 @@ extern int nfs_migrate_page(struct address_space *,
- #endif
- 
- /* nfs4proc.c */
--extern int _nfs4_call_sync(struct nfs_server *server,
-+extern int _nfs4_call_sync(struct rpc_clnt *clnt,
-+			   struct nfs_server *server,
- 			   struct rpc_message *msg,
- 			   struct nfs4_sequence_args *args,
- 			   struct nfs4_sequence_res *res,
-@@ -283,7 +284,8 @@ extern int _nfs4_call_sync_session(struct nfs_server *server,
- 				   struct rpc_message *msg,
- 				   struct nfs4_sequence_args *args,
- 				   struct nfs4_sequence_res *res,
--				   int cache_reply);
-+				   int cache_reply,
-+				   struct rpc_clnt *alt_clnt);
- 
- /*
-  * Determine the device name as a string
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index db6aa36..3c361f8 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -127,7 +127,7 @@ static void * nfs_follow_mountpoint(struct dentry *dentry, struct nameidata *nd)
- 
- 	/* Look it up again */
- 	parent = dget_parent(nd->path.dentry);
--	err = server->nfs_client->rpc_ops->lookup(parent->d_inode,
-+	err = server->nfs_client->rpc_ops->lookup(server->client, parent->d_inode,
- 						  &nd->path.dentry->d_name,
- 						  fh, fattr);
- 	dput(parent);
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index ce939c0..2b0e7c8 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -141,7 +141,7 @@ nfs3_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	list_for_each_entry (m, &cl_queued.list, list) {
++		if (m->type == CB_LAYOUT_RECALL)
++			continue;
+ 		if (is_next(&m->stateid, &cl_layout.stateid) ||
+ 		    (m->type == LAYOUTRETURN &&
+ 		     m->stateid.type == OPEN_STATEID &&
+@@ -227,6 +229,36 @@ out_free:
  }
  
- static int
--nfs3_proc_lookup(struct inode *dir, struct qstr *name,
-+nfs3_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
- 		 struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ static void
++cl_recv_cb_layout_recall(struct msg *m)
++{
++	if ((m->stateid.type == OPEN_STATEID &&
++	     cl_layout.stateid.type != OPEN_STATEID) ||
++	    (m->stateid.seq > cl_layout.stateid.seq + 1)) {
++		dprintk(1, "%s: m=%p seq=%llu cl_layout.seq=%llu: waiting\n",
++			__func__, m,
++			llu(m->stateid.seq), llu(cl_layout.stateid.seq));
++		m->status = NFS4ERR_DELAY;
++		goto out;
++	}
++
++	BUG_ON(m->stateid.seq <= cl_layout.stateid.seq);
++	if (mynrand(10) < 3) {
++		dprintk(1, "%s: m=%p: simulating delay\n", __func__, m);
++		m->status = NFS4ERR_DELAY;
++		goto out;
++	}
++
++	/* forgetful model */
++	layout_delete(&cl_layout, &m->range);
++	cl_layout.stateid = m->stateid;
++	m->status = NFS4ERR_NOMATCHING_LAYOUT;
++
++out:
++	dprintk(1, "%s: m=%p status=%d\n", __func__, m, m->status);
++	enqueue(&srv_msg_queue, m);
++}
++
++static void
+ _cl_recv_msg(struct msg *m)
  {
- 	struct nfs3_diropargs	arg = {
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 7a74740..700c780 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -57,7 +57,8 @@ enum nfs4_session_state {
- struct nfs4_minor_version_ops {
- 	u32	minor_version;
+ 	switch (m->type) {
+@@ -236,10 +268,9 @@ _cl_recv_msg(struct msg *m)
+ 	case LAYOUTRETURN:
+ 		cl_recv_layoutreturn(m);
+ 		break;
+-#if 0
+-	case CB_LAYOUTRECALL:
++	case CB_LAYOUT_RECALL:
++		cl_recv_cb_layout_recall(m);
+ 		break;
+-#endif
+ 	default:
+ 		BUG_ON(true);
+ 	}
+diff --git a/layout.c b/layout.c
+index 94870f0..c5ad99a 100644
+--- a/layout.c
++++ b/layout.c
+@@ -65,7 +65,7 @@ last_byte_offset(u64 start, u64 len)
+  *                  |----------------|
+  */
+ static inline int
+-lo_seg_overlapping(struct layout_range *l1, struct layout_range *l2)
++lo_seg_overlapping(const struct layout_range *l1, const struct layout_range *l2)
+ {
+ 	u64 start1 = l1->offset;
+ 	u64 last1 = last_byte_offset(start1, l1->length);
+@@ -82,13 +82,15 @@ lo_seg_overlapping(struct layout_range *l1, struct layout_range *l2)
+ }
  
--	int	(*call_sync)(struct nfs_server *server,
-+	int	(*call_sync)(struct rpc_clnt *clnt,
-+			struct nfs_server *server,
- 			struct rpc_message *msg,
- 			struct nfs4_sequence_args *args,
- 			struct nfs4_sequence_res *res,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 41f0a06..53254f9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -70,7 +70,9 @@ static int _nfs4_proc_open(struct nfs4_opendata *data);
- static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
- static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
- static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
--static int _nfs4_proc_lookup(struct inode *dir, const struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
-+static int _nfs4_proc_lookup(struct rpc_clnt *client, struct inode *dir,
-+			     const struct qstr *name, struct nfs_fh *fhandle,
-+			     struct nfs_fattr *fattr);
- static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			    struct nfs_fattr *fattr, struct iattr *sattr,
-@@ -639,7 +641,8 @@ struct rpc_call_ops nfs41_call_priv_sync_ops = {
- 	.rpc_call_done = nfs41_call_sync_done,
+ bool
+-layout_delete(struct layout *lo, struct layout_range *range)
++_lookup_layout(const char *func, struct layout *lo,
++	       const struct layout_range *range,
++	       bool do_delete)
+ {
+ 	bool found = false;
+ 	struct layout_item *pos, *next;
+ 
+ 	dprintk(1, "%s: %s: offset=%llu length=%llu iomode=%d roc=%d\n",
+-		__func__, lo->desc,
++		func, lo->desc,
+ 		llu(range->offset), llu(range->length),
+ 		range->iomode, range->roc);
+ 
+@@ -98,9 +100,12 @@ layout_delete(struct layout *lo, struct layout_range *range)
+ 		    (!range->roc || pos->range.roc) &&
+ 		    lo_seg_overlapping(&pos->range, range)) {
+ 			dprintk(1, "%s: found l=%p\n", __func__, pos);
+-			list_del(&pos->list);
+-			myfree(pos);
+ 			found = true;
++			if (do_delete) {
++				list_del(&pos->list);
++				myfree(pos);
++			} else
++				break;
+ 		}
+ 	}
+ 
+@@ -113,8 +118,10 @@ layout_verify(struct layout *server, struct layout *client)
+ 	bool ok = true, found;
+ 	struct layout_item *cl, *sl;
+ 
+-	if ((client->stateid.type != server->stateid.type) ||
+-	    (client->stateid.seq != server->stateid.seq)) {
++	if (((client->stateid.type != server->stateid.type) ||
++	     (client->stateid.seq != server->stateid.seq)) &&
++	    (!server->layout_recall_msg ||
++	     client->stateid.seq >= server->stateid.seq)) {
+ 		dprintk(0, "%s: cl stateid=%d:%llu srv stateid=%d:%llu\n",
+ 			__func__,
+ 			client->stateid.type, llu(client->stateid.seq),
+diff --git a/layout.h b/layout.h
+index bafad13..895b145 100644
+--- a/layout.h
++++ b/layout.h
+@@ -43,15 +43,31 @@ struct stateid {
+ 		    type resets to OPEN_STATEID */
  };
  
--static int nfs4_call_sync_sequence(struct nfs_server *server,
-+static int nfs4_call_sync_sequence(struct rpc_clnt *clnt,
-+				   struct nfs_server *server,
- 				   struct rpc_message *msg,
- 				   struct nfs4_sequence_args *args,
- 				   struct nfs4_sequence_res *res,
-@@ -655,7 +658,7 @@ static int nfs4_call_sync_sequence(struct nfs_server *server,
- 		.cache_reply = cache_reply,
- 	};
- 	struct rpc_task_setup task_setup = {
--		.rpc_client = server->client,
-+		.rpc_client = clnt,
- 		.rpc_message = msg,
- 		.callback_ops = &nfs41_call_sync_ops,
- 		.callback_data = &data
-@@ -664,6 +667,7 @@ static int nfs4_call_sync_sequence(struct nfs_server *server,
- 	res->sr_slot = NULL;
- 	if (privileged)
- 		task_setup.callback_ops = &nfs41_call_priv_sync_ops;
-+	task_setup.rpc_client = alt_clnt;
- 	task = rpc_run_task(&task_setup);
- 	if (IS_ERR(task))
- 		ret = PTR_ERR(task);
-@@ -674,13 +678,14 @@ static int nfs4_call_sync_sequence(struct nfs_server *server,
- 	return ret;
- }
++struct msg;
++
+ struct layout {
+ 	struct stateid stateid;
+ 	struct list_head segs;
+ 	char *desc;
++	struct msg *layout_recall_msg;
+ };
  
--int _nfs4_call_sync_session(struct nfs_server *server,
-+int _nfs4_call_sync_session(struct rpc_clnt *clnt,
-+			    struct nfs_server *server,
- 			    struct rpc_message *msg,
- 			    struct nfs4_sequence_args *args,
- 			    struct nfs4_sequence_res *res,
- 			    int cache_reply)
+ void layout_init(struct layout *, char *desc);
+ void layout_insert(struct layout *, struct layout_range *);
+-bool layout_delete(struct layout *, struct layout_range *);
++bool _lookup_layout(const char *func, struct layout *,
++		    const struct layout_range *,
++		    bool do_delete);
++
++static inline bool has_layout(struct layout *lo, const struct layout_range *range)
++{
++	return _lookup_layout(__func__, lo, range, false);
++}
++
++static inline bool layout_delete(struct layout *lo, const struct layout_range *range)
++{
++	return _lookup_layout(__func__, lo, range, true);
++}
++
+ bool layout_verify(struct layout *server, struct layout *client);
+ 
+ enum msg_type {
+diff --git a/server.c b/server.c
+index 1bc9978..19bb85a 100644
+--- a/server.c
++++ b/server.c
+@@ -5,6 +5,7 @@
+  * See "COPYING" for more information
+  */
+ 
++#include "alloc.h"
+ #include "client.h"
+ #include "debug.h"
+ #include "layout.h"
+@@ -63,10 +64,13 @@ verify_stateid(struct msg *m)
+ 		    srv_layout.stateid.seq > 100) {
+ 			/* FIXME: use an actual limit on parallelism */
+ 			return m->status = NFS4ERR_OLD_STATEID;
+-		} else if (m->stateid.type == LAYOUT_STATEID &&
+-		           m->stateid.seq > srv_layout.stateid.seq)
+-			return m->status = NFS4ERR_BAD_STATEID;
+-		/* TODO: CB_LAYOUTRECALL case */
++		} else if (m->stateid.type == LAYOUT_STATEID) {
++			if (srv_layout.layout_recall_msg &&
++		            m->stateid.seq < srv_layout.layout_recall_msg->stateid.seq)
++				return m->status = NFS4ERR_OLD_STATEID;
++			else if (m->stateid.seq > srv_layout.stateid.seq)
++				return m->status = NFS4ERR_BAD_STATEID;
++		}
+ 		break;
+ 	default:
+ 		BUG_ON(true);
+@@ -77,8 +81,13 @@ verify_stateid(struct msg *m)
+ static void
+ srv_recv_layoutget(struct msg *m)
  {
--	return nfs4_call_sync_sequence(server, msg, args, res, cache_reply, 0);
-+	return nfs4_call_sync_sequence(server, msg, args, res, cache_reply, 0, clnt);
++	if (srv_layout.layout_recall_msg) {
++		m->status = NFS4ERR_RECALLCONFLICT;
++		goto out;
++	}
++
+ 	if (verify_stateid(m))
+-		return;
++		goto out;
+ 
+ 	/* randomize layoutget response */
+ 	m->range.length = BLOCK_SIZE + mynrand(MAX_LO_MSG_LENGTH - BLOCK_SIZE);
+@@ -87,22 +96,54 @@ srv_recv_layoutget(struct msg *m)
+ 		m->range.iomode = IOMODE_RW;
+ 	srv_set_stateid(m);
+ 	m->status = NFS4_OK;
+-	dump_msg(m);
+ 	layout_insert(&srv_layout, &m->range);
++out:
++	dump_msg(m);
  }
  
- #else
-@@ -691,25 +696,27 @@ static int nfs4_sequence_done(struct rpc_task *task,
- }
- #endif /* CONFIG_NFS_V4_1 */
- 
--int _nfs4_call_sync(struct nfs_server *server,
-+int _nfs4_call_sync(struct rpc_clnt *clnt,
-+		    struct nfs_server *server,
- 		    struct rpc_message *msg,
- 		    struct nfs4_sequence_args *args,
- 		    struct nfs4_sequence_res *res,
- 		    int cache_reply)
+ static void
+ srv_recv_layoutreturn(struct msg *m)
  {
- 	args->sa_session = res->sr_session = NULL;
--	return rpc_call_sync(server->client, msg, 0);
-+	return rpc_call_sync(clnt, msg, 0);
++	struct msg *lrm;
++
+ 	if (verify_stateid(m))
+ 		return;
+ 
+ 	layout_delete(&srv_layout, &m->range);
+ 	srv_set_stateid(m);
+ 	m->status = NFS4_OK;
++	lrm = srv_layout.layout_recall_msg;
++	if (lrm && m->range.iomode == lrm->range.iomode &&
++	    m->range.offset == lrm->range.offset &&
++	    m->range.length && lrm->range.length) {
++		srv_layout.layout_recall_msg = NULL;
++		myfree(lrm);
++	}
+ 	dump_msg(m);
  }
  
- static inline
--int nfs4_call_sync(struct nfs_server *server,
-+int nfs4_call_sync(struct rpc_clnt *clnt,
-+		   struct nfs_server *server,
- 		   struct rpc_message *msg,
- 		   struct nfs4_sequence_args *args,
- 		   struct nfs4_sequence_res *res,
- 		   int cache_reply)
++static void
++srv_recv_cb_layout_recall(struct msg *m)
++{
++	BUG_ON(m != srv_layout.layout_recall_msg);
++	dump_msg(m);
++	switch (m->status) {
++	case NFS4_OK:
++	case NFS4ERR_DELAY:
++		dprintk(1, "%s: m=%p: layout_recall resent\n",
++			__func__, srv_layout.layout_recall_msg);
++		enqueue(&cl_msg_queue, srv_layout.layout_recall_msg);
++		break;
++	case NFS4ERR_NOMATCHING_LAYOUT:
++		layout_delete(&cl_layout, &m->range);
++		srv_layout.layout_recall_msg = NULL;
++		myfree(m);
++		break;
++	default:
++		BUG_ON(true);
++	}
++}
++
+ void
+ srv_recv_msg(void)
  {
--	return server->nfs_client->cl_mvops->call_sync(server, msg, args,
--						res, cache_reply);
-+	return server->nfs_client->cl_mvops->call_sync(clnt, server, msg,
-+						args, res, cache_reply);
- }
- 
- static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
-@@ -1817,7 +1824,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 	} else
- 		memcpy(&arg.stateid, &zero_stateid, sizeof(arg.stateid));
- 
--	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
-+	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (status == 0 && state != NULL)
- 		renew_lease(server, timestamp);
- 	return status;
-@@ -2076,7 +2083,7 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 	};
- 	int status;
- 
--	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
-+	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (status == 0) {
- 		memcpy(server->attr_bitmask, res.attr_bitmask, sizeof(server->attr_bitmask));
- 		server->caps &= ~(NFS_CAP_ACLS|NFS_CAP_HARDLINKS|
-@@ -2146,7 +2153,7 @@ static int _nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	};
- 
- 	nfs_fattr_init(info->fattr);
--	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
-+	return nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
-@@ -2235,7 +2242,7 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
- 	};
- 	
- 	nfs_fattr_init(fattr);
--	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
-+	return nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-@@ -2295,9 +2302,9 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	return status;
- }
- 
--static int _nfs4_proc_lookupfh(struct nfs_server *server, const struct nfs_fh *dirfh,
--		const struct qstr *name, struct nfs_fh *fhandle,
--		struct nfs_fattr *fattr)
-+static int _nfs4_proc_lookupfh(struct rpc_clnt *clnt, struct nfs_server *server,
-+		const struct nfs_fh *dirfh, const struct qstr *name,
-+		struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
- 	int		       status;
- 	struct nfs4_lookup_arg args = {
-@@ -2319,7 +2326,7 @@ static int _nfs4_proc_lookupfh(struct nfs_server *server, const struct nfs_fh *d
- 	nfs_fattr_init(fattr);
- 
- 	dprintk("NFS call  lookupfh %s\n", name->name);
--	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
-+	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args, &res.seq_res, 0);
- 	dprintk("NFS reply lookupfh: %d\n", status);
- 	return status;
- }
-@@ -2331,7 +2338,7 @@ static int nfs4_proc_lookupfh(struct nfs_server *server, struct nfs_fh *dirfh,
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
--		err = _nfs4_proc_lookupfh(server, dirfh, name, fhandle, fattr);
-+		err = _nfs4_proc_lookupfh(server->client, server, dirfh, name, fhandle, fattr);
- 		/* FIXME: !!!! */
- 		if (err == -NFS4ERR_MOVED) {
- 			err = -EREMOTE;
-@@ -2342,26 +2349,28 @@ static int nfs4_proc_lookupfh(struct nfs_server *server, struct nfs_fh *dirfh,
- 	return err;
- }
- 
--static int _nfs4_proc_lookup(struct inode *dir, const struct qstr *name,
--		struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-+static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
-+		const struct qstr *name, struct nfs_fh *fhandle,
-+		struct nfs_fattr *fattr)
- {
- 	int status;
- 	
- 	dprintk("NFS call  lookup %s\n", name->name);
--	status = _nfs4_proc_lookupfh(NFS_SERVER(dir), NFS_FH(dir), name, fhandle, fattr);
-+	status = _nfs4_proc_lookupfh(clnt, NFS_SERVER(dir), NFS_FH(dir), name, fhandle, fattr);
- 	if (status == -NFS4ERR_MOVED)
- 		status = nfs4_get_referral(dir, name, fattr, fhandle);
- 	dprintk("NFS reply lookup: %d\n", status);
- 	return status;
- }
- 
--static int nfs4_proc_lookup(struct inode *dir, struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-+static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
-+			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
- 	struct nfs4_exception exception = { };
- 	int err;
- 	do {
- 		err = nfs4_handle_exception(NFS_SERVER(dir),
--				_nfs4_proc_lookup(dir, name, fhandle, fattr),
-+				_nfs4_proc_lookup(clnt, dir, name, fhandle, fattr),
- 				&exception);
- 	} while (exception.retry);
- 	return err;
-@@ -2407,7 +2416,7 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 	if (res.fattr == NULL)
- 		return -ENOMEM;
- 
--	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
-+	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (!status) {
- 		entry->mask = 0;
- 		if (res.access & NFS4_ACCESS_READ)
-@@ -2474,7 +2483,7 @@ static int _nfs4_proc_readlink(struct inode *inode, struct page *page,
- 		.rpc_resp = &res,
- 	};
- 
--	return nfs4_call_sync(NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
-+	return nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_readlink(struct inode *inode, struct page *page,
-@@ -2563,7 +2572,7 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
- 	if (res.dir_attr == NULL)
- 		goto out;
- 
--	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 1);
-+	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
- 	if (status == 0) {
- 		update_changeattr(dir, &res.cinfo);
- 		nfs_post_op_update_inode(dir, res.dir_attr);
-@@ -2664,7 +2673,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 	if (res.old_fattr == NULL || res.new_fattr == NULL)
- 		goto out;
- 
--	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
-+	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(old_dir, &res.old_cinfo);
- 		nfs_post_op_update_inode(old_dir, res.old_fattr);
-@@ -2715,7 +2724,7 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
- 	if (res.fattr == NULL || res.dir_attr == NULL)
- 		goto out;
- 
--	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
-+	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(dir, &res.cinfo);
- 		nfs_post_op_update_inode(dir, res.dir_attr);
-@@ -2778,7 +2787,7 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- 
- static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
- {
--	int status = nfs4_call_sync(NFS_SERVER(dir), &data->msg,
-+	int status = nfs4_call_sync(NFS_SERVER(dir)->client, NFS_SERVER(dir), &data->msg,
- 				    &data->arg.seq_args, &data->res.seq_res, 1);
- 	if (status == 0) {
- 		update_changeattr(dir, &data->res.dir_cinfo);
-@@ -2891,7 +2900,7 @@ static int _nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- 			(unsigned long long)cookie);
- 	nfs4_setup_readdir(cookie, NFS_COOKIEVERF(dir), dentry, &args);
- 	res.pgbase = args.pgbase;
--	status = nfs4_call_sync(NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
-+	status = nfs4_call_sync(NFS_SERVER(dir)->client, NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
- 	if (status >= 0) {
- 		memcpy(NFS_COOKIEVERF(dir), res.verifier.data, NFS4_VERIFIER_SIZE);
- 		status += args.pgbase;
-@@ -2983,7 +2992,7 @@ static int _nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
- 	};
- 
- 	nfs_fattr_init(fsstat->fattr);
--	return  nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
-+	return  nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsstat *fsstat)
-@@ -3014,7 +3023,7 @@ static int _nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
- 		.rpc_resp = &res,
- 	};
- 
--	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
-+	return nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsinfo *fsinfo)
-@@ -3059,7 +3068,7 @@ static int _nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle
+@@ -121,15 +162,51 @@ srv_recv_msg(void)
+ 	case LAYOUTRETURN:
+ 		srv_recv_layoutreturn(m);
+ 		break;
++	case CB_LAYOUT_RECALL:
++		srv_recv_cb_layout_recall(m);
++		return;
+ 	default:
+ 		BUG_ON(true);
  	}
- 
- 	nfs_fattr_init(pathconf->fattr);
--	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
-+	return nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	enqueue(&cl_msg_queue, m);
  }
  
- static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
-@@ -3359,7 +3368,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 		resp_buf = buf;
- 		buf_to_pages(buf, buflen, args.acl_pages, &args.acl_pgbase);
- 	}
--	ret = nfs4_call_sync(NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
-+	ret = nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
- 	if (ret)
- 		goto out_free;
- 	if (res.acl_len > args.acl_len)
-@@ -3432,7 +3441,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 		return -EOPNOTSUPP;
- 	nfs_inode_return_delegation(inode);
- 	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
--	ret = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
-+	ret = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	/*
- 	 * Acl update can result in inode attribute update.
- 	 * so mark the attribute cache invalid.
-@@ -3787,7 +3796,7 @@ static int _nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock
- 	lsp = request->fl_u.nfs4_fl.owner;
- 	arg.lock_owner.id = lsp->ls_id.id;
- 	arg.lock_owner.s_dev = server->s_dev;
--	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
-+	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	switch (status) {
- 		case 0:
- 			request->fl_type = F_UNLCK;
-@@ -4518,7 +4527,7 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 	nfs_fattr_init(&fs_locations->fattr);
- 	fs_locations->server = server;
- 	fs_locations->nlocations = 0;
--	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
-+	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- 	nfs_fixup_referral_attributes(&fs_locations->fattr);
- 	dprintk("%s: returned status = %d\n", __func__, status);
- 	return status;
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 77d5e21..89ac23a 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -177,7 +177,7 @@ nfs_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- }
- 
- static int
--nfs_proc_lookup(struct inode *dir, struct qstr *name,
-+nfs_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
- 		struct nfs_fh *fhandle, struct nfs_fattr *fattr)
++static void
++srv_recall_layout(void)
++{
++	struct msg *m;
++
++	if (srv_layout.layout_recall_msg) {
++		dprintk(1, "%s: m=%p layout_recall already in progress: status=%d\n",
++			__func__,
++			srv_layout.layout_recall_msg,
++			srv_layout.layout_recall_msg->status);
++		return;
++	}
++
++	dprintk(1, "%s\n", __func__);
++	m = myzalloc(sizeof(*m));
++	m->type = CB_LAYOUT_RECALL;
++	m->range.offset = mynrand(MAX_LO_MSG_OFFSET) & ~BLOCK_MASK;
++	m->range.length = BLOCK_SIZE + mynrand(MAX_LO_MSG_LENGTH - BLOCK_SIZE);
++	m->range.iomode = IOMODE_READ + mynrand(3);
++	/* bump server stateid.seq */
++	srv_layout.stateid.seq++;
++	m->stateid =  srv_layout.stateid;
++	m->status = -1;
++	srv_layout.layout_recall_msg = m;
++	dump_msg(m);
++
++	enqueue(&cl_msg_queue, m);
++}
++
++struct rand_event srv_events[] = {
++	{ 75, srv_recv_msg },
++	{ 25, srv_recall_layout },
++};
++
+ void
+ srv_draw_event(void)
  {
- 	struct nfs_diropargs	arg = {
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index b006857..74c4e71 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1061,7 +1061,7 @@ struct nfs_rpc_ops {
- 			    struct nfs_fattr *);
- 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
- 			    struct iattr *);
--	int	(*lookup)  (struct inode *, struct qstr *,
-+	int	(*lookup)  (struct rpc_clnt *clnt, struct inode *, struct qstr *,
- 			    struct nfs_fh *, struct nfs_fattr *);
- 	int	(*access)  (struct inode *, struct nfs_access_entry *);
- 	int	(*readlink)(struct inode *, struct page *, unsigned int,
+-	srv_recv_msg();
++	rand_call(srv_events);
+ }
+-
 -- 
 1.7.3.4
 
