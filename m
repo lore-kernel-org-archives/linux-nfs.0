@@ -1,151 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:15622 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51067 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753804Ab1AFCFK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 21:05:10 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V9 08/12] NFS associate sessionid with callback connection
-Date: Wed,  5 Jan 2011 21:04:31 -0500
-Message-Id: <1294279475-8540-9-git-send-email-andros@netapp.com>
-In-Reply-To: <1294279475-8540-8-git-send-email-andros@netapp.com>
-References: <1294279475-8540-1-git-send-email-andros@netapp.com>
- <1294279475-8540-2-git-send-email-andros@netapp.com>
- <1294279475-8540-3-git-send-email-andros@netapp.com>
- <1294279475-8540-4-git-send-email-andros@netapp.com>
- <1294279475-8540-5-git-send-email-andros@netapp.com>
- <1294279475-8540-6-git-send-email-andros@netapp.com>
- <1294279475-8540-7-git-send-email-andros@netapp.com>
- <1294279475-8540-8-git-send-email-andros@netapp.com>
+	id S1752516Ab1A0Stg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Jan 2011 13:49:36 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id p0RInZlk006563
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2011 13:49:36 -0500
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p0RInZcP018723
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Jan 2011 13:49:35 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/3] Connectathon: Remove warning from general tests
+Date: Thu, 27 Jan 2011 13:49:31 -0500
+Message-Id: <1296154174-13076-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Here are three approaches to removing the 
+    warning: around line 47: table wider than line width
 
-The sessions based callback service is started prior to the CREATE_SESSION call
-so that it can handle CB_NULL requests which can be sent before the
-CREATE_SESSION call returns and the session ID is known.
+that is currently occurring in the general tests.
 
-Set the callback sessionid after a sucessful CREATE_SESSION.
+The first approach is to make the stat command, which read
+the output time file, ignore lines it does not understand. 
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/callback.c               |   31 +++++++++++++++++++++++++++++++
- fs/nfs/callback.h               |    1 +
- fs/nfs/nfs4state.c              |    6 ++++++
- include/linux/sunrpc/svc_xprt.h |    1 +
- net/sunrpc/svcsock.c            |    4 +++-
- 5 files changed, 42 insertions(+), 1 deletions(-)
+The second approach was to fix the nroff.in file. It turns
+out, the only I could stop that warning was to decrease the
+width of the table. Through my trials and tribulations with
+this, I'm beginning to believe the generating of this warning
+is a bug in the groff command, since I can not find anything
+wrong with the original table definition.
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 0e9fae8..c0b0549 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -137,6 +137,33 @@ out_err:
- 
- #if defined(CONFIG_NFS_V4_1)
- /*
-+ *  * CB_SEQUENCE operations will fail until the callback sessionid is set.
-+ *   */
-+int nfs4_set_callback_sessionid(struct nfs_client *clp)
-+{
-+	struct svc_serv *serv = clp->cl_rpcclient->cl_xprt->bc_serv;
-+	struct nfs4_sessionid *bc_sid;
-+
-+	if (!serv->bc_xprt)
-+		return -EINVAL;
-+
-+	/* on success freed in xprt_free */
-+	bc_sid = kmalloc(sizeof(struct nfs4_sessionid), GFP_KERNEL);
-+	if (!bc_sid)
-+		return -ENOMEM;
-+	memcpy(bc_sid->data, &clp->cl_session->sess_id.data,
-+		NFS4_MAX_SESSIONID_LEN);
-+	spin_lock_bh(&serv->sv_cb_lock);
-+	serv->bc_xprt->xpt_bc_sid = bc_sid;
-+	spin_unlock_bh(&serv->sv_cb_lock);
-+	dprintk("%s set xpt_bc_sid=%u:%u:%u:%u for bc_xprt %p\n", __func__,
-+		((u32 *)bc_sid->data)[0], ((u32 *)bc_sid->data)[1],
-+		((u32 *)bc_sid->data)[2], ((u32 *)bc_sid->data)[3],
-+		serv->bc_xprt);
-+	return 0;
-+}
-+
-+/*
-  * The callback service for NFSv4.1 callbacks
-  */
- static int
-@@ -241,6 +268,10 @@ static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
- 		struct nfs_callback_data *cb_info)
- {
- }
-+int nfs4_set_callback_sessionid(struct nfs_client *clp)
-+{
-+	return 0;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- /*
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 85a7cfd..58d61a8 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -137,6 +137,7 @@ extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
- extern void nfs_callback_down(int minorversion);
- extern int nfs4_validate_delegation_stateid(struct nfs_delegation *delegation,
- 					    const nfs4_stateid *stateid);
-+extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
- #endif /* CONFIG_NFS_V4 */
- /*
-  * nfs41: Callbacks are expected to not cause substantial latency,
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index f575a31..485e95e 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -192,6 +192,12 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 	status = nfs4_proc_create_session(clp);
- 	if (status != 0)
- 		goto out;
-+	status = nfs4_set_callback_sessionid(clp);
-+	if (status != 0) {
-+		printk(KERN_WARNING "Sessionid not set. No callback service\n");
-+		nfs_callback_down(1);
-+		status = 0;
-+	}
- 	nfs41_setup_state_renewal(clp);
- 	nfs_mark_client_ready(clp, NFS_CS_READY);
- out:
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index aea0d43..357da5e 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -78,6 +78,7 @@ struct svc_xprt {
- 	size_t			xpt_remotelen;	/* length of address */
- 	struct rpc_wait_queue	xpt_bc_pending;	/* backchannel wait queue */
- 	struct list_head	xpt_users;	/* callbacks on free */
-+	void			*xpt_bc_sid;	/* back channel session ID */
- 
- 	struct net		*xpt_net;
- };
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index e6b66d8..db3013e 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1605,7 +1605,9 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
-  */
- static void svc_bc_sock_free(struct svc_xprt *xprt)
- {
--	if (xprt)
-+	if (xprt) {
-+		kfree(xprt->xpt_bc_sid);
- 		kfree(container_of(xprt, struct svc_sock, sk_xprt));
-+	}
- }
- #endif /* CONFIG_NFS_V4_1 */
+The third and final approach is a patch that Jeff Layton 
+purposed that leaves the table width alone and adds the
+"nowarn" to the global options of the table.
+
+All three seem to do the trick but obviously we don't need
+all three... I am leaning towards the first approach since
+its not dependent on nroff/tbl isms... 
+
+Steve Dickson (2):
+  Make the stat command ignore lines that it is not looking for.
+  Make the tbl table smaller to avoid a warning about line width
+
+Jeff Layton (1):
+  cthon04: add "nowarn" option to nroff.in tables
+
+ general/nroff.in |    2 +-
+ general/stat.c   |    9 +++++++--
+ 2 files changed, 8 insertions(+), 3 deletions(-)
+
 -- 
-1.6.6
+1.7.3.3
 
