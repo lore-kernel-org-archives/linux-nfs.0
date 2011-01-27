@@ -1,84 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:33997 "EHLO
-	bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753900Ab1AFRkT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Jan 2011 12:40:19 -0500
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Marc Kleine-Budde <mkl@pengutronix.de>,
-        Uwe =?ISO-8859-1?Q?Kleine-K=F6nig?=
-	<u.kleine-koenig@pengutronix.de>,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
-        linux-arm-kernel@lists.infradead.org,
-        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
-In-Reply-To: <1294270104.16957.73.camel@mulgrave.site>
-References: <1294254337.16957.13.camel@mulgrave.site>
-	 <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
-	 <1294256169.16957.18.camel@mulgrave.site>
-	 <20110105200008.GJ8638@n2100.arm.linux.org.uk>
-	 <1294259637.16957.25.camel@mulgrave.site>
-	 <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
-	 <20110105210448.GM8638@n2100.arm.linux.org.uk>
-	 <AANLkTi=EXXBTW7oWHq3D+PHsx=thF1CpkRjn0ax2p5rm@mail.gmail.com>
-	 <1294262208.2952.4.camel@heimdal.trondhjem.org>
-	 <AANLkTi=3Gu-rz=-OdNtUXn4qw60Df6=YePnzvB=s-+Ov@mail.gmail.com>
-	 <1294268808.2952.18.camel@heimdal.trondhjem.org>
-	 <1294270104.16957.73.camel@mulgrave.site>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 06 Jan 2011 11:40:13 -0600
-Message-ID: <1294335614.22825.154.camel@mulgrave.site>
+Received: from mx5.sophos.com ([213.31.172.35]:49249 "EHLO mx5.sophos.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752882Ab1A0ONJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jan 2011 09:13:09 -0500
+Date: Thu, 27 Jan 2011 14:06:10 +0000
+From: Douglas Leeder <douglas.leeder@sophos.com>
+To: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
+CC: Tvrtko Ursulin <tvrtko.ursulin@sophos.com>, <douglas.leeder@gmail.com>,
+        <linux-kernel@vger.kernel.org>
+Subject: kernel BUG while mv files onto an nfs mount with Linus' linux-2.6
+ git tree
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Message-ID: <1c30423a-57bf-44bb-aa2e-4d658f829474@uk-exch1.green.sophos>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-01-05 at 23:28 +0000, James Bottomley wrote:
-> Can you explain how the code works? it looks to me like you read the xdr
-> stuff through the vmap region then write it out directly to the pages? 
+Hi,
 
-OK, I think I see how this is supposed to work:  It's a sequential loop
-of reading in via the pages (i.e. through the kernel mapping) and then
-updating those pages via the vmap.  In which case, I think this patch is
-what you need.
+I got the following kernel BUG while moving files onto an nfs mount,
+while running Linus' linux-2.6 git tree (2.6.38-rc2) under VirtualBox.
 
-The theory of operation is that the readdir on pages actually uses the
-network DMA operations to perform, so when it's finished, the underlying
-page is up to date.  After this you invalidate the vmap range, so we
-have no cache lines above it (so it picks up the values from the
-uptodate page).  Finally, after the operation on the vmap region has
-finished, you flush it so that any updated contents go back to the pages
-themselves before the next iteration begins.
+The mv command is now stuck in the D+ state.
 
-Does this look right to people?  I've verified it fixes the issues on
-parisc.
+Attempting to ls the mount results in ls being stuck in the D+ state.
 
-James
+The nfs server is an Ubuntu 10.04 box running Ubuntu kernel.
+(2.6.32-28-generic-pae #55-Ubuntu SMP Mon Jan 10 22:34:08 UTC 2011)
 
----
+I would be happy to provide any more information that is required.
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 996dd89..bde1911 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -587,12 +587,16 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 		if (status < 0)
- 			break;
- 		pglen = status;
-+
-+		invalidate_kernel_vmap_range(pages_ptr, pglen);
-+
- 		status = nfs_readdir_page_filler(desc, &entry, pages_ptr, page, pglen);
- 		if (status < 0) {
- 			if (status == -ENOSPC)
- 				status = 0;
- 			break;
- 		}
-+		flush_kernel_vmap_range(pages_ptr, pglen);
- 	} while (array->eof_index < 0);
- 
- 	nfs_readdir_free_large_page(pages_ptr, pages, array_size);
+kernel BUG at fs/nfs/nfs3xdr.c:1338!
+invalid opcode: 0000 [#1] SMP
+last sysfs file: /sys/devices/virtual/bdi/0:21/uevent
+Modules linked in: nfsd exportfs nfs lockd fscache nfs_acl auth_rpcgss
+sunrpc psmouse i2c_piix4 serio_raw sr_mod pcnet32 mii
+476034]
+Pid: 3214, comm: mv Not tainted 2.6.38-rc2-custom3dlcl #3 /VirtualBox
+EIP: 0060:[<d8a0d9e8>] EFLAGS: 00010282 CPU: 0
+EIP is at nfs3_xdr_enc_setacl3args+0xb8/0xc0 [nfs]
+EAX: ffffffea EBX: d623bd90 ECX: 00000000 EDX: d623bbd8
+ESI: d623bcac EDI: 00000084 EBP: d623bc88 ESP: d623bc70
+  DS: 007b ES: 007b FS: 00d8 GS: 00e0 SS: 0068
+Process mv (pid: 3214, ti=d623a000 task=d7770ca0 task.ti=d623a000)
+Stack:
+  d6d651a0 00000001 00000000 d623bcac d5ea8000 d8a0d930 d623bcd4 d88d8f16
+  d1828820 d623bcb0 d88d9be7 d1828824 d182884c d7553880 00000000 d1828888
+  d5ea8004 d18289d4 d5ea8004 d623bd10 d5d8d000 d5d8d35c d7553880 d5ea8000
+Call Trace:
+  [<d8a0d930>] ? nfs3_xdr_enc_setacl3args+0x0/0xc0 [nfs]
+  [<d88d8f16>] rpcauth_wrap_req+0x76/0xb0 [sunrpc]
+  [<d88d9be7>] ? unx_marshal+0x47/0xc0 [sunrpc]
+  [<d88d0f7f>] call_transmit+0x14f/0x250 [sunrpc]
+  [<d88d8227>] __rpc_execute+0x67/0x200 [sunrpc]
+  [<c0166d6e>] ? wake_up_bit+0x5e/0x70
+  [<d88d7b92>] ? rpc_make_runnable+0x72/0xa0 [sunrpc]
+  [<d88d83f8>] rpc_execute+0x38/0x40 [sunrpc]
+  [<d88d1d04>] rpc_run_task+0xa4/0xe0 [sunrpc]
+  [<d88d1e3e>] rpc_call_sync+0x3e/0x60 [sunrpc]
+  [<d8a0f4c0>] nfs3_proc_setacls+0x150/0x2e0 [nfs]
+  [<c016ae01>] ? __run_hrtimer+0xa1/0x1c0
+  [<c025c317>] ? posix_acl_alloc+0x17/0x30
+  [<d8a0fdaf>] nfs3_proc_setacl+0x5f/0x100 [nfs]
+  [<c025c48c>] ? posix_acl_from_xattr+0x6c/0x100
+  [<d8a0ff02>] nfs3_setxattr+0x52/0xa0 [nfs]
+  [<d8a0feb0>] ? nfs3_setxattr+0x0/0xa0 [nfs]
+  [<c0237ef1>] __vfs_setxattr_noperm+0x41/0x120
+  [<c030a67c>] ? cap_inode_setxattr+0x2c/0x60
+  [<c0238061>] vfs_setxattr+0x91/0xa0
+  [<c0238128>] setxattr+0xb8/0x110
+  [<c01f8695>] ? handle_pte_fault+0x85/0x920
+  [<c01307cc>] ? kmap_atomic_prot+0x4c/0x100
+  [<c01f8fdc>] ? handle_mm_fault+0xac/0x140
+  [<c05bc772>] ? do_page_fault+0x1b2/0x450
+  [<c02d0500>] ? ext4_listxattr+0x0/0x240
+  [<c023783a>] ? vfs_listxattr+0x3a/0x70
+  [<c0238218>] sys_fsetxattr+0x98/0xb0
+  [<c010301f>] sysenter_do_call+0x12/0x28
+Code: 59 f2 ff 85 c0 78 20 83 c4 0c 5b 5e 5f 5d c3 8d 74 26 00 8b 43 10
+31 c9 8b 53 18 89 04 24 89 f0 e8 0e 38 ed ff eb 80 0f 0b eb fe <0f> 0b
+eb fe 8d 74 26 00 55 89 e5 83 ec 08 89 1c 24 89 74 24 04
+EIP: [<d8a0d9e8>] nfs3_xdr_enc_setacl3args+0xb8/0xc0 [nfs] SS:ESP
+0068:d623bc70
+---[ end trace 69c4fc2ce1ae740d ]---
 
+--
+Douglas Leeder, Senior Software Engineer
 
+Sophos Limited, The Pentagon, Abingdon Science Park, Abingdon, OX14 3YP, United Kingdom.
+Company Reg No 2096520. VAT Reg No GB 991 2418 08.
