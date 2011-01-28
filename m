@@ -1,47 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from esrismtp2.esri.com ([198.102.62.103]:35544 "EHLO esri3.esri.com"
+Received: from mx2.netapp.com ([216.240.18.37]:29885 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751446Ab1ASArm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Jan 2011 19:47:42 -0500
-Date: Tue, 18 Jan 2011 16:29:07 -0800
-From: Ray Van Dolson <rvandolson@esri.com>
-To: rhelv6-list@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: NFSv4 automount - nss_getpwnam name 'user@domain.com' does not map
- into domain 'localdomain'
-Message-ID: <20110119002907.GA25400@esri.com>
-Content-Type: text/plain; charset=us-ascii
+	id S1751220Ab1A1SmF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Jan 2011 13:42:05 -0500
+Message-ID: <4D430DFA.90708@netapp.com>
+Date: Fri, 28 Jan 2011 13:42:02 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] NFS: NFSv4 readdir loses entries
+References: <20110128173624.3235.74504.stgit@matisse.1015granger.net> <20110128174105.3235.21014.stgit@matisse.1015granger.net>
+In-Reply-To: <20110128174105.3235.21014.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Am doing a kickstart installation of RHEL 6.0 vanilla (no errata
-applied).
+On 01/28/2011 12:41 PM, Chuck Lever wrote:
+> On recent 2.6.38-rc kernels, connectathon basic test 6 fails on
+> NFSv4 mounts of OpenSolaris with something like:
+> 
+>> ./test6: readdir
+>> 	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.12' dir entry, pass 0
+>> 	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.82' dir entry, pass 0
+>> 	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.164' dir entry, pass 0
+>> 	./test6: (/mnt/klimt/matisse.test) Test failed with 3 errors
+>> basic tests failed
+>> Tests failed, leaving /mnt/klimt mounted
+>> [cel@matisse cthon04]$
+> 
+> I narrowed the problem down to nfs4_decode_direct() reporting that the
 
-After reboot, when using the automounter to access NFSv4 shares
-(running on Fedora 13), we see the following in the logs on the RHEL6
-client:
+I'm guessing that should be nfs4_decode_dirent()?
 
-Jan 18 15:56:16 rhel6test rpc.idmapd[1387]: nss_getpwnam: name 'root@esri.com' does not map into domain 'localdomain'
-Jan 18 15:56:16 rhel6test rpc.idmapd[1387]: nss_getpwnam: name 'ray5147@esri.com' does not map into domain 'localdomain'
+> decode buffer had overflowed while decoding the entries for those
+> missing files.
+> 
+> verify_attr_len() assumes both it's pointer arguments reside on the
+> same page.  When these arguments point to locations on two different
+> pages, verify_attr_len() can report false errors.  This can happen now
+> that a large NFSv4 readdir result can span pages.
+> 
+> We have reasonably good checking in nfs4_decode_dirent() anyway, so
+> it should be safe to simply remove the extra checking.
+> 
+> At a guess, this was introduced by commit 6650239a, "NFS: Don't use
+> vm_map_ram() in readdir".
+> 
+> Cc: stable@kernel.org [2.6.37]
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/nfs/nfs4xdr.c |    3 ---
+>  1 files changed, 0 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 009aef9..4e2c168 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -6132,9 +6132,6 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+>  	if (entry->fattr->valid & NFS_ATTR_FATTR_TYPE)
+>  		entry->d_type = nfs_umode_to_dtype(entry->fattr->mode);
+>  
+> -	if (verify_attr_len(xdr, p, len) < 0)
+> -		goto out_overflow;
+> -
+>  	return 0;
+>  
+>  out_overflow:
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-As a result, directories are not mapped to the correct users but
-instead to 'nobody'.
-
-This is odd, because per the idmap man pages, the default domain used
-by rpc.idmapd should be the same as the system domain minus the
-hostname.  This should be esri.com, and is when I type hostname.
-
-Thinking that perhaps rpc.idmapd was started before the network
-subsystem, I restarted it.  Immediately everything worked fine.
-
-I rebooted the system assuming the problem would return, but it didn't.
-Maybe there's a cache used by rpc.idmapd (nscd?)?  Is there something
-else maybe I'm missing?
-
-Trying to determine if the "right" thing to do is to leave my
-configuration as default or if I should be modifying /etc/idmapd.conf
-to set a default domain.
-
-Thanks,
-Ray
