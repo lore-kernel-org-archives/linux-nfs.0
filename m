@@ -1,50 +1,80 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] Fixed segfault in rpc.mountd
-Date: Wed, 26 Jan 2011 11:34:37 -0500
-Message-ID: <4D404D1D.6020803@RedHat.com>
-References: <1296046655-20246-1-git-send-email-steved@redhat.com>
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 2/2] NFS: NFSv4 readdir loses entries
+Date: Fri, 28 Jan 2011 13:34:42 -0500
+Message-ID: <1296239682.5464.15.camel@heimdal.trondhjem.org>
+References: <20110128173624.3235.74504.stgit@matisse.1015granger.net>
+	 <20110128174105.3235.21014.stgit@matisse.1015granger.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-To: Steve Dickson <steved@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:3831 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:37461 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752705Ab1AZQej (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Jan 2011 11:34:39 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id p0QGYcok003994
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 26 Jan 2011 11:34:38 -0500
-In-Reply-To: <1296046655-20246-1-git-send-email-steved@redhat.com>
+	id S1755385Ab1A1SfW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Jan 2011 13:35:22 -0500
+In-Reply-To: <20110128174105.3235.21014.stgit-RytpoXr2tKZ9HhUboXbp9zCvJB+x5qRC@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 01/26/2011 07:57 AM, Steve Dickson wrote:
-> A unallocated piece of memory, instead of a NULL point, was being
-> used to initialize a ->next point in the mount link list which
-> caused a segfault after a few remote accesses via the showmount
-> command.
+On Fri, 2011-01-28 at 12:41 -0500, Chuck Lever wrote: 
+> On recent 2.6.38-rc kernels, connectathon basic test 6 fails on
+> NFSv4 mounts of OpenSolaris with something like:
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
+> > ./test6: readdir
+> > 	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.12' dir entry, pass 0
+> > 	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.82' dir entry, pass 0
+> > 	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.164' dir entry, pass 0
+> > 	./test6: (/mnt/klimt/matisse.test) Test failed with 3 errors
+> > basic tests failed
+> > Tests failed, leaving /mnt/klimt mounted
+> > [cel@matisse cthon04]$
+> 
+> I narrowed the problem down to nfs4_decode_direct() reporting that the
+> decode buffer had overflowed while decoding the entries for those
+> missing files.
+> 
+> verify_attr_len() assumes both it's pointer arguments reside on the
+> same page.  When these arguments point to locations on two different
+> pages, verify_attr_len() can report false errors.  This can happen now
+> that a large NFSv4 readdir result can span pages.
+> 
+> We have reasonably good checking in nfs4_decode_dirent() anyway, so
+> it should be safe to simply remove the extra checking.
+> 
+> At a guess, this was introduced by commit 6650239a, "NFS: Don't use
+> vm_map_ram() in readdir".
+> 
+> Cc: stable@kernel.org [2.6.37]
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
->  utils/mountd/rmtab.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
 > 
-> diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
-> index d339296..527377f 100644
-> --- a/utils/mountd/rmtab.c
-> +++ b/utils/mountd/rmtab.c
-> @@ -205,6 +205,7 @@ mountlist_list(void)
->  	}
->  	if (stb.st_mtime != last_mtime) {
->  		mountlist_freeall(mlist);
-> +		mlist = NULL;
->  		last_mtime = stb.st_mtime;
+>  fs/nfs/nfs4xdr.c |    3 ---
+>  1 files changed, 0 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 009aef9..4e2c168 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -6132,9 +6132,6 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+>  	if (entry->fattr->valid & NFS_ATTR_FATTR_TYPE)
+>  		entry->d_type = nfs_umode_to_dtype(entry->fattr->mode);
 >  
->  		setrmtabent("r");
-Committed.... 
+> -	if (verify_attr_len(xdr, p, len) < 0)
+> -		goto out_overflow;
+> -
+>  	return 0;
+>  
+>  out_overflow:
+> 
 
-steved.
+I'm assuming that this is 'Cc: stable@kernel.org [2.6.37]'?
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
