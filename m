@@ -1,154 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41548 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751260Ab1AEPhW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 10:37:22 -0500
-Date: Wed, 5 Jan 2011 10:37:13 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] nfsd4: implement secinfo_no_name
-Message-ID: <20110105153713.GA13000@fieldses.org>
-References: <1292612511-14203-1-git-send-email-bfields@redhat.com>
- <1292612511-14203-4-git-send-email-bfields@redhat.com>
- <4D183265.70608@cn.fujitsu.com>
- <20101229185609.GA12218@fieldses.org>
- <4D1C06E7.5060009@cn.fujitsu.com>
- <20110105010507.GC14744@fieldses.org>
- <AANLkTimHAzLWE2ZC+QGtSw3ff6fpQsejDV8M7x8m34dp@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <AANLkTimHAzLWE2ZC+QGtSw3ff6fpQsejDV8M7x8m34dp@mail.gmail.com>
+Received: from mail-qy0-f174.google.com ([209.85.216.174]:61788 "EHLO
+	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755061Ab1A1RlJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Jan 2011 12:41:09 -0500
+Received: by qyj19 with SMTP id 19so1127151qyj.19
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Jan 2011 09:41:07 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/2] NFS: NFSv4 readdir loses entries
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 28 Jan 2011 12:41:05 -0500
+Message-ID: <20110128174105.3235.21014.stgit@matisse.1015granger.net>
+In-Reply-To: <20110128173624.3235.74504.stgit@matisse.1015granger.net>
+References: <20110128173624.3235.74504.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jan 05, 2011 at 10:15:11AM -0500, Fred Isaman wrote:
-> On Tue, Jan 4, 2011 at 8:05 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Thu, Dec 30, 2010 at 12:13:27PM +0800, Mi Jinlong wrote:
-> >>
-> >>
-> >> J. Bruce Fields:
-> >> > On Mon, Dec 27, 2010 at 02:29:57PM +0800, Mi Jinlong wrote:
-> >> >> When testing this patch, oops appears.
-> >> >>
-> >> >> We should implement a nfsd4_encode_secinfo_no_name() instead using
-> >> >> nfsd4_encode_secinfo().
-> >> >>
-> >> >> With the following patch, kernel will run correctly.
-> >> >
-> >> > Whoops, yes, you're correct.  I've applied your patch.  Thanks!
-> >> >
-> >> > (What are you using for testing?)
-> >>
-> >> Hi Bruce:
-> >>
-> >>   I test it by the pynfs41 at your tree, and add some simple
-> >>   test case as following.
-> >>
-> >>   I have a question about the op.secinfo_no_name(), should it take
-> >>   a argument?
-> >>   Right now, maybe it always request with NFS4_SECINFO_STYLE4_CURRENT_FH,
-> >>   or I can't find how to set the argument.
-> >
-> 
-> There was a bug in how the op.secinfo_no_name() function was auto
-> constructed.  I've pushed a fix to
-> my tree at git://linux-nfs.org/~iisaman/newpynfs.git.
+On recent 2.6.38-rc kernels, connectathon basic test 6 fails on
+NFSv4 mounts of OpenSolaris with something like:
 
-Thanks, Fred.  I've pulled that into my repository too.
+> ./test6: readdir
+> 	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.12' dir entry, pass 0
+> 	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.82' dir entry, pass 0
+> 	./test6: (/mnt/klimt/matisse.test) didn't read expected 'file.164' dir entry, pass 0
+> 	./test6: (/mnt/klimt/matisse.test) Test failed with 3 errors
+> basic tests failed
+> Tests failed, leaving /mnt/klimt mounted
+> [cel@matisse cthon04]$
 
---b.
+I narrowed the problem down to nfs4_decode_direct() reporting that the
+decode buffer had overflowed while decoding the entries for those
+missing files.
 
-> 
-> Fred
-> 
-> > Hm, I don't know, I guess I'd look at how arguments are passed to some
-> > of the other operations when constructing compounds in other tests....
-> >
-> > --b.
-> >
-> >>
-> >> thanks,
-> >> Mi Jinlong
-> >>
-> >> >From 31ae25c04295888fa54ea531cdfaa4cfdefbe877 Mon Sep 17 00:00:00 2001
-> >> From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> >> Date: Wed, 29 Dec 2010 17:23:35 +0800
-> >> Subject: [PATCH] CLNT: Add some simple secinfo_no_name tests
-> >>
-> >>  Add two simple secinfo_no_name tests as Bruce said:
-> >>     - send PUTROOTFH+SECINFO_NO_NAME, check that you get back a
-> >>       legal result.
-> >>     - send PUTROOTFH+SECINFO+GETFH, and/or
-> >>       PUTROOTFH+SECINFO_NO_NAME+GETFH, check that the GETFH returns
-> >>       NOFILEHANDLE.
-> >>
-> >>  Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> >> ---
-> >>  nfs4.1/server41tests/__init__.py           |    1 +
-> >>  nfs4.1/server41tests/st_secinfo_no_name.py |   35 ++++++++++++++++++++++++++++
-> >>  2 files changed, 36 insertions(+), 0 deletions(-)
-> >>  create mode 100644 nfs4.1/server41tests/st_secinfo_no_name.py
-> >>
-> >> diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
-> >> index 22cd664..6aee88e 100644
-> >> --- a/nfs4.1/server41tests/__init__.py
-> >> +++ b/nfs4.1/server41tests/__init__.py
-> >> @@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
-> >>             "st_compound.py",
-> >>             "st_create_session.py",
-> >>             "st_destroy_session.py",
-> >> +           "st_secinfo_no_name.py",
-> >>             "st_sequence.py",
-> >>          "st_trunking.py",
-> >>             "st_open.py",
-> >> diff --git a/nfs4.1/server41tests/st_secinfo_no_name.py b/nfs4.1/server41tests/st_secinfo_no_name.py
-> >> new file mode 100644
-> >> index 0000000..a4b148d
-> >> --- /dev/null
-> >> +++ b/nfs4.1/server41tests/st_secinfo_no_name.py
-> >> @@ -0,0 +1,35 @@
-> >> +from st_create_session import create_session
-> >> +from nfs4_const import *
-> >> +from environment import check, fail, bad_sessionid, create_file
-> >> +from nfs4_type import channel_attrs4
-> >> +import nfs4_ops as op
-> >> +import nfs4lib
-> >> +
-> >> +def testSupported(t, env):
-> >> +    """Do a simple SECINFO_NO_NAME
-> >> +       send PUTROOTFH+SECINFO_NO_NAME, check is result legal
-> >> +
-> >> +    FLAGS: all
-> >> +    CODE: SECNN1
-> >> +    """
-> >> +    c = env.c1.new_client(env.testname(t))
-> >> +    sess = c.create_session()
-> >> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name()])
-> >> +    check(res);
-> >> +
-> >> +def testSupported2(t, env):
-> >> +    """GETFH after do a SECINFO_NO_NAME or SECINFO
-> >> +       result in a NOFILEHANDLE error, See rfc 5661 section 2.6.3.1.1.8
-> >> +
-> >> +    FLAGS: all
-> >> +    CODE: SECNN2
-> >> +    """
-> >> +    c = env.c1.new_client(env.testname(t))
-> >> +    sess = c.create_session()
-> >> +    res = sess.compound([op.putrootfh(), op.secinfo_no_name(), op.getfh()])
-> >> +    print res
-> >> +    check(res, NFS4ERR_NOFILEHANDLE);
-> >> +
-> >> +    res = sess.compound([op.putrootfh(), op.secinfo("tree"), op.getfh()])
-> >> +    print res
-> >> +    check(res, NFS4ERR_NOFILEHANDLE);
-> >> --
-> >> 1.7.3.3
-> >>
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
+verify_attr_len() assumes both it's pointer arguments reside on the
+same page.  When these arguments point to locations on two different
+pages, verify_attr_len() can report false errors.  This can happen now
+that a large NFSv4 readdir result can span pages.
+
+We have reasonably good checking in nfs4_decode_dirent() anyway, so
+it should be safe to simply remove the extra checking.
+
+At a guess, this was introduced by commit 6650239a, "NFS: Don't use
+vm_map_ram() in readdir".
+
+Cc: stable@kernel.org [2.6.37]
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4xdr.c |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 009aef9..4e2c168 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -6132,9 +6132,6 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 	if (entry->fattr->valid & NFS_ATTR_FATTR_TYPE)
+ 		entry->d_type = nfs_umode_to_dtype(entry->fattr->mode);
+ 
+-	if (verify_attr_len(xdr, p, len) < 0)
+-		goto out_overflow;
+-
+ 	return 0;
+ 
+ out_overflow:
+
