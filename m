@@ -1,62 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:46706 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752286Ab1AEUt2 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 15:49:28 -0500
-In-Reply-To: <1294259637.16957.25.camel@mulgrave.site>
-References: <1294254337.16957.13.camel@mulgrave.site> <AANLkTi=VZUxNFd7n-qwf5aiOeK5rkk8qBmo+kOpgg7up@mail.gmail.com>
- <1294256169.16957.18.camel@mulgrave.site> <20110105200008.GJ8638@n2100.arm.linux.org.uk>
- <1294259637.16957.25.camel@mulgrave.site>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Wed, 5 Jan 2011 12:48:32 -0800
-Message-ID: <AANLkTimzzBsdtWcZtP5E_CH1hUZugGMoaHOiMdQJf764@mail.gmail.com>
-Subject: Re: still nfs problems [Was: Linux 2.6.37-rc8]
-To: James Bottomley <James.Bottomley@hansenpartnership.com>
-Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Marc Kleine-Budde <mkl@pengutronix.de>,
-        =?ISO-8859-1?Q?Uwe_Kleine=2DK=F6nig?=
-	<u.kleine-koenig@pengutronix.de>,
-        Marc Kleine-Budde <m.kleine-budde@pengutronix.de>,
-        linux-arm-kernel@lists.infradead.org,
-        Parisc List <linux-parisc@vger.kernel.org>, linux-arch@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from borg.medozas.de ([188.40.89.202]:40157 "EHLO borg.medozas.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753504Ab1A3N1g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 30 Jan 2011 08:27:36 -0500
+Date: Sun, 30 Jan 2011 14:27:34 +0100 (CET)
+From: Jan Engelhardt <jengelh@medozas.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS: server error: fileid changed
+In-Reply-To: <20101206161701.GD27096@fieldses.org>
+Message-ID: <alpine.LNX.2.01.1101301424370.31459@obet.zrqbmnf.qr>
+References: <alpine.LNX.2.01.1011281518090.14665@obet.zrqbmnf.qr> <20101128160543.GA18889@fieldses.org> <alpine.LNX.2.01.1011281853520.7586@obet.zrqbmnf.qr> <20101128181942.GA23535@fieldses.org> <alpine.LNX.2.01.1012051540560.7505@obet.zrqbmnf.qr>
+ <20101206161701.GD27096@fieldses.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Jan 5, 2011 at 12:33 PM, James Bottomley
-<James.Bottomley@hansenpartnership.com> wrote:
->
-> well, that depends.  For us on parisc, kmap of a user page in !HIGHMEM
-> sets up an inequivalent aliase still ... because the cache colour of the
-> user and kernel virtual addresses are different.  Depending on the
-> return path to userspace, we still usually have to flush to get the user
-> to see the changes the kernel has made.
 
-Umm. Again, that has nothing to do with kmap().
+On Sunday 2010-11-28 19:19, J. Bruce Fields wrote:
+>>>On Sun, Nov 28, 2010 at 03:23:23PM +0100, Jan Engelhardt wrote:
+>>>> Sometime between 2.6.33 and 2.6.36 it seems, knfsd has become really 
+>>>> unreliable, having clients start to emit messages like
+>>>> 
+>>>> (nfsv3)
+>>>> [42306.521225] NFS: server nova error: fileid changed
+>>>> [42306.521226] fsid 0:10: expected fileid 0x1b007be, got 0x1b006b0
+>>>> 
+>>>> On nfsv4, it is even worse, as updates on the server are not
+>>>> immediately reflected on the client like it was the case on
+>>>> nfsv3. Unfortunately, that is all the information I currently
+>>>> have. (Server is on 2.6.36-rc8, client on 2.6.37-rc1.)
+>>>
+>>>Have you really being changing only the server, or have you been
+>>>changing the client at the same time?
 
-This time it's about the user space mapping.
+Fast forward. I have now a 2.6.38-rc1+ client with a 2.6.37 server, 
+using nfs4 with ext4. The "fileid changes" messages seem to be gone.
 
-Repeat after me: even without the kmap(), the kernel access to that
-mapping would have caused cache aliases.
-
-See? Once more, the kmap() is entirely innocent. You can have a
-non-highmem mapping that you never use kmap for, and that you map into
-user space, and you'd see exactly the same aliases. Notice? Look ma,
-no kmap().
-
-So clearly kmap() is not the issue. The issue continues to be a
-totally separate virtual mapping. Whether it's a user mapping or
-vm_map_ram() is obviously immaterial - as far as the CPU is concerned,
-there is no difference between the two (apart from the trivial
-differences of virtual location and permissions).
-
-(You can also force the problem with vmalloc() an then following the
-kernel page tables, but I hope nobody does that any more. I suspect
-I'm wrong, though, there's probably code that mixes vmalloc and
-physical page accesses in various drivers)
-
-                    Linus
+I change a file on the server, compile it there, and then would expect 
+the client to pick up the change, but some awkward internal caching 
+mechanism pins the old copy and I don't get, say, new debug messages I 
+have added to my program that was just recompiled.
