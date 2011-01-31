@@ -1,106 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:58854 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757354Ab1ANQFZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jan 2011 11:05:25 -0500
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: mac error
-Date: Fri, 14 Jan 2011 10:55:00 -0500
-Message-ID: <BF3BB6D12298F54B89C8DCC1E4073D8002CC1D8F@CORPUSMX50A.corp.emc.com>
-In-Reply-To: <BB05F812-F3D3-4742-BD54-794FD4BCC0C0@oracle.com>
-References: <AANLkTin04TeswNAM89ij84YzfeTAR7rsppGyZFfq01qM@mail.gmail.com> <4D2FB6F4.6070304@cn.fujitsu.com> <AANLkTin8PEyLqpdaTorSrS3Zi5sF7VeJRcrCVK9fEyc7@mail.gmail.com> <BB05F812-F3D3-4742-BD54-794FD4BCC0C0@oracle.com>
-From: <peter.staubach@emc.com>
-To: <chuck.lever@oracle.com>, <webmail.hce@gmail.com>
-Cc: <linux-nfs@vger.kernel.org>
+Received: from smtp-out-1.desy.de ([131.169.56.84]:60560 "EHLO
+	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754022Ab1AaLhk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Jan 2011 06:37:40 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id 90315195C
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Jan 2011 12:37:38 +0100 (MET)
+Received: from adserv70.win.desy.de (adserv70.win.desy.de [131.169.97.56])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 8823513E8D
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Jan 2011 12:37:38 +0100 (MET)
+Received: from smtp-intra-1.desy.de (lb-40-26.desy.de) by adserv70.win.desy.de
+ (Clearswift SMTPRS 5.3.4) with ESMTP id <T9ae87cd3dd83a9613815a8@adserv70.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Mon, 31 Jan 2011 12:37:38 +0100
+Received: from [131.169.185.68] (anahit.desy.de [131.169.185.68])
+	by smtp-intra-1.desy.de (DESY-INTRA-1) with ESMTP id 2E2DC3E901
+	for <linux-nfs@vger.kernel.org>; Mon, 31 Jan 2011 12:37:38 +0100 (MET)
+Message-ID: <4D469F31.8060909@desy.de>
+Date: Mon, 31 Jan 2011 12:38:25 +0100
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: 2.6.38-rc2 + pnfs kernel crash
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi.
+pnfs-all-latest 66e2713ceff5ab6aa26fe9dd41484e2ac7db8c70
 
-Actually, that command should work.  The server should respond with an
-RPC error indicating which
-versions of the nlockmgr protocol are supported and then rpcinfo will
-ping each of them.
-
-		ps
-
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org
-[mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Chuck Lever
-Sent: Friday, January 14, 2011 10:18 AM
-To: hce
-Cc: Linux NFS Mailing List
-Subject: Re: mac error
-
-
-On Jan 13, 2011, at 11:01 PM, hce wrote:
-
-> Thanks for your response. I've just found that nlockmgr did not
-> respond when I run following command on the server. Is it a problem or
-> it is normal? Anyway, the NFS is still working fine.
-
-nlockmgr and NFS are two separate RPC services.  So, NFS can work while
-there might be a problem with nlockmgr.  IMO, nlockmgr should respond in
-this case.
-
-> $ rpcinfo -t linux_server nlockmgr
-> rpcinfo: RPC: Timed out
-> program 100021 version 0 is not available
-> 
-> $ rpcinfo -u linux_server nlockmgr
-> rpcinfo: RPC: Timed out
-> program 100021 version 0 is not available
-
-This is attempting to contact nlockmgr's "version 0" which is not
-registered (see below).  Versions 1, 3, and 4 are registered.
-
-Try "rpcinfo -u linux_server nlockmgr 3".
-
-> $ rpcinfo -p
->   program vers proto   port
->    100000    2   tcp    111  portmapper
->    100000    2   udp    111  portmapper
->    100024    1   udp    895  status
->    100024    1   tcp    898  status
->    100011    1   udp    806  rquotad
->    100011    2   udp    806  rquotad
->    100011    1   tcp    809  rquotad
->    100011    2   tcp    809  rquotad
->    100003    2   udp   2049  nfs
->    100003    3   udp   2049  nfs
->    100003    4   udp   2049  nfs
->    100021    1   udp  32794  nlockmgr
->    100021    3   udp  32794  nlockmgr
->    100021    4   udp  32794  nlockmgr
->    100003    2   tcp   2049  nfs
->    100003    3   tcp   2049  nfs
->    100003    4   tcp   2049  nfs
->    100021    1   tcp  57164  nlockmgr
->    100021    3   tcp  57164  nlockmgr
->    100021    4   tcp  57164  nlockmgr
->    100005    1   udp    828  mountd
->    100005    1   tcp    831  mountd
->    100005    2   udp    828  mountd
->    100005    2   tcp    831  mountd
->    100005    3   udp    828  mountd
->    100005    3   tcp    831  mountd
-
-nlockmgr is registered, so it must have been started at some point.
-It's a kernel service, so there's no daemon to die.  Do you have some
-kind of firewall in place that would prevent contacting the NLM service?
-Does "linux_server" resolve to the IP address you expect it to?
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+[258924.345210] ------------[ cut here ]------------
+[258924.345212] kernel BUG at fs/nfs/pnfs.c:262!
+[258924.345215] invalid opcode: 0000 [#1] SMP
+[258924.345219] last sysfs file:
+/sys/devices/pci0000:00/0000:00:1f.2/host0/target0:0:0/0:0:0:0/block/sda/sda4/stat
+[258924.345221] CPU 0
+[258924.345223] Modules linked in: nfs_layout_nfsv41_files joydev st
+ide_gd_mod ide_cd_mod snd_pcm_oss snd_mixer_oss snd_seq edd
+rpcsec_gss_krb5 nfs lockd fscache nfs_acl auth_rpcgss sunrpc vboxnetadp
+vboxnetflt vboxdrv cpufreq_conservative cpufreq_userspace
+cpufreq_powersave acpi_cpufreq mperf loop dm_mod snd_hda_codec_idt
+snd_usb_audio snd_usbmidi_lib snd_rawmidi snd_seq_device snd_hda_intel
+snd_hda_codec snd_hwdep iTCO_wdt e1000e snd_pcm sg sr_mod cdrom
+snd_timer snd snd_page_alloc iTCO_vendor_support pcspkr i2c_i801 button
+microcode serio_raw ext4 jbd2 crc16 fan processor ide_pci_generic
+ide_core ata_generic pata_marvell thermal thermal_sys
+[258924.345279]
+[258924.345282] Pid: 10209, comm: 131.169.40.35-m Tainted: G        W I
+2.6.38-rc2-pnfs-2+ #34 DX38BT/pczW1007
+[258924.345285] RIP: 0010:[<ffffffffa0461177>]  [<ffffffffa0461177>]
+destroy_layout_hdr+0x57/0x60 [nfs]
+[258924.345296] RSP: 0018:ffff880129893df0  EFLAGS: 00010216
+[258924.345298] RAX: ffff8800c5df6388 RBX: ffff8800c5df6380 RCX:
+000000000003ffff
+[258924.345301] RDX: 0000000000001f1e RSI: 0000000000000046 RDI:
+ffff8800c5df6380
+[258924.345304] RBP: ffff880129893e00 R08: 000000000007cfe5 R09:
+0000000000000000
+[258924.345307] R10: 000000000000000a R11: 0000000000000001 R12:
+ffff88012c744a90
+[258924.345309] R13: ffff880129893e30 R14: 0000000000000000 R15:
+ffff8800039208f0
+[258924.345312] FS:  0000000000000000(0000) GS:ffff8800cea00000(0000)
+knlGS:0000000000000000
+[258924.345315] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[258924.345318] CR2: 00007f37b390c000 CR3: 000000012ce48000 CR4:
+00000000000406f0
+[258924.345321] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
+0000000000000000
+[258924.345324] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7:
+0000000000000400
+[258924.345327] Process 131.169.40.35-m (pid: 10209, threadinfo
+ffff880129892000, task ffff88012c8ca050)
+[258924.345329] Stack:
+[258924.345331]  ffff880129893e00 ffff8800c5df6380 ffff880129893e60
+ffffffffa046299b
+[258924.345336]  ffff880100000003 0000000000000000 ffffffffffffffff
+ffff880003920800
+[258924.345342]  ffff880129893e30 ffff880129893e30 ffffffffa0471820
+ffff8800c5df6380
+[258924.345348] Call Trace:
+[258924.345357]  [<ffffffffa046299b>] pnfs_destroy_layout+0xab/0x100 [nfs]
+[258924.345366]  [<ffffffffa0462a80>] pnfs_destroy_all_layouts+0x90/0xd0
+[nfs]
+[258924.345376]  [<ffffffffa045af3f>] nfs4_run_state_manager+0x2bf/0x580
+[nfs]
+[258924.345386]  [<ffffffffa045ac80>] ? nfs4_run_state_manager+0x0/0x580
+[nfs]
+[258924.345396]  [<ffffffffa045ac80>] ? nfs4_run_state_manager+0x0/0x580
+[nfs]
+[258924.345400]  [<ffffffff8105d016>] kthread+0x96/0xa0
+[258924.345404]  [<ffffffff81003b54>] kernel_thread_helper+0x4/0x10
+[258924.345408]  [<ffffffff8105cf80>] ? kthread+0x0/0xa0
+[258924.345411]  [<ffffffff81003b50>] ? kernel_thread_helper+0x0/0x10
+[258924.345413] Code: f0 00 00 00 00 e8 8a ff ff ff 48 83 c4 08 5b c9 c3
+48 89 fa 48 c7 c6 40 94 46 a0 48 c7 c7 44 b9 46 a0 31 c0 e8 91 d5 f8 e0
+eb be <0f> 0b 0f 1f 80 00 00 00 00 55 48 89 e5 53 48 89 fb 48 83 ec 08
+[258924.345465] RIP  [<ffffffffa0461177>] destroy_layout_hdr+0x57/0x60 [nfs]
+[258924.345475]  RSP <ffff880129893df0>
+[258924.345478] ---[ end trace a7919e7f17c0a729 ]---
 
