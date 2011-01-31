@@ -1,126 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:57249 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751939Ab1ANF5Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Jan 2011 00:57:16 -0500
-Message-ID: <4D2FE6E9.5050708@cn.fujitsu.com>
-Date: Fri, 14 Jan 2011 14:02:17 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: hce <webmail.hce@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: mac error
-References: <AANLkTin04TeswNAM89ij84YzfeTAR7rsppGyZFfq01qM@mail.gmail.com>	<4D2FB6F4.6070304@cn.fujitsu.com> <AANLkTin8PEyLqpdaTorSrS3Zi5sF7VeJRcrCVK9fEyc7@mail.gmail.com>
-In-Reply-To: <AANLkTin8PEyLqpdaTorSrS3Zi5sF7VeJRcrCVK9fEyc7@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:18993 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755998Ab1AaP1g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 31 Jan 2011 10:27:36 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 3/3] pnfs: fix pnfs lock inversion of i_lock and cl_lock
+Date: Mon, 31 Jan 2011 10:27:13 -0500
+Message-Id: <1296487633-21057-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1296487633-21057-1-git-send-email-iisaman@netapp.com>
+References: <1296487633-21057-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+The pnfs code was using throughout the lock order i_lock, cl_lock.
+This conflicts with the nfs delegation code.  Rework the pnfs code
+to avoid taking both locks simultaneously.
 
+Currently the code takes the double lock to add/remove the layout to a
+nfs_client list, while atomically checking that the list of lsegs is
+empty.  To avoid this, we rely on existing serializations.  When a
+layout is initialized with lseg count equal zero, LAYOUTGET's
+openstateid serialization is in effect, making it safe to assume it
+stays zero unless we change it.  And once a layout's lseg count drops
+to zero, it is set as DESTROYED and so will stay at zero.
 
-hce :
-> Thanks for your response. I've just found that nlockmgr did not
-> respond when I run following command on the server. Is it a problem or
-> it is normal? Anyway, the NFS is still working fine.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/callback_proc.c |    2 +-
+ fs/nfs/pnfs.c          |   50 +++++++++++++++++++++++++++--------------------
+ 2 files changed, 30 insertions(+), 22 deletions(-)
 
-  No, it's not a problem.
-  It just a lack of NFSv3's file lock, if you try to lock NFSv3 file,
-  you must start the nfslock service both the client and server
-  (maybe other platform don't named nfslock).
-
-  Because your normal NFS operation don't need file lock,
-  so NFSv3 is still working fine.
-
-> 
-> $ rpcinfo -t linux_server nlockmgr
-> rpcinfo: RPC: Timed out
-> program 100021 version 0 is not available
-> 
-> $ rpcinfo -u linux_server nlockmgr
-> rpcinfo: RPC: Timed out
-> program 100021 version 0 is not available
-> 
-> $ rpcinfo -p
-
-  The linux_server and localhost are different machine ?
-
-  linux_server is CentOS?? or MAC?
-  localhost is?
-
-
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 8958757..2f41dcce 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -188,10 +188,10 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
+ 			rv = NFS4ERR_DELAY;
+ 		list_del_init(&lo->plh_bulk_recall);
+ 		spin_unlock(&ino->i_lock);
++		pnfs_free_lseg_list(&free_me_list);
+ 		put_layout_hdr(lo);
+ 		iput(ino);
+ 	}
+-	pnfs_free_lseg_list(&free_me_list);
+ 	return rv;
+ }
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index f89c3bb..ee6c69a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -247,13 +247,6 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
+ 		BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 		list_del(&lseg->pls_list);
+ 		if (list_empty(&lseg->pls_layout->plh_segs)) {
+-			struct nfs_client *clp;
+-
+-			clp = NFS_SERVER(ino)->nfs_client;
+-			spin_lock(&clp->cl_lock);
+-			/* List does not take a reference, so no need for put here */
+-			list_del_init(&lseg->pls_layout->plh_layouts);
+-			spin_unlock(&clp->cl_lock);
+ 			set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
+ 			/* Matched by initial refcount set in alloc_init_layout_hdr */
+ 			put_layout_hdr_locked(lseg->pls_layout);
+@@ -319,14 +312,30 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 	return invalid - removed;
+ }
+ 
++/* note free_me must contain lsegs from a single layout_hdr */
+ void
+ pnfs_free_lseg_list(struct list_head *free_me)
+ {
+-	struct pnfs_layout_segment *lseg, *tmp;
++	if (!list_empty(free_me)) {
++		struct pnfs_layout_segment *lseg, *tmp;
++		struct pnfs_layout_hdr *lo;
+ 
+-	list_for_each_entry_safe(lseg, tmp, free_me, pls_list) {
+-		list_del(&lseg->pls_list);
+-		free_lseg(lseg);
++		lo = list_first_entry(free_me,
++				      struct pnfs_layout_segment,
++				      pls_list)->pls_layout;
++
++		if (test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags)) {
++			struct nfs_client *clp;
++
++			clp = NFS_SERVER(lo->plh_inode)->nfs_client;
++			spin_lock(&clp->cl_lock);
++			list_del_init(&lo->plh_layouts);
++			spin_unlock(&clp->cl_lock);
++		}
++		list_for_each_entry_safe(lseg, tmp, free_me, pls_list) {
++			list_del(&lseg->pls_list);
++			free_lseg(lseg);
++		}
+ 	}
+ }
+ 
+@@ -704,6 +713,7 @@ pnfs_update_layout(struct inode *ino,
+ 	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg = NULL;
++	bool first = false;
+ 
+ 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
+ 		return NULL;
+@@ -734,7 +744,10 @@ pnfs_update_layout(struct inode *ino,
+ 	atomic_inc(&lo->plh_outstanding);
+ 
+ 	get_layout_hdr(lo);
+-	if (list_empty(&lo->plh_segs)) {
++	if (list_empty(&lo->plh_segs))
++		first = true;
++	spin_unlock(&ino->i_lock);
++	if (first) {
+ 		/* The lo must be on the clp list if there is any
+ 		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
+ 		 */
+@@ -743,17 +756,12 @@ pnfs_update_layout(struct inode *ino,
+ 		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+-	spin_unlock(&ino->i_lock);
+ 
+ 	lseg = send_layoutget(lo, ctx, iomode);
+-	if (!lseg) {
+-		spin_lock(&ino->i_lock);
+-		if (list_empty(&lo->plh_segs)) {
+-			spin_lock(&clp->cl_lock);
+-			list_del_init(&lo->plh_layouts);
+-			spin_unlock(&clp->cl_lock);
+-		}
+-		spin_unlock(&ino->i_lock);
++	if (!lseg && first) {
++		spin_lock(&clp->cl_lock);
++		list_del_init(&lo->plh_layouts);
++		spin_unlock(&clp->cl_lock);
+ 	}
+ 	atomic_dec(&lo->plh_outstanding);
+ 	put_layout_hdr(lo);
 -- 
-thanks,
-Mi Jinlong
-
->    program vers proto   port
->     100000    2   tcp    111  portmapper
->     100000    2   udp    111  portmapper
->     100024    1   udp    895  status
->     100024    1   tcp    898  status
->     100011    1   udp    806  rquotad
->     100011    2   udp    806  rquotad
->     100011    1   tcp    809  rquotad
->     100011    2   tcp    809  rquotad
->     100003    2   udp   2049  nfs
->     100003    3   udp   2049  nfs
->     100003    4   udp   2049  nfs
->     100021    1   udp  32794  nlockmgr
->     100021    3   udp  32794  nlockmgr
->     100021    4   udp  32794  nlockmgr
->     100003    2   tcp   2049  nfs
->     100003    3   tcp   2049  nfs
->     100003    4   tcp   2049  nfs
->     100021    1   tcp  57164  nlockmgr
->     100021    3   tcp  57164  nlockmgr
->     100021    4   tcp  57164  nlockmgr
->     100005    1   udp    828  mountd
->     100005    1   tcp    831  mountd
->     100005    2   udp    828  mountd
->     100005    2   tcp    831  mountd
->     100005    3   udp    828  mountd
->     100005    3   tcp    831  mountd
-> 
-> On Fri, Jan 14, 2011 at 1:37 PM, Mi Jinlong <mijinlong@cn.fujitsu.com> wrote:
->>
->> hce :
->>> Hi,
->>>
->>> I am running nfs server on a CentOS 5, it works fine for all
->>> connections from linux, windows clients. Mac clients worked fine for
->>> coping some regular files, but it could not copy mac packaging file
->>> with the extension *.dmg, it stuck with an error "nfs server lockd not
->>> responding", at the same time the server got a log message of
->>> "rpc.statd[2448]: Can't callback linux_server (100021,4), giving up".
->>>
->>> Appreciate advice what could cause that problem and how could fix it?
->> Hi hce,
->>
->> You use NFSv3,
->> the NFSv3's file lock service depend on NLM(Network Lock Manager),
->> that need a user space program named rpc.statd to support service
->> like this:
->>
->>           |     nfs client     |      nfs server
->> -------------------------------------------------
->>           |                    |
->> user space |     rpc.statd    <--->      rpc.statd
->>           |        ^           |            ^
->> --------------------|------------------------|----
->>           |        v           |            v
->> kernel     |      lockd       <--->       lockd
->>
->> when your nfs client is a MAC, maybe Mac's user space don't support
->> a program as rpc.statd, or you don't make the program run correctly.
->>
->> Maybe you can use NFSv4 to avoid this problem.
->>
->>
->> --
->> ----
->> thanks
->> Mi Jinlong
->>
->>
-> 
-> 
+1.7.2.1
 
