@@ -1,103 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:12006 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:42603 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752499Ab1AEUvw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Jan 2011 15:51:52 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH_V8 01/13] SUNRPC move svc_drop to caller of svc_process_common
-Date: Wed,  5 Jan 2011 15:51:19 -0500
-Message-Id: <1294260690-3095-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1294260690-3095-1-git-send-email-andros@netapp.com>
-References: <1294260690-3095-1-git-send-email-andros@netapp.com>
+	id S1756003Ab1AaP1g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 31 Jan 2011 10:27:36 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 2/3] pnfs: do not need to clear NFS_LAYOUT_BULK_RECALL flag
+Date: Mon, 31 Jan 2011 10:27:12 -0500
+Message-Id: <1296487633-21057-3-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1296487633-21057-1-git-send-email-iisaman@netapp.com>
+References: <1296487633-21057-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+We do not need to clear the NFS_LAYOUT_BULK_RECALL, as setting it
+guarantees that NFS_LAYOUT_DESTROYED will be set once any outstanding
+io is finished.
 
-The NFSv4.1 shared back channel does not need to call svc_drop because the
-callback service never outlives the single connection it services, and it
-reuses it's buffers and keeps the trasport.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Acked-by: Bruce Fields <bfields@redhat.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- net/sunrpc/svc.c |   30 ++++++++++++++++--------------
- 1 files changed, 16 insertions(+), 14 deletions(-)
+ fs/nfs/pnfs.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 6359c42..606d182 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1147,7 +1147,6 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
-  dropit:
- 	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
- 	dprintk("svc: svc_process dropit\n");
--	svc_drop(rqstp);
- 	return 0;
- 
- err_short_len:
-@@ -1218,7 +1217,6 @@ svc_process(struct svc_rqst *rqstp)
- 	struct kvec		*resv = &rqstp->rq_res.head[0];
- 	struct svc_serv		*serv = rqstp->rq_server;
- 	u32			dir;
--	int			error;
- 
- 	/*
- 	 * Setup response xdr_buf.
-@@ -1246,11 +1244,13 @@ svc_process(struct svc_rqst *rqstp)
- 		return 0;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index dcd5d54..f89c3bb 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -254,7 +254,6 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
+ 			/* List does not take a reference, so no need for put here */
+ 			list_del_init(&lseg->pls_layout->plh_layouts);
+ 			spin_unlock(&clp->cl_lock);
+-			clear_bit(NFS_LAYOUT_BULK_RECALL, &lseg->pls_layout->plh_flags);
+ 			set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
+ 			/* Matched by initial refcount set in alloc_init_layout_hdr */
+ 			put_layout_hdr_locked(lseg->pls_layout);
+@@ -753,7 +752,6 @@ pnfs_update_layout(struct inode *ino,
+ 			spin_lock(&clp->cl_lock);
+ 			list_del_init(&lo->plh_layouts);
+ 			spin_unlock(&clp->cl_lock);
+-			clear_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
+ 		}
+ 		spin_unlock(&ino->i_lock);
  	}
- 
--	error = svc_process_common(rqstp, argv, resv);
--	if (error <= 0)
--		return error;
--
--	return svc_send(rqstp);
-+	/* Returns 1 for send, 0 for drop */
-+	if (svc_process_common(rqstp, argv, resv))
-+		return svc_send(rqstp);
-+	else {
-+		svc_drop(rqstp);
-+		return 0;
-+	}
- }
- 
- #if defined(CONFIG_NFS_V4_1)
-@@ -1264,7 +1264,6 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
- {
- 	struct kvec	*argv = &rqstp->rq_arg.head[0];
- 	struct kvec	*resv = &rqstp->rq_res.head[0];
--	int 		error;
- 
- 	/* Build the svc_rqst used by the common processing routine */
- 	rqstp->rq_xprt = serv->bc_xprt;
-@@ -1292,12 +1291,15 @@ bc_svc_process(struct svc_serv *serv, struct rpc_rqst *req,
- 	svc_getu32(argv);	/* XID */
- 	svc_getnl(argv);	/* CALLDIR */
- 
--	error = svc_process_common(rqstp, argv, resv);
--	if (error <= 0)
--		return error;
--
--	memcpy(&req->rq_snd_buf, &rqstp->rq_res, sizeof(req->rq_snd_buf));
--	return bc_send(req);
-+	/* Returns 1 for send, 0 for drop */
-+	if (svc_process_common(rqstp, argv, resv)) {
-+		memcpy(&req->rq_snd_buf, &rqstp->rq_res,
-+						sizeof(req->rq_snd_buf));
-+		return bc_send(req);
-+	} else {
-+		/* Nothing to do to drop request */
-+		return 0;
-+	}
- }
- EXPORT_SYMBOL(bc_svc_process);
- #endif /* CONFIG_NFS_V4_1 */
 -- 
-1.6.6
+1.7.2.1
 
