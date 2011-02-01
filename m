@@ -1,131 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43979 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753545Ab1ASXZ4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jan 2011 18:25:56 -0500
-Subject: Re: [PATCH] NFS: Fix "BUG at fs/aio.c:554!"
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: npiggin@gmail.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wen.gang.wang@oracle.com
-In-Reply-To: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
-References: <20110119223543.30706.10304.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 19 Jan 2011 18:25:17 -0500
-Message-ID: <1295479517.22151.16.camel@heimdal.trondhjem.org>
+Received: from mail-ww0-f42.google.com ([74.125.82.42]:36318 "EHLO
+	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753871Ab1BADYx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Jan 2011 22:24:53 -0500
+Received: by wwi17 with SMTP id 17so4304374wwi.1
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Jan 2011 19:24:52 -0800 (PST)
+In-Reply-To: <AANLkTinD01zA=DTXEDG5pXVYcrEGsWOyXcMta0rzvB6n@mail.gmail.com>
+References: <AANLkTinD01zA=DTXEDG5pXVYcrEGsWOyXcMta0rzvB6n@mail.gmail.com>
+From: camden lindsay <camden.lindsay@gmail.com>
+Date: Mon, 31 Jan 2011 19:24:30 -0800
+Message-ID: <AANLkTimA-sCz8LQLu1weh-qQOm30jHYyO3qtxmPDPX98@mail.gmail.com>
+Subject: clients cannot reconnect to mounted nfs shares after server restart
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-01-19 at 17:36 -0500, Chuck Lever wrote: 
-> Nick Piggin reports:
-> 
-> > I'm getting use after frees in aio code in NFS
-> >
-> > [ 2703.396766] Call Trace:
-> > [ 2703.396858]  [<ffffffff8100b057>] ? native_sched_clock+0x27/0x80
-> > [ 2703.396959]  [<ffffffff8108509e>] ? put_lock_stats+0xe/0x40
-> > [ 2703.397058]  [<ffffffff81088348>] ? lock_release_holdtime+0xa8/0x140
-> > [ 2703.397159]  [<ffffffff8108a2a5>] lock_acquire+0x95/0x1b0
-> > [ 2703.397260]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
-> > [ 2703.397361]  [<ffffffff81039701>] ? get_parent_ip+0x11/0x50
-> > [ 2703.397464]  [<ffffffff81612a31>] _raw_spin_lock_irq+0x41/0x80
-> > [ 2703.397564]  [<ffffffff811627db>] ? aio_put_req+0x2b/0x60
-> > [ 2703.397662]  [<ffffffff811627db>] aio_put_req+0x2b/0x60
-> > [ 2703.397761]  [<ffffffff811647fe>] do_io_submit+0x2be/0x7c0
-> > [ 2703.397895]  [<ffffffff81164d0b>] sys_io_submit+0xb/0x10
-> > [ 2703.397995]  [<ffffffff8100307b>] system_call_fastpath+0x16/0x1b
-> >
-> > Adding some tracing, it is due to nfs completing the request then
-> > returning something other than -EIOCBQUEUED, so aio.c
-> > also completes the request.
-> 
-> To address this, prevent the NFS direct I/O engine from completing
-> async iocbs when the forward path returns an error other than
-> EIOCBQUEUED.
-> 
-> This appears to survive ^C during both "xfstest no. 208" and "fsx -Z."
-> 
-> Cc: Stable <stable@kernel.org>
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
-> Here's my take.
-> 
->  fs/nfs/direct.c |   32 +++++++++++++++++---------------
->  1 files changed, 17 insertions(+), 15 deletions(-)
-> 
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index e6ace0d..c2176f4 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -407,15 +407,16 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
->  		pos += vec->iov_len;
->  	}
->  
-> -	if (put_dreq(dreq))
-> -		nfs_direct_complete(dreq);
-> -
-> -	if (requested_bytes != 0)
-> -		return 0;
-> +	/*
-> +	 * If no bytes were started, return the error, and let the
-> +	 * generic layer handle the completion.
-> +	 */
-> +	if (requested_bytes == 0)
-> +		return result < 0 ? result : -EIO;
->  
-> -	if (result < 0)
-> -		return result;
-> -	return -EIO;
-> +	if (put_dreq(dreq))
-> +		nfs_direct_write_complete(dreq, dreq->inode);
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-In nfs_direct_read_schedule_iovec()? Shouldn't that be 
-		nfs_direct_complete(dreq);
+Having an issue i believe is an NFS bug, but would like someone to
+verify as well as... point me the correct direction to submit a bug as
+needed if it indeed is.
+Situation:
+NFS server running
+Client connected with mounted share
+NFS server is shut down -- (halt or /etc/init.d/nfs stop)
+NFS server is turned on (booted or /etc/init.d/nfs start)
 
-Also, why is EIO the correct reply when no bytes were read/written? Why
-shouldn't the VFS aio code be able to cope with a zero byte reply?
+Outcome:
+NFS client that was connected does not reconnect to that share automatically
+NFS client that was connected cannot reconnect via umount then mount again
+No other nfs client can connect to that share, before or after origial
+NFS clients attempts to connect/reconnect
+NFS clients CAN connect to a different share.
+Details/logs:
+Server shows that client is authenticating:
+Feb  1 03:01:47 BigBox mountd[6557]: authenticated mount request from
+192.168.11.49:674 for /mnt/store/public (/mnt/store/public)
+Feb  1 03:01:48 BigBox mountd[6557]: authenticated mount request from
+192.168.11.49:763 for /mnt/store/public (/mnt/store/public)
+Feb  1 03:01:50 BigBox mountd[6557]: authenticated mount request from
+192.168.11.49:932 for /mnt/store/public (/mnt/store/public)
+Feb  1 03:01:54 BigBox mountd[6557]: authenticated mount request from
+192.168.11.49:942 for /mnt/store/public (/mnt/store/public)
 
-> +	return 0;
->  }
->  
->  static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
-> @@ -841,15 +842,16 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
->  		pos += vec->iov_len;
->  	}
->  
-> +	/*
-> +	 * If no bytes were started, return the error, and let the
-> +	 * generic layer handle the completion.
-> +	 */
-> +	if (requested_bytes == 0)
-> +		return result < 0 ? result : -EIO;
-> +
->  	if (put_dreq(dreq))
->  		nfs_direct_write_complete(dreq, dreq->inode);
-> -
-> -	if (requested_bytes != 0)
-> -		return 0;
-> -
-> -	if (result < 0)
-> -		return result;
-> -	return -EIO;
-> +	return 0;
->  }
->  
->  static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Client shows retransmission:
+dylan@shobuntu:~$ sudo mount -v -t nfs bigbox:/mnt/store/public Public/
+mount.nfs: timeout set for Mon Jan 31 19:09:32 2011
+mount.nfs: text-based options: 'addr=192.168.11.10'
+mount.nfs: text-based options: 'addr=192.168.11.10'
+mount.nfs: text-based options: 'addr=192.168.11.10'
+mount.nfs: text-based options: 'addr=192.168.11.10'
+mount.nfs: text-based options: 'addr=192.168.11.10'
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Server Version:
+net-fs/nfs-utils
+      Latest version available: 1.1.4-r1
+      Latest version installed: 1.1.4-r1
+      Size of files: 574 kB
+      Homepage:      http://linux-nfs.org/
+      Description:   NFS client and server daemons
+      License:       GPL-2
+(server is on Gentoo, client on Ubuntu)
+Thanks!
+Camden
