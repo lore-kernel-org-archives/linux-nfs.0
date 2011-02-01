@@ -1,39 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:50438 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751201Ab1BOO6a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 09:58:30 -0500
-Date: Tue, 15 Feb 2011 09:58:28 -0500
-From: Christoph Hellwig <hch@infradead.org>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: Christoph Hellwig <hch@infradead.org>, andros@netapp.com,
-        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 08/16] pnfs: wave 3: lseg refcounting
-Message-ID: <20110215145828.GA18038@infradead.org>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>
- <1297711116-3139-9-git-send-email-andros@netapp.com>
- <20110215092531.GB29871@infradead.org>
- <AANLkTik+dVSmWgO6LRANo2xTt6iMqQ7ehvgqk-igQFhM@mail.gmail.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <AANLkTik+dVSmWgO6LRANo2xTt6iMqQ7ehvgqk-igQFhM@mail.gmail.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:11060 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756911Ab1BAOQc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Feb 2011 09:16:32 -0500
+Message-ID: <4D4815BD.5090404@parallels.com>
+Date: Tue, 01 Feb 2011 17:16:29 +0300
+From: Konstantin Khorenko <khorenko@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: [PATCH] NFSD: memory corruption due to writing beyond the stat array
+Content-Type: multipart/mixed;
+ boundary="------------090602070308090607020401"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Feb 15, 2011 at 09:48:26AM -0500, Fred Isaman wrote:
-> pnfs_free_lseg_list, besides calling free_lseg, also potentially
-> removes the layout from the clients list of inodes with layouts.
+--------------090602070308090607020401
+Content-Type: text/plain; charset=KOI8-R
+Content-Transfer-Encoding: 7bit
 
-Looks like the routine than changed from the mainline variant
-I looked at.  I took a quick look at the one from pnfs-submit,
-which looks quite suspicios, as it special cases the first item
-on the list without a good explanation and then iterates the list.
+Hi All,
 
-Does your tree have another caller of pnfs_free_lseg_list?  If not
-please just open code the right thing in the caller, instead of
-pretending we're dealing with a list if you're always dealing with
-one entry.  If the tree grows a caller that needs to deal with a list
-with more than 1 entry we can revisit if there's a point in sharing
-code.
+i've found a bug which makes NFSD to corrupt memory due to writing beyond the stat array.
 
+Initially this issue was found on 2.6.18-x RHEL5 kernel, but the same seems to be true for the current mainstream kernel (checked on 2.6.38-rc3).
+
+./fs/nfsd/vfs.c:
+static inline struct raparms *
+nfsd_get_raparms(dev_t dev, ino_t ino)
+{
+...
+       // here we searched our file in a readahead cache
+       // but not found it
+...
+         depth = nfsdstats.ra_size*11/10;
+...
+       // some stuff, but "depth" is not changed
+...
+         nfsdstats.ra_depth[depth*10/nfsdstats.ra_size]++;
+...
+}
+
+And here we write to the 12th array element
+(nfsdstats.ra_size*11/10*10/nfsdstats.ra_size == 11), while ra_depth has only
+11 elements:
+
+struct nfsd_stats {
+...
+        unsigned int    ra_depth[11];   /* number of times ra entry was found that deep
+                                         * in the cache (10percentiles). [10] = not found */
+#ifdef CONFIG_NFSD_V4
+        unsigned int    nfs4_opcount[LAST_NFS4_OP + 1]; /* count of individual
+nfsv4 operations */
+#endif
+};
+
+This means that each time we did not find a file in a readahead cache we
+corrupt memory. Fortunately in a kernel with NFSDv4 compiled in it corrupts
+(inc) NFS4 ops counter, but in a kernel with NFSDv4 disabled it corrupts (inc)
+some other data, that lays in the memory beyond nfsdstats.
+
+Proposed fix is attached.
+
+--
+Best regards,
+
+Konstantin Khorenko
+
+--------------090602070308090607020401
+Content-Type: text/plain;
+ name="diff-ms-nfsd-write-beyond-stat-array"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="diff-ms-nfsd-write-beyond-stat-array"
+
+NFSD: The patch fixes writing beyond the array.
+
+If nfsd fails to find an exported via NFS file in the readahead cache,
+it should increment corresponding nfsdstats counter (ra_depth[10]), but
+due to a bug writes beside the stat array, corrupting following field.
+
+In a kernel with NFSDv4 compiled in it corrupts (inc) NFS4 counter:
+the number of individual nfsv4 operations.
+In a kernel with NFSDv4 disabled it corrupts (inc) some other data,
+that lays in the memory beyond nfsdstats.
+
+Signed-off-by: Konstantin Khorenko <khorenko@openvz.org>
+
+--- a/fs/nfsd/vfs.c.nfsd	2011-01-05 03:50:19.000000000 +0300
++++ b/fs/nfsd/vfs.c	2011-02-01 16:39:28.000000000 +0300
+@@ -809,7 +809,7 @@ nfsd_get_raparms(dev_t dev, ino_t ino)
+ 		if (ra->p_count == 0)
+ 			frap = rap;
+ 	}
+-	depth = nfsdstats.ra_size*11/10;
++	depth = nfsdstats.ra_size;
+ 	if (!frap) {	
+ 		spin_unlock(&rab->pb_lock);
+ 		return NULL;
+
+--------------090602070308090607020401--
