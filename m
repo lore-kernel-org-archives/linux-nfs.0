@@ -1,329 +1,217 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:48868 "EHLO shutemov.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755474Ab1BHSmL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Feb 2011 13:42:11 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Rob Landley <rlandley@parallels.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v3, RESEND 06/16] lockd: get rpc_pipefs mount point from callers
-Date: Tue,  8 Feb 2011 20:41:57 +0200
-Message-Id: <1297190527-19925-7-git-send-email-kas@openvz.org>
-In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
-References: <1297190527-19925-1-git-send-email-kas@openvz.org>
+Received: from daytona.panasas.com ([67.152.220.89]:34849 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752167Ab1BAQDX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Feb 2011 11:03:23 -0500
+Message-ID: <4D482EC8.2030105@panasas.com>
+Date: Tue, 01 Feb 2011 18:03:20 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 3/3] pnfs: fix pnfs lock inversion of i_lock and cl_lock
+References: <1296487633-21057-1-git-send-email-iisaman@netapp.com> <1296487633-21057-4-git-send-email-iisaman@netapp.com> <4D48299F.4070800@panasas.com> <80A4262E-EA90-44A4-96A6-23464177BAA6@netapp.com>
+In-Reply-To: <80A4262E-EA90-44A4-96A6-23464177BAA6@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
-Reviewed-by: Rob Landley <rlandley@parallels.com>
----
- fs/lockd/clntlock.c         |    8 +++++---
- fs/lockd/host.c             |   17 ++++++++++++++---
- fs/lockd/mon.c              |   15 ++++++++-------
- fs/lockd/svc.c              |    6 ++----
- fs/nfs/client.c             |    1 +
- fs/nfsd/nfssvc.c            |    2 +-
- include/linux/lockd/bind.h  |    3 ++-
- include/linux/lockd/lockd.h |    4 +++-
- 8 files changed, 36 insertions(+), 20 deletions(-)
+On 2011-02-01 17:54, Fred Isaman wrote:
+> 
+> On Feb 1, 2011, at 10:41 AM, Benny Halevy wrote:
+> 
+>> I'm actually seeing that with the pnfs tree over 2.8.38-rc3
+>> See signature below.
+>> Will re-test with this patch.
+>>
+> 
+> In your retest, note that this patch depends on patch 1 of the series to work correctly.
 
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index 8d4ea83..4664c56 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -56,13 +56,14 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
- 	u32 nlm_version = (nlm_init->nfs_version == 2) ? 1 : 4;
- 	int status;
- 
--	status = lockd_up();
-+	status = lockd_up(nlm_init->rpcmount);
- 	if (status < 0)
- 		return ERR_PTR(status);
- 
- 	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->addrlen,
- 				   nlm_init->protocol, nlm_version,
--				   nlm_init->hostname, nlm_init->noresvport);
-+				   nlm_init->hostname, nlm_init->noresvport,
-+				   nlm_init->rpcmount);
- 	if (host == NULL) {
- 		lockd_down();
- 		return ERR_PTR(-ENOLCK);
-@@ -223,7 +224,8 @@ reclaimer(void *ptr)
- 	allow_signal(SIGKILL);
- 
- 	down_write(&host->h_rwsem);
--	lockd_up();	/* note: this cannot fail as lockd is already running */
-+	/* note: this cannot fail as lockd is already running */
-+	lockd_up(host->h_rpcmount);
- 
- 	dprintk("lockd: reclaiming locks for host %s\n", host->h_name);
- 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 45e973f..b4cb391 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -14,9 +14,10 @@
- #include <linux/in6.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc.h>
--#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/lockd/lockd.h>
- #include <linux/mutex.h>
-+#include <linux/mount.h>
-+
- 
- #include <net/ipv6.h>
- 
-@@ -55,6 +56,7 @@ struct nlm_lookup_host_info {
- 	const char		*hostname;	/* remote's hostname */
- 	const size_t		hostname_len;	/* it's length */
- 	const int		noresvport;	/* use non-priv port */
-+	struct vfsmount		*rpcmount;	/* rpc_pipefs mount point */
- };
- 
- /*
-@@ -134,6 +136,7 @@ static struct nlm_host *nlm_alloc_host(struct nlm_lookup_host_info *ni,
- 	host->h_srcaddrlen = 0;
- 
- 	host->h_rpcclnt    = NULL;
-+	host->h_rpcmount   = mntget(ni->rpcmount);
- 	host->h_name	   = nsm->sm_name;
- 	host->h_version    = ni->version;
- 	host->h_proto      = ni->protocol;
-@@ -179,6 +182,7 @@ static void nlm_destroy_host_locked(struct nlm_host *host)
- 
- 	nsm_unmonitor(host);
- 	nsm_release(host->h_nsmhandle);
-+	mntput(host->h_rpcmount);
- 
- 	clnt = host->h_rpcclnt;
- 	if (clnt != NULL)
-@@ -207,7 +211,8 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
- 				     const unsigned short protocol,
- 				     const u32 version,
- 				     const char *hostname,
--				     int noresvport)
-+				     int noresvport,
-+				     struct vfsmount *rpcmount)
- {
- 	struct nlm_lookup_host_info ni = {
- 		.server		= 0,
-@@ -218,6 +223,7 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
- 		.hostname	= hostname,
- 		.hostname_len	= strlen(hostname),
- 		.noresvport	= noresvport,
-+		.rpcmount	= rpcmount,
- 	};
- 	struct hlist_head *chain;
- 	struct hlist_node *pos;
-@@ -243,6 +249,8 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
- 			continue;
- 		if (host->h_version != version)
- 			continue;
-+		if (host->h_rpcmount->mnt_sb != ni.rpcmount->mnt_sb)
-+			continue;
- 
- 		nlm_get_host(host);
- 		dprintk("lockd: %s found host %s (%s)\n", __func__,
-@@ -333,6 +341,7 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 		.version	= rqstp->rq_vers,
- 		.hostname	= hostname,
- 		.hostname_len	= hostname_len,
-+		.rpcmount	= rqstp->rq_server->sv_rpcmount,
- 	};
- 
- 	dprintk("lockd: %s(host='%*s', vers=%u, proto=%s)\n", __func__,
-@@ -374,6 +383,8 @@ struct nlm_host *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 			continue;
- 		if (!rpc_cmp_addr(nlm_srcaddr(host), src_sap))
- 			continue;
-+		if (host->h_rpcmount->mnt_sb != ni.rpcmount->mnt_sb)
-+			continue;
- 
- 		/* Move to head of hash chain. */
- 		hlist_del(&host->h_hash);
-@@ -464,7 +475,7 @@ nlm_bind_host(struct nlm_host *host)
- 			.authflavor	= RPC_AUTH_UNIX,
- 			.flags		= (RPC_CLNT_CREATE_NOPING |
- 					   RPC_CLNT_CREATE_AUTOBIND),
--			.rpcmount	= init_rpc_pipefs,
-+			.rpcmount	= host->h_rpcmount,
- 		};
- 
- 		/*
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 6219026..a121f5e 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -15,7 +15,6 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/xprtsock.h>
- #include <linux/sunrpc/svc.h>
--#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/lockd/lockd.h>
- 
- #include <asm/unaligned.h>
-@@ -63,7 +62,7 @@ static inline struct sockaddr *nsm_addr(const struct nsm_handle *nsm)
- 	return (struct sockaddr *)&nsm->sm_addr;
- }
- 
--static struct rpc_clnt *nsm_create(void)
-+static struct rpc_clnt *nsm_create(struct vfsmount *rpcmount)
- {
- 	struct sockaddr_in sin = {
- 		.sin_family		= AF_INET,
-@@ -79,13 +78,14 @@ static struct rpc_clnt *nsm_create(void)
- 		.version		= NSM_VERSION,
- 		.authflavor		= RPC_AUTH_NULL,
- 		.flags			= RPC_CLNT_CREATE_NOPING,
--		.rpcmount		= init_rpc_pipefs,
-+		.rpcmount		= rpcmount,
- 	};
- 
- 	return rpc_create(&args);
- }
- 
--static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
-+static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
-+		struct vfsmount *rpcmount)
- {
- 	struct rpc_clnt	*clnt;
- 	int		status;
-@@ -101,7 +101,7 @@ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res)
- 		.rpc_resp	= res,
- 	};
- 
--	clnt = nsm_create();
-+	clnt = nsm_create(rpcmount);
- 	if (IS_ERR(clnt)) {
- 		status = PTR_ERR(clnt);
- 		dprintk("lockd: failed to create NSM upcall transport, "
-@@ -151,7 +151,7 @@ int nsm_monitor(const struct nlm_host *host)
- 	 */
- 	nsm->sm_mon_name = nsm_use_hostnames ? nsm->sm_name : nsm->sm_addrbuf;
- 
--	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res);
-+	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res, host->h_rpcmount);
- 	if (unlikely(res.status != 0))
- 		status = -EIO;
- 	if (unlikely(status < 0)) {
-@@ -185,7 +185,8 @@ void nsm_unmonitor(const struct nlm_host *host)
- 	 && nsm->sm_monitored && !nsm->sm_sticky) {
- 		dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
- 
--		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res);
-+		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res,
-+				host->h_rpcmount);
- 		if (res.status != 0)
- 			status = -EIO;
- 		if (status < 0)
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 32310b1..7387b04 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -31,7 +31,6 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/svcsock.h>
--#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <net/ip.h>
- #include <linux/lockd/lockd.h>
- #include <linux/nfs.h>
-@@ -249,7 +248,7 @@ out_err:
- /*
-  * Bring up the lockd process if it's not already up.
-  */
--int lockd_up(void)
-+int lockd_up(struct vfsmount *rpcmount)
- {
- 	struct svc_serv *serv;
- 	int		error = 0;
-@@ -270,8 +269,7 @@ int lockd_up(void)
- 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
- 
- 	error = -ENOMEM;
--	serv = svc_create(&nlmsvc_program, init_rpc_pipefs, LOCKD_BUFSIZE,
--			NULL);
-+	serv = svc_create(&nlmsvc_program, rpcmount, LOCKD_BUFSIZE, NULL);
- 	if (!serv) {
- 		printk(KERN_WARNING "lockd_up: create service failed\n");
- 		goto out;
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 0e0a952..79c01f8 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -675,6 +675,7 @@ static int nfs_start_lockd(struct nfs_server *server)
- 		.nfs_version	= clp->rpc_ops->version,
- 		.noresvport	= server->flags & NFS_MOUNT_NORESVPORT ?
- 					1 : 0,
-+		.rpcmount	= init_rpc_pipefs,
- 	};
- 
- 	if (nlm_init.nfs_version > 3)
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index e4fc85d..dc11012 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -220,7 +220,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
- 	ret = nfsd_init_socks(port);
- 	if (ret)
- 		goto out_racache;
--	ret = lockd_up();
-+	ret = lockd_up(init_rpc_pipefs);
- 	if (ret)
- 		goto out_racache;
- 	ret = nfs4_state_start();
-diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-index fbc48f8..97cd4bf 100644
---- a/include/linux/lockd/bind.h
-+++ b/include/linux/lockd/bind.h
-@@ -42,6 +42,7 @@ struct nlmclnt_initdata {
- 	unsigned short		protocol;
- 	u32			nfs_version;
- 	int			noresvport;
-+	struct vfsmount		*rpcmount;
- };
- 
- /*
-@@ -53,7 +54,7 @@ extern void	nlmclnt_done(struct nlm_host *host);
- 
- extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
- 					struct file_lock *fl);
--extern int	lockd_up(void);
-+extern int	lockd_up(struct vfsmount *rpcmount);
- extern void	lockd_down(void);
- 
- #endif /* LINUX_LOCKD_BIND_H */
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index ff9abff..32dbb7f 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -44,6 +44,7 @@ struct nlm_host {
- 	size_t			h_addrlen;
- 	struct sockaddr_storage	h_srcaddr;	/* our address (optional) */
- 	size_t			h_srcaddrlen;
-+	struct vfsmount		*h_rpcmount;	/* rpc_pipefs mount point */
- 	struct rpc_clnt		*h_rpcclnt;	/* RPC client to talk to peer */
- 	char			*h_name;		/* remote hostname */
- 	u32			h_version;	/* interface version */
-@@ -222,7 +223,8 @@ struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
- 					const unsigned short protocol,
- 					const u32 version,
- 					const char *hostname,
--					int noresvport);
-+					int noresvport,
-+					struct vfsmount *rpcmount);
- void		  nlmclnt_release_host(struct nlm_host *);
- struct nlm_host  *nlmsvc_lookup_host(const struct svc_rqst *rqstp,
- 					const char *hostname,
--- 
-1.7.4
+Yeah, I noticed :-/
 
+Benny
+
+> 
+> Fred
+> 
+>> Benny
+>>
+>> [ INFO: possible circular locking dependency detected ]                        
+>> 2.6.38-rc3-pnfs-00391-g13858b7 #5                                              
+>> -------------------------------------------------------                        
+>> test5/2174 is trying to acquire lock:                                          
+>> (&sb->s_type->i_lock_key#24){+.+...}, at: [<ffffffffa018e924>] nfs_inode_set_]
+>>
+>> but task is already holding lock:                                              
+>> (&(&clp->cl_lock)->rlock){+.+...}, at: [<ffffffffa018e822>] nfs_inode_set_del]
+>>
+>> which lock already depends on the new lock.                                    
+>>
+>>
+>> the existing dependency chain (in reverse order) is:                           
+>>
+>> -> #1 (&(&clp->cl_lock)->rlock){+.+...}:                                       
+>>       [<ffffffff8108281f>] lock_acquire+0xd3/0x100                            
+>>       [<ffffffff8147df43>] _raw_spin_lock+0x36/0x69                           
+>>       [<ffffffffa0193b87>] pnfs_update_layout+0x2f5/0x4d9 [nfs]               
+>>       [<ffffffffa0166862>] nfs_write_begin+0x90/0x257 [nfs]                   
+>>       [<ffffffff810e1d7b>] generic_file_buffered_write+0x106/0x267            
+>>       [<ffffffff810e33a8>] __generic_file_aio_write+0x245/0x27a               
+>>       [<ffffffff810e3439>] generic_file_aio_write+0x5c/0xaa                   
+>>       [<ffffffffa016728b>] nfs_file_write+0xdf/0x177 [nfs]                    
+>>       [<ffffffff8112b599>] do_sync_write+0xcb/0x108                           
+>>       [<ffffffff8112bf97>] vfs_write+0xb1/0x10d                               
+>>       [<ffffffff8112c0bc>] sys_write+0x4d/0x77                                
+>>       [<ffffffff8100ab82>] system_call_fastpath+0x16/0x1b                     
+>>
+>> -> #0 (&sb->s_type->i_lock_key#24){+.+...}:                                    
+>>       [<ffffffff81082457>] __lock_acquire+0xa45/0xd3a                         
+>>       [<ffffffff8108281f>] lock_acquire+0xd3/0x100                            
+>>       [<ffffffff8147df43>] _raw_spin_lock+0x36/0x69                           
+>>       [<ffffffffa018e924>] nfs_inode_set_delegation+0x1f4/0x250 [nfs]         
+>>       [<ffffffffa017cb9b>] nfs4_opendata_to_nfs4_state+0x26c/0x2c9 [nfs]      
+>>       [<ffffffffa0181827>] nfs4_do_open+0x364/0x37c [nfs]                     
+>>       [<ffffffffa0181867>] nfs4_atomic_open+0x28/0x45 [nfs]                   
+>>       [<ffffffffa0165edc>] nfs_open_revalidate+0xf8/0x1a1 [nfs]               
+>>       [<ffffffff81135111>] d_revalidate+0x21/0x56                             
+>>       [<ffffffff811351ca>] do_revalidate+0x1d/0x7a                            
+>>       [<ffffffff811353eb>] do_lookup+0x1c4/0x1f8                              
+>>       [<ffffffff81137406>] link_path_walk+0x260/0x485                         
+>>       [<ffffffff8113786a>] do_path_lookup+0x50/0x10d                          
+>>       [<ffffffff81138658>] do_filp_open+0x137/0x65e                           
+>>       [<ffffffff81129e6e>] do_sys_open+0x60/0xf2                              
+>>       [<ffffffff81129f33>] sys_open+0x20/0x22                                 
+>>       [<ffffffff8100ab82>] system_call_fastpath+0x16/0x1b                     
+>>
+>>
+>> On 2011-01-31 17:27, Fred Isaman wrote:
+>>> The pnfs code was using throughout the lock order i_lock, cl_lock.
+>>> This conflicts with the nfs delegation code.  Rework the pnfs code
+>>> to avoid taking both locks simultaneously.
+>>>
+>>> Currently the code takes the double lock to add/remove the layout to a
+>>> nfs_client list, while atomically checking that the list of lsegs is
+>>> empty.  To avoid this, we rely on existing serializations.  When a
+>>> layout is initialized with lseg count equal zero, LAYOUTGET's
+>>> openstateid serialization is in effect, making it safe to assume it
+>>> stays zero unless we change it.  And once a layout's lseg count drops
+>>> to zero, it is set as DESTROYED and so will stay at zero.
+>>>
+>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>> ---
+>>> fs/nfs/callback_proc.c |    2 +-
+>>> fs/nfs/pnfs.c          |   50 +++++++++++++++++++++++++++--------------------
+>>> 2 files changed, 30 insertions(+), 22 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+>>> index 8958757..2f41dcce 100644
+>>> --- a/fs/nfs/callback_proc.c
+>>> +++ b/fs/nfs/callback_proc.c
+>>> @@ -188,10 +188,10 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
+>>> 			rv = NFS4ERR_DELAY;
+>>> 		list_del_init(&lo->plh_bulk_recall);
+>>> 		spin_unlock(&ino->i_lock);
+>>> +		pnfs_free_lseg_list(&free_me_list);
+>>> 		put_layout_hdr(lo);
+>>> 		iput(ino);
+>>> 	}
+>>> -	pnfs_free_lseg_list(&free_me_list);
+>>> 	return rv;
+>>> }
+>>>
+>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>> index f89c3bb..ee6c69a 100644
+>>> --- a/fs/nfs/pnfs.c
+>>> +++ b/fs/nfs/pnfs.c
+>>> @@ -247,13 +247,6 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
+>>> 		BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+>>> 		list_del(&lseg->pls_list);
+>>> 		if (list_empty(&lseg->pls_layout->plh_segs)) {
+>>> -			struct nfs_client *clp;
+>>> -
+>>> -			clp = NFS_SERVER(ino)->nfs_client;
+>>> -			spin_lock(&clp->cl_lock);
+>>> -			/* List does not take a reference, so no need for put here */
+>>> -			list_del_init(&lseg->pls_layout->plh_layouts);
+>>> -			spin_unlock(&clp->cl_lock);
+>>> 			set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
+>>> 			/* Matched by initial refcount set in alloc_init_layout_hdr */
+>>> 			put_layout_hdr_locked(lseg->pls_layout);
+>>> @@ -319,14 +312,30 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+>>> 	return invalid - removed;
+>>> }
+>>>
+>>> +/* note free_me must contain lsegs from a single layout_hdr */
+>>> void
+>>> pnfs_free_lseg_list(struct list_head *free_me)
+>>> {
+>>> -	struct pnfs_layout_segment *lseg, *tmp;
+>>> +	if (!list_empty(free_me)) {
+>>> +		struct pnfs_layout_segment *lseg, *tmp;
+>>> +		struct pnfs_layout_hdr *lo;
+>>>
+>>> -	list_for_each_entry_safe(lseg, tmp, free_me, pls_list) {
+>>> -		list_del(&lseg->pls_list);
+>>> -		free_lseg(lseg);
+>>> +		lo = list_first_entry(free_me,
+>>> +				      struct pnfs_layout_segment,
+>>> +				      pls_list)->pls_layout;
+>>> +
+>>> +		if (test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags)) {
+>>> +			struct nfs_client *clp;
+>>> +
+>>> +			clp = NFS_SERVER(lo->plh_inode)->nfs_client;
+>>> +			spin_lock(&clp->cl_lock);
+>>> +			list_del_init(&lo->plh_layouts);
+>>> +			spin_unlock(&clp->cl_lock);
+>>> +		}
+>>> +		list_for_each_entry_safe(lseg, tmp, free_me, pls_list) {
+>>> +			list_del(&lseg->pls_list);
+>>> +			free_lseg(lseg);
+>>> +		}
+>>> 	}
+>>> }
+>>>
+>>> @@ -704,6 +713,7 @@ pnfs_update_layout(struct inode *ino,
+>>> 	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
+>>> 	struct pnfs_layout_hdr *lo;
+>>> 	struct pnfs_layout_segment *lseg = NULL;
+>>> +	bool first = false;
+>>>
+>>> 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
+>>> 		return NULL;
+>>> @@ -734,7 +744,10 @@ pnfs_update_layout(struct inode *ino,
+>>> 	atomic_inc(&lo->plh_outstanding);
+>>>
+>>> 	get_layout_hdr(lo);
+>>> -	if (list_empty(&lo->plh_segs)) {
+>>> +	if (list_empty(&lo->plh_segs))
+>>> +		first = true;
+>>> +	spin_unlock(&ino->i_lock);
+>>> +	if (first) {
+>>> 		/* The lo must be on the clp list if there is any
+>>> 		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
+>>> 		 */
+>>> @@ -743,17 +756,12 @@ pnfs_update_layout(struct inode *ino,
+>>> 		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
+>>> 		spin_unlock(&clp->cl_lock);
+>>> 	}
+>>> -	spin_unlock(&ino->i_lock);
+>>>
+>>> 	lseg = send_layoutget(lo, ctx, iomode);
+>>> -	if (!lseg) {
+>>> -		spin_lock(&ino->i_lock);
+>>> -		if (list_empty(&lo->plh_segs)) {
+>>> -			spin_lock(&clp->cl_lock);
+>>> -			list_del_init(&lo->plh_layouts);
+>>> -			spin_unlock(&clp->cl_lock);
+>>> -		}
+>>> -		spin_unlock(&ino->i_lock);
+>>> +	if (!lseg && first) {
+>>> +		spin_lock(&clp->cl_lock);
+>>> +		list_del_init(&lo->plh_layouts);
+>>> +		spin_unlock(&clp->cl_lock);
+>>> 	}
+>>> 	atomic_dec(&lo->plh_outstanding);
+>>> 	put_layout_hdr(lo);
+> 
