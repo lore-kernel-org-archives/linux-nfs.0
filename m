@@ -1,69 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37233 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:39326 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755146Ab1BRT4J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Feb 2011 14:56:09 -0500
-Date: Fri, 18 Feb 2011 20:56:06 +0100
-From: Karel Zak <kzak@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Jan Engelhardt <jengelh@medozas.de>,
-        linux-nfs@vger.kernel.org
-Subject: Re: umount.nfs4 is disturbed by /proc/mounts
-Message-ID: <20110218195605.GD25634@nb.net.home>
-References: <alpine.LNX.2.01.1102180041530.20379@obet.zrqbmnf.qr> <AF3E1D8A-81C5-4B78-894A-49E29A775404@oracle.com> <20110218142828.0a35e9d7@corrin.poochiereds.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110218142828.0a35e9d7@corrin.poochiereds.net>
+	id S1751291Ab1BASPL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Feb 2011 13:15:11 -0500
+Date: Tue, 1 Feb 2011 13:15:10 -0500
+To: camden lindsay <camden.lindsay@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: clients cannot reconnect to mounted nfs shares after server
+ restart
+Message-ID: <20110201181510.GA25136@fieldses.org>
+References: <AANLkTinD01zA=DTXEDG5pXVYcrEGsWOyXcMta0rzvB6n@mail.gmail.com>
+ <AANLkTimA-sCz8LQLu1weh-qQOm30jHYyO3qtxmPDPX98@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <AANLkTimA-sCz8LQLu1weh-qQOm30jHYyO3qtxmPDPX98@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Feb 18, 2011 at 02:28:28PM -0500, Jeff Layton wrote:
-> On Fri, 18 Feb 2011 09:11:54 -0800
-> Chuck Lever <chuck.lever@oracle.com> wrote:
+On Mon, Jan 31, 2011 at 07:24:30PM -0800, camden lindsay wrote:
+> Having an issue i believe is an NFS bug, but would like someone to
+> verify as well as... point me the correct direction to submit a bug as
+> needed if it indeed is.
+> Situation:
+> NFS server running
+> Client connected with mounted share
+> NFS server is shut down -- (halt or /etc/init.d/nfs stop)
+> NFS server is turned on (booted or /etc/init.d/nfs start)
 > 
-> > 
-> > On Feb 17, 2011, at 3:44 PM, Jan Engelhardt wrote:
-> > 
-> > > 
-> > > Recent distributions start to have /etc/mtab being a symlink to 
-> > > /proc/mounts with util-linux 2.19. Subsequently, this annoys umount.nfs4 
-> > > from nfs-client-1.2.3 and emits a warning:
-> > > 
-> > > jng-0:/ # grep nfs4 /proc/mounts
-> > > 10.10.1.1:/home/ /home nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=10.10.1.212,minorversion=0,local_lock=none,addr=10.10.1.1 0 0
-> > > jng-0:/ # umount /home
-> > > umount.nfs4: invalid value for 'port=' option
-> > 
-> > I can take a look at this.
-> > 
+> Outcome:
+> NFS client that was connected does not reconnect to that share automatically
+> NFS client that was connected cannot reconnect via umount then mount again
+> No other nfs client can connect to that share, before or after origial
+
+How long have you waited?
+
+> NFS clients attempts to connect/reconnect
+> NFS clients CAN connect to a different share.
+> Details/logs:
+> Server shows that client is authenticating:
+> Feb  1 03:01:47 BigBox mountd[6557]: authenticated mount request from
+> 192.168.11.49:674 for /mnt/store/public (/mnt/store/public)
+> Feb  1 03:01:48 BigBox mountd[6557]: authenticated mount request from
+> 192.168.11.49:763 for /mnt/store/public (/mnt/store/public)
+> Feb  1 03:01:50 BigBox mountd[6557]: authenticated mount request from
+> 192.168.11.49:932 for /mnt/store/public (/mnt/store/public)
+> Feb  1 03:01:54 BigBox mountd[6557]: authenticated mount request from
+> 192.168.11.49:942 for /mnt/store/public (/mnt/store/public)
+
+A network trace (tcpdump -s0 -wtmp.pcap, then reproduce the problem,
+then ^C tcpdump, then send us tmp.pcap) might help.
+
 > 
-> FWIW, I just fixed mount.cifs recently based on recommendations from
-> Karel:
+> Client shows retransmission:
+> dylan@shobuntu:~$ sudo mount -v -t nfs bigbox:/mnt/store/public Public/
+> mount.nfs: timeout set for Mon Jan 31 19:09:32 2011
+> mount.nfs: text-based options: 'addr=192.168.11.10'
+> mount.nfs: text-based options: 'addr=192.168.11.10'
+> mount.nfs: text-based options: 'addr=192.168.11.10'
+> mount.nfs: text-based options: 'addr=192.168.11.10'
+> mount.nfs: text-based options: 'addr=192.168.11.10'
 > 
->     http://git.samba.org/?p=cifs-utils.git;a=commitdiff;h=fba28cfe2f13dd8bdae3cec76178f42b001a40ca
-> 
-> ...this is the same approach that /bin/mount uses, so you're probably
-> safe to use a similar one for mount/umount.nfs.
+> Server Version:
+> net-fs/nfs-utils
+>       Latest version available: 1.1.4-r1
+>       Latest version installed: 1.1.4-r1
+>       Size of files: 574 kB
+>       Homepage:      http://linux-nfs.org/
+>       Description:   NFS client and server daemons
+>       License:       GPL-2
+> (server is on Gentoo, client on Ubuntu)
 
- This is not the same problem. The NFS umount/remount depends on
- (userspace) values from /etc/mtab.
- 
- The solution is to link mount.nfs with libmount. I'm working on this
- change...  http://www.spinics.net/lists/linux-nfs/msg19165.html
+Note most of the NFS code is actually in the kernel, so the kernel
+version(s) involved would be useful too.
 
+--b.
 
- I have already talked about mtab issues at fedora-devel list, see
- http://lists.fedoraproject.org/pipermail/devel/2011-January/147995.html
-
- The mount.nfs and pam_mount are on my TODO list for the next weeks.
- If the changes in mount.nfs will be successful then I'd like to link
- mount.cifs with libmount too.
-
- Note that mount(8) in Fedora still supports regular mtab too, and
- the regular mtab is still util-linux upstream default.
-
-    Karel
-
--- 
- Karel Zak  <kzak@redhat.com>
- http://karelzak.blogspot.com
+> Thanks!
+> Camden
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
