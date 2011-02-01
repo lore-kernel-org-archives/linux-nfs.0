@@ -1,37 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:1034 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:35412 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754963Ab1BHQHb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Feb 2011 11:07:31 -0500
-Message-ID: <4D516A3F.8050200@RedHat.com>
-Date: Tue, 08 Feb 2011 11:07:27 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Jim Rees <rees@umich.edu>
-CC: peter honeyman <honey@citi.umich.edu>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] cthon: remove extraneous files
-References: <20110207190513.GA4036@merit.edu>
-In-Reply-To: <20110207190513.GA4036@merit.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751584Ab1BAQbI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Feb 2011 11:31:08 -0500
+Subject: Re: [PATCH 1/3] pnfs: avoid incorrect use of layout stateid
+Content-Type: text/plain; charset=us-ascii
+From: Fred Isaman <iisaman@netapp.com>
+In-Reply-To: <4D4828DC.9020103@panasas.com>
+Date: Tue, 1 Feb 2011 11:31:07 -0500
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
+Message-Id: <AF70A3A4-2A06-4BD1-AC69-270658CF6365@netapp.com>
+References: <1296487633-21057-1-git-send-email-iisaman@netapp.com> <1296487633-21057-2-git-send-email-iisaman@netapp.com> <4D4828DC.9020103@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-FYI...
 
-On 02/07/2011 02:05 PM, Jim Rees wrote:
-> These are generated files and don't belong in the distribution.
+On Feb 1, 2011, at 10:38 AM, Benny Halevy wrote:
+
+> On 2011-01-31 17:27, Fred Isaman wrote:
+>> The code could violate the following from RFC5661, section 12.5.3:
+>> "Once a client has no more layouts on a file, the layout stateid is no
+>> longer valid and MUST NOT be used."
 > 
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> ---
->  general/large1.c |  443 ------------------------------------------------------
->  general/large2.c |  443 ------------------------------------------------------
->  general/large3.c |  443 ------------------------------------------------------
->  3 files changed, 0 insertions(+), 1329 deletions(-)
->  delete mode 100644 general/large1.c
->  delete mode 100644 general/large2.c
->  delete mode 100644 general/large3.c
-I committed this patch as well as my nroff fixes to
-   git://linux-nfs.org/~steved/cthon04.git
+> NACK.
+> 
+> Fred, this is your interpretation of the forgetful model and it is taken
+> out of context.
+> 
+> Until the spec is changed only the server invalidates the stateid by returning
+> lrs_present=false on LAYOUTRETURN. Merely forgetting the layout state without
+> LAYOUTRETURN does not determine that.
+> 
+> 
+> Also from 12.5.3:
+>   Once a layout stateid is established, the "other"
+>   field will stay constant unless the stateid is revoked or the client
+>   returns all layouts on the file and the server disposes of the stateid.
+>   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 
 
-steved.
+
+OK, so the question is, does sending a LAYOUTGET with openstateid "return all layouts".
+Making the answer to this "yes" is perfectly consistent with the spec, given its complete absence
+of direction here.  The alternative is a forgetful model where the client can forget layouts, but
+not layout stateid.
+
+The question is, is there any objection to the above interpretation of LAYOUTGET with openstateid?
+Because if not, then we will shortly get an appropriate errata, and there is no good reason to delay the patch until the errata is finalized.  I know previously you had objected on the basis that this prevents parallel use of openstateid with LAYOUTGET.  But given that you had indicated that such parallel use can not be done for other reasons, I have been working on the assumption that the interpretation above will be accepted without controversy at the upcoming IETF.
+
+On the other hand, if there is objection to the above interpretation, that should be made known.
+
+Fred
+
+
+> and
+> 
+>   Once the client receives a layout stateid, it MUST use the correct
+>   "seqid" for subsequent LAYOUTGET or LAYOUTRETURN operations.  The
+>   correct "seqid" is defined as the highest "seqid" value from
+>   responses of fully processed LAYOUTGET or LAYOUTRETURN operations or
+>   arguments of a fully processed CB_LAYOUTRECALL operation.
+> 
+> and 18.43.3
+> 
+>   The loga_stateid field specifies a valid stateid.  If a layout is not
+>   currently held by the client, the loga_stateid field represents a
+>   stateid reflecting the correspondingly valid open, byte-range lock,
+>   or delegation stateid.  Once a layout is held on the file by the
+>   client, the loga_stateid field MUST be a stateid as returned from a
+>   previous LAYOUTGET or LAYOUTRETURN operation or provided by a
+>   CB_LAYOUTRECALL operation (see Section 12.5.3).
+> 
+> Only when we agree that the client can throw away the layout state and
+> send a singular future LAYOUTGET with a non-layout stateid - something it MUST not
+> do at the moment - only then we can do what this patch suggests.
+> 
+> Benny
+> 
+>> 
+>> This can occur when a layout already has a lseg, starts another
+>> non-everlapping LAYOUTGET, and a CB_LAYOUTRECALL for the existing lseg
+>> is processed before we hit pnfs_layout_process().
+>> 
+>> Solve by setting, each time the client has no more lsegs for a file, a
+>> flag which blocks further use of the layout and triggers its removal.
+>> 
+>> This also fixes a second bug which occurs in the same instance as
+>> above.  If we actually use pnfs_layout_process, we add the new lseg to
+>> the layout, but the layout has been removed from the nfs_client list
+>> by the intervening CB_LAYOUTRECALL and will not be added back.  Thus
+>> the newly acquired lseg will not be properly returned in the event of
+>> a subsequent CB_LAYOUTRECALL.
+>> 
+>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>> ---
+>> fs/nfs/pnfs.c |   12 +++++++++---
+>> 1 files changed, 9 insertions(+), 3 deletions(-)
+>> 
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> index 1b1bc1a..dcd5d54 100644
+>> --- a/fs/nfs/pnfs.c
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -255,6 +255,9 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
+>> 			list_del_init(&lseg->pls_layout->plh_layouts);
+>> 			spin_unlock(&clp->cl_lock);
+>> 			clear_bit(NFS_LAYOUT_BULK_RECALL, &lseg->pls_layout->plh_flags);
+>> +			set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
+>> +			/* Matched by initial refcount set in alloc_init_layout_hdr */
+>> +			put_layout_hdr_locked(lseg->pls_layout);
+>> 		}
+>> 		rpc_wake_up(&NFS_SERVER(ino)->roc_rpcwaitq);
+>> 		list_add(&lseg->pls_list, tmp_list);
+>> @@ -299,6 +302,11 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+>> 
+>> 	dprintk("%s:Begin lo %p\n", __func__, lo);
+>> 
+>> +	if (list_empty(&lo->plh_segs)) {
+>> +		if (!test_and_set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags))
+>> +			put_layout_hdr_locked(lo);
+>> +		return 0;
+>> +	}
+>> 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
+>> 		if (should_free_lseg(lseg->pls_range.iomode, iomode)) {
+>> 			dprintk("%s: freeing lseg %p iomode %d "
+>> @@ -332,10 +340,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
+>> 	spin_lock(&nfsi->vfs_inode.i_lock);
+>> 	lo = nfsi->layout;
+>> 	if (lo) {
+>> -		set_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags);
+>> 		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
+>> -		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
+>> -		put_layout_hdr_locked(lo);
+>> 	}
+>> 	spin_unlock(&nfsi->vfs_inode.i_lock);
+>> 	pnfs_free_lseg_list(&tmp_list);
+>> @@ -403,6 +408,7 @@ pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, nfs4_stateid *stateid,
+>> 	    (int)(lo->plh_barrier - be32_to_cpu(stateid->stateid.seqid)) >= 0)
+>> 		return true;
+>> 	return lo->plh_block_lgets ||
+>> +		test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags) ||
+>> 		test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
+>> 		(list_empty(&lo->plh_segs) &&
+>> 		 (atomic_read(&lo->plh_outstanding) > lget));
 
