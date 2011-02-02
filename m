@@ -1,45 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from swampdragon.chaosbits.net ([90.184.90.115]:12326 "EHLO
-	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756104Ab1BWW2L (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 17:28:11 -0500
-Date: Wed, 23 Feb 2011 23:27:21 +0100 (CET)
-From: Jesper Juhl <jj@chaosbits.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-cc: Chuck Lever <chuck.lever@oracle.com>, Milton Miller <miltonm@bga.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Neil Brown <neilb@suse.de>, bfields@fieldses.org
-Subject: Re: [PATCH] Fix size argument to memset call in nfsacl_encode
-In-Reply-To: <alpine.LNX.2.00.1102232326130.28678@swampdragon.chaosbits.net>
-Message-ID: <alpine.LNX.2.00.1102232327010.28678@swampdragon.chaosbits.net>
-References: <alpine.LNX.2.00.1102032012540.15101@swampdragon.chaosbits.net>  <1296761330.3015.22.camel@heimdal.trondhjem.org>  <alpine.LNX.2.00.1102032035280.15101@swampdragon.chaosbits.net>  <705C97E5-E273-45AA-9714-2BF409DE1322@oracle.com>
- <1296763614.3015.26.camel@heimdal.trondhjem.org>  <67867FEF-6C10-4A35-8952-4EB56EAB79B9@oracle.com> <1296770110.12342.6.camel@heimdal.trondhjem.org> <alpine.LNX.2.00.1102232326130.28678@swampdragon.chaosbits.net>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from mx2.netapp.com ([216.240.18.37]:7633 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754439Ab1BBPpp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Feb 2011 10:45:45 -0500
+Subject: Re: [PATCH 1/3] pnfs: avoid incorrect use of layout stateid
+Content-Type: text/plain; charset=us-ascii
+From: Fred Isaman <iisaman@netapp.com>
+In-Reply-To: <4D48DB59.9010102@panasas.com>
+Date: Wed, 2 Feb 2011 10:45:18 -0500
+Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
+Message-Id: <F2D196CC-A542-40DA-AB94-1ADB22A5E899@netapp.com>
+References: <1296487633-21057-1-git-send-email-iisaman@netapp.com> <1296487633-21057-2-git-send-email-iisaman@netapp.com> <4D4828DC.9020103@panasas.com> <AF70A3A4-2A06-4BD1-AC69-270658CF6365@netapp.com> <4D48DB59.9010102@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 23 Feb 2011, Jesper Juhl wrote:
 
-> On Thu, 3 Feb 2011, Trond Myklebust wrote:
-> 
-> > On Thu, 2011-02-03 at 15:29 -0500, Chuck Lever wrote: 
-> > > Sorry, I wasn't clear.  IMO, data that is destined for the network is an important case where we have to be careful about the rule of using either assignments or memset(), not both, when initializing a data structure.
-> > > 
-> > > If the compiler doesn't pack the fields in struct posix_acl, there is unused space between them.  Memory for acl2 comes from the stack, which contains arbitrary data when this function is invoked.  The areas between the structure fields are not affected by the variable assignments used here.  If the data in acl2 is then simply memcpy'd to the XDR buffer, that old stack data can possibly appear on the wire.
-> > > 
-> > > I agree that the current memset() is incorrect.  My conditional ACK was more about what happens in xdr_encode_array2() rather than how the posix_acl acl2 is initialized.  I think in that regard we are also safe, if the array encoding operates by data type rather than by simply doing a blanket memcpy.  See xdr_nfsace_encode().  It's always possible I misunderstood how ACEs are XDR encoded.
-> > 
-> > We shouldn't ever be memcopying entire structures directly to or from
-> > the XDR buffer, and as far as I know, the current code will always copy
-> > them element by element.
-> > 
-> Ok. So, could we merge the patch that kills the memcpy() ? 
-> 
-I mean memset() of course. 
+On Feb 1, 2011, at 11:19 PM, Benny Halevy wrote:
 
--- 
-Jesper Juhl <jj@chaosbits.net>            http://www.chaosbits.net/
-Plain text mails only, please.
-Don't top-post http://www.catb.org/~esr/jargon/html/T/top-post.html
+> On 2011-02-01 18:31, Fred Isaman wrote:
+>> 
+>> On Feb 1, 2011, at 10:38 AM, Benny Halevy wrote:
+>> 
+>>> On 2011-01-31 17:27, Fred Isaman wrote:
+>>>> The code could violate the following from RFC5661, section 12.5.3:
+>>>> "Once a client has no more layouts on a file, the layout stateid is no
+>>>> longer valid and MUST NOT be used."
+>>> 
+>>> NACK.
+>>> 
+>>> Fred, this is your interpretation of the forgetful model and it is taken
+>>> out of context.
+>>> 
+>>> Until the spec is changed only the server invalidates the stateid by returning
+>>> lrs_present=false on LAYOUTRETURN. Merely forgetting the layout state without
+>>> LAYOUTRETURN does not determine that.
+>>> 
+>>> 
+>>> Also from 12.5.3:
+>>>  Once a layout stateid is established, the "other"
+>>>  field will stay constant unless the stateid is revoked or the client
+>>>  returns all layouts on the file and the server disposes of the stateid.
+>>>  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>>> 
+>> 
+>> 
+>> OK, so the question is, does sending a LAYOUTGET with openstateid "return all layouts".
+>> Making the answer to this "yes" is perfectly consistent with the spec, given its complete absence
+>> of direction here.
+> 
+> I disagree, and so are other server implementations, including linux-pnfs!
+> (It will return BAD_STATEID if the client forgets the layout
+> in any case but LAYOUTRETURN or CB_LAYOUTRECALL/NOMATCHING_LAYOUT)
+> 
+>> The alternative is a forgetful model where the client can forget layouts, but
+>> not layout stateid.
+> 
+> Right, and this is the direction we should go until the errata is in place.
+> 
+>> 
+>> The question is, is there any objection to the above interpretation of LAYOUTGET with openstateid?
+>> Because if not, then we will shortly get an appropriate errata,
+>> and there is no good reason to delay the patch until the errata is finalized.
+>> I know previously you had objected on the basis that this prevents parallel use of openstateid with LAYOUTGET.
+>> But given that you had indicated that such parallel use can not be done for other reasons,
+>> I have been working on the assumption that the interpretation above will be accepted without controversy at the upcoming IETF.
+>> 
+>> On the other hand, if there is objection to the above interpretation, that should be made known.
+> 
+> I simulated this with the layout-sim and given the LAYOUTGET sent with the initial stateid
+> is always fully serialized with other layout stateid-changing operations, this model works.
+> 
+> I object the timing, before the IETF discussion is over and before the upcoming Connectathon
+> where other server vendors have no chance to implement this erratum.
+> 
+
+Our goal is to have at cthon working code to test that is basically what will be submitted upstream,  Waiting for the IETF to be over before implementing means nothing will be implemented.  Instead, we have been consistently making best guesses, with Trond's input, on how each spec ambiguity will be resolved.
+
+This patch fixes two real existing bugs.  It prepares the way for fixing another real existing bug (lock inversion). Yes, it makes an assumption on how we will decide to clarify a spec issue, but so does much of the existing code.  (For example, we update seqid on NOMATCHING, all the roc code.) Finally, the current code *already* makes this assumption.  Because the client can randomly forget layouts, it has NO way to know when sending a NOMATCHING return whether it should keep the stateid or not, so it *already* uses the assumption that if it has none in memory, it will send an openstateid.
+ 
+Fred
 
