@@ -1,81 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out1.smtp.messagingengine.com ([66.111.4.25]:55183 "EHLO
-	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753644Ab1BXGe1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2011 01:34:27 -0500
-Subject: Re: [PATCH 0/3] Fixes for vfs-scale and vfs-automount
-From: Ian Kent <raven@themaw.net>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        David Howells <dhowells@redhat.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>, npiggin@gmail.com
-In-Reply-To: <20110224035836.GS22723@ZenIV.linux.org.uk>
-References: <20110118040449.23109.33071.stgit@localhost6.localdomain6>
-	 <1295420817.3076.24.camel@perseus> <1297779902.13007.86.camel@perseus>
-	 <20110224015817.GQ22723@ZenIV.linux.org.uk>
-	 <1298516618.2916.20.camel@perseus>
-	 <20110224031439.GR22723@ZenIV.linux.org.uk>
-	 <1298518137.2916.35.camel@perseus>
-	 <20110224035836.GS22723@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 24 Feb 2011 14:34:20 +0800
-Message-ID: <1298529260.2916.91.camel@perseus>
+Received: from daytona.panasas.com ([67.152.220.89]:7384 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753992Ab1BCIPc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2011 03:15:32 -0500
+Message-ID: <4D4A6420.5020208@panasas.com>
+Date: Thu, 03 Feb 2011 10:15:28 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] pnfs: avoid incorrect use of layout stateid
+References: <1296487633-21057-1-git-send-email-iisaman@netapp.com>	 <1296487633-21057-2-git-send-email-iisaman@netapp.com>	 <4D4828DC.9020103@panasas.com>	 <AF70A3A4-2A06-4BD1-AC69-270658CF6365@netapp.com>	 <4D48DB59.9010102@panasas.com> <1296626165.8895.31.camel@heimdal.trondhjem.org>
+In-Reply-To: <1296626165.8895.31.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-02-24 at 03:58 +0000, Al Viro wrote:
+On 2011-02-02 07:56, Trond Myklebust wrote:
+> On Wed, 2011-02-02 at 06:19 +0200, Benny Halevy wrote: 
+>> On 2011-02-01 18:31, Fred Isaman wrote:
+>>>
+>>> On Feb 1, 2011, at 10:38 AM, Benny Halevy wrote:
+>>>
+>>>> On 2011-01-31 17:27, Fred Isaman wrote:
+>>>>> The code could violate the following from RFC5661, section 12.5.3:
+>>>>> "Once a client has no more layouts on a file, the layout stateid is no
+>>>>> longer valid and MUST NOT be used."
+>>>>
+>>>> NACK.
+>>>>
+>>>> Fred, this is your interpretation of the forgetful model and it is taken
+>>>> out of context.
+>>>>
+>>>> Until the spec is changed only the server invalidates the stateid by returning
+>>>> lrs_present=false on LAYOUTRETURN. Merely forgetting the layout state without
+>>>> LAYOUTRETURN does not determine that.
+>>>>
+>>>>
+>>>> Also from 12.5.3:
+>>>>   Once a layout stateid is established, the "other"
+>>>>   field will stay constant unless the stateid is revoked or the client
+>>>>   returns all layouts on the file and the server disposes of the stateid.
+>>>>   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>>
+>>> OK, so the question is, does sending a LAYOUTGET with openstateid "return all layouts".
+>>> Making the answer to this "yes" is perfectly consistent with the spec, given its complete absence
+>>> of direction here.
+>>
+>> I disagree, and so are other server implementations, including linux-pnfs!
+>> (It will return BAD_STATEID if the client forgets the layout
+>> in any case but LAYOUTRETURN or CB_LAYOUTRECALL/NOMATCHING_LAYOUT)
 > 
-> Anyway, I wonder why you care about __d_lookup_rcu() and ->d_inode stability;
-> d_mountpoint() _is_ stable at that point (we hold vfsmount_lock) and you
-> don't seem to look at ->d_inode at all in RCU case.  Note that ->d_automount()
-> is never called in RCU case at all; nor is ->lookup() and friends, so you
-> really only have ->d_manage() to cope with, what with autofs4 having no
-> ->d_revalidate() anymore.
+> Where do you see this being allowed? I see nothing in RFC5661 that
+> justifies the server returning BAD_STATEID (or any other error) if the
+> client supplies an open stateid in LAYOUTGET. The only stateids that are
+> explicitly disallowed in section 12 are the special stateids.
+> IOW: I see no justification there for your interpretation or the above
+> error message. Fix the linux pnfs server and the "other server
+> implementation" if it does this.
 
-It does now but it doesn't do a whole lot, just checks for a negative
-dentry, returning false, and drops out of RCU mode when the dentry isn't
-selected or being checked for expiry yet.
-
-Indeed, I shouldn't need to care about it and checking for it doesn't
-seem to do a whole lot.
-
-I've seen walks fail with a dentry that has gone away (ie. I'm walking
-in a tree that is being expired, they seem to be trees with no actual
-mount at their base), which should be because I'm not catching the block
-request at a higher level dentry. Unfortunately, including a check for
-the base dentry in __follow_mount_rcu(), regardless of it being a
-mountpoint, doesn't always catch the need to block either. That the tree
-is being selected for expire is probably because the expire can't detect
-a walk within the mount tree when the walker is between the
-__d_lookup_rcu() and __follow_mount_rcu() calls. Jumping out of rcu-walk
-mode in an added revalidate reduces the possibility of this happening
-(assuming walks are sneaking in between dropping and acquiring the
-vfsmount_lock) but doesn't eliminate it. 
-
-At this point I loop back to the trying to work out why a reference gets
-picked up and the cycle repeats with various small changes to the
-overall approach.
-
-Actually, it's not just the root of a mount that is getting an extra
-reference either. When I notice a root dentry has picked up a reference
-(from a printk) and SIGKILL everything and start umounting manually I
-get to a point in the tree where I need to umount autofs mounts twice,
-which usually means nothing more than a get/put mismatch somewhere, but
-in that case I normally don't see a root dentry pick up a reference.
-That's confusing me too.
+This case is indeed not defined well in the spec.
 
 > 
-> BTW, Nick has moved to kernel.dk; whether he's still reachable there is
-> a question, though - he seems to have disappeared since mid-January.
+> The only text I can find is repeated in both section 12.5.2. and section
+> 12.5.3 and states that the client uses an open stateid, delegation
+> stateid or lock stateid if it holds no layouts.
 
-Yeah, I've forwarded a couple of messages where I forgot to change the
-email. A few emails back Nick said he was following the thread anyway.
+Right, but the point in which it is defined to hold no layout is when
+it has returned them to the server.  There is not much sense in arguing
+that over and over again as we're in agreement regarding the proposed
+errata.
 
-Ian
+Benny
 
-
+> Section 12.5.5.1 then states that the client is allowed to forget
+> layouts and that this is safe as long as it doesn't assume it holds
+> layouts for ranges that lie beyond what the server granted. The same
+> section states that the server has no control over what the client
+> believes, and so it is allowed to recall a layout that the client knows
+> nothing about if it is in doubt.
+> 
+> 
+> Trond
