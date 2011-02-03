@@ -1,70 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:48437 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752211Ab1BOJbU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 04:31:20 -0500
-Date: Tue, 15 Feb 2011 04:31:13 -0500
-From: Christoph Hellwig <hch@infradead.org>
-To: andros@netapp.com
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        Fred Isaman <iisaman@netapp.com>, Andy Adamson <andros@citi.umich.edu>,
-        Dean Hildebrand <dhildeb@us.ibm.com>,
-        Marc Eshel <eshel@almaden.ibm.com>, Mike Sager <sager@netapp.com>,
-        Oleg Drokin <green@linuxhacker.ru>, Tao Guo <guotao@nrchpc.ac.cn>,
-        Tigran Mkrtchyan <tigran@anahit.desy.de>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 13/16] pnfs: wave 3: filelayout i/o helpers
-Message-ID: <20110215093113.GC29871@infradead.org>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>
- <1297711116-3139-14-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1297711116-3139-14-git-send-email-andros@netapp.com>
+Received: from mx2.parallels.com ([64.131.90.16]:57423 "EHLO mx2.parallels.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751897Ab1BCWNV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Feb 2011 17:13:21 -0500
+Received: from [96.31.168.206] (helo=mail.parallels.com)
+	by mx2.parallels.com with esmtps (TLSv1:AES128-SHA:128)
+	(Exim 4.72)
+	(envelope-from <rlandley@parallels.com>)
+	id 1Pl7QW-0002To-Oq
+	for linux-nfs@vger.kernel.org; Thu, 03 Feb 2011 17:13:20 -0500
+Message-ID: <4D4B287E.70206@parallels.com>
+Date: Thu, 3 Feb 2011 16:13:18 -0600
+From: Rob Landley <rlandley@parallels.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH] Ensure user-supplied string null terminated before kstrdup()
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Feb 14, 2011 at 02:18:33PM -0500, andros@netapp.com wrote:
-> +static loff_t
-> +filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
-> +{
-> +	struct nfs4_filelayout_segment *flseg = FILELAYOUT_LSEG(lseg);
-> +
-> +	switch (flseg->stripe_type) {
-> +	case STRIPE_SPARSE:
-> +		return offset;
-> +
-> +	case STRIPE_DENSE:
-> +	{
-> +		u32 stripe_width;
-> +		u64 tmp, off;
-> +		u32 unit = flseg->stripe_unit;
-> +
-> +		stripe_width = unit * flseg->dsaddr->stripe_count;
-> +		tmp = off = offset - flseg->pattern_offset;
-> +		do_div(tmp, stripe_width);
-> +		return tmp * unit + do_div(off, unit);
+From: Rob Landley <rlandley@parallels.com>
 
-For readability's sake I'd split this out into a helper:
+Make sure user string is null terminated before copying it.
 
-static loff_t
-filelayout_get_dense_offset(struct nfs4_filelayout_segment *flseg,
-			    loff_t offset)
-{
-	u32 stripe_width = flseg->stripe_unit * flseg->dsaddr->stripe_count;
-	u64 tmp;
+Signed-off-by: Rob Landley <rlandley@parallels.com>
+---
 
-	offset -= flseg->pattern_offset
+ fs/nfs/super.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-	tmp = off;
-	do_div(tmp, stripe_width);
-
-	return tmp * unit + do_div(offset, flseg->stripe_unit);
-}
-
-...
-
-
-	case STRIPE_DENSE:
-		return filelayout_get_dense_offset(flset, offset);
-
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index b68c860..0ad1255 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1881,9 +1881,12 @@ static int nfs_validate_mount_data(void *options,
+ 
+ 		if (!(data->flags & NFS_MOUNT_TCP))
+ 			args->nfs_server.protocol = XPRT_TRANSPORT_UDP;
++		/* Force null termination of data->hostname no matter what
++		   user passed in. */
++		args->namlen		= data->namlen;
++		data->namlen = 0;
+ 		/* N.B. caller will free nfs_server.hostname in all cases */
+ 		args->nfs_server.hostname = kstrdup(data->hostname, GFP_KERNEL);
+-		args->namlen		= data->namlen;
+ 		args->bsize		= data->bsize;
+ 
+ 		if (data->flags & NFS_MOUNT_SECFLAVOUR)
