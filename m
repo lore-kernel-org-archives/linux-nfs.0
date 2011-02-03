@@ -1,103 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:11060 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:54684 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756911Ab1BAOQc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Feb 2011 09:16:32 -0500
-Message-ID: <4D4815BD.5090404@parallels.com>
-Date: Tue, 01 Feb 2011 17:16:29 +0300
-From: Konstantin Khorenko <khorenko@parallels.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-CC: linux-nfs@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: [PATCH] NFSD: memory corruption due to writing beyond the stat array
-Content-Type: multipart/mixed;
- boundary="------------090602070308090607020401"
+	id S1755455Ab1BCEhG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Feb 2011 23:37:06 -0500
+Date: Wed, 2 Feb 2011 23:37:04 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: George Spelvin <linux@horizon.com>
+Cc: linux-nfs@vger.kernel.org, nix@esperi.org.uk
+Subject: Re: persistent, quasi-random -ESTALE at mount time
+Message-ID: <20110203043703.GB30641@fieldses.org>
+References: <20110203034844.GA30641@fieldses.org>
+ <20110203042814.6364.qmail@science.horizon.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110203042814.6364.qmail@science.horizon.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---------------090602070308090607020401
-Content-Type: text/plain; charset=KOI8-R
-Content-Transfer-Encoding: 7bit
+On Wed, Feb 02, 2011 at 11:28:14PM -0500, George Spelvin wrote:
+> > So the reboot was for an upgrade from 2.6.26-rcX to 2.6.38-rc3?  I
+> > wonder if a reboot (or just a server restart) without changing kernels
+> > would see the same problem?
+> 
+> Whoops, typo.  It was from 2.6.36-rcX (I think -rc5, but it's scrolled
+> off the logs), not .26.
+> 
+> > We work quite hard to ensure that filehandles returned from older nfsd's
+> > will still be accepted by newer ones.  But that doesn't mean there
+> > couldn't failed at that somehow in some case....
+> 
+> I understand that sometimes there's an incompatible server change, but
+> I don't ever remember a Linux-linux nfs mount surviving a server
+> reboot.
+> 
+> However, the problem I'm complaining about here is more alarming.  With
+> a clean client, attempting to *mount* is failing with -ESTALE.
 
-Hi All,
+Oh, apologies, I missed that.
 
-i've found a bug which makes NFSD to corrupt memory due to writing beyond the stat array.
+> > If you manage to reproduce the problem, /proc/fs/nfs/exports before and
+> > after the reboot would be interesting, and ideally also a network trace
+> > showing traffic before and after the reboot (including the operation
+> > that returned the STALE error).
+> 
+> Can do.  How much detail do you want in the packet trace?  Is -vvv
+> enough, or do you want -X as well?
 
-Initially this issue was found on 2.6.18-x RHEL5 kernel, but the same seems to be true for the current mainstream kernel (checked on 2.6.38-rc3).
+Actually, the raw packet data would be most useful; so something like:
 
-./fs/nfsd/vfs.c:
-static inline struct raparms *
-nfsd_get_raparms(dev_t dev, ino_t ino)
-{
-...
-       // here we searched our file in a readahead cache
-       // but not found it
-...
-         depth = nfsdstats.ra_size*11/10;
-...
-       // some stuff, but "depth" is not changed
-...
-         nfsdstats.ra_depth[depth*10/nfsdstats.ra_size]++;
-...
-}
+	tcpdump -s0 -wtmp.pcap
 
-And here we write to the 12th array element
-(nfsdstats.ra_size*11/10*10/nfsdstats.ra_size == 11), while ra_depth has only
-11 elements:
+then send me tmp.pcap.
 
-struct nfsd_stats {
-...
-        unsigned int    ra_depth[11];   /* number of times ra entry was found that deep
-                                         * in the cache (10percentiles). [10] = not found */
-#ifdef CONFIG_NFSD_V4
-        unsigned int    nfs4_opcount[LAST_NFS4_OP + 1]; /* count of individual
-nfsv4 operations */
-#endif
-};
+And the contents of
 
-This means that each time we did not find a file in a readahead cache we
-corrupt memory. Fortunately in a kernel with NFSDv4 compiled in it corrupts
-(inc) NFS4 ops counter, but in a kernel with NFSDv4 disabled it corrupts (inc)
-some other data, that lays in the memory beyond nfsdstats.
+	/proc/net/rpc/nfsd.fh/content
+	/proc/net/rpc/nfsd.export/content
 
-Proposed fix is attached.
+after the failure.
 
---
-Best regards,
-
-Konstantin Khorenko
-
---------------090602070308090607020401
-Content-Type: text/plain;
- name="diff-ms-nfsd-write-beyond-stat-array"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="diff-ms-nfsd-write-beyond-stat-array"
-
-NFSD: The patch fixes writing beyond the array.
-
-If nfsd fails to find an exported via NFS file in the readahead cache,
-it should increment corresponding nfsdstats counter (ra_depth[10]), but
-due to a bug writes beside the stat array, corrupting following field.
-
-In a kernel with NFSDv4 compiled in it corrupts (inc) NFS4 counter:
-the number of individual nfsv4 operations.
-In a kernel with NFSDv4 disabled it corrupts (inc) some other data,
-that lays in the memory beyond nfsdstats.
-
-Signed-off-by: Konstantin Khorenko <khorenko@openvz.org>
-
---- a/fs/nfsd/vfs.c.nfsd	2011-01-05 03:50:19.000000000 +0300
-+++ b/fs/nfsd/vfs.c	2011-02-01 16:39:28.000000000 +0300
-@@ -809,7 +809,7 @@ nfsd_get_raparms(dev_t dev, ino_t ino)
- 		if (ra->p_count == 0)
- 			frap = rap;
- 	}
--	depth = nfsdstats.ra_size*11/10;
-+	depth = nfsdstats.ra_size;
- 	if (!frap) {	
- 		spin_unlock(&rab->pb_lock);
- 		return NULL;
-
---------------090602070308090607020401--
+--b.
