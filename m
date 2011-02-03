@@ -1,72 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:27961 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:41005 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751051Ab1BCURQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2011 15:17:16 -0500
-Subject: Re: Client hangs in __mutex_lock_slowpath, network connection
- maxed out
+	id S1753735Ab1BCVz1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2011 16:55:27 -0500
+Subject: Re: [PATCH] Fix size argument to memset call in nfsacl_encode
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Nikolaus Rath <Nikolaus@rath.org>, linux-nfs@vger.kernel.org
-In-Reply-To: <20110203181403.GA28234@fieldses.org>
-References: <4D4AEE47.8080504@rath.org>
-	 <20110203181403.GA28234@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jesper Juhl <jj@chaosbits.net>, Milton Miller <miltonm@bga.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Neil Brown <neilb@suse.de>, bfields@fieldses.org
+In-Reply-To: <67867FEF-6C10-4A35-8952-4EB56EAB79B9@oracle.com>
+References: <alpine.LNX.2.00.1102032012540.15101@swampdragon.chaosbits.net>
+	 <1296761330.3015.22.camel@heimdal.trondhjem.org>
+	 <alpine.LNX.2.00.1102032035280.15101@swampdragon.chaosbits.net>
+	 <705C97E5-E273-45AA-9714-2BF409DE1322@oracle.com>
+	 <1296763614.3015.26.camel@heimdal.trondhjem.org>
+	 <67867FEF-6C10-4A35-8952-4EB56EAB79B9@oracle.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 03 Feb 2011 15:17:13 -0500
-Message-ID: <1296764233.3015.30.camel@heimdal.trondhjem.org>
+Date: Thu, 03 Feb 2011 16:55:10 -0500
+Message-ID: <1296770110.12342.6.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-02-03 at 13:14 -0500, J. Bruce Fields wrote: 
-> On Thu, Feb 03, 2011 at 01:04:55PM -0500, Nikolaus Rath wrote:
-> > Hello,
-> > 
-> > I'm mounting an NFS4 volume from a kernel 2.6.32-27 server in a
-> > 2.6.37-020637rc2 client.
-> > Very often, when there is significant IO on the mounted volume, the
-> > client hangs. The process accessing the mountpoint is stuck in D
-> > state. Any more attempts to access the mountpoint get stuck in D state
-> > as well. Shortly after, the kernel reports the task as hanging:
-> > 
-> > [ 3120.620125] Call Trace:
-> > [ 3120.620138]  [<c05ec44d>] ? _raw_spin_lock+0xd/0x10
-> > [ 3120.620146]  [<c05eb4b6>] __mutex_lock_slowpath+0xc6/0x120
-> > [ 3120.620152]  [<c05eb1c5>] mutex_lock+0x25/0x40
-> > [ 3120.620158]  [<c022e3b3>] do_lookup+0xc3/0x120
-> > [ 3120.620164]  [<c022fbb2>] link_path_walk+0x402/0x9b0
-> > [ 3120.620171]  [<c0167b5a>] ? queue_work+0x1a/0x20
-> > 
-> > Additional tasks hang at a slightly different point:
-> > 
-> > [ 3120.620304]  [<f90b863d>] ? nfs_access_add_cache+0xcd/0x120 [nfs]
-> > [ 3120.620326]  [<f90b8709>] ? nfs_do_access+0x79/0xc0 [nfs]
-> > [ 3120.620333]  [<c05eb4b6>] __mutex_lock_slowpath+0xc6/0x120
-> > [ 3120.620339]  [<c05eb1c5>] mutex_lock+0x25/0x40
-> > [ 3120.620344]  [<c022e3b3>] do_lookup+0xc3/0x120
-> > [ 3120.620350]  [<c022fbb2>] link_path_walk+0x402/0x9b0
-> > [ 3120.620356]  [<c0230697>] path_walk+0x47/0xa0
-> > [ 3120.620361]  [<c0230819>] do_path_lookup+0x59/0xb0
-> > [ 3120.620367]  [<c02311ff>] user_path_at+0x3f/0x70
-> > [ 3120.620374]  [<c02005b8>] ? do_linear_fault+0x58/0x70
-> > [ 3120.620380]  [<c020133a>] ? handle_mm_fault+0xda/0x230
-> > [ 3120.620387]  [<c0228899>] vfs_fstatat+0x49/0x70
-> > 
-> > 
-> > Finally, the client saturates the 100 MBit connection with sending and
-> > receiving from the NFS server. I'm pretty sure this is garbage data,
-> > even if the client would copy the entire mountpoint there wouldn't be
-> > that much data to copy.
+On Thu, 2011-02-03 at 15:29 -0500, Chuck Lever wrote: 
+> Sorry, I wasn't clear.  IMO, data that is destined for the network is an important case where we have to be careful about the rule of using either assignments or memset(), not both, when initializing a data structure.
 > 
-> Could you take a look at that traffic with wireshark (or send the raw
-> packet dump data) and see what that traffic consists of?
+> If the compiler doesn't pack the fields in struct posix_acl, there is unused space between them.  Memory for acl2 comes from the stack, which contains arbitrary data when this function is invoked.  The areas between the structure fields are not affected by the variable assignments used here.  If the data in acl2 is then simply memcpy'd to the XDR buffer, that old stack data can possibly appear on the wire.
 > 
-> For example it may be repeating the same few operations, in which case
-> there's probably some kind of infinite loop.
+> I agree that the current memset() is incorrect.  My conditional ACK was more about what happens in xdr_encode_array2() rather than how the posix_acl acl2 is initialized.  I think in that regard we are also safe, if the array encoding operates by data type rather than by simply doing a blanket memcpy.  See xdr_nfsace_encode().  It's always possible I misunderstood how ACEs are XDR encoded.
 
-Not before upgrading the client. As I said earlier, there are a number
-of known nasty bugs/hangs in 2.6.37-rc2, so there is no point in
-repeating the debugging process for them...
+We shouldn't ever be memcopying entire structures directly to or from
+the XDR buffer, and as far as I know, the current code will always copy
+them element by element.
+
 -- 
 Trond Myklebust
 Linux NFS client maintainer
