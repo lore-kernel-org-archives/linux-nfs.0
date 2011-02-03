@@ -1,41 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:35119 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753620Ab1BWEqI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Feb 2011 23:46:08 -0500
-Message-ID: <4D64910E.1030202@panasas.com>
-Date: Tue, 22 Feb 2011 20:46:06 -0800
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Jim Rees <rees@merit.edu>
-CC: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: Re: stripe definitions
-References: <20110222200558.GC7545@merit.edu>
-In-Reply-To: <20110222200558.GC7545@merit.edu>
-Content-Type: text/plain; charset=UTF-8
+Received: from swampdragon.chaosbits.net ([90.184.90.115]:10144 "EHLO
+	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932221Ab1BCTQ0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2011 14:16:26 -0500
+Date: Thu, 3 Feb 2011 20:15:28 +0100 (CET)
+From: Jesper Juhl <jj@chaosbits.net>
+To: linux-nfs@vger.kernel.org
+cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, bfields@fieldses.org
+Subject: [PATCH] Fix size argument to memset call in nfsacl_encode
+Message-ID: <alpine.LNX.2.00.1102032012540.15101@swampdragon.chaosbits.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 02/22/2011 12:05 PM, Jim Rees wrote:
-> There's an inconsistency in rfc5663 that had me a bit confused:
-> 
->    /// struct pnfs_block_stripe_volume_info4 {
->    ///     length4  bsv_stripe_unit;      /* size of stripe in bytes */
-> 
-> The comment "size of stripe in bytes" fits the definition of "stripe width"
-> from rfc5661 section 13.2, but that's not what's meant here.  The field
-> name, "stripe_unit", is correct.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+We want to give memset() the sizeof(struct posix_acl), not
+sizeof(struct posix_acl *).
 
-You are right stripe_unit is the the bytes to write to a single
-device before advancing to the next device. The comment is wrong
-the "size of stripe in bytes" is stripe_unit * num_of_devices.
+Signed-off-by: Jesper Juhl <jj@chaosbits.net>
+---
+ nfsacl.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-The same name used in the OSD and files layout and has the same
-meaning.
+diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
+index 84c27d6..bc6d81b 100644
+--- a/fs/nfs_common/nfsacl.c
++++ b/fs/nfs_common/nfsacl.c
+@@ -117,7 +117,7 @@ int nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
+ 		 * invoked in contexts where a memory allocation failure is
+ 		 * fatal.  Fortunately this fake ACL is small enough to
+ 		 * construct on the stack. */
+-		memset(acl2, 0, sizeof(acl2));
++		memset(acl2, 0, sizeof(*acl2));
+ 		posix_acl_init(acl2, 4);
+ 
+ 		/* Insert entries in canonical order: other orders seem
+-- 
+Jesper Juhl <jj@chaosbits.net>            http://www.chaosbits.net/
+Don't top-post http://www.catb.org/~esr/jargon/html/T/top-post.html
+Plain text mails only, please.
 
-Cheers
-Boaz 
