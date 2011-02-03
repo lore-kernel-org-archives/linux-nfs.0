@@ -1,208 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:27961 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753230Ab1BDVeo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Feb 2011 16:34:44 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 24/40] NFS move nfs_client initialization into nfs_get_client
-Date: Fri,  4 Feb 2011 16:33:46 -0500
-Message-Id: <1296855242-2592-25-git-send-email-andros@netapp.com>
-In-Reply-To: <1296855242-2592-24-git-send-email-andros@netapp.com>
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
- <1296855242-2592-2-git-send-email-andros@netapp.com>
- <1296855242-2592-3-git-send-email-andros@netapp.com>
- <1296855242-2592-4-git-send-email-andros@netapp.com>
- <1296855242-2592-5-git-send-email-andros@netapp.com>
- <1296855242-2592-6-git-send-email-andros@netapp.com>
- <1296855242-2592-7-git-send-email-andros@netapp.com>
- <1296855242-2592-8-git-send-email-andros@netapp.com>
- <1296855242-2592-9-git-send-email-andros@netapp.com>
- <1296855242-2592-10-git-send-email-andros@netapp.com>
- <1296855242-2592-11-git-send-email-andros@netapp.com>
- <1296855242-2592-12-git-send-email-andros@netapp.com>
- <1296855242-2592-13-git-send-email-andros@netapp.com>
- <1296855242-2592-14-git-send-email-andros@netapp.com>
- <1296855242-2592-15-git-send-email-andros@netapp.com>
- <1296855242-2592-16-git-send-email-andros@netapp.com>
- <1296855242-2592-17-git-send-email-andros@netapp.com>
- <1296855242-2592-18-git-send-email-andros@netapp.com>
- <1296855242-2592-19-git-send-email-andros@netapp.com>
- <1296855242-2592-20-git-send-email-andros@netapp.com>
- <1296855242-2592-21-git-send-email-andros@netapp.com>
- <1296855242-2592-22-git-send-email-andros@netapp.com>
- <1296855242-2592-23-git-send-email-andros@netapp.com>
- <1296855242-2592-24-git-send-email-andros@netapp.com>
+	id S1751051Ab1BCURQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2011 15:17:16 -0500
+Subject: Re: Client hangs in __mutex_lock_slowpath, network connection
+ maxed out
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Nikolaus Rath <Nikolaus@rath.org>, linux-nfs@vger.kernel.org
+In-Reply-To: <20110203181403.GA28234@fieldses.org>
+References: <4D4AEE47.8080504@rath.org>
+	 <20110203181403.GA28234@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 03 Feb 2011 15:17:13 -0500
+Message-ID: <1296764233.3015.30.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Thu, 2011-02-03 at 13:14 -0500, J. Bruce Fields wrote: 
+> On Thu, Feb 03, 2011 at 01:04:55PM -0500, Nikolaus Rath wrote:
+> > Hello,
+> > 
+> > I'm mounting an NFS4 volume from a kernel 2.6.32-27 server in a
+> > 2.6.37-020637rc2 client.
+> > Very often, when there is significant IO on the mounted volume, the
+> > client hangs. The process accessing the mountpoint is stuck in D
+> > state. Any more attempts to access the mountpoint get stuck in D state
+> > as well. Shortly after, the kernel reports the task as hanging:
+> > 
+> > [ 3120.620125] Call Trace:
+> > [ 3120.620138]  [<c05ec44d>] ? _raw_spin_lock+0xd/0x10
+> > [ 3120.620146]  [<c05eb4b6>] __mutex_lock_slowpath+0xc6/0x120
+> > [ 3120.620152]  [<c05eb1c5>] mutex_lock+0x25/0x40
+> > [ 3120.620158]  [<c022e3b3>] do_lookup+0xc3/0x120
+> > [ 3120.620164]  [<c022fbb2>] link_path_walk+0x402/0x9b0
+> > [ 3120.620171]  [<c0167b5a>] ? queue_work+0x1a/0x20
+> > 
+> > Additional tasks hang at a slightly different point:
+> > 
+> > [ 3120.620304]  [<f90b863d>] ? nfs_access_add_cache+0xcd/0x120 [nfs]
+> > [ 3120.620326]  [<f90b8709>] ? nfs_do_access+0x79/0xc0 [nfs]
+> > [ 3120.620333]  [<c05eb4b6>] __mutex_lock_slowpath+0xc6/0x120
+> > [ 3120.620339]  [<c05eb1c5>] mutex_lock+0x25/0x40
+> > [ 3120.620344]  [<c022e3b3>] do_lookup+0xc3/0x120
+> > [ 3120.620350]  [<c022fbb2>] link_path_walk+0x402/0x9b0
+> > [ 3120.620356]  [<c0230697>] path_walk+0x47/0xa0
+> > [ 3120.620361]  [<c0230819>] do_path_lookup+0x59/0xb0
+> > [ 3120.620367]  [<c02311ff>] user_path_at+0x3f/0x70
+> > [ 3120.620374]  [<c02005b8>] ? do_linear_fault+0x58/0x70
+> > [ 3120.620380]  [<c020133a>] ? handle_mm_fault+0xda/0x230
+> > [ 3120.620387]  [<c0228899>] vfs_fstatat+0x49/0x70
+> > 
+> > 
+> > Finally, the client saturates the 100 MBit connection with sending and
+> > receiving from the NFS server. I'm pretty sure this is garbage data,
+> > even if the client would copy the entire mountpoint there wouldn't be
+> > that much data to copy.
+> 
+> Could you take a look at that traffic with wireshark (or send the raw
+> packet dump data) and see what that traffic consists of?
+> 
+> For example it may be repeating the same few operations, in which case
+> there's probably some kind of infinite loop.
 
-Now nfs_get_client returns an nfs_client ready to be used no matter if it was
-found or created.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/client.c |   66 ++++++++++++++++++++++++++++++++++++++----------------
- 1 files changed, 46 insertions(+), 20 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index ea2d032..5cfcd40 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -81,6 +81,15 @@ retry:
- }
- #endif /* CONFIG_NFS_V4 */
- 
-+static int nfs4_init_client(struct nfs_client *clp,
-+		const struct rpc_timeout *timeparms,
-+		const char *ip_addr,
-+		rpc_authflavor_t authflavour,
-+		int noresvport);
-+static int nfs_init_client(struct nfs_client *clp,
-+			   const struct rpc_timeout *timeparms,
-+			   int noresvport);
-+
- /*
-  * RPC cruft for NFS
-  */
-@@ -482,7 +491,11 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
-  * Look up a client by IP address and protocol version
-  * - creates a new record if one doesn't yet exist
-  */
--static struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
-+static struct nfs_client *nfs_get_client(struct nfs_client_initdata *cl_init,
-+					 const struct rpc_timeout *timeparms,
-+					 const char *ip_addr,
-+					 rpc_authflavor_t authflavour,
-+					 int noresvport)
- {
- 	struct nfs_client *clp, *new = NULL;
- 	int error;
-@@ -513,6 +526,17 @@ install_client:
- 	clp = new;
- 	list_add(&clp->cl_share_link, &nfs_client_list);
- 	spin_unlock(&nfs_client_lock);
-+
-+	if (cl_init->rpc_ops->version == 4)
-+		error = nfs4_init_client(clp, timeparms, ip_addr, authflavour,
-+					 noresvport);
-+	else
-+		error = nfs_init_client(clp, timeparms, noresvport);
-+
-+	if (error < 0) {
-+		nfs_put_client(clp);
-+		return ERR_PTR(error);
-+	}
- 	dprintk("--> nfs_get_client() = %p [new]\n", clp);
- 	return clp;
- 
-@@ -771,7 +795,7 @@ static int nfs_init_server_rpcclient(struct nfs_server *server,
-  */
- static int nfs_init_client(struct nfs_client *clp,
- 			   const struct rpc_timeout *timeparms,
--			   const struct nfs_parsed_mount_data *data)
-+			   int noresvport)
- {
- 	int error;
- 
-@@ -786,7 +810,7 @@ static int nfs_init_client(struct nfs_client *clp,
- 	 * - RFC 2623, sec 2.3.2
- 	 */
- 	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX,
--				      0, data->flags & NFS_MOUNT_NORESVPORT);
-+				      0, noresvport);
- 	if (error < 0)
- 		goto error;
- 	nfs_mark_client_ready(clp, NFS_CS_READY);
-@@ -822,19 +846,17 @@ static int nfs_init_server(struct nfs_server *server,
- 		cl_init.rpc_ops = &nfs_v3_clientops;
- #endif
- 
-+	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
-+			data->timeo, data->retrans);
-+
- 	/* Allocate or find a client reference we can use */
--	clp = nfs_get_client(&cl_init);
-+	clp = nfs_get_client(&cl_init, &timeparms, NULL, RPC_AUTH_UNIX,
-+			     data->flags & NFS_MOUNT_NORESVPORT);
- 	if (IS_ERR(clp)) {
- 		dprintk("<-- nfs_init_server() = error %ld\n", PTR_ERR(clp));
- 		return PTR_ERR(clp);
- 	}
- 
--	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
--			data->timeo, data->retrans);
--	error = nfs_init_client(clp, &timeparms, data);
--	if (error < 0)
--		goto error;
--
- 	server->nfs_client = clp;
- 
- 	/* Initialise the client representation from the mount data */
-@@ -1313,7 +1335,7 @@ static int nfs4_init_client(struct nfs_client *clp,
- 		const struct rpc_timeout *timeparms,
- 		const char *ip_addr,
- 		rpc_authflavor_t authflavour,
--		int flags)
-+		int noresvport)
- {
- 	int error;
- 
-@@ -1327,7 +1349,7 @@ static int nfs4_init_client(struct nfs_client *clp,
- 	clp->rpc_ops = &nfs_v4_clientops;
- 
- 	error = nfs_create_rpc_client(clp, timeparms, authflavour,
--				      1, flags & NFS_MOUNT_NORESVPORT);
-+				      1, noresvport);
- 	if (error < 0)
- 		goto error;
- 	strlcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
-@@ -1380,22 +1402,16 @@ int nfs4_set_client(struct nfs_server *server,
- 	dprintk("--> nfs4_set_client()\n");
- 
- 	/* Allocate or find a client reference we can use */
--	clp = nfs_get_client(&cl_init);
-+	clp = nfs_get_client(&cl_init, timeparms, ip_addr, authflavour,
-+			     server->flags & NFS_MOUNT_NORESVPORT);
- 	if (IS_ERR(clp)) {
- 		error = PTR_ERR(clp);
- 		goto error;
- 	}
--	error = nfs4_init_client(clp, timeparms, ip_addr, authflavour,
--					server->flags);
--	if (error < 0)
--		goto error_put;
- 
- 	server->nfs_client = clp;
- 	dprintk("<-- nfs4_set_client() = 0 [new %p]\n", clp);
- 	return 0;
--
--error_put:
--	nfs_put_client(clp);
- error:
- 	dprintk("<-- nfs4_set_client() = xerror %d\n", error);
- 	return error;
-@@ -1614,6 +1630,16 @@ error:
- 	return ERR_PTR(error);
- }
- 
-+#else /* CONFIG_NFS_V4 */
-+static int nfs4_init_client(struct nfs_client *clp,
-+			    const struct rpc_timeout *timeparms,
-+			    const char *ip_addr,
-+			    rpc_authflavor_t authflavour,
-+			    int noresvport)
-+{
-+	return -EPROTONOSUPPORT;
-+}
-+
- #endif /* CONFIG_NFS_V4 */
- 
- /*
+Not before upgrading the client. As I said earlier, there are a number
+of known nasty bugs/hangs in 2.6.37-rc2, so there is no point in
+repeating the debugging process for them...
 -- 
-1.6.6
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
