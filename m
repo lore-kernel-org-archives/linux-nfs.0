@@ -1,258 +1,228 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:63100 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753214Ab1BOP2R convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 10:28:17 -0500
-Subject: Re: NFS only mount with -o udp option
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <AANLkTim9zbEzKZ=RZbfZhcLovn6fWkdL-3eZp21-NDP+@mail.gmail.com>
-Date: Tue, 15 Feb 2011 10:27:58 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <2F1D1F4B-0623-4954-861C-2F7B37EB2CA7@oracle.com>
-References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com> <665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com> <AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com> <0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com> <AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com> <AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com> <1A31AB06-8518-427C-8D0B-0058AA613D0E@oracle.com> <AANLkTimiACttSQ+=M0UNGs5nZrP=zs0zRFV+4HP8c-OP@mail.gmail.com> <81853901-909D-4803-81A5-C01C0337CAE1@oracle.com> <AANLkTim9zbEzKZ=RZbfZhcLovn6fWkdL-3eZp21-NDP+@mail.gmail.com>
-To: Edgar Almonte <samudhio@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753265Ab1BDVer (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:47 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 28/40] pnfs-submit: wave3 turn off pNFS on ds connection failure
+Date: Fri,  4 Feb 2011 16:33:50 -0500
+Message-Id: <1296855242-2592-29-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-28-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
+ <1296855242-2592-11-git-send-email-andros@netapp.com>
+ <1296855242-2592-12-git-send-email-andros@netapp.com>
+ <1296855242-2592-13-git-send-email-andros@netapp.com>
+ <1296855242-2592-14-git-send-email-andros@netapp.com>
+ <1296855242-2592-15-git-send-email-andros@netapp.com>
+ <1296855242-2592-16-git-send-email-andros@netapp.com>
+ <1296855242-2592-17-git-send-email-andros@netapp.com>
+ <1296855242-2592-18-git-send-email-andros@netapp.com>
+ <1296855242-2592-19-git-send-email-andros@netapp.com>
+ <1296855242-2592-20-git-send-email-andros@netapp.com>
+ <1296855242-2592-21-git-send-email-andros@netapp.com>
+ <1296855242-2592-22-git-send-email-andros@netapp.com>
+ <1296855242-2592-23-git-send-email-andros@netapp.com>
+ <1296855242-2592-24-git-send-email-andros@netapp.com>
+ <1296855242-2592-25-git-send-email-andros@netapp.com>
+ <1296855242-2592-26-git-send-email-andros@netapp.com>
+ <1296855242-2592-27-git-send-email-andros@netapp.com>
+ <1296855242-2592-28-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Andy Adamson <andros@netapp.com>
 
-On Feb 14, 2011, at 9:09 PM, Edgar Almonte wrote:
+If a data server is unavailable, go through MDS.
 
-> in debian dont exist a package called nfs-utils , i get nfs-common and
-> say the same version of the nfs-utils of archlinux
+Mark the deviceid containing the data server as a negative cache entry.
+Do not try to connect to any data server on a deviceid marked as a negative
+cache entry. Mark any layout that tries to use the marked deviceid as failed.
 
-The same nfs-utils version should behave the same way no matter what (modulo bugs, of course).  It may be that the two packages were built with different configure options.  Not sure how we could find out how these were built.
+Inodes with a layout marked as fails will not use the layout for I/O, and will
+not perform any more layoutgets.
+Inodes without a layout will still do layoutget, but the layout will get
+marked immediately.
 
-Basically, I'm trying to figure out how to reproduce the problem here.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c    |    6 ++++--
+ fs/nfs/nfs4filelayout.h    |    3 +++
+ fs/nfs/nfs4filelayoutdev.c |   39 +++++++++++++++++++++++++++++----------
+ fs/nfs/pnfs.c              |   18 ++++++++++++++----
+ fs/nfs/pnfs.h              |    4 ++++
+ 5 files changed, 54 insertions(+), 16 deletions(-)
 
-> not sure about MNT version config , i dont remember intentionally
-> changing this , where i can check it ?
-
-On the server, look at the command line options for rpc.mountd.  I'm not familiar with Ubuntu or Debian's start-up scripts, so I can't be more specific than that.
-
-Note that this is an independent issue from the mount problem, but it's incorrect and contributing to mount's misbehavior.
-
-> pd: sorry for the double email i forget press reply all
-> 
-> On Mon, Feb 14, 2011 at 11:56 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> Hi Edgar-
->> 
->> On Feb 11, 2011, at 6:46 PM, Edgar Almonte wrote:
->> 
->>> hmm i will try update to the last version but is the lasted in
->>> official repository of my distro
->> 
->> Yes, that could be a problem.  Out of curiosity, can you tell us what version of nfs-utils is running on the working Debian client you have?
->> 
->>> the rpcinfo -p localhost output ( run at the server )
->>> 
->>> rpcinfo -p localhost
->>>   program vers proto   port  service
->>>    100000    4   tcp    111  portmapper
->>>    100000    3   tcp    111  portmapper
->>>    100000    2   tcp    111  portmapper
->>>    100000    4   udp    111  portmapper
->>>    100000    3   udp    111  portmapper
->>>    100000    2   udp    111  portmapper
->>>    391002    2   tcp    661  sgi_fam
->>>    100024    1   udp  49216  status
->>>    100024    1   tcp  42903  status
->>>    100003    2   tcp   2049  nfs
->>>    100003    3   tcp   2049  nfs
->>>    100003    4   tcp   2049  nfs
->>>    100227    2   tcp   2049  nfs_acl
->>>    100227    3   tcp   2049  nfs_acl
->>>    100003    2   udp   2049  nfs
->>>    100003    3   udp   2049  nfs
->>>    100003    4   udp   2049  nfs
->>>    100227    2   udp   2049  nfs_acl
->>>    100227    3   udp   2049  nfs_acl
->>>    100021    1   udp  36092  nlockmgr
->>>    100021    3   udp  36092  nlockmgr
->>>    100021    4   udp  36092  nlockmgr
->>>    100021    1   tcp  52268  nlockmgr
->>>    100021    3   tcp  52268  nlockmgr
->>>    100021    4   tcp  52268  nlockmgr
->>>    100005    3   udp  41849  mountd
->>>    100005    3   tcp  46012  mountd
->> 
->> This looks weird.  NFS is available on TCP and UDP in all three versions, but MNT is available in version 3.  I wonder if this is confusing mount.nfs.  Is there any reason why your server is configured to disable MNT version 1?
->> 
->>> On Fri, Feb 11, 2011 at 7:27 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>> 
->>>> On Feb 11, 2011, at 6:13 PM, Edgar Almonte wrote:
->>>> 
->>>>> Was a ipv6 issues because i add this to the client with the problem:
->>>>> options ipv6 disable=1
->>>>> in /etc/modprobe.d/modprobe.conf
->>>>> reboot and mount without using udp option work, output:
->>>>> 
->>>>> [root@circle zen]# mount heaven.local:/STORAGE /nfs/STORAGE/ -v
->>>>> mount: no type was given - I'll assume nfs because of the colon
->>>>> mount.nfs: timeout set for Fri Feb 11 19:11:53 2011
->>>>> mount.nfs: trying text-based options
->>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->>>>> mount.nfs: mount(2): No such file or directory
->>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
->>>>> mount.nfs: prog 100003, trying vers=3, prot=6
->>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
->>>>> mount.nfs: prog 100005, trying vers=3, prot=17
->>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41849
->>>>> 
->>>>> and i think maybe is a bug of nfs-utils that can't handle in the
->>>>> proper way this because a connection using ipv4 protocol exist ( even
->>>>> it detect it )
->>>>> 
->>>>> should i need report something like this ? or and wrong ?
->>>> 
->>>> I swear this has been discussed and fixed already, but I can't find a specific fix in the bugzilla database or the git log.  nfs-utils 1.2.2 is at least a year old.  Can you update to the latest version and try again?
->>>> 
->>>> Also, please report the NFS server's transport capabilities.  "rpcinfo 192.168.1.102" should work.  You may need the "-p" option.
->>>> 
->>>>> On Fri, Feb 11, 2011 at 6:57 PM, Edgar Almonte <samudhio@gmail.com> wrote:
->>>>>> [root@circle zen]# pacman -Qs nfs-utils
->>>>>> local/nfs-utils 1.2.2-4 [0.69 MB]
->>>>>>    Support programs for Network File Systems
->>>>>> [root@circle zen]# uname -a
->>>>>> Linux circle 2.6.36-ARCH #1 SMP PREEMPT Mon Jan 24 18:34:55 UTC 2011
->>>>>> i686 Intel(R) Atom(TM) CPU D510 @ 1.66GHz GenuineIntel GNU/Linux
->>>>>> 
->>>>>> 
->>>>>> On Fri, Feb 11, 2011 at 1:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>> Which nfs-utils version and kernel release are you using?  What transport protocols are available from your NFS server?  It looks like only UDP.  I recall a bug fix in this area in the past year.
->>>>>>> 
->>>>>>> On Feb 11, 2011, at 12:35 PM, Edgar Almonte wrote:
->>>>>>> 
->>>>>>>> i get this without udp option:
->>>>>>>> 
->>>>>>>> mount: no type was given - I'll assume nfs because of the colon
->>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:27:33 2011
->>>>>>>> mount.nfs: trying text-based options
->>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>> mount.nfs: trying text-based options
->>>>>>>> 'vers=4,addr=fe80::224:21ff:fe57:368d,clientaddr=::'
->>>>>>>> mount.nfs: mount(2): Input/output error
->>>>>>>> mount.nfs: mount system call failed
->>>>>>>> 
->>>>>>>> 
->>>>>>>> and with udp option:
->>>>>>>> 
->>>>>>>> ount: no type was given - I'll assume nfs because of the colon
->>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:28:29 2011
->>>>>>>> mount.nfs: trying text-based options
->>>>>>>> 'udp,vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>> mount.nfs: trying text-based options 'udp,addr=192.168.1.102'
->>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=17
->>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot UDP port 2049
->>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
->>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
->>>>>>>> heaven.local:/STORAGE on /nfs/STORAGE type nfs (rw,udp)
->>>>>>>> 
->>>>>>>> 
->>>>>>>> for other distro ( debian laptop ) without the udp option:
->>>>>>>> 
->>>>>>>> mount: no type was given - I'll assume nfs because of the colon
->>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:31:37 2011
->>>>>>>> mount.nfs: trying text-based options
->>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.107'
->>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
->>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=6
->>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
->>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
->>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
->>>>>>>> heaven.local:/STORAGE on /srv/nfs type nfs (rw)
->>>>>>>> 
->>>>>>>> 
->>>>>>>> and look like is some ipv6 issues
->>>>>>>> 
->>>>>>>> 
->>>>>>>> On Thu, Feb 10, 2011 at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>>>> 
->>>>>>>>> On Feb 9, 2011, at 7:59 PM, Edgar Almonte wrote:
->>>>>>>>> 
->>>>>>>>>> hello list
->>>>>>>>>> 
->>>>>>>>>> like the subject say after some upgrade of my distro ( i have 2
->>>>>>>>>> machine with the same distro and only in one happne the problem ) i
->>>>>>>>>> can only mount nfs share using the option -o udp , without it i get
->>>>>>>>>> this error
->>>>>>>>>> mount.nfs: mount system call failed
->>>>>>>>> 
->>>>>>>>> What does
->>>>>>>>> 
->>>>>>>>>  sudo mount.nfs heaven.local:/STORAGE /nfs/STORAGE -v
->>>>>>>>> 
->>>>>>>>> say?  It should tell you how the mount command is negotiating with the server.
->>>>>>>>> 
->>>>>>>>>> i am using avahi-dns ( mdns ) for hostname resolve
->>>>>>>>>> 
->>>>>>>>>> command used:
->>>>>>>>>> mount heaven.local:/STORAGE /nfs/STORAGE/
->>>>>>>>>> check dns is work right :
->>>>>>>>>> 
->>>>>>>>>> ping heaven.local
->>>>>>>>>> PING heaven.local (192.168.1.102) 56(84) bytes of data.
->>>>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=1 ttl=64 time=0.153 ms
->>>>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=2 ttl=64 time=0.160 ms
->>>>>>>>>> ^C
->>>>>>>>>> --- heaven.local ping statistics ---
->>>>>>>>>> 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
->>>>>>>>>> rtt min/avg/max/mdev = 0.153/0.156/0.160/0.013 ms
->>>>>>>>>> 
->>>>>>>>>> 
->>>>>>>>>> anyidea what i need check for solve this issue ?
->>>>>>>>>> 
->>>>>>>>>> thanks
->>>>>>>>>> --
->>>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>>>>> 
->>>>>>>>> --
->>>>>>>>> Chuck Lever
->>>>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>>>> 
->>>>>>>>> 
->>>>>>>>> 
->>>>>>>>> 
->>>>>>>>> 
->>>>>>> 
->>>>>>> --
->>>>>>> Chuck Lever
->>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>> 
->>>>>>> 
->>>>>>> 
->>>>>>> 
->>>>>>> 
->>>>>> 
->>>> 
->>>> --
->>>> Chuck Lever
->>>> chuck[dot]lever[at]oracle[dot]com
->>>> 
->>>> 
->>>> 
->>>> 
->>>> 
->> 
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
->> 
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index d925af6..9b9a81c 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -146,7 +146,9 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	idx = nfs4_fl_calc_ds_index(lseg, offset);
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds) {
+-		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
++		/* Either layout fh index faulty, or ds connect failed */
++		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
++		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+ 		return PNFS_NOT_ATTEMPTED;
+ 	}
+ 	dprintk("%s USE DS:ip %x %hu\n", __func__,
+@@ -161,7 +163,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
+ 	data->fldata.orig_offset = offset;
+ 
+-	/* Perform an asynchronous read */
++	/* Perform an asynchronous read to ds */
+ 	nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
+ 			  &filelayout_read_call_ops);
+ 	return PNFS_ATTEMPTED;
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index f884b0c..7e33bd8 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -96,5 +96,8 @@ extern struct nfs4_file_layout_dsaddr *
+ nfs4_fl_find_get_deviceid(struct nfs_client *, struct nfs4_deviceid *dev_id);
+ struct nfs4_file_layout_dsaddr *
+ get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id);
++void filelayout_mark_devid_negative(struct nfs_client *clp,
++				    struct pnfs_deviceid_node *devid,
++				    int err, u32 ds_ipaddr);
+ 
+ #endif /* FS_NFS_NFS4FILELAYOUT_H */
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 9bb13f5..8642109 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -558,27 +558,46 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, loff_t offset)
+ 		i = _nfs4_fl_calc_j_index(lseg, offset);
+ 	return flseg->fh_array[i];
+ }
++void
++filelayout_mark_devid_negative(struct nfs_client *mds_clp,
++			       struct pnfs_deviceid_node *devid,
++			       int err, u32 ds_addr)
++{
++	u32 *p = (u32 *)&devid->de_id;
++
++	printk(KERN_ERR "NFS: data server %x connection error %d."
++			" Deviceid [%x%x%x%x] marked out of use.\n",
++			ds_addr, err, p[0], p[1], p[2], p[3]);
++
++	pnfs_mark_devid_negative(mds_clp, devid);
++}
+ 
+ struct nfs4_pnfs_ds *
+ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ {
+-	struct nfs4_file_layout_dsaddr *dsaddr;
++	struct nfs4_file_layout_dsaddr *dsaddr = FILELAYOUT_LSEG(lseg)->dsaddr;
++	struct nfs4_pnfs_ds *ds = dsaddr->ds_list[ds_idx];
+ 
+-	dsaddr = FILELAYOUT_LSEG(lseg)->dsaddr;
+-	if (dsaddr->ds_list[ds_idx] == NULL) {
+-		printk(KERN_ERR "%s: No data server for device id!\n",
+-			__func__);
++	if (ds == NULL) {
++		printk(KERN_ERR "%s: No data server for offset index %d\n",
++			__func__, ds_idx);
+ 		return NULL;
+ 	}
+ 
+-	if (!dsaddr->ds_list[ds_idx]->ds_clp) {
++	if (!ds->ds_clp) {
++		struct nfs_server *s = NFS_SERVER(lseg->pls_layout->plh_inode);
+ 		int err;
+ 
+-		err = nfs4_ds_connect(NFS_SERVER(lseg->pls_layout->plh_inode),
+-					  dsaddr->ds_list[ds_idx]);
++		/* Already tried to connect, don't try again */
++		if (dsaddr->deviceid.de_flags & NFS4_DEVICE_ID_NEG_ENTRY) {
++			dprintk("%s Deviceid marked out of use\n", __func__);
++			return NULL;
++		}
++		err = nfs4_ds_connect(s, ds);
+ 		if (err) {
+-			printk(KERN_ERR "%s nfs4_ds_connect error %d\n",
+-			       __func__, err);
++			filelayout_mark_devid_negative(s->nfs_client,
++						       &dsaddr->deviceid, err,
++						       ntohl(ds->ds_ip_addr));
+ 			return NULL;
+ 		}
+ 	}
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 4c49109..72786ec 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -759,15 +759,16 @@ pnfs_update_layout(struct inode *ino,
+ 		dprintk("%s matches recall, use MDS\n", __func__);
+ 		goto out_unlock;
+ 	}
++
++	/* If LAYOUTGET or pNFS I/O already failed once we don't try again */
++	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
++		goto out_unlock;
++
+ 	/* Check to see if the layout for the given range already exists */
+ 	lseg = pnfs_find_lseg(lo, iomode);
+ 	if (lseg)
+ 		goto out_unlock;
+ 
+-	/* if LAYOUTGET already failed once we don't try again */
+-	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
+-		goto out_unlock;
+-
+ 	if (pnfs_layoutgets_blocked(lo, NULL, 0))
+ 		goto out_unlock;
+ 	atomic_inc(&lo->plh_outstanding);
+@@ -1089,3 +1090,12 @@ pnfs_put_deviceid_cache(struct nfs_client *clp)
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(pnfs_put_deviceid_cache);
++
++void
++pnfs_mark_devid_negative(struct nfs_client *clp, struct pnfs_deviceid_node *d)
++{
++	spin_lock(&clp->cl_devid_cache->dc_lock);
++	d->de_flags |= NFS4_DEVICE_ID_NEG_ENTRY;
++	spin_unlock(&clp->cl_devid_cache->dc_lock);
++}
++EXPORT_SYMBOL_GPL(pnfs_mark_devid_negative);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index cbbcdfa..25a4e25 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -135,6 +135,8 @@ struct pnfs_deviceid_node {
+ 	struct hlist_node	de_node;
+ 	struct nfs4_deviceid	de_id;
+ 	atomic_t		de_ref;
++	unsigned long		de_flags;
++#define NFS4_DEVICE_ID_NEG_ENTRY		1
+ };
+ 
+ struct pnfs_deviceid_cache {
+@@ -155,6 +157,8 @@ extern struct pnfs_deviceid_node *pnfs_add_deviceid(
+ 				struct pnfs_deviceid_node *);
+ extern void pnfs_put_deviceid(struct pnfs_deviceid_cache *c,
+ 			      struct pnfs_deviceid_node *devid);
++extern void pnfs_mark_devid_negative(struct nfs_client *clp,
++				     struct pnfs_deviceid_node *d);
+ 
+ extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
+ extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.6.6
 
