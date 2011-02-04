@@ -1,143 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:47805 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751201Ab1BOPAm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 10:00:42 -0500
-Subject: Re: [PATCH 09/16] pnfs: wave 3: shift pnfs_update_layout locations
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: andros@netapp.com, linux-nfs@vger.kernel.org,
-        Andy Adamon <andros@citi.umich.edu>,
-        Dean Hildebrand <dhildeb@us.ibm.com>,
-        Benny Halevy <bhalevy@panasas.com>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        Oleg Drokin <green@linuxhacker.ru>, Tao Guo <guotao@nrchpc.ac.cn>
-In-Reply-To: <AANLkTinxqbmWvWXeaPnw7oNtL_zfCYOTB=KjZFJQaKFn@mail.gmail.com>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>
-	 <1297711116-3139-10-git-send-email-andros@netapp.com>
-	 <1297725252.23841.45.camel@heimdal.trondhjem.org>
-	 <AANLkTinxqbmWvWXeaPnw7oNtL_zfCYOTB=KjZFJQaKFn@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 15 Feb 2011 10:00:40 -0500
-Message-ID: <1297782040.10103.10.camel@heimdal.trondhjem.org>
+	id S1753268Ab1BDVe5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:57 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 38/40] pnfs-submit wave3 new flag for state renewal check
+Date: Fri,  4 Feb 2011 16:34:00 -0500
+Message-Id: <1296855242-2592-39-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-38-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
+ <1296855242-2592-11-git-send-email-andros@netapp.com>
+ <1296855242-2592-12-git-send-email-andros@netapp.com>
+ <1296855242-2592-13-git-send-email-andros@netapp.com>
+ <1296855242-2592-14-git-send-email-andros@netapp.com>
+ <1296855242-2592-15-git-send-email-andros@netapp.com>
+ <1296855242-2592-16-git-send-email-andros@netapp.com>
+ <1296855242-2592-17-git-send-email-andros@netapp.com>
+ <1296855242-2592-18-git-send-email-andros@netapp.com>
+ <1296855242-2592-19-git-send-email-andros@netapp.com>
+ <1296855242-2592-20-git-send-email-andros@netapp.com>
+ <1296855242-2592-21-git-send-email-andros@netapp.com>
+ <1296855242-2592-22-git-send-email-andros@netapp.com>
+ <1296855242-2592-23-git-send-email-andros@netapp.com>
+ <1296855242-2592-24-git-send-email-andros@netapp.com>
+ <1296855242-2592-25-git-send-email-andros@netapp.com>
+ <1296855242-2592-26-git-send-email-andros@netapp.com>
+ <1296855242-2592-27-git-send-email-andros@netapp.com>
+ <1296855242-2592-28-git-send-email-andros@netapp.com>
+ <1296855242-2592-29-git-send-email-andros@netapp.com>
+ <1296855242-2592-30-git-send-email-andros@netapp.com>
+ <1296855242-2592-31-git-send-email-andros@netapp.com>
+ <1296855242-2592-32-git-send-email-andros@netapp.com>
+ <1296855242-2592-33-git-send-email-andros@netapp.com>
+ <1296855242-2592-34-git-send-email-andros@netapp.com>
+ <1296855242-2592-35-git-send-email-andros@netapp.com>
+ <1296855242-2592-36-git-send-email-andros@netapp.com>
+ <1296855242-2592-37-git-send-email-andros@netapp.com>
+ <1296855242-2592-38-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, 2011-02-15 at 09:41 -0500, Fred Isaman wrote: 
-> On Mon, Feb 14, 2011 at 6:14 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Mon, 2011-02-14 at 14:18 -0500, andros@netapp.com wrote:
-> >> From: Fred Isaman <iisaman@netapp.com>
-> >>
-> >> Move the pnfs_update_layout call location to nfs_pageio_do_add_request().
-> >> Grab the lseg sent in the doio function to nfs_read_rpcsetup and attach
-> >> it to each nfs_read_data so it can be sent to the layout driver.
-> >>
-> >> Signed-off-by: Andy Adamon <andros@netapp.com>
-> >> Signed-off-by: Andy Adamon <andros@citi.umich.edu>
-> >> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-> >> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> >> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> >> Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
-> >> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-> >> ---
-> >>  fs/nfs/file.c            |    4 ----
-> >>  fs/nfs/pagelist.c        |   15 ++++++++++++---
-> >>  fs/nfs/pnfs.c            |    4 ++--
-> >>  fs/nfs/pnfs.h            |    1 +
-> >>  fs/nfs/read.c            |   28 ++++++++++++++++------------
-> >>  fs/nfs/write.c           |    4 ++--
-> >>  include/linux/nfs_page.h |    5 +++--
-> >>  include/linux/nfs_xdr.h  |    1 +
-> >>  8 files changed, 37 insertions(+), 25 deletions(-)
-> >>
-> >> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> >> index 7bf029e..d85a534 100644
-> >> --- a/fs/nfs/file.c
-> >> +++ b/fs/nfs/file.c
-> >> @@ -387,10 +387,6 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
-> >>               file->f_path.dentry->d_name.name,
-> >>               mapping->host->i_ino, len, (long long) pos);
-> >>
-> >> -     pnfs_update_layout(mapping->host,
-> >> -                        nfs_file_open_context(file),
-> >> -                        IOMODE_RW);
-> >> -
-> >>  start:
-> >>       /*
-> >>        * Prevent starvation issues if someone is doing a consistency
-> >> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> >> index e1164e3..e0a0cb4 100644
-> >> --- a/fs/nfs/pagelist.c
-> >> +++ b/fs/nfs/pagelist.c
-> >> @@ -20,6 +20,7 @@
-> >>  #include <linux/nfs_mount.h>
-> >>
-> >>  #include "internal.h"
-> >> +#include "pnfs.h"
-> >>
-> >>  static struct kmem_cache *nfs_page_cachep;
-> >>
-> >> @@ -213,7 +214,7 @@ nfs_wait_on_request(struct nfs_page *req)
-> >>   */
-> >>  void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
-> >>                    struct inode *inode,
-> >> -                  int (*doio)(struct inode *, struct list_head *, unsigned int, size_t, int),
-> >> +                  int (*doio)(struct inode *, struct list_head *, unsigned int, size_t, int, struct pnfs_layout_segment *),
-> >>                    size_t bsize,
-> >>                    int io_flags)
-> >>  {
-> >> @@ -226,6 +227,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
-> >>       desc->pg_doio = doio;
-> >>       desc->pg_ioflags = io_flags;
-> >>       desc->pg_error = 0;
-> >> +     desc->pg_lseg = NULL;
-> >>  }
-> >>
-> >>  /**
-> >> @@ -288,8 +290,13 @@ static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
-> >>               prev = nfs_list_entry(desc->pg_list.prev);
-> >>               if (!nfs_can_coalesce_requests(prev, req))
-> >>                       return 0;
-> >> -     } else
-> >> +     } else {
-> >> +             put_lseg(desc->pg_lseg);
-> >>               desc->pg_base = req->wb_pgbase;
-> >> +             desc->pg_lseg = pnfs_update_layout(desc->pg_inode,
-> >> +                                                req->wb_context,
-> >> +                                                IOMODE_READ);
-> >
-> > Looking at this afresh after a week of vacation. Isn't it more natural
-> > to do this as part of the pg_doio() callback?
-> >
-> > Your only reason for introducing the ->pg_lseg pointer is to be able to
-> > pass it to the ->pg_doio() in the first place. Why not do that by simply
-> > passing the 'desc' pointer to ->pg_doio(), and then having it call
-> > pnfs_update_layout() instead of 'get_layout()'?
-> >
-> 
-> The problem is that it is not the only reason.  Passing the lseg into
-> the nfs_can_coalesce_requests is another.  Calling pnfs_update_layout
-> in ->pg_doio would be eliminate the opportunity to have a say in
-> coalescing based on the layout.
+From: Andy Adamson <andros@netapp.com>
 
-The point is that you are adding intimate knowledge of layouts to sites
-like nfs_pageio_do_add_request and nfs_pageio_complete, and then on top
-of that adding callbacks whose sole purpose is to support layouts.
+Data servers not sharing a session with the mount MDS always have an empty
+cl_superblocks list.
+Replace the cl_superblocks empty list check to see if it is time to shut down
+renewd with the NFS_CS_STOP_RENEW bit which is not set by such a data server.
 
-A better approach is to keep the layouts in the callbacks (i.e. pg_test
-and pg_doio). I don't care if you cache the layout in a pg_lseg field,
-but I do object to the proliferation of layout knowledge in places where
-we don't need it.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c           |    5 +++++
+ fs/nfs/nfs4renewd.c       |    6 +-----
+ include/linux/nfs_fs_sb.h |    1 +
+ 3 files changed, 7 insertions(+), 5 deletions(-)
 
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 9e07586..c2ba883 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1031,14 +1031,19 @@ static void nfs_server_insert_lists(struct nfs_server *server)
+ 	spin_lock(&nfs_client_lock);
+ 	list_add_tail_rcu(&server->client_link, &clp->cl_superblocks);
+ 	list_add_tail(&server->master_link, &nfs_volume_list);
++	clear_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state);
+ 	spin_unlock(&nfs_client_lock);
+ 
+ }
+ 
+ static void nfs_server_remove_lists(struct nfs_server *server)
+ {
++	struct nfs_client *clp = server->nfs_client;
++
+ 	spin_lock(&nfs_client_lock);
+ 	list_del_rcu(&server->client_link);
++	if (clp && list_empty(&clp->cl_superblocks))
++		set_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state);
+ 	list_del(&server->master_link);
+ 	spin_unlock(&nfs_client_lock);
+ 
+diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
+index c8dbbeb..df8e7f3 100644
+--- a/fs/nfs/nfs4renewd.c
++++ b/fs/nfs/nfs4renewd.c
+@@ -64,12 +64,8 @@ nfs4_renew_state(struct work_struct *work)
+ 	ops = clp->cl_mvops->state_renewal_ops;
+ 	dprintk("%s: start\n", __func__);
+ 
+-	rcu_read_lock();
+-	if (list_empty(&clp->cl_superblocks) && !is_ds_only_client(clp)) {
+-		rcu_read_unlock();
++	if (test_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state))
+ 		goto out;
+-	}
+-	rcu_read_unlock();
+ 
+ 	spin_lock(&clp->cl_lock);
+ 	lease = clp->cl_lease_time;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index b197563..2c2dc18 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -30,6 +30,7 @@ struct nfs_client {
+ #define NFS_CS_CALLBACK		1		/* - callback started */
+ #define NFS_CS_IDMAP		2		/* - idmap started */
+ #define NFS_CS_RENEWD		3		/* - renewd started */
++#define NFS_CS_STOP_RENEW	4		/* no more state to renew */
+ 	struct sockaddr_storage	cl_addr;	/* server identifier */
+ 	size_t			cl_addrlen;
+ 	char *			cl_hostname;	/* hostname of server */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.6.6
 
