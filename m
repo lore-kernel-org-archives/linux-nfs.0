@@ -1,80 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:60870 "EHLO mx1.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757764Ab1BKQ7p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 11:59:45 -0500
-Date: Fri, 11 Feb 2011 17:59:44 +0100
-Message-ID: <s5hd3mymrr3.wl%tiwai@suse.de>
-From: Takashi Iwai <tiwai@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Tino Keitel <tino.keitel@tikei.de>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: 2.6.38-rc3: kernel BUG at fs/nfsd/nfs4state.c:3132!
-In-Reply-To: <s5hhbcamrv2.wl%tiwai@suse.de>
-References: <20110208221235.GA16984@mac.home>
-	<s5hsjvuoqqt.wl%tiwai@suse.de>
-	<20110211152112.GA3005@fieldses.org>
-	<s5h62sqbnd7.wl%tiwai@suse.de>
-	<20110211153702.GC3005@fieldses.org>
-	<s5hwrl6a7ch.wl%tiwai@suse.de>
-	<20110211160532.GD3005@fieldses.org>
-	<s5hsjvua6tq.wl%tiwai@suse.de>
-	<s5hhbcamrv2.wl%tiwai@suse.de>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753268Ab1BDVew (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:52 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 33/40] pnfs-submit wave3 remove CONFIG_NFS_V4 and V4_1 from nfs_read_data
+Date: Fri,  4 Feb 2011 16:33:55 -0500
+Message-Id: <1296855242-2592-34-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-33-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
+ <1296855242-2592-11-git-send-email-andros@netapp.com>
+ <1296855242-2592-12-git-send-email-andros@netapp.com>
+ <1296855242-2592-13-git-send-email-andros@netapp.com>
+ <1296855242-2592-14-git-send-email-andros@netapp.com>
+ <1296855242-2592-15-git-send-email-andros@netapp.com>
+ <1296855242-2592-16-git-send-email-andros@netapp.com>
+ <1296855242-2592-17-git-send-email-andros@netapp.com>
+ <1296855242-2592-18-git-send-email-andros@netapp.com>
+ <1296855242-2592-19-git-send-email-andros@netapp.com>
+ <1296855242-2592-20-git-send-email-andros@netapp.com>
+ <1296855242-2592-21-git-send-email-andros@netapp.com>
+ <1296855242-2592-22-git-send-email-andros@netapp.com>
+ <1296855242-2592-23-git-send-email-andros@netapp.com>
+ <1296855242-2592-24-git-send-email-andros@netapp.com>
+ <1296855242-2592-25-git-send-email-andros@netapp.com>
+ <1296855242-2592-26-git-send-email-andros@netapp.com>
+ <1296855242-2592-27-git-send-email-andros@netapp.com>
+ <1296855242-2592-28-git-send-email-andros@netapp.com>
+ <1296855242-2592-29-git-send-email-andros@netapp.com>
+ <1296855242-2592-30-git-send-email-andros@netapp.com>
+ <1296855242-2592-31-git-send-email-andros@netapp.com>
+ <1296855242-2592-32-git-send-email-andros@netapp.com>
+ <1296855242-2592-33-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-At Fri, 11 Feb 2011 17:57:21 +0100,
-Takashi Iwai wrote:
-> 
-> At Fri, 11 Feb 2011 17:12:33 +0100,
-> Takashi Iwai wrote:
-> > 
-> > At Fri, 11 Feb 2011 11:05:32 -0500,
-> > J. Bruce Fields wrote:
-> > > 
-> > > On Fri, Feb 11, 2011 at 05:01:18PM +0100, Takashi Iwai wrote:
-> > > > At Fri, 11 Feb 2011 10:37:02 -0500,
-> > > > J. Bruce Fields wrote:
-> > > > > 
-> > > > > On Fri, Feb 11, 2011 at 04:29:56PM +0100, Takashi Iwai wrote:
-> > > > > > At Fri, 11 Feb 2011 10:21:12 -0500,
-> > > > > > J. Bruce Fields wrote:
-> > > > > > > Again, 2.6.38-rc4 does not have a BUG() on line 3132.  Could you post
-> > > > > > > the full oops message from your machine?
-> > > > > > 
-> > > > > > Well, on vanilla 2.6.38-rc4, it's in nfs4_preprocess_stateid_op():
-> > > > > >                if (filpp) {
-> > > > > >                         *filpp = find_readable_file(dp->dl_file);
-> > > > > > ==>                     BUG_ON(!*filpp);
-> > > > > >                 }
-> > > > > 
-> > > > > Oh good grief, my apologies--I mistyped "38" as "28"!
-> > > > > 
-> > > > > This looks like it could be a known delegation bug....  Would it be
-> > > > > possible for you to check whether this is reproduceable on
-> > > > > 
-> > > > > 	git://linux-nfs.org/~bfields/topics.git for-2.6.38-incoming
-> > > > 
-> > > > Hm, I couldn't pull it.
-> > > > 
-> > > >   % git pull 'git://linux-nfs.org/~bfields/topics.git' for-2.6.38-incoming
-> > > >   fatal: The remote end hung up unexpectedly
-> > > 
-> > > Should be linux-topics, apologies again:
-> > > 
-> > > 	git://linux-nfs.org/~bfields/linux-topics.git for-2.6.38-incoming
-> > 
-> > Thanks.  I'm going to give it a try now.
-> 
-> Looks good so far.  I'll let you know if it's triggered again.
+From: Andy Adamson <andros@netapp.com>
 
-Argh, too early to say.  Now I got the same one.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ include/linux/nfs_xdr.h |   12 ++++--------
+ 1 files changed, 4 insertions(+), 8 deletions(-)
 
-It seems that it's triggered when I start Firefox on NFS client
-machine.
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 3b2e488..1222aa9 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1016,15 +1016,11 @@ struct nfs_read_data {
+ 	unsigned int		npages;	/* Max length of pagevec */
+ 	struct nfs_readargs args;
+ 	struct nfs_readres  res;
+-	struct pnfs_layout_segment *lseg;
+-	struct nfs_client	*ds_clp;   /* pNFS data server */
+-#ifdef CONFIG_NFS_V4
+ 	unsigned long		timestamp;	/* For lease renewal */
+-#endif
+-#if defined(CONFIG_NFS_V4_1)
+-	const struct rpc_call_ops *call_ops;
+-	__u64			orig_offset; /* For filelayout dense stripe */
+-#endif /* CONFIG_NFS_V4_1 */
++	struct pnfs_layout_segment *lseg;
++	struct nfs_client	*ds_clp;	/* pNFS data server */
++	const struct rpc_call_ops *call_ops;	/* For pNFS recovery to MDS */
++	__u64			orig_offset;	/* Filelayout dense stripe */
+ 	struct page		*page_array[NFS_PAGEVEC_SIZE];
+ };
+ 
+-- 
+1.6.6
 
-
-Takashi
