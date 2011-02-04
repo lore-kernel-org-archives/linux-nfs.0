@@ -1,90 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:58765 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751639Ab1BWTwx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Feb 2011 14:52:53 -0500
-Date: Wed, 23 Feb 2011 14:52:51 -0500
-To: Ferenc Wagner <wferi@niif.hu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: server does not abort grace period
-Message-ID: <20110223195250.GB13399@fieldses.org>
-References: <87wrl6ix2i.fsf@tac.ki.iif.hu>
- <87mxlpw4cv.fsf@tac.ki.iif.hu>
- <20110222011144.GA18424@fieldses.org>
- <878vx8huet.fsf@tac.ki.iif.hu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <878vx8huet.fsf@tac.ki.iif.hu>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753105Ab1BDVec (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:32 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 12/40] pnfs_submit: enforce requested DS only pNFS role
+Date: Fri,  4 Feb 2011 16:33:34 -0500
+Message-Id: <1296855242-2592-13-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-12-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
+ <1296855242-2592-11-git-send-email-andros@netapp.com>
+ <1296855242-2592-12-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Feb 22, 2011 at 06:05:14PM +0100, Ferenc Wagner wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> writes:
-> > The NFSv4.0 protocol doesn't provide any way for clients to tell the
-> > server that they have finished recovering; as long as *any* clients
-> > held state on the previous server instance, the new server is stuck
-> > waiting out the whole grace period.  Some things we could do:
-> >
-> > 	- We could at least recognize the case where *no* clients held
-> > 	  state before, and end the grace period early in that case.
-> 
-> Would this mean that /var/lib/nfs/v4recovery is empty on the server?
+From: Andy Adamson <andros@netapp.com>
 
-Right.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+[pnfs-submit: fail init_clientid if a DS is not really a DS]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4filelayoutdev.c |    5 -----
+ fs/nfs/nfs4state.c         |   11 +++++++++++
+ 2 files changed, 11 insertions(+), 5 deletions(-)
 
-> Actually, it contains a hex-named empty directory, sometimes two (we're
-> running with two clients at the moment).
-> 
-> > 	- In the NFSv4.1 case there is a "reclaim complete" rpc that
-> > 	  clients are required to send.  Currently we don't take
-> > 	  advantage of that to end the grace period early, but we
-> > 	  should.  That's no help for 4.0 clients.
-> 
-> /proc/fs/nfsd/versions shows +4.1 on the server, does this mean that
-> nfs4 type Linux client mounts should issue "reclaim complete"?
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 0059375..83b0ab8 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -183,11 +183,6 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 		goto out_put;
+ 	}
+ 	/*
+-	 * Mask the (possibly) returned EXCHGID4_FLAG_USE_PNFS_MDS pNFS role
+-	 * The is_ds_only_session depends on this.
+-	 */
+-	clp->cl_exchange_flags &= ~EXCHGID4_FLAG_USE_PNFS_MDS;
+-	/*
+ 	 * Set DS lease equal to the MDS lease, renewal is scheduled in
+ 	 * create_session
+ 	 */
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 49433aa..3cdbf3b 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -229,6 +229,7 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
+ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ {
+ 	int status;
++	u32 req_exchange_flags = clp->cl_exchange_flags;
+ 
+ 	nfs4_begin_drain_session(clp);
+ 	status = nfs4_proc_exchange_id(clp, cred);
+@@ -237,6 +238,16 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ 	status = nfs4_proc_create_session(clp);
+ 	if (status != 0)
+ 		goto out;
++	if (is_ds_only_session(req_exchange_flags)) {
++		clp->cl_exchange_flags &=
++		     ~(EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_NON_PNFS);
++		if (!is_ds_only_session(clp->cl_exchange_flags)) {
++			nfs4_destroy_session(clp->cl_session);
++			clp->cl_session = NULL;
++			status = -ENOTSUPP;
++			goto out;
++		}
++	}
+ 	nfs41_setup_state_renewal(clp);
+ 	nfs_mark_client_ready(clp, NFS_CS_READY);
+ out:
+-- 
+1.6.6
 
-It means that a 4.1 is supported, so a client *could* use 4.1 if it
-asked to.  And if it did use 4.1, yes, it would be required to issue
-reclaim complete.  Current linux clients do not use 4.1 unless you
-explicitly ask for it on the mont commandline.
-
-(Aside: the server really shouldn't have +4.1 by default, as the 4.1
-server is not done.  We should fix that; which distro are you using?)
-
-> I see
-> that it won't help anyway at the moment, lacking server support, just
-> out of interest...
-> 
-> > 	- We could record a count of all locks/opens held in stable
-> > 	  storage and use that to decide when a client is done
-> > 	  recovering.  That would be complicated and risk slowing down
-> > 	  normal opens and locks a lot.
-> 
-> And the "reclaim complete" client RPC seems must better anyway, as the
-> server and the client may get out of sync in case of an unclean client
-> shutdown.
-> 
-> > I don't think decreasing the lease time would be so terrible.  Perhaps
-> > the default should even be a little less.
-> 
-> Fine, then.  Does the Linux nfs server implementation use the lease time
-> of the previous server instance as grace period on startup, or does it
-> simply take whatever it finds in /proc/fs/nfsd/nfsv4leasetime?
-
-The latest server has separately tunable "nfsv4gracetime" and
-"nfsv4leasetime", and if you want to be careful, you should:
-
-	- stop the server
-	- set nfsv4gracetime to the *previous* lease time
-	- set nfsv4leasetime to the *new* lease time
-	- start the server
-
-That gives you the new (lower) lease time while still giving a
-sufficiently long grace period for clients who only knew about the old
-time to recover.  After doing that once, on future restarts you can use
-the shorter time for both.
-
-Probably we should write utilites which do this right for you....
-
---b.
