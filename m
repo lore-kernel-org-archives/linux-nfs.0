@@ -1,228 +1,323 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+Received: from mx2.parallels.com ([64.131.90.16]:45536 "EHLO mx2.parallels.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753006Ab1BDVeT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Feb 2011 16:34:19 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
-        Andy Adamson <andros@citi.umich.edu>,
-        Dean Hildebrand <dhildeb@us.ibm.com>,
-        Fred Isaman <iisaman@citi.umich.edu>, Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 05/40] pnfs_submit: wave3 pageio-helpers
-Date: Fri,  4 Feb 2011 16:33:27 -0500
-Message-Id: <1296855242-2592-6-git-send-email-andros@netapp.com>
-In-Reply-To: <1296855242-2592-5-git-send-email-andros@netapp.com>
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
- <1296855242-2592-2-git-send-email-andros@netapp.com>
- <1296855242-2592-3-git-send-email-andros@netapp.com>
- <1296855242-2592-4-git-send-email-andros@netapp.com>
- <1296855242-2592-5-git-send-email-andros@netapp.com>
+	id S1755538Ab1BDDan (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Feb 2011 22:30:43 -0500
+Received: from [96.31.168.206] (helo=mail.parallels.com)
+	by mx2.parallels.com with esmtps (TLSv1:AES128-SHA:128)
+	(Exim 4.72)
+	(envelope-from <rlandley@parallels.com>)
+	id 1PlCNe-0000Pk-L5
+	for linux-nfs@vger.kernel.org; Thu, 03 Feb 2011 22:30:43 -0500
+Message-ID: <4D4B72E2.5070901@parallels.com>
+Date: Thu, 3 Feb 2011 21:30:42 -0600
+From: Rob Landley <rlandley@parallels.com>
+To: <linux-nfs@vger.kernel.org>, Pavel Emelyanov <xemul@parallels.com>
+Subject: [PATCH] cleanup: factor out cut-and-paste code in options parsing.
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+From: Rob Landley <rlandley@parallels.com>
 
-Signed-off-by: Andy Adamon <andros@netapp.com>
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
-[pnfs-submit: init pg_lseg to NULL when !CONFIG_NFS_V4_1]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Factor out some cut-and-paste code in options parsing.
+
+Signed-off-by: Rob Landley <rlandley@parallels.com>
 ---
- fs/nfs/pagelist.c        |   11 +++++++++--
- fs/nfs/pnfs.c            |   40 ++++++++++++++++++++++++++++++++++++++++
- fs/nfs/pnfs.h            |   14 ++++++++++++++
- fs/nfs/read.c            |    4 ++--
- include/linux/nfs_page.h |    5 +++++
- 5 files changed, 70 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index e1164e3..0e8dece 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -240,7 +240,8 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
-  * Return 'true' if this is the case, else return 'false'.
-  */
- static int nfs_can_coalesce_requests(struct nfs_page *prev,
--				     struct nfs_page *req)
-+				     struct nfs_page *req,
-+				     struct nfs_pageio_descriptor *pgio)
- {
- 	if (req->wb_context->cred != prev->wb_context->cred)
- 		return 0;
-@@ -254,6 +255,12 @@ static int nfs_can_coalesce_requests(struct nfs_page *prev,
- 		return 0;
- 	if (prev->wb_pgbase + prev->wb_bytes != PAGE_CACHE_SIZE)
- 		return 0;
-+	if (req->wb_lseg != prev->wb_lseg)
-+		return 0;
-+#ifdef CONFIG_NFS_V4_1
-+	if (pgio->pg_test && !pgio->pg_test(pgio, prev, req))
-+		return 0;
-+#endif /* CONFIG_NFS_V4_1 */
+ add/remove: 2/0 grow/shrink: 1/2 up/down: 115/-956 (-841)
+ function                                     old     new   delta
+ nfs_get_option_ul                              -      69     +69
+ nfs_get_option_str                             -      45     +45
+ nfs_kill_super                                33      34      +1
+ nfs_alloc_parsed_mount_data                  107     106      -1
+ nfs_parse_mount_options                     3608    2653    -955
+
+ fs/nfs/super.c |  155 +++++++++++++----------------------------------
+ 1 file changed, 44 insertions(+), 111 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index b68c860..d103034 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -979,6 +979,27 @@ static int nfs_parse_security_flavors(char *value,
  	return 1;
  }
  
-@@ -286,7 +293,7 @@ static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
- 		if (newlen > desc->pg_bsize)
- 			return 0;
- 		prev = nfs_list_entry(desc->pg_list.prev);
--		if (!nfs_can_coalesce_requests(prev, req))
-+		if (!nfs_can_coalesce_requests(prev, req, desc))
- 			return 0;
- 	} else
- 		desc->pg_base = req->wb_pgbase;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 32ad768..c7199db 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -870,6 +870,46 @@ out_forget_reply:
- 	goto out;
- }
- 
-+void
-+pnfs_set_pg_test(struct inode *inode, struct nfs_pageio_descriptor *pgio)
++static int nfs_get_option_str(substring_t args[], char **option)
 +{
-+	struct pnfs_layout_hdr *lo;
-+	struct pnfs_layoutdriver_type *ld;
-+
-+	pgio->pg_test = NULL;
-+
-+	lo = NFS_I(inode)->layout;
-+	ld = NFS_SERVER(inode)->pnfs_curr_ld;
-+	if (!ld || !lo)
-+		return;
-+
-+	pgio->pg_test = ld->pg_test;
++	kfree(*option);
++	*option = match_strdup(args);
++	return !option;
 +}
 +
-+/*
-+ * rsize is already set by caller to MDS rsize.
-+ */
-+void
-+pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-+		  struct inode *inode,
-+		  struct nfs_open_context *ctx,
-+		  struct list_head *pages)
++static int nfs_get_option_ul(substring_t args[], unsigned long *option)
 +{
-+	struct nfs_server *nfss = NFS_SERVER(inode);
++	int rc;
++	char *string;
 +
-+	pgio->pg_test = NULL;
-+	pgio->pg_lseg = NULL;
++	string = match_strdup(args);
++	if (string == NULL)
++		return -ENOMEM;
++	rc = strict_strtoul(string, 10, option);
++	kfree(string);
 +
-+	if (!pnfs_enabled_sb(nfss))
-+		return;
-+
-+	pgio->pg_lseg = pnfs_update_layout(inode, ctx, IOMODE_READ);
-+	if (!pgio->pg_lseg)
-+		return;
-+
-+	pnfs_set_pg_test(inode, pgio);
++	return rc;
 +}
 +
  /*
-  * Device ID cache. Currently supports one layout type per struct nfs_client.
-  * Add layout type to the lookup key to expand to support multiple types.
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index fe50faa..7a75a0c 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -30,6 +30,8 @@
- #ifndef FS_NFS_PNFS_H
- #define FS_NFS_PNFS_H
- 
-+#include <linux/nfs_page.h>
-+
- enum {
- 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
- 	NFS_LSEG_ROC,		/* roc bit received from server */
-@@ -65,6 +67,9 @@ struct pnfs_layoutdriver_type {
- 	int (*clear_layoutdriver) (struct nfs_server *);
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
-+
-+	/* test for nfs page cache coalescing */
-+	int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
- };
- 
- struct pnfs_layout_hdr {
-@@ -151,6 +156,8 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
- 		   enum pnfs_iomode access_type);
- void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
- void unset_pnfs_layoutdriver(struct nfs_server *);
-+void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
-+			   struct nfs_open_context *, struct list_head *);
- int pnfs_layout_process(struct nfs4_layoutget *lgp);
- void pnfs_free_lseg_list(struct list_head *tmp_list);
- void pnfs_destroy_layout(struct nfs_inode *);
-@@ -240,6 +247,13 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
- {
- }
- 
-+static inline void
-+pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *ino,
-+		      struct nfs_open_context *ctx, struct list_head *pages)
-+{
-+	pgio->pg_lseg = NULL;
-+}
-+
- #endif /* CONFIG_NFS_V4_1 */
- 
- #endif /* FS_NFS_PNFS_H */
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 6c224e8..11e7d6e 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -20,12 +20,12 @@
- #include <linux/nfs_page.h>
- 
- #include <asm/system.h>
-+#include "pnfs.h"
- 
- #include "nfs4_fs.h"
- #include "internal.h"
- #include "iostat.h"
- #include "fscache.h"
--#include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
-@@ -625,7 +625,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 	if (ret == 0)
- 		goto read_complete; /* all pages were read */
- 
--	pnfs_update_layout(inode, desc.ctx, IOMODE_READ);
-+	pnfs_pageio_init_read(&pgio, inode, desc.ctx, pages);
- 	if (rsize < PAGE_CACHE_SIZE)
- 		nfs_pageio_init(&pgio, inode, nfs_pagein_multi, rsize, 0);
- 	else
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index d55cee7..ec9fd30 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -49,6 +49,7 @@ struct nfs_page {
- 	struct kref		wb_kref;	/* reference count */
- 	unsigned long		wb_flags;
- 	struct nfs_writeverf	wb_verf;	/* Commit cookie */
-+	struct pnfs_layout_segment *wb_lseg;	/* Pnfs layout info */
- };
- 
- struct nfs_pageio_descriptor {
-@@ -62,6 +63,10 @@ struct nfs_pageio_descriptor {
- 	int			(*pg_doio)(struct inode *, struct list_head *, unsigned int, size_t, int);
- 	int 			pg_ioflags;
- 	int			pg_error;
-+	struct pnfs_layout_segment *pg_lseg;
-+#ifdef CONFIG_NFS_V4_1
-+	int			(*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
-+#endif /* CONFIG_NFS_V4_1 */
- };
- 
- #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
--- 
-1.6.6
-
+  * Error-check and convert a string of mount options from user space into
+  * a data structure.  The whole mount string is processed; bad options are
+@@ -1127,155 +1148,82 @@ static int nfs_parse_mount_options(char *raw,
+ 		 * options that take numeric values
+ 		 */
+ 		case Opt_port:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0 || option > USHRT_MAX)
++			if (nfs_get_option_ul(args, &option) ||
++			    option > USHRT_MAX)
+ 				goto out_invalid_value;
+ 			mnt->nfs_server.port = option;
+ 			break;
+ 		case Opt_rsize:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0)
++			if (nfs_get_option_ul(args, &option))
+ 				goto out_invalid_value;
+ 			mnt->rsize = option;
+ 			break;
+ 		case Opt_wsize:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0)
++			if (nfs_get_option_ul(args, &option))
+ 				goto out_invalid_value;
+ 			mnt->wsize = option;
+ 			break;
+ 		case Opt_bsize:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0)
++			if (nfs_get_option_ul(args, &option))
+ 				goto out_invalid_value;
+ 			mnt->bsize = option;
+ 			break;
+ 		case Opt_timeo:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0 || option == 0)
++			if (nfs_get_option_ul(args, &option) || option == 0)
+ 				goto out_invalid_value;
+ 			mnt->timeo = option;
+ 			break;
+ 		case Opt_retrans:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0 || option == 0)
++			if (nfs_get_option_ul(args, &option) || option == 0)
+ 				goto out_invalid_value;
+ 			mnt->retrans = option;
+ 			break;
+ 		case Opt_acregmin:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0)
++			if (nfs_get_option_ul(args, &option))
+ 				goto out_invalid_value;
+ 			mnt->acregmin = option;
+ 			break;
+ 		case Opt_acregmax:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0)
++			if (nfs_get_option_ul(args, &option))
+ 				goto out_invalid_value;
+ 			mnt->acregmax = option;
+ 			break;
+ 		case Opt_acdirmin:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0)
++			if (nfs_get_option_ul(args, &option))
+ 				goto out_invalid_value;
+ 			mnt->acdirmin = option;
+ 			break;
+ 		case Opt_acdirmax:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0)
++			if (nfs_get_option_ul(args, &option))
+ 				goto out_invalid_value;
+ 			mnt->acdirmax = option;
+ 			break;
+ 		case Opt_actimeo:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0)
++			if (nfs_get_option_ul(args, &option))
+ 				goto out_invalid_value;
+ 			mnt->acregmin = mnt->acregmax =
+ 			mnt->acdirmin = mnt->acdirmax = option;
+ 			break;
+ 		case Opt_namelen:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0)
++			if (nfs_get_option_ul(args, &option))
+ 				goto out_invalid_value;
+ 			mnt->namlen = option;
+ 			break;
+ 		case Opt_mountport:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0 || option > USHRT_MAX)
++			if (nfs_get_option_ul(args, &option) ||
++			    option > USHRT_MAX)
+ 				goto out_invalid_value;
+ 			mnt->mount_server.port = option;
+ 			break;
+ 		case Opt_mountvers:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0 ||
++			if (nfs_get_option_ul(args, &option) ||
+ 			    option < NFS_MNT_VERSION ||
+ 			    option > NFS_MNT3_VERSION)
+ 				goto out_invalid_value;
+ 			mnt->mount_server.version = option;
+ 			break;
+ 		case Opt_nfsvers:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0)
++			if (nfs_get_option_ul(args, &option))
+ 				goto out_invalid_value;
+ 			switch (option) {
+ 			case NFS2_VERSION:
+@@ -1295,12 +1243,7 @@ static int nfs_parse_mount_options(char *raw,
+ 			}
+ 			break;
+ 		case Opt_minorversion:
+-			string = match_strdup(args);
+-			if (string == NULL)
+-				goto out_nomem;
+-			rc = strict_strtoul(string, 10, &option);
+-			kfree(string);
+-			if (rc != 0)
++			if (nfs_get_option_ul(args, &option))
+ 				goto out_invalid_value;
+ 			if (option > NFS4_MAX_MINOR_VERSION)
+ 				goto out_invalid_value;
+@@ -1336,21 +1279,18 @@ static int nfs_parse_mount_options(char *raw,
+ 			case Opt_xprt_udp:
+ 				mnt->flags &= ~NFS_MOUNT_TCP;
+ 				mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
+-				kfree(string);
+ 				break;
+ 			case Opt_xprt_tcp6:
+ 				protofamily = AF_INET6;
+ 			case Opt_xprt_tcp:
+ 				mnt->flags |= NFS_MOUNT_TCP;
+ 				mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+-				kfree(string);
+ 				break;
+ 			case Opt_xprt_rdma:
+ 				/* vector side protocols to TCP */
+ 				mnt->flags |= NFS_MOUNT_TCP;
+ 				mnt->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
+ 				xprt_load_transport(string);
+-				kfree(string);
+ 				break;
+ 			default:
+ 				dfprintk(MOUNT, "NFS:   unrecognized "
+@@ -1358,6 +1298,7 @@ static int nfs_parse_mount_options(char *raw,
+ 				kfree(string);
+ 				return 0;
+ 			}
++			kfree(string);
+ 			break;
+ 		case Opt_mountproto:
+ 			string = match_strdup(args);
+@@ -1400,18 +1341,13 @@ static int nfs_parse_mount_options(char *raw,
+ 				goto out_invalid_address;
+ 			break;
+ 		case Opt_clientaddr:
+-			string = match_strdup(args);
+-			if (string == NULL)
++			if (nfs_get_option_str(args, &mnt->client_address))
+ 				goto out_nomem;
+-			kfree(mnt->client_address);
+-			mnt->client_address = string;
+ 			break;
+ 		case Opt_mounthost:
+-			string = match_strdup(args);
+-			if (string == NULL)
++			if (nfs_get_option_str(args,
++					       &mnt->mount_server.hostname))
+ 				goto out_nomem;
+-			kfree(mnt->mount_server.hostname);
+-			mnt->mount_server.hostname = string;
+ 			break;
+ 		case Opt_mountaddr:
+ 			string = match_strdup(args);
+@@ -1451,11 +1387,8 @@ static int nfs_parse_mount_options(char *raw,
+ 			};
+ 			break;
+ 		case Opt_fscache_uniq:
+-			string = match_strdup(args);
+-			if (string == NULL)
++			if (nfs_get_option_str(args, &mnt->fscache_uniq))
+ 				goto out_nomem;
+-			kfree(mnt->fscache_uniq);
+-			mnt->fscache_uniq = string;
+ 			mnt->options |= NFS_OPTION_FSCACHE;
+ 			break;
+ 		case Opt_local_lock:
