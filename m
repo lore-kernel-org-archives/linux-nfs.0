@@ -1,53 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:59063 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752174Ab1BQJCP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Feb 2011 04:02:15 -0500
-Message-ID: <4D5CE432.10304@cn.fujitsu.com>
-Date: Thu, 17 Feb 2011 17:02:42 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: NFS <linux-nfs@vger.kernel.org>, andros@netapp.com, bhalevy@panasas.com
-Subject: [PATCH] nfsd41: modify the members value of nfsd4_op_flags
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753166Ab1BDVeh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:37 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 17/40] SQUASHME pnfs-submit wave3 remove is_ds_only_session
+Date: Fri,  4 Feb 2011 16:33:39 -0500
+Message-Id: <1296855242-2592-18-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-17-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
+ <1296855242-2592-11-git-send-email-andros@netapp.com>
+ <1296855242-2592-12-git-send-email-andros@netapp.com>
+ <1296855242-2592-13-git-send-email-andros@netapp.com>
+ <1296855242-2592-14-git-send-email-andros@netapp.com>
+ <1296855242-2592-15-git-send-email-andros@netapp.com>
+ <1296855242-2592-16-git-send-email-andros@netapp.com>
+ <1296855242-2592-17-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-The members of nfsd4_op_flags, (ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS)
-equals to  ALLOWED_AS_FIRST_OP, maybe that's not what we want.
+From: Andy Adamson <andros@netapp.com>
 
-OP_PUTROOTFH with op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS,
-can't appears as the first operation with out SEQUENCE ops.
+Remove the un-used is_ds_only_session. Move private function is_ds_only_client.
+Use EXCHGID4_FLAG_MASK_PNFS which includes the NON_PNFS role.
 
-This patch modify the wrong value of ALLOWED_WITHOUT_FH etc which 
-was introduced by f9bb94c4.
-
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfsd/nfs4proc.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4_fs.h          |   13 +++++++++++++
+ include/linux/nfs4.h      |    7 -------
+ include/linux/nfs_fs_sb.h |   10 ----------
+ 3 files changed, 13 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index db52546..8605d38 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -983,9 +983,9 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
- typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
- 			      void *);
- enum nfsd4_op_flags {
--	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
--	ALLOWED_ON_ABSENT_FS = 2 << 0,	/* ops processed on absent fs */
--	ALLOWED_AS_FIRST_OP = 3 << 0,	/* ops reqired first in compound */
-+	ALLOWED_WITHOUT_FH = 1 << 1,	/* No current filehandle required */
-+	ALLOWED_ON_ABSENT_FS = 1 << 2,	/* ops processed on absent fs */
-+	ALLOWED_AS_FIRST_OP = 1 << 3,	/* ops reqired first in compound */
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 7a74740..5d84642 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -259,6 +259,13 @@ extern int nfs4_proc_destroy_session(struct nfs4_session *);
+ extern int nfs4_init_session(struct nfs_server *server);
+ extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
+ 		struct nfs_fsinfo *fsinfo);
++
++static inline bool
++is_ds_only_client(struct nfs_client *clp)
++{
++	return (clp->cl_exchange_flags & EXCHGID4_FLAG_MASK_PNFS) ==
++		EXCHGID4_FLAG_USE_PNFS_DS;
++}
+ #else /* CONFIG_NFS_v4_1 */
+ static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
+ {
+@@ -276,6 +283,12 @@ static inline int nfs4_init_session(struct nfs_server *server)
+ {
+ 	return 0;
+ }
++
++static inline bool
++is_ds_only_client(struct nfs_client *clp)
++{
++	return false;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index b32a792..134716e 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -131,13 +131,6 @@
+ #define EXCHGID4_FLAG_MASK_A			0x40070103
+ #define EXCHGID4_FLAG_MASK_R			0x80070103
+ 
+-static inline bool
+-is_ds_only_session(u32 exchange_flags)
+-{
+-	u32 mask = EXCHGID4_FLAG_USE_PNFS_DS | EXCHGID4_FLAG_USE_PNFS_MDS;
+-	return (exchange_flags & mask) == EXCHGID4_FLAG_USE_PNFS_DS;
+-}
+-
+ #define SEQ4_STATUS_CB_PATH_DOWN		0x00000001
+ #define SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRING	0x00000002
+ #define SEQ4_STATUS_CB_GSS_CONTEXTS_EXPIRED	0x00000004
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 017f835..b197563 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -87,16 +87,6 @@ struct nfs_client {
+ #endif
  };
  
- struct nfsd4_operation {
+-static inline bool
+-is_ds_only_client(struct nfs_client *clp)
+-{
+-#ifdef CONFIG_NFS_V4_1
+-	return is_ds_only_session(clp->cl_exchange_flags);
+-#else
+-	return false;
+-#endif
+-}
+-
+ /*
+  * NFS client parameters stored in the superblock.
+  */
 -- 
-1.7.4.1
-
-
-
+1.6.6
 
