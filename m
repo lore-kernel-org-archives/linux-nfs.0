@@ -1,57 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51329 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757855Ab1BKSAp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 13:00:45 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 17/17] SQUASHME put_layout_hdr can remove nfsi->layout
-Date: Thu, 10 Feb 2011 20:52:50 -0500
-Message-Id: <1297389170-26702-18-git-send-email-andros@netapp.com>
-In-Reply-To: <1297389170-26702-17-git-send-email-andros@netapp.com>
-References: <1297389170-26702-1-git-send-email-andros@netapp.com>
- <1297389170-26702-2-git-send-email-andros@netapp.com>
- <1297389170-26702-3-git-send-email-andros@netapp.com>
- <1297389170-26702-4-git-send-email-andros@netapp.com>
- <1297389170-26702-5-git-send-email-andros@netapp.com>
- <1297389170-26702-6-git-send-email-andros@netapp.com>
- <1297389170-26702-7-git-send-email-andros@netapp.com>
- <1297389170-26702-8-git-send-email-andros@netapp.com>
- <1297389170-26702-9-git-send-email-andros@netapp.com>
- <1297389170-26702-10-git-send-email-andros@netapp.com>
- <1297389170-26702-11-git-send-email-andros@netapp.com>
- <1297389170-26702-12-git-send-email-andros@netapp.com>
- <1297389170-26702-13-git-send-email-andros@netapp.com>
- <1297389170-26702-14-git-send-email-andros@netapp.com>
- <1297389170-26702-15-git-send-email-andros@netapp.com>
- <1297389170-26702-16-git-send-email-andros@netapp.com>
- <1297389170-26702-17-git-send-email-andros@netapp.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:45651 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752021Ab1BDVoc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Feb 2011 16:44:32 -0500
+Received: by bwz15 with SMTP id 15so3176969bwz.19
+        for <linux-nfs@vger.kernel.org>; Fri, 04 Feb 2011 13:44:30 -0800 (PST)
+In-Reply-To: <1296855242-2592-20-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+	<1296855242-2592-2-git-send-email-andros@netapp.com>
+	<1296855242-2592-3-git-send-email-andros@netapp.com>
+	<1296855242-2592-4-git-send-email-andros@netapp.com>
+	<1296855242-2592-5-git-send-email-andros@netapp.com>
+	<1296855242-2592-6-git-send-email-andros@netapp.com>
+	<1296855242-2592-7-git-send-email-andros@netapp.com>
+	<1296855242-2592-8-git-send-email-andros@netapp.com>
+	<1296855242-2592-9-git-send-email-andros@netapp.com>
+	<1296855242-2592-10-git-send-email-andros@netapp.com>
+	<1296855242-2592-11-git-send-email-andros@netapp.com>
+	<1296855242-2592-12-git-send-email-andros@netapp.com>
+	<1296855242-2592-13-git-send-email-andros@netapp.com>
+	<1296855242-2592-14-git-send-email-andros@netapp.com>
+	<1296855242-2592-15-git-send-email-andros@netapp.com>
+	<1296855242-2592-16-git-send-email-andros@netapp.com>
+	<1296855242-2592-17-git-send-email-andros@netapp.com>
+	<1296855242-2592-18-git-send-email-andros@netapp.com>
+	<1296855242-2592-19-git-send-email-andros@netapp.com>
+	<1296855242-2592-20-git-send-email-andros@netapp.com>
+Date: Fri, 4 Feb 2011 16:44:30 -0500
+Message-ID: <AANLkTinxqvGOm0JkPph9zH3FO4EEmfqWZLH2qo+oiovi@mail.gmail.com>
+Subject: Re: [PATCH 19/40] SQUASHME pnfs-submit wave3 filelayout read pagelist cleanup
+From: Fred Isaman <iisaman@netapp.com>
+To: andros@netapp.com
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Fri, Feb 4, 2011 at 4:33 PM,  <andros@netapp.com> wrote:
+> From: Andy Adamson <andros@netapp.com>
+>
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/nfs4filelayout.c |   19 ++-----------------
+>  1 files changed, 2 insertions(+), 17 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index 3daf351..dce90a0 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -132,14 +132,6 @@ struct rpc_call_ops filelayout_read_call_ops = {
+>        .rpc_release = filelayout_read_release,
+>  };
+>
+> -/* Perform sync or async reads.
+> - *
+> - * An optimization for the NFS file layout driver
+> - * allows the original read/write data structs to be passed in the
+> - * last argument.
+> - *
+> - * TODO: join with write_pagelist?
+> - */
+>  static enum pnfs_try_status
+>  filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
+>  {
+> @@ -149,8 +141,8 @@ filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
+>        u32 idx;
+>        struct nfs_fh *fh;
+>
+> -       dprintk("--> %s ino %lu nr_pages %d pgbase %u req %Zu@%llu\n",
+> -               __func__, data->inode->i_ino, nr_pages,
+> +       dprintk("--> %s ino %lu pgbase %u req %Zu@%llu\n",
+> +               __func__, data->inode->i_ino,
+>                data->args.pgbase, (size_t)data->args.count, offset);
+>
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/pnfs.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+A nit, but this belongs in the next patch.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index dc15a76..912b1ff 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -799,7 +799,7 @@ pnfs_update_layout(struct inode *ino,
- 	put_layout_hdr(lo);
- out:
- 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
--		nfsi->layout->plh_flags, lseg);
-+		nfsi->layout ? nfsi->layout->plh_flags : -1, lseg);
- 	return lseg;
- out_unlock:
- 	spin_unlock(&ino->i_lock);
--- 
-1.6.6
+Fred
 
+>        /* Retrieve the correct rpc_client for the byte range */
+> @@ -169,13 +161,6 @@ filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
+>        if (fh)
+>                data->args.fh = fh;
+>
+> -       /*
+> -        * Now get the file offset on the dserver
+> -        * Set the read offset to this offset, and
+> -        * save the original offset in orig_offset
+> -        * In the case of aync reads, the offset will be reset in the
+> -        * call_ops->rpc_call_done() routine.
+> -        */
+>        data->args.offset = filelayout_get_dserver_offset(lseg, offset);
+>        data->fldata.orig_offset = offset;
+>
+> --
+> 1.6.6
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
