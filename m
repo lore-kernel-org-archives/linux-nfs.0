@@ -1,186 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41287 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752333Ab1BNTSo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Feb 2011 14:18:44 -0500
+	id S1753066Ab1BDVea (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:30 -0500
 From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 03/16] NFS move nfs_client initialization into nfs_get_client
-Date: Mon, 14 Feb 2011 14:18:23 -0500
-Message-Id: <1297711116-3139-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1297711116-3139-1-git-send-email-andros@netapp.com>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@citi.umich.edu>,
+        Dean Hildebrand <dhildeb@us.ibm.com>,
+        Fred Isaman <iisaman@citi.umich.edu>, Fred Isaman <iisaman@netapp.com>,
+        Mingyang Guo <guomingyang@nrchpc.ac.cn>,
+        Oleg Drokin <green@linuxhacker.ru>,
+        Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH 10/40] pnfs_submit: filelayout read
+Date: Fri,  4 Feb 2011 16:33:32 -0500
+Message-Id: <1296855242-2592-11-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-10-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Now nfs_get_client returns an nfs_client ready to be used no matter if it was
-found or created.
-
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
+Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Tested-by: Guo Mingyang <guomingyang@nrchpc.ac.cn>
 Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/client.c |   67 ++++++++++++++++++++++++++++++++++++++----------------
- 1 files changed, 47 insertions(+), 20 deletions(-)
+ fs/nfs/nfs4filelayout.c |   88 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 88 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index bd3ca32..75b236f 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -81,6 +81,15 @@ retry:
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 6ec9957..3daf351 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -99,6 +99,93 @@ filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
  }
- #endif /* CONFIG_NFS_V4 */
  
-+static int nfs4_init_client(struct nfs_client *clp,
-+		const struct rpc_timeout *timeparms,
-+		const char *ip_addr,
-+		rpc_authflavor_t authflavour,
-+		int noresvport);
-+static int nfs_init_client(struct nfs_client *clp,
-+			   const struct rpc_timeout *timeparms,
-+			   int noresvport);
-+
  /*
-  * RPC cruft for NFS
-  */
-@@ -481,7 +490,12 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
-  * Look up a client by IP address and protocol version
-  * - creates a new record if one doesn't yet exist
-  */
--static struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
-+static struct nfs_client *
-+nfs_get_client(const struct nfs_client_initdata *cl_init,
-+	       const struct rpc_timeout *timeparms,
-+	       const char *ip_addr,
-+	       rpc_authflavor_t authflavour,
-+	       int noresvport)
- {
- 	struct nfs_client *clp, *new = NULL;
- 	int error;
-@@ -512,6 +526,17 @@ install_client:
- 	clp = new;
- 	list_add(&clp->cl_share_link, &nfs_client_list);
- 	spin_unlock(&nfs_client_lock);
-+
-+	if (cl_init->rpc_ops->version == 4)
-+		error = nfs4_init_client(clp, timeparms, ip_addr, authflavour,
-+					 noresvport);
-+	else
-+		error = nfs_init_client(clp, timeparms, noresvport);
-+
-+	if (error < 0) {
-+		nfs_put_client(clp);
-+		return ERR_PTR(error);
-+	}
- 	dprintk("--> nfs_get_client() = %p [new]\n", clp);
- 	return clp;
- 
-@@ -769,7 +794,7 @@ static int nfs_init_server_rpcclient(struct nfs_server *server,
-  */
- static int nfs_init_client(struct nfs_client *clp,
- 			   const struct rpc_timeout *timeparms,
--			   const struct nfs_parsed_mount_data *data)
-+			   int noresvport)
- {
- 	int error;
- 
-@@ -784,7 +809,7 @@ static int nfs_init_client(struct nfs_client *clp,
- 	 * - RFC 2623, sec 2.3.2
- 	 */
- 	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX,
--				      0, data->flags & NFS_MOUNT_NORESVPORT);
-+				      0, noresvport);
- 	if (error < 0)
- 		goto error;
- 	nfs_mark_client_ready(clp, NFS_CS_READY);
-@@ -820,19 +845,17 @@ static int nfs_init_server(struct nfs_server *server,
- 		cl_init.rpc_ops = &nfs_v3_clientops;
- #endif
- 
-+	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
-+			data->timeo, data->retrans);
-+
- 	/* Allocate or find a client reference we can use */
--	clp = nfs_get_client(&cl_init);
-+	clp = nfs_get_client(&cl_init, &timeparms, NULL, RPC_AUTH_UNIX,
-+			     data->flags & NFS_MOUNT_NORESVPORT);
- 	if (IS_ERR(clp)) {
- 		dprintk("<-- nfs_init_server() = error %ld\n", PTR_ERR(clp));
- 		return PTR_ERR(clp);
- 	}
- 
--	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
--			data->timeo, data->retrans);
--	error = nfs_init_client(clp, &timeparms, data);
--	if (error < 0)
--		goto error;
--
- 	server->nfs_client = clp;
- 
- 	/* Initialise the client representation from the mount data */
-@@ -1311,7 +1334,7 @@ static int nfs4_init_client(struct nfs_client *clp,
- 		const struct rpc_timeout *timeparms,
- 		const char *ip_addr,
- 		rpc_authflavor_t authflavour,
--		int flags)
-+		int noresvport)
- {
- 	int error;
- 
-@@ -1325,7 +1348,7 @@ static int nfs4_init_client(struct nfs_client *clp,
- 	clp->rpc_ops = &nfs_v4_clientops;
- 
- 	error = nfs_create_rpc_client(clp, timeparms, authflavour,
--				      1, flags & NFS_MOUNT_NORESVPORT);
-+				      1, noresvport);
- 	if (error < 0)
- 		goto error;
- 	strlcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
-@@ -1378,22 +1401,16 @@ static int nfs4_set_client(struct nfs_server *server,
- 	dprintk("--> nfs4_set_client()\n");
- 
- 	/* Allocate or find a client reference we can use */
--	clp = nfs_get_client(&cl_init);
-+	clp = nfs_get_client(&cl_init, timeparms, ip_addr, authflavour,
-+			     server->flags & NFS_MOUNT_NORESVPORT);
- 	if (IS_ERR(clp)) {
- 		error = PTR_ERR(clp);
- 		goto error;
- 	}
--	error = nfs4_init_client(clp, timeparms, ip_addr, authflavour,
--					server->flags);
--	if (error < 0)
--		goto error_put;
- 
- 	server->nfs_client = clp;
- 	dprintk("<-- nfs4_set_client() = 0 [new %p]\n", clp);
- 	return 0;
--
--error_put:
--	nfs_put_client(clp);
- error:
- 	dprintk("<-- nfs4_set_client() = xerror %d\n", error);
- 	return error;
-@@ -1611,6 +1628,16 @@ error:
- 	return ERR_PTR(error);
- }
- 
-+#else /* CONFIG_NFS_V4 */
-+static int nfs4_init_client(struct nfs_client *clp,
-+			    const struct rpc_timeout *timeparms,
-+			    const char *ip_addr,
-+			    rpc_authflavor_t authflavour,
-+			    int noresvport)
++ * Call ops for the async read/write cases
++ * In the case of dense layouts, the offset needs to be reset to its
++ * original value.
++ */
++static void filelayout_read_call_done(struct rpc_task *task, void *data)
 +{
-+	return -EPROTONOSUPPORT;
++	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++
++	if (rdata->fldata.orig_offset) {
++		dprintk("%s new off %llu orig offset %llu\n", __func__,
++			rdata->args.offset, rdata->fldata.orig_offset);
++		rdata->args.offset = rdata->fldata.orig_offset;
++	}
++
++	/* Note this may cause RPC to be resent */
++	rdata->pdata.call_ops->rpc_call_done(task, data);
 +}
 +
- #endif /* CONFIG_NFS_V4 */
++static void filelayout_read_release(void *data)
++{
++	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++
++	put_lseg(rdata->pdata.lseg);
++	rdata->pdata.lseg = NULL;
++	rdata->pdata.call_ops->rpc_release(data);
++}
++
++struct rpc_call_ops filelayout_read_call_ops = {
++	.rpc_call_prepare = nfs_read_prepare,
++	.rpc_call_done = filelayout_read_call_done,
++	.rpc_release = filelayout_read_release,
++};
++
++/* Perform sync or async reads.
++ *
++ * An optimization for the NFS file layout driver
++ * allows the original read/write data structs to be passed in the
++ * last argument.
++ *
++ * TODO: join with write_pagelist?
++ */
++static enum pnfs_try_status
++filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
++{
++	struct pnfs_layout_segment *lseg = data->pdata.lseg;
++	struct nfs4_pnfs_ds *ds;
++	loff_t offset = data->args.offset;
++	u32 idx;
++	struct nfs_fh *fh;
++
++	dprintk("--> %s ino %lu nr_pages %d pgbase %u req %Zu@%llu\n",
++		__func__, data->inode->i_ino, nr_pages,
++		data->args.pgbase, (size_t)data->args.count, offset);
++
++	/* Retrieve the correct rpc_client for the byte range */
++	idx = nfs4_fl_calc_ds_index(lseg, offset);
++	ds = nfs4_fl_prepare_ds(lseg, idx);
++	if (!ds) {
++		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
++		return PNFS_NOT_ATTEMPTED;
++	}
++	dprintk("%s USE DS:ip %x %hu\n", __func__,
++		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
++
++	/* just try the first data server for the index..*/
++	data->fldata.ds_nfs_client = ds->ds_clp;
++	fh = nfs4_fl_select_ds_fh(lseg, offset);
++	if (fh)
++		data->args.fh = fh;
++
++	/*
++	 * Now get the file offset on the dserver
++	 * Set the read offset to this offset, and
++	 * save the original offset in orig_offset
++	 * In the case of aync reads, the offset will be reset in the
++	 * call_ops->rpc_call_done() routine.
++	 */
++	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
++	data->fldata.orig_offset = offset;
++
++	/* Perform an asynchronous read */
++	nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
++			  &filelayout_read_call_ops);
++	return PNFS_ATTEMPTED;
++}
++
++/*
+  * filelayout_check_layout()
+  *
+  * Make sure layout segment parameters are sane WRT the device.
+@@ -320,6 +407,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.alloc_lseg              = filelayout_alloc_lseg,
+ 	.free_lseg               = filelayout_free_lseg,
+ 	.pg_test                 = filelayout_pg_test,
++	.read_pagelist           = filelayout_read_pagelist,
+ };
  
- /*
+ static int __init nfs4filelayout_init(void)
 -- 
-1.7.2.3
+1.6.6
 
