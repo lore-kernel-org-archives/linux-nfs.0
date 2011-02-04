@@ -1,96 +1,208 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:29001 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751690Ab1B1Qbf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2011 11:31:35 -0500
-Message-ID: <4D6BCDDF.1070909@panasas.com>
-Date: Mon, 28 Feb 2011 18:31:27 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: pnfs git tree status pnfs-all-2.6.38-rc5-2011-02-26
-References: <4D41D711.70807@panasas.com> <4D4B10B0.2040500@panasas.com>
-In-Reply-To: <4D4B10B0.2040500@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753230Ab1BDVeo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:44 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 24/40] NFS move nfs_client initialization into nfs_get_client
+Date: Fri,  4 Feb 2011 16:33:46 -0500
+Message-Id: <1296855242-2592-25-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-24-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
+ <1296855242-2592-11-git-send-email-andros@netapp.com>
+ <1296855242-2592-12-git-send-email-andros@netapp.com>
+ <1296855242-2592-13-git-send-email-andros@netapp.com>
+ <1296855242-2592-14-git-send-email-andros@netapp.com>
+ <1296855242-2592-15-git-send-email-andros@netapp.com>
+ <1296855242-2592-16-git-send-email-andros@netapp.com>
+ <1296855242-2592-17-git-send-email-andros@netapp.com>
+ <1296855242-2592-18-git-send-email-andros@netapp.com>
+ <1296855242-2592-19-git-send-email-andros@netapp.com>
+ <1296855242-2592-20-git-send-email-andros@netapp.com>
+ <1296855242-2592-21-git-send-email-andros@netapp.com>
+ <1296855242-2592-22-git-send-email-andros@netapp.com>
+ <1296855242-2592-23-git-send-email-andros@netapp.com>
+ <1296855242-2592-24-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-I pushed the Connectathon fixes for pnfs-all-latest to the main tree
-git://linux-nfs.org/~bhalevy/linux-pnfs.git
-And I'll sync with Fred's wave[345] series when he's ready.
+From: Andy Adamson <andros@netapp.com>
 
-New commits submitted since last update (pnfs-all-2.6.38-rc3-2011-02-03)
-are listed below.
+Now nfs_get_client returns an nfs_client ready to be used no matter if it was
+found or created.
 
-Benny
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c |   66 ++++++++++++++++++++++++++++++++++++++----------------
+ 1 files changed, 46 insertions(+), 20 deletions(-)
 
-pnfs-all-2.6.37:
-  Benny Halevy     6d105b3 pnfsd: Initialize cb_layout clr_recall.cb_work
-  Benny Halevy     f8282df pnfsd: add default error case in nfsd4_cb_layout_done
-  Benny Halevy     488dbb1 pnfsd: do not clear rpc_resp in nfsd4_cb_done_sequence
-  Benny Halevy     9243514 pnfs: fix missing unlock in nfs_client_return_layouts
-  Benny Halevy     38a4a8d pnfs: return bool status from nfs4_asynch_forget_layouts
-  Benny Halevy     1cabadb pnfs: return NFS4ERR_DELAY from layoutrecall while waiting on lsegs
-  Benny Halevy     be52477 pnfs: fix cl_drain_notification indexing
-  Benny Halevy     257b10f pnfs: fix nfs4_asynch_forget_layouts accounting
-  Benny Halevy     013dffa pnfs: improve nfs4_layoutget_done debug printouts
-  Benny Halevy     7355ec0 pnfs: fix lock inversion in pnfs_layout_process
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index ea2d032..5cfcd40 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -81,6 +81,15 @@ retry:
+ }
+ #endif /* CONFIG_NFS_V4 */
+ 
++static int nfs4_init_client(struct nfs_client *clp,
++		const struct rpc_timeout *timeparms,
++		const char *ip_addr,
++		rpc_authflavor_t authflavour,
++		int noresvport);
++static int nfs_init_client(struct nfs_client *clp,
++			   const struct rpc_timeout *timeparms,
++			   int noresvport);
++
+ /*
+  * RPC cruft for NFS
+  */
+@@ -482,7 +491,11 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+  * Look up a client by IP address and protocol version
+  * - creates a new record if one doesn't yet exist
+  */
+-static struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
++static struct nfs_client *nfs_get_client(struct nfs_client_initdata *cl_init,
++					 const struct rpc_timeout *timeparms,
++					 const char *ip_addr,
++					 rpc_authflavor_t authflavour,
++					 int noresvport)
+ {
+ 	struct nfs_client *clp, *new = NULL;
+ 	int error;
+@@ -513,6 +526,17 @@ install_client:
+ 	clp = new;
+ 	list_add(&clp->cl_share_link, &nfs_client_list);
+ 	spin_unlock(&nfs_client_lock);
++
++	if (cl_init->rpc_ops->version == 4)
++		error = nfs4_init_client(clp, timeparms, ip_addr, authflavour,
++					 noresvport);
++	else
++		error = nfs_init_client(clp, timeparms, noresvport);
++
++	if (error < 0) {
++		nfs_put_client(clp);
++		return ERR_PTR(error);
++	}
+ 	dprintk("--> nfs_get_client() = %p [new]\n", clp);
+ 	return clp;
+ 
+@@ -771,7 +795,7 @@ static int nfs_init_server_rpcclient(struct nfs_server *server,
+  */
+ static int nfs_init_client(struct nfs_client *clp,
+ 			   const struct rpc_timeout *timeparms,
+-			   const struct nfs_parsed_mount_data *data)
++			   int noresvport)
+ {
+ 	int error;
+ 
+@@ -786,7 +810,7 @@ static int nfs_init_client(struct nfs_client *clp,
+ 	 * - RFC 2623, sec 2.3.2
+ 	 */
+ 	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX,
+-				      0, data->flags & NFS_MOUNT_NORESVPORT);
++				      0, noresvport);
+ 	if (error < 0)
+ 		goto error;
+ 	nfs_mark_client_ready(clp, NFS_CS_READY);
+@@ -822,19 +846,17 @@ static int nfs_init_server(struct nfs_server *server,
+ 		cl_init.rpc_ops = &nfs_v3_clientops;
+ #endif
+ 
++	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
++			data->timeo, data->retrans);
++
+ 	/* Allocate or find a client reference we can use */
+-	clp = nfs_get_client(&cl_init);
++	clp = nfs_get_client(&cl_init, &timeparms, NULL, RPC_AUTH_UNIX,
++			     data->flags & NFS_MOUNT_NORESVPORT);
+ 	if (IS_ERR(clp)) {
+ 		dprintk("<-- nfs_init_server() = error %ld\n", PTR_ERR(clp));
+ 		return PTR_ERR(clp);
+ 	}
+ 
+-	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
+-			data->timeo, data->retrans);
+-	error = nfs_init_client(clp, &timeparms, data);
+-	if (error < 0)
+-		goto error;
+-
+ 	server->nfs_client = clp;
+ 
+ 	/* Initialise the client representation from the mount data */
+@@ -1313,7 +1335,7 @@ static int nfs4_init_client(struct nfs_client *clp,
+ 		const struct rpc_timeout *timeparms,
+ 		const char *ip_addr,
+ 		rpc_authflavor_t authflavour,
+-		int flags)
++		int noresvport)
+ {
+ 	int error;
+ 
+@@ -1327,7 +1349,7 @@ static int nfs4_init_client(struct nfs_client *clp,
+ 	clp->rpc_ops = &nfs_v4_clientops;
+ 
+ 	error = nfs_create_rpc_client(clp, timeparms, authflavour,
+-				      1, flags & NFS_MOUNT_NORESVPORT);
++				      1, noresvport);
+ 	if (error < 0)
+ 		goto error;
+ 	strlcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
+@@ -1380,22 +1402,16 @@ int nfs4_set_client(struct nfs_server *server,
+ 	dprintk("--> nfs4_set_client()\n");
+ 
+ 	/* Allocate or find a client reference we can use */
+-	clp = nfs_get_client(&cl_init);
++	clp = nfs_get_client(&cl_init, timeparms, ip_addr, authflavour,
++			     server->flags & NFS_MOUNT_NORESVPORT);
+ 	if (IS_ERR(clp)) {
+ 		error = PTR_ERR(clp);
+ 		goto error;
+ 	}
+-	error = nfs4_init_client(clp, timeparms, ip_addr, authflavour,
+-					server->flags);
+-	if (error < 0)
+-		goto error_put;
+ 
+ 	server->nfs_client = clp;
+ 	dprintk("<-- nfs4_set_client() = 0 [new %p]\n", clp);
+ 	return 0;
+-
+-error_put:
+-	nfs_put_client(clp);
+ error:
+ 	dprintk("<-- nfs4_set_client() = xerror %d\n", error);
+ 	return error;
+@@ -1614,6 +1630,16 @@ error:
+ 	return ERR_PTR(error);
+ }
+ 
++#else /* CONFIG_NFS_V4 */
++static int nfs4_init_client(struct nfs_client *clp,
++			    const struct rpc_timeout *timeparms,
++			    const char *ip_addr,
++			    rpc_authflavor_t authflavour,
++			    int noresvport)
++{
++	return -EPROTONOSUPPORT;
++}
++
+ #endif /* CONFIG_NFS_V4 */
+ 
+ /*
+-- 
+1.6.6
 
-nfs-upstream:
-  Trond Myklebust  ec45b78 SUNRPC: Fix a memory leak in rpc_new_task()
-  Trond Myklebust  3561b23 SUNRPC: Close a race in __rpc_wait_for_completion_task()
-  Trond Myklebust  bcaedce NFS/VFS: Fix the nfs sillyrename regression
-  Benny Halevy     4856b2d NFSv4.1: reject zero layout with zeroed stripe unit
-  Jim Rees         b76d1d5 NFSv4.1: fix typo in filelayout_check_layout
-
-nfsd-upstream:
-  Benny Halevy     767d1a0 NFSD: fix decode_cb_sequence4resok
-  Benny Halevy     ebca1bc nfsd41: use SEQ4_STATUS_BACKCHANNEL_FAULT when cb_sequence is invalid
-
-pnfsd:
-  Benny Halevy     9bb661a pnfsd: do not clear rpc_resp in nfsd4_cb_done_sequence
-
-pnfsd-lexp:
-  Benny Halevy     3e947f3 pnfsd-lexp: recall layout on truncate
-
-pnfs-submit-wave3:
-  Andy Adamson     733c2ca NFSv4: remove CONFIG_NFS_V4 from nfs_read_data
-  Andy Adamson     e347996 NFSv4.1: put_layout_hdr can remove nfsi->layout
-  Andy Adamson     2e5bfda NFS move nfs_client initialization into nfs_get_client
-  Andy Adamson     31642d8 NFSv4.1: send zero stateid seqid on v4.1 i/o
-  Andy Adamson     078fb11 NFSv4.1: new flag for state renewal check
-  Andy Adamson     45429c7b NFSv4.1: new flag for lease time check
-  Andy Adamson     a557a45 NFSv4.1: add MDS mount DS only check
-  Fred Isaman      42e7c6e NFSv4.1: lseg refcounting
-  Fred Isaman      28377e6 NFSv4.1: coelesce across layout stripes
-  Fred Isaman      f5650f9 NFSv4.1: shift pnfs_update_layout locations
-  Andy Adamson     ab7ffb5 NFSv4.1: generic read
-  Andy Adamson     242f5ce NFSv4.1: data server connection
-  Fred Isaman      4374a1b NFSv4.1: filelayout i/o helpers
-  Andy Adamson     fcb2ee6 NFSv4.1: filelayout read
-  Andy Adamson     47c3fd3 NFSv4.1: filelayout async error handler
-  Christoph Hellwig  627c22e NFSv4.1 move deviceid cache to filelayout driver
-  Andy Adamson     29b9fde NFSv4.1: turn off pNFS on ds connection failure
-  Fred Isaman      442d08c NFSv4.1: lseg documentation
-  Fred Isaman      6205ddc SQUASHME wave3: address Benny's comment
-  Fred Isaman      d3ff5cd SQUASHME wave3: whitespace fix
-  Benny Halevy     9d0fcee NFSv4.1: pnfs-submit-wave3: put_lseg_common should use list_del_init
-
-pnfs-submit-wave4:
-  Fred Isaman      0479cd6 NFSv4.1: add callback to nfs4_write_done
-  Fred Isaman      55f54f7 NFSv4.1: trigger LAYOUTGET for writes
-  Fred Isaman      0c992aa NFSv4.1: remove GETATTR from ds writes
-  Fred Isaman      7326c07 NFSv4.1: pnfs filelayout driver write
-
-pnfs-submit:
-  Benny Halevy     34af0eb NFSv4.1: pnfs-submit-wave3: put_lseg_common should use list_del_init
-
-pnfs:
-  Benny Halevy     67e864c pnfs: fix missing unlock in nfs_client_return_layouts
-  Benny Halevy     787d5ab pnfs: return bool status from nfs4_asynch_forget_layouts
-  Benny Halevy     5564508 pnfs: return NFS4ERR_DELAY from layoutrecall while waiting on lsegs
-  Benny Halevy     051d190 pnfs: fix cl_drain_notification indexing
-  Benny Halevy     e60a67c pnfs: fix nfs4_asynch_forget_layouts accounting
-  Benny Halevy     a86c7ac pnfs: improve nfs4_layoutget_done debug printouts
-  Benny Halevy     a92a66b SQUASHME: pnfs: fix lock inversion in pnfs_layout_process
-  Benny Halevy     b2005e6 SQUASHME: pnfs: revert layout recall/get/return synchronization
