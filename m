@@ -1,58 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:41876 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757380Ab1BKQFg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 11:05:36 -0500
-Date: Fri, 11 Feb 2011 11:05:32 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Takashi Iwai <tiwai@suse.de>
-Cc: Tino Keitel <tino.keitel@tikei.de>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: 2.6.38-rc3: kernel BUG at fs/nfsd/nfs4state.c:3132!
-Message-ID: <20110211160532.GD3005@fieldses.org>
-References: <20110208221235.GA16984@mac.home>
- <s5hsjvuoqqt.wl%tiwai@suse.de>
- <20110211152112.GA3005@fieldses.org>
- <s5h62sqbnd7.wl%tiwai@suse.de>
- <20110211153702.GC3005@fieldses.org>
- <s5hwrl6a7ch.wl%tiwai@suse.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <s5hwrl6a7ch.wl%tiwai@suse.de>
+	id S1753146Ab1BDVej (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:39 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 19/40] SQUASHME pnfs-submit wave3 filelayout read pagelist cleanup
+Date: Fri,  4 Feb 2011 16:33:41 -0500
+Message-Id: <1296855242-2592-20-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-19-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
+ <1296855242-2592-11-git-send-email-andros@netapp.com>
+ <1296855242-2592-12-git-send-email-andros@netapp.com>
+ <1296855242-2592-13-git-send-email-andros@netapp.com>
+ <1296855242-2592-14-git-send-email-andros@netapp.com>
+ <1296855242-2592-15-git-send-email-andros@netapp.com>
+ <1296855242-2592-16-git-send-email-andros@netapp.com>
+ <1296855242-2592-17-git-send-email-andros@netapp.com>
+ <1296855242-2592-18-git-send-email-andros@netapp.com>
+ <1296855242-2592-19-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Feb 11, 2011 at 05:01:18PM +0100, Takashi Iwai wrote:
-> At Fri, 11 Feb 2011 10:37:02 -0500,
-> J. Bruce Fields wrote:
-> > 
-> > On Fri, Feb 11, 2011 at 04:29:56PM +0100, Takashi Iwai wrote:
-> > > At Fri, 11 Feb 2011 10:21:12 -0500,
-> > > J. Bruce Fields wrote:
-> > > > Again, 2.6.38-rc4 does not have a BUG() on line 3132.  Could you post
-> > > > the full oops message from your machine?
-> > > 
-> > > Well, on vanilla 2.6.38-rc4, it's in nfs4_preprocess_stateid_op():
-> > >                if (filpp) {
-> > >                         *filpp = find_readable_file(dp->dl_file);
-> > > ==>                     BUG_ON(!*filpp);
-> > >                 }
-> > 
-> > Oh good grief, my apologies--I mistyped "38" as "28"!
-> > 
-> > This looks like it could be a known delegation bug....  Would it be
-> > possible for you to check whether this is reproduceable on
-> > 
-> > 	git://linux-nfs.org/~bfields/topics.git for-2.6.38-incoming
-> 
-> Hm, I couldn't pull it.
-> 
->   % git pull 'git://linux-nfs.org/~bfields/topics.git' for-2.6.38-incoming
->   fatal: The remote end hung up unexpectedly
+From: Andy Adamson <andros@netapp.com>
 
-Should be linux-topics, apologies again:
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   19 ++-----------------
+ 1 files changed, 2 insertions(+), 17 deletions(-)
 
-	git://linux-nfs.org/~bfields/linux-topics.git for-2.6.38-incoming
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 3daf351..dce90a0 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -132,14 +132,6 @@ struct rpc_call_ops filelayout_read_call_ops = {
+ 	.rpc_release = filelayout_read_release,
+ };
+ 
+-/* Perform sync or async reads.
+- *
+- * An optimization for the NFS file layout driver
+- * allows the original read/write data structs to be passed in the
+- * last argument.
+- *
+- * TODO: join with write_pagelist?
+- */
+ static enum pnfs_try_status
+ filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
+ {
+@@ -149,8 +141,8 @@ filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
+ 	u32 idx;
+ 	struct nfs_fh *fh;
+ 
+-	dprintk("--> %s ino %lu nr_pages %d pgbase %u req %Zu@%llu\n",
+-		__func__, data->inode->i_ino, nr_pages,
++	dprintk("--> %s ino %lu pgbase %u req %Zu@%llu\n",
++		__func__, data->inode->i_ino,
+ 		data->args.pgbase, (size_t)data->args.count, offset);
+ 
+ 	/* Retrieve the correct rpc_client for the byte range */
+@@ -169,13 +161,6 @@ filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
+ 	if (fh)
+ 		data->args.fh = fh;
+ 
+-	/*
+-	 * Now get the file offset on the dserver
+-	 * Set the read offset to this offset, and
+-	 * save the original offset in orig_offset
+-	 * In the case of aync reads, the offset will be reset in the
+-	 * call_ops->rpc_call_done() routine.
+-	 */
+ 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
+ 	data->fldata.orig_offset = offset;
+ 
+-- 
+1.6.6
 
---b.
