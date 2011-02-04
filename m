@@ -1,314 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:37214 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755622Ab1BOWzh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 17:55:37 -0500
-Subject: Re: NFS only mount with -o udp option
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <AANLkTikFVyg-VY5SdXMWTYuyx3irRPPa=cw0-f35NduT@mail.gmail.com>
-Date: Tue, 15 Feb 2011 17:54:39 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <46B9DC0D-2396-40F3-9DFF-C1CD7DF1F145@oracle.com>
-References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com> <665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com> <AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com> <0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com> <AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com> <AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com> <1A31AB06-8518-427C-8D0B-0058AA613D0E@oracle.com> <AANLkTimiACttSQ+=M0UNGs5nZrP=zs0zRFV+4HP8c-OP@mail.gmail.com> <81853901-909D-4803-81A5-C01C0337CAE1@oracle.com> <AANLkTim9zbEzKZ=RZbfZhcLovn6fWkdL-3eZp21-NDP+@mail.gmail.com> <2F1D1F4B-0623-4954-861C-2F7B37EB2CA7@oracle.com> <AANLkTikFVyg-VY5SdXMWTYuyx3irRPPa=cw0-f35NduT@mail.gmail.com>
-To: Edgar Almonte <samudhio@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753260Ab1BDVe7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:59 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 40/40] pnfs-submit wave3 add MDS mount DS only check
+Date: Fri,  4 Feb 2011 16:34:02 -0500
+Message-Id: <1296855242-2592-41-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-40-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
+ <1296855242-2592-11-git-send-email-andros@netapp.com>
+ <1296855242-2592-12-git-send-email-andros@netapp.com>
+ <1296855242-2592-13-git-send-email-andros@netapp.com>
+ <1296855242-2592-14-git-send-email-andros@netapp.com>
+ <1296855242-2592-15-git-send-email-andros@netapp.com>
+ <1296855242-2592-16-git-send-email-andros@netapp.com>
+ <1296855242-2592-17-git-send-email-andros@netapp.com>
+ <1296855242-2592-18-git-send-email-andros@netapp.com>
+ <1296855242-2592-19-git-send-email-andros@netapp.com>
+ <1296855242-2592-20-git-send-email-andros@netapp.com>
+ <1296855242-2592-21-git-send-email-andros@netapp.com>
+ <1296855242-2592-22-git-send-email-andros@netapp.com>
+ <1296855242-2592-23-git-send-email-andros@netapp.com>
+ <1296855242-2592-24-git-send-email-andros@netapp.com>
+ <1296855242-2592-25-git-send-email-andros@netapp.com>
+ <1296855242-2592-26-git-send-email-andros@netapp.com>
+ <1296855242-2592-27-git-send-email-andros@netapp.com>
+ <1296855242-2592-28-git-send-email-andros@netapp.com>
+ <1296855242-2592-29-git-send-email-andros@netapp.com>
+ <1296855242-2592-30-git-send-email-andros@netapp.com>
+ <1296855242-2592-31-git-send-email-andros@netapp.com>
+ <1296855242-2592-32-git-send-email-andros@netapp.com>
+ <1296855242-2592-33-git-send-email-andros@netapp.com>
+ <1296855242-2592-34-git-send-email-andros@netapp.com>
+ <1296855242-2592-35-git-send-email-andros@netapp.com>
+ <1296855242-2592-36-git-send-email-andros@netapp.com>
+ <1296855242-2592-37-git-send-email-andros@netapp.com>
+ <1296855242-2592-38-git-send-email-andros@netapp.com>
+ <1296855242-2592-39-git-send-email-andros@netapp.com>
+ <1296855242-2592-40-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Andy Adamson <andros@netapp.com>
 
-On Feb 15, 2011, at 5:31 PM, Edgar Almonte wrote:
+The DS only role cannot be used to mount.
 
-> i confirm the ipv6 things i tell you , i comment the line
-> 
-> options ipv6 disable=1
-> 
-> in /etc/modprobe.d/modprobe.conf
-> 
-> the same error in mount without using -o udp
-> 
-> but the thing is i share folder in that client and mount it in the
-> server normal without the upd option and work fine ( the server have
-> the same distro that the client with the problem "archlinux" ) and in
-> the server i dont have the option in the /etc/modprobe.d/modprobe.conf
-> 
-> [root@heaven Desktop]# mount  circle.local:/torrent_files
-> /media/torrent_files/ -v
-> mount: no type was given - I'll assume nfs because of the colon
-> mount.nfs: timeout set for Tue Feb 15 18:27:24 2011
-> mount.nfs: trying text-based options
-> 'vers=4,addr=192.168.1.103,clientaddr=192.168.1.102'
-> circle.local:/torrent_files on /media/torrent_files type nfs (rw)
-> 
-> i use nfs4 for this share in the server and using nfs3 for the share
-> 
-> another thing is that the server have the version 64bit of the same
-> package in the client but i686 plataform
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
 
-Let me confirm what you said:
-
-  1.  The server is running the latest ARCH (x86-64).  Mounting the share via loopback on the server gets you an NFSv4 mount
-  2.  The client is running the latest ARCH (x86-32).  Mounting the share from the client gets you an NFSv3, not an NFSv4, mount, and you have to specify UDP to make the negotiation complete successfully
-  3.  Preventing ipv6.ko from loading on the client allows the mount to proceed without specifying extra options
-
-I tried to reproduce this this morning from an x86-64 client using the latest upstream nfs-utils source, and was able to get an NFSv4 mount immediately.  In other words, I reproduced the behavior in 1, but was not able to reproduce the behavior in 2.  I can try again with an x86-32 client soon, but I'm traveling tomorrow.
-
-Specifying "udp" forces the mount request to use IPv4.  If my theory is correct, specifying "tcp" also works, and gets you an NFSv4 mount.  I wasn't aware that ARCH had libtirpc and an IPv6-enabled nfs-utils build.  Does the failing client have a copy of /etc/netconfig, and can you send it?
-
-> rpc.mountd option:
-> root@heaven Desktop]# ps aux | grep rpc.mountd
-> root      4351  0.0  0.0  54512   660 ?        Ss   18:11   0:00
-> /usr/sbin/rpc.mountd --no-nfs-version 1 --no-nfs-version 2
-
-That's consistent with the "rpcinfo" output you provided, but it doesn't explain why nfsd is still providing NFSv2.  Probably not a big deal, as the mount command on your client is failing before it even tries vers=2.
-
-> On Tue, Feb 15, 2011 at 11:27 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->> On Feb 14, 2011, at 9:09 PM, Edgar Almonte wrote:
->> 
->>> in debian dont exist a package called nfs-utils , i get nfs-common and
->>> say the same version of the nfs-utils of archlinux
->> 
->> The same nfs-utils version should behave the same way no matter what (modulo bugs, of course).  It may be that the two packages were built with different configure options.  Not sure how we could find out how these were built.
->> 
->> Basically, I'm trying to figure out how to reproduce the problem here.
->> 
->>> not sure about MNT version config , i dont remember intentionally
->>> changing this , where i can check it ?
->> 
->> On the server, look at the command line options for rpc.mountd.  I'm not familiar with Ubuntu or Debian's start-up scripts, so I can't be more specific than that.
->> 
->> Note that this is an independent issue from the mount problem, but it's incorrect and contributing to mount's misbehavior.
->> 
->>> pd: sorry for the double email i forget press reply all
->>> 
->>> On Mon, Feb 14, 2011 at 11:56 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>> Hi Edgar-
->>>> 
->>>> On Feb 11, 2011, at 6:46 PM, Edgar Almonte wrote:
->>>> 
->>>>> hmm i will try update to the last version but is the lasted in
->>>>> official repository of my distro
->>>> 
->>>> Yes, that could be a problem.  Out of curiosity, can you tell us what version of nfs-utils is running on the working Debian client you have?
->>>> 
->>>>> the rpcinfo -p localhost output ( run at the server )
->>>>> 
->>>>> rpcinfo -p localhost
->>>>>   program vers proto   port  service
->>>>>    100000    4   tcp    111  portmapper
->>>>>    100000    3   tcp    111  portmapper
->>>>>    100000    2   tcp    111  portmapper
->>>>>    100000    4   udp    111  portmapper
->>>>>    100000    3   udp    111  portmapper
->>>>>    100000    2   udp    111  portmapper
->>>>>    391002    2   tcp    661  sgi_fam
->>>>>    100024    1   udp  49216  status
->>>>>    100024    1   tcp  42903  status
->>>>>    100003    2   tcp   2049  nfs
->>>>>    100003    3   tcp   2049  nfs
->>>>>    100003    4   tcp   2049  nfs
->>>>>    100227    2   tcp   2049  nfs_acl
->>>>>    100227    3   tcp   2049  nfs_acl
->>>>>    100003    2   udp   2049  nfs
->>>>>    100003    3   udp   2049  nfs
->>>>>    100003    4   udp   2049  nfs
->>>>>    100227    2   udp   2049  nfs_acl
->>>>>    100227    3   udp   2049  nfs_acl
->>>>>    100021    1   udp  36092  nlockmgr
->>>>>    100021    3   udp  36092  nlockmgr
->>>>>    100021    4   udp  36092  nlockmgr
->>>>>    100021    1   tcp  52268  nlockmgr
->>>>>    100021    3   tcp  52268  nlockmgr
->>>>>    100021    4   tcp  52268  nlockmgr
->>>>>    100005    3   udp  41849  mountd
->>>>>    100005    3   tcp  46012  mountd
->>>> 
->>>> This looks weird.  NFS is available on TCP and UDP in all three versions, but MNT is available in version 3.  I wonder if this is confusing mount.nfs.  Is there any reason why your server is configured to disable MNT version 1?
->>>> 
->>>>> On Fri, Feb 11, 2011 at 7:27 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>> 
->>>>>> On Feb 11, 2011, at 6:13 PM, Edgar Almonte wrote:
->>>>>> 
->>>>>>> Was a ipv6 issues because i add this to the client with the problem:
->>>>>>> options ipv6 disable=1
->>>>>>> in /etc/modprobe.d/modprobe.conf
->>>>>>> reboot and mount without using udp option work, output:
->>>>>>> 
->>>>>>> [root@circle zen]# mount heaven.local:/STORAGE /nfs/STORAGE/ -v
->>>>>>> mount: no type was given - I'll assume nfs because of the colon
->>>>>>> mount.nfs: timeout set for Fri Feb 11 19:11:53 2011
->>>>>>> mount.nfs: trying text-based options
->>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
->>>>>>> mount.nfs: prog 100003, trying vers=3, prot=6
->>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
->>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
->>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41849
->>>>>>> 
->>>>>>> and i think maybe is a bug of nfs-utils that can't handle in the
->>>>>>> proper way this because a connection using ipv4 protocol exist ( even
->>>>>>> it detect it )
->>>>>>> 
->>>>>>> should i need report something like this ? or and wrong ?
->>>>>> 
->>>>>> I swear this has been discussed and fixed already, but I can't find a specific fix in the bugzilla database or the git log.  nfs-utils 1.2.2 is at least a year old.  Can you update to the latest version and try again?
->>>>>> 
->>>>>> Also, please report the NFS server's transport capabilities.  "rpcinfo 192.168.1.102" should work.  You may need the "-p" option.
->>>>>> 
->>>>>>> On Fri, Feb 11, 2011 at 6:57 PM, Edgar Almonte <samudhio@gmail.com> wrote:
->>>>>>>> [root@circle zen]# pacman -Qs nfs-utils
->>>>>>>> local/nfs-utils 1.2.2-4 [0.69 MB]
->>>>>>>>    Support programs for Network File Systems
->>>>>>>> [root@circle zen]# uname -a
->>>>>>>> Linux circle 2.6.36-ARCH #1 SMP PREEMPT Mon Jan 24 18:34:55 UTC 2011
->>>>>>>> i686 Intel(R) Atom(TM) CPU D510 @ 1.66GHz GenuineIntel GNU/Linux
->>>>>>>> 
->>>>>>>> 
->>>>>>>> On Fri, Feb 11, 2011 at 1:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>>>> Which nfs-utils version and kernel release are you using?  What transport protocols are available from your NFS server?  It looks like only UDP.  I recall a bug fix in this area in the past year.
->>>>>>>>> 
->>>>>>>>> On Feb 11, 2011, at 12:35 PM, Edgar Almonte wrote:
->>>>>>>>> 
->>>>>>>>>> i get this without udp option:
->>>>>>>>>> 
->>>>>>>>>> mount: no type was given - I'll assume nfs because of the colon
->>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:27:33 2011
->>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->>>>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>> 'vers=4,addr=fe80::224:21ff:fe57:368d,clientaddr=::'
->>>>>>>>>> mount.nfs: mount(2): Input/output error
->>>>>>>>>> mount.nfs: mount system call failed
->>>>>>>>>> 
->>>>>>>>>> 
->>>>>>>>>> and with udp option:
->>>>>>>>>> 
->>>>>>>>>> ount: no type was given - I'll assume nfs because of the colon
->>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:28:29 2011
->>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>> 'udp,vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->>>>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>>>> mount.nfs: trying text-based options 'udp,addr=192.168.1.102'
->>>>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=17
->>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot UDP port 2049
->>>>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
->>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
->>>>>>>>>> heaven.local:/STORAGE on /nfs/STORAGE type nfs (rw,udp)
->>>>>>>>>> 
->>>>>>>>>> 
->>>>>>>>>> for other distro ( debian laptop ) without the udp option:
->>>>>>>>>> 
->>>>>>>>>> mount: no type was given - I'll assume nfs because of the colon
->>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:31:37 2011
->>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.107'
->>>>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
->>>>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=6
->>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
->>>>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
->>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
->>>>>>>>>> heaven.local:/STORAGE on /srv/nfs type nfs (rw)
->>>>>>>>>> 
->>>>>>>>>> 
->>>>>>>>>> and look like is some ipv6 issues
->>>>>>>>>> 
->>>>>>>>>> 
->>>>>>>>>> On Thu, Feb 10, 2011 at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>>>>>> 
->>>>>>>>>>> On Feb 9, 2011, at 7:59 PM, Edgar Almonte wrote:
->>>>>>>>>>> 
->>>>>>>>>>>> hello list
->>>>>>>>>>>> 
->>>>>>>>>>>> like the subject say after some upgrade of my distro ( i have 2
->>>>>>>>>>>> machine with the same distro and only in one happne the problem ) i
->>>>>>>>>>>> can only mount nfs share using the option -o udp , without it i get
->>>>>>>>>>>> this error
->>>>>>>>>>>> mount.nfs: mount system call failed
->>>>>>>>>>> 
->>>>>>>>>>> What does
->>>>>>>>>>> 
->>>>>>>>>>>  sudo mount.nfs heaven.local:/STORAGE /nfs/STORAGE -v
->>>>>>>>>>> 
->>>>>>>>>>> say?  It should tell you how the mount command is negotiating with the server.
->>>>>>>>>>> 
->>>>>>>>>>>> i am using avahi-dns ( mdns ) for hostname resolve
->>>>>>>>>>>> 
->>>>>>>>>>>> command used:
->>>>>>>>>>>> mount heaven.local:/STORAGE /nfs/STORAGE/
->>>>>>>>>>>> check dns is work right :
->>>>>>>>>>>> 
->>>>>>>>>>>> ping heaven.local
->>>>>>>>>>>> PING heaven.local (192.168.1.102) 56(84) bytes of data.
->>>>>>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=1 ttl=64 time=0.153 ms
->>>>>>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=2 ttl=64 time=0.160 ms
->>>>>>>>>>>> ^C
->>>>>>>>>>>> --- heaven.local ping statistics ---
->>>>>>>>>>>> 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
->>>>>>>>>>>> rtt min/avg/max/mdev = 0.153/0.156/0.160/0.013 ms
->>>>>>>>>>>> 
->>>>>>>>>>>> 
->>>>>>>>>>>> anyidea what i need check for solve this issue ?
->>>>>>>>>>>> 
->>>>>>>>>>>> thanks
->>>>>>>>>>>> --
->>>>>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>>>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>>>>>>> 
->>>>>>>>>>> --
->>>>>>>>>>> Chuck Lever
->>>>>>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>>>>>> 
->>>>>>>>>>> 
->>>>>>>>>>> 
->>>>>>>>>>> 
->>>>>>>>>>> 
->>>>>>>>> 
->>>>>>>>> --
->>>>>>>>> Chuck Lever
->>>>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>>>> 
->>>>>>>>> 
->>>>>>>>> 
->>>>>>>>> 
->>>>>>>>> 
->>>>>>>> 
->>>>>> 
->>>>>> --
->>>>>> Chuck Lever
->>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>> 
->>>>>> 
->>>>>> 
->>>>>> 
->>>>>> 
->>>> 
->>>> --
->>>> Chuck Lever
->>>> chuck[dot]lever[at]oracle[dot]com
->>>> 
->>>> 
->>>> 
->>>> 
->>>> 
->> 
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
->> 
-
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 842c288..17da633 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1412,6 +1412,12 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		goto error;
+ 	}
+ 
++	/* Cannot mount a DS only server */
++	if (is_ds_only_client(clp)) {
++		error = -ENODEV;
++		goto error;
++	}
++
+ 	/*
+ 	 * Query for the lease time on clientid setup or renewal
+ 	 *
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.6.6
 
