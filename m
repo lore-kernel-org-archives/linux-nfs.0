@@ -1,54 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27517 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754924Ab1BWAMO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Feb 2011 19:12:14 -0500
-Date: Tue, 22 Feb 2011 16:11:01 -0800
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NFSD: fix decode_cb_sequence4resok
-Message-ID: <20110223001100.GC5543@pad.home.fieldses.org>
-References: <1298414602-17029-1-git-send-email-bhalevy@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1298414602-17029-1-git-send-email-bhalevy@panasas.com>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:34323 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753748Ab1BDJb0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Feb 2011 04:31:26 -0500
+Received: by wyb28 with SMTP id 28so2050032wyb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 04 Feb 2011 01:31:25 -0800 (PST)
+In-Reply-To: <20110201181510.GA25136@fieldses.org>
+References: <AANLkTinD01zA=DTXEDG5pXVYcrEGsWOyXcMta0rzvB6n@mail.gmail.com>
+ <AANLkTimA-sCz8LQLu1weh-qQOm30jHYyO3qtxmPDPX98@mail.gmail.com> <20110201181510.GA25136@fieldses.org>
+From: camden lindsay <camden.lindsay@gmail.com>
+Date: Fri, 4 Feb 2011 01:31:05 -0800
+Message-ID: <AANLkTimzQ4ajWtPCCT3M9L7SFmijMiM2hdSJss5jqeoo@mail.gmail.com>
+Subject: Re: clients cannot reconnect to mounted nfs shares after server restart
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Feb 22, 2011 at 02:43:22PM -0800, Benny Halevy wrote:
-> Fix bug introduced in patch
-> 85a56480 NFSD: Update XDR decoders in NFSv4 callback client
-> 
-> Although decode_cb_sequence4resok ignores highest slotid and target highest slotid
-> it must account for their space in their xdr stream when calling xdr_inline_decode
+Thanks for the response:
+I have waited quite some time-- many minutes-- and still cannot reconnect.
 
-Thanks, applying for 2.6.38.  (How come you caught this, and I didn't?
-I guess it's just that the object code depends more on the callback
-returns?)
+Server --> BigBox dylan # uname -a
+Linux BigBox 2.6.36-gentoo-r5 #5 SMP Tue Feb 1 06:57:03 PST 2011
+x86_64 Intel(R) Core(TM) i3 CPU 540 @ 3.07GHz GenuineIntel GNU/Linux
 
---b.
+What i have found is that, with a newer client, i get slightly more
+information at the command line, pointing to stale nfs filehandle:
+Client1:
+Linux shobuntu 2.6.24-28-generic #1 SMP Wed Nov 24 09:30:14 UTC 2010
+i686 GNU/Linux
+mount.nfs: timeout set for Fri Feb  4 01:19:37 2011
+mount.nfs: text-based options: 'addr=192.168.11.10'
+mount.nfs: text-based options: 'addr=192.168.11.10'
+mount.nfs: text-based options: 'addr=192.168.11.10'
+mount.nfs: text-based options: 'addr=192.168.11.10'
+mount.nfs: text-based options: 'addr=192.168.11.10'
 
-> 
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfsd/nfs4callback.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index da54498..d046bdb 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -592,7 +592,7 @@ static int decode_cb_sequence4resok(struct xdr_stream *xdr,
->  	 * If the server returns different values for sessionID, slotID or
->  	 * sequence number, the server is looney tunes.
->  	 */
-> -	p = xdr_inline_decode(xdr, NFS4_MAX_SESSIONID_LEN + 4 + 4);
-> +	p = xdr_inline_decode(xdr, NFS4_MAX_SESSIONID_LEN + 4 + 4 + 4 + 4);
->  	if (unlikely(p == NULL))
->  		goto out_overflow;
->  	memcpy(id.data, p, NFS4_MAX_SESSIONID_LEN);
-> -- 
-> 1.7.3.4
-> 
+Client2:
+Linux core2buntu 2.6.32-28-generic #55-Ubuntu SMP Mon Jan 10 23:42:43
+UTC 2011 x86_64 GNU/Linux
+mount.nfs: timeout set for Fri Feb  4 01:18:17 2011
+mount.nfs: text-based options: 'addr=192.168.11.10'
+mount.nfs: mount(2): Stale NFS file handle
+mount.nfs: text-based options: 'addr=192.168.11.10'
+mount.nfs: mount(2): Stale NFS file handle
+mount.nfs: text-based options: 'addr=192.168.11.10'
+mount.nfs: mount(2): Stale NFS file handle
+
+
+Should this automatically converge at some point?
+If so, how long should i expect for convergence?
+
+Thanks!
+Camden
+
+On Tue, Feb 1, 2011 at 10:15 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Mon, Jan 31, 2011 at 07:24:30PM -0800, camden lindsay wrote:
+> > Having an issue i believe is an NFS bug, but would like someone to
+> > verify as well as... point me the correct direction to submit a bug as
+> > needed if it indeed is.
+> > Situation:
+> > NFS server running
+> > Client connected with mounted share
+> > NFS server is shut down -- (halt or /etc/init.d/nfs stop)
+> > NFS server is turned on (booted or /etc/init.d/nfs start)
+> >
+> > Outcome:
+> > NFS client that was connected does not reconnect to that share automatically
+> > NFS client that was connected cannot reconnect via umount then mount again
+> > No other nfs client can connect to that share, before or after origial
+>
+> How long have you waited?
+>
+> > NFS clients attempts to connect/reconnect
+> > NFS clients CAN connect to a different share.
+> > Details/logs:
+> > Server shows that client is authenticating:
+> > Feb  1 03:01:47 BigBox mountd[6557]: authenticated mount request from
+> > 192.168.11.49:674 for /mnt/store/public (/mnt/store/public)
+> > Feb  1 03:01:48 BigBox mountd[6557]: authenticated mount request from
+> > 192.168.11.49:763 for /mnt/store/public (/mnt/store/public)
+> > Feb  1 03:01:50 BigBox mountd[6557]: authenticated mount request from
+> > 192.168.11.49:932 for /mnt/store/public (/mnt/store/public)
+> > Feb  1 03:01:54 BigBox mountd[6557]: authenticated mount request from
+> > 192.168.11.49:942 for /mnt/store/public (/mnt/store/public)
+>
+> A network trace (tcpdump -s0 -wtmp.pcap, then reproduce the problem,
+> then ^C tcpdump, then send us tmp.pcap) might help.
+>
+> >
+> > Client shows retransmission:
+> > dylan@shobuntu:~$ sudo mount -v -t nfs bigbox:/mnt/store/public Public/
+> > mount.nfs: timeout set for Mon Jan 31 19:09:32 2011
+> > mount.nfs: text-based options: 'addr=192.168.11.10'
+> > mount.nfs: text-based options: 'addr=192.168.11.10'
+> > mount.nfs: text-based options: 'addr=192.168.11.10'
+> > mount.nfs: text-based options: 'addr=192.168.11.10'
+> > mount.nfs: text-based options: 'addr=192.168.11.10'
+> >
+> > Server Version:
+> > net-fs/nfs-utils
+> >       Latest version available: 1.1.4-r1
+> >       Latest version installed: 1.1.4-r1
+> >       Size of files: 574 kB
+> >       Homepage:      http://linux-nfs.org/
+> >       Description:   NFS client and server daemons
+> >       License:       GPL-2
+> > (server is on Gentoo, client on Ubuntu)
+>
+> Note most of the NFS code is actually in the kernel, so the kernel
+> version(s) involved would be useful too.
+>
+> --b.
+>
+> > Thanks!
+> > Camden
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
