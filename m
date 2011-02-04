@@ -1,130 +1,213 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:21322 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753181Ab1BRUyZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Feb 2011 15:54:25 -0500
-Subject: Re: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release
- to nfsiod
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20110218150435.3870147c@corrin.poochiereds.net>
-References: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
-	 <1297783898.10103.22.camel@heimdal.trondhjem.org>
-	 <20110215113053.345e3abc@tlielax.poochiereds.net>
-	 <1297813624.10103.34.camel@heimdal.trondhjem.org>
-	 <1297865354.6596.13.camel@heimdal.trondhjem.org>
-	 <1297866373.6596.18.camel@heimdal.trondhjem.org>
-	 <20110216095002.1e7944c9@tlielax.poochiereds.net>
-	 <1297869677.6596.30.camel@heimdal.trondhjem.org>
-	 <20110216131307.0880ad00@tlielax.poochiereds.net>
-	 <20110217084052.34a6686b@barsoom.rdu.redhat.com>
-	 <20110217101014.39bcc80b@barsoom.rdu.redhat.com>
-	 <1297972044.2964.27.camel@heimdal.trondhjem.org>
-	 <20110217163741.004adac8@corrin.poochiereds.net>
-	 <20110218150435.3870147c@corrin.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 18 Feb 2011 12:54:07 -0800
-Message-ID: <1298062447.8061.2.camel@heimdal.trondhjem.org>
+	id S1753253Ab1BDVep (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:45 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 26/40] pnfs-submit: wave3 refactor data server session initialization
+Date: Fri,  4 Feb 2011 16:33:48 -0500
+Message-Id: <1296855242-2592-27-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-26-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
+ <1296855242-2592-11-git-send-email-andros@netapp.com>
+ <1296855242-2592-12-git-send-email-andros@netapp.com>
+ <1296855242-2592-13-git-send-email-andros@netapp.com>
+ <1296855242-2592-14-git-send-email-andros@netapp.com>
+ <1296855242-2592-15-git-send-email-andros@netapp.com>
+ <1296855242-2592-16-git-send-email-andros@netapp.com>
+ <1296855242-2592-17-git-send-email-andros@netapp.com>
+ <1296855242-2592-18-git-send-email-andros@netapp.com>
+ <1296855242-2592-19-git-send-email-andros@netapp.com>
+ <1296855242-2592-20-git-send-email-andros@netapp.com>
+ <1296855242-2592-21-git-send-email-andros@netapp.com>
+ <1296855242-2592-22-git-send-email-andros@netapp.com>
+ <1296855242-2592-23-git-send-email-andros@netapp.com>
+ <1296855242-2592-24-git-send-email-andros@netapp.com>
+ <1296855242-2592-25-git-send-email-andros@netapp.com>
+ <1296855242-2592-26-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 2011-02-18 at 15:04 -0500, Jeff Layton wrote: 
-> On Thu, 17 Feb 2011 16:37:41 -0500
-> Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > On Thu, 17 Feb 2011 11:47:24 -0800
-> > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> > 
-> > > On Thu, 2011-02-17 at 10:10 -0500, Jeff Layton wrote: 
-> > > > On Thu, 17 Feb 2011 08:40:52 -0500
-> > > > Jeff Layton <jlayton@redhat.com> wrote:
-> > > > 
-> > > > > 
-> > > > > Looks like it finally failed on the 39th pass:
-> > > > > 
-> > > > > second check for lost reply on non-idempotent requests
-> > > > > testing 50 idempotencies in directory "testdir"
-> > > > > rmdir 1: Directory not empty
-> > > > > special tests failed
-> > > > > 
-> > > > > When I look in the directory (several hours after it failed), the
-> > > > > silly-renamed file is still there:
-> > > > > 
-> > > > > -rw---x--x. 1 root root   30 Feb 16 15:04 .nfs000000000000002d00000090
-> > > > > 
-> > > > > ...so I'm not sure what exactly is wrong yet, but it looks like the
-> > > > > silly delete just never happened. Maybe there's a dentry refcount leak
-> > > > > of some sort? There are no queued RPC's.
-> > > > > 
-> > > > > I'll keep looking at it but if you have ideas as to what it could be,
-> > > > > let me know.
-> > > > > 
-> > > > 
-> > > > I walked down the directory tree in crash on the live kernel and found
-> > > > the dentry. The d_count is 0x0, so I'm not clear on why it didn't get
-> > > > cleaned up:
-> > > > 
-> > > > crash> struct dentry.d_flags,d_count,d_name 0xffff880017d46a80
-> > > >   d_flags = 0xc000, 
-> > > >   d_count = 0x0, 
-> > > >   d_name = {
-> > > >     hash = 0xe08ab5c8, 
-> > > >     len = 0x1c, 
-> > > >     name = 0xffff880017d46ab8 ".nfs000000000000002d00000090"
-> > > >   }, 
-> > > > 
-> > > > 
-> > > > The d_flags are:
-> > > > 
-> > > > #define DCACHE_OP_REVALIDATE    0x4000
-> > > > #define DCACHE_OP_DELETE        0x8000
-> > > > 
-> > > > ...very odd. I'd have expected to see this one set too:
-> > > > 
-> > > > #define DCACHE_NFSFS_RENAMED  0x0002
-> > > > 
-> > > > I suppose the async sillyrename call could have failed and we ended up
-> > > > calling nfs_cancel_async_unlink? I'll stick in some printk's around
-> > > > that area and see if I can figure out what's going on...
-> > > > 
-> > > 
-> > > Perhaps I missed a call site that needs an rpc_put_task_async()?
-> > > 
-> > 
-> > I'm not sure that would explain what we're seeing here, unless I'm just
-> > missing something. I do know that nfs_cancel_async_unlink was never
-> > called in my latest test run, so that does not seem to be it.
-> > 
-> > Another anomaly -- d_fsdata is NULL. How do we get into that state with
-> > a dentry that has been silly-renamed? FWIW, here's the entire dentry
-> > struct with my latest reproducer. Let me know if anything stands out to
-> > you...
-> > 
-> 
-> My current thinking is that the problems I'm seeing here are not
-> directly related to the bug we're trying to fix. It looks like
-> sillyrename is still just plain broken a'la your email entitled:
-> 
->     2.6.38-rc2... NFS sillyrename is broken...
-> 
-> ...I'll plan to keep an eye out for the fix from Nick, and re-test this
-> when it hits.
-> 
-> Thanks,
+From: Andy Adamson <andros@netapp.com>
 
-Oh, I'm sorry. I wasn't aware you were testing on 2.6.38-rc...
+Follow nfs4_init_session convention.
 
-Yes, sillyrename is still broken there due to the NULL parent dentry
-being passed to the d_iput() callback. Nick promised us a patch, but
-hasn't delivered yet.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/internal.h          |    2 +-
+ fs/nfs/nfs4_fs.h           |   12 ++++++++++++
+ fs/nfs/nfs4filelayoutdev.c |   30 +++++++++++-------------------
+ fs/nfs/nfs4proc.c          |   22 +++++++++++++++++++++-
+ 4 files changed, 45 insertions(+), 21 deletions(-)
 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 764a235..5518d61 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -216,7 +216,7 @@ extern const u32 nfs41_maxwrite_overhead;
+ extern struct rpc_procinfo nfs4_procedures[];
+ #endif
+ 
+-extern int nfs4_recover_expired_lease(struct nfs_client *clp);
++extern int nfs4_init_ds_session(struct nfs_client *clp);
+ 
+ /* proc.c */
+ void nfs_close_context(struct nfs_open_context *ctx, int is_sync);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 5d84642..5dc378e 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -266,6 +266,12 @@ is_ds_only_client(struct nfs_client *clp)
+ 	return (clp->cl_exchange_flags & EXCHGID4_FLAG_MASK_PNFS) ==
+ 		EXCHGID4_FLAG_USE_PNFS_DS;
+ }
++
++static inline bool
++is_ds_client(struct nfs_client *clp)
++{
++	return clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_DS;
++}
+ #else /* CONFIG_NFS_v4_1 */
+ static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
+ {
+@@ -289,6 +295,12 @@ is_ds_only_client(struct nfs_client *clp)
+ {
+ 	return false;
+ }
++
++static inline bool
++is_ds_client(struct nfs_client *clp)
++{
++	return false;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index c46cb00..6557d1c 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -113,7 +113,7 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ {
+ 	struct nfs_client *clp;
+ 	struct sockaddr_in sin;
+-	int err = 0;
++	int status = 0;
+ 
+ 	dprintk("--> %s ip:port %x:%hu au_flavor %d\n", __func__,
+ 		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port),
+@@ -126,7 +126,7 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 	clp = nfs4_set_ds_client(mds_srv->nfs_client, (struct sockaddr *)&sin,
+ 				 sizeof(sin), IPPROTO_TCP);
+ 	if (IS_ERR(clp)) {
+-		err = PTR_ERR(clp);
++		status = PTR_ERR(clp);
+ 		goto out;
+ 	}
+ 
+@@ -134,27 +134,13 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 		dprintk("%s [existing] ip=%x, port=%hu\n", __func__,
+ 			ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
+ 
+-		if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_DS)) {
+-			err = -ENODEV;
++		if (!is_ds_client(clp)) {
++			status = -ENODEV;
+ 			goto out_put;
+ 		}
+ 		goto out;
+ 	}
+ 
+-	/* Ask for only the EXCHGID4_FLAG_USE_PNFS_DS pNFS role */
+-	dprintk("%s EXCHANGE_ID for clp %p\n", __func__, clp);
+-	clp->cl_exchange_flags = EXCHGID4_FLAG_USE_PNFS_DS;
+-
+-	err = nfs4_recover_expired_lease(clp);
+-	if (!err)
+-		err = nfs4_check_client_ready(clp);
+-	if (err)
+-		goto out_put;
+-
+-	if (!(clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_DS)) {
+-		err = -ENODEV;
+-		goto out_put;
+-	}
+ 	/*
+ 	 * Set DS lease equal to the MDS lease, renewal is scheduled in
+ 	 * create_session
+@@ -164,12 +150,18 @@ nfs4_pnfs_ds_create(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 	spin_unlock(&mds_srv->nfs_client->cl_lock);
+ 	clp->cl_last_renewal = jiffies;
+ 
++	/* New nfs_client */
++	status = nfs4_init_ds_session(clp);
++	if (status)
++		goto out_put;
++
++
+ 	ds->ds_clp = clp;
+ 
+ 	dprintk("%s [new] ip=%x, port=%hu\n", __func__, ntohl(ds->ds_ip_addr),
+ 		ntohs(ds->ds_port));
+ out:
+-	return err;
++	return status;
+ out_put:
+ 	nfs_put_client(clp);
+ 	goto out;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index fb22cbf..1da0ebf 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1591,7 +1591,6 @@ static int nfs4_client_recover_expired_lease(struct nfs_client *clp)
+ 	}
+ 	return ret;
+ }
+-EXPORT_SYMBOL(nfs4_recover_expired_lease);
+ 
+ static int nfs4_recover_expired_lease(struct nfs_server *server)
+ {
+@@ -5086,6 +5085,27 @@ int nfs4_init_session(struct nfs_server *server)
+ 	return ret;
+ }
+ 
++int nfs4_init_ds_session(struct nfs_client *clp)
++{
++	struct nfs4_session *session = clp->cl_session;
++	int ret;
++
++	if (!test_and_clear_bit(NFS4_SESSION_INITING, &session->session_state))
++		return 0;
++
++	ret = nfs4_client_recover_expired_lease(clp);
++	if (!ret)
++		/* Test for the DS role */
++		if (!is_ds_client(clp))
++			ret = -ENODEV;
++	if (!ret)
++		ret = nfs4_check_client_ready(clp);
++	return ret;
++
++}
++EXPORT_SYMBOL_GPL(nfs4_init_ds_session);
++
++
+ /*
+  * Renew the cl_session lease.
+  */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.6.6
 
