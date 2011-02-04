@@ -1,44 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43261 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756291Ab1BCNki (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Feb 2011 08:40:38 -0500
-Date: Thu, 3 Feb 2011 08:40:35 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Nix <nix@esperi.org.uk>
-Cc: George Spelvin <linux@horizon.com>, linux-nfs@vger.kernel.org
-Subject: Re: persistent, quasi-random -ESTALE at mount time
-Message-ID: <20110203134035.GA18325@fieldses.org>
-References: <20110203034844.GA30641@fieldses.org>
- <20110203042814.6364.qmail@science.horizon.com>
- <20110203044010.GC30641@fieldses.org>
- <87zkqdo6yv.fsf@spindle.srvr.nix>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87zkqdo6yv.fsf@spindle.srvr.nix>
+	id S1753233Ab1BDVen (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:43 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 23/40] SQUASHME pnfs-submit wave3 new function for ds expired lease
+Date: Fri,  4 Feb 2011 16:33:45 -0500
+Message-Id: <1296855242-2592-24-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-23-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
+ <1296855242-2592-11-git-send-email-andros@netapp.com>
+ <1296855242-2592-12-git-send-email-andros@netapp.com>
+ <1296855242-2592-13-git-send-email-andros@netapp.com>
+ <1296855242-2592-14-git-send-email-andros@netapp.com>
+ <1296855242-2592-15-git-send-email-andros@netapp.com>
+ <1296855242-2592-16-git-send-email-andros@netapp.com>
+ <1296855242-2592-17-git-send-email-andros@netapp.com>
+ <1296855242-2592-18-git-send-email-andros@netapp.com>
+ <1296855242-2592-19-git-send-email-andros@netapp.com>
+ <1296855242-2592-20-git-send-email-andros@netapp.com>
+ <1296855242-2592-21-git-send-email-andros@netapp.com>
+ <1296855242-2592-22-git-send-email-andros@netapp.com>
+ <1296855242-2592-23-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Feb 03, 2011 at 08:30:48AM +0000, Nix wrote:
-> On 3 Feb 2011, J. Bruce Fields stated:
-> 
-> > Ouch.  I do test that regularly, and haven't seen problems.  Again, if
-> > you have reproduceable problem, I'd appreciate details.--b.
-> 
-> I can give you a packet dump from my (completely reproducible) failure
-> with the same symptoms, if you like. (Again, it is fixed by running
-> exportfs repeatedly, each time fixing another few mounts: currently,
-> I have to run it six times.)
+From: Andy Adamson <andros@netapp.com>
 
-That would be great, thanks.  And could you collect the contents of
-/proc/net/rpc/{nfsd.fh,nfsd.export}/content at the same time?  (I think
-you already sent some; but I'd be curious to match them up with the
-packet trace.)  Also, the output of "blkid" might help diagnose any
-problems with uuid's.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   11 ++++++++---
+ 1 files changed, 8 insertions(+), 3 deletions(-)
 
-(Also, I think it's probably a totally different problem, but I found a
-problem yesterday with out-of-date uuid information that appears to be
-due to selinux preventing rpc.mountd from opening block devices; are you
-using selinux, and if so does turning it off (setenforce 0) help?)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9c50be7..fb22cbf 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1574,7 +1574,7 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
+ 	return 0;
+ }
+ 
+-int nfs4_recover_expired_lease(struct nfs_client *clp)
++static int nfs4_client_recover_expired_lease(struct nfs_client *clp)
+ {
+ 	unsigned int loop;
+ 	int ret;
+@@ -1593,6 +1593,11 @@ int nfs4_recover_expired_lease(struct nfs_client *clp)
+ }
+ EXPORT_SYMBOL(nfs4_recover_expired_lease);
+ 
++static int nfs4_recover_expired_lease(struct nfs_server *server)
++{
++	return nfs4_client_recover_expired_lease(server->nfs_client);
++}
++
+ /*
+  * OPEN_EXPIRED:
+  * 	reclaim state on the server after a network partition.
+@@ -1680,7 +1685,7 @@ static int _nfs4_do_open(struct inode *dir, struct path *path, fmode_t fmode, in
+ 		dprintk("nfs4_do_open: nfs4_get_state_owner failed!\n");
+ 		goto out_err;
+ 	}
+-	status = nfs4_recover_expired_lease(server->nfs_client);
++	status = nfs4_recover_expired_lease(server);
+ 	if (status != 0)
+ 		goto err_put_state_owner;
+ 	if (path->dentry->d_inode != NULL)
+@@ -5075,7 +5080,7 @@ int nfs4_init_session(struct nfs_server *server)
+ 	session->fc_attrs.max_rqst_sz = wsize + nfs41_maxwrite_overhead;
+ 	session->fc_attrs.max_resp_sz = rsize + nfs41_maxread_overhead;
+ 
+-	ret = nfs4_recover_expired_lease(server->nfs_client);
++	ret = nfs4_recover_expired_lease(server);
+ 	if (!ret)
+ 		ret = nfs4_check_client_ready(clp);
+ 	return ret;
+-- 
+1.6.6
 
---b.
