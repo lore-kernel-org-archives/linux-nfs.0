@@ -1,58 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:39505 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752621Ab1BQEc4 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Feb 2011 23:32:56 -0500
-In-Reply-To: <20110217042519.GH14534@fieldses.org>
-References: <20110215185902.GG29420@fieldses.org> <20110217042519.GH14534@fieldses.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Wed, 16 Feb 2011 20:32:06 -0800
-Message-ID: <AANLkTikeK77v7y346-OX9dvufJSjbJ7qQSpJc4C3wLrZ@mail.gmail.com>
-Subject: Re: 2.6.38 nfsd bugfixes
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753207Ab1BDVek (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:40 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 21/40] SQUASHME pnfs-submit wave3 add comment to nfs4_fl_prepare_ds_fh
+Date: Fri,  4 Feb 2011 16:33:43 -0500
+Message-Id: <1296855242-2592-22-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-21-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
+ <1296855242-2592-11-git-send-email-andros@netapp.com>
+ <1296855242-2592-12-git-send-email-andros@netapp.com>
+ <1296855242-2592-13-git-send-email-andros@netapp.com>
+ <1296855242-2592-14-git-send-email-andros@netapp.com>
+ <1296855242-2592-15-git-send-email-andros@netapp.com>
+ <1296855242-2592-16-git-send-email-andros@netapp.com>
+ <1296855242-2592-17-git-send-email-andros@netapp.com>
+ <1296855242-2592-18-git-send-email-andros@netapp.com>
+ <1296855242-2592-19-git-send-email-andros@netapp.com>
+ <1296855242-2592-20-git-send-email-andros@netapp.com>
+ <1296855242-2592-21-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, Feb 16, 2011 at 8:25 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> -               if ((host_err = nfsd_map_name_to_uid(argp->rqstp, buf, dummy32, &iattr->ia_uid)))
-> -                       goto out_nfserr;
-> +               if ((status = nfsd_map_name_to_uid(argp->rqstp, buf, dummy32, &iattr->ia_uid)))
-> +                       return status;
+From: Andy Adamson <andros@netapp.com>
 
-Btw, can we please just agree to not doing those idiotic double parenthesis?
+Signed-off-by: Andy Adamson <andros@netapp.com>
 
-There is a really trivial solution to the gcc warning - write your
-code like a sane person, instead of some ex-LISP hacker that has
-withdrawal symptoms. IOW, the above should be written as
+	tag-out
+---
+ fs/nfs/nfs4filelayoutdev.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-  status = nfsd_map_name_to_uid(argp->rqstp, buf, dummy32, &iattr->ia_uid);
-  if (status)
-    return status;
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 83b0ab8..b1290ca 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -590,6 +590,7 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, loff_t offset)
+ 		if (flseg->num_fh == 1)
+ 			i = 0;
+ 		else if (flseg->num_fh == 0)
++			/* Use the MDS OPEN fh set in nfs_read_rpcsetup */
+ 			return NULL;
+ 		else
+ 			i = nfs4_fl_calc_ds_index(lseg, offset);
+-- 
+1.6.6
 
-which is a hell of a lot more readable, no?
-
-There is never any real excuse to put an assignment inside a regular
-if-statement.
-
-Inside a while/for loop? Sure. There are real syntactic reasons for
-doing things like
-
-   while ((c = getchar()) != EOF) {
-   }
-
-that actually make the code better and denser and avoid extra control
-flow crap or duplicate code.
-
-Inside a macro expansion? Again, there may be good reasons to try to
-make it a single statement.
-
-But a simple if-statement? There just isn't any reason for it, since
-the obvious thing is to just write it as two separate statements: the
-assignment, and the if-statement. So why do it and make the code
-uglier and harder to parse?
-
-                                   Linus
