@@ -1,104 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:45651 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752021Ab1BDVoc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Feb 2011 16:44:32 -0500
-Received: by bwz15 with SMTP id 15so3176969bwz.19
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Feb 2011 13:44:30 -0800 (PST)
-In-Reply-To: <1296855242-2592-20-git-send-email-andros@netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753151Ab1BDVeg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:36 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 16/40] REVERT pnfs_submit: enforce requested DS only pNFS role
+Date: Fri,  4 Feb 2011 16:33:38 -0500
+Message-Id: <1296855242-2592-17-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-16-git-send-email-andros@netapp.com>
 References: <1296855242-2592-1-git-send-email-andros@netapp.com>
-	<1296855242-2592-2-git-send-email-andros@netapp.com>
-	<1296855242-2592-3-git-send-email-andros@netapp.com>
-	<1296855242-2592-4-git-send-email-andros@netapp.com>
-	<1296855242-2592-5-git-send-email-andros@netapp.com>
-	<1296855242-2592-6-git-send-email-andros@netapp.com>
-	<1296855242-2592-7-git-send-email-andros@netapp.com>
-	<1296855242-2592-8-git-send-email-andros@netapp.com>
-	<1296855242-2592-9-git-send-email-andros@netapp.com>
-	<1296855242-2592-10-git-send-email-andros@netapp.com>
-	<1296855242-2592-11-git-send-email-andros@netapp.com>
-	<1296855242-2592-12-git-send-email-andros@netapp.com>
-	<1296855242-2592-13-git-send-email-andros@netapp.com>
-	<1296855242-2592-14-git-send-email-andros@netapp.com>
-	<1296855242-2592-15-git-send-email-andros@netapp.com>
-	<1296855242-2592-16-git-send-email-andros@netapp.com>
-	<1296855242-2592-17-git-send-email-andros@netapp.com>
-	<1296855242-2592-18-git-send-email-andros@netapp.com>
-	<1296855242-2592-19-git-send-email-andros@netapp.com>
-	<1296855242-2592-20-git-send-email-andros@netapp.com>
-Date: Fri, 4 Feb 2011 16:44:30 -0500
-Message-ID: <AANLkTinxqvGOm0JkPph9zH3FO4EEmfqWZLH2qo+oiovi@mail.gmail.com>
-Subject: Re: [PATCH 19/40] SQUASHME pnfs-submit wave3 filelayout read pagelist cleanup
-From: Fred Isaman <iisaman@netapp.com>
-To: andros@netapp.com
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
+ <1296855242-2592-3-git-send-email-andros@netapp.com>
+ <1296855242-2592-4-git-send-email-andros@netapp.com>
+ <1296855242-2592-5-git-send-email-andros@netapp.com>
+ <1296855242-2592-6-git-send-email-andros@netapp.com>
+ <1296855242-2592-7-git-send-email-andros@netapp.com>
+ <1296855242-2592-8-git-send-email-andros@netapp.com>
+ <1296855242-2592-9-git-send-email-andros@netapp.com>
+ <1296855242-2592-10-git-send-email-andros@netapp.com>
+ <1296855242-2592-11-git-send-email-andros@netapp.com>
+ <1296855242-2592-12-git-send-email-andros@netapp.com>
+ <1296855242-2592-13-git-send-email-andros@netapp.com>
+ <1296855242-2592-14-git-send-email-andros@netapp.com>
+ <1296855242-2592-15-git-send-email-andros@netapp.com>
+ <1296855242-2592-16-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, Feb 4, 2011 at 4:33 PM,  <andros@netapp.com> wrote:
-> From: Andy Adamson <andros@netapp.com>
->
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/nfs4filelayout.c |   19 ++-----------------
->  1 files changed, 2 insertions(+), 17 deletions(-)
->
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index 3daf351..dce90a0 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -132,14 +132,6 @@ struct rpc_call_ops filelayout_read_call_ops = {
->        .rpc_release = filelayout_read_release,
->  };
->
-> -/* Perform sync or async reads.
-> - *
-> - * An optimization for the NFS file layout driver
-> - * allows the original read/write data structs to be passed in the
-> - * last argument.
-> - *
-> - * TODO: join with write_pagelist?
-> - */
->  static enum pnfs_try_status
->  filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
->  {
-> @@ -149,8 +141,8 @@ filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
->        u32 idx;
->        struct nfs_fh *fh;
->
-> -       dprintk("--> %s ino %lu nr_pages %d pgbase %u req %Zu@%llu\n",
-> -               __func__, data->inode->i_ino, nr_pages,
-> +       dprintk("--> %s ino %lu pgbase %u req %Zu@%llu\n",
-> +               __func__, data->inode->i_ino,
->                data->args.pgbase, (size_t)data->args.count, offset);
->
+From: Andy Adamson <andros@netapp.com>
 
-A nit, but this belongs in the next patch.
+We no longer ask for any role. We check for DS only in nfs4_set_ds_client.
 
-Fred
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4state.c |   11 -----------
+ 1 files changed, 0 insertions(+), 11 deletions(-)
 
->        /* Retrieve the correct rpc_client for the byte range */
-> @@ -169,13 +161,6 @@ filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
->        if (fh)
->                data->args.fh = fh;
->
-> -       /*
-> -        * Now get the file offset on the dserver
-> -        * Set the read offset to this offset, and
-> -        * save the original offset in orig_offset
-> -        * In the case of aync reads, the offset will be reset in the
-> -        * call_ops->rpc_call_done() routine.
-> -        */
->        data->args.offset = filelayout_get_dserver_offset(lseg, offset);
->        data->fldata.orig_offset = offset;
->
-> --
-> 1.6.6
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 3cdbf3b..49433aa 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -229,7 +229,6 @@ static int nfs4_begin_drain_session(struct nfs_client *clp)
+ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ {
+ 	int status;
+-	u32 req_exchange_flags = clp->cl_exchange_flags;
+ 
+ 	nfs4_begin_drain_session(clp);
+ 	status = nfs4_proc_exchange_id(clp, cred);
+@@ -238,16 +237,6 @@ int nfs41_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ 	status = nfs4_proc_create_session(clp);
+ 	if (status != 0)
+ 		goto out;
+-	if (is_ds_only_session(req_exchange_flags)) {
+-		clp->cl_exchange_flags &=
+-		     ~(EXCHGID4_FLAG_USE_PNFS_MDS | EXCHGID4_FLAG_USE_NON_PNFS);
+-		if (!is_ds_only_session(clp->cl_exchange_flags)) {
+-			nfs4_destroy_session(clp->cl_session);
+-			clp->cl_session = NULL;
+-			status = -ENOTSUPP;
+-			goto out;
+-		}
+-	}
+ 	nfs41_setup_state_renewal(clp);
+ 	nfs_mark_client_ready(clp, NFS_CS_READY);
+ out:
+-- 
+1.6.6
+
