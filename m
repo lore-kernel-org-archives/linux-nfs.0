@@ -1,146 +1,206 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:48891 "EHLO shutemov.name"
+Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755507Ab1BHSmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Feb 2011 13:42:12 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Rob Landley <rlandley@parallels.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v3, RESEND 14/16] sunrpc: make rpc_pipefs be mountable multiple times
-Date: Tue,  8 Feb 2011 20:42:05 +0200
-Message-Id: <1297190527-19925-15-git-send-email-kas@openvz.org>
-In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
-References: <1297190527-19925-1-git-send-email-kas@openvz.org>
+	id S1752267Ab1BDVeO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Feb 2011 16:34:14 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@citi.umich.edu>,
+        Dean Hildebrand <dhildeb@us.ibm.com>,
+        Marc Eshel <eshel@almaden.ibm.com>, Mike Sager <sager@netapp.com>,
+        Oleg Drokin <green@linuxhacker.ru>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Andy Adamson <andros@netapp.com>, Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH 02/40] pnfs_submit: add data server session to nfs4_setup_sequence
+Date: Fri,  4 Feb 2011 16:33:24 -0500
+Message-Id: <1296855242-2592-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-2-git-send-email-andros@netapp.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+ <1296855242-2592-2-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-To support containers, allow multiple independent instances of
-rpc_pipefs. Use '-o newinstance' to create new of the filesystem.
-The same semantics as with devpts.
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
-Reviewed-by: Rob Landley <rlandley@parallels.com>
+Note: original patch of same name...
+
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Mike Sager <sager@netapp.com>
+Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off_by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- net/sunrpc/rpc_pipe.c |   80 ++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 79 insertions(+), 1 deletions(-)
+ fs/nfs/nfs4_fs.h  |    3 +++
+ fs/nfs/nfs4proc.c |   17 ++++++++++-------
+ fs/nfs/read.c     |    2 +-
+ fs/nfs/unlink.c   |    4 ++--
+ fs/nfs/write.c    |    2 +-
+ 5 files changed, 17 insertions(+), 11 deletions(-)
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 1261f27..f824f33 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -19,6 +19,7 @@
- #include <linux/nsproxy.h>
- #include <linux/mnt_namespace.h>
- #include <linux/fs_struct.h>
-+#include <linux/parser.h>
- 
- #include <asm/ioctls.h>
- #include <linux/fs.h>
-@@ -41,6 +42,49 @@ static struct kmem_cache *rpc_inode_cachep __read_mostly;
- 
- #define RPC_UPCALL_TIMEOUT (30*HZ)
- 
-+struct rpc_mount_opts {
-+	int newinstance;
-+};
-+
-+enum {
-+	Opt_newinstance,
-+
-+	Opt_err
-+};
-+
-+static const match_table_t tokens = {
-+	{Opt_newinstance, "newinstance"},
-+
-+	{Opt_err, NULL}
-+};
-+
-+static int
-+parse_mount_options(char *data, struct rpc_mount_opts *opts)
-+{
-+	char *p;
-+
-+	opts->newinstance = 0;
-+
-+	while ((p = strsep(&data, ",")) != NULL) {
-+		substring_t args[MAX_OPT_ARGS];
-+		int token;
-+
-+		if (!*p)
-+			continue;
-+
-+		token = match_token(p, tokens, args);
-+		switch (token) {
-+		case Opt_newinstance:
-+			opts->newinstance = 1;
-+			break;
-+		default:
-+			return -EINVAL;
-+		}
-+	}
-+
-+	return 0;
-+}
-+
- static void rpc_purge_list(struct rpc_inode *rpci, struct list_head *head,
- 		void (*destroy_msg)(struct rpc_pipe_msg *), int err)
- {
-@@ -1093,11 +1137,45 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 	return 0;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 7a74740..28fda51 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -250,10 +250,12 @@ static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *ser
  }
  
-+static int
-+compare_rpc_mnt_sb(struct super_block *s, void *p)
-+{
-+	if (init_rpc_pipefs)
-+		return init_rpc_pipefs->mnt_sb == s;
-+	return 0;
-+}
-+
- static struct dentry *
- rpc_mount(struct file_system_type *fs_type,
- 		int flags, const char *dev_name, void *data)
- {
--	return mount_single(fs_type, flags, data, rpc_fill_super);
-+	int error;
-+	struct rpc_mount_opts opts;
-+	struct super_block *s;
-+
-+	error = parse_mount_options(data, &opts);
-+	if (error)
-+		return ERR_PTR(error);
-+
-+	if (opts.newinstance)
-+		s = sget(fs_type, NULL, set_anon_super, NULL);
-+	else
-+		s = sget(fs_type, compare_rpc_mnt_sb, set_anon_super, NULL);
-+
-+	if (IS_ERR(s))
-+		return ERR_CAST(s);
-+
-+	if (!s->s_root) {
-+		s->s_flags = flags;
-+		error = rpc_fill_super(s, data, flags & MS_SILENT ? 1 : 0);
-+		if (error) {
-+			deactivate_locked_super(s);
-+			return ERR_PTR(error);
-+		}
-+		s->s_flags |= MS_ACTIVE;
-+	}
-+
-+	return dget(s->s_root);
+ extern int nfs4_setup_sequence(const struct nfs_server *server,
++		struct nfs4_session *ds_session,
+ 		struct nfs4_sequence_args *args, struct nfs4_sequence_res *res,
+ 		int cache_reply, struct rpc_task *task);
+ extern void nfs4_destroy_session(struct nfs4_session *session);
+ extern struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp);
++extern int nfs4_proc_exchange_id(struct nfs_client *, struct rpc_cred *);
+ extern int nfs4_proc_create_session(struct nfs_client *);
+ extern int nfs4_proc_destroy_session(struct nfs4_session *);
+ extern int nfs4_init_session(struct nfs_server *server);
+@@ -266,6 +268,7 @@ static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *ser
  }
  
- static void rpc_kill_sb(struct super_block *sb)
+ static inline int nfs4_setup_sequence(const struct nfs_server *server,
++		struct nfs4_session *ds_session,
+ 		struct nfs4_sequence_args *args, struct nfs4_sequence_res *res,
+ 		int cache_reply, struct rpc_task *task)
+ {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 78936a8..9d0d636 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -573,6 +573,7 @@ static int nfs41_setup_sequence(struct nfs4_session *session,
+ }
+ 
+ int nfs4_setup_sequence(const struct nfs_server *server,
++		struct nfs4_session *ds_session,
+ 			struct nfs4_sequence_args *args,
+ 			struct nfs4_sequence_res *res,
+ 			int cache_reply,
+@@ -581,6 +582,8 @@ int nfs4_setup_sequence(const struct nfs_server *server,
+ 	struct nfs4_session *session = nfs4_get_session(server);
+ 	int ret = 0;
+ 
++	if (ds_session)
++		session = ds_session;
+ 	if (session == NULL) {
+ 		args->sa_session = NULL;
+ 		res->sr_session = NULL;
+@@ -611,7 +614,7 @@ static void nfs41_call_sync_prepare(struct rpc_task *task, void *calldata)
+ 
+ 	dprintk("--> %s data->seq_server %p\n", __func__, data->seq_server);
+ 
+-	if (nfs4_setup_sequence(data->seq_server, data->seq_args,
++	if (nfs4_setup_sequence(data->seq_server, NULL, data->seq_args,
+ 				data->seq_res, data->cache_reply, task))
+ 		return;
+ 	rpc_call_start(task);
+@@ -1399,7 +1402,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+ 		nfs_copy_fh(&data->o_res.fh, data->o_arg.fh);
+ 	}
+ 	data->timestamp = jiffies;
+-	if (nfs4_setup_sequence(data->o_arg.server,
++	if (nfs4_setup_sequence(data->o_arg.server, NULL,
+ 				&data->o_arg.seq_args,
+ 				&data->o_res.seq_res, 1, task))
+ 		return;
+@@ -1950,7 +1953,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 
+ 	nfs_fattr_init(calldata->res.fattr);
+ 	calldata->timestamp = jiffies;
+-	if (nfs4_setup_sequence(NFS_SERVER(calldata->inode),
++	if (nfs4_setup_sequence(NFS_SERVER(calldata->inode), NULL,
+ 				&calldata->arg.seq_args, &calldata->res.seq_res,
+ 				1, task))
+ 		return;
+@@ -3652,7 +3655,7 @@ static void nfs4_delegreturn_prepare(struct rpc_task *task, void *data)
+ 
+ 	d_data = (struct nfs4_delegreturndata *)data;
+ 
+-	if (nfs4_setup_sequence(d_data->res.server,
++	if (nfs4_setup_sequence(d_data->res.server, NULL,
+ 				&d_data->args.seq_args,
+ 				&d_data->res.seq_res, 1, task))
+ 		return;
+@@ -3904,7 +3907,7 @@ static void nfs4_locku_prepare(struct rpc_task *task, void *data)
+ 		return;
+ 	}
+ 	calldata->timestamp = jiffies;
+-	if (nfs4_setup_sequence(calldata->server,
++	if (nfs4_setup_sequence(calldata->server, NULL,
+ 				&calldata->arg.seq_args,
+ 				&calldata->res.seq_res, 1, task))
+ 		return;
+@@ -4059,7 +4062,7 @@ static void nfs4_lock_prepare(struct rpc_task *task, void *calldata)
+ 	} else
+ 		data->arg.new_lock_owner = 0;
+ 	data->timestamp = jiffies;
+-	if (nfs4_setup_sequence(data->server,
++	if (nfs4_setup_sequence(data->server, NULL,
+ 				&data->arg.seq_args,
+ 				&data->res.seq_res, 1, task))
+ 		return;
+@@ -5328,7 +5331,7 @@ nfs4_layoutget_prepare(struct rpc_task *task, void *calldata)
+ 	 * However, that is not so catastrophic, and there seems
+ 	 * to be no way to prevent it completely.
+ 	 */
+-	if (nfs4_setup_sequence(server, &lgp->args.seq_args,
++	if (nfs4_setup_sequence(server, NULL, &lgp->args.seq_args,
+ 				&lgp->res.seq_res, 0, task))
+ 		return;
+ 	if (pnfs_choose_layoutget_stateid(&lgp->args.stateid,
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index aedcaa7..6c224e8 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -411,7 +411,7 @@ void nfs_read_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_read_data *data = calldata;
+ 
+-	if (nfs4_setup_sequence(NFS_SERVER(data->inode),
++	if (nfs4_setup_sequence(NFS_SERVER(data->inode), NULL,
+ 				&data->args.seq_args, &data->res.seq_res,
+ 				0, task))
+ 		return;
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index e313a51..82dc70b 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -113,7 +113,7 @@ void nfs_unlink_prepare(struct rpc_task *task, void *calldata)
+ 	struct nfs_unlinkdata *data = calldata;
+ 	struct nfs_server *server = NFS_SERVER(data->dir);
+ 
+-	if (nfs4_setup_sequence(server, &data->args.seq_args,
++	if (nfs4_setup_sequence(server, NULL, &data->args.seq_args,
+ 				&data->res.seq_res, 1, task))
+ 		return;
+ 	rpc_call_start(task);
+@@ -388,7 +388,7 @@ static void nfs_rename_prepare(struct rpc_task *task, void *calldata)
+ 	struct nfs_renamedata *data = calldata;
+ 	struct nfs_server *server = NFS_SERVER(data->old_dir);
+ 
+-	if (nfs4_setup_sequence(server, &data->args.seq_args,
++	if (nfs4_setup_sequence(server, NULL, &data->args.seq_args,
+ 				&data->res.seq_res, 1, task))
+ 		return;
+ 	rpc_call_start(task);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index c8278f4..7a2905d 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1048,7 +1048,7 @@ void nfs_write_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_write_data *data = calldata;
+ 
+-	if (nfs4_setup_sequence(NFS_SERVER(data->inode),
++	if (nfs4_setup_sequence(NFS_SERVER(data->inode), NULL,
+ 				&data->args.seq_args,
+ 				&data->res.seq_res, 1, task))
+ 		return;
 -- 
-1.7.4
+1.6.6
 
