@@ -1,48 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zak.futurequest.net ([69.5.6.152]:44570 "HELO
-	zak.futurequest.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755337Ab1BWUXv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 15:23:51 -0500
-Date: Wed, 23 Feb 2011 14:23:48 -0600
-From: Bruce Guenter <bruce@untroubled.org>
-To: linux-nfs@vger.kernel.org
-Subject: Re: Invisible file problem
-Message-ID: <20110223202348.GA16643@untroubled.org>
-References: <20110222215214.GA32537@untroubled.org>
- <1298447447.2968.8.camel@heimdal.trondhjem.org>
- <20110223145004.GA6747@untroubled.org>
- <4D65632C.7040800@gmail.com>
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="KsGdsel6WgEHnImy"
-In-Reply-To: <4D65632C.7040800@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:6198 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751753Ab1BEM7y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Feb 2011 07:59:54 -0500
+Date: Sat, 5 Feb 2011 08:03:32 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: David Howells <dhowells@redhat.com>
+Cc: lsf-pc@lists.linuxfoundation.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org
+Subject: Re: [LSF/MM TOPIC] Unified keys for NFS, CIFS and AFS for security
+ data
+Message-ID: <20110205080332.4899b352@corrin.poochiereds.net>
+In-Reply-To: <3599.1295624067@redhat.com>
+References: <3599.1295624067@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
---KsGdsel6WgEHnImy
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On Fri, 21 Jan 2011 15:34:27 +0000
+David Howells <dhowells@redhat.com> wrote:
 
-On Wed, Feb 23, 2011 at 02:42:36PM -0500, Joe Landman wrote:
-> Is this a server or client side issue BTW?  I am trying to track=20
-> something that could be related to this down.
+> 
+> I'd like to propose a discussion topic for the LSF: how best to implement a
+> common key type for use by NFS, CIFS and AFS such that, say, a kerberos key
+> can be encapsulated within one and then be pulled out by various filesystems.
+> 
+> Furthermore, it would be necessary to allow the request_key() upcall mechanism
+> to perform GSSAPI queries.
+> 
 
-Client side.
+I would be interested in discussing this as well. Currently CIFS
+"punts" to some degree and offloads almost all of the SPNEGO blob
+construction to userspace. So, for CIFS this would involve moving more
+of this code into the kernel. I think that's a good thing since it will
+make it easier to do mutual-authentication, etc...
 
---=20
-Bruce Guenter <bruce@untroubled.org>                http://untroubled.org/
+This would make it more plausible to store krb5 credcaches in the
+kernel keyring too. Modern MIT krb5 libs can do this today (I think),
+but most of the kernel upcalls rely on FILE: credcaches. Breaking that
+dependency would be nice.
 
---KsGdsel6WgEHnImy
-Content-Type: application/pgp-signature
-Content-Disposition: inline
+The difficulty here is that request_key() is "stateless", so we need to
+think about how to manage GSSAPI contexts across multiple upcalls...or
+plan to implement large swaths of the GSSAPI in-kernel.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.17 (GNU/Linux)
+It might also be helpful to couple this with some consolidation and
+cleanup of the ASN.1 parsing code in the kernel. There are at least 3
+separate implementations in the kernel today (one in cifs, one in
+sunrpc, and one in iptables).
 
-iEYEARECAAYFAk1lbNQACgkQ6W+y3GmZgOgV7wCffEtJ34D3HuYXoawUvxyT0eB1
-BoAAn2bS6OSm3kLwjaYHgmhFoZ8A82pX
-=wFWH
------END PGP SIGNATURE-----
+Since Trond's original email asked what I expertise I would bring to
+the table:
 
---KsGdsel6WgEHnImy--
+I currently maintain the cifs-utils package which contains the
+cifs.upcall program, and wrote most of the in-kernel pieces of the
+current SPNEGO/krb5 upcall for CIFS. I've also done a some work on
+the GSSAPI upcall pieces in the RPC layer and in nfs-utils.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
