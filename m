@@ -1,114 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:47619 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932154Ab1BWTaR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 14:30:17 -0500
-Date: Wed, 23 Feb 2011 14:30:16 -0500
-From: Jim Rees <rees@umich.edu>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: [PATCH] nfs-utils: fix stripe device size calculation for layouts
- not a multiple of stripe unit
-Message-ID: <20110223193016.GA14849@merit.edu>
+Received: from eastrmmtao107.cox.net ([68.230.240.59]:51738 "EHLO
+	eastrmmtao107.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754474Ab1BGUwm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Feb 2011 15:52:42 -0500
+Date: Mon, 7 Feb 2011 14:53:06 -0600
+From: Tom Haynes <tdh@excfb.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Tom Haynes <tdh@excfb.com>, linux-nfs@vger.kernel.org
+Subject: Re: Debugging mount failure with netgroup
+Message-ID: <20110207205306.GA13731@adept.internal.excfb.com>
+References: <20110207195609.GA13225@adept.internal.excfb.com>
+ <20110207201202.GA3055@fieldses.org>
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110207201202.GA3055@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-If a complex layout has a stripe volume in it, and that volume has a size
-that is not a multiple of the stripe unit, the total layout size will be
-wrong because it is based on the truncated stripe volume size.  Fix this by
-using the truncated size for making the mapped device, and the untruncated
-size in the table for subsequent devices to use.
 
-Also remove the warning for stripe volumes not a multiple of the stripe
-width, since this is legal and apparently common.
+On Mon, Feb 07, 2011 at 03:12:02PM -0500, J. Bruce Fields wrote:
+> > What can I do to further triage this?
+> 
+> Alas, I've never used netgroups, much less tried to debug problems with
+> them.... Have you tried looking at the nis traffic over "lo" to see if
+> mountd's doing the right queries?  You could also try seeing if adding
+> "-dall" to the rpc.mountd commandline turns up any useful debugging.
 
-While we're at it, use variable names consistent with the terminology in
-rfc5661 section 13.2.
+[tdh@adept ~]> sudo tshark -i lo
+Running as user "root" and group "root". This could be dangerous.
+Capturing on lo
+  0.000000 192.168.2.108 -> 192.168.2.108 DNS Standard query PTR 105.2.168.192.in-addr.arpa
+  0.002862 192.168.2.108 -> 192.168.2.108 DNS Standard query response PTR wont.internal.excfb.com
+  0.003455 192.168.2.108 -> 192.168.2.108 DNS Standard query A wont.internal.excfb.com
+  0.003499 192.168.2.108 -> 192.168.2.108 DNS Standard query AAAA wont.internal.excfb.com
+  0.003819 192.168.2.108 -> 192.168.2.108 DNS Standard query response A 192.168.2.105
+  0.003939 192.168.2.108 -> 192.168.2.108 DNS Standard query response
+  0.004427 192.168.2.108 -> 192.168.2.108 DNS Standard query A wont.internal.excfb.com
+  0.004761 192.168.2.108 -> 192.168.2.108 DNS Standard query response A 192.168.2.105
+  7.472292 192.168.2.108 -> 192.168.2.108 YPSERV V2 DOMAIN Call
+  7.472413 192.168.2.108 -> 192.168.2.108 YPSERV V2 DOMAIN Reply (Call In 9)
 
-Signed-off-by: Jim Rees <rees@umich.edu>
----
- utils/blkmapd/device-process.c |   10 ++++------
- utils/blkmapd/dm-device.c      |   21 +++++----------------
- 2 files changed, 9 insertions(+), 22 deletions(-)
+The above seems to suggest that the host lookup went fine.
 
-diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
-index 9a78457..79e596d 100644
---- a/utils/blkmapd/device-process.c
-+++ b/utils/blkmapd/device-process.c
-@@ -295,10 +295,10 @@ decode_blk_volume(uint32_t **pp, uint32_t *end, struct bl_volume *vols, int voln
- 	case BLOCK_VOLUME_STRIPE:
- 		BLK_READBUF(p, end, 8);
- 		READ_SECTOR(vol->param.bv_stripe_unit);
--		off_t chunksize = vol->param.bv_stripe_unit;
-+		off_t stripe_unit = vol->param.bv_stripe_unit;
- 		/* Check limitations imposed by device-mapper */
--		if ((chunksize & (chunksize - 1)) != 0
--		    || chunksize < (off_t) (PAGE_SIZE >> 9))
-+		if ((stripe_unit & (stripe_unit - 1)) != 0
-+		    || stripe_unit < (off_t) (PAGE_SIZE >> 9))
- 			return -EIO;
- 		BLK_READBUF(p, end, 4);
- 		READ32(vol->bv_vol_n);
-@@ -306,7 +306,7 @@ decode_blk_volume(uint32_t **pp, uint32_t *end, struct bl_volume *vols, int voln
- 			return -EIO;
- 		*array_cnt = vol->bv_vol_n;
- 		BL_LOG_INFO("%s: stripe %d nvols=%d unit=%ld\n", __func__, voln,
--			    vol->bv_vol_n, (long)chunksize);
-+			    vol->bv_vol_n, (long)stripe_unit);
- 		status = set_vol_array(&p, end, vols, voln);
- 		if (status)
- 			return status;
-@@ -317,9 +317,7 @@ decode_blk_volume(uint32_t **pp, uint32_t *end, struct bl_volume *vols, int voln
- 				return -EIO;
- 			}
- 		}
--		/* Truncate size to a stripe unit boundary */
- 		vol->bv_size = vol->bv_vols[0]->bv_size * vol->bv_vol_n;
--		vol->bv_size &= ~(chunksize - 1);
- 		break;
- 	case BLOCK_VOLUME_CONCAT:
- 		BLK_READBUF(p, end, 4);
-diff --git a/utils/blkmapd/dm-device.c b/utils/blkmapd/dm-device.c
-index c4fe4e9..0f4f148 100644
---- a/utils/blkmapd/dm-device.c
-+++ b/utils/blkmapd/dm-device.c
-@@ -369,7 +369,7 @@ static int dm_device_exists(char *dev_name)
- /* TODO: check the value for DM_DEV_NAME_LEN, DM_TYPE_LEN, DM_PARAMS_LEN */
- uint64_t dm_device_create(struct bl_volume *vols, int num_vols)
- {
--	uint64_t size, stripe_unit, stripe_size, nstripes, dev = 0;
-+	uint64_t size, stripe_unit, dev = 0;
- 	unsigned int count = dev_count;
- 	int volnum, i, pos;
- 	struct bl_volume *node;
-@@ -414,21 +414,10 @@ uint64_t dm_device_create(struct bl_volume *vols, int num_vols)
- 			if (!table)
- 				goto out;
- 			table->offset = 0;
--			stripe_unit = node->param.bv_stripe_unit << 9;
--			stripe_size = stripe_unit * node->bv_vol_n;
--			nstripes = node->bv_size * node->bv_vol_n / stripe_size;
--			/* Make sure total size is a multiple of stripe size */
--			size = node->bv_size;
--			if (size % stripe_size != 0) {
--				/* XXX Should this be an error? */
--				BL_LOG_WARNING(
--					"%s: %d units of %llu bytes is not a multiple of %lld stripe size\n",
--					__func__, node->bv_vol_n,
--					(long long unsigned) node->bv_size,
--					(long long unsigned) stripe_size);
--				size = nstripes * stripe_size;
--			}
--			table->size = size;
-+			/* Truncate size to a stripe unit boundary */
-+			stripe_unit = node->param.bv_stripe_unit;
-+			table->size =
-+			    node->bv_size - (node->bv_size % stripe_unit);
- 			strcpy(table->target_type, "striped");
- 			sprintf(table->params, "%d %llu %n", node->bv_vol_n,
- 				(long long unsigned) stripe_unit, &pos);
+-dall:
+
+Feb  7 14:35:27 adept mountd[13285]: check_default: access by 192.168.2.105 ALLOWED (cached)
+Feb  7 14:35:27 adept mountd[13285]: Received NULL request from 192.168.2.105
+Feb  7 14:35:27 adept mountd[13285]: check_default: access by 192.168.2.105 ALLOWED (cached)
+Feb  7 14:35:27 adept mountd[13285]: Received NULL request from 192.168.2.105
+Feb  7 14:35:27 adept mountd[13285]: check_default: access by 192.168.2.105 ALLOWED (cached)
+Feb  7 14:35:27 adept mountd[13285]: Received MNT3(/fooper) request from 192.168.2.105
+Feb  7 14:35:27 adept mountd[13285]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+
+
+
+> 
+> After that, I don't know, I suppose I'd start looking at the mountd
+> source....
+
+Yeah, I'm not sure if I can do that. :->
+
+I did google and did not find much on netgroups - but I did find
+a bunch on "unmatched host".
+
+It seems to be black magic from some of the answers.
+
+And I agree:
+
+1) Modified the export:
+[root@adept /]# more /etc/exports 
+/fooper   @adeptya(rw,insecure,no_root_squash,sync)
+
+2) Did other mumbo-jumbo
+
+3) Really, really did not want to reboot.
+
+4) service nfs stop ; exportfs ; service nfs start
+
+And that last one worked!
+
+Feb  7 14:44:31 adept mountd[13712]: Received MNT3(/fooper) request from 192.168.2.105
+Feb  7 14:44:31 adept mountd[13712]: authenticated mount request from wont.internal.excfb.com:972 for /fooper (/fooper)
+Feb  7 14:44:31 adept mountd[13712]: nfsd_fh: inbuf '@adeptya 7 \x0100060000000000a9a3be796f4c43878b99ea75025e5384'
+Feb  7 14:44:31 adept mountd[13712]: nfsd_fh: found 0x20da950 path /fooper
+
+Thanks
+
+> 
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.1
-
+Tom Haynes
+ex-cfb
