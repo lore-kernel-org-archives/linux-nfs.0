@@ -1,97 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49032 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:48938 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756711Ab1BKPVQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 10:21:16 -0500
-Date: Fri, 11 Feb 2011 10:21:12 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Takashi Iwai <tiwai@suse.de>
-Cc: Tino Keitel <tino.keitel@tikei.de>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: 2.6.38-rc3: kernel BUG at fs/nfsd/nfs4state.c:3132!
-Message-ID: <20110211152112.GA3005@fieldses.org>
-References: <20110208221235.GA16984@mac.home>
- <s5hsjvuoqqt.wl%tiwai@suse.de>
+	id S1753233Ab1BGUME (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Feb 2011 15:12:04 -0500
+Date: Mon, 7 Feb 2011 15:12:02 -0500
+To: Tom Haynes <tdh@excfb.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Debugging mount failure with netgroup
+Message-ID: <20110207201202.GA3055@fieldses.org>
+References: <20110207195609.GA13225@adept.internal.excfb.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <s5hsjvuoqqt.wl%tiwai@suse.de>
+In-Reply-To: <20110207195609.GA13225@adept.internal.excfb.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Feb 11, 2011 at 10:38:34AM +0100, Takashi Iwai wrote:
-> At Tue, 8 Feb 2011 23:12:35 +0100,
-> Tino Keitel wrote:
-> > 
-> > Hi,
-> > 
-> > I get the following error with kernel 2.6.38-rc3 during normal file access via
-> > NFS v4.
-> > 
-> > At least one other user seems to have the same problem:
-> > http://pastebin.com/QRq1TMkj
-> > 
-> > <0>------------[ cut here ]------------
-> > kernel BUG at fs/nfsd/nfs4state.c:3132!
-> > <0>invalid opcode: 0000 [#1] SMP 
-> > <0>last sysfs file: /sys/devices/virtual/block/dm-8/uevent
-> > CPU 0 
-> > Modules linked in: ipv6 usblp btusb bluetooth loop arc4 ecb
-> > snd_hda_codec_idt snd_hda_intel snd_hda_codec snd_pcm_oss ath5k
-> > dvb_usb_vp7045 ath dvb_usb snd_pcm snd_timer mac80211
-> >  snd_page_alloc evdev dvb_core sky2 rc_core ata_piix cfg80211
-> > 
-> > Pid: 2280, comm: nfsd Not tainted 2.6.38-rc3-00062-gb64606b #6
-> > Mac-F4208EAA/Macmini2,1
-> > RIP: 0010:[<ffffffff8119f973>]  [<ffffffff8119f973>]
-> > nfs4_preprocess_stateid_op+0x3a3/0x490
-> > RSP: 0018:ffff8800b399bd50  EFLAGS: 00010246
-> > RAX: 0000000000000000 RBX: ffff8800b60a9000 RCX: ffffffff8175a010
-> > RDX: ffff8800ab784e48 RSI: ffffffff8175a020 RDI: ffffffff8175a000
-> > RBP: ffff8800a4ce5678 R08: 0000000000000000 R09: 0000000000000000
-> > R10: ffff8800b3910180 R11: c600000000000000 R12: ffff8800b390f1c0
-> > R13: ffff8800b390f1a0 R14: 0000000000000000 R15: ffff8800aba079a0
-> > FS:  0000000000000000(0000) GS:ffff8800bde00000(0000)
-> > knlGS:0000000000000000
-> > CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> > CR2: 00007f2b8805d000 CR3: 00000000b6fe8000 CR4: 00000000000006b0
-> > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> > Process nfsd (pid: 2280, threadinfo ffff8800b399a000, task
-> > ffff8800b63a62d0)
-> > <0>Stack:
-> >  000000004d507f0d ffff8800b390f1a0 ffff8800b3910040 ffff8800b391c000
-> >  0000000016000000 0000000000000000 ffff8800b3910040 ffffffff8118f549
-> >  ffff8800b390f000 ffff8800b3910000 ffff8800b390f000 ffff8800b391c000
-> > <0>Call Trace:
-> >  [<ffffffff8118f549>] ? nfsd4_read+0x79/0xc0
-> >  [<ffffffff81190096>] ? nfsd4_proc_compound+0x416/0x4d0
-> >  [<ffffffff8117f5ad>] ? nfsd_dispatch+0xfd/0x240
-> >  [<ffffffff8146f1f9>] ? svc_process_common+0x339/0x680
-> >  [<ffffffff81035b70>] ? default_wake_function+0x0/0x20
-> >  [<ffffffff8117ecc0>] ? nfsd+0x0/0x150
-> >  [<ffffffff8146f80a>] ? svc_process+0x10a/0x160
-> >  [<ffffffff8117ecc0>] ? nfsd+0x0/0x150
-> >  [<ffffffff8117ed72>] ? nfsd+0xb2/0x150
-> >  [<ffffffff81055ff6>] ? kthread+0x96/0xa0
-> >  [<ffffffff810039b4>] ? kernel_thread_helper+0x4/0x10
-> >  [<ffffffff81055f60>] ? kthread+0x0/0xa0
-> >  [<ffffffff810039b0>] ? kernel_thread_helper+0x0/0x10
-> > <0>Code: 27 29 41 3b 47 50 0f 87 9a fd ff ff 0f 83 e9 fe ff ff e9 76 ff
-> > ff ff 48 8b 42 48 45 31 f6 49 89 04 24 48 85 c0 0f 85 7b fd ff ff <0f>
-> > 0b 49 8b 57 48 48 8b 42 40 48 85 c
-> > 0 0f 85 2a ff ff ff 48 8b 
-> > RIP  [<ffffffff8119f973>] nfs4_preprocess_stateid_op+0x3a3/0x490
-> >  RSP <ffff8800b399bd50>
-> > ---[ end trace 7ef2fa5b1b62014a ]---
+On Mon, Feb 07, 2011 at 01:56:09PM -0600, Tom Haynes wrote:
+> Trying to mount:
 > 
-> [Added relevant guys to Cc]
+> [root@wont ~]# mount -o vers=3,hard,intr adept:/fooper /t/adept
+> mount.nfs: access denied by server while mounting adept:/fooper
+> [root@wont ~]# uname -a
+> Linux wont.internal.excfb.com 2.6.35.10-74.fc14.x86_64 #1 SMP Thu Dec 23 16:04:50 UTC 2010 x86_64 x86_64 x86_64 GNU/Linux
+> [root@wont ~]# showmount -e adept
+> Export list for adept:
+> /fooper @adeptya
 > 
-> This occurred on my machine with 2.6.38-rc4.
+> The server tells us:
+> 
+> [root@adept log]# more /etc/exports 
+> /fooper   @titan(rw)
+> [root@adept log]# vi /etc/exports 
+> [root@adept log]# more /etc/exports 
+> /fooper   @adeptya(rw)
+> [root@adept log]# exportfs -au
+> [root@adept log]# exportfs -a
+> [root@adept log]# exportfs
+> /fooper       	@adeptya
+> [root@adept log]# ypmatch adeptya netgroup
+> (adept,,) (adept.internal.excfb.com,,) (wont,,) (wont.internal.excfb.com,,)
+> [root@adept log]# host wont.internal.excfb.com
+> wont.internal.excfb.com has address 192.168.2.105
+> [root@adept log]# host 192.168.2.105
+> 105.2.168.192.in-addr.arpa domain name pointer wont.internal.excfb.com.
+> [root@adept log]# tail messages
+> Feb  7 13:33:41 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+> Feb  7 13:34:58 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+> Feb  7 13:36:02 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+> Feb  7 13:36:32 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+> Feb  7 13:37:14 adept mountd[13050]: authenticated mount request from 192.168.2.105:698 for /fooper (/fooper)
+> Feb  7 13:38:12 adept mountd[13050]: authenticated unmount request from 192.168.2.105:657 for /fooper (/fooper)
+> Feb  7 13:39:06 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+> Feb  7 13:43:52 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+> Feb  7 13:45:24 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+> Feb  7 13:48:17 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+> 
+> The success at 13:37:14 was from when I changed the export to:
+> 
+> [root@adept ~]# exportfs
+> /fooper       	192.168.2.0/255.255.255.0
+> 
+> to verify that NFS was working. At that point I was able to mount,
+> create a file, etc.
+> 
+> Oh yeah, the NFS server is also the NIS and DNS server, so there
+> shouldn't be any connectivity issues.
+> 
+> What can I do to further triage this?
 
-Again, 2.6.38-rc4 does not have a BUG() on line 3132.  Could you post
-the full oops message from your machine?
+Alas, I've never used netgroups, much less tried to debug problems with
+them.... Have you tried looking at the nis traffic over "lo" to see if
+mountd's doing the right queries?  You could also try seeing if adding
+"-dall" to the rpc.mountd commandline turns up any useful debugging.
+
+After that, I don't know, I suppose I'd start looking at the mountd
+source....
 
 --b.
-
-> I didn't see it in 2.6.37.
