@@ -1,165 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:41225 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751030Ab1BPVJ4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Feb 2011 16:09:56 -0500
-Received: by bwz15 with SMTP id 15so1049470bwz.19
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Feb 2011 13:09:55 -0800 (PST)
-In-Reply-To: <4D5C2ED8.1030200@panasas.com>
-References: <1297759143-2045-1-git-send-email-andros@netapp.com>
-	<1297759143-2045-11-git-send-email-andros@netapp.com>
-	<4D5C28B3.5010206@panasas.com>
-	<3CAD00F0-0B5E-4A70-B3AA-265E75100DD6@netapp.com>
-	<4D5C2ED8.1030200@panasas.com>
-Date: Wed, 16 Feb 2011 16:09:54 -0500
-Message-ID: <AANLkTim04-f5ittgAQf9Q1fp7NsXXLk9MC4-NAS9mdd5@mail.gmail.com>
-Subject: Re: [PATCH pNFS wave 3 Version 2 10/18] NFSv4.1: shift
- pnfs_update_layout locations
-From: Fred Isaman <iisaman@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: andros@netapp.com, trond.myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        Andy Adamon <andros@citi.umich.edu>,
-        Dean Hildebrand <dhildeb@us.ibm.com>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        Oleg Drokin <green@linuxhacker.ru>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from eastrmpop108.cox.net ([68.230.240.50]:54230 "EHLO
+	eastrmpop108.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753259Ab1BGUEF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Feb 2011 15:04:05 -0500
+Received: from eastrmimpo02.cox.net ([68.1.16.120])
+          by eastrmmtao102.cox.net
+          (InterMail vM.8.01.04.00 201-2260-137-20101110) with ESMTP
+          id <20110207195545.DDZ2814.eastrmmtao102.cox.net@eastrmimpo02.cox.net>
+          for <linux-nfs@vger.kernel.org>; Mon, 7 Feb 2011 14:55:45 -0500
+Received: from adept.internal.excfb.com (localhost.localdomain [127.0.0.1])
+	by adept.internal.excfb.com (8.14.4/8.14.4) with ESMTP id p17JuA0T013237
+	for <linux-nfs@vger.kernel.org>; Mon, 7 Feb 2011 13:56:10 -0600
+Received: (from tdh@localhost)
+	by adept.internal.excfb.com (8.14.4/8.14.4/Submit) id p17Ju9Nd013235
+	for linux-nfs@vger.kernel.org; Mon, 7 Feb 2011 13:56:09 -0600
+Date: Mon, 7 Feb 2011 13:56:09 -0600
+From: Tom Haynes <tdh@excfb.com>
+To: linux-nfs@vger.kernel.org
+Subject: Debugging mount failure with netgroup
+Message-ID: <20110207195609.GA13225@adept.internal.excfb.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Feb 16, 2011 at 3:08 PM, Benny Halevy <bhalevy@panasas.com> wrote:
-> On 2011-02-16 14:55, Fred Isaman wrote:
->>
->> On Feb 16, 2011, at 2:42 PM, Benny Halevy wrote:
->>
->>> On 2011-02-15 03:38, andros@netapp.com wrote:
->>>> From: Fred Isaman <iisaman@netapp.com>
->>>>
->>>> Move the pnfs_update_layout call location to nfs_pageio_do_add_request().
->>>> Grab the lseg sent in the doio function to nfs_read_rpcsetup and attach
->>>> it to each nfs_read_data so it can be sent to the layout driver.
->>>>
->>>> @@ -131,10 +132,12 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
->>>>             zero_user_segment(page, len, PAGE_CACHE_SIZE);
->>>>
->>>>     nfs_list_add_request(new, &one_request);
->>>> +   lseg = pnfs_update_layout(inode, ctx, IOMODE_READ);
->>>>     if (NFS_SERVER(inode)->rsize < PAGE_CACHE_SIZE)
->>>> -           nfs_pagein_multi(inode, &one_request, 1, len, 0);
->>>> +           nfs_pagein_multi(inode, &one_request, 1, len, 0, lseg);
->>>>     else
->>>> -           nfs_pagein_one(inode, &one_request, 1, len, 0);
->>>> +           nfs_pagein_one(inode, &one_request, 1, len, 0, lseg);
->>>> +   put_lseg(lseg);
->>>>     return 0;
->>>> }
->>>>
->>>> @@ -160,7 +163,8 @@ static void nfs_readpage_release(struct nfs_page *req)
->>>>  */
->>>> static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
->>>>             const struct rpc_call_ops *call_ops,
->>>> -           unsigned int count, unsigned int offset)
->>>> +           unsigned int count, unsigned int offset,
->>>> +           struct pnfs_layout_segment *lseg)
->>>> {
->>>>     struct inode *inode = req->wb_context->path.dentry->d_inode;
->>>>     int swap_flags = IS_SWAPFILE(inode) ? NFS_RPC_SWAPFLAGS : 0;
->>>> @@ -183,6 +187,7 @@ static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
->>>>     data->req         = req;
->>>>     data->inode       = inode;
->>>>     data->cred        = msg.rpc_cred;
->>>> +   data->lseg        = get_lseg(lseg);
->>>>
->>>>     data->args.fh     = NFS_FH(inode);
->>>>     data->args.offset = req_offset(req) + offset;
->>>> @@ -240,7 +245,7 @@ nfs_async_read_error(struct list_head *head)
->>>>  * won't see the new data until our attribute cache is updated.  This is more
->>>>  * or less conventional NFS client behavior.
->>>>  */
->>>> -static int nfs_pagein_multi(struct inode *inode, struct list_head *head, unsigned int npages, size_t count, int flags)
->>>> +static int nfs_pagein_multi(struct inode *inode, struct list_head *head, unsigned int npages, size_t count, int flags, struct pnfs_layout_segment *lseg)
->>>> {
->>>>     struct nfs_page *req = nfs_list_entry(head->next);
->>>>     struct page *page = req->wb_page;
->>>> @@ -266,6 +271,8 @@ static int nfs_pagein_multi(struct inode *inode, struct list_head *head, unsigne
->>>>     } while(nbytes != 0);
->>>>     atomic_set(&req->wb_complete, requests);
->>>>
->>>> +   /* We know lseg==NULL */
->
-> Can you provide more details?
-> If it's always NULL why bother to pass it in?
->
->>>> +   lseg = pnfs_update_layout(inode, req->wb_context, IOMODE_READ);
->>>>     ClearPageError(page);
->>>>     offset = 0;
->>>>     nbytes = count;
->>>> @@ -280,12 +287,13 @@ static int nfs_pagein_multi(struct inode *inode, struct list_head *head, unsigne
->>>>             if (nbytes < rsize)
->>>>                     rsize = nbytes;
->>>>             ret2 = nfs_read_rpcsetup(req, data, &nfs_read_partial_ops,
->>>> -                             rsize, offset);
->>>> +                                    rsize, offset, lseg);
->>>>             if (ret == 0)
->>>>                     ret = ret2;
->>>>             offset += rsize;
->>>>             nbytes -= rsize;
->>>>     } while (nbytes != 0);
->>>> +   put_lseg(lseg);
->>>>
->>>>     return ret;
->>>>
->>>> @@ -300,7 +308,7 @@ out_bad:
->>>>     return -ENOMEM;
->>>> }
->>>>
->>>> -static int nfs_pagein_one(struct inode *inode, struct list_head *head, unsigned int npages, size_t count, int flags)
->>>> +static int nfs_pagein_one(struct inode *inode, struct list_head *head, unsigned int npages, size_t count, int flags, struct pnfs_layout_segment *lseg)
->>>> {
->>>>     struct nfs_page         *req;
->>>>     struct page             **pages;
->>>> @@ -320,9 +328,14 @@ static int nfs_pagein_one(struct inode *inode, struct list_head *head, unsigned
->>>>             *pages++ = req->wb_page;
->>>>     }
->>>>     req = nfs_list_entry(data->pages.next);
->>>> +   if ((!lseg) && list_is_singular(&data->pages))
->>>> +           lseg = pnfs_update_layout(inode, req->wb_context, IOMODE_READ);
->
-> When is lseg NULL and why getting it here works better than in nfs_readpage_async?
->
->>>>
->>>> -   return nfs_read_rpcsetup(req, data, &nfs_read_full_ops, count, 0);
->>>> +   ret = nfs_read_rpcsetup(req, data, &nfs_read_full_ops, count, 0, lseg);
->>>> +   put_lseg(lseg);
->>>
->>> Shouldn't that be done only if pnfs_update_layout was called here?
->>> Otherwise, the caller, nfs_readpage_async puts the lseg it passes down.
->>>
->>
->> You are right there is a problem.  But it needs to be fixed by removing the put_lseg from nfs_readpage_async.
->>
->>
->
-> If we can avoid getting the lseg in one place and putting it in another that would be better.
->
-> Benny
->
+Trying to mount:
 
-I agree, but I don't see how It is possible with the current code,
-where the pnfs_update_layout occurs in pg_test.
+[root@wont ~]# mount -o vers=3,hard,intr adept:/fooper /t/adept
+mount.nfs: access denied by server while mounting adept:/fooper
+[root@wont ~]# uname -a
+Linux wont.internal.excfb.com 2.6.35.10-74.fc14.x86_64 #1 SMP Thu Dec 23 16:04:50 UTC 2010 x86_64 x86_64 x86_64 GNU/Linux
+[root@wont ~]# showmount -e adept
+Export list for adept:
+/fooper @adeptya
 
-Fred
+The server tells us:
 
->>>> +   return ret;
->>>> out_bad:
->>>> +   put_lseg(lseg);
->>>
->>> I'd unify the common exit path by doing nfs_async_read_error on the error path
->>> and then goto out for the common code.
->>>
->>
->> OK.
->>
->> Fred
->>
->
+[root@adept log]# more /etc/exports 
+/fooper   @titan(rw)
+[root@adept log]# vi /etc/exports 
+[root@adept log]# more /etc/exports 
+/fooper   @adeptya(rw)
+[root@adept log]# exportfs -au
+[root@adept log]# exportfs -a
+[root@adept log]# exportfs
+/fooper       	@adeptya
+[root@adept log]# ypmatch adeptya netgroup
+(adept,,) (adept.internal.excfb.com,,) (wont,,) (wont.internal.excfb.com,,)
+[root@adept log]# host wont.internal.excfb.com
+wont.internal.excfb.com has address 192.168.2.105
+[root@adept log]# host 192.168.2.105
+105.2.168.192.in-addr.arpa domain name pointer wont.internal.excfb.com.
+[root@adept log]# tail messages
+Feb  7 13:33:41 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+Feb  7 13:34:58 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+Feb  7 13:36:02 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+Feb  7 13:36:32 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+Feb  7 13:37:14 adept mountd[13050]: authenticated mount request from 192.168.2.105:698 for /fooper (/fooper)
+Feb  7 13:38:12 adept mountd[13050]: authenticated unmount request from 192.168.2.105:657 for /fooper (/fooper)
+Feb  7 13:39:06 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+Feb  7 13:43:52 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+Feb  7 13:45:24 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+Feb  7 13:48:17 adept mountd[13050]: refused mount request from 192.168.2.105 for /fooper (/fooper): unmatched host
+
+The success at 13:37:14 was from when I changed the export to:
+
+[root@adept ~]# exportfs
+/fooper       	192.168.2.0/255.255.255.0
+
+to verify that NFS was working. At that point I was able to mount,
+create a file, etc.
+
+Oh yeah, the NFS server is also the NIS and DNS server, so there
+shouldn't be any connectivity issues.
+
+What can I do to further triage this?
+
+
+Thanks!
+
+
+
+
+-- 
+Tom Haynes
+ex-cfb
