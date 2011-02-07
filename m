@@ -1,49 +1,47 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: persistent, quasi-random -ESTALE at mount time
-Date: Sun, 6 Feb 2011 14:23:07 -0500
-Message-ID: <20110206192307.GA14850@fieldses.org>
-References: <20110203034844.GA30641@fieldses.org>
- <20110203042814.6364.qmail@science.horizon.com>
- <20110203044010.GC30641@fieldses.org>
- <87zkqdo6yv.fsf@spindle.srvr.nix>
- <20110203134035.GA18325@fieldses.org>
- <87sjw156yx.fsf@spindle.srvr.nix>
+From: Jim Rees <rees@umich.edu>
+Subject: Re: Patched up cthon source?
+Date: Mon, 7 Feb 2011 14:13:21 -0500
+Message-ID: <20110207191321.GB4036@merit.edu>
+References: <E5AAF04F-8A0E-4506-A29D-A0CD4098AA64@netapp.com>
+ <83EC814B-1043-46B2-8F5E-E1FB1F5B56BF@oracle.com>
+ <4D3DFE40.1070605@panasas.com>
+ <4D3ED37D.6020606@netapp.com>
+ <20110125095649.446212fd@tlielax.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: George Spelvin <linux@horizon.com>, linux-nfs@vger.kernel.org
-To: Nix <nix@esperi.org.uk>
+Cc: Bryan Schumaker <bjschuma@netapp.com>,
+	Benny Halevy <bhalevy@panasas.com>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Thomas Haynes <thomas@netapp.com>, linux-nfs@vger.kernel.org
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43038 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753724Ab1BFTXK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 6 Feb 2011 14:23:10 -0500
-In-Reply-To: <87sjw156yx.fsf-AdTWujXS48Mg67Zj9sPl2A@public.gmane.org>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:60257 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754559Ab1BGTNX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Feb 2011 14:13:23 -0500
+In-Reply-To: <20110125095649.446212fd-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Feb 06, 2011 at 06:54:46PM +0000, Nix wrote:
-> On 3 Feb 2011, J. Bruce Fields uttered the following:
-> > On Thu, Feb 03, 2011 at 08:30:48AM +0000, Nix wrote:
-> >> I can give you a packet dump from my (completely reproducible) failure
-> >> with the same symptoms, if you like. (Again, it is fixed by running
-> >> exportfs repeatedly, each time fixing another few mounts: currently,
-> >> I have to run it six times.)
-> >
-> > That would be great, thanks.  And could you collect the contents of
-> > /proc/net/rpc/{nfsd.fh,nfsd.export}/content at the same time?  (I think
-> > you already sent some; but I'd be curious to match them up with the
-> > packet trace.)  Also, the output of "blkid" might help diagnose any
-> > problems with uuid's.
-> 
-> I jinxed it. I just recompiled and the problem went away. The only
-> differences between the old and new kernel are a so-far-entirely-
-> unconfigured IPv6 setup (so nothing but link-local private addresses, no
-> routing, nothing) and a new compiler (4.5.x rather than 4.4.x).
-> 
-> Which of these caused the change in behaviour I do not yet know, but
-> will try to figure out (by turning IPv6 off again and seeing if
-> the problem recurs).
+Jeff Layton wrote:
 
-OK, thanks.
+  On Tue, 25 Jan 2011 08:43:25 -0500
+  Bryan Schumaker <bjschuma@netapp.com> wrote:
+  
+  > On 01/24/2011 05:33 PM, Benny Halevy wrote:
+  > > this is a problem with the version of nroff on newer distributions.
+  > 
+  > My version of groff (1.21) is splitting the error into two lines, so I am using the following patch.
+  > 
+  > Bryan
+  > 
+  
+  Yep, this workaround stopped working around for me on my rawhide box
+  broke yesterday for the same reason.
+  
+  I think this patch may be a better approach than trying to grep out
+  random stuff, but I don't know whether non-GNU tbl programs will barf
+  on it. If anyone has a solaris box handy, could you let me know if
+  this breaks on it?
 
---b.
+Your patch does not work for me on Ubuntu with groff 1.20.1.
