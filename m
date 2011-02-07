@@ -1,53 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:44479 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751398Ab1BOAVH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Feb 2011 19:21:07 -0500
-Received: by iyj8 with SMTP id 8so5391023iyj.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Feb 2011 16:21:07 -0800 (PST)
-Date: Mon, 14 Feb 2011 16:21:07 -0800
-Message-ID: <AANLkTimyXBKeFJ2_mmHvCsC9EBEO0mb_ontXKaOxwtav@mail.gmail.com>
-Subject: Oops.... cannot mount secure nfs exports (kerberized nfs / rpc.gssd crashes)
-From: Di Pe <dipeit@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:43019 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754971Ab1BGV7g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Feb 2011 16:59:36 -0500
+Date: Mon, 7 Feb 2011 16:59:35 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tom Haynes <tdh@excfb.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Debugging mount failure with netgroup
+Message-ID: <20110207215935.GB3853@fieldses.org>
+References: <20110207195609.GA13225@adept.internal.excfb.com>
+ <20110207201202.GA3055@fieldses.org>
+ <20110207205306.GA13731@adept.internal.excfb.com>
+ <20110207211917.GA3853@fieldses.org>
+ <20110207215344.GA15778@adept.internal.excfb.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110207215344.GA15778@adept.internal.excfb.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Could someone have a look at this
+On Mon, Feb 07, 2011 at 03:53:44PM -0600, Tom Haynes wrote:
+> On Mon, Feb 07, 2011 at 04:19:17PM -0500, J. Bruce Fields wrote:
+> > On Mon, Feb 07, 2011 at 02:53:06PM -0600, Tom Haynes wrote:
+> > > I did google and did not find much on netgroups - but I did find
+> > > a bunch on "unmatched host".
+> > > 
+> > > It seems to be black magic from some of the answers.
+> > > 
+> > > And I agree:
+> > > 
+> > > 1) Modified the export:
+> > > [root@adept /]# more /etc/exports 
+> > > /fooper   @adeptya(rw,insecure,no_root_squash,sync)
+> > 
+> > So it was probably the "insecure"?
+> 
+> Sorry, I forgot to mention after every step that I tried
+> the mount and it failed. It was only restarting nfs
+> that worked.
 
-https://bugzilla.novell.com/show_bug.cgi?id=668880
+Changes to /etc/exports aren't automatically detected, so you need a
+server restart or an exportfs -ra after any change.
 
-Thanks
--------------
+> I'd have to check to see what port number the requests
+> are coming in on, but I don't think it is this.
+> 
+> And I've actually got the system horked up right now -
+> I restarted one time too many. Frustrating as there isn't
+> anything logged beyond "unmatched host".
 
-ox6:~ # rpm -q nfs-client
-nfs-client-1.2.3-7.1.x86_64
+I forgot you said that was the error.  And looking at the code we
+actually do have a different message for the port number case ("illegal
+port").
 
-ox6:~ # uname -a
-Linux ox6 2.6.37-20-desktop #1 SMP PREEMPT 2011-01-22 00:41:44 +0100
-x86_64 x86_64 x86_64 GNU/Linux
+OK, so maybe the problem was just that mountd never found out about your
+original /etc/exports file?
 
-ox6:~ # mount -t nfs4 -o sec=krb5 home:/vol/home_ph1 /mnt/home/home_ph1
+--b.
 
-Message from syslogd@ox6 at Feb 14 16:16:54 ...
- kernel:[ 6376.964544] Oops: 0000 [#1] PREEMPT SMP
-
-Message from syslogd@ox6 at Feb 14 16:16:54 ...
- kernel:[ 6376.964547] last sysfs file: /sys/module/auth_rpcgss/initstate
-
-Message from syslogd@ox6 at Feb 14 16:16:54 ...
- kernel:[ 6376.964672] Stack:
-
-Message from syslogd@ox6 at Feb 14 16:16:54 ...
- kernel:[ 6376.964694] Call Trace:
-
-Message from syslogd@ox6 at Feb 14 16:16:54 ...
- kernel:[ 6376.965010] Code: e8 2b fd ff ff 48 8b 43 58 2a 43 50 88 43
-4e eb e9 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 48 89 f8 89 d1
-c1 e9 03 83 e2 07 <f3> 48 a5 89 d1 f3 a4 c3 20 48 83 ea 20 4c 8b 06 4c
-8b 4e 08 4c
-
-Message from syslogd@ox6 at Feb 14 16:16:54 ...
- kernel:[ 6376.965010] CR2: ffff88002022ff28
+> 
+> > 
+> > Are we returning the right error to the mount client in that case?
+> > 
+> > And I suppose the logged error should be more helpful.  I'm not really
+> > sure mountd should be logging every mount failure by default, but if you
+> > request it, it should at be able to tell you the reason for the failure.
+> > 
+> > --b.
+> > 
+> 
+> -- 
+> Tom Haynes
+> ex-cfb
