@@ -1,194 +1,1378 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753230Ab1BDVeu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Feb 2011 16:34:50 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 31/40] pnfs_submit wave3 remove struct pnfs_fl_call_data
-Date: Fri,  4 Feb 2011 16:33:53 -0500
-Message-Id: <1296855242-2592-32-git-send-email-andros@netapp.com>
-In-Reply-To: <1296855242-2592-31-git-send-email-andros@netapp.com>
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
- <1296855242-2592-2-git-send-email-andros@netapp.com>
- <1296855242-2592-3-git-send-email-andros@netapp.com>
- <1296855242-2592-4-git-send-email-andros@netapp.com>
- <1296855242-2592-5-git-send-email-andros@netapp.com>
- <1296855242-2592-6-git-send-email-andros@netapp.com>
- <1296855242-2592-7-git-send-email-andros@netapp.com>
- <1296855242-2592-8-git-send-email-andros@netapp.com>
- <1296855242-2592-9-git-send-email-andros@netapp.com>
- <1296855242-2592-10-git-send-email-andros@netapp.com>
- <1296855242-2592-11-git-send-email-andros@netapp.com>
- <1296855242-2592-12-git-send-email-andros@netapp.com>
- <1296855242-2592-13-git-send-email-andros@netapp.com>
- <1296855242-2592-14-git-send-email-andros@netapp.com>
- <1296855242-2592-15-git-send-email-andros@netapp.com>
- <1296855242-2592-16-git-send-email-andros@netapp.com>
- <1296855242-2592-17-git-send-email-andros@netapp.com>
- <1296855242-2592-18-git-send-email-andros@netapp.com>
- <1296855242-2592-19-git-send-email-andros@netapp.com>
- <1296855242-2592-20-git-send-email-andros@netapp.com>
- <1296855242-2592-21-git-send-email-andros@netapp.com>
- <1296855242-2592-22-git-send-email-andros@netapp.com>
- <1296855242-2592-23-git-send-email-andros@netapp.com>
- <1296855242-2592-24-git-send-email-andros@netapp.com>
- <1296855242-2592-25-git-send-email-andros@netapp.com>
- <1296855242-2592-26-git-send-email-andros@netapp.com>
- <1296855242-2592-27-git-send-email-andros@netapp.com>
- <1296855242-2592-28-git-send-email-andros@netapp.com>
- <1296855242-2592-29-git-send-email-andros@netapp.com>
- <1296855242-2592-30-git-send-email-andros@netapp.com>
- <1296855242-2592-31-git-send-email-andros@netapp.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:54415 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754290Ab1BGTFT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Feb 2011 14:05:19 -0500
+Date: Mon, 7 Feb 2011 14:05:13 -0500
+From: Jim Rees <rees@umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: peter honeyman <honey@citi.umich.edu>, linux-nfs@vger.kernel.org
+Subject: [PATCH] cthon: remove extraneous files
+Message-ID: <20110207190513.GA4036@merit.edu>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+These are generated files and don't belong in the distribution.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Jim Rees <rees@umich.edu>
 ---
- fs/nfs/nfs4filelayout.c |   13 +++++++------
- fs/nfs/nfs4proc.c       |    8 ++++----
- fs/nfs/read.c           |    9 +--------
- include/linux/nfs_xdr.h |   13 ++++---------
- 4 files changed, 16 insertions(+), 27 deletions(-)
+ general/large1.c |  443 ------------------------------------------------------
+ general/large2.c |  443 ------------------------------------------------------
+ general/large3.c |  443 ------------------------------------------------------
+ 3 files changed, 0 insertions(+), 1329 deletions(-)
+ delete mode 100644 general/large1.c
+ delete mode 100644 general/large2.c
+ delete mode 100644 general/large3.c
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index c7ba5bc..fa718e1 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -104,10 +104,11 @@ static void filelayout_read_call_done(struct rpc_task *task, void *data)
- {
- 	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
- 
--	if (rdata->fldata.orig_offset) {
-+	dprintk("--> %s task->tk_status %d\n", __func__, task->tk_status);
-+	if (rdata->orig_offset) {
- 		dprintk("%s new off %llu orig offset %llu\n", __func__,
--			rdata->args.offset, rdata->fldata.orig_offset);
--		rdata->args.offset = rdata->fldata.orig_offset;
-+			rdata->args.offset, rdata->orig_offset);
-+		rdata->args.offset = rdata->orig_offset;
- 	}
- 
- 	/* Note this may cause RPC to be resent */
-@@ -152,14 +153,14 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	dprintk("%s USE DS:ip %x %hu\n", __func__,
- 		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
- 
--	/* just try the first data server for the index..*/
--	data->fldata.ds_nfs_client = ds->ds_clp;
-+	/* No multipath support. Use first DS */
-+	data->ds_clp = ds->ds_clp;
- 	fh = nfs4_fl_select_ds_fh(lseg, offset);
- 	if (fh)
- 		data->args.fh = fh;
- 
- 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
--	data->fldata.orig_offset = offset;
-+	data->orig_offset = offset;
- 
- 	/* Perform an asynchronous read to ds */
- 	nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1da0ebf..213e3f0 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3077,15 +3077,15 @@ static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
- static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
- {
- 	struct nfs_server *server = NFS_SERVER(data->inode);
--	struct nfs_client *client = server->nfs_client;
-+	struct nfs_client *clp = server->nfs_client;
- 
- 	dprintk("--> %s\n", __func__);
- 
- #ifdef CONFIG_NFS_V4_1
- 	/* Is this a DS session */
--	if (data->fldata.ds_nfs_client) {
-+	if (data->ds_clp) {
- 		dprintk("%s DS read\n", __func__);
--		client = data->fldata.ds_nfs_client;
-+		clp = data->ds_clp;
- 	}
- #endif /* CONFIG_NFS_V4_1 */
- 
-@@ -3098,7 +3098,7 @@ static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
- 	}
- 
- 	nfs_invalidate_atime(data->inode);
--	if (task->tk_status > 0 && client == server->nfs_client)
-+	if (task->tk_status > 0 && !data->ds_clp)
- 		renew_lease(server, data->timestamp);
- 	return 0;
- }
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 0db6203..9af3048 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -382,14 +382,7 @@ static void nfs_readpage_retry(struct rpc_task *task, struct nfs_read_data *data
- {
- 	struct nfs_readargs *argp = &data->args;
- 	struct nfs_readres *resp = &data->res;
--	struct nfs_client *clp = NFS_SERVER(data->inode)->nfs_client;
- 
--#ifdef CONFIG_NFS_V4_1
--	if (data->fldata.ds_nfs_client) {
--		dprintk("%s DS read\n", __func__);
--		clp = data->fldata.ds_nfs_client;
--	}
--#endif /* CONFIG_NFS_V4_1 */
- 	if (resp->eof || resp->count == argp->count)
- 		return;
- 
-@@ -403,7 +396,7 @@ static void nfs_readpage_retry(struct rpc_task *task, struct nfs_read_data *data
- 	argp->offset += resp->count;
- 	argp->pgbase += resp->count;
- 	argp->count -= resp->count;
--	nfs_restart_rpc(task, clp);
-+	nfs_restart_rpc(task, NFS_SERVER(data->inode)->nfs_client);
- }
- 
- /*
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 887aff3..4cf522e 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1009,14 +1009,8 @@ struct nfs_page;
- /* pnfs-specific data needed for read, write, and commit calls */
- struct pnfs_call_data {
- 	const struct rpc_call_ops *call_ops;
--	u32			orig_count;	/* for retry via MDS */
--	u8			how;		/* for FLUSH_STABLE */
--};
+diff --git a/general/large1.c b/general/large1.c
+deleted file mode 100644
+index 5dd2950..0000000
+--- a/general/large1.c
++++ /dev/null
+@@ -1,443 +0,0 @@
+-/*	@(#)large.c	1.3 2002/12/13 Connectathon Testsuite	*/
+-/*
+- * cc - front end for C compiler
+- */
+-#include <sys/param.h>
+-#ifndef major
+-#include <sys/types.h>
+-#endif
+-#include <stdio.h>
+-#include <ctype.h>
+-#include <signal.h>
+-#ifdef SVR4
+-#include <dirent.h>
+-#else
+-#include <sys/dir.h>
+-#endif
 -
--/* files layout-type specific data for read, write, and commit */
--struct pnfs_fl_call_data {
--	struct nfs_client	*ds_nfs_client;
--	__u64			orig_offset;
-+	u32			orig_count;     /* for retry via MDS */
-+	u8			how;            /* for FLUSH_STABLE */
- };
- #endif /* CONFIG_NFS_V4_1 */
- 
-@@ -1033,12 +1027,13 @@ struct nfs_read_data {
- 	struct nfs_readargs args;
- 	struct nfs_readres  res;
- 	struct pnfs_layout_segment *lseg;
-+	struct nfs_client	*ds_clp;   /* pNFS data server */
- #ifdef CONFIG_NFS_V4
- 	unsigned long		timestamp;	/* For lease renewal */
- #endif
- #if defined(CONFIG_NFS_V4_1)
- 	struct pnfs_call_data	pdata;
--	struct pnfs_fl_call_data fldata;
-+	__u64			orig_offset; /* For filelayout dense stripe */
- #endif /* CONFIG_NFS_V4_1 */
- 	struct page		*page_array[NFS_PAGEVEC_SIZE];
- };
+-#undef  MAXNAMLEN
+-#define MAXNAMLEN	256
+-
+-/* return type for signal handlers */
+-#if defined(SVR4) || defined (TRU64)
+-#define SIGHAND_T	void
+-#else
+-#define	SIGHAND_T	int
+-#endif
+-
+-char	*cpp = "/lib/cpp";
+-char	*ccom = "/lib/ccom";
+-char	*c2 = "/lib/c2";
+-char	*as = "/bin/as";
+-char	*ld = "/bin/ld";
+-char	*crt0 = "/lib/crt0.o";
+-
+-char	tmp0[30];		/* big enough for /tmp/ctm%05.5d */
+-char	*tmp1, *tmp2, *tmp3, *tmp4, *tmp5;
+-char	*outfile;
+-char	*savestr(), *strspl(), *setsuf();
+-SIGHAND_T	idexit();
+-char	**av, **clist, **llist, **plist;
+-int	cflag, eflag, oflag, pflag, sflag, wflag, Rflag, exflag, proflag;
+-int	gflag, Gflag;
+-char	*dflag;
+-int	exfail;
+-char	*passes;
+-char	*npassname;
+-
+-int	nc, nl, np, nxo, na;
+-
+-#define	cunlink(s)	if (s) unlink(s)
+-
+-main(argc, argv)
+-	char **argv;
+-{
+-	char *t;
+-	char *assource;
+-	int i, j, c;
+-
+-	/* ld currently adds upto 5 args; 10 is room to spare */
+-	av = (char **)calloc(argc+10, sizeof (char **));
+-	clist = (char **)calloc(argc, sizeof (char **));
+-	llist = (char **)calloc(argc, sizeof (char **));
+-	plist = (char **)calloc(argc, sizeof (char **));
+-	for (i = 1; i < argc; i++) {
+-		if (*argv[i] == '-') switch (argv[i][1]) {
+-
+-		case 'S':
+-			sflag++;
+-			cflag++;
+-			continue;
+-		case 'o':
+-			if (++i < argc) {
+-				outfile = argv[i];
+-				switch (getsuf(outfile)) {
+-
+-				case 'c':
+-				case 'o':
+-					error("-o would overwrite %s",
+-					    outfile);
+-					exit(8);
+-				}
+-			}
+-			continue;
+-		case 'R':
+-			Rflag++;
+-			continue;
+-		case 'O':
+-			oflag++;
+-			continue;
+-		case 'p':
+-			proflag++;
+-			crt0 = "/lib/mcrt0.o";
+-			if (argv[i][2] == 'g')
+-				crt0 = "/usr/lib/gcrt0.o";
+-			continue;
+-		case 'g':
+-			if (argv[i][2] == 'o') {
+-			    Gflag++;	/* old format for -go */
+-			} else {
+-			    gflag++;	/* new format for -g */
+-			}
+-			continue;
+-		case 'w':
+-			wflag++;
+-			continue;
+-		case 'E':
+-			exflag++;
+-		case 'P':
+-			pflag++;
+-			if (argv[i][1]=='P')
+-				fprintf(stderr,
+-	"cc: warning: -P option obsolete; you should use -E instead\n");
+-			plist[np++] = argv[i];
+-		case 'c':
+-			cflag++;
+-			continue;
+-		case 'D':
+-		case 'I':
+-		case 'U':
+-		case 'C':
+-			plist[np++] = argv[i];
+-			continue;
+-		case 't':
+-			if (passes)
+-				error("-t overwrites earlier option", 0);
+-			passes = argv[i]+2;
+-			if (passes[0]==0)
+-				passes = "012p";
+-			continue;
+-		case 'f':
+-			fprintf(stderr,
+-	"cc: warning: -f option obsolete (unnecessary)\n");
+-			continue;
+-		case 'B':
+-			if (npassname)
+-				error("-B overwrites earlier option", 0);
+-			npassname = argv[i]+2;
+-			if (npassname[0]==0)
+-				npassname = "/usr/c/o";
+-			continue;
+-		case 'd':
+-			dflag = argv[i];
+-			continue;
+-		}
+-		t = argv[i];
+-		c = getsuf(t);
+-		if (c=='c' || c=='s' || exflag) {
+-			clist[nc++] = t;
+-			t = setsuf(t, 'o');
+-		}
+-		if (nodup(llist, t)) {
+-			llist[nl++] = t;
+-			if (getsuf(t)=='o')
+-				nxo++;
+-		}
+-	}
+-	if (gflag || Gflag) {
+-		if (oflag)
+-			fprintf(stderr, "cc: warning: -g disables -O\n");
+-		oflag = 0;
+-	}
+-	if (npassname && passes ==0)
+-		passes = "012p";
+-	if (passes && npassname==0)
+-		npassname = "/usr/new";
+-	if (passes)
+-	for (t=passes; *t; t++) {
+-		switch (*t) {
+-
+-		case '0':
+-			ccom = strspl(npassname, "ccom");
+-			continue;
+-		case '2':
+-			c2 = strspl(npassname, "c2");
+-			continue;
+-		case 'p':
+-			cpp = strspl(npassname, "cpp");
+-			continue;
+-		}
+-	}
+-	if (nc==0)
+-		goto nocom;
+-	if (signal(SIGINT, SIG_IGN) != SIG_IGN)
+-		signal(SIGINT, idexit);
+-	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)
+-		signal(SIGTERM, idexit);
+-	if (pflag==0)
+-		sprintf(tmp0, "/tmp/ctm%05.5d", getpid());
+-	tmp1 = strspl(tmp0, "1");
+-	tmp2 = strspl(tmp0, "2");
+-	tmp3 = strspl(tmp0, "3");
+-	if (pflag==0)
+-		tmp4 = strspl(tmp0, "4");
+-	if (oflag)
+-		tmp5 = strspl(tmp0, "5");
+-	for (i=0; i<nc; i++) {
+-		if (nc > 1) {
+-			printf("%s:\n", clist[i]);
+-			fflush(stdout);
+-		}
+-		if (getsuf(clist[i]) == 's') {
+-			assource = clist[i];
+-			goto assemble;
+-		} else
+-			assource = tmp3;
+-		if (pflag)
+-			tmp4 = setsuf(clist[i], 'i');
+-		av[0] = "cpp"; av[1] = clist[i]; av[2] = exflag ? "-" : tmp4;
+-		na = 3;
+-		for (j = 0; j < np; j++)
+-			av[na++] = plist[j];
+-		av[na++] = 0;
+-		if (callsys(cpp, av)) {
+-			exfail++;
+-			eflag++;
+-		}
+-		if (pflag || exfail) {
+-			cflag++;
+-			continue;
+-		}
+-		if (sflag)
+-			assource = tmp3 = setsuf(clist[i], 's');
+-		av[0] = "ccom"; av[1] = tmp4; av[2] = oflag?tmp5:tmp3; na = 3;
+-		if (proflag)
+-			av[na++] = "-XP";
+-		if (gflag) {
+-			av[na++] = "-Xg";
+-		} else if (Gflag) {
+-			av[na++] = "-XG";
+-		}
+-		if (wflag)
+-			av[na++] = "-w";
+-		av[na] = 0;
+-		if (callsys(ccom, av)) {
+-			cflag++;
+-			eflag++;
+-			continue;
+-		}
+-		if (oflag) {
+-			av[0] = "c2"; av[1] = tmp5; av[2] = tmp3; av[3] = 0;
+-			if (callsys(c2, av)) {
+-				unlink(tmp3);
+-				tmp3 = assource = tmp5;
+-			} else
+-				unlink(tmp5);
+-		}
+-		if (sflag)
+-			continue;
+-	assemble:
+-		cunlink(tmp1); cunlink(tmp2); cunlink(tmp4);
+-		av[0] = "as"; av[1] = "-o"; av[2] = setsuf(clist[i], 'o');
+-		na = 3;
+-		if (Rflag)
+-			av[na++] = "-R";
+-		if (dflag)
+-			av[na++] = dflag;
+-		av[na++] = assource;
+-		av[na] = 0;
+-		if (callsys(as, av) > 1) {
+-			cflag++;
+-			eflag++;
+-			continue;
+-		}
+-	}
+-nocom:
+-	if (cflag==0 && nl!=0) {
+-		i = 0;
+-		av[0] = "ld"; av[1] = "-X"; av[2] = crt0; na = 3;
+-		if (outfile) {
+-			av[na++] = "-o";
+-			av[na++] = outfile;
+-		}
+-		while (i < nl)
+-			av[na++] = llist[i++];
+-		if (gflag || Gflag)
+-			av[na++] = "-lg";
+-		if (proflag)
+-			av[na++] = "-lc_p";
+-		else
+-			av[na++] = "-lc";
+-		av[na++] = 0;
+-		eflag |= callsys(ld, av);
+-		if (nc==1 && nxo==1 && eflag==0)
+-			unlink(setsuf(clist[0], 'o'));
+-	}
+-	dexit();
+-}
+-
+-SIGHAND_T
+-idexit()
+-{
+-
+-	eflag = 100;
+-	dexit();
+-}
+-
+-dexit()
+-{
+-
+-	if (!pflag) {
+-		cunlink(tmp1);
+-		cunlink(tmp2);
+-		if (sflag==0)
+-			cunlink(tmp3);
+-		cunlink(tmp4);
+-		cunlink(tmp5);
+-	}
+-	exit(eflag);
+-}
+-
+-error(s, x)
+-	char *s, *x;
+-{
+-	FILE *diag = exflag ? stderr : stdout;
+-
+-	fprintf(diag, "cc: ");
+-	fprintf(diag, s, x);
+-	putc('\n', diag);
+-	exfail++;
+-	cflag++;
+-	eflag++;
+-}
+-
+-getsuf(as)
+-char as[];
+-{
+-	register int c;
+-	register char *s;
+-	register int t;
+-
+-	s = as;
+-	c = 0;
+-	while (t = *s++)
+-		if (t=='/')
+-			c = 0;
+-		else
+-			c++;
+-	s -= 3;
+-	if (c <= MAXNAMLEN && c > 2 && *s++ == '.')
+-		return (*s);
+-	return (0);
+-}
+-
+-char *
+-setsuf(as, ch)
+-	char *as;
+-{
+-	register char *s, *s1;
+-
+-	s = s1 = savestr(as);
+-	while (*s)
+-		if (*s++ == '/')
+-			s1 = s;
+-	s[-1] = ch;
+-	return (s1);
+-}
+-
+-callsys(f, v)
+-	char *f, **v;
+-{
+-	int t, status;
+-
+-	t = fork();
+-	if (t == -1) {
+-		printf("No more processes\n");
+-		return (100);
+-	}
+-	if (t == 0) {
+-		execv(f, v);
+-		printf("Can't find %s\n", f);
+-		fflush(stdout);
+-		_exit(100);
+-	}
+-	while (t != wait(&status))
+-		;
+-	if ((t=(status&0377)) != 0 && t!=14) {
+-		if (t!=2) {
+-			printf("Fatal error in %s\n", f);
+-			eflag = 8;
+-		}
+-		dexit();
+-	}
+-	return ((status>>8) & 0377);
+-}
+-
+-nodup(l, os)
+-	char **l, *os;
+-{
+-	register char *t, *s;
+-	register int c;
+-
+-	s = os;
+-	if (getsuf(s) != 'o')
+-		return (1);
+-	while (t = *l++) {
+-		while (c = *s++)
+-			if (c != *t++)
+-				break;
+-		if (*t==0 && c==0)
+-			return (0);
+-		s = os;
+-	}
+-	return (1);
+-}
+-
+-#define	NSAVETAB	1024
+-char	*savetab;
+-int	saveleft;
+-
+-char *
+-savestr(cp)
+-	register char *cp;
+-{
+-	register int len;
+-
+-	len = strlen(cp) + 1;
+-	if (len > saveleft) {
+-		saveleft = NSAVETAB;
+-		if (len > saveleft)
+-			saveleft = len;
+-		savetab = (char *)malloc(saveleft);
+-		if (savetab == 0) {
+-			fprintf(stderr, "ran out of memory (savestr)\n");
+-			exit(1);
+-		}
+-	}
+-	strncpy(savetab, cp, len);
+-	cp = savetab;
+-	savetab += len;
+-	saveleft -= len;
+-	return (cp);
+-}
+-
+-char *
+-strspl(left, right)
+-	char *left, *right;
+-{
+-	char buf[BUFSIZ];
+-
+-	strcpy(buf, left);
+-	strcat(buf, right);
+-	return (savestr(buf));
+-}
+diff --git a/general/large2.c b/general/large2.c
+deleted file mode 100644
+index 5dd2950..0000000
+--- a/general/large2.c
++++ /dev/null
+@@ -1,443 +0,0 @@
+-/*	@(#)large.c	1.3 2002/12/13 Connectathon Testsuite	*/
+-/*
+- * cc - front end for C compiler
+- */
+-#include <sys/param.h>
+-#ifndef major
+-#include <sys/types.h>
+-#endif
+-#include <stdio.h>
+-#include <ctype.h>
+-#include <signal.h>
+-#ifdef SVR4
+-#include <dirent.h>
+-#else
+-#include <sys/dir.h>
+-#endif
+-
+-#undef  MAXNAMLEN
+-#define MAXNAMLEN	256
+-
+-/* return type for signal handlers */
+-#if defined(SVR4) || defined (TRU64)
+-#define SIGHAND_T	void
+-#else
+-#define	SIGHAND_T	int
+-#endif
+-
+-char	*cpp = "/lib/cpp";
+-char	*ccom = "/lib/ccom";
+-char	*c2 = "/lib/c2";
+-char	*as = "/bin/as";
+-char	*ld = "/bin/ld";
+-char	*crt0 = "/lib/crt0.o";
+-
+-char	tmp0[30];		/* big enough for /tmp/ctm%05.5d */
+-char	*tmp1, *tmp2, *tmp3, *tmp4, *tmp5;
+-char	*outfile;
+-char	*savestr(), *strspl(), *setsuf();
+-SIGHAND_T	idexit();
+-char	**av, **clist, **llist, **plist;
+-int	cflag, eflag, oflag, pflag, sflag, wflag, Rflag, exflag, proflag;
+-int	gflag, Gflag;
+-char	*dflag;
+-int	exfail;
+-char	*passes;
+-char	*npassname;
+-
+-int	nc, nl, np, nxo, na;
+-
+-#define	cunlink(s)	if (s) unlink(s)
+-
+-main(argc, argv)
+-	char **argv;
+-{
+-	char *t;
+-	char *assource;
+-	int i, j, c;
+-
+-	/* ld currently adds upto 5 args; 10 is room to spare */
+-	av = (char **)calloc(argc+10, sizeof (char **));
+-	clist = (char **)calloc(argc, sizeof (char **));
+-	llist = (char **)calloc(argc, sizeof (char **));
+-	plist = (char **)calloc(argc, sizeof (char **));
+-	for (i = 1; i < argc; i++) {
+-		if (*argv[i] == '-') switch (argv[i][1]) {
+-
+-		case 'S':
+-			sflag++;
+-			cflag++;
+-			continue;
+-		case 'o':
+-			if (++i < argc) {
+-				outfile = argv[i];
+-				switch (getsuf(outfile)) {
+-
+-				case 'c':
+-				case 'o':
+-					error("-o would overwrite %s",
+-					    outfile);
+-					exit(8);
+-				}
+-			}
+-			continue;
+-		case 'R':
+-			Rflag++;
+-			continue;
+-		case 'O':
+-			oflag++;
+-			continue;
+-		case 'p':
+-			proflag++;
+-			crt0 = "/lib/mcrt0.o";
+-			if (argv[i][2] == 'g')
+-				crt0 = "/usr/lib/gcrt0.o";
+-			continue;
+-		case 'g':
+-			if (argv[i][2] == 'o') {
+-			    Gflag++;	/* old format for -go */
+-			} else {
+-			    gflag++;	/* new format for -g */
+-			}
+-			continue;
+-		case 'w':
+-			wflag++;
+-			continue;
+-		case 'E':
+-			exflag++;
+-		case 'P':
+-			pflag++;
+-			if (argv[i][1]=='P')
+-				fprintf(stderr,
+-	"cc: warning: -P option obsolete; you should use -E instead\n");
+-			plist[np++] = argv[i];
+-		case 'c':
+-			cflag++;
+-			continue;
+-		case 'D':
+-		case 'I':
+-		case 'U':
+-		case 'C':
+-			plist[np++] = argv[i];
+-			continue;
+-		case 't':
+-			if (passes)
+-				error("-t overwrites earlier option", 0);
+-			passes = argv[i]+2;
+-			if (passes[0]==0)
+-				passes = "012p";
+-			continue;
+-		case 'f':
+-			fprintf(stderr,
+-	"cc: warning: -f option obsolete (unnecessary)\n");
+-			continue;
+-		case 'B':
+-			if (npassname)
+-				error("-B overwrites earlier option", 0);
+-			npassname = argv[i]+2;
+-			if (npassname[0]==0)
+-				npassname = "/usr/c/o";
+-			continue;
+-		case 'd':
+-			dflag = argv[i];
+-			continue;
+-		}
+-		t = argv[i];
+-		c = getsuf(t);
+-		if (c=='c' || c=='s' || exflag) {
+-			clist[nc++] = t;
+-			t = setsuf(t, 'o');
+-		}
+-		if (nodup(llist, t)) {
+-			llist[nl++] = t;
+-			if (getsuf(t)=='o')
+-				nxo++;
+-		}
+-	}
+-	if (gflag || Gflag) {
+-		if (oflag)
+-			fprintf(stderr, "cc: warning: -g disables -O\n");
+-		oflag = 0;
+-	}
+-	if (npassname && passes ==0)
+-		passes = "012p";
+-	if (passes && npassname==0)
+-		npassname = "/usr/new";
+-	if (passes)
+-	for (t=passes; *t; t++) {
+-		switch (*t) {
+-
+-		case '0':
+-			ccom = strspl(npassname, "ccom");
+-			continue;
+-		case '2':
+-			c2 = strspl(npassname, "c2");
+-			continue;
+-		case 'p':
+-			cpp = strspl(npassname, "cpp");
+-			continue;
+-		}
+-	}
+-	if (nc==0)
+-		goto nocom;
+-	if (signal(SIGINT, SIG_IGN) != SIG_IGN)
+-		signal(SIGINT, idexit);
+-	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)
+-		signal(SIGTERM, idexit);
+-	if (pflag==0)
+-		sprintf(tmp0, "/tmp/ctm%05.5d", getpid());
+-	tmp1 = strspl(tmp0, "1");
+-	tmp2 = strspl(tmp0, "2");
+-	tmp3 = strspl(tmp0, "3");
+-	if (pflag==0)
+-		tmp4 = strspl(tmp0, "4");
+-	if (oflag)
+-		tmp5 = strspl(tmp0, "5");
+-	for (i=0; i<nc; i++) {
+-		if (nc > 1) {
+-			printf("%s:\n", clist[i]);
+-			fflush(stdout);
+-		}
+-		if (getsuf(clist[i]) == 's') {
+-			assource = clist[i];
+-			goto assemble;
+-		} else
+-			assource = tmp3;
+-		if (pflag)
+-			tmp4 = setsuf(clist[i], 'i');
+-		av[0] = "cpp"; av[1] = clist[i]; av[2] = exflag ? "-" : tmp4;
+-		na = 3;
+-		for (j = 0; j < np; j++)
+-			av[na++] = plist[j];
+-		av[na++] = 0;
+-		if (callsys(cpp, av)) {
+-			exfail++;
+-			eflag++;
+-		}
+-		if (pflag || exfail) {
+-			cflag++;
+-			continue;
+-		}
+-		if (sflag)
+-			assource = tmp3 = setsuf(clist[i], 's');
+-		av[0] = "ccom"; av[1] = tmp4; av[2] = oflag?tmp5:tmp3; na = 3;
+-		if (proflag)
+-			av[na++] = "-XP";
+-		if (gflag) {
+-			av[na++] = "-Xg";
+-		} else if (Gflag) {
+-			av[na++] = "-XG";
+-		}
+-		if (wflag)
+-			av[na++] = "-w";
+-		av[na] = 0;
+-		if (callsys(ccom, av)) {
+-			cflag++;
+-			eflag++;
+-			continue;
+-		}
+-		if (oflag) {
+-			av[0] = "c2"; av[1] = tmp5; av[2] = tmp3; av[3] = 0;
+-			if (callsys(c2, av)) {
+-				unlink(tmp3);
+-				tmp3 = assource = tmp5;
+-			} else
+-				unlink(tmp5);
+-		}
+-		if (sflag)
+-			continue;
+-	assemble:
+-		cunlink(tmp1); cunlink(tmp2); cunlink(tmp4);
+-		av[0] = "as"; av[1] = "-o"; av[2] = setsuf(clist[i], 'o');
+-		na = 3;
+-		if (Rflag)
+-			av[na++] = "-R";
+-		if (dflag)
+-			av[na++] = dflag;
+-		av[na++] = assource;
+-		av[na] = 0;
+-		if (callsys(as, av) > 1) {
+-			cflag++;
+-			eflag++;
+-			continue;
+-		}
+-	}
+-nocom:
+-	if (cflag==0 && nl!=0) {
+-		i = 0;
+-		av[0] = "ld"; av[1] = "-X"; av[2] = crt0; na = 3;
+-		if (outfile) {
+-			av[na++] = "-o";
+-			av[na++] = outfile;
+-		}
+-		while (i < nl)
+-			av[na++] = llist[i++];
+-		if (gflag || Gflag)
+-			av[na++] = "-lg";
+-		if (proflag)
+-			av[na++] = "-lc_p";
+-		else
+-			av[na++] = "-lc";
+-		av[na++] = 0;
+-		eflag |= callsys(ld, av);
+-		if (nc==1 && nxo==1 && eflag==0)
+-			unlink(setsuf(clist[0], 'o'));
+-	}
+-	dexit();
+-}
+-
+-SIGHAND_T
+-idexit()
+-{
+-
+-	eflag = 100;
+-	dexit();
+-}
+-
+-dexit()
+-{
+-
+-	if (!pflag) {
+-		cunlink(tmp1);
+-		cunlink(tmp2);
+-		if (sflag==0)
+-			cunlink(tmp3);
+-		cunlink(tmp4);
+-		cunlink(tmp5);
+-	}
+-	exit(eflag);
+-}
+-
+-error(s, x)
+-	char *s, *x;
+-{
+-	FILE *diag = exflag ? stderr : stdout;
+-
+-	fprintf(diag, "cc: ");
+-	fprintf(diag, s, x);
+-	putc('\n', diag);
+-	exfail++;
+-	cflag++;
+-	eflag++;
+-}
+-
+-getsuf(as)
+-char as[];
+-{
+-	register int c;
+-	register char *s;
+-	register int t;
+-
+-	s = as;
+-	c = 0;
+-	while (t = *s++)
+-		if (t=='/')
+-			c = 0;
+-		else
+-			c++;
+-	s -= 3;
+-	if (c <= MAXNAMLEN && c > 2 && *s++ == '.')
+-		return (*s);
+-	return (0);
+-}
+-
+-char *
+-setsuf(as, ch)
+-	char *as;
+-{
+-	register char *s, *s1;
+-
+-	s = s1 = savestr(as);
+-	while (*s)
+-		if (*s++ == '/')
+-			s1 = s;
+-	s[-1] = ch;
+-	return (s1);
+-}
+-
+-callsys(f, v)
+-	char *f, **v;
+-{
+-	int t, status;
+-
+-	t = fork();
+-	if (t == -1) {
+-		printf("No more processes\n");
+-		return (100);
+-	}
+-	if (t == 0) {
+-		execv(f, v);
+-		printf("Can't find %s\n", f);
+-		fflush(stdout);
+-		_exit(100);
+-	}
+-	while (t != wait(&status))
+-		;
+-	if ((t=(status&0377)) != 0 && t!=14) {
+-		if (t!=2) {
+-			printf("Fatal error in %s\n", f);
+-			eflag = 8;
+-		}
+-		dexit();
+-	}
+-	return ((status>>8) & 0377);
+-}
+-
+-nodup(l, os)
+-	char **l, *os;
+-{
+-	register char *t, *s;
+-	register int c;
+-
+-	s = os;
+-	if (getsuf(s) != 'o')
+-		return (1);
+-	while (t = *l++) {
+-		while (c = *s++)
+-			if (c != *t++)
+-				break;
+-		if (*t==0 && c==0)
+-			return (0);
+-		s = os;
+-	}
+-	return (1);
+-}
+-
+-#define	NSAVETAB	1024
+-char	*savetab;
+-int	saveleft;
+-
+-char *
+-savestr(cp)
+-	register char *cp;
+-{
+-	register int len;
+-
+-	len = strlen(cp) + 1;
+-	if (len > saveleft) {
+-		saveleft = NSAVETAB;
+-		if (len > saveleft)
+-			saveleft = len;
+-		savetab = (char *)malloc(saveleft);
+-		if (savetab == 0) {
+-			fprintf(stderr, "ran out of memory (savestr)\n");
+-			exit(1);
+-		}
+-	}
+-	strncpy(savetab, cp, len);
+-	cp = savetab;
+-	savetab += len;
+-	saveleft -= len;
+-	return (cp);
+-}
+-
+-char *
+-strspl(left, right)
+-	char *left, *right;
+-{
+-	char buf[BUFSIZ];
+-
+-	strcpy(buf, left);
+-	strcat(buf, right);
+-	return (savestr(buf));
+-}
+diff --git a/general/large3.c b/general/large3.c
+deleted file mode 100644
+index 5dd2950..0000000
+--- a/general/large3.c
++++ /dev/null
+@@ -1,443 +0,0 @@
+-/*	@(#)large.c	1.3 2002/12/13 Connectathon Testsuite	*/
+-/*
+- * cc - front end for C compiler
+- */
+-#include <sys/param.h>
+-#ifndef major
+-#include <sys/types.h>
+-#endif
+-#include <stdio.h>
+-#include <ctype.h>
+-#include <signal.h>
+-#ifdef SVR4
+-#include <dirent.h>
+-#else
+-#include <sys/dir.h>
+-#endif
+-
+-#undef  MAXNAMLEN
+-#define MAXNAMLEN	256
+-
+-/* return type for signal handlers */
+-#if defined(SVR4) || defined (TRU64)
+-#define SIGHAND_T	void
+-#else
+-#define	SIGHAND_T	int
+-#endif
+-
+-char	*cpp = "/lib/cpp";
+-char	*ccom = "/lib/ccom";
+-char	*c2 = "/lib/c2";
+-char	*as = "/bin/as";
+-char	*ld = "/bin/ld";
+-char	*crt0 = "/lib/crt0.o";
+-
+-char	tmp0[30];		/* big enough for /tmp/ctm%05.5d */
+-char	*tmp1, *tmp2, *tmp3, *tmp4, *tmp5;
+-char	*outfile;
+-char	*savestr(), *strspl(), *setsuf();
+-SIGHAND_T	idexit();
+-char	**av, **clist, **llist, **plist;
+-int	cflag, eflag, oflag, pflag, sflag, wflag, Rflag, exflag, proflag;
+-int	gflag, Gflag;
+-char	*dflag;
+-int	exfail;
+-char	*passes;
+-char	*npassname;
+-
+-int	nc, nl, np, nxo, na;
+-
+-#define	cunlink(s)	if (s) unlink(s)
+-
+-main(argc, argv)
+-	char **argv;
+-{
+-	char *t;
+-	char *assource;
+-	int i, j, c;
+-
+-	/* ld currently adds upto 5 args; 10 is room to spare */
+-	av = (char **)calloc(argc+10, sizeof (char **));
+-	clist = (char **)calloc(argc, sizeof (char **));
+-	llist = (char **)calloc(argc, sizeof (char **));
+-	plist = (char **)calloc(argc, sizeof (char **));
+-	for (i = 1; i < argc; i++) {
+-		if (*argv[i] == '-') switch (argv[i][1]) {
+-
+-		case 'S':
+-			sflag++;
+-			cflag++;
+-			continue;
+-		case 'o':
+-			if (++i < argc) {
+-				outfile = argv[i];
+-				switch (getsuf(outfile)) {
+-
+-				case 'c':
+-				case 'o':
+-					error("-o would overwrite %s",
+-					    outfile);
+-					exit(8);
+-				}
+-			}
+-			continue;
+-		case 'R':
+-			Rflag++;
+-			continue;
+-		case 'O':
+-			oflag++;
+-			continue;
+-		case 'p':
+-			proflag++;
+-			crt0 = "/lib/mcrt0.o";
+-			if (argv[i][2] == 'g')
+-				crt0 = "/usr/lib/gcrt0.o";
+-			continue;
+-		case 'g':
+-			if (argv[i][2] == 'o') {
+-			    Gflag++;	/* old format for -go */
+-			} else {
+-			    gflag++;	/* new format for -g */
+-			}
+-			continue;
+-		case 'w':
+-			wflag++;
+-			continue;
+-		case 'E':
+-			exflag++;
+-		case 'P':
+-			pflag++;
+-			if (argv[i][1]=='P')
+-				fprintf(stderr,
+-	"cc: warning: -P option obsolete; you should use -E instead\n");
+-			plist[np++] = argv[i];
+-		case 'c':
+-			cflag++;
+-			continue;
+-		case 'D':
+-		case 'I':
+-		case 'U':
+-		case 'C':
+-			plist[np++] = argv[i];
+-			continue;
+-		case 't':
+-			if (passes)
+-				error("-t overwrites earlier option", 0);
+-			passes = argv[i]+2;
+-			if (passes[0]==0)
+-				passes = "012p";
+-			continue;
+-		case 'f':
+-			fprintf(stderr,
+-	"cc: warning: -f option obsolete (unnecessary)\n");
+-			continue;
+-		case 'B':
+-			if (npassname)
+-				error("-B overwrites earlier option", 0);
+-			npassname = argv[i]+2;
+-			if (npassname[0]==0)
+-				npassname = "/usr/c/o";
+-			continue;
+-		case 'd':
+-			dflag = argv[i];
+-			continue;
+-		}
+-		t = argv[i];
+-		c = getsuf(t);
+-		if (c=='c' || c=='s' || exflag) {
+-			clist[nc++] = t;
+-			t = setsuf(t, 'o');
+-		}
+-		if (nodup(llist, t)) {
+-			llist[nl++] = t;
+-			if (getsuf(t)=='o')
+-				nxo++;
+-		}
+-	}
+-	if (gflag || Gflag) {
+-		if (oflag)
+-			fprintf(stderr, "cc: warning: -g disables -O\n");
+-		oflag = 0;
+-	}
+-	if (npassname && passes ==0)
+-		passes = "012p";
+-	if (passes && npassname==0)
+-		npassname = "/usr/new";
+-	if (passes)
+-	for (t=passes; *t; t++) {
+-		switch (*t) {
+-
+-		case '0':
+-			ccom = strspl(npassname, "ccom");
+-			continue;
+-		case '2':
+-			c2 = strspl(npassname, "c2");
+-			continue;
+-		case 'p':
+-			cpp = strspl(npassname, "cpp");
+-			continue;
+-		}
+-	}
+-	if (nc==0)
+-		goto nocom;
+-	if (signal(SIGINT, SIG_IGN) != SIG_IGN)
+-		signal(SIGINT, idexit);
+-	if (signal(SIGTERM, SIG_IGN) != SIG_IGN)
+-		signal(SIGTERM, idexit);
+-	if (pflag==0)
+-		sprintf(tmp0, "/tmp/ctm%05.5d", getpid());
+-	tmp1 = strspl(tmp0, "1");
+-	tmp2 = strspl(tmp0, "2");
+-	tmp3 = strspl(tmp0, "3");
+-	if (pflag==0)
+-		tmp4 = strspl(tmp0, "4");
+-	if (oflag)
+-		tmp5 = strspl(tmp0, "5");
+-	for (i=0; i<nc; i++) {
+-		if (nc > 1) {
+-			printf("%s:\n", clist[i]);
+-			fflush(stdout);
+-		}
+-		if (getsuf(clist[i]) == 's') {
+-			assource = clist[i];
+-			goto assemble;
+-		} else
+-			assource = tmp3;
+-		if (pflag)
+-			tmp4 = setsuf(clist[i], 'i');
+-		av[0] = "cpp"; av[1] = clist[i]; av[2] = exflag ? "-" : tmp4;
+-		na = 3;
+-		for (j = 0; j < np; j++)
+-			av[na++] = plist[j];
+-		av[na++] = 0;
+-		if (callsys(cpp, av)) {
+-			exfail++;
+-			eflag++;
+-		}
+-		if (pflag || exfail) {
+-			cflag++;
+-			continue;
+-		}
+-		if (sflag)
+-			assource = tmp3 = setsuf(clist[i], 's');
+-		av[0] = "ccom"; av[1] = tmp4; av[2] = oflag?tmp5:tmp3; na = 3;
+-		if (proflag)
+-			av[na++] = "-XP";
+-		if (gflag) {
+-			av[na++] = "-Xg";
+-		} else if (Gflag) {
+-			av[na++] = "-XG";
+-		}
+-		if (wflag)
+-			av[na++] = "-w";
+-		av[na] = 0;
+-		if (callsys(ccom, av)) {
+-			cflag++;
+-			eflag++;
+-			continue;
+-		}
+-		if (oflag) {
+-			av[0] = "c2"; av[1] = tmp5; av[2] = tmp3; av[3] = 0;
+-			if (callsys(c2, av)) {
+-				unlink(tmp3);
+-				tmp3 = assource = tmp5;
+-			} else
+-				unlink(tmp5);
+-		}
+-		if (sflag)
+-			continue;
+-	assemble:
+-		cunlink(tmp1); cunlink(tmp2); cunlink(tmp4);
+-		av[0] = "as"; av[1] = "-o"; av[2] = setsuf(clist[i], 'o');
+-		na = 3;
+-		if (Rflag)
+-			av[na++] = "-R";
+-		if (dflag)
+-			av[na++] = dflag;
+-		av[na++] = assource;
+-		av[na] = 0;
+-		if (callsys(as, av) > 1) {
+-			cflag++;
+-			eflag++;
+-			continue;
+-		}
+-	}
+-nocom:
+-	if (cflag==0 && nl!=0) {
+-		i = 0;
+-		av[0] = "ld"; av[1] = "-X"; av[2] = crt0; na = 3;
+-		if (outfile) {
+-			av[na++] = "-o";
+-			av[na++] = outfile;
+-		}
+-		while (i < nl)
+-			av[na++] = llist[i++];
+-		if (gflag || Gflag)
+-			av[na++] = "-lg";
+-		if (proflag)
+-			av[na++] = "-lc_p";
+-		else
+-			av[na++] = "-lc";
+-		av[na++] = 0;
+-		eflag |= callsys(ld, av);
+-		if (nc==1 && nxo==1 && eflag==0)
+-			unlink(setsuf(clist[0], 'o'));
+-	}
+-	dexit();
+-}
+-
+-SIGHAND_T
+-idexit()
+-{
+-
+-	eflag = 100;
+-	dexit();
+-}
+-
+-dexit()
+-{
+-
+-	if (!pflag) {
+-		cunlink(tmp1);
+-		cunlink(tmp2);
+-		if (sflag==0)
+-			cunlink(tmp3);
+-		cunlink(tmp4);
+-		cunlink(tmp5);
+-	}
+-	exit(eflag);
+-}
+-
+-error(s, x)
+-	char *s, *x;
+-{
+-	FILE *diag = exflag ? stderr : stdout;
+-
+-	fprintf(diag, "cc: ");
+-	fprintf(diag, s, x);
+-	putc('\n', diag);
+-	exfail++;
+-	cflag++;
+-	eflag++;
+-}
+-
+-getsuf(as)
+-char as[];
+-{
+-	register int c;
+-	register char *s;
+-	register int t;
+-
+-	s = as;
+-	c = 0;
+-	while (t = *s++)
+-		if (t=='/')
+-			c = 0;
+-		else
+-			c++;
+-	s -= 3;
+-	if (c <= MAXNAMLEN && c > 2 && *s++ == '.')
+-		return (*s);
+-	return (0);
+-}
+-
+-char *
+-setsuf(as, ch)
+-	char *as;
+-{
+-	register char *s, *s1;
+-
+-	s = s1 = savestr(as);
+-	while (*s)
+-		if (*s++ == '/')
+-			s1 = s;
+-	s[-1] = ch;
+-	return (s1);
+-}
+-
+-callsys(f, v)
+-	char *f, **v;
+-{
+-	int t, status;
+-
+-	t = fork();
+-	if (t == -1) {
+-		printf("No more processes\n");
+-		return (100);
+-	}
+-	if (t == 0) {
+-		execv(f, v);
+-		printf("Can't find %s\n", f);
+-		fflush(stdout);
+-		_exit(100);
+-	}
+-	while (t != wait(&status))
+-		;
+-	if ((t=(status&0377)) != 0 && t!=14) {
+-		if (t!=2) {
+-			printf("Fatal error in %s\n", f);
+-			eflag = 8;
+-		}
+-		dexit();
+-	}
+-	return ((status>>8) & 0377);
+-}
+-
+-nodup(l, os)
+-	char **l, *os;
+-{
+-	register char *t, *s;
+-	register int c;
+-
+-	s = os;
+-	if (getsuf(s) != 'o')
+-		return (1);
+-	while (t = *l++) {
+-		while (c = *s++)
+-			if (c != *t++)
+-				break;
+-		if (*t==0 && c==0)
+-			return (0);
+-		s = os;
+-	}
+-	return (1);
+-}
+-
+-#define	NSAVETAB	1024
+-char	*savetab;
+-int	saveleft;
+-
+-char *
+-savestr(cp)
+-	register char *cp;
+-{
+-	register int len;
+-
+-	len = strlen(cp) + 1;
+-	if (len > saveleft) {
+-		saveleft = NSAVETAB;
+-		if (len > saveleft)
+-			saveleft = len;
+-		savetab = (char *)malloc(saveleft);
+-		if (savetab == 0) {
+-			fprintf(stderr, "ran out of memory (savestr)\n");
+-			exit(1);
+-		}
+-	}
+-	strncpy(savetab, cp, len);
+-	cp = savetab;
+-	savetab += len;
+-	saveleft -= len;
+-	return (cp);
+-}
+-
+-char *
+-strspl(left, right)
+-	char *left, *right;
+-{
+-	char buf[BUFSIZ];
+-
+-	strcpy(buf, left);
+-	strcat(buf, right);
+-	return (savestr(buf));
+-}
 -- 
-1.6.6
+1.7.1
 
