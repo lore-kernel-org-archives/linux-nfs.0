@@ -1,99 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([122.248.162.4]:35018 "EHLO
-	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755450Ab1BWNxI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 08:53:08 -0500
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
-        sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
-        jlayton@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
-Subject: [PATCH -V5 04/24] vfs: Add generic IS_ACL() test for acl support
-Date: Wed, 23 Feb 2011 19:21:51 +0530
-Message-Id: <1298469131-16555-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from shutemov.name ([188.40.19.243]:48849 "EHLO shutemov.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755465Ab1BHSmJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Feb 2011 13:42:09 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3, RESEND 04/16] sunrpc: tag svc_serv with rpc_pipefs mount point
+Date: Tue,  8 Feb 2011 20:41:55 +0200
+Message-Id: <1297190527-19925-5-git-send-email-kas@openvz.org>
+In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
+References: <1297190527-19925-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andreas Gruenbacher <agruen@suse.de>
-
-When IS_POSIXACL() is true, the vfs does not apply the umask.  Other acl
-models will need the same exception, so introduce a separate IS_ACL()
-test.
-
-The IS_POSIX_ACL() test is still needed so that nfsd can determine when
-the underlying file system supports POSIX ACLs (as opposed to some other
-kind).
-
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+Reviewed-by: Rob Landley <rlandley@parallels.com>
 ---
- fs/namei.c         |    6 +++---
- include/linux/fs.h |    8 +++++++-
- 2 files changed, 10 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/svc.h |    1 +
+ net/sunrpc/svc.c           |    4 ++++
+ 2 files changed, 5 insertions(+), 0 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 0bfc546..b1e5104 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2161,7 +2161,7 @@ static int __open_namei_create(struct nameidata *nd, struct path *path,
- 	int error;
- 	struct dentry *dir = nd->path.dentry;
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index ea29330..0cfd8e8 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -64,6 +64,7 @@ struct svc_pool {
+  */
+ struct svc_serv {
+ 	struct svc_program *	sv_program;	/* RPC program */
++	struct vfsmount *	sv_rpcmount;	/* rpc_pipefs mount point*/
+ 	struct svc_stat *	sv_stats;	/* RPC statistics */
+ 	spinlock_t		sv_lock;
+ 	unsigned int		sv_nrthreads;	/* # of server threads */
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 08e05a8..370bc46 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -20,6 +20,7 @@
+ #include <linux/module.h>
+ #include <linux/kthread.h>
+ #include <linux/slab.h>
++#include <linux/mount.h>
  
--	if (!IS_POSIXACL(dir->d_inode))
-+	if (!IS_ACL(dir->d_inode))
- 		mode &= ~current_umask();
- 	error = security_path_mknod(&nd->path, path->dentry, mode, 0);
- 	if (error)
-@@ -2691,7 +2691,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, int, mode,
- 		error = PTR_ERR(dentry);
- 		goto out_unlock;
- 	}
--	if (!IS_POSIXACL(nd.path.dentry->d_inode))
-+	if (!IS_ACL(nd.path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = may_mknod(mode);
- 	if (error)
-@@ -2768,7 +2768,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, int, mode)
- 	if (IS_ERR(dentry))
- 		goto out_unlock;
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/xdr.h>
+@@ -27,6 +28,7 @@
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/bc_xprt.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
  
--	if (!IS_POSIXACL(nd.path.dentry->d_inode))
-+	if (!IS_ACL(nd.path.dentry->d_inode))
- 		mode &= ~current_umask();
- 	error = mnt_want_write(nd.path.mnt);
- 	if (error)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index bd32159..70c7779 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -205,7 +205,7 @@ struct inodes_stat_t {
- #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
- 				   MS_VERBOSE is deprecated. */
- #define MS_SILENT	32768
--#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
-+#define MS_POSIXACL	(1<<16) /* Supports POSIX ACLs */
- #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
- #define MS_PRIVATE	(1<<18)	/* change to private */
- #define MS_SLAVE	(1<<19)	/* change to slave */
-@@ -280,6 +280,12 @@ struct inodes_stat_t {
- #define IS_IMA(inode)		((inode)->i_flags & S_IMA)
- #define IS_AUTOMOUNT(inode)	((inode)->i_flags & S_AUTOMOUNT)
+ #define RPCDBG_FACILITY	RPCDBG_SVCDSP
  
-+/*
-+ * IS_ACL() tells the VFS to not apply the umask
-+ * and use iop->check_acl for acl permission checks when defined.
-+ */
-+#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
-+
- /* the read-only stuff doesn't really belong here, but any other place is
-    probably as bad and I don't want to create yet another include file. */
+@@ -371,6 +373,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 		return NULL;
+ 	serv->sv_name      = prog->pg_name;
+ 	serv->sv_program   = prog;
++	serv->sv_rpcmount  = mntget(init_rpc_pipefs);
+ 	serv->sv_nrthreads = 1;
+ 	serv->sv_stats     = prog->pg_stats;
+ 	if (bufsize > RPCSVC_MAXPAYLOAD)
+@@ -488,6 +491,7 @@ svc_destroy(struct svc_serv *serv)
+ 	if (svc_serv_is_pooled(serv))
+ 		svc_pool_map_put();
  
++	mntput(serv->sv_rpcmount);
+ 	svc_unregister(serv);
+ 	kfree(serv->sv_pools);
+ 	kfree(serv);
 -- 
-1.7.1
+1.7.4
 
