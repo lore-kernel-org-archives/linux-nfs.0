@@ -1,101 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:63389 "EHLO mx2.netapp.com"
+Received: from shutemov.name ([188.40.19.243]:48881 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754006Ab1BPNW6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Feb 2011 08:22:58 -0500
-Subject: Re: NFS on little-endian platform - Microblaze
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: monstr@monstr.eu
-Cc: netdev@vger.kernel.org, David Miller <davem@davemloft.net>,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4D5BCE43.1090401@monstr.eu>
-References: <4D5BCC74.9010301@monstr.eu>  <4D5BCE43.1090401@monstr.eu>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 16 Feb 2011 08:22:53 -0500
-Message-ID: <1297862575.6596.0.camel@heimdal.trondhjem.org>
+	id S1755480Ab1BHSmL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Feb 2011 13:42:11 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3, RESEND 09/16] sunrpc: introduce rpc_pipefs_add_destroy_cb()
+Date: Tue,  8 Feb 2011 20:42:00 +0200
+Message-Id: <1297190527-19925-10-git-send-email-kas@openvz.org>
+In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
+References: <1297190527-19925-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2011-02-16 at 14:16 +0100, Michal Simek wrote: 
-> Hi again,
-> 
-> I forget to cc linux-nfs mailing list.
-> 
-> Michal
-> 
-> P.S.: Tested on kernels 2.6.38-rc4, 2.6.37 and 2.6.36
-> 
-> Michal Simek wrote:
-> > Hi All,
-> > 
-> > I am trying to understand one problem which we have found.
-> > The problem is that I can't on Microblaze little-endian platform
-> > mount nfs without -o nolock options. (Log below)
-> > Selecting tcp or udp has no effect.
-> > I am using emaclite driver and there is no problem on big endian 
-> > microblaze.
-> > 
-> > ping, telnet, http, ftp, iperf, netperf work well.
-> > 
-> > That's why I have a question if there is any endian specific option for 
-> > NFS?
-> > 
-> > Thanks,
-> > Michal
-> > 
-> > ~ # mount -t nfs 192.168.0.101:/tftpboot/nfs /mnt
-> > svc: failed to register lockdv1 RPC service (errno 13).
-> > lockd_up: makesock failed, error=-13
-> > svc: failed to register lockdv1 RPC service (errno 13).
-> > ~ # mount -t nfs -o nolock 192.168.0.101:/tftpboot/nfs /mnt
-> > ~ # mount
-> > rootfs on / type rootfs (rw)
-> > proc on /proc type proc (rw,relatime)
-> > none on /var type ramfs (rw,relatime)
-> > none on /sys type sysfs (rw,relatime)
-> > none on /etc/config type ramfs (rw,relatime)
-> > none on /dev/pts type devpts (rw,relatime,mode=600)
-> > 192.168.0.101:/tftpboot/nfs on /mnt type nfs 
-> > (rw,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,port=65535,timeo=7,retrans=3,sec=sys,local_lock=all,addr=192.168.0.101) 
-> > 
-> > ~ #
-> > ~ # ps
-> > PID   USER     TIME   COMMAND
-> >     1 root       0:02 init
-> >     2 root       0:00 [kthreadd]
-> >     3 root       0:00 [ksoftirqd/0]
-> >     4 root       0:00 [kworker/0:0]
-> >     5 root       0:00 [kworker/u:0]
-> >     6 root       0:00 [khelper]
-> >     7 root       0:00 [sync_supers]
-> >     8 root       0:00 [bdi-default]
-> >     9 root       0:00 [kblockd]
-> >    10 root       0:00 [rpciod]
-> >    11 root       0:00 [kworker/0:1]
-> >    12 root       0:00 [kswapd0]
-> >    13 root       0:00 [fsnotify_mark]
-> >    14 root       0:00 [aio]
-> >    15 root       0:00 [nfsiod]
-> >    16 root       0:00 [kworker/u:1]
-> >    58 root       0:00 udhcpc -R -n -p /var/run/udhcpc.eth0.pid -i eth0
-> >    62 1          0:00 /bin/portmap
-> >    64 root       0:00 /bin/inetd /etc/inetd.conf
-> >    65 root       0:01 -sh
-> >    66 root       0:00 /bin/syslogd -n
-> >    67 root       0:00 /bin/flatfsd
-> >    68 root       0:00 [kworker/0:2]
-> >    91 root       0:00 ps
+Add facility to do some action on destroying of rpc_pipefs superblock.
 
-Where is rpc.statd? Without it, the above behaviour is 100% expected.
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+Reviewed-by: Rob Landley <rlandley@parallels.com>
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |    3 ++
+ net/sunrpc/rpc_pipe.c              |   51 ++++++++++++++++++++++++++++++++++-
+ 2 files changed, 52 insertions(+), 2 deletions(-)
 
-Trond
-
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index b09bfa5..f5216f1 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -46,6 +46,9 @@ RPC_I(struct inode *inode)
+ 
+ extern struct vfsmount *init_rpc_pipefs;
+ 
++extern int rpc_pipefs_add_destroy_cb(struct super_block *sb,
++		void (*destroy_cb)(void *data), void *data);
++
+ extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
+ 
+ struct rpc_clnt;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 484c9a3..58312fa 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -939,6 +939,31 @@ static const struct super_operations s_ops = {
+ 
+ #define RPCAUTH_GSSMAGIC 0x67596969
+ 
++struct destroy_cb {
++	struct list_head list;
++	void (*callback)(void *data);
++	void *data;
++};
++
++int rpc_pipefs_add_destroy_cb(struct super_block *sb,
++		void (*destroy_cb)(void *data), void *data)
++{
++	struct destroy_cb *dcb;
++	struct list_head *destroy_cb_list = sb->s_fs_info;
++
++	dcb = kmalloc(sizeof(*dcb), GFP_KERNEL);
++	if (!dcb)
++		return -ENOMEM;
++
++	dcb->callback = destroy_cb;
++	dcb->data = data;
++	INIT_LIST_HEAD(&dcb->list);
++	list_add(&dcb->list, destroy_cb_list);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(rpc_pipefs_add_destroy_cb);
++
+ /*
+  * We have a single directory with 1 node in it.
+  */
+@@ -1004,8 +1029,16 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 		iput(inode);
+ 		return -ENOMEM;
+ 	}
+-	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
++	/* List of destroy callbacks */
++	sb->s_fs_info = kmalloc(sizeof(struct list_head), GFP_KERNEL);
++	if (!sb->s_fs_info)
++		return -ENOMEM;
++	INIT_LIST_HEAD((struct list_head*) sb->s_fs_info);
++	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL)) {
++		kfree(sb->s_fs_info);
+ 		return -ENOMEM;
++	}
++
+ 	return 0;
+ }
+ 
+@@ -1016,11 +1049,25 @@ rpc_mount(struct file_system_type *fs_type,
+ 	return mount_single(fs_type, flags, data, rpc_fill_super);
+ }
+ 
++static void rpc_kill_sb(struct super_block *sb)
++{
++	struct list_head *destroy_cb_list = sb->s_fs_info;
++	struct destroy_cb *dcb, *tmp;
++
++	list_for_each_entry_safe(dcb, tmp, destroy_cb_list, list) {
++		dcb->callback(dcb->data);
++		list_del(&dcb->list);
++		kfree(dcb);
++	}
++	kfree(destroy_cb_list);
++	kill_litter_super(sb);
++}
++
+ static struct file_system_type rpc_pipe_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "rpc_pipefs",
+ 	.mount		= rpc_mount,
+-	.kill_sb	= kill_litter_super,
++	.kill_sb	= rpc_kill_sb,
+ };
+ 
+ static void
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.4
 
