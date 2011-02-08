@@ -1,47 +1,575 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from swampdragon.chaosbits.net ([90.184.90.115]:11381 "EHLO
-	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751375Ab1BNV5h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Feb 2011 16:57:37 -0500
-Date: Mon, 14 Feb 2011 22:56:33 +0100 (CET)
-From: Jesper Juhl <jj@chaosbits.net>
-To: linux-nfs@vger.kernel.org
-cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH] NFS: Zap entire 'struct inode' in nfs_zap_caches_locked().
-Message-ID: <alpine.LNX.2.00.1102142252540.4530@swampdragon.chaosbits.net>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from rcsinet10.oracle.com ([148.87.113.121]:46621 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754376Ab1BHP5M convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Feb 2011 10:57:12 -0500
+Subject: Re: [PATCH 2/2] mount: add --enable-libmount-mount
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1297172717-26431-3-git-send-email-kzak@redhat.com>
+Date: Tue, 8 Feb 2011 10:56:28 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <9586C586-0398-4D70-9ACA-59D6159233E7@oracle.com>
+References: <1297172717-26431-1-git-send-email-kzak@redhat.com> <1297172717-26431-3-git-send-email-kzak@redhat.com>
+To: Karel Zak <kzak@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-nfs_zap_caches_locked() attempts to zero all of the 'struct inode' that's 
-passed in via the pointer variable 'inode'. Unfortunately it only manages 
-to zero the size of a 'pointer to struct inode'. Fix that.
+A few initial comments.
 
-Signed-off-by: Jesper Juhl <jj@chaosbits.net>
----
- inode.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On Feb 8, 2011, at 8:45 AM, Karel Zak wrote:
 
- compile tested only
+> This patch allows to link mount.nfs with libmount from util-linux >=
+> v2.19. The new libmount based code is enabled by CONFIG_LIBMOUNT and
+> is stored in mount_libmount.c. The old code is not affected by this
+> change.
+> 
+> The libmount does not have officially stable API yet, so the
+> --enable-libmount-mount is marked as experimental in the configure
+> help output.
+> 
+> The ./configure option is the same as we use in util-linux to enable
+> support for libmount in mount(8).
+> 
+> The addr= (and some other options necessary for remount/umount) are
+> stored to /etc/mtab or to /dev/.mount/utab. The utab file is *private*
+> libmount file. It's possible that some mount options (for example
+> user=) will be moved to kernel, so the utab will not be necessary.
+> 
+> About libmount:
+> 
+>  * supports systems without and with regular /etc/mtab
+>  * does not store VFS and FS mount options in userspace
+>  * manages user= option and evaluate permissions
+>  * parses VFS mount options and generate MS_* flags
+>  * parses /etc/{fstab,mtab}, /proc/mounts or /proc/self/mountinfo
+>  * long-term goal is to use the same code in all mount.<type> helpers
+> 
+> Note, use
+> 
+>   LIBMOUNT_DEBUG=0xffff mount.nfs foo:/path /path
+> 
+> to debug the library.
+> 
+> On systems with util-linux v2.19 the findmnt(8) command uses libmount
+> to list all/selected mount points:
+> 
+>   $ findmnt /path
+>   $ findmnt --mtab /path
+> 
+> the --mtab appends userspace mount options (e.g. user=) to the output.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 1cc600e..6c4236e 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -145,7 +145,7 @@ static void nfs_zap_caches_locked(struct inode *inode)
- 	nfsi->attrtimeo = NFS_MINATTRTIMEO(inode);
- 	nfsi->attrtimeo_timestamp = jiffies;
- 
--	memset(NFS_COOKIEVERF(inode), 0, sizeof(NFS_COOKIEVERF(inode)));
-+	memset(NFS_COOKIEVERF(inode), 0, sizeof(*NFS_COOKIEVERF(inode)));
- 	if (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode))
- 		nfsi->cache_validity |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL|NFS_INO_REVAL_PAGECACHE;
- 	else
+I like the long patch description.
 
+> 
+> Signed-off-by: Karel Zak <kzak@redhat.com>
+> ---
+> configure.ac                 |   16 ++
+> utils/mount/Makefile.am      |   13 ++-
+> utils/mount/mount_libmount.c |  398 ++++++++++++++++++++++++++++++++++++++++++
+> 3 files changed, 425 insertions(+), 2 deletions(-)
+> create mode 100644 utils/mount/mount_libmount.c
+> 
+> diff --git a/configure.ac b/configure.ac
+> index 2e074d9..9c384d8 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -132,6 +132,15 @@ AC_ARG_ENABLE(mount,
+> 	enable_mount=$enableval,
+> 	enable_mount=yes)
+> 	AM_CONDITIONAL(CONFIG_MOUNT, [test "$enable_mount" = "yes"])
+> +
+> +if test "$enable_mount" = yes; then
+> +	AC_ARG_ENABLE(libmount-mount,
+> +		[AC_HELP_STRING([--enable-libmount-mount],
+> +				[Link mount.nfs with libmount (EXPERIMENTAL)])],
+> +		enable_libmount=yes,
+> +		enable_libmount=no)
+> +fi
+> +
+> AC_ARG_ENABLE(tirpc,
+> 	[AC_HELP_STRING([--enable-tirpc],
+> 			[enable use of TI-RPC @<:@default=yes@:>@])],
+> @@ -285,6 +294,13 @@ AC_SUBST(LIBCRYPT)
+> AC_SUBST(LIBBSD)
+> AC_SUBST(LIBBLKID)
+> 
+> +if test "$enable_libmount" != no; then
+> +   AC_CHECK_LIB(mount, mnt_context_do_mount, [LIBMOUNT="-lmount"], AC_MSG_ERROR([libmount needed]))
+> +   AC_CHECK_HEADER(libmount/libmount.h, , AC_MSG_ERROR([Cannot find libmount header file libmount/libmount.h]))
+> +fi
+> +AM_CONDITIONAL(CONFIG_LIBMOUNT, [test "$enable_libmount" = "yes"])
+> +AC_SUBST(LIBMOUNT)
+> +
+> if test "$enable_gss" = yes; then
+>   dnl 'gss' requires getnameinfo - at least for gssd_proc.c
+>   AC_CHECK_FUNC([getnameinfo], , [AC_MSG_ERROR([GSSAPI support requires 'getnameinfo' function])])
+> diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
+> index a9553dc..056293c 100644
+> --- a/utils/mount/Makefile.am
+> +++ b/utils/mount/Makefile.am
+> @@ -9,7 +9,7 @@ man5_MANS	= nfs.man
+> 
+> sbin_PROGRAMS	= mount.nfs
+> EXTRA_DIST = nfsmount.x $(man8_MANS) $(man5_MANS)
+> -mount_nfs_SOURCES = mount.c error.c network.c fstab.c token.c \
+> +mount_common = error.c network.c fstab.c token.c \
+> 		    parse_opt.c parse_dev.c \
+> 		    nfsmount.c nfs4mount.c stropts.c\
+> 		    nfsumount.c \
+> @@ -19,7 +19,7 @@ mount_nfs_SOURCES = mount.c error.c network.c fstab.c token.c \
+> 		    mount_config.h utils.c utils.h
+> 
+> if MOUNT_CONFIG
+> -mount_nfs_SOURCES += configfile.c
+> +mount_common += configfile.c
+> man5_MANS += nfsmount.conf.man
+> EXTRA_DIST += nfsmount.conf
+> endif
+> @@ -27,6 +27,15 @@ endif
+> mount_nfs_LDADD = ../../support/nfs/libnfs.a \
+> 		  ../../support/export/libexport.a
+> 
+> +mount_nfs_SOURCES = $(mount_common)
+> +
+> +if CONFIG_LIBMOUNT
+> +mount_nfs_SOURCES += mount_libmount.c
+> +mount_nfs_LDADD += $(LIBMOUNT)
+> +else
+> +mount_nfs_SOURCES += mount.c
+> +endif
+> +
+> MAINTAINERCLEANFILES = Makefile.in
+> 
+> install-exec-hook:
+> diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
+> new file mode 100644
+> index 0000000..3d499c0
+> --- /dev/null
+> +++ b/utils/mount/mount_libmount.c
+> @@ -0,0 +1,398 @@
+> +/*
+> + * mount_libmount.c -- Linux NFS [u]mount based on libmount
+> + *
+> + * Copyright (C) 2011 Karel Zak <kzak@redhat.com>
+> + *
+> + * This program is free software; you can redistribute it and/or modify
+> + * it under the terms of the GNU General Public License as published by
+> + * the Free Software Foundation; either version 2, or (at your option)
+> + * any later version.
+> + *
+> + * This program is distributed in the hope that it will be useful,
+> + * but WITHOUT ANY WARRANTY; without even the implied warranty of
+> + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+> + * GNU General Public License for more details.
+
+Nit: boilerplate here is also minus the address paragraph.
+
+> + *
+> + */
+> +
+> +#ifdef HAVE_CONFIG_H
+> +#include <config.h>
+> +#endif
+> +
+> +#include <unistd.h>
+> +#include <stdio.h>
+> +#include <string.h>
+> +#include <errno.h>
+> +#include <getopt.h>
+> +
+> +#include <libmount/libmount.h>
+> +
+> +#include "nls.h"
+> +#include "mount_config.h"
+> +
+> +#include "nfs_mount.h"
+> +#include "nfs4_mount.h"
+> +#include "stropts.h"
+> +#include "version.h"
+> +#include "xcommon.h"
+> +
+> +#include "error.h"
+> +#include "utils.h"
+> +
+> +char *progname;
+> +int nfs_mount_data_version;
+> +int verbose;
+> +int sloppy;
+> +int string;
+> +int nomtab;
+> +
+> +#define FOREGROUND	(0)
+> +#define BACKGROUND	(1)
+> +
+> +static int try_mount(struct libmnt_context *cxt, int bg)
+> +{
+> +	struct libmnt_fs *fs;
+> +	const char *p;
+> +	char *src = NULL, *tgt = NULL, *type = NULL, *opts = NULL;
+> +	unsigned long flags = 0;
+> +	int fake, ret = 0;
+> +
+> +	fs = mnt_context_get_fs(cxt);
+> +
+> +	/* libmount returns read-only pointers (const char)
+> +	 * so, reallocate for nfsmount() functions.
+> +	 */
+> +	if ((p = mnt_fs_get_source(fs)))		/* spec */
+> +		src = strdup(p);
+> +	if ((p = mnt_fs_get_target(fs)))		/* mountpoint */
+> +		tgt = strdup(p);
+> +	if ((p = mnt_fs_get_fstype(fs)))
+> +		type = strdup(p);
+> +	if ((p = mnt_fs_get_fs_options(fs)))
+> +		opts = strdup(p);
+> +
+> +	mnt_context_get_mflags(cxt, &flags);	/* mount(2) flags */
+> +	fake = mnt_context_is_fake(cxt);
+> +
+> +	if (string)
+> +		ret = nfsmount_string(src, tgt, type, flags, &opts, fake, bg);
+> +
+> +	else if (strcmp(type, "nfs4") == 0)
+> +		ret = nfs4mount(src, tgt, flags, &opts, fake, bg);
+> +	else
+> +		ret = nfsmount(src, tgt, flags, &opts, fake, bg);
+> +
+> +	if (!ret && !mnt_context_is_nomtab(cxt)) {
+> +		/* it's possible that mount options was modified by nfsmount()
+> +		 * functions -- update info in libmount as well
+> +		 *
+> +		 * Note that on systems without /etc/mtab the fs-specific
+> +		 * options are not managed by libmount at all. We have to use
+> +		 * "mount attributes" that are private for mount.<type> helpers.
+> +		 * The umount.nfs reads the attributes.
+> +		 */
+> +		mnt_fs_set_attributes(fs, opts);	/* for non-mtab systems */
+> +		mnt_fs_set_fs_options(fs, opts);	/* for mtab */
+> +	}
+> +
+> +	free(src);
+> +	free(tgt);
+> +	free(type);
+> +	free(opts);
+> +
+> +	return ret;
+> +}
+> +
+> +/* returns: error = -1, success = 0 , unknown = 1 */
+> +static int is_vers4(struct libmnt_context *cxt)
+> +{
+> +	struct libmnt_fs *fs = mnt_context_get_fs(cxt);
+> +	struct libmnt_table *tb = NULL;
+> +	const char *src = mnt_context_get_source(cxt),
+> +		   *tgt = mnt_context_get_target(cxt);
+> +	int rc = 1;
+> +
+> +	if (!src || !tgt)
+> +		return -1;
+> +
+> +	if (!mnt_fs_is_kernel(fs)) {
+> +		struct libmnt_table *tb = mnt_new_table_from_file("/proc/mounts");
+> +
+> +		if (!tb)
+> +			return -1;
+> +		fs = mnt_table_find_pair(tb, src, tgt, MNT_ITER_BACKWARD);
+> +	}
+> +
+> +	if (fs) {
+> +		const char *type = mnt_fs_get_fstype(fs);
+> +		if (type && strcmp(type, "nfs4") == 0)
+> +			rc = 0;
+> +	}
+> +	mnt_free_table(tb);
+> +	return rc;
+> +}
+> +
+> +static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
+> +{
+> +	int rc, c;
+> +	struct libmnt_fs *fs;
+> +	char *spec = NULL, *opts = NULL;
+> +
+> +	struct option longopts[] = {
+> +		{ "force", 0, 0, 'f' },
+> +		{ "help", 0, 0, 'h' },
+> +		{ "no-mtab", 0, 0, 'n' },
+> +		{ "verbose", 0, 0, 'v' },
+> +		{ "read-only", 0, 0, 'r' },
+> +		{ "lazy", 0, 0, 'l' },
+> +		{ "types", 1, 0, 't' },
+> +		{ NULL, 0, 0, 0 }
+> +	};
+> +
+> +	mnt_context_init_helper(cxt, MNT_ACT_UMOUNT, 0);
+> +
+> +	while ((c = getopt_long (argc, argv, "fvnrlh", longopts, NULL)) != -1) {
+> +
+> +		rc = mnt_context_helper_setopt(cxt, c, optarg);
+> +		if (rc == 0)		/* valid option */
+> +			continue;
+> +		if (rc < 0)		/* error (probably ENOMEM) */
+> +			goto err;
+> +					/* rc==1 means unknow option */
+> +		umount_usage();
+> +		return EX_USAGE;
+> +	}
+> +
+> +	if (optind < argc)
+> +		spec = argv[optind++];
+> +
+> +	if (!spec || (*spec != '/' && strchr(spec,':') == NULL)) {
+> +		nfs_error(_("%s: no mount point provided"), progname);
+> +		return EX_USAGE;
+> +	}
+> +
+> +	if (mnt_context_set_target(cxt, spec))
+> +		goto err;
+> +	if (mnt_context_set_fstype_pattern(cxt, "nfs,nfs4"))	/* restrict filesystems */
+> +		goto err;
+> +
+> +	/* read mtab/fstab, evaluate permissions, etc. */
+> +	rc = mnt_context_prepare_umount(cxt);
+> +	if (rc) {
+> +		nfs_error(_("%s: failed to prepare umount: %s\n"),
+> +					progname, strerror(-rc));
+> +		goto err;
+> +	}
+> +
+> +	/* NFS stores some mount options in userspace, in mtab or in libmount
+> +	 * private mount table.
+> +	 */
+
+It might help to abstract the storing and retrieval of these special mount options into separate named functions (here in mount_libmount.c, of course) so a casual reader of this code gets a sense of the pairing between mount.nfs and umount.nfs.  It would be a place to clearly document this important behavior.
+
+> +	fs = mnt_context_get_fs(cxt);
+> +	if (fs) {
+> +		opts = (char *) mnt_fs_get_attributes(fs);	/* /dev/.mount/utab */
+> +		if (opts) {
+> +			opts = strdup(opts);
+> +			if (!opts)
+> +				goto err;
+> +		}
+> +		else
+> +			opts = mnt_fs_strdup_options(fs);	/* /etc/mtab */
+> +	}
+> +
+> +	if (!mnt_context_is_lazy(cxt)) {
+> +		if (opts) {
+> +			/* we have full FS description (e.g. from mtab or /proc) */
+> +			switch (is_vers4(cxt)) {
+> +			case 0:
+> +				/* We ignore the error from nfs_umount23.
+> +				 * If the actual umount succeeds (in del_mtab),
+> +				 * we don't want to signal an error, as that
+> +				 * could cause /sbin/mount to retry!
+> +				 */
+> +				nfs_umount23(mnt_context_get_source(cxt), opts);
+> +				break;
+> +			case 1:			/* unknown */
+> +				break;
+> +			default:		/* error */
+> +				goto err;
+> +			}
+> +		} else
+> +			/* strange, no entry in mtab or /proc not mounted */
+> +			nfs_umount23(spec, "tcp,v3");
+> +	}
+> +
+> +	rc = mnt_context_do_umount(cxt);	/* call umount(2) syscall */
+> +	mnt_context_finalize_mount(cxt);	/* mtab update */
+> +
+> +	if (!rc)
+> +		goto err;
+> +
+> +	free(opts);
+> +	return EX_SUCCESS;
+> +err:
+> +	free(opts);
+> +	return EX_FAIL;
+> +}
+> +
+> +static int mount_main(struct libmnt_context *cxt, int argc, char **argv)
+> +{
+> +	int rc, c;
+> +	struct libmnt_fs *fs;
+> +	char *spec = NULL, *mount_point = NULL, *opts = NULL;
+> +
+> +	struct option longopts[] = {
+> +	  { "fake", 0, 0, 'f' },
+> +	  { "help", 0, 0, 'h' },
+> +	  { "no-mtab", 0, 0, 'n' },
+> +	  { "read-only", 0, 0, 'r' },
+> +	  { "ro", 0, 0, 'r' },
+> +	  { "verbose", 0, 0, 'v' },
+> +	  { "version", 0, 0, 'V' },
+> +	  { "read-write", 0, 0, 'w' },
+> +	  { "rw", 0, 0, 'w' },
+> +	  { "options", 1, 0, 'o' },
+> +	  { "sloppy", 0, 0, 's' },
+> +	  { NULL, 0, 0, 0 }
+> +	};
+
+Should these be declared "const static" ?  The current declaration would seem to put this big array of strings on the stack.
+
+> +
+> +	mount_config_init(progname);
+> +	mnt_context_init_helper(cxt, MNT_ACT_MOUNT, 0);
+> +
+> +	while ((c = getopt_long(argc, argv, "fhnrVvwo:s", longopts, NULL)) != -1) {
+> +
+> +		rc = mnt_context_helper_setopt(cxt, c, optarg);
+> +		if (rc == 0)		/* valid option */
+> +			continue;
+> +		if (rc < 0)		/* error (probably ENOMEM) */
+> +			goto err;
+> +					/* rc==1 means unknow option */
+> +		switch (c) {
+> +		case 'V':
+> +			printf("%s: ("PACKAGE_STRING")\n", progname);
+> +			return EX_SUCCESS;
+> +		case 'h':
+> +		default:
+> +			mount_usage();
+> +			return EX_USAGE;
+> +		}
+> +	}
+> +
+> +	if (optind < argc)
+> +		spec = argv[optind++];
+> +	if (optind < argc)
+> +		mount_point = argv[optind++];
+> +
+> +	if (!mount_point) {
+> +		nfs_error(_("%s: no mount point provided"), progname);
+> +		goto err;
+> +	}
+> +	if (!spec) {
+> +		nfs_error(_("%s: no mount spec provided"), progname);
+> +		goto err;
+> +	}
+> +
+> +	if (geteuid() != 0) {
+> +		nfs_error(_("%s: not installed setuid - "
+> +			    "\"user\" NFS mounts not supported."), progname);
+> +		goto err;
+> +	}
+> +
+> +	verbose = mnt_context_is_verbose(cxt);
+> +	sloppy = mnt_context_is_sloppy(cxt);
+> +	nomtab = mnt_context_is_nomtab(cxt);
+> +
+> +	if (strcmp(progname, "mount.nfs4") == 0)
+> +		mnt_context_set_fstype(cxt, "nfs4");
+> +	else
+> +		mnt_context_set_fstype(cxt, "nfs");	/* default */
+> +
+> +	rc = mnt_context_set_source(cxt, spec);
+> +	if (!rc)
+> +		mnt_context_set_target(cxt, mount_point);
+> +	if (rc) {
+> +		nfs_error(_("%s: failed to set spec or mountpoint: %s"),
+> +				progname, strerror(errno));
+> +		goto err;
+> +	}
+> +
+> +	mount_point = mnt_resolve_path(mount_point,
+> +				       mnt_context_get_cache(cxt));
+> +
+> +	if (chk_mountpoint(mount_point))
+> +		goto err;
+> +	/*
+> +	 * Concatenate mount options from the configuration file
+> +	 */
+> +	fs = mnt_context_get_fs(cxt);
+> +	if (fs) {
+> +		opts = mnt_fs_strdup_options(fs);
+> +
+> +		opts = mount_config_opts(spec, mount_point, opts);
+> +		mnt_fs_set_options(fs, opts);
+> +	}
+> +
+> +	rc = mnt_context_prepare_mount(cxt);
+> +	if (rc) {
+> +		nfs_error(_("%s: failed to prepare mount: %s\n"),
+> +					progname, strerror(-rc));
+> +		goto err;
+> +	}
+> +
+> +	rc = try_mount(cxt, FOREGROUND);
+> +
+> +	if (rc == EX_BG) {
+> +		printf(_("%s: backgrounding \"%s\"\n"),
+> +			progname, mnt_context_get_source(cxt));
+> +		printf(_("%s: mount options: \"%s\"\n"),
+> +			progname, opts);
+> +
+> +		fflush(stdout);
+> +
+> +		if (daemon(0, 0)) {
+> +			nfs_error(_("%s: failed to start "
+> +					"background process: %s\n"),
+> +					progname, strerror(errno));
+> +			exit(EX_FAIL);
+> +		}
+> +
+> +		rc = try_mount(cxt, BACKGROUND);
+> +
+> +		if (verbose && rc)
+> +			printf(_("%s: giving up \"%s\"\n"),
+> +				progname, mnt_context_get_source(cxt));
+> +	}
+> +
+> +	mnt_context_set_syscall_status(cxt, rc);
+> +	mnt_context_finalize_mount(cxt);	/* mtab update */
+> +
+> +	return rc;
+> +err:
+> +	return EX_FAIL;
+> +}
+> +
+> +int main(int argc, char *argv[])
+> +{
+> +	struct libmnt_context *cxt;
+> +	int rc;
+> +
+> +	mnt_init_debug(0);
+> +	cxt = mnt_new_context();
+> +	if (!cxt) {
+> +		nfs_error(_("Can't initilize libmount: %s"),
+> +					strerror(errno));
+> +		rc = EX_FAIL;
+> +		goto done;
+> +	}
+
+How is localization handled?
+
+> +
+> +	progname = basename(argv[0]);
+> +	nfs_mount_data_version = discover_nfs_mount_data_version(&string);
+> +
+> +	if(!strncmp(progname, "umount", 6))
+
+Nit: we tend to like "strncmp() == 0" since it's less likely to be misread.  "!strncmp" can easily be misread as "not equal".
+
+> +		rc = umount_main(cxt, argc, argv);
+> +	else
+> +		rc = mount_main(cxt, argc, argv);
+> +done:
+> +	mnt_free_context(cxt);
+> +	return rc;
+> +}
+> +
+> -- 
+> 1.7.3.4
+> 
 
 -- 
-Jesper Juhl <jj@chaosbits.net>            http://www.chaosbits.net/
-Plain text mails only, please.
-Don't top-post http://www.catb.org/~esr/jargon/html/T/top-post.html
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
