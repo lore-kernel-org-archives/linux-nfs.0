@@ -1,158 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+Received: from shutemov.name ([188.40.19.243]:48873 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753066Ab1BDVea (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Feb 2011 16:34:30 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@citi.umich.edu>,
-        Dean Hildebrand <dhildeb@us.ibm.com>,
-        Fred Isaman <iisaman@citi.umich.edu>, Fred Isaman <iisaman@netapp.com>,
-        Mingyang Guo <guomingyang@nrchpc.ac.cn>,
-        Oleg Drokin <green@linuxhacker.ru>,
-        Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH 10/40] pnfs_submit: filelayout read
-Date: Fri,  4 Feb 2011 16:33:32 -0500
-Message-Id: <1296855242-2592-11-git-send-email-andros@netapp.com>
-In-Reply-To: <1296855242-2592-10-git-send-email-andros@netapp.com>
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
- <1296855242-2592-2-git-send-email-andros@netapp.com>
- <1296855242-2592-3-git-send-email-andros@netapp.com>
- <1296855242-2592-4-git-send-email-andros@netapp.com>
- <1296855242-2592-5-git-send-email-andros@netapp.com>
- <1296855242-2592-6-git-send-email-andros@netapp.com>
- <1296855242-2592-7-git-send-email-andros@netapp.com>
- <1296855242-2592-8-git-send-email-andros@netapp.com>
- <1296855242-2592-9-git-send-email-andros@netapp.com>
- <1296855242-2592-10-git-send-email-andros@netapp.com>
+	id S1755478Ab1BHSmL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Feb 2011 13:42:11 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3, RESEND 08/16] sunrpc: tag pipefs field of cache_detail with rpc_pipefs mount point
+Date: Tue,  8 Feb 2011 20:41:59 +0200
+Message-Id: <1297190527-19925-9-git-send-email-kas@openvz.org>
+In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
+References: <1297190527-19925-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
-
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
-Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
-Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Tested-by: Guo Mingyang <guomingyang@nrchpc.ac.cn>
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+Reviewed-by: Rob Landley <rlandley@parallels.com>
 ---
- fs/nfs/nfs4filelayout.c |   88 +++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 88 insertions(+), 0 deletions(-)
+ fs/nfs/cache_lib.c           |    3 +--
+ include/linux/sunrpc/cache.h |    9 +++------
+ net/sunrpc/cache.c           |   16 ++++++++++------
+ 3 files changed, 14 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 6ec9957..3daf351 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -99,6 +99,93 @@ filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
+diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
+index dd7ca5f..0944d4e 100644
+--- a/fs/nfs/cache_lib.c
++++ b/fs/nfs/cache_lib.c
+@@ -123,7 +123,7 @@ int nfs_cache_register(struct cache_detail *cd)
+ 	ret = vfs_path_lookup(mnt->mnt_root, mnt, "/cache", 0, &nd);
+ 	if (ret)
+ 		goto err;
+-	ret = sunrpc_cache_register_pipefs(nd.path.dentry,
++	ret = sunrpc_cache_register_pipefs(mnt, nd.path.dentry,
+ 			cd->name, 0600, cd);
+ 	path_put(&nd.path);
+ 	if (!ret)
+@@ -136,6 +136,5 @@ err:
+ void nfs_cache_unregister(struct cache_detail *cd)
+ {
+ 	sunrpc_cache_unregister_pipefs(cd);
+-	mntput(init_rpc_pipefs);
  }
  
- /*
-+ * Call ops for the async read/write cases
-+ * In the case of dense layouts, the offset needs to be reset to its
-+ * original value.
-+ */
-+static void filelayout_read_call_done(struct rpc_task *task, void *data)
-+{
-+	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
-+
-+	if (rdata->fldata.orig_offset) {
-+		dprintk("%s new off %llu orig offset %llu\n", __func__,
-+			rdata->args.offset, rdata->fldata.orig_offset);
-+		rdata->args.offset = rdata->fldata.orig_offset;
-+	}
-+
-+	/* Note this may cause RPC to be resent */
-+	rdata->pdata.call_ops->rpc_call_done(task, data);
-+}
-+
-+static void filelayout_read_release(void *data)
-+{
-+	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
-+
-+	put_lseg(rdata->pdata.lseg);
-+	rdata->pdata.lseg = NULL;
-+	rdata->pdata.call_ops->rpc_release(data);
-+}
-+
-+struct rpc_call_ops filelayout_read_call_ops = {
-+	.rpc_call_prepare = nfs_read_prepare,
-+	.rpc_call_done = filelayout_read_call_done,
-+	.rpc_release = filelayout_read_release,
-+};
-+
-+/* Perform sync or async reads.
-+ *
-+ * An optimization for the NFS file layout driver
-+ * allows the original read/write data structs to be passed in the
-+ * last argument.
-+ *
-+ * TODO: join with write_pagelist?
-+ */
-+static enum pnfs_try_status
-+filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
-+{
-+	struct pnfs_layout_segment *lseg = data->pdata.lseg;
-+	struct nfs4_pnfs_ds *ds;
-+	loff_t offset = data->args.offset;
-+	u32 idx;
-+	struct nfs_fh *fh;
-+
-+	dprintk("--> %s ino %lu nr_pages %d pgbase %u req %Zu@%llu\n",
-+		__func__, data->inode->i_ino, nr_pages,
-+		data->args.pgbase, (size_t)data->args.count, offset);
-+
-+	/* Retrieve the correct rpc_client for the byte range */
-+	idx = nfs4_fl_calc_ds_index(lseg, offset);
-+	ds = nfs4_fl_prepare_ds(lseg, idx);
-+	if (!ds) {
-+		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
-+		return PNFS_NOT_ATTEMPTED;
-+	}
-+	dprintk("%s USE DS:ip %x %hu\n", __func__,
-+		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
-+
-+	/* just try the first data server for the index..*/
-+	data->fldata.ds_nfs_client = ds->ds_clp;
-+	fh = nfs4_fl_select_ds_fh(lseg, offset);
-+	if (fh)
-+		data->args.fh = fh;
-+
-+	/*
-+	 * Now get the file offset on the dserver
-+	 * Set the read offset to this offset, and
-+	 * save the original offset in orig_offset
-+	 * In the case of aync reads, the offset will be reset in the
-+	 * call_ops->rpc_call_done() routine.
-+	 */
-+	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
-+	data->fldata.orig_offset = offset;
-+
-+	/* Perform an asynchronous read */
-+	nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
-+			  &filelayout_read_call_ops);
-+	return PNFS_ATTEMPTED;
-+}
-+
-+/*
-  * filelayout_check_layout()
-  *
-  * Make sure layout segment parameters are sane WRT the device.
-@@ -320,6 +407,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
- 	.alloc_lseg              = filelayout_alloc_lseg,
- 	.free_lseg               = filelayout_free_lseg,
- 	.pg_test                 = filelayout_pg_test,
-+	.read_pagelist           = filelayout_read_pagelist,
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 7898ea1..a5957cb 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -65,10 +65,6 @@ struct cache_detail_procfs {
+ 	struct proc_dir_entry   *flush_ent, *channel_ent, *content_ent;
  };
  
- static int __init nfs4filelayout_init(void)
+-struct cache_detail_pipefs {
+-	struct dentry *dir;
+-};
+-
+ struct cache_detail {
+ 	struct module *		owner;
+ 	int			hash_size;
+@@ -115,7 +111,7 @@ struct cache_detail {
+ 
+ 	union {
+ 		struct cache_detail_procfs procfs;
+-		struct cache_detail_pipefs pipefs;
++		struct path pipefs;
+ 	} u;
+ };
+ 
+@@ -202,7 +198,8 @@ extern int cache_register_net(struct cache_detail *cd, struct net *net);
+ extern void cache_unregister(struct cache_detail *cd);
+ extern void cache_unregister_net(struct cache_detail *cd, struct net *net);
+ 
+-extern int sunrpc_cache_register_pipefs(struct dentry *parent, const char *,
++extern int sunrpc_cache_register_pipefs(struct vfsmount *rpcmount,
++					struct dentry *parent, const char *,
+ 					mode_t, struct cache_detail *);
+ extern void sunrpc_cache_unregister_pipefs(struct cache_detail *);
+ 
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 72ad836..cfc225a 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -28,6 +28,7 @@
+ #include <linux/workqueue.h>
+ #include <linux/mutex.h>
+ #include <linux/pagemap.h>
++#include <linux/mount.h>
+ #include <asm/ioctls.h>
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/cache.h>
+@@ -1777,7 +1778,8 @@ const struct file_operations cache_flush_operations_pipefs = {
+ 	.llseek		= no_llseek,
+ };
+ 
+-int sunrpc_cache_register_pipefs(struct dentry *parent,
++int sunrpc_cache_register_pipefs(struct vfsmount *rpcmount,
++				 struct dentry *parent,
+ 				 const char *name, mode_t umode,
+ 				 struct cache_detail *cd)
+ {
+@@ -1790,9 +1792,10 @@ int sunrpc_cache_register_pipefs(struct dentry *parent,
+ 	q.len = strlen(name);
+ 	q.hash = full_name_hash(q.name, q.len);
+ 	dir = rpc_create_cache_dir(parent, &q, umode, cd);
+-	if (!IS_ERR(dir))
+-		cd->u.pipefs.dir = dir;
+-	else {
++	if (!IS_ERR(dir)) {
++		cd->u.pipefs.mnt = mntget(rpcmount);
++		cd->u.pipefs.dentry = dir;
++	} else {
+ 		sunrpc_destroy_cache_detail(cd);
+ 		ret = PTR_ERR(dir);
+ 	}
+@@ -1802,8 +1805,9 @@ EXPORT_SYMBOL_GPL(sunrpc_cache_register_pipefs);
+ 
+ void sunrpc_cache_unregister_pipefs(struct cache_detail *cd)
+ {
+-	rpc_remove_cache_dir(cd->u.pipefs.dir);
+-	cd->u.pipefs.dir = NULL;
++	rpc_remove_cache_dir(cd->u.pipefs.dentry);
++	cd->u.pipefs.dentry = NULL;
++	mntput(cd->u.pipefs.mnt);
+ 	sunrpc_destroy_cache_detail(cd);
+ }
+ EXPORT_SYMBOL_GPL(sunrpc_cache_unregister_pipefs);
 -- 
-1.6.6
+1.7.4
 
