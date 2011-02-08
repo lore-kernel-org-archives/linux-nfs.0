@@ -1,30 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:42400 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752595Ab1BIQ2k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Feb 2011 11:28:40 -0500
-Date: Wed, 9 Feb 2011 11:28:38 -0500
-From: Jim Rees <rees@umich.edu>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/6] nfsd4: split up nfsd_break_deleg_cb
-Message-ID: <20110209162838.GA21056@merit.edu>
-References: <1297227351-15365-1-git-send-email-bfields@redhat.com>
- <1297227351-15365-2-git-send-email-bfields@redhat.com>
- <20110209050118.GA2485@infradead.org>
- <20110209151402.GA13624@pad.home.fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110209151402.GA13624@pad.home.fieldses.org>
+Received: from shutemov.name ([188.40.19.243]:48888 "EHLO shutemov.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755499Ab1BHSmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Feb 2011 13:42:12 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3, RESEND 12/16] sunrpc: introduce get_rpc_pipefs()
+Date: Tue,  8 Feb 2011 20:42:03 +0200
+Message-Id: <1297190527-19925-13-git-send-email-kas@openvz.org>
+In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
+References: <1297190527-19925-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-J. Bruce Fields wrote:
+Get rpc_pipefs mount point by path. If path is NULL, we use first
+rpc_pipefs from mount table visible from current root directory.
 
-  Agreed.  Those two lines were actually untouched by this patch, no
-  matter what diff thinks--but I'm just as happy to fix it up while we're
-  there; done.
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+Reviewed-by: Rob Landley <rlandley@parallels.com>
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |    1 +
+ net/sunrpc/rpc_pipe.c              |   51 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 52 insertions(+), 0 deletions(-)
 
-I agree too, but "indent -linux" likes "static" on a line by itself, and
-prefers it over "static void".  This is not the first time I've disagreed
-with it, although I use it a lot.
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index f5216f1..4a8830a 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -46,6 +46,7 @@ RPC_I(struct inode *inode)
+ 
+ extern struct vfsmount *init_rpc_pipefs;
+ 
++extern struct vfsmount *get_rpc_pipefs(const char *path);
+ extern int rpc_pipefs_add_destroy_cb(struct super_block *sb,
+ 		void (*destroy_cb)(void *data), void *data);
+ 
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 58312fa..1261f27 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -16,6 +16,9 @@
+ #include <linux/namei.h>
+ #include <linux/fsnotify.h>
+ #include <linux/kernel.h>
++#include <linux/nsproxy.h>
++#include <linux/mnt_namespace.h>
++#include <linux/fs_struct.h>
+ 
+ #include <asm/ioctls.h>
+ #include <linux/fs.h>
+@@ -939,6 +942,54 @@ static const struct super_operations s_ops = {
+ 
+ #define RPCAUTH_GSSMAGIC 0x67596969
+ 
++static int check_rpc_pipefs(struct vfsmount *mnt, void *arg)
++{
++	struct vfsmount **rpcmount = arg;
++	struct path path = {
++		.mnt = mnt,
++		.dentry = mnt->mnt_root,
++	};
++
++	if (!mnt->mnt_sb)
++		return 0;
++	if (mnt->mnt_sb->s_magic != RPCAUTH_GSSMAGIC)
++		return 0;
++
++	if (!path_is_under(&path, &current->fs->root))
++		return 0;
++
++	*rpcmount = mntget(mnt);
++	return 1;
++}
++
++struct vfsmount *get_rpc_pipefs(const char *p)
++{
++	int error;
++	struct vfsmount *rpcmount = ERR_PTR(-EINVAL);
++	struct path path;
++
++	if (!p) {
++		iterate_mounts(check_rpc_pipefs, &rpcmount,
++				current->nsproxy->mnt_ns->root);
++
++		if (IS_ERR(rpcmount) && (current->nsproxy->mnt_ns ==
++					init_task.nsproxy->mnt_ns))
++			return mntget(init_rpc_pipefs);
++
++		return rpcmount;
++	}
++
++	error = kern_path(p, LOOKUP_FOLLOW | LOOKUP_DIRECTORY, &path);
++	if (error)
++		return ERR_PTR(error);
++
++	check_rpc_pipefs(path.mnt, &rpcmount);
++	path_put(&path);
++
++	return rpcmount;
++}
++EXPORT_SYMBOL_GPL(get_rpc_pipefs);
++
+ struct destroy_cb {
+ 	struct list_head list;
+ 	void (*callback)(void *data);
+-- 
+1.7.4
+
