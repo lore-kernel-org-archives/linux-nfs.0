@@ -1,241 +1,178 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:58636 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752841Ab1BPDLo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 22:11:44 -0500
-Message-ID: <4D5B406C.4080801@panasas.com>
-Date: Tue, 15 Feb 2011 22:11:40 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>, andros@netapp.com,
-        linux-nfs@vger.kernel.org, Andy Adamon <andros@citi.umich.edu>,
-        Dean Hildebrand <dhildeb@us.ibm.com>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        Oleg Drokin <green@linuxhacker.ru>, Tao Guo <guotao@nrchpc.ac.cn>
-Subject: Re: [PATCH 09/16] pnfs: wave 3: shift pnfs_update_layout locations
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>	<1297711116-3139-10-git-send-email-andros@netapp.com>	<1297725252.23841.45.camel@heimdal.trondhjem.org> <AANLkTinxqbmWvWXeaPnw7oNtL_zfCYOTB=KjZFJQaKFn@mail.gmail.com>
-In-Reply-To: <AANLkTinxqbmWvWXeaPnw7oNtL_zfCYOTB=KjZFJQaKFn@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from shutemov.name ([188.40.19.243]:48823 "EHLO shutemov.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755413Ab1BHSmK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Feb 2011 13:42:10 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3, RESEND 02/16] sunrpc: introduce init_rpc_pipefs
+Date: Tue,  8 Feb 2011 20:41:53 +0200
+Message-Id: <1297190527-19925-3-git-send-email-kas@openvz.org>
+In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
+References: <1297190527-19925-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-02-15 09:41, Fred Isaman wrote:
-> On Mon, Feb 14, 2011 at 6:14 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
->> On Mon, 2011-02-14 at 14:18 -0500, andros@netapp.com wrote:
->>> From: Fred Isaman <iisaman@netapp.com>
->>>
->>> Move the pnfs_update_layout call location to nfs_pageio_do_add_request().
->>> Grab the lseg sent in the doio function to nfs_read_rpcsetup and attach
->>> it to each nfs_read_data so it can be sent to the layout driver.
->>>
->>> Signed-off-by: Andy Adamon <andros@netapp.com>
->>> Signed-off-by: Andy Adamon <andros@citi.umich.edu>
->>> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
->>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
->>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
->>> Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
->>> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
->>> ---
->>>  fs/nfs/file.c            |    4 ----
->>>  fs/nfs/pagelist.c        |   15 ++++++++++++---
->>>  fs/nfs/pnfs.c            |    4 ++--
->>>  fs/nfs/pnfs.h            |    1 +
->>>  fs/nfs/read.c            |   28 ++++++++++++++++------------
->>>  fs/nfs/write.c           |    4 ++--
->>>  include/linux/nfs_page.h |    5 +++--
->>>  include/linux/nfs_xdr.h  |    1 +
->>>  8 files changed, 37 insertions(+), 25 deletions(-)
->>>
->>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
->>> index 7bf029e..d85a534 100644
->>> --- a/fs/nfs/file.c
->>> +++ b/fs/nfs/file.c
->>> @@ -387,10 +387,6 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
->>>               file->f_path.dentry->d_name.name,
->>>               mapping->host->i_ino, len, (long long) pos);
->>>
->>> -     pnfs_update_layout(mapping->host,
->>> -                        nfs_file_open_context(file),
->>> -                        IOMODE_RW);
->>> -
->>>  start:
->>>       /*
->>>        * Prevent starvation issues if someone is doing a consistency
->>> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
->>> index e1164e3..e0a0cb4 100644
->>> --- a/fs/nfs/pagelist.c
->>> +++ b/fs/nfs/pagelist.c
->>> @@ -20,6 +20,7 @@
->>>  #include <linux/nfs_mount.h>
->>>
->>>  #include "internal.h"
->>> +#include "pnfs.h"
->>>
->>>  static struct kmem_cache *nfs_page_cachep;
->>>
->>> @@ -213,7 +214,7 @@ nfs_wait_on_request(struct nfs_page *req)
->>>   */
->>>  void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
->>>                    struct inode *inode,
->>> -                  int (*doio)(struct inode *, struct list_head *, unsigned int, size_t, int),
->>> +                  int (*doio)(struct inode *, struct list_head *, unsigned int, size_t, int, struct pnfs_layout_segment *),
->>>                    size_t bsize,
->>>                    int io_flags)
->>>  {
->>> @@ -226,6 +227,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
->>>       desc->pg_doio = doio;
->>>       desc->pg_ioflags = io_flags;
->>>       desc->pg_error = 0;
->>> +     desc->pg_lseg = NULL;
->>>  }
->>>
->>>  /**
->>> @@ -288,8 +290,13 @@ static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
->>>               prev = nfs_list_entry(desc->pg_list.prev);
->>>               if (!nfs_can_coalesce_requests(prev, req))
->>>                       return 0;
->>> -     } else
->>> +     } else {
->>> +             put_lseg(desc->pg_lseg);
->>>               desc->pg_base = req->wb_pgbase;
->>> +             desc->pg_lseg = pnfs_update_layout(desc->pg_inode,
->>> +                                                req->wb_context,
->>> +                                                IOMODE_READ);
->>
->> Looking at this afresh after a week of vacation. Isn't it more natural
->> to do this as part of the pg_doio() callback?
->>
->> Your only reason for introducing the ->pg_lseg pointer is to be able to
->> pass it to the ->pg_doio() in the first place. Why not do that by simply
->> passing the 'desc' pointer to ->pg_doio(), and then having it call
->> pnfs_update_layout() instead of 'get_layout()'?
->>
-> 
-> The problem is that it is not the only reason.  Passing the lseg into
-> the nfs_can_coalesce_requests is another.  Calling pnfs_update_layout
-> in ->pg_doio would be eliminate the opportunity to have a say in
-> coalescing based on the layout.
-> 
-> 
+Introduce global variable init_rpc_pipefs and use it instead of
+rpc_get_mount()/rpc_put_mount().
 
-As long as you correctly deal with short I/Os in to doio path (like we did
-many moons ago) you should be fine if the layout you got does not cover
-the whole coalesced range.
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+Reviewed-by: Rob Landley <rlandley@parallels.com>
+---
+ fs/nfs/cache_lib.c                 |    6 +++---
+ include/linux/sunrpc/rpc_pipe_fs.h |    4 ++--
+ net/sunrpc/clnt.c                  |   10 ++++------
+ net/sunrpc/rpc_pipe.c              |   21 +++++----------------
+ 4 files changed, 14 insertions(+), 27 deletions(-)
 
->>> +     }
->>>       nfs_list_remove_request(req);
->>>       nfs_list_add_request(req, &desc->pg_list);
->>>       desc->pg_count = newlen;
->>> @@ -307,7 +314,8 @@ static void nfs_pageio_doio(struct nfs_pageio_descriptor *desc)
->>>                                         nfs_page_array_len(desc->pg_base,
->>>                                                            desc->pg_count),
->>>                                         desc->pg_count,
->>> -                                       desc->pg_ioflags);
->>> +                                       desc->pg_ioflags,
->>> +                                       desc->pg_lseg);
->>>               if (error < 0)
->>>                       desc->pg_error = error;
->>>               else
->>> @@ -345,6 +353,7 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
->>>  void nfs_pageio_complete(struct nfs_pageio_descriptor *desc)
->>>  {
->>>       nfs_pageio_doio(desc);
->>> +     put_lseg(desc->pg_lseg);
->>>  }
->>>
->>>  /**
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> index f0a9578..dcd4356 100644
->>> --- a/fs/nfs/pnfs.c
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -264,7 +264,7 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
->>>       return 0;
->>>  }
->>>
->>> -static void
->>> +void
->>>  put_lseg(struct pnfs_layout_segment *lseg)
->>>  {
->>>       struct inode *ino;
->>> @@ -285,6 +285,7 @@ put_lseg(struct pnfs_layout_segment *lseg)
->>>               pnfs_free_lseg_list(&free_me);
->>>       }
->>>  }
->>> +EXPORT_SYMBOL_GPL(put_lseg);
->>
->> Why is this needed here?
->>
-> 
-> That looks like an artifact left over from older code.  It is not needed.
-> 
->>
->>> static bool
->>>  should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
->>> @@ -797,7 +798,6 @@ pnfs_update_layout(struct inode *ino,
->>>  out:
->>>       dprintk("%s end, state 0x%lx lseg %p\n", __func__,
->>>               nfsi->layout ? nfsi->layout->plh_flags : -1, lseg);
->>> -     put_lseg(lseg); /* STUB - callers currently ignore return value */
->>>       return lseg;
->>>  out_unlock:
->>>       spin_unlock(&ino->i_lock);
->>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->>> index 9a994bc..121d6a3 100644
->>> --- a/fs/nfs/pnfs.h
->>> +++ b/fs/nfs/pnfs.h
->>> @@ -146,6 +146,7 @@ extern int nfs4_proc_layoutget(struct nfs4_layoutget *lgp);
->>>
->>>  /* pnfs.c */
->>>  void get_layout_hdr(struct pnfs_layout_hdr *lo);
->>> +void put_lseg(struct pnfs_layout_segment *lseg);
->>>  struct pnfs_layout_segment *
->>>  pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
->>>                  enum pnfs_iomode access_type);
->>> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
->>> index aedcaa7..c453164 100644
->>> --- a/fs/nfs/read.c
->>> +++ b/fs/nfs/read.c
->>> @@ -20,17 +20,17 @@
->>>  #include <linux/nfs_page.h>
->>>
->>>  #include <asm/system.h>
->>> +#include "pnfs.h"
->>>
->>>  #include "nfs4_fs.h"
->>>  #include "internal.h"
->>>  #include "iostat.h"
->>>  #include "fscache.h"
->>> -#include "pnfs.h"
->>>
->>>  #define NFSDBG_FACILITY              NFSDBG_PAGECACHE
->>>
->>> -static int nfs_pagein_multi(struct inode *, struct list_head *, unsigned int, size_t, int);
->>> -static int nfs_pagein_one(struct inode *, struct list_head *, unsigned int, size_t, int);
->>> +static int nfs_pagein_multi(struct inode *, struct list_head *, unsigned int, size_t, int, struct pnfs_layout_segment *);
->>> +static int nfs_pagein_one(struct inode *, struct list_head *, unsigned int, size_t, int, struct pnfs_layout_segment *);
->>>  static const struct rpc_call_ops nfs_read_partial_ops;
->>>  static const struct rpc_call_ops nfs_read_full_ops;
->>>
->>> @@ -70,6 +70,7 @@ void nfs_readdata_free(struct nfs_read_data *p)
->>>  static void nfs_readdata_release(struct nfs_read_data *rdata)
->>>  {
->>>       put_nfs_open_context(rdata->args.context);
->>> +     put_lseg(rdata->lseg);
->>
->> Shouldn't you be calling put_lseg() _before_ put_nfs_open_context()? You
->> are not guaranteed that the inode still exists after that call.
->>
+diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
+index 8469031..dd7ca5f 100644
+--- a/fs/nfs/cache_lib.c
++++ b/fs/nfs/cache_lib.c
+@@ -117,7 +117,7 @@ int nfs_cache_register(struct cache_detail *cd)
+ 	struct vfsmount *mnt;
+ 	int ret;
+ 
+-	mnt = rpc_get_mount();
++	mnt = mntget(init_rpc_pipefs);
+ 	if (IS_ERR(mnt))
+ 		return PTR_ERR(mnt);
+ 	ret = vfs_path_lookup(mnt->mnt_root, mnt, "/cache", 0, &nd);
+@@ -129,13 +129,13 @@ int nfs_cache_register(struct cache_detail *cd)
+ 	if (!ret)
+ 		return ret;
+ err:
+-	rpc_put_mount();
++	mntput(mnt);
+ 	return ret;
+ }
+ 
+ void nfs_cache_unregister(struct cache_detail *cd)
+ {
+ 	sunrpc_cache_unregister_pipefs(cd);
+-	rpc_put_mount();
++	mntput(init_rpc_pipefs);
+ }
+ 
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index cf14db9..b09bfa5 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -44,6 +44,8 @@ RPC_I(struct inode *inode)
+ 	return container_of(inode, struct rpc_inode, vfs_inode);
+ }
+ 
++extern struct vfsmount *init_rpc_pipefs;
++
+ extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
+ 
+ struct rpc_clnt;
+@@ -60,8 +62,6 @@ extern void rpc_remove_cache_dir(struct dentry *);
+ extern struct dentry *rpc_mkpipe(struct dentry *, const char *, void *,
+ 				 const struct rpc_pipe_ops *, int flags);
+ extern int rpc_unlink(struct dentry *);
+-extern struct vfsmount *rpc_get_mount(void);
+-extern void rpc_put_mount(void);
+ extern int register_rpc_pipefs(void);
+ extern void unregister_rpc_pipefs(void);
+ 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 57d344c..f3812d0 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -112,9 +112,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
+ 	if (dir_name == NULL)
+ 		return 0;
+ 
+-	path.mnt = rpc_get_mount();
+-	if (IS_ERR(path.mnt))
+-		return PTR_ERR(path.mnt);
++	path.mnt = mntget(init_rpc_pipefs);
+ 	error = vfs_path_lookup(path.mnt->mnt_root, path.mnt, dir_name, 0, &nd);
+ 	if (error)
+ 		goto err;
+@@ -140,7 +138,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
+ err_path_put:
+ 	path_put(&nd.path);
+ err:
+-	rpc_put_mount();
++	mntput(path.mnt);
+ 	return error;
+ }
+ 
+@@ -251,7 +249,7 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ out_no_auth:
+ 	if (!IS_ERR(clnt->cl_path.dentry)) {
+ 		rpc_remove_client_dir(clnt->cl_path.dentry);
+-		rpc_put_mount();
++		mntput(clnt->cl_path.mnt);
+ 	}
+ out_no_path:
+ 	kfree(clnt->cl_principal);
+@@ -472,7 +470,7 @@ rpc_free_client(struct rpc_clnt *clnt)
+ 			clnt->cl_protname, clnt->cl_server);
+ 	if (!IS_ERR(clnt->cl_path.dentry)) {
+ 		rpc_remove_client_dir(clnt->cl_path.dentry);
+-		rpc_put_mount();
++		mntput(clnt->cl_path.mnt);
+ 	}
+ 	if (clnt->cl_parent != clnt) {
+ 		rpc_release_client(clnt->cl_parent);
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 9ab9355..484c9a3 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -28,7 +28,8 @@
+ #include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/sunrpc/cache.h>
+ 
+-static struct vfsmount *rpc_mnt __read_mostly;
++struct vfsmount *init_rpc_pipefs __read_mostly;
++EXPORT_SYMBOL_GPL(init_rpc_pipefs);
+ 
+ static struct file_system_type rpc_pipe_fs_type;
+ 
+@@ -420,18 +421,6 @@ struct rpc_filelist {
+ 	umode_t mode;
+ };
+ 
+-struct vfsmount *rpc_get_mount(void)
+-{
+-	return mntget(rpc_mnt);
+-}
+-EXPORT_SYMBOL_GPL(rpc_get_mount);
+-
+-void rpc_put_mount(void)
+-{
+-	mntput(rpc_mnt);
+-}
+-EXPORT_SYMBOL_GPL(rpc_put_mount);
+-
+ static int rpc_delete_dentry(const struct dentry *dentry)
+ {
+ 	return 1;
+@@ -1068,9 +1057,9 @@ int register_rpc_pipefs(void)
+ 	if (err)
+ 		goto destroy_cache;
+ 
+-	rpc_mnt = kern_mount(&rpc_pipe_fs_type);
+-	if (IS_ERR(rpc_mnt)) {
+-		err = PTR_ERR(rpc_mnt);
++	init_rpc_pipefs = kern_mount(&rpc_pipe_fs_type);
++	if (IS_ERR(init_rpc_pipefs)) {
++		err = PTR_ERR(init_rpc_pipefs);
+ 		goto unregister_fs;
+ 	}
+ 
+-- 
+1.7.4
 
-Good catch.  If we need the layout to outlive the open context then
-we should get a reference on the inode using iget and iput the inode
-in put_layout_hdr_locked.
-
-Benny
-> 
-> Yes.
-> 
-> Fred
