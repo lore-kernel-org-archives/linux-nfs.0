@@ -1,41 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29011 "EHLO mx2.netapp.com"
+Received: from shutemov.name ([188.40.19.243]:48891 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750857Ab1BOOwH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 09:52:07 -0500
-Subject: Re: [PATCH 01/16] NFS remove unnecessary CONFIG_NFS_V4 from nfs_read_data
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <20110215091618.GA29871@infradead.org>
-Date: Tue, 15 Feb 2011 09:51:49 -0500
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <2D037026-0D3A-4D8B-B2CF-F0C1DB590756@netapp.com>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com> <1297711116-3139-2-git-send-email-andros@netapp.com> <20110215091618.GA29871@infradead.org>
-To: Christoph Hellwig <hch@infradead.org>
+	id S1755507Ab1BHSmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Feb 2011 13:42:12 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3, RESEND 14/16] sunrpc: make rpc_pipefs be mountable multiple times
+Date: Tue,  8 Feb 2011 20:42:05 +0200
+Message-Id: <1297190527-19925-15-git-send-email-kas@openvz.org>
+In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
+References: <1297190527-19925-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+To support containers, allow multiple independent instances of
+rpc_pipefs. Use '-o newinstance' to create new of the filesystem.
+The same semantics as with devpts.
 
-On Feb 15, 2011, at 4:16 AM, Christoph Hellwig wrote:
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+Reviewed-by: Rob Landley <rlandley@parallels.com>
+---
+ net/sunrpc/rpc_pipe.c |   80 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 79 insertions(+), 1 deletions(-)
 
-> On Mon, Feb 14, 2011 at 02:18:21PM -0500, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
-> 
-> Either the patch or the description is incorrect.  If you actually need
-> it for NFSv2/3 the description should say it.  Otherwise it's just a
-> "cleanup" which bloats the structure for people not having v4 support
-> compiled in.
-
-It is just a clean-up per Trond's request to just get rid of the CONFIG_NFS_V4 and CONFIG_NFS_V4_1 ifdef's in struct nfs_read_data.  I'll change the description to match.
-
--->Andy
-
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 1261f27..f824f33 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -19,6 +19,7 @@
+ #include <linux/nsproxy.h>
+ #include <linux/mnt_namespace.h>
+ #include <linux/fs_struct.h>
++#include <linux/parser.h>
+ 
+ #include <asm/ioctls.h>
+ #include <linux/fs.h>
+@@ -41,6 +42,49 @@ static struct kmem_cache *rpc_inode_cachep __read_mostly;
+ 
+ #define RPC_UPCALL_TIMEOUT (30*HZ)
+ 
++struct rpc_mount_opts {
++	int newinstance;
++};
++
++enum {
++	Opt_newinstance,
++
++	Opt_err
++};
++
++static const match_table_t tokens = {
++	{Opt_newinstance, "newinstance"},
++
++	{Opt_err, NULL}
++};
++
++static int
++parse_mount_options(char *data, struct rpc_mount_opts *opts)
++{
++	char *p;
++
++	opts->newinstance = 0;
++
++	while ((p = strsep(&data, ",")) != NULL) {
++		substring_t args[MAX_OPT_ARGS];
++		int token;
++
++		if (!*p)
++			continue;
++
++		token = match_token(p, tokens, args);
++		switch (token) {
++		case Opt_newinstance:
++			opts->newinstance = 1;
++			break;
++		default:
++			return -EINVAL;
++		}
++	}
++
++	return 0;
++}
++
+ static void rpc_purge_list(struct rpc_inode *rpci, struct list_head *head,
+ 		void (*destroy_msg)(struct rpc_pipe_msg *), int err)
+ {
+@@ -1093,11 +1137,45 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 	return 0;
+ }
+ 
++static int
++compare_rpc_mnt_sb(struct super_block *s, void *p)
++{
++	if (init_rpc_pipefs)
++		return init_rpc_pipefs->mnt_sb == s;
++	return 0;
++}
++
+ static struct dentry *
+ rpc_mount(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *data)
+ {
+-	return mount_single(fs_type, flags, data, rpc_fill_super);
++	int error;
++	struct rpc_mount_opts opts;
++	struct super_block *s;
++
++	error = parse_mount_options(data, &opts);
++	if (error)
++		return ERR_PTR(error);
++
++	if (opts.newinstance)
++		s = sget(fs_type, NULL, set_anon_super, NULL);
++	else
++		s = sget(fs_type, compare_rpc_mnt_sb, set_anon_super, NULL);
++
++	if (IS_ERR(s))
++		return ERR_CAST(s);
++
++	if (!s->s_root) {
++		s->s_flags = flags;
++		error = rpc_fill_super(s, data, flags & MS_SILENT ? 1 : 0);
++		if (error) {
++			deactivate_locked_super(s);
++			return ERR_PTR(error);
++		}
++		s->s_flags |= MS_ACTIVE;
++	}
++
++	return dget(s->s_root);
+ }
+ 
+ static void rpc_kill_sb(struct super_block *sb)
+-- 
+1.7.4
 
