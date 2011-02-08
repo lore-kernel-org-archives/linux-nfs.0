@@ -1,56 +1,267 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:47493 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753385Ab1BUWqs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 17:46:48 -0500
-Message-ID: <4D62EB58.7000600@panasas.com>
-Date: Mon, 21 Feb 2011 14:46:48 -0800
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: linux-pnfs-cthon git tree
-References: <4D62EA13.1000809@panasas.com>
-In-Reply-To: <4D62EA13.1000809@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from shutemov.name ([188.40.19.243]:48874 "EHLO shutemov.name"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755479Ab1BHSmL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Feb 2011 13:42:11 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3, RESEND 07/16] sunrpc: get rpc_pipefs mount point for rpcb_create[_local] from callers
+Date: Tue,  8 Feb 2011 20:41:58 +0200
+Message-Id: <1297190527-19925-8-git-send-email-kas@openvz.org>
+In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
+References: <1297190527-19925-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-02-21 14:41, Benny Halevy wrote:
-> I've set up a git tree for Connectathon to hold up the fixes we're testing
-> here temporarily.  I'll update the main tree when we're done so not to cause
-> unnecessary churn.
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+Reviewed-by: Rob Landley <rlandley@parallels.com>
+---
+ include/linux/sunrpc/clnt.h |    4 ++--
+ net/sunrpc/rpcb_clnt.c      |   22 ++++++++++++----------
+ net/sunrpc/svc.c            |   34 +++++++++++++++++++++-------------
+ 3 files changed, 35 insertions(+), 25 deletions(-)
 
-Oops, here's the tree's url:
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index dffaaaa..52f6142 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -135,10 +135,10 @@ void		rpc_shutdown_client(struct rpc_clnt *);
+ void		rpc_release_client(struct rpc_clnt *);
+ void		rpc_task_release_client(struct rpc_task *);
+ 
+-int		rpcb_register(u32, u32, int, unsigned short);
++int		rpcb_register(u32, u32, int, unsigned short, struct vfsmount *);
+ int		rpcb_v4_register(const u32 program, const u32 version,
+ 				 const struct sockaddr *address,
+-				 const char *netid);
++				 const char *netid, struct vfsmount *rpcmount);
+ void		rpcb_getport_async(struct rpc_task *);
+ 
+ void		rpc_call_start(struct rpc_task *);
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index b059cbe..7fddafa 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -27,7 +27,6 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/xprtsock.h>
+-#include <linux/sunrpc/rpc_pipe_fs.h>
+ 
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_BIND
+@@ -171,7 +170,7 @@ static DEFINE_MUTEX(rpcb_create_local_mutex);
+  * Returns zero on success, otherwise a negative errno value
+  * is returned.
+  */
+-static int rpcb_create_local(void)
++static int rpcb_create_local(struct vfsmount *rpcmount)
+ {
+ 	struct rpc_create_args args = {
+ 		.net		= &init_net,
+@@ -183,7 +182,7 @@ static int rpcb_create_local(void)
+ 		.version	= RPCBVERS_2,
+ 		.authflavor	= RPC_AUTH_UNIX,
+ 		.flags		= RPC_CLNT_CREATE_NOPING,
+-		.rpcmount	= init_rpc_pipefs,
++		.rpcmount	= rpcmount,
+ 	};
+ 	struct rpc_clnt *clnt, *clnt4;
+ 	int result = 0;
+@@ -225,7 +224,8 @@ out:
+ }
+ 
+ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
+-				    size_t salen, int proto, u32 version)
++				    size_t salen, int proto, u32 version,
++				    struct vfsmount *rpcmount)
+ {
+ 	struct rpc_create_args args = {
+ 		.net		= &init_net,
+@@ -238,7 +238,7 @@ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
+ 		.authflavor	= RPC_AUTH_UNIX,
+ 		.flags		= (RPC_CLNT_CREATE_NOPING |
+ 					RPC_CLNT_CREATE_NONPRIVPORT),
+-		.rpcmount	= init_rpc_pipefs,
++		.rpcmount	= rpcmount,
+ 	};
+ 
+ 	switch (srvaddr->sa_family) {
+@@ -305,7 +305,8 @@ static int rpcb_register_call(struct rpc_clnt *clnt, struct rpc_message *msg)
+  * IN6ADDR_ANY (ie available for all AF_INET and AF_INET6
+  * addresses).
+  */
+-int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
++int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port,
++		struct vfsmount *rpcmount)
+ {
+ 	struct rpcbind_args map = {
+ 		.r_prog		= prog,
+@@ -318,7 +319,7 @@ int rpcb_register(u32 prog, u32 vers, int prot, unsigned short port)
+ 	};
+ 	int error;
+ 
+-	error = rpcb_create_local();
++	error = rpcb_create_local(rpcmount);
+ 	if (error)
+ 		return error;
+ 
+@@ -445,7 +446,8 @@ static int rpcb_unregister_all_protofamilies(struct rpc_message *msg)
+  * advertises the service on all IPv4 and IPv6 addresses.
+  */
+ int rpcb_v4_register(const u32 program, const u32 version,
+-		     const struct sockaddr *address, const char *netid)
++		     const struct sockaddr *address, const char *netid,
++		     struct vfsmount *rpcmount)
+ {
+ 	struct rpcbind_args map = {
+ 		.r_prog		= program,
+@@ -458,7 +460,7 @@ int rpcb_v4_register(const u32 program, const u32 version,
+ 	};
+ 	int error;
+ 
+-	error = rpcb_create_local();
++	error = rpcb_create_local(rpcmount);
+ 	if (error)
+ 		return error;
+ 	if (rpcb_local_clnt4 == NULL)
+@@ -594,7 +596,7 @@ void rpcb_getport_async(struct rpc_task *task)
+ 		task->tk_pid, __func__, bind_version);
+ 
+ 	rpcb_clnt = rpcb_create(clnt->cl_server, sap, salen, xprt->prot,
+-				bind_version);
++				bind_version, clnt->cl_path.mnt);
+ 	if (IS_ERR(rpcb_clnt)) {
+ 		status = PTR_ERR(rpcb_clnt);
+ 		dprintk("RPC: %5u %s: rpcb_create failed, error %ld\n",
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 63abe2b..031f2d4 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -739,7 +739,8 @@ EXPORT_SYMBOL_GPL(svc_exit_thread);
+  */
+ static int __svc_rpcb_register4(const u32 program, const u32 version,
+ 				const unsigned short protocol,
+-				const unsigned short port)
++				const unsigned short port,
++				struct vfsmount *rpcmount)
+ {
+ 	const struct sockaddr_in sin = {
+ 		.sin_family		= AF_INET,
+@@ -761,14 +762,16 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
+ 	}
+ 
+ 	error = rpcb_v4_register(program, version,
+-					(const struct sockaddr *)&sin, netid);
++					(const struct sockaddr *)&sin, netid,
++					rpcmount);
+ 
+ 	/*
+ 	 * User space didn't support rpcbind v4, so retry this
+ 	 * registration request with the legacy rpcbind v2 protocol.
+ 	 */
+ 	if (error == -EPROTONOSUPPORT)
+-		error = rpcb_register(program, version, protocol, port);
++		error = rpcb_register(program, version, protocol, port,
++				rpcmount);
+ 
+ 	return error;
+ }
+@@ -786,7 +789,8 @@ static int __svc_rpcb_register4(const u32 program, const u32 version,
+  */
+ static int __svc_rpcb_register6(const u32 program, const u32 version,
+ 				const unsigned short protocol,
+-				const unsigned short port)
++				const unsigned short port,
++				struct vfsmount *rpcmount)
+ {
+ 	const struct sockaddr_in6 sin6 = {
+ 		.sin6_family		= AF_INET6,
+@@ -808,7 +812,8 @@ static int __svc_rpcb_register6(const u32 program, const u32 version,
+ 	}
+ 
+ 	error = rpcb_v4_register(program, version,
+-					(const struct sockaddr *)&sin6, netid);
++					(const struct sockaddr *)&sin6, netid,
++					rpcmount);
+ 
+ 	/*
+ 	 * User space didn't support rpcbind version 4, so we won't
+@@ -831,19 +836,20 @@ static int __svc_register(const char *progname,
+ 			  const u32 program, const u32 version,
+ 			  const int family,
+ 			  const unsigned short protocol,
+-			  const unsigned short port)
++			  const unsigned short port,
++			  struct vfsmount *rpcmount)
+ {
+ 	int error = -EAFNOSUPPORT;
+ 
+ 	switch (family) {
+ 	case PF_INET:
+ 		error = __svc_rpcb_register4(program, version,
+-						protocol, port);
++						protocol, port, rpcmount);
+ 		break;
+ #if defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE)
+ 	case PF_INET6:
+ 		error = __svc_rpcb_register6(program, version,
+-						protocol, port);
++						protocol, port, rpcmount);
+ #endif	/* defined(CONFIG_IPV6) || defined(CONFIG_IPV6_MODULE) */
+ 	}
+ 
+@@ -889,7 +895,8 @@ int svc_register(const struct svc_serv *serv, const int family,
+ 				continue;
+ 
+ 			error = __svc_register(progp->pg_name, progp->pg_prog,
+-						i, family, proto, port);
++						i, family, proto, port,
++						serv->sv_rpcmount);
+ 			if (error < 0)
+ 				break;
+ 		}
+@@ -906,18 +913,18 @@ int svc_register(const struct svc_serv *serv, const int family,
+  * in this case to clear all existing entries for [program, version].
+  */
+ static void __svc_unregister(const u32 program, const u32 version,
+-			     const char *progname)
++			     const char *progname, struct vfsmount *rpcmount)
+ {
+ 	int error;
+ 
+-	error = rpcb_v4_register(program, version, NULL, "");
++	error = rpcb_v4_register(program, version, NULL, "", rpcmount);
+ 
+ 	/*
+ 	 * User space didn't support rpcbind v4, so retry this
+ 	 * request with the legacy rpcbind v2 protocol.
+ 	 */
+ 	if (error == -EPROTONOSUPPORT)
+-		error = rpcb_register(program, version, 0, 0);
++		error = rpcb_register(program, version, 0, 0, rpcmount);
+ 
+ 	dprintk("svc: %s(%sv%u), error %d\n",
+ 			__func__, progname, version, error);
+@@ -946,7 +953,8 @@ static void svc_unregister(const struct svc_serv *serv)
+ 			if (progp->pg_vers[i]->vs_hidden)
+ 				continue;
+ 
+-			__svc_unregister(progp->pg_prog, i, progp->pg_name);
++			__svc_unregister(progp->pg_prog, i, progp->pg_name,
++					serv->sv_rpcmount);
+ 		}
+ 	}
+ 
+-- 
+1.7.4
 
-git://linux-nfs.org/~bhalevy/linux-pnfs-cthon.git
-
-or
-
-ssh://linux-nfs.org/~bhalevy/exports/linux-pnfs-cthon.git
-if you don't have git access (and have ssh access to linux-nfs.org).
-
-If you need local access on the cthon network
-the latest tree is also available on
-git://10.41.21.1/linux-pnfs.git
-
-However, as it's stored on my laptop it might be unavailable
-intermittently.  Please coordinate with me when you're pulling it
-to make sure it stays up.
-
-Bennny 
-
-> 
-> The following branches have been posted up:
-> 
->   pnfs-all-2.6.37
->   pnfs-all-latest 	# based on v2.6.38-rc5
->   pnfs-submit-wave3	# based on v2.6.38-rc5 .. Andy's wave3-rev11 .. Fred's 2 SQUASHMEs
->   pnfs-submit-wave4	# based on pnfs-submit-wave3 and Fred's wave4 patches
-> 
-> The -all branches include the fixes for layout recall that I've posted on the mailing list.
-> 
-> Benny
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
