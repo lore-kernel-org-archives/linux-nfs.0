@@ -1,104 +1,223 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:50741 "EHLO mx1.suse.de"
+Received: from shutemov.name ([188.40.19.243]:48832 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751541Ab1BWFx3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Feb 2011 00:53:29 -0500
-Date: Wed, 23 Feb 2011 16:53:17 +1100
-From: NeilBrown <neilb@suse.de>
-To: Rob Landley <rlandley@parallels.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: Re: CACHE_NEW_EXPIRY is 120, nextcheck initialized to 30*60=1800?
-Message-ID: <20110223165317.60cf5a3b@notabene.brown>
-In-Reply-To: <4D64861F.5000707@parallels.com>
-References: <4D63BAA0.3090505@parallels.com>
-	<20110223080731.6c013be2@notabene.brown>
-	<4D64861F.5000707@parallels.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1755435Ab1BHSmK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Feb 2011 13:42:10 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3, RESEND 03/16] sunrpc: push init_rpc_pipefs up to rpc_create() callers
+Date: Tue,  8 Feb 2011 20:41:54 +0200
+Message-Id: <1297190527-19925-4-git-send-email-kas@openvz.org>
+In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
+References: <1297190527-19925-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, 22 Feb 2011 21:59:27 -0600 Rob Landley <rlandley@parallels.com> wrote:
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+Reviewed-by: Rob Landley <rlandley@parallels.com>
+---
+ fs/lockd/host.c             |    2 ++
+ fs/lockd/mon.c              |    2 ++
+ fs/nfs/client.c             |    2 ++
+ fs/nfs/mount_clnt.c         |    2 ++
+ fs/nfsd/nfs4callback.c      |    2 ++
+ include/linux/sunrpc/clnt.h |    1 +
+ net/sunrpc/clnt.c           |   11 +++++++----
+ net/sunrpc/rpcb_clnt.c      |    3 +++
+ 8 files changed, 21 insertions(+), 4 deletions(-)
 
-> On 02/22/2011 03:07 PM, NeilBrown wrote:
-> > On Tue, 22 Feb 2011 07:31:12 -0600 Rob Landley <rlandley@parallels.com> wrote:
-> > 
-> >> In net/sunrpc/cache.c line 416 or so (function cache_clean()) there's
-> >> this bit:
-> >>
-> >> else {
-> >>         current_index = 0;
-> >>         current_detail->nextcheck = seconds_since_boot()+30*60;
-> >> }
-> >>
-> >> The other uses of seconds_since_boot() add CACHE_NEW_EXPIRY (which is
-> >> 120).  This is A) more than ten times that, B) a magic inline constant.
-> >>
-> >> Is there a reason for this?  (Some subtle cache lifetime balancing thing?)
-> > 
-> > Apples and oranges are both fruit, but don't taste the same...
-> 
-> I know what "apples and oranges" means, thanks.
-> 
-> I'm trying to understand this code, and finding a lot of it hard to
-> figure out.  For example, in net/sunrpc/svcauth_unix.c there are two
-> instances of:
-> 
->   expiry = get_expiry(&mesg);
->   if (expiry ==0)
->           return -EINVAL;
-> 
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index b7c99bf..45e973f 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -14,6 +14,7 @@
+ #include <linux/in6.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/svc.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/lockd/lockd.h>
+ #include <linux/mutex.h>
+ 
+@@ -463,6 +464,7 @@ nlm_bind_host(struct nlm_host *host)
+ 			.authflavor	= RPC_AUTH_UNIX,
+ 			.flags		= (RPC_CLNT_CREATE_NOPING |
+ 					   RPC_CLNT_CREATE_AUTOBIND),
++			.rpcmount	= init_rpc_pipefs,
+ 		};
+ 
+ 		/*
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index 23d7451..6219026 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -15,6 +15,7 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/xprtsock.h>
+ #include <linux/sunrpc/svc.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/lockd/lockd.h>
+ 
+ #include <asm/unaligned.h>
+@@ -78,6 +79,7 @@ static struct rpc_clnt *nsm_create(void)
+ 		.version		= NSM_VERSION,
+ 		.authflavor		= RPC_AUTH_NULL,
+ 		.flags			= RPC_CLNT_CREATE_NOPING,
++		.rpcmount		= init_rpc_pipefs,
+ 	};
+ 
+ 	return rpc_create(&args);
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index bd3ca32..0e0a952 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -25,6 +25,7 @@
+ #include <linux/sunrpc/metrics.h>
+ #include <linux/sunrpc/xprtsock.h>
+ #include <linux/sunrpc/xprtrdma.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_mount.h>
+ #include <linux/nfs4_mount.h>
+@@ -628,6 +629,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
+ 		.program	= &nfs_program,
+ 		.version	= clp->rpc_ops->version,
+ 		.authflavor	= flavor,
++		.rpcmount	= init_rpc_pipefs,
+ 	};
+ 
+ 	if (discrtry)
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index d4c2d6b..6227875 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -13,6 +13,7 @@
+ #include <linux/in.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/nfs_fs.h>
+ #include "internal.h"
+ 
+@@ -161,6 +162,7 @@ int nfs_mount(struct nfs_mount_request *info)
+ 		.program	= &mnt_program,
+ 		.version	= info->version,
+ 		.authflavor	= RPC_AUTH_UNIX,
++		.rpcmount	= init_rpc_pipefs,
+ 	};
+ 	struct rpc_clnt		*mnt_clnt;
+ 	int			status;
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 3be975e..6636ab2 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -33,6 +33,7 @@
+ 
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/svc_xprt.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ #include <linux/slab.h>
+ #include "nfsd.h"
+ #include "state.h"
+@@ -645,6 +646,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 		.version	= 0,
+ 		.authflavor	= clp->cl_flavor,
+ 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
++		.rpcmount	= init_rpc_pipefs,
+ 	};
+ 	struct rpc_clnt *client;
+ 
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index ef9476a..dffaaaa 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -116,6 +116,7 @@ struct rpc_create_args {
+ 	unsigned long		flags;
+ 	char			*client_name;
+ 	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
++	struct vfsmount		*rpcmount;
+ };
+ 
+ /* Values for "flags" field */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index f3812d0..6e1d923 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -96,7 +96,8 @@ static void rpc_unregister_client(struct rpc_clnt *clnt)
+ }
+ 
+ static int
+-rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
++rpc_setup_pipedir(struct rpc_clnt *clnt, struct vfsmount *rpcmount,
++		char *dir_name)
+ {
+ 	static uint32_t clntid;
+ 	struct nameidata nd;
+@@ -112,7 +113,7 @@ rpc_setup_pipedir(struct rpc_clnt *clnt, char *dir_name)
+ 	if (dir_name == NULL)
+ 		return 0;
+ 
+-	path.mnt = mntget(init_rpc_pipefs);
++	path.mnt = mntget(rpcmount);
+ 	error = vfs_path_lookup(path.mnt->mnt_root, path.mnt, dir_name, 0, &nd);
+ 	if (error)
+ 		goto err;
+@@ -226,7 +227,8 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
+ 
+ 	atomic_set(&clnt->cl_count, 1);
+ 
+-	err = rpc_setup_pipedir(clnt, program->pipe_dir_name);
++	BUG_ON(!args->rpcmount);
++	err = rpc_setup_pipedir(clnt, args->rpcmount, program->pipe_dir_name);
+ 	if (err < 0)
+ 		goto out_no_path;
+ 
+@@ -390,7 +392,8 @@ rpc_clone_client(struct rpc_clnt *clnt)
+ 			goto out_no_principal;
+ 	}
+ 	atomic_set(&new->cl_count, 1);
+-	err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
++	err = rpc_setup_pipedir(new, clnt->cl_path.mnt,
++			clnt->cl_program->pipe_dir_name);
+ 	if (err != 0)
+ 		goto out_no_path;
+ 	if (new->cl_auth)
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index c652e4c..b059cbe 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -27,6 +27,7 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/xprtsock.h>
++#include <linux/sunrpc/rpc_pipe_fs.h>
+ 
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_BIND
+@@ -182,6 +183,7 @@ static int rpcb_create_local(void)
+ 		.version	= RPCBVERS_2,
+ 		.authflavor	= RPC_AUTH_UNIX,
+ 		.flags		= RPC_CLNT_CREATE_NOPING,
++		.rpcmount	= init_rpc_pipefs,
+ 	};
+ 	struct rpc_clnt *clnt, *clnt4;
+ 	int result = 0;
+@@ -236,6 +238,7 @@ static struct rpc_clnt *rpcb_create(char *hostname, struct sockaddr *srvaddr,
+ 		.authflavor	= RPC_AUTH_UNIX,
+ 		.flags		= (RPC_CLNT_CREATE_NOPING |
+ 					RPC_CLNT_CREATE_NONPRIVPORT),
++		.rpcmount	= init_rpc_pipefs,
+ 	};
+ 
+ 	switch (srvaddr->sa_family) {
+-- 
+1.7.4
 
-The value '0' means that the (textual) mesg didn't look like a value number.
-
-
-> Except that get_expiry() defined in include/linux/sunrpc/cache.h returns
-> the difference between the int stored at &mesg and getboottime(), which
-> implies that the value can go negative fairly easily if the system is
-> busy with something else for a second, so comparing for equality with
-> zero seems odd if it's easy to _miss_.  Possibly some kind of timer is
-> scheduled to force this test to happen at the expiry time, but if so I
-> haven't found it yet...
-
-The value in 'mesg' should always be well in the future (wrt 'gettimeofday').
-The value returned by getboottime will always be in the past (wrt
-'gettimeofday').
-So the difference will only be negative if userspace requested an expiry time
-that was before the time when the system was booted.
-It could get an EINVAL, which it what it would deserve, but it would be more
-likely to get an entry that is already expired (which is a reasonable result).
-
-The 'expiry' number is a 'seconds since epoch' number, in case that wasn't
-obvious.
-
-> 
-> (I'm trying to hunt down a specific bug where a cached value of some
-> kind is using the wrong struct net * context, and thus if I mount nfsv3
-> from the host context it works, and from a container it also works, but
-> if I have different (overlapping) network routings in host and container
-> and I mount the same IP from the host from the container it doesn't
-> work, even if I _unmount_ the host's copy before mounting the
-> container's copy (or vice versa).  But that it starts working again when
-> I give it a couple minutes after the umount for the cache data to time
-> out...)
-
-I'm a little fuzzy about the whole 'struct net * context' thing, but in
-cache.c, it only seems to be connected with server-side things, while you
-seem to be talking about client-side things so maybe there is a disconnect
-there.  Not sure though.
-
-
-> 
-> Mostly I'm assuming you guys know what you're doing and that my
-> understanding of the enormous layers of nested cacheing is incomplete,
-> but there's a lot of complexity to dig through here...
-
-You are too kind.   "Once thought we knew what we were doing" is about as
-much as I'd own up to :-)
-
-If you are looking at client-side handling of net contexts, you probably want
-to start at rpc_create which does something with args->net.
-Find out where that value came from, and where it is going to.  Maybe that
-will help.  (But if you find any wild geese, let me know!)
-
-NeilBrown
