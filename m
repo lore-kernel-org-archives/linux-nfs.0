@@ -1,84 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:37328 "EHLO mx2.netapp.com"
+Received: from shutemov.name ([188.40.19.243]:48867 "EHLO shutemov.name"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752421Ab1BBF4X convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Feb 2011 00:56:23 -0500
-Subject: Re: [PATCH 1/3] pnfs: avoid incorrect use of layout stateid
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <4D48DB59.9010102@panasas.com>
-References: <1296487633-21057-1-git-send-email-iisaman@netapp.com>
-	 <1296487633-21057-2-git-send-email-iisaman@netapp.com>
-	 <4D4828DC.9020103@panasas.com>
-	 <AF70A3A4-2A06-4BD1-AC69-270658CF6365@netapp.com>
-	 <4D48DB59.9010102@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 02 Feb 2011 00:56:05 -0500
-Message-ID: <1296626165.8895.31.camel@heimdal.trondhjem.org>
+	id S1755496Ab1BHSmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Feb 2011 13:42:12 -0500
+From: "Kirill A. Shutemov" <kas@openvz.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
+Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
+        "David S. Miller" <davem@davemloft.net>,
+        Rob Landley <rlandley@parallels.com>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
+Subject: [PATCH v3, RESEND 15/16] sunrpc: remove global init_rpc_pipefs
+Date: Tue,  8 Feb 2011 20:42:06 +0200
+Message-Id: <1297190527-19925-16-git-send-email-kas@openvz.org>
+In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
+References: <1297190527-19925-1-git-send-email-kas@openvz.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2011-02-02 at 06:19 +0200, Benny Halevy wrote: 
-> On 2011-02-01 18:31, Fred Isaman wrote:
-> > 
-> > On Feb 1, 2011, at 10:38 AM, Benny Halevy wrote:
-> > 
-> >> On 2011-01-31 17:27, Fred Isaman wrote:
-> >>> The code could violate the following from RFC5661, section 12.5.3:
-> >>> "Once a client has no more layouts on a file, the layout stateid is no
-> >>> longer valid and MUST NOT be used."
-> >>
-> >> NACK.
-> >>
-> >> Fred, this is your interpretation of the forgetful model and it is taken
-> >> out of context.
-> >>
-> >> Until the spec is changed only the server invalidates the stateid by returning
-> >> lrs_present=false on LAYOUTRETURN. Merely forgetting the layout state without
-> >> LAYOUTRETURN does not determine that.
-> >>
-> >>
-> >> Also from 12.5.3:
-> >>   Once a layout stateid is established, the "other"
-> >>   field will stay constant unless the stateid is revoked or the client
-> >>   returns all layouts on the file and the server disposes of the stateid.
-> >>   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> 
-> > OK, so the question is, does sending a LAYOUTGET with openstateid "return all layouts".
-> > Making the answer to this "yes" is perfectly consistent with the spec, given its complete absence
-> > of direction here.
-> 
-> I disagree, and so are other server implementations, including linux-pnfs!
-> (It will return BAD_STATEID if the client forgets the layout
-> in any case but LAYOUTRETURN or CB_LAYOUTRECALL/NOMATCHING_LAYOUT)
+Replace remaining init_rpc_pipefs references with get_rpc_pipefs(NULL)
+and make init_rpc_pipefs static.
 
-Where do you see this being allowed? I see nothing in RFC5661 that
-justifies the server returning BAD_STATEID (or any other error) if the
-client supplies an open stateid in LAYOUTGET. The only stateids that are
-explicitly disallowed in section 12 are the special stateids.
-IOW: I see no justification there for your interpretation or the above
-error message. Fix the linux pnfs server and the "other server
-implementation" if it does this.
+Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
+Reviewed-by: Rob Landley <rlandley@parallels.com>
+---
+ fs/nfsd/nfs4callback.c             |    5 ++++-
+ fs/nfsd/nfssvc.c                   |   16 ++++++++++++++--
+ include/linux/sunrpc/rpc_pipe_fs.h |    2 --
+ net/sunrpc/rpc_pipe.c              |    1 -
+ 4 files changed, 18 insertions(+), 6 deletions(-)
 
-The only text I can find is repeated in both section 12.5.2. and section
-12.5.3 and states that the client uses an open stateid, delegation
-stateid or lock stateid if it holds no layouts.
-Section 12.5.5.1 then states that the client is allowed to forget
-layouts and that this is safe as long as it doesn't assume it holds
-layouts for ranges that lie beyond what the server granted. The same
-section states that the server has no control over what the client
-believes, and so it is allowed to recall a layout that the client knows
-nothing about if it is in doubt.
-
-
-Trond
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 6636ab2..3048988 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -646,7 +646,6 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 		.version	= 0,
+ 		.authflavor	= clp->cl_flavor,
+ 		.flags		= (RPC_CLNT_CREATE_NOPING | RPC_CLNT_CREATE_QUIET),
+-		.rpcmount	= init_rpc_pipefs,
+ 	};
+ 	struct rpc_clnt *client;
+ 
+@@ -666,8 +665,12 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 		args.prognumber = clp->cl_cb_session->se_cb_prog;
+ 		args.protocol = XPRT_TRANSPORT_BC_TCP;
+ 	}
++	args.rpcmount = get_rpc_pipefs(NULL);
++	if (IS_ERR(args.rpcmount))
++		return PTR_ERR(args.rpcmount);
+ 	/* Create RPC client */
+ 	client = rpc_create(&args);
++	mntput(args.rpcmount);
+ 	if (IS_ERR(client)) {
+ 		dprintk("NFSD: couldn't create callback client: %ld\n",
+ 			PTR_ERR(client));
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index dc11012..a10b1439 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -206,6 +206,7 @@ static bool nfsd_up = false;
+ static int nfsd_startup(unsigned short port, int nrservs)
+ {
+ 	int ret;
++	struct vfsmount *rpcmount;
+ 
+ 	if (nfsd_up)
+ 		return 0;
+@@ -220,7 +221,13 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	ret = nfsd_init_socks(port);
+ 	if (ret)
+ 		goto out_racache;
+-	ret = lockd_up(init_rpc_pipefs);
++	rpcmount = get_rpc_pipefs(NULL);
++	if (IS_ERR(rpcmount)) {
++		ret = PTR_ERR(rpcmount);
++		goto out_racache;
++	}
++	ret = lockd_up(rpcmount);
++	mntput(rpcmount);
+ 	if (ret)
+ 		goto out_racache;
+ 	ret = nfs4_state_start();
+@@ -308,6 +315,7 @@ static void set_max_drc(void)
+ int nfsd_create_serv(void)
+ {
+ 	int err = 0;
++	struct vfsmount *rpcmount;
+ 
+ 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
+ 	if (nfsd_serv) {
+@@ -332,9 +340,13 @@ int nfsd_create_serv(void)
+ 	}
+ 	nfsd_reset_versions();
+ 
+-	nfsd_serv = svc_create_pooled(&nfsd_program, init_rpc_pipefs,
++	rpcmount = get_rpc_pipefs(NULL);
++	if (IS_ERR(rpcmount))
++		return PTR_ERR(rpcmount);
++	nfsd_serv = svc_create_pooled(&nfsd_program, rpcmount,
+ 				      nfsd_max_blksize, nfsd_last_thread, nfsd,
+ 				      THIS_MODULE);
++	mntput(rpcmount);
+ 	if (nfsd_serv == NULL)
+ 		return -ENOMEM;
+ 
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 4a8830a..a0b9c46 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -44,8 +44,6 @@ RPC_I(struct inode *inode)
+ 	return container_of(inode, struct rpc_inode, vfs_inode);
+ }
+ 
+-extern struct vfsmount *init_rpc_pipefs;
+-
+ extern struct vfsmount *get_rpc_pipefs(const char *path);
+ extern int rpc_pipefs_add_destroy_cb(struct super_block *sb,
+ 		void (*destroy_cb)(void *data), void *data);
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index f824f33..7c16261 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -33,7 +33,6 @@
+ #include <linux/sunrpc/cache.h>
+ 
+ struct vfsmount *init_rpc_pipefs __read_mostly;
+-EXPORT_SYMBOL_GPL(init_rpc_pipefs);
+ 
+ static struct file_system_type rpc_pipe_fs_type;
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.4
 
