@@ -1,375 +1,1045 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gw0-f46.google.com ([74.125.83.46]:56238 "EHLO
-	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932744Ab1BPBzc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 20:55:32 -0500
-Received: by gwj20 with SMTP id 20so389929gwj.19
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2011 17:55:31 -0800 (PST)
-In-Reply-To: <46B9DC0D-2396-40F3-9DFF-C1CD7DF1F145@oracle.com>
-References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com>
-	<665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com>
-	<AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com>
-	<0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
-	<AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com>
-	<AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com>
-	<1A31AB06-8518-427C-8D0B-0058AA613D0E@oracle.com>
-	<AANLkTimiACttSQ+=M0UNGs5nZrP=zs0zRFV+4HP8c-OP@mail.gmail.com>
-	<81853901-909D-4803-81A5-C01C0337CAE1@oracle.com>
-	<AANLkTim9zbEzKZ=RZbfZhcLovn6fWkdL-3eZp21-NDP+@mail.gmail.com>
-	<2F1D1F4B-0623-4954-861C-2F7B37EB2CA7@oracle.com>
-	<AANLkTikFVyg-VY5SdXMWTYuyx3irRPPa=cw0-f35NduT@mail.gmail.com>
-	<46B9DC0D-2396-40F3-9DFF-C1CD7DF1F145@oracle.com>
-Date: Tue, 15 Feb 2011 21:55:31 -0400
-Message-ID: <AANLkTinty+rEMQ2MX+gvZXoYED3uQ1xsd5eE=JH1rYZH@mail.gmail.com>
-Subject: Re: NFS only mount with -o udp option
-From: Edgar Almonte <samudhio@gmail.com>
+Received: from glaurung.lavos.net ([69.162.133.92]:44850 "EHLO
+	glaurung.lavos.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751172Ab1BIULn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Feb 2011 15:11:43 -0500
+Date: Wed, 9 Feb 2011 20:01:29 +0000
+From: Brian Downing <bdowning@lavos.net>
 To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Cc: deepaksi <deepak.sikri@st.com>, Armando VISCONTI <armando.visconti@st.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>, netdev@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Shiraz HASHIM <shiraz.hashim@st.com>,
+        Viresh KUMAR <viresh.kumar@st.com>,
+        Peppe CAVALLARO <peppe.cavallaro@st.com>, amitgoel <amit.goel@st.com>
+Subject: Re: STMMAC driver: NFS Problem on 2.6.37
+Message-ID: <20110209200129.GA6402@glaurung.lavos.net>
+References: <4D2EC133.7010607@st.com> <2D04CF75-CA68-4BDC-99A3-FA1DD6113602@oracle.com> <4D2F4453.4040400@st.com> <4D301DD1.9070104@st.com> <593F2676-CA62-4D77-90AD-41F2FAF13EB6@oracle.com> <4D3EBA54.4020308@st.com> <EFFBD485-8B7E-44D1-A8D2-61E73BF42DF9@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <EFFBD485-8B7E-44D1-A8D2-61E73BF42DF9@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
- yes the server is  archlinux x86-64. i mount in the server a folder
-that i share in the client using NFSv4 setup :
-client share setup:
-(/etc/exports )
-/srv/nfs4          192.168.1.1/24(rw,fsid=0,no_subtree_check,async,crossmnt)
-/srv/nfs4/torrent_files   192.168.1.1/24(rw,no_subtree_check,async)
+[See http://marc.info/?l=linux-nfs&m=129597871731431&w=2 for the
+remainder of the context that was trimmed here; it's long enough as is!]
 
-i have this setup in the client ( with the problem , archlinux i686 )
-and i mount this in the main server ( file server ) without udp option
-and work fine ( and without the modprobe.conf ipv6 line )
+On Tue, Jan 25, 2011 at 01:04:21PM -0500, Chuck Lever wrote:
+> On Jan 25, 2011, at 6:56 AM, deepaksi wrote:
+> > Are there some changes in the kernel framework w.r.t rpc ping time
+> > out ?  This problem was not there in previous kernels.
+> 
+> There have been changes in the RPC socket code around how it manages
+> recovery from failed attempts to connect.  We also have new logic now
+> in the RPC client that causes RPC ping to fail immediately if a host
+> can't be reached.
+> 
+> Thanks for your efforts so far.  It would be helpful if you could
+> bisect to determine which commit(s) introduced this RPC client
+> behavior (or any related changes to your network driver behavior).
 
-now the share setup in the server ( the X86-64 ) :
-(/etc/exports )
-/STORAGE/ 192.168.1.1/24(ro,fsid=0,no_subtree_check,insecure,sync,nohide)
+I'm having this same problem with a Freescale MPC8313E-RDB board while
+trying to do nfsroot in 2.6.37 with its built-in gianfar ethernet.
+I was able to bisect it down to this commit:
 
-which i read is the way of share for NFSv3 and/or NFSv2
-( i do this because i am noob at nfs but i will take in the future the
-NFSv4 way )
-now when i mount that share in the client is where i get the error (
-without using the udp option and without the modprobe.conf line of
-ipv6 )
+56463e50d1fc3f070492434cea6303b35ea000de is the first bad commit
+commit 56463e50d1fc3f070492434cea6303b35ea000de
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Fri Sep 17 10:54:37 2010 -0400
 
+    NFS: Use super.c for NFSROOT mount option parsing
+    
+    Replace duplicate code in NFSROOT for mounting an NFS server on '/'
+    with logic that uses the existing mainline text-based logic in the NFS
+    client.
+    
+    Add documenting comments where appropriate.
+    
+    Note that this means NFSROOT mounts now use the same default settings
+    as v2/v3 mounts done via mount(2) from user space.
+    
+      vers=3,tcp,rsize=<negotiated default>,wsize=<negotiated default>
+    
+    As before, however, no version/protocol negotiation with the server is
+    done.
+    
+    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
+Here's the boot console logs from both the good and bad cases with NFS
+and RPC debug enabled.  Note that the gianfar ethernet driver takes
+approximately 2 seconds to get a useful link (i.e. between
+"ADDRCONF(NETDEV_UP): eth1: link is not ready" and
+"ADDRCONF(NETDEV_CHANGE): eth1: link becomes ready"), which I suspect is
+part of the problem here.  Also, once I added RPC debug in the bad case
+it started working occasionally, which I suspect is because of delays
+induced by the serial console blocking.
 
-netconfig cat output:
-#
-# The network configuration file. This file is currently only used in
-# conjunction with the TI-RPC code in the libtirpc library.
-#
-# Entries consist of:
-#
-#       <network_id> <semantics> <flags> <protofamily> <protoname> \
-#               <device> <nametoaddr_libs>
-#
-# The <device> and <nametoaddr_libs> fields are always empty in this
-# implementation.
-#
-udp        tpi_clts      v     inet     udp     -       -
-tcp        tpi_cots_ord  v     inet     tcp     -       -
-udp6       tpi_clts      v     inet6    udp     -       -
-tcp6       tpi_cots_ord  v     inet6    tcp     -       -
-rawip      tpi_raw       -     inet      -      -       -
-local      tpi_cots_ord  -     loopback  -      -       -
-unix       tpi_cots_ord  -     loopback  -      -       -
+Hopefully this helps narrow it down.
 
-On Tue, Feb 15, 2011 at 6:54 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
-> On Feb 15, 2011, at 5:31 PM, Edgar Almonte wrote:
->
->> i confirm the ipv6 things i tell you , i comment the line
->>
->> options ipv6 disable=1
->>
->> in /etc/modprobe.d/modprobe.conf
->>
->> the same error in mount without using -o udp
->>
->> but the thing is i share folder in that client and mount it in the
->> server normal without the upd option and work fine ( the server have
->> the same distro that the client with the problem "archlinux" ) and in
->> the server i dont have the option in the /etc/modprobe.d/modprobe.conf
->>
->> [root@heaven Desktop]# mount  circle.local:/torrent_files
->> /media/torrent_files/ -v
->> mount: no type was given - I'll assume nfs because of the colon
->> mount.nfs: timeout set for Tue Feb 15 18:27:24 2011
->> mount.nfs: trying text-based options
->> 'vers=4,addr=192.168.1.103,clientaddr=192.168.1.102'
->> circle.local:/torrent_files on /media/torrent_files type nfs (rw)
->>
->> i use nfs4 for this share in the server and using nfs3 for the share
->>
->> another thing is that the server have the version 64bit of the same
->> package in the client but i686 plataform
->
-> Let me confirm what you said:
->
->  1.  The server is running the latest ARCH (x86-64).  Mounting the share via loopback on the server gets you an NFSv4 mount
->  2.  The client is running the latest ARCH (x86-32).  Mounting the share from the client gets you an NFSv3, not an NFSv4, mount, and you have to specify UDP to make the negotiation complete successfully
->  3.  Preventing ipv6.ko from loading on the client allows the mount to proceed without specifying extra options
->
-> I tried to reproduce this this morning from an x86-64 client using the latest upstream nfs-utils source, and was able to get an NFSv4 mount immediately.  In other words, I reproduced the behavior in 1, but was not able to reproduce the behavior in 2.  I can try again with an x86-32 client soon, but I'm traveling tomorrow.
->
-> Specifying "udp" forces the mount request to use IPv4.  If my theory is correct, specifying "tcp" also works, and gets you an NFSv4 mount.  I wasn't aware that ARCH had libtirpc and an IPv6-enabled nfs-utils build.  Does the failing client have a copy of /etc/netconfig, and can you send it?
->
->> rpc.mountd option:
->> root@heaven Desktop]# ps aux | grep rpc.mountd
->> root      4351  0.0  0.0  54512   660 ?        Ss   18:11   0:00
->> /usr/sbin/rpc.mountd --no-nfs-version 1 --no-nfs-version 2
->
-> That's consistent with the "rpcinfo" output you provided, but it doesn't explain why nfsd is still providing NFSv2.  Probably not a big deal, as the mount command on your client is failing before it even tries vers=2.
->
->> On Tue, Feb 15, 2011 at 11:27 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>
->>> On Feb 14, 2011, at 9:09 PM, Edgar Almonte wrote:
->>>
->>>> in debian dont exist a package called nfs-utils , i get nfs-common and
->>>> say the same version of the nfs-utils of archlinux
->>>
->>> The same nfs-utils version should behave the same way no matter what (modulo bugs, of course).  It may be that the two packages were built with different configure options.  Not sure how we could find out how these were built.
->>>
->>> Basically, I'm trying to figure out how to reproduce the problem here.
->>>
->>>> not sure about MNT version config , i dont remember intentionally
->>>> changing this , where i can check it ?
->>>
->>> On the server, look at the command line options for rpc.mountd.  I'm not familiar with Ubuntu or Debian's start-up scripts, so I can't be more specific than that.
->>>
->>> Note that this is an independent issue from the mount problem, but it's incorrect and contributing to mount's misbehavior.
->>>
->>>> pd: sorry for the double email i forget press reply all
->>>>
->>>> On Mon, Feb 14, 2011 at 11:56 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>> Hi Edgar-
->>>>>
->>>>> On Feb 11, 2011, at 6:46 PM, Edgar Almonte wrote:
->>>>>
->>>>>> hmm i will try update to the last version but is the lasted in
->>>>>> official repository of my distro
->>>>>
->>>>> Yes, that could be a problem.  Out of curiosity, can you tell us what version of nfs-utils is running on the working Debian client you have?
->>>>>
->>>>>> the rpcinfo -p localhost output ( run at the server )
->>>>>>
->>>>>> rpcinfo -p localhost
->>>>>>   program vers proto   port  service
->>>>>>    100000    4   tcp    111  portmapper
->>>>>>    100000    3   tcp    111  portmapper
->>>>>>    100000    2   tcp    111  portmapper
->>>>>>    100000    4   udp    111  portmapper
->>>>>>    100000    3   udp    111  portmapper
->>>>>>    100000    2   udp    111  portmapper
->>>>>>    391002    2   tcp    661  sgi_fam
->>>>>>    100024    1   udp  49216  status
->>>>>>    100024    1   tcp  42903  status
->>>>>>    100003    2   tcp   2049  nfs
->>>>>>    100003    3   tcp   2049  nfs
->>>>>>    100003    4   tcp   2049  nfs
->>>>>>    100227    2   tcp   2049  nfs_acl
->>>>>>    100227    3   tcp   2049  nfs_acl
->>>>>>    100003    2   udp   2049  nfs
->>>>>>    100003    3   udp   2049  nfs
->>>>>>    100003    4   udp   2049  nfs
->>>>>>    100227    2   udp   2049  nfs_acl
->>>>>>    100227    3   udp   2049  nfs_acl
->>>>>>    100021    1   udp  36092  nlockmgr
->>>>>>    100021    3   udp  36092  nlockmgr
->>>>>>    100021    4   udp  36092  nlockmgr
->>>>>>    100021    1   tcp  52268  nlockmgr
->>>>>>    100021    3   tcp  52268  nlockmgr
->>>>>>    100021    4   tcp  52268  nlockmgr
->>>>>>    100005    3   udp  41849  mountd
->>>>>>    100005    3   tcp  46012  mountd
->>>>>
->>>>> This looks weird.  NFS is available on TCP and UDP in all three versions, but MNT is available in version 3.  I wonder if this is confusing mount.nfs.  Is there any reason why your server is configured to disable MNT version 1?
->>>>>
->>>>>> On Fri, Feb 11, 2011 at 7:27 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>>
->>>>>>> On Feb 11, 2011, at 6:13 PM, Edgar Almonte wrote:
->>>>>>>
->>>>>>>> Was a ipv6 issues because i add this to the client with the problem:
->>>>>>>> options ipv6 disable=1
->>>>>>>> in /etc/modprobe.d/modprobe.conf
->>>>>>>> reboot and mount without using udp option work, output:
->>>>>>>>
->>>>>>>> [root@circle zen]# mount heaven.local:/STORAGE /nfs/STORAGE/ -v
->>>>>>>> mount: no type was given - I'll assume nfs because of the colon
->>>>>>>> mount.nfs: timeout set for Fri Feb 11 19:11:53 2011
->>>>>>>> mount.nfs: trying text-based options
->>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
->>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=6
->>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
->>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
->>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41849
->>>>>>>>
->>>>>>>> and i think maybe is a bug of nfs-utils that can't handle in the
->>>>>>>> proper way this because a connection using ipv4 protocol exist ( even
->>>>>>>> it detect it )
->>>>>>>>
->>>>>>>> should i need report something like this ? or and wrong ?
->>>>>>>
->>>>>>> I swear this has been discussed and fixed already, but I can't find a specific fix in the bugzilla database or the git log.  nfs-utils 1.2.2 is at least a year old.  Can you update to the latest version and try again?
->>>>>>>
->>>>>>> Also, please report the NFS server's transport capabilities.  "rpcinfo 192.168.1.102" should work.  You may need the "-p" option.
->>>>>>>
->>>>>>>> On Fri, Feb 11, 2011 at 6:57 PM, Edgar Almonte <samudhio@gmail.com> wrote:
->>>>>>>>> [root@circle zen]# pacman -Qs nfs-utils
->>>>>>>>> local/nfs-utils 1.2.2-4 [0.69 MB]
->>>>>>>>>    Support programs for Network File Systems
->>>>>>>>> [root@circle zen]# uname -a
->>>>>>>>> Linux circle 2.6.36-ARCH #1 SMP PREEMPT Mon Jan 24 18:34:55 UTC 2011
->>>>>>>>> i686 Intel(R) Atom(TM) CPU D510 @ 1.66GHz GenuineIntel GNU/Linux
->>>>>>>>>
->>>>>>>>>
->>>>>>>>> On Fri, Feb 11, 2011 at 1:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>>>>> Which nfs-utils version and kernel release are you using?  What transport protocols are available from your NFS server?  It looks like only UDP.  I recall a bug fix in this area in the past year.
->>>>>>>>>>
->>>>>>>>>> On Feb 11, 2011, at 12:35 PM, Edgar Almonte wrote:
->>>>>>>>>>
->>>>>>>>>>> i get this without udp option:
->>>>>>>>>>>
->>>>>>>>>>> mount: no type was given - I'll assume nfs because of the colon
->>>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:27:33 2011
->>>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->>>>>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>>> 'vers=4,addr=fe80::224:21ff:fe57:368d,clientaddr=::'
->>>>>>>>>>> mount.nfs: mount(2): Input/output error
->>>>>>>>>>> mount.nfs: mount system call failed
->>>>>>>>>>>
->>>>>>>>>>>
->>>>>>>>>>> and with udp option:
->>>>>>>>>>>
->>>>>>>>>>> ount: no type was given - I'll assume nfs because of the colon
->>>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:28:29 2011
->>>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>>> 'udp,vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->>>>>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>>>>> mount.nfs: trying text-based options 'udp,addr=192.168.1.102'
->>>>>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=17
->>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot UDP port 2049
->>>>>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
->>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
->>>>>>>>>>> heaven.local:/STORAGE on /nfs/STORAGE type nfs (rw,udp)
->>>>>>>>>>>
->>>>>>>>>>>
->>>>>>>>>>> for other distro ( debian laptop ) without the udp option:
->>>>>>>>>>>
->>>>>>>>>>> mount: no type was given - I'll assume nfs because of the colon
->>>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:31:37 2011
->>>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.107'
->>>>>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
->>>>>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=6
->>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
->>>>>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
->>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
->>>>>>>>>>> heaven.local:/STORAGE on /srv/nfs type nfs (rw)
->>>>>>>>>>>
->>>>>>>>>>>
->>>>>>>>>>> and look like is some ipv6 issues
->>>>>>>>>>>
->>>>>>>>>>>
->>>>>>>>>>> On Thu, Feb 10, 2011 at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>>>>>>>
->>>>>>>>>>>> On Feb 9, 2011, at 7:59 PM, Edgar Almonte wrote:
->>>>>>>>>>>>
->>>>>>>>>>>>> hello list
->>>>>>>>>>>>>
->>>>>>>>>>>>> like the subject say after some upgrade of my distro ( i have 2
->>>>>>>>>>>>> machine with the same distro and only in one happne the problem ) i
->>>>>>>>>>>>> can only mount nfs share using the option -o udp , without it i get
->>>>>>>>>>>>> this error
->>>>>>>>>>>>> mount.nfs: mount system call failed
->>>>>>>>>>>>
->>>>>>>>>>>> What does
->>>>>>>>>>>>
->>>>>>>>>>>>  sudo mount.nfs heaven.local:/STORAGE /nfs/STORAGE -v
->>>>>>>>>>>>
->>>>>>>>>>>> say?  It should tell you how the mount command is negotiating with the server.
->>>>>>>>>>>>
->>>>>>>>>>>>> i am using avahi-dns ( mdns ) for hostname resolve
->>>>>>>>>>>>>
->>>>>>>>>>>>> command used:
->>>>>>>>>>>>> mount heaven.local:/STORAGE /nfs/STORAGE/
->>>>>>>>>>>>> check dns is work right :
->>>>>>>>>>>>>
->>>>>>>>>>>>> ping heaven.local
->>>>>>>>>>>>> PING heaven.local (192.168.1.102) 56(84) bytes of data.
->>>>>>>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=1 ttl=64 time=0.153 ms
->>>>>>>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=2 ttl=64 time=0.160 ms
->>>>>>>>>>>>> ^C
->>>>>>>>>>>>> --- heaven.local ping statistics ---
->>>>>>>>>>>>> 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
->>>>>>>>>>>>> rtt min/avg/max/mdev = 0.153/0.156/0.160/0.013 ms
->>>>>>>>>>>>>
->>>>>>>>>>>>>
->>>>>>>>>>>>> anyidea what i need check for solve this issue ?
->>>>>>>>>>>>>
->>>>>>>>>>>>> thanks
->>>>>>>>>>>>> --
->>>>>>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>>>>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>>>>>>>>
->>>>>>>>>>>> --
->>>>>>>>>>>> Chuck Lever
->>>>>>>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>>>>>>>
->>>>>>>>>>>>
->>>>>>>>>>>>
->>>>>>>>>>>>
->>>>>>>>>>>>
->>>>>>>>>>
->>>>>>>>>> --
->>>>>>>>>> Chuck Lever
->>>>>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>>>>>
->>>>>>>>>>
->>>>>>>>>>
->>>>>>>>>>
->>>>>>>>>>
->>>>>>>>>
->>>>>>>
->>>>>>> --
->>>>>>> Chuck Lever
->>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>
->>>>> --
->>>>> Chuck Lever
->>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>
->>>>>
->>>>>
->>>>>
->>>>>
->>>
->>> --
->>> Chuck Lever
->>> chuck[dot]lever[at]oracle[dot]com
->>>
->>>
->>>
->>>
->>>
->
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
->
->
+********** good (60ac03685bf513f9d9b6e8e098018b35309ed326) **********
+Using MPC831x RDB machine description
+Linux version 2.6.36-rc3+ (bdowning@scatha) (gcc version 4.4.2 (crosstool-NG-hg_default@1733_02db017f4fe1) ) #25 Wed Feb 9 13:08:52 CST 2011
+bootconsole [udbg0] enabled
+setup_arch: bootmem
+mpc831x_rdb_setup_arch()
+Found FSL PCI host bridge at 0x00000000e0008500. Firmware bus number: 0->0
+PCI host bridge /sleep-nexus/pci@e0008500 (primary) ranges:
+ MEM 0x0000000090000000..0x000000009fffffff -> 0x0000000090000000 
+ MEM 0x0000000080000000..0x000000008fffffff -> 0x0000000080000000 Prefetch
+  IO 0x00000000e2000000..0x00000000e20fffff -> 0x0000000000000000
+arch: exit
+Zone PFN ranges:
+  DMA      0x00000000 -> 0x00008000
+  Normal   empty
+Movable zone start PFN for each node
+early_node_map[1] active PFN ranges
+    0: 0x00000000 -> 0x00008000
+Built 1 zonelists in Zone order, mobility grouping on.  Total pages: 32512
+Kernel command line: nfsroot=172.26.128.52:/srv/nfs/root0 ip=172.26.130.10:172.26.128.52:172.26.128.1:255.255.240.0:ppc10:eth1:off root=/dev/nfs rw console=ttyS0,115200 nfsrootdebug
+PID hash table entries: 512 (order: -1, 2048 bytes)
+Dentry cache hash table entries: 16384 (order: 4, 65536 bytes)
+Inode-cache hash table entries: 8192 (order: 3, 32768 bytes)
+Memory: 124812k/131072k available (4768k kernel code, 6260k reserved, 216k data, 101k bss, 192k init)
+Kernel virtual memory layout:
+  * 0xfffdf000..0xfffff000  : fixmap
+  * 0xfdefb000..0xfe000000  : early ioremap
+  * 0xc9000000..0xfdefb000  : vmalloc & ioremap
+SLUB: Genslabs=13, HWalign=32, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+NR_IRQS:512
+IPIC (128 IRQ sources) at c9000700
+clocksource: timebase mult[6000002] shift[22] registered
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 512
+NET: Registered protocol family 16
+             
+PCI: Probing PCI hardware
+bio: create slab <bio-0> at 0
+vgaarb: loaded
+SCSI subsystem initialized
+usbcore: registered new interface driver usbfs
+usbcore: registered new interface driver hub
+usbcore: registered new device driver usb
+Switching to clocksource timebase
+NET: Registered protocol family 2
+IP route cache hash table entries: 1024 (order: 0, 4096 bytes)
+TCP established hash table entries: 4096 (order: 3, 32768 bytes)
+TCP bind hash table entries: 4096 (order: 2, 16384 bytes)
+TCP: Hash tables configured (established 4096 bind 4096)
+TCP reno registered
+UDP hash table entries: 256 (order: 0, 4096 bytes)
+UDP-Lite hash table entries: 256 (order: 0, 4096 bytes)
+NET: Registered protocol family 1
+RPC: Registered udp transport module.
+RPC: Registered tcp transport module.
+RPC: Registered tcp NFSv4.1 backchannel transport module.
+msgmni has been set to 243
+alg: No test for stdrng (krng)
+io scheduler noop registered
+io scheduler deadline registered
+io scheduler cfq registered (default)
+Serial: 8250/16550 driver, 4 ports, IRQ sharing disabled
+serial8250.0: ttyS0 at MMIO 0xe0004500 (irq = 16) is a 16550A
+console [ttyS0] enabled, bootconsole disabled
+console [ttyS0] enabled, bootconsole disabled
+serial8250.0: ttyS1 at MMIO 0xe0004600 (irq = 17) is a 16550A
+brd: module loaded
+loop: module loaded
+fe000000.flash: Found 1 x16 devices at 0x0 in 16-bit bank. Manufacturer ID 0x000001 Chip ID 0x001001
+Amd/Fujitsu Extended Query Table at 0x0040
+  Amd/Fujitsu Extended Query version 1.3.
+fe000000.flash: Swapping erase regions for top-boot CFI table.
+number of CFI chips: 1
+cmdlinepart partition parsing not available
+RedBoot partition parsing not available
+of:fsl-elbc e0005000.localbus: read_byte beyond end of buffer
+of:fsl-elbc e0005000.localbus: read_byte beyond end of buffer
+of:fsl-elbc e0005000.localbus: read_byte beyond end of buffer
+NAND device: Manufacturer ID: 0xec, Chip ID: 0x75 (Samsung NAND 32MiB 3,3V 8-bit)
+cmdlinepart partition parsing not available
+RedBoot partition parsing not available
+Creating 3 MTD partitions on "e2800000.flash":
+0x000000000000-0x000000100000 : "u-boot"
+0x000000100000-0x000000400000 : "kernel"
+0x000000400000-0x000002000000 : "fs"
+eLBC NAND device at 0xe2800000, bank 1
+Fixed MDIO Bus: probed
+of:fsl-gianfar e0024000.ethernet: enabled errata workarounds, flags: 0x7
+eth0: Gianfar Ethernet Controller Version 1.2, 08:00:3e:03:01:a0
+eth0: Running with NAPI enabled
+eth0: RX BD ring size for Q[0]: 256
+eth0: TX BD ring size for Q[0]: 256
+of:fsl-gianfar e0025000.ethernet: enabled errata workarounds, flags: 0x7
+eth1: Gianfar Ethernet Controller Version 1.2, 08:00:3e:03:01:a1
+eth1: Running with NAPI enabled
+eth1: RX BD ring size for Q[0]: 256
+eth1: TX BD ring size for Q[0]: 256
+Freescale PowerQUICC MII Bus: probed
+Freescale PowerQUICC MII Bus: probed
+ehci_hcd: USB 2.0 'Enhanced' Host Controller (EHCI) Driver
+fsl-ehci fsl-ehci.0: Freescale On-Chip EHCI Host Controller
+fsl-ehci fsl-ehci.0: new USB bus registered, assigned bus number 1
+fsl-ehci fsl-ehci.0: irq 38, io base 0xe0023000
+fsl-ehci fsl-ehci.0: USB 2.0 started, EHCI 1.00
+hub 1-0:1.0: USB hub found
+hub 1-0:1.0: 1 port detected
+i2c /dev entries driver
+of:mpc-i2c e0003000.i2c: timeout 1000000 us
+rtc-ds1307 0-0068: rtc core: registered ds1339 as rtc0
+of:mpc-i2c e0003100.i2c: timeout 1000000 us
+alg: No test for authenc(hmac(sha1),cbc(aes)) (authenc-hmac-sha1-cbc-aes-talitos)
+of:talitos e0030000.crypto: authenc-hmac-sha1-cbc-aes-talitos
+alg: No test for authenc(hmac(sha1),cbc(des3_ede)) (authenc-hmac-sha1-cbc-3des-talitos)
+of:talitos e0030000.crypto: authenc-hmac-sha1-cbc-3des-talitos
+alg: No test for authenc(hmac(sha256),cbc(aes)) (authenc-hmac-sha256-cbc-aes-talitos)
+of:talitos e0030000.crypto: authenc-hmac-sha256-cbc-aes-talitos
+alg: No test for authenc(hmac(sha256),cbc(des3_ede)) (authenc-hmac-sha256-cbc-3des-talitos)
+of:talitos e0030000.crypto: authenc-hmac-sha256-cbc-3des-talitos
+alg: No test for authenc(hmac(md5),cbc(aes)) (authenc-hmac-md5-cbc-aes-talitos)
+of:talitos e0030000.crypto: authenc-hmac-md5-cbc-aes-talitos
+alg: No test for authenc(hmac(md5),cbc(des3_ede)) (authenc-hmac-md5-cbc-3des-talitos)
+of:talitos e0030000.crypto: authenc-hmac-md5-cbc-3des-talitos
+of:talitos e0030000.crypto: cbc-aes-talitos
+of:talitos e0030000.crypto: cbc-3des-talitos
+of:talitos e0030000.crypto: md5-talitos
+of:talitos e0030000.crypto: sha1-talitos
+of:talitos e0030000.crypto: sha224-talitos
+of:talitos e0030000.crypto: sha256-talitos
+usbcore: registered new interface driver usbhid
+usbhid: USB HID core driver
+TCP cubic registered
+NET: Registered protocol family 10
+IPv6 over IPv4 tunneling driver
+NET: Registered protocol family 17
+NET: Registered protocol family 15
+Registering the dns_resolver key type
+rtc-ds1307 0-0068: setting system clock to 2000-01-06 16:34:00 UTC (947176440)
+ADDRCONF(NETDEV_UP): eth1: link is not ready
+IP-Config: Complete:
+     device=eth1, addr=172.26.130.10, mask=255.255.240.0, gw=172.26.128.1,
+     host=ppc10, domain=, nis-domain=(none),
+     bootserver=172.26.128.52, rootserver=172.26.128.52, rootpath=
+Looking up port of RPC 100003/2 on 172.26.128.52
+RPC:       rpcb_getport_sync(172.26.128.52, 100003, 2, 17)
+RPC:       set up xprt to 172.26.128.52 (port 111) via udp
+RPC:       created transport c79c6800 with 16 slots
+RPC:       creating rpcbind client for 172.26.128.52 (xprt c79c6800)
+RPC:       creating UNIX authenticator for client c7920800
+RPC:       new task initialized, procpid 1
+RPC:       allocated task c792fa80
+RPC:     1 __rpc_execute flags=0x280
+RPC:     1 call_start rpcbind2 proc GETPORT (sync)
+RPC:     1 call_reserve (status 0)
+RPC:     1 reserved req c780b000 xid 5420c919
+RPC:     1 call_reserveresult (status 0)
+RPC:     1 call_allocate (status 0)
+RPC:     1 allocated buffer of size 412 at c79c7000
+RPC:     1 call_refresh (status 0)
+RPC:     1 looking up UNIX cred
+RPC:       looking up UNIX cred
+RPC:       allocating UNIX cred for uid 0 gid 0
+RPC:     1 refreshing UNIX cred c792fb00
+RPC:     1 call_refreshresult (status 0)
+RPC:     1 call_bind (status 0)
+RPC:     1 call_connect xprt c79c6800 is not connected
+RPC:     1 xprt_connect xprt c79c6800 is not connected
+RPC:     1 xprt_cwnd_limited cong = 0 cwnd = 256
+RPC:     1 sleep_on(queue "xprt_pending" time 4294892880)
+RPC:     1 added to queue c79c69ac "xprt_pending"
+RPC:     1 setting alarm for 5000 ms
+RPC:       xs_connect scheduled xprt c79c6800
+RPC:     1 sync task going to sleep
+RPC:       xs_bind4 0.0.0.0:0: ok (0)
+RPC:       worker connecting xprt c79c6800 via udp to 172.26.128.52 (port 111)
+RPC:     1 __rpc_wake_up_task (now 4294892888)
+RPC:     1 disabling timer
+RPC:     1 removed from queue c79c69ac "xprt_pending"
+RPC:       __rpc_wake_up_task done
+RPC:     1 sync task resuming
+RPC:     1 xprt_connect_status: connection established
+RPC:     1 call_connect_status (status 0)
+RPC:     1 call_transmit (status 0)
+RPC:     1 xprt_prepare_transmit
+RPC:     1 rpc_xdr_encode (status 0)
+RPC:     1 marshaling UNIX cred c792fb00
+RPC:     1 using AUTH_UNIX cred c792fb00 to wrap rpc data
+RPC:     1 encoding PMAP_GETPORT call (100003, 2, 17, 0)
+RPC:     1 xprt_transmit(84)
+RPC:       xs_udp_send_request(84) = 84
+RPC:     1 xmit complete
+RPC:     1 sleep_on(queue "xprt_pending" time 4294892902)
+RPC:     1 added to queue c79c69ac "xprt_pending"
+RPC:     1 setting alarm for 5000 ms
+RPC:     1 sync task going to sleep
+PHY: mdio@e0024520:04 - Link is Up - 1000/Full
+ADDRCONF(NETDEV_CHANGE): eth1: link becomes ready
+RPC:     1 timeout
+RPC:     1 __rpc_wake_up_task (now 4294894156)
+RPC:     1 disabling timer
+RPC:     1 removed from queue c79c69ac "xprt_pending"
+RPC:       __rpc_wake_up_task done
+RPC:     1 sync task resuming
+RPC:     1 xprt_timer
+RPC:       cong 256, cwnd was 256, now 256
+RPC:       wake_up_next(c79c6954 "xprt_resend")
+RPC:       wake_up_next(c79c68fc "xprt_sending")
+RPC:     1 call_status (status -110)
+RPC:     1 call_timeout (minor)
+RPC:     1 call_bind (status 0)
+RPC:     1 call_connect xprt c79c6800 is connected
+RPC:     1 call_transmit (status 0)
+RPC:     1 xprt_prepare_transmit
+RPC:     1 xprt_cwnd_limited cong = 0 cwnd = 256
+RPC:     1 rpc_xdr_encode (status 0)
+RPC:     1 marshaling UNIX cred c792fb00
+RPC:     1 using AUTH_UNIX cred c792fb00 to wrap rpc data
+RPC:     1 encoding PMAP_GETPORT call (100003, 2, 17, 0)
+RPC:     1 xprt_transmit(84)
+RPC:       xs_udp_send_request(84) = 84
+RPC:     1 xmit complete
+RPC:     1 sleep_on(queue "xprt_pending" time 4294894176)
+RPC:     1 added to queue c79c69ac "xprt_pending"
+RPC:     1 setting alarm for 10000 ms
+RPC:       xs_udp_data_ready...
+RPC:       cong 256, cwnd was 256, now 512
+RPC:     1 xid 5420c919 complete (28 bytes received)
+RPC:     1 __rpc_wake_up_task (now 4294894183)
+RPC:     1 disabling timer
+RPC:     1 removed from queue c79c69ac "xprt_pending"
+RPC:       __rpc_wake_up_task done
+RPC:       wake_up_next(c79c6954 "xprt_resend")
+RPC:       wake_up_next(c79c68fc "xprt_sending")
+RPC:     1 call_status (status 28)
+RPC:     1 call_decode (status 28)
+RPC:     1 validating UNIX cred c792fb00
+RPC:     1 using AUTH_UNIX cred c792fb00 to unwrap rpc data
+RPC:     1 PMAP_GETPORT result: 2049
+RPC:     1 call_decode result 0
+RPC:     1 return 0, status 0
+RPC:     1 release task
+RPC:       freeing buffer of size 412 at c79c7000
+RPC:     1 release request c780b000
+RPC:       wake_up_next(c79c6a04 "xprt_backlog")
+RPC:       rpc_release_client(c7920800)
+RPC:     1 freeing task
+RPC:       shutting down rpcbind client for 172.26.128.52
+RPC:       rpc_release_client(c7920800)
+RPC:       destroying UNIX authenticator c04d5950
+RPC:       destroying rpcbind client for 172.26.128.52
+RPC:       destroying transport c79c6800
+RPC:       xs_destroy xprt c79c6800
+RPC:       xs_close xprt c79c6800
+RPC:       disconnected transport c79c6800
+Root-NFS: Portmapper on server returned 2049 as nfsd port
+Looking up port of RPC 100005/1 on 172.26.128.52
+RPC:       rpcb_getport_sync(172.26.128.52, 100005, 1, 17)
+RPC:       set up xprt to 172.26.128.52 (port 111) via udp
+RPC:       created transport c793f800 with 16 slots
+RPC:       creating rpcbind client for 172.26.128.52 (xprt c793f800)
+RPC:       creating UNIX authenticator for client c79c8a00
+RPC:       new task initialized, procpid 1
+RPC:       allocated task c792fa80
+RPC:     2 __rpc_execute flags=0x280
+RPC:     2 call_start rpcbind2 proc GETPORT (sync)
+RPC:     2 call_reserve (status 0)
+RPC:     2 reserved req c780b000 xid 0fe4a33c
+RPC:     2 call_reserveresult (status 0)
+RPC:     2 call_allocate (status 0)
+RPC:     2 allocated buffer of size 412 at c79c6800
+RPC:     2 call_refresh (status 0)
+RPC:     2 looking up UNIX cred
+RPC:       looking up UNIX cred
+RPC:       allocating UNIX cred for uid 0 gid 0
+RPC:     2 refreshing UNIX cred c792fe80
+RPC:     2 call_refreshresult (status 0)
+RPC:     2 call_bind (status 0)
+RPC:     2 call_connect xprt c793f800 is not connected
+RPC:     2 xprt_connect xprt c793f800 is not connected
+RPC:     2 xprt_cwnd_limited cong = 0 cwnd = 256
+RPC:     2 sleep_on(queue "xprt_pending" time 4294894234)
+RPC:     2 added to queue c793f9ac "xprt_pending"
+RPC:     2 setting alarm for 5000 ms
+RPC:       xs_connect scheduled xprt c793f800
+RPC:     2 sync task going to sleep
+RPC:       unx_free_cred c792fb00
+RPC:       xs_bind4 0.0.0.0:0: ok (0)
+RPC:       worker connecting xprt c793f800 via udp to 172.26.128.52 (port 111)
+RPC:     2 __rpc_wake_up_task (now 4294894243)
+RPC:     2 disabling timer
+RPC:     2 removed from queue c793f9ac "xprt_pending"
+RPC:       __rpc_wake_up_task done
+RPC:     2 sync task resuming
+RPC:     2 xprt_connect_status: connection established
+RPC:     2 call_connect_status (status 0)
+RPC:     2 call_transmit (status 0)
+RPC:     2 xprt_prepare_transmit
+RPC:     2 rpc_xdr_encode (status 0)
+RPC:     2 marshaling UNIX cred c792fe80
+RPC:     2 using AUTH_UNIX cred c792fe80 to wrap rpc data
+RPC:     2 encoding PMAP_GETPORT call (100005, 1, 17, 0)
+RPC:     2 xprt_transmit(84)
+RPC:       xs_udp_send_request(84) = 84
+RPC:       xs_udp_data_ready...
+RPC:       cong 256, cwnd was 256, now 512
+RPC:     2 xid 0fe4a33c complete (28 bytes received)
+RPC:     2 xmit complete
+RPC:       wake_up_next(c793f954 "xprt_resend")
+RPC:       wake_up_next(c793f8fc "xprt_sending")
+RPC:     2 call_status (status 28)
+RPC:     2 call_decode (status 28)
+RPC:     2 validating UNIX cred c792fe80
+RPC:     2 using AUTH_UNIX cred c792fe80 to unwrap rpc data
+RPC:     2 PMAP_GETPORT result: 37346
+RPC:     2 call_decode result 0
+RPC:     2 return 0, status 0
+RPC:     2 release task
+RPC:       freeing buffer of size 412 at c79c6800
+RPC:     2 release request c780b000
+RPC:       wake_up_next(c793fa04 "xprt_backlog")
+RPC:       rpc_release_client(c79c8a00)
+RPC:     2 freeing task
+RPC:       shutting down rpcbind client for 172.26.128.52
+RPC:       rpc_release_client(c79c8a00)
+RPC:       destroying UNIX authenticator c04d5950
+RPC:       destroying rpcbind client for 172.26.128.52
+RPC:       destroying transport c793f800
+RPC:       xs_destroy xprt c793f800
+RPC:       xs_close xprt c793f800
+RPC:       disconnected transport c793f800
+Root-NFS: mountd port is 37346
+NFS: sending MNT request for server:/srv/nfs/root0
+RPC:       set up xprt to 172.26.128.52 (port 37346) via udp
+RPC:       created transport c79c6800 with 16 slots
+RPC:       creating mount client for 172.26.128.52 (xprt c79c6800)
+RPC:       creating UNIX authenticator for client c79c8a00
+RPC:       new task initialized, procpid 1
+RPC:       allocated task c792fb00
+RPC:     3 __rpc_execute flags=0x680
+RPC:     3 call_start mount1 proc NULL (sync)
+RPC:     3 call_reserve (status 0)
+RPC:     3 reserved req c780b000 xid e265f825
+RPC:     3 call_reserveresult (status 0)
+RPC:     3 call_allocate (status 0)
+RPC:     3 allocated buffer of size 392 at c7940000
+RPC:     3 call_refresh (status 0)
+RPC:     3 holding NULL cred c04d591c
+RPC:     3 refreshing NULL cred c04d591c
+RPC:     3 call_refreshresult (status 0)
+RPC:     3 call_bind (status 0)
+RPC:     3 call_connect xprt c79c6800 is not connected
+RPC:     3 xprt_connect xprt c79c6800 is not connected
+RPC:     3 xprt_cwnd_limited cong = 0 cwnd = 256
+RPC:     3 sleep_on(queue "xprt_pending" time 4294894305)
+RPC:     3 added to queue c79c69ac "xprt_pending"
+RPC:     3 setting alarm for 5000 ms
+RPC:       xs_connect scheduled xprt c79c6800
+RPC:     3 sync task going to sleep
+RPC:       unx_free_cred c792fe80
+RPC:       xs_bind4 0.0.0.0:672: ok (0)
+RPC:       worker connecting xprt c79c6800 via udp to 172.26.128.52 (port 37346)
+RPC:     3 __rpc_wake_up_task (now 4294894313)
+RPC:     3 disabling timer
+RPC:     3 removed from queue c79c69ac "xprt_pending"
+RPC:       __rpc_wake_up_task done
+RPC:     3 sync task resuming
+RPC:     3 xprt_connect_status: connection established
+RPC:     3 call_connect_status (status 0)
+RPC:     3 call_transmit (status 0)
+RPC:     3 xprt_prepare_transmit
+RPC:     3 rpc_xdr_encode (status 0)
+RPC:     3 marshaling NULL cred c04d591c
+RPC:     3 using AUTH_NULL cred c04d591c to wrap rpc data
+RPC:     3 xprt_transmit(40)
+RPC:       xs_udp_send_request(40) = 40
+RPC:       xs_udp_data_ready...
+RPC:       cong 256, cwnd was 256, now 512
+RPC:     3 xid e265f825 complete (24 bytes received)
+RPC:     3 xmit complete
+RPC:       wake_up_next(c79c6954 "xprt_resend")
+RPC:       wake_up_next(c79c68fc "xprt_sending")
+RPC:     3 call_status (status 24)
+RPC:     3 call_decode (status 24)
+RPC:     3 validating NULL cred c04d591c
+RPC:     3 using AUTH_NULL cred c04d591c to unwrap rpc data
+RPC:     3 call_decode result 0
+RPC:     3 return 0, status 0
+RPC:     3 release task
+RPC:       freeing buffer of size 392 at c7940000
+RPC:     3 release request c780b000
+RPC:       wake_up_next(c79c6a04 "xprt_backlog")
+RPC:       rpc_release_client(c79c8a00)
+RPC:     3 freeing task
+RPC:       new task initialized, procpid 1
+RPC:       allocated task c792fb00
+RPC:     4 __rpc_execute flags=0x280
+RPC:     4 call_start mount1 proc MOUNT (sync)
+RPC:     4 call_reserve (status 0)
+RPC:     4 reserved req c780b000 xid e265f826
+RPC:     4 call_reserveresult (status 0)
+RPC:     4 call_allocate (status 0)
+RPC:     4 allocated buffer of size 1456 at c7940000
+RPC:     4 call_refresh (status 0)
+RPC:     4 looking up UNIX cred
+RPC:       looking up UNIX cred
+RPC:       allocating UNIX cred for uid 0 gid 0
+RPC:     4 refreshing UNIX cred c792fe80
+RPC:     4 call_refreshresult (status 0)
+RPC:     4 call_bind (status 0)
+RPC:     4 call_connect xprt c79c6800 is connected
+RPC:     4 call_transmit (status 0)
+RPC:     4 xprt_prepare_transmit
+RPC:     4 xprt_cwnd_limited cong = 0 cwnd = 512
+RPC:     4 rpc_xdr_encode (status 0)
+RPC:     4 marshaling UNIX cred c792fe80
+RPC:     4 using AUTH_UNIX cred c792fe80 to wrap rpc data
+RPC:     4 xprt_transmit(88)
+RPC:       xs_udp_send_request(88) = 88
+RPC:       xs_udp_data_ready...
+RPC:       cong 256, cwnd was 512, now 512
+RPC:     4 xid e265f826 complete (60 bytes received)
+RPC:     4 xmit complete
+RPC:       wake_up_next(c79c6954 "xprt_resend")
+RPC:       wake_up_next(c79c68fc "xprt_sending")
+RPC:     4 call_status (status 60)
+RPC:     4 call_decode (status 60)
+RPC:     4 validating UNIX cred c792fe80
+RPC:     4 using AUTH_UNIX cred c792fe80 to unwrap rpc data
+RPC:     4 call_decode result 0
+RPC:     4 return 0, status 0
+RPC:     4 release task
+RPC:       freeing buffer of size 1456 at c7940000
+RPC:     4 release request c780b000
+RPC:       wake_up_next(c79c6a04 "xprt_backlog")
+RPC:       rpc_release_client(c79c8a00)
+RPC:     4 freeing task
+RPC:       shutting down mount client for 172.26.128.52
+RPC:       rpc_release_client(c79c8a00)
+RPC:       destroying UNIX authenticator c04d5950
+RPC:       destroying mount client for 172.26.128.52
+RPC:       destroying transport c79c6800
+RPC:       xs_destroy xprt c79c6800
+RPC:       xs_close xprt c79c6800
+RPC:       disconnected transport c79c6800
+NFS: MNT request succeeded
+RPC:       looking up machine cred
+RPC:       allocated machine cred c7927300 for uid 0 gid 0
+RPC:       set up xprt to 172.26.128.52 (port 2049) via udp
+RPC:       created transport c7940000 with 16 slots
+RPC:       creating nfs client for 172.26.128.52 (xprt c7940000)
+RPC:       creating UNIX authenticator for client c79c8a00
+RPC:       new task initialized, procpid 1
+RPC:       allocated task c792fa80
+RPC:     5 __rpc_execute flags=0x680
+RPC:     5 call_start nfs2 proc NULL (sync)
+RPC:     5 call_reserve (status 0)
+RPC:     5 reserved req c780e000 xid 0d837923
+RPC:     5 call_reserveresult (status 0)
+RPC:     5 call_allocate (status 0)
+RPC:     5 allocated buffer of size 392 at c79c6800
+RPC:     5 call_refresh (status 0)
+RPC:     5 holding NULL cred c04d591c
+RPC:     5 refreshing NULL cred c04d591c
+RPC:     5 call_refreshresult (status 0)
+RPC:     5 call_bind (status 0)
+RPC:     5 call_connect xprt c7940000 is not connected
+RPC:     5 xprt_connect xprt c7940000 is not connected
+RPC:     5 xprt_cwnd_limited cong = 0 cwnd = 256
+RPC:     5 sleep_on(queue "xprt_pending" time 4294894412)
+RPC:     5 added to queue c79401ac "xprt_pending"
+RPC:     5 setting alarm for 1100 ms
+RPC:       xs_connect scheduled xprt c7940000
+RPC:     5 sync task going to sleep
+RPC:       unx_free_cred c792fe80
+RPC:       xs_bind4 0.0.0.0:866: ok (0)
+RPC:       worker connecting xprt c7940000 via udp to 172.26.128.52 (port 2049)
+RPC:     5 __rpc_wake_up_task (now 4294894421)
+RPC:     5 disabling timer
+RPC:     5 removed from queue c79401ac "xprt_pending"
+RPC:       __rpc_wake_up_task done
+RPC:     5 sync task resuming
+RPC:     5 xprt_connect_status: connection established
+RPC:     5 call_connect_status (status 0)
+RPC:     5 call_transmit (status 0)
+RPC:     5 xprt_prepare_transmit
+RPC:     5 rpc_xdr_encode (status 0)
+RPC:     5 marshaling NULL cred c04d591c
+RPC:     5 using AUTH_NULL cred c04d591c to wrap rpc data
+RPC:     5 xprt_transmit(40)
+RPC:       xs_udp_send_request(40) = 40
+RPC:       xs_udp_data_ready...
+RPC:       cong 256, cwnd was 256, now 512
+RPC:     5 xid 0d837923 complete (24 bytes received)
+RPC:     5 xmit complete
+RPC:       wake_up_next(c7940154 "xprt_resend")
+RPC:       wake_up_next(c79400fc "xprt_sending")
+RPC:     5 call_status (status 24)
+RPC:     5 call_decode (status 24)
+RPC:     5 validating NULL cred c04d591c
+RPC:     5 using AUTH_NULL cred c04d591c to unwrap rpc data
+RPC:     5 call_decode result 0
+RPC:     5 return 0, status 0
+RPC:     5 release task
+RPC:       freeing buffer of size 392 at c79c6800
+RPC:     5 release request c780e000
+RPC:       wake_up_next(c7940204 "xprt_backlog")
+RPC:       rpc_release_client(c79c8a00)
+RPC:     5 freeing task
+RPC:       new task initialized, procpid 1
+RPC:       allocated task c792fa80
+RPC:     6 __rpc_execute flags=0x80
+RPC:     6 call_start nfs2 proc STATFS (sync)
+RPC:     6 call_reserve (status 0)
+RPC:     6 reserved req c780e000 xid 0d837924
+RPC:     6 call_reserveresult (status 0)
+RPC:     6 call_allocate (status 0)
+RPC:     6 allocated buffer of size 448 at c79d2800
+RPC:     6 call_refresh (status 0)
+RPC:     6 looking up UNIX cred
+RPC:       looking up UNIX cred
+RPC:       allocating UNIX cred for uid 0 gid 0
+RPC:     6 refreshing UNIX cred c792fe80
+RPC:     6 call_refreshresult (status 0)
+RPC:     6 call_bind (status 0)
+RPC:     6 call_connect xprt c7940000 is connected
+RPC:     6 call_transmit (status 0)
+RPC:     6 xprt_prepare_transmit
+RPC:     6 xprt_cwnd_limited cong = 0 cwnd = 512
+RPC:     6 rpc_xdr_encode (status 0)
+RPC:     6 marshaling UNIX cred c792fe80
+RPC:     6 using AUTH_UNIX cred c792fe80 to wrap rpc data
+RPC:     6 xprt_transmit(100)
+RPC:       xs_udp_send_request(100) = 100
+RPC:       xs_udp_data_ready...
+RPC:       cong 256, cwnd was 512, now 512
+RPC:     6 xid 0d837924 complete (48 bytes received)
+RPC:     6 xmit complete
+RPC:       wake_up_next(c7940154 "xprt_resend")
+RPC:       wake_up_next(c79400fc "xprt_sending")
+RPC:     6 call_status (status 48)
+RPC:     6 call_decode (status 48)
+RPC:     6 validating UNIX cred c792fe80
+RPC:     6 using AUTH_UNIX cred c792fe80 to unwrap rpc data
+RPC:     6 call_decode result 0
+RPC:     6 return 0, status 0
+RPC:     6 release task
+RPC:       freeing buffer of size 448 at c79d2800
+RPC:     6 release request c780e000
+RPC:       wake_up_next(c7940204 "xprt_backlog")
+RPC:       rpc_release_client(c79c8b00)
+RPC:     6 freeing task
+RPC:       new task initialized, procpid 1
+RPC:       allocated task c792fa80
+RPC:     7 __rpc_execute flags=0x80
+RPC:     7 call_start nfs2 proc GETATTR (sync)
+RPC:     7 call_reserve (status 0)
+RPC:     7 reserved req c780e000 xid 0d837925
+RPC:     7 call_reserveresult (status 0)
+RPC:     7 call_allocate (status 0)
+RPC:     7 allocated buffer of size 496 at c79d2800
+RPC:     7 call_refresh (status 0)
+RPC:     7 looking up UNIX cred
+RPC:       looking up UNIX cred
+RPC:     7 refreshing UNIX cred c792fe80
+RPC:     7 call_refreshresult (status 0)
+RPC:     7 call_bind (status 0)
+RPC:     7 call_connect xprt c7940000 is connected
+RPC:     7 call_transmit (status 0)
+RPC:     7 xprt_prepare_transmit
+RPC:     7 xprt_cwnd_limited cong = 0 cwnd = 512
+RPC:     7 rpc_xdr_encode (status 0)
+RPC:     7 marshaling UNIX cred c792fe80
+RPC:     7 using AUTH_UNIX cred c792fe80 to wrap rpc data
+RPC:     7 xprt_transmit(100)
+RPC:       xs_udp_send_request(100) = 100
+RPC:       xs_udp_data_ready...
+RPC:       cong 256, cwnd was 512, now 512
+RPC:     7 xid 0d837925 complete (96 bytes received)
+RPC:     7 xmit complete
+RPC:       wake_up_next(c7940154 "xprt_resend")
+RPC:       wake_up_next(c79400fc "xprt_sending")
+RPC:     7 call_status (status 96)
+RPC:     7 call_decode (status 96)
+RPC:     7 validating UNIX cred c792fe80
+RPC:     7 using AUTH_UNIX cred c792fe80 to unwrap rpc data
+RPC:     7 call_decode result 0
+RPC:     7 return 0, status 0
+RPC:     7 release task
+RPC:       freeing buffer of size 496 at c79d2800
+RPC:     7 release request c780e000
+RPC:       wake_up_next(c7940204 "xprt_backlog")
+RPC:       rpc_release_client(c79c8b00)
+RPC:     7 freeing task
+RPC:       new task initialized, procpid 1
+RPC:       allocated task c792fa80
+RPC:     8 __rpc_execute flags=0x80
+RPC:     8 call_start nfs2 proc GETATTR (sync)
+RPC:     8 call_reserve (status 0)
+RPC:     8 reserved req c780e000 xid 0d837926
+RPC:     8 call_reserveresult (status 0)
+RPC:     8 call_allocate (status 0)
+RPC:     8 allocated buffer of size 496 at c79d2800
+RPC:     8 call_refresh (status 0)
+RPC:     8 looking up UNIX cred
+RPC:       looking up UNIX cred
+RPC:     8 refreshing UNIX cred c792fe80
+RPC:     8 call_refreshresult (status 0)
+RPC:     8 call_bind (status 0)
+RPC:     8 call_connect xprt c7940000 is connected
+RPC:     8 call_transmit (status 0)
+RPC:     8 xprt_prepare_transmit
+RPC:     8 xprt_cwnd_limited cong = 0 cwnd = 512
+RPC:     8 rpc_xdr_encode (status 0)
+RPC:     8 marshaling UNIX cred c792fe80
+RPC:     8 using AUTH_UNIX cred c792fe80 to wrap rpc data
+RPC:     8 xprt_transmit(100)
+RPC:       xs_udp_send_request(100) = 100
+RPC:       xs_udp_data_ready...
+RPC:       cong 256, cwnd was 512, now 512
+RPC:     8 xid 0d837926 complete (96 bytes received)
+RPC:     8 xmit complete
+RPC:       wake_up_next(c7940154 "xprt_resend")
+RPC:       wake_up_next(c79400fc "xprt_sending")
+RPC:     8 call_status (status 96)
+RPC:     8 call_decode (status 96)
+RPC:     8 validating UNIX cred c792fe80
+RPC:     8 using AUTH_UNIX cred c792fe80 to unwrap rpc data
+RPC:     8 call_decode result 0
+RPC:     8 return 0, status 0
+RPC:     8 release task
+RPC:       freeing buffer of size 496 at c79d2800
+RPC:     8 release request c780e000
+RPC:       wake_up_next(c7940204 "xprt_backlog")
+RPC:       rpc_release_client(c79c8b00)
+RPC:     8 freeing task
+RPC:       new task initialized, procpid 1
+RPC:       allocated task c792fa80
+RPC:     9 __rpc_execute flags=0x80
+RPC:     9 call_start nfs2 proc STATFS (sync)
+RPC:     9 call_reserve (status 0)
+RPC:     9 reserved req c780e000 xid 0d837927
+RPC:     9 call_reserveresult (status 0)
+RPC:     9 call_allocate (status 0)
+RPC:     9 allocated buffer of size 448 at c7943000
+RPC:     9 call_refresh (status 0)
+RPC:     9 looking up UNIX cred
+RPC:       looking up UNIX cred
+RPC:     9 refreshing UNIX cred c792fe80
+RPC:     9 call_refreshresult (status 0)
+RPC:     9 call_bind (status 0)
+RPC:     9 call_connect xprt c7940000 is connected
+RPC:     9 call_transmit (status 0)
+RPC:     9 xprt_prepare_transmit
+RPC:     9 xprt_cwnd_limited cong = 0 cwnd = 512
+RPC:     9 rpc_xdr_encode (status 0)
+RPC:     9 marshaling UNIX cred c792fe80
+RPC:     9 using AUTH_UNIX cred c792fe80 to wrap rpc data
+RPC:     9 xprt_transmit(100)
+RPC:       xs_udp_send_request(100) = 100
+RPC:       xs_udp_data_ready...
+RPC:       cong 256, cwnd was 512, now 512
+RPC:     9 xid 0d837927 complete (48 bytes received)
+RPC:     9 xmit complete
+RPC:       wake_up_next(c7940154 "xprt_resend")
+RPC:       wake_up_next(c79400fc "xprt_sending")
+RPC:     9 call_status (status 48)
+RPC:     9 call_decode (status 48)
+RPC:     9 validating UNIX cred c792fe80
+RPC:     9 using AUTH_UNIX cred c792fe80 to unwrap rpc data
+RPC:     9 call_decode result 0
+RPC:     9 return 0, status 0
+RPC:     9 release task
+RPC:       freeing buffer of size 448 at c7943000
+RPC:     9 release request c780e000
+RPC:       wake_up_next(c7940204 "xprt_backlog")
+RPC:       rpc_release_client(c79c8b00)
+RPC:     9 freeing task
+VFS: Mounted root (nfs filesystem) on device 0:12.
+Freeing unused kernel memory: 192k init
+
+********** bad (56463e50d1fc3f070492434cea6303b35ea000de) **********
+Using MPC831x RDB machine description
+Linux version 2.6.36-rc3+ (bdowning@scatha) (gcc version 4.4.2 (crosstool-NG-hg_default@1733_02db017f4fe1) ) #30 Wed Feb 9 13:20:18 CST 2011
+bootconsole [udbg0] enabled
+setup_arch: bootmem
+mpc831x_rdb_setup_arch()
+Found FSL PCI host bridge at 0x00000000e0008500. Firmware bus number: 0->0
+PCI host bridge /sleep-nexus/pci@e0008500 (primary) ranges:
+ MEM 0x0000000090000000..0x000000009fffffff -> 0x0000000090000000 
+ MEM 0x0000000080000000..0x000000008fffffff -> 0x0000000080000000 Prefetch
+  IO 0x00000000e2000000..0x00000000e20fffff -> 0x0000000000000000
+arch: exit
+Zone PFN ranges:
+  DMA      0x00000000 -> 0x00008000
+  Normal   empty
+Movable zone start PFN for each node
+early_node_map[1] active PFN ranges
+    0: 0x00000000 -> 0x00008000
+Built 1 zonelists in Zone order, mobility grouping on.  Total pages: 32512
+Kernel command line: nfsroot=172.26.128.52:/srv/nfs/root0 ip=172.26.130.10:172.26.128.52:172.26.128.1:255.255.240.0:ppc10:eth1:off root=/dev/nfs rw console=ttyS0,115200 nfsrootdebug
+PID hash table entries: 512 (order: -1, 2048 bytes)
+Dentry cache hash table entries: 16384 (order: 4, 65536 bytes)
+Inode-cache hash table entries: 8192 (order: 3, 32768 bytes)
+Memory: 124812k/131072k available (4768k kernel code, 6260k reserved, 216k data, 101k bss, 192k init)
+Kernel virtual memory layout:
+  * 0xfffdf000..0xfffff000  : fixmap
+  * 0xfdefb000..0xfe000000  : early ioremap
+  * 0xc9000000..0xfdefb000  : vmalloc & ioremap
+SLUB: Genslabs=13, HWalign=32, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+NR_IRQS:512
+IPIC (128 IRQ sources) at c9000700
+clocksource: timebase mult[6000002] shift[22] registered
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 512
+NET: Registered protocol family 16
+             
+PCI: Probing PCI hardware
+bio: create slab <bio-0> at 0
+vgaarb: loaded
+SCSI subsystem initialized
+usbcore: registered new interface driver usbfs
+usbcore: registered new interface driver hub
+usbcore: registered new device driver usb
+Switching to clocksource timebase
+NET: Registered protocol family 2
+IP route cache hash table entries: 1024 (order: 0, 4096 bytes)
+TCP established hash table entries: 4096 (order: 3, 32768 bytes)
+TCP bind hash table entries: 4096 (order: 2, 16384 bytes)
+TCP: Hash tables configured (established 4096 bind 4096)
+TCP reno registered
+UDP hash table entries: 256 (order: 0, 4096 bytes)
+UDP-Lite hash table entries: 256 (order: 0, 4096 bytes)
+NET: Registered protocol family 1
+RPC: Registered udp transport module.
+RPC: Registered tcp transport module.
+RPC: Registered tcp NFSv4.1 backchannel transport module.
+msgmni has been set to 243
+alg: No test for stdrng (krng)
+io scheduler noop registered
+io scheduler deadline registered
+io scheduler cfq registered (default)
+Serial: 8250/16550 driver, 4 ports, IRQ sharing disabled
+serial8250.0: ttyS0 at MMIO 0xe0004500 (irq = 16) is a 16550A
+console [ttyS0] enabled, bootconsole disabled
+console [ttyS0] enabled, bootconsole disabled
+serial8250.0: ttyS1 at MMIO 0xe0004600 (irq = 17) is a 16550A
+brd: module loaded
+loop: module loaded
+fe000000.flash: Found 1 x16 devices at 0x0 in 16-bit bank. Manufacturer ID 0x000001 Chip ID 0x001001
+Amd/Fujitsu Extended Query Table at 0x0040
+  Amd/Fujitsu Extended Query version 1.3.
+fe000000.flash: Swapping erase regions for top-boot CFI table.
+number of CFI chips: 1
+cmdlinepart partition parsing not available
+RedBoot partition parsing not available
+of:fsl-elbc e0005000.localbus: read_byte beyond end of buffer
+of:fsl-elbc e0005000.localbus: read_byte beyond end of buffer
+of:fsl-elbc e0005000.localbus: read_byte beyond end of buffer
+NAND device: Manufacturer ID: 0xec, Chip ID: 0x75 (Samsung NAND 32MiB 3,3V 8-bit)
+cmdlinepart partition parsing not available
+RedBoot partition parsing not available
+Creating 3 MTD partitions on "e2800000.flash":
+0x000000000000-0x000000100000 : "u-boot"
+0x000000100000-0x000000400000 : "kernel"
+0x000000400000-0x000002000000 : "fs"
+eLBC NAND device at 0xe2800000, bank 1
+Fixed MDIO Bus: probed
+of:fsl-gianfar e0024000.ethernet: enabled errata workarounds, flags: 0x7
+eth0: Gianfar Ethernet Controller Version 1.2, 08:00:3e:03:01:a0
+eth0: Running with NAPI enabled
+eth0: RX BD ring size for Q[0]: 256
+eth0: TX BD ring size for Q[0]: 256
+of:fsl-gianfar e0025000.ethernet: enabled errata workarounds, flags: 0x7
+eth1: Gianfar Ethernet Controller Version 1.2, 08:00:3e:03:01:a1
+eth1: Running with NAPI enabled
+eth1: RX BD ring size for Q[0]: 256
+eth1: TX BD ring size for Q[0]: 256
+Freescale PowerQUICC MII Bus: probed
+Freescale PowerQUICC MII Bus: probed
+ehci_hcd: USB 2.0 'Enhanced' Host Controller (EHCI) Driver
+fsl-ehci fsl-ehci.0: Freescale On-Chip EHCI Host Controller
+fsl-ehci fsl-ehci.0: new USB bus registered, assigned bus number 1
+fsl-ehci fsl-ehci.0: irq 38, io base 0xe0023000
+fsl-ehci fsl-ehci.0: USB 2.0 started, EHCI 1.00
+hub 1-0:1.0: USB hub found
+hub 1-0:1.0: 1 port detected
+i2c /dev entries driver
+of:mpc-i2c e0003000.i2c: timeout 1000000 us
+rtc-ds1307 0-0068: rtc core: registered ds1339 as rtc0
+of:mpc-i2c e0003100.i2c: timeout 1000000 us
+alg: No test for authenc(hmac(sha1),cbc(aes)) (authenc-hmac-sha1-cbc-aes-talitos)
+of:talitos e0030000.crypto: authenc-hmac-sha1-cbc-aes-talitos
+alg: No test for authenc(hmac(sha1),cbc(des3_ede)) (authenc-hmac-sha1-cbc-3des-talitos)
+of:talitos e0030000.crypto: authenc-hmac-sha1-cbc-3des-talitos
+alg: No test for authenc(hmac(sha256),cbc(aes)) (authenc-hmac-sha256-cbc-aes-talitos)
+of:talitos e0030000.crypto: authenc-hmac-sha256-cbc-aes-talitos
+alg: No test for authenc(hmac(sha256),cbc(des3_ede)) (authenc-hmac-sha256-cbc-3des-talitos)
+of:talitos e0030000.crypto: authenc-hmac-sha256-cbc-3des-talitos
+alg: No test for authenc(hmac(md5),cbc(aes)) (authenc-hmac-md5-cbc-aes-talitos)
+of:talitos e0030000.crypto: authenc-hmac-md5-cbc-aes-talitos
+alg: No test for authenc(hmac(md5),cbc(des3_ede)) (authenc-hmac-md5-cbc-3des-talitos)
+of:talitos e0030000.crypto: authenc-hmac-md5-cbc-3des-talitos
+of:talitos e0030000.crypto: cbc-aes-talitos
+of:talitos e0030000.crypto: cbc-3des-talitos
+of:talitos e0030000.crypto: md5-talitos
+of:talitos e0030000.crypto: sha1-talitos
+of:talitos e0030000.crypto: sha224-talitos
+of:talitos e0030000.crypto: sha256-talitos
+usbcore: registered new interface driver usbhid
+usbhid: USB HID core driver
+TCP cubic registered
+NET: Registered protocol family 10
+IPv6 over IPv4 tunneling driver
+NET: Registered protocol family 17
+NET: Registered protocol family 15
+Registering the dns_resolver key type
+rtc-ds1307 0-0068: setting system clock to 2000-01-06 16:45:22 UTC (947177122)
+ADDRCONF(NETDEV_UP): eth1: link is not ready
+IP-Config: Complete:
+     device=eth1, addr=172.26.130.10, mask=255.255.240.0, gw=172.26.128.1,
+     host=ppc10, domain=, nis-domain=(none),
+     bootserver=172.26.128.52, rootserver=172.26.128.52, rootpath=
+Root-NFS: nfsroot=/srv/nfs/root0
+NFS: nfs mount opts='nolock,addr=172.26.128.52'
+NFS:   parsing nfs mount option 'nolock'
+NFS:   parsing nfs mount option 'addr=172.26.128.52'
+NFS: MNTPATH: '/srv/nfs/root0'
+NFS: sending MNT request for 172.26.128.52:/srv/nfs/root0
+RPC:       set up xprt to 172.26.128.52 (autobind) via tcp
+RPC:       created transport c79c6800 with 16 slots
+RPC:       creating mount client for 172.26.128.52 (xprt c79c6800)
+RPC:       creating UNIX authenticator for client c7920800
+RPC:       new task initialized, procpid 1
+RPC:       allocated task c792fb00
+RPC:     1 __rpc_execute flags=0x680
+RPC:     1 call_start mount3 proc NULL (sync)
+RPC:     1 call_reserve (status 0)
+RPC:     1 reserved req c780e000 xid fd74e0cd
+RPC:     1 call_reserveresult (status 0)
+RPC:     1 call_allocate (status 0)
+RPC:     1 allocated buffer of size 392 at c79c7000
+RPC:     1 call_refresh (status 0)
+RPC:     1 holding NULL cred c04d591c
+RPC:     1 refreshing NULL cred c04d591c
+RPC:     1 call_refreshresult (status 0)
+RPC:     1 call_bind (status 0)
+RPC:     1 rpcb_getport_async(172.26.128.52, 100005, 3, 6)
+RPC:     1 sleep_on(queue "xprt_binding" time 4294892879)
+RPC:     1 added to queue c79c68a4 "xprt_binding"
+RPC:     1 setting alarm for 60000 ms
+RPC:     1 rpcb_getport_async: trying rpcbind version 2
+RPC:       set up xprt to 172.26.128.52 (port 111) via tcp
+RPC:       created transport c79c7800 with 16 slots
+RPC:       creating rpcbind client for 172.26.128.52 (xprt c79c7800)
+RPC:       creating UNIX authenticator for client c7920900
+RPC:       new task initialized, procpid 1
+RPC:       allocated task c792fb80
+RPC:       rpc_release_client(c7920900)
+RPC:     1 sync task going to sleep
+RPC:     2 __rpc_execute flags=0x681
+RPC:     2 call_start rpcbind2 proc GETPORT (async)
+RPC:     2 call_reserve (status 0)
+RPC:     2 reserved req c780f000 xid 5741830a
+RPC:     2 call_reserveresult (status 0)
+RPC:     2 call_allocate (status 0)
+RPC:     2 allocated buffer of size 412 at c79c8000
+RPC:     2 call_refresh (status 0)
+RPC:     2 looking up UNIX cred
+RPC:       looking up UNIX cred
+RPC:       allocating UNIX cred for uid 0 gid 0
+RPC:     2 refreshing UNIX cred c792f980
+RPC:     2 call_refreshresult (status 0)
+RPC:     2 call_bind (status 0)
+RPC:     2 call_connect xprt c79c7800 is not connected
+RPC:     2 xprt_connect xprt c79c7800 is not connected
+RPC:     2 sleep_on(queue "xprt_pending" time 4294892908)
+RPC:     2 added to queue c79c79ac "xprt_pending"
+RPC:     2 setting alarm for 60000 ms
+RPC:       xs_connect scheduled xprt c79c7800
+RPC:       xs_bind4 0.0.0.0:0: ok (0)
+RPC:       worker connecting xprt c79c7800 via tcp to 172.26.128.52 (port 111)
+RPC:       c79c7800 connect status 115 connected 0 sock state 2
+PHY: mdio@e0024520:04 - Link is Up - 1000/Full
+ADDRCONF(NETDEV_CHANGE): eth1: link becomes ready
+RPC:       xs_error_report client c79c7800...
+RPC:       error 113
+RPC:     2 __rpc_wake_up_task (now 4294893667)
+RPC:     2 disabling timer
+RPC:     2 removed from queue c79c79ac "xprt_pending"
+RPC:       __rpc_wake_up_task done
+RPC:       xs_tcp_state_change client c79c7800...
+RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
+RPC:       disconnected transport c79c7800
+RPC:     2 __rpc_execute flags=0x681
+RPC:     2 xprt_connect_status: retrying
+RPC:     2 call_connect_status (status -11)
+RPC:     2 call_transmit (status 0)
+RPC:     2 xprt_prepare_transmit
+RPC:     2 rpc_xdr_encode (status 0)
+RPC:     2 marshaling UNIX cred c792f980
+RPC:     2 using AUTH_UNIX cred c792f980 to wrap rpc data
+RPC:     2 encoding PMAP_GETPORT call (100005, 3, 6, 0)
+RPC:     2 xprt_transmit(88)
+RPC:       xs_tcp_send_request(88) = -113
+RPC:       sendmsg returned unrecognized error 113
+RPC:       xs_tcp_state_change client c79c7800...
+RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
+RPC:       disconnected transport c79c7800
+RPC:       wake_up_next(c79c7954 "xprt_resend")
+RPC:       wake_up_next(c79c78fc "xprt_sending")
+RPC:       setting port for xprt c79c6800 to 0
+RPC:     2 rpcb_getport_done(status -113, port 0)
+RPC:     2 return 0, status -113
+RPC:     2 release task
+RPC:       freeing buffer of size 412 at c79c8000
+RPC:     2 release request c780f000
+RPC:       wake_up_next(c79c7a04 "xprt_backlog")
+RPC:       rpc_release_client(c7920900)
+RPC:       destroying rpcbind client for 172.26.128.52
+RPC:       destroying transport c79c7800
+RPC:       xs_destroy xprt c79c7800
+RPC:       xs_close xprt c79c7800
+RPC:       disconnected transport c79c7800
+RPC:     2 freeing task
+RPC:     1 __rpc_wake_up_task (now 4294893704)
+RPC:     1 disabling timer
+RPC:     1 removed from queue c79c68a4 "xprt_binding"
+RPC:       __rpc_wake_up_task done
+RPC:     1 sync task resuming
+RPC:     1 remote rpcbind unreachable: -113
+RPC:     1 return 0, status -113
+RPC:     1 release task
+RPC:       freeing buffer of size 392 at c79c7000
+RPC:     1 release request c780e000
+RPC:       wake_up_next(c79c6a04 "xprt_backlog")
+RPC:       rpc_release_client(c7920800)
+RPC:     1 freeing task
+RPC:       shutting down mount client for 172.26.128.52
+RPC:       rpc_release_client(c7920800)
+RPC:       destroying UNIX authenticator c04d5950
+RPC:       destroying mount client for 172.26.128.52
+RPC:       destroying transport c79c6800
+RPC:       xs_destroy xprt c79c6800
+RPC:       xs_close xprt c79c6800
+RPC:       disconnected transport c79c6800
+NFS: failed to create MNT RPC client, status=-113
+NFS: unable to mount server 172.26.128.52, error -113
+VFS: Unable to mount root fs via NFS, trying floppy.
+RPC:       unx_free_cred c792f980
+VFS: Cannot open root device "nfs" or unknown-block(2,0)
+Please append a correct "root=" boot option; here are the available partitions:
+1f00            8192 mtdblock0 (driver?)
+1f01            1024 mtdblock1 (driver?)
+1f02            3072 mtdblock2 (driver?)
+1f03           28672 mtdblock3 (driver?)
+Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(2,0)
+Call Trace:
+[c7827ed0] [c0008988] show_stack+0x70/0x1bc (unreliable)
+[c7827f10] [c03a9dd8] panic+0xb8/0x1e8
+[c7827f60] [c0478e38] mount_block_root+0x1a4/0x268
+[c7827fb0] [c0478fb8] mount_root+0xbc/0xd4
+[c7827fd0] [c0479174] prepare_namespace+0x1a4/0x1e8
+[c7827fe0] [c0478270] kernel_init+0x150/0x170
+[c7827ff0] [c0010378] kernel_thread+0x4c/0x68
+Rebooting in 180 seconds..
+
+-bcd
