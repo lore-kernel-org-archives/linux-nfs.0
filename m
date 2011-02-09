@@ -1,101 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38787 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750917Ab1BJVgd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Feb 2011 16:36:33 -0500
-Date: Thu, 10 Feb 2011 16:36:32 -0500
-To: Tino Keitel <tino.keitel@tikei.de>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:44868 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753636Ab1BIRMl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Feb 2011 12:12:41 -0500
+Received: by iwn9 with SMTP id 9so347459iwn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Feb 2011 09:12:41 -0800 (PST)
+In-Reply-To: <4D502F19.7060705@panasas.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+	<1296855242-2592-22-git-send-email-andros@netapp.com>
+	<1296855242-2592-23-git-send-email-andros@netapp.com>
+	<1296855242-2592-24-git-send-email-andros@netapp.com>
+	<1296855242-2592-25-git-send-email-andros@netapp.com>
+	<1296855242-2592-26-git-send-email-andros@netapp.com>
+	<1296855242-2592-27-git-send-email-andros@netapp.com>
+	<1296855242-2592-28-git-send-email-andros@netapp.com>
+	<1296855242-2592-29-git-send-email-andros@netapp.com>
+	<1296855242-2592-30-git-send-email-andros@netapp.com>
+	<1296855242-2592-31-git-send-email-andros@netapp.com>
+	<1296855242-2592-32-git-send-email-andros@netapp.com>
+	<1296855242-2592-33-git-send-email-andros@netapp.com>
+	<1296855242-2592-34-git-send-email-andros@netapp.com>
+	<1296855242-2592-35-git-send-email-andros@netapp.com>
+	<1296855242-2592-36-git-send-email-andros@netapp.com>
+	<1296855242-2592-37-git-send-email-andros@netapp.com>
+	<1296855242-2592-38-git-send-email-andros@netapp.com>
+	<4D502F19.7060705@panasas.com>
+Date: Wed, 9 Feb 2011 12:11:45 -0500
+Message-ID: <AANLkTik+huHvWku7h9EWdcdoeSVLPYF8MTMqscrpedg1@mail.gmail.com>
+Subject: Re: [PATCH 37/40] pnfs-submit wave3 send zero stateid seqid on v4.1 i/o
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: 2.6.38-rc3: kernel BUG at fs/nfsd/nfs4state.c:3132!
-Message-ID: <20110210213632.GA29900@fieldses.org>
-References: <20110209220427.GA12140@mac.home>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110209220427.GA12140@mac.home>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Feb 09, 2011 at 11:04:27PM +0100, Tino Keitel wrote:
-> Hi,
-> 
-> I get the following error with kernel 2.6.38-rc3 during normal file access via
-> NFS v4. The underlying FS is ext4, if that matters.
-> 
-> At least one other user seems to have the same problem:
-> http://pastebin.com/QRq1TMkj
+On Mon, Feb 7, 2011 at 12:42 PM, Benny Halevy <bhalevy@panasas.com> wrote:
+> On 2011-02-04 23:33, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> Data servers require a zero stateid seqid, and there is no advantage to not
+>> doing the same for all NFSv4.1
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  fs/nfs/nfs4xdr.c |   10 +++++++---
+>>  1 files changed, 7 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>> index 4e2c168..2380c45 100644
+>> --- a/fs/nfs/nfs4xdr.c
+>> +++ b/fs/nfs/nfs4xdr.c
+>> @@ -1384,7 +1384,7 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+>>       hdr->replen += decode_putrootfh_maxsz;
+>>  }
+>>
+>> -static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx)
+>> +static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx, int zero_seqid)
+>
+> nit: how about bool rather than int zero_stateid?
 
-Thanks for the report.
+At first I thought OK, change to bool. But then I looked at how it is
+set. The zero_seqid parameter is simply the compound_hdr->minorversion
+passed into encode_stateid which I think is cleaner than changing
+zero_seqid to a bool and then testing if compound_hdr->minorversion
+then set 'true' when encode_stateid is called.  So I think this is OK
+as is.
 
-> 
-> <0>------------[ cut here ]------------
-> kernel BUG at fs/nfsd/nfs4state.c:3132!
-
-This is a bit odd: v2.6.38-rc3 doesn't have a BUG on line 3132 of
-fs/nfsd/nfs4state.c.
-
-> <0>invalid opcode: 0000 [#1] SMP 
-> <0>last sysfs file: /sys/devices/virtual/block/dm-8/uevent
-> CPU 0 
-> Modules linked in: ipv6 usblp btusb bluetooth loop arc4 ecb
-> snd_hda_codec_idt snd_hda_intel snd_hda_codec snd_pcm_oss ath5k
-> dvb_usb_vp7045 ath dvb_usb snd_pcm snd_timer mac80211
->  snd_page_alloc evdev dvb_core sky2 rc_core ata_piix cfg80211
-> 
-> Pid: 2280, comm: nfsd Not tainted 2.6.38-rc3-00062-gb64606b #6
-
-Also, I haven't seen any commit b64606b.
-
-Are you sure about the kernel version here?
-
---b.
-
-> Mac-F4208EAA/Macmini2,1
-> RIP: 0010:[<ffffffff8119f973>]  [<ffffffff8119f973>]
-> nfs4_preprocess_stateid_op+0x3a3/0x490
-> RSP: 0018:ffff8800b399bd50  EFLAGS: 00010246
-> RAX: 0000000000000000 RBX: ffff8800b60a9000 RCX: ffffffff8175a010
-> RDX: ffff8800ab784e48 RSI: ffffffff8175a020 RDI: ffffffff8175a000
-> RBP: ffff8800a4ce5678 R08: 0000000000000000 R09: 0000000000000000
-> R10: ffff8800b3910180 R11: c600000000000000 R12: ffff8800b390f1c0
-> R13: ffff8800b390f1a0 R14: 0000000000000000 R15: ffff8800aba079a0
-> FS:  0000000000000000(0000) GS:ffff8800bde00000(0000)
-> knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> CR2: 00007f2b8805d000 CR3: 00000000b6fe8000 CR4: 00000000000006b0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Process nfsd (pid: 2280, threadinfo ffff8800b399a000, task
-> ffff8800b63a62d0)
-> <0>Stack:
->  000000004d507f0d ffff8800b390f1a0 ffff8800b3910040 ffff8800b391c000
->  0000000016000000 0000000000000000 ffff8800b3910040 ffffffff8118f549
->  ffff8800b390f000 ffff8800b3910000 ffff8800b390f000 ffff8800b391c000
-> <0>Call Trace:
->  [<ffffffff8118f549>] ? nfsd4_read+0x79/0xc0
->  [<ffffffff81190096>] ? nfsd4_proc_compound+0x416/0x4d0
->  [<ffffffff8117f5ad>] ? nfsd_dispatch+0xfd/0x240
->  [<ffffffff8146f1f9>] ? svc_process_common+0x339/0x680
->  [<ffffffff81035b70>] ? default_wake_function+0x0/0x20
->  [<ffffffff8117ecc0>] ? nfsd+0x0/0x150
->  [<ffffffff8146f80a>] ? svc_process+0x10a/0x160
->  [<ffffffff8117ecc0>] ? nfsd+0x0/0x150
->  [<ffffffff8117ed72>] ? nfsd+0xb2/0x150
->  [<ffffffff81055ff6>] ? kthread+0x96/0xa0
->  [<ffffffff810039b4>] ? kernel_thread_helper+0x4/0x10
->  [<ffffffff81055f60>] ? kthread+0x0/0xa0
->  [<ffffffff810039b0>] ? kernel_thread_helper+0x0/0x10
-> <0>Code: 27 29 41 3b 47 50 0f 87 9a fd ff ff 0f 83 e9 fe ff ff e9 76 ff
-> ff ff 48 8b 42 48 45 31 f6 49 89 04 24 48 85 c0 0f 85 7b fd ff ff <0f>
-> 0b 49 8b 57 48 48 8b 42 40 48 85 c
-> 0 0f 85 2a ff ff ff 48 8b 
-> RIP  [<ffffffff8119f973>] nfs4_preprocess_stateid_op+0x3a3/0x490
->  RSP <ffff8800b399bd50>
-> ---[ end trace 7ef2fa5b1b62014a ]---
-> 
-> Regards,
-> Tino
+-->Andy
+>
+> Benny
+>
+>>  {
+>>       nfs4_stateid stateid;
+>>       __be32 *p;
+>> @@ -1392,6 +1392,8 @@ static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context
+>>       p = reserve_space(xdr, NFS4_STATEID_SIZE);
+>>       if (ctx->state != NULL) {
+>>               nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
+>> +             if (zero_seqid)
+>> +                     stateid.stateid.seqid = 0;
+>>               xdr_encode_opaque_fixed(p, stateid.data, NFS4_STATEID_SIZE);
+>>       } else
+>>               xdr_encode_opaque_fixed(p, zero_stateid.data, NFS4_STATEID_SIZE);
+>> @@ -1404,7 +1406,8 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
+>>       p = reserve_space(xdr, 4);
+>>       *p = cpu_to_be32(OP_READ);
+>>
+>> -     encode_stateid(xdr, args->context, args->lock_context);
+>> +     encode_stateid(xdr, args->context, args->lock_context,
+>> +                    hdr->minorversion);
+>>
+>>       p = reserve_space(xdr, 12);
+>>       p = xdr_encode_hyper(p, args->offset);
+>> @@ -1592,7 +1595,8 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
+>>       p = reserve_space(xdr, 4);
+>>       *p = cpu_to_be32(OP_WRITE);
+>>
+>> -     encode_stateid(xdr, args->context, args->lock_context);
+>> +     encode_stateid(xdr, args->context, args->lock_context,
+>> +                    hdr->minorversion);
+>>
+>>       p = reserve_space(xdr, 16);
+>>       p = xdr_encode_hyper(p, args->offset);
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
