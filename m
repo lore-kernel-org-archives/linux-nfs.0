@@ -1,147 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35412 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:46282 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751584Ab1BAQbI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Feb 2011 11:31:08 -0500
-Subject: Re: [PATCH 1/3] pnfs: avoid incorrect use of layout stateid
-Content-Type: text/plain; charset=us-ascii
-From: Fred Isaman <iisaman@netapp.com>
-In-Reply-To: <4D4828DC.9020103@panasas.com>
-Date: Tue, 1 Feb 2011 11:31:07 -0500
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
-Message-Id: <AF70A3A4-2A06-4BD1-AC69-270658CF6365@netapp.com>
-References: <1296487633-21057-1-git-send-email-iisaman@netapp.com> <1296487633-21057-2-git-send-email-iisaman@netapp.com> <4D4828DC.9020103@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
+	id S1751286Ab1BIEz5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Feb 2011 23:55:57 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/6] nfsd4: add helper function for lease setup
+Date: Tue,  8 Feb 2011 23:55:47 -0500
+Message-Id: <1297227351-15365-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1297227351-15365-1-git-send-email-bfields@redhat.com>
+References: <1297227351-15365-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   33 +++++++++++++++++++++------------
+ 1 files changed, 21 insertions(+), 12 deletions(-)
 
-On Feb 1, 2011, at 10:38 AM, Benny Halevy wrote:
-
-> On 2011-01-31 17:27, Fred Isaman wrote:
->> The code could violate the following from RFC5661, section 12.5.3:
->> "Once a client has no more layouts on a file, the layout stateid is no
->> longer valid and MUST NOT be used."
-> 
-> NACK.
-> 
-> Fred, this is your interpretation of the forgetful model and it is taken
-> out of context.
-> 
-> Until the spec is changed only the server invalidates the stateid by returning
-> lrs_present=false on LAYOUTRETURN. Merely forgetting the layout state without
-> LAYOUTRETURN does not determine that.
-> 
-> 
-> Also from 12.5.3:
->   Once a layout stateid is established, the "other"
->   field will stay constant unless the stateid is revoked or the client
->   returns all layouts on the file and the server disposes of the stateid.
->   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> 
-
-
-OK, so the question is, does sending a LAYOUTGET with openstateid "return all layouts".
-Making the answer to this "yes" is perfectly consistent with the spec, given its complete absence
-of direction here.  The alternative is a forgetful model where the client can forget layouts, but
-not layout stateid.
-
-The question is, is there any objection to the above interpretation of LAYOUTGET with openstateid?
-Because if not, then we will shortly get an appropriate errata, and there is no good reason to delay the patch until the errata is finalized.  I know previously you had objected on the basis that this prevents parallel use of openstateid with LAYOUTGET.  But given that you had indicated that such parallel use can not be done for other reasons, I have been working on the assumption that the interpretation above will be accepted without controversy at the upcoming IETF.
-
-On the other hand, if there is objection to the above interpretation, that should be made known.
-
-Fred
-
-
-> and
-> 
->   Once the client receives a layout stateid, it MUST use the correct
->   "seqid" for subsequent LAYOUTGET or LAYOUTRETURN operations.  The
->   correct "seqid" is defined as the highest "seqid" value from
->   responses of fully processed LAYOUTGET or LAYOUTRETURN operations or
->   arguments of a fully processed CB_LAYOUTRECALL operation.
-> 
-> and 18.43.3
-> 
->   The loga_stateid field specifies a valid stateid.  If a layout is not
->   currently held by the client, the loga_stateid field represents a
->   stateid reflecting the correspondingly valid open, byte-range lock,
->   or delegation stateid.  Once a layout is held on the file by the
->   client, the loga_stateid field MUST be a stateid as returned from a
->   previous LAYOUTGET or LAYOUTRETURN operation or provided by a
->   CB_LAYOUTRECALL operation (see Section 12.5.3).
-> 
-> Only when we agree that the client can throw away the layout state and
-> send a singular future LAYOUTGET with a non-layout stateid - something it MUST not
-> do at the moment - only then we can do what this patch suggests.
-> 
-> Benny
-> 
->> 
->> This can occur when a layout already has a lseg, starts another
->> non-everlapping LAYOUTGET, and a CB_LAYOUTRECALL for the existing lseg
->> is processed before we hit pnfs_layout_process().
->> 
->> Solve by setting, each time the client has no more lsegs for a file, a
->> flag which blocks further use of the layout and triggers its removal.
->> 
->> This also fixes a second bug which occurs in the same instance as
->> above.  If we actually use pnfs_layout_process, we add the new lseg to
->> the layout, but the layout has been removed from the nfs_client list
->> by the intervening CB_LAYOUTRECALL and will not be added back.  Thus
->> the newly acquired lseg will not be properly returned in the event of
->> a subsequent CB_LAYOUTRECALL.
->> 
->> Signed-off-by: Fred Isaman <iisaman@netapp.com>
->> ---
->> fs/nfs/pnfs.c |   12 +++++++++---
->> 1 files changed, 9 insertions(+), 3 deletions(-)
->> 
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 1b1bc1a..dcd5d54 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -255,6 +255,9 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
->> 			list_del_init(&lseg->pls_layout->plh_layouts);
->> 			spin_unlock(&clp->cl_lock);
->> 			clear_bit(NFS_LAYOUT_BULK_RECALL, &lseg->pls_layout->plh_flags);
->> +			set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
->> +			/* Matched by initial refcount set in alloc_init_layout_hdr */
->> +			put_layout_hdr_locked(lseg->pls_layout);
->> 		}
->> 		rpc_wake_up(&NFS_SERVER(ino)->roc_rpcwaitq);
->> 		list_add(&lseg->pls_list, tmp_list);
->> @@ -299,6 +302,11 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
->> 
->> 	dprintk("%s:Begin lo %p\n", __func__, lo);
->> 
->> +	if (list_empty(&lo->plh_segs)) {
->> +		if (!test_and_set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags))
->> +			put_layout_hdr_locked(lo);
->> +		return 0;
->> +	}
->> 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
->> 		if (should_free_lseg(lseg->pls_range.iomode, iomode)) {
->> 			dprintk("%s: freeing lseg %p iomode %d "
->> @@ -332,10 +340,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
->> 	spin_lock(&nfsi->vfs_inode.i_lock);
->> 	lo = nfsi->layout;
->> 	if (lo) {
->> -		set_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags);
->> 		mark_matching_lsegs_invalid(lo, &tmp_list, IOMODE_ANY);
->> -		/* Matched by refcount set to 1 in alloc_init_layout_hdr */
->> -		put_layout_hdr_locked(lo);
->> 	}
->> 	spin_unlock(&nfsi->vfs_inode.i_lock);
->> 	pnfs_free_lseg_list(&tmp_list);
->> @@ -403,6 +408,7 @@ pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, nfs4_stateid *stateid,
->> 	    (int)(lo->plh_barrier - be32_to_cpu(stateid->stateid.seqid)) >= 0)
->> 		return true;
->> 	return lo->plh_block_lgets ||
->> +		test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags) ||
->> 		test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
->> 		(list_empty(&lo->plh_segs) &&
->> 		 (atomic_read(&lo->plh_outstanding) > lget));
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b5bdc33..a47aedd 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2640,6 +2640,26 @@ static bool nfsd4_cb_channel_good(struct nfs4_client *clp)
+ 	return clp->cl_minorversion && clp->cl_cb_state == NFSD4_CB_UNKNOWN;
+ }
+ 
++static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int flag)
++{
++	struct file_lock *fl;
++
++	fl = locks_alloc_lock();
++	if (!fl)
++		return NULL;
++	locks_init_lock(fl);
++	fl->fl_lmops = &nfsd_lease_mng_ops;
++	fl->fl_flags = FL_LEASE;
++	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
++	fl->fl_end = OFFSET_MAX;
++	fl->fl_owner = (fl_owner_t)dp;
++	fl->fl_file = dp->dl_vfs_file;
++	BUG_ON(!fl->fl_file);
++	fl->fl_pid = current->tgid;
++	dp->dl_flock = fl;
++	return fl;
++}
++
+ /*
+  * Attempt to hand out a delegation.
+  */
+@@ -2685,20 +2705,9 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open, struct nfs4_sta
+ 		goto out;
+ 	}
+ 	status = -ENOMEM;
+-	fl = locks_alloc_lock();
++	fl = nfs4_alloc_init_lease(dp, flag);
+ 	if (!fl)
+ 		goto out;
+-	locks_init_lock(fl);
+-	fl->fl_lmops = &nfsd_lease_mng_ops;
+-	fl->fl_flags = FL_LEASE;
+-	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
+-	fl->fl_end = OFFSET_MAX;
+-	fl->fl_owner =  (fl_owner_t)dp;
+-	fl->fl_file = find_readable_file(stp->st_file);
+-	BUG_ON(!fl->fl_file);
+-	fl->fl_pid = current->tgid;
+-	dp->dl_flock = fl;
+-
+ 	/* vfs_setlease checks to see if delegation should be handed out.
+ 	 * the lock_manager callback fl_change is used
+ 	 */
+-- 
+1.7.1
 
