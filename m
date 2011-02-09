@@ -1,40 +1,116 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH 08/16] pnfs: wave 3: lseg refcounting
-Date: Tue, 15 Feb 2011 09:59:25 -0500
-Message-ID: <4D5A94CD.4030508@panasas.com>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com> <1297711116-3139-9-git-send-email-andros@netapp.com> <20110215092531.GB29871@infradead.org> <AANLkTik+dVSmWgO6LRANo2xTt6iMqQ7ehvgqk-igQFhM@mail.gmail.com> <20110215145828.GA18038@infradead.org>
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+Subject: Re: [PATCH 33/40] pnfs-submit wave3 remove CONFIG_NFS_V4 and V4_1
+ from nfs_read_data
+Date: Wed, 9 Feb 2011 11:11:53 -0500
+Message-ID: <AANLkTinp+6vOLKt6hhkQ04mdcK=HHhwBr7GgCBw9Gjnt@mail.gmail.com>
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+	<1296855242-2592-2-git-send-email-andros@netapp.com>
+	<1296855242-2592-3-git-send-email-andros@netapp.com>
+	<1296855242-2592-4-git-send-email-andros@netapp.com>
+	<1296855242-2592-5-git-send-email-andros@netapp.com>
+	<1296855242-2592-6-git-send-email-andros@netapp.com>
+	<1296855242-2592-7-git-send-email-andros@netapp.com>
+	<1296855242-2592-8-git-send-email-andros@netapp.com>
+	<1296855242-2592-9-git-send-email-andros@netapp.com>
+	<1296855242-2592-10-git-send-email-andros@netapp.com>
+	<1296855242-2592-11-git-send-email-andros@netapp.com>
+	<1296855242-2592-12-git-send-email-andros@netapp.com>
+	<1296855242-2592-13-git-send-email-andros@netapp.com>
+	<1296855242-2592-14-git-send-email-andros@netapp.com>
+	<1296855242-2592-15-git-send-email-andros@netapp.com>
+	<1296855242-2592-16-git-send-email-andros@netapp.com>
+	<1296855242-2592-17-git-send-email-andros@netapp.com>
+	<1296855242-2592-18-git-send-email-andros@netapp.com>
+	<1296855242-2592-19-git-send-email-andros@netapp.com>
+	<1296855242-2592-20-git-send-email-andros@netapp.com>
+	<1296855242-2592-21-git-send-email-andros@netapp.com>
+	<1296855242-2592-22-git-send-email-andros@netapp.com>
+	<1296855242-2592-23-git-send-email-andros@netapp.com>
+	<1296855242-2592-24-git-send-email-andros@netapp.com>
+	<1296855242-2592-25-git-send-email-andros@netapp.com>
+	<1296855242-2592-26-git-send-email-andros@netapp.com>
+	<1296855242-2592-27-git-send-email-andros@netapp.com>
+	<1296855242-2592-28-git-send-email-andros@netapp.com>
+	<1296855242-2592-29-git-send-email-andros@netapp.com>
+	<1296855242-2592-30-git-send-email-andros@netapp.com>
+	<1296855242-2592-31-git-send-email-andros@netapp.com>
+	<1296855242-2592-32-git-send-email-andros@netapp.com>
+	<1296855242-2592-33-git-send-email-andros@netapp.com>
+	<1296855242-2592-34-git-send-email-andros@netapp.com>
+	<AANLkTin_N0rFNr2KzxZ32bpWWUzwJQ4skLnZNVA=W6FQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Cc: Fred Isaman <iisaman@netapp.com>, andros@netapp.com,
-	trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+To: Fred Isaman <iisaman@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:29691 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751201Ab1BOO71 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 09:59:27 -0500
-In-Reply-To: <20110215145828.GA18038@infradead.org>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:38910 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752719Ab1BIQLy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Feb 2011 11:11:54 -0500
+Received: by iyj8 with SMTP id 8so302785iyj.19
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Feb 2011 08:11:53 -0800 (PST)
+In-Reply-To: <AANLkTin_N0rFNr2KzxZ32bpWWUzwJQ4skLnZNVA=W6FQ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2011-02-15 09:58, Christoph Hellwig wrote:
-> On Tue, Feb 15, 2011 at 09:48:26AM -0500, Fred Isaman wrote:
->> pnfs_free_lseg_list, besides calling free_lseg, also potentially
->> removes the layout from the clients list of inodes with layouts.
-> 
-> Looks like the routine than changed from the mainline variant
-> I looked at.  I took a quick look at the one from pnfs-submit,
-> which looks quite suspicios, as it special cases the first item
-> on the list without a good explanation and then iterates the list.
-> 
-> Does your tree have another caller of pnfs_free_lseg_list?  If not
-> please just open code the right thing in the caller, instead of
-> pretending we're dealing with a list if you're always dealing with
-> one entry.  If the tree grows a caller that needs to deal with a list
-> with more than 1 entry we can revisit if there's a point in sharing
-> code.
-> 
+On Tue, Feb 8, 2011 at 5:09 PM, Fred Isaman <iisaman@netapp.com> wrote:
+> On Fri, Feb 4, 2011 at 4:33 PM,  <andros@netapp.com> wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  include/linux/nfs_xdr.h |   12 ++++--------
+>>  1 files changed, 4 insertions(+), 8 deletions(-)
+>>
+>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>> index 3b2e488..1222aa9 100644
+>> --- a/include/linux/nfs_xdr.h
+>> +++ b/include/linux/nfs_xdr.h
+>> @@ -1016,15 +1016,11 @@ struct nfs_read_data {
+>>        unsigned int            npages; /* Max length of pagevec */
+>>        struct nfs_readargs args;
+>>        struct nfs_readres  res;
+>> -       struct pnfs_layout_segment *lseg;
+>> -       struct nfs_client       *ds_clp;   /* pNFS data server */
+>> -#ifdef CONFIG_NFS_V4
+>>        unsigned long           timestamp;      /* For lease renewal */
+>> -#endif
+>> -#if defined(CONFIG_NFS_V4_1)
+>> -       const struct rpc_call_ops *call_ops;
+>> -       __u64                   orig_offset; /* For filelayout dense stripe */
+>> -#endif /* CONFIG_NFS_V4_1 */
+>> +       struct pnfs_layout_segment *lseg;
+>> +       struct nfs_client       *ds_clp;        /* pNFS data server */
+>> +       const struct rpc_call_ops *call_ops;    /* For pNFS recovery to MDS */
+>
+> The comment is misleading, as it is used for pretty much all file
+> layout calls, not just recovery.
+> Perhaps rename the field to mds_call_ops and drop the comment?
+>
+>> +       __u64                   orig_offset;    /* Filelayout dense stripe */
+>
+> Also here, mds_offset might be a better name.
 
-Agreed.
+Good suggestions.
 
-Benny
+-->Andy
+
+>
+> Fred
+>
+>>        struct page             *page_array[NFS_PAGEVEC_SIZE];
+>>  };
+>>
+>> --
+>> 1.6.6
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
