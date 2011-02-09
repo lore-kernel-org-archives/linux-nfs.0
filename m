@@ -1,45 +1,39 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] Gssd: modify wrong err message at handle_gssd_upcall
-Date: Wed, 09 Feb 2011 11:34:47 -0500
-Message-ID: <4D52C227.7050007@RedHat.com>
-References: <4D523618.8080106@cn.fujitsu.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Linux pNFS status meeting 02/10/11
+Date: Wed, 9 Feb 2011 12:42:41 -0800
+Message-ID: <OFE5EB3C35.2452A201-ON88257832.0071A603-88257832.0071C1FD@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Cc: NFS <linux-nfs@vger.kernel.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Content-Type: text/plain; charset="US-ASCII"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29556 "EHLO mx1.redhat.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:42311 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752604Ab1BIQev (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Feb 2011 11:34:51 -0500
-In-Reply-To: <4D523618.8080106@cn.fujitsu.com>
+	id S1750989Ab1BIUmk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Feb 2011 15:42:40 -0500
+Received: from d01dlp02.pok.ibm.com (d01dlp02.pok.ibm.com [9.56.224.85])
+	by e4.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p19KO2vK018663
+	for <linux-nfs@vger.kernel.org>; Wed, 9 Feb 2011 15:24:04 -0500
+Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 493864DE803F
+	for <linux-nfs@vger.kernel.org>; Wed,  9 Feb 2011 15:41:49 -0500 (EST)
+Received: from d01av05.pok.ibm.com (d01av05.pok.ibm.com [9.56.224.195])
+	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p19KgclH411766
+	for <linux-nfs@vger.kernel.org>; Wed, 9 Feb 2011 15:42:38 -0500
+Received: from d01av05.pok.ibm.com (loopback [127.0.0.1])
+	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p19KgcIC005083
+	for <linux-nfs@vger.kernel.org>; Wed, 9 Feb 2011 15:42:38 -0500
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p19KgcoC005080
+	for <linux-nfs@vger.kernel.org>; Wed, 9 Feb 2011 15:42:38 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Meeting on Thursday 02/10/11 at 9:30 AM PST (12:30 PM EST)
 
 
-On 02/09/2011 01:37 AM, Mi Jinlong wrote:
-> Modify wrong err message at handle_gssd_upcall when 
-> sscanf encryption types fail.
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  utils/gssd/gssd_proc.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index c301d46..41328c9 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -1245,7 +1245,7 @@ handle_gssd_upcall(struct clnt_info *clp)
->  			goto out;
->  		if (sscanf(p, "enctypes=%s", enctypes) != 1) {
->  			printerr(0, "WARNING: handle_gssd_upcall: "
-> -				    "failed to parse target name "
-> +				    "failed to parse encryption types "
->  				    "in upcall string '%s'\n", lbuf);
->  			goto out;
->  		}
-Committed... 
+USA Toll-Free: 888-426-6840
+USA Caller Paid: 215-861-6239
 
-steved.
+Israel Toll-Free: 1-809-417-783
+
+Participant Code: 8792872
