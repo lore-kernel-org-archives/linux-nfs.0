@@ -1,47 +1,196 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51329 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33276 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757812Ab1BKSAn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 13:00:43 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 05/17] SQUASHME rename nfs_read_data call_ops TWO
-Date: Thu, 10 Feb 2011 20:52:38 -0500
-Message-Id: <1297389170-26702-6-git-send-email-andros@netapp.com>
-In-Reply-To: <1297389170-26702-5-git-send-email-andros@netapp.com>
-References: <1297389170-26702-1-git-send-email-andros@netapp.com>
- <1297389170-26702-2-git-send-email-andros@netapp.com>
- <1297389170-26702-3-git-send-email-andros@netapp.com>
- <1297389170-26702-4-git-send-email-andros@netapp.com>
- <1297389170-26702-5-git-send-email-andros@netapp.com>
+	id S1753397Ab1BIQeU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Feb 2011 11:34:20 -0500
+Message-ID: <4D52C207.4040206@RedHat.com>
+Date: Wed, 09 Feb 2011 11:34:15 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Support AD style kerberos automatically in rpc.gss
+References: <20101222192227.GA31112@obsidianresearch.com>
+In-Reply-To: <20101222192227.GA31112@obsidianresearch.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+My apologies for taking so long with this... 
 
-squash into pnfs-submit wave3 filelayout read done
+On 12/22/2010 02:22 PM, Jason Gunthorpe wrote:
+> An Active Directory KDC will only grant a TGT for UPNs, getting
+> a TGT for SPNs is not possible:
+> 
+> $ kinit -k host/ib5@ADS.ORCORP.CA
+> kinit: Client not found in Kerberos database while getting initial credentials
+> 
+> The correct thing to do for machine credentials is to get a TGT
+> for the computer UPN <HOSTNAME>$@REALM:
+> $ kinit -k IB5\$
+> $ klist
+> 12/22/10 11:43:47  12/22/10 21:43:47  krbtgt/ADS.ORCORP.CA@ADS.ORCORP.CA
+> 
+> Samba automatically creates /etc/krb5.keytab entry for the computer UPN,
+> this patch makes gssd_refresh_krb5_machine_credential prefer it above
+> the SPNs if it is present.
+> 
+> The net result is that nfs client works automatically out of the box
+> if samba has been used to setup kerberos via 'net ads join' 'net ads
+> keytab create'
+> 
+> Tested using Windows Server 2003 R2 as the AD server.
+> 
+> Signed-off-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+Committed... 
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 9dee49d..64a0d4f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3115,7 +3115,7 @@ void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data)
- 	data->ds_clp = NULL;
- 	data->args.fh     = NFS_FH(data->inode);
- 	data->read_done_cb = nfs4_read_done_cb;
--	task->tk_ops = data->call_ops;
-+	task->tk_ops = data->mds_ops;
- 	rpc_task_reset_client(task, NFS_CLIENT(data->inode));
- }
- EXPORT_SYMBOL_GPL(nfs4_reset_read);
--- 
-1.6.6
-
+steved.
+> ---
+>  utils/gssd/gssd.man    |    5 ++++
+>  utils/gssd/krb5_util.c |   62 ++++++++++++++++++++++++++++++++++--------------
+>  2 files changed, 49 insertions(+), 18 deletions(-)
+> 
+> I'm still looking into what to do for AD in the server case when
+> process_krb5_upcall is called with service == nfs. Some references
+> suggest setting AD's userPrincipalName to the nfs SPN, but it would be
+> really nice if that wasn't necessary.
+> 
+> Shouldn't it be possible to use the a ticket provided from the client
+> to send back an unsolicted reply??
+> 
+> Thanks,
+> Jason
+> 
+> diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+> index 0a23cd6..073379d 100644
+> --- a/utils/gssd/gssd.man
+> +++ b/utils/gssd/gssd.man
+> @@ -53,6 +53,8 @@ To be more consistent with other implementations, we now look for
+>  specific keytab entries.  The search order for keytabs to be used
+>  for "machine credentials" is now:
+>  .br
+> +  <HOSTNAME>$@<REALM>
+> +.br
+>    root/<hostname>@<REALM>
+>  .br
+>    nfs/<hostname>@<REALM>
+> @@ -64,6 +66,9 @@ for "machine credentials" is now:
+>    nfs/<anyname>@<REALM>
+>  .br
+>    host/<anyname>@<REALM>
+> +.IP
+> +If this search order does not use the correct key then provide a
+> +keytab file that contains only correct keys.
+>  .TP
+>  .B -p path
+>  Tells
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index f071600..4b13fa1 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -768,6 +768,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+>  	krb5_error_code code;
+>  	char **realmnames = NULL;
+>  	char myhostname[NI_MAXHOST], targethostname[NI_MAXHOST];
+> +	char myhostad[NI_MAXHOST+1];
+>  	int i, j, retval;
+>  	char *default_realm = NULL;
+>  	char *realm;
+> @@ -789,6 +790,14 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+>  		printerr(1, "%s while getting local hostname\n", k5err);
+>  		goto out;
+>  	}
+> +
+> +	/* Compute the active directory machine name HOST$ */
+> +	strcpy(myhostad, myhostname);
+> +	for (i = 0; myhostad[i] != 0; ++i)
+> +		myhostad[i] = toupper(myhostad[i]);
+> +	myhostad[i] = '$';
+> +	myhostad[i+1] = 0;
+> +
+>  	retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
+>  	if (retval)
+>  		goto out;
+> @@ -833,32 +842,47 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+>  		if (strcmp(realm, default_realm) == 0)
+>  			tried_default = 1;
+>  		for (j = 0; svcnames[j] != NULL; j++) {
+> -			code = krb5_build_principal_ext(context, &princ,
+> -							strlen(realm),
+> -							realm,
+> -							strlen(svcnames[j]),
+> -							svcnames[j],
+> -							strlen(myhostname),
+> -							myhostname,
+> -							NULL);
+> +			char spn[300];
+> +
+> +			/*
+> +			 * The special svcname "$" means 'try the active
+> +			 * directory machine account'
+> +			 */
+> +			if (strcmp(svcnames[j],"$") == 0) {
+> +				snprintf(spn, sizeof(spn), "%s@%s", myhostad, realm);
+> +				code = krb5_build_principal_ext(context, &princ,
+> +								strlen(realm),
+> +								realm,
+> +								strlen(myhostad),
+> +								myhostad,
+> +								NULL);
+> +			} else {
+> +				snprintf(spn, sizeof(spn), "%s/%s@%s",
+> +					 svcnames[j], myhostname, realm);
+> +				code = krb5_build_principal_ext(context, &princ,
+> +								strlen(realm),
+> +								realm,
+> +								strlen(svcnames[j]),
+> +								svcnames[j],
+> +								strlen(myhostname),
+> +								myhostname,
+> +								NULL);
+> +			}
+> +
+>  			if (code) {
+>  				k5err = gssd_k5_err_msg(context, code);
+> -				printerr(1, "%s while building principal for "
+> -					 "'%s/%s@%s'\n", k5err, svcnames[j],
+> -					 myhostname, realm);
+> +				printerr(1, "%s while building principal for '%s'\n",
+> +					 k5err, spn);
+>  				continue;
+>  			}
+>  			code = krb5_kt_get_entry(context, kt, princ, 0, 0, kte);
+>  			krb5_free_principal(context, princ);
+>  			if (code) {
+>  				k5err = gssd_k5_err_msg(context, code);
+> -				printerr(3, "%s while getting keytab entry for "
+> -					 "'%s/%s@%s'\n", k5err, svcnames[j],
+> -					 myhostname, realm);
+> +				printerr(3, "%s while getting keytab entry for '%s'\n",
+> +					 k5err, spn);
+>  			} else {
+> -				printerr(3, "Success getting keytab entry for "
+> -					 "'%s/%s@%s'\n",
+> -					 svcnames[j], myhostname, realm);
+> +				printerr(3, "Success getting keytab entry for '%s'\n",spn);
+>  				retval = 0;
+>  				goto out;
+>  			}
+> @@ -870,6 +894,8 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
+>  		 */
+>  		for (j = 0; svcnames[j] != NULL; j++) {
+>  			int found = 0;
+> +			if (strcmp(svcnames[j],"$") == 0)
+> +				continue;
+>  			code = gssd_search_krb5_keytab(context, kt, realm,
+>  						       svcnames[j], &found, kte);
+>  			if (!code && found) {
+> @@ -1160,7 +1186,7 @@ gssd_refresh_krb5_machine_credential(char *hostname,
+>  	krb5_keytab kt = NULL;;
+>  	int retval = 0;
+>  	char *k5err = NULL;
+> -	const char *svcnames[4] = { "root", "nfs", "host", NULL };
+> +	const char *svcnames[5] = { "$", "root", "nfs", "host", NULL };
+>  
+>  	/*
+>  	 * If a specific service name was specified, use it.
