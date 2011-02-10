@@ -1,55 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51329 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757878Ab1BKSAp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 13:00:45 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 13/17] SQUASHME update nfs4_ds_connect comment
-Date: Thu, 10 Feb 2011 20:52:46 -0500
-Message-Id: <1297389170-26702-14-git-send-email-andros@netapp.com>
-In-Reply-To: <1297389170-26702-13-git-send-email-andros@netapp.com>
-References: <1297389170-26702-1-git-send-email-andros@netapp.com>
- <1297389170-26702-2-git-send-email-andros@netapp.com>
- <1297389170-26702-3-git-send-email-andros@netapp.com>
- <1297389170-26702-4-git-send-email-andros@netapp.com>
- <1297389170-26702-5-git-send-email-andros@netapp.com>
- <1297389170-26702-6-git-send-email-andros@netapp.com>
- <1297389170-26702-7-git-send-email-andros@netapp.com>
- <1297389170-26702-8-git-send-email-andros@netapp.com>
- <1297389170-26702-9-git-send-email-andros@netapp.com>
- <1297389170-26702-10-git-send-email-andros@netapp.com>
- <1297389170-26702-11-git-send-email-andros@netapp.com>
- <1297389170-26702-12-git-send-email-andros@netapp.com>
- <1297389170-26702-13-git-send-email-andros@netapp.com>
+Received: from eazy.amigager.de ([213.239.192.238]:60469 "EHLO
+	eazy.amigager.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752172Ab1BJVtM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2011 16:49:12 -0500
+Received: from mac.home (port-92-206-155-227.dynamic.qsc.de [92.206.155.227])
+	by eazy.amigager.de (Postfix) with ESMTPA id 34256F3001A
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Feb 2011 22:49:11 +0100 (CET)
+Date: Thu, 10 Feb 2011 22:49:14 +0100
+From: Tino Keitel <tino.keitel@tikei.de>
+To: linux-nfs@vger.kernel.org
+Subject: Re: 2.6.38-rc3: kernel BUG at fs/nfsd/nfs4state.c:3132!
+Message-ID: <20110210214914.GA24324@mac.home>
+References: <20110209220427.GA12140@mac.home>
+ <20110210213632.GA29900@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110210213632.GA29900@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Thu, Feb 10, 2011 at 16:36:32 -0500, J. Bruce Fields wrote:
+> On Wed, Feb 09, 2011 at 11:04:27PM +0100, Tino Keitel wrote:
+> > Hi,
+> > 
+> > I get the following error with kernel 2.6.38-rc3 during normal file access via
+> > NFS v4. The underlying FS is ext4, if that matters.
+> > 
+> > At least one other user seems to have the same problem:
+> > http://pastebin.com/QRq1TMkj
+> 
+> Thanks for the report.
+> 
+> > 
+> > <0>------------[ cut here ]------------
+> > kernel BUG at fs/nfsd/nfs4state.c:3132!
+> 
+> This is a bit odd: v2.6.38-rc3 doesn't have a BUG on line 3132 of
+> fs/nfsd/nfs4state.c.
 
-squash into: pnfs-submit wave3 data server connection
+It is something after -rc3, and I have another patch applied (regarding
+sd devices at suspend wakeup).
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayoutdev.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+My nfs4state.c was last touched by the merge commit
+18bce371ae09af6c20ee62c1092a4d1d0e84dd49.
 
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 6a7de00..b8c3681 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -105,7 +105,7 @@ _data_server_lookup_locked(u32 ip_addr, u32 port)
- }
- 
- /*
-- * Create an rpc to the nfs4_pnfs_ds data server
-+ * Create an rpc connection to the nfs4_pnfs_ds data server
-  * Currently only support IPv4
-  */
- static int
--- 
-1.6.6
-
+Regards,
+Tino
