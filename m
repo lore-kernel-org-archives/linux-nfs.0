@@ -1,159 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:47208 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751883Ab1BUWaw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 17:30:52 -0500
-From: Benny Halevy <bhalevy@panasas.com>
+Received: from blade3.isti.cnr.it ([194.119.192.19]:57425 "EHLO
+	BLADE3.ISTI.CNR.IT" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750822Ab1BJBsD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Feb 2011 20:48:03 -0500
+Received: from SCRIPT-SPFWL-DAEMON.mx.isti.cnr.it by mx.isti.cnr.it
+ (PMDF V6.5-x5 #31825) id <01NXN9APIV2OPHQGUJ@mx.isti.cnr.it> for
+ linux-nfs@vger.kernel.org; Thu, 10 Feb 2011 02:47:04 +0100 (MET)
+Received: from conversionlocal.isti.cnr.it by mx.isti.cnr.it
+ (PMDF V6.5-x5 #31825) id <01NXN9AOXY5SPHQGUI@mx.isti.cnr.it> for
+ linux-nfs@vger.kernel.org; Thu, 10 Feb 2011 02:47:02 +0100 (MET)
+Received: from [151.82.102.54] by mx.isti.cnr.it (PMDF V6.5-x5 #31826)
+ with ESMTPSA id <01NXN9AN46H4PGHRNH@mx.isti.cnr.it> for
+ linux-nfs@vger.kernel.org; Thu, 10 Feb 2011 02:47:01 +0100 (MET)
+Date: Thu, 10 Feb 2011 02:47:00 +0100
+From: Asdo <asdo@shiftmail.org>
+Subject: How to separate mount rights in nfsv4
 To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 7/9] pnfs: fix cl_drain_notification indexing
-Date: Mon, 21 Feb 2011 14:30:48 -0800
-Message-Id: <1298327448-8993-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4D62E6F3.8000304@panasas.com>
-References: <4D62E6F3.8000304@panasas.com>
+Message-id: <4D534394.2050404@shiftmail.org>
+Content-type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-cl_drain_notification is an actual index into cl_drain_notification
-and a bit index into pls_notify_mask.
+Hello,
+it's not clear to me how I can allow different access to different
+machines in NFSv4.
+Because nfsv4 needs a root export with fsid=0, and all other mounts
+should be below that.
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/callback_proc.c |   27 ++++++++++++++++-----------
- fs/nfs/pnfs.c          |    4 ++--
- fs/nfs/pnfs.h          |    2 +-
- 3 files changed, 19 insertions(+), 14 deletions(-)
+However, if the line with fsid=0 is not mountable to all nodes, also the
+mounts below it will fail.
+And if the line with fsid=0 is mountable to all nodes, all further lines
+can provide no additional security!
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 5e4b5d1..dd295e2 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -197,8 +197,10 @@ void nfs_client_return_layouts(struct nfs_client *clp)
- 					   struct pnfs_cb_lrecall_info,
- 					   pcl_list);
- 		spin_unlock(&clp->cl_lock);
-+		/* Were all recalled lsegs already forgotten */
- 		if (atomic_read(&cb_info->pcl_count) != 0)
- 			break;
-+
- 		/* What do on error return?  These layoutreturns are
- 		 * required by the protocol.  So if do not get
- 		 * successful reply, probably have to do something
-@@ -209,7 +211,7 @@ void nfs_client_return_layouts(struct nfs_client *clp)
- 		/* Removing from the list unblocks LAYOUTGETs */
- 		list_del(&cb_info->pcl_list);
- 		clp->cl_cb_lrecall_count--;
--		clp->cl_drain_notification[1 << cb_info->pcl_notify_bit] = NULL;
-+		clp->cl_drain_notification[cb_info->pcl_notify_idx] = NULL;
- 		spin_unlock(&clp->cl_lock);
- 		rpc_wake_up(&clp->cl_rpcwaitq_recall);
- 		kfree(cb_info);
-@@ -224,7 +226,7 @@ void notify_drained(struct nfs_client *clp, u64 mask)
- 	/* clp lock not needed except to remove used up entries */
- 	/* Should probably use functions defined in bitmap.h */
- 	while (mask) {
--		if ((mask & 1) && (atomic_dec_and_test(*ptr)))
-+		if ((mask & 1) && atomic_dec_and_test(*ptr))
- 			done = true;
- 		mask >>= 1;
- 		ptr++;
-@@ -272,7 +274,7 @@ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
- 		if (rv == NFS4_OK) {
- 			lo->plh_block_lgets++;
- 			if (nfs4_asynch_forget_layouts(lo, &args->cbl_range,
--						       cb_info->pcl_notify_bit,
-+						       cb_info->pcl_notify_idx,
- 						       &cb_info->pcl_count,
- 						       &free_me_list))
- 				rv = NFS4ERR_DELAY;
-@@ -314,7 +316,7 @@ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
- 			spin_lock(&lo->inode->i_lock);
- 			set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
- 			if (nfs4_asynch_forget_layouts(lo, &range,
--						       cb_info->pcl_notify_bit,
-+						       cb_info->pcl_notify_idx,
- 						       &cb_info->pcl_count,
- 						       &free_me_list))
- 				rv = NFS4ERR_DELAY;
-@@ -334,8 +336,7 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
- 				    struct cb_layoutrecallargs *args)
- {
- 	struct pnfs_cb_lrecall_info *new;
--	atomic_t **ptr;
--	int bit_num;
-+	int i;
- 	u32 res;
- 
- 	dprintk("%s enter, type=%i\n", __func__, args->cbl_recall_type);
-@@ -353,22 +354,26 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
- 		kfree(new);
- 		res = NFS4ERR_DELAY;
- 		spin_unlock(&clp->cl_lock);
-+		dprintk("%s: too many layout recalls\n", __func__);
- 		goto out;
- 	}
- 	clp->cl_cb_lrecall_count++;
- 	/* Adding to the list will block conflicting LGET activity */
- 	list_add_tail(&new->pcl_list, &clp->cl_layoutrecalls);
--	for (bit_num = 0, ptr = clp->cl_drain_notification; *ptr; ptr++)
--		bit_num++;
--	*ptr = &new->pcl_count;
--	new->pcl_notify_bit = bit_num;
-+	for (i = 0; i < PNFS_MAX_CB_LRECALLS; i++)
-+		if (!clp->cl_drain_notification[i]) {
-+			clp->cl_drain_notification[i] = &new->pcl_count;
-+			break;
-+		}
-+	BUG_ON(i >= PNFS_MAX_CB_LRECALLS);
-+	new->pcl_notify_idx = i;
- 	spin_unlock(&clp->cl_lock);
- 	res = initiate_layout_draining(new);
- 	if (res || atomic_dec_and_test(&new->pcl_count)) {
- 		spin_lock(&clp->cl_lock);
- 		list_del(&new->pcl_list);
- 		clp->cl_cb_lrecall_count--;
--		clp->cl_drain_notification[1 << bit_num] = NULL;
-+		clp->cl_drain_notification[new->pcl_notify_idx] = NULL;
- 		rpc_wake_up(&clp->cl_rpcwaitq_recall);
- 		spin_unlock(&clp->cl_lock);
- 		if (res == NFS4_OK) {
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7507054..8c5f4b4 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -642,7 +642,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 
- bool nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
- 				struct pnfs_layout_range *range,
--				int notify_bit, atomic_t *notify_count,
-+				int notify_idx, atomic_t *notify_count,
- 				struct list_head *tmp_list)
- {
- 	bool rv = false;
-@@ -652,7 +652,7 @@ bool nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
- 	dprintk("%s\n", __func__);
- 	list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
- 		if (should_free_lseg(&lseg->range, range)) {
--			lseg->pls_notify_mask |= (1 << notify_bit);
-+			lseg->pls_notify_mask |= (1 << notify_idx);
- 			atomic_inc(notify_count);
- 			mark_lseg_invalid(lseg, tmp_list);
- 			rv = true;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 11c6ee4..092559b 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -179,7 +179,7 @@ struct pnfs_device {
- struct pnfs_cb_lrecall_info {
- 	struct list_head	pcl_list; /* hook into cl_layoutrecalls list */
- 	atomic_t		pcl_count;
--	int			pcl_notify_bit;
-+	int			pcl_notify_idx;
- 	struct nfs_client	*pcl_clp;
- 	struct inode		*pcl_ino;
- 	struct cb_layoutrecallargs pcl_args;
--- 
-1.7.3.4
+Example; this is my current export:
+
+/virtual_machines/kvm/export   
+10.48.0.0/24(rw,no_root_squash,async,subtree_check,fsid=0)
+/virtual_machines/kvm/export/hwnode1  
+10.48.0.10(rw,no_root_squash,async,subtree_check)
+/virtual_machines/kvm/export/hwnode2  
+10.48.0.11(rw,no_root_squash,async,subtree_check)
+
+I have two hardware nodes for virtual machines. Ideally each one of them
+should be able to mount only its subdirectory, but the export shown
+above is the only working one I could create.
+However with the above export file the root user on hwnode1 can directly
+mount /virtual_machines/kvm/export and see everything, even the files
+that were for hwnode2 only.
+OTOH if I set my fsid=0 line so that it's not mountable (e.g. changing
+the IP or netmask), all lines below it stop working.
+
+How should I do?
+
+Thanks for your help
 
