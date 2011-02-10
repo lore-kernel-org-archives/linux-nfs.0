@@ -1,57 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:4990 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756525Ab1BCT2w convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2011 14:28:52 -0500
-Subject: Re: [PATCH] Fix size argument to memset call in nfsacl_encode
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jesper Juhl <jj@chaosbits.net>, Milton Miller <miltonm@bga.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Neil Brown <neilb@suse.de>, bfields@fieldses.org
-In-Reply-To: <alpine.LNX.2.00.1102032012540.15101@swampdragon.chaosbits.net>
-References: <alpine.LNX.2.00.1102032012540.15101@swampdragon.chaosbits.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 03 Feb 2011 14:28:50 -0500
-Message-ID: <1296761330.3015.22.camel@heimdal.trondhjem.org>
+Received: from eazy.amigager.de ([213.239.192.238]:39194 "EHLO
+	eazy.amigager.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932430Ab1BJXlE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2011 18:41:04 -0500
+Received: from mac.home (port-92-206-155-227.dynamic.qsc.de [92.206.155.227])
+	by eazy.amigager.de (Postfix) with ESMTPA id 2AE5BF3001A
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2011 00:41:03 +0100 (CET)
+Date: Fri, 11 Feb 2011 00:41:06 +0100
+From: Tino Keitel <tino.keitel@tikei.de>
+To: linux-nfs@vger.kernel.org
+Subject: Re: 2.6.38-rc3: kernel BUG at fs/nfsd/nfs4state.c:3132!
+Message-ID: <20110210234106.GA29411@mac.home>
+References: <20110209220427.GA12140@mac.home>
+ <20110210213632.GA29900@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110210213632.GA29900@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-02-03 at 20:15 +0100, Jesper Juhl wrote: 
-> We want to give memset() the sizeof(struct posix_acl), not
-> sizeof(struct posix_acl *).
+On Thu, Feb 10, 2011 at 16:36:32 -0500, J. Bruce Fields wrote:
+> On Wed, Feb 09, 2011 at 11:04:27PM +0100, Tino Keitel wrote:
+> > Hi,
+> > 
+> > I get the following error with kernel 2.6.38-rc3 during normal file access via
+> > NFS v4. The underlying FS is ext4, if that matters.
+> > 
+> > At least one other user seems to have the same problem:
+> > http://pastebin.com/QRq1TMkj
 > 
-> Signed-off-by: Jesper Juhl <jj@chaosbits.net>
-> ---
->  nfsacl.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> Thanks for the report.
 > 
-> diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
-> index 84c27d6..bc6d81b 100644
-> --- a/fs/nfs_common/nfsacl.c
-> +++ b/fs/nfs_common/nfsacl.c
-> @@ -117,7 +117,7 @@ int nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
->  		 * invoked in contexts where a memory allocation failure is
->  		 * fatal.  Fortunately this fake ACL is small enough to
->  		 * construct on the stack. */
-> -		memset(acl2, 0, sizeof(acl2));
-> +		memset(acl2, 0, sizeof(*acl2));
->  		posix_acl_init(acl2, 4);
->  
->  		/* Insert entries in canonical order: other orders seem
+> > 
+> > <0>------------[ cut here ]------------
+> > kernel BUG at fs/nfsd/nfs4state.c:3132!
+> 
+> This is a bit odd: v2.6.38-rc3 doesn't have a BUG on line 3132 of
+> fs/nfsd/nfs4state.c.
 
-Ccing Milton Miller who also sent in the same patch.
+Mine does:
 
-Neither patch is correct afaics. posix_acl_init() will clobber the above
-memset, and so the correct fix is just to get rid of it...
+$ git show | head -n 5 ; echo ; head -n 3132 fs/nfsd/nfs4state.c | tail -n 1
+commit ebf53826e105f488f4f628703a108e98940d1dc5
+Author: Linus Torvalds <torvalds@linux-foundation.org>
+Date:   Tue Feb 1 13:05:49 2011 +1000
 
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+    Linux 2.6.38-rc3
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+			BUG_ON(!*filpp);
+$
 
+This is vanilla upstream source.
+
+Regards,
+Tino
