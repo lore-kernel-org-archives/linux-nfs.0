@@ -1,83 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39326 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751291Ab1BASPL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Feb 2011 13:15:11 -0500
-Date: Tue, 1 Feb 2011 13:15:10 -0500
-To: camden lindsay <camden.lindsay@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: clients cannot reconnect to mounted nfs shares after server
- restart
-Message-ID: <20110201181510.GA25136@fieldses.org>
-References: <AANLkTinD01zA=DTXEDG5pXVYcrEGsWOyXcMta0rzvB6n@mail.gmail.com>
- <AANLkTimA-sCz8LQLu1weh-qQOm30jHYyO3qtxmPDPX98@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <AANLkTimA-sCz8LQLu1weh-qQOm30jHYyO3qtxmPDPX98@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from daytona.panasas.com ([67.152.220.89]:44118 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751069Ab1BJF7o (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2011 00:59:44 -0500
+Message-ID: <4D537ECC.8060703@panasas.com>
+Date: Thu, 10 Feb 2011 07:59:40 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: andros@netapp.com
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/40] Wave3: For pNFS team review, not for kernel submission
+References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1296855242-2592-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Jan 31, 2011 at 07:24:30PM -0800, camden lindsay wrote:
-> Having an issue i believe is an NFS bug, but would like someone to
-> verify as well as... point me the correct direction to submit a bug as
-> needed if it indeed is.
-> Situation:
-> NFS server running
-> Client connected with mounted share
-> NFS server is shut down -- (halt or /etc/init.d/nfs stop)
-> NFS server is turned on (booted or /etc/init.d/nfs start)
+I merged these patches in the pnfs-submit-wave3-rev2 branch
+in git://linux-nfs.org/~bhalevy/linux-pnfs.git
+and then your 15 patch series that's zero diff from this one
+as pnfs-submit-wave3-rev3
+
+pnfs-submit-wave3 now points to pnfs-submit-wave3-rev3
+
+Fred is working on preparing wave4 on top of wave3
+But until we're finished with that and then the rest of the tree on top of it
+I forked pnfs-submit and downward from wave3 and it has not changed.
+
+The tree at this point is structured like this:
+
+nfsd41-all
+	pnfs-submit-wave3
+	pnfs-submit
+		pnfs
+			...
+
+Benny
+
+On 2011-02-04 23:33, andros@netapp.com wrote:
+> The wave3 code addresses pNFS file layout data server connection, data server
+> READ I/O and recovery of failed data server READs through the MDS.
 > 
-> Outcome:
-> NFS client that was connected does not reconnect to that share automatically
-> NFS client that was connected cannot reconnect via umount then mount again
-> No other nfs client can connect to that share, before or after origial
-
-How long have you waited?
-
-> NFS clients attempts to connect/reconnect
-> NFS clients CAN connect to a different share.
-> Details/logs:
-> Server shows that client is authenticating:
-> Feb  1 03:01:47 BigBox mountd[6557]: authenticated mount request from
-> 192.168.11.49:674 for /mnt/store/public (/mnt/store/public)
-> Feb  1 03:01:48 BigBox mountd[6557]: authenticated mount request from
-> 192.168.11.49:763 for /mnt/store/public (/mnt/store/public)
-> Feb  1 03:01:50 BigBox mountd[6557]: authenticated mount request from
-> 192.168.11.49:932 for /mnt/store/public (/mnt/store/public)
-> Feb  1 03:01:54 BigBox mountd[6557]: authenticated mount request from
-> 192.168.11.49:942 for /mnt/store/public (/mnt/store/public)
-
-A network trace (tcpdump -s0 -wtmp.pcap, then reproduce the problem,
-then ^C tcpdump, then send us tmp.pcap) might help.
-
+> I did not see the pnfs-submit-wave3 branch on benny's tree, so I created my
+> own for the meantime.
+> I cloned the nfsd41-all from git://linux-nfs.org/~bhalevy/linux-pnfs.git
+> which is the base for the pnfs-submit branch.
+> I then applied the wave3 patches from benny's pnfs-submit branch,
+> and then the changes.
 > 
-> Client shows retransmission:
-> dylan@shobuntu:~$ sudo mount -v -t nfs bigbox:/mnt/store/public Public/
-> mount.nfs: timeout set for Mon Jan 31 19:09:32 2011
-> mount.nfs: text-based options: 'addr=192.168.11.10'
-> mount.nfs: text-based options: 'addr=192.168.11.10'
-> mount.nfs: text-based options: 'addr=192.168.11.10'
-> mount.nfs: text-based options: 'addr=192.168.11.10'
-> mount.nfs: text-based options: 'addr=192.168.11.10'
+> git://linux-nfs.org/projects/andros/benny-linux-pnfs.git
+> branch andros-pnfs-submit-wave3 contains the result.
 > 
-> Server Version:
-> net-fs/nfs-utils
->       Latest version available: 1.1.4-r1
->       Latest version installed: 1.1.4-r1
->       Size of files: 574 kB
->       Homepage:      http://linux-nfs.org/
->       Description:   NFS client and server daemons
->       License:       GPL-2
-> (server is on Gentoo, client on Ubuntu)
-
-Note most of the NFS code is actually in the kernel, so the kernel
-version(s) involved would be useful too.
-
---b.
-
-> Thanks!
-> Camden
+> ========================================================================
+> Please review the changes - I want to submit to Trond/Christoph next week.
+> ========================================================================
+> 
+> These patches are in the first 12 in the pnfs-submit tree and are the original
+> "wave3" patches.
+> 
+> 0001-pnfs-submit-wave3-lseg-refcounting.patch
+> 0002-pnfs_submit-add-data-server-session-to-nfs4_setup_se.patch
+> 0003-pnfs_submit-update-nfs4_async_handle_error-for-data-.patch
+> 0004-pnfs_submit-update-state-renewal-for-data-servers.patch
+> 0005-pnfs_submit-wave3-pageio-helpers.patch
+> 0006-pnfs_submit-wave3-associate-layout-segment-with-nfs_.patch
+> 0007-pnfs_submit-filelayout-policy-operations.patch
+> 0008-pnfs_submit-filelayout-i-o-helpers.patch
+> 0009-pnfs_submit-wave3-generic-read.patch
+> 0010-pnfs_submit-filelayout-read.patch
+> 0011-pnfs_submit-increase-NFS_MAX_FILE_IO_SIZE.patch
+> 0012-pnfs_submit-enforce-requested-DS-only-pNFS-role.patch
+> 
+> The rest are the wave3 changes.
+> 
+> Summary of changes;
+> -------------------
+> 
+> 1) The file layoutdriver now specifies it's own rpc_call_prepare and
+> rpc_call_done callbacks for READ.
+> 
+> filelayout_read_prepare:
+> - Uses nfs41_setup_sequence so we do not need to change nfs4_setup_sequence().
+> 
+> filelayout_read_done
+> - Add a read_done_cb function to nfs_read_data that calls nfs_read_done_cb for
+> NFS READs and filelayout_read_done_cb for data server READs.
+> - filelayout_read_done_cb has its own async error handler so we do not need to change nfs4_async_handle_error()
+> 
+> 2) DS/MDS dual role now allows for sessions used as a data server to be reused
+> as an MDS or NFSv41 mount.
+> - We don't ask for the DS role on data server EXCHANGE_ID
+> - We don't strip any roles returned by the server.
+> - If a session is in use as a DS role, and the client subsequently mounts the
+> same server as either an MDS or NON_PNFS mount, the same session can be used
+> provided the existing exchange flags allow it.
+> 
+> 3) We always send a zero READ/WRITE stateid seqid. This is required for
+> data servers, and there is no advantage to not doing it for MDS or NON_PNFS
+> mounts.
+> 
+> 4) We mark the deviceid as invalid upon any data server connection failure
+> and print out a kernel message.
+> This in turn marks any layout that tries to use the devicid as failed for
+> both IOMODE_READ and IOMODE_RW. Inodes without layouts will still send
+> a layoutget. If the resultant layout uses the marked deviceid, it will be
+> marked as failed for both iomodes. All I/O will go through the MDS until
+> a client reboot or a CB_LAYOUTRECALL ALL or FSID removes all layouts that
+> refer to the deviceid, which removes the deviceid.
+> 
+> 5) Our new file layout async error handler only recovers from session
+> related errors, or grace/delay errors. All other errors including
+> NFS4ERR_EXPIRED or NFS4ERR_STALE_CLIENTID result in marking the layout as
+> failed for IOMODE_READ and I/O is retried through the MDS.
+> 
+> 6) Fred's lock inversion patches, and the request by Trond to not reference
+> a layout segment on dirty pages held in the cache changed the layout
+> segment reference counting.
+> 
+> There are a couple of small issues I'm still investigating. Trond and Fred
+> have done an initial review.
+> 
+> -->Andy
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
