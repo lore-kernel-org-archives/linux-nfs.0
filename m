@@ -1,545 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32877 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:38787 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752600Ab1BHN7e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Feb 2011 08:59:34 -0500
-From: Karel Zak <kzak@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org, Karel Zak <kzak@redhat.com>
-Subject: [PATCH 2/2] mount: add --enable-libmount-mount
-Date: Tue,  8 Feb 2011 14:45:17 +0100
-Message-Id: <1297172717-26431-3-git-send-email-kzak@redhat.com>
-In-Reply-To: <1297172717-26431-1-git-send-email-kzak@redhat.com>
-References: <1297172717-26431-1-git-send-email-kzak@redhat.com>
+	id S1750917Ab1BJVgd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Feb 2011 16:36:33 -0500
+Date: Thu, 10 Feb 2011 16:36:32 -0500
+To: Tino Keitel <tino.keitel@tikei.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: 2.6.38-rc3: kernel BUG at fs/nfsd/nfs4state.c:3132!
+Message-ID: <20110210213632.GA29900@fieldses.org>
+References: <20110209220427.GA12140@mac.home>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110209220427.GA12140@mac.home>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This patch allows to link mount.nfs with libmount from util-linux >=
-v2.19. The new libmount based code is enabled by CONFIG_LIBMOUNT and
-is stored in mount_libmount.c. The old code is not affected by this
-change.
+On Wed, Feb 09, 2011 at 11:04:27PM +0100, Tino Keitel wrote:
+> Hi,
+> 
+> I get the following error with kernel 2.6.38-rc3 during normal file access via
+> NFS v4. The underlying FS is ext4, if that matters.
+> 
+> At least one other user seems to have the same problem:
+> http://pastebin.com/QRq1TMkj
 
-The libmount does not have officially stable API yet, so the
---enable-libmount-mount is marked as experimental in the configure
-help output.
+Thanks for the report.
 
-The ./configure option is the same as we use in util-linux to enable
-support for libmount in mount(8).
+> 
+> <0>------------[ cut here ]------------
+> kernel BUG at fs/nfsd/nfs4state.c:3132!
 
-The addr= (and some other options necessary for remount/umount) are
-stored to /etc/mtab or to /dev/.mount/utab. The utab file is *private*
-libmount file. It's possible that some mount options (for example
-user=) will be moved to kernel, so the utab will not be necessary.
+This is a bit odd: v2.6.38-rc3 doesn't have a BUG on line 3132 of
+fs/nfsd/nfs4state.c.
 
-About libmount:
+> <0>invalid opcode: 0000 [#1] SMP 
+> <0>last sysfs file: /sys/devices/virtual/block/dm-8/uevent
+> CPU 0 
+> Modules linked in: ipv6 usblp btusb bluetooth loop arc4 ecb
+> snd_hda_codec_idt snd_hda_intel snd_hda_codec snd_pcm_oss ath5k
+> dvb_usb_vp7045 ath dvb_usb snd_pcm snd_timer mac80211
+>  snd_page_alloc evdev dvb_core sky2 rc_core ata_piix cfg80211
+> 
+> Pid: 2280, comm: nfsd Not tainted 2.6.38-rc3-00062-gb64606b #6
 
-  * supports systems without and with regular /etc/mtab
-  * does not store VFS and FS mount options in userspace
-  * manages user= option and evaluate permissions
-  * parses VFS mount options and generate MS_* flags
-  * parses /etc/{fstab,mtab}, /proc/mounts or /proc/self/mountinfo
-  * long-term goal is to use the same code in all mount.<type> helpers
+Also, I haven't seen any commit b64606b.
 
-Note, use
+Are you sure about the kernel version here?
 
-   LIBMOUNT_DEBUG=0xffff mount.nfs foo:/path /path
+--b.
 
-to debug the library.
-
-On systems with util-linux v2.19 the findmnt(8) command uses libmount
-to list all/selected mount points:
-
-   $ findmnt /path
-   $ findmnt --mtab /path
-
-the --mtab appends userspace mount options (e.g. user=) to the output.
-
-Signed-off-by: Karel Zak <kzak@redhat.com>
----
- configure.ac                 |   16 ++
- utils/mount/Makefile.am      |   13 ++-
- utils/mount/mount_libmount.c |  398 ++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 425 insertions(+), 2 deletions(-)
- create mode 100644 utils/mount/mount_libmount.c
-
-diff --git a/configure.ac b/configure.ac
-index 2e074d9..9c384d8 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -132,6 +132,15 @@ AC_ARG_ENABLE(mount,
- 	enable_mount=$enableval,
- 	enable_mount=yes)
- 	AM_CONDITIONAL(CONFIG_MOUNT, [test "$enable_mount" = "yes"])
-+
-+if test "$enable_mount" = yes; then
-+	AC_ARG_ENABLE(libmount-mount,
-+		[AC_HELP_STRING([--enable-libmount-mount],
-+				[Link mount.nfs with libmount (EXPERIMENTAL)])],
-+		enable_libmount=yes,
-+		enable_libmount=no)
-+fi
-+
- AC_ARG_ENABLE(tirpc,
- 	[AC_HELP_STRING([--enable-tirpc],
- 			[enable use of TI-RPC @<:@default=yes@:>@])],
-@@ -285,6 +294,13 @@ AC_SUBST(LIBCRYPT)
- AC_SUBST(LIBBSD)
- AC_SUBST(LIBBLKID)
- 
-+if test "$enable_libmount" != no; then
-+   AC_CHECK_LIB(mount, mnt_context_do_mount, [LIBMOUNT="-lmount"], AC_MSG_ERROR([libmount needed]))
-+   AC_CHECK_HEADER(libmount/libmount.h, , AC_MSG_ERROR([Cannot find libmount header file libmount/libmount.h]))
-+fi
-+AM_CONDITIONAL(CONFIG_LIBMOUNT, [test "$enable_libmount" = "yes"])
-+AC_SUBST(LIBMOUNT)
-+
- if test "$enable_gss" = yes; then
-   dnl 'gss' requires getnameinfo - at least for gssd_proc.c
-   AC_CHECK_FUNC([getnameinfo], , [AC_MSG_ERROR([GSSAPI support requires 'getnameinfo' function])])
-diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
-index a9553dc..056293c 100644
---- a/utils/mount/Makefile.am
-+++ b/utils/mount/Makefile.am
-@@ -9,7 +9,7 @@ man5_MANS	= nfs.man
- 
- sbin_PROGRAMS	= mount.nfs
- EXTRA_DIST = nfsmount.x $(man8_MANS) $(man5_MANS)
--mount_nfs_SOURCES = mount.c error.c network.c fstab.c token.c \
-+mount_common = error.c network.c fstab.c token.c \
- 		    parse_opt.c parse_dev.c \
- 		    nfsmount.c nfs4mount.c stropts.c\
- 		    nfsumount.c \
-@@ -19,7 +19,7 @@ mount_nfs_SOURCES = mount.c error.c network.c fstab.c token.c \
- 		    mount_config.h utils.c utils.h
- 
- if MOUNT_CONFIG
--mount_nfs_SOURCES += configfile.c
-+mount_common += configfile.c
- man5_MANS += nfsmount.conf.man
- EXTRA_DIST += nfsmount.conf
- endif
-@@ -27,6 +27,15 @@ endif
- mount_nfs_LDADD = ../../support/nfs/libnfs.a \
- 		  ../../support/export/libexport.a
- 
-+mount_nfs_SOURCES = $(mount_common)
-+
-+if CONFIG_LIBMOUNT
-+mount_nfs_SOURCES += mount_libmount.c
-+mount_nfs_LDADD += $(LIBMOUNT)
-+else
-+mount_nfs_SOURCES += mount.c
-+endif
-+
- MAINTAINERCLEANFILES = Makefile.in
- 
- install-exec-hook:
-diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
-new file mode 100644
-index 0000000..3d499c0
---- /dev/null
-+++ b/utils/mount/mount_libmount.c
-@@ -0,0 +1,398 @@
-+/*
-+ * mount_libmount.c -- Linux NFS [u]mount based on libmount
-+ *
-+ * Copyright (C) 2011 Karel Zak <kzak@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2, or (at your option)
-+ * any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <unistd.h>
-+#include <stdio.h>
-+#include <string.h>
-+#include <errno.h>
-+#include <getopt.h>
-+
-+#include <libmount/libmount.h>
-+
-+#include "nls.h"
-+#include "mount_config.h"
-+
-+#include "nfs_mount.h"
-+#include "nfs4_mount.h"
-+#include "stropts.h"
-+#include "version.h"
-+#include "xcommon.h"
-+
-+#include "error.h"
-+#include "utils.h"
-+
-+char *progname;
-+int nfs_mount_data_version;
-+int verbose;
-+int sloppy;
-+int string;
-+int nomtab;
-+
-+#define FOREGROUND	(0)
-+#define BACKGROUND	(1)
-+
-+static int try_mount(struct libmnt_context *cxt, int bg)
-+{
-+	struct libmnt_fs *fs;
-+	const char *p;
-+	char *src = NULL, *tgt = NULL, *type = NULL, *opts = NULL;
-+	unsigned long flags = 0;
-+	int fake, ret = 0;
-+
-+	fs = mnt_context_get_fs(cxt);
-+
-+	/* libmount returns read-only pointers (const char)
-+	 * so, reallocate for nfsmount() functions.
-+	 */
-+	if ((p = mnt_fs_get_source(fs)))		/* spec */
-+		src = strdup(p);
-+	if ((p = mnt_fs_get_target(fs)))		/* mountpoint */
-+		tgt = strdup(p);
-+	if ((p = mnt_fs_get_fstype(fs)))
-+		type = strdup(p);
-+	if ((p = mnt_fs_get_fs_options(fs)))
-+		opts = strdup(p);
-+
-+	mnt_context_get_mflags(cxt, &flags);	/* mount(2) flags */
-+	fake = mnt_context_is_fake(cxt);
-+
-+	if (string)
-+		ret = nfsmount_string(src, tgt, type, flags, &opts, fake, bg);
-+
-+	else if (strcmp(type, "nfs4") == 0)
-+		ret = nfs4mount(src, tgt, flags, &opts, fake, bg);
-+	else
-+		ret = nfsmount(src, tgt, flags, &opts, fake, bg);
-+
-+	if (!ret && !mnt_context_is_nomtab(cxt)) {
-+		/* it's possible that mount options was modified by nfsmount()
-+		 * functions -- update info in libmount as well
-+		 *
-+		 * Note that on systems without /etc/mtab the fs-specific
-+		 * options are not managed by libmount at all. We have to use
-+		 * "mount attributes" that are private for mount.<type> helpers.
-+		 * The umount.nfs reads the attributes.
-+		 */
-+		mnt_fs_set_attributes(fs, opts);	/* for non-mtab systems */
-+		mnt_fs_set_fs_options(fs, opts);	/* for mtab */
-+	}
-+
-+	free(src);
-+	free(tgt);
-+	free(type);
-+	free(opts);
-+
-+	return ret;
-+}
-+
-+/* returns: error = -1, success = 0 , unknown = 1 */
-+static int is_vers4(struct libmnt_context *cxt)
-+{
-+	struct libmnt_fs *fs = mnt_context_get_fs(cxt);
-+	struct libmnt_table *tb = NULL;
-+	const char *src = mnt_context_get_source(cxt),
-+		   *tgt = mnt_context_get_target(cxt);
-+	int rc = 1;
-+
-+	if (!src || !tgt)
-+		return -1;
-+
-+	if (!mnt_fs_is_kernel(fs)) {
-+		struct libmnt_table *tb = mnt_new_table_from_file("/proc/mounts");
-+
-+		if (!tb)
-+			return -1;
-+		fs = mnt_table_find_pair(tb, src, tgt, MNT_ITER_BACKWARD);
-+	}
-+
-+	if (fs) {
-+		const char *type = mnt_fs_get_fstype(fs);
-+		if (type && strcmp(type, "nfs4") == 0)
-+			rc = 0;
-+	}
-+	mnt_free_table(tb);
-+	return rc;
-+}
-+
-+static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
-+{
-+	int rc, c;
-+	struct libmnt_fs *fs;
-+	char *spec = NULL, *opts = NULL;
-+
-+	struct option longopts[] = {
-+		{ "force", 0, 0, 'f' },
-+		{ "help", 0, 0, 'h' },
-+		{ "no-mtab", 0, 0, 'n' },
-+		{ "verbose", 0, 0, 'v' },
-+		{ "read-only", 0, 0, 'r' },
-+		{ "lazy", 0, 0, 'l' },
-+		{ "types", 1, 0, 't' },
-+		{ NULL, 0, 0, 0 }
-+	};
-+
-+	mnt_context_init_helper(cxt, MNT_ACT_UMOUNT, 0);
-+
-+	while ((c = getopt_long (argc, argv, "fvnrlh", longopts, NULL)) != -1) {
-+
-+		rc = mnt_context_helper_setopt(cxt, c, optarg);
-+		if (rc == 0)		/* valid option */
-+			continue;
-+		if (rc < 0)		/* error (probably ENOMEM) */
-+			goto err;
-+					/* rc==1 means unknow option */
-+		umount_usage();
-+		return EX_USAGE;
-+	}
-+
-+	if (optind < argc)
-+		spec = argv[optind++];
-+
-+	if (!spec || (*spec != '/' && strchr(spec,':') == NULL)) {
-+		nfs_error(_("%s: no mount point provided"), progname);
-+		return EX_USAGE;
-+	}
-+
-+	if (mnt_context_set_target(cxt, spec))
-+		goto err;
-+	if (mnt_context_set_fstype_pattern(cxt, "nfs,nfs4"))	/* restrict filesystems */
-+		goto err;
-+
-+	/* read mtab/fstab, evaluate permissions, etc. */
-+	rc = mnt_context_prepare_umount(cxt);
-+	if (rc) {
-+		nfs_error(_("%s: failed to prepare umount: %s\n"),
-+					progname, strerror(-rc));
-+		goto err;
-+	}
-+
-+	/* NFS stores some mount options in userspace, in mtab or in libmount
-+	 * private mount table.
-+	 */
-+	fs = mnt_context_get_fs(cxt);
-+	if (fs) {
-+		opts = (char *) mnt_fs_get_attributes(fs);	/* /dev/.mount/utab */
-+		if (opts) {
-+			opts = strdup(opts);
-+			if (!opts)
-+				goto err;
-+		}
-+		else
-+			opts = mnt_fs_strdup_options(fs);	/* /etc/mtab */
-+	}
-+
-+	if (!mnt_context_is_lazy(cxt)) {
-+		if (opts) {
-+			/* we have full FS description (e.g. from mtab or /proc) */
-+			switch (is_vers4(cxt)) {
-+			case 0:
-+				/* We ignore the error from nfs_umount23.
-+				 * If the actual umount succeeds (in del_mtab),
-+				 * we don't want to signal an error, as that
-+				 * could cause /sbin/mount to retry!
-+				 */
-+				nfs_umount23(mnt_context_get_source(cxt), opts);
-+				break;
-+			case 1:			/* unknown */
-+				break;
-+			default:		/* error */
-+				goto err;
-+			}
-+		} else
-+			/* strange, no entry in mtab or /proc not mounted */
-+			nfs_umount23(spec, "tcp,v3");
-+	}
-+
-+	rc = mnt_context_do_umount(cxt);	/* call umount(2) syscall */
-+	mnt_context_finalize_mount(cxt);	/* mtab update */
-+
-+	if (!rc)
-+		goto err;
-+
-+	free(opts);
-+	return EX_SUCCESS;
-+err:
-+	free(opts);
-+	return EX_FAIL;
-+}
-+
-+static int mount_main(struct libmnt_context *cxt, int argc, char **argv)
-+{
-+	int rc, c;
-+	struct libmnt_fs *fs;
-+	char *spec = NULL, *mount_point = NULL, *opts = NULL;
-+
-+	struct option longopts[] = {
-+	  { "fake", 0, 0, 'f' },
-+	  { "help", 0, 0, 'h' },
-+	  { "no-mtab", 0, 0, 'n' },
-+	  { "read-only", 0, 0, 'r' },
-+	  { "ro", 0, 0, 'r' },
-+	  { "verbose", 0, 0, 'v' },
-+	  { "version", 0, 0, 'V' },
-+	  { "read-write", 0, 0, 'w' },
-+	  { "rw", 0, 0, 'w' },
-+	  { "options", 1, 0, 'o' },
-+	  { "sloppy", 0, 0, 's' },
-+	  { NULL, 0, 0, 0 }
-+	};
-+
-+	mount_config_init(progname);
-+	mnt_context_init_helper(cxt, MNT_ACT_MOUNT, 0);
-+
-+	while ((c = getopt_long(argc, argv, "fhnrVvwo:s", longopts, NULL)) != -1) {
-+
-+		rc = mnt_context_helper_setopt(cxt, c, optarg);
-+		if (rc == 0)		/* valid option */
-+			continue;
-+		if (rc < 0)		/* error (probably ENOMEM) */
-+			goto err;
-+					/* rc==1 means unknow option */
-+		switch (c) {
-+		case 'V':
-+			printf("%s: ("PACKAGE_STRING")\n", progname);
-+			return EX_SUCCESS;
-+		case 'h':
-+		default:
-+			mount_usage();
-+			return EX_USAGE;
-+		}
-+	}
-+
-+	if (optind < argc)
-+		spec = argv[optind++];
-+	if (optind < argc)
-+		mount_point = argv[optind++];
-+
-+	if (!mount_point) {
-+		nfs_error(_("%s: no mount point provided"), progname);
-+		goto err;
-+	}
-+	if (!spec) {
-+		nfs_error(_("%s: no mount spec provided"), progname);
-+		goto err;
-+	}
-+
-+	if (geteuid() != 0) {
-+		nfs_error(_("%s: not installed setuid - "
-+			    "\"user\" NFS mounts not supported."), progname);
-+		goto err;
-+	}
-+
-+	verbose = mnt_context_is_verbose(cxt);
-+	sloppy = mnt_context_is_sloppy(cxt);
-+	nomtab = mnt_context_is_nomtab(cxt);
-+
-+	if (strcmp(progname, "mount.nfs4") == 0)
-+		mnt_context_set_fstype(cxt, "nfs4");
-+	else
-+		mnt_context_set_fstype(cxt, "nfs");	/* default */
-+
-+	rc = mnt_context_set_source(cxt, spec);
-+	if (!rc)
-+		mnt_context_set_target(cxt, mount_point);
-+	if (rc) {
-+		nfs_error(_("%s: failed to set spec or mountpoint: %s"),
-+				progname, strerror(errno));
-+		goto err;
-+	}
-+
-+	mount_point = mnt_resolve_path(mount_point,
-+				       mnt_context_get_cache(cxt));
-+
-+	if (chk_mountpoint(mount_point))
-+		goto err;
-+	/*
-+	 * Concatenate mount options from the configuration file
-+	 */
-+	fs = mnt_context_get_fs(cxt);
-+	if (fs) {
-+		opts = mnt_fs_strdup_options(fs);
-+
-+		opts = mount_config_opts(spec, mount_point, opts);
-+		mnt_fs_set_options(fs, opts);
-+	}
-+
-+	rc = mnt_context_prepare_mount(cxt);
-+	if (rc) {
-+		nfs_error(_("%s: failed to prepare mount: %s\n"),
-+					progname, strerror(-rc));
-+		goto err;
-+	}
-+
-+	rc = try_mount(cxt, FOREGROUND);
-+
-+	if (rc == EX_BG) {
-+		printf(_("%s: backgrounding \"%s\"\n"),
-+			progname, mnt_context_get_source(cxt));
-+		printf(_("%s: mount options: \"%s\"\n"),
-+			progname, opts);
-+
-+		fflush(stdout);
-+
-+		if (daemon(0, 0)) {
-+			nfs_error(_("%s: failed to start "
-+					"background process: %s\n"),
-+					progname, strerror(errno));
-+			exit(EX_FAIL);
-+		}
-+
-+		rc = try_mount(cxt, BACKGROUND);
-+
-+		if (verbose && rc)
-+			printf(_("%s: giving up \"%s\"\n"),
-+				progname, mnt_context_get_source(cxt));
-+	}
-+
-+	mnt_context_set_syscall_status(cxt, rc);
-+	mnt_context_finalize_mount(cxt);	/* mtab update */
-+
-+	return rc;
-+err:
-+	return EX_FAIL;
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	struct libmnt_context *cxt;
-+	int rc;
-+
-+	mnt_init_debug(0);
-+	cxt = mnt_new_context();
-+	if (!cxt) {
-+		nfs_error(_("Can't initilize libmount: %s"),
-+					strerror(errno));
-+		rc = EX_FAIL;
-+		goto done;
-+	}
-+
-+	progname = basename(argv[0]);
-+	nfs_mount_data_version = discover_nfs_mount_data_version(&string);
-+
-+	if(!strncmp(progname, "umount", 6))
-+		rc = umount_main(cxt, argc, argv);
-+	else
-+		rc = mount_main(cxt, argc, argv);
-+done:
-+	mnt_free_context(cxt);
-+	return rc;
-+}
-+
--- 
-1.7.3.4
-
+> Mac-F4208EAA/Macmini2,1
+> RIP: 0010:[<ffffffff8119f973>]  [<ffffffff8119f973>]
+> nfs4_preprocess_stateid_op+0x3a3/0x490
+> RSP: 0018:ffff8800b399bd50  EFLAGS: 00010246
+> RAX: 0000000000000000 RBX: ffff8800b60a9000 RCX: ffffffff8175a010
+> RDX: ffff8800ab784e48 RSI: ffffffff8175a020 RDI: ffffffff8175a000
+> RBP: ffff8800a4ce5678 R08: 0000000000000000 R09: 0000000000000000
+> R10: ffff8800b3910180 R11: c600000000000000 R12: ffff8800b390f1c0
+> R13: ffff8800b390f1a0 R14: 0000000000000000 R15: ffff8800aba079a0
+> FS:  0000000000000000(0000) GS:ffff8800bde00000(0000)
+> knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> CR2: 00007f2b8805d000 CR3: 00000000b6fe8000 CR4: 00000000000006b0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> Process nfsd (pid: 2280, threadinfo ffff8800b399a000, task
+> ffff8800b63a62d0)
+> <0>Stack:
+>  000000004d507f0d ffff8800b390f1a0 ffff8800b3910040 ffff8800b391c000
+>  0000000016000000 0000000000000000 ffff8800b3910040 ffffffff8118f549
+>  ffff8800b390f000 ffff8800b3910000 ffff8800b390f000 ffff8800b391c000
+> <0>Call Trace:
+>  [<ffffffff8118f549>] ? nfsd4_read+0x79/0xc0
+>  [<ffffffff81190096>] ? nfsd4_proc_compound+0x416/0x4d0
+>  [<ffffffff8117f5ad>] ? nfsd_dispatch+0xfd/0x240
+>  [<ffffffff8146f1f9>] ? svc_process_common+0x339/0x680
+>  [<ffffffff81035b70>] ? default_wake_function+0x0/0x20
+>  [<ffffffff8117ecc0>] ? nfsd+0x0/0x150
+>  [<ffffffff8146f80a>] ? svc_process+0x10a/0x160
+>  [<ffffffff8117ecc0>] ? nfsd+0x0/0x150
+>  [<ffffffff8117ed72>] ? nfsd+0xb2/0x150
+>  [<ffffffff81055ff6>] ? kthread+0x96/0xa0
+>  [<ffffffff810039b4>] ? kernel_thread_helper+0x4/0x10
+>  [<ffffffff81055f60>] ? kthread+0x0/0xa0
+>  [<ffffffff810039b0>] ? kernel_thread_helper+0x0/0x10
+> <0>Code: 27 29 41 3b 47 50 0f 87 9a fd ff ff 0f 83 e9 fe ff ff e9 76 ff
+> ff ff 48 8b 42 48 45 31 f6 49 89 04 24 48 85 c0 0f 85 7b fd ff ff <0f>
+> 0b 49 8b 57 48 48 8b 42 40 48 85 c
+> 0 0f 85 2a ff ff ff 48 8b 
+> RIP  [<ffffffff8119f973>] nfs4_preprocess_stateid_op+0x3a3/0x490
+>  RSP <ffff8800b399bd50>
+> ---[ end trace 7ef2fa5b1b62014a ]---
+> 
+> Regards,
+> Tino
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
