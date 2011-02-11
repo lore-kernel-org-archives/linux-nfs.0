@@ -1,49 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 2605ds1-ynoe.0.fullrate.dk ([90.184.12.24]:43561 "EHLO
-	shrek.krogh.cc" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750893Ab1BNVHs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Feb 2011 16:07:48 -0500
-Message-ID: <4D59999E.9040302@krogh.cc>
-Date: Mon, 14 Feb 2011 22:07:42 +0100
-From: Jesper Krogh <jesper@krogh.cc>
-To: Jan Kara <jack@suse.cz>
-CC: linux-kernel@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: sync hangs - 2.6.35.10
-References: <4D47A99A.6050204@krogh.cc> <20110201121457.GA2059@quack.suse.cz>
-In-Reply-To: <20110201121457.GA2059@quack.suse.cz>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:50563 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757749Ab1BKUch (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Feb 2011 15:32:37 -0500
+Received: by bwz15 with SMTP id 15so3596334bwz.19
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2011 12:32:36 -0800 (PST)
+In-Reply-To: <76B48A68-FCC3-4E52-9FF3-43C6C68CD0AA@netapp.com>
+References: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
+	<76B48A68-FCC3-4E52-9FF3-43C6C68CD0AA@netapp.com>
+Date: Fri, 11 Feb 2011 15:32:35 -0500
+Message-ID: <AANLkTinMyMmFz5BH+sWxuX+T8aCr2n7tdTHjw-w4VwtZ@mail.gmail.com>
+Subject: Re: [PATCH 0/7] pnfs wave 4 proposal
+From: Fred Isaman <iisaman@netapp.com>
+To: Andy Adamson <andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-02-01 13:14, Jan Kara wrote:
->    Definitely. There have been several patches fixing livelock issues
-> in this area under various conditions. Considering your use case, you
-> might be hit by problems being fixed by commits:
-> 6585027a5e8cb490e3a761b2f3f3c3acf722aff2
-> aa373cf550994623efb5d49a4d8775bafd10bbc1
-> b9543dac5bbc4aef0a598965b6b34f6259ab9a9b
-> (went into 2.6.38-rc1)
-I couldn't get above to apply on a 2.6.35.10 kernel, but applied to
-a 2.6.37 the problem seems solved. Have they been queued up for stable?
-> possibly also older
-> 7624ee72aa09334af072853457a5d46d9901c3f8
-> (in 2.6.36-rc1)
-This one alone applied to 2.6.35 didn't solve it.
+On Fri, Feb 11, 2011 at 3:19 PM, Andy Adamson <andros@netapp.com> wrote:
+> I don't see pnfs_initiate_write
+>
+> -->Andy
+>
 
-jk@clyde:~$ time sync
+It is inlined at the end of nfs_rpc_setup, added in patch 5/7.
 
-real    19m2.650s
-user    0m0.000s
-sys    0m0.030s
-
-Without notable disk-activity while waiting. (<5MB/s measured using dstat)
-This sample was "decent" I've seen sync times over 2 horus on this system
-with 128GB of memory.. again without any notable disk-activity while 
-waiting.
-
-Thanks for your prompt response.
-
--- 
-Jesper
+Fred
