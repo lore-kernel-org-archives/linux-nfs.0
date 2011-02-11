@@ -1,66 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34575 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44219 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757209Ab1BKPmq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 10:42:46 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 2/4] RPC: clarify rpc_run_task error handling
-Date: Fri, 11 Feb 2011 10:42:36 -0500
-Message-Id: <1297438958-24861-3-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1297438958-24861-1-git-send-email-iisaman@netapp.com>
-References: <1297438958-24861-1-git-send-email-iisaman@netapp.com>
+	id S1756989Ab1BKUUL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Feb 2011 15:20:11 -0500
+Subject: Re: [PATCH 0/7] pnfs wave 4 proposal
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
+Date: Fri, 11 Feb 2011 15:19:54 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <76B48A68-FCC3-4E52-9FF3-43C6C68CD0AA@netapp.com>
+References: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
+To: Fred Isaman <iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-rpc_run_task can only fail if it is not passed in a preallocated task.
-However, that is not at all clear with the current code.  So
-remove several impossible to occur failure checks.
+I don't see pnfs_initiate_write
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- net/sunrpc/clnt.c  |    6 ------
- net/sunrpc/sched.c |    6 ------
- 2 files changed, 0 insertions(+), 12 deletions(-)
+-->Andy
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 57d344c..8b5a6b4 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -636,12 +636,6 @@ struct rpc_task *rpc_run_task(const struct rpc_task_setup *task_setup_data)
- 	rpc_task_set_client(task, task_setup_data->rpc_client);
- 	rpc_task_set_rpc_message(task, task_setup_data->rpc_message);
- 
--	if (task->tk_status != 0) {
--		int ret = task->tk_status;
--		rpc_put_task(task);
--		return ERR_PTR(ret);
--	}
--
- 	if (task->tk_action == NULL)
- 		rpc_call_start(task);
- 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index bb8f54f..a3f6d97 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -822,12 +822,6 @@ struct rpc_task *rpc_new_task(const struct rpc_task_setup *setup_data)
- 	}
- 
- 	rpc_init_task(task, setup_data);
--	if (task->tk_status < 0) {
--		int err = task->tk_status;
--		rpc_put_task(task);
--		return ERR_PTR(err);
--	}
--
- 	task->tk_flags |= flags;
- 	dprintk("RPC:       allocated task %p\n", task);
- 	return task;
--- 
-1.7.2.1
+On Feb 11, 2011, at 11:54 AM, Fred Isaman wrote:
+
+> These apply on top of Andy's wave3-on-nfs-for-next-rev4.
+> 
+> These patches give write functionality to the pnfs file layout driver.
+> The primary limitation is that we have not yet modified the commit
+> code, so we can not yet handle COMMITs to the data server.  We get
+> around this for the moment by sending any WRITE to a data server which
+> does not have commit-to-mds set as a SYNCH write.
+> 
+> Fred
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
