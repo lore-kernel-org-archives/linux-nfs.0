@@ -1,52 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp01.in.ibm.com ([122.248.162.1]:60235 "EHLO
-	e28smtp01.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755158Ab1BWNwz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 08:52:55 -0500
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
-        sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
-        jlayton@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl interoperability 
-Date: Wed, 23 Feb 2011 19:21:47 +0530
-Message-Id: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:54060 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758320Ab1BKW66 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Feb 2011 17:58:58 -0500
+Received: by bwz15 with SMTP id 15so3711121bwz.19
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2011 14:58:57 -0800 (PST)
+In-Reply-To: <AANLkTinSC8E1-Ym_KMn+jwUrjgdcEiBpQo=CazY6z9cV@mail.gmail.com>
+References: <AANLkTinSC8E1-Ym_KMn+jwUrjgdcEiBpQo=CazY6z9cV@mail.gmail.com>
+Date: Fri, 11 Feb 2011 17:58:56 -0500
+Message-ID: <AANLkTikCw+5DjYDtPZGNLATLA85E9Zr-2TbkCWAZ0F8d@mail.gmail.com>
+Subject: Re: Problems with Krb5/Nfs4, misconfiguration, bug or incompatibility?
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: CeR <cer.inet@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi,
+On Fri, Feb 11, 2011 at 1:38 PM, CeR <cer.inet@gmail.com> wrote:
+>
+> Hello. I have been trying to set up a local-teachpurpose-server at home.
+>
+> My enviroment: debian squeeze KVM/libvirt machine, with 2.6.32-5-amd64 kernel.
+>
+> When restarting services with the correct configuration, i get this:
+> As you can see, the keytab is there, with correct permissions to read by root.
+>
+> root@goku:~# /etc/init.d/nfs-common restart
+> Stopping NFS common utilities: gssd idmapd statd.
+> Starting NFS common utilities: statd idmapd gssd.
+>
+> root@goku:~# /etc/init.d/nfs-kernel-server restart
+> Stopping NFS kernel daemon: mountd svcgssd nfsd.
+> Unexporting directories for NFS kernel daemon....
+> Exporting directories for NFS kernel daemon....
+> Starting NFS kernel daemon: nfsd svcgssd failed!
+>
+> root@goku:~# tail /var/log/syslog
+> Feb 11 18:29:45 goku kernel: [ 2266.025197] nfsd: last server has
+> exited, flushing export cache
+> Feb 11 18:29:46 goku kernel: [ 2267.119699] svc: failed to register
+> lockdv1 RPC service (errno 97).
+> Feb 11 18:29:46 goku kernel: [ 2267.121318] NFSD: Using
+> /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+> Feb 11 18:29:46 goku kernel: [ 2267.122284] NFSD: starting 90-second
+> grace period
+> Feb 11 18:29:46 goku rpc.svcgssd[2333]: ERROR: GSS-API: error in
+> gss_acquire_cred(): Unspecified GSS failure.  Minor code may provide
+> more information - Key table entry not found
+> Feb 11 18:29:46 goku rpc.svcgssd[2333]: unable to obtain root
+> (machine) credentials
+> Feb 11 18:29:46 goku rpc.svcgssd[2333]: do you have a keytab entry for
+> nfs/<your.host>@<YOUR.REALM> in /etc/krb5.keytab?
+>
+> root@goku:~# ls -l /etc/krb5.keytab
+> -rw-r----- 1 root openldap 1210 feb 11 11:11 /etc/krb5.keytab
+>
+> root@goku:~# klist -k
+> Keytab name: WRFILE:/etc/krb5.keytab
+> KVNO Principal
+> ---- --------------------------------------------------------------------------
+>   2 host/goku.example.com@EXAMPLE.COM
+>   2 host/goku.example.com@EXAMPLE.COM
+>   2 host/goku.example.com@EXAMPLE.COM
+>   2 host/goku.example.com@EXAMPLE.COM
+>   2 ldap/goku.example.com@EXAMPLE.COM
+>   2 ldap/goku.example.com@EXAMPLE.COM
+>   2 ldap/goku.example.com@EXAMPLE.COM
+>   2 ldap/goku.example.com@EXAMPLE.COM
+>   4 nfs/goku.example.com@EXAMPLE.COM
+>   4 nfs/goku.example.com@EXAMPLE.COM
+>   4 nfs/goku.example.com@EXAMPLE.COM
+>   4 nfs/goku.example.com@EXAMPLE.COM
+>
+>
+> Is a bug? A incompatibility between my packages versions? A
+> configuration problem? Any idea?
+>
+>
+> Thank you. Best regards.
 
-The following set of patches implements VFS and ext4 changes needed to implement
-a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
-extended by file masks to fit into the standard POSIX file permission model.
-They are designed to work seamlessly locally as well as across the NFSv4 and
-CIFS/SMB2 network file system protocols.
+First, with this kernel version, you should only have one keytab entry
+for nfs/goku.example.com with a DES key.  (You don't show the
+enctypes, but I see you have 4 keys for nfs.)  You won't hit this
+problem until you get past the other error.
 
-Full patch series including NFS server and client changes can be found at
-git://git.kernel.org/pub/scm/linux/kernel/git/agruen/linux-2.6-richacl.git  richacl
-or
-git://git.kernel.org/pub/scm/linux/kernel/git/kvaneesh/linux-richacl.git richacl
+Make sure the reverse look-up for your server's host returns the
+correct name.  (Matching the name in the keytab, "goku.example.com")
 
-A user-space utility for displaying and changing richacls is available at [4]
-(a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
+Perhaps send a copy of /etc/hosts and your /etc/krb5.conf to see what
+might be misconfigured.
 
-[4] git://git.kernel.org/pub/scm/linux/kernel/git/agruen/richacl.git master
-
-To test richacl on ext4 use -o richacl mount option. This mount option may later be
-dropped in favour of a feature flag.
-
-More details regarding richacl can be found at
-http://acl.bestbits.at/richacl/
-
-Changes from v4:
-a) rebase to 2.6.38-rc6
-b) Fixes for MAY_DELETE_CHILD and MAY_DELETE_SELF when directory have sticky bits
-c) Fixes for NFsv4  permission checking to make it work better with new MAY_* flags
-
-
--aneesh
-
+K.C.
