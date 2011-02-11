@@ -1,57 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51331 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757840Ab1BKSAp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 13:00:45 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 12/17] SQUASHME remove filelayout_async_handle_error comment
-Date: Thu, 10 Feb 2011 20:52:45 -0500
-Message-Id: <1297389170-26702-13-git-send-email-andros@netapp.com>
-In-Reply-To: <1297389170-26702-12-git-send-email-andros@netapp.com>
-References: <1297389170-26702-1-git-send-email-andros@netapp.com>
- <1297389170-26702-2-git-send-email-andros@netapp.com>
- <1297389170-26702-3-git-send-email-andros@netapp.com>
- <1297389170-26702-4-git-send-email-andros@netapp.com>
- <1297389170-26702-5-git-send-email-andros@netapp.com>
- <1297389170-26702-6-git-send-email-andros@netapp.com>
- <1297389170-26702-7-git-send-email-andros@netapp.com>
- <1297389170-26702-8-git-send-email-andros@netapp.com>
- <1297389170-26702-9-git-send-email-andros@netapp.com>
- <1297389170-26702-10-git-send-email-andros@netapp.com>
- <1297389170-26702-11-git-send-email-andros@netapp.com>
- <1297389170-26702-12-git-send-email-andros@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:41882 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757328Ab1BKRlz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Feb 2011 12:41:55 -0500
+Subject: Re: NFS only mount with -o udp option
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com>
+Date: Fri, 11 Feb 2011 12:40:13 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
+References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com> <665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com> <AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com>
+To: Edgar Almonte <samudhio@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Which nfs-utils version and kernel release are you using?  What transport protocols are available from your NFS server?  It looks like only UDP.  I recall a bug fix in this area in the past year.
 
-squash into: pnfs-submit-wave3-filelayout-read-done
+On Feb 11, 2011, at 12:35 PM, Edgar Almonte wrote:
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c |    5 -----
- 1 files changed, 0 insertions(+), 5 deletions(-)
+> i get this without udp option:
+> 
+> mount: no type was given - I'll assume nfs because of the colon
+> mount.nfs: timeout set for Fri Feb 11 13:27:33 2011
+> mount.nfs: trying text-based options
+> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+> mount.nfs: mount(2): No such file or directory
+> mount.nfs: trying text-based options
+> 'vers=4,addr=fe80::224:21ff:fe57:368d,clientaddr=::'
+> mount.nfs: mount(2): Input/output error
+> mount.nfs: mount system call failed
+> 
+> 
+> and with udp option:
+> 
+> ount: no type was given - I'll assume nfs because of the colon
+> mount.nfs: timeout set for Fri Feb 11 13:28:29 2011
+> mount.nfs: trying text-based options
+> 'udp,vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+> mount.nfs: mount(2): No such file or directory
+> mount.nfs: trying text-based options 'udp,addr=192.168.1.102'
+> mount.nfs: prog 100003, trying vers=3, prot=17
+> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot UDP port 2049
+> mount.nfs: prog 100005, trying vers=3, prot=17
+> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+> heaven.local:/STORAGE on /nfs/STORAGE type nfs (rw,udp)
+> 
+> 
+> for other distro ( debian laptop ) without the udp option:
+> 
+> mount: no type was given - I'll assume nfs because of the colon
+> mount.nfs: timeout set for Fri Feb 11 13:31:37 2011
+> mount.nfs: trying text-based options
+> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.107'
+> mount.nfs: mount(2): No such file or directory
+> mount.nfs: trying text-based options 'addr=192.168.1.102'
+> mount.nfs: prog 100003, trying vers=3, prot=6
+> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
+> mount.nfs: prog 100005, trying vers=3, prot=17
+> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+> heaven.local:/STORAGE on /srv/nfs type nfs (rw)
+> 
+> 
+> and look like is some ipv6 issues
+> 
+> 
+> On Thu, Feb 10, 2011 at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>> On Feb 9, 2011, at 7:59 PM, Edgar Almonte wrote:
+>> 
+>>> hello list
+>>> 
+>>> like the subject say after some upgrade of my distro ( i have 2
+>>> machine with the same distro and only in one happne the problem ) i
+>>> can only mount nfs share using the option -o udp , without it i get
+>>> this error
+>>> mount.nfs: mount system call failed
+>> 
+>> What does
+>> 
+>>  sudo mount.nfs heaven.local:/STORAGE /nfs/STORAGE -v
+>> 
+>> say?  It should tell you how the mount command is negotiating with the server.
+>> 
+>>> i am using avahi-dns ( mdns ) for hostname resolve
+>>> 
+>>> command used:
+>>> mount heaven.local:/STORAGE /nfs/STORAGE/
+>>> check dns is work right :
+>>> 
+>>> ping heaven.local
+>>> PING heaven.local (192.168.1.102) 56(84) bytes of data.
+>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=1 ttl=64 time=0.153 ms
+>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=2 ttl=64 time=0.160 ms
+>>> ^C
+>>> --- heaven.local ping statistics ---
+>>> 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+>>> rtt min/avg/max/mdev = 0.153/0.156/0.160/0.013 ms
+>>> 
+>>> 
+>>> anyidea what i need check for solve this issue ?
+>>> 
+>>> thanks
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+>> 
+>> 
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 083f541..80e7a66 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -110,11 +110,6 @@ filelayout_set_lo_fail(struct pnfs_layout_segment *lseg)
- 	}
- }
- 
--/*
-- * Async I/O error handler.
-- *
-- * NFS4ERR_OLD_STATEID can not occur with a zero stateid seqid.
-- */
- static int filelayout_async_handle_error(struct rpc_task *task,
- 					 struct nfs4_state *state,
- 					 struct nfs_client *clp,
 -- 
-1.6.6
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
