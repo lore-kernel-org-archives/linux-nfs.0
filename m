@@ -1,92 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:49234 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:51331 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753546Ab1BQTrl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Feb 2011 14:47:41 -0500
-Subject: Re: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release
- to nfsiod
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20110217101014.39bcc80b@barsoom.rdu.redhat.com>
-References: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
-	 <1297783898.10103.22.camel@heimdal.trondhjem.org>
-	 <20110215113053.345e3abc@tlielax.poochiereds.net>
-	 <1297813624.10103.34.camel@heimdal.trondhjem.org>
-	 <1297865354.6596.13.camel@heimdal.trondhjem.org>
-	 <1297866373.6596.18.camel@heimdal.trondhjem.org>
-	 <20110216095002.1e7944c9@tlielax.poochiereds.net>
-	 <1297869677.6596.30.camel@heimdal.trondhjem.org>
-	 <20110216131307.0880ad00@tlielax.poochiereds.net>
-	 <20110217084052.34a6686b@barsoom.rdu.redhat.com>
-	 <20110217101014.39bcc80b@barsoom.rdu.redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 17 Feb 2011 11:47:24 -0800
-Message-ID: <1297972044.2964.27.camel@heimdal.trondhjem.org>
+	id S1757871Ab1BKSAp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Feb 2011 13:00:45 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 10/17] SQUASHME just return ds in nfs4_fl_prepare_ds
+Date: Thu, 10 Feb 2011 20:52:43 -0500
+Message-Id: <1297389170-26702-11-git-send-email-andros@netapp.com>
+In-Reply-To: <1297389170-26702-10-git-send-email-andros@netapp.com>
+References: <1297389170-26702-1-git-send-email-andros@netapp.com>
+ <1297389170-26702-2-git-send-email-andros@netapp.com>
+ <1297389170-26702-3-git-send-email-andros@netapp.com>
+ <1297389170-26702-4-git-send-email-andros@netapp.com>
+ <1297389170-26702-5-git-send-email-andros@netapp.com>
+ <1297389170-26702-6-git-send-email-andros@netapp.com>
+ <1297389170-26702-7-git-send-email-andros@netapp.com>
+ <1297389170-26702-8-git-send-email-andros@netapp.com>
+ <1297389170-26702-9-git-send-email-andros@netapp.com>
+ <1297389170-26702-10-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-02-17 at 10:10 -0500, Jeff Layton wrote: 
-> On Thu, 17 Feb 2011 08:40:52 -0500
-> Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > 
-> > Looks like it finally failed on the 39th pass:
-> > 
-> > second check for lost reply on non-idempotent requests
-> > testing 50 idempotencies in directory "testdir"
-> > rmdir 1: Directory not empty
-> > special tests failed
-> > 
-> > When I look in the directory (several hours after it failed), the
-> > silly-renamed file is still there:
-> > 
-> > -rw---x--x. 1 root root   30 Feb 16 15:04 .nfs000000000000002d00000090
-> > 
-> > ...so I'm not sure what exactly is wrong yet, but it looks like the
-> > silly delete just never happened. Maybe there's a dentry refcount leak
-> > of some sort? There are no queued RPC's.
-> > 
-> > I'll keep looking at it but if you have ideas as to what it could be,
-> > let me know.
-> > 
-> 
-> I walked down the directory tree in crash on the live kernel and found
-> the dentry. The d_count is 0x0, so I'm not clear on why it didn't get
-> cleaned up:
-> 
-> crash> struct dentry.d_flags,d_count,d_name 0xffff880017d46a80
->   d_flags = 0xc000, 
->   d_count = 0x0, 
->   d_name = {
->     hash = 0xe08ab5c8, 
->     len = 0x1c, 
->     name = 0xffff880017d46ab8 ".nfs000000000000002d00000090"
->   }, 
-> 
-> 
-> The d_flags are:
-> 
-> #define DCACHE_OP_REVALIDATE    0x4000
-> #define DCACHE_OP_DELETE        0x8000
-> 
-> ...very odd. I'd have expected to see this one set too:
-> 
-> #define DCACHE_NFSFS_RENAMED  0x0002
-> 
-> I suppose the async sillyrename call could have failed and we ended up
-> calling nfs_cancel_async_unlink? I'll stick in some printk's around
-> that area and see if I can figure out what's going on...
-> 
+From: Andy Adamson <andros@netapp.com>
 
-Perhaps I missed a call site that needs an rpc_put_task_async()?
+squash into: pnfs_submit: filelayout i/o helpers
 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayoutdev.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 673e31e..6a7de00 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -599,5 +599,5 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ 			return NULL;
+ 		}
+ 	}
+-	return dsaddr->ds_list[ds_idx];
++	return ds;
+ }
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.6.6
 
