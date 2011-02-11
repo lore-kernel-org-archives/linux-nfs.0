@@ -1,46 +1,277 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp102.sbc.mail.mud.yahoo.com ([68.142.198.201]:20598 "HELO
-	smtp102.sbc.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753674Ab1B1P10 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2011 10:27:26 -0500
-Received: from hope.more-right-rudder.com (localhost.localdomain [127.0.0.1])
-	by hope.more-right-rudder.com (8.14.4/8.14.4) with ESMTP id p1SFRNst010559
-	for <linux-nfs@vger.kernel.org>; Mon, 28 Feb 2011 10:27:23 -0500
-Message-Id: <201102281527.p1SFRNst010559@hope.more-right-rudder.com>
+Received: from mx2.netapp.com ([216.240.18.37]:28505 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757728Ab1BKQzB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Feb 2011 11:55:01 -0500
+Received: from localhost.localdomain (manjua-lxp.hq.netapp.com [10.58.49.248] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p1BGshZ9002533
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2011 08:54:47 -0800 (PST)
+From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: Possible NFSv4 locking bug
-From: "Rick Koshi" <nfs-bug-report@more-right-rudder.com>
-Date: Mon, 28 Feb 2011 10:27:23 -0500
+Subject: [PATCH 6/7] wave4: filelayout write
+Date: Fri, 11 Feb 2011 11:54:38 -0500
+Message-Id: <1297443279-19813-7-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
+References: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-Hi all, I hope this is the right place for this.
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
+Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Tested-by: Guo Mingyang <guomingyang@nrchpc.ac.cn>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/internal.h       |    5 ++
+ fs/nfs/nfs4filelayout.c |  103 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c       |   17 ++++++++
+ fs/nfs/write.c          |    5 ++-
+ include/linux/nfs_xdr.h |    1 +
+ 5 files changed, 130 insertions(+), 1 deletions(-)
 
-I'm using NFSv4, server and client both running 2.6.36.
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index f69a322..34096a1 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -272,6 +272,10 @@ extern int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
+ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+ 
+ /* write.c */
++extern int nfs_initiate_write(struct nfs_write_data *data,
++			      struct rpc_clnt *clnt,
++			      const struct rpc_call_ops *call_ops,
++			      int how);
+ extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
+ #ifdef CONFIG_MIGRATION
+ extern int nfs_migrate_page(struct address_space *,
+@@ -282,6 +286,7 @@ extern int nfs_migrate_page(struct address_space *,
+ 
+ /* nfs4proc.c */
+ extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
++extern void nfs4_reset_write(struct rpc_task *task, struct nfs_write_data *data);
+ extern int _nfs4_call_sync(struct nfs_server *server,
+ 			   struct rpc_message *msg,
+ 			   struct nfs4_sequence_args *args,
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 80e7a66..be4af22 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -208,12 +208,69 @@ static void filelayout_read_release(void *data)
+ 	rdata->mds_ops->rpc_release(data);
+ }
+ 
++static int filelayout_write_done_cb(struct rpc_task *task,
++				struct nfs_write_data *data)
++{
++	int reset = 0;
++
++	if (filelayout_async_handle_error(task, data->args.context->state,
++					  data->ds_clp, &reset) == -EAGAIN) {
++		struct nfs_client *clp;
++
++		dprintk("%s calling restart ds_clp %p ds_clp->cl_session %p\n",
++			__func__, data->ds_clp, data->ds_clp->cl_session);
++		if (reset) {
++			nfs4_reset_write(task, data);
++			filelayout_set_lo_fail(data->lseg);
++			clp = NFS_SERVER(data->inode)->nfs_client;
++		} else
++			clp = data->ds_clp;
++		nfs_restart_rpc(task, clp);
++		return -EAGAIN;
++	}
++
++	return 0;
++}
++
++static void filelayout_write_prepare(struct rpc_task *task, void *data)
++{
++	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++
++	if (nfs41_setup_sequence(wdata->ds_clp->cl_session,
++				&wdata->args.seq_args, &wdata->res.seq_res,
++				0, task))
++		return;
++
++	rpc_call_start(task);
++}
++
++static void filelayout_write_call_done(struct rpc_task *task, void *data)
++{
++	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++
++	/* Note this may cause RPC to be resent */
++	wdata->mds_ops->rpc_call_done(task, data);
++}
++
++static void filelayout_write_release(void *data)
++{
++	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
++
++	wdata->mds_ops->rpc_release(data);
++}
++
+ struct rpc_call_ops filelayout_read_call_ops = {
+ 	.rpc_call_prepare = filelayout_read_prepare,
+ 	.rpc_call_done = filelayout_read_call_done,
+ 	.rpc_release = filelayout_read_release,
+ };
+ 
++struct rpc_call_ops filelayout_write_call_ops = {
++	.rpc_call_prepare = filelayout_write_prepare,
++	.rpc_call_done = filelayout_write_call_done,
++	.rpc_release = filelayout_write_release,
++};
++
+ static enum pnfs_try_status
+ filelayout_read_pagelist(struct nfs_read_data *data)
+ {
+@@ -254,6 +311,51 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	return PNFS_ATTEMPTED;
+ }
+ 
++/* Perform async writes. */
++static enum pnfs_try_status
++filelayout_write_pagelist(struct nfs_write_data *data, int sync)
++{
++	struct pnfs_layout_segment *lseg = data->lseg;
++	struct nfs4_pnfs_ds *ds;
++	loff_t offset = data->args.offset;
++	u32 idx;
++	struct nfs_fh *fh;
++
++	/* Retrieve the correct rpc_client for the byte range */
++	idx = nfs4_fl_calc_ds_index(lseg, offset);
++	ds = nfs4_fl_prepare_ds(lseg, idx);
++	if (!ds) {
++		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
++		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
++		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
++		return PNFS_NOT_ATTEMPTED;
++	}
++	dprintk("%s ino %lu sync %d req %Zu@%llu DS:%x:%hu\n", __func__,
++		data->inode->i_ino, sync, (size_t) data->args.count, offset,
++		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
++
++	/* We can't handle commit to ds yet */
++	if (!FILELAYOUT_LSEG(lseg)->commit_through_mds)
++		data->args.stable = NFS_FILE_SYNC;
++
++	data->write_done_cb = filelayout_write_done_cb;
++	data->ds_clp = ds->ds_clp;
++	fh = nfs4_fl_select_ds_fh(lseg, offset);
++	if (fh)
++		data->args.fh = fh;
++	/*
++	 * Get the file offset on the dserver. Set the write offset to
++	 * this offset and save the original offset.
++	 */
++	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
++	data->mds_offset = offset;
++
++	/* Perform an asynchronous write */
++	nfs_initiate_write(data, ds->ds_clp->cl_rpcclient,
++			   &filelayout_write_call_ops, sync);
++	return PNFS_ATTEMPTED;
++}
++
+ /*
+  * filelayout_check_layout()
+  *
+@@ -475,6 +577,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.free_lseg               = filelayout_free_lseg,
+ 	.pg_test                 = filelayout_pg_test,
+ 	.read_pagelist           = filelayout_read_pagelist,
++	.write_pagelist          = filelayout_write_pagelist,
+ };
+ 
+ static int __init nfs4filelayout_init(void)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 3952f7c..6cce678 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3144,6 +3144,23 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+ 	return data->write_done_cb(task, data);
+ }
+ 
++/* Reset the the nfs_write_data to send the write to the MDS. */
++void nfs4_reset_write(struct rpc_task *task, struct nfs_write_data *data)
++{
++	dprintk("%s Reset task for i/o through \n", __func__);
++	put_lseg(data->lseg);
++	data->lseg          = NULL;
++	data->ds_clp        = NULL;
++	data->write_done_cb = nfs4_write_done_cb;
++	data->args.fh       = NFS_FH(data->inode);
++	data->args.bitmask  = data->res.server->cache_consistency_bitmask;
++	data->args.offset   = data->mds_offset;
++	data->res.fattr     = &data->fattr;
++	task->tk_ops        = data->mds_ops;
++	rpc_task_reset_client(task, NFS_CLIENT(data->inode));
++}
++EXPORT_SYMBOL_GPL(nfs4_reset_write);
++
+ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_message *msg)
+ {
+ 	struct nfs_server *server = NFS_SERVER(data->inode);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 24cc34d..5757b06 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -783,7 +783,7 @@ static int flush_task_priority(int how)
+ 	return RPC_PRIORITY_NORMAL;
+ }
+ 
+-static int nfs_initiate_write(struct nfs_write_data *data,
++int nfs_initiate_write(struct nfs_write_data *data,
+ 		       struct rpc_clnt *clnt,
+ 		       const struct rpc_call_ops *call_ops,
+ 		       int how)
+@@ -833,6 +833,7 @@ static int nfs_initiate_write(struct nfs_write_data *data,
+ out:
+ 	return ret;
+ }
++EXPORT_SYMBOL(nfs_initiate_write);
+ 
+ /*
+  * Set up the argument/result storage required for the RPC call.
+@@ -1186,6 +1187,7 @@ int nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
+ 		 */
+ 		static unsigned long    complain;
+ 
++		/* Note this will print the MDS for a DS write */
+ 		if (time_before(complain, jiffies)) {
+ 			dprintk("NFS:       faulty NFS server %s:"
+ 				" (committed = %d) != (stable = %d)\n",
+@@ -1206,6 +1208,7 @@ int nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
+ 			/* Was this an NFSv2 write or an NFSv3 stable write? */
+ 			if (resp->verf->committed != NFS_UNSTABLE) {
+ 				/* Resend from where the server left off */
++				data->mds_offset += resp->count;
+ 				argp->offset += resp->count;
+ 				argp->pgbase += resp->count;
+ 				argp->count -= resp->count;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 9ff26f9..a045d12 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1045,6 +1045,7 @@ struct nfs_write_data {
+ #ifdef CONFIG_NFS_V4
+ 	unsigned long		timestamp;	/* For lease renewal */
+ #endif
++	__u64			mds_offset;	/* Filelayout dense stripe */
+ 	struct page		*page_array[NFS_PAGEVEC_SIZE];
+ };
+ 
+-- 
+1.7.2.1
 
-I've found that when I lock an NFS-mounted file on a client, the server
-reserves an open file descriptor (as seen in /proc/sys/fs/file-nr).
-The server never releases this descriptor, even if the client process
-explictly releases the lock or exits.
-
-In my case, I noticed this because I have a monitoring process which
-runs every 5 seconds and runs 'rrdtool' to log some status to a file
-on an NFS-mounted filesystem.  This allocated 720 files per hour, and
-eventually caused my server to run out of file descriptors and become
-unusable.  I experimented with a test program, and found that it's the
-fcntl64(3, F_SETLK, {type=F_WRLCK, ...}) system call that triggers
-the behavior, and that unlocking the file explictly doesn't help.
-
-Stopping the NFS service (including the lockd) does not release the
-open files.  Only rebooting resets the state.
-
-I'm no kernel expert.  Perhaps you can tell me if this is a necessary
-side effect of some part of the NFS implementation.  But to me, it looks
-like a bug.
-
-Thanks for your time,
-
-    -- Koshi
