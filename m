@@ -1,40 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:54195 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752470Ab1BITpY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Feb 2011 14:45:24 -0500
-From: Tom Tucker <tom@ogc.us>
-Subject: [PATCH 0/2] RPCRDMA Fixes
-To: Trond.Myklebust@netapp.com
-Cc: spelic@shiftmail.org, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Date: Wed, 09 Feb 2011 13:45:23 -0600
-Message-ID: <20110209194430.22358.46254.stgit@build.ogc.int>
-Content-Type: text/plain; charset="utf-8"
+Received: from borg.medozas.de ([188.40.89.202]:45622 "EHLO borg.medozas.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750699Ab1BKK3k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Feb 2011 05:29:40 -0500
+From: Jan Engelhardt <jengelh@medozas.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] configure: reduce minimum autoconf version to 2.65
+Date: Fri, 11 Feb 2011 11:29:34 +0100
+Message-Id: <1297420176-24960-2-git-send-email-jengelh@medozas.de>
+In-Reply-To: <1297420176-24960-1-git-send-email-jengelh@medozas.de>
+References: <1297420176-24960-1-git-send-email-jengelh@medozas.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-This pair of patches fixes a problem with the marshalling of XDR into
-RPCRDMA messages and an issue with FRMR mapping in the presence of transport
-errors. The problems were discovered together as part of looking into the
-ENOSPC problems seen by spelic@shiftmail.com.
+Bumping AC_PREREQ to 2.66 in commit
+fac889e58e61a8547f2de07e764eb1031b47d9a0 seems unwarranted; the
+constructs also work with 2.65.
 
-The fixes, however, are independent and do not rely on each other. I have tested
-them indepently and together on 64b with both Infiniband and iWARP. They have been
-compile tested on 32b.
-
+Signed-off-by: Jan Engelhardt <jengelh@medozas.de>
 ---
+ configure.in |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Tom Tucker (2):
-      RPCRDMA: Fix FRMR registration/invalidate handling.
-      RPCRDMA: Fix to XDR page base interpretation in marshalling logic.
-
-
- net/sunrpc/xprtrdma/rpc_rdma.c  |   86 +++++++++++++++++++--------------------
- net/sunrpc/xprtrdma/verbs.c     |   52 ++++++++++++++++++++----
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 
- 3 files changed, 87 insertions(+), 52 deletions(-)
-
+diff --git a/configure.in b/configure.in
+index 7ad3e5f..9341db1 100644
+--- a/configure.in
++++ b/configure.in
+@@ -1,7 +1,7 @@
+ #                                               -*- Autoconf -*-
+ # Process this file with autoconf to produce a configure script.
+ 
+-AC_PREREQ([2.66])
++AC_PREREQ([2.65])
+ AC_INIT([libnfsidmap],[0.24],[linux-nfs@vger.kernel.org])
+ AC_CONFIG_SRCDIR([nfsidmap.h])
+ AC_CONFIG_MACRO_DIR([m4])
 -- 
-Signed-off-by: Tom Tucker <tom@ogc.us>
+1.7.1
+
