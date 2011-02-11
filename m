@@ -1,91 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28031 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:51336 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754040Ab1BQNk4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Feb 2011 08:40:56 -0500
-Date: Thu, 17 Feb 2011 08:40:52 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release to
- nfsiod
-Message-ID: <20110217084052.34a6686b@barsoom.rdu.redhat.com>
-In-Reply-To: <20110216131307.0880ad00@tlielax.poochiereds.net>
-References: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
-	<1297783898.10103.22.camel@heimdal.trondhjem.org>
-	<20110215113053.345e3abc@tlielax.poochiereds.net>
-	<1297813624.10103.34.camel@heimdal.trondhjem.org>
-	<1297865354.6596.13.camel@heimdal.trondhjem.org>
-	<1297866373.6596.18.camel@heimdal.trondhjem.org>
-	<20110216095002.1e7944c9@tlielax.poochiereds.net>
-	<1297869677.6596.30.camel@heimdal.trondhjem.org>
-	<20110216131307.0880ad00@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=US-ASCII
+	id S1757802Ab1BKSAp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Feb 2011 13:00:45 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 16/17] SQUASHME restore lost put_lseg code
+Date: Thu, 10 Feb 2011 20:52:49 -0500
+Message-Id: <1297389170-26702-17-git-send-email-andros@netapp.com>
+In-Reply-To: <1297389170-26702-16-git-send-email-andros@netapp.com>
+References: <1297389170-26702-1-git-send-email-andros@netapp.com>
+ <1297389170-26702-2-git-send-email-andros@netapp.com>
+ <1297389170-26702-3-git-send-email-andros@netapp.com>
+ <1297389170-26702-4-git-send-email-andros@netapp.com>
+ <1297389170-26702-5-git-send-email-andros@netapp.com>
+ <1297389170-26702-6-git-send-email-andros@netapp.com>
+ <1297389170-26702-7-git-send-email-andros@netapp.com>
+ <1297389170-26702-8-git-send-email-andros@netapp.com>
+ <1297389170-26702-9-git-send-email-andros@netapp.com>
+ <1297389170-26702-10-git-send-email-andros@netapp.com>
+ <1297389170-26702-11-git-send-email-andros@netapp.com>
+ <1297389170-26702-12-git-send-email-andros@netapp.com>
+ <1297389170-26702-13-git-send-email-andros@netapp.com>
+ <1297389170-26702-14-git-send-email-andros@netapp.com>
+ <1297389170-26702-15-git-send-email-andros@netapp.com>
+ <1297389170-26702-16-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 16 Feb 2011 13:13:07 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+From: Andy Adamson <andros@netapp.com>
 
-> On Wed, 16 Feb 2011 10:21:17 -0500
-> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Wed, 2011-02-16 at 09:50 -0500, Jeff Layton wrote: 
-> > > Thanks Trond,
-> > > 
-> > > This builds, but I can't plug in the module:
-> > > 
-> > > [  103.540405] sunrpc: Unknown symbol __wake_up_locked_key (err 0)
-> > > 
-> > > ...I think __wake_up_locked_key will need to be exported too. I'll do
-> > > that and then test this out later today.
-> > 
-> > Thanks! I've added an EXPORT_SYMBOL_GPL() for __wake_up_locked_key to
-> > the patch.
-> > 
-> 
-> So far this patch looks good. I've been able to reproduce the problem
-> much more reliably with this patch and running the cthon special tests:
-> 
-> ---------------------------[snip]-------------------------
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 40381d2..0e3d75f 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1849,6 +1849,7 @@ static void nfs4_free_closedata(void *data)
->         struct nfs4_closedata *calldata = data;
->         struct nfs4_state_owner *sp = calldata->state->owner;
->  
-> +       msleep(100);
->         if (calldata->roc)
->                 pnfs_roc_release(calldata->state->inode);
->         nfs4_put_open_state(calldata->state);
-> ---------------------------[snip]-------------------------
-> 
-> ...with your patch on top of that, I've not been able to reproduce the
-> problem so far after around 20 passes. I'll plan to let the tests run
-> this evening to make sure, but initial results are good.
-> 
+Lost in merge from Fred's lseg rewrite.
 
-Looks like it finally failed on the 39th pass:
+squash into: pnfs-submit-wave3-lseg-refcounting
 
-second check for lost reply on non-idempotent requests
-testing 50 idempotencies in directory "testdir"
-rmdir 1: Directory not empty
-special tests failed
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/pnfs.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
 
-When I look in the directory (several hours after it failed), the
-silly-renamed file is still there:
-
--rw---x--x. 1 root root   30 Feb 16 15:04 .nfs000000000000002d00000090
-
-...so I'm not sure what exactly is wrong yet, but it looks like the
-silly delete just never happened. Maybe there's a dentry refcount leak
-of some sort? There are no queued RPC's.
-
-I'll keep looking at it but if you have ideas as to what it could be,
-let me know.
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 31e5f55..dc15a76 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -278,9 +278,12 @@ put_lseg(struct pnfs_layout_segment *lseg)
+ 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 	ino = lseg->pls_layout->plh_inode;
+ 	if (atomic_dec_and_lock(&lseg->pls_refcount, &ino->i_lock)) {
++		LIST_HEAD(free_me);
++
+ 		_put_lseg_common(lseg);
++		list_add(&lseg->pls_list, &free_me);
+ 		spin_unlock(&ino->i_lock);
+-		free_lseg(lseg);
++		pnfs_free_lseg_list(&free_me);
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(put_lseg);
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.6.6
+
