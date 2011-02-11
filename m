@@ -1,187 +1,176 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.opengridcomputing.com ([209.198.142.2]:54205 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752470Ab1BITpe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Feb 2011 14:45:34 -0500
-From: Tom Tucker <tom@ogc.us>
-Subject: [PATCH 2/2] RPCRDMA: Fix FRMR registration/invalidate handling.
-To: Trond.Myklebust@netapp.com
-Cc: spelic@shiftmail.org, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Date: Wed, 09 Feb 2011 13:45:34 -0600
-Message-ID: <20110209194533.22358.37966.stgit@build.ogc.int>
-In-Reply-To: <20110209194430.22358.46254.stgit@build.ogc.int>
-References: <20110209194430.22358.46254.stgit@build.ogc.int>
-Content-Type: text/plain; charset="utf-8"
+Received: from rcsinet10.oracle.com ([148.87.113.121]:30093 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754023Ab1BKX1V convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Feb 2011 18:27:21 -0500
+Subject: Re: NFS only mount with -o udp option
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com>
+Date: Fri, 11 Feb 2011 18:27:09 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <1A31AB06-8518-427C-8D0B-0058AA613D0E@oracle.com>
+References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com> <665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com> <AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com> <0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com> <AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com> <AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com>
+To: Edgar Almonte <samudhio@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-When the rpc_memreg_strategy is 5, FRMR are used to map RPC data.
-This mode uses an FRMR to map the RPC data, then invalidates
-(i.e. unregisers) the data in xprt_rdma_free. These FRMR are used
-across connections on the same mount, i.e. if the connection goes
-away on an idle timeout and reconnects later, the FRMR are not
-destroyed and recreated.
 
-This creates a problem for transport errors because the WR that
-invalidate an FRMR may be flushed (i.e. fail) leaving the
-FRMR valid. When the FRMR is later used to map an RPC it will fail,
-tearing down the transport and starting over. Over time, more and
-more of the FRMR pool end up in the wrong state resulting in
-seemingly random disconnects.
+On Feb 11, 2011, at 6:13 PM, Edgar Almonte wrote:
 
-This fix keeps track of the FRMR state explicitly by setting it's
-state based on the successful completion of a reg/inv WR. If the FRMR
-is ever used and found to be in the wrong state, an invalidate WR
-is prepended, re-syncing the FRMR state and avoiding the connection loss.
+> Was a ipv6 issues because i add this to the client with the problem:
+> options ipv6 disable=1
+> in /etc/modprobe.d/modprobe.conf
+> reboot and mount without using udp option work, output:
+> 
+> [root@circle zen]# mount heaven.local:/STORAGE /nfs/STORAGE/ -v
+> mount: no type was given - I'll assume nfs because of the colon
+> mount.nfs: timeout set for Fri Feb 11 19:11:53 2011
+> mount.nfs: trying text-based options
+> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+> mount.nfs: mount(2): No such file or directory
+> mount.nfs: trying text-based options 'addr=192.168.1.102'
+> mount.nfs: prog 100003, trying vers=3, prot=6
+> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
+> mount.nfs: prog 100005, trying vers=3, prot=17
+> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41849
+> 
+> and i think maybe is a bug of nfs-utils that can't handle in the
+> proper way this because a connection using ipv4 protocol exist ( even
+> it detect it )
+> 
+> should i need report something like this ? or and wrong ?
 
-Signed-off-by: Tom Tucker <tom@ogc.us>
----
+I swear this has been discussed and fixed already, but I can't find a specific fix in the bugzilla database or the git log.  nfs-utils 1.2.2 is at least a year old.  Can you update to the latest version and try again?
 
- net/sunrpc/xprtrdma/verbs.c     |   52 +++++++++++++++++++++++++++++++++------
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 2 files changed, 45 insertions(+), 8 deletions(-)
+Also, please report the NFS server's transport capabilities.  "rpcinfo 192.168.1.102" should work.  You may need the "-p" option.
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 5f4c7b3..570f08d 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -144,6 +144,7 @@ rpcrdma_cq_async_error_upcall(struct ib_event *event, void *context)
- static inline
- void rpcrdma_event_process(struct ib_wc *wc)
- {
-+	struct rpcrdma_mw *frmr;
- 	struct rpcrdma_rep *rep =
- 			(struct rpcrdma_rep *)(unsigned long) wc->wr_id;
- 
-@@ -154,15 +155,23 @@ void rpcrdma_event_process(struct ib_wc *wc)
- 		return;
- 
- 	if (IB_WC_SUCCESS != wc->status) {
--		dprintk("RPC:       %s: %s WC status %X, connection lost\n",
--			__func__, (wc->opcode & IB_WC_RECV) ? "recv" : "send",
--			 wc->status);
-+		dprintk("RPC:       %s: WC opcode %d status %X, connection lost\n",
-+			__func__, wc->opcode, wc->status);
- 		rep->rr_len = ~0U;
--		rpcrdma_schedule_tasklet(rep);
-+		if (wc->opcode != IB_WC_FAST_REG_MR && wc->opcode != IB_WC_LOCAL_INV)
-+			rpcrdma_schedule_tasklet(rep);
- 		return;
- 	}
- 
- 	switch (wc->opcode) {
-+	case IB_WC_FAST_REG_MR:
-+		frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
-+		frmr->r.frmr.state = FRMR_IS_VALID;
-+		break;
-+	case IB_WC_LOCAL_INV:
-+		frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
-+		frmr->r.frmr.state = FRMR_IS_INVALID;
-+		break;
- 	case IB_WC_RECV:
- 		rep->rr_len = wc->byte_len;
- 		ib_dma_sync_single_for_cpu(
-@@ -1450,6 +1459,11 @@ rpcrdma_map_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg, int writing)
- 		seg->mr_dma = ib_dma_map_single(ia->ri_id->device,
- 				seg->mr_offset,
- 				seg->mr_dmalen, seg->mr_dir);
-+	if (ib_dma_mapping_error(ia->ri_id->device, seg->mr_dma)) {
-+		dprintk("RPC:       %s: mr_dma %llx mr_offset %p mr_dma_len %zu\n",
-+			__func__,
-+			seg->mr_dma, seg->mr_offset, seg->mr_dmalen);
-+	}
- }
- 
- static void
-@@ -1469,7 +1483,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 			struct rpcrdma_xprt *r_xprt)
- {
- 	struct rpcrdma_mr_seg *seg1 = seg;
--	struct ib_send_wr frmr_wr, *bad_wr;
-+	struct ib_send_wr invalidate_wr, frmr_wr, *bad_wr, *post_wr;
-+
- 	u8 key;
- 	int len, pageoff;
- 	int i, rc;
-@@ -1484,6 +1499,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 		rpcrdma_map_one(ia, seg, writing);
- 		seg1->mr_chunk.rl_mw->r.frmr.fr_pgl->page_list[i] = seg->mr_dma;
- 		len += seg->mr_len;
-+		BUG_ON(seg->mr_len > PAGE_SIZE);
- 		++seg;
- 		++i;
- 		/* Check for holes */
-@@ -1494,26 +1510,45 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
- 		__func__, seg1->mr_chunk.rl_mw, i);
- 
-+	if (unlikely(seg1->mr_chunk.rl_mw->r.frmr.state == FRMR_IS_VALID)) {
-+		dprintk("RPC:       %s: frmr %x left valid, posting invalidate.\n",
-+			__func__,
-+			seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey);
-+		/* Invalidate before using. */
-+		memset(&invalidate_wr, 0, sizeof invalidate_wr);
-+		invalidate_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
-+		invalidate_wr.next = &frmr_wr;
-+		invalidate_wr.opcode = IB_WR_LOCAL_INV;
-+		invalidate_wr.send_flags = IB_SEND_SIGNALED;
-+		invalidate_wr.ex.invalidate_rkey =
-+			seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
-+		DECR_CQCOUNT(&r_xprt->rx_ep);
-+		post_wr = &invalidate_wr;
-+	} else
-+		post_wr = &frmr_wr;
-+
- 	/* Bump the key */
- 	key = (u8)(seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey & 0x000000FF);
- 	ib_update_fast_reg_key(seg1->mr_chunk.rl_mw->r.frmr.fr_mr, ++key);
- 
- 	/* Prepare FRMR WR */
- 	memset(&frmr_wr, 0, sizeof frmr_wr);
-+	frmr_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
- 	frmr_wr.opcode = IB_WR_FAST_REG_MR;
--	frmr_wr.send_flags = 0;			/* unsignaled */
-+	frmr_wr.send_flags = IB_SEND_SIGNALED;
- 	frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
- 	frmr_wr.wr.fast_reg.page_list = seg1->mr_chunk.rl_mw->r.frmr.fr_pgl;
- 	frmr_wr.wr.fast_reg.page_list_len = i;
- 	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
- 	frmr_wr.wr.fast_reg.length = i << PAGE_SHIFT;
-+	BUG_ON(frmr_wr.wr.fast_reg.length < len);
- 	frmr_wr.wr.fast_reg.access_flags = (writing ?
- 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
- 				IB_ACCESS_REMOTE_READ);
- 	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
--	rc = ib_post_send(ia->ri_id->qp, &frmr_wr, &bad_wr);
-+	rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
- 
- 	if (rc) {
- 		dprintk("RPC:       %s: failed ib_post_send for register,"
-@@ -1542,8 +1577,9 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- 		rpcrdma_unmap_one(ia, seg++);
- 
- 	memset(&invalidate_wr, 0, sizeof invalidate_wr);
-+	invalidate_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
- 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
--	invalidate_wr.send_flags = 0;			/* unsignaled */
-+	invalidate_wr.send_flags = IB_SEND_SIGNALED;
- 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index c7a7eba..cae761a 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -164,6 +164,7 @@ struct rpcrdma_mr_seg {		/* chunk descriptors */
- 				struct {
- 					struct ib_fast_reg_page_list *fr_pgl;
- 					struct ib_mr *fr_mr;
-+					enum { FRMR_IS_INVALID, FRMR_IS_VALID  } state;
- 				} frmr;
- 			} r;
- 			struct list_head mw_list;
+> On Fri, Feb 11, 2011 at 6:57 PM, Edgar Almonte <samudhio@gmail.com> wrote:
+>> [root@circle zen]# pacman -Qs nfs-utils
+>> local/nfs-utils 1.2.2-4 [0.69 MB]
+>>    Support programs for Network File Systems
+>> [root@circle zen]# uname -a
+>> Linux circle 2.6.36-ARCH #1 SMP PREEMPT Mon Jan 24 18:34:55 UTC 2011
+>> i686 Intel(R) Atom(TM) CPU D510 @ 1.66GHz GenuineIntel GNU/Linux
+>> 
+>> 
+>> On Fri, Feb 11, 2011 at 1:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>> Which nfs-utils version and kernel release are you using?  What transport protocols are available from your NFS server?  It looks like only UDP.  I recall a bug fix in this area in the past year.
+>>> 
+>>> On Feb 11, 2011, at 12:35 PM, Edgar Almonte wrote:
+>>> 
+>>>> i get this without udp option:
+>>>> 
+>>>> mount: no type was given - I'll assume nfs because of the colon
+>>>> mount.nfs: timeout set for Fri Feb 11 13:27:33 2011
+>>>> mount.nfs: trying text-based options
+>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>>>> mount.nfs: mount(2): No such file or directory
+>>>> mount.nfs: trying text-based options
+>>>> 'vers=4,addr=fe80::224:21ff:fe57:368d,clientaddr=::'
+>>>> mount.nfs: mount(2): Input/output error
+>>>> mount.nfs: mount system call failed
+>>>> 
+>>>> 
+>>>> and with udp option:
+>>>> 
+>>>> ount: no type was given - I'll assume nfs because of the colon
+>>>> mount.nfs: timeout set for Fri Feb 11 13:28:29 2011
+>>>> mount.nfs: trying text-based options
+>>>> 'udp,vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>>>> mount.nfs: mount(2): No such file or directory
+>>>> mount.nfs: trying text-based options 'udp,addr=192.168.1.102'
+>>>> mount.nfs: prog 100003, trying vers=3, prot=17
+>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot UDP port 2049
+>>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+>>>> heaven.local:/STORAGE on /nfs/STORAGE type nfs (rw,udp)
+>>>> 
+>>>> 
+>>>> for other distro ( debian laptop ) without the udp option:
+>>>> 
+>>>> mount: no type was given - I'll assume nfs because of the colon
+>>>> mount.nfs: timeout set for Fri Feb 11 13:31:37 2011
+>>>> mount.nfs: trying text-based options
+>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.107'
+>>>> mount.nfs: mount(2): No such file or directory
+>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
+>>>> mount.nfs: prog 100003, trying vers=3, prot=6
+>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
+>>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+>>>> heaven.local:/STORAGE on /srv/nfs type nfs (rw)
+>>>> 
+>>>> 
+>>>> and look like is some ipv6 issues
+>>>> 
+>>>> 
+>>>> On Thu, Feb 10, 2011 at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>> 
+>>>>> On Feb 9, 2011, at 7:59 PM, Edgar Almonte wrote:
+>>>>> 
+>>>>>> hello list
+>>>>>> 
+>>>>>> like the subject say after some upgrade of my distro ( i have 2
+>>>>>> machine with the same distro and only in one happne the problem ) i
+>>>>>> can only mount nfs share using the option -o udp , without it i get
+>>>>>> this error
+>>>>>> mount.nfs: mount system call failed
+>>>>> 
+>>>>> What does
+>>>>> 
+>>>>>  sudo mount.nfs heaven.local:/STORAGE /nfs/STORAGE -v
+>>>>> 
+>>>>> say?  It should tell you how the mount command is negotiating with the server.
+>>>>> 
+>>>>>> i am using avahi-dns ( mdns ) for hostname resolve
+>>>>>> 
+>>>>>> command used:
+>>>>>> mount heaven.local:/STORAGE /nfs/STORAGE/
+>>>>>> check dns is work right :
+>>>>>> 
+>>>>>> ping heaven.local
+>>>>>> PING heaven.local (192.168.1.102) 56(84) bytes of data.
+>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=1 ttl=64 time=0.153 ms
+>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=2 ttl=64 time=0.160 ms
+>>>>>> ^C
+>>>>>> --- heaven.local ping statistics ---
+>>>>>> 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+>>>>>> rtt min/avg/max/mdev = 0.153/0.156/0.160/0.013 ms
+>>>>>> 
+>>>>>> 
+>>>>>> anyidea what i need check for solve this issue ?
+>>>>>> 
+>>>>>> thanks
+>>>>>> --
+>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>> 
+>>>>> --
+>>>>> Chuck Lever
+>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>> 
+>>>>> 
+>>>>> 
+>>>>> 
+>>>>> 
+>>> 
+>>> --
+>>> Chuck Lever
+>>> chuck[dot]lever[at]oracle[dot]com
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>> 
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
