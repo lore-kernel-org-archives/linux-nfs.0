@@ -1,98 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:48817 "EHLO shutemov.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755304Ab1BHSmJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Feb 2011 13:42:09 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Rob Landley <rlandley@parallels.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v3, RESEND 01/16] sunrpc: mount rpc_pipefs on initialization
-Date: Tue,  8 Feb 2011 20:41:52 +0200
-Message-Id: <1297190527-19925-2-git-send-email-kas@openvz.org>
-In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
-References: <1297190527-19925-1-git-send-email-kas@openvz.org>
+Received: from out1.smtp.messagingengine.com ([66.111.4.25]:49119 "EHLO
+	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751226Ab1BKDtk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2011 22:49:40 -0500
+Subject: Re: vfs-scale, general questions (Re: NFS root lockups with -next
+ 20110113)
+From: Ian Kent <raven@themaw.net>
+To: "J. R. Okajima" <hooanon05@yahoo.co.jp>
+Cc: Nick Piggin <npiggin@gmail.com>,
+        Santosh Shilimkar <santosh.shilimkar@ti.com>,
+        Mark Brown <broonie@opensource.wolfsonmicro.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Nick Piggin <npiggin@kernel.dk>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+In-Reply-To: <909.1295419383@jrobl>
+References: <20110113120626.GB30351@opensource.wolfsonmicro.com>
+	 <8138.1294924927@jrobl> <676f5c24375e1cc2aa14fe6630ef1324@mail.gmail.com>
+	 <8482.1294926315@jrobl>
+	 <AANLkTim=VY7+fo6d_nUXVxs+iZ_f79qWu_eYMUjvhVJO@mail.gmail.com>
+	 <909.1295419383@jrobl>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 11 Feb 2011 11:49:29 +0800
+Message-ID: <1297396169.3844.11.camel@perseus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Mount rpc_pipefs on register_rpc_pipefs() and replace
-rpc_get_mount()/rpc_put_mount() implementation with mntget()/mntput().
+On Wed, 2011-01-19 at 15:43 +0900, J. R. Okajima wrote:
+> Hi,
+> 
+> Nick Piggin:
+> > Thanks for your help, can you see how I've fixed it in my vfs-scale
+> > tree? What do you think?
+> 
+> Your fix is great. I have no objection at all.
+> Other than the fix, here are more generic questions about vfs-scale work.
+> I am happy if you reply when you have time.
+> 
+> - getcwd(2) needs d_lock?
+>   It acquires rename_lock and then tests whether the pwd is removed by
+>   d_unhashed(). If a race condition between vfs_rename_dir() which may
+>   unhash/rehash the dentry happens, then getcwd() may return the wrong
+>   result due to unprotected d_unhashed() call, I am afraid. rename_lock
+>   doesn't help this case.
+> 
+> - what is the right order of dget() and mntget()?
+>   If I remember correctly, someone said "mntget() first and then
+>   dget(). when putting, do in reverse" in the discussion when
+>   path_{get,put}() were born. So it is called "the right order" in the
+>   commit log.
+>   It was many years ago. Is it still true? And should rcu-walk follow it
+>   too? The current implementation doesn't seem to care about this order.
 
-This commit introduces temprorary regression: there is no way to
-remove the module. It will be fixed at the end of the patchset.
+I didn't spot that, where did you see this?
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
-Reviewed-by: Rob Landley <rlandley@parallels.com>
----
- net/sunrpc/rpc_pipe.c |   26 +++++++++++++++-----------
- 1 files changed, 15 insertions(+), 11 deletions(-)
+I'm not sure about the get but I fairly sure the dput() has to be before
+the mntput() because the shrink_dcache_*() cleanup routines object to
+dentrys that have a reference count of more than one.
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 72bc536..9ab9355 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -29,7 +29,6 @@
- #include <linux/sunrpc/cache.h>
- 
- static struct vfsmount *rpc_mnt __read_mostly;
--static int rpc_mount_count;
- 
- static struct file_system_type rpc_pipe_fs_type;
- 
-@@ -423,18 +422,13 @@ struct rpc_filelist {
- 
- struct vfsmount *rpc_get_mount(void)
- {
--	int err;
--
--	err = simple_pin_fs(&rpc_pipe_fs_type, &rpc_mnt, &rpc_mount_count);
--	if (err != 0)
--		return ERR_PTR(err);
--	return rpc_mnt;
-+	return mntget(rpc_mnt);
- }
- EXPORT_SYMBOL_GPL(rpc_get_mount);
- 
- void rpc_put_mount(void)
- {
--	simple_release_fs(&rpc_mnt, &rpc_mount_count);
-+	mntput(rpc_mnt);
- }
- EXPORT_SYMBOL_GPL(rpc_put_mount);
- 
-@@ -1071,12 +1065,22 @@ int register_rpc_pipefs(void)
- 	if (!rpc_inode_cachep)
- 		return -ENOMEM;
- 	err = register_filesystem(&rpc_pipe_fs_type);
--	if (err) {
--		kmem_cache_destroy(rpc_inode_cachep);
--		return err;
-+	if (err)
-+		goto destroy_cache;
-+
-+	rpc_mnt = kern_mount(&rpc_pipe_fs_type);
-+	if (IS_ERR(rpc_mnt)) {
-+		err = PTR_ERR(rpc_mnt);
-+		goto unregister_fs;
- 	}
- 
- 	return 0;
-+
-+unregister_fs:
-+	unregister_filesystem(&rpc_pipe_fs_type);
-+destroy_cache:
-+	kmem_cache_destroy(rpc_inode_cachep);
-+	return err;
- }
- 
- void unregister_rpc_pipefs(void)
--- 
-1.7.4
+Ian
+
 
