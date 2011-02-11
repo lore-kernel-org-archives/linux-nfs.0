@@ -1,60 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from tac.ki.iif.hu ([193.6.222.43]:47812 "EHLO tac.ki.iif.hu"
+Received: from mx2.netapp.com ([216.240.18.37]:34575 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932265Ab1BYQnZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Feb 2011 11:43:25 -0500
-From: Ferenc Wagner <wferi@niif.hu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Seemingly inconsistent directory state under NFSv4
-References: <87sjvuiwnl.fsf@tac.ki.iif.hu> <87d3mkhvgb.fsf@tac.ki.iif.hu>
-	<20110223193929.GA13399@fieldses.org> <87vd098jk5.fsf@tac.ki.iif.hu>
-	<20110224172747.GA22070@fieldses.org>
-Date: Fri, 25 Feb 2011 17:43:23 +0100
-In-Reply-To: <20110224172747.GA22070@fieldses.org> (J. Bruce Fields's message
-	of "Thu, 24 Feb 2011 12:27:47 -0500")
-Message-ID: <87tyfsqd3o.fsf@tac.ki.iif.hu>
-Content-Type: text/plain; charset=us-ascii
+	id S1757209Ab1BKPmq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Feb 2011 10:42:46 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 2/4] RPC: clarify rpc_run_task error handling
+Date: Fri, 11 Feb 2011 10:42:36 -0500
+Message-Id: <1297438958-24861-3-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1297438958-24861-1-git-send-email-iisaman@netapp.com>
+References: <1297438958-24861-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-"J. Bruce Fields" <bfields@fieldses.org> writes:
+rpc_run_task can only fail if it is not passed in a preallocated task.
+However, that is not at all clear with the current code.  So
+remove several impossible to occur failure checks.
 
-> On Thu, Feb 24, 2011 at 05:48:58PM +0100, Ferenc Wagner wrote:
->
->> "J. Bruce Fields" <bfields@fieldses.org> writes:
->> One client removed the file, and another could still access it by name
->> (although not present in the directory listing).  So it could have been
->> a client-client conflict, even though we couldn't prove that the removed
->> file was actually in use on the client.  Is there a way to list the
->> delegations being hold by a client?
->
-> Not really.  They'll show up as LEASE entries in /proc/locks, with the
-> pid of an nfsd process, but no way to associate them with a client.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ net/sunrpc/clnt.c  |    6 ------
+ net/sunrpc/sched.c |    6 ------
+ 2 files changed, 0 insertions(+), 12 deletions(-)
 
-Well, thanks, this is something.  I'll check when it happens again.
-There are lots of such lines, so chances are that will be it.
-
-> Some way to dump lock (and other state) information might be a nice
-> thing to have some day for debugging and tuning.
-
-Yes, very much!  I guess the info is more or less readily available in
-the kernel, just isn't exported to userspace.  Looks like a job for
-debugfs.
-
->>> You can turn off delegations completely with
->>> 	echo 0 >/proc/sys/fs/leases-enable
->>> before starting the nfs server.
->> 
->> Wouldn't I lose most of the efficiency advantages of NFSv4 with that
->> move?
->
-> Probably so.  It would at least be a way to verify whether delegations
-> are the source of your problem, if you have a reproduceable test case.
-
-Not yet, unfortunately.  But we're trying to work one out.  It's pretty
-rare, so only mildly disturbing, but when it hits, it hits hard...
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 57d344c..8b5a6b4 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -636,12 +636,6 @@ struct rpc_task *rpc_run_task(const struct rpc_task_setup *task_setup_data)
+ 	rpc_task_set_client(task, task_setup_data->rpc_client);
+ 	rpc_task_set_rpc_message(task, task_setup_data->rpc_message);
+ 
+-	if (task->tk_status != 0) {
+-		int ret = task->tk_status;
+-		rpc_put_task(task);
+-		return ERR_PTR(ret);
+-	}
+-
+ 	if (task->tk_action == NULL)
+ 		rpc_call_start(task);
+ 
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index bb8f54f..a3f6d97 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -822,12 +822,6 @@ struct rpc_task *rpc_new_task(const struct rpc_task_setup *setup_data)
+ 	}
+ 
+ 	rpc_init_task(task, setup_data);
+-	if (task->tk_status < 0) {
+-		int err = task->tk_status;
+-		rpc_put_task(task);
+-		return ERR_PTR(err);
+-	}
+-
+ 	task->tk_flags |= flags;
+ 	dprintk("RPC:       allocated task %p\n", task);
+ 	return task;
 -- 
-Thanks,
-Feri.
+1.7.2.1
+
