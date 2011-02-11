@@ -1,90 +1,221 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753146Ab1BDVej (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Feb 2011 16:34:39 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 19/40] SQUASHME pnfs-submit wave3 filelayout read pagelist cleanup
-Date: Fri,  4 Feb 2011 16:33:41 -0500
-Message-Id: <1296855242-2592-20-git-send-email-andros@netapp.com>
-In-Reply-To: <1296855242-2592-19-git-send-email-andros@netapp.com>
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
- <1296855242-2592-2-git-send-email-andros@netapp.com>
- <1296855242-2592-3-git-send-email-andros@netapp.com>
- <1296855242-2592-4-git-send-email-andros@netapp.com>
- <1296855242-2592-5-git-send-email-andros@netapp.com>
- <1296855242-2592-6-git-send-email-andros@netapp.com>
- <1296855242-2592-7-git-send-email-andros@netapp.com>
- <1296855242-2592-8-git-send-email-andros@netapp.com>
- <1296855242-2592-9-git-send-email-andros@netapp.com>
- <1296855242-2592-10-git-send-email-andros@netapp.com>
- <1296855242-2592-11-git-send-email-andros@netapp.com>
- <1296855242-2592-12-git-send-email-andros@netapp.com>
- <1296855242-2592-13-git-send-email-andros@netapp.com>
- <1296855242-2592-14-git-send-email-andros@netapp.com>
- <1296855242-2592-15-git-send-email-andros@netapp.com>
- <1296855242-2592-16-git-send-email-andros@netapp.com>
- <1296855242-2592-17-git-send-email-andros@netapp.com>
- <1296855242-2592-18-git-send-email-andros@netapp.com>
- <1296855242-2592-19-git-send-email-andros@netapp.com>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:56756 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756856Ab1BKXqu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Feb 2011 18:46:50 -0500
+Received: by gxk9 with SMTP id 9so1308263gxk.19
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2011 15:46:49 -0800 (PST)
+In-Reply-To: <1A31AB06-8518-427C-8D0B-0058AA613D0E@oracle.com>
+References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com>
+	<665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com>
+	<AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com>
+	<0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
+	<AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com>
+	<AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com>
+	<1A31AB06-8518-427C-8D0B-0058AA613D0E@oracle.com>
+Date: Fri, 11 Feb 2011 19:46:48 -0400
+Message-ID: <AANLkTimiACttSQ+=M0UNGs5nZrP=zs0zRFV+4HP8c-OP@mail.gmail.com>
+Subject: Re: NFS only mount with -o udp option
+From: Edgar Almonte <samudhio@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+hmm i will try update to the last version but is the lasted in
+official repository of my distro
+the rpcinfo -p localhost output ( run at the server )
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c |   19 ++-----------------
- 1 files changed, 2 insertions(+), 17 deletions(-)
+rpcinfo -p localhost
+   program vers proto   port  service
+    100000    4   tcp    111  portmapper
+    100000    3   tcp    111  portmapper
+    100000    2   tcp    111  portmapper
+    100000    4   udp    111  portmapper
+    100000    3   udp    111  portmapper
+    100000    2   udp    111  portmapper
+    391002    2   tcp    661  sgi_fam
+    100024    1   udp  49216  status
+    100024    1   tcp  42903  status
+    100003    2   tcp   2049  nfs
+    100003    3   tcp   2049  nfs
+    100003    4   tcp   2049  nfs
+    100227    2   tcp   2049  nfs_acl
+    100227    3   tcp   2049  nfs_acl
+    100003    2   udp   2049  nfs
+    100003    3   udp   2049  nfs
+    100003    4   udp   2049  nfs
+    100227    2   udp   2049  nfs_acl
+    100227    3   udp   2049  nfs_acl
+    100021    1   udp  36092  nlockmgr
+    100021    3   udp  36092  nlockmgr
+    100021    4   udp  36092  nlockmgr
+    100021    1   tcp  52268  nlockmgr
+    100021    3   tcp  52268  nlockmgr
+    100021    4   tcp  52268  nlockmgr
+    100005    3   udp  41849  mountd
+    100005    3   tcp  46012  mountd
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 3daf351..dce90a0 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -132,14 +132,6 @@ struct rpc_call_ops filelayout_read_call_ops = {
- 	.rpc_release = filelayout_read_release,
- };
- 
--/* Perform sync or async reads.
-- *
-- * An optimization for the NFS file layout driver
-- * allows the original read/write data structs to be passed in the
-- * last argument.
-- *
-- * TODO: join with write_pagelist?
-- */
- static enum pnfs_try_status
- filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
- {
-@@ -149,8 +141,8 @@ filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
- 	u32 idx;
- 	struct nfs_fh *fh;
- 
--	dprintk("--> %s ino %lu nr_pages %d pgbase %u req %Zu@%llu\n",
--		__func__, data->inode->i_ino, nr_pages,
-+	dprintk("--> %s ino %lu pgbase %u req %Zu@%llu\n",
-+		__func__, data->inode->i_ino,
- 		data->args.pgbase, (size_t)data->args.count, offset);
- 
- 	/* Retrieve the correct rpc_client for the byte range */
-@@ -169,13 +161,6 @@ filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
- 	if (fh)
- 		data->args.fh = fh;
- 
--	/*
--	 * Now get the file offset on the dserver
--	 * Set the read offset to this offset, and
--	 * save the original offset in orig_offset
--	 * In the case of aync reads, the offset will be reset in the
--	 * call_ops->rpc_call_done() routine.
--	 */
- 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
- 	data->fldata.orig_offset = offset;
- 
--- 
-1.6.6
 
+On Fri, Feb 11, 2011 at 7:27 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+> On Feb 11, 2011, at 6:13 PM, Edgar Almonte wrote:
+>
+>> Was a ipv6 issues because i add this to the client with the problem:
+>> options ipv6 disable=1
+>> in /etc/modprobe.d/modprobe.conf
+>> reboot and mount without using udp option work, output:
+>>
+>> [root@circle zen]# mount heaven.local:/STORAGE /nfs/STORAGE/ -v
+>> mount: no type was given - I'll assume nfs because of the colon
+>> mount.nfs: timeout set for Fri Feb 11 19:11:53 2011
+>> mount.nfs: trying text-based options
+>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>> mount.nfs: mount(2): No such file or directory
+>> mount.nfs: trying text-based options 'addr=192.168.1.102'
+>> mount.nfs: prog 100003, trying vers=3, prot=6
+>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
+>> mount.nfs: prog 100005, trying vers=3, prot=17
+>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41849
+>>
+>> and i think maybe is a bug of nfs-utils that can't handle in the
+>> proper way this because a connection using ipv4 protocol exist ( even
+>> it detect it )
+>>
+>> should i need report something like this ? or and wrong ?
+>
+> I swear this has been discussed and fixed already, but I can't find a specific fix in the bugzilla database or the git log.  nfs-utils 1.2.2 is at least a year old.  Can you update to the latest version and try again?
+>
+> Also, please report the NFS server's transport capabilities.  "rpcinfo 192.168.1.102" should work.  You may need the "-p" option.
+>
+>> On Fri, Feb 11, 2011 at 6:57 PM, Edgar Almonte <samudhio@gmail.com> wrote:
+>>> [root@circle zen]# pacman -Qs nfs-utils
+>>> local/nfs-utils 1.2.2-4 [0.69 MB]
+>>>    Support programs for Network File Systems
+>>> [root@circle zen]# uname -a
+>>> Linux circle 2.6.36-ARCH #1 SMP PREEMPT Mon Jan 24 18:34:55 UTC 2011
+>>> i686 Intel(R) Atom(TM) CPU D510 @ 1.66GHz GenuineIntel GNU/Linux
+>>>
+>>>
+>>> On Fri, Feb 11, 2011 at 1:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>> Which nfs-utils version and kernel release are you using?  What transport protocols are available from your NFS server?  It looks like only UDP.  I recall a bug fix in this area in the past year.
+>>>>
+>>>> On Feb 11, 2011, at 12:35 PM, Edgar Almonte wrote:
+>>>>
+>>>>> i get this without udp option:
+>>>>>
+>>>>> mount: no type was given - I'll assume nfs because of the colon
+>>>>> mount.nfs: timeout set for Fri Feb 11 13:27:33 2011
+>>>>> mount.nfs: trying text-based options
+>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>>>>> mount.nfs: mount(2): No such file or directory
+>>>>> mount.nfs: trying text-based options
+>>>>> 'vers=4,addr=fe80::224:21ff:fe57:368d,clientaddr=::'
+>>>>> mount.nfs: mount(2): Input/output error
+>>>>> mount.nfs: mount system call failed
+>>>>>
+>>>>>
+>>>>> and with udp option:
+>>>>>
+>>>>> ount: no type was given - I'll assume nfs because of the colon
+>>>>> mount.nfs: timeout set for Fri Feb 11 13:28:29 2011
+>>>>> mount.nfs: trying text-based options
+>>>>> 'udp,vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>>>>> mount.nfs: mount(2): No such file or directory
+>>>>> mount.nfs: trying text-based options 'udp,addr=192.168.1.102'
+>>>>> mount.nfs: prog 100003, trying vers=3, prot=17
+>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot UDP port 2049
+>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+>>>>> heaven.local:/STORAGE on /nfs/STORAGE type nfs (rw,udp)
+>>>>>
+>>>>>
+>>>>> for other distro ( debian laptop ) without the udp option:
+>>>>>
+>>>>> mount: no type was given - I'll assume nfs because of the colon
+>>>>> mount.nfs: timeout set for Fri Feb 11 13:31:37 2011
+>>>>> mount.nfs: trying text-based options
+>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.107'
+>>>>> mount.nfs: mount(2): No such file or directory
+>>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
+>>>>> mount.nfs: prog 100003, trying vers=3, prot=6
+>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
+>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+>>>>> heaven.local:/STORAGE on /srv/nfs type nfs (rw)
+>>>>>
+>>>>>
+>>>>> and look like is some ipv6 issues
+>>>>>
+>>>>>
+>>>>> On Thu, Feb 10, 2011 at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>>
+>>>>>> On Feb 9, 2011, at 7:59 PM, Edgar Almonte wrote:
+>>>>>>
+>>>>>>> hello list
+>>>>>>>
+>>>>>>> like the subject say after some upgrade of my distro ( i have 2
+>>>>>>> machine with the same distro and only in one happne the problem ) i
+>>>>>>> can only mount nfs share using the option -o udp , without it i get
+>>>>>>> this error
+>>>>>>> mount.nfs: mount system call failed
+>>>>>>
+>>>>>> What does
+>>>>>>
+>>>>>>  sudo mount.nfs heaven.local:/STORAGE /nfs/STORAGE -v
+>>>>>>
+>>>>>> say?  It should tell you how the mount command is negotiating with the server.
+>>>>>>
+>>>>>>> i am using avahi-dns ( mdns ) for hostname resolve
+>>>>>>>
+>>>>>>> command used:
+>>>>>>> mount heaven.local:/STORAGE /nfs/STORAGE/
+>>>>>>> check dns is work right :
+>>>>>>>
+>>>>>>> ping heaven.local
+>>>>>>> PING heaven.local (192.168.1.102) 56(84) bytes of data.
+>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=1 ttl=64 time=0.153 ms
+>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=2 ttl=64 time=0.160 ms
+>>>>>>> ^C
+>>>>>>> --- heaven.local ping statistics ---
+>>>>>>> 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+>>>>>>> rtt min/avg/max/mdev = 0.153/0.156/0.160/0.013 ms
+>>>>>>>
+>>>>>>>
+>>>>>>> anyidea what i need check for solve this issue ?
+>>>>>>>
+>>>>>>> thanks
+>>>>>>> --
+>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>>
+>>>>>> --
+>>>>>> Chuck Lever
+>>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>>>
+>>>>>>
+>>>>>>
+>>>>>>
+>>>>>>
+>>>>
+>>>> --
+>>>> Chuck Lever
+>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
+>
