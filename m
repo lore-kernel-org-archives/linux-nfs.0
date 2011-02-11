@@ -1,196 +1,141 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33276 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753397Ab1BIQeU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Feb 2011 11:34:20 -0500
-Message-ID: <4D52C207.4040206@RedHat.com>
-Date: Wed, 09 Feb 2011 11:34:15 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Support AD style kerberos automatically in rpc.gss
-References: <20101222192227.GA31112@obsidianresearch.com>
-In-Reply-To: <20101222192227.GA31112@obsidianresearch.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-yi0-f46.google.com ([209.85.218.46]:65358 "EHLO
+	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758291Ab1BKW5F convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Feb 2011 17:57:05 -0500
+Received: by yib18 with SMTP id 18so1291432yib.19
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2011 14:57:04 -0800 (PST)
+In-Reply-To: <0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
+References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com>
+	<665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com>
+	<AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com>
+	<0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
+Date: Fri, 11 Feb 2011 18:57:04 -0400
+Message-ID: <AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com>
+Subject: Re: NFS only mount with -o udp option
+From: Edgar Almonte <samudhio@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-My apologies for taking so long with this... 
+[root@circle zen]# pacman -Qs nfs-utils
+local/nfs-utils 1.2.2-4 [0.69 MB]
+    Support programs for Network File Systems
+[root@circle zen]# uname -a
+Linux circle 2.6.36-ARCH #1 SMP PREEMPT Mon Jan 24 18:34:55 UTC 2011
+i686 Intel(R) Atom(TM) CPU D510 @ 1.66GHz GenuineIntel GNU/Linux
 
-On 12/22/2010 02:22 PM, Jason Gunthorpe wrote:
-> An Active Directory KDC will only grant a TGT for UPNs, getting
-> a TGT for SPNs is not possible:
-> 
-> $ kinit -k host/ib5@ADS.ORCORP.CA
-> kinit: Client not found in Kerberos database while getting initial credentials
-> 
-> The correct thing to do for machine credentials is to get a TGT
-> for the computer UPN <HOSTNAME>$@REALM:
-> $ kinit -k IB5\$
-> $ klist
-> 12/22/10 11:43:47  12/22/10 21:43:47  krbtgt/ADS.ORCORP.CA@ADS.ORCORP.CA
-> 
-> Samba automatically creates /etc/krb5.keytab entry for the computer UPN,
-> this patch makes gssd_refresh_krb5_machine_credential prefer it above
-> the SPNs if it is present.
-> 
-> The net result is that nfs client works automatically out of the box
-> if samba has been used to setup kerberos via 'net ads join' 'net ads
-> keytab create'
-> 
-> Tested using Windows Server 2003 R2 as the AD server.
-> 
-> Signed-off-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-Committed... 
 
-steved.
-> ---
->  utils/gssd/gssd.man    |    5 ++++
->  utils/gssd/krb5_util.c |   62 ++++++++++++++++++++++++++++++++++--------------
->  2 files changed, 49 insertions(+), 18 deletions(-)
-> 
-> I'm still looking into what to do for AD in the server case when
-> process_krb5_upcall is called with service == nfs. Some references
-> suggest setting AD's userPrincipalName to the nfs SPN, but it would be
-> really nice if that wasn't necessary.
-> 
-> Shouldn't it be possible to use the a ticket provided from the client
-> to send back an unsolicted reply??
-> 
-> Thanks,
-> Jason
-> 
-> diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
-> index 0a23cd6..073379d 100644
-> --- a/utils/gssd/gssd.man
-> +++ b/utils/gssd/gssd.man
-> @@ -53,6 +53,8 @@ To be more consistent with other implementations, we now look for
->  specific keytab entries.  The search order for keytabs to be used
->  for "machine credentials" is now:
->  .br
-> +  <HOSTNAME>$@<REALM>
-> +.br
->    root/<hostname>@<REALM>
->  .br
->    nfs/<hostname>@<REALM>
-> @@ -64,6 +66,9 @@ for "machine credentials" is now:
->    nfs/<anyname>@<REALM>
->  .br
->    host/<anyname>@<REALM>
-> +.IP
-> +If this search order does not use the correct key then provide a
-> +keytab file that contains only correct keys.
->  .TP
->  .B -p path
->  Tells
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index f071600..4b13fa1 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -768,6 +768,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
->  	krb5_error_code code;
->  	char **realmnames = NULL;
->  	char myhostname[NI_MAXHOST], targethostname[NI_MAXHOST];
-> +	char myhostad[NI_MAXHOST+1];
->  	int i, j, retval;
->  	char *default_realm = NULL;
->  	char *realm;
-> @@ -789,6 +790,14 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
->  		printerr(1, "%s while getting local hostname\n", k5err);
->  		goto out;
->  	}
-> +
-> +	/* Compute the active directory machine name HOST$ */
-> +	strcpy(myhostad, myhostname);
-> +	for (i = 0; myhostad[i] != 0; ++i)
-> +		myhostad[i] = toupper(myhostad[i]);
-> +	myhostad[i] = '$';
-> +	myhostad[i+1] = 0;
-> +
->  	retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
->  	if (retval)
->  		goto out;
-> @@ -833,32 +842,47 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
->  		if (strcmp(realm, default_realm) == 0)
->  			tried_default = 1;
->  		for (j = 0; svcnames[j] != NULL; j++) {
-> -			code = krb5_build_principal_ext(context, &princ,
-> -							strlen(realm),
-> -							realm,
-> -							strlen(svcnames[j]),
-> -							svcnames[j],
-> -							strlen(myhostname),
-> -							myhostname,
-> -							NULL);
-> +			char spn[300];
-> +
-> +			/*
-> +			 * The special svcname "$" means 'try the active
-> +			 * directory machine account'
-> +			 */
-> +			if (strcmp(svcnames[j],"$") == 0) {
-> +				snprintf(spn, sizeof(spn), "%s@%s", myhostad, realm);
-> +				code = krb5_build_principal_ext(context, &princ,
-> +								strlen(realm),
-> +								realm,
-> +								strlen(myhostad),
-> +								myhostad,
-> +								NULL);
-> +			} else {
-> +				snprintf(spn, sizeof(spn), "%s/%s@%s",
-> +					 svcnames[j], myhostname, realm);
-> +				code = krb5_build_principal_ext(context, &princ,
-> +								strlen(realm),
-> +								realm,
-> +								strlen(svcnames[j]),
-> +								svcnames[j],
-> +								strlen(myhostname),
-> +								myhostname,
-> +								NULL);
-> +			}
-> +
->  			if (code) {
->  				k5err = gssd_k5_err_msg(context, code);
-> -				printerr(1, "%s while building principal for "
-> -					 "'%s/%s@%s'\n", k5err, svcnames[j],
-> -					 myhostname, realm);
-> +				printerr(1, "%s while building principal for '%s'\n",
-> +					 k5err, spn);
->  				continue;
->  			}
->  			code = krb5_kt_get_entry(context, kt, princ, 0, 0, kte);
->  			krb5_free_principal(context, princ);
->  			if (code) {
->  				k5err = gssd_k5_err_msg(context, code);
-> -				printerr(3, "%s while getting keytab entry for "
-> -					 "'%s/%s@%s'\n", k5err, svcnames[j],
-> -					 myhostname, realm);
-> +				printerr(3, "%s while getting keytab entry for '%s'\n",
-> +					 k5err, spn);
->  			} else {
-> -				printerr(3, "Success getting keytab entry for "
-> -					 "'%s/%s@%s'\n",
-> -					 svcnames[j], myhostname, realm);
-> +				printerr(3, "Success getting keytab entry for '%s'\n",spn);
->  				retval = 0;
->  				goto out;
->  			}
-> @@ -870,6 +894,8 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
->  		 */
->  		for (j = 0; svcnames[j] != NULL; j++) {
->  			int found = 0;
-> +			if (strcmp(svcnames[j],"$") == 0)
-> +				continue;
->  			code = gssd_search_krb5_keytab(context, kt, realm,
->  						       svcnames[j], &found, kte);
->  			if (!code && found) {
-> @@ -1160,7 +1186,7 @@ gssd_refresh_krb5_machine_credential(char *hostname,
->  	krb5_keytab kt = NULL;;
->  	int retval = 0;
->  	char *k5err = NULL;
-> -	const char *svcnames[4] = { "root", "nfs", "host", NULL };
-> +	const char *svcnames[5] = { "$", "root", "nfs", "host", NULL };
->  
->  	/*
->  	 * If a specific service name was specified, use it.
+On Fri, Feb 11, 2011 at 1:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> Which nfs-utils version and kernel release are you using?  What transport protocols are available from your NFS server?  It looks like only UDP.  I recall a bug fix in this area in the past year.
+>
+> On Feb 11, 2011, at 12:35 PM, Edgar Almonte wrote:
+>
+>> i get this without udp option:
+>>
+>> mount: no type was given - I'll assume nfs because of the colon
+>> mount.nfs: timeout set for Fri Feb 11 13:27:33 2011
+>> mount.nfs: trying text-based options
+>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>> mount.nfs: mount(2): No such file or directory
+>> mount.nfs: trying text-based options
+>> 'vers=4,addr=fe80::224:21ff:fe57:368d,clientaddr=::'
+>> mount.nfs: mount(2): Input/output error
+>> mount.nfs: mount system call failed
+>>
+>>
+>> and with udp option:
+>>
+>> ount: no type was given - I'll assume nfs because of the colon
+>> mount.nfs: timeout set for Fri Feb 11 13:28:29 2011
+>> mount.nfs: trying text-based options
+>> 'udp,vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>> mount.nfs: mount(2): No such file or directory
+>> mount.nfs: trying text-based options 'udp,addr=192.168.1.102'
+>> mount.nfs: prog 100003, trying vers=3, prot=17
+>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot UDP port 2049
+>> mount.nfs: prog 100005, trying vers=3, prot=17
+>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+>> heaven.local:/STORAGE on /nfs/STORAGE type nfs (rw,udp)
+>>
+>>
+>> for other distro ( debian laptop ) without the udp option:
+>>
+>> mount: no type was given - I'll assume nfs because of the colon
+>> mount.nfs: timeout set for Fri Feb 11 13:31:37 2011
+>> mount.nfs: trying text-based options
+>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.107'
+>> mount.nfs: mount(2): No such file or directory
+>> mount.nfs: trying text-based options 'addr=192.168.1.102'
+>> mount.nfs: prog 100003, trying vers=3, prot=6
+>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
+>> mount.nfs: prog 100005, trying vers=3, prot=17
+>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+>> heaven.local:/STORAGE on /srv/nfs type nfs (rw)
+>>
+>>
+>> and look like is some ipv6 issues
+>>
+>>
+>> On Thu, Feb 10, 2011 at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>
+>>> On Feb 9, 2011, at 7:59 PM, Edgar Almonte wrote:
+>>>
+>>>> hello list
+>>>>
+>>>> like the subject say after some upgrade of my distro ( i have 2
+>>>> machine with the same distro and only in one happne the problem ) i
+>>>> can only mount nfs share using the option -o udp , without it i get
+>>>> this error
+>>>> mount.nfs: mount system call failed
+>>>
+>>> What does
+>>>
+>>>  sudo mount.nfs heaven.local:/STORAGE /nfs/STORAGE -v
+>>>
+>>> say?  It should tell you how the mount command is negotiating with the server.
+>>>
+>>>> i am using avahi-dns ( mdns ) for hostname resolve
+>>>>
+>>>> command used:
+>>>> mount heaven.local:/STORAGE /nfs/STORAGE/
+>>>> check dns is work right :
+>>>>
+>>>> ping heaven.local
+>>>> PING heaven.local (192.168.1.102) 56(84) bytes of data.
+>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=1 ttl=64 time=0.153 ms
+>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=2 ttl=64 time=0.160 ms
+>>>> ^C
+>>>> --- heaven.local ping statistics ---
+>>>> 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+>>>> rtt min/avg/max/mdev = 0.153/0.156/0.160/0.013 ms
+>>>>
+>>>>
+>>>> anyidea what i need check for solve this issue ?
+>>>>
+>>>> thanks
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>> --
+>>> Chuck Lever
+>>> chuck[dot]lever[at]oracle[dot]com
+>>>
+>>>
+>>>
+>>>
+>>>
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
+>
