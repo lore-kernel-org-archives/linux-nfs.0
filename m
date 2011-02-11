@@ -1,60 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45452 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750727Ab1BIFE2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Feb 2011 00:04:28 -0500
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1Pn2E7-000444-Su
-	for linux-nfs@vger.kernel.org; Wed, 09 Feb 2011 00:04:27 -0500
-Date: Wed, 9 Feb 2011 00:04:27 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: break lease on unlink due to rename
-Message-ID: <20110209050427.GB15514@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:65009 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758291Ab1BKXNG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Feb 2011 18:13:06 -0500
+Received: by gwj20 with SMTP id 20so1297220gwj.19
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2011 15:13:06 -0800 (PST)
+In-Reply-To: <AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com>
+References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com>
+	<665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com>
+	<AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com>
+	<0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
+	<AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com>
+Date: Fri, 11 Feb 2011 19:13:05 -0400
+Message-ID: <AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com>
+Subject: Re: NFS only mount with -o udp option
+From: Edgar Almonte <samudhio@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-When I added code to break leases on nfsd rename, I overlooked the case
-where the rename unlinks a preexisting file at the target path.
+Was a ipv6 issues because i add this to the client with the problem:
+options ipv6 disable=1
+in /etc/modprobe.d/modprobe.conf
+reboot and mount without using udp option work, output:
 
-It was an important oversight, and the fix is pretty minor, but there's
-no regression here, so I'm a bit on the fence whether to put this off
-to 2.6.39 or try to slip it into 2.6.38.
+[root@circle zen]# mount heaven.local:/STORAGE /nfs/STORAGE/ -v
+mount: no type was given - I'll assume nfs because of the colon
+mount.nfs: timeout set for Fri Feb 11 19:11:53 2011
+mount.nfs: trying text-based options
+'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+mount.nfs: mount(2): No such file or directory
+mount.nfs: trying text-based options 'addr=192.168.1.102'
+mount.nfs: prog 100003, trying vers=3, prot=6
+mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
+mount.nfs: prog 100005, trying vers=3, prot=17
+mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41849
 
---b.
+and i think maybe is a bug of nfs-utils that can't handle in the
+proper way this because a connection using ipv4 protocol exist ( even
+it detect it )
 
-commit 090f03c2183cf0ad8596c0a8c30a3976a47cdea8
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Sun Feb 6 16:46:30 2011 -0500
+should i need report something like this ? or and wrong ?
 
-    nfsd: break lease on unlink due to rename
-    
-    4795bb37effb7b8fe77e2d2034545d062d3788a8 "nfsd: break lease on unlink,
-    link, and rename", only broke the lease on the file that was being
-    renamed, and didn't handle the case where the target path refers to an
-    already-existing file that will be unlinked by a rename--in that case
-    the target file should have any leases broken as well.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 4218531..d7aa65c 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1744,6 +1744,13 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 	host_err = nfsd_break_lease(odentry->d_inode);
- 	if (host_err)
- 		goto out_drop_write;
-+	if (ndentry->d_inode) {
-+		host_err = nfsd_break_lease(ndentry->d_inode);
-+		if (host_err)
-+			goto out_drop_write;
-+	}
-+	if (host_err)
-+		goto out_drop_write;
- 	host_err = vfs_rename(fdir, odentry, tdir, ndentry);
- 	if (!host_err) {
- 		host_err = commit_metadata(tfhp);
+On Fri, Feb 11, 2011 at 6:57 PM, Edgar Almonte <samudhio@gmail.com> wrote:
+> [root@circle zen]# pacman -Qs nfs-utils
+> local/nfs-utils 1.2.2-4 [0.69 MB]
+>    Support programs for Network File Systems
+> [root@circle zen]# uname -a
+> Linux circle 2.6.36-ARCH #1 SMP PREEMPT Mon Jan 24 18:34:55 UTC 2011
+> i686 Intel(R) Atom(TM) CPU D510 @ 1.66GHz GenuineIntel GNU/Linux
+>
+>
+> On Fri, Feb 11, 2011 at 1:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> Which nfs-utils version and kernel release are you using?  What transport protocols are available from your NFS server?  It looks like only UDP.  I recall a bug fix in this area in the past year.
+>>
+>> On Feb 11, 2011, at 12:35 PM, Edgar Almonte wrote:
+>>
+>>> i get this without udp option:
+>>>
+>>> mount: no type was given - I'll assume nfs because of the colon
+>>> mount.nfs: timeout set for Fri Feb 11 13:27:33 2011
+>>> mount.nfs: trying text-based options
+>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>>> mount.nfs: mount(2): No such file or directory
+>>> mount.nfs: trying text-based options
+>>> 'vers=4,addr=fe80::224:21ff:fe57:368d,clientaddr=::'
+>>> mount.nfs: mount(2): Input/output error
+>>> mount.nfs: mount system call failed
+>>>
+>>>
+>>> and with udp option:
+>>>
+>>> ount: no type was given - I'll assume nfs because of the colon
+>>> mount.nfs: timeout set for Fri Feb 11 13:28:29 2011
+>>> mount.nfs: trying text-based options
+>>> 'udp,vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>>> mount.nfs: mount(2): No such file or directory
+>>> mount.nfs: trying text-based options 'udp,addr=192.168.1.102'
+>>> mount.nfs: prog 100003, trying vers=3, prot=17
+>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot UDP port 2049
+>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+>>> heaven.local:/STORAGE on /nfs/STORAGE type nfs (rw,udp)
+>>>
+>>>
+>>> for other distro ( debian laptop ) without the udp option:
+>>>
+>>> mount: no type was given - I'll assume nfs because of the colon
+>>> mount.nfs: timeout set for Fri Feb 11 13:31:37 2011
+>>> mount.nfs: trying text-based options
+>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.107'
+>>> mount.nfs: mount(2): No such file or directory
+>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
+>>> mount.nfs: prog 100003, trying vers=3, prot=6
+>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
+>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+>>> heaven.local:/STORAGE on /srv/nfs type nfs (rw)
+>>>
+>>>
+>>> and look like is some ipv6 issues
+>>>
+>>>
+>>> On Thu, Feb 10, 2011 at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>
+>>>> On Feb 9, 2011, at 7:59 PM, Edgar Almonte wrote:
+>>>>
+>>>>> hello list
+>>>>>
+>>>>> like the subject say after some upgrade of my distro ( i have 2
+>>>>> machine with the same distro and only in one happne the problem ) i
+>>>>> can only mount nfs share using the option -o udp , without it i get
+>>>>> this error
+>>>>> mount.nfs: mount system call failed
+>>>>
+>>>> What does
+>>>>
+>>>>  sudo mount.nfs heaven.local:/STORAGE /nfs/STORAGE -v
+>>>>
+>>>> say?  It should tell you how the mount command is negotiating with the server.
+>>>>
+>>>>> i am using avahi-dns ( mdns ) for hostname resolve
+>>>>>
+>>>>> command used:
+>>>>> mount heaven.local:/STORAGE /nfs/STORAGE/
+>>>>> check dns is work right :
+>>>>>
+>>>>> ping heaven.local
+>>>>> PING heaven.local (192.168.1.102) 56(84) bytes of data.
+>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=1 ttl=64 time=0.153 ms
+>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=2 ttl=64 time=0.160 ms
+>>>>> ^C
+>>>>> --- heaven.local ping statistics ---
+>>>>> 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+>>>>> rtt min/avg/max/mdev = 0.153/0.156/0.160/0.013 ms
+>>>>>
+>>>>>
+>>>>> anyidea what i need check for solve this issue ?
+>>>>>
+>>>>> thanks
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>
+>>>> --
+>>>> Chuck Lever
+>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>>
+>>
+>>
+>>
+>>
+>
