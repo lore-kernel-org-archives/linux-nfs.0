@@ -1,33 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:19507 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750783Ab1BMFRd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Feb 2011 00:17:33 -0500
-Message-ID: <4D576968.6070802@panasas.com>
-Date: Sun, 13 Feb 2011 07:17:28 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: andros@netapp.com
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/17] pnfs-submit-wave3-rev3 bug fixes and cleanup
-References: <1297389170-26702-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1297389170-26702-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from tac.ki.iif.hu ([193.6.222.43]:52673 "EHLO tac.ki.iif.hu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750820Ab1BKMSb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Feb 2011 07:18:31 -0500
+Received: from wferi by tac.ki.iif.hu with local (Exim 4.72)
+	(envelope-from <wferi@niif.hu>)
+	id 1PnrxF-0006xD-Cx
+	for linux-nfs@vger.kernel.org; Fri, 11 Feb 2011 13:18:29 +0100
+From: Ferenc Wagner <wferi@niif.hu>
+To: linux-nfs@vger.kernel.org
+Subject: server does not abort grace period
+Date: Fri, 11 Feb 2011 13:18:29 +0100
+Message-ID: <87wrl6ix2i.fsf@tac.ki.iif.hu>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-02-11 03:52, andros@netapp.com wrote:
-> These patches bring the pnfs-submit-wave3-rev3 branch equal to the wave3 patches
-> at git://linux-nfs.org/projects/andros/nfs-2.6.git wave3-on-nfs-for-next-rev4
-> which is being tested.
-> 
-> -->Andy
-> 
+Hi,
 
-Merged as pnfs-submit-wave3-rev4
-I also merged the cleaned up patchset from your tree as pnfs-submit-wave3-rev5
-and set pnfs-submit-wave3 to -rev5
+We're running 2.6.32 (Debian squeeze) NFS4 server and clients.  The
+server boots and runs purely from SAN, so we can start it on different
+computers.  In case of such "hardware failovers" I'd expect the clients
+to quickly reclaim their locks (if any) and thus the server to abort
+it's 90-second grace period early.  However, this does not happen,
+ruining our HA like, totally.
 
-Thanks!
-
-Benny
+So, the questions: is the functionality of aborting the grace period
+early missing from version 2.6.32 of the Linux kernel?  If yes, is it
+present in any kernel version?  If it should work, could someone offer
+some advice on debugging it?  If it isn't supported, what's the
+best practice of providing highly available NFSv4 today?
+-- 
+Thanks,
+Feri.
