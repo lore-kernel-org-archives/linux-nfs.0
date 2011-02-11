@@ -1,45 +1,166 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ey0-f174.google.com ([209.85.215.174]:64794 "EHLO
-	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752027Ab1BOPLf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 10:11:35 -0500
-Received: by eye27 with SMTP id 27so126283eye.19
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2011 07:11:34 -0800 (PST)
-In-Reply-To: <20110215150628.GA24358@infradead.org>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>
-	<1297711116-3139-9-git-send-email-andros@netapp.com>
-	<20110215092531.GB29871@infradead.org>
-	<AANLkTik+dVSmWgO6LRANo2xTt6iMqQ7ehvgqk-igQFhM@mail.gmail.com>
-	<20110215145828.GA18038@infradead.org>
-	<4D5A94CD.4030508@panasas.com>
-	<20110215150628.GA24358@infradead.org>
-Date: Tue, 15 Feb 2011 10:11:28 -0500
-Message-ID: <AANLkTimUK4gNpHdvYkTs2H6c9w757BqkEXFr54vD8_Y-@mail.gmail.com>
-Subject: Re: [PATCH 08/16] pnfs: wave 3: lseg refcounting
+Received: from mx2.netapp.com ([216.240.18.37]:17119 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757424Ab1BKQy7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Feb 2011 11:54:59 -0500
+Received: from localhost.localdomain (manjua-lxp.hq.netapp.com [10.58.49.248] (may be forged))
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p1BGshZ4002533
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2011 08:54:44 -0800 (PST)
 From: Fred Isaman <iisaman@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Benny Halevy <bhalevy@panasas.com>, andros@netapp.com,
-        trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/7] wave4: nfs: rearrange nfs_write_rpcsetup
+Date: Fri, 11 Feb 2011 11:54:33 -0500
+Message-Id: <1297443279-19813-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
+References: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Feb 15, 2011 at 10:06 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> Btw, what's the point for deferring the free_lseg calls?  It looks like it's
-> to avoid calling something that might block under i_lock, but looking around
-> the pnfs-submit branch it seems that root cause could be fixed trivially.
->
-> In common code *free_lseg* and *put_layout_hdr* do nothing but list
-> manipulations and kfrees.  And in filelayout_free_lseg we have just kfrees
-> and a call to pnfs_put_deviceid which may sleep due to calling
-> synchronize_rcu.  But synchronize_rcu is horribly inefficient to start with,
-> and you'd better be off using call_rcu to free the device id, which will
-> lead to much saner code and better performance.
->
+From: The pNFS Team <linux-nfs@vger.kernel.org>
 
-The fundamental reason was that filelayout_free_lseg can call
-nfs_put_client (through nfs4_fl_free_deviceid_callback), which in some
-codepaths grabs a mutex.
+Reorder nfs_write_rpcsetup, preparing for a pnfs switch.
 
-Fred
+FIXME: these signoffs are ridiculous for this simple patch.
+Lets just pick an author and be done with it.
+
+Reported-by: Alexandros Batsakis <batsakis@netapp.com>
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
+Signed-off-by: Mike Sager <sager@netapp.com>
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/write.c |   82 +++++++++++++++++++++++++++++++------------------------
+ 1 files changed, 46 insertions(+), 36 deletions(-)
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index aca0268..5604854 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -782,25 +782,21 @@ static int flush_task_priority(int how)
+ 	return RPC_PRIORITY_NORMAL;
+ }
+ 
+-/*
+- * Set up the argument/result storage required for the RPC call.
+- */
+-static int nfs_write_rpcsetup(struct nfs_page *req,
+-		struct nfs_write_data *data,
+-		const struct rpc_call_ops *call_ops,
+-		unsigned int count, unsigned int offset,
+-		int how)
++static int nfs_initiate_write(struct nfs_write_data *data,
++		       struct rpc_clnt *clnt,
++		       const struct rpc_call_ops *call_ops,
++		       int how)
+ {
+-	struct inode *inode = req->wb_context->path.dentry->d_inode;
++	struct inode *inode = data->inode;
+ 	int priority = flush_task_priority(how);
+ 	struct rpc_task *task;
+ 	struct rpc_message msg = {
+ 		.rpc_argp = &data->args,
+ 		.rpc_resp = &data->res,
+-		.rpc_cred = req->wb_context->cred,
++		.rpc_cred = data->cred,
+ 	};
+ 	struct rpc_task_setup task_setup_data = {
+-		.rpc_client = NFS_CLIENT(inode),
++		.rpc_client = clnt,
+ 		.task = &data->task,
+ 		.rpc_message = &msg,
+ 		.callback_ops = call_ops,
+@@ -811,12 +807,49 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+ 	};
+ 	int ret = 0;
+ 
++	/* Set up the initial task struct.  */
++	NFS_PROTO(inode)->write_setup(data, &msg);
++
++	dprintk("NFS: %5u initiated write call "
++		"(req %s/%lld, %u bytes @ offset %llu)\n",
++		data->task.tk_pid,
++		inode->i_sb->s_id,
++		(long long)NFS_FILEID(inode),
++		data->args.count,
++		(unsigned long long)data->args.offset);
++
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task)) {
++		ret = PTR_ERR(task);
++		goto out;
++	}
++	if (how & FLUSH_SYNC) {
++		ret = rpc_wait_for_completion_task(task);
++		if (ret == 0)
++			ret = task->tk_status;
++	}
++	rpc_put_task(task);
++out:
++	return ret;
++}
++
++/*
++ * Set up the argument/result storage required for the RPC call.
++ */
++static int nfs_write_rpcsetup(struct nfs_page *req,
++		struct nfs_write_data *data,
++		const struct rpc_call_ops *call_ops,
++		unsigned int count, unsigned int offset,
++		int how)
++{
++	struct inode *inode = req->wb_context->path.dentry->d_inode;
++
+ 	/* Set up the RPC argument and reply structs
+ 	 * NB: take care not to mess about with data->commit et al. */
+ 
+ 	data->req = req;
+ 	data->inode = inode = req->wb_context->path.dentry->d_inode;
+-	data->cred = msg.rpc_cred;
++	data->cred = req->wb_context->cred;
+ 
+ 	data->args.fh     = NFS_FH(inode);
+ 	data->args.offset = req_offset(req) + offset;
+@@ -837,30 +870,7 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+ 	data->res.verf    = &data->verf;
+ 	nfs_fattr_init(&data->fattr);
+ 
+-	/* Set up the initial task struct.  */
+-	NFS_PROTO(inode)->write_setup(data, &msg);
+-
+-	dprintk("NFS: %5u initiated write call "
+-		"(req %s/%lld, %u bytes @ offset %llu)\n",
+-		data->task.tk_pid,
+-		inode->i_sb->s_id,
+-		(long long)NFS_FILEID(inode),
+-		count,
+-		(unsigned long long)data->args.offset);
+-
+-	task = rpc_run_task(&task_setup_data);
+-	if (IS_ERR(task)) {
+-		ret = PTR_ERR(task);
+-		goto out;
+-	}
+-	if (how & FLUSH_SYNC) {
+-		ret = rpc_wait_for_completion_task(task);
+-		if (ret == 0)
+-			ret = task->tk_status;
+-	}
+-	rpc_put_task(task);
+-out:
+-	return ret;
++	return nfs_initiate_write(data, NFS_CLIENT(inode), call_ops, how);
+ }
+ 
+ /* If a nfs_flush_* function fails, it should remove reqs from @head and
+-- 
+1.7.2.1
+
