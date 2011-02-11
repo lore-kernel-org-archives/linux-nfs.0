@@ -1,182 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp07.in.ibm.com ([122.248.162.7]:53343 "EHLO
-	e28smtp07.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932207Ab1BWNy1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 08:54:27 -0500
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
-        sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
-        jlayton@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
-Subject: [PATCH -V5 21/24] ext4: Use IS_POSIXACL() to check for POSIX ACL support
-Date: Wed, 23 Feb 2011 19:22:08 +0530
-Message-Id: <1298469131-16555-22-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from cantor2.suse.de ([195.135.220.15]:47927 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751169Ab1BKJig (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Feb 2011 04:38:36 -0500
+Date: Fri, 11 Feb 2011 10:38:34 +0100
+Message-ID: <s5hsjvuoqqt.wl%tiwai@suse.de>
+From: Takashi Iwai <tiwai@suse.de>
+To: Tino Keitel <tino.keitel@tikei.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: 2.6.38-rc3: kernel BUG at fs/nfsd/nfs4state.c:3132!
+In-Reply-To: <20110208221235.GA16984@mac.home>
+References: <20110208221235.GA16984@mac.home>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Use IS_POSIXACL() instead of a file system specific mount flag since we
-have IS_POSIXACL() in the vfs already, anyway.
+At Tue, 8 Feb 2011 23:12:35 +0100,
+Tino Keitel wrote:
+> 
+> Hi,
+> 
+> I get the following error with kernel 2.6.38-rc3 during normal file access via
+> NFS v4.
+> 
+> At least one other user seems to have the same problem:
+> http://pastebin.com/QRq1TMkj
+> 
+> <0>------------[ cut here ]------------
+> kernel BUG at fs/nfsd/nfs4state.c:3132!
+> <0>invalid opcode: 0000 [#1] SMP 
+> <0>last sysfs file: /sys/devices/virtual/block/dm-8/uevent
+> CPU 0 
+> Modules linked in: ipv6 usblp btusb bluetooth loop arc4 ecb
+> snd_hda_codec_idt snd_hda_intel snd_hda_codec snd_pcm_oss ath5k
+> dvb_usb_vp7045 ath dvb_usb snd_pcm snd_timer mac80211
+>  snd_page_alloc evdev dvb_core sky2 rc_core ata_piix cfg80211
+> 
+> Pid: 2280, comm: nfsd Not tainted 2.6.38-rc3-00062-gb64606b #6
+> Mac-F4208EAA/Macmini2,1
+> RIP: 0010:[<ffffffff8119f973>]  [<ffffffff8119f973>]
+> nfs4_preprocess_stateid_op+0x3a3/0x490
+> RSP: 0018:ffff8800b399bd50  EFLAGS: 00010246
+> RAX: 0000000000000000 RBX: ffff8800b60a9000 RCX: ffffffff8175a010
+> RDX: ffff8800ab784e48 RSI: ffffffff8175a020 RDI: ffffffff8175a000
+> RBP: ffff8800a4ce5678 R08: 0000000000000000 R09: 0000000000000000
+> R10: ffff8800b3910180 R11: c600000000000000 R12: ffff8800b390f1c0
+> R13: ffff8800b390f1a0 R14: 0000000000000000 R15: ffff8800aba079a0
+> FS:  0000000000000000(0000) GS:ffff8800bde00000(0000)
+> knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> CR2: 00007f2b8805d000 CR3: 00000000b6fe8000 CR4: 00000000000006b0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> Process nfsd (pid: 2280, threadinfo ffff8800b399a000, task
+> ffff8800b63a62d0)
+> <0>Stack:
+>  000000004d507f0d ffff8800b390f1a0 ffff8800b3910040 ffff8800b391c000
+>  0000000016000000 0000000000000000 ffff8800b3910040 ffffffff8118f549
+>  ffff8800b390f000 ffff8800b3910000 ffff8800b390f000 ffff8800b391c000
+> <0>Call Trace:
+>  [<ffffffff8118f549>] ? nfsd4_read+0x79/0xc0
+>  [<ffffffff81190096>] ? nfsd4_proc_compound+0x416/0x4d0
+>  [<ffffffff8117f5ad>] ? nfsd_dispatch+0xfd/0x240
+>  [<ffffffff8146f1f9>] ? svc_process_common+0x339/0x680
+>  [<ffffffff81035b70>] ? default_wake_function+0x0/0x20
+>  [<ffffffff8117ecc0>] ? nfsd+0x0/0x150
+>  [<ffffffff8146f80a>] ? svc_process+0x10a/0x160
+>  [<ffffffff8117ecc0>] ? nfsd+0x0/0x150
+>  [<ffffffff8117ed72>] ? nfsd+0xb2/0x150
+>  [<ffffffff81055ff6>] ? kthread+0x96/0xa0
+>  [<ffffffff810039b4>] ? kernel_thread_helper+0x4/0x10
+>  [<ffffffff81055f60>] ? kthread+0x0/0xa0
+>  [<ffffffff810039b0>] ? kernel_thread_helper+0x0/0x10
+> <0>Code: 27 29 41 3b 47 50 0f 87 9a fd ff ff 0f 83 e9 fe ff ff e9 76 ff
+> ff ff 48 8b 42 48 45 31 f6 49 89 04 24 48 85 c0 0f 85 7b fd ff ff <0f>
+> 0b 49 8b 57 48 48 8b 42 40 48 85 c
+> 0 0f 85 2a ff ff ff 48 8b 
+> RIP  [<ffffffff8119f973>] nfs4_preprocess_stateid_op+0x3a3/0x490
+>  RSP <ffff8800b399bd50>
+> ---[ end trace 7ef2fa5b1b62014a ]---
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
----
- fs/ext4/acl.c   |   16 ++++++++--------
- fs/ext4/ext4.h  |    1 -
- fs/ext4/super.c |   16 +++++-----------
- 3 files changed, 13 insertions(+), 20 deletions(-)
+[Added relevant guys to Cc]
 
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index e0270d1..364514c 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -139,7 +139,7 @@ ext4_get_acl(struct inode *inode, int type)
- 	struct posix_acl *acl;
- 	int retval;
- 
--	if (!test_opt(inode->i_sb, POSIX_ACL))
-+	if (!IS_POSIXACL(inode))
- 		return NULL;
- 
- 	acl = get_cached_acl(inode, type);
-@@ -273,7 +273,7 @@ ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
- 	int error = 0;
- 
- 	if (!S_ISLNK(inode->i_mode)) {
--		if (test_opt(dir->i_sb, POSIX_ACL)) {
-+		if (IS_POSIXACL(inode)) {
- 			acl = ext4_get_acl(dir, ACL_TYPE_DEFAULT);
- 			if (IS_ERR(acl))
- 				return PTR_ERR(acl);
-@@ -281,7 +281,7 @@ ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
- 		if (!acl)
- 			inode->i_mode &= ~current_umask();
- 	}
--	if (test_opt(inode->i_sb, POSIX_ACL) && acl) {
-+	if (IS_POSIXACL(inode) && acl) {
- 		struct posix_acl *clone;
- 		mode_t mode;
- 
-@@ -335,7 +335,7 @@ ext4_acl_chmod(struct inode *inode)
- 
- 	if (S_ISLNK(inode->i_mode))
- 		return -EOPNOTSUPP;
--	if (!test_opt(inode->i_sb, POSIX_ACL))
-+	if (!IS_POSIXACL(inode))
- 		return 0;
- 	acl = ext4_get_acl(inode, ACL_TYPE_ACCESS);
- 	if (IS_ERR(acl) || !acl)
-@@ -377,7 +377,7 @@ ext4_xattr_list_acl_access(struct dentry *dentry, char *list, size_t list_len,
- {
- 	const size_t size = sizeof(POSIX_ACL_XATTR_ACCESS);
- 
--	if (!test_opt(dentry->d_sb, POSIX_ACL))
-+	if (!IS_POSIXACL(dentry->d_inode))
- 		return 0;
- 	if (list && size <= list_len)
- 		memcpy(list, POSIX_ACL_XATTR_ACCESS, size);
-@@ -390,7 +390,7 @@ ext4_xattr_list_acl_default(struct dentry *dentry, char *list, size_t list_len,
- {
- 	const size_t size = sizeof(POSIX_ACL_XATTR_DEFAULT);
- 
--	if (!test_opt(dentry->d_sb, POSIX_ACL))
-+	if (!IS_POSIXACL(dentry->d_inode))
- 		return 0;
- 	if (list && size <= list_len)
- 		memcpy(list, POSIX_ACL_XATTR_DEFAULT, size);
-@@ -406,7 +406,7 @@ ext4_xattr_get_acl(struct dentry *dentry, const char *name, void *buffer,
- 
- 	if (strcmp(name, "") != 0)
- 		return -EINVAL;
--	if (!test_opt(dentry->d_sb, POSIX_ACL))
-+	if (!IS_POSIXACL(dentry->d_inode))
- 		return -EOPNOTSUPP;
- 
- 	acl = ext4_get_acl(dentry->d_inode, type);
-@@ -431,7 +431,7 @@ ext4_xattr_set_acl(struct dentry *dentry, const char *name, const void *value,
- 
- 	if (strcmp(name, "") != 0)
- 		return -EINVAL;
--	if (!test_opt(inode->i_sb, POSIX_ACL))
-+	if (!IS_POSIXACL(dentry->d_inode))
- 		return -EOPNOTSUPP;
- 	if (!is_owner_or_cap(inode))
- 		return -EPERM;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3aa0b72..5d1f56a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -892,7 +892,6 @@ struct ext4_inode_info {
- #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
- #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
- #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
--#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
- #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
- #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
- #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f6a318f..adc97b7 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1006,9 +1006,9 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	}
- #endif
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
--	if (test_opt(sb, POSIX_ACL) && !(def_mount_opts & EXT4_DEFM_ACL))
-+	if ((sb->s_flags & MS_POSIXACL) && !(def_mount_opts & EXT4_DEFM_ACL))
- 		seq_puts(seq, ",acl");
--	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT4_DEFM_ACL))
-+	if (!(sb->s_flags & MS_POSIXACL) && (def_mount_opts & EXT4_DEFM_ACL))
- 		seq_puts(seq, ",noacl");
- #endif
- 	if (sbi->s_commit_interval != JBD2_DEFAULT_MAX_COMMIT_AGE*HZ) {
-@@ -1529,10 +1529,10 @@ static int parse_options(char *options, struct super_block *sb,
- #endif
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
- 		case Opt_acl:
--			set_opt(sb, POSIX_ACL);
-+			sb->s_flags |= MS_POSIXACL;
- 			break;
- 		case Opt_noacl:
--			clear_opt(sb, POSIX_ACL);
-+			sb->s_flags &= ~MS_POSIXACL;
- 			break;
- #else
- 		case Opt_acl:
-@@ -3101,7 +3101,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- #endif
- #ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	if (def_mount_opts & EXT4_DEFM_ACL)
--		set_opt(sb, POSIX_ACL);
-+		sb->s_flags |= MS_POSIXACL;
- #endif
- 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
- 		set_opt(sb, JOURNAL_DATA);
-@@ -3148,9 +3148,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			   &journal_ioprio, NULL, 0))
- 		goto failed_mount;
- 
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
--
- 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
- 	    (EXT4_HAS_COMPAT_FEATURE(sb, ~0U) ||
- 	     EXT4_HAS_RO_COMPAT_FEATURE(sb, ~0U) ||
-@@ -4235,9 +4232,6 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
- 		ext4_abort(sb, "Abort forced by user");
- 
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
--
- 	es = sbi->s_es;
- 
- 	if (sbi->s_journal) {
--- 
-1.7.1
+This occurred on my machine with 2.6.38-rc4.
+I didn't see it in 2.6.37.
 
+
+thanks,
+
+Takashi
