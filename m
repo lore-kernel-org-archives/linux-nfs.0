@@ -1,73 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:4796 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751144Ab1B0PEY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Feb 2011 10:04:24 -0500
-Message-ID: <4D6A67F3.3060308@panasas.com>
-Date: Sun, 27 Feb 2011 17:04:19 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        Andy Adamson <andros@netapp.com>, Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH] SQUASHME: pnfs: FIX stupid recall_layout BUG
-References: <4D686893.7010106@panasas.com>
-In-Reply-To: <4D686893.7010106@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from cantor2.suse.de ([195.135.220.15]:46471 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752990Ab1BNLfh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Feb 2011 06:35:37 -0500
+Date: Mon, 14 Feb 2011 12:35:35 +0100
+Message-ID: <s5hhbc6n914.wl%tiwai@suse.de>
+From: Takashi Iwai <tiwai@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Tino Keitel <tino.keitel@tikei.de>, Neil Brown <neilb@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: 2.6.38-rc3: kernel BUG at fs/nfsd/nfs4state.c:3132!
+In-Reply-To: <s5hvd0q4eue.wl%tiwai@suse.de>
+References: <s5hsjvuoqqt.wl%tiwai@suse.de>
+	<20110211152112.GA3005@fieldses.org>
+	<s5h62sqbnd7.wl%tiwai@suse.de>
+	<20110211153702.GC3005@fieldses.org>
+	<s5hwrl6a7ch.wl%tiwai@suse.de>
+	<20110211160532.GD3005@fieldses.org>
+	<s5hsjvua6tq.wl%tiwai@suse.de>
+	<s5hhbcamrv2.wl%tiwai@suse.de>
+	<s5hd3mymrr3.wl%tiwai@suse.de>
+	<20110211170036.GF3005@fieldses.org>
+	<20110211174312.GH3005@fieldses.org>
+	<s5hvd0q4eue.wl%tiwai@suse.de>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+At Fri, 11 Feb 2011 19:15:53 +0100,
+Takashi Iwai wrote:
+> 
+> At Fri, 11 Feb 2011 12:43:12 -0500,
+> J. Bruce Fields wrote:
+> > 
+> > On Fri, Feb 11, 2011 at 12:00:36PM -0500, J. Bruce Fields wrote:
+> > > On Fri, Feb 11, 2011 at 05:59:44PM +0100, Takashi Iwai wrote:
+> > > > At Fri, 11 Feb 2011 17:57:21 +0100,
+> > > > Takashi Iwai wrote:
+> > > > > 
+> > > > > At Fri, 11 Feb 2011 17:12:33 +0100,
+> > > > > Takashi Iwai wrote:
+> > > > > > 
+> > > > > > At Fri, 11 Feb 2011 11:05:32 -0500,
+> > > > > > J. Bruce Fields wrote:
+> > > > > > > 
+> > > > > > > On Fri, Feb 11, 2011 at 05:01:18PM +0100, Takashi Iwai wrote:
+> > > > > > > > At Fri, 11 Feb 2011 10:37:02 -0500,
+> > > > > > > > J. Bruce Fields wrote:
+> > > > > > > > > 
+> > > > > > > > > On Fri, Feb 11, 2011 at 04:29:56PM +0100, Takashi Iwai wrote:
+> > > > > > > > > > At Fri, 11 Feb 2011 10:21:12 -0500,
+> > > > > > > > > > J. Bruce Fields wrote:
+> > > > > > > > > > > Again, 2.6.38-rc4 does not have a BUG() on line 3132.  Could you post
+> > > > > > > > > > > the full oops message from your machine?
+> > > > > > > > > > 
+> > > > > > > > > > Well, on vanilla 2.6.38-rc4, it's in nfs4_preprocess_stateid_op():
+> > > > > > > > > >                if (filpp) {
+> > > > > > > > > >                         *filpp = find_readable_file(dp->dl_file);
+> > > > > > > > > > ==>                     BUG_ON(!*filpp);
+> > > > > > > > > >                 }
+> > > > > > > > > 
+> > > > > > > > > Oh good grief, my apologies--I mistyped "38" as "28"!
+> > > > > > > > > 
+> > > > > > > > > This looks like it could be a known delegation bug....  Would it be
+> > > > > > > > > possible for you to check whether this is reproduceable on
+> > > > > > > > > 
+> > > > > > > > > 	git://linux-nfs.org/~bfields/topics.git for-2.6.38-incoming
+> > > > > > > > 
+> > > > > > > > Hm, I couldn't pull it.
+> > > > > > > > 
+> > > > > > > >   % git pull 'git://linux-nfs.org/~bfields/topics.git' for-2.6.38-incoming
+> > > > > > > >   fatal: The remote end hung up unexpectedly
+> > > > > > > 
+> > > > > > > Should be linux-topics, apologies again:
+> > > > > > > 
+> > > > > > > 	git://linux-nfs.org/~bfields/linux-topics.git for-2.6.38-incoming
+> > > > > > 
+> > > > > > Thanks.  I'm going to give it a try now.
+> > > > > 
+> > > > > Looks good so far.  I'll let you know if it's triggered again.
+> > > > 
+> > > > Argh, too early to say.  Now I got the same one.
+> > > > 
+> > > > It seems that it's triggered when I start Firefox on NFS client
+> > > > machine.
+> > > 
+> > > OK, thanks, I'll take a look.
+> > 
+> > I think I see the problem....  Could you try fetching that branch again?
+> > 
+> > 	git://linux-nfs.org/~bfields/linux-topics.git for-2.6.38-incoming
+> > 
+> > (But I've only tested that it compiles so far.)
+> 
+> Sorry, I already left my office and have no access to the machine.
+> I'll test it on Monday if Tino can't test it beforehand.
 
-OK, who wrote this code? He did not stop to think for even a
-second. And surely it was never tested, since it is 100%
-repeatable. Smack yourself on the head!
-
-Simple: layout is in use, a recall comes in. _DELAY is returned
-meanwhile, a flag is set and no new IOs are allowed. The last
-IO dereference the layout, there are no more layouts. The server
-persists, sends a second recall, boom below code crash.
-
-* While at it fix an if();else {} style violation
-* The added BUG_ON is important because the address taken from
-  a member of a null pointer is not null, and the crash is not
-  at all clean.
-
-It no longer crashes my trunc_test, Now I need to verify the recall
-is actually honoured.
-
-Signed-off-by: Boaz Harrosh <Boaz Harrosh bharrosh@panasas.com>
----
- fs/nfs/callback_proc.c |    9 +++++++--
- 1 files changed, 7 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 12ab7b3..34aee16 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -252,9 +252,9 @@ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
- 			if (nfs_compare_fh(&args->cbl_fh,
- 					   &NFS_I(lo->plh_inode)->fh))
- 				continue;
--			if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags))
-+			if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
- 				rv = NFS4ERR_DELAY;
--			else {
-+			} else {
- 				/* FIXME I need to better understand igrab and
- 				 * does having a layout ref keep ino around?
- 				 *  It should.
-@@ -270,6 +270,11 @@ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
- 		}
- 		spin_unlock(&clp->cl_lock);
- 
-+		if (rv == NFS4ERR_NOMATCHING_LAYOUT)
-+			/* Nothing found */
-+			return rv;
-+
-+		BUG_ON(!lo->plh_inode);
- 		spin_lock(&lo->plh_inode->i_lock);
- 		if (rv == NFS4_OK) {
- 			lo->plh_block_lgets++;
--- 
-1.7.3.4
+I've been testing it for hours, and so far this looks good.
+FireFox starts and doesn't trigger BUG().
 
 
+Thanks!
+
+Takashi
