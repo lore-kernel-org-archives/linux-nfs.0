@@ -1,94 +1,198 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:37588 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751745Ab1BFTlx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Feb 2011 14:41:53 -0500
-Received: by bwz15 with SMTP id 15so4317756bwz.19
-        for <linux-nfs@vger.kernel.org>; Sun, 06 Feb 2011 11:41:52 -0800 (PST)
-In-Reply-To: <AANLkTikGXQrhLXi9-irp92io0DzHB+H3adD+1CdUX7W_@mail.gmail.com>
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
-	<1296855242-2592-2-git-send-email-andros@netapp.com>
-	<1296855242-2592-3-git-send-email-andros@netapp.com>
-	<1296855242-2592-4-git-send-email-andros@netapp.com>
-	<1296855242-2592-5-git-send-email-andros@netapp.com>
-	<1296855242-2592-6-git-send-email-andros@netapp.com>
-	<1296855242-2592-7-git-send-email-andros@netapp.com>
-	<1296855242-2592-8-git-send-email-andros@netapp.com>
-	<1296855242-2592-9-git-send-email-andros@netapp.com>
-	<1296855242-2592-10-git-send-email-andros@netapp.com>
-	<1296855242-2592-11-git-send-email-andros@netapp.com>
-	<1296855242-2592-12-git-send-email-andros@netapp.com>
-	<1296855242-2592-13-git-send-email-andros@netapp.com>
-	<1296855242-2592-14-git-send-email-andros@netapp.com>
-	<1296855242-2592-15-git-send-email-andros@netapp.com>
-	<1296855242-2592-16-git-send-email-andros@netapp.com>
-	<1296855242-2592-17-git-send-email-andros@netapp.com>
-	<1296855242-2592-18-git-send-email-andros@netapp.com>
-	<1296855242-2592-19-git-send-email-andros@netapp.com>
-	<1296855242-2592-20-git-send-email-andros@netapp.com>
-	<1296855242-2592-21-git-send-email-andros@netapp.com>
-	<1296855242-2592-22-git-send-email-andros@netapp.com>
-	<1296855242-2592-23-git-send-email-andros@netapp.com>
-	<1296855242-2592-24-git-send-email-andros@netapp.com>
-	<AANLkTi=GcLNguekTEnapQ-tzJ6ojWddhwM=VyMoE=enr@mail.gmail.com>
-	<AANLkTikGXQrhLXi9-irp92io0DzHB+H3adD+1CdUX7W_@mail.gmail.com>
-Date: Sun, 6 Feb 2011 14:41:52 -0500
-Message-ID: <AANLkTimACJomfqNY01+9W6_i-0S4y-hgg93mUMM-NcrZ@mail.gmail.com>
-Subject: Re: [PATCH 23/40] SQUASHME pnfs-submit wave3 new function for ds
- expired lease
-From: Fred Isaman <iisaman@netapp.com>
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:51972 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752856Ab1BNTS7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Feb 2011 14:18:59 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
+        Andy Adamson <andros@citi.umich.edu>,
+        Dean Hildebrand <dhildeb@us.ibm.com>,
+        Fred Isaman <iisaman@citi.umich.edu>, Fred Isaman <iisaman@netapp.com>,
+        Mingyang Guo <guomingyang@nrchpc.ac.cn>,
+        Oleg Drokin <green@linuxhacker.ru>,
+        Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 14/16] pnfs: wave 3: filelayout read
+Date: Mon, 14 Feb 2011 14:18:34 -0500
+Message-Id: <1297711116-3139-15-git-send-email-andros@netapp.com>
+In-Reply-To: <1297711116-3139-1-git-send-email-andros@netapp.com>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Sat, Feb 5, 2011 at 11:46 AM, William A. (Andy) Adamson
-<androsadamson@gmail.com> wrote:
-> On Fri, Feb 4, 2011 at 4:51 PM, Fred Isaman <iisaman@netapp.com> wrote:
->> On Fri, Feb 4, 2011 at 4:33 PM,  <andros@netapp.com> wrote:
->>> From: Andy Adamson <andros@netapp.com>
->>>
->>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>> ---
->>> áfs/nfs/nfs4proc.c | á 11 ++++++++---
->>> á1 files changed, 8 insertions(+), 3 deletions(-)
->>>
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index 9c50be7..fb22cbf 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -1574,7 +1574,7 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
->>> á á á áreturn 0;
->>> á}
->>>
->>> -int nfs4_recover_expired_lease(struct nfs_client *clp)
->>> +static int nfs4_client_recover_expired_lease(struct nfs_client *clp)
->>> á{
->>> á á á áunsigned int loop;
->>> á á á áint ret;
->>> @@ -1593,6 +1593,11 @@ int nfs4_recover_expired_lease(struct nfs_client *clp)
->>> á}
->>> áEXPORT_SYMBOL(nfs4_recover_expired_lease);
->>>
->>> +static int nfs4_recover_expired_lease(struct nfs_server *server)
->>> +{
->>> + á á á return nfs4_client_recover_expired_lease(server->nfs_client);
->>> +}
->>> +
->>
->> Why are we doing this extra indirection?
->
-> As Trond pointed out, it is a lot less intrusive to the existing code.
->
-> -->Andy
->
+From: Andy Adamson <andros@netapp.com>
 
-I must be missing something.  What I see is that you are changing the
-arguments to a function that is called exactly twice, and creating a
-totally unnecessary subfunction  nfs4_client_recover_expired_lease.
-How is this less intrusive than just directly inlining
-nfs4_client_recover_expired_lease?
+Attempt a pNFS file layout read by setting up the nfs_read_data struct and
+calling nfs_initiate_read with the data server rpc client and the
+filelayout rpc call ops.
 
-Fred
+Error handling is implemented in a subsequent patch.
+
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
+Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Tested-by: Guo Mingyang <guomingyang@nrchpc.ac.cn>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4_fs.h        |    3 ++
+ fs/nfs/nfs4filelayout.c |   80 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c       |    3 +-
+ include/linux/nfs_xdr.h |    1 +
+ 4 files changed, 86 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 5dc378e..457b1fe 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -252,6 +252,9 @@ static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *ser
+ extern int nfs4_setup_sequence(const struct nfs_server *server,
+ 		struct nfs4_sequence_args *args, struct nfs4_sequence_res *res,
+ 		int cache_reply, struct rpc_task *task);
++extern int nfs41_setup_sequence(struct nfs4_session *session,
++		struct nfs4_sequence_args *args, struct nfs4_sequence_res *res,
++		int cache_reply, struct rpc_task *task);
+ extern void nfs4_destroy_session(struct nfs4_session *session);
+ extern struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp);
+ extern int nfs4_proc_create_session(struct nfs_client *);
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 1c34809..a352674 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -96,6 +96,85 @@ filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
+ }
+ 
+ /*
++ * Call ops for the async read/write cases
++ * In the case of dense layouts, the offset needs to be reset to its
++ * original value.
++ */
++static void filelayout_read_prepare(struct rpc_task *task, void *data)
++{
++	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++
++	if (nfs41_setup_sequence(rdata->ds_clp->cl_session,
++				&rdata->args.seq_args, &rdata->res.seq_res,
++				0, task))
++		return;
++
++	rpc_call_start(task);
++}
++
++static void filelayout_read_call_done(struct rpc_task *task, void *data)
++{
++	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++
++	dprintk("--> %s task->tk_status %d\n", __func__, task->tk_status);
++
++	/* Note this may cause RPC to be resent */
++	rdata->mds_ops->rpc_call_done(task, data);
++}
++
++static void filelayout_read_release(void *data)
++{
++	struct nfs_read_data *rdata = (struct nfs_read_data *)data;
++
++	rdata->mds_ops->rpc_release(data);
++}
++
++struct rpc_call_ops filelayout_read_call_ops = {
++	.rpc_call_prepare = filelayout_read_prepare,
++	.rpc_call_done = filelayout_read_call_done,
++	.rpc_release = filelayout_read_release,
++};
++
++static enum pnfs_try_status
++filelayout_read_pagelist(struct nfs_read_data *data)
++{
++	struct pnfs_layout_segment *lseg = data->lseg;
++	struct nfs4_pnfs_ds *ds;
++	loff_t offset = data->args.offset;
++	u32 j, idx;
++	struct nfs_fh *fh;
++
++	dprintk("--> %s ino %lu pgbase %u req %Zu@%llu\n",
++		__func__, data->inode->i_ino,
++		data->args.pgbase, (size_t)data->args.count, offset);
++
++	/* Retrieve the correct rpc_client for the byte range */
++	j = nfs4_fl_calc_j_index(lseg, offset);
++	idx = nfs4_fl_calc_ds_index(lseg, j);
++	ds = nfs4_fl_prepare_ds(lseg, idx);
++	if (!ds) {
++		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
++		return PNFS_NOT_ATTEMPTED;
++	}
++	dprintk("%s USE DS:ip %x %hu\n", __func__,
++		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
++
++	/* No multipath support. Use first DS */
++	data->ds_clp = ds->ds_clp;
++	fh = nfs4_fl_select_ds_fh(lseg, j);
++	if (fh)
++		data->args.fh = fh;
++
++	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
++	data->mds_offset = offset;
++
++	/* Perform an asynchronous read to ds */
++	nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
++			  &filelayout_read_call_ops);
++	return PNFS_ATTEMPTED;
++}
++
++/*
+  * filelayout_check_layout()
+  *
+  * Make sure layout segment parameters are sane WRT the device.
+@@ -315,6 +394,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.alloc_lseg              = filelayout_alloc_lseg,
+ 	.free_lseg               = filelayout_free_lseg,
+ 	.pg_test                 = filelayout_pg_test,
++	.read_pagelist           = filelayout_read_pagelist,
+ };
+ 
+ static int __init nfs4filelayout_init(void)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index fe75ebd..bdf6fa6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -505,7 +505,7 @@ out:
+ 	return ret_id;
+ }
+ 
+-static int nfs41_setup_sequence(struct nfs4_session *session,
++int nfs41_setup_sequence(struct nfs4_session *session,
+ 				struct nfs4_sequence_args *args,
+ 				struct nfs4_sequence_res *res,
+ 				int cache_reply,
+@@ -571,6 +571,7 @@ static int nfs41_setup_sequence(struct nfs4_session *session,
+ 	res->sr_status = 1;
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(nfs41_setup_sequence);
+ 
+ int nfs4_setup_sequence(const struct nfs_server *server,
+ 			struct nfs4_sequence_args *args,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index a607c65..3c74807 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1020,6 +1020,7 @@ struct nfs_read_data {
+ 	struct pnfs_layout_segment *lseg;
+ 	struct nfs_client	*ds_clp;	/* pNFS data server */
+ 	const struct rpc_call_ops *mds_ops;
++	__u64			mds_offset;
+ 	struct page		*page_array[NFS_PAGEVEC_SIZE];
+ };
+ 
+-- 
+1.7.2.3
+
