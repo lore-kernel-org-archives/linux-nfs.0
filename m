@@ -1,89 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:7444 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753207Ab1BDVej (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Feb 2011 16:34:39 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 20/40] SQUASHME pnfs-submit wave3 remove nr_pages from read_pagelist
-Date: Fri,  4 Feb 2011 16:33:42 -0500
-Message-Id: <1296855242-2592-21-git-send-email-andros@netapp.com>
-In-Reply-To: <1296855242-2592-20-git-send-email-andros@netapp.com>
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
- <1296855242-2592-2-git-send-email-andros@netapp.com>
- <1296855242-2592-3-git-send-email-andros@netapp.com>
- <1296855242-2592-4-git-send-email-andros@netapp.com>
- <1296855242-2592-5-git-send-email-andros@netapp.com>
- <1296855242-2592-6-git-send-email-andros@netapp.com>
- <1296855242-2592-7-git-send-email-andros@netapp.com>
- <1296855242-2592-8-git-send-email-andros@netapp.com>
- <1296855242-2592-9-git-send-email-andros@netapp.com>
- <1296855242-2592-10-git-send-email-andros@netapp.com>
- <1296855242-2592-11-git-send-email-andros@netapp.com>
- <1296855242-2592-12-git-send-email-andros@netapp.com>
- <1296855242-2592-13-git-send-email-andros@netapp.com>
- <1296855242-2592-14-git-send-email-andros@netapp.com>
- <1296855242-2592-15-git-send-email-andros@netapp.com>
- <1296855242-2592-16-git-send-email-andros@netapp.com>
- <1296855242-2592-17-git-send-email-andros@netapp.com>
- <1296855242-2592-18-git-send-email-andros@netapp.com>
- <1296855242-2592-19-git-send-email-andros@netapp.com>
- <1296855242-2592-20-git-send-email-andros@netapp.com>
+	id S1750893Ab1BNWKE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Feb 2011 17:10:04 -0500
+Subject: Re: [PATCH] NFS: Zap entire 'struct inode' in
+ nfs_zap_caches_locked().
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jesper Juhl <jj@chaosbits.net>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+In-Reply-To: <alpine.LNX.2.00.1102142252540.4530@swampdragon.chaosbits.net>
+References: <alpine.LNX.2.00.1102142252540.4530@swampdragon.chaosbits.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 14 Feb 2011 17:09:45 -0500
+Message-ID: <1297721385.23841.14.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Mon, 2011-02-14 at 22:56 +0100, Jesper Juhl wrote: 
+> nfs_zap_caches_locked() attempts to zero all of the 'struct inode' that's 
+> passed in via the pointer variable 'inode'. Unfortunately it only manages 
+> to zero the size of a 'pointer to struct inode'. Fix that.
+> 
+> Signed-off-by: Jesper Juhl <jj@chaosbits.net>
+> ---
+>  inode.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+>  compile tested only
+> 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 1cc600e..6c4236e 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -145,7 +145,7 @@ static void nfs_zap_caches_locked(struct inode *inode)
+>  	nfsi->attrtimeo = NFS_MINATTRTIMEO(inode);
+>  	nfsi->attrtimeo_timestamp = jiffies;
+>  
+> -	memset(NFS_COOKIEVERF(inode), 0, sizeof(NFS_COOKIEVERF(inode)));
+> +	memset(NFS_COOKIEVERF(inode), 0, sizeof(*NFS_COOKIEVERF(inode)));
+>  	if (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode))
+>  		nfsi->cache_validity |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL|NFS_INO_REVAL_PAGECACHE;
+>  	else
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c |    2 +-
- fs/nfs/pnfs.c           |    3 +--
- fs/nfs/pnfs.h           |    2 +-
- 3 files changed, 3 insertions(+), 4 deletions(-)
+That's incorrect.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index dce90a0..2b5a38e 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -133,7 +133,7 @@ struct rpc_call_ops filelayout_read_call_ops = {
- };
- 
- static enum pnfs_try_status
--filelayout_read_pagelist(struct nfs_read_data *data, unsigned nr_pages)
-+filelayout_read_pagelist(struct nfs_read_data *data)
- {
- 	struct pnfs_layout_segment *lseg = data->pdata.lseg;
- 	struct nfs4_pnfs_ds *ds;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index d06e9ea..4c49109 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -943,8 +943,7 @@ pnfs_try_to_read_data(struct nfs_read_data *rdata,
- 	get_lseg(lseg);
- 
- 	rdata->pdata.lseg = lseg;
--	trypnfs = nfss->pnfs_curr_ld->read_pagelist(rdata,
--		nfs_page_array_len(rdata->args.pgbase, rdata->args.count));
-+	trypnfs = nfss->pnfs_curr_ld->read_pagelist(rdata);
- 	if (trypnfs == PNFS_NOT_ATTEMPTED) {
- 		rdata->pdata.lseg = NULL;
- 		put_lseg(lseg);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 2e231e3..cbbcdfa 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -84,7 +84,7 @@ struct pnfs_layoutdriver_type {
- 	 * MUST be called.
- 	 */
- 	enum pnfs_try_status
--	(*read_pagelist) (struct nfs_read_data *nfs_data, unsigned nr_pages);
-+	(*read_pagelist) (struct nfs_read_data *nfs_data);
- };
- 
- struct pnfs_layout_hdr {
+NFS_COOKIEVERF(inode) expands to NFS_I(inode)->cookieverf, and since
+cookieverf is declared inside the struct nfs_inode as 
+
+	u32	cookieverf[2];
+
+the sizeof(NFS_I(inode)->cookieverf) should expand to the size of the
+cookieverf array (i.e. 8 bytes).
+
+Cheers
+  Trond
+
 -- 
-1.6.6
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
