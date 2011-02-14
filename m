@@ -1,75 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43019 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:11450 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754971Ab1BGV7g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Feb 2011 16:59:36 -0500
-Date: Mon, 7 Feb 2011 16:59:35 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tom Haynes <tdh@excfb.com>
+	id S1752527Ab1BNWjW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Feb 2011 17:39:22 -0500
+Received: from sacrsexc1-prd.hq.netapp.com (sacrsexc1-prd.hq.netapp.com [10.99.115.27])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p1EMdM8W019787
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Feb 2011 14:39:22 -0800 (PST)
+Subject: Re: [PATCH 0/16] pnfs wave 3 submission
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: andros@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: Debugging mount failure with netgroup
-Message-ID: <20110207215935.GB3853@fieldses.org>
-References: <20110207195609.GA13225@adept.internal.excfb.com>
- <20110207201202.GA3055@fieldses.org>
- <20110207205306.GA13731@adept.internal.excfb.com>
- <20110207211917.GA3853@fieldses.org>
- <20110207215344.GA15778@adept.internal.excfb.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110207215344.GA15778@adept.internal.excfb.com>
+In-Reply-To: <1297711116-3139-1-git-send-email-andros@netapp.com>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 14 Feb 2011 17:39:20 -0500
+Message-ID: <1297723160.23841.30.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Feb 07, 2011 at 03:53:44PM -0600, Tom Haynes wrote:
-> On Mon, Feb 07, 2011 at 04:19:17PM -0500, J. Bruce Fields wrote:
-> > On Mon, Feb 07, 2011 at 02:53:06PM -0600, Tom Haynes wrote:
-> > > I did google and did not find much on netgroups - but I did find
-> > > a bunch on "unmatched host".
-> > > 
-> > > It seems to be black magic from some of the answers.
-> > > 
-> > > And I agree:
-> > > 
-> > > 1) Modified the export:
-> > > [root@adept /]# more /etc/exports 
-> > > /fooper   @adeptya(rw,insecure,no_root_squash,sync)
-> > 
-> > So it was probably the "insecure"?
+On Mon, 2011-02-14 at 14:18 -0500, andros@netapp.com wrote: 
+> These patches implement wave 3 of the pNFS submission, which encompasses file
+> layout data server connection, READ I/O, and recovery through the MDS.
 > 
-> Sorry, I forgot to mention after every step that I tried
-> the mount and it failed. It was only restarting nfs
-> that worked.
-
-Changes to /etc/exports aren't automatically detected, so you need a
-server restart or an exportfs -ra after any change.
-
-> I'd have to check to see what port number the requests
-> are coming in on, but I don't think it is this.
+> They apply on top of Fred's recent 3 patch 'lock inversion' series
+> commits 2d767077 .. 2cc09edd in Trond's nfs-for-next tree.
 > 
-> And I've actually got the system horked up right now -
-> I restarted one time too many. Frustrating as there isn't
-> anything logged beyond "unmatched host".
-
-I forgot you said that was the error.  And looking at the code we
-actually do have a different message for the port number case ("illegal
-port").
-
-OK, so maybe the problem was just that mountd never found out about your
-original /etc/exports file?
-
---b.
-
+> They are based upon Benny's current pnfs-submit-wave3 branch re-arranged
+> into a more choerent series of patches and rebased upon Trond's nfs-for-next.
 > 
-> > 
-> > Are we returning the right error to the mount client in that case?
-> > 
-> > And I suppose the logged error should be more helpful.  I'm not really
-> > sure mountd should be logging every mount failure by default, but if you
-> > request it, it should at be able to tell you the reason for the failure.
-> > 
-> > --b.
-> > 
+> -->Andy
 > 
-> -- 
-> Tom Haynes
-> ex-cfb
+> 0001-NFS-remove-unnecessary-CONFIG_NFS_V4-from-nfs_read_d.patch
+> 0002-NFS-put_layout_hdr-can-remove-nfsi-layout.patch
+> 0003-NFS-move-nfs_client-initialization-into-nfs_get_clie.patch
+> 0004-pnfs-wave-3-send-zero-stateid-seqid-on-v4.1-i-o.patch
+> 0005-pnfs-wave-3-new-flag-for-state-renewal-check.patch
+> 0006-pnfs-wave-3-new-flag-for-lease-time-check.patch
+> 0007-pnfs-wave-3-add-MDS-mount-DS-only-check.patch
+> 0008-pnfs-wave-3-lseg-refcounting.patch
+> 0009-pnfs-wave-3-shift-pnfs_update_layout-locations.patch
+> 0010-pnfs-wave-3-coelesce-across-layout-stripes.patch
+> 0011-pnfs-wave-3-generic-read.patch
+> 0012-pnfs-wave-3-data-server-connection.patch
+> 0013-pnfs-wave-3-filelayout-read.patch
+> 0014-pnfs-wave-3-filelayout-read.patch
+> 0015-pnfs-wave-3-filelayout-async-error-handler.patch
+> 0016-pnfs-wave-3-turn-off-pNFS-on-ds-connection-failure.patch
+> 
+
+Hi Andy,
+
+Can we please get rid of the 'wave 3:' in the subject of all these
+patches? It is a slang that is only meaningful to the people who
+regularly follow the Linux pNFS conference calls.
+
+If you do want to label the patches, then please encode the label as
+something like
+
+[PATCH pNFS wave3] NFSv4.1: xxxxxxxxxxxx
+
+so that 'git am' strips out the [PNFS WAVE 3] bit, and just leaves the
+patch short description.
+
+You can do this using the --subject-prefix="PATCH pNFS wave3" argument
+to 'git format-patch'.
+Alternatively, if you are using 'stg mail' then you can achieve the same
+effect with --version="pNFS wave3".
+
+Cheers
+  Trond
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
