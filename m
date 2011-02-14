@@ -1,60 +1,61 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: 2.6.38-rc3: kernel BUG at fs/nfsd/nfs4state.c:3132!
-Date: Mon, 14 Feb 2011 09:29:49 -0500
-Message-ID: <20110214142949.GA19748@fieldses.org>
-References: <20110211153702.GC3005@fieldses.org>
- <s5hwrl6a7ch.wl%tiwai@suse.de>
- <20110211160532.GD3005@fieldses.org>
- <s5hsjvua6tq.wl%tiwai@suse.de>
- <s5hhbcamrv2.wl%tiwai@suse.de>
- <s5hd3mymrr3.wl%tiwai@suse.de>
- <20110211170036.GF3005@fieldses.org>
- <20110211174312.GH3005@fieldses.org>
- <s5hvd0q4eue.wl%tiwai@suse.de>
- <s5hhbc6n914.wl%tiwai@suse.de>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH] nfs-utils: calculate stripe device size during process
+ phase
+Date: Mon, 14 Feb 2011 15:45:12 -0500
+Message-ID: <4D599458.8040004@panasas.com>
+References: <20110214193233.GA3555@merit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Tino Keitel <tino.keitel-rAwCM5oiXHA@public.gmane.org>, Neil Brown <neilb@suse.de>,
-	Trond Myklebust <Trond.Myklebust@netapp.com>,
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Takashi Iwai <tiwai@suse.de>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+To: Jim Rees <rees@umich.edu>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34346 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753753Ab1BNO3y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Feb 2011 09:29:54 -0500
-In-Reply-To: <s5hhbc6n914.wl%tiwai@suse.de>
+Received: from daytona.panasas.com ([67.152.220.89]:5922 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750932Ab1BNUpO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Feb 2011 15:45:14 -0500
+In-Reply-To: <20110214193233.GA3555-8f4Pc2RrbJmHXe+LvDLADg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 14, 2011 at 12:35:35PM +0100, Takashi Iwai wrote:
-> At Fri, 11 Feb 2011 19:15:53 +0100,
-> Takashi Iwai wrote:
-> > 
-> > At Fri, 11 Feb 2011 12:43:12 -0500,
-> > J. Bruce Fields wrote:
-> > > 
-> > > On Fri, Feb 11, 2011 at 12:00:36PM -0500, J. Bruce Fields wrote:
-> > > > On Fri, Feb 11, 2011 at 05:59:44PM +0100, Takashi Iwai wrote:
-> > > > > Argh, too early to say.  Now I got the same one.
-> > > > > 
-> > > > > It seems that it's triggered when I start Firefox on NFS client
-> > > > > machine.
-> > > > 
-> > > > OK, thanks, I'll take a look.
-> > > 
-> > > I think I see the problem....  Could you try fetching that branch again?
-> > > 
-> > > 	git://linux-nfs.org/~bfields/linux-topics.git for-2.6.38-incoming
-> > > 
-> > > (But I've only tested that it compiles so far.)
-> > 
-> > Sorry, I already left my office and have no access to the machine.
-> > I'll test it on Monday if Tino can't test it beforehand.
+Merged.  Thanks!
+
+Benny
+
+On 2011-02-14 14:32, Jim Rees wrote:
+> If a device has stripe device components, the total size will be wrong.
+> Calculate the stripe device size earlier, during the process phase, so that
+> later devices will have the correct size.
 > 
-> I've been testing it for hours, and so far this looks good.
-> FireFox starts and doesn't trigger BUG().
-
-Good, thanks for the testing.
-
---b.
+> Signed-off-by: Jim Rees <rees@umich.edu>
+> ---
+>  utils/blkmapd/device-process.c |    3 ++-
+>  utils/blkmapd/dm-device.c      |    2 +-
+>  2 files changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
+> index b709b48..9a78457 100644
+> --- a/utils/blkmapd/device-process.c
+> +++ b/utils/blkmapd/device-process.c
+> @@ -318,7 +318,8 @@ decode_blk_volume(uint32_t **pp, uint32_t *end, struct bl_volume *vols, int voln
+>  			}
+>  		}
+>  		/* Truncate size to a stripe unit boundary */
+> -		vol->bv_size = vol->bv_vols[0]->bv_size & ~(chunksize - 1);
+> +		vol->bv_size = vol->bv_vols[0]->bv_size * vol->bv_vol_n;
+> +		vol->bv_size &= ~(chunksize - 1);
+>  		break;
+>  	case BLOCK_VOLUME_CONCAT:
+>  		BLK_READBUF(p, end, 4);
+> diff --git a/utils/blkmapd/dm-device.c b/utils/blkmapd/dm-device.c
+> index 2e87db8..c4fe4e9 100644
+> --- a/utils/blkmapd/dm-device.c
+> +++ b/utils/blkmapd/dm-device.c
+> @@ -418,7 +418,7 @@ uint64_t dm_device_create(struct bl_volume *vols, int num_vols)
+>  			stripe_size = stripe_unit * node->bv_vol_n;
+>  			nstripes = node->bv_size * node->bv_vol_n / stripe_size;
+>  			/* Make sure total size is a multiple of stripe size */
+> -			size = node->bv_size * node->bv_vol_n;
+> +			size = node->bv_size;
+>  			if (size % stripe_size != 0) {
+>  				/* XXX Should this be an error? */
+>  				BL_LOG_WARNING(
