@@ -1,50 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:53797 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:41287 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932365Ab1BCS3B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Feb 2011 13:29:01 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 2/3] pnfs: do not need to clear NFS_LAYOUT_BULK_RECALL flag
-Date: Thu,  3 Feb 2011 13:28:51 -0500
-Message-Id: <1296757732-16261-3-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1296757732-16261-1-git-send-email-iisaman@netapp.com>
-References: <1296757732-16261-1-git-send-email-iisaman@netapp.com>
+	id S1752692Ab1BNTSp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Feb 2011 14:18:45 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 04/16] pnfs: wave 3: send zero stateid seqid on v4.1 i/o
+Date: Mon, 14 Feb 2011 14:18:24 -0500
+Message-Id: <1297711116-3139-5-git-send-email-andros@netapp.com>
+In-Reply-To: <1297711116-3139-1-git-send-email-andros@netapp.com>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-We do not need to clear the NFS_LAYOUT_BULK_RECALL, as setting it
-guarantees that NFS_LAYOUT_DESTROYED will be set once any outstanding
-io is finished.
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Data servers require a zero stateid seqid, and there is no advantage to not
+doing the same for all NFSv4.1
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/pnfs.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4xdr.c |   10 +++++++---
+ 1 files changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index c8d9b21..c17edfb 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -254,7 +254,6 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
- 			/* List does not take a reference, so no need for put here */
- 			list_del_init(&lseg->pls_layout->plh_layouts);
- 			spin_unlock(&clp->cl_lock);
--			clear_bit(NFS_LAYOUT_BULK_RECALL, &lseg->pls_layout->plh_flags);
- 			set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
- 			/* Matched by initial refcount set in alloc_init_layout_hdr */
- 			put_layout_hdr_locked(lseg->pls_layout);
-@@ -754,7 +753,6 @@ pnfs_update_layout(struct inode *ino,
- 			spin_lock(&clp->cl_lock);
- 			list_del_init(&lo->plh_layouts);
- 			spin_unlock(&clp->cl_lock);
--			clear_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
- 		}
- 		spin_unlock(&ino->i_lock);
- 	}
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4e2c168..2380c45 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1384,7 +1384,7 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ 	hdr->replen += decode_putrootfh_maxsz;
+ }
+ 
+-static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx)
++static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx, int zero_seqid)
+ {
+ 	nfs4_stateid stateid;
+ 	__be32 *p;
+@@ -1392,6 +1392,8 @@ static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context
+ 	p = reserve_space(xdr, NFS4_STATEID_SIZE);
+ 	if (ctx->state != NULL) {
+ 		nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
++		if (zero_seqid)
++			stateid.stateid.seqid = 0;
+ 		xdr_encode_opaque_fixed(p, stateid.data, NFS4_STATEID_SIZE);
+ 	} else
+ 		xdr_encode_opaque_fixed(p, zero_stateid.data, NFS4_STATEID_SIZE);
+@@ -1404,7 +1406,8 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(OP_READ);
+ 
+-	encode_stateid(xdr, args->context, args->lock_context);
++	encode_stateid(xdr, args->context, args->lock_context,
++		       hdr->minorversion);
+ 
+ 	p = reserve_space(xdr, 12);
+ 	p = xdr_encode_hyper(p, args->offset);
+@@ -1592,7 +1595,8 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(OP_WRITE);
+ 
+-	encode_stateid(xdr, args->context, args->lock_context);
++	encode_stateid(xdr, args->context, args->lock_context,
++		       hdr->minorversion);
+ 
+ 	p = reserve_space(xdr, 16);
+ 	p = xdr_encode_hyper(p, args->offset);
 -- 
-1.7.2.1
+1.7.2.3
 
