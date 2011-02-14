@@ -1,101 +1,186 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:41287 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753051Ab1BDVeJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Feb 2011 16:34:09 -0500
+	id S1752333Ab1BNTSo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Feb 2011 14:18:44 -0500
 From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/40] Wave3: For pNFS team review, not for kernel submission 
-Date: Fri,  4 Feb 2011 16:33:22 -0500
-Message-Id: <1296855242-2592-1-git-send-email-andros@netapp.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 03/16] NFS move nfs_client initialization into nfs_get_client
+Date: Mon, 14 Feb 2011 14:18:23 -0500
+Message-Id: <1297711116-3139-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1297711116-3139-1-git-send-email-andros@netapp.com>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Andy Adamson <andros@netapp.com>
 
-The wave3 code addresses pNFS file layout data server connection, data server
-READ I/O and recovery of failed data server READs through the MDS.
+Now nfs_get_client returns an nfs_client ready to be used no matter if it was
+found or created.
 
-I did not see the pnfs-submit-wave3 branch on benny's tree, so I created my
-own for the meantime.
-I cloned the nfsd41-all from git://linux-nfs.org/~bhalevy/linux-pnfs.git
-which is the base for the pnfs-submit branch.
-I then applied the wave3 patches from benny's pnfs-submit branch,
-and then the changes.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c |   67 ++++++++++++++++++++++++++++++++++++++----------------
+ 1 files changed, 47 insertions(+), 20 deletions(-)
 
-git://linux-nfs.org/projects/andros/benny-linux-pnfs.git
-branch andros-pnfs-submit-wave3 contains the result.
-
-========================================================================
-Please review the changes - I want to submit to Trond/Christoph next week.
-========================================================================
-
-These patches are in the first 12 in the pnfs-submit tree and are the original
-"wave3" patches.
-
-0001-pnfs-submit-wave3-lseg-refcounting.patch
-0002-pnfs_submit-add-data-server-session-to-nfs4_setup_se.patch
-0003-pnfs_submit-update-nfs4_async_handle_error-for-data-.patch
-0004-pnfs_submit-update-state-renewal-for-data-servers.patch
-0005-pnfs_submit-wave3-pageio-helpers.patch
-0006-pnfs_submit-wave3-associate-layout-segment-with-nfs_.patch
-0007-pnfs_submit-filelayout-policy-operations.patch
-0008-pnfs_submit-filelayout-i-o-helpers.patch
-0009-pnfs_submit-wave3-generic-read.patch
-0010-pnfs_submit-filelayout-read.patch
-0011-pnfs_submit-increase-NFS_MAX_FILE_IO_SIZE.patch
-0012-pnfs_submit-enforce-requested-DS-only-pNFS-role.patch
-
-The rest are the wave3 changes.
-
-Summary of changes;
--------------------
-
-1) The file layoutdriver now specifies it's own rpc_call_prepare and
-rpc_call_done callbacks for READ.
-
-filelayout_read_prepare:
-- Uses nfs41_setup_sequence so we do not need to change nfs4_setup_sequence().
-
-filelayout_read_done
-- Add a read_done_cb function to nfs_read_data that calls nfs_read_done_cb for
-NFS READs and filelayout_read_done_cb for data server READs.
-- filelayout_read_done_cb has its own async error handler so we do not need to change nfs4_async_handle_error()
-
-2) DS/MDS dual role now allows for sessions used as a data server to be reused
-as an MDS or NFSv41 mount.
-- We don't ask for the DS role on data server EXCHANGE_ID
-- We don't strip any roles returned by the server.
-- If a session is in use as a DS role, and the client subsequently mounts the
-same server as either an MDS or NON_PNFS mount, the same session can be used
-provided the existing exchange flags allow it.
-
-3) We always send a zero READ/WRITE stateid seqid. This is required for
-data servers, and there is no advantage to not doing it for MDS or NON_PNFS
-mounts.
-
-4) We mark the deviceid as invalid upon any data server connection failure
-and print out a kernel message.
-This in turn marks any layout that tries to use the devicid as failed for
-both IOMODE_READ and IOMODE_RW. Inodes without layouts will still send
-a layoutget. If the resultant layout uses the marked deviceid, it will be
-marked as failed for both iomodes. All I/O will go through the MDS until
-a client reboot or a CB_LAYOUTRECALL ALL or FSID removes all layouts that
-refer to the deviceid, which removes the deviceid.
-
-5) Our new file layout async error handler only recovers from session
-related errors, or grace/delay errors. All other errors including
-NFS4ERR_EXPIRED or NFS4ERR_STALE_CLIENTID result in marking the layout as
-failed for IOMODE_READ and I/O is retried through the MDS.
-
-6) Fred's lock inversion patches, and the request by Trond to not reference
-a layout segment on dirty pages held in the cache changed the layout
-segment reference counting.
-
-There are a couple of small issues I'm still investigating. Trond and Fred
-have done an initial review.
-
--->Andy
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index bd3ca32..75b236f 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -81,6 +81,15 @@ retry:
+ }
+ #endif /* CONFIG_NFS_V4 */
+ 
++static int nfs4_init_client(struct nfs_client *clp,
++		const struct rpc_timeout *timeparms,
++		const char *ip_addr,
++		rpc_authflavor_t authflavour,
++		int noresvport);
++static int nfs_init_client(struct nfs_client *clp,
++			   const struct rpc_timeout *timeparms,
++			   int noresvport);
++
+ /*
+  * RPC cruft for NFS
+  */
+@@ -481,7 +490,12 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+  * Look up a client by IP address and protocol version
+  * - creates a new record if one doesn't yet exist
+  */
+-static struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
++static struct nfs_client *
++nfs_get_client(const struct nfs_client_initdata *cl_init,
++	       const struct rpc_timeout *timeparms,
++	       const char *ip_addr,
++	       rpc_authflavor_t authflavour,
++	       int noresvport)
+ {
+ 	struct nfs_client *clp, *new = NULL;
+ 	int error;
+@@ -512,6 +526,17 @@ install_client:
+ 	clp = new;
+ 	list_add(&clp->cl_share_link, &nfs_client_list);
+ 	spin_unlock(&nfs_client_lock);
++
++	if (cl_init->rpc_ops->version == 4)
++		error = nfs4_init_client(clp, timeparms, ip_addr, authflavour,
++					 noresvport);
++	else
++		error = nfs_init_client(clp, timeparms, noresvport);
++
++	if (error < 0) {
++		nfs_put_client(clp);
++		return ERR_PTR(error);
++	}
+ 	dprintk("--> nfs_get_client() = %p [new]\n", clp);
+ 	return clp;
+ 
+@@ -769,7 +794,7 @@ static int nfs_init_server_rpcclient(struct nfs_server *server,
+  */
+ static int nfs_init_client(struct nfs_client *clp,
+ 			   const struct rpc_timeout *timeparms,
+-			   const struct nfs_parsed_mount_data *data)
++			   int noresvport)
+ {
+ 	int error;
+ 
+@@ -784,7 +809,7 @@ static int nfs_init_client(struct nfs_client *clp,
+ 	 * - RFC 2623, sec 2.3.2
+ 	 */
+ 	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX,
+-				      0, data->flags & NFS_MOUNT_NORESVPORT);
++				      0, noresvport);
+ 	if (error < 0)
+ 		goto error;
+ 	nfs_mark_client_ready(clp, NFS_CS_READY);
+@@ -820,19 +845,17 @@ static int nfs_init_server(struct nfs_server *server,
+ 		cl_init.rpc_ops = &nfs_v3_clientops;
+ #endif
+ 
++	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
++			data->timeo, data->retrans);
++
+ 	/* Allocate or find a client reference we can use */
+-	clp = nfs_get_client(&cl_init);
++	clp = nfs_get_client(&cl_init, &timeparms, NULL, RPC_AUTH_UNIX,
++			     data->flags & NFS_MOUNT_NORESVPORT);
+ 	if (IS_ERR(clp)) {
+ 		dprintk("<-- nfs_init_server() = error %ld\n", PTR_ERR(clp));
+ 		return PTR_ERR(clp);
+ 	}
+ 
+-	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
+-			data->timeo, data->retrans);
+-	error = nfs_init_client(clp, &timeparms, data);
+-	if (error < 0)
+-		goto error;
+-
+ 	server->nfs_client = clp;
+ 
+ 	/* Initialise the client representation from the mount data */
+@@ -1311,7 +1334,7 @@ static int nfs4_init_client(struct nfs_client *clp,
+ 		const struct rpc_timeout *timeparms,
+ 		const char *ip_addr,
+ 		rpc_authflavor_t authflavour,
+-		int flags)
++		int noresvport)
+ {
+ 	int error;
+ 
+@@ -1325,7 +1348,7 @@ static int nfs4_init_client(struct nfs_client *clp,
+ 	clp->rpc_ops = &nfs_v4_clientops;
+ 
+ 	error = nfs_create_rpc_client(clp, timeparms, authflavour,
+-				      1, flags & NFS_MOUNT_NORESVPORT);
++				      1, noresvport);
+ 	if (error < 0)
+ 		goto error;
+ 	strlcpy(clp->cl_ipaddr, ip_addr, sizeof(clp->cl_ipaddr));
+@@ -1378,22 +1401,16 @@ static int nfs4_set_client(struct nfs_server *server,
+ 	dprintk("--> nfs4_set_client()\n");
+ 
+ 	/* Allocate or find a client reference we can use */
+-	clp = nfs_get_client(&cl_init);
++	clp = nfs_get_client(&cl_init, timeparms, ip_addr, authflavour,
++			     server->flags & NFS_MOUNT_NORESVPORT);
+ 	if (IS_ERR(clp)) {
+ 		error = PTR_ERR(clp);
+ 		goto error;
+ 	}
+-	error = nfs4_init_client(clp, timeparms, ip_addr, authflavour,
+-					server->flags);
+-	if (error < 0)
+-		goto error_put;
+ 
+ 	server->nfs_client = clp;
+ 	dprintk("<-- nfs4_set_client() = 0 [new %p]\n", clp);
+ 	return 0;
+-
+-error_put:
+-	nfs_put_client(clp);
+ error:
+ 	dprintk("<-- nfs4_set_client() = xerror %d\n", error);
+ 	return error;
+@@ -1611,6 +1628,16 @@ error:
+ 	return ERR_PTR(error);
+ }
+ 
++#else /* CONFIG_NFS_V4 */
++static int nfs4_init_client(struct nfs_client *clp,
++			    const struct rpc_timeout *timeparms,
++			    const char *ip_addr,
++			    rpc_authflavor_t authflavour,
++			    int noresvport)
++{
++	return -EPROTONOSUPPORT;
++}
++
+ #endif /* CONFIG_NFS_V4 */
+ 
+ /*
+-- 
+1.7.2.3
 
