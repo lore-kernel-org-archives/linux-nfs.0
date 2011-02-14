@@ -1,59 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out2.uio.no ([129.240.10.58]:59771 "EHLO mail-out2.uio.no"
+Received: from mx2.netapp.com ([216.240.18.37]:41287 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753350Ab1B1WFH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Feb 2011 17:05:07 -0500
-Subject: Re: [PATCH] zero out delegation in the inode after it has been
- returned
-From: Trond Myklebust <trond.myklebust@fys.uio.no>
-To: Jim Rees <rees@umich.edu>
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-In-Reply-To: <1298930494.8564.50.camel@heimdal.trondhjem.org>
-References: <20110228213103.GA1256@merit.edu>
-	 <1298929144.8564.44.camel@heimdal.trondhjem.org>
-	 <20110228215439.GD1256@merit.edu>
-	 <1298930494.8564.50.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 28 Feb 2011 17:04:58 -0500
-Message-ID: <1298930698.8564.51.camel@heimdal.trondhjem.org>
+	id S1752692Ab1BNTSr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Feb 2011 14:18:47 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 07/16] pnfs: wave 3: add MDS mount DS only check
+Date: Mon, 14 Feb 2011 14:18:27 -0500
+Message-Id: <1297711116-3139-8-git-send-email-andros@netapp.com>
+In-Reply-To: <1297711116-3139-1-git-send-email-andros@netapp.com>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 2011-02-28 at 17:01 -0500, Trond Myklebust wrote: 
-> On Mon, 2011-02-28 at 16:54 -0500, Jim Rees wrote: 
-> > Trond Myklebust wrote:
-> > 
-> >   nfsi->delegation is released under the appropriate locks well before we
-> >   get here. The above line is 100% racy and risks clobbering any new
-> >   delegation that has been issued after the delegreturn completed...
-> > 
-> > I'd have been amazed if I'd gotten it right.  But there really is a problem
-> > here, the client does try to use delegations that have been returned, and
-> > this patch does solve that problem.  I'm happy to keep after this but would
-> > appreciate any suggestions or nudges in the right direction.
-> 
-> The procedure for returning delegations is supposed to work as follows:
-> 
->      1. Remove the nfsi->delegation so that it is no longer visible to
->         new open() requests 
->      2. write back any dirty data to the server 
->      3. Reclaim any locks 
->      4. Reclaim any open stateids (using CLAIM_DELEGATE_CUR) 
+From: Andy Adamson <andros@netapp.com>
 
-Errr.... lock reclaim comes after open reclaim, of course...
+The DS only role cannot be used to mount.
 
-The rest is correct.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c  |    6 ++++++
+ fs/nfs/nfs4_fs.h |   13 +++++++++++++
+ 2 files changed, 19 insertions(+), 0 deletions(-)
 
-> 5. delegreturn
-> 
-> While there may indeed be the odd READ or WRITE that races between 4.
-> and 5., so that the server receives the delegation stateid after the
-> delegreturn, that shouldn't matter: the server returns an error, and the
-> client should retry using the new open stateid.
-> 
-> What is failing to work correctly here?
-> 
-
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 4d15331..e48457a 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1413,6 +1413,12 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		goto error;
+ 	}
+ 
++	/* Cannot mount a DS only server */
++	if (is_ds_only_client(clp)) {
++		error = -ENODEV;
++		goto error;
++	}
++
+ 	/*
+ 	 * Query for the lease time on clientid setup or renewal
+ 	 *
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 7a74740..5d84642 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -259,6 +259,13 @@ extern int nfs4_proc_destroy_session(struct nfs4_session *);
+ extern int nfs4_init_session(struct nfs_server *server);
+ extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
+ 		struct nfs_fsinfo *fsinfo);
++
++static inline bool
++is_ds_only_client(struct nfs_client *clp)
++{
++	return (clp->cl_exchange_flags & EXCHGID4_FLAG_MASK_PNFS) ==
++		EXCHGID4_FLAG_USE_PNFS_DS;
++}
+ #else /* CONFIG_NFS_v4_1 */
+ static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
+ {
+@@ -276,6 +283,12 @@ static inline int nfs4_init_session(struct nfs_server *server)
+ {
+ 	return 0;
+ }
++
++static inline bool
++is_ds_only_client(struct nfs_client *clp)
++{
++	return false;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
+-- 
+1.7.2.3
 
