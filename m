@@ -1,48 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:11768 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:41287 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754602Ab1BYAhg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2011 19:37:36 -0500
-Subject: Re: stat family function problem (php file_exists)
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: larith <larith@go2.pl>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <3c95bae3.61f80ace.4d666374.d4ebc@go2.pl>
-References: <3c95bae3.61f80ace.4d666374.d4ebc@go2.pl>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 24 Feb 2011 16:37:34 -0800
-Message-ID: <1298594254.4606.6.camel@heimdal.trondhjem.org>
+	id S1752388Ab1BNTSq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Feb 2011 14:18:46 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 05/16] pnfs: wave 3: new flag for state renewal check
+Date: Mon, 14 Feb 2011 14:18:25 -0500
+Message-Id: <1297711116-3139-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1297711116-3139-1-git-send-email-andros@netapp.com>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-02-24 at 14:56 +0100, larith wrote: 
-> Hi
-> 
-> I have one nfs server mounted on 2 clients. If I check on client2 if a file exists, then after creating this file on client2 is is not immediately visible to file_exist() function on client2. it was only after some time. how to fix this ?
+From: Andy Adamson <andros@netapp.com>
 
-1) Use open() instead of stat()
+Data servers not sharing a session with the mount MDS always have an empty
+cl_superblocks list.
+Replace the cl_superblocks empty list check to see if it is time to shut down
+renewd with the NFS_CS_STOP_RENEW bit which is not set by such a data server.
 
-or
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c           |    5 +++++
+ fs/nfs/nfs4renewd.c       |    6 +-----
+ include/linux/nfs_fs_sb.h |    1 +
+ 3 files changed, 7 insertions(+), 5 deletions(-)
 
-2) Use the -olookupcache=  mount option (see 'man 5 nfs').
-
-Trond
-
-> client1:/mnt/storage0/test# cat a.php
-> <?php
-> 
-> if (file_exists ($argv[1])) {
->     echo "1\n";
-> } else {
->     echo "0\n";
-> }
-
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 75b236f..5891cf8 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1032,14 +1032,19 @@ static void nfs_server_insert_lists(struct nfs_server *server)
+ 	spin_lock(&nfs_client_lock);
+ 	list_add_tail_rcu(&server->client_link, &clp->cl_superblocks);
+ 	list_add_tail(&server->master_link, &nfs_volume_list);
++	clear_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state);
+ 	spin_unlock(&nfs_client_lock);
+ 
+ }
+ 
+ static void nfs_server_remove_lists(struct nfs_server *server)
+ {
++	struct nfs_client *clp = server->nfs_client;
++
+ 	spin_lock(&nfs_client_lock);
+ 	list_del_rcu(&server->client_link);
++	if (clp && list_empty(&clp->cl_superblocks))
++		set_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state);
+ 	list_del(&server->master_link);
+ 	spin_unlock(&nfs_client_lock);
+ 
+diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
+index 402143d..df8e7f3 100644
+--- a/fs/nfs/nfs4renewd.c
++++ b/fs/nfs/nfs4renewd.c
+@@ -64,12 +64,8 @@ nfs4_renew_state(struct work_struct *work)
+ 	ops = clp->cl_mvops->state_renewal_ops;
+ 	dprintk("%s: start\n", __func__);
+ 
+-	rcu_read_lock();
+-	if (list_empty(&clp->cl_superblocks)) {
+-		rcu_read_unlock();
++	if (test_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state))
+ 		goto out;
+-	}
+-	rcu_read_unlock();
+ 
+ 	spin_lock(&clp->cl_lock);
+ 	lease = clp->cl_lease_time;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index b197563..2c2dc18 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -30,6 +30,7 @@ struct nfs_client {
+ #define NFS_CS_CALLBACK		1		/* - callback started */
+ #define NFS_CS_IDMAP		2		/* - idmap started */
+ #define NFS_CS_RENEWD		3		/* - renewd started */
++#define NFS_CS_STOP_RENEW	4		/* no more state to renew */
+ 	struct sockaddr_storage	cl_addr;	/* server identifier */
+ 	size_t			cl_addrlen;
+ 	char *			cl_hostname;	/* hostname of server */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.2.3
 
