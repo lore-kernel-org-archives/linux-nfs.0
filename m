@@ -1,213 +1,184 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([122.248.162.6]:52650 "EHLO
-	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755493Ab1BWNyL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 08:54:11 -0500
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
-        sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
-        jlayton@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
-Subject: [PATCH -V5 17/24] richacl: Create-time inheritance
-Date: Wed, 23 Feb 2011 19:22:04 +0530
-Message-Id: <1298469131-16555-18-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:56953 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752726Ab1BNR1X convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Feb 2011 12:27:23 -0500
+Subject: Re: [PATCH 1/7] wave4: nfs: rearrange nfs_write_rpcsetup
+Content-Type: text/plain; charset=us-ascii
+From: Fred Isaman <iisaman@netapp.com>
+In-Reply-To: <142A667D-F17B-4B00-B3B4-85AD1E15C8CF@netapp.com>
+Date: Mon, 14 Feb 2011 12:27:21 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <588C4512-1156-41C3-9735-FF4404672C18@netapp.com>
+References: <1297443279-19813-1-git-send-email-iisaman@netapp.com> <1297443279-19813-2-git-send-email-iisaman@netapp.com> <142A667D-F17B-4B00-B3B4-85AD1E15C8CF@netapp.com>
+To: Andy Adamson <andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-When a new file is created, it can inherit an acl from its parent
-directory; this is similar to how default acls work in POSIX (draft)
-ACLs.
 
-As with POSIX ACLs, if a file inherits an acl from its parent directory,
-the intersection between the create mode and the permissions granted by
-the inherited acl determines the file masks and file permission bits,
-and the umask is ignored.
+On Feb 14, 2011, at 12:22 PM, Andy Adamson wrote:
 
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/Makefile             |    2 +-
- fs/richacl_base.c       |   69 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/richacl_inode.c      |   59 ++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |    4 +++
- 4 files changed, 133 insertions(+), 1 deletions(-)
- create mode 100644 fs/richacl_inode.c
+> Since I'm the author for the read version of this code, I'll raise my hand to be the author for this version.
+> 
+> -->Andy
+> 
 
-diff --git a/fs/Makefile b/fs/Makefile
-index ed79438..e313219 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -49,7 +49,7 @@ obj-$(CONFIG_NFS_COMMON)	+= nfs_common/
- obj-$(CONFIG_GENERIC_ACL)	+= generic_acl.o
- 
- obj-$(CONFIG_FS_RICHACL)	+= richacl.o
--richacl-y			:= richacl_base.o
-+richacl-y			:= richacl_base.o richacl_inode.o
- 
- obj-y				+= quota/
- 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index a6e3199..5e926ad 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -492,3 +492,72 @@ is_everyone:
- 	return denied ? -EACCES : 0;
- }
- EXPORT_SYMBOL_GPL(richacl_permission);
-+
-+/**
-+ * richacl_inherit  -  compute the inherited acl of a new file
-+ * @dir_acl:	acl of the containing direcory
-+ * @isdir:	inherit by a directory or non-directory?
-+ *
-+ * A directory can have acl entries which files and/or directories created
-+ * inside the directory will inherit.  This function computes the acl for such
-+ * a new file.  If there is no inheritable acl, it will return %NULL.
-+ */
-+struct richacl *
-+richacl_inherit(const struct richacl *dir_acl, int isdir)
-+{
-+	const struct richace *dir_ace;
-+	struct richacl *acl = NULL;
-+	struct richace *ace;
-+	int count = 0;
-+
-+	if (isdir) {
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!richace_is_inheritable(dir_ace))
-+				continue;
-+			count++;
-+		}
-+		if (!count)
-+			return NULL;
-+		acl = richacl_alloc(count);
-+		if (!acl)
-+			return ERR_PTR(-ENOMEM);
-+		ace = acl->a_entries;
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!richace_is_inheritable(dir_ace))
-+				continue;
-+			memcpy(ace, dir_ace, sizeof(struct richace));
-+			if (dir_ace->e_flags & ACE4_NO_PROPAGATE_INHERIT_ACE)
-+				richace_clear_inheritance_flags(ace);
-+			if ((dir_ace->e_flags & ACE4_FILE_INHERIT_ACE) &&
-+			    !(dir_ace->e_flags & ACE4_DIRECTORY_INHERIT_ACE))
-+				ace->e_flags |= ACE4_INHERIT_ONLY_ACE;
-+			ace++;
-+		}
-+	} else {
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!(dir_ace->e_flags & ACE4_FILE_INHERIT_ACE))
-+				continue;
-+			count++;
-+		}
-+		if (!count)
-+			return NULL;
-+		acl = richacl_alloc(count);
-+		if (!acl)
-+			return ERR_PTR(-ENOMEM);
-+		ace = acl->a_entries;
-+		richacl_for_each_entry(dir_ace, dir_acl) {
-+			if (!(dir_ace->e_flags & ACE4_FILE_INHERIT_ACE))
-+				continue;
-+			memcpy(ace, dir_ace, sizeof(struct richace));
-+			richace_clear_inheritance_flags(ace);
-+			/*
-+			 * ACE4_DELETE_CHILD is meaningless for
-+			 * non-directories, so clear it.
-+			 */
-+			ace->e_mask &= ~ACE4_DELETE_CHILD;
-+			ace++;
-+		}
-+	}
-+
-+	return acl;
-+}
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-new file mode 100644
-index 0000000..31e6925
---- /dev/null
-+++ b/fs/richacl_inode.c
-@@ -0,0 +1,59 @@
-+/*
-+ * Copyright (C) 2010  Novell, Inc.
-+ * Written by Andreas Gruenbacher <agruen@suse.de>
-+ *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of the GNU General Public License as published by the
-+ * Free Software Foundation; either version 2, or (at your option) any
-+ * later version.
-+ *
-+ * This program is distributed in the hope that it will be useful, but
-+ * WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#include <linux/sched.h>
-+#include <linux/module.h>
-+#include <linux/fs.h>
-+#include <linux/richacl.h>
-+
-+/**
-+ * richacl_inherit_inode  -  compute inherited acl and file mode
-+ * @dir_acl:	acl of the containing direcory
-+ * @inode:	inode of the new file (create mode in i_mode)
-+ *
-+ * The file permission bits in inode->i_mode must be set to the create mode.
-+ * If there is an inheritable acl, the maximum permissions that the acl grants
-+ * will be computed and permissions not granted by the acl will be removed from
-+ * inode->i_mode.  If there is no inheritable acl, the umask will be applied
-+ * instead.
-+ */
-+struct richacl *
-+richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
-+{
-+	struct richacl *acl;
-+	mode_t mask;
-+
-+	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
-+	if (acl) {
-+
-+		richacl_compute_max_masks(acl);
-+
-+		/*
-+		 * Ensure that the acl will not grant any permissions beyond
-+		 * the create mode.
-+		 */
-+		acl->a_flags |= ACL4_MASKED;
-+		acl->a_owner_mask &= richacl_mode_to_mask(inode->i_mode >> 6) |
-+				     ACE4_POSIX_OWNER_ALLOWED;
-+		acl->a_group_mask &= richacl_mode_to_mask(inode->i_mode >> 3);
-+		acl->a_other_mask &= richacl_mode_to_mask(inode->i_mode);
-+		mask = ~S_IRWXUGO | richacl_masks_to_mode(acl);
-+	} else
-+		mask = ~current_umask();
-+
-+	inode->i_mode &= mask;
-+	return acl;
-+}
-+EXPORT_SYMBOL_GPL(richacl_inherit_inode);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index c9d2761..630bf86 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -291,5 +291,9 @@ extern void richacl_compute_max_masks(struct richacl *);
- extern struct richacl *richacl_chmod(struct richacl *, mode_t);
- extern int richacl_permission(struct inode *, const struct richacl *,
- 			      unsigned int);
-+extern struct richacl *richacl_inherit(const struct richacl *, int);
- 
-+/* richacl_inode.c */
-+extern struct richacl *richacl_inherit_inode(const struct richacl *,
-+					     struct inode *);
- #endif /* __RICHACL_H */
--- 
-1.7.1
+OK, do you wan't patch 5 as well?...they were both split from the same "pNFS Team" patch.
+
+Fred
+
+> On Feb 11, 2011, at 11:54 AM, Fred Isaman wrote:
+> 
+>> From: The pNFS Team <linux-nfs@vger.kernel.org>
+>> 
+>> Reorder nfs_write_rpcsetup, preparing for a pnfs switch.
+>> 
+>> FIXME: these signoffs are ridiculous for this simple patch.
+>> Lets just pick an author and be done with it.
+>> 
+>> Reported-by: Alexandros Batsakis <batsakis@netapp.com>
+>> Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+>> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+>> Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
+>> Signed-off-by: Mike Sager <sager@netapp.com>
+>> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+>> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>> ---
+>> fs/nfs/write.c |   82 +++++++++++++++++++++++++++++++------------------------
+>> 1 files changed, 46 insertions(+), 36 deletions(-)
+>> 
+>> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+>> index aca0268..5604854 100644
+>> --- a/fs/nfs/write.c
+>> +++ b/fs/nfs/write.c
+>> @@ -782,25 +782,21 @@ static int flush_task_priority(int how)
+>> 	return RPC_PRIORITY_NORMAL;
+>> }
+>> 
+>> -/*
+>> - * Set up the argument/result storage required for the RPC call.
+>> - */
+>> -static int nfs_write_rpcsetup(struct nfs_page *req,
+>> -		struct nfs_write_data *data,
+>> -		const struct rpc_call_ops *call_ops,
+>> -		unsigned int count, unsigned int offset,
+>> -		int how)
+>> +static int nfs_initiate_write(struct nfs_write_data *data,
+>> +		       struct rpc_clnt *clnt,
+>> +		       const struct rpc_call_ops *call_ops,
+>> +		       int how)
+>> {
+>> -	struct inode *inode = req->wb_context->path.dentry->d_inode;
+>> +	struct inode *inode = data->inode;
+>> 	int priority = flush_task_priority(how);
+>> 	struct rpc_task *task;
+>> 	struct rpc_message msg = {
+>> 		.rpc_argp = &data->args,
+>> 		.rpc_resp = &data->res,
+>> -		.rpc_cred = req->wb_context->cred,
+>> +		.rpc_cred = data->cred,
+>> 	};
+>> 	struct rpc_task_setup task_setup_data = {
+>> -		.rpc_client = NFS_CLIENT(inode),
+>> +		.rpc_client = clnt,
+>> 		.task = &data->task,
+>> 		.rpc_message = &msg,
+>> 		.callback_ops = call_ops,
+>> @@ -811,12 +807,49 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+>> 	};
+>> 	int ret = 0;
+>> 
+>> +	/* Set up the initial task struct.  */
+>> +	NFS_PROTO(inode)->write_setup(data, &msg);
+>> +
+>> +	dprintk("NFS: %5u initiated write call "
+>> +		"(req %s/%lld, %u bytes @ offset %llu)\n",
+>> +		data->task.tk_pid,
+>> +		inode->i_sb->s_id,
+>> +		(long long)NFS_FILEID(inode),
+>> +		data->args.count,
+>> +		(unsigned long long)data->args.offset);
+>> +
+>> +	task = rpc_run_task(&task_setup_data);
+>> +	if (IS_ERR(task)) {
+>> +		ret = PTR_ERR(task);
+>> +		goto out;
+>> +	}
+>> +	if (how & FLUSH_SYNC) {
+>> +		ret = rpc_wait_for_completion_task(task);
+>> +		if (ret == 0)
+>> +			ret = task->tk_status;
+>> +	}
+>> +	rpc_put_task(task);
+>> +out:
+>> +	return ret;
+>> +}
+>> +
+>> +/*
+>> + * Set up the argument/result storage required for the RPC call.
+>> + */
+>> +static int nfs_write_rpcsetup(struct nfs_page *req,
+>> +		struct nfs_write_data *data,
+>> +		const struct rpc_call_ops *call_ops,
+>> +		unsigned int count, unsigned int offset,
+>> +		int how)
+>> +{
+>> +	struct inode *inode = req->wb_context->path.dentry->d_inode;
+>> +
+>> 	/* Set up the RPC argument and reply structs
+>> 	 * NB: take care not to mess about with data->commit et al. */
+>> 
+>> 	data->req = req;
+>> 	data->inode = inode = req->wb_context->path.dentry->d_inode;
+>> -	data->cred = msg.rpc_cred;
+>> +	data->cred = req->wb_context->cred;
+>> 
+>> 	data->args.fh     = NFS_FH(inode);
+>> 	data->args.offset = req_offset(req) + offset;
+>> @@ -837,30 +870,7 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+>> 	data->res.verf    = &data->verf;
+>> 	nfs_fattr_init(&data->fattr);
+>> 
+>> -	/* Set up the initial task struct.  */
+>> -	NFS_PROTO(inode)->write_setup(data, &msg);
+>> -
+>> -	dprintk("NFS: %5u initiated write call "
+>> -		"(req %s/%lld, %u bytes @ offset %llu)\n",
+>> -		data->task.tk_pid,
+>> -		inode->i_sb->s_id,
+>> -		(long long)NFS_FILEID(inode),
+>> -		count,
+>> -		(unsigned long long)data->args.offset);
+>> -
+>> -	task = rpc_run_task(&task_setup_data);
+>> -	if (IS_ERR(task)) {
+>> -		ret = PTR_ERR(task);
+>> -		goto out;
+>> -	}
+>> -	if (how & FLUSH_SYNC) {
+>> -		ret = rpc_wait_for_completion_task(task);
+>> -		if (ret == 0)
+>> -			ret = task->tk_status;
+>> -	}
+>> -	rpc_put_task(task);
+>> -out:
+>> -	return ret;
+>> +	return nfs_initiate_write(data, NFS_CLIENT(inode), call_ops, how);
+>> }
+>> 
+>> /* If a nfs_flush_* function fails, it should remove reqs from @head and
+>> -- 
+>> 1.7.2.1
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
