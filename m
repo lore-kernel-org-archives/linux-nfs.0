@@ -1,73 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:35003 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:20569 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754628Ab1BURtn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Feb 2011 12:49:43 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 6/7] NFSv4.1: remove GETATTR from ds writes
-Date: Mon, 21 Feb 2011 12:49:35 -0500
-Message-Id: <1298310576-13523-7-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1298310576-13523-1-git-send-email-iisaman@netapp.com>
-References: <1298310576-13523-1-git-send-email-iisaman@netapp.com>
+	id S1755122Ab1BNRUU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Feb 2011 12:20:20 -0500
+Subject: Re: pNFS files server?
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <DE966DA98A4ABE438D726BDF1699CF61043FE56802@MX05A.corp.emc.com>
+Date: Mon, 14 Feb 2011 12:20:19 -0500
+Cc: <linux-nfs@vger.kernel.org>
+Message-Id: <22B76C5D-2028-40A5-8AF2-CABEEB1C48EE@netapp.com>
+References: <1297443279-19813-1-git-send-email-iisaman@netapp.com> <1297443279-19813-8-git-send-email-iisaman@netapp.com> <DE966DA98A4ABE438D726BDF1699CF61043FE56802@MX05A.corp.emc.com>
+To: <Daniel.Muntz@emc.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Any WRITE compound directed to a data server needs to have the
-GETATTR calls suppressed.
+The GFS2 pnfs files server code has not moved forward for a while as we have all spent our time on the pnfs files client.  The pnfsd-files branch of benny's tree git://linux-nfs.org/~bhalevy/linux-pnfs.git has the latest code.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4proc.c |    6 +++++-
- fs/nfs/nfs4xdr.c  |    8 +++++---
- 2 files changed, 10 insertions(+), 4 deletions(-)
+-->Andy
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bfdd36a..4ec34e2 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3148,7 +3148,11 @@ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
- {
- 	struct nfs_server *server = NFS_SERVER(data->inode);
- 
--	data->args.bitmask = server->cache_consistency_bitmask;
-+	if (data->lseg) {
-+		data->args.bitmask = NULL;
-+		data->res.fattr = NULL;
-+	} else
-+		data->args.bitmask = server->cache_consistency_bitmask;
- 	if (!data->write_done_cb)
- 		data->write_done_cb = nfs4_write_done_cb;
- 	data->res.server = server;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 2380c45..c35880c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2275,7 +2275,8 @@ static void nfs4_xdr_enc_write(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_putfh(xdr, args->fh, &hdr);
- 	encode_write(xdr, args, &hdr);
- 	req->rq_snd_buf.flags |= XDRBUF_WRITE;
--	encode_getfattr(xdr, args->bitmask, &hdr);
-+	if (args->bitmask)
-+		encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- }
- 
-@@ -5694,8 +5695,9 @@ static int nfs4_xdr_dec_write(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	status = decode_write(xdr, res);
- 	if (status)
- 		goto out;
--	decode_getfattr(xdr, res->fattr, res->server,
--			!RPC_IS_ASYNC(rqstp->rq_task));
-+	if (res->fattr)
-+		decode_getfattr(xdr, res->fattr, res->server,
-+				!RPC_IS_ASYNC(rqstp->rq_task));
- 	if (!status)
- 		status = res->count;
- out:
--- 
-1.7.2.1
+On Feb 11, 2011, at 5:15 PM, <Daniel.Muntz@emc.com> wrote:
+
+> Is anyone still working on a freely-available pNFS files server for Linux?  I've had a couple of inquiries recently about spNFS, and would like to be able to point people to recent work.  Last I knew, Andy's GFS2-based pnfs files server work was the POR for delivering a server.  Is that work still going on, and if so, is there usable code I can point to?
+> 
+>  Thanks,
+>  Dan--
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
