@@ -1,40 +1,259 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:47169 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751759Ab1BUW3u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 17:29:50 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 1/9] pnfsd: Initialize cb_layout clr_recall.cb_work
-Date: Mon, 21 Feb 2011 14:29:45 -0800
-Message-Id: <1298327385-6766-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4D62E6F3.8000304@panasas.com>
-References: <4D62E6F3.8000304@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:58884 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752853Ab1BPSjI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Feb 2011 13:39:08 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>,
+        Andy Adamon <andros@netapp.com>, Andy Adamon <andros@citi.umich.edu>,
+        Dean Hildebrand <dhildeb@us.ibm.com>,
+        Fred Isaman <iisaman@citi.umich.edu>,
+        Benny Halevy <bhalevy@panasas.com>,
+        Boaz Harrosh <bharrosh@panasas.com>,
+        Oleg Drokin <green@linuxhacker.ru>, Tao Guo <guotao@nrchpc.ac.cn>
+Subject: [PATCH pNFS wave 3 Version 2 09/18] NFSv4.1: coelesce across layout stripes
+Date: Tue, 15 Feb 2011 03:38:54 -0500
+Message-Id: <1297759143-2045-10-git-send-email-andros@netapp.com>
+In-Reply-To: <1297759143-2045-1-git-send-email-andros@netapp.com>
+References: <1297759143-2045-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Fixes a 2,6,37-only bug
+From: Fred Isaman <iisaman@netapp.com>
 
+Add a pg_test layout driver hook which is used to avoid coelescing I/O across
+layout stripes.
+
+Signed-off-by: Andy Adamon <andros@netapp.com>
+Signed-off-by: Andy Adamon <andros@citi.umich.edu>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
 ---
- fs/nfsd/nfs4pnfsd.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4filelayout.c  |   26 ++++++++++++++++++++++++++
+ fs/nfs/pagelist.c        |   12 ++++++++++--
+ fs/nfs/pnfs.c            |   19 +++++++++++++++++++
+ fs/nfs/pnfs.h            |   12 ++++++++++++
+ fs/nfs/read.c            |    1 +
+ fs/nfs/write.c           |    3 +++
+ include/linux/nfs_page.h |    2 ++
+ 7 files changed, 73 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 4aa7999..507e3e2 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -579,6 +579,7 @@ alloc_init_layoutrecall(struct nfsd4_pnfs_cb_layout *cbl,
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 23f930c..98e26e0 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -252,6 +252,31 @@ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
+ 	_filelayout_free_lseg(fl);
+ }
  
- 	kref_init(&clr->clr_ref);
- 	INIT_LIST_HEAD(&clr->clr_perclnt);
-+	INIT_WORK(&clr->clr_recall.cb_work, nfsd4_do_callback_rpc);
++/*
++ * filelayout_pg_test(). Called by nfs_can_coalesce_requests()
++ *
++ * return 1 :  coalesce page
++ * return 0 :  don't coalesce page
++ */
++int
++filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
++		   struct nfs_page *req)
++{
++	u64 p_stripe, r_stripe;
++	u32 stripe_unit;
++
++	if (!pgio->pg_lseg)
++		return 1;
++	p_stripe = (u64)prev->wb_index << PAGE_CACHE_SHIFT;
++	r_stripe = (u64)req->wb_index << PAGE_CACHE_SHIFT;
++	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
++
++	do_div(p_stripe, stripe_unit);
++	do_div(r_stripe, stripe_unit);
++
++	return (p_stripe == r_stripe);
++}
++
+ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.id = LAYOUT_NFSV4_1_FILES,
+ 	.name = "LAYOUT_NFSV4_1_FILES",
+@@ -260,6 +285,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.clear_layoutdriver = filelayout_clear_layoutdriver,
+ 	.alloc_lseg              = filelayout_alloc_lseg,
+ 	.free_lseg               = filelayout_free_lseg,
++	.pg_test                 = filelayout_pg_test,
+ };
  
- 	dprintk("NFSD %s return %p\n", __func__, clr);
- 	return clr;
+ static int __init nfs4filelayout_init(void)
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index e1164e3..9b9a65c 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -226,6 +226,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_doio = doio;
+ 	desc->pg_ioflags = io_flags;
+ 	desc->pg_error = 0;
++	desc->pg_lseg = NULL;
+ }
+ 
+ /**
+@@ -240,7 +241,8 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+  * Return 'true' if this is the case, else return 'false'.
+  */
+ static int nfs_can_coalesce_requests(struct nfs_page *prev,
+-				     struct nfs_page *req)
++				     struct nfs_page *req,
++				     struct nfs_pageio_descriptor *pgio)
+ {
+ 	if (req->wb_context->cred != prev->wb_context->cred)
+ 		return 0;
+@@ -254,6 +256,12 @@ static int nfs_can_coalesce_requests(struct nfs_page *prev,
+ 		return 0;
+ 	if (prev->wb_pgbase + prev->wb_bytes != PAGE_CACHE_SIZE)
+ 		return 0;
++	/*
++	 * Non-whole file layouts need to check that req is inside of
++	 * pgio->pg_lseg.
++	 */
++	if (pgio->pg_test && !pgio->pg_test(pgio, prev, req))
++		return 0;
+ 	return 1;
+ }
+ 
+@@ -286,7 +294,7 @@ static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
+ 		if (newlen > desc->pg_bsize)
+ 			return 0;
+ 		prev = nfs_list_entry(desc->pg_list.prev);
+-		if (!nfs_can_coalesce_requests(prev, req))
++		if (!nfs_can_coalesce_requests(prev, req, desc))
+ 			return 0;
+ 	} else
+ 		desc->pg_base = req->wb_pgbase;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 1173434..d12f463 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -858,6 +858,25 @@ out_forget_reply:
+ 	goto out;
+ }
+ 
++static void
++pnfs_set_pg_test(struct inode *inode, struct nfs_pageio_descriptor *pgio)
++{
++	struct pnfs_layoutdriver_type *ld;
++
++	ld = NFS_SERVER(inode)->pnfs_curr_ld;
++	pgio->pg_test = (ld ? ld->pg_test : NULL);
++}
++
++/*
++ * rsize is already set by caller to MDS rsize.
++ */
++void
++pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
++		  struct inode *inode)
++{
++	pnfs_set_pg_test(inode, pgio);
++}
++
+ /*
+  * Device ID cache. Currently supports one layout type per struct nfs_client.
+  * Add layout type to the lookup key to expand to support multiple types.
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 9a994bc..db52d96 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -30,6 +30,8 @@
+ #ifndef FS_NFS_PNFS_H
+ #define FS_NFS_PNFS_H
+ 
++#include <linux/nfs_page.h>
++
+ enum {
+ 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
+ 	NFS_LSEG_ROC,		/* roc bit received from server */
+@@ -65,6 +67,9 @@ struct pnfs_layoutdriver_type {
+ 	int (*clear_layoutdriver) (struct nfs_server *);
+ 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
++
++	/* test for nfs page cache coalescing */
++	int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
+ };
+ 
+ struct pnfs_layout_hdr {
+@@ -151,6 +156,7 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 		   enum pnfs_iomode access_type);
+ void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
++void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+ void pnfs_destroy_layout(struct nfs_inode *);
+@@ -250,6 +256,12 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
+ {
+ }
+ 
++static inline void
++pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *ino)
++{
++	pgio->pg_test = NULL;
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #endif /* FS_NFS_PNFS_H */
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index aedcaa7..2a27659 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -626,6 +626,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 		goto read_complete; /* all pages were read */
+ 
+ 	pnfs_update_layout(inode, desc.ctx, IOMODE_READ);
++	pnfs_pageio_init_read(&pgio, inode);
+ 	if (rsize < PAGE_CACHE_SIZE)
+ 		nfs_pageio_init(&pgio, inode, nfs_pagein_multi, rsize, 0);
+ 	else
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index c8278f4..6e90cdf 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -28,6 +28,7 @@
+ #include "iostat.h"
+ #include "nfs4_fs.h"
+ #include "fscache.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+@@ -982,6 +983,8 @@ static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+ {
+ 	size_t wsize = NFS_SERVER(inode)->wsize;
+ 
++	pgio->pg_test = NULL;
++
+ 	if (wsize < PAGE_CACHE_SIZE)
+ 		nfs_pageio_init(pgio, inode, nfs_flush_multi, wsize, ioflags);
+ 	else
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index d55cee7..4eaf27a 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -62,6 +62,8 @@ struct nfs_pageio_descriptor {
+ 	int			(*pg_doio)(struct inode *, struct list_head *, unsigned int, size_t, int);
+ 	int 			pg_ioflags;
+ 	int			pg_error;
++	struct pnfs_layout_segment *pg_lseg;
++	int			(*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
+ };
+ 
+ #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
 -- 
-1.7.3.4
+1.7.2.3
 
