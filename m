@@ -1,131 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:48881 "EHLO shutemov.name"
+Received: from mx2.netapp.com ([216.240.18.37]:58961 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755480Ab1BHSmL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Feb 2011 13:42:11 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Rob Landley <rlandley@parallels.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v3, RESEND 09/16] sunrpc: introduce rpc_pipefs_add_destroy_cb()
-Date: Tue,  8 Feb 2011 20:42:00 +0200
-Message-Id: <1297190527-19925-10-git-send-email-kas@openvz.org>
-In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
-References: <1297190527-19925-1-git-send-email-kas@openvz.org>
+	id S1751675Ab1BOCXJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Feb 2011 21:23:09 -0500
+Subject: Re: NFS only mount with -o udp option
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Edgar Almonte <samudhio@gmail.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <AANLkTim9zbEzKZ=RZbfZhcLovn6fWkdL-3eZp21-NDP+@mail.gmail.com>
+References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com>
+	 <665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com>
+	 <AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com>
+	 <0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
+	 <AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com>
+	 <AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com>
+	 <1A31AB06-8518-427C-8D0B-0058AA613D0E@oracle.com>
+	 <AANLkTimiACttSQ+=M0UNGs5nZrP=zs0zRFV+4HP8c-OP@mail.gmail.com>
+	 <81853901-909D-4803-81A5-C01C0337CAE1@oracle.com>
+	 <AANLkTim9zbEzKZ=RZbfZhcLovn6fWkdL-3eZp21-NDP+@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 14 Feb 2011 21:22:52 -0500
+Message-ID: <1297736572.23841.60.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Add facility to do some action on destroying of rpc_pipefs superblock.
+On Mon, 2011-02-14 at 22:09 -0400, Edgar Almonte wrote: 
+> in debian dont exist a package called nfs-utils , i get nfs-common and
+> say the same version of the nfs-utils of archlinux
+> not sure about MNT version config , i dont remember intentionally
+> changing this , where i can check it ?
+> 
+> pd: sorry for the double email i forget press reply all
+> 
+> On Mon, Feb 14, 2011 at 11:56 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> > Hi Edgar-
+> >
+> > On Feb 11, 2011, at 6:46 PM, Edgar Almonte wrote:
+> >
+> >> hmm i will try update to the last version but is the lasted in
+> >> official repository of my distro
+> >
+> > Yes, that could be a problem.  Out of curiosity, can you tell us what version of nfs-utils is running on the working Debian client you have?
+> >
+> >> the rpcinfo -p localhost output ( run at the server )
+> >>
+> >> rpcinfo -p localhost
+> >>   program vers proto   port  service
+> >>    100000    4   tcp    111  portmapper
+> >>    100000    3   tcp    111  portmapper
+> >>    100000    2   tcp    111  portmapper
+> >>    100000    4   udp    111  portmapper
+> >>    100000    3   udp    111  portmapper
+> >>    100000    2   udp    111  portmapper
+> >>    391002    2   tcp    661  sgi_fam
+> >>    100024    1   udp  49216  status
+> >>    100024    1   tcp  42903  status
+> >>    100003    2   tcp   2049  nfs
+> >>    100003    3   tcp   2049  nfs
+> >>    100003    4   tcp   2049  nfs
+> >>    100227    2   tcp   2049  nfs_acl
+> >>    100227    3   tcp   2049  nfs_acl
+> >>    100003    2   udp   2049  nfs
+> >>    100003    3   udp   2049  nfs
+> >>    100003    4   udp   2049  nfs
+> >>    100227    2   udp   2049  nfs_acl
+> >>    100227    3   udp   2049  nfs_acl
+> >>    100021    1   udp  36092  nlockmgr
+> >>    100021    3   udp  36092  nlockmgr
+> >>    100021    4   udp  36092  nlockmgr
+> >>    100021    1   tcp  52268  nlockmgr
+> >>    100021    3   tcp  52268  nlockmgr
+> >>    100021    4   tcp  52268  nlockmgr
+> >>    100005    3   udp  41849  mountd
+> >>    100005    3   tcp  46012  mountd
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
-Reviewed-by: Rob Landley <rlandley@parallels.com>
----
- include/linux/sunrpc/rpc_pipe_fs.h |    3 ++
- net/sunrpc/rpc_pipe.c              |   51 ++++++++++++++++++++++++++++++++++-
- 2 files changed, 52 insertions(+), 2 deletions(-)
+UDP and TCP appear to be running on different ports.
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index b09bfa5..f5216f1 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -46,6 +46,9 @@ RPC_I(struct inode *inode)
- 
- extern struct vfsmount *init_rpc_pipefs;
- 
-+extern int rpc_pipefs_add_destroy_cb(struct super_block *sb,
-+		void (*destroy_cb)(void *data), void *data);
-+
- extern int rpc_queue_upcall(struct inode *, struct rpc_pipe_msg *);
- 
- struct rpc_clnt;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 484c9a3..58312fa 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -939,6 +939,31 @@ static const struct super_operations s_ops = {
- 
- #define RPCAUTH_GSSMAGIC 0x67596969
- 
-+struct destroy_cb {
-+	struct list_head list;
-+	void (*callback)(void *data);
-+	void *data;
-+};
-+
-+int rpc_pipefs_add_destroy_cb(struct super_block *sb,
-+		void (*destroy_cb)(void *data), void *data)
-+{
-+	struct destroy_cb *dcb;
-+	struct list_head *destroy_cb_list = sb->s_fs_info;
-+
-+	dcb = kmalloc(sizeof(*dcb), GFP_KERNEL);
-+	if (!dcb)
-+		return -ENOMEM;
-+
-+	dcb->callback = destroy_cb;
-+	dcb->data = data;
-+	INIT_LIST_HEAD(&dcb->list);
-+	list_add(&dcb->list, destroy_cb_list);
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(rpc_pipefs_add_destroy_cb);
-+
- /*
-  * We have a single directory with 1 node in it.
-  */
-@@ -1004,8 +1029,16 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 		iput(inode);
- 		return -ENOMEM;
- 	}
--	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
-+	/* List of destroy callbacks */
-+	sb->s_fs_info = kmalloc(sizeof(struct list_head), GFP_KERNEL);
-+	if (!sb->s_fs_info)
-+		return -ENOMEM;
-+	INIT_LIST_HEAD((struct list_head*) sb->s_fs_info);
-+	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL)) {
-+		kfree(sb->s_fs_info);
- 		return -ENOMEM;
-+	}
-+
- 	return 0;
- }
- 
-@@ -1016,11 +1049,25 @@ rpc_mount(struct file_system_type *fs_type,
- 	return mount_single(fs_type, flags, data, rpc_fill_super);
- }
- 
-+static void rpc_kill_sb(struct super_block *sb)
-+{
-+	struct list_head *destroy_cb_list = sb->s_fs_info;
-+	struct destroy_cb *dcb, *tmp;
-+
-+	list_for_each_entry_safe(dcb, tmp, destroy_cb_list, list) {
-+		dcb->callback(dcb->data);
-+		list_del(&dcb->list);
-+		kfree(dcb);
-+	}
-+	kfree(destroy_cb_list);
-+	kill_litter_super(sb);
-+}
-+
- static struct file_system_type rpc_pipe_fs_type = {
- 	.owner		= THIS_MODULE,
- 	.name		= "rpc_pipefs",
- 	.mount		= rpc_mount,
--	.kill_sb	= kill_litter_super,
-+	.kill_sb	= rpc_kill_sb,
- };
- 
- static void
+     1. Does running 'sudo netstat -anp' on the server show any other
+        processes running on TCP port 41849 or UDP port 46012? 
+     2. Does running 'sudo iptables -n -L' on the server show anything
+        rejecting TCP connections on port 46012?
+
+Cheers
+  Trond
 -- 
-1.7.4
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
