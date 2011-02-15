@@ -1,113 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:61677 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932115Ab1BOWVr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 17:21:47 -0500
-Received: by yib18 with SMTP id 18so333029yib.19
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2011 14:21:47 -0800 (PST)
-In-Reply-To: <1297736572.23841.60.camel@heimdal.trondhjem.org>
-References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com>
-	<665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com>
-	<AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com>
-	<0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
-	<AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com>
-	<AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com>
-	<1A31AB06-8518-427C-8D0B-0058AA613D0E@oracle.com>
-	<AANLkTimiACttSQ+=M0UNGs5nZrP=zs0zRFV+4HP8c-OP@mail.gmail.com>
-	<81853901-909D-4803-81A5-C01C0337CAE1@oracle.com>
-	<AANLkTim9zbEzKZ=RZbfZhcLovn6fWkdL-3eZp21-NDP+@mail.gmail.com>
-	<1297736572.23841.60.camel@heimdal.trondhjem.org>
-Date: Tue, 15 Feb 2011 18:21:46 -0400
-Message-ID: <AANLkTi=q2UU=CGCgLHs+q19Lxj=von1H06pQnyvixAdY@mail.gmail.com>
-Subject: Re: NFS only mount with -o udp option
-From: Edgar Almonte <samudhio@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:41722 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755189Ab1BOPHP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 10:07:15 -0500
+Received: by wwa36 with SMTP id 36so277265wwa.1
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2011 07:07:13 -0800 (PST)
+In-Reply-To: <20110215145828.GA18038@infradead.org>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com>
+	<1297711116-3139-9-git-send-email-andros@netapp.com>
+	<20110215092531.GB29871@infradead.org>
+	<AANLkTik+dVSmWgO6LRANo2xTt6iMqQ7ehvgqk-igQFhM@mail.gmail.com>
+	<20110215145828.GA18038@infradead.org>
+Date: Tue, 15 Feb 2011 10:07:13 -0500
+Message-ID: <AANLkTi=DfuLCduGgwGrL_N5dm+y4Et9r7O511wSJw71r@mail.gmail.com>
+Subject: Re: [PATCH 08/16] pnfs: wave 3: lseg refcounting
+From: Fred Isaman <iisaman@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: andros@netapp.com, trond.myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        Benny Halevy <bhalevy@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-1- no
-
-2:
-[root@heaven Desktop]# iptables -n -L
-Chain INPUT (policy ACCEPT)
-target     prot opt source               destination
-
-Chain FORWARD (policy ACCEPT)
-target     prot opt source               destination
-
-Chain OUTPUT (policy ACCEPT)
-target     prot opt source               destination
-
-On Mon, Feb 14, 2011 at 10:22 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Mon, 2011-02-14 at 22:09 -0400, Edgar Almonte wrote:
->> in debian dont exist a package called nfs-utils , i get nfs-common and
->> say the same version of the nfs-utils of archlinux
->> not sure about MNT version config , i dont remember intentionally
->> changing this , where i can check it ?
->>
->> pd: sorry for the double email i forget press reply all
->>
->> On Mon, Feb 14, 2011 at 11:56 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> > Hi Edgar-
->> >
->> > On Feb 11, 2011, at 6:46 PM, Edgar Almonte wrote:
->> >
->> >> hmm i will try update to the last version but is the lasted in
->> >> official repository of my distro
->> >
->> > Yes, that could be a problem.  Out of curiosity, can you tell us what version of nfs-utils is running on the working Debian client you have?
->> >
->> >> the rpcinfo -p localhost output ( run at the server )
->> >>
->> >> rpcinfo -p localhost
->> >>   program vers proto   port  service
->> >>    100000    4   tcp    111  portmapper
->> >>    100000    3   tcp    111  portmapper
->> >>    100000    2   tcp    111  portmapper
->> >>    100000    4   udp    111  portmapper
->> >>    100000    3   udp    111  portmapper
->> >>    100000    2   udp    111  portmapper
->> >>    391002    2   tcp    661  sgi_fam
->> >>    100024    1   udp  49216  status
->> >>    100024    1   tcp  42903  status
->> >>    100003    2   tcp   2049  nfs
->> >>    100003    3   tcp   2049  nfs
->> >>    100003    4   tcp   2049  nfs
->> >>    100227    2   tcp   2049  nfs_acl
->> >>    100227    3   tcp   2049  nfs_acl
->> >>    100003    2   udp   2049  nfs
->> >>    100003    3   udp   2049  nfs
->> >>    100003    4   udp   2049  nfs
->> >>    100227    2   udp   2049  nfs_acl
->> >>    100227    3   udp   2049  nfs_acl
->> >>    100021    1   udp  36092  nlockmgr
->> >>    100021    3   udp  36092  nlockmgr
->> >>    100021    4   udp  36092  nlockmgr
->> >>    100021    1   tcp  52268  nlockmgr
->> >>    100021    3   tcp  52268  nlockmgr
->> >>    100021    4   tcp  52268  nlockmgr
->> >>    100005    3   udp  41849  mountd
->> >>    100005    3   tcp  46012  mountd
+On Tue, Feb 15, 2011 at 9:58 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Tue, Feb 15, 2011 at 09:48:26AM -0500, Fred Isaman wrote:
+>> pnfs_free_lseg_list, besides calling free_lseg, also potentially
+>> removes the layout from the clients list of inodes with layouts.
 >
-> UDP and TCP appear to be running on different ports.
+> Looks like the routine than changed from the mainline variant
+> I looked at. �I took a quick look at the one from pnfs-submit,
+> which looks quite suspicios, as it special cases the first item
+> on the list without a good explanation and then iterates the list.
 >
->     1. Does running 'sudo netstat -anp' on the server show any other
->        processes running on TCP port 41849 or UDP port 46012?
->     2. Does running 'sudo iptables -n -L' on the server show anything
->        rejecting TCP connections on port 46012?
+
+I can add a comment, but every element on the list is from the same
+layout, so we just grab the layout from the first item in the list.
+
+> Does your tree have another caller of pnfs_free_lseg_list?
+
+Yes, there are several callers, two in callback_proc.c for example
+which are both potentially actual lists.
+
+Fred
+
+
+> If not
+> please just open code the right thing in the caller, instead of
+> pretending we're dealing with a list if you're always dealing with
+> one entry. �If the tree grows a caller that needs to deal with a list
+> with more than 1 entry we can revisit if there's a point in sharing
+> code.
 >
-> Cheers
->  Trond
 > --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at �http://vger.kernel.org/majordomo-info.html
 >
