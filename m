@@ -1,151 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:47805 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753100Ab1BDVeK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Feb 2011 16:34:10 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH 01/40] pnfs-submit: wave3: lseg refcounting
-Date: Fri,  4 Feb 2011 16:33:23 -0500
-Message-Id: <1296855242-2592-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1296855242-2592-1-git-send-email-andros@netapp.com>
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
+	id S1751201Ab1BOPAm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 10:00:42 -0500
+Subject: Re: [PATCH 09/16] pnfs: wave 3: shift pnfs_update_layout locations
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Fred Isaman <iisaman@netapp.com>
+Cc: andros@netapp.com, linux-nfs@vger.kernel.org,
+        Andy Adamon <andros@citi.umich.edu>,
+        Dean Hildebrand <dhildeb@us.ibm.com>,
+        Benny Halevy <bhalevy@panasas.com>,
+        Boaz Harrosh <bharrosh@panasas.com>,
+        Oleg Drokin <green@linuxhacker.ru>, Tao Guo <guotao@nrchpc.ac.cn>
+In-Reply-To: <AANLkTinxqbmWvWXeaPnw7oNtL_zfCYOTB=KjZFJQaKFn@mail.gmail.com>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com>
+	 <1297711116-3139-10-git-send-email-andros@netapp.com>
+	 <1297725252.23841.45.camel@heimdal.trondhjem.org>
+	 <AANLkTinxqbmWvWXeaPnw7oNtL_zfCYOTB=KjZFJQaKFn@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 15 Feb 2011 10:00:40 -0500
+Message-ID: <1297782040.10103.10.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@netapp.com>
+On Tue, 2011-02-15 at 09:41 -0500, Fred Isaman wrote: 
+> On Mon, Feb 14, 2011 at 6:14 PM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> > On Mon, 2011-02-14 at 14:18 -0500, andros@netapp.com wrote:
+> >> From: Fred Isaman <iisaman@netapp.com>
+> >>
+> >> Move the pnfs_update_layout call location to nfs_pageio_do_add_request().
+> >> Grab the lseg sent in the doio function to nfs_read_rpcsetup and attach
+> >> it to each nfs_read_data so it can be sent to the layout driver.
+> >>
+> >> Signed-off-by: Andy Adamon <andros@netapp.com>
+> >> Signed-off-by: Andy Adamon <andros@citi.umich.edu>
+> >> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+> >> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+> >> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+> >> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> >> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> >> Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+> >> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+> >> ---
+> >>  fs/nfs/file.c            |    4 ----
+> >>  fs/nfs/pagelist.c        |   15 ++++++++++++---
+> >>  fs/nfs/pnfs.c            |    4 ++--
+> >>  fs/nfs/pnfs.h            |    1 +
+> >>  fs/nfs/read.c            |   28 ++++++++++++++++------------
+> >>  fs/nfs/write.c           |    4 ++--
+> >>  include/linux/nfs_page.h |    5 +++--
+> >>  include/linux/nfs_xdr.h  |    1 +
+> >>  8 files changed, 37 insertions(+), 25 deletions(-)
+> >>
+> >> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> >> index 7bf029e..d85a534 100644
+> >> --- a/fs/nfs/file.c
+> >> +++ b/fs/nfs/file.c
+> >> @@ -387,10 +387,6 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
+> >>               file->f_path.dentry->d_name.name,
+> >>               mapping->host->i_ino, len, (long long) pos);
+> >>
+> >> -     pnfs_update_layout(mapping->host,
+> >> -                        nfs_file_open_context(file),
+> >> -                        IOMODE_RW);
+> >> -
+> >>  start:
+> >>       /*
+> >>        * Prevent starvation issues if someone is doing a consistency
+> >> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+> >> index e1164e3..e0a0cb4 100644
+> >> --- a/fs/nfs/pagelist.c
+> >> +++ b/fs/nfs/pagelist.c
+> >> @@ -20,6 +20,7 @@
+> >>  #include <linux/nfs_mount.h>
+> >>
+> >>  #include "internal.h"
+> >> +#include "pnfs.h"
+> >>
+> >>  static struct kmem_cache *nfs_page_cachep;
+> >>
+> >> @@ -213,7 +214,7 @@ nfs_wait_on_request(struct nfs_page *req)
+> >>   */
+> >>  void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+> >>                    struct inode *inode,
+> >> -                  int (*doio)(struct inode *, struct list_head *, unsigned int, size_t, int),
+> >> +                  int (*doio)(struct inode *, struct list_head *, unsigned int, size_t, int, struct pnfs_layout_segment *),
+> >>                    size_t bsize,
+> >>                    int io_flags)
+> >>  {
+> >> @@ -226,6 +227,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+> >>       desc->pg_doio = doio;
+> >>       desc->pg_ioflags = io_flags;
+> >>       desc->pg_error = 0;
+> >> +     desc->pg_lseg = NULL;
+> >>  }
+> >>
+> >>  /**
+> >> @@ -288,8 +290,13 @@ static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
+> >>               prev = nfs_list_entry(desc->pg_list.prev);
+> >>               if (!nfs_can_coalesce_requests(prev, req))
+> >>                       return 0;
+> >> -     } else
+> >> +     } else {
+> >> +             put_lseg(desc->pg_lseg);
+> >>               desc->pg_base = req->wb_pgbase;
+> >> +             desc->pg_lseg = pnfs_update_layout(desc->pg_inode,
+> >> +                                                req->wb_context,
+> >> +                                                IOMODE_READ);
+> >
+> > Looking at this afresh after a week of vacation. Isn't it more natural
+> > to do this as part of the pg_doio() callback?
+> >
+> > Your only reason for introducing the ->pg_lseg pointer is to be able to
+> > pass it to the ->pg_doio() in the first place. Why not do that by simply
+> > passing the 'desc' pointer to ->pg_doio(), and then having it call
+> > pnfs_update_layout() instead of 'get_layout()'?
+> >
+> 
+> The problem is that it is not the only reason.  Passing the lseg into
+> the nfs_can_coalesce_requests is another.  Calling pnfs_update_layout
+> in ->pg_doio would be eliminate the opportunity to have a say in
+> coalescing based on the layout.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/pnfs.c |   48 ++++++++++++++++++++++++++++++++++++++----------
- fs/nfs/pnfs.h |   10 ++++++++++
- 2 files changed, 48 insertions(+), 10 deletions(-)
+The point is that you are adding intimate knowledge of layouts to sites
+like nfs_pageio_do_add_request and nfs_pageio_complete, and then on top
+of that adding callbacks whose sole purpose is to support layouts.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 0f5b66f..32ad768 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -230,6 +230,21 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
- 	put_layout_hdr(NFS_I(ino)->layout);
- }
- 
-+static void
-+_put_lseg_common(struct pnfs_layout_segment *lseg)
-+{
-+	struct inode *ino = lseg->pls_layout->plh_inode;
-+
-+	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+	list_del(&lseg->pls_list);
-+	if (list_empty(&lseg->pls_layout->plh_segs)) {
-+		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
-+		/* Matched by initial refcount set in alloc_init_layout_hdr */
-+		put_layout_hdr_locked(lseg->pls_layout);
-+	}
-+	rpc_wake_up(&NFS_SERVER(ino)->roc_rpcwaitq);
-+}
-+
- /* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
-  * could sleep, so must be called outside of the lock.
-  * Returns 1 if object was removed, otherwise return 0.
-@@ -242,22 +257,32 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
- 		atomic_read(&lseg->pls_refcount),
- 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	if (atomic_dec_and_test(&lseg->pls_refcount)) {
--		struct inode *ino = lseg->pls_layout->plh_inode;
--
--		BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
--		list_del(&lseg->pls_list);
--		if (list_empty(&lseg->pls_layout->plh_segs)) {
--			set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
--			/* Matched by initial refcount set in alloc_init_layout_hdr */
--			put_layout_hdr_locked(lseg->pls_layout);
--		}
--		rpc_wake_up(&NFS_SERVER(ino)->roc_rpcwaitq);
-+		_put_lseg_common(lseg);
- 		list_add(&lseg->pls_list, tmp_list);
- 		return 1;
- 	}
- 	return 0;
- }
- 
-+static void
-+put_lseg(struct pnfs_layout_segment *lseg)
-+{
-+	struct inode *ino;
-+
-+	if (!lseg)
-+		return;
-+
-+	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
-+		atomic_read(&lseg->pls_refcount),
-+		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+	ino = lseg->pls_layout->plh_inode;
-+	if (atomic_dec_and_lock(&lseg->pls_refcount, &ino->i_lock)) {
-+		_put_lseg_common(lseg);
-+		spin_unlock(&ino->i_lock);
-+		free_lseg(lseg);
-+	}
-+}
-+
- static bool
- should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
- {
-@@ -689,6 +714,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
- 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
- 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
- 		    is_matching_lseg(lseg, iomode)) {
-+			get_lseg(lseg);
- 			ret = lseg;
- 			break;
- 		}
-@@ -769,6 +795,7 @@ pnfs_update_layout(struct inode *ino,
- out:
- 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
- 		nfsi->layout->plh_flags, lseg);
-+	put_lseg(lseg); /* STUB - callers currently ignore return value */
- 	return lseg;
- out_unlock:
- 	spin_unlock(&ino->i_lock);
-@@ -821,6 +848,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	}
- 	init_lseg(lo, lseg);
- 	lseg->pls_range = res->range;
-+	get_lseg(lseg);
- 	*lgp->lsegpp = lseg;
- 	pnfs_insert_layout(lo, lseg);
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index e2612ea..fe50faa 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -177,6 +177,12 @@ static inline int lo_fail_bit(u32 iomode)
- 			 NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
- }
- 
-+static inline void get_lseg(struct pnfs_layout_segment *lseg)
-+{
-+	atomic_inc(&lseg->pls_refcount);
-+	smp_mb__after_atomic_inc();
-+}
-+
- /* Return true if a layout driver is being used for this mountpoint */
- static inline int pnfs_enabled_sb(struct nfs_server *nfss)
- {
-@@ -193,6 +199,10 @@ static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
- {
- }
- 
-+static inline void get_lseg(struct pnfs_layout_segment *lseg)
-+{
-+}
-+
- static inline struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
- 		   enum pnfs_iomode access_type)
+A better approach is to keep the layouts in the callbacks (i.e. pg_test
+and pg_doio). I don't care if you cache the layout in a pg_lseg field,
+but I do object to the proliferation of layout knowledge in places where
+we don't need it.
+
 -- 
-1.6.6
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
