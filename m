@@ -1,88 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:26986 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:2011 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757424Ab1BKQzA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 11:55:00 -0500
-Received: from localhost.localdomain (manjua-lxp.hq.netapp.com [10.58.49.248] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p1BGshZ6002533
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2011 08:54:45 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/7] wave4: remove GETATTR from ds write
-Date: Fri, 11 Feb 2011 11:54:35 -0500
-Message-Id: <1297443279-19813-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
-References: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
+	id S1751198Ab1BOPbz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 10:31:55 -0500
+Subject: Re: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release
+ to nfsiod
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
+References: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 15 Feb 2011 10:31:38 -0500
+Message-ID: <1297783898.10103.22.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Any WRITE compounds directed to a data server need to have the
-GETATTR calls suppressed.
+On Tue, 2011-02-15 at 09:58 -0500, Jeff Layton wrote: 
+> I recently had some of our QA people report some connectathon test
+> failures in RHEL5 (2.6.18-based kernel). For some odd reason (maybe
+> scheduling differences that make the race more likely?) the problem
+> occurs more frequently on s390.
+> 
+> The problem generally manifests itself on NFSv4 as a race where an rmdir
+> fails because a silly-renamed file in the directory wasn't deleted in
+> time. Looking at traces, what you usually see is the failing rmdir
+> attempt that fails with the sillydelete of the file that prevented it
+> very soon afterward.
+> 
+> Silly deletes are handled via dentry_iput and in the case of a close on
+> NFSv4, the last dentry reference is often held by the CLOSE RPC task.
+> nfs4_do_close does the close as an async RPC task that it conditionally
+> waits on depending on whether the close is synchronous or not.
+> 
+> It also sets the workqueue for the task to nfsiod_workqueue. When
+> tk_workqueue is set, the rpc_release operation is queued to that
+> workqueue. rpc_release is where the dentry reference held by the task is
+> put. The caller has no way to wait for that to complete, so the close(2)
+> syscall can easily return before the rpc_release call is ever done. In
+> some cases, that rpc_release is delayed for a long enough to prevent a
+> subsequent rmdir of the containing directory.
+> 
+> I believe this is a bug, or at least not ideal behavior. We should try
+> not to have the close(2) call return in this situation until the
+> sillydelete is done.
+> 
+> I've been able to reproduce this more reliably by adding a 100ms sleep
+> at the top of nfs4_free_closedata. I've not seen it "in the wild" on
+> mainline kernels, but it seems quite possible when a machine is heavily
+> loaded.
+> 
+> This patch fixes this by not setting tk_workqueue in nfs4_do_close when
+> the wait flag is set. This makes the final rpc_put_task a synchronous
+> operation and should prevent close(2) from returning before the
+> dentry_iput is done.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfs/nfs4proc.c |    5 ++++-
+>  1 files changed, 4 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 78936a8..4cabfea 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1988,11 +1988,14 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, i
+>  		.rpc_client = server->client,
+>  		.rpc_message = &msg,
+>  		.callback_ops = &nfs4_close_ops,
+> -		.workqueue = nfsiod_workqueue,
+>  		.flags = RPC_TASK_ASYNC,
+>  	};
+>  	int status = -ENOMEM;
+>  
+> +	/* rpc_release must be synchronous too if "wait" is set */
+> +	if (!wait)
+> +		task_setup_data.workqueue = nfsiod_workqueue;
+> +
+>  	calldata = kzalloc(sizeof(*calldata), gfp_mask);
+>  	if (calldata == NULL)
+>  		goto out;
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4proc.c       |    6 +++++-
- fs/nfs/nfs4xdr.c        |    8 +++++---
- include/linux/nfs_xdr.h |    1 +
- 3 files changed, 11 insertions(+), 4 deletions(-)
+There is no guarantee that rpc_wait_for_completion_task() will wait
+until rpciod had called rpc_put_task(), in which case the above change
+ends up with a dput() on the rpciod workqueue, and potential deadlocks.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f396853..a40a281 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3144,7 +3144,11 @@ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
- {
- 	struct nfs_server *server = NFS_SERVER(data->inode);
- 
--	data->args.bitmask = server->cache_consistency_bitmask;
-+	if (data->ds_clp) {
-+		data->args.bitmask = NULL;
-+		data->res.fattr = NULL;
-+	} else
-+		data->args.bitmask = server->cache_consistency_bitmask;
- 	data->res.server = server;
- 	data->timestamp   = jiffies;
- 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 2380c45..c35880c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2275,7 +2275,8 @@ static void nfs4_xdr_enc_write(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_putfh(xdr, args->fh, &hdr);
- 	encode_write(xdr, args, &hdr);
- 	req->rq_snd_buf.flags |= XDRBUF_WRITE;
--	encode_getfattr(xdr, args->bitmask, &hdr);
-+	if (args->bitmask)
-+		encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- }
- 
-@@ -5694,8 +5695,9 @@ static int nfs4_xdr_dec_write(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	status = decode_write(xdr, res);
- 	if (status)
- 		goto out;
--	decode_getfattr(xdr, res->fattr, res->server,
--			!RPC_IS_ASYNC(rqstp->rq_task));
-+	if (res->fattr)
-+		decode_getfattr(xdr, res->fattr, res->server,
-+				!RPC_IS_ASYNC(rqstp->rq_task));
- 	if (!status)
- 		status = res->count;
- out:
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index d60ec32..726ec2a 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1039,6 +1039,7 @@ struct nfs_write_data {
- 	struct nfs_writeargs	args;		/* argument struct */
- 	struct nfs_writeres	res;		/* result struct */
- 	struct pnfs_layout_segment *lseg;
-+	struct nfs_client	*ds_clp;	/* pNFS data server */
- #ifdef CONFIG_NFS_V4
- 	unsigned long		timestamp;	/* For lease renewal */
- #endif
+Let's rather look at making rpc_put_task a little bit more safe, by
+ensuring that rpciod always calls queue_work(), and by allowing other
+callers to switch it off.
+
 -- 
-1.7.2.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
