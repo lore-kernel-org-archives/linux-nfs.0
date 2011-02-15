@@ -1,57 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:40065 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753171Ab1BNVZa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Feb 2011 16:25:30 -0500
-Date: Mon, 14 Feb 2011 22:25:28 +0100
-From: Jan Kara <jack@suse.cz>
-To: Jesper Krogh <jesper@krogh.cc>
-Cc: Jan Kara <jack@suse.cz>, linux-kernel@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: sync hangs - 2.6.35.10
-Message-ID: <20110214212528.GG3018@quack.suse.cz>
-References: <4D47A99A.6050204@krogh.cc>
- <20110201121457.GA2059@quack.suse.cz>
- <4D59999E.9040302@krogh.cc>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D59999E.9040302@krogh.cc>
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:36216 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751201Ab1BOO7F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 09:59:05 -0500
+Received: by gwj20 with SMTP id 20so103086gwj.19
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2011 06:59:04 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release to nfsiod
+Date: Tue, 15 Feb 2011 09:58:59 -0500
+Message-Id: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon 14-02-11 22:07:42, Jesper Krogh wrote:
-> On 2011-02-01 13:14, Jan Kara wrote:
-> >   Definitely. There have been several patches fixing livelock issues
-> >in this area under various conditions. Considering your use case, you
-> >might be hit by problems being fixed by commits:
-> >6585027a5e8cb490e3a761b2f3f3c3acf722aff2
-> >aa373cf550994623efb5d49a4d8775bafd10bbc1
-> >b9543dac5bbc4aef0a598965b6b34f6259ab9a9b
-> >(went into 2.6.38-rc1)
-> I couldn't get above to apply on a 2.6.35.10 kernel, but applied to
-> a 2.6.37 the problem seems solved. Have they been queued up for stable?
-  I don't think so but it's a good idea. Will send them there.
+I recently had some of our QA people report some connectathon test
+failures in RHEL5 (2.6.18-based kernel). For some odd reason (maybe
+scheduling differences that make the race more likely?) the problem
+occurs more frequently on s390.
 
-> >possibly also older
-> >7624ee72aa09334af072853457a5d46d9901c3f8
-> >(in 2.6.36-rc1)
-> This one alone applied to 2.6.35 didn't solve it.
-> 
-> jk@clyde:~$ time sync
-> 
-> real    19m2.650s
-> user    0m0.000s
-> sys    0m0.030s
-> 
-> Without notable disk-activity while waiting. (<5MB/s measured using dstat)
-> This sample was "decent" I've seen sync times over 2 horus on this system
-> with 128GB of memory.. again without any notable disk-activity while
-> waiting.
-  Hmm, then I suspect you hit the case fixed by commit
-b9543dac5bbc4aef0a598965b6b34f6259ab9a9b. Anyway, glad to hear you don't
-see the problems anymore. Thanks for letting me know your results :).
+The problem generally manifests itself on NFSv4 as a race where an rmdir
+fails because a silly-renamed file in the directory wasn't deleted in
+time. Looking at traces, what you usually see is the failing rmdir
+attempt that fails with the sillydelete of the file that prevented it
+very soon afterward.
 
-								Honza
+Silly deletes are handled via dentry_iput and in the case of a close on
+NFSv4, the last dentry reference is often held by the CLOSE RPC task.
+nfs4_do_close does the close as an async RPC task that it conditionally
+waits on depending on whether the close is synchronous or not.
+
+It also sets the workqueue for the task to nfsiod_workqueue. When
+tk_workqueue is set, the rpc_release operation is queued to that
+workqueue. rpc_release is where the dentry reference held by the task is
+put. The caller has no way to wait for that to complete, so the close(2)
+syscall can easily return before the rpc_release call is ever done. In
+some cases, that rpc_release is delayed for a long enough to prevent a
+subsequent rmdir of the containing directory.
+
+I believe this is a bug, or at least not ideal behavior. We should try
+not to have the close(2) call return in this situation until the
+sillydelete is done.
+
+I've been able to reproduce this more reliably by adding a 100ms sleep
+at the top of nfs4_free_closedata. I've not seen it "in the wild" on
+mainline kernels, but it seems quite possible when a machine is heavily
+loaded.
+
+This patch fixes this by not setting tk_workqueue in nfs4_do_close when
+the wait flag is set. This makes the final rpc_put_task a synchronous
+operation and should prevent close(2) from returning before the
+dentry_iput is done.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs4proc.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 78936a8..4cabfea 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1988,11 +1988,14 @@ int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_mask, i
+ 		.rpc_client = server->client,
+ 		.rpc_message = &msg,
+ 		.callback_ops = &nfs4_close_ops,
+-		.workqueue = nfsiod_workqueue,
+ 		.flags = RPC_TASK_ASYNC,
+ 	};
+ 	int status = -ENOMEM;
+ 
++	/* rpc_release must be synchronous too if "wait" is set */
++	if (!wait)
++		task_setup_data.workqueue = nfsiod_workqueue;
++
+ 	calldata = kzalloc(sizeof(*calldata), gfp_mask);
+ 	if (calldata == NULL)
+ 		goto out;
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.4
+
