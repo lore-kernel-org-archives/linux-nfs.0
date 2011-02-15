@@ -1,193 +1,613 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.parallels.com ([64.131.90.16]:57211 "EHLO mx2.parallels.com"
+Received: from mx2.netapp.com ([216.240.18.37]:16079 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752420Ab1BCWKC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Feb 2011 17:10:02 -0500
-Received: from [96.31.168.206] (helo=mail.parallels.com)
-	by mx2.parallels.com with esmtps (TLSv1:AES128-SHA:128)
-	(Exim 4.72)
-	(envelope-from <rlandley@parallels.com>)
-	id 1Pl7NJ-00022o-TI
-	for linux-nfs@vger.kernel.org; Thu, 03 Feb 2011 17:10:02 -0500
-Message-ID: <4D4B27B7.80604@parallels.com>
-Date: Thu, 3 Feb 2011 16:09:59 -0600
-From: Rob Landley <rlandley@parallels.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: [PATCH] Cleanup: move some NFSv4-only code/data under CONFIG_NFS_V4.
-Content-Type: text/plain; charset="ISO-8859-1"
+	id S1754538Ab1BOTaY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 14:30:24 -0500
+Subject: Re: [PATCH 08/16] pnfs: wave 3: lseg refcounting
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <4D5AD3FD.60002@panasas.com>
+Date: Tue, 15 Feb 2011 14:30:22 -0500
+Cc: "William A. (Andy) Adamson" <androsadamson@gmail.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Fred Isaman <iisaman@netapp.com>, trond.myklebust@netapp.com,
+        linux-nfs@vger.kernel.org
+Message-Id: <C750E102-F361-43D7-9D86-58941667FF4C@netapp.com>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com> <1297711116-3139-9-git-send-email-andros@netapp.com> <20110215092531.GB29871@infradead.org> <AANLkTik+dVSmWgO6LRANo2xTt6iMqQ7ehvgqk-igQFhM@mail.gmail.com> <20110215145828.GA18038@infradead.org> <4D5A94CD.4030508@panasas.com> <20110215150628.GA24358@infradead.org> <20110215160209.GA31704@infradead.org> <AANLkTi=ZbQoUvCmK2VYzsKdgscYVC9k_7TkrPN3pdTHt@mail.gmail.com> <3482810E-BE53-4E28-9A4A-9549851A9D58@netapp.com> <4D5AD3FD.60002@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Rob Landley <rlandley@parallels.com>
 
-Move some NFSv4-only stuff under CONFIG_NFS_V4.
+On Feb 15, 2011, at 2:29 PM, Benny Halevy wrote:
 
-Signed-off-by: Rob Landley <rlandley@parallels.com>
----
+> On 2011-02-15 14:17, Andy Adamson wrote:
+>> 
+>> On Feb 15, 2011, at 11:37 AM, William A. (Andy) Adamson wrote:
+>> 
+>>> On Tue, Feb 15, 2011 at 11:02 AM, Christoph Hellwig <hch@infradead.org> wrote:
+>>>> FYI that whole device layout cache thingy looks like a complete fucking
+>>>> mess to me.
+>>>> 
+>>>> It's nothing but a trivial hash lookup which is only used in the file
+>>>> layout driver.  But instead of just having a hash allocated in the file
+>>>> layout driver on module load, and a trivial opencoded lookup for it it's
+>>>> a massively overcomplicated set of routines.  Please rip this stuff out
+>>>> before doing further work in this area.
+>>>> 
+>>>> The patch below removes the maze of pointless abstractions and just
+>>>> keeps a simple hash of deviceids in the filelayout driver.
+>>> 
+>>> 
+>>> The abstract layer is so that this code is not replicated per layout
+>>> driver.  Object and block drivers need to do the same task, and indeed
+>>> use this code in their prototypes.
+>>> That said, we don't have those other layout drivers in kernel, so
+>>> moving it all to the file layout driver is fine with me, so long as we
+>>> don't have to move it back once we get other drivers.
+> 
+> Why not move it back later on?
+> I don't want to replicate any code if it can be factored out and reused.
 
-Space saved from NFSv3-only config on x86_64:
+Yes, we should move it back later on.  Christopher's single patch makes this easy to revert.
 
- function                                     old     new   delta
- static.T                                   46908   46905      -3
- nfs_start_lockd                              178     175      -3
- nfs_get_client                               930     903     -27
- nfs4_cb_match_client                         141       -    -141
+-->Andy
 
- fs/nfs/client.c           |   88 ++++++++++++++++++------------------
- include/linux/nfs_fs_sb.h |    4 -
- 2 files changed, 47 insertions(+), 45 deletions(-)
+> 
+> Benny
+> 
+>>> 
+>>> Trond?
+>>> 
+>>> -->Andy
+>> 
+>> OK. We all agree. Move the deviceid cache to the filelayout driver until there is a need for a common cache.
+>> 
+>> -->Andy
+>> 
+>>> 
+>>>> 
+>>>> 
+>>>> Index: linux-2.6/fs/nfs/nfs4filelayout.c
+>>>> ===================================================================
+>>>> --- linux-2.6.orig/fs/nfs/nfs4filelayout.c      2011-02-15 16:10:51.108421283 +0100
+>>>> +++ linux-2.6/fs/nfs/nfs4filelayout.c   2011-02-15 16:55:22.087422176 +0100
+>>>> @@ -40,32 +40,6 @@ MODULE_LICENSE("GPL");
+>>>> MODULE_AUTHOR("Dean Hildebrand <dhildebz@umich.edu>");
+>>>> MODULE_DESCRIPTION("The NFSv4 file layout driver");
+>>>> 
+>>>> -static int
+>>>> -filelayout_set_layoutdriver(struct nfs_server *nfss)
+>>>> -{
+>>>> -       int status = pnfs_alloc_init_deviceid_cache(nfss->nfs_client,
+>>>> -                                               nfs4_fl_free_deviceid_callback);
+>>>> -       if (status) {
+>>>> -               printk(KERN_WARNING "%s: deviceid cache could not be "
+>>>> -                       "initialized\n", __func__);
+>>>> -               return status;
+>>>> -       }
+>>>> -       dprintk("%s: deviceid cache has been initialized successfully\n",
+>>>> -               __func__);
+>>>> -       return 0;
+>>>> -}
+>>>> -
+>>>> -/* Clear out the layout by destroying its device list */
+>>>> -static int
+>>>> -filelayout_clear_layoutdriver(struct nfs_server *nfss)
+>>>> -{
+>>>> -       dprintk("--> %s\n", __func__);
+>>>> -
+>>>> -       if (nfss->nfs_client->cl_devid_cache)
+>>>> -               pnfs_put_deviceid_cache(nfss->nfs_client);
+>>>> -       return 0;
+>>>> -}
+>>>> -
+>>>> /*
+>>>> * filelayout_check_layout()
+>>>> *
+>>>> @@ -99,7 +73,7 @@ filelayout_check_layout(struct pnfs_layo
+>>>>      }
+>>>> 
+>>>>      /* find and reference the deviceid */
+>>>> -       dsaddr = nfs4_fl_find_get_deviceid(nfss->nfs_client, id);
+>>>> +       dsaddr = nfs4_fl_find_get_deviceid(id);
+>>>>      if (dsaddr == NULL) {
+>>>>              dsaddr = get_device_info(lo->plh_inode, id);
+>>>>              if (dsaddr == NULL)
+>>>> @@ -134,7 +108,7 @@ out:
+>>>>      dprintk("--> %s returns %d\n", __func__, status);
+>>>>      return status;
+>>>> out_put:
+>>>> -       pnfs_put_deviceid(nfss->nfs_client->cl_devid_cache, &dsaddr->deviceid);
+>>>> +       nfs4_fl_put_deviceid(dsaddr);
+>>>>      goto out;
+>>>> }
+>>>> 
+>>>> @@ -243,23 +217,19 @@ filelayout_alloc_lseg(struct pnfs_layout
+>>>> static void
+>>>> filelayout_free_lseg(struct pnfs_layout_segment *lseg)
+>>>> {
+>>>> -       struct nfs_server *nfss = NFS_SERVER(lseg->pls_layout->plh_inode);
+>>>>      struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
+>>>> 
+>>>>      dprintk("--> %s\n", __func__);
+>>>> -       pnfs_put_deviceid(nfss->nfs_client->cl_devid_cache,
+>>>> -                         &fl->dsaddr->deviceid);
+>>>> +       nfs4_fl_put_deviceid(fl->dsaddr);
+>>>>      _filelayout_free_lseg(fl);
+>>>> }
+>>>> 
+>>>> static struct pnfs_layoutdriver_type filelayout_type = {
+>>>> -       .id = LAYOUT_NFSV4_1_FILES,
+>>>> -       .name = "LAYOUT_NFSV4_1_FILES",
+>>>> -       .owner = THIS_MODULE,
+>>>> -       .set_layoutdriver = filelayout_set_layoutdriver,
+>>>> -       .clear_layoutdriver = filelayout_clear_layoutdriver,
+>>>> -       .alloc_lseg              = filelayout_alloc_lseg,
+>>>> -       .free_lseg               = filelayout_free_lseg,
+>>>> +       .id                     = LAYOUT_NFSV4_1_FILES,
+>>>> +       .name                   = "LAYOUT_NFSV4_1_FILES",
+>>>> +       .owner                  = THIS_MODULE,
+>>>> +       .alloc_lseg             = filelayout_alloc_lseg,
+>>>> +       .free_lseg              = filelayout_free_lseg,
+>>>> };
+>>>> 
+>>>> static int __init nfs4filelayout_init(void)
+>>>> Index: linux-2.6/fs/nfs/nfs4filelayout.h
+>>>> ===================================================================
+>>>> --- linux-2.6.orig/fs/nfs/nfs4filelayout.h      2011-02-15 16:30:25.270920897 +0100
+>>>> +++ linux-2.6/fs/nfs/nfs4filelayout.h   2011-02-15 16:47:50.063445740 +0100
+>>>> @@ -56,7 +56,9 @@ struct nfs4_pnfs_ds {
+>>>> };
+>>>> 
+>>>> struct nfs4_file_layout_dsaddr {
+>>>> -       struct pnfs_deviceid_node       deviceid;
+>>>> +       struct hlist_node               node;
+>>>> +       struct nfs4_deviceid            deviceid;
+>>>> +       atomic_t                        ref;
+>>>>      u32                             stripe_count;
+>>>>      u8                              *stripe_indices;
+>>>>      u32                             ds_num;
+>>>> @@ -83,11 +85,11 @@ FILELAYOUT_LSEG(struct pnfs_layout_segme
+>>>>                          generic_hdr);
+>>>> }
+>>>> 
+>>>> -extern void nfs4_fl_free_deviceid_callback(struct pnfs_deviceid_node *);
+>>>> extern void print_ds(struct nfs4_pnfs_ds *ds);
+>>>> extern void print_deviceid(struct nfs4_deviceid *dev_id);
+>>>> extern struct nfs4_file_layout_dsaddr *
+>>>> -nfs4_fl_find_get_deviceid(struct nfs_client *, struct nfs4_deviceid *dev_id);
+>>>> +nfs4_fl_find_get_deviceid(struct nfs4_deviceid *dev_id);
+>>>> +extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+>>>> struct nfs4_file_layout_dsaddr *
+>>>> get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id);
+>>>> 
+>>>> Index: linux-2.6/fs/nfs/nfs4filelayoutdev.c
+>>>> ===================================================================
+>>>> --- linux-2.6.orig/fs/nfs/nfs4filelayoutdev.c   2011-02-15 16:23:03.480487362 +0100
+>>>> +++ linux-2.6/fs/nfs/nfs4filelayoutdev.c        2011-02-15 16:55:02.894924739 +0100
+>>>> @@ -37,6 +37,30 @@
+>>>> #define NFSDBG_FACILITY                NFSDBG_PNFS_LD
+>>>> 
+>>>> /*
+>>>> + * Device ID RCU cache. A device ID is unique per client ID and layout type.
+>>>> + */
+>>>> +#define NFS4_FL_DEVICE_ID_HASH_BITS    5
+>>>> +#define NFS4_FL_DEVICE_ID_HASH_SIZE    (1 << NFS4_FL_DEVICE_ID_HASH_BITS)
+>>>> +#define NFS4_FL_DEVICE_ID_HASH_MASK    (NFS4_FL_DEVICE_ID_HASH_SIZE - 1)
+>>>> +
+>>>> +static inline u32
+>>>> +nfs4_fl_deviceid_hash(struct nfs4_deviceid *id)
+>>>> +{
+>>>> +       unsigned char *cptr = (unsigned char *)id->data;
+>>>> +       unsigned int nbytes = NFS4_DEVICEID4_SIZE;
+>>>> +       u32 x = 0;
+>>>> +
+>>>> +       while (nbytes--) {
+>>>> +               x *= 37;
+>>>> +               x += *cptr++;
+>>>> +       }
+>>>> +       return x & NFS4_FL_DEVICE_ID_HASH_MASK;
+>>>> +}
+>>>> +
+>>>> +static struct hlist_head filelayout_deviceid_cache[NFS4_FL_DEVICE_ID_HASH_SIZE];
+>>>> +static DEFINE_SPINLOCK(filelayout_deviceid_lock);
+>>>> +
+>>>> +/*
+>>>> * Data server cache
+>>>> *
+>>>> * Data servers can be mapped to different device ids.
+>>>> @@ -122,7 +146,7 @@ nfs4_fl_free_deviceid(struct nfs4_file_l
+>>>>      struct nfs4_pnfs_ds *ds;
+>>>>      int i;
+>>>> 
+>>>> -       print_deviceid(&dsaddr->deviceid.de_id);
+>>>> +       print_deviceid(&dsaddr->deviceid);
+>>>> 
+>>>>      for (i = 0; i < dsaddr->ds_num; i++) {
+>>>>              ds = dsaddr->ds_list[i];
+>>>> @@ -139,15 +163,6 @@ nfs4_fl_free_deviceid(struct nfs4_file_l
+>>>>      kfree(dsaddr);
+>>>> }
+>>>> 
+>>>> -void
+>>>> -nfs4_fl_free_deviceid_callback(struct pnfs_deviceid_node *device)
+>>>> -{
+>>>> -       struct nfs4_file_layout_dsaddr *dsaddr =
+>>>> -               container_of(device, struct nfs4_file_layout_dsaddr, deviceid);
+>>>> -
+>>>> -       nfs4_fl_free_deviceid(dsaddr);
+>>>> -}
+>>>> -
+>>>> static struct nfs4_pnfs_ds *
+>>>> nfs4_pnfs_ds_add(struct inode *inode, u32 ip_addr, u32 port)
+>>>> {
+>>>> @@ -296,7 +311,7 @@ decode_device(struct inode *ino, struct
+>>>>      dsaddr->stripe_count = cnt;
+>>>>      dsaddr->ds_num = num;
+>>>> 
+>>>> -       memcpy(&dsaddr->deviceid.de_id, &pdev->dev_id, sizeof(pdev->dev_id));
+>>>> +       memcpy(&dsaddr->deviceid, &pdev->dev_id, sizeof(pdev->dev_id));
+>>>> 
+>>>>      /* Go back an read stripe indices */
+>>>>      p = indicesp;
+>>>> @@ -346,28 +361,37 @@ out_err:
+>>>> }
+>>>> 
+>>>> /*
+>>>> - * Decode the opaque device specified in 'dev'
+>>>> - * and add it to the list of available devices.
+>>>> - * If the deviceid is already cached, nfs4_add_deviceid will return
+>>>> - * a pointer to the cached struct and throw away the new.
+>>>> + * Decode the opaque device specified in 'dev' and add it to the cache of
+>>>> + * available devices.
+>>>> */
+>>>> -static struct nfs4_file_layout_dsaddr*
+>>>> +static struct nfs4_file_layout_dsaddr *
+>>>> decode_and_add_device(struct inode *inode, struct pnfs_device *dev)
+>>>> {
+>>>> -       struct nfs4_file_layout_dsaddr *dsaddr;
+>>>> -       struct pnfs_deviceid_node *d;
+>>>> +       struct nfs4_file_layout_dsaddr *d, *new;
+>>>> +       long hash;
+>>>> 
+>>>> -       dsaddr = decode_device(inode, dev);
+>>>> -       if (!dsaddr) {
+>>>> +       new = decode_device(inode, dev);
+>>>> +       if (!new) {
+>>>>              printk(KERN_WARNING "%s: Could not decode or add device\n",
+>>>>                      __func__);
+>>>>              return NULL;
+>>>>      }
+>>>> 
+>>>> -       d = pnfs_add_deviceid(NFS_SERVER(inode)->nfs_client->cl_devid_cache,
+>>>> -                             &dsaddr->deviceid);
+>>>> +       spin_lock(&filelayout_deviceid_lock);
+>>>> +       d = nfs4_fl_find_get_deviceid(&new->deviceid);
+>>>> +       if (d) {
+>>>> +               spin_unlock(&filelayout_deviceid_lock);
+>>>> +               nfs4_fl_free_deviceid(new);
+>>>> +               return d;
+>>>> +       }
+>>>> +
+>>>> +       INIT_HLIST_NODE(&new->node);
+>>>> +       atomic_set(&new->ref, 1);
+>>>> +       hash = nfs4_fl_deviceid_hash(&new->deviceid);
+>>>> +       hlist_add_head_rcu(&new->node, &filelayout_deviceid_cache[hash]);
+>>>> +       spin_unlock(&filelayout_deviceid_lock);
+>>>> 
+>>>> -       return container_of(d, struct nfs4_file_layout_dsaddr, deviceid);
+>>>> +       return new;
+>>>> }
+>>>> 
+>>>> /*
+>>>> @@ -442,12 +466,36 @@ out_free:
+>>>>      return dsaddr;
+>>>> }
+>>>> 
+>>>> +void
+>>>> +nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr)
+>>>> +{
+>>>> +       if (atomic_dec_and_lock(&dsaddr->ref, &filelayout_deviceid_lock)) {
+>>>> +               hlist_del_rcu(&dsaddr->node);
+>>>> +               spin_unlock(&filelayout_deviceid_lock);
+>>>> +
+>>>> +               synchronize_rcu();
+>>>> +               nfs4_fl_free_deviceid(dsaddr);
+>>>> +       }
+>>>> +}
+>>>> +
+>>>> struct nfs4_file_layout_dsaddr *
+>>>> -nfs4_fl_find_get_deviceid(struct nfs_client *clp, struct nfs4_deviceid *id)
+>>>> +nfs4_fl_find_get_deviceid(struct nfs4_deviceid *id)
+>>>> {
+>>>> -       struct pnfs_deviceid_node *d;
+>>>> +       struct nfs4_file_layout_dsaddr *d;
+>>>> +       struct hlist_node *n;
+>>>> +       long hash = nfs4_fl_deviceid_hash(id);
+>>>> +
+>>>> 
+>>>> -       d = pnfs_find_get_deviceid(clp->cl_devid_cache, id);
+>>>> -       return (d == NULL) ? NULL :
+>>>> -               container_of(d, struct nfs4_file_layout_dsaddr, deviceid);
+>>>> +       rcu_read_lock();
+>>>> +       hlist_for_each_entry_rcu(d, n, &filelayout_deviceid_cache[hash], node) {
+>>>> +               if (!memcmp(&d->deviceid, id, sizeof(*id))) {
+>>>> +                       if (!atomic_inc_not_zero(&d->ref))
+>>>> +                               goto fail;
+>>>> +                       rcu_read_unlock();
+>>>> +                       return d;
+>>>> +               }
+>>>> +       }
+>>>> +fail:
+>>>> +       rcu_read_unlock();
+>>>> +       return NULL;
+>>>> }
+>>>> Index: linux-2.6/fs/nfs/pnfs.c
+>>>> ===================================================================
+>>>> --- linux-2.6.orig/fs/nfs/pnfs.c        2011-02-15 16:10:33.284421051 +0100
+>>>> +++ linux-2.6/fs/nfs/pnfs.c     2011-02-15 16:21:47.115422052 +0100
+>>>> @@ -74,10 +74,8 @@ find_pnfs_driver(u32 id)
+>>>> void
+>>>> unset_pnfs_layoutdriver(struct nfs_server *nfss)
+>>>> {
+>>>> -       if (nfss->pnfs_curr_ld) {
+>>>> -               nfss->pnfs_curr_ld->clear_layoutdriver(nfss);
+>>>> +       if (nfss->pnfs_curr_ld)
+>>>>              module_put(nfss->pnfs_curr_ld->owner);
+>>>> -       }
+>>>>      nfss->pnfs_curr_ld = NULL;
+>>>> }
+>>>> 
+>>>> @@ -115,13 +113,7 @@ set_pnfs_layoutdriver(struct nfs_server
+>>>>              goto out_no_driver;
+>>>>      }
+>>>>      server->pnfs_curr_ld = ld_type;
+>>>> -       if (ld_type->set_layoutdriver(server)) {
+>>>> -               printk(KERN_ERR
+>>>> -                      "%s: Error initializing mount point for layout driver %u.\n",
+>>>> -                      __func__, id);
+>>>> -               module_put(ld_type->owner);
+>>>> -               goto out_no_driver;
+>>>> -       }
+>>>> +
+>>>>      dprintk("%s: pNFS module for %u set\n", __func__, id);
+>>>>      return;
+>>>> 
+>>>> @@ -828,138 +820,3 @@ out_forget_reply:
+>>>>      NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+>>>>      goto out;
+>>>> }
+>>>> -
+>>>> -/*
+>>>> - * Device ID cache. Currently supports one layout type per struct nfs_client.
+>>>> - * Add layout type to the lookup key to expand to support multiple types.
+>>>> - */
+>>>> -int
+>>>> -pnfs_alloc_init_deviceid_cache(struct nfs_client *clp,
+>>>> -                        void (*free_callback)(struct pnfs_deviceid_node *))
+>>>> -{
+>>>> -       struct pnfs_deviceid_cache *c;
+>>>> -
+>>>> -       c = kzalloc(sizeof(struct pnfs_deviceid_cache), GFP_KERNEL);
+>>>> -       if (!c)
+>>>> -               return -ENOMEM;
+>>>> -       spin_lock(&clp->cl_lock);
+>>>> -       if (clp->cl_devid_cache != NULL) {
+>>>> -               atomic_inc(&clp->cl_devid_cache->dc_ref);
+>>>> -               dprintk("%s [kref [%d]]\n", __func__,
+>>>> -                       atomic_read(&clp->cl_devid_cache->dc_ref));
+>>>> -               kfree(c);
+>>>> -       } else {
+>>>> -               /* kzalloc initializes hlists */
+>>>> -               spin_lock_init(&c->dc_lock);
+>>>> -               atomic_set(&c->dc_ref, 1);
+>>>> -               c->dc_free_callback = free_callback;
+>>>> -               clp->cl_devid_cache = c;
+>>>> -               dprintk("%s [new]\n", __func__);
+>>>> -       }
+>>>> -       spin_unlock(&clp->cl_lock);
+>>>> -       return 0;
+>>>> -}
+>>>> -EXPORT_SYMBOL_GPL(pnfs_alloc_init_deviceid_cache);
+>>>> -
+>>>> -/*
+>>>> - * Called from pnfs_layoutdriver_type->free_lseg
+>>>> - * last layout segment reference frees deviceid
+>>>> - */
+>>>> -void
+>>>> -pnfs_put_deviceid(struct pnfs_deviceid_cache *c,
+>>>> -                 struct pnfs_deviceid_node *devid)
+>>>> -{
+>>>> -       struct nfs4_deviceid *id = &devid->de_id;
+>>>> -       struct pnfs_deviceid_node *d;
+>>>> -       struct hlist_node *n;
+>>>> -       long h = nfs4_deviceid_hash(id);
+>>>> -
+>>>> -       dprintk("%s [%d]\n", __func__, atomic_read(&devid->de_ref));
+>>>> -       if (!atomic_dec_and_lock(&devid->de_ref, &c->dc_lock))
+>>>> -               return;
+>>>> -
+>>>> -       hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[h], de_node)
+>>>> -               if (!memcmp(&d->de_id, id, sizeof(*id))) {
+>>>> -                       hlist_del_rcu(&d->de_node);
+>>>> -                       spin_unlock(&c->dc_lock);
+>>>> -                       synchronize_rcu();
+>>>> -                       c->dc_free_callback(devid);
+>>>> -                       return;
+>>>> -               }
+>>>> -       spin_unlock(&c->dc_lock);
+>>>> -       /* Why wasn't it found in  the list? */
+>>>> -       BUG();
+>>>> -}
+>>>> -EXPORT_SYMBOL_GPL(pnfs_put_deviceid);
+>>>> -
+>>>> -/* Find and reference a deviceid */
+>>>> -struct pnfs_deviceid_node *
+>>>> -pnfs_find_get_deviceid(struct pnfs_deviceid_cache *c, struct nfs4_deviceid *id)
+>>>> -{
+>>>> -       struct pnfs_deviceid_node *d;
+>>>> -       struct hlist_node *n;
+>>>> -       long hash = nfs4_deviceid_hash(id);
+>>>> -
+>>>> -       dprintk("--> %s hash %ld\n", __func__, hash);
+>>>> -       rcu_read_lock();
+>>>> -       hlist_for_each_entry_rcu(d, n, &c->dc_deviceids[hash], de_node) {
+>>>> -               if (!memcmp(&d->de_id, id, sizeof(*id))) {
+>>>> -                       if (!atomic_inc_not_zero(&d->de_ref)) {
+>>>> -                               goto fail;
+>>>> -                       } else {
+>>>> -                               rcu_read_unlock();
+>>>> -                               return d;
+>>>> -                       }
+>>>> -               }
+>>>> -       }
+>>>> -fail:
+>>>> -       rcu_read_unlock();
+>>>> -       return NULL;
+>>>> -}
+>>>> -EXPORT_SYMBOL_GPL(pnfs_find_get_deviceid);
+>>>> -
+>>>> -/*
+>>>> - * Add a deviceid to the cache.
+>>>> - * GETDEVICEINFOs for same deviceid can race. If deviceid is found, discard new
+>>>> - */
+>>>> -struct pnfs_deviceid_node *
+>>>> -pnfs_add_deviceid(struct pnfs_deviceid_cache *c, struct pnfs_deviceid_node *new)
+>>>> -{
+>>>> -       struct pnfs_deviceid_node *d;
+>>>> -       long hash = nfs4_deviceid_hash(&new->de_id);
+>>>> -
+>>>> -       dprintk("--> %s hash %ld\n", __func__, hash);
+>>>> -       spin_lock(&c->dc_lock);
+>>>> -       d = pnfs_find_get_deviceid(c, &new->de_id);
+>>>> -       if (d) {
+>>>> -               spin_unlock(&c->dc_lock);
+>>>> -               dprintk("%s [discard]\n", __func__);
+>>>> -               c->dc_free_callback(new);
+>>>> -               return d;
+>>>> -       }
+>>>> -       INIT_HLIST_NODE(&new->de_node);
+>>>> -       atomic_set(&new->de_ref, 1);
+>>>> -       hlist_add_head_rcu(&new->de_node, &c->dc_deviceids[hash]);
+>>>> -       spin_unlock(&c->dc_lock);
+>>>> -       dprintk("%s [new]\n", __func__);
+>>>> -       return new;
+>>>> -}
+>>>> -EXPORT_SYMBOL_GPL(pnfs_add_deviceid);
+>>>> -
+>>>> -void
+>>>> -pnfs_put_deviceid_cache(struct nfs_client *clp)
+>>>> -{
+>>>> -       struct pnfs_deviceid_cache *local = clp->cl_devid_cache;
+>>>> -
+>>>> -       dprintk("--> %s ({%d})\n", __func__, atomic_read(&local->dc_ref));
+>>>> -       if (atomic_dec_and_lock(&local->dc_ref, &clp->cl_lock)) {
+>>>> -               int i;
+>>>> -               /* Verify cache is empty */
+>>>> -               for (i = 0; i < NFS4_DEVICE_ID_HASH_SIZE; i++)
+>>>> -                       BUG_ON(!hlist_empty(&local->dc_deviceids[i]));
+>>>> -               clp->cl_devid_cache = NULL;
+>>>> -               spin_unlock(&clp->cl_lock);
+>>>> -               kfree(local);
+>>>> -       }
+>>>> -}
+>>>> -EXPORT_SYMBOL_GPL(pnfs_put_deviceid_cache);
+>>>> Index: linux-2.6/fs/nfs/pnfs.h
+>>>> ===================================================================
+>>>> --- linux-2.6.orig/fs/nfs/pnfs.h        2011-02-15 16:10:51.088421060 +0100
+>>>> +++ linux-2.6/fs/nfs/pnfs.h     2011-02-15 16:21:34.995159583 +0100
+>>>> @@ -61,8 +61,6 @@ struct pnfs_layoutdriver_type {
+>>>>      const u32 id;
+>>>>      const char *name;
+>>>>      struct module *owner;
+>>>> -       int (*set_layoutdriver) (struct nfs_server *);
+>>>> -       int (*clear_layoutdriver) (struct nfs_server *);
+>>>>      struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr);
+>>>>      void (*free_lseg) (struct pnfs_layout_segment *lseg);
+>>>> };
+>>>> @@ -90,52 +88,6 @@ struct pnfs_device {
+>>>>      unsigned int  pglen;
+>>>> };
+>>>> 
+>>>> -/*
+>>>> - * Device ID RCU cache. A device ID is unique per client ID and layout type.
+>>>> - */
+>>>> -#define NFS4_DEVICE_ID_HASH_BITS       5
+>>>> -#define NFS4_DEVICE_ID_HASH_SIZE       (1 << NFS4_DEVICE_ID_HASH_BITS)
+>>>> -#define NFS4_DEVICE_ID_HASH_MASK       (NFS4_DEVICE_ID_HASH_SIZE - 1)
+>>>> -
+>>>> -static inline u32
+>>>> -nfs4_deviceid_hash(struct nfs4_deviceid *id)
+>>>> -{
+>>>> -       unsigned char *cptr = (unsigned char *)id->data;
+>>>> -       unsigned int nbytes = NFS4_DEVICEID4_SIZE;
+>>>> -       u32 x = 0;
+>>>> -
+>>>> -       while (nbytes--) {
+>>>> -               x *= 37;
+>>>> -               x += *cptr++;
+>>>> -       }
+>>>> -       return x & NFS4_DEVICE_ID_HASH_MASK;
+>>>> -}
+>>>> -
+>>>> -struct pnfs_deviceid_node {
+>>>> -       struct hlist_node       de_node;
+>>>> -       struct nfs4_deviceid    de_id;
+>>>> -       atomic_t                de_ref;
+>>>> -};
+>>>> -
+>>>> -struct pnfs_deviceid_cache {
+>>>> -       spinlock_t              dc_lock;
+>>>> -       atomic_t                dc_ref;
+>>>> -       void                    (*dc_free_callback)(struct pnfs_deviceid_node *);
+>>>> -       struct hlist_head       dc_deviceids[NFS4_DEVICE_ID_HASH_SIZE];
+>>>> -};
+>>>> -
+>>>> -extern int pnfs_alloc_init_deviceid_cache(struct nfs_client *,
+>>>> -                       void (*free_callback)(struct pnfs_deviceid_node *));
+>>>> -extern void pnfs_put_deviceid_cache(struct nfs_client *);
+>>>> -extern struct pnfs_deviceid_node *pnfs_find_get_deviceid(
+>>>> -                               struct pnfs_deviceid_cache *,
+>>>> -                               struct nfs4_deviceid *);
+>>>> -extern struct pnfs_deviceid_node *pnfs_add_deviceid(
+>>>> -                               struct pnfs_deviceid_cache *,
+>>>> -                               struct pnfs_deviceid_node *);
+>>>> -extern void pnfs_put_deviceid(struct pnfs_deviceid_cache *c,
+>>>> -                             struct pnfs_deviceid_node *devid);
+>>>> -
+>>>> extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
+>>>> extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
+>>>> 
+>>>> Index: linux-2.6/include/linux/nfs_fs_sb.h
+>>>> ===================================================================
+>>>> --- linux-2.6.orig/include/linux/nfs_fs_sb.h    2011-02-15 16:16:45.976420895 +0100
+>>>> +++ linux-2.6/include/linux/nfs_fs_sb.h 2011-02-15 16:16:50.347380534 +0100
+>>>> @@ -79,7 +79,6 @@ struct nfs_client {
+>>>>      u32                     cl_exchange_flags;
+>>>>      struct nfs4_session     *cl_session;    /* sharred session */
+>>>>      struct list_head        cl_layouts;
+>>>> -       struct pnfs_deviceid_cache *cl_devid_cache; /* pNFS deviceid cache */
+>>>> #endif /* CONFIG_NFS_V4_1 */
+>>>> 
+>>>> #ifdef CONFIG_NFS_FSCACHE
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 192f2f8..fa3685d 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -383,25 +383,6 @@ static int nfs_sockaddr_cmp_ip4(const struct sockaddr *sa1,
- 
- /*
-  * Test if two socket addresses represent the same actual socket,
-- * by comparing (only) relevant fields, excluding the port number.
-- */
--static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
--				     const struct sockaddr *sa2)
--{
--	if (sa1->sa_family != sa2->sa_family)
--		return 0;
--
--	switch (sa1->sa_family) {
--	case AF_INET:
--		return nfs_sockaddr_match_ipaddr4(sa1, sa2);
--	case AF_INET6:
--		return nfs_sockaddr_match_ipaddr6(sa1, sa2);
--	}
--	return 0;
--}
--
--/*
-- * Test if two socket addresses represent the same actual socket,
-  * by comparing (only) relevant fields, including the port number.
-  */
- static int nfs_sockaddr_cmp(const struct sockaddr *sa1,
-@@ -419,30 +400,6 @@ static int nfs_sockaddr_cmp(const struct sockaddr *sa1,
- 	return 0;
- }
- 
--/* Common match routine for v4.0 and v4.1 callback services */
--bool
--nfs4_cb_match_client(const struct sockaddr *addr, struct nfs_client *clp,
--		     u32 minorversion)
--{
--	struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
--
--	/* Don't match clients that failed to initialise */
--	if (!(clp->cl_cons_state == NFS_CS_READY ||
--	    clp->cl_cons_state == NFS_CS_SESSION_INITING))
--		return false;
--
--	/* Match the version and minorversion */
--	if (clp->rpc_ops->version != 4 ||
--	    clp->cl_minorversion != minorversion)
--		return false;
--
--	/* Match only the IP address, not the port number */
--	if (!nfs_sockaddr_match_ipaddr(addr, clap))
--		return false;
--
--	return true;
--}
--
- /*
-  * Find an nfs_client on the list that matches the initialisation data
-  * that is supplied.
-@@ -464,9 +421,11 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 
- 		if (clp->cl_proto != data->proto)
- 			continue;
-+#ifdef CONFIG_NFS_V4
- 		/* Match nfsv4 minorversion */
- 		if (clp->cl_minorversion != data->minorversion)
- 			continue;
-+#endif
- 		/* Match the full socket address */
- 		if (!nfs_sockaddr_cmp(sap, clap))
- 			continue;
-@@ -1156,6 +1115,49 @@ error:
- 
- #ifdef CONFIG_NFS_V4
- /*
-+ * Test if two socket addresses represent the same actual socket,
-+ * by comparing (only) relevant fields, excluding the port number.
-+ */
-+static int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
-+				     const struct sockaddr *sa2)
-+{
-+	if (sa1->sa_family != sa2->sa_family)
-+		return 0;
-+
-+	switch (sa1->sa_family) {
-+	case AF_INET:
-+		return nfs_sockaddr_match_ipaddr4(sa1, sa2);
-+	case AF_INET6:
-+		return nfs_sockaddr_match_ipaddr6(sa1, sa2);
-+	}
-+	return 0;
-+}
-+
-+/* Common match routine for v4.0 and v4.1 callback services */
-+bool
-+nfs4_cb_match_client(const struct sockaddr *addr, struct nfs_client *clp,
-+		     u32 minorversion)
-+{
-+	struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
-+
-+	/* Don't match clients that failed to initialise */
-+	if (!(clp->cl_cons_state == NFS_CS_READY ||
-+	    clp->cl_cons_state == NFS_CS_SESSION_INITING))
-+		return false;
-+
-+	/* Match the version and minorversion */
-+	if (clp->rpc_ops->version != 4 ||
-+	    clp->cl_minorversion != minorversion)
-+		return false;
-+
-+	/* Match only the IP address, not the port number */
-+	if (!nfs_sockaddr_match_ipaddr(addr, clap))
-+		return false;
-+
-+	return true;
-+}
-+
-+/*
-  * NFSv4.0 callback thread helper
-  *
-  * Find a client by IP address, protocol version, and minorversion
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index b197563..38263f0 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -23,6 +23,7 @@ struct nfs4_minor_version_ops;
- struct nfs_client {
- 	atomic_t		cl_count;
- 	int			cl_cons_state;	/* current construction state (-ve: init error) */
-+	int			cl_proto;	/* Network transport protocol */
- #define NFS_CS_READY		0		/* ready to be used */
- #define NFS_CS_INITING		1		/* busy initialising */
- #define NFS_CS_SESSION_INITING	2		/* busy initialising  session */
-@@ -38,9 +39,7 @@ struct nfs_client {
- 
- 	struct rpc_clnt *	cl_rpcclient;
- 	const struct nfs_rpc_ops *rpc_ops;	/* NFS protocol vector */
--	int			cl_proto;	/* Network transport protocol */
- 
--	u32			cl_minorversion;/* NFSv4 minorversion */
- 	struct rpc_cred		*cl_machine_cred;
- 
- #ifdef CONFIG_NFS_V4
-@@ -67,6 +66,7 @@ struct nfs_client {
- 	char			cl_ipaddr[48];
- 	unsigned char		cl_id_uniquifier;
- 	u32			cl_cb_ident;	/* v4.0 callback identifier */
-+	u32			cl_minorversion;/* NFSv4 minorversion */
- 	const struct nfs4_minor_version_ops *cl_mvops;
- #endif /* CONFIG_NFS_V4 */
- 
