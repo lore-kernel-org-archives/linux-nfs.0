@@ -1,60 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51331 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757753Ab1BKSAn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 13:00:43 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 04/17] SQUASHME rename nfs_read_data call_ops ONE
-Date: Thu, 10 Feb 2011 20:52:37 -0500
-Message-Id: <1297389170-26702-5-git-send-email-andros@netapp.com>
-In-Reply-To: <1297389170-26702-4-git-send-email-andros@netapp.com>
-References: <1297389170-26702-1-git-send-email-andros@netapp.com>
- <1297389170-26702-2-git-send-email-andros@netapp.com>
- <1297389170-26702-3-git-send-email-andros@netapp.com>
- <1297389170-26702-4-git-send-email-andros@netapp.com>
+Received: from bombadil.infradead.org ([18.85.46.34]:53123 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755083Ab1BOPGa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 10:06:30 -0500
+Date: Tue, 15 Feb 2011 10:06:28 -0500
+From: Christoph Hellwig <hch@infradead.org>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Fred Isaman <iisaman@netapp.com>,
+        andros@netapp.com, trond.myklebust@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/16] pnfs: wave 3: lseg refcounting
+Message-ID: <20110215150628.GA24358@infradead.org>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com>
+ <1297711116-3139-9-git-send-email-andros@netapp.com>
+ <20110215092531.GB29871@infradead.org>
+ <AANLkTik+dVSmWgO6LRANo2xTt6iMqQ7ehvgqk-igQFhM@mail.gmail.com>
+ <20110215145828.GA18038@infradead.org>
+ <4D5A94CD.4030508@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D5A94CD.4030508@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Btw, what's the point for deferring the free_lseg calls?  It looks like it's
+to avoid calling something that might block under i_lock, but looking around
+the pnfs-submit branch it seems that root cause could be fixed trivially.
 
-squash into pnfs_submit-wave3-generic-read
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/pnfs.c           |    2 +-
- include/linux/nfs_xdr.h |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e96bd82..98dd993 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -902,7 +902,7 @@ pnfs_try_to_read_data(struct nfs_read_data *rdata,
- 	struct nfs_server *nfss = NFS_SERVER(inode);
- 	enum pnfs_try_status trypnfs;
- 
--	rdata->call_ops = call_ops;
-+	rdata->mds_ops = call_ops;
- 
- 	dprintk("%s: Reading ino:%lu %u@%llu\n",
- 		__func__, inode->i_ino, rdata->args.count, rdata->args.offset);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 935d8ff..4121c3e 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1019,7 +1019,7 @@ struct nfs_read_data {
- 	unsigned long		timestamp;	/* For lease renewal */
- 	struct pnfs_layout_segment *lseg;
- 	struct nfs_client	*ds_clp;	/* pNFS data server */
--	const struct rpc_call_ops *call_ops;	/* For pNFS recovery to MDS */
-+	const struct rpc_call_ops *mds_ops;
- 	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
- 	__u64			mds_offset;
- 	struct page		*page_array[NFS_PAGEVEC_SIZE];
--- 
-1.6.6
+In common code *free_lseg* and *put_layout_hdr* do nothing but list
+manipulations and kfrees.  And in filelayout_free_lseg we have just kfrees
+and a call to pnfs_put_deviceid which may sleep due to calling
+synchronize_rcu.  But synchronize_rcu is horribly inefficient to start with,
+and you'd better be off using call_rcu to free the device id, which will
+lead to much saner code and better performance.
 
