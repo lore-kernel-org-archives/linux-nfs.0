@@ -1,74 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:35331 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754351Ab1B1SYk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2011 13:24:40 -0500
-Message-ID: <4D6BE865.7010307@panasas.com>
-Date: Mon, 28 Feb 2011 20:24:37 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        Andy Adamson <andros@netapp.com>
-Subject: Re: [PATCH] SQUASHME: pnfs: FIX stupid recall_layout BUG
-References: <4D686893.7010106@panasas.com>	<4D6A67F3.3060308@panasas.com> <AANLkTimZS=54ZkwXwK9tMUUBn_JDXD5=+ohBpnKemtbQ@mail.gmail.com>
-In-Reply-To: <AANLkTimZS=54ZkwXwK9tMUUBn_JDXD5=+ohBpnKemtbQ@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:26933 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752735Ab1BPSjE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Feb 2011 13:39:04 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH pNFS wave 3 Version 2 05/18] NFSv4.1: new flag for state renewal check
+Date: Tue, 15 Feb 2011 03:38:50 -0500
+Message-Id: <1297759143-2045-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1297759143-2045-1-git-send-email-andros@netapp.com>
+References: <1297759143-2045-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 02/28/2011 12:09 AM, Fred Isaman wrote:
-> On Sun, Feb 27, 2011 at 7:04 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->>
->> OK, who wrote this code? He did not stop to think for even a
->> second. And surely it was never tested, since it is 100%
->> repeatable. Smack yourself on the head!
->>
-> 
-> I wrote the code.  But note that the tree you are using is taking the
-> tested, reasonably mature code that is currently in the downstream
-> kernel and reverting it back to ancient buggy prototype code.  My
-> understanding was that Benny was rightly ripping out the reversions at
-> bakeathon.
-> 
+From: Andy Adamson <andros@netapp.com>
 
-OK that figures then. I was using the only tree I could use,
-I guess I'll have to wait out until things settle.
+Data servers not sharing a session with the mount MDS always have an empty
+cl_superblocks list.
+Replace the cl_superblocks empty list check to see if it is time to shut down
+renewd with the NFS_CS_STOP_RENEW bit which is not set by such a data server.
 
-> Fred
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c           |    5 +++++
+ fs/nfs/nfs4renewd.c       |    6 +-----
+ include/linux/nfs_fs_sb.h |    1 +
+ 3 files changed, 7 insertions(+), 5 deletions(-)
 
-However with the tree released by benny few hours ago I get
-a new crash. The uml backtrace is really bad I'll try to print
-out more context to see where was the last put done.
-This time it takes a long time to trigger. It feels like
-a race.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index b9ed2a8..a86698c 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1019,14 +1019,19 @@ static void nfs_server_insert_lists(struct nfs_server *server)
+ 	spin_lock(&nfs_client_lock);
+ 	list_add_tail_rcu(&server->client_link, &clp->cl_superblocks);
+ 	list_add_tail(&server->master_link, &nfs_volume_list);
++	clear_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state);
+ 	spin_unlock(&nfs_client_lock);
+ 
+ }
+ 
+ static void nfs_server_remove_lists(struct nfs_server *server)
+ {
++	struct nfs_client *clp = server->nfs_client;
++
+ 	spin_lock(&nfs_client_lock);
+ 	list_del_rcu(&server->client_link);
++	if (clp && list_empty(&clp->cl_superblocks))
++		set_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state);
+ 	list_del(&server->master_link);
+ 	spin_unlock(&nfs_client_lock);
+ 
+diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
+index 402143d..df8e7f3 100644
+--- a/fs/nfs/nfs4renewd.c
++++ b/fs/nfs/nfs4renewd.c
+@@ -64,12 +64,8 @@ nfs4_renew_state(struct work_struct *work)
+ 	ops = clp->cl_mvops->state_renewal_ops;
+ 	dprintk("%s: start\n", __func__);
+ 
+-	rcu_read_lock();
+-	if (list_empty(&clp->cl_superblocks)) {
+-		rcu_read_unlock();
++	if (test_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state))
+ 		goto out;
+-	}
+-	rcu_read_unlock();
+ 
+ 	spin_lock(&clp->cl_lock);
+ 	lease = clp->cl_lease_time;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index b197563..2c2dc18 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -30,6 +30,7 @@ struct nfs_client {
+ #define NFS_CS_CALLBACK		1		/* - callback started */
+ #define NFS_CS_IDMAP		2		/* - idmap started */
+ #define NFS_CS_RENEWD		3		/* - renewd started */
++#define NFS_CS_STOP_RENEW	4		/* no more state to renew */
+ 	struct sockaddr_storage	cl_addr;	/* server identifier */
+ 	size_t			cl_addrlen;
+ 	char *			cl_hostname;	/* hostname of server */
+-- 
+1.7.2.3
 
-Call Trace: 
-602678a8:  [<6001585b>] panic_exit+0x2f/0x45
-602678c8:  [<60049a3e>] notifier_call_chain+0x32/0x5e
-60267908:  [<60049a8c>] atomic_notifier_call_chain+0x13/0x15
-60267918:  [<601b3b9b>] panic+0x105/0x1dc
-602679c8:  [<601b6056>] _raw_spin_unlock_irqrestore+0x18/0x1c
-602679e8:  [<60016e5f>] free_irqs+0x74/0xde
-60267a18:  [<60015162>] relay_signal+0x38/0x79
-60267a28:  [<60012cef>] sigio_handler+0x5a/0x5f
-60267a48:  [<600224d0>] sig_handler_common+0x84/0x98
-60267a68:  [<6002257d>] real_alarm_handler+0x3c/0x3e
-60267af0:  [<60186de1>] tcp_rcv_established+0x107/0x5fa
-60267b78:  [<60022616>] sig_handler+0x30/0x3b
-60267b98:  [<60022848>] handle_signal+0x6d/0xa3
-60267be8:  [<600241c8>] hard_handler+0x10/0x14
-60267ca8:  [<7b9cdaa3>] destroy_layout_hdr+0x33/0x52 [nfs]
-
-(gdb) list *(destroy_layout_hdr+0x33)
-0x2eac7 is in destroy_layout_hdr (/usr0/export/dev/bharrosh/git/pub/linux-pnfs/fs/nfs/pnfs.c:262).
-257
-258     static void
-259     destroy_layout_hdr(struct pnfs_layout_hdr *lo)
-260     {
-261             dprintk("%s: freeing layout cache %p\n", __func__, lo);
-262             BUG_ON(!list_empty(&lo->plh_layouts));
-263             NFS_I(lo->plh_inode)->layout = NULL;
-264             pnfs_free_layout_hdr(lo);
-265     }
-266
