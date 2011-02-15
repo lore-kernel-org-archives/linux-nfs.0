@@ -1,70 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:47231 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751118Ab1BUWbC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 17:31:02 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 8/9] pnfs: fix nfs4_asynch_forget_layouts accounting
-Date: Mon, 21 Feb 2011 14:30:58 -0800
-Message-Id: <1298327458-9310-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4D62E6F3.8000304@panasas.com>
-References: <4D62E6F3.8000304@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:26933 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751314Ab1BPSjB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Feb 2011 13:39:01 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH pNFS wave 3 Version 2 02/18] NFSv4.1: put_layout_hdr can remove nfsi->layout
+Date: Tue, 15 Feb 2011 03:38:47 -0500
+Message-Id: <1297759143-2045-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1297759143-2045-1-git-send-email-andros@netapp.com>
+References: <1297759143-2045-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-increment notify_count only the first time is it associated with a callback.
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Prevents an Oops triggered by CB_LAYOUTRECALL and LAYOUTGET race on a
+pnfs_layout_hdr first pnfs_layout_segment.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/pnfs.c |   15 +++++++++++----
- 1 files changed, 11 insertions(+), 4 deletions(-)
+ fs/nfs/pnfs.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 8c5f4b4..a10e8e8 100644
+index 0f5b66f..7d031cd 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -441,17 +441,22 @@ should_free_lseg(struct pnfs_layout_range *lseg_range,
- 	       lo_seg_intersecting(lseg_range, recall_range);
- }
- 
--static void mark_lseg_invalid(struct pnfs_layout_segment *lseg,
-+static bool mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- 			      struct list_head *tmp_list)
- {
-+	bool rv;
-+
- 	assert_spin_locked(&lseg->layout->inode->i_lock);
--	if (test_and_clear_bit(NFS_LSEG_VALID, &lseg->pls_flags)) {
-+	rv = test_and_clear_bit(NFS_LSEG_VALID, &lseg->pls_flags);
-+	if (rv) {
- 		/* Remove the reference keeping the lseg in the
- 		 * list.  It will now be removed when all
- 		 * outstanding io is finished.
- 		 */
- 		put_lseg_locked(lseg, tmp_list);
- 	}
-+
-+	return rv;
- }
- 
- /* Returns false if there was nothing to do, true otherwise */
-@@ -652,8 +657,10 @@ bool nfs4_asynch_forget_layouts(struct pnfs_layout_hdr *lo,
- 	dprintk("%s\n", __func__);
- 	list_for_each_entry_safe(lseg, tmp, &lo->segs, fi_list)
- 		if (should_free_lseg(&lseg->range, range)) {
--			lseg->pls_notify_mask |= (1 << notify_idx);
--			atomic_inc(notify_count);
-+			if (lseg->pls_notify_mask & (1 << notify_idx)) {
-+				lseg->pls_notify_mask |= (1 << notify_idx);
-+				atomic_inc(notify_count);
-+			}
- 			mark_lseg_invalid(lseg, tmp_list);
- 			rv = true;
- 		}
+@@ -768,7 +768,7 @@ pnfs_update_layout(struct inode *ino,
+ 	put_layout_hdr(lo);
+ out:
+ 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+-		nfsi->layout->plh_flags, lseg);
++		nfsi->layout ? nfsi->layout->plh_flags : -1, lseg);
+ 	return lseg;
+ out_unlock:
+ 	spin_unlock(&ino->i_lock);
 -- 
-1.7.3.4
+1.7.2.3
 
