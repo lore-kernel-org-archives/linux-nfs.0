@@ -1,61 +1,44 @@
-From: Benny Halevy <bhalevy@panasas.com>
-Subject: Re: [PATCH] nfs-utils: calculate stripe device size during process
- phase
-Date: Mon, 14 Feb 2011 15:45:12 -0500
-Message-ID: <4D599458.8040004@panasas.com>
-References: <20110214193233.GA3555@merit.edu>
+From: <Taousif_Ansari-G5Y5guI6XLZWk0Htik3J/w@public.gmane.org>
+Subject: RE: [PATCH 01/16] NFS remove unnecessary CONFIG_NFS_V4 from
+ nfs_read_data
+Date: Tue, 15 Feb 2011 14:54:24 +0530
+Message-ID: <A1A98FD909DC5248811A65C5D18E9C761D565BB73F@BLRX7MCDC202.AMER.DELL.COM>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com>
+ <1297711116-3139-2-git-send-email-andros@netapp.com>
+ <20110215091618.GA29871@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-To: Jim Rees <rees@umich.edu>
+Content-Type: text/plain; charset="us-ascii"
+Cc: <trond.myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
+To: <hch@infradead.org>, <andros@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:5922 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750932Ab1BNUpO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Feb 2011 15:45:14 -0500
-In-Reply-To: <20110214193233.GA3555-8f4Pc2RrbJmHXe+LvDLADg@public.gmane.org>
+Received: from ausc60ps301.us.dell.com ([143.166.148.206]:48487 "EHLO
+	ausc60ps301.us.dell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754454Ab1BOJZY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 04:25:24 -0500
+In-Reply-To: <20110215091618.GA29871@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Merged.  Thanks!
 
-Benny
 
-On 2011-02-14 14:32, Jim Rees wrote:
-> If a device has stripe device components, the total size will be wrong.
-> Calculate the stripe device size earlier, during the process phase, so that
-> later devices will have the correct size.
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Christoph Hellwig
+Sent: Tuesday, February 15, 2011 2:46 PM
+To: andros@netapp.com
+Cc: trond.myklebust@netapp.com; linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 01/16] NFS remove unnecessary CONFIG_NFS_V4 from nfs_read_data
+
+On Mon, Feb 14, 2011 at 02:18:21PM -0500, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
-> Signed-off-by: Jim Rees <rees@umich.edu>
-> ---
->  utils/blkmapd/device-process.c |    3 ++-
->  utils/blkmapd/dm-device.c      |    2 +-
->  2 files changed, 3 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
-> index b709b48..9a78457 100644
-> --- a/utils/blkmapd/device-process.c
-> +++ b/utils/blkmapd/device-process.c
-> @@ -318,7 +318,8 @@ decode_blk_volume(uint32_t **pp, uint32_t *end, struct bl_volume *vols, int voln
->  			}
->  		}
->  		/* Truncate size to a stripe unit boundary */
-> -		vol->bv_size = vol->bv_vols[0]->bv_size & ~(chunksize - 1);
-> +		vol->bv_size = vol->bv_vols[0]->bv_size * vol->bv_vol_n;
-> +		vol->bv_size &= ~(chunksize - 1);
->  		break;
->  	case BLOCK_VOLUME_CONCAT:
->  		BLK_READBUF(p, end, 4);
-> diff --git a/utils/blkmapd/dm-device.c b/utils/blkmapd/dm-device.c
-> index 2e87db8..c4fe4e9 100644
-> --- a/utils/blkmapd/dm-device.c
-> +++ b/utils/blkmapd/dm-device.c
-> @@ -418,7 +418,7 @@ uint64_t dm_device_create(struct bl_volume *vols, int num_vols)
->  			stripe_size = stripe_unit * node->bv_vol_n;
->  			nstripes = node->bv_size * node->bv_vol_n / stripe_size;
->  			/* Make sure total size is a multiple of stripe size */
-> -			size = node->bv_size * node->bv_vol_n;
-> +			size = node->bv_size;
->  			if (size % stripe_size != 0) {
->  				/* XXX Should this be an error? */
->  				BL_LOG_WARNING(
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+
+Either the patch or the description is incorrect.  If you actually need
+it for NFSv2/3 the description should say it.  Otherwise it's just a
+"cleanup" which bloats the structure for people not having v4 support
+compiled in.
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
