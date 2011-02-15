@@ -1,88 +1,221 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from swampdragon.chaosbits.net ([90.184.90.115]:10486 "EHLO
-	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756491Ab1BCTmD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2011 14:42:03 -0500
-Date: Thu, 3 Feb 2011 20:41:05 +0100 (CET)
-From: Jesper Juhl <jj@chaosbits.net>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-cc: Milton Miller <miltonm@bga.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Neil Brown <neilb@suse.de>,
-        bfields@fieldses.org
-Subject: Re: [PATCH] Fix size argument to memset call in nfsacl_encode
-In-Reply-To: <1296761330.3015.22.camel@heimdal.trondhjem.org>
-Message-ID: <alpine.LNX.2.00.1102032035280.15101@swampdragon.chaosbits.net>
-References: <alpine.LNX.2.00.1102032012540.15101@swampdragon.chaosbits.net> <1296761330.3015.22.camel@heimdal.trondhjem.org>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:50547 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751408Ab1BOQWv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 11:22:51 -0500
+Received: by qwa26 with SMTP id 26so260282qwa.19
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2011 08:22:50 -0800 (PST)
+In-Reply-To: <AANLkTingfoYHpwANBXfN-VUsCYaDiRXLmnbX+raSwsT+@mail.gmail.com>
+References: <AANLkTinSC8E1-Ym_KMn+jwUrjgdcEiBpQo=CazY6z9cV@mail.gmail.com>
+ <AANLkTikCw+5DjYDtPZGNLATLA85E9Zr-2TbkCWAZ0F8d@mail.gmail.com>
+ <AANLkTiknt45jxzBP6_oKdFA2LFU5Hk+aAwuyGsM9LkSz@mail.gmail.com> <AANLkTingfoYHpwANBXfN-VUsCYaDiRXLmnbX+raSwsT+@mail.gmail.com>
+From: CeR <cer.inet@gmail.com>
+Date: Tue, 15 Feb 2011 17:22:30 +0100
+Message-ID: <AANLkTimZj9wwVeYix6YroB=a0Mk8V4CX8-crRRKGzQ2U@mail.gmail.com>
+Subject: Re: Problems with Krb5/Nfs4, misconfiguration, bug or incompatibility?
+To: Kevin Coffman <kwc@citi.umich.edu>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 3 Feb 2011, Trond Myklebust wrote:
+Hello. I solved that error by cleaning /etc/hosts.
 
-> On Thu, 2011-02-03 at 20:15 +0100, Jesper Juhl wrote: 
-> > We want to give memset() the sizeof(struct posix_acl), not
-> > sizeof(struct posix_acl *).
-> > 
-> > Signed-off-by: Jesper Juhl <jj@chaosbits.net>
-> > ---
-> >  nfsacl.c |    2 +-
-> >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
-> > index 84c27d6..bc6d81b 100644
-> > --- a/fs/nfs_common/nfsacl.c
-> > +++ b/fs/nfs_common/nfsacl.c
-> > @@ -117,7 +117,7 @@ int nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
-> >  		 * invoked in contexts where a memory allocation failure is
-> >  		 * fatal.  Fortunately this fake ACL is small enough to
-> >  		 * construct on the stack. */
-> > -		memset(acl2, 0, sizeof(acl2));
-> > +		memset(acl2, 0, sizeof(*acl2));
-> >  		posix_acl_init(acl2, 4);
-> >  
-> >  		/* Insert entries in canonical order: other orders seem
-> 
-> Ccing Milton Miller who also sent in the same patch.
-> 
-> Neither patch is correct afaics. posix_acl_init() will clobber the above
-> memset, and so the correct fix is just to get rid of it...
-> 
+I just leave:
 
-posix_acl_init() sets a_refcount and a_count, but what about a_entries ... 
-no problem, nfsacl_encode() itself takes care of that post the 
-posix_acl_init() call.. it's all good.
+#cat /etc/hosts
+127.0.0.1 localhost
 
-So ...
+Then the error left.  Nfs4 still doesn't works fine, but due to my
+work I haven't time to carry on..
+
+Best regards!
 
 
-Remove pointless memset() in nfsacl_encode().
 
-Thanks to Trond Myklebust <Trond.Myklebust@netapp.com> for pointing out 
-that it is not needed since posix_acl_init() will set everything 
-regardless..
 
-Signed-off-by: Jesper Juhl <jj@chaosbits.net>
----
- nfsacl.c |    1 -
- 1 file changed, 1 deletion(-)
 
-diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
-index 84c27d6..ec0f277 100644
---- a/fs/nfs_common/nfsacl.c
-+++ b/fs/nfs_common/nfsacl.c
-@@ -117,7 +117,6 @@ int nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
- 		 * invoked in contexts where a memory allocation failure is
- 		 * fatal.  Fortunately this fake ACL is small enough to
- 		 * construct on the stack. */
--		memset(acl2, 0, sizeof(acl2));
- 		posix_acl_init(acl2, 4);
- 
- 		/* Insert entries in canonical order: other orders seem
+
+2011/2/15 Kevin Coffman <kwc@citi.umich.edu>:
+> Sorry for taking so long to respond.
+>
+> Depending on the version of Kerberos, you may need the following in
+> the libdefaults section of /etc/krb5.conf
+>
+>   allow_weak_crypto = true
+>
+> I'm not sure why the nfs.example.com entries are in /etc/hosts?  That
+> may be part of the problem?
+>
+> Make sure that 'hostname' on the server returns the correct name,
+> matching the name in your keytab entry (goku.example.com).
+>
+> Make sure a reverse DNS lookup of the address returned by a forward
+> DNS lookup, returns that same name as well.
+>
+> K.C.
+>
+>
+> On Sat, Feb 12, 2011 at 7:49 AM, CeR <cer.inet@gmail.com> wrote:
+>> Thank you, i will take a look  to the enctypes of my keytab. I hope
+>> that's the problem.
+>>
+>>
+>>
+>> Here /etc/krb5.conf
+>>
+>> -----------------------------------------------------------------------
+>> [libdefaults]
+>>        default_realm = EXAMPLE.COM
+>>
+>> # The following krb5.conf variables are only for MIT Kerberos.
+>>        krb4_config = /etc/krb.conf
+>>        krb4_realms = /etc/krb.realms
+>>        kdc_timesync = 1
+>>        ccache_type = 4
+>>        forwardable = true
+>>        proxiable = true
+>>
+>> #       default_tgs_enctypes = des3-hmac-sha1
+>> #       default_tkt_enctypes = des3-hmac-sha1
+>> #       permitted_enctypes = des3-hmac-sha1
+>>
+>> # The following libdefaults parameters are only for Heimdal Kerberos.
+>>        v4_instance_resolve = false
+>>        v4_name_convert = {
+>>                host = {
+>>                        rcmd = host
+>>                        ftp = ftp
+>>                }
+>>                plain = {
+>>                        something = something-else
+>>                }
+>>        }
+>>        fcc-mit-ticketflags = true
+>>
+>> [realms]
+>>        EXAMPLE.COM = {
+>>                kdc = kerberos.example.com
+>>                admin_server = kerberos.example.com
+>>        }
+>> [domain_realm]
+>>        .example.com = EXAMPLE.COM
+>>        example.com = EXAMPLE.COM
+>>
+>> [login]
+>>        krb4_convert = true
+>>        krb4_get_tickets = false
+>> --------------------------------------------------------------------------------
+>> Here /etc/hosts
+>>
+>> 127.0.0.1       localhost goku goku.example.com nfs.example.com
+>> 10.0.0.1        goku goku.example.com
+>> 10.0.0.1        nfs.example.com
+>>
+>> # The following lines are desirable for IPv6 capable hosts
+>> ::1     ip6-localhost ip6-loopback
+>> fe00::0 ip6-localnet
+>> ff00::0 ip6-mcastprefix
+>> ff02::1 ip6-allnodes
+>> ff02::2 ip6-allrouters
+>> ff02::3 ip6-allhosts
+>>
+>>
+>>
+>>
+>>
+>>
+>>
+>>
+>>
+>> 2011/2/11 Kevin Coffman <kwc@citi.umich.edu>:
+>>> On Fri, Feb 11, 2011 at 1:38 PM, CeR <cer.inet@gmail.com> wrote:
+>>>>
+>>>> Hello. I have been trying to set up a local-teachpurpose-server at home.
+>>>>
+>>>> My enviroment: debian squeeze KVM/libvirt machine, with 2.6.32-5-amd64 kernel.
+>>>>
+>>>> When restarting services with the correct configuration, i get this:
+>>>> As you can see, the keytab is there, with correct permissions to read by root.
+>>>>
+>>>> root@goku:~# /etc/init.d/nfs-common restart
+>>>> Stopping NFS common utilities: gssd idmapd statd.
+>>>> Starting NFS common utilities: statd idmapd gssd.
+>>>>
+>>>> root@goku:~# /etc/init.d/nfs-kernel-server restart
+>>>> Stopping NFS kernel daemon: mountd svcgssd nfsd.
+>>>> Unexporting directories for NFS kernel daemon....
+>>>> Exporting directories for NFS kernel daemon....
+>>>> Starting NFS kernel daemon: nfsd svcgssd failed!
+>>>>
+>>>> root@goku:~# tail /var/log/syslog
+>>>> Feb 11 18:29:45 goku kernel: [ 2266.025197] nfsd: last server has
+>>>> exited, flushing export cache
+>>>> Feb 11 18:29:46 goku kernel: [ 2267.119699] svc: failed to register
+>>>> lockdv1 RPC service (errno 97).
+>>>> Feb 11 18:29:46 goku kernel: [ 2267.121318] NFSD: Using
+>>>> /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
+>>>> Feb 11 18:29:46 goku kernel: [ 2267.122284] NFSD: starting 90-second
+>>>> grace period
+>>>> Feb 11 18:29:46 goku rpc.svcgssd[2333]: ERROR: GSS-API: error in
+>>>> gss_acquire_cred(): Unspecified GSS failure.  Minor code may provide
+>>>> more information - Key table entry not found
+>>>> Feb 11 18:29:46 goku rpc.svcgssd[2333]: unable to obtain root
+>>>> (machine) credentials
+>>>> Feb 11 18:29:46 goku rpc.svcgssd[2333]: do you have a keytab entry for
+>>>> nfs/<your.host>@<YOUR.REALM> in /etc/krb5.keytab?
+>>>>
+>>>> root@goku:~# ls -l /etc/krb5.keytab
+>>>> -rw-r----- 1 root openldap 1210 feb 11 11:11 /etc/krb5.keytab
+>>>>
+>>>> root@goku:~# klist -k
+>>>> Keytab name: WRFILE:/etc/krb5.keytab
+>>>> KVNO Principal
+>>>> ---- --------------------------------------------------------------------------
+>>>>   2 host/goku.example.com@EXAMPLE.COM
+>>>>   2 host/goku.example.com@EXAMPLE.COM
+>>>>   2 host/goku.example.com@EXAMPLE.COM
+>>>>   2 host/goku.example.com@EXAMPLE.COM
+>>>>   2 ldap/goku.example.com@EXAMPLE.COM
+>>>>   2 ldap/goku.example.com@EXAMPLE.COM
+>>>>   2 ldap/goku.example.com@EXAMPLE.COM
+>>>>   2 ldap/goku.example.com@EXAMPLE.COM
+>>>>   4 nfs/goku.example.com@EXAMPLE.COM
+>>>>   4 nfs/goku.example.com@EXAMPLE.COM
+>>>>   4 nfs/goku.example.com@EXAMPLE.COM
+>>>>   4 nfs/goku.example.com@EXAMPLE.COM
+>>>>
+>>>>
+>>>> Is a bug? A incompatibility between my packages versions? A
+>>>> configuration problem? Any idea?
+>>>>
+>>>>
+>>>> Thank you. Best regards.
+>>>
+>>> First, with this kernel version, you should only have one keytab entry
+>>> for nfs/goku.example.com with a DES key.  (You don't show the
+>>> enctypes, but I see you have 4 keys for nfs.)  You won't hit this
+>>> problem until you get past the other error.
+>>>
+>>> Make sure the reverse look-up for your server's host returns the
+>>> correct name.  (Matching the name in the keytab, "goku.example.com")
+>>>
+>>> Perhaps send a copy of /etc/hosts and your /etc/krb5.conf to see what
+>>> might be misconfigured.
+>>>
+>>> K.C.
+>>>
+>>
+>>
+>>
+>> --
+>> [*] CeR / Arturo Borrero Gonzalez [*]
+>>
+>>
+>
+
 
 
 -- 
-Jesper Juhl <jj@chaosbits.net>            http://www.chaosbits.net/
-Don't top-post http://www.catb.org/~esr/jargon/html/T/top-post.html
-Plain text mails only, please.
-
+[*] CeR / Arturo Borrero Gonzalez [*]
