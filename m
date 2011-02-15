@@ -1,135 +1,180 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([122.248.162.4]:35093 "EHLO
-	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755466Ab1BWNx3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 08:53:29 -0500
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
-        sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
-        jlayton@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
-Subject: [PATCH -V5 10/24] vfs: Add permission flags for setting file attributes
-Date: Wed, 23 Feb 2011 19:21:57 +0530
-Message-Id: <1298469131-16555-11-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx2.netapp.com ([216.240.18.37]:58884 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751314Ab1BPSjF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Feb 2011 13:39:05 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>,
+        Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH pNFS wave 3 Version 2 08/18] NFSv4.1: lseg refcounting
+Date: Tue, 15 Feb 2011 03:38:53 -0500
+Message-Id: <1297759143-2045-9-git-send-email-andros@netapp.com>
+In-Reply-To: <1297759143-2045-1-git-send-email-andros@netapp.com>
+References: <1297759143-2045-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andreas Gruenbacher <agruen@suse.de>
+From: Fred Isaman <iisaman@netapp.com>
 
-Some permission models can allow processes to take ownership of a file,
-change the file permissions, and set the file timestamps.  Introduce new
-permission mask flags and check for those permissions in
-inode_change_ok().
+Prepare put_lseg and get_lseg to be called from the pNFS I/O code.
+Pull common code from pnfs_lseg_locked to call from pnfs_lseg.
+Inline pnfs_lseg_locked into it's only caller.
 
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/attr.c          |   49 ++++++++++++++++++++++++++++++++++++++-----------
- include/linux/fs.h |    3 +++
- 2 files changed, 41 insertions(+), 11 deletions(-)
+ fs/nfs/pnfs.c |   62 +++++++++++++++++++++++++++++++++++---------------------
+ fs/nfs/pnfs.h |   20 ++++++++++++++++++
+ 2 files changed, 59 insertions(+), 23 deletions(-)
 
-diff --git a/fs/attr.c b/fs/attr.c
-index f081b5a..793f34c 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -13,6 +13,20 @@
- #include <linux/fsnotify.h>
- #include <linux/fcntl.h>
- #include <linux/security.h>
-+#include <linux/richacl.h>
-+
-+static int richacl_change_ok(struct inode *inode, int mask)
-+{
-+	if (!IS_RICHACL(inode))
-+		return -EPERM;
-+
-+	if (inode->i_op->permission)
-+		return inode->i_op->permission(inode, mask, 0);
-+	else if (inode->i_op->check_acl)
-+		return inode->i_op->check_acl(inode, mask, 0);
-+	else
-+		return -EPERM;
-+}
- 
- /**
-  * inode_change_ok - check if attribute changes to an inode are allowed
-@@ -47,20 +61,29 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 	/* Make sure a caller can chown. */
- 	if ((ia_valid & ATTR_UID) &&
- 	    (current_fsuid() != inode->i_uid ||
--	     attr->ia_uid != inode->i_uid) && !capable(CAP_CHOWN))
--		return -EPERM;
-+	     attr->ia_uid != inode->i_uid) &&
-+	    (current_fsuid() != attr->ia_uid ||
-+	     richacl_change_ok(inode, MAY_TAKE_OWNERSHIP)) &&
-+	    !capable(CAP_CHOWN))
-+		goto error;
- 
- 	/* Make sure caller can chgrp. */
--	if ((ia_valid & ATTR_GID) &&
--	    (current_fsuid() != inode->i_uid ||
--	    (!in_group_p(attr->ia_gid) && attr->ia_gid != inode->i_gid)) &&
--	    !capable(CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_GID) {
-+		int in_group = in_group_p(attr->ia_gid);
-+		if ((current_fsuid() != inode->i_uid ||
-+		     (!in_group && attr->ia_gid != inode->i_gid)) &&
-+		    (!in_group ||
-+		     richacl_change_ok(inode, MAY_TAKE_OWNERSHIP)) &&
-+		    !capable(CAP_CHOWN))
-+			goto error;
-+	}
- 
- 	/* Make sure a caller can chmod. */
- 	if (ia_valid & ATTR_MODE) {
--		if (!is_owner_or_cap(inode))
--			return -EPERM;
-+		if (current_fsuid() != inode->i_uid &&
-+		    richacl_change_ok(inode, MAY_CHMOD) &&
-+		    !capable(CAP_FOWNER))
-+			goto error;
- 		/* Also check the setgid bit! */
- 		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
- 				inode->i_gid) && !capable(CAP_FSETID))
-@@ -69,11 +92,15 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 
- 	/* Check for setting the inode time. */
- 	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
--		if (!is_owner_or_cap(inode))
--			return -EPERM;
-+		if (current_fsuid() != inode->i_uid &&
-+		    richacl_change_ok(inode, MAY_SET_TIMES) &&
-+		    !capable(CAP_FOWNER))
-+			goto error;
- 	}
- 
- 	return 0;
-+error:
-+	return -EPERM;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 7d031cd..1173434 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -230,32 +230,41 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
+ 	put_layout_hdr(NFS_I(ino)->layout);
  }
- EXPORT_SYMBOL(inode_change_ok);
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 3ae23a2..1627592 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -66,6 +66,9 @@ struct inodes_stat_t {
- #define MAY_CREATE_DIR 256
- #define MAY_DELETE_CHILD 512
- #define MAY_DELETE_SELF 1024
-+#define MAY_TAKE_OWNERSHIP 2048
-+#define MAY_CHMOD 4096
-+#define MAY_SET_TIMES 8192
+-/* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
+- * could sleep, so must be called outside of the lock.
+- * Returns 1 if object was removed, otherwise return 0.
+- */
+-static int
+-put_lseg_locked(struct pnfs_layout_segment *lseg,
+-		struct list_head *tmp_list)
++static void
++put_lseg_common(struct pnfs_layout_segment *lseg)
++{
++	struct inode *inode = lseg->pls_layout->plh_inode;
++
++	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
++	list_del(&lseg->pls_list);
++	if (list_empty(&lseg->pls_layout->plh_segs)) {
++		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
++		/* Matched by initial refcount set in alloc_init_layout_hdr */
++		put_layout_hdr_locked(lseg->pls_layout);
++	}
++	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
++}
++
++static void
++put_lseg(struct pnfs_layout_segment *lseg)
+ {
++	struct inode *inode;
++
++	if (!lseg)
++		return;
++
+ 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+ 		atomic_read(&lseg->pls_refcount),
+ 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+-	if (atomic_dec_and_test(&lseg->pls_refcount)) {
+-		struct inode *ino = lseg->pls_layout->plh_inode;
++	inode = lseg->pls_layout->plh_inode;
++	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
++		LIST_HEAD(free_me);
  
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+-		BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+-		list_del(&lseg->pls_list);
+-		if (list_empty(&lseg->pls_layout->plh_segs)) {
+-			set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
+-			/* Matched by initial refcount set in alloc_init_layout_hdr */
+-			put_layout_hdr_locked(lseg->pls_layout);
+-		}
+-		rpc_wake_up(&NFS_SERVER(ino)->roc_rpcwaitq);
+-		list_add(&lseg->pls_list, tmp_list);
+-		return 1;
++		put_lseg_common(lseg);
++		list_add(&lseg->pls_list, &free_me);
++		spin_unlock(&inode->i_lock);
++		pnfs_free_lseg_list(&free_me);
+ 	}
+-	return 0;
+ }
+ 
+ static bool
+@@ -276,7 +285,13 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ 		 * list.  It will now be removed when all
+ 		 * outstanding io is finished.
+ 		 */
+-		rv = put_lseg_locked(lseg, tmp_list);
++		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
++			atomic_read(&lseg->pls_refcount));
++		if (atomic_dec_and_test(&lseg->pls_refcount)) {
++			put_lseg_common(lseg);
++			list_add(&lseg->pls_list, tmp_list);
++			rv = 1;
++		}
+ 	}
+ 	return rv;
+ }
+@@ -689,7 +704,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
+ 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
+ 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
+ 		    is_matching_lseg(lseg, iomode)) {
+-			ret = lseg;
++			ret = get_lseg(lseg);
+ 			break;
+ 		}
+ 		if (cmp_layout(iomode, lseg->pls_range.iomode) > 0)
+@@ -769,6 +784,7 @@ pnfs_update_layout(struct inode *ino,
+ out:
+ 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+ 		nfsi->layout ? nfsi->layout->plh_flags : -1, lseg);
++	put_lseg(lseg); /* STUB - callers currently ignore return value */
+ 	return lseg;
+ out_unlock:
+ 	spin_unlock(&ino->i_lock);
+@@ -821,7 +837,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	}
+ 	init_lseg(lo, lseg);
+ 	lseg->pls_range = res->range;
+-	*lgp->lsegpp = lseg;
++	*lgp->lsegpp = get_lseg(lseg);
+ 	pnfs_insert_layout(lo, lseg);
+ 
+ 	if (res->return_on_close) {
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index e2612ea..9a994bc 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -177,6 +177,16 @@ static inline int lo_fail_bit(u32 iomode)
+ 			 NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
+ }
+ 
++static inline struct pnfs_layout_segment *
++get_lseg(struct pnfs_layout_segment *lseg)
++{
++	if (lseg) {
++		atomic_inc(&lseg->pls_refcount);
++		smp_mb__after_atomic_inc();
++	}
++	return lseg;
++}
++
+ /* Return true if a layout driver is being used for this mountpoint */
+ static inline int pnfs_enabled_sb(struct nfs_server *nfss)
+ {
+@@ -194,6 +204,16 @@ static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
+ }
+ 
+ static inline struct pnfs_layout_segment *
++get_lseg(struct pnfs_layout_segment *lseg)
++{
++	return NULL;
++}
++
++static inline void put_lseg(struct pnfs_layout_segment *lseg)
++{
++}
++
++static inline struct pnfs_layout_segment *
+ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 		   enum pnfs_iomode access_type)
+ {
 -- 
-1.7.1
+1.7.2.3
 
