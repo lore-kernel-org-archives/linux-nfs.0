@@ -1,62 +1,191 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out1.smtp.messagingengine.com ([66.111.4.25]:40970 "EHLO
-	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751904Ab1BXHXZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2011 02:23:25 -0500
-Subject: Re: [PATCH 0/3] Fixes for vfs-scale and vfs-automount
-From: Ian Kent <raven@themaw.net>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Nick Piggin <npiggin@kernel.dk>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        David Howells <dhowells@redhat.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <20110224054701.GU22723@ZenIV.linux.org.uk>
-References: <20110118040449.23109.33071.stgit@localhost6.localdomain6>
-	 <1295420817.3076.24.camel@perseus> <1297779902.13007.86.camel@perseus>
-	 <20110224015817.GQ22723@ZenIV.linux.org.uk>
-	 <1298516618.2916.20.camel@perseus>
-	 <20110224031439.GR22723@ZenIV.linux.org.uk>
-	 <1298518137.2916.35.camel@perseus>
-	 <20110224035836.GS22723@ZenIV.linux.org.uk>
-	 <20110224054701.GU22723@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 24 Feb 2011 15:23:17 +0800
-Message-ID: <1298532197.31595.1.camel@perseus>
+Received: from mx2.netapp.com ([216.240.18.37]:58884 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753228Ab1BPSjO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Feb 2011 13:39:14 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>,
+        Andy Adamson <andros@citi.umich.edu>,
+        Dean Hildebrand <dhildeb@us.ibm.com>,
+        Marc Eshel <eshel@almaden.ibm.com>, Mike Sager <sager@netapp.com>,
+        Oleg Drokin <green@linuxhacker.ru>, Tao Guo <guotao@nrchpc.ac.cn>,
+        Tigran Mkrtchyan <tigran@anahit.desy.de>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Andy Adamson <andros@netapp.com>, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH pNFS wave 3 Version 2 13/18] NFSv4.1: filelayout i/o helpers
+Date: Tue, 15 Feb 2011 03:38:58 -0500
+Message-Id: <1297759143-2045-14-git-send-email-andros@netapp.com>
+In-Reply-To: <1297759143-2045-1-git-send-email-andros@netapp.com>
+References: <1297759143-2045-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 2011-02-24 at 05:47 +0000, Al Viro wrote:
-> On Thu, Feb 24, 2011 at 03:58:37AM +0000, Al Viro wrote:
-> > On Thu, Feb 24, 2011 at 11:28:57AM +0800, Ian Kent wrote:
-> > 
-> > > Ha, I haven't even turned on my Ultrsparc 2 in months, it's only got an
-> > > old version of Solaris on it now anyway, ;)
-> > 
-> > U60, with lenny (and mainline kernel) on it.  Probably ought to upgrade
-> > to squeeze one of those days...  It works, all right, but it's only 2-way,
-> > so reproducing would probably be harder.  Plus the fun of building the tests
-> > themselves on somewhat different userland...
-> > 
-> > Anyway, I wonder why you care about __d_lookup_rcu() and ->d_inode stability;
-> > d_mountpoint() _is_ stable at that point (we hold vfsmount_lock) and you
-> > don't seem to look at ->d_inode at all in RCU case.  Note that ->d_automount()
-> > is never called in RCU case at all; nor is ->lookup() and friends, so you
-> > really only have ->d_manage() to cope with, what with autofs4 having no
-> > ->d_revalidate() anymore.
-> 
-> FWIW, can we _ever_ get to __do_follow_link() with link->mnt != nd->path.mnt?
-> It's probably not what's happening here, or we would've stepped on another
-> BUG_ON(), but still it might be worth checking...
-> 
-> AFAICS, if we ever get there that way, we are fscked, so the check before
-> mntget() ought to replaced with BUG_ON(link->mnt != nd->path.mnt)...
+From: Fred Isaman <iisaman@netapp.com>
 
-Yeah, don't think autofs can go their with no ->follow_link() defined.
-I've largely ignored that code to date.
+Prepare for filelayout_read_pagelist with helper functions that find the correct
+data server, filehandle, and offset.
 
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Mike Sager <sager@netapp.com>
+Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+Signed-off-by: Tigran Mkrtchyan <tigran@anahit.desy.de>
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4filelayout.c    |   34 ++++++++++++++++++++++
+ fs/nfs/nfs4filelayout.h    |    7 ++++
+ fs/nfs/nfs4filelayoutdev.c |   67 ++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 108 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 98e26e0..a2cde39 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -66,6 +66,40 @@ filelayout_clear_layoutdriver(struct nfs_server *nfss)
+ 	return 0;
+ }
+ 
++static loff_t
++filelayout_get_dense_offset(struct nfs4_filelayout_segment *flseg,
++			    loff_t offset)
++{
++	u32 stripe_width = flseg->stripe_unit * flseg->dsaddr->stripe_count;
++	u64 tmp;
++
++	offset -= flseg->pattern_offset;
++	tmp = offset;
++	do_div(tmp, stripe_width);
++
++	return tmp * flseg->stripe_unit + do_div(offset, flseg->stripe_unit);
++}
++
++/* This function is used by the layout driver to calculate the
++ * offset of the file on the dserver based on whether the
++ * layout type is STRIPE_DENSE or STRIPE_SPARSE
++ */
++static loff_t
++filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
++{
++	struct nfs4_filelayout_segment *flseg = FILELAYOUT_LSEG(lseg);
++
++	switch (flseg->stripe_type) {
++	case STRIPE_SPARSE:
++		return offset;
++
++	case STRIPE_DENSE:
++		return filelayout_get_dense_offset(flseg, offset);
++	}
++
++	BUG();
++}
++
+ /*
+  * filelayout_check_layout()
+  *
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index bbf60dd..9fef76e 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -83,9 +83,16 @@ FILELAYOUT_LSEG(struct pnfs_layout_segment *lseg)
+ 			    generic_hdr);
+ }
+ 
++extern struct nfs_fh *
++nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j);
++
+ extern void nfs4_fl_free_deviceid_callback(struct pnfs_deviceid_node *);
+ extern void print_ds(struct nfs4_pnfs_ds *ds);
+ extern void print_deviceid(struct nfs4_deviceid *dev_id);
++u32 nfs4_fl_calc_j_index(struct pnfs_layout_segment *lseg, loff_t offset);
++u32 nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, u32 j);
++struct nfs4_pnfs_ds *nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg,
++					u32 ds_idx);
+ extern struct nfs4_file_layout_dsaddr *
+ nfs4_fl_find_get_deviceid(struct nfs_client *, struct nfs4_deviceid *dev_id);
+ struct nfs4_file_layout_dsaddr *
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 8e21e65..e8496f3 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -512,3 +512,70 @@ nfs4_fl_find_get_deviceid(struct nfs_client *clp, struct nfs4_deviceid *id)
+ 	return (d == NULL) ? NULL :
+ 		container_of(d, struct nfs4_file_layout_dsaddr, deviceid);
+ }
++
++/*
++ * Want res = (offset - layout->pattern_offset)/ layout->stripe_unit
++ * Then: ((res + fsi) % dsaddr->stripe_count)
++ */
++u32
++nfs4_fl_calc_j_index(struct pnfs_layout_segment *lseg, loff_t offset)
++{
++	struct nfs4_filelayout_segment *flseg = FILELAYOUT_LSEG(lseg);
++	u64 tmp;
++
++	tmp = offset - flseg->pattern_offset;
++	do_div(tmp, flseg->stripe_unit);
++	tmp += flseg->first_stripe_index;
++	return do_div(tmp, flseg->dsaddr->stripe_count);
++}
++
++u32
++nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, u32 j)
++{
++	return FILELAYOUT_LSEG(lseg)->dsaddr->stripe_indices[j];
++}
++
++struct nfs_fh *
++nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
++{
++	struct nfs4_filelayout_segment *flseg = FILELAYOUT_LSEG(lseg);
++	u32 i;
++
++	if (flseg->stripe_type == STRIPE_SPARSE) {
++		if (flseg->num_fh == 1)
++			i = 0;
++		else if (flseg->num_fh == 0)
++			/* Use the MDS OPEN fh set in nfs_read_rpcsetup */
++			return NULL;
++		else
++			i = nfs4_fl_calc_ds_index(lseg, j);
++	} else
++		i = j;
++	return flseg->fh_array[i];
++}
++
++struct nfs4_pnfs_ds *
++nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
++{
++	struct nfs4_file_layout_dsaddr *dsaddr = FILELAYOUT_LSEG(lseg)->dsaddr;
++	struct nfs4_pnfs_ds *ds = dsaddr->ds_list[ds_idx];
++
++	if (ds == NULL) {
++		printk(KERN_ERR "%s: No data server for offset index %d\n",
++			__func__, ds_idx);
++		return NULL;
++	}
++
++	if (!ds->ds_clp) {
++		int err;
++
++		err = nfs4_ds_connect(NFS_SERVER(lseg->pls_layout->plh_inode),
++					  dsaddr->ds_list[ds_idx]);
++		if (err) {
++			printk(KERN_ERR "%s nfs4_ds_connect error %d\n",
++			       __func__, err);
++			return NULL;
++		}
++	}
++	return ds;
++}
+-- 
+1.7.2.3
 
