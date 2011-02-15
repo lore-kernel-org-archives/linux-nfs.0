@@ -1,277 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:28505 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757728Ab1BKQzB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 11:55:01 -0500
-Received: from localhost.localdomain (manjua-lxp.hq.netapp.com [10.58.49.248] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p1BGshZ9002533
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2011 08:54:47 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/7] wave4: filelayout write
-Date: Fri, 11 Feb 2011 11:54:38 -0500
-Message-Id: <1297443279-19813-7-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
-References: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
+Received: from mail-yi0-f46.google.com ([209.85.218.46]:61677 "EHLO
+	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932115Ab1BOWVr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 17:21:47 -0500
+Received: by yib18 with SMTP id 18so333029yib.19
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2011 14:21:47 -0800 (PST)
+In-Reply-To: <1297736572.23841.60.camel@heimdal.trondhjem.org>
+References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com>
+	<665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com>
+	<AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com>
+	<0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
+	<AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com>
+	<AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com>
+	<1A31AB06-8518-427C-8D0B-0058AA613D0E@oracle.com>
+	<AANLkTimiACttSQ+=M0UNGs5nZrP=zs0zRFV+4HP8c-OP@mail.gmail.com>
+	<81853901-909D-4803-81A5-C01C0337CAE1@oracle.com>
+	<AANLkTim9zbEzKZ=RZbfZhcLovn6fWkdL-3eZp21-NDP+@mail.gmail.com>
+	<1297736572.23841.60.camel@heimdal.trondhjem.org>
+Date: Tue, 15 Feb 2011 18:21:46 -0400
+Message-ID: <AANLkTi=q2UU=CGCgLHs+q19Lxj=von1H06pQnyvixAdY@mail.gmail.com>
+Subject: Re: NFS only mount with -o udp option
+From: Edgar Almonte <samudhio@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: The pNFS Team <linux-nfs@vger.kernel.org>
+1- no
 
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
-Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Tested-by: Guo Mingyang <guomingyang@nrchpc.ac.cn>
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/internal.h       |    5 ++
- fs/nfs/nfs4filelayout.c |  103 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c       |   17 ++++++++
- fs/nfs/write.c          |    5 ++-
- include/linux/nfs_xdr.h |    1 +
- 5 files changed, 130 insertions(+), 1 deletions(-)
+2:
+[root@heaven Desktop]# iptables -n -L
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index f69a322..34096a1 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -272,6 +272,10 @@ extern int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- 
- /* write.c */
-+extern int nfs_initiate_write(struct nfs_write_data *data,
-+			      struct rpc_clnt *clnt,
-+			      const struct rpc_call_ops *call_ops,
-+			      int how);
- extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
- #ifdef CONFIG_MIGRATION
- extern int nfs_migrate_page(struct address_space *,
-@@ -282,6 +286,7 @@ extern int nfs_migrate_page(struct address_space *,
- 
- /* nfs4proc.c */
- extern void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data);
-+extern void nfs4_reset_write(struct rpc_task *task, struct nfs_write_data *data);
- extern int _nfs4_call_sync(struct nfs_server *server,
- 			   struct rpc_message *msg,
- 			   struct nfs4_sequence_args *args,
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 80e7a66..be4af22 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -208,12 +208,69 @@ static void filelayout_read_release(void *data)
- 	rdata->mds_ops->rpc_release(data);
- }
- 
-+static int filelayout_write_done_cb(struct rpc_task *task,
-+				struct nfs_write_data *data)
-+{
-+	int reset = 0;
-+
-+	if (filelayout_async_handle_error(task, data->args.context->state,
-+					  data->ds_clp, &reset) == -EAGAIN) {
-+		struct nfs_client *clp;
-+
-+		dprintk("%s calling restart ds_clp %p ds_clp->cl_session %p\n",
-+			__func__, data->ds_clp, data->ds_clp->cl_session);
-+		if (reset) {
-+			nfs4_reset_write(task, data);
-+			filelayout_set_lo_fail(data->lseg);
-+			clp = NFS_SERVER(data->inode)->nfs_client;
-+		} else
-+			clp = data->ds_clp;
-+		nfs_restart_rpc(task, clp);
-+		return -EAGAIN;
-+	}
-+
-+	return 0;
-+}
-+
-+static void filelayout_write_prepare(struct rpc_task *task, void *data)
-+{
-+	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-+
-+	if (nfs41_setup_sequence(wdata->ds_clp->cl_session,
-+				&wdata->args.seq_args, &wdata->res.seq_res,
-+				0, task))
-+		return;
-+
-+	rpc_call_start(task);
-+}
-+
-+static void filelayout_write_call_done(struct rpc_task *task, void *data)
-+{
-+	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-+
-+	/* Note this may cause RPC to be resent */
-+	wdata->mds_ops->rpc_call_done(task, data);
-+}
-+
-+static void filelayout_write_release(void *data)
-+{
-+	struct nfs_write_data *wdata = (struct nfs_write_data *)data;
-+
-+	wdata->mds_ops->rpc_release(data);
-+}
-+
- struct rpc_call_ops filelayout_read_call_ops = {
- 	.rpc_call_prepare = filelayout_read_prepare,
- 	.rpc_call_done = filelayout_read_call_done,
- 	.rpc_release = filelayout_read_release,
- };
- 
-+struct rpc_call_ops filelayout_write_call_ops = {
-+	.rpc_call_prepare = filelayout_write_prepare,
-+	.rpc_call_done = filelayout_write_call_done,
-+	.rpc_release = filelayout_write_release,
-+};
-+
- static enum pnfs_try_status
- filelayout_read_pagelist(struct nfs_read_data *data)
- {
-@@ -254,6 +311,51 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	return PNFS_ATTEMPTED;
- }
- 
-+/* Perform async writes. */
-+static enum pnfs_try_status
-+filelayout_write_pagelist(struct nfs_write_data *data, int sync)
-+{
-+	struct pnfs_layout_segment *lseg = data->lseg;
-+	struct nfs4_pnfs_ds *ds;
-+	loff_t offset = data->args.offset;
-+	u32 idx;
-+	struct nfs_fh *fh;
-+
-+	/* Retrieve the correct rpc_client for the byte range */
-+	idx = nfs4_fl_calc_ds_index(lseg, offset);
-+	ds = nfs4_fl_prepare_ds(lseg, idx);
-+	if (!ds) {
-+		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
-+		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
-+		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
-+		return PNFS_NOT_ATTEMPTED;
-+	}
-+	dprintk("%s ino %lu sync %d req %Zu@%llu DS:%x:%hu\n", __func__,
-+		data->inode->i_ino, sync, (size_t) data->args.count, offset,
-+		ntohl(ds->ds_ip_addr), ntohs(ds->ds_port));
-+
-+	/* We can't handle commit to ds yet */
-+	if (!FILELAYOUT_LSEG(lseg)->commit_through_mds)
-+		data->args.stable = NFS_FILE_SYNC;
-+
-+	data->write_done_cb = filelayout_write_done_cb;
-+	data->ds_clp = ds->ds_clp;
-+	fh = nfs4_fl_select_ds_fh(lseg, offset);
-+	if (fh)
-+		data->args.fh = fh;
-+	/*
-+	 * Get the file offset on the dserver. Set the write offset to
-+	 * this offset and save the original offset.
-+	 */
-+	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
-+	data->mds_offset = offset;
-+
-+	/* Perform an asynchronous write */
-+	nfs_initiate_write(data, ds->ds_clp->cl_rpcclient,
-+			   &filelayout_write_call_ops, sync);
-+	return PNFS_ATTEMPTED;
-+}
-+
- /*
-  * filelayout_check_layout()
-  *
-@@ -475,6 +577,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
- 	.free_lseg               = filelayout_free_lseg,
- 	.pg_test                 = filelayout_pg_test,
- 	.read_pagelist           = filelayout_read_pagelist,
-+	.write_pagelist          = filelayout_write_pagelist,
- };
- 
- static int __init nfs4filelayout_init(void)
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3952f7c..6cce678 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3144,6 +3144,23 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
- 	return data->write_done_cb(task, data);
- }
- 
-+/* Reset the the nfs_write_data to send the write to the MDS. */
-+void nfs4_reset_write(struct rpc_task *task, struct nfs_write_data *data)
-+{
-+	dprintk("%s Reset task for i/o through \n", __func__);
-+	put_lseg(data->lseg);
-+	data->lseg          = NULL;
-+	data->ds_clp        = NULL;
-+	data->write_done_cb = nfs4_write_done_cb;
-+	data->args.fh       = NFS_FH(data->inode);
-+	data->args.bitmask  = data->res.server->cache_consistency_bitmask;
-+	data->args.offset   = data->mds_offset;
-+	data->res.fattr     = &data->fattr;
-+	task->tk_ops        = data->mds_ops;
-+	rpc_task_reset_client(task, NFS_CLIENT(data->inode));
-+}
-+EXPORT_SYMBOL_GPL(nfs4_reset_write);
-+
- static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_message *msg)
- {
- 	struct nfs_server *server = NFS_SERVER(data->inode);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 24cc34d..5757b06 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -783,7 +783,7 @@ static int flush_task_priority(int how)
- 	return RPC_PRIORITY_NORMAL;
- }
- 
--static int nfs_initiate_write(struct nfs_write_data *data,
-+int nfs_initiate_write(struct nfs_write_data *data,
- 		       struct rpc_clnt *clnt,
- 		       const struct rpc_call_ops *call_ops,
- 		       int how)
-@@ -833,6 +833,7 @@ static int nfs_initiate_write(struct nfs_write_data *data,
- out:
- 	return ret;
- }
-+EXPORT_SYMBOL(nfs_initiate_write);
- 
- /*
-  * Set up the argument/result storage required for the RPC call.
-@@ -1186,6 +1187,7 @@ int nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
- 		 */
- 		static unsigned long    complain;
- 
-+		/* Note this will print the MDS for a DS write */
- 		if (time_before(complain, jiffies)) {
- 			dprintk("NFS:       faulty NFS server %s:"
- 				" (committed = %d) != (stable = %d)\n",
-@@ -1206,6 +1208,7 @@ int nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
- 			/* Was this an NFSv2 write or an NFSv3 stable write? */
- 			if (resp->verf->committed != NFS_UNSTABLE) {
- 				/* Resend from where the server left off */
-+				data->mds_offset += resp->count;
- 				argp->offset += resp->count;
- 				argp->pgbase += resp->count;
- 				argp->count -= resp->count;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 9ff26f9..a045d12 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1045,6 +1045,7 @@ struct nfs_write_data {
- #ifdef CONFIG_NFS_V4
- 	unsigned long		timestamp;	/* For lease renewal */
- #endif
-+	__u64			mds_offset;	/* Filelayout dense stripe */
- 	struct page		*page_array[NFS_PAGEVEC_SIZE];
- };
- 
--- 
-1.7.2.1
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination
 
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination
+
+On Mon, Feb 14, 2011 at 10:22 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Mon, 2011-02-14 at 22:09 -0400, Edgar Almonte wrote:
+>> in debian dont exist a package called nfs-utils , i get nfs-common and
+>> say the same version of the nfs-utils of archlinux
+>> not sure about MNT version config , i dont remember intentionally
+>> changing this , where i can check it ?
+>>
+>> pd: sorry for the double email i forget press reply all
+>>
+>> On Mon, Feb 14, 2011 at 11:56 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> > Hi Edgar-
+>> >
+>> > On Feb 11, 2011, at 6:46 PM, Edgar Almonte wrote:
+>> >
+>> >> hmm i will try update to the last version but is the lasted in
+>> >> official repository of my distro
+>> >
+>> > Yes, that could be a problem.  Out of curiosity, can you tell us what version of nfs-utils is running on the working Debian client you have?
+>> >
+>> >> the rpcinfo -p localhost output ( run at the server )
+>> >>
+>> >> rpcinfo -p localhost
+>> >>   program vers proto   port  service
+>> >>    100000    4   tcp    111  portmapper
+>> >>    100000    3   tcp    111  portmapper
+>> >>    100000    2   tcp    111  portmapper
+>> >>    100000    4   udp    111  portmapper
+>> >>    100000    3   udp    111  portmapper
+>> >>    100000    2   udp    111  portmapper
+>> >>    391002    2   tcp    661  sgi_fam
+>> >>    100024    1   udp  49216  status
+>> >>    100024    1   tcp  42903  status
+>> >>    100003    2   tcp   2049  nfs
+>> >>    100003    3   tcp   2049  nfs
+>> >>    100003    4   tcp   2049  nfs
+>> >>    100227    2   tcp   2049  nfs_acl
+>> >>    100227    3   tcp   2049  nfs_acl
+>> >>    100003    2   udp   2049  nfs
+>> >>    100003    3   udp   2049  nfs
+>> >>    100003    4   udp   2049  nfs
+>> >>    100227    2   udp   2049  nfs_acl
+>> >>    100227    3   udp   2049  nfs_acl
+>> >>    100021    1   udp  36092  nlockmgr
+>> >>    100021    3   udp  36092  nlockmgr
+>> >>    100021    4   udp  36092  nlockmgr
+>> >>    100021    1   tcp  52268  nlockmgr
+>> >>    100021    3   tcp  52268  nlockmgr
+>> >>    100021    4   tcp  52268  nlockmgr
+>> >>    100005    3   udp  41849  mountd
+>> >>    100005    3   tcp  46012  mountd
+>
+> UDP and TCP appear to be running on different ports.
+>
+>     1. Does running 'sudo netstat -anp' on the server show any other
+>        processes running on TCP port 41849 or UDP port 46012?
+>     2. Does running 'sudo iptables -n -L' on the server show anything
+>        rejecting TCP connections on port 46012?
+>
+> Cheers
+>  Trond
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
+>
