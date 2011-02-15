@@ -1,95 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from tac.ki.iif.hu ([193.6.222.43]:51018 "EHLO tac.ki.iif.hu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753875Ab1BXRGB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Feb 2011 12:06:01 -0500
-Received: from wferi by tac.ki.iif.hu with local (Exim 4.72)
-	(envelope-from <wferi@niif.hu>)
-	id 1Psedc-0005vj-6y
-	for linux-nfs@vger.kernel.org; Thu, 24 Feb 2011 18:06:00 +0100
-From: Ferenc Wagner <wferi@niif.hu>
-To: linux-nfs@vger.kernel.org
-Subject: Re: server does not abort grace period
-References: <87wrl6ix2i.fsf@tac.ki.iif.hu> <87mxlpw4cv.fsf@tac.ki.iif.hu>
-	<20110222011144.GA18424@fieldses.org> <878vx8huet.fsf@tac.ki.iif.hu>
-	<20110223195250.GB13399@fieldses.org>
-Date: Thu, 24 Feb 2011 18:06:00 +0100
-In-Reply-To: <20110223195250.GB13399@fieldses.org> (J. Bruce Fields's message
-	of "Wed, 23 Feb 2011 14:52:51 -0500")
-Message-ID: <87r5ax8irr.fsf@tac.ki.iif.hu>
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:53297 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751483Ab1BOOoZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 09:44:25 -0500
+Received: by iwn9 with SMTP id 9so228188iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2011 06:44:24 -0800 (PST)
+In-Reply-To: <1297723160.23841.30.camel@heimdal.trondhjem.org>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com>
+	<1297723160.23841.30.camel@heimdal.trondhjem.org>
+Date: Tue, 15 Feb 2011 09:44:24 -0500
+Message-ID: <AANLkTimaSjeNdyBvmdLcT-rG8Y4xLatRV9uGahXFBfks@mail.gmail.com>
+Subject: Re: [PATCH 0/16] pnfs wave 3 submission
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-"J. Bruce Fields" <bfields@fieldses.org> writes:
-
-> On Tue, Feb 22, 2011 at 06:05:14PM +0100, Ferenc Wagner wrote:
->
->> "J. Bruce Fields" <bfields@fieldses.org> writes:
+On Mon, Feb 14, 2011 at 5:39 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> On Mon, 2011-02-14 at 14:18 -0500, andros@netapp.com wrote:
+>> These patches implement wave 3 of the pNFS submission, which encompasses file
+>> layout data server connection, READ I/O, and recovery through the MDS.
 >>
->>> 	- In the NFSv4.1 case there is a "reclaim complete" rpc that
->>> 	  clients are required to send.  Currently we don't take
->>> 	  advantage of that to end the grace period early, but we
->>> 	  should.  That's no help for 4.0 clients.
->> 
->> /proc/fs/nfsd/versions shows +4.1 on the server, does this mean that
->> nfs4 type Linux client mounts should issue "reclaim complete"?
+>> They apply on top of Fred's recent 3 patch 'lock inversion' series
+>> commits 2d767077 .. 2cc09edd in Trond's nfs-for-next tree.
+>>
+>> They are based upon Benny's current pnfs-submit-wave3 branch re-arranged
+>> into a more choerent series of patches and rebased upon Trond's nfs-for-next.
+>>
+>> -->Andy
+>>
+>> 0001-NFS-remove-unnecessary-CONFIG_NFS_V4-from-nfs_read_d.patch
+>> 0002-NFS-put_layout_hdr-can-remove-nfsi-layout.patch
+>> 0003-NFS-move-nfs_client-initialization-into-nfs_get_clie.patch
+>> 0004-pnfs-wave-3-send-zero-stateid-seqid-on-v4.1-i-o.patch
+>> 0005-pnfs-wave-3-new-flag-for-state-renewal-check.patch
+>> 0006-pnfs-wave-3-new-flag-for-lease-time-check.patch
+>> 0007-pnfs-wave-3-add-MDS-mount-DS-only-check.patch
+>> 0008-pnfs-wave-3-lseg-refcounting.patch
+>> 0009-pnfs-wave-3-shift-pnfs_update_layout-locations.patch
+>> 0010-pnfs-wave-3-coelesce-across-layout-stripes.patch
+>> 0011-pnfs-wave-3-generic-read.patch
+>> 0012-pnfs-wave-3-data-server-connection.patch
+>> 0013-pnfs-wave-3-filelayout-read.patch
+>> 0014-pnfs-wave-3-filelayout-read.patch
+>> 0015-pnfs-wave-3-filelayout-async-error-handler.patch
+>> 0016-pnfs-wave-3-turn-off-pNFS-on-ds-connection-failure.patch
+>>
 >
-> It means that a 4.1 is supported, so a client *could* use 4.1 if it
-> asked to.  And if it did use 4.1, yes, it would be required to issue
-> reclaim complete.  Current linux clients do not use 4.1 unless you
-> explicitly ask for it on the mount commandline.
-
-I can't find any mention of 4.1 in man nfs (nfs-common version 1.2.2),
-is there an undocumented nfsvers=4.1 mount option or some other means?
-
-> (Aside: the server really shouldn't have +4.1 by default, as the 4.1
-> server is not done.  We should fix that; which distro are you using?)
-
-Debian squeeze.  If it's switchable, then it's possible I switched it
-on, I can't remember.  However, 4.1 client support is disabled in the
-stock kernel config, and 4.1 server support isn't even mentioned:
-
-$ fgrep NFS /boot/config-2.6.32-5-686 
-CONFIG_NFS_FS=m
-CONFIG_NFS_V3=y
-CONFIG_NFS_V3_ACL=y
-CONFIG_NFS_V4=y
-# CONFIG_NFS_V4_1 is not set
-CONFIG_NFS_FSCACHE=y
-CONFIG_NFSD=m
-CONFIG_NFSD_V2_ACL=y
-CONFIG_NFSD_V3=y
-CONFIG_NFSD_V3_ACL=y
-CONFIG_NFSD_V4=y
-CONFIG_NFS_ACL_SUPPORT=m
-CONFIG_NFS_COMMON=y
-CONFIG_NCPFS_NFS_NS=y
-
->> Does the Linux nfs server implementation use the lease time of the
->> previous server instance as grace period on startup, or does it
->> simply take whatever it finds in /proc/fs/nfsd/nfsv4leasetime?
+> Hi Andy,
 >
-> The latest server has separately tunable "nfsv4gracetime" and
-> "nfsv4leasetime", and if you want to be careful, you should:
+> Can we please get rid of the 'wave 3:' in the subject of all these
+> patches? It is a slang that is only meaningful to the people who
+> regularly follow the Linux pNFS conference calls.
+
+Sure - makes sense.
+
+-->Andy
 >
-> 	- stop the server
-> 	- set nfsv4gracetime to the *previous* lease time
-> 	- set nfsv4leasetime to the *new* lease time
-> 	- start the server
+> If you do want to label the patches, then please encode the label as
+> something like
 >
-> That gives you the new (lower) lease time while still giving a
-> sufficiently long grace period for clients who only knew about the old
-> time to recover.  After doing that once, on future restarts you can use
-> the shorter time for both.
-
-Yes, this is exactly where I was going to (and what's recommended in the
-RFC).  Good to hear it's already implemented!
-
-> Probably we should write utilites which do this right for you....
-
-No worries, I won't be changing the lease time that frequently. :)
--- 
-Thanks a lot,
-Feri.
+> [PATCH pNFS wave3] NFSv4.1: xxxxxxxxxxxx
+>
+> so that 'git am' strips out the [PNFS WAVE 3] bit, and just leaves the
+> patch short description.
+>
+> You can do this using the --subject-prefix="PATCH pNFS wave3" argument
+> to 'git format-patch'.
+> Alternatively, if you are using 'stg mail' then you can achieve the same
+> effect with --version="pNFS wave3".
+>
+> Cheers
+>  Trond
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
