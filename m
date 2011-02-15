@@ -1,44 +1,40 @@
-From: <Taousif_Ansari-G5Y5guI6XLZWk0Htik3J/w@public.gmane.org>
-Subject: RE: [PATCH 01/16] NFS remove unnecessary CONFIG_NFS_V4 from
- nfs_read_data
-Date: Tue, 15 Feb 2011 14:54:24 +0530
-Message-ID: <A1A98FD909DC5248811A65C5D18E9C761D565BB73F@BLRX7MCDC202.AMER.DELL.COM>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>
- <1297711116-3139-2-git-send-email-andros@netapp.com>
- <20110215091618.GA29871@infradead.org>
+From: Benny Halevy <bhalevy@panasas.com>
+Subject: Re: [PATCH 08/16] pnfs: wave 3: lseg refcounting
+Date: Tue, 15 Feb 2011 09:59:25 -0500
+Message-ID: <4D5A94CD.4030508@panasas.com>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com> <1297711116-3139-9-git-send-email-andros@netapp.com> <20110215092531.GB29871@infradead.org> <AANLkTik+dVSmWgO6LRANo2xTt6iMqQ7ehvgqk-igQFhM@mail.gmail.com> <20110215145828.GA18038@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: <trond.myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
-To: <hch@infradead.org>, <andros@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Fred Isaman <iisaman@netapp.com>, andros@netapp.com,
+	trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from ausc60ps301.us.dell.com ([143.166.148.206]:48487 "EHLO
-	ausc60ps301.us.dell.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754454Ab1BOJZY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 04:25:24 -0500
-In-Reply-To: <20110215091618.GA29871@infradead.org>
+Received: from daytona.panasas.com ([67.152.220.89]:29691 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751201Ab1BOO71 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 09:59:27 -0500
+In-Reply-To: <20110215145828.GA18038@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Christoph Hellwig
-Sent: Tuesday, February 15, 2011 2:46 PM
-To: andros@netapp.com
-Cc: trond.myklebust@netapp.com; linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 01/16] NFS remove unnecessary CONFIG_NFS_V4 from nfs_read_data
-
-On Mon, Feb 14, 2011 at 02:18:21PM -0500, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+On 2011-02-15 09:58, Christoph Hellwig wrote:
+> On Tue, Feb 15, 2011 at 09:48:26AM -0500, Fred Isaman wrote:
+>> pnfs_free_lseg_list, besides calling free_lseg, also potentially
+>> removes the layout from the clients list of inodes with layouts.
 > 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
+> Looks like the routine than changed from the mainline variant
+> I looked at.  I took a quick look at the one from pnfs-submit,
+> which looks quite suspicios, as it special cases the first item
+> on the list without a good explanation and then iterates the list.
+> 
+> Does your tree have another caller of pnfs_free_lseg_list?  If not
+> please just open code the right thing in the caller, instead of
+> pretending we're dealing with a list if you're always dealing with
+> one entry.  If the tree grows a caller that needs to deal with a list
+> with more than 1 entry we can revisit if there's a point in sharing
+> code.
+> 
 
-Either the patch or the description is incorrect.  If you actually need
-it for NFSv2/3 the description should say it.  Otherwise it's just a
-"cleanup" which bloats the structure for people not having v4 support
-compiled in.
+Agreed.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Benny
