@@ -1,152 +1,258 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:58089 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756439Ab1BKP35 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 10:29:57 -0500
-Date: Fri, 11 Feb 2011 16:29:56 +0100
-Message-ID: <s5h62sqbnd7.wl%tiwai@suse.de>
-From: Takashi Iwai <tiwai@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Tino Keitel <tino.keitel@tikei.de>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: 2.6.38-rc3: kernel BUG at fs/nfsd/nfs4state.c:3132!
-In-Reply-To: <20110211152112.GA3005@fieldses.org>
-References: <20110208221235.GA16984@mac.home>
-	<s5hsjvuoqqt.wl%tiwai@suse.de>
-	<20110211152112.GA3005@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from rcsinet10.oracle.com ([148.87.113.121]:63100 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753214Ab1BOP2R convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 10:28:17 -0500
+Subject: Re: NFS only mount with -o udp option
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <AANLkTim9zbEzKZ=RZbfZhcLovn6fWkdL-3eZp21-NDP+@mail.gmail.com>
+Date: Tue, 15 Feb 2011 10:27:58 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <2F1D1F4B-0623-4954-861C-2F7B37EB2CA7@oracle.com>
+References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com> <665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com> <AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com> <0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com> <AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com> <AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com> <1A31AB06-8518-427C-8D0B-0058AA613D0E@oracle.com> <AANLkTimiACttSQ+=M0UNGs5nZrP=zs0zRFV+4HP8c-OP@mail.gmail.com> <81853901-909D-4803-81A5-C01C0337CAE1@oracle.com> <AANLkTim9zbEzKZ=RZbfZhcLovn6fWkdL-3eZp21-NDP+@mail.gmail.com>
+To: Edgar Almonte <samudhio@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-At Fri, 11 Feb 2011 10:21:12 -0500,
-J. Bruce Fields wrote:
+
+On Feb 14, 2011, at 9:09 PM, Edgar Almonte wrote:
+
+> in debian dont exist a package called nfs-utils , i get nfs-common and
+> say the same version of the nfs-utils of archlinux
+
+The same nfs-utils version should behave the same way no matter what (modulo bugs, of course).  It may be that the two packages were built with different configure options.  Not sure how we could find out how these were built.
+
+Basically, I'm trying to figure out how to reproduce the problem here.
+
+> not sure about MNT version config , i dont remember intentionally
+> changing this , where i can check it ?
+
+On the server, look at the command line options for rpc.mountd.  I'm not familiar with Ubuntu or Debian's start-up scripts, so I can't be more specific than that.
+
+Note that this is an independent issue from the mount problem, but it's incorrect and contributing to mount's misbehavior.
+
+> pd: sorry for the double email i forget press reply all
 > 
-> On Fri, Feb 11, 2011 at 10:38:34AM +0100, Takashi Iwai wrote:
-> > At Tue, 8 Feb 2011 23:12:35 +0100,
-> > Tino Keitel wrote:
-> > > 
-> > > Hi,
-> > > 
-> > > I get the following error with kernel 2.6.38-rc3 during normal file access via
-> > > NFS v4.
-> > > 
-> > > At least one other user seems to have the same problem:
-> > > http://pastebin.com/QRq1TMkj
-> > > 
-> > > <0>------------[ cut here ]------------
-> > > kernel BUG at fs/nfsd/nfs4state.c:3132!
-> > > <0>invalid opcode: 0000 [#1] SMP 
-> > > <0>last sysfs file: /sys/devices/virtual/block/dm-8/uevent
-> > > CPU 0 
-> > > Modules linked in: ipv6 usblp btusb bluetooth loop arc4 ecb
-> > > snd_hda_codec_idt snd_hda_intel snd_hda_codec snd_pcm_oss ath5k
-> > > dvb_usb_vp7045 ath dvb_usb snd_pcm snd_timer mac80211
-> > >  snd_page_alloc evdev dvb_core sky2 rc_core ata_piix cfg80211
-> > > 
-> > > Pid: 2280, comm: nfsd Not tainted 2.6.38-rc3-00062-gb64606b #6
-> > > Mac-F4208EAA/Macmini2,1
-> > > RIP: 0010:[<ffffffff8119f973>]  [<ffffffff8119f973>]
-> > > nfs4_preprocess_stateid_op+0x3a3/0x490
-> > > RSP: 0018:ffff8800b399bd50  EFLAGS: 00010246
-> > > RAX: 0000000000000000 RBX: ffff8800b60a9000 RCX: ffffffff8175a010
-> > > RDX: ffff8800ab784e48 RSI: ffffffff8175a020 RDI: ffffffff8175a000
-> > > RBP: ffff8800a4ce5678 R08: 0000000000000000 R09: 0000000000000000
-> > > R10: ffff8800b3910180 R11: c600000000000000 R12: ffff8800b390f1c0
-> > > R13: ffff8800b390f1a0 R14: 0000000000000000 R15: ffff8800aba079a0
-> > > FS:  0000000000000000(0000) GS:ffff8800bde00000(0000)
-> > > knlGS:0000000000000000
-> > > CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> > > CR2: 00007f2b8805d000 CR3: 00000000b6fe8000 CR4: 00000000000006b0
-> > > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> > > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> > > Process nfsd (pid: 2280, threadinfo ffff8800b399a000, task
-> > > ffff8800b63a62d0)
-> > > <0>Stack:
-> > >  000000004d507f0d ffff8800b390f1a0 ffff8800b3910040 ffff8800b391c000
-> > >  0000000016000000 0000000000000000 ffff8800b3910040 ffffffff8118f549
-> > >  ffff8800b390f000 ffff8800b3910000 ffff8800b390f000 ffff8800b391c000
-> > > <0>Call Trace:
-> > >  [<ffffffff8118f549>] ? nfsd4_read+0x79/0xc0
-> > >  [<ffffffff81190096>] ? nfsd4_proc_compound+0x416/0x4d0
-> > >  [<ffffffff8117f5ad>] ? nfsd_dispatch+0xfd/0x240
-> > >  [<ffffffff8146f1f9>] ? svc_process_common+0x339/0x680
-> > >  [<ffffffff81035b70>] ? default_wake_function+0x0/0x20
-> > >  [<ffffffff8117ecc0>] ? nfsd+0x0/0x150
-> > >  [<ffffffff8146f80a>] ? svc_process+0x10a/0x160
-> > >  [<ffffffff8117ecc0>] ? nfsd+0x0/0x150
-> > >  [<ffffffff8117ed72>] ? nfsd+0xb2/0x150
-> > >  [<ffffffff81055ff6>] ? kthread+0x96/0xa0
-> > >  [<ffffffff810039b4>] ? kernel_thread_helper+0x4/0x10
-> > >  [<ffffffff81055f60>] ? kthread+0x0/0xa0
-> > >  [<ffffffff810039b0>] ? kernel_thread_helper+0x0/0x10
-> > > <0>Code: 27 29 41 3b 47 50 0f 87 9a fd ff ff 0f 83 e9 fe ff ff e9 76 ff
-> > > ff ff 48 8b 42 48 45 31 f6 49 89 04 24 48 85 c0 0f 85 7b fd ff ff <0f>
-> > > 0b 49 8b 57 48 48 8b 42 40 48 85 c
-> > > 0 0f 85 2a ff ff ff 48 8b 
-> > > RIP  [<ffffffff8119f973>] nfs4_preprocess_stateid_op+0x3a3/0x490
-> > >  RSP <ffff8800b399bd50>
-> > > ---[ end trace 7ef2fa5b1b62014a ]---
-> > 
-> > [Added relevant guys to Cc]
-> > 
-> > This occurred on my machine with 2.6.38-rc4.
-> 
-> Again, 2.6.38-rc4 does not have a BUG() on line 3132.  Could you post
-> the full oops message from your machine?
+> On Mon, Feb 14, 2011 at 11:56 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> Hi Edgar-
+>> 
+>> On Feb 11, 2011, at 6:46 PM, Edgar Almonte wrote:
+>> 
+>>> hmm i will try update to the last version but is the lasted in
+>>> official repository of my distro
+>> 
+>> Yes, that could be a problem.  Out of curiosity, can you tell us what version of nfs-utils is running on the working Debian client you have?
+>> 
+>>> the rpcinfo -p localhost output ( run at the server )
+>>> 
+>>> rpcinfo -p localhost
+>>>   program vers proto   port  service
+>>>    100000    4   tcp    111  portmapper
+>>>    100000    3   tcp    111  portmapper
+>>>    100000    2   tcp    111  portmapper
+>>>    100000    4   udp    111  portmapper
+>>>    100000    3   udp    111  portmapper
+>>>    100000    2   udp    111  portmapper
+>>>    391002    2   tcp    661  sgi_fam
+>>>    100024    1   udp  49216  status
+>>>    100024    1   tcp  42903  status
+>>>    100003    2   tcp   2049  nfs
+>>>    100003    3   tcp   2049  nfs
+>>>    100003    4   tcp   2049  nfs
+>>>    100227    2   tcp   2049  nfs_acl
+>>>    100227    3   tcp   2049  nfs_acl
+>>>    100003    2   udp   2049  nfs
+>>>    100003    3   udp   2049  nfs
+>>>    100003    4   udp   2049  nfs
+>>>    100227    2   udp   2049  nfs_acl
+>>>    100227    3   udp   2049  nfs_acl
+>>>    100021    1   udp  36092  nlockmgr
+>>>    100021    3   udp  36092  nlockmgr
+>>>    100021    4   udp  36092  nlockmgr
+>>>    100021    1   tcp  52268  nlockmgr
+>>>    100021    3   tcp  52268  nlockmgr
+>>>    100021    4   tcp  52268  nlockmgr
+>>>    100005    3   udp  41849  mountd
+>>>    100005    3   tcp  46012  mountd
+>> 
+>> This looks weird.  NFS is available on TCP and UDP in all three versions, but MNT is available in version 3.  I wonder if this is confusing mount.nfs.  Is there any reason why your server is configured to disable MNT version 1?
+>> 
+>>> On Fri, Feb 11, 2011 at 7:27 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>> 
+>>>> On Feb 11, 2011, at 6:13 PM, Edgar Almonte wrote:
+>>>> 
+>>>>> Was a ipv6 issues because i add this to the client with the problem:
+>>>>> options ipv6 disable=1
+>>>>> in /etc/modprobe.d/modprobe.conf
+>>>>> reboot and mount without using udp option work, output:
+>>>>> 
+>>>>> [root@circle zen]# mount heaven.local:/STORAGE /nfs/STORAGE/ -v
+>>>>> mount: no type was given - I'll assume nfs because of the colon
+>>>>> mount.nfs: timeout set for Fri Feb 11 19:11:53 2011
+>>>>> mount.nfs: trying text-based options
+>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>>>>> mount.nfs: mount(2): No such file or directory
+>>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
+>>>>> mount.nfs: prog 100003, trying vers=3, prot=6
+>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
+>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41849
+>>>>> 
+>>>>> and i think maybe is a bug of nfs-utils that can't handle in the
+>>>>> proper way this because a connection using ipv4 protocol exist ( even
+>>>>> it detect it )
+>>>>> 
+>>>>> should i need report something like this ? or and wrong ?
+>>>> 
+>>>> I swear this has been discussed and fixed already, but I can't find a specific fix in the bugzilla database or the git log.  nfs-utils 1.2.2 is at least a year old.  Can you update to the latest version and try again?
+>>>> 
+>>>> Also, please report the NFS server's transport capabilities.  "rpcinfo 192.168.1.102" should work.  You may need the "-p" option.
+>>>> 
+>>>>> On Fri, Feb 11, 2011 at 6:57 PM, Edgar Almonte <samudhio@gmail.com> wrote:
+>>>>>> [root@circle zen]# pacman -Qs nfs-utils
+>>>>>> local/nfs-utils 1.2.2-4 [0.69 MB]
+>>>>>>    Support programs for Network File Systems
+>>>>>> [root@circle zen]# uname -a
+>>>>>> Linux circle 2.6.36-ARCH #1 SMP PREEMPT Mon Jan 24 18:34:55 UTC 2011
+>>>>>> i686 Intel(R) Atom(TM) CPU D510 @ 1.66GHz GenuineIntel GNU/Linux
+>>>>>> 
+>>>>>> 
+>>>>>> On Fri, Feb 11, 2011 at 1:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>>> Which nfs-utils version and kernel release are you using?  What transport protocols are available from your NFS server?  It looks like only UDP.  I recall a bug fix in this area in the past year.
+>>>>>>> 
+>>>>>>> On Feb 11, 2011, at 12:35 PM, Edgar Almonte wrote:
+>>>>>>> 
+>>>>>>>> i get this without udp option:
+>>>>>>>> 
+>>>>>>>> mount: no type was given - I'll assume nfs because of the colon
+>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:27:33 2011
+>>>>>>>> mount.nfs: trying text-based options
+>>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>>>>>>>> mount.nfs: mount(2): No such file or directory
+>>>>>>>> mount.nfs: trying text-based options
+>>>>>>>> 'vers=4,addr=fe80::224:21ff:fe57:368d,clientaddr=::'
+>>>>>>>> mount.nfs: mount(2): Input/output error
+>>>>>>>> mount.nfs: mount system call failed
+>>>>>>>> 
+>>>>>>>> 
+>>>>>>>> and with udp option:
+>>>>>>>> 
+>>>>>>>> ount: no type was given - I'll assume nfs because of the colon
+>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:28:29 2011
+>>>>>>>> mount.nfs: trying text-based options
+>>>>>>>> 'udp,vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>>>>>>>> mount.nfs: mount(2): No such file or directory
+>>>>>>>> mount.nfs: trying text-based options 'udp,addr=192.168.1.102'
+>>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=17
+>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot UDP port 2049
+>>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+>>>>>>>> heaven.local:/STORAGE on /nfs/STORAGE type nfs (rw,udp)
+>>>>>>>> 
+>>>>>>>> 
+>>>>>>>> for other distro ( debian laptop ) without the udp option:
+>>>>>>>> 
+>>>>>>>> mount: no type was given - I'll assume nfs because of the colon
+>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:31:37 2011
+>>>>>>>> mount.nfs: trying text-based options
+>>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.107'
+>>>>>>>> mount.nfs: mount(2): No such file or directory
+>>>>>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
+>>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=6
+>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
+>>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+>>>>>>>> heaven.local:/STORAGE on /srv/nfs type nfs (rw)
+>>>>>>>> 
+>>>>>>>> 
+>>>>>>>> and look like is some ipv6 issues
+>>>>>>>> 
+>>>>>>>> 
+>>>>>>>> On Thu, Feb 10, 2011 at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>>>>> 
+>>>>>>>>> On Feb 9, 2011, at 7:59 PM, Edgar Almonte wrote:
+>>>>>>>>> 
+>>>>>>>>>> hello list
+>>>>>>>>>> 
+>>>>>>>>>> like the subject say after some upgrade of my distro ( i have 2
+>>>>>>>>>> machine with the same distro and only in one happne the problem ) i
+>>>>>>>>>> can only mount nfs share using the option -o udp , without it i get
+>>>>>>>>>> this error
+>>>>>>>>>> mount.nfs: mount system call failed
+>>>>>>>>> 
+>>>>>>>>> What does
+>>>>>>>>> 
+>>>>>>>>>  sudo mount.nfs heaven.local:/STORAGE /nfs/STORAGE -v
+>>>>>>>>> 
+>>>>>>>>> say?  It should tell you how the mount command is negotiating with the server.
+>>>>>>>>> 
+>>>>>>>>>> i am using avahi-dns ( mdns ) for hostname resolve
+>>>>>>>>>> 
+>>>>>>>>>> command used:
+>>>>>>>>>> mount heaven.local:/STORAGE /nfs/STORAGE/
+>>>>>>>>>> check dns is work right :
+>>>>>>>>>> 
+>>>>>>>>>> ping heaven.local
+>>>>>>>>>> PING heaven.local (192.168.1.102) 56(84) bytes of data.
+>>>>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=1 ttl=64 time=0.153 ms
+>>>>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=2 ttl=64 time=0.160 ms
+>>>>>>>>>> ^C
+>>>>>>>>>> --- heaven.local ping statistics ---
+>>>>>>>>>> 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+>>>>>>>>>> rtt min/avg/max/mdev = 0.153/0.156/0.160/0.013 ms
+>>>>>>>>>> 
+>>>>>>>>>> 
+>>>>>>>>>> anyidea what i need check for solve this issue ?
+>>>>>>>>>> 
+>>>>>>>>>> thanks
+>>>>>>>>>> --
+>>>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>>>>> 
+>>>>>>>>> --
+>>>>>>>>> Chuck Lever
+>>>>>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>>>>>> 
+>>>>>>>>> 
+>>>>>>>>> 
+>>>>>>>>> 
+>>>>>>>>> 
+>>>>>>> 
+>>>>>>> --
+>>>>>>> Chuck Lever
+>>>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>>>> 
+>>>>>>> 
+>>>>>>> 
+>>>>>>> 
+>>>>>>> 
+>>>>>> 
+>>>> 
+>>>> --
+>>>> Chuck Lever
+>>>> chuck[dot]lever[at]oracle[dot]com
+>>>> 
+>>>> 
+>>>> 
+>>>> 
+>>>> 
+>> 
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+>> 
+>> 
 
-Well, on vanilla 2.6.38-rc4, it's in nfs4_preprocess_stateid_op():
-               if (filpp) {
-                        *filpp = find_readable_file(dp->dl_file);
-==>                     BUG_ON(!*filpp);
-                }
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-Anyway, here is the Oops log on my machine:
 
-Feb  9 16:12:12 alsa2 kernel: ------------[ cut here ]------------
-Feb  9 16:12:12 alsa2 kernel: kernel BUG at fs/nfsd/nfs4state.c:3132!
-Feb  9 16:12:12 alsa2 kernel: invalid opcode: 0000 [#1] SMP 
-Feb  9 16:12:12 alsa2 kernel: last sysfs file: /sys/devices/system/cpu/cpu3/cache/index2/shared_cpu_map
-Feb  9 16:12:12 alsa2 kernel: CPU 0 
-Feb  9 16:12:12 alsa2 kernel: Modules linked in: md5 nfs fscache autofs4 nfsd lockd nfs_acl auth_rpcgss sunrpc exportfs snd_pcm_oss snd_mixer_oss microcode nls_iso8859_1 nls_cp437 vfat fat snd_hda_codec_realtek snd_hda_intel snd_hda_codec snd_hwdep kvm_intel snd_pcm kvm snd_timer sr_mod snd tg3 shpchp i5000_edac soundcore ppdev edac_core sg cdrom snd_page_alloc pci_hotplug parport_pc iTCO_wdt libphy iTCO_vendor_support wmi parport pcspkr floppy nouveau ttm drm_kms_helper uhci_hcd ehci_hcd drm sd_mod usbcore rtc_cmos rtc_core crc_t10dif i2c_algo_bit i2c_core rtc_lib button edd ext4 mbcache jbd2 crc16 fan ata_piix ahci libahci libata scsi_mod thermal processor
-Feb  9 16:12:12 alsa2 kernel: 
-Feb  9 16:12:12 alsa2 kernel: Pid: 1976, comm: nfsd Not tainted 2.6.38-rc4-test2 #70 0A04h/HP xw6400 Workstation
-Feb  9 16:12:12 alsa2 kernel: RIP: 0010:[<ffffffffa04bbe26>]  [<ffffffffa04bbe26>] nfs4_preprocess_stateid_op+0x213/0x3e7 [nfsd]
-Feb  9 16:12:12 alsa2 kernel: RSP: 0018:ffff880112959d50  EFLAGS: 00010246
-Feb  9 16:12:12 alsa2 kernel: RAX: 0000000000000000 RBX: 0000000000000000 RCX: ffffffffa04c9870
-Feb  9 16:12:12 alsa2 kernel: RDX: ffff8801134be0b8 RSI: ffff88011103b528 RDI: ffffffffa04c9860
-Feb  9 16:12:12 alsa2 kernel: RBP: ffff880112959d90 R08: 0000000000000004 R09: 0000000000000004
-Feb  9 16:12:12 alsa2 kernel: R10: 00000000000056ce R11: 000000000000273b R12: ffff8801146fc000
-Feb  9 16:12:12 alsa2 kernel: R13: ffff8801142531c0 R14: ffff88011103b4c0 R15: ffff880114f10040
-Feb  9 16:12:12 alsa2 kernel: FS:  0000000000000000(0000) GS:ffff8800dfc00000(0000) knlGS:0000000000000000
-Feb  9 16:12:12 alsa2 kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-Feb  9 16:12:12 alsa2 kernel: CR2: 00007f86edc58000 CR3: 00000001139ae000 CR4: 00000000000006f0
-Feb  9 16:12:12 alsa2 kernel: DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-Feb  9 16:12:12 alsa2 kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Feb  9 16:12:12 alsa2 kernel: Process nfsd (pid: 1976, threadinfo ffff880112958000, task ffff880114bb0040)
-Feb  9 16:12:12 alsa2 kernel: Stack:
-Feb  9 16:12:12 alsa2 kernel:  ffff880112959d80 ffff8801142531a0 ffff88011664d880 ffff8801142531a0
-Feb  9 16:12:12 alsa2 kernel:  ffff880114f10040 ffff880113692000 0000000016000000 ffff880113692000
-Feb  9 16:12:12 alsa2 kernel:  ffff880112959dc0 ffffffffa04aec1b ffff880114f10000 ffff880114253198
-Feb  9 16:12:12 alsa2 kernel: Call Trace:
-Feb  9 16:12:12 alsa2 kernel:  [<ffffffffa04aec1b>] nfsd4_read+0x4b/0x92 [nfsd]
-Feb  9 16:12:12 alsa2 kernel:  [<ffffffffa04af746>] nfsd4_proc_compound+0x22a/0x3b7 [nfsd]
-Feb  9 16:12:12 alsa2 kernel:  [<ffffffffa04a07fa>] nfsd_dispatch+0xec/0x1cf [nfsd]
-Feb  9 16:12:12 alsa2 kernel:  [<ffffffffa0464836>] svc_process+0x446/0x734 [sunrpc]
-Feb  9 16:12:12 alsa2 kernel:  [<ffffffffa04a0025>] ? nfsd+0x0/0x13a [nfsd]
-Feb  9 16:12:12 alsa2 kernel:  [<ffffffffa04a0116>] nfsd+0xf1/0x13a [nfsd]
-Feb  9 16:12:12 alsa2 kernel:  [<ffffffff810668ea>] kthread+0x7d/0x85
-Feb  9 16:12:12 alsa2 kernel:  [<ffffffff8100a824>] kernel_thread_helper+0x4/0x10
-Feb  9 16:12:12 alsa2 kernel:  [<ffffffff8106686d>] ? kthread+0x0/0x85
-Feb  9 16:12:12 alsa2 kernel:  [<ffffffff8100a820>] ? kernel_thread_helper+0x0/0x10
-Feb  9 16:12:12 alsa2 kernel: Code: 61 da 00 00 4d 85 ed 0f 84 89 01 00 00 49 8b 56 40 48 8b 42 38 48 85 c0 75 04 48 8b 42 48 49 89 45 00 48 85 c0 0f 85 6b 01 00 00 <0f> 0b 44 89 e6 48 8b 7d c8 e8 0a b7 ff ff 49 89 c6 bb 00 00 27 
-Feb  9 16:12:12 alsa2 kernel: RIP  [<ffffffffa04bbe26>] nfs4_preprocess_stateid_op+0x213/0x3e7 [nfsd]
-Feb  9 16:12:12 alsa2 kernel:  RSP <ffff880112959d50>
-Feb  9 16:12:12 alsa2 kernel: ---[ end trace 3beccd8999adc82a ]---
-
-
---
-Takashi Iwai <tiwai@suse.de>		ALSA Developer - www.alsa-project.org
 
