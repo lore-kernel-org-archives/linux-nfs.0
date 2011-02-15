@@ -1,394 +1,323 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:46930 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751401Ab1BUUxf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 15:53:35 -0500
-Received: by ywj3 with SMTP id 3so954654ywj.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2011 12:53:35 -0800 (PST)
-In-Reply-To: <E56EE676-77C8-4FF3-B6FE-5D593AF32915@oracle.com>
-References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com>
-	<665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com>
-	<AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com>
-	<0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
-	<AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com>
-	<AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com>
-	<1A31AB06-8518-427C-8D0B-0058AA613D0E@oracle.com>
-	<AANLkTimiACttSQ+=M0UNGs5nZrP=zs0zRFV+4HP8c-OP@mail.gmail.com>
-	<81853901-909D-4803-81A5-C01C0337CAE1@oracle.com>
-	<AANLkTim9zbEzKZ=RZbfZhcLovn6fWkdL-3eZp21-NDP+@mail.gmail.com>
-	<2F1D1F4B-0623-4954-861C-2F7B37EB2CA7@oracle.com>
-	<AANLkTikFVyg-VY5SdXMWTYuyx3irRPPa=cw0-f35NduT@mail.gmail.com>
-	<46B9DC0D-2396-40F3-9DFF-C1CD7DF1F145@oracle.com>
-	<AANLkTinty+rEMQ2MX+gvZXoYED3uQ1xsd5eE=JH1rYZH@mail.gmail.com>
-	<E56EE676-77C8-4FF3-B6FE-5D593AF32915@oracle.com>
-Date: Mon, 21 Feb 2011 16:53:33 -0400
-Message-ID: <AANLkTi=C+a_wyHno1-Uc4ExcaKrHr8B50_-uMFLLGpKt@mail.gmail.com>
-Subject: Re: NFS only mount with -o udp option
-From: Edgar Almonte <samudhio@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:17512 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751362Ab1BOOrw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 09:47:52 -0500
+Subject: Re: [PATCH 11/16] pnfs: wave 3: generic read
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <1297726585.23841.49.camel@heimdal.trondhjem.org>
+Date: Tue, 15 Feb 2011 09:47:50 -0500
+Cc: "linux-nfs@vger.kernel.org list" <linux-nfs@vger.kernel.org>
+Message-Id: <48E254CD-0D11-40BD-96ED-6BBC790E8644@netapp.com>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com> <1297711116-3139-12-git-send-email-andros@netapp.com> <1297726585.23841.49.camel@heimdal.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Thanks ,
 
-i will try get update nfs-utils to the last version , already contact
-the maintainer of the package.
+On Feb 14, 2011, at 6:36 PM, Trond Myklebust wrote:
 
-On Mon, Feb 21, 2011 at 4:30 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
-> On Feb 15, 2011, at 5:55 PM, Edgar Almonte wrote:
->
->> yes the server is  archlinux x86-64. i mount in the server a folder
->> that i share in the client using NFSv4 setup :
->> client share setup:
->> (/etc/exports )
->> /srv/nfs4          192.168.1.1/24(rw,fsid=0,no_subtree_check,async,crossmnt)
->> /srv/nfs4/torrent_files   192.168.1.1/24(rw,no_subtree_check,async)
->>
->> i have this setup in the client ( with the problem , archlinux i686 )
->> and i mount this in the main server ( file server ) without udp option
->> and work fine ( and without the modprobe.conf ipv6 line )
->>
->> now the share setup in the server ( the X86-64 ) :
->> (/etc/exports )
->> /STORAGE/ 192.168.1.1/24(ro,fsid=0,no_subtree_check,insecure,sync,nohide)
->>
->> which i read is the way of share for NFSv3 and/or NFSv2
->> ( i do this because i am noob at nfs but i will take in the future the
->> NFSv4 way )
->> now when i mount that share in the client is where i get the error (
->> without using the udp option and without the modprobe.conf line of
->> ipv6 )
->
-> I can't reproduce your mount failure on my x86 client running the latest nfs-utils.  I recommend contacting your distributor for support, as I suspect whatever problem you have hit is fixed by a later release of nfs-utils.
->
->> netconfig cat output:
->> #
->> # The network configuration file. This file is currently only used in
->> # conjunction with the TI-RPC code in the libtirpc library.
->> #
->> # Entries consist of:
->> #
->> #       <network_id> <semantics> <flags> <protofamily> <protoname> \
->> #               <device> <nametoaddr_libs>
->> #
->> # The <device> and <nametoaddr_libs> fields are always empty in this
->> # implementation.
->> #
->> udp        tpi_clts      v     inet     udp     -       -
->> tcp        tpi_cots_ord  v     inet     tcp     -       -
->> udp6       tpi_clts      v     inet6    udp     -       -
->> tcp6       tpi_cots_ord  v     inet6    tcp     -       -
->> rawip      tpi_raw       -     inet      -      -       -
->> local      tpi_cots_ord  -     loopback  -      -       -
->> unix       tpi_cots_ord  -     loopback  -      -       -
->>
->> On Tue, Feb 15, 2011 at 6:54 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>
->>> On Feb 15, 2011, at 5:31 PM, Edgar Almonte wrote:
->>>
->>>> i confirm the ipv6 things i tell you , i comment the line
->>>>
->>>> options ipv6 disable=1
->>>>
->>>> in /etc/modprobe.d/modprobe.conf
->>>>
->>>> the same error in mount without using -o udp
->>>>
->>>> but the thing is i share folder in that client and mount it in the
->>>> server normal without the upd option and work fine ( the server have
->>>> the same distro that the client with the problem "archlinux" ) and in
->>>> the server i dont have the option in the /etc/modprobe.d/modprobe.conf
->>>>
->>>> [root@heaven Desktop]# mount  circle.local:/torrent_files
->>>> /media/torrent_files/ -v
->>>> mount: no type was given - I'll assume nfs because of the colon
->>>> mount.nfs: timeout set for Tue Feb 15 18:27:24 2011
->>>> mount.nfs: trying text-based options
->>>> 'vers=4,addr=192.168.1.103,clientaddr=192.168.1.102'
->>>> circle.local:/torrent_files on /media/torrent_files type nfs (rw)
->>>>
->>>> i use nfs4 for this share in the server and using nfs3 for the share
->>>>
->>>> another thing is that the server have the version 64bit of the same
->>>> package in the client but i686 plataform
->>>
->>> Let me confirm what you said:
->>>
->>>  1.  The server is running the latest ARCH (x86-64).  Mounting the share via loopback on the server gets you an NFSv4 mount
->>>  2.  The client is running the latest ARCH (x86-32).  Mounting the share from the client gets you an NFSv3, not an NFSv4, mount, and you have to specify UDP to make the negotiation complete successfully
->>>  3.  Preventing ipv6.ko from loading on the client allows the mount to proceed without specifying extra options
->>>
->>> I tried to reproduce this this morning from an x86-64 client using the latest upstream nfs-utils source, and was able to get an NFSv4 mount immediately.  In other words, I reproduced the behavior in 1, but was not able to reproduce the behavior in 2.  I can try again with an x86-32 client soon, but I'm traveling tomorrow.
->>>
->>> Specifying "udp" forces the mount request to use IPv4.  If my theory is correct, specifying "tcp" also works, and gets you an NFSv4 mount.  I wasn't aware that ARCH had libtirpc and an IPv6-enabled nfs-utils build.  Does the failing client have a copy of /etc/netconfig, and can you send it?
->>>
->>>> rpc.mountd option:
->>>> root@heaven Desktop]# ps aux | grep rpc.mountd
->>>> root      4351  0.0  0.0  54512   660 ?        Ss   18:11   0:00
->>>> /usr/sbin/rpc.mountd --no-nfs-version 1 --no-nfs-version 2
->>>
->>> That's consistent with the "rpcinfo" output you provided, but it doesn't explain why nfsd is still providing NFSv2.  Probably not a big deal, as the mount command on your client is failing before it even tries vers=2.
->>>
->>>> On Tue, Feb 15, 2011 at 11:27 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>
->>>>> On Feb 14, 2011, at 9:09 PM, Edgar Almonte wrote:
->>>>>
->>>>>> in debian dont exist a package called nfs-utils , i get nfs-common and
->>>>>> say the same version of the nfs-utils of archlinux
->>>>>
->>>>> The same nfs-utils version should behave the same way no matter what (modulo bugs, of course).  It may be that the two packages were built with different configure options.  Not sure how we could find out how these were built.
->>>>>
->>>>> Basically, I'm trying to figure out how to reproduce the problem here.
->>>>>
->>>>>> not sure about MNT version config , i dont remember intentionally
->>>>>> changing this , where i can check it ?
->>>>>
->>>>> On the server, look at the command line options for rpc.mountd.  I'm not familiar with Ubuntu or Debian's start-up scripts, so I can't be more specific than that.
->>>>>
->>>>> Note that this is an independent issue from the mount problem, but it's incorrect and contributing to mount's misbehavior.
->>>>>
->>>>>> pd: sorry for the double email i forget press reply all
->>>>>>
->>>>>> On Mon, Feb 14, 2011 at 11:56 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>> Hi Edgar-
->>>>>>>
->>>>>>> On Feb 11, 2011, at 6:46 PM, Edgar Almonte wrote:
->>>>>>>
->>>>>>>> hmm i will try update to the last version but is the lasted in
->>>>>>>> official repository of my distro
->>>>>>>
->>>>>>> Yes, that could be a problem.  Out of curiosity, can you tell us what version of nfs-utils is running on the working Debian client you have?
->>>>>>>
->>>>>>>> the rpcinfo -p localhost output ( run at the server )
->>>>>>>>
->>>>>>>> rpcinfo -p localhost
->>>>>>>>   program vers proto   port  service
->>>>>>>>    100000    4   tcp    111  portmapper
->>>>>>>>    100000    3   tcp    111  portmapper
->>>>>>>>    100000    2   tcp    111  portmapper
->>>>>>>>    100000    4   udp    111  portmapper
->>>>>>>>    100000    3   udp    111  portmapper
->>>>>>>>    100000    2   udp    111  portmapper
->>>>>>>>    391002    2   tcp    661  sgi_fam
->>>>>>>>    100024    1   udp  49216  status
->>>>>>>>    100024    1   tcp  42903  status
->>>>>>>>    100003    2   tcp   2049  nfs
->>>>>>>>    100003    3   tcp   2049  nfs
->>>>>>>>    100003    4   tcp   2049  nfs
->>>>>>>>    100227    2   tcp   2049  nfs_acl
->>>>>>>>    100227    3   tcp   2049  nfs_acl
->>>>>>>>    100003    2   udp   2049  nfs
->>>>>>>>    100003    3   udp   2049  nfs
->>>>>>>>    100003    4   udp   2049  nfs
->>>>>>>>    100227    2   udp   2049  nfs_acl
->>>>>>>>    100227    3   udp   2049  nfs_acl
->>>>>>>>    100021    1   udp  36092  nlockmgr
->>>>>>>>    100021    3   udp  36092  nlockmgr
->>>>>>>>    100021    4   udp  36092  nlockmgr
->>>>>>>>    100021    1   tcp  52268  nlockmgr
->>>>>>>>    100021    3   tcp  52268  nlockmgr
->>>>>>>>    100021    4   tcp  52268  nlockmgr
->>>>>>>>    100005    3   udp  41849  mountd
->>>>>>>>    100005    3   tcp  46012  mountd
->>>>>>>
->>>>>>> This looks weird.  NFS is available on TCP and UDP in all three versions, but MNT is available in version 3.  I wonder if this is confusing mount.nfs.  Is there any reason why your server is configured to disable MNT version 1?
->>>>>>>
->>>>>>>> On Fri, Feb 11, 2011 at 7:27 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>>>>
->>>>>>>>> On Feb 11, 2011, at 6:13 PM, Edgar Almonte wrote:
->>>>>>>>>
->>>>>>>>>> Was a ipv6 issues because i add this to the client with the problem:
->>>>>>>>>> options ipv6 disable=1
->>>>>>>>>> in /etc/modprobe.d/modprobe.conf
->>>>>>>>>> reboot and mount without using udp option work, output:
->>>>>>>>>>
->>>>>>>>>> [root@circle zen]# mount heaven.local:/STORAGE /nfs/STORAGE/ -v
->>>>>>>>>> mount: no type was given - I'll assume nfs because of the colon
->>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 19:11:53 2011
->>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->>>>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
->>>>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=6
->>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
->>>>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
->>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41849
->>>>>>>>>>
->>>>>>>>>> and i think maybe is a bug of nfs-utils that can't handle in the
->>>>>>>>>> proper way this because a connection using ipv4 protocol exist ( even
->>>>>>>>>> it detect it )
->>>>>>>>>>
->>>>>>>>>> should i need report something like this ? or and wrong ?
->>>>>>>>>
->>>>>>>>> I swear this has been discussed and fixed already, but I can't find a specific fix in the bugzilla database or the git log.  nfs-utils 1.2.2 is at least a year old.  Can you update to the latest version and try again?
->>>>>>>>>
->>>>>>>>> Also, please report the NFS server's transport capabilities.  "rpcinfo 192.168.1.102" should work.  You may need the "-p" option.
->>>>>>>>>
->>>>>>>>>> On Fri, Feb 11, 2011 at 6:57 PM, Edgar Almonte <samudhio@gmail.com> wrote:
->>>>>>>>>>> [root@circle zen]# pacman -Qs nfs-utils
->>>>>>>>>>> local/nfs-utils 1.2.2-4 [0.69 MB]
->>>>>>>>>>>    Support programs for Network File Systems
->>>>>>>>>>> [root@circle zen]# uname -a
->>>>>>>>>>> Linux circle 2.6.36-ARCH #1 SMP PREEMPT Mon Jan 24 18:34:55 UTC 2011
->>>>>>>>>>> i686 Intel(R) Atom(TM) CPU D510 @ 1.66GHz GenuineIntel GNU/Linux
->>>>>>>>>>>
->>>>>>>>>>>
->>>>>>>>>>> On Fri, Feb 11, 2011 at 1:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>>>>>>> Which nfs-utils version and kernel release are you using?  What transport protocols are available from your NFS server?  It looks like only UDP.  I recall a bug fix in this area in the past year.
->>>>>>>>>>>>
->>>>>>>>>>>> On Feb 11, 2011, at 12:35 PM, Edgar Almonte wrote:
->>>>>>>>>>>>
->>>>>>>>>>>>> i get this without udp option:
->>>>>>>>>>>>>
->>>>>>>>>>>>> mount: no type was given - I'll assume nfs because of the colon
->>>>>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:27:33 2011
->>>>>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->>>>>>>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>>>>> 'vers=4,addr=fe80::224:21ff:fe57:368d,clientaddr=::'
->>>>>>>>>>>>> mount.nfs: mount(2): Input/output error
->>>>>>>>>>>>> mount.nfs: mount system call failed
->>>>>>>>>>>>>
->>>>>>>>>>>>>
->>>>>>>>>>>>> and with udp option:
->>>>>>>>>>>>>
->>>>>>>>>>>>> ount: no type was given - I'll assume nfs because of the colon
->>>>>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:28:29 2011
->>>>>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>>>>> 'udp,vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->>>>>>>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>>>>>>> mount.nfs: trying text-based options 'udp,addr=192.168.1.102'
->>>>>>>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=17
->>>>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot UDP port 2049
->>>>>>>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
->>>>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
->>>>>>>>>>>>> heaven.local:/STORAGE on /nfs/STORAGE type nfs (rw,udp)
->>>>>>>>>>>>>
->>>>>>>>>>>>>
->>>>>>>>>>>>> for other distro ( debian laptop ) without the udp option:
->>>>>>>>>>>>>
->>>>>>>>>>>>> mount: no type was given - I'll assume nfs because of the colon
->>>>>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:31:37 2011
->>>>>>>>>>>>> mount.nfs: trying text-based options
->>>>>>>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.107'
->>>>>>>>>>>>> mount.nfs: mount(2): No such file or directory
->>>>>>>>>>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
->>>>>>>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=6
->>>>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
->>>>>>>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
->>>>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
->>>>>>>>>>>>> heaven.local:/STORAGE on /srv/nfs type nfs (rw)
->>>>>>>>>>>>>
->>>>>>>>>>>>>
->>>>>>>>>>>>> and look like is some ipv6 issues
->>>>>>>>>>>>>
->>>>>>>>>>>>>
->>>>>>>>>>>>> On Thu, Feb 10, 2011 at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>>>>>>>>>
->>>>>>>>>>>>>> On Feb 9, 2011, at 7:59 PM, Edgar Almonte wrote:
->>>>>>>>>>>>>>
->>>>>>>>>>>>>>> hello list
->>>>>>>>>>>>>>>
->>>>>>>>>>>>>>> like the subject say after some upgrade of my distro ( i have 2
->>>>>>>>>>>>>>> machine with the same distro and only in one happne the problem ) i
->>>>>>>>>>>>>>> can only mount nfs share using the option -o udp , without it i get
->>>>>>>>>>>>>>> this error
->>>>>>>>>>>>>>> mount.nfs: mount system call failed
->>>>>>>>>>>>>>
->>>>>>>>>>>>>> What does
->>>>>>>>>>>>>>
->>>>>>>>>>>>>>  sudo mount.nfs heaven.local:/STORAGE /nfs/STORAGE -v
->>>>>>>>>>>>>>
->>>>>>>>>>>>>> say?  It should tell you how the mount command is negotiating with the server.
->>>>>>>>>>>>>>
->>>>>>>>>>>>>>> i am using avahi-dns ( mdns ) for hostname resolve
->>>>>>>>>>>>>>>
->>>>>>>>>>>>>>> command used:
->>>>>>>>>>>>>>> mount heaven.local:/STORAGE /nfs/STORAGE/
->>>>>>>>>>>>>>> check dns is work right :
->>>>>>>>>>>>>>>
->>>>>>>>>>>>>>> ping heaven.local
->>>>>>>>>>>>>>> PING heaven.local (192.168.1.102) 56(84) bytes of data.
->>>>>>>>>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=1 ttl=64 time=0.153 ms
->>>>>>>>>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=2 ttl=64 time=0.160 ms
->>>>>>>>>>>>>>> ^C
->>>>>>>>>>>>>>> --- heaven.local ping statistics ---
->>>>>>>>>>>>>>> 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
->>>>>>>>>>>>>>> rtt min/avg/max/mdev = 0.153/0.156/0.160/0.013 ms
->>>>>>>>>>>>>>>
->>>>>>>>>>>>>>>
->>>>>>>>>>>>>>> anyidea what i need check for solve this issue ?
->>>>>>>>>>>>>>>
->>>>>>>>>>>>>>> thanks
->>>>>>>>>>>>>>> --
->>>>>>>>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>>>>>>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>>>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>>>>>>>>>>
->>>>>>>>>>>>>> --
->>>>>>>>>>>>>> Chuck Lever
->>>>>>>>>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>>>>>>>>>
->>>>>>>>>>>>>>
->>>>>>>>>>>>>>
->>>>>>>>>>>>>>
->>>>>>>>>>>>>>
->>>>>>>>>>>>
->>>>>>>>>>>> --
->>>>>>>>>>>> Chuck Lever
->>>>>>>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>>>>>>>
->>>>>>>>>>>>
->>>>>>>>>>>>
->>>>>>>>>>>>
->>>>>>>>>>>>
->>>>>>>>>>>
->>>>>>>>>
->>>>>>>>> --
->>>>>>>>> Chuck Lever
->>>>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>>>>
->>>>>>>>>
->>>>>>>>>
->>>>>>>>>
->>>>>>>>>
->>>>>>>
->>>>>>> --
->>>>>>> Chuck Lever
->>>>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>
->>>>> --
->>>>> Chuck Lever
->>>>> chuck[dot]lever[at]oracle[dot]com
->>>>>
->>>>>
->>>>>
->>>>>
->>>>>
->>>
->>> --
->>> Chuck Lever
->>> chuck[dot]lever[at]oracle[dot]com
->>>
->>>
->>>
->>>
->>>
->
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
->
+> On Mon, 2011-02-14 at 14:18 -0500, andros@netapp.com wrote: 
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> Separate the rpc run portion of nfs_read_rpcsetup into a new function
+>> nfs_initiate_read that is called for normal NFS I/O.
+>> 
+>> Add a pNFS read_pagelist function that is called instead of nfs_intitate_read
+>> for pNFS reads.
+>> 
+>> Reported-by: Alexandros Batsakis <batsakis@netapp.com>
+>> Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+>> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>> Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
+>> Signed-off-by: Mike Sager <sager@netapp.com>
+>> Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
+>> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+>> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>> ---
+>> fs/nfs/internal.h          |    2 +
+>> fs/nfs/pnfs.c              |   28 ++++++++++++++++++
+>> fs/nfs/pnfs.h              |   20 +++++++++++++
+>> fs/nfs/read.c              |   66 +++++++++++++++++++++++++++----------------
+>> include/linux/nfs_iostat.h |    1 +
+>> include/linux/nfs_xdr.h    |    1 +
+>> 6 files changed, 93 insertions(+), 25 deletions(-)
+>> 
+>> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+>> index cf9fdbd..335755d 100644
+>> --- a/fs/nfs/internal.h
+>> +++ b/fs/nfs/internal.h
+>> @@ -262,6 +262,8 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh);
+>> #endif
+>> 
+>> /* read.c */
+>> +extern int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
+>> +			     const struct rpc_call_ops *call_ops);
+>> extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+>> 
+>> /* write.c */
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> index f200e34..6f4a5ab 100644
+>> --- a/fs/nfs/pnfs.c
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -30,6 +30,7 @@
+>> #include <linux/nfs_fs.h>
+>> #include "internal.h"
+>> #include "pnfs.h"
+>> +#include "iostat.h"
+>> 
+>> #define NFSDBG_FACILITY		NFSDBG_PNFS
+>> 
+>> @@ -891,6 +892,33 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+>> }
+>> 
+>> /*
+>> + * Call the appropriate parallel I/O subsystem read function.
+>> + */
+>> +enum pnfs_try_status
+>> +pnfs_try_to_read_data(struct nfs_read_data *rdata,
+>> +		       const struct rpc_call_ops *call_ops)
+>> +{
+>> +	struct inode *inode = rdata->inode;
+>> +	struct nfs_server *nfss = NFS_SERVER(inode);
+>> +	enum pnfs_try_status trypnfs;
+>> +
+>> +	rdata->mds_ops = call_ops;
+>> +
+>> +	dprintk("%s: Reading ino:%lu %u@%llu\n",
+>> +		__func__, inode->i_ino, rdata->args.count, rdata->args.offset);
+>> +
+>> +	trypnfs = nfss->pnfs_curr_ld->read_pagelist(rdata);
+>> +	if (trypnfs == PNFS_NOT_ATTEMPTED) {
+>> +		put_lseg(rdata->lseg);
+>> +		rdata->lseg = NULL;
+>> +	} else {
+>> +		nfs_inc_stats(inode, NFSIOS_PNFS_READ);
+>> +	}
+>> +	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
+>> +	return trypnfs;
+>> +}
+>> +
+>> +/*
+>>  * Device ID cache. Currently supports one layout type per struct nfs_client.
+>>  * Add layout type to the lookup key to expand to support multiple types.
+>>  */
+>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+>> index 5107d14..585023f 100644
+>> --- a/fs/nfs/pnfs.h
+>> +++ b/fs/nfs/pnfs.h
+>> @@ -45,6 +45,11 @@ struct pnfs_layout_segment {
+>> 	struct pnfs_layout_hdr *pls_layout;
+>> };
+>> 
+>> +enum pnfs_try_status {
+>> +	PNFS_ATTEMPTED     = 0,
+>> +	PNFS_NOT_ATTEMPTED = 1,
+>> +};
+>> +
+>> #ifdef CONFIG_NFS_V4_1
+>> 
+>> #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
+>> @@ -70,6 +75,12 @@ struct pnfs_layoutdriver_type {
+>> 
+>> 	/* test for nfs page cache coalescing */
+>> 	int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
+>> +
+>> +	/*
+>> +	 * Return PNFS_ATTEMPTED to indicate the layout code has attempted
+>> +	 * I/O, else return PNFS_NOT_ATTEMPTED to fall back to normal NFS
+>> +	 */
+>> +	enum pnfs_try_status (*read_pagelist) (struct nfs_read_data *nfs_data);
+>> };
+>> 
+>> struct pnfs_layout_hdr {
+>> @@ -157,6 +168,8 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+>> 		   enum pnfs_iomode access_type);
+>> void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+>> void unset_pnfs_layoutdriver(struct nfs_server *);
+>> +enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
+>> +					    const struct rpc_call_ops *);
+>> void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
+>> int pnfs_layout_process(struct nfs4_layoutget *lgp);
+>> void pnfs_free_lseg_list(struct list_head *tmp_list);
+>> @@ -227,6 +240,13 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+>> 	return NULL;
+>> }
+>> 
+>> +static inline enum pnfs_try_status
+>> +pnfs_try_to_read_data(struct nfs_read_data *data,
+>> +		      const struct rpc_call_ops *call_ops)
+>> +{
+>> +	return PNFS_NOT_ATTEMPTED;
+>> +}
+>> +
+>> static inline bool
+>> pnfs_roc(struct inode *ino)
+>> {
+>> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+>> index 20cc936..5c09d72 100644
+>> --- a/fs/nfs/read.c
+>> +++ b/fs/nfs/read.c
+>> @@ -18,6 +18,8 @@
+>> #include <linux/sunrpc/clnt.h>
+>> #include <linux/nfs_fs.h>
+>> #include <linux/nfs_page.h>
+>> +#include <linux/smp_lock.h>
+>> +#include <linux/module.h>
+>> 
+>> #include <asm/system.h>
+>> #include "pnfs.h"
+>> @@ -158,25 +160,20 @@ static void nfs_readpage_release(struct nfs_page *req)
+>> 	nfs_release_request(req);
+>> }
+>> 
+>> -/*
+>> - * Set up the NFS read request struct
+>> - */
+>> -static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+>> -		const struct rpc_call_ops *call_ops,
+>> -		unsigned int count, unsigned int offset,
+>> -		struct pnfs_layout_segment *lseg)
+>> +int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
+> 
+> static int.... Nobody is using this outside of fs/nfs/read.c
+
+Should be static here, and made not static in the patch that uses it.
+
+
+> 
+>> +		      const struct rpc_call_ops *call_ops)
+>> {
+>> -	struct inode *inode = req->wb_context->path.dentry->d_inode;
+>> +	struct inode *inode = data->inode;
+>> 	int swap_flags = IS_SWAPFILE(inode) ? NFS_RPC_SWAPFLAGS : 0;
+>> 	struct rpc_task *task;
+>> 	struct rpc_message msg = {
+>> 		.rpc_argp = &data->args,
+>> 		.rpc_resp = &data->res,
+>> -		.rpc_cred = req->wb_context->cred,
+>> +		.rpc_cred = data->cred,
+>> 	};
+>> 	struct rpc_task_setup task_setup_data = {
+>> 		.task = &data->task,
+>> -		.rpc_client = NFS_CLIENT(inode),
+>> +		.rpc_client = clnt,
+>> 		.rpc_message = &msg,
+>> 		.callback_ops = call_ops,
+>> 		.callback_data = data,
+>> @@ -184,9 +181,38 @@ static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+>> 		.flags = RPC_TASK_ASYNC | swap_flags,
+>> 	};
+>> 
+>> +	/* Set up the initial task struct. */
+>> +	NFS_PROTO(inode)->read_setup(data, &msg);
+>> +
+>> +	dprintk("NFS: %5u initiated read call (req %s/%lld, %u bytes @ "
+>> +			"offset %llu)\n",
+>> +			data->task.tk_pid,
+>> +			inode->i_sb->s_id,
+>> +			(long long)NFS_FILEID(inode),
+>> +			data->args.count,
+>> +			(unsigned long long)data->args.offset);
+>> +
+>> +	task = rpc_run_task(&task_setup_data);
+>> +	if (IS_ERR(task))
+>> +		return PTR_ERR(task);
+>> +	rpc_put_task(task);
+>> +	return 0;
+>> +}
+>> +EXPORT_SYMBOL(nfs_initiate_read);
+> 
+> Firstly, this should be EXPORT_SYMBOL_GPL, but in any case, why include
+> it here? This patch contains no users for the export.
+
+Oops - GPL indeed. Yes, I'll move it to the patch that uses it.
+
+-->Andy
+
+> 
+>> +
+>> +/*
+>> + * Set up the NFS read request struct
+>> + */
+>> +static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+>> +		const struct rpc_call_ops *call_ops,
+>> +		unsigned int count, unsigned int offset,
+>> +		struct pnfs_layout_segment *lseg)
+>> +{
+>> +	struct inode *inode = req->wb_context->path.dentry->d_inode;
+>> +
+>> 	data->req	  = req;
+>> 	data->inode	  = inode;
+>> -	data->cred	  = msg.rpc_cred;
+>> +	data->cred	  = req->wb_context->cred;
+>> 	data->lseg	  = get_lseg(lseg);
+>> 
+>> 	data->args.fh     = NFS_FH(inode);
+>> @@ -202,21 +228,11 @@ static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+>> 	data->res.eof     = 0;
+>> 	nfs_fattr_init(&data->fattr);
+>> 
+>> -	/* Set up the initial task struct. */
+>> -	NFS_PROTO(inode)->read_setup(data, &msg);
+>> -
+>> -	dprintk("NFS: %5u initiated read call (req %s/%Ld, %u bytes @ offset %Lu)\n",
+>> -			data->task.tk_pid,
+>> -			inode->i_sb->s_id,
+>> -			(long long)NFS_FILEID(inode),
+>> -			count,
+>> -			(unsigned long long)data->args.offset);
+>> +	if (data->lseg &&
+>> +	    (pnfs_try_to_read_data(data, call_ops) == PNFS_ATTEMPTED))
+>> +		return 0;
+>> 
+>> -	task = rpc_run_task(&task_setup_data);
+>> -	if (IS_ERR(task))
+>> -		return PTR_ERR(task);
+>> -	rpc_put_task(task);
+>> -	return 0;
+>> +	return nfs_initiate_read(data, NFS_CLIENT(inode), call_ops);
+>> }
+>> 
+>> static void
+>> diff --git a/include/linux/nfs_iostat.h b/include/linux/nfs_iostat.h
+>> index 68b10f5..37a1437 100644
+>> --- a/include/linux/nfs_iostat.h
+>> +++ b/include/linux/nfs_iostat.h
+>> @@ -113,6 +113,7 @@ enum nfs_stat_eventcounters {
+>> 	NFSIOS_SHORTREAD,
+>> 	NFSIOS_SHORTWRITE,
+>> 	NFSIOS_DELAY,
+>> +	NFSIOS_PNFS_READ,
+>> 	__NFSIOS_COUNTSMAX,
+>> };
+>> 
+>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>> index 37e91c3..4591075 100644
+>> --- a/include/linux/nfs_xdr.h
+>> +++ b/include/linux/nfs_xdr.h
+>> @@ -1018,6 +1018,7 @@ struct nfs_read_data {
+>> 	struct nfs_readres  res;
+>> 	unsigned long		timestamp;	/* For lease renewal */
+>> 	struct pnfs_layout_segment *lseg;
+>> +	const struct rpc_call_ops *mds_ops;
+>> 	struct page		*page_array[NFS_PAGEVEC_SIZE];
+>> };
+>> 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+
