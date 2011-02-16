@@ -1,73 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34958 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:63389 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752726Ab1BPSjD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Feb 2011 13:39:03 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH pNFS wave 3 Version 2 04/18] NFSv4.1: send zero stateid seqid on v4.1 i/o
-Date: Tue, 15 Feb 2011 03:38:49 -0500
-Message-Id: <1297759143-2045-5-git-send-email-andros@netapp.com>
-In-Reply-To: <1297759143-2045-1-git-send-email-andros@netapp.com>
-References: <1297759143-2045-1-git-send-email-andros@netapp.com>
+	id S1754006Ab1BPNW6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Feb 2011 08:22:58 -0500
+Subject: Re: NFS on little-endian platform - Microblaze
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: monstr@monstr.eu
+Cc: netdev@vger.kernel.org, David Miller <davem@davemloft.net>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4D5BCE43.1090401@monstr.eu>
+References: <4D5BCC74.9010301@monstr.eu>  <4D5BCE43.1090401@monstr.eu>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 16 Feb 2011 08:22:53 -0500
+Message-ID: <1297862575.6596.0.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Wed, 2011-02-16 at 14:16 +0100, Michal Simek wrote: 
+> Hi again,
+> 
+> I forget to cc linux-nfs mailing list.
+> 
+> Michal
+> 
+> P.S.: Tested on kernels 2.6.38-rc4, 2.6.37 and 2.6.36
+> 
+> Michal Simek wrote:
+> > Hi All,
+> > 
+> > I am trying to understand one problem which we have found.
+> > The problem is that I can't on Microblaze little-endian platform
+> > mount nfs without -o nolock options. (Log below)
+> > Selecting tcp or udp has no effect.
+> > I am using emaclite driver and there is no problem on big endian 
+> > microblaze.
+> > 
+> > ping, telnet, http, ftp, iperf, netperf work well.
+> > 
+> > That's why I have a question if there is any endian specific option for 
+> > NFS?
+> > 
+> > Thanks,
+> > Michal
+> > 
+> > ~ # mount -t nfs 192.168.0.101:/tftpboot/nfs /mnt
+> > svc: failed to register lockdv1 RPC service (errno 13).
+> > lockd_up: makesock failed, error=-13
+> > svc: failed to register lockdv1 RPC service (errno 13).
+> > ~ # mount -t nfs -o nolock 192.168.0.101:/tftpboot/nfs /mnt
+> > ~ # mount
+> > rootfs on / type rootfs (rw)
+> > proc on /proc type proc (rw,relatime)
+> > none on /var type ramfs (rw,relatime)
+> > none on /sys type sysfs (rw,relatime)
+> > none on /etc/config type ramfs (rw,relatime)
+> > none on /dev/pts type devpts (rw,relatime,mode=600)
+> > 192.168.0.101:/tftpboot/nfs on /mnt type nfs 
+> > (rw,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,port=65535,timeo=7,retrans=3,sec=sys,local_lock=all,addr=192.168.0.101) 
+> > 
+> > ~ #
+> > ~ # ps
+> > PID   USER     TIME   COMMAND
+> >     1 root       0:02 init
+> >     2 root       0:00 [kthreadd]
+> >     3 root       0:00 [ksoftirqd/0]
+> >     4 root       0:00 [kworker/0:0]
+> >     5 root       0:00 [kworker/u:0]
+> >     6 root       0:00 [khelper]
+> >     7 root       0:00 [sync_supers]
+> >     8 root       0:00 [bdi-default]
+> >     9 root       0:00 [kblockd]
+> >    10 root       0:00 [rpciod]
+> >    11 root       0:00 [kworker/0:1]
+> >    12 root       0:00 [kswapd0]
+> >    13 root       0:00 [fsnotify_mark]
+> >    14 root       0:00 [aio]
+> >    15 root       0:00 [nfsiod]
+> >    16 root       0:00 [kworker/u:1]
+> >    58 root       0:00 udhcpc -R -n -p /var/run/udhcpc.eth0.pid -i eth0
+> >    62 1          0:00 /bin/portmap
+> >    64 root       0:00 /bin/inetd /etc/inetd.conf
+> >    65 root       0:01 -sh
+> >    66 root       0:00 /bin/syslogd -n
+> >    67 root       0:00 /bin/flatfsd
+> >    68 root       0:00 [kworker/0:2]
+> >    91 root       0:00 ps
 
-Data servers require a zero stateid seqid, and there is no advantage to not
-doing the same for all NFSv4.1
+Where is rpc.statd? Without it, the above behaviour is 100% expected.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4xdr.c |   10 +++++++---
- 1 files changed, 7 insertions(+), 3 deletions(-)
+Trond
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4e2c168..2380c45 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1384,7 +1384,7 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
- 	hdr->replen += decode_putrootfh_maxsz;
- }
- 
--static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx)
-+static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx, int zero_seqid)
- {
- 	nfs4_stateid stateid;
- 	__be32 *p;
-@@ -1392,6 +1392,8 @@ static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context
- 	p = reserve_space(xdr, NFS4_STATEID_SIZE);
- 	if (ctx->state != NULL) {
- 		nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
-+		if (zero_seqid)
-+			stateid.stateid.seqid = 0;
- 		xdr_encode_opaque_fixed(p, stateid.data, NFS4_STATEID_SIZE);
- 	} else
- 		xdr_encode_opaque_fixed(p, zero_stateid.data, NFS4_STATEID_SIZE);
-@@ -1404,7 +1406,8 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(OP_READ);
- 
--	encode_stateid(xdr, args->context, args->lock_context);
-+	encode_stateid(xdr, args->context, args->lock_context,
-+		       hdr->minorversion);
- 
- 	p = reserve_space(xdr, 12);
- 	p = xdr_encode_hyper(p, args->offset);
-@@ -1592,7 +1595,8 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(OP_WRITE);
- 
--	encode_stateid(xdr, args->context, args->lock_context);
-+	encode_stateid(xdr, args->context, args->lock_context,
-+		       hdr->minorversion);
- 
- 	p = reserve_space(xdr, 16);
- 	p = xdr_encode_hyper(p, args->offset);
 -- 
-1.7.2.3
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
