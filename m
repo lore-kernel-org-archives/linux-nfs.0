@@ -1,50 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34575 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:43438 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757168Ab1BKPmq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 10:42:46 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH 1/4] RPC: remove check for impossible condition in rpc_make_runnable
-Date: Fri, 11 Feb 2011 10:42:35 -0500
-Message-Id: <1297438958-24861-2-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1297438958-24861-1-git-send-email-iisaman@netapp.com>
-References: <1297438958-24861-1-git-send-email-iisaman@netapp.com>
+	id S1752250Ab1BPGQJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Feb 2011 01:16:09 -0500
+Date: Wed, 16 Feb 2011 17:15:55 +1100
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Small O_SYNC writes are no longer NFS_DATA_SYNC
+Message-ID: <20110216171555.6642c630@notabene.brown>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-queue_work() only returns 0 or 1, never a negative value.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- net/sunrpc/sched.c |    9 +--------
- 1 files changed, 1 insertions(+), 8 deletions(-)
+Hi Trond,
+ I wonder if I might get your help/advice on an issue with NFS.
 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 243fc09..bb8f54f 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -285,15 +285,8 @@ static void rpc_make_runnable(struct rpc_task *task)
- 	if (rpc_test_and_set_running(task))
- 		return;
- 	if (RPC_IS_ASYNC(task)) {
--		int status;
--
- 		INIT_WORK(&task->u.tk_work, rpc_async_schedule);
--		status = queue_work(rpciod_workqueue, &task->u.tk_work);
--		if (status < 0) {
--			printk(KERN_WARNING "RPC: failed to add task to queue: error: %d!\n", status);
--			task->tk_status = status;
--			return;
--		}
-+		queue_work(rpciod_workqueue, &task->u.tk_work);
- 	} else
- 		wake_up_bit(&task->tk_runstate, RPC_TASK_QUEUED);
+ It seems that NFS_DATA_SYNC is hardly used at all currently.  It is used for
+ O_DIRECT writes and for writes 'for_reclaim', and for handling some error
+ conditions, but that is about it.
+
+ This appears to be a regression.
+
+ Back in 2005, commit ab0a3dbedc5 in 2.6.13 says:
+
+    [PATCH] NFS: Write optimization for short files and small O_SYNC writes.
+    
+     Use stable writes if we can see that we are only going to put a single
+     write on the wire.
+
+ which seems like a sensible optimisation, and we have a customer which
+ values it.  Very roughly, they have an NFS server which optimises 'unstable'
+ writes for throughput and 'stable' writes for latency - these seems like a
+ reasonable approach.
+ With a 2.6.16 kernel an application which generates many small sync writes
+ gets adequate performance.  In 2.6.32 they see unstable writes followed by
+ commits, which cannot be (or at least aren't) optimised as well.
+
+ It seems this was changed by commit c63c7b0513953
+
+    NFS: Fix a race when doing NFS write coalescing
+    
+ in 2.6.22.
+
+ Is it possible/easy/desirable to get this behaviour back.  i.e. to use
+ NFS_DATA_SYNC at least on sub-page writes triggered by a write to an
+ O_SYNC file.
+
+ My (possibly naive) attempt is as follows.  It appears to work as I expect
+ (though it still uses SYNC for 1-page writes) but I'm not confident that it
+ is "right".
+
+Thanks,
+
+NeilBrown
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 10d648e..392bfa8 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -178,6 +178,9 @@ static int wb_priority(struct writeback_control *wbc)
+ 		return FLUSH_HIGHPRI | FLUSH_STABLE;
+ 	if (wbc->for_kupdate || wbc->for_background)
+ 		return FLUSH_LOWPRI;
++	if (wbc->sync_mode == WB_SYNC_ALL &&
++	    (wbc->range_end - wbc->range_start) < PAGE_SIZE)
++		return FLUSH_STABLE;
+ 	return 0;
  }
--- 
-1.7.2.1
-
+ 
