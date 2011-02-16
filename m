@@ -1,53 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:60476 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:49500 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756623Ab1BKQBT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 11:01:19 -0500
-Date: Fri, 11 Feb 2011 17:01:18 +0100
-Message-ID: <s5hwrl6a7ch.wl%tiwai@suse.de>
-From: Takashi Iwai <tiwai@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Tino Keitel <tino.keitel@tikei.de>, Neil Brown <neilb@suse.de>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: 2.6.38-rc3: kernel BUG at fs/nfsd/nfs4state.c:3132!
-In-Reply-To: <20110211153702.GC3005@fieldses.org>
-References: <20110208221235.GA16984@mac.home>
-	<s5hsjvuoqqt.wl%tiwai@suse.de>
-	<20110211152112.GA3005@fieldses.org>
-	<s5h62sqbnd7.wl%tiwai@suse.de>
-	<20110211153702.GC3005@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1751395Ab1BPPVT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Feb 2011 10:21:19 -0500
+Subject: Re: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release
+ to nfsiod
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20110216095002.1e7944c9@tlielax.poochiereds.net>
+References: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
+	 <1297783898.10103.22.camel@heimdal.trondhjem.org>
+	 <20110215113053.345e3abc@tlielax.poochiereds.net>
+	 <1297813624.10103.34.camel@heimdal.trondhjem.org>
+	 <1297865354.6596.13.camel@heimdal.trondhjem.org>
+	 <1297866373.6596.18.camel@heimdal.trondhjem.org>
+	 <20110216095002.1e7944c9@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 16 Feb 2011 10:21:17 -0500
+Message-ID: <1297869677.6596.30.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-At Fri, 11 Feb 2011 10:37:02 -0500,
-J. Bruce Fields wrote:
+On Wed, 2011-02-16 at 09:50 -0500, Jeff Layton wrote: 
+> Thanks Trond,
 > 
-> On Fri, Feb 11, 2011 at 04:29:56PM +0100, Takashi Iwai wrote:
-> > At Fri, 11 Feb 2011 10:21:12 -0500,
-> > J. Bruce Fields wrote:
-> > > Again, 2.6.38-rc4 does not have a BUG() on line 3132.  Could you post
-> > > the full oops message from your machine?
-> > 
-> > Well, on vanilla 2.6.38-rc4, it's in nfs4_preprocess_stateid_op():
-> >                if (filpp) {
-> >                         *filpp = find_readable_file(dp->dl_file);
-> > ==>                     BUG_ON(!*filpp);
-> >                 }
+> This builds, but I can't plug in the module:
 > 
-> Oh good grief, my apologies--I mistyped "38" as "28"!
+> [  103.540405] sunrpc: Unknown symbol __wake_up_locked_key (err 0)
 > 
-> This looks like it could be a known delegation bug....  Would it be
-> possible for you to check whether this is reproduceable on
-> 
-> 	git://linux-nfs.org/~bfields/topics.git for-2.6.38-incoming
+> ...I think __wake_up_locked_key will need to be exported too. I'll do
+> that and then test this out later today.
 
-Hm, I couldn't pull it.
+Thanks! I've added an EXPORT_SYMBOL_GPL() for __wake_up_locked_key to
+the patch.
 
-  % git pull 'git://linux-nfs.org/~bfields/topics.git' for-2.6.38-incoming
-  fatal: The remote end hung up unexpectedly
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-Takashi
