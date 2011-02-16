@@ -1,48 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33481 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:2654 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751216Ab1BWAZb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Feb 2011 19:25:31 -0500
-Date: Tue, 22 Feb 2011 16:24:18 -0800
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] NFSD: fix decode_cb_sequence4resok
-Message-ID: <20110223002417.GD5543@pad.home.fieldses.org>
-References: <1298414602-17029-1-git-send-email-bhalevy@panasas.com>
- <20110223001100.GC5543@pad.home.fieldses.org>
- <4D64519A.8050604@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D64519A.8050604@panasas.com>
+	id S1755457Ab1BPO0Q convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Feb 2011 09:26:16 -0500
+Subject: Re: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release
+ to nfsiod
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <1297865354.6596.13.camel@heimdal.trondhjem.org>
+References: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
+	 <1297783898.10103.22.camel@heimdal.trondhjem.org>
+	 <20110215113053.345e3abc@tlielax.poochiereds.net>
+	 <1297813624.10103.34.camel@heimdal.trondhjem.org>
+	 <1297865354.6596.13.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 16 Feb 2011 09:26:13 -0500
+Message-ID: <1297866373.6596.18.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Feb 22, 2011 at 04:15:22PM -0800, Benny Halevy wrote:
-> On 2011-02-22 16:11, J. Bruce Fields wrote:
-> > On Tue, Feb 22, 2011 at 02:43:22PM -0800, Benny Halevy wrote:
-> >> Fix bug introduced in patch
-> >> 85a56480 NFSD: Update XDR decoders in NFSv4 callback client
-> >>
-> >> Although decode_cb_sequence4resok ignores highest slotid and target highest slotid
-> >> it must account for their space in their xdr stream when calling xdr_inline_decode
-> > 
-> > Thanks, applying for 2.6.38.  (How come you caught this, and I didn't?
-> > I guess it's just that the object code depends more on the callback
-> > returns?)
+On Wed, 2011-02-16 at 09:09 -0500, Trond Myklebust wrote: 
+> On Tue, 2011-02-15 at 18:47 -0500, Trond Myklebust wrote: 
+> > diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+> > index 243fc09..11b71b1 100644
+> > --- a/net/sunrpc/sched.c
+> > +++ b/net/sunrpc/sched.c
+> > @@ -252,23 +252,39 @@ static void rpc_set_active(struct rpc_task *task)
+> >  
+> >  /*
+> >   * Mark an RPC call as having completed by clearing the 'active' bit
+> > + * and then waking up all tasks that were sleeping.
+> >   */
+> > -static void rpc_mark_complete_task(struct rpc_task *task)
+> > +static int rpc_complete_task(struct rpc_task *task)
+> >  {
+> > -	smp_mb__before_clear_bit();
+> > +	void *m = &task->tk_runstate;
+> > +	wait_queue_head_t *wq = bit_waitqueue(m, RPC_TASK_ACTIVE);
+> > +	struct wait_bit_key k = __WAIT_BIT_KEY_INITIALIZER(m, RPC_TASK_ACTIVE);
+> > +	unsigned long flags;
+> > +	int ret;
+> > +
+> > +	spin_lock_irqsave(&wq->lock, flags);
+> >  	clear_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
+> > -	smp_mb__after_clear_bit();
+> > -	wake_up_bit(&task->tk_runstate, RPC_TASK_ACTIVE);
+> > +	if (waitqueue_active(wq))
+> > +		__wake_up_locked_key(wq, TASK_NORMAL, &k);
+> > +	ret = atomic_dec_and_test(&task->tk_count);
+> > +	spin_unlock_irqrestore(&wq->lock, flags);
+> > +	return ret;
+> >  }
+> >  
+> >  /*
+> >   * Allow callers to wait for completion of an RPC call
+> > + *
+> > + * Note the use of out_of_line_wait_on_bit() rather than wait_on_bit()
+> > + * to enforce taking of the wq->lock and hence avoid races with
+> > + * rpc_complete_task().
+> >   */
+> >  int __rpc_wait_for_completion_task(struct rpc_task *task, int (*action)(void *))
+> >  {
+> > +	BUG_ON(!RPC_IS_ASYNC(task));
+> > +
+> >  	if (action == NULL)
+> >  		action = rpc_wait_bit_killable;
+> > -	return wait_on_bit(&task->tk_runstate, RPC_TASK_ACTIVE,
+> > +	return out_of_line_wait_on_bit(&task->tk_runstate, RPC_TASK_ACTIVE,
+> >  			action, TASK_KILLABLE);
+> >  }
+> >  EXPORT_SYMBOL_GPL(__rpc_wait_for_completion_task);
 > 
-> That's a great question.
-> I caught it by testing cb_layoutrecall, both with the objects layout
-> and with the files layout with the patch I sent for PNFSD_LEXP to recall the
-> layout on truncate.
-> cb_recall decoding should be broken too at the server.
-> It's possible nothing really depends on its status.
+> Never mind. The above ordering scheme is broken by the fact that
+> 'wake_bit_function' calls autoremove_wake_function, which again means
+> that finish_wait optimises away the spin lock.
+> 
+> Back to the drawing board...
 
-Yeah, the server may take a failure as a sign it should retry the
-request, but the only "reply" that really matters is the eventual
-{deleg,layout,whatever}return.
+...and after yet another cup of coffee the solution suggests itself: we
+just need to reorder the calls to __wake_up_locked_key and the
+atomic_dec_and_test in rpc_complete_task. The revised patch is appended.
 
-On the client side a failure here would be visisble at most as a retry,
-so pynfs won't catch this kind of thing.
+Cheers
+  Trond 
 
---b.
+8<---------------------------------------------------------------------------- 
