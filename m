@@ -1,69 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.parallels.com ([64.131.90.16]:37144 "EHLO mx2.parallels.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11784 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751340Ab1BWD7e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Feb 2011 22:59:34 -0500
-Message-ID: <4D64861F.5000707@parallels.com>
-Date: Tue, 22 Feb 2011 21:59:27 -0600
-From: Rob Landley <rlandley@parallels.com>
-To: NeilBrown <neilb@suse.de>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: CACHE_NEW_EXPIRY is 120, nextcheck initialized to 30*60=1800?
-References: <4D63BAA0.3090505@parallels.com> <20110223080731.6c013be2@notabene.brown>
-In-Reply-To: <20110223080731.6c013be2@notabene.brown>
-Content-Type: text/plain; charset="ISO-8859-1"
+	id S1754954Ab1BPOEh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Feb 2011 09:04:37 -0500
+Subject: Re: NFS on little-endian platform - Microblaze
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: monstr@monstr.eu
+Cc: netdev@vger.kernel.org, David Miller <davem@davemloft.net>,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <4D5BD6E5.8010903@monstr.eu>
+References: <4D5BCC74.9010301@monstr.eu>  <4D5BCE43.1090401@monstr.eu>
+	 <1297862575.6596.0.camel@heimdal.trondhjem.org>
+	 <4D5BD6E5.8010903@monstr.eu>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 16 Feb 2011 09:04:34 -0500
+Message-ID: <1297865074.6596.10.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 02/22/2011 03:07 PM, NeilBrown wrote:
-> On Tue, 22 Feb 2011 07:31:12 -0600 Rob Landley <rlandley@parallels.com> wrote:
+On Wed, 2011-02-16 at 14:53 +0100, Michal Simek wrote: 
+> Trond Myklebust wrote:
+> > On Wed, 2011-02-16 at 14:16 +0100, Michal Simek wrote: 
+> >> Hi again,
+> >>
+> >> I forget to cc linux-nfs mailing list.
+> >>
+> >> Michal
+> >>
+> >> P.S.: Tested on kernels 2.6.38-rc4, 2.6.37 and 2.6.36
+> >>
+> >> Michal Simek wrote:
+> >>> Hi All,
+> >>>
+> >>> I am trying to understand one problem which we have found.
+> >>> The problem is that I can't on Microblaze little-endian platform
+> >>> mount nfs without -o nolock options. (Log below)
+> >>> Selecting tcp or udp has no effect.
+> >>> I am using emaclite driver and there is no problem on big endian 
+> >>> microblaze.
+> >>>
+> >>> ping, telnet, http, ftp, iperf, netperf work well.
+> >>>
+> >>> That's why I have a question if there is any endian specific option for 
+> >>> NFS?
+> >>>
+> >>> Thanks,
+> >>> Michal
+> >>>
+> >>> ~ # mount -t nfs 192.168.0.101:/tftpboot/nfs /mnt
+> >>> svc: failed to register lockdv1 RPC service (errno 13).
+> >>> lockd_up: makesock failed, error=-13
+> >>> svc: failed to register lockdv1 RPC service (errno 13).
+> >>> ~ # mount -t nfs -o nolock 192.168.0.101:/tftpboot/nfs /mnt
+> >>> ~ # mount
+> >>> rootfs on / type rootfs (rw)
+> >>> proc on /proc type proc (rw,relatime)
+> >>> none on /var type ramfs (rw,relatime)
+> >>> none on /sys type sysfs (rw,relatime)
+> >>> none on /etc/config type ramfs (rw,relatime)
+> >>> none on /dev/pts type devpts (rw,relatime,mode=600)
+> >>> 192.168.0.101:/tftpboot/nfs on /mnt type nfs 
+> >>> (rw,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,port=65535,timeo=7,retrans=3,sec=sys,local_lock=all,addr=192.168.0.101) 
+> >>>
+> >>> ~ #
+> >>> ~ # ps
+> >>> PID   USER     TIME   COMMAND
+> >>>     1 root       0:02 init
+> >>>     2 root       0:00 [kthreadd]
+> >>>     3 root       0:00 [ksoftirqd/0]
+> >>>     4 root       0:00 [kworker/0:0]
+> >>>     5 root       0:00 [kworker/u:0]
+> >>>     6 root       0:00 [khelper]
+> >>>     7 root       0:00 [sync_supers]
+> >>>     8 root       0:00 [bdi-default]
+> >>>     9 root       0:00 [kblockd]
+> >>>    10 root       0:00 [rpciod]
+> >>>    11 root       0:00 [kworker/0:1]
+> >>>    12 root       0:00 [kswapd0]
+> >>>    13 root       0:00 [fsnotify_mark]
+> >>>    14 root       0:00 [aio]
+> >>>    15 root       0:00 [nfsiod]
+> >>>    16 root       0:00 [kworker/u:1]
+> >>>    58 root       0:00 udhcpc -R -n -p /var/run/udhcpc.eth0.pid -i eth0
+> >>>    62 1          0:00 /bin/portmap
+> >>>    64 root       0:00 /bin/inetd /etc/inetd.conf
+> >>>    65 root       0:01 -sh
+> >>>    66 root       0:00 /bin/syslogd -n
+> >>>    67 root       0:00 /bin/flatfsd
+> >>>    68 root       0:00 [kworker/0:2]
+> >>>    91 root       0:00 ps
+> > 
+> > Where is rpc.statd? Without it, the above behaviour is 100% expected.
 > 
->> In net/sunrpc/cache.c line 416 or so (function cache_clean()) there's
->> this bit:
->>
->> else {
->>         current_index = 0;
->>         current_detail->nextcheck = seconds_since_boot()+30*60;
->> }
->>
->> The other uses of seconds_since_boot() add CACHE_NEW_EXPIRY (which is
->> 120).  This is A) more than ten times that, B) a magic inline constant.
->>
->> Is there a reason for this?  (Some subtle cache lifetime balancing thing?)
+> I see on BE that lockd is used but it is enabled on little endian too but hasn't started.
 > 
-> Apples and oranges are both fruit, but don't taste the same...
+> Enabled options:
+> CONFIG_NETWORK_FILESYSTEMS=y
+> CONFIG_NFS_FS=y
+> CONFIG_NFS_V3=y
+> CONFIG_LOCKD=y
+> CONFIG_LOCKD_V4=y
+> CONFIG_NFS_COMMON=y
+> CONFIG_SUNRPC=y
+> 
+> On Be lockd is up.
+>     69 root       0:00 /bin/flatfsd
+>     71 root       0:00 [lockd]
+>     73 root       0:00 ps
+> 
+> I have to look why.
+> How is it started?
 
-I know what "apples and oranges" means, thanks.
+Either rpc.bind or rpc.portmap and then rpc.statd need to be started
+manually (in that order) before you may mount the NFS partition without
+'-onolock'. The lockd daemon itself will be started by the kernel
+whenever there is a need for it.
 
-I'm trying to understand this code, and finding a lot of it hard to
-figure out.  For example, in net/sunrpc/svcauth_unix.c there are two
-instances of:
+Please check your 'init' boot scripts to find out why they are not being
+started as expected.
 
-  expiry = get_expiry(&mesg);
-  if (expiry ==0)
-          return -EINVAL;
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Except that get_expiry() defined in include/linux/sunrpc/cache.h returns
-the difference between the int stored at &mesg and getboottime(), which
-implies that the value can go negative fairly easily if the system is
-busy with something else for a second, so comparing for equality with
-zero seems odd if it's easy to _miss_.  Possibly some kind of timer is
-scheduled to force this test to happen at the expiry time, but if so I
-haven't found it yet...
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-(I'm trying to hunt down a specific bug where a cached value of some
-kind is using the wrong struct net * context, and thus if I mount nfsv3
-from the host context it works, and from a container it also works, but
-if I have different (overlapping) network routings in host and container
-and I mount the same IP from the host from the container it doesn't
-work, even if I _unmount_ the host's copy before mounting the
-container's copy (or vice versa).  But that it starts working again when
-I give it a couple minutes after the umount for the cache data to time
-out...)
-
-Mostly I'm assuming you guys know what you're doing and that my
-understanding of the enormous layers of nested cacheing is incomplete,
-but there's a lot of complexity to dig through here...
-
-Rob
