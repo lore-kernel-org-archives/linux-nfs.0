@@ -1,70 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34953 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:12160 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755084Ab1CAAA7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2011 19:00:59 -0500
-Subject: Re: [PATCH] zero out delegation in the inode after it has been
- returned
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jim Rees <rees@umich.edu>
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-In-Reply-To: <20110228232258.GA1901@merit.edu>
-References: <20110228213103.GA1256@merit.edu>
-	 <1298929144.8564.44.camel@heimdal.trondhjem.org>
-	 <20110228215439.GD1256@merit.edu>
-	 <1298930494.8564.50.camel@heimdal.trondhjem.org>
-	 <20110228232258.GA1901@merit.edu>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 28 Feb 2011 19:00:33 -0500
-Message-ID: <1298937633.18451.9.camel@heimdal.trondhjem.org>
+	id S1751496Ab1BPP4b convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Feb 2011 10:56:31 -0500
+Subject: Re: [PATCH 11/16] pnfs: wave 3: generic read
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <4D5BF2B5.2020502@panasas.com>
+Date: Wed, 16 Feb 2011 10:56:13 -0500
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        Andy Adamson <andros@citi.umich.edu>,
+        Boaz Harrosh <bharrosh@panasas.com>,
+        Dean Hildebrand <dhildeb@us.ibm.com>,
+        Fred Isaman <iisaman@citi.umich.edu>, Fred Isaman <iisaman@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Mike Sager <sager@netapp.com>, Mingyang Guo <guomingyang@nrchpc.ac.cn>,
+        Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Message-Id: <4CBB4CED-DCE5-465F-B3EF-3E5EC722B2DC@netapp.com>
+References: <1297711116-3139-1-git-send-email-andros@netapp.com>	 <1297711116-3139-12-git-send-email-andros@netapp.com>	 <4D5B4192.4090107@panasas.com>	 <21F5A956-5830-4BB1-8F91-92C3121510BD@netapp.com> <1297868955.6596.24.camel@heimdal.trondhjem.org> <4D5BF2B5.2020502@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-02-28 at 18:22 -0500, Jim Rees wrote: 
-> Trond Myklebust wrote:
-> 
->   The procedure for returning delegations is supposed to work as follows:
->   
->        1. Remove the nfsi->delegation so that it is no longer visible to
->           new open() requests 
->        2. write back any dirty data to the server 
->        3. Reclaim any locks 
->        4. Reclaim any open stateids (using CLAIM_DELEGATE_CUR) 
->        5. delegreturn
->   
->   While there may indeed be the odd READ or WRITE that races between 4.
->   and 5., so that the server receives the delegation stateid after the
->   delegreturn, that shouldn't matter: the server returns an error, and the
->   client should retry using the new open stateid.
->   
->   What is failing to work correctly here?
-> 
-> That helps, thanks.  I'll see if I can figure out what's going wrong.
-> 
-> At the server, I see a delegreturn followed by a setattr using the returned
-> stateid.  The server returns BAD_STATEID.  I'll look to see if the client
-> then retries.
-> 
-> At the client, I see a non-null nfsi->delegation after the delgreturn, and
-> the application gets a EIO.
 
-That's because your server is confusing the hell out of us all by giving
-out a delegation as part of the reply (in frame 5328) to the
-OPEN(CLAIM_DELEGATE_CUR) in frame 5325.
+On Feb 16, 2011, at 10:52 AM, Benny Halevy wrote:
 
-IOW: the client is in the process of returning the delegation, and asks
-to trade in the delegation stateid into an open stateid, then the server
-replies with an open stateid, and the delegation stateid...
+> On 2011-02-16 10:09, Trond Myklebust wrote:
+>> On Wed, 2011-02-16 at 09:53 -0500, Andy Adamson wrote: 
+>>> On Feb 15, 2011, at 10:16 PM, Benny Halevy wrote:
+>>> 
+>>>> On 2011-02-14 14:18, andros@netapp.com wrote:
+>>>>> From: Andy Adamson <andros@netapp.com>
+>>>> 
+>>>> Andy, taking into account the many contributors to this patch
+>>>> the author should be "The pNFS Team" IMO.
+>>> 
+>>> The author can't be "The pNFS Team".  Somebody needs to be the author. I asked for volunteers and said I would be the default. Do you want to be the author?
+>> 
+>> Right. Patches authored by 'The pNFS Team' will be rejected, as
+>> discussed in Hopkinton last autumn.
+>> 
+> 
+> OK. I'm not the original author so I can't claim authorship for this patch.
+> FWIW, The earliest record I have in my tree for the earliest versions of this code is
+> authored by Andy an Mike Sager...
 
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Thanks for looking Benny. I'll remain the author.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+-->Andy
+
+> 
+> Benny
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
