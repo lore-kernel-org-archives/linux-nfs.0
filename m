@@ -1,53 +1,155 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:54056 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752021Ab1BDVoI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Feb 2011 16:44:08 -0500
-Date: Fri, 4 Feb 2011 16:36:35 -0500
-From: Jim Rees <rees@umich.edu>
-To: linux-nfs@vger.kernel.org
-Cc: peter honeyman <honey@citi.umich.edu>
-Subject: hung task in iozone test on nfs client
-Message-ID: <20110204213635.GB3632@merit.edu>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx1.redhat.com ([209.132.183.28]:33144 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754525Ab1BPUqs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Feb 2011 15:46:48 -0500
+Date: Wed, 16 Feb 2011 15:50:42 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: Small O_SYNC writes are no longer NFS_DATA_SYNC
+Message-ID: <20110216155042.383b420f@corrin.poochiereds.net>
+In-Reply-To: <20110217072618.26a6c02a@notabene.brown>
+References: <20110216171555.6642c630@notabene.brown>
+	<20110216081150.49b50ffe@tlielax.poochiereds.net>
+	<20110217072618.26a6c02a@notabene.brown>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I have a report here of iozone hanging when run on nfs4 client against an
-EMC server.  We have reproduced this problem with a wide range of client
-kernel versions, from 2.6.33.3-85.fc13.x86_64 up to
-2.6.38-0.rc3.git2.1.pnfs_wave3_20110203.fc15.x86_64, and on both 4.0 and
-4.1.  It seems to happen only with heavy multi-threaded iozone testing with
-big files.  The iozone is something like this:
+On Thu, 17 Feb 2011 07:26:18 +1100
+NeilBrown <neilb@suse.de> wrote:
 
-iozone -r 2m -s 256m -w -W -c -t 12 -i 0 -o
+> On Wed, 16 Feb 2011 08:11:50 -0500 Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > On Wed, 16 Feb 2011 17:15:55 +1100
+> > NeilBrown <neilb@suse.de> wrote:
+> > 
+> > > 
+> > > Hi Trond,
+> > >  I wonder if I might get your help/advice on an issue with NFS.
+> > > 
+> > >  It seems that NFS_DATA_SYNC is hardly used at all currently.  It is used for
+> > >  O_DIRECT writes and for writes 'for_reclaim', and for handling some error
+> > >  conditions, but that is about it.
+> > > 
+> > >  This appears to be a regression.
+> > > 
+> > >  Back in 2005, commit ab0a3dbedc5 in 2.6.13 says:
+> > > 
+> > >     [PATCH] NFS: Write optimization for short files and small O_SYNC writes.
+> > >     
+> > >      Use stable writes if we can see that we are only going to put a single
+> > >      write on the wire.
+> > > 
+> > >  which seems like a sensible optimisation, and we have a customer which
+> > >  values it.  Very roughly, they have an NFS server which optimises 'unstable'
+> > >  writes for throughput and 'stable' writes for latency - these seems like a
+> > >  reasonable approach.
+> > >  With a 2.6.16 kernel an application which generates many small sync writes
+> > >  gets adequate performance.  In 2.6.32 they see unstable writes followed by
+> > >  commits, which cannot be (or at least aren't) optimised as well.
+> > > 
+> > >  It seems this was changed by commit c63c7b0513953
+> > > 
+> > >     NFS: Fix a race when doing NFS write coalescing
+> > >     
+> > >  in 2.6.22.
+> > > 
+> > >  Is it possible/easy/desirable to get this behaviour back.  i.e. to use
+> > >  NFS_DATA_SYNC at least on sub-page writes triggered by a write to an
+> > >  O_SYNC file.
+> > > 
+> > >  My (possibly naive) attempt is as follows.  It appears to work as I expect
+> > >  (though it still uses SYNC for 1-page writes) but I'm not confident that it
+> > >  is "right".
+> > > 
+> > > Thanks,
+> > > 
+> > > NeilBrown
+> > > 
+> > > diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> > > index 10d648e..392bfa8 100644
+> > > --- a/fs/nfs/write.c
+> > > +++ b/fs/nfs/write.c
+> > > @@ -178,6 +178,9 @@ static int wb_priority(struct writeback_control *wbc)
+> > >  		return FLUSH_HIGHPRI | FLUSH_STABLE;
+> > >  	if (wbc->for_kupdate || wbc->for_background)
+> > >  		return FLUSH_LOWPRI;
+> > > +	if (wbc->sync_mode == WB_SYNC_ALL &&
+> > > +	    (wbc->range_end - wbc->range_start) < PAGE_SIZE)
+> > > +		return FLUSH_STABLE;
+> > >  	return 0;
+> > >  }
+> > >  
+> > 
+> > I'm not so sure about this change. wb_priority is called from
+> > nfs_wb_page. The comments there say:
+> > 
+> > /*
+> >  * Write back all requests on one page - we do this before reading it.
+> >  */
+> > 
+> > ...do we really need those writes to be NFS_FILE_SYNC?
+> 
+> Thanks for taking a look.
+> wb_priority is called from several places - yes.
+> 
+> In the nfs_wb_page case, I think we *do* want NFS_FILE_SYNC.
+> nfs_wb_page calls nfs_writepage_locked and then nfs_commit_inode which calls
+> nfs_scan_commit to send a COMMIT request for the page (if the write wasn't
+> stable).
+> 
+> By using NFS_FILE_SYNC we can avoid that COMMIT, and lose nothing (that I can
+> see).
+> 
 
-The call trace is usually something like this:
+Good point.
 
-[<ffffffff810c1314>] ? sync_page+0x0/0x45
-[<ffffffff814297bc>] io_schedule+0x6e/0xb0
-[<ffffffff810c1355>] sync_page+0x41/0x45
-[<ffffffff81429cf8>] __wait_on_bit+0x43/0x76
-[<ffffffff810c14ae>] wait_on_page_bit+0x6d/0x74
-[<ffffffff8106484b>] ? wake_bit_function+0x0/0x2e
-[<ffffffff810c94c0>] ? pagevec_lookup_tag+0x20/0x29
-[<ffffffff810c1751>] filemap_fdatawait_range+0x9f/0x173
-[<ffffffff810c18ce>] filemap_write_and_wait_range+0x3e/0x51
-[<ffffffff8111fa53>] vfs_fsync_range+0x5a/0xad
-[<ffffffff8111faf9>] generic_write_sync+0x53/0x55
-[<ffffffff810c1d4b>] generic_file_aio_write+0x86/0xa2
-[<ffffffffa0321bf8>] nfs_file_write+0xed/0x169 [nfs]
-[<ffffffff811017c5>] do_sync_write+0xbf/0xfc
-[<ffffffff810f4dc9>] ? __slab_free+0x28/0x22e
-[<ffffffff81204b7d>] ? might_fault+0x1c/0x1e
-[<ffffffff811be22b>] ? security_file_permission+0x11/0x13
-[<ffffffff81101d23>] vfs_write+0xa9/0x106
-[<ffffffff81101e36>] sys_write+0x45/0x69
-[<ffffffff81009b02>] system_call_fastpath+0x16/0x1b
+> > 
+> > I think that the difficulty here is determining when we really are
+> > going to just be doing a single write. In that case, then clearly a
+> > FILE_SYNC write is better than an unstable + COMMIT.
+> > 
+> > This is very workload dependent though. It's hard to know beforehand
+> > whether a page that we intend to write will be redirtied soon
+> > afterward. If it is, then FILE_SYNC writes may be worse than letting
+> > the server cache the writes until a COMMIT comes in.
+> > 
+> 
+> The hope is that sync_mode == WB_SYNC_ALL combined with a short 'range' are
+> sufficient.
+> 
+> In particular, WB_SYNC_ALL essentially says that we want this page out to
+> storage *now* so a 'flush' of some sort is likely to following.
+> 
 
-I have a pcap file here but it's 8GB.  I am trying to distill it to the
-important parts.
+Also a good point.
 
-Those of you who are familiar with the page cache, is there any obvious
-deadlock here that jumps out at you?
+I guess my main worry is that, at least in the Linux NFS server case,
+these get translated to O_SYNC writes which can be very slow. If we
+know though that we're not likely to have follow-on writes that could
+be batched up then this is probably fine.
+
+I guess I just don't have a good feel for how often (if ever) we do
+multiple writes to the same file with different wbc ranges without an
+intervening commit. If that happens and we end up doing FILE_SYNC
+writes rather than unstable ones, then this change is probably not a
+good one.
+
+Do you have any idea as to why unstable writes get worse performance
+for this customer? I know that base 2.6.32 did a *lot* more COMMITs
+than were really necessary. Perhaps they are seeing the effect of that?
+Or have they also tested something more recent and seen bad
+performance?
+
+> 
+> BTW, I'm wondering if the length of 'range' that we test should be related to
+> 'wsize' rather than PAGE_SIZE.  Any thoughts on that?
+> 
+
+Yeah, that seems like a more meaningful test than page size.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
