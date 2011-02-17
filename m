@@ -1,109 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:37208 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753281Ab1BDVe4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Feb 2011 16:34:56 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 37/40] pnfs-submit wave3 send zero stateid seqid on v4.1 i/o
-Date: Fri,  4 Feb 2011 16:33:59 -0500
-Message-Id: <1296855242-2592-38-git-send-email-andros@netapp.com>
-In-Reply-To: <1296855242-2592-37-git-send-email-andros@netapp.com>
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
- <1296855242-2592-2-git-send-email-andros@netapp.com>
- <1296855242-2592-3-git-send-email-andros@netapp.com>
- <1296855242-2592-4-git-send-email-andros@netapp.com>
- <1296855242-2592-5-git-send-email-andros@netapp.com>
- <1296855242-2592-6-git-send-email-andros@netapp.com>
- <1296855242-2592-7-git-send-email-andros@netapp.com>
- <1296855242-2592-8-git-send-email-andros@netapp.com>
- <1296855242-2592-9-git-send-email-andros@netapp.com>
- <1296855242-2592-10-git-send-email-andros@netapp.com>
- <1296855242-2592-11-git-send-email-andros@netapp.com>
- <1296855242-2592-12-git-send-email-andros@netapp.com>
- <1296855242-2592-13-git-send-email-andros@netapp.com>
- <1296855242-2592-14-git-send-email-andros@netapp.com>
- <1296855242-2592-15-git-send-email-andros@netapp.com>
- <1296855242-2592-16-git-send-email-andros@netapp.com>
- <1296855242-2592-17-git-send-email-andros@netapp.com>
- <1296855242-2592-18-git-send-email-andros@netapp.com>
- <1296855242-2592-19-git-send-email-andros@netapp.com>
- <1296855242-2592-20-git-send-email-andros@netapp.com>
- <1296855242-2592-21-git-send-email-andros@netapp.com>
- <1296855242-2592-22-git-send-email-andros@netapp.com>
- <1296855242-2592-23-git-send-email-andros@netapp.com>
- <1296855242-2592-24-git-send-email-andros@netapp.com>
- <1296855242-2592-25-git-send-email-andros@netapp.com>
- <1296855242-2592-26-git-send-email-andros@netapp.com>
- <1296855242-2592-27-git-send-email-andros@netapp.com>
- <1296855242-2592-28-git-send-email-andros@netapp.com>
- <1296855242-2592-29-git-send-email-andros@netapp.com>
- <1296855242-2592-30-git-send-email-andros@netapp.com>
- <1296855242-2592-31-git-send-email-andros@netapp.com>
- <1296855242-2592-32-git-send-email-andros@netapp.com>
- <1296855242-2592-33-git-send-email-andros@netapp.com>
- <1296855242-2592-34-git-send-email-andros@netapp.com>
- <1296855242-2592-35-git-send-email-andros@netapp.com>
- <1296855242-2592-36-git-send-email-andros@netapp.com>
- <1296855242-2592-37-git-send-email-andros@netapp.com>
+	id S1754104Ab1BQEZX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Feb 2011 23:25:23 -0500
+Date: Wed, 16 Feb 2011 23:25:19 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: 2.6.38 nfsd bugfixes
+Message-ID: <20110217042519.GH14534@fieldses.org>
+References: <20110215185902.GG29420@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110215185902.GG29420@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Doh--I missed one patch in my previous pull request; see
 
-Data servers require a zero stateid seqid, and there is no advantage to not
-doing the same for all NFSv4.1
+  git://linux-nfs.org/~bfields/linux.git for-2.6.38
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4xdr.c |   10 +++++++---
- 1 files changed, 7 insertions(+), 3 deletions(-)
+Please apply.
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4e2c168..2380c45 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1384,7 +1384,7 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
- 	hdr->replen += decode_putrootfh_maxsz;
- }
- 
--static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx)
-+static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx, int zero_seqid)
- {
- 	nfs4_stateid stateid;
- 	__be32 *p;
-@@ -1392,6 +1392,8 @@ static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context
- 	p = reserve_space(xdr, NFS4_STATEID_SIZE);
- 	if (ctx->state != NULL) {
- 		nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
-+		if (zero_seqid)
-+			stateid.stateid.seqid = 0;
- 		xdr_encode_opaque_fixed(p, stateid.data, NFS4_STATEID_SIZE);
- 	} else
- 		xdr_encode_opaque_fixed(p, zero_stateid.data, NFS4_STATEID_SIZE);
-@@ -1404,7 +1406,8 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(OP_READ);
- 
--	encode_stateid(xdr, args->context, args->lock_context);
-+	encode_stateid(xdr, args->context, args->lock_context,
-+		       hdr->minorversion);
- 
- 	p = reserve_space(xdr, 12);
- 	p = xdr_encode_hyper(p, args->offset);
-@@ -1592,7 +1595,8 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(OP_WRITE);
- 
--	encode_stateid(xdr, args->context, args->lock_context);
-+	encode_stateid(xdr, args->context, args->lock_context,
-+		       hdr->minorversion);
- 
- 	p = reserve_space(xdr, 16);
- 	p = xdr_encode_hyper(p, args->offset);
--- 
-1.6.6
+--b.
 
+commit 47c85291d3dd1a51501555000b90f8e281a0458e
+Author: NeilBrown <neilb@suse.de>
+Date:   Wed Feb 16 13:08:35 2011 +1100
+
+    nfsd: correctly handle return value from nfsd_map_name_to_*
+    
+    These functions return an nfs status, not a host_err.  So don't
+    try to convert  before returning.
+    
+    This is a regression introduced by
+    3c726023402a2f3b28f49b9d90ebf9e71151157d; I fixed up two of the callers,
+    but missed these two.
+    
+    Cc: stable@kernel.org
+    Reported-by: Herbert Poetzl <herbert@13thfloor.at>
+    Signed-off-by: NeilBrown <neilb@suse.de>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 956629b..1275b86 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -317,8 +317,8 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 		READ_BUF(dummy32);
+ 		len += (XDR_QUADLEN(dummy32) << 2);
+ 		READMEM(buf, dummy32);
+-		if ((host_err = nfsd_map_name_to_uid(argp->rqstp, buf, dummy32, &iattr->ia_uid)))
+-			goto out_nfserr;
++		if ((status = nfsd_map_name_to_uid(argp->rqstp, buf, dummy32, &iattr->ia_uid)))
++			return status;
+ 		iattr->ia_valid |= ATTR_UID;
+ 	}
+ 	if (bmval[1] & FATTR4_WORD1_OWNER_GROUP) {
+@@ -328,8 +328,8 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 		READ_BUF(dummy32);
+ 		len += (XDR_QUADLEN(dummy32) << 2);
+ 		READMEM(buf, dummy32);
+-		if ((host_err = nfsd_map_name_to_gid(argp->rqstp, buf, dummy32, &iattr->ia_gid)))
+-			goto out_nfserr;
++		if ((status = nfsd_map_name_to_gid(argp->rqstp, buf, dummy32, &iattr->ia_gid)))
++			return status;
+ 		iattr->ia_valid |= ATTR_GID;
+ 	}
+ 	if (bmval[1] & FATTR4_WORD1_TIME_ACCESS_SET) {
