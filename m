@@ -1,79 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:26933 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:21322 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751314Ab1BPSjA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Feb 2011 13:39:00 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
+	id S1753181Ab1BRUyZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Feb 2011 15:54:25 -0500
+Subject: Re: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release
+ to nfsiod
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/18] pNFS wave 3 submission Version 2 
-Date: Tue, 15 Feb 2011 03:38:45 -0500
-Message-Id: <1297759143-2045-1-git-send-email-andros@netapp.com>
+In-Reply-To: <20110218150435.3870147c@corrin.poochiereds.net>
+References: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
+	 <1297783898.10103.22.camel@heimdal.trondhjem.org>
+	 <20110215113053.345e3abc@tlielax.poochiereds.net>
+	 <1297813624.10103.34.camel@heimdal.trondhjem.org>
+	 <1297865354.6596.13.camel@heimdal.trondhjem.org>
+	 <1297866373.6596.18.camel@heimdal.trondhjem.org>
+	 <20110216095002.1e7944c9@tlielax.poochiereds.net>
+	 <1297869677.6596.30.camel@heimdal.trondhjem.org>
+	 <20110216131307.0880ad00@tlielax.poochiereds.net>
+	 <20110217084052.34a6686b@barsoom.rdu.redhat.com>
+	 <20110217101014.39bcc80b@barsoom.rdu.redhat.com>
+	 <1297972044.2964.27.camel@heimdal.trondhjem.org>
+	 <20110217163741.004adac8@corrin.poochiereds.net>
+	 <20110218150435.3870147c@corrin.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 18 Feb 2011 12:54:07 -0800
+Message-ID: <1298062447.8061.2.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+On Fri, 2011-02-18 at 15:04 -0500, Jeff Layton wrote: 
+> On Thu, 17 Feb 2011 16:37:41 -0500
+> Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > On Thu, 17 Feb 2011 11:47:24 -0800
+> > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > 
+> > > On Thu, 2011-02-17 at 10:10 -0500, Jeff Layton wrote: 
+> > > > On Thu, 17 Feb 2011 08:40:52 -0500
+> > > > Jeff Layton <jlayton@redhat.com> wrote:
+> > > > 
+> > > > > 
+> > > > > Looks like it finally failed on the 39th pass:
+> > > > > 
+> > > > > second check for lost reply on non-idempotent requests
+> > > > > testing 50 idempotencies in directory "testdir"
+> > > > > rmdir 1: Directory not empty
+> > > > > special tests failed
+> > > > > 
+> > > > > When I look in the directory (several hours after it failed), the
+> > > > > silly-renamed file is still there:
+> > > > > 
+> > > > > -rw---x--x. 1 root root   30 Feb 16 15:04 .nfs000000000000002d00000090
+> > > > > 
+> > > > > ...so I'm not sure what exactly is wrong yet, but it looks like the
+> > > > > silly delete just never happened. Maybe there's a dentry refcount leak
+> > > > > of some sort? There are no queued RPC's.
+> > > > > 
+> > > > > I'll keep looking at it but if you have ideas as to what it could be,
+> > > > > let me know.
+> > > > > 
+> > > > 
+> > > > I walked down the directory tree in crash on the live kernel and found
+> > > > the dentry. The d_count is 0x0, so I'm not clear on why it didn't get
+> > > > cleaned up:
+> > > > 
+> > > > crash> struct dentry.d_flags,d_count,d_name 0xffff880017d46a80
+> > > >   d_flags = 0xc000, 
+> > > >   d_count = 0x0, 
+> > > >   d_name = {
+> > > >     hash = 0xe08ab5c8, 
+> > > >     len = 0x1c, 
+> > > >     name = 0xffff880017d46ab8 ".nfs000000000000002d00000090"
+> > > >   }, 
+> > > > 
+> > > > 
+> > > > The d_flags are:
+> > > > 
+> > > > #define DCACHE_OP_REVALIDATE    0x4000
+> > > > #define DCACHE_OP_DELETE        0x8000
+> > > > 
+> > > > ...very odd. I'd have expected to see this one set too:
+> > > > 
+> > > > #define DCACHE_NFSFS_RENAMED  0x0002
+> > > > 
+> > > > I suppose the async sillyrename call could have failed and we ended up
+> > > > calling nfs_cancel_async_unlink? I'll stick in some printk's around
+> > > > that area and see if I can figure out what's going on...
+> > > > 
+> > > 
+> > > Perhaps I missed a call site that needs an rpc_put_task_async()?
+> > > 
+> > 
+> > I'm not sure that would explain what we're seeing here, unless I'm just
+> > missing something. I do know that nfs_cancel_async_unlink was never
+> > called in my latest test run, so that does not seem to be it.
+> > 
+> > Another anomaly -- d_fsdata is NULL. How do we get into that state with
+> > a dentry that has been silly-renamed? FWIW, here's the entire dentry
+> > struct with my latest reproducer. Let me know if anything stands out to
+> > you...
+> > 
+> 
+> My current thinking is that the problems I'm seeing here are not
+> directly related to the bug we're trying to fix. It looks like
+> sillyrename is still just plain broken a'la your email entitled:
+> 
+>     2.6.38-rc2... NFS sillyrename is broken...
+> 
+> ...I'll plan to keep an eye out for the fix from Nick, and re-test this
+> when it hits.
+> 
+> Thanks,
 
-These patches implement wave 3 of the pNFS submission, which encompasses file
-layout data server connection, READ I/O, and recovery through the MDS.
+Oh, I'm sorry. I wasn't aware you were testing on 2.6.38-rc...
 
-Responded to all Version 1 comments.
+Yes, sillyrename is still broken there due to the NULL parent dentry
+being passed to the d_iput() callback. Nick promised us a patch, but
+hasn't delivered yet.
 
--->Andy
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Changes since Version 1:
-Renamed patches from "pnfs: wave3:XXX" to NFSv4.1:XXX
-
-0001-NFSv4-remove-CONFIG_NFS_V4-from-nfs_read_data.patch
-Patch comment and title adjusted
-
-0002-NFSv4.1-put_layout_hdr-can-remove-nfsi-layout.patch
-Unchanged
-
-0003-NFS-move-nfs_client-initialization-into-nfs_get_clie.patch
-added init_client rpc_ops
-
-0004-NFSv4.1-send-zero-stateid-seqid-on-v4.1-i-o.patch
-0005-NFSv4.1-new-flag-for-state-renewal-check.patch
-0006-NFSv4.1-new-flag-for-lease-time-check.patch
-0007-NFSv4.1-add-MDS-mount-DS-only-check.patch
-Unchanged
-
-0008-NFSv4.1-lseg-refcounting.patch
-Changed parameter name ino=>inode
-Changed function name put_lseg_common
-inlined put_lseg_locked
-
-0009-NFSv4.1-coelesce-across-layout-stripes.patch
-0010-NFSv4.1-shift-pnfs_update_layout-locations.patch
-Switched the order of the above two patches
-Moved pnfs_update_layout to pg_doio/pg_test
-switched put_lseg/put_nfs_open_context
-
-0011-NFSv4.1-generic-read.patch
-Keep nfs_initiate_read static, don't EXPORT here
-Removed bfields Signed-off-by;
-Removed Reported-by: Alexandros
-
-0012-NFSv4.1-data-server-connection.patch
-Unchanged
-
-0013-NFSv4.1-filelayout-i-o-helpers.patch
-Added dense stripe helper function
-
-0014-NFSv4.1-filelayout-read.patch
-Declare nfs_initiate_read non-static and EXPORT_SYMBOL_GPL
-
-0015-NFSv4.1-filelayout-async-error-handler.patch
-Unchanged
-
-0016-NFSv4.1-move-deviceid-cache-to-filelayout-driver.patch
-New patch from Christoph
-
-0017-NFSv4.1-turn-off-pNFS-on-ds-connection-failure.patch
-Modified to use filelayout driver deviceid cache
-
-0018-NFSv4.1-lseg-documentation.patch
-New patch from Fred.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
