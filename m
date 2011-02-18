@@ -1,159 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:8055 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754767Ab1BCI7B (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2011 03:59:01 -0500
-Message-ID: <4D4A6E52.1020108@panasas.com>
-Date: Thu, 03 Feb 2011 10:58:58 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 3/3] pnfs: fix pnfs lock inversion of i_lock and cl_lock
-References: <1296487633-21057-1-git-send-email-iisaman@netapp.com> <1296487633-21057-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1296487633-21057-4-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:30040 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758445Ab1BRUAf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Feb 2011 15:00:35 -0500
+Date: Fri, 18 Feb 2011 15:04:35 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release to
+ nfsiod
+Message-ID: <20110218150435.3870147c@corrin.poochiereds.net>
+In-Reply-To: <20110217163741.004adac8@corrin.poochiereds.net>
+References: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
+	<1297783898.10103.22.camel@heimdal.trondhjem.org>
+	<20110215113053.345e3abc@tlielax.poochiereds.net>
+	<1297813624.10103.34.camel@heimdal.trondhjem.org>
+	<1297865354.6596.13.camel@heimdal.trondhjem.org>
+	<1297866373.6596.18.camel@heimdal.trondhjem.org>
+	<20110216095002.1e7944c9@tlielax.poochiereds.net>
+	<1297869677.6596.30.camel@heimdal.trondhjem.org>
+	<20110216131307.0880ad00@tlielax.poochiereds.net>
+	<20110217084052.34a6686b@barsoom.rdu.redhat.com>
+	<20110217101014.39bcc80b@barsoom.rdu.redhat.com>
+	<1297972044.2964.27.camel@heimdal.trondhjem.org>
+	<20110217163741.004adac8@corrin.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-01-31 17:27, Fred Isaman wrote:
-> The pnfs code was using throughout the lock order i_lock, cl_lock.
-> This conflicts with the nfs delegation code.  Rework the pnfs code
-> to avoid taking both locks simultaneously.
+On Thu, 17 Feb 2011 16:37:41 -0500
+Jeff Layton <jlayton@redhat.com> wrote:
+
+> On Thu, 17 Feb 2011 11:47:24 -0800
+> Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 > 
-> Currently the code takes the double lock to add/remove the layout to a
-> nfs_client list, while atomically checking that the list of lsegs is
-> empty.  To avoid this, we rely on existing serializations.  When a
-> layout is initialized with lseg count equal zero, LAYOUTGET's
-> openstateid serialization is in effect, making it safe to assume it
-> stays zero unless we change it.  And once a layout's lseg count drops
-> to zero, it is set as DESTROYED and so will stay at zero.
+> > On Thu, 2011-02-17 at 10:10 -0500, Jeff Layton wrote: 
+> > > On Thu, 17 Feb 2011 08:40:52 -0500
+> > > Jeff Layton <jlayton@redhat.com> wrote:
+> > > 
+> > > > 
+> > > > Looks like it finally failed on the 39th pass:
+> > > > 
+> > > > second check for lost reply on non-idempotent requests
+> > > > testing 50 idempotencies in directory "testdir"
+> > > > rmdir 1: Directory not empty
+> > > > special tests failed
+> > > > 
+> > > > When I look in the directory (several hours after it failed), the
+> > > > silly-renamed file is still there:
+> > > > 
+> > > > -rw---x--x. 1 root root   30 Feb 16 15:04 .nfs000000000000002d00000090
+> > > > 
+> > > > ...so I'm not sure what exactly is wrong yet, but it looks like the
+> > > > silly delete just never happened. Maybe there's a dentry refcount leak
+> > > > of some sort? There are no queued RPC's.
+> > > > 
+> > > > I'll keep looking at it but if you have ideas as to what it could be,
+> > > > let me know.
+> > > > 
+> > > 
+> > > I walked down the directory tree in crash on the live kernel and found
+> > > the dentry. The d_count is 0x0, so I'm not clear on why it didn't get
+> > > cleaned up:
+> > > 
+> > > crash> struct dentry.d_flags,d_count,d_name 0xffff880017d46a80
+> > >   d_flags = 0xc000, 
+> > >   d_count = 0x0, 
+> > >   d_name = {
+> > >     hash = 0xe08ab5c8, 
+> > >     len = 0x1c, 
+> > >     name = 0xffff880017d46ab8 ".nfs000000000000002d00000090"
+> > >   }, 
+> > > 
+> > > 
+> > > The d_flags are:
+> > > 
+> > > #define DCACHE_OP_REVALIDATE    0x4000
+> > > #define DCACHE_OP_DELETE        0x8000
+> > > 
+> > > ...very odd. I'd have expected to see this one set too:
+> > > 
+> > > #define DCACHE_NFSFS_RENAMED  0x0002
+> > > 
+> > > I suppose the async sillyrename call could have failed and we ended up
+> > > calling nfs_cancel_async_unlink? I'll stick in some printk's around
+> > > that area and see if I can figure out what's going on...
+> > > 
+> > 
+> > Perhaps I missed a call site that needs an rpc_put_task_async()?
+> > 
 > 
-> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> ---
->  fs/nfs/callback_proc.c |    2 +-
->  fs/nfs/pnfs.c          |   50 +++++++++++++++++++++++++++--------------------
->  2 files changed, 30 insertions(+), 22 deletions(-)
+> I'm not sure that would explain what we're seeing here, unless I'm just
+> missing something. I do know that nfs_cancel_async_unlink was never
+> called in my latest test run, so that does not seem to be it.
 > 
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index 8958757..2f41dcce 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -188,10 +188,10 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
->  			rv = NFS4ERR_DELAY;
->  		list_del_init(&lo->plh_bulk_recall);
->  		spin_unlock(&ino->i_lock);
-> +		pnfs_free_lseg_list(&free_me_list);
->  		put_layout_hdr(lo);
->  		iput(ino);
->  	}
-> -	pnfs_free_lseg_list(&free_me_list);
->  	return rv;
->  }
->  
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index f89c3bb..ee6c69a 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -247,13 +247,6 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
->  		BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
->  		list_del(&lseg->pls_list);
->  		if (list_empty(&lseg->pls_layout->plh_segs)) {
-> -			struct nfs_client *clp;
-> -
-> -			clp = NFS_SERVER(ino)->nfs_client;
-> -			spin_lock(&clp->cl_lock);
-> -			/* List does not take a reference, so no need for put here */
-> -			list_del_init(&lseg->pls_layout->plh_layouts);
-> -			spin_unlock(&clp->cl_lock);
->  			set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
->  			/* Matched by initial refcount set in alloc_init_layout_hdr */
->  			put_layout_hdr_locked(lseg->pls_layout);
-> @@ -319,14 +312,30 @@ mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
->  	return invalid - removed;
->  }
->  
-> +/* note free_me must contain lsegs from a single layout_hdr */
->  void
->  pnfs_free_lseg_list(struct list_head *free_me)
->  {
-> -	struct pnfs_layout_segment *lseg, *tmp;
-> +	if (!list_empty(free_me)) {
+> Another anomaly -- d_fsdata is NULL. How do we get into that state with
+> a dentry that has been silly-renamed? FWIW, here's the entire dentry
+> struct with my latest reproducer. Let me know if anything stands out to
+> you...
+> 
 
-Since this puts everything in this function under the condition
-why not define an inline wrapper in pnfs.h
-that checks that and calls the real function only when the list's not empty
-or, if this is assumed to be a rare case, just begin the function with
+My current thinking is that the problems I'm seeing here are not
+directly related to the bug we're trying to fix. It looks like
+sillyrename is still just plain broken a'la your email entitled:
 
-	if (list_empty(free_me))
-		return;
+    2.6.38-rc2... NFS sillyrename is broken...
 
-Benny
+...I'll plan to keep an eye out for the fix from Nick, and re-test this
+when it hits.
 
-> +		struct pnfs_layout_segment *lseg, *tmp;
-> +		struct pnfs_layout_hdr *lo;
->  
-> -	list_for_each_entry_safe(lseg, tmp, free_me, pls_list) {
-> -		list_del(&lseg->pls_list);
-> -		free_lseg(lseg);
-> +		lo = list_first_entry(free_me,
-> +				      struct pnfs_layout_segment,
-> +				      pls_list)->pls_layout;
-> +
-> +		if (test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags)) {
-> +			struct nfs_client *clp;
-> +
-> +			clp = NFS_SERVER(lo->plh_inode)->nfs_client;
-> +			spin_lock(&clp->cl_lock);
-> +			list_del_init(&lo->plh_layouts);
-> +			spin_unlock(&clp->cl_lock);
-> +		}
-> +		list_for_each_entry_safe(lseg, tmp, free_me, pls_list) {
-> +			list_del(&lseg->pls_list);
-> +			free_lseg(lseg);
-> +		}
->  	}
->  }
->  
-> @@ -704,6 +713,7 @@ pnfs_update_layout(struct inode *ino,
->  	struct nfs_client *clp = NFS_SERVER(ino)->nfs_client;
->  	struct pnfs_layout_hdr *lo;
->  	struct pnfs_layout_segment *lseg = NULL;
-> +	bool first = false;
->  
->  	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
->  		return NULL;
-> @@ -734,7 +744,10 @@ pnfs_update_layout(struct inode *ino,
->  	atomic_inc(&lo->plh_outstanding);
->  
->  	get_layout_hdr(lo);
-> -	if (list_empty(&lo->plh_segs)) {
-> +	if (list_empty(&lo->plh_segs))
-> +		first = true;
-> +	spin_unlock(&ino->i_lock);
-> +	if (first) {
->  		/* The lo must be on the clp list if there is any
->  		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
->  		 */
-> @@ -743,17 +756,12 @@ pnfs_update_layout(struct inode *ino,
->  		list_add_tail(&lo->plh_layouts, &clp->cl_layouts);
->  		spin_unlock(&clp->cl_lock);
->  	}
-> -	spin_unlock(&ino->i_lock);
->  
->  	lseg = send_layoutget(lo, ctx, iomode);
-> -	if (!lseg) {
-> -		spin_lock(&ino->i_lock);
-> -		if (list_empty(&lo->plh_segs)) {
-> -			spin_lock(&clp->cl_lock);
-> -			list_del_init(&lo->plh_layouts);
-> -			spin_unlock(&clp->cl_lock);
-> -		}
-> -		spin_unlock(&ino->i_lock);
-> +	if (!lseg && first) {
-> +		spin_lock(&clp->cl_lock);
-> +		list_del_init(&lo->plh_layouts);
-> +		spin_unlock(&clp->cl_lock);
->  	}
->  	atomic_dec(&lo->plh_outstanding);
->  	put_layout_hdr(lo);
+Thanks,
+-- 
+Jeff Layton <jlayton@redhat.com>
