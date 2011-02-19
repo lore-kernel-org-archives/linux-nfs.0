@@ -1,74 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:31025 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751479Ab1BCUbq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2011 15:31:46 -0500
-Message-ID: <4D4B10B0.2040500@panasas.com>
-Date: Thu, 03 Feb 2011 22:31:44 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: pnfs git tree status pnfs-all-2.6.38-rc3-2011-02-03
-References: <4D41D711.70807@panasas.com>
-In-Reply-To: <4D41D711.70807@panasas.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:17407 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932071Ab1BSWao convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Feb 2011 17:30:44 -0500
+Subject: Re: umount.nfs4 is disturbed by /proc/mounts
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <alpine.LNX.2.01.1102180041530.20379@obet.zrqbmnf.qr>
+Date: Sat, 19 Feb 2011 14:28:47 -0800
+Cc: linux-nfs@vger.kernel.org, kzak@redhat.com
+Message-Id: <0388D451-4AF3-4B6A-8EFF-283F2B049F10@oracle.com>
+References: <alpine.LNX.2.01.1102180041530.20379@obet.zrqbmnf.qr>
+To: Jan Engelhardt <jengelh@medozas.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I rebased the pnfs tree onto 2.6.38-rc3, with Fred's lock inversion fix in place
-and Andy's reordering of pnfs-submit for wave3 and wave4.
-pnfs-all-latest tip is tagged as pnfs-all-2.6.38-rc3-2011-02-03
 
-Note: spnfs-block is currently broken due to the fallocate() API change.
+On Feb 17, 2011, at 3:44 PM, Jan Engelhardt wrote:
 
-Cumulative patches can be generated from
-git://linux-nfs.org/~bhalevy/linux-pnfs.git
-using
-git diff v2.6.38-rc3 pnfs-all-2.6.38-rc3-2011-02-03
+> 
+> Recent distributions start to have /etc/mtab being a symlink to 
+> /proc/mounts with util-linux 2.19. Subsequently, this annoys umount.nfs4 
+> from nfs-client-1.2.3 and emits a warning:
+> 
+> jng-0:/ # grep nfs4 /proc/mounts
+> 10.10.1.1:/home/ /home nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=10.10.1.212,minorversion=0,local_lock=none,addr=10.10.1.1 0 0
+> jng-0:/ # umount /home
+> umount.nfs4: invalid value for 'port=' option
 
-Or, they can be downloaded from the wiki at:
-http://wiki.linux-nfs.org/wiki/index.php/PNFS_Development_Git_tree
+With the latest nfs-utils (post 1.2.3) I can't reproduce this on my Fedora 13 client after replacing /etc/mtab with a symlink to /proc/mounts.  I think we may have an upstream fix for this already:
 
-A new branch, pnfs-submit-wave3 points at wave3 candidate patches
-and pnfs-submit points at current wave4 patches.
+commit dc08c702a6c7f824f317af561f491635ee898a71
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Wed Oct 13 13:55:10 2010 -0400
 
-pnfs-submit-wave3:
-  Fred Isaman      1786469 pnfs-submit: wave3: lseg refcounting
-  The pNFS Team    6d48359 pnfs_submit: add data server session to nfs4_setup_sequence
-  The pNFS Team    3dec9b6 pnfs_submit: update nfs4_async_handle_error for data server
-  The pNFS Team    9390f23 pnfs_submit: update state renewal for data servers
-  Andy Adamson     790dbeb pnfs_submit: wave3 pageio-helpers
-  Andy Adamson     54583dc pnfs_submit: wave3 associate layout segment with nfs_page
-  The pNFS Team    c85562c pnfs_submit: filelayout policy operations
-  The pNFS Team    a5437b7 pnfs_submit: filelayout i/o helpers
-  Andy Adamson     bca89961 pnfs_submit: wave3 generic read
-  The pNFS Team    a9c9c75 pnfs_submit: filelayout read
-  The pNFS Team    60882f9 pnfs_submit: increase NFS_MAX_FILE_IO_SIZE
-  Andy Adamson     3ad8d6c pnfs_submit: enforce requested DS only pNFS role
+    umount.nfs: Distinguish between nfs4 and nfs mounts
 
-pnfs-submit:
-  Fred Isaman      3f48c62 DEBUG: add some BUG_ON(refcount==0) statements
-  Fred Isaman      502388a debug: add assert_spin_locked
-  Fred Isaman      a655dac pnfs-submit: Add WARN_ONs removed by submission code
-  Andy Adamson     c11704d pnfs_submit: wave4 pageio-helpers
-  Andy Adamson     8fb9114 pnfs_submit: wave4 associate layout segment with nfs_page
-  Andy Adamson     de2c655 pnfs_submit: wave4 generic read
-  The pNFS Team    302270f pnfs_submit: generic write
-  The pNFS Team    f978c0a pnfs_submit: data server write with no getattr
-  The pNFS Team    15e01aa pnfs_submit: filelayout write
-  The pNFS Team    f184813 pnfs_submit: signal layoutdriver commit
-  The pNFS Team    b4e299a pnfs_submit: generic commit
-  The pNFS Team    af37694 pnfs_submit: data server commit with no getattr
-  The pNFS Team    cf279a7 pnfs_submit: filelayout commit
-  Fred Isaman      13f429d pnfs-submit: wave4: fix bug dealing with commit split between DS and MDS
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Latest patches that went in since pnfs-all-2.6.38-rc2-2011-01-27:
 
-nfs-upstream:
-  Fred Isaman      995a73b pnfs: avoid incorrect use of layout stateid
-  Fred Isaman      8073b9d pnfs: do not need to clear NFS_LAYOUT_BULK_RECALL flag
-  Fred Isaman      de5f699 pnfs: fix pnfs lock inversion of i_lock and cl_lock
 
-pnfs-all-latest:
-  Benny Halevy     5186ca3 SQUASHME: pnfs-block: use pnfs_layout_hdr field prefix
-  Benny Halevy     4c5fcc5 SQUASHME: pnfs-obj: use pnfs_layout_hdr and layout_segment field prefix
