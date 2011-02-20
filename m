@@ -1,49 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47947 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751791Ab1BRTYe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Feb 2011 14:24:34 -0500
-Date: Fri, 18 Feb 2011 14:28:28 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Jan Engelhardt <jengelh@medozas.de>, linux-nfs@vger.kernel.org,
-        kzak@redhat.com
-Subject: Re: umount.nfs4 is disturbed by /proc/mounts
-Message-ID: <20110218142828.0a35e9d7@corrin.poochiereds.net>
-In-Reply-To: <AF3E1D8A-81C5-4B78-894A-49E29A775404@oracle.com>
-References: <alpine.LNX.2.01.1102180041530.20379@obet.zrqbmnf.qr>
-	<AF3E1D8A-81C5-4B78-894A-49E29A775404@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:61053 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754719Ab1BTWdt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Feb 2011 17:33:49 -0500
+Received: by qwd7 with SMTP id 7so1620777qwd.19
+        for <linux-nfs@vger.kernel.org>; Sun, 20 Feb 2011 14:33:48 -0800 (PST)
+From: Ilia Mirkin <imirkin@alum.mit.edu>
+To: Trond.Myklebust@netapp.com
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org,
+        Ilia Mirkin <imirkin@alum.mit.edu>
+Subject: [PATCH] NFS: Zero entire acl2 structure
+Date: Sun, 20 Feb 2011 17:33:04 -0500
+Message-Id: <1298241184-1250-1-git-send-email-imirkin@alum.mit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 18 Feb 2011 09:11:54 -0800
-Chuck Lever <chuck.lever@oracle.com> wrote:
+The semantic match that finds this problem:
+// <smpl>
+@@
+type T;
+identifier x;
+@@
 
-> 
-> On Feb 17, 2011, at 3:44 PM, Jan Engelhardt wrote:
-> 
-> > 
-> > Recent distributions start to have /etc/mtab being a symlink to 
-> > /proc/mounts with util-linux 2.19. Subsequently, this annoys umount.nfs4 
-> > from nfs-client-1.2.3 and emits a warning:
-> > 
-> > jng-0:/ # grep nfs4 /proc/mounts
-> > 10.10.1.1:/home/ /home nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=10.10.1.212,minorversion=0,local_lock=none,addr=10.10.1.1 0 0
-> > jng-0:/ # umount /home
-> > umount.nfs4: invalid value for 'port=' option
-> 
-> I can take a look at this.
-> 
+T *x;
+...
+* memset(x, ..., ... * sizeof(x) * ...);
+// </smpl>
 
-FWIW, I just fixed mount.cifs recently based on recommendations from
-Karel:
+Signed-off-by: Ilia Mirkin <imirkin@alum.mit.edu>
 
-    http://git.samba.org/?p=cifs-utils.git;a=commitdiff;h=fba28cfe2f13dd8bdae3cec76178f42b001a40ca
+---
+ fs/nfs_common/nfsacl.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-...this is the same approach that /bin/mount uses, so you're probably
-safe to use a similar one for mount/umount.nfs.
+Untested. But it's unlikely that the original intention was to only
+zero out the acl's refcount. However all of the acl's fields are
+explicitly initialized, so perhaps this can just be removed entirely.
+Unless the intention was to avoid leaking stack data in the structure's
+padding bytes.
 
+diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
+index 84c27d6..bc6d81b 100644
+--- a/fs/nfs_common/nfsacl.c
++++ b/fs/nfs_common/nfsacl.c
+@@ -117,7 +117,7 @@ int nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
+ 		 * invoked in contexts where a memory allocation failure is
+ 		 * fatal.  Fortunately this fake ACL is small enough to
+ 		 * construct on the stack. */
+-		memset(acl2, 0, sizeof(acl2));
++		memset(acl2, 0, sizeof(*acl2));
+ 		posix_acl_init(acl2, 4);
+ 
+ 		/* Insert entries in canonical order: other orders seem
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.3.4
+
