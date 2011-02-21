@@ -1,100 +1,394 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:51238 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754413Ab1BUJJl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 04:09:41 -0500
-Received: by iwn8 with SMTP id 8so1673439iwn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2011 01:09:40 -0800 (PST)
-In-Reply-To: <AANLkTikGAHBEKxeQqVegtW3VmZcJScMPkzGOyWfvD9h7@mail.gmail.com>
-References: <AANLkTikGAHBEKxeQqVegtW3VmZcJScMPkzGOyWfvD9h7@mail.gmail.com>
-Date: Mon, 21 Feb 2011 11:09:40 +0200
-Message-ID: <AANLkTinZ61OZObYMeuisJ-H2+o3PgFM1K+kExyUMaTNL@mail.gmail.com>
-Subject: Re: 2.6.32, NFSv4, "Stale NFS file handle" problem
-From: Nick Patavalis <npat@efault.net>
-To: linux-nfs@vger.kernel.org
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:46930 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751401Ab1BUUxf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 15:53:35 -0500
+Received: by ywj3 with SMTP id 3so954654ywj.19
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2011 12:53:35 -0800 (PST)
+In-Reply-To: <E56EE676-77C8-4FF3-B6FE-5D593AF32915@oracle.com>
+References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com>
+	<665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com>
+	<AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com>
+	<0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
+	<AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com>
+	<AANLkTinG0774DoYyM+2381Eyxdx0+29JUs_-dzfRp=vM@mail.gmail.com>
+	<1A31AB06-8518-427C-8D0B-0058AA613D0E@oracle.com>
+	<AANLkTimiACttSQ+=M0UNGs5nZrP=zs0zRFV+4HP8c-OP@mail.gmail.com>
+	<81853901-909D-4803-81A5-C01C0337CAE1@oracle.com>
+	<AANLkTim9zbEzKZ=RZbfZhcLovn6fWkdL-3eZp21-NDP+@mail.gmail.com>
+	<2F1D1F4B-0623-4954-861C-2F7B37EB2CA7@oracle.com>
+	<AANLkTikFVyg-VY5SdXMWTYuyx3irRPPa=cw0-f35NduT@mail.gmail.com>
+	<46B9DC0D-2396-40F3-9DFF-C1CD7DF1F145@oracle.com>
+	<AANLkTinty+rEMQ2MX+gvZXoYED3uQ1xsd5eE=JH1rYZH@mail.gmail.com>
+	<E56EE676-77C8-4FF3-B6FE-5D593AF32915@oracle.com>
+Date: Mon, 21 Feb 2011 16:53:33 -0400
+Message-ID: <AANLkTi=C+a_wyHno1-Uc4ExcaKrHr8B50_-uMFLLGpKt@mail.gmail.com>
+Subject: Re: NFS only mount with -o udp option
+From: Edgar Almonte <samudhio@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+Thanks ,
 
-On Mon, Feb 21, 2011 at 2:54 AM, Nick Patavalis <npat@efault.net> wrote:
+i will try get update nfs-utils to the last version , already contact
+the maintainer of the package.
+
+On Mon, Feb 21, 2011 at 4:30 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
 >
-> I don't know if this is an NFS bug, but seems a lot like it... My
-> server-host exports a few NTFS filesystems (read-only exports) using
-> NFSv4. Two client-hosts mount these file-systems.
+> On Feb 15, 2011, at 5:55 PM, Edgar Almonte wrote:
 >
-> Client A runs 2.6.31, and client B 2.6.32. Client A works fine. Client
-> B, while it initially mounts everything ok, and for some time
-> everything works ok (or so it seems), after a while it starts
-> returning "Stale NFS file hande" errors for random files and
-> directories. Client A NEVER returns stale errors, EVEN after a server
-> reboot.
+>> yes the server is  archlinux x86-64. i mount in the server a folder
+>> that i share in the client using NFSv4 setup :
+>> client share setup:
+>> (/etc/exports )
+>> /srv/nfs4          192.168.1.1/24(rw,fsid=0,no_subtree_check,async,crossmnt)
+>> /srv/nfs4/torrent_files   192.168.1.1/24(rw,no_subtree_check,async)
+>>
+>> i have this setup in the client ( with the problem , archlinux i686 )
+>> and i mount this in the main server ( file server ) without udp option
+>> and work fine ( and without the modprobe.conf ipv6 line )
+>>
+>> now the share setup in the server ( the X86-64 ) :
+>> (/etc/exports )
+>> /STORAGE/ 192.168.1.1/24(ro,fsid=0,no_subtree_check,insecure,sync,nohide)
+>>
+>> which i read is the way of share for NFSv3 and/or NFSv2
+>> ( i do this because i am noob at nfs but i will take in the future the
+>> NFSv4 way )
+>> now when i mount that share in the client is where i get the error (
+>> without using the udp option and without the modprobe.conf line of
+>> ipv6 )
 >
-
-Some additional information.
-
-After the problem appears (i.e. after "client B" starts returning
-"stale file handle" errors), an "ls" on a file (directory) for
-which the file-handle is stale, with "sunrpc.nfs_debug = 1023"
-shows:
-
-  # ls /mnt/thepat/mydvds5-6/MyDVDs5
-  ls: cannot access /mnt/thepat/mydvds5-6/MyDVDs5: Stale NFS file
-  handle
-  # ls /mnt/thepat/mydvds5-6/MyDVDs5
-  ls: cannot access /mnt/thepat/mydvds5-6/MyDVDs5: Stale NFS file
-  handle
-
-While in syslog:
-
-  Feb 21 10:59:19 azure kernel: [197436.952297] encode_compound: tag=
-  Feb 21 10:59:19 azure kernel: [197436.957441] decode_attr_type: type=040000
-  Feb 21 10:59:19 azure kernel: [197436.957448] decode_attr_change:
-change attribute=381218604654685448
-  Feb 21 10:59:19 azure kernel: [197436.957454] decode_attr_size: file size=4096
-  Feb 21 10:59:19 azure kernel: [197436.957460] decode_attr_fsid: fsid=(0x4/0x0)
-  Feb 21 10:59:19 azure kernel: [197436.957465] decode_attr_fileid: fileid=5
-  Feb 21 10:59:19 azure kernel: [197436.957471]
-decode_attr_fs_locations: fs_locations done, error = 0
-  Feb 21 10:59:19 azure kernel: [197436.957477] decode_attr_mode: file mode=0777
-  Feb 21 10:59:19 azure kernel: [197436.957481] decode_attr_nlink: nlink=1
-  Feb 21 10:59:19 azure kernel: [197436.957489] decode_attr_owner:
-nfs_map_name_to_uid failed!
-  Feb 21 10:59:19 azure kernel: [197436.957494] decode_attr_owner: uid=-2
-  Feb 21 10:59:19 azure kernel: [197436.957501] decode_attr_group:
-nfs_map_group_to_gid failed!
-  Feb 21 10:59:19 azure kernel: [197436.957506] decode_attr_group: gid=-2
-  Feb 21 10:59:19 azure kernel: [197436.957511] decode_attr_rdev: rdev=(0x0:0x0)
-  Feb 21 10:59:19 azure kernel: [197436.957516]
-decode_attr_space_used: space used=4096
-  Feb 21 10:59:19 azure kernel: [197436.957522]
-decode_attr_time_access: atime=1297893893
-  Feb 21 10:59:19 azure kernel: [197436.957527]
-decode_attr_time_metadata: ctime=1297893893
-  Feb 21 10:59:19 azure kernel: [197436.957533]
-decode_attr_time_modify: mtime=1297893893
-  Feb 21 10:59:19 azure kernel: [197436.957538]
-decode_attr_mounted_on_fileid: fileid=0
-  Feb 21 10:59:19 azure kernel: [197436.957543] decode_getfattr: xdr returned 0
-  Feb 21 10:59:19 azure kernel: [197436.957557] NFS:
-nfs_update_inode(0:1e/5 ct=3 info=0x27e67)
-  Feb 21 10:59:19 azure kernel: [197436.957567] NFS:
-permission(0:1e/5), mask=0x1, res=0
-  Feb 21 10:59:19 azure kernel: [197436.957578] NFS:
-nfs_lookup_revalidate(/MyDVDs5) is valid
-  Feb 21 10:59:19 azure kernel: [197436.957586] NFS: revalidating (0:1e/33)
-  Feb 21 10:59:19 azure kernel: [197436.957596] encode_compound: tag=
-  Feb 21 10:59:19 azure kernel: [197436.963413] nfs_revalidate_inode:
-(0:1e/33) getattr failed, error=-116
-  Feb 21 10:59:19 azure kernel: [197436.963422] NFS: dentry_delete(/MyDVDs5, 88)
-  Feb 21 10:59:28 azure kernel: [197446.008528] NFS:
-permission(0:1e/5), mask=0x1, res=0
-  Feb 21 10:59:28 azure kernel: [197446.008540] NFS:
-nfs_lookup_revalidate(/MyDVDs5) is valid
-  Feb 21 10:59:28 azure kernel: [197446.008547] NFS: revalidating (0:1e/33)
-  Feb 21 10:59:28 azure kernel: [197446.008568] encode_compound: tag=
-  Feb 21 10:59:28 azure kernel: [197446.015965] nfs_revalidate_inode:
-(0:1e/33) getattr failed, error=-116
-  Feb 21 10:59:28 azure kernel: [197446.015974] NFS: dentry_delete(/MyDVDs5, 88)
+> I can't reproduce your mount failure on my x86 client running the latest nfs-utils.  I recommend contacting your distributor for support, as I suspect whatever problem you have hit is fixed by a later release of nfs-utils.
+>
+>> netconfig cat output:
+>> #
+>> # The network configuration file. This file is currently only used in
+>> # conjunction with the TI-RPC code in the libtirpc library.
+>> #
+>> # Entries consist of:
+>> #
+>> #       <network_id> <semantics> <flags> <protofamily> <protoname> \
+>> #               <device> <nametoaddr_libs>
+>> #
+>> # The <device> and <nametoaddr_libs> fields are always empty in this
+>> # implementation.
+>> #
+>> udp        tpi_clts      v     inet     udp     -       -
+>> tcp        tpi_cots_ord  v     inet     tcp     -       -
+>> udp6       tpi_clts      v     inet6    udp     -       -
+>> tcp6       tpi_cots_ord  v     inet6    tcp     -       -
+>> rawip      tpi_raw       -     inet      -      -       -
+>> local      tpi_cots_ord  -     loopback  -      -       -
+>> unix       tpi_cots_ord  -     loopback  -      -       -
+>>
+>> On Tue, Feb 15, 2011 at 6:54 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>
+>>> On Feb 15, 2011, at 5:31 PM, Edgar Almonte wrote:
+>>>
+>>>> i confirm the ipv6 things i tell you , i comment the line
+>>>>
+>>>> options ipv6 disable=1
+>>>>
+>>>> in /etc/modprobe.d/modprobe.conf
+>>>>
+>>>> the same error in mount without using -o udp
+>>>>
+>>>> but the thing is i share folder in that client and mount it in the
+>>>> server normal without the upd option and work fine ( the server have
+>>>> the same distro that the client with the problem "archlinux" ) and in
+>>>> the server i dont have the option in the /etc/modprobe.d/modprobe.conf
+>>>>
+>>>> [root@heaven Desktop]# mount  circle.local:/torrent_files
+>>>> /media/torrent_files/ -v
+>>>> mount: no type was given - I'll assume nfs because of the colon
+>>>> mount.nfs: timeout set for Tue Feb 15 18:27:24 2011
+>>>> mount.nfs: trying text-based options
+>>>> 'vers=4,addr=192.168.1.103,clientaddr=192.168.1.102'
+>>>> circle.local:/torrent_files on /media/torrent_files type nfs (rw)
+>>>>
+>>>> i use nfs4 for this share in the server and using nfs3 for the share
+>>>>
+>>>> another thing is that the server have the version 64bit of the same
+>>>> package in the client but i686 plataform
+>>>
+>>> Let me confirm what you said:
+>>>
+>>>  1.  The server is running the latest ARCH (x86-64).  Mounting the share via loopback on the server gets you an NFSv4 mount
+>>>  2.  The client is running the latest ARCH (x86-32).  Mounting the share from the client gets you an NFSv3, not an NFSv4, mount, and you have to specify UDP to make the negotiation complete successfully
+>>>  3.  Preventing ipv6.ko from loading on the client allows the mount to proceed without specifying extra options
+>>>
+>>> I tried to reproduce this this morning from an x86-64 client using the latest upstream nfs-utils source, and was able to get an NFSv4 mount immediately.  In other words, I reproduced the behavior in 1, but was not able to reproduce the behavior in 2.  I can try again with an x86-32 client soon, but I'm traveling tomorrow.
+>>>
+>>> Specifying "udp" forces the mount request to use IPv4.  If my theory is correct, specifying "tcp" also works, and gets you an NFSv4 mount.  I wasn't aware that ARCH had libtirpc and an IPv6-enabled nfs-utils build.  Does the failing client have a copy of /etc/netconfig, and can you send it?
+>>>
+>>>> rpc.mountd option:
+>>>> root@heaven Desktop]# ps aux | grep rpc.mountd
+>>>> root      4351  0.0  0.0  54512   660 ?        Ss   18:11   0:00
+>>>> /usr/sbin/rpc.mountd --no-nfs-version 1 --no-nfs-version 2
+>>>
+>>> That's consistent with the "rpcinfo" output you provided, but it doesn't explain why nfsd is still providing NFSv2.  Probably not a big deal, as the mount command on your client is failing before it even tries vers=2.
+>>>
+>>>> On Tue, Feb 15, 2011 at 11:27 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>
+>>>>> On Feb 14, 2011, at 9:09 PM, Edgar Almonte wrote:
+>>>>>
+>>>>>> in debian dont exist a package called nfs-utils , i get nfs-common and
+>>>>>> say the same version of the nfs-utils of archlinux
+>>>>>
+>>>>> The same nfs-utils version should behave the same way no matter what (modulo bugs, of course).  It may be that the two packages were built with different configure options.  Not sure how we could find out how these were built.
+>>>>>
+>>>>> Basically, I'm trying to figure out how to reproduce the problem here.
+>>>>>
+>>>>>> not sure about MNT version config , i dont remember intentionally
+>>>>>> changing this , where i can check it ?
+>>>>>
+>>>>> On the server, look at the command line options for rpc.mountd.  I'm not familiar with Ubuntu or Debian's start-up scripts, so I can't be more specific than that.
+>>>>>
+>>>>> Note that this is an independent issue from the mount problem, but it's incorrect and contributing to mount's misbehavior.
+>>>>>
+>>>>>> pd: sorry for the double email i forget press reply all
+>>>>>>
+>>>>>> On Mon, Feb 14, 2011 at 11:56 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>>> Hi Edgar-
+>>>>>>>
+>>>>>>> On Feb 11, 2011, at 6:46 PM, Edgar Almonte wrote:
+>>>>>>>
+>>>>>>>> hmm i will try update to the last version but is the lasted in
+>>>>>>>> official repository of my distro
+>>>>>>>
+>>>>>>> Yes, that could be a problem.  Out of curiosity, can you tell us what version of nfs-utils is running on the working Debian client you have?
+>>>>>>>
+>>>>>>>> the rpcinfo -p localhost output ( run at the server )
+>>>>>>>>
+>>>>>>>> rpcinfo -p localhost
+>>>>>>>>   program vers proto   port  service
+>>>>>>>>    100000    4   tcp    111  portmapper
+>>>>>>>>    100000    3   tcp    111  portmapper
+>>>>>>>>    100000    2   tcp    111  portmapper
+>>>>>>>>    100000    4   udp    111  portmapper
+>>>>>>>>    100000    3   udp    111  portmapper
+>>>>>>>>    100000    2   udp    111  portmapper
+>>>>>>>>    391002    2   tcp    661  sgi_fam
+>>>>>>>>    100024    1   udp  49216  status
+>>>>>>>>    100024    1   tcp  42903  status
+>>>>>>>>    100003    2   tcp   2049  nfs
+>>>>>>>>    100003    3   tcp   2049  nfs
+>>>>>>>>    100003    4   tcp   2049  nfs
+>>>>>>>>    100227    2   tcp   2049  nfs_acl
+>>>>>>>>    100227    3   tcp   2049  nfs_acl
+>>>>>>>>    100003    2   udp   2049  nfs
+>>>>>>>>    100003    3   udp   2049  nfs
+>>>>>>>>    100003    4   udp   2049  nfs
+>>>>>>>>    100227    2   udp   2049  nfs_acl
+>>>>>>>>    100227    3   udp   2049  nfs_acl
+>>>>>>>>    100021    1   udp  36092  nlockmgr
+>>>>>>>>    100021    3   udp  36092  nlockmgr
+>>>>>>>>    100021    4   udp  36092  nlockmgr
+>>>>>>>>    100021    1   tcp  52268  nlockmgr
+>>>>>>>>    100021    3   tcp  52268  nlockmgr
+>>>>>>>>    100021    4   tcp  52268  nlockmgr
+>>>>>>>>    100005    3   udp  41849  mountd
+>>>>>>>>    100005    3   tcp  46012  mountd
+>>>>>>>
+>>>>>>> This looks weird.  NFS is available on TCP and UDP in all three versions, but MNT is available in version 3.  I wonder if this is confusing mount.nfs.  Is there any reason why your server is configured to disable MNT version 1?
+>>>>>>>
+>>>>>>>> On Fri, Feb 11, 2011 at 7:27 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>>>>>
+>>>>>>>>> On Feb 11, 2011, at 6:13 PM, Edgar Almonte wrote:
+>>>>>>>>>
+>>>>>>>>>> Was a ipv6 issues because i add this to the client with the problem:
+>>>>>>>>>> options ipv6 disable=1
+>>>>>>>>>> in /etc/modprobe.d/modprobe.conf
+>>>>>>>>>> reboot and mount without using udp option work, output:
+>>>>>>>>>>
+>>>>>>>>>> [root@circle zen]# mount heaven.local:/STORAGE /nfs/STORAGE/ -v
+>>>>>>>>>> mount: no type was given - I'll assume nfs because of the colon
+>>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 19:11:53 2011
+>>>>>>>>>> mount.nfs: trying text-based options
+>>>>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>>>>>>>>>> mount.nfs: mount(2): No such file or directory
+>>>>>>>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
+>>>>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=6
+>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
+>>>>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41849
+>>>>>>>>>>
+>>>>>>>>>> and i think maybe is a bug of nfs-utils that can't handle in the
+>>>>>>>>>> proper way this because a connection using ipv4 protocol exist ( even
+>>>>>>>>>> it detect it )
+>>>>>>>>>>
+>>>>>>>>>> should i need report something like this ? or and wrong ?
+>>>>>>>>>
+>>>>>>>>> I swear this has been discussed and fixed already, but I can't find a specific fix in the bugzilla database or the git log.  nfs-utils 1.2.2 is at least a year old.  Can you update to the latest version and try again?
+>>>>>>>>>
+>>>>>>>>> Also, please report the NFS server's transport capabilities.  "rpcinfo 192.168.1.102" should work.  You may need the "-p" option.
+>>>>>>>>>
+>>>>>>>>>> On Fri, Feb 11, 2011 at 6:57 PM, Edgar Almonte <samudhio@gmail.com> wrote:
+>>>>>>>>>>> [root@circle zen]# pacman -Qs nfs-utils
+>>>>>>>>>>> local/nfs-utils 1.2.2-4 [0.69 MB]
+>>>>>>>>>>>    Support programs for Network File Systems
+>>>>>>>>>>> [root@circle zen]# uname -a
+>>>>>>>>>>> Linux circle 2.6.36-ARCH #1 SMP PREEMPT Mon Jan 24 18:34:55 UTC 2011
+>>>>>>>>>>> i686 Intel(R) Atom(TM) CPU D510 @ 1.66GHz GenuineIntel GNU/Linux
+>>>>>>>>>>>
+>>>>>>>>>>>
+>>>>>>>>>>> On Fri, Feb 11, 2011 at 1:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>>>>>>>> Which nfs-utils version and kernel release are you using?  What transport protocols are available from your NFS server?  It looks like only UDP.  I recall a bug fix in this area in the past year.
+>>>>>>>>>>>>
+>>>>>>>>>>>> On Feb 11, 2011, at 12:35 PM, Edgar Almonte wrote:
+>>>>>>>>>>>>
+>>>>>>>>>>>>> i get this without udp option:
+>>>>>>>>>>>>>
+>>>>>>>>>>>>> mount: no type was given - I'll assume nfs because of the colon
+>>>>>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:27:33 2011
+>>>>>>>>>>>>> mount.nfs: trying text-based options
+>>>>>>>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>>>>>>>>>>>>> mount.nfs: mount(2): No such file or directory
+>>>>>>>>>>>>> mount.nfs: trying text-based options
+>>>>>>>>>>>>> 'vers=4,addr=fe80::224:21ff:fe57:368d,clientaddr=::'
+>>>>>>>>>>>>> mount.nfs: mount(2): Input/output error
+>>>>>>>>>>>>> mount.nfs: mount system call failed
+>>>>>>>>>>>>>
+>>>>>>>>>>>>>
+>>>>>>>>>>>>> and with udp option:
+>>>>>>>>>>>>>
+>>>>>>>>>>>>> ount: no type was given - I'll assume nfs because of the colon
+>>>>>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:28:29 2011
+>>>>>>>>>>>>> mount.nfs: trying text-based options
+>>>>>>>>>>>>> 'udp,vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
+>>>>>>>>>>>>> mount.nfs: mount(2): No such file or directory
+>>>>>>>>>>>>> mount.nfs: trying text-based options 'udp,addr=192.168.1.102'
+>>>>>>>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=17
+>>>>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot UDP port 2049
+>>>>>>>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>>>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+>>>>>>>>>>>>> heaven.local:/STORAGE on /nfs/STORAGE type nfs (rw,udp)
+>>>>>>>>>>>>>
+>>>>>>>>>>>>>
+>>>>>>>>>>>>> for other distro ( debian laptop ) without the udp option:
+>>>>>>>>>>>>>
+>>>>>>>>>>>>> mount: no type was given - I'll assume nfs because of the colon
+>>>>>>>>>>>>> mount.nfs: timeout set for Fri Feb 11 13:31:37 2011
+>>>>>>>>>>>>> mount.nfs: trying text-based options
+>>>>>>>>>>>>> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.107'
+>>>>>>>>>>>>> mount.nfs: mount(2): No such file or directory
+>>>>>>>>>>>>> mount.nfs: trying text-based options 'addr=192.168.1.102'
+>>>>>>>>>>>>> mount.nfs: prog 100003, trying vers=3, prot=6
+>>>>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
+>>>>>>>>>>>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>>>>>>>>>>>> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
+>>>>>>>>>>>>> heaven.local:/STORAGE on /srv/nfs type nfs (rw)
+>>>>>>>>>>>>>
+>>>>>>>>>>>>>
+>>>>>>>>>>>>> and look like is some ipv6 issues
+>>>>>>>>>>>>>
+>>>>>>>>>>>>>
+>>>>>>>>>>>>> On Thu, Feb 10, 2011 at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>>>>>>>>>>
+>>>>>>>>>>>>>> On Feb 9, 2011, at 7:59 PM, Edgar Almonte wrote:
+>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>> hello list
+>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>> like the subject say after some upgrade of my distro ( i have 2
+>>>>>>>>>>>>>>> machine with the same distro and only in one happne the problem ) i
+>>>>>>>>>>>>>>> can only mount nfs share using the option -o udp , without it i get
+>>>>>>>>>>>>>>> this error
+>>>>>>>>>>>>>>> mount.nfs: mount system call failed
+>>>>>>>>>>>>>>
+>>>>>>>>>>>>>> What does
+>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>  sudo mount.nfs heaven.local:/STORAGE /nfs/STORAGE -v
+>>>>>>>>>>>>>>
+>>>>>>>>>>>>>> say?  It should tell you how the mount command is negotiating with the server.
+>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>> i am using avahi-dns ( mdns ) for hostname resolve
+>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>> command used:
+>>>>>>>>>>>>>>> mount heaven.local:/STORAGE /nfs/STORAGE/
+>>>>>>>>>>>>>>> check dns is work right :
+>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>> ping heaven.local
+>>>>>>>>>>>>>>> PING heaven.local (192.168.1.102) 56(84) bytes of data.
+>>>>>>>>>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=1 ttl=64 time=0.153 ms
+>>>>>>>>>>>>>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=2 ttl=64 time=0.160 ms
+>>>>>>>>>>>>>>> ^C
+>>>>>>>>>>>>>>> --- heaven.local ping statistics ---
+>>>>>>>>>>>>>>> 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+>>>>>>>>>>>>>>> rtt min/avg/max/mdev = 0.153/0.156/0.160/0.013 ms
+>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>> anyidea what i need check for solve this issue ?
+>>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>> thanks
+>>>>>>>>>>>>>>> --
+>>>>>>>>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>>>>>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>>>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>>>>>>>>>>
+>>>>>>>>>>>>>> --
+>>>>>>>>>>>>>> Chuck Lever
+>>>>>>>>>>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>
+>>>>>>>>>>>>>>
+>>>>>>>>>>>>
+>>>>>>>>>>>> --
+>>>>>>>>>>>> Chuck Lever
+>>>>>>>>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>>>>>>>>>
+>>>>>>>>>>>>
+>>>>>>>>>>>>
+>>>>>>>>>>>>
+>>>>>>>>>>>>
+>>>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>> --
+>>>>>>>>> Chuck Lever
+>>>>>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>>
+>>>>>>>
+>>>>>>> --
+>>>>>>> Chuck Lever
+>>>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>>>
+>>>>> --
+>>>>> Chuck Lever
+>>>>> chuck[dot]lever[at]oracle[dot]com
+>>>>>
+>>>>>
+>>>>>
+>>>>>
+>>>>>
+>>>
+>>> --
+>>> Chuck Lever
+>>> chuck[dot]lever[at]oracle[dot]com
+>>>
+>>>
+>>>
+>>>
+>>>
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
