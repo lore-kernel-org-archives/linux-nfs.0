@@ -1,66 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38185 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:43653 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754799Ab1BCDsq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Feb 2011 22:48:46 -0500
-Date: Wed, 2 Feb 2011 22:48:44 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: George Spelvin <linux@horizon.com>
-Cc: linux-nfs@vger.kernel.org, nix@esperi.org.uk
-Subject: Re: persistent, quasi-random -ESTALE at mount time
-Message-ID: <20110203034844.GA30641@fieldses.org>
-References: <20110202035636.32013.qmail@science.horizon.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110202035636.32013.qmail@science.horizon.com>
+	id S1754599Ab1BURtm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Feb 2011 12:49:42 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 3/7] NFSv4.1: Send lseg down into nfs_write_rpcsetup
+Date: Mon, 21 Feb 2011 12:49:32 -0500
+Message-Id: <1298310576-13523-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1298310576-13523-1-git-send-email-iisaman@netapp.com>
+References: <1298310576-13523-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Feb 01, 2011 at 10:56:36PM -0500, George Spelvin wrote:
-> For what it's worth, I'm seeing the same problem.
-> 
-> The server was just rebooted with 2.6.38-rc3, and the client reported
-> "STALE NFS file handle".  I wish I understood why; I thought the point
-> of a stateless protocol was that it could survive server reboots.
-> 
-> Anyway, I found all the affected processes, killed them, unmounted,
-> tried to remount, and lo and behold:
-> 
-> mount("server:/path/dir", "/client/dir", "nfs", MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC, "addr=ww.xx.yy.zz,vers=3,proto=tcp,mountvers=3,mountproto=tcp,mountport=2050") = -1 ESTALE (Stale NFS file handle)
-> 
-> The server is just logging
-> send(10, "<29>Feb  1 22:39:49 mountd[4167]: authenticated mount request from $CLIENT:912 for /path/dir (/path/dir)", 125, MSG_NOSIGNAL) = 125
-> 
-> /proc/fs/nfs/exports is reporting:
-> /path/dir   *.dom.ain,client.dom.ain(ro,root_squash,async,wdelay,no_subtree_check,uuid=3210ba59:586b43f2:8780109f:d915f4ab)
-> 
-> Debian packaged nfs utilities 1.2.2-4 on both server and client.  32 bits in both cases.  (Server is
-> running a 64-bit kernel, but 32-bit userland.)
-> 
-> It worked immediately before the reboot (when the server was runnign 2.6.26-rcX).
-> 
-> 
-> "exportfs -a" several times did NOT fix it, but restarting mountd and nfsd
-> ("/etc/init.d/nfs-kernel-server restart") fixed it.
-> 
-> 
-> Anyway, quite annoying.  Unfortunately, that's a server I don't like to reboot.
-> (But I can restart the NFS server safely if that would help testing.)
+We grab the lseg sent in from the doio function and attach it to
+each struct nfs_write_data created.  This is how the lseg will be
+sent to the layout driver.
 
-So the reboot was for an upgrade from 2.6.26-rcX to 2.6.38-rc3?  I
-wonder if a reboot (or just a server restart) without changing kernels
-would see the same problem?
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/write.c          |    7 +++++--
+ include/linux/nfs_xdr.h |    1 +
+ 2 files changed, 6 insertions(+), 2 deletions(-)
 
-In which case some change in the filehandle format or perhaps in the way
-the uuid's are calculated might explain the problem.
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 5604854..0df18ae 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -97,6 +97,7 @@ void nfs_writedata_free(struct nfs_write_data *p)
+ 
+ static void nfs_writedata_release(struct nfs_write_data *wdata)
+ {
++	put_lseg(wdata->lseg);
+ 	put_nfs_open_context(wdata->args.context);
+ 	nfs_writedata_free(wdata);
+ }
+@@ -840,6 +841,7 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+ 		struct nfs_write_data *data,
+ 		const struct rpc_call_ops *call_ops,
+ 		unsigned int count, unsigned int offset,
++		struct pnfs_layout_segment *lseg,
+ 		int how)
+ {
+ 	struct inode *inode = req->wb_context->path.dentry->d_inode;
+@@ -850,6 +852,7 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+ 	data->req = req;
+ 	data->inode = inode = req->wb_context->path.dentry->d_inode;
+ 	data->cred = req->wb_context->cred;
++	data->lseg = get_lseg(lseg);
+ 
+ 	data->args.fh     = NFS_FH(inode);
+ 	data->args.offset = req_offset(req) + offset;
+@@ -930,7 +933,7 @@ static int nfs_flush_multi(struct inode *inode, struct list_head *head, unsigned
+ 		if (nbytes < wsize)
+ 			wsize = nbytes;
+ 		ret2 = nfs_write_rpcsetup(req, data, &nfs_write_partial_ops,
+-				   wsize, offset, how);
++					  wsize, offset, lseg, how);
+ 		if (ret == 0)
+ 			ret = ret2;
+ 		offset += wsize;
+@@ -978,7 +981,7 @@ static int nfs_flush_one(struct inode *inode, struct list_head *head, unsigned i
+ 	req = nfs_list_entry(data->pages.next);
+ 
+ 	/* Set up the argument struct */
+-	return nfs_write_rpcsetup(req, data, &nfs_write_full_ops, count, 0, how);
++	return nfs_write_rpcsetup(req, data, &nfs_write_full_ops, count, 0, lseg, how);
+  out_bad:
+ 	while (!list_empty(head)) {
+ 		req = nfs_list_entry(head->next);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 21cd41d..09d9681 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1038,6 +1038,7 @@ struct nfs_write_data {
+ 	unsigned int		npages;		/* Max length of pagevec */
+ 	struct nfs_writeargs	args;		/* argument struct */
+ 	struct nfs_writeres	res;		/* result struct */
++	struct pnfs_layout_segment *lseg;
+ 	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
+ #ifdef CONFIG_NFS_V4
+ 	unsigned long		timestamp;	/* For lease renewal */
+-- 
+1.7.2.1
 
-We work quite hard to ensure that filehandles returned from older nfsd's
-will still be accepted by newer ones.  But that doesn't mean there
-couldn't failed at that somehow in some case....
-
-If you manage to reproduce the problem, /proc/fs/nfs/exports before and
-after the reboot would be interesting, and ideally also a network trace
-showing traffic before and after the reboot (including the operation
-that returned the STALE error).
-
---b.
