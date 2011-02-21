@@ -1,170 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41287 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752692Ab1BNTSs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Feb 2011 14:18:48 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>,
-        Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 08/16] pnfs: wave 3: lseg refcounting
-Date: Mon, 14 Feb 2011 14:18:28 -0500
-Message-Id: <1297711116-3139-9-git-send-email-andros@netapp.com>
-In-Reply-To: <1297711116-3139-1-git-send-email-andros@netapp.com>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:47174 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751921Ab1BUWaK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 17:30:10 -0500
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Cc: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 3/9] pnfsd: do not clear rpc_resp in nfsd4_cb_done_sequence
+Date: Mon, 21 Feb 2011 14:30:06 -0800
+Message-Id: <1298327406-7544-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4D62E6F3.8000304@panasas.com>
+References: <4D62E6F3.8000304@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@netapp.com>
+This is not needed anymore and is causes bug on the retry path
+after getting NFS4ERR_DELAY when nfs4_xdr_dec_cb_layout sees cb == NULL
 
-Prepare put_lseg and get_lseg to be called from the pNFS I/O code.
-Pull common code from pnfs_lseg_locked to call from pnfs_lseg.
-
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
 Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/pnfs.c |   53 +++++++++++++++++++++++++++++++++++++++++------------
- fs/nfs/pnfs.h |   20 ++++++++++++++++++++
- 2 files changed, 61 insertions(+), 12 deletions(-)
+ fs/nfsd/nfs4callback.c |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7d031cd..f0a9578 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -230,6 +230,21 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
- 	put_layout_hdr(NFS_I(ino)->layout);
- }
- 
-+static void
-+_put_lseg_common(struct pnfs_layout_segment *lseg)
-+{
-+	struct inode *ino = lseg->pls_layout->plh_inode;
-+
-+	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+	list_del(&lseg->pls_list);
-+	if (list_empty(&lseg->pls_layout->plh_segs)) {
-+		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
-+		/* Matched by initial refcount set in alloc_init_layout_hdr */
-+		put_layout_hdr_locked(lseg->pls_layout);
-+	}
-+	rpc_wake_up(&NFS_SERVER(ino)->roc_rpcwaitq);
-+}
-+
- /* The use of tmp_list is necessary because pnfs_curr_ld->free_lseg
-  * could sleep, so must be called outside of the lock.
-  * Returns 1 if object was removed, otherwise return 0.
-@@ -242,22 +257,35 @@ put_lseg_locked(struct pnfs_layout_segment *lseg,
- 		atomic_read(&lseg->pls_refcount),
- 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	if (atomic_dec_and_test(&lseg->pls_refcount)) {
--		struct inode *ino = lseg->pls_layout->plh_inode;
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 8351f67..3fb989a 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -876,9 +876,6 @@ static void nfsd4_cb_done_sequence(struct rpc_task *task,
+ 		rpc_wake_up_next(&clp->cl_cb_waitq);
+ 		dprintk("%s: freed slot, new seqid=%d\n", __func__,
+ 			clp->cl_cb_session->se_cb_seq_nr);
 -
--		BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
--		list_del(&lseg->pls_list);
--		if (list_empty(&lseg->pls_layout->plh_segs)) {
--			set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
--			/* Matched by initial refcount set in alloc_init_layout_hdr */
--			put_layout_hdr_locked(lseg->pls_layout);
--		}
--		rpc_wake_up(&NFS_SERVER(ino)->roc_rpcwaitq);
-+		_put_lseg_common(lseg);
- 		list_add(&lseg->pls_list, tmp_list);
- 		return 1;
+-		/* We're done looking into the sequence information */
+-		task->tk_msg.rpc_resp = NULL;
  	}
- 	return 0;
  }
  
-+static void
-+put_lseg(struct pnfs_layout_segment *lseg)
-+{
-+	struct inode *ino;
-+
-+	if (!lseg)
-+		return;
-+
-+	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
-+		atomic_read(&lseg->pls_refcount),
-+		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
-+	ino = lseg->pls_layout->plh_inode;
-+	if (atomic_dec_and_lock(&lseg->pls_refcount, &ino->i_lock)) {
-+		LIST_HEAD(free_me);
-+
-+		_put_lseg_common(lseg);
-+		list_add(&lseg->pls_list, &free_me);
-+		spin_unlock(&ino->i_lock);
-+		pnfs_free_lseg_list(&free_me);
-+	}
-+}
-+
- static bool
- should_free_lseg(u32 lseg_iomode, u32 recall_iomode)
- {
-@@ -689,7 +717,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo, u32 iomode)
- 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
- 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
- 		    is_matching_lseg(lseg, iomode)) {
--			ret = lseg;
-+			ret = get_lseg(lseg);
- 			break;
- 		}
- 		if (cmp_layout(iomode, lseg->pls_range.iomode) > 0)
-@@ -769,6 +797,7 @@ pnfs_update_layout(struct inode *ino,
- out:
- 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
- 		nfsi->layout ? nfsi->layout->plh_flags : -1, lseg);
-+	put_lseg(lseg); /* STUB - callers currently ignore return value */
- 	return lseg;
- out_unlock:
- 	spin_unlock(&ino->i_lock);
-@@ -821,7 +850,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	}
- 	init_lseg(lo, lseg);
- 	lseg->pls_range = res->range;
--	*lgp->lsegpp = lseg;
-+	*lgp->lsegpp = get_lseg(lseg);
- 	pnfs_insert_layout(lo, lseg);
- 
- 	if (res->return_on_close) {
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index e2612ea..9a994bc 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -177,6 +177,16 @@ static inline int lo_fail_bit(u32 iomode)
- 			 NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
- }
- 
-+static inline struct pnfs_layout_segment *
-+get_lseg(struct pnfs_layout_segment *lseg)
-+{
-+	if (lseg) {
-+		atomic_inc(&lseg->pls_refcount);
-+		smp_mb__after_atomic_inc();
-+	}
-+	return lseg;
-+}
-+
- /* Return true if a layout driver is being used for this mountpoint */
- static inline int pnfs_enabled_sb(struct nfs_server *nfss)
- {
-@@ -194,6 +204,16 @@ static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
- }
- 
- static inline struct pnfs_layout_segment *
-+get_lseg(struct pnfs_layout_segment *lseg)
-+{
-+	return NULL;
-+}
-+
-+static inline void put_lseg(struct pnfs_layout_segment *lseg)
-+{
-+}
-+
-+static inline struct pnfs_layout_segment *
- pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
- 		   enum pnfs_iomode access_type)
- {
 -- 
-1.7.2.3
+1.7.3.4
 
