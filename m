@@ -1,79 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41287 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752692Ab1BNTSr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Feb 2011 14:18:47 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 07/16] pnfs: wave 3: add MDS mount DS only check
-Date: Mon, 14 Feb 2011 14:18:27 -0500
-Message-Id: <1297711116-3139-8-git-send-email-andros@netapp.com>
-In-Reply-To: <1297711116-3139-1-git-send-email-andros@netapp.com>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:47493 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753385Ab1BUWqs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 17:46:48 -0500
+Message-ID: <4D62EB58.7000600@panasas.com>
+Date: Mon, 21 Feb 2011 14:46:48 -0800
+From: Benny Halevy <bhalevy@panasas.com>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: linux-pnfs-cthon git tree
+References: <4D62EA13.1000809@panasas.com>
+In-Reply-To: <4D62EA13.1000809@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On 2011-02-21 14:41, Benny Halevy wrote:
+> I've set up a git tree for Connectathon to hold up the fixes we're testing
+> here temporarily.  I'll update the main tree when we're done so not to cause
+> unnecessary churn.
 
-The DS only role cannot be used to mount.
+Oops, here's the tree's url:
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/client.c  |    6 ++++++
- fs/nfs/nfs4_fs.h |   13 +++++++++++++
- 2 files changed, 19 insertions(+), 0 deletions(-)
+git://linux-nfs.org/~bhalevy/linux-pnfs-cthon.git
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 4d15331..e48457a 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1413,6 +1413,12 @@ static int nfs4_set_client(struct nfs_server *server,
- 		goto error;
- 	}
- 
-+	/* Cannot mount a DS only server */
-+	if (is_ds_only_client(clp)) {
-+		error = -ENODEV;
-+		goto error;
-+	}
-+
- 	/*
- 	 * Query for the lease time on clientid setup or renewal
- 	 *
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 7a74740..5d84642 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -259,6 +259,13 @@ extern int nfs4_proc_destroy_session(struct nfs4_session *);
- extern int nfs4_init_session(struct nfs_server *server);
- extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
- 		struct nfs_fsinfo *fsinfo);
-+
-+static inline bool
-+is_ds_only_client(struct nfs_client *clp)
-+{
-+	return (clp->cl_exchange_flags & EXCHGID4_FLAG_MASK_PNFS) ==
-+		EXCHGID4_FLAG_USE_PNFS_DS;
-+}
- #else /* CONFIG_NFS_v4_1 */
- static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
- {
-@@ -276,6 +283,12 @@ static inline int nfs4_init_session(struct nfs_server *server)
- {
- 	return 0;
- }
-+
-+static inline bool
-+is_ds_only_client(struct nfs_client *clp)
-+{
-+	return false;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
--- 
-1.7.2.3
+or
 
+ssh://linux-nfs.org/~bhalevy/exports/linux-pnfs-cthon.git
+if you don't have git access (and have ssh access to linux-nfs.org).
+
+If you need local access on the cthon network
+the latest tree is also available on
+git://10.41.21.1/linux-pnfs.git
+
+However, as it's stored on my laptop it might be unavailable
+intermittently.  Please coordinate with me when you're pulling it
+to make sure it stays up.
+
+Bennny 
+
+> 
+> The following branches have been posted up:
+> 
+>   pnfs-all-2.6.37
+>   pnfs-all-latest 	# based on v2.6.38-rc5
+>   pnfs-submit-wave3	# based on v2.6.38-rc5 .. Andy's wave3-rev11 .. Fred's 2 SQUASHMEs
+>   pnfs-submit-wave4	# based on pnfs-submit-wave3 and Fred's wave4 patches
+> 
+> The -all branches include the fixes for layout recall that I've posted on the mailing list.
+> 
+> Benny
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
