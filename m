@@ -1,126 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753268Ab1BDVe5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Feb 2011 16:34:57 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 38/40] pnfs-submit wave3 new flag for state renewal check
-Date: Fri,  4 Feb 2011 16:34:00 -0500
-Message-Id: <1296855242-2592-39-git-send-email-andros@netapp.com>
-In-Reply-To: <1296855242-2592-38-git-send-email-andros@netapp.com>
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
- <1296855242-2592-2-git-send-email-andros@netapp.com>
- <1296855242-2592-3-git-send-email-andros@netapp.com>
- <1296855242-2592-4-git-send-email-andros@netapp.com>
- <1296855242-2592-5-git-send-email-andros@netapp.com>
- <1296855242-2592-6-git-send-email-andros@netapp.com>
- <1296855242-2592-7-git-send-email-andros@netapp.com>
- <1296855242-2592-8-git-send-email-andros@netapp.com>
- <1296855242-2592-9-git-send-email-andros@netapp.com>
- <1296855242-2592-10-git-send-email-andros@netapp.com>
- <1296855242-2592-11-git-send-email-andros@netapp.com>
- <1296855242-2592-12-git-send-email-andros@netapp.com>
- <1296855242-2592-13-git-send-email-andros@netapp.com>
- <1296855242-2592-14-git-send-email-andros@netapp.com>
- <1296855242-2592-15-git-send-email-andros@netapp.com>
- <1296855242-2592-16-git-send-email-andros@netapp.com>
- <1296855242-2592-17-git-send-email-andros@netapp.com>
- <1296855242-2592-18-git-send-email-andros@netapp.com>
- <1296855242-2592-19-git-send-email-andros@netapp.com>
- <1296855242-2592-20-git-send-email-andros@netapp.com>
- <1296855242-2592-21-git-send-email-andros@netapp.com>
- <1296855242-2592-22-git-send-email-andros@netapp.com>
- <1296855242-2592-23-git-send-email-andros@netapp.com>
- <1296855242-2592-24-git-send-email-andros@netapp.com>
- <1296855242-2592-25-git-send-email-andros@netapp.com>
- <1296855242-2592-26-git-send-email-andros@netapp.com>
- <1296855242-2592-27-git-send-email-andros@netapp.com>
- <1296855242-2592-28-git-send-email-andros@netapp.com>
- <1296855242-2592-29-git-send-email-andros@netapp.com>
- <1296855242-2592-30-git-send-email-andros@netapp.com>
- <1296855242-2592-31-git-send-email-andros@netapp.com>
- <1296855242-2592-32-git-send-email-andros@netapp.com>
- <1296855242-2592-33-git-send-email-andros@netapp.com>
- <1296855242-2592-34-git-send-email-andros@netapp.com>
- <1296855242-2592-35-git-send-email-andros@netapp.com>
- <1296855242-2592-36-git-send-email-andros@netapp.com>
- <1296855242-2592-37-git-send-email-andros@netapp.com>
- <1296855242-2592-38-git-send-email-andros@netapp.com>
+Received: from relay.parallels.com ([195.214.232.42]:40300 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751738Ab1BUVet (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 16:34:49 -0500
+Message-ID: <4D62D8C4.3030004@parallels.com>
+Date: Tue, 22 Feb 2011 00:27:32 +0300
+From: Konstantin Khlebnikov <khlebnikov@parallels.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFS: account direct-io into task io accounting
+References: <20110221191546.5920.96947.stgit@localhost6> <CE953B49-D775-4A61-942B-4B2F5DE9D7BF@oracle.com>
+In-Reply-To: <CE953B49-D775-4A61-942B-4B2F5DE9D7BF@oracle.com>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Chuck Lever wrote:
+>
+> On Feb 21, 2011, at 11:15 AM, Konstantin Khlebnikov wrote:
+>
+>> Account complete NFS direct-io reads and writes into Task I/O Accounting.
+>>
+>> NFS have unusual direct-io implementation,
+>> thus accounting in generic code does not work.
+>>
+>> Signed-off-by: Konstantin Khlebnikov<khlebnikov@openvz.org>
+>> ---
+>> fs/nfs/direct.c |    9 +++++++--
+>> 1 files changed, 7 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+>> index 9943a75..bab4185 100644
+>> --- a/fs/nfs/direct.c
+>> +++ b/fs/nfs/direct.c
+>> @@ -45,6 +45,7 @@
+>> #include<linux/pagemap.h>
+>> #include<linux/kref.h>
+>> #include<linux/slab.h>
+>> +#include<linux/task_io_accounting_ops.h>
+>>
+>> #include<linux/nfs_fs.h>
+>> #include<linux/nfs_page.h>
+>> @@ -939,8 +940,10 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, const struct iovec *iov,
+>> 		goto out;
+>>
+>> 	retval = nfs_direct_read(iocb, iov, nr_segs, pos);
+>> -	if (retval>  0)
+>> +	if (retval>  0) {
+>> 		iocb->ki_pos = pos + retval;
+>> +		task_io_account_read(retval);
+>> +	}
+>>
+>> out:
+>> 	return retval;
+>> @@ -1001,8 +1004,10 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+>>
+>> 	retval = nfs_direct_write(iocb, iov, nr_segs, pos, count);
+>>
+>> -	if (retval>  0)
+>> +	if (retval>  0) {
+>> 		iocb->ki_pos = pos + retval;
+>> +		task_io_account_write(retval);
+>> +	}
+>
+> The async path always returns -EIOCBQUEUED.  How are those bytes accounted for?
+>
 
-Data servers not sharing a session with the mount MDS always have an empty
-cl_superblocks list.
-Replace the cl_superblocks empty list check to see if it is time to shut down
-renewd with the NFS_CS_STOP_RENEW bit which is not set by such a data server.
+Oh, thanks. I forget about aio.
+So, there only one option -- always account whole requiest before completion.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/client.c           |    5 +++++
- fs/nfs/nfs4renewd.c       |    6 +-----
- include/linux/nfs_fs_sb.h |    1 +
- 3 files changed, 7 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 9e07586..c2ba883 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1031,14 +1031,19 @@ static void nfs_server_insert_lists(struct nfs_server *server)
- 	spin_lock(&nfs_client_lock);
- 	list_add_tail_rcu(&server->client_link, &clp->cl_superblocks);
- 	list_add_tail(&server->master_link, &nfs_volume_list);
-+	clear_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state);
- 	spin_unlock(&nfs_client_lock);
- 
- }
- 
- static void nfs_server_remove_lists(struct nfs_server *server)
- {
-+	struct nfs_client *clp = server->nfs_client;
-+
- 	spin_lock(&nfs_client_lock);
- 	list_del_rcu(&server->client_link);
-+	if (clp && list_empty(&clp->cl_superblocks))
-+		set_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state);
- 	list_del(&server->master_link);
- 	spin_unlock(&nfs_client_lock);
- 
-diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
-index c8dbbeb..df8e7f3 100644
---- a/fs/nfs/nfs4renewd.c
-+++ b/fs/nfs/nfs4renewd.c
-@@ -64,12 +64,8 @@ nfs4_renew_state(struct work_struct *work)
- 	ops = clp->cl_mvops->state_renewal_ops;
- 	dprintk("%s: start\n", __func__);
- 
--	rcu_read_lock();
--	if (list_empty(&clp->cl_superblocks) && !is_ds_only_client(clp)) {
--		rcu_read_unlock();
-+	if (test_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state))
- 		goto out;
--	}
--	rcu_read_unlock();
- 
- 	spin_lock(&clp->cl_lock);
- 	lease = clp->cl_lease_time;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index b197563..2c2dc18 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -30,6 +30,7 @@ struct nfs_client {
- #define NFS_CS_CALLBACK		1		/* - callback started */
- #define NFS_CS_IDMAP		2		/* - idmap started */
- #define NFS_CS_RENEWD		3		/* - renewd started */
-+#define NFS_CS_STOP_RENEW	4		/* no more state to renew */
- 	struct sockaddr_storage	cl_addr;	/* server identifier */
- 	size_t			cl_addrlen;
- 	char *			cl_hostname;	/* hostname of server */
--- 
-1.6.6
+>>
+>> out:
+>> 	return retval;
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
 
