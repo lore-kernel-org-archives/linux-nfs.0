@@ -1,89 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2654 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755457Ab1BPO0Q convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Feb 2011 09:26:16 -0500
-Subject: Re: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release
- to nfsiod
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <1297865354.6596.13.camel@heimdal.trondhjem.org>
-References: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
-	 <1297783898.10103.22.camel@heimdal.trondhjem.org>
-	 <20110215113053.345e3abc@tlielax.poochiereds.net>
-	 <1297813624.10103.34.camel@heimdal.trondhjem.org>
-	 <1297865354.6596.13.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 16 Feb 2011 09:26:13 -0500
-Message-ID: <1297866373.6596.18.camel@heimdal.trondhjem.org>
+Received: from daytona.panasas.com ([67.152.220.89]:47247 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752600Ab1BUWbN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 17:31:13 -0500
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Cc: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 9/9] pnfs: improve nfs4_layoutget_done debug printouts
+Date: Mon, 21 Feb 2011 14:31:08 -0800
+Message-Id: <1298327468-9612-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <4D62E6F3.8000304@panasas.com>
+References: <4D62E6F3.8000304@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2011-02-16 at 09:09 -0500, Trond Myklebust wrote: 
-> On Tue, 2011-02-15 at 18:47 -0500, Trond Myklebust wrote: 
-> > diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> > index 243fc09..11b71b1 100644
-> > --- a/net/sunrpc/sched.c
-> > +++ b/net/sunrpc/sched.c
-> > @@ -252,23 +252,39 @@ static void rpc_set_active(struct rpc_task *task)
-> >  
-> >  /*
-> >   * Mark an RPC call as having completed by clearing the 'active' bit
-> > + * and then waking up all tasks that were sleeping.
-> >   */
-> > -static void rpc_mark_complete_task(struct rpc_task *task)
-> > +static int rpc_complete_task(struct rpc_task *task)
-> >  {
-> > -	smp_mb__before_clear_bit();
-> > +	void *m = &task->tk_runstate;
-> > +	wait_queue_head_t *wq = bit_waitqueue(m, RPC_TASK_ACTIVE);
-> > +	struct wait_bit_key k = __WAIT_BIT_KEY_INITIALIZER(m, RPC_TASK_ACTIVE);
-> > +	unsigned long flags;
-> > +	int ret;
-> > +
-> > +	spin_lock_irqsave(&wq->lock, flags);
-> >  	clear_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
-> > -	smp_mb__after_clear_bit();
-> > -	wake_up_bit(&task->tk_runstate, RPC_TASK_ACTIVE);
-> > +	if (waitqueue_active(wq))
-> > +		__wake_up_locked_key(wq, TASK_NORMAL, &k);
-> > +	ret = atomic_dec_and_test(&task->tk_count);
-> > +	spin_unlock_irqrestore(&wq->lock, flags);
-> > +	return ret;
-> >  }
-> >  
-> >  /*
-> >   * Allow callers to wait for completion of an RPC call
-> > + *
-> > + * Note the use of out_of_line_wait_on_bit() rather than wait_on_bit()
-> > + * to enforce taking of the wq->lock and hence avoid races with
-> > + * rpc_complete_task().
-> >   */
-> >  int __rpc_wait_for_completion_task(struct rpc_task *task, int (*action)(void *))
-> >  {
-> > +	BUG_ON(!RPC_IS_ASYNC(task));
-> > +
-> >  	if (action == NULL)
-> >  		action = rpc_wait_bit_killable;
-> > -	return wait_on_bit(&task->tk_runstate, RPC_TASK_ACTIVE,
-> > +	return out_of_line_wait_on_bit(&task->tk_runstate, RPC_TASK_ACTIVE,
-> >  			action, TASK_KILLABLE);
-> >  }
-> >  EXPORT_SYMBOL_GPL(__rpc_wait_for_completion_task);
-> 
-> Never mind. The above ordering scheme is broken by the fact that
-> 'wake_bit_function' calls autoremove_wake_function, which again means
-> that finish_wait optimises away the spin lock.
-> 
-> Back to the drawing board...
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4proc.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-...and after yet another cup of coffee the solution suggests itself: we
-just need to reorder the calls to __wake_up_locked_key and the
-atomic_dec_and_test in rpc_complete_task. The revised patch is appended.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 10d46c4..785c460 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5446,7 +5446,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+ 	struct nfs4_layoutget *lgp = calldata;
+ 	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+ 
+-	dprintk("--> %s\n", __func__);
++	dprintk("--> %s: tk_status=%d\n", __func__, task->tk_status);
+ 
+ 	if (!nfs4_sequence_done(task, &lgp->res.seq_res)) {
+ 		/* layout code relies on fact that in this case
+@@ -5467,6 +5467,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+ 		if (nfs4_async_handle_error(task, server, NULL, NULL) == -EAGAIN) {
+ 			struct inode *ino = lgp->args.inode;
+ 
++			dprintk("<-- %s retrying\n", __func__);
+ 			spin_lock(&ino->i_lock);
+ 			atomic_dec(&NFS_I(ino)->layout->plh_outstanding);
+ 			spin_unlock(&ino->i_lock);
+-- 
+1.7.3.4
 
-Cheers
-  Trond 
-
-8<---------------------------------------------------------------------------- 
