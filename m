@@ -1,62 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1368 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751325Ab1BYR5c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Feb 2011 12:57:32 -0500
-From: andros@netapp.com
-To: iisaman@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/4] NFS remove duplicate clientid in nfs_client
-Date: Thu, 24 Feb 2011 05:11:06 -0500
-Message-Id: <1298542269-2477-1-git-send-email-andros@netapp.com>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:49936 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751770Ab1BUTPu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 14:15:50 -0500
+Subject: [PATCH] NFS: account direct-io into task io accounting
+To: linux-nfs@vger.kernel.org
+From: Konstantin Khlebnikov <khlebnikov@openvz.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-kernel@vger.kernel.org
+Date: Mon, 21 Feb 2011 22:15:46 +0300
+Message-ID: <20110221191546.5920.96947.stgit@localhost6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Account complete NFS direct-io reads and writes into Task I/O Accounting.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+NFS have unusual direct-io implementation,
+thus accounting in generic code does not work.
+
+Signed-off-by: Konstantin Khlebnikov <khlebnikov@openvz.org>
 ---
- fs/nfs/nfs4xdr.c          |    4 ++--
- include/linux/nfs_fs_sb.h |    2 --
- 2 files changed, 2 insertions(+), 4 deletions(-)
+ fs/nfs/direct.c |    9 +++++++--
+ 1 files changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c35880c..0f2dcfb 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1664,7 +1664,7 @@ static void encode_create_session(struct xdr_stream *xdr,
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 9943a75..bab4185 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -45,6 +45,7 @@
+ #include <linux/pagemap.h>
+ #include <linux/kref.h>
+ #include <linux/slab.h>
++#include <linux/task_io_accounting_ops.h>
  
- 	p = reserve_space(xdr, 20 + 2*28 + 20 + len + 12);
- 	*p++ = cpu_to_be32(OP_CREATE_SESSION);
--	p = xdr_encode_hyper(p, clp->cl_ex_clid);
-+	p = xdr_encode_hyper(p, clp->cl_clientid);
- 	*p++ = cpu_to_be32(clp->cl_seqid);			/*Sequence id */
- 	*p++ = cpu_to_be32(args->flags);			/*flags */
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
+@@ -939,8 +940,10 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, const struct iovec *iov,
+ 		goto out;
  
-@@ -4699,7 +4699,7 @@ static int decode_exchange_id(struct xdr_stream *xdr,
- 	p = xdr_inline_decode(xdr, 8);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	xdr_decode_hyper(p, &clp->cl_ex_clid);
-+	xdr_decode_hyper(p, &clp->cl_clientid);
- 	p = xdr_inline_decode(xdr, 12);
- 	if (unlikely(!p))
- 		goto out_overflow;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 7f71698..e52f010 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -73,8 +73,6 @@ struct nfs_client {
- #endif /* CONFIG_NFS_V4 */
+ 	retval = nfs_direct_read(iocb, iov, nr_segs, pos);
+-	if (retval > 0)
++	if (retval > 0) {
+ 		iocb->ki_pos = pos + retval;
++		task_io_account_read(retval);
++	}
  
- #ifdef CONFIG_NFS_V4_1
--	/* clientid returned from EXCHANGE_ID, used by session operations */
--	u64			cl_ex_clid;
- 	/* The sequence id to use for the next CREATE_SESSION */
- 	u32			cl_seqid;
- 	/* The flags used for obtaining the clientid during EXCHANGE_ID */
--- 
-1.7.3.1
+ out:
+ 	return retval;
+@@ -1001,8 +1004,10 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 
+ 	retval = nfs_direct_write(iocb, iov, nr_segs, pos, count);
+ 
+-	if (retval > 0)
++	if (retval > 0) {
+ 		iocb->ki_pos = pos + retval;
++		task_io_account_write(retval);
++	}
+ 
+ out:
+ 	return retval;
 
