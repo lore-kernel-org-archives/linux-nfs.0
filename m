@@ -1,84 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:7384 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753992Ab1BCIPc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Feb 2011 03:15:32 -0500
-Message-ID: <4D4A6420.5020208@panasas.com>
-Date: Thu, 03 Feb 2011 10:15:28 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] pnfs: avoid incorrect use of layout stateid
-References: <1296487633-21057-1-git-send-email-iisaman@netapp.com>	 <1296487633-21057-2-git-send-email-iisaman@netapp.com>	 <4D4828DC.9020103@panasas.com>	 <AF70A3A4-2A06-4BD1-AC69-270658CF6365@netapp.com>	 <4D48DB59.9010102@panasas.com> <1296626165.8895.31.camel@heimdal.trondhjem.org>
-In-Reply-To: <1296626165.8895.31.camel@heimdal.trondhjem.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:60635 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752848Ab1BUJaT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 04:30:19 -0500
+Received: by iwn8 with SMTP id 8so1689532iwn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2011 01:30:18 -0800 (PST)
+In-Reply-To: <AANLkTinZ61OZObYMeuisJ-H2+o3PgFM1K+kExyUMaTNL@mail.gmail.com>
+References: <AANLkTikGAHBEKxeQqVegtW3VmZcJScMPkzGOyWfvD9h7@mail.gmail.com>
+	<AANLkTinZ61OZObYMeuisJ-H2+o3PgFM1K+kExyUMaTNL@mail.gmail.com>
+Date: Mon, 21 Feb 2011 11:30:18 +0200
+Message-ID: <AANLkTikyuyc0K2qXZf9ce5Y0ApMCsjsysEfg==gAxJJV@mail.gmail.com>
+Subject: Re: 2.6.32, NFSv4, "Stale NFS file handle" problem
+From: Nick Patavalis <npat@efault.net>
+To: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-02-02 07:56, Trond Myklebust wrote:
-> On Wed, 2011-02-02 at 06:19 +0200, Benny Halevy wrote: 
->> On 2011-02-01 18:31, Fred Isaman wrote:
->>>
->>> On Feb 1, 2011, at 10:38 AM, Benny Halevy wrote:
->>>
->>>> On 2011-01-31 17:27, Fred Isaman wrote:
->>>>> The code could violate the following from RFC5661, section 12.5.3:
->>>>> "Once a client has no more layouts on a file, the layout stateid is no
->>>>> longer valid and MUST NOT be used."
->>>>
->>>> NACK.
->>>>
->>>> Fred, this is your interpretation of the forgetful model and it is taken
->>>> out of context.
->>>>
->>>> Until the spec is changed only the server invalidates the stateid by returning
->>>> lrs_present=false on LAYOUTRETURN. Merely forgetting the layout state without
->>>> LAYOUTRETURN does not determine that.
->>>>
->>>>
->>>> Also from 12.5.3:
->>>>   Once a layout stateid is established, the "other"
->>>>   field will stay constant unless the stateid is revoked or the client
->>>>   returns all layouts on the file and the server disposes of the stateid.
->>>>   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Hi,
+
+On Mon, Feb 21, 2011 at 11:09 AM, Nick Patavalis <npat@efault.net> wrote:
+>
+> On Mon, Feb 21, 2011 at 2:54 AM, Nick Patavalis <npat@efault.net> wrote:
 >>
->>> OK, so the question is, does sending a LAYOUTGET with openstateid "return all layouts".
->>> Making the answer to this "yes" is perfectly consistent with the spec, given its complete absence
->>> of direction here.
+>> I don't know if this is an NFS bug, but seems a lot like it... My
+>> server-host exports a few NTFS filesystems (read-only exports) using
+>> NFSv4. Two client-hosts mount these file-systems.
 >>
->> I disagree, and so are other server implementations, including linux-pnfs!
->> (It will return BAD_STATEID if the client forgets the layout
->> in any case but LAYOUTRETURN or CB_LAYOUTRECALL/NOMATCHING_LAYOUT)
-> 
-> Where do you see this being allowed? I see nothing in RFC5661 that
-> justifies the server returning BAD_STATEID (or any other error) if the
-> client supplies an open stateid in LAYOUTGET. The only stateids that are
-> explicitly disallowed in section 12 are the special stateids.
-> IOW: I see no justification there for your interpretation or the above
-> error message. Fix the linux pnfs server and the "other server
-> implementation" if it does this.
+>> Client A runs 2.6.31, and client B 2.6.32. Client A works fine. Client
+>> B, while it initially mounts everything ok, and for some time
+>> everything works ok (or so it seems), after a while it starts
+>> returning "Stale NFS file hande" errors for random files and
+>> directories. Client A NEVER returns stale errors, EVEN after a server
+>> reboot.
+>>
+>
+> Some additional information.
+>
+> After the problem appears (i.e. after "client B" starts returning
+> "stale file handle" errors), an "ls" on a file (directory) for
+> which the file-handle is stale, with "sunrpc.nfs_debug = 1023"
+> shows:
+>
 
-This case is indeed not defined well in the spec.
+I also tried:
 
-> 
-> The only text I can find is repeated in both section 12.5.2. and section
-> 12.5.3 and states that the client uses an open stateid, delegation
-> stateid or lock stateid if it holds no layouts.
+- Exporting /mnt (the NFSv4 preudo-root) without the "crossmount"
+  option (and having the clients mount the subordinate file-systems)
 
-Right, but the point in which it is defined to hold no layout is when
-it has returned them to the server.  There is not much sense in arguing
-that over and over again as we're in agreement regarding the proposed
-errata.
+- Exporting /mnt with "crossmount" and having the client B (the
+  "problematic" one, running kernel 2.6.32) mount "server:/" instead
+  of the subordinate filesystems.
 
-Benny
+- Making client B mount with options: "ro,soft,proto=tcp"
+  (i.e. without the "nocto,actimeo=300")
 
-> Section 12.5.5.1 then states that the client is allowed to forget
-> layouts and that this is safe as long as it doesn't assume it holds
-> layouts for ranges that lie beyond what the server granted. The same
-> section states that the server has no control over what the client
-> believes, and so it is allowed to recall a layout that the client knows
-> nothing about if it is in doubt.
-> 
-> 
-> Trond
+No observable change in behavior. Client A (the one with kernel
+2.6.31) works perfectly. Client B (the one with kernel 2.6.32) mounts
+ok but, at some point in time, it starts returning "stale file handle"
+errors (as described in the previous message).
+
+At this point I start to run out of things to try! Any suggestions
+would be greately appreciated.
+
+Thanks again
+/npat
