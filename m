@@ -1,118 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:48888 "EHLO shutemov.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755499Ab1BHSmM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Feb 2011 13:42:12 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Rob Landley <rlandley@parallels.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v3, RESEND 12/16] sunrpc: introduce get_rpc_pipefs()
-Date: Tue,  8 Feb 2011 20:42:03 +0200
-Message-Id: <1297190527-19925-13-git-send-email-kas@openvz.org>
-In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
-References: <1297190527-19925-1-git-send-email-kas@openvz.org>
+Received: from daytona.panasas.com ([67.152.220.89]:13736 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750784Ab1BVRrd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Feb 2011 12:47:33 -0500
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Cc: Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH] SQUASHME: pnfs: fix lock inversion in pnfs_layout_process
+Date: Tue, 22 Feb 2011 09:47:29 -0800
+Message-Id: <1298396849-19340-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Get rpc_pipefs mount point by path. If path is NULL, we use first
-rpc_pipefs from mount table visible from current root directory.
+Introduced in cab1647c Revert "pnfs-submit: wave2: remove cl_layoutrecalls list"
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
-Reviewed-by: Rob Landley <rlandley@parallels.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- include/linux/sunrpc/rpc_pipe_fs.h |    1 +
- net/sunrpc/rpc_pipe.c              |   51 ++++++++++++++++++++++++++++++++++++
- 2 files changed, 52 insertions(+), 0 deletions(-)
+ fs/nfs/pnfs.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index f5216f1..4a8830a 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -46,6 +46,7 @@ RPC_I(struct inode *inode)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 5a47b76..c184e41 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1045,7 +1045,6 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 		goto out;
+ 	}
  
- extern struct vfsmount *init_rpc_pipefs;
+-	spin_lock(&ino->i_lock);
+ 	/* decrement needs to be done before call to pnfs_layoutget_blocked */
+ 	atomic_dec(&lo->plh_outstanding);
+ 	spin_lock(&clp->cl_lock);
+@@ -1056,6 +1055,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	}
+ 	spin_unlock(&clp->cl_lock);
  
-+extern struct vfsmount *get_rpc_pipefs(const char *path);
- extern int rpc_pipefs_add_destroy_cb(struct super_block *sb,
- 		void (*destroy_cb)(void *data), void *data);
- 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 58312fa..1261f27 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -16,6 +16,9 @@
- #include <linux/namei.h>
- #include <linux/fsnotify.h>
- #include <linux/kernel.h>
-+#include <linux/nsproxy.h>
-+#include <linux/mnt_namespace.h>
-+#include <linux/fs_struct.h>
- 
- #include <asm/ioctls.h>
- #include <linux/fs.h>
-@@ -939,6 +942,54 @@ static const struct super_operations s_ops = {
- 
- #define RPCAUTH_GSSMAGIC 0x67596969
- 
-+static int check_rpc_pipefs(struct vfsmount *mnt, void *arg)
-+{
-+	struct vfsmount **rpcmount = arg;
-+	struct path path = {
-+		.mnt = mnt,
-+		.dentry = mnt->mnt_root,
-+	};
-+
-+	if (!mnt->mnt_sb)
-+		return 0;
-+	if (mnt->mnt_sb->s_magic != RPCAUTH_GSSMAGIC)
-+		return 0;
-+
-+	if (!path_is_under(&path, &current->fs->root))
-+		return 0;
-+
-+	*rpcmount = mntget(mnt);
-+	return 1;
-+}
-+
-+struct vfsmount *get_rpc_pipefs(const char *p)
-+{
-+	int error;
-+	struct vfsmount *rpcmount = ERR_PTR(-EINVAL);
-+	struct path path;
-+
-+	if (!p) {
-+		iterate_mounts(check_rpc_pipefs, &rpcmount,
-+				current->nsproxy->mnt_ns->root);
-+
-+		if (IS_ERR(rpcmount) && (current->nsproxy->mnt_ns ==
-+					init_task.nsproxy->mnt_ns))
-+			return mntget(init_rpc_pipefs);
-+
-+		return rpcmount;
-+	}
-+
-+	error = kern_path(p, LOOKUP_FOLLOW | LOOKUP_DIRECTORY, &path);
-+	if (error)
-+		return ERR_PTR(error);
-+
-+	check_rpc_pipefs(path.mnt, &rpcmount);
-+	path_put(&path);
-+
-+	return rpcmount;
-+}
-+EXPORT_SYMBOL_GPL(get_rpc_pipefs);
-+
- struct destroy_cb {
- 	struct list_head list;
- 	void (*callback)(void *data);
++	spin_lock(&ino->i_lock);
+ 	if (pnfs_layoutgets_blocked(lo, &res->stateid)) {
+ 		dprintk("%s forget reply due to state\n", __func__);
+ 		goto out_forget_reply;
 -- 
-1.7.4
+1.7.3.4
 
