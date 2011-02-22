@@ -1,63 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:49936 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751770Ab1BUTPu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 14:15:50 -0500
-Subject: [PATCH] NFS: account direct-io into task io accounting
+Received: from tac.ki.iif.hu ([193.6.222.43]:45904 "EHLO tac.ki.iif.hu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753725Ab1BVQmq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Feb 2011 11:42:46 -0500
+Received: from wferi by tac.ki.iif.hu with local (Exim 4.72)
+	(envelope-from <wferi@niif.hu>)
+	id 1PrvK0-00062i-4b
+	for linux-nfs@vger.kernel.org; Tue, 22 Feb 2011 17:42:44 +0100
+From: Ferenc Wagner <wferi@niif.hu>
 To: linux-nfs@vger.kernel.org
-From: Konstantin Khlebnikov <khlebnikov@openvz.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-kernel@vger.kernel.org
-Date: Mon, 21 Feb 2011 22:15:46 +0300
-Message-ID: <20110221191546.5920.96947.stgit@localhost6>
-Content-Type: text/plain; charset="utf-8"
+Subject: Re: Seemingly inconsistent directory state under NFSv4
+References: <87sjvuiwnl.fsf@tac.ki.iif.hu>
+Date: Tue, 22 Feb 2011 17:42:44 +0100
+In-Reply-To: <87sjvuiwnl.fsf@tac.ki.iif.hu> (Ferenc Wagner's message of "Fri,
+	11 Feb 2011 13:27:26 +0100")
+Message-ID: <87d3mkhvgb.fsf@tac.ki.iif.hu>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Account complete NFS direct-io reads and writes into Task I/O Accounting.
+Ferenc Wagner <wferi@niif.hu> writes:
 
-NFS have unusual direct-io implementation,
-thus accounting in generic code does not work.
+> In our somewhat mixed NFSv4 setup (Linux 2.6.32 Debian squeeze server, a
+> 2.6.26 and a 2.6.32 Debian lenny client) we sometimes experience the
+> following: removing a file on the 2.6.26 client makes that file
+> disappear from the directory listing of the 2.6.32 client, but the file
+> itself remains accessible by its old -- now nonexistent -- name there.
+> Is such a confusing state expected, or is this the manifestation of some
+> bug?
 
-Signed-off-by: Konstantin Khlebnikov <khlebnikov@openvz.org>
----
- fs/nfs/direct.c |    9 +++++++--
- 1 files changed, 7 insertions(+), 2 deletions(-)
+Is this perhaps a manifestation of the following paragraph of
+nfs41-server.txt in the Linux kernel documentation?
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 9943a75..bab4185 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -45,6 +45,7 @@
- #include <linux/pagemap.h>
- #include <linux/kref.h>
- #include <linux/slab.h>
-+#include <linux/task_io_accounting_ops.h>
- 
- #include <linux/nfs_fs.h>
- #include <linux/nfs_page.h>
-@@ -939,8 +940,10 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, const struct iovec *iov,
- 		goto out;
- 
- 	retval = nfs_direct_read(iocb, iov, nr_segs, pos);
--	if (retval > 0)
-+	if (retval > 0) {
- 		iocb->ki_pos = pos + retval;
-+		task_io_account_read(retval);
-+	}
- 
- out:
- 	return retval;
-@@ -1001,8 +1004,10 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 
- 	retval = nfs_direct_write(iocb, iov, nr_segs, pos, count);
- 
--	if (retval > 0)
-+	if (retval > 0) {
- 		iocb->ki_pos = pos + retval;
-+		task_io_account_write(retval);
-+	}
- 
- out:
- 	return retval;
+    Incomplete delegation enforcement: if a file is renamed or
+    unlinked, a client holding a delegation may continue to
+    indefinitely allow opens of the file under the old name.
 
+If yes, is there a way to list the active delegations (on the server and
+on the client) and possibly trigger releasing/recalling them?
+-- 
+Thanks,
+Feri.
