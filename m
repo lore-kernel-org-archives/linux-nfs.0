@@ -1,77 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([122.248.162.3]:36677 "EHLO
-	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755294Ab1BWNw5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 08:52:57 -0500
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
-        sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
-        jlayton@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
-Subject: [PATCH -V5 02/24] vfs: Pass all mask flags down to iop->check_acl
-Date: Wed, 23 Feb 2011 19:21:49 +0530
-Message-Id: <1298469131-16555-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from smtp-out-1.desy.de ([131.169.56.84]:63272 "EHLO
+	smtp-out-1.desy.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754079Ab1BVQHf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Feb 2011 11:07:35 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-out-1.desy.de (DESY_OUT_1) with ESMTP id 1D70F1858
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Feb 2011 17:07:28 +0100 (MET)
+Received: from adserv71.win.desy.de (adserv71.win.desy.de [131.169.97.57])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 174BA13E89
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Feb 2011 17:07:27 +0100 (MET)
+Received: from smtp-intra-2.desy.de (lb-40-26.desy.de) by adserv71.win.desy.de
+ (Clearswift SMTPRS 5.3.4) with ESMTP id <T9b5abfc3fb83a96139dd4@adserv71.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Tue, 22 Feb 2011 17:07:27 +0100
+Received: from ADXV1.win.desy.de (adxb11.win.desy.de [131.169.97.62])
+	by smtp-intra-2.desy.de (DESY-INTRA-2) with ESMTP id 4883DE32
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Feb 2011 17:07:27 +0100 (MET)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] nfsd: fix missing include
+Date: Tue, 22 Feb 2011 17:08:43 +0100
+Message-Id: <1298390923-6547-1-git-send-email-tigran.mkrtchyan@desy.de>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andreas Gruenbacher <agruen@suse.de>
+I got some compile time error:
 
-Some file permission models differentiate between writing to a file
-(MAY_WRITE) and appending to it (MAY_WRITE | MAY_APPEND).  Pass all the
-mask flags down to iop->check_acl so that filesystems can distinguish
-between writing and appending.
+  CC [M]  fs/nfsd/nfs4proc.o
+In file included from include/linux/nfsd/nfsd4_pnfs.h:39:0,
+                 from include/linux/nfsd/nfs4layoutxdr.h:38,
+                 from fs/nfsd/nfs4proc.c:37:
+include/linux/nfs_xdr.h:1124:15: error: field ‘refcount’ has incomplete type
 
-All users of iop->check_acl pass the mask value back into
-posix_acl_permission(); strip off the additional mask flags there.
-
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+and here is my attempt to fix it
 ---
- fs/namei.c     |    4 +---
- fs/posix_acl.c |    2 ++
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ include/linux/nfs_xdr.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index b01eab8..f09ab1f 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -174,8 +174,6 @@ static int acl_permission_check(struct inode *inode, int mask, unsigned int flag
- {
- 	umode_t			mode = inode->i_mode;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index a965f9d..e4710b0 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -5,6 +5,7 @@
+ #include <linux/nfs3.h>
+ #include <linux/nfs4.h>
+ #include <linux/sunrpc/sched.h>
++#include <linux/kref.h>
  
--	mask &= MAY_READ | MAY_WRITE | MAY_EXEC;
--
- 	if (current_fsuid() == inode->i_uid)
- 		mode >>= 6;
- 	else {
-@@ -192,7 +190,7 @@ static int acl_permission_check(struct inode *inode, int mask, unsigned int flag
- 	/*
- 	 * If the DACs are ok we don't need any capability check.
- 	 */
--	if ((mask & ~mode) == 0)
-+	if ((mask & (MAY_READ | MAY_WRITE | MAY_EXEC) & ~mode) == 0)
- 		return 0;
- 	return -EACCES;
- }
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index b1cf6bf..ad40df2 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -222,6 +222,8 @@ posix_acl_permission(struct inode *inode, const struct posix_acl *acl, int want)
- 	const struct posix_acl_entry *pa, *pe, *mask_obj;
- 	int found = 0;
- 
-+	want &= MAY_READ | MAY_WRITE | MAY_EXEC;
-+
- 	FOREACH_ACL_ENTRY(pa, acl, pe) {
-                 switch(pa->e_tag) {
-                         case ACL_USER_OBJ:
+ /*
+  * To change the maximum rsize and wsize supported by the NFS client, adjust
 -- 
-1.7.1
+1.7.4
 
