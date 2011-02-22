@@ -1,72 +1,191 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out1.smtp.messagingengine.com ([66.111.4.25]:33210 "EHLO
-	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751909Ab1BYDHz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2011 22:07:55 -0500
-Subject: Re: [PATCH 0/3] Fixes for vfs-scale and vfs-automount
-From: Ian Kent <raven@themaw.net>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        David Howells <dhowells@redhat.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>, npiggin@gmail.com
-In-Reply-To: <20110224145947.GA22723@ZenIV.linux.org.uk>
-References: <1295420817.3076.24.camel@perseus>
-	 <1297779902.13007.86.camel@perseus>
-	 <20110224015817.GQ22723@ZenIV.linux.org.uk>
-	 <1298516618.2916.20.camel@perseus>
-	 <20110224031439.GR22723@ZenIV.linux.org.uk>
-	 <1298518137.2916.35.camel@perseus>
-	 <20110224035836.GS22723@ZenIV.linux.org.uk>
-	 <1298529260.2916.91.camel@perseus>
-	 <20110224070724.GW22723@ZenIV.linux.org.uk>
-	 <1298542053.3058.56.camel@perseus>
-	 <20110224145947.GA22723@ZenIV.linux.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 25 Feb 2011 11:07:46 +0800
-Message-ID: <1298603266.3439.44.camel@perseus>
+Received: from daytona.panasas.com ([67.152.220.89]:50527 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752974Ab1BVCOD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 21:14:03 -0500
+Message-ID: <4D631BE8.9010901@panasas.com>
+Date: Mon, 21 Feb 2011 18:14:00 -0800
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 4/7] NFSv4.1: trigger LAYOUTGET for writes
+References: <1298310576-13523-1-git-send-email-iisaman@netapp.com> <1298310576-13523-5-git-send-email-iisaman@netapp.com> <4D62B3BA.3060905@panasas.com> <5ADF7199-6511-4064-A662-2F572A2280D7@netapp.com>
+In-Reply-To: <5ADF7199-6511-4064-A662-2F572A2280D7@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-02-24 at 14:59 +0000, Al Viro wrote:
-> On Thu, Feb 24, 2011 at 06:07:33PM +0800, Ian Kent wrote:
-> > > I really don't like the look of autofs4_tree_busy(), BTW - you don't need
-> > > RCU to get races here; just a plain chdir("../../.."); done by a process
-> > > that sits deep enough in subtree you are checking can very well race with
-> > > your check, so that your iterator gets through the new cwd before chdir()
-> > > and through the old one after it...
-> > 
-> > Yes, that's a problem.
-> > 
-> > Previously the dcache_lock would have blocked on the dput() ... mmm, I'd
-> > missed that so far, although Nick didn't talk with me about his changes
-> > very much at all and I didn't pay enough attention to his patch series
-> > along the way, oops!
+On 2011-02-21 17:06, Fred Isaman wrote:
 > 
-> Well...  In principle, you could mark all mountpoints in a tree as managed,
-> have an "expiry search in progress" flag to stop everything in there while
-> the expiry happens, then wait out all RCU walks in progress, then go ahead
-> with your expiry checks.  Would that work for you?
+> On Feb 21, 2011, at 10:49 AM, Benny Halevy wrote:
+> 
+>> On 2011-02-21 09:49, Fred Isaman wrote:
+>>> Signed-off-by: Fred Isaman <iisaman@netapp.com>
+>>> ---
+>>> fs/nfs/pnfs.c  |   25 +++++++++++++++++++++++++
+>>> fs/nfs/pnfs.h  |    7 +++++++
+>>> fs/nfs/write.c |   32 ++++++++++++++++++++------------
+>>> 3 files changed, 52 insertions(+), 12 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>> index a7ea646..0ed3948d 100644
+>>> --- a/fs/nfs/pnfs.c
+>>> +++ b/fs/nfs/pnfs.c
+>>> @@ -876,6 +876,31 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode)
+>>> 	pgio->pg_test = (ld && ld->pg_test) ? pnfs_read_pg_test : NULL;
+>>> }
+>>>
+>>> +static int pnfs_write_pg_test(struct nfs_pageio_descriptor *pgio,
+>>> +			      struct nfs_page *prev,
+>>> +			      struct nfs_page *req)
+>>> +{
+>>> +	if (pgio->pg_count == prev->wb_bytes) {
+>>> +		/* This is first coelesce call for a series of nfs_pages */
+>>> +		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+>>> +						   prev->wb_context,
+>>> +						   IOMODE_RW);
+>>> +	}
+>>> +	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
+>>> +}
+>>> +
+>>> +/*
+>>> + * rsize is already set by caller to MDS rsize.
+>>> + */
+>>
+>> This comment is confusing and looks out of place...
+> 
+> OK.  I suggest we  remove similar comment in the read code too.
+> 
 
-That approach would solve the problem.
+Yeah.  Works for me.
 
-It was deliberate to not make all dentrys as managed to avoid function
-calls to ->manage() where possible but that might not be possible.
+>>
+>>> +void
+>>> +pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
+>>> +{
+>>> +	struct pnfs_layoutdriver_type *ld;
+>>> +
+>>> +	ld = NFS_SERVER(inode)->pnfs_curr_ld;
+>>> +	pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
+>>> +}
+>>> +
+>>> /*
+>>>  * Call the appropriate parallel I/O subsystem read function.
+>>>  */
+>>> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+>>> index acbb778..1d4e631 100644
+>>> --- a/fs/nfs/pnfs.h
+>>> +++ b/fs/nfs/pnfs.h
+>>> @@ -123,6 +123,7 @@ void unset_pnfs_layoutdriver(struct nfs_server *);
+>>> enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
+>>> 					    const struct rpc_call_ops *);
+>>> void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
+>>> +void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
+>>> int pnfs_layout_process(struct nfs4_layoutget *lgp);
+>>> void pnfs_free_lseg_list(struct list_head *tmp_list);
+>>> void pnfs_destroy_layout(struct nfs_inode *);
+>>> @@ -235,6 +236,12 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *ino)
+>>> 	pgio->pg_test = NULL;
+>>> }
+>>>
+>>> +static inline void
+>>> +pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *ino)
+>>> +{
+>>> +	pgio->pg_test = NULL;
+>>> +}
+>>> +
+>>> #endif /* CONFIG_NFS_V4_1 */
+>>>
+>>> #endif /* FS_NFS_PNFS_H */
+>>> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+>>> index 0df18ae..6cf5de6 100644
+>>> --- a/fs/nfs/write.c
+>>> +++ b/fs/nfs/write.c
+>>> @@ -919,6 +919,8 @@ static int nfs_flush_multi(struct inode *inode, struct list_head *head, unsigned
+>>> 	} while (nbytes != 0);
+>>> 	atomic_set(&req->wb_complete, requests);
+>>>
+>>> +	/* We know lseg==NULL */
+>>
+>> Then maybe BUG_ON or WARN_ON(lseg != NULL)?
+> 
+> OK.
+> 
+> 
+>>
+>>> +	lseg = pnfs_update_layout(inode, req->wb_context, IOMODE_RW);
+>>> 	ClearPageError(page);
+>>> 	offset = 0;
+>>> 	nbytes = count;
+>>> @@ -940,6 +942,7 @@ static int nfs_flush_multi(struct inode *inode, struct list_head *head, unsigned
+>>> 		nbytes -= wsize;
+>>> 	} while (nbytes != 0);
+>>>
+>>> +	put_lseg(lseg);
+>>> 	return ret;
+>>>
+>>> out_bad:
+>>> @@ -965,11 +968,18 @@ static int nfs_flush_one(struct inode *inode, struct list_head *head, unsigned i
+>>> 	struct nfs_page		*req;
+>>> 	struct page		**pages;
+>>> 	struct nfs_write_data	*data;
+>>> +	int ret;
+>>>
+>>> 	data = nfs_writedata_alloc(npages);
+>>> -	if (!data)
+>>> -		goto out_bad;
+>>> -
+>>> +	if (!data) {
+>>> +		while (!list_empty(head)) {
+>>> +			req = nfs_list_entry(head->next);
+>>
+>> nit: it'd be cleaner to define a nfs_list_first_entry helper in nfs_page.h
+>> rather than using a combination of list helpers and open code (head->next).
+> 
+> I would think that would be a separate patch. As this is just a simple move of pre-existing code,
+> it is easier to see what is happening if I leave the copied code the same.
+> 
+> 
 
-The priority right now though is the BUG() I'm getting due to the
-elevated reference.
+OK, makes sense.
 
-It turns out that the missing dput() you spotted won't trigger unless
-user space does something stupid and that's why it didn't show up in
-testing before.
+Benny
 
-Anyway, recent printk output is pointing me at do_filp_open() so I'm
-probably going to need to look closely at it. I'm still gathering printk
-evidence but I think that pain is coming.
-
-Ian
-
+>>
+>>> +			nfs_list_remove_request(req);
+>>> +			nfs_redirty_request(req);
+>>> +		}
+>>> +		ret = -ENOMEM;
+>>> +		goto out;
+>>> +	}
+>>> 	pages = data->pagevec;
+>>> 	while (!list_empty(head)) {
+>>> 		req = nfs_list_entry(head->next);
+>>> @@ -979,16 +989,14 @@ static int nfs_flush_one(struct inode *inode, struct list_head *head, unsigned i
+>>> 		*pages++ = req->wb_page;
+>>> 	}
+>>> 	req = nfs_list_entry(data->pages.next);
+>>> +	if ((!lseg) && list_is_singular(&data->pages))
+>>> +		lseg = pnfs_update_layout(inode, req->wb_context, IOMODE_RW);
+>>>
+>>> 	/* Set up the argument struct */
+>>> -	return nfs_write_rpcsetup(req, data, &nfs_write_full_ops, count, 0, lseg, how);
+>>> - out_bad:
+>>> -	while (!list_empty(head)) {
+>>> -		req = nfs_list_entry(head->next);
+>>> -		nfs_list_remove_request(req);
+>>> -		nfs_redirty_request(req);
+>>> -	}
+>>> -	return -ENOMEM;
+>>> +	ret = nfs_write_rpcsetup(req, data, &nfs_write_full_ops, count, 0, lseg, how);
+>>> +out:
+>>> +	put_lseg(lseg);
+>>
+>> Shouldn't you do that only if lseg was updated above?
+>>
+> 
+> No, this is the put matching the get done in the pg_test function.  I'll comment that.
+> 
+> Fred
+> 
