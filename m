@@ -1,195 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:35346 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750792Ab1BWFHh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 00:07:37 -0500
-Message-ID: <4D649617.8080609@panasas.com>
-Date: Tue, 22 Feb 2011 21:07:35 -0800
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] pnfsd-lexp: recall layout on truncate
-References: <1298419783-27791-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <1298419783-27791-1-git-send-email-bhalevy@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from e28smtp07.in.ibm.com ([122.248.162.7]:53140 "EHLO
+	e28smtp07.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755530Ab1BWNxY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 08:53:24 -0500
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
+        sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
+        jlayton@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
+Subject: [PATCH -V5 08/24] vfs: Add delete child and delete self permission flags
+Date: Wed, 23 Feb 2011 19:21:55 +0530
+Message-Id: <1298469131-16555-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 02/22/2011 04:09 PM, Benny Halevy wrote:
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfsd/pnfsd.h      |    1 +
->  fs/nfsd/pnfsd_lexp.c |   76 ++++++++++++++++++++++++++++++++++++++++++++++++-
->  fs/nfsd/vfs.c        |    4 ++
->  3 files changed, 79 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
-> index 946f334..51dd982 100644
-> --- a/fs/nfsd/pnfsd.h
-> +++ b/fs/nfsd/pnfsd.h
-> @@ -139,6 +139,7 @@ extern struct sockaddr pnfsd_lexp_addr;
->  extern size_t pnfs_lexp_addr_len;
->  
->  extern void pnfsd_lexp_init(struct inode *);
-> +extern int pnfsd_lexp_recall_layout(struct inode *);
->  #endif /* CONFIG_PNFSD_LOCAL_EXPORT */
->  
->  #endif /* LINUX_NFSD_PNFSD_H */
-> diff --git a/fs/nfsd/pnfsd_lexp.c b/fs/nfsd/pnfsd_lexp.c
-> index bf2f403..736cc3f 100644
-> --- a/fs/nfsd/pnfsd_lexp.c
-> +++ b/fs/nfsd/pnfsd_lexp.c
-> @@ -18,6 +18,8 @@
->   * by David M. Richter <richterd@citi.umich.edu>
->   */
->  
-> +#include <linux/sched.h>
-> +#include <linux/wait.h>
->  #include <linux/sunrpc/svc_xprt.h>
->  #include <linux/nfsd/nfs4layoutxdr.h>
->  
-> @@ -28,6 +30,8 @@
->  struct sockaddr pnfsd_lexp_addr;
->  size_t pnfs_lexp_addr_len;
->  
-> +static wait_queue_head_t lo_recall_wq;
-> +
->  static int
->  pnfsd_lexp_layout_type(struct super_block *sb)
->  {
-> @@ -196,8 +200,7 @@ static int
->  pnfsd_lexp_layout_return(struct inode *inode,
->  			 const struct nfsd4_pnfs_layoutreturn_arg *args)
->  {
-> -	dprintk("%s: (unimplemented)\n", __func__);
-> -
-> +	wake_up_all(&lo_recall_wq);
->  	return 0;
->  }
->  
-> @@ -220,6 +223,75 @@ static struct pnfs_export_operations pnfsd_lexp_ops = {
->  void
->  pnfsd_lexp_init(struct inode *inode)
->  {
-> +	static bool init_once;
-> +
->  	dprintk("%s: &pnfsd_lexp_ops=%p\n", __func__, &pnfsd_lexp_ops);
->  	inode->i_sb->s_pnfs_op = &pnfsd_lexp_ops;
-> +
-> +	if (!init_once++)
-> +		init_waitqueue_head(&lo_recall_wq);
-> +}
-> +
-> +static bool
-> +has_no_layout(struct nfs4_file *fp)
-> +{
-> +	return list_empty(&fp->fi_layouts);
-> +}
+From: Andreas Gruenbacher <agruen@suse.de>
 
-I don't like that negative logic naming it's better
-to ask for positive return and do the !empty inside
+Normally, deleting a file requires write access to the parent directory.
+Some permission models use a different permission on the parent
+directory to indicate delete access.  In addition, a process can have
+per-file delete access even without delete access on the parent
+directory.
 
-Note the 
-+	while (!has_no_layout(fp)) {
+Introduce two new inode_permission() mask flags and use them in
+may_delete()
 
-Below. Double negative in a single statement is to much
-for my 50 years old brain
+Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/namei.c         |   40 ++++++++++++++++++++++++++--------------
+ include/linux/fs.h |    2 ++
+ 2 files changed, 28 insertions(+), 14 deletions(-)
 
-> +
-> +/*
-> + * recalls the layout if needed and waits synchronously for its return
-> + */
-> +int
-> +pnfsd_lexp_recall_layout(struct inode *inode)
-> +{
-> +	struct nfs4_file *fp;
-> +	struct nfsd4_pnfs_cb_layout cbl;
-> +	struct pnfsd_cb_ctl cb_ctl;
-> +	int status = 0;
-> +
-> +	dprintk("%s: begin\n", __func__);
-> +	fp = find_file(inode);
-> +	BUG_ON(!fp);
-> +
-> +	if (has_no_layout(fp))
-> +		goto out;
-> +
-> +	memset(&cb_ctl, 0, sizeof(cb_ctl));
-> +	status = pnfsd_get_cb_op(&cb_ctl);
-
-You are inside nfsd module so you don't need this
-reference taking and call through a vector. But 
-I guess since it's only for testing It is good as
-a documentation example of use.
-
-> +	BUG_ON(status);
-> +
-> +	memset(&cbl, 0, sizeof(cbl));
-> +	cbl.cbl_recall_type = RETURN_FILE;
-> +	cbl.cbl_seg.layout_type = LAYOUT_NFSV4_1_FILES;
-> +	/* for now, always recall the whole layout */
-> +	cbl.cbl_seg.iomode = IOMODE_ANY;
-> +	cbl.cbl_seg.offset = 0;
-> +	cbl.cbl_seg.length = NFS4_MAX_UINT64;
-> +
-> +	while (!has_no_layout(fp)) {
-> +		dprintk("%s: recalling layout\n", __func__);
-> +		status = cb_ctl.cb_op->cb_layout_recall(inode->i_sb, inode, &cbl);
-> +
-> +		switch (status) {
-> +		case 0:
-> +		case -EAGAIN:
-> +			break;
-> +		case -ENOENT:	/* no matching layout */
-> +			status = 0;
-> +			goto out_put_cb;
-> +		default:
-> +			goto out_put_cb;
-> +		}
-> +
-> +		dprintk("%s: waiting\n", __func__);
-> +		status = wait_event_interruptible(lo_recall_wq, has_no_layout(fp));
-> +		if (status)
-> +			break;
-> +	}
-> +out_put_cb:
-> +	pnfsd_put_cb_op(&cb_ctl);
-> +out:
-> +	put_nfs4_file(fp);
-> +	dprintk("%s: status=%d\n", __func__, status);
-> +	return status;
->  }
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 79ba25f..021e89e 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -36,6 +36,7 @@
->  #ifdef CONFIG_NFSD_V4
->  #include "acl.h"
->  #include "idmap.h"
-> +#include "pnfsd.h"
->  #include <linux/nfsd4_spnfs.h>
->  #endif /* CONFIG_NFSD_V4 */
->  #if defined(CONFIG_SPNFS_BLOCK)
-> @@ -384,6 +385,9 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
->  					NFSD_MAY_TRUNC|NFSD_MAY_OWNER_OVERRIDE);
->  			if (err)
->  				goto out;
-> +#if defined(CONFIG_PNFSD_LOCAL_EXPORT)
-> +			pnfsd_lexp_recall_layout(inode);
-
-This is not enough. You need to lock with the layout_get code
-to not give any layouts from before the issued recall till after
-the execution of the truncate. Any layout_gets between that time should
-return NFS_ERROR_DELAY or so.
-
-See exofs/export.c for an example
-
-Boaz
-
-> +#endif /* CONFIG_PNFSD_LOCAL_EXPORT */
->  #if defined(CONFIG_SPNFS_BLOCK)
->  			if (pnfs_block_enabled(inode, 0)) {
->  				err = bl_layoutrecall(inode, RETURN_FILE,
+diff --git a/fs/namei.c b/fs/namei.c
+index b4f7198..1b6dbc9 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -253,7 +253,7 @@ int generic_permission(struct inode *inode, int mask, unsigned int flags,
+  * are used for other things.
+  *
+  * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
+- * MAY_WRITE must also be set in @mask.
++ * MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_WRITE must also be set in @mask.
+  */
+ int inode_permission(struct inode *inode, int mask)
+ {
+@@ -1944,7 +1944,7 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
+ 		return 0;
+ 	if (dir->i_uid == fsuid)
+ 		return 0;
+-	return !capable(CAP_FOWNER);
++	return 1;
+ }
+ 
+ /*
+@@ -1966,30 +1966,42 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
+  * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
+  *     nfs_async_unlink().
+  */
+-static int may_delete(struct inode *dir,struct dentry *victim,int isdir)
++static int may_delete(struct inode *dir, struct dentry *victim,
++		      int isdir, int replace)
+ {
+-	int error;
++	int mask, error, is_sticky;
++	struct inode *inode = victim->d_inode;
+ 
+-	if (!victim->d_inode)
++	if (!inode)
+ 		return -ENOENT;
+ 
+ 	BUG_ON(victim->d_parent->d_inode != dir);
+ 	audit_inode_child(victim, dir);
+ 
+-	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
++	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
++	if (replace)
++		mask |= S_ISDIR(inode->i_mode) ?
++			MAY_CREATE_DIR : MAY_CREATE_FILE;
++	is_sticky = check_sticky(dir, inode);
++	error = inode_permission(dir, mask);
++	if ((error || is_sticky) && IS_RICHACL(inode) &&
++	    !inode_permission(dir, mask & ~(MAY_WRITE | MAY_DELETE_CHILD)) &&
++	    !inode_permission(inode, MAY_DELETE_SELF))
++		error = 0;
++	else if (!error && is_sticky && !capable(CAP_FOWNER))
++		error = -EPERM;
+ 	if (error)
+ 		return error;
+ 	if (IS_APPEND(dir))
+ 		return -EPERM;
+-	if (check_sticky(dir, victim->d_inode)||IS_APPEND(victim->d_inode)||
+-	    IS_IMMUTABLE(victim->d_inode) || IS_SWAPFILE(victim->d_inode))
++	if (IS_APPEND(inode) || IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
+ 		return -EPERM;
+ 	if (isdir) {
+-		if (!S_ISDIR(victim->d_inode->i_mode))
++		if (!S_ISDIR(inode->i_mode))
+ 			return -ENOTDIR;
+ 		if (IS_ROOT(victim))
+ 			return -EBUSY;
+-	} else if (S_ISDIR(victim->d_inode->i_mode))
++	} else if (S_ISDIR(inode->i_mode))
+ 		return -EISDIR;
+ 	if (IS_DEADDIR(dir))
+ 		return -ENOENT;
+@@ -2824,7 +2836,7 @@ void dentry_unhash(struct dentry *dentry)
+ 
+ int vfs_rmdir(struct inode *dir, struct dentry *dentry)
+ {
+-	int error = may_delete(dir, dentry, 1);
++	int error = may_delete(dir, dentry, 1, 0);
+ 
+ 	if (error)
+ 		return error;
+@@ -2911,7 +2923,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+ 
+ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ {
+-	int error = may_delete(dir, dentry, 0);
++	int error = may_delete(dir, dentry, 0, 0);
+ 
+ 	if (error)
+ 		return error;
+@@ -3304,14 +3316,14 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (old_dentry->d_inode == new_dentry->d_inode)
+  		return 0;
+  
+-	error = may_delete(old_dir, old_dentry, is_dir);
++	error = may_delete(old_dir, old_dentry, is_dir, 0);
+ 	if (error)
+ 		return error;
+ 
+ 	if (!new_dentry->d_inode)
+ 		error = may_create(new_dir, new_dentry, is_dir);
+ 	else
+-		error = may_delete(new_dir, new_dentry, is_dir);
++		error = may_delete(new_dir, new_dentry, is_dir, 1);
+ 	if (error)
+ 		return error;
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index a86afc0..6a6e017 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -64,6 +64,8 @@ struct inodes_stat_t {
+ #define MAY_CHDIR 64
+ #define MAY_CREATE_FILE 128
+ #define MAY_CREATE_DIR 256
++#define MAY_DELETE_CHILD 512
++#define MAY_DELETE_SELF 1024
+ 
+ /*
+  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
+-- 
+1.7.1
 
