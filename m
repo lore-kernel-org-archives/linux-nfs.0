@@ -1,318 +1,232 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:5028 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751456Ab1BNXg2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Feb 2011 18:36:28 -0500
-Subject: Re: [PATCH 11/16] pnfs: wave 3: generic read
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: andros@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@citi.umich.edu>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        Dean Hildebrand <dhildeb@us.ibm.com>,
-        Fred Isaman <iisaman@citi.umich.edu>, Fred Isaman <iisaman@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Mike Sager <sager@netapp.com>, Mingyang Guo <guomingyang@nrchpc.ac.cn>,
-        Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
-        Tao Guo <guotao@nrchpc.ac.cn>, Benny Halevy <bhalevy@panasas.com>
-In-Reply-To: <1297711116-3139-12-git-send-email-andros@netapp.com>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>
-	 <1297711116-3139-12-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 14 Feb 2011 18:36:25 -0500
-Message-ID: <1297726585.23841.49.camel@heimdal.trondhjem.org>
+Received: from e28smtp02.in.ibm.com ([122.248.162.2]:33157 "EHLO
+	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932162Ab1BWNx4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 08:53:56 -0500
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
+        sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
+        jlayton@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
+Subject: [PATCH -V5 13/24] richacl: Permission mapping functions
+Date: Wed, 23 Feb 2011 19:22:00 +0530
+Message-Id: <1298469131-16555-14-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Mon, 2011-02-14 at 14:18 -0500, andros@netapp.com wrote: 
-> From: Andy Adamson <andros@netapp.com>
-> 
-> Separate the rpc run portion of nfs_read_rpcsetup into a new function
-> nfs_initiate_read that is called for normal NFS I/O.
-> 
-> Add a pNFS read_pagelist function that is called instead of nfs_intitate_read
-> for pNFS reads.
-> 
-> Reported-by: Alexandros Batsakis <batsakis@netapp.com>
-> Signed-off-by: Andy Adamson <andros@citi.umich.edu>
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
-> Signed-off-by: Mike Sager <sager@netapp.com>
-> Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
-> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/internal.h          |    2 +
->  fs/nfs/pnfs.c              |   28 ++++++++++++++++++
->  fs/nfs/pnfs.h              |   20 +++++++++++++
->  fs/nfs/read.c              |   66 +++++++++++++++++++++++++++----------------
->  include/linux/nfs_iostat.h |    1 +
->  include/linux/nfs_xdr.h    |    1 +
->  6 files changed, 93 insertions(+), 25 deletions(-)
-> 
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index cf9fdbd..335755d 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -262,6 +262,8 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh);
->  #endif
->  
->  /* read.c */
-> +extern int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
-> +			     const struct rpc_call_ops *call_ops);
->  extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
->  
->  /* write.c */
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index f200e34..6f4a5ab 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -30,6 +30,7 @@
->  #include <linux/nfs_fs.h>
->  #include "internal.h"
->  #include "pnfs.h"
-> +#include "iostat.h"
->  
->  #define NFSDBG_FACILITY		NFSDBG_PNFS
->  
-> @@ -891,6 +892,33 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
->  }
->  
->  /*
-> + * Call the appropriate parallel I/O subsystem read function.
-> + */
-> +enum pnfs_try_status
-> +pnfs_try_to_read_data(struct nfs_read_data *rdata,
-> +		       const struct rpc_call_ops *call_ops)
-> +{
-> +	struct inode *inode = rdata->inode;
-> +	struct nfs_server *nfss = NFS_SERVER(inode);
-> +	enum pnfs_try_status trypnfs;
-> +
-> +	rdata->mds_ops = call_ops;
-> +
-> +	dprintk("%s: Reading ino:%lu %u@%llu\n",
-> +		__func__, inode->i_ino, rdata->args.count, rdata->args.offset);
-> +
-> +	trypnfs = nfss->pnfs_curr_ld->read_pagelist(rdata);
-> +	if (trypnfs == PNFS_NOT_ATTEMPTED) {
-> +		put_lseg(rdata->lseg);
-> +		rdata->lseg = NULL;
-> +	} else {
-> +		nfs_inc_stats(inode, NFSIOS_PNFS_READ);
-> +	}
-> +	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
-> +	return trypnfs;
-> +}
-> +
-> +/*
->   * Device ID cache. Currently supports one layout type per struct nfs_client.
->   * Add layout type to the lookup key to expand to support multiple types.
->   */
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index 5107d14..585023f 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -45,6 +45,11 @@ struct pnfs_layout_segment {
->  	struct pnfs_layout_hdr *pls_layout;
->  };
->  
-> +enum pnfs_try_status {
-> +	PNFS_ATTEMPTED     = 0,
-> +	PNFS_NOT_ATTEMPTED = 1,
-> +};
-> +
->  #ifdef CONFIG_NFS_V4_1
->  
->  #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
-> @@ -70,6 +75,12 @@ struct pnfs_layoutdriver_type {
->  
->  	/* test for nfs page cache coalescing */
->  	int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
-> +
-> +	/*
-> +	 * Return PNFS_ATTEMPTED to indicate the layout code has attempted
-> +	 * I/O, else return PNFS_NOT_ATTEMPTED to fall back to normal NFS
-> +	 */
-> +	enum pnfs_try_status (*read_pagelist) (struct nfs_read_data *nfs_data);
->  };
->  
->  struct pnfs_layout_hdr {
-> @@ -157,6 +168,8 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
->  		   enum pnfs_iomode access_type);
->  void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
->  void unset_pnfs_layoutdriver(struct nfs_server *);
-> +enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
-> +					    const struct rpc_call_ops *);
->  void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
->  int pnfs_layout_process(struct nfs4_layoutget *lgp);
->  void pnfs_free_lseg_list(struct list_head *tmp_list);
-> @@ -227,6 +240,13 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
->  	return NULL;
->  }
->  
-> +static inline enum pnfs_try_status
-> +pnfs_try_to_read_data(struct nfs_read_data *data,
-> +		      const struct rpc_call_ops *call_ops)
-> +{
-> +	return PNFS_NOT_ATTEMPTED;
-> +}
-> +
->  static inline bool
->  pnfs_roc(struct inode *ino)
->  {
-> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> index 20cc936..5c09d72 100644
-> --- a/fs/nfs/read.c
-> +++ b/fs/nfs/read.c
-> @@ -18,6 +18,8 @@
->  #include <linux/sunrpc/clnt.h>
->  #include <linux/nfs_fs.h>
->  #include <linux/nfs_page.h>
-> +#include <linux/smp_lock.h>
-> +#include <linux/module.h>
->  
->  #include <asm/system.h>
->  #include "pnfs.h"
-> @@ -158,25 +160,20 @@ static void nfs_readpage_release(struct nfs_page *req)
->  	nfs_release_request(req);
->  }
->  
-> -/*
-> - * Set up the NFS read request struct
-> - */
-> -static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
-> -		const struct rpc_call_ops *call_ops,
-> -		unsigned int count, unsigned int offset,
-> -		struct pnfs_layout_segment *lseg)
-> +int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
+From: Andreas Gruenbacher <agruen@suse.de>
 
-static int.... Nobody is using this outside of fs/nfs/read.c
+We need to map from POSIX permissions to NFSv4 permissions when a
+chmod() is done, from NFSv4 permissions to POSIX permissions when an acl
+is set (which implicitly sets the file permission bits), and from the
+MAY_READ/MAY_WRITE/MAY_EXEC/MAY_APPEND flags to NFSv4 permissions when
+doing an access check in a richacl.
 
-> +		      const struct rpc_call_ops *call_ops)
->  {
-> -	struct inode *inode = req->wb_context->path.dentry->d_inode;
-> +	struct inode *inode = data->inode;
->  	int swap_flags = IS_SWAPFILE(inode) ? NFS_RPC_SWAPFLAGS : 0;
->  	struct rpc_task *task;
->  	struct rpc_message msg = {
->  		.rpc_argp = &data->args,
->  		.rpc_resp = &data->res,
-> -		.rpc_cred = req->wb_context->cred,
-> +		.rpc_cred = data->cred,
->  	};
->  	struct rpc_task_setup task_setup_data = {
->  		.task = &data->task,
-> -		.rpc_client = NFS_CLIENT(inode),
-> +		.rpc_client = clnt,
->  		.rpc_message = &msg,
->  		.callback_ops = call_ops,
->  		.callback_data = data,
-> @@ -184,9 +181,38 @@ static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
->  		.flags = RPC_TASK_ASYNC | swap_flags,
->  	};
->  
-> +	/* Set up the initial task struct. */
-> +	NFS_PROTO(inode)->read_setup(data, &msg);
-> +
-> +	dprintk("NFS: %5u initiated read call (req %s/%lld, %u bytes @ "
-> +			"offset %llu)\n",
-> +			data->task.tk_pid,
-> +			inode->i_sb->s_id,
-> +			(long long)NFS_FILEID(inode),
-> +			data->args.count,
-> +			(unsigned long long)data->args.offset);
-> +
-> +	task = rpc_run_task(&task_setup_data);
-> +	if (IS_ERR(task))
-> +		return PTR_ERR(task);
-> +	rpc_put_task(task);
-> +	return 0;
-> +}
-> +EXPORT_SYMBOL(nfs_initiate_read);
+Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/richacl_base.c       |  118 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |   46 ++++++++++++++++++
+ 2 files changed, 164 insertions(+), 0 deletions(-)
 
-Firstly, this should be EXPORT_SYMBOL_GPL, but in any case, why include
-it here? This patch contains no users for the export.
-
-> +
-> +/*
-> + * Set up the NFS read request struct
-> + */
-> +static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
-> +		const struct rpc_call_ops *call_ops,
-> +		unsigned int count, unsigned int offset,
-> +		struct pnfs_layout_segment *lseg)
-> +{
-> +	struct inode *inode = req->wb_context->path.dentry->d_inode;
-> +
->  	data->req	  = req;
->  	data->inode	  = inode;
-> -	data->cred	  = msg.rpc_cred;
-> +	data->cred	  = req->wb_context->cred;
->  	data->lseg	  = get_lseg(lseg);
->  
->  	data->args.fh     = NFS_FH(inode);
-> @@ -202,21 +228,11 @@ static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
->  	data->res.eof     = 0;
->  	nfs_fattr_init(&data->fattr);
->  
-> -	/* Set up the initial task struct. */
-> -	NFS_PROTO(inode)->read_setup(data, &msg);
-> -
-> -	dprintk("NFS: %5u initiated read call (req %s/%Ld, %u bytes @ offset %Lu)\n",
-> -			data->task.tk_pid,
-> -			inode->i_sb->s_id,
-> -			(long long)NFS_FILEID(inode),
-> -			count,
-> -			(unsigned long long)data->args.offset);
-> +	if (data->lseg &&
-> +	    (pnfs_try_to_read_data(data, call_ops) == PNFS_ATTEMPTED))
-> +		return 0;
->  
-> -	task = rpc_run_task(&task_setup_data);
-> -	if (IS_ERR(task))
-> -		return PTR_ERR(task);
-> -	rpc_put_task(task);
-> -	return 0;
-> +	return nfs_initiate_read(data, NFS_CLIENT(inode), call_ops);
->  }
->  
->  static void
-> diff --git a/include/linux/nfs_iostat.h b/include/linux/nfs_iostat.h
-> index 68b10f5..37a1437 100644
-> --- a/include/linux/nfs_iostat.h
-> +++ b/include/linux/nfs_iostat.h
-> @@ -113,6 +113,7 @@ enum nfs_stat_eventcounters {
->  	NFSIOS_SHORTREAD,
->  	NFSIOS_SHORTWRITE,
->  	NFSIOS_DELAY,
-> +	NFSIOS_PNFS_READ,
->  	__NFSIOS_COUNTSMAX,
->  };
->  
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 37e91c3..4591075 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1018,6 +1018,7 @@ struct nfs_read_data {
->  	struct nfs_readres  res;
->  	unsigned long		timestamp;	/* For lease renewal */
->  	struct pnfs_layout_segment *lseg;
-> +	const struct rpc_call_ops *mds_ops;
->  	struct page		*page_array[NFS_PAGEVEC_SIZE];
->  };
->  
-
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index 99ed0ca..50ba645 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -69,6 +69,124 @@ richacl_clone(const struct richacl *acl)
+ }
+ 
+ /**
++ * richacl_mask_to_mode  -  compute the file permission bits which correspond to @mask
++ * @mask:	%ACE4_* permission mask
++ *
++ * See richacl_masks_to_mode().
++ */
++static int
++richacl_mask_to_mode(unsigned int mask)
++{
++	int mode = 0;
++
++	if (mask & ACE4_POSIX_MODE_READ)
++		mode |= MAY_READ;
++	if (mask & ACE4_POSIX_MODE_WRITE)
++		mode |= MAY_WRITE;
++	if (mask & ACE4_POSIX_MODE_EXEC)
++		mode |= MAY_EXEC;
++
++	return mode;
++}
++
++/**
++ * richacl_masks_to_mode  -  compute the file permission bits from the file masks
++ *
++ * When setting a richacl, we set the file permission bits to indicate maximum
++ * permissions: for example, we set the Write permission when a mask contains
++ * ACE4_APPEND_DATA even if it does not also contain ACE4_WRITE_DATA.
++ *
++ * Permissions which are not in ACE4_POSIX_MODE_READ, ACE4_POSIX_MODE_WRITE, or
++ * ACE4_POSIX_MODE_EXEC cannot be represented in the file permission bits.
++ * Such permissions can still be effective, but not for new files or after a
++ * chmod(), and only if they were set explicitly, for example, by setting a
++ * richacl.
++ */
++int
++richacl_masks_to_mode(const struct richacl *acl)
++{
++	return richacl_mask_to_mode(acl->a_owner_mask) << 6 |
++	       richacl_mask_to_mode(acl->a_group_mask) << 3 |
++	       richacl_mask_to_mode(acl->a_other_mask);
++}
++EXPORT_SYMBOL_GPL(richacl_masks_to_mode);
++
++/**
++ * richacl_mode_to_mask  - compute a file mask from the lowest three mode bits
++ *
++ * When the file permission bits of a file are set with chmod(), this specifies
++ * the maximum permissions that processes will get.  All permissions beyond
++ * that will be removed from the file masks, and become ineffective.
++ *
++ * We also add in the permissions which are always allowed no matter what the
++ * acl says.
++ */
++unsigned int
++richacl_mode_to_mask(mode_t mode)
++{
++	unsigned int mask = ACE4_POSIX_ALWAYS_ALLOWED;
++
++	if (mode & MAY_READ)
++		mask |= ACE4_POSIX_MODE_READ;
++	if (mode & MAY_WRITE)
++		mask |= ACE4_POSIX_MODE_WRITE;
++	if (mode & MAY_EXEC)
++		mask |= ACE4_POSIX_MODE_EXEC;
++
++	return mask;
++}
++
++/**
++ * richacl_want_to_mask  - convert the iop->permission want argument to a mask
++ * @want:	@want argument of the permission inode operation
++ *
++ * When checking for append, @want is (MAY_WRITE | MAY_APPEND).
++ *
++ * Richacls use the iop->may_create and iop->may_delete hooks which are
++ * used for checking if creating and deleting files is allowed.  These hooks do
++ * not use richacl_want_to_mask(), so we do not have to deal with mapping
++ * MAY_WRITE to ACE4_ADD_FILE, ACE4_ADD_SUBDIRECTORY, and ACE4_DELETE_CHILD
++ * here.
++ */
++unsigned int
++richacl_want_to_mask(int want)
++{
++	unsigned int mask = 0;
++
++	if (want & MAY_READ)
++		mask |= ACE4_READ_DATA;
++	if (want & (MAY_APPEND |
++		    MAY_CREATE_FILE | MAY_CREATE_DIR |
++		    MAY_DELETE_CHILD | MAY_DELETE_SELF |
++		    MAY_TAKE_OWNERSHIP | MAY_CHMOD | MAY_SET_TIMES)) {
++		if (want & MAY_APPEND)
++			mask |= ACE4_APPEND_DATA;
++		else if (want & MAY_DELETE_SELF)
++			mask |= ACE4_DELETE;
++		else if (want & MAY_TAKE_OWNERSHIP)
++			mask |= ACE4_WRITE_OWNER;
++		else if (want & MAY_CHMOD)
++			mask |= ACE4_WRITE_ACL;
++		else if (want & MAY_SET_TIMES)
++			mask |= ACE4_WRITE_ATTRIBUTES;
++		else {
++			if (want & MAY_CREATE_FILE)
++				mask |= ACE4_ADD_FILE;
++			if (want & MAY_CREATE_DIR)
++				mask |= ACE4_ADD_SUBDIRECTORY;
++			if (want & MAY_DELETE_CHILD)
++				mask |= ACE4_DELETE_CHILD;
++		}
++	} else if (want & MAY_WRITE)
++		mask |= ACE4_WRITE_DATA;
++	if (want & MAY_EXEC)
++		mask |= ACE4_EXECUTE;
++
++	return mask;
++}
++EXPORT_SYMBOL_GPL(richacl_want_to_mask);
++
++/**
+  * richace_is_same_identifier  -  are both identifiers the same?
+  */
+ int
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index b0472f1..399dbc9 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -117,6 +117,49 @@ struct richacl {
+ 	ACE4_WRITE_OWNER |				\
+ 	ACE4_SYNCHRONIZE)
+ 
++/*
++ * The POSIX permissions are supersets of the following NFSv4 permissions:
++ *
++ *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
++ *    of the file system object.
++ *
++ *  - MAY_WRITE maps to WRITE_DATA or ACE4_APPEND_DATA for files, and to
++ *    ADD_FILE, ACE4_ADD_SUBDIRECTORY, or ACE4_DELETE_CHILD for directories.
++ *
++ *  - MAY_EXECUTE maps to ACE4_EXECUTE.
++ *
++ *  (Some of these NFSv4 permissions have the same bit values.)
++ */
++#define ACE4_POSIX_MODE_READ (			\
++		ACE4_READ_DATA |		\
++		ACE4_LIST_DIRECTORY)
++#define ACE4_POSIX_MODE_WRITE (			\
++		ACE4_WRITE_DATA |		\
++		ACE4_ADD_FILE |			\
++		ACE4_APPEND_DATA |		\
++		ACE4_ADD_SUBDIRECTORY |		\
++		ACE4_DELETE_CHILD)
++#define ACE4_POSIX_MODE_EXEC ACE4_EXECUTE
++#define ACE4_POSIX_MODE_ALL (			\
++		ACE4_POSIX_MODE_READ |		\
++		ACE4_POSIX_MODE_WRITE |		\
++		ACE4_POSIX_MODE_EXEC)
++/*
++ * These permissions are always allowed
++ * no matter what the acl says.
++ */
++#define ACE4_POSIX_ALWAYS_ALLOWED (	\
++		ACE4_SYNCHRONIZE |	\
++		ACE4_READ_ATTRIBUTES |	\
++		ACE4_READ_ACL)
++/*
++ * The owner is implicitly granted
++ * these permissions under POSIX.
++ */
++#define ACE4_POSIX_OWNER_ALLOWED (		\
++		ACE4_WRITE_ATTRIBUTES |		\
++		ACE4_WRITE_OWNER |		\
++		ACE4_WRITE_ACL)
+ /**
+  * richacl_get  -  grab another reference to a richacl handle
+  */
+@@ -241,5 +284,8 @@ extern struct richacl *richacl_alloc(int);
+ extern int richace_is_same_identifier(const struct richace *,
+ 				      const struct richace *);
+ extern int richace_set_who(struct richace *, const char *);
++extern int richacl_masks_to_mode(const struct richacl *);
++extern unsigned int richacl_mode_to_mask(mode_t);
++extern unsigned int richacl_want_to_mask(int);
+ 
+ #endif /* __RICHACL_H */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.1
 
