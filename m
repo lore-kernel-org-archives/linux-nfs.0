@@ -1,187 +1,176 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shutemov.name ([188.40.19.243]:48867 "EHLO shutemov.name"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755473Ab1BHSmL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Feb 2011 13:42:11 -0500
-From: "Kirill A. Shutemov" <kas@openvz.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>
-Cc: Pavel Emelyanov <xemul@parallels.com>, linux-nfs@vger.kernel.org,
-        "David S. Miller" <davem@davemloft.net>,
-        Rob Landley <rlandley@parallels.com>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        containers@lists.linux-foundation.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Kirill A. Shutemov" <kas@openvz.org>
-Subject: [PATCH v3, RESEND 05/16] sunrpc: get rpc_pipefs mount point for svc_serv from callers
-Date: Tue,  8 Feb 2011 20:41:56 +0200
-Message-Id: <1297190527-19925-6-git-send-email-kas@openvz.org>
-In-Reply-To: <1297190527-19925-1-git-send-email-kas@openvz.org>
-References: <1297190527-19925-1-git-send-email-kas@openvz.org>
+Received: from daytona.panasas.com ([67.152.220.89]:52010 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751660Ab1BWRTv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 12:19:51 -0500
+Message-ID: <4D654174.3000101@panasas.com>
+Date: Wed, 23 Feb 2011 09:18:44 -0800
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] pnfsd-lexp: recall layout on truncate
+References: <1298419783-27791-1-git-send-email-bhalevy@panasas.com>
+In-Reply-To: <1298419783-27791-1-git-send-email-bhalevy@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Kirill A. Shutemov <kas@openvz.org>
-Reviewed-by: Rob Landley <rlandley@parallels.com>
----
- fs/lockd/svc.c             |    4 +++-
- fs/nfs/callback.c          |    4 +++-
- fs/nfsd/nfssvc.c           |    6 ++++--
- include/linux/sunrpc/svc.h |    8 ++++----
- net/sunrpc/svc.c           |   18 +++++++++---------
- 5 files changed, 23 insertions(+), 17 deletions(-)
+On 02/22/2011 04:09 PM, Benny Halevy wrote:
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+>  fs/nfsd/pnfsd.h      |    1 +
+>  fs/nfsd/pnfsd_lexp.c |   76 ++++++++++++++++++++++++++++++++++++++++++++++++-
+>  fs/nfsd/vfs.c        |    4 ++
+>  3 files changed, 79 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+> index 946f334..51dd982 100644
+> --- a/fs/nfsd/pnfsd.h
+> +++ b/fs/nfsd/pnfsd.h
+> @@ -139,6 +139,7 @@ extern struct sockaddr pnfsd_lexp_addr;
+>  extern size_t pnfs_lexp_addr_len;
+>  
+>  extern void pnfsd_lexp_init(struct inode *);
+> +extern int pnfsd_lexp_recall_layout(struct inode *);
+>  #endif /* CONFIG_PNFSD_LOCAL_EXPORT */
+>  
+>  #endif /* LINUX_NFSD_PNFSD_H */
+> diff --git a/fs/nfsd/pnfsd_lexp.c b/fs/nfsd/pnfsd_lexp.c
+> index bf2f403..736cc3f 100644
+> --- a/fs/nfsd/pnfsd_lexp.c
+> +++ b/fs/nfsd/pnfsd_lexp.c
+> @@ -18,6 +18,8 @@
+>   * by David M. Richter <richterd@citi.umich.edu>
+>   */
+>  
+> +#include <linux/sched.h>
+> +#include <linux/wait.h>
+>  #include <linux/sunrpc/svc_xprt.h>
+>  #include <linux/nfsd/nfs4layoutxdr.h>
+>  
+> @@ -28,6 +30,8 @@
+>  struct sockaddr pnfsd_lexp_addr;
+>  size_t pnfs_lexp_addr_len;
+>  
+> +static wait_queue_head_t lo_recall_wq;
+> +
+>  static int
+>  pnfsd_lexp_layout_type(struct super_block *sb)
+>  {
+> @@ -196,8 +200,7 @@ static int
+>  pnfsd_lexp_layout_return(struct inode *inode,
+>  			 const struct nfsd4_pnfs_layoutreturn_arg *args)
+>  {
+> -	dprintk("%s: (unimplemented)\n", __func__);
+> -
+> +	wake_up_all(&lo_recall_wq);
+>  	return 0;
+>  }
+>  
+> @@ -220,6 +223,75 @@ static struct pnfs_export_operations pnfsd_lexp_ops = {
+>  void
+>  pnfsd_lexp_init(struct inode *inode)
+>  {
+> +	static bool init_once;
+> +
+>  	dprintk("%s: &pnfsd_lexp_ops=%p\n", __func__, &pnfsd_lexp_ops);
+>  	inode->i_sb->s_pnfs_op = &pnfsd_lexp_ops;
+> +
+> +	if (!init_once++)
+> +		init_waitqueue_head(&lo_recall_wq);
+> +}
+> +
+> +static bool
+> +has_no_layout(struct nfs4_file *fp)
+> +{
+> +	return list_empty(&fp->fi_layouts);
+> +}
+> +
+> +/*
+> + * recalls the layout if needed and waits synchronously for its return
+> + */
+> +int
+> +pnfsd_lexp_recall_layout(struct inode *inode)
+> +{
+> +	struct nfs4_file *fp;
+> +	struct nfsd4_pnfs_cb_layout cbl;
+> +	struct pnfsd_cb_ctl cb_ctl;
+> +	int status = 0;
+> +
+> +	dprintk("%s: begin\n", __func__);
+> +	fp = find_file(inode);
+> +	BUG_ON(!fp);
+> +
+> +	if (has_no_layout(fp))
+> +		goto out;
+> +
+> +	memset(&cb_ctl, 0, sizeof(cb_ctl));
+> +	status = pnfsd_get_cb_op(&cb_ctl);
+> +	BUG_ON(status);
+> +
+> +	memset(&cbl, 0, sizeof(cbl));
+> +	cbl.cbl_recall_type = RETURN_FILE;
+> +	cbl.cbl_seg.layout_type = LAYOUT_NFSV4_1_FILES;
+> +	/* for now, always recall the whole layout */
+> +	cbl.cbl_seg.iomode = IOMODE_ANY;
+> +	cbl.cbl_seg.offset = 0;
+> +	cbl.cbl_seg.length = NFS4_MAX_UINT64;
+> +
+> +	while (!has_no_layout(fp)) {
+> +		dprintk("%s: recalling layout\n", __func__);
+> +		status = cb_ctl.cb_op->cb_layout_recall(inode->i_sb, inode, &cbl);
+> +
+> +		switch (status) {
+> +		case 0:
+> +		case -EAGAIN:
+> +			break;
+> +		case -ENOENT:	/* no matching layout */
+> +			status = 0;
+> +			goto out_put_cb;
+> +		default:
+> +			goto out_put_cb;
+> +		}
+> +
+> +		dprintk("%s: waiting\n", __func__);
+> +		status = wait_event_interruptible(lo_recall_wq, has_no_layout(fp));
+> +		if (status)
+> +			break;
+> +	}
+> +out_put_cb:
+> +	pnfsd_put_cb_op(&cb_ctl);
+> +out:
+> +	put_nfs4_file(fp);
+> +	dprintk("%s: status=%d\n", __func__, status);
+> +	return status;
+>  }
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 79ba25f..021e89e 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -36,6 +36,7 @@
+>  #ifdef CONFIG_NFSD_V4
+>  #include "acl.h"
+>  #include "idmap.h"
+> +#include "pnfsd.h"
+>  #include <linux/nfsd4_spnfs.h>
+>  #endif /* CONFIG_NFSD_V4 */
+>  #if defined(CONFIG_SPNFS_BLOCK)
+> @@ -384,6 +385,9 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+>  					NFSD_MAY_TRUNC|NFSD_MAY_OWNER_OVERRIDE);
+>  			if (err)
+>  				goto out;
+> +#if defined(CONFIG_PNFSD_LOCAL_EXPORT)
+> +			pnfsd_lexp_recall_layout(inode);
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index abfff9d..32310b1 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -31,6 +31,7 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/svcsock.h>
-+#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <net/ip.h>
- #include <linux/lockd/lockd.h>
- #include <linux/nfs.h>
-@@ -269,7 +270,8 @@ int lockd_up(void)
- 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
- 
- 	error = -ENOMEM;
--	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, NULL);
-+	serv = svc_create(&nlmsvc_program, init_rpc_pipefs, LOCKD_BUFSIZE,
-+			NULL);
- 	if (!serv) {
- 		printk(KERN_WARNING "lockd_up: create service failed\n");
- 		goto out;
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index e3d2942..c9b98ad 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -16,6 +16,7 @@
- #include <linux/freezer.h>
- #include <linux/kthread.h>
- #include <linux/sunrpc/svcauth_gss.h>
-+#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/sunrpc/bc_xprt.h>
- 
- #include <net/inet_sock.h>
-@@ -259,7 +260,8 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- 		nfs_callback_bc_serv(minorversion, xprt, cb_info);
- 		goto out;
- 	}
--	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, NULL);
-+	serv = svc_create(&nfs4_callback_program, init_rpc_pipefs,
-+			NFS4_CALLBACK_BUFSIZE, NULL);
- 	if (!serv) {
- 		ret = -ENOMEM;
- 		goto out_err;
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 18743c4..e4fc85d 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -13,6 +13,7 @@
- 
- #include <linux/sunrpc/stats.h>
- #include <linux/sunrpc/svcsock.h>
-+#include <linux/sunrpc/rpc_pipe_fs.h>
- #include <linux/lockd/bind.h>
- #include <linux/nfsacl.h>
- #include <linux/seq_file.h>
-@@ -331,8 +332,9 @@ int nfsd_create_serv(void)
- 	}
- 	nfsd_reset_versions();
- 
--	nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
--				      nfsd_last_thread, nfsd, THIS_MODULE);
-+	nfsd_serv = svc_create_pooled(&nfsd_program, init_rpc_pipefs,
-+				      nfsd_max_blksize, nfsd_last_thread, nfsd,
-+				      THIS_MODULE);
- 	if (nfsd_serv == NULL)
- 		return -ENOMEM;
- 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 0cfd8e8..be15862 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -401,13 +401,13 @@ struct svc_procedure {
- /*
-  * Function prototypes.
-  */
--struct svc_serv *svc_create(struct svc_program *, unsigned int,
--			    void (*shutdown)(struct svc_serv *));
-+struct svc_serv *svc_create(struct svc_program *, struct vfsmount *,
-+			    unsigned int, void (*shutdown)(struct svc_serv *));
- struct svc_rqst *svc_prepare_thread(struct svc_serv *serv,
- 					struct svc_pool *pool);
- void		   svc_exit_thread(struct svc_rqst *);
--struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
--			void (*shutdown)(struct svc_serv *),
-+struct svc_serv *  svc_create_pooled(struct svc_program *, struct vfsmount *,
-+			unsigned int, void (*shutdown)(struct svc_serv *),
- 			svc_thread_fn, struct module *);
- int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
- int		   svc_pool_stats_open(struct svc_serv *serv, struct file *file);
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 370bc46..63abe2b 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -28,7 +28,6 @@
- #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/bc_xprt.h>
--#include <linux/sunrpc/rpc_pipe_fs.h>
- 
- #define RPCDBG_FACILITY	RPCDBG_SVCDSP
- 
-@@ -361,7 +360,8 @@ svc_pool_for_cpu(struct svc_serv *serv, int cpu)
-  * Create an RPC service
-  */
- static struct svc_serv *
--__svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
-+__svc_create(struct svc_program *prog, struct vfsmount *rpcmount,
-+	     unsigned int bufsize, int npools,
- 	     void (*shutdown)(struct svc_serv *serv))
- {
- 	struct svc_serv	*serv;
-@@ -373,7 +373,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 		return NULL;
- 	serv->sv_name      = prog->pg_name;
- 	serv->sv_program   = prog;
--	serv->sv_rpcmount  = mntget(init_rpc_pipefs);
-+	serv->sv_rpcmount  = mntget(rpcmount);
- 	serv->sv_nrthreads = 1;
- 	serv->sv_stats     = prog->pg_stats;
- 	if (bufsize > RPCSVC_MAXPAYLOAD)
-@@ -429,22 +429,22 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- }
- 
- struct svc_serv *
--svc_create(struct svc_program *prog, unsigned int bufsize,
--	   void (*shutdown)(struct svc_serv *serv))
-+svc_create(struct svc_program *prog, struct vfsmount *rpcmount,
-+	   unsigned int bufsize, void (*shutdown)(struct svc_serv *serv))
- {
--	return __svc_create(prog, bufsize, /*npools*/1, shutdown);
-+	return __svc_create(prog, rpcmount, bufsize, /*npools*/1, shutdown);
- }
- EXPORT_SYMBOL_GPL(svc_create);
- 
- struct svc_serv *
--svc_create_pooled(struct svc_program *prog, unsigned int bufsize,
--		  void (*shutdown)(struct svc_serv *serv),
-+svc_create_pooled(struct svc_program *prog, struct vfsmount *rpcmount,
-+		  unsigned int bufsize, void (*shutdown)(struct svc_serv *serv),
- 		  svc_thread_fn func, struct module *mod)
- {
- 	struct svc_serv *serv;
- 	unsigned int npools = svc_pool_map_get();
- 
--	serv = __svc_create(prog, bufsize, npools, shutdown);
-+	serv = __svc_create(prog, rpcmount, bufsize, npools, shutdown);
- 
- 	if (serv != NULL) {
- 		serv->sv_function = func;
--- 
-1.7.4
+Ha, I just realized, this is not good, for when CONFIG_PNFSD_LOCAL_EXPORT is set
+but the actual sb is pnfs-exported by the file system like gfs2 and exofs.
+You need to check if the FS is owned by the PNFSD_LOCAL_EXPORT.
+
+Boaz
+
+> +#endif /* CONFIG_PNFSD_LOCAL_EXPORT */
+>  #if defined(CONFIG_SPNFS_BLOCK)
+>  			if (pnfs_block_enabled(inode, 0)) {
+>  				err = bl_layoutrecall(inode, RETURN_FILE,
 
