@@ -1,68 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:60635 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752848Ab1BUJaT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 04:30:19 -0500
-Received: by iwn8 with SMTP id 8so1689532iwn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Feb 2011 01:30:18 -0800 (PST)
-In-Reply-To: <AANLkTinZ61OZObYMeuisJ-H2+o3PgFM1K+kExyUMaTNL@mail.gmail.com>
-References: <AANLkTikGAHBEKxeQqVegtW3VmZcJScMPkzGOyWfvD9h7@mail.gmail.com>
-	<AANLkTinZ61OZObYMeuisJ-H2+o3PgFM1K+kExyUMaTNL@mail.gmail.com>
-Date: Mon, 21 Feb 2011 11:30:18 +0200
-Message-ID: <AANLkTikyuyc0K2qXZf9ce5Y0ApMCsjsysEfg==gAxJJV@mail.gmail.com>
-Subject: Re: 2.6.32, NFSv4, "Stale NFS file handle" problem
-From: Nick Patavalis <npat@efault.net>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from rcsinet10.oracle.com ([148.87.113.121]:23015 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755104Ab1BWQtG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 11:49:06 -0500
+Subject: Re: [PATCH] NFSD: fix decode_cb_sequence4resok
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1298414602-17029-1-git-send-email-bhalevy@panasas.com>
+Date: Wed, 23 Feb 2011 08:48:51 -0800
+Cc: " J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <EEB9D74B-D547-4C43-AC8B-B8B58EBD9A54@oracle.com>
+References: <1298414602-17029-1-git-send-email-bhalevy@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
 
-On Mon, Feb 21, 2011 at 11:09 AM, Nick Patavalis <npat@efault.net> wrote:
->
-> On Mon, Feb 21, 2011 at 2:54 AM, Nick Patavalis <npat@efault.net> wrote:
->>
->> I don't know if this is an NFS bug, but seems a lot like it... My
->> server-host exports a few NTFS filesystems (read-only exports) using
->> NFSv4. Two client-hosts mount these file-systems.
->>
->> Client A runs 2.6.31, and client B 2.6.32. Client A works fine. Client
->> B, while it initially mounts everything ok, and for some time
->> everything works ok (or so it seems), after a while it starts
->> returning "Stale NFS file hande" errors for random files and
->> directories. Client A NEVER returns stale errors, EVEN after a server
->> reboot.
->>
->
-> Some additional information.
->
-> After the problem appears (i.e. after "client B" starts returning
-> "stale file handle" errors), an "ls" on a file (directory) for
-> which the file-handle is stale, with "sunrpc.nfs_debug = 1023"
-> shows:
->
+On Feb 22, 2011, at 2:43 PM, Benny Halevy wrote:
 
-I also tried:
+> Fix bug introduced in patch
+> 85a56480 NFSD: Update XDR decoders in NFSv4 callback client
+> 
+> Although decode_cb_sequence4resok ignores highest slotid and target highest slotid
+> it must account for their space in their xdr stream when calling xdr_inline_decode
 
-- Exporting /mnt (the NFSv4 preudo-root) without the "crossmount"
-  option (and having the clients mount the subordinate file-systems)
+The real problem is that decoding for the next operation in the compound will start too early in the buffer, because we didn't account for the ignored 8 bytes here, yes?
 
-- Exporting /mnt with "crossmount" and having the client B (the
-  "problematic" one, running kernel 2.6.32) mount "server:/" instead
-  of the subordinate filesystems.
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
-- Making client B mount with options: "ro,soft,proto=tcp"
-  (i.e. without the "nocto,actimeo=300")
+> Cc: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> ---
+> fs/nfsd/nfs4callback.c |    2 +-
+> 1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index da54498..d046bdb 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -592,7 +592,7 @@ static int decode_cb_sequence4resok(struct xdr_stream *xdr,
+> 	 * If the server returns different values for sessionID, slotID or
+> 	 * sequence number, the server is looney tunes.
+> 	 */
+> -	p = xdr_inline_decode(xdr, NFS4_MAX_SESSIONID_LEN + 4 + 4);
+> +	p = xdr_inline_decode(xdr, NFS4_MAX_SESSIONID_LEN + 4 + 4 + 4 + 4);
+> 	if (unlikely(p == NULL))
+> 		goto out_overflow;
+> 	memcpy(id.data, p, NFS4_MAX_SESSIONID_LEN);
+> -- 
+> 1.7.3.4
+> 
 
-No observable change in behavior. Client A (the one with kernel
-2.6.31) works perfectly. Client B (the one with kernel 2.6.32) mounts
-ok but, at some point in time, it starts returning "stale file handle"
-errors (as described in the previous message).
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-At this point I start to run out of things to try! Any suggestions
-would be greately appreciated.
 
-Thanks again
-/npat
+
