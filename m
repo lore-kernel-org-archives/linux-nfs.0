@@ -1,311 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:58713 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752921Ab1BPDQi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 22:16:38 -0500
-Message-ID: <4D5B4192.4090107@panasas.com>
-Date: Tue, 15 Feb 2011 22:16:34 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: andros@netapp.com
-CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        Andy Adamson <andros@citi.umich.edu>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        Dean Hildebrand <dhildeb@us.ibm.com>,
-        Fred Isaman <iisaman@citi.umich.edu>, Fred Isaman <iisaman@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Mike Sager <sager@netapp.com>, Mingyang Guo <guomingyang@nrchpc.ac.cn>,
-        Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
-        Tao Guo <guotao@nrchpc.ac.cn>
-Subject: Re: [PATCH 11/16] pnfs: wave 3: generic read
-References: <1297711116-3139-1-git-send-email-andros@netapp.com> <1297711116-3139-12-git-send-email-andros@netapp.com>
-In-Reply-To: <1297711116-3139-12-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:56947 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755313Ab1BWUNY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Feb 2011 15:13:24 -0500
+Date: Wed, 23 Feb 2011 12:17:30 -0800
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release to
+ nfsiod
+Message-ID: <20110223121730.0883607c@corrin.poochiereds.net>
+In-Reply-To: <1298062447.8061.2.camel@heimdal.trondhjem.org>
+References: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
+	<1297783898.10103.22.camel@heimdal.trondhjem.org>
+	<20110215113053.345e3abc@tlielax.poochiereds.net>
+	<1297813624.10103.34.camel@heimdal.trondhjem.org>
+	<1297865354.6596.13.camel@heimdal.trondhjem.org>
+	<1297866373.6596.18.camel@heimdal.trondhjem.org>
+	<20110216095002.1e7944c9@tlielax.poochiereds.net>
+	<1297869677.6596.30.camel@heimdal.trondhjem.org>
+	<20110216131307.0880ad00@tlielax.poochiereds.net>
+	<20110217084052.34a6686b@barsoom.rdu.redhat.com>
+	<20110217101014.39bcc80b@barsoom.rdu.redhat.com>
+	<1297972044.2964.27.camel@heimdal.trondhjem.org>
+	<20110217163741.004adac8@corrin.poochiereds.net>
+	<20110218150435.3870147c@corrin.poochiereds.net>
+	<1298062447.8061.2.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-02-14 14:18, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+On Fri, 18 Feb 2011 12:54:07 -0800
+Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-Andy, taking into account the many contributors to this patch
-the author should be "The pNFS Team" IMO.
-
+> On Fri, 2011-02-18 at 15:04 -0500, Jeff Layton wrote: 
+> > On Thu, 17 Feb 2011 16:37:41 -0500
+> > Jeff Layton <jlayton@redhat.com> wrote:
+> > 
+> > > On Thu, 17 Feb 2011 11:47:24 -0800
+> > > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > > 
+> > > > On Thu, 2011-02-17 at 10:10 -0500, Jeff Layton wrote: 
+> > > > > On Thu, 17 Feb 2011 08:40:52 -0500
+> > > > > Jeff Layton <jlayton@redhat.com> wrote:
+> > > > > 
+> > > > > > 
+> > > > > > Looks like it finally failed on the 39th pass:
+> > > > > > 
+> > > > > > second check for lost reply on non-idempotent requests
+> > > > > > testing 50 idempotencies in directory "testdir"
+> > > > > > rmdir 1: Directory not empty
+> > > > > > special tests failed
+> > > > > > 
+> > > > > > When I look in the directory (several hours after it failed), the
+> > > > > > silly-renamed file is still there:
+> > > > > > 
+> > > > > > -rw---x--x. 1 root root   30 Feb 16 15:04 .nfs000000000000002d00000090
+> > > > > > 
+> > > > > > ...so I'm not sure what exactly is wrong yet, but it looks like the
+> > > > > > silly delete just never happened. Maybe there's a dentry refcount leak
+> > > > > > of some sort? There are no queued RPC's.
+> > > > > > 
+> > > > > > I'll keep looking at it but if you have ideas as to what it could be,
+> > > > > > let me know.
+> > > > > > 
+> > > > > 
+> > > > > I walked down the directory tree in crash on the live kernel and found
+> > > > > the dentry. The d_count is 0x0, so I'm not clear on why it didn't get
+> > > > > cleaned up:
+> > > > > 
+> > > > > crash> struct dentry.d_flags,d_count,d_name 0xffff880017d46a80
+> > > > >   d_flags = 0xc000, 
+> > > > >   d_count = 0x0, 
+> > > > >   d_name = {
+> > > > >     hash = 0xe08ab5c8, 
+> > > > >     len = 0x1c, 
+> > > > >     name = 0xffff880017d46ab8 ".nfs000000000000002d00000090"
+> > > > >   }, 
+> > > > > 
+> > > > > 
+> > > > > The d_flags are:
+> > > > > 
+> > > > > #define DCACHE_OP_REVALIDATE    0x4000
+> > > > > #define DCACHE_OP_DELETE        0x8000
+> > > > > 
+> > > > > ...very odd. I'd have expected to see this one set too:
+> > > > > 
+> > > > > #define DCACHE_NFSFS_RENAMED  0x0002
+> > > > > 
+> > > > > I suppose the async sillyrename call could have failed and we ended up
+> > > > > calling nfs_cancel_async_unlink? I'll stick in some printk's around
+> > > > > that area and see if I can figure out what's going on...
+> > > > > 
+> > > > 
+> > > > Perhaps I missed a call site that needs an rpc_put_task_async()?
+> > > > 
+> > > 
+> > > I'm not sure that would explain what we're seeing here, unless I'm just
+> > > missing something. I do know that nfs_cancel_async_unlink was never
+> > > called in my latest test run, so that does not seem to be it.
+> > > 
+> > > Another anomaly -- d_fsdata is NULL. How do we get into that state with
+> > > a dentry that has been silly-renamed? FWIW, here's the entire dentry
+> > > struct with my latest reproducer. Let me know if anything stands out to
+> > > you...
+> > > 
+> > 
+> > My current thinking is that the problems I'm seeing here are not
+> > directly related to the bug we're trying to fix. It looks like
+> > sillyrename is still just plain broken a'la your email entitled:
+> > 
+> >     2.6.38-rc2... NFS sillyrename is broken...
+> > 
+> > ...I'll plan to keep an eye out for the fix from Nick, and re-test this
+> > when it hits.
+> > 
+> > Thanks,
 > 
-> Separate the rpc run portion of nfs_read_rpcsetup into a new function
-> nfs_initiate_read that is called for normal NFS I/O.
+> Oh, I'm sorry. I wasn't aware you were testing on 2.6.38-rc...
 > 
-> Add a pNFS read_pagelist function that is called instead of nfs_intitate_read
-> for pNFS reads.
+> Yes, sillyrename is still broken there due to the NULL parent dentry
+> being passed to the d_iput() callback. Nick promised us a patch, but
+> hasn't delivered yet.
 > 
-> Reported-by: Alexandros Batsakis <batsakis@netapp.com>
 
-historical trivia? :)
+Thanks. I went back and tested this patch along with my trivial patch
+that adds an artificial delay in the rpc_release callback. This patch
+seems to fix the race.
 
-Benny
-
-> Signed-off-by: Andy Adamson <andros@citi.umich.edu>
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> Signed-off-by: Fred Isaman <iisaman@netapp.com>
-> Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
-> Signed-off-by: Mike Sager <sager@netapp.com>
-> Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
-> Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> ---
->  fs/nfs/internal.h          |    2 +
->  fs/nfs/pnfs.c              |   28 ++++++++++++++++++
->  fs/nfs/pnfs.h              |   20 +++++++++++++
->  fs/nfs/read.c              |   66 +++++++++++++++++++++++++++----------------
->  include/linux/nfs_iostat.h |    1 +
->  include/linux/nfs_xdr.h    |    1 +
->  6 files changed, 93 insertions(+), 25 deletions(-)
-> 
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index cf9fdbd..335755d 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -262,6 +262,8 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh);
->  #endif
->  
->  /* read.c */
-> +extern int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
-> +			     const struct rpc_call_ops *call_ops);
->  extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
->  
->  /* write.c */
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index f200e34..6f4a5ab 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -30,6 +30,7 @@
->  #include <linux/nfs_fs.h>
->  #include "internal.h"
->  #include "pnfs.h"
-> +#include "iostat.h"
->  
->  #define NFSDBG_FACILITY		NFSDBG_PNFS
->  
-> @@ -891,6 +892,33 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
->  }
->  
->  /*
-> + * Call the appropriate parallel I/O subsystem read function.
-> + */
-> +enum pnfs_try_status
-> +pnfs_try_to_read_data(struct nfs_read_data *rdata,
-> +		       const struct rpc_call_ops *call_ops)
-> +{
-> +	struct inode *inode = rdata->inode;
-> +	struct nfs_server *nfss = NFS_SERVER(inode);
-> +	enum pnfs_try_status trypnfs;
-> +
-> +	rdata->mds_ops = call_ops;
-> +
-> +	dprintk("%s: Reading ino:%lu %u@%llu\n",
-> +		__func__, inode->i_ino, rdata->args.count, rdata->args.offset);
-> +
-> +	trypnfs = nfss->pnfs_curr_ld->read_pagelist(rdata);
-> +	if (trypnfs == PNFS_NOT_ATTEMPTED) {
-> +		put_lseg(rdata->lseg);
-> +		rdata->lseg = NULL;
-> +	} else {
-> +		nfs_inc_stats(inode, NFSIOS_PNFS_READ);
-> +	}
-> +	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
-> +	return trypnfs;
-> +}
-> +
-> +/*
->   * Device ID cache. Currently supports one layout type per struct nfs_client.
->   * Add layout type to the lookup key to expand to support multiple types.
->   */
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index 5107d14..585023f 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -45,6 +45,11 @@ struct pnfs_layout_segment {
->  	struct pnfs_layout_hdr *pls_layout;
->  };
->  
-> +enum pnfs_try_status {
-> +	PNFS_ATTEMPTED     = 0,
-> +	PNFS_NOT_ATTEMPTED = 1,
-> +};
-> +
->  #ifdef CONFIG_NFS_V4_1
->  
->  #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
-> @@ -70,6 +75,12 @@ struct pnfs_layoutdriver_type {
->  
->  	/* test for nfs page cache coalescing */
->  	int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
-> +
-> +	/*
-> +	 * Return PNFS_ATTEMPTED to indicate the layout code has attempted
-> +	 * I/O, else return PNFS_NOT_ATTEMPTED to fall back to normal NFS
-> +	 */
-> +	enum pnfs_try_status (*read_pagelist) (struct nfs_read_data *nfs_data);
->  };
->  
->  struct pnfs_layout_hdr {
-> @@ -157,6 +168,8 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
->  		   enum pnfs_iomode access_type);
->  void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
->  void unset_pnfs_layoutdriver(struct nfs_server *);
-> +enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
-> +					    const struct rpc_call_ops *);
->  void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
->  int pnfs_layout_process(struct nfs4_layoutget *lgp);
->  void pnfs_free_lseg_list(struct list_head *tmp_list);
-> @@ -227,6 +240,13 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
->  	return NULL;
->  }
->  
-> +static inline enum pnfs_try_status
-> +pnfs_try_to_read_data(struct nfs_read_data *data,
-> +		      const struct rpc_call_ops *call_ops)
-> +{
-> +	return PNFS_NOT_ATTEMPTED;
-> +}
-> +
->  static inline bool
->  pnfs_roc(struct inode *ino)
->  {
-> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> index 20cc936..5c09d72 100644
-> --- a/fs/nfs/read.c
-> +++ b/fs/nfs/read.c
-> @@ -18,6 +18,8 @@
->  #include <linux/sunrpc/clnt.h>
->  #include <linux/nfs_fs.h>
->  #include <linux/nfs_page.h>
-> +#include <linux/smp_lock.h>
-> +#include <linux/module.h>
->  
->  #include <asm/system.h>
->  #include "pnfs.h"
-> @@ -158,25 +160,20 @@ static void nfs_readpage_release(struct nfs_page *req)
->  	nfs_release_request(req);
->  }
->  
-> -/*
-> - * Set up the NFS read request struct
-> - */
-> -static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
-> -		const struct rpc_call_ops *call_ops,
-> -		unsigned int count, unsigned int offset,
-> -		struct pnfs_layout_segment *lseg)
-> +int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
-> +		      const struct rpc_call_ops *call_ops)
->  {
-> -	struct inode *inode = req->wb_context->path.dentry->d_inode;
-> +	struct inode *inode = data->inode;
->  	int swap_flags = IS_SWAPFILE(inode) ? NFS_RPC_SWAPFLAGS : 0;
->  	struct rpc_task *task;
->  	struct rpc_message msg = {
->  		.rpc_argp = &data->args,
->  		.rpc_resp = &data->res,
-> -		.rpc_cred = req->wb_context->cred,
-> +		.rpc_cred = data->cred,
->  	};
->  	struct rpc_task_setup task_setup_data = {
->  		.task = &data->task,
-> -		.rpc_client = NFS_CLIENT(inode),
-> +		.rpc_client = clnt,
->  		.rpc_message = &msg,
->  		.callback_ops = call_ops,
->  		.callback_data = data,
-> @@ -184,9 +181,38 @@ static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
->  		.flags = RPC_TASK_ASYNC | swap_flags,
->  	};
->  
-> +	/* Set up the initial task struct. */
-> +	NFS_PROTO(inode)->read_setup(data, &msg);
-> +
-> +	dprintk("NFS: %5u initiated read call (req %s/%lld, %u bytes @ "
-> +			"offset %llu)\n",
-> +			data->task.tk_pid,
-> +			inode->i_sb->s_id,
-> +			(long long)NFS_FILEID(inode),
-> +			data->args.count,
-> +			(unsigned long long)data->args.offset);
-> +
-> +	task = rpc_run_task(&task_setup_data);
-> +	if (IS_ERR(task))
-> +		return PTR_ERR(task);
-> +	rpc_put_task(task);
-> +	return 0;
-> +}
-> +EXPORT_SYMBOL(nfs_initiate_read);
-> +
-> +/*
-> + * Set up the NFS read request struct
-> + */
-> +static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
-> +		const struct rpc_call_ops *call_ops,
-> +		unsigned int count, unsigned int offset,
-> +		struct pnfs_layout_segment *lseg)
-> +{
-> +	struct inode *inode = req->wb_context->path.dentry->d_inode;
-> +
->  	data->req	  = req;
->  	data->inode	  = inode;
-> -	data->cred	  = msg.rpc_cred;
-> +	data->cred	  = req->wb_context->cred;
->  	data->lseg	  = get_lseg(lseg);
->  
->  	data->args.fh     = NFS_FH(inode);
-> @@ -202,21 +228,11 @@ static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
->  	data->res.eof     = 0;
->  	nfs_fattr_init(&data->fattr);
->  
-> -	/* Set up the initial task struct. */
-> -	NFS_PROTO(inode)->read_setup(data, &msg);
-> -
-> -	dprintk("NFS: %5u initiated read call (req %s/%Ld, %u bytes @ offset %Lu)\n",
-> -			data->task.tk_pid,
-> -			inode->i_sb->s_id,
-> -			(long long)NFS_FILEID(inode),
-> -			count,
-> -			(unsigned long long)data->args.offset);
-> +	if (data->lseg &&
-> +	    (pnfs_try_to_read_data(data, call_ops) == PNFS_ATTEMPTED))
-> +		return 0;
->  
-> -	task = rpc_run_task(&task_setup_data);
-> -	if (IS_ERR(task))
-> -		return PTR_ERR(task);
-> -	rpc_put_task(task);
-> -	return 0;
-> +	return nfs_initiate_read(data, NFS_CLIENT(inode), call_ops);
->  }
->  
->  static void
-> diff --git a/include/linux/nfs_iostat.h b/include/linux/nfs_iostat.h
-> index 68b10f5..37a1437 100644
-> --- a/include/linux/nfs_iostat.h
-> +++ b/include/linux/nfs_iostat.h
-> @@ -113,6 +113,7 @@ enum nfs_stat_eventcounters {
->  	NFSIOS_SHORTREAD,
->  	NFSIOS_SHORTWRITE,
->  	NFSIOS_DELAY,
-> +	NFSIOS_PNFS_READ,
->  	__NFSIOS_COUNTSMAX,
->  };
->  
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 37e91c3..4591075 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1018,6 +1018,7 @@ struct nfs_read_data {
->  	struct nfs_readres  res;
->  	unsigned long		timestamp;	/* For lease renewal */
->  	struct pnfs_layout_segment *lseg;
-> +	const struct rpc_call_ops *mds_ops;
->  	struct page		*page_array[NFS_PAGEVEC_SIZE];
->  };
->  
+-- 
+Jeff Layton <jlayton@redhat.com>
