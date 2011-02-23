@@ -1,128 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:44118 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751069Ab1BJF7o (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2011 00:59:44 -0500
-Message-ID: <4D537ECC.8060703@panasas.com>
-Date: Thu, 10 Feb 2011 07:59:40 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: andros@netapp.com
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/40] Wave3: For pNFS team review, not for kernel submission
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1296855242-2592-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from swampdragon.chaosbits.net ([90.184.90.115]:12326 "EHLO
+	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756104Ab1BWW2L (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 17:28:11 -0500
+Date: Wed, 23 Feb 2011 23:27:21 +0100 (CET)
+From: Jesper Juhl <jj@chaosbits.net>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+cc: Chuck Lever <chuck.lever@oracle.com>, Milton Miller <miltonm@bga.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Neil Brown <neilb@suse.de>, bfields@fieldses.org
+Subject: Re: [PATCH] Fix size argument to memset call in nfsacl_encode
+In-Reply-To: <alpine.LNX.2.00.1102232326130.28678@swampdragon.chaosbits.net>
+Message-ID: <alpine.LNX.2.00.1102232327010.28678@swampdragon.chaosbits.net>
+References: <alpine.LNX.2.00.1102032012540.15101@swampdragon.chaosbits.net>  <1296761330.3015.22.camel@heimdal.trondhjem.org>  <alpine.LNX.2.00.1102032035280.15101@swampdragon.chaosbits.net>  <705C97E5-E273-45AA-9714-2BF409DE1322@oracle.com>
+ <1296763614.3015.26.camel@heimdal.trondhjem.org>  <67867FEF-6C10-4A35-8952-4EB56EAB79B9@oracle.com> <1296770110.12342.6.camel@heimdal.trondhjem.org> <alpine.LNX.2.00.1102232326130.28678@swampdragon.chaosbits.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-I merged these patches in the pnfs-submit-wave3-rev2 branch
-in git://linux-nfs.org/~bhalevy/linux-pnfs.git
-and then your 15 patch series that's zero diff from this one
-as pnfs-submit-wave3-rev3
+On Wed, 23 Feb 2011, Jesper Juhl wrote:
 
-pnfs-submit-wave3 now points to pnfs-submit-wave3-rev3
+> On Thu, 3 Feb 2011, Trond Myklebust wrote:
+> 
+> > On Thu, 2011-02-03 at 15:29 -0500, Chuck Lever wrote: 
+> > > Sorry, I wasn't clear.  IMO, data that is destined for the network is an important case where we have to be careful about the rule of using either assignments or memset(), not both, when initializing a data structure.
+> > > 
+> > > If the compiler doesn't pack the fields in struct posix_acl, there is unused space between them.  Memory for acl2 comes from the stack, which contains arbitrary data when this function is invoked.  The areas between the structure fields are not affected by the variable assignments used here.  If the data in acl2 is then simply memcpy'd to the XDR buffer, that old stack data can possibly appear on the wire.
+> > > 
+> > > I agree that the current memset() is incorrect.  My conditional ACK was more about what happens in xdr_encode_array2() rather than how the posix_acl acl2 is initialized.  I think in that regard we are also safe, if the array encoding operates by data type rather than by simply doing a blanket memcpy.  See xdr_nfsace_encode().  It's always possible I misunderstood how ACEs are XDR encoded.
+> > 
+> > We shouldn't ever be memcopying entire structures directly to or from
+> > the XDR buffer, and as far as I know, the current code will always copy
+> > them element by element.
+> > 
+> Ok. So, could we merge the patch that kills the memcpy() ? 
+> 
+I mean memset() of course. 
 
-Fred is working on preparing wave4 on top of wave3
-But until we're finished with that and then the rest of the tree on top of it
-I forked pnfs-submit and downward from wave3 and it has not changed.
+-- 
+Jesper Juhl <jj@chaosbits.net>            http://www.chaosbits.net/
+Plain text mails only, please.
+Don't top-post http://www.catb.org/~esr/jargon/html/T/top-post.html
 
-The tree at this point is structured like this:
-
-nfsd41-all
-	pnfs-submit-wave3
-	pnfs-submit
-		pnfs
-			...
-
-Benny
-
-On 2011-02-04 23:33, andros@netapp.com wrote:
-> The wave3 code addresses pNFS file layout data server connection, data server
-> READ I/O and recovery of failed data server READs through the MDS.
-> 
-> I did not see the pnfs-submit-wave3 branch on benny's tree, so I created my
-> own for the meantime.
-> I cloned the nfsd41-all from git://linux-nfs.org/~bhalevy/linux-pnfs.git
-> which is the base for the pnfs-submit branch.
-> I then applied the wave3 patches from benny's pnfs-submit branch,
-> and then the changes.
-> 
-> git://linux-nfs.org/projects/andros/benny-linux-pnfs.git
-> branch andros-pnfs-submit-wave3 contains the result.
-> 
-> ========================================================================
-> Please review the changes - I want to submit to Trond/Christoph next week.
-> ========================================================================
-> 
-> These patches are in the first 12 in the pnfs-submit tree and are the original
-> "wave3" patches.
-> 
-> 0001-pnfs-submit-wave3-lseg-refcounting.patch
-> 0002-pnfs_submit-add-data-server-session-to-nfs4_setup_se.patch
-> 0003-pnfs_submit-update-nfs4_async_handle_error-for-data-.patch
-> 0004-pnfs_submit-update-state-renewal-for-data-servers.patch
-> 0005-pnfs_submit-wave3-pageio-helpers.patch
-> 0006-pnfs_submit-wave3-associate-layout-segment-with-nfs_.patch
-> 0007-pnfs_submit-filelayout-policy-operations.patch
-> 0008-pnfs_submit-filelayout-i-o-helpers.patch
-> 0009-pnfs_submit-wave3-generic-read.patch
-> 0010-pnfs_submit-filelayout-read.patch
-> 0011-pnfs_submit-increase-NFS_MAX_FILE_IO_SIZE.patch
-> 0012-pnfs_submit-enforce-requested-DS-only-pNFS-role.patch
-> 
-> The rest are the wave3 changes.
-> 
-> Summary of changes;
-> -------------------
-> 
-> 1) The file layoutdriver now specifies it's own rpc_call_prepare and
-> rpc_call_done callbacks for READ.
-> 
-> filelayout_read_prepare:
-> - Uses nfs41_setup_sequence so we do not need to change nfs4_setup_sequence().
-> 
-> filelayout_read_done
-> - Add a read_done_cb function to nfs_read_data that calls nfs_read_done_cb for
-> NFS READs and filelayout_read_done_cb for data server READs.
-> - filelayout_read_done_cb has its own async error handler so we do not need to change nfs4_async_handle_error()
-> 
-> 2) DS/MDS dual role now allows for sessions used as a data server to be reused
-> as an MDS or NFSv41 mount.
-> - We don't ask for the DS role on data server EXCHANGE_ID
-> - We don't strip any roles returned by the server.
-> - If a session is in use as a DS role, and the client subsequently mounts the
-> same server as either an MDS or NON_PNFS mount, the same session can be used
-> provided the existing exchange flags allow it.
-> 
-> 3) We always send a zero READ/WRITE stateid seqid. This is required for
-> data servers, and there is no advantage to not doing it for MDS or NON_PNFS
-> mounts.
-> 
-> 4) We mark the deviceid as invalid upon any data server connection failure
-> and print out a kernel message.
-> This in turn marks any layout that tries to use the devicid as failed for
-> both IOMODE_READ and IOMODE_RW. Inodes without layouts will still send
-> a layoutget. If the resultant layout uses the marked deviceid, it will be
-> marked as failed for both iomodes. All I/O will go through the MDS until
-> a client reboot or a CB_LAYOUTRECALL ALL or FSID removes all layouts that
-> refer to the deviceid, which removes the deviceid.
-> 
-> 5) Our new file layout async error handler only recovers from session
-> related errors, or grace/delay errors. All other errors including
-> NFS4ERR_EXPIRED or NFS4ERR_STALE_CLIENTID result in marking the layout as
-> failed for IOMODE_READ and I/O is retried through the MDS.
-> 
-> 6) Fred's lock inversion patches, and the request by Trond to not reference
-> a layout segment on dirty pages held in the cache changed the layout
-> segment reference counting.
-> 
-> There are a couple of small issues I'm still investigating. Trond and Fred
-> have done an initial review.
-> 
-> -->Andy
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
