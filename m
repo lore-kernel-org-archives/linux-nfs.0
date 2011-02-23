@@ -1,221 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:50547 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751408Ab1BOQWv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 11:22:51 -0500
-Received: by qwa26 with SMTP id 26so260282qwa.19
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Feb 2011 08:22:50 -0800 (PST)
-In-Reply-To: <AANLkTingfoYHpwANBXfN-VUsCYaDiRXLmnbX+raSwsT+@mail.gmail.com>
-References: <AANLkTinSC8E1-Ym_KMn+jwUrjgdcEiBpQo=CazY6z9cV@mail.gmail.com>
- <AANLkTikCw+5DjYDtPZGNLATLA85E9Zr-2TbkCWAZ0F8d@mail.gmail.com>
- <AANLkTiknt45jxzBP6_oKdFA2LFU5Hk+aAwuyGsM9LkSz@mail.gmail.com> <AANLkTingfoYHpwANBXfN-VUsCYaDiRXLmnbX+raSwsT+@mail.gmail.com>
-From: CeR <cer.inet@gmail.com>
-Date: Tue, 15 Feb 2011 17:22:30 +0100
-Message-ID: <AANLkTimZj9wwVeYix6YroB=a0Mk8V4CX8-crRRKGzQ2U@mail.gmail.com>
-Subject: Re: Problems with Krb5/Nfs4, misconfiguration, bug or incompatibility?
-To: Kevin Coffman <kwc@citi.umich.edu>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from swampdragon.chaosbits.net ([90.184.90.115]:12277 "EHLO
+	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753810Ab1BWW10 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 17:27:26 -0500
+Date: Wed, 23 Feb 2011 23:26:36 +0100 (CET)
+From: Jesper Juhl <jj@chaosbits.net>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+cc: Chuck Lever <chuck.lever@oracle.com>, Milton Miller <miltonm@bga.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Neil Brown <neilb@suse.de>, bfields@fieldses.org
+Subject: Re: [PATCH] Fix size argument to memset call in nfsacl_encode
+In-Reply-To: <1296770110.12342.6.camel@heimdal.trondhjem.org>
+Message-ID: <alpine.LNX.2.00.1102232326130.28678@swampdragon.chaosbits.net>
+References: <alpine.LNX.2.00.1102032012540.15101@swampdragon.chaosbits.net>  <1296761330.3015.22.camel@heimdal.trondhjem.org>  <alpine.LNX.2.00.1102032035280.15101@swampdragon.chaosbits.net>  <705C97E5-E273-45AA-9714-2BF409DE1322@oracle.com>
+ <1296763614.3015.26.camel@heimdal.trondhjem.org>  <67867FEF-6C10-4A35-8952-4EB56EAB79B9@oracle.com> <1296770110.12342.6.camel@heimdal.trondhjem.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello. I solved that error by cleaning /etc/hosts.
+On Thu, 3 Feb 2011, Trond Myklebust wrote:
 
-I just leave:
-
-#cat /etc/hosts
-127.0.0.1 localhost
-
-Then the error left.  Nfs4 still doesn't works fine, but due to my
-work I haven't time to carry on..
-
-Best regards!
-
-
-
-
-
-
-2011/2/15 Kevin Coffman <kwc@citi.umich.edu>:
-> Sorry for taking so long to respond.
->
-> Depending on the version of Kerberos, you may need the following in
-> the libdefaults section of /etc/krb5.conf
->
->   allow_weak_crypto = true
->
-> I'm not sure why the nfs.example.com entries are in /etc/hosts?  That
-> may be part of the problem?
->
-> Make sure that 'hostname' on the server returns the correct name,
-> matching the name in your keytab entry (goku.example.com).
->
-> Make sure a reverse DNS lookup of the address returned by a forward
-> DNS lookup, returns that same name as well.
->
-> K.C.
->
->
-> On Sat, Feb 12, 2011 at 7:49 AM, CeR <cer.inet@gmail.com> wrote:
->> Thank you, i will take a look  to the enctypes of my keytab. I hope
->> that's the problem.
->>
->>
->>
->> Here /etc/krb5.conf
->>
->> -----------------------------------------------------------------------
->> [libdefaults]
->>        default_realm = EXAMPLE.COM
->>
->> # The following krb5.conf variables are only for MIT Kerberos.
->>        krb4_config = /etc/krb.conf
->>        krb4_realms = /etc/krb.realms
->>        kdc_timesync = 1
->>        ccache_type = 4
->>        forwardable = true
->>        proxiable = true
->>
->> #       default_tgs_enctypes = des3-hmac-sha1
->> #       default_tkt_enctypes = des3-hmac-sha1
->> #       permitted_enctypes = des3-hmac-sha1
->>
->> # The following libdefaults parameters are only for Heimdal Kerberos.
->>        v4_instance_resolve = false
->>        v4_name_convert = {
->>                host = {
->>                        rcmd = host
->>                        ftp = ftp
->>                }
->>                plain = {
->>                        something = something-else
->>                }
->>        }
->>        fcc-mit-ticketflags = true
->>
->> [realms]
->>        EXAMPLE.COM = {
->>                kdc = kerberos.example.com
->>                admin_server = kerberos.example.com
->>        }
->> [domain_realm]
->>        .example.com = EXAMPLE.COM
->>        example.com = EXAMPLE.COM
->>
->> [login]
->>        krb4_convert = true
->>        krb4_get_tickets = false
->> --------------------------------------------------------------------------------
->> Here /etc/hosts
->>
->> 127.0.0.1       localhost goku goku.example.com nfs.example.com
->> 10.0.0.1        goku goku.example.com
->> 10.0.0.1        nfs.example.com
->>
->> # The following lines are desirable for IPv6 capable hosts
->> ::1     ip6-localhost ip6-loopback
->> fe00::0 ip6-localnet
->> ff00::0 ip6-mcastprefix
->> ff02::1 ip6-allnodes
->> ff02::2 ip6-allrouters
->> ff02::3 ip6-allhosts
->>
->>
->>
->>
->>
->>
->>
->>
->>
->> 2011/2/11 Kevin Coffman <kwc@citi.umich.edu>:
->>> On Fri, Feb 11, 2011 at 1:38 PM, CeR <cer.inet@gmail.com> wrote:
->>>>
->>>> Hello. I have been trying to set up a local-teachpurpose-server at home.
->>>>
->>>> My enviroment: debian squeeze KVM/libvirt machine, with 2.6.32-5-amd64 kernel.
->>>>
->>>> When restarting services with the correct configuration, i get this:
->>>> As you can see, the keytab is there, with correct permissions to read by root.
->>>>
->>>> root@goku:~# /etc/init.d/nfs-common restart
->>>> Stopping NFS common utilities: gssd idmapd statd.
->>>> Starting NFS common utilities: statd idmapd gssd.
->>>>
->>>> root@goku:~# /etc/init.d/nfs-kernel-server restart
->>>> Stopping NFS kernel daemon: mountd svcgssd nfsd.
->>>> Unexporting directories for NFS kernel daemon....
->>>> Exporting directories for NFS kernel daemon....
->>>> Starting NFS kernel daemon: nfsd svcgssd failed!
->>>>
->>>> root@goku:~# tail /var/log/syslog
->>>> Feb 11 18:29:45 goku kernel: [ 2266.025197] nfsd: last server has
->>>> exited, flushing export cache
->>>> Feb 11 18:29:46 goku kernel: [ 2267.119699] svc: failed to register
->>>> lockdv1 RPC service (errno 97).
->>>> Feb 11 18:29:46 goku kernel: [ 2267.121318] NFSD: Using
->>>> /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
->>>> Feb 11 18:29:46 goku kernel: [ 2267.122284] NFSD: starting 90-second
->>>> grace period
->>>> Feb 11 18:29:46 goku rpc.svcgssd[2333]: ERROR: GSS-API: error in
->>>> gss_acquire_cred(): Unspecified GSS failure.  Minor code may provide
->>>> more information - Key table entry not found
->>>> Feb 11 18:29:46 goku rpc.svcgssd[2333]: unable to obtain root
->>>> (machine) credentials
->>>> Feb 11 18:29:46 goku rpc.svcgssd[2333]: do you have a keytab entry for
->>>> nfs/<your.host>@<YOUR.REALM> in /etc/krb5.keytab?
->>>>
->>>> root@goku:~# ls -l /etc/krb5.keytab
->>>> -rw-r----- 1 root openldap 1210 feb 11 11:11 /etc/krb5.keytab
->>>>
->>>> root@goku:~# klist -k
->>>> Keytab name: WRFILE:/etc/krb5.keytab
->>>> KVNO Principal
->>>> ---- --------------------------------------------------------------------------
->>>>   2 host/goku.example.com@EXAMPLE.COM
->>>>   2 host/goku.example.com@EXAMPLE.COM
->>>>   2 host/goku.example.com@EXAMPLE.COM
->>>>   2 host/goku.example.com@EXAMPLE.COM
->>>>   2 ldap/goku.example.com@EXAMPLE.COM
->>>>   2 ldap/goku.example.com@EXAMPLE.COM
->>>>   2 ldap/goku.example.com@EXAMPLE.COM
->>>>   2 ldap/goku.example.com@EXAMPLE.COM
->>>>   4 nfs/goku.example.com@EXAMPLE.COM
->>>>   4 nfs/goku.example.com@EXAMPLE.COM
->>>>   4 nfs/goku.example.com@EXAMPLE.COM
->>>>   4 nfs/goku.example.com@EXAMPLE.COM
->>>>
->>>>
->>>> Is a bug? A incompatibility between my packages versions? A
->>>> configuration problem? Any idea?
->>>>
->>>>
->>>> Thank you. Best regards.
->>>
->>> First, with this kernel version, you should only have one keytab entry
->>> for nfs/goku.example.com with a DES key.  (You don't show the
->>> enctypes, but I see you have 4 keys for nfs.)  You won't hit this
->>> problem until you get past the other error.
->>>
->>> Make sure the reverse look-up for your server's host returns the
->>> correct name.  (Matching the name in the keytab, "goku.example.com")
->>>
->>> Perhaps send a copy of /etc/hosts and your /etc/krb5.conf to see what
->>> might be misconfigured.
->>>
->>> K.C.
->>>
->>
->>
->>
->> --
->> [*] CeR / Arturo Borrero Gonzalez [*]
->>
->>
->
-
-
+> On Thu, 2011-02-03 at 15:29 -0500, Chuck Lever wrote: 
+> > Sorry, I wasn't clear.  IMO, data that is destined for the network is an important case where we have to be careful about the rule of using either assignments or memset(), not both, when initializing a data structure.
+> > 
+> > If the compiler doesn't pack the fields in struct posix_acl, there is unused space between them.  Memory for acl2 comes from the stack, which contains arbitrary data when this function is invoked.  The areas between the structure fields are not affected by the variable assignments used here.  If the data in acl2 is then simply memcpy'd to the XDR buffer, that old stack data can possibly appear on the wire.
+> > 
+> > I agree that the current memset() is incorrect.  My conditional ACK was more about what happens in xdr_encode_array2() rather than how the posix_acl acl2 is initialized.  I think in that regard we are also safe, if the array encoding operates by data type rather than by simply doing a blanket memcpy.  See xdr_nfsace_encode().  It's always possible I misunderstood how ACEs are XDR encoded.
+> 
+> We shouldn't ever be memcopying entire structures directly to or from
+> the XDR buffer, and as far as I know, the current code will always copy
+> them element by element.
+> 
+Ok. So, could we merge the patch that kills the memcpy() ? 
 
 -- 
-[*] CeR / Arturo Borrero Gonzalez [*]
+Jesper Juhl <jj@chaosbits.net>            http://www.chaosbits.net/
+Plain text mails only, please.
+Don't top-post http://www.catb.org/~esr/jargon/html/T/top-post.html
+
