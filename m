@@ -1,141 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yi0-f46.google.com ([209.85.218.46]:65358 "EHLO
-	mail-yi0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758291Ab1BKW5F convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Feb 2011 17:57:05 -0500
-Received: by yib18 with SMTP id 18so1291432yib.19
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2011 14:57:04 -0800 (PST)
-In-Reply-To: <0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
-References: <AANLkTik_Y4_UpBx-OMaedXz34qc+zuVzN1B5A5qnzW5y@mail.gmail.com>
-	<665D28F4-A8C9-47E8-AE27-E1D960A1830B@oracle.com>
-	<AANLkTi=dgyOmf+to8waRi+piomovMM-H7_7GdzyhYuEo@mail.gmail.com>
-	<0F40C51E-38A3-451B-9D88-586CFD82EF8F@oracle.com>
-Date: Fri, 11 Feb 2011 18:57:04 -0400
-Message-ID: <AANLkTiksVebz5Pc+hH55hRUgvQ5PMFE1DG2X1JWbtSeD@mail.gmail.com>
-Subject: Re: NFS only mount with -o udp option
-From: Edgar Almonte <samudhio@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from e28smtp04.in.ibm.com ([122.248.162.4]:35018 "EHLO
+	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755450Ab1BWNxI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 08:53:08 -0500
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
+        sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
+        jlayton@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
+Subject: [PATCH -V5 04/24] vfs: Add generic IS_ACL() test for acl support
+Date: Wed, 23 Feb 2011 19:21:51 +0530
+Message-Id: <1298469131-16555-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-[root@circle zen]# pacman -Qs nfs-utils
-local/nfs-utils 1.2.2-4 [0.69 MB]
-    Support programs for Network File Systems
-[root@circle zen]# uname -a
-Linux circle 2.6.36-ARCH #1 SMP PREEMPT Mon Jan 24 18:34:55 UTC 2011
-i686 Intel(R) Atom(TM) CPU D510 @ 1.66GHz GenuineIntel GNU/Linux
+From: Andreas Gruenbacher <agruen@suse.de>
 
+When IS_POSIXACL() is true, the vfs does not apply the umask.  Other acl
+models will need the same exception, so introduce a separate IS_ACL()
+test.
 
-On Fri, Feb 11, 2011 at 1:40 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Which nfs-utils version and kernel release are you using?  What transport protocols are available from your NFS server?  It looks like only UDP.  I recall a bug fix in this area in the past year.
->
-> On Feb 11, 2011, at 12:35 PM, Edgar Almonte wrote:
->
->> i get this without udp option:
->>
->> mount: no type was given - I'll assume nfs because of the colon
->> mount.nfs: timeout set for Fri Feb 11 13:27:33 2011
->> mount.nfs: trying text-based options
->> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->> mount.nfs: mount(2): No such file or directory
->> mount.nfs: trying text-based options
->> 'vers=4,addr=fe80::224:21ff:fe57:368d,clientaddr=::'
->> mount.nfs: mount(2): Input/output error
->> mount.nfs: mount system call failed
->>
->>
->> and with udp option:
->>
->> ount: no type was given - I'll assume nfs because of the colon
->> mount.nfs: timeout set for Fri Feb 11 13:28:29 2011
->> mount.nfs: trying text-based options
->> 'udp,vers=4,addr=192.168.1.102,clientaddr=192.168.1.103'
->> mount.nfs: mount(2): No such file or directory
->> mount.nfs: trying text-based options 'udp,addr=192.168.1.102'
->> mount.nfs: prog 100003, trying vers=3, prot=17
->> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot UDP port 2049
->> mount.nfs: prog 100005, trying vers=3, prot=17
->> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
->> heaven.local:/STORAGE on /nfs/STORAGE type nfs (rw,udp)
->>
->>
->> for other distro ( debian laptop ) without the udp option:
->>
->> mount: no type was given - I'll assume nfs because of the colon
->> mount.nfs: timeout set for Fri Feb 11 13:31:37 2011
->> mount.nfs: trying text-based options
->> 'vers=4,addr=192.168.1.102,clientaddr=192.168.1.107'
->> mount.nfs: mount(2): No such file or directory
->> mount.nfs: trying text-based options 'addr=192.168.1.102'
->> mount.nfs: prog 100003, trying vers=3, prot=6
->> mount.nfs: trying 192.168.1.102 prog 100003 vers 3 prot TCP port 2049
->> mount.nfs: prog 100005, trying vers=3, prot=17
->> mount.nfs: trying 192.168.1.102 prog 100005 vers 3 prot UDP port 41044
->> heaven.local:/STORAGE on /srv/nfs type nfs (rw)
->>
->>
->> and look like is some ipv6 issues
->>
->>
->> On Thu, Feb 10, 2011 at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>
->>> On Feb 9, 2011, at 7:59 PM, Edgar Almonte wrote:
->>>
->>>> hello list
->>>>
->>>> like the subject say after some upgrade of my distro ( i have 2
->>>> machine with the same distro and only in one happne the problem ) i
->>>> can only mount nfs share using the option -o udp , without it i get
->>>> this error
->>>> mount.nfs: mount system call failed
->>>
->>> What does
->>>
->>>  sudo mount.nfs heaven.local:/STORAGE /nfs/STORAGE -v
->>>
->>> say?  It should tell you how the mount command is negotiating with the server.
->>>
->>>> i am using avahi-dns ( mdns ) for hostname resolve
->>>>
->>>> command used:
->>>> mount heaven.local:/STORAGE /nfs/STORAGE/
->>>> check dns is work right :
->>>>
->>>> ping heaven.local
->>>> PING heaven.local (192.168.1.102) 56(84) bytes of data.
->>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=1 ttl=64 time=0.153 ms
->>>> 64 bytes from heaven.local (192.168.1.102): icmp_seq=2 ttl=64 time=0.160 ms
->>>> ^C
->>>> --- heaven.local ping statistics ---
->>>> 2 packets transmitted, 2 received, 0% packet loss, time 1001ms
->>>> rtt min/avg/max/mdev = 0.153/0.156/0.160/0.013 ms
->>>>
->>>>
->>>> anyidea what i need check for solve this issue ?
->>>>
->>>> thanks
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>> --
->>> Chuck Lever
->>> chuck[dot]lever[at]oracle[dot]com
->>>
->>>
->>>
->>>
->>>
->
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
->
->
+The IS_POSIX_ACL() test is still needed so that nfsd can determine when
+the underlying file system supports POSIX ACLs (as opposed to some other
+kind).
+
+Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/namei.c         |    6 +++---
+ include/linux/fs.h |    8 +++++++-
+ 2 files changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 0bfc546..b1e5104 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2161,7 +2161,7 @@ static int __open_namei_create(struct nameidata *nd, struct path *path,
+ 	int error;
+ 	struct dentry *dir = nd->path.dentry;
+ 
+-	if (!IS_POSIXACL(dir->d_inode))
++	if (!IS_ACL(dir->d_inode))
+ 		mode &= ~current_umask();
+ 	error = security_path_mknod(&nd->path, path->dentry, mode, 0);
+ 	if (error)
+@@ -2691,7 +2691,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, int, mode,
+ 		error = PTR_ERR(dentry);
+ 		goto out_unlock;
+ 	}
+-	if (!IS_POSIXACL(nd.path.dentry->d_inode))
++	if (!IS_ACL(nd.path.dentry->d_inode))
+ 		mode &= ~current_umask();
+ 	error = may_mknod(mode);
+ 	if (error)
+@@ -2768,7 +2768,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, int, mode)
+ 	if (IS_ERR(dentry))
+ 		goto out_unlock;
+ 
+-	if (!IS_POSIXACL(nd.path.dentry->d_inode))
++	if (!IS_ACL(nd.path.dentry->d_inode))
+ 		mode &= ~current_umask();
+ 	error = mnt_want_write(nd.path.mnt);
+ 	if (error)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index bd32159..70c7779 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -205,7 +205,7 @@ struct inodes_stat_t {
+ #define MS_VERBOSE	32768	/* War is peace. Verbosity is silence.
+ 				   MS_VERBOSE is deprecated. */
+ #define MS_SILENT	32768
+-#define MS_POSIXACL	(1<<16)	/* VFS does not apply the umask */
++#define MS_POSIXACL	(1<<16) /* Supports POSIX ACLs */
+ #define MS_UNBINDABLE	(1<<17)	/* change to unbindable */
+ #define MS_PRIVATE	(1<<18)	/* change to private */
+ #define MS_SLAVE	(1<<19)	/* change to slave */
+@@ -280,6 +280,12 @@ struct inodes_stat_t {
+ #define IS_IMA(inode)		((inode)->i_flags & S_IMA)
+ #define IS_AUTOMOUNT(inode)	((inode)->i_flags & S_AUTOMOUNT)
+ 
++/*
++ * IS_ACL() tells the VFS to not apply the umask
++ * and use iop->check_acl for acl permission checks when defined.
++ */
++#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
++
+ /* the read-only stuff doesn't really belong here, but any other place is
+    probably as bad and I don't want to create yet another include file. */
+ 
+-- 
+1.7.1
+
