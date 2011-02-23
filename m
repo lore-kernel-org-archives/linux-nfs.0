@@ -1,42 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41287 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752333Ab1BNTSn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Feb 2011 14:18:43 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 01/16] NFS remove unnecessary CONFIG_NFS_V4 from nfs_read_data
-Date: Mon, 14 Feb 2011 14:18:21 -0500
-Message-Id: <1297711116-3139-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1297711116-3139-1-git-send-email-andros@netapp.com>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>
+Received: from zak.futurequest.net ([69.5.6.152]:44570 "HELO
+	zak.futurequest.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1755337Ab1BWUXv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 15:23:51 -0500
+Date: Wed, 23 Feb 2011 14:23:48 -0600
+From: Bruce Guenter <bruce@untroubled.org>
+To: linux-nfs@vger.kernel.org
+Subject: Re: Invisible file problem
+Message-ID: <20110223202348.GA16643@untroubled.org>
+References: <20110222215214.GA32537@untroubled.org>
+ <1298447447.2968.8.camel@heimdal.trondhjem.org>
+ <20110223145004.GA6747@untroubled.org>
+ <4D65632C.7040800@gmail.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="KsGdsel6WgEHnImy"
+In-Reply-To: <4D65632C.7040800@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+--KsGdsel6WgEHnImy
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- include/linux/nfs_xdr.h |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+On Wed, Feb 23, 2011 at 02:42:36PM -0500, Joe Landman wrote:
+> Is this a server or client side issue BTW?  I am trying to track=20
+> something that could be related to this down.
 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index b006857..51bfadb 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1016,9 +1016,7 @@ struct nfs_read_data {
- 	unsigned int		npages;	/* Max length of pagevec */
- 	struct nfs_readargs args;
- 	struct nfs_readres  res;
--#ifdef CONFIG_NFS_V4
- 	unsigned long		timestamp;	/* For lease renewal */
--#endif
- 	struct page		*page_array[NFS_PAGEVEC_SIZE];
- };
- 
--- 
-1.7.2.3
+Client side.
 
+--=20
+Bruce Guenter <bruce@untroubled.org>                http://untroubled.org/
+
+--KsGdsel6WgEHnImy
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.17 (GNU/Linux)
+
+iEYEARECAAYFAk1lbNQACgkQ6W+y3GmZgOgV7wCffEtJ34D3HuYXoawUvxyT0eB1
+BoAAn2bS6OSm3kLwjaYHgmhFoZ8A82pX
+=wFWH
+-----END PGP SIGNATURE-----
+
+--KsGdsel6WgEHnImy--
