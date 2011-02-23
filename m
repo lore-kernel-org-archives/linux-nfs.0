@@ -1,151 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17921 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751666Ab1BQM7B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Feb 2011 07:59:01 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p1HCx1b3022005
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2011 07:59:01 -0500
-Received: from localhost (beach.nrt.redhat.com [10.64.200.71])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id p1HCx04v019654
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Feb 2011 07:59:01 -0500
-Date: Thu, 17 Feb 2011 21:59:00 +0900 (JST)
-Message-Id: <20110217.215900.388120588347145930.yamato@redhat.com>
+Received: from daytona.panasas.com ([67.152.220.89]:30222 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752844Ab1BWAJq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Feb 2011 19:09:46 -0500
+From: Benny Halevy <bhalevy@panasas.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
-From: Masatake YAMATO <yamato@redhat.com>
-Content-Type: Text/Plain; charset=us-ascii
+Subject: [PATCH] pnfsd-lexp: recall layout on truncate
+Date: Tue, 22 Feb 2011 16:09:43 -0800
+Message-Id: <1298419783-27791-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-This patch adding a capability to read /etc/exports.d/*.export as 
-extra export files to exportfs.
-
-If one wants to add or remove an export entry in a script, currently
-one may have to use sed or something tool for adding or removing the
-line for the entry in /etc/exports file. 
-
-With the patch, adding and removing an entry from a script is much easier.
-cat<<EOF... or mv can be used for adding. rm can be used for removing.
-
-
-Signed-off-by: Masatake YAMATO <yamato@redhat.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- support/include/nfslib.h  |    6 ++++
- utils/exportfs/exportfs.c |   59 ++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 64 insertions(+), 1 deletions(-)
+ fs/nfsd/pnfsd.h      |    1 +
+ fs/nfsd/pnfsd_lexp.c |   76 ++++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/vfs.c        |    4 ++
+ 3 files changed, 79 insertions(+), 2 deletions(-)
 
-diff --git a/support/include/nfslib.h b/support/include/nfslib.h
-index 53ece0e..864aae2 100644
---- a/support/include/nfslib.h
-+++ b/support/include/nfslib.h
-@@ -25,6 +25,12 @@
- #ifndef _PATH_EXPORTS
- #define _PATH_EXPORTS		"/etc/exports"
- #endif
-+#ifndef _PATH_EXPORTS_D
-+#define _PATH_EXPORTS_D         "/etc/exports.d"
-+#endif
-+#ifndef _EXT_EXPORT
-+#define _EXT_EXPORT             ".export"
-+#endif
- #ifndef _PATH_IDMAPDCONF
- #define _PATH_IDMAPDCONF	"/etc/idmapd.conf"
- #endif
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index b78957f..26d0504 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -25,6 +25,7 @@
- #include <fcntl.h>
- #include <netdb.h>
- #include <errno.h>
-+#include <dirent.h>
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+index 946f334..51dd982 100644
+--- a/fs/nfsd/pnfsd.h
++++ b/fs/nfsd/pnfsd.h
+@@ -139,6 +139,7 @@ extern struct sockaddr pnfsd_lexp_addr;
+ extern size_t pnfs_lexp_addr_len;
  
- #include "sockaddr.h"
- #include "misc.h"
-@@ -41,6 +42,7 @@ static void	error(nfs_export *exp, int err);
- static void	usage(const char *progname);
- static void	validate_export(nfs_export *exp);
- static int	matchhostname(const char *hostname1, const char *hostname2);
-+static void	export_d_read(const char *dname);
+ extern void pnfsd_lexp_init(struct inode *);
++extern int pnfsd_lexp_recall_layout(struct inode *);
+ #endif /* CONFIG_PNFSD_LOCAL_EXPORT */
  
- int
- main(int argc, char **argv)
-@@ -127,8 +129,10 @@ main(int argc, char **argv)
- 			return 0;
- 		}
- 	}
--	if (f_export && ! f_ignore)
-+	if (f_export && ! f_ignore) {
- 		export_read(_PATH_EXPORTS);
-+		export_d_read(_PATH_EXPORTS_D);
-+	}
- 	if (f_export) {
- 		if (f_all)
- 			export_all(f_verbose);
-@@ -485,6 +489,59 @@ out:
- 	return result;
+ #endif /* LINUX_NFSD_PNFSD_H */
+diff --git a/fs/nfsd/pnfsd_lexp.c b/fs/nfsd/pnfsd_lexp.c
+index bf2f403..736cc3f 100644
+--- a/fs/nfsd/pnfsd_lexp.c
++++ b/fs/nfsd/pnfsd_lexp.c
+@@ -18,6 +18,8 @@
+  * by David M. Richter <richterd@citi.umich.edu>
+  */
+ 
++#include <linux/sched.h>
++#include <linux/wait.h>
+ #include <linux/sunrpc/svc_xprt.h>
+ #include <linux/nfsd/nfs4layoutxdr.h>
+ 
+@@ -28,6 +30,8 @@
+ struct sockaddr pnfsd_lexp_addr;
+ size_t pnfs_lexp_addr_len;
+ 
++static wait_queue_head_t lo_recall_wq;
++
+ static int
+ pnfsd_lexp_layout_type(struct super_block *sb)
+ {
+@@ -196,8 +200,7 @@ static int
+ pnfsd_lexp_layout_return(struct inode *inode,
+ 			 const struct nfsd4_pnfs_layoutreturn_arg *args)
+ {
+-	dprintk("%s: (unimplemented)\n", __func__);
+-
++	wake_up_all(&lo_recall_wq);
+ 	return 0;
  }
  
-+/* Based on mnt_table_parse_dir() in
-+   util-linux-ng/shlibs/mount/src/tab_parse.c */
-+static void
-+export_d_read(const char *dname)
-+{
-+	int n = 0, i;
-+	struct dirent **namelist = NULL;
+@@ -220,6 +223,75 @@ static struct pnfs_export_operations pnfsd_lexp_ops = {
+ void
+ pnfsd_lexp_init(struct inode *inode)
+ {
++	static bool init_once;
 +
+ 	dprintk("%s: &pnfsd_lexp_ops=%p\n", __func__, &pnfsd_lexp_ops);
+ 	inode->i_sb->s_pnfs_op = &pnfsd_lexp_ops;
 +
-+	n = scandir(dname, &namelist, NULL, versionsort);
-+	if (n < 0)
-+		xlog(L_NOTICE, "scandir %s: %s\n", dname, strerror(errno));
-+	else if (n == 0)
-+		return;
-+
-+	for (i = 0; i < n; i++) {
-+		struct dirent *d = namelist[i];
-+		size_t namesz;
-+		char fname[PATH_MAX + 1];
-+		int fname_len;
-+
-+
-+		if (d->d_type != DT_UNKNOWN 
-+		    && d->d_type != DT_REG
-+		    && d->d_type != DT_LNK)
-+			continue;
-+		if (*d->d_name == '.')
-+			continue;
-+
-+#define _EXT_EXPORT_SIZ   (sizeof(_EXT_EXPORT) - 1)
-+		namesz = strlen(d->d_name);
-+		if (!namesz 
-+		    || namesz < _EXT_EXPORT_SIZ + 1
-+		    || strcmp(d->d_name + (namesz - _EXT_EXPORT_SIZ),
-+			      _EXT_EXPORT))
-+			continue;
-+
-+		fname_len = snprintf(fname, PATH_MAX +1, "%s/%s", dname, d->d_name);
-+		if (fname_len > PATH_MAX) {
-+			xlog(L_WARNING, "Too long file name: %s in %s\n", d->d_name, dname);
-+			continue;
-+		}
-+
-+		export_read(fname);
-+	}
-+		
-+	for (i = 0; i < n; i++)
-+		free(namelist[i]);
-+	free(namelist);
-+
-+	return;
++	if (!init_once++)
++		init_waitqueue_head(&lo_recall_wq);
 +}
 +
- static char
- dumpopt(char c, char *fmt, ...)
- {
++static bool
++has_no_layout(struct nfs4_file *fp)
++{
++	return list_empty(&fp->fi_layouts);
++}
++
++/*
++ * recalls the layout if needed and waits synchronously for its return
++ */
++int
++pnfsd_lexp_recall_layout(struct inode *inode)
++{
++	struct nfs4_file *fp;
++	struct nfsd4_pnfs_cb_layout cbl;
++	struct pnfsd_cb_ctl cb_ctl;
++	int status = 0;
++
++	dprintk("%s: begin\n", __func__);
++	fp = find_file(inode);
++	BUG_ON(!fp);
++
++	if (has_no_layout(fp))
++		goto out;
++
++	memset(&cb_ctl, 0, sizeof(cb_ctl));
++	status = pnfsd_get_cb_op(&cb_ctl);
++	BUG_ON(status);
++
++	memset(&cbl, 0, sizeof(cbl));
++	cbl.cbl_recall_type = RETURN_FILE;
++	cbl.cbl_seg.layout_type = LAYOUT_NFSV4_1_FILES;
++	/* for now, always recall the whole layout */
++	cbl.cbl_seg.iomode = IOMODE_ANY;
++	cbl.cbl_seg.offset = 0;
++	cbl.cbl_seg.length = NFS4_MAX_UINT64;
++
++	while (!has_no_layout(fp)) {
++		dprintk("%s: recalling layout\n", __func__);
++		status = cb_ctl.cb_op->cb_layout_recall(inode->i_sb, inode, &cbl);
++
++		switch (status) {
++		case 0:
++		case -EAGAIN:
++			break;
++		case -ENOENT:	/* no matching layout */
++			status = 0;
++			goto out_put_cb;
++		default:
++			goto out_put_cb;
++		}
++
++		dprintk("%s: waiting\n", __func__);
++		status = wait_event_interruptible(lo_recall_wq, has_no_layout(fp));
++		if (status)
++			break;
++	}
++out_put_cb:
++	pnfsd_put_cb_op(&cb_ctl);
++out:
++	put_nfs4_file(fp);
++	dprintk("%s: status=%d\n", __func__, status);
++	return status;
+ }
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 79ba25f..021e89e 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -36,6 +36,7 @@
+ #ifdef CONFIG_NFSD_V4
+ #include "acl.h"
+ #include "idmap.h"
++#include "pnfsd.h"
+ #include <linux/nfsd4_spnfs.h>
+ #endif /* CONFIG_NFSD_V4 */
+ #if defined(CONFIG_SPNFS_BLOCK)
+@@ -384,6 +385,9 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+ 					NFSD_MAY_TRUNC|NFSD_MAY_OWNER_OVERRIDE);
+ 			if (err)
+ 				goto out;
++#if defined(CONFIG_PNFSD_LOCAL_EXPORT)
++			pnfsd_lexp_recall_layout(inode);
++#endif /* CONFIG_PNFSD_LOCAL_EXPORT */
+ #if defined(CONFIG_SPNFS_BLOCK)
+ 			if (pnfs_block_enabled(inode, 0)) {
+ 				err = bl_layoutrecall(inode, RETURN_FILE,
 -- 
-1.7.4
+1.7.3.4
 
