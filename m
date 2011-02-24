@@ -1,89 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41287 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752388Ab1BNTSq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Feb 2011 14:18:46 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 05/16] pnfs: wave 3: new flag for state renewal check
-Date: Mon, 14 Feb 2011 14:18:25 -0500
-Message-Id: <1297711116-3139-6-git-send-email-andros@netapp.com>
-In-Reply-To: <1297711116-3139-1-git-send-email-andros@netapp.com>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:51461 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755365Ab1BXWJF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2011 17:09:05 -0500
+From: Benny Halevy <bhalevy@panasas.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] SQUASHME: pnfsd-lexp: pnfsd_lexp_recall_layout fixes
+Date: Thu, 24 Feb 2011 14:09:05 -0800
+Message-Id: <1298585345-618-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Fix Boaz Harrosh's review comments.
 
-Data servers not sharing a session with the mount MDS always have an empty
-cl_superblocks list.
-Replace the cl_superblocks empty list check to see if it is time to shut down
-renewd with the NFS_CS_STOP_RENEW bit which is not set by such a data server.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
 ---
- fs/nfs/client.c           |    5 +++++
- fs/nfs/nfs4renewd.c       |    6 +-----
- include/linux/nfs_fs_sb.h |    1 +
- 3 files changed, 7 insertions(+), 5 deletions(-)
+ fs/nfsd/pnfsd_lexp.c |   25 +++++++++----------------
+ 1 files changed, 9 insertions(+), 16 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 75b236f..5891cf8 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1032,14 +1032,19 @@ static void nfs_server_insert_lists(struct nfs_server *server)
- 	spin_lock(&nfs_client_lock);
- 	list_add_tail_rcu(&server->client_link, &clp->cl_superblocks);
- 	list_add_tail(&server->master_link, &nfs_volume_list);
-+	clear_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state);
- 	spin_unlock(&nfs_client_lock);
- 
+diff --git a/fs/nfsd/pnfsd_lexp.c b/fs/nfsd/pnfsd_lexp.c
+index 71d503e..e9382da 100644
+--- a/fs/nfsd/pnfsd_lexp.c
++++ b/fs/nfsd/pnfsd_lexp.c
+@@ -239,9 +239,9 @@ is_inode_pnfsd_lexp(struct inode *inode)
  }
  
- static void nfs_server_remove_lists(struct nfs_server *server)
+ static bool
+-has_no_layout(struct nfs4_file *fp)
++has_layout(struct nfs4_file *fp)
  {
-+	struct nfs_client *clp = server->nfs_client;
-+
- 	spin_lock(&nfs_client_lock);
- 	list_del_rcu(&server->client_link);
-+	if (clp && list_empty(&clp->cl_superblocks))
-+		set_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state);
- 	list_del(&server->master_link);
- 	spin_unlock(&nfs_client_lock);
+-	return list_empty(&fp->fi_layouts);
++	return !list_empty(&fp->fi_layouts);
+ }
  
-diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
-index 402143d..df8e7f3 100644
---- a/fs/nfs/nfs4renewd.c
-+++ b/fs/nfs/nfs4renewd.c
-@@ -64,12 +64,8 @@ nfs4_renew_state(struct work_struct *work)
- 	ops = clp->cl_mvops->state_renewal_ops;
- 	dprintk("%s: start\n", __func__);
+ /*
+@@ -252,20 +252,15 @@ pnfsd_lexp_recall_layout(struct inode *inode)
+ {
+ 	struct nfs4_file *fp;
+ 	struct nfsd4_pnfs_cb_layout cbl;
+-	struct pnfsd_cb_ctl cb_ctl;
+ 	int status = 0;
  
--	rcu_read_lock();
--	if (list_empty(&clp->cl_superblocks)) {
--		rcu_read_unlock();
-+	if (test_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state))
+ 	dprintk("%s: begin\n", __func__);
+ 	fp = find_file(inode);
+ 	BUG_ON(!fp);
+ 
+-	if (has_no_layout(fp))
++	if (!has_layout(fp))
  		goto out;
--	}
--	rcu_read_unlock();
  
- 	spin_lock(&clp->cl_lock);
- 	lease = clp->cl_lease_time;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index b197563..2c2dc18 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -30,6 +30,7 @@ struct nfs_client {
- #define NFS_CS_CALLBACK		1		/* - callback started */
- #define NFS_CS_IDMAP		2		/* - idmap started */
- #define NFS_CS_RENEWD		3		/* - renewd started */
-+#define NFS_CS_STOP_RENEW	4		/* no more state to renew */
- 	struct sockaddr_storage	cl_addr;	/* server identifier */
- 	size_t			cl_addrlen;
- 	char *			cl_hostname;	/* hostname of server */
+-	memset(&cb_ctl, 0, sizeof(cb_ctl));
+-	status = pnfsd_get_cb_op(&cb_ctl);
+-	BUG_ON(status);
+-
+ 	memset(&cbl, 0, sizeof(cbl));
+ 	cbl.cbl_recall_type = RETURN_FILE;
+ 	cbl.cbl_seg.layout_type = LAYOUT_NFSV4_1_FILES;
+@@ -274,9 +269,9 @@ pnfsd_lexp_recall_layout(struct inode *inode)
+ 	cbl.cbl_seg.offset = 0;
+ 	cbl.cbl_seg.length = NFS4_MAX_UINT64;
+ 
+-	while (!has_no_layout(fp)) {
++	while (has_layout(fp)) {
+ 		dprintk("%s: recalling layout\n", __func__);
+-		status = cb_ctl.cb_op->cb_layout_recall(inode->i_sb, inode, &cbl);
++		status = nfsd_layout_recall_cb(inode->i_sb, inode, &cbl);
+ 
+ 		switch (status) {
+ 		case 0:
+@@ -284,18 +279,16 @@ pnfsd_lexp_recall_layout(struct inode *inode)
+ 			break;
+ 		case -ENOENT:	/* no matching layout */
+ 			status = 0;
+-			goto out_put_cb;
++			goto out;
+ 		default:
+-			goto out_put_cb;
++			goto out;
+ 		}
+ 
+-		dprintk("%s: waiting\n", __func__);
+-		status = wait_event_interruptible(lo_recall_wq, has_no_layout(fp));
++		dprintk("%s: waiting status=%d\n", __func__, status);
++		status = wait_event_interruptible(lo_recall_wq, !has_layout(fp));
+ 		if (status)
+ 			break;
+ 	}
+-out_put_cb:
+-	pnfsd_put_cb_op(&cb_ctl);
+ out:
+ 	put_nfs4_file(fp);
+ 	dprintk("%s: status=%d\n", __func__, status);
 -- 
-1.7.2.3
+1.7.3.4
 
