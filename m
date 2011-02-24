@@ -1,74 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:47186 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751883Ab1BUWal (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 17:30:41 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 6/9] pnfs: return NFS4ERR_DELAY from layoutrecall while waiting on lsegs
-Date: Mon, 21 Feb 2011 14:30:37 -0800
-Message-Id: <1298327437-8675-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4D62E6F3.8000304@panasas.com>
-References: <4D62E6F3.8000304@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:12537 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753434Ab1BYR5c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Feb 2011 12:57:32 -0500
+From: andros@netapp.com
+To: iisaman@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 3/4] NFSv4.1 reclaim complete must wait for completion
+Date: Thu, 24 Feb 2011 05:11:08 -0500
+Message-Id: <1298542269-2477-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1298542269-2477-1-git-send-email-andros@netapp.com>
+References: <1298542269-2477-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/callback_proc.c |   23 +++++++++++++++--------
- 1 files changed, 15 insertions(+), 8 deletions(-)
+From: Andy Adamson <andros@netapp.com>
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 9547c34..5e4b5d1 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -186,6 +186,7 @@ void nfs_client_return_layouts(struct nfs_client *clp)
- {
- 	struct pnfs_cb_lrecall_info *cb_info;
- 
-+	dprintk("%s\n", __func__);
- 	spin_lock(&clp->cl_lock);
- 	while (true) {
- 		if (list_empty(&clp->cl_layoutrecalls)) {
-@@ -270,10 +271,13 @@ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
- 		spin_lock(&lo->inode->i_lock);
- 		if (rv == NFS4_OK) {
- 			lo->plh_block_lgets++;
--			nfs4_asynch_forget_layouts(lo, &args->cbl_range,
--						   cb_info->pcl_notify_bit,
--						   &cb_info->pcl_count,
--						   &free_me_list);
-+			if (nfs4_asynch_forget_layouts(lo, &args->cbl_range,
-+						       cb_info->pcl_notify_bit,
-+						       &cb_info->pcl_count,
-+						       &free_me_list))
-+				rv = NFS4ERR_DELAY;
-+			else
-+				rv = NFS4ERR_NOMATCHING_LAYOUT;
- 		}
- 		pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
- 		spin_unlock(&lo->inode->i_lock);
-@@ -309,10 +313,13 @@ static int initiate_layout_draining(struct pnfs_cb_lrecall_info *cb_info)
- 					 &recall_list, plh_bulk_recall) {
- 			spin_lock(&lo->inode->i_lock);
- 			set_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
--			nfs4_asynch_forget_layouts(lo, &range,
--						   cb_info->pcl_notify_bit,
--						   &cb_info->pcl_count,
--						   &free_me_list);
-+			if (nfs4_asynch_forget_layouts(lo, &range,
-+						       cb_info->pcl_notify_bit,
-+						       &cb_info->pcl_count,
-+						       &free_me_list))
-+				rv = NFS4ERR_DELAY;
-+			else
-+				rv = NFS4ERR_NOMATCHING_LAYOUT;
- 			list_del_init(&lo->plh_bulk_recall);
- 			spin_unlock(&lo->inode->i_lock);
- 			put_layout_hdr(lo);
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Reported-by: Trond Myklebust <trond.myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7d80e78..388817b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5385,6 +5385,9 @@ static int nfs41_proc_reclaim_complete(struct nfs_client *clp)
+ 		status = PTR_ERR(task);
+ 		goto out;
+ 	}
++        status = nfs4_wait_for_completion_rpc_task(task);
++        if (status == 0)
++                status = task->tk_status;
+ 	rpc_put_task(task);
+ 	return 0;
+ out:
 -- 
-1.7.3.4
+1.7.3.1
 
