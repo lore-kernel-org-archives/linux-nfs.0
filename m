@@ -1,58 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:9853 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751372Ab1B1WBl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2011 17:01:41 -0500
-Subject: Re: [PATCH] zero out delegation in the inode after it has been
- returned
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jim Rees <rees@umich.edu>
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
-        peter honeyman <honey@citi.umich.edu>
-In-Reply-To: <20110228215439.GD1256@merit.edu>
-References: <20110228213103.GA1256@merit.edu>
-	 <1298929144.8564.44.camel@heimdal.trondhjem.org>
-	 <20110228215439.GD1256@merit.edu>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 28 Feb 2011 17:01:34 -0500
-Message-ID: <1298930494.8564.50.camel@heimdal.trondhjem.org>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:34274 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932071Ab1BXDPA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 22:15:00 -0500
+Date: Thu, 24 Feb 2011 03:14:39 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Ian Kent <raven@themaw.net>
+Cc: Nick Piggin <npiggin@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        David Howells <dhowells@redhat.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/3] Fixes for vfs-scale and vfs-automount
+Message-ID: <20110224031439.GR22723@ZenIV.linux.org.uk>
+References: <20110118040449.23109.33071.stgit@localhost6.localdomain6>
+ <1295420817.3076.24.camel@perseus>
+ <1297779902.13007.86.camel@perseus>
+ <20110224015817.GQ22723@ZenIV.linux.org.uk>
+ <1298516618.2916.20.camel@perseus>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1298516618.2916.20.camel@perseus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2011-02-28 at 16:54 -0500, Jim Rees wrote: 
-> Trond Myklebust wrote:
+On Thu, Feb 24, 2011 at 11:03:38AM +0800, Ian Kent wrote:
+
+> I also have a sick feeling that dentrys may become negative at any point
+> after __d_lookup_rcu() .....
+
+Yes.  To get stability of ->d_inode (assuming the sucker isn't pinned down
+in normal way by ->d_count) you need ->d_lock.
+
+> > Ho-hum...  I can reach RHTS, but I'd rather do that at home boxen, if
+> > possible...  Has it been reproduced on UP boxen with SMP kernels, BTW?
 > 
->   nfsi->delegation is released under the appropriate locks well before we
->   get here. The above line is 100% racy and risks clobbering any new
->   delegation that has been issued after the delegreturn completed...
-> 
-> I'd have been amazed if I'd gotten it right.  But there really is a problem
-> here, the client does try to use delegations that have been returned, and
-> this patch does solve that problem.  I'm happy to keep after this but would
-> appreciate any suggestions or nudges in the right direction.
+> Nope, I'd need to build a kernel specifically for that. I'm not sure how
+> useful that would be though since the test is specifically meant to
+> expose problems with multiple concurrent processes accessing an
+> automount tree. I don't see any problem running the Connectathon tests
+> which is essentially one automount and one client process.
 
-The procedure for returning delegations is supposed to work as follows:
-
-     1. Remove the nfsi->delegation so that it is no longer visible to
-        new open() requests 
-     2. write back any dirty data to the server 
-     3. Reclaim any locks 
-     4. Reclaim any open stateids (using CLAIM_DELEGATE_CUR) 
-     5. delegreturn
-
-While there may indeed be the odd READ or WRITE that races between 4.
-and 5., so that the server receives the delegation stateid after the
-delegreturn, that shouldn't matter: the server returns an error, and the
-client should retry using the new open stateid.
-
-What is failing to work correctly here?
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Heh...  No, it's just that the only SMP box I have locally right now
+is dual ultrasparc.  Anyway, I can live with RHTS.
