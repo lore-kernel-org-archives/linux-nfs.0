@@ -1,103 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:43209 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752548Ab1BUSx3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Feb 2011 13:53:29 -0500
-Message-ID: <4D62B4A8.5030500@panasas.com>
-Date: Mon, 21 Feb 2011 10:53:28 -0800
-From: Benny Halevy <bhalevy@panasas.com>
-To: Fred Isaman <iisaman@netapp.com>
-CC: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 5/7] NFSv4.1: implement generic pnfs layer write switch
-References: <1298310576-13523-1-git-send-email-iisaman@netapp.com> <1298310576-13523-6-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1298310576-13523-6-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:1368 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753102Ab1BYR5c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Feb 2011 12:57:32 -0500
+From: andros@netapp.com
+To: iisaman@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 2/4] SQUASHME: NFSv4.1: DS only check
+Date: Thu, 24 Feb 2011 05:11:07 -0500
+Message-Id: <1298542269-2477-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1298542269-2477-1-git-send-email-andros@netapp.com>
+References: <1298542269-2477-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-02-21 09:49, Fred Isaman wrote:
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index 1d4e631..3766afea 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -79,6 +79,8 @@ struct pnfs_layoutdriver_type {
->  	 * I/O, else return PNFS_NOT_ATTEMPTED to fall back to normal NFS
->  	 */
->  	enum pnfs_try_status (*read_pagelist) (struct nfs_read_data *nfs_data);
-> +	enum pnfs_try_status
-> +	(*write_pagelist) (struct nfs_write_data *nfs_data, int how);
+From: Andy Adamson <andros@netapp.com>
 
-nit: line break
+squash into fdd1e4e137c75a69a274acc680706906c72344e1
+NFSv4.1: add MDS mount DS only check
 
->  };
->  
->  struct pnfs_layout_hdr {
-> @@ -120,6 +122,8 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
->  		   enum pnfs_iomode access_type);
->  void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
->  void unset_pnfs_layoutdriver(struct nfs_server *);
-> +enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
-> +					     const struct rpc_call_ops *, int);
->  enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
->  					    const struct rpc_call_ops *);
->  void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
-> @@ -200,6 +204,13 @@ pnfs_try_to_read_data(struct nfs_read_data *data,
->  	return PNFS_NOT_ATTEMPTED;
->  }
->  
-> +static inline enum pnfs_try_status
-> +pnfs_try_to_write_data(struct nfs_write_data *data,
-> +		       const struct rpc_call_ops *call_ops, int how)
-> +{
-> +	return PNFS_NOT_ATTEMPTED;
-> +}
-> +
->  static inline bool
->  pnfs_roc(struct inode *ino)
->  {
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 6cf5de6..b6b683d 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -873,6 +873,10 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
->  	data->res.verf    = &data->verf;
->  	nfs_fattr_init(&data->fattr);
->  
-> +	if (data->lseg &&
-> +	    (pnfs_try_to_write_data(data, call_ops, how) == PNFS_ATTEMPTED))
-> +		return 0;
-> +
->  	return nfs_initiate_write(data, NFS_CLIENT(inode), call_ops, how);
->  }
->  
-> diff --git a/include/linux/nfs_iostat.h b/include/linux/nfs_iostat.h
-> index 37a1437..8866bb3 100644
-> --- a/include/linux/nfs_iostat.h
-> +++ b/include/linux/nfs_iostat.h
-> @@ -114,6 +114,7 @@ enum nfs_stat_eventcounters {
->  	NFSIOS_SHORTWRITE,
->  	NFSIOS_DELAY,
->  	NFSIOS_PNFS_READ,
-> +	NFSIOS_PNFS_WRITE,
->  	__NFSIOS_COUNTSMAX,
->  };
->  
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 09d9681..c82ad33 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1039,6 +1039,7 @@ struct nfs_write_data {
->  	struct nfs_writeargs	args;		/* argument struct */
->  	struct nfs_writeres	res;		/* result struct */
->  	struct pnfs_layout_segment *lseg;
-> +	const struct rpc_call_ops *mds_ops;
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c    |   10 ++++------
+ fs/nfs/nfs4state.c |    2 +-
+ 2 files changed, 5 insertions(+), 7 deletions(-)
 
-nit: mds_ops is not really used in the patch, just initialized.
-better introduce it along with its usage in patch 7/7.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 738f624..6dd50ac 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1400,12 +1400,6 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		goto error;
+ 	}
+ 
+-	/* Cannot mount a DS only server */
+-	if (is_ds_only_client(clp)) {
+-		error = -ENODEV;
+-		goto error;
+-	}
+-
+ 	/*
+ 	 * Query for the lease time on clientid setup or renewal
+ 	 *
+@@ -1500,6 +1494,10 @@ static int nfs4_server_common_setup(struct nfs_server *server,
+ 	BUG_ON(!server->nfs_client->rpc_ops);
+ 	BUG_ON(!server->nfs_client->rpc_ops->file_inode_ops);
+ 
++	/* data servers support only a subset of NFSv4.1 */
++	if (is_ds_only_client(server->nfs_client))
++		return -EPROTONOSUPPORT;
++
+ 	fattr = nfs_alloc_fattr();
+ 	if (fattr == NULL)
+ 		return -ENOMEM;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 6da026a..0021f40 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -153,7 +153,7 @@ static int nfs41_setup_state_renewal(struct nfs_client *clp)
+ 	int status;
+ 	struct nfs_fsinfo fsinfo;
+ 
+-	if (!test_bit(NFS_CS_CHECK_LEASE_TIME, &clp->cl_res_state)) {
++	if (!test_bit(NFS_CS_CHECK_LEASE_TIME, &clp->cl_res_state))
+ 		nfs4_schedule_state_renewal(clp);
+ 		return 0;
+ 	}
+-- 
+1.7.3.1
 
-Benny
-
->  	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
->  #ifdef CONFIG_NFS_V4
->  	unsigned long		timestamp;	/* For lease renewal */
