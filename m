@@ -1,228 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753265Ab1BDVer (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Feb 2011 16:34:47 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 28/40] pnfs-submit: wave3 turn off pNFS on ds connection failure
-Date: Fri,  4 Feb 2011 16:33:50 -0500
-Message-Id: <1296855242-2592-29-git-send-email-andros@netapp.com>
-In-Reply-To: <1296855242-2592-28-git-send-email-andros@netapp.com>
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
- <1296855242-2592-2-git-send-email-andros@netapp.com>
- <1296855242-2592-3-git-send-email-andros@netapp.com>
- <1296855242-2592-4-git-send-email-andros@netapp.com>
- <1296855242-2592-5-git-send-email-andros@netapp.com>
- <1296855242-2592-6-git-send-email-andros@netapp.com>
- <1296855242-2592-7-git-send-email-andros@netapp.com>
- <1296855242-2592-8-git-send-email-andros@netapp.com>
- <1296855242-2592-9-git-send-email-andros@netapp.com>
- <1296855242-2592-10-git-send-email-andros@netapp.com>
- <1296855242-2592-11-git-send-email-andros@netapp.com>
- <1296855242-2592-12-git-send-email-andros@netapp.com>
- <1296855242-2592-13-git-send-email-andros@netapp.com>
- <1296855242-2592-14-git-send-email-andros@netapp.com>
- <1296855242-2592-15-git-send-email-andros@netapp.com>
- <1296855242-2592-16-git-send-email-andros@netapp.com>
- <1296855242-2592-17-git-send-email-andros@netapp.com>
- <1296855242-2592-18-git-send-email-andros@netapp.com>
- <1296855242-2592-19-git-send-email-andros@netapp.com>
- <1296855242-2592-20-git-send-email-andros@netapp.com>
- <1296855242-2592-21-git-send-email-andros@netapp.com>
- <1296855242-2592-22-git-send-email-andros@netapp.com>
- <1296855242-2592-23-git-send-email-andros@netapp.com>
- <1296855242-2592-24-git-send-email-andros@netapp.com>
- <1296855242-2592-25-git-send-email-andros@netapp.com>
- <1296855242-2592-26-git-send-email-andros@netapp.com>
- <1296855242-2592-27-git-send-email-andros@netapp.com>
- <1296855242-2592-28-git-send-email-andros@netapp.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:39560 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932340Ab1BXD6m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 22:58:42 -0500
+Date: Thu, 24 Feb 2011 03:58:37 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Ian Kent <raven@themaw.net>
+Cc: Nick Piggin <npiggin@kernel.dk>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        David Howells <dhowells@redhat.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/3] Fixes for vfs-scale and vfs-automount
+Message-ID: <20110224035836.GS22723@ZenIV.linux.org.uk>
+References: <20110118040449.23109.33071.stgit@localhost6.localdomain6>
+ <1295420817.3076.24.camel@perseus>
+ <1297779902.13007.86.camel@perseus>
+ <20110224015817.GQ22723@ZenIV.linux.org.uk>
+ <1298516618.2916.20.camel@perseus>
+ <20110224031439.GR22723@ZenIV.linux.org.uk>
+ <1298518137.2916.35.camel@perseus>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1298518137.2916.35.camel@perseus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Thu, Feb 24, 2011 at 11:28:57AM +0800, Ian Kent wrote:
 
-If a data server is unavailable, go through MDS.
+> Ha, I haven't even turned on my Ultrsparc 2 in months, it's only got an
+> old version of Solaris on it now anyway, ;)
 
-Mark the deviceid containing the data server as a negative cache entry.
-Do not try to connect to any data server on a deviceid marked as a negative
-cache entry. Mark any layout that tries to use the marked deviceid as failed.
+U60, with lenny (and mainline kernel) on it.  Probably ought to upgrade
+to squeeze one of those days...  It works, all right, but it's only 2-way,
+so reproducing would probably be harder.  Plus the fun of building the tests
+themselves on somewhat different userland...
 
-Inodes with a layout marked as fails will not use the layout for I/O, and will
-not perform any more layoutgets.
-Inodes without a layout will still do layoutget, but the layout will get
-marked immediately.
+Anyway, I wonder why you care about __d_lookup_rcu() and ->d_inode stability;
+d_mountpoint() _is_ stable at that point (we hold vfsmount_lock) and you
+don't seem to look at ->d_inode at all in RCU case.  Note that ->d_automount()
+is never called in RCU case at all; nor is ->lookup() and friends, so you
+really only have ->d_manage() to cope with, what with autofs4 having no
+->d_revalidate() anymore.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c    |    6 ++++--
- fs/nfs/nfs4filelayout.h    |    3 +++
- fs/nfs/nfs4filelayoutdev.c |   39 +++++++++++++++++++++++++++++----------
- fs/nfs/pnfs.c              |   18 ++++++++++++++----
- fs/nfs/pnfs.h              |    4 ++++
- 5 files changed, 54 insertions(+), 16 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index d925af6..9b9a81c 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -146,7 +146,9 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	idx = nfs4_fl_calc_ds_index(lseg, offset);
- 	ds = nfs4_fl_prepare_ds(lseg, idx);
- 	if (!ds) {
--		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
-+		/* Either layout fh index faulty, or ds connect failed */
-+		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
-+		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
- 		return PNFS_NOT_ATTEMPTED;
- 	}
- 	dprintk("%s USE DS:ip %x %hu\n", __func__,
-@@ -161,7 +163,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
- 	data->fldata.orig_offset = offset;
- 
--	/* Perform an asynchronous read */
-+	/* Perform an asynchronous read to ds */
- 	nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
- 			  &filelayout_read_call_ops);
- 	return PNFS_ATTEMPTED;
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index f884b0c..7e33bd8 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -96,5 +96,8 @@ extern struct nfs4_file_layout_dsaddr *
- nfs4_fl_find_get_deviceid(struct nfs_client *, struct nfs4_deviceid *dev_id);
- struct nfs4_file_layout_dsaddr *
- get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id);
-+void filelayout_mark_devid_negative(struct nfs_client *clp,
-+				    struct pnfs_deviceid_node *devid,
-+				    int err, u32 ds_ipaddr);
- 
- #endif /* FS_NFS_NFS4FILELAYOUT_H */
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 9bb13f5..8642109 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -558,27 +558,46 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, loff_t offset)
- 		i = _nfs4_fl_calc_j_index(lseg, offset);
- 	return flseg->fh_array[i];
- }
-+void
-+filelayout_mark_devid_negative(struct nfs_client *mds_clp,
-+			       struct pnfs_deviceid_node *devid,
-+			       int err, u32 ds_addr)
-+{
-+	u32 *p = (u32 *)&devid->de_id;
-+
-+	printk(KERN_ERR "NFS: data server %x connection error %d."
-+			" Deviceid [%x%x%x%x] marked out of use.\n",
-+			ds_addr, err, p[0], p[1], p[2], p[3]);
-+
-+	pnfs_mark_devid_negative(mds_clp, devid);
-+}
- 
- struct nfs4_pnfs_ds *
- nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
- {
--	struct nfs4_file_layout_dsaddr *dsaddr;
-+	struct nfs4_file_layout_dsaddr *dsaddr = FILELAYOUT_LSEG(lseg)->dsaddr;
-+	struct nfs4_pnfs_ds *ds = dsaddr->ds_list[ds_idx];
- 
--	dsaddr = FILELAYOUT_LSEG(lseg)->dsaddr;
--	if (dsaddr->ds_list[ds_idx] == NULL) {
--		printk(KERN_ERR "%s: No data server for device id!\n",
--			__func__);
-+	if (ds == NULL) {
-+		printk(KERN_ERR "%s: No data server for offset index %d\n",
-+			__func__, ds_idx);
- 		return NULL;
- 	}
- 
--	if (!dsaddr->ds_list[ds_idx]->ds_clp) {
-+	if (!ds->ds_clp) {
-+		struct nfs_server *s = NFS_SERVER(lseg->pls_layout->plh_inode);
- 		int err;
- 
--		err = nfs4_ds_connect(NFS_SERVER(lseg->pls_layout->plh_inode),
--					  dsaddr->ds_list[ds_idx]);
-+		/* Already tried to connect, don't try again */
-+		if (dsaddr->deviceid.de_flags & NFS4_DEVICE_ID_NEG_ENTRY) {
-+			dprintk("%s Deviceid marked out of use\n", __func__);
-+			return NULL;
-+		}
-+		err = nfs4_ds_connect(s, ds);
- 		if (err) {
--			printk(KERN_ERR "%s nfs4_ds_connect error %d\n",
--			       __func__, err);
-+			filelayout_mark_devid_negative(s->nfs_client,
-+						       &dsaddr->deviceid, err,
-+						       ntohl(ds->ds_ip_addr));
- 			return NULL;
- 		}
- 	}
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 4c49109..72786ec 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -759,15 +759,16 @@ pnfs_update_layout(struct inode *ino,
- 		dprintk("%s matches recall, use MDS\n", __func__);
- 		goto out_unlock;
- 	}
-+
-+	/* If LAYOUTGET or pNFS I/O already failed once we don't try again */
-+	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
-+		goto out_unlock;
-+
- 	/* Check to see if the layout for the given range already exists */
- 	lseg = pnfs_find_lseg(lo, iomode);
- 	if (lseg)
- 		goto out_unlock;
- 
--	/* if LAYOUTGET already failed once we don't try again */
--	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
--		goto out_unlock;
--
- 	if (pnfs_layoutgets_blocked(lo, NULL, 0))
- 		goto out_unlock;
- 	atomic_inc(&lo->plh_outstanding);
-@@ -1089,3 +1090,12 @@ pnfs_put_deviceid_cache(struct nfs_client *clp)
- 	}
- }
- EXPORT_SYMBOL_GPL(pnfs_put_deviceid_cache);
-+
-+void
-+pnfs_mark_devid_negative(struct nfs_client *clp, struct pnfs_deviceid_node *d)
-+{
-+	spin_lock(&clp->cl_devid_cache->dc_lock);
-+	d->de_flags |= NFS4_DEVICE_ID_NEG_ENTRY;
-+	spin_unlock(&clp->cl_devid_cache->dc_lock);
-+}
-+EXPORT_SYMBOL_GPL(pnfs_mark_devid_negative);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index cbbcdfa..25a4e25 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -135,6 +135,8 @@ struct pnfs_deviceid_node {
- 	struct hlist_node	de_node;
- 	struct nfs4_deviceid	de_id;
- 	atomic_t		de_ref;
-+	unsigned long		de_flags;
-+#define NFS4_DEVICE_ID_NEG_ENTRY		1
- };
- 
- struct pnfs_deviceid_cache {
-@@ -155,6 +157,8 @@ extern struct pnfs_deviceid_node *pnfs_add_deviceid(
- 				struct pnfs_deviceid_node *);
- extern void pnfs_put_deviceid(struct pnfs_deviceid_cache *c,
- 			      struct pnfs_deviceid_node *devid);
-+extern void pnfs_mark_devid_negative(struct nfs_client *clp,
-+				     struct pnfs_deviceid_node *d);
- 
- extern int pnfs_register_layoutdriver(struct pnfs_layoutdriver_type *);
- extern void pnfs_unregister_layoutdriver(struct pnfs_layoutdriver_type *);
--- 
-1.6.6
-
+BTW, Nick has moved to kernel.dk; whether he's still reachable there is
+a question, though - he seems to have disappeared since mid-January.
