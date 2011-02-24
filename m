@@ -1,88 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f181.google.com ([209.85.216.181]:41823 "EHLO
-	mail-qy0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756663Ab1BJRqu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Feb 2011 12:46:50 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFS: NFSROOT should default to "proto=udp"
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-Date: Thu, 10 Feb 2011 12:46:44 -0500
-Message-ID: <20110210174644.3073.91582.stgit@ellison.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from zeniv.linux.org.uk ([195.92.253.2]:56772 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755779Ab1BXHHn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2011 02:07:43 -0500
+Date: Thu, 24 Feb 2011 07:07:24 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Ian Kent <raven@themaw.net>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        David Howells <dhowells@redhat.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>, npiggin@gmail.com
+Subject: Re: [PATCH 0/3] Fixes for vfs-scale and vfs-automount
+Message-ID: <20110224070724.GW22723@ZenIV.linux.org.uk>
+References: <20110118040449.23109.33071.stgit@localhost6.localdomain6>
+ <1295420817.3076.24.camel@perseus>
+ <1297779902.13007.86.camel@perseus>
+ <20110224015817.GQ22723@ZenIV.linux.org.uk>
+ <1298516618.2916.20.camel@perseus>
+ <20110224031439.GR22723@ZenIV.linux.org.uk>
+ <1298518137.2916.35.camel@perseus>
+ <20110224035836.GS22723@ZenIV.linux.org.uk>
+ <1298529260.2916.91.camel@perseus>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1298529260.2916.91.camel@perseus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-There have been a number of recent reports that NFSROOT is no longer
-working with default mount options, but fails only with certain NICs.
+On Thu, Feb 24, 2011 at 02:34:20PM +0800, Ian Kent wrote:
 
-Brian Downing <bdowning@lavos.net> bisected to commit 56463e50 "NFS:
-Use super.c for NFSROOT mount option parsing".  Among other things,
-this commit changes the default mount options for NFSROOT to use TCP
-instead of UDP as the underlying transport.
+> It does now but it doesn't do a whole lot, just checks for a negative
+> dentry, returning false, and drops out of RCU mode when the dentry isn't
+> selected or being checked for expiry yet.
 
-TCP seems less able to deal with NICs that are slow to initialize.
-The system logs that have accompanied reports of problems all show
-that NFSROOT attempts to establish a TCP connection before the NIC is
-fully initialized, and thus the TCP connection attempt fails.
-
-Because NFSROOT is used in some environments where it is not possible
-to update the kernel command line to specify "udp", the proper thing
-to do is change NFSROOT to use UDP by default, as it did before commit
-56463e50.
-
-To make it easier to see how to change default mount options for
-NFSROOT and to distinguish default settings from mandatory settings,
-I've adjusted a couple of areas to document the specifics.
-
-Tested-by: Brian Downing <bdowning@lavos.net>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: <stable@kernel.org> # 2.6.37
----
-
- fs/nfs/nfsroot.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-index 903908a..0bc654f 100644
---- a/fs/nfs/nfsroot.c
-+++ b/fs/nfs/nfsroot.c
-@@ -86,11 +86,14 @@
- /* Default path we try to mount. "%s" gets replaced by our IP address */
- #define NFS_ROOT		"/tftpboot/%s"
+Er?  Where does ->d_revalidate() exist in fs/autofs4?  Mainline doesn't
+have anything of that kind...
  
-+/* Default NFSROOT mount options. */
-+#define NFS_DEF_OPTIONS		"udp"
-+
- /* Parameters passed from the kernel command line */
- static char nfs_root_parms[256] __initdata = "";
- 
- /* Text-based mount options passed to super.c */
--static char nfs_root_options[256] __initdata = "";
-+static char nfs_root_options[256] __initdata = NFS_DEF_OPTIONS;
- 
- /* Address of NFS server */
- static __be32 servaddr __initdata = htonl(INADDR_NONE);
-@@ -217,7 +220,7 @@ static int __init root_nfs_parse_options(char *incoming, char *exppath,
-  */
- static int __init root_nfs_data(char *cmdline)
- {
--	char addr_option[sizeof("nolock,addr=") + INET_ADDRSTRLEN + 1];
-+	char mand_options[sizeof("nolock,addr=") + INET_ADDRSTRLEN + 1];
- 	int len, retval = -1;
- 	char *tmp = NULL;
- 	const size_t tmplen = sizeof(nfs_export_path);
-@@ -244,9 +247,9 @@ static int __init root_nfs_data(char *cmdline)
- 	 * Append mandatory options for nfsroot so they override
- 	 * what has come before
- 	 */
--	snprintf(addr_option, sizeof(addr_option), "nolock,addr=%pI4",
-+	snprintf(mand_options, sizeof(mand_options), "nolock,addr=%pI4",
- 			&servaddr);
--	if (root_nfs_cat(nfs_root_options, addr_option,
-+	if (root_nfs_cat(nfs_root_options, mand_options,
- 						sizeof(nfs_root_options)))
- 		goto out_optionstoolong;
- 
+> I've seen walks fail with a dentry that has gone away (ie. I'm walking
+> in a tree that is being expired, they seem to be trees with no actual
+> mount at their base), which should be because I'm not catching the block
+> request at a higher level dentry. Unfortunately, including a check for
+> the base dentry in __follow_mount_rcu(), regardless of it being a
+> mountpoint, doesn't always catch the need to block either. That the tree
+> is being selected for expire is probably because the expire can't detect
+> a walk within the mount tree when the walker is between the
+> __d_lookup_rcu() and __follow_mount_rcu() calls. Jumping out of rcu-walk
+> mode in an added revalidate reduces the possibility of this happening
+> (assuming walks are sneaking in between dropping and acquiring the
+> vfsmount_lock) but doesn't eliminate it. 
+> 
+> At this point I loop back to the trying to work out why a reference gets
+> picked up and the cycle repeats with various small changes to the
+> overall approach.
+> 
+> Actually, it's not just the root of a mount that is getting an extra
+> reference either. When I notice a root dentry has picked up a reference
+> (from a printk) and SIGKILL everything and start umounting manually I
+> get to a point in the tree where I need to umount autofs mounts twice,
+> which usually means nothing more than a get/put mismatch somewhere, but
+> in that case I normally don't see a root dentry pick up a reference.
+> That's confusing me too.
 
+OK, now I'm really confused.  Where does your tree live?
+
+I really don't like the look of autofs4_tree_busy(), BTW - you don't need
+RCU to get races here; just a plain chdir("../../.."); done by a process
+that sits deep enough in subtree you are checking can very well race with
+your check, so that your iterator gets through the new cwd before chdir()
+and through the old one after it...
+
+Maybe I'm missing something subtle here.  A braindump on how you expect
+all "we choose dentry for expiry" stuff to work and what is really required
+from it would be nice...
+ 
+> > BTW, Nick has moved to kernel.dk; whether he's still reachable there is
+> > a question, though - he seems to have disappeared since mid-January.
+> 
+> Yeah, I've forwarded a couple of messages where I forgot to change the
+> email. A few emails back Nick said he was following the thread anyway.
+
+Could you _please_ forward to him the question I tried to ask, without
+any success so far?  Namely, what was the reason for reverting do_filp_open()
+to use of do_path_lookup() in non-create case?  I have a couple of guesses,
+but...
