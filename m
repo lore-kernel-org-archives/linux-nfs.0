@@ -1,79 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:26933 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753038Ab1BPSjE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Feb 2011 13:39:04 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH pNFS wave 3 Version 2 07/18] NFSv4.1: add MDS mount DS only check
-Date: Tue, 15 Feb 2011 03:38:52 -0500
-Message-Id: <1297759143-2045-8-git-send-email-andros@netapp.com>
-In-Reply-To: <1297759143-2045-1-git-send-email-andros@netapp.com>
-References: <1297759143-2045-1-git-send-email-andros@netapp.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:36136 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751748Ab1BXFrU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2011 00:47:20 -0500
+Date: Thu, 24 Feb 2011 05:47:01 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Ian Kent <raven@themaw.net>
+Cc: Nick Piggin <npiggin@kernel.dk>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        David Howells <dhowells@redhat.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/3] Fixes for vfs-scale and vfs-automount
+Message-ID: <20110224054701.GU22723@ZenIV.linux.org.uk>
+References: <20110118040449.23109.33071.stgit@localhost6.localdomain6>
+ <1295420817.3076.24.camel@perseus>
+ <1297779902.13007.86.camel@perseus>
+ <20110224015817.GQ22723@ZenIV.linux.org.uk>
+ <1298516618.2916.20.camel@perseus>
+ <20110224031439.GR22723@ZenIV.linux.org.uk>
+ <1298518137.2916.35.camel@perseus>
+ <20110224035836.GS22723@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110224035836.GS22723@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Thu, Feb 24, 2011 at 03:58:37AM +0000, Al Viro wrote:
+> On Thu, Feb 24, 2011 at 11:28:57AM +0800, Ian Kent wrote:
+> 
+> > Ha, I haven't even turned on my Ultrsparc 2 in months, it's only got an
+> > old version of Solaris on it now anyway, ;)
+> 
+> U60, with lenny (and mainline kernel) on it.  Probably ought to upgrade
+> to squeeze one of those days...  It works, all right, but it's only 2-way,
+> so reproducing would probably be harder.  Plus the fun of building the tests
+> themselves on somewhat different userland...
+> 
+> Anyway, I wonder why you care about __d_lookup_rcu() and ->d_inode stability;
+> d_mountpoint() _is_ stable at that point (we hold vfsmount_lock) and you
+> don't seem to look at ->d_inode at all in RCU case.  Note that ->d_automount()
+> is never called in RCU case at all; nor is ->lookup() and friends, so you
+> really only have ->d_manage() to cope with, what with autofs4 having no
+> ->d_revalidate() anymore.
 
-The DS only role cannot be used to mount.
+FWIW, can we _ever_ get to __do_follow_link() with link->mnt != nd->path.mnt?
+It's probably not what's happening here, or we would've stepped on another
+BUG_ON(), but still it might be worth checking...
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/client.c  |    6 ++++++
- fs/nfs/nfs4_fs.h |   13 +++++++++++++
- 2 files changed, 19 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 280d41f6..4a501d0 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1400,6 +1400,12 @@ static int nfs4_set_client(struct nfs_server *server,
- 		goto error;
- 	}
- 
-+	/* Cannot mount a DS only server */
-+	if (is_ds_only_client(clp)) {
-+		error = -ENODEV;
-+		goto error;
-+	}
-+
- 	/*
- 	 * Query for the lease time on clientid setup or renewal
- 	 *
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 7a74740..5d84642 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -259,6 +259,13 @@ extern int nfs4_proc_destroy_session(struct nfs4_session *);
- extern int nfs4_init_session(struct nfs_server *server);
- extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
- 		struct nfs_fsinfo *fsinfo);
-+
-+static inline bool
-+is_ds_only_client(struct nfs_client *clp)
-+{
-+	return (clp->cl_exchange_flags & EXCHGID4_FLAG_MASK_PNFS) ==
-+		EXCHGID4_FLAG_USE_PNFS_DS;
-+}
- #else /* CONFIG_NFS_v4_1 */
- static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
- {
-@@ -276,6 +283,12 @@ static inline int nfs4_init_session(struct nfs_server *server)
- {
- 	return 0;
- }
-+
-+static inline bool
-+is_ds_only_client(struct nfs_client *clp)
-+{
-+	return false;
-+}
- #endif /* CONFIG_NFS_V4_1 */
- 
- extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
--- 
-1.7.2.3
-
+AFAICS, if we ever get there that way, we are fscked, so the check before
+mntget() ought to replaced with BUG_ON(link->mnt != nd->path.mnt)...
