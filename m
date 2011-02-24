@@ -1,70 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:34843 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751744Ab1BEPzU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Feb 2011 10:55:20 -0500
-In-Reply-To: <20110205080332.4899b352@corrin.poochiereds.net>
-References: <3599.1295624067@redhat.com>
-	<20110205080332.4899b352@corrin.poochiereds.net>
-Date: Sat, 5 Feb 2011 09:55:18 -0600
-Message-ID: <AANLkTikpjKys0LEkhYNErN9_2_ker4xdzBLpCEHf4dyW@mail.gmail.com>
-Subject: Re: [LSF/MM TOPIC] Unified keys for NFS, CIFS and AFS for security data
-From: Steve French <smfrench@gmail.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: David Howells <dhowells@redhat.com>, lsf-pc@lists.linuxfoundation.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from tac.ki.iif.hu ([193.6.222.43]:48353 "EHLO tac.ki.iif.hu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755520Ab1BXQtA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Feb 2011 11:49:00 -0500
+Received: from wferi by tac.ki.iif.hu with local (Exim 4.72)
+	(envelope-from <wferi@niif.hu>)
+	id 1PseN8-0005SN-Cj
+	for linux-nfs@vger.kernel.org; Thu, 24 Feb 2011 17:48:58 +0100
+From: Ferenc Wagner <wferi@niif.hu>
+To: linux-nfs@vger.kernel.org
+Subject: Re: Seemingly inconsistent directory state under NFSv4
+References: <87sjvuiwnl.fsf@tac.ki.iif.hu> <87d3mkhvgb.fsf@tac.ki.iif.hu>
+	<20110223193929.GA13399@fieldses.org>
+Date: Thu, 24 Feb 2011 17:48:58 +0100
+In-Reply-To: <20110223193929.GA13399@fieldses.org> (J. Bruce Fields's message
+	of "Wed, 23 Feb 2011 14:39:29 -0500")
+Message-ID: <87vd098jk5.fsf@tac.ki.iif.hu>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, Feb 5, 2011 at 7:03 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> On Fri, 21 Jan 2011 15:34:27 +0000
-> David Howells <dhowells@redhat.com> wrote:
+"J. Bruce Fields" <bfields@fieldses.org> writes:
+
+> On Tue, Feb 22, 2011 at 05:42:44PM +0100, Ferenc Wagner wrote:
+>> Ferenc Wagner <wferi@niif.hu> writes:
+>> 
+>>> In our somewhat mixed NFSv4 setup (Linux 2.6.32 Debian squeeze server, a
+>>> 2.6.26 and a 2.6.32 Debian lenny client) we sometimes experience the
+>>> following: removing a file on the 2.6.26 client makes that file
+>>> disappear from the directory listing of the 2.6.32 client, but the file
+>>> itself remains accessible by its old -- now nonexistent -- name there.
+>>> Is such a confusing state expected, or is this the manifestation of some
+>>> bug?
+>> 
+>> Is this perhaps a manifestation of the following paragraph of
+>> nfs41-server.txt in the Linux kernel documentation?
+>> 
+>>     Incomplete delegation enforcement: if a file is renamed or
+>>     unlinked, a client holding a delegation may continue to
+>>     indefinitely allow opens of the file under the old name.
+>> 
+>> If yes, is there a way to list the active delegations (on the server and
+>> on the client) and possibly trigger releasing/recalling them?
 >
->>
->> I'd like to propose a discussion topic for the LSF: how best to implement a
->> common key type for use by NFS, CIFS and AFS such that, say, a kerberos key
->> can be encapsulated within one and then be pulled out by various filesystems.
->>
->> Furthermore, it would be necessary to allow the request_key() upcall mechanism
->> to perform GSSAPI queries.
->>
+> The linux client will return any delegation before it does a rename or
+> unlink, so if you're just doing everything from one client, I don't
+> *think* the problem is with delegations--you should hit this delegation
+> problem only in the case where you are removing the file on one client
+> while using it on another, or removing on the server while using it on
+> the client.
 >
-> I would be interested in discussing this as well. Currently CIFS
-> "punts" to some degree and offloads almost all of the SPNEGO blob
-> construction to userspace. So, for CIFS this would involve moving more
-> of this code into the kernel. I think that's a good thing since it will
-> make it easier to do mutual-authentication, etc...
+> (In the case of client-client conflicts, this is fixed in 2.6.38.)
 
-Yes. I also agree, in part because the more the upcall has to go
-to userspace the more likely a reconnect (network connection
-drop) can cause problems when memory available to userspace
-is constrained by a large amount of cached data on the network mount.
+One client removed the file, and another could still access it by name
+(although not present in the directory listing).  So it could have been
+a client-client conflict, even though we couldn't prove that the removed
+file was actually in use on the client.  Is there a way to list the
+delegations being hold by a client?
 
+> You can turn off delegations completely with
+> 	echo 0 >/proc/sys/fs/leases-enable
+> before starting the nfs server.
 
-> This would make it more plausible to store krb5 credcaches in the
-> kernel keyring too. Modern MIT krb5 libs can do this today (I think),
-
-yes
-
-> The difficulty here is that request_key() is "stateless", so we need to
-> think about how to manage GSSAPI contexts across multiple upcalls...or
-> plan to implement large swaths of the GSSAPI in-kernel.
-
-> It might also be helpful to couple this with some consolidation and
-> cleanup of the ASN.1 parsing code in the kernel. There are at least 3
-> separate implementations in the kernel today (one in cifs, one in
-> sunrpc, and one in iptables).
-
-This is harder, but would also simplify future work as well
-(such as SMB2, which will require this more often in
-sessionsetup than cifs)
-
-
-
+Wouldn't I lose most of the efficiency advantages of NFSv4 with that
+move?
 -- 
 Thanks,
-
-Steve
+Feri.
