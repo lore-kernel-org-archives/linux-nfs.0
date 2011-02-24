@@ -1,57 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:49788 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754670Ab1BOPDo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 10:03:44 -0500
-Subject: Re: [PATCH 10/16] pnfs: wave 3: coelesce across layout stripes
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>,
-        Andy Adamon <andros@citi.umich.edu>,
-        Dean Hildebrand <dhildeb@us.ibm.com>,
-        Fred Isaman <iisaman@citi.umich.edu>,
-        Benny Halevy <bhalevy@panasas.com>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        Oleg Drokin <green@linuxhacker.ru>, Tao Guo <guotao@nrchpc.ac.cn>
-In-Reply-To: <AANLkTikRMT=xxXp+7ky9kaYCOn2-y0obpJ7-gW96NkN5@mail.gmail.com>
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>
-	 <1297711116-3139-11-git-send-email-andros@netapp.com>
-	 <1297726920.23841.51.camel@heimdal.trondhjem.org>
-	 <AANLkTikRMT=xxXp+7ky9kaYCOn2-y0obpJ7-gW96NkN5@mail.gmail.com>
+Received: from out1.smtp.messagingengine.com ([66.111.4.25]:55183 "EHLO
+	out1.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753644Ab1BXGe1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2011 01:34:27 -0500
+Subject: Re: [PATCH 0/3] Fixes for vfs-scale and vfs-automount
+From: Ian Kent <raven@themaw.net>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        David Howells <dhowells@redhat.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>, npiggin@gmail.com
+In-Reply-To: <20110224035836.GS22723@ZenIV.linux.org.uk>
+References: <20110118040449.23109.33071.stgit@localhost6.localdomain6>
+	 <1295420817.3076.24.camel@perseus> <1297779902.13007.86.camel@perseus>
+	 <20110224015817.GQ22723@ZenIV.linux.org.uk>
+	 <1298516618.2916.20.camel@perseus>
+	 <20110224031439.GR22723@ZenIV.linux.org.uk>
+	 <1298518137.2916.35.camel@perseus>
+	 <20110224035836.GS22723@ZenIV.linux.org.uk>
 Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 15 Feb 2011 10:03:40 -0500
-Message-ID: <1297782220.10103.13.camel@heimdal.trondhjem.org>
+Date: Thu, 24 Feb 2011 14:34:20 +0800
+Message-ID: <1298529260.2916.91.camel@perseus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-02-15 at 09:43 -0500, William A. (Andy) Adamson wrote: 
-> On Mon, Feb 14, 2011 at 6:42 PM, Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Mon, 2011-02-14 at 14:18 -0500, andros@netapp.com wrote:
-> >> From: Fred Isaman <iisaman@netapp.com>
-> >>
-> >> Add a pg_test layout driver hook which is used to avoid coelescing I/O across
-> >> layout stripes.
-> >
-> > Doesn't this belong before [PATCH 09/16] pnfs: wave 3: shift
-> > pnfs_update_layout locations?
+On Thu, 2011-02-24 at 03:58 +0000, Al Viro wrote:
 > 
-> The pg_test uses the pg_lseg declared in [PATCH 09/16] pnfs: wave 3:
-> shift pnfs_update_layout locations, which is why the patches are
-> ordered this way.
+> Anyway, I wonder why you care about __d_lookup_rcu() and ->d_inode stability;
+> d_mountpoint() _is_ stable at that point (we hold vfsmount_lock) and you
+> don't seem to look at ->d_inode at all in RCU case.  Note that ->d_automount()
+> is never called in RCU case at all; nor is ->lookup() and friends, so you
+> really only have ->d_manage() to cope with, what with autofs4 having no
+> ->d_revalidate() anymore.
 
-What prevents you from moving the pg_lseg declaration into this patch,
-and just relying on the initialisation being NULL?
+It does now but it doesn't do a whole lot, just checks for a negative
+dentry, returning false, and drops out of RCU mode when the dentry isn't
+selected or being checked for expiry yet.
 
-The current ordering means that applying 9/16 without 10/16 gives rise
-to broken stripe sizes.
+Indeed, I shouldn't need to care about it and checking for it doesn't
+seem to do a whole lot.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+I've seen walks fail with a dentry that has gone away (ie. I'm walking
+in a tree that is being expired, they seem to be trees with no actual
+mount at their base), which should be because I'm not catching the block
+request at a higher level dentry. Unfortunately, including a check for
+the base dentry in __follow_mount_rcu(), regardless of it being a
+mountpoint, doesn't always catch the need to block either. That the tree
+is being selected for expire is probably because the expire can't detect
+a walk within the mount tree when the walker is between the
+__d_lookup_rcu() and __follow_mount_rcu() calls. Jumping out of rcu-walk
+mode in an added revalidate reduces the possibility of this happening
+(assuming walks are sneaking in between dropping and acquiring the
+vfsmount_lock) but doesn't eliminate it. 
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+At this point I loop back to the trying to work out why a reference gets
+picked up and the cycle repeats with various small changes to the
+overall approach.
+
+Actually, it's not just the root of a mount that is getting an extra
+reference either. When I notice a root dentry has picked up a reference
+(from a printk) and SIGKILL everything and start umounting manually I
+get to a point in the tree where I need to umount autofs mounts twice,
+which usually means nothing more than a get/put mismatch somewhere, but
+in that case I normally don't see a root dentry pick up a reference.
+That's confusing me too.
+
+> 
+> BTW, Nick has moved to kernel.dk; whether he's still reachable there is
+> a question, though - he seems to have disappeared since mid-January.
+
+Yeah, I've forwarded a couple of messages where I forgot to change the
+email. A few emails back Nick said he was following the thread anyway.
+
+Ian
+
 
