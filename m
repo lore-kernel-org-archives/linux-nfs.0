@@ -1,86 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:13672 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753260Ab1BDVe7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Feb 2011 16:34:59 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 40/40] pnfs-submit wave3 add MDS mount DS only check
-Date: Fri,  4 Feb 2011 16:34:02 -0500
-Message-Id: <1296855242-2592-41-git-send-email-andros@netapp.com>
-In-Reply-To: <1296855242-2592-40-git-send-email-andros@netapp.com>
-References: <1296855242-2592-1-git-send-email-andros@netapp.com>
- <1296855242-2592-2-git-send-email-andros@netapp.com>
- <1296855242-2592-3-git-send-email-andros@netapp.com>
- <1296855242-2592-4-git-send-email-andros@netapp.com>
- <1296855242-2592-5-git-send-email-andros@netapp.com>
- <1296855242-2592-6-git-send-email-andros@netapp.com>
- <1296855242-2592-7-git-send-email-andros@netapp.com>
- <1296855242-2592-8-git-send-email-andros@netapp.com>
- <1296855242-2592-9-git-send-email-andros@netapp.com>
- <1296855242-2592-10-git-send-email-andros@netapp.com>
- <1296855242-2592-11-git-send-email-andros@netapp.com>
- <1296855242-2592-12-git-send-email-andros@netapp.com>
- <1296855242-2592-13-git-send-email-andros@netapp.com>
- <1296855242-2592-14-git-send-email-andros@netapp.com>
- <1296855242-2592-15-git-send-email-andros@netapp.com>
- <1296855242-2592-16-git-send-email-andros@netapp.com>
- <1296855242-2592-17-git-send-email-andros@netapp.com>
- <1296855242-2592-18-git-send-email-andros@netapp.com>
- <1296855242-2592-19-git-send-email-andros@netapp.com>
- <1296855242-2592-20-git-send-email-andros@netapp.com>
- <1296855242-2592-21-git-send-email-andros@netapp.com>
- <1296855242-2592-22-git-send-email-andros@netapp.com>
- <1296855242-2592-23-git-send-email-andros@netapp.com>
- <1296855242-2592-24-git-send-email-andros@netapp.com>
- <1296855242-2592-25-git-send-email-andros@netapp.com>
- <1296855242-2592-26-git-send-email-andros@netapp.com>
- <1296855242-2592-27-git-send-email-andros@netapp.com>
- <1296855242-2592-28-git-send-email-andros@netapp.com>
- <1296855242-2592-29-git-send-email-andros@netapp.com>
- <1296855242-2592-30-git-send-email-andros@netapp.com>
- <1296855242-2592-31-git-send-email-andros@netapp.com>
- <1296855242-2592-32-git-send-email-andros@netapp.com>
- <1296855242-2592-33-git-send-email-andros@netapp.com>
- <1296855242-2592-34-git-send-email-andros@netapp.com>
- <1296855242-2592-35-git-send-email-andros@netapp.com>
- <1296855242-2592-36-git-send-email-andros@netapp.com>
- <1296855242-2592-37-git-send-email-andros@netapp.com>
- <1296855242-2592-38-git-send-email-andros@netapp.com>
- <1296855242-2592-39-git-send-email-andros@netapp.com>
- <1296855242-2592-40-git-send-email-andros@netapp.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:46786 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754446Ab1BXPS0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2011 10:18:26 -0500
+Date: Thu, 24 Feb 2011 15:18:09 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Ian Kent <raven@themaw.net>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        David Howells <dhowells@redhat.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>, npiggin@gmail.com
+Subject: Re: [PATCH 0/3] Fixes for vfs-scale and vfs-automount
+Message-ID: <20110224151809.GB22723@ZenIV.linux.org.uk>
+References: <1297779902.13007.86.camel@perseus>
+ <20110224015817.GQ22723@ZenIV.linux.org.uk>
+ <1298516618.2916.20.camel@perseus>
+ <20110224031439.GR22723@ZenIV.linux.org.uk>
+ <1298518137.2916.35.camel@perseus>
+ <20110224035836.GS22723@ZenIV.linux.org.uk>
+ <1298529260.2916.91.camel@perseus>
+ <20110224070724.GW22723@ZenIV.linux.org.uk>
+ <1298542053.3058.56.camel@perseus>
+ <20110224145947.GA22723@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110224145947.GA22723@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Thu, Feb 24, 2011 at 02:59:47PM +0000, Al Viro wrote:
 
-The DS only role cannot be used to mount.
+> Well...  In principle, you could mark all mountpoints in a tree as managed,
+> have an "expiry search in progress" flag to stop everything in there while
+> the expiry happens, then wait out all RCU walks in progress, then go ahead
+> with your expiry checks.  Would that work for you?
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/client.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 842c288..17da633 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1412,6 +1412,12 @@ static int nfs4_set_client(struct nfs_server *server,
- 		goto error;
- 	}
- 
-+	/* Cannot mount a DS only server */
-+	if (is_ds_only_client(clp)) {
-+		error = -ENODEV;
-+		goto error;
-+	}
-+
- 	/*
- 	 * Query for the lease time on clientid setup or renewal
- 	 *
--- 
-1.6.6
-
+There's at least one leak I can see in expiry.c, BTW - autofs4_expire_direct()
+leaks root dentry if you hit
+        /* No point expiring a pending mount */
+        if (ino->flags & AUTOFS_INF_PENDING) {
+                spin_unlock(&sbi->fs_lock);
+                return NULL;
+        }
+in there.  Try to stick dput(root) before that return and see if that's what
+it is...
