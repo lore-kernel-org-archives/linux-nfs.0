@@ -1,46 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:49500 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751395Ab1BPPVT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Feb 2011 10:21:19 -0500
-Subject: Re: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release
- to nfsiod
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from daytona.panasas.com ([67.152.220.89]:44239 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752125Ab1BXThp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2011 14:37:45 -0500
+From: Benny Halevy <bhalevy@panasas.com>
+To: andros@netapp.com
 Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20110216095002.1e7944c9@tlielax.poochiereds.net>
-References: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
-	 <1297783898.10103.22.camel@heimdal.trondhjem.org>
-	 <20110215113053.345e3abc@tlielax.poochiereds.net>
-	 <1297813624.10103.34.camel@heimdal.trondhjem.org>
-	 <1297865354.6596.13.camel@heimdal.trondhjem.org>
-	 <1297866373.6596.18.camel@heimdal.trondhjem.org>
-	 <20110216095002.1e7944c9@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 16 Feb 2011 10:21:17 -0500
-Message-ID: <1297869677.6596.30.camel@heimdal.trondhjem.org>
+Subject: [PATCH] NFSv4.1: put_lseg_common should use list_del_init
+Date: Thu, 24 Feb 2011 11:37:41 -0800
+Message-Id: <1298576261-3174-1-git-send-email-bhalevy@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Wed, 2011-02-16 at 09:50 -0500, Jeff Layton wrote: 
-> Thanks Trond,
-> 
-> This builds, but I can't plug in the module:
-> 
-> [  103.540405] sunrpc: Unknown symbol __wake_up_locked_key (err 0)
-> 
-> ...I think __wake_up_locked_key will need to be exported too. I'll do
-> that and then test this out later today.
+The lseg can be added to a tmp list after put_lseg
 
-Thanks! I've added an EXPORT_SYMBOL_GPL() for __wake_up_locked_key to
-the patch.
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/pnfs.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 47f2057..e2adcaa 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -311,7 +311,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
+ 	struct inode *inode = lseg->pls_layout->plh_inode;
+ 
+ 	BUG_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+-	list_del(&lseg->pls_list);
++	list_del_init(&lseg->pls_list);
+ 	if (list_empty(&lseg->pls_layout->plh_segs)) {
+ 		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
+ 		/* Matched by initial refcount set in alloc_init_layout_hdr */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.7.3.4
 
