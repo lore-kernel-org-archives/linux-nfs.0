@@ -1,51 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:23327 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751082Ab1BOAKs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Feb 2011 19:10:48 -0500
-Subject: Re: [PATCH 1/2] mount: move generic functions to utils.c and network.c
+Received: from zeniv.linux.org.uk ([195.92.253.2]:56791 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752125Ab1BXTKU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Feb 2011 14:10:20 -0500
+Date: Thu, 24 Feb 2011 19:10:13 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Ian Kent <raven@themaw.net>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        David Howells <dhowells@redhat.com>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>, npiggin@gmail.com
+Subject: Re: [PATCH 0/3] Fixes for vfs-scale and vfs-automount
+Message-ID: <20110224191012.GC22723@ZenIV.linux.org.uk>
+References: <1295420817.3076.24.camel@perseus>
+ <1297779902.13007.86.camel@perseus>
+ <20110224015817.GQ22723@ZenIV.linux.org.uk>
+ <1298516618.2916.20.camel@perseus>
+ <20110224031439.GR22723@ZenIV.linux.org.uk>
+ <1298518137.2916.35.camel@perseus>
+ <20110224035836.GS22723@ZenIV.linux.org.uk>
+ <1298529260.2916.91.camel@perseus>
+ <20110224070724.GW22723@ZenIV.linux.org.uk>
+ <1298542053.3058.56.camel@perseus>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20110208160823.GA21408@nb.net.home>
-Date: Mon, 14 Feb 2011 19:08:37 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <AC21B3C6-5A87-4142-AE88-35C6F835ABC0@oracle.com>
-References: <1297172717-26431-1-git-send-email-kzak@redhat.com> <1297172717-26431-2-git-send-email-kzak@redhat.com> <D42D29E5-82B4-4786-BB0C-D2672A58F522@oracle.com> <20110208160823.GA21408@nb.net.home>
-To: Karel Zak <kzak@redhat.com>
+In-Reply-To: <1298542053.3058.56.camel@perseus>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Thu, Feb 24, 2011 at 06:07:33PM +0800, Ian Kent wrote:
 
-On Feb 8, 2011, at 11:08 AM, Karel Zak wrote:
-
-> On Tue, Feb 08, 2011 at 10:43:23AM -0500, Chuck Lever wrote:
->> Nice work, just a few nits so far.
+> Yes, that's a problem.
 > 
-> I'll send updated version later. Thanks for your feedback.
-> 
->> I'll wait for utils-linux
->> 2.19... and we have NFS Connectathon (http://www.connectathon.org)
->> in a couple of weeks, so it will be March before I can spend some
->> quality time with this.
->> 
->> Also, I'm cleaning up a version of parse_opt.c and token.c for you,
->> if you want to include these in libmount at some point.
-> 
-> The library already has some code for mount options parsing, but there
-> is not code to create a list from parsed mount options. The library 
-> already uses struct list_head (originally probably from e2fsprogs
-> and Linux kernel, see include/list.h in util-linux), so maybe we can
-> use it for mount options too.
+> Previously the dcache_lock would have blocked on the dput() ... mmm, I'd
+> missed that so far, although Nick didn't talk with me about his changes
+> very much at all and I didn't pay enough attention to his patch series
+> along the way, oops!
 
-"struct mount_options" is meant to be opaque to callers.  Originally I expected there would be more than just a list in it.  As it turned out, a doubly-linked list is all that is needed.
-
-I can experiment with replacing "struct mount_options" with "struct list_head."  I rather prefer the opacity, as that discourages callers from tinkering with the option lists themselves.  It's a nit, I suppose.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Actually, dcache_lock blocks only the _final_ dput().  I.e. one that has
+refcount going to 0.  Not the case here, so that's a problem without
+RCU stuff as well.
