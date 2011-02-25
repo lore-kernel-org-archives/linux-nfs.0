@@ -1,104 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42307 "EHLO mx1.redhat.com"
+Received: from tac.ki.iif.hu ([193.6.222.43]:47812 "EHLO tac.ki.iif.hu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751094Ab1BPOuJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Feb 2011 09:50:09 -0500
-Date: Wed, 16 Feb 2011 09:50:02 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+	id S932265Ab1BYQnZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Feb 2011 11:43:25 -0500
+From: Ferenc Wagner <wferi@niif.hu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: don't queue synchronous NFSv4 close rpc_release to
- nfsiod
-Message-ID: <20110216095002.1e7944c9@tlielax.poochiereds.net>
-In-Reply-To: <1297866373.6596.18.camel@heimdal.trondhjem.org>
-References: <1297781939-1400-1-git-send-email-jlayton@redhat.com>
-	<1297783898.10103.22.camel@heimdal.trondhjem.org>
-	<20110215113053.345e3abc@tlielax.poochiereds.net>
-	<1297813624.10103.34.camel@heimdal.trondhjem.org>
-	<1297865354.6596.13.camel@heimdal.trondhjem.org>
-	<1297866373.6596.18.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+Subject: Re: Seemingly inconsistent directory state under NFSv4
+References: <87sjvuiwnl.fsf@tac.ki.iif.hu> <87d3mkhvgb.fsf@tac.ki.iif.hu>
+	<20110223193929.GA13399@fieldses.org> <87vd098jk5.fsf@tac.ki.iif.hu>
+	<20110224172747.GA22070@fieldses.org>
+Date: Fri, 25 Feb 2011 17:43:23 +0100
+In-Reply-To: <20110224172747.GA22070@fieldses.org> (J. Bruce Fields's message
+	of "Thu, 24 Feb 2011 12:27:47 -0500")
+Message-ID: <87tyfsqd3o.fsf@tac.ki.iif.hu>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 16 Feb 2011 09:26:13 -0500
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+"J. Bruce Fields" <bfields@fieldses.org> writes:
 
-> On Wed, 2011-02-16 at 09:09 -0500, Trond Myklebust wrote: 
-> > On Tue, 2011-02-15 at 18:47 -0500, Trond Myklebust wrote: 
-> > > diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> > > index 243fc09..11b71b1 100644
-> > > --- a/net/sunrpc/sched.c
-> > > +++ b/net/sunrpc/sched.c
-> > > @@ -252,23 +252,39 @@ static void rpc_set_active(struct rpc_task *task)
-> > >  
-> > >  /*
-> > >   * Mark an RPC call as having completed by clearing the 'active' bit
-> > > + * and then waking up all tasks that were sleeping.
-> > >   */
-> > > -static void rpc_mark_complete_task(struct rpc_task *task)
-> > > +static int rpc_complete_task(struct rpc_task *task)
-> > >  {
-> > > -	smp_mb__before_clear_bit();
-> > > +	void *m = &task->tk_runstate;
-> > > +	wait_queue_head_t *wq = bit_waitqueue(m, RPC_TASK_ACTIVE);
-> > > +	struct wait_bit_key k = __WAIT_BIT_KEY_INITIALIZER(m, RPC_TASK_ACTIVE);
-> > > +	unsigned long flags;
-> > > +	int ret;
-> > > +
-> > > +	spin_lock_irqsave(&wq->lock, flags);
-> > >  	clear_bit(RPC_TASK_ACTIVE, &task->tk_runstate);
-> > > -	smp_mb__after_clear_bit();
-> > > -	wake_up_bit(&task->tk_runstate, RPC_TASK_ACTIVE);
-> > > +	if (waitqueue_active(wq))
-> > > +		__wake_up_locked_key(wq, TASK_NORMAL, &k);
-> > > +	ret = atomic_dec_and_test(&task->tk_count);
-> > > +	spin_unlock_irqrestore(&wq->lock, flags);
-> > > +	return ret;
-> > >  }
-> > >  
-> > >  /*
-> > >   * Allow callers to wait for completion of an RPC call
-> > > + *
-> > > + * Note the use of out_of_line_wait_on_bit() rather than wait_on_bit()
-> > > + * to enforce taking of the wq->lock and hence avoid races with
-> > > + * rpc_complete_task().
-> > >   */
-> > >  int __rpc_wait_for_completion_task(struct rpc_task *task, int (*action)(void *))
-> > >  {
-> > > +	BUG_ON(!RPC_IS_ASYNC(task));
-> > > +
-> > >  	if (action == NULL)
-> > >  		action = rpc_wait_bit_killable;
-> > > -	return wait_on_bit(&task->tk_runstate, RPC_TASK_ACTIVE,
-> > > +	return out_of_line_wait_on_bit(&task->tk_runstate, RPC_TASK_ACTIVE,
-> > >  			action, TASK_KILLABLE);
-> > >  }
-> > >  EXPORT_SYMBOL_GPL(__rpc_wait_for_completion_task);
-> > 
-> > Never mind. The above ordering scheme is broken by the fact that
-> > 'wake_bit_function' calls autoremove_wake_function, which again means
-> > that finish_wait optimises away the spin lock.
-> > 
-> > Back to the drawing board...
-> 
-> ...and after yet another cup of coffee the solution suggests itself: we
-> just need to reorder the calls to __wake_up_locked_key and the
-> atomic_dec_and_test in rpc_complete_task. The revised patch is appended.
-> 
-> Cheers
->   Trond 
-> 
+> On Thu, Feb 24, 2011 at 05:48:58PM +0100, Ferenc Wagner wrote:
+>
+>> "J. Bruce Fields" <bfields@fieldses.org> writes:
+>> One client removed the file, and another could still access it by name
+>> (although not present in the directory listing).  So it could have been
+>> a client-client conflict, even though we couldn't prove that the removed
+>> file was actually in use on the client.  Is there a way to list the
+>> delegations being hold by a client?
+>
+> Not really.  They'll show up as LEASE entries in /proc/locks, with the
+> pid of an nfsd process, but no way to associate them with a client.
 
-Thanks Trond,
+Well, thanks, this is something.  I'll check when it happens again.
+There are lots of such lines, so chances are that will be it.
 
-This builds, but I can't plug in the module:
+> Some way to dump lock (and other state) information might be a nice
+> thing to have some day for debugging and tuning.
 
-[  103.540405] sunrpc: Unknown symbol __wake_up_locked_key (err 0)
+Yes, very much!  I guess the info is more or less readily available in
+the kernel, just isn't exported to userspace.  Looks like a job for
+debugfs.
 
-...I think __wake_up_locked_key will need to be exported too. I'll do
-that and then test this out later today.
+>>> You can turn off delegations completely with
+>>> 	echo 0 >/proc/sys/fs/leases-enable
+>>> before starting the nfs server.
+>> 
+>> Wouldn't I lose most of the efficiency advantages of NFSv4 with that
+>> move?
+>
+> Probably so.  It would at least be a way to verify whether delegations
+> are the source of your problem, if you have a reproduceable test case.
 
+Not yet, unfortunately.  But we're trying to work one out.  It's pretty
+rare, so only mildly disturbing, but when it hits, it hits hard...
 -- 
-Jeff Layton <jlayton@redhat.com>
+Thanks,
+Feri.
