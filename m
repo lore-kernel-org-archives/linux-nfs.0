@@ -1,196 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([122.248.162.2]:33271 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932238Ab1BWNy2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Feb 2011 08:54:28 -0500
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
-        sandeen@redhat.com, tytso@mit.edu, bfields@fieldses.org,
-        jlayton@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Andreas Gruenbacher <agruen@suse.de>
-Subject: [PATCH -V5 19/24] richacl: Automatic Inheritance
-Date: Wed, 23 Feb 2011 19:22:06 +0530
-Message-Id: <1298469131-16555-20-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from daytona.panasas.com ([67.152.220.89]:43377 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750970Ab1BZCm3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Feb 2011 21:42:29 -0500
+Message-ID: <4D686893.7010106@panasas.com>
+Date: Fri, 25 Feb 2011 21:42:27 -0500
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        Andy Adamson <andros@netapp.com>, Fred Isaman <iisaman@netapp.com>
+Subject: Client still crashing on 2nd callback after NFS4_ERR_DELAY
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andreas Gruenbacher <agruen@suse.de>
+I get the below crash on the 2nd recall after the client returned
+NFS_ERR_DELAY, and the server sends a retry.
 
-Automatic Inheritance (AI) allows changes to the acl of a directory to
-recursively propagate down to files and directories in the directory.
+602678a8:  [<6001585b>] panic_exit+0x2f/0x45
+602678c8:  [<60049a3e>] notifier_call_chain+0x32/0x5e
+60267908:  [<60049a8c>] atomic_notifier_call_chain+0x13/0x15
+60267918:  [<601b3b9b>] panic+0x105/0x1dc
+602679c8:  [<601b6056>] _raw_spin_unlock_irqrestore+0x18/0x1c
+602679e8:  [<60016e5f>] free_irqs+0x74/0xde
+60267a18:  [<60015162>] relay_signal+0x38/0x79
+60267a28:  [<60012cef>] sigio_handler+0x5a/0x5f
+60267a48:  [<600224d0>] sig_handler_common+0x84/0x98
+60267a68:  [<6002257d>] real_alarm_handler+0x3c/0x3e
+60267af0:  [<6012fc02>] radix_tree_delete+0x101/0x1d7
+60267b38:  [<6002252f>] unblock_signals+0x4b/0x5d
+60267b78:  [<60022616>] sig_handler+0x30/0x3b
+60267b98:  [<60022848>] handle_signal+0x6d/0xa3
+60267be8:  [<600241c8>] hard_handler+0x10/0x14
+60267ca8:  [<7c1d5dfb>] do_callback_layoutrecall+0x457/0x993 [nfs]
 
-To implement this, the kernel keeps track of which permissions have been
-inherited, and makes sure that permission propagation is turned off when
-the file permission bits of a file are changed (upon create or chmod).
 
-The actual permission propagation is implemented in user space.
+(gdb) list *(do_callback_layoutrecall+0x457)
+0x2de1f is in do_callback_layoutrecall (/usr0/export/dev/bharrosh/git/pub/linux-pnfs/fs/nfs/callback_proc.c:282).
+277     dprintk("%s %d\n", __func__, __LINE__);
+278                     spin_unlock(&clp->cl_lock);
+279     dprintk("%s %d\n", __func__, __LINE__);
+280
+281                     BUG_ON(!lo);
+282                     BUG_ON(!lo->plh_inode);
+283                     spin_lock(&lo->plh_inode->i_lock);
+284     dprintk("%s %d\n", __func__, __LINE__);
+285                     if (rv == NFS4_OK) {
+286                             lo->plh_block_lgets++;
 
-AI works as follows:
+Prints and BUG_ONs added by me.
 
- - When the ACL4_AUTO_INHERIT flag in the acl of a file is cleared, the
-   file is not affected by AI.
+Any body wants to fix this. How would lo->plh_inode be null, and why only the
+second time.
 
- - When the ACL4_AUTO_INHERIT flag in the acl of a directory is set and
-   a file or subdirectory is created in that directory, files created in
-   the directory will have the ACL4_AUTO_INHERIT flag set, and all
-   inherited aces will have the ACE4_INHERITED_ACE flag set.  This
-   allows user space to distinguish between aces which have been
-   inherited, and aces which have been explicitly added.
-
- - When the ACL4_PROTECTED acl flag in the acl of a file is set, AI will
-   not modify the acl of the file.  This does not affect propagation of
-   permissions from the file to its children (if the file is a
-   directory).
-
-Linux does not have a way of creating files without setting the file
-permission bits, so all files created inside a directory with
-ACL4_AUTO_INHERIT set will also have the ACL4_PROTECTED flag set.  This
-effectively disables AI.
-
-Protocols which support creating files without specifying permissions
-can explicitly clear the ACL4_PROTECTED flag after creating a file (and
-reset the file masks to "undo" applying the create mode; see
-richacl_compute_max_masks()).  This is a workaround; a per-create or
-per-process flag indicating to ignore the create mode when AI is in
-effect would fix this problem.
-
-Signed-off-by: Andreas Gruenbacher <agruen@suse.de>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/richacl_base.c       |   10 +++++++++-
- fs/richacl_inode.c      |    7 ++++++-
- include/linux/richacl.h |   25 +++++++++++++++++++++++--
- 3 files changed, 38 insertions(+), 4 deletions(-)
-
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index e60440b..c064c90 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -377,7 +377,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	if (acl->a_owner_mask == owner_mask &&
- 	    acl->a_group_mask == group_mask &&
- 	    acl->a_other_mask == other_mask &&
--	    (acl->a_flags & ACL4_MASKED))
-+	    (acl->a_flags & ACL4_MASKED) &&
-+	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
- 		return acl;
- 
- 	clone = richacl_clone(acl);
-@@ -389,6 +390,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	clone->a_owner_mask = owner_mask;
- 	clone->a_group_mask = group_mask;
- 	clone->a_other_mask = other_mask;
-+	if (richacl_is_auto_inherit(clone))
-+		clone->a_flags |= ACL4_PROTECTED;
- 
- 	return clone;
- }
-@@ -558,6 +561,11 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 			ace++;
- 		}
- 	}
-+	if (richacl_is_auto_inherit(dir_acl)) {
-+		acl->a_flags = ACL4_AUTO_INHERIT;
-+		richacl_for_each_entry(ace, acl)
-+			ace->e_flags |= ACE4_INHERITED_ACE;
-+	}
- 
- 	return acl;
- }
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-index 31e6925..5ae6326 100644
---- a/fs/richacl_inode.c
-+++ b/fs/richacl_inode.c
-@@ -37,9 +37,14 @@ richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
- 
- 	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
- 	if (acl) {
-+		/*
-+		 * We need to set ACL4_PROTECTED because we are
-+		 * doing an implicit chmod
-+		 */
-+		if (richacl_is_auto_inherit(acl))
-+			acl->a_flags |= ACL4_PROTECTED;
- 
- 		richacl_compute_max_masks(acl);
--
- 		/*
- 		 * Ensure that the acl will not grant any permissions beyond
- 		 * the create mode.
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 12a79f1..23befbc 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -47,10 +47,16 @@ struct richacl {
- 	     _ace != _acl->a_entries - 1; \
- 	     _ace--)
- 
-+/* a_flags values */
-+#define ACL4_AUTO_INHERIT		0x01
-+#define ACL4_PROTECTED			0x02
-+/* #define ACL4_DEFAULTED			0x04 */
- /* Flag values defined by rich-acl */
- #define ACL4_MASKED			0x80
- 
- #define ACL4_VALID_FLAGS (			\
-+		ACL4_AUTO_INHERIT |		\
-+		ACL4_PROTECTED |		\
- 		ACL4_MASKED)
- 
- /* e_type values */
-@@ -67,6 +73,7 @@ struct richacl {
- /*#define ACE4_SUCCESSFUL_ACCESS_ACE_FLAG	0x0010*/
- /*#define ACE4_FAILED_ACCESS_ACE_FLAG	0x0020*/
- #define ACE4_IDENTIFIER_GROUP		0x0040
-+#define ACE4_INHERITED_ACE		0x0080
- /* in-memory representation only */
- #define ACE4_SPECIAL_WHO		0x4000
- 
-@@ -75,7 +82,8 @@ struct richacl {
- 	ACE4_DIRECTORY_INHERIT_ACE |		\
- 	ACE4_NO_PROPAGATE_INHERIT_ACE |		\
- 	ACE4_INHERIT_ONLY_ACE |			\
--	ACE4_IDENTIFIER_GROUP)
-+	ACE4_IDENTIFIER_GROUP |			\
-+	ACE4_INHERITED_ACE)
- 
- /* e_mask bitflags */
- #define ACE4_READ_DATA			0x00000001
-@@ -181,6 +189,18 @@ richacl_put(struct richacl *acl)
- 		kfree(acl);
- }
- 
-+static inline int
-+richacl_is_auto_inherit(const struct richacl *acl)
-+{
-+	return acl->a_flags & ACL4_AUTO_INHERIT;
-+}
-+
-+static inline int
-+richacl_is_protected(const struct richacl *acl)
-+{
-+	return acl->a_flags & ACL4_PROTECTED;
-+}
-+
- /*
-  * Special e_who identifiers: we use these pointer values in comparisons
-  * instead of doing a strcmp.
-@@ -259,7 +279,8 @@ richace_clear_inheritance_flags(struct richace *ace)
- 	ace->e_flags &= ~(ACE4_FILE_INHERIT_ACE |
- 			  ACE4_DIRECTORY_INHERIT_ACE |
- 			  ACE4_NO_PROPAGATE_INHERIT_ACE |
--			  ACE4_INHERIT_ONLY_ACE);
-+			  ACE4_INHERIT_ONLY_ACE |
-+			  ACE4_INHERITED_ACE);
- }
- 
- /**
--- 
-1.7.1
-
+Thanks
+Boaz
