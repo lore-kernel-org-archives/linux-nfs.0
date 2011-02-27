@@ -1,37 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:53523 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752651Ab1BOLOH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Feb 2011 06:14:07 -0500
-Date: Tue, 15 Feb 2011 06:14:04 -0500
-From: Christoph Hellwig <hch@infradead.org>
-To: Jim Rees <rees@umich.edu>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/6] nfsd4: split up nfsd_break_deleg_cb
-Message-ID: <20110215111404.GA12517@infradead.org>
-References: <1297227351-15365-1-git-send-email-bfields@redhat.com>
- <1297227351-15365-2-git-send-email-bfields@redhat.com>
- <20110209050118.GA2485@infradead.org>
- <20110209151402.GA13624@pad.home.fieldses.org>
- <20110209162838.GA21056@merit.edu>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110209162838.GA21056@merit.edu>
+Received: from daytona.panasas.com ([67.152.220.89]:3554 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751551Ab1B0Mou (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Feb 2011 07:44:50 -0500
+Message-ID: <4D6A4741.3080706@panasas.com>
+Date: Sun, 27 Feb 2011 14:44:49 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: andros@netapp.com
+CC: iisaman@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/4] NFSv4.1 reclaim complete must wait for completion
+References: <1298542269-2477-1-git-send-email-andros@netapp.com> <1298542269-2477-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1298542269-2477-3-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Feb 09, 2011 at 11:28:38AM -0500, Jim Rees wrote:
-> J. Bruce Fields wrote:
+On 2011-02-24 02:11, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
->   Agreed.  Those two lines were actually untouched by this patch, no
->   matter what diff thinks--but I'm just as happy to fix it up while we're
->   there; done.
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> Reported-by: Trond Myklebust <trond.myklebust@netapp.com>
+> ---
+>  fs/nfs/nfs4proc.c |    3 +++
+>  1 files changed, 3 insertions(+), 0 deletions(-)
 > 
-> I agree too, but "indent -linux" likes "static" on a line by itself, and
-> prefers it over "static void".  This is not the first time I've disagreed
-> with it, although I use it a lot.
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 7d80e78..388817b 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5385,6 +5385,9 @@ static int nfs41_proc_reclaim_complete(struct nfs_client *clp)
+>  		status = PTR_ERR(task);
+>  		goto out;
+>  	}
+> +        status = nfs4_wait_for_completion_rpc_task(task);
+> +        if (status == 0)
+> +                status = task->tk_status;
 
-The linux styles of most indent-like programs are utter garbage.  If you
-want Linux style use the scripts/Lindent script in the source tree.  It
-still has a few quirks, like stupid ways to split overly long lines, but
-generally does a reasonable job.
+nit: please use tabs rather than spaces to indent.
+
+Benny
+
+>  	rpc_put_task(task);
+>  	return 0;
+>  out:
