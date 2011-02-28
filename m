@@ -1,65 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51336 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:9853 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757802Ab1BKSAp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 13:00:45 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 16/17] SQUASHME restore lost put_lseg code
-Date: Thu, 10 Feb 2011 20:52:49 -0500
-Message-Id: <1297389170-26702-17-git-send-email-andros@netapp.com>
-In-Reply-To: <1297389170-26702-16-git-send-email-andros@netapp.com>
-References: <1297389170-26702-1-git-send-email-andros@netapp.com>
- <1297389170-26702-2-git-send-email-andros@netapp.com>
- <1297389170-26702-3-git-send-email-andros@netapp.com>
- <1297389170-26702-4-git-send-email-andros@netapp.com>
- <1297389170-26702-5-git-send-email-andros@netapp.com>
- <1297389170-26702-6-git-send-email-andros@netapp.com>
- <1297389170-26702-7-git-send-email-andros@netapp.com>
- <1297389170-26702-8-git-send-email-andros@netapp.com>
- <1297389170-26702-9-git-send-email-andros@netapp.com>
- <1297389170-26702-10-git-send-email-andros@netapp.com>
- <1297389170-26702-11-git-send-email-andros@netapp.com>
- <1297389170-26702-12-git-send-email-andros@netapp.com>
- <1297389170-26702-13-git-send-email-andros@netapp.com>
- <1297389170-26702-14-git-send-email-andros@netapp.com>
- <1297389170-26702-15-git-send-email-andros@netapp.com>
- <1297389170-26702-16-git-send-email-andros@netapp.com>
+	id S1751372Ab1B1WBl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2011 17:01:41 -0500
+Subject: Re: [PATCH] zero out delegation in the inode after it has been
+ returned
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+In-Reply-To: <20110228215439.GD1256@merit.edu>
+References: <20110228213103.GA1256@merit.edu>
+	 <1298929144.8564.44.camel@heimdal.trondhjem.org>
+	 <20110228215439.GD1256@merit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 28 Feb 2011 17:01:34 -0500
+Message-ID: <1298930494.8564.50.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Mon, 2011-02-28 at 16:54 -0500, Jim Rees wrote: 
+> Trond Myklebust wrote:
+> 
+>   nfsi->delegation is released under the appropriate locks well before we
+>   get here. The above line is 100% racy and risks clobbering any new
+>   delegation that has been issued after the delegreturn completed...
+> 
+> I'd have been amazed if I'd gotten it right.  But there really is a problem
+> here, the client does try to use delegations that have been returned, and
+> this patch does solve that problem.  I'm happy to keep after this but would
+> appreciate any suggestions or nudges in the right direction.
 
-Lost in merge from Fred's lseg rewrite.
+The procedure for returning delegations is supposed to work as follows:
 
-squash into: pnfs-submit-wave3-lseg-refcounting
+     1. Remove the nfsi->delegation so that it is no longer visible to
+        new open() requests 
+     2. write back any dirty data to the server 
+     3. Reclaim any locks 
+     4. Reclaim any open stateids (using CLAIM_DELEGATE_CUR) 
+     5. delegreturn
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/pnfs.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
+While there may indeed be the odd READ or WRITE that races between 4.
+and 5., so that the server receives the delegation stateid after the
+delegreturn, that shouldn't matter: the server returns an error, and the
+client should retry using the new open stateid.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 31e5f55..dc15a76 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -278,9 +278,12 @@ put_lseg(struct pnfs_layout_segment *lseg)
- 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	ino = lseg->pls_layout->plh_inode;
- 	if (atomic_dec_and_lock(&lseg->pls_refcount, &ino->i_lock)) {
-+		LIST_HEAD(free_me);
-+
- 		_put_lseg_common(lseg);
-+		list_add(&lseg->pls_list, &free_me);
- 		spin_unlock(&ino->i_lock);
--		free_lseg(lseg);
-+		pnfs_free_lseg_list(&free_me);
- 	}
- }
- EXPORT_SYMBOL_GPL(put_lseg);
+What is failing to work correctly here?
+
 -- 
-1.6.6
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
