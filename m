@@ -1,38 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:55035 "EHLO lo.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754832Ab1BIMpI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Feb 2011 07:45:08 -0500
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1Pn9Pu-0002eX-3t
-	for linux-nfs@vger.kernel.org; Wed, 09 Feb 2011 13:45:06 +0100
-Received: from 194.88.55.211 ([194.88.55.211])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Feb 2011 13:45:06 +0100
-Received: from karesz999 by 194.88.55.211 with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Feb 2011 13:45:06 +0100
-To: linux-nfs@vger.kernel.org
-From: Karoly Slavic <karesz999@yahoo.com>
-Subject: Nfs u32 jiffy counter question
-Date: Wed, 9 Feb 2011 12:40:03 +0000 (UTC)
-Message-ID: <loom.20110209T133851-968@post.gmane.org>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:50595 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751450Ab1B1VbG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2011 16:31:06 -0500
+Date: Mon, 28 Feb 2011 16:31:03 -0500
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: [PATCH] zero out delegation in the inode after it has been returned
+Message-ID: <20110228213103.GA1256@merit.edu>
 Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi!
+Signed-off-by: Jim Rees <rees@umich.edu>
+---
+ fs/nfs/delegation.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-
-I've found a red hat bug forum post regarding this problem, namely that the u32
-jiffy counter can overload after ~50 days.
-https://bugzilla.redhat.com/show_bug.cgi?id=228801
-
-Has this problem been solved in a kernel release maybe?
-
-Thanks & regards
-Karoly Slavic
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index bbbc6bf..5bc4f7e 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -176,9 +176,11 @@ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
+ 
+ static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *delegation, int issync)
+ {
++	struct nfs_inode *nfsi = NFS_I(inode);
+ 	int res = 0;
+ 
+ 	res = nfs4_proc_delegreturn(inode, delegation->cred, &delegation->stateid, issync);
++	rcu_assign_pointer(nfsi->delegation, NULL);
+ 	nfs_free_delegation(delegation);
+ 	return res;
+ }
+-- 
+1.7.1
 
