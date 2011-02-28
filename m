@@ -1,323 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.parallels.com ([64.131.90.16]:45536 "EHLO mx2.parallels.com"
+Received: from mail-out2.uio.no ([129.240.10.58]:59771 "EHLO mail-out2.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755538Ab1BDDan (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Feb 2011 22:30:43 -0500
-Received: from [96.31.168.206] (helo=mail.parallels.com)
-	by mx2.parallels.com with esmtps (TLSv1:AES128-SHA:128)
-	(Exim 4.72)
-	(envelope-from <rlandley@parallels.com>)
-	id 1PlCNe-0000Pk-L5
-	for linux-nfs@vger.kernel.org; Thu, 03 Feb 2011 22:30:43 -0500
-Message-ID: <4D4B72E2.5070901@parallels.com>
-Date: Thu, 3 Feb 2011 21:30:42 -0600
-From: Rob Landley <rlandley@parallels.com>
-To: <linux-nfs@vger.kernel.org>, Pavel Emelyanov <xemul@parallels.com>
-Subject: [PATCH] cleanup: factor out cut-and-paste code in options parsing.
-Content-Type: text/plain; charset="ISO-8859-1"
+	id S1753350Ab1B1WFH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Feb 2011 17:05:07 -0500
+Subject: Re: [PATCH] zero out delegation in the inode after it has been
+ returned
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+To: Jim Rees <rees@umich.edu>
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+In-Reply-To: <1298930494.8564.50.camel@heimdal.trondhjem.org>
+References: <20110228213103.GA1256@merit.edu>
+	 <1298929144.8564.44.camel@heimdal.trondhjem.org>
+	 <20110228215439.GD1256@merit.edu>
+	 <1298930494.8564.50.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 28 Feb 2011 17:04:58 -0500
+Message-ID: <1298930698.8564.51.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Rob Landley <rlandley@parallels.com>
+On Mon, 2011-02-28 at 17:01 -0500, Trond Myklebust wrote: 
+> On Mon, 2011-02-28 at 16:54 -0500, Jim Rees wrote: 
+> > Trond Myklebust wrote:
+> > 
+> >   nfsi->delegation is released under the appropriate locks well before we
+> >   get here. The above line is 100% racy and risks clobbering any new
+> >   delegation that has been issued after the delegreturn completed...
+> > 
+> > I'd have been amazed if I'd gotten it right.  But there really is a problem
+> > here, the client does try to use delegations that have been returned, and
+> > this patch does solve that problem.  I'm happy to keep after this but would
+> > appreciate any suggestions or nudges in the right direction.
+> 
+> The procedure for returning delegations is supposed to work as follows:
+> 
+>      1. Remove the nfsi->delegation so that it is no longer visible to
+>         new open() requests 
+>      2. write back any dirty data to the server 
+>      3. Reclaim any locks 
+>      4. Reclaim any open stateids (using CLAIM_DELEGATE_CUR) 
 
-Factor out some cut-and-paste code in options parsing.
+Errr.... lock reclaim comes after open reclaim, of course...
 
-Signed-off-by: Rob Landley <rlandley@parallels.com>
----
+The rest is correct.
 
- add/remove: 2/0 grow/shrink: 1/2 up/down: 115/-956 (-841)
- function                                     old     new   delta
- nfs_get_option_ul                              -      69     +69
- nfs_get_option_str                             -      45     +45
- nfs_kill_super                                33      34      +1
- nfs_alloc_parsed_mount_data                  107     106      -1
- nfs_parse_mount_options                     3608    2653    -955
+> 5. delegreturn
+> 
+> While there may indeed be the odd READ or WRITE that races between 4.
+> and 5., so that the server receives the delegation stateid after the
+> delegreturn, that shouldn't matter: the server returns an error, and the
+> client should retry using the new open stateid.
+> 
+> What is failing to work correctly here?
+> 
 
- fs/nfs/super.c |  155 +++++++++++++----------------------------------
- 1 file changed, 44 insertions(+), 111 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index b68c860..d103034 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -979,6 +979,27 @@ static int nfs_parse_security_flavors(char *value,
- 	return 1;
- }
- 
-+static int nfs_get_option_str(substring_t args[], char **option)
-+{
-+	kfree(*option);
-+	*option = match_strdup(args);
-+	return !option;
-+}
-+
-+static int nfs_get_option_ul(substring_t args[], unsigned long *option)
-+{
-+	int rc;
-+	char *string;
-+
-+	string = match_strdup(args);
-+	if (string == NULL)
-+		return -ENOMEM;
-+	rc = strict_strtoul(string, 10, option);
-+	kfree(string);
-+
-+	return rc;
-+}
-+
- /*
-  * Error-check and convert a string of mount options from user space into
-  * a data structure.  The whole mount string is processed; bad options are
-@@ -1127,155 +1148,82 @@ static int nfs_parse_mount_options(char *raw,
- 		 * options that take numeric values
- 		 */
- 		case Opt_port:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0 || option > USHRT_MAX)
-+			if (nfs_get_option_ul(args, &option) ||
-+			    option > USHRT_MAX)
- 				goto out_invalid_value;
- 			mnt->nfs_server.port = option;
- 			break;
- 		case Opt_rsize:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0)
-+			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
- 			mnt->rsize = option;
- 			break;
- 		case Opt_wsize:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0)
-+			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
- 			mnt->wsize = option;
- 			break;
- 		case Opt_bsize:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0)
-+			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
- 			mnt->bsize = option;
- 			break;
- 		case Opt_timeo:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0 || option == 0)
-+			if (nfs_get_option_ul(args, &option) || option == 0)
- 				goto out_invalid_value;
- 			mnt->timeo = option;
- 			break;
- 		case Opt_retrans:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0 || option == 0)
-+			if (nfs_get_option_ul(args, &option) || option == 0)
- 				goto out_invalid_value;
- 			mnt->retrans = option;
- 			break;
- 		case Opt_acregmin:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0)
-+			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
- 			mnt->acregmin = option;
- 			break;
- 		case Opt_acregmax:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0)
-+			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
- 			mnt->acregmax = option;
- 			break;
- 		case Opt_acdirmin:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0)
-+			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
- 			mnt->acdirmin = option;
- 			break;
- 		case Opt_acdirmax:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0)
-+			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
- 			mnt->acdirmax = option;
- 			break;
- 		case Opt_actimeo:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0)
-+			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
- 			mnt->acregmin = mnt->acregmax =
- 			mnt->acdirmin = mnt->acdirmax = option;
- 			break;
- 		case Opt_namelen:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0)
-+			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
- 			mnt->namlen = option;
- 			break;
- 		case Opt_mountport:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0 || option > USHRT_MAX)
-+			if (nfs_get_option_ul(args, &option) ||
-+			    option > USHRT_MAX)
- 				goto out_invalid_value;
- 			mnt->mount_server.port = option;
- 			break;
- 		case Opt_mountvers:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0 ||
-+			if (nfs_get_option_ul(args, &option) ||
- 			    option < NFS_MNT_VERSION ||
- 			    option > NFS_MNT3_VERSION)
- 				goto out_invalid_value;
- 			mnt->mount_server.version = option;
- 			break;
- 		case Opt_nfsvers:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0)
-+			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
- 			switch (option) {
- 			case NFS2_VERSION:
-@@ -1295,12 +1243,7 @@ static int nfs_parse_mount_options(char *raw,
- 			}
- 			break;
- 		case Opt_minorversion:
--			string = match_strdup(args);
--			if (string == NULL)
--				goto out_nomem;
--			rc = strict_strtoul(string, 10, &option);
--			kfree(string);
--			if (rc != 0)
-+			if (nfs_get_option_ul(args, &option))
- 				goto out_invalid_value;
- 			if (option > NFS4_MAX_MINOR_VERSION)
- 				goto out_invalid_value;
-@@ -1336,21 +1279,18 @@ static int nfs_parse_mount_options(char *raw,
- 			case Opt_xprt_udp:
- 				mnt->flags &= ~NFS_MOUNT_TCP;
- 				mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
--				kfree(string);
- 				break;
- 			case Opt_xprt_tcp6:
- 				protofamily = AF_INET6;
- 			case Opt_xprt_tcp:
- 				mnt->flags |= NFS_MOUNT_TCP;
- 				mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
--				kfree(string);
- 				break;
- 			case Opt_xprt_rdma:
- 				/* vector side protocols to TCP */
- 				mnt->flags |= NFS_MOUNT_TCP;
- 				mnt->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
- 				xprt_load_transport(string);
--				kfree(string);
- 				break;
- 			default:
- 				dfprintk(MOUNT, "NFS:   unrecognized "
-@@ -1358,6 +1298,7 @@ static int nfs_parse_mount_options(char *raw,
- 				kfree(string);
- 				return 0;
- 			}
-+			kfree(string);
- 			break;
- 		case Opt_mountproto:
- 			string = match_strdup(args);
-@@ -1400,18 +1341,13 @@ static int nfs_parse_mount_options(char *raw,
- 				goto out_invalid_address;
- 			break;
- 		case Opt_clientaddr:
--			string = match_strdup(args);
--			if (string == NULL)
-+			if (nfs_get_option_str(args, &mnt->client_address))
- 				goto out_nomem;
--			kfree(mnt->client_address);
--			mnt->client_address = string;
- 			break;
- 		case Opt_mounthost:
--			string = match_strdup(args);
--			if (string == NULL)
-+			if (nfs_get_option_str(args,
-+					       &mnt->mount_server.hostname))
- 				goto out_nomem;
--			kfree(mnt->mount_server.hostname);
--			mnt->mount_server.hostname = string;
- 			break;
- 		case Opt_mountaddr:
- 			string = match_strdup(args);
-@@ -1451,11 +1387,8 @@ static int nfs_parse_mount_options(char *raw,
- 			};
- 			break;
- 		case Opt_fscache_uniq:
--			string = match_strdup(args);
--			if (string == NULL)
-+			if (nfs_get_option_str(args, &mnt->fscache_uniq))
- 				goto out_nomem;
--			kfree(mnt->fscache_uniq);
--			mnt->fscache_uniq = string;
- 			mnt->options |= NFS_OPTION_FSCACHE;
- 			break;
- 		case Opt_local_lock:
