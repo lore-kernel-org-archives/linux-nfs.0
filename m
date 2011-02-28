@@ -1,134 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ew0-f46.google.com ([209.85.215.46]:55227 "EHLO
-	mail-ew0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932070Ab1BPORB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Feb 2011 09:17:01 -0500
-Message-ID: <4D5BDC58.9020906@monstr.eu>
-Date: Wed, 16 Feb 2011 15:16:56 +0100
-From: Michal Simek <monstr@monstr.eu>
-Reply-To: monstr@monstr.eu
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: netdev@vger.kernel.org, David Miller <davem@davemloft.net>,
-        linux-nfs@vger.kernel.org
-Subject: Re: NFS on little-endian platform - Microblaze
-References: <4D5BCC74.9010301@monstr.eu>  <4D5BCE43.1090401@monstr.eu>	 <1297862575.6596.0.camel@heimdal.trondhjem.org>	 <4D5BD6E5.8010903@monstr.eu> <1297865074.6596.10.camel@heimdal.trondhjem.org>
-In-Reply-To: <1297865074.6596.10.camel@heimdal.trondhjem.org>
+Received: from mail-ww0-f42.google.com ([74.125.82.42]:64784 "EHLO
+	mail-ww0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752781Ab1B1UEo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2011 15:04:44 -0500
+Message-ID: <4D6BFFCF.1010509@gmail.com>
+Date: Mon, 28 Feb 2011 20:04:31 +0000
+From: Andre Rodier <andre.rodier@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: kernel NFS bug
+References: <4D695031.9050001@gmail.com> <20110228170120.GA13028@fieldses.org>
+In-Reply-To: <20110228170120.GA13028@fieldses.org>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Trond Myklebust wrote:
-> On Wed, 2011-02-16 at 14:53 +0100, Michal Simek wrote: 
->> Trond Myklebust wrote:
->>> On Wed, 2011-02-16 at 14:16 +0100, Michal Simek wrote: 
->>>> Hi again,
->>>>
->>>> I forget to cc linux-nfs mailing list.
->>>>
->>>> Michal
->>>>
->>>> P.S.: Tested on kernels 2.6.38-rc4, 2.6.37 and 2.6.36
->>>>
->>>> Michal Simek wrote:
->>>>> Hi All,
->>>>>
->>>>> I am trying to understand one problem which we have found.
->>>>> The problem is that I can't on Microblaze little-endian platform
->>>>> mount nfs without -o nolock options. (Log below)
->>>>> Selecting tcp or udp has no effect.
->>>>> I am using emaclite driver and there is no problem on big endian 
->>>>> microblaze.
->>>>>
->>>>> ping, telnet, http, ftp, iperf, netperf work well.
->>>>>
->>>>> That's why I have a question if there is any endian specific option for 
->>>>> NFS?
->>>>>
->>>>> Thanks,
->>>>> Michal
->>>>>
->>>>> ~ # mount -t nfs 192.168.0.101:/tftpboot/nfs /mnt
->>>>> svc: failed to register lockdv1 RPC service (errno 13).
->>>>> lockd_up: makesock failed, error=-13
->>>>> svc: failed to register lockdv1 RPC service (errno 13).
->>>>> ~ # mount -t nfs -o nolock 192.168.0.101:/tftpboot/nfs /mnt
->>>>> ~ # mount
->>>>> rootfs on / type rootfs (rw)
->>>>> proc on /proc type proc (rw,relatime)
->>>>> none on /var type ramfs (rw,relatime)
->>>>> none on /sys type sysfs (rw,relatime)
->>>>> none on /etc/config type ramfs (rw,relatime)
->>>>> none on /dev/pts type devpts (rw,relatime,mode=600)
->>>>> 192.168.0.101:/tftpboot/nfs on /mnt type nfs 
->>>>> (rw,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=udp,port=65535,timeo=7,retrans=3,sec=sys,local_lock=all,addr=192.168.0.101) 
->>>>>
->>>>> ~ #
->>>>> ~ # ps
->>>>> PID   USER     TIME   COMMAND
->>>>>     1 root       0:02 init
->>>>>     2 root       0:00 [kthreadd]
->>>>>     3 root       0:00 [ksoftirqd/0]
->>>>>     4 root       0:00 [kworker/0:0]
->>>>>     5 root       0:00 [kworker/u:0]
->>>>>     6 root       0:00 [khelper]
->>>>>     7 root       0:00 [sync_supers]
->>>>>     8 root       0:00 [bdi-default]
->>>>>     9 root       0:00 [kblockd]
->>>>>    10 root       0:00 [rpciod]
->>>>>    11 root       0:00 [kworker/0:1]
->>>>>    12 root       0:00 [kswapd0]
->>>>>    13 root       0:00 [fsnotify_mark]
->>>>>    14 root       0:00 [aio]
->>>>>    15 root       0:00 [nfsiod]
->>>>>    16 root       0:00 [kworker/u:1]
->>>>>    58 root       0:00 udhcpc -R -n -p /var/run/udhcpc.eth0.pid -i eth0
->>>>>    62 1          0:00 /bin/portmap
->>>>>    64 root       0:00 /bin/inetd /etc/inetd.conf
->>>>>    65 root       0:01 -sh
->>>>>    66 root       0:00 /bin/syslogd -n
->>>>>    67 root       0:00 /bin/flatfsd
->>>>>    68 root       0:00 [kworker/0:2]
->>>>>    91 root       0:00 ps
->>> Where is rpc.statd? Without it, the above behaviour is 100% expected.
->> I see on BE that lockd is used but it is enabled on little endian too but hasn't started.
+Hi Bruce,
+
+Once I'll have cloned the virtual machine and made a sandbox, I'll do a 
+test with a recent kernel.
+
+It may take some time, though
+
+Kind regards,
+André Rodier.
+
+On 28/02/11 17:01, J. Bruce Fields wrote:
+> On Sat, Feb 26, 2011 at 07:10:41PM +0000, Andre Rodier wrote:
+>    
+>> Hello guys,
 >>
->> Enabled options:
->> CONFIG_NETWORK_FILESYSTEMS=y
->> CONFIG_NFS_FS=y
->> CONFIG_NFS_V3=y
->> CONFIG_LOCKD=y
->> CONFIG_LOCKD_V4=y
->> CONFIG_NFS_COMMON=y
->> CONFIG_SUNRPC=y
+>> *After typing this command,*
 >>
->> On Be lockd is up.
->>     69 root       0:00 /bin/flatfsd
->>     71 root       0:00 [lockd]
->>     73 root       0:00 ps
+>> echo 1023>/proc/sys/sunrpc/nfs_debug ; mount /home/samba/profiles/
 >>
->> I have to look why.
->> How is it started?
-> 
-> Either rpc.bind or rpc.portmap and then rpc.statd need to be started
-> manually (in that order) before you may mount the NFS partition without
-> '-onolock'. The lockd daemon itself will be started by the kernel
-> whenever there is a need for it.
-
-On big-endian system is not any rpc* binary either that's why I think this is not a problem.
-Only portmap is started on both systems. Nothing more. If you want I can send you cpio archive.
-
-> 
-> Please check your 'init' boot scripts to find out why they are not being
-> started as expected.
-
-ok.
-
-Michal
-
-
--- 
-Michal Simek, Ing. (M.Eng)
-w: www.monstr.eu p: +42-0-721842854
-Maintainer of Linux kernel 2.6 Microblaze Linux - http://www.monstr.eu/fdt/
-Microblaze U-BOOT custodian
+>> *I had this error:*
+>>
+>> Feb 26 16:03:33 titan kernel: [1121430.975412] -->   nfs4_create_server()
+>> Feb 26 16:03:33 titan kernel: [1121430.975422] -->   nfs4_init_server()
+>> Feb 26 16:03:33 titan kernel: [1121430.975424] -->   nfs4_set_client()
+>> Feb 26 16:03:33 titan kernel: [1121430.975427] -->   nfs_get_client(ananke,v4)
+>> Feb 26 16:03:33 titan kernel: [1121430.975436] -->   nfs_get_client() = ffff88001d9bf800 [new]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] ------------[ cut here ]------------
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] kernel BUG at /build/buildd-linux-2.6_2.6.32-30-amd64-d4MbNM/linux-2.6-2.6.32/debian/build/source_amd64_none/net/sunrpc/rpc_pipe.c:462!
+>>      
+> Is that reproduceable with a more recent kernel?
+>
+> Cc'ing linux-nfs.
+>
+> --b.
+>
+>    
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] invalid opcode: 0000 [#1] SMP
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] last sysfs file: /sys/module/rpcsec_gss_krb5/initstate
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] CPU 0
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] Modules linked in: nfsd exportfs rpcsec_gss_krb5 nfs lockd fscache nfs_acl auth_rpcgss sunrpc tun xt_multiport ipt_REJECT xt_limit xt_tcpudp ipt_addrtype xt_state ip6table_filter ip6_tables nf_nat_irc nf_conntrack_irc nf_nat_ftp nf_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack_ftp nf_conntrack iptable_filter ip_tables x_tables loop joydev snd_pcm snd_timer usbhid hid snd i2c_piix4 soundcore snd_page_alloc psmouse evdev serio_raw pcspkr i2c_core processor button ext3 jbd mbcache sg sr_mod cdrom ata_generic ata_piix uhci_hcd ehci_hcd virtio_net virtio_blk thermal libata floppy thermal_sys virtio_pci virtio_ring virtio usbcore nls_base scsi_mod [last unloaded: scsi_wait_scan]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] Pid: 28867, comm: mount.nfs4 Not tainted 2.6.32-5-amd64 #1 Bochs
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] RIP: 0010:[<ffffffffa03143ed>]  [<ffffffffa03143ed>] __rpc_create_common+0x1a/0xb0 [sunrpc]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] RSP: 0018:ffff8800180178e8  EFLAGS: 00010246
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] RAX: 0000000000000000 RBX: 0000000000001180 RCX: ffffffffa03186a0
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] RDX: 0000000000001180 RSI: ffff8800051a46c0 RDI: ffff88001ee2a700
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] RBP: ffff8800051a46c0 R08: ffff880017d4f800 R09: ffff880001815780
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] R10: ffff8800180c72d8 R11: ffff88001f1e4700 R12: ffff88001ee2a700
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] R13: ffffffffa03186a0 R14: ffff880017d4f800 R15: ffff880017d4f800
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] FS:  00007f2f08c93700(0000) GS:ffff880001800000(0000) knlGS:0000000000000000
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] CR2: 0000000000687000 CR3: 0000000017ce7000 CR4: 00000000000006f0
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] Process mount.nfs4 (pid: 28867, threadinfo ffff880018016000, task ffff88001d8ae350)
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] Stack:
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  0000000000001180 ffff8800051a46c0 ffffffffa03cf756 ffffffffa03440d0
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]<0>   ffff88001ee2a700 ffffffffa0314600 ffff880017d4f800 000000018104a7f3
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]<0>   ffff88000f8d5a80 ffff88001ee2a7b8 0000000401a80b22 ffffffffa03cf756
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] Call Trace:
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffffa0314600>] ? rpc_mkpipe+0x111/0x192 [sunrpc]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffffa0341799>] ? gss_create+0x1d4/0x234 [auth_rpcgss]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffffa030a81d>] ? rpcauth_create+0xe5/0x130 [sunrpc]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffffa0303f66>] ? rpc_create+0x362/0x4f0 [sunrpc]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff812f9e2c>] ? printk+0x4e/0x5a
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffffa037fc22>] ? nfs_create_rpc_client+0x9d/0xe3 [nfs]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffffa0380228>] ? nfs4_set_client+0xc6/0x21a [nfs]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffffa0380a83>] ? nfs4_create_server+0xe0/0x312 [nfs]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff810eb84e>] ? pcpu_alloc_area+0x25b/0x2a7
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff811948b6>] ? vsnprintf+0x9e/0x449
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff810eadaa>] ? pcpu_next_pop+0x3d/0x4a
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff810e4493>] ? get_partial_node+0x15/0x85
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff810e6870>] ? __slab_alloc+0xd3/0x39b
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffffa03894d7>] ? nfs4_remote_get_sb+0x39/0x1ae [nfs]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff810e7cad>] ? __kmalloc+0x12f/0x141
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffffa038951b>] ? nfs4_remote_get_sb+0x7d/0x1ae [nfs]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff810f0a2b>] ? vfs_kern_mount+0x99/0x14b
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffffa0389851>] ? nfs_do_root_mount+0x72/0x8c [nfs]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffffa0389a95>] ? nfs4_try_mount+0x55/0xae [nfs]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffffa0389d5a>] ? nfs4_get_sb+0x26c/0x2ee [nfs]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff810f0a2b>] ? vfs_kern_mount+0x99/0x14b
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff810f0b30>] ? do_kern_mount+0x43/0xe2
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff81104c03>] ? do_mount+0x72a/0x792
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff81103001>] ? copy_mount_options+0xca/0x12b
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff81104ceb>] ? sys_mount+0x80/0xbd
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  [<ffffffff81010b42>] ? system_call_fastpath+0x16/0x1b
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] Code: 89 c7 e8 43 a6 de e0 48 c7 c0 ef ff ff ff 41 59 c3 41 56 4d 89 c6 41 55 49 89 cd 41 54 49 89 fc 55 48 89 f5 53 f6 46 04 10 75 04<0f>   0b eb fe 48 8b bf 08 01 00 00 0f b7 f2 e8 0a fe ff ff 48 85
+>> Feb 26 16:03:33 titan kernel: [1121430.988571] RIP  [<ffffffffa03143ed>] __rpc_create_common+0x1a/0xb0 [sunrpc]
+>> Feb 26 16:03:33 titan kernel: [1121430.988571]  RSP<ffff8800180178e8>
+>> Feb 26 16:03:33 titan kernel: [1121431.224151] ---[ end trace 06c24dd64155af13 ]---
+>> Feb 26 16:04:05 titan kernel: [1121463.047413] NFS: nfs mount opts='sec=krb5,hard,addr=10.10.2.8,clientaddr=10.10.2.10'
+>> Feb 26 16:04:05 titan kernel: [1121463.048909] NFS:   parsing nfs mount option 'sec=krb5'
+>> Feb 26 16:04:05 titan kernel: [1121463.049562] NFS: parsing sec=krb5 option
+>> Feb 26 16:04:05 titan kernel: [1121463.050115] NFS:   parsing nfs mount option 'hard'
+>> Feb 26 16:04:05 titan kernel: [1121463.050707] NFS:   parsing nfs mount option 'addr=10.10.2.8'
+>> Feb 26 16:04:05 titan kernel: [1121463.051431] NFS:   parsing nfs mount option 'clientaddr=10.10.2.10'
+>> Feb 26 16:04:05 titan kernel: [1121463.052634] NFS: MNTPATH: '/home/samba/profiles'
+>> Feb 26 16:04:05 titan kernel: [1121463.053255] -->   nfs4_try_mount()
+>> Feb 26 16:04:19 titan kernel: [1121476.616103]<-- nfs4_try_mount() = -512 [error]
+>>
+>>
+>> Sorry to have not enough time to send more info, but I hope that's help.
+>>
+>> André Rodier
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+>> the body of a message tomajordomo@vger.kernel.org
+>> More majordomo info athttp://vger.kernel.org/majordomo-info.html
+>> Please read the FAQ athttp://www.tux.org/lkml/
+>>      
