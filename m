@@ -1,151 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:43653 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753261Ab1BURtl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Feb 2011 12:49:41 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 1/7] NFSv4.1: rearrange nfs_write_rpcsetup
-Date: Mon, 21 Feb 2011 12:49:30 -0500
-Message-Id: <1298310576-13523-2-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1298310576-13523-1-git-send-email-iisaman@netapp.com>
-References: <1298310576-13523-1-git-send-email-iisaman@netapp.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:50801 "EHLO
+	test.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755209Ab1B1VL4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Feb 2011 16:11:56 -0500
+Date: Mon, 28 Feb 2011 16:11:45 -0500
+From: "Ted Ts'o" <tytso@mit.edu>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: sfrench@us.ibm.com, agruen@linbit.com, dilger.kernel@dilger.ca,
+        sandeen@redhat.com, bfields@fieldses.org, jlayton@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl
+ interoperability
+Message-ID: <20110228211145.GG28617@thunk.org>
+References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+Hi Aneesh,
 
-Reorder nfs_write_rpcsetup, preparing for a pnfs entry point.
+What is the current status of this patch series?  I seem to remember
+that Christoph and Al Viro had some objections; have those been
+cleared yet?  If not, can you summarize what their objections are?
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/write.c |   82 +++++++++++++++++++++++++++++++------------------------
- 1 files changed, 46 insertions(+), 36 deletions(-)
+To be honest I haven't been paying super close attention to this patch
+series, and I'm curious what needs to happen with it one way or
+another.
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index aca0268..5604854 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -782,25 +782,21 @@ static int flush_task_priority(int how)
- 	return RPC_PRIORITY_NORMAL;
- }
- 
--/*
-- * Set up the argument/result storage required for the RPC call.
-- */
--static int nfs_write_rpcsetup(struct nfs_page *req,
--		struct nfs_write_data *data,
--		const struct rpc_call_ops *call_ops,
--		unsigned int count, unsigned int offset,
--		int how)
-+static int nfs_initiate_write(struct nfs_write_data *data,
-+		       struct rpc_clnt *clnt,
-+		       const struct rpc_call_ops *call_ops,
-+		       int how)
- {
--	struct inode *inode = req->wb_context->path.dentry->d_inode;
-+	struct inode *inode = data->inode;
- 	int priority = flush_task_priority(how);
- 	struct rpc_task *task;
- 	struct rpc_message msg = {
- 		.rpc_argp = &data->args,
- 		.rpc_resp = &data->res,
--		.rpc_cred = req->wb_context->cred,
-+		.rpc_cred = data->cred,
- 	};
- 	struct rpc_task_setup task_setup_data = {
--		.rpc_client = NFS_CLIENT(inode),
-+		.rpc_client = clnt,
- 		.task = &data->task,
- 		.rpc_message = &msg,
- 		.callback_ops = call_ops,
-@@ -811,12 +807,49 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
- 	};
- 	int ret = 0;
- 
-+	/* Set up the initial task struct.  */
-+	NFS_PROTO(inode)->write_setup(data, &msg);
-+
-+	dprintk("NFS: %5u initiated write call "
-+		"(req %s/%lld, %u bytes @ offset %llu)\n",
-+		data->task.tk_pid,
-+		inode->i_sb->s_id,
-+		(long long)NFS_FILEID(inode),
-+		data->args.count,
-+		(unsigned long long)data->args.offset);
-+
-+	task = rpc_run_task(&task_setup_data);
-+	if (IS_ERR(task)) {
-+		ret = PTR_ERR(task);
-+		goto out;
-+	}
-+	if (how & FLUSH_SYNC) {
-+		ret = rpc_wait_for_completion_task(task);
-+		if (ret == 0)
-+			ret = task->tk_status;
-+	}
-+	rpc_put_task(task);
-+out:
-+	return ret;
-+}
-+
-+/*
-+ * Set up the argument/result storage required for the RPC call.
-+ */
-+static int nfs_write_rpcsetup(struct nfs_page *req,
-+		struct nfs_write_data *data,
-+		const struct rpc_call_ops *call_ops,
-+		unsigned int count, unsigned int offset,
-+		int how)
-+{
-+	struct inode *inode = req->wb_context->path.dentry->d_inode;
-+
- 	/* Set up the RPC argument and reply structs
- 	 * NB: take care not to mess about with data->commit et al. */
- 
- 	data->req = req;
- 	data->inode = inode = req->wb_context->path.dentry->d_inode;
--	data->cred = msg.rpc_cred;
-+	data->cred = req->wb_context->cred;
- 
- 	data->args.fh     = NFS_FH(inode);
- 	data->args.offset = req_offset(req) + offset;
-@@ -837,30 +870,7 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
- 	data->res.verf    = &data->verf;
- 	nfs_fattr_init(&data->fattr);
- 
--	/* Set up the initial task struct.  */
--	NFS_PROTO(inode)->write_setup(data, &msg);
--
--	dprintk("NFS: %5u initiated write call "
--		"(req %s/%lld, %u bytes @ offset %llu)\n",
--		data->task.tk_pid,
--		inode->i_sb->s_id,
--		(long long)NFS_FILEID(inode),
--		count,
--		(unsigned long long)data->args.offset);
--
--	task = rpc_run_task(&task_setup_data);
--	if (IS_ERR(task)) {
--		ret = PTR_ERR(task);
--		goto out;
--	}
--	if (how & FLUSH_SYNC) {
--		ret = rpc_wait_for_completion_task(task);
--		if (ret == 0)
--			ret = task->tk_status;
--	}
--	rpc_put_task(task);
--out:
--	return ret;
-+	return nfs_initiate_write(data, NFS_CLIENT(inode), call_ops, how);
- }
- 
- /* If a nfs_flush_* function fails, it should remove reqs from @head and
--- 
-1.7.2.1
-
+						- Ted
