@@ -1,121 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:17119 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757730Ab1BKQzB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 11:55:01 -0500
-Received: from localhost.localdomain (manjua-lxp.hq.netapp.com [10.58.49.248] (may be forged))
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p1BGshZA002533
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Feb 2011 08:54:48 -0800 (PST)
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 7/7] wave4: nfs_pageio_do_add_request needs to distinguish between read and write
-Date: Fri, 11 Feb 2011 11:54:39 -0500
-Message-Id: <1297443279-19813-8-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
-References: <1297443279-19813-1-git-send-email-iisaman@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:29001 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751690Ab1B1Qbf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2011 11:31:35 -0500
+Message-ID: <4D6BCDDF.1070909@panasas.com>
+Date: Mon, 28 Feb 2011 18:31:27 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: NFS list <linux-nfs@vger.kernel.org>
+Subject: pnfs git tree status pnfs-all-2.6.38-rc5-2011-02-26
+References: <4D41D711.70807@panasas.com> <4D4B10B0.2040500@panasas.com>
+In-Reply-To: <4D4B10B0.2040500@panasas.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This is so that it can send the appropriate mode in LAYOUTGET.
+I pushed the Connectathon fixes for pnfs-all-latest to the main tree
+git://linux-nfs.org/~bhalevy/linux-pnfs.git
+And I'll sync with Fred's wave[345] series when he's ready.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pagelist.c        |    7 +++----
- fs/nfs/pnfs.c            |    8 ++++++++
- fs/nfs/pnfs.h            |    7 +++++++
- fs/nfs/write.c           |    2 +-
- include/linux/nfs_page.h |    1 +
- 5 files changed, 20 insertions(+), 5 deletions(-)
+New commits submitted since last update (pnfs-all-2.6.38-rc3-2011-02-03)
+are listed below.
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index f0aa20b..0518d62a 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -299,10 +299,9 @@ static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
- 	} else {
- 		put_lseg(desc->pg_lseg);
- 		desc->pg_base = req->wb_pgbase;
--		if (desc->pg_test)
--			desc->pg_lseg = pnfs_update_layout(desc->pg_inode,
--							   req->wb_context,
--							   IOMODE_READ);
-+		desc->pg_lseg = pnfs_update_layout(desc->pg_inode,
-+						   req->wb_context,
-+						   desc->pg_iomode);
- 	}
- 	nfs_list_remove_request(req);
- 	nfs_list_add_request(req, &desc->pg_list);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 9d2351a..a2ee472 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -889,6 +889,14 @@ void
- pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 		  struct inode *inode)
- {
-+	pgio->pg_iomode = IOMODE_READ;
-+	pnfs_set_pg_test(inode, pgio);
-+}
-+
-+void
-+pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
-+{
-+	pgio->pg_iomode = IOMODE_RW;
- 	pnfs_set_pg_test(inode, pgio);
- }
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 50bcb1f..16f9fa5 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -179,6 +179,7 @@ enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
- enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
- 					    const struct rpc_call_ops *);
- void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
-+void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
- int pnfs_layout_process(struct nfs4_layoutget *lgp);
- void pnfs_free_lseg_list(struct list_head *tmp_list);
- void pnfs_destroy_layout(struct nfs_inode *);
-@@ -297,6 +298,12 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *ino)
- 	pgio->pg_test = NULL;
- }
- 
-+static inline void
-+pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *ino)
-+{
-+	pgio->pg_test = NULL;
-+}
-+
- #endif /* CONFIG_NFS_V4_1 */
- 
- #endif /* FS_NFS_PNFS_H */
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 5757b06..4c21045 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1001,7 +1001,7 @@ static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- {
- 	size_t wsize = NFS_SERVER(inode)->wsize;
- 
--	pgio->pg_test = NULL;
-+	pnfs_pageio_init_write(pgio, inode);
- 
- 	if (wsize < PAGE_CACHE_SIZE)
- 		nfs_pageio_init(pgio, inode, nfs_flush_multi, wsize, ioflags);
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index ba88ff4..fd57be2 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -63,6 +63,7 @@ struct nfs_pageio_descriptor {
- 	int 			pg_ioflags;
- 	int			pg_error;
- 	struct pnfs_layout_segment *pg_lseg;
-+	int			pg_iomode;
- 	int			(*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
- };
- 
--- 
-1.7.2.1
+Benny
 
+pnfs-all-2.6.37:
+  Benny Halevy     6d105b3 pnfsd: Initialize cb_layout clr_recall.cb_work
+  Benny Halevy     f8282df pnfsd: add default error case in nfsd4_cb_layout_done
+  Benny Halevy     488dbb1 pnfsd: do not clear rpc_resp in nfsd4_cb_done_sequence
+  Benny Halevy     9243514 pnfs: fix missing unlock in nfs_client_return_layouts
+  Benny Halevy     38a4a8d pnfs: return bool status from nfs4_asynch_forget_layouts
+  Benny Halevy     1cabadb pnfs: return NFS4ERR_DELAY from layoutrecall while waiting on lsegs
+  Benny Halevy     be52477 pnfs: fix cl_drain_notification indexing
+  Benny Halevy     257b10f pnfs: fix nfs4_asynch_forget_layouts accounting
+  Benny Halevy     013dffa pnfs: improve nfs4_layoutget_done debug printouts
+  Benny Halevy     7355ec0 pnfs: fix lock inversion in pnfs_layout_process
+
+nfs-upstream:
+  Trond Myklebust  ec45b78 SUNRPC: Fix a memory leak in rpc_new_task()
+  Trond Myklebust  3561b23 SUNRPC: Close a race in __rpc_wait_for_completion_task()
+  Trond Myklebust  bcaedce NFS/VFS: Fix the nfs sillyrename regression
+  Benny Halevy     4856b2d NFSv4.1: reject zero layout with zeroed stripe unit
+  Jim Rees         b76d1d5 NFSv4.1: fix typo in filelayout_check_layout
+
+nfsd-upstream:
+  Benny Halevy     767d1a0 NFSD: fix decode_cb_sequence4resok
+  Benny Halevy     ebca1bc nfsd41: use SEQ4_STATUS_BACKCHANNEL_FAULT when cb_sequence is invalid
+
+pnfsd:
+  Benny Halevy     9bb661a pnfsd: do not clear rpc_resp in nfsd4_cb_done_sequence
+
+pnfsd-lexp:
+  Benny Halevy     3e947f3 pnfsd-lexp: recall layout on truncate
+
+pnfs-submit-wave3:
+  Andy Adamson     733c2ca NFSv4: remove CONFIG_NFS_V4 from nfs_read_data
+  Andy Adamson     e347996 NFSv4.1: put_layout_hdr can remove nfsi->layout
+  Andy Adamson     2e5bfda NFS move nfs_client initialization into nfs_get_client
+  Andy Adamson     31642d8 NFSv4.1: send zero stateid seqid on v4.1 i/o
+  Andy Adamson     078fb11 NFSv4.1: new flag for state renewal check
+  Andy Adamson     45429c7b NFSv4.1: new flag for lease time check
+  Andy Adamson     a557a45 NFSv4.1: add MDS mount DS only check
+  Fred Isaman      42e7c6e NFSv4.1: lseg refcounting
+  Fred Isaman      28377e6 NFSv4.1: coelesce across layout stripes
+  Fred Isaman      f5650f9 NFSv4.1: shift pnfs_update_layout locations
+  Andy Adamson     ab7ffb5 NFSv4.1: generic read
+  Andy Adamson     242f5ce NFSv4.1: data server connection
+  Fred Isaman      4374a1b NFSv4.1: filelayout i/o helpers
+  Andy Adamson     fcb2ee6 NFSv4.1: filelayout read
+  Andy Adamson     47c3fd3 NFSv4.1: filelayout async error handler
+  Christoph Hellwig  627c22e NFSv4.1 move deviceid cache to filelayout driver
+  Andy Adamson     29b9fde NFSv4.1: turn off pNFS on ds connection failure
+  Fred Isaman      442d08c NFSv4.1: lseg documentation
+  Fred Isaman      6205ddc SQUASHME wave3: address Benny's comment
+  Fred Isaman      d3ff5cd SQUASHME wave3: whitespace fix
+  Benny Halevy     9d0fcee NFSv4.1: pnfs-submit-wave3: put_lseg_common should use list_del_init
+
+pnfs-submit-wave4:
+  Fred Isaman      0479cd6 NFSv4.1: add callback to nfs4_write_done
+  Fred Isaman      55f54f7 NFSv4.1: trigger LAYOUTGET for writes
+  Fred Isaman      0c992aa NFSv4.1: remove GETATTR from ds writes
+  Fred Isaman      7326c07 NFSv4.1: pnfs filelayout driver write
+
+pnfs-submit:
+  Benny Halevy     34af0eb NFSv4.1: pnfs-submit-wave3: put_lseg_common should use list_del_init
+
+pnfs:
+  Benny Halevy     67e864c pnfs: fix missing unlock in nfs_client_return_layouts
+  Benny Halevy     787d5ab pnfs: return bool status from nfs4_asynch_forget_layouts
+  Benny Halevy     5564508 pnfs: return NFS4ERR_DELAY from layoutrecall while waiting on lsegs
+  Benny Halevy     051d190 pnfs: fix cl_drain_notification indexing
+  Benny Halevy     e60a67c pnfs: fix nfs4_asynch_forget_layouts accounting
+  Benny Halevy     a86c7ac pnfs: improve nfs4_layoutget_done debug printouts
+  Benny Halevy     a92a66b SQUASHME: pnfs: fix lock inversion in pnfs_layout_process
+  Benny Halevy     b2005e6 SQUASHME: pnfs: revert layout recall/get/return synchronization
