@@ -1,92 +1,296 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:39288 "EHLO lo.gmane.org"
+Received: from mx2.netapp.com ([216.240.18.37]:39366 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752061Ab1C0AH0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 26 Mar 2011 20:07:26 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1Q3dVt-0005AQ-O3
-	for linux-nfs@vger.kernel.org; Sun, 27 Mar 2011 01:07:25 +0100
-Received: from d67-193-214-242.home3.cgocable.net ([67.193.214.242])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Mar 2011 01:07:25 +0100
-Received: from brian by d67-193-214-242.home3.cgocable.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Mar 2011 01:07:25 +0100
-To: linux-nfs@vger.kernel.org
-From: "Brian J. Murrell" <brian@interlinx.bc.ca>
-Subject: Re: different kernels mean NFS4/GSSAPI works or doesn't
-Date: Sat, 26 Mar 2011 20:07:12 -0400
-Message-ID: <4D8E7FB0.9060109@interlinx.bc.ca>
-References: <imbb8m$uiv$1@dough.gmane.org>	 <AANLkTimFJ2fMn805jY91u8FQihib8GfJ=8S7Yy4y47R3@mail.gmail.com>	 <4D89D36D.3090207@interlinx.bc.ca>	 <AANLkTi=b1z0MrYYQmidbra0EHanegcLO5qoOScLq21rb@mail.gmail.com>	 <4D8A0C9F.8090300@interlinx.bc.ca> <1300900035.11677.12.camel@lade.trondhjem.org>
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enig51F3B30CECD4604F801EDDC6"
-Cc: Kevin Coffman <public-kwc-vtMw8L3fJ9vSiEDVxGk4TQ@lo.gmane.org>
-In-Reply-To: <1300900035.11677.12.camel@lade.trondhjem.org>
+	id S1757115Ab1CAR3v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Mar 2011 12:29:51 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>,
+        Andy Adamson <andros@citi.umich.edu>,
+        Boaz Harrosh <bharrosh@panasas.com>,
+        Dean Hildebrand <dhildeb@us.ibm.com>,
+        Fred Isaman <iisaman@citi.umich.edu>, Fred Isaman <iisaman@netapp.com>,
+        Mike Sager <sager@netapp.com>, Mingyang Guo <guomingyang@nrchpc.ac.cn>,
+        Ricardo Labiaga <Ricardo.Labiaga@netapp.com>,
+        Tao Guo <guotao@nrchpc.ac.cn>, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH pNFS wave 3 Version 3 11/18] NFSv4.1: generic read
+Date: Mon, 28 Feb 2011 20:34:16 -0500
+Message-Id: <1298943263-2886-12-git-send-email-andros@netapp.com>
+In-Reply-To: <1298943263-2886-11-git-send-email-andros@netapp.com>
+References: <1298943263-2886-1-git-send-email-andros@netapp.com>
+ <1298943263-2886-2-git-send-email-andros@netapp.com>
+ <1298943263-2886-3-git-send-email-andros@netapp.com>
+ <1298943263-2886-4-git-send-email-andros@netapp.com>
+ <1298943263-2886-5-git-send-email-andros@netapp.com>
+ <1298943263-2886-6-git-send-email-andros@netapp.com>
+ <1298943263-2886-7-git-send-email-andros@netapp.com>
+ <1298943263-2886-8-git-send-email-andros@netapp.com>
+ <1298943263-2886-9-git-send-email-andros@netapp.com>
+ <1298943263-2886-10-git-send-email-andros@netapp.com>
+ <1298943263-2886-11-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
---------------enig51F3B30CECD4604F801EDDC6
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+From: Andy Adamson <andros@netapp.com>
 
-On 11-03-23 01:07 PM, Trond Myklebust wrote:
-> Please don't remove people from the Cc list.
+Separate the rpc run portion of nfs_read_rpcsetup into a new function
+nfs_initiate_read that is called for normal NFS I/O.
 
-Fair enough.  Personally, I dislike getting two copies, but I can
-respect others' wishes.
+Add a pNFS read_pagelist function that is called instead of nfs_intitate_read
+for pNFS reads.
 
-> You said this happens only with RPCSEC_GSS?
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Mike Sager <sager@netapp.com>
+Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/pnfs.c              |   28 +++++++++++++++++++
+ fs/nfs/pnfs.h              |   20 +++++++++++++
+ fs/nfs/read.c              |   65 +++++++++++++++++++++++++++-----------------
+ include/linux/nfs_iostat.h |    1 +
+ include/linux/nfs_xdr.h    |    1 +
+ 5 files changed, 90 insertions(+), 25 deletions(-)
 
-Indeed.  Hrm.  Well, to be honest my two scenarios are NFS4 with
-RPCSEC_GSS and NFSv3.  I've never really looked into NFS4 without
-RPCSEC_GSS.  Is that even possible?  What's the point?  I guess there
-are protocol improvements in NFS4 aside from RPCSEC_GSS?
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 77966ec..86c154b 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -30,6 +30,7 @@
+ #include <linux/nfs_fs.h>
+ #include "internal.h"
+ #include "pnfs.h"
++#include "iostat.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PNFS
+ 
+@@ -880,6 +881,33 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode)
+ }
+ 
+ /*
++ * Call the appropriate parallel I/O subsystem read function.
++ */
++enum pnfs_try_status
++pnfs_try_to_read_data(struct nfs_read_data *rdata,
++		       const struct rpc_call_ops *call_ops)
++{
++	struct inode *inode = rdata->inode;
++	struct nfs_server *nfss = NFS_SERVER(inode);
++	enum pnfs_try_status trypnfs;
++
++	rdata->mds_ops = call_ops;
++
++	dprintk("%s: Reading ino:%lu %u@%llu\n",
++		__func__, inode->i_ino, rdata->args.count, rdata->args.offset);
++
++	trypnfs = nfss->pnfs_curr_ld->read_pagelist(rdata);
++	if (trypnfs == PNFS_NOT_ATTEMPTED) {
++		put_lseg(rdata->lseg);
++		rdata->lseg = NULL;
++	} else {
++		nfs_inc_stats(inode, NFSIOS_PNFS_READ);
++	}
++	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
++	return trypnfs;
++}
++
++/*
+  * Device ID cache. Currently supports one layout type per struct nfs_client.
+  * Add layout type to the lookup key to expand to support multiple types.
+  */
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 5107d14..585023f 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -45,6 +45,11 @@ struct pnfs_layout_segment {
+ 	struct pnfs_layout_hdr *pls_layout;
+ };
+ 
++enum pnfs_try_status {
++	PNFS_ATTEMPTED     = 0,
++	PNFS_NOT_ATTEMPTED = 1,
++};
++
+ #ifdef CONFIG_NFS_V4_1
+ 
+ #define LAYOUT_NFSV4_1_MODULE_PREFIX "nfs-layouttype4"
+@@ -70,6 +75,12 @@ struct pnfs_layoutdriver_type {
+ 
+ 	/* test for nfs page cache coalescing */
+ 	int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
++
++	/*
++	 * Return PNFS_ATTEMPTED to indicate the layout code has attempted
++	 * I/O, else return PNFS_NOT_ATTEMPTED to fall back to normal NFS
++	 */
++	enum pnfs_try_status (*read_pagelist) (struct nfs_read_data *nfs_data);
+ };
+ 
+ struct pnfs_layout_hdr {
+@@ -157,6 +168,8 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 		   enum pnfs_iomode access_type);
+ void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
++enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
++					    const struct rpc_call_ops *);
+ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+@@ -227,6 +240,13 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 	return NULL;
+ }
+ 
++static inline enum pnfs_try_status
++pnfs_try_to_read_data(struct nfs_read_data *data,
++		      const struct rpc_call_ops *call_ops)
++{
++	return PNFS_NOT_ATTEMPTED;
++}
++
+ static inline bool
+ pnfs_roc(struct inode *ino)
+ {
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 6dc9eaf..4127a1c 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -18,6 +18,8 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
++#include <linux/smp_lock.h>
++#include <linux/module.h>
+ 
+ #include <asm/system.h>
+ #include "pnfs.h"
+@@ -155,25 +157,20 @@ static void nfs_readpage_release(struct nfs_page *req)
+ 	nfs_release_request(req);
+ }
+ 
+-/*
+- * Set up the NFS read request struct
+- */
+-static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+-		const struct rpc_call_ops *call_ops,
+-		unsigned int count, unsigned int offset,
+-		struct pnfs_layout_segment *lseg)
++static int nfs_initiate_read(struct nfs_read_data *data, struct rpc_clnt *clnt,
++		      const struct rpc_call_ops *call_ops)
+ {
+-	struct inode *inode = req->wb_context->path.dentry->d_inode;
++	struct inode *inode = data->inode;
+ 	int swap_flags = IS_SWAPFILE(inode) ? NFS_RPC_SWAPFLAGS : 0;
+ 	struct rpc_task *task;
+ 	struct rpc_message msg = {
+ 		.rpc_argp = &data->args,
+ 		.rpc_resp = &data->res,
+-		.rpc_cred = req->wb_context->cred,
++		.rpc_cred = data->cred,
+ 	};
+ 	struct rpc_task_setup task_setup_data = {
+ 		.task = &data->task,
+-		.rpc_client = NFS_CLIENT(inode),
++		.rpc_client = clnt,
+ 		.rpc_message = &msg,
+ 		.callback_ops = call_ops,
+ 		.callback_data = data,
+@@ -181,9 +178,37 @@ static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+ 		.flags = RPC_TASK_ASYNC | swap_flags,
+ 	};
+ 
++	/* Set up the initial task struct. */
++	NFS_PROTO(inode)->read_setup(data, &msg);
++
++	dprintk("NFS: %5u initiated read call (req %s/%lld, %u bytes @ "
++			"offset %llu)\n",
++			data->task.tk_pid,
++			inode->i_sb->s_id,
++			(long long)NFS_FILEID(inode),
++			data->args.count,
++			(unsigned long long)data->args.offset);
++
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task))
++		return PTR_ERR(task);
++	rpc_put_task(task);
++	return 0;
++}
++
++/*
++ * Set up the NFS read request struct
++ */
++static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
++		const struct rpc_call_ops *call_ops,
++		unsigned int count, unsigned int offset,
++		struct pnfs_layout_segment *lseg)
++{
++	struct inode *inode = req->wb_context->path.dentry->d_inode;
++
+ 	data->req	  = req;
+ 	data->inode	  = inode;
+-	data->cred	  = msg.rpc_cred;
++	data->cred	  = req->wb_context->cred;
+ 	data->lseg	  = get_lseg(lseg);
+ 
+ 	data->args.fh     = NFS_FH(inode);
+@@ -199,21 +224,11 @@ static int nfs_read_rpcsetup(struct nfs_page *req, struct nfs_read_data *data,
+ 	data->res.eof     = 0;
+ 	nfs_fattr_init(&data->fattr);
+ 
+-	/* Set up the initial task struct. */
+-	NFS_PROTO(inode)->read_setup(data, &msg);
+-
+-	dprintk("NFS: %5u initiated read call (req %s/%Ld, %u bytes @ offset %Lu)\n",
+-			data->task.tk_pid,
+-			inode->i_sb->s_id,
+-			(long long)NFS_FILEID(inode),
+-			count,
+-			(unsigned long long)data->args.offset);
++	if (data->lseg &&
++	    (pnfs_try_to_read_data(data, call_ops) == PNFS_ATTEMPTED))
++		return 0;
+ 
+-	task = rpc_run_task(&task_setup_data);
+-	if (IS_ERR(task))
+-		return PTR_ERR(task);
+-	rpc_put_task(task);
+-	return 0;
++	return nfs_initiate_read(data, NFS_CLIENT(inode), call_ops);
+ }
+ 
+ static void
+diff --git a/include/linux/nfs_iostat.h b/include/linux/nfs_iostat.h
+index 68b10f5..37a1437 100644
+--- a/include/linux/nfs_iostat.h
++++ b/include/linux/nfs_iostat.h
+@@ -113,6 +113,7 @@ enum nfs_stat_eventcounters {
+ 	NFSIOS_SHORTREAD,
+ 	NFSIOS_SHORTWRITE,
+ 	NFSIOS_DELAY,
++	NFSIOS_PNFS_READ,
+ 	__NFSIOS_COUNTSMAX,
+ };
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 560923e..9d2b9da 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1018,6 +1018,7 @@ struct nfs_read_data {
+ 	struct nfs_readres  res;
+ 	unsigned long		timestamp;	/* For lease renewal */
+ 	struct pnfs_layout_segment *lseg;
++	const struct rpc_call_ops *mds_ops;
+ 	struct page		*page_array[NFS_PAGEVEC_SIZE];
+ };
+ 
+-- 
+1.6.6
 
-> Have you tried bisecting, to see which changes caused it?
-
-I just did, using Ubuntu's "mainline" kernels, which AFAIU are upstream
-kernel source without any of their special sauce, but built with their
-=2Econfigs.
-
-It seems the problem was introduced in 2.6.32.12.  I don't really know
-which commit between 2.6.32.11 and 2.6.32.12 though.  In fact I don't
-even know where to find these so-called .11 and .12 4th order of
-releases to see what all went into it.
-
-I did find
-http://www.kernel.org/pub/linux/kernel/v2.6/ChangeLog-2.6.32.11 but a
-gitweb interface to the changes would be much more useful I think.
-Although the number of changes that show up there for matches of /nfs/
-or /gss/ are quite small (only one for the latter).
-
-> You can
-> probably restrict yourself to bisecting changes to include/linux/sunrpc=
-,
-> net/sunrpc and net/sunrpc/auth_gss.
-
-If I could find a gitweb tree to grovel through.  :-)
-
-b.
-
-
-
-
---------------enig51F3B30CECD4604F801EDDC6
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
-
-iEYEARECAAYFAk2Of7AACgkQl3EQlGLyuXA6KACgndbSOAncrfUCQI2BEWlgkZlc
-0IoAoMpQWD3/fGsY8Ql1aN1a7DSnFCXK
-=juBK
------END PGP SIGNATURE-----
-
---------------enig51F3B30CECD4604F801EDDC6--
