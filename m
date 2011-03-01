@@ -1,55 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:26269 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:39366 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753461Ab1CVQCi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Mar 2011 12:02:38 -0400
-Message-ID: <4D88C832.4010104@parallels.com>
-Date: Tue, 22 Mar 2011 19:02:58 +0300
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-To: Peter Lojkin <ia6432@inbox.ru>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] RPC: killing RPC tasks races fixed
-References: <E1Q22wg-00080R-00.ia6432-inbox-ru@f70.mail.ru>
-In-Reply-To: <E1Q22wg-00080R-00.ia6432-inbox-ru@f70.mail.ru>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	id S1757133Ab1CAR36 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Mar 2011 12:29:58 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH pNFS wave 3 Version 3 07/18] NFSv4.1: add MDS mount DS only check
+Date: Mon, 28 Feb 2011 20:34:12 -0500
+Message-Id: <1298943263-2886-8-git-send-email-andros@netapp.com>
+In-Reply-To: <1298943263-2886-7-git-send-email-andros@netapp.com>
+References: <1298943263-2886-1-git-send-email-andros@netapp.com>
+ <1298943263-2886-2-git-send-email-andros@netapp.com>
+ <1298943263-2886-3-git-send-email-andros@netapp.com>
+ <1298943263-2886-4-git-send-email-andros@netapp.com>
+ <1298943263-2886-5-git-send-email-andros@netapp.com>
+ <1298943263-2886-6-git-send-email-andros@netapp.com>
+ <1298943263-2886-7-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-22.03.2011 17:52, Peter Lojkin пишет:
-> On Thu, 2011-03-17 at 15:54:23 2011-03-17 at 18:43 +0300, Stanislav Kinsbursky wrote:
->
->> RPC task RPC_TASK_QUEUED bit is set must be checked before trying to wake up
->> task rpc_killall_tasks() because task->tk_waitqueue can not be set (equal to
->> NULL).
->> Also, as Trond Myklebust mentioned, such approach (instead of checking
->> tk_waitqueue to NULL) allows us to "optimise away the call to
->> rpc_wake_up_queued_task() altogether for those
->> tasks that aren't queued".
->
-> you mentioned earlier that you have found this problem in .32 kernel but your patch only works for newer kernels.
-> does the following patch is correct and needed for pre .36 kernels?
->
+From: Andy Adamson <andros@netapp.com>
 
+The DS only role cannot be used to mount.
 
-Yes, it is. This bug was found in rhel6 kernel which is based on 2.6.32 vanilla.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/client.c  |    4 ++++
+ fs/nfs/nfs4_fs.h |   13 +++++++++++++
+ 2 files changed, 17 insertions(+), 0 deletions(-)
 
-
-> --- a/net/sunrpc/sched.c	2011-03-22 16:55:36.802000287 +0300
-> +++ b/net/sunrpc/sched.c	2011-03-22 17:01:13.858000242 +0300
-> @@ -939,7 +939,8 @@
->   		if (!(rovr->tk_flags&  RPC_TASK_KILLED)) {
->   			rovr->tk_flags |= RPC_TASK_KILLED;
->   			rpc_exit(rovr, -EIO);
-> -			rpc_wake_up_task(rovr);
-> +			if (RPC_IS_QUEUED(rovr))
-> +				rpc_wake_up_task(rovr);
->   		}
->   	}
->   	spin_unlock(&clnt->cl_lock);
->
-
-
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 280d41f..d5c5bdf 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1453,6 +1453,10 @@ static int nfs4_server_common_setup(struct nfs_server *server,
+ 	BUG_ON(!server->nfs_client->rpc_ops);
+ 	BUG_ON(!server->nfs_client->rpc_ops->file_inode_ops);
+ 
++	/* data servers support only a subset of NFSv4.1 */
++	if (is_ds_only_client(server->nfs_client))
++		return -EPROTONOSUPPORT;
++
+ 	fattr = nfs_alloc_fattr();
+ 	if (fattr == NULL)
+ 		return -ENOMEM;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 7a74740..5d84642 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -259,6 +259,13 @@ extern int nfs4_proc_destroy_session(struct nfs4_session *);
+ extern int nfs4_init_session(struct nfs_server *server);
+ extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
+ 		struct nfs_fsinfo *fsinfo);
++
++static inline bool
++is_ds_only_client(struct nfs_client *clp)
++{
++	return (clp->cl_exchange_flags & EXCHGID4_FLAG_MASK_PNFS) ==
++		EXCHGID4_FLAG_USE_PNFS_DS;
++}
+ #else /* CONFIG_NFS_v4_1 */
+ static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
+ {
+@@ -276,6 +283,12 @@ static inline int nfs4_init_session(struct nfs_server *server)
+ {
+ 	return 0;
+ }
++
++static inline bool
++is_ds_only_client(struct nfs_client *clp)
++{
++	return false;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.6.6
+
