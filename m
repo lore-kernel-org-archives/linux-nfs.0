@@ -1,70 +1,203 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from orca.ele.uri.edu ([131.128.51.63]:48902 "EHLO orca.ele.uri.edu"
+Received: from mx2.netapp.com ([216.240.18.37]:39366 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754516Ab1C2Us1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Mar 2011 16:48:27 -0400
-From: "Will Simoneau" <simoneau@ele.uri.edu>
-Date: Tue, 29 Mar 2011 16:24:08 -0400
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Belisko Marek <marek.belisko@gmail.com>, Trond.Myklebust@netapp.com,
-        broonie@opensource.wolfsonmicro.com, bdowning@lavos.net,
-        linux-nfs@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [bisect] kernel 2.6.38 regression with root nfs mounting
-Message-ID: <20110329202408.GM1966@ele.uri.edu>
-References: <AANLkTimjmdi8sFTTjSPerOVgHQ+pjjwwMvCUX3AJ16At@mail.gmail.com>
- <43F07477-9075-444D-9BBB-368650538EA8@oracle.com>
- <AANLkTinHUQkBvcvh9APVutOqcKOug6CA066kS_O4p4Tq@mail.gmail.com>
- <DC2B75F8-382A-4AFB-9286-4A55EAF7609A@oracle.com>
- <AANLkTikWyUbtHbbnSh8NBeP3mT4jDOu5Pbtfw=TwKrwE@mail.gmail.com>
- <977C528D-4540-4EB2-92F9-6DAF357D8C81@oracle.com>
- <AANLkTik0UgB+k2i=E5t9XcF50SoSr_iXaFYrhctDx0FJ@mail.gmail.com>
- <8F19F0FE-0800-4C45-B857-1C682CF6A30D@oracle.com>
- <AANLkTin4-+Mc7d0a-XnZvPKL-C_Cf+Kmnm1Bmh1XZZu4@mail.gmail.com>
- <4AD2FFC1-E777-4C29-8718-4E1717EFCD86@oracle.com>
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="BnCwdHgQ2ZomtW9r"
-In-Reply-To: <4AD2FFC1-E777-4C29-8718-4E1717EFCD86@oracle.com>
+	id S1757120Ab1CAR3y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Mar 2011 12:29:54 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>,
+        Andy Adamson <andros@citi.umich.edu>,
+        Dean Hildebrand <dhildeb@us.ibm.com>,
+        Marc Eshel <eshel@almaden.ibm.com>, Mike Sager <sager@netapp.com>,
+        Oleg Drokin <green@linuxhacker.ru>, Tao Guo <guotao@nrchpc.ac.cn>,
+        Tigran Mkrtchyan <tigran@anahit.desy.de>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        Andy Adamson <andros@netapp.com>, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH pNFS wave 3 Version 3 13/18] NFSv4.1: filelayout i/o helpers
+Date: Mon, 28 Feb 2011 20:34:18 -0500
+Message-Id: <1298943263-2886-14-git-send-email-andros@netapp.com>
+In-Reply-To: <1298943263-2886-13-git-send-email-andros@netapp.com>
+References: <1298943263-2886-1-git-send-email-andros@netapp.com>
+ <1298943263-2886-2-git-send-email-andros@netapp.com>
+ <1298943263-2886-3-git-send-email-andros@netapp.com>
+ <1298943263-2886-4-git-send-email-andros@netapp.com>
+ <1298943263-2886-5-git-send-email-andros@netapp.com>
+ <1298943263-2886-6-git-send-email-andros@netapp.com>
+ <1298943263-2886-7-git-send-email-andros@netapp.com>
+ <1298943263-2886-8-git-send-email-andros@netapp.com>
+ <1298943263-2886-9-git-send-email-andros@netapp.com>
+ <1298943263-2886-10-git-send-email-andros@netapp.com>
+ <1298943263-2886-11-git-send-email-andros@netapp.com>
+ <1298943263-2886-12-git-send-email-andros@netapp.com>
+ <1298943263-2886-13-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
---BnCwdHgQ2ZomtW9r
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+From: Fred Isaman <iisaman@netapp.com>
 
-On 09:26 Fri 25 Mar     , Chuck Lever wrote:
->=20
-> According to the trace, the mount succeeds, and NFS requests are working.=
-  However, the server's replies to READ requests are not being seen by the =
-client.  Something on the client host or in the network is dropping them.  =
-I see successful 16KB reads, but 32KB reads do not work.  Check your client=
- for packet filtering (either intentional filtering, or accidental filterin=
-g due to configuration issues).
->=20
-> I'll revisit the mount option defaults for NFSROOT again.
+Prepare for filelayout_read_pagelist with helper functions that find the correct
+data server, filehandle, and offset.
 
-I have encountered the same problem as Belisko, using an FPGA board I am
-working on (CPU is a mipsel r4k clone). 2.6.38-rc8 nfsroot works fine,
-2.6.38 hangs while starting init. I can see read replies going out from
-the NFS server but the client does not seem to receive them.
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
+Signed-off-by: Mike Sager <sager@netapp.com>
+Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+Signed-off-by: Tigran Mkrtchyan <tigran@anahit.desy.de>
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+---
+ fs/nfs/nfs4filelayout.c    |   34 ++++++++++++++++++++++
+ fs/nfs/nfs4filelayout.h    |    7 ++++
+ fs/nfs/nfs4filelayoutdev.c |   67 ++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 108 insertions(+), 0 deletions(-)
 
-Interestingly, we are both using DM9000 network chips. I wonder if there
-is a UDP-related problem on the DM9000. I will play with my
-configuration a little more (in particular testing proto=3Dtcp and revert
-of 53d4737580535e073963b91ce87d4216e434fab5) but my guess is the DM9000
-driver/chip is to blame. The DM9000A on my board has 16K of on-chip SRAM
-used for its RX/TX buffers which may be playing a part in the problem.
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 0efe8cb..ed83370 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -66,6 +66,40 @@ filelayout_clear_layoutdriver(struct nfs_server *nfss)
+ 	return 0;
+ }
+ 
++static loff_t
++filelayout_get_dense_offset(struct nfs4_filelayout_segment *flseg,
++			    loff_t offset)
++{
++	u32 stripe_width = flseg->stripe_unit * flseg->dsaddr->stripe_count;
++	u64 tmp;
++
++	offset -= flseg->pattern_offset;
++	tmp = offset;
++	do_div(tmp, stripe_width);
++
++	return tmp * flseg->stripe_unit + do_div(offset, flseg->stripe_unit);
++}
++
++/* This function is used by the layout driver to calculate the
++ * offset of the file on the dserver based on whether the
++ * layout type is STRIPE_DENSE or STRIPE_SPARSE
++ */
++static loff_t
++filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
++{
++	struct nfs4_filelayout_segment *flseg = FILELAYOUT_LSEG(lseg);
++
++	switch (flseg->stripe_type) {
++	case STRIPE_SPARSE:
++		return offset;
++
++	case STRIPE_DENSE:
++		return filelayout_get_dense_offset(flseg, offset);
++	}
++
++	BUG();
++}
++
+ /*
+  * filelayout_check_layout()
+  *
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index bbf60dd..9fef76e 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -83,9 +83,16 @@ FILELAYOUT_LSEG(struct pnfs_layout_segment *lseg)
+ 			    generic_hdr);
+ }
+ 
++extern struct nfs_fh *
++nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j);
++
+ extern void nfs4_fl_free_deviceid_callback(struct pnfs_deviceid_node *);
+ extern void print_ds(struct nfs4_pnfs_ds *ds);
+ extern void print_deviceid(struct nfs4_deviceid *dev_id);
++u32 nfs4_fl_calc_j_index(struct pnfs_layout_segment *lseg, loff_t offset);
++u32 nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, u32 j);
++struct nfs4_pnfs_ds *nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg,
++					u32 ds_idx);
+ extern struct nfs4_file_layout_dsaddr *
+ nfs4_fl_find_get_deviceid(struct nfs_client *, struct nfs4_deviceid *dev_id);
+ struct nfs4_file_layout_dsaddr *
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 8e21e65..e8496f3 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -512,3 +512,70 @@ nfs4_fl_find_get_deviceid(struct nfs_client *clp, struct nfs4_deviceid *id)
+ 	return (d == NULL) ? NULL :
+ 		container_of(d, struct nfs4_file_layout_dsaddr, deviceid);
+ }
++
++/*
++ * Want res = (offset - layout->pattern_offset)/ layout->stripe_unit
++ * Then: ((res + fsi) % dsaddr->stripe_count)
++ */
++u32
++nfs4_fl_calc_j_index(struct pnfs_layout_segment *lseg, loff_t offset)
++{
++	struct nfs4_filelayout_segment *flseg = FILELAYOUT_LSEG(lseg);
++	u64 tmp;
++
++	tmp = offset - flseg->pattern_offset;
++	do_div(tmp, flseg->stripe_unit);
++	tmp += flseg->first_stripe_index;
++	return do_div(tmp, flseg->dsaddr->stripe_count);
++}
++
++u32
++nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, u32 j)
++{
++	return FILELAYOUT_LSEG(lseg)->dsaddr->stripe_indices[j];
++}
++
++struct nfs_fh *
++nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
++{
++	struct nfs4_filelayout_segment *flseg = FILELAYOUT_LSEG(lseg);
++	u32 i;
++
++	if (flseg->stripe_type == STRIPE_SPARSE) {
++		if (flseg->num_fh == 1)
++			i = 0;
++		else if (flseg->num_fh == 0)
++			/* Use the MDS OPEN fh set in nfs_read_rpcsetup */
++			return NULL;
++		else
++			i = nfs4_fl_calc_ds_index(lseg, j);
++	} else
++		i = j;
++	return flseg->fh_array[i];
++}
++
++struct nfs4_pnfs_ds *
++nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
++{
++	struct nfs4_file_layout_dsaddr *dsaddr = FILELAYOUT_LSEG(lseg)->dsaddr;
++	struct nfs4_pnfs_ds *ds = dsaddr->ds_list[ds_idx];
++
++	if (ds == NULL) {
++		printk(KERN_ERR "%s: No data server for offset index %d\n",
++			__func__, ds_idx);
++		return NULL;
++	}
++
++	if (!ds->ds_clp) {
++		int err;
++
++		err = nfs4_ds_connect(NFS_SERVER(lseg->pls_layout->plh_inode),
++					  dsaddr->ds_list[ds_idx]);
++		if (err) {
++			printk(KERN_ERR "%s nfs4_ds_connect error %d\n",
++			       __func__, err);
++			return NULL;
++		}
++	}
++	return ds;
++}
+-- 
+1.6.6
 
---BnCwdHgQ2ZomtW9r
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.16 (GNU/Linux)
-
-iEYEARECAAYFAk2SP+gACgkQLYBaX8VDLLUC4ACdGU1KyfOH4zbNEhWGPaTqz6Mx
-Az4AoKoUbHa/C9U6gUdxJpX1jUAJNUY9
-=2Biu
------END PGP SIGNATURE-----
-
---BnCwdHgQ2ZomtW9r--
