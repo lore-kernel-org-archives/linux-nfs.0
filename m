@@ -1,63 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57889 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751859Ab1CPWzi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2011 18:55:38 -0400
-Date: Wed, 16 Mar 2011 18:55:25 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>, roel <roel.kluin@gmail.com>,
-        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: wrong index used in inner loop
-Message-ID: <20110316225524.GC17004@fieldses.org>
-References: <4D76A06A.4090405@gmail.com>
- <20110309004955.GD15814@fieldses.org>
- <4D79A183.8090306@cn.fujitsu.com>
- <20110314222229.GJ25442@fieldses.org>
- <1300146731.3026.4.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1300146731.3026.4.camel@lade.trondhjem.org>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:29651 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756093Ab1CAJxK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Mar 2011 04:53:10 -0500
+From: <daniel.gardere@emc.com>
+To: <bfields@fieldses.org>, <Trond.Myklebust@netapp.com>
+CC: <rees@umich.edu>, <bhalevy@panasas.com>, <linux-nfs@vger.kernel.org>,
+        <honey@citi.umich.edu>
+Date: Tue, 1 Mar 2011 04:52:21 -0500
+Subject: RE: [PATCH] zero out delegation in the inode after it has been
+ returned
+Message-ID: <1037D95241CCD148999713870A5F4A8606EE14E851@MX11A.corp.emc.com>
+References: <20110228213103.GA1256@merit.edu>
+ <1298929144.8564.44.camel@heimdal.trondhjem.org>
+ <20110228215439.GD1256@merit.edu>
+ <1298930494.8564.50.camel@heimdal.trondhjem.org>
+ <20110228232258.GA1901@merit.edu>
+ <1298937633.18451.9.camel@heimdal.trondhjem.org>
+ <20110301040945.GC17725@fieldses.org>
+In-Reply-To: <20110301040945.GC17725@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Mar 14, 2011 at 07:52:11PM -0400, Trond Myklebust wrote:
-> On Mon, 2011-03-14 at 18:22 -0400, J. Bruce Fields wrote:
-> > On Fri, Mar 11, 2011 at 12:13:55PM +0800, Mi Jinlong wrote:
-> > > 
-> > > 
-> > > J. Bruce Fields:
-> > > > On Tue, Mar 08, 2011 at 10:32:26PM +0100, roel wrote:
-> > > >> @@ -1215,7 +1215,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
-> > > >>  			READ_BUF(4);
-> > > >>  			READ32(dummy);
-> > > >>  			READ_BUF(dummy * 4);
-> > > >> -			for (i = 0; i < dummy; ++i)
-> > > >> +			for (j = 0; j < dummy; ++j)
-> > > >>  				READ32(dummy);
-> > > 
-> > >   We must not use dummy for index here.
-> > >   After the first index, READ32(dummy) will change dummy!!!!
+It is EMC server.
+
+The server returns the delegation to the OPEN CLAIM_DELEGATE_CUR operation. At this point the delegation is still valid. This is far before the DELEGRETURN; so this doesn't explain why
+the delegation is used in SETATTR (frame 5596) after the DELEGRETURN (frame 5589, reply in 5592).
+
+Returning a delegation to OPEN CLAIM_DELEGATE_CUR is probably useless, as the client already has this delegation. But, I don't think that it is illegal.
+If this creates the confusion, we can avoid returning the delegation in this case.
+
+
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+Sent: mardi 1 mars 2011 05:10
+To: Trond Myklebust
+Cc: Jim Rees; Benny Halevy; linux-nfs@vger.kernel.org; peter honeyman
+Subject: Re: [PATCH] zero out delegation in the inode after it has been returned
+
+On Mon, Feb 28, 2011 at 07:00:33PM -0500, Trond Myklebust wrote:
+> On Mon, 2011-02-28 at 18:22 -0500, Jim Rees wrote: 
+> > Trond Myklebust wrote:
 > > 
-> > Actually, wait, this is kind of silly.  I don't see why we couldn't just
-> > skip the loop and do
+> >   The procedure for returning delegations is supposed to work as follows:
+> >   
+> >        1. Remove the nfsi->delegation so that it is no longer visible to
+> >           new open() requests 
+> >        2. write back any dirty data to the server 
+> >        3. Reclaim any locks 
+> >        4. Reclaim any open stateids (using CLAIM_DELEGATE_CUR) 
+> >        5. delegreturn
+> >   
+> >   While there may indeed be the odd READ or WRITE that races between 4.
+> >   and 5., so that the server receives the delegation stateid after the
+> >   delegreturn, that shouldn't matter: the server returns an error, and the
+> >   client should retry using the new open stateid.
+> >   
+> >   What is failing to work correctly here?
 > > 
-> > 	p += dummy;
+> > That helps, thanks.  I'll see if I can figure out what's going wrong.
+> > 
+> > At the server, I see a delegreturn followed by a setattr using the returned
+> > stateid.  The server returns BAD_STATEID.  I'll look to see if the client
+> > then retries.
+> > 
+> > At the client, I see a non-null nfsi->delegation after the delgreturn, and
+> > the application gets a EIO.
 > 
-> This is exactly why I _hate_ the READ*() macros and their ilk, and am
-> really happy we got rid of them in the client.
+> That's because your server is confusing the hell out of us all by giving
+> out a delegation as part of the reply (in frame 5328) to the
+> OPEN(CLAIM_DELEGATE_CUR) in frame 5325.
+> 
+> IOW: the client is in the process of returning the delegation, and asks
+> to trade in the delegation stateid into an open stateid, then the server
+> replies with an open stateid, and the delegation stateid...
 
-Agreed, I'm all for getting rid of them completely.
+Which server is this, Jim?
 
-> READ_BUF() _sets_ p to whatever the value of argp->p is, and then
-> updates argp->p. It is just very very very hard to see that due to the
-> lack of transparency.
->
-> IOW: You don't need the "p += dummy" either. That happens automatically
-> when you next invoke READ_BUF().
-
-Yes, you're right, we could remove that silly loop entirely.
+(I checked the Linux server quickly and it doesn't look like it should
+do this....)
 
 --b.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
