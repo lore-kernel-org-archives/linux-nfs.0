@@ -1,100 +1,166 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from os.inf.tu-dresden.de ([141.76.48.99]:47178 "EHLO
-	os.inf.tu-dresden.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755676Ab1CQVdI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2011 17:33:08 -0400
-Date: Thu, 17 Mar 2011 22:33:03 +0100
-From: Adam Lackorzynski <adam@os.inf.tu-dresden.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: 2.6.38: Quota over NFS4
-Message-ID: <20110317213302.GA2445@os.inf.tu-dresden.de>
-References: <20110317133247.GB6424@os.inf.tu-dresden.de>
- <20110317173805.GB30180@fieldses.org>
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20110317173805.GB30180@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:39366 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757127Ab1CAR35 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Mar 2011 12:29:57 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH pNFS wave 3 Version 3 17/18] NFSv4.1: turn off pNFS on ds connection failure
+Date: Mon, 28 Feb 2011 20:34:22 -0500
+Message-Id: <1298943263-2886-18-git-send-email-andros@netapp.com>
+In-Reply-To: <1298943263-2886-17-git-send-email-andros@netapp.com>
+References: <1298943263-2886-1-git-send-email-andros@netapp.com>
+ <1298943263-2886-2-git-send-email-andros@netapp.com>
+ <1298943263-2886-3-git-send-email-andros@netapp.com>
+ <1298943263-2886-4-git-send-email-andros@netapp.com>
+ <1298943263-2886-5-git-send-email-andros@netapp.com>
+ <1298943263-2886-6-git-send-email-andros@netapp.com>
+ <1298943263-2886-7-git-send-email-andros@netapp.com>
+ <1298943263-2886-8-git-send-email-andros@netapp.com>
+ <1298943263-2886-9-git-send-email-andros@netapp.com>
+ <1298943263-2886-10-git-send-email-andros@netapp.com>
+ <1298943263-2886-11-git-send-email-andros@netapp.com>
+ <1298943263-2886-12-git-send-email-andros@netapp.com>
+ <1298943263-2886-13-git-send-email-andros@netapp.com>
+ <1298943263-2886-14-git-send-email-andros@netapp.com>
+ <1298943263-2886-15-git-send-email-andros@netapp.com>
+ <1298943263-2886-16-git-send-email-andros@netapp.com>
+ <1298943263-2886-17-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Andy Adamson <andros@netapp.com>
 
-On Thu Mar 17, 2011 at 13:38:05 -0400, J. Bruce Fields wrote:
-> On Thu, Mar 17, 2011 at 02:32:47PM +0100, Adam Lackorzynski wrote:
-> > Hello,
-> > 
-> > I'm seeing a problem with quotas in a system where the server running
-> > 2.6.38 exports an XFS filesystem via NFS4 to a client. The client kernel
-> > version does not seem to play a role, checked with 2.6.38, 2.6.37 and
-> > 2.6.36. The following script and output show the problem:
-> > 
-> > #! /bin/sh
-> > 
-> > quota | grep home
-> > du
-> > cp /bin/ls x1
-> > du
-> > cat x1 > /dev/null
-> > rm x1
-> > du
-> > quota | grep home
-> > 
-> > Output:
-> > 
-> >    homes:/home/ 8194720  9072000 9174400          403670  500000  550000        
-> > 0       .
-> > 96      .
-> > 0       .
-> >    homes:/home/ 8194816  9072000 9174400          403671  500000  550000        
-> > 
-> > 
-> > As can be seen the 96 kb are still accounted on the quota of the user.
-> > Removing the 'cat' command from the script makes the quota be ok again
-> > (original value). Also mounting via nfs3 does not exhibit it, same for running
-> > the script on the nfs-server directly.
-> 
-> Does "df" show the same problem?
+If a data server is unavailable, go through MDS.
 
-With '/bin/ls' it does not change at all, so I took a bigger binary
-which yields to:
+Mark the deviceid containing the data server as a negative cache entry.
+Do not try to connect to any data server on a deviceid marked as a negative
+cache entry. Mark any layout that tries to use the marked deviceid as failed.
 
-   homes:/home/ 8203780  9072000 9174400          403688  500000  550000        
-0       .
-Filesystem           1K-blocks      Used Available Use% Mounted on
-  homes:/home        513671168 335251456 178419712  66% /tmp/xx
-4592    .
-Filesystem           1K-blocks      Used Available Use% Mounted on
-  homes:/home        513671168 335256576 178414592  66% /tmp/xx
-0       .
-Filesystem           1K-blocks      Used Available Use% Mounted on
-  homes:/home        513671168 335256576 178414592  66% /tmp/xx
-   homes:/home/ 8208372  9072000 9174400          403689  500000  550000        
+Inodes with a layout marked as fails will not use the layout for I/O, and will
+not perform any more layoutgets.
+Inodes without a layout will still do layoutget, but the layout will get
+marked immediately.
 
-So yes, it seems to be there as well.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c    |    4 +++-
+ fs/nfs/nfs4filelayout.h    |    4 ++++
+ fs/nfs/nfs4filelayoutdev.c |   28 ++++++++++++++++++++++++----
+ fs/nfs/pnfs.c              |    9 +++++----
+ 4 files changed, 36 insertions(+), 9 deletions(-)
 
-> And does unmounting/remounting on the
-> client clear the problem?
-
-No.
-
-> (Or that, in combination with stopping the
-> server, unmounting the xfs export, remounting it, and restarting?)
-
-I rebooted once, got a recovery and then the quotas were ok again (and
-supposedly the used blocks as well). I assume a unmount/mount would show
-the same behaviour but requires a bit of preparation to try out.
-
-> Was there an earlier server version that didn't exhibit this problem?
-
-Had 2.6.37 on the server before and that was fine regarding this.
-
-> > Client mount options are:
-> > homes:/home/ /home nfs4 rw,nosuid,nodev,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=1.2.3.3,minorversion=0,local_lock=none,addr=1.2.3.4 0 0
-> > 
-> > Server mount options are:
-> > /dev/mapper/vg-homefs /home xfs rw,nosuid,nodev,relatime,attr2,usrquota 0 0
-
-Adam
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index abb1481..fea483a 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -214,7 +214,9 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	idx = nfs4_fl_calc_ds_index(lseg, j);
+ 	ds = nfs4_fl_prepare_ds(lseg, idx);
+ 	if (!ds) {
+-		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
++		/* Either layout fh index faulty, or ds connect failed */
++		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
++		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+ 		return PNFS_NOT_ATTEMPTED;
+ 	}
+ 	dprintk("%s USE DS:ip %x %hu\n", __func__,
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 23f1e1e..ee0c907 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -55,10 +55,14 @@ struct nfs4_pnfs_ds {
+ 	atomic_t		ds_count;
+ };
+ 
++/* nfs4_file_layout_dsaddr flags */
++#define NFS4_DEVICE_ID_NEG_ENTRY	0x00000001
++
+ struct nfs4_file_layout_dsaddr {
+ 	struct hlist_node		node;
+ 	struct nfs4_deviceid		deviceid;
+ 	atomic_t			ref;
++	unsigned long			flags;
+ 	u32				stripe_count;
+ 	u8				*stripe_indices;
+ 	u32				ds_num;
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index ac38c75..433204f 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -602,6 +602,21 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
+ 	return flseg->fh_array[i];
+ }
+ 
++static void
++filelayout_mark_devid_negative(struct nfs4_file_layout_dsaddr *dsaddr,
++			       int err, u32 ds_addr)
++{
++	u32 *p = (u32 *)&dsaddr->deviceid;
++
++	printk(KERN_ERR "NFS: data server %x connection error %d."
++		" Deviceid [%x%x%x%x] marked out of use.\n",
++		ds_addr, err, p[0], p[1], p[2], p[3]);
++
++	spin_lock(&filelayout_deviceid_lock);
++	dsaddr->flags |= NFS4_DEVICE_ID_NEG_ENTRY;
++	spin_unlock(&filelayout_deviceid_lock);
++}
++
+ struct nfs4_pnfs_ds *
+ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ {
+@@ -615,13 +630,18 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
+ 	}
+ 
+ 	if (!ds->ds_clp) {
++		struct nfs_server *s = NFS_SERVER(lseg->pls_layout->plh_inode);
+ 		int err;
+ 
+-		err = nfs4_ds_connect(NFS_SERVER(lseg->pls_layout->plh_inode),
+-					  dsaddr->ds_list[ds_idx]);
++		if (dsaddr->flags & NFS4_DEVICE_ID_NEG_ENTRY) {
++			/* Already tried to connect, don't try again */
++			dprintk("%s Deviceid marked out of use\n", __func__);
++			return NULL;
++		}
++		err = nfs4_ds_connect(s, ds);
+ 		if (err) {
+-			printk(KERN_ERR "%s nfs4_ds_connect error %d\n",
+-			       __func__, err);
++			filelayout_mark_devid_negative(dsaddr, err,
++						       ntohl(ds->ds_ip_addr));
+ 			return NULL;
+ 		}
+ 	}
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 1f4c153..3e54514 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -739,15 +739,16 @@ pnfs_update_layout(struct inode *ino,
+ 		dprintk("%s matches recall, use MDS\n", __func__);
+ 		goto out_unlock;
+ 	}
+-	/* Check to see if the layout for the given range already exists */
+-	lseg = pnfs_find_lseg(lo, iomode);
+-	if (lseg)
+-		goto out_unlock;
+ 
+ 	/* if LAYOUTGET already failed once we don't try again */
+ 	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
+ 		goto out_unlock;
+ 
++	/* Check to see if the layout for the given range already exists */
++	lseg = pnfs_find_lseg(lo, iomode);
++	if (lseg)
++		goto out_unlock;
++
+ 	if (pnfs_layoutgets_blocked(lo, NULL, 0))
+ 		goto out_unlock;
+ 	atomic_inc(&lo->plh_outstanding);
 -- 
-Adam                 adam@os.inf.tu-dresden.de
-  Lackorzynski         http://os.inf.tu-dresden.de/~adam/
+1.6.6
+
