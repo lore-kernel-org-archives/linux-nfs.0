@@ -1,82 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:32592 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:1570 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755670Ab1CCPOp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Mar 2011 10:14:45 -0500
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 2/9] NFSv4.1: add callback to nfs4_write_done
-Date: Thu,  3 Mar 2011 10:13:42 -0500
-Message-Id: <1299165229-3148-3-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
-References: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
+	id S1752551Ab1CATZw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Mar 2011 14:25:52 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH pnfs-submit-wave3 update 1/5] wave3: SQUASHME: remove comment to pnfs_pageio_init_read
+Date: Tue,  1 Mar 2011 14:25:30 -0500
+Message-Id: <1299007534-4105-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1299007534-4105-1-git-send-email-andros@netapp.com>
+References: <1299007534-4105-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Add callback that pnfs layout driver can use to do its own handling
-of data server WRITE response.
+From: Fred Isaman <iisaman@netapp.com>
+
+Benny points out this comment is confusing and out of place
+for the write code, remove it from read code too.
 
 Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfs/nfs4proc.c       |   14 ++++++++++----
- include/linux/nfs_xdr.h |    1 +
- 2 files changed, 11 insertions(+), 4 deletions(-)
+ fs/nfs/pnfs.c |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index dbf8678..e79131b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3124,13 +3124,10 @@ void nfs4_reset_read(struct rpc_task *task, struct nfs_read_data *data)
- }
- EXPORT_SYMBOL_GPL(nfs4_reset_read);
- 
--static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
-+static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	struct inode *inode = data->inode;
- 	
--	if (!nfs4_sequence_done(task, &data->res.seq_res))
--		return -EAGAIN;
--
- 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), data->args.context->state) == -EAGAIN) {
- 		nfs_restart_rpc(task, NFS_SERVER(inode)->nfs_client);
- 		return -EAGAIN;
-@@ -3142,11 +3139,20 @@ static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
- 	return 0;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e17cebd..3e54514 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -864,9 +864,6 @@ static int pnfs_read_pg_test(struct nfs_pageio_descriptor *pgio,
+ 	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
  }
  
-+static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
-+{
-+	if (!nfs4_sequence_done(task, &data->res.seq_res))
-+		return -EAGAIN;
-+	return data->write_done_cb(task, data);
-+}
-+
- static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_message *msg)
+-/*
+- * rsize is already set by caller to MDS rsize.
+- */
+ void
+ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode)
  {
- 	struct nfs_server *server = NFS_SERVER(data->inode);
- 
- 	data->args.bitmask = server->cache_consistency_bitmask;
-+	if (!data->write_done_cb)
-+		data->write_done_cb = nfs4_write_done_cb;
- 	data->res.server = server;
- 	data->timestamp   = jiffies;
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index eb0e870..21cd41d 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1038,6 +1038,7 @@ struct nfs_write_data {
- 	unsigned int		npages;		/* Max length of pagevec */
- 	struct nfs_writeargs	args;		/* argument struct */
- 	struct nfs_writeres	res;		/* result struct */
-+	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
- #ifdef CONFIG_NFS_V4
- 	unsigned long		timestamp;	/* For lease renewal */
- #endif
 -- 
-1.7.2.1
+1.6.2.5
 
