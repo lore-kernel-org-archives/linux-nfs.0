@@ -1,46 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:11690 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751208Ab1BPPwW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Feb 2011 10:52:22 -0500
-Message-ID: <4D5BF2B5.2020502@panasas.com>
-Date: Wed, 16 Feb 2011 10:52:21 -0500
-From: Benny Halevy <bhalevy@panasas.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Andy Adamson <andros@netapp.com>
-CC: linux-nfs@vger.kernel.org, Andy Adamson <andros@citi.umich.edu>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        Dean Hildebrand <dhildeb@us.ibm.com>,
-        Fred Isaman <iisaman@citi.umich.edu>, Fred Isaman <iisaman@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Mike Sager <sager@netapp.com>, Mingyang Guo <guomingyang@nrchpc.ac.cn>,
-        Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Subject: Re: [PATCH 11/16] pnfs: wave 3: generic read
-References: <1297711116-3139-1-git-send-email-andros@netapp.com>	 <1297711116-3139-12-git-send-email-andros@netapp.com>	 <4D5B4192.4090107@panasas.com>	 <21F5A956-5830-4BB1-8F91-92C3121510BD@netapp.com> <1297868955.6596.24.camel@heimdal.trondhjem.org>
-In-Reply-To: <1297868955.6596.24.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:41067 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753170Ab1CAEJu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Feb 2011 23:09:50 -0500
+Date: Mon, 28 Feb 2011 23:09:45 -0500
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Jim Rees <rees@umich.edu>, Benny Halevy <bhalevy@panasas.com>,
+        linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
+Subject: Re: [PATCH] zero out delegation in the inode after it has been
+ returned
+Message-ID: <20110301040945.GC17725@fieldses.org>
+References: <20110228213103.GA1256@merit.edu>
+ <1298929144.8564.44.camel@heimdal.trondhjem.org>
+ <20110228215439.GD1256@merit.edu>
+ <1298930494.8564.50.camel@heimdal.trondhjem.org>
+ <20110228232258.GA1901@merit.edu>
+ <1298937633.18451.9.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1298937633.18451.9.camel@heimdal.trondhjem.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 2011-02-16 10:09, Trond Myklebust wrote:
-> On Wed, 2011-02-16 at 09:53 -0500, Andy Adamson wrote: 
->> On Feb 15, 2011, at 10:16 PM, Benny Halevy wrote:
->>
->>> On 2011-02-14 14:18, andros@netapp.com wrote:
->>>> From: Andy Adamson <andros@netapp.com>
->>>
->>> Andy, taking into account the many contributors to this patch
->>> the author should be "The pNFS Team" IMO.
->>
->> The author can't be "The pNFS Team".  Somebody needs to be the author. I asked for volunteers and said I would be the default. Do you want to be the author?
+On Mon, Feb 28, 2011 at 07:00:33PM -0500, Trond Myklebust wrote:
+> On Mon, 2011-02-28 at 18:22 -0500, Jim Rees wrote: 
+> > Trond Myklebust wrote:
+> > 
+> >   The procedure for returning delegations is supposed to work as follows:
+> >   
+> >        1. Remove the nfsi->delegation so that it is no longer visible to
+> >           new open() requests 
+> >        2. write back any dirty data to the server 
+> >        3. Reclaim any locks 
+> >        4. Reclaim any open stateids (using CLAIM_DELEGATE_CUR) 
+> >        5. delegreturn
+> >   
+> >   While there may indeed be the odd READ or WRITE that races between 4.
+> >   and 5., so that the server receives the delegation stateid after the
+> >   delegreturn, that shouldn't matter: the server returns an error, and the
+> >   client should retry using the new open stateid.
+> >   
+> >   What is failing to work correctly here?
+> > 
+> > That helps, thanks.  I'll see if I can figure out what's going wrong.
+> > 
+> > At the server, I see a delegreturn followed by a setattr using the returned
+> > stateid.  The server returns BAD_STATEID.  I'll look to see if the client
+> > then retries.
+> > 
+> > At the client, I see a non-null nfsi->delegation after the delgreturn, and
+> > the application gets a EIO.
 > 
-> Right. Patches authored by 'The pNFS Team' will be rejected, as
-> discussed in Hopkinton last autumn.
+> That's because your server is confusing the hell out of us all by giving
+> out a delegation as part of the reply (in frame 5328) to the
+> OPEN(CLAIM_DELEGATE_CUR) in frame 5325.
 > 
+> IOW: the client is in the process of returning the delegation, and asks
+> to trade in the delegation stateid into an open stateid, then the server
+> replies with an open stateid, and the delegation stateid...
 
-OK. I'm not the original author so I can't claim authorship for this patch.
-FWIW, The earliest record I have in my tree for the earliest versions of this code is
-authored by Andy an Mike Sager...
+Which server is this, Jim?
 
-Benny
+(I checked the Linux server quickly and it doesn't look like it should
+do this....)
+
+--b.
