@@ -1,62 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:48433 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751188Ab1CJK6Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Mar 2011 05:58:25 -0500
-Date: Thu, 10 Mar 2011 10:58:21 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Nick Piggin <npiggin@gmail.com>, Nick Piggin <npiggin@kernel.dk>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] fs/dcache: allow __d_obtain_alias() to return unhashed
- dentries
-Message-ID: <20110310105821.GE22723@ZenIV.linux.org.uk>
-References: <20101214220102.GM24828@fieldses.org>
- <20101217180022.GB11515@fieldses.org>
- <20101218020118.GA3179@amd>
- <20101218161609.GA22150@fieldses.org>
- <AANLkTingRv_gtRSctGzMfYrKg02M_sKj97HSQPRm_mA_@mail.gmail.com>
- <20101227234641.GA22248@fieldses.org>
- <20110118204509.GA10903@fieldses.org>
- <AANLkTikL2CDSWQJ1QH_Y4G-j70Vd=VesNMMnYTmMGHC9@mail.gmail.com>
- <20110118220817.GF10903@fieldses.org>
- <20110308181320.GA15566@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110308181320.GA15566@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:1570 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756286Ab1CATZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Mar 2011 14:25:54 -0500
+From: andros@netapp.com
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH pnfs-submit-wave3 update 3/5] wave3: document that we are relying on nfs_initiate_read not failing
+Date: Tue,  1 Mar 2011 14:25:32 -0500
+Message-Id: <1299007534-4105-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1299007534-4105-3-git-send-email-andros@netapp.com>
+References: <1299007534-4105-1-git-send-email-andros@netapp.com>
+ <1299007534-4105-2-git-send-email-andros@netapp.com>
+ <1299007534-4105-3-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Tue, Mar 08, 2011 at 01:13:20PM -0500, J. Bruce Fields wrote:
+From: Fred Isaman <iisaman@netapp.com>
 
-> Al, do you have this in your queue to look at?  Need me to resend?  Or
-> should it take some other route?
+With the curent code, rpc_run_task(), and thus nfs_initiate_read(),
+can not fail if the task is pre-initialized.  Trond asked that
+we document this in case of future code changes with a BUG_ON.
 
-It's in queue, but I'd be a lot happier if I understood what's going on
-with __d_find_alias() elsewhere.  Namely, in d_splice_alias().  The thing
-is, unless I'm missing something we ought to use __d_find_any_alias()
-there as well.  Directories really, _really_ should not have more than
-one alias.  And what we get is really weird:
-	* find (the only) alias
-	* if it doesn't exist, create one (OK, no problem)
-	* if it does exist and happens to be IS_ROOT and DCACHE_DISCONNECTED,
-move it (also fine, modulo rather useless BUG_ON() in there)
-	* if it does exist and either isn't IS_ROOT or not DCACHE_DISCONNECTED,
-add a new alias and say nothing.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-The last part looks very strange.  I'd been staring at the history of this
-function and I _think_ it's a rudiment of period when we used that stuff for
-non-directories as well.  It used to be directory-only; then Neil had
-switched it to non-directories as well (in "Fix disconnected dentries on NFS
-exports" back in 2004), adding want_discon argument to __d_find_alias() in
-process and using it instead of open-coded equivalent of __d_find_any_alias().
-Then, two years later, in "knfsd: close a race-opportunity in d_splice_alias"
-he'd made that code directory-only again, at which point we arrived to the
-current situation.
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 45b650a..e76c582 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -203,6 +203,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	loff_t offset = data->args.offset;
+ 	u32 j, idx;
+ 	struct nfs_fh *fh;
++	int status;
+ 
+ 	dprintk("--> %s ino %lu pgbase %u req %Zu@%llu\n",
+ 		__func__, data->inode->i_ino,
+@@ -231,8 +232,9 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	data->mds_offset = offset;
+ 
+ 	/* Perform an asynchronous read to ds */
+-	nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
+-			  &filelayout_read_call_ops);
++	status = nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
++				   &filelayout_read_call_ops);
++	BUG_ON(status != 0);
+ 	return PNFS_ATTEMPTED;
+ }
+ 
+-- 
+1.6.2.5
 
-Neil, is there some reason I'm missing that makes __d_find_alias() right in
-there?  And do we still need the second argument in __d_find_alias()?
-
-Anyway, Bruce's patch goes in tonight's push, but I'd love to see that
-mess cleaned up as well or at least explained.
