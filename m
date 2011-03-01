@@ -1,52 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:44050 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752978Ab1C2PwQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Mar 2011 11:52:16 -0400
-From: <peter.staubach@emc.com>
-To: <Zoltan.Menyhart@bull.net>, <chuck.lever@oracle.com>
-CC: <linux-nfs@vger.kernel.org>
-Date: Tue, 29 Mar 2011 11:50:36 -0400
-Subject: RE: NFS v4 client blocks when using UDP protocol
-Message-ID: <5E6794FC7B8FCA41A704019BE3C70E8B069D40C4@MX31A.corp.emc.com>
-References: <EB0F26AF-C0DB-4861-ABB5-72E39CB38090@bull.net>
- <4D91ED79.4020302@bull.net>
- <4A05F533-1BE6-4DFC-BC53-9392DA8BED76@oracle.com> <4D91FA1D.1000206@bull.net>
-In-Reply-To: <4D91FA1D.1000206@bull.net>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx2.netapp.com ([216.240.18.37]:39358 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757104Ab1CAR3g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Mar 2011 12:29:36 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH pNFS wave 3 Version 3 04/18] NFSv4.1: send zero stateid seqid on v4.1 i/o
+Date: Mon, 28 Feb 2011 20:34:09 -0500
+Message-Id: <1298943263-2886-5-git-send-email-andros@netapp.com>
+In-Reply-To: <1298943263-2886-4-git-send-email-andros@netapp.com>
+References: <1298943263-2886-1-git-send-email-andros@netapp.com>
+ <1298943263-2886-2-git-send-email-andros@netapp.com>
+ <1298943263-2886-3-git-send-email-andros@netapp.com>
+ <1298943263-2886-4-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-It does talk about NFS over UDP, interestingly, but the text on page 25, indicates that the transport of choice MUST be one of the IETF-approved congestion control transport protocols, of which, UDP is not one.
+From: Andy Adamson <andros@netapp.com>
 
-Perhaps some clean up of RFC3530bis and RFC5661 could include removal of the UDP mentions.
+Data servers require a zero stateid seqid, and there is no advantage to not
+doing the same for all NFSv4.1
 
-		ps
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4xdr.c |   10 +++++++---
+ 1 files changed, 7 insertions(+), 3 deletions(-)
 
-
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Menyhart Zoltan
-Sent: Tuesday, March 29, 2011 11:26 AM
-To: Chuck Lever
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS v4 client blocks when using UDP protocol
-
-Chuck Lever wrote:
-> Zoltan-
->
-> As far as I know, NFSv4 is not supported on UDP transports.
->Some of it may work, but no warrantee, either expressed or implied, is given.  :-)
-
-Do you mean the Linux implementation?
-Because the RFC 3530 speaks about how to do NFS v4 over UDP and UDP6.
-
-Thank you,
-
-Zoltan
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4e2c168..2380c45 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1384,7 +1384,7 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ 	hdr->replen += decode_putrootfh_maxsz;
+ }
+ 
+-static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx)
++static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx, int zero_seqid)
+ {
+ 	nfs4_stateid stateid;
+ 	__be32 *p;
+@@ -1392,6 +1392,8 @@ static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context
+ 	p = reserve_space(xdr, NFS4_STATEID_SIZE);
+ 	if (ctx->state != NULL) {
+ 		nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
++		if (zero_seqid)
++			stateid.stateid.seqid = 0;
+ 		xdr_encode_opaque_fixed(p, stateid.data, NFS4_STATEID_SIZE);
+ 	} else
+ 		xdr_encode_opaque_fixed(p, zero_stateid.data, NFS4_STATEID_SIZE);
+@@ -1404,7 +1406,8 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(OP_READ);
+ 
+-	encode_stateid(xdr, args->context, args->lock_context);
++	encode_stateid(xdr, args->context, args->lock_context,
++		       hdr->minorversion);
+ 
+ 	p = reserve_space(xdr, 12);
+ 	p = xdr_encode_hyper(p, args->offset);
+@@ -1592,7 +1595,8 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
+ 	p = reserve_space(xdr, 4);
+ 	*p = cpu_to_be32(OP_WRITE);
+ 
+-	encode_stateid(xdr, args->context, args->lock_context);
++	encode_stateid(xdr, args->context, args->lock_context,
++		       hdr->minorversion);
+ 
+ 	p = reserve_space(xdr, 16);
+ 	p = xdr_encode_hyper(p, args->offset);
+-- 
+1.6.6
 
