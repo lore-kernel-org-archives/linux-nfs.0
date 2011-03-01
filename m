@@ -1,54 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20526 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:39366 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755911Ab1CQXWX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2011 19:22:23 -0400
-Subject: Re: Bug in xdr_copy_to_scratch???
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20110318101608.34bb1117@notabene.brown>
-References: <20110316213642.360be61d@notabene.brown>
-	 <1300282974.16266.33.camel@lade.trondhjem.org>
-	 <20110317093838.0f15eb98@notabene.brown>
-	 <1300384865.28305.27.camel@lade.trondhjem.org>
-	 <20110318101608.34bb1117@notabene.brown>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 17 Mar 2011 19:22:19 -0400
-Message-ID: <1300404139.4621.1.camel@lade.trondhjem.org>
+	id S1757129Ab1CAR36 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Mar 2011 12:29:58 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>
+Subject: [PATCH pNFS wave 3 Version 3 18/18] NFSv4.1: lseg documentation
+Date: Mon, 28 Feb 2011 20:34:23 -0500
+Message-Id: <1298943263-2886-19-git-send-email-andros@netapp.com>
+In-Reply-To: <1298943263-2886-18-git-send-email-andros@netapp.com>
+References: <1298943263-2886-1-git-send-email-andros@netapp.com>
+ <1298943263-2886-2-git-send-email-andros@netapp.com>
+ <1298943263-2886-3-git-send-email-andros@netapp.com>
+ <1298943263-2886-4-git-send-email-andros@netapp.com>
+ <1298943263-2886-5-git-send-email-andros@netapp.com>
+ <1298943263-2886-6-git-send-email-andros@netapp.com>
+ <1298943263-2886-7-git-send-email-andros@netapp.com>
+ <1298943263-2886-8-git-send-email-andros@netapp.com>
+ <1298943263-2886-9-git-send-email-andros@netapp.com>
+ <1298943263-2886-10-git-send-email-andros@netapp.com>
+ <1298943263-2886-11-git-send-email-andros@netapp.com>
+ <1298943263-2886-12-git-send-email-andros@netapp.com>
+ <1298943263-2886-13-git-send-email-andros@netapp.com>
+ <1298943263-2886-14-git-send-email-andros@netapp.com>
+ <1298943263-2886-15-git-send-email-andros@netapp.com>
+ <1298943263-2886-16-git-send-email-andros@netapp.com>
+ <1298943263-2886-17-git-send-email-andros@netapp.com>
+ <1298943263-2886-18-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Fri, 2011-03-18 at 10:16 +1100, NeilBrown wrote:
-> On Thu, 17 Mar 2011 14:01:05 -0400 Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Thu, 2011-03-17 at 09:38 +1100, NeilBrown wrote:
-> > > We should probably submit a fix to 2.6.37-stable though.  For that it
-> > > is possibly simplest to tell xdr_decode_inline to round nbytes up to
-> > > a multiple of 4 - would you agree?
-> > 
-> > How about the following fix for 2.6.37 stable?
-> 
-> That is good for NFSv3, but NFSv2 has the same problem.  Code fragment is
-> 	p = xdr_inline_decode(xdr, entry->len + 4);
-> 	if (unlikely(!p))
-> 		goto out_overflow;
-> 	entry->name	  = (const char *) p;
-> 	p		 += XDR_QUADLEN(entry->len);
-> 	entry->prev_cookie	  = entry->cookie;
-> 	entry->cookie	  = ntohl(*p++);
-> 
-> so again we have the cookie after the name and they are decoded together.
+From: Fred Isaman <iisaman@netapp.com>
 
-Fair enough. I'll fix that one too.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ Documentation/filesystems/nfs/pnfs.txt |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
 
+diff --git a/Documentation/filesystems/nfs/pnfs.txt b/Documentation/filesystems/nfs/pnfs.txt
+index bc0b9cf..983e14a 100644
+--- a/Documentation/filesystems/nfs/pnfs.txt
++++ b/Documentation/filesystems/nfs/pnfs.txt
+@@ -46,3 +46,10 @@ data server cache
+ file driver devices refer to data servers, which are kept in a module
+ level cache.  Its reference is held over the lifetime of the deviceid
+ pointing to it.
++
++lseg
++----
++lseg maintains an extra reference corresponding to the NFS_LSEG_VALID
++bit which holds it in the pnfs_layout_hdr's list.  When the final lseg
++is removed from the pnfs_layout_hdr's list, the NFS_LAYOUT_DESTROYED
++bit is set, preventing any new lsegs from being added.
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+1.6.6
 
