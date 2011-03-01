@@ -1,53 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:51329 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6917 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757873Ab1BKSAp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Feb 2011 13:00:45 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 11/17] SQUASHME update pnfs_try_to_read_data comment
-Date: Thu, 10 Feb 2011 20:52:44 -0500
-Message-Id: <1297389170-26702-12-git-send-email-andros@netapp.com>
-In-Reply-To: <1297389170-26702-11-git-send-email-andros@netapp.com>
-References: <1297389170-26702-1-git-send-email-andros@netapp.com>
- <1297389170-26702-2-git-send-email-andros@netapp.com>
- <1297389170-26702-3-git-send-email-andros@netapp.com>
- <1297389170-26702-4-git-send-email-andros@netapp.com>
- <1297389170-26702-5-git-send-email-andros@netapp.com>
- <1297389170-26702-6-git-send-email-andros@netapp.com>
- <1297389170-26702-7-git-send-email-andros@netapp.com>
- <1297389170-26702-8-git-send-email-andros@netapp.com>
- <1297389170-26702-9-git-send-email-andros@netapp.com>
- <1297389170-26702-10-git-send-email-andros@netapp.com>
- <1297389170-26702-11-git-send-email-andros@netapp.com>
+	id S1755334Ab1CAAHu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Feb 2011 19:07:50 -0500
+Subject: Re: [PATCH] zero out delegation in the inode after it has been
+ returned
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>, Tom Haynes <Tom.Haynes@netapp.com>
+Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org,
+        peter honeyman <honey@citi.umich.edu>
+In-Reply-To: <1298937633.18451.9.camel@heimdal.trondhjem.org>
+References: <20110228213103.GA1256@merit.edu>
+	 <1298929144.8564.44.camel@heimdal.trondhjem.org>
+	 <20110228215439.GD1256@merit.edu>
+	 <1298930494.8564.50.camel@heimdal.trondhjem.org>
+	 <20110228232258.GA1901@merit.edu>
+	 <1298937633.18451.9.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 28 Feb 2011 19:07:46 -0500
+Message-ID: <1298938066.18451.12.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Mon, 2011-02-28 at 19:00 -0500, Trond Myklebust wrote: 
+> That's because your server is confusing the hell out of us all by giving
+> out a delegation as part of the reply (in frame 5328) to the
+> OPEN(CLAIM_DELEGATE_CUR) in frame 5325.
+> 
+> IOW: the client is in the process of returning the delegation, and asks
+> to trade in the delegation stateid into an open stateid, then the server
+> replies with an open stateid, and the delegation stateid...
 
-squash into: pnfs_submit-wave3-generic-read
+BTW: it is interesting to note that the only place in the spec where it
+is explicitly stateid that the server should not send a delegation in
+the case of CLAIM_DELEGATE_CUR is in section 8.1.8 (Use of Open
+Confirmation).
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/pnfs.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+Perhaps we should add some words in section 14.2.16 to that effect, Tom?
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 98dd993..31e5f55 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -891,8 +891,6 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 
- /*
-  * Call the appropriate parallel I/O subsystem read function.
-- * If no I/O device driver exists, or one does match the returned
-- * fstype, then return a positive status for regular NFS processing.
-  */
- enum pnfs_try_status
- pnfs_try_to_read_data(struct nfs_read_data *rdata,
+Cheers
+  Trond
+
 -- 
-1.6.6
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
