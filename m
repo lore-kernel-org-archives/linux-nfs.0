@@ -1,33 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from keetweej.vanheusden.com ([83.163.219.98]:45610 "EHLO
-	keetweej.vanheusden.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753442Ab1C1L64 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2011 07:58:56 -0400
-Received: from belle.intranet.vanheusden.com (belle.intranet.vanheusden.com [192.168.64.100])
-	by keetweej.vanheusden.com (Postfix) with ESMTP id 2A95C160EA2
-	for <linux-nfs@vger.kernel.org>; Mon, 28 Mar 2011 13:50:48 +0200 (CEST)
-Date: Mon, 28 Mar 2011 13:50:47 +0200
-From: folkert <folkert@vanheusden.com>
-To: linux-nfs@vger.kernel.org
-Subject: error message
-Message-ID: <20110328115046.GH3997@belle.intranet.vanheusden.com>
-Content-Type: text/plain; charset=us-ascii
+Received: from mx2.netapp.com ([216.240.18.37]:39358 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752645Ab1CAR3e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Mar 2011 12:29:34 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH pNFS wave 3 Version 3 01/18] NFSv4: remove CONFIG_NFS_V4 from nfs_read_data
+Date: Mon, 28 Feb 2011 20:34:06 -0500
+Message-Id: <1298943263-2886-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1298943263-2886-1-git-send-email-andros@netapp.com>
+References: <1298943263-2886-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hi,
+From: Andy Adamson <andros@netapp.com>
 
-When a nfs-mount fails because portmapper is not running on the other
-end, mount.nfs says "connection refused". Now it is not always directly
-clear what is refusing connection. So maybe one can change the message
-to "connection to portmapper on server refused".
+Cleanup nfs_read_data. We also won't use CONFIG_NFS_V4_1 for additional
+NFSv4.1 fields in subsequent patches.
 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ include/linux/nfs_xdr.h |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
 
-Folkert van Heusden
-
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index b006857..51bfadb 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1016,9 +1016,7 @@ struct nfs_read_data {
+ 	unsigned int		npages;	/* Max length of pagevec */
+ 	struct nfs_readargs args;
+ 	struct nfs_readres  res;
+-#ifdef CONFIG_NFS_V4
+ 	unsigned long		timestamp;	/* For lease renewal */
+-#endif
+ 	struct page		*page_array[NFS_PAGEVEC_SIZE];
+ };
+ 
 -- 
-Nagios user? Check out CoffeeSaint - the versatile Nagios status
-viewer! http://www.vanheusden.com/java/CoffeeSaint/
-----------------------------------------------------------------------
-Phone: +31-6-41278122, PGP-key: 1F28D8AE, www.vanheusden.com
+1.6.6
+
