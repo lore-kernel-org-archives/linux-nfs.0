@@ -1,39 +1,23 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:38396 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753307Ab1CGSV5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Mar 2011 13:21:57 -0500
-Date: Mon, 7 Mar 2011 13:21:56 -0500
-To: Ivo =?utf-8?Q?P=C5=99ikryl?= <prikryl@eurosat.cz>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Possible NFSv4 locking bug
-Message-ID: <20110307182156.GA8104@fieldses.org>
-References: <201103070059.28304.prikryl@eurosat.cz>
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <201103070059.28304.prikryl@eurosat.cz>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:64485 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751499Ab1CBGXF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Mar 2011 01:23:05 -0500
+Message-ID: <4D6DE26C.3010103@cn.fujitsu.com>
+Date: Wed, 02 Mar 2011 14:23:40 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH 00/17] add some test case for pynfs41
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Mar 07, 2011 at 12:59:28AM +0100, Ivo Přikryl wrote:
-> Hello, 
-> 
-> just booted MDV 2010.2 with custom build 2.6.38 RC3 kernel, NFS4 server patched with your patch. 
-> So far it seems to be running just fine. No file descriptor wasted..
-> 
-> server#cat /proc/sys/fs/file-nr
-> 960     0       1231794
-> 
-> I will give it more time to observe..
-> 
-> 
-> I can also confirm, that before it was impossible to umount the volume after file descriptors leakage. 
-> If you want me to test anything regarding this issue, I have system ready.
+Add some test case for pynfs41 which according to rfc5661.
 
-Thanks for the report!
 
-(Minor complaint: in future if you mean to send mail to me, please send
-it to me specifically and cc: the list, don't send it to the list only.)
 
---b.
+thanks,
+Mi Jinlong
+
