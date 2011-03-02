@@ -1,53 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.bluewatersys.com ([202.124.120.130]:48414 "EHLO
-	hayes.bluewaternz.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753252Ab1C1Bzq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Mar 2011 21:55:46 -0400
-From: Ryan Mallon <ryan@bluewatersys.com>
-To: viro@zeniv.linux.org.uk, dchinner@redhat.com, Trond.Myklebust@netapp.com
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Ryan Mallon <ryan@bluewatersys.com>
-Subject: [RFC PATCH 0/2] Introduce unlocked version of igrab 
-Date: Mon, 28 Mar 2011 14:55:59 +1300
-Message-Id: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:54584 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751154Ab1CBG1y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Mar 2011 01:27:54 -0500
+Message-ID: <4D6DE38D.8050003@cn.fujitsu.com>
+Date: Wed, 02 Mar 2011 14:28:29 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH 03/17] CLNT: check the csr_sequence at CREATE_SESSION
+References: <4D6DE26C.3010103@cn.fujitsu.com> <4D6DE34A.2020404@cn.fujitsu.com>
+In-Reply-To: <4D6DE34A.2020404@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Commit 250df6ed274d767da844a5d9f05720b804240197 "fs: protect 
-inode->i_state with inode->i_lock" introduces a change to igrab to acquire
-inode->i_lock. 
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ nfs4.1/nfs4client.py                      |    1 +
+ nfs4.1/server41tests/st_create_session.py |   15 +++++++++++++++
+ 2 files changed, 16 insertions(+), 0 deletions(-)
 
-This change causes a panic on boot on my ARM EP93xx board when the rootfs
-uses NFS. The problem occurs because nfs_inode_add_request acquires
-inode->i_lock and then calls igrab, resulting in the following panic:
+diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
+index b517c27..9786bf3 100644
+--- a/nfs4.1/nfs4client.py
++++ b/nfs4.1/nfs4client.py
+@@ -404,6 +404,7 @@ class SendChannel(object):
+ class SessionRecord(object):
+     def __init__(self, csr, client):
+         self.sessionid = csr.csr_sessionid
++        self.seqid = csr.csr_sequence
+         self.client = client
+         self.c = client.c
+         self.cred = client.cred
+diff --git a/nfs4.1/server41tests/st_create_session.py b/nfs4.1/server41tests/st_create_session.py
+index 1d02a50..4185aa8 100644
+--- a/nfs4.1/server41tests/st_create_session.py
++++ b/nfs4.1/server41tests/st_create_session.py
+@@ -396,3 +396,18 @@ def testNotOnlyOp(t, env):
+                                         chan_attrs, chan_attrs,
+                                         123, []), op.putrootfh()], None)
+     check(res, NFS4ERR_NOT_ONLY_OP)
++
++def testCsr_sequence(t, env):
++    """The corresponding result of csa_sequence is csr_sequence,
++       which MUST be equal to csa_sequence.
++
++    FLAGS: create_session all
++    CODE: CSESS24
++    """
++    c = env.c1.new_client(env.testname(t))
++    # CREATE_SESSION
++    chan_attrs = channel_attrs4(0,8192,8192,8192,128,8,[])
++    csa_sequence = c.seqid
++    sess1 = c.create_session(fore_attrs=chan_attrs)
++    if not nfs4lib.test_equal(sess1.seqid, csa_sequence, "int"):
++        fail("Server returns bad csr_sequence which not equal to csa_sequence")
+-- 
+1.7.4.1
 
-BUG: spinlock recursion on CPU#0, getty/262
- lock: cc421cb4, .magic: dead4ead, .owner: getty/262, .owner_cpu: 0
-[<c0031b0c>] (unwind_backtrace+0x0/0xe4) from [<c015f16c>] (do_raw_spin_lock+0x40/0x13c)
-[<c015f16c>] (do_raw_spin_lock+0x40/0x13c) from [<c00a938c>] (igrab+0x14/0x48)
-[<c00a938c>] (igrab+0x14/0x48) from [<c01186bc>] (nfs_updatepage+0x2e0/0x524)
-[<c01186bc>] (nfs_updatepage+0x2e0/0x524) from [<c010b19c>] (nfs_write_end+0x23c/0x270)
-[<c010b19c>] (nfs_write_end+0x23c/0x270) from [<c006b484>] (generic_file_buffered_write+0x180/0x248)
-[<c006b484>] (generic_file_buffered_write+0x180/0x248) from [<c006d060>] (__generic_file_aio_write+0x3b8/0x3f4)
-[<c006d060>] (__generic_file_aio_write+0x3b8/0x3f4) from [<c006d108>] (generic_file_aio_write+0x6c/0xdc)
-[<c006d108>] (generic_file_aio_write+0x6c/0xdc) from [<c010bce0>] (nfs_file_write+0xec/0x178)
-[<c010bce0>] (nfs_file_write+0xec/0x178) from [<c00956ac>] (do_sync_write+0xa4/0xe4)
-[<c00956ac>] (do_sync_write+0xa4/0xe4) from [<c00960c8>] (vfs_write+0xb4/0x12c)
-[<c00960c8>] (vfs_write+0xb4/0x12c) from [<c00961f0>] (sys_write+0x3c/0x68)
-[<c00961f0>] (sys_write+0x3c/0x68) from [<c002c8e0>] (ret_fast_syscall+0x0/0x2c)
 
-This series introduces a new function called __igrab, which is an unlocked
-version of igrab and modifies nfs_inode_add_request to use the unlocked
-version.
-
-Ryan Mallon (2):
-  Add unlocked version of igrab.
-  Use __igrab instead of igrab in nfs_inode_add_request
-
- fs/inode.c         |   16 ++++++++++++----
- fs/nfs/write.c     |    2 +-
- include/linux/fs.h |    1 +
- 3 files changed, 14 insertions(+), 5 deletions(-)
 
