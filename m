@@ -1,236 +1,333 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3698 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758291Ab1COTw1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Mar 2011 15:52:27 -0400
-Message-ID: <4D7FC378.1000702@netapp.com>
-Date: Tue, 15 Mar 2011 15:52:24 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 1/5] NFS: convert call_sync() to a function
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:52129 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756439Ab1CBSUQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Mar 2011 13:20:16 -0500
+Received: by fxm17 with SMTP id 17so261032fxm.19
+        for <linux-nfs@vger.kernel.org>; Wed, 02 Mar 2011 10:20:14 -0800 (PST)
+Message-ID: <4D6E8A5A.8010307@monstr.eu>
+Date: Wed, 02 Mar 2011 19:20:10 +0100
+From: Michal Simek <monstr@monstr.eu>
+Reply-To: monstr@monstr.eu
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: NFS problem on Microblaze LE
+References: <4D6E4052.7050201@monstr.eu> <20110302154900.GA29136@fieldses.org> <4D6E6C49.90309@monstr.eu> <20110302173438.GC29136@fieldses.org>
+In-Reply-To: <20110302173438.GC29136@fieldses.org>
+Content-Type: multipart/mixed;
+ boundary="------------070605010100040206050301"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+--------------070605010100040206050301
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-This patch changes nfs4_call_sync() from a macro into a
-static inline function.  As a macro, the call_sync()
-function will not do any type checking and depends
-on the sequence arguments always having the same name.
-As a function, we get to have type checking and can
-rename the arguments if we so choose.
+J. Bruce Fields wrote:
+> On Wed, Mar 02, 2011 at 05:11:53PM +0100, Michal Simek wrote:
+>> J. Bruce Fields wrote:
+>>> On Wed, Mar 02, 2011 at 02:04:18PM +0100, Michal Simek wrote:
+>>>> Hi,
+>>>>
+>>>> I am getting some troubles to get nfs work on new Microblaze
+>>>> little-endian platform and I would like to ask you for some
+>>>> recommendations how to debug it.
+>>>>
+>>>> First of all I need to write that Microblaze big-endian platforms have no problem.
+>>>> The problem only happen if I use mount without -o nolock option
+>>>> (mount -t nfs 192.168.0.101:/tftpboot/nfs /mnt)
+>>>> If I use -o nolock option I have no problem to use nfs.
+>>>>
+>>>> I use xilinx emaclite and axi emac(it is not in the mainline now)
+>>>> driver and I have no problem to use dhcp, ftp, http, telnet and
+>>>> other internet protocols.
+>>>>
+>>>> I compared debug logs on big and little endian platform(rootfs has
+>>>> the same setting) I found that little-endian got packet which is
+>>>> shorter than on big endian which I have added to the log below.
+>>>> The second thing, which I think is connected to the previous point,
+>>>> is that I am getting BADCRED in rpc_verify_headers.
+>>>>
+>>>> Is there any option/macro/recommended debug technique how to see
+>>>> packets? I need to get some clue how to see packet and then how they
+>>>> are passed to rpc_verify_header function.
+>>> A good first step would be to look at the network traffic with
+>>> wireshark.
+>> Yes, I am looking at it all the time but I can't see anything weird.
+>> Look at attachment. 192.168.0.101 - host, 192.168.0.103 target.
+>>
+>> There are two NULL calls and two reply calls.
+> 
+> Yes, looks normal.  I wonder why everything exept portmap is using udp,
+> but your debugging traces refer to tcp?
+> 
+> Oh, wait, it's talking about portmap map/unmap calls: could try try
+> running wireshark on the loopback interface?  (run with -ilo).
+> 
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c |   53 ++++++++++++++++++++++++++++++-----------------------
- 1 files changed, 30 insertions(+), 23 deletions(-)
+It is captured by tcpdump (tcpdump -i lo -e -S -n -vvv -x -w nfs)
+If you want to use different setting please let me know. (I have also verbose node but saving to 
+file should be enough for you).
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1d84e70..e403d7a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -719,9 +719,16 @@ int _nfs4_call_sync(struct nfs_server *server,
- 	return rpc_call_sync(server->client, msg, 0);
- }
- 
--#define nfs4_call_sync(server, msg, args, res, cache_reply) \
--	(server)->nfs_client->cl_mvops->call_sync((server), (msg), &(args)->seq_args, \
--			&(res)->seq_res, (cache_reply))
-+static inline
-+int nfs4_call_sync(struct nfs_server *server,
-+		   struct rpc_message *msg,
-+		   struct nfs4_sequence_args *args,
-+		   struct nfs4_sequence_res *res,
-+		   int cache_reply)
-+{
-+	return server->nfs_client->cl_mvops->call_sync(server, msg, args,
-+						res, cache_reply);
-+}
- 
- static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
- {
-@@ -1831,7 +1838,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 	} else
- 		memcpy(&arg.stateid, &zero_stateid, sizeof(arg.stateid));
- 
--	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (status == 0 && state != NULL)
- 		renew_lease(server, timestamp);
- 	return status;
-@@ -2090,7 +2097,7 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 	};
- 	int status;
- 
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (status == 0) {
- 		memcpy(server->attr_bitmask, res.attr_bitmask, sizeof(server->attr_bitmask));
- 		server->caps &= ~(NFS_CAP_ACLS|NFS_CAP_HARDLINKS|
-@@ -2160,7 +2167,7 @@ static int _nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	};
- 
- 	nfs_fattr_init(info->fattr);
--	return nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
-@@ -2249,7 +2256,7 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
- 	};
- 	
- 	nfs_fattr_init(fattr);
--	return nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-@@ -2333,7 +2340,7 @@ static int _nfs4_proc_lookupfh(struct nfs_server *server, const struct nfs_fh *d
- 	nfs_fattr_init(fattr);
- 
- 	dprintk("NFS call  lookupfh %s\n", name->name);
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	dprintk("NFS reply lookupfh: %d\n", status);
- 	return status;
- }
-@@ -2421,7 +2428,7 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 	if (res.fattr == NULL)
- 		return -ENOMEM;
- 
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (!status) {
- 		entry->mask = 0;
- 		if (res.access & NFS4_ACCESS_READ)
-@@ -2488,7 +2495,7 @@ static int _nfs4_proc_readlink(struct inode *inode, struct page *page,
- 		.rpc_resp = &res,
- 	};
- 
--	return nfs4_call_sync(NFS_SERVER(inode), &msg, &args, &res, 0);
-+	return nfs4_call_sync(NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_readlink(struct inode *inode, struct page *page,
-@@ -2577,7 +2584,7 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
- 	if (res.dir_attr == NULL)
- 		goto out;
- 
--	status = nfs4_call_sync(server, &msg, &args, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 1);
- 	if (status == 0) {
- 		update_changeattr(dir, &res.cinfo);
- 		nfs_post_op_update_inode(dir, res.dir_attr);
-@@ -2678,7 +2685,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 	if (res.old_fattr == NULL || res.new_fattr == NULL)
- 		goto out;
- 
--	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(old_dir, &res.old_cinfo);
- 		nfs_post_op_update_inode(old_dir, res.old_fattr);
-@@ -2729,7 +2736,7 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
- 	if (res.fattr == NULL || res.dir_attr == NULL)
- 		goto out;
- 
--	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(dir, &res.cinfo);
- 		nfs_post_op_update_inode(dir, res.dir_attr);
-@@ -2793,7 +2800,7 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
- {
- 	int status = nfs4_call_sync(NFS_SERVER(dir), &data->msg,
--				    &data->arg, &data->res, 1);
-+				    &data->arg.seq_args, &data->res.seq_res, 1);
- 	if (status == 0) {
- 		update_changeattr(dir, &data->res.dir_cinfo);
- 		nfs_post_op_update_inode(dir, data->res.dir_fattr);
-@@ -2905,7 +2912,7 @@ static int _nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- 			(unsigned long long)cookie);
- 	nfs4_setup_readdir(cookie, NFS_COOKIEVERF(dir), dentry, &args);
- 	res.pgbase = args.pgbase;
--	status = nfs4_call_sync(NFS_SERVER(dir), &msg, &args, &res, 0);
-+	status = nfs4_call_sync(NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
- 	if (status >= 0) {
- 		memcpy(NFS_COOKIEVERF(dir), res.verifier.data, NFS4_VERIFIER_SIZE);
- 		status += args.pgbase;
-@@ -2997,7 +3004,7 @@ static int _nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
- 	};
- 
- 	nfs_fattr_init(fsstat->fattr);
--	return  nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return  nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsstat *fsstat)
-@@ -3028,7 +3035,7 @@ static int _nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
- 		.rpc_resp = &res,
- 	};
- 
--	return nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsinfo *fsinfo)
-@@ -3073,7 +3080,7 @@ static int _nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle
- 	}
- 
- 	nfs_fattr_init(pathconf->fattr);
--	return nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
-@@ -3452,7 +3459,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 		resp_buf = buf;
- 		buf_to_pages(buf, buflen, args.acl_pages, &args.acl_pgbase);
- 	}
--	ret = nfs4_call_sync(NFS_SERVER(inode), &msg, &args, &res, 0);
-+	ret = nfs4_call_sync(NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
- 	if (ret)
- 		goto out_free;
- 	if (res.acl_len > args.acl_len)
-@@ -3527,7 +3534,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 	if (i < 0)
- 		return i;
- 	nfs_inode_return_delegation(inode);
--	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	ret = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 
- 	/*
- 	 * Free each page after tx, so the only ref left is
-@@ -3890,7 +3897,7 @@ static int _nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock
- 	lsp = request->fl_u.nfs4_fl.owner;
- 	arg.lock_owner.id = lsp->ls_id.id;
- 	arg.lock_owner.s_dev = server->s_dev;
--	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	switch (status) {
- 		case 0:
- 			request->fl_type = F_UNLCK;
-@@ -4618,7 +4625,7 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 	nfs_fattr_init(&fs_locations->fattr);
- 	fs_locations->server = server;
- 	fs_locations->nlocations = 0;
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	nfs_fixup_referral_attributes(&fs_locations->fattr);
- 	dprintk("%s: returned status = %d\n", __func__, status);
- 	return status;
-@@ -5586,7 +5593,7 @@ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
- 	int status;
- 
- 	dprintk("--> %s\n", __func__);
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	dprintk("<-- %s status=%d\n", __func__, status);
- 
- 	return status;
+
+Thanks,
+Michal
+
+
+
+
 -- 
-1.7.4.1
+Michal Simek, Ing. (M.Eng)
+w: www.monstr.eu p: +42-0-721842854
+Maintainer of Linux kernel 2.6 Microblaze Linux - http://www.monstr.eu/fdt/
+Microblaze U-BOOT custodian
 
+--------------070605010100040206050301
+Content-Type: application/octet-stream;
+ name="nfs"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="nfs"
+
+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
+NYJTgoAQIAb+KAAAAQEICv//aU///2lO
+
+--------------070605010100040206050301--
