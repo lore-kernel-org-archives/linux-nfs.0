@@ -1,93 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:55809 "EHLO mx1.suse.de"
+Received: from fieldses.org ([174.143.236.118]:40672 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754220Ab1CPVao (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2011 17:30:44 -0400
-Date: Thu, 17 Mar 2011 08:30:34 +1100
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Bryan Schumaker <bjschuma@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Use of READDIRPLUS on large directories
-Message-ID: <20110317083034.479ecb5f@notabene.brown>
-In-Reply-To: <1300285203.16266.46.camel@lade.trondhjem.org>
-References: <20110316155528.31913c58@notabene.brown>
-	<24085EE6-EF0B-4F36-8F6A-100AB863F408@oracle.com>
-	<4D80C5C6.2060003@netapp.com>
-	<1300285203.16266.46.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753633Ab1CBSYl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Mar 2011 13:24:41 -0500
+Date: Wed, 2 Mar 2011 13:24:37 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Michal Simek <monstr@monstr.eu>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: NFS problem on Microblaze LE
+Message-ID: <20110302182437.GD29136@fieldses.org>
+References: <4D6E4052.7050201@monstr.eu>
+ <20110302154900.GA29136@fieldses.org>
+ <4D6E6C49.90309@monstr.eu>
+ <20110302173438.GC29136@fieldses.org>
+ <4D6E8A5A.8010307@monstr.eu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D6E8A5A.8010307@monstr.eu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 16 Mar 2011 10:20:03 -0400 Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-
-> On Wed, 2011-03-16 at 10:14 -0400, Bryan Schumaker wrote:
-> > I guess I misunderstood what to publish test results for?  I know I included numbers on one of the patches (commit 82f2e5472e2304e531c2fa85e457f4a71070044e, copied below)...  I'll find the numbers you're asking about and post them.
-> > 
-> > -Bryan
-> > 
-> > commit 82f2e5472e2304e531c2fa85e457f4a71070044e
-> > Author: Bryan Schumaker <bjschuma@netapp.com>
-> > Date:   Thu Oct 21 16:33:18 2010 -0400
-> > 
-> >     NFS: Readdir plus in v4
-> >     
-> >     By requsting more attributes during a readdir, we can mimic the readdir plus
-> >     operation that was in NFSv3.
-> >     
-> >     To test, I ran the command `ls -lU --color=none` on directories with various
-> >     numbers of files.  Without readdir plus, I see this:
-> >     
-> >     n files |    100    |   1,000   |  10,000   |  100,000  | 1,000,000
-> >     --------+-----------+-----------+-----------+-----------+----------
-> >     real    | 0m00.153s | 0m00.589s | 0m05.601s | 0m56.691s | 9m59.128s
-> >     user    | 0m00.007s | 0m00.007s | 0m00.077s | 0m00.703s | 0m06.800s
-> >     sys     | 0m00.010s | 0m00.070s | 0m00.633s | 0m06.423s | 1m10.005s
-> >     access  | 3         | 1         | 1         | 4         | 31
-> >     getattr | 2         | 1         | 1         | 1         | 1
-> >     lookup  | 104       | 1,003     | 10,003    | 100,003   | 1,000,003
-> >     readdir | 2         | 16        | 158       | 1,575     | 15,749
-> >     total   | 111       | 1,021     | 10,163    | 101,583   | 1,015,784
-> >     
-> >     With readdir plus enabled, I see this:
-> >     
-> >     n files |    100    |   1,000   |  10,000   |  100,000  | 1,000,000
-> >     --------+-----------+-----------+-----------+-----------+----------
-> >     real    | 0m00.115s | 0m00.206s | 0m01.079s | 0m12.521s | 2m07.528s
-> >     user    | 0m00.003s | 0m00.003s | 0m00.040s | 0m00.290s | 0m03.296s
-> >     sys     | 0m00.007s | 0m00.020s | 0m00.120s | 0m01.357s | 0m17.556s
-> >     access  | 3         | 1         | 1         | 1         | 7
-> >     getattr | 2         | 1         | 1         | 1         | 1
-> >     lookup  | 4         | 3         | 3         | 3         | 3
-> >     readdir | 6         | 62        | 630       | 6,300     | 62,993
-> >     total   | 15        | 67        | 635       | 6,305     | 63,004
-> >     
-> >     Readdir plus disabled has about a 16x increase in the number of rpc calls an
-> >     is 4 - 5 times slower on large directories.
+On Wed, Mar 02, 2011 at 07:20:10PM +0100, Michal Simek wrote:
+> J. Bruce Fields wrote:
+> >On Wed, Mar 02, 2011 at 05:11:53PM +0100, Michal Simek wrote:
+> >>J. Bruce Fields wrote:
+> >>>On Wed, Mar 02, 2011 at 02:04:18PM +0100, Michal Simek wrote:
+> >>>>Hi,
+> >>>>
+> >>>>I am getting some troubles to get nfs work on new Microblaze
+> >>>>little-endian platform and I would like to ask you for some
+> >>>>recommendations how to debug it.
+> >>>>
+> >>>>First of all I need to write that Microblaze big-endian platforms have no problem.
+> >>>>The problem only happen if I use mount without -o nolock option
+> >>>>(mount -t nfs 192.168.0.101:/tftpboot/nfs /mnt)
+> >>>>If I use -o nolock option I have no problem to use nfs.
+> >>>>
+> >>>>I use xilinx emaclite and axi emac(it is not in the mainline now)
+> >>>>driver and I have no problem to use dhcp, ftp, http, telnet and
+> >>>>other internet protocols.
+> >>>>
+> >>>>I compared debug logs on big and little endian platform(rootfs has
+> >>>>the same setting) I found that little-endian got packet which is
+> >>>>shorter than on big endian which I have added to the log below.
+> >>>>The second thing, which I think is connected to the previous point,
+> >>>>is that I am getting BADCRED in rpc_verify_headers.
+> >>>>
+> >>>>Is there any option/macro/recommended debug technique how to see
+> >>>>packets? I need to get some clue how to see packet and then how they
+> >>>>are passed to rpc_verify_header function.
+> >>>A good first step would be to look at the network traffic with
+> >>>wireshark.
+> >>Yes, I am looking at it all the time but I can't see anything weird.
+> >>Look at attachment. 192.168.0.101 - host, 192.168.0.103 target.
+> >>
+> >>There are two NULL calls and two reply calls.
+> >
+> >Yes, looks normal.  I wonder why everything exept portmap is using udp,
+> >but your debugging traces refer to tcp?
+> >
+> >Oh, wait, it's talking about portmap map/unmap calls: could try try
+> >running wireshark on the loopback interface?  (run with -ilo).
+> >
 > 
-> Right. Those are the numbers that convinced me...
-> 
-> 
+> It is captured by tcpdump (tcpdump -i lo -e -S -n -vvv -x -w nfs)
+> If you want to use different setting please let me know. (I have
+> also verbose node but saving to file should be enough for you).
 
-Lies, Damn Lies, and ......
+A little odd; -s0 to get the whole packet might help.
 
+You may also want to take a look at it yourself in wireshark.  Probably
+you'll see the BADCRED error in one of the replies once you manage to
+capture the right stuff.
 
-while these are impressive numbers they only tell half the story.
-
-If a change makes one common operation 4 times faster, and another common
-operation 10 times slower, it is a good change?  or even an acceptable change?
-
-(The "10 times" is not a definite statistic - it is a guess based on
- a low-detail report)
-
-So it is obvious that there is sometimes value in using readdirplus,
-it is equally obvious that there is sometimes a cost.
-
-Switching the default from "not paying the cost when it is big" to
-"always paying the cost" is wrong.
-
-
-NeilBrown
+--b.
