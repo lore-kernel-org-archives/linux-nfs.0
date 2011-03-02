@@ -1,70 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64976 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751790Ab1CDKSr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Mar 2011 05:18:47 -0500
-Date: Fri, 4 Mar 2011 11:18:42 +0100
-From: Karel Zak <kzak@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] mount: add --enable-libmount-mount
-Message-ID: <20110304101842.GA1655@nb.net.home>
-References: <1299159822-25190-1-git-send-email-kzak@redhat.com> <1299159822-25190-3-git-send-email-kzak@redhat.com> <4D6FF1A2.8060205@RedHat.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D6FF1A2.8060205@RedHat.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:62183 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1750950Ab1CBGbP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Mar 2011 01:31:15 -0500
+Message-ID: <4D6DE458.4040809@cn.fujitsu.com>
+Date: Wed, 02 Mar 2011 14:31:52 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH 08/17] CLNT: test the sessionid, slotid and sequenceid for
+ SEQUENCE
+References: <4D6DE26C.3010103@cn.fujitsu.com>
+In-Reply-To: <4D6DE26C.3010103@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Mar 03, 2011 at 02:53:06PM -0500, Steve Dickson wrote:
-> > +	opts = retrieve_mount_options(mnt_context_get_fs(cxt));
-> > +
-> > +	if (!mnt_context_is_lazy(cxt)) {
-> > +		if (opts) {
-> > +			/* we have full FS description (e.g. from mtab or /proc) */
-> > +			switch (is_vers4(cxt)) {
-> > +			case 0:
-> > +				/* We ignore the error from nfs_umount23.
-> > +				 * If the actual umount succeeds (in del_mtab),
-> > +				 * we don't want to signal an error, as that
-> > +				 * could cause /sbin/mount to retry!
-> > +				 */
-> > +				nfs_umount23(mnt_context_get_source(cxt), opts);
-> > +				break;
-> > +			case 1:			/* unknown */
-> > +				break;
-> > +			default:		/* error */
-> > +				goto err;
-> > +			}
-> > +		} else
-> > +			/* strange, no entry in mtab or /proc not mounted */
-> > +			nfs_umount23(spec, "tcp,v3");
-> Question: since retrieve_mount_options() returns NULL why do you assume 
-> the mount exists?
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ nfs4.1/server41tests/st_sequence.py |   24 ++++++++++++++++++++++++
+ 1 files changed, 24 insertions(+), 0 deletions(-)
 
- because on systems with /etc/mtab is possible that the file is empty,
- so we have no clue about the mount point.
- 
- This is normal umount(8) behavior, for root user it always tries to
- call umount(2) syscall. We should not assume that there is usable
- /proc or /etc/mtab. It's important be able to umount any device
- independently on /proc or /etc.
-
- See nfsumount.c, the current code uses the same logic.
-
-> What's happing is I'm doing an umount.nfs on an 
-> not existing mount point and the error is 
->     umount.nfs: remote share not in 'host:dir' format
-> 
-> Instead of
->     umount.nfs: /mnt/home: not mounted
-
- Good catch, this is bug. There is missing umount_error();
-
- I'll update the patch and add your change to mount_config_init() too.
-
-    Karel
-
+diff --git a/nfs4.1/server41tests/st_sequence.py b/nfs4.1/server41tests/st_sequence.py
+index c6a5959..ed0cc8c 100644
+--- a/nfs4.1/server41tests/st_sequence.py
++++ b/nfs4.1/server41tests/st_sequence.py
+@@ -314,3 +314,27 @@ def testOpNotInSession(t, env):
+     # putrootfh with out session
+     res = c.c.compound([op.putrootfh()])
+     check(res, NFS4ERR_OP_NOT_IN_SESSION)
++
++def testSessionidSequenceidSlotid(t, env):
++    """ The sr_sessionid result MUST equal sa_sessionid.
++        The sr_slotid result MUST equal sa_slotid. 
++        The sr_sequenceid result MUST equal sa_sequenceid.
++        rfc5661 18.46.3 
++
++    FLAGS: sequence all
++    CODE: SEQ12
++    """
++    c = env.c1.new_client(env.testname(t))
++    sess1 = c.create_session()
++
++    # SEQUENCE
++    sid = sess1.sessionid 
++    res = c.c.compound([op.sequence(sid, 1, 2, 3, True)])
++    if not nfs4lib.test_equal(res.resarray[0].sr_sessionid, sid, "opaque"):
++        fail("server return bad sessionid")
++
++    if not nfs4lib.test_equal(res.resarray[0].sr_sequenceid, 1, "int"):
++        fail("server return bad sequenceid")
++
++    if not nfs4lib.test_equal(res.resarray[0].sr_slotid, 2, "int"):
++        fail("server return bad slotid")
 -- 
- Karel Zak  <kzak@redhat.com>
- http://karelzak.blogspot.com
+1.7.4.1
+
+
+
