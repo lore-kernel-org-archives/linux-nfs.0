@@ -1,36 +1,50 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: Linux pNFS status meeting 03/10/11
-Date: Thu, 10 Mar 2011 08:37:18 -0500
-Message-ID: <4D78D40E.7090007@RedHat.com>
-References: <OF5807E8ED.B1E3CA64-ON8825784F.00117ACE-8825784F.001199D5@us.ibm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: NFS problem on Microblaze LE
+Date: Wed, 2 Mar 2011 10:49:00 -0500
+Message-ID: <20110302154900.GA29136@fieldses.org>
+References: <4D6E4052.7050201@monstr.eu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-nfs@vger.kernel.org
-To: Marc Eshel <eshel@almaden.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+To: Michal Simek <monstr-pSz03upnqPeHXe+LvDLADg@public.gmane.org>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55913 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:42825 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751435Ab1CJNhU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Mar 2011 08:37:20 -0500
-In-Reply-To: <OF5807E8ED.B1E3CA64-ON8825784F.00117ACE-8825784F.001199D5@us.ibm.com>
+	id S1750959Ab1CBPtH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Mar 2011 10:49:07 -0500
+In-Reply-To: <4D6E4052.7050201-pSz03upnqPeHXe+LvDLADg@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I will not be able to make this either... 
+On Wed, Mar 02, 2011 at 02:04:18PM +0100, Michal Simek wrote:
+> Hi,
+> 
+> I am getting some troubles to get nfs work on new Microblaze
+> little-endian platform and I would like to ask you for some
+> recommendations how to debug it.
+> 
+> First of all I need to write that Microblaze big-endian platforms have no problem.
+> The problem only happen if I use mount without -o nolock option
+> (mount -t nfs 192.168.0.101:/tftpboot/nfs /mnt)
+> If I use -o nolock option I have no problem to use nfs.
+> 
+> I use xilinx emaclite and axi emac(it is not in the mainline now)
+> driver and I have no problem to use dhcp, ftp, http, telnet and
+> other internet protocols.
+> 
+> I compared debug logs on big and little endian platform(rootfs has
+> the same setting) I found that little-endian got packet which is
+> shorter than on big endian which I have added to the log below.
+> The second thing, which I think is connected to the previous point,
+> is that I am getting BADCRED in rpc_verify_headers.
+> 
+> Is there any option/macro/recommended debug technique how to see
+> packets? I need to get some clue how to see packet and then how they
+> are passed to rpc_verify_header function.
 
-steved.
+A good first step would be to look at the network traffic with
+wireshark.
 
-On 03/09/2011 10:12 PM, Marc Eshel wrote:
-> Meeting on Thursday 03/10/11 at 9:30 AM PST (12:30 PM EST)
-> 
-> 
-> USA Toll-Free: 888-426-6840
-> USA Caller Paid: 215-861-6239
-> 
-> Israel Toll-Free: 1-809-417-783
-> 
-> Participant Code: 8792872
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--b.
