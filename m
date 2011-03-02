@@ -1,66 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:20436 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751164Ab1C1Ent (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2011 00:43:49 -0400
-Date: Mon, 28 Mar 2011 15:43:34 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Ryan Mallon <ryan@bluewatersys.com>
-Cc: viro@zeniv.linux.org.uk, dchinner@redhat.com, Trond.Myklebust@netapp.com,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH 0/2] Introduce unlocked version of igrab
-Message-ID: <20110328044334.GA1022@dastard>
-References: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com>
+Received: from mail-fx0-f46.google.com ([209.85.161.46]:45229 "EHLO
+	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754507Ab1CBQMF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Mar 2011 11:12:05 -0500
+Received: by fxm17 with SMTP id 17so132666fxm.19
+        for <linux-nfs@vger.kernel.org>; Wed, 02 Mar 2011 08:12:03 -0800 (PST)
+Message-ID: <4D6E6C49.90309@monstr.eu>
+Date: Wed, 02 Mar 2011 17:11:53 +0100
+From: Michal Simek <monstr@monstr.eu>
+Reply-To: monstr@monstr.eu
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: NFS problem on Microblaze LE
+References: <4D6E4052.7050201@monstr.eu> <20110302154900.GA29136@fieldses.org>
+In-Reply-To: <20110302154900.GA29136@fieldses.org>
+Content-Type: multipart/mixed;
+ boundary="------------030908070306020100020305"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Mar 28, 2011 at 02:55:59PM +1300, Ryan Mallon wrote:
-> Commit 250df6ed274d767da844a5d9f05720b804240197 "fs: protect 
-> inode->i_state with inode->i_lock" introduces a change to igrab to acquire
-> inode->i_lock. 
+--------------030908070306020100020305
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+
+J. Bruce Fields wrote:
+> On Wed, Mar 02, 2011 at 02:04:18PM +0100, Michal Simek wrote:
+>> Hi,
+>>
+>> I am getting some troubles to get nfs work on new Microblaze
+>> little-endian platform and I would like to ask you for some
+>> recommendations how to debug it.
+>>
+>> First of all I need to write that Microblaze big-endian platforms have no problem.
+>> The problem only happen if I use mount without -o nolock option
+>> (mount -t nfs 192.168.0.101:/tftpboot/nfs /mnt)
+>> If I use -o nolock option I have no problem to use nfs.
+>>
+>> I use xilinx emaclite and axi emac(it is not in the mainline now)
+>> driver and I have no problem to use dhcp, ftp, http, telnet and
+>> other internet protocols.
+>>
+>> I compared debug logs on big and little endian platform(rootfs has
+>> the same setting) I found that little-endian got packet which is
+>> shorter than on big endian which I have added to the log below.
+>> The second thing, which I think is connected to the previous point,
+>> is that I am getting BADCRED in rpc_verify_headers.
+>>
+>> Is there any option/macro/recommended debug technique how to see
+>> packets? I need to get some clue how to see packet and then how they
+>> are passed to rpc_verify_header function.
 > 
-> This change causes a panic on boot on my ARM EP93xx board when the rootfs
-> uses NFS. The problem occurs because nfs_inode_add_request acquires
-> inode->i_lock and then calls igrab, resulting in the following panic:
-> 
-> BUG: spinlock recursion on CPU#0, getty/262
->  lock: cc421cb4, .magic: dead4ead, .owner: getty/262, .owner_cpu: 0
-> [<c0031b0c>] (unwind_backtrace+0x0/0xe4) from [<c015f16c>] (do_raw_spin_lock+0x40/0x13c)
-> [<c015f16c>] (do_raw_spin_lock+0x40/0x13c) from [<c00a938c>] (igrab+0x14/0x48)
-> [<c00a938c>] (igrab+0x14/0x48) from [<c01186bc>] (nfs_updatepage+0x2e0/0x524)
-> [<c01186bc>] (nfs_updatepage+0x2e0/0x524) from [<c010b19c>] (nfs_write_end+0x23c/0x270)
-> [<c010b19c>] (nfs_write_end+0x23c/0x270) from [<c006b484>] (generic_file_buffered_write+0x180/0x248)
-> [<c006b484>] (generic_file_buffered_write+0x180/0x248) from [<c006d060>] (__generic_file_aio_write+0x3b8/0x3f4)
-> [<c006d060>] (__generic_file_aio_write+0x3b8/0x3f4) from [<c006d108>] (generic_file_aio_write+0x6c/0xdc)
-> [<c006d108>] (generic_file_aio_write+0x6c/0xdc) from [<c010bce0>] (nfs_file_write+0xec/0x178)
-> [<c010bce0>] (nfs_file_write+0xec/0x178) from [<c00956ac>] (do_sync_write+0xa4/0xe4)
-> [<c00956ac>] (do_sync_write+0xa4/0xe4) from [<c00960c8>] (vfs_write+0xb4/0x12c)
-> [<c00960c8>] (vfs_write+0xb4/0x12c) from [<c00961f0>] (sys_write+0x3c/0x68)
-> [<c00961f0>] (sys_write+0x3c/0x68) from [<c002c8e0>] (ret_fast_syscall+0x0/0x2c)
-> 
-> This series introduces a new function called __igrab, which is an unlocked
-> version of igrab and modifies nfs_inode_add_request to use the unlocked
-> version.
+> A good first step would be to look at the network traffic with
+> wireshark.
 
-It's called ihold() and already exists.
+Yes, I am looking at it all the time but I can't see anything weird.
+Look at attachment. 192.168.0.101 - host, 192.168.0.103 target.
 
-As it is, I thought I posted a igrab->ihold fix to lkml a couple of
-days ago when this first came up. Trond then posted a better fix by
-removingthe igrab() altoegther in the same thread.
+There are two NULL calls and two reply calls. There should different packet sent from
+target to host.
 
-Turns out, someone removed LKML from the cc list on the thread half
-way through so neither of those patches made it to lkml.
+Michal
 
-Trond, can you push your fix for this (NFS: Fix a hang in the
-writeback path) to Linus?
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+Michal Simek, Ing. (M.Eng)
+w: www.monstr.eu p: +42-0-721842854
+Maintainer of Linux kernel 2.6 Microblaze Linux - http://www.monstr.eu/fdt/
+Microblaze U-BOOT custodian
+
+--------------030908070306020100020305
+Content-Type: application/octet-stream;
+ name="nfs"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="nfs"
+
+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
+
+--------------030908070306020100020305--
