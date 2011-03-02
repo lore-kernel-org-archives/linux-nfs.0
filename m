@@ -1,137 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:28587 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750924Ab1CANJZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Mar 2011 08:09:25 -0500
-From: <daniel.gardere@emc.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <bfields@fieldses.org>, <rees@umich.edu>, <bhalevy@panasas.com>,
-        <linux-nfs@vger.kernel.org>, <honey@citi.umich.edu>
-Date: Tue, 1 Mar 2011 08:06:12 -0500
-Subject: RE: [PATCH] zero out delegation in the inode after it has been
- returned
-Message-ID: <1037D95241CCD148999713870A5F4A8606EE14E898@MX11A.corp.emc.com>
-References: <20110228213103.GA1256@merit.edu>
-	 <1298929144.8564.44.camel@heimdal.trondhjem.org>
-	 <20110228215439.GD1256@merit.edu>
-	 <1298930494.8564.50.camel@heimdal.trondhjem.org>
-	 <20110228232258.GA1901@merit.edu>
-	 <1298937633.18451.9.camel@heimdal.trondhjem.org>
-	 <20110301040945.GC17725@fieldses.org>
-	 <1037D95241CCD148999713870A5F4A8606EE14E851@MX11A.corp.emc.com>
- <1298981761.9306.20.camel@heimdal.trondhjem.org>
-In-Reply-To: <1298981761.9306.20.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from cn.fujitsu.com ([222.73.24.84]:62225 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751154Ab1CBG3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Mar 2011 01:29:17 -0500
+Message-ID: <4D6DE3E7.4090105@cn.fujitsu.com>
+Date: Wed, 02 Mar 2011 14:29:59 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH 05/17] CLNT: test reply too big
+References: <4D6DE26C.3010103@cn.fujitsu.com>
+In-Reply-To: <4D6DE26C.3010103@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogVHJvbmQgTXlrbGVidXN0
-IFttYWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21dDQo+IFNlbnQ6IG1hcmRpIDEgbWFy
-cyAyMDExIDEzOjE2DQo+IFRvOiBHYXJkZXJlLCBEYW5pZWwNCj4gQ2M6IGJmaWVsZHNAZmllbGRz
-ZXMub3JnOyByZWVzQHVtaWNoLmVkdTsgYmhhbGV2eUBwYW5hc2FzLmNvbTsgbGludXgtDQo+IG5m
-c0B2Z2VyLmtlcm5lbC5vcmc7IGhvbmV5QGNpdGkudW1pY2guZWR1DQo+IFN1YmplY3Q6IFJFOiBb
-UEFUQ0hdIHplcm8gb3V0IGRlbGVnYXRpb24gaW4gdGhlIGlub2RlIGFmdGVyIGl0IGhhcyBiZWVu
-DQo+IHJldHVybmVkDQo+IA0KPiBPbiBUdWUsIDIwMTEtMDMtMDEgYXQgMDQ6NTIgLTA1MDAsIGRh
-bmllbC5nYXJkZXJlQGVtYy5jb20gd3JvdGU6DQo+ID4gSXQgaXMgRU1DIHNlcnZlci4NCj4gPg0K
-PiA+IFRoZSBzZXJ2ZXIgcmV0dXJucyB0aGUgZGVsZWdhdGlvbiB0byB0aGUgT1BFTiBDTEFJTV9E
-RUxFR0FURV9DVVINCj4gb3BlcmF0aW9uLiBBdCB0aGlzIHBvaW50IHRoZSBkZWxlZ2F0aW9uIGlz
-IHN0aWxsIHZhbGlkLiBUaGlzIGlzIGZhcg0KPiBiZWZvcmUgdGhlIERFTEVHUkVUVVJOOyBzbyB0
-aGlzIGRvZXNuJ3QgZXhwbGFpbiB3aHkNCj4gPiB0aGUgZGVsZWdhdGlvbiBpcyB1c2VkIGluIFNF
-VEFUVFIgKGZyYW1lIDU1OTYpIGFmdGVyIHRoZSBERUxFR1JFVFVSTg0KPiAoZnJhbWUgNTU4OSwg
-cmVwbHkgaW4gNTU5MikuDQo+IA0KPiBJdCBleHBsYWlucyBfZXhhY3RseV8gd2hhdCBpcyBoYXBw
-ZW5pbmcuLi4NCj4gDQo+IFRoZSBzZXJ2ZXIgaGFuZHMgb3V0IGEgZGVsZWdhdGlvbiBpbiBzdGVw
-IDQuIG9mIHRoZSByZWNvdmVyeSBwcm9jZXNzLA0KPiB3aGljaCBjYXVzZXMgdGhlIGNsaWVudCB0
-byBhdHRhY2ggYSBuZXcgZGVsZWdhdGlvbiB0byB0aGUNCj4gbmZzaS0+ZGVsZWdhdGlvbi4gWW91
-IGNhbiBhcmd1ZSB0aGF0IHRoZSBjbGllbnQgc2hvdWxkbid0IGJlIGRvaW5nIHRoYXQNCj4gd2hp
-bGUgaXQgaXMgaW4gdGhlIG1pZGRsZSBvZiBhIHJlY292ZXJ5IHByb2Nlc3MsIGJ1dCBhcyBmYXIg
-YXMgb3VyDQo+IGNsaWVudCBpcyBjb25jZXJuZWQsIGl0IGRvZXNuJ3QgZXhwZWN0IHRoZSBzZXJ2
-ZXIgdG8gdmlvbGF0ZSB0aGUNCj4gcHJvdG9jb2wgaW4gdGhpcyBtYW5uZXIuDQo+IA0KT0sgSSB1
-bmRlcnN0YW5kIHRoZSBzaXR1YXRpb24uDQoNCj4gPiBSZXR1cm5pbmcgYSBkZWxlZ2F0aW9uIHRv
-IE9QRU4gQ0xBSU1fREVMRUdBVEVfQ1VSIGlzIHByb2JhYmx5DQo+IHVzZWxlc3MsIGFzIHRoZSBj
-bGllbnQgYWxyZWFkeSBoYXMgdGhpcyBkZWxlZ2F0aW9uLiBCdXQsIEkgZG9uJ3QgdGhpbmsNCj4g
-dGhhdCBpdCBpcyBpbGxlZ2FsLg0KPiA+IElmIHRoaXMgY3JlYXRlcyB0aGUgY29uZnVzaW9uLCB3
-ZSBjYW4gYXZvaWQgcmV0dXJuaW5nIHRoZSBkZWxlZ2F0aW9uDQo+IGluIHRoaXMgY2FzZS4NCj4g
-DQo+IFNlZSBzZWN0aW9uIDguMS44IChhcyBJIG5vdGVkIGluIG15IGZvbGxvd3VwIGVtYWlsKS4g
-VGhlIHNlcnZlciBpcyBub3QNCj4gc3VwcG9zZWQgdG8gc2VuZCBhIGRlbGVnYXRpb24gYXMgcGFy
-dCBvZiBhIENMQUlNX0RFTEVHQVRFX0NVUiByZXF1ZXN0Lg0KPiBZb3UgYXJlIHZpb2xhdGluZyB0
-aGUgc3BlYy4NCj4gDQpBZ3JlZWQuIEkgbWlzc2VkIHRoaXMgcG9pbnQgaW4gdGhlIFJGQy4NCg0K
-PiBTZW5kaW5nIGEgZGVsZWdhdGlvbiBtb3JlIHRoYW4gb25jZSBpcyBuZWl0aGVyIG5lY2Vzc2Fy
-eSwgbm9yIGlzIGl0DQo+IHJlYWxseSBhIGdvb2QgaWRlYSBldmVuIGlmIHRoZSBjbGllbnQgc2Vu
-ZHMgbXVsdGlwbGUgQ0xBSU1fTlVMTCBjYWxscy4NCj4gSW4gZmFjdCBpdCBpcyBhIHJlY2lwZSBm
-b3IgY3JlYXRpbmcgcmFjZXMuLi4NCj4gVGhlIHJlYXNvbnMgYXJlOg0KPiANCj4gICAgICAgKiBV
-bmxpa2UgbGF5b3V0cywgdGhlcmUgaXMgbm8gJ2ZvcmdldGZ1bCcgbW9kZWwgZm9yIGRlbGVnYXRp
-b25zLg0KPiAgICAgICAgIE9uY2UgdGhlIGNsaWVudCByZWNlaXZlcyBhIGRlbGVnYXRpb24sIGl0
-IGlzIGV4cGVjdGVkIHRvIGtlZXANCj4gICAgICAgICB0cmFjayBvZiB0aGF0IGRlbGVnYXRpb24g
-YW5kIHJldHVybiBpdCB3aGVuIGl0IG5vIGxvbmdlciBuZWVkcw0KPiAgICAgICAgIGl0Lg0KPiAg
-ICAgICAqIEluIE5GU3Y0LjAsIHRoZXJlIGlzIG5vIGdvb2Qgd2F5IG9mIGRlYWxpbmcgd2l0aCBy
-YWNlcyBiZXR3ZWVuDQo+ICAgICAgICAgT1BFTiBhbmQgQ0JfUkVDQUxMLiBJZiB0aGUgc2VydmVy
-IGlzIGhhbmRpbmcgb3V0IGEgZGVsZWdhdGlvbiwNCj4gICAgICAgICBidXQgdGhlbiBuZWVkcyB0
-byByZWNhbGwgaXQgZm9yIHNvbWUgcmVhc29uLCB0aGVuIGl0IGhhcyBubyB3YXkNCj4gICAgICAg
-ICBvZiBlbnN1cmluZyB0aGF0IHRoZSBjbGllbnQgcHJvY2Vzc2VzIHRoZSBDQl9SRUNBTEwgX2Fm
-dGVyXyB0aGUNCj4gICAgICAgICByZXBseSB0byB0aGUgT1BFTiBpbiB3aGljaCB0aGUgZGVsZWdh
-dGlvbiB3YXMgaGFuZGVkIG91dCBmb3INCj4gdGhlDQo+ICAgICAgICAgc2Vjb25kIHRpbWUuDQo+
-IA0KPiBJT1c6IHRoZXJlIGlzIGEgZGFuZ2VyIG9mIHNvbWV0aGluZyBsaWtlIHRoZSBmb2xsb3dp
-bmcgcmFjZSBvY2N1cnJpbmc6DQo+IA0KPiBDbGllbnQJCQkJCVNlcnZlcg0KPiANCj4gU2VuZCBP
-UEVOKENMQUlNX05VTEwpDQo+IAkJCQloYW5kcyBvdXQgZGVsZWdhdGlvbg0KPiBwcm9jZXNzIG9w
-ZW4gcmVzdWx0DQo+IGNsaWVudCBub3cgdGhpbmtzIGl0DQo+IGhvbGRzIGEgZGVsZWdhdGlvbg0K
-PiANCj4gCQkJCVNlcnZlciBub3cgdGhpbmtzIGNsaWVudA0KPiAJCQkJaG9sZHMgYSBkZWxlZ2F0
-aW9uDQo+IA0KPiBTZW5kIE9QRU4oQ0xBSU1fTlVMTCkNCj4gCQkJCWhhbmRzIG91dCBkZWxlZ2F0
-aW9uIGFnYWluDQo+IAkJCQlTZW5kIENCX1JFQ0FMTA0KPiBwcm9jZXNzIENCX1JFQ0FMTA0KPiBT
-ZW5kIERFTEVHUkVUVVJODQo+IA0KPiBwcm9jZXNzIG9wZW4gcmVzdWx0DQo+IGNsaWVudCBub3cg
-dGhpbmtzIGl0DQo+IGhvbGRzIGEgZGVsZWdhdGlvbg0KPiANCj4gU2VydmVyIHRoaW5rcyBjbGll
-bnQgZG9lc24ndCBob2xkDQo+IGEgZGVsZWdhdGlvbi4NCj4gDQo+IA0KVGhpcyBjYXNlIGlzIGEg
-bGl0dGxlIGJpdCBkaWZmZXJlbnQuIEkgYW0gZ29pbmcgdG8gbWFrZSBzdXJlIHRoYXQgZGVsZWdh
-dGlvbnMgYXJlIHJldHVybmVkIG9ubHkgb25jZS4NCj4gDQo+ID4gLS0tLS1PcmlnaW5hbCBNZXNz
-YWdlLS0tLS0NCj4gPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIFttYWls
-dG86bGludXgtbmZzLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBKLiBC
-cnVjZSBGaWVsZHMNCj4gPiBTZW50OiBtYXJkaSAxIG1hcnMgMjAxMSAwNToxMA0KPiA+IFRvOiBU
-cm9uZCBNeWtsZWJ1c3QNCj4gPiBDYzogSmltIFJlZXM7IEJlbm55IEhhbGV2eTsgbGludXgtbmZz
-QHZnZXIua2VybmVsLm9yZzsgcGV0ZXIgaG9uZXltYW4NCj4gPiBTdWJqZWN0OiBSZTogW1BBVENI
-XSB6ZXJvIG91dCBkZWxlZ2F0aW9uIGluIHRoZSBpbm9kZSBhZnRlciBpdCBoYXMNCj4gYmVlbiBy
-ZXR1cm5lZA0KPiA+DQo+ID4gT24gTW9uLCBGZWIgMjgsIDIwMTEgYXQgMDc6MDA6MzNQTSAtMDUw
-MCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+ID4gT24gTW9uLCAyMDExLTAyLTI4IGF0IDE4
-OjIyIC0wNTAwLCBKaW0gUmVlcyB3cm90ZToNCj4gPiA+ID4gVHJvbmQgTXlrbGVidXN0IHdyb3Rl
-Og0KPiA+ID4gPg0KPiA+ID4gPiAgIFRoZSBwcm9jZWR1cmUgZm9yIHJldHVybmluZyBkZWxlZ2F0
-aW9ucyBpcyBzdXBwb3NlZCB0byB3b3JrIGFzDQo+IGZvbGxvd3M6DQo+ID4gPiA+DQo+ID4gPiA+
-ICAgICAgICAxLiBSZW1vdmUgdGhlIG5mc2ktPmRlbGVnYXRpb24gc28gdGhhdCBpdCBpcyBubyBs
-b25nZXINCj4gdmlzaWJsZSB0bw0KPiA+ID4gPiAgICAgICAgICAgbmV3IG9wZW4oKSByZXF1ZXN0
-cw0KPiA+ID4gPiAgICAgICAgMi4gd3JpdGUgYmFjayBhbnkgZGlydHkgZGF0YSB0byB0aGUgc2Vy
-dmVyDQo+ID4gPiA+ICAgICAgICAzLiBSZWNsYWltIGFueSBsb2Nrcw0KPiA+ID4gPiAgICAgICAg
-NC4gUmVjbGFpbSBhbnkgb3BlbiBzdGF0ZWlkcyAodXNpbmcgQ0xBSU1fREVMRUdBVEVfQ1VSKQ0K
-PiA+ID4gPiAgICAgICAgNS4gZGVsZWdyZXR1cm4NCj4gPiA+ID4NCj4gPiA+ID4gICBXaGlsZSB0
-aGVyZSBtYXkgaW5kZWVkIGJlIHRoZSBvZGQgUkVBRCBvciBXUklURSB0aGF0IHJhY2VzDQo+IGJl
-dHdlZW4gNC4NCj4gPiA+ID4gICBhbmQgNS4sIHNvIHRoYXQgdGhlIHNlcnZlciByZWNlaXZlcyB0
-aGUgZGVsZWdhdGlvbiBzdGF0ZWlkDQo+IGFmdGVyIHRoZQ0KPiA+ID4gPiAgIGRlbGVncmV0dXJu
-LCB0aGF0IHNob3VsZG4ndCBtYXR0ZXI6IHRoZSBzZXJ2ZXIgcmV0dXJucyBhbg0KPiBlcnJvciwg
-YW5kIHRoZQ0KPiA+ID4gPiAgIGNsaWVudCBzaG91bGQgcmV0cnkgdXNpbmcgdGhlIG5ldyBvcGVu
-IHN0YXRlaWQuDQo+ID4gPiA+DQo+ID4gPiA+ICAgV2hhdCBpcyBmYWlsaW5nIHRvIHdvcmsgY29y
-cmVjdGx5IGhlcmU/DQo+ID4gPiA+DQo+ID4gPiA+IFRoYXQgaGVscHMsIHRoYW5rcy4gIEknbGwg
-c2VlIGlmIEkgY2FuIGZpZ3VyZSBvdXQgd2hhdCdzIGdvaW5nDQo+IHdyb25nLg0KPiA+ID4gPg0K
-PiA+ID4gPiBBdCB0aGUgc2VydmVyLCBJIHNlZSBhIGRlbGVncmV0dXJuIGZvbGxvd2VkIGJ5IGEg
-c2V0YXR0ciB1c2luZw0KPiB0aGUgcmV0dXJuZWQNCj4gPiA+ID4gc3RhdGVpZC4gIFRoZSBzZXJ2
-ZXIgcmV0dXJucyBCQURfU1RBVEVJRC4gIEknbGwgbG9vayB0byBzZWUgaWYNCj4gdGhlIGNsaWVu
-dA0KPiA+ID4gPiB0aGVuIHJldHJpZXMuDQo+ID4gPiA+DQo+ID4gPiA+IEF0IHRoZSBjbGllbnQs
-IEkgc2VlIGEgbm9uLW51bGwgbmZzaS0+ZGVsZWdhdGlvbiBhZnRlciB0aGUNCj4gZGVsZ3JldHVy
-biwgYW5kDQo+ID4gPiA+IHRoZSBhcHBsaWNhdGlvbiBnZXRzIGEgRUlPLg0KPiA+ID4NCj4gPiA+
-IFRoYXQncyBiZWNhdXNlIHlvdXIgc2VydmVyIGlzIGNvbmZ1c2luZyB0aGUgaGVsbCBvdXQgb2Yg
-dXMgYWxsIGJ5DQo+IGdpdmluZw0KPiA+ID4gb3V0IGEgZGVsZWdhdGlvbiBhcyBwYXJ0IG9mIHRo
-ZSByZXBseSAoaW4gZnJhbWUgNTMyOCkgdG8gdGhlDQo+ID4gPiBPUEVOKENMQUlNX0RFTEVHQVRF
-X0NVUikgaW4gZnJhbWUgNTMyNS4NCj4gPiA+DQo+ID4gPiBJT1c6IHRoZSBjbGllbnQgaXMgaW4g
-dGhlIHByb2Nlc3Mgb2YgcmV0dXJuaW5nIHRoZSBkZWxlZ2F0aW9uLCBhbmQNCj4gYXNrcw0KPiA+
-ID4gdG8gdHJhZGUgaW4gdGhlIGRlbGVnYXRpb24gc3RhdGVpZCBpbnRvIGFuIG9wZW4gc3RhdGVp
-ZCwgdGhlbiB0aGUNCj4gc2VydmVyDQo+ID4gPiByZXBsaWVzIHdpdGggYW4gb3BlbiBzdGF0ZWlk
-LCBhbmQgdGhlIGRlbGVnYXRpb24gc3RhdGVpZC4uLg0KPiA+DQo+ID4gV2hpY2ggc2VydmVyIGlz
-IHRoaXMsIEppbT8NCj4gPg0KPiA+IChJIGNoZWNrZWQgdGhlIExpbnV4IHNlcnZlciBxdWlja2x5
-IGFuZCBpdCBkb2Vzbid0IGxvb2sgbGlrZSBpdA0KPiBzaG91bGQNCj4gPiBkbyB0aGlzLi4uLikN
-Cj4gPg0KPiA+IC0tYi4NCj4gPiAtLQ0KPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0
-OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiDQo+IGluDQo+ID4gdGhlIGJv
-ZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBNb3JlIG1h
-am9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0
-bWwNCj4gPg0KPiANCj4gLS0NCj4gVHJvbmQgTXlrbGVidXN0DQo+IExpbnV4IE5GUyBjbGllbnQg
-bWFpbnRhaW5lcg0KPiANCj4gTmV0QXBwDQo+IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+
-IHd3dy5uZXRhcHAuY29tDQo+IA0KDQoT77+977+97Lm7HO+/vSbvv71+77+9Ju+/vRjvv73vv70r
-Le+/ve+/vd22F++/ve+/vXfvv73vv73Lm++/ve+/ve+/vW3vv71i77+977+9Z37Ip++/vRfvv73v
-v73cqH3vv73vv73vv73GoHrvv70majordu+/ve+/ve+/vQfvv73vv73vv73vv716Wivvv73vv70r
-embvv73vv73vv71o77+977+977+9fu+/ve+/ve+/ve+/vWnvv73vv73vv71677+9Hu+/vXfvv73v
-v73vv70/77+977+977+977+9Ju+/vSnfohtm
+
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ nfs4.1/server41tests/st_create_session.py |   30 ++++++++++++++++++++++++++++-
+ 1 files changed, 29 insertions(+), 1 deletions(-)
+
+diff --git a/nfs4.1/server41tests/st_create_session.py b/nfs4.1/server41tests/st_create_session.py
+index 1b8b119..c474ce3 100644
+--- a/nfs4.1/server41tests/st_create_session.py
++++ b/nfs4.1/server41tests/st_create_session.py
+@@ -1,6 +1,6 @@
+ from nfs4_const import *
+ import nfs4_ops as op
+-from environment import check, fail
++from environment import check, fail, create_file, open_file
+ from nfs4_type import *
+ import random
+ import nfs4lib
+@@ -427,3 +427,31 @@ def testTooSmallMaxRS(t, env):
+                                         chan_attrs, chan_attrs,
+                                         123, [])], None)
+     check(res, NFS4ERR_TOOSMALL)
++
++def testRepTooBig(t, env):
++    """If requester sends a request for which the size of the reply
++       would exceed ca_maxresponsesize, the replier will return
++       NFS4ERR_REP_TOO_BIG
++
++    FLAGS: create_session all
++    CODE: CSESS26
++    """
++    name = env.testname(t)
++    c1 = env.c1.new_client(name)
++    # create session with a small ca_maxresponsesize
++    chan_attrs = channel_attrs4(0,8192,50,8192,128,8,[])
++    sess1 = c1.create_session(fore_attrs=chan_attrs)
++    owner = "owner_%s" % name
++    path = sess1.c.homedir + [name]
++    res = create_file(sess1, owner, path, access=OPEN4_SHARE_ACCESS_BOTH)
++    check(res)
++
++    # write some data to file
++    fh = res.resarray[-1].object
++    stateid = res.resarray[-2].stateid
++    res = sess1.compound([op.putfh(fh), op.write(stateid, 5, FILE_SYNC4, "write test data " * 10)])
++    check(res)
++
++    # read data rather than ca_maxresponsesize
++    res = sess1.compound([op.putfh(fh), op.read(stateid, 0, 500)])
++    check(res, NFS4ERR_REP_TOO_BIG)
+-- 
+1.7.4.1
+
+
