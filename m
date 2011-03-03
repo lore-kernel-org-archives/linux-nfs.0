@@ -1,46 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:46546 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755131Ab1CYVit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Mar 2011 17:38:49 -0400
-Received: by yxs7 with SMTP id 7so637804yxs.19
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Mar 2011 14:38:48 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/3] statd: Remove vestigial "-w" option from man page synopsis
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 25 Mar 2011 17:38:29 -0400
-Message-ID: <20110325213829.27166.97569.stgit@matisse.1015granger.net>
-In-Reply-To: <20110325213559.27166.71461.stgit@matisse.1015granger.net>
-References: <20110325213559.27166.71461.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:38652 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754507Ab1CCPOp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Mar 2011 10:14:45 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 0/9] NFSv4.1: pnfs wave4 submission v2
+Date: Thu,  3 Mar 2011 10:13:40 -0500
+Message-Id: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-The synopsis of rpc.statd in its man page lists "-w" as a valid
-option.  There is currently no support in the source code for a "-w"
-option.
+These apply on top of Andy's most recent wave3 patches.
 
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=199
+They can also be found at the branch wave4-submit-2 at
+git://linux-nfs.org/~iisaman/linux-pnfs.git
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+These include bugfixes and cleanups from the recent connectathon.
+The final two patches should probably be at the start of the wave 3
+submission, but were not part of the connectathon testing, so I've
+put them last.
 
- utils/statd/statd.man |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+These patches give write functionality to the pnfs file layout driver.
+The primary limitation is that we have not yet modified the commit
+code, so we can not yet handle COMMITs to the data server.  We get
+around this for the moment by sending any WRITE to a data server which
+does not have commit-to-mds set as a SYNCH write.  The next patchset will
+address this limitation.
 
-diff --git a/utils/statd/statd.man b/utils/statd/statd.man
-index ca00e24..b72236c 100644
---- a/utils/statd/statd.man
-+++ b/utils/statd/statd.man
-@@ -12,7 +12,7 @@
- .SH NAME
- rpc.statd \- NSM service daemon
- .SH SYNOPSIS
--.BI "rpc.statd [-dh?FLNvVw] [-H " prog "] [-n " my-name "] [-o " outgoing-port "] [-p " listener-port "] [-P " path " ]
-+.BI "rpc.statd [-dh?FLNvV] [-H " prog "] [-n " my-name "] [-o " outgoing-port "] [-p " listener-port "] [-P " path " ]
- .SH DESCRIPTION
- File locks are not part of persistent file system state.
- Lock state is thus lost when a host reboots.
+Fred
 
