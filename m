@@ -1,84 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20886 "EHLO mx2.netapp.com"
+Received: from citi.umich.edu ([141.212.112.111]:55875 "EHLO citi.umich.edu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755558Ab1CWMaj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2011 08:30:39 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 07/11] NFSv4.1: alloc and free commit_buckets
-Date: Wed, 23 Mar 2011 08:30:08 -0400
-Message-Id: <1300883412-32296-8-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1300883412-32296-1-git-send-email-iisaman@netapp.com>
-References: <1300883412-32296-1-git-send-email-iisaman@netapp.com>
+	id S1754437Ab1CCA7P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Mar 2011 19:59:15 -0500
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: <linux-nfs@vger.kernel.org>, Kevin Coffman <kwc@citi.umich.edu>
+Subject: [PATCH 2/2] nfsd: add proc file listing kernel's gss_krb5 enctypes
+Date: Wed,  2 Mar 2011 19:51:42 -0500
+Message-Id: <1299113502-17179-3-git-send-email-kwc@citi.umich.edu>
+In-Reply-To: <1299113502-17179-1-git-send-email-kwc@citi.umich.edu>
+References: <1299113502-17179-1-git-send-email-kwc@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Create a preallocated list header to hold nfs_pages for each
-non-MDS COMMIT destination.  Note this is not necessarily each DS,
-but is basically each <DS, fh> pair.
+Add a new proc file which lists the encryption types supported
+by the kernel's gss_krb5 code.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Newer MIT Kerberos libraries support the assertion of acceptor
+subkeys.  This enctype information allows user-land (svcgssd)
+to request that the Kerberos libraries limit the encryption
+types that it uses when generating the subkeys.
+
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
 ---
- fs/nfs/nfs4filelayout.c |   22 ++++++++++++++++++++++
- fs/nfs/nfs4filelayout.h |    2 ++
- 2 files changed, 24 insertions(+), 0 deletions(-)
+ fs/nfsd/nfsctl.c |   31 ++++++++++++++++++++++++++++++-
+ 1 files changed, 30 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 9401afd..03ff80c 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -503,6 +503,7 @@ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 33b3e2b..35dcfa8 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -12,13 +12,14 @@
+ #include <linux/nfsd/syscall.h>
+ #include <linux/lockd/lockd.h>
+ #include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/gss_api.h>
  
- 	dprintk("--> %s\n", __func__);
- 	nfs4_fl_put_deviceid(fl->dsaddr);
-+	kfree(fl->commit_buckets);
- 	_filelayout_free_lseg(fl);
- }
+ #include "idmap.h"
+ #include "nfsd.h"
+ #include "cache.h"
  
-@@ -524,6 +525,27 @@ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
- 		_filelayout_free_lseg(fl);
- 		return NULL;
- 	}
-+
-+	/* This assumes there is only one IOMODE_RW lseg.  What
-+	 * we really want to do is have a layout_hdr level
-+	 * dictionary of <multipath_list4, fh> keys, each
-+	 * associated with a struct list_head, populated by calls
-+	 * to filelayout_write_pagelist().
-+	 * */
-+	if ((!fl->commit_through_mds) && (lgr->range.iomode == IOMODE_RW)) {
-+		int i;
-+		int size = (fl->stripe_type == STRIPE_SPARSE) ?
-+			fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
-+
-+		fl->commit_buckets = kcalloc(size, sizeof(struct list_head), GFP_KERNEL);
-+		if (!fl->commit_buckets) {
-+			filelayout_free_lseg(&fl->generic_hdr);
-+			return NULL;
-+		}
-+		fl->number_of_buckets = size;
-+		for (i = 0; i < size; i++)
-+			INIT_LIST_HEAD(&fl->commit_buckets[i]);
-+	}
- 	return &fl->generic_hdr;
- }
- 
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index ee0c907..085a354 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -79,6 +79,8 @@ struct nfs4_filelayout_segment {
- 	struct nfs4_file_layout_dsaddr *dsaddr; /* Point to GETDEVINFO data */
- 	unsigned int num_fh;
- 	struct nfs_fh **fh_array;
-+	struct list_head *commit_buckets; /* Sort commits to ds */
-+	int number_of_buckets;
+ /*
+- *	We have a single directory with 9 nodes in it.
++ *	We have a single directory with several nodes in it.
+  */
+ enum {
+ 	NFSD_Root = 1,
+@@ -42,6 +43,7 @@ enum {
+ 	NFSD_Versions,
+ 	NFSD_Ports,
+ 	NFSD_MaxBlkSize,
++	NFSD_SupportedEnctypes,
+ 	/*
+ 	 * The below MUST come last.  Otherwise we leave a hole in nfsd_files[]
+ 	 * with !CONFIG_NFSD_V4 and simple_fill_super() goes oops
+@@ -187,6 +189,32 @@ static struct file_operations export_features_operations = {
+ 	.release	= single_release,
  };
  
- static inline struct nfs4_filelayout_segment *
++static int supported_enctypes_show(struct seq_file *m, void *v)
++{
++	struct gss_api_mech *k5mech;
++
++	k5mech = gss_mech_get_by_name("krb5");
++	if (k5mech == NULL)
++		goto out;
++	if (k5mech->gm_upcall_enctypes != NULL)
++		seq_printf(m, k5mech->gm_upcall_enctypes);
++	gss_mech_put(k5mech);
++out:
++	return 0;
++}
++
++static int supported_enctypes_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, supported_enctypes_show, NULL);
++}
++
++static struct file_operations supported_enctypes_ops = {
++	.open		= supported_enctypes_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++
+ extern int nfsd_pool_stats_open(struct inode *inode, struct file *file);
+ extern int nfsd_pool_stats_release(struct inode *inode, struct file *file);
+ 
+@@ -1397,6 +1425,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
+ 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
+ 		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
++		[NFSD_SupportedEnctypes] = {"supported_krb5_enctypes", &supported_enctypes_ops, S_IRUGO},
+ #ifdef CONFIG_NFSD_V4
+ 		[NFSD_Leasetime] = {"nfsv4leasetime", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Gracetime] = {"nfsv4gracetime", &transaction_ops, S_IWUSR|S_IRUSR},
 -- 
-1.7.2.1
+1.7.3.4
 
