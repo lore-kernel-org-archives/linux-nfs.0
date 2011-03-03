@@ -1,68 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:65375 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751035Ab1CBGeR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Mar 2011 01:34:17 -0500
-Message-ID: <4D6DE513.5090700@cn.fujitsu.com>
-Date: Wed, 02 Mar 2011 14:34:59 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Received: from citi.umich.edu ([141.212.112.111]:55873 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754180Ab1CCA7P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Mar 2011 19:59:15 -0500
+From: Kevin Coffman <kwc@citi.umich.edu>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 13/17] CLNT: add a simple test about RECLAIM_COMPLETE
-References: <4D6DE26C.3010103@cn.fujitsu.com>
-In-Reply-To: <4D6DE26C.3010103@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+Cc: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/2] Give svcgssd access to kernel's supported enctypes
+Date: Wed,  2 Mar 2011 19:51:40 -0500
+Message-Id: <1299113502-17179-1-git-send-email-kwc@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- nfs4.1/server41tests/__init__.py            |    1 +
- nfs4.1/server41tests/st_reclaim_complete.py |   21 +++++++++++++++++++++
- 2 files changed, 22 insertions(+), 0 deletions(-)
- create mode 100644 nfs4.1/server41tests/st_reclaim_complete.py
-
-diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
-index 3b4411a..1cc2048 100644
---- a/nfs4.1/server41tests/__init__.py
-+++ b/nfs4.1/server41tests/__init__.py
-@@ -2,6 +2,7 @@ __all__ = ["st_exchange_id.py", # draft 21
-            "st_compound.py",
-            "st_create_session.py",
-            "st_destroy_session.py",
-+           "st_reclaim_complete.py",
-            "st_secinfo_no_name.py",
-            "st_secinfo.py",
-            "st_sequence.py",
-diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
-new file mode 100644
-index 0000000..1d2d815
---- /dev/null
-+++ b/nfs4.1/server41tests/st_reclaim_complete.py
-@@ -0,0 +1,21 @@
-+from st_create_session import create_session
-+from nfs4_const import *
-+from environment import check, fail, use_obj, create_file
-+import nfs4_ops as op
-+import nfs4lib
-+
-+def testSupported(t, env):
-+    """Do a simple RECLAIM_COMPLETE
-+
-+    FLAGS: all
-+    CODE: RECC1
-+    """
-+    c = env.c1.new_client(env.testname(t))
-+    sess = c.create_session()
-+
-+    # RECLAIM_COMPLETE
-+    res = sess.compound([op.reclaim_complete(FALSE)])
-+    check(res)
-+
-+    res = sess.compound([op.putrootfh(), op.reclaim_complete(TRUE)])
-+    check(res)
--- 
-1.7.4.1
-
+Make the kernel's supported enctypes available to user-land
+(svcgssd) via a new proc file.  The client side already gets
+this information in the upcall to gssd, we need to make it
+available to svcgssd.
 
