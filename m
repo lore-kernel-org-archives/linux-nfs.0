@@ -1,164 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:41849 "EHLO
+Received: from rcsinet10.oracle.com ([148.87.113.121]:61619 "EHLO
 	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752707Ab1CJUlm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Mar 2011 15:41:42 -0500
-Subject: Re: [PATCH 5/8] NFS: Add basic migration support to state manager thread
+	with ESMTP id S1752886Ab1CCPBs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Mar 2011 10:01:48 -0500
+Subject: Re: NFS problem on Microblaze LE
 Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1299789301.3075.40.camel@heimdal.trondhjem.org>
-Date: Thu, 10 Mar 2011 15:40:01 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <EE42594F-A914-4007-8CA2-4C07632DC602@oracle.com>
-References: <20110310171345.8878.25548.stgit@matisse.1015granger.net> <20110310173018.8878.71092.stgit@matisse.1015granger.net> <1299789301.3075.40.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+In-Reply-To: <4D6F5F8E.7040200@monstr.eu>
+Date: Thu, 3 Mar 2011 10:01:33 -0500
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Message-Id: <258A2C12-1389-4437-963D-60F0C88FAE91@oracle.com>
+References: <4D6E4052.7050201@monstr.eu> <20110302154900.GA29136@fieldses.org> <4D6E6C49.90309@monstr.eu> <20110302173438.GC29136@fieldses.org> <4D6E8A5A.8010307@monstr.eu> <20110302182437.GD29136@fieldses.org> <4D6F5F8E.7040200@monstr.eu>
+To: monstr@monstr.eu
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-On Mar 10, 2011, at 3:35 PM, Trond Myklebust wrote:
+On Mar 3, 2011, at 4:29 AM, Michal Simek wrote:
 
-> On Thu, 2011-03-10 at 12:30 -0500, Chuck Lever wrote:
+> J. Bruce Fields wrote:
+>> On Wed, Mar 02, 2011 at 07:20:10PM +0100, Michal Simek wrote:
+>>> J. Bruce Fields wrote:
+>>>> On Wed, Mar 02, 2011 at 05:11:53PM +0100, Michal Simek wrote:
+>>>>> J. Bruce Fields wrote:
+>>>>>> On Wed, Mar 02, 2011 at 02:04:18PM +0100, Michal Simek wrote:
+>>>>>>> Hi,
+>>>>>>> 
+>>>>>>> I am getting some troubles to get nfs work on new Microblaze
+>>>>>>> little-endian platform and I would like to ask you for some
+>>>>>>> recommendations how to debug it.
+>>>>>>> 
+>>>>>>> First of all I need to write that Microblaze big-endian platforms have no problem.
+>>>>>>> The problem only happen if I use mount without -o nolock option
+>>>>>>> (mount -t nfs 192.168.0.101:/tftpboot/nfs /mnt)
+>>>>>>> If I use -o nolock option I have no problem to use nfs.
+>>>>>>> 
+>>>>>>> I use xilinx emaclite and axi emac(it is not in the mainline now)
+>>>>>>> driver and I have no problem to use dhcp, ftp, http, telnet and
+>>>>>>> other internet protocols.
+>>>>>>> 
+>>>>>>> I compared debug logs on big and little endian platform(rootfs has
+>>>>>>> the same setting) I found that little-endian got packet which is
+>>>>>>> shorter than on big endian which I have added to the log below.
+>>>>>>> The second thing, which I think is connected to the previous point,
+>>>>>>> is that I am getting BADCRED in rpc_verify_headers.
+>>>>>>> 
+>>>>>>> Is there any option/macro/recommended debug technique how to see
+>>>>>>> packets? I need to get some clue how to see packet and then how they
+>>>>>>> are passed to rpc_verify_header function.
+>>>>>> A good first step would be to look at the network traffic with
+>>>>>> wireshark.
+>>>>> Yes, I am looking at it all the time but I can't see anything weird.
+>>>>> Look at attachment. 192.168.0.101 - host, 192.168.0.103 target.
+>>>>> 
+>>>>> There are two NULL calls and two reply calls.
+>>>> Yes, looks normal.  I wonder why everything exept portmap is using udp,
+>>>> but your debugging traces refer to tcp?
+>>>> 
+>>>> Oh, wait, it's talking about portmap map/unmap calls: could try try
+>>>> running wireshark on the loopback interface?  (run with -ilo).
+>>>> 
+>>> It is captured by tcpdump (tcpdump -i lo -e -S -n -vvv -x -w nfs)
+>>> If you want to use different setting please let me know. (I have
+>>> also verbose node but saving to file should be enough for you).
+>> A little odd; -s0 to get the whole packet might help.
 > 
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index e6742b5..a788ec9 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -56,6 +56,8 @@
->> #include "internal.h"
->> #include "pnfs.h"
->> 
->> +#define NFSDBG_FACILITY		NFSDBG_CLIENT
->> +
->> #define OPENOWNER_POOL_SIZE	8
->> 
->> const nfs4_stateid zero_stateid;
->> @@ -1013,9 +1015,33 @@ void nfs4_schedule_state_recovery(struct nfs_client *clp)
->> {
->> 	if (!clp)
->> 		return;
->> +	dprintk("--> %s: \"%s\" (client ID %llx)\n",
->> +		__func__, clp->cl_hostname, clp->cl_clientid);
->> 	if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
->> 		set_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
->> 	nfs4_schedule_state_manager(clp);
->> +	dprintk("<-- %s\n", __func__);
->> +}
->> +
->> +/**
->> + * nfs4_schedule_migration_recovery - start background migration recovery
->> + *
->> + * @server: nfs_server representing remote file system that is migrating
->> + *
->> + */
->> +void nfs4_schedule_migration_recovery(struct nfs_server *server)
->> +{
->> +	struct nfs_client *clp = server->nfs_client;
->> +
->> +	dprintk("--> %s(%llx:%llx)\n", __func__,
->> +			(unsigned long long)server->fsid.major,
->> +			(unsigned long long)server->fsid.minor);
->> +	if (test_and_set_bit(NFS4CLNT_MOVED, &clp->cl_state) == 0) {
->> +		set_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state);
+> I can't use -s0 because I use older tcpdump but that shouldn't be a problem.
+> Packet dumps for LE and BE are attached.
 > 
-> Hmm... Why do we need to reset the NFSv4.1 session here?
+>> You may also want to take a look at it yourself in wireshark.  Probably
+>> you'll see the BADCRED error in one of the replies once you manage to
+>> capture the right stuff.
+> 
+> I have looked at it and I see two things.
+> 1. TCP checksum is incorrect but BE has the same behavior that's why I think it is fine.
+> 2. Packet #9 (V2 UNSET Reply (Call In 8)) contains Reply state: denied and AUTH_ERROR
+> bad credential (seal broken) that's the confirmation what I saw from the kernel debug logs.
+> 
+> What does it caused this rejection?
+> 
+> I am looking for it in the kernel.
 
-That's an assumption on my part.  It's not really clear yet what kind of changes will be needed for minor version 1.  I can pull this out for now.
+Which kernel release is this?  (uname -a)
 
->> +		clp->cl_moved_server = server;
->> +		nfs4_schedule_state_manager(clp);
->> +	}
->> +	dprintk("<-- %s\n", __func__);
->> }
->> 
->> int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
->> @@ -1435,6 +1461,64 @@ static int nfs4_reclaim_lease(struct nfs_client *clp)
->> 	return status;
->> }
->> 
->> +/*
->> + * Try remote migration of one FSID from a source server to a
->> + * destination server.  The source server provides a list of
->> + * potential destinations.
->> + */
->> +static void nfs4_try_migration(struct nfs_server *server)
->> +{
->> +	struct nfs_client *clp = server->nfs_client;
->> +	struct nfs4_fs_locations *locations = NULL;
->> +	struct page *page;
->> +	int status;
->> +
->> +	dprintk("--> %s: FSID %llx:%llx on \"%s\"\n", __func__,
->> +			(unsigned long long)server->fsid.major,
->> +			(unsigned long long)server->fsid.minor,
->> +			clp->cl_hostname);
->> +
->> +	status = -ENOMEM;
->> +	page = alloc_page(GFP_KERNEL);
->> +	locations = kmalloc(sizeof(struct nfs4_fs_locations), GFP_KERNEL);
->> +	if (page == NULL || locations == NULL) {
->> +		dprintk("<-- %s: no memory\n", __func__);
->> +		goto out;
->> +	}
->> +
->> +	status = nfs4_proc_get_mig_status(server, locations, page);
->> +	if (status != 0) {
->> +		dprintk("<-- %s: get migration status: %d\n",
->> +			__func__, status);
->> +		goto out;
->> +	}
->> +	if (!(locations->fattr.valid & NFS_ATTR_FATTR_V4_LOCATIONS)) {
->> +		dprintk("<-- %s: No fs_locations data available, "
->> +			"migration skipped\n", __func__);
->> +		goto out;
->> +	}
->> +
->> +	status = nfs4_replace_transport(server, locations);
->> +	if (status != 0) {
->> +		dprintk("<-- %s: failed to replace transport: %d\n",
->> +			__func__, status);
->> +		goto out;
->> +	}
->> +
->> +	/* Force an update of our callback info on the destination server */
->> +	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
-> 
-> I wonder if this should be made into a separate flag. That would enable
-> us to reuse it for the NFS4ERR_CB_PATH_DOWN handling...
-
-Instead, I think we will need a function call here to perform a fresh SETCLIENTID, rather than looping through the state manager's FSM again.  For one thing, we need to construct a new long-form client ID for this nfs_server: the callback endpoint information will have changed.
-
-I just wonder, though, if that is enough.  Where will nfs4_init_clientid() send the SETCLIENTID request?  To the source server or the destination server?
-
-</speculation>
-
-> 
->> +
->> +	/* XXX: would like to update /proc/mounts, but that's entirely
->> +	 *      optional. */
->> +
->> +	dprintk("<-- %s: migration succeeded\n", __func__);
->> +
->> +out:
->> +	if (page != NULL)
->> +		__free_page(page);
->> +	kfree(locations);
->> +}
->> +
->> #ifdef CONFIG_NFS_V4_1
->> void nfs41_handle_recall_slot(struct nfs_client *clp)
->> {
->> @@ -1664,6 +1748,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+Which distribution is this?  In user space, does it use portmap with glibc RPC, or rpcbind with libtirpc?
 
 -- 
 Chuck Lever
