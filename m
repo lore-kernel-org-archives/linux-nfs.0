@@ -1,133 +1,177 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:45229 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754507Ab1CBQMF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Mar 2011 11:12:05 -0500
-Received: by fxm17 with SMTP id 17so132666fxm.19
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Mar 2011 08:12:03 -0800 (PST)
-Message-ID: <4D6E6C49.90309@monstr.eu>
-Date: Wed, 02 Mar 2011 17:11:53 +0100
-From: Michal Simek <monstr@monstr.eu>
-Reply-To: monstr@monstr.eu
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: NFS problem on Microblaze LE
-References: <4D6E4052.7050201@monstr.eu> <20110302154900.GA29136@fieldses.org>
-In-Reply-To: <20110302154900.GA29136@fieldses.org>
-Content-Type: multipart/mixed;
- boundary="------------030908070306020100020305"
+Received: from mx2.netapp.com ([216.240.18.37]:38652 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757489Ab1CCPOq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Mar 2011 10:14:46 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 5/9] NFSv4.1: implement generic pnfs layer write switch
+Date: Thu,  3 Mar 2011 10:13:45 -0500
+Message-Id: <1299165229-3148-6-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
+References: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
---------------030908070306020100020305
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+From: Andy Adamson <andros@netapp.com>
 
-J. Bruce Fields wrote:
-> On Wed, Mar 02, 2011 at 02:04:18PM +0100, Michal Simek wrote:
->> Hi,
->>
->> I am getting some troubles to get nfs work on new Microblaze
->> little-endian platform and I would like to ask you for some
->> recommendations how to debug it.
->>
->> First of all I need to write that Microblaze big-endian platforms have no problem.
->> The problem only happen if I use mount without -o nolock option
->> (mount -t nfs 192.168.0.101:/tftpboot/nfs /mnt)
->> If I use -o nolock option I have no problem to use nfs.
->>
->> I use xilinx emaclite and axi emac(it is not in the mainline now)
->> driver and I have no problem to use dhcp, ftp, http, telnet and
->> other internet protocols.
->>
->> I compared debug logs on big and little endian platform(rootfs has
->> the same setting) I found that little-endian got packet which is
->> shorter than on big endian which I have added to the log below.
->> The second thing, which I think is connected to the previous point,
->> is that I am getting BADCRED in rpc_verify_headers.
->>
->> Is there any option/macro/recommended debug technique how to see
->> packets? I need to get some clue how to see packet and then how they
->> are passed to rpc_verify_header function.
-> 
-> A good first step would be to look at the network traffic with
-> wireshark.
+Signed-off-by: Andy Adamson <andros@citi.umich.edu>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
+Signed-off-by: Mike Sager <sager@netapp.com>
+Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
+Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c    |    7 +++++++
+ fs/nfs/pnfs.c              |   24 ++++++++++++++++++++++++
+ fs/nfs/pnfs.h              |   10 ++++++++++
+ fs/nfs/write.c             |    4 ++++
+ include/linux/nfs_iostat.h |    1 +
+ include/linux/nfs_xdr.h    |    1 +
+ 6 files changed, 47 insertions(+), 0 deletions(-)
 
-Yes, I am looking at it all the time but I can't see anything weird.
-Look at attachment. 192.168.0.101 - host, 192.168.0.103 target.
-
-There are two NULL calls and two reply calls. There should different packet sent from
-target to host.
-
-Michal
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index fea483a..35f58eb 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -238,6 +238,12 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	return PNFS_ATTEMPTED;
+ }
+ 
++static enum pnfs_try_status
++filelayout_write_pagelist(struct nfs_write_data *data, int sync)
++{
++	return PNFS_NOT_ATTEMPTED;
++}
++
+ /*
+  * filelayout_check_layout()
+  *
+@@ -455,6 +461,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.free_lseg		= filelayout_free_lseg,
+ 	.pg_test		= filelayout_pg_test,
+ 	.read_pagelist		= filelayout_read_pagelist,
++	.write_pagelist		= filelayout_write_pagelist,
+ };
+ 
+ static int __init nfs4filelayout_init(void)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 5f205d3..f38813a 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -895,6 +895,30 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
+ 	pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
+ }
+ 
++enum pnfs_try_status
++pnfs_try_to_write_data(struct nfs_write_data *wdata,
++			const struct rpc_call_ops *call_ops, int how)
++{
++	struct inode *inode = wdata->inode;
++	enum pnfs_try_status trypnfs;
++	struct nfs_server *nfss = NFS_SERVER(inode);
++
++	wdata->mds_ops = call_ops;
++
++	dprintk("%s: Writing ino:%lu %u@%llu (how %d)\n", __func__,
++		inode->i_ino, wdata->args.count, wdata->args.offset, how);
++
++	trypnfs = nfss->pnfs_curr_ld->write_pagelist(wdata, how);
++	if (trypnfs == PNFS_NOT_ATTEMPTED) {
++		put_lseg(wdata->lseg);
++		wdata->lseg = NULL;
++	} else
++		nfs_inc_stats(inode, NFSIOS_PNFS_WRITE);
++
++	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
++	return trypnfs;
++}
++
+ /*
+  * Call the appropriate parallel I/O subsystem read function.
+  */
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 1d4e631..6380b94 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -79,6 +79,7 @@ struct pnfs_layoutdriver_type {
+ 	 * I/O, else return PNFS_NOT_ATTEMPTED to fall back to normal NFS
+ 	 */
+ 	enum pnfs_try_status (*read_pagelist) (struct nfs_read_data *nfs_data);
++	enum pnfs_try_status (*write_pagelist) (struct nfs_write_data *nfs_data, int how);
+ };
+ 
+ struct pnfs_layout_hdr {
+@@ -120,6 +121,8 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
+ 		   enum pnfs_iomode access_type);
+ void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
++enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
++					     const struct rpc_call_ops *, int);
+ enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
+ 					    const struct rpc_call_ops *);
+ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
+@@ -200,6 +203,13 @@ pnfs_try_to_read_data(struct nfs_read_data *data,
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+ 
++static inline enum pnfs_try_status
++pnfs_try_to_write_data(struct nfs_write_data *data,
++		       const struct rpc_call_ops *call_ops, int how)
++{
++	return PNFS_NOT_ATTEMPTED;
++}
++
+ static inline bool
+ pnfs_roc(struct inode *ino)
+ {
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index c618d41..1852a54 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -873,6 +873,10 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+ 	data->res.verf    = &data->verf;
+ 	nfs_fattr_init(&data->fattr);
+ 
++	if (data->lseg &&
++	    (pnfs_try_to_write_data(data, call_ops, how) == PNFS_ATTEMPTED))
++		return 0;
++
+ 	return nfs_initiate_write(data, NFS_CLIENT(inode), call_ops, how);
+ }
+ 
+diff --git a/include/linux/nfs_iostat.h b/include/linux/nfs_iostat.h
+index 37a1437..8866bb3 100644
+--- a/include/linux/nfs_iostat.h
++++ b/include/linux/nfs_iostat.h
+@@ -114,6 +114,7 @@ enum nfs_stat_eventcounters {
+ 	NFSIOS_SHORTWRITE,
+ 	NFSIOS_DELAY,
+ 	NFSIOS_PNFS_READ,
++	NFSIOS_PNFS_WRITE,
+ 	__NFSIOS_COUNTSMAX,
+ };
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 09d9681..c82ad33 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1039,6 +1039,7 @@ struct nfs_write_data {
+ 	struct nfs_writeargs	args;		/* argument struct */
+ 	struct nfs_writeres	res;		/* result struct */
+ 	struct pnfs_layout_segment *lseg;
++	const struct rpc_call_ops *mds_ops;
+ 	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
+ #ifdef CONFIG_NFS_V4
+ 	unsigned long		timestamp;	/* For lease renewal */
 -- 
-Michal Simek, Ing. (M.Eng)
-w: www.monstr.eu p: +42-0-721842854
-Maintainer of Linux kernel 2.6 Microblaze Linux - http://www.monstr.eu/fdt/
-Microblaze U-BOOT custodian
+1.7.2.1
 
---------------030908070306020100020305
-Content-Type: application/octet-stream;
- name="nfs"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="nfs"
-
-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
-
---------------030908070306020100020305--
