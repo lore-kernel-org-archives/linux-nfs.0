@@ -1,167 +1,161 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:57380 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754550Ab1C1U0S convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2011 16:26:18 -0400
-Received: by iwn34 with SMTP id 34so4054817iwn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Mar 2011 13:26:18 -0700 (PDT)
-In-Reply-To: <j2m3b6787961004170054o64f3cb47l38864ca402eb231b@mail.gmail.com>
-References: <y2n3b6787961004170051qfce975c0tdbc14b7ea237504d@mail.gmail.com>
-	<j2m3b6787961004170054o64f3cb47l38864ca402eb231b@mail.gmail.com>
-Date: Mon, 28 Mar 2011 16:26:17 -0400
-Message-ID: <AANLkTi=YZhpAE4ei6HV=36mCq_vY0AbdiPaH0EghKDxU@mail.gmail.com>
-Subject: Re: cannot mount nfsv4/krb5 with krb51.7, 1.8 and 1.8.1
-From: Olga Kornievskaia <aglo@citi.umich.edu>
+Received: from mx2.netapp.com ([216.240.18.37]:32592 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756708Ab1CCPOq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Mar 2011 10:14:46 -0500
+From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: Di Pe <dipeit@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 4/9] NFSv4.1: trigger LAYOUTGET for writes
+Date: Thu,  3 Mar 2011 10:13:44 -0500
+Message-Id: <1299165229-3148-5-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
+References: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-I'd like to 2nd this issue.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pnfs.c  |   22 ++++++++++++++++++++++
+ fs/nfs/pnfs.h  |    7 +++++++
+ fs/nfs/write.c |   32 ++++++++++++++++++++------------
+ 3 files changed, 49 insertions(+), 12 deletions(-)
 
-the problem is in the kernel's derivation of the rc4 signature key.
-this is the commit that broke it.
-
-[aglo@skydive linux-pnfs]$ git show 411b5e05617593efebc06241dbc56f42150f2abe
-commit 411b5e05617593efebc06241dbc56f42150f2abe
-Author: Joe Perches <joe@perches.com>
-Date:   Mon Sep 13 12:48:01 2010 -0700
-
-    net/sunrpc: Use static const char arrays
-
-    Signed-off-by: Joe Perches <joe@perches.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_
-index 0326446..8a4d083c 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -422,7 +422,7 @@ static int
- context_derive_keys_rc4(struct krb5_ctx *ctx)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3e54514..5f205d3 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -873,6 +873,28 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode)
+ 	pgio->pg_test = (ld && ld->pg_test) ? pnfs_read_pg_test : NULL;
+ }
+ 
++static int pnfs_write_pg_test(struct nfs_pageio_descriptor *pgio,
++			      struct nfs_page *prev,
++			      struct nfs_page *req)
++{
++	if (pgio->pg_count == prev->wb_bytes) {
++		/* This is first coelesce call for a series of nfs_pages */
++		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
++						   prev->wb_context,
++						   IOMODE_RW);
++	}
++	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
++}
++
++void
++pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
++{
++	struct pnfs_layoutdriver_type *ld;
++
++	ld = NFS_SERVER(inode)->pnfs_curr_ld;
++	pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
++}
++
+ /*
+  * Call the appropriate parallel I/O subsystem read function.
+  */
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index acbb778..1d4e631 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -123,6 +123,7 @@ void unset_pnfs_layoutdriver(struct nfs_server *);
+ enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
+ 					    const struct rpc_call_ops *);
+ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
++void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *);
+ int pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+ void pnfs_destroy_layout(struct nfs_inode *);
+@@ -235,6 +236,12 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *ino)
+ 	pgio->pg_test = NULL;
+ }
+ 
++static inline void
++pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *ino)
++{
++	pgio->pg_test = NULL;
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #endif /* FS_NFS_PNFS_H */
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 0df18ae..c618d41 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -919,6 +919,8 @@ static int nfs_flush_multi(struct inode *inode, struct list_head *head, unsigned
+ 	} while (nbytes != 0);
+ 	atomic_set(&req->wb_complete, requests);
+ 
++	BUG_ON(lseg);
++	lseg = pnfs_update_layout(inode, req->wb_context, IOMODE_RW);
+ 	ClearPageError(page);
+ 	offset = 0;
+ 	nbytes = count;
+@@ -940,6 +942,7 @@ static int nfs_flush_multi(struct inode *inode, struct list_head *head, unsigned
+ 		nbytes -= wsize;
+ 	} while (nbytes != 0);
+ 
++	put_lseg(lseg);
+ 	return ret;
+ 
+ out_bad:
+@@ -965,11 +968,18 @@ static int nfs_flush_one(struct inode *inode, struct list_head *head, unsigned i
+ 	struct nfs_page		*req;
+ 	struct page		**pages;
+ 	struct nfs_write_data	*data;
++	int ret;
+ 
+ 	data = nfs_writedata_alloc(npages);
+-	if (!data)
+-		goto out_bad;
+-
++	if (!data) {
++		while (!list_empty(head)) {
++			req = nfs_list_entry(head->next);
++			nfs_list_remove_request(req);
++			nfs_redirty_request(req);
++		}
++		ret = -ENOMEM;
++		goto out;
++	}
+ 	pages = data->pagevec;
+ 	while (!list_empty(head)) {
+ 		req = nfs_list_entry(head->next);
+@@ -979,16 +989,14 @@ static int nfs_flush_one(struct inode *inode, struct list_head *head, unsigned i
+ 		*pages++ = req->wb_page;
+ 	}
+ 	req = nfs_list_entry(data->pages.next);
++	if ((!lseg) && list_is_singular(&data->pages))
++		lseg = pnfs_update_layout(inode, req->wb_context, IOMODE_RW);
+ 
+ 	/* Set up the argument struct */
+-	return nfs_write_rpcsetup(req, data, &nfs_write_full_ops, count, 0, lseg, how);
+- out_bad:
+-	while (!list_empty(head)) {
+-		req = nfs_list_entry(head->next);
+-		nfs_list_remove_request(req);
+-		nfs_redirty_request(req);
+-	}
+-	return -ENOMEM;
++	ret = nfs_write_rpcsetup(req, data, &nfs_write_full_ops, count, 0, lseg, how);
++out:
++	put_lseg(lseg); /* Cleans any gotten in ->pg_test */
++	return ret;
+ }
+ 
+ static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+@@ -996,7 +1004,7 @@ static void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
  {
-        struct crypto_hash *hmac;
--       char sigkeyconstant[] = "signaturekey";
-+       static const char sigkeyconstant[] = "signaturekey";
-        int slen = strlen(sigkeyconstant) + 1;  /* include null terminator */
-        struct hash_desc desc;
-        struct scatterlist sg[1];
+ 	size_t wsize = NFS_SERVER(inode)->wsize;
+ 
+-	pgio->pg_test = NULL;
++	pnfs_pageio_init_write(pgio, inode);
+ 
+ 	if (wsize < PAGE_CACHE_SIZE)
+ 		nfs_pageio_init(pgio, inode, nfs_flush_multi, wsize, ioflags);
+-- 
+1.7.2.1
 
-
-
-
-On Sat, Apr 17, 2010 at 3:54 AM, Di Pe <dipeit@gmail.com> wrote:
-> Hi,
->
-> this looks like an issue with kerberos, but not 100% sure:
->
-> ##############
->
->
-> I have a working configuration for Kerberized NFSv4 using Active
-> Directory 2003 functional level using
->  Kernel 2.6.27 with krb5 1.6.3 and gssd 1.1.3. openSUSE 11.1  When I
-> switch to openSUSE 11.2 (Kernel 2.6.31, krb5 1.70, gssd 1.1.3)
-> rpc.gssd -fvvvvv shows this error message (Failed to create machine
-> krb5 context) and gives me more errros like "gss_create_upcall for uid
-> 0 result -13" when I turn on rpc/nfs debugging using 'echo "65535" >
-> /proc/sys/sunrpc/rpc[nfs]_debug'
->
-> handling krb5 upcall
-> Full hostname for 'COMPUTRON.MYDOMAIN.ORG' is 'computron.mydomain.org'
-> Full hostname for 'phsgrid-03.fhcrc.org' is 'phsgrid-03.mydomain.org'
-> Key table entry not found while getting keytab entry for
-> 'root/phsgrid-03.mydomain.org@MYDOMAIN.ORG'
-> Success getting keytab entry for 'nfs/phsgrid-03.mydomain.org@MYDOMAIN.ORG'
-> Successfully obtained machine credentials for principal
-> 'nfs/phsgrid-03.mydomain.org@MYDOMAIN.ORG' stored in ccache
-> 'FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG'
-> INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG' are
-> good until 1271522236
-> using FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG as credentials cache for
-> machine creds
-> using environment variable to select krb5 ccache
-> FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG
-> creating context using fsuid 0 (save_uid 0)
-> creating tcp client for server COMPUTRON.MYDOMAIN.ORG
-> DEBUG: port already set to 2049
-> creating context with server nfs@COMPUTRON.MYDOMAIN.ORG
-> WARNING: Failed to create krb5 context for user with uid 0 for server
-> COMPUTRON.MYDOMAIN.ORG
-> WARNING: Failed to create machine krb5 context with credentials cache
-> FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG for server
-> COMPUTRON.MYDOMAIN.ORG
-> WARNING: Failed to create machine krb5 context with any credentials
-> cache for server COMPUTRON.MYDOMAIN.ORG
-> doing error downcall
->
->
-> now when replace krb5-1.7 with krb5-1.6.3 on openSUSE 11.2 everything
-> works again:
->
-> handling krb5 upcall
-> Full hostname for 'computron.mydomain.org' is 'computron.mydomain.org'
-> Full hostname for 'panther5.mydomain.org' is 'panther5.mydomain.org'
-> Key table entry not found while getting keytab entry for
-> 'root/panther5.mydomain.org@MYDOMAIN.ORG'
-> Success getting keytab entry for 'nfs/panther5.mydomain.org@MYDOMAIN.ORG'
-> INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG' are
-> good until 1271518766
-> INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG' are
-> good until 1271518766
-> using FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG as credentials cache for
-> machine creds
-> using environment variable to select krb5 ccache
-> FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG
-> creating context using fsuid 0 (save_uid 0)
-> creating tcp client for server computron.mydomain.org
-> creating context with server nfs@computron.mydomain.org
-> DEBUG: serialize_krb5_ctx: lucid version!
-> prepare_krb5_rfc1964_buffer: serializing keys with enctype 4 and length 8
-> doing downcall
->
->
-> going to openSUSE11.3 (Kernel 2.6.34-rc3, gssd 1.2.1, krb5 1.8) does
-> not help either. executing
-> mount -t nfs4 -o rsize=65536,wsize=65536,sec=krb5 computron:/tmp_iscsi tmp_iscsi
-> gives me the very some error message
->
-> after that I tried to install the rpm package of krb5 1.8.1 and also
-> 1.8.1 straight from source. I am always getting the same error message
-> "Failed to create krb5 context"
->
->> cat /etc/krb5.conf
-> [libdefaults]
->        default_realm = FHCRC.ORG
->        clockskew = 300
->        allow_weak_crypto = true
->        default_tkt_enctypes = des-cbc-crc
->        default_tgs_enctypes = des-cbc-crc
->        #default_tkt_enctypes = des-cbc-md5
->        #default_tgs_enctypes = des-cbc-md5
->        #default_tkt_enctypes = rc4-hmac
->        #default_tgs_enctypes = rc4-hmac
->        #kdc_req_checksum_type = -138
->        #ap_req_checksum_type = -138
->        #safe_checksum_type = -138
->        #ccache_type = 3
->        #pkinit_eku_checking = kpServerAuth
->
->>cat idmapd.conf
-> [General]
-> Verbosity = 0
-> Pipefs-Directory = /var/lib/nfs/rpc_pipefs
-> Domain = mydomain.org
-> Local-Realm = MYDOMAIN.ORG
->
->> klist -k -e -t
-> Keytab name: WRFILE:/etc/krb5.keytab
-> KVNO Timestamp         Principal
-> ---- ----------------- --------------------------------------------------------
->   3 12/31/69 16:00:00 nfs/phsgrid-03.mydomain.org@MYDOMAIN.ORG (DES
-> cbc mode with CRC-32)
->
->
-> Thanks for your help
->
