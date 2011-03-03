@@ -1,151 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from web65410.mail.ac4.yahoo.com ([76.13.9.30]:48382 "HELO
-	web65410.mail.ac4.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751180Ab1DAAmr convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 Mar 2011 20:42:47 -0400
-Message-ID: <510884.31321.qm@web65410.mail.ac4.yahoo.com>
-Date: Thu, 31 Mar 2011 17:42:45 -0700 (PDT)
-From: Andrew Klaassen <clawsoon@yahoo.com>
-Subject: Re: readdirplus/getattr
-To: linux-nfs@vger.kernel.org
-In-Reply-To: <23968.1301612295@risen.void.org>
-Content-Type: text/plain; charset=iso-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:33386 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758655Ab1CCUiT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Mar 2011 15:38:19 -0500
+Message-ID: <4D6FFC37.9040409@RedHat.com>
+Date: Thu, 03 Mar 2011 15:38:15 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Karel Zak <kzak@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/2] mount: Allow 'port=0' to be a valid port value.
+References: <1299159822-25190-1-git-send-email-kzak@redhat.com> <4D6FF466.2070004@RedHat.com> <0B360A89-0FE0-4DB9-92C4-0EE59B1C2B75@oracle.com> <8C4D7A5C-3611-42AE-883E-59BA3C769041@oracle.com>
+In-Reply-To: <8C4D7A5C-3611-42AE-883E-59BA3C769041@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Interesting.  So the reason it's switching back and forth between readdirplus and getattr during the same ls command is because the command is taking so long to run that the cache is periodically expiring as the command is running?
-
-I'll do some playing with actimeo to see if I'm actually understanding this.
-
-Thanks!
-
-Andrew
 
 
---- On Thu, 3/31/11, Steven Procter <steven@risen.void.org> wrote:
-
-> This is due to client caching. 
-> When the second ls -l runs the cache
-> contains an entry for the directory.  The client can
-> check if the cached
-> directory data is still valid by issuing a GETATTR on the
-> directory.
+On 03/03/2011 03:16 PM, Chuck Lever wrote:
 > 
-> But this only validates the names, not the attributes,
-> which are not
-> actually part of the directory.  Those must be
-> refetched.  So the client
-> issues a GETATTR for each entry in the directory.  It
-> issues them
-> sequentially, probably as ls calls readdir() and then
-> stat()
-> sequentially on the directory entries.
+> On Mar 3, 2011, at 3:12 PM, Chuck Lever wrote:
 > 
-> This takes so long that the cache entry times out and the
-> next time you
-> run ls -l the client reloads the directory using
-> READDIRPLUS.
+>> Hi Steve-
+>>
+>> On Mar 3, 2011, at 3:04 PM, Steve Dickson wrote:
+>>
+>>> With the new util-linux, /etc/mtab is now is symbolically linked
+>>> to /proc/mounts. In /proc/mounts, the 'port=0' exits which causes
+>>> the umount.nfs to error out with the following error:
+>>>  umount.nfs: invalid value for 'port=' option
+>>>
+>>> Setting port=0 is a valid value. It just means go out and query
+>>> remote rpcbind to get the correct port.
+>>>
+>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>
+>> Why are you signing off on this?  I sent you this patch weeks ago.  (In fact my version of the patch also fixes this problem in nfs_mount_port() as well).
 > 
-> --Steven
+> Could have been lost in the shuffle... we were all traveling.  Anyway, you need to fix this in  () too.
+Yeah... I don't see it... but see your point WRT nfs_mount_port()
+
+steved.
 > 
-> > X-Mailer: YahooMailClassic/12.0.2
-> YahooMailWebService/0.8.109.295617
-> > Date:    Thu, 31 Mar 2011 15:24:15
-> -0700 (PDT)
-> > From:    Andrew Klaassen <clawsoon@yahoo.com>
-> > Subject: readdirplus/getattr
-> > To:    linux-nfs@vger.kernel.org
-> > Sender:    linux-nfs-owner@vger.kernel.org
-> > 
-> > Hi,
-> > 
-> > I've been trying to get my Linux NFS clients to be a
-> little snappier about listing large directories from
-> heavily-loaded servers.  I found the following
-> fascinating behaviour (this is with 2.6.31.14-0.6-desktop,
-> x86_64, from openSUSE 11.3, Solaris Express 11 NFS server):
-> > 
-> > With "ls -l --color=none" on a directory with 2500
-> files:
-> > 
-> >             
-> |      rdirplus   | 
->   nordirplus   |
-> >             
-> |1st  |2nd  |1st  |1st  |2nd 
-> |1st  |
-> >             
-> |run  |run  |run  |run  |run 
-> |run  |
-> >             
-> |light|light|heavy|light|light|heavy|
-> >              |load
-> |load |load |load |load |load |
-> > --------------------------------------------------
-> > readdir      |   0
-> |   0 |   0 |  25
-> |   0 |  25 |
-> > readdirplus  | 209 |   0 | 276
-> |   0 |   0
-> |   0 |
-> > lookup       |  16
-> |   0 |  10 |2316 |   0
-> |2473 |
-> > getattr      |   1 |2501
-> |2452 |   1 |2465 |   1 |
-> > 
-> > The most interesting case is with rdirplus specified
-> as a mount option to a heavily loaded server.  The NFS
-> client keeps switching back and forth between readdirplus
-> and getattr:
-> > 
-> >  ~10 seconds doing ~70 readdirplus calls,
-> followed by
-> >  ~150 seconds doing ~800 gettattr calls, followed
-> by
-> >  ~12 seconds doing ~70 readdirplus calls,
-> followed by
-> >  ~200 seconds doing ~800 gettattr calls, followed
-> by
-> >  ~20 seconds doing ~130 readdirplus calls,
-> followed by
-> >  ~220 seconds doing ~800 gettattr calls
-> > 
-> > All the calls appear to get reasonably prompt replies
-> (never more than a second or so), which makes me wonder why
-> it keeps switching back and forth between the
-> strategies.  (Especially since I've specified rdirplus
-> as a mount option.)
-> > 
-> > Is it supposed to do that?
-> > 
-> > I'd really like to see how it does with readdirplus
-> ~only~, no getattr calls, since it's spending only 40
-> seconds in total on readdirplus calls compared to 570
-> seconds in total on (redundant, I think, based on the
-> lightly-loaded case) getattr calls.
-> > 
-> > It'd also be nice to be able to force readdirplus
-> calls instead of getattr calls for second and subsequent
-> listings of a directory.
-> > 
-> > I saw a recent thread talking about readdirplus
-> changes in 2.6.37, so I'll give that a try when I get a
-> chance to see how it behaves.
-> > 
-> > Andrew
-> > 
-> > 
-> > --
-> > To unsubscribe from this list: send the line
-> "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe
-> linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+>>
+>>> ---
+>>> utils/mount/network.c |    2 +-
+>>> 1 files changed, 1 insertions(+), 1 deletions(-)
+>>>
+>>> diff --git a/utils/mount/network.c b/utils/mount/network.c
+>>> index 8049c1a..88ab222 100644
+>>> --- a/utils/mount/network.c
+>>> +++ b/utils/mount/network.c
+>>> @@ -1346,7 +1346,7 @@ nfs_nfs_port(struct mount_options *options, unsigned long *port)
+>>> 	case PO_NOT_FOUND:
+>>> 		break;
+>>> 	case PO_FOUND:
+>>> -		if (tmp >= 1 && tmp <= 65535) {
+>>> +		if (tmp >= 0 && tmp <= 65535) {
+>>> 			*port = tmp;
+>>> 			return 1;
+>>> 		}
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>> -- 
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>>
+>>
+>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
