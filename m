@@ -1,57 +1,39 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH 01/17] CLNT: check NFS4ERR_NOT_ONLY_OP for
- CREATE_SESSION
-Date: Thu, 3 Mar 2011 00:57:02 -0500
-Message-ID: <20110303055702.GC7724@fieldses.org>
-References: <4D6DE26C.3010103@cn.fujitsu.com>
- <4D6DE2F8.8010309@cn.fujitsu.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Linux pNFS status meeting 03/03/11
+Date: Wed, 2 Mar 2011 22:12:09 -0800
+Message-ID: <OFAC6C85E8.9110DFE9-ON88257848.0021F152-88257848.002211F4@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: NFS <linux-nfs@vger.kernel.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Content-Type: text/plain; charset="US-ASCII"
+To: linux-nfs@vger.kernel.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:49719 "EHLO fieldses.org"
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:38492 "EHLO e3.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753960Ab1CCF5D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Mar 2011 00:57:03 -0500
-In-Reply-To: <4D6DE2F8.8010309@cn.fujitsu.com>
+	id S1750923Ab1CCGMO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Mar 2011 01:12:14 -0500
+Received: from d01dlp01.pok.ibm.com (d01dlp01.pok.ibm.com [9.56.224.56])
+	by e3.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p235qBHk002712
+	for <linux-nfs@vger.kernel.org>; Thu, 3 Mar 2011 00:52:11 -0500
+Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 9C6DD38C8038
+	for <linux-nfs@vger.kernel.org>; Thu,  3 Mar 2011 01:12:12 -0500 (EST)
+Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p236CDhA2425086
+	for <linux-nfs@vger.kernel.org>; Thu, 3 Mar 2011 01:12:13 -0500
+Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p236CDw8020445
+	for <linux-nfs@vger.kernel.org>; Thu, 3 Mar 2011 01:12:13 -0500
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p236CDsH020437
+	for <linux-nfs@vger.kernel.org>; Thu, 3 Mar 2011 01:12:13 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 02, 2011 at 02:26:00PM +0800, Mi Jinlong wrote:
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Meeting on Thursday 03/03/11 at 9:30 AM PST (12:30 PM EST)
 
-Looks fine, thanks.--b.
 
-> ---
->  nfs4.1/server41tests/st_create_session.py |   14 ++++++++++++++
->  1 files changed, 14 insertions(+), 0 deletions(-)
-> 
-> diff --git a/nfs4.1/server41tests/st_create_session.py b/nfs4.1/server41tests/st_create_session.py
-> index a213a3c..1d02a50 100644
-> --- a/nfs4.1/server41tests/st_create_session.py
-> +++ b/nfs4.1/server41tests/st_create_session.py
-> @@ -382,3 +382,17 @@ def testMaxreqs(t, env):
->      if nfs4lib.test_equal(sess1.fore_channel.maxrequests,
->                            chan_attrs.ca_maxrequests, "count4"):
->          fail("Server allows surprisingly large fore_channel maxreqs")
-> +
-> +def testNotOnlyOp(t, env):
-> +    """Check for NFS4ERR_NOT_ONLY_OP
-> +
-> +    FLAGS: create_session all
-> +    CODE: CSESS23
-> +    """
-> +    c = env.c1.new_client(env.testname(t))
-> +    # CREATE_SESSION with PUT_ROOTFH
-> +    chan_attrs = channel_attrs4(0,8192,8192,8192,128,8,[])
-> +    res = c.c.compound([op.create_session(c.clientid, c.seqid, 0,
-> +                                        chan_attrs, chan_attrs,
-> +                                        123, []), op.putrootfh()], None)
-> +    check(res, NFS4ERR_NOT_ONLY_OP)
-> -- 
-> 1.7.4.1
-> 
-> 
-> 
+USA Toll-Free: 888-426-6840
+USA Caller Paid: 215-861-6239
+
+Israel Toll-Free: 1-809-417-783
+
+Participant Code: 8792872
