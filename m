@@ -1,101 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:48715 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750724Ab1CXQyy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Mar 2011 12:54:54 -0400
-Received: by bwz15 with SMTP id 15so223807bwz.19
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Mar 2011 09:54:53 -0700 (PDT)
-In-Reply-To: <1300985305.31106.6.camel@lade.trondhjem.org>
-References: <AANLkTinBuLxDq5zrxC=-0fS_md5CXTQAS_POsKA9issP@mail.gmail.com>
-	<4D8B732F.8020404@panasas.com>
-	<1300985305.31106.6.camel@lade.trondhjem.org>
-Date: Thu, 24 Mar 2011 12:54:52 -0400
-Message-ID: <AANLkTi=xb7WAAkyK8tTngjyF1b69wtW+TqpXLStth6a0@mail.gmail.com>
-Subject: Re: [PATCH 11/12] NFSv4.1: layoutcommit
+Received: from mx2.netapp.com ([216.240.18.37]:38652 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755657Ab1CCPOp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Mar 2011 10:14:45 -0500
 From: Fred Isaman <iisaman@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Benny Halevy <bhalevy@panasas.com>,
-        "William A. (Andy) Adamson" <androsadamson@gmail.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 1/9] NFSv4.1: rearrange nfs_write_rpcsetup
+Date: Thu,  3 Mar 2011 10:13:41 -0500
+Message-Id: <1299165229-3148-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
+References: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, Mar 24, 2011 at 12:48 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2011-03-24 at 18:37 +0200, Benny Halevy wrote:
->> On 2011-03-24 15:57, William A. (Andy) Adamson wrote:
->> >>> Only whole file layout support means that there is only one IOMODE_RW layout
->> >>> segment.
->> >>>
->> >>> Signed-off-by: Andy Adamson <andros@netapp.com>
->> >>> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
->> >>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
->> >>> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
->> >>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
->> >>> Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
->> >>> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
->> >>> Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
->> >>> Tested-by: Boaz Harrosh <bharrosh@panasas.com>
->> >>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->> >>
->> >> The code in this patch is new and different enough from the one I/we
->> >> signed-off originally that they don't make sense here.
->> >
->> > Hi Benny
->> >
->> > OK with me
->> >
->> >>>
->> >>> +             /* references matched in nfs4_layoutcommit_release */
->> >>> +             wdata->lseg->pls_lc_cred =
->> >>> +                     get_rpccred(wdata->args.context->state->owner->so_cred);
->> >>> +             mark_inode_dirty_sync(wdata->inode);
->> >>> +             dprintk("%s: Set layoutcommit for inode %lu ",
->> >>> +                     __func__, wdata->inode->i_ino);
->> >>> +     }
->> >>> +     if (end_pos > wdata->lseg->pls_end_pos)
->> >>> +             wdata->lseg->pls_end_pos = end_pos;
->> >>
->> >> The end_pos is essentially per inode, why maintain it per lseg?
->> >> How do you see this working with multiple lsegs in mind?
->> >
->> > The end-pos is per lseg, not per inode - each layoutcommit applies to
->> > a range of WRITES for a layoutsegment over the LAYOUTCOMMIT range.
->> >
->> > From Section 18.42.3
->> > .  The byte-range being committed is
->> >    specified through the byte-range (loca_offset and loca_length).  This
->> >    byte-range MUST overlap with one or more existing layouts previously
->> >    granted via LAYOUTGET
->> >
->> >
->> >    Also, loca_last_write_offset MUST overlap the range
->> >    described by loca_offset and loca_length.
->> >
->> > For the multiple lseg case: if the lsegs are merged, bookeeping
->> > end_pos per lseg just works. If a layoutdriver does not use merged
->> > lsegs, then there is a bit of work to do to walk the list of lsegs and
->> > determine the final end_pos for a given LAYOUTCOMMIT.  If there are
->> > multiple non-contiguous lsegs, each used for WRITEs then multiple
->> > LAYOUTCOMMITs will need to be sent, otherwise the LAYOUTCOMMIT
->> > byte-range will not overlap as required.
->> >
->>
->> For the current layout types I believe that the LAYOUTCOMMIT can "merge"
->> multiple layout segments into a single LAYOUTCOMMIT, with a byte range
->> covering all segments and a last_byte_written offset which is just the maximum.
->> Future layout types may need this method though...
->
-> Is that safe?
->
-> What if I'm doing blocks and have written layout segment 1 & 3, but not
-> layout segment 2? I don't want to have the MDS commit layout segment 2,
-> and make the (lack of) data there visible to future readers.
->
+From: Andy Adamson <andros@netapp.com>
 
-No, it is not safe.  Avoiding this problem is one of the major reasons
-for putting the bookkeeping in the lseg.
+Reorder nfs_write_rpcsetup, preparing for a pnfs entry point.
 
-Fred
+Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/write.c |   82 +++++++++++++++++++++++++++++++------------------------
+ 1 files changed, 46 insertions(+), 36 deletions(-)
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index aca0268..5604854 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -782,25 +782,21 @@ static int flush_task_priority(int how)
+ 	return RPC_PRIORITY_NORMAL;
+ }
+ 
+-/*
+- * Set up the argument/result storage required for the RPC call.
+- */
+-static int nfs_write_rpcsetup(struct nfs_page *req,
+-		struct nfs_write_data *data,
+-		const struct rpc_call_ops *call_ops,
+-		unsigned int count, unsigned int offset,
+-		int how)
++static int nfs_initiate_write(struct nfs_write_data *data,
++		       struct rpc_clnt *clnt,
++		       const struct rpc_call_ops *call_ops,
++		       int how)
+ {
+-	struct inode *inode = req->wb_context->path.dentry->d_inode;
++	struct inode *inode = data->inode;
+ 	int priority = flush_task_priority(how);
+ 	struct rpc_task *task;
+ 	struct rpc_message msg = {
+ 		.rpc_argp = &data->args,
+ 		.rpc_resp = &data->res,
+-		.rpc_cred = req->wb_context->cred,
++		.rpc_cred = data->cred,
+ 	};
+ 	struct rpc_task_setup task_setup_data = {
+-		.rpc_client = NFS_CLIENT(inode),
++		.rpc_client = clnt,
+ 		.task = &data->task,
+ 		.rpc_message = &msg,
+ 		.callback_ops = call_ops,
+@@ -811,12 +807,49 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+ 	};
+ 	int ret = 0;
+ 
++	/* Set up the initial task struct.  */
++	NFS_PROTO(inode)->write_setup(data, &msg);
++
++	dprintk("NFS: %5u initiated write call "
++		"(req %s/%lld, %u bytes @ offset %llu)\n",
++		data->task.tk_pid,
++		inode->i_sb->s_id,
++		(long long)NFS_FILEID(inode),
++		data->args.count,
++		(unsigned long long)data->args.offset);
++
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task)) {
++		ret = PTR_ERR(task);
++		goto out;
++	}
++	if (how & FLUSH_SYNC) {
++		ret = rpc_wait_for_completion_task(task);
++		if (ret == 0)
++			ret = task->tk_status;
++	}
++	rpc_put_task(task);
++out:
++	return ret;
++}
++
++/*
++ * Set up the argument/result storage required for the RPC call.
++ */
++static int nfs_write_rpcsetup(struct nfs_page *req,
++		struct nfs_write_data *data,
++		const struct rpc_call_ops *call_ops,
++		unsigned int count, unsigned int offset,
++		int how)
++{
++	struct inode *inode = req->wb_context->path.dentry->d_inode;
++
+ 	/* Set up the RPC argument and reply structs
+ 	 * NB: take care not to mess about with data->commit et al. */
+ 
+ 	data->req = req;
+ 	data->inode = inode = req->wb_context->path.dentry->d_inode;
+-	data->cred = msg.rpc_cred;
++	data->cred = req->wb_context->cred;
+ 
+ 	data->args.fh     = NFS_FH(inode);
+ 	data->args.offset = req_offset(req) + offset;
+@@ -837,30 +870,7 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+ 	data->res.verf    = &data->verf;
+ 	nfs_fattr_init(&data->fattr);
+ 
+-	/* Set up the initial task struct.  */
+-	NFS_PROTO(inode)->write_setup(data, &msg);
+-
+-	dprintk("NFS: %5u initiated write call "
+-		"(req %s/%lld, %u bytes @ offset %llu)\n",
+-		data->task.tk_pid,
+-		inode->i_sb->s_id,
+-		(long long)NFS_FILEID(inode),
+-		count,
+-		(unsigned long long)data->args.offset);
+-
+-	task = rpc_run_task(&task_setup_data);
+-	if (IS_ERR(task)) {
+-		ret = PTR_ERR(task);
+-		goto out;
+-	}
+-	if (how & FLUSH_SYNC) {
+-		ret = rpc_wait_for_completion_task(task);
+-		if (ret == 0)
+-			ret = task->tk_status;
+-	}
+-	rpc_put_task(task);
+-out:
+-	return ret;
++	return nfs_initiate_write(data, NFS_CLIENT(inode), call_ops, how);
+ }
+ 
+ /* If a nfs_flush_* function fails, it should remove reqs from @head and
+-- 
+1.7.2.1
+
