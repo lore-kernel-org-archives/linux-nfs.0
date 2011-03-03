@@ -1,57 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:53258 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753257Ab1C1U4w (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2011 16:56:52 -0400
-Received: by iwn34 with SMTP id 34so4081951iwn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Mar 2011 13:56:52 -0700 (PDT)
-Date: Mon, 28 Mar 2011 16:56:51 -0400
-Message-ID: <AANLkTikRJad_vR1qxL1Wr4AO0OfP32oCYj4X0cTnVwv+@mail.gmail.com>
-Subject: rc4-hmac-md5 mount failure
-From: Olga Kornievskaia <aglo@citi.umich.edu>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from citi.umich.edu ([141.212.112.111]:55878 "EHLO citi.umich.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754413Ab1CCA7P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Mar 2011 19:59:15 -0500
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: <linux-nfs@vger.kernel.org>, Kevin Coffman <kwc@citi.umich.edu>
+Subject: [PATCH 1/2] gss:krb5 only include enctype numbers in gm_upcall_enctypes
+Date: Wed,  2 Mar 2011 19:51:41 -0500
+Message-Id: <1299113502-17179-2-git-send-email-kwc@citi.umich.edu>
+In-Reply-To: <1299113502-17179-1-git-send-email-kwc@citi.umich.edu>
+References: <1299113502-17179-1-git-send-email-kwc@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-I apologize I have posted an incomplete problem/solution and possibly
-to the wrong thread.
+Make the value in gm_upcall_enctypes just the enctype values.
+This allows the values to be used more easily elsewhere.
 
-Problem: linux client mounting linux server using rc4-hmac-md5
-enctype. gssd fails with create a context after receiving a reply from
-the server.
+Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+---
+ net/sunrpc/auth_gss/auth_gss.c      |    2 +-
+ net/sunrpc/auth_gss/gss_krb5_mech.c |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-Diagnose: putting printout statements in the server kernel and
-kerberos libraries revealed that client and server derived different
-integrity keys.
-
-Server kernel code was at fault due the the commit
-
-[aglo@skydive linux-pnfs]$ git show 411b5e05617593efebc06241dbc56f42150f2abe
-commit 411b5e05617593efebc06241dbc56f42150f2abe
-Author: Joe Perches <joe@perches.com>
-Date:   Mon Sep 13 12:48:01 2010 -0700
-
-   net/sunrpc: Use static const char arrays
-
-   Signed-off-by: Joe Perches <joe@perches.com>
-   Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_
-index 0326446..8a4d083c 100644
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 45dbf15..f3914d0 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -417,7 +417,7 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+ 		gss_msg->msg.len += len;
+ 	}
+ 	if (mech->gm_upcall_enctypes) {
+-		len = sprintf(p, mech->gm_upcall_enctypes);
++		len = sprintf(p, "enctypes=%s ", mech->gm_upcall_enctypes);
+ 		p += len;
+ 		gss_msg->msg.len += len;
+ 	}
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index f375dec..9022f0a 100644
 --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
 +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -422,7 +422,7 @@ static int
- context_derive_keys_rc4(struct krb5_ctx *ctx)
- {
-       struct crypto_hash *hmac;
--       char sigkeyconstant[] = "signaturekey";
-+       static const char sigkeyconstant[] = "signaturekey";
-       int slen = strlen(sigkeyconstant) + 1;  /* include null terminator */
-       struct hash_desc desc;
-       struct scatterlist sg[1];
+@@ -750,7 +750,7 @@ static struct gss_api_mech gss_kerberos_mech = {
+ 	.gm_ops		= &gss_kerberos_ops,
+ 	.gm_pf_num	= ARRAY_SIZE(gss_kerberos_pfs),
+ 	.gm_pfs		= gss_kerberos_pfs,
+-	.gm_upcall_enctypes = "enctypes=18,17,16,23,3,1,2 ",
++	.gm_upcall_enctypes = "18,17,16,23,3,1,2",
+ };
+ 
+ static int __init init_kerberos_module(void)
+-- 
+1.7.3.4
 
-Solution: if this commit is undone, rc4-based mount works without
-issues. verified with linux and windows clients.
