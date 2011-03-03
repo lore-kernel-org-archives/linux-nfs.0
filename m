@@ -1,74 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:21810 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752685Ab1COSQA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 14:16:00 -0400
-Subject: Re: problem with nfs latency during high IO
+Received: from fieldses.org ([174.143.236.118]:38065 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756010Ab1CCG0V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Mar 2011 01:26:21 -0500
+Date: Thu, 3 Mar 2011 01:26:21 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kevin Coffman <kwc@citi.umich.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/2] Give svcgssd access to kernel's supported enctypes
+Message-ID: <20110303062621.GG7724@fieldses.org>
+References: <1299113502-17179-1-git-send-email-kwc@citi.umich.edu>
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com>
-Date: Tue, 15 Mar 2011 14:15:41 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Judith Flo Gaya <jflo@imppc.org>
-Message-Id: <7D458ECC-9AFB-4791-94EF-736061BD1095@oracle.com>
-References: <4D7B6DE5.8010008@imppc.org> <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com> <4D7FA11F.5020604@imppc.org> <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+In-Reply-To: <1299113502-17179-1-git-send-email-kwc@citi.umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, Mar 02, 2011 at 07:51:40PM -0500, Kevin Coffman wrote:
+> Make the kernel's supported enctypes available to user-land
+> (svcgssd) via a new proc file.  The client side already gets
+> this information in the upcall to gssd, we need to make it
+> available to svcgssd.
 
-On Mar 15, 2011, at 2:03 PM, Chuck Lever wrote:
+They look good to me; I'll queue them up for 2.6.39 if nobody else sees
+a problem.
 
-> 
-> On Mar 15, 2011, at 1:25 PM, Judith Flo Gaya wrote:
-> 
->> Hello Chuck,
->> 
->> On 03/15/2011 05:24 PM, Chuck Lever wrote:
->>> Hi Judith-
->>> 
->>> On Mar 12, 2011, at 7:58 AM, Judith Flo Gaya wrote:
->>> 
->>>> Hello,
->>>> 
->>>> I was told some days ago that my problem with my NFS system is related to this bug, as the problem that I'm experiencing is quite similar.
->>>> 
->>>> The bug : https://bugzilla.redhat.com/show_bug.cgi?id=469848
->>>> 
->>>> The link itself explains quite well my issue, I'm just truing to copy a big file (36Gb) to my nfs server and when I try to get an ls -l command to the same folder where I'm copying data, the command gets stuck for some time. This amount of time changes from a few secs to SOME minutes (9' is the current record).
->>>> I can live with some seconds of delay, but minutes is something quite unacceptable.
->>>> 
->>>> As this is an nfs server running on a red hat system (an HP ibrix x9300 with Red Hat 5.3 x86_64, kernel 2.6.18-128) I was told to apply the patch suggested from the bug on my clients.
->>>> 
->>>> Unfortunately my clients are running fedora core 14 (x86_64, kernel 2.6.35.6-45) and I can't find the file that they are referring to, the file fs/nfs/inode.c is not there and I can't find the rpm that contains it.
->>>> 
->>>> As the bug is a very very old one, I took it for granted that is already applied to fedora, but I wanted to make sure that it is looking at the file.
->>>> 
->>>> Can you help me on this? I'm I wrong in my supposition (is the patch really applied)? is it possible that my problem is somewhere else?
->>> 
->>> This sounds like typical behavior.
->> But it is not like this when I use a RHEL6 as a client to those servers, in this case, the ls only last for some seconds, nothing like the minutes that it takes from my fedora.
-> 
-> Which Fedora systems, exactly?  The fix I described below is almost certainly in RHEL 6.
-> 
->>> 
->>> POSIX requires that the mtime and file size returned by stat(2) ('ls -l') reflect the most recent write(2).  On NFS, the server sets both of these fields.  If a client is caching dirty data, and an application does a stat(2), the client is forced to flush the dirty data so that the server can update mtime and file size appropriately.  The client then does a GETATTR, and returns those values to the requesting application.
->>> 
->> ok, sorry, I know this is a very stupid question but. what do you mean by dirty data?
-> 
-> Dirty data is data that your application has written to the file but which hasn't been flushed to the server's disk.  This data resides in the client's page cache, on its way to the server.
-> 
->> BTW i understand the time issue, but again, if the version of the kernel that the red hat has installed allows me to get the information soon, why a newer kernel in fedora does not?
-> 
-> Sounds like a bug.  Fedora kernels newer than 2.6.32 should work as well as, or better than, RHEL 6.
+Do you have the nfs-utils bits ready as well?
 
-Looks like commit acdc53b2 "NFS: Replace __nfs_write_mapping with sync_inode()" removes the code that holds i_mutex while trying to flush writes before a GETATTR.  This means application writes can possibly starve a stat(2) call.  Trond, this seems like a regression...?
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+--b.
