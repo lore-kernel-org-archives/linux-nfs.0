@@ -1,64 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:50545 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755814Ab1CAVdg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Mar 2011 16:33:36 -0500
-Received: by wwb22 with SMTP id 22so5021287wwb.1
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Mar 2011 13:33:34 -0800 (PST)
-In-Reply-To: <AANLkTimtmz_7Q8DsjhhM1M8pFhLfJpannebJsuFuV_C-@mail.gmail.com>
-References: <AANLkTimtmz_7Q8DsjhhM1M8pFhLfJpannebJsuFuV_C-@mail.gmail.com>
-Date: Tue, 1 Mar 2011 16:33:34 -0500
-Message-ID: <AANLkTikKbUvEDY5LWHk5=JOEimS1R+oz-m0bfP=6+YcP@mail.gmail.com>
-Subject: nfs4 kernel ops
-From: Olga Kornievskaia <aglo@citi.umich.edu>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:38652 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756243Ab1CCPOq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Mar 2011 10:14:46 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 3/9] NFSv4.1: Send lseg down into nfs_write_rpcsetup
+Date: Thu,  3 Mar 2011 10:13:43 -0500
+Message-Id: <1299165229-3148-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
+References: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Is this an interesting kernel ops for the linux server developers? It
-happened while running general tests on the windows client.
+We grab the lseg sent in from the doio function and attach it to
+each struct nfs_write_data created.  This is how the lseg will be
+sent to the layout driver.
 
-This is from benney's tree and it's 2.6.38-rc5. from pnfs-all-latest
-branch and commit
-9e697ce1a3fc537cf3fb37a3e11e29345eb0f24d
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/write.c          |    7 +++++--
+ include/linux/nfs_xdr.h |    1 +
+ 2 files changed, 6 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 5604854..0df18ae 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -97,6 +97,7 @@ void nfs_writedata_free(struct nfs_write_data *p)
+ 
+ static void nfs_writedata_release(struct nfs_write_data *wdata)
+ {
++	put_lseg(wdata->lseg);
+ 	put_nfs_open_context(wdata->args.context);
+ 	nfs_writedata_free(wdata);
+ }
+@@ -840,6 +841,7 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+ 		struct nfs_write_data *data,
+ 		const struct rpc_call_ops *call_ops,
+ 		unsigned int count, unsigned int offset,
++		struct pnfs_layout_segment *lseg,
+ 		int how)
+ {
+ 	struct inode *inode = req->wb_context->path.dentry->d_inode;
+@@ -850,6 +852,7 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
+ 	data->req = req;
+ 	data->inode = inode = req->wb_context->path.dentry->d_inode;
+ 	data->cred = req->wb_context->cred;
++	data->lseg = get_lseg(lseg);
+ 
+ 	data->args.fh     = NFS_FH(inode);
+ 	data->args.offset = req_offset(req) + offset;
+@@ -930,7 +933,7 @@ static int nfs_flush_multi(struct inode *inode, struct list_head *head, unsigned
+ 		if (nbytes < wsize)
+ 			wsize = nbytes;
+ 		ret2 = nfs_write_rpcsetup(req, data, &nfs_write_partial_ops,
+-				   wsize, offset, how);
++					  wsize, offset, lseg, how);
+ 		if (ret == 0)
+ 			ret = ret2;
+ 		offset += wsize;
+@@ -978,7 +981,7 @@ static int nfs_flush_one(struct inode *inode, struct list_head *head, unsigned i
+ 	req = nfs_list_entry(data->pages.next);
+ 
+ 	/* Set up the argument struct */
+-	return nfs_write_rpcsetup(req, data, &nfs_write_full_ops, count, 0, how);
++	return nfs_write_rpcsetup(req, data, &nfs_write_full_ops, count, 0, lseg, how);
+  out_bad:
+ 	while (!list_empty(head)) {
+ 		req = nfs_list_entry(head->next);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 21cd41d..09d9681 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1038,6 +1038,7 @@ struct nfs_write_data {
+ 	unsigned int		npages;		/* Max length of pagevec */
+ 	struct nfs_writeargs	args;		/* argument struct */
+ 	struct nfs_writeres	res;		/* result struct */
++	struct pnfs_layout_segment *lseg;
+ 	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
+ #ifdef CONFIG_NFS_V4
+ 	unsigned long		timestamp;	/* For lease renewal */
+-- 
+1.7.2.1
 
-ar  1 15:31:37 localhost kernel: Call Trace:
-Mar  1 15:31:37 localhost kernel: [<ffffffff8145bf89>]
-__mutex_lock_common+0x12c/0x193
-Mar  1 15:31:37 localhost kernel: [<ffffffff81070af8>] ? groups_alloc+0x3d/0xc3
-Mar  1 15:31:37 localhost kernel: [<ffffffff8145c009>]
-__mutex_lock_slowpath+0x19/0x1b
-Mar  1 15:31:37 localhost kernel: [<ffffffff8145c129>] mutex_lock+0x36/0x50
-Mar  1 15:31:37 localhost kernel: [<ffffffffa02cba41>]
-nfs4_lock_state+0x15/0x27 [nfsd]
-Mar  1 15:31:37 localhost kernel: [<ffffffffa02d3d5c>]
-nfsd_layout_recall_cb+0xa9/0x32e [nfsd]
-Mar  1 15:31:37 localhost kernel: [<ffffffffa02d76ce>]
-pnfsd_lexp_recall_layout+0xfb/0x243 [nfsd]
-Mar  1 15:31:37 localhost kernel: [<ffffffffa02b4baf>] ?
-nfsd_permission+0x43/0xf6 [nfsd]
-Mar  1 15:31:37 localhost kernel: [<ffffffffa02b654b>]
-nfsd_setattr+0x124/0x2b3 [nfsd]
-Mar  1 15:31:37 localhost kernel: [<ffffffffa02cc457>]
-nfsd4_process_open2+0x2dd/0x971 [nfsd]
-Mar  1 15:31:37 localhost kernel: [<ffffffffa02c10a7>]
-nfsd4_open+0x296/0x2cd [nfsd]
-Mar  1 15:31:37 localhost kernel: [<ffffffffa02c08a7>]
-nfsd4_proc_compound+0x229/0x3ba [nfsd]
-Mar  1 15:31:37 localhost kernel: [<ffffffffa02b138f>]
-nfsd_dispatch+0xf1/0x1d5 [nfsd]
-Mar  1 15:31:37 localhost kernel: [<ffffffffa0224e4a>]
-svc_process_common+0x2e1/0x4d8 [sunrpc]
-Mar  1 15:31:37 localhost kernel: [<ffffffffa02b185a>] ? nfsd+0x0/0x13f [nfsd]
-Mar  1 15:31:37 localhost kernel: [<ffffffffa0225264>]
-svc_process+0x11c/0x13c [sunrpc]
-Mar  1 15:31:37 localhost kernel: [<ffffffffa02b1950>] nfsd+0xf6/0x13f [nfsd]
-Mar  1 15:31:37 localhost kernel: [<ffffffff81069f52>] kthread+0x82/0x8a
-Mar  1 15:31:37 localhost kernel: [<ffffffff8100ba24>]
-kernel_thread_helper+0x4/0x10
-Mar  1 15:31:37 localhost kernel: [<ffffffff81069ed0>] ? kthread+0x0/0x8a
-Mar  1 15:31:37 localhost kernel: [<ffffffff8100ba20>] ?
-kernel_thread_helper+0x0/0x10
