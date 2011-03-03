@@ -1,41 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:42230 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753173Ab1CDQ6y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2011 11:58:54 -0500
-Date: Fri, 4 Mar 2011 11:58:52 -0500
-From: Christoph Hellwig <hch@infradead.org>
-To: Neil Horman <nhorman@tuxdriver.com>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        security@kernel.org, Jeff Layton <jlayton@redhat.com>,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] nfs4: Ensure that ACL pages sent over NFS were not
- allocated from the slab
-Message-ID: <20110304165852.GA2679@infradead.org>
-References: <1299257053-13175-1-git-send-email-nhorman@tuxdriver.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1299257053-13175-1-git-send-email-nhorman@tuxdriver.com>
+Received: from mx2.netapp.com ([216.240.18.37]:32592 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758085Ab1CCPOr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Mar 2011 10:14:47 -0500
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 9/9] NFSv4.1: Clear lseg pointer in ->doio function
+Date: Thu,  3 Mar 2011 10:13:49 -0500
+Message-Id: <1299165229-3148-10-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
+References: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-> It occurs, because an skb with a fraglist was freed from the tcp retransmit
-> queue when it was acked, but a page on that fraglist had PG_Slab set (indicating
-> it was allocated from the Slab allocator (which means the free path above can't
-> safely free it via put_page)
-> 
-> We tracked this back to an nfsv4 setacl operation, in which the nfs code
-> attempted to fill convert the passed in buffer to an array of pages in
-> __nfs4_proc_set_acl, which gets used by the skb->frags list in xs_sendpages.
-> __nfs4_proc_set_acl just converts each page in the buffer to a page struct via
-> virt_to_page, but the vfs allocates the buffer via kmalloc, meaning the PG_slab
-> bit is set.  We can't create a buffer with kmalloc and free it later in the tcp
-> ack path with put_page, so we need to either:
+Now that we have access to the pointer, clear it immediately after
+the put, instead of in caller.
 
-Note that the same thing can also happen with ext4 sending kmalloc'ed
-buffers through network based block storage.  Long time ago we had the
-same issue with XFS and went to great length to avoid sending down
-kmalloc'ed pages, but recently we (fs developers) were told that's just
-fine.  Consequently ext4 now actually uses slab pages for I/O, and we
-are planning to make use of that fact soon again in XFS, too.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pagelist.c |    1 -
+ fs/nfs/read.c     |    2 ++
+ fs/nfs/write.c    |    2 ++
+ 3 files changed, 4 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 9f62874..23e7944 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -312,7 +312,6 @@ static void nfs_pageio_doio(struct nfs_pageio_descriptor *desc)
+ {
+ 	if (!list_empty(&desc->pg_list)) {
+ 		int error = desc->pg_doio(desc);
+-		desc->pg_lseg = NULL;
+ 		if (error < 0)
+ 			desc->pg_error = error;
+ 		else
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index ab9c776..4b764c6 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -311,6 +311,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc)
+ 		nbytes -= rsize;
+ 	} while (nbytes != 0);
+ 	put_lseg(lseg);
++	desc->pg_lseg = NULL;
+ 
+ 	return ret;
+ 
+@@ -357,6 +358,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc)
+ 				0, lseg);
+ out:
+ 	put_lseg(lseg);
++	desc->pg_lseg = NULL;
+ 	return ret;
+ }
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index ccc7c22..bdb72f3 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -949,6 +949,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc)
+ 	} while (nbytes != 0);
+ 
+ 	put_lseg(lseg);
++	desc->pg_lseg = NULL;
+ 	return ret;
+ 
+ out_bad:
+@@ -1005,6 +1006,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc)
+ 	ret = nfs_write_rpcsetup(req, data, &nfs_write_full_ops, desc->pg_count, 0, lseg, desc->pg_ioflags);
+ out:
+ 	put_lseg(lseg); /* Cleans any gotten in ->pg_test */
++	desc->pg_lseg = NULL;
+ 	return ret;
+ }
+ 
+-- 
+1.7.2.1
 
