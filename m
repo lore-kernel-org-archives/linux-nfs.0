@@ -1,47 +1,177 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1570 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:18068 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756742Ab1CATZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Mar 2011 14:25:54 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH pnfs-submit-wave3 update 4/5] wave3: clean up lseg after pg_doio function
-Date: Tue,  1 Mar 2011 14:25:33 -0500
-Message-Id: <1299007534-4105-5-git-send-email-andros@netapp.com>
-In-Reply-To: <1299007534-4105-4-git-send-email-andros@netapp.com>
-References: <1299007534-4105-1-git-send-email-andros@netapp.com>
- <1299007534-4105-2-git-send-email-andros@netapp.com>
- <1299007534-4105-3-git-send-email-andros@netapp.com>
- <1299007534-4105-4-git-send-email-andros@netapp.com>
+	id S1756708Ab1CCUwR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Mar 2011 15:52:17 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p23KqHL1006153
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 3 Mar 2011 15:52:17 -0500
+Message-ID: <4D6FFF80.6030102@RedHat.com>
+Date: Thu, 03 Mar 2011 15:52:16 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Masatake YAMATO <yamato@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
+References: <20110217.215900.388120588347145930.yamato@redhat.com> <20110303.230122.1012453714437438591.yamato@redhat.com>
+In-Reply-To: <20110303.230122.1012453714437438591.yamato@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@netapp.com>
 
-nfs_pageio_doio can be repeatedly triggered, in which case
-it is possible for an lseg which has already been put to be
-used and put again without matching gets.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pagelist.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+On 03/03/2011 09:01 AM, Masatake YAMATO wrote:
+> No comment?
+Sorry about that... I was traveling for the couple weeks... 
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index b49cb4b..45b0fb8 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -318,6 +318,7 @@ static void nfs_pageio_doio(struct nfs_pageio_descriptor *desc)
- 					  desc->pg_count,
- 					  desc->pg_ioflags,
- 					  desc->pg_lseg);
-+		desc->pg_lseg = NULL;
- 		if (error < 0)
- 			desc->pg_error = error;
- 		else
--- 
-1.6.2.5
+Would you happen to have an example script on how 
+this new feature would be used? I just want to run 
+some quick tests...
 
+tia,
+
+steved.
+
+> 
+> 
+> Masatake YAMATO
+> 
+>> This patch adding a capability to read /etc/exports.d/*.export as 
+>> extra export files to exportfs.
+>>
+>> If one wants to add or remove an export entry in a script, currently
+>> one may have to use sed or something tool for adding or removing the
+>> line for the entry in /etc/exports file. 
+>>
+>> With the patch, adding and removing an entry from a script is much easier.
+>> cat<<EOF... or mv can be used for adding. rm can be used for removing.
+>>
+>>
+>> Signed-off-by: Masatake YAMATO <yamato@redhat.com>
+>> ---
+>>  support/include/nfslib.h  |    6 ++++
+>>  utils/exportfs/exportfs.c |   59 ++++++++++++++++++++++++++++++++++++++++++++-
+>>  2 files changed, 64 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+>> index 53ece0e..864aae2 100644
+>> --- a/support/include/nfslib.h
+>> +++ b/support/include/nfslib.h
+>> @@ -25,6 +25,12 @@
+>>  #ifndef _PATH_EXPORTS
+>>  #define _PATH_EXPORTS		"/etc/exports"
+>>  #endif
+>> +#ifndef _PATH_EXPORTS_D
+>> +#define _PATH_EXPORTS_D         "/etc/exports.d"
+>> +#endif
+>> +#ifndef _EXT_EXPORT
+>> +#define _EXT_EXPORT             ".export"
+>> +#endif
+>>  #ifndef _PATH_IDMAPDCONF
+>>  #define _PATH_IDMAPDCONF	"/etc/idmapd.conf"
+>>  #endif
+>> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+>> index b78957f..26d0504 100644
+>> --- a/utils/exportfs/exportfs.c
+>> +++ b/utils/exportfs/exportfs.c
+>> @@ -25,6 +25,7 @@
+>>  #include <fcntl.h>
+>>  #include <netdb.h>
+>>  #include <errno.h>
+>> +#include <dirent.h>
+>>  
+>>  #include "sockaddr.h"
+>>  #include "misc.h"
+>> @@ -41,6 +42,7 @@ static void	error(nfs_export *exp, int err);
+>>  static void	usage(const char *progname);
+>>  static void	validate_export(nfs_export *exp);
+>>  static int	matchhostname(const char *hostname1, const char *hostname2);
+>> +static void	export_d_read(const char *dname);
+>>  
+>>  int
+>>  main(int argc, char **argv)
+>> @@ -127,8 +129,10 @@ main(int argc, char **argv)
+>>  			return 0;
+>>  		}
+>>  	}
+>> -	if (f_export && ! f_ignore)
+>> +	if (f_export && ! f_ignore) {
+>>  		export_read(_PATH_EXPORTS);
+>> +		export_d_read(_PATH_EXPORTS_D);
+>> +	}
+>>  	if (f_export) {
+>>  		if (f_all)
+>>  			export_all(f_verbose);
+>> @@ -485,6 +489,59 @@ out:
+>>  	return result;
+>>  }
+>>  
+>> +/* Based on mnt_table_parse_dir() in
+>> +   util-linux-ng/shlibs/mount/src/tab_parse.c */
+>> +static void
+>> +export_d_read(const char *dname)
+>> +{
+>> +	int n = 0, i;
+>> +	struct dirent **namelist = NULL;
+>> +
+>> +
+>> +	n = scandir(dname, &namelist, NULL, versionsort);
+>> +	if (n < 0)
+>> +		xlog(L_NOTICE, "scandir %s: %s\n", dname, strerror(errno));
+>> +	else if (n == 0)
+>> +		return;
+>> +
+>> +	for (i = 0; i < n; i++) {
+>> +		struct dirent *d = namelist[i];
+>> +		size_t namesz;
+>> +		char fname[PATH_MAX + 1];
+>> +		int fname_len;
+>> +
+>> +
+>> +		if (d->d_type != DT_UNKNOWN 
+>> +		    && d->d_type != DT_REG
+>> +		    && d->d_type != DT_LNK)
+>> +			continue;
+>> +		if (*d->d_name == '.')
+>> +			continue;
+>> +
+>> +#define _EXT_EXPORT_SIZ   (sizeof(_EXT_EXPORT) - 1)
+>> +		namesz = strlen(d->d_name);
+>> +		if (!namesz 
+>> +		    || namesz < _EXT_EXPORT_SIZ + 1
+>> +		    || strcmp(d->d_name + (namesz - _EXT_EXPORT_SIZ),
+>> +			      _EXT_EXPORT))
+>> +			continue;
+>> +
+>> +		fname_len = snprintf(fname, PATH_MAX +1, "%s/%s", dname, d->d_name);
+>> +		if (fname_len > PATH_MAX) {
+>> +			xlog(L_WARNING, "Too long file name: %s in %s\n", d->d_name, dname);
+>> +			continue;
+>> +		}
+>> +
+>> +		export_read(fname);
+>> +	}
+>> +		
+>> +	for (i = 0; i < n; i++)
+>> +		free(namelist[i]);
+>> +	free(namelist);
+>> +
+>> +	return;
+>> +}
+>> +
+>>  static char
+>>  dumpopt(char c, char *fmt, ...)
+>>  {
+>> -- 
+>> 1.7.4
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
