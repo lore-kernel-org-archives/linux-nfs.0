@@ -1,16 +1,20 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:51477 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750783Ab1CCJGU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Mar 2011 04:06:20 -0500
-Message-ID: <4D6F5A3D.6050000@cn.fujitsu.com>
-Date: Thu, 03 Mar 2011 17:07:09 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 02/17] CLNT: test lease period of unconfirmed record
-References: <4D6DE26C.3010103@cn.fujitsu.com> <4D6DE34A.2020404@cn.fujitsu.com> <20110303060225.GD7724@fieldses.org>
-In-Reply-To: <20110303060225.GD7724@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:47805 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759698Ab1CDQV4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Mar 2011 11:21:56 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p24GLuO4025876
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 4 Mar 2011 11:21:56 -0500
+Message-ID: <4D7111A2.9050700@RedHat.com>
+Date: Fri, 04 Mar 2011 11:21:54 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Masatake YAMATO <yamato@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
+References: <20110217.215900.388120588347145930.yamato@redhat.com>	<20110303.230122.1012453714437438591.yamato@redhat.com>	<4D6FFF80.6030102@RedHat.com> <20110304.151026.946624858093159104.yamato@redhat.com>
+In-Reply-To: <20110304.151026.946624858093159104.yamato@redhat.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -18,54 +22,57 @@ MIME-Version: 1.0
 
 
 
-J. Bruce Fields :
-> On Wed, Mar 02, 2011 at 02:27:22PM +0800, Mi Jinlong wrote:
->> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->> ---
->>  nfs4.1/server41tests/st_exchange_id.py |   26 ++++++++++++++++++++++++++
->>  1 files changed, 26 insertions(+), 0 deletions(-)
+On 03/04/2011 01:10 AM, Masatake YAMATO wrote:
+> Hi,
+> 
+> thank you for replying.
+Again.. my apologies for taking so long... 
+
+> 
+>> On 03/03/2011 09:01 AM, Masatake YAMATO wrote:
+>>> No comment?
+>> Sorry about that... I was traveling for the couple weeks... 
 >>
->> diff --git a/nfs4.1/server41tests/st_exchange_id.py b/nfs4.1/server41tests/st_exchange_id.py
->> index b5e34e6..85f3092 100644
->> --- a/nfs4.1/server41tests/st_exchange_id.py
->> +++ b/nfs4.1/server41tests/st_exchange_id.py
->> @@ -1,5 +1,6 @@
->>  from nfs4_const import *
->>  import nfs4_ops as op
->> +import time
->>  from environment import check, fail
->>  from nfs4_type import *
->>  from rpc import RPCAcceptError, GARBAGE_ARGS, RPCTimeout
->> @@ -436,3 +437,28 @@ def testNotOnlyOp(t, env):
->>      res = c.compound([op.exchange_id(owner, 0, protect, [c.impl_id]), op.putrootfh()])
->>      # per draft 21 18.35.3, server MUST return NFS4ERR_NOT_ONLY_OP
->>      check(res, NFS4ERR_NOT_ONLY_OP)
->> +
->> +def testLeasePeriod(t, env):
->> +    """Any unconfirmed record that is not confirmed within
->> +       a lease period SHOULD be removed.
->> +
->> +    FLAGS: exchange_id all
->> +    CODE: EID9
->> +    """
->> +    c1 = env.c1.new_client("%s_1" % env.testname(t))
->> +    c2 = env.c1.new_client("%s_2" % env.testname(t))
->> +    # CREATE_SESSION
->> +    chan_attrs = channel_attrs4(0,8192,8192,8192,128,8,[])
->> +    time.sleep(80)
+>> Would you happen to have an example script on how 
+>> this new feature would be used? I just want to run 
+>> some quick tests...
+>>
+>> tia,
+>>
+>> steved.
 > 
-> Let's not hard-code any lease time.  pynfs should do a getattr to find
-> the server's lease time, and use that as the basis for calculations
-> (we need something like the getLeaseTime in the 4.0 pynfs.)
+> Could you try following one?
 > 
-> I actually usually set the server lease time to 15 seconds for testing,
-> just to make the tests go faster....
+> # cd /tmp
+> # mkdir /tmp/alpha
+> # mkdir /tmp/beta
+> # mkdir /etc/exports.d
+> # mkdir /etc/exports.d
+> # echo '/tmp/alpha *(ro)' > /etc/exports.d/alpha.export
+> # echo '/tmp/beta *(ro)'  > /etc/exports.d/beta.export
+> # /etc/init.d nfs restart
+> 
+> After above setting up, when you do `exportfs', following lines 
+> may be included in the output:
+> 
+>     /tmp/alpha	 <world>
+>     /tmp/beta        <world>
+Question... Where is the race? Meaning who is reading the exports
+file while its being modified?
 
-  Agree with you!
-  What about the following one?
+The reason I ask is exporting (or re-exporting) pretty serial:
 
----
-thanks,
-Mi Jinlong
+exportfs read /etc/exports
+exportfs writes the new exports to /var/lib/nfs/etab
+mountd notices etab has changed and rereads its.
+mountd flush the kernel cache cause the kernel to do upcalls to get the new exports.
 
-=================================
+So since exportfs command not a daemon I don't see why 
+   cp exports.new /etc/exports && exportfs -arv
+
+isn't all that is needed.  What am I missing?
+
+steved.
+
+
+   
