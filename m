@@ -1,81 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:18011 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932357Ab1COQyq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 12:54:46 -0400
-Subject: Re: [PATCH] SUNRPC: svc_register error overwritten in next iteration
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20110315161301.GA32635@fieldses.org>
-Date: Tue, 15 Mar 2011 12:54:01 -0400
-Cc: roel <roel.kluin@gmail.com>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-        LKML <linux-kernel@vger.kernel.org>
-Message-Id: <C9DC5C29-0641-4B34-A6CD-1BD148ACB26D@oracle.com>
-References: <4D7B74C7.7060506@gmail.com> <20110314223645.GL25442@fieldses.org> <13D041DB-A26D-4EC1-A585-7DBA266CF18A@oracle.com> <20110315161301.GA32635@fieldses.org>
+Received: from e23smtp05.au.ibm.com ([202.81.31.147]:45672 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754031Ab1CDKiY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2011 05:38:24 -0500
+From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Ted Ts'o" <tytso@mit.edu>, sfrench@us.ibm.com, agruen@linbit.com,
+        dilger.kernel@dilger.ca, sandeen@redhat.com, jlayton@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl interoperability
+In-Reply-To: <20110302185847.GA3524@fieldses.org>
+References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20110228211145.GG28617@thunk.org> <87oc5vgwqr.fsf@linux.vnet.ibm.com> <20110302154943.GB29136@fieldses.org> <87ei6pza5v.fsf@linux.vnet.ibm.com> <20110302185847.GA3524@fieldses.org>
+Date: Fri, 04 Mar 2011 16:08:15 +0530
+Message-ID: <871v2nw4q0.fsf@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Mar 15, 2011, at 12:13 PM, J. Bruce Fields wrote:
-
-> On Tue, Mar 15, 2011 at 11:43:32AM -0400, Chuck Lever wrote:
->> 
->> On Mar 14, 2011, at 6:36 PM, J. Bruce Fields wrote:
->> 
->>> On Sat, Mar 12, 2011 at 02:27:35PM +0100, roel wrote:
->>>> The break is in the inner loop, the svc_register() error is overwritten
->>>> in the next iteration. Only the error in the last iteration is returned.
->>>> 
->>>> Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
->>>> ---
->>>> net/sunrpc/svc.c |    2 ++
->>>> 1 files changed, 2 insertions(+), 0 deletions(-)
->>>> 
->>>> Is this needed?
->>>> 
->>>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->>>> index 08e05a8..5fd08c0 100644
->>>> --- a/net/sunrpc/svc.c
->>>> +++ b/net/sunrpc/svc.c
->>>> @@ -889,6 +889,8 @@ int svc_register(const struct svc_serv *serv, const int family,
->>>> 			if (error < 0)
->>>> 				break;
->>> 
->>> May as well just "goto out" or "return error" here?
->>> 
->>> But: aren't we missing some cleanup?  If we succesfully register one
->>> program then fail at a second one, don't we need to unregister the
->>> first?
->> 
->> Right.  I don't understand what is the intended effect here (of the original code):  Best effort registration, or "all or none"?
+On Wed, 2 Mar 2011 13:58:47 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Wed, Mar 02, 2011 at 11:17:56PM +0530, Aneesh Kumar K. V wrote:
+> > On Wed, 2 Mar 2011 10:49:43 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > On Tue, Mar 01, 2011 at 12:20:36PM +0530, Aneesh Kumar K. V wrote:
+> > > > On Mon, 28 Feb 2011 16:11:45 -0500, "Ted Ts'o" <tytso@mit.edu> wrote:
+> > > > > Hi Aneesh,
+> > > > > 
+> > > > > What is the current status of this patch series?  I seem to remember
+> > > > > that Christoph and Al Viro had some objections; have those been
+> > > > > cleared yet?  If not, can you summarize what their objections are?
+> > > > 
+> > > > The main objection raised was the use of may_delete and may_create inode
+> > > > operations callback. They are gone now and we have MAY_* flags as
+> > > > favoured by Al Viro.  The new MAY_* flags added are 
+> > > > 
+> > > > #define MAY_CREATE_FILE 128
+> > > > #define MAY_CREATE_DIR 256
+> > > > #define MAY_DELETE_CHILD 512
+> > > > #define MAY_DELETE_SELF 1024
+> > > > #define MAY_TAKE_OWNERSHIP 2048
+> > > > #define MAY_CHMOD 4096
+> > > > #define MAY_SET_TIMES 8192
+> > > > 
+> > > > 
+> > > > > 
+> > > > > To be honest I haven't been paying super close attention to this patch
+> > > > > series, and I'm curious what needs to happen with it one way or
+> > > > > another.
+> > > > > 
+> > > > 
+> > > > IMHO we are ready to get first 11 patches upstream in the next merge
+> > > > window. ie the below set of patches.
+> > > 
+> > > Why aren't all of them ready?
+> > > 
+> > 
+> > All except how to enable richacl in local file system is ready. I
+> > actually floated two ideas in the patch series
+> > 
+> > 1) mount option
+> > 2) Ext4 compat flags.
 > 
-> The current code was failing iff the last registration returns an error.
-> We list the nfs program before the acl program in this list, so nfsd
-> registration was failing iff the acl program failed, which makes no
-> sense whatsoever.
+> The choice of ACL format is a persistant property of the filesystem, not
+> of a single mount of the filesystem: for example, people can't try out
+> richacls for one mount and then decide to revert bacak to posix acls.
 > 
-> I think "all or none" would be cleanest.
+> (Right?)  So I'm assuming we should use the latter--but I don't
+> understand what ext4 compat flags are.... Is there some disadvantage to
+> using them?
 > 
-> If people start complaining that they don't want to run rpcbind/portmap
-> then we could give them some way of requesting that instead of just
-> depending on allowing the registration to fail.
 
-I thought vs_hidden was set for NFSACL... but maybe I was wrong about that.
-
-> For cleanup, we can just unregister everything, right?  (No harm in
-> possibly unregistering something who's registration just failed?)
-
-Yes.  As a simple hard-headed approach, probably you should walk the passed-in sv_program list again and unregister each item in the list.  The downside to this is if the upcall is taking a long time (for instance, if networking is not available).  It would double the amount of time for svc_register() to return a failure.
-
-However, be prepared: I bet such a change could expose bugs in the NFSD start up stack.  :-(  Maybe it deserves some soak-time in linux-next.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+We already have a mount option to enable posix acl (-o acl|noacl). So
+along the same line should we have -o richacl|norichacl or should we
+have richacl as a ext4 compat flag EXT4_FEATURE_COMPAT_RICHACL. The
+compat feature can be enabled via tune2fs for an already created file
+system. Once the compat feature is enabled a -o acl mount option cause
+the richacl access check to be enabled. That can also result in
+mapping the existing posix acl in the file system to richacl and
+using mapped richacl for access restriction. With compat flag once set
+we will never be able to mount the file system again to use posix acl
+access restriction. (We cannot map richacl to posixacl because richacl
+support advanced access masks)
 
 
+With mount option (-o richacl) we can still mount the file system with
+-o acl which implies we will have to ignore the richacl associated with
+files and only evaluate the posix acl stored.
 
-
+-aneesh
