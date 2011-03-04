@@ -1,47 +1,50 @@
-From: j223yang@asset.uwaterloo.ca
-Subject: [patch]xprt: remove redundant checks
-Date: Wed, 16 Mar 2011 02:45:09 -0400
-Message-ID: <20110316064509.GA1498@asset.uwaterloo.ca>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [Security] [PATCH] nfs4: Ensure that ACL pages sent over NFS
+ were not allocated from the slab
+Date: Fri, 4 Mar 2011 16:04:14 -0500
+Message-ID: <20110304210414.GD21260@fieldses.org>
+References: <1299257053-13175-1-git-send-email-nhorman@tuxdriver.com>
+ <20110304171320.GA19496@fieldses.org>
+ <20110304184505.GB10083@hmsreliant.think-freely.org>
+ <20110304193325.GB21260@fieldses.org>
+ <AANLkTimpX6JPWyPgB6vcZ8TuQ5gj9aPcJ9OCK186n5Nk@mail.gmail.com>
+ <20110304200703.GC21260@fieldses.org>
+ <20110304153059.79374df7@tlielax.poochiereds.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org
-To: linux-nfs@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	Neil Horman <nhorman-2XuSBdqkA4R54TAoqtyWWQ@public.gmane.org>, linux-nfs@vger.kernel.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>,
+	security@kernel.org
+To: Jeff Layton <jlayton@redhat.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:44995 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932452Ab1CDVE3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Mar 2011 16:04:29 -0500
+In-Reply-To: <20110304153059.79374df7-9yPaYZwiELC+kQycOl6kW4xkIHaj4LzF@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-'req' is already dereferenced in 
-'struct rpc_xprt *xprt = req->rq_xprt;',
-but check again later in the function.
-The patch removes these redundant checks.
+On Fri, Mar 04, 2011 at 03:30:59PM -0500, Jeff Layton wrote:
+> On Fri, 4 Mar 2011 15:07:03 -0500
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > In this case, we're not kfree()'ing until we've gotten an rpc reply
+> > back.  But in theory perhaps there could be cases where the server's
+> > gotten the data and we've seen the reply but the tcp layer still thinks
+> > it needs to retransmit something?  I don't think we'd care if the data
+> > was still correct in that case, but it could be an information leak if
+> > nothing else.
+> 
+> There's also timeouts + soft mounts to consider. We may send the data
+> on the socket, which gets buffered up and then the caller goes to sleep
+> waiting for a reply. If that never comes (server crashed or something),
+> then we can return an error back up to the VFS layer if it's a soft
+> mount. Meanwhile, the kernel is still trying to send the data on the
+> socket...
 
-Signed-off-by: Jinqiu Yang <crindy646@gmail.com>
----
- xprt.c |    8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+Good point, I forgot about that.
 
-diff --git a/net/sunrpt/xprt.c b/net/sunrpt/xprt.c
---- a/net/sunrpc/xprt.c	2011-03-16 00:10:08.764164573 -0400
-+++ b/net/sunrpt/xprt.c	2011-03-16 02:33:38.559164414 -0400
-@@ -202,10 +202,8 @@ int xprt_reserve_xprt(struct rpc_task *t
- 		goto out_sleep;
- 	}
- 	xprt->snd_task = task;
--	if (req) {
--		req->rq_bytes_sent = 0;
--		req->rq_ntrans++;
--	}
-+	req->rq_bytes_sent = 0;
-+	req->rq_ntrans++;
- 	return 1;
- 
- out_sleep:
-@@ -213,7 +211,7 @@ out_sleep:
- 			task->tk_pid, xprt);
- 	task->tk_timeout = 0;
- 	task->tk_status = -EAGAIN;
--	if (req && req->rq_ntrans)
-+	if (req->rq_ntrans)
- 		rpc_sleep_on(&xprt->resend, task, NULL);
- 	else
- 		rpc_sleep_on(&xprt->sending, task, NULL);
+Thanks to everyone for setting me straight!
+
+--b.
