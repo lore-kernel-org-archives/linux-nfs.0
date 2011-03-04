@@ -1,50 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:19148 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756714Ab1CQBVt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2011 21:21:49 -0400
-Subject: Re: problem with nfs latency during high IO
-From: Harshula Jayasuriya <harshula@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>, Judith Flo Gaya <jflo@imppc.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <7D458ECC-9AFB-4791-94EF-736061BD1095@oracle.com>
-References: <4D7B6DE5.8010008@imppc.org>
-	 <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com>
-	 <4D7FA11F.5020604@imppc.org>
-	 <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com>
-	 <7D458ECC-9AFB-4791-94EF-736061BD1095@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 17 Mar 2011 12:21:24 +1100
-Message-ID: <1300324884.7042.4.camel@serendib>
+Received: from charlotte.tuxdriver.com ([70.61.120.58]:60683 "EHLO
+	smtp.tuxdriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752222Ab1CDT7y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2011 14:59:54 -0500
+Date: Fri, 4 Mar 2011 14:59:48 -0500
+From: Neil Horman <nhorman@tuxdriver.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, security@kernel.org,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH] nfs4: Ensure that ACL pages sent over NFS were not
+ allocated from the slab
+Message-ID: <20110304195948.GD10083@hmsreliant.think-freely.org>
+References: <1299257053-13175-1-git-send-email-nhorman@tuxdriver.com>
+ <1299265315.2901.7.camel@heimdal.trondhjem.org>
+ <20110304191719.GC10083@hmsreliant.think-freely.org>
+ <1299266730.2901.15.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1299266730.2901.15.camel@heimdal.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi Chuck & Judith,
-
-On Tue, 2011-03-15 at 14:15 -0400, Chuck Lever wrote:
-> On Mar 15, 2011, at 2:03 PM, Chuck Lever wrote:
-> > On Mar 15, 2011, at 1:25 PM, Judith Flo Gaya wrote:
-
-> >> BTW i understand the time issue, but again, if the version of the
-> kernel that the red hat has installed allows me to get the information
-> soon, why a newer kernel in fedora does not?
-> > 
-> > Sounds like a bug.  Fedora kernels newer than 2.6.32 should work as
-> well as, or better than, RHEL 6.
+On Fri, Mar 04, 2011 at 02:25:30PM -0500, Trond Myklebust wrote:
+> On Fri, 2011-03-04 at 14:17 -0500, Neil Horman wrote: 
+> > On Fri, Mar 04, 2011 at 02:01:55PM -0500, Trond Myklebust wrote:
+> > > On Fri, 2011-03-04 at 11:44 -0500, Neil Horman wrote:
+> > > >  
+> > > > +static int buf_to_pages_noslab(const void *buf, size_t buflen,
+> > > > +		struct page **pages, unsigned int *pgbase)
+> > > > +{
+> > > > +	const void *p = buf;
+> > > > +	struct page *page, *newpage, **spages;
+> > > > +	int rc = -ENOMEM;
+> > > > +
+> > > > +	spages = pages;
+> > > > +	*pgbase = offset_in_page(buf);
+> > > > +	p -= *pgbase;
+> > > > +	while (p < buf + buflen) {
+> > > > +		page = virt_to_page(p);
+> > > > +		newpage = alloc_page(GFP_KERNEL);
+> > > > +		if (!newpage)
+> > > > +			goto unwind;
+> > > > +		memcpy(page_address(newpage), page_address(page),
+> > > > +		       PAGE_CACHE_SIZE);
+> > > 
+> > > Why do we need to keep this byzantian offset_in_page() and
+> > > virt_to_page() logic in order to copying data from a linear buffer into
+> > > a set of pages?
+> > > 
+> > We don't I suppose, but I thought it best to follow the byzantine style of the
+> > function immediately above it. :)  If you have a better suggestion, I'm
+> > listening.
 > 
-> Looks like commit acdc53b2 "NFS: Replace __nfs_write_mapping with
-> sync_inode()" removes the code that holds i_mutex while trying to
-> flush writes before a GETATTR.  This means application writes can
-> possibly starve a stat(2) call.  Trond, this seems like a
-> regression...?
+> Why isn't something like the following good enough?
+> 
+> 	do {
+> 		size_t len = min(PAGE_CACHE_SIZE, buflen);
+> 		struct page *newpage = alloc_page(GFP_KERNEL);
+> 
+> 		if (newpage == NULL)
+> 			goto unwind;
+> 		memcpy(page_address(newpage), buf, len);
+> 		copied += len;
+> 		buf += len;
+> 		buflen -= len;
+> 	} while (buflen != 0);
+> 
+Ah, I see what your saying - you're suggesting that we copy from an offset in
+the page to the start of the page and always make the resulting pgbase be zero.
+That makes sense.  I'll respin it that way.
+Neil
 
-RHEL 6.0 released with RH kernel 2.6.32-71 and it *does* contain the
-commit acdc53b2 "NFS: Replace __nfs_write_mapping with sync_inode()"
-backported to 2.6.32. So, I doubt that the reported bad Fedora
-performance is due to that commit.
-
-cya,
-#
-
+> 
+> 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+> 
