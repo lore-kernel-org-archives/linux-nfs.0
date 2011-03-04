@@ -1,142 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:7302 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753357Ab1CEQyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 Mar 2011 11:54:33 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p25GsWNH004737
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Sat, 5 Mar 2011 11:54:32 -0500
-Date: Sun, 06 Mar 2011 01:54:30 +0900 (JST)
-Message-Id: <20110306.015430.825430197519907711.yamato@redhat.com>
-To: SteveD@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
-From: Masatake YAMATO <yamato@redhat.com>
-In-Reply-To: <4D7111A2.9050700@RedHat.com>
-References: <4D6FFF80.6030102@RedHat.com>
-	<20110304.151026.946624858093159104.yamato@redhat.com>
-	<4D7111A2.9050700@RedHat.com>
-Content-Type: Text/Plain; charset=us-ascii
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:48381 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752435Ab1CDTsp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2011 14:48:45 -0500
+Received: from mail-iy0-f174.google.com (mail-iy0-f174.google.com [209.85.210.174])
+	(authenticated bits=0)
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id p24JmijE023117
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Fri, 4 Mar 2011 11:48:44 -0800
+Received: by iyb26 with SMTP id 26so2195516iyb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 04 Mar 2011 11:48:43 -0800 (PST)
+In-Reply-To: <20110304193325.GB21260@fieldses.org>
+References: <1299257053-13175-1-git-send-email-nhorman@tuxdriver.com>
+ <20110304171320.GA19496@fieldses.org> <20110304184505.GB10083@hmsreliant.think-freely.org>
+ <20110304193325.GB21260@fieldses.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Fri, 4 Mar 2011 11:48:23 -0800
+Message-ID: <AANLkTimpX6JPWyPgB6vcZ8TuQ5gj9aPcJ9OCK186n5Nk@mail.gmail.com>
+Subject: Re: [Security] [PATCH] nfs4: Ensure that ACL pages sent over NFS were
+ not allocated from the slab
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Neil Horman <nhorman@tuxdriver.com>, linux-nfs@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>, security@kernel.org,
+        Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 04 Mar 2011 11:21:54 -0500, Steve Dickson <SteveD@redhat.com> wrote
-> 
-> 
-> On 03/04/2011 01:10 AM, Masatake YAMATO wrote:
->> Hi,
->> 
->> thank you for replying.
-> Again.. my apologies for taking so long... 
-> 
->> 
->>> On 03/03/2011 09:01 AM, Masatake YAMATO wrote:
->>>> No comment?
->>> Sorry about that... I was traveling for the couple weeks... 
->>>
->>> Would you happen to have an example script on how 
->>> this new feature would be used? I just want to run 
->>> some quick tests...
->>>
->>> tia,
->>>
->>> steved.
->> 
->> Could you try following one?
->> 
->> # cd /tmp
->> # mkdir /tmp/alpha
->> # mkdir /tmp/beta
->> # mkdir /etc/exports.d
->> # mkdir /etc/exports.d
->> # echo '/tmp/alpha *(ro)' > /etc/exports.d/alpha.export
->> # echo '/tmp/beta *(ro)'  > /etc/exports.d/beta.export
->> # /etc/init.d nfs restart
->> 
->> After above setting up, when you do `exportfs', following lines 
->> may be included in the output:
->> 
->>     /tmp/alpha	 <world>
->>     /tmp/beta        <world>
-> Question... Where is the race? Meaning who is reading the exports
-> file while its being modified?
+On Fri, Mar 4, 2011 at 11:33 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> So I assumed the slab allocator would hold a reference to the page like
+> any other user would, in which case the tcp code could take a second
+> reference of its own.
 
-Sorry, I don't understand well. Are you talking about race condition
-introduced with my patch?
+So the reason that wouldn't work is simple: the reference is obviously
+at a page level, but slab doles out allocations on its own level.
 
-> The reason I ask is exporting (or re-exporting) pretty serial:
-> 
-> exportfs read /etc/exports
-> exportfs writes the new exports to /var/lib/nfs/etab
-> mountd notices etab has changed and rereads its.
-> mountd flush the kernel cache cause the kernel to do upcalls to get the new exports.
+What does that mean? Imagine if the network layer takes a ref on the
+page, but then the original user does a "kfree()". The _page_ would
+stay around (we have a ref from it - but so does the slab allocator),
+but the thing is, the slab allocator will release and then re-use the
+slab entry.
 
-With my patch doesn't change match this sequence:
+So the "hold a reference to the page" doesn't actually _help_. The
+problem isn't the page going away, it's the smaller slab-allocation
+being reused for something else - so the page-level ref would be
+useless.
 
-(S1) exportfs read /etc/exports
-(S2) exportfs read /etc/exports.d/*.export 
-(S3) exportfs writes the new exports to /var/lib/nfs/etab
-(S4) mountd notices etab has changed and rereads its.
-(S5) mountd flush the kernel cache cause the kernel to do upcalls to get the new exports.
+So page-level references really only do work with page allocators.
+They don't know about the allocation patterns within a page that slab
+does.
 
-I've added (Sn) to make discussion easier. I've just added S2 stage.
- 
-> So since exportfs command not a daemon I don't see why 
->    cp exports.new /etc/exports && exportfs -arv
-> 
-> isn't all that is needed.  What am I missing?
-
-Consider the case when an user wants to add following entry to /etc/exports:
-
-	 '/tmp/alpha *(ro)'
-
-How one will do? Without my patch I image following sequence (sequence 1).
-
-    cp /etc/exports exports.new
-    echo '/tmp/alpha *(ro)' >> exports.new
-    cp exports.new /etc/exports && exportfs -arv    
-
-With my patch this sequence becomes simplified as (sequence 1'):
-
-     echo '/tmp/alpha *(ro)' > /etc/exports.d/alpha.export
-     exportfs -arv    
-
-When duplicated entries must be considered the sequence 1 may become
-more complex.
-
-
-Next, consider removing the export entry from /etc/exports.
-Without my patch I image following sequence (sequence 2).
-
-    cp /etc/exports exports.old
-    grep -v '/tmp/alpha *(ro)' < exports.old > /etc/exports
-    exportfs -arv        
-
-With my patch this sequence becomes simplified as (sequence 2'):
-    rm /etc/exports.d/alpha.export
-    exportfs -arv 
-
-
-
-More background I'm thinking expanding the area of utilizing rpm package
-in system management. Consider installing an export entry to a system
-via rpm package. Without my patch you have to write down sequence 1
-to %post and sequence 2 to %postun of the spec file. With my patch
-you have to just put /etc/exports.d/alpha.export to %files section.
-
-This story of rpm is just my application. However, I thik my patch may be
-useful for other purposes. 
-
-
-Masatake YAMATO
-
-> steved.
-> 
-> 
->    
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+                     Linus
