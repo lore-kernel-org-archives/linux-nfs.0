@@ -1,36 +1,64 @@
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/4] Refactor data structures to support NFSv4 migration (2)
-Date: Fri, 4 Mar 2011 17:57:34 -0500
-Message-ID: <FBE2594D-16CC-4A57-A74C-7A37AD578CFF@oracle.com>
-References: <20101224012636.2445.41411.stgit@matisse.1015granger.net> <1299278738.5341.0.camel@KPMH461.ibm.com>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Cc: Trond Myklebust <trond.myklebust@netapp.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Frank Filz <ffilzlnx@us.ibm.com>
+From: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH 1.5/2] mount: Remove MOUNT_CONFIG warning
+Date: Sat, 05 Mar 2011 16:24:32 -0500
+Message-ID: <4D72AA10.5010004@RedHat.com>
+References: <1299159822-25190-1-git-send-email-kzak@redhat.com> <1299159822-25190-2-git-send-email-kzak@redhat.com> <4D6FF3F4.8040602@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: Karel Zak <kzak@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
+	linux-nfs@vger.kernel.org
+To: Steve Dickson <SteveD@redhat.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:46926 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932520Ab1CDW6Q convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2011 17:58:16 -0500
-In-Reply-To: <1299278738.5341.0.camel-LVD8ZR29O+mrIzol8Bc5pA@public.gmane.org>
+Received: from mx1.redhat.com ([209.132.183.28]:61733 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752341Ab1CEVYg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Mar 2011 16:24:36 -0500
+In-Reply-To: <4D6FF3F4.8040602-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hey Karel,
 
-On Mar 4, 2011, at 5:45 PM, Frank Filz wrote:
+On 03/03/2011 03:03 PM, Steve Dickson wrote:
+> The following changes are needed to remove compile warnings when
+> MOUNT_CONFIG is not define
+Don't worry about this one... I just committed it.. 
+
+steved.
 
 > 
-> Chuck, Trond,
+> Signed-off-by: Steve Dickson <steved@redhat.com>
 > 
-> What is the outlook for the client patchset for migration?
-
-Trond and I are going to meet next week to go over the prototype and roadmap.  I'll post something for people to review soon.  Client-side migration will likely go in 2.6.40, but that's up to Trond.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> diff --git a/utils/mount/mount_config.h b/utils/mount/mount_config.h
+> index e86b4ba..69ffd1e 100644
+> --- a/utils/mount/mount_config.h
+> +++ b/utils/mount/mount_config.h
+> @@ -39,10 +39,10 @@ static inline char *mount_config_opts(char *spec,
+>  
+>  #else /* MOUNT_CONFIG */
+>  
+> -static inline void mount_config_init(char *program) { }
+> +static inline void mount_config_init(__attribute__ ((unused)) char *program) { }
+>  
+> -static inline char *mount_config_opts(char *spec,
+> -		char *mount_point, char *mount_opts)
+> +static inline char *mount_config_opts(__attribute__ ((unused)) char *spec,
+> +		__attribute__ ((unused)) char *mount_point, char *mount_opts)
+>  {
+>  	return mount_opts;
+>  }
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index e314b82..f1aa503 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -110,7 +110,7 @@ static void nfs_default_version(struct nfsmount_info *mi)
+>  	}
+>  }
+>  #else
+> -inline void nfs_default_version(struct nfsmount_info *mi) {}
+> +inline void nfs_default_version(__attribute__ ((unused)) struct nfsmount_info *mi) {}
+>  #endif /* MOUNT_CONFIG */
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
