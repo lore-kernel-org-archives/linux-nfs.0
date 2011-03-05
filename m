@@ -1,150 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:34831 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755034Ab1CaVgb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Mar 2011 17:36:31 -0400
-Received: by bwz15 with SMTP id 15so2090637bwz.19
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Mar 2011 14:36:29 -0700 (PDT)
-Date: Fri, 1 Apr 2011 00:36:25 +0300
-From: Alexey Dobriyan <adobriyan@gmail.com>
-To: Trond.Myklebust@netapp.com
+Received: from mx1.redhat.com ([209.132.183.28]:7302 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753357Ab1CEQyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Mar 2011 11:54:33 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p25GsWNH004737
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Sat, 5 Mar 2011 11:54:32 -0500
+Date: Sun, 06 Mar 2011 01:54:30 +0900 (JST)
+Message-Id: <20110306.015430.825430197519907711.yamato@redhat.com>
+To: SteveD@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: kstrtox: convert net/sunrpc/
-Message-ID: <20110331213625.GA3637@p183.telecom.by>
-Content-Type: text/plain; charset=us-ascii
+Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
+From: Masatake YAMATO <yamato@redhat.com>
+In-Reply-To: <4D7111A2.9050700@RedHat.com>
+References: <4D6FFF80.6030102@RedHat.com>
+	<20110304.151026.946624858093159104.yamato@redhat.com>
+	<4D7111A2.9050700@RedHat.com>
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-* fix a bug in rpc_parse_scope_id() where successfull parsing of
-  scope ID was an error.
-  
-  I'm not sure whether ID=0 should be banned, though.
+On Fri, 04 Mar 2011 11:21:54 -0500, Steve Dickson <SteveD@redhat.com> wrote
+> 
+> 
+> On 03/04/2011 01:10 AM, Masatake YAMATO wrote:
+>> Hi,
+>> 
+>> thank you for replying.
+> Again.. my apologies for taking so long... 
+> 
+>> 
+>>> On 03/03/2011 09:01 AM, Masatake YAMATO wrote:
+>>>> No comment?
+>>> Sorry about that... I was traveling for the couple weeks... 
+>>>
+>>> Would you happen to have an example script on how 
+>>> this new feature would be used? I just want to run 
+>>> some quick tests...
+>>>
+>>> tia,
+>>>
+>>> steved.
+>> 
+>> Could you try following one?
+>> 
+>> # cd /tmp
+>> # mkdir /tmp/alpha
+>> # mkdir /tmp/beta
+>> # mkdir /etc/exports.d
+>> # mkdir /etc/exports.d
+>> # echo '/tmp/alpha *(ro)' > /etc/exports.d/alpha.export
+>> # echo '/tmp/beta *(ro)'  > /etc/exports.d/beta.export
+>> # /etc/init.d nfs restart
+>> 
+>> After above setting up, when you do `exportfs', following lines 
+>> may be included in the output:
+>> 
+>>     /tmp/alpha	 <world>
+>>     /tmp/beta        <world>
+> Question... Where is the race? Meaning who is reading the exports
+> file while its being modified?
 
-Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
----
+Sorry, I don't understand well. Are you talking about race condition
+introduced with my patch?
 
- net/sunrpc/addr.c     |   20 ++++++++------------
- net/sunrpc/auth.c     |   15 ++++++---------
- net/sunrpc/xprtsock.c |    8 +++++---
- 3 files changed, 19 insertions(+), 24 deletions(-)
+> The reason I ask is exporting (or re-exporting) pretty serial:
+> 
+> exportfs read /etc/exports
+> exportfs writes the new exports to /var/lib/nfs/etab
+> mountd notices etab has changed and rereads its.
+> mountd flush the kernel cache cause the kernel to do upcalls to get the new exports.
 
---- a/net/sunrpc/addr.c
-+++ b/net/sunrpc/addr.c
-@@ -173,15 +173,15 @@ static int rpc_parse_scope_id(const char *buf, const size_t buflen,
- 	len = (buf + buflen) - delim - 1;
- 	p = kstrndup(delim + 1, len, GFP_KERNEL);
- 	if (p) {
--		unsigned long scope_id = 0;
- 		struct net_device *dev;
-+		u32 scope_id;
+With my patch doesn't change match this sequence:
+
+(S1) exportfs read /etc/exports
+(S2) exportfs read /etc/exports.d/*.export 
+(S3) exportfs writes the new exports to /var/lib/nfs/etab
+(S4) mountd notices etab has changed and rereads its.
+(S5) mountd flush the kernel cache cause the kernel to do upcalls to get the new exports.
+
+I've added (Sn) to make discussion easier. I've just added S2 stage.
  
- 		dev = dev_get_by_name(&init_net, p);
- 		if (dev != NULL) {
- 			scope_id = dev->ifindex;
- 			dev_put(dev);
- 		} else {
--			if (strict_strtoul(p, 10, &scope_id) == 0) {
-+			if (kstrtou32(p, 10, &scope_id) < 0) {
- 				kfree(p);
- 				return 0;
- 			}
-@@ -299,7 +299,7 @@ EXPORT_SYMBOL_GPL(rpc_sockaddr2uaddr);
-  * @sap: buffer into which to plant socket address
-  * @salen: size of buffer
-  *
-- * @uaddr does not have to be '\0'-terminated, but strict_strtoul() and
-+ * @uaddr does not have to be '\0'-terminated, but kstrto*() and
-  * rpc_pton() require proper string termination to be successful.
-  *
-  * Returns the size of the socket address if successful; otherwise
-@@ -309,8 +309,8 @@ size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
- 			  struct sockaddr *sap, const size_t salen)
- {
- 	char *c, buf[RPCBIND_MAXUADDRLEN + sizeof('\0')];
--	unsigned long portlo, porthi;
--	unsigned short port;
-+	u8 portlo, porthi;
-+	u16 port;
- 
- 	if (uaddr_len > RPCBIND_MAXUADDRLEN)
- 		return 0;
-@@ -321,21 +321,17 @@ size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
- 	c = strrchr(buf, '.');
- 	if (unlikely(c == NULL))
- 		return 0;
--	if (unlikely(strict_strtoul(c + 1, 10, &portlo) != 0))
--		return 0;
--	if (unlikely(portlo > 255))
-+	if (unlikely(kstrtou8(c + 1, 10, &portlo) != 0))
- 		return 0;
- 
- 	*c = '\0';
- 	c = strrchr(buf, '.');
- 	if (unlikely(c == NULL))
- 		return 0;
--	if (unlikely(strict_strtoul(c + 1, 10, &porthi) != 0))
--		return 0;
--	if (unlikely(porthi > 255))
-+	if (unlikely(kstrtou8(c + 1, 10, &porthi) != 0))
- 		return 0;
- 
--	port = (unsigned short)((porthi << 8) | portlo);
-+	port = (porthi << 8) | portlo;
- 
- 	*c = '\0';
- 	if (rpc_pton(buf, strlen(buf), sap, salen) == 0)
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -41,24 +41,21 @@ static unsigned long number_cred_unused;
- #define MAX_HASHTABLE_BITS (14)
- static int param_set_hashtbl_sz(const char *val, const struct kernel_param *kp)
- {
--	unsigned long num;
--	unsigned int nbits;
-+	unsigned int num, nbits;
- 	int ret;
- 
- 	if (!val)
--		goto out_inval;
--	ret = strict_strtoul(val, 0, &num);
--	if (ret == -EINVAL)
--		goto out_inval;
-+		return -EINVAL;
-+	ret = kstrtouint(val, 0, &num);
-+	if (ret < 0)
-+		return ret;
- 	nbits = fls(num);
- 	if (num > (1U << nbits))
- 		nbits++;
- 	if (nbits > MAX_HASHTABLE_BITS || nbits < 2)
--		goto out_inval;
-+		return -EINVAL;
- 	*(unsigned int *)kp->arg = nbits;
- 	return 0;
--out_inval:
--	return -EINVAL;
- }
- 
- static int param_get_hashtbl_sz(char *buffer, const struct kernel_param *kp)
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2502,13 +2502,15 @@ static int param_set_uint_minmax(const char *val,
- 		const struct kernel_param *kp,
- 		unsigned int min, unsigned int max)
- {
--	unsigned long num;
-+	unsigned int num;
- 	int ret;
- 
- 	if (!val)
- 		return -EINVAL;
--	ret = strict_strtoul(val, 0, &num);
--	if (ret == -EINVAL || num < min || num > max)
-+	ret = kstrtouint(val, 0, &num);
-+	if (ret < 0)
-+		return ret;
-+	if (num < min || num > max)
- 		return -EINVAL;
- 	*((unsigned int *)kp->arg) = num;
- 	return 0;
+> So since exportfs command not a daemon I don't see why 
+>    cp exports.new /etc/exports && exportfs -arv
+> 
+> isn't all that is needed.  What am I missing?
+
+Consider the case when an user wants to add following entry to /etc/exports:
+
+	 '/tmp/alpha *(ro)'
+
+How one will do? Without my patch I image following sequence (sequence 1).
+
+    cp /etc/exports exports.new
+    echo '/tmp/alpha *(ro)' >> exports.new
+    cp exports.new /etc/exports && exportfs -arv    
+
+With my patch this sequence becomes simplified as (sequence 1'):
+
+     echo '/tmp/alpha *(ro)' > /etc/exports.d/alpha.export
+     exportfs -arv    
+
+When duplicated entries must be considered the sequence 1 may become
+more complex.
+
+
+Next, consider removing the export entry from /etc/exports.
+Without my patch I image following sequence (sequence 2).
+
+    cp /etc/exports exports.old
+    grep -v '/tmp/alpha *(ro)' < exports.old > /etc/exports
+    exportfs -arv        
+
+With my patch this sequence becomes simplified as (sequence 2'):
+    rm /etc/exports.d/alpha.export
+    exportfs -arv 
+
+
+
+More background I'm thinking expanding the area of utilizing rpm package
+in system management. Consider installing an export entry to a system
+via rpm package. Without my patch you have to write down sequence 1
+to %post and sequence 2 to %postun of the spec file. With my patch
+you have to just put /etc/exports.d/alpha.export to %files section.
+
+This story of rpm is just my application. However, I thik my patch may be
+useful for other purposes. 
+
+
+Masatake YAMATO
+
+> steved.
+> 
+> 
+>    
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
