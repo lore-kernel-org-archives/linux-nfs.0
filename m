@@ -1,80 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [218.249.29.245] ([218.249.29.245]:52613 "HELO bjtu.edu.cn"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-	id S1751983Ab1CKQa5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Mar 2011 11:30:57 -0500
-From: "=?gb2312?B?sNfLycHW?=" <09120171@bjtu.edu.cn>
-To: rees@umich.edu
-Cc: linux-nfs@vger.kernel.org, 09120171@bjtu.edu.cn
-Date: Sat, 12 Mar 2011 00:28:12 +0800
-Message-ID: <RYMHGFHUOWTREOPCEMWIBKKRWODC.09120171@bjtu.edu.cn>
-Reply-To: "=?gb2312?B?sNfLycHW?=" <09120171@bjtu.edu.cn>
-Subject: Re: questions about blocklayoutdriver
-Content-Type: text/plain;
-	charset="gb2312"
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:58241 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752170Ab1CER6Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Mar 2011 12:58:24 -0500
+From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Ted Ts'o" <tytso@mit.edu>, sfrench@us.ibm.com, agruen@linbit.com,
+        dilger.kernel@dilger.ca, sandeen@redhat.com, jlayton@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl interoperability
+In-Reply-To: <20110305003214.GF21260@fieldses.org>
+References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20110228211145.GG28617@thunk.org> <87oc5vgwqr.fsf@linux.vnet.ibm.com> <20110302154943.GB29136@fieldses.org> <87ei6pza5v.fsf@linux.vnet.ibm.com> <20110302185847.GA3524@fieldses.org> <871v2nw4q0.fsf@linux.vnet.ibm.com> <20110305003214.GF21260@fieldses.org>
+Date: Sat, 05 Mar 2011 23:28:12 +0530
+Message-ID: <87pqq5a1qj.fsf@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-SGkNCg0KSW4gdGhlIHdlYnBhZ2UoaHR0cDovL3dpa2kubGludXhuZnMub3JnL3dpa2kvaW5kZXgu
-cGhwL1BORlNfQmxvY2tfU2VydmVyX1NldHVwX0luc3RydWN0aW9ucyksDQp0aGVyZSBpcyBvbmUg
-c2VudGVuY2UsIG1vdW50IC10IG5mczQgLW8gbWlub3J2ZXJzaW9uPTEgU046LyAvbW50L29iIA0K
-SW4gdGhpcyBzZW50ZW5jZSx3aGV0aGVyIHRoZSBTTiBtZWFucyBhIE1EUyBvciBtZWFucyBhIERT
-Pw0KDQoNCldlIHNldCB1cCB0aGUgcE5GUyBlbnZpcm9ubWVudCBhcyBmb2xsb3dzOg0KRFM6MTAu
-MjcuMTQwLjQwDQpNRFM6MTAuMjcuMTQwLjM1DQpDbGllbnQ6MTAuMjcuMTQwLjM4DQoNCk9uIERT
-OiAxLiB0aGUgZGlzayB3YXMgcGFydGl0aW9uZWQgd2l0aCAicGFydGVkIixhbmQgcHJvZHVjZWQg
-c2RhNiBmb3IgY2xpZW50Lg0KICAgICAgIDIuIGFkZGVkIGxpbmUgaW4gL2V0Yy9leHBvcnRzIGFz
-IGZvbGxvd3MNCiAgICAgICAgICAvcG5mcyAgKihydyxzeW5jLGZzaWQ9MCxpbnNlY3VyZSxub19z
-dWJ0cmVlX2NoZWNrLG5vX3Jvb3Rfc3F1YXNoLHBuZnMpDQogICAgICAgMy4gdXNlZCB0aGUgZm9s
-bG93aW5nIHNjcmlwdCB0byBzdGFydCB0aGUgRFMgc2VydmVyIA0KDQogICAgICAgICAgICMvYmlu
-L2Jhc2ggDQogICAgICAgICAgIHVtb3VudCAvcG5mcw0KICAgICAgICAgICBzZXJ2aWNlIHRndGQg
-cmVzdGFydA0KICAgICAgICAgICBzbGVlcCA4DQogICAgICAgICAgIHRndGFkbSAtLWxsZCBpc2Nz
-aSAtLW9wIG5ldyAtLW1vZGUgdGFyZ2V0IC0tdGlkIDEgLVQgaXFuLjE5OTItMDUuY29tLmVtYzpv
-cGVuYmxvY2sNCiAgICAgICAgICAgdGd0YWRtIC0tbGxkIGlzY3NpIC0tbW9kZSBsb2dpY2FsdW5p
-dCAtLW9wIG5ldyAtLXRpZCAxIC0tbHVuIDEgLS1iYWNraW5nLXN0b3JlIC9kZXYvc2RhNg0KICAg
-ICAgICAgICB0Z3RhZG0gLS1sbGQgaXNjc2kgLS1tb2RlIHRhcmdldCAtLW9wIGJpbmQgLS10aWQg
-MSAtLWluaXRpYXRvci1hZGRyZXNzIEFMTA0KICAgICAgICAgICB0Z3RhZG0gLS1sbGQgaXNjc2kg
-LS1vcCBzaG93IC0tbW9kZSB0YXJnZXQNCiAgICAgICAgICAgbW91bnQgL2Rldi9zZGE2IC9wbmZz
-DQogICAgICAgICAgIHNsZWVwIDMNCiAgICAgICAgICAgc2VydmljZSBuZnMgcmVzdGFydA0KICAg
-ICAgICAgICBzbGVlcCAzDQogICAgICAgICAgIGNkDQovY3RsLw0KICAgICAgICAgICAuL2N0bCAt
-dSAmDQpPbiBNRFM6IDEuIGFkZGVkIGxpbmUgaW4gL2V0Yy9leHBvcnRzDQogICAgICAgICAgIC8g
-Kihydyxmc2lkPTAsaW5zZWN1cmUsbm9fcm9vdF9zcXVhc2gsc3luYyxub19zdWJ0cmVlX2NoZWNr
-LHBuZnMpDQogICAgICAgIDIuIGNyZWF0ZWQgdGhlIGZvbGRlcg0KICAgICAgICAgICBta2RpciAv
-c3BuZnMvMTAuMjcuMTQwLjQwDQogICAgICAgIDMuIG1vdW50IDEwLjI3LjE0MC40MDovcG5mcyAv
-c3BuZnMvMTAuMjcuMTQwLjQwDQogICAgICAgIDQuIHJ1biBzcG5mc2QgYW5kIHRoZSBjb250ZW50
-IG9mIC9ldGMvc3BuZnMuY29uZiBhcyBmb2xsb3dzDQogICAgICAgICAgICANCiAgICAgICAgICAg
-W0dlbmVyYWxdDQogICAgICAgICAgIFZlcmJvc2l0eSA9IDENCiAgICAgICAgICAgU3RyaXBlLXNp
-emUgPSA4MTkyDQogICAgICAgICAgIERlbnNlLXN0cmlwaW5nID0gMA0KICAgICAgICAgICBQaXBl
-ZnMtRGlyZWN0b3J5ID0gL3Zhci9saWIvbmZzL3JwY19waXBlZnMNCiAgICAgICAgICAgRFMtTW91
-bnQtRGlyZWN0b3J5ID0gL3NwbmZzDQogDQogICAgICAgICAgIFtEYXRhU2VydmVyc10NCiAgICAg
-ICAgICAgTnVtRFMgPSAxDQogICAgICAgICAgIERTMV9JUCA9IDEwLjI3LjE0MC40MA0KICAgICAg
-ICAgICBEUzFfUE9SVCA9IDIwNDkNCiAgICAgICAgICAgRFMxX1JPT1QgPSAvcG5mcw0KICAgICAg
-ICAgICBEUzFfSUQgPSAxDQoNCk9uIGNsaWVudDogMS4gIGNvbm5lY3R0ZWQgdG8gaXNjc2kgdGFy
-Z2V0cw0KICAgICAgICAgICAgICAgaXNjc2lhZG0gLW0gZGlzY292ZXJ5IC10IHNlbmR0YXJnZXRz
-IC1wIDEwLjI3LjE0MC40MCAtbA0KICAgICAgICAgICAyLiAgc3RhcnQgdGhlIGJsb2NrIGxheW91
-dCBzZXJ2aWNlDQogICAgICAgICAgICAgICBpbml0ZC5yZWRoYXQgcmVzdGFydA0KICAgICAgICAg
-ICAzLiAgbW91bnRlZCB0aGUgTURToaFzZXJ2ZXINCqGhoaGhoaGhoaGhoaGhIG1vdW50IC10IG5m
-czQgLW8gbWlub3J2ZXJzaW9uPTEgMTAuMjcuMTQwLjM1Oi9zcG5mcyAgL21udA0KDQpXZSB0ZXN0
-ZWQgdGhlIHBORlMgaW5mb3JtYW5jZSBpbiB0aGUgZW52aXJvbm1lbnQsYW5kIGZvdW5kIHRoYXQg
-d2hlbiBjbGllbnQgd3JpdGUgZGF0YSB0byBjbGllbnQ6L21udCwNCmFsbCBvZiB0aGUgZGF0YSBi
-ZSBzZW50IHRvIE1EUyBmaXJzdGx5LCBhbmQgdGhlbiBNRFMgZm9yd2FyZGVkIHRoZSBkYXRhIHRv
-IERTLHdoZW4gd2UgZ290IHRoZSANCnBhY2thZ2UgYnkgd2lyZXNoYXJrLGFuZCBmb3VuZCBtb3N0
-IG9mIHRoZSBwcm90b2NvbCBiZXR3ZWVuIE1EUyBhbmQgRFMgYXJlIE5GUyBhbmQgVENQLg0KDQpJ
-IGRvbid0IGtvbncgd2h5IHRoZSBkYXRhIGJlIHNlbnQgdG8gTURTIGZpcnN0bHksIGFuZCBJIHRo
-aW5rIGl0IHNob3VsZCBiZSBzZW50IHRvIERTIGZyb20gDQpjbGllbnQgZGlyY2V0bHkgd2l0aCBp
-U0NTSSBwcm90b2NvbC4NCkNhbiB5b3UgcG9pbnQgd2hlcmUgaXMgdGhlIGVycm9yPw0KDQpUaGFu
-a3MuDQpTb25nbGluIEJBSS4gDQoNCg0KDQoNCg0KDQo+RnJvbTogSmltIFJlZXMNCg0KPlJlcGx5
-LVRvOiANCj5UbzogsNfLycHWDQoNCj5TdWJqZWN0OiBSZTogcXVlc3Rpb25zIGFib3V0IGJsb2Nr
-bGF5b3V0ZHJpdmVyDQo+RGF0ZTogVHVlLCAxIE1hciAyMDExIDA5OjE3OjUwIC0wNTAwDQo+DQo+
-sNfLycHWIHdyb3RlOg0KPg0KPiAgSSBhbSBhIHBvc3RncmFkdWF0ZSBhdCBCZWlKaW5nIEppYW9U
-b25nIHVuaXZlcnNpdHkgaW4gY2hpbmEuIEluIG91cg0KPiAgbGFiLGluY2x1ZGluZyBvdXIgcHJv
-ZmVzc29yLHdlIGFyZSBpbnRlcmVzdGVkIGluIFBORlMuICBOb3csd2UgaGF2ZSBiZWVuDQo+ICBz
-ZXQgdXAgdGhlIHRlc3QgZW52aXJvbm1lbnQgd2l0aCB0aGUgbmZzX2xheW91dF9uZnN2NDFfZmls
-ZXMua28sIGFuZCBpdA0KPiAgY2FuIHJ1biBzdWNjZXNzZnVsbHkuICBCdXQsd2UgZG8gbm90IGtv
-bncgaG93IHRvIHVzZSBibG9ja2xheW91dGRpcnZlci5rby4NCj4gIENhbiB5b3UgdGVsbCBtZSBz
-b21ldGhpbmcgYWJvdXQgaG93IHRvIHVzZSBpdD8NCj4NCj5Zb3UgY2FuIGZpbmQgc29tZSBkb2N1
-bWVudGF0aW9uIGhlcmU6DQo+aHR0cDovL3dpa2kubGludXgtbmZzLm9yZy93aWtpL2luZGV4LnBo
-cC9GZWRvcmFfcE5GU19DbGllbnRfU2V0dXANCj4NCj5JZiB5b3UgaGF2ZSBzcGVjaWZpYyBxdWVz
-dGlvbnMgSSB3aWxsIGJlIGhhcHB5IHRvIGFuc3dlciB0aGVtLg0KPiATounsuT8/3n4/P6yWKy2x
-6d22F6WKd66ey5uxyuJt6WKe7Gd+yKc/m6HcqH2pnrLGoHo/ajordomoP6uR6ud6WiuAP3pmo6K3
-aJqIp36GrYbbaf/74Ho/rneloj+ZqOitPz/fohtm
+On Fri, 4 Mar 2011 19:32:15 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Fri, Mar 04, 2011 at 04:08:15PM +0530, Aneesh Kumar K. V wrote:
+> > On Wed, 2 Mar 2011 13:58:47 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > On Wed, Mar 02, 2011 at 11:17:56PM +0530, Aneesh Kumar K. V wrote:
+> > > > On Wed, 2 Mar 2011 10:49:43 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > > On Tue, Mar 01, 2011 at 12:20:36PM +0530, Aneesh Kumar K. V wrote:
+> > > > > > On Mon, 28 Feb 2011 16:11:45 -0500, "Ted Ts'o" <tytso@mit.edu> wrote:
+> > > > > > > Hi Aneesh,
+> > > > > > > 
+> > > > > > > What is the current status of this patch series?  I seem to remember
+> > > > > > > that Christoph and Al Viro had some objections; have those been
+> > > > > > > cleared yet?  If not, can you summarize what their objections are?
+> > > > > > 
+> > > > > > The main objection raised was the use of may_delete and may_create inode
+> > > > > > operations callback. They are gone now and we have MAY_* flags as
+> > > > > > favoured by Al Viro.  The new MAY_* flags added are 
+> > > > > > 
+> > > > > > #define MAY_CREATE_FILE 128
+> > > > > > #define MAY_CREATE_DIR 256
+> > > > > > #define MAY_DELETE_CHILD 512
+> > > > > > #define MAY_DELETE_SELF 1024
+> > > > > > #define MAY_TAKE_OWNERSHIP 2048
+> > > > > > #define MAY_CHMOD 4096
+> > > > > > #define MAY_SET_TIMES 8192
+> > > > > > 
+> > > > > > 
+> > > > > > > 
+> > > > > > > To be honest I haven't been paying super close attention to this patch
+> > > > > > > series, and I'm curious what needs to happen with it one way or
+> > > > > > > another.
+> > > > > > > 
+> > > > > > 
+> > > > > > IMHO we are ready to get first 11 patches upstream in the next merge
+> > > > > > window. ie the below set of patches.
+> > > > > 
+> > > > > Why aren't all of them ready?
+> > > > > 
+> > > > 
+> > > > All except how to enable richacl in local file system is ready. I
+> > > > actually floated two ideas in the patch series
+> > > > 
+> > > > 1) mount option
+> > > > 2) Ext4 compat flags.
+> > > 
+> > > The choice of ACL format is a persistant property of the filesystem, not
+> > > of a single mount of the filesystem: for example, people can't try out
+> > > richacls for one mount and then decide to revert bacak to posix acls.
+> > > 
+> > > (Right?)  So I'm assuming we should use the latter--but I don't
+> > > understand what ext4 compat flags are.... Is there some disadvantage to
+> > > using them?
+> > > 
+> > 
+> > We already have a mount option to enable posix acl (-o acl|noacl). So
+> > along the same line should we have -o richacl|norichacl or should we
+> > have richacl as a ext4 compat flag EXT4_FEATURE_COMPAT_RICHACL. The
+> > compat feature can be enabled via tune2fs for an already created file
+> > system. Once the compat feature is enabled a -o acl mount option cause
+> > the richacl access check to be enabled. That can also result in
+> > mapping the existing posix acl in the file system to richacl and
+> > using mapped richacl for access restriction. With compat flag once set
+> > we will never be able to mount the file system again to use posix acl
+> > access restriction. (We cannot map richacl to posixacl because richacl
+> > support advanced access masks)
+> 
+> Sounds fine to me.  I'm not sure you answered my question.  Is there any
+> disadvantage to doing it this way?
+> 
+
+Andreas didn't like the compat feature flag patch. I don't remember why
+though. Andreas can you comment on why you didn't want the compat
+feature flag ?
+
+-aneesh
