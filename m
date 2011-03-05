@@ -1,120 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:58778 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64009 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751564Ab1CXRPv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Mar 2011 13:15:51 -0400
-Subject: Re: [PATCH 11/12] NFSv4.1: layoutcommit
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: "William A. (Andy) Adamson" <androsadamson@gmail.com>,
-        Fred Isaman <iisaman@netapp.com>, NFS list <linux-nfs@vger.kernel.org>,
-        David Black <Black_David@emc.com>, "Rees, James" <rees@umich.edu>
-In-Reply-To: <4D8B781D.6090007@panasas.com>
-References: <AANLkTinBuLxDq5zrxC=-0fS_md5CXTQAS_POsKA9issP@mail.gmail.com>
-	 <4D8B732F.8020404@panasas.com>
-	 <1300985305.31106.6.camel@lade.trondhjem.org>
-	 <4D8B781D.6090007@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 24 Mar 2011 13:15:48 -0400
-Message-ID: <1300986948.31106.16.camel@lade.trondhjem.org>
+	id S1751008Ab1CENtS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Mar 2011 08:49:18 -0500
+Date: Sat, 5 Mar 2011 08:49:04 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Nick Piggin <npiggin@gmail.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. R. Okajima" <hooanon05@yahoo.co.jp>, linux-nfs@vger.kernel.org,
+        Linux Filesystem Development <linux-fsdevel@vger.kernel.org>
+Subject: Re: 2.6.38-rc2... NFS sillyrename is broken...
+Message-ID: <20110305084904.2761cea9@tlielax.poochiereds.net>
+In-Reply-To: <AANLkTim_JrZkD_D8HWXNr0qxjQ-=LKaAvzcH_w7A_T42@mail.gmail.com>
+References: <1295998215.6867.22.camel@heimdal.trondhjem.org>
+	<21515.1296030022@jrobl>
+	<1296072867.7127.26.camel@heimdal.trondhjem.org>
+	<1296074585.7127.33.camel@heimdal.trondhjem.org>
+	<AANLkTik2JJt4vcX8mMJmz+uwJU01vpMwF0UjQ+3QFAtp@mail.gmail.com>
+	<1296086349.7127.55.camel@heimdal.trondhjem.org>
+	<AANLkTim1-dwNjTpyCi5qBjCer5vgPo4qSNfK7Htd_vfL@mail.gmail.com>
+	<1296089830.25999.1.camel@heimdal.trondhjem.org>
+	<AANLkTim_JrZkD_D8HWXNr0qxjQ-=LKaAvzcH_w7A_T42@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-03-24 at 18:58 +0200, Benny Halevy wrote:
-> On 2011-03-24 18:48, Trond Myklebust wrote:
-> > On Thu, 2011-03-24 at 18:37 +0200, Benny Halevy wrote:
-> >> On 2011-03-24 15:57, William A. (Andy) Adamson wrote:
-> >>>>> Only whole file layout support means that there is only one IOMODE_RW layout
-> >>>>> segment.
-> >>>>>
-> >>>>> Signed-off-by: Andy Adamson <andros@netapp.com>
-> >>>>> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
-> >>>>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> >>>>> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-> >>>>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-> >>>>> Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
-> >>>>> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-> >>>>> Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
-> >>>>> Tested-by: Boaz Harrosh <bharrosh@panasas.com>
-> >>>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-> >>>>
-> >>>> The code in this patch is new and different enough from the one I/we
-> >>>> signed-off originally that they don't make sense here.
-> >>>
-> >>> Hi Benny
-> >>>
-> >>> OK with me
-> >>>
-> >>>>>
-> >>>>> +             /* references matched in nfs4_layoutcommit_release */
-> >>>>> +             wdata->lseg->pls_lc_cred =
-> >>>>> +                     get_rpccred(wdata->args.context->state->owner->so_cred);
-> >>>>> +             mark_inode_dirty_sync(wdata->inode);
-> >>>>> +             dprintk("%s: Set layoutcommit for inode %lu ",
-> >>>>> +                     __func__, wdata->inode->i_ino);
-> >>>>> +     }
-> >>>>> +     if (end_pos > wdata->lseg->pls_end_pos)
-> >>>>> +             wdata->lseg->pls_end_pos = end_pos;
-> >>>>
-> >>>> The end_pos is essentially per inode, why maintain it per lseg?
-> >>>> How do you see this working with multiple lsegs in mind?
-> >>>
-> >>> The end-pos is per lseg, not per inode - each layoutcommit applies to
-> >>> a range of WRITES for a layoutsegment over the LAYOUTCOMMIT range.
-> >>>
-> >>> From Section 18.42.3
-> >>> .  The byte-range being committed is
-> >>>    specified through the byte-range (loca_offset and loca_length).  This
-> >>>    byte-range MUST overlap with one or more existing layouts previously
-> >>>    granted via LAYOUTGET
-> >>>
-> >>>
-> >>>    Also, loca_last_write_offset MUST overlap the range
-> >>>    described by loca_offset and loca_length.
-> >>>
-> >>> For the multiple lseg case: if the lsegs are merged, bookeeping
-> >>> end_pos per lseg just works. If a layoutdriver does not use merged
-> >>> lsegs, then there is a bit of work to do to walk the list of lsegs and
-> >>> determine the final end_pos for a given LAYOUTCOMMIT.  If there are
-> >>> multiple non-contiguous lsegs, each used for WRITEs then multiple
-> >>> LAYOUTCOMMITs will need to be sent, otherwise the LAYOUTCOMMIT
-> >>> byte-range will not overlap as required.
-> >>>
-> >>
-> >> For the current layout types I believe that the LAYOUTCOMMIT can "merge"
-> >> multiple layout segments into a single LAYOUTCOMMIT, with a byte range
-> >> covering all segments and a last_byte_written offset which is just the maximum.
-> >> Future layout types may need this method though...
-> > 
-> > Is that safe?
-> > 
-> > What if I'm doing blocks and have written layout segment 1 & 3, but not
-> > layout segment 2? I don't want to have the MDS commit layout segment 2,
-> > and make the (lack of) data there visible to future readers.
-> > 
+On Thu, 27 Jan 2011 12:25:35 +1100
+Nick Piggin <npiggin@gmail.com> wrote:
+
+> On Thu, Jan 27, 2011 at 11:57 AM, Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> > On Thu, 2011-01-27 at 11:44 +1100, Nick Piggin wrote:
 > 
-> I'm not the real expert on pnfs-blocks but my interpretation of rfc5663 is that the
-> list of extents in pnfs_block_layoutupdate4 may be sparse (or holey if you'd like).
-> Note that the client may have written just parts of the layout it got in one layout segment.
-> In this case too, you don't want to send multiple LAYOUTCOMMITs for each contiguous
-> area...
+> >> But we could just check for d_count != 0 which means the parent has
+> >> to be valid as well (we have rename protection as well).
+> >
+> > That would certainly be less intrusive. Can you please propose a patch?
+> 
+> Yes I'll write something up today.
 
-Sure, but my understanding was that RFC5663 supports copy on write files
-and that the actual copying of the block may need to be done by the
-client (see section 2.3.4).
+Hi Nick,
 
-If the new block is still uninitialised when you call LAYOUTCOMMIT, then
-that will corrupt the file if the client then dies before it finishes
-processing segment 2, since the previously valid data blocks are being
-replaced by uninitialised ones (which I presume will convert that
-section into a pre-allocated hole???).
+I was doing some testing earlier and noticed that NFS sillyrenames are
+still broken as of -rc7. Did you ever get around to doing a patch to fix
+this?
 
+Thanks,
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Jeff Layton <jlayton@redhat.com>
