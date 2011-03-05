@@ -1,82 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:3790 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51475 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760065Ab1CDUcJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Mar 2011 15:32:09 -0500
-Date: Fri, 4 Mar 2011 15:30:59 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Neil Horman <nhorman@tuxdriver.com>, linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>, security@kernel.org
-Subject: Re: [Security] [PATCH] nfs4: Ensure that ACL pages sent over NFS
- were not allocated from the slab
-Message-ID: <20110304153059.79374df7@tlielax.poochiereds.net>
-In-Reply-To: <20110304200703.GC21260@fieldses.org>
-References: <1299257053-13175-1-git-send-email-nhorman@tuxdriver.com>
-	<20110304171320.GA19496@fieldses.org>
-	<20110304184505.GB10083@hmsreliant.think-freely.org>
-	<20110304193325.GB21260@fieldses.org>
-	<AANLkTimpX6JPWyPgB6vcZ8TuQ5gj9aPcJ9OCK186n5Nk@mail.gmail.com>
-	<20110304200703.GC21260@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1752386Ab1CEWqM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Mar 2011 17:46:12 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p25MkCux022782
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Sat, 5 Mar 2011 17:46:12 -0500
+Message-ID: <4D72BD33.70208@RedHat.com>
+Date: Sat, 05 Mar 2011 17:46:11 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Masatake YAMATO <yamato@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
+References: <20110217.215900.388120588347145930.yamato@redhat.com>
+In-Reply-To: <20110217.215900.388120588347145930.yamato@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 4 Mar 2011 15:07:03 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Hello,
 
-> On Fri, Mar 04, 2011 at 11:48:23AM -0800, Linus Torvalds wrote:
-> > On Fri, Mar 4, 2011 at 11:33 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > >
-> > > So I assumed the slab allocator would hold a reference to the page like
-> > > any other user would, in which case the tcp code could take a second
-> > > reference of its own.
-> > 
-> > So the reason that wouldn't work is simple: the reference is obviously
-> > at a page level, but slab doles out allocations on its own level.
-> > 
-> > What does that mean? Imagine if the network layer takes a ref on the
-> > page, but then the original user does a "kfree()". The _page_ would
-> > stay around (we have a ref from it - but so does the slab allocator),
-> > but the thing is, the slab allocator will release and then re-use the
-> > slab entry.
-> >
-> > So the "hold a reference to the page" doesn't actually _help_. The
-> > problem isn't the page going away, it's the smaller slab-allocation
-> > being reused for something else - so the page-level ref would be
-> > useless.
-> > 
-> > So page-level references really only do work with page allocators.
-> > They don't know about the allocation patterns within a page that slab
-> > does.
+On 02/17/2011 07:59 AM, Masatake YAMATO wrote:
+> This patch adding a capability to read /etc/exports.d/*.export as 
+> extra export files to exportfs.
 > 
-> Makes sense, thanks for the explanation.
+> If one wants to add or remove an export entry in a script, currently
+> one may have to use sed or something tool for adding or removing the
+> line for the entry in /etc/exports file. 
 > 
-> Could it still make sense to hand off kmalloc'd memory to tcp_send_pages
-> if we know the kfree won't happen till after the data's sent?
+> With the patch, adding and removing an entry from a script is much easier.
+> cat<<EOF... or mv can be used for adding. rm can be used for removing.
 > 
-> OK, maybe in that case someone above the tcp layer just shouldn't be
-> assuming they can know when the tcp layer is done with the data.
 > 
+> Signed-off-by: Masatake YAMATO <yamato@redhat.com>
+> ---
+>  support/include/nfslib.h  |    6 ++++
+>  utils/exportfs/exportfs.c |   59 ++++++++++++++++++++++++++++++++++++++++++++-
+>  2 files changed, 64 insertions(+), 1 deletions(-)
+> 
+> diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+> index 53ece0e..864aae2 100644
+> --- a/support/include/nfslib.h
+> +++ b/support/include/nfslib.h
+> @@ -25,6 +25,12 @@
+>  #ifndef _PATH_EXPORTS
+>  #define _PATH_EXPORTS		"/etc/exports"
+>  #endif
+> +#ifndef _PATH_EXPORTS_D
+> +#define _PATH_EXPORTS_D         "/etc/exports.d"
+> +#endif
+> +#ifndef _EXT_EXPORT
+> +#define _EXT_EXPORT             ".export"
+Question: Why do we care about the format of the file that lives in
+the _PATH_EXPORTS_D directory? The reason I asked is I created a file
+called 'root.exports' which silently failed export those exports.
 
-Right, I don't think we can know that since we (at the RPC layer) don't
-get any real notification of when we receive a TCP ACK.
+Now, I realize you added the ".export" explanation to the man page 
+but is there a particular reason why file in that directory have 
+to end with ".export"? Out of "easy of use" sake, should any 
+and all files that exist in that directory be expected to 
+be exports files?
 
-> In this case, we're not kfree()'ing until we've gotten an rpc reply
-> back.  But in theory perhaps there could be cases where the server's
-> gotten the data and we've seen the reply but the tcp layer still thinks
-> it needs to retransmit something?  I don't think we'd care if the data
-> was still correct in that case, but it could be an information leak if
-> nothing else.
+steved.
 
-There's also timeouts + soft mounts to consider. We may send the data
-on the socket, which gets buffered up and then the caller goes to sleep
-waiting for a reply. If that never comes (server crashed or something),
-then we can return an error back up to the VFS layer if it's a soft
-mount. Meanwhile, the kernel is still trying to send the data on the
-socket...
 
--- 
-Jeff Layton <jlayton@redhat.com>
+> +#endif
+>  #ifndef _PATH_IDMAPDCONF
+>  #define _PATH_IDMAPDCONF	"/etc/idmapd.conf"
+>  #endif
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index b78957f..26d0504 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -25,6 +25,7 @@
+>  #include <fcntl.h>
+>  #include <netdb.h>
+>  #include <errno.h>
+> +#include <dirent.h>
+>  
+>  #include "sockaddr.h"
+>  #include "misc.h"
+> @@ -41,6 +42,7 @@ static void	error(nfs_export *exp, int err);
+>  static void	usage(const char *progname);
+>  static void	validate_export(nfs_export *exp);
+>  static int	matchhostname(const char *hostname1, const char *hostname2);
+> +static void	export_d_read(const char *dname);
+>  
+>  int
+>  main(int argc, char **argv)
+> @@ -127,8 +129,10 @@ main(int argc, char **argv)
+>  			return 0;
+>  		}
+>  	}
+> -	if (f_export && ! f_ignore)
+> +	if (f_export && ! f_ignore) {
+>  		export_read(_PATH_EXPORTS);
+> +		export_d_read(_PATH_EXPORTS_D);
+> +	}
+>  	if (f_export) {
+>  		if (f_all)
+>  			export_all(f_verbose);
+> @@ -485,6 +489,59 @@ out:
+>  	return result;
+>  }
+>  
+> +/* Based on mnt_table_parse_dir() in
+> +   util-linux-ng/shlibs/mount/src/tab_parse.c */
+> +static void
+> +export_d_read(const char *dname)
+> +{
+> +	int n = 0, i;
+> +	struct dirent **namelist = NULL;
+> +
+> +
+> +	n = scandir(dname, &namelist, NULL, versionsort);
+> +	if (n < 0)
+> +		xlog(L_NOTICE, "scandir %s: %s\n", dname, strerror(errno));
+> +	else if (n == 0)
+> +		return;
+> +
+> +	for (i = 0; i < n; i++) {
+> +		struct dirent *d = namelist[i];
+> +		size_t namesz;
+> +		char fname[PATH_MAX + 1];
+> +		int fname_len;
+> +
+> +
+> +		if (d->d_type != DT_UNKNOWN 
+> +		    && d->d_type != DT_REG
+> +		    && d->d_type != DT_LNK)
+> +			continue;
+> +		if (*d->d_name == '.')
+> +			continue;
+> +
+> +#define _EXT_EXPORT_SIZ   (sizeof(_EXT_EXPORT) - 1)
+> +		namesz = strlen(d->d_name);
+> +		if (!namesz 
+> +		    || namesz < _EXT_EXPORT_SIZ + 1
+> +		    || strcmp(d->d_name + (namesz - _EXT_EXPORT_SIZ),
+> +			      _EXT_EXPORT))
+> +			continue;
+> +
+> +		fname_len = snprintf(fname, PATH_MAX +1, "%s/%s", dname, d->d_name);
+> +		if (fname_len > PATH_MAX) {
+> +			xlog(L_WARNING, "Too long file name: %s in %s\n", d->d_name, dname);
+> +			continue;
+> +		}
+> +
+> +		export_read(fname);
+> +	}
+> +		
+> +	for (i = 0; i < n; i++)
+> +		free(namelist[i]);
+> +	free(namelist);
+> +
+> +	return;
+> +}
+> +
+>  static char
+>  dumpopt(char c, char *fmt, ...)
+>  {
