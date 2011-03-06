@@ -1,44 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:56949 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:9686 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932901Ab1CWUf3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 16:35:29 -0400
-Subject: Re: [PATCH 09/12] NFSv4.1: remove GETATTR from ds commits
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: Benny Halevy <bhalevy@panasas.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <AANLkTi=_+22+7-bw_Y7q4NpF16B7G3wNin7r7EkJNg7n@mail.gmail.com>
-References: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
-	 <1300886875-5016-10-git-send-email-iisaman@netapp.com>
-	 <4D8A4F2B.5040007@panasas.com>
-	 <AANLkTi=_+22+7-bw_Y7q4NpF16B7G3wNin7r7EkJNg7n@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 23 Mar 2011 16:35:09 -0400
-Message-ID: <1300912509.11677.70.camel@lade.trondhjem.org>
+	id S1751029Ab1CFGL3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 6 Mar 2011 01:11:29 -0500
+Date: Sun, 06 Mar 2011 15:11:23 +0900 (JST)
+Message-Id: <20110306.151123.1031846434411534102.yamato@redhat.com>
+To: rees@umich.edu
+Cc: SteveD@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
+From: Masatake YAMATO <yamato@redhat.com>
+In-Reply-To: <20110306015106.GA23388@merit.edu>
+References: <20110217.215900.388120588347145930.yamato@redhat.com>
+	<4D72BD33.70208@RedHat.com>
+	<20110306015106.GA23388@merit.edu>
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-03-23 at 16:32 -0400, Fred Isaman wrote:
-> 2011/3/23 Benny Halevy <bhalevy@panasas.com>:
-> > On 2011-03-23 15:27, Fred Isaman wrote:
-> >> Any COMMIT compound directed to a data server needs to have the
-> >> GETATTR calls suppressed.  We here, make sure the field we are testing
-> >
-> > s/We/While/?
-> >
+On Sat, 5 Mar 2011 20:51:06 -0500, Jim Rees <rees@umich.edu> wrote
+> Steve Dickson wrote:
 > 
-> Yes.
+>   Now, I realize you added the ".export" explanation to the man page 
+>   but is there a particular reason why file in that directory have 
+>   to end with ".export"? Out of "easy of use" sake, should any 
+>   and all files that exist in that directory be expected to 
+>   be exports files?
 > 
-> Fred
+> I don't know if that's the best way to do it, but I think it would be useful
+> to have a way to keep files in the directory that don't get automatically
+> read.  As an analogy, I have the following files in my /etc/init:
+> 
+> portmap.conf           This is the real one that gets used
+> portmap.conf~          This is a backup file produced by emacs
+> portmap.conf-20100603  This is the file that came with my distro
+> 
+> Only the first one gets used, which is what I want, because it's the only
+> one ending in ".conf".
 
-Too late. That typo is already committed.
+Jim, thank you for explanation. He wrote what I'd like to write.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+This technique is borrowed from util-linux-ng; libmount.so reads
+only *.fstab under /etc/fstab.d.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
 
+In addition, ".export" suffix tells an editor which syntax highlighter
+should be used when editing .export file:P
+
+Masatake YAMATO
