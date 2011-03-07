@@ -1,64 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18676 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:23794 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751253Ab1CISOD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Mar 2011 13:14:03 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
+	id S1751400Ab1CGNu5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Mar 2011 08:50:57 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p27DouIg027434
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 7 Mar 2011 08:50:56 -0500
+Date: Mon, 07 Mar 2011 22:50:54 +0900 (JST)
+Message-Id: <20110307.225054.778816292497413667.yamato@redhat.com>
+To: SteveD@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH Cthon2011 fixes 2/3] NFSv4: remove duplicate clientid in struct nfs_client
-Date: Wed,  9 Mar 2011 13:13:45 -0500
-Message-Id: <1299694426-5620-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1299694426-5620-1-git-send-email-andros@netapp.com>
-References: <1299694426-5620-1-git-send-email-andros@netapp.com>
+Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
+From: Masatake YAMATO <yamato@redhat.com>
+In-Reply-To: <4D74DAE7.5060503@RedHat.com>
+References: <20110306.151123.1031846434411534102.yamato@redhat.com>
+	<4D74D822.4000009@RedHat.com>
+	<4D74DAE7.5060503@RedHat.com>
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+> 
+> 
+> On 03/07/2011 08:05 AM, Steve Dickson wrote:
+>> 
+>> 
+>> On 03/06/2011 01:11 AM, Masatake YAMATO wrote:
+>>> On Sat, 5 Mar 2011 20:51:06 -0500, Jim Rees <rees@umich.edu> wrote
+>>>> Steve Dickson wrote:
+>>>>
+>>>>   Now, I realize you added the ".export" explanation to the man page 
+>>>>   but is there a particular reason why file in that directory have 
+>>>>   to end with ".export"? Out of "easy of use" sake, should any 
+>>>>   and all files that exist in that directory be expected to 
+>>>>   be exports files?
+>>>>
+>>>> I don't know if that's the best way to do it, but I think it would be useful
+>>>> to have a way to keep files in the directory that don't get automatically
+>>>> read.  As an analogy, I have the following files in my /etc/init:
+>>>>
+>>>> portmap.conf           This is the real one that gets used
+>>>> portmap.conf~          This is a backup file produced by emacs
+>>>> portmap.conf-20100603  This is the file that came with my distro
+>>>>
+>>>> Only the first one gets used, which is what I want, because it's the only
+>>>> one ending in ".conf".
+>> This makes sense... 
+>> 
+>>>
+>>> Jim, thank you for explanation. He wrote what I'd like to write.
+>>>
+>>> This technique is borrowed from util-linux-ng; libmount.so reads
+>>> only *.fstab under /etc/fstab.d.
+>>>
+>>>
+>>> In addition, ".export" suffix tells an editor which syntax highlighter
+>>> should be used when editing .export file:P
+>> True... But I noticed the suffix that gvim looks for is ".exports"
+>> not ".export". 
+>> 
+>> What editor are you using and does it look for a ".export" by default?
+>> 
+> After thinking about this a little longer, I think making the 
+> suffix ".exports" does make sense. Along with the that being 
+> the default syntax  highlighter for gvim, more importantly, its
+> also the name of the man page, exports(5).
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4xdr.c          |    4 ++--
- include/linux/nfs_fs_sb.h |    2 --
- 2 files changed, 2 insertions(+), 4 deletions(-)
+I see. I didn't think what is the best suffix the file such deeply.
+Do I need to resubmit a patch for s/.export/.exports/g?
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 353ef5d..2221fa2 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1687,7 +1687,7 @@ static void encode_create_session(struct xdr_stream *xdr,
+Masatake YAMATO
  
- 	p = reserve_space(xdr, 20 + 2*28 + 20 + len + 12);
- 	*p++ = cpu_to_be32(OP_CREATE_SESSION);
--	p = xdr_encode_hyper(p, clp->cl_ex_clid);
-+	p = xdr_encode_hyper(p, clp->cl_clientid);
- 	*p++ = cpu_to_be32(clp->cl_seqid);			/*Sequence id */
- 	*p++ = cpu_to_be32(args->flags);			/*flags */
- 
-@@ -4770,7 +4770,7 @@ static int decode_exchange_id(struct xdr_stream *xdr,
- 	p = xdr_inline_decode(xdr, 8);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	xdr_decode_hyper(p, &clp->cl_ex_clid);
-+	xdr_decode_hyper(p, &clp->cl_clientid);
- 	p = xdr_inline_decode(xdr, 12);
- 	if (unlikely(!p))
- 		goto out_overflow;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 7f71698..e52f010 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -73,8 +73,6 @@ struct nfs_client {
- #endif /* CONFIG_NFS_V4 */
- 
- #ifdef CONFIG_NFS_V4_1
--	/* clientid returned from EXCHANGE_ID, used by session operations */
--	u64			cl_ex_clid;
- 	/* The sequence id to use for the next CREATE_SESSION */
- 	u32			cl_seqid;
- 	/* The flags used for obtaining the clientid during EXCHANGE_ID */
--- 
-1.6.6
+> steved.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
