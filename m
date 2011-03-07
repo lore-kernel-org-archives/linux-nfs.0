@@ -1,64 +1,62 @@
-From: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH 1.5/2] mount: Remove MOUNT_CONFIG warning
-Date: Sat, 05 Mar 2011 16:24:32 -0500
-Message-ID: <4D72AA10.5010004@RedHat.com>
-References: <1299159822-25190-1-git-send-email-kzak@redhat.com> <1299159822-25190-2-git-send-email-kzak@redhat.com> <4D6FF3F4.8040602@RedHat.com>
+From: Jovi Zhang <bookjovi@gmail.com>
+Subject: Re: [PATCH] nfs: fix compilation warning
+Date: Mon, 7 Mar 2011 12:11:57 +0800
+Message-ID: <AANLkTi=CLqfMa_Sxq5YUTpbBCi+UoVKoD+n7hAMEW82K@mail.gmail.com>
+References: <1299107978-3248-1-git-send-email-bookjovi@gmail.com>
+	<20110305160153.a37899b3.rdunlap@xenotime.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: Karel Zak <kzak@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
-	linux-nfs@vger.kernel.org
-To: Steve Dickson <SteveD@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Cc: "open list:NFS, linux-kernel@vger.kernel.org (open list)"
+	<linux-nfs@vger.kernel.org>
+To: Randy Dunlap <rdunlap@xenotime.net>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61733 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752341Ab1CEVYg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 Mar 2011 16:24:36 -0500
-In-Reply-To: <4D6FF3F4.8040602-AfCzQyP5zfLQT0dZR+AlfA@public.gmane.org>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:40217 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755256Ab1CGEL6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Mar 2011 23:11:58 -0500
+Received: by yxs7 with SMTP id 7so1476173yxs.19
+        for <linux-nfs@vger.kernel.org>; Sun, 06 Mar 2011 20:11:57 -0800 (PST)
+In-Reply-To: <20110305160153.a37899b3.rdunlap@xenotime.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Karel,
-
-On 03/03/2011 03:03 PM, Steve Dickson wrote:
-> The following changes are needed to remove compile warnings when
-> MOUNT_CONFIG is not define
-Don't worry about this one... I just committed it.. 
-
-steved.
-
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> 
-> diff --git a/utils/mount/mount_config.h b/utils/mount/mount_config.h
-> index e86b4ba..69ffd1e 100644
-> --- a/utils/mount/mount_config.h
-> +++ b/utils/mount/mount_config.h
-> @@ -39,10 +39,10 @@ static inline char *mount_config_opts(char *spec,
->  
->  #else /* MOUNT_CONFIG */
->  
-> -static inline void mount_config_init(char *program) { }
-> +static inline void mount_config_init(__attribute__ ((unused)) char *program) { }
->  
-> -static inline char *mount_config_opts(char *spec,
-> -		char *mount_point, char *mount_opts)
-> +static inline char *mount_config_opts(__attribute__ ((unused)) char *spec,
-> +		__attribute__ ((unused)) char *mount_point, char *mount_opts)
->  {
->  	return mount_opts;
->  }
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index e314b82..f1aa503 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -110,7 +110,7 @@ static void nfs_default_version(struct nfsmount_info *mi)
->  	}
->  }
->  #else
-> -inline void nfs_default_version(struct nfsmount_info *mi) {}
-> +inline void nfs_default_version(__attribute__ ((unused)) struct nfsmount_info *mi) {}
->  #endif /* MOUNT_CONFIG */
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Sun, Mar 6, 2011 at 8:01 AM, Randy Dunlap <rdunlap@xenotime.net> wro=
+te:
+> On Wed, =C2=A02 Mar 2011 18:19:37 -0500 bookjovi@gmail.com wrote:
+>
+>> From: Jovi Zhang <bookjovi@gmail.com>
+>>
+>> this commit fix compilation warning as following:
+>> linux-2.6/fs/nfs/nfs4proc.c:3265: warning: comparison of distinct po=
+inter types lacks a cast
+>>
+>> Signed-off-by: Jovi Zhang <bookjovi@gmail.com>
+>> ---
+>> =C2=A0fs/nfs/nfs4proc.c | =C2=A0 =C2=A02 +-
+>> =C2=A01 files changed, 1 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 1ff76ac..c7eb4ee 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -3262,7 +3262,7 @@ static int buf_to_pages_noslab(const void *buf=
+, size_t buflen,
+>> =C2=A0 =C2=A0 =C2=A0 spages =3D pages;
+>>
+>> =C2=A0 =C2=A0 =C2=A0 do {
+>> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 len =3D min(PAGE_CACHE_S=
+IZE, buflen);
+>> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 len =3D min((size_t)PAGE=
+_CACHE_SIZE, buflen);
+>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 newpage =3D alloc_p=
+age(GFP_KERNEL);
+>>
+>> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 if (newpage =3D=3D =
+NULL)
+>> --
+>
+> or use
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0len =3D min_t(size_t, PAGE_SIZE_CACHE, buf=
+len);
+>
+That's good, Thanks.
