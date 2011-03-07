@@ -1,65 +1,157 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from swampdragon.chaosbits.net ([90.184.90.115]:18191 "EHLO
-	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752408Ab1CEXbJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Mar 2011 18:31:09 -0500
-Date: Sun, 6 Mar 2011 00:30:35 +0100 (CET)
-From: Jesper Juhl <jj@chaosbits.net>
-To: linux-nfs@vger.kernel.org
-cc: linux-kernel@vger.kernel.org, Neil Brown <neilb@suse.de>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH] NFSD, VFS: Remove dead code in nfsd_rename()
-Message-ID: <alpine.LNX.2.00.1103060024380.6297@swampdragon.chaosbits.net>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from mx1.redhat.com ([209.132.183.28]:31798 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750814Ab1CGO3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Mar 2011 09:29:17 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p27ETHgx030763
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 7 Mar 2011 09:29:17 -0500
+Message-ID: <4D74EBBC.4060007@RedHat.com>
+Date: Mon, 07 Mar 2011 09:29:16 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Masatake YAMATO <yamato@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
+References: <20110217.215900.388120588347145930.yamato@redhat.com>
+In-Reply-To: <20110217.215900.388120588347145930.yamato@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Currently we have the following code in fs/nfsd/vfs.c::nfsd_rename() :
+Hello,
 
-	...
-	host_err = nfsd_break_lease(odentry->d_inode);
-	if (host_err)
-		goto out_drop_write;
-	if (ndentry->d_inode) {
-		host_err = nfsd_break_lease(ndentry->d_inode);
-		if (host_err)
-			goto out_drop_write;
-	}
-	if (host_err)
-		goto out_drop_write;
-	...
+On 02/17/2011 07:59 AM, Masatake YAMATO wrote:
+> This patch adding a capability to read /etc/exports.d/*.export as 
+> extra export files to exportfs.
+> 
+> If one wants to add or remove an export entry in a script, currently
+> one may have to use sed or something tool for adding or removing the
+> line for the entry in /etc/exports file. 
+> 
+> With the patch, adding and removing an entry from a script is much easier.
+> cat<<EOF... or mv can be used for adding. rm can be used for removing.
+> 
+> 
+> Signed-off-by: Masatake YAMATO <yamato@redhat.com>
+Committed with the 's/.export/.exports/g' change... 
 
-'host_err' is guaranteed to be 0 by the time we test 'ndentry->d_inode'. 
-If 'host_err' becomes != 0 inside the 'if' statement, then we goto 
-'out_drop_write'. So, after the 'if' statement there is no way that 
-'host_err' can be anything but 0, so the test afterwards is just dead 
-code.
-This patch removes the dead code.
+Again, thanks for your patience!
 
-Signed-off-by: Jesper Juhl <jj@chaosbits.net>
----
- vfs.c |    2 --
- 1 file changed, 2 deletions(-)
+steved.
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index da1d970..9cc626b 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1749,8 +1749,6 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 		if (host_err)
- 			goto out_drop_write;
- 	}
--	if (host_err)
--		goto out_drop_write;
- 	host_err = vfs_rename(fdir, odentry, tdir, ndentry);
- 	if (!host_err) {
- 		host_err = commit_metadata(tfhp);
-
-
--- 
-Jesper Juhl <jj@chaosbits.net>            http://www.chaosbits.net/
-Plain text mails only, please.
-Don't top-post http://www.catb.org/~esr/jargon/html/T/top-post.html
-
+> ---
+>  support/include/nfslib.h  |    6 ++++
+>  utils/exportfs/exportfs.c |   59 ++++++++++++++++++++++++++++++++++++++++++++-
+>  2 files changed, 64 insertions(+), 1 deletions(-)
+> 
+> diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+> index 53ece0e..864aae2 100644
+> --- a/support/include/nfslib.h
+> +++ b/support/include/nfslib.h
+> @@ -25,6 +25,12 @@
+>  #ifndef _PATH_EXPORTS
+>  #define _PATH_EXPORTS		"/etc/exports"
+>  #endif
+> +#ifndef _PATH_EXPORTS_D
+> +#define _PATH_EXPORTS_D         "/etc/exports.d"
+> +#endif
+> +#ifndef _EXT_EXPORT
+> +#define _EXT_EXPORT             ".export"
+> +#endif
+>  #ifndef _PATH_IDMAPDCONF
+>  #define _PATH_IDMAPDCONF	"/etc/idmapd.conf"
+>  #endif
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index b78957f..26d0504 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -25,6 +25,7 @@
+>  #include <fcntl.h>
+>  #include <netdb.h>
+>  #include <errno.h>
+> +#include <dirent.h>
+>  
+>  #include "sockaddr.h"
+>  #include "misc.h"
+> @@ -41,6 +42,7 @@ static void	error(nfs_export *exp, int err);
+>  static void	usage(const char *progname);
+>  static void	validate_export(nfs_export *exp);
+>  static int	matchhostname(const char *hostname1, const char *hostname2);
+> +static void	export_d_read(const char *dname);
+>  
+>  int
+>  main(int argc, char **argv)
+> @@ -127,8 +129,10 @@ main(int argc, char **argv)
+>  			return 0;
+>  		}
+>  	}
+> -	if (f_export && ! f_ignore)
+> +	if (f_export && ! f_ignore) {
+>  		export_read(_PATH_EXPORTS);
+> +		export_d_read(_PATH_EXPORTS_D);
+> +	}
+>  	if (f_export) {
+>  		if (f_all)
+>  			export_all(f_verbose);
+> @@ -485,6 +489,59 @@ out:
+>  	return result;
+>  }
+>  
+> +/* Based on mnt_table_parse_dir() in
+> +   util-linux-ng/shlibs/mount/src/tab_parse.c */
+> +static void
+> +export_d_read(const char *dname)
+> +{
+> +	int n = 0, i;
+> +	struct dirent **namelist = NULL;
+> +
+> +
+> +	n = scandir(dname, &namelist, NULL, versionsort);
+> +	if (n < 0)
+> +		xlog(L_NOTICE, "scandir %s: %s\n", dname, strerror(errno));
+> +	else if (n == 0)
+> +		return;
+> +
+> +	for (i = 0; i < n; i++) {
+> +		struct dirent *d = namelist[i];
+> +		size_t namesz;
+> +		char fname[PATH_MAX + 1];
+> +		int fname_len;
+> +
+> +
+> +		if (d->d_type != DT_UNKNOWN 
+> +		    && d->d_type != DT_REG
+> +		    && d->d_type != DT_LNK)
+> +			continue;
+> +		if (*d->d_name == '.')
+> +			continue;
+> +
+> +#define _EXT_EXPORT_SIZ   (sizeof(_EXT_EXPORT) - 1)
+> +		namesz = strlen(d->d_name);
+> +		if (!namesz 
+> +		    || namesz < _EXT_EXPORT_SIZ + 1
+> +		    || strcmp(d->d_name + (namesz - _EXT_EXPORT_SIZ),
+> +			      _EXT_EXPORT))
+> +			continue;
+> +
+> +		fname_len = snprintf(fname, PATH_MAX +1, "%s/%s", dname, d->d_name);
+> +		if (fname_len > PATH_MAX) {
+> +			xlog(L_WARNING, "Too long file name: %s in %s\n", d->d_name, dname);
+> +			continue;
+> +		}
+> +
+> +		export_read(fname);
+> +	}
+> +		
+> +	for (i = 0; i < n; i++)
+> +		free(namelist[i]);
+> +	free(namelist);
+> +
+> +	return;
+> +}
+> +
+>  static char
+>  dumpopt(char c, char *fmt, ...)
+>  {
