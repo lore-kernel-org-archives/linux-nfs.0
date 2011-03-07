@@ -1,58 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1208 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:29382 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753531Ab1CIVoF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Mar 2011 16:44:05 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/4] NFSv4.1: Fix the handling of the SEQUENCE status bits
-Date: Wed,  9 Mar 2011 16:43:40 -0500
-Message-Id: <1299707022-21140-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1299707022-21140-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1299707022-21140-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752546Ab1CGOOJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Mar 2011 09:14:09 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p27EE9vl013733
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 7 Mar 2011 09:14:09 -0500
+Message-ID: <4D74E830.6020406@RedHat.com>
+Date: Mon, 07 Mar 2011 09:14:08 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Masatake YAMATO <yamato@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
+References: <20110306.151123.1031846434411534102.yamato@redhat.com>	<4D74D822.4000009@RedHat.com>	<4D74DAE7.5060503@RedHat.com> <20110307.225054.778816292497413667.yamato@redhat.com>
+In-Reply-To: <20110307.225054.778816292497413667.yamato@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-We want SEQUENCE status bits to be handled by the state manager in order
-to avoid threading issues.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c |   11 ++++++++---
- 1 files changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index deedeb2..8ae1926 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -436,8 +436,8 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
- 		clp = res->sr_session->clp;
- 		do_renew_lease(clp, timestamp);
- 		/* Check sequence flags */
--		if (atomic_read(&clp->cl_count) > 1)
--			nfs41_handle_sequence_flag_errors(clp, res->sr_status_flags);
-+		if (res->sr_status_flags != 0)
-+			nfs4_schedule_lease_recovery(clp);
- 		break;
- 	case -NFS4ERR_DELAY:
- 		/* The server detected a resend of the RPC call and
-@@ -5254,8 +5254,13 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
- 		goto out;
- 	}
- 	ret = rpc_wait_for_completion_task(task);
--	if (!ret)
-+	if (!ret) {
-+		struct nfs4_sequence_res *res = task->tk_msg.rpc_resp;
-+
-+		if (task->tk_status == 0)
-+			nfs41_handle_sequence_flag_errors(clp, res->sr_status_flags);
- 		ret = task->tk_status;
-+	}
- 	rpc_put_task(task);
- out:
- 	dprintk("<-- %s status=%d\n", __func__, ret);
--- 
-1.7.4
+On 03/07/2011 08:50 AM, Masatake YAMATO wrote:
+>>
+>>
+>> On 03/07/2011 08:05 AM, Steve Dickson wrote:
+>>>
+>>>
+>>> On 03/06/2011 01:11 AM, Masatake YAMATO wrote:
+>>>> On Sat, 5 Mar 2011 20:51:06 -0500, Jim Rees <rees@umich.edu> wrote
+>>>>> Steve Dickson wrote:
+>>>>>
+>>>>>   Now, I realize you added the ".export" explanation to the man page 
+>>>>>   but is there a particular reason why file in that directory have 
+>>>>>   to end with ".export"? Out of "easy of use" sake, should any 
+>>>>>   and all files that exist in that directory be expected to 
+>>>>>   be exports files?
+>>>>>
+>>>>> I don't know if that's the best way to do it, but I think it would be useful
+>>>>> to have a way to keep files in the directory that don't get automatically
+>>>>> read.  As an analogy, I have the following files in my /etc/init:
+>>>>>
+>>>>> portmap.conf           This is the real one that gets used
+>>>>> portmap.conf~          This is a backup file produced by emacs
+>>>>> portmap.conf-20100603  This is the file that came with my distro
+>>>>>
+>>>>> Only the first one gets used, which is what I want, because it's the only
+>>>>> one ending in ".conf".
+>>> This makes sense... 
+>>>
+>>>>
+>>>> Jim, thank you for explanation. He wrote what I'd like to write.
+>>>>
+>>>> This technique is borrowed from util-linux-ng; libmount.so reads
+>>>> only *.fstab under /etc/fstab.d.
+>>>>
+>>>>
+>>>> In addition, ".export" suffix tells an editor which syntax highlighter
+>>>> should be used when editing .export file:P
+>>> True... But I noticed the suffix that gvim looks for is ".exports"
+>>> not ".export". 
+>>>
+>>> What editor are you using and does it look for a ".export" by default?
+>>>
+>> After thinking about this a little longer, I think making the 
+>> suffix ".exports" does make sense. Along with the that being 
+>> the default syntax  highlighter for gvim, more importantly, its
+>> also the name of the man page, exports(5).
+> 
+> I see. I didn't think what is the best suffix the file such deeply.
+> Do I need to resubmit a patch for s/.export/.exports/g?
+No... I'll take care of it...
 
+steved.
