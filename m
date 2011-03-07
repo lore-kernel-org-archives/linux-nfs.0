@@ -1,126 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailin.studentenwerk.mhn.de ([141.84.225.229]:56776 "EHLO
-	email.studentenwerk.mhn.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754754Ab1CWHyk convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2011 03:54:40 -0400
-From: Wolfgang Walter <wolfgang.walter@stwm.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: problem with nfs4: rpciod seems to loop in rpc_shutdown_client forever
-Date: Wed, 23 Mar 2011 08:54:37 +0100
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-References: <201103182349.22331.wolfgang.walter@stwm.de> <201103221552.21826.wolfgang.walter@stwm.de> <20110322150147.GA14627@fieldses.org>
-In-Reply-To: <20110322150147.GA14627@fieldses.org>
-Content-Type: text/plain;
-  charset="utf-8"
-Message-Id: <201103230854.38151.wolfgang.walter@stwm.de>
+Received: from mx1.redhat.com ([209.132.183.28]:40855 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750754Ab1CGNR3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Mar 2011 08:17:29 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p27DHTdr007889
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 7 Mar 2011 08:17:29 -0500
+Received: from badhat.bos.devel.redhat.com (vpn-10-184.rdu.redhat.com [10.11.10.184])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p27DHR6B015736
+	for <linux-nfs@vger.kernel.org>; Mon, 7 Mar 2011 08:17:28 -0500
+Message-ID: <4D74DAE7.5060503@RedHat.com>
+Date: Mon, 07 Mar 2011 08:17:27 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
+References: <20110217.215900.388120588347145930.yamato@redhat.com>	<4D72BD33.70208@RedHat.com>	<20110306015106.GA23388@merit.edu> <20110306.151123.1031846434411534102.yamato@redhat.com> <4D74D822.4000009@RedHat.com>
+In-Reply-To: <4D74D822.4000009@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Am Dienstag, 22. März 2011 schrieb J. Bruce Fields:
-> On Tue, Mar 22, 2011 at 03:52:21PM +0100, Wolfgang Walter wrote:
-> > Am Dienstag, 22. März 2011 schrieb J. Bruce Fields:
-> > > On Fri, Mar 18, 2011 at 11:49:21PM +0100, Wolfgang Walter wrote:
-> > > > Hello,
-> > > >
-> > > > I have a problem with our nfs-server (stable 2.6.32.33 but also with
-> > > > .31 or .32 and probably older ones): sometimes
-> > > > one or more rpciod get stuck. I used
-> > > >
-> > > > 	rpcdebug -m rpc -s all
-> > > >
-> > > > I get messages as the following one about every second:
-> > > >
-> > > > Mar 18 11:15:37 au kernel: [44640.906793] RPC:       killing all
-> > > > tasks for client ffff88041c51de00 Mar 18 11:15:38 au kernel:
-> > > > [44641.906793] RPC:       killing all tasks for client
-> > > > ffff88041c51de00 Mar 18 11:15:39 au kernel: [44642.906795] RPC:      
-> > > > killing all tasks for client ffff88041c51de00 Mar 18 11:15:40 au
-> > > > kernel: [44643.906793] RPC: killing all tasks for client
-> > > > ffff88041c51de00 Mar 18 11:15:41 au kernel: [44644.906795] RPC:      
-> > > > killing all tasks for client ffff88041c51de00 Mar 18 11:15:42 au
-> > > > kernel: [44645.906794] RPC:       killing all tasks for client
-> > > > ffff88041c51de00
-> > > >
-> > > > and I get this messages:
-> > > >
-> > > > Mar 18 22:45:57 au kernel: [86061.779008]   174 0381     -5
-> > > > ffff88041c51de00   (null)        0 ffffffff817211a0 nfs4_cbv1 CB_NULL
-> > > > a:rpc_exit_task q:none
-> > > >
-> > > > My theorie is this one:
-> > > >
-> > > > * this async task is runnable but does not progress (calling
-> > > > rpc_exit_task). * this is because the same rpciod which handles this
-> > > > task loops in rpc_shutdown_client waiting for this task to go away. *
-> > > > because rpc_shutdown_client is called from an async rpc, too
-> > >
-> > > Off hand I don't see any place where rpc_shutdown_client() is called
-> > > from rpciod; do you?
-> >
-> > I'm not familiar with the code.
-> >
-> > But could it be that this is in fs/nfsd/nfs4state.c ?
-> >
-> > Just a guess because 2.6.38 does not have this problem and in 2.6.38 it
-> > seems to have a workqueue of its own.
->
-> Well, spotted, yes it's true that 2.6.32 had called put_nfs4_client()
-> from an rpc_call_done callback, that put_nfs4_client() can end up
-> calling rpc_shutdown_client, and that that's since been fixed....
->
-> If someone wants to backport the fix to 2.6.32.y....
->
-> Actually I think it might be sufficient just to apply
-> 147efd0dd702ce2f1ab44449bd70369405ef68fd ?  But I haven't tried.
->
-> --b.
->
-> commit 147efd0dd702ce2f1ab44449bd70369405ef68fd
-> Author: J. Bruce Fields <bfields@citi.umich.edu>
-> Date:   Sun Feb 21 17:41:19 2010 -0800
->
->     nfsd4: shutdown callbacks on expiry
->
->     Once we've expired the client, there's no further purpose to the
->     callbacks; go ahead and shut down the callback client rather than
->     waiting for the last reference to go.
->
->     Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
->
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index efef7f2..9ce5831 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -697,9 +697,6 @@ shutdown_callback_client(struct nfs4_client *clp)
->  static inline void
->  free_client(struct nfs4_client *clp)
->  {
-> -	shutdown_callback_client(clp);
-> -	if (clp->cl_cb_xprt)
-> -		svc_xprt_put(clp->cl_cb_xprt);
->  	if (clp->cl_cred.cr_group_info)
->  		put_group_info(clp->cl_cred.cr_group_info);
->  	kfree(clp->cl_principal);
-> @@ -752,6 +749,9 @@ expire_client(struct nfs4_client *clp)
->  				 se_perclnt);
->  		release_session(ses);
->  	}
-> +	shutdown_callback_client(clp);
-> +	if (clp->cl_cb_xprt)
-> +		svc_xprt_put(clp->cl_cb_xprt);
->  	put_nfs4_client(clp);
->  }
 
-I'll test it this weekend.
 
-I use 2.6.38 on this server for now and probably will stay with it. But having 
-a working longterm-kernel to fall back is important for me :-).  
+On 03/07/2011 08:05 AM, Steve Dickson wrote:
+> 
+> 
+> On 03/06/2011 01:11 AM, Masatake YAMATO wrote:
+>> On Sat, 5 Mar 2011 20:51:06 -0500, Jim Rees <rees@umich.edu> wrote
+>>> Steve Dickson wrote:
+>>>
+>>>   Now, I realize you added the ".export" explanation to the man page 
+>>>   but is there a particular reason why file in that directory have 
+>>>   to end with ".export"? Out of "easy of use" sake, should any 
+>>>   and all files that exist in that directory be expected to 
+>>>   be exports files?
+>>>
+>>> I don't know if that's the best way to do it, but I think it would be useful
+>>> to have a way to keep files in the directory that don't get automatically
+>>> read.  As an analogy, I have the following files in my /etc/init:
+>>>
+>>> portmap.conf           This is the real one that gets used
+>>> portmap.conf~          This is a backup file produced by emacs
+>>> portmap.conf-20100603  This is the file that came with my distro
+>>>
+>>> Only the first one gets used, which is what I want, because it's the only
+>>> one ending in ".conf".
+> This makes sense... 
+> 
+>>
+>> Jim, thank you for explanation. He wrote what I'd like to write.
+>>
+>> This technique is borrowed from util-linux-ng; libmount.so reads
+>> only *.fstab under /etc/fstab.d.
+>>
+>>
+>> In addition, ".export" suffix tells an editor which syntax highlighter
+>> should be used when editing .export file:P
+> True... But I noticed the suffix that gvim looks for is ".exports"
+> not ".export". 
+> 
+> What editor are you using and does it look for a ".export" by default?
+> 
+After thinking about this a little longer, I think making the 
+suffix ".exports" does make sense. Along with the that being 
+the default syntax  highlighter for gvim, more importantly, its
+also the name of the man page, exports(5).
 
-Regards,
--- 
-Wolfgang Walter
-Studentenwerk München
-Anstalt des öffentlichen Rechts
+steved.
