@@ -1,57 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from seldrel01.sonyericsson.com ([212.209.106.2]:7814 "EHLO
-	seldrel01.sonyericsson.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751022Ab1CJJjl convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Mar 2011 04:39:41 -0500
-From: "Assarsson, Emil" <Emil.Assarsson@sonyericsson.com>
-To: "'NeilBrown'" <neilb@suse.de>
-CC: "'linux-nfs@vger.kernel.org'" <linux-nfs@vger.kernel.org>
-Date: Thu, 10 Mar 2011 10:39:38 +0100
-Subject: RE: mountd --manage-gids supports max 100 groups?
-Message-ID: <2BF070A7A2375D46BA1B6087F8D5DCB678B8E772B9@seldmbx01.corpusers.net>
-References: <2BF070A7A2375D46BA1B6087F8D5DCB678B8E772B8@seldmbx01.corpusers.net>
- <20110310073515.799d1530@notabene.brown>
-In-Reply-To: <20110310073515.799d1530@notabene.brown>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx1.redhat.com ([209.132.183.28]:32682 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751413Ab1CGORY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Mar 2011 09:17:24 -0500
+Message-ID: <4D74E8F1.8010808@RedHat.com>
+Date: Mon, 07 Mar 2011 09:17:21 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Jim Rees <rees@umich.edu>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
+References: <20110217.215900.388120588347145930.yamato@redhat.com> <4D72BD33.70208@RedHat.com> <20110306015106.GA23388@merit.edu> <20110306.151123.1031846434411534102.yamato@redhat.com> <4D74D822.4000009@RedHat.com> <20110307140230.GB2212@merit.edu>
+In-Reply-To: <20110307140230.GB2212@merit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> > Running linux kernel 2.6.32 and nfs-utils 1.2.0 (Ubuntu Lucid)
-> >
-> > A regular user in our company usually is member of more than 300 groups.
-> Some user even have up to 600. We want to use the --manage-gids option for
-> mountd. However it seems to me that it is limited to about 100 groups.
-> >
-> > The reason seems to be that there is a hard limit for mountd but also that
-> the /proc/net/rpc/auth.unix.gid/channel won't accept more than 1008 characters
-> as input.
-> >
-> > I tried to adjust the code for mountd so that it tried to add up to 1000
-> groups but then I ran in to the channel problem.
-> >
-> > Can someone please guide me to the place where I can adjust this limit?
+
+
+On 03/07/2011 09:02 AM, Jim Rees wrote:
+> Steve Dickson wrote:
 > 
-> The limit should be 8192, not 1008.
+>   True... But I noticed the suffix that gvim looks for is ".exports"
+>   not ".export". 
 > 
-> This is set in net/sunrpc/cache.c
-> If the write is less than one page, it is handled in cache_downcall().
-> If it is bigger it is passed to cache_slow_downcall() which stops at
-> 8192 (but could trivially be make to handle more).
-> 
-> What is your evidence that '.../channel won't accept more than 1008
-> characters as input" ???
+> Is the exports file format so complicated that we need syntax highlighting?
+Probably not...  ;-) I just noticed there was a syntax highlighter called
+".exports" in gvim... 
 
-I was testing the channel by piping in a subset of my groups into the channel:
-
-root@maslx0007:~# echo "2060593965 1299750919 95 4 20 24 44 104 105 119 124 500 2060452353 2060475597 2060778714 2060602086 2060505462 2060519313 2060541288 2060629540 2060560887 2060641701 2060507449 2060571139 2060460520 2060691482 2060497267 2060732197 2060629803 2060686723 2060722618 2060491358 2060552159 2060797585 2060683892 2060542012 2060683910 2060732968 2060717801 2060542828 2060619829 2060736330 2060531560 2060522215 2060483025 2060505538 2060570959 2060720431 2060476680 2060596415 2060488853 2060766185 2060492019 2060720092 2060571137 2060523545 2060475499 2060599566 2060622371 2060629570 2060824683 2060553587 2060476512 2060596572 2060691488 2060800539 2060720087 2060782445 2060461021 2060511067 2060483404 2060480477 2060460563 2060481754 2060637993 2060707607 2060717396 2060476873 2060732920 2060560895 2060693869 2060618583 2060686894 2060718263 2060803975 2060626966 2060708951 2060767809 2060527105 2060808457 2060802223 2060674942 2060763101 2060800542 2060599!
- 910 2060778719 2060687138 2060503954 20606" > /proc/net/rpc/auth.unix.gid/channel
-root@maslx0007:~# echo "2060593965 1299750919 95 4 20 24 44 104 105 119 124 500 2060452353 2060475597 2060778714 2060602086 2060505462 2060519313 2060541288 2060629540 2060560887 2060641701 2060507449 2060571139 2060460520 2060691482 2060497267 2060732197 2060629803 2060686723 2060722618 2060491358 2060552159 2060797585 2060683892 2060542012 2060683910 2060732968 2060717801 2060542828 2060619829 2060736330 2060531560 2060522215 2060483025 2060505538 2060570959 2060720431 2060476680 2060596415 2060488853 2060766185 2060492019 2060720092 2060571137 2060523545 2060475499 2060599566 2060622371 2060629570 2060824683 2060553587 2060476512 2060596572 2060691488 2060800539 2060720087 2060782445 2060461021 2060511067 2060483404 2060480477 2060460563 2060481754 2060637993 2060707607 2060717396 2060476873 2060732920 2060560895 2060693869 2060618583 2060686894 2060718263 2060803975 2060626966 2060708951 2060767809 2060527105 2060808457 2060802223 2060674942 2060763101 2060800542 2060599!
- 910 2060778719 2060687138 2060503954 206061" > /proc/net/rpc/auth.unix.gid/channel
--su: echo: write error: Invalid argument
-
-As soon as I go above 1008 characters it returns "Invalid argument"
-
-Thanks,
-Emil Assarsson
+steved.
