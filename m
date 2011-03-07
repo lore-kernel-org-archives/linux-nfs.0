@@ -1,58 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1570 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:57716 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756286Ab1CATZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Mar 2011 14:25:54 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH pnfs-submit-wave3 update 3/5] wave3: document that we are relying on nfs_initiate_read not failing
-Date: Tue,  1 Mar 2011 14:25:32 -0500
-Message-Id: <1299007534-4105-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1299007534-4105-3-git-send-email-andros@netapp.com>
-References: <1299007534-4105-1-git-send-email-andros@netapp.com>
- <1299007534-4105-2-git-send-email-andros@netapp.com>
- <1299007534-4105-3-git-send-email-andros@netapp.com>
+	id S1752435Ab1CGQ6o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Mar 2011 11:58:44 -0500
+Date: Mon, 7 Mar 2011 11:58:41 -0500
+From: "J. Bruce  Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Jesper Juhl <jj@chaosbits.net>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] NFSD, VFS: Remove dead code in nfsd_rename()
+Message-ID: <20110307165840.GD6718@fieldses.org>
+References: <alpine.LNX.2.00.1103060024380.6297@swampdragon.chaosbits.net>
+ <20110306165242.0cafd68a@notabene.brown>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110306165242.0cafd68a@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@netapp.com>
+On Sun, Mar 06, 2011 at 04:52:42PM +1100, NeilBrown wrote:
+> On Sun, 6 Mar 2011 00:30:35 +0100 (CET) Jesper Juhl <jj@chaosbits.net> wrote:
+> 
+> > Currently we have the following code in fs/nfsd/vfs.c::nfsd_rename() :
+> > 
+> > 	...
+> > 	host_err = nfsd_break_lease(odentry->d_inode);
+> > 	if (host_err)
+> > 		goto out_drop_write;
+> > 	if (ndentry->d_inode) {
+> > 		host_err = nfsd_break_lease(ndentry->d_inode);
+> > 		if (host_err)
+> > 			goto out_drop_write;
+> > 	}
+> > 	if (host_err)
+> > 		goto out_drop_write;
+> > 	...
+> > 
+> > 'host_err' is guaranteed to be 0 by the time we test 'ndentry->d_inode'. 
+> > If 'host_err' becomes != 0 inside the 'if' statement, then we goto 
+> > 'out_drop_write'. So, after the 'if' statement there is no way that 
+> > 'host_err' can be anything but 0, so the test afterwards is just dead 
+> > code.
+> > This patch removes the dead code.
+> 
+> I would probably have gone for:
+> 
+>   host_err = nfsd_break_lease(odentry->d_inode);
+>   if (!host_err && ndentry->d_inode)
+>         host_err = nfsd_break_lease(ndentry->d_inode);
+>   if (host_err)
+>         goto out_drop_write;
+> 
+> or even
+>   host_err = nfsd_break_lease(odentry->d_inode);
+>   if (ndentry->d_inode)
+>         host_err = hosterr ?: nfsd_break_lease(ndentry->d_inode);
+>   if (host_err)
+>         goto out_drop_write;
+> 
+> 
+> but it is largely a matter of taste.  I agree there is redundant code there
+> and your's is a suitable fix.
 
-With the curent code, rpc_run_task(), and thus nfs_initiate_read(),
-can not fail if the task is pre-initialized.  Trond asked that
-we document this in case of future code changes with a BUG_ON.
+Yeah, works for me.  Thanks for catching that; queueing up for 2.6.39.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4filelayout.c |    6 ++++--
- 1 files changed, 4 insertions(+), 2 deletions(-)
+--b.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 45b650a..e76c582 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -203,6 +203,7 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	loff_t offset = data->args.offset;
- 	u32 j, idx;
- 	struct nfs_fh *fh;
-+	int status;
- 
- 	dprintk("--> %s ino %lu pgbase %u req %Zu@%llu\n",
- 		__func__, data->inode->i_ino,
-@@ -231,8 +232,9 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	data->mds_offset = offset;
- 
- 	/* Perform an asynchronous read to ds */
--	nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
--			  &filelayout_read_call_ops);
-+	status = nfs_initiate_read(data, ds->ds_clp->cl_rpcclient,
-+				   &filelayout_read_call_ops);
-+	BUG_ON(status != 0);
- 	return PNFS_ATTEMPTED;
- }
- 
--- 
-1.6.2.5
-
+> 
+> NeilBrown
+> 
+> > 
+> > Signed-off-by: Jesper Juhl <jj@chaosbits.net>
+> > ---
+> >  vfs.c |    2 --
+> >  1 file changed, 2 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > index da1d970..9cc626b 100644
+> > --- a/fs/nfsd/vfs.c
+> > +++ b/fs/nfsd/vfs.c
+> > @@ -1749,8 +1749,6 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+> >  		if (host_err)
+> >  			goto out_drop_write;
+> >  	}
+> > -	if (host_err)
+> > -		goto out_drop_write;
+> >  	host_err = vfs_rename(fdir, odentry, tdir, ndentry);
+> >  	if (!host_err) {
+> >  		host_err = commit_metadata(tfhp);
+> > 
+> > 
+> 
