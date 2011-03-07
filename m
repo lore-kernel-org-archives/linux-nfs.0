@@ -1,78 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from eastrmfepi202.cox.net ([68.230.241.206]:41797 "EHLO
-	eastrmfepi202.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751605Ab1C3A3W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Mar 2011 20:29:22 -0400
-Date: Tue, 29 Mar 2011 19:12:32 -0500
-From: Tom Haynes <tdh@excfb.com>
-To: peter.staubach@emc.com
-Cc: Zoltan.Menyhart@bull.net, chuck.lever@oracle.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: NFS v4 client blocks when using UDP protocol
-Message-ID: <20110330001232.GB19700@adept.internal.excfb.com>
-References: <EB0F26AF-C0DB-4861-ABB5-72E39CB38090@bull.net>
- <4D91ED79.4020302@bull.net>
- <4A05F533-1BE6-4DFC-BC53-9392DA8BED76@oracle.com>
- <4D91FA1D.1000206@bull.net>
- <5E6794FC7B8FCA41A704019BE3C70E8B069D40C4@MX31A.corp.emc.com>
+Received: from fieldses.org ([174.143.236.118]:39720 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754168Ab1CGQgE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Mar 2011 11:36:04 -0500
+Received: from bfields by fieldses.org with local (Exim 4.72)
+	(envelope-from <bfields@fieldses.org>)
+	id 1PwdPf-0001rO-Qg
+	for linux-nfs@vger.kernel.org; Mon, 07 Mar 2011 11:36:03 -0500
+Date: Mon, 7 Mar 2011 11:36:03 -0500
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd4: fix bad pointer on failure to find delegation
+Message-ID: <20110307163603.GB6718@fieldses.org>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5E6794FC7B8FCA41A704019BE3C70E8B069D40C4@MX31A.corp.emc.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Mar 29, 2011 at 11:50:36AM -0400, peter.staubach@emc.com wrote:
-> It does talk about NFS over UDP, interestingly, but the text on page 25, indicates that the transport of choice MUST be one of the IETF-approved congestion control transport protocols, of which, UDP is not one.
-> 
-> Perhaps some clean up of RFC3530bis and RFC5661 could include removal of the UDP mentions.
+From: J. Bruce Fields <bfields@redhat.com>
 
-The text in 3530bis could be made to match that in 5661:
+In case of a nonempty list, the return on error here is obviously bogus;
+it ends up being a pointer to the list head instead of to any valid
+delegation on the list.
 
-   It is permissible for a connectionless transport to be used under
-   NFSv4.1; however, reliable and in-order delivery of data combined
-   with congestion control by the connectionless transport is REQUIRED.
-   As a consequence, UDP by itself MUST NOT be used as an NFSv4.1
-   transport.  NFSv4.1 assumes that a client transport address and
-   server transport address used to send data over a transport together
-   constitute a connection, even if the underlying transport eschews the
-   concept of a connection.
+In particular, if nfsd4_delegreturn() hits this case, and you're quite unlucky,
+then renew_client may oops, and it may take an embarassingly long time to
+figure out why.  Facepalm.
 
-But as we can see 5661 is very strong.
+BUG: unable to handle kernel NULL pointer dereference at 0000000000000090
+IP: [<ffffffff81292965>] nfsd4_delegreturn+0x125/0x200
+...
 
-> 
-> 		ps
-> 
-> 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Menyhart Zoltan
-> Sent: Tuesday, March 29, 2011 11:26 AM
-> To: Chuck Lever
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: NFS v4 client blocks when using UDP protocol
-> 
-> Chuck Lever wrote:
-> > Zoltan-
-> >
-> > As far as I know, NFSv4 is not supported on UDP transports.
-> >Some of it may work, but no warrantee, either expressed or implied, is given.  :-)
-> 
-> Do you mean the Linux implementation?
-> Because the RFC 3530 speaks about how to do NFS v4 over UDP and UDP6.
-> 
-> Thank you,
-> 
-> Zoltan
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   13 +++++++------
+ 1 files changed, 7 insertions(+), 6 deletions(-)
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 54b60bf..7b566ec 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2445,15 +2445,16 @@ nfs4_check_delegmode(struct nfs4_delegation *dp, int flags)
+ static struct nfs4_delegation *
+ find_delegation_file(struct nfs4_file *fp, stateid_t *stid)
+ {
+-	struct nfs4_delegation *dp = NULL;
++	struct nfs4_delegation *dp;
+ 
+ 	spin_lock(&recall_lock);
+-	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile) {
+-		if (dp->dl_stateid.si_stateownerid == stid->si_stateownerid)
+-			break;
+-	}
++	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
++		if (dp->dl_stateid.si_stateownerid == stid->si_stateownerid) {
++			spin_unlock(&recall_lock);
++			return dp;
++		}
+ 	spin_unlock(&recall_lock);
+-	return dp;
++	return NULL;
+ }
+ 
+ int share_access_to_flags(u32 share_access)
 -- 
-Tom Haynes
-ex-cfb
+1.7.1
+
