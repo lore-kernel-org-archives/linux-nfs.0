@@ -1,76 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39358 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:38396 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757104Ab1CAR3g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Mar 2011 12:29:36 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH pNFS wave 3 Version 3 04/18] NFSv4.1: send zero stateid seqid on v4.1 i/o
-Date: Mon, 28 Feb 2011 20:34:09 -0500
-Message-Id: <1298943263-2886-5-git-send-email-andros@netapp.com>
-In-Reply-To: <1298943263-2886-4-git-send-email-andros@netapp.com>
-References: <1298943263-2886-1-git-send-email-andros@netapp.com>
- <1298943263-2886-2-git-send-email-andros@netapp.com>
- <1298943263-2886-3-git-send-email-andros@netapp.com>
- <1298943263-2886-4-git-send-email-andros@netapp.com>
+	id S1753307Ab1CGSV5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Mar 2011 13:21:57 -0500
+Date: Mon, 7 Mar 2011 13:21:56 -0500
+To: Ivo =?utf-8?Q?P=C5=99ikryl?= <prikryl@eurosat.cz>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Possible NFSv4 locking bug
+Message-ID: <20110307182156.GA8104@fieldses.org>
+References: <201103070059.28304.prikryl@eurosat.cz>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <201103070059.28304.prikryl@eurosat.cz>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+On Mon, Mar 07, 2011 at 12:59:28AM +0100, Ivo Přikryl wrote:
+> Hello, 
+> 
+> just booted MDV 2010.2 with custom build 2.6.38 RC3 kernel, NFS4 server patched with your patch. 
+> So far it seems to be running just fine. No file descriptor wasted..
+> 
+> server#cat /proc/sys/fs/file-nr
+> 960     0       1231794
+> 
+> I will give it more time to observe..
+> 
+> 
+> I can also confirm, that before it was impossible to umount the volume after file descriptors leakage. 
+> If you want me to test anything regarding this issue, I have system ready.
 
-Data servers require a zero stateid seqid, and there is no advantage to not
-doing the same for all NFSv4.1
+Thanks for the report!
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4xdr.c |   10 +++++++---
- 1 files changed, 7 insertions(+), 3 deletions(-)
+(Minor complaint: in future if you mean to send mail to me, please send
+it to me specifically and cc: the list, don't send it to the list only.)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4e2c168..2380c45 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1384,7 +1384,7 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
- 	hdr->replen += decode_putrootfh_maxsz;
- }
- 
--static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx)
-+static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context *ctx, const struct nfs_lock_context *l_ctx, int zero_seqid)
- {
- 	nfs4_stateid stateid;
- 	__be32 *p;
-@@ -1392,6 +1392,8 @@ static void encode_stateid(struct xdr_stream *xdr, const struct nfs_open_context
- 	p = reserve_space(xdr, NFS4_STATEID_SIZE);
- 	if (ctx->state != NULL) {
- 		nfs4_copy_stateid(&stateid, ctx->state, l_ctx->lockowner, l_ctx->pid);
-+		if (zero_seqid)
-+			stateid.stateid.seqid = 0;
- 		xdr_encode_opaque_fixed(p, stateid.data, NFS4_STATEID_SIZE);
- 	} else
- 		xdr_encode_opaque_fixed(p, zero_stateid.data, NFS4_STATEID_SIZE);
-@@ -1404,7 +1406,8 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args,
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(OP_READ);
- 
--	encode_stateid(xdr, args->context, args->lock_context);
-+	encode_stateid(xdr, args->context, args->lock_context,
-+		       hdr->minorversion);
- 
- 	p = reserve_space(xdr, 12);
- 	p = xdr_encode_hyper(p, args->offset);
-@@ -1592,7 +1595,8 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(OP_WRITE);
- 
--	encode_stateid(xdr, args->context, args->lock_context);
-+	encode_stateid(xdr, args->context, args->lock_context,
-+		       hdr->minorversion);
- 
- 	p = reserve_space(xdr, 16);
- 	p = xdr_encode_hyper(p, args->offset);
--- 
-1.6.6
-
+--b.
