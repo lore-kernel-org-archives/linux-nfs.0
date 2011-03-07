@@ -1,54 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:44375 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754095Ab1CAPxJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Mar 2011 10:53:09 -0500
-Date: Tue, 1 Mar 2011 10:53:08 -0500
-To: Rick Koshi <nfs-bug-report@more-right-rudder.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Possible NFSv4 locking bug
-Message-ID: <20110301155308.GB20599@fieldses.org>
-References: <201102281527.p1SFRNst010559@hope.more-right-rudder.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201102281527.p1SFRNst010559@hope.more-right-rudder.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from earthlight.etchedpixels.co.uk ([81.2.110.250]:50783 "EHLO
+	www.etchedpixels.co.uk" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753340Ab1CGQBG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Mar 2011 11:01:06 -0500
+Date: Mon, 7 Mar 2011 16:00:42 +0000
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
+To: David Howells <dhowells@redhat.com>
+Cc: linux-security-module@vger.kernel.org, keyrings@linux-nfs.org,
+        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-afs@lists.infradead.org, linux-api@vger.kernel.org,
+        linux-kernel@vger.kernel.org, netdev@vger.kernel.org
+Subject: Re: [PATCH 2/2] Define ENONAMESERVICE and ENAMEUNKNOWN to indicate
+ name service errors
+Message-ID: <20110307160042.2ddc8e65@lxorguk.ukuu.org.uk>
+In-Reply-To: <20110307150218.28218.84916.stgit@warthog.procyon.org.uk>
+References: <20110307150208.28218.89348.stgit@warthog.procyon.org.uk>
+	<20110307150218.28218.84916.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Feb 28, 2011 at 10:27:23AM -0500, Rick Koshi wrote:
-> 
-> Hi all, I hope this is the right place for this.
-> 
-> I'm using NFSv4, server and client both running 2.6.36.
-> 
-> I've found that when I lock an NFS-mounted file on a client, the server
-> reserves an open file descriptor (as seen in /proc/sys/fs/file-nr).
+> Define ENONAMESERVICE to indicate "Network name service unavailable".  This can
+> be used to indicate, for example, that an attempt was made by dns_query() to
+> make a query, but the name server (e.g. a DNS server) it is supposed to contact
+> didn't answer or that it couldn't determine the location of a suitable server.
 
-So it looks like that's the total number of allocated struct file's
-across the system?
+Are these in glibc and are there glibc patches submitted and accepted for
+this ?
 
-> The server never releases this descriptor, even if the client process
-> explictly releases the lock or exits.
-> 
-> In my case, I noticed this because I have a monitoring process which
-> runs every 5 seconds and runs 'rrdtool' to log some status to a file
-> on an NFS-mounted filesystem.  This allocated 720 files per hour, and
-> eventually caused my server to run out of file descriptors and become
-> unusable.  I experimented with a test program, and found that it's the
-> fcntl64(3, F_SETLK, {type=F_WRLCK, ...}) system call that triggers
-> the behavior, and that unlocking the file explictly doesn't help.
-> 
-> Stopping the NFS service (including the lockd) does not release the
-> open files.  Only rebooting resets the state.
-> 
-> I'm no kernel expert.  Perhaps you can tell me if this is a necessary
-> side effect of some part of the NFS implementation.  But to me, it looks
-> like a bug.
-
-Looks like I can reproduce something similar.  Yes, looks like a bug to
-me.
-
-Is there any earlier kernel where you know this problem *didn't* occur?
-
---b.
+(I only ask because I know its previously taken years for glibc to catch
+up with stuff)
