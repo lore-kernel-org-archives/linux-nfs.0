@@ -1,157 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:31798 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34211 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750814Ab1CGO3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Mar 2011 09:29:17 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p27ETHgx030763
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 7 Mar 2011 09:29:17 -0500
-Message-ID: <4D74EBBC.4060007@RedHat.com>
-Date: Mon, 07 Mar 2011 09:29:16 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Masatake YAMATO <yamato@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
-References: <20110217.215900.388120588347145930.yamato@redhat.com>
-In-Reply-To: <20110217.215900.388120588347145930.yamato@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1753536Ab1CIVoF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Mar 2011 16:44:05 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/4] NFSv4: Fix the setlk error handler
+Date: Wed,  9 Mar 2011 16:43:41 -0500
+Message-Id: <1299707022-21140-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1299707022-21140-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1299707022-21140-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1299707022-21140-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Hello,
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   13 ++++---------
+ 1 files changed, 4 insertions(+), 9 deletions(-)
 
-On 02/17/2011 07:59 AM, Masatake YAMATO wrote:
-> This patch adding a capability to read /etc/exports.d/*.export as 
-> extra export files to exportfs.
-> 
-> If one wants to add or remove an export entry in a script, currently
-> one may have to use sed or something tool for adding or removing the
-> line for the entry in /etc/exports file. 
-> 
-> With the patch, adding and removing an entry from a script is much easier.
-> cat<<EOF... or mv can be used for adding. rm can be used for removing.
-> 
-> 
-> Signed-off-by: Masatake YAMATO <yamato@redhat.com>
-Committed with the 's/.export/.exports/g' change... 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8ae1926..f49b629 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4173,23 +4173,18 @@ static const struct rpc_call_ops nfs4_recover_lock_ops = {
+ 
+ static void nfs4_handle_setlk_error(struct nfs_server *server, struct nfs4_lock_state *lsp, int new_lock_owner, int error)
+ {
+-	struct nfs_client *clp = server->nfs_client;
+-	struct nfs4_state *state = lsp->ls_state;
+-
+ 	switch (error) {
+ 	case -NFS4ERR_ADMIN_REVOKED:
+ 	case -NFS4ERR_BAD_STATEID:
+-	case -NFS4ERR_EXPIRED:
++		lsp->ls_seqid.flags &= ~NFS_SEQID_CONFIRMED;
+ 		if (new_lock_owner != 0 ||
+ 		   (lsp->ls_flags & NFS_LOCK_INITIALIZED) != 0)
+-			nfs4_state_mark_reclaim_nograce(clp, state);
+-		lsp->ls_seqid.flags &= ~NFS_SEQID_CONFIRMED;
++			nfs4_schedule_stateid_recovery(server, lsp->ls_state);
+ 		break;
+ 	case -NFS4ERR_STALE_STATEID:
+-		if (new_lock_owner != 0 ||
+-		    (lsp->ls_flags & NFS_LOCK_INITIALIZED) != 0)
+-			nfs4_state_mark_reclaim_reboot(clp, state);
+ 		lsp->ls_seqid.flags &= ~NFS_SEQID_CONFIRMED;
++	case -NFS4ERR_EXPIRED:
++		nfs4_schedule_lease_recovery(server->nfs_client);
+ 	};
+ }
+ 
+-- 
+1.7.4
 
-Again, thanks for your patience!
-
-steved.
-
-> ---
->  support/include/nfslib.h  |    6 ++++
->  utils/exportfs/exportfs.c |   59 ++++++++++++++++++++++++++++++++++++++++++++-
->  2 files changed, 64 insertions(+), 1 deletions(-)
-> 
-> diff --git a/support/include/nfslib.h b/support/include/nfslib.h
-> index 53ece0e..864aae2 100644
-> --- a/support/include/nfslib.h
-> +++ b/support/include/nfslib.h
-> @@ -25,6 +25,12 @@
->  #ifndef _PATH_EXPORTS
->  #define _PATH_EXPORTS		"/etc/exports"
->  #endif
-> +#ifndef _PATH_EXPORTS_D
-> +#define _PATH_EXPORTS_D         "/etc/exports.d"
-> +#endif
-> +#ifndef _EXT_EXPORT
-> +#define _EXT_EXPORT             ".export"
-> +#endif
->  #ifndef _PATH_IDMAPDCONF
->  #define _PATH_IDMAPDCONF	"/etc/idmapd.conf"
->  #endif
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index b78957f..26d0504 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -25,6 +25,7 @@
->  #include <fcntl.h>
->  #include <netdb.h>
->  #include <errno.h>
-> +#include <dirent.h>
->  
->  #include "sockaddr.h"
->  #include "misc.h"
-> @@ -41,6 +42,7 @@ static void	error(nfs_export *exp, int err);
->  static void	usage(const char *progname);
->  static void	validate_export(nfs_export *exp);
->  static int	matchhostname(const char *hostname1, const char *hostname2);
-> +static void	export_d_read(const char *dname);
->  
->  int
->  main(int argc, char **argv)
-> @@ -127,8 +129,10 @@ main(int argc, char **argv)
->  			return 0;
->  		}
->  	}
-> -	if (f_export && ! f_ignore)
-> +	if (f_export && ! f_ignore) {
->  		export_read(_PATH_EXPORTS);
-> +		export_d_read(_PATH_EXPORTS_D);
-> +	}
->  	if (f_export) {
->  		if (f_all)
->  			export_all(f_verbose);
-> @@ -485,6 +489,59 @@ out:
->  	return result;
->  }
->  
-> +/* Based on mnt_table_parse_dir() in
-> +   util-linux-ng/shlibs/mount/src/tab_parse.c */
-> +static void
-> +export_d_read(const char *dname)
-> +{
-> +	int n = 0, i;
-> +	struct dirent **namelist = NULL;
-> +
-> +
-> +	n = scandir(dname, &namelist, NULL, versionsort);
-> +	if (n < 0)
-> +		xlog(L_NOTICE, "scandir %s: %s\n", dname, strerror(errno));
-> +	else if (n == 0)
-> +		return;
-> +
-> +	for (i = 0; i < n; i++) {
-> +		struct dirent *d = namelist[i];
-> +		size_t namesz;
-> +		char fname[PATH_MAX + 1];
-> +		int fname_len;
-> +
-> +
-> +		if (d->d_type != DT_UNKNOWN 
-> +		    && d->d_type != DT_REG
-> +		    && d->d_type != DT_LNK)
-> +			continue;
-> +		if (*d->d_name == '.')
-> +			continue;
-> +
-> +#define _EXT_EXPORT_SIZ   (sizeof(_EXT_EXPORT) - 1)
-> +		namesz = strlen(d->d_name);
-> +		if (!namesz 
-> +		    || namesz < _EXT_EXPORT_SIZ + 1
-> +		    || strcmp(d->d_name + (namesz - _EXT_EXPORT_SIZ),
-> +			      _EXT_EXPORT))
-> +			continue;
-> +
-> +		fname_len = snprintf(fname, PATH_MAX +1, "%s/%s", dname, d->d_name);
-> +		if (fname_len > PATH_MAX) {
-> +			xlog(L_WARNING, "Too long file name: %s in %s\n", d->d_name, dname);
-> +			continue;
-> +		}
-> +
-> +		export_read(fname);
-> +	}
-> +		
-> +	for (i = 0; i < n; i++)
-> +		free(namelist[i]);
-> +	free(namelist);
-> +
-> +	return;
-> +}
-> +
->  static char
->  dumpopt(char c, char *fmt, ...)
->  {
