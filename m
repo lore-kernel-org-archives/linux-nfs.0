@@ -1,46 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from posta.eurosat.cz ([194.213.214.60]:58751 "EHLO mail.eurosat.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752831Ab1CFX47 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Mar 2011 18:56:59 -0500
-Received: from m50v.localnet (unknown [88.102.140.154])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mail.eurosat.cz (Postfix) with ESMTPSA id 0571C53C03F
-	for <linux-nfs@vger.kernel.org>; Mon,  7 Mar 2011 00:56:57 +0100 (CET)
-From: Ivo =?utf-8?q?P=C5=99ikryl?= <prikryl@eurosat.cz>
-To: linux-nfs@vger.kernel.org
-Subject: Re: Possible NFSv4 locking bug
-Date: Mon, 7 Mar 2011 00:59:28 +0100
-Content-Type: text/plain;
-  charset="utf-8"
-Message-Id: <201103070059.28304.prikryl@eurosat.cz>
+Received: from seldrel01.sonyericsson.com ([212.209.106.2]:11157 "EHLO
+	seldrel01.sonyericsson.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751488Ab1CIPav convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Mar 2011 10:30:51 -0500
+From: "Assarsson, Emil" <Emil.Assarsson@sonyericsson.com>
+To: "'linux-nfs@vger.kernel.org'" <linux-nfs@vger.kernel.org>
+Date: Wed, 9 Mar 2011 16:20:42 +0100
+Subject: mountd --manage-gids supports max 100 groups?
+Message-ID: <2BF070A7A2375D46BA1B6087F8D5DCB678B8E772B8@seldmbx01.corpusers.net>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello, 
+Hi All,
 
-just booted MDV 2010.2 with custom build 2.6.38 RC3 kernel, NFS4 server patched with your patch. 
-So far it seems to be running just fine. No file descriptor wasted..
+Running linux kernel 2.6.32 and nfs-utils 1.2.0 (Ubuntu Lucid)
 
-server#cat /proc/sys/fs/file-nr
-960     0       1231794
+A regular user in our company usually is member of more than 300 groups. Some user even have up to 600. We want to use the --manage-gids option for mountd. However it seems to me that it is limited to about 100 groups.
 
-I will give it more time to observe..
+The reason seems to be that there is a hard limit for mountd but also that the /proc/net/rpc/auth.unix.gid/channel won't accept more than 1008 characters as input.
+
+I tried to adjust the code for mountd so that it tried to add up to 1000 groups but then I ran in to the channel problem.
+
+Can someone please guide me to the place where I can adjust this limit?
 
 
-I can also confirm, that before it was impossible to umount the volume after file descriptors leakage. 
-If you want me to test anything regarding this issue, I have system ready.
+Best regards
 
-Thanks again 
+Emil Assarsson
+Sony Ericsson Mobile Communications AB
 
-Regards 
-Ivo 
--- 
-****************************************
-Ivo Přikryl
-prikryl@eurosat.cz
-EuroSat cs spol.s r.o.
-www.eurosat.cz
-*****************************************
+"The information in this email, and attachment(s) thereto, is strictly confidential and may be legally privileged. It is intended solely for the named recipient(s), and access to this e-mail, or any attachment(s) thereto, by anyone else is unauthorized. Violations hereof may result in legal actions. Any attachment(s) to this e-mail has been checked for viruses, but please rely on your own virus-checker and procedures. If you contact us by e-mail, we will store your name and address to facilitate communications in the matter concerned. If you do not consent to us storing your name and address for above stated purpose, please notify the sender promptly. Also, if you are not the intended recipient please inform the sender by replying to this transmission, and delete the e-mail, its attachment(s), and any copies of it without, disclosing it."
+
+
