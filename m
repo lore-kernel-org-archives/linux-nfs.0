@@ -1,122 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from dresden.studentenwerk.mhn.de ([141.84.225.229]:38214 "EHLO
-	email.studentenwerk.mhn.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752488Ab1CRW4D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Mar 2011 18:56:03 -0400
-From: Wolfgang Walter <wolfgang.walter@stwm.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: problem with nfs4: rpciod seems to loop in rpc_shutdown_client forever
-Date: Fri, 18 Mar 2011 23:49:21 +0100
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201103182349.22331.wolfgang.walter@stwm.de>
+Received: from fieldses.org ([174.143.236.118]:43805 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751147Ab1CIB3o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Mar 2011 20:29:44 -0500
+Date: Tue, 8 Mar 2011 20:29:42 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 02/17] CLNT: test lease period of unconfirmed record
+Message-ID: <20110309012942.GE15814@fieldses.org>
+References: <4D6DE26C.3010103@cn.fujitsu.com>
+ <4D6DE34A.2020404@cn.fujitsu.com>
+ <20110303060225.GD7724@fieldses.org>
+ <4D6F5A3D.6050000@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D6F5A3D.6050000@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
+On Thu, Mar 03, 2011 at 05:07:09PM +0800, Mi Jinlong wrote:
+> 
+> 
+> J. Bruce Fields :
+> > On Wed, Mar 02, 2011 at 02:27:22PM +0800, Mi Jinlong wrote:
+> >> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> >> ---
+> >>  nfs4.1/server41tests/st_exchange_id.py |   26 ++++++++++++++++++++++++++
+> >>  1 files changed, 26 insertions(+), 0 deletions(-)
+> >>
+> >> diff --git a/nfs4.1/server41tests/st_exchange_id.py b/nfs4.1/server41tests/st_exchange_id.py
+> >> index b5e34e6..85f3092 100644
+> >> --- a/nfs4.1/server41tests/st_exchange_id.py
+> >> +++ b/nfs4.1/server41tests/st_exchange_id.py
+> >> @@ -1,5 +1,6 @@
+> >>  from nfs4_const import *
+> >>  import nfs4_ops as op
+> >> +import time
+> >>  from environment import check, fail
+> >>  from nfs4_type import *
+> >>  from rpc import RPCAcceptError, GARBAGE_ARGS, RPCTimeout
+> >> @@ -436,3 +437,28 @@ def testNotOnlyOp(t, env):
+> >>      res = c.compound([op.exchange_id(owner, 0, protect, [c.impl_id]), op.putrootfh()])
+> >>      # per draft 21 18.35.3, server MUST return NFS4ERR_NOT_ONLY_OP
+> >>      check(res, NFS4ERR_NOT_ONLY_OP)
+> >> +
+> >> +def testLeasePeriod(t, env):
+> >> +    """Any unconfirmed record that is not confirmed within
+> >> +       a lease period SHOULD be removed.
+> >> +
+> >> +    FLAGS: exchange_id all
+> >> +    CODE: EID9
+> >> +    """
+> >> +    c1 = env.c1.new_client("%s_1" % env.testname(t))
+> >> +    c2 = env.c1.new_client("%s_2" % env.testname(t))
+> >> +    # CREATE_SESSION
+> >> +    chan_attrs = channel_attrs4(0,8192,8192,8192,128,8,[])
+> >> +    time.sleep(80)
+> > 
+> > Let's not hard-code any lease time.  pynfs should do a getattr to find
+> > the server's lease time, and use that as the basis for calculations
+> > (we need something like the getLeaseTime in the 4.0 pynfs.)
+> > 
+> > I actually usually set the server lease time to 15 seconds for testing,
+> > just to make the tests go faster....
+> 
+>   Agree with you!
+>   What about the following one?
 
-I have a problem with our nfs-server (stable 2.6.32.33 but also with
-.31 or .32 and probably older ones): sometimes
-one or more rpciod get stuck. I used
+Looks fine to me.
 
-	rpcdebug -m rpc -s all
+> +    chan_attrs = channel_attrs4(0,8192,8192,8192,128,8,[])
+> +    time.sleep(lease - 10)
 
-I get messages as the following one about every second:
+I changed this to
 
-Mar 18 11:15:37 au kernel: [44640.906793] RPC:       killing all tasks for client ffff88041c51de00
-Mar 18 11:15:38 au kernel: [44641.906793] RPC:       killing all tasks for client ffff88041c51de00
-Mar 18 11:15:39 au kernel: [44642.906795] RPC:       killing all tasks for client ffff88041c51de00
-Mar 18 11:15:40 au kernel: [44643.906793] RPC:       killing all tasks for client ffff88041c51de00
-Mar 18 11:15:41 au kernel: [44644.906795] RPC:       killing all tasks for client ffff88041c51de00
-Mar 18 11:15:42 au kernel: [44645.906794] RPC:       killing all tasks for client ffff88041c51de00
+	time.sleep(min(lease-10, 1))
 
-and I get this messages:
+so it'll sill work with single-digit lease, and left it the same
+otherwise.
 
-Mar 18 22:45:57 au kernel: [86061.779008]   174 0381     -5 ffff88041c51de00   (null)        0 ffffffff817211a0 nfs4_cbv1 CB_NULL a:rpc_exit_task q:none
+Thanks!
 
-My theorie is this one:
+--b.
 
-* this async task is runnable but does not progress (calling rpc_exit_task).
-* this is because the same rpciod which handles this task loops in
-  rpc_shutdown_client waiting for this task to go away.
-* because rpc_shutdown_client is called from an async rpc, too
-
-At the beginning is is always one or more tasks as above.
-
-Once a rpciod hangs more an more other tasks hang forever:
-
-Mar 18 22:45:57 au kernel: [86061.778809] -pid- flgs status -client- --rqstp- -timeout ---ops--
-Mar 18 22:45:57 au kernel: [86061.778819]   300 0281    -13 ffff8801ef5d0600   (null)        0 ffffffff817211a0 nfs4_cbv1 CB_NULL a:call_refreshresult q:none
-Mar 18 22:45:57 au kernel: [86061.778823]   289 0281      0 ffff880142a49800 ffff8802a1dde000        0 ffffffff817a3fd0 rpcbindv2 GETPORT a:call_status q:none
-Mar 18 22:45:57 au kernel: [86061.778827]   286 0281      0 ffff880349f57e00 ffff88010affe000        0 ffffffff817a3fd0 rpcbindv2 GETPORT a:call_status q:none
-Mar 18 22:45:57 au kernel: [86061.778830]   283 0281      0 ffff88041d19ac00 ffff880418650000        0 ffffffff817a3fd0 rpcbindv2 GETPORT a:call_status q:none
-Mar 18 22:45:57 au kernel: [86061.778833]   280 0281      0 ffff880380561400 ffff8803d3b7a000        0 ffffffff817a3fd0 rpcbindv2 GETPORT a:call_status q:none
-Mar 18 22:45:57 au kernel: [86061.778837]   277 0281      0 ffff8803ef73ac00 ffff88010af50000        0 ffffffff817a3fd0 rpcbindv2 GETPORT a:call_status q:none
-Mar 18 22:45:57 au kernel: [86061.778840]   274 0281      0 ffff880302c31c00 ffff8803e92b6000        0 ffffffff817a3fd0 rpcbindv2 GETPORT a:call_status q:none
-Mar 18 22:45:57 au kernel: [86061.778844]   271 0281      0 ffff8803c44d0600 ffff88002687e000        0 ffffffff817a3fd0 rpcbindv2 GETPORT a:call_status q:none
-Mar 18 22:45:57 au kernel: [86061.778847]   234 0281   -110 ffff8801f414b000 ffff880005382000        0 ffffffff817a3fd0 rpcbindv2 GETPORT a:call_connect_status q:none
-Mar 18 22:45:57 au kernel: [86061.778851]   233 0281   -110 ffff8802c9945800 ffff880050382000        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778855]   235 0281   -110 ffff8802c9945800 ffff880050382150        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778858]   236 0281   -110 ffff8802c9945800 ffff8800503822a0        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778861]   237 0281   -110 ffff8802c9945800 ffff8800503823f0        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778864]   238 0281   -110 ffff8802c9945800 ffff880050382540        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778867]   239 0281   -110 ffff8802c9945800 ffff880050382690        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778870]   240 0281   -110 ffff8802c9945800 ffff8800503827e0        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778874]   241 0281   -110 ffff8802c9945800 ffff880050382930        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778877]   242 0281   -110 ffff8802c9945800 ffff880050382a80        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778880]   243 0281   -110 ffff8802c9945800 ffff880050382bd0        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778884]   244 0281   -110 ffff8802c9945800 ffff880050382d20        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778887]   245 0281   -110 ffff8802c9945800 ffff880050382e70        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778890]   246 0281   -110 ffff8802c9945800 ffff880050382fc0        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778893]   247 0281   -110 ffff8802c9945800 ffff880050383110        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778896]   248 0281   -110 ffff8802c9945800 ffff880050383260        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778899]   249 0281   -110 ffff8802c9945800 ffff8800503833b0        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_bind_status q:none
-Mar 18 22:45:57 au kernel: [86061.778903]   250 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778906]   251 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778909]   252 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778912]   253 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778915]   254 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778919]   255 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778922]   256 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778925]   257 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778928]   258 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778931]   259 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778935]   260 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778938]   261 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778941]   262 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778945]   263 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778948]   264 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778951]   265 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778954]   266 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778958]   267 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778961]   268 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778964]   269 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 UNLOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778967]   272 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 LOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778971]   275 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 LOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778974]   278 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 LOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778977]   281 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 LOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778980]   284 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 LOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778983]   287 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 LOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778987]   290 0281    -11 ffff8802c9945800   (null)        0 ffffffff81721440 lockdv4 LOCK_RES a:call_reserveresult q:xprt_backlog
-Mar 18 22:45:57 au kernel: [86061.778990]   232 0281   -110 ffff8803d3bc6000 ffff8803d5eaa000        0 ffffffff817a3fd0 rpcbindv2 GETPORT a:call_connect_status q:none
-Mar 18 22:45:57 au kernel: [86061.778993]   230 0281    -13 ffff8801ef5d0200   (null)        0 ffffffff817211a0 nfs4_cbv1 CB_NULL a:call_refreshresult q:none
-Mar 18 22:45:57 au kernel: [86061.778997]   180 0281    -13 ffff880341e36800   (null)        0 ffffffff817211a0 nfs4_cbv1 CB_NULL a:call_refreshresult q:none
-Mar 18 22:45:57 au kernel: [86061.779000]   179 0281    -13 ffff88027dc01000   (null)        0 ffffffff817211a0 nfs4_cbv1 CB_NULL a:call_refreshresult q:none
-Mar 18 22:45:57 au kernel: [86061.779003]   178 0281    -13 ffff8801bddac600   (null)        0 ffffffff817211a0 nfs4_cbv1 CB_NULL a:call_refreshresult q:none
-Mar 18 22:45:57 au kernel: [86061.779008]   174 0381     -5 ffff88041c51de00   (null)        0 ffffffff817211a0 nfs4_cbv1 CB_NULL a:rpc_exit_task q:none
-
-I think I saw hanging rpciods once in a while but since we use kerberos we
-have it very often.
-
-
-My theorie may be completely bogus and there is another reason, I'm not
-familiar with the code.
-
-Regards,
--- 
-Wolfgang Walter
-Studentenwerk München
-Anstalt des öffentlichen Rechts
+> +    # Inside lease period, create_session will success.
+> +    res1 = c1.c.compound([op.create_session(c1.clientid, c1.seqid, 0,
+> +                                        chan_attrs, chan_attrs,
+> +                                        123, [])], None)
+> +    check(res1)
+> +
+> +    time.sleep(lease + 10)
+> +    # After lease period, create_session will get error NFS4ERR_STALE_CLIENTID
+> +    res2 = c2.c.compound([op.create_session(c2.clientid, c2.seqid, 0,
+> +                                        chan_attrs, chan_attrs,
+> +                                        123, [])], None)
+> +    check(res2, NFS4ERR_STALE_CLIENTID)
+> -- 
+> 1.7.4.1
+> 
+> 
+> 
