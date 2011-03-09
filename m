@@ -1,78 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47805 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:18676 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759698Ab1CDQV4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Mar 2011 11:21:56 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p24GLuO4025876
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 4 Mar 2011 11:21:56 -0500
-Message-ID: <4D7111A2.9050700@RedHat.com>
-Date: Fri, 04 Mar 2011 11:21:54 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Masatake YAMATO <yamato@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
-References: <20110217.215900.388120588347145930.yamato@redhat.com>	<20110303.230122.1012453714437438591.yamato@redhat.com>	<4D6FFF80.6030102@RedHat.com> <20110304.151026.946624858093159104.yamato@redhat.com>
-In-Reply-To: <20110304.151026.946624858093159104.yamato@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751253Ab1CISOD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Mar 2011 13:14:03 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH Cthon2011 fixes 2/3] NFSv4: remove duplicate clientid in struct nfs_client
+Date: Wed,  9 Mar 2011 13:13:45 -0500
+Message-Id: <1299694426-5620-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1299694426-5620-1-git-send-email-andros@netapp.com>
+References: <1299694426-5620-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+From: Andy Adamson <andros@netapp.com>
 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4xdr.c          |    4 ++--
+ include/linux/nfs_fs_sb.h |    2 --
+ 2 files changed, 2 insertions(+), 4 deletions(-)
 
-On 03/04/2011 01:10 AM, Masatake YAMATO wrote:
-> Hi,
-> 
-> thank you for replying.
-Again.. my apologies for taking so long... 
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 353ef5d..2221fa2 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1687,7 +1687,7 @@ static void encode_create_session(struct xdr_stream *xdr,
+ 
+ 	p = reserve_space(xdr, 20 + 2*28 + 20 + len + 12);
+ 	*p++ = cpu_to_be32(OP_CREATE_SESSION);
+-	p = xdr_encode_hyper(p, clp->cl_ex_clid);
++	p = xdr_encode_hyper(p, clp->cl_clientid);
+ 	*p++ = cpu_to_be32(clp->cl_seqid);			/*Sequence id */
+ 	*p++ = cpu_to_be32(args->flags);			/*flags */
+ 
+@@ -4770,7 +4770,7 @@ static int decode_exchange_id(struct xdr_stream *xdr,
+ 	p = xdr_inline_decode(xdr, 8);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+-	xdr_decode_hyper(p, &clp->cl_ex_clid);
++	xdr_decode_hyper(p, &clp->cl_clientid);
+ 	p = xdr_inline_decode(xdr, 12);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 7f71698..e52f010 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -73,8 +73,6 @@ struct nfs_client {
+ #endif /* CONFIG_NFS_V4 */
+ 
+ #ifdef CONFIG_NFS_V4_1
+-	/* clientid returned from EXCHANGE_ID, used by session operations */
+-	u64			cl_ex_clid;
+ 	/* The sequence id to use for the next CREATE_SESSION */
+ 	u32			cl_seqid;
+ 	/* The flags used for obtaining the clientid during EXCHANGE_ID */
+-- 
+1.6.6
 
-> 
->> On 03/03/2011 09:01 AM, Masatake YAMATO wrote:
->>> No comment?
->> Sorry about that... I was traveling for the couple weeks... 
->>
->> Would you happen to have an example script on how 
->> this new feature would be used? I just want to run 
->> some quick tests...
->>
->> tia,
->>
->> steved.
-> 
-> Could you try following one?
-> 
-> # cd /tmp
-> # mkdir /tmp/alpha
-> # mkdir /tmp/beta
-> # mkdir /etc/exports.d
-> # mkdir /etc/exports.d
-> # echo '/tmp/alpha *(ro)' > /etc/exports.d/alpha.export
-> # echo '/tmp/beta *(ro)'  > /etc/exports.d/beta.export
-> # /etc/init.d nfs restart
-> 
-> After above setting up, when you do `exportfs', following lines 
-> may be included in the output:
-> 
->     /tmp/alpha	 <world>
->     /tmp/beta        <world>
-Question... Where is the race? Meaning who is reading the exports
-file while its being modified?
-
-The reason I ask is exporting (or re-exporting) pretty serial:
-
-exportfs read /etc/exports
-exportfs writes the new exports to /var/lib/nfs/etab
-mountd notices etab has changed and rereads its.
-mountd flush the kernel cache cause the kernel to do upcalls to get the new exports.
-
-So since exportfs command not a daemon I don't see why 
-   cp exports.new /etc/exports && exportfs -arv
-
-isn't all that is needed.  What am I missing?
-
-steved.
-
-
-   
