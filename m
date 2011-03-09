@@ -1,177 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:38652 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:64259 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757489Ab1CCPOq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Mar 2011 10:14:46 -0500
-From: Fred Isaman <iisaman@netapp.com>
+	id S1751324Ab1CIXce (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Mar 2011 18:32:34 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 5/9] NFSv4.1: implement generic pnfs layer write switch
-Date: Thu,  3 Mar 2011 10:13:45 -0500
-Message-Id: <1299165229-3148-6-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
-References: <1299165229-3148-1-git-send-email-iisaman@netapp.com>
+Subject: [PATCH 2/4] NFSv4.1: Fix the handling of the SEQUENCE status bits
+Date: Wed,  9 Mar 2011 18:32:25 -0500
+Message-Id: <1299713547-22190-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1299713547-22190-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1299713547-22190-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
+We want SEQUENCE status bits to be handled by the state manager in order
+to avoid threading issues.
 
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
-Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
-Signed-off-by: Mike Sager <sager@netapp.com>
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
-Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4filelayout.c    |    7 +++++++
- fs/nfs/pnfs.c              |   24 ++++++++++++++++++++++++
- fs/nfs/pnfs.h              |   10 ++++++++++
- fs/nfs/write.c             |    4 ++++
- include/linux/nfs_iostat.h |    1 +
- include/linux/nfs_xdr.h    |    1 +
- 6 files changed, 47 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4proc.c |   11 ++++++++---
+ 1 files changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index fea483a..35f58eb 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -238,6 +238,12 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	return PNFS_ATTEMPTED;
- }
- 
-+static enum pnfs_try_status
-+filelayout_write_pagelist(struct nfs_write_data *data, int sync)
-+{
-+	return PNFS_NOT_ATTEMPTED;
-+}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index deedeb2..8ae1926 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -436,8 +436,8 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ 		clp = res->sr_session->clp;
+ 		do_renew_lease(clp, timestamp);
+ 		/* Check sequence flags */
+-		if (atomic_read(&clp->cl_count) > 1)
+-			nfs41_handle_sequence_flag_errors(clp, res->sr_status_flags);
++		if (res->sr_status_flags != 0)
++			nfs4_schedule_lease_recovery(clp);
+ 		break;
+ 	case -NFS4ERR_DELAY:
+ 		/* The server detected a resend of the RPC call and
+@@ -5254,8 +5254,13 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
+ 		goto out;
+ 	}
+ 	ret = rpc_wait_for_completion_task(task);
+-	if (!ret)
++	if (!ret) {
++		struct nfs4_sequence_res *res = task->tk_msg.rpc_resp;
 +
- /*
-  * filelayout_check_layout()
-  *
-@@ -455,6 +461,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
- 	.free_lseg		= filelayout_free_lseg,
- 	.pg_test		= filelayout_pg_test,
- 	.read_pagelist		= filelayout_read_pagelist,
-+	.write_pagelist		= filelayout_write_pagelist,
- };
- 
- static int __init nfs4filelayout_init(void)
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 5f205d3..f38813a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -895,6 +895,30 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode)
- 	pgio->pg_test = (ld && ld->pg_test) ? pnfs_write_pg_test : NULL;
- }
- 
-+enum pnfs_try_status
-+pnfs_try_to_write_data(struct nfs_write_data *wdata,
-+			const struct rpc_call_ops *call_ops, int how)
-+{
-+	struct inode *inode = wdata->inode;
-+	enum pnfs_try_status trypnfs;
-+	struct nfs_server *nfss = NFS_SERVER(inode);
-+
-+	wdata->mds_ops = call_ops;
-+
-+	dprintk("%s: Writing ino:%lu %u@%llu (how %d)\n", __func__,
-+		inode->i_ino, wdata->args.count, wdata->args.offset, how);
-+
-+	trypnfs = nfss->pnfs_curr_ld->write_pagelist(wdata, how);
-+	if (trypnfs == PNFS_NOT_ATTEMPTED) {
-+		put_lseg(wdata->lseg);
-+		wdata->lseg = NULL;
-+	} else
-+		nfs_inc_stats(inode, NFSIOS_PNFS_WRITE);
-+
-+	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
-+	return trypnfs;
-+}
-+
- /*
-  * Call the appropriate parallel I/O subsystem read function.
-  */
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 1d4e631..6380b94 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -79,6 +79,7 @@ struct pnfs_layoutdriver_type {
- 	 * I/O, else return PNFS_NOT_ATTEMPTED to fall back to normal NFS
- 	 */
- 	enum pnfs_try_status (*read_pagelist) (struct nfs_read_data *nfs_data);
-+	enum pnfs_try_status (*write_pagelist) (struct nfs_write_data *nfs_data, int how);
- };
- 
- struct pnfs_layout_hdr {
-@@ -120,6 +121,8 @@ pnfs_update_layout(struct inode *ino, struct nfs_open_context *ctx,
- 		   enum pnfs_iomode access_type);
- void set_pnfs_layoutdriver(struct nfs_server *, u32 id);
- void unset_pnfs_layoutdriver(struct nfs_server *);
-+enum pnfs_try_status pnfs_try_to_write_data(struct nfs_write_data *,
-+					     const struct rpc_call_ops *, int);
- enum pnfs_try_status pnfs_try_to_read_data(struct nfs_read_data *,
- 					    const struct rpc_call_ops *);
- void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *);
-@@ -200,6 +203,13 @@ pnfs_try_to_read_data(struct nfs_read_data *data,
- 	return PNFS_NOT_ATTEMPTED;
- }
- 
-+static inline enum pnfs_try_status
-+pnfs_try_to_write_data(struct nfs_write_data *data,
-+		       const struct rpc_call_ops *call_ops, int how)
-+{
-+	return PNFS_NOT_ATTEMPTED;
-+}
-+
- static inline bool
- pnfs_roc(struct inode *ino)
- {
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index c618d41..1852a54 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -873,6 +873,10 @@ static int nfs_write_rpcsetup(struct nfs_page *req,
- 	data->res.verf    = &data->verf;
- 	nfs_fattr_init(&data->fattr);
- 
-+	if (data->lseg &&
-+	    (pnfs_try_to_write_data(data, call_ops, how) == PNFS_ATTEMPTED))
-+		return 0;
-+
- 	return nfs_initiate_write(data, NFS_CLIENT(inode), call_ops, how);
- }
- 
-diff --git a/include/linux/nfs_iostat.h b/include/linux/nfs_iostat.h
-index 37a1437..8866bb3 100644
---- a/include/linux/nfs_iostat.h
-+++ b/include/linux/nfs_iostat.h
-@@ -114,6 +114,7 @@ enum nfs_stat_eventcounters {
- 	NFSIOS_SHORTWRITE,
- 	NFSIOS_DELAY,
- 	NFSIOS_PNFS_READ,
-+	NFSIOS_PNFS_WRITE,
- 	__NFSIOS_COUNTSMAX,
- };
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 09d9681..c82ad33 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1039,6 +1039,7 @@ struct nfs_write_data {
- 	struct nfs_writeargs	args;		/* argument struct */
- 	struct nfs_writeres	res;		/* result struct */
- 	struct pnfs_layout_segment *lseg;
-+	const struct rpc_call_ops *mds_ops;
- 	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
- #ifdef CONFIG_NFS_V4
- 	unsigned long		timestamp;	/* For lease renewal */
++		if (task->tk_status == 0)
++			nfs41_handle_sequence_flag_errors(clp, res->sr_status_flags);
+ 		ret = task->tk_status;
++	}
+ 	rpc_put_task(task);
+ out:
+ 	dprintk("<-- %s status=%d\n", __func__, ret);
 -- 
-1.7.2.1
+1.7.4
 
