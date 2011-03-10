@@ -1,220 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:52145 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752092Ab1CNM5m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Mar 2011 08:57:42 -0400
-Received: by mail-iy0-f174.google.com with SMTP id 26so4900509iyb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Mar 2011 05:57:41 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/12] NFS: Add functions to swap transports during migration
-	recovery
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 14 Mar 2011 08:57:39 -0400
-Message-ID: <20110314125739.2413.28519.stgit@matisse.1015granger.net>
-In-Reply-To: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
-References: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from cantor2.suse.de ([195.135.220.15]:43143 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751342Ab1CJK2g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Mar 2011 05:28:36 -0500
+Date: Thu, 10 Mar 2011 21:28:22 +1100
+From: NeilBrown <neilb@suse.de>
+To: "Assarsson, Emil" <Emil.Assarsson@sonyericsson.com>
+Cc: "'linux-nfs@vger.kernel.org'" <linux-nfs@vger.kernel.org>
+Subject: Re: mountd --manage-gids supports max 100 groups?
+Message-ID: <20110310212822.159a4a47@notabene.brown>
+In-Reply-To: <2BF070A7A2375D46BA1B6087F8D5DCB678B8E772B9@seldmbx01.corpusers.net>
+References: <2BF070A7A2375D46BA1B6087F8D5DCB678B8E772B8@seldmbx01.corpusers.net>
+	<20110310073515.799d1530@notabene.brown>
+	<2BF070A7A2375D46BA1B6087F8D5DCB678B8E772B9@seldmbx01.corpusers.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Introduce functions that can walk through an array of returned
-fs_locations information and connect a transport to one of the
-destination servers listed therein.
+On Thu, 10 Mar 2011 10:39:38 +0100 "Assarsson, Emil"
+<Emil.Assarsson@sonyericsson.com> wrote:
 
-Note that minor version 1 introduces "fs_locations_info" which
-extends the sorting information available to clients.  This is
-not supported yet.
+> > > Running linux kernel 2.6.32 and nfs-utils 1.2.0 (Ubuntu Lucid)
+> > >
+> > > A regular user in our company usually is member of more than 300 groups.
+> > Some user even have up to 600. We want to use the --manage-gids option for
+> > mountd. However it seems to me that it is limited to about 100 groups.
+> > >
+> > > The reason seems to be that there is a hard limit for mountd but also that
+> > the /proc/net/rpc/auth.unix.gid/channel won't accept more than 1008 characters
+> > as input.
+> > >
+> > > I tried to adjust the code for mountd so that it tried to add up to 1000
+> > groups but then I ran in to the channel problem.
+> > >
+> > > Can someone please guide me to the place where I can adjust this limit?
+> > 
+> > The limit should be 8192, not 1008.
+> > 
+> > This is set in net/sunrpc/cache.c
+> > If the write is less than one page, it is handled in cache_downcall().
+> > If it is bigger it is passed to cache_slow_downcall() which stops at
+> > 8192 (but could trivially be make to handle more).
+> > 
+> > What is your evidence that '.../channel won't accept more than 1008
+> > characters as input" ???
+> 
+> I was testing the channel by piping in a subset of my groups into the channel:
+> 
+> root@maslx0007:~# echo "2060593965 1299750919 95 4 20 24 44 104 105 119 124 500 2060452353 2060475597 2060778714 2060602086 2060505462 2060519313 2060541288 2060629540 2060560887 2060641701 2060507449 2060571139 2060460520 2060691482 2060497267 2060732197 2060629803 2060686723 2060722618 2060491358 2060552159 2060797585 2060683892 2060542012 2060683910 2060732968 2060717801 2060542828 2060619829 2060736330 2060531560 2060522215 2060483025 2060505538 2060570959 2060720431 2060476680 2060596415 2060488853 2060766185 2060492019 2060720092 2060571137 2060523545 2060475499 2060599566 2060622371 2060629570 2060824683 2060553587 2060476512 2060596572 2060691488 2060800539 2060720087 2060782445 2060461021 2060511067 2060483404 2060480477 2060460563 2060481754 2060637993 2060707607 2060717396 2060476873 2060732920 2060560895 2060693869 2060618583 2060686894 2060718263 2060803975 2060626966 2060708951 2060767809 2060527105 2060808457 2060802223 2060674942 2060763101 2060800542 206059
+ 9910 2060778719 2060687138 2060503954 20606" > /proc/net/rpc/auth.unix.gid/channel
+> root@maslx0007:~# echo "2060593965 1299750919 95 4 20 24 44 104 105 119 124 500 2060452353 2060475597 2060778714 2060602086 2060505462 2060519313 2060541288 2060629540 2060560887 2060641701 2060507449 2060571139 2060460520 2060691482 2060497267 2060732197 2060629803 2060686723 2060722618 2060491358 2060552159 2060797585 2060683892 2060542012 2060683910 2060732968 2060717801 2060542828 2060619829 2060736330 2060531560 2060522215 2060483025 2060505538 2060570959 2060720431 2060476680 2060596415 2060488853 2060766185 2060492019 2060720092 2060571137 2060523545 2060475499 2060599566 2060622371 2060629570 2060824683 2060553587 2060476512 2060596572 2060691488 2060800539 2060720087 2060782445 2060461021 2060511067 2060483404 2060480477 2060460563 2060481754 2060637993 2060707607 2060717396 2060476873 2060732920 2060560895 2060693869 2060618583 2060686894 2060718263 2060803975 2060626966 2060708951 2060767809 2060527105 2060808457 2060802223 2060674942 2060763101 2060800542 206059
+ 9910 2060778719 2060687138 2060503954 206061" > /proc/net/rpc/auth.unix.gid/channel
+> -su: echo: write error: Invalid argument
+> 
+> As soon as I go above 1008 characters it returns "Invalid argument"
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+I cannot reproduce this - on 2.6.34.7 - and I don't see any changes since
+2.6.32 that could possibly be related.
 
- fs/nfs/internal.h      |    2 +
- fs/nfs/nfs4namespace.c |  162 ++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 164 insertions(+), 0 deletions(-)
+You have 96 gids there, but the gid count given is 95, so it will
+ignore that last one when it comes to actually parsing the string of numbers.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 58a9ad7..bf2a4e7 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -164,6 +164,8 @@ static inline void nfs_fs_proc_exit(void)
- /* nfs4namespace.c */
- #ifdef CONFIG_NFS_V4
- extern struct vfsmount *nfs_do_refmount(const struct vfsmount *mnt_parent, struct dentry *dentry);
-+extern int nfs4_replace_transport(struct nfs_server *server,
-+		const struct nfs4_fs_locations *locations);
- #else
- static inline
- struct vfsmount *nfs_do_refmount(const struct vfsmount *mnt_parent, struct dentry *dentry)
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 3c2a172..ea591ff 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -270,3 +270,165 @@ out:
- 	dprintk("%s: done\n", __func__);
- 	return mnt;
- }
-+
-+#undef NFSDBG_FACILITY
-+#define NFSDBG_FACILITY		NFSDBG_CLIENT
-+
-+/*
-+ * Returns zero on success, or a negative errno value.
-+ */
-+static int nfs4_update_server(struct nfs_server *server, const char *hostname,
-+			      struct sockaddr *sap, size_t salen)
-+{
-+	struct nfs_client *clp = server->nfs_client;
-+	struct rpc_clnt *clnt = server->client;
-+	struct xprt_create xargs = {
-+		.ident		= clp->cl_proto,
-+		.net		= &init_net,
-+		.dstaddr	= sap,
-+		.addrlen	= salen,
-+		.servername	= hostname,
-+	};
-+	int error;
-+
-+	dprintk("--> %s: move FSID %llx:%llx to \"%s\")\n", __func__,
-+			(unsigned long long)server->fsid.major,
-+			(unsigned long long)server->fsid.minor,
-+			hostname);
-+
-+	/*
-+	 * rpc_lock_client() deadlocks here.  This is because the tasks
-+	 * that received NFS4ERR_MOVED are waiting for us to wake them
-+	 * when we are done recovering.  But they have bumped active_tasks,
-+	 * so rpc_lock_client() can't make any progress.
-+	 */
-+#if 0
-+	error = rpc_lock_client(clnt, clnt->cl_timeout->to_maxval);
-+	if (error != 0)
-+		goto out;
-+#endif
-+
-+	error = rpc_switch_client_transport(clnt, &xargs, clnt->cl_timeout);
-+
-+out:
-+#if 0
-+	rpc_unlock_client(clnt);
-+#endif
-+	dprintk("<-- %s() = %d\n", __func__, error);
-+	return error;
-+}
-+
-+/*
-+ * Try one location from the fs_locations array.
-+ *
-+ * Returns zero on success, or a negative errno value.
-+ */
-+static int nfs4_try_replacing_one_location(struct nfs_server *server,
-+		char *page, char *page2,
-+		const struct nfs4_fs_location *location)
-+{
-+	const size_t addr_bufsize = sizeof(struct sockaddr_storage);
-+	struct sockaddr *sap;
-+	unsigned int s;
-+	size_t salen;
-+	int error;
-+
-+	dprintk("--> %s(%llx:%llx)\n", __func__,
-+			(unsigned long long)server->fsid.major,
-+			(unsigned long long)server->fsid.minor);
-+
-+	error = -ENOMEM;
-+	sap = kmalloc(addr_bufsize, GFP_KERNEL);
-+	if (sap == NULL)
-+		goto out;
-+
-+	error = -ENOENT;
-+	for (s = 0; s < location->nservers; s++) {
-+		const struct nfs4_string *buf = &location->servers[s];
-+		char *hostname;
-+
-+		if (buf->len <= 0 || buf->len > PAGE_SIZE)
-+			continue;
-+
-+		/* XXX: IPv6 not supported? */
-+		if (memchr(buf->data, IPV6_SCOPE_DELIMITER, buf->len) != NULL)
-+			continue;
-+
-+		salen = nfs_parse_server_name(buf->data, buf->len,
-+						sap, addr_bufsize);
-+		if (salen == 0)
-+			continue;
-+		rpc_set_port(sap, NFS_PORT);
-+
-+		error = -ENOMEM;
-+		hostname = kstrndup(buf->data, buf->len, GFP_KERNEL);
-+		if (hostname == NULL)
-+			break;
-+
-+		error = nfs4_update_server(server, hostname, sap, salen);
-+		kfree(hostname);
-+		if (error == 0)
-+			break;
-+	}
-+
-+	kfree(sap);
-+out:
-+	dprintk("<-- %s() = %d\n", __func__, error);
-+	return error;
-+}
-+
-+/**
-+ * nfs4_replace_transport - set up transport to destination server
-+ *
-+ * @server: export being migrated
-+ * @locations: fs_locations array
-+ *
-+ * Returns zero on success, or a negative errno value.
-+ *
-+ * The client tries all the entries in the "locations" array, in the
-+ * order returned by the server, until one works or the end of the
-+ * array is reached.
-+ */
-+int nfs4_replace_transport(struct nfs_server *server,
-+			   const struct nfs4_fs_locations *locations)
-+{
-+	char *page = NULL, *page2 = NULL;
-+	int loc, error;
-+
-+	dprintk("--> %s(%llx:%llx)\n", __func__,
-+			(unsigned long long)server->fsid.major,
-+			(unsigned long long)server->fsid.minor);
-+
-+	error = -ENOENT;
-+	if (locations == NULL || locations->nlocations <= 0)
-+		goto out;
-+
-+	error = -ENOMEM;
-+	page = (char *) __get_free_page(GFP_USER);
-+	if (!page)
-+		goto out;
-+	page2 = (char *) __get_free_page(GFP_USER);
-+	if (!page2)
-+		goto out;
-+
-+	for (loc = 0; loc < locations->nlocations; loc++) {
-+		const struct nfs4_fs_location *location =
-+						&locations->locations[loc];
-+
-+		if (location == NULL || location->nservers <= 0 ||
-+		    location->rootpath.ncomponents == 0)
-+			continue;
-+
-+		error = nfs4_try_replacing_one_location(server, page,
-+							page2, location);
-+		if (error == 0)
-+			break;
-+	}
-+
-+out:
-+	free_page((unsigned long)page);
-+	free_page((unsigned long)page2);
-+
-+	dprintk("<-- %s() = %d\n", __func__, error);
-+	return error;
-+}
+There are lots of different conditions that could case an EINVAL return,
+but I don't see how any of them could apply here:
+ - write request is >= 8192 bytes
+ - write length is 0
+ - last char is not '\n'
+ - first word doesn't exist or isn't a valid int
+ - second word is not a valid int, or is 0
+ - third word is not an int, or is negative, or exceeds 8192
+ - any of the subsequent N words (Where N is the first word) are not
+   valid ints.
 
+If I duplicate the list of gids in your list, and change the '95' to '190',
+it still works, and if I look in /proc/net/rpc/auth.unix.gid/content, It
+see the full list of 190 gids (with duplicates).
+
+So I don't know what is causing your 'Invalid argument'.
+
+The first thing I would try is run the echo under 'strace' and make
+sure it is going as a single write.
+
+Then I would start putting printk's in unix_gid_parse, recompiling the
+kernel, and trying to see were the EINVAL comes from.
+
+NeilBrown.
