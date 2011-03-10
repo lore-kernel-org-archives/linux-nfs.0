@@ -1,161 +1,163 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:42961 "EHLO
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:56623 "EHLO
 	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752966Ab1CNM6K (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Mar 2011 08:58:10 -0400
-Received: by iwn34 with SMTP id 34so4887758iwn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Mar 2011 05:58:10 -0700 (PDT)
+	with ESMTP id S1753823Ab1CJRaa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Mar 2011 12:30:30 -0500
+Received: by mail-iw0-f174.google.com with SMTP id 34so1743856iwn.19
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Mar 2011 09:30:29 -0800 (PST)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 11/12] NFS: Add migration recovery callouts in nfs4proc.c
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 14 Mar 2011 08:58:07 -0400
-Message-ID: <20110314125807.2413.79300.stgit@matisse.1015granger.net>
-In-Reply-To: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
-References: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
+Subject: [PATCH 6/8] NFS: Remove "const" from "struct nfs_server *" fields
+To: linux-nfs@vger.kernel.org
+Date: Thu, 10 Mar 2011 12:30:27 -0500
+Message-ID: <20110310173027.8878.78797.stgit@matisse.1015granger.net>
+In-Reply-To: <20110310171345.8878.25548.stgit@matisse.1015granger.net>
+References: <20110310171345.8878.25548.stgit@matisse.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Finally, to enable support for migration, insert migration recovery
-callouts in the synchronous and asynchronous error handling paths for
-NFSv4 procedures.
+We're about to pass the nfs_server pointer in some NFSv4 argument and
+result structures to functions that may change it, so it's no longer
+"const".
+
+The preference here is to maintain existing whitespace style rather
+than answer all the nits called out by checkpatch.pl.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/nfs4proc.c |   61 ++++++++++++++++++++++++++++++++++++++++-------------
- 1 files changed, 46 insertions(+), 15 deletions(-)
+ include/linux/nfs_xdr.h |   28 ++++++++++++++--------------
+ 1 files changed, 14 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bdd8aac..2537a18 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -71,7 +71,8 @@ struct nfs4_opendata;
- static int _nfs4_proc_open(struct nfs4_opendata *data);
- static int _nfs4_recover_proc_open(struct nfs4_opendata *data);
- static int nfs4_do_fsinfo(struct nfs_server *, struct nfs_fh *, struct nfs_fsinfo *);
--static int nfs4_async_handle_error(struct rpc_task *, const struct nfs_server *, struct nfs4_state *);
-+static int nfs4_async_handle_error(struct rpc_task *, struct nfs_server *,
-+				struct nfs4_state *);
- static int _nfs4_proc_lookup(struct inode *dir, const struct qstr *name, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr);
- static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
-@@ -239,10 +240,17 @@ static int nfs4_delay(struct rpc_clnt *clnt, long *timeout)
- 	return res;
- }
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 632e869..04b9ef7 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -256,7 +256,7 @@ struct nfs_openargs {
+ 		fmode_t		delegation_type;	/* CLAIM_PREVIOUS */
+ 	} u;
+ 	const struct qstr *	name;
+-	const struct nfs_server *server;	 /* Needed for ID mapping */
++	struct nfs_server *	server;		/* Needed for ID mapping */
+ 	const u32 *		bitmask;
+ 	__u32			claim;
+ 	struct nfs4_sequence_args	seq_args;
+@@ -270,7 +270,7 @@ struct nfs_openres {
+ 	struct nfs_fattr *      f_attr;
+ 	struct nfs_fattr *      dir_attr;
+ 	struct nfs_seqid *	seqid;
+-	const struct nfs_server *server;
++	struct nfs_server *	server;
+ 	fmode_t			delegation_type;
+ 	nfs4_stateid		delegation;
+ 	__u32			do_recall;
+@@ -309,7 +309,7 @@ struct nfs_closeres {
+ 	nfs4_stateid            stateid;
+ 	struct nfs_fattr *	fattr;
+ 	struct nfs_seqid *	seqid;
+-	const struct nfs_server *server;
++	struct nfs_server *	server;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ /*
+@@ -381,7 +381,7 @@ struct nfs4_delegreturnargs {
  
--/* This is the error handling routine for processes that are allowed
-- * to sleep.
-+/**
-+ * nfs4_handle_exception - Common error handling for callers allowed to sleep
-+ *
-+ * @server: local state context for the server
-+ * @errorcode: NFS4ERR value returned from the server
-+ * @exception: exception handling state
-+ *
-+ * Returns zero on success, or a negative errno value.
-  */
--static int nfs4_handle_exception(const struct nfs_server *server, int errorcode, struct nfs4_exception *exception)
-+static int nfs4_handle_exception(struct nfs_server *server, int errorcode,
-+				 struct nfs4_exception *exception)
- {
- 	struct nfs_client *clp = server->nfs_client;
- 	struct nfs4_state *state = exception->state;
-@@ -277,6 +285,9 @@ static int nfs4_handle_exception(const struct nfs_server *server, int errorcode,
- 			exception->retry = 1;
- 			break;
- #endif /* defined(CONFIG_NFS_V4_1) */
-+		case -NFS4ERR_MOVED:
-+			nfs4_schedule_migration_recovery(server);
-+			goto recovery_wait;
- 		case -NFS4ERR_FILE_OPEN:
- 			if (exception->timeout > HZ) {
- 				/* We have retried a decent amount, time to
-@@ -298,6 +309,7 @@ static int nfs4_handle_exception(const struct nfs_server *server, int errorcode,
- 	return nfs4_map_errors(ret);
- do_state_recovery:
- 	nfs4_schedule_state_recovery(clp);
-+recovery_wait:
- 	ret = nfs4_wait_clnt_recover(clp);
- 	if (ret == 0)
- 		exception->retry = 1;
-@@ -2194,10 +2206,14 @@ static int nfs4_get_referral(struct inode *dir, const struct qstr *name, struct
- 	status = nfs4_proc_fs_locations(dir, name, locations, page);
- 	if (status != 0)
- 		goto out;
--	/* Make sure server returned a different fsid for the referral */
-+
-+	/*
-+	 * If the fsid didn't change, this is a migration event, not a
-+	 * referral.  Cause us to drop into the exception handler, which
-+	 * will kick off migration recovery.
-+	 */
- 	if (nfs_fsid_equal(&NFS_SERVER(dir)->fsid, &locations->fattr.fsid)) {
--		dprintk("%s: server did not return a different fsid for a referral at %s\n", __func__, name->name);
--		status = -EIO;
-+		status = -NFS4ERR_MOVED;
- 		goto out;
- 	}
+ struct nfs4_delegreturnres {
+ 	struct nfs_fattr * fattr;
+-	const struct nfs_server *server;
++	struct nfs_server * server;
+ 	struct nfs4_sequence_res	seq_res;
+ };
  
-@@ -3492,8 +3508,18 @@ static int nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t buflen
- 	return err;
- }
+@@ -431,7 +431,7 @@ struct nfs_writeres {
+ 	struct nfs_fattr *	fattr;
+ 	struct nfs_writeverf *	verf;
+ 	__u32			count;
+-	const struct nfs_server *server;
++	struct nfs_server *	server;
+ 	struct nfs4_sequence_res	seq_res;
+ };
  
--static int
--nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server, struct nfs4_state *state)
-+/**
-+ * nfs4_async_handle_error - Common error handling for callers who cannot sleep
-+ *
-+ * @task: active RPC task
-+ * @server: local state for the server
-+ * @state: NFSv4 state for active operation
-+ *
-+ * Returns zero on success, or a negative errno value.
-+ */
-+static int nfs4_async_handle_error(struct rpc_task *task,
-+				   struct nfs_server *server,
-+				   struct nfs4_state *state)
- {
- 	struct nfs_client *clp = server->nfs_client;
+@@ -446,7 +446,7 @@ struct nfs_removeargs {
+ };
  
-@@ -3522,19 +3548,23 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 			dprintk("%s ERROR %d, Reset session\n", __func__,
- 				task->tk_status);
- 			nfs4_schedule_state_recovery(clp);
--			task->tk_status = 0;
--			return -EAGAIN;
-+			goto restart_call;
- #endif /* CONFIG_NFS_V4_1 */
-+		case -NFS4ERR_MOVED:
-+			rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
-+			nfs4_schedule_migration_recovery(server);
-+			if (test_bit(NFS4CLNT_MANAGER_RUNNING,
-+							&clp->cl_state) == 0)
-+				rpc_wake_up_queued_task(&clp->cl_rpcwaitq, task);
-+			goto restart_call;
- 		case -NFS4ERR_DELAY:
- 			nfs_inc_server_stats(server, NFSIOS_DELAY);
- 		case -NFS4ERR_GRACE:
- 		case -EKEYEXPIRED:
- 			rpc_delay(task, NFS4_POLL_RETRY_MAX);
--			task->tk_status = 0;
--			return -EAGAIN;
-+			goto restart_call;
- 		case -NFS4ERR_OLD_STATEID:
--			task->tk_status = 0;
--			return -EAGAIN;
-+			goto restart_call;
- 	}
- 	task->tk_status = nfs4_map_errors(task->tk_status);
- 	return 0;
-@@ -3543,6 +3573,7 @@ do_state_recovery:
- 	nfs4_schedule_state_recovery(clp);
- 	if (test_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) == 0)
- 		rpc_wake_up_queued_task(&clp->cl_rpcwaitq, task);
-+restart_call:
- 	task->tk_status = 0;
- 	return -EAGAIN;
- }
+ struct nfs_removeres {
+-	const struct nfs_server *server;
++	struct nfs_server	*server;
+ 	struct nfs_fattr	*dir_attr;
+ 	struct nfs4_change_info	cinfo;
+ 	struct nfs4_sequence_res 	seq_res;
+@@ -465,7 +465,7 @@ struct nfs_renameargs {
+ };
+ 
+ struct nfs_renameres {
+-	const struct nfs_server		*server;
++	struct nfs_server		*server;
+ 	struct nfs4_change_info		old_cinfo;
+ 	struct nfs_fattr		*old_fattr;
+ 	struct nfs4_change_info		new_cinfo;
+@@ -546,7 +546,7 @@ struct nfs_getaclres {
+ 
+ struct nfs_setattrres {
+ 	struct nfs_fattr *              fattr;
+-	const struct nfs_server *	server;
++	struct nfs_server *		server;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ 
+@@ -719,7 +719,7 @@ struct nfs4_accessargs {
+ };
+ 
+ struct nfs4_accessres {
+-	const struct nfs_server *	server;
++	struct nfs_server *		server;
+ 	struct nfs_fattr *		fattr;
+ 	u32				supported;
+ 	u32				access;
+@@ -747,7 +747,7 @@ struct nfs4_create_arg {
+ };
+ 
+ struct nfs4_create_res {
+-	const struct nfs_server *	server;
++	struct nfs_server *		server;
+ 	struct nfs_fh *			fh;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs4_change_info		dir_cinfo;
+@@ -773,7 +773,7 @@ struct nfs4_getattr_arg {
+ };
+ 
+ struct nfs4_getattr_res {
+-	const struct nfs_server *	server;
++	struct nfs_server *		server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+@@ -787,7 +787,7 @@ struct nfs4_link_arg {
+ };
+ 
+ struct nfs4_link_res {
+-	const struct nfs_server *	server;
++	struct nfs_server *		server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs4_change_info		cinfo;
+ 	struct nfs_fattr *		dir_attr;
+@@ -803,7 +803,7 @@ struct nfs4_lookup_arg {
+ };
+ 
+ struct nfs4_lookup_res {
+-	const struct nfs_server *	server;
++	struct nfs_server *		server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs_fh *			fh;
+ 	struct nfs4_sequence_res	seq_res;
+@@ -918,7 +918,7 @@ struct nfs4_fs_location {
+ #define NFS4_FS_LOCATIONS_MAXENTRIES 10
+ struct nfs4_fs_locations {
+ 	struct nfs_fattr fattr;
+-	const struct nfs_server *server;
++	struct nfs_server *server;
+ 	struct nfs4_pathname fs_path;
+ 	int nlocations;
+ 	struct nfs4_fs_location locations[NFS4_FS_LOCATIONS_MAXENTRIES];
 
