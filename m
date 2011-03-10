@@ -1,88 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43143 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:2867 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751342Ab1CJK2g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Mar 2011 05:28:36 -0500
-Date: Thu, 10 Mar 2011 21:28:22 +1100
-From: NeilBrown <neilb@suse.de>
-To: "Assarsson, Emil" <Emil.Assarsson@sonyericsson.com>
-Cc: "'linux-nfs@vger.kernel.org'" <linux-nfs@vger.kernel.org>
-Subject: Re: mountd --manage-gids supports max 100 groups?
-Message-ID: <20110310212822.159a4a47@notabene.brown>
-In-Reply-To: <2BF070A7A2375D46BA1B6087F8D5DCB678B8E772B9@seldmbx01.corpusers.net>
-References: <2BF070A7A2375D46BA1B6087F8D5DCB678B8E772B8@seldmbx01.corpusers.net>
-	<20110310073515.799d1530@notabene.brown>
-	<2BF070A7A2375D46BA1B6087F8D5DCB678B8E772B9@seldmbx01.corpusers.net>
-Content-Type: text/plain; charset=US-ASCII
+	id S1752226Ab1CJAT2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Mar 2011 19:19:28 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 2/4] NFSv4.1: Fix the handling of the SEQUENCE status bits
+Date: Wed,  9 Mar 2011 19:19:17 -0500
+Message-Id: <1299716359-30977-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1299716359-30977-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1299716359-30977-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 10 Mar 2011 10:39:38 +0100 "Assarsson, Emil"
-<Emil.Assarsson@sonyericsson.com> wrote:
+We want SEQUENCE status bits to be handled by the state manager in order
+to avoid threading issues.
 
-> > > Running linux kernel 2.6.32 and nfs-utils 1.2.0 (Ubuntu Lucid)
-> > >
-> > > A regular user in our company usually is member of more than 300 groups.
-> > Some user even have up to 600. We want to use the --manage-gids option for
-> > mountd. However it seems to me that it is limited to about 100 groups.
-> > >
-> > > The reason seems to be that there is a hard limit for mountd but also that
-> > the /proc/net/rpc/auth.unix.gid/channel won't accept more than 1008 characters
-> > as input.
-> > >
-> > > I tried to adjust the code for mountd so that it tried to add up to 1000
-> > groups but then I ran in to the channel problem.
-> > >
-> > > Can someone please guide me to the place where I can adjust this limit?
-> > 
-> > The limit should be 8192, not 1008.
-> > 
-> > This is set in net/sunrpc/cache.c
-> > If the write is less than one page, it is handled in cache_downcall().
-> > If it is bigger it is passed to cache_slow_downcall() which stops at
-> > 8192 (but could trivially be make to handle more).
-> > 
-> > What is your evidence that '.../channel won't accept more than 1008
-> > characters as input" ???
-> 
-> I was testing the channel by piping in a subset of my groups into the channel:
-> 
-> root@maslx0007:~# echo "2060593965 1299750919 95 4 20 24 44 104 105 119 124 500 2060452353 2060475597 2060778714 2060602086 2060505462 2060519313 2060541288 2060629540 2060560887 2060641701 2060507449 2060571139 2060460520 2060691482 2060497267 2060732197 2060629803 2060686723 2060722618 2060491358 2060552159 2060797585 2060683892 2060542012 2060683910 2060732968 2060717801 2060542828 2060619829 2060736330 2060531560 2060522215 2060483025 2060505538 2060570959 2060720431 2060476680 2060596415 2060488853 2060766185 2060492019 2060720092 2060571137 2060523545 2060475499 2060599566 2060622371 2060629570 2060824683 2060553587 2060476512 2060596572 2060691488 2060800539 2060720087 2060782445 2060461021 2060511067 2060483404 2060480477 2060460563 2060481754 2060637993 2060707607 2060717396 2060476873 2060732920 2060560895 2060693869 2060618583 2060686894 2060718263 2060803975 2060626966 2060708951 2060767809 2060527105 2060808457 2060802223 2060674942 2060763101 2060800542 206059
- 9910 2060778719 2060687138 2060503954 20606" > /proc/net/rpc/auth.unix.gid/channel
-> root@maslx0007:~# echo "2060593965 1299750919 95 4 20 24 44 104 105 119 124 500 2060452353 2060475597 2060778714 2060602086 2060505462 2060519313 2060541288 2060629540 2060560887 2060641701 2060507449 2060571139 2060460520 2060691482 2060497267 2060732197 2060629803 2060686723 2060722618 2060491358 2060552159 2060797585 2060683892 2060542012 2060683910 2060732968 2060717801 2060542828 2060619829 2060736330 2060531560 2060522215 2060483025 2060505538 2060570959 2060720431 2060476680 2060596415 2060488853 2060766185 2060492019 2060720092 2060571137 2060523545 2060475499 2060599566 2060622371 2060629570 2060824683 2060553587 2060476512 2060596572 2060691488 2060800539 2060720087 2060782445 2060461021 2060511067 2060483404 2060480477 2060460563 2060481754 2060637993 2060707607 2060717396 2060476873 2060732920 2060560895 2060693869 2060618583 2060686894 2060718263 2060803975 2060626966 2060708951 2060767809 2060527105 2060808457 2060802223 2060674942 2060763101 2060800542 206059
- 9910 2060778719 2060687138 2060503954 206061" > /proc/net/rpc/auth.unix.gid/channel
-> -su: echo: write error: Invalid argument
-> 
-> As soon as I go above 1008 characters it returns "Invalid argument"
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   11 ++++++++---
+ 1 files changed, 8 insertions(+), 3 deletions(-)
 
-I cannot reproduce this - on 2.6.34.7 - and I don't see any changes since
-2.6.32 that could possibly be related.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 32713dd..7fd1683 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -436,8 +436,8 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ 		clp = res->sr_session->clp;
+ 		do_renew_lease(clp, timestamp);
+ 		/* Check sequence flags */
+-		if (atomic_read(&clp->cl_count) > 1)
+-			nfs41_handle_sequence_flag_errors(clp, res->sr_status_flags);
++		if (res->sr_status_flags != 0)
++			nfs4_schedule_lease_recovery(clp);
+ 		break;
+ 	case -NFS4ERR_DELAY:
+ 		/* The server detected a resend of the RPC call and
+@@ -5254,8 +5254,13 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
+ 		goto out;
+ 	}
+ 	ret = rpc_wait_for_completion_task(task);
+-	if (!ret)
++	if (!ret) {
++		struct nfs4_sequence_res *res = task->tk_msg.rpc_resp;
++
++		if (task->tk_status == 0)
++			nfs41_handle_sequence_flag_errors(clp, res->sr_status_flags);
+ 		ret = task->tk_status;
++	}
+ 	rpc_put_task(task);
+ out:
+ 	dprintk("<-- %s status=%d\n", __func__, ret);
+-- 
+1.7.4
 
-You have 96 gids there, but the gid count given is 95, so it will
-ignore that last one when it comes to actually parsing the string of numbers.
-
-There are lots of different conditions that could case an EINVAL return,
-but I don't see how any of them could apply here:
- - write request is >= 8192 bytes
- - write length is 0
- - last char is not '\n'
- - first word doesn't exist or isn't a valid int
- - second word is not a valid int, or is 0
- - third word is not an int, or is negative, or exceeds 8192
- - any of the subsequent N words (Where N is the first word) are not
-   valid ints.
-
-If I duplicate the list of gids in your list, and change the '95' to '190',
-it still works, and if I look in /proc/net/rpc/auth.unix.gid/content, It
-see the full list of 190 gids (with duplicates).
-
-So I don't know what is causing your 'Invalid argument'.
-
-The first thing I would try is run the echo under 'strace' and make
-sure it is going as a single write.
-
-Then I would start putting printk's in unix_gid_parse, recompiling the
-kernel, and trying to see were the EINVAL comes from.
-
-NeilBrown.
