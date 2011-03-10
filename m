@@ -1,83 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39483 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753632Ab1C0P07 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Mar 2011 11:26:59 -0400
-Subject: Re: NFS page states & writeback
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Jan Kara <jack@suse.cz>, Wu Fengguang <fengguang.wu@intel.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Christoph Hellwig <hch@infradead.org>
-In-Reply-To: <20110326011806.GT26611@dastard>
-References: <20110325012803.GA25052@quack.suse.cz>
-	 <20110325070054.GA5970@localhost> <20110325093957.GL26611@dastard>
-	 <20110325142253.GA11589@localhost> <20110325225558.GQ26611@dastard>
-	 <20110325232440.GE26932@quack.suse.cz>  <20110326011806.GT26611@dastard>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sun, 27 Mar 2011 17:26:41 +0200
-Message-ID: <1301239601.22136.23.camel@lade.trondhjem.org>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:48433 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751188Ab1CJK6Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Mar 2011 05:58:25 -0500
+Date: Thu, 10 Mar 2011 10:58:21 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Nick Piggin <npiggin@gmail.com>, Nick Piggin <npiggin@kernel.dk>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] fs/dcache: allow __d_obtain_alias() to return unhashed
+ dentries
+Message-ID: <20110310105821.GE22723@ZenIV.linux.org.uk>
+References: <20101214220102.GM24828@fieldses.org>
+ <20101217180022.GB11515@fieldses.org>
+ <20101218020118.GA3179@amd>
+ <20101218161609.GA22150@fieldses.org>
+ <AANLkTingRv_gtRSctGzMfYrKg02M_sKj97HSQPRm_mA_@mail.gmail.com>
+ <20101227234641.GA22248@fieldses.org>
+ <20110118204509.GA10903@fieldses.org>
+ <AANLkTikL2CDSWQJ1QH_Y4G-j70Vd=VesNMMnYTmMGHC9@mail.gmail.com>
+ <20110118220817.GF10903@fieldses.org>
+ <20110308181320.GA15566@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110308181320.GA15566@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, 2011-03-26 at 12:18 +1100, Dave Chinner wrote:
-> Yes - though this only reduces the variance the client sees in
-> steady state operation.  Realistically, we don't care if one commit
-> takes 2s for 100MB and the next takes 0.2s for the next 100MB as
-> long as we've been able to send 50MB/s of writes over the wire
-> consistently. IOWs, what we need to care about is getting the data
-> to the server as quickly as possible and decoupling that from the
-> commit operation.  i.e. we need to maximise and smooth the rate at
-> which we send dirty pages to the server, not the rate at which we
-> convert unstable pages to stable. If the server can't handle the
-> write rate we send it, if will slow downteh rate at which it
-> processes writes and we get congestion feedback that way (i.e. via
-> the network channel).
-> 
-> Essentially what I'm trying to say is that I don't think
-> unstable->clean operations (i.e. the commit) should affect or
-> control  the estimated bandwidth of the channel. A commit is an
-> operation that can be tuned to optimise throughput, but because of
-> it's variance it's not really an operation that can be used to
-> directly measure and control that throughput.
+On Tue, Mar 08, 2011 at 01:13:20PM -0500, J. Bruce Fields wrote:
 
-Agreed. However as I have said before, most of the problem here is that
-the Linux server is assuming that it should cache the data maximally as
-if this were a local process.
+> Al, do you have this in your queue to look at?  Need me to resend?  Or
+> should it take some other route?
 
-Once the NFS client starts flushing data to the server, it is because
-the client no longer wants to cache, but rather wants to see the data
-put onto stable storage as quickly as possible.
-At that point, the server should be focussing doing the same. It should
-not be setting the low water mark at 20% of total memory before starting
-writeback, because that means that the COMMIT may have to wait for
-several GB of data of data to hit the platter.
-If the water mark was set at say 100MB or so, then writeback would be
-much smoother...
+It's in queue, but I'd be a lot happier if I understood what's going on
+with __d_find_alias() elsewhere.  Namely, in d_splice_alias().  The thing
+is, unless I'm missing something we ought to use __d_find_any_alias()
+there as well.  Directories really, _really_ should not have more than
+one alias.  And what we get is really weird:
+	* find (the only) alias
+	* if it doesn't exist, create one (OK, no problem)
+	* if it does exist and happens to be IS_ROOT and DCACHE_DISCONNECTED,
+move it (also fine, modulo rather useless BUG_ON() in there)
+	* if it does exist and either isn't IS_ROOT or not DCACHE_DISCONNECTED,
+add a new alias and say nothing.
 
-> It is also worth remembering that some NFS servers return STABLE as
-> the state of the data in their write response. This transitions the
-> pages directly from writeback to clean, so there is no unstable
-> state or need for a commit operation. Hence the bandwidth estimation
-> in these cases is directly related to the network/protocol
-> throughput. If we can run background commit operations triggered by
-> write responses, then we have the same bandwidth estimation
-> behaviour for writes regardless of whether they return as STABLE or
-> UNSTABLE on the server...
+The last part looks very strange.  I'd been staring at the history of this
+function and I _think_ it's a rudiment of period when we used that stuff for
+non-directories as well.  It used to be directory-only; then Neil had
+switched it to non-directories as well (in "Fix disconnected dentries on NFS
+exports" back in 2004), adding want_discon argument to __d_find_alias() in
+process and using it instead of open-coded equivalent of __d_find_any_alias().
+Then, two years later, in "knfsd: close a race-opportunity in d_splice_alias"
+he'd made that code directory-only again, at which point we arrived to the
+current situation.
 
-If the server were doing its job of acting as a glorified disk instead
-of trying to act as a caching device, then most of that data should
-already be on disk before the client sends the COMMIT.
+Neil, is there some reason I'm missing that makes __d_find_alias() right in
+there?  And do we still need the second argument in __d_find_alias()?
 
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Anyway, Bruce's patch goes in tonight's push, but I'd love to see that
+mess cleaned up as well or at least explained.
