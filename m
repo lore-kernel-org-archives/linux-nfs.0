@@ -1,75 +1,169 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:26620 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751376Ab1CUOaw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Mar 2011 10:30:52 -0400
-Message-ID: <4D876119.3090007@RedHat.com>
-Date: Mon, 21 Mar 2011 10:30:49 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Vladimir Elisseev <vovan@vovan.nl>
-CC: NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: rpc.svcgssd problem after updating client 1.2.2->1.2.3
-References: <1300387690.2684.23.camel@vovan.net.home>	 <AANLkTim6nptBM40b5Zt2fhr7aiQ47kqX+_RBprnCokRD@mail.gmail.com>	 <1300427036.30472.11.camel@vovan.net.home>	 <AANLkTim7q+-ijBnzWs+zW9X-gfxyrt5kw4Vj_pcrWJFw@mail.gmail.com>	 <20110318145204.20621su4mostcrk4@vovan.nl>	 <AANLkTimLE7gJ_tzi5JOCgM+RA4-8EnHcW8hqB++a5X8X@mail.gmail.com>	 <20110318164828.943007egbodjy3t8@vovan.nl>	 <AANLkTinGHaeF-G+XGj8--+m2NygX7fZ49gdf7sAepN=+@mail.gmail.com>	 <1300521382.15416.18.camel@vovan.net.home>  <4D85642D.3060901@RedHat.com> <1300685799.18075.7.camel@vovan.net.home>
-In-Reply-To: <1300685799.18075.7.camel@vovan.net.home>
-Content-Type: text/plain; charset=UTF-8
+Received: from rcsinet10.oracle.com ([148.87.113.121]:41849 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752707Ab1CJUlm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Mar 2011 15:41:42 -0500
+Subject: Re: [PATCH 5/8] NFS: Add basic migration support to state manager thread
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1299789301.3075.40.camel@heimdal.trondhjem.org>
+Date: Thu, 10 Mar 2011 15:40:01 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <EE42594F-A914-4007-8CA2-4C07632DC602@oracle.com>
+References: <20110310171345.8878.25548.stgit@matisse.1015granger.net> <20110310173018.8878.71092.stgit@matisse.1015granger.net> <1299789301.3075.40.camel@heimdal.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
+On Mar 10, 2011, at 3:35 PM, Trond Myklebust wrote:
 
-On 03/21/2011 01:36 AM, Vladimir Elisseev wrote:
-> Steve,
+> On Thu, 2011-03-10 at 12:30 -0500, Chuck Lever wrote:
 > 
-> The segfault on the client side is gone after client reboot. This
-> segfault occurs when nfs-utils has been updated and then I just restart
-> corresponding services (rpcbind, rpc.idmapd, rpc.gssd) without rebooting
-> the client. Now client simply exits with the lines below (as I described
-> initially in my first mail): 
-> mount.nfs: mount(2): Permission denied
-> mount.nfs: access denied by server while mounting ...
-Ok.. to find out where rpc.gssd is segfaulting do the following:
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index e6742b5..a788ec9 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -56,6 +56,8 @@
+>> #include "internal.h"
+>> #include "pnfs.h"
+>> 
+>> +#define NFSDBG_FACILITY		NFSDBG_CLIENT
+>> +
+>> #define OPENOWNER_POOL_SIZE	8
+>> 
+>> const nfs4_stateid zero_stateid;
+>> @@ -1013,9 +1015,33 @@ void nfs4_schedule_state_recovery(struct nfs_client *clp)
+>> {
+>> 	if (!clp)
+>> 		return;
+>> +	dprintk("--> %s: \"%s\" (client ID %llx)\n",
+>> +		__func__, clp->cl_hostname, clp->cl_clientid);
+>> 	if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
+>> 		set_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
+>> 	nfs4_schedule_state_manager(clp);
+>> +	dprintk("<-- %s\n", __func__);
+>> +}
+>> +
+>> +/**
+>> + * nfs4_schedule_migration_recovery - start background migration recovery
+>> + *
+>> + * @server: nfs_server representing remote file system that is migrating
+>> + *
+>> + */
+>> +void nfs4_schedule_migration_recovery(struct nfs_server *server)
+>> +{
+>> +	struct nfs_client *clp = server->nfs_client;
+>> +
+>> +	dprintk("--> %s(%llx:%llx)\n", __func__,
+>> +			(unsigned long long)server->fsid.major,
+>> +			(unsigned long long)server->fsid.minor);
+>> +	if (test_and_set_bit(NFS4CLNT_MOVED, &clp->cl_state) == 0) {
+>> +		set_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state);
+> 
+> Hmm... Why do we need to reset the NFSv4.1 session here?
 
-# debuginfo-install nfs-utils
-(assuming Fedora)
-# gdb /usr/sbin/rpc.gssd 
-gdb> run -f -vvv 
-(When the segfault happens)
-gdb> bt 
-(which will show the backtrace)
+That's an assumption on my part.  It's not really clear yet what kind of changes will be needed for minor version 1.  I can pull this out for now.
 
-steved.
+>> +		clp->cl_moved_server = server;
+>> +		nfs4_schedule_state_manager(clp);
+>> +	}
+>> +	dprintk("<-- %s\n", __func__);
+>> }
+>> 
+>> int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
+>> @@ -1435,6 +1461,64 @@ static int nfs4_reclaim_lease(struct nfs_client *clp)
+>> 	return status;
+>> }
+>> 
+>> +/*
+>> + * Try remote migration of one FSID from a source server to a
+>> + * destination server.  The source server provides a list of
+>> + * potential destinations.
+>> + */
+>> +static void nfs4_try_migration(struct nfs_server *server)
+>> +{
+>> +	struct nfs_client *clp = server->nfs_client;
+>> +	struct nfs4_fs_locations *locations = NULL;
+>> +	struct page *page;
+>> +	int status;
+>> +
+>> +	dprintk("--> %s: FSID %llx:%llx on \"%s\"\n", __func__,
+>> +			(unsigned long long)server->fsid.major,
+>> +			(unsigned long long)server->fsid.minor,
+>> +			clp->cl_hostname);
+>> +
+>> +	status = -ENOMEM;
+>> +	page = alloc_page(GFP_KERNEL);
+>> +	locations = kmalloc(sizeof(struct nfs4_fs_locations), GFP_KERNEL);
+>> +	if (page == NULL || locations == NULL) {
+>> +		dprintk("<-- %s: no memory\n", __func__);
+>> +		goto out;
+>> +	}
+>> +
+>> +	status = nfs4_proc_get_mig_status(server, locations, page);
+>> +	if (status != 0) {
+>> +		dprintk("<-- %s: get migration status: %d\n",
+>> +			__func__, status);
+>> +		goto out;
+>> +	}
+>> +	if (!(locations->fattr.valid & NFS_ATTR_FATTR_V4_LOCATIONS)) {
+>> +		dprintk("<-- %s: No fs_locations data available, "
+>> +			"migration skipped\n", __func__);
+>> +		goto out;
+>> +	}
+>> +
+>> +	status = nfs4_replace_transport(server, locations);
+>> +	if (status != 0) {
+>> +		dprintk("<-- %s: failed to replace transport: %d\n",
+>> +			__func__, status);
+>> +		goto out;
+>> +	}
+>> +
+>> +	/* Force an update of our callback info on the destination server */
+>> +	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+> 
+> I wonder if this should be made into a separate flag. That would enable
+> us to reuse it for the NFS4ERR_CB_PATH_DOWN handling...
+
+Instead, I think we will need a function call here to perform a fresh SETCLIENTID, rather than looping through the state manager's FSM again.  For one thing, we need to construct a new long-form client ID for this nfs_server: the callback endpoint information will have changed.
+
+I just wonder, though, if that is enough.  Where will nfs4_init_clientid() send the SETCLIENTID request?  To the source server or the destination server?
+
+</speculation>
 
 > 
-> Regards,
-> Vladimir.
+>> +
+>> +	/* XXX: would like to update /proc/mounts, but that's entirely
+>> +	 *      optional. */
+>> +
+>> +	dprintk("<-- %s: migration succeeded\n", __func__);
+>> +
+>> +out:
+>> +	if (page != NULL)
+>> +		__free_page(page);
+>> +	kfree(locations);
+>> +}
+>> +
+>> #ifdef CONFIG_NFS_V4_1
+>> void nfs41_handle_recall_slot(struct nfs_client *clp)
+>> {
+>> @@ -1664,6 +1748,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
 > 
-> On Sat, 2011-03-19 at 22:19 -0400, Steve Dickson wrote:
->>
->> On 03/19/2011 03:56 AM, Vladimir Elisseev wrote:
->>> Kevin,
->>>
->>> I have some updates. I recompiled nfs-utils and dependencies (libgssglue
->>> keyutils librpcsecgss libtirpc) on the server and on the test client.
->>> Nevertheless, while on the server side I see the same error:
->>> rpc.svcgssd[8390]: qword_eol: fflush failed: errno 22 (Invalid argument)
->>> on the client side rpc.gssd segfault(!):
->>> kernel: rpc.gssd[2107] segfault at 4 ip 0000003ef9430805 sp 00007fff655cdd10 error 4 in libgssapi_krb5.so.2.2[3ef9400000+3e000]
->>> Reverting back to nfs-utils 1.2.2 on the client and everything is fine.
->>> Below are relevant log entries from KDC when using nfs-utils 1.2.2 and 1.2.3 on the client:
->>>
->>> ****** nfs-utils 1.2.2 *******
->>> Mar 19 07:56:27 srv2 krb5kdc[7945]: AS_REQ (7 etypes {18 17 16 23 1 3 2}) 192.168.1.8: ISSUE: authtime 1300517787, etypes {rep=18 tkt=18 ses=18}, host/vbox.xxx.xxx@X.X for krbtgt/X.X@X.X 
->>> Mar 19 07:56:28 srv2 krb5kdc[7945]: TGS_REQ (7 etypes {18 17 16 23 1 3 2}) 192.168.1.8: ISSUE: authtime 1300517787, etypes {rep=18 tkt=18 ses=18}, host/vbox.xxx.xxx@X.X for nfs/nfs.xxx.xxx@X.X 
->>> Mar 19 07:56:28 srv2 krb5kdc[7945]: TGS_REQ (3 etypes {1 3 2}) 192.168.1.8: ISSUE: authtime 1300517787, etypes {rep=18 tkt=18 ses=1}, host/vbox.xxx.xxx@X.X for nfs/nfs.xxx.xxx@X.X 
->>>
->>> ****** nfs-utils 1.2.3 *******
->>> Mar 19 08:22:22 srv2 krb5kdc[7945]: AS_REQ (7 etypes {18 17 16 23 1 3 2}) 192.168.1.2: ISSUE: authtime 1300519342, etypes {rep=18 tkt=18 ses=18}, host/x.x.x@X.X for krbtgt/X.X@X.X 
->>> Mar 19 08:22:22 srv2 krb5kdc[7945]: TGS_REQ (7 etypes {18 17 16 23 1 3 2}) 192.168.1.2: ISSUE: authtime 1300519342, etypes {rep=18 tkt=18 ses=18}, host/x.x.x@X.X for nfs/nfs.x.x@X.X
->>> then
->>> rpc.svcgssd[8390]: qword_eol: fflush failed: errno 22 (Invalid argument) 
->>> and segfault on the client side.
->> Would it be possible to get a back trace from the core?
->>
->> steved.
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
 > 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
