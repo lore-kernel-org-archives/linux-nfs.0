@@ -1,274 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:52145 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752092Ab1CNM5c (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Mar 2011 08:57:32 -0400
-Received: by mail-iy0-f174.google.com with SMTP id 26so4900509iyb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Mar 2011 05:57:32 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/12] NFS: Introduce nfs4_proc_get_mig_status()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 14 Mar 2011 08:57:29 -0400
-Message-ID: <20110314125729.2413.85167.stgit@matisse.1015granger.net>
-In-Reply-To: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
-References: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from [218.249.29.245] ([218.249.29.245]:51995 "HELO bjtu.edu.cn"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with SMTP
+	id S1751983Ab1CKQ3h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Mar 2011 11:29:37 -0500
+From: "=?gb2312?B?sNfLycHW?=" <09120171@bjtu.edu.cn>
+To: bhalevy@panasas.com
+Cc: linux-nfs@vger.kernel.org, 09120171@bjtu.edu.cn
+Date: Sat, 12 Mar 2011 00:18:31 +0800
+Message-ID: <ZILUKLNGDVEJQIKOSYKLJUGEIUTK.09120171@bjtu.edu.cn>
+Reply-To: "=?gb2312?B?sNfLycHW?=" <09120171@bjtu.edu.cn>
+Subject: Re: questions about blocklayoutdriver.ko
+Content-Type: text/plain;
+	charset="gb2312"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-The nfs4_proc_fs_locations() function is invoked during referral
-processing to perform a GETATTR(fs_locations) on an object's parent
-directory in order to discover the target of the referral.  It
-performs a LOOKUP, so the client needs to know the parent's file
-handle a priori.
-
-To handle migration recovery, we need to probe fs_locations
-information on an FSID's root directory.  The "parent" of the root
-directory is not available via LOOKUP.
-
-Additionally, a minor version zero server needs to know what client ID
-is requesting fs_locations information, so it can clear the flag that
-forces it to continue returning NFS4ERR_LEASE_MOVED.  This flag is set
-per client ID and per FSID.  The client ID is not an argument of the
-PUTFH or GETATTR operations.
-
-Later minor versions have client ID information embedded in the
-session ID.  By convention, minor version zero clients send a RENEW
-operation in the same compound as the GETATTR(fs_locations).  (We may
-need to visit this for referrals too, in case the LOOKUP operation is
-actually seeing a migration).
-
-Because of all of this, we need a new variant of
-nfs4_proc_fs_locations() that can operate directly on a target file
-handle, rather than taking a name and doing a LOOKUP as part of
-retrieving fs_locations from the server.  It also must properly append
-a RENEW operation as needed.  Introduce nfs4_proc_get_mig_status() to
-fill this role, and add the requisite XDR encoding and decoding
-paraphenalia.
-
-Under the covers, both nfs4_proc_foo functions use the FS_LOCATIONS
-XDR routines.  This is a little awkward, but is necessary because it's
-currently not easy to add new NFSv4 procedures due to a bug in
-nfsstat.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/nfs4_fs.h        |    2 +
- fs/nfs/nfs4proc.c       |   67 ++++++++++++++++++++++++++++++++++++++++++++++-
- fs/nfs/nfs4xdr.c        |   48 +++++++++++++++++++++++++---------
- include/linux/nfs_xdr.h |    7 ++++-
- 4 files changed, 108 insertions(+), 16 deletions(-)
-
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index e266e2d..b746a51 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -241,6 +241,8 @@ extern int nfs4_do_close(struct path *path, struct nfs4_state *state, gfp_t gfp_
- extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
- extern int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 		struct nfs4_fs_locations *fs_locations, struct page *page);
-+extern int nfs4_proc_get_mig_status(struct nfs_server *server,
-+		struct nfs4_fs_locations *fs_locations, struct page *page);
- extern void nfs4_release_lockowner(const struct nfs4_lock_state *);
- extern const struct xattr_handler *nfs4_xattr_handlers[];
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1e72e5f..bdd8aac 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4527,6 +4527,16 @@ static void nfs_fixup_referral_attributes(struct nfs_fattr *fattr)
- 	fattr->nlink = 2;
- }
- 
-+/**
-+ * nfs4_proc_fs_locations - retrieve locations array for a named object
-+ *
-+ * @dir: inode of parent directory
-+ * @name: qstr containing name of object to query
-+ * @locations: result of query
-+ * @page: buffer
-+ *
-+ * Returns zero on success, or a negative errno code
-+ */
- int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 		struct nfs4_fs_locations *fs_locations, struct page *page)
- {
-@@ -4551,13 +4561,66 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 	};
- 	int status;
- 
--	dprintk("%s: start\n", __func__);
-+	dprintk("--> %s: FSID %llx:%llx on \"%s\"\n", __func__,
-+		(unsigned long long)server->fsid.major,
-+		(unsigned long long)server->fsid.minor,
-+		server->nfs_client->cl_hostname);
- 	nfs_fattr_init(&fs_locations->fattr);
- 	fs_locations->server = server;
- 	fs_locations->nlocations = 0;
- 	status = nfs4_call_sync(server, &msg, &args, &res, 0);
- 	nfs_fixup_referral_attributes(&fs_locations->fattr);
--	dprintk("%s: returned status = %d\n", __func__, status);
-+	dprintk("<-- %s status=%d\n", __func__, status);
-+	return status;
-+}
-+
-+/**
-+ * nfs4_proc_get_mig_status - probe migration status of an export
-+ *
-+ * @server: local state for server
-+ * @locations: result of query
-+ * @page: buffer
-+ *
-+ * Returns zero on success, or a negative errno code
-+ */
-+int nfs4_proc_get_mig_status(struct nfs_server *server,
-+			     struct nfs4_fs_locations *locations,
-+			     struct page *page)
-+{
-+	u32 bitmask[2] = {
-+		[0]		= FATTR4_WORD0_FSID |
-+				  FATTR4_WORD0_FS_LOCATIONS,
-+	};
-+	struct nfs4_fs_locations_arg args = {
-+		.client		= server->nfs_client,
-+		.fh		= server->rootfh,
-+		.page		= page,
-+		.bitmask	= bitmask,
-+	};
-+	struct nfs4_fs_locations_res res = {
-+		.fs_locations	= locations,
-+	};
-+	struct rpc_message msg = {
-+		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_FS_LOCATIONS],
-+		.rpc_argp	= &args,
-+		.rpc_resp	= &res,
-+	};
-+	int status;
-+
-+	dprintk("--> %s: FSID %llx:%llx on \"%s\"\n", __func__,
-+		(unsigned long long)server->fsid.major,
-+		(unsigned long long)server->fsid.minor,
-+		args.client->cl_hostname);
-+	nfs_display_fhandle(args.fh, "Probing file handle");
-+
-+	args.mig_status = res.mig_status = 1;
-+	if (args.client->cl_mvops->minor_version == 0)
-+		args.renew = res.renew = 1;
-+	nfs_fattr_init(&locations->fattr);
-+	locations->server = server;
-+	locations->nlocations = 0;
-+	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	dprintk("<-- %s status=%d\n", __func__, status);
- 	return status;
- }
- 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 9d2c9d2..e4a8e50 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -669,13 +669,15 @@ static int nfs4_stat_to_errno(int);
- 				 encode_sequence_maxsz + \
- 				 encode_putfh_maxsz + \
- 				 encode_lookup_maxsz + \
--				 encode_fs_locations_maxsz)
-+				 encode_fs_locations_maxsz + \
-+				 encode_renew_maxsz)
- #define NFS4_dec_fs_locations_sz \
- 				(compound_decode_hdr_maxsz + \
- 				 decode_sequence_maxsz + \
- 				 decode_putfh_maxsz + \
- 				 decode_lookup_maxsz + \
--				 decode_fs_locations_maxsz)
-+				 decode_fs_locations_maxsz + \
-+				 encode_renew_maxsz)
- #if defined(CONFIG_NFS_V4_1)
- #define NFS4_enc_exchange_id_sz \
- 				(compound_encode_hdr_maxsz + \
-@@ -2450,11 +2452,20 @@ static void nfs4_xdr_enc_fs_locations(struct rpc_rqst *req,
- 
- 	encode_compound_hdr(xdr, req, &hdr);
- 	encode_sequence(xdr, &args->seq_args, &hdr);
--	encode_putfh(xdr, args->dir_fh, &hdr);
--	encode_lookup(xdr, args->name, &hdr);
--	replen = hdr.replen;	/* get the attribute into args->page */
--	encode_fs_locations(xdr, args->bitmask, &hdr);
-+	if (args->mig_status) {
-+		encode_putfh(xdr, args->fh, &hdr);
-+		replen = hdr.replen;
-+		encode_fs_locations(xdr, args->bitmask, &hdr);
-+		if (args->renew)
-+			encode_renew(xdr, args->client, &hdr);
-+	} else {
-+		encode_putfh(xdr, args->dir_fh, &hdr);
-+		encode_lookup(xdr, args->name, &hdr);
-+		replen = hdr.replen;
-+		encode_fs_locations(xdr, args->bitmask, &hdr);
-+	}
- 
-+	/* Set up reply kvec to capture returned fs_locations array. */
- 	xdr_inline_pages(&req->rq_rcv_buf, replen << 2, &args->page,
- 			0, PAGE_SIZE);
- 	encode_nops(&hdr);
-@@ -5904,13 +5915,24 @@ static int nfs4_xdr_dec_fs_locations(struct rpc_rqst *req,
- 	status = decode_putfh(xdr);
- 	if (status)
- 		goto out;
--	status = decode_lookup(xdr);
--	if (status)
--		goto out;
--	xdr_enter_page(xdr, PAGE_SIZE);
--	status = decode_getfattr(xdr, &res->fs_locations->fattr,
--				 res->fs_locations->server,
--				 !RPC_IS_ASYNC(req->rq_task));
-+	if (res->mig_status) {
-+		xdr_enter_page(xdr, PAGE_SIZE);
-+		status = decode_getfattr(xdr, &res->fs_locations->fattr,
-+				 	res->fs_locations->server,
-+				 	!RPC_IS_ASYNC(req->rq_task));
-+		if (status)
-+			goto out;
-+		if (res->renew)
-+			status = decode_renew(xdr);
-+	} else {
-+		status = decode_lookup(xdr);
-+		if (status)
-+			goto out;
-+		xdr_enter_page(xdr, PAGE_SIZE);
-+		status = decode_getfattr(xdr, &res->fs_locations->fattr,
-+				 	res->fs_locations->server,
-+				 	!RPC_IS_ASYNC(req->rq_task));
-+	}
- out:
- 	return status;
- }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 2492487..bcf823b 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -925,16 +925,21 @@ struct nfs4_fs_locations {
- };
- 
- struct nfs4_fs_locations_arg {
-+	const struct nfs_client *client;
- 	const struct nfs_fh *dir_fh;
-+	const struct nfs_fh *fh;
- 	const struct qstr *name;
- 	struct page *page;
- 	const u32 *bitmask;
--	struct nfs4_sequence_args	seq_args;
-+	struct nfs4_sequence_args seq_args;
-+	unsigned char mig_status : 1, renew : 1;
- };
- 
- struct nfs4_fs_locations_res {
- 	struct nfs4_fs_locations       *fs_locations;
- 	struct nfs4_sequence_res	seq_res;
-+	unsigned char			mig_status : 1,
-+					renew : 1;
- };
- 
- #endif /* CONFIG_NFS_V4 */
-
+SGkgDQoNCkkgYW0gYWJsZSB0byBtb3VudCBNRFMgb3IgRFMgb3ZlciBuZnN2MywgbmZzdjQsIGFu
+ZCBuZnN2NC4xIHdpdGhvdXQgcG5mcy4NCg0KWW91IHNhaWQgdGhlIFNOIG1lYW5zIHNlcnZlciBu
+YW1lKG9yIGlwIGFkZHJlc3MpIGluIHRoZSBsYXN0IGxldHRlci4gQnV0IEkgZG9uJ3Qga29udyB3
+aGV0aGVyIGl0IG1lYW5zIGEgTURTJ3MgbmFtZSBvciBpdCBtZWFucyBhIERTJ3MgbmFtZS4NCkNh
+biB5b3UgdGVsbCBtZSB3aGF0IGl0IGlzPw0KDQpXZSBzZXQgdXAgdGhlIHBORlMgZW52aXJvbm1l
+bnQgYXMgZm9sbG93czoNCkRTOjEwLjI3LjE0MC40MA0KTURTOjEwLjI3LjE0MC4zNQ0KQ2xpZW50
+OjEwLjI3LjE0MC4zOA0KDQpPbiBEUzogMS4gdGhlIGRpc2sgd2FzIHBhcnRpdGlvbmVkIHdpdGgg
+InBhcnRlZCIsYW5kIHByb2R1Y2VkIHNkYTYgZm9yIGNsaWVudC4NCiAgICAgICAyLiBhZGRlZCBs
+aW5lIGluIC9ldGMvZXhwb3J0cyBhcyBmb2xsb3dzDQogICAgICAgICAgL3BuZnMgICoocncsc3lu
+Yyxmc2lkPTAsaW5zZWN1cmUsbm9fc3VidHJlZV9jaGVjayxub19yb290X3NxdWFzaCxwbmZzKQ0K
+ICAgICAgIDMuIHVzZWQgdGhlIGZvbGxvd2luZyBzY3JpcHQgdG8gc3RhcnQgdGhlIERTIHNlcnZl
+ciANCg0KICAgICAgICAgICAjL2Jpbi9iYXNoIA0KICAgICAgICAgICB1bW91bnQgL3BuZnMNCiAg
+ICAgICAgICAgc2VydmljZSB0Z3RkIHJlc3RhcnQNCiAgICAgICAgICAgc2xlZXAgOA0KICAgICAg
+ICAgICB0Z3RhZG0gLS1sbGQgaXNjc2kgLS1vcCBuZXcgLS1tb2RlIHRhcmdldCAtLXRpZCAxIC1U
+IGlxbi4xOTkyLTA1LmNvbS5lbWM6b3BlbmJsb2NrDQogICAgICAgICAgIHRndGFkbSAtLWxsZCBp
+c2NzaSAtLW1vZGUgbG9naWNhbHVuaXQgLS1vcCBuZXcgLS10aWQgMSAtLWx1biAxIC0tYmFja2lu
+Zy1zdG9yZSAvZGV2L3NkYTYNCiAgICAgICAgICAgdGd0YWRtIC0tbGxkIGlzY3NpIC0tbW9kZSB0
+YXJnZXQgLS1vcCBiaW5kIC0tdGlkIDEgLS1pbml0aWF0b3ItYWRkcmVzcyBBTEwNCiAgICAgICAg
+ICAgdGd0YWRtIC0tbGxkIGlzY3NpIC0tb3Agc2hvdyAtLW1vZGUgdGFyZ2V0DQogICAgICAgICAg
+IG1vdW50IC9kZXYvc2RhNiAvcG5mcw0KICAgICAgICAgICBzbGVlcCAzDQogICAgICAgICAgIHNl
+cnZpY2UgbmZzIHJlc3RhcnQNCiAgICAgICAgICAgc2xlZXAgMw0KICAgICAgICAgICBjZCA8Q1RM
+X1NSQz4vY3RsLw0KICAgICAgICAgICAuL2N0bCAtdSAmDQpPbiBNRFM6IDEuIGFkZGVkIGxpbmUg
+aW4gL2V0Yy9leHBvcnRzDQogICAgICAgICAgIC8gKihydyxmc2lkPTAsaW5zZWN1cmUsbm9fcm9v
+dF9zcXVhc2gsc3luYyxub19zdWJ0cmVlX2NoZWNrLHBuZnMpDQogICAgICAgIDIuIGNyZWF0ZWQg
+dGhlIGZvbGRlcg0KICAgICAgICAgICBta2RpciAvc3BuZnMvMTAuMjcuMTQwLjQwDQogICAgICAg
+IDMuIG1vdW50IDEwLjI3LjE0MC40MDovcG5mcyAvc3BuZnMvMTAuMjcuMTQwLjQwICAgICAgDQog
+ICAgICAgIDQuIHJ1biBzcG5mc2QgYW5kIHRoZSBjb250ZW50IG9mIC9ldGMvc3BuZnMuY29uZiBh
+cyBmb2xsb3dzDQogICAgICAgICAgICANCiAgICAgICAgICAgW0dlbmVyYWxdDQogICAgICAgICAg
+IFZlcmJvc2l0eSA9IDENCiAgICAgICAgICAgU3RyaXBlLXNpemUgPSA4MTkyDQogICAgICAgICAg
+IERlbnNlLXN0cmlwaW5nID0gMA0KICAgICAgICAgICBQaXBlZnMtRGlyZWN0b3J5ID0gL3Zhci9s
+aWIvbmZzL3JwY19waXBlZnMNCiAgICAgICAgICAgRFMtTW91bnQtRGlyZWN0b3J5ID0gL3NwbmZz
+DQogDQogICAgICAgICAgIFtEYXRhU2VydmVyc10NCiAgICAgICAgICAgTnVtRFMgPSAxDQogICAg
+ICAgICAgIERTMV9JUCA9IDEwLjI3LjE0MC40MA0KICAgICAgICAgICBEUzFfUE9SVCA9IDIwNDkN
+CiAgICAgICAgICAgRFMxX1JPT1QgPSAvcG5mcw0KICAgICAgICAgICBEUzFfSUQgPSAxDQoNCk9u
+IGNsaWVudDogMS4gIGNvbm5lY3R0ZWQgdG8gaXNjc2kgdGFyZ2V0cw0KICAgICAgICAgICAgICAg
+aXNjc2lhZG0gLW0gZGlzY292ZXJ5IC10IHNlbmR0YXJnZXRzIC1wIDEwLjI3LjE0MC40MCAtbA0K
+ICAgICAgICAgICAyLiAgc3RhcnQgdGhlIGJsb2NrIGxheW91dCBzZXJ2aWNlDQogICAgICAgICAg
+ICAgICBpbml0ZC5yZWRoYXQgcmVzdGFydA0KICAgICAgICAgICAzLiAgbW91bnRlZCB0aGUgTURT
+oaFzZXJ2ZXINCqGhoaGhoaGhoaGhoaGhIG1vdW50IC10IG5mczQgLW8gbWlub3J2ZXJzaW9uPTEg
+MTAuMjcuMTQwLjM1Oi9zcG5mcyAgL21udA0KDQpXZSB0ZXN0ZWQgdGhlIHBORlMgaW5mb3JtYW5j
+ZSBpbiB0aGUgZW52aXJvbm1lbnQsYW5kIGZvdW5kIHRoYXQgd2hlbiBjbGllbnQgd3JpdGUgZGF0
+YSB0byAvbW50LGFsbCBvZiB0aGUgZGF0YSBiZSBzZW50IHRvIE1EUyBmaXJzdGx5LCBhbmQgdGhl
+biBNRFMgZm9yd2FyZGVkIHRoZSBkYXRhIHRvIERTLHdoZW4gd2UgZ290IHRoZSBwYWNrYWdlIGJ5
+IHdpcmVzaGFyayxhbmQgZm91bmQgbW9zdCBvZiB0aGUgcHJvdG9jb2wgYmV0d2VlbiBNRFMgYW5k
+IERTIGFyZSBORlMgYW5kIFRDUC4NCg0KSSBkb24ndCBrb253IHdoeSB0aGUgZGF0YSBiZSBzZW50
+IHRvIE1EUyBmaXJzdGx5LCBJIHRoaW5rIGl0IHNob3VsZCBiZSBzZW50IHRvIERTIGZyb20gY2xp
+ZW50IGRpcmNldGx5IHdpdGggaVNDU0kgcHJvdG9jb2wuDQpDYW4geW91IHBvaW50IHdoZXJlIGlz
+IHRoZSBlcnJvcj8NCg0KVGhhbmtzLg0KU29uZ2xpbiBCQUkuIA0KDQoNCg0KDQoNCg0KPkZyb206
+IEJlbm55IEhhbGV2eSA8YmhhbGV2eUBwYW5hc2FzLmNvbT4NCj5SZXBseS1UbzogDQo+VG86ILDX
+y8nB1jwwOTEyMDE3MUBianR1LmVkdS5jbj4NCj5TdWJqZWN0OiBSZTogcXVlc3Rpb25zIGFib3V0
+IGJsb2NrbGF5b3V0ZHJpdmVyLmtvDQo+RGF0ZTogV2VkLCAwOSBNYXIgMjAxMSAyMzoxMjowNCAt
+MDgwMA0KPg0KPk9uIDIwMTEtMDMtMDkgMDg6MTMsILDXy8nB1iB3cm90ZToNCj4+IEhpDQo+PiAN
+Cj4+IFRoYW5rcyBmb3IgeW91ciByZXBseS4NCj4+IA0KPj4gQWNjb3JkaW5nIHRvIHlvdXIgYWR2
+aWNlLGkgcmVmZXJlZCB0aGUgcGFnZShodHRwOi8vd2lraS5saW51eC1uZnMub3JnL3dpa2kvaW5k
+ZXgucGhwL1BORlNfQmxvY2tfU2VydmVyX1NldHVwX0luc3RydWN0aW9ucyksIGFuZCBzZXQgdXAg
+dGhlIHRlc3QgZW52aXJvbm1lbnQsYnV0IGZhaWxlZC4gSSBkb24ndCBrb253IHdoYXQgdG8gZG8g
+aW4gbWV0YWRhdGEgc2VydmVyLGFuZCB3aGF0IHNob3VsZCBiZSBkb25lIGluIGRhdGEgc2VydmVy
+LiBjYW4geW91IGhlbHAgbWUgPw0KPj4gSW4gdGhpcyB3ZWJwYWdlLHRoZXJlIGlzIG9uZSBzZW50
+ZW5jZSwNCj4+IG1vdW50IC10IG5mczQgLW8gbWlub3J2ZXJzaW9uPTEgU046LyAvbW50L29iIA0K
+Pj4gSW4gdGhpcyBzZW50ZW5jZSxjYW4geW91IHRlbGwgbWUgd2hhdCBpcyBTTiBtZWFucz8NCj4N
+Cj5UaGlzIGlzIHRoZSBzZXJ2ZXIgbmFtZSAob3IgaXAgYWRkcmVzcykNCj5BcmUgeW91IGFibGUg
+dG8gbW91bnQgaXQgb3ZlciBuZnN2MywgbmZzdjQsIGFuZCBuZnN2NC4xIHdpdGhvdXQgcG5mcz8N
+Cj4NCj4+IA0KPj4gQW50aGVyIHF1ZXN0aW9uLHRoZXJlIGlzIG9uZSB3YXkgYWJvdXQgRmVkcm9h
+IHBORlMgY2xpZW50IHNldHVwIGluIHRoZSB3ZWJwYWdlKGh0dHA6Ly93aWtpLmxpbnV4LW5mcy5v
+cmcvd2lraS9pbmRleC5waHAvRmVkb3JhX3BORlNfQ2xpZW50X1NldHVwKSxjYW4geW91IHByb3Zp
+ZGUgbWUgZm9yIG9uZSB3YXkgYWJvdXQgcE5GUyBjbGllbnQgc2V0dXAgaW4gcmVkaGF0Lg0KPg0K
+Pkl0IHNob3VsZCBiZSB0aGUgc2FtZSBhcyB0aGUgb25lIHlvdSBidWlsZCBmcm9tIHRoZSBsaW51
+eC1wbmZzIHRyZWUuDQo+SSdtIENjJ2luZyBTdGV2ZSBEaWNrc29uIHdobyBnZW5lcmF0ZXMgdGhp
+cyBwYWNrYWdlcywganVzdCBpbiBjYXNlLg0KPg0KPj4gSW4gdGhpcyB3ZWJwYWdlLHRoZXJlIGlz
+IG9uZSBzZW50ZW5jZSwNCj4+IG1vdW50IC10IG5mczQgLW8gbWlub3J2ZXJzaW9uPTENCjovZXhw
+b3J0ICAvbW50DQo+PiBJbiB0aGlzIHNlbnRlbmNlLGlzIHRoZSBzZXJ2ZXIgbWVhbnMgTURTPw0K
+Pg0KPkNvcnJlY3QuDQo+DQo+QmVubnkNCj4NCj5QLlMuIEknZCBhcHByZWNpYXRlIGlmIHlvdSBj
+b3VsZCBDQyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnIHNvIHRoYXQNCj5vdGhlcnMgY291bGQg
+YmVuZWZpdCBmcm9tIG91ciBkaXNjdXNzaW9uIHRvby4NCj4NCj4+IA0KPj4gVGhhbmtzLg0KPj4g
+U29uZ2xpbiBCYWkuDQo+PiANCj4+IA0KPj4gDQo+PiANCj4+IATounsubj+Jt5+uia0/JYrLbHp3
+bYXpYp3rp7Lm7HK4m3pYp7sZ37Ip7YXm6HcqH2pnrLE/tomajordomovgerkerneloo/it6ZqOit
+Pz/foathttp//vgerkerneloP+ZqOit2iaiKd+iG2aU=
