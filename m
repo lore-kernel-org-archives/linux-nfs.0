@@ -1,61 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:56376 "EHLO song.cn.fujitsu.com"
+Received: from cn.fujitsu.com ([222.73.24.84]:61642 "EHLO song.cn.fujitsu.com"
 	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751035Ab1CBGby (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Mar 2011 01:31:54 -0500
-Message-ID: <4D6DE484.6010608@cn.fujitsu.com>
-Date: Wed, 02 Mar 2011 14:32:36 +0800
+	id S1751251Ab1CKENL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Mar 2011 23:13:11 -0500
+Message-ID: <4D79A183.8090306@cn.fujitsu.com>
+Date: Fri, 11 Mar 2011 12:13:55 +0800
 From: Mi Jinlong <mijinlong@cn.fujitsu.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 09/17] CLNT: test Bad Sequenceid At Slot
-References: <4D6DE26C.3010103@cn.fujitsu.com>
-In-Reply-To: <4D6DE26C.3010103@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+CC: roel <roel.kluin@gmail.com>, Neil Brown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: wrong index used in inner loop
+References: <4D76A06A.4090405@gmail.com> <20110309004955.GD15814@fieldses.org>
+In-Reply-To: <20110309004955.GD15814@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+
+
+J. Bruce Fields:
+> On Tue, Mar 08, 2011 at 10:32:26PM +0100, roel wrote:
+>> Index i was already used in the outer loop
+>>
+>> Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
+>> ---
+>>  fs/nfsd/nfs4xdr.c |    4 ++--
+>>  1 files changed, 2 insertions(+), 2 deletions(-)
+>>
+>> Not 100% sure this one is needed but it looks suspicious.
+> 
+> Looks bad to me, thanks.
+> 
+> nfsd4_decode_create_session should probably really be broken up a little
+> bit; if it wasn't so long this would have been more obvious.
+> 
+> I'll see if I can slip this into 2.6.38 with a couple other last-minute
+> patches....  Otherwise, it'll be in 2.6.39.
+> 
+> --b.
+> 
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index 1275b86..615f0a9 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -1142,7 +1142,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+>>  
+>>  	u32 dummy;
+>>  	char *machine_name;
+>> -	int i;
+>> +	int i, j;
+>>  	int nr_secflavs;
+>>  
+>>  	READ_BUF(16);
+>> @@ -1215,7 +1215,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+>>  			READ_BUF(4);
+>>  			READ32(dummy);
+>>  			READ_BUF(dummy * 4);
+>> -			for (i = 0; i < dummy; ++i)
+>> +			for (j = 0; j < dummy; ++j)
+>>  				READ32(dummy);
+
+  We must not use dummy for index here.
+  After the first index, READ32(dummy) will change dummy!!!!
+
+  The following patch fix this problem.
+
+--
+thanks,
+Mi Jinlong
+============================================================
+
+We must not use dummy for index.
+After the first index, READ32(dummy) will change dummy!!!!
+
 Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
 ---
- nfs4.1/server41tests/st_sequence.py |   25 +++++++++++++++++++++++++
- 1 files changed, 25 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4xdr.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/nfs4.1/server41tests/st_sequence.py b/nfs4.1/server41tests/st_sequence.py
-index ed0cc8c..4ea5cab 100644
---- a/nfs4.1/server41tests/st_sequence.py
-+++ b/nfs4.1/server41tests/st_sequence.py
-@@ -338,3 +338,28 @@ def testSessionidSequenceidSlotid(t, env):
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 615f0a9..8dd70d0 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1140,7 +1140,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+ {
+ 	DECODE_HEAD;
  
-     if not nfs4lib.test_equal(res.resarray[0].sr_slotid, 2, "int"):
-         fail("server return bad slotid")
-+
-+def testBadSequenceidAtSlot(t, env):
-+    """ If the difference between sa_sequenceid and the server's cached
-+        sequence ID at the slot ID is two (2) or more, or if sa_sequenceid
-+        is less than the cached sequence ID , server MUST return
-+        NFS4ERR_SEQ_MISORDERED. rfc5661 18.46.3
-+
-+    FLAGS: sequence all
-+    CODE: SEQ13
-+    """
-+    c = env.c1.new_client(env.testname(t))
-+    # CREATE_SESSION
-+    sess1 = c.create_session()
-+
-+    sid = sess1.sessionid 
-+    res = c.c.compound([op.sequence(sid, 1, 2, 3, True)])
-+    check(res)
-+
-+    seqid = res.resarray[0].sr_sequenceid
-+    # SEQUENCE with bad sr_sequenceid
-+    res = c.c.compound([op.sequence(sid, seqid + 2, 2, 3, True)])
-+    check(res, NFS4ERR_SEQ_MISORDERED)
-+
-+    res = c.c.compound([op.sequence(sid, nfs4lib.dec_u32(seqid), 2, 3, True)])
-+    check(res, NFS4ERR_SEQ_MISORDERED)
+-	u32 dummy;
++	u32 dummy, tmp;
+ 	char *machine_name;
+ 	int i, j;
+ 	int nr_secflavs;
+@@ -1216,7 +1216,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+ 			READ32(dummy);
+ 			READ_BUF(dummy * 4);
+ 			for (j = 0; j < dummy; ++j)
+-				READ32(dummy);
++				READ32(tmp);
+ 			break;
+ 		case RPC_AUTH_GSS:
+ 			dprintk("RPC_AUTH_GSS callback secflavor "
 -- 
 1.7.4.1
-
 
 
