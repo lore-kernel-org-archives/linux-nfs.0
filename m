@@ -1,46 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:42307 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752731Ab1CZCeH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Mar 2011 22:34:07 -0400
-Date: Fri, 25 Mar 2011 22:34:03 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond@netapp.com>,
-        "William A.(Andy) Adamson" <andros@citi.umich.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: nfs4.1 locking broken
-Message-ID: <20110326023403.GA16277@fieldses.org>
-References: <201103252328.p2PNSVRY013346@pop.test.fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201103252328.p2PNSVRY013346@pop.test.fieldses.org>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:43089 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751072Ab1CKRCb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Mar 2011 12:02:31 -0500
+Date: Fri, 11 Mar 2011 12:02:27 -0500
+From: Jim Rees <rees@umich.edu>
+To: =?utf-8?B?55m95p2+5p6X?= <09120171@bjtu.edu.cn>
+Cc: bhalevy@panasas.com, linux-nfs@vger.kernel.org
+Subject: Re: questions about blocklayoutdriver.ko
+Message-ID: <20110311170227.GA3096@merit.edu>
+References: <ZILUKLNGDVEJQIKOSYKLJUGEIUTK.09120171@bjtu.edu.cn>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <ZILUKLNGDVEJQIKOSYKLJUGEIUTK.09120171@bjtu.edu.cn>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Commit 114f64b5f24abac33a42f4f1856eb3a9766d497e "NFSv4: remove duplicate
-clientid in struct nfs_client" breaks locking over 4.1; from a cthon
-run:
+白松林 wrote:
 
-On Fri, Mar 25, 2011 at 07:28:31PM -0400, J. Bruce Fields wrote:
-> Starting LOCKING tests: test directory /mnt/TMP (arg: -f)
-> 
-> Testing native post-LFS locking
-> 
-> Creating parent/child synchronization pipes.
-> 
-> Test #1 - Test regions of an unlocked file.
-> 	Parent: 1.1  - F_TEST  [               0,               1] FAILED!
-> 	Parent: **** Expected success, returned EINVAL...
-> 	Parent: **** Probably implementation error.
-> 
-> ** PARENT pass 1 results: 0/0 pass, 0/0 warn, 1/1 fail (pass/total).
-> 
-> **  CHILD pass 1 results: 0/0 pass, 0/0 warn, 0/0 fail (pass/total).
-> lock tests failed
+  We tested the pNFS informance in the environment,and found that when
+  client write data to /mnt,all of the data be sent to MDS firstly, and then
+  MDS forwarded the data to DS,when we got the package by wireshark,and
+  found most of the protocol between MDS and DS are NFS and TCP.
 
-I haven't figured out why.
+I suspect you don't actually have a pnfs mount.  Check/proc/self/mountstats
+for pnfs=LAYOUT_BLOCK_VOLUME.  I recently added a troubleshooting section to
+the pnfs block client how-to, maybe that will help.
 
-Presumably the lock code assumed the clientid would be unset in the 4.1
-case?
-
---b.
+http://wiki.linux-nfs.org/wiki/index.php/Fedora_pNFS_Client_Setup
