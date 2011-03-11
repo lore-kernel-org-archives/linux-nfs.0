@@ -1,458 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:42213 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933288Ab1CWUaK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 16:30:10 -0400
-Received: by bwz15 with SMTP id 15so6994014bwz.19
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Mar 2011 13:30:08 -0700 (PDT)
-In-Reply-To: <4D8A4D16.1060702@panasas.com>
-References: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
-	<1300886875-5016-9-git-send-email-iisaman@netapp.com>
-	<4D8A4D16.1060702@panasas.com>
-Date: Wed, 23 Mar 2011 16:30:08 -0400
-Message-ID: <AANLkTi=_9nmyg4j1LqC61QBAGD5q0y0ndBMgzNLN_0Py@mail.gmail.com>
-Subject: Re: [PATCH 08/12] NFSv4.1: add generic layer hooks for pnfs COMMIT
-From: Fred Isaman <iisaman@netapp.com>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from peace.netnation.com ([204.174.223.2]:47440 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754477Ab1CKVJk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Mar 2011 16:09:40 -0500
+Date: Fri, 11 Mar 2011 13:09:38 -0800
+From: Simon Kirby <sim@hostway.ca>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Mark Moseley <moseleymark@gmail.com>, linux-nfs@vger.kernel.org,
+        Al Viro <viro@ZenIV.linux.org.uk>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [git pull] more vfs fixes for final
+Message-ID: <20110311210938.GB8211@hostway.ca>
+References: <20110310110931.GF22723@ZenIV.linux.org.uk> <AANLkTi=gv+iT6Lc_ADoBu9_P78ivhmOwLh-+Oki7WmD1@mail.gmail.com> <20110310115856.GG22723@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110310115856.GG22723@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-2011/3/23 Benny Halevy <bhalevy@panasas.com>:
-> On 2011-03-23 15:27, Fred Isaman wrote:
->>
->> We create three major hooks for the pnfs code.
->>
->> pnfs_mark_request_commit() is called during writeback_done from
->> nfs_mark_request_commit, which gives the driver an opportunity to
->> claim it wants control over commiting a particular req.
->>
->> pnfs_choose_commit_list() is called from nfs_scan_list
->> to choose which list a given req should be added to, based on
->> where we intend to send it for COMMIT.  It is up to the driver
->> to have preallocated list headers for each destination it may need.
->>
->> pnfs_commit_list() is how the driver actually takes control, it is
->> used instead of nfs_commit_list().
->>
->> In order to pass information between the above functions, we create
->> a union in nfs_page to hold a lseg (which is possible because the req is
->> not on any list while in transition), and add some flags to indicate
->> if we need to use the pnfs code.
->>
->> Signed-off-by: Fred Isaman<iisaman@netapp.com>
->> ---
->>  fs/nfs/pagelist.c        |    5 ++-
->>  fs/nfs/pnfs.h            |   73
->> ++++++++++++++++++++++++++++++++++++++++++++++
->>  fs/nfs/write.c           |   41 ++++++++++++++++---------
->>  include/linux/nfs_fs.h   |    1 +
->>  include/linux/nfs_page.h |    6 +++-
->>  5 files changed, 108 insertions(+), 18 deletions(-)
->>
->> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
->> index fd85618..87a593c 100644
->> --- a/fs/nfs/pagelist.c
->> +++ b/fs/nfs/pagelist.c
->> @@ -398,6 +398,7 @@ int nfs_scan_list(struct nfs_inode *nfsi,
->>        pgoff_t idx_end;
->>        int found, i;
->>        int res;
->> +       struct list_head *list;
->>
->>        res = 0;
->>        if (npages == 0)
->> @@ -418,10 +419,10 @@ int nfs_scan_list(struct nfs_inode *nfsi,
->>                        idx_start = req->wb_index + 1;
->>                        if (nfs_set_page_tag_locked(req)) {
->>                                kref_get(&req->wb_kref);
->> -                               nfs_list_remove_request(req);
->>                                radix_tree_tag_clear(&nfsi->nfs_page_tree,
->>                                                req->wb_index, tag);
->> -                               nfs_list_add_request(req, dst);
->> +                               list = pnfs_choose_commit_list(req, dst);
->> +                               nfs_list_add_request(req, list);
->>                                res++;
->>                                if (res == INT_MAX)
->>                                        goto out;
->> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->> index 6380b94..5370f1b 100644
->> --- a/fs/nfs/pnfs.h
->> +++ b/fs/nfs/pnfs.h
->> @@ -74,6 +74,13 @@ struct pnfs_layoutdriver_type {
->>        /* test for nfs page cache coalescing */
->>        int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *,
->> struct nfs_page *);
->>
->> +       /* Returns true if layoutdriver wants to divert this request to
->> +        * driver's commit routine.
->> +        */
->> +       bool (*mark_pnfs_commit)(struct pnfs_layout_segment *lseg);
->> +       struct list_head * (*choose_commit_list) (struct nfs_page *req);
->> +       int (*commit_pagelist)(struct inode *inode, struct list_head
->> *mds_pages, int how);
->> +
->>        /*
->>         * Return PNFS_ATTEMPTED to indicate the layout code has attempted
->>         * I/O, else return PNFS_NOT_ATTEMPTED to fall back to normal NFS
->> @@ -169,6 +176,51 @@ static inline int pnfs_enabled_sb(struct nfs_server
->> *nfss)
->>        return nfss->pnfs_curr_ld != NULL;
->>  }
->>
->> +static inline void
->> +pnfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment
->> *lseg)
->> +{
->> +       if (lseg) {
->> +               struct pnfs_layoutdriver_type *ld;
->> +
->> +               ld =
->> NFS_SERVER(req->wb_page->mapping->host)->pnfs_curr_ld;
->> +               if (ld->mark_pnfs_commit&&  ld->mark_pnfs_commit(lseg)) {
->
-> nit: space before and after "&&"
->
+On Thu, Mar 10, 2011 at 11:58:56AM +0000, Al Viro wrote:
 
-I'm ignoring the formatting nits due to mailer mishandling, per your
-subsequent email.
+> commit d891eedbc3b1b0fade8a9ce60cc0eba1cccb59e5
+> Author: J. Bruce Fields <bfields@fieldses.org>
+> Date:   Tue Jan 18 15:45:09 2011 -0500
+> 
+>     fs/dcache: allow d_obtain_alias() to return unhashed dentries
 
->> +                       set_bit(PG_PNFS_COMMIT,&req->wb_flags);
->
-> nit: space after comma
->
->> +                       req->wb_commit_lseg = get_lseg(lseg);
->
-> What are the atomicity requirements of the PG_PNFS_COMMIT bit in wb_flags
-> and the validity of wb_commit_lseg?
->
+Hmm, I was hoping this or something recently would fix nfs_inode_cache
+growing forever and flush processes taking lots of system time since
+2.6.36. For example:
 
-It is handled under the PG_BUSY bit_lock.
+  OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME
+3457486 3454365  99%    0.95K 105601       33   3379232K nfs_inode_cache
+469638 248761  52%    0.10K  12042       39     48168K buffer_head
+243712 216348  88%    0.02K    952      256      3808K kmalloc-16
+232785 202185  86%    0.19K  11085       21     44340K dentry
+149696  54633  36%    0.06K   2339       64      9356K kmalloc-64
+115976 106806  92%    0.55K   4142       28     66272K radix_tree_node
+ 76064  45680  60%    0.12K   2377       32      9508K kmalloc-128
+ 62336  53427  85%    0.03K    487      128      1948K kmalloc-32
+ 41958  41250  98%    0.75K   1998       21     31968K ext3_inode_cache
 
->> +               }
->> +       }
->> +}
->> +
->> +static inline int
->> +pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int
->> how)
->> +{
->> +       if (!test_and_clear_bit(NFS_INO_PNFS_COMMIT,&NFS_I(inode)->flags))
->> +               return PNFS_NOT_ATTEMPTED;
->> +       return NFS_SERVER(inode)->pnfs_curr_ld->commit_pagelist(inode,
->> mds_pages, how);
->
-> Again, I don't get the concurrency control here...
-> NFS_INO_PNFS_COMMIT is set in pnfs_choose_commit_list under i_lock
-> but then pnfs_commit_list is called outside the i_lock so what guarantees
-> that NFS_INO_PNFS_COMMIT is still valid with respect to the output of
-> pnfs_choose_commit_list?
->
+This clears them all, similar to what you posted:
 
+echo 2 > /proc/sys/vm/drop_caches
+sync
+echo 2 > /proc/sys/vm/drop_caches
 
-They are both done under the NFS_INO_COMMIT bit lock.
+...but 2.6.38-rc8 still doesn't seem to fix it.
 
->> +}
->> +
->> +static inline struct list_head *
->> +pnfs_choose_commit_list(struct nfs_page *req, struct list_head *mds)
->> +{
->> +       struct list_head *rv;
->> +
->> +       if (test_and_clear_bit(PG_PNFS_COMMIT,&req->wb_flags)) {
->
-> nit: space after comma
->
->> +               struct inode *inode =
->> req->wb_commit_lseg->pls_layout->plh_inode;
->> +
->> +               set_bit(NFS_INO_PNFS_COMMIT,&NFS_I(inode)->flags);
->
-> nit: ditto
->
->> +               rv =
->> NFS_SERVER(inode)->pnfs_curr_ld->choose_commit_list(req);
->> +               /* matched by ref taken when PG_PNFS_COMMIT is set */
->> +               put_lseg(req->wb_commit_lseg);
->
-> Since wb_commit_lseg and wb_list are in a union, how about
->                INIT_LIST_HEAD(&req->wb_list);
+http://0x.ca/sim/ref/2.6.37/cpu3_nfs.png
+http://www.spinics.net/lists/linux-nfs/msg18212.html
 
-I actually had that there.  Trond pointed out it was unnecessary and
-asked that it be removed.
+Any ideas?  This started with 2.6.36.
 
->
->> +       } else
->> +               rv = mds;
->> +       return rv;
->> +}
->> +
->> +static inline void pnfs_clear_request_commit(struct nfs_page *req)
->> +{
->> +       if (test_and_clear_bit(PG_PNFS_COMMIT,&req->wb_flags))
->> +               put_lseg(req->wb_commit_lseg);
->
-> ditto
-
-I see your ditto, and raise you one :)
-
->
-> Benny
->
->> +}
->> +
->>  #else  /* CONFIG_NFS_V4_1 */
->>
->>  static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
->> @@ -252,6 +304,27 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor
->> *pgio, struct inode *ino)
->>        pgio->pg_test = NULL;
->>  }
->>
->> +static inline void
->> +pnfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment
->> *lseg)
->> +{
->> +}
->> +
->> +static inline int
->> +pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int
->> how)
->> +{
->> +       return PNFS_NOT_ATTEMPTED;
->> +}
->> +
->> +static inline struct list_head *
->> +pnfs_choose_commit_list(struct nfs_page *req, struct list_head *mds)
->> +{
->> +       return mds;
->> +}
->> +
->> +static inline void pnfs_clear_request_commit(struct nfs_page *req)
->> +{
->> +}
->> +
->>  #endif /* CONFIG_NFS_V4_1 */
->>
->>  #endif /* FS_NFS_PNFS_H */
->> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
->> index f5f005e..6927a18 100644
->> --- a/fs/nfs/write.c
->> +++ b/fs/nfs/write.c
->> @@ -441,7 +441,7 @@ nfs_mark_request_dirty(struct nfs_page *req)
->>   * Add a request to the inode's commit list.
->>   */
->>  static void
->> -nfs_mark_request_commit(struct nfs_page *req)
->> +nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment
->> *lseg)
->>  {
->>        struct inode *inode = req->wb_context->path.dentry->d_inode;
->>        struct nfs_inode *nfsi = NFS_I(inode);
->> @@ -453,6 +453,7 @@ nfs_mark_request_commit(struct nfs_page *req)
->>                        NFS_PAGE_TAG_COMMIT);
->>        nfsi->ncommit++;
->>        spin_unlock(&inode->i_lock);
->> +       pnfs_mark_request_commit(req, lseg);
->
-> Why do this out of the i_lock?
->
-
-Both the req and lseg are held in memory by references, and any
-serialization needs are met by the req's PG_BUSY bit lock.
-
-Fred
-
->>        inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
->>        inc_bdi_stat(req->wb_page->mapping->backing_dev_info,
->> BDI_RECLAIMABLE);
->>        __mark_inode_dirty(inode, I_DIRTY_DATASYNC);
->> @@ -481,10 +482,11 @@ int nfs_write_need_commit(struct nfs_write_data
->> *data)
->>  }
->>
->>  static inline
->> -int nfs_reschedule_unstable_write(struct nfs_page *req)
->> +int nfs_reschedule_unstable_write(struct nfs_page *req,
->> +                                 struct nfs_write_data *data)
->>  {
->>        if (test_and_clear_bit(PG_NEED_COMMIT,&req->wb_flags)) {
->> -               nfs_mark_request_commit(req);
->> +               nfs_mark_request_commit(req, data->lseg);
->>                return 1;
->>        }
->>        if (test_and_clear_bit(PG_NEED_RESCHED,&req->wb_flags)) {
->> @@ -495,7 +497,7 @@ int nfs_reschedule_unstable_write(struct nfs_page
->> *req)
->>  }
->>  #else
->>  static inline void
->> -nfs_mark_request_commit(struct nfs_page *req)
->> +nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment
->> *lseg)
->>  {
->>  }
->>
->> @@ -512,7 +514,8 @@ int nfs_write_need_commit(struct nfs_write_data *data)
->>  }
->>
->>  static inline
->> -int nfs_reschedule_unstable_write(struct nfs_page *req)
->> +int nfs_reschedule_unstable_write(struct nfs_page *req,
->> +                                 struct nfs_write_data *data)
->>  {
->>        return 0;
->>  }
->> @@ -615,9 +618,11 @@ static struct nfs_page
->> *nfs_try_to_update_request(struct inode *inode,
->>        }
->>
->>        if (nfs_clear_request_commit(req)&&
->> -                       radix_tree_tag_clear(&NFS_I(inode)->nfs_page_tree,
->> -                               req->wb_index, NFS_PAGE_TAG_COMMIT) !=
->> NULL)
->> +           radix_tree_tag_clear(&NFS_I(inode)->nfs_page_tree,
->> +                                req->wb_index, NFS_PAGE_TAG_COMMIT) !=
->> NULL) {
->>                NFS_I(inode)->ncommit--;
->> +               pnfs_clear_request_commit(req);
->> +       }
->>
->>        /* Okay, the request matches. Update the region */
->>        if (offset<  req->wb_offset) {
->> @@ -765,11 +770,12 @@ int nfs_updatepage(struct file *file, struct page
->> *page,
->>        return status;
->>  }
->>
->> -static void nfs_writepage_release(struct nfs_page *req)
->> +static void nfs_writepage_release(struct nfs_page *req,
->> +                                 struct nfs_write_data *data)
->>  {
->>        struct page *page = req->wb_page;
->>
->> -       if (PageError(req->wb_page) ||
->> !nfs_reschedule_unstable_write(req))
->> +       if (PageError(req->wb_page) || !nfs_reschedule_unstable_write(req,
->> data))
->>                nfs_inode_remove_request(req);
->>        nfs_clear_page_tag_locked(req);
->>        nfs_end_page_writeback(page);
->> @@ -1087,7 +1093,7 @@ static void nfs_writeback_release_partial(void
->> *calldata)
->>
->>  out:
->>        if (atomic_dec_and_test(&req->wb_complete))
->> -               nfs_writepage_release(req);
->> +               nfs_writepage_release(req, data);
->>        nfs_writedata_release(calldata);
->>  }
->>
->> @@ -1154,7 +1160,7 @@ static void nfs_writeback_release_full(void
->> *calldata)
->>
->>                if (nfs_write_need_commit(data)) {
->>                        memcpy(&req->wb_verf,&data->verf,
->> sizeof(req->wb_verf));
->> -                       nfs_mark_request_commit(req);
->> +                       nfs_mark_request_commit(req, data->lseg);
->>                        dprintk(" marked for commit\n");
->>                        goto next;
->>                }
->> @@ -1357,14 +1363,15 @@ static void nfs_init_commit(struct nfs_write_data
->> *data,
->>        nfs_fattr_init(&data->fattr);
->>  }
->>
->> -static void nfs_retry_commit(struct list_head *page_list)
->> +static void nfs_retry_commit(struct list_head *page_list,
->> +                     struct pnfs_layout_segment *lseg)
->>  {
->>        struct nfs_page *req;
->>
->>        while (!list_empty(page_list)) {
->>                req = nfs_list_entry(page_list->next);
->>                nfs_list_remove_request(req);
->> -               nfs_mark_request_commit(req);
->> +               nfs_mark_request_commit(req, lseg);
->>                dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
->>                dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
->>                             BDI_RECLAIMABLE);
->> @@ -1389,7 +1396,7 @@ nfs_commit_list(struct inode *inode, struct
->> list_head *head, int how)
->>        nfs_init_commit(data, head);
->>        return nfs_initiate_commit(data, NFS_CLIENT(inode), data->mds_ops,
->> how);
->>   out_bad:
->> -       nfs_retry_commit(head);
->> +       nfs_retry_commit(head, NULL);
->>        nfs_commit_clear_lock(NFS_I(inode));
->>        return -ENOMEM;
->>  }
->> @@ -1477,7 +1484,11 @@ int nfs_commit_inode(struct inode *inode, int how)
->>        res = nfs_scan_commit(inode,&head, 0, 0);
->>        spin_unlock(&inode->i_lock);
->>        if (res) {
->> -               int error = nfs_commit_list(inode,&head, how);
->> +               int error;
->> +
->> +               error = pnfs_commit_list(inode,&head, how);
->> +               if (error == PNFS_NOT_ATTEMPTED)
->> +                       error = nfs_commit_list(inode,&head, how);
->>                if (error<  0)
->>                        return error;
->>                if (!may_wait)
->> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
->> index cb2add4..f64ea14 100644
->> --- a/include/linux/nfs_fs.h
->> +++ b/include/linux/nfs_fs.h
->> @@ -221,6 +221,7 @@ struct nfs_inode {
->>  #define NFS_INO_FSCACHE               (5)             /* inode can be
->> cached by FS-Cache */
->>  #define NFS_INO_FSCACHE_LOCK  (6)             /* FS-Cache cookie
->> management lock */
->>  #define NFS_INO_COMMIT                (7)             /* inode is
->> committing unstable writes */
->> +#define NFS_INO_PNFS_COMMIT    (8)             /* use pnfs code for
->> commit */
->
-> nit: alignment
->
->>
->>  static inline struct nfs_inode *NFS_I(const struct inode *inode)
->>  {
->> diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
->> index 92d54c8..8023e4e 100644
->> --- a/include/linux/nfs_page.h
->> +++ b/include/linux/nfs_page.h
->> @@ -33,11 +33,15 @@ enum {
->>        PG_CLEAN,
->>        PG_NEED_COMMIT,
->>        PG_NEED_RESCHED,
->> +       PG_PNFS_COMMIT,
->>  };
->>
->>  struct nfs_inode;
->>  struct nfs_page {
->> -       struct list_head        wb_list;        /* Defines state of page:
->> */
->> +       union {
->> +               struct list_head        wb_list;        /* Defines state
->> of page: */
->> +               struct pnfs_layout_segment *wb_commit_lseg; /* Used when
->> PG_PNFS_COMMIT set */
->> +       };
->>        struct page             *wb_page;       /* page to read in/write
->> out */
->>        struct nfs_open_context *wb_context;    /* File state context info
->> */
->>        struct nfs_lock_context *wb_lock_context;       /* lock context
->> info */
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Simon-
