@@ -1,56 +1,163 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18676 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750923Ab1CISOC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Mar 2011 13:14:02 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
+Received: from rcsinet10.oracle.com ([148.87.113.121]:61311 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751489Ab1CKUzZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Mar 2011 15:55:25 -0500
+Subject: Re: [PATCH 5/8] NFS: Add basic migration support to state manager thread
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1299789301.3075.40.camel@heimdal.trondhjem.org>
+Date: Fri, 11 Mar 2011 15:53:29 -0500
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH Cthon2011 fixes 1/3] NFSv4.1: Retry CREATE_SESSION on NFS4ERR_DELAY
-Date: Wed,  9 Mar 2011 13:13:44 -0500
-Message-Id: <1299694426-5620-1-git-send-email-andros@netapp.com>
+Message-Id: <D1B06BB1-D4AB-433B-A976-4799B290EC9E@oracle.com>
+References: <20110310171345.8878.25548.stgit@matisse.1015granger.net> <20110310173018.8878.71092.stgit@matisse.1015granger.net> <1299789301.3075.40.camel@heimdal.trondhjem.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
 
-Fix bug where we currently retry the EXCHANGEID call again, eventhough
-we already have a valid clientid.  Instead, delay and retry the CREATE_SESSION
-call.
+On Mar 10, 2011, at 3:35 PM, Trond Myklebust wrote:
 
-Signed-off-by: Ricardo Labiaga <Ricardo.Labiaga@netapp.com>
----
- fs/nfs/nfs4proc.c |   12 +++++++++++-
- 1 files changed, 11 insertions(+), 1 deletions(-)
+> On Thu, 2011-03-10 at 12:30 -0500, Chuck Lever wrote:
+> 
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index e6742b5..a788ec9 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -56,6 +56,8 @@
+>> #include "internal.h"
+>> #include "pnfs.h"
+>> 
+>> +#define NFSDBG_FACILITY		NFSDBG_CLIENT
+>> +
+>> #define OPENOWNER_POOL_SIZE	8
+>> 
+>> const nfs4_stateid zero_stateid;
+>> @@ -1013,9 +1015,33 @@ void nfs4_schedule_state_recovery(struct nfs_client *clp)
+>> {
+>> 	if (!clp)
+>> 		return;
+>> +	dprintk("--> %s: \"%s\" (client ID %llx)\n",
+>> +		__func__, clp->cl_hostname, clp->cl_clientid);
+>> 	if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
+>> 		set_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
+>> 	nfs4_schedule_state_manager(clp);
+>> +	dprintk("<-- %s\n", __func__);
+>> +}
+>> +
+>> +/**
+>> + * nfs4_schedule_migration_recovery - start background migration recovery
+>> + *
+>> + * @server: nfs_server representing remote file system that is migrating
+>> + *
+>> + */
+>> +void nfs4_schedule_migration_recovery(struct nfs_server *server)
+>> +{
+>> +	struct nfs_client *clp = server->nfs_client;
+>> +
+>> +	dprintk("--> %s(%llx:%llx)\n", __func__,
+>> +			(unsigned long long)server->fsid.major,
+>> +			(unsigned long long)server->fsid.minor);
+>> +	if (test_and_set_bit(NFS4CLNT_MOVED, &clp->cl_state) == 0) {
+>> +		set_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state);
+> 
+> Hmm... Why do we need to reset the NFSv4.1 session here?
+> 
+>> +		clp->cl_moved_server = server;
+>> +		nfs4_schedule_state_manager(clp);
+>> +	}
+>> +	dprintk("<-- %s\n", __func__);
+>> }
+>> 
+>> int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
+>> @@ -1435,6 +1461,64 @@ static int nfs4_reclaim_lease(struct nfs_client *clp)
+>> 	return status;
+>> }
+>> 
+>> +/*
+>> + * Try remote migration of one FSID from a source server to a
+>> + * destination server.  The source server provides a list of
+>> + * potential destinations.
+>> + */
+>> +static void nfs4_try_migration(struct nfs_server *server)
+>> +{
+>> +	struct nfs_client *clp = server->nfs_client;
+>> +	struct nfs4_fs_locations *locations = NULL;
+>> +	struct page *page;
+>> +	int status;
+>> +
+>> +	dprintk("--> %s: FSID %llx:%llx on \"%s\"\n", __func__,
+>> +			(unsigned long long)server->fsid.major,
+>> +			(unsigned long long)server->fsid.minor,
+>> +			clp->cl_hostname);
+>> +
+>> +	status = -ENOMEM;
+>> +	page = alloc_page(GFP_KERNEL);
+>> +	locations = kmalloc(sizeof(struct nfs4_fs_locations), GFP_KERNEL);
+>> +	if (page == NULL || locations == NULL) {
+>> +		dprintk("<-- %s: no memory\n", __func__);
+>> +		goto out;
+>> +	}
+>> +
+>> +	status = nfs4_proc_get_mig_status(server, locations, page);
+>> +	if (status != 0) {
+>> +		dprintk("<-- %s: get migration status: %d\n",
+>> +			__func__, status);
+>> +		goto out;
+>> +	}
+>> +	if (!(locations->fattr.valid & NFS_ATTR_FATTR_V4_LOCATIONS)) {
+>> +		dprintk("<-- %s: No fs_locations data available, "
+>> +			"migration skipped\n", __func__);
+>> +		goto out;
+>> +	}
+>> +
+>> +	status = nfs4_replace_transport(server, locations);
+>> +	if (status != 0) {
+>> +		dprintk("<-- %s: failed to replace transport: %d\n",
+>> +			__func__, status);
+>> +		goto out;
+>> +	}
+>> +
+>> +	/* Force an update of our callback info on the destination server */
+>> +	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+> 
+> I wonder if this should be made into a separate flag. That would enable
+> us to reuse it for the NFS4ERR_CB_PATH_DOWN handling...
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 36b3c44..8edb1fc 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5083,10 +5083,20 @@ int nfs4_proc_create_session(struct nfs_client *clp)
- 	int status;
- 	unsigned *ptr;
- 	struct nfs4_session *session = clp->cl_session;
-+	long timeout = 0;
-+	int err;
- 
- 	dprintk("--> %s clp=%p session=%p\n", __func__, clp, session);
- 
--	status = _nfs4_proc_create_session(clp);
-+	do {
-+		status = _nfs4_proc_create_session(clp);
-+		if (status == -NFS4ERR_DELAY) {
-+			err = nfs4_delay(clp->cl_rpcclient, &timeout);
-+			if (err)
-+				status = err;
-+		}
-+	} while (status == -NFS4ERR_DELAY);
-+
- 	if (status)
- 		goto out;
- 
+So... how exactly would this mechanism be different than nfs4[1]_init_clientid() ?  I'm trying to get a handle on what this new flag will need to do.
+
+> 
+>> +
+>> +	/* XXX: would like to update /proc/mounts, but that's entirely
+>> +	 *      optional. */
+>> +
+>> +	dprintk("<-- %s: migration succeeded\n", __func__);
+>> +
+>> +out:
+>> +	if (page != NULL)
+>> +		__free_page(page);
+>> +	kfree(locations);
+>> +}
+>> +
+>> #ifdef CONFIG_NFS_V4_1
+>> void nfs41_handle_recall_slot(struct nfs_client *clp)
+>> {
+>> @@ -1664,6 +1748,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
+
 -- 
-1.6.6
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
