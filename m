@@ -1,62 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53399 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:55875 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753184Ab1CWV2G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2011 17:28:06 -0400
-Date: Thu, 24 Mar 2011 08:27:54 +1100
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: peter.staubach@emc.com, bfields@fieldses.org, bjschuma@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] NFS: Detect loops in a readdir due to bad cookies
-Message-ID: <20110324082754.76f199a6@notabene.brown>
-In-Reply-To: <1300906115.11677.58.camel@lade.trondhjem.org>
-References: <4D8A3060.807@netapp.com>
-	<20110323182524.GB25284@fieldses.org>
-	<1300905243.11677.53.camel@lade.trondhjem.org>
-	<5E6794FC7B8FCA41A704019BE3C70E8B0693F05F@MX31A.corp.emc.com>
-	<1300906115.11677.58.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1755523Ab1CKVfW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Mar 2011 16:35:22 -0500
+Date: Fri, 11 Mar 2011 16:35:19 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Simon Kirby <sim@hostway.ca>
+Cc: Mark Moseley <moseleymark@gmail.com>, linux-nfs@vger.kernel.org,
+        Al Viro <viro@ZenIV.linux.org.uk>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [git pull] more vfs fixes for final
+Message-ID: <20110311213519.GA9404@fieldses.org>
+References: <20110310110931.GF22723@ZenIV.linux.org.uk>
+ <AANLkTi=gv+iT6Lc_ADoBu9_P78ivhmOwLh-+Oki7WmD1@mail.gmail.com>
+ <20110310115856.GG22723@ZenIV.linux.org.uk>
+ <20110311210938.GB8211@hostway.ca>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110311210938.GB8211@hostway.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 23 Mar 2011 14:48:35 -0400 Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-
-> On Wed, 2011-03-23 at 14:42 -0400, peter.staubach@emc.com wrote:
-> > Although I think that it is a good thing to protect the client against broken servers, it does seem like the right solution is to get the server fixed...
+On Fri, Mar 11, 2011 at 01:09:38PM -0800, Simon Kirby wrote:
+> On Thu, Mar 10, 2011 at 11:58:56AM +0000, Al Viro wrote:
 > 
-> Don't get me wrong: I fully agree with that!
+> > commit d891eedbc3b1b0fade8a9ce60cc0eba1cccb59e5
+> > Author: J. Bruce Fields <bfields@fieldses.org>
+> > Date:   Tue Jan 18 15:45:09 2011 -0500
+> > 
+> >     fs/dcache: allow d_obtain_alias() to return unhashed dentries
+> 
+> Hmm, I was hoping this or something recently would fix nfs_inode_cache
+> growing forever and flush processes taking lots of system time since
+> 2.6.36. For example:
+> 
+>   OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME
+> 3457486 3454365  99%    0.95K 105601       33   3379232K nfs_inode_cache
+> 469638 248761  52%    0.10K  12042       39     48168K buffer_head
+> 243712 216348  88%    0.02K    952      256      3808K kmalloc-16
+> 232785 202185  86%    0.19K  11085       21     44340K dentry
+> 149696  54633  36%    0.06K   2339       64      9356K kmalloc-64
+> 115976 106806  92%    0.55K   4142       28     66272K radix_tree_node
+>  76064  45680  60%    0.12K   2377       32      9508K kmalloc-128
+>  62336  53427  85%    0.03K    487      128      1948K kmalloc-32
+>  41958  41250  98%    0.75K   1998       21     31968K ext3_inode_cache
+> 
+> This clears them all, similar to what you posted:
+> 
+> echo 2 > /proc/sys/vm/drop_caches
+> sync
+> echo 2 > /proc/sys/vm/drop_caches
+> 
+> ...but 2.6.38-rc8 still doesn't seem to fix it.
+> 
+> http://0x.ca/sim/ref/2.6.37/cpu3_nfs.png
+> http://www.spinics.net/lists/linux-nfs/msg18212.html
+> 
+> Any ideas?  This started with 2.6.36.
 
-Ack.
+Do you have NFSv4 clients that are doing locking?  Then it's probably
+0997b17360 and 529d7b2a7f on the for-2.6.39 branch at:
 
-As I understand it, ext4 (and ext3) use the hash of the basename as the
-cookie.  This hash has a per-directory random seed which is hidden so it is
-not possible to deliberately create files with the same hash, but thanks to
-the birthday paradox it isn't too hard to get collisions in a suitably large
-directory.
+	git://linux-nfs.org/~bfields/linux.git for-2.6.39
 
-For 'readdir' ext4 keeps extra state in the 'struct file' so that it knows
-where it was up to in a list of names with the same hash and so won't return
-duplicates.  However if you telldir/seekdir you will restart at the start of
-the sequence (I think).
+Let me know if not.
 
-Assuming that the fs always delivers names-with-the-same-cookie in a
-contiguous set (which seems likely), NFSD could mitigate this problem by
-treating them as a unit.
-i.e. to a given READDIR request, it either returns all names with a
-particular cookie, or none of them.
-This could only work if the set of names with the one cookie fits inside a
-single reply, but that should be likely unless the rsize is tiny.
+Those should go into 2.6.39 and stable when the merge window opens.  I
+would have tried to slip them into 2.6.38 but they just didn't seem
+quite trivial enough given where we are in the release process.
 
-nfsd should also, after lseeking to the given address, skip over any
-subsequent entries that have the same address.
-This would ensure no looping happened, and the first step would make it
-unlikely that names were missed.
-
-It would be nice if filesystems would get this right, but I think it is
-reasonable for NFSD to take steps like this to guard against unfortunate
-filesystem design.
-
-NeilBrown
+--b.
