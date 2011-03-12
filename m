@@ -1,67 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([122.248.162.4]:43466 "EHLO
-	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756375Ab1CBRsI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Mar 2011 12:48:08 -0500
-From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
+Received: from peace.netnation.com ([204.174.223.2]:40645 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752394Ab1CLBJc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Mar 2011 20:09:32 -0500
+Date: Fri, 11 Mar 2011 17:09:30 -0800
+From: Simon Kirby <sim@hostway.ca>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Ted Ts'o" <tytso@mit.edu>, sfrench@us.ibm.com, agruen@linbit.com,
-        dilger.kernel@dilger.ca, sandeen@redhat.com, jlayton@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl interoperability
-In-Reply-To: <20110302154943.GB29136@fieldses.org>
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20110228211145.GG28617@thunk.org> <87oc5vgwqr.fsf@linux.vnet.ibm.com> <20110302154943.GB29136@fieldses.org>
-Date: Wed, 02 Mar 2011 23:17:56 +0530
-Message-ID: <87ei6pza5v.fsf@linux.vnet.ibm.com>
+Cc: Mark Moseley <moseleymark@gmail.com>, linux-nfs@vger.kernel.org,
+        Al Viro <viro@ZenIV.linux.org.uk>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [git pull] more vfs fixes for final
+Message-ID: <20110312010930.GD8211@hostway.ca>
+References: <20110310110931.GF22723@ZenIV.linux.org.uk> <AANLkTi=gv+iT6Lc_ADoBu9_P78ivhmOwLh-+Oki7WmD1@mail.gmail.com> <20110310115856.GG22723@ZenIV.linux.org.uk> <20110311210938.GB8211@hostway.ca> <20110311213519.GA9404@fieldses.org>
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110311213519.GA9404@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2 Mar 2011 10:49:43 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Tue, Mar 01, 2011 at 12:20:36PM +0530, Aneesh Kumar K. V wrote:
-> > On Mon, 28 Feb 2011 16:11:45 -0500, "Ted Ts'o" <tytso@mit.edu> wrote:
-> > > Hi Aneesh,
+On Fri, Mar 11, 2011 at 04:35:19PM -0500, J. Bruce Fields wrote:
+
+> On Fri, Mar 11, 2011 at 01:09:38PM -0800, Simon Kirby wrote:
+> > On Thu, Mar 10, 2011 at 11:58:56AM +0000, Al Viro wrote:
+> > 
+> > > commit d891eedbc3b1b0fade8a9ce60cc0eba1cccb59e5
+> > > Author: J. Bruce Fields <bfields@fieldses.org>
+> > > Date:   Tue Jan 18 15:45:09 2011 -0500
 > > > 
-> > > What is the current status of this patch series?  I seem to remember
-> > > that Christoph and Al Viro had some objections; have those been
-> > > cleared yet?  If not, can you summarize what their objections are?
+> > >     fs/dcache: allow d_obtain_alias() to return unhashed dentries
 > > 
-> > The main objection raised was the use of may_delete and may_create inode
-> > operations callback. They are gone now and we have MAY_* flags as
-> > favoured by Al Viro.  The new MAY_* flags added are 
+> > Hmm, I was hoping this or something recently would fix nfs_inode_cache
+> > growing forever and flush processes taking lots of system time since
+> > 2.6.36. For example:
 > > 
-> > #define MAY_CREATE_FILE 128
-> > #define MAY_CREATE_DIR 256
-> > #define MAY_DELETE_CHILD 512
-> > #define MAY_DELETE_SELF 1024
-> > #define MAY_TAKE_OWNERSHIP 2048
-> > #define MAY_CHMOD 4096
-> > #define MAY_SET_TIMES 8192
+> >   OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME
+> > 3457486 3454365  99%    0.95K 105601       33   3379232K nfs_inode_cache
+> > 469638 248761  52%    0.10K  12042       39     48168K buffer_head
+> > 243712 216348  88%    0.02K    952      256      3808K kmalloc-16
+> > 232785 202185  86%    0.19K  11085       21     44340K dentry
+> > 149696  54633  36%    0.06K   2339       64      9356K kmalloc-64
+> > 115976 106806  92%    0.55K   4142       28     66272K radix_tree_node
+> >  76064  45680  60%    0.12K   2377       32      9508K kmalloc-128
+> >  62336  53427  85%    0.03K    487      128      1948K kmalloc-32
+> >  41958  41250  98%    0.75K   1998       21     31968K ext3_inode_cache
 > > 
+> > This clears them all, similar to what you posted:
 > > 
-> > > 
-> > > To be honest I haven't been paying super close attention to this patch
-> > > series, and I'm curious what needs to happen with it one way or
-> > > another.
-> > > 
+> > echo 2 > /proc/sys/vm/drop_caches
+> > sync
+> > echo 2 > /proc/sys/vm/drop_caches
 > > 
-> > IMHO we are ready to get first 11 patches upstream in the next merge
-> > window. ie the below set of patches.
+> > ...but 2.6.38-rc8 still doesn't seem to fix it.
+> > 
+> > http://0x.ca/sim/ref/2.6.37/cpu3_nfs.png
+> > http://www.spinics.net/lists/linux-nfs/msg18212.html
+> > 
+> > Any ideas?  This started with 2.6.36.
 > 
-> Why aren't all of them ready?
+> Do you have NFSv4 clients that are doing locking?  Then it's probably
+> 0997b17360 and 529d7b2a7f on the for-2.6.39 branch at:
 > 
+> 	git://linux-nfs.org/~bfields/linux.git for-2.6.39
+> 
+> Let me know if not.
 
-All except how to enable richacl in local file system is ready. I
-actually floated two ideas in the patch series
+Yes, but when this started, it was all NFSv3. I tried NFSv4 to see if
+it made any different (no, other than more I/O wait due to idmapd and
+flock(LOCK_EX) breaking on a file opened O_RDONLY, which works locally
+and on NFSv3 -- fixed by changing to open(O_RDWR) in my code), but
+otherwise NFSv3 and NFSv4 look pretty much the same and "leak" at the
+same rate.
 
-1) mount option
-2) Ext4 compat flags.
+Actually, I only changed the mount where it writes the log results, and
+not where it reads them from (a bunch of NFSv3 mounts that will take a
+lot more work to make NFSv4 since they currently run without libnss-mysql
+set up), so I haven't actually tested to see if it happens with purely
+NFSv4 mounts.
 
-If we can get to decide which one, then the entire set can go in. We also
-want others to review the richacl format. If that cannot be completed by
-next merge window there is no reason to prevent the vfs changes from
-going in. VFS changes are independent of richacl format.
+Anyway, it's locking on one file only, and it was purely for reducing
+writeback thrashing, so I could try without it if you think it might be
+related, but it all started without NFSv4. All this thing does is read a
+bunch of log files, crunch them into reports, and write them to another
+mount point, all run from xargs -P. Pretty basic readdir, read, write,
+unlink...not anything exotic.
 
--aneesh
+Simon-
