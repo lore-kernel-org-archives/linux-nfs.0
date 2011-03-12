@@ -1,29 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qy0-f174.google.com ([209.85.216.174]:54577 "EHLO
-	mail-qy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757443Ab1CQB2F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2011 21:28:05 -0400
-Received: by qyk7 with SMTP id 7so3965167qyk.19
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Mar 2011 18:28:04 -0700 (PDT)
-Date: Wed, 16 Mar 2011 21:28:04 -0400
-Message-ID: <AANLkTik72b2H3yVx7-YcE1Bmp73LboMzZ+DSOjww=RS0@mail.gmail.com>
-Subject: libgssglue-0.2
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from milhouse.imppc.org ([213.151.98.37]:57864 "EHLO
+	milhouse.imppc.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751812Ab1CLMxm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Mar 2011 07:53:42 -0500
+Message-ID: <4D7B6DE5.8010008@imppc.org>
+Date: Sat, 12 Mar 2011 13:58:13 +0100
+From: Judith Flo Gaya <jflo@imppc.org>
+To: <linux-nfs@vger.kernel.org>
+Subject: problem with nfs latency during high IO
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-A new version of library libgssglue is now available from:
+Hello,
 
-http://www.citi.umich.edu/projects/nfsv4/linux/libgssglue/libgssglue-0.2.tar.gz
+I was told some days ago that my problem with my NFS system is related 
+to this bug, as the problem that I'm experiencing is quite similar.
 
-Changes since libgssglue-0.1:
+The bug : https://bugzilla.redhat.com/show_bug.cgi?id=469848
 
-	* Modify the gss_acquire_cred() code to accept, and
-	  properly handle, an input name of GSS_C_NO_NAME.
-	  Other misc. changes to support this change.
-	* Remove some generated files from git.  Change
-	  autogen.sh to clean up files that might become
-	  outdated and incompatible.
+The link itself explains quite well my issue, I'm just truing to copy a 
+big file (36Gb) to my nfs server and when I try to get an ls -l command 
+to the same folder where I'm copying data, the command gets stuck for 
+some time. This amount of time changes from a few secs to SOME minutes 
+(9' is the current record).
+I can live with some seconds of delay, but minutes is something quite 
+unacceptable.
+
+As this is an nfs server running on a red hat system (an HP ibrix x9300 
+with Red Hat 5.3 x86_64, kernel 2.6.18-128) I was told to apply the 
+patch suggested from the bug on my clients.
+
+Unfortunately my clients are running fedora core 14 (x86_64, kernel 
+2.6.35.6-45) and I can't find the file that they are referring to, the 
+file fs/nfs/inode.c is not there and I can't find the rpm that contains it.
+
+As the bug is a very very old one, I took it for granted that is already 
+applied to fedora, but I wanted to make sure that it is looking at the 
+file.
+
+Can you help me on this? I'm I wrong in my supposition (is the patch 
+really applied)? is it possible that my problem is somewhere else?
+
+Thanks a lot in advance for your help, please let me know if I can 
+provide any more information.
+j
+
+
