@@ -1,62 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from os.inf.tu-dresden.de ([141.76.48.99]:52531 "EHLO
-	os.inf.tu-dresden.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752001Ab1CQOOt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2011 10:14:49 -0400
-Date: Thu, 17 Mar 2011 14:32:47 +0100
-From: Adam Lackorzynski <adam@os.inf.tu-dresden.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: 2.6.38: Quota over NFS4
-Message-ID: <20110317133247.GB6424@os.inf.tu-dresden.de>
-Content-Type: text/plain; charset=iso-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:8509 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751813Ab1CNXxc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Mar 2011 19:53:32 -0400
+Subject: Re: [PATCH] nfsd: wrong index used in inner loop
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Mi Jinlong <mijinlong@cn.fujitsu.com>, roel <roel.kluin@gmail.com>,
+        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        LKML <linux-kernel@vger.kernel.org>
+In-Reply-To: <20110314222229.GJ25442@fieldses.org>
+References: <4D76A06A.4090405@gmail.com>
+	 <20110309004955.GD15814@fieldses.org> <4D79A183.8090306@cn.fujitsu.com>
+	 <20110314222229.GJ25442@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 14 Mar 2011 19:52:11 -0400
+Message-ID: <1300146731.3026.4.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello,
+On Mon, 2011-03-14 at 18:22 -0400, J. Bruce Fields wrote:
+> On Fri, Mar 11, 2011 at 12:13:55PM +0800, Mi Jinlong wrote:
+> > 
+> > 
+> > J. Bruce Fields:
+> > > On Tue, Mar 08, 2011 at 10:32:26PM +0100, roel wrote:
+> > >> Index i was already used in the outer loop
+> > >>
+> > >> Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
+> > >> ---
+> > >>  fs/nfsd/nfs4xdr.c |    4 ++--
+> > >>  1 files changed, 2 insertions(+), 2 deletions(-)
+> > >>
+> > >> Not 100% sure this one is needed but it looks suspicious.
+> > > 
+> > > Looks bad to me, thanks.
+> > > 
+> > > nfsd4_decode_create_session should probably really be broken up a little
+> > > bit; if it wasn't so long this would have been more obvious.
+> > > 
+> > > I'll see if I can slip this into 2.6.38 with a couple other last-minute
+> > > patches....  Otherwise, it'll be in 2.6.39.
+> > > 
+> > > --b.
+> > > 
+> > >> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> > >> index 1275b86..615f0a9 100644
+> > >> --- a/fs/nfsd/nfs4xdr.c
+> > >> +++ b/fs/nfsd/nfs4xdr.c
+> > >> @@ -1142,7 +1142,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+> > >>  
+> > >>  	u32 dummy;
+> > >>  	char *machine_name;
+> > >> -	int i;
+> > >> +	int i, j;
+> > >>  	int nr_secflavs;
+> > >>  
+> > >>  	READ_BUF(16);
+> > >> @@ -1215,7 +1215,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+> > >>  			READ_BUF(4);
+> > >>  			READ32(dummy);
+> > >>  			READ_BUF(dummy * 4);
+> > >> -			for (i = 0; i < dummy; ++i)
+> > >> +			for (j = 0; j < dummy; ++j)
+> > >>  				READ32(dummy);
+> > 
+> >   We must not use dummy for index here.
+> >   After the first index, READ32(dummy) will change dummy!!!!
+> 
+> Actually, wait, this is kind of silly.  I don't see why we couldn't just
+> skip the loop and do
+> 
+> 	p += dummy;
 
-I'm seeing a problem with quotas in a system where the server running
-2.6.38 exports an XFS filesystem via NFS4 to a client. The client kernel
-version does not seem to play a role, checked with 2.6.38, 2.6.37 and
-2.6.36. The following script and output show the problem:
+This is exactly why I _hate_ the READ*() macros and their ilk, and am
+really happy we got rid of them in the client.
 
-#! /bin/sh
+READ_BUF() _sets_ p to whatever the value of argp->p is, and then
+updates argp->p. It is just very very very hard to see that due to the
+lack of transparency.
 
-quota | grep home
-du
-cp /bin/ls x1
-du
-cat x1 > /dev/null
-rm x1
-du
-quota | grep home
+IOW: You don't need the "p += dummy" either. That happens automatically
+when you next invoke READ_BUF().
 
-Output:
-
-   homes:/home/ 8194720  9072000 9174400          403670  500000  550000        
-0       .
-96      .
-0       .
-   homes:/home/ 8194816  9072000 9174400          403671  500000  550000        
-
-
-As can be seen the 96 kb are still accounted on the quota of the user.
-Removing the 'cat' command from the script makes the quota be ok again
-(original value). Also mounting via nfs3 does not exhibit it, same for running
-the script on the nfs-server directly.
-
-Client mount options are:
-homes:/home/ /home nfs4 rw,nosuid,nodev,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=1.2.3.3,minorversion=0,local_lock=none,addr=1.2.3.4 0 0
-
-Server mount options are:
-/dev/mapper/vg-homefs /home xfs rw,nosuid,nodev,relatime,attr2,usrquota 0 0
-
-
-
-
-Thanks,
-Adam
+Trond
 -- 
-Adam                 adam@os.inf.tu-dresden.de
-  Lackorzynski         http://os.inf.tu-dresden.de/~adam/
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
