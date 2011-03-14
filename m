@@ -1,46 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from oxalide-out.extra.cea.fr ([132.168.224.8]:57908 "EHLO
-	oxalide-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755129Ab1COPat (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 11:30:49 -0400
-Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
-	by oxalide.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.2) with ESMTP id p2FF7idw010253
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Mar 2011 16:07:44 +0100
-Received: from muguet2.intra.cea.fr (muguet2.intra.cea.fr [132.166.192.7])
-	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id p2FF7i9k007052
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Mar 2011 16:07:45 +0100
-	(envelope-from philippe.deniel@cea.fr)
-Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
-	by muguet2.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id p2FF7i2q004404
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Mar 2011 16:07:44 +0100
-Message-ID: <4D7F80C0.2020405@cea.fr>
-Date: Tue, 15 Mar 2011 16:07:44 +0100
-From: DENIEL Philippe <philippe.deniel@cea.fr>
-To: linux-nfs@vger.kernel.org
-Subject: NFSv4 and NFSv4.1 client recovery
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:50788 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752092Ab1CNM4y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Mar 2011 08:56:54 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 34so4886177iwn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Mar 2011 05:56:54 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/12] NFS: Add NFS4CLNT_UPDATE_CLIENTID
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 14 Mar 2011 08:56:52 -0400
+Message-ID: <20110314125652.2413.10405.stgit@matisse.1015granger.net>
+In-Reply-To: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
+References: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+Introduce a mechanism for updating our client's callback endpoint
+information on a server when handling NFS4ERR_CB_PATH_DOWN or during
+migration recovery.
 
-as you may know, I am working on a NFS server in user space called 
-nfs-ganesha. One of the feature of nfs-ganesha is its capability of 
-being used as a NFSv4 proxy. This is implemented as a backend in 
-nfs-ganesha : all the filesystem that nfs-ganesha can export have a 
-dedicated module with a well known API (this module is called FSAL for 
-File System Abstraction layer). The proxy feature is made by make a FSAL 
-library that is a NFSv4 basic client (each of the FSAL functions calls 
-wrap one or more NFSv4 request). The trouble is the case when the remote 
-server (the one accessed by the proxy operating as a client via FSAL 
-calls) crashes : the client inside the FSAL needs to recover to the 
-remote server as it comes back to work. My question is : what is the 
-simpliest way for my user space client to recover ? I must precise it 
-make no delegation and use only a forechannel to the remote server. 
-There is no backchannel.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-    Regards
+ fs/nfs/nfs4_fs.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-       Philippe
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 7a74740..e266e2d 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -47,6 +47,7 @@ enum nfs4_client_state {
+ 	NFS4CLNT_LAYOUTRECALL,
+ 	NFS4CLNT_SESSION_RESET,
+ 	NFS4CLNT_RECALL_SLOT,
++	NFS4CLNT_UPDATE_CLIENTID,
+ };
+ 
+ enum nfs4_session_state {
+
