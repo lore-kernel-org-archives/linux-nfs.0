@@ -1,31 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37310 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751278Ab1CNN6l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Mar 2011 09:58:41 -0400
-From: Karel Zak <kzak@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: mount.nfs libmount support (v3)
-Date: Mon, 14 Mar 2011 14:58:26 +0100
-Message-Id: <1300111108-13137-1-git-send-email-kzak@redhat.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:39597 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755791Ab1CNMrf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Mar 2011 08:47:35 -0400
+Subject: Re: [PATCH] SUNRPC: svc_register error overwritten in next iteration
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4D7B74C7.7060506@gmail.com>
+Date: Mon, 14 Mar 2011 08:47:18 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        LKML <linux-kernel@vger.kernel.org>
+Message-Id: <F864C699-63D9-46EB-998F-A783038A7356@oracle.com>
+References: <4D7B74C7.7060506@gmail.com>
+To: roel <roel.kluin@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This is the third version of the mount.nfs with libmount support. The code
-depends on util-linux >= v2.19 (e.g. Fedora 15).
 
-v3:
-  - call umount_error() on mount(2) error
+On Mar 12, 2011, at 8:27 AM, roel wrote:
 
-v2:
-  - move nfs_umount_do_umnt() to network.c
-  - use union nfs_sockaddr
-  - add missing GPL address paragraph
-  - use abstract function the storing and retrieval mount options
-  - use "static const" for struct option
-  - use "strncmp() == 0" everywhere
+> The break is in the inner loop, the svc_register() error is overwritten
+> in the next iteration. Only the error in the last iteration is returned.
+> 
+> Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
+> ---
+> net/sunrpc/svc.c |    2 ++
+> 1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+> Is this needed?
+
+Maybe.  Did you encounter a problem here?
+
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 08e05a8..5fd08c0 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -889,6 +889,8 @@ int svc_register(const struct svc_serv *serv, const int family,
+> 			if (error < 0)
+> 				break;
+> 		}
+> +		if (error < 0)
+> +			break;
+> 	}
+> 
+> 	return error;
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
 
