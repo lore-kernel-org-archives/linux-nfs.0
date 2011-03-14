@@ -1,203 +1,216 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39366 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757120Ab1CAR3y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Mar 2011 12:29:54 -0500
-From: andros@netapp.com
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:52145 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752966Ab1CNM6T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Mar 2011 08:58:19 -0400
+Received: by mail-iy0-f174.google.com with SMTP id 26so4900509iyb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Mar 2011 05:58:19 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 12/12] NFS: Implement support for NFS4ERR_LEASE_MOVED
 To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>,
-        Andy Adamson <andros@citi.umich.edu>,
-        Dean Hildebrand <dhildeb@us.ibm.com>,
-        Marc Eshel <eshel@almaden.ibm.com>, Mike Sager <sager@netapp.com>,
-        Oleg Drokin <green@linuxhacker.ru>, Tao Guo <guotao@nrchpc.ac.cn>,
-        Tigran Mkrtchyan <tigran@anahit.desy.de>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Andy Adamson <andros@netapp.com>, Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH pNFS wave 3 Version 3 13/18] NFSv4.1: filelayout i/o helpers
-Date: Mon, 28 Feb 2011 20:34:18 -0500
-Message-Id: <1298943263-2886-14-git-send-email-andros@netapp.com>
-In-Reply-To: <1298943263-2886-13-git-send-email-andros@netapp.com>
-References: <1298943263-2886-1-git-send-email-andros@netapp.com>
- <1298943263-2886-2-git-send-email-andros@netapp.com>
- <1298943263-2886-3-git-send-email-andros@netapp.com>
- <1298943263-2886-4-git-send-email-andros@netapp.com>
- <1298943263-2886-5-git-send-email-andros@netapp.com>
- <1298943263-2886-6-git-send-email-andros@netapp.com>
- <1298943263-2886-7-git-send-email-andros@netapp.com>
- <1298943263-2886-8-git-send-email-andros@netapp.com>
- <1298943263-2886-9-git-send-email-andros@netapp.com>
- <1298943263-2886-10-git-send-email-andros@netapp.com>
- <1298943263-2886-11-git-send-email-andros@netapp.com>
- <1298943263-2886-12-git-send-email-andros@netapp.com>
- <1298943263-2886-13-git-send-email-andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 14 Mar 2011 08:58:17 -0400
+Message-ID: <20110314125817.2413.89457.stgit@matisse.1015granger.net>
+In-Reply-To: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
+References: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@netapp.com>
+To recover from NFS4ERR_LEASE_MOVED, walk the cl_superblocks list and
+invoke nfs4_try_migration() on each server's root file handle.
+nfs4_try_migration() should automatically determine whether that file
+system has migrated, and then perform recovery for it.
 
-Prepare for filelayout_read_pagelist with helper functions that find the correct
-data server, filehandle, and offset.
+The per-filesystem migration probe also informs minor version zero
+servers that this client should no longer receive NFS4ERR_LEASE_MOVED.
 
-Signed-off-by: Andy Adamson <andros@citi.umich.edu>
-Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
-Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
-Signed-off-by: Mike Sager <sager@netapp.com>
-Signed-off-by: Oleg Drokin <green@linuxhacker.ru>
-Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
-Signed-off-by: Tigran Mkrtchyan <tigran@anahit.desy.de>
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs4filelayout.c    |   34 ++++++++++++++++++++++
- fs/nfs/nfs4filelayout.h    |    7 ++++
- fs/nfs/nfs4filelayoutdev.c |   67 ++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 108 insertions(+), 0 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 0efe8cb..ed83370 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -66,6 +66,40 @@ filelayout_clear_layoutdriver(struct nfs_server *nfss)
- 	return 0;
+ fs/nfs/client.c           |    1 +
+ fs/nfs/nfs4_fs.h          |    2 ++
+ fs/nfs/nfs4proc.c         |   10 ++++++++
+ fs/nfs/nfs4state.c        |   54 ++++++++++++++++++++++++++++++++++++++++++++-
+ include/linux/nfs_fs_sb.h |    2 ++
+ 5 files changed, 68 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index a2f016a..f628526 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -179,6 +179,7 @@ static struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_
+ 	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
+ 	clp->cl_minorversion = cl_init->minorversion;
+ 	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
++	clp->cl_mig_counter = 1;
+ #endif
+ 	cred = rpc_lookup_machine_cred();
+ 	if (!IS_ERR(cred))
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 8049c62..dc696c6 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -49,6 +49,7 @@ enum nfs4_client_state {
+ 	NFS4CLNT_RECALL_SLOT,
+ 	NFS4CLNT_UPDATE_CLIENTID,
+ 	NFS4CLNT_MOVED,
++	NFS4CLNT_LEASE_MOVED,
+ };
+ 
+ enum nfs4_session_state {
+@@ -313,6 +314,7 @@ extern void nfs4_close_sync(struct path *, struct nfs4_state *, fmode_t);
+ extern void nfs4_state_set_mode_locked(struct nfs4_state *, fmode_t);
+ extern void nfs4_schedule_state_recovery(struct nfs_client *);
+ extern void nfs4_schedule_migration_recovery(struct nfs_server *);
++extern void nfs4_schedule_lease_moved_recovery(struct nfs_client *);
+ extern void nfs4_schedule_state_manager(struct nfs_client *);
+ extern int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state);
+ extern int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2537a18..3e8a2e3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -288,6 +288,9 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode,
+ 		case -NFS4ERR_MOVED:
+ 			nfs4_schedule_migration_recovery(server);
+ 			goto recovery_wait;
++		case -NFS4ERR_LEASE_MOVED:
++			nfs4_schedule_lease_moved_recovery(clp);
++			goto recovery_wait;
+ 		case -NFS4ERR_FILE_OPEN:
+ 			if (exception->timeout > HZ) {
+ 				/* We have retried a decent amount, time to
+@@ -3557,6 +3560,13 @@ static int nfs4_async_handle_error(struct rpc_task *task,
+ 							&clp->cl_state) == 0)
+ 				rpc_wake_up_queued_task(&clp->cl_rpcwaitq, task);
+ 			goto restart_call;
++		case -NFS4ERR_LEASE_MOVED:
++			rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
++			nfs4_schedule_lease_moved_recovery(clp);
++			if (test_bit(NFS4CLNT_MANAGER_RUNNING,
++							&clp->cl_state) == 0)
++				rpc_wake_up_queued_task(&clp->cl_rpcwaitq, task);
++			goto restart_call;
+ 		case -NFS4ERR_DELAY:
+ 			nfs_inc_server_stats(server, NFSIOS_DELAY);
+ 		case -NFS4ERR_GRACE:
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index a4e69c3..1b521eb 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -60,6 +60,8 @@
+ 
+ #define OPENOWNER_POOL_SIZE	8
+ 
++static void nfs4_handle_lease_moved(struct nfs_client *clp);
++
+ const nfs4_stateid zero_stateid;
+ 
+ static LIST_HEAD(nfs4_clientid_list);
+@@ -1043,6 +1045,23 @@ void nfs4_schedule_migration_recovery(struct nfs_server *server)
+ 	dprintk("<-- %s\n", __func__);
  }
  
-+static loff_t
-+filelayout_get_dense_offset(struct nfs4_filelayout_segment *flseg,
-+			    loff_t offset)
-+{
-+	u32 stripe_width = flseg->stripe_unit * flseg->dsaddr->stripe_count;
-+	u64 tmp;
-+
-+	offset -= flseg->pattern_offset;
-+	tmp = offset;
-+	do_div(tmp, stripe_width);
-+
-+	return tmp * flseg->stripe_unit + do_div(offset, flseg->stripe_unit);
-+}
-+
-+/* This function is used by the layout driver to calculate the
-+ * offset of the file on the dserver based on whether the
-+ * layout type is STRIPE_DENSE or STRIPE_SPARSE
++/**
++ * nfs4_schedule_lease_moved_recovery - start lease moved recovery
++ *
++ * @clp: nfs_client of server that may have migrated file systems
++ *
 + */
-+static loff_t
-+filelayout_get_dserver_offset(struct pnfs_layout_segment *lseg, loff_t offset)
++void nfs4_schedule_lease_moved_recovery(struct nfs_client *clp)
 +{
-+	struct nfs4_filelayout_segment *flseg = FILELAYOUT_LSEG(lseg);
++	dprintk("--> %s: \"%s\" (client ID %llx)\n",
++		__func__, clp->cl_hostname, clp->cl_clientid);
 +
-+	switch (flseg->stripe_type) {
-+	case STRIPE_SPARSE:
-+		return offset;
++	if (test_and_set_bit(NFS4CLNT_LEASE_MOVED, &clp->cl_state) == 0)
++		nfs4_schedule_state_manager(clp);
 +
-+	case STRIPE_DENSE:
-+		return filelayout_get_dense_offset(flseg, offset);
-+	}
-+
-+	BUG();
++	dprintk("<-- %s\n", __func__);
 +}
 +
- /*
-  * filelayout_check_layout()
-  *
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index bbf60dd..9fef76e 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -83,9 +83,16 @@ FILELAYOUT_LSEG(struct pnfs_layout_segment *lseg)
- 			    generic_hdr);
+ int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
+ {
+ 
+@@ -1348,11 +1367,13 @@ static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
+ 			nfs4_state_end_reclaim_reboot(clp);
+ 			return 0;
+ 		case -NFS4ERR_STALE_CLIENTID:
+-		case -NFS4ERR_LEASE_MOVED:
+ 			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+ 			nfs4_state_clear_reclaim_reboot(clp);
+ 			nfs4_state_start_reclaim_reboot(clp);
+ 			break;
++		case -NFS4ERR_LEASE_MOVED:
++			nfs4_handle_lease_moved(clp);
++			return 0;
+ 		case -NFS4ERR_EXPIRED:
+ 			set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+ 			nfs4_state_start_reclaim_nograce(clp);
+@@ -1521,6 +1542,34 @@ out:
+ 	kfree(locations);
  }
  
-+extern struct nfs_fh *
-+nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j);
-+
- extern void nfs4_fl_free_deviceid_callback(struct pnfs_deviceid_node *);
- extern void print_ds(struct nfs4_pnfs_ds *ds);
- extern void print_deviceid(struct nfs4_deviceid *dev_id);
-+u32 nfs4_fl_calc_j_index(struct pnfs_layout_segment *lseg, loff_t offset);
-+u32 nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, u32 j);
-+struct nfs4_pnfs_ds *nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg,
-+					u32 ds_idx);
- extern struct nfs4_file_layout_dsaddr *
- nfs4_fl_find_get_deviceid(struct nfs_client *, struct nfs4_deviceid *dev_id);
- struct nfs4_file_layout_dsaddr *
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index 8e21e65..e8496f3 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -512,3 +512,70 @@ nfs4_fl_find_get_deviceid(struct nfs_client *clp, struct nfs4_deviceid *id)
- 	return (d == NULL) ? NULL :
- 		container_of(d, struct nfs4_file_layout_dsaddr, deviceid);
- }
-+
-+/*
-+ * Want res = (offset - layout->pattern_offset)/ layout->stripe_unit
-+ * Then: ((res + fsi) % dsaddr->stripe_count)
-+ */
-+u32
-+nfs4_fl_calc_j_index(struct pnfs_layout_segment *lseg, loff_t offset)
++static void nfs4_handle_lease_moved(struct nfs_client *clp)
 +{
-+	struct nfs4_filelayout_segment *flseg = FILELAYOUT_LSEG(lseg);
-+	u64 tmp;
++	struct nfs_server *server;
 +
-+	tmp = offset - flseg->pattern_offset;
-+	do_div(tmp, flseg->stripe_unit);
-+	tmp += flseg->first_stripe_index;
-+	return do_div(tmp, flseg->dsaddr->stripe_count);
-+}
++	dprintk("--> %s: \"%s\" (client ID %llx)\n",
++		__func__, clp->cl_hostname, clp->cl_clientid);
 +
-+u32
-+nfs4_fl_calc_ds_index(struct pnfs_layout_segment *lseg, u32 j)
-+{
-+	return FILELAYOUT_LSEG(lseg)->dsaddr->stripe_indices[j];
-+}
-+
-+struct nfs_fh *
-+nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
-+{
-+	struct nfs4_filelayout_segment *flseg = FILELAYOUT_LSEG(lseg);
-+	u32 i;
-+
-+	if (flseg->stripe_type == STRIPE_SPARSE) {
-+		if (flseg->num_fh == 1)
-+			i = 0;
-+		else if (flseg->num_fh == 0)
-+			/* Use the MDS OPEN fh set in nfs_read_rpcsetup */
-+			return NULL;
-+		else
-+			i = nfs4_fl_calc_ds_index(lseg, j);
-+	} else
-+		i = j;
-+	return flseg->fh_array[i];
-+}
-+
-+struct nfs4_pnfs_ds *
-+nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
-+{
-+	struct nfs4_file_layout_dsaddr *dsaddr = FILELAYOUT_LSEG(lseg)->dsaddr;
-+	struct nfs4_pnfs_ds *ds = dsaddr->ds_list[ds_idx];
-+
-+	if (ds == NULL) {
-+		printk(KERN_ERR "%s: No data server for offset index %d\n",
-+			__func__, ds_idx);
-+		return NULL;
-+	}
-+
-+	if (!ds->ds_clp) {
-+		int err;
-+
-+		err = nfs4_ds_connect(NFS_SERVER(lseg->pls_layout->plh_inode),
-+					  dsaddr->ds_list[ds_idx]);
-+		if (err) {
-+			printk(KERN_ERR "%s nfs4_ds_connect error %d\n",
-+			       __func__, err);
-+			return NULL;
++	/*
++	 * rcu_read_lock() must be dropped before trying each individual
++	 * migration.  cl_mig_counter is used to skip servers that have
++	 * already been visited for this lease_moved event when the list
++	 * walk is restarted.
++	 */
++	clp->cl_mig_counter++;
++restart:
++	rcu_read_lock();
++	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link)
++		if (server->mig_counter != clp->cl_mig_counter) {
++			server->mig_counter = clp->cl_mig_counter;
++			rcu_read_unlock();
++			nfs4_try_migration(server);
++			goto restart;
 +		}
-+	}
-+	return ds;
++	rcu_read_unlock();
++
++	dprintk("<-- %s\n", __func__);
 +}
--- 
-1.6.6
++
+ #ifdef CONFIG_NFS_V4_1
+ void nfs41_handle_recall_slot(struct nfs_client *clp)
+ {
+@@ -1710,6 +1759,9 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 				goto out_error;
+ 		}
+ 
++		if (test_and_clear_bit(NFS4CLNT_LEASE_MOVED, &clp->cl_state))
++			nfs4_handle_lease_moved(clp);
++
+ 		if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state))
+ 			nfs4_try_migration(clp->cl_moved_server);
+ 
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 3741928..0ce4aad 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -57,6 +57,7 @@ struct nfs_client {
+ 
+ 	/* accessed only when NFS4CLNT_MOVED bit is set */
+ 	struct nfs_server *	cl_moved_server;
++	unsigned long		cl_mig_counter;
+ 
+ 	/* used for the setclientid verifier */
+ 	struct timespec		cl_boot_time;
+@@ -157,6 +158,7 @@ struct nfs_server {
+ 	struct list_head	delegations;
+ 	void (*destroy)(struct nfs_server *);
+ 	struct nfs_fh		*rootfh;
++	unsigned long		mig_counter;
+ 
+ 	atomic_t active; /* Keep trace of any activity to this server */
+ 
 
