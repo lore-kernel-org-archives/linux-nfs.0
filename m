@@ -1,75 +1,164 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:56623 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753005Ab1CJR3w (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Mar 2011 12:29:52 -0500
-Received: by iwn34 with SMTP id 34so1743856iwn.19
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Mar 2011 09:29:52 -0800 (PST)
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:52145 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752966Ab1CNM6A (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Mar 2011 08:58:00 -0400
+Received: by mail-iy0-f174.google.com with SMTP id 26so4900509iyb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Mar 2011 05:58:00 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/8] NFS: Save root file handle in nfs_server
-To: linux-nfs@vger.kernel.org
-Date: Thu, 10 Mar 2011 12:29:49 -0500
-Message-ID: <20110310172949.8878.82487.stgit@matisse.1015granger.net>
-In-Reply-To: <20110310171345.8878.25548.stgit@matisse.1015granger.net>
-References: <20110310171345.8878.25548.stgit@matisse.1015granger.net>
+Subject: [PATCH 10/12] NFS: Remove "const" from "struct nfs_server *" fields
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 14 Mar 2011 08:57:58 -0400
+Message-ID: <20110314125758.2413.94921.stgit@matisse.1015granger.net>
+In-Reply-To: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
+References: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Save each FSID's root directory file handle in the export's local
-nfs_server structure on the client.  This FH can later be used by the
-migration recovery logic.
+We're about to pass the nfs_server pointer in some NFSv4 argument and
+result structures to functions that may change it, so it's no longer
+"const".
 
-NB: Saving the root FH is done only for NFSv4 mounts.
+The preference here is to maintain existing whitespace style rather
+than answer all the nits called out by checkpatch.pl.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- fs/nfs/client.c           |    1 +
- fs/nfs/getroot.c          |    6 ++++++
- include/linux/nfs_fs_sb.h |    1 +
- 3 files changed, 8 insertions(+), 0 deletions(-)
+ include/linux/nfs_xdr.h |   28 ++++++++++++++--------------
+ 1 files changed, 14 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index f8c95e4..a2f016a 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1081,6 +1081,7 @@ void nfs_free_server(struct nfs_server *server)
- 	nfs_put_client(server->nfs_client);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index bcf823b..b9ae049 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -256,7 +256,7 @@ struct nfs_openargs {
+ 		fmode_t		delegation_type;	/* CLAIM_PREVIOUS */
+ 	} u;
+ 	const struct qstr *	name;
+-	const struct nfs_server *server;	 /* Needed for ID mapping */
++	struct nfs_server *	server;		/* Needed for ID mapping */
+ 	const u32 *		bitmask;
+ 	__u32			claim;
+ 	struct nfs4_sequence_args	seq_args;
+@@ -270,7 +270,7 @@ struct nfs_openres {
+ 	struct nfs_fattr *      f_attr;
+ 	struct nfs_fattr *      dir_attr;
+ 	struct nfs_seqid *	seqid;
+-	const struct nfs_server *server;
++	struct nfs_server *	server;
+ 	fmode_t			delegation_type;
+ 	nfs4_stateid		delegation;
+ 	__u32			do_recall;
+@@ -309,7 +309,7 @@ struct nfs_closeres {
+ 	nfs4_stateid            stateid;
+ 	struct nfs_fattr *	fattr;
+ 	struct nfs_seqid *	seqid;
+-	const struct nfs_server *server;
++	struct nfs_server *	server;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ /*
+@@ -381,7 +381,7 @@ struct nfs4_delegreturnargs {
  
- 	nfs_free_iostats(server->io_stats);
-+	nfs_free_fhandle(server->rootfh);
- 	bdi_destroy(&server->backing_dev_info);
- 	kfree(server);
- 	nfs_release_automount_timer();
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index b5ffe8f..4b9fc6e 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -205,6 +205,12 @@ struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh)
- 		ret = ERR_CAST(inode);
- 		goto out;
- 	}
-+	server->rootfh = nfs_alloc_fhandle();
-+	if (server->rootfh != NULL) {
-+		dprintk("nfs_get_root: saving root FH\n");
-+		nfs_display_fhandle(mntfh);
-+		nfs_copy_fh(server->rootfh, mntfh);
-+	}
+ struct nfs4_delegreturnres {
+ 	struct nfs_fattr * fattr;
+-	const struct nfs_server *server;
++	struct nfs_server * server;
+ 	struct nfs4_sequence_res	seq_res;
+ };
  
- 	error = nfs_superblock_set_dummy_root(sb, inode);
- 	if (error != 0) {
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index b197563..961ee85 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -153,6 +153,7 @@ struct nfs_server {
- #endif
- 	struct list_head	delegations;
- 	void (*destroy)(struct nfs_server *);
-+	struct nfs_fh		*rootfh;
+@@ -431,7 +431,7 @@ struct nfs_writeres {
+ 	struct nfs_fattr *	fattr;
+ 	struct nfs_writeverf *	verf;
+ 	__u32			count;
+-	const struct nfs_server *server;
++	struct nfs_server *	server;
+ 	struct nfs4_sequence_res	seq_res;
+ };
  
- 	atomic_t active; /* Keep trace of any activity to this server */
+@@ -446,7 +446,7 @@ struct nfs_removeargs {
+ };
  
+ struct nfs_removeres {
+-	const struct nfs_server *server;
++	struct nfs_server	*server;
+ 	struct nfs_fattr	*dir_attr;
+ 	struct nfs4_change_info	cinfo;
+ 	struct nfs4_sequence_res 	seq_res;
+@@ -465,7 +465,7 @@ struct nfs_renameargs {
+ };
+ 
+ struct nfs_renameres {
+-	const struct nfs_server		*server;
++	struct nfs_server		*server;
+ 	struct nfs4_change_info		old_cinfo;
+ 	struct nfs_fattr		*old_fattr;
+ 	struct nfs4_change_info		new_cinfo;
+@@ -546,7 +546,7 @@ struct nfs_getaclres {
+ 
+ struct nfs_setattrres {
+ 	struct nfs_fattr *              fattr;
+-	const struct nfs_server *	server;
++	struct nfs_server *		server;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ 
+@@ -719,7 +719,7 @@ struct nfs4_accessargs {
+ };
+ 
+ struct nfs4_accessres {
+-	const struct nfs_server *	server;
++	struct nfs_server *		server;
+ 	struct nfs_fattr *		fattr;
+ 	u32				supported;
+ 	u32				access;
+@@ -747,7 +747,7 @@ struct nfs4_create_arg {
+ };
+ 
+ struct nfs4_create_res {
+-	const struct nfs_server *	server;
++	struct nfs_server *		server;
+ 	struct nfs_fh *			fh;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs4_change_info		dir_cinfo;
+@@ -773,7 +773,7 @@ struct nfs4_getattr_arg {
+ };
+ 
+ struct nfs4_getattr_res {
+-	const struct nfs_server *	server;
++	struct nfs_server *		server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+@@ -787,7 +787,7 @@ struct nfs4_link_arg {
+ };
+ 
+ struct nfs4_link_res {
+-	const struct nfs_server *	server;
++	struct nfs_server *		server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs4_change_info		cinfo;
+ 	struct nfs_fattr *		dir_attr;
+@@ -803,7 +803,7 @@ struct nfs4_lookup_arg {
+ };
+ 
+ struct nfs4_lookup_res {
+-	const struct nfs_server *	server;
++	struct nfs_server *		server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs_fh *			fh;
+ 	struct nfs4_sequence_res	seq_res;
+@@ -918,7 +918,7 @@ struct nfs4_fs_location {
+ #define NFS4_FS_LOCATIONS_MAXENTRIES 10
+ struct nfs4_fs_locations {
+ 	struct nfs_fattr fattr;
+-	const struct nfs_server *server;
++	struct nfs_server *server;
+ 	struct nfs4_pathname fs_path;
+ 	int nlocations;
+ 	struct nfs4_fs_location locations[NFS4_FS_LOCATIONS_MAXENTRIES];
 
