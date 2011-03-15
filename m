@@ -1,60 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20886 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:47617 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755447Ab1CWMai (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2011 08:30:38 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 05/11] NFSv4.1: pull out code from nfs_commit_release
-Date: Wed, 23 Mar 2011 08:30:06 -0400
-Message-Id: <1300883412-32296-6-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1300883412-32296-1-git-send-email-iisaman@netapp.com>
-References: <1300883412-32296-1-git-send-email-iisaman@netapp.com>
+	id S1752230Ab1COVmD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Mar 2011 17:42:03 -0400
+Date: Tue, 15 Mar 2011 17:42:03 -0400
+To: DENIEL Philippe <philippe.deniel@cea.fr>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 and NFSv4.1 client recovery
+Message-ID: <20110315214203.GC2292@fieldses.org>
+References: <4D7F80C0.2020405@cea.fr>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D7F80C0.2020405@cea.fr>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Create a separate support function for later use by data server
-commit code.
+On Tue, Mar 15, 2011 at 04:07:44PM +0100, DENIEL Philippe wrote:
+> Hi,
+> 
+> as you may know, I am working on a NFS server in user space called
+> nfs-ganesha. One of the feature of nfs-ganesha is its capability of
+> being used as a NFSv4 proxy. This is implemented as a backend in
+> nfs-ganesha : all the filesystem that nfs-ganesha can export have a
+> dedicated module with a well known API (this module is called FSAL
+> for File System Abstraction layer). The proxy feature is made by
+> make a FSAL library that is a NFSv4 basic client (each of the FSAL
+> functions calls wrap one or more NFSv4 request). The trouble is the
+> case when the remote server (the one accessed by the proxy operating
+> as a client via FSAL calls) crashes : the client inside the FSAL
+> needs to recover to the remote server as it comes back to work. My
+> question is : what is the simpliest way for my user space client to
+> recover ? I must precise it make no delegation and use only a
+> forechannel to the remote server. There is no backchannel.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/write.c |   12 +++++++++---
- 1 files changed, 9 insertions(+), 3 deletions(-)
+I suppose you could either try to do the recovery yourself on the proxy,
+or pass back the STALE errors to the original client and make it drive
+the recovery.  Maybe either way will work?
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index dbc8018..f5f005e 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1409,10 +1409,9 @@ static void nfs_commit_done(struct rpc_task *task, void *calldata)
- 		return;
- }
- 
--static void nfs_commit_release(void *calldata)
-+static void nfs_commit_release_pages(struct nfs_write_data *data)
- {
--	struct nfs_write_data	*data = calldata;
--	struct nfs_page		*req;
-+	struct nfs_page	*req;
- 	int status = data->task.tk_status;
- 
- 	while (!list_empty(&data->pages)) {
-@@ -1446,6 +1445,13 @@ static void nfs_commit_release(void *calldata)
- 	next:
- 		nfs_clear_page_tag_locked(req);
- 	}
-+}
-+
-+static void nfs_commit_release(void *calldata)
-+{
-+	struct nfs_write_data *data = calldata;
-+
-+	nfs_commit_release_pages(data);
- 	nfs_commit_clear_lock(NFS_I(data->inode));
- 	nfs_commitdata_release(calldata);
- }
--- 
-1.7.2.1
+If you did the latter then I suppose your API would have to support
+allowing proxy module to report a reboot, and allow passing reclaims
+down.
 
+I dunno.
+
+--b.
