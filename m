@@ -1,44 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32057 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:36745 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758545Ab1CCUE5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Mar 2011 15:04:57 -0500
-Message-ID: <4D6FF466.2070004@RedHat.com>
-Date: Thu, 03 Mar 2011 15:04:54 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Karel Zak <kzak@redhat.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/2] mount: Allow 'port=0' to be a valid port value.
-References: <1299159822-25190-1-git-send-email-kzak@redhat.com>
-In-Reply-To: <1299159822-25190-1-git-send-email-kzak@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1758140Ab1COQNI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Mar 2011 12:13:08 -0400
+Date: Tue, 15 Mar 2011 12:13:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: roel <roel.kluin@gmail.com>, Neil Brown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: svc_register error overwritten in next
+ iteration
+Message-ID: <20110315161301.GA32635@fieldses.org>
+References: <4D7B74C7.7060506@gmail.com>
+ <20110314223645.GL25442@fieldses.org>
+ <13D041DB-A26D-4EC1-A585-7DBA266CF18A@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <13D041DB-A26D-4EC1-A585-7DBA266CF18A@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-With the new util-linux, /etc/mtab is now is symbolically linked
-to /proc/mounts. In /proc/mounts, the 'port=0' exits which causes
-the umount.nfs to error out with the following error:
-   umount.nfs: invalid value for 'port=' option
+On Tue, Mar 15, 2011 at 11:43:32AM -0400, Chuck Lever wrote:
+> 
+> On Mar 14, 2011, at 6:36 PM, J. Bruce Fields wrote:
+> 
+> > On Sat, Mar 12, 2011 at 02:27:35PM +0100, roel wrote:
+> >> The break is in the inner loop, the svc_register() error is overwritten
+> >> in the next iteration. Only the error in the last iteration is returned.
+> >> 
+> >> Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
+> >> ---
+> >> net/sunrpc/svc.c |    2 ++
+> >> 1 files changed, 2 insertions(+), 0 deletions(-)
+> >> 
+> >> Is this needed?
+> >> 
+> >> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> >> index 08e05a8..5fd08c0 100644
+> >> --- a/net/sunrpc/svc.c
+> >> +++ b/net/sunrpc/svc.c
+> >> @@ -889,6 +889,8 @@ int svc_register(const struct svc_serv *serv, const int family,
+> >> 			if (error < 0)
+> >> 				break;
+> > 
+> > May as well just "goto out" or "return error" here?
+> > 
+> > But: aren't we missing some cleanup?  If we succesfully register one
+> > program then fail at a second one, don't we need to unregister the
+> > first?
+> 
+> Right.  I don't understand what is the intended effect here (of the original code):  Best effort registration, or "all or none"?
 
-Setting port=0 is a valid value. It just means go out and query
-remote rpcbind to get the correct port.
+The current code was failing iff the last registration returns an error.
+We list the nfs program before the acl program in this list, so nfsd
+registration was failing iff the acl program failed, which makes no
+sense whatsoever.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/mount/network.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+I think "all or none" would be cleanest.
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 8049c1a..88ab222 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -1346,7 +1346,7 @@ nfs_nfs_port(struct mount_options *options, unsigned long *port)
- 	case PO_NOT_FOUND:
- 		break;
- 	case PO_FOUND:
--		if (tmp >= 1 && tmp <= 65535) {
-+		if (tmp >= 0 && tmp <= 65535) {
- 			*port = tmp;
- 			return 1;
- 		}
+If people start complaining that they don't want to run rpcbind/portmap
+then we could give them some way of requesting that instead of just
+depending on allowing the registration to fail.
+
+For cleanup, we can just unregister everything, right?  (No harm in
+possibly unregistering something who's registration just failed?)
+
+--b.
