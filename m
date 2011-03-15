@@ -1,9 +1,9 @@
 From: Paul Menage <menage@google.com>
-Subject: Re: [PATCH 02/17] cgroup,
-	rcu: convert call_rcu(free_cgroup_rcu) to kfree_rcu()
-Date: Tue, 15 Mar 2011 13:04:00 -0700
-Message-ID: <AANLkTim-BeRO7DJA4bqKrxED4FbWeV3R-U6cciEkyUQo@mail.gmail.com>
-References: <4D7F3610.6000809@cn.fujitsu.com> <4D7F3784.6090307@cn.fujitsu.com>
+Subject: Re: [PATCH 03/17] cgroup,
+	rcu: convert call_rcu(__free_css_id_cb) to kfree_rcu()
+Date: Tue, 15 Mar 2011 13:04:33 -0700
+Message-ID: <AANLkTi=coPDZRv7ydnP4q-Qztq=FLaa+neNjTvcFowAE@mail.gmail.com>
+References: <4D7F3610.6000809@cn.fujitsu.com> <4D7F37BA.5000308@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Cc: Randy Dunlap <randy.dunlap@oracle.com>,
@@ -24,7 +24,7 @@ Cc: Randy Dunlap <randy.dunlap@oracle.com>,
         Hideaki YOSHIFUJI <yoshfu
 To: Lai Jiangshan <laijs@cn.fujitsu.com>
 Return-path: <containers-bounces@lists.linux-foundation.org>
-In-Reply-To: <4D7F3784.6090307@cn.fujitsu.com>
+In-Reply-To: <4D7F37BA.5000308@cn.fujitsu.com>
 List-Unsubscribe: <https://lists.linux-foundation.org/mailman/listinfo/containers>,
 	<mailto:containers-request@lists.linux-foundation.org?subject=unsubscribe>
 List-Archive: <http://lists.linux-foundation.org/pipermail/containers>
@@ -38,48 +38,50 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 2011/3/15 Lai Jiangshan <laijs@cn.fujitsu.com>:
 >
-> The rcu callback free_cgroup_rcu() just calls a kfree(),
-> so we use kfree_rcu() instead of the call_rcu(free_cgroup_rcu).
+>
+> The rcu callback __free_css_id_cb() just calls a kfree(),
+> so we use kfree_rcu() instead of the call_rcu(__free_css_id_cb).
 >
 > Signed-off-by: Lai Jiangshan <laijs@cn.fujitsu.com>
 
 Acked-by: Paul Menage <menage@google.com>
 
+
 > ---
-> =A0kernel/cgroup.c | =A0 =A09 +--------
-> =A01 files changed, 1 insertions(+), 8 deletions(-)
+> =A0kernel/cgroup.c | =A0 10 +---------
+> =A01 files changed, 1 insertions(+), 9 deletions(-)
 >
 > diff --git a/kernel/cgroup.c b/kernel/cgroup.c
-> index ad485d4..5c83c91 100644
+> index 5c83c91..b7d3f6d 100644
 > --- a/kernel/cgroup.c
 > +++ b/kernel/cgroup.c
-> @@ -806,13 +806,6 @@ static int cgroup_call_pre_destroy(struct cgroup *cg=
-rp)
+> @@ -4612,14 +4612,6 @@ bool css_is_ancestor(struct cgroup_subsys_state *c=
+hild,
 > =A0 =A0 =A0 =A0return ret;
 > =A0}
 >
-> -static void free_cgroup_rcu(struct rcu_head *obj)
+> -static void __free_css_id_cb(struct rcu_head *head)
 > -{
-> - =A0 =A0 =A0 struct cgroup *cgrp =3D container_of(obj, struct cgroup, rc=
-u_head);
+> - =A0 =A0 =A0 struct css_id *id;
 > -
-> - =A0 =A0 =A0 kfree(cgrp);
+> - =A0 =A0 =A0 id =3D container_of(head, struct css_id, rcu_head);
+> - =A0 =A0 =A0 kfree(id);
 > -}
 > -
-> =A0static void cgroup_diput(struct dentry *dentry, struct inode *inode)
+> =A0void free_css_id(struct cgroup_subsys *ss, struct cgroup_subsys_state =
+*css)
 > =A0{
-> =A0 =A0 =A0 =A0/* is dentry a directory ? if so, kfree() associated cgrou=
-p */
-> @@ -850,7 +843,7 @@ static void cgroup_diput(struct dentry *dentry, struc=
-t inode *inode)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 */
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0BUG_ON(!list_empty(&cgrp->pidlists));
->
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 call_rcu(&cgrp->rcu_head, free_cgroup_rcu);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 kfree_rcu(cgrp, rcu_head);
-> =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0iput(inode);
+> =A0 =A0 =A0 =A0struct css_id *id =3D css->id;
+> @@ -4634,7 +4626,7 @@ void free_css_id(struct cgroup_subsys *ss, struct c=
+group_subsys_state *css)
+> =A0 =A0 =A0 =A0spin_lock(&ss->id_lock);
+> =A0 =A0 =A0 =A0idr_remove(&ss->idr, id->id);
+> =A0 =A0 =A0 =A0spin_unlock(&ss->id_lock);
+> - =A0 =A0 =A0 call_rcu(&id->rcu_head, __free_css_id_cb);
+> + =A0 =A0 =A0 kfree_rcu(id, rcu_head);
 > =A0}
+> =A0EXPORT_SYMBOL_GPL(free_css_id);
+>
 > --
 > 1.7.4
 >
