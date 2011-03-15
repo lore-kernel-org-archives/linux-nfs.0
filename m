@@ -1,123 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:40592 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756158Ab1CWTEe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2011 15:04:34 -0400
-Message-ID: <4D8A443F.4070309@netapp.com>
-Date: Wed, 23 Mar 2011 15:04:31 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from milhouse.imppc.org ([213.151.98.37]:51236 "EHLO
+	milhouse.imppc.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757762Ab1CORZy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 13:25:54 -0400
+Message-ID: <4D7FA11F.5020604@imppc.org>
+Date: Tue, 15 Mar 2011 18:25:51 +0100
+From: Judith Flo Gaya <jflo@imppc.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 3/3] NFS: Detect loops in a readdir due to bad cookies
-References: <4D8A407F.40105@netapp.com>
-In-Reply-To: <4D8A407F.40105@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: Re: problem with nfs latency during high IO
+References: <4D7B6DE5.8010008@imppc.org> <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com>
+In-Reply-To: <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Here is an updated patch.  In nfs_ll_seekdir() I clear dir_ctx->duped at the same time as dir_ctx->dir_cookie, rather than at the beginning of the function.  I also changed the pr_notice() message to print out the cookie that caused the problem.
+Hello Chuck,
 
--Bryan
+On 03/15/2011 05:24 PM, Chuck Lever wrote:
+> Hi Judith-
+>
+> On Mar 12, 2011, at 7:58 AM, Judith Flo Gaya wrote:
+>
+>> Hello,
+>>
+>> I was told some days ago that my problem with my NFS system is related to this bug, as the problem that I'm experiencing is quite similar.
+>>
+>> The bug : https://bugzilla.redhat.com/show_bug.cgi?id=469848
+>>
+>> The link itself explains quite well my issue, I'm just truing to copy a big file (36Gb) to my nfs server and when I try to get an ls -l command to the same folder where I'm copying data, the command gets stuck for some time. This amount of time changes from a few secs to SOME minutes (9' is the current record).
+>> I can live with some seconds of delay, but minutes is something quite unacceptable.
+>>
+>> As this is an nfs server running on a red hat system (an HP ibrix x9300 with Red Hat 5.3 x86_64, kernel 2.6.18-128) I was told to apply the patch suggested from the bug on my clients.
+>>
+>> Unfortunately my clients are running fedora core 14 (x86_64, kernel 2.6.35.6-45) and I can't find the file that they are referring to, the file fs/nfs/inode.c is not there and I can't find the rpm that contains it.
+>>
+>> As the bug is a very very old one, I took it for granted that is already applied to fedora, but I wanted to make sure that it is looking at the file.
+>>
+>> Can you help me on this? I'm I wrong in my supposition (is the patch really applied)? is it possible that my problem is somewhere else?
+>
+> This sounds like typical behavior.
+But it is not like this when I use a RHEL6 as a client to those servers, 
+in this case, the ls only last for some seconds, nothing like the 
+minutes that it takes from my fedora.
+>
+> POSIX requires that the mtime and file size returned by stat(2) ('ls -l') reflect the most recent write(2).  On NFS, the server sets both of these fields.  If a client is caching dirty data, and an application does a stat(2), the client is forced to flush the dirty data so that the server can update mtime and file size appropriately.  The client then does a GETATTR, and returns those values to the requesting application.
+>
+ok, sorry, I know this is a very stupid question but. what do you mean 
+by dirty data?
+BTW i understand the time issue, but again, if the version of the kernel 
+that the red hat has installed allows me to get the information soon, 
+why a newer kernel in fedora does not?
 
+> The problem is that Linux caches writes aggressively.  That makes flushing before the GETATTR take a long time in some cases.  On some versions of Linux, it could be an indefinite amount of time; recently we added a bit of logic to make the GETATTR code path hold up additional application writes so it would be able to squeeze in the GETATTR to get a consistent snapshot of mtime and size.
+>
+I thought that the purpose of the patch was specifically to allow the 
+client to get the stat(2) info faster than before, so that  this 
+aggressive behavior doesn't impact so much the performance of the stat 
+petition.
+> Another issue is: what if other clients are writing to the file?  Those writes won't be seen on your client, either in the form of data changes or mtime/size updates, until your client's attribute cache times out (or the file is unlocked or closed).
+>
+I didn't consider it, big issue indeed. Then how is RHEL doing it not to 
+have the problem???
+> The best you can do for now is to lower the amount of dirty data the client allows to be outstanding, thus reducing the amount of time it takes for a flush to complete.  This is done with a sysctl, I believe "vm.dirty_ratio," and affects all file systems on the client.  Alternately, the client file system in question can be mounted with "sync" to cause writes to go to the server immediately, but that has other significant performance implications.
+>
+I'll give it a try and let you know how the new tests are doing.
+I already considered the sync parameter but of course the performance of 
+the copy lowers to unacceptable times (from 6min to 40min)
 
-Some filesystems (such as ext4) can return the same cookie value for
-multiple files.  If we try to start a readdir with one of these cookies,
-the server will return the first file found with a cookie of the same
-value.  This can cause the client to enter an infinite loop.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 112494a..901e9c0 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -139,7 +139,9 @@ static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct rpc_cred *
- 	struct nfs_open_dir_context *ctx;
- 	ctx = kmalloc(sizeof(*ctx), GFP_KERNEL);
- 	if (ctx != NULL) {
-+		ctx->duped = 0;
- 		ctx->dir_cookie = 0;
-+		ctx->dup_cookie = 0;
- 		ctx->cred = get_rpccred(cred);
- 	} else
- 		ctx = ERR_PTR(-ENOMEM);
-@@ -321,6 +323,7 @@ int nfs_readdir_search_for_pos(struct nfs_cache_array *array, nfs_readdir_descri
- {
- 	loff_t diff = desc->file->f_pos - desc->current_index;
- 	unsigned int index;
-+	struct nfs_open_dir_context *ctx = desc->file->private_data;
- 
- 	if (diff < 0)
- 		goto out_eof;
-@@ -333,6 +336,7 @@ int nfs_readdir_search_for_pos(struct nfs_cache_array *array, nfs_readdir_descri
- 	index = (unsigned int)diff;
- 	*desc->dir_cookie = array->array[index].cookie;
- 	desc->cache_entry_index = index;
-+	ctx->duped = 0;
- 	return 0;
- out_eof:
- 	desc->eof = 1;
-@@ -343,11 +347,18 @@ static
- int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_descriptor_t *desc)
- {
- 	int i;
-+	loff_t new_pos;
- 	int status = -EAGAIN;
-+	struct nfs_open_dir_context *ctx = desc->file->private_data;
- 
- 	for (i = 0; i < array->size; i++) {
- 		if (array->array[i].cookie == *desc->dir_cookie) {
--			desc->file->f_pos = desc->current_index + i;
-+			new_pos = desc->current_index + i;
-+			if (new_pos < desc->file->f_pos) {
-+				ctx->dup_cookie = *desc->dir_cookie;
-+				ctx->duped = 1;
-+			}
-+			desc->file->f_pos = new_pos;
- 			desc->cache_entry_index = i;
- 			return 0;
- 		}
-@@ -732,6 +743,20 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
- 	int i = 0;
- 	int res = 0;
- 	struct nfs_cache_array *array = NULL;
-+	struct nfs_open_dir_context *ctx = file->private_data;
-+
-+	if (ctx->duped != 0 && ctx->dup_cookie == *desc->dir_cookie) {
-+		if (printk_ratelimit()) {
-+			pr_notice("NFS: directory %s/%s contains a readdir loop.  "
-+				"Please contact your server vendor.  "
-+				"Offending cookie: %llu\n",
-+				file->f_dentry->d_parent->d_name.name,
-+				file->f_dentry->d_name.name,
-+				*desc->dir_cookie);
-+		}
-+		res = -ELOOP;
-+		goto out;
-+	}
- 
- 	array = nfs_readdir_get_array(desc->page);
- 	if (IS_ERR(array)) {
-@@ -914,6 +939,7 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int origin)
- 	if (offset != filp->f_pos) {
- 		filp->f_pos = offset;
- 		dir_ctx->dir_cookie = 0;
-+		dir_ctx->duped = 0;
- 	}
- out:
- 	mutex_unlock(&inode->i_mutex);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 4b87c00..69d6fc9 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -98,6 +98,8 @@ struct nfs_open_context {
- struct nfs_open_dir_context {
- 	struct rpc_cred *cred;
- 	__u64 dir_cookie;
-+	__u64 dup_cookie;
-+	int duped;
- };
- 
- /*
-
+Thanks,
+j
