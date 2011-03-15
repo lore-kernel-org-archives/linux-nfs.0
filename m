@@ -1,83 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from dsl017-049-228.sfo4.dsl.speakeasy.net ([69.17.49.228]:34287
-	"EHLO void.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753873Ab1CaXEw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 Mar 2011 19:04:52 -0400
-To: Andrew Klaassen <clawsoon@yahoo.com>
-cc: linux-nfs@vger.kernel.org
-Subject: Re: readdirplus/getattr
-In-reply-to: <457901.56654.qm@web65410.mail.ac4.yahoo.com>
-References: <457901.56654.qm@web65410.mail.ac4.yahoo.com>
-Date: Thu, 31 Mar 2011 15:58:15 -0700
-Message-ID: <23968.1301612295@risen.void.org>
-From: Steven Procter <steven@void.org>
+Received: from milhouse.imppc.org ([213.151.98.37]:60792 "EHLO
+	milhouse.imppc.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751239Ab1COVXA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 17:23:00 -0400
+Message-ID: <4D7FDB14.6090908@imppc.org>
+Date: Tue, 15 Mar 2011 22:33:08 +0100
+From: Judith Flo Gaya <jflo@imppc.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: problem with nfs latency during high IO
+References: <4D7B6DE5.8010008@imppc.org> <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com> <4D7FA11F.5020604@imppc.org> <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com>
+In-Reply-To: <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-This is due to client caching.  When the second ls -l runs the cache
-contains an entry for the directory.  The client can check if the cached
-directory data is still valid by issuing a GETATTR on the directory.
 
-But this only validates the names, not the attributes, which are not
-actually part of the directory.  Those must be refetched.  So the client
-issues a GETATTR for each entry in the directory.  It issues them
-sequentially, probably as ls calls readdir() and then stat()
-sequentially on the directory entries.
 
-This takes so long that the cache entry times out and the next time you
-run ls -l the client reloads the directory using READDIRPLUS.
+On 3/15/11 7:03 PM, Chuck Lever wrote:
+> On Mar 15, 2011, at 1:25 PM, Judith Flo Gaya wrote:
+>
+>> Hello Chuck,
+>>
+>> On 03/15/2011 05:24 PM, Chuck Lever wrote:
+>>> Hi Judith-
+>>>
+>>> On Mar 12, 2011, at 7:58 AM, Judith Flo Gaya wrote:
+>>>
+>>>> Hello,
+>>>>
+>>>> I was told some days ago that my problem with my NFS system is related to this bug, as the problem that I'm experiencing is quite similar.
+>>>>
+>>>> The bug : https://bugzilla.redhat.com/show_bug.cgi?id=469848
+>>>>
+>>>> The link itself explains quite well my issue, I'm just truing to copy a big file (36Gb) to my nfs server and when I try to get an ls -l command to the same folder where I'm copying data, the command gets stuck for some time. This amount of time changes from a few secs to SOME minutes (9' is the current record).
+>>>> I can live with some seconds of delay, but minutes is something quite unacceptable.
+>>>>
+>>>> As this is an nfs server running on a red hat system (an HP ibrix x9300 with Red Hat 5.3 x86_64, kernel 2.6.18-128) I was told to apply the patch suggested from the bug on my clients.
+>>>>
+>>>> Unfortunately my clients are running fedora core 14 (x86_64, kernel 2.6.35.6-45) and I can't find the file that they are referring to, the file fs/nfs/inode.c is not there and I can't find the rpm that contains it.
+>>>>
+>>>> As the bug is a very very old one, I took it for granted that is already applied to fedora, but I wanted to make sure that it is looking at the file.
+>>>>
+>>>> Can you help me on this? I'm I wrong in my supposition (is the patch really applied)? is it possible that my problem is somewhere else?
+>>> This sounds like typical behavior.
+>> But it is not like this when I use a RHEL6 as a client to those servers, in this case, the ls only last for some seconds, nothing like the minutes that it takes from my fedora.
+> Which Fedora systems, exactly?  The fix I described below is almost certainly in RHEL 6.
+Fedora Core 14, 64 bit, 2.6.35.6-45
+>>> POSIX requires that the mtime and file size returned by stat(2) ('ls -l') reflect the most recent write(2).  On NFS, the server sets both of these fields.  If a client is caching dirty data, and an application does a stat(2), the client is forced to flush the dirty data so that the server can update mtime and file size appropriately.  The client then does a GETATTR, and returns those values to the requesting application.
+>>>
+>> ok, sorry, I know this is a very stupid question but. what do you mean by dirty data?
+> Dirty data is data that your application has written to the file but which hasn't been flushed to the server's disk.  This data resides in the client's page cache, on its way to the server.
+ok, understood. Then the sysctl change that you suggest, I've been 
+checking both distributions, RHEL6 and FC14 and they share the same 
+value... I assume by this that changing this value will not "help", am I 
+right?
+>> BTW i understand the time issue, but again, if the version of the kernel that the red hat has installed allows me to get the information soon, why a newer kernel in fedora does not?
+> Sounds like a bug.  Fedora kernels newer than 2.6.32 should work as well as, or better than, RHEL 6.
+I thought the same, but the test doesn't suggest that this is true ;(
+I saw your next message about the difference in the code and that would 
+make a lot of sense!
 
---Steven
+Thanks for your help!
+j
 
-> X-Mailer: YahooMailClassic/12.0.2 YahooMailWebService/0.8.109.295617
-> Date:	Thu, 31 Mar 2011 15:24:15 -0700 (PDT)
-> From:	Andrew Klaassen <clawsoon@yahoo.com>
-> Subject: readdirplus/getattr
-> To:	linux-nfs@vger.kernel.org
-> Sender:	linux-nfs-owner@vger.kernel.org
-> 
-> Hi,
-> 
-> I've been trying to get my Linux NFS clients to be a little snappier about listing large directories from heavily-loaded servers.  I found the following fascinating behaviour (this is with 2.6.31.14-0.6-desktop, x86_64, from openSUSE 11.3, Solaris Express 11 NFS server):
-> 
-> With "ls -l --color=none" on a directory with 2500 files:
-> 
->              |      rdirplus   |    nordirplus   |
->              |1st  |2nd  |1st  |1st  |2nd  |1st  |
->              |run  |run  |run  |run  |run  |run  |
->              |light|light|heavy|light|light|heavy|
->              |load |load |load |load |load |load |
-> --------------------------------------------------
-> readdir      |   0 |   0 |   0 |  25 |   0 |  25 |
-> readdirplus  | 209 |   0 | 276 |   0 |   0 |   0 |
-> lookup       |  16 |   0 |  10 |2316 |   0 |2473 |
-> getattr      |   1 |2501 |2452 |   1 |2465 |   1 |
-> 
-> The most interesting case is with rdirplus specified as a mount option to a heavily loaded server.  The NFS client keeps switching back and forth between readdirplus and getattr:
-> 
->  ~10 seconds doing ~70 readdirplus calls, followed by
->  ~150 seconds doing ~800 gettattr calls, followed by
->  ~12 seconds doing ~70 readdirplus calls, followed by
->  ~200 seconds doing ~800 gettattr calls, followed by
->  ~20 seconds doing ~130 readdirplus calls, followed by
->  ~220 seconds doing ~800 gettattr calls
-> 
-> All the calls appear to get reasonably prompt replies (never more than a second or so), which makes me wonder why it keeps switching back and forth between the strategies.  (Especially since I've specified rdirplus as a mount option.)
-> 
-> Is it supposed to do that?
-> 
-> I'd really like to see how it does with readdirplus ~only~, no getattr calls, since it's spending only 40 seconds in total on readdirplus calls compared to 570 seconds in total on (redundant, I think, based on the lightly-loaded case) getattr calls.
-> 
-> It'd also be nice to be able to force readdirplus calls instead of getattr calls for second and subsequent listings of a directory.
-> 
-> I saw a recent thread talking about readdirplus changes in 2.6.37, so I'll give that a try when I get a chance to see how it behaves.
-> 
-> Andrew
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
