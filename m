@@ -1,9 +1,9 @@
 From: David Miller <davem@davemloft.net>
-Subject: Re: [PATCH 04/17] net,rcu: convert call_rcu(tcf_common_free_rcu)
+Subject: Re: [PATCH 05/17] net,rcu: convert call_rcu(tcf_police_free_rcu)
 	to kfree_rcu()
-Date: Tue, 15 Mar 2011 14:02:22 -0700 (PDT)
-Message-ID: <20110315.140222.71135070.davem@davemloft.net>
-References: <4D7F3610.6000809@cn.fujitsu.com> <4D7F37F0.1050801@cn.fujitsu.com>
+Date: Tue, 15 Mar 2011 14:02:59 -0700 (PDT)
+Message-ID: <20110315.140259.104074771.davem@davemloft.net>
+References: <4D7F3610.6000809@cn.fujitsu.com> <4D7F3828.4040403@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Cc: randy.dunlap@oracle.com, linux-decnet-user@lists.sourceforge.net,
@@ -21,7 +21,7 @@ Cc: randy.dunlap@oracle.com, linux-decnet-user@lists.sourceforge.net,
         johannes@sipsolutions.net
 To: laijs@cn.fujitsu.com
 Return-path: <containers-bounces@lists.linux-foundation.org>
-In-Reply-To: <4D7F37F0.1050801@cn.fujitsu.com>
+In-Reply-To: <4D7F3828.4040403@cn.fujitsu.com>
 List-Unsubscribe: <https://lists.linux-foundation.org/mailman/listinfo/containers>,
 	<mailto:containers-request@lists.linux-foundation.org?subject=unsubscribe>
 List-Archive: <http://lists.linux-foundation.org/pipermail/containers>
@@ -34,12 +34,12 @@ Errors-To: containers-bounces@lists.linux-foundation.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Lai Jiangshan <laijs@cn.fujitsu.com>
-Date: Tue, 15 Mar 2011 17:57:04 +0800
+Date: Tue, 15 Mar 2011 17:58:00 +0800
 
+> [PATCH 05/17] net,rcu: convert call_rcu(tcf_police_free_rcu) to kfree_rcu()
 > 
-> 
-> The rcu callback tcf_common_free_rcu() just calls a kfree(),
-> so we use kfree_rcu() instead of the call_rcu(tcf_common_free_rcu).
+> The rcu callback tcf_police_free_rcu() just calls a kfree(),
+> so we use kfree_rcu() instead of the call_rcu(tcf_police_free_rcu).
 > 
 > Signed-off-by: Lai Jiangshan <laijs@cn.fujitsu.com>
 
