@@ -1,166 +1,374 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:55403 "EHLO mx1.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:3708 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754525Ab1CYS0a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Mar 2011 14:26:30 -0400
-Date: Fri, 25 Mar 2011 19:26:26 +0100
-From: Jan Kara <jack@suse.cz>
-To: Wu Fengguang <fengguang.wu@intel.com>
-Cc: Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: NFS page states & writeback
-Message-ID: <20110325182626.GA26932@quack.suse.cz>
-References: <20110325012803.GA25052@quack.suse.cz>
- <20110325070054.GA5970@localhost>
- <20110325093957.GL26611@dastard>
- <20110325142253.GA11589@localhost>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110325142253.GA11589@localhost>
+	id S1758291Ab1COTw3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Mar 2011 15:52:29 -0400
+Message-ID: <4D7FC37B.3000108@netapp.com>
+Date: Tue, 15 Mar 2011 15:52:27 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 4/5] NFS: use secinfo when crossing mountpoints
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri 25-03-11 22:22:53, Wu Fengguang wrote:
-> On Fri, Mar 25, 2011 at 05:39:57PM +0800, Dave Chinner wrote:
-> > On Fri, Mar 25, 2011 at 03:00:54PM +0800, Wu Fengguang wrote:
-> > > Hi Jan,
-> > > 
-> > > On Fri, Mar 25, 2011 at 09:28:03AM +0800, Jan Kara wrote:
-> > > >   Hi,
-> > > > 
-> > > >   while working on changes to balance_dirty_pages() I was investigating why
-> > > > NFS writeback is *so* bumpy when I do not call writeback_inodes_wb() from
-> > > > balance_dirty_pages(). Take a single dd writing to NFS. What I can
-> > > > see is that we quickly accumulate dirty pages upto limit - ~700 MB on that
-> > > > machine. So flusher thread starts working and in an instant all these ~700
-> > > > MB transition from Dirty state to Writeback state. Then, as server acks
-> > > 
-> > > That can be fixed by the following patch:
-> > > 
-> > >         [PATCH 09/27] nfs: writeback pages wait queue
-> > >         https://lkml.org/lkml/2011/3/3/79
-> > 
-> > I don't think this is a good definition of write congestion for a
-> > NFS (or any other network fs) client. Firstly, writeback congestion
-> > is really dependent on the size of the network send window
-> > remaining. That is, if you've filled the socket buffer with writes
-> > and would block trying to queue more pages on the socket, then you
-> > are congested. i.e. the measure of congestion is the rate at which
-> > write request can be sent to the server and processed by the server.
-> 
-> You are right. The wait queue fullness does reflect the congestion in
-> typical setup because the queue size is typically much larger than the
-> network pipeline. If happens to not be the case, I don't bother much
-> because the patch's main goal is to avoid
-> 
-> - NFS client side nr_dirty being constantly exhausted
-> 
-> - very bursty network IO (I literally see it), such as 1Gbps for 1
->   second followed by completely idle for 10 seconds. Ideally if the
->   server disk can only do 10MB/s then there should be a fluent 10MB/s
->   network stream.
-> 
-> It just happens to inherit the old *congestion* names, and the upper
-> layer now actually hardly care about the congestion state.
-  Fengguang, I believe that limitting amount of NFS writeback pages is the
-wrong direction. I don't think that the rapid transition of Dirty pages to
-Writeback pages is a problem. Limiting Writeback pages only papers-over
-the problem in writeback code. So let NFS client write what we tell it to
-write as fast as the network and the server can take it. I agree that
-bursty sending of pages might cause problems with network congestion etc.
-but that's not the problem we are trying to address now.
 
-> > Secondly, the big problem that causes the lumpiness is that we only
-> > send commits when we reach at large threshold of unstable pages.
-> > Because most servers tend to cache large writes in RAM,
-> > the server might have a long commit latency because it has to write
-> > hundred of MB of data to disk to complete the commit.
-> > 
-> > IOWs, the client sends the commit only when it really needs the
-> > pages the be cleaned, and then we have the latency of the server
-> > write before it responds that they are clean. Hence commits can take
-> > a long time to complete and mark pages clean on the client side.
->  
-> That's the point. That's why I add the following patches to limit the
-> NFS commit size:
-> 
->         [PATCH 10/27] nfs: limit the commit size to reduce fluctuations
->         [PATCH 11/27] nfs: limit the commit range
-  I agree we need something along the lines of your first patch to push
-pages from Unstable state more aggressively. I was testing a patch
-yesterday which was more conservative and just changed the check to:
+A submount may use different security than the parent
+mount does.  We should figure out what sec flavor the
+submount uses at mount time.
 
-               if (nfsi->ncommit <= (nfsi->npages >> 4) ||
-                   (!exceeded && nfsi->ncommit <= (nfsi->npages >> 1)))
-                        goto out_mark_dirty;
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/inode.c                        |    8 ++-
+ fs/nfs/internal.h                     |    7 ++
+ fs/nfs/namespace.c                    |  102 ++++++++++++++++++++++++++++++++-
+ fs/nfs/nfs4proc.c                     |   14 +++++
+ fs/nfs/nfs4xdr.c                      |   11 ++--
+ include/linux/nfs_xdr.h               |    1 +
+ net/sunrpc/auth_gss/gss_mech_switch.c |   22 +++++++
+ 7 files changed, 154 insertions(+), 11 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 2f8e618..fd29490 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -254,7 +254,9 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 	struct inode *inode = ERR_PTR(-ENOENT);
+ 	unsigned long hash;
  
-Where 'exceeded' is bdi->dirty_exceeded. So we are more aggresive only if
-we really need the pages back (since each commit forces a server to do
-fsync, it is good to avoid it if we don't really need it). And it worked
-nicely in reducing the bumps as well.
-
-I'm not entirely conviced the nfsi->ncommit <= (nfsi->npages >> 4) part of
-the check is the best thing to do, maybe we could have a fixed limit (like
-64 MB) there as well. So the condition could look like:
-
-if ((exceeded && nfsi->ncommit <= (nfsi->npages >> 4) && nfsi->ncommit < 16384)
-    || (!exceeded && nfsi->ncommit <= (nfsi->npages >> 1)))
-	goto out_mark_dirty;
-
-What do you think?
-
-I'm not sure about the second patch - I didn't test a load where it would
-help. It would possibly help only if several clients shared a file? How
-likely is that? Or do I misread your patch?
-
-> > A solution that IRIX used for this problem was the concept of a
-> > background commit. While doing writeback on an inode, if it sent
-> > more than than a certain threshold of data (typically in the range
-> > of 0.5-2s worth of data) to the server without a commit being
-> > issued, it would send an _asynchronous_ commit with the current dirty
-> > range to the server. That way the server starts writing the data
-> > before it hits dirty thresholds (i.e. prevents GBs of dirty data
-> > being cached on the server so commit lantecy is kept low).
-> > 
-> > When the background commit completes the NFS client can then convert
-> > pages in the commit range to clean. Hence we keep the number of
-> > unstable pages under control without needing to wait for a certain
-> > number of unstable pages to build up before commits are triggered.
-> > This allows the process of writing dirty pages to clean
-> > unstable pages at roughly the same rate as the write rate without
-> > needing any magic thresholds to be configured....
-> 
-> That's a good approach. In linux, by limiting the commit size, the NFS
-> flusher should roughly achieve the same effect.
-> 
-> However there is another problem. Look at the below graph. Even though
-> the commits are sent to NFS server in relatively small size and evenly
-> distributed in time (the green points), the commit COMPLETION events
-> from the server are observed to be pretty bumpy over time (the blue
-> points sitting on the red lines). This may not be easily fixable.. So
-> we still have to live with bumpy NFS commit completions...
-> 
-> http://www.kernel.org/pub/linux/kernel/people/wfg/writeback/dirty-throttling-v6/NFS/nfs-1dd-1M-8p-2945M-20%25-2.6.38-rc6-dt6+-2011-02-22-21-09/nfs-commit.png
-  Well, looking at your graph, and it also pretty well matches my tests, the
-completions come in ~50 MB batches. It's not perfect but far better than
-those +400 MB batches I was seeing previously - compare e.g.
-http://beta.suse.com/private/jack/balance_dirty_pages-v2/graphs/dd-test-nfs_8_1024-2011-02-28-21:52:05-mm.png
-and
-http://beta.suse.com/private/jack/balance_dirty_pages-v2/graphs/dd-test-nfs_8_1024-2011-03-25-01:02:43-mm.png
-
-With these smaller bumps, pauses in balance_dirty_pages() stay below 500 ms
-even with 8 dds banging the NFS share with my patchset (most of them is
-~30 ms in fact):
-http://beta.suse.com/private/jack/balance_dirty_pages-v2/graphs/dd-test-nfs_8_1024-2011-03-25-01:02:43-mm-procs.png
-
-So I'd say that fixing the background limit checking logic and the small
-tweak to commit check should be enough to make NFS reasonably well
-behaved...
-
-								Honza
+-	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0)
++	nfs_attr_check_mountpoint(sb, fattr);
++
++	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) == 0 && (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT) == 0)
+ 		goto out_no_inode;
+ 	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) == 0)
+ 		goto out_no_inode;
+@@ -298,8 +300,8 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 			if (nfs_server_capable(inode, NFS_CAP_READDIRPLUS))
+ 				set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
+ 			/* Deal with crossing mountpoints */
+-			if ((fattr->valid & NFS_ATTR_FATTR_FSID)
+-					&& !nfs_fsid_equal(&NFS_SB(sb)->fsid, &fattr->fsid)) {
++			if (fattr->valid & NFS_ATTR_FATTR_MOUNTPOINT ||
++					fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
+ 				if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
+ 					inode->i_op = &nfs_referral_inode_operations;
+ 				else
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index d4a6bdb..3270c23 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -39,6 +39,12 @@ static inline int nfs4_has_persistent_session(const struct nfs_client *clp)
+ 	return 0;
+ }
+ 
++static inline void nfs_attr_check_mountpoint(struct super_block *parent, struct nfs_fattr *fattr)
++{
++	if (!nfs_fsid_equal(&NFS_SB(parent)->fsid, &fattr->fsid))
++		fattr->valid |= NFS_ATTR_FATTR_MOUNTPOINT;
++}
++
+ struct nfs_clone_mount {
+ 	const struct super_block *sb;
+ 	const struct dentry *dentry;
+@@ -214,6 +220,7 @@ extern const u32 nfs41_maxwrite_overhead;
+ /* nfs4proc.c */
+ #ifdef CONFIG_NFS_V4
+ extern struct rpc_procinfo nfs4_procedures[];
++void nfs_fixup_secinfo_attributes(struct nfs_fattr *, struct nfs_fh *);
+ #endif
+ 
+ extern int nfs4_init_ds_session(struct nfs_client *clp);
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index b744080..56d8300 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -15,6 +15,7 @@
+ #include <linux/string.h>
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/vfs.h>
++#include <linux/sunrpc/gss_api.h>
+ #include "internal.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_VFS
+@@ -28,7 +29,8 @@ int nfs_mountpoint_expiry_timeout = 500 * HZ;
+ static struct vfsmount *nfs_do_submount(const struct vfsmount *mnt_parent,
+ 					const struct dentry *dentry,
+ 					struct nfs_fh *fh,
+-					struct nfs_fattr *fattr);
++					struct nfs_fattr *fattr,
++					rpc_authflavor_t authflavor);
+ 
+ /*
+  * nfs_path - reconstruct the path given an arbitrary dentry
+@@ -96,6 +98,90 @@ Elong:
+ 	return ERR_PTR(-ENAMETOOLONG);
+ }
+ 
++static rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors, struct inode *inode)
++{
++	struct gss_api_mech *mech;
++	struct xdr_netobj oid;
++	int i;
++	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
++
++	for (i = 0; i < flavors->num_flavors; i++) {
++		struct nfs4_secinfo_flavor *flavor;
++		flavor = &flavors->flavors[i];
++
++		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
++			pseudoflavor = flavor->flavor;
++			break;
++		} else if (flavor->flavor == RPC_AUTH_GSS) {
++			oid.len  = flavor->gss.sec_oid4.len;
++			oid.data = flavor->gss.sec_oid4.data;
++			mech = gss_mech_get_by_OID(&oid);
++			if (!mech)
++				continue;
++			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
++			gss_mech_put(mech);
++			break;
++		}
++	}
++
++	return pseudoflavor;
++}
++
++static rpc_authflavor_t nfs_negotiate_security(const struct dentry *parent, const struct dentry *dentry)
++{
++	int status = 0;
++	struct page *page;
++	struct nfs4_secinfo_flavors *flavors;
++	int (*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
++	rpc_authflavor_t flavor = RPC_AUTH_UNIX;
++
++	secinfo = NFS_PROTO(parent->d_inode)->secinfo;
++	if (secinfo != NULL) {
++		page = alloc_page(GFP_KERNEL);
++		if (!page) {
++			status = -ENOMEM;
++			goto out;
++		}
++		flavors = page_address(page);
++		status = secinfo(parent->d_inode, &dentry->d_name, flavors);
++		flavor = nfs_find_best_sec(flavors, dentry->d_inode);
++		put_page(page);
++	}
++
++	return flavor;
++
++out:
++	status = -ENOMEM;
++	return status;
++}
++
++static rpc_authflavor_t nfs_lookup_with_sec(struct nfs_server *server, struct dentry *parent,
++				     struct dentry *dentry, struct path *path,
++				     struct nfs_fh *fh, struct nfs_fattr *fattr)
++{
++	rpc_authflavor_t flavor;
++	struct rpc_clnt *clone;
++	struct rpc_auth *auth;
++	int err;
++
++	flavor = nfs_negotiate_security(parent, path->dentry);
++	if (flavor < 0)
++		goto out;
++	clone  = rpc_clone_client(server->client);
++	auth   = rpcauth_create(flavor, clone);
++	if (!auth) {
++		flavor = -EIO;
++		goto out;
++	}
++	err = server->nfs_client->rpc_ops->lookup(clone, parent->d_inode,
++						  &path->dentry->d_name,
++						  fh, fattr);
++	if (err < 0)
++		flavor = err;
++out:
++	return flavor;
++}
++
+ /*
+  * nfs_d_automount - Handle crossing a mountpoint on the server
+  * @path - The mountpoint
+@@ -116,6 +202,7 @@ struct vfsmount *nfs_d_automount(struct path *path)
+ 	struct nfs_fh *fh = NULL;
+ 	struct nfs_fattr *fattr = NULL;
+ 	int err;
++	rpc_authflavor_t flavor = 1;
+ 
+ 	dprintk("--> nfs_d_automount()\n");
+ 
+@@ -137,6 +224,13 @@ struct vfsmount *nfs_d_automount(struct path *path)
+ 						  parent->d_inode,
+ 						  &path->dentry->d_name,
+ 						  fh, fattr);
++	if (err == -EPERM) {
++		flavor = nfs_lookup_with_sec(server, parent, path->dentry, path, fh, fattr);
++		if (flavor < 0)
++			err = flavor;
++		else
++			err = 0;
++	}
+ 	dput(parent);
+ 	if (err != 0) {
+ 		mnt = ERR_PTR(err);
+@@ -146,7 +240,7 @@ struct vfsmount *nfs_d_automount(struct path *path)
+ 	if (fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL)
+ 		mnt = nfs_do_refmount(path->mnt, path->dentry);
+ 	else
+-		mnt = nfs_do_submount(path->mnt, path->dentry, fh, fattr);
++		mnt = nfs_do_submount(path->mnt, path->dentry, fh, fattr, flavor);
+ 	if (IS_ERR(mnt))
+ 		goto out;
+ 
+@@ -219,13 +313,15 @@ static struct vfsmount *nfs_do_clone_mount(struct nfs_server *server,
+ static struct vfsmount *nfs_do_submount(const struct vfsmount *mnt_parent,
+ 					const struct dentry *dentry,
+ 					struct nfs_fh *fh,
+-					struct nfs_fattr *fattr)
++					struct nfs_fattr *fattr,
++					rpc_authflavor_t authflavor)
+ {
+ 	struct nfs_clone_mount mountdata = {
+ 		.sb = mnt_parent->mnt_sb,
+ 		.dentry = dentry,
+ 		.fh = fh,
+ 		.fattr = fattr,
++		.authflavor = authflavor,
+ 	};
+ 	struct vfsmount *mnt = ERR_PTR(-ENOMEM);
+ 	char *page = (char *) __get_free_page(GFP_USER);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index c6a737e..2e56ec7 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -87,6 +87,8 @@ static int nfs4_map_errors(int err)
+ 	switch (err) {
+ 	case -NFS4ERR_RESOURCE:
+ 		return -EREMOTEIO;
++	case -NFS4ERR_WRONGSEC:
++		return -EPERM;
+ 	case -NFS4ERR_BADOWNER:
+ 	case -NFS4ERR_BADNAME:
+ 		return -EINVAL;
+@@ -2384,6 +2386,16 @@ static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
+ 	return status;
+ }
+ 
++void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr, struct nfs_fh *fh)
++{
++	memset(fh, 0, sizeof(struct nfs_fh));
++	fattr->fsid.major = 1;
++	fattr->valid |= NFS_ATTR_FATTR_TYPE | NFS_ATTR_FATTR_MODE |
++		NFS_ATTR_FATTR_NLINK | NFS_ATTR_FATTR_FSID | NFS_ATTR_FATTR_MOUNTPOINT;
++	fattr->mode = S_IFDIR | S_IRUGO | S_IXUGO;
++	fattr->nlink = 2;
++}
++
+ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qstr *name,
+ 			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+ {
+@@ -2393,6 +2405,8 @@ static int nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir, struct qst
+ 		err = nfs4_handle_exception(NFS_SERVER(dir),
+ 				_nfs4_proc_lookup(clnt, dir, name, fhandle, fattr),
+ 				&exception);
++		if (err == -EPERM)
++			nfs_fixup_secinfo_attributes(fattr, fhandle);
+ 	} while (exception.retry);
+ 	return err;
+ }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index d4d79ee..7e46690 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -113,7 +113,7 @@ static int nfs4_stat_to_errno(int);
+ #define encode_restorefh_maxsz  (op_encode_hdr_maxsz)
+ #define decode_restorefh_maxsz  (op_decode_hdr_maxsz)
+ #define encode_fsinfo_maxsz	(encode_getattr_maxsz)
+-#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 11)
++#define decode_fsinfo_maxsz	(op_decode_hdr_maxsz + 15)
+ #define encode_renew_maxsz	(op_encode_hdr_maxsz + 3)
+ #define decode_renew_maxsz	(op_decode_hdr_maxsz)
+ #define encode_setclientid_maxsz \
+@@ -2968,6 +2968,7 @@ static int decode_attr_error(struct xdr_stream *xdr, uint32_t *bitmap)
+ 		if (unlikely(!p))
+ 			goto out_overflow;
+ 		bitmap[0] &= ~FATTR4_WORD0_RDATTR_ERROR;
++		return -be32_to_cpup(p);
+ 	}
+ 	return 0;
+ out_overflow:
+@@ -3955,6 +3956,10 @@ static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t *bitmap,
+ 	fattr->valid |= status;
+ 
+ 	status = decode_attr_error(xdr, bitmap);
++	if (status == -NFS4ERR_WRONGSEC) {
++		nfs_fixup_secinfo_attributes(fattr, fh);
++		status = 0;
++	}
+ 	if (status < 0)
+ 		goto xdr_error;
+ 
+@@ -6316,10 +6321,6 @@ static struct {
+ 	{ NFS4ERR_SYMLINK,	-ELOOP		},
+ 	{ NFS4ERR_OP_ILLEGAL,	-EOPNOTSUPP	},
+ 	{ NFS4ERR_DEADLOCK,	-EDEADLK	},
+-	{ NFS4ERR_WRONGSEC,	-EPERM		}, /* FIXME: this needs
+-						    * to be handled by a
+-						    * middle-layer.
+-						    */
+ 	{ -1,			-EIO		}
+ };
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 8f3d7b2..02dd83e 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -79,6 +79,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_CHANGE		(1U << 17)
+ #define NFS_ATTR_FATTR_PRECHANGE	(1U << 18)
+ #define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 19)	/* NFSv4 referral */
++#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 20)	/* Treat as mountpoint */
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index 8b40610..6c844b0 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -160,6 +160,28 @@ gss_mech_get_by_name(const char *name)
+ 
+ EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
+ 
++struct gss_api_mech *
++gss_mech_get_by_OID(struct xdr_netobj *obj)
++{
++	struct gss_api_mech	*pos, *gm = NULL;
++
++	spin_lock(&registered_mechs_lock);
++	list_for_each_entry(pos, &registered_mechs, gm_list) {
++		if (obj->len == pos->gm_oid.len) {
++			if (0 == memcmp(obj->data, pos->gm_oid.data, obj->len)) {
++				if (try_module_get(pos->gm_owner))
++					gm = pos;
++				break;
++			}
++		}
++	}
++	spin_unlock(&registered_mechs_lock);
++	return gm;
++
++}
++
++EXPORT_SYMBOL_GPL(gss_mech_get_by_OID);
++
+ static inline int
+ mech_supports_pseudoflavor(struct gss_api_mech *gm, u32 pseudoflavor)
+ {
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.7.4.1
+
