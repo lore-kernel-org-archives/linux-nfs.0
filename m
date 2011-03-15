@@ -1,103 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:43805 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751147Ab1CIB3o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Mar 2011 20:29:44 -0500
-Date: Tue, 8 Mar 2011 20:29:42 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 02/17] CLNT: test lease period of unconfirmed record
-Message-ID: <20110309012942.GE15814@fieldses.org>
-References: <4D6DE26C.3010103@cn.fujitsu.com>
- <4D6DE34A.2020404@cn.fujitsu.com>
- <20110303060225.GD7724@fieldses.org>
- <4D6F5A3D.6050000@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D6F5A3D.6050000@cn.fujitsu.com>
+Received: from milhouse.imppc.org ([213.151.98.37]:34939 "EHLO
+	milhouse.imppc.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932138Ab1COQZs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 12:25:48 -0400
+Message-ID: <4D7F930A.1010509@imppc.org>
+Date: Tue, 15 Mar 2011 17:25:46 +0100
+From: Judith Flo Gaya <jflo@imppc.org>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: problem with nfs latency during high IO
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Mar 03, 2011 at 05:07:09PM +0800, Mi Jinlong wrote:
-> 
-> 
-> J. Bruce Fields :
-> > On Wed, Mar 02, 2011 at 02:27:22PM +0800, Mi Jinlong wrote:
-> >> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> >> ---
-> >>  nfs4.1/server41tests/st_exchange_id.py |   26 ++++++++++++++++++++++++++
-> >>  1 files changed, 26 insertions(+), 0 deletions(-)
-> >>
-> >> diff --git a/nfs4.1/server41tests/st_exchange_id.py b/nfs4.1/server41tests/st_exchange_id.py
-> >> index b5e34e6..85f3092 100644
-> >> --- a/nfs4.1/server41tests/st_exchange_id.py
-> >> +++ b/nfs4.1/server41tests/st_exchange_id.py
-> >> @@ -1,5 +1,6 @@
-> >>  from nfs4_const import *
-> >>  import nfs4_ops as op
-> >> +import time
-> >>  from environment import check, fail
-> >>  from nfs4_type import *
-> >>  from rpc import RPCAcceptError, GARBAGE_ARGS, RPCTimeout
-> >> @@ -436,3 +437,28 @@ def testNotOnlyOp(t, env):
-> >>      res = c.compound([op.exchange_id(owner, 0, protect, [c.impl_id]), op.putrootfh()])
-> >>      # per draft 21 18.35.3, server MUST return NFS4ERR_NOT_ONLY_OP
-> >>      check(res, NFS4ERR_NOT_ONLY_OP)
-> >> +
-> >> +def testLeasePeriod(t, env):
-> >> +    """Any unconfirmed record that is not confirmed within
-> >> +       a lease period SHOULD be removed.
-> >> +
-> >> +    FLAGS: exchange_id all
-> >> +    CODE: EID9
-> >> +    """
-> >> +    c1 = env.c1.new_client("%s_1" % env.testname(t))
-> >> +    c2 = env.c1.new_client("%s_2" % env.testname(t))
-> >> +    # CREATE_SESSION
-> >> +    chan_attrs = channel_attrs4(0,8192,8192,8192,128,8,[])
-> >> +    time.sleep(80)
-> > 
-> > Let's not hard-code any lease time.  pynfs should do a getattr to find
-> > the server's lease time, and use that as the basis for calculations
-> > (we need something like the getLeaseTime in the 4.0 pynfs.)
-> > 
-> > I actually usually set the server lease time to 15 seconds for testing,
-> > just to make the tests go faster....
-> 
->   Agree with you!
->   What about the following one?
+[Sorry if the e-mail appears to be duplicated, I don't see it in the 
+list, but I sent it 3 days ago ;(]
 
-Looks fine to me.
+Hello,
 
-> +    chan_attrs = channel_attrs4(0,8192,8192,8192,128,8,[])
-> +    time.sleep(lease - 10)
+I was told some days ago that my problem with my NFS system is related 
+to this bug, as the problem that I'm experiencing is quite similar.
 
-I changed this to
+The bug : https://bugzilla.redhat.com/show_bug.cgi?id=469848
 
-	time.sleep(min(lease-10, 1))
+The link itself explains quite well my issue, I'm just truing to copy a 
+big file (36Gb) to my nfs server and when I try to get an ls -l command 
+to the same folder where I'm copying data, the command gets stuck for 
+some time. This amount of time changes from a few secs to SOME minutes 
+(9' is the current record).
+I can live with some seconds of delay, but minutes is something quite 
+unacceptable.
 
-so it'll sill work with single-digit lease, and left it the same
-otherwise.
+As this is an nfs server running on a red hat system (an HP ibrix x9300 
+with Red Hat 5.3 x86_64, kernel 2.6.18-128) I was told to apply the 
+patch suggested from the bug on my clients.
 
-Thanks!
+Unfortunately my clients are running fedora core 14 (x86_64, kernel 
+2.6.35.6-45) and I can't find the file that they are referring to, the 
+file fs/nfs/inode.c is not there and I can't find the rpm that contains it.
 
---b.
+As the bug is a very very old one, I took it for granted that is already 
+applied to fedora, but I wanted to make sure that it is looking at the file.
 
-> +    # Inside lease period, create_session will success.
-> +    res1 = c1.c.compound([op.create_session(c1.clientid, c1.seqid, 0,
-> +                                        chan_attrs, chan_attrs,
-> +                                        123, [])], None)
-> +    check(res1)
-> +
-> +    time.sleep(lease + 10)
-> +    # After lease period, create_session will get error NFS4ERR_STALE_CLIENTID
-> +    res2 = c2.c.compound([op.create_session(c2.clientid, c2.seqid, 0,
-> +                                        chan_attrs, chan_attrs,
-> +                                        123, [])], None)
-> +    check(res2, NFS4ERR_STALE_CLIENTID)
-> -- 
-> 1.7.4.1
-> 
-> 
-> 
+Can you help me on this? I'm I wrong in my supposition (is the patch 
+really applied)? is it possible that my problem is somewhere else?
+
+Thanks a lot in advance for your help, please let me know if I can 
+provide any more information.
+j
+
+
