@@ -1,83 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:46733 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751039Ab1CCGCZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Mar 2011 01:02:25 -0500
-Date: Thu, 3 Mar 2011 01:02:25 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 02/17] CLNT: test lease period of unconfirmed record
-Message-ID: <20110303060225.GD7724@fieldses.org>
-References: <4D6DE26C.3010103@cn.fujitsu.com>
- <4D6DE34A.2020404@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D6DE34A.2020404@cn.fujitsu.com>
+Received: from oxalide-out.extra.cea.fr ([132.168.224.8]:57908 "EHLO
+	oxalide-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755129Ab1COPat (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 11:30:49 -0400
+Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
+	by oxalide.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.2) with ESMTP id p2FF7idw010253
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Mar 2011 16:07:44 +0100
+Received: from muguet2.intra.cea.fr (muguet2.intra.cea.fr [132.166.192.7])
+	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id p2FF7i9k007052
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Mar 2011 16:07:45 +0100
+	(envelope-from philippe.deniel@cea.fr)
+Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
+	by muguet2.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id p2FF7i2q004404
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Mar 2011 16:07:44 +0100
+Message-ID: <4D7F80C0.2020405@cea.fr>
+Date: Tue, 15 Mar 2011 16:07:44 +0100
+From: DENIEL Philippe <philippe.deniel@cea.fr>
+To: linux-nfs@vger.kernel.org
+Subject: NFSv4 and NFSv4.1 client recovery
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Mar 02, 2011 at 02:27:22PM +0800, Mi Jinlong wrote:
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  nfs4.1/server41tests/st_exchange_id.py |   26 ++++++++++++++++++++++++++
->  1 files changed, 26 insertions(+), 0 deletions(-)
-> 
-> diff --git a/nfs4.1/server41tests/st_exchange_id.py b/nfs4.1/server41tests/st_exchange_id.py
-> index b5e34e6..85f3092 100644
-> --- a/nfs4.1/server41tests/st_exchange_id.py
-> +++ b/nfs4.1/server41tests/st_exchange_id.py
-> @@ -1,5 +1,6 @@
->  from nfs4_const import *
->  import nfs4_ops as op
-> +import time
->  from environment import check, fail
->  from nfs4_type import *
->  from rpc import RPCAcceptError, GARBAGE_ARGS, RPCTimeout
-> @@ -436,3 +437,28 @@ def testNotOnlyOp(t, env):
->      res = c.compound([op.exchange_id(owner, 0, protect, [c.impl_id]), op.putrootfh()])
->      # per draft 21 18.35.3, server MUST return NFS4ERR_NOT_ONLY_OP
->      check(res, NFS4ERR_NOT_ONLY_OP)
-> +
-> +def testLeasePeriod(t, env):
-> +    """Any unconfirmed record that is not confirmed within
-> +       a lease period SHOULD be removed.
-> +
-> +    FLAGS: exchange_id all
-> +    CODE: EID9
-> +    """
-> +    c1 = env.c1.new_client("%s_1" % env.testname(t))
-> +    c2 = env.c1.new_client("%s_2" % env.testname(t))
-> +    # CREATE_SESSION
-> +    chan_attrs = channel_attrs4(0,8192,8192,8192,128,8,[])
-> +    time.sleep(80)
+Hi,
 
-Let's not hard-code any lease time.  pynfs should do a getattr to find
-the server's lease time, and use that as the basis for calculations
-(we need something like the getLeaseTime in the 4.0 pynfs.)
+as you may know, I am working on a NFS server in user space called 
+nfs-ganesha. One of the feature of nfs-ganesha is its capability of 
+being used as a NFSv4 proxy. This is implemented as a backend in 
+nfs-ganesha : all the filesystem that nfs-ganesha can export have a 
+dedicated module with a well known API (this module is called FSAL for 
+File System Abstraction layer). The proxy feature is made by make a FSAL 
+library that is a NFSv4 basic client (each of the FSAL functions calls 
+wrap one or more NFSv4 request). The trouble is the case when the remote 
+server (the one accessed by the proxy operating as a client via FSAL 
+calls) crashes : the client inside the FSAL needs to recover to the 
+remote server as it comes back to work. My question is : what is the 
+simpliest way for my user space client to recover ? I must precise it 
+make no delegation and use only a forechannel to the remote server. 
+There is no backchannel.
 
-I actually usually set the server lease time to 15 seconds for testing,
-just to make the tests go faster....
+    Regards
 
-> +    # Inside lease period, create_session will success.
-> +    res1 = c1.c.compound([op.create_session(c1.clientid, c1.seqid, 0,
-> +                                        chan_attrs, chan_attrs,
-> +                                        123, [])], None)
-> +    check(res1)
-> +
-> +    time.sleep(20)
-
-Ditto.
-
---b.
-
-> +    # After lease period, create_session will get error NFS4ERR_STALE_CLIENTID
-> +    res2 = c2.c.compound([op.create_session(c2.clientid, c2.seqid, 0,
-> +                                        chan_attrs, chan_attrs,
-> +                                        123, [])], None)
-> +    check(res2, NFS4ERR_STALE_CLIENTID)
-> -- 
-> 1.7.4.1
-> 
-> 
+       Philippe
