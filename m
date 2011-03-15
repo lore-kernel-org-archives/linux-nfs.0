@@ -1,131 +1,352 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.parallels.com ([64.131.90.16]:37853 "EHLO mx2.parallels.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3698 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754650Ab1CYRAa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Mar 2011 13:00:30 -0400
-Message-ID: <4D8CCA28.7040001@parallels.com>
-Date: Fri, 25 Mar 2011 12:00:24 -0500
-From: Rob Landley <rlandley@parallels.com>
-To: <linux-nfs@vger.kernel.org>, <containers@lists.linux-foundation.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [RFC PATCH] Teach auth_unix cache to check network namespace in comparisons
-Content-Type: text/plain; charset="ISO-8859-1"
+	id S1758538Ab1COTw2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Mar 2011 15:52:28 -0400
+Message-ID: <4D7FC37A.5040103@netapp.com>
+Date: Tue, 15 Mar 2011 15:52:26 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 3/5] NFS: Add secinfo procedure
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-This patch samples current->nsproxy->net_ns in ip_map_parse().
-As far as I can tell this function is currently only called from
-cache_write_procfs() and cache_write_pipefs() (via cache_write()
-and cache_downcall()), meaning we should always have a relevant
-process context.  (The buf argument is __user annotated through
-cache_do_downcall()).
 
-Does this sound like the right way to do it, or should I try to
-add a struct net * argument to cache_parse(), or...?
+This patch adds the nfs4 operation secinfo as a
+valid nfs rpc operation.
 
-Here's the patch I have.
-
-From: Rob Landley <rlandley@parallels.com>
-
-Teach the auth_unix cache to check network namespace when comparing addresses.
-
-Signed-off-by: Rob Landley <rlandley@parallels.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
+ fs/nfs/nfs4proc.c       |   35 ++++++++++++
+ fs/nfs/nfs4xdr.c        |  137 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs4.h    |    1 +
+ include/linux/nfs_xdr.h |   34 ++++++++++++
+ 4 files changed, 207 insertions(+), 0 deletions(-)
 
- net/sunrpc/svcauth_unix.c |   21 ++++++++++++++-------
- 1 file changed, 14 insertions(+), 7 deletions(-)
-
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 30916b0..63a2fa7 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -14,6 +14,7 @@
- #include <net/sock.h>
- #include <net/ipv6.h>
- #include <linux/kernel.h>
-+#include <linux/user_namespace.h>
- #define RPCDBG_FACILITY	RPCDBG_AUTH
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ebb8146..c6a737e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4640,6 +4640,40 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 	return status;
+ }
  
++static int _nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
++{
++	int status;
++	struct nfs4_secinfo_arg args = {
++		.dir_fh = NFS_FH(dir),
++		.name   = name,
++	};
++	struct nfs4_secinfo_res res = {
++		.flavors     = flavors,
++	};
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SECINFO],
++		.rpc_argp = &args,
++		.rpc_resp = &res,
++	};
++
++	dprintk("NFS call  secinfo %s\n", name->name);
++	status = nfs4_call_sync(NFS_SERVER(dir)->client, NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
++	dprintk("NFS reply  secinfo: %d\n", status);
++	return status;
++}
++
++int nfs4_proc_secinfo(struct inode *dir, const struct qstr *name, struct nfs4_secinfo_flavors *flavors)
++{
++	struct nfs4_exception exception = { };
++	int err;
++	do {
++		err = nfs4_handle_exception(NFS_SERVER(dir),
++				_nfs4_proc_secinfo(dir, name, flavors),
++				&exception);
++	} while (exception.retry);
++	return err;
++}
++
+ #ifdef CONFIG_NFS_V4_1
+ /*
+  * Check the exchange flags returned by the server for invalid flags, having
+@@ -5757,6 +5791,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.close_context  = nfs4_close_context,
+ 	.open_context	= nfs4_atomic_open,
+ 	.init_client	= nfs4_init_client,
++	.secinfo	= nfs4_proc_secinfo,
+ };
+ 
+ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 0cf560f..d4d79ee 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -46,6 +46,7 @@
+ #include <linux/kdev_t.h>
  #include <linux/sunrpc/clnt.h>
-@@ -94,6 +95,7 @@ struct ip_map {
- 	struct cache_head	h;
- 	char			m_class[8]; /* e.g. "nfsd" */
- 	struct in6_addr		m_addr;
-+	struct net		*m_net;
- 	struct unix_domain	*m_client;
- #ifdef CONFIG_NFSD_DEPRECATED
- 	int			m_add_change;
-@@ -134,6 +136,7 @@ static int ip_map_match(struct cache_head *corig, struct cache_head *cnew)
- 	struct ip_map *orig = container_of(corig, struct ip_map, h);
- 	struct ip_map *new = container_of(cnew, struct ip_map, h);
- 	return strcmp(orig->m_class, new->m_class) == 0 &&
-+	       net_eq(orig->m_net, new->m_net) &&
- 	       ipv6_addr_equal(&orig->m_addr, &new->m_addr);
- }
- static void ip_map_init(struct cache_head *cnew, struct cache_head *citem)
-@@ -142,6 +145,7 @@ static void ip_map_init(struct cache_head *cnew, struct cache_head *citem)
- 	struct ip_map *item = container_of(citem, struct ip_map, h);
+ #include <linux/sunrpc/msg_prot.h>
++#include <linux/sunrpc/gss_api.h>
+ #include <linux/nfs.h>
+ #include <linux/nfs4.h>
+ #include <linux/nfs_fs.h>
+@@ -253,6 +254,8 @@ static int nfs4_stat_to_errno(int);
+ 				(encode_getattr_maxsz)
+ #define decode_fs_locations_maxsz \
+ 				(0)
++#define encode_secinfo_maxsz	(op_encode_hdr_maxsz + nfs4_name_maxsz)
++#define decode_secinfo_maxsz	(op_decode_hdr_maxsz + 4 + (NFS_MAX_SECFLAVORS * (16 + GSS_OID_MAX_LEN)))
  
- 	strcpy(new->m_class, item->m_class);
-+	new->m_net = item->m_net;
- 	ipv6_addr_copy(&new->m_addr, &item->m_addr);
- }
- static void update(struct cache_head *cnew, struct cache_head *citem)
-@@ -186,7 +190,7 @@ static int ip_map_upcall(struct cache_detail *cd, struct cache_head *h)
- 	return sunrpc_cache_pipe_upcall(cd, h, ip_map_request);
- }
- 
--static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class, struct in6_addr *addr);
-+static struct ip_map *__ip_map_lookup(struct cache_detail *cd, struct net *net, char *class, struct in6_addr *addr);
- static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm, struct unix_domain *udom, time_t expiry);
- 
- static int ip_map_parse(struct cache_detail *cd,
-@@ -256,7 +260,8 @@ static int ip_map_parse(struct cache_detail *cd,
- 		dom = NULL;
- 
- 	/* IPv6 scope IDs are ignored for now */
--	ipmp = __ip_map_lookup(cd, class, &sin6.sin6_addr);
-+	ipmp = __ip_map_lookup(cd, current->nsproxy->net_ns, class,
-+			       &sin6.sin6_addr);
- 	if (ipmp) {
- 		err = __ip_map_update(cd, ipmp,
- 			     container_of(dom, struct unix_domain, h),
-@@ -301,13 +306,14 @@ static int ip_map_show(struct seq_file *m,
+ #if defined(CONFIG_NFS_V4_1)
+ #define NFS4_MAX_MACHINE_NAME_LEN (64)
+@@ -676,6 +679,14 @@ static int nfs4_stat_to_errno(int);
+ 				 decode_putfh_maxsz + \
+ 				 decode_lookup_maxsz + \
+ 				 decode_fs_locations_maxsz)
++#define NFS4_enc_secinfo_sz 	(compound_encode_hdr_maxsz + \
++				encode_sequence_maxsz + \
++				encode_putfh_maxsz + \
++				encode_secinfo_maxsz)
++#define NFS4_dec_secinfo_sz	(compound_decode_hdr_maxsz + \
++				decode_sequence_maxsz + \
++				decode_putfh_maxsz + \
++				decode_secinfo_maxsz)
+ #if defined(CONFIG_NFS_V4_1)
+ #define NFS4_enc_exchange_id_sz \
+ 				(compound_encode_hdr_maxsz + \
+@@ -1620,6 +1631,18 @@ static void encode_delegreturn(struct xdr_stream *xdr, const nfs4_stateid *state
+ 	hdr->replen += decode_delegreturn_maxsz;
  }
  
++static void encode_secinfo(struct xdr_stream *xdr, const struct qstr *name, struct compound_hdr *hdr)
++{
++	int len = name->len;
++	__be32 *p;
++
++	p = reserve_space(xdr, 8 + len);
++	*p++ = cpu_to_be32(OP_SECINFO);
++	xdr_encode_opaque(p, name->name, len);
++	hdr->nops++;
++	hdr->replen += decode_secinfo_maxsz;
++}
++
+ #if defined(CONFIG_NFS_V4_1)
+ /* NFSv4.1 operations */
+ static void encode_exchange_id(struct xdr_stream *xdr,
+@@ -2608,6 +2631,26 @@ static void nfs4_xdr_enc_layoutget(struct rpc_rqst *req,
+ }
+ #endif /* CONFIG_NFS_V4_1 */
  
--static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class,
--		struct in6_addr *addr)
-+static struct ip_map *__ip_map_lookup(struct cache_detail *cd, struct net *net,
-+		char *class, struct in6_addr *addr)
++/*
++ * Encode SECINFO request
++ */
++static int nfs4_xdr_enc_secinfo(struct rpc_rqst *req, uint32_t *p,
++				struct nfs4_secinfo_arg *args)
++{
++	struct xdr_stream xdr;
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	xdr_init_encode(&xdr, &req->rq_snd_buf, p);
++	encode_compound_hdr(&xdr, req, &hdr);
++	encode_sequence(&xdr, &args->seq_args, &hdr);
++	encode_putfh(&xdr, args->dir_fh, &hdr);
++	encode_secinfo(&xdr, args->name, &hdr);
++	encode_nops(&hdr);
++	return 0;
++}
++
+ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
  {
- 	struct ip_map ip;
- 	struct cache_head *ch;
- 
- 	strcpy(ip.m_class, class);
-+	ip.m_net = net;
- 	ipv6_addr_copy(&ip.m_addr, addr);
- 	ch = sunrpc_cache_lookup(cd, &ip.h,
- 				 hash_str(class, IP_HASHBITS) ^
-@@ -325,7 +331,7 @@ static inline struct ip_map *ip_map_lookup(struct net *net, char *class,
- 	struct sunrpc_net *sn;
- 
- 	sn = net_generic(net, sunrpc_net_id);
--	return __ip_map_lookup(sn->ip_map_cache, class, addr);
-+	return __ip_map_lookup(sn->ip_map_cache, net, class, addr);
+ 	dprintk("nfs: %s: prematurely hit end of receive buffer. "
+@@ -4680,6 +4723,71 @@ static int decode_delegreturn(struct xdr_stream *xdr)
+ 	return decode_op_hdr(xdr, OP_DELEGRETURN);
  }
  
- static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm,
-@@ -748,8 +754,9 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
++static int decode_secinfo_gss(struct xdr_stream *xdr, struct nfs4_secinfo_flavor *flavor)
++{
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	flavor->gss.sec_oid4.len = be32_to_cpup(p);
++	if (flavor->gss.sec_oid4.len > GSS_OID_MAX_LEN)
++		goto out_err;
++
++	p = xdr_inline_decode(xdr, flavor->gss.sec_oid4.len + 8);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	memcpy(flavor->gss.sec_oid4.data, p, flavor->gss.sec_oid4.len);
++	p += XDR_QUADLEN(flavor->gss.sec_oid4.len);
++	flavor->gss.qop4 = be32_to_cpup(p++);
++	flavor->gss.service = be32_to_cpup(p);
++
++	return 0;
++
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++out_err:
++	return -EINVAL;
++}
++
++static int decode_secinfo(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
++{
++	struct nfs4_secinfo_flavor *sec_flavor;
++	int status;
++	__be32 *p;
++	int i;
++
++	status = decode_op_hdr(xdr, OP_SECINFO);
++	p = xdr_inline_decode(xdr, 4);
++	if (unlikely(!p))
++		goto out_overflow;
++	res->flavors->num_flavors = be32_to_cpup(p);
++
++	for (i = 0; i < res->flavors->num_flavors; i++) {
++		sec_flavor = &res->flavors->flavors[i];
++		if ((char *)&sec_flavor[1] - (char *)res > PAGE_SIZE)
++			break;
++
++		p = xdr_inline_decode(xdr, 4);
++		if (unlikely(!p))
++			goto out_overflow;
++		sec_flavor->flavor = be32_to_cpup(p);
++
++		if (sec_flavor->flavor == RPC_AUTH_GSS) {
++			if (decode_secinfo_gss(xdr, sec_flavor))
++				break;
++		}
++	}
++
++	return 0;
++
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++}
++
+ #if defined(CONFIG_NFS_V4_1)
+ static int decode_exchange_id(struct xdr_stream *xdr,
+ 			      struct nfs41_exchange_id_res *res)
+@@ -6068,6 +6176,34 @@ out:
+ }
+ #endif /* CONFIG_NFS_V4_1 */
  
- 	ipm = ip_map_cached_get(xprt);
- 	if (ipm == NULL)
--		ipm = __ip_map_lookup(sn->ip_map_cache, rqstp->rq_server->sv_program->pg_class,
--				    &sin6->sin6_addr);
-+		ipm = __ip_map_lookup(sn->ip_map_cache, net,
-+				      rqstp->rq_server->sv_program->pg_class,
-+				      &sin6->sin6_addr);
++/*
++ * Decode SECINFO response
++ */
++static int nfs4_xdr_dec_secinfo(struct rpc_rqst *rqstp, uint32_t *p,
++				struct nfs4_secinfo_res *res)
++{
++	struct xdr_stream xdr;
++	struct compound_hdr hdr;
++	int status;
++
++	xdr_init_decode(&xdr, &rqstp->rq_rcv_buf, p);
++	status = decode_compound_hdr(&xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(&xdr, &res->seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_putfh(&xdr);
++	if (status)
++		goto out;
++	status = decode_secinfo(&xdr, res);
++	if (status)
++		goto out;
++out:
++	return status;
++	return NFS_OK;
++}
++
+ /**
+  * nfs4_decode_dirent - Decode a single NFSv4 directory entry stored in
+  *                      the local page cache.
+@@ -6258,6 +6394,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ 	PROC(SETACL,		enc_setacl,		dec_setacl),
+ 	PROC(FS_LOCATIONS,	enc_fs_locations,	dec_fs_locations),
+ 	PROC(RELEASE_LOCKOWNER,	enc_release_lockowner,	dec_release_lockowner),
++	PROC(SECINFO,		enc_secinfo,		dec_secinfo),
+ #if defined(CONFIG_NFS_V4_1)
+ 	PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
+ 	PROC(CREATE_SESSION,	enc_create_session,	dec_create_session),
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 134716e..7e7f6b7 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -550,6 +550,7 @@ enum {
+ 	NFSPROC4_CLNT_SETACL,
+ 	NFSPROC4_CLNT_FS_LOCATIONS,
+ 	NFSPROC4_CLNT_RELEASE_LOCKOWNER,
++	NFSPROC4_CLNT_SECINFO,
  
- 	if (ipm == NULL)
- 		return SVC_DENIED;
+ 	/* nfs41 */
+ 	NFSPROC4_CLNT_EXCHANGE_ID,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 71ee679..8f3d7b2 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -3,6 +3,7 @@
+ 
+ #include <linux/nfsacl.h>
+ #include <linux/nfs3.h>
++#include <linux/sunrpc/gss_api.h>
+ 
+ /*
+  * To change the maximum rsize and wsize supported by the NFS client, adjust
+@@ -936,6 +937,38 @@ struct nfs4_fs_locations_res {
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ 
++struct nfs4_secinfo_oid {
++	unsigned int len;
++	char data[GSS_OID_MAX_LEN];
++};
++
++struct nfs4_secinfo_gss {
++	struct nfs4_secinfo_oid sec_oid4;
++	unsigned int qop4;
++	unsigned int service;
++};
++
++struct nfs4_secinfo_flavor {
++	unsigned int 		flavor;
++	struct nfs4_secinfo_gss	gss;
++};
++
++struct nfs4_secinfo_flavors {
++	unsigned int num_flavors;
++	struct nfs4_secinfo_flavor flavors[0];
++};
++
++struct nfs4_secinfo_arg {
++	const struct nfs_fh		*dir_fh;
++	const struct qstr		*name;
++	struct nfs4_sequence_args	seq_args;
++};
++
++struct nfs4_secinfo_res {
++	struct nfs4_secinfo_flavors	*flavors;
++	struct nfs4_sequence_res	seq_res;
++};
++
+ #endif /* CONFIG_NFS_V4 */
+ 
+ struct nfstime4 {
+@@ -1118,6 +1151,7 @@ struct nfs_rpc_ops {
+ 				struct iattr *iattr);
+ 	int	(*init_client) (struct nfs_client *, const struct rpc_timeout *,
+ 				const char *, rpc_authflavor_t, int);
++	int	(*secinfo)(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+ };
+ 
+ /*
+-- 
+1.7.4.1
+
