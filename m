@@ -1,166 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:39366 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757127Ab1CAR35 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Mar 2011 12:29:57 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH pNFS wave 3 Version 3 17/18] NFSv4.1: turn off pNFS on ds connection failure
-Date: Mon, 28 Feb 2011 20:34:22 -0500
-Message-Id: <1298943263-2886-18-git-send-email-andros@netapp.com>
-In-Reply-To: <1298943263-2886-17-git-send-email-andros@netapp.com>
-References: <1298943263-2886-1-git-send-email-andros@netapp.com>
- <1298943263-2886-2-git-send-email-andros@netapp.com>
- <1298943263-2886-3-git-send-email-andros@netapp.com>
- <1298943263-2886-4-git-send-email-andros@netapp.com>
- <1298943263-2886-5-git-send-email-andros@netapp.com>
- <1298943263-2886-6-git-send-email-andros@netapp.com>
- <1298943263-2886-7-git-send-email-andros@netapp.com>
- <1298943263-2886-8-git-send-email-andros@netapp.com>
- <1298943263-2886-9-git-send-email-andros@netapp.com>
- <1298943263-2886-10-git-send-email-andros@netapp.com>
- <1298943263-2886-11-git-send-email-andros@netapp.com>
- <1298943263-2886-12-git-send-email-andros@netapp.com>
- <1298943263-2886-13-git-send-email-andros@netapp.com>
- <1298943263-2886-14-git-send-email-andros@netapp.com>
- <1298943263-2886-15-git-send-email-andros@netapp.com>
- <1298943263-2886-16-git-send-email-andros@netapp.com>
- <1298943263-2886-17-git-send-email-andros@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:21810 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752685Ab1COSQA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 14:16:00 -0400
+Subject: Re: problem with nfs latency during high IO
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com>
+Date: Tue, 15 Mar 2011 14:15:41 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Judith Flo Gaya <jflo@imppc.org>
+Message-Id: <7D458ECC-9AFB-4791-94EF-736061BD1095@oracle.com>
+References: <4D7B6DE5.8010008@imppc.org> <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com> <4D7FA11F.5020604@imppc.org> <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Andy Adamson <andros@netapp.com>
 
-If a data server is unavailable, go through MDS.
+On Mar 15, 2011, at 2:03 PM, Chuck Lever wrote:
 
-Mark the deviceid containing the data server as a negative cache entry.
-Do not try to connect to any data server on a deviceid marked as a negative
-cache entry. Mark any layout that tries to use the marked deviceid as failed.
+> 
+> On Mar 15, 2011, at 1:25 PM, Judith Flo Gaya wrote:
+> 
+>> Hello Chuck,
+>> 
+>> On 03/15/2011 05:24 PM, Chuck Lever wrote:
+>>> Hi Judith-
+>>> 
+>>> On Mar 12, 2011, at 7:58 AM, Judith Flo Gaya wrote:
+>>> 
+>>>> Hello,
+>>>> 
+>>>> I was told some days ago that my problem with my NFS system is related to this bug, as the problem that I'm experiencing is quite similar.
+>>>> 
+>>>> The bug : https://bugzilla.redhat.com/show_bug.cgi?id=469848
+>>>> 
+>>>> The link itself explains quite well my issue, I'm just truing to copy a big file (36Gb) to my nfs server and when I try to get an ls -l command to the same folder where I'm copying data, the command gets stuck for some time. This amount of time changes from a few secs to SOME minutes (9' is the current record).
+>>>> I can live with some seconds of delay, but minutes is something quite unacceptable.
+>>>> 
+>>>> As this is an nfs server running on a red hat system (an HP ibrix x9300 with Red Hat 5.3 x86_64, kernel 2.6.18-128) I was told to apply the patch suggested from the bug on my clients.
+>>>> 
+>>>> Unfortunately my clients are running fedora core 14 (x86_64, kernel 2.6.35.6-45) and I can't find the file that they are referring to, the file fs/nfs/inode.c is not there and I can't find the rpm that contains it.
+>>>> 
+>>>> As the bug is a very very old one, I took it for granted that is already applied to fedora, but I wanted to make sure that it is looking at the file.
+>>>> 
+>>>> Can you help me on this? I'm I wrong in my supposition (is the patch really applied)? is it possible that my problem is somewhere else?
+>>> 
+>>> This sounds like typical behavior.
+>> But it is not like this when I use a RHEL6 as a client to those servers, in this case, the ls only last for some seconds, nothing like the minutes that it takes from my fedora.
+> 
+> Which Fedora systems, exactly?  The fix I described below is almost certainly in RHEL 6.
+> 
+>>> 
+>>> POSIX requires that the mtime and file size returned by stat(2) ('ls -l') reflect the most recent write(2).  On NFS, the server sets both of these fields.  If a client is caching dirty data, and an application does a stat(2), the client is forced to flush the dirty data so that the server can update mtime and file size appropriately.  The client then does a GETATTR, and returns those values to the requesting application.
+>>> 
+>> ok, sorry, I know this is a very stupid question but. what do you mean by dirty data?
+> 
+> Dirty data is data that your application has written to the file but which hasn't been flushed to the server's disk.  This data resides in the client's page cache, on its way to the server.
+> 
+>> BTW i understand the time issue, but again, if the version of the kernel that the red hat has installed allows me to get the information soon, why a newer kernel in fedora does not?
+> 
+> Sounds like a bug.  Fedora kernels newer than 2.6.32 should work as well as, or better than, RHEL 6.
 
-Inodes with a layout marked as fails will not use the layout for I/O, and will
-not perform any more layoutgets.
-Inodes without a layout will still do layoutget, but the layout will get
-marked immediately.
+Looks like commit acdc53b2 "NFS: Replace __nfs_write_mapping with sync_inode()" removes the code that holds i_mutex while trying to flush writes before a GETATTR.  This means application writes can possibly starve a stat(2) call.  Trond, this seems like a regression...?
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4filelayout.c    |    4 +++-
- fs/nfs/nfs4filelayout.h    |    4 ++++
- fs/nfs/nfs4filelayoutdev.c |   28 ++++++++++++++++++++++++----
- fs/nfs/pnfs.c              |    9 +++++----
- 4 files changed, 36 insertions(+), 9 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index abb1481..fea483a 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -214,7 +214,9 @@ filelayout_read_pagelist(struct nfs_read_data *data)
- 	idx = nfs4_fl_calc_ds_index(lseg, j);
- 	ds = nfs4_fl_prepare_ds(lseg, idx);
- 	if (!ds) {
--		printk(KERN_ERR "%s: prepare_ds failed, use MDS\n", __func__);
-+		/* Either layout fh index faulty, or ds connect failed */
-+		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
-+		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
- 		return PNFS_NOT_ATTEMPTED;
- 	}
- 	dprintk("%s USE DS:ip %x %hu\n", __func__,
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index 23f1e1e..ee0c907 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -55,10 +55,14 @@ struct nfs4_pnfs_ds {
- 	atomic_t		ds_count;
- };
- 
-+/* nfs4_file_layout_dsaddr flags */
-+#define NFS4_DEVICE_ID_NEG_ENTRY	0x00000001
-+
- struct nfs4_file_layout_dsaddr {
- 	struct hlist_node		node;
- 	struct nfs4_deviceid		deviceid;
- 	atomic_t			ref;
-+	unsigned long			flags;
- 	u32				stripe_count;
- 	u8				*stripe_indices;
- 	u32				ds_num;
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index ac38c75..433204f 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -602,6 +602,21 @@ nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j)
- 	return flseg->fh_array[i];
- }
- 
-+static void
-+filelayout_mark_devid_negative(struct nfs4_file_layout_dsaddr *dsaddr,
-+			       int err, u32 ds_addr)
-+{
-+	u32 *p = (u32 *)&dsaddr->deviceid;
-+
-+	printk(KERN_ERR "NFS: data server %x connection error %d."
-+		" Deviceid [%x%x%x%x] marked out of use.\n",
-+		ds_addr, err, p[0], p[1], p[2], p[3]);
-+
-+	spin_lock(&filelayout_deviceid_lock);
-+	dsaddr->flags |= NFS4_DEVICE_ID_NEG_ENTRY;
-+	spin_unlock(&filelayout_deviceid_lock);
-+}
-+
- struct nfs4_pnfs_ds *
- nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
- {
-@@ -615,13 +630,18 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
- 	}
- 
- 	if (!ds->ds_clp) {
-+		struct nfs_server *s = NFS_SERVER(lseg->pls_layout->plh_inode);
- 		int err;
- 
--		err = nfs4_ds_connect(NFS_SERVER(lseg->pls_layout->plh_inode),
--					  dsaddr->ds_list[ds_idx]);
-+		if (dsaddr->flags & NFS4_DEVICE_ID_NEG_ENTRY) {
-+			/* Already tried to connect, don't try again */
-+			dprintk("%s Deviceid marked out of use\n", __func__);
-+			return NULL;
-+		}
-+		err = nfs4_ds_connect(s, ds);
- 		if (err) {
--			printk(KERN_ERR "%s nfs4_ds_connect error %d\n",
--			       __func__, err);
-+			filelayout_mark_devid_negative(dsaddr, err,
-+						       ntohl(ds->ds_ip_addr));
- 			return NULL;
- 		}
- 	}
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 1f4c153..3e54514 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -739,15 +739,16 @@ pnfs_update_layout(struct inode *ino,
- 		dprintk("%s matches recall, use MDS\n", __func__);
- 		goto out_unlock;
- 	}
--	/* Check to see if the layout for the given range already exists */
--	lseg = pnfs_find_lseg(lo, iomode);
--	if (lseg)
--		goto out_unlock;
- 
- 	/* if LAYOUTGET already failed once we don't try again */
- 	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
- 		goto out_unlock;
- 
-+	/* Check to see if the layout for the given range already exists */
-+	lseg = pnfs_find_lseg(lo, iomode);
-+	if (lseg)
-+		goto out_unlock;
-+
- 	if (pnfs_layoutgets_blocked(lo, NULL, 0))
- 		goto out_unlock;
- 	atomic_inc(&lo->plh_outstanding);
 -- 
-1.6.6
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
