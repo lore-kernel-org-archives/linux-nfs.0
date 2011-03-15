@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:57250 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:3698 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752744Ab1CPUyW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2011 16:54:22 -0400
-Message-ID: <4D81236C.8080703@netapp.com>
-Date: Wed, 16 Mar 2011 16:54:04 -0400
+	id S1758291Ab1COTw1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Mar 2011 15:52:27 -0400
+Message-ID: <4D7FC378.1000702@netapp.com>
+Date: Tue, 15 Mar 2011 15:52:24 -0400
 From: Bryan Schumaker <bjschuma@netapp.com>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH v5 1/5] NFS: convert call_sync() to a function
+Subject: [PATCH v4 1/5] NFS: convert call_sync() to a function
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
