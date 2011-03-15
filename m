@@ -1,40 +1,33 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [PATCH 17/17] net,act_police,rcu: remove rcu_barrier()
-Date: Tue, 15 Mar 2011 14:04:52 -0700 (PDT)
-Message-ID: <20110315.140452.48500353.davem@davemloft.net>
-References: <4D7F3610.6000809@cn.fujitsu.com>
-	<4D7F3B62.6000005@cn.fujitsu.com>
+From: Marc Eshel <eshel@almaden.ibm.com>
+Subject: Linux pNFS status meeting CANCELED this week
+Date: Tue, 15 Mar 2011 16:40:17 -0700
+Message-ID: <OFA1EF420A.0E360008-ON88257854.0081D49A-88257854.0081FBED@us.ibm.com>
+References: <OF5807E8ED.B1E3CA64-ON8825784F.00117ACE-8825784F.001199D5@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Cc: mingo@elte.hu, paulmck@linux.vnet.ibm.com, axboe@kernel.dk,
-	Trond.Myklebust@netapp.com, vladislav.yasevich@hp.com,
-	sri@us.ibm.com, viro@zeniv.linux.org.uk, eparis@redhat.com,
-	menage@google.com, kuznet@ms2.inr.ac.ru, pekkas@netcore.fi,
-	jmorris@namei.org, yoshfuji@linux-ipv6.org, kaber@trash.net,
-	johannes@sipsolutions.net, linville@tuxdriver.com, hadi@cyberus.ca,
-	jpirko@redhat.com, eric.dumazet@gmail.com, hagen@jauu.net,
-	randy.dunlap@oracle.com, jkosina@suse.cz, joe@perches.com,
-	u.kleine-koenig@pengutronix.de, ebiederm@xmission.com,
-	gregkh@suse.de, xemul@openvz.org, linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-sctp@vger.kernel.org,
-	netdev@vger.kernel.org, containers@lists.linux-foundation.org,
-	linux-decnet-user@lists.sourceforge.net,
-	linux-wireless@vger.kernel.org,
-	linux-security-module@vger.kernel.org
-To: laijs@cn.fujitsu.com
-Return-path: <linux-security-module-owner@vger.kernel.org>
-In-Reply-To: <4D7F3B62.6000005@cn.fujitsu.com>
-Sender: linux-security-module-owner@vger.kernel.org
+Content-Type: text/plain; charset="US-ASCII"
+To: linux-nfs@vger.kernel.org
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:33658 "EHLO e5.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754598Ab1COXkZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Mar 2011 19:40:25 -0400
+Received: from d01dlp01.pok.ibm.com (d01dlp01.pok.ibm.com [9.56.224.56])
+	by e5.ny.us.ibm.com (8.14.4/8.13.1) with ESMTP id p2FNFIje027342
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Mar 2011 19:15:18 -0400
+Received: from d01relay06.pok.ibm.com (d01relay06.pok.ibm.com [9.56.227.116])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 8C24F38C8039
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Mar 2011 19:40:18 -0400 (EDT)
+Received: from d01av05.pok.ibm.com (d01av05.pok.ibm.com [9.56.224.195])
+	by d01relay06.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id p2FNeLFU2428940
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Mar 2011 19:40:21 -0400
+Received: from d01av05.pok.ibm.com (loopback [127.0.0.1])
+	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id p2FNeLev020940
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Mar 2011 19:40:21 -0400
+Received: from d01ml604.pok.ibm.com (d01ml604.pok.ibm.com [9.56.227.90])
+	by d01av05.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id p2FNeLKP020937
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Mar 2011 19:40:21 -0400
+In-Reply-To: <OF5807E8ED.B1E3CA64-ON8825784F.00117ACE-8825784F.001199D5@us.ibm.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Lai Jiangshan <laijs@cn.fujitsu.com>
-Date: Tue, 15 Mar 2011 18:11:46 +0800
 
-> 
-> 
-> There is no callback of this module maybe queued
-> since we use kfree_rcu(), we can safely remove the rcu_barrier().
-> 
-> Signed-off-by: Lai Jiangshan <laijs@cn.fujitsu.com>
-
-Acked-by: David S. Miller <davem@davemloft.net>
