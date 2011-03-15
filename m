@@ -1,78 +1,153 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:16370 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751028Ab1CYEr7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Mar 2011 00:47:59 -0400
-Date: Fri, 25 Mar 2011 15:47:54 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Wu Fengguang <fengguang.wu@intel.com>
-Subject: Re: NFS page states & writeback
-Message-ID: <20110325044754.GK26611@dastard>
-References: <20110325012803.GA25052@quack.suse.cz>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110325012803.GA25052@quack.suse.cz>
+Received: from cn.fujitsu.com ([222.73.24.84]:63312 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751169Ab1COCav (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Mar 2011 22:30:51 -0400
+Message-ID: <4D7ECF91.2030308@cn.fujitsu.com>
+Date: Tue, 15 Mar 2011 10:31:45 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: roel <roel.kluin@gmail.com>, Neil Brown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: wrong index used in inner loop
+References: <4D76A06A.4090405@gmail.com> <20110309004955.GD15814@fieldses.org> <4D79A183.8090306@cn.fujitsu.com> <20110314222229.GJ25442@fieldses.org>
+In-Reply-To: <20110314222229.GJ25442@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Mar 25, 2011 at 02:28:03AM +0100, Jan Kara wrote:
->   Hi,
-> 
->   while working on changes to balance_dirty_pages() I was investigating why
-> NFS writeback is *so* bumpy when I do not call writeback_inodes_wb() from
-> balance_dirty_pages(). Take a single dd writing to NFS. What I can
-> see is that we quickly accumulate dirty pages upto limit - ~700 MB on that
-> machine. So flusher thread starts working and in an instant all these ~700
-> MB transition from Dirty state to Writeback state. Then, as server acks
-> writes, Writeback pages slowly change to Unstable pages (at 100 MB/s rate
-> let's say) and then at one moment (commit to server happens) all pages
-> transition from Unstable to Clean state - the cycle begins from the start.
-> 
-> The reason for this behavior seems to be a flaw in the logic in
-> over_bground_thresh() which checks:
-> global_page_state(NR_FILE_DIRTY) +
->       global_page_state(NR_UNSTABLE_NFS) > background_thresh
-> So at the moment all pages are turned Writeback, flusher thread goes to
-> sleep and doesn't do any background writeback, until we have accumulated
-> enough Stable pages to get over background_thresh. But NFS needs to have
-> ->write_inode() called so that it can sent commit requests to the server.
-> So effectively we end up sending commit only when background_thresh Unstable
-> pages have accumulated which creates the bumpyness. Previously this wasn't
-> a problem because balance_dirty_pages() ended up calling ->write_inode()
-> often enough for NFS to send commit requests reasonably often.
-> 
-> Now I wouldn't write so long email about this if I knew how to cleanly fix
-> the check ;-). One way to "fix" the check would be to add there Writeback
-> pages:
-> NR_FILE_DIRTY + NR_WRITEBACK + NR_UNSTABLE_NFS > background_thresh
-> 
-> This would work in the sense that it would keep flusher thread working but
-> a) for normal filesystems it would be working even if there's potentially
-> nothing to do (or it is not necessary to do anything)
-> b) NFS is picky when it sends commit requests (inode has to have more
-> Stable pages than Writeback pages if I'm reading the code in
-> nfs_commit_unstable_pages() right) so flusher thread may be working but
-> nothing really happens until enough stable pages accumulate.
-> 
-> A check which kind of works but looks a bit hacky and is not perfect when
-> there are multiple files is:
-> NR_FILE_DIRTY + NR_UNSTABLE_NFS > background_thresh ||
-> NR_UNSTABLE_NFS > NR_WRITEBACK (to match what NFS does)
-> 
-> Any better idea for a fix?
 
-Have NFS account for it's writeback pages to also be accounted as
-NR_UNSTABLE_NFS pages? i.e. rather than incrementing NR_UNSTABLE_NFS
-at the writeback->unstable transition, account it at the
-dirty->writeback transition....
 
-Cheers,
+J. Bruce Fields:
+> On Fri, Mar 11, 2011 at 12:13:55PM +0800, Mi Jinlong wrote:
+>>
+>> J. Bruce Fields:
+>>> On Tue, Mar 08, 2011 at 10:32:26PM +0100, roel wrote:
+>>>> Index i was already used in the outer loop
+>>>>
+>>>> Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
+>>>> ---
+>>>>  fs/nfsd/nfs4xdr.c |    4 ++--
+>>>>  1 files changed, 2 insertions(+), 2 deletions(-)
+>>>>
+>>>> Not 100% sure this one is needed but it looks suspicious.
+>>> Looks bad to me, thanks.
+>>>
+>>> nfsd4_decode_create_session should probably really be broken up a little
+>>> bit; if it wasn't so long this would have been more obvious.
+>>>
+>>> I'll see if I can slip this into 2.6.38 with a couple other last-minute
+>>> patches....  Otherwise, it'll be in 2.6.39.
+>>>
+>>> --b.
+>>>
+>>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>>>> index 1275b86..615f0a9 100644
+>>>> --- a/fs/nfsd/nfs4xdr.c
+>>>> +++ b/fs/nfsd/nfs4xdr.c
+>>>> @@ -1142,7 +1142,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+>>>>  
+>>>>  	u32 dummy;
+>>>>  	char *machine_name;
+>>>> -	int i;
+>>>> +	int i, j;
+>>>>  	int nr_secflavs;
+>>>>  
+>>>>  	READ_BUF(16);
+>>>> @@ -1215,7 +1215,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+>>>>  			READ_BUF(4);
+>>>>  			READ32(dummy);
+>>>>  			READ_BUF(dummy * 4);
+>>>> -			for (i = 0; i < dummy; ++i)
+>>>> +			for (j = 0; j < dummy; ++j)
+>>>>  				READ32(dummy);
+>>   We must not use dummy for index here.
+>>   After the first index, READ32(dummy) will change dummy!!!!
+> 
+> Actually, wait, this is kind of silly.  I don't see why we couldn't just
+> skip the loop and do
+> 
+> 	p += dummy;
+> 
+> Also, your new test is still failing with a BAD_XDR error.  Well, maybe
+> the test should fail--we don't really implement this yet anyway--but it
+> should at least be getting past the xdr decoding.  So something else is
+> still wrong.
 
-Dave.
+  How did you modify it??
+
+  When testing it, I modify as 
+ 
+    -                       for (j = 0; j < dummy; ++j)
+    -                               READ32(dummy);
+    +                       p += dummy;
+
+  or
+    
+    -                       for (j = 0; j < dummy; ++j)
+    -                               READ32(dummy);
+
+  Test case CSESS16 and CSESS16a are PASS, 
+  I can't get BAD_XDR error as you said.
+
+--
+thanks,
+Mi Jinlong
+
+> 
+> --b.
+> 
+>>   The following patch fix this problem.
+>>
+>> --
+>> thanks,
+>> Mi Jinlong
+>> ============================================================
+>>
+>> We must not use dummy for index.
+>> After the first index, READ32(dummy) will change dummy!!!!
+>>
+>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+>> ---
+>>  fs/nfsd/nfs4xdr.c |    4 ++--
+>>  1 files changed, 2 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index 615f0a9..8dd70d0 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -1140,7 +1140,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+>>  {
+>>  	DECODE_HEAD;
+>>  
+>> -	u32 dummy;
+>> +	u32 dummy, tmp;
+>>  	char *machine_name;
+>>  	int i, j;
+>>  	int nr_secflavs;
+>> @@ -1216,7 +1216,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+>>  			READ32(dummy);
+>>  			READ_BUF(dummy * 4);
+>>  			for (j = 0; j < dummy; ++j)
+>> -				READ32(dummy);
+>> +				READ32(tmp);
+>>  			break;
+>>  		case RPC_AUTH_GSS:
+>>  			dprintk("RPC_AUTH_GSS callback secflavor "
+>> -- 
+>> 1.7.4.1
+>>
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
 -- 
-Dave Chinner
-david@fromorbit.com
+----
+thanks
+Mi Jinlong
+
