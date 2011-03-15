@@ -1,10 +1,10 @@
 From: David Miller <davem@davemloft.net>
-Subject: Re: [PATCH 11/17] net,rcu: convert call_rcu(sctp_local_addr_free)
- to kfree_rcu()
-Date: Tue, 15 Mar 2011 14:03:59 -0700 (PDT)
-Message-ID: <20110315.140359.39186121.davem@davemloft.net>
+Subject: Re: [PATCH 15/17] net,rcu: convert call_rcu(ha_rcu_free) to
+ kfree_rcu()
+Date: Tue, 15 Mar 2011 14:04:22 -0700 (PDT)
+Message-ID: <20110315.140422.59684684.davem@davemloft.net>
 References: <4D7F3610.6000809@cn.fujitsu.com>
-	<4D7F39CE.80403@cn.fujitsu.com>
+	<4D7F3ABA.7020709@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: Text/Plain; charset=us-ascii
 Cc: mingo@elte.hu, paulmck@linux.vnet.ibm.com, axboe@kernel.dk,
@@ -24,21 +24,21 @@ Cc: mingo@elte.hu, paulmck@linux.vnet.ibm.com, axboe@kernel.dk,
 	linux-security-module@vger.kernel.org
 To: laijs@cn.fujitsu.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from 74-93-104-97-Washington.hfc.comcastbusiness.net ([74.93.104.97]:41186
+Received: from 74-93-104-97-Washington.hfc.comcastbusiness.net ([74.93.104.97]:41221
 	"EHLO sunset.davemloft.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758748Ab1COVDX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 17:03:23 -0400
-In-Reply-To: <4D7F39CE.80403@cn.fujitsu.com>
+	by vger.kernel.org with ESMTP id S1758703Ab1COVDp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 17:03:45 -0400
+In-Reply-To: <4D7F3ABA.7020709@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Lai Jiangshan <laijs@cn.fujitsu.com>
-Date: Tue, 15 Mar 2011 18:05:02 +0800
+Date: Tue, 15 Mar 2011 18:08:58 +0800
 
 > 
 > 
-> The rcu callback sctp_local_addr_free() just calls a kfree(),
-> so we use kfree_rcu() instead of the call_rcu(sctp_local_addr_free).
+> The rcu callback ha_rcu_free() just calls a kfree(),
+> so we use kfree_rcu() instead of the call_rcu(ha_rcu_free).
 > 
 > Signed-off-by: Lai Jiangshan <laijs@cn.fujitsu.com>
 
