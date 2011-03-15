@@ -1,79 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qw0-f46.google.com ([209.85.216.46]:34306 "EHLO
-	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754926Ab1CQWNo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2011 18:13:44 -0400
-Received: by qwk3 with SMTP id 3so2434432qwk.19
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Mar 2011 15:13:43 -0700 (PDT)
-In-Reply-To: <1300387690.2684.23.camel@vovan.net.home>
-References: <1300387690.2684.23.camel@vovan.net.home>
-Date: Thu, 17 Mar 2011 18:13:43 -0400
-Message-ID: <AANLkTim6nptBM40b5Zt2fhr7aiQ47kqX+_RBprnCokRD@mail.gmail.com>
-Subject: Re: rpc.svcgssd problem after updating client 1.2.2->1.2.3
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: Vladimir Elisseev <vovan@vovan.nl>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet10.oracle.com ([148.87.113.121]:53493 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932138Ab1COQZD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 12:25:03 -0400
+Subject: Re: problem with nfs latency during high IO
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4D7B6DE5.8010008@imppc.org>
+Date: Tue, 15 Mar 2011 12:24:40 -0400
+Cc: <linux-nfs@vger.kernel.org>
+Message-Id: <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com>
+References: <4D7B6DE5.8010008@imppc.org>
+To: Judith Flo Gaya <jflo@imppc.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Mar 17, 2011 at 2:48 PM, Vladimir Elisseev <vovan@vovan.nl> wrote:
+Hi Judith-
+
+On Mar 12, 2011, at 7:58 AM, Judith Flo Gaya wrote:
+
 > Hello,
->
-> I've got a problem after updating NFS client. I've been trying to find
-> possible solution without a success for a while, so I'd appreciate any
-> help. All the info is below. Client has kernel 2.6.37 and server 2.6.36.
->
-> Regards,
-> Vladimir.
->
-> On the server side the error is "rpc.svcgssd[15159]: qword_eol: fflush
-> failed: errno 22 (Invalid argument)", the full track is below:
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: leaving poll
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: handling null request
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: sname = host/x.x.x@X.X
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids: calling
-> umich_ldap->princ_to_ids
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: ldap_init_and_bind: version
-> mismatch between API information and protocol version. Setting protocol
-> version to 3
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids:
-> umich_ldap->princ_to_ids returned -2
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids: calling
-> nsswitch->princ_to_ids
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nss_getpwnam: name
-> 'host/x.x.x@X.X' domain '(null)': resulting localname
-> 'host/user.net.home'
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids:
-> nsswitch->princ_to_ids returned -2
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids: final
-> return value is -2
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: DEBUG: serialize_krb5_ctx:
-> lucid version!
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: prepare_krb5_rfc4121_buffer:
-> protocol 1
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: prepare_krb5_rfc4121_buffer:
-> serializing key with enctype 18 and size 32
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: doing downcall
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: mech: krb5, hndl len: 4, ctx
-> len 52, timeout: 1300464362 (86399 from now), clnt: host@x.x.x, uid: -1,
-> gid: -1, num aux grps: 0:
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: qword_eol: fflush failed: errno
-> 22 (Invalid argument)
-> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: WARNING: error writing to
-> downcall channel /proc/net/rpc/auth.rpcsec.context/channel: Invalid
-> argument
+> 
+> I was told some days ago that my problem with my NFS system is related to this bug, as the problem that I'm experiencing is quite similar.
+> 
+> The bug : https://bugzilla.redhat.com/show_bug.cgi?id=469848
+> 
+> The link itself explains quite well my issue, I'm just truing to copy a big file (36Gb) to my nfs server and when I try to get an ls -l command to the same folder where I'm copying data, the command gets stuck for some time. This amount of time changes from a few secs to SOME minutes (9' is the current record).
+> I can live with some seconds of delay, but minutes is something quite unacceptable.
+> 
+> As this is an nfs server running on a red hat system (an HP ibrix x9300 with Red Hat 5.3 x86_64, kernel 2.6.18-128) I was told to apply the patch suggested from the bug on my clients.
+> 
+> Unfortunately my clients are running fedora core 14 (x86_64, kernel 2.6.35.6-45) and I can't find the file that they are referring to, the file fs/nfs/inode.c is not there and I can't find the rpm that contains it.
+> 
+> As the bug is a very very old one, I took it for granted that is already applied to fedora, but I wanted to make sure that it is looking at the file.
+> 
+> Can you help me on this? I'm I wrong in my supposition (is the patch really applied)? is it possible that my problem is somewhere else?
 
-I've seen this when the negotiated enctype is AES (18), and the kernel
-does not have AES support.  However, 2.6.36 should have AES support.
-Did the client update include a Kerberos version update as well?  (See
-recently submitted patches regarding "acceptor subkey".)
+This sounds like typical behavior.
 
-The immediate work-around for the acceptor subkey problem is to set
+POSIX requires that the mtime and file size returned by stat(2) ('ls -l') reflect the most recent write(2).  On NFS, the server sets both of these fields.  If a client is caching dirty data, and an application does a stat(2), the client is forced to flush the dirty data so that the server can update mtime and file size appropriately.  The client then does a GETATTR, and returns those values to the requesting application.
 
-  default_tgs_enctypes = des-cbc-crc
+The problem is that Linux caches writes aggressively.  That makes flushing before the GETATTR take a long time in some cases.  On some versions of Linux, it could be an indefinite amount of time; recently we added a bit of logic to make the GETATTR code path hold up additional application writes so it would be able to squeeze in the GETATTR to get a consistent snapshot of mtime and size.
 
-in the server's /etc/krb5.conf file.  Could you try this and see if it helps?
+Another issue is: what if other clients are writing to the file?  Those writes won't be seen on your client, either in the form of data changes or mtime/size updates, until your client's attribute cache times out (or the file is unlocked or closed).
 
-K.C.
+The best you can do for now is to lower the amount of dirty data the client allows to be outstanding, thus reducing the amount of time it takes for a flush to complete.  This is done with a sysctl, I believe "vm.dirty_ratio," and affects all file systems on the client.  Alternately, the client file system in question can be mounted with "sync" to cause writes to go to the server immediately, but that has other significant performance implications.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
