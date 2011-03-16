@@ -1,346 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:19426 "EHLO mx2.netapp.com"
+Received: from cantor.suse.de ([195.135.220.2]:55809 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932883Ab1CWN2H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2011 09:28:07 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 08/12] NFSv4.1: add generic layer hooks for pnfs COMMIT
-Date: Wed, 23 Mar 2011 09:27:51 -0400
-Message-Id: <1300886875-5016-9-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
-References: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
+	id S1754220Ab1CPVao (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2011 17:30:44 -0400
+Date: Thu, 17 Mar 2011 08:30:34 +1100
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Use of READDIRPLUS on large directories
+Message-ID: <20110317083034.479ecb5f@notabene.brown>
+In-Reply-To: <1300285203.16266.46.camel@lade.trondhjem.org>
+References: <20110316155528.31913c58@notabene.brown>
+	<24085EE6-EF0B-4F36-8F6A-100AB863F408@oracle.com>
+	<4D80C5C6.2060003@netapp.com>
+	<1300285203.16266.46.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-We create three major hooks for the pnfs code.
+On Wed, 16 Mar 2011 10:20:03 -0400 Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
 
-pnfs_mark_request_commit() is called during writeback_done from
-nfs_mark_request_commit, which gives the driver an opportunity to
-claim it wants control over commiting a particular req.
+> On Wed, 2011-03-16 at 10:14 -0400, Bryan Schumaker wrote:
+> > I guess I misunderstood what to publish test results for?  I know I included numbers on one of the patches (commit 82f2e5472e2304e531c2fa85e457f4a71070044e, copied below)...  I'll find the numbers you're asking about and post them.
+> > 
+> > -Bryan
+> > 
+> > commit 82f2e5472e2304e531c2fa85e457f4a71070044e
+> > Author: Bryan Schumaker <bjschuma@netapp.com>
+> > Date:   Thu Oct 21 16:33:18 2010 -0400
+> > 
+> >     NFS: Readdir plus in v4
+> >     
+> >     By requsting more attributes during a readdir, we can mimic the readdir plus
+> >     operation that was in NFSv3.
+> >     
+> >     To test, I ran the command `ls -lU --color=none` on directories with various
+> >     numbers of files.  Without readdir plus, I see this:
+> >     
+> >     n files |    100    |   1,000   |  10,000   |  100,000  | 1,000,000
+> >     --------+-----------+-----------+-----------+-----------+----------
+> >     real    | 0m00.153s | 0m00.589s | 0m05.601s | 0m56.691s | 9m59.128s
+> >     user    | 0m00.007s | 0m00.007s | 0m00.077s | 0m00.703s | 0m06.800s
+> >     sys     | 0m00.010s | 0m00.070s | 0m00.633s | 0m06.423s | 1m10.005s
+> >     access  | 3         | 1         | 1         | 4         | 31
+> >     getattr | 2         | 1         | 1         | 1         | 1
+> >     lookup  | 104       | 1,003     | 10,003    | 100,003   | 1,000,003
+> >     readdir | 2         | 16        | 158       | 1,575     | 15,749
+> >     total   | 111       | 1,021     | 10,163    | 101,583   | 1,015,784
+> >     
+> >     With readdir plus enabled, I see this:
+> >     
+> >     n files |    100    |   1,000   |  10,000   |  100,000  | 1,000,000
+> >     --------+-----------+-----------+-----------+-----------+----------
+> >     real    | 0m00.115s | 0m00.206s | 0m01.079s | 0m12.521s | 2m07.528s
+> >     user    | 0m00.003s | 0m00.003s | 0m00.040s | 0m00.290s | 0m03.296s
+> >     sys     | 0m00.007s | 0m00.020s | 0m00.120s | 0m01.357s | 0m17.556s
+> >     access  | 3         | 1         | 1         | 1         | 7
+> >     getattr | 2         | 1         | 1         | 1         | 1
+> >     lookup  | 4         | 3         | 3         | 3         | 3
+> >     readdir | 6         | 62        | 630       | 6,300     | 62,993
+> >     total   | 15        | 67        | 635       | 6,305     | 63,004
+> >     
+> >     Readdir plus disabled has about a 16x increase in the number of rpc calls an
+> >     is 4 - 5 times slower on large directories.
+> 
+> Right. Those are the numbers that convinced me...
+> 
+> 
 
-pnfs_choose_commit_list() is called from nfs_scan_list
-to choose which list a given req should be added to, based on
-where we intend to send it for COMMIT.  It is up to the driver
-to have preallocated list headers for each destination it may need.
+Lies, Damn Lies, and ......
 
-pnfs_commit_list() is how the driver actually takes control, it is
-used instead of nfs_commit_list().
 
-In order to pass information between the above functions, we create
-a union in nfs_page to hold a lseg (which is possible because the req is
-not on any list while in transition), and add some flags to indicate
-if we need to use the pnfs code.
+while these are impressive numbers they only tell half the story.
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pagelist.c        |    5 ++-
- fs/nfs/pnfs.h            |   73 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/write.c           |   41 ++++++++++++++++---------
- include/linux/nfs_fs.h   |    1 +
- include/linux/nfs_page.h |    6 +++-
- 5 files changed, 108 insertions(+), 18 deletions(-)
+If a change makes one common operation 4 times faster, and another common
+operation 10 times slower, it is a good change?  or even an acceptable change?
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index fd85618..87a593c 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -398,6 +398,7 @@ int nfs_scan_list(struct nfs_inode *nfsi,
- 	pgoff_t idx_end;
- 	int found, i;
- 	int res;
-+	struct list_head *list;
- 
- 	res = 0;
- 	if (npages == 0)
-@@ -418,10 +419,10 @@ int nfs_scan_list(struct nfs_inode *nfsi,
- 			idx_start = req->wb_index + 1;
- 			if (nfs_set_page_tag_locked(req)) {
- 				kref_get(&req->wb_kref);
--				nfs_list_remove_request(req);
- 				radix_tree_tag_clear(&nfsi->nfs_page_tree,
- 						req->wb_index, tag);
--				nfs_list_add_request(req, dst);
-+				list = pnfs_choose_commit_list(req, dst);
-+				nfs_list_add_request(req, list);
- 				res++;
- 				if (res == INT_MAX)
- 					goto out;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 6380b94..5370f1b 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -74,6 +74,13 @@ struct pnfs_layoutdriver_type {
- 	/* test for nfs page cache coalescing */
- 	int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
- 
-+	/* Returns true if layoutdriver wants to divert this request to
-+	 * driver's commit routine.
-+	 */
-+	bool (*mark_pnfs_commit)(struct pnfs_layout_segment *lseg);
-+	struct list_head * (*choose_commit_list) (struct nfs_page *req);
-+	int (*commit_pagelist)(struct inode *inode, struct list_head *mds_pages, int how);
-+
- 	/*
- 	 * Return PNFS_ATTEMPTED to indicate the layout code has attempted
- 	 * I/O, else return PNFS_NOT_ATTEMPTED to fall back to normal NFS
-@@ -169,6 +176,51 @@ static inline int pnfs_enabled_sb(struct nfs_server *nfss)
- 	return nfss->pnfs_curr_ld != NULL;
- }
- 
-+static inline void
-+pnfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
-+{
-+	if (lseg) {
-+		struct pnfs_layoutdriver_type *ld;
-+
-+		ld = NFS_SERVER(req->wb_page->mapping->host)->pnfs_curr_ld;
-+		if (ld->mark_pnfs_commit && ld->mark_pnfs_commit(lseg)) {
-+			set_bit(PG_PNFS_COMMIT, &req->wb_flags);
-+			req->wb_commit_lseg = get_lseg(lseg);
-+		}
-+	}
-+}
-+
-+static inline int
-+pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how)
-+{
-+	if (!test_and_clear_bit(NFS_INO_PNFS_COMMIT, &NFS_I(inode)->flags))
-+		return PNFS_NOT_ATTEMPTED;
-+	return NFS_SERVER(inode)->pnfs_curr_ld->commit_pagelist(inode, mds_pages, how);
-+}
-+
-+static inline struct list_head *
-+pnfs_choose_commit_list(struct nfs_page *req, struct list_head *mds)
-+{
-+	struct list_head *rv;
-+
-+	if (test_and_clear_bit(PG_PNFS_COMMIT, &req->wb_flags)) {
-+		struct inode *inode = req->wb_commit_lseg->pls_layout->plh_inode;
-+
-+		set_bit(NFS_INO_PNFS_COMMIT, &NFS_I(inode)->flags);
-+		rv = NFS_SERVER(inode)->pnfs_curr_ld->choose_commit_list(req);
-+		/* matched by ref taken when PG_PNFS_COMMIT is set */
-+		put_lseg(req->wb_commit_lseg);
-+	} else
-+		rv = mds;
-+	return rv;
-+}
-+
-+static inline void pnfs_clear_request_commit(struct nfs_page *req)
-+{
-+	if (test_and_clear_bit(PG_PNFS_COMMIT, &req->wb_flags))
-+		put_lseg(req->wb_commit_lseg);
-+}
-+
- #else  /* CONFIG_NFS_V4_1 */
- 
- static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
-@@ -252,6 +304,27 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *ino)
- 	pgio->pg_test = NULL;
- }
- 
-+static inline void
-+pnfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
-+{
-+}
-+
-+static inline int
-+pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how)
-+{
-+	return PNFS_NOT_ATTEMPTED;
-+}
-+
-+static inline struct list_head *
-+pnfs_choose_commit_list(struct nfs_page *req, struct list_head *mds)
-+{
-+	return mds;
-+}
-+
-+static inline void pnfs_clear_request_commit(struct nfs_page *req)
-+{
-+}
-+
- #endif /* CONFIG_NFS_V4_1 */
- 
- #endif /* FS_NFS_PNFS_H */
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index f5f005e..6927a18 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -441,7 +441,7 @@ nfs_mark_request_dirty(struct nfs_page *req)
-  * Add a request to the inode's commit list.
-  */
- static void
--nfs_mark_request_commit(struct nfs_page *req)
-+nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
- {
- 	struct inode *inode = req->wb_context->path.dentry->d_inode;
- 	struct nfs_inode *nfsi = NFS_I(inode);
-@@ -453,6 +453,7 @@ nfs_mark_request_commit(struct nfs_page *req)
- 			NFS_PAGE_TAG_COMMIT);
- 	nfsi->ncommit++;
- 	spin_unlock(&inode->i_lock);
-+	pnfs_mark_request_commit(req, lseg);
- 	inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
- 	inc_bdi_stat(req->wb_page->mapping->backing_dev_info, BDI_RECLAIMABLE);
- 	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
-@@ -481,10 +482,11 @@ int nfs_write_need_commit(struct nfs_write_data *data)
- }
- 
- static inline
--int nfs_reschedule_unstable_write(struct nfs_page *req)
-+int nfs_reschedule_unstable_write(struct nfs_page *req,
-+				  struct nfs_write_data *data)
- {
- 	if (test_and_clear_bit(PG_NEED_COMMIT, &req->wb_flags)) {
--		nfs_mark_request_commit(req);
-+		nfs_mark_request_commit(req, data->lseg);
- 		return 1;
- 	}
- 	if (test_and_clear_bit(PG_NEED_RESCHED, &req->wb_flags)) {
-@@ -495,7 +497,7 @@ int nfs_reschedule_unstable_write(struct nfs_page *req)
- }
- #else
- static inline void
--nfs_mark_request_commit(struct nfs_page *req)
-+nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
- {
- }
- 
-@@ -512,7 +514,8 @@ int nfs_write_need_commit(struct nfs_write_data *data)
- }
- 
- static inline
--int nfs_reschedule_unstable_write(struct nfs_page *req)
-+int nfs_reschedule_unstable_write(struct nfs_page *req,
-+				  struct nfs_write_data *data)
- {
- 	return 0;
- }
-@@ -615,9 +618,11 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
- 	}
- 
- 	if (nfs_clear_request_commit(req) &&
--			radix_tree_tag_clear(&NFS_I(inode)->nfs_page_tree,
--				req->wb_index, NFS_PAGE_TAG_COMMIT) != NULL)
-+	    radix_tree_tag_clear(&NFS_I(inode)->nfs_page_tree,
-+				 req->wb_index, NFS_PAGE_TAG_COMMIT) != NULL) {
- 		NFS_I(inode)->ncommit--;
-+		pnfs_clear_request_commit(req);
-+	}
- 
- 	/* Okay, the request matches. Update the region */
- 	if (offset < req->wb_offset) {
-@@ -765,11 +770,12 @@ int nfs_updatepage(struct file *file, struct page *page,
- 	return status;
- }
- 
--static void nfs_writepage_release(struct nfs_page *req)
-+static void nfs_writepage_release(struct nfs_page *req,
-+				  struct nfs_write_data *data)
- {
- 	struct page *page = req->wb_page;
- 
--	if (PageError(req->wb_page) || !nfs_reschedule_unstable_write(req))
-+	if (PageError(req->wb_page) || !nfs_reschedule_unstable_write(req, data))
- 		nfs_inode_remove_request(req);
- 	nfs_clear_page_tag_locked(req);
- 	nfs_end_page_writeback(page);
-@@ -1087,7 +1093,7 @@ static void nfs_writeback_release_partial(void *calldata)
- 
- out:
- 	if (atomic_dec_and_test(&req->wb_complete))
--		nfs_writepage_release(req);
-+		nfs_writepage_release(req, data);
- 	nfs_writedata_release(calldata);
- }
- 
-@@ -1154,7 +1160,7 @@ static void nfs_writeback_release_full(void *calldata)
- 
- 		if (nfs_write_need_commit(data)) {
- 			memcpy(&req->wb_verf, &data->verf, sizeof(req->wb_verf));
--			nfs_mark_request_commit(req);
-+			nfs_mark_request_commit(req, data->lseg);
- 			dprintk(" marked for commit\n");
- 			goto next;
- 		}
-@@ -1357,14 +1363,15 @@ static void nfs_init_commit(struct nfs_write_data *data,
- 	nfs_fattr_init(&data->fattr);
- }
- 
--static void nfs_retry_commit(struct list_head *page_list)
-+static void nfs_retry_commit(struct list_head *page_list,
-+		      struct pnfs_layout_segment *lseg)
- {
- 	struct nfs_page *req;
- 
- 	while (!list_empty(page_list)) {
- 		req = nfs_list_entry(page_list->next);
- 		nfs_list_remove_request(req);
--		nfs_mark_request_commit(req);
-+		nfs_mark_request_commit(req, lseg);
- 		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
- 		dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
- 			     BDI_RECLAIMABLE);
-@@ -1389,7 +1396,7 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how)
- 	nfs_init_commit(data, head);
- 	return nfs_initiate_commit(data, NFS_CLIENT(inode), data->mds_ops, how);
-  out_bad:
--	nfs_retry_commit(head);
-+	nfs_retry_commit(head, NULL);
- 	nfs_commit_clear_lock(NFS_I(inode));
- 	return -ENOMEM;
- }
-@@ -1477,7 +1484,11 @@ int nfs_commit_inode(struct inode *inode, int how)
- 	res = nfs_scan_commit(inode, &head, 0, 0);
- 	spin_unlock(&inode->i_lock);
- 	if (res) {
--		int error = nfs_commit_list(inode, &head, how);
-+		int error;
-+
-+		error = pnfs_commit_list(inode, &head, how);
-+		if (error == PNFS_NOT_ATTEMPTED)
-+			error = nfs_commit_list(inode, &head, how);
- 		if (error < 0)
- 			return error;
- 		if (!may_wait)
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index cb2add4..f64ea14 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -221,6 +221,7 @@ struct nfs_inode {
- #define NFS_INO_FSCACHE		(5)		/* inode can be cached by FS-Cache */
- #define NFS_INO_FSCACHE_LOCK	(6)		/* FS-Cache cookie management lock */
- #define NFS_INO_COMMIT		(7)		/* inode is committing unstable writes */
-+#define NFS_INO_PNFS_COMMIT	(8)		/* use pnfs code for commit */
- 
- static inline struct nfs_inode *NFS_I(const struct inode *inode)
- {
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index 92d54c8..8023e4e 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -33,11 +33,15 @@ enum {
- 	PG_CLEAN,
- 	PG_NEED_COMMIT,
- 	PG_NEED_RESCHED,
-+	PG_PNFS_COMMIT,
- };
- 
- struct nfs_inode;
- struct nfs_page {
--	struct list_head	wb_list;	/* Defines state of page: */
-+	union {
-+		struct list_head	wb_list;	/* Defines state of page: */
-+		struct pnfs_layout_segment *wb_commit_lseg; /* Used when PG_PNFS_COMMIT set */
-+	};
- 	struct page		*wb_page;	/* page to read in/write out */
- 	struct nfs_open_context	*wb_context;	/* File state context info */
- 	struct nfs_lock_context	*wb_lock_context;	/* lock context info */
--- 
-1.7.2.1
+(The "10 times" is not a definite statistic - it is a guess based on
+ a low-detail report)
 
+So it is obvious that there is sometimes value in using readdirplus,
+it is equally obvious that there is sometimes a cost.
+
+Switching the default from "not paying the cost when it is big" to
+"always paying the cost" is wrong.
+
+
+NeilBrown
