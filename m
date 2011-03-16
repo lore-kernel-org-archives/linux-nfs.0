@@ -1,220 +1,236 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from charlotte.tuxdriver.com ([70.61.120.58]:32815 "EHLO
-	smtp.tuxdriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932437Ab1CDSpO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2011 13:45:14 -0500
-Date: Fri, 4 Mar 2011 13:45:06 -0500
-From: Neil Horman <nhorman@tuxdriver.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        security@kernel.org, Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] nfs4: Ensure that ACL pages sent over NFS were not
- allocated from the slab
-Message-ID: <20110304184505.GB10083@hmsreliant.think-freely.org>
-References: <1299257053-13175-1-git-send-email-nhorman@tuxdriver.com>
- <20110304171320.GA19496@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110304171320.GA19496@fieldses.org>
+Received: from mx2.netapp.com ([216.240.18.37]:57250 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752744Ab1CPUyW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2011 16:54:22 -0400
+Message-ID: <4D81236C.8080703@netapp.com>
+Date: Wed, 16 Mar 2011 16:54:04 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH v5 1/5] NFS: convert call_sync() to a function
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Mar 04, 2011 at 12:13:21PM -0500, J. Bruce Fields wrote:
-> On Fri, Mar 04, 2011 at 11:44:13AM -0500, Neil Horman wrote:
-> > This oops was reported recently:
-> > 
-> >  <IRQ>  [<ffffffff800ca161>] bad_page+0x69/0x91
-> >   [<ffffffff8000b8ae>] free_hot_cold_page+0x81/0x144
-> >   [<ffffffff8022f28a>] skb_release_data+0x5f/0x98
-> >   [<ffffffff80028b88>] __kfree_skb+0x11/0x1a
-> >   [<ffffffff800243b8>] tcp_ack+0x6a3/0x1868
-> >   [<ffffffff8001bff4>] tcp_rcv_established+0x7a6/0x8b9
-> >   [<ffffffff8003b684>] tcp_v4_do_rcv+0x2a/0x2fa
-> >   [<ffffffff8002730e>] tcp_v4_rcv+0x9a2/0x9f6
-> >   [<ffffffff80099b45>] do_timer+0x2df/0x52c
-> >   [<ffffffff8003495c>] ip_local_deliver+0x19d/0x263
-> >   [<ffffffff80035ab8>] ip_rcv+0x539/0x57c
-> >   [<ffffffff80020ab6>] netif_receive_skb+0x470/0x49f
-> >   [<ffffffff883190b5>] :virtio_net:virtnet_poll+0x46b/0x5c5
-> >   [<ffffffff8000c979>] net_rx_action+0xac/0x1b3
-> >   [<ffffffff80012464>] __do_softirq+0x89/0x133
-> >   [<ffffffff8005e2fc>] call_softirq+0x1c/0x28
-> >   [<ffffffff8006d5f5>] do_softirq+0x2c/0x7d
-> >   [<ffffffff8006d485>] do_IRQ+0xec/0xf5
-> >   [<ffffffff8006bdb5>] default_idle+0x0/0x50
-> >   [<ffffffff8005d615>] ret_from_intr+0x0/0xa
-> >   <EOI>  [<ffffffff8006bdde>] default_idle+0x29/0x50
-> >   [<ffffffff800492fd>] cpu_idle+0x95/0xb8
-> >   [<ffffffff80461807>] start_kernel+0x220/0x225
-> >   [<ffffffff8046122f>] _sinittext+0x22f/0x236
-> > 
-> > It occurs, because an skb with a fraglist was freed from the tcp retransmit
-> > queue when it was acked, but a page on that fraglist had PG_Slab set (indicating
-> > it was allocated from the Slab allocator (which means the free path above can't
-> > safely free it via put_page)
-> > 
-> > We tracked this back to an nfsv4 setacl operation, in which the nfs code
-> > attempted to fill convert the passed in buffer to an array of pages in
-> > __nfs4_proc_set_acl, which gets used by the skb->frags list in xs_sendpages.
-> > __nfs4_proc_set_acl just converts each page in the buffer to a page struct via
-> > virt_to_page, but the vfs allocates the buffer via kmalloc, meaning the PG_slab
-> > bit is set.
-> 
-> My code originally, I think, so apologies, and thanks for the fix!
-> 
 
-No problem :)
+This patch changes nfs4_call_sync() from a macro into a
+static inline function.  As a macro, the call_sync()
+function will not do any type checking and depends
+on the sequence arguments always having the same name.
+As a function, we get to have type checking and can
+rename the arguments if we so choose.
 
-> > We can't create a buffer with kmalloc and free it later in the tcp
-> > ack path with put_page, so we need to either:
-> 
-> But out of curiosity: why is there this rule?
-> 
-Its an artifact the results from needing to free memory using a method in
-keeping with the way in which it was allocated.  To use this bug as an example,
-the acl data was allocated by the VFS using kmalloc, which gets data from the
-slab.  Even though this data is a size that is a multiple of a page, slab
-objects can be less than a page, and multiple objects can be stored in a single
-page.  As such, anything allocated from the slab allocator needs to be freed by
-the slab allocator, so that object reference counts internally maintained by the
-slab can be kept accurate.  
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4proc.c |   53 ++++++++++++++++++++++++++++++-----------------------
+ 1 files changed, 30 insertions(+), 23 deletions(-)
 
-Couple that with the fact that, once you pass this buffer to the network stack,
-its the network stack thats responsible for it, particularly for freeing it once
-its been transmitted.  Given that the network stack wasn't responsible for
-allocating it, but still needs to know how to free it, there must be some
-convention used to help the stack know how to return it to the heap.  In this
-case the convention is that 'pages placed in skb->frags must have been allocated
-by the buddy allocator'.  In guaranteeing that, the network stack can safely use
-put_page to free the pages later on when the data has finished transmitting.
-Thats why we have the PG_Slab check in the free path on the stack trace above.
-If we just called put_page on all these pages, and one or more of the pages were
-from the slab allocator, we would get all sorts of corruption, because we might
-return a page that contains multiple slab objects to the buddy allocator while
-the slab was still in use, and the slab allocator would loose the tracking data
-on those objects, leading to further corruption.  so we do this PG_Slab check in
-free_pages_check to ensure that we're not freeing something using a method other
-than the one used to allocate it.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1d84e70..e403d7a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -719,9 +719,16 @@ int _nfs4_call_sync(struct nfs_server *server,
+ 	return rpc_call_sync(server->client, msg, 0);
+ }
+ 
+-#define nfs4_call_sync(server, msg, args, res, cache_reply) \
+-	(server)->nfs_client->cl_mvops->call_sync((server), (msg), &(args)->seq_args, \
+-			&(res)->seq_res, (cache_reply))
++static inline
++int nfs4_call_sync(struct nfs_server *server,
++		   struct rpc_message *msg,
++		   struct nfs4_sequence_args *args,
++		   struct nfs4_sequence_res *res,
++		   int cache_reply)
++{
++	return server->nfs_client->cl_mvops->call_sync(server, msg, args,
++						res, cache_reply);
++}
+ 
+ static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
+ {
+@@ -1831,7 +1838,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	} else
+ 		memcpy(&arg.stateid, &zero_stateid, sizeof(arg.stateid));
+ 
+-	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
++	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (status == 0 && state != NULL)
+ 		renew_lease(server, timestamp);
+ 	return status;
+@@ -2090,7 +2097,7 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
+ 	};
+ 	int status;
+ 
+-	status = nfs4_call_sync(server, &msg, &args, &res, 0);
++	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (status == 0) {
+ 		memcpy(server->attr_bitmask, res.attr_bitmask, sizeof(server->attr_bitmask));
+ 		server->caps &= ~(NFS_CAP_ACLS|NFS_CAP_HARDLINKS|
+@@ -2160,7 +2167,7 @@ static int _nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	};
+ 
+ 	nfs_fattr_init(info->fattr);
+-	return nfs4_call_sync(server, &msg, &args, &res, 0);
++	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
+@@ -2249,7 +2256,7 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	};
+ 	
+ 	nfs_fattr_init(fattr);
+-	return nfs4_call_sync(server, &msg, &args, &res, 0);
++	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+ static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
+@@ -2333,7 +2340,7 @@ static int _nfs4_proc_lookupfh(struct nfs_server *server, const struct nfs_fh *d
+ 	nfs_fattr_init(fattr);
+ 
+ 	dprintk("NFS call  lookupfh %s\n", name->name);
+-	status = nfs4_call_sync(server, &msg, &args, &res, 0);
++	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	dprintk("NFS reply lookupfh: %d\n", status);
+ 	return status;
+ }
+@@ -2421,7 +2428,7 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 	if (res.fattr == NULL)
+ 		return -ENOMEM;
+ 
+-	status = nfs4_call_sync(server, &msg, &args, &res, 0);
++	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (!status) {
+ 		entry->mask = 0;
+ 		if (res.access & NFS4_ACCESS_READ)
+@@ -2488,7 +2495,7 @@ static int _nfs4_proc_readlink(struct inode *inode, struct page *page,
+ 		.rpc_resp = &res,
+ 	};
+ 
+-	return nfs4_call_sync(NFS_SERVER(inode), &msg, &args, &res, 0);
++	return nfs4_call_sync(NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+ static int nfs4_proc_readlink(struct inode *inode, struct page *page,
+@@ -2577,7 +2584,7 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
+ 	if (res.dir_attr == NULL)
+ 		goto out;
+ 
+-	status = nfs4_call_sync(server, &msg, &args, &res, 1);
++	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 1);
+ 	if (status == 0) {
+ 		update_changeattr(dir, &res.cinfo);
+ 		nfs_post_op_update_inode(dir, res.dir_attr);
+@@ -2678,7 +2685,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 	if (res.old_fattr == NULL || res.new_fattr == NULL)
+ 		goto out;
+ 
+-	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
++	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(old_dir, &res.old_cinfo);
+ 		nfs_post_op_update_inode(old_dir, res.old_fattr);
+@@ -2729,7 +2736,7 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
+ 	if (res.fattr == NULL || res.dir_attr == NULL)
+ 		goto out;
+ 
+-	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
++	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(dir, &res.cinfo);
+ 		nfs_post_op_update_inode(dir, res.dir_attr);
+@@ -2793,7 +2800,7 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
+ {
+ 	int status = nfs4_call_sync(NFS_SERVER(dir), &data->msg,
+-				    &data->arg, &data->res, 1);
++				    &data->arg.seq_args, &data->res.seq_res, 1);
+ 	if (status == 0) {
+ 		update_changeattr(dir, &data->res.dir_cinfo);
+ 		nfs_post_op_update_inode(dir, data->res.dir_fattr);
+@@ -2905,7 +2912,7 @@ static int _nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
+ 			(unsigned long long)cookie);
+ 	nfs4_setup_readdir(cookie, NFS_COOKIEVERF(dir), dentry, &args);
+ 	res.pgbase = args.pgbase;
+-	status = nfs4_call_sync(NFS_SERVER(dir), &msg, &args, &res, 0);
++	status = nfs4_call_sync(NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (status >= 0) {
+ 		memcpy(NFS_COOKIEVERF(dir), res.verifier.data, NFS4_VERIFIER_SIZE);
+ 		status += args.pgbase;
+@@ -2997,7 +3004,7 @@ static int _nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	};
+ 
+ 	nfs_fattr_init(fsstat->fattr);
+-	return  nfs4_call_sync(server, &msg, &args, &res, 0);
++	return  nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+ static int nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsstat *fsstat)
+@@ -3028,7 +3035,7 @@ static int _nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
+ 		.rpc_resp = &res,
+ 	};
+ 
+-	return nfs4_call_sync(server, &msg, &args, &res, 0);
++	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+ static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsinfo *fsinfo)
+@@ -3073,7 +3080,7 @@ static int _nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle
+ 	}
+ 
+ 	nfs_fattr_init(pathconf->fattr);
+-	return nfs4_call_sync(server, &msg, &args, &res, 0);
++	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ }
+ 
+ static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
+@@ -3452,7 +3459,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+ 		resp_buf = buf;
+ 		buf_to_pages(buf, buflen, args.acl_pages, &args.acl_pgbase);
+ 	}
+-	ret = nfs4_call_sync(NFS_SERVER(inode), &msg, &args, &res, 0);
++	ret = nfs4_call_sync(NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (ret)
+ 		goto out_free;
+ 	if (res.acl_len > args.acl_len)
+@@ -3527,7 +3534,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
+ 	if (i < 0)
+ 		return i;
+ 	nfs_inode_return_delegation(inode);
+-	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
++	ret = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 
+ 	/*
+ 	 * Free each page after tx, so the only ref left is
+@@ -3890,7 +3897,7 @@ static int _nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock
+ 	lsp = request->fl_u.nfs4_fl.owner;
+ 	arg.lock_owner.id = lsp->ls_id.id;
+ 	arg.lock_owner.s_dev = server->s_dev;
+-	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
++	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	switch (status) {
+ 		case 0:
+ 			request->fl_type = F_UNLCK;
+@@ -4618,7 +4625,7 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
+ 	nfs_fattr_init(&fs_locations->fattr);
+ 	fs_locations->server = server;
+ 	fs_locations->nlocations = 0;
+-	status = nfs4_call_sync(server, &msg, &args, &res, 0);
++	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	nfs_fixup_referral_attributes(&fs_locations->fattr);
+ 	dprintk("%s: returned status = %d\n", __func__, status);
+ 	return status;
+@@ -5586,7 +5593,7 @@ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
+ 	int status;
+ 
+ 	dprintk("--> %s\n", __func__);
+-	status = nfs4_call_sync(server, &msg, &args, &res, 0);
++	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	dprintk("<-- %s status=%d\n", __func__, status);
+ 
+ 	return status;
+-- 
+1.7.4.1
 
-> > 1) ensure that when we create the list of pages, no page struct has PG_Slab set
-> > or
-> > 2) not use a page list to send this data
-> > 
-> > Given that these buffers can be multiple pages and arbitrarily sized, I think
-> > (1) is the right way to go.  I've written the below patch to allocate a page
-> > from the buddy allocator directly and copy the data over to it.  This ensures
-> > that we have a put_page free-able page for every entry that winds up on an skb
-> > frag list, so it can be safely freed when the frame is acked.  We do a put page
-> > on each entry after the rpc_call_sync call so as to drop our own reference count
-> > to the page, leaving only the ref count taken by tcp_sendpages.  This way the
-> > data will be properly freed when the ack comes in
-> 
-> Seems fine to me.
-> 
-> There's one thing I still don't understand: why was this only triggered
-> for large ACLs?  The setacl doesn't doesn't treat the first 4k specially
-> that I can see: even a 1-byte acl would get translated into a page.  Is
-> it that the VFS creates the buffer it hands down differently in that
-> case?
-> 
-Thats an artifact of tcp_sendpages (the proto specific function called by
-kernel_sendpages).  If you send less then a page of data via that function, it
-doesn't use the fraglist to store data, it just inlines the page into the skb.
-Neil
-
-> --b.
-> 
-> > Successfully tested by myself to solve the above oops.
-> > 
-> > Note, as this is the result of a setacl operation that exceeded a page of data,
-> > I think this amounts to a local DOS triggerable by an uprivlidged user, so I'm
-> > CCing security on this as well.
-> > 
-> > Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> > CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > CC: security@kernel.org
-> > CC: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/nfs/nfs4proc.c |   42 ++++++++++++++++++++++++++++++++++++++++--
-> >  1 files changed, 40 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > index 78936a8..e4bd9b5 100644
-> > --- a/fs/nfs/nfs4proc.c
-> > +++ b/fs/nfs/nfs4proc.c
-> > @@ -51,6 +51,7 @@
-> >  #include <linux/sunrpc/bc_xprt.h>
-> >  #include <linux/xattr.h>
-> >  #include <linux/utsname.h>
-> > +#include <linux/mm.h>
-> >  
-> >  #include "nfs4_fs.h"
-> >  #include "delegation.h"
-> > @@ -3252,6 +3253,36 @@ static void buf_to_pages(const void *buf, size_t buflen,
-> >  	}
-> >  }
-> >  
-> > +static int buf_to_pages_noslab(const void *buf, size_t buflen,
-> > +		struct page **pages, unsigned int *pgbase)
-> > +{
-> > +	const void *p = buf;
-> > +	struct page *page, *newpage, **spages;
-> > +	int rc = -ENOMEM;
-> > +
-> > +	spages = pages;
-> > +	*pgbase = offset_in_page(buf);
-> > +	p -= *pgbase;
-> > +	while (p < buf + buflen) {
-> > +		page = virt_to_page(p);
-> > +		newpage = alloc_page(GFP_KERNEL);
-> > +		if (!newpage)
-> > +			goto unwind;
-> > +		memcpy(page_address(newpage), page_address(page),
-> > +		       PAGE_CACHE_SIZE);
-> > +		*(pages++) = newpage;
-> > +		p += PAGE_CACHE_SIZE;
-> > +	}
-> > +
-> > +	rc = 0;
-> > +	return rc;
-> > +
-> > +unwind:
-> > +	while (*spages != NULL)
-> > +		__free_page(*(spages++));
-> > +	return rc;
-> > +}
-> > +
-> >  struct nfs4_cached_acl {
-> >  	int cached;
-> >  	size_t len;
-> > @@ -3420,13 +3451,20 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
-> >  		.rpc_argp	= &arg,
-> >  		.rpc_resp	= &res,
-> >  	};
-> > -	int ret;
-> > +	int ret, i;
-> >  
-> >  	if (!nfs4_server_supports_acls(server))
-> >  		return -EOPNOTSUPP;
-> > +	memset(pages, 0, sizeof(struct page *) * NFS4ACL_MAXPAGES);
-> > +	ret = buf_to_pages_noslab(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
-> > +	if (ret)
-> > +		return ret;
-> >  	nfs_inode_return_delegation(inode);
-> > -	buf_to_pages(buf, buflen, arg.acl_pages, &arg.acl_pgbase);
-> >  	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
-> > +
-> > +	for (i = 0; pages[i] != NULL; i++)
-> > +		put_page(pages[i]);
-> > +
-> >  	/*
-> >  	 * Acl update can result in inode attribute update.
-> >  	 * so mark the attribute cache invalid.
-> > -- 
-> > 1.7.4
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
