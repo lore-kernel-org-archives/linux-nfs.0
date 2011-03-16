@@ -1,77 +1,66 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: Use of READDIRPLUS on large directories
-Date: Wed, 16 Mar 2011 10:20:03 -0400
-Message-ID: <1300285203.16266.46.camel@lade.trondhjem.org>
-References: <20110316155528.31913c58@notabene.brown>
-	 <24085EE6-EF0B-4F36-8F6A-100AB863F408@oracle.com>
-	 <4D80C5C6.2060003@netapp.com>
+From: Trond Myklebust <trond.myklebust@fys.uio.no>
+Subject: Re: [patch]xprt: remove redundant checks
+Date: Wed, 16 Mar 2011 10:25:40 -0400
+Message-ID: <1300285540.16266.49.camel@lade.trondhjem.org>
+References: <20110316064509.GA1498@asset.uwaterloo.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neilb@suse.de>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: j223yang-I6MVnP1QzuRPSEYXltEZZrDks+cytr/Z@public.gmane.org
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2753 "EHLO mx2.netapp.com"
+Received: from mail-out1.uio.no ([129.240.10.57]:40525 "EHLO mail-out1.uio.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751137Ab1CPOUF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2011 10:20:05 -0400
-In-Reply-To: <4D80C5C6.2060003@netapp.com>
+	id S1752446Ab1CPOZr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2011 10:25:47 -0400
+In-Reply-To: <20110316064509.GA1498-I6MVnP1QzuRPSEYXltEZZrDks+cytr/Z@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2011-03-16 at 10:14 -0400, Bryan Schumaker wrote:
-> I guess I misunderstood what to publish test results for?  I know I included numbers on one of the patches (commit 82f2e5472e2304e531c2fa85e457f4a71070044e, copied below)...  I'll find the numbers you're asking about and post them.
+On Wed, 2011-03-16 at 02:45 -0400, j223yang-I6MVnP1QzuRPSEYXltEZZrDks+cytr/Z@public.gmane.org wrote:
+> 'req' is already dereferenced in 
+> 'struct rpc_xprt *xprt = req->rq_xprt;',
+> but check again later in the function.
+> The patch removes these redundant checks.
 > 
-> -Bryan
+> Signed-off-by: Jinqiu Yang <crindy646@gmail.com>
+> ---
+>  xprt.c |    8 +++-----
+>  1 file changed, 3 insertions(+), 5 deletions(-)
 > 
-> commit 82f2e5472e2304e531c2fa85e457f4a71070044e
-> Author: Bryan Schumaker <bjschuma@netapp.com>
-> Date:   Thu Oct 21 16:33:18 2010 -0400
-> 
->     NFS: Readdir plus in v4
->     
->     By requsting more attributes during a readdir, we can mimic the readdir plus
->     operation that was in NFSv3.
->     
->     To test, I ran the command `ls -lU --color=none` on directories with various
->     numbers of files.  Without readdir plus, I see this:
->     
->     n files |    100    |   1,000   |  10,000   |  100,000  | 1,000,000
->     --------+-----------+-----------+-----------+-----------+----------
->     real    | 0m00.153s | 0m00.589s | 0m05.601s | 0m56.691s | 9m59.128s
->     user    | 0m00.007s | 0m00.007s | 0m00.077s | 0m00.703s | 0m06.800s
->     sys     | 0m00.010s | 0m00.070s | 0m00.633s | 0m06.423s | 1m10.005s
->     access  | 3         | 1         | 1         | 4         | 31
->     getattr | 2         | 1         | 1         | 1         | 1
->     lookup  | 104       | 1,003     | 10,003    | 100,003   | 1,000,003
->     readdir | 2         | 16        | 158       | 1,575     | 15,749
->     total   | 111       | 1,021     | 10,163    | 101,583   | 1,015,784
->     
->     With readdir plus enabled, I see this:
->     
->     n files |    100    |   1,000   |  10,000   |  100,000  | 1,000,000
->     --------+-----------+-----------+-----------+-----------+----------
->     real    | 0m00.115s | 0m00.206s | 0m01.079s | 0m12.521s | 2m07.528s
->     user    | 0m00.003s | 0m00.003s | 0m00.040s | 0m00.290s | 0m03.296s
->     sys     | 0m00.007s | 0m00.020s | 0m00.120s | 0m01.357s | 0m17.556s
->     access  | 3         | 1         | 1         | 1         | 7
->     getattr | 2         | 1         | 1         | 1         | 1
->     lookup  | 4         | 3         | 3         | 3         | 3
->     readdir | 6         | 62        | 630       | 6,300     | 62,993
->     total   | 15        | 67        | 635       | 6,305     | 63,004
->     
->     Readdir plus disabled has about a 16x increase in the number of rpc calls an
->     is 4 - 5 times slower on large directories.
+> diff --git a/net/sunrpt/xprt.c b/net/sunrpt/xprt.c
+> --- a/net/sunrpc/xprt.c	2011-03-16 00:10:08.764164573 -0400
+> +++ b/net/sunrpt/xprt.c	2011-03-16 02:33:38.559164414 -0400
+> @@ -202,10 +202,8 @@ int xprt_reserve_xprt(struct rpc_task *t
+>  		goto out_sleep;
+>  	}
+>  	xprt->snd_task = task;
+> -	if (req) {
+> -		req->rq_bytes_sent = 0;
+> -		req->rq_ntrans++;
+> -	}
+> +	req->rq_bytes_sent = 0;
+> +	req->rq_ntrans++;
+>  	return 1;
+>  
+>  out_sleep:
+> @@ -213,7 +211,7 @@ out_sleep:
+>  			task->tk_pid, xprt);
+>  	task->tk_timeout = 0;
+>  	task->tk_status = -EAGAIN;
+> -	if (req && req->rq_ntrans)
+> +	if (req->rq_ntrans)
+>  		rpc_sleep_on(&xprt->resend, task, NULL);
+>  	else
+>  		rpc_sleep_on(&xprt->sending, task, NULL);
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Right. Those are the numbers that convinced me...
+You already sent hunk 1 in a different patch, and I've already applied
+that to the nfs-for-2.6.39 branch. Could you therefore please resend
+this patch with just the second hunk.
 
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Cheers
+  Trond
 
