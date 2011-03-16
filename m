@@ -1,117 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.parallels.com ([64.131.90.16]:58750 "EHLO mx2.parallels.com"
+Received: from mx2.netapp.com ([216.240.18.37]:1220 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751532Ab1CVDOc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Mar 2011 23:14:32 -0400
-Message-ID: <4D881413.9050807@parallels.com>
-Date: Mon, 21 Mar 2011 22:14:27 -0500
-From: Rob Landley <rlandley@parallels.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Tim Spriggs <tims@uahirise.org>
-Subject: [PATCH] Minimal fix to mount NFS in containers with non-default network
- context.
-Content-Type: text/plain; charset="ISO-8859-1"
+	id S1751108Ab1CPNuG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2011 09:50:06 -0400
+Subject: RE: Use of READDIRPLUS on large directories
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: peter.staubach@emc.com
+Cc: neilb@suse.de, bjschuma@netapp.com, linux-nfs@vger.kernel.org
+In-Reply-To: <5E6794FC7B8FCA41A704019BE3C70E8B068397B4@MX31A.corp.emc.com>
+References: <20110316155528.31913c58@notabene.brown>
+	 <5E6794FC7B8FCA41A704019BE3C70E8B068397B4@MX31A.corp.emc.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 16 Mar 2011 09:50:04 -0400
+Message-ID: <1300283404.16266.41.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Rob Landley <rlandley@parallels.com>
+On Wed, 2011-03-16 at 08:30 -0400, peter.staubach@emc.com wrote:
+> Perhaps the use of a heuristic that enables readdirplus only after the application has shown that it is interested in the attributes for each entry in the directory?  Thus, if the application does readdir()/stat()/stat()/stat()/readdir()/... then the NFS client could use readdirplus to fill the caches.  If the application is just reading the directory and looking at the names, then the client could just use readdir.
+> 
+> 		ps
 
-Here is the first (simple) patch to get NFS working in a container that 
-a different network context than init_net.  I've tested it with:
+Yes, possibly.
 
- mount -t nfs 10.0.2.2:/path/to/mnt tempdir \
-    -o port=9999,mountport=9999,nolock,nosharecache,nfsvers=3
+The thing that convinced me that we should get rid of the limit was when
+Bryan was testing directories with 10^6 entries, and was seeing an order
+of magnitude improvement when comparing readdirplus vs. readdir on 'ls
+-l' workloads. I wish he had published the actual numbers in the
+changelog.
 
-For a test server, I used unfs3.sourceforge.net:
+As I recall, the slowdown when comparing readdirplus vs readdir on 'ls'
+workloads was far less.
 
-  unfsd -d -s -p -l 10.0.2.2 -m 9999 -n 9999 \
-    -e <(echo '/path/to/mnt (rw,no_root_squash,insecure)')
+You can easily test that yourself, using the "-onordirplus" mount option
+to turn off readdirplus (which, btw, remains a workaround for people who
+don't care about 'ls -l' workloads).
 
-And my test environment setup is described in excruciating detail here:
+Cheers
+  Trond
 
-  http://landley.net/lxc/
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of NeilBrown
+> Sent: Wednesday, March 16, 2011 12:55 AM
+> To: Trond Myklebust; Bryan Schumaker
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Use of READDIRPLUS on large directories
+> 
+> 
+> Hi Trond / Bryan et al.
+> 
+> Now that openSUSE 11.4 is out I have started getting a few reports
+> of regressions that can be traced to 
+> 
+> commit 0715dc632a271fc0fedf3ef4779fe28ac1e53ef4
+> Author: Bryan Schumaker <bjschuma@netapp.com>
+> Date:   Fri Sep 24 18:50:01 2010 -0400
+> 
+>     NFS: remove readdir plus limit
+>     
+>     We will now use readdir plus even on directories that are very large.
+>     
+>     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> 
+> This particularly affects users with their home directory over
+> NFS, and with largish maildir mail folders.
+> 
+> Where it used to take a smallish number of seconds for (e.g.)
+> xbiff to start up and read through the various directories, it now
+> takes multiple minutes.
+> 
+> I can confirm that the slow down is due to readdirplus by mounting the
+> filesystem with nordirplus.
+> 
+> 
+> While I can understand that there are sometime benefits in using
+> readdirplus for very large directories, there are also obviously real
+> costs.  So I think we have to see this patch as a regression that should
+> be reverted.
+> 
+> 
+> It would quite possibly make sense to create a tunable (mount option or
+> sysctl I guess) to set the max size for directories to use readdirplus,
+> but I think it really should be an opt-in situation.
+> 
+> [[ It would also be really nice if the change-log for such a significant
+> change contained a little more justification.... :-(   ]]
+> 
+> Thoughts?
+> 
+> Thanks,
+> NeilBrown
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-Both ro/rw and udp/tcp in the mount -o work for me.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-This requires a lot of follow-up patches to fix DNS resolution, 
-portmapper, the lock daemon, superblock merging, nontrivial 
-authentication mechanisms, the entire can of worms that is NFSv4...
-But this at least makes basic NFS mounts work for the trivial case.
-(It will _not_ work if two different network contexts try to mount
-the same IP address, due to malignant caching.  Working on it.)
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-This patch is sampling the mount process context three times, which 
-isn't ideal but is the least intrusive thing I can do for a first 
-pass.  I've traced through and confirmed as best I can that all three 
-are only called from the mount process context.  (Remount seems to be a 
-different code path, and if you remount from a different network 
-context I'm not sure what _should_ happen, anyway.  Keep the old one,
-I guess?)
-
-(I'm working on a patch adds a network context to nfs_client and then 
-drills that down to the various places that could use it, which is 
-more than just these 3, but it's a lot more intrusive and can be done 
-on top of this.  Also, the rpc code is already doing the get_net() and 
-put_net() reference counting for lifetimes this way.  When I add it to 
-nfs_client I'll have to get that right myself.)
-
-Signed-off-by: Rob Landley <rlandley@parallels.com>
----
-
- fs/nfs/client.c     |    3 ++-
- fs/nfs/mount_clnt.c |    5 +++--
- 2 files changed, 7 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 192f2f8..4fb94e9 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -39,6 +39,7 @@
- #include <net/ipv6.h>
- #include <linux/nfs_xdr.h>
- #include <linux/sunrpc/bc_xprt.h>
-+#include <linux/user_namespace.h>
- 
- #include <asm/system.h>
- 
-@@ -619,7 +620,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
- {
- 	struct rpc_clnt		*clnt = NULL;
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= current->nsproxy->net_ns,
- 		.protocol	= clp->cl_proto,
- 		.address	= (struct sockaddr *)&clp->cl_addr,
- 		.addrsize	= clp->cl_addrlen,
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index d4c2d6b..5564f64 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -14,6 +14,7 @@
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/sched.h>
- #include <linux/nfs_fs.h>
-+#include <linux/user_namespace.h>
- #include "internal.h"
- 
- #ifdef RPC_DEBUG
-@@ -153,7 +156,7 @@ int nfs_mount(struct nfs_mount_request *info)
- 		.rpc_resp	= &result,
- 	};
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= current->nsproxy->net_ns,
- 		.protocol	= info->protocol,
- 		.address	= info->sap,
- 		.addrsize	= info->salen,
-@@ -225,7 +228,7 @@ void nfs_umount(const struct nfs_mount_request *info)
- 		.to_retries = 2,
- 	};
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= current->nsproxy->net_ns,
- 		.protocol	= IPPROTO_UDP,
- 		.address	= info->sap,
- 		.addrsize	= info->salen,
