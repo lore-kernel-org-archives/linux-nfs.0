@@ -1,58 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64259 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751249Ab1CIXcf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Mar 2011 18:32:35 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] NFSv4: Fix the setlk error handler
-Date: Wed,  9 Mar 2011 18:32:26 -0500
-Message-Id: <1299713547-22190-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1299713547-22190-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1299713547-22190-1-git-send-email-Trond.Myklebust@netapp.com>
- <1299713547-22190-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from peace.netnation.com ([204.174.223.2]:42235 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750867Ab1CPXvP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2011 19:51:15 -0400
+Date: Wed, 16 Mar 2011 16:51:13 -0700
+From: Simon Kirby <sim@hostway.ca>
+To: Judith Flo Gaya <jflo@imppc.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: problem with nfs latency during high IO
+Message-ID: <20110316235113.GG23526@hostway.ca>
+References: <4D7B6DE5.8010008@imppc.org> <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com> <4D7FA11F.5020604@imppc.org> <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com> <4D7FDB14.6090908@imppc.org> <9CC4990D-6969-4788-8B52-BA5AF2743DE3@oracle.com> <4D7FE0E8.5050701@imppc.org> <16BF52F0-4D1A-4B68-ADEE-DC70255A139C@oracle.com> <4D80A2DE.2030507@imppc.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D80A2DE.2030507@imppc.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c |   13 ++++---------
- 1 files changed, 4 insertions(+), 9 deletions(-)
+On Wed, Mar 16, 2011 at 12:45:34PM +0100, Judith Flo Gaya wrote:
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8ae1926..f49b629 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4173,23 +4173,18 @@ static const struct rpc_call_ops nfs4_recover_lock_ops = {
- 
- static void nfs4_handle_setlk_error(struct nfs_server *server, struct nfs4_lock_state *lsp, int new_lock_owner, int error)
- {
--	struct nfs_client *clp = server->nfs_client;
--	struct nfs4_state *state = lsp->ls_state;
--
- 	switch (error) {
- 	case -NFS4ERR_ADMIN_REVOKED:
- 	case -NFS4ERR_BAD_STATEID:
--	case -NFS4ERR_EXPIRED:
-+		lsp->ls_seqid.flags &= ~NFS_SEQID_CONFIRMED;
- 		if (new_lock_owner != 0 ||
- 		   (lsp->ls_flags & NFS_LOCK_INITIALIZED) != 0)
--			nfs4_state_mark_reclaim_nograce(clp, state);
--		lsp->ls_seqid.flags &= ~NFS_SEQID_CONFIRMED;
-+			nfs4_schedule_stateid_recovery(server, lsp->ls_state);
- 		break;
- 	case -NFS4ERR_STALE_STATEID:
--		if (new_lock_owner != 0 ||
--		    (lsp->ls_flags & NFS_LOCK_INITIALIZED) != 0)
--			nfs4_state_mark_reclaim_reboot(clp, state);
- 		lsp->ls_seqid.flags &= ~NFS_SEQID_CONFIRMED;
-+	case -NFS4ERR_EXPIRED:
-+		nfs4_schedule_lease_recovery(server->nfs_client);
- 	};
- }
- 
--- 
-1.7.4
+> I made some tests with a value of 10 for the vm_dirty_ratio and indeed  
+> the ls-hang-time has decreased a lot, from 3min avg to 1.5min.
+> I was wondering what is the minimum number that it is safe to use? I'm  
+> sure that you have already dealt with the side-effects/collateral  
+> damages of this action,  I don't want to fix a problem creating another  
+> one..
 
+For a while, we were running with this on production NFS clients:
+
+vm/dirty_background_bytes = 1048576
+vm/dirty_bytes = 2097152
+
+which is totally crazy, but generally seemed to work for the most part,
+and penalized the process creating the pages instead of totally hosing
+everything else when somebody was just writing back a huge file. Without
+it, we were seeing a single "dd" able to cause the load to hit 200,
+simply because 200 other processes got stuck in D waiting for RPC slots
+due to the slowdown. With those settings, load would stay around 3-4 and
+latency was much better.
+
+I think I removed it when trying to figure out the other flush issues,
+but it seems the same problem still exists.
+
+Simon-
