@@ -1,66 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:2867 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752884Ab1CJAT3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Mar 2011 19:19:29 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/4] NFSv4: nfs4_state_mark_reclaim_nograce() should be static
-Date: Wed,  9 Mar 2011 19:19:19 -0500
-Message-Id: <1299716359-30977-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1299716359-30977-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1299716359-30977-1-git-send-email-Trond.Myklebust@netapp.com>
- <1299716359-30977-2-git-send-email-Trond.Myklebust@netapp.com>
- <1299716359-30977-3-git-send-email-Trond.Myklebust@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:42140 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754425Ab1CPAMQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 20:12:16 -0400
+Date: Tue, 15 Mar 2011 17:11:59 -0700
+From: Randy Dunlap <randy.dunlap@oracle.com>
+To: Stephen Rothwell <sfr@canb.auug.org.au>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Cc: linux-next@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        Neil Brown <neilb@suse.de>, bfields@fieldses.org
+Subject: [PATCH -next] sunrpc: fix printk format warning
+Message-Id: <20110315171159.b0e1fab1.randy.dunlap@oracle.com>
+In-Reply-To: <20110315194543.a5d56c0c.sfr@canb.auug.org.au>
+References: <20110315194543.a5d56c0c.sfr@canb.auug.org.au>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-There are no more external users of nfs4_state_mark_reclaim_nograce() or
-nfs4_state_mark_reclaim_reboot(), so mark them as static.
+From: Randy Dunlap <randy.dunlap@oracle.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Fix printk format build warning:
+
+net/sunrpc/xprtrdma/verbs.c:1463: warning: format '%llx' expects type 'long long unsigned int', but argument 3 has type 'dma_addr_t'
+
+Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
 ---
- fs/nfs/nfs4_fs.h   |    2 --
- fs/nfs/nfs4state.c |    4 ++--
- 2 files changed, 2 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 42884b3..560ebde 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -315,8 +315,6 @@ extern void nfs4_state_set_mode_locked(struct nfs4_state *, fmode_t);
- extern void nfs4_schedule_lease_recovery(struct nfs_client *);
- extern void nfs4_schedule_state_manager(struct nfs_client *);
- extern void nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
--extern int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state);
--extern int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state);
- extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
- extern void nfs41_handle_recall_slot(struct nfs_client *clp);
- extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 47c8dcd..0592288 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1018,7 +1018,7 @@ void nfs4_schedule_lease_recovery(struct nfs_client *clp)
- 	nfs4_schedule_state_manager(clp);
+--- linux-next-20110315.orig/net/sunrpc/xprtrdma/verbs.c
++++ linux-next-20110315/net/sunrpc/xprtrdma/verbs.c
+@@ -1462,7 +1462,8 @@ rpcrdma_map_one(struct rpcrdma_ia *ia, s
+ 	if (ib_dma_mapping_error(ia->ri_id->device, seg->mr_dma)) {
+ 		dprintk("RPC:       %s: mr_dma %llx mr_offset %p mr_dma_len %zu\n",
+ 			__func__,
+-			seg->mr_dma, seg->mr_offset, seg->mr_dmalen);
++			(unsigned long long)seg->mr_dma,
++			seg->mr_offset, seg->mr_dmalen);
+ 	}
  }
  
--int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
-+static int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
- {
- 
- 	set_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
-@@ -1032,7 +1032,7 @@ int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *st
- 	return 1;
- }
- 
--int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state)
-+static int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state)
- {
- 	set_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags);
- 	clear_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
--- 
-1.7.4
-
