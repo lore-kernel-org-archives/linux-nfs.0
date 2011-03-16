@@ -1,158 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:61311 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751489Ab1CKUzZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Mar 2011 15:55:25 -0500
-Subject: Re: [PATCH 5/8] NFS: Add basic migration support to state manager thread
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1299789301.3075.40.camel@heimdal.trondhjem.org>
-Date: Fri, 11 Mar 2011 15:53:29 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <D1B06BB1-D4AB-433B-A976-4799B290EC9E@oracle.com>
-References: <20110310171345.8878.25548.stgit@matisse.1015granger.net> <20110310173018.8878.71092.stgit@matisse.1015granger.net> <1299789301.3075.40.camel@heimdal.trondhjem.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:26840 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750765Ab1CPNnb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2011 09:43:31 -0400
+From: <peter.staubach@emc.com>
+To: <chuck.lever@oracle.com>, <jflo@imppc.org>
+CC: <linux-nfs@vger.kernel.org>
+Date: Wed, 16 Mar 2011 09:42:37 -0400
+Subject: RE: problem with nfs latency during high IO
+Message-ID: <5E6794FC7B8FCA41A704019BE3C70E8B068397E9@MX31A.corp.emc.com>
+References: <4D7B6DE5.8010008@imppc.org>
+ <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com>
+ <4D7FA11F.5020604@imppc.org>
+ <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com>
+ <4D7FDB14.6090908@imppc.org>
+ <9CC4990D-6969-4788-8B52-BA5AF2743DE3@oracle.com>
+ <4D7FE0E8.5050701@imppc.org>
+ <16BF52F0-4D1A-4B68-ADEE-DC70255A139C@oracle.com>
+ <4D80A2DE.2030507@imppc.org>
+ <E6EAC031-956D-42E7-AF01-72AD36474E8B@oracle.com>
+In-Reply-To: <E6EAC031-956D-42E7-AF01-72AD36474E8B@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Yes, "may have deleterious effects on workload performance", is true.  Especially the "may" part.  Many applications simply open a file, write it out, and then close it.  The aggressive caching really only helps when an application is working within an open file, where the working set fits within the cache, for an extended period.  Otherwise, the client may as well start flushing as soon as it can generate full WRITE requests and as long as it is doing that, it may as well throttle the application to match the rate in which pages can be cleaned.
 
-On Mar 10, 2011, at 3:35 PM, Trond Myklebust wrote:
+This will help with overall performance by not tying down memory to hold dirty pages which will not get touched again until they are clean.  It can also greatly help the "ls -l" problem.
 
-> On Thu, 2011-03-10 at 12:30 -0500, Chuck Lever wrote:
-> 
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index e6742b5..a788ec9 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -56,6 +56,8 @@
->> #include "internal.h"
->> #include "pnfs.h"
->> 
->> +#define NFSDBG_FACILITY		NFSDBG_CLIENT
->> +
->> #define OPENOWNER_POOL_SIZE	8
->> 
->> const nfs4_stateid zero_stateid;
->> @@ -1013,9 +1015,33 @@ void nfs4_schedule_state_recovery(struct nfs_client *clp)
->> {
->> 	if (!clp)
->> 		return;
->> +	dprintk("--> %s: \"%s\" (client ID %llx)\n",
->> +		__func__, clp->cl_hostname, clp->cl_clientid);
->> 	if (!test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
->> 		set_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
->> 	nfs4_schedule_state_manager(clp);
->> +	dprintk("<-- %s\n", __func__);
->> +}
->> +
->> +/**
->> + * nfs4_schedule_migration_recovery - start background migration recovery
->> + *
->> + * @server: nfs_server representing remote file system that is migrating
->> + *
->> + */
->> +void nfs4_schedule_migration_recovery(struct nfs_server *server)
->> +{
->> +	struct nfs_client *clp = server->nfs_client;
->> +
->> +	dprintk("--> %s(%llx:%llx)\n", __func__,
->> +			(unsigned long long)server->fsid.major,
->> +			(unsigned long long)server->fsid.minor);
->> +	if (test_and_set_bit(NFS4CLNT_MOVED, &clp->cl_state) == 0) {
->> +		set_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state);
-> 
-> Hmm... Why do we need to reset the NFSv4.1 session here?
-> 
->> +		clp->cl_moved_server = server;
->> +		nfs4_schedule_state_manager(clp);
->> +	}
->> +	dprintk("<-- %s\n", __func__);
->> }
->> 
->> int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
->> @@ -1435,6 +1461,64 @@ static int nfs4_reclaim_lease(struct nfs_client *clp)
->> 	return status;
->> }
->> 
->> +/*
->> + * Try remote migration of one FSID from a source server to a
->> + * destination server.  The source server provides a list of
->> + * potential destinations.
->> + */
->> +static void nfs4_try_migration(struct nfs_server *server)
->> +{
->> +	struct nfs_client *clp = server->nfs_client;
->> +	struct nfs4_fs_locations *locations = NULL;
->> +	struct page *page;
->> +	int status;
->> +
->> +	dprintk("--> %s: FSID %llx:%llx on \"%s\"\n", __func__,
->> +			(unsigned long long)server->fsid.major,
->> +			(unsigned long long)server->fsid.minor,
->> +			clp->cl_hostname);
->> +
->> +	status = -ENOMEM;
->> +	page = alloc_page(GFP_KERNEL);
->> +	locations = kmalloc(sizeof(struct nfs4_fs_locations), GFP_KERNEL);
->> +	if (page == NULL || locations == NULL) {
->> +		dprintk("<-- %s: no memory\n", __func__);
->> +		goto out;
->> +	}
->> +
->> +	status = nfs4_proc_get_mig_status(server, locations, page);
->> +	if (status != 0) {
->> +		dprintk("<-- %s: get migration status: %d\n",
->> +			__func__, status);
->> +		goto out;
->> +	}
->> +	if (!(locations->fattr.valid & NFS_ATTR_FATTR_V4_LOCATIONS)) {
->> +		dprintk("<-- %s: No fs_locations data available, "
->> +			"migration skipped\n", __func__);
->> +		goto out;
->> +	}
->> +
->> +	status = nfs4_replace_transport(server, locations);
->> +	if (status != 0) {
->> +		dprintk("<-- %s: failed to replace transport: %d\n",
->> +			__func__, status);
->> +		goto out;
->> +	}
->> +
->> +	/* Force an update of our callback info on the destination server */
->> +	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
-> 
-> I wonder if this should be made into a separate flag. That would enable
-> us to reuse it for the NFS4ERR_CB_PATH_DOWN handling...
+		ps
 
-So... how exactly would this mechanism be different than nfs4[1]_init_clientid() ?  I'm trying to get a handle on what this new flag will need to do.
 
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Chuck Lever
+Sent: Wednesday, March 16, 2011 9:25 AM
+To: Judith Flo Gaya
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: problem with nfs latency during high IO
+
+
+On Mar 16, 2011, at 7:45 AM, Judith Flo Gaya wrote:
+
+> Hello Chuck,
 > 
->> +
->> +	/* XXX: would like to update /proc/mounts, but that's entirely
->> +	 *      optional. */
->> +
->> +	dprintk("<-- %s: migration succeeded\n", __func__);
->> +
->> +out:
->> +	if (page != NULL)
->> +		__free_page(page);
->> +	kfree(locations);
->> +}
->> +
->> #ifdef CONFIG_NFS_V4_1
->> void nfs41_handle_recall_slot(struct nfs_client *clp)
->> {
->> @@ -1664,6 +1748,10 @@ static void nfs4_state_manager(struct nfs_client *clp)
+> On 03/15/2011 11:10 PM, Chuck Lever wrote:
+>> 
+>> On Mar 15, 2011, at 5:58 PM, Judith Flo Gaya wrote:
+>> 
+>>> 
+>>> I saw that the value was 20, I don't know the impact of changing the number by units or tens... Should I test with 10 or this is too much? I assume that the behavior will change immediately right?
+>> 
+>> I believe the dirty ratio is the percentage of physical memory that can be consumed by one file's dirty data before the VM starts flushing its pages asynchronously.  Or it could be the amount of dirty data allowed across all files... one file or many doesn't make any difference if you are writing a single very large file.
+>> 
+>> If your client memory is large, a small number should work without problem.  One percent of a 16GB client is still quite a bit of memory.  The current setting means you can have 20% of said 16GB client, or 3.2GB, of dirty file data on that client before it will even think about flushing it.  Along comes "ls -l" and you will have to wait for the client to flush 3.2GB before it can send the GETATTR.
+>> 
+>> I believe this setting does take effect immediately, but you will have to put the setting in /etc/sysctl.conf to make it last across a reboot.
+>> 
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+> I made some tests with a value of 10 for the vm_dirty_ratio and indeed the ls-hang-time has decreased a lot, from 3min avg to 1.5min.
+> I was wondering what is the minimum number that it is safe to use? I'm sure that you have already dealt with the side-effects/collateral damages of this action,  I don't want to fix a problem creating another one..
+
+As I said before, you can set it to 1, and that will mean background flushing kicks in at 1% of your client's physical memory.  I think that's probably safe nearly anywhere, but it may have deleterious effects on workload performance.  You need to test various settings with your workload and your clients to see what is the best setting in your environment.
+
+> Regarding the modification of the inode.c file, what do you think that will be the next step? And how can I apply it to my system? Should I modify the file by myself and recompile the kernel to have the changed applied?
+
+I recommend that you file a bug against Fedora 14.  See http://bugzilla.redhat.com/ .
 
 -- 
 Chuck Lever
@@ -160,4 +73,9 @@ chuck[dot]lever[at]oracle[dot]com
 
 
 
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
