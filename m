@@ -1,104 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:52318 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750788Ab1C1FJa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2011 01:09:30 -0400
-In-Reply-To: <20110325141947.3236.83222.stgit@matisse.1015granger.net>
-References: <20110325141947.3236.83222.stgit@matisse.1015granger.net>
-Date: Mon, 28 Mar 2011 07:09:29 +0200
-Message-ID: <AANLkTikohEL9EVkOeX_hApVXQGB3c0V3Aqnfx3=tY0u6@mail.gmail.com>
-Subject: Re: [PATCH] NFS: Revert NFSROOT default mount options
-From: Belisko Marek <marek.belisko@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from cantor.suse.de ([195.135.220.2]:43863 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750799Ab1CPEzi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2011 00:55:38 -0400
+Date: Wed, 16 Mar 2011 15:55:28 +1100
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Bryan Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Use of READDIRPLUS on large directories
+Message-ID: <20110316155528.31913c58@notabene.brown>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Mar 25, 2011 at 3:23 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Marek Belisko <marek.belisko@gmail.com> reports that recent attempts
-> to fix regressions in NFSROOT have broken his configuration:
->
->> After update from 2.6.38-rc8 to 2.6.38 is mounting rootfs over nfs not possible.
->> Log:
->> VFS: Mounted root (nfs filesystem) on device 0:14.
->> Freeing init memory: 132K
->> nfs: server 10.146.1.21 not responding, still trying
->> nfs: server 10.146.1.21 not responding, still trying
->>
->> This is never ending. I make short bisect (not too much commits
->> between versions)
->> and bad commit was reported: 53d4737580535e073963b91ce87d4216e434fab5
->>
->> NFS: NFSROOT should default to "proto=udp"
->>
->> I've tested on mini2440 board (DM9000, static IP).
->> Is there some missing option or something else to be checked?
->
-> An examination of a network trace captured during the failure shows
-> that the mount is actually succeeding, but that the client is not
-> seeing READ replies larger than 16KB.
->
-> Last fall we removed the ad hoc mount option parser in fs/nfs/nfsroot.c
-> in favor of using the main parser in fs/nfs/super.c (see commit
-> 56463e50 "NFS: Use super.c for NFSROOT mount option parsing").  That
-> commit changed the default NFSROOT mount options to be the same as
-> those employed by user space mounts.  As it turns out, that change is
-> not tolerated by many embedded systems.
->
-> Subsequently, commit 53d47375 introduced a clean way to specify
-> default mount options for NFSROOT, so we can restore the traditional
-> defaults for NFSROOT easily now:
->
->   vers=2,udp,rsize=4096,wsize=4096
->
-> This should revert the changed default NFSROOT mount options
-> introduced with commit 56463e50.
-Work fine with below patch.
-You can add my Tested by: Marek Belisko <marek.belisko@open-nandra.com>
->
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->
-> Hi-
->
-> Please test this, as I no longer have an NFSROOT rig here.
->
-> Can some responsible maintainer type see that this gets into
-> linux-next quickly for broader testing?
->
->  fs/nfs/nfsroot.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-> index c541093..c4744e1 100644
-> --- a/fs/nfs/nfsroot.c
-> +++ b/fs/nfs/nfsroot.c
-> @@ -87,7 +87,7 @@
->  #define NFS_ROOT               "/tftpboot/%s"
->
->  /* Default NFSROOT mount options. */
-> -#define NFS_DEF_OPTIONS                "udp"
-> +#define NFS_DEF_OPTIONS                "vers=2,udp,rsize=4096,wsize=4096"
->
->  /* Parameters passed from the kernel command line */
->  static char nfs_root_parms[256] __initdata = "";
->
->
 
-regards,
+Hi Trond / Bryan et al.
 
-marek
+Now that openSUSE 11.4 is out I have started getting a few reports
+of regressions that can be traced to 
 
--- 
-as simple and primitive as possible
--------------------------------------------------
-Marek Belisko - OPEN-NANDRA
-Freelance Developer
+commit 0715dc632a271fc0fedf3ef4779fe28ac1e53ef4
+Author: Bryan Schumaker <bjschuma@netapp.com>
+Date:   Fri Sep 24 18:50:01 2010 -0400
 
-Ruska Nova Ves 219 | Presov, 08005 Slovak Republic
-Tel: +421 915 052 184
-skype: marekwhite
-icq: 290551086
-web: http://open-nandra.com
+    NFS: remove readdir plus limit
+    
+    We will now use readdir plus even on directories that are very large.
+    
+    Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+
+This particularly affects users with their home directory over
+NFS, and with largish maildir mail folders.
+
+Where it used to take a smallish number of seconds for (e.g.)
+xbiff to start up and read through the various directories, it now
+takes multiple minutes.
+
+I can confirm that the slow down is due to readdirplus by mounting the
+filesystem with nordirplus.
+
+
+While I can understand that there are sometime benefits in using
+readdirplus for very large directories, there are also obviously real
+costs.  So I think we have to see this patch as a regression that should
+be reverted.
+
+
+It would quite possibly make sense to create a tunable (mount option or
+sysctl I guess) to set the max size for directories to use readdirplus,
+but I think it really should be an opt-in situation.
+
+[[ It would also be really nice if the change-log for such a significant
+change contained a little more justification.... :-(   ]]
+
+Thoughts?
+
+Thanks,
+NeilBrown
