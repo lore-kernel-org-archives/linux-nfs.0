@@ -1,114 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:52145 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752092Ab1CNM5E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Mar 2011 08:57:04 -0400
-Received: by mail-iy0-f174.google.com with SMTP id 26so4900509iyb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Mar 2011 05:57:03 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/12] NFS: Add a client-side function to display file handles
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 14 Mar 2011 08:57:01 -0400
-Message-ID: <20110314125701.2413.7021.stgit@matisse.1015granger.net>
-In-Reply-To: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
-References: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:37618 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750834Ab1CPPMH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2011 11:12:07 -0400
+Date: Wed, 16 Mar 2011 11:12:05 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs41: make sure nfs server return right
+ ca_maxresponsesize_cached
+Message-ID: <20110316151205.GA9299@fieldses.org>
+References: <4D789D49.7090407@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D789D49.7090407@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-For debugging, introduce a simplistic function to print file handles
-on the system console.  It's hooked into the dprintk debugging
-facility, but you can call _nfs_display_fhandle() directly if you
-always want to print a handle.
+On Thu, Mar 10, 2011 at 05:43:37PM +0800, Mi Jinlong wrote:
+> According to rfc5661, 
+>   
+>   ca_maxresponsesize_cached:
+> 
+>      Like ca_maxresponsesize, but the maximum size of a reply that
+>      will be stored in the reply cache (Section 2.10.6.1).  For each
+>      channel, the server MAY decrease this value, but MUST NOT
+>      increase it.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+I wonder what the reason for that is--I can't see why the client would
+object to the server increasing this.  Oh well, my as well observe the
+MUST NOT; applied.
 
- fs/nfs/inode.c         |   45 +++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs_fs.h |   14 ++++++++++++++
- 2 files changed, 59 insertions(+), 0 deletions(-)
+--b.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 1cc600e..552c47b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1033,6 +1033,51 @@ struct nfs_fh *nfs_alloc_fhandle(void)
- }
- 
- /**
-+ * _nfs_display_fhandle - display an NFS file handle on the console
-+ *
-+ * @fh: file handle to display
-+ * @caption: display caption
-+ *
-+ * For debugging only.
-+ */
-+#ifdef RPC_DEBUG
-+void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption)
-+{
-+	unsigned short i;
-+
-+	if (fh->size == 0 || fh == NULL) {
-+		printk(KERN_NOTICE "%s at %p is empty\n", caption, fh);
-+		return;
-+	}
-+
-+	printk(KERN_NOTICE "%s at %p is %u bytes:\n", caption, fh, fh->size);
-+	for (i = 0; i < fh->size; i += 16) {
-+		__be32 *pos = (__be32 *)&fh->data[i];
-+
-+		switch ((fh->size - i - 1) >> 2) {
-+		case 0:
-+			printk(KERN_NOTICE " %08x",
-+				be32_to_cpup(pos));
-+			break;
-+		case 1:
-+			printk(KERN_NOTICE " %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1));
-+			break;
-+		case 2:
-+			printk(KERN_NOTICE " %08x %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1),
-+				be32_to_cpup(pos + 2));
-+			break;
-+		default:
-+			printk(KERN_NOTICE " %08x %08x %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1),
-+				be32_to_cpup(pos + 2), be32_to_cpup(pos + 3));
-+		}
-+	}
-+}
-+#endif
-+
-+/**
-  * nfs_inode_attrs_need_update - check if the inode attributes need updating
-  * @inode - pointer to inode
-  * @fattr - attributes
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 6023efa..a3ed01d 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -384,6 +384,20 @@ static inline void nfs_free_fhandle(const struct nfs_fh *fh)
- 	kfree(fh);
- }
- 
-+#ifdef RPC_DEBUG
-+extern void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption);
-+#define nfs_display_fhandle(fh, caption)			\
-+	do {							\
-+		if (unlikely(nfs_debug & NFSDBG_FACILITY))	\
-+			_nfs_display_fhandle(fh, caption);	\
-+	} while(0)
-+#else
-+static inline void nfs_display_fhandle(const struct nfs_fh *fh,
-+				       const char *caption)
-+{
-+}
-+#endif
-+
- /*
-  * linux/fs/nfs/nfsroot.c
-  */
-
+>  
+> the latest kernel(2.6.38-rc8) may increase the value for ignoring 
+> request's ca_maxresponsesize_cached value. We should not ignore it.
+> 
+> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+> ---
+>  fs/nfsd/nfs4state.c |    3 ++-
+>  1 files changed, 2 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 54b60bf..96edd02 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -608,7 +608,8 @@ static void init_forechannel_attrs(struct nfsd4_channel_attrs *new, struct nfsd4
+>  	u32 maxrpc = nfsd_serv->sv_max_mesg;
+>  
+>  	new->maxreqs = numslots;
+> -	new->maxresp_cached = slotsize + NFSD_MIN_HDR_SEQ_SZ;
+> +	new->maxresp_cached = min_t(u32, req->maxresp_cached, 
+> +					slotsize + NFSD_MIN_HDR_SEQ_SZ);
+>  	new->maxreq_sz = min_t(u32, req->maxreq_sz, maxrpc);
+>  	new->maxresp_sz = min_t(u32, req->maxresp_sz, maxrpc);
+>  	new->maxops = min_t(u32, req->maxops, NFSD_MAX_OPS_PER_COMPOUND);
+> -- 
+> 1.7.4.1
+> 
+> 
+> 
