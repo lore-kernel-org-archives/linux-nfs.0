@@ -1,71 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ww0-f44.google.com ([74.125.82.44]:57595 "EHLO
-	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965396Ab1C3VzB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Mar 2011 17:55:01 -0400
-Received: by wwa36 with SMTP id 36so2045993wwa.1
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Mar 2011 14:55:00 -0700 (PDT)
-In-Reply-To: <AANLkTinSq5Zg-Webeb-XE5MGJaohG67cBMbii6gjtWkZ@mail.gmail.com>
-References: <20110325161156.007b2a10@tlielax.poochiereds.net>
-	<AANLkTikq+y4hEaeyc=D5HRU2Jna4MZ41C+A3=0vF4JMZ@mail.gmail.com>
-	<AANLkTinSq5Zg-Webeb-XE5MGJaohG67cBMbii6gjtWkZ@mail.gmail.com>
-Date: Wed, 30 Mar 2011 14:55:00 -0700
-Message-ID: <AANLkTi=XA0dd7WJpX8DU-T_QSxnXmMfK-vLg+SpMR-cA@mail.gmail.com>
-Subject: Re: BUG() in shrink_dcache_for_umount_subtree on nfs4 mount
-From: Mark Moseley <moseleymark@gmail.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
-To: unlisted-recipients:; (no To-header on input)
+Received: from milhouse.imppc.org ([213.151.98.37]:29639 "EHLO
+	milhouse.imppc.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751116Ab1CPLpg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2011 07:45:36 -0400
+Message-ID: <4D80A2DE.2030507@imppc.org>
+Date: Wed, 16 Mar 2011 12:45:34 +0100
+From: Judith Flo Gaya <jflo@imppc.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: problem with nfs latency during high IO
+References: <4D7B6DE5.8010008@imppc.org> <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com> <4D7FA11F.5020604@imppc.org> <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com> <4D7FDB14.6090908@imppc.org> <9CC4990D-6969-4788-8B52-BA5AF2743DE3@oracle.com> <4D7FE0E8.5050701@imppc.org> <16BF52F0-4D1A-4B68-ADEE-DC70255A139C@oracle.com>
+In-Reply-To: <16BF52F0-4D1A-4B68-ADEE-DC70255A139C@oracle.com>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-> I'm not 100% sure it's related (but I'm going to guess it is) but on
-> these same boxes, they're not actually able to reboot at the end of a
-> graceful shutdown. After yielding that bug and continuing with the
-> shutdown process, it gets all the way to exec'ing:
->
-> reboot -d -f -i
->
-> and then just hangs forever. I'm guessing a thread is hung still
-> trying to unmount things. On another box, I triggered that bug with a
-> umount of one top-level mount that had subtrees. When I umount'd
-> another top-level mount with subtrees on that same box, it's blocked
-> and unkillable. That second umount also logged another bug to the
-> kernel logs.
->
-> In both umounts described above, the entries in /proc/mounts go away
-> after the umount.
->
-> Jeff, are you at liberty to do a graceful shutdown of the box you saw
-> that bug on? If so, does it actually reboot?
+Hello Chuck,
 
+On 03/15/2011 11:10 PM, Chuck Lever wrote:
+>
+> On Mar 15, 2011, at 5:58 PM, Judith Flo Gaya wrote:
+>
+>>
+>> I saw that the value was 20, I don't know the impact of changing the number by units or tens... Should I test with 10 or this is too much? I assume that the behavior will change immediately right?
+>
+> I believe the dirty ratio is the percentage of physical memory that can be consumed by one file's dirty data before the VM starts flushing its pages asynchronously.  Or it could be the amount of dirty data allowed across all files... one file or many doesn't make any difference if you are writing a single very large file.
+>
+> If your client memory is large, a small number should work without problem.  One percent of a 16GB client is still quite a bit of memory.  The current setting means you can have 20% of said 16GB client, or 3.2GB, of dirty file data on that client before it will even think about flushing it.  Along comes "ls -l" and you will have to wait for the client to flush 3.2GB before it can send the GETATTR.
+>
+> I believe this setting does take effect immediately, but you will have to put the setting in /etc/sysctl.conf to make it last across a reboot.
+>
 
-A bit more info: On the same boxes, freshly booted but with all the
-same mounts (even the subtrees) mounted, I don't get that bug, so it
-seems to happen just when there's been significant usage within those
-mounts. These are all read-only mounts, if it makes a difference.
+I made some tests with a value of 10 for the vm_dirty_ratio and indeed 
+the ls-hang-time has decreased a lot, from 3min avg to 1.5min.
+I was wondering what is the minimum number that it is safe to use? I'm 
+sure that you have already dealt with the side-effects/collateral 
+damages of this action,  I don't want to fix a problem creating another 
+one..
 
-I was however able to trigger the bug on a box that had been running
-(web serving) for about 15 minutes. Here's a snippet from slabinfo
-right before umount'ing (let me know if more of it would help):
+Regarding the modification of the inode.c file, what do you think that 
+will be the next step? And how can I apply it to my system? Should I 
+modify the file by myself and recompile the kernel to have the changed 
+applied?
 
-# grep nfs /proc/slabinfo
-nfsd4_delegations      0      0    360   22    2 : tunables    0    0
-  0 : slabdata      0      0      0
-nfsd4_stateids         0      0    120   34    1 : tunables    0    0
-  0 : slabdata      0      0      0
-nfsd4_files            0      0    136   30    1 : tunables    0    0
-  0 : slabdata      0      0      0
-nfsd4_stateowners      0      0    424   38    4 : tunables    0    0
-  0 : slabdata      0      0      0
-nfs_direct_cache       0      0    136   30    1 : tunables    0    0
-  0 : slabdata      0      0      0
-nfs_write_data        46     46    704   23    4 : tunables    0    0
-  0 : slabdata      2      2      0
-nfs_read_data        207    207    704   23    4 : tunables    0    0
-  0 : slabdata      9      9      0
-nfs_inode_cache    23901  23901   1056   31    8 : tunables    0    0
-  0 : slabdata    771    771      0
-nfs_page             256    256    128   32    1 : tunables    0    0
-  0 : slabdata      8      8      0
+Thanks a lot,
+j
