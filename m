@@ -1,116 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wy0-f174.google.com ([74.125.82.174]:36613 "EHLO
-	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751664Ab1CaXVd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Mar 2011 19:21:33 -0400
-In-Reply-To: <AANLkTimS19xXqwTgjZ7b6=D5OoNAqeGzBJk6FEFBNVAe@mail.gmail.com>
-References: <20110325161156.007b2a10@tlielax.poochiereds.net>
-	<AANLkTikq+y4hEaeyc=D5HRU2Jna4MZ41C+A3=0vF4JMZ@mail.gmail.com>
-	<AANLkTinSq5Zg-Webeb-XE5MGJaohG67cBMbii6gjtWkZ@mail.gmail.com>
-	<AANLkTi=XA0dd7WJpX8DU-T_QSxnXmMfK-vLg+SpMR-cA@mail.gmail.com>
-	<20110330213748.513d0774@corrin.poochiereds.net>
-	<AANLkTimS19xXqwTgjZ7b6=D5OoNAqeGzBJk6FEFBNVAe@mail.gmail.com>
-Date: Thu, 31 Mar 2011 16:21:31 -0700
-Message-ID: <AANLkTi=dinD0KeHDb1S8k6L0yfhGsAxVxiz7TwszVQ7E@mail.gmail.com>
-Subject: Re: BUG() in shrink_dcache_for_umount_subtree on nfs4 mount
-From: Mark Moseley <moseleymark@gmail.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:45878 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752531Ab1CPQo5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Mar 2011 12:44:57 -0400
+Date: Wed, 16 Mar 2011 12:44:53 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Randy Dunlap <randy.dunlap@oracle.com>
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>, linux-nfs@vger.kernel.org,
+        linux-next@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        Neil Brown <neilb@suse.de>
+Subject: Re: linux-next: Tree for March 16 (nfsd)
+Message-ID: <20110316164453.GB9299@fieldses.org>
+References: <20110316191444.d91a3263.sfr@canb.auug.org.au>
+ <20110316093234.a82a8b0b.randy.dunlap@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110316093234.a82a8b0b.randy.dunlap@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Mar 31, 2011 at 12:17 PM, Mark Moseley <moseleymark@gmail.com> wrote:
-> On Wed, Mar 30, 2011 at 6:37 PM, Jeff Layton <jlayton@redhat.com> wrote:
->> On Wed, 30 Mar 2011 14:55:00 -0700
->> Mark Moseley <moseleymark@gmail.com> wrote:
->>
->>> > I'm not 100% sure it's related (but I'm going to guess it is) but on
->>> > these same boxes, they're not actually able to reboot at the end of a
->>> > graceful shutdown. After yielding that bug and continuing with the
->>> > shutdown process, it gets all the way to exec'ing:
->>> >
->>> > reboot -d -f -i
->>> >
->>> > and then just hangs forever. I'm guessing a thread is hung still
->>> > trying to unmount things. On another box, I triggered that bug with a
->>> > umount of one top-level mount that had subtrees. When I umount'd
->>> > another top-level mount with subtrees on that same box, it's blocked
->>> > and unkillable. That second umount also logged another bug to the
->>> > kernel logs.
->>> >
->>> > In both umounts described above, the entries in /proc/mounts go away
->>> > after the umount.
->>> >
->>> > Jeff, are you at liberty to do a graceful shutdown of the box you saw
->>> > that bug on? If so, does it actually reboot?
->>>
->>>
->>> A bit more info: On the same boxes, freshly booted but with all the
->>> same mounts (even the subtrees) mounted, I don't get that bug, so it
->>> seems to happen just when there's been significant usage within those
->>> mounts. These are all read-only mounts, if it makes a difference.
->>>
->>> I was however able to trigger the bug on a box that had been running
->>> (web serving) for about 15 minutes. Here's a snippet from slabinfo
->>> right before umount'ing (let me know if more of it would help):
->>>
->>
->> No, it hung. Unfortunately, I didn't collect any info that told me
->> where it was hung though.
->>
->> I believe that's fairly typical though in situations like this. The
->> problem is that we likely have a dentry refcount leak somewhere. The
->> vfsmount refcount was low enough to allow an unmount though. Often
->> these sorts of problems lurk in error handling code...
->>
->>> # grep nfs /proc/slabinfo
->>> nfsd4_delegations      0      0    360   22    2 : tunables    0    0
->>>   0 : slabdata      0      0      0
->>> nfsd4_stateids         0      0    120   34    1 : tunables    0    0
->>>   0 : slabdata      0      0      0
->>> nfsd4_files            0      0    136   30    1 : tunables    0    0
->>>   0 : slabdata      0      0      0
->>> nfsd4_stateowners      0      0    424   38    4 : tunables    0    0
->>>   0 : slabdata      0      0      0
->>> nfs_direct_cache       0      0    136   30    1 : tunables    0    0
->>>   0 : slabdata      0      0      0
->>> nfs_write_data        46     46    704   23    4 : tunables    0    0
->>>   0 : slabdata      2      2      0
->>> nfs_read_data        207    207    704   23    4 : tunables    0    0
->>>   0 : slabdata      9      9      0
->>> nfs_inode_cache    23901  23901   1056   31    8 : tunables    0    0
->>>   0 : slabdata    771    771      0
->>> nfs_page             256    256    128   32    1 : tunables    0    0
->>>   0 : slabdata      8      8      0
->>
->> slabinfo probably won't tell us much here. If we can narrow down the
->> reproducer for this though then that would definitely help.
->> Actually, /proc/self/mountstats might give us something to go on...
->
-> Would turning on kmemleak and letting it run for a bit (luckily 15
-> mins of regular use seems to be enough to trigger this bug) tell us
-> anything? I can do that easily enough but I don't know if it tracks
-> dentry entries.
->
-> Also I'll grab mountstats as well before/after trying a umount.
-> Anything in particular within mountstats I should pay close attention
-> to?
->
+On Wed, Mar 16, 2011 at 09:32:34AM -0700, Randy Dunlap wrote:
+> On Wed, 16 Mar 2011 19:14:44 +1100 Stephen Rothwell wrote:
+> 
+> > Hi all,
+> > 
+> > Changes since 20110315:
+> 
+> 
+> ERROR: "gss_mech_put" [fs/nfsd/nfsd.ko] undefined!
+> ERROR: "gss_mech_get_by_name" [fs/nfsd/nfsd.ko] undefined!
 
-I've been trying random things too, just to see if anything shakes out:
+Let me know if this is not fixed by
+0a5e5f122c756d1c1a6ca712eda76ea8664e5fd9 in the latest
 
-* I tried mounting the top-level mount with the subtree mounts via TCP
-(was UDP), but I still get that error.
+	git://linux-nfs.org/~bfields/linux.git for-2.6.39
 
-* Mounting normally (UDP), if I iterate through the subtrees and
-unmount them *first* (so that there's zero subtrees left over) and
-then unmount the top-level mount, I *don't* get that error. And a
-umount at shutdown proceeds without error and the final call to reboot
-works just fine (instead of hanging indefinitely). So unmounting all
-the subtrees first cleans things up sufficiently.
-
-One random/irrelevant but slightly interesting thing is that when I
-trigger that error, it also bumps kernel.printk from "1 7 1 4" to "15
-7 1 4". I've not seen that before.
+--b.
