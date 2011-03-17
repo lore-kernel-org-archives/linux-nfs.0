@@ -1,65 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:49542 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755416Ab1CVWJL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2011 18:09:11 -0400
-Received: by iyb26 with SMTP id 26so7900353iyb.19
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2011 15:09:11 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/4] SUNRPC: Clean up use of curly braces in switch cases
-To: linux-nfs@vger.kernel.org
-Date: Tue, 22 Mar 2011 18:09:08 -0400
-Message-ID: <20110322220907.4360.79821.stgit@matisse.1015granger.net>
-In-Reply-To: <20110322220518.4360.51304.stgit@matisse.1015granger.net>
-References: <20110322220518.4360.51304.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from os.inf.tu-dresden.de ([141.76.48.99]:40036 "EHLO
+	os.inf.tu-dresden.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755918Ab1CQXQR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2011 19:16:17 -0400
+Date: Fri, 18 Mar 2011 00:16:13 +0100
+From: Adam Lackorzynski <adam@os.inf.tu-dresden.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: 2.6.38: Quota over NFS4
+Message-ID: <20110317231613.GC2445@os.inf.tu-dresden.de>
+References: <20110317133247.GB6424@os.inf.tu-dresden.de>
+ <20110317173805.GB30180@fieldses.org>
+ <20110317213302.GA2445@os.inf.tu-dresden.de>
+ <20110317222732.GC31845@fieldses.org>
+ <20110317225908.GB2445@os.inf.tu-dresden.de>
+ <20110317230315.GG31845@fieldses.org>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20110317230315.GG31845@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Clean up.  Preferred style is not to use curly braces around
-switch cases.  I'm about to add another case that needs yet
-another different type cast.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+On Thu Mar 17, 2011 at 19:03:15 -0400, J. Bruce Fields wrote:
+> On Thu, Mar 17, 2011 at 11:59:08PM +0100, Adam Lackorzynski wrote:
+> > 
+> > On Thu Mar 17, 2011 at 18:27:32 -0400, J. Bruce Fields wrote:
+> > > On Thu, Mar 17, 2011 at 10:33:03PM +0100, Adam Lackorzynski wrote:
+> > > > 
+> > > > On Thu Mar 17, 2011 at 13:38:05 -0400, J. Bruce Fields wrote:
+> > > > > On Thu, Mar 17, 2011 at 02:32:47PM +0100, Adam Lackorzynski wrote:
+> > > > > > Hello,
+> > > > > > 
+> > > > > > I'm seeing a problem with quotas in a system where the server running
+> > > > > > 2.6.38 exports an XFS filesystem via NFS4 to a client. The client kernel
+> > > > > > version does not seem to play a role, checked with 2.6.38, 2.6.37 and
+> > > > > > 2.6.36. The following script and output show the problem:
+> > > > > > 
+> > > > > > #! /bin/sh
+> > > > > > 
+> > > > > > quota | grep home
+> > > > > > du
+> > > > > > cp /bin/ls x1
+> > > > > > du
+> > > > > > cat x1 > /dev/null
+> > > > > > rm x1
+> > > > > > du
+> > > > > > quota | grep home
+> > > > > > 
+> > > > > > Output:
+> > > > > > 
+> > > > > >    homes:/home/ 8194720  9072000 9174400          403670  500000  550000        
+> > > > > > 0       .
+> > > > > > 96      .
+> > > > > > 0       .
+> > > > > >    homes:/home/ 8194816  9072000 9174400          403671  500000  550000        
+> > > > > > 
+> > > > > > 
+> > > > > > As can be seen the 96 kb are still accounted on the quota of the user.
+> > > > > > Removing the 'cat' command from the script makes the quota be ok again
+> > > > > > (original value). Also mounting via nfs3 does not exhibit it, same for running
+> > > > > > the script on the nfs-server directly.
+> > > > > 
+> > > > > Does "df" show the same problem?
+> > > > 
+> > > > With '/bin/ls' it does not change at all, so I took a bigger binary
+> > > > which yields to:
+> > > > 
+> > > >    homes:/home/ 8203780  9072000 9174400          403688  500000  550000        
+> > > > 0       .
+> > > > Filesystem           1K-blocks      Used Available Use% Mounted on
+> > > >   homes:/home        513671168 335251456 178419712  66% /tmp/xx
+> > > > 4592    .
+> > > > Filesystem           1K-blocks      Used Available Use% Mounted on
+> > > >   homes:/home        513671168 335256576 178414592  66% /tmp/xx
+> > > > 0       .
+> > > > Filesystem           1K-blocks      Used Available Use% Mounted on
+> > > >   homes:/home        513671168 335256576 178414592  66% /tmp/xx
+> > > >    homes:/home/ 8208372  9072000 9174400          403689  500000  550000        
+> > > > 
+> > > > So yes, it seems to be there as well.
+> > > 
+> > > It might be easier to see with "df -i" (assuming we're leaking an
+> > > inode).
+> > 
+> > Result is as expected, inode goes one up and not down again.
+> 
+> Is this something special about binaries?  If you copy something other
+> than a binary, do you not see the bug?
 
- net/sunrpc/clnt.c |   17 ++++++++---------
- 1 files changed, 8 insertions(+), 9 deletions(-)
+No change when using a plain text file instead of a binary.
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 6111ea2..3725c6d 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -305,22 +305,21 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
- 	 * up a string representation of the passed-in address.
- 	 */
- 	if (xprtargs.servername == NULL) {
-+		struct sockaddr_in *sin =
-+				(struct sockaddr_in *)args->address;
-+		struct sockaddr_in6 *sin6 =
-+				(struct sockaddr_in6 *)args->address;
-+
- 		servername[0] = '\0';
- 		switch (args->address->sa_family) {
--		case AF_INET: {
--			struct sockaddr_in *sin =
--					(struct sockaddr_in *)args->address;
-+		case AF_INET:
- 			snprintf(servername, sizeof(servername), "%pI4",
- 				 &sin->sin_addr.s_addr);
- 			break;
--		}
--		case AF_INET6: {
--			struct sockaddr_in6 *sin =
--					(struct sockaddr_in6 *)args->address;
-+		case AF_INET6:
- 			snprintf(servername, sizeof(servername), "%pI6",
--				 &sin->sin6_addr);
-+				 &sin6->sin6_addr);
- 			break;
--		}
- 		default:
- 			/* caller wants default server name, but
- 			 * address family isn't recognized. */
 
+Adam
+-- 
+Adam                 adam@os.inf.tu-dresden.de
+  Lackorzynski         http://os.inf.tu-dresden.de/~adam/
