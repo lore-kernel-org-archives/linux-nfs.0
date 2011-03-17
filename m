@@ -1,72 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:55875 "EHLO fieldses.org"
+Received: from cantor.suse.de ([195.135.220.2]:52847 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755523Ab1CKVfW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Mar 2011 16:35:22 -0500
-Date: Fri, 11 Mar 2011 16:35:19 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Simon Kirby <sim@hostway.ca>
-Cc: Mark Moseley <moseleymark@gmail.com>, linux-nfs@vger.kernel.org,
-        Al Viro <viro@ZenIV.linux.org.uk>, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [git pull] more vfs fixes for final
-Message-ID: <20110311213519.GA9404@fieldses.org>
-References: <20110310110931.GF22723@ZenIV.linux.org.uk>
- <AANLkTi=gv+iT6Lc_ADoBu9_P78ivhmOwLh-+Oki7WmD1@mail.gmail.com>
- <20110310115856.GG22723@ZenIV.linux.org.uk>
- <20110311210938.GB8211@hostway.ca>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110311210938.GB8211@hostway.ca>
+	id S1755555Ab1CQXQR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Mar 2011 19:16:17 -0400
+Date: Fri, 18 Mar 2011 10:16:08 +1100
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Bug in xdr_copy_to_scratch???
+Message-ID: <20110318101608.34bb1117@notabene.brown>
+In-Reply-To: <1300384865.28305.27.camel@lade.trondhjem.org>
+References: <20110316213642.360be61d@notabene.brown>
+	<1300282974.16266.33.camel@lade.trondhjem.org>
+	<20110317093838.0f15eb98@notabene.brown>
+	<1300384865.28305.27.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Mar 11, 2011 at 01:09:38PM -0800, Simon Kirby wrote:
-> On Thu, Mar 10, 2011 at 11:58:56AM +0000, Al Viro wrote:
-> 
-> > commit d891eedbc3b1b0fade8a9ce60cc0eba1cccb59e5
-> > Author: J. Bruce Fields <bfields@fieldses.org>
-> > Date:   Tue Jan 18 15:45:09 2011 -0500
-> > 
-> >     fs/dcache: allow d_obtain_alias() to return unhashed dentries
-> 
-> Hmm, I was hoping this or something recently would fix nfs_inode_cache
-> growing forever and flush processes taking lots of system time since
-> 2.6.36. For example:
-> 
->   OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME
-> 3457486 3454365  99%    0.95K 105601       33   3379232K nfs_inode_cache
-> 469638 248761  52%    0.10K  12042       39     48168K buffer_head
-> 243712 216348  88%    0.02K    952      256      3808K kmalloc-16
-> 232785 202185  86%    0.19K  11085       21     44340K dentry
-> 149696  54633  36%    0.06K   2339       64      9356K kmalloc-64
-> 115976 106806  92%    0.55K   4142       28     66272K radix_tree_node
->  76064  45680  60%    0.12K   2377       32      9508K kmalloc-128
->  62336  53427  85%    0.03K    487      128      1948K kmalloc-32
->  41958  41250  98%    0.75K   1998       21     31968K ext3_inode_cache
-> 
-> This clears them all, similar to what you posted:
-> 
-> echo 2 > /proc/sys/vm/drop_caches
-> sync
-> echo 2 > /proc/sys/vm/drop_caches
-> 
-> ...but 2.6.38-rc8 still doesn't seem to fix it.
-> 
-> http://0x.ca/sim/ref/2.6.37/cpu3_nfs.png
-> http://www.spinics.net/lists/linux-nfs/msg18212.html
-> 
-> Any ideas?  This started with 2.6.36.
+On Thu, 17 Mar 2011 14:01:05 -0400 Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
 
-Do you have NFSv4 clients that are doing locking?  Then it's probably
-0997b17360 and 529d7b2a7f on the for-2.6.39 branch at:
+> On Thu, 2011-03-17 at 09:38 +1100, NeilBrown wrote:
+> > We should probably submit a fix to 2.6.37-stable though.  For that it
+> > is possibly simplest to tell xdr_decode_inline to round nbytes up to
+> > a multiple of 4 - would you agree?
+> 
+> How about the following fix for 2.6.37 stable?
 
-	git://linux-nfs.org/~bfields/linux.git for-2.6.39
+That is good for NFSv3, but NFSv2 has the same problem.  Code fragment is
+	p = xdr_inline_decode(xdr, entry->len + 4);
+	if (unlikely(!p))
+		goto out_overflow;
+	entry->name	  = (const char *) p;
+	p		 += XDR_QUADLEN(entry->len);
+	entry->prev_cookie	  = entry->cookie;
+	entry->cookie	  = ntohl(*p++);
 
-Let me know if not.
+so again we have the cookie after the name and they are decoded together.
 
-Those should go into 2.6.39 and stable when the merge window opens.  I
-would have tried to slip them into 2.6.38 but they just didn't seem
-quite trivial enough given where we are in the release process.
+This is what I have committed to openSUSE 11.3 for the next update.
+It may not match the long-term preferred direction, but it is simple and
+obviously covers all cases.
 
---b.
+NeilBrown
+
+From: NeilBrown <neilb@suse.de>
+Subject: Fix cookie decoding problem in NFS
+Patch-mainline: no
+References: bnc#678123
+
+nfs3proc decode_dirent asks xdr_inline_decode to return a name
+buffer and the cookie in a single request.
+There could be padding between these, but if xdr_inline_decode
+calls xdr_copy_to_scratch, it will assume the padding is at the end.
+
+So in xdr_copy_to_scratch, round up 'nbytes' to we make don't
+fail to return useful data.
+
+Acked-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Neil Brown <neilb@suse.de>
+
+---
+ net/sunrpc/xdr.c |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- linux-2.6.37-openSUSE-11.4.orig/net/sunrpc/xdr.c
++++ linux-2.6.37-openSUSE-11.4/net/sunrpc/xdr.c
+@@ -673,6 +673,11 @@ static __be32 *xdr_copy_to_scratch(struc
+ 	void *cpdest = xdr->scratch.iov_base;
+ 	size_t cplen = (char *)xdr->end - (char *)xdr->p;
+ 
++	/* some callers assume we return the full rounded-up
++	 * number of bytes.
++	 */
++	nbytes = XDR_QUADLEN(nbytes)*4;
++
+ 	if (nbytes > xdr->scratch.iov_len)
+ 		return NULL;
+ 	memcpy(cpdest, xdr->p, cplen);
