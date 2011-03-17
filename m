@@ -1,196 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay03.bluemeaney.com ([205.234.16.187]:39160 "EHLO
-	relay03.bluemeaney.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751693Ab1CURwW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2011 13:52:22 -0400
-Subject: [PATCH] Fix memory corruption due to not expected FS_LOCATIONS  v3
-From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        David Howells <dhowells@redhat.com>
-In-Reply-To: <1297338894.3667.0.camel@vT510>
-References: <1297338894.3667.0.camel@vT510>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 21 Mar 2011 20:34:24 +0300
-Message-ID: <1300728864.6113.13.camel@vT510>
+Received: from fieldses.org ([174.143.236.118]:52998 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753354Ab1CQSh5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Mar 2011 14:37:57 -0400
+Date: Thu, 17 Mar 2011 14:37:52 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jesper Juhl <jj@chaosbits.net>
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Pavel Emelyanov <xemul@openvz.org>,
+        Chuck Lever <chuck.lever@oracle.com>, Tejun Heo <tj@kernel.org>,
+        Tom Tucker <tom@opengridcomputing.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] SUNRPC: Remove resource leak in svc_rdma_send_error()
+Message-ID: <20110317183752.GH30180@fieldses.org>
+References: <alpine.LNX.2.00.1101222233260.7746@swampdragon.chaosbits.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <alpine.LNX.2.00.1101222233260.7746@swampdragon.chaosbits.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Changes with v2 version: when not expected fs_locations occurs:
+On Sat, Jan 22, 2011 at 10:40:20PM +0100, Jesper Juhl wrote:
+> We leak the memory allocated to 'ctxt' when we return after 
+> 'ib_dma_mapping_error()' returns !=0.
+> 
+> Signed-off-by: Jesper Juhl <jj@chaosbits.net>
 
-1. Throw print message "unexpected fs_locations"
-2. Stop parsing xdr and return EIO error
+I don't know this code, but I can't see how that could be wrong....
+Applying unless Tom tells me otherwise.
 
-----
+--b.
 
-There is a remote vulnerability for nfs4-client. That allows
-a remote NFSv4 server or attacker in middle rewrite memory on
-NFSv4 client.
-Of course if encryption is used then only server can do corruption.
-
-1. Client send GETATTR request to server, but there are not
-   checks for bitmask in reply from server. Therefore server may return
-   more attributes than were asked.
-
-2. Pointer to struct nfs_fattr is passed to decode_getfattr(), but
-   that parameter is considered as pointer to struct nfs4_fs_locations
-   in case set FATTR4_WORD0_FS_LOCATIONS in reply from server.
-
-   But there is no check for pointer type that was passed!
-
-3. Remote side can set FATTR4_WORD0_FS_LOCATIONS and fill
-   datas fsattr4_fs_locations in reply to client.
-
-4. sizeof(nfs4_fs_locations) is about 92080 bytes in kernel 2.6.38
-
-   So ~ 90 Kbytes can be overwritten in memory of NFSv4 client.
-
-   Fortunately, nfs_fattr is allocated via kmalloc and
-   is not stored on stack. So generally kmalloc-192 is corrupted.
-
-   Affected kernels: all from v2.6.18
-   Commit 683b57b435326eb512c7305892683b6205669448
-   "NFSv4: Implement the fs_locations function call"
-
-Signed-off-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-
----
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c87e543..6fea9c9 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -3451,7 +3451,8 @@ out_overflow:
- 	return -EIO;
- }
- 
--static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t
-*bitmap, struct nfs4_fs_locations *res)
-+static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t
-*bitmap, struct nfs4_fs_locations *res,
-+				    uint32_t *deny_bitmap)
- {
- 	int n;
- 	__be32 *p;
-@@ -3462,6 +3463,13 @@ static int decode_attr_fs_locations(struct
-xdr_stream *xdr, uint32_t *bitmap, st
- 	status = 0;
- 	if (unlikely(!(bitmap[0] & FATTR4_WORD0_FS_LOCATIONS)))
- 		goto out;
-+
-+	if (unlikely(deny_bitmap[0] & FATTR4_WORD0_FS_LOCATIONS)) {
-+		status = -EIO;
-+		printk(KERN_WARNING "%s: Unexpected fs_locations\n", __func__);
-+		goto out;
-+	}
-+
- 	dprintk("%s: fsroot ", __func__);
- 	status = decode_pathname(xdr, &res->fs_path);
- 	if (unlikely(status != 0))
-@@ -4186,7 +4194,8 @@ xdr_error:
- 
- static int decode_getfattr_attrs(struct xdr_stream *xdr, uint32_t
-*bitmap,
- 		struct nfs_fattr *fattr, struct nfs_fh *fh,
--		const struct nfs_server *server, int may_sleep)
-+		const struct nfs_server *server, int may_sleep,
-+		uint32_t *deny_bitmap)
- {
- 	int status;
- 	umode_t fmode = 0;
-@@ -4232,7 +4241,7 @@ static int decode_getfattr_attrs(struct xdr_stream
-*xdr, uint32_t *bitmap,
- 
- 	status = decode_attr_fs_locations(xdr, bitmap, container_of(fattr,
- 						struct nfs4_fs_locations,
--						fattr));
-+						fattr), deny_bitmap);
- 	if (status < 0)
- 		goto xdr_error;
- 	fattr->valid |= status;
-@@ -4301,11 +4310,13 @@ xdr_error:
- }
- 
- static int decode_getfattr_generic(struct xdr_stream *xdr, struct
-nfs_fattr *fattr,
--		struct nfs_fh *fh, const struct nfs_server *server, int may_sleep)
-+		struct nfs_fh *fh, const struct nfs_server *server, int may_sleep,
-+		int expect_fsloc)
- {
- 	__be32 *savep;
- 	uint32_t attrlen,
- 		 bitmap[3] = {0};
-+	uint32_t deny_bitmap[3] = {0};
- 	int status;
- 
- 	status = decode_op_hdr(xdr, OP_GETATTR);
-@@ -4316,11 +4327,15 @@ static int decode_getfattr_generic(struct
-xdr_stream *xdr, struct nfs_fattr *fat
- 	if (status < 0)
- 		goto xdr_error;
- 
-+	if (!expect_fsloc)
-+		deny_bitmap[0] |= FATTR4_WORD0_FS_LOCATIONS;
-+
- 	status = decode_attr_length(xdr, &attrlen, &savep);
- 	if (status < 0)
- 		goto xdr_error;
- 
--	status = decode_getfattr_attrs(xdr, bitmap, fattr, fh, server,
-may_sleep);
-+	status = decode_getfattr_attrs(xdr, bitmap, fattr, fh, server,
-may_sleep,
-+				       deny_bitmap);
- 	if (status < 0)
- 		goto xdr_error;
- 
-@@ -4333,7 +4348,7 @@ xdr_error:
- static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr
-*fattr,
- 		const struct nfs_server *server, int may_sleep)
- {
--	return decode_getfattr_generic(xdr, fattr, NULL, server, may_sleep);
-+	return decode_getfattr_generic(xdr, fattr, NULL, server, may_sleep,
-0);
- }
- 
- /*
-@@ -6338,9 +6353,11 @@ static int nfs4_xdr_dec_fs_locations(struct
-rpc_rqst *req,
- 	if (status)
- 		goto out;
- 	xdr_enter_page(xdr, PAGE_SIZE);
--	status = decode_getfattr(xdr, &res->fs_locations->fattr,
-+	status = decode_getfattr_generic(xdr, &res->fs_locations->fattr,
-+				 NULL,
- 				 res->fs_locations->server,
--				 !RPC_IS_ASYNC(req->rq_task));
-+				 !RPC_IS_ASYNC(req->rq_task),
-+				 1);
- out:
- 	return status;
- }
-@@ -6639,7 +6656,7 @@ out:
- int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 		       int plus)
- {
--	uint32_t bitmap[3] = {0};
-+	uint32_t bitmap[3] = {0}, deny_bitmap[3] = {0};
- 	uint32_t len;
- 	__be32 *p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
-@@ -6680,8 +6697,10 @@ int nfs4_decode_dirent(struct xdr_stream *xdr,
-struct nfs_entry *entry,
- 	if (decode_attr_length(xdr, &len, &p) < 0)
- 		goto out_overflow;
- 
-+	deny_bitmap[0] |= FATTR4_WORD0_FS_LOCATIONS;
-+
- 	if (decode_getfattr_attrs(xdr, bitmap, entry->fattr, entry->fh,
--					entry->server, 1) < 0)
-+				  entry->server, 1, deny_bitmap) < 0)
- 		goto out_overflow;
- 	if (entry->fattr->valid & NFS_ATTR_FATTR_FILEID)
- 		entry->ino = entry->fattr->fileid;
-
-
+> ---
+>  svc_rdma_transport.c |    1 +
+>  1 file changed, 1 insertion(+)
+> 
+>   compile tested only
+> 
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index 9df1ead..1a10dcd 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -1335,6 +1335,7 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+>  					    p, 0, length, DMA_FROM_DEVICE);
+>  	if (ib_dma_mapping_error(xprt->sc_cm_id->device, ctxt->sge[0].addr)) {
+>  		put_page(p);
+> +		svc_rdma_put_context(ctxt, 1);
+>  		return;
+>  	}
+>  	atomic_inc(&xprt->sc_dma_used);
+> 
+> 
+> -- 
+> Jesper Juhl <jj@chaosbits.net>            http://www.chaosbits.net/
+> Don't top-post http://www.catb.org/~esr/jargon/html/T/top-post.html
+> Plain text mails only, please.
+> 
