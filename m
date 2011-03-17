@@ -1,30 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate1.disneyanimation.com ([198.187.190.101]:58569 "EHLO
-	mailgate1.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751369Ab1CQTLF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2011 15:11:05 -0400
-From: Kevin Constantine <Kevin.Constantine@disneyanimation.com>
-Message-ID: <4D825CC8.6040808@disney.com>
-Date: Thu, 17 Mar 2011 12:11:04 -0700
-To: Jim Rees <rees@umich.edu>
-CC: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: NFS hanging waiting for a process to be killable?
-References: <4D80F8B9.1080900@disney.com> <4D823B81.5040702@RedHat.com> <20110317175256.GA2730@merit.edu>
-In-Reply-To: <20110317175256.GA2730@merit.edu>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mailhub.sw.ru ([195.214.232.25]:15261 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754773Ab1CQPyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Mar 2011 11:54:33 -0400
+Subject: [PATCH v2] RPC: killing RPC tasks races fixed
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        bfields@fieldses.org, davem@davemloft.net, skinsbursky@openvz.org
+Date: Thu, 17 Mar 2011 18:54:23 +0300
+Message-ID: <20110317155252.27674.52947.stgit@localhost6.localdomain6>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 03/17/2011 10:52 AM, Jim Rees wrote:
-> Steve Dickson wrote:
->
->    I wonder if this is the same problem Jim was seeing a while back
->    as well as some other people.... Something similar to:
->        https://bugzilla.redhat.com/show_bug.cgi?id=669204
->
-> I wondered that too.  The traces are hard to read (someone word-wrapped
-> them) but they looked different to me.  Could be the same underlying
-> problem.
+RPC task RPC_TASK_QUEUED bit is set must be checked before trying to wake up
+task rpc_killall_tasks() because task->tk_waitqueue can not be set (equal to
+NULL).
+Also, as Trond Myklebust mentioned, such approach (instead of checking
+tk_waitqueue to NULL) allows us to "optimise away the call to
+rpc_wake_up_queued_task() altogether for those
+tasks that aren't queued".
 
-Yeah, the more i'm looking at the backtraces, the more different they look.
+Here is an example of dereferencing of tk_waitqueue equal to NULL:
+
+CPU 0               	CPU 1				CPU 2
+--------------------	---------------------	--------------------------
+nfs4_run_open_task
+rpc_run_task
+rpc_execute
+rpc_set_active
+rpc_make_runnable
+(waiting)
+			rpc_async_schedule
+			nfs4_open_prepare
+			nfs_wait_on_sequence
+						nfs_umount_begin
+						rpc_killall_tasks
+						rpc_wake_up_task
+						rpc_wake_up_queued_task
+						spin_lock(tk_waitqueue == NULL)
+						BUG()
+			rpc_sleep_on
+			spin_lock(&q->lock)
+			__rpc_sleep_on
+			task->tk_waitqueue = q
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@openvz.org>
+
+---
+ net/sunrpc/clnt.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 57d344c..3444757 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -436,7 +436,9 @@ void rpc_killall_tasks(struct rpc_clnt *clnt)
+ 		if (!(rovr->tk_flags & RPC_TASK_KILLED)) {
+ 			rovr->tk_flags |= RPC_TASK_KILLED;
+ 			rpc_exit(rovr, -EIO);
+-			rpc_wake_up_queued_task(rovr->tk_waitqueue, rovr);
++			if (RPC_IS_QUEUED(rovr))
++				rpc_wake_up_queued_task(rovr->tk_waitqueue, 
++							rovr);
+ 		}
+ 	}
+ 	spin_unlock(&clnt->cl_lock);
+
