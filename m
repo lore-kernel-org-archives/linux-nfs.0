@@ -1,96 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail4.conversis.de ([213.203.219.181]:54617 "EHLO
-	mail4.conversis.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751551Ab1CUM6a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2011 08:58:30 -0400
-Message-ID: <4D874419.5030303@conversis.de>
-Date: Mon, 21 Mar 2011 13:27:05 +0100
-From: Dennis Jacobfeuerborn <dennisml@conversis.de>
-To: NeilBrown <neilb@suse.de>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: bind mounts, crossmnt and multi client nfsv3
-References: <4D86B6F2.1070004@conversis.de> <20110321140923.5a618d89@notabene.brown>
-In-Reply-To: <20110321140923.5a618d89@notabene.brown>
+Received: from smtp.opengridcomputing.com ([209.198.142.2]:40518 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754725Ab1CQSy1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2011 14:54:27 -0400
+Message-ID: <4D8258DF.3030302@opengridcomputing.com>
+Date: Thu, 17 Mar 2011 12:54:23 -0600
+From: Tom Tucker <tom@opengridcomputing.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jesper Juhl <jj@chaosbits.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Pavel Emelyanov <xemul@openvz.org>,
+        Chuck Lever <chuck.lever@oracle.com>, Tejun Heo <tj@kernel.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] SUNRPC: Remove resource leak in svc_rdma_send_error()
+References: <alpine.LNX.2.00.1101222233260.7746@swampdragon.chaosbits.net> <20110317183752.GH30180@fieldses.org>
+In-Reply-To: <20110317183752.GH30180@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 03/21/2011 04:09 AM, NeilBrown wrote:
-> On Mon, 21 Mar 2011 03:24:50 +0100 Dennis Jacobfeuerborn
-> <d.jacobfeuerborn@conversis.de>  wrote:
->
->> Hi,
->> I have a storage system that is exporting many directories to multiple
->> clients resulting in a lot of mountpoints (156) on each client. What I'm
->> trying to do is to create a single directory on the server and then use
->> mount --bind to mount all the different directories (which are stored on
->> different LVM volumes) into this single export directory and finally export
->> this directory to the clients.
->> Now the exports man-page mentions the crossmnt option but it also mentions
->> that it cannot be used if I want to export the directory to multiple
->> clients. Is there another way to accomplish something like this?
+Hi Bruce,
+
+I believe this fix is correct.
+
+Tom
+
+On 3/17/11 12:37 PM, J. Bruce Fields wrote:
+> On Sat, Jan 22, 2011 at 10:40:20PM +0100, Jesper Juhl wrote:
+>> We leak the memory allocated to 'ctxt' when we return after
+>> 'ib_dma_mapping_error()' returns !=0.
 >>
+>> Signed-off-by: Jesper Juhl<jj@chaosbits.net>
+> I don't know this code, but I can't see how that could be wrong....
+> Applying unless Tom tells me otherwise.
 >
-> Just export the top directory with 'crossmnt' - it should work fine.
+> --b.
 >
-> The 'multiple clients' thing only affects 'nohide' and I think it only
-> affected it back in 2.4 days.
-> Lots changed with 2.6, but maybe not enough of the man page changed :-(
->
-> So try with 'crossmnt' and if it doesn't work, then come back with details.
+>> ---
+>>   svc_rdma_transport.c |    1 +
+>>   1 file changed, 1 insertion(+)
+>>
+>>    compile tested only
+>>
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> index 9df1ead..1a10dcd 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> @@ -1335,6 +1335,7 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+>>   					    p, 0, length, DMA_FROM_DEVICE);
+>>   	if (ib_dma_mapping_error(xprt->sc_cm_id->device, ctxt->sge[0].addr)) {
+>>   		put_page(p);
+>> +		svc_rdma_put_context(ctxt, 1);
+>>   		return;
+>>   	}
+>>   	atomic_inc(&xprt->sc_dma_used);
+>>
+>>
+>> -- 
+>> Jesper Juhl<jj@chaosbits.net>             http://www.chaosbits.net/
+>> Don't top-post http://www.catb.org/~esr/jargon/html/T/top-post.html
+>> Plain text mails only, please.
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
 
-I've tried this now but it doesn't seem to work. This is the setup so far:
-
-===========
-
-On the server I've created the bind mounts like this:
-
-/mnt/vg0/vol01/country/de/a on /exports/country/de/a type none (rw,bind)
-/mnt/vg0/vol03/country/de/b on /exports/country/de/b type none (rw,bind)
-...
-
-Then I put the following line in /etc/exports:
-/exports 
-192.168.0.0/255.255.255.0(rw,anonuid=96,anongid=96,secure,no_root_squash,wdelay,sync,crossmnt,no_subtree_check)
-
-additionally these exports exist for each volume:
-/mnt/vg0/vol01/country 
-213.131.252.0/255.255.255.0(rw,anonuid=96,anongid=96,secure,no_root_squash,wdelay,sync)
-
-===========
-
-On the client I've mounted this export like this:
-mount -o rw,noatime,tcp,rsize=8192,hard,intr,nfsvers=3,addr=192.168.0.8 
-192.168.0.8:/exports/country/de /data/country/de
-
-This succeeds and I can see the letters a-z in /data/country/de however 
-these directories are all empty so crossing the filesystem border doesn't 
-seem to work.
-
-===========
-
-The server is an openfiler appliance:
-
-[root@exonas900 ~]# conary q|grep nfs
-libnfsidmap=0.20-1.1-1
-nfs-client=1.0.10-4.6-1
-nfs-server=1.0.10-4.6-1
-nfs-utils=1.0.10-4.6-1
-[root@exonas900 ~]# uname -a
-Linux exonas900 2.6.26.8-1.0.11.smp.gcc3.4.x86.i686 #1 SMP Sat Jan 10 
-22:09:09 GMT 2009 i686 i686 i386 GNU/Linux
-
-===========
-
-The client I'm testing with is a Centos 5 system:
-
-[root@wmembf10 ~]# rpm -qa|grep nfs
-nfs-utils-lib-1.0.8-7.6.el5
-nfs-utils-1.0.9-47.el5_5
-[root@wmembf10 ~]# uname -a
-Linux wmembf10.tmm.cvsn.de 2.6.18-194.11.4.el5xen #1 SMP Tue Sep 21 
-05:40:24 EDT 2010 x86_64 x86_64 x86_64 GNU/Linux
-
-Regards,
-   Dennis
