@@ -1,99 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from os.inf.tu-dresden.de ([141.76.48.99]:40036 "EHLO
-	os.inf.tu-dresden.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755918Ab1CQXQR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2011 19:16:17 -0400
-Date: Fri, 18 Mar 2011 00:16:13 +0100
-From: Adam Lackorzynski <adam@os.inf.tu-dresden.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: 2.6.38: Quota over NFS4
-Message-ID: <20110317231613.GC2445@os.inf.tu-dresden.de>
-References: <20110317133247.GB6424@os.inf.tu-dresden.de>
- <20110317173805.GB30180@fieldses.org>
- <20110317213302.GA2445@os.inf.tu-dresden.de>
- <20110317222732.GC31845@fieldses.org>
- <20110317225908.GB2445@os.inf.tu-dresden.de>
- <20110317230315.GG31845@fieldses.org>
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20110317230315.GG31845@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:44363 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755775Ab1CQWwr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Mar 2011 18:52:47 -0400
+Date: Thu, 17 Mar 2011 18:52:45 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 10/17] CLNT: test resues slot ID
+Message-ID: <20110317225245.GE31845@fieldses.org>
+References: <4D6DE26C.3010103@cn.fujitsu.com>
+ <4D6DE4A5.1050702@cn.fujitsu.com>
+ <20110303061442.GE7724@fieldses.org>
+ <4D6F5B4E.7000903@cn.fujitsu.com>
+ <4D70AB97.3070502@cn.fujitsu.com>
+ <20110314184144.GB25442@fieldses.org>
+ <20110314192434.GC25442@fieldses.org>
+ <4D7ED324.4070600@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D7ED324.4070600@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Thu Mar 17, 2011 at 19:03:15 -0400, J. Bruce Fields wrote:
-> On Thu, Mar 17, 2011 at 11:59:08PM +0100, Adam Lackorzynski wrote:
-> > 
-> > On Thu Mar 17, 2011 at 18:27:32 -0400, J. Bruce Fields wrote:
-> > > On Thu, Mar 17, 2011 at 10:33:03PM +0100, Adam Lackorzynski wrote:
-> > > > 
-> > > > On Thu Mar 17, 2011 at 13:38:05 -0400, J. Bruce Fields wrote:
-> > > > > On Thu, Mar 17, 2011 at 02:32:47PM +0100, Adam Lackorzynski wrote:
-> > > > > > Hello,
-> > > > > > 
-> > > > > > I'm seeing a problem with quotas in a system where the server running
-> > > > > > 2.6.38 exports an XFS filesystem via NFS4 to a client. The client kernel
-> > > > > > version does not seem to play a role, checked with 2.6.38, 2.6.37 and
-> > > > > > 2.6.36. The following script and output show the problem:
-> > > > > > 
-> > > > > > #! /bin/sh
-> > > > > > 
-> > > > > > quota | grep home
-> > > > > > du
-> > > > > > cp /bin/ls x1
-> > > > > > du
-> > > > > > cat x1 > /dev/null
-> > > > > > rm x1
-> > > > > > du
-> > > > > > quota | grep home
-> > > > > > 
-> > > > > > Output:
-> > > > > > 
-> > > > > >    homes:/home/ 8194720  9072000 9174400          403670  500000  550000        
-> > > > > > 0       .
-> > > > > > 96      .
-> > > > > > 0       .
-> > > > > >    homes:/home/ 8194816  9072000 9174400          403671  500000  550000        
-> > > > > > 
-> > > > > > 
-> > > > > > As can be seen the 96 kb are still accounted on the quota of the user.
-> > > > > > Removing the 'cat' command from the script makes the quota be ok again
-> > > > > > (original value). Also mounting via nfs3 does not exhibit it, same for running
-> > > > > > the script on the nfs-server directly.
-> > > > > 
-> > > > > Does "df" show the same problem?
-> > > > 
-> > > > With '/bin/ls' it does not change at all, so I took a bigger binary
-> > > > which yields to:
-> > > > 
-> > > >    homes:/home/ 8203780  9072000 9174400          403688  500000  550000        
-> > > > 0       .
-> > > > Filesystem           1K-blocks      Used Available Use% Mounted on
-> > > >   homes:/home        513671168 335251456 178419712  66% /tmp/xx
-> > > > 4592    .
-> > > > Filesystem           1K-blocks      Used Available Use% Mounted on
-> > > >   homes:/home        513671168 335256576 178414592  66% /tmp/xx
-> > > > 0       .
-> > > > Filesystem           1K-blocks      Used Available Use% Mounted on
-> > > >   homes:/home        513671168 335256576 178414592  66% /tmp/xx
-> > > >    homes:/home/ 8208372  9072000 9174400          403689  500000  550000        
-> > > > 
-> > > > So yes, it seems to be there as well.
-> > > 
-> > > It might be easier to see with "df -i" (assuming we're leaking an
-> > > inode).
-> > 
-> > Result is as expected, inode goes one up and not down again.
+On Tue, Mar 15, 2011 at 10:47:00AM +0800, Mi Jinlong wrote:
 > 
-> Is this something special about binaries?  If you copy something other
-> than a binary, do you not see the bug?
+> 
+> J. Bruce Fields:
+> > On Mon, Mar 14, 2011 at 02:41:44PM -0400, J. Bruce Fields wrote:
+> >> On Fri, Mar 04, 2011 at 05:06:31PM +0800, Mi Jinlong wrote:
+> >>>    Maybe the following one is better than before.
+> >> Looks good to me, thanks!
+> > 
+> > But on testing I get a failure:
+> > 
+> > SEQ14    st_sequence.testReuseSlotID                              : FAILURE
+> >            AttributeError: LOOKUP4res instance has no attribute
+> > 	   'object'
+> 
+>   See below.
+> 
+> > 
+> > I haven't tried to figure out what's going on there.
+> > 
+> > --b.
+> > 
+> >> Very minor nit:
+> >>
+> >>> +def testReuseSlotID(t, env):
+> >>> +    """ If client reuses a slot ID and sequence ID for a completely
+> >>> +        different request, server MAY treat the request as if it is
+> >>> +        a retry of what it has already executed. rfc5661 18.46.3
+> >>> +
+> >>> +    FLAGS: sequence all
+> >>> +    CODE: SEQ14
+> >>> +    """
+> >>> +    c = env.c1.new_client(env.testname(t))
+> >>> +    # CREATE_SESSION
+> >>> +    sess1 = c.create_session()
+> >>> +
+> >>> +    name = "%s_1" % env.testname(t)
+> >>> +    res = create_file(sess1, name) 
+> >> Could you check your patches for trailing whitespace?  (There's an extra
+> >> space at the end of that line.)
+> 
+>   I will pay attention to that in the future.
+> 
+> >>
+> >> (No need to resend anything.)
+> >>
+> >> --b.
+> >>
+> >>> +    check(res)
+> >>> +
+> >>> +    sid = sess1.sessionid
+> >>> +    seqid = nfs4lib.inc_u32(sess1.seqid)
+> >>> +    fh = res.resarray[3].object
+> 
+>   The error only appears here. 
+> 
+>   At my machine, the res.resarray[3] is GETFHres. 
+>   As the above error message shown res.resarray[3] is LOOKUP4res.
+>   Is it the nfs4lib's problem?
 
-No change when using a plain text file instead of a binary.
+Oh, are you assuming that the GETFH op is always at the same position in
+the compound?
 
+You can't do that--the number of LOOKUPS required to get to the file
+depends on how deep in the server's pseudofs the file is.
 
-Adam
--- 
-Adam                 adam@os.inf.tu-dresden.de
-  Lackorzynski         http://os.inf.tu-dresden.de/~adam/
+Note the following "homedir = " line also assumes that the pynfs tests
+are being run on /, but that's not necessarily true.
+
+--b.
+
+> 
+> --
+> thanks,
+> Mi Jinlong 
+> 
+> >>> +    homedir = sess1.c.homedir[0]
+> >>> +
+> >>> +    res = c.c.compound([op.sequence(sid, seqid, 0, 0, TRUE), op.putrootfh(),
+> >>> +                        op.lookup(homedir), op.remove(name)])
+> >>> +    check(res)
+> >>> +
+> >>> +    # Reuses slot ID and sequence ID for different request
+> >>> +    res = c.c.compound([op.sequence(sid, seqid, 0, 0, TRUE), op.putrootfh(),
+> >>> +                        op.lookup(homedir), op.rename(name, "test")])
+> >>> +    check(res)
+> >>> -- 
+> >>> 1.7.4.1
+> >>>
+> >>>
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> 
