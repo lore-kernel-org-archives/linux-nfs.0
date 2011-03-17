@@ -1,38 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from milhouse.imppc.org ([213.151.98.37]:51553 "EHLO
-	milhouse.imppc.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756163Ab1COVrv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 17:47:51 -0400
-Message-ID: <4D7FE0E8.5050701@imppc.org>
-Date: Tue, 15 Mar 2011 22:58:00 +0100
-From: Judith Flo Gaya <jflo@imppc.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: problem with nfs latency during high IO
-References: <4D7B6DE5.8010008@imppc.org> <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com> <4D7FA11F.5020604@imppc.org> <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com> <4D7FDB14.6090908@imppc.org> <9CC4990D-6969-4788-8B52-BA5AF2743DE3@oracle.com>
-In-Reply-To: <9CC4990D-6969-4788-8B52-BA5AF2743DE3@oracle.com>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:30789 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755196Ab1CQU5V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Mar 2011 16:57:21 -0400
+Message-ID: <4D8275AE.5030001@RedHat.com>
+Date: Thu, 17 Mar 2011 16:57:18 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Vladimir Elisseev <vovan@vovan.nl>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: rpc.svcgssd problem after updating client 1.2.2->1.2.3
+References: <1300387690.2684.23.camel@vovan.net.home>
+In-Reply-To: <1300387690.2684.23.camel@vovan.net.home>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
 
-On 3/15/11 10:28 PM, Chuck Lever wrote:
->>>>>> Can you help me on this? I'm I wrong in my supposition (is the patch really applied)? is it possible that my problem is somewhere else?
->>>>> This sounds like typical behavior.
->>>> But it is not like this when I use a RHEL6 as a client to those servers, in this case, the ls only last for some seconds, nothing like the minutes that it takes from my fedora.
->>> Which Fedora systems, exactly?  The fix I described below is almost certainly in RHEL 6.
->> Fedora Core 14, 64 bit, 2.6.35.6-45
-> Right, you mentioned that in your OP.  Sorry.
-no problem
->>>>> POSIX requires that the mtime and file size returned by stat(2) ('ls -l') reflect the most recent write(2).  On NFS, the server sets both of these fields.  If a client is caching dirty data, and an application does a stat(2), the client is forced to flush the dirty data so that the server can update mtime and file size appropriately.  The client then does a GETATTR, and returns those values to the requesting application.
->>>>>
->>>> ok, sorry, I know this is a very stupid question but. what do you mean by dirty data?
->>> Dirty data is data that your application has written to the file but which hasn't been flushed to the server's disk.  This data resides in the client's page cache, on its way to the server.
->> ok, understood. Then the sysctl change that you suggest, I've been checking both distributions, RHEL6 and FC14 and they share the same value... I assume by this that changing this value will not "help", am I right?
-> It should improve behavior somewhat in both cases, but the delay won't go away entirely.  This was a workaround we gave EL5 customers before this bug was addressed.  In the Fedora case I wouldn't expect a strongly deterministic improvement, but the average wait for "ls -l" should go down somewhat.
-I saw that the value was 20, I don't know the impact of changing the 
-number by units or tens... Should I test with 10 or this is too much? I 
-assume that the behavior will change immediately right?
-j
+On 03/17/2011 02:48 PM, Vladimir Elisseev wrote:
+> Hello,
+> 
+> I've got a problem after updating NFS client. I've been trying to find
+> possible solution without a success for a while, so I'd appreciate any
+> help. All the info is below. Client has kernel 2.6.37 and server 2.6.36.
+> 
+> Regards,
+> Vladimir.
+> 
+> On the server side the error is "rpc.svcgssd[15159]: qword_eol: fflush
+> failed: errno 22 (Invalid argument)", the full track is below:
+I've seen this before but I believe it was in mountd. The fflush(3) call 
+is failing with EINVAL on the upcall fd... I forget how it cleared its
+self up..... 
+
+steved.
+
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: leaving poll
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: handling null request
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: sname = host/x.x.x@X.X
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids: calling
+> umich_ldap->princ_to_ids
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: ldap_init_and_bind: version
+> mismatch between API information and protocol version. Setting protocol
+> version to 3
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids:
+> umich_ldap->princ_to_ids returned -2
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids: calling
+> nsswitch->princ_to_ids
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nss_getpwnam: name
+> 'host/x.x.x@X.X' domain '(null)': resulting localname
+> 'host/user.net.home'
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids:
+> nsswitch->princ_to_ids returned -2
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids: final
+> return value is -2
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: DEBUG: serialize_krb5_ctx:
+> lucid version!
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: prepare_krb5_rfc4121_buffer:
+> protocol 1
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: prepare_krb5_rfc4121_buffer:
+> serializing key with enctype 18 and size 32
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: doing downcall
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: mech: krb5, hndl len: 4, ctx
+> len 52, timeout: 1300464362 (86399 from now), clnt: host@x.x.x, uid: -1,
+> gid: -1, num aux grps: 0:
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: qword_eol: fflush failed: errno
+> 22 (Invalid argument)
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: WARNING: error writing to
+> downcall channel /proc/net/rpc/auth.rpcsec.context/channel: Invalid
+> argument
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: sending null reply
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: writing message: \x
+> \x6082025106092a864886f71201020201006e8202403082023ca003020105a10302010ea20703050020000000a38201486182014430820140a003020105a10a1b084e45542e484f4d45a21e301ca003020103a11530131b036e66731b0c6e66732e6e65742e686f6d65a382010b30820107a003020112a103020103a281fa0481f76d51de4ee749be6f5662e84fd91220874cd512114a52a7dbb0d1fb96da4768ec9d9f967a9664cc3a27626e0383a6a2e6930123efd709525a41420a68fdaa8fafabfab642f00c4e7d6dc4f075d900adf92f339d02b8ad1a162efeefa7501417280c553a430056634f4771a9bfa86c80eb758e7d530bff6dba5a112ca6b2412123e496a10ef93ac5af820b8751ec53db527acc059fcaee551edab8adc61f1dbc61ed9d16b65157974bd572d25ce62fd8c2e9d30650ef8cd35b12e315535cc1e53895bbd0a9589e02e2de1e62ca61e50e99f2b9f0456157bd3b3d739c6b6899b62f681f91e6072033e62e665ade4c366a1369315f19ca2e7da481da3081d7a003020112a281cf0481cc224de9a1f61431a8aee2b5a4f9fb6260230a0220c87c32030c528c80756b779eea25b272164e1c5e29b4d5be07557039cb7a9e230a5a8572dbe5bec750b952d57022d61ce29643f1110fece4e3c07ba027461e3e865f30a5ed29068cbec2e7a8d1dd18f6
+6!
+>  50e6f2a565b7d779220c9c5c40c504533de623c63e3f229749f34e4d64cfc050083c09b3913371d0203994d3893a6640b6d9e1a5c43949f0b6567b755c99c4876f6987e7c3886d2eddd5cca1775ae4b0cde83910ddd786706c34fdbc18eca86206d42c05fd4fda4 1300378023 0 0 \x2d000000 \x60819906092a864886f71201020202006f8189308186a003020105a10302010fa27a3078a003020112a271046f5b995dfc1da7fffbad590382fac5637845400ac2b3d3943196e2c4ab8d55edfccfaf99b27d5e06ca56df734d817378c16a4b0c0fee21ecffd1be76b0cdffb8715e0cfe8659e3344407312e18194df2acd1795f8285f6f60ac31658d6bc678750f0fa0bb9e8d41ea2846832f8c7bc91
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: finished handling null request
+> Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: entering poll
+> 
+> On the client side mount ends with "access denied" error, the full log
+> is below:
+> Mar 17 17:09:06 user rpc.gssd[32238]: handling gssd upcall
+> (/var/lib/nfs/rpc_pipefs/nfs/clnt37) 
+> Mar 17 17:09:06 user rpc.gssd[32238]: handle_gssd_upcall: 'mech=krb5
+> uid=0 enctypes=18,17,16,23,3,1,2 ' 
+> Mar 17 17:09:06 user rpc.gssd[32238]: handling krb5 upcall
+> (/var/lib/nfs/rpc_pipefs/nfs/clnt37) 
+> Mar 17 17:09:06 user rpc.gssd[32238]: process_krb5_upcall: service is
+> '<null>' 
+> Mar 17 17:09:06 user rpc.gssd[32238]: Full hostname for 'nfs.x.x' is
+> 'nfs.x.x' 
+> Mar 17 17:09:06 user rpc.gssd[32238]: Full hostname for 'user.x.x' is
+> 'user.x.x' 
+> Mar 17 17:09:06 user rpc.gssd[32238]: No key table entry found for
+> root/user.x.x@X.X while getting keytab entry for 'root/user.x.x@X.X' 
+> Mar 17 17:09:06 user rpc.gssd[32238]: No key table entry found for
+> nfs/user.x.x@X.X while getting keytab entry for 'nfs/user.x.x@X.X' 
+> Mar 17 17:09:06 user rpc.gssd[32238]: Success getting keytab entry for
+> 'host/user.x.x@X.X' 
+> Mar 17 17:09:06 user rpc.gssd[32238]: Successfully obtained machine
+> credentials for principal 'host/user.x.x@X.X' stored in ccache
+> 'FILE:/tmp/krb5cc_machine_x.x'    
+> Mar 17 17:09:06 user rpc.gssd[32238]: INFO: Credentials in CC
+> 'FILE:/tmp/krb5cc_machine_x.x' are good until 1300464546 
+> Mar 17 17:09:06 user rpc.gssd[32238]: using FILE:/tmp/krb5cc_machine_x.x
+> as credentials cache for machine creds 
+> Mar 17 17:09:06 user rpc.gssd[32238]: using environment variable to
+> select krb5 ccache FILE:/tmp/krb5cc_machine_x.x 
+> Mar 17 17:09:06 user rpc.gssd[32238]: creating context using fsuid 0
+> (save_uid 0) 
+> Mar 17 17:09:06 user rpc.gssd[32238]: creating tcp client for server
+> nfs.x.x 
+> Mar 17 17:09:06 user rpc.gssd[32238]: DEBUG: port already set to 2049 
+> Mar 17 17:09:06 user rpc.gssd[32238]: creating context with server
+> nfs@nfs.x.x 
+> Mar 17 17:09:06 user rpc.gssd[32238]: WARNING: Failed to create krb5
+> context for user with uid 0 for server nfs.x.x 
+> Mar 17 17:09:06 user rpc.gssd[32238]: WARNING: Failed to create machine
+> krb5 context with credentials cache FILE:/tmp/krb5cc_machine_X.X for
+> server nfs.x.x 
+> Mar 17 17:09:06 user rpc.gssd[32238]: WARNING: Machine cache is
+> prematurely expired or corrupted trying to recreate cache for server
+> nfs.x.x 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
