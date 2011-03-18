@@ -1,58 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sainfoin-out.extra.cea.fr ([132.167.192.144]:33669 "EHLO
-	sainfoin-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752443Ab1C1N0m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2011 09:26:42 -0400
-Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
-	by sainfoin.extra.cea.fr (8.14.2/8.14.2/CEAnet-Internet-out-2.2) with ESMTP id p2SCeH5R012080
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Mon, 28 Mar 2011 14:40:17 +0200
-Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
-	by pisaure.intra.cea.fr (8.14.4/8.14.4) with ESMTP id p2SCeHUT024284
-	for <linux-nfs@vger.kernel.org>; Mon, 28 Mar 2011 14:40:17 +0200
-	(envelope-from philippe.deniel@cea.fr)
-Received: from zia.bruyeres.cea.fr (esteban.dam.intra.cea.fr [132.165.76.10])
-	by muguet1.intra.cea.fr (8.13.8/8.13.8/CEAnet-Intranet-out-1.1) with SMTP id p2SCeH0Z032211
-	for <linux-nfs@vger.kernel.org>; Mon, 28 Mar 2011 14:40:17 +0200
-Message-ID: <4D9081B1.1020205@cea.fr>
-Date: Mon, 28 Mar 2011 14:40:17 +0200
-From: DENIEL Philippe <philippe.deniel@cea.fr>
-To: linux-nfs@vger.kernel.org
-Subject: NFSv4 : question on the resolution of unknown users and groups
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from cantor2.suse.de ([195.135.220.15]:42425 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752742Ab1CRE1T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Mar 2011 00:27:19 -0400
+Date: Fri, 18 Mar 2011 15:27:09 +1100
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: peter.staubach@emc.com, Trond.Myklebust@netapp.com, bjschuma@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: Use of READDIRPLUS on large directories
+Message-ID: <20110318152709.77e2d51b@notabene.brown>
+In-Reply-To: <20110317174453.GC30180@fieldses.org>
+References: <20110316155528.31913c58@notabene.brown>
+	<5E6794FC7B8FCA41A704019BE3C70E8B068397B4@MX31A.corp.emc.com>
+	<20110317084038.6d4ea49d@notabene.brown>
+	<20110317115522.29020461@notabene.brown>
+	<20110317174453.GC30180@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi,
+On Thu, 17 Mar 2011 13:44:53 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-I am in the following situation : a file belonging to the user whose 
-(uid, gid) is (15678,15678) is to be exported via NFS through a client 
-and / or a server than knows nothing about this user (there is no entry 
-in /etc/passwd, in the yellow pages or whatever is used to maintain 
-users's maps).
+> On Thu, Mar 17, 2011 at 11:55:22AM +1100, NeilBrown wrote:
+> > Strangely, when I try NFSv4 I don't get what I would expect.
+> > 
+> > "ls" on an unpatched 2.6.38 takes over 5 seconds rather than around 4.
+> > With the patch it does back down to about 2. (still NFSv3 at 1.5).
+> > Why would NFSv4 be slower?
+> >  On v3 we make 44 READDIRPLUS calls and 284 READDIR calls - total of  328
+> >        READDIRPLUS have about 30 names, READDIR have about 100
+> >  On v4 we make 633 READDIR calls - nearly double.
+> >        Early packed contain about 19 name, later ones about 70
+> > 
+> > Is nfsd (2.6.32) just not packing enough answers in the reply?
+> > Client asks for a dircount of 16384 and a maxcount of 32768, and gets
+> > packets which are about 4K long - I guess that is PAGE_SIZE ??
+> 
+> >From nfsd4_encode_readdir():
+> 
+> 	maxcount = PAGE_SIZE;
+> 	if (maxcount > readdir->rd_maxcount)
+> 		maxcount = readdir->rd_maxcount;
+> 
+> Unfortunately, I don't think the xdr encoding is equipped to deal with
+> page boundaries.  It should be.
 
-When using NFSv3, I see this on the client:
+Bah humbug.
+NFSv3 gets it right - it just encodes into the next page and then copies back.
 
-    # ls -ld unknown/
-    drwxr-xr-x 2 15678 15678 4096 Mar 28 11:15 unknown/
+Sounds like a simple afternoon's project .... now if only we could find
+someone with a simple afternoon :-)
+Getting a realistic upper limit on the size of the reply (which is more
+variable for v4 than for v3) would be the only tricky bit..
+Though nfsd4_encode_fattr looks fairly idempotent, so you could just
+try to encode and if it doesn't fit:
+  allocate next page
+  encode into there
+  copy some into previous page
+  copy rest down.
 
-When using NFSv4 (the rpc.idmapd is running on both client and server 
-and is configured homogeneously) I see this:
-
-    # ls -ld unknown/
-    drwxr-xr-x 2 nobody nobody 4096 Mar 28 11:15 unknown/
-
-With wireshark I can see that the server itself replies the string 
-"nobody" as OWNER and OWNER_GROUP. I guess the libnfslibmap (used inside 
-the rpc.idmapd) is not resolving (15678, 15678) and returns an error, 
-making the nfsd returning nobody. The nfs-utils-lib that I use is 
-1.1.5-1 (it's a F13 machine).
-Is what I saw a regular behaviour ? How shoud I configure the client 
-and/or the server to have the same display in NFSv4 and NFSv3 when 
-querying attributes on objects belonging to an unknown user ?
-
-    Regards
-
-       Philippe
-
+NeilBrown
