@@ -1,236 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:32249 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933682Ab1CXRMZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Mar 2011 13:12:25 -0400
-Message-ID: <4D8B7B77.6080103@netapp.com>
-Date: Thu, 24 Mar 2011 13:12:23 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH v6 1/5] NFS: convert call_sync() to a function
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:35416 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757036Ab1CRQg2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Mar 2011 12:36:28 -0400
+Received: by qwk3 with SMTP id 3so2941796qwk.19
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Mar 2011 09:36:27 -0700 (PDT)
+In-Reply-To: <20110318164828.943007egbodjy3t8@vovan.nl>
+References: <1300387690.2684.23.camel@vovan.net.home>
+	<AANLkTim6nptBM40b5Zt2fhr7aiQ47kqX+_RBprnCokRD@mail.gmail.com>
+	<1300427036.30472.11.camel@vovan.net.home>
+	<AANLkTim7q+-ijBnzWs+zW9X-gfxyrt5kw4Vj_pcrWJFw@mail.gmail.com>
+	<20110318145204.20621su4mostcrk4@vovan.nl>
+	<AANLkTimLE7gJ_tzi5JOCgM+RA4-8EnHcW8hqB++a5X8X@mail.gmail.com>
+	<20110318164828.943007egbodjy3t8@vovan.nl>
+Date: Fri, 18 Mar 2011 12:36:23 -0400
+Message-ID: <AANLkTinGHaeF-G+XGj8--+m2NygX7fZ49gdf7sAepN=+@mail.gmail.com>
+Subject: Re: rpc.svcgssd problem after updating client 1.2.2->1.2.3
+From: Kevin Coffman <kwc@citi.umich.edu>
+To: Vladimir Elisseev <vovan@vovan.nl>
+Cc: NFS list <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Fri, Mar 18, 2011 at 11:48 AM, Vladimir Elisseev <vovan@vovan.nl> wrote:
+> Kevin,
+>
+> First of all, thank you for helping me with this issue.
+>
+> Quoting Kevin Coffman <kwc@citi.umich.edu>:
+>
+>> Re: the change to krb5.conf, yes I think you need to restart svcgssd.
+>> And yes, it does have global effect (limiting all Kerberos connections
+>> on the machine to DES), which is not optimal.
+>
+> I'll try to reproduce this later then if needed.
 
-This patch changes nfs4_call_sync() from a macro into a
-static inline function.  As a macro, the call_sync()
-function will not do any type checking and depends
-on the sequence arguments always having the same name.
-As a function, we get to have type checking and can
-rename the arguments if we so choose.
+Sounds good.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c |   53 ++++++++++++++++++++++++++++++-----------------------
- 1 files changed, 30 insertions(+), 23 deletions(-)
+>> Offhand, I'm not aware of any changes to gssd or svcgssd between
+>> nfs-utils 1.2.2 and 1.2.3 that would affect this.  Moving from
+>> Kerberos 1.6 to something later would bring in the acceptor subkey
+>> issue.  (I believe both sides need to have krb5-1.7 or later libraries
+>> for the subkey to be used.)  But again, your server's kernel _should_
+>> have RPC GSS support for AES.
+>
+> The version of mit-kerberos used on all machines is 1.9. As for the change
+> in nfs-utils, the only one I've found related to kerberos is the one below:
+> commit 76be349d5dd07f55797cb9920cc275667258f10f
+> Author: Kevin Coffman <kwc@citi.umich.edu>
+> Date:   Thu Apr 15 08:32:20 2010 -0400
+>
+>    Try to use kernel function to determine supported Kerberos enctypes.
+>
+>    This patch replaces a hard-coded list with a function to obtain
+>    the Kerberos encryption types that the kernel's rpcsec_gss code
+>    can support.  Defaults to old behavior if kernel does not supply
+>    information.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6f2f402..9acad79 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -719,9 +719,16 @@ int _nfs4_call_sync(struct nfs_server *server,
- 	return rpc_call_sync(server->client, msg, 0);
- }
- 
--#define nfs4_call_sync(server, msg, args, res, cache_reply) \
--	(server)->nfs_client->cl_mvops->call_sync((server), (msg), &(args)->seq_args, \
--			&(res)->seq_res, (cache_reply))
-+static inline
-+int nfs4_call_sync(struct nfs_server *server,
-+		   struct rpc_message *msg,
-+		   struct nfs4_sequence_args *args,
-+		   struct nfs4_sequence_res *res,
-+		   int cache_reply)
-+{
-+	return server->nfs_client->cl_mvops->call_sync(server, msg, args,
-+						res, cache_reply);
-+}
- 
- static void update_changeattr(struct inode *dir, struct nfs4_change_info *cinfo)
- {
-@@ -1831,7 +1838,7 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 	} else
- 		memcpy(&arg.stateid, &zero_stateid, sizeof(arg.stateid));
- 
--	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (status == 0 && state != NULL)
- 		renew_lease(server, timestamp);
- 	return status;
-@@ -2090,7 +2097,7 @@ static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *f
- 	};
- 	int status;
- 
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (status == 0) {
- 		memcpy(server->attr_bitmask, res.attr_bitmask, sizeof(server->attr_bitmask));
- 		server->caps &= ~(NFS_CAP_ACLS|NFS_CAP_HARDLINKS|
-@@ -2160,7 +2167,7 @@ static int _nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	};
- 
- 	nfs_fattr_init(info->fattr);
--	return nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
-@@ -2249,7 +2256,7 @@ static int _nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle,
- 	};
- 	
- 	nfs_fattr_init(fattr);
--	return nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_getattr(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fattr *fattr)
-@@ -2333,7 +2340,7 @@ static int _nfs4_proc_lookupfh(struct nfs_server *server, const struct nfs_fh *d
- 	nfs_fattr_init(fattr);
- 
- 	dprintk("NFS call  lookupfh %s\n", name->name);
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	dprintk("NFS reply lookupfh: %d\n", status);
- 	return status;
- }
-@@ -2421,7 +2428,7 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 	if (res.fattr == NULL)
- 		return -ENOMEM;
- 
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (!status) {
- 		entry->mask = 0;
- 		if (res.access & NFS4_ACCESS_READ)
-@@ -2488,7 +2495,7 @@ static int _nfs4_proc_readlink(struct inode *inode, struct page *page,
- 		.rpc_resp = &res,
- 	};
- 
--	return nfs4_call_sync(NFS_SERVER(inode), &msg, &args, &res, 0);
-+	return nfs4_call_sync(NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_readlink(struct inode *inode, struct page *page,
-@@ -2577,7 +2584,7 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
- 	if (res.dir_attr == NULL)
- 		goto out;
- 
--	status = nfs4_call_sync(server, &msg, &args, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 1);
- 	if (status == 0) {
- 		update_changeattr(dir, &res.cinfo);
- 		nfs_post_op_update_inode(dir, res.dir_attr);
-@@ -2678,7 +2685,7 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 	if (res.old_fattr == NULL || res.new_fattr == NULL)
- 		goto out;
- 
--	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(old_dir, &res.old_cinfo);
- 		nfs_post_op_update_inode(old_dir, res.old_fattr);
-@@ -2729,7 +2736,7 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
- 	if (res.fattr == NULL || res.dir_attr == NULL)
- 		goto out;
- 
--	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(dir, &res.cinfo);
- 		nfs_post_op_update_inode(dir, res.dir_attr);
-@@ -2793,7 +2800,7 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
- {
- 	int status = nfs4_call_sync(NFS_SERVER(dir), &data->msg,
--				    &data->arg, &data->res, 1);
-+				    &data->arg.seq_args, &data->res.seq_res, 1);
- 	if (status == 0) {
- 		update_changeattr(dir, &data->res.dir_cinfo);
- 		nfs_post_op_update_inode(dir, data->res.dir_fattr);
-@@ -2905,7 +2912,7 @@ static int _nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
- 			(unsigned long long)cookie);
- 	nfs4_setup_readdir(cookie, NFS_COOKIEVERF(dir), dentry, &args);
- 	res.pgbase = args.pgbase;
--	status = nfs4_call_sync(NFS_SERVER(dir), &msg, &args, &res, 0);
-+	status = nfs4_call_sync(NFS_SERVER(dir), &msg, &args.seq_args, &res.seq_res, 0);
- 	if (status >= 0) {
- 		memcpy(NFS_COOKIEVERF(dir), res.verifier.data, NFS4_VERIFIER_SIZE);
- 		status += args.pgbase;
-@@ -2997,7 +3004,7 @@ static int _nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle,
- 	};
- 
- 	nfs_fattr_init(fsstat->fattr);
--	return  nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return  nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_statfs(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsstat *fsstat)
-@@ -3028,7 +3035,7 @@ static int _nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle,
- 		.rpc_resp = &res,
- 	};
- 
--	return nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_do_fsinfo(struct nfs_server *server, struct nfs_fh *fhandle, struct nfs_fsinfo *fsinfo)
-@@ -3073,7 +3080,7 @@ static int _nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle
- 	}
- 
- 	nfs_fattr_init(pathconf->fattr);
--	return nfs4_call_sync(server, &msg, &args, &res, 0);
-+	return nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- }
- 
- static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
-@@ -3462,7 +3469,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 		resp_buf = buf;
- 		buf_to_pages(buf, buflen, args.acl_pages, &args.acl_pgbase);
- 	}
--	ret = nfs4_call_sync(NFS_SERVER(inode), &msg, &args, &res, 0);
-+	ret = nfs4_call_sync(NFS_SERVER(inode), &msg, &args.seq_args, &res.seq_res, 0);
- 	if (ret)
- 		goto out_free;
- 	if (res.acl_len > args.acl_len)
-@@ -3537,7 +3544,7 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
- 	if (i < 0)
- 		return i;
- 	nfs_inode_return_delegation(inode);
--	ret = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	ret = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 
- 	/*
- 	 * Free each page after tx, so the only ref left is
-@@ -3900,7 +3907,7 @@ static int _nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock
- 	lsp = request->fl_u.nfs4_fl.owner;
- 	arg.lock_owner.id = lsp->ls_id.id;
- 	arg.lock_owner.s_dev = server->s_dev;
--	status = nfs4_call_sync(server, &msg, &arg, &res, 1);
-+	status = nfs4_call_sync(server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	switch (status) {
- 		case 0:
- 			request->fl_type = F_UNLCK;
-@@ -4628,7 +4635,7 @@ int nfs4_proc_fs_locations(struct inode *dir, const struct qstr *name,
- 	nfs_fattr_init(&fs_locations->fattr);
- 	fs_locations->server = server;
- 	fs_locations->nlocations = 0;
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	nfs_fixup_referral_attributes(&fs_locations->fattr);
- 	dprintk("%s: returned status = %d\n", __func__, status);
- 	return status;
-@@ -5596,7 +5603,7 @@ _nfs4_proc_getdeviceinfo(struct nfs_server *server, struct pnfs_device *pdev)
- 	int status;
- 
- 	dprintk("--> %s\n", __func__);
--	status = nfs4_call_sync(server, &msg, &args, &res, 0);
-+	status = nfs4_call_sync(server, &msg, &args.seq_args, &res.seq_res, 0);
- 	dprintk("<-- %s status=%d\n", __func__, status);
- 
- 	return status;
--- 
-1.7.4.1
+Wow! I've totally lost track of what version of nfs-utils this stuff
+went into.  That patch deals only with limiting the encryption types
+from the client side.  We assumed at that time that limiting the
+enctypes in the server's keytab was all that would be needed to limit
+the negotiated enctypes on the server side.
 
+Looking back at the Changelog, the other important patch is this:
+
+commit 4c5ff6d48021731128c4fc13d51610645a6fcf5c
+Author: Kevin Coffman <kwc@citi.umich.edu>
+Date:   Mon Apr 12 17:13:25 2010 -0400
+
+    Add support for non-DES encryption types.
+
+    Sends a new format of context information to the kernel.
+    (Requires kernel support to do anything useful.)
+
+>> The patch here, http://www.spinics.net/lists/linux-nfs/msg19999.html,
+>> along with the Kerberos patch referenced there, should limit the
+>> negotiation to DES.  (w/o the kernel patch, it will use a default list
+>> of only DES enctypes).
+>
+> After you mentioned this "acceptor subkey" patch, I took a look at both
+> patches already.
+>
+>>
+>> However, it might be better to figure out why your kernel doesn't like
+>> the AES key.  Looking back at the other issues like this, the error
+>> returned when the kernel doesn't have RPC GSS support for AES was
+>> "function not implemented", not "invalid argument".  Just as a sanity
+>> check, you've verified that the rpcsec_gss_krb5 kernel module is
+>> loaded?
+>
+> I'm quite sure, that the rpcsec_gss_krb5 is in the kernel:
+> zcat /proc/config.gz| grep -i krb
+> CONFIG_RPCSEC_GSS_KRB5=y
+> However, as I recently understand, the nfs-utils package for servers has
+> been compiled against linus-header-2.6.32. Could it be the root of my
+> problem? If that so, simply recompiling nfs-utils will solw the issue ;-)
+
+That would be nice if it was the case.  I am really not sure whether
+there are kernel header dependencies that could cause this.
+
+K.C.
