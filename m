@@ -1,165 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from charlotte.tuxdriver.com ([70.61.120.58]:56927 "EHLO
-	smtp.tuxdriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759903Ab1CDTRg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2011 14:17:36 -0500
-Date: Fri, 4 Mar 2011 14:17:19 -0500
-From: Neil Horman <nhorman@tuxdriver.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, security@kernel.org,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH] nfs4: Ensure that ACL pages sent over NFS were not
- allocated from the slab
-Message-ID: <20110304191719.GC10083@hmsreliant.think-freely.org>
-References: <1299257053-13175-1-git-send-email-nhorman@tuxdriver.com>
- <1299265315.2901.7.camel@heimdal.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1299265315.2901.7.camel@heimdal.trondhjem.org>
+Received: from smtp06.online.nl ([194.134.42.51]:55884 "EHLO smtp06.online.nl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750919Ab1CRGAo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Mar 2011 02:00:44 -0400
+Subject: Re: rpc.svcgssd problem after updating client 1.2.2->1.2.3
+From: Vladimir Elisseev <vovan@vovan.nl>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <4D8275AE.5030001@RedHat.com>
+References: <1300387690.2684.23.camel@vovan.net.home>
+	 <4D8275AE.5030001@RedHat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 18 Mar 2011 06:49:47 +0100
+Message-ID: <1300427387.30472.15.camel@vovan.net.home>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Mar 04, 2011 at 02:01:55PM -0500, Trond Myklebust wrote:
-> On Fri, 2011-03-04 at 11:44 -0500, Neil Horman wrote: 
-> > This oops was reported recently:
-> > 
-> >  <IRQ>  [<ffffffff800ca161>] bad_page+0x69/0x91
-> >   [<ffffffff8000b8ae>] free_hot_cold_page+0x81/0x144
-> >   [<ffffffff8022f28a>] skb_release_data+0x5f/0x98
-> >   [<ffffffff80028b88>] __kfree_skb+0x11/0x1a
-> >   [<ffffffff800243b8>] tcp_ack+0x6a3/0x1868
-> >   [<ffffffff8001bff4>] tcp_rcv_established+0x7a6/0x8b9
-> >   [<ffffffff8003b684>] tcp_v4_do_rcv+0x2a/0x2fa
-> >   [<ffffffff8002730e>] tcp_v4_rcv+0x9a2/0x9f6
-> >   [<ffffffff80099b45>] do_timer+0x2df/0x52c
-> >   [<ffffffff8003495c>] ip_local_deliver+0x19d/0x263
-> >   [<ffffffff80035ab8>] ip_rcv+0x539/0x57c
-> >   [<ffffffff80020ab6>] netif_receive_skb+0x470/0x49f
-> >   [<ffffffff883190b5>] :virtio_net:virtnet_poll+0x46b/0x5c5
-> >   [<ffffffff8000c979>] net_rx_action+0xac/0x1b3
-> >   [<ffffffff80012464>] __do_softirq+0x89/0x133
-> >   [<ffffffff8005e2fc>] call_softirq+0x1c/0x28
-> >   [<ffffffff8006d5f5>] do_softirq+0x2c/0x7d
-> >   [<ffffffff8006d485>] do_IRQ+0xec/0xf5
-> >   [<ffffffff8006bdb5>] default_idle+0x0/0x50
-> >   [<ffffffff8005d615>] ret_from_intr+0x0/0xa
-> >   <EOI>  [<ffffffff8006bdde>] default_idle+0x29/0x50
-> >   [<ffffffff800492fd>] cpu_idle+0x95/0xb8
-> >   [<ffffffff80461807>] start_kernel+0x220/0x225
-> >   [<ffffffff8046122f>] _sinittext+0x22f/0x236
-> > 
-> > It occurs, because an skb with a fraglist was freed from the tcp retransmit
-> > queue when it was acked, but a page on that fraglist had PG_Slab set (indicating
-> > it was allocated from the Slab allocator (which means the free path above can't
-> > safely free it via put_page)
-> > 
-> > We tracked this back to an nfsv4 setacl operation, in which the nfs code
-> > attempted to fill convert the passed in buffer to an array of pages in
-> > __nfs4_proc_set_acl, which gets used by the skb->frags list in xs_sendpages.
-> > __nfs4_proc_set_acl just converts each page in the buffer to a page struct via
-> > virt_to_page, but the vfs allocates the buffer via kmalloc, meaning the PG_slab
-> > bit is set.  We can't create a buffer with kmalloc and free it later in the tcp
-> > ack path with put_page, so we need to either:
-> > 
-> > 1) ensure that when we create the list of pages, no page struct has PG_Slab set
-> > or
-> > 2) not use a page list to send this data
-> > 
-> > Given that these buffers can be multiple pages and arbitrarily sized, I think
-> > (1) is the right way to go.  I've written the below patch to allocate a page
-> > from the buddy allocator directly and copy the data over to it.  This ensures
-> > that we have a put_page free-able page for every entry that winds up on an skb
-> > frag list, so it can be safely freed when the frame is acked.  We do a put page
-> > on each entry after the rpc_call_sync call so as to drop our own reference count
-> > to the page, leaving only the ref count taken by tcp_sendpages.  This way the
-> > data will be properly freed when the ack comes in
-> > 
-> > Successfully tested by myself to solve the above oops.
-> > 
-> > Note, as this is the result of a setacl operation that exceeded a page of data,
-> > I think this amounts to a local DOS triggerable by an uprivlidged user, so I'm
-> > CCing security on this as well.
-> > 
-> > Signed-off-by: Neil Horman <nhorman@tuxdriver.com>
-> > CC: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > CC: security@kernel.org
-> > CC: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/nfs/nfs4proc.c |   42 ++++++++++++++++++++++++++++++++++++++++--
-> >  1 files changed, 40 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > index 78936a8..e4bd9b5 100644
-> > --- a/fs/nfs/nfs4proc.c
-> > +++ b/fs/nfs/nfs4proc.c
-> > @@ -51,6 +51,7 @@
-> >  #include <linux/sunrpc/bc_xprt.h>
-> >  #include <linux/xattr.h>
-> >  #include <linux/utsname.h>
-> > +#include <linux/mm.h>
-> >  
-> >  #include "nfs4_fs.h"
-> >  #include "delegation.h"
-> > @@ -3252,6 +3253,36 @@ static void buf_to_pages(const void *buf, size_t buflen,
-> >  	}
-> >  }
-> >  
-> > +static int buf_to_pages_noslab(const void *buf, size_t buflen,
-> > +		struct page **pages, unsigned int *pgbase)
-> > +{
-> > +	const void *p = buf;
-> > +	struct page *page, *newpage, **spages;
-> > +	int rc = -ENOMEM;
-> > +
-> > +	spages = pages;
-> > +	*pgbase = offset_in_page(buf);
-> > +	p -= *pgbase;
-> > +	while (p < buf + buflen) {
-> > +		page = virt_to_page(p);
-> > +		newpage = alloc_page(GFP_KERNEL);
-> > +		if (!newpage)
-> > +			goto unwind;
-> > +		memcpy(page_address(newpage), page_address(page),
-> > +		       PAGE_CACHE_SIZE);
-> 
-> Why do we need to keep this byzantian offset_in_page() and
-> virt_to_page() logic in order to copying data from a linear buffer into
-> a set of pages?
-> 
-We don't I suppose, but I thought it best to follow the byzantine style of the
-function immediately above it. :)  If you have a better suggestion, I'm
-listening.
- 
+You're right, I saw about the same error with mountd, but the problem I
+have is most likely related to the change: 
 
-> > +		*(pages++) = newpage;
-> > +		p += PAGE_CACHE_SIZE;
-> > +	}
-> > +
-> > +	rc = 0;
-> > +	return rc;
-> > +
-> > +unwind:
-> > +	while (*spages != NULL)
-> > +		__free_page(*(spages++));
-> > +	return rc;
-> > +}
-> > +
-> >  struct nfs4_cached_acl {
-> >  	int cached;
-> >  	size_t len;
-> > @@ -3420,13 +3451,20 @@ static int __nfs4_proc_set_acl(struct inode *inode, const void *buf, size_t bufl
-> >  		.rpc_argp	= &arg,
-> >  		.rpc_resp	= &res,
-> >  	};
-> > -	int ret;
-> > +	int ret, i;
-> >  
-> >  	if (!nfs4_server_supports_acls(server))
-> >  		return -EOPNOTSUPP;
-> > +	memset(pages, 0, sizeof(struct page *) * NFS4ACL_MAXPAGES);
+commit 76be349d5dd07f55797cb9920cc275667258f10f
+Author: Kevin Coffman <kwc@citi.umich.edu>
+Date:   Thu Apr 15 08:32:20 2010 -0400
+
+    Try to use kernel function to determine supported Kerberos enctypes.
+
+    This patch replaces a hard-coded list with a function to obtain
+    the Kerberos encryption types that the kernel's rpcsec_gss code
+    can support.  Defaults to old behavior if kernel does not supply
+    information.
+
+Regards,
+Vladimir.
+
+On Thu, 2011-03-17 at 16:57 -0400, Steve Dickson wrote:
 > 
-> Why is this initialisation needed? Just return the number of pages that
-> were actually allocated in the call below.
+> On 03/17/2011 02:48 PM, Vladimir Elisseev wrote:
+> > Hello,
+> > 
+> > I've got a problem after updating NFS client. I've been trying to find
+> > possible solution without a success for a while, so I'd appreciate any
+> > help. All the info is below. Client has kernel 2.6.37 and server 2.6.36.
+> > 
+> > Regards,
+> > Vladimir.
+> > 
+> > On the server side the error is "rpc.svcgssd[15159]: qword_eol: fflush
+> > failed: errno 22 (Invalid argument)", the full track is below:
+> I've seen this before but I believe it was in mountd. The fflush(3) call 
+> is failing with EINVAL on the upcall fd... I forget how it cleared its
+> self up..... 
 > 
-Yeah, I suppose I can do that, I'll respin here shortly.
-Neil
+> steved.
+> 
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: leaving poll
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: handling null request
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: sname = host/x.x.x@X.X
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids: calling
+> > umich_ldap->princ_to_ids
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: ldap_init_and_bind: version
+> > mismatch between API information and protocol version. Setting protocol
+> > version to 3
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids:
+> > umich_ldap->princ_to_ids returned -2
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids: calling
+> > nsswitch->princ_to_ids
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nss_getpwnam: name
+> > 'host/x.x.x@X.X' domain '(null)': resulting localname
+> > 'host/user.net.home'
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids:
+> > nsswitch->princ_to_ids returned -2
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids: final
+> > return value is -2
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: DEBUG: serialize_krb5_ctx:
+> > lucid version!
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: prepare_krb5_rfc4121_buffer:
+> > protocol 1
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: prepare_krb5_rfc4121_buffer:
+> > serializing key with enctype 18 and size 32
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: doing downcall
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: mech: krb5, hndl len: 4, ctx
+> > len 52, timeout: 1300464362 (86399 from now), clnt: host@x.x.x, uid: -1,
+> > gid: -1, num aux grps: 0:
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: qword_eol: fflush failed: errno
+> > 22 (Invalid argument)
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: WARNING: error writing to
+> > downcall channel /proc/net/rpc/auth.rpcsec.context/channel: Invalid
+> > argument
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: sending null reply
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: writing message: \x
+> > \x6082025106092a864886f71201020201006e8202403082023ca003020105a10302010ea20703050020000000a38201486182014430820140a003020105a10a1b084e45542e484f4d45a21e301ca003020103a11530131b036e66731b0c6e66732e6e65742e686f6d65a382010b30820107a003020112a103020103a281fa0481f76d51de4ee749be6f5662e84fd91220874cd512114a52a7dbb0d1fb96da4768ec9d9f967a9664cc3a27626e0383a6a2e6930123efd709525a41420a68fdaa8fafabfab642f00c4e7d6dc4f075d900adf92f339d02b8ad1a162efeefa7501417280c553a430056634f4771a9bfa86c80eb758e7d530bff6dba5a112ca6b2412123e496a10ef93ac5af820b8751ec53db527acc059fcaee551edab8adc61f1dbc61ed9d16b65157974bd572d25ce62fd8c2e9d30650ef8cd35b12e315535cc1e53895bbd0a9589e02e2de1e62ca61e50e99f2b9f0456157bd3b3d739c6b6899b62f681f91e6072033e62e665ade4c366a1369315f19ca2e7da481da3081d7a003020112a281cf0481cc224de9a1f61431a8aee2b5a4f9fb6260230a0220c87c32030c528c80756b779eea25b272164e1c5e29b4d5be07557039cb7a9e230a5a8572dbe5bec750b952d57022d61ce29643f1110fece4e3c07ba027461e3e865f30a5ed29068cbec2e7a8d1dd18
+ f6
+> 6!
+> >  50e6f2a565b7d779220c9c5c40c504533de623c63e3f229749f34e4d64cfc050083c09b3913371d0203994d3893a6640b6d9e1a5c43949f0b6567b755c99c4876f6987e7c3886d2eddd5cca1775ae4b0cde83910ddd786706c34fdbc18eca86206d42c05fd4fda4 1300378023 0 0 \x2d000000 \x60819906092a864886f71201020202006f8189308186a003020105a10302010fa27a3078a003020112a271046f5b995dfc1da7fffbad590382fac5637845400ac2b3d3943196e2c4ab8d55edfccfaf99b27d5e06ca56df734d817378c16a4b0c0fee21ecffd1be76b0cdffb8715e0cfe8659e3344407312e18194df2acd1795f8285f6f60ac31658d6bc678750f0fa0bb9e8d41ea2846832f8c7bc91
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: finished handling null request
+> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: entering poll
+> > 
+> > On the client side mount ends with "access denied" error, the full log
+> > is below:
+> > Mar 17 17:09:06 user rpc.gssd[32238]: handling gssd upcall
+> > (/var/lib/nfs/rpc_pipefs/nfs/clnt37) 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: handle_gssd_upcall: 'mech=krb5
+> > uid=0 enctypes=18,17,16,23,3,1,2 ' 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: handling krb5 upcall
+> > (/var/lib/nfs/rpc_pipefs/nfs/clnt37) 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: process_krb5_upcall: service is
+> > '<null>' 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: Full hostname for 'nfs.x.x' is
+> > 'nfs.x.x' 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: Full hostname for 'user.x.x' is
+> > 'user.x.x' 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: No key table entry found for
+> > root/user.x.x@X.X while getting keytab entry for 'root/user.x.x@X.X' 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: No key table entry found for
+> > nfs/user.x.x@X.X while getting keytab entry for 'nfs/user.x.x@X.X' 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: Success getting keytab entry for
+> > 'host/user.x.x@X.X' 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: Successfully obtained machine
+> > credentials for principal 'host/user.x.x@X.X' stored in ccache
+> > 'FILE:/tmp/krb5cc_machine_x.x'    
+> > Mar 17 17:09:06 user rpc.gssd[32238]: INFO: Credentials in CC
+> > 'FILE:/tmp/krb5cc_machine_x.x' are good until 1300464546 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: using FILE:/tmp/krb5cc_machine_x.x
+> > as credentials cache for machine creds 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: using environment variable to
+> > select krb5 ccache FILE:/tmp/krb5cc_machine_x.x 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: creating context using fsuid 0
+> > (save_uid 0) 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: creating tcp client for server
+> > nfs.x.x 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: DEBUG: port already set to 2049 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: creating context with server
+> > nfs@nfs.x.x 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: WARNING: Failed to create krb5
+> > context for user with uid 0 for server nfs.x.x 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: WARNING: Failed to create machine
+> > krb5 context with credentials cache FILE:/tmp/krb5cc_machine_X.X for
+> > server nfs.x.x 
+> > Mar 17 17:09:06 user rpc.gssd[32238]: WARNING: Machine cache is
+> > prematurely expired or corrupted trying to recreate cache for server
+> > nfs.x.x 
+> > 
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
