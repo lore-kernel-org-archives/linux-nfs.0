@@ -1,402 +1,201 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.212.112.111]:55125 "EHLO citi.umich.edu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754050Ab1CQB3U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2011 21:29:20 -0400
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:36263 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752724Ab1CRPTD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Mar 2011 11:19:03 -0400
+Received: by qwk3 with SMTP id 3so2884905qwk.19
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Mar 2011 08:19:02 -0700 (PDT)
+In-Reply-To: <20110318145204.20621su4mostcrk4@vovan.nl>
+References: <1300387690.2684.23.camel@vovan.net.home>
+	<AANLkTim6nptBM40b5Zt2fhr7aiQ47kqX+_RBprnCokRD@mail.gmail.com>
+	<1300427036.30472.11.camel@vovan.net.home>
+	<AANLkTim7q+-ijBnzWs+zW9X-gfxyrt5kw4Vj_pcrWJFw@mail.gmail.com>
+	<20110318145204.20621su4mostcrk4@vovan.nl>
+Date: Fri, 18 Mar 2011 11:19:01 -0400
+Message-ID: <AANLkTimLE7gJ_tzi5JOCgM+RA4-8EnHcW8hqB++a5X8X@mail.gmail.com>
+Subject: Re: rpc.svcgssd problem after updating client 1.2.2->1.2.3
 From: Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH] nfs-utils: Add support to svcgssd to limit the negotiated
-	enctypes
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 16 Mar 2011 21:29:19 -0400
-Message-ID: <20110317012919.7982.12281.stgit@jazz.citi.umich.edu>
-Content-Type: text/plain; charset="utf-8"
+To: Vladimir Elisseev <vovan@vovan.nl>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Recent versions of Kerberos libraries negotiate and use
-an "acceptor subkey".  This negotiation does not consider
-that a service may have limited the encryption keys in its
-keytab.  A patch (http://src.mit.edu/fisheye/changelog/krb5/?cs=24603)
-has been added to the MIT Kerberos code to allow an application
-to indicate that it wants to limit the encryption types negotiated.
-(This functionality has been available on the client/initiator
-side for a while.  The new patch adds this support to the
-server/acceptor side.)
+Re: the change to krb5.conf, yes I think you need to restart svcgssd.
+And yes, it does have global effect (limiting all Kerberos connections
+on the machine to DES), which is not optimal.
 
-This patch adds support to read a recently added nfsd
-proc file to determine the encryption types supported by
-the kernel and calls the function to limit encryption
-types negotiated for the acceptor subkey.
+Offhand, I'm not aware of any changes to gssd or svcgssd between
+nfs-utils 1.2.2 and 1.2.3 that would affect this.  Moving from
+Kerberos 1.6 to something later would bring in the acceptor subkey
+issue.  (I believe both sides need to have krb5-1.7 or later libraries
+for the subkey to be used.)  But again, your server's kernel _should_
+have RPC GSS support for AES.
 
-Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
----
+The patch here, http://www.spinics.net/lists/linux-nfs/msg19999.html,
+along with the Kerberos patch referenced there, should limit the
+negotiation to DES.  (w/o the kernel patch, it will use a default list
+of only DES enctypes).
 
- utils/gssd/Makefile.am    |    2 
- utils/gssd/gss_util.c     |   25 +++---
- utils/gssd/krb5_util.h    |    1 
- utils/gssd/svcgssd.c      |    7 ++
- utils/gssd/svcgssd_krb5.c |  200 +++++++++++++++++++++++++++++++++++++++++++++
- utils/gssd/svcgssd_krb5.h |   36 ++++++++
- utils/gssd/svcgssd_proc.c |    5 +
- 7 files changed, 266 insertions(+), 10 deletions(-)
- create mode 100644 utils/gssd/svcgssd_krb5.c
- create mode 100644 utils/gssd/svcgssd_krb5.h
+However, it might be better to figure out why your kernel doesn't like
+the AES key.  Looking back at the other issues like this, the error
+returned when the kernel doesn't have RPC GSS support for AES was
+"function not implemented", not "invalid argument".  Just as a sanity
+check, you've verified that the rpcsec_gss_krb5 kernel module is
+loaded?
 
-diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
-index 95a2bd0..d7888ad 100644
---- a/utils/gssd/Makefile.am
-+++ b/utils/gssd/Makefile.am
-@@ -51,7 +51,9 @@ svcgssd_SOURCES = \
- 	svcgssd_main_loop.c \
- 	svcgssd_mech2file.c \
- 	svcgssd_proc.c \
-+	svcgssd_krb5.c \
- 	\
-+	svcgssd_krb5.h \
- 	svcgssd.h
- 
- svcgssd_LDADD = \
-diff --git a/utils/gssd/gss_util.c b/utils/gssd/gss_util.c
-index 8fe1e9b..46d48a5 100644
---- a/utils/gssd/gss_util.c
-+++ b/utils/gssd/gss_util.c
-@@ -199,20 +199,25 @@ gssd_acquire_cred(char *server_name, const gss_OID oid)
- 	u_int32_t ignore_maj_stat, ignore_min_stat;
- 	gss_buffer_desc pbuf;
- 
--	name.value = (void *)server_name;
--	name.length = strlen(server_name);
-+	/* If server_name is NULL, get cred for GSS_C_NO_NAME */
-+	if (server_name == NULL) {
-+		target_name = GSS_C_NO_NAME;
-+	} else {
-+		name.value = (void *)server_name;
-+		name.length = strlen(server_name);
- 
--	maj_stat = gss_import_name(&min_stat, &name,
--			oid,
--			&target_name);
-+		maj_stat = gss_import_name(&min_stat, &name,
-+				oid,
-+				&target_name);
- 
--	if (maj_stat != GSS_S_COMPLETE) {
--		pgsserr("gss_import_name", maj_stat, min_stat, g_mechOid);
--		return (FALSE);
-+		if (maj_stat != GSS_S_COMPLETE) {
-+			pgsserr("gss_import_name", maj_stat, min_stat, g_mechOid);
-+			return (FALSE);
-+		}
- 	}
- 
--	maj_stat = gss_acquire_cred(&min_stat, target_name, 0,
--			GSS_C_NULL_OID_SET, GSS_C_ACCEPT,
-+	maj_stat = gss_acquire_cred(&min_stat, target_name, GSS_C_INDEFINITE,
-+			GSS_C_NO_OID_SET, GSS_C_ACCEPT,
- 			&gssd_creds, NULL, NULL);
- 
- 	if (maj_stat != GSS_S_COMPLETE) {
-diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index b42b91e..0d6019c 100644
---- a/utils/gssd/krb5_util.h
-+++ b/utils/gssd/krb5_util.h
-@@ -37,6 +37,7 @@ void gssd_k5_get_default_realm(char **def_realm);
- 
- #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
- int limit_krb5_enctypes(struct rpc_gss_sec *sec);
-+int limit_svcgssd_krb5_enctypes();
- #endif
- 
- /*
-diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
-index 9b463f3..89d4cf0 100644
---- a/utils/gssd/svcgssd.c
-+++ b/utils/gssd/svcgssd.c
-@@ -262,6 +262,13 @@ main(int argc, char *argv[])
- 				"/etc/krb5.keytab?\n");
- 			exit(1);
- 		}
-+	} else {
-+		status = gssd_acquire_cred(NULL,
-+			(const gss_OID)GSS_C_NT_HOSTBASED_SERVICE);
-+		if (status == FALSE) {
-+			printerr(0, "unable to obtain nameless credentials\n");
-+			exit(1);
-+		}
- 	}
- 
- 	if (!fg)
-diff --git a/utils/gssd/svcgssd_krb5.c b/utils/gssd/svcgssd_krb5.c
-new file mode 100644
-index 0000000..fc67a6f
---- /dev/null
-+++ b/utils/gssd/svcgssd_krb5.c
-@@ -0,0 +1,200 @@
-+/*
-+ * COPYRIGHT (c) 2011
-+ * The Regents of the University of Michigan
-+ * ALL RIGHTS RESERVED
-+ *
-+ * Permission is granted to use, copy, create derivative works
-+ * and redistribute this software and such derivative works
-+ * for any purpose, so long as the name of The University of
-+ * Michigan is not used in any advertising or publicity
-+ * pertaining to the use of distribution of this software
-+ * without specific, written prior authorization.  If the
-+ * above copyright notice or any other identification of the
-+ * University of Michigan is included in any copy of any
-+ * portion of this software, then the disclaimer below must
-+ * also be included.
-+ *
-+ * THIS SOFTWARE IS PROVIDED AS IS, WITHOUT REPRESENTATION
-+ * FROM THE UNIVERSITY OF MICHIGAN AS TO ITS FITNESS FOR ANY
-+ * PURPOSE, AND WITHOUT WARRANTY BY THE UNIVERSITY OF
-+ * MICHIGAN OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING
-+ * WITHOUT LIMITATION THE IMPLIED WARRANTIES OF
-+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE
-+ * REGENTS OF THE UNIVERSITY OF MICHIGAN SHALL NOT BE LIABLE
-+ * FOR ANY DAMAGES, INCLUDING SPECIAL, INDIRECT, INCIDENTAL, OR
-+ * CONSEQUENTIAL DAMAGES, WITH RESPECT TO ANY CLAIM ARISING
-+ * OUT OF OR IN CONNECTION WITH THE USE OF THE SOFTWARE, EVEN
-+ * IF IT HAS BEEN OR IS HEREAFTER ADVISED OF THE POSSIBILITY OF
-+ * SUCH DAMAGES.
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif	/* HAVE_CONFIG_H */
-+
-+#ifndef _GNU_SOURCE
-+#define _GNU_SOURCE
-+#endif
-+
-+#include <stdio.h>
-+#include <errno.h>
-+#include <gssapi/gssapi.h>
-+#include <krb5.h>
-+
-+#include "gss_util.h"
-+#include "gss_oids.h"
-+#include "err_util.h"
-+#include "svcgssd_krb5.h"
-+
-+#define MYBUFLEN 1024
-+
-+char *supported_enctypes_filename = "/proc/fs/nfsd/supported_krb5_enctypes";
-+int parsed_num_enctypes = 0;
-+krb5_enctype *parsed_enctypes = NULL;
-+char *cached_enctypes = NULL;
-+
-+/*==========================*/
-+/*===  Internal routines ===*/
-+/*==========================*/
-+
-+/*
-+ * Parse the supported encryption type information
-+ */
-+static int
-+parse_enctypes(char *enctypes)
-+{
-+	int n = 0;
-+	char *curr, *comma;
-+	int i;
-+
-+	/* Don't parse the same string over and over... */
-+	if (cached_enctypes && strcmp(cached_enctypes, enctypes) == 0)
-+		return 0;
-+
-+	/* Free any existing cached_enctypes */
-+	free(cached_enctypes);
-+
-+	if (parsed_enctypes != NULL) {
-+		free(parsed_enctypes);
-+		parsed_enctypes = NULL;
-+		parsed_num_enctypes = 0;
-+	}
-+
-+	/* count the number of commas */
-+	for (curr = enctypes; curr && *curr != '\0'; curr = ++comma) {
-+		comma = strchr(curr, ',');
-+		if (comma != NULL)
-+			n++;
-+		else
-+			break;
-+	}
-+
-+	/* If no more commas and we're not at the end, there's one more value */
-+	if (*curr != '\0')
-+		n++;
-+
-+	/* Empty string, return an error */
-+	if (n == 0)
-+		return ENOENT;
-+
-+	/* Allocate space for enctypes array */
-+	if ((parsed_enctypes = (int *) calloc(n, sizeof(int))) == NULL) {
-+		return ENOMEM;
-+	}
-+
-+	/* Now parse each value into the array */
-+	for (curr = enctypes, i = 0; curr && *curr != '\0'; curr = ++comma) {
-+		parsed_enctypes[i++] = atoi(curr);
-+		comma = strchr(curr, ',');
-+		if (comma == NULL)
-+			break;
-+	}
-+
-+	parsed_num_enctypes = n;
-+	if ((cached_enctypes = malloc(strlen(enctypes)+1)))
-+		strcpy(cached_enctypes, enctypes);
-+
-+	return 0;
-+}
-+
-+static void
-+get_kernel_supported_enctypes(void)
-+{
-+	FILE *s_e;
-+	int ret;
-+	char buffer[MYBUFLEN + 1];
-+
-+	memset(buffer, '\0', sizeof(buffer));
-+
-+	s_e = fopen(supported_enctypes_filename, "r");
-+	if (s_e == NULL)
-+		goto out_clean_parsed;
-+
-+	ret = fread(buffer, 1, MYBUFLEN, s_e);
-+	if (ret < 0) {
-+		fclose(s_e);
-+		goto out_clean_parsed;
-+	}
-+	fclose(s_e);
-+	if (parse_enctypes(buffer)) {
-+		goto out_clean_parsed;
-+	}
-+out:
-+	return;
-+
-+out_clean_parsed:
-+	if (parsed_enctypes != NULL) {
-+		free(parsed_enctypes);
-+		parsed_num_enctypes = 0;
-+	}
-+	goto out;
-+}
-+
-+/*==========================*/
-+/*===  External routines ===*/
-+/*==========================*/
-+
-+/*
-+ * Get encryption types supported by the kernel, and then
-+ * call gss_krb5_set_allowable_enctypes() to limit the
-+ * encryption types negotiated.
-+ *
-+ * Returns:
-+ *	0 => all went well
-+ *     -1 => there was an error
-+ */
-+
-+int
-+svcgssd_limit_krb5_enctypes(void)
-+{
-+#ifdef HAVE_SET_ALLOWABLE_ENCTYPES
-+	u_int maj_stat, min_stat;
-+	krb5_enctype default_enctypes[] = { ENCTYPE_DES_CBC_CRC,
-+					    ENCTYPE_DES_CBC_MD5,
-+					    ENCTYPE_DES_CBC_MD4 };
-+	int default_num_enctypes =
-+		sizeof(default_enctypes) / sizeof(default_enctypes[0]);
-+	krb5_enctype *enctypes;
-+	int num_enctypes;
-+
-+	get_kernel_supported_enctypes();
-+
-+	if (parsed_enctypes != NULL) {
-+		enctypes = parsed_enctypes;
-+		num_enctypes = parsed_num_enctypes;
-+	} else {
-+		enctypes = default_enctypes;
-+		num_enctypes = default_num_enctypes;
-+	}
-+
-+	maj_stat = gss_set_allowable_enctypes(&min_stat, gssd_creds,
-+			&krb5oid, num_enctypes, enctypes);
-+	if (maj_stat != GSS_S_COMPLETE) {
-+		printerr(1, "WARNING: gss_set_allowable_enctypes failed\n");
-+		pgsserr("svcgssd_limit_krb5_enctypes: gss_set_allowable_enctypes",
-+			maj_stat, min_stat, &krb5oid);
-+		return -1;
-+	}
-+#endif
-+	return 0;
-+}
-diff --git a/utils/gssd/svcgssd_krb5.h b/utils/gssd/svcgssd_krb5.h
-new file mode 100644
-index 0000000..07d5eb9
---- /dev/null
-+++ b/utils/gssd/svcgssd_krb5.h
-@@ -0,0 +1,36 @@
-+/*
-+ * COPYRIGHT (c) 2011
-+ * The Regents of the University of Michigan
-+ * ALL RIGHTS RESERVED
-+ *
-+ * Permission is granted to use, copy, create derivative works
-+ * and redistribute this software and such derivative works
-+ * for any purpose, so long as the name of The University of
-+ * Michigan is not used in any advertising or publicity
-+ * pertaining to the use of distribution of this software
-+ * without specific, written prior authorization.  If the
-+ * above copyright notice or any other identification of the
-+ * University of Michigan is included in any copy of any
-+ * portion of this software, then the disclaimer below must
-+ * also be included.
-+ *
-+ * THIS SOFTWARE IS PROVIDED AS IS, WITHOUT REPRESENTATION
-+ * FROM THE UNIVERSITY OF MICHIGAN AS TO ITS FITNESS FOR ANY
-+ * PURPOSE, AND WITHOUT WARRANTY BY THE UNIVERSITY OF
-+ * MICHIGAN OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING
-+ * WITHOUT LIMITATION THE IMPLIED WARRANTIES OF
-+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE
-+ * REGENTS OF THE UNIVERSITY OF MICHIGAN SHALL NOT BE LIABLE
-+ * FOR ANY DAMAGES, INCLUDING SPECIAL, INDIRECT, INCIDENTAL, OR
-+ * CONSEQUENTIAL DAMAGES, WITH RESPECT TO ANY CLAIM ARISING
-+ * OUT OF OR IN CONNECTION WITH THE USE OF THE SOFTWARE, EVEN
-+ * IF IT HAS BEEN OR IS HEREAFTER ADVISED OF THE POSSIBILITY OF
-+ * SUCH DAMAGES.
-+ */
-+
-+#ifndef SVCGSSD_KRB5_H
-+#define SVCGSSD_KRB5_H
-+
-+int svcgssd_limit_krb5_enctypes(void);
-+
-+#endif /* SVCGSSD_KRB5_H */
-diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
-index 3894078..65c472d 100644
---- a/utils/gssd/svcgssd_proc.c
-+++ b/utils/gssd/svcgssd_proc.c
-@@ -57,6 +57,7 @@
- #include "err_util.h"
- #include "context.h"
- #include "gss_oids.h"
-+#include "svcgssd_krb5.h"
- 
- extern char * mech2file(gss_OID mech);
- #define SVCGSSD_CONTEXT_CHANNEL "/proc/net/rpc/auth.rpcsec.context/channel"
-@@ -443,6 +444,10 @@ handle_nullreq(FILE *f) {
- 		memcpy(&ctx, in_handle.value, in_handle.length);
- 	}
- 
-+	if (svcgssd_limit_krb5_enctypes()) {
-+		goto out_err;
-+	}
-+
- 	maj_stat = gss_accept_sec_context(&min_stat, &ctx, gssd_creds,
- 			&in_tok, GSS_C_NO_CHANNEL_BINDINGS, &client_name,
- 			&mech, &out_tok, &ret_flags, NULL, NULL);
+K.C.
 
+On Fri, Mar 18, 2011 at 9:52 AM, Vladimir Elisseev <vovan@vovan.nl> wrote:
+> Kevin,
+>
+> Sorry, I have to mention this initially: the server has nfs-utils 1.2.3, but
+> clients have 1.2.2 (we've tested and upgraded servers firstly without having
+> any problems). As for the rest, see my comment in-line below.
+>
+> Regards,
+> Vladimir.
+>
+> Quoting Kevin Coffman <kwc@citi.umich.edu>:
+>
+>> Vladimir,
+>> Having the raw crypto enabled in the kernel is only part of it.  The
+>> RPC GSS support to make use of it went into 2.6.35, so your server's
+>> kernel should have that.
+>
+> Thanks for clarifying this.
+>
+>>
+>> Did the output from svcgssd change when you added the
+>> default_tgs_enctypes?  Specifically, "prepare_krb5_rfc4121_buffer:
+>> serializing key with enctype 18 and size 32" should have changed to a
+>> different enctype and size.
+>
+> After changing krb5.conf I saw the same entry "repare_krb5_rfc4121_buffer:
+> serializing key with enctype 18 and size 32" in the log file. However, I
+> think I had to restart rpc.svcgssd (is this true?), but I didn't.
+> Unfortunately, changing default_tgs_enctypes for Kerberos will have global
+> effect and can be used only for testing purposes.
+>
+>>
+>> If adding default_tgs_enctypes didn't help, the patches dealing with
+>> "acceptor subkey" won't help.
+>>
+>> Does the server continue to work for other clients?
+>
+> As I mentioned at the beginning of this mail, clients with nfs-utils 1.2.2
+> work just fine and are able use des encryption:
+> klist -ce /tmp/krb5cc_machine_X.X
+> Ticket cache: FILE:/tmp/krb5cc_machine_X.X
+> Default principal: host/x.x.x@X.X
+>
+> Valid starting     Expires            Service principal
+> 03/18/11 06:40:36 03/19/11 06:40:36  krbtgt/X.X@X.X
+>        Etype (skey, tkt): aes256-cts-hmac-sha1-96, aes256-cts-hmac-sha1-96
+> 03/18/11 06:40:37  03/19/11 06:40:36  nfs/nfs.x.x@X.X
+>        Etype (skey, tkt): des-cbc-crc, aes256-cts-hmac-sha1-96
+>
+>
+>>
+>> K.C.
+>>
+>> On Fri, Mar 18, 2011 at 1:43 AM, Vladimir Elisseev <vovan@vovan.nl> wrote:
+>>>
+>>> Kevin,
+>>>
+>>> I think the kernel configuration on server include AES encryption:
+>>> zcat /proc/config.gz| grep -i aes
+>>> CONFIG_CRYPTO_AES=y
+>>> CONFIG_CRYPTO_AES_X86_64=y
+>>> # CONFIG_CRYPTO_AES_NI_INTEL is not set
+>>> IMO, this is sufficient. As for the kerberos version on the client it's
+>>> 1.9 with patches: CVE-2010-4022, CVE-2011-0281,0282,0283,0284.
+>>> Changing server's krb5.conf with default_tgs_enctypes = des-cbc-crc
+>>> doesn't solve this problem.
+>>> As you suggested I'm going to check patches regarding "acceptor subkey".
+>>>
+>>> Regards,
+>>> Vladimir.
+>>>
+>>> On Thu, 2011-03-17 at 18:13 -0400, Kevin Coffman wrote:
+>>>>
+>>>> On Thu, Mar 17, 2011 at 2:48 PM, Vladimir Elisseev <vovan@vovan.nl>
+>>>> wrote:
+>>>> > Hello,
+>>>> >
+>>>> > I've got a problem after updating NFS client. I've been trying to find
+>>>> > possible solution without a success for a while, so I'd appreciate any
+>>>> > help. All the info is below. Client has kernel 2.6.37 and server
+>>>> > 2.6.36.
+>>>> >
+>>>> > Regards,
+>>>> > Vladimir.
+>>>> >
+>>>> > On the server side the error is "rpc.svcgssd[15159]: qword_eol: fflush
+>>>> > failed: errno 22 (Invalid argument)", the full track is below:
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: leaving poll
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: handling null request
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: sname = host/x.x.x@X.X
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids:
+>>>> > calling
+>>>> > umich_ldap->princ_to_ids
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: ldap_init_and_bind: version
+>>>> > mismatch between API information and protocol version. Setting
+>>>> > protocol
+>>>> > version to 3
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids:
+>>>> > umich_ldap->princ_to_ids returned -2
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids:
+>>>> > calling
+>>>> > nsswitch->princ_to_ids
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nss_getpwnam: name
+>>>> > 'host/x.x.x@X.X' domain '(null)': resulting localname
+>>>> > 'host/user.net.home'
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids:
+>>>> > nsswitch->princ_to_ids returned -2
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: nfs4_gss_princ_to_ids: final
+>>>> > return value is -2
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: DEBUG: serialize_krb5_ctx:
+>>>> > lucid version!
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: prepare_krb5_rfc4121_buffer:
+>>>> > protocol 1
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: prepare_krb5_rfc4121_buffer:
+>>>> > serializing key with enctype 18 and size 32
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: doing downcall
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: mech: krb5, hndl len: 4, ctx
+>>>> > len 52, timeout: 1300464362 (86399 from now), clnt: host@x.x.x, uid:
+>>>> > -1,
+>>>> > gid: -1, num aux grps: 0:
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: qword_eol: fflush failed:
+>>>> > errno
+>>>> > 22 (Invalid argument)
+>>>> > Mar 17 17:06:03 srv2 rpc.svcgssd[15159]: WARNING: error writing to
+>>>> > downcall channel /proc/net/rpc/auth.rpcsec.context/channel: Invalid
+>>>> > argument
+>>>>
+>>>> I've seen this when the negotiated enctype is AES (18), and the kernel
+>>>> does not have AES support.  However, 2.6.36 should have AES support.
+>>>> Did the client update include a Kerberos version update as well?  (See
+>>>> recently submitted patches regarding "acceptor subkey".)
+>>>>
+>>>> The immediate work-around for the acceptor subkey problem is to set
+>>>>
+>>>>   default_tgs_enctypes = des-cbc-crc
+>>>>
+>>>> in the server's /etc/krb5.conf file.  Could you try this and see if it
+>>>> helps?
+>>>>
+>>>> K.C.
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>>
+>>
+>
+>
+>
+>
+>
