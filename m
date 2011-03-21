@@ -1,20 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1570 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752551Ab1CATZv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Mar 2011 14:25:51 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH pnfs-submit-wave3 update 0/5] Update tree to match submission 
-Date: Tue,  1 Mar 2011 14:25:29 -0500
-Message-Id: <1299007534-4105-1-git-send-email-andros@netapp.com>
+Received: from mail4.conversis.de ([213.203.219.181]:33497 "EHLO
+	mail4.conversis.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752476Ab1CUC6a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Mar 2011 22:58:30 -0400
+Received: from [10.143.1.248] (unknown [212.23.103.97])
+	by mail4.conversis.de (Postfix) with ESMTP id 82D832410004
+	for <linux-nfs@vger.kernel.org>; Mon, 21 Mar 2011 03:24:51 +0100 (CET)
+Message-ID: <4D86B6F2.1070004@conversis.de>
+Date: Mon, 21 Mar 2011 03:24:50 +0100
+From: Dennis Jacobfeuerborn <d.jacobfeuerborn@conversis.de>
+To: linux-nfs@vger.kernel.org
+Subject: bind mounts, crossmnt and multi client nfsv3
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
+Hi,
+I have a storage system that is exporting many directories to multiple 
+clients resulting in a lot of mountpoints (156) on each client. What I'm 
+trying to do is to create a single directory on the server and then use 
+mount --bind to mount all the different directories (which are stored on 
+different LVM volumes) into this single export directory and finally export 
+this directory to the clients.
+Now the exports man-page mentions the crossmnt option but it also mentions 
+that it cannot be used if I want to export the directory to multiple 
+clients. Is there another way to accomplish something like this?
 
-Sync the pNFS Team git://linux-nfs.org/~bhalevy/linux-pnfs.git pnfs-submit-wave3 branch with submitted wave 3 patches.
-
--->Andy
+Regards,
+   Dennis
