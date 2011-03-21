@@ -1,630 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33064 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:41883 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751059Ab1CCNoT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Mar 2011 08:44:19 -0500
-From: Karel Zak <kzak@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org, Karel Zak <kzak@redhat.com>,
-        Steve Dickson <steved@redhat.com>
-Subject: [PATCH 1/2] mount: move generic functions to utils.c and network.c
-Date: Thu,  3 Mar 2011 14:43:41 +0100
-Message-Id: <1299159822-25190-2-git-send-email-kzak@redhat.com>
-In-Reply-To: <1299159822-25190-1-git-send-email-kzak@redhat.com>
-References: <1299159822-25190-1-git-send-email-kzak@redhat.com>
+	id S1754337Ab1CUXr4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Mar 2011 19:47:56 -0400
+Date: Tue, 22 Mar 2011 10:47:47 +1100
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Small O_SYNC writes are no longer NFS_DATA_SYNC
+Message-ID: <20110322104747.2c61dd0d@notabene.brown>
+In-Reply-To: <1300748095.26546.12.camel@lade.trondhjem.org>
+References: <20110216171555.6642c630@notabene.brown>
+	<1300405987.4621.10.camel@lade.trondhjem.org>
+	<20110318120417.435551da@notabene.brown>
+	<1300412966.9671.9.camel@lade.trondhjem.org>
+	<20110318131214.0e2c840a@notabene.brown>
+	<1300415108.13476.6.camel@lade.trondhjem.org>
+	<20110318145232.7bbb4216@notabene.brown>
+	<1300741320.13307.50.camel@lade.trondhjem.org>
+	<20110322091757.7bf56d80@notabene.brown>
+	<1300748095.26546.12.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Move generic code that could be shared between standard mount.nfs and
-libmount version to utils.c and network.c.
+On Mon, 21 Mar 2011 18:54:55 -0400 Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
 
-CC: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <steved@redhat.com>
-Signed-off-by: Karel Zak <kzak@redhat.com>
----
- utils/mount/Makefile.am |    2 +-
- utils/mount/mount.c     |   83 +----------------------
- utils/mount/network.c   |   68 ++++++++++++++++++
- utils/mount/network.h   |    3 +
- utils/mount/nfsumount.c |  119 +-------------------------------
- utils/mount/utils.c     |  175 +++++++++++++++++++++++++++++++++++++++++++++++
- utils/mount/utils.h     |   36 ++++++++++
- 7 files changed, 286 insertions(+), 200 deletions(-)
- create mode 100644 utils/mount/utils.c
- create mode 100644 utils/mount/utils.h
+> On Tue, 2011-03-22 at 09:17 +1100, NeilBrown wrote:
+> > On Mon, 21 Mar 2011 17:02:00 -0400 Trond Myklebust
+> > <Trond.Myklebust@netapp.com> wrote:
+> > I must admit that I found the terminology a bit confusing for 
+> > FLUSH_COND_STABLE.
+> > What is means is "if this turns out to be part of a larger request, then clear
+> > FLUSH_STABLE" - which sounds a bit more like "FLUSH_COND_UNSTABLE" - i.e. if
+> > a condition is met, then make it unstable.
+> > But I don't think that change would help at all.
+> > 
+> > How about changing the test in nfs_write_rpcsetup to
+> > 	if (how & (FLUSH_STABLE|FLUSH_CONDSTABLE)) {
+> > 		data->args.stable = NFS_DATA_SYNC;
+> > 		if (!nfs_need_commit(NFS_I(inode)))
+> > 			data->args.stable = NFS_FILE_SYNC;
+> > 	}
+> > 
+> > and then just set either FLUSH_STABLE or FLUSH_COND_STABLE - never both -
+> > and when you test FLUSH_COND_STABLE and then some other condition, just
+> > clear FLUSH_COND_STABLE.
+> > 
+> > I would find that quite a bit more readable.
+> 
+> The reason why I opted not to go for that approach was because
+> nfs_write_rpcsetup() doesn't really know about whether or not there are
+> any more RPCs pending (and so having a 'conditional' flag being
+> interpreted there didn't appear to make sense), but if you feel that is
+> easier on the eyes then I'm happy to change my opinion.
+> 
 
-diff --git a/utils/mount/Makefile.am b/utils/mount/Makefile.am
-index 299384a..a9553dc 100644
---- a/utils/mount/Makefile.am
-+++ b/utils/mount/Makefile.am
-@@ -16,7 +16,7 @@ mount_nfs_SOURCES = mount.c error.c network.c fstab.c token.c \
- 		    mount_constants.h error.h network.h fstab.h token.h \
- 		    parse_opt.h parse_dev.h \
- 		    nfs4_mount.h nfs_mount4.h stropts.h version.h \
--			mount_config.h
-+		    mount_config.h utils.c utils.h
- 
- if MOUNT_CONFIG
- mount_nfs_SOURCES += configfile.c
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index a19af53..f3f0a83 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -47,7 +47,7 @@
- #include "mount.h"
- #include "error.h"
- #include "stropts.h"
--#include "version.h"
-+#include "utils.h"
- 
- char *progname;
- int nfs_mount_data_version;
-@@ -150,49 +150,6 @@ static const struct opt_map opt_map[] = {
- static void parse_opts(const char *options, int *flags, char **extra_opts);
- 
- /*
-- * Choose the version of the nfs_mount_data structure that is appropriate
-- * for the kernel that is doing the mount.
-- *
-- * NFS_MOUNT_VERSION:		maximum version supported by these sources
-- * nfs_mount_data_version:	maximum version supported by the running kernel
-- */
--static void discover_nfs_mount_data_version(void)
--{
--	unsigned int kernel_version = linux_version_code();
--
--	if (kernel_version) {
--		if (kernel_version < MAKE_VERSION(2, 1, 32))
--			nfs_mount_data_version = 1;
--		else if (kernel_version < MAKE_VERSION(2, 2, 18))
--			nfs_mount_data_version = 3;
--		else if (kernel_version < MAKE_VERSION(2, 3, 0))
--			nfs_mount_data_version = 4;
--		else if (kernel_version < MAKE_VERSION(2, 3, 99))
--			nfs_mount_data_version = 3;
--		else if (kernel_version < MAKE_VERSION(2, 6, 3))
--			nfs_mount_data_version = 4;
--		else
--			nfs_mount_data_version = 6;
--	}
--	if (nfs_mount_data_version > NFS_MOUNT_VERSION)
--		nfs_mount_data_version = NFS_MOUNT_VERSION;
--	else
--		if (kernel_version > MAKE_VERSION(2, 6, 22))
--			string++;
--}
--
--static void print_one(char *spec, char *node, char *type, char *opts)
--{
--	if (!verbose)
--		return;
--
--	if (opts)
--		printf(_("%s on %s type %s (%s)\n"), spec, node, type, opts);
--	else
--		printf(_("%s on %s type %s\n"), spec, node, type);
--}
--
--/*
-  * Build a canonical mount option string for /etc/mtab.
-  */
- static char *fix_opts_string(int flags, const char *extra_opts)
-@@ -327,22 +284,6 @@ static int add_mtab(char *spec, char *mount_point, char *fstype,
- 	return result;
- }
- 
--static void mount_usage(void)
--{
--	printf(_("usage: %s remotetarget dir [-rvVwfnsih] [-o nfsoptions]\n"),
--		progname);
--	printf(_("options:\n"));
--	printf(_("\t-r\t\tMount file system readonly\n"));
--	printf(_("\t-v\t\tVerbose\n"));
--	printf(_("\t-V\t\tPrint version\n"));
--	printf(_("\t-w\t\tMount file system read-write\n"));
--	printf(_("\t-f\t\tFake mount, do not actually mount\n"));
--	printf(_("\t-n\t\tDo not update /etc/mtab\n"));
--	printf(_("\t-s\t\tTolerate sloppy mount options rather than fail\n"));
--	printf(_("\t-h\t\tPrint this help\n"));
--	printf(_("\tnfsoptions\tRefer to mount.nfs(8) or nfs(5)\n\n"));
--}
--
- static void parse_opt(const char *opt, int *mask, char *extra_opts, size_t len)
- {
- 	const struct opt_map *om;
-@@ -403,26 +344,6 @@ static void parse_opts(const char *options, int *flags, char **extra_opts)
- 	}
- }
- 
--static int chk_mountpoint(char *mount_point)
--{
--	struct stat sb;
--
--	if (stat(mount_point, &sb) < 0){
--		mount_error(NULL, mount_point, errno);
--		return 1;
--	}
--	if (S_ISDIR(sb.st_mode) == 0){
--		mount_error(NULL, mount_point, ENOTDIR);
--		return 1;
--	}
--	if (access(mount_point, X_OK) < 0) {
--		mount_error(NULL, mount_point, errno);
--		return 1;
--	}
--
--	return 0;
--}
--
- static int try_mount(char *spec, char *mount_point, int flags,
- 			char *fs_type, char **extra_opts, char *mount_opts,
- 			int fake, int bg)
-@@ -459,7 +380,7 @@ int main(int argc, char *argv[])
- 
- 	progname = basename(argv[0]);
- 
--	discover_nfs_mount_data_version();
-+	nfs_mount_data_version = discover_nfs_mount_data_version(&string);
- 
- 	if(!strncmp(progname, "umount", strlen("umount")))
- 		exit(nfsumount(argc, argv));
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 21a7a2c..8049c1a 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -1626,3 +1626,71 @@ int nfs_options2pmap(struct mount_options *options,
- 
- 	return 1;
- }
-+
-+/*
-+ * Discover mount server's hostname/address by examining mount options
-+ *
-+ * Returns a pointer to a string that the caller must free, on
-+ * success; otherwise NULL is returned.
-+ */
-+static char *nfs_umount_hostname(struct mount_options *options,
-+				 char *hostname)
-+{
-+	char *option;
-+
-+	option = po_get(options, "mountaddr");
-+	if (option)
-+		goto out;
-+	option = po_get(options, "mounthost");
-+	if (option)
-+		goto out;
-+	option = po_get(options, "addr");
-+	if (option)
-+		goto out;
-+
-+	return hostname;
-+
-+out:
-+	free(hostname);
-+	return strdup(option);
-+}
-+
-+
-+/*
-+ * Returns EX_SUCCESS if mount options and device name have been
-+ * parsed successfully; otherwise EX_FAIL.
-+ */
-+int nfs_umount_do_umnt(struct mount_options *options,
-+		       char **hostname, char **dirname)
-+{
-+	union nfs_sockaddr address;
-+	struct sockaddr *sap = &address.sa;
-+	socklen_t salen = sizeof(address);
-+	struct pmap nfs_pmap, mnt_pmap;
-+	sa_family_t family;
-+
-+	if (!nfs_options2pmap(options, &nfs_pmap, &mnt_pmap))
-+		return EX_FAIL;
-+
-+	/* Skip UMNT call for vers=4 mounts */
-+	if (nfs_pmap.pm_vers == 4)
-+		return EX_SUCCESS;
-+
-+	*hostname = nfs_umount_hostname(options, *hostname);
-+	if (!*hostname) {
-+		nfs_error(_("%s: out of memory"), progname);
-+		return EX_FAIL;
-+	}
-+
-+	if (!nfs_mount_proto_family(options, &family))
-+		return 0;
-+	if (!nfs_lookup(*hostname, family, sap, &salen))
-+		/* nfs_lookup reports any errors */
-+		return EX_FAIL;
-+
-+	if (nfs_advise_umount(sap, salen, &mnt_pmap, dirname) == 0)
-+		/* nfs_advise_umount reports any errors */
-+		return EX_FAIL;
-+
-+	return EX_SUCCESS;
-+}
-diff --git a/utils/mount/network.h b/utils/mount/network.h
-index 2a3a110..81c6f22 100644
---- a/utils/mount/network.h
-+++ b/utils/mount/network.h
-@@ -75,4 +75,7 @@ int nfs_advise_umount(const struct sockaddr *, const socklen_t,
- CLIENT *mnt_openclnt(clnt_addr_t *, int *);
- void mnt_closeclnt(CLIENT *, int);
- 
-+int nfs_umount_do_umnt(struct mount_options *options,
-+		       char **hostname, char **dirname);
-+
- #endif	/* _NFS_UTILS_MOUNT_NETWORK_H */
-diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
-index 02d40ff..8cd2852 100644
---- a/utils/mount/nfsumount.c
-+++ b/utils/mount/nfsumount.c
-@@ -37,6 +37,7 @@
- #include "network.h"
- #include "parse_opt.h"
- #include "parse_dev.h"
-+#include "utils.h"
- 
- #define MOUNTSFILE	"/proc/mounts"
- #define LINELEN		(4096)
-@@ -139,113 +140,6 @@ static int del_mtab(const char *spec, const char *node)
- }
- 
- /*
-- * Discover mount server's hostname/address by examining mount options
-- *
-- * Returns a pointer to a string that the caller must free, on
-- * success; otherwise NULL is returned.
-- */
--static char *nfs_umount_hostname(struct mount_options *options,
--				 char *hostname)
--{
--	char *option;
--
--	option = po_get(options, "mountaddr");
--	if (option)
--		goto out;
--	option = po_get(options, "mounthost");
--	if (option)
--		goto out;
--	option = po_get(options, "addr");
--	if (option)
--		goto out;
--
--	return hostname;
--
--out:
--	free(hostname);
--	return strdup(option);
--}
--
--/*
-- * Returns EX_SUCCESS if mount options and device name have been
-- * parsed successfully; otherwise EX_FAIL.
-- */
--static int nfs_umount_do_umnt(struct mount_options *options,
--			      char **hostname, char **dirname)
--{
--	union {
--		struct sockaddr		sa;
--		struct sockaddr_in	s4;
--		struct sockaddr_in6	s6;
--	} address;
--	struct sockaddr *sap = &address.sa;
--	socklen_t salen = sizeof(address);
--	struct pmap nfs_pmap, mnt_pmap;
--	sa_family_t family;
--
--	if (!nfs_options2pmap(options, &nfs_pmap, &mnt_pmap))
--		return EX_FAIL;
--
--	/* Skip UMNT call for vers=4 mounts */
--	if (nfs_pmap.pm_vers == 4)
--		return EX_SUCCESS;
--
--	*hostname = nfs_umount_hostname(options, *hostname);
--	if (!*hostname) {
--		nfs_error(_("%s: out of memory"), progname);
--		return EX_FAIL;
--	}
--
--	if (!nfs_mount_proto_family(options, &family))
--		return 0;
--	if (!nfs_lookup(*hostname, family, sap, &salen))
--		/* nfs_lookup reports any errors */
--		return EX_FAIL;
--
--	if (nfs_advise_umount(sap, salen, &mnt_pmap, dirname) == 0)
--		/* nfs_advise_umount reports any errors */
--		return EX_FAIL;
--
--	return EX_SUCCESS;
--}
--
--/*
-- * Pick up certain mount options used during the original mount
-- * from /etc/mtab.  The basics include the server's IP address and
-- * the server pathname of the share to unregister.
-- *
-- * These options might also describe the mount port, mount protocol
-- * version, and transport protocol used to punch through a firewall.
-- * We will need this information to get through the firewall again
-- * to do the umount.
-- *
-- * Note that option parsing failures won't necessarily cause the
-- * umount request to fail.  Those values will be left zero in the
-- * pmap tuple.  If the GETPORT call later fails to disambiguate them,
-- * then we fail.
-- */
--static int nfs_umount23(const char *devname, char *string)
--{
--	char *hostname, *dirname;
--	struct mount_options *options;
--	int result = EX_FAIL;
--
--	if (!nfs_parse_devname(devname, &hostname, &dirname))
--		return EX_USAGE;
--
--	options = po_split(string);
--	if (options) {
--		result = nfs_umount_do_umnt(options, &hostname, &dirname);
--		po_destroy(options);
--	} else
--		nfs_error(_("%s: option parsing error"), progname);
--
--	free(hostname);
--	free(dirname);
--	return result;
--}
--
--/*
-  * Detect NFSv4 mounts.
-  *
-  * Consult /proc/mounts to determine if the mount point
-@@ -340,17 +234,6 @@ static struct option umount_longopts[] =
-   { NULL, 0, 0, 0 }
- };
- 
--static void umount_usage(void)
--{
--	printf(_("usage: %s dir [-fvnrlh]\n"), progname);
--	printf(_("options:\n\t-f\t\tforce unmount\n"));
--	printf(_("\t-v\tverbose\n"));
--	printf(_("\t-n\tDo not update /etc/mtab\n"));
--	printf(_("\t-r\tremount\n"));
--	printf(_("\t-l\tlazy unmount\n"));
--	printf(_("\t-h\tprint this help\n\n"));
--}
--
- int nfsumount(int argc, char *argv[])
- {
- 	int c, ret;
-diff --git a/utils/mount/utils.c b/utils/mount/utils.c
-new file mode 100644
-index 0000000..298db39
---- /dev/null
-+++ b/utils/mount/utils.c
-@@ -0,0 +1,175 @@
-+/*
-+ * Copyright (C) 2010 Karel Zak <kzak@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2, or (at your option)
-+ * any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public
-+ * License along with this program; if not, write to the
-+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-+ * Boston, MA 021110-1307, USA.
-+ *
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <stdio.h>
-+#include <string.h>
-+#include <errno.h>
-+#include <unistd.h>
-+#include <sys/types.h>
-+#include <sys/stat.h>
-+
-+#include "sockaddr.h"
-+#include "nfs_mount.h"
-+#include "nls.h"
-+#include "xcommon.h"
-+#include "version.h"
-+#include "error.h"
-+#include "utils.h"
-+#include "mount.h"
-+#include "network.h"
-+#include "parse_dev.h"
-+
-+extern int verbose;
-+extern char *progname;
-+
-+/*
-+ * Choose the version of the nfs_mount_data structure that is appropriate
-+ * for the kernel that is doing the mount.
-+ *
-+ * NFS_MOUNT_VERSION:		maximum version supported by these sources
-+ * nfs_mount_data_version:	maximum version supported by the running kernel
-+ */
-+int discover_nfs_mount_data_version(int *string_ver)
-+{
-+	unsigned int kernel_version = linux_version_code();
-+	int ver = 0;
-+
-+	*string_ver = 0;
-+
-+	if (kernel_version) {
-+		if (kernel_version < MAKE_VERSION(2, 1, 32))
-+			ver = 1;
-+		else if (kernel_version < MAKE_VERSION(2, 2, 18))
-+			ver = 3;
-+		else if (kernel_version < MAKE_VERSION(2, 3, 0))
-+			ver = 4;
-+		else if (kernel_version < MAKE_VERSION(2, 3, 99))
-+			ver = 3;
-+		else if (kernel_version < MAKE_VERSION(2, 6, 3))
-+			ver = 4;
-+		else
-+			ver = 6;
-+	}
-+	if (ver > NFS_MOUNT_VERSION)
-+		ver = NFS_MOUNT_VERSION;
-+	else
-+		if (kernel_version > MAKE_VERSION(2, 6, 22))
-+			(*string_ver)++;
-+
-+	return ver;
-+}
-+
-+void print_one(char *spec, char *node, char *type, char *opts)
-+{
-+	if (!verbose)
-+		return;
-+
-+	if (opts)
-+		printf(_("%s on %s type %s (%s)\n"), spec, node, type, opts);
-+	else
-+		printf(_("%s on %s type %s\n"), spec, node, type);
-+}
-+
-+void mount_usage(void)
-+{
-+	printf(_("usage: %s remotetarget dir [-rvVwfnsih] [-o nfsoptions]\n"),
-+		progname);
-+	printf(_("options:\n"));
-+	printf(_("\t-r\t\tMount file system readonly\n"));
-+	printf(_("\t-v\t\tVerbose\n"));
-+	printf(_("\t-V\t\tPrint version\n"));
-+	printf(_("\t-w\t\tMount file system read-write\n"));
-+	printf(_("\t-f\t\tFake mount, do not actually mount\n"));
-+	printf(_("\t-n\t\tDo not update /etc/mtab\n"));
-+	printf(_("\t-s\t\tTolerate sloppy mount options rather than fail\n"));
-+	printf(_("\t-h\t\tPrint this help\n"));
-+	printf(_("\tnfsoptions\tRefer to mount.nfs(8) or nfs(5)\n\n"));
-+}
-+
-+void umount_usage(void)
-+{
-+	printf(_("usage: %s dir [-fvnrlh]\n"), progname);
-+	printf(_("options:\n\t-f\t\tforce unmount\n"));
-+	printf(_("\t-v\tverbose\n"));
-+	printf(_("\t-n\tDo not update /etc/mtab\n"));
-+	printf(_("\t-r\tremount\n"));
-+	printf(_("\t-l\tlazy unmount\n"));
-+	printf(_("\t-h\tprint this help\n\n"));
-+}
-+
-+int chk_mountpoint(const char *mount_point)
-+{
-+	struct stat sb;
-+
-+	if (stat(mount_point, &sb) < 0){
-+		mount_error(NULL, mount_point, errno);
-+		return 1;
-+	}
-+	if (S_ISDIR(sb.st_mode) == 0){
-+		mount_error(NULL, mount_point, ENOTDIR);
-+		return 1;
-+	}
-+	if (access(mount_point, X_OK) < 0) {
-+		mount_error(NULL, mount_point, errno);
-+		return 1;
-+	}
-+
-+	return 0;
-+}
-+
-+/*
-+ * Pick up certain mount options used during the original mount
-+ * from /etc/mtab.  The basics include the server's IP address and
-+ * the server pathname of the share to unregister.
-+ *
-+ * These options might also describe the mount port, mount protocol
-+ * version, and transport protocol used to punch through a firewall.
-+ * We will need this information to get through the firewall again
-+ * to do the umount.
-+ *
-+ * Note that option parsing failures won't necessarily cause the
-+ * umount request to fail.  Those values will be left zero in the
-+ * pmap tuple.  If the GETPORT call later fails to disambiguate them,
-+ * then we fail.
-+ */
-+int nfs_umount23(const char *devname, char *string)
-+{
-+	char *hostname = NULL, *dirname = NULL;
-+	struct mount_options *options;
-+	int result = EX_FAIL;
-+
-+	if (!nfs_parse_devname(devname, &hostname, &dirname))
-+		return EX_USAGE;
-+
-+	options = po_split(string);
-+	if (options) {
-+		result = nfs_umount_do_umnt(options, &hostname, &dirname);
-+		po_destroy(options);
-+	} else
-+		nfs_error(_("%s: option parsing error"), progname);
-+
-+	free(hostname);
-+	free(dirname);
-+	return result;
-+}
-diff --git a/utils/mount/utils.h b/utils/mount/utils.h
-new file mode 100644
-index 0000000..3fcd504
---- /dev/null
-+++ b/utils/mount/utils.h
-@@ -0,0 +1,36 @@
-+/*
-+ * utils.h -- misc utils for mount and umount
-+ *
-+ * Copyright (C) 2010 Karel Zak <kzak@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public
-+ * License as published by the Free Software Foundation; either
-+ * version 2 of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public
-+ * License along with this program; if not, write to the
-+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-+ * Boston, MA 021110-1307, USA.
-+ *
-+ */
-+
-+#ifndef _NFS_UTILS_MOUNT_UTILS_H
-+#define _NFS_UTILS_MOUNT_UTILS_H
-+
-+#include "parse_opt.h"
-+
-+int discover_nfs_mount_data_version(int *string_ver);
-+void print_one(char *spec, char *node, char *type, char *opts);
-+void mount_usage(void);
-+void umount_usage(void);
-+int chk_mountpoint(const char *mount_point);
-+
-+int nfs_umount23(const char *devname, char *string);
-+
-+#endif	/* !_NFS_UTILS_MOUNT_UTILS_H */
--- 
-1.7.3.4
+I do see your point - by the time we get to nfs_write_rpcsetup it isn't
+really conditional any more - it is now mandatory.
+
+Maybe one cannot get the names perfect.  However I find that having
+interdependencies between different flag bits can easily become confusing.
+
+So I have a slight preference for my version, but I concede that it isn't a
+clear winner.
+
+Thanks,
+NeilBrown
 
