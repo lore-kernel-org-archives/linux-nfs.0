@@ -1,59 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from palinux.external.hp.com ([192.25.206.14]:46950 "EHLO
-	mail.parisc-linux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753324Ab1C1CyZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Mar 2011 22:54:25 -0400
-Date: Sun, 27 Mar 2011 20:54:23 -0600
-From: Matthew Wilcox <matthew@wil.cx>
-To: Ryan Mallon <ryan@bluewatersys.com>
-Cc: viro@zeniv.linux.org.uk, dchinner@redhat.com, Trond.Myklebust@netapp.com,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH 1/2] Add unlocked version of igrab.
-Message-ID: <20110328025423.GN13806@parisc-linux.org>
-References: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com> <1301277361-9453-2-git-send-email-ryan@bluewatersys.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1301277361-9453-2-git-send-email-ryan@bluewatersys.com>
+Received: from smtp03.online.nl ([194.134.41.33]:58193 "EHLO smtp03.online.nl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751039Ab1CUFgn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Mar 2011 01:36:43 -0400
+Subject: Re: rpc.svcgssd problem after updating client 1.2.2->1.2.3
+From: Vladimir Elisseev <vovan@vovan.nl>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+In-Reply-To: <4D85642D.3060901@RedHat.com>
+References: <1300387690.2684.23.camel@vovan.net.home>
+	 <AANLkTim6nptBM40b5Zt2fhr7aiQ47kqX+_RBprnCokRD@mail.gmail.com>
+	 <1300427036.30472.11.camel@vovan.net.home>
+	 <AANLkTim7q+-ijBnzWs+zW9X-gfxyrt5kw4Vj_pcrWJFw@mail.gmail.com>
+	 <20110318145204.20621su4mostcrk4@vovan.nl>
+	 <AANLkTimLE7gJ_tzi5JOCgM+RA4-8EnHcW8hqB++a5X8X@mail.gmail.com>
+	 <20110318164828.943007egbodjy3t8@vovan.nl>
+	 <AANLkTinGHaeF-G+XGj8--+m2NygX7fZ49gdf7sAepN=+@mail.gmail.com>
+	 <1300521382.15416.18.camel@vovan.net.home>  <4D85642D.3060901@RedHat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 21 Mar 2011 06:36:39 +0100
+Message-ID: <1300685799.18075.7.camel@vovan.net.home>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, Mar 28, 2011 at 02:56:00PM +1300, Ryan Mallon wrote:
-> Commit 250df6ed274d767da844a5d9f05720b804240197 "fs: protect
-> inode->i_state with inode->i_lock" changes igrab to acquire inode->i_lock,
-> however some callees, notably nfs_inode_add_request, already hold the lock
-> when calling igrab.
+Steve,
 
-I think a better solution to your problem is to notice that this is
-called in the context of doing a write to an inode.  That means we
-must already have a reference count on this inode, so it can't possibly
-be in I_FREEING or I_WILL_FREE.  That means we can just call __iget()
-instead ... except that __iget isn't exported to modules.
+The segfault on the client side is gone after client reboot. This
+segfault occurs when nfs-utils has been updated and then I just restart
+corresponding services (rpcbind, rpc.idmapd, rpc.gssd) without rebooting
+the client. Now client simply exits with the lines below (as I described
+initially in my first mail): 
+mount.nfs: mount(2): Permission denied
+mount.nfs: access denied by server while mounting ...
 
-So we could just bump the refcount by hand ... or we could
-EXPORT_SYMBOL(__iget).
+Regards,
+Vladimir.
 
+On Sat, 2011-03-19 at 22:19 -0400, Steve Dickson wrote:
+> 
+> On 03/19/2011 03:56 AM, Vladimir Elisseev wrote:
+> > Kevin,
+> > 
+> > I have some updates. I recompiled nfs-utils and dependencies (libgssglue
+> > keyutils librpcsecgss libtirpc) on the server and on the test client.
+> > Nevertheless, while on the server side I see the same error:
+> > rpc.svcgssd[8390]: qword_eol: fflush failed: errno 22 (Invalid argument)
+> > on the client side rpc.gssd segfault(!):
+> > kernel: rpc.gssd[2107] segfault at 4 ip 0000003ef9430805 sp 00007fff655cdd10 error 4 in libgssapi_krb5.so.2.2[3ef9400000+3e000]
+> > Reverting back to nfs-utils 1.2.2 on the client and everything is fine.
+> > Below are relevant log entries from KDC when using nfs-utils 1.2.2 and 1.2.3 on the client:
+> > 
+> > ****** nfs-utils 1.2.2 *******
+> > Mar 19 07:56:27 srv2 krb5kdc[7945]: AS_REQ (7 etypes {18 17 16 23 1 3 2}) 192.168.1.8: ISSUE: authtime 1300517787, etypes {rep=18 tkt=18 ses=18}, host/vbox.xxx.xxx@X.X for krbtgt/X.X@X.X 
+> > Mar 19 07:56:28 srv2 krb5kdc[7945]: TGS_REQ (7 etypes {18 17 16 23 1 3 2}) 192.168.1.8: ISSUE: authtime 1300517787, etypes {rep=18 tkt=18 ses=18}, host/vbox.xxx.xxx@X.X for nfs/nfs.xxx.xxx@X.X 
+> > Mar 19 07:56:28 srv2 krb5kdc[7945]: TGS_REQ (3 etypes {1 3 2}) 192.168.1.8: ISSUE: authtime 1300517787, etypes {rep=18 tkt=18 ses=1}, host/vbox.xxx.xxx@X.X for nfs/nfs.xxx.xxx@X.X 
+> > 
+> > ****** nfs-utils 1.2.3 *******
+> > Mar 19 08:22:22 srv2 krb5kdc[7945]: AS_REQ (7 etypes {18 17 16 23 1 3 2}) 192.168.1.2: ISSUE: authtime 1300519342, etypes {rep=18 tkt=18 ses=18}, host/x.x.x@X.X for krbtgt/X.X@X.X 
+> > Mar 19 08:22:22 srv2 krb5kdc[7945]: TGS_REQ (7 etypes {18 17 16 23 1 3 2}) 192.168.1.2: ISSUE: authtime 1300519342, etypes {rep=18 tkt=18 ses=18}, host/x.x.x@X.X for nfs/nfs.x.x@X.X
+> > then
+> > rpc.svcgssd[8390]: qword_eol: fflush failed: errno 22 (Invalid argument) 
+> > and segfault on the client side.
+> Would it be possible to get a back trace from the core?
+> 
+> steved.
 
-Or Al's going to swear a lot about what NFS is doing here and how it's
-utterly misdesigned.  Anyway, this patch could be part of the solution.
-
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 85d7525..330cef3 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -390,7 +390,7 @@ static int nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
- 	error = radix_tree_insert(&nfsi->nfs_page_tree, req->wb_index, req);
- 	BUG_ON(error);
- 	if (!nfsi->npages) {
--		igrab(inode);
-+		__iget(inode);
- 		if (nfs_have_delegation(inode, FMODE_WRITE))
- 			nfsi->change_attr++;
- 	}
-
--- 
-Matthew Wilcox				Intel Open Source Technology Centre
-"Bill, look, we understand that you're interested in selling us this
-operating system, but compare it to ours.  We can't possibly take such
-a retrograde step."
