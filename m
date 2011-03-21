@@ -1,86 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.bluewatersys.com ([202.124.120.130]:16141 "EHLO
-	hayes.bluewaternz.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753282Ab1C1Bzq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Mar 2011 21:55:46 -0400
-From: Ryan Mallon <ryan@bluewatersys.com>
-To: viro@zeniv.linux.org.uk, dchinner@redhat.com, Trond.Myklebust@netapp.com
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Ryan Mallon <ryan@bluewatersys.com>
-Subject: [RFC PATCH 1/2] Add unlocked version of igrab.
-Date: Mon, 28 Mar 2011 14:56:00 +1300
-Message-Id: <1301277361-9453-2-git-send-email-ryan@bluewatersys.com>
-In-Reply-To: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com>
-References: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com>
+Received: from fieldses.org ([174.143.236.118]:36798 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752425Ab1CUSTQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Mar 2011 14:19:16 -0400
+Date: Mon, 21 Mar 2011 14:19:13 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dennis Jacobfeuerborn <dennisml@conversis.de>
+Cc: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: bind mounts, crossmnt and multi client nfsv3
+Message-ID: <20110321181913.GA472@fieldses.org>
+References: <4D86B6F2.1070004@conversis.de>
+ <20110321140923.5a618d89@notabene.brown>
+ <4D874419.5030303@conversis.de>
+ <20110321172530.GA32359@fieldses.org>
+ <4D87908E.1020107@conversis.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D87908E.1020107@conversis.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Commit 250df6ed274d767da844a5d9f05720b804240197 "fs: protect
-inode->i_state with inode->i_lock" changes igrab to acquire inode->i_lock,
-however some callees, notably nfs_inode_add_request, already hold the lock
-when calling igrab.
+On Mon, Mar 21, 2011 at 06:53:18PM +0100, Dennis Jacobfeuerborn wrote:
+> On 03/21/2011 06:25 PM, J. Bruce Fields wrote:
+> >On Mon, Mar 21, 2011 at 01:27:05PM +0100, Dennis Jacobfeuerborn wrote:
+> >>On 03/21/2011 04:09 AM, NeilBrown wrote:
+> >>>On Mon, 21 Mar 2011 03:24:50 +0100 Dennis Jacobfeuerborn
+> >>><d.jacobfeuerborn@conversis.de>   wrote:
+> >>>
+> >>>>Hi,
+> >>>>I have a storage system that is exporting many directories to multiple
+> >>>>clients resulting in a lot of mountpoints (156) on each client. What I'm
+> >>>>trying to do is to create a single directory on the server and then use
+> >>>>mount --bind to mount all the different directories (which are stored on
+> >>>>different LVM volumes) into this single export directory and finally export
+> >>>>this directory to the clients.
+> >>>>Now the exports man-page mentions the crossmnt option but it also mentions
+> >>>>that it cannot be used if I want to export the directory to multiple
+> >>>>clients. Is there another way to accomplish something like this?
+> >>>>
+> >>>
+> >>>Just export the top directory with 'crossmnt' - it should work fine.
+> >>>
+> >>>The 'multiple clients' thing only affects 'nohide' and I think it only
+> >>>affected it back in 2.4 days.
+> >>>Lots changed with 2.6, but maybe not enough of the man page changed :-(
+> >>>
+> >>>So try with 'crossmnt' and if it doesn't work, then come back with details.
+> >>
+> >>I've tried this now but it doesn't seem to work. This is the setup so far:
+> >>
+> >>===========
+> >>
+> >>On the server I've created the bind mounts like this:
+> >>
+> >>/mnt/vg0/vol01/country/de/a on /exports/country/de/a type none (rw,bind)
+> >>/mnt/vg0/vol03/country/de/b on /exports/country/de/b type none (rw,bind)
+> >>...
+> >>
+> >>Then I put the following line in /etc/exports:
+> >>/exports 192.168.0.0/255.255.255.0(rw,anonuid=96,anongid=96,secure,no_root_squash,wdelay,sync,crossmnt,no_subtree_check)
+> >>
+> >>additionally these exports exist for each volume:
+> >>/mnt/vg0/vol01/country 213.131.252.0/255.255.255.0(rw,anonuid=96,anongid=96,secure,no_root_squash,wdelay,sync)
+> >
+> >I'm a bit confused by the paths and ip blocks:
+> >
+> >	- You want to export the path that the client sees
+> >	  (/exports/country/whatever), not the original path
+> >	  (/mnt/vg0/...).
+> >	- If you expect clients to be able to traverse from /exports/ to
+> >	  filesystems underneath, then you'd want to make sure /exports/
+> >	  is exported to anything that the filesystems underneath are.
+> 
+> The /mnt/vg0/volXX exports are currently used to export each
+> filesystem containing letters individually. On the client I then
+> mount each letter individually which means access to each mountpoint
+> doesn't have to traverse filesystem boundaries on the server but it
+> also means I end up with 156 individual mountpoints which is a pain
+> to deal with. I had to write a script that runs a loop mounting 5
+> letters then waiting 30 seconds then mount the next 5 letters etc.
+> If I try to mount these in one go about 10 mounts work fine but then
+> I only get errors. Apparently the server can only handle so many
+> mounts in a certain timeframe (socket timeouts?)
 
-Introduce an unlocked version of igrab called __igrab which can be
-called when inode->i_lock is already held.
+Might be interesting to pin that problem down.  I wonder if "insecure"
+would help?
 
-Signed-off-by: Ryan Mallon <ryan@bluewatersys.com>
----
- fs/inode.c         |   16 ++++++++++++----
- include/linux/fs.h |    1 +
- 2 files changed, 13 insertions(+), 4 deletions(-)
+> That's why I'm aiming for consolidating the letters on the server
+> using bind mounts and then just mount the country directories
+> leaving me with 6 mountpoints per client which would be *much*
+> easier to handle.
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 05a1f75..bdcfbba 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1134,14 +1134,11 @@ ino_t iunique(struct super_block *sb, ino_t max_reserved)
- }
- EXPORT_SYMBOL(iunique);
- 
--struct inode *igrab(struct inode *inode)
-+struct inode *__igrab(struct inode *inode)
- {
--	spin_lock(&inode->i_lock);
- 	if (!(inode->i_state & (I_FREEING|I_WILL_FREE))) {
- 		__iget(inode);
--		spin_unlock(&inode->i_lock);
- 	} else {
--		spin_unlock(&inode->i_lock);
- 		/*
- 		 * Handle the case where s_op->clear_inode is not been
- 		 * called yet, and somebody is calling igrab
-@@ -1149,6 +1146,17 @@ struct inode *igrab(struct inode *inode)
- 		 */
- 		inode = NULL;
- 	}
-+
-+	return inode;
-+}
-+EXPORT_SYMBOL(__igrab);
-+
-+struct inode *igrab(struct inode *inode)
-+{
-+	spin_lock(&inode->i_lock);
-+	inode = __igrab(inode);
-+	spin_unlock(&inode->i_lock);
-+
- 	return inode;
- }
- EXPORT_SYMBOL(igrab);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index b677bd7..32c4bc5 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2240,6 +2240,7 @@ extern void inode_init_once(struct inode *);
- extern void address_space_init_once(struct address_space *mapping);
- extern void ihold(struct inode * inode);
- extern void iput(struct inode *);
-+extern struct inode *__igrab(struct inode *inode);
- extern struct inode * igrab(struct inode *);
- extern ino_t iunique(struct super_block *, ino_t);
- extern int inode_needs_sync(struct inode *inode);
--- 
-1.7.0.4
+Oh, so you're actually exporting each filesystem *twice*, in two
+different places?
 
+I think the server can deal with that.  But probably only if the two
+filesystems have the same export options.  (You've got crossmnt and
+no_subtree_check set on one but not the other.)
+
+Wait, and looks like you're also bind mounting *subdirectories* of
+filesystems instead of whole filesystems.  I'm not sure the server will
+handle that the way you'd expect.
+
+Is there any reason you can't just bind-mount all of /mnt/vg0/vol01/, or
+whatever, to the same path?
+
+> The 192 IP range was a mistake and that should be the same 213 range
+> as the /exports export. If I can get this working then I plan to
+> eliminate the individual /mnt/vg0/... exports if they are not
+> needed.
+> 
+> >But actually you should only need the first /exports entry; filesystems
+> >underneath should inherit export options from the parent.
+> 
+> This is what /var/lib/nfs/etab says for /exports after an exportfs -r:
+> /exports 213.131.252.0/255.255.255.0(rw,sync,wdelay,hide,crossmnt,secure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,mapping=identity,anonuid=96,anongid=96)
+> 
+> When I mount this I can see the proper subdirectories until I get to
+> the bind mounted letter directories which have their expected
+> contents on the server but appear empty on the client.
+
+Note also NFSv2/v3 clients aren't necessarily equipped to deal with
+filesystem boundaries, and some applications may be confused by seeing
+what look like files with the same inode number on the same filesystem
+that are actually different files.
+
+--b.
