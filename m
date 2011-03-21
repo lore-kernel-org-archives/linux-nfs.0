@@ -1,79 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:64917 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1759290Ab1CDJFi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Mar 2011 04:05:38 -0500
-Message-ID: <4D70AB97.3070502@cn.fujitsu.com>
-Date: Fri, 04 Mar 2011 17:06:31 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Received: from mx2.netapp.com ([216.240.18.37]:34695 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755583Ab1CUXfi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2011 19:35:38 -0400
+Subject: Re: problem with nfs4: rpciod seems to loop in rpc_shutdown_client
+ forever
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/17] CLNT: test resues slot ID
-References: <4D6DE26C.3010103@cn.fujitsu.com> <4D6DE4A5.1050702@cn.fujitsu.com> <20110303061442.GE7724@fieldses.org> <4D6F5B4E.7000903@cn.fujitsu.com>
-In-Reply-To: <4D6F5B4E.7000903@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: Wolfgang Walter <wolfgang.walter@stwm.de>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <20110321232857.GC472@fieldses.org>
+References: <201103182349.22331.wolfgang.walter@stwm.de>
+	 <20110321232857.GC472@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 21 Mar 2011 19:35:36 -0400
+Message-ID: <1300750536.26546.31.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Mon, 2011-03-21 at 19:28 -0400, J. Bruce Fields wrote:
+> On Fri, Mar 18, 2011 at 11:49:21PM +0100, Wolfgang Walter wrote:
+> > Hello,
+> > 
+> > I have a problem with our nfs-server (stable 2.6.32.33 but also with
+> > .31 or .32 and probably older ones): sometimes
+> > one or more rpciod get stuck. I used
+> > 
+> > 	rpcdebug -m rpc -s all
+> > 
+> > I get messages as the following one about every second:
+> > 
+> > Mar 18 11:15:37 au kernel: [44640.906793] RPC:       killing all tasks for client ffff88041c51de00
+> > Mar 18 11:15:38 au kernel: [44641.906793] RPC:       killing all tasks for client ffff88041c51de00
+> > Mar 18 11:15:39 au kernel: [44642.906795] RPC:       killing all tasks for client ffff88041c51de00
+> > Mar 18 11:15:40 au kernel: [44643.906793] RPC:       killing all tasks for client ffff88041c51de00
+> > Mar 18 11:15:41 au kernel: [44644.906795] RPC:       killing all tasks for client ffff88041c51de00
+> > Mar 18 11:15:42 au kernel: [44645.906794] RPC:       killing all tasks for client ffff88041c51de00
+> > 
+> > and I get this messages:
+> > 
+> > Mar 18 22:45:57 au kernel: [86061.779008]   174 0381     -5 ffff88041c51de00   (null)        0 ffffffff817211a0 nfs4_cbv1 CB_NULL a:rpc_exit_task q:none
+> > 
+> > My theorie is this one:
+> > 
+> > * this async task is runnable but does not progress (calling rpc_exit_task).
+> > * this is because the same rpciod which handles this task loops in
+> >   rpc_shutdown_client waiting for this task to go away.
+> > * because rpc_shutdown_client is called from an async rpc, too
+> 
+> Off hand I don't see any place where rpc_shutdown_client() is called
+> from rpciod; do you?
 
+The only case I could think of would be if we're still calling mntput()
+from some RPC callback. In principle we should only be doing that from
+the rpc_call_ops->rpc_callback() from within the nfsiod thread rather
+than rpciod.
 
-Mi Jinlong :
-> 
-> J. Bruce Fields:
->> On Wed, Mar 02, 2011 at 02:33:09PM +0800, Mi Jinlong wrote:
->>> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->>> ---
->>>  nfs4.1/server41tests/st_sequence.py |   18 ++++++++++++++++++
->>>  1 files changed, 18 insertions(+), 0 deletions(-)
->>>
->>> diff --git a/nfs4.1/server41tests/st_sequence.py b/nfs4.1/server41tests/st_sequence.py
->>> index 4ea5cab..391fc45 100644
->>> --- a/nfs4.1/server41tests/st_sequence.py
->>> +++ b/nfs4.1/server41tests/st_sequence.py
->>> @@ -363,3 +363,21 @@ def testBadSequenceidAtSlot(t, env):
->>>  
->>>      res = c.c.compound([op.sequence(sid, nfs4lib.dec_u32(seqid), 2, 3, True)])
->>>      check(res, NFS4ERR_SEQ_MISORDERED)
->>> +
->>> +def testReuseSlotID(t, env):
->>> +    """
->>> +
->>> +    FLAGS: sequence all
->>> +    CODE: SEQ14
->>> +    """
->> Missing description?
-> 
->   Sorry! I will add it at next version.
-> 
->>> +    c = env.c1.new_client(env.testname(t))
->>> +    # CREATE_SESSION
->>> +    sess1 = c.create_session()
->>> +
->>> +    sid = sess1.sessionid 
->>> +    res = c.c.compound([op.sequence(sid, 1, 2, 3, True), op.putrootfh()])
->>> +    check(res)
->>> +
->>> +    res = c.c.compound([op.sequence(sid, 1, 2, 3, True)])
->>> +    # should we also check the ERROR of NFS4ERR_SEQ_FALSE_RETRY ??
->> As I understand it, the server isn't required to recognize false
->> retries, so I don't think we can check for that.
->>
->> The only useful thing to check for, I think, is just to send the same
->> request twice and make sure the requests match.
->>
->> Actually, best would be to do this with a non-idempotent operation.  For
->> example, send SEQ+RENAME twice and make sure that both renames succeed.
->> (Whereas if the server reply cache is broken and the server attempts to
->> rename the file again, the second rename will fail with NOENT.)
-> 
->   Yes, thanks for you advice.
->   I will send a new patch tomorrow.
-
-   Maybe the following one is better than before.
+Is it possible this might be another instance of the nfs_commit_inode()
+busy-loop?
 
 -- 
-thanks,
-Mi Jinlong 
+Trond Myklebust
+Linux NFS client maintainer
 
-=========================================================
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
