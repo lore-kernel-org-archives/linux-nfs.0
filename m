@@ -1,66 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.bluewatersys.com ([202.124.120.130]:61198 "EHLO
-	hayes.bluewaternz.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750818Ab1C1Eqo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2011 00:46:44 -0400
-Message-ID: <4D9012C5.8070401@bluewatersys.com>
-Date: Mon, 28 Mar 2011 17:47:01 +1300
-From: Ryan Mallon <ryan@bluewatersys.com>
-To: Dave Chinner <david@fromorbit.com>
-CC: viro@zeniv.linux.org.uk, dchinner@redhat.com, Trond.Myklebust@netapp.com,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH 0/2] Introduce unlocked version of igrab
-References: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com> <20110328044334.GA1022@dastard>
-In-Reply-To: <20110328044334.GA1022@dastard>
+Received: from mx1.redhat.com ([209.132.183.28]:9684 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752933Ab1CUTEO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Mar 2011 15:04:14 -0400
+Message-ID: <4D87A12A.60209@RedHat.com>
+Date: Mon, 21 Mar 2011 15:04:10 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Karel Zak <kzak@redhat.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: mount.nfs libmount support (v3)
+References: <1300111108-13137-1-git-send-email-kzak@redhat.com>
+In-Reply-To: <1300111108-13137-1-git-send-email-kzak@redhat.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 03/28/2011 05:43 PM, Dave Chinner wrote:
-> On Mon, Mar 28, 2011 at 02:55:59PM +1300, Ryan Mallon wrote:
->> Commit 250df6ed274d767da844a5d9f05720b804240197 "fs: protect 
->> inode->i_state with inode->i_lock" introduces a change to igrab to acquire
->> inode->i_lock. 
->>
->> This change causes a panic on boot on my ARM EP93xx board when the rootfs
->> uses NFS. The problem occurs because nfs_inode_add_request acquires
->> inode->i_lock and then calls igrab, resulting in the following panic:
->>
->> BUG: spinlock recursion on CPU#0, getty/262
->>  lock: cc421cb4, .magic: dead4ead, .owner: getty/262, .owner_cpu: 0
->> [<c0031b0c>] (unwind_backtrace+0x0/0xe4) from [<c015f16c>] (do_raw_spin_lock+0x40/0x13c)
->> [<c015f16c>] (do_raw_spin_lock+0x40/0x13c) from [<c00a938c>] (igrab+0x14/0x48)
->> [<c00a938c>] (igrab+0x14/0x48) from [<c01186bc>] (nfs_updatepage+0x2e0/0x524)
->> [<c01186bc>] (nfs_updatepage+0x2e0/0x524) from [<c010b19c>] (nfs_write_end+0x23c/0x270)
->> [<c010b19c>] (nfs_write_end+0x23c/0x270) from [<c006b484>] (generic_file_buffered_write+0x180/0x248)
->> [<c006b484>] (generic_file_buffered_write+0x180/0x248) from [<c006d060>] (__generic_file_aio_write+0x3b8/0x3f4)
->> [<c006d060>] (__generic_file_aio_write+0x3b8/0x3f4) from [<c006d108>] (generic_file_aio_write+0x6c/0xdc)
->> [<c006d108>] (generic_file_aio_write+0x6c/0xdc) from [<c010bce0>] (nfs_file_write+0xec/0x178)
->> [<c010bce0>] (nfs_file_write+0xec/0x178) from [<c00956ac>] (do_sync_write+0xa4/0xe4)
->> [<c00956ac>] (do_sync_write+0xa4/0xe4) from [<c00960c8>] (vfs_write+0xb4/0x12c)
->> [<c00960c8>] (vfs_write+0xb4/0x12c) from [<c00961f0>] (sys_write+0x3c/0x68)
->> [<c00961f0>] (sys_write+0x3c/0x68) from [<c002c8e0>] (ret_fast_syscall+0x0/0x2c)
->>
->> This series introduces a new function called __igrab, which is an unlocked
->> version of igrab and modifies nfs_inode_add_request to use the unlocked
->> version.
+Hey Karel,
+
+On 03/14/2011 09:58 AM, Karel Zak wrote:
+> This is the third version of the mount.nfs with libmount support. The code
+> depends on util-linux >= v2.19 (e.g. Fedora 15).
 > 
-> It's called ihold() and already exists.
+> v3:
+>   - call umount_error() on mount(2) error
+> 
+> v2:
+>   - move nfs_umount_do_umnt() to network.c
+>   - use union nfs_sockaddr
+>   - add missing GPL address paragraph
+>   - use abstract function the storing and retrieval mount options
+>   - use "static const" for struct option
+>   - use "strncmp() == 0" everywhere
+> 
+> 
+Looking at unmounting a non-existent fs I get:
 
-Thanks. Missed that one.
+# umount.nfs /mnt/home
+umount.nfs: remote share not in 'host:dir' format
+umount.nfs: /mnt/home: not mounted
+#
+I took a quick look as to why that incorrect "remote share...." 
+is message is being generated and why it wasn't in the
+previous code.
 
-Is ihold the correct replacement for the fs/ceph cases I mentioned in my
-other email?
+The message is being generated because nfs_umount23() is
+is passed an invalid devname ('/mnt/home' in my case).
+The reason the message was not being generated before
+is because nfs_umount23() was not called when the devname
+did not exist in the mtab.
 
-~Ryan
+Now, I understand the umount(2) system call still has to
+occur when the devname is not found in the mtab. This happen
+the previous code because del_mtab() was called  (which calls 
+umount(2)) even when the devname was not in the mtab.
 
--- 
-Bluewater Systems Ltd - ARM Technology Solution Centre
+I also notice that the libmount code does indeed  know the devname 
+is not in the mtab. The lookup_umount_fs() call fails which is in 
+the mnt_context_prepare_umount() call... But, rightly so, you continue 
+to process the umount. Plus the umount(2) is done during the 
+mnt_context_do_umount() call which ends up generating the correct
+"not mounted" message.
 
-Ryan Mallon         		5 Amuri Park, 404 Barbadoes St
-ryan@bluewatersys.com         	PO Box 13 889, Christchurch 8013
-http://www.bluewatersys.com	New Zealand
-Phone: +64 3 3779127		Freecall: Australia 1800 148 751
-Fax:   +64 3 3779135			  USA 1800 261 2934
+So my question is, is there some why I can tell, using the libmount
+API, that the fs was not in either /proc/mounts or /etc/mtab?
+
+Basically I do not want to call nfs_umount23() but I do want
+to call mnt_context_do_umount() when the file system is not
+in the mtab, similar to how it worked in the previous code.
+
+steved.
+
