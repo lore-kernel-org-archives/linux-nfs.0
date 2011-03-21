@@ -1,71 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40855 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750754Ab1CGNR3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Mar 2011 08:17:29 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p27DHTdr007889
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 7 Mar 2011 08:17:29 -0500
-Received: from badhat.bos.devel.redhat.com (vpn-10-184.rdu.redhat.com [10.11.10.184])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id p27DHR6B015736
-	for <linux-nfs@vger.kernel.org>; Mon, 7 Mar 2011 08:17:28 -0500
-Message-ID: <4D74DAE7.5060503@RedHat.com>
-Date: Mon, 07 Mar 2011 08:17:27 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from swampdragon.chaosbits.net ([90.184.90.115]:18176 "EHLO
+	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754069Ab1CUTf6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2011 15:35:58 -0400
+Date: Mon, 21 Mar 2011 20:35:49 +0100 (CET)
+From: Jesper Juhl <jj@chaosbits.net>
 To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
-References: <20110217.215900.388120588347145930.yamato@redhat.com>	<4D72BD33.70208@RedHat.com>	<20110306015106.GA23388@merit.edu> <20110306.151123.1031846434411534102.yamato@redhat.com> <4D74D822.4000009@RedHat.com>
-In-Reply-To: <4D74D822.4000009@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Milton Miller <miltonm@bga.com>, Chuck Lever <chuck.lever@oracle.com>,
+        linux-kernel@vger.kernel.org, Neil Brown <neilb@suse.de>,
+        bfields@fieldses.org
+Subject: [PATCH][resend] Remove pointless memset in nfsacl_encode()
+Message-ID: <alpine.LNX.2.00.1103212031550.15815@swampdragon.chaosbits.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Remove pointless memset() in nfsacl_encode().
+
+Thanks to Trond Myklebust <Trond.Myklebust@netapp.com> for pointing out 
+that it is not needed since posix_acl_init() will set everything 
+regardless..
+
+Signed-off-by: Jesper Juhl <jj@chaosbits.net>
+---
+ nfsacl.c |    1 -
+ 1 file changed, 1 deletion(-)
+
+ Patch against up-to-date Linus' tree.
+
+diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
+index 84c27d6..ec0f277 100644
+--- a/fs/nfs_common/nfsacl.c
++++ b/fs/nfs_common/nfsacl.c
+@@ -117,7 +117,6 @@ int nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
+ 		 * invoked in contexts where a memory allocation failure is
+ 		 * fatal.  Fortunately this fake ACL is small enough to
+ 		 * construct on the stack. */
+-		memset(acl2, 0, sizeof(acl2));
+ 		posix_acl_init(acl2, 4);
+ 
+ 		/* Insert entries in canonical order: other orders seem
 
 
-On 03/07/2011 08:05 AM, Steve Dickson wrote:
-> 
-> 
-> On 03/06/2011 01:11 AM, Masatake YAMATO wrote:
->> On Sat, 5 Mar 2011 20:51:06 -0500, Jim Rees <rees@umich.edu> wrote
->>> Steve Dickson wrote:
->>>
->>>   Now, I realize you added the ".export" explanation to the man page 
->>>   but is there a particular reason why file in that directory have 
->>>   to end with ".export"? Out of "easy of use" sake, should any 
->>>   and all files that exist in that directory be expected to 
->>>   be exports files?
->>>
->>> I don't know if that's the best way to do it, but I think it would be useful
->>> to have a way to keep files in the directory that don't get automatically
->>> read.  As an analogy, I have the following files in my /etc/init:
->>>
->>> portmap.conf           This is the real one that gets used
->>> portmap.conf~          This is a backup file produced by emacs
->>> portmap.conf-20100603  This is the file that came with my distro
->>>
->>> Only the first one gets used, which is what I want, because it's the only
->>> one ending in ".conf".
-> This makes sense... 
-> 
->>
->> Jim, thank you for explanation. He wrote what I'd like to write.
->>
->> This technique is borrowed from util-linux-ng; libmount.so reads
->> only *.fstab under /etc/fstab.d.
->>
->>
->> In addition, ".export" suffix tells an editor which syntax highlighter
->> should be used when editing .export file:P
-> True... But I noticed the suffix that gvim looks for is ".exports"
-> not ".export". 
-> 
-> What editor are you using and does it look for a ".export" by default?
-> 
-After thinking about this a little longer, I think making the 
-suffix ".exports" does make sense. Along with the that being 
-the default syntax  highlighter for gvim, more importantly, its
-also the name of the man page, exports(5).
 
-steved.
+-- 
+Jesper Juhl <jj@chaosbits.net>       http://www.chaosbits.net/
+Don't top-post http://www.catb.org/jargon/html/T/top-post.html
+Plain text mails only, please.
+
