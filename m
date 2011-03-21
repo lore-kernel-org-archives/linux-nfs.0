@@ -1,211 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailgate2.disneyanimation.com ([198.187.190.102]:15078 "EHLO
-	mailgate2.disneyanimation.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752962Ab1CPSBX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2011 14:01:23 -0400
-From: Kevin Constantine <Kevin.Constantine@disneyanimation.com>
-Received: from [172.30.160.222] (facilier.fas.fa.disney.com [172.30.246.126])
-	(using SSLv3 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mailhub.fa.disney.com (Postfix) with ESMTP id AC4393C00D
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Mar 2011 10:51:53 -0700 (PDT)
-Message-ID: <4D80F8B9.1080900@disney.com>
-Date: Wed, 16 Mar 2011 10:51:53 -0700
-To: linux-nfs@vger.kernel.org
-Subject: NFS hanging waiting for a process to be killable?
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:41423 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754506Ab1CUWy6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2011 18:54:58 -0400
+Subject: Re: Small O_SYNC writes are no longer NFS_DATA_SYNC
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20110322091757.7bf56d80@notabene.brown>
+References: <20110216171555.6642c630@notabene.brown>
+	 <1300405987.4621.10.camel@lade.trondhjem.org>
+	 <20110318120417.435551da@notabene.brown>
+	 <1300412966.9671.9.camel@lade.trondhjem.org>
+	 <20110318131214.0e2c840a@notabene.brown>
+	 <1300415108.13476.6.camel@lade.trondhjem.org>
+	 <20110318145232.7bbb4216@notabene.brown>
+	 <1300741320.13307.50.camel@lade.trondhjem.org>
+	 <20110322091757.7bf56d80@notabene.brown>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 21 Mar 2011 18:54:55 -0400
+Message-ID: <1300748095.26546.12.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We had a rash of machines start spewing the following backtraces last 
-night every 63 seconds:
+On Tue, 2011-03-22 at 09:17 +1100, NeilBrown wrote:
+> On Mon, 21 Mar 2011 17:02:00 -0400 Trond Myklebust
+> <Trond.Myklebust@netapp.com> wrote:
+> I must admit that I found the terminology a bit confusing for 
+> FLUSH_COND_STABLE.
+> What is means is "if this turns out to be part of a larger request, then clear
+> FLUSH_STABLE" - which sounds a bit more like "FLUSH_COND_UNSTABLE" - i.e. if
+> a condition is met, then make it unstable.
+> But I don't think that change would help at all.
+> 
+> How about changing the test in nfs_write_rpcsetup to
+> 	if (how & (FLUSH_STABLE|FLUSH_CONDSTABLE)) {
+> 		data->args.stable = NFS_DATA_SYNC;
+> 		if (!nfs_need_commit(NFS_I(inode)))
+> 			data->args.stable = NFS_FILE_SYNC;
+> 	}
+> 
+> and then just set either FLUSH_STABLE or FLUSH_COND_STABLE - never both -
+> and when you test FLUSH_COND_STABLE and then some other condition, just
+> clear FLUSH_COND_STABLE.
+> 
+> I would find that quite a bit more readable.
 
-Mar 16 10:07:52 drfa506 kernel: BUG: soft lockup - CPU#2 stuck for 61s! 
-[maya.bin:19659]
-Mar 16 10:07:52 drfa506 kernel: Modules linked in: autofs4 fcoe libfcoe 
-libfc scsi_transport_fc scsi_tgt 8021q garp stp llc nfs lockd fscache 
-nfs_acl auth_rpcgss sunrpc cpufreq_ondemand acpi_cpufreq freq_table ipv6 
-uinput sg dcdbas serio_raw i2c_i801 i2c_core iTCO_wdt 
-iTCO_vendor_support i5k_amb hwmon i5000_edac edac_core shpchp e1000e 
-ext4 mbcache jbd2 sd_mod crc_t10dif ata_generic pata_acpi ata_piix 
-mptsas mptscsih mptbase scsi_transport_sas dm_mod [last unloaded: microcode]
-Mar 16 10:07:52 drfa506 kernel: CPU 2:
-Mar 16 10:07:52 drfa506 kernel: Modules linked in: autofs4 fcoe libfcoe 
-libfc scsi_transport_fc scsi_tgt 8021q garp stp llc nfs lockd fscache 
-nfs_acl auth_rpcgss sunrpc cpufreq_ondemand acpi_cpufreq freq_table ipv6 
-uinput sg dcdbas serio_raw i2c_i801 i2c_core iTCO_wdt 
-iTCO_vendor_support i5k_amb hwmon i5000_edac edac_core shpchp e1000e 
-ext4 mbcache jbd2 sd_mod crc_t10dif ata_generic pata_acpi ata_piix 
-mptsas mptscsih mptbase scsi_transport_sas dm_mod [last unloaded: microcode]
-Mar 16 10:07:52 drfa506 kernel: Pid: 19659, comm: maya.bin Tainted: G 
-      W  ----------------  2.6.32-71.14.1.el6.x86_64 #1 BlackfordESB2
-Mar 16 10:07:52 drfa506 kernel: RIP: 0010:[<ffffffff814cb597>] 
-[<ffffffff814cb597>] _spin_unlock_irqrestore+0x17/0x20
-Mar 16 10:07:52 drfa506 kernel: RSP: 0018:ffff8807fa8cb8f8  EFLAGS: 00000282
-Mar 16 10:07:52 drfa506 kernel: RAX: 0000000000000282 RBX: 
-ffff8807fa8cb8f8 RCX: ffff8800280359c0
-Mar 16 10:07:52 drfa506 kernel: RDX: ffff8800280359b8 RSI: 
-0000000000000282 RDI: 0000000000000282
-Mar 16 10:07:52 drfa506 kernel: RBP: ffffffff81013c8e R08: 
-ffff8800280359c0 R09: f84d68504e493607
-Mar 16 10:07:52 drfa506 kernel: R10: 0000000000000000 R11: 
-0000000000000000 R12: ffffffffa0229557
-Mar 16 10:07:52 drfa506 kernel: R13: ffff8807fa8cb888 R14: 
-ffffffff814cb72b R15: ffff8807fa8cb858
-Mar 16 10:07:52 drfa506 kernel: FS:  00007f1a57277860(0000) 
-GS:ffff880028280000(0000) knlGS:0000000000000000
-Mar 16 10:07:52 drfa506 kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 
-0000000080050033
-Mar 16 10:07:52 drfa506 kernel: CR2: 00007f484ea2a180 CR3: 
-000000072615d000 CR4: 00000000000006e0
-Mar 16 10:07:52 drfa506 kernel: DR0: 0000000000000000 DR1: 
-0000000000000000 DR2: 0000000000000000
-Mar 16 10:07:52 drfa506 kernel: DR3: 0000000000000000 DR6: 
-00000000ffff0ff0 DR7: 0000000000000400
-Mar 16 10:07:52 drfa506 kernel: Call Trace:
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff81091ede>] ? 
-abort_exclusive_wait+0x6e/0xb0
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff814c9ca4>] ? 
-__wait_on_bit_lock+0xa4/0xc0
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff8104af40>] ? __phys_addr+0x0/0x50
-Mar 16 10:07:52 drfa506 kernel: [<ffffffffa02cc560>] ? 
-nfs_wait_bit_killable+0x0/0x40 [nfs]
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff814c9d38>] ? 
-out_of_line_wait_on_bit_lock+0x78/0x90
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff81091e20>] ? 
-wake_bit_function+0x0/0x50
-Mar 16 10:07:52 drfa506 kernel: [<ffffffffa02d9c9a>] ? 
-nfs_commit_inode+0xaa/0x1c0 [nfs]
-Mar 16 10:07:52 drfa506 kernel: [<ffffffffa02d9e29>] ? 
-nfs_wb_page+0x79/0xd0 [nfs]
-Mar 16 10:07:52 drfa506 kernel: [<ffffffffa02d8170>] ? 
-nfs_page_find_request+0x50/0x70 [nfs]
-Mar 16 10:07:52 drfa506 kernel: [<ffffffffa02d9ec0>] ? 
-nfs_flush_incompatible+0x40/0x70 [nfs]
-Mar 16 10:07:52 drfa506 kernel: [<ffffffffa02c8aa3>] ? 
-nfs_write_begin+0x93/0x220 [nfs]
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff8110cb0e>] ? 
-generic_file_buffered_write+0x10e/0x2a0
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff8110e460>] ? 
-__generic_file_aio_write+0x250/0x480
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff8110e6ff>] ? 
-generic_file_aio_write+0x6f/0xe0
-Mar 16 10:07:52 drfa506 kernel: [<ffffffffa02c971a>] ? 
-nfs_file_write+0xda/0x1e0 [nfs]
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff8116cd9a>] ? 
-do_sync_write+0xfa/0x140
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff81091de0>] ? 
-autoremove_wake_function+0x0/0x40
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff81059db2>] ? 
-finish_task_switch+0x42/0xd0
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff811ffb76>] ? 
-security_file_permission+0x16/0x20
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff8116d098>] ? vfs_write+0xb8/0x1a0
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff810d42b2>] ? 
-audit_syscall_entry+0x272/0x2a0
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff8116dad1>] ? sys_write+0x51/0x90
-Mar 16 10:07:52 drfa506 kernel: [<ffffffff81013172>] ? 
-system_call_fastpath+0x16/0x1b
-Mar 16 10:08:57 drfa506 kernel: BUG: soft lockup - CPU#2 stuck for 61s! 
-[maya.bin:19659]
-Mar 16 10:08:57 drfa506 kernel: Modules linked in: autofs4 fcoe libfcoe 
-libfc scsi_transport_fc scsi_tgt 8021q garp stp llc nfs lockd fscache 
-nfs_acl auth_rpcgss sunrpc cpufreq_ondemand acpi_cpufreq freq_table ipv6 
-uinput sg dcdbas serio_raw i2c_i801 i2c_core iTCO_wdt 
-iTCO_vendor_support i5k_amb hwmon i5000_edac edac_core shpchp e1000e 
-ext4 mbcache jbd2 sd_mod crc_t10dif ata_generic pata_acpi ata_piix 
-mptsas mptscsih mptbase scsi_transport_sas dm_mod [last unloaded: microcode]
-Mar 16 10:08:57 drfa506 kernel: CPU 2:
-Mar 16 10:08:57 drfa506 kernel: Modules linked in: autofs4 fcoe libfcoe 
-libfc scsi_transport_fc scsi_tgt 8021q garp stp llc nfs lockd fscache 
-nfs_acl auth_rpcgss sunrpc cpufreq_ondemand acpi_cpufreq freq_table ipv6 
-uinput sg dcdbas serio_raw i2c_i801 i2c_core iTCO_wdt 
-iTCO_vendor_support i5k_amb hwmon i5000_edac edac_core shpchp e1000e 
-ext4 mbcache jbd2 sd_mod crc_t10dif ata_generic pata_acpi ata_piix 
-mptsas mptscsih mptbase scsi_transport_sas dm_mod [last unloaded: microcode]
-Mar 16 10:08:57 drfa506 kernel: Pid: 19659, comm: maya.bin Tainted: G 
-      W  ----------------  2.6.32-71.14.1.el6.x86_64 #1 BlackfordESB2
-Mar 16 10:08:57 drfa506 kernel: RIP: 0010:[<ffffffff81091ce1>] 
-[<ffffffff81091ce1>] bit_waitqueue+0x51/0xd0
-Mar 16 10:08:57 drfa506 kernel: RSP: 0018:ffff8807fa8cb978  EFLAGS: 00000246
-Mar 16 10:08:57 drfa506 kernel: RAX: 0000000000000000 RBX: 
-ffff8807fa8cb988 RCX: 0000000000000082
-Mar 16 10:08:57 drfa506 kernel: RDX: 0000000000010d80 RSI: 
-0000000000000007 RDI: ffff8807949994d8
-Mar 16 10:08:57 drfa506 kernel: RBP: ffffffff81013c8e R08: 
-ffff8800280359c0 R09: f84d68504e493607
-Mar 16 10:08:57 drfa506 kernel: R10: 0000000000000000 R11: 
-0000000000000000 R12: ffff8800280359b8
-Mar 16 10:08:57 drfa506 kernel: R13: f84d68504e493607 R14: 
-0000000000000000 R15: 0000000000000000
-Mar 16 10:08:57 drfa506 kernel: FS:  00007f1a57277860(0000) 
-GS:ffff880028280000(0000) knlGS:0000000000000000
-Mar 16 10:08:57 drfa506 kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 
-0000000080050033
-Mar 16 10:08:57 drfa506 kernel: CR2: 00007f484ea2a180 CR3: 
-000000072615d000 CR4: 00000000000006e0
-Mar 16 10:08:57 drfa506 kernel: DR0: 0000000000000000 DR1: 
-0000000000000000 DR2: 0000000000000000
-Mar 16 10:08:57 drfa506 kernel: DR3: 0000000000000000 DR6: 
-00000000ffff0ff0 DR7: 0000000000000400
-Mar 16 10:08:57 drfa506 kernel: Call Trace:
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff81091ca7>] ? 
-bit_waitqueue+0x17/0xd0
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff814c9ced>] ? 
-out_of_line_wait_on_bit_lock+0x2d/0x90
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff81091e20>] ? 
-wake_bit_function+0x0/0x50
-Mar 16 10:08:57 drfa506 kernel: [<ffffffffa02d9c9a>] ? 
-nfs_commit_inode+0xaa/0x1c0 [nfs]
-Mar 16 10:08:57 drfa506 kernel: [<ffffffffa02d9e29>] ? 
-nfs_wb_page+0x79/0xd0 [nfs]
-Mar 16 10:08:57 drfa506 kernel: [<ffffffffa02d8170>] ? 
-nfs_page_find_request+0x50/0x70 [nfs]
-Mar 16 10:08:57 drfa506 kernel: [<ffffffffa02d9ec0>] ? 
-nfs_flush_incompatible+0x40/0x70 [nfs]
-Mar 16 10:08:57 drfa506 kernel: [<ffffffffa02c8aa3>] ? 
-nfs_write_begin+0x93/0x220 [nfs]
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff8110cb0e>] ? 
-generic_file_buffered_write+0x10e/0x2a0
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff8110e460>] ? 
-__generic_file_aio_write+0x250/0x480
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff8110e6ff>] ? 
-generic_file_aio_write+0x6f/0xe0
-Mar 16 10:08:57 drfa506 kernel: [<ffffffffa02c971a>] ? 
-nfs_file_write+0xda/0x1e0 [nfs]
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff8116cd9a>] ? 
-do_sync_write+0xfa/0x140
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff81091de0>] ? 
-autoremove_wake_function+0x0/0x40
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff81059db2>] ? 
-finish_task_switch+0x42/0xd0
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff811ffb76>] ? 
-security_file_permission+0x16/0x20
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff8116d098>] ? vfs_write+0xb8/0x1a0
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff810d42b2>] ? 
-audit_syscall_entry+0x272/0x2a0
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff8116dad1>] ? sys_write+0x51/0x90
-Mar 16 10:08:57 drfa506 kernel: [<ffffffff81013172>] ? 
-system_call_fastpath+0x16/0x1b
-
-
-The process 19659 was in the process of being killed when these messages 
-began.  That process became disinherited by its parent and is now 
-parented to init before the kill was sent.  All of the other processes 
-on the machine are now blocking in Uninteruptible sleep.
-
-I'm hoping that maybe this will spark some idea about what might be 
-causing this issue.
-
+The reason why I opted not to go for that approach was because
+nfs_write_rpcsetup() doesn't really know about whether or not there are
+any more RPCs pending (and so having a 'conditional' flag being
+interpreted there didn't appear to make sense), but if you feel that is
+easier on the eyes then I'm happy to change my opinion.
 
 -- 
-------------------------------------------------------------
-Kevin Constantine
+Trond Myklebust
+Linux NFS client maintainer
 
-Systems Engineer
-Walt Disney Animation Studios	e: kevin.constantine@disney.com
-gpg: 1C8E D0B3 AF79 67F3 7808  5B7D 8099 FA7D 3129 A4F4
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-Any sufficiently advanced technology is indistinguishable from magic.
-     - Arthur C. Clarke
