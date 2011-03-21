@@ -1,101 +1,161 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:61696 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750874Ab1COCqG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Mar 2011 22:46:06 -0400
-Message-ID: <4D7ED324.4070600@cn.fujitsu.com>
-Date: Tue, 15 Mar 2011 10:47:00 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Received: from mail4.conversis.de ([213.203.219.181]:44090 "EHLO
+	mail4.conversis.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752933Ab1CUTEX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2011 15:04:23 -0400
+Message-ID: <4D87A135.6090309@conversis.de>
+Date: Mon, 21 Mar 2011 20:04:21 +0100
+From: Dennis Jacobfeuerborn <dennisml@conversis.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/17] CLNT: test resues slot ID
-References: <4D6DE26C.3010103@cn.fujitsu.com> <4D6DE4A5.1050702@cn.fujitsu.com> <20110303061442.GE7724@fieldses.org> <4D6F5B4E.7000903@cn.fujitsu.com> <4D70AB97.3070502@cn.fujitsu.com> <20110314184144.GB25442@fieldses.org> <20110314192434.GC25442@fieldses.org>
-In-Reply-To: <20110314192434.GC25442@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+CC: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: bind mounts, crossmnt and multi client nfsv3
+References: <4D86B6F2.1070004@conversis.de> <20110321140923.5a618d89@notabene.brown> <4D874419.5030303@conversis.de> <20110321172530.GA32359@fieldses.org> <4D87908E.1020107@conversis.de> <20110321181913.GA472@fieldses.org>
+In-Reply-To: <20110321181913.GA472@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-
-J. Bruce Fields:
-> On Mon, Mar 14, 2011 at 02:41:44PM -0400, J. Bruce Fields wrote:
->> On Fri, Mar 04, 2011 at 05:06:31PM +0800, Mi Jinlong wrote:
->>>    Maybe the following one is better than before.
->> Looks good to me, thanks!
-> 
-> But on testing I get a failure:
-> 
-> SEQ14    st_sequence.testReuseSlotID                              : FAILURE
->            AttributeError: LOOKUP4res instance has no attribute
-> 	   'object'
-
-  See below.
-
-> 
-> I haven't tried to figure out what's going on there.
-> 
-> --b.
-> 
->> Very minor nit:
->>
->>> +def testReuseSlotID(t, env):
->>> +    """ If client reuses a slot ID and sequence ID for a completely
->>> +        different request, server MAY treat the request as if it is
->>> +        a retry of what it has already executed. rfc5661 18.46.3
->>> +
->>> +    FLAGS: sequence all
->>> +    CODE: SEQ14
->>> +    """
->>> +    c = env.c1.new_client(env.testname(t))
->>> +    # CREATE_SESSION
->>> +    sess1 = c.create_session()
->>> +
->>> +    name = "%s_1" % env.testname(t)
->>> +    res = create_file(sess1, name) 
->> Could you check your patches for trailing whitespace?  (There's an extra
->> space at the end of that line.)
-
-  I will pay attention to that in the future.
-
->>
->> (No need to resend anything.)
->>
->> --b.
->>
->>> +    check(res)
->>> +
->>> +    sid = sess1.sessionid
->>> +    seqid = nfs4lib.inc_u32(sess1.seqid)
->>> +    fh = res.resarray[3].object
-
-  The error only appears here. 
-
-  At my machine, the res.resarray[3] is GETFHres. 
-  As the above error message shown res.resarray[3] is LOOKUP4res.
-  Is it the nfs4lib's problem?
-
---
-thanks,
-Mi Jinlong 
-
->>> +    homedir = sess1.c.homedir[0]
->>> +
->>> +    res = c.c.compound([op.sequence(sid, seqid, 0, 0, TRUE), op.putrootfh(),
->>> +                        op.lookup(homedir), op.remove(name)])
->>> +    check(res)
->>> +
->>> +    # Reuses slot ID and sequence ID for different request
->>> +    res = c.c.compound([op.sequence(sid, seqid, 0, 0, TRUE), op.putrootfh(),
->>> +                        op.lookup(homedir), op.rename(name, "test")])
->>> +    check(res)
->>> -- 
->>> 1.7.4.1
+On 03/21/2011 07:19 PM, J. Bruce Fields wrote:
+> On Mon, Mar 21, 2011 at 06:53:18PM +0100, Dennis Jacobfeuerborn wrote:
+>> On 03/21/2011 06:25 PM, J. Bruce Fields wrote:
+>>> On Mon, Mar 21, 2011 at 01:27:05PM +0100, Dennis Jacobfeuerborn wrote:
+>>>> On 03/21/2011 04:09 AM, NeilBrown wrote:
+>>>>> On Mon, 21 Mar 2011 03:24:50 +0100 Dennis Jacobfeuerborn
+>>>>> <d.jacobfeuerborn@conversis.de>    wrote:
+>>>>>
+>>>>>> Hi,
+>>>>>> I have a storage system that is exporting many directories to multiple
+>>>>>> clients resulting in a lot of mountpoints (156) on each client. What I'm
+>>>>>> trying to do is to create a single directory on the server and then use
+>>>>>> mount --bind to mount all the different directories (which are stored on
+>>>>>> different LVM volumes) into this single export directory and finally export
+>>>>>> this directory to the clients.
+>>>>>> Now the exports man-page mentions the crossmnt option but it also mentions
+>>>>>> that it cannot be used if I want to export the directory to multiple
+>>>>>> clients. Is there another way to accomplish something like this?
+>>>>>>
+>>>>>
+>>>>> Just export the top directory with 'crossmnt' - it should work fine.
+>>>>>
+>>>>> The 'multiple clients' thing only affects 'nohide' and I think it only
+>>>>> affected it back in 2.4 days.
+>>>>> Lots changed with 2.6, but maybe not enough of the man page changed :-(
+>>>>>
+>>>>> So try with 'crossmnt' and if it doesn't work, then come back with details.
+>>>>
+>>>> I've tried this now but it doesn't seem to work. This is the setup so far:
+>>>>
+>>>> ===========
+>>>>
+>>>> On the server I've created the bind mounts like this:
+>>>>
+>>>> /mnt/vg0/vol01/country/de/a on /exports/country/de/a type none (rw,bind)
+>>>> /mnt/vg0/vol03/country/de/b on /exports/country/de/b type none (rw,bind)
+>>>> ...
+>>>>
+>>>> Then I put the following line in /etc/exports:
+>>>> /exports 192.168.0.0/255.255.255.0(rw,anonuid=96,anongid=96,secure,no_root_squash,wdelay,sync,crossmnt,no_subtree_check)
+>>>>
+>>>> additionally these exports exist for each volume:
+>>>> /mnt/vg0/vol01/country 213.131.252.0/255.255.255.0(rw,anonuid=96,anongid=96,secure,no_root_squash,wdelay,sync)
 >>>
+>>> I'm a bit confused by the paths and ip blocks:
 >>>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+>>> 	- You want to export the path that the client sees
+>>> 	  (/exports/country/whatever), not the original path
+>>> 	  (/mnt/vg0/...).
+>>> 	- If you expect clients to be able to traverse from /exports/ to
+>>> 	  filesystems underneath, then you'd want to make sure /exports/
+>>> 	  is exported to anything that the filesystems underneath are.
+>>
+>> The /mnt/vg0/volXX exports are currently used to export each
+>> filesystem containing letters individually. On the client I then
+>> mount each letter individually which means access to each mountpoint
+>> doesn't have to traverse filesystem boundaries on the server but it
+>> also means I end up with 156 individual mountpoints which is a pain
+>> to deal with. I had to write a script that runs a loop mounting 5
+>> letters then waiting 30 seconds then mount the next 5 letters etc.
+>> If I try to mount these in one go about 10 mounts work fine but then
+>> I only get errors. Apparently the server can only handle so many
+>> mounts in a certain timeframe (socket timeouts?)
+>
+> Might be interesting to pin that problem down.  I wonder if "insecure"
+> would help?
 
+I'm going to give it a try.
+
+>> That's why I'm aiming for consolidating the letters on the server
+>> using bind mounts and then just mount the country directories
+>> leaving me with 6 mountpoints per client which would be *much*
+>> easier to handle.
+>
+> Oh, so you're actually exporting each filesystem *twice*, in two
+> different places?
+>
+> I think the server can deal with that.  But probably only if the two
+> filesystems have the same export options.  (You've got crossmnt and
+> no_subtree_check set on one but not the other.)
+
+I've modified the entries so that the options are now exactly identical in 
+/var/lib/nfs/etab (all have set nohide,crossmnt,no_subtree_check now). This 
+doesn't seem to help so far.
+
+> Wait, and looks like you're also bind mounting *subdirectories* of
+> filesystems instead of whole filesystems.  I'm not sure the server will
+> handle that the way you'd expect.
+>
+> Is there any reason you can't just bind-mount all of /mnt/vg0/vol01/, or
+> whatever, to the same path?
+
+Each of the 10 volumes contains (not quite) random letter directories for 
+various countries and when the are mounted on the clients they end up in 
+the proper hierarchy e.g.:
+
+vol01/de/a => country/de/a
+vol03/de/b => country/de/b
+vol07/de/c => country/de/c
+...
+vol03/fr/a => country/fr/a
+vol05/fr/b => country/fr/b
+...
+
+so I cannot really mount entire volumes in one go on the client. I guess 
+another way would be to mount the volumes on the clients and then use bind 
+mounts there to create the appropriate hierarchy. Since I'd have to 
+duplicate that on each client though I'd really like to avoid this and 
+accomplish this on the server side.
+
+>> The 192 IP range was a mistake and that should be the same 213 range
+>> as the /exports export. If I can get this working then I plan to
+>> eliminate the individual /mnt/vg0/... exports if they are not
+>> needed.
+>>
+>>> But actually you should only need the first /exports entry; filesystems
+>>> underneath should inherit export options from the parent.
+>>
+>> This is what /var/lib/nfs/etab says for /exports after an exportfs -r:
+>> /exports 213.131.252.0/255.255.255.0(rw,sync,wdelay,hide,crossmnt,secure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,mapping=identity,anonuid=96,anongid=96)
+>>
+>> When I mount this I can see the proper subdirectories until I get to
+>> the bind mounted letter directories which have their expected
+>> contents on the server but appear empty on the client.
+>
+> Note also NFSv2/v3 clients aren't necessarily equipped to deal with
+> filesystem boundaries, and some applications may be confused by seeing
+> what look like files with the same inode number on the same filesystem
+> that are actually different files.
+
+I'd be interested to move on to v4 but from what I've heard the 
+user-mapping no longer is done using the uid. Since the users don't have 
+entries in /etc/passwd and exist purely as id's in the filesystem the 
+username based mapping in nfsv4 doesn't allow me to use it in this case.
+I guess the only way to accomplish that would be to write a custom 
+rpcidmapd daemon?
+
+I'm currently downloading the openfiler installer so I can replicate the 
+setup here for better testing. Maybe updating the nfs-utils package to a 
+more current version will have an impact.
+
+Regards,
+   Dennis
