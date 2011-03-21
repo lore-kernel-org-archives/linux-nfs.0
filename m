@@ -1,74 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:58744 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752821Ab1CYN01 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Mar 2011 09:26:27 -0400
-Subject: Re: [bisect] kernel 2.6.38 regression with root nfs mounting
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <AANLkTin4-+Mc7d0a-XnZvPKL-C_Cf+Kmnm1Bmh1XZZu4@mail.gmail.com>
-Date: Fri, 25 Mar 2011 09:26:17 -0400
-Cc: Trond.Myklebust@netapp.com, broonie@opensource.wolfsonmicro.com,
-        bdowning@lavos.net, linux-nfs@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>
-Message-Id: <4AD2FFC1-E777-4C29-8718-4E1717EFCD86@oracle.com>
-References: <AANLkTimjmdi8sFTTjSPerOVgHQ+pjjwwMvCUX3AJ16At@mail.gmail.com> <43F07477-9075-444D-9BBB-368650538EA8@oracle.com> <AANLkTinHUQkBvcvh9APVutOqcKOug6CA066kS_O4p4Tq@mail.gmail.com> <DC2B75F8-382A-4AFB-9286-4A55EAF7609A@oracle.com> <AANLkTikWyUbtHbbnSh8NBeP3mT4jDOu5Pbtfw=TwKrwE@mail.gmail.com> <977C528D-4540-4EB2-92F9-6DAF357D8C81@oracle.com> <AANLkTik0UgB+k2i=E5t9XcF50SoSr_iXaFYrhctDx0FJ@mail.gmail.com> <8F19F0FE-0800-4C45-B857-1C682CF6A30D@oracle.com> <AANLkTin4-+Mc7d0a-XnZvPKL-C_Cf+Kmnm1Bmh1XZZu4@mail.gmail.com>
-To: Belisko Marek <marek.belisko@gmail.com>
+Received: from mail4.conversis.de ([213.203.219.181]:49010 "EHLO
+	mail4.conversis.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753783Ab1CURxW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2011 13:53:22 -0400
+Message-ID: <4D87908E.1020107@conversis.de>
+Date: Mon, 21 Mar 2011 18:53:18 +0100
+From: Dennis Jacobfeuerborn <dennisml@conversis.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: bind mounts, crossmnt and multi client nfsv3
+References: <4D86B6F2.1070004@conversis.de> <20110321140923.5a618d89@notabene.brown> <4D874419.5030303@conversis.de> <20110321172530.GA32359@fieldses.org>
+In-Reply-To: <20110321172530.GA32359@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 03/21/2011 06:25 PM, J. Bruce Fields wrote:
+> On Mon, Mar 21, 2011 at 01:27:05PM +0100, Dennis Jacobfeuerborn wrote:
+>> On 03/21/2011 04:09 AM, NeilBrown wrote:
+>>> On Mon, 21 Mar 2011 03:24:50 +0100 Dennis Jacobfeuerborn
+>>> <d.jacobfeuerborn@conversis.de>   wrote:
+>>>
+>>>> Hi,
+>>>> I have a storage system that is exporting many directories to multiple
+>>>> clients resulting in a lot of mountpoints (156) on each client. What I'm
+>>>> trying to do is to create a single directory on the server and then use
+>>>> mount --bind to mount all the different directories (which are stored on
+>>>> different LVM volumes) into this single export directory and finally export
+>>>> this directory to the clients.
+>>>> Now the exports man-page mentions the crossmnt option but it also mentions
+>>>> that it cannot be used if I want to export the directory to multiple
+>>>> clients. Is there another way to accomplish something like this?
+>>>>
+>>>
+>>> Just export the top directory with 'crossmnt' - it should work fine.
+>>>
+>>> The 'multiple clients' thing only affects 'nohide' and I think it only
+>>> affected it back in 2.4 days.
+>>> Lots changed with 2.6, but maybe not enough of the man page changed :-(
+>>>
+>>> So try with 'crossmnt' and if it doesn't work, then come back with details.
+>>
+>> I've tried this now but it doesn't seem to work. This is the setup so far:
+>>
+>> ===========
+>>
+>> On the server I've created the bind mounts like this:
+>>
+>> /mnt/vg0/vol01/country/de/a on /exports/country/de/a type none (rw,bind)
+>> /mnt/vg0/vol03/country/de/b on /exports/country/de/b type none (rw,bind)
+>> ...
+>>
+>> Then I put the following line in /etc/exports:
+>> /exports 192.168.0.0/255.255.255.0(rw,anonuid=96,anongid=96,secure,no_root_squash,wdelay,sync,crossmnt,no_subtree_check)
+>>
+>> additionally these exports exist for each volume:
+>> /mnt/vg0/vol01/country 213.131.252.0/255.255.255.0(rw,anonuid=96,anongid=96,secure,no_root_squash,wdelay,sync)
+>
+> I'm a bit confused by the paths and ip blocks:
+>
+> 	- You want to export the path that the client sees
+> 	  (/exports/country/whatever), not the original path
+> 	  (/mnt/vg0/...).
+> 	- If you expect clients to be able to traverse from /exports/ to
+> 	  filesystems underneath, then you'd want to make sure /exports/
+> 	  is exported to anything that the filesystems underneath are.
 
-On Mar 25, 2011, at 3:24 AM, Belisko Marek wrote:
+The /mnt/vg0/volXX exports are currently used to export each filesystem 
+containing letters individually. On the client I then mount each letter 
+individually which means access to each mountpoint doesn't have to traverse 
+filesystem boundaries on the server but it also means I end up with 156 
+individual mountpoints which is a pain to deal with. I had to write a 
+script that runs a loop mounting 5 letters then waiting 30 seconds then 
+mount the next 5 letters etc. If I try to mount these in one go about 10 
+mounts work fine but then I only get errors. Apparently the server can only 
+handle so many mounts in a certain timeframe (socket timeouts?)
 
-> On Wed, Mar 23, 2011 at 3:54 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->> On Mar 23, 2011, at 10:30 AM, Belisko Marek wrote:
->> 
->> The server is advertising NFS over UDP.  Why can't a client access your server via UDP?  What happens if you perform a normal post-boot mount of this file system via UDP?
-> Strange (rootfs mounted from SD card and try to mount nfs always fail)
-> 
-> mount -t nfs -o udp 10.146.1.21:/home/open-nandra/rootfs /mnt
-> svc: failed to register lockdv1 RPC service (errno 111).
-> lockd_up: makesock failed, error=-111
-> mount: mounting 10.146.1.21:/home/open-nandra/rootfs on /mnt failed:
-> Connection refused
-> # mount -t nfs -o tcp 10.146.1.21:/home/open-nandra/rootfs /mnt
-> svc: failed to register lockdv1 RPC service (errno 111).
-> mount: mounting 10.146.1.21:/home/open-nandra/rootfs on /mnt failed:
-> Connection refused
+That's why I'm aiming for consolidating the letters on the server using 
+bind mounts and then just mount the country directories leaving me with 6 
+mountpoints per client which would be *much* easier to handle.
 
-The client system isn't running a portmapper that its NFS client (specifically lockd) can talk to.  That "connection refused" is due to an incorrect client configuration.  A simple workaround might be to specify the "nolock" mount option for this test.
+The 192 IP range was a mistake and that should be the same 213 range as the 
+/exports export. If I can get this working then I plan to eliminate the 
+individual /mnt/vg0/... exports if they are not needed.
 
-> 
->> 
->>>>>    100227    2   udp   2049
->>>>>    100227    3   udp   2049
->>>>>    100005    1   udp  58278  mountd
->>>>>    100005    1   tcp  37178  mountd
->>>>>    100005    2   udp  58278  mountd
->>>>>    100005    2   tcp  37178  mountd
->>>>>    100005    3   udp  58278  mountd
->>>>>    100005    3   tcp  37178  mountd
->>>> 
->>>> Can you boot if you specify either the "tcp" or "proto=tcp" NFSROOT mount options?
->>> When add proto=tcp to bootargs it boot fine
->>> (....nfsroot=10.146.1.21:/home/open-nandra/rootfs,proto=tcp....).
->>>> Perhaps a network trace would be probative.  Capture on the server with "tcpdump -s0 -w /tmp/foo ip 10.146.1.199" (untested, but I think you get the idea) while the client is attempting to boot, and post.
->>> Log is attached in attachment (too big 4.8M). Correct form is: tcpdump
->>> -s0 -w /tmp/foo host 10.146.1.199
->> 
->> Received.  I should have been clear: Please capture a non-working client boot attempt.  To reduce the size of the attachment, strip the TFTP packets before sending, and please gzip the file.
-> tcpdump log from wrong attemp in attachment.
+> But actually you should only need the first /exports entry; filesystems
+> underneath should inherit export options from the parent.
 
-According to the trace, the mount succeeds, and NFS requests are working.  However, the server's replies to READ requests are not being seen by the client.  Something on the client host or in the network is dropping them.  I see successful 16KB reads, but 32KB reads do not work.  Check your client for packet filtering (either intentional filtering, or accidental filtering due to configuration issues).
+This is what /var/lib/nfs/etab says for /exports after an exportfs -r:
+/exports 
+213.131.252.0/255.255.255.0(rw,sync,wdelay,hide,crossmnt,secure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,mapping=identity,anonuid=96,anongid=96)
 
-I'll revisit the mount option defaults for NFSROOT again.
+When I mount this I can see the proper subdirectories until I get to the 
+bind mounted letter directories which have their expected contents on the 
+server but appear empty on the client.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Regards,
+   Dennis
