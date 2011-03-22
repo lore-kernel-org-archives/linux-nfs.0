@@ -1,82 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:52847 "EHLO mx1.suse.de"
+Received: from fieldses.org ([174.143.236.118]:45830 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755555Ab1CQXQR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Mar 2011 19:16:17 -0400
-Date: Fri, 18 Mar 2011 10:16:08 +1100
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Bug in xdr_copy_to_scratch???
-Message-ID: <20110318101608.34bb1117@notabene.brown>
-In-Reply-To: <1300384865.28305.27.camel@lade.trondhjem.org>
-References: <20110316213642.360be61d@notabene.brown>
-	<1300282974.16266.33.camel@lade.trondhjem.org>
-	<20110317093838.0f15eb98@notabene.brown>
-	<1300384865.28305.27.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1751774Ab1CVRyK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Mar 2011 13:54:10 -0400
+Date: Tue, 22 Mar 2011 13:54:06 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dennis Jacobfeuerborn <dennisml@conversis.de>
+Cc: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: bind mounts, crossmnt and multi client nfsv3
+Message-ID: <20110322175406.GC14627@fieldses.org>
+References: <4D86B6F2.1070004@conversis.de>
+ <20110321140923.5a618d89@notabene.brown>
+ <4D874419.5030303@conversis.de>
+ <20110321172530.GA32359@fieldses.org>
+ <4D87908E.1020107@conversis.de>
+ <20110321181913.GA472@fieldses.org>
+ <4D87A135.6090309@conversis.de>
+ <4D88DFC1.10400@conversis.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D88DFC1.10400@conversis.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 17 Mar 2011 14:01:05 -0400 Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-
-> On Thu, 2011-03-17 at 09:38 +1100, NeilBrown wrote:
-> > We should probably submit a fix to 2.6.37-stable though.  For that it
-> > is possibly simplest to tell xdr_decode_inline to round nbytes up to
-> > a multiple of 4 - would you agree?
+On Tue, Mar 22, 2011 at 06:43:29PM +0100, Dennis Jacobfeuerborn wrote:
+> On 03/21/2011 08:04 PM, Dennis Jacobfeuerborn wrote:
 > 
-> How about the following fix for 2.6.37 stable?
+> [SNIP]
+> 
+> >I'd be interested to move on to v4 but from what I've heard the
+> >user-mapping no longer is done using the uid. Since the users don't have
+> >entries in /etc/passwd and exist purely as id's in the filesystem the
+> >username based mapping in nfsv4 doesn't allow me to use it in this case.
+> >I guess the only way to accomplish that would be to write a custom
+> >rpcidmapd daemon?
+> >
+> >I'm currently downloading the openfiler installer so I can replicate the
+> >setup here for better testing. Maybe updating the nfs-utils package to a
+> >more current version will have an impact.
+> 
+> Apparently I need to export both the /exports directory and all the
+> letter directories beneath it for the crossmnt option to work, e.g.:
+> 
+> /exports 192.168...
+> /exports/country/de/a 192.168...
+> /exports/country/de/b 192.168...
+> /exports/country/de/c 192.168...
 
-That is good for NFSv3, but NFSv2 has the same problem.  Code fragment is
-	p = xdr_inline_decode(xdr, entry->len + 4);
-	if (unlikely(!p))
-		goto out_overflow;
-	entry->name	  = (const char *) p;
-	p		 += XDR_QUADLEN(entry->len);
-	entry->prev_cookie	  = entry->cookie;
-	entry->cookie	  = ntohl(*p++);
+Huh.  I did just a quick test, mount --bind'ing a couple directories
+under a crossmnt export, and verified that I could see the result from
+an nfsv3 client.
 
-so again we have the cookie after the name and they are decoded together.
+2.6.38-ish kernel, fc13 userspace (nfs-utils-1.2.2-6).
 
-This is what I have committed to openSUSE 11.3 for the next update.
-It may not match the long-term preferred direction, but it is simple and
-obviously covers all cases.
-
-NeilBrown
-
-From: NeilBrown <neilb@suse.de>
-Subject: Fix cookie decoding problem in NFS
-Patch-mainline: no
-References: bnc#678123
-
-nfs3proc decode_dirent asks xdr_inline_decode to return a name
-buffer and the cookie in a single request.
-There could be padding between these, but if xdr_inline_decode
-calls xdr_copy_to_scratch, it will assume the padding is at the end.
-
-So in xdr_copy_to_scratch, round up 'nbytes' to we make don't
-fail to return useful data.
-
-Acked-by: NeilBrown <neilb@suse.de>
-Signed-off-by: Neil Brown <neilb@suse.de>
-
----
- net/sunrpc/xdr.c |    5 +++++
- 1 file changed, 5 insertions(+)
-
---- linux-2.6.37-openSUSE-11.4.orig/net/sunrpc/xdr.c
-+++ linux-2.6.37-openSUSE-11.4/net/sunrpc/xdr.c
-@@ -673,6 +673,11 @@ static __be32 *xdr_copy_to_scratch(struc
- 	void *cpdest = xdr->scratch.iov_base;
- 	size_t cplen = (char *)xdr->end - (char *)xdr->p;
- 
-+	/* some callers assume we return the full rounded-up
-+	 * number of bytes.
-+	 */
-+	nbytes = XDR_QUADLEN(nbytes)*4;
-+
- 	if (nbytes > xdr->scratch.iov_len)
- 		return NULL;
- 	memcpy(cpdest, xdr->p, cplen);
+--b.
