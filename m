@@ -1,108 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:61642 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751251Ab1CKENL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Mar 2011 23:13:11 -0500
-Message-ID: <4D79A183.8090306@cn.fujitsu.com>
-Date: Fri, 11 Mar 2011 12:13:55 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: roel <roel.kluin@gmail.com>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: wrong index used in inner loop
-References: <4D76A06A.4090405@gmail.com> <20110309004955.GD15814@fieldses.org>
-In-Reply-To: <20110309004955.GD15814@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:56842 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755416Ab1CVWJU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2011 18:09:20 -0400
+Received: by mail-iw0-f174.google.com with SMTP id 34so7906460iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2011 15:09:20 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/4] SUNRPC: Rename xs_encode_tcp_fragment_header()
+To: linux-nfs@vger.kernel.org
+Date: Tue, 22 Mar 2011 18:09:18 -0400
+Message-ID: <20110322220918.4360.37689.stgit@matisse.1015granger.net>
+In-Reply-To: <20110322220518.4360.51304.stgit@matisse.1015granger.net>
+References: <20110322220518.4360.51304.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Clean up: Use a more generic name for xs_encode_tcp_fragment_header();
+it's appropriate to use for all stream transport types (and we're
+about to add another).
 
+Also, move it to a place where it is more easily shared amongst the
+various send_request methods.
 
-J. Bruce Fields:
-> On Tue, Mar 08, 2011 at 10:32:26PM +0100, roel wrote:
->> Index i was already used in the outer loop
->>
->> Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
->> ---
->>  fs/nfsd/nfs4xdr.c |    4 ++--
->>  1 files changed, 2 insertions(+), 2 deletions(-)
->>
->> Not 100% sure this one is needed but it looks suspicious.
-> 
-> Looks bad to me, thanks.
-> 
-> nfsd4_decode_create_session should probably really be broken up a little
-> bit; if it wasn't so long this would have been more obvious.
-> 
-> I'll see if I can slip this into 2.6.38 with a couple other last-minute
-> patches....  Otherwise, it'll be in 2.6.39.
-> 
-> --b.
-> 
->> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->> index 1275b86..615f0a9 100644
->> --- a/fs/nfsd/nfs4xdr.c
->> +++ b/fs/nfsd/nfs4xdr.c
->> @@ -1142,7 +1142,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
->>  
->>  	u32 dummy;
->>  	char *machine_name;
->> -	int i;
->> +	int i, j;
->>  	int nr_secflavs;
->>  
->>  	READ_BUF(16);
->> @@ -1215,7 +1215,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
->>  			READ_BUF(4);
->>  			READ32(dummy);
->>  			READ_BUF(dummy * 4);
->> -			for (i = 0; i < dummy; ++i)
->> +			for (j = 0; j < dummy; ++j)
->>  				READ32(dummy);
-
-  We must not use dummy for index here.
-  After the first index, READ32(dummy) will change dummy!!!!
-
-  The following patch fix this problem.
-
---
-thanks,
-Mi Jinlong
-============================================================
-
-We must not use dummy for index.
-After the first index, READ32(dummy) will change dummy!!!!
-
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 615f0a9..8dd70d0 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1140,7 +1140,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
- {
- 	DECODE_HEAD;
+ net/sunrpc/xprtsock.c |   24 ++++++++++++------------
+ 1 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index be96d42..caf397a 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -495,6 +495,16 @@ static int xs_nospace(struct rpc_task *task)
+ 	return ret;
+ }
  
--	u32 dummy;
-+	u32 dummy, tmp;
- 	char *machine_name;
- 	int i, j;
- 	int nr_secflavs;
-@@ -1216,7 +1216,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
- 			READ32(dummy);
- 			READ_BUF(dummy * 4);
- 			for (j = 0; j < dummy; ++j)
--				READ32(dummy);
-+				READ32(tmp);
- 			break;
- 		case RPC_AUTH_GSS:
- 			dprintk("RPC_AUTH_GSS callback secflavor "
--- 
-1.7.4.1
-
++/*
++ * Construct a stream transport record marker in @buf.
++ */
++static inline void xs_encode_stream_record_marker(struct xdr_buf *buf)
++{
++	u32 reclen = buf->len - sizeof(rpc_fraghdr);
++	rpc_fraghdr *base = buf->head[0].iov_base;
++	*base = cpu_to_be32(RPC_LAST_STREAM_FRAGMENT | reclen);
++}
++
+ /**
+  * xs_udp_send_request - write an RPC request to a UDP socket
+  * @task: address of RPC task that manages the state of an RPC request
+@@ -574,13 +584,6 @@ static void xs_tcp_shutdown(struct rpc_xprt *xprt)
+ 		kernel_sock_shutdown(sock, SHUT_WR);
+ }
+ 
+-static inline void xs_encode_tcp_record_marker(struct xdr_buf *buf)
+-{
+-	u32 reclen = buf->len - sizeof(rpc_fraghdr);
+-	rpc_fraghdr *base = buf->head[0].iov_base;
+-	*base = htonl(RPC_LAST_STREAM_FRAGMENT | reclen);
+-}
+-
+ /**
+  * xs_tcp_send_request - write an RPC request to a TCP socket
+  * @task: address of RPC task that manages the state of an RPC request
+@@ -603,7 +606,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	struct xdr_buf *xdr = &req->rq_snd_buf;
+ 	int status;
+ 
+-	xs_encode_tcp_record_marker(&req->rq_snd_buf);
++	xs_encode_stream_record_marker(&req->rq_snd_buf);
+ 
+ 	xs_pktdump("packet data:",
+ 				req->rq_svec->iov_base,
+@@ -2012,10 +2015,7 @@ static int bc_sendto(struct rpc_rqst *req)
+ 	unsigned long headoff;
+ 	unsigned long tailoff;
+ 
+-	/*
+-	 * Set up the rpc header and record marker stuff
+-	 */
+-	xs_encode_tcp_record_marker(xbufp);
++	xs_encode_stream_record_marker(xbufp);
+ 
+ 	tailoff = (unsigned long)xbufp->tail[0].iov_base & ~PAGE_MASK;
+ 	headoff = (unsigned long)xbufp->head[0].iov_base & ~PAGE_MASK;
 
