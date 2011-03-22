@@ -1,35 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:59037 "EHLO newverein.lst.de"
+Received: from mx2.parallels.com ([64.131.90.16]:48967 "EHLO mx2.parallels.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754815Ab1C3Rdo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Mar 2011 13:33:44 -0400
-Date: Wed, 30 Mar 2011 19:33:44 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Benny Halevy <bhalevy@panasas.com>
-Cc: Rees <rees@citi.umich.edu>, linux-nfs@vger.kernel.org
-Subject: Re: [RFC] spnfs-block: restore i_op->fallocate
-Message-ID: <20110330173344.GA24631@lst.de>
-References: <1301500460-16467-1-git-send-email-bhalevy@panasas.com> <20110330155811.GA21931@lst.de> <4D936453.2070501@panasas.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D936453.2070501@panasas.com>
+	id S1751675Ab1CVDQr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Mar 2011 23:16:47 -0400
+Message-ID: <4D88149C.10506@parallels.com>
+Date: Mon, 21 Mar 2011 22:16:44 -0500
+From: Rob Landley <rlandley@parallels.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Tim Spriggs <tims@uahirise.org>
+Subject: Re: [PATCH] Minimal fix to mount NFS in containers with non-default
+ network context.
+References: <4D881413.9050807@parallels.com>
+In-Reply-To: <4D881413.9050807@parallels.com>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Mar 30, 2011 at 07:11:47PM +0200, Benny Halevy wrote:
-> Makes sense. This could also be done by adding a respective flags argument
-> to fallocate and have a common wrapper function look at the file descriptor
-> and call the fs fallocate, that could then get the inode rather the file.
-> In other words, why copy code rather than factor it out into a common
-> function?
+On 03/21/2011 10:14 PM, Rob Landley wrote:
+>  fs/nfs/client.c     |    3 ++-
+>  fs/nfs/mount_clnt.c |    5 +++--
+>  2 files changed, 7 insertions(+), 3 deletions(-)
 
-We can discuss that _iff_ a valid use for a file-less fallocate appears
-in mainline.  The pnfs-block one is not.  It's just a racy hack, which
-opens gapping holes.  Take a look what it does - it allocates block for
-a client to write into directly, with absolutely zero guarantee the
-block allocation actually stays around until that point.
+Sigh.
 
-You'll need to have some outstanding token on extent map changes like
-done in CXFS or NEC's "gfs" which implemented something similar to pnfs
-based on nfsv3.
+5 insertions, 3 deletions.  Removed an irrelevant hunk by hand, shoulda
+just re-run diffstat...
 
+Rob
