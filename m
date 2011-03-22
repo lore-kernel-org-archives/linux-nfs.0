@@ -1,95 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [218.249.29.245] ([218.249.29.245]:51995 "HELO bjtu.edu.cn"
-	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-	id S1751983Ab1CKQ3h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Mar 2011 11:29:37 -0500
-From: "=?gb2312?B?sNfLycHW?=" <09120171@bjtu.edu.cn>
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, 09120171@bjtu.edu.cn
-Date: Sat, 12 Mar 2011 00:18:31 +0800
-Message-ID: <ZILUKLNGDVEJQIKOSYKLJUGEIUTK.09120171@bjtu.edu.cn>
-Reply-To: "=?gb2312?B?sNfLycHW?=" <09120171@bjtu.edu.cn>
-Subject: Re: questions about blocklayoutdriver.ko
-Content-Type: text/plain;
-	charset="gb2312"
+Received: from mail4.conversis.de ([213.203.219.181]:41985 "EHLO
+	mail4.conversis.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751615Ab1CVRnc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2011 13:43:32 -0400
+Message-ID: <4D88DFC1.10400@conversis.de>
+Date: Tue, 22 Mar 2011 18:43:29 +0100
+From: Dennis Jacobfeuerborn <dennisml@conversis.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: bind mounts, crossmnt and multi client nfsv3
+References: <4D86B6F2.1070004@conversis.de> <20110321140923.5a618d89@notabene.brown> <4D874419.5030303@conversis.de> <20110321172530.GA32359@fieldses.org> <4D87908E.1020107@conversis.de> <20110321181913.GA472@fieldses.org> <4D87A135.6090309@conversis.de>
+In-Reply-To: <4D87A135.6090309@conversis.de>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-SGkgDQoNCkkgYW0gYWJsZSB0byBtb3VudCBNRFMgb3IgRFMgb3ZlciBuZnN2MywgbmZzdjQsIGFu
-ZCBuZnN2NC4xIHdpdGhvdXQgcG5mcy4NCg0KWW91IHNhaWQgdGhlIFNOIG1lYW5zIHNlcnZlciBu
-YW1lKG9yIGlwIGFkZHJlc3MpIGluIHRoZSBsYXN0IGxldHRlci4gQnV0IEkgZG9uJ3Qga29udyB3
-aGV0aGVyIGl0IG1lYW5zIGEgTURTJ3MgbmFtZSBvciBpdCBtZWFucyBhIERTJ3MgbmFtZS4NCkNh
-biB5b3UgdGVsbCBtZSB3aGF0IGl0IGlzPw0KDQpXZSBzZXQgdXAgdGhlIHBORlMgZW52aXJvbm1l
-bnQgYXMgZm9sbG93czoNCkRTOjEwLjI3LjE0MC40MA0KTURTOjEwLjI3LjE0MC4zNQ0KQ2xpZW50
-OjEwLjI3LjE0MC4zOA0KDQpPbiBEUzogMS4gdGhlIGRpc2sgd2FzIHBhcnRpdGlvbmVkIHdpdGgg
-InBhcnRlZCIsYW5kIHByb2R1Y2VkIHNkYTYgZm9yIGNsaWVudC4NCiAgICAgICAyLiBhZGRlZCBs
-aW5lIGluIC9ldGMvZXhwb3J0cyBhcyBmb2xsb3dzDQogICAgICAgICAgL3BuZnMgICoocncsc3lu
-Yyxmc2lkPTAsaW5zZWN1cmUsbm9fc3VidHJlZV9jaGVjayxub19yb290X3NxdWFzaCxwbmZzKQ0K
-ICAgICAgIDMuIHVzZWQgdGhlIGZvbGxvd2luZyBzY3JpcHQgdG8gc3RhcnQgdGhlIERTIHNlcnZl
-ciANCg0KICAgICAgICAgICAjL2Jpbi9iYXNoIA0KICAgICAgICAgICB1bW91bnQgL3BuZnMNCiAg
-ICAgICAgICAgc2VydmljZSB0Z3RkIHJlc3RhcnQNCiAgICAgICAgICAgc2xlZXAgOA0KICAgICAg
-ICAgICB0Z3RhZG0gLS1sbGQgaXNjc2kgLS1vcCBuZXcgLS1tb2RlIHRhcmdldCAtLXRpZCAxIC1U
-IGlxbi4xOTkyLTA1LmNvbS5lbWM6b3BlbmJsb2NrDQogICAgICAgICAgIHRndGFkbSAtLWxsZCBp
-c2NzaSAtLW1vZGUgbG9naWNhbHVuaXQgLS1vcCBuZXcgLS10aWQgMSAtLWx1biAxIC0tYmFja2lu
-Zy1zdG9yZSAvZGV2L3NkYTYNCiAgICAgICAgICAgdGd0YWRtIC0tbGxkIGlzY3NpIC0tbW9kZSB0
-YXJnZXQgLS1vcCBiaW5kIC0tdGlkIDEgLS1pbml0aWF0b3ItYWRkcmVzcyBBTEwNCiAgICAgICAg
-ICAgdGd0YWRtIC0tbGxkIGlzY3NpIC0tb3Agc2hvdyAtLW1vZGUgdGFyZ2V0DQogICAgICAgICAg
-IG1vdW50IC9kZXYvc2RhNiAvcG5mcw0KICAgICAgICAgICBzbGVlcCAzDQogICAgICAgICAgIHNl
-cnZpY2UgbmZzIHJlc3RhcnQNCiAgICAgICAgICAgc2xlZXAgMw0KICAgICAgICAgICBjZCA8Q1RM
-X1NSQz4vY3RsLw0KICAgICAgICAgICAuL2N0bCAtdSAmDQpPbiBNRFM6IDEuIGFkZGVkIGxpbmUg
-aW4gL2V0Yy9leHBvcnRzDQogICAgICAgICAgIC8gKihydyxmc2lkPTAsaW5zZWN1cmUsbm9fcm9v
-dF9zcXVhc2gsc3luYyxub19zdWJ0cmVlX2NoZWNrLHBuZnMpDQogICAgICAgIDIuIGNyZWF0ZWQg
-dGhlIGZvbGRlcg0KICAgICAgICAgICBta2RpciAvc3BuZnMvMTAuMjcuMTQwLjQwDQogICAgICAg
-IDMuIG1vdW50IDEwLjI3LjE0MC40MDovcG5mcyAvc3BuZnMvMTAuMjcuMTQwLjQwICAgICAgDQog
-ICAgICAgIDQuIHJ1biBzcG5mc2QgYW5kIHRoZSBjb250ZW50IG9mIC9ldGMvc3BuZnMuY29uZiBh
-cyBmb2xsb3dzDQogICAgICAgICAgICANCiAgICAgICAgICAgW0dlbmVyYWxdDQogICAgICAgICAg
-IFZlcmJvc2l0eSA9IDENCiAgICAgICAgICAgU3RyaXBlLXNpemUgPSA4MTkyDQogICAgICAgICAg
-IERlbnNlLXN0cmlwaW5nID0gMA0KICAgICAgICAgICBQaXBlZnMtRGlyZWN0b3J5ID0gL3Zhci9s
-aWIvbmZzL3JwY19waXBlZnMNCiAgICAgICAgICAgRFMtTW91bnQtRGlyZWN0b3J5ID0gL3NwbmZz
-DQogDQogICAgICAgICAgIFtEYXRhU2VydmVyc10NCiAgICAgICAgICAgTnVtRFMgPSAxDQogICAg
-ICAgICAgIERTMV9JUCA9IDEwLjI3LjE0MC40MA0KICAgICAgICAgICBEUzFfUE9SVCA9IDIwNDkN
-CiAgICAgICAgICAgRFMxX1JPT1QgPSAvcG5mcw0KICAgICAgICAgICBEUzFfSUQgPSAxDQoNCk9u
-IGNsaWVudDogMS4gIGNvbm5lY3R0ZWQgdG8gaXNjc2kgdGFyZ2V0cw0KICAgICAgICAgICAgICAg
-aXNjc2lhZG0gLW0gZGlzY292ZXJ5IC10IHNlbmR0YXJnZXRzIC1wIDEwLjI3LjE0MC40MCAtbA0K
-ICAgICAgICAgICAyLiAgc3RhcnQgdGhlIGJsb2NrIGxheW91dCBzZXJ2aWNlDQogICAgICAgICAg
-ICAgICBpbml0ZC5yZWRoYXQgcmVzdGFydA0KICAgICAgICAgICAzLiAgbW91bnRlZCB0aGUgTURT
-oaFzZXJ2ZXINCqGhoaGhoaGhoaGhoaGhIG1vdW50IC10IG5mczQgLW8gbWlub3J2ZXJzaW9uPTEg
-MTAuMjcuMTQwLjM1Oi9zcG5mcyAgL21udA0KDQpXZSB0ZXN0ZWQgdGhlIHBORlMgaW5mb3JtYW5j
-ZSBpbiB0aGUgZW52aXJvbm1lbnQsYW5kIGZvdW5kIHRoYXQgd2hlbiBjbGllbnQgd3JpdGUgZGF0
-YSB0byAvbW50LGFsbCBvZiB0aGUgZGF0YSBiZSBzZW50IHRvIE1EUyBmaXJzdGx5LCBhbmQgdGhl
-biBNRFMgZm9yd2FyZGVkIHRoZSBkYXRhIHRvIERTLHdoZW4gd2UgZ290IHRoZSBwYWNrYWdlIGJ5
-IHdpcmVzaGFyayxhbmQgZm91bmQgbW9zdCBvZiB0aGUgcHJvdG9jb2wgYmV0d2VlbiBNRFMgYW5k
-IERTIGFyZSBORlMgYW5kIFRDUC4NCg0KSSBkb24ndCBrb253IHdoeSB0aGUgZGF0YSBiZSBzZW50
-IHRvIE1EUyBmaXJzdGx5LCBJIHRoaW5rIGl0IHNob3VsZCBiZSBzZW50IHRvIERTIGZyb20gY2xp
-ZW50IGRpcmNldGx5IHdpdGggaVNDU0kgcHJvdG9jb2wuDQpDYW4geW91IHBvaW50IHdoZXJlIGlz
-IHRoZSBlcnJvcj8NCg0KVGhhbmtzLg0KU29uZ2xpbiBCQUkuIA0KDQoNCg0KDQoNCg0KPkZyb206
-IEJlbm55IEhhbGV2eSA8YmhhbGV2eUBwYW5hc2FzLmNvbT4NCj5SZXBseS1UbzogDQo+VG86ILDX
-y8nB1jwwOTEyMDE3MUBianR1LmVkdS5jbj4NCj5TdWJqZWN0OiBSZTogcXVlc3Rpb25zIGFib3V0
-IGJsb2NrbGF5b3V0ZHJpdmVyLmtvDQo+RGF0ZTogV2VkLCAwOSBNYXIgMjAxMSAyMzoxMjowNCAt
-MDgwMA0KPg0KPk9uIDIwMTEtMDMtMDkgMDg6MTMsILDXy8nB1iB3cm90ZToNCj4+IEhpDQo+PiAN
-Cj4+IFRoYW5rcyBmb3IgeW91ciByZXBseS4NCj4+IA0KPj4gQWNjb3JkaW5nIHRvIHlvdXIgYWR2
-aWNlLGkgcmVmZXJlZCB0aGUgcGFnZShodHRwOi8vd2lraS5saW51eC1uZnMub3JnL3dpa2kvaW5k
-ZXgucGhwL1BORlNfQmxvY2tfU2VydmVyX1NldHVwX0luc3RydWN0aW9ucyksIGFuZCBzZXQgdXAg
-dGhlIHRlc3QgZW52aXJvbm1lbnQsYnV0IGZhaWxlZC4gSSBkb24ndCBrb253IHdoYXQgdG8gZG8g
-aW4gbWV0YWRhdGEgc2VydmVyLGFuZCB3aGF0IHNob3VsZCBiZSBkb25lIGluIGRhdGEgc2VydmVy
-LiBjYW4geW91IGhlbHAgbWUgPw0KPj4gSW4gdGhpcyB3ZWJwYWdlLHRoZXJlIGlzIG9uZSBzZW50
-ZW5jZSwNCj4+IG1vdW50IC10IG5mczQgLW8gbWlub3J2ZXJzaW9uPTEgU046LyAvbW50L29iIA0K
-Pj4gSW4gdGhpcyBzZW50ZW5jZSxjYW4geW91IHRlbGwgbWUgd2hhdCBpcyBTTiBtZWFucz8NCj4N
-Cj5UaGlzIGlzIHRoZSBzZXJ2ZXIgbmFtZSAob3IgaXAgYWRkcmVzcykNCj5BcmUgeW91IGFibGUg
-dG8gbW91bnQgaXQgb3ZlciBuZnN2MywgbmZzdjQsIGFuZCBuZnN2NC4xIHdpdGhvdXQgcG5mcz8N
-Cj4NCj4+IA0KPj4gQW50aGVyIHF1ZXN0aW9uLHRoZXJlIGlzIG9uZSB3YXkgYWJvdXQgRmVkcm9h
-IHBORlMgY2xpZW50IHNldHVwIGluIHRoZSB3ZWJwYWdlKGh0dHA6Ly93aWtpLmxpbnV4LW5mcy5v
-cmcvd2lraS9pbmRleC5waHAvRmVkb3JhX3BORlNfQ2xpZW50X1NldHVwKSxjYW4geW91IHByb3Zp
-ZGUgbWUgZm9yIG9uZSB3YXkgYWJvdXQgcE5GUyBjbGllbnQgc2V0dXAgaW4gcmVkaGF0Lg0KPg0K
-Pkl0IHNob3VsZCBiZSB0aGUgc2FtZSBhcyB0aGUgb25lIHlvdSBidWlsZCBmcm9tIHRoZSBsaW51
-eC1wbmZzIHRyZWUuDQo+SSdtIENjJ2luZyBTdGV2ZSBEaWNrc29uIHdobyBnZW5lcmF0ZXMgdGhp
-cyBwYWNrYWdlcywganVzdCBpbiBjYXNlLg0KPg0KPj4gSW4gdGhpcyB3ZWJwYWdlLHRoZXJlIGlz
-IG9uZSBzZW50ZW5jZSwNCj4+IG1vdW50IC10IG5mczQgLW8gbWlub3J2ZXJzaW9uPTENCjovZXhw
-b3J0ICAvbW50DQo+PiBJbiB0aGlzIHNlbnRlbmNlLGlzIHRoZSBzZXJ2ZXIgbWVhbnMgTURTPw0K
-Pg0KPkNvcnJlY3QuDQo+DQo+QmVubnkNCj4NCj5QLlMuIEknZCBhcHByZWNpYXRlIGlmIHlvdSBj
-b3VsZCBDQyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnIHNvIHRoYXQNCj5vdGhlcnMgY291bGQg
-YmVuZWZpdCBmcm9tIG91ciBkaXNjdXNzaW9uIHRvby4NCj4NCj4+IA0KPj4gVGhhbmtzLg0KPj4g
-U29uZ2xpbiBCYWkuDQo+PiANCj4+IA0KPj4gDQo+PiANCj4+IATounsubj+Jt5+uia0/JYrLbHp3
-bYXpYp3rp7Lm7HK4m3pYp7sZ37Ip7YXm6HcqH2pnrLE/tomajordomovgerkerneloo/it6ZqOit
-Pz/foathttp//vgerkerneloP+ZqOit2iaiKd+iG2aU=
+On 03/21/2011 08:04 PM, Dennis Jacobfeuerborn wrote:
+
+[SNIP]
+
+> I'd be interested to move on to v4 but from what I've heard the
+> user-mapping no longer is done using the uid. Since the users don't have
+> entries in /etc/passwd and exist purely as id's in the filesystem the
+> username based mapping in nfsv4 doesn't allow me to use it in this case.
+> I guess the only way to accomplish that would be to write a custom
+> rpcidmapd daemon?
+>
+> I'm currently downloading the openfiler installer so I can replicate the
+> setup here for better testing. Maybe updating the nfs-utils package to a
+> more current version will have an impact.
+
+Apparently I need to export both the /exports directory and all the letter 
+directories beneath it for the crossmnt option to work, e.g.:
+
+/exports 192.168...
+/exports/country/de/a 192.168...
+/exports/country/de/b 192.168...
+/exports/country/de/c 192.168...
+etc.
+
+Regards,
+   Dennis
