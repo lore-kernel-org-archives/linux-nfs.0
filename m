@@ -1,56 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:62365 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750972Ab1CBG35 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Mar 2011 01:29:57 -0500
-Message-ID: <4D6DE40F.2040100@cn.fujitsu.com>
-Date: Wed, 02 Mar 2011 14:30:39 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 06/17] CLNT: test reply too big to cache
-References: <4D6DE26C.3010103@cn.fujitsu.com>
-In-Reply-To: <4D6DE26C.3010103@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mx2.parallels.com ([64.131.90.16]:58750 "EHLO mx2.parallels.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751532Ab1CVDOc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Mar 2011 23:14:32 -0400
+Message-ID: <4D881413.9050807@parallels.com>
+Date: Mon, 21 Mar 2011 22:14:27 -0500
+From: Rob Landley <rlandley@parallels.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Tim Spriggs <tims@uahirise.org>
+Subject: [PATCH] Minimal fix to mount NFS in containers with non-default network
+ context.
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+From: Rob Landley <rlandley@parallels.com>
+
+Here is the first (simple) patch to get NFS working in a container that 
+a different network context than init_net.  I've tested it with:
+
+ mount -t nfs 10.0.2.2:/path/to/mnt tempdir \
+    -o port=9999,mountport=9999,nolock,nosharecache,nfsvers=3
+
+For a test server, I used unfs3.sourceforge.net:
+
+  unfsd -d -s -p -l 10.0.2.2 -m 9999 -n 9999 \
+    -e <(echo '/path/to/mnt (rw,no_root_squash,insecure)')
+
+And my test environment setup is described in excruciating detail here:
+
+  http://landley.net/lxc/
+
+Both ro/rw and udp/tcp in the mount -o work for me.
+
+This requires a lot of follow-up patches to fix DNS resolution, 
+portmapper, the lock daemon, superblock merging, nontrivial 
+authentication mechanisms, the entire can of worms that is NFSv4...
+But this at least makes basic NFS mounts work for the trivial case.
+(It will _not_ work if two different network contexts try to mount
+the same IP address, due to malignant caching.  Working on it.)
+
+This patch is sampling the mount process context three times, which 
+isn't ideal but is the least intrusive thing I can do for a first 
+pass.  I've traced through and confirmed as best I can that all three 
+are only called from the mount process context.  (Remount seems to be a 
+different code path, and if you remount from a different network 
+context I'm not sure what _should_ happen, anyway.  Keep the old one,
+I guess?)
+
+(I'm working on a patch adds a network context to nfs_client and then 
+drills that down to the various places that could use it, which is 
+more than just these 3, but it's a lot more intrusive and can be done 
+on top of this.  Also, the rpc code is already doing the get_net() and 
+put_net() reference counting for lifetimes this way.  When I add it to 
+nfs_client I'll have to get that right myself.)
+
+Signed-off-by: Rob Landley <rlandley@parallels.com>
 ---
- nfs4.1/server41tests/st_create_session.py |   21 +++++++++++++++++++++
- 1 files changed, 21 insertions(+), 0 deletions(-)
 
-diff --git a/nfs4.1/server41tests/st_create_session.py b/nfs4.1/server41tests/st_create_session.py
-index c474ce3..ff55d10 100644
---- a/nfs4.1/server41tests/st_create_session.py
-+++ b/nfs4.1/server41tests/st_create_session.py
-@@ -455,3 +455,24 @@ def testRepTooBig(t, env):
-     # read data rather than ca_maxresponsesize
-     res = sess1.compound([op.putfh(fh), op.read(stateid, 0, 500)])
-     check(res, NFS4ERR_REP_TOO_BIG)
-+
-+def testRepTooBigToCache(t, env):
-+    """If requester sends a request for which the size of the reply
-+       would exceed ca_maxresponsesize_cached, the replier will return
-+       NFS4ERR_REP_TOO_BIG_TO_CACHE
-+
-+    FLAGS: create_session all
-+    CODE: CSESS27
-+    """
-+    c = env.c1.new_client(env.testname(t))
-+    # CREATE_SESSION with a small ca_maxresponsesize_cached
-+    chan_attrs = channel_attrs4(0,8192,8192,10,128,8,[])
-+    res = c.c.compound([op.create_session(c.clientid, c.seqid, 0,
-+                                        chan_attrs, chan_attrs,
-+                                        123, [])], None)
-+    check(res)
-+
-+    # SEQUENCE with cache this
-+    sid = res.resarray[0].csr_sessionid
-+    res = c.c.compound([op.sequence(sid, 1, 0, 0, True)])
-+    check(res, NFS4ERR_REP_TOO_BIG_TO_CACHE)
--- 
-1.7.4.1
+ fs/nfs/client.c     |    3 ++-
+ fs/nfs/mount_clnt.c |    5 +++--
+ 2 files changed, 7 insertions(+), 3 deletions(-)
 
-
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 192f2f8..4fb94e9 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -39,6 +39,7 @@
+ #include <net/ipv6.h>
+ #include <linux/nfs_xdr.h>
+ #include <linux/sunrpc/bc_xprt.h>
++#include <linux/user_namespace.h>
+ 
+ #include <asm/system.h>
+ 
+@@ -619,7 +620,7 @@ static int nfs_create_rpc_client(struct nfs_client *clp,
+ {
+ 	struct rpc_clnt		*clnt = NULL;
+ 	struct rpc_create_args args = {
+-		.net		= &init_net,
++		.net		= current->nsproxy->net_ns,
+ 		.protocol	= clp->cl_proto,
+ 		.address	= (struct sockaddr *)&clp->cl_addr,
+ 		.addrsize	= clp->cl_addrlen,
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index d4c2d6b..5564f64 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -14,6 +14,7 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/sched.h>
+ #include <linux/nfs_fs.h>
++#include <linux/user_namespace.h>
+ #include "internal.h"
+ 
+ #ifdef RPC_DEBUG
+@@ -153,7 +156,7 @@ int nfs_mount(struct nfs_mount_request *info)
+ 		.rpc_resp	= &result,
+ 	};
+ 	struct rpc_create_args args = {
+-		.net		= &init_net,
++		.net		= current->nsproxy->net_ns,
+ 		.protocol	= info->protocol,
+ 		.address	= info->sap,
+ 		.addrsize	= info->salen,
+@@ -225,7 +228,7 @@ void nfs_umount(const struct nfs_mount_request *info)
+ 		.to_retries = 2,
+ 	};
+ 	struct rpc_create_args args = {
+-		.net		= &init_net,
++		.net		= current->nsproxy->net_ns,
+ 		.protocol	= IPPROTO_UDP,
+ 		.address	= info->sap,
+ 		.addrsize	= info->salen,
