@@ -1,91 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:26942 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753150Ab1CJT7F convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Mar 2011 14:59:05 -0500
-Subject: Re: [PATCH 3/8] NFS: Introduce nfs4_proc_get_mig_status()
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20110310172959.8878.88948.stgit@matisse.1015granger.net>
-References: <20110310171345.8878.25548.stgit@matisse.1015granger.net>
-	 <20110310172959.8878.88948.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 10 Mar 2011 14:58:59 -0500
-Message-ID: <1299787139.3075.36.camel@heimdal.trondhjem.org>
+Received: from fallback2.mail.ru ([94.100.176.87]:34371 "EHLO
+	fallback2.mail.ru" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753544Ab1CVO6H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2011 10:58:07 -0400
+Received: from f70.mail.ru (f70.mail.ru [217.69.128.219])
+	by fallback2.mail.ru (mPOP.Fallback_MX) with ESMTP id AEF824247BF0
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2011 17:53:01 +0300 (MSK)
+From: Peter Lojkin <ia6432@inbox.ru>
+To: linux-nfs@vger.kernel.org
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: =?utf-8?Q?Re=3A_[PATCH_v2]_RPC=3A_killing_RPC_tasks_races_fixed?=
+Date: Tue, 22 Mar 2011 17:52:27 +0300
+Reply-To: Peter Lojkin <ia6432@inbox.ru>
+Content-Type: text/plain; charset=utf-8
+Message-Id: <E1Q22wg-00080R-00.ia6432-inbox-ru@f70.mail.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2011-03-10 at 12:29 -0500, Chuck Lever wrote: 
-> @@ -5915,6 +5962,37 @@ out:
->  	return status;
->  }
->  
-> +/*
-> + * Decode migration status probe
-> + */
-> +static int nfs4_xdr_dec_get_mig_status(struct rpc_rqst *req,
-> +				       struct xdr_stream *xdr,
-> +				       struct nfs4_fs_locations_res *res)
-> +{
-> +	struct compound_hdr hdr;
-> +	int status;
-> +
-> +	status = decode_compound_hdr(xdr, &hdr);
-> +	if (status)
-> +		goto out;
-> +	status = decode_sequence(xdr, &res->seq_res, req);
-> +	if (status)
-> +		goto out;
-> +	status = decode_putfh(xdr);
-> +	if (status)
-> +		goto out;
-> +	xdr_enter_page(xdr, PAGE_SIZE);
-> +	status = decode_getfattr(xdr, &res->fs_locations->fattr,
-> +				 res->fs_locations->server,
-> +				 !RPC_IS_ASYNC(req->rq_task));
-> +	if (status)
-> +		goto out;
-> +	if (res->renew)
-> +		status = decode_renew(xdr);
-> +out:
-> +	return status;
-> +}
-> +
->  #if defined(CONFIG_NFS_V4_1)
->  /*
->   * Decode EXCHANGE_ID response
-> @@ -6255,6 +6333,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
->  	PROC(GETACL,		enc_getacl,		dec_getacl),
->  	PROC(SETACL,		enc_setacl,		dec_setacl),
->  	PROC(FS_LOCATIONS,	enc_fs_locations,	dec_fs_locations),
-> +	PROC(GET_MIG_STATUS,	enc_get_mig_status,	dec_get_mig_status)
+On Thu, 2011-03-17 at 15:54:23 2011-03-17 at 18:43 +0300, Stanislav Kinsbursky wrote:
 
-Yet more trouble for nfsstat...
+> RPC task RPC_TASK_QUEUED bit is set must be checked before trying to wake up
+> task rpc_killall_tasks() because task->tk_waitqueue can not be set (equal to
+> NULL).
+> Also, as Trond Myklebust mentioned, such approach (instead of checking
+> tk_waitqueue to NULL) allows us to "optimise away the call to
+> rpc_wake_up_queued_task() altogether for those
+> tasks that aren't queued".
 
-> ,
->  	PROC(RELEASE_LOCKOWNER,	enc_release_lockowner,	dec_release_lockowner),
->  #if defined(CONFIG_NFS_V4_1)
->  	PROC(EXCHANGE_ID,	enc_exchange_id,	dec_exchange_id),
+you mentioned earlier that you have found this problem in .32 kernel but your patch only works for newer kernels.
+does the following patch is correct and needed for pre .36 kernels?
 
-So looking at what you are doing in GET_MIG_STATUS, it appears to me
-that
-
-1) We don't need it for NFSv4.1: the existing fs_locations request just
-works for that.
-2) The only new thing in NFSv4.0 is the renew operation...
-
-So how about if we just modify the existing fs_locations call to append
-a RENEW request if/when we supply a clientid?
-
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+--- a/net/sunrpc/sched.c	2011-03-22 16:55:36.802000287 +0300
++++ b/net/sunrpc/sched.c	2011-03-22 17:01:13.858000242 +0300
+@@ -939,7 +939,8 @@
+ 		if (!(rovr->tk_flags & RPC_TASK_KILLED)) {
+ 			rovr->tk_flags |= RPC_TASK_KILLED;
+ 			rpc_exit(rovr, -EIO);
+-			rpc_wake_up_task(rovr);
++			if (RPC_IS_QUEUED(rovr))
++				rpc_wake_up_task(rovr);
+ 		}
+ 	}
+ 	spin_unlock(&clnt->cl_lock);
 
