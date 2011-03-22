@@ -1,68 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:51995 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933242Ab1CYB2H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Mar 2011 21:28:07 -0400
-Date: Fri, 25 Mar 2011 02:28:03 +0100
-From: Jan Kara <jack@suse.cz>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Wu Fengguang <fengguang.wu@intel.com>,
-        Dave Chinner <david@fromorbit.com>
-Subject: NFS page states & writeback
-Message-ID: <20110325012803.GA25052@quack.suse.cz>
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:56842 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755416Ab1CVWJB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2011 18:09:01 -0400
+Received: by iwn34 with SMTP id 34so7906460iwn.19
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Mar 2011 15:09:01 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/4] RFC: RPC over AF_LOCAL, kernel client-side
+To: linux-nfs@vger.kernel.org
+Date: Tue, 22 Mar 2011 18:08:57 -0400
+Message-ID: <20110322220518.4360.51304.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-  Hi,
+Just for sh*ts and giggles, I threw together a partial implementation
+of RPC over AF_LOCAL sockets, and taught the kernel rpcbind client to
+use it for registering in-kernel RPC services.
 
-  while working on changes to balance_dirty_pages() I was investigating why
-NFS writeback is *so* bumpy when I do not call writeback_inodes_wb() from
-balance_dirty_pages(). Take a single dd writing to NFS. What I can
-see is that we quickly accumulate dirty pages upto limit - ~700 MB on that
-machine. So flusher thread starts working and in an instant all these ~700
-MB transition from Dirty state to Writeback state. Then, as server acks
-writes, Writeback pages slowly change to Unstable pages (at 100 MB/s rate
-let's say) and then at one moment (commit to server happens) all pages
-transition from Unstable to Clean state - the cycle begins from the start.
+It's still a little rough around the edges.  Any thoughts?
 
-The reason for this behavior seems to be a flaw in the logic in
-over_bground_thresh() which checks:
-global_page_state(NR_FILE_DIRTY) +
-      global_page_state(NR_UNSTABLE_NFS) > background_thresh
-So at the moment all pages are turned Writeback, flusher thread goes to
-sleep and doesn't do any background writeback, until we have accumulated
-enough Stable pages to get over background_thresh. But NFS needs to have
-->write_inode() called so that it can sent commit requests to the server.
-So effectively we end up sending commit only when background_thresh Unstable
-pages have accumulated which creates the bumpyness. Previously this wasn't
-a problem because balance_dirty_pages() ended up calling ->write_inode()
-often enough for NFS to send commit requests reasonably often.
+---
 
-Now I wouldn't write so long email about this if I knew how to cleanly fix
-the check ;-). One way to "fix" the check would be to add there Writeback
-pages:
-NR_FILE_DIRTY + NR_WRITEBACK + NR_UNSTABLE_NFS > background_thresh
+Chuck Lever (4):
+      SUNRPC: Use AF_LOCAL for rpcbind upcalls
+      SUNRPC: Support for RPC over AF_LOCAL transports
+      SUNRPC: Rename xs_encode_tcp_fragment_header()
+      SUNRPC: Clean up use of curly braces in switch cases
 
-This would work in the sense that it would keep flusher thread working but
-a) for normal filesystems it would be working even if there's potentially
-nothing to do (or it is not necessary to do anything)
-b) NFS is picky when it sends commit requests (inode has to have more
-Stable pages than Writeback pages if I'm reading the code in
-nfs_commit_unstable_pages() right) so flusher thread may be working but
-nothing really happens until enough stable pages accumulate.
 
-A check which kind of works but looks a bit hacky and is not perfect when
-there are multiple files is:
-NR_FILE_DIRTY + NR_UNSTABLE_NFS > background_thresh ||
-NR_UNSTABLE_NFS > NR_WRITEBACK (to match what NFS does)
+ include/linux/sunrpc/msg_prot.h |    1 
+ include/linux/sunrpc/xprt.h     |    3 
+ net/sunrpc/clnt.c               |   25 +-
+ net/sunrpc/rpcb_clnt.c          |   97 ++++++++-
+ net/sunrpc/svc.c                |    2 
+ net/sunrpc/xprtsock.c           |  417 ++++++++++++++++++++++++++++++++++++++-
+ 6 files changed, 506 insertions(+), 39 deletions(-)
 
-Any better idea for a fix?
-
-								Honza
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Chuck Lever
