@@ -1,130 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:18415 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753872Ab1CPUyX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2011 16:54:23 -0400
-Message-ID: <4D812378.8050006@netapp.com>
-Date: Wed, 16 Mar 2011 16:54:16 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH v5 5/5] NFS: Determine initial mount security
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from relay03.bluemeaney.com ([205.234.16.187]:49177 "EHLO
+	relay03.bluemeaney.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753924Ab1CVW6d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2011 18:58:33 -0400
+Subject: Re: [PATCH] nfs4: Fix NULL dereference at d_alloc_and_lookup()
+From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+In-Reply-To: <1300830742.9442.53.camel@lade.trondhjem.org>
+References: <1300830025-17152-1-git-send-email-gusev.vitaliy@nexenta.com>
+	 <1300830742.9442.53.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 23 Mar 2011 01:58:27 +0300
+Message-ID: <1300834707.17103.61.camel@vT510>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Tue, 2011-03-22 at 17:52 -0400, Trond Myklebust wrote:
+> On Wed, 2011-03-23 at 00:40 +0300, Vitaliy Gusev wrote:
+> > From: Gusev Vitaliy <gusev.vitaliy@nexenta.com>
+> > 
+> > d_alloc_and_lookup() calls i_op->lookup method due to
+> > rootfh changes his fsid.
+> >
+> > During mount i_op of NFS root inode is set to
+> > nfs_mountpoint_inode_operations, if rpc_ops->getroot()
+> > and rpc_ops->getattr() return different fsid.
+> 
+> That is a server bug! Why are you trying to "fix" that on the client
+> instead of telling the user that their server deserves to be burned
+> behind the shed?
+> 
 
-When sec=<something> is not presented as a mount option,
-we should attempt to determine what security flavor the
-server is using.
+Because nfs_update_inode() does it with success and pleasure:
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c                     |   33 +++++++++++++++++++++++++++++++--
- include/linux/sunrpc/gss_api.h        |    3 +++
- net/sunrpc/auth_gss/gss_mech_switch.c |   16 ++++++++++++++++
- 3 files changed, 50 insertions(+), 2 deletions(-)
+	if (S_ISDIR(inode->i_mode) && (fattr->valid & NFS_ATTR_FATTR_FSID) &&
+			!nfs_fsid_equal(&server->fsid, &fattr->fsid) &&
+			!IS_AUTOMOUNT(inode))
+		server->fsid = fattr->fsid;
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5634637..f9150f0 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -41,6 +41,7 @@
- #include <linux/string.h>
- #include <linux/slab.h>
- #include <linux/sunrpc/clnt.h>
-+#include <linux/sunrpc/gss_api.h>
- #include <linux/nfs.h>
- #include <linux/nfs4.h>
- #include <linux/nfs_fs.h>
-@@ -2191,15 +2192,43 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return err;
- }
- 
-+static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-+				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
-+{
-+	struct rpc_auth *auth;
-+	int ret;
-+
-+	auth = rpcauth_create(flavor, server->client);
-+	if (!auth) {
-+		ret = -EIO;
-+		goto out;
-+	}
-+	ret = nfs4_lookup_root(server, fhandle, info);
-+	if (ret < 0)
-+		ret = -EAGAIN;
-+out:
-+	return ret;
-+}
-+
- /*
-  * get the file handle for the "/" directory on the server
-  */
- static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 			      struct nfs_fsinfo *info)
- {
--	int status;
-+	int i, len, status = 0;
-+	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS + 2];
- 
--	status = nfs4_lookup_root(server, fhandle, info);
-+	flav_array[0] = RPC_AUTH_UNIX;
-+	len = gss_mech_list_pseudoflavors(&flav_array[1]);
-+	flav_array[1+len] = RPC_AUTH_NULL;
-+	len += 2;
-+
-+	for (i = 0; i < len; i++) {
-+		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
-+		if (status == 0)
-+			break;
-+	}
- 	if (status == 0)
- 		status = nfs4_server_capabilities(server, fhandle);
- 	if (status == 0)
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index 5d8048b..332da61 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -126,6 +126,9 @@ struct gss_api_mech *gss_mech_get_by_name(const char *);
- /* Similar, but get by pseudoflavor. */
- struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
- 
-+/* Fill in an array with a list of supported pseudoflavors */
-+int gss_mech_list_pseudoflavors(u32 *);
-+
- /* Just increments the mechanism's reference count and returns its input: */
- struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
- 
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 6c844b0..e3c36a2 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -215,6 +215,22 @@ gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
- 
- EXPORT_SYMBOL_GPL(gss_mech_get_by_pseudoflavor);
- 
-+int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr)
-+{
-+	struct gss_api_mech *pos = NULL;
-+	int i = 0;
-+
-+	spin_lock(&registered_mechs_lock);
-+	list_for_each_entry(pos, &registered_mechs, gm_list) {
-+		array_ptr[i] = pos->gm_pfs->pseudoflavor;
-+		i++;
-+	}
-+	spin_unlock(&registered_mechs_lock);
-+	return i;
-+}
-+
-+EXPORT_SYMBOL_GPL(gss_mech_list_pseudoflavors);
-+
- u32
- gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
- {
+And what are the reasons to tell to user about broken servers during
+mount, but do not tell about it after mount ?
+
+
+> >  
+> > +	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
+> > +	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
+> > +		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
+> 
+> No. add a printk() to the effect that the server is insane, return -EIO
+> and we're done...
+
+Ok. Next checks mntroot->d_inode->i_op != dir_inode_ops) from super.c
+does what you pointed. But it is only for cross mounts and referrals.
+
+
+	mntroot = nfs4_get_root(s, mntfh);
+	if (IS_ERR(mntroot)) {
+		error = PTR_ERR(mntroot);
+		goto error_splat_super;
+	}
+
+	if (mntroot->d_inode->i_op !=
+NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
+		dput(mntroot);
+		error = -ESTALE;
+		goto error_splat_super;
+	}
+
+
+
+
 -- 
-1.7.4.1
+Thanks,
+Vitaliy Gusev
 
