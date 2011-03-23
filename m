@@ -1,41 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:52200 "EHLO
+Received: from rcsinet10.oracle.com ([148.87.113.121]:22657 "EHLO
 	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750947Ab1COWKu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 18:10:50 -0400
-Subject: Re: problem with nfs latency during high IO
+	with ESMTP id S932337Ab1CWOyt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 10:54:49 -0400
+Subject: Re: [bisect] kernel 2.6.38 regression with root nfs mounting
 Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4D7FE0E8.5050701@imppc.org>
-Date: Tue, 15 Mar 2011 18:10:37 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <16BF52F0-4D1A-4B68-ADEE-DC70255A139C@oracle.com>
-References: <4D7B6DE5.8010008@imppc.org> <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com> <4D7FA11F.5020604@imppc.org> <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com> <4D7FDB14.6090908@imppc.org> <9CC4990D-6969-4788-8B52-BA5AF2743DE3@oracle.com> <4D7FE0E8.5050701@imppc.org>
-To: Judith Flo Gaya <jflo@imppc.org>
+In-Reply-To: <AANLkTik0UgB+k2i=E5t9XcF50SoSr_iXaFYrhctDx0FJ@mail.gmail.com>
+Date: Wed, 23 Mar 2011 10:54:39 -0400
+Cc: Trond.Myklebust@netapp.com, broonie@opensource.wolfsonmicro.com,
+        bdowning@lavos.net, linux-nfs@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>
+Message-Id: <8F19F0FE-0800-4C45-B857-1C682CF6A30D@oracle.com>
+References: <AANLkTimjmdi8sFTTjSPerOVgHQ+pjjwwMvCUX3AJ16At@mail.gmail.com> <43F07477-9075-444D-9BBB-368650538EA8@oracle.com> <AANLkTinHUQkBvcvh9APVutOqcKOug6CA066kS_O4p4Tq@mail.gmail.com> <DC2B75F8-382A-4AFB-9286-4A55EAF7609A@oracle.com> <AANLkTikWyUbtHbbnSh8NBeP3mT4jDOu5Pbtfw=TwKrwE@mail.gmail.com> <977C528D-4540-4EB2-92F9-6DAF357D8C81@oracle.com> <AANLkTik0UgB+k2i=E5t9XcF50SoSr_iXaFYrhctDx0FJ@mail.gmail.com>
+To: Belisko Marek <marek.belisko@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-On Mar 15, 2011, at 5:58 PM, Judith Flo Gaya wrote:
+On Mar 23, 2011, at 10:30 AM, Belisko Marek wrote:
 
-> 
-> 
-> On 3/15/11 10:28 PM, Chuck Lever wrote:
+> On Wed, Mar 23, 2011 at 3:06 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
 >> 
->>>>>> POSIX requires that the mtime and file size returned by stat(2) ('ls -l') reflect the most recent write(2).  On NFS, the server sets both of these fields.  If a client is caching dirty data, and an application does a stat(2), the client is forced to flush the dirty data so that the server can update mtime and file size appropriately.  The client then does a GETATTR, and returns those values to the requesting application.
->>>>>> 
->>>>> ok, sorry, I know this is a very stupid question but. what do you mean by dirty data?
->>>> Dirty data is data that your application has written to the file but which hasn't been flushed to the server's disk.  This data resides in the client's page cache, on its way to the server.
->>> ok, understood. Then the sysctl change that you suggest, I've been checking both distributions, RHEL6 and FC14 and they share the same value... I assume by this that changing this value will not "help", am I right?
->> It should improve behavior somewhat in both cases, but the delay won't go away entirely.  This was a workaround we gave EL5 customers before this bug was addressed.  In the Fedora case I wouldn't expect a strongly deterministic improvement, but the average wait for "ls -l" should go down somewhat.
-> I saw that the value was 20, I don't know the impact of changing the number by units or tens... Should I test with 10 or this is too much? I assume that the behavior will change immediately right?
+>> On Mar 23, 2011, at 9:46 AM, Belisko Marek wrote:
+>> 
+>>> On Wed, Mar 23, 2011 at 2:44 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>> 
+>>>> What does "rpcinfo -p 10.146.1.21" output look like?  Is NFS over UDP enabled on your server?
+>>> program vers proto   port
+>>>    100000    2   tcp    111  portmapper
+>>>    100000    2   udp    111  portmapper
+>>>    100024    1   udp  40517  status
+>>>    100024    1   tcp  51397  status
+>>>    100021    1   udp  44516  nlockmgr
+>>>    100021    3   udp  44516  nlockmgr
+>>>    100021    4   udp  44516  nlockmgr
+>>>    100021    1   tcp  55152  nlockmgr
+>>>    100021    3   tcp  55152  nlockmgr
+>>>    100021    4   tcp  55152  nlockmgr
+>>>    100003    2   tcp   2049  nfs
+>>>    100003    3   tcp   2049  nfs
+>>>    100003    4   tcp   2049  nfs
+>>>    100227    2   tcp   2049
+>>>    100227    3   tcp   2049
+>>>    100003    2   udp   2049  nfs
+>>>    100003    3   udp   2049  nfs
+>>>    100003    4   udp   2049  nfs
 
-I believe the dirty ratio is the percentage of physical memory that can be consumed by one file's dirty data before the VM starts flushing its pages asynchronously.  Or it could be the amount of dirty data allowed across all files... one file or many doesn't make any difference if you are writing a single very large file.
+The server is advertising NFS over UDP.  Why can't a client access your server via UDP?  What happens if you perform a normal post-boot mount of this file system via UDP?
 
-If your client memory is large, a small number should work without problem.  One percent of a 16GB client is still quite a bit of memory.  The current setting means you can have 20% of said 16GB client, or 3.2GB, of dirty file data on that client before it will even think about flushing it.  Along comes "ls -l" and you will have to wait for the client to flush 3.2GB before it can send the GETATTR.
+>>>    100227    2   udp   2049
+>>>    100227    3   udp   2049
+>>>    100005    1   udp  58278  mountd
+>>>    100005    1   tcp  37178  mountd
+>>>    100005    2   udp  58278  mountd
+>>>    100005    2   tcp  37178  mountd
+>>>    100005    3   udp  58278  mountd
+>>>    100005    3   tcp  37178  mountd
+>> 
+>> Can you boot if you specify either the "tcp" or "proto=tcp" NFSROOT mount options?
+> When add proto=tcp to bootargs it boot fine
+> (....nfsroot=10.146.1.21:/home/open-nandra/rootfs,proto=tcp....).
+>> Perhaps a network trace would be probative.  Capture on the server with "tcpdump -s0 -w /tmp/foo ip 10.146.1.199" (untested, but I think you get the idea) while the client is attempting to boot, and post.
+> Log is attached in attachment (too big 4.8M). Correct form is: tcpdump
+> -s0 -w /tmp/foo host 10.146.1.199
 
-I believe this setting does take effect immediately, but you will have to put the setting in /etc/sysctl.conf to make it last across a reboot.
+Received.  I should have been clear: Please capture a non-working client boot attempt.  To reduce the size of the attachment, strip the TFTP packets before sending, and please gzip the file.
 
 -- 
 Chuck Lever
