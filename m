@@ -1,71 +1,346 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:22143 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756765Ab1COV2e convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 17:28:34 -0400
-Subject: Re: problem with nfs latency during high IO
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4D7FDB14.6090908@imppc.org>
-Date: Tue, 15 Mar 2011 17:28:20 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <9CC4990D-6969-4788-8B52-BA5AF2743DE3@oracle.com>
-References: <4D7B6DE5.8010008@imppc.org> <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com> <4D7FA11F.5020604@imppc.org> <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com> <4D7FDB14.6090908@imppc.org>
-To: Judith Flo Gaya <jflo@imppc.org>
+Received: from mx2.netapp.com ([216.240.18.37]:16120 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755581Ab1CWMaj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 08:30:39 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 08/11] NFSv4.1: add generic layer hooks for pnfs COMMIT
+Date: Wed, 23 Mar 2011 08:30:09 -0400
+Message-Id: <1300883412-32296-9-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1300883412-32296-1-git-send-email-iisaman@netapp.com>
+References: <1300883412-32296-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
+We create three major hooks for the pnfs code.
 
-On Mar 15, 2011, at 5:33 PM, Judith Flo Gaya wrote:
+pnfs_mark_request_commit() is called during writeback_done from
+nfs_mark_request_commit, which gives the driver an opportunity to
+claim it wants control over commiting a particular req.
 
-> 
-> 
-> On 3/15/11 7:03 PM, Chuck Lever wrote:
->> On Mar 15, 2011, at 1:25 PM, Judith Flo Gaya wrote:
->> 
->>> Hello Chuck,
->>> 
->>> On 03/15/2011 05:24 PM, Chuck Lever wrote:
->>>> Hi Judith-
->>>> 
->>>> On Mar 12, 2011, at 7:58 AM, Judith Flo Gaya wrote:
->>>> 
->>>>> Hello,
->>>>> 
->>>>> I was told some days ago that my problem with my NFS system is related to this bug, as the problem that I'm experiencing is quite similar.
->>>>> 
->>>>> The bug : https://bugzilla.redhat.com/show_bug.cgi?id=469848
->>>>> 
->>>>> The link itself explains quite well my issue, I'm just truing to copy a big file (36Gb) to my nfs server and when I try to get an ls -l command to the same folder where I'm copying data, the command gets stuck for some time. This amount of time changes from a few secs to SOME minutes (9' is the current record).
->>>>> I can live with some seconds of delay, but minutes is something quite unacceptable.
->>>>> 
->>>>> As this is an nfs server running on a red hat system (an HP ibrix x9300 with Red Hat 5.3 x86_64, kernel 2.6.18-128) I was told to apply the patch suggested from the bug on my clients.
->>>>> 
->>>>> Unfortunately my clients are running fedora core 14 (x86_64, kernel 2.6.35.6-45) and I can't find the file that they are referring to, the file fs/nfs/inode.c is not there and I can't find the rpm that contains it.
->>>>> 
->>>>> As the bug is a very very old one, I took it for granted that is already applied to fedora, but I wanted to make sure that it is looking at the file.
->>>>> 
->>>>> Can you help me on this? I'm I wrong in my supposition (is the patch really applied)? is it possible that my problem is somewhere else?
->>>> This sounds like typical behavior.
->>> But it is not like this when I use a RHEL6 as a client to those servers, in this case, the ls only last for some seconds, nothing like the minutes that it takes from my fedora.
->> Which Fedora systems, exactly?  The fix I described below is almost certainly in RHEL 6.
-> Fedora Core 14, 64 bit, 2.6.35.6-45
+pnfs_choose_commit_list() is called from nfs_scan_list
+to choose which list a given req should be added to, based on
+where we intend to send it for COMMIT.  It is up to the driver
+to have preallocated list headers for each destination it may need.
 
-Right, you mentioned that in your OP.  Sorry.
+pnfs_commit_list() is how the driver actually takes control, it is
+used instead of nfs_commit_list().
 
->>>> POSIX requires that the mtime and file size returned by stat(2) ('ls -l') reflect the most recent write(2).  On NFS, the server sets both of these fields.  If a client is caching dirty data, and an application does a stat(2), the client is forced to flush the dirty data so that the server can update mtime and file size appropriately.  The client then does a GETATTR, and returns those values to the requesting application.
->>>> 
->>> ok, sorry, I know this is a very stupid question but. what do you mean by dirty data?
->> Dirty data is data that your application has written to the file but which hasn't been flushed to the server's disk.  This data resides in the client's page cache, on its way to the server.
-> ok, understood. Then the sysctl change that you suggest, I've been checking both distributions, RHEL6 and FC14 and they share the same value... I assume by this that changing this value will not "help", am I right?
+In order to pass information between the above functions, we create
+a union in nfs_page to hold a lseg (which is possible because the req is
+not on any list while in transition), and add some flags to indicate
+if we need to use the pnfs code.
 
-It should improve behavior somewhat in both cases, but the delay won't go away entirely.  This was a workaround we gave EL5 customers before this bug was addressed.  In the Fedora case I wouldn't expect a strongly deterministic improvement, but the average wait for "ls -l" should go down somewhat.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/pagelist.c        |    5 ++-
+ fs/nfs/pnfs.h            |   73 ++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/write.c           |   41 ++++++++++++++++---------
+ include/linux/nfs_fs.h   |    1 +
+ include/linux/nfs_page.h |    6 +++-
+ 5 files changed, 108 insertions(+), 18 deletions(-)
 
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index fd85618..87a593c 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -398,6 +398,7 @@ int nfs_scan_list(struct nfs_inode *nfsi,
+ 	pgoff_t idx_end;
+ 	int found, i;
+ 	int res;
++	struct list_head *list;
+ 
+ 	res = 0;
+ 	if (npages == 0)
+@@ -418,10 +419,10 @@ int nfs_scan_list(struct nfs_inode *nfsi,
+ 			idx_start = req->wb_index + 1;
+ 			if (nfs_set_page_tag_locked(req)) {
+ 				kref_get(&req->wb_kref);
+-				nfs_list_remove_request(req);
+ 				radix_tree_tag_clear(&nfsi->nfs_page_tree,
+ 						req->wb_index, tag);
+-				nfs_list_add_request(req, dst);
++				list = pnfs_choose_commit_list(req, dst);
++				nfs_list_add_request(req, list);
+ 				res++;
+ 				if (res == INT_MAX)
+ 					goto out;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 6380b94..5370f1b 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -74,6 +74,13 @@ struct pnfs_layoutdriver_type {
+ 	/* test for nfs page cache coalescing */
+ 	int (*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
+ 
++	/* Returns true if layoutdriver wants to divert this request to
++	 * driver's commit routine.
++	 */
++	bool (*mark_pnfs_commit)(struct pnfs_layout_segment *lseg);
++	struct list_head * (*choose_commit_list) (struct nfs_page *req);
++	int (*commit_pagelist)(struct inode *inode, struct list_head *mds_pages, int how);
++
+ 	/*
+ 	 * Return PNFS_ATTEMPTED to indicate the layout code has attempted
+ 	 * I/O, else return PNFS_NOT_ATTEMPTED to fall back to normal NFS
+@@ -169,6 +176,51 @@ static inline int pnfs_enabled_sb(struct nfs_server *nfss)
+ 	return nfss->pnfs_curr_ld != NULL;
+ }
+ 
++static inline void
++pnfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
++{
++	if (lseg) {
++		struct pnfs_layoutdriver_type *ld;
++
++		ld = NFS_SERVER(req->wb_page->mapping->host)->pnfs_curr_ld;
++		if (ld->mark_pnfs_commit && ld->mark_pnfs_commit(lseg)) {
++			set_bit(PG_PNFS_COMMIT, &req->wb_flags);
++			req->wb_commit_lseg = get_lseg(lseg);
++		}
++	}
++}
++
++static inline int
++pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how)
++{
++	if (!test_and_clear_bit(NFS_INO_PNFS_COMMIT, &NFS_I(inode)->flags))
++		return PNFS_NOT_ATTEMPTED;
++	return NFS_SERVER(inode)->pnfs_curr_ld->commit_pagelist(inode, mds_pages, how);
++}
++
++static inline struct list_head *
++pnfs_choose_commit_list(struct nfs_page *req, struct list_head *mds)
++{
++	struct list_head *rv;
++
++	if (test_and_clear_bit(PG_PNFS_COMMIT, &req->wb_flags)) {
++		struct inode *inode = req->wb_commit_lseg->pls_layout->plh_inode;
++
++		set_bit(NFS_INO_PNFS_COMMIT, &NFS_I(inode)->flags);
++		rv = NFS_SERVER(inode)->pnfs_curr_ld->choose_commit_list(req);
++		/* matched by ref taken when PG_PNFS_COMMIT is set */
++		put_lseg(req->wb_commit_lseg);
++	} else
++		rv = mds;
++	return rv;
++}
++
++static inline void pnfs_clear_request_commit(struct nfs_page *req)
++{
++	if (test_and_clear_bit(PG_PNFS_COMMIT, &req->wb_flags))
++		put_lseg(req->wb_commit_lseg);
++}
++
+ #else  /* CONFIG_NFS_V4_1 */
+ 
+ static inline void pnfs_destroy_all_layouts(struct nfs_client *clp)
+@@ -252,6 +304,27 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *ino)
+ 	pgio->pg_test = NULL;
+ }
+ 
++static inline void
++pnfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
++{
++}
++
++static inline int
++pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how)
++{
++	return PNFS_NOT_ATTEMPTED;
++}
++
++static inline struct list_head *
++pnfs_choose_commit_list(struct nfs_page *req, struct list_head *mds)
++{
++	return mds;
++}
++
++static inline void pnfs_clear_request_commit(struct nfs_page *req)
++{
++}
++
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #endif /* FS_NFS_PNFS_H */
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index f5f005e..6927a18 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -441,7 +441,7 @@ nfs_mark_request_dirty(struct nfs_page *req)
+  * Add a request to the inode's commit list.
+  */
+ static void
+-nfs_mark_request_commit(struct nfs_page *req)
++nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
+ {
+ 	struct inode *inode = req->wb_context->path.dentry->d_inode;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+@@ -453,6 +453,7 @@ nfs_mark_request_commit(struct nfs_page *req)
+ 			NFS_PAGE_TAG_COMMIT);
+ 	nfsi->ncommit++;
+ 	spin_unlock(&inode->i_lock);
++	pnfs_mark_request_commit(req, lseg);
+ 	inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
+ 	inc_bdi_stat(req->wb_page->mapping->backing_dev_info, BDI_RECLAIMABLE);
+ 	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
+@@ -481,10 +482,11 @@ int nfs_write_need_commit(struct nfs_write_data *data)
+ }
+ 
+ static inline
+-int nfs_reschedule_unstable_write(struct nfs_page *req)
++int nfs_reschedule_unstable_write(struct nfs_page *req,
++				  struct nfs_write_data *data)
+ {
+ 	if (test_and_clear_bit(PG_NEED_COMMIT, &req->wb_flags)) {
+-		nfs_mark_request_commit(req);
++		nfs_mark_request_commit(req, data->lseg);
+ 		return 1;
+ 	}
+ 	if (test_and_clear_bit(PG_NEED_RESCHED, &req->wb_flags)) {
+@@ -495,7 +497,7 @@ int nfs_reschedule_unstable_write(struct nfs_page *req)
+ }
+ #else
+ static inline void
+-nfs_mark_request_commit(struct nfs_page *req)
++nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg)
+ {
+ }
+ 
+@@ -512,7 +514,8 @@ int nfs_write_need_commit(struct nfs_write_data *data)
+ }
+ 
+ static inline
+-int nfs_reschedule_unstable_write(struct nfs_page *req)
++int nfs_reschedule_unstable_write(struct nfs_page *req,
++				  struct nfs_write_data *data)
+ {
+ 	return 0;
+ }
+@@ -615,9 +618,11 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+ 	}
+ 
+ 	if (nfs_clear_request_commit(req) &&
+-			radix_tree_tag_clear(&NFS_I(inode)->nfs_page_tree,
+-				req->wb_index, NFS_PAGE_TAG_COMMIT) != NULL)
++	    radix_tree_tag_clear(&NFS_I(inode)->nfs_page_tree,
++				 req->wb_index, NFS_PAGE_TAG_COMMIT) != NULL) {
+ 		NFS_I(inode)->ncommit--;
++		pnfs_clear_request_commit(req);
++	}
+ 
+ 	/* Okay, the request matches. Update the region */
+ 	if (offset < req->wb_offset) {
+@@ -765,11 +770,12 @@ int nfs_updatepage(struct file *file, struct page *page,
+ 	return status;
+ }
+ 
+-static void nfs_writepage_release(struct nfs_page *req)
++static void nfs_writepage_release(struct nfs_page *req,
++				  struct nfs_write_data *data)
+ {
+ 	struct page *page = req->wb_page;
+ 
+-	if (PageError(req->wb_page) || !nfs_reschedule_unstable_write(req))
++	if (PageError(req->wb_page) || !nfs_reschedule_unstable_write(req, data))
+ 		nfs_inode_remove_request(req);
+ 	nfs_clear_page_tag_locked(req);
+ 	nfs_end_page_writeback(page);
+@@ -1087,7 +1093,7 @@ static void nfs_writeback_release_partial(void *calldata)
+ 
+ out:
+ 	if (atomic_dec_and_test(&req->wb_complete))
+-		nfs_writepage_release(req);
++		nfs_writepage_release(req, data);
+ 	nfs_writedata_release(calldata);
+ }
+ 
+@@ -1154,7 +1160,7 @@ static void nfs_writeback_release_full(void *calldata)
+ 
+ 		if (nfs_write_need_commit(data)) {
+ 			memcpy(&req->wb_verf, &data->verf, sizeof(req->wb_verf));
+-			nfs_mark_request_commit(req);
++			nfs_mark_request_commit(req, data->lseg);
+ 			dprintk(" marked for commit\n");
+ 			goto next;
+ 		}
+@@ -1357,14 +1363,15 @@ static void nfs_init_commit(struct nfs_write_data *data,
+ 	nfs_fattr_init(&data->fattr);
+ }
+ 
+-static void nfs_retry_commit(struct list_head *page_list)
++static void nfs_retry_commit(struct list_head *page_list,
++		      struct pnfs_layout_segment *lseg)
+ {
+ 	struct nfs_page *req;
+ 
+ 	while (!list_empty(page_list)) {
+ 		req = nfs_list_entry(page_list->next);
+ 		nfs_list_remove_request(req);
+-		nfs_mark_request_commit(req);
++		nfs_mark_request_commit(req, lseg);
+ 		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
+ 		dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
+ 			     BDI_RECLAIMABLE);
+@@ -1389,7 +1396,7 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how)
+ 	nfs_init_commit(data, head);
+ 	return nfs_initiate_commit(data, NFS_CLIENT(inode), data->mds_ops, how);
+  out_bad:
+-	nfs_retry_commit(head);
++	nfs_retry_commit(head, NULL);
+ 	nfs_commit_clear_lock(NFS_I(inode));
+ 	return -ENOMEM;
+ }
+@@ -1477,7 +1484,11 @@ int nfs_commit_inode(struct inode *inode, int how)
+ 	res = nfs_scan_commit(inode, &head, 0, 0);
+ 	spin_unlock(&inode->i_lock);
+ 	if (res) {
+-		int error = nfs_commit_list(inode, &head, how);
++		int error;
++
++		error = pnfs_commit_list(inode, &head, how);
++		if (error == PNFS_NOT_ATTEMPTED)
++			error = nfs_commit_list(inode, &head, how);
+ 		if (error < 0)
+ 			return error;
+ 		if (!may_wait)
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index cb2add4..f64ea14 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -221,6 +221,7 @@ struct nfs_inode {
+ #define NFS_INO_FSCACHE		(5)		/* inode can be cached by FS-Cache */
+ #define NFS_INO_FSCACHE_LOCK	(6)		/* FS-Cache cookie management lock */
+ #define NFS_INO_COMMIT		(7)		/* inode is committing unstable writes */
++#define NFS_INO_PNFS_COMMIT	(8)		/* use pnfs code for commit */
+ 
+ static inline struct nfs_inode *NFS_I(const struct inode *inode)
+ {
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 92d54c8..8023e4e 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -33,11 +33,15 @@ enum {
+ 	PG_CLEAN,
+ 	PG_NEED_COMMIT,
+ 	PG_NEED_RESCHED,
++	PG_PNFS_COMMIT,
+ };
+ 
+ struct nfs_inode;
+ struct nfs_page {
+-	struct list_head	wb_list;	/* Defines state of page: */
++	union {
++		struct list_head	wb_list;	/* Defines state of page: */
++		struct pnfs_layout_segment *wb_commit_lseg; /* Used when PG_PNFS_COMMIT set */
++	};
+ 	struct page		*wb_page;	/* page to read in/write out */
+ 	struct nfs_open_context	*wb_context;	/* File state context info */
+ 	struct nfs_lock_context	*wb_lock_context;	/* lock context info */
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.2.1
 
