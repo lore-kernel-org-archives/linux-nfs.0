@@ -1,68 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:19419 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932884Ab1CWN2D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2011 09:28:03 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 03/12] NFSv4.1: add callback to nfs4_commit_done
-Date: Wed, 23 Mar 2011 09:27:46 -0400
-Message-Id: <1300886875-5016-4-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
-References: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
+Received: from daytona.panasas.com ([67.152.220.89]:7728 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932576Ab1CWTup (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 15:50:45 -0400
+Message-ID: <4D8A4F2B.5040007@panasas.com>
+Date: Wed, 23 Mar 2011 21:51:07 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: Fred Isaman <iisaman@netapp.com>
+CC: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 09/12] NFSv4.1: remove GETATTR from ds commits
+References: <1300886875-5016-1-git-send-email-iisaman@netapp.com> <1300886875-5016-10-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1300886875-5016-10-git-send-email-iisaman@netapp.com>
+Content-Type: text/plain; charset=windows-1255
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Add a callback that the pnfs layout driver can use to do its own
-error handling of the data server's COMMIT response.
+On 2011-03-23 15:27, Fred Isaman wrote:
+> Any COMMIT compound directed to a data server needs to have the
+> GETATTR calls suppressed.  We here, make sure the field we are testing
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/nfs4proc.c |   14 ++++++++++----
- 1 files changed, 10 insertions(+), 4 deletions(-)
+s/We/While/?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1d84e70..bcc29bd 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3195,12 +3195,9 @@ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_WRITE];
- }
- 
--static int nfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
-+static int nfs4_commit_done_cb(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	struct inode *inode = data->inode;
--	
--	if (!nfs4_sequence_done(task, &data->res.seq_res))
--		return -EAGAIN;
- 
- 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), NULL) == -EAGAIN) {
- 		nfs_restart_rpc(task, NFS_SERVER(inode)->nfs_client);
-@@ -3210,11 +3207,20 @@ static int nfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
- 	return 0;
- }
- 
-+static int nfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
-+{
-+	if (!nfs4_sequence_done(task, &data->res.seq_res))
-+		return -EAGAIN;
-+	return data->write_done_cb(task, data);
-+}
-+
- static void nfs4_proc_commit_setup(struct nfs_write_data *data, struct rpc_message *msg)
- {
- 	struct nfs_server *server = NFS_SERVER(data->inode);
- 	
- 	data->args.bitmask = server->cache_consistency_bitmask;
-+	if (!data->write_done_cb)
-+		data->write_done_cb = nfs4_commit_done_cb;
- 	data->res.server = server;
- 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COMMIT];
- }
--- 
-1.7.2.1
+Benny
 
+> (data->lseg) is set and refcounted correctly.
+> 
+> Signed-off-by: Fred Isaman <iisaman@netapp.com>
