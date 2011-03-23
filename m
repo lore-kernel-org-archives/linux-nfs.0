@@ -1,83 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga14.intel.com ([143.182.124.37]:60582 "EHLO mga14.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932237Ab1CYHLx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Mar 2011 03:11:53 -0400
-Date: Fri, 25 Mar 2011 15:11:50 +0800
-From: Wu Fengguang <fengguang.wu@intel.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Jan Kara <jack@suse.cz>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: NFS page states & writeback
-Message-ID: <20110325071149.GB5970@localhost>
-References: <20110325012803.GA25052@quack.suse.cz>
- <20110325044754.GK26611@dastard>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110325044754.GK26611@dastard>
+Received: from cn.fujitsu.com ([222.73.24.84]:53408 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751073Ab1CWJkp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 05:40:45 -0400
+Message-ID: <4D89C05F.50208@cn.fujitsu.com>
+Date: Wed, 23 Mar 2011 17:41:51 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 10/17] CLNT: test resues slot ID
+References: <4D6DE26C.3010103@cn.fujitsu.com> <4D6DE4A5.1050702@cn.fujitsu.com> <20110303061442.GE7724@fieldses.org> <4D6F5B4E.7000903@cn.fujitsu.com> <4D70AB97.3070502@cn.fujitsu.com> <20110314184144.GB25442@fieldses.org> <20110314192434.GC25442@fieldses.org> <4D7ED324.4070600@cn.fujitsu.com> <20110317225245.GE31845@fieldses.org> <4D886F71.8050001@cn.fujitsu.com> <20110322214839.GA17784@fieldses.org>
+In-Reply-To: <20110322214839.GA17784@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Mar 25, 2011 at 12:47:54PM +0800, Dave Chinner wrote:
-> On Fri, Mar 25, 2011 at 02:28:03AM +0100, Jan Kara wrote:
-> >   Hi,
-> > 
-> >   while working on changes to balance_dirty_pages() I was investigating why
-> > NFS writeback is *so* bumpy when I do not call writeback_inodes_wb() from
-> > balance_dirty_pages(). Take a single dd writing to NFS. What I can
-> > see is that we quickly accumulate dirty pages upto limit - ~700 MB on that
-> > machine. So flusher thread starts working and in an instant all these ~700
-> > MB transition from Dirty state to Writeback state. Then, as server acks
-> > writes, Writeback pages slowly change to Unstable pages (at 100 MB/s rate
-> > let's say) and then at one moment (commit to server happens) all pages
-> > transition from Unstable to Clean state - the cycle begins from the start.
-> > 
-> > The reason for this behavior seems to be a flaw in the logic in
-> > over_bground_thresh() which checks:
-> > global_page_state(NR_FILE_DIRTY) +
-> >       global_page_state(NR_UNSTABLE_NFS) > background_thresh
-> > So at the moment all pages are turned Writeback, flusher thread goes to
-> > sleep and doesn't do any background writeback, until we have accumulated
-> > enough Stable pages to get over background_thresh. But NFS needs to have
-> > ->write_inode() called so that it can sent commit requests to the server.
-> > So effectively we end up sending commit only when background_thresh Unstable
-> > pages have accumulated which creates the bumpyness. Previously this wasn't
-> > a problem because balance_dirty_pages() ended up calling ->write_inode()
-> > often enough for NFS to send commit requests reasonably often.
-> > 
-> > Now I wouldn't write so long email about this if I knew how to cleanly fix
-> > the check ;-). One way to "fix" the check would be to add there Writeback
-> > pages:
-> > NR_FILE_DIRTY + NR_WRITEBACK + NR_UNSTABLE_NFS > background_thresh
-> > 
-> > This would work in the sense that it would keep flusher thread working but
-> > a) for normal filesystems it would be working even if there's potentially
-> > nothing to do (or it is not necessary to do anything)
-> > b) NFS is picky when it sends commit requests (inode has to have more
-> > Stable pages than Writeback pages if I'm reading the code in
-> > nfs_commit_unstable_pages() right) so flusher thread may be working but
-> > nothing really happens until enough stable pages accumulate.
-> > 
-> > A check which kind of works but looks a bit hacky and is not perfect when
-> > there are multiple files is:
-> > NR_FILE_DIRTY + NR_UNSTABLE_NFS > background_thresh ||
-> > NR_UNSTABLE_NFS > NR_WRITEBACK (to match what NFS does)
-> > 
-> > Any better idea for a fix?
+
+
+J. Bruce Fields:
+> On Tue, Mar 22, 2011 at 05:44:17PM +0800, Mi Jinlong wrote:
+>>   I have made a mistake about this case, we don't need the filehandle from GETFHres,
+>>   that is just unnecessary.
+>>
+>>   Thanks for your point about the homedir, 
+>>   I found a function named use_obj at nfs4lib which can solve our problem.
+>>
+>>   After fixed, maybe the following patch is OK now.
 > 
-> Have NFS account for it's writeback pages to also be accounted as
-> NR_UNSTABLE_NFS pages? i.e. rather than incrementing NR_UNSTABLE_NFS
-> at the writeback->unstable transition, account it at the
-> dirty->writeback transition....
+> Great, thanks--applied.
+> 
+> At this point I've applied and pushed out everything I've taken from
+> you.
 
-This increases the opportunity for the NFS flusher to busy loop. Maybe
-not a big problem as long as we add some sleep in the loop.
+  Thanks.
 
-writeback: sleep for 10ms when nothing is written
-http://linux.derkeiler.com/Mailing-Lists/Kernel/2010-12/msg06391.html
+> 
+> So let me know what else you still have that's not in my git repo.  I
+> know there are the reclaim_complete tests that you're still looking
+> at, but there might also be a few other odd tests that I still had
+> questions about?
 
-Thanks,
-Fengguang
+  No. Just those tests about reclaim_complete.
+
+  Maybe I have meet some other problem about pynfs41 tests, 
+  I will send the fixing out after I check out.
+
+-- 
+----
+thanks
+Mi Jinlong
+
