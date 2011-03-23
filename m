@@ -1,103 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from citi.umich.edu ([141.212.112.111]:55875 "EHLO citi.umich.edu"
+Received: from mx2.netapp.com ([216.240.18.37]:19419 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754437Ab1CCA7P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Mar 2011 19:59:15 -0500
-From: Kevin Coffman <kwc@citi.umich.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: <linux-nfs@vger.kernel.org>, Kevin Coffman <kwc@citi.umich.edu>
-Subject: [PATCH 2/2] nfsd: add proc file listing kernel's gss_krb5 enctypes
-Date: Wed,  2 Mar 2011 19:51:42 -0500
-Message-Id: <1299113502-17179-3-git-send-email-kwc@citi.umich.edu>
-In-Reply-To: <1299113502-17179-1-git-send-email-kwc@citi.umich.edu>
-References: <1299113502-17179-1-git-send-email-kwc@citi.umich.edu>
+	id S932884Ab1CWN2D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 09:28:03 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 03/12] NFSv4.1: add callback to nfs4_commit_done
+Date: Wed, 23 Mar 2011 09:27:46 -0400
+Message-Id: <1300886875-5016-4-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
+References: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 MIME-Version: 1.0
 
-Add a new proc file which lists the encryption types supported
-by the kernel's gss_krb5 code.
+Add a callback that the pnfs layout driver can use to do its own
+error handling of the data server's COMMIT response.
 
-Newer MIT Kerberos libraries support the assertion of acceptor
-subkeys.  This enctype information allows user-land (svcgssd)
-to request that the Kerberos libraries limit the encryption
-types that it uses when generating the subkeys.
-
-Signed-off-by: Kevin Coffman <kwc@citi.umich.edu>
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
 ---
- fs/nfsd/nfsctl.c |   31 ++++++++++++++++++++++++++++++-
- 1 files changed, 30 insertions(+), 1 deletions(-)
+ fs/nfs/nfs4proc.c |   14 ++++++++++----
+ 1 files changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 33b3e2b..35dcfa8 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -12,13 +12,14 @@
- #include <linux/nfsd/syscall.h>
- #include <linux/lockd/lockd.h>
- #include <linux/sunrpc/clnt.h>
-+#include <linux/sunrpc/gss_api.h>
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1d84e70..bcc29bd 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3195,12 +3195,9 @@ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_WRITE];
+ }
  
- #include "idmap.h"
- #include "nfsd.h"
- #include "cache.h"
+-static int nfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
++static int nfs4_commit_done_cb(struct rpc_task *task, struct nfs_write_data *data)
+ {
+ 	struct inode *inode = data->inode;
+-	
+-	if (!nfs4_sequence_done(task, &data->res.seq_res))
+-		return -EAGAIN;
  
- /*
-- *	We have a single directory with 9 nodes in it.
-+ *	We have a single directory with several nodes in it.
-  */
- enum {
- 	NFSD_Root = 1,
-@@ -42,6 +43,7 @@ enum {
- 	NFSD_Versions,
- 	NFSD_Ports,
- 	NFSD_MaxBlkSize,
-+	NFSD_SupportedEnctypes,
- 	/*
- 	 * The below MUST come last.  Otherwise we leave a hole in nfsd_files[]
- 	 * with !CONFIG_NFSD_V4 and simple_fill_super() goes oops
-@@ -187,6 +189,32 @@ static struct file_operations export_features_operations = {
- 	.release	= single_release,
- };
+ 	if (nfs4_async_handle_error(task, NFS_SERVER(inode), NULL) == -EAGAIN) {
+ 		nfs_restart_rpc(task, NFS_SERVER(inode)->nfs_client);
+@@ -3210,11 +3207,20 @@ static int nfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
+ 	return 0;
+ }
  
-+static int supported_enctypes_show(struct seq_file *m, void *v)
++static int nfs4_commit_done(struct rpc_task *task, struct nfs_write_data *data)
 +{
-+	struct gss_api_mech *k5mech;
-+
-+	k5mech = gss_mech_get_by_name("krb5");
-+	if (k5mech == NULL)
-+		goto out;
-+	if (k5mech->gm_upcall_enctypes != NULL)
-+		seq_printf(m, k5mech->gm_upcall_enctypes);
-+	gss_mech_put(k5mech);
-+out:
-+	return 0;
++	if (!nfs4_sequence_done(task, &data->res.seq_res))
++		return -EAGAIN;
++	return data->write_done_cb(task, data);
 +}
 +
-+static int supported_enctypes_open(struct inode *inode, struct file *file)
-+{
-+	return single_open(file, supported_enctypes_show, NULL);
-+}
-+
-+static struct file_operations supported_enctypes_ops = {
-+	.open		= supported_enctypes_open,
-+	.read		= seq_read,
-+	.llseek		= seq_lseek,
-+	.release	= single_release,
-+};
-+
- extern int nfsd_pool_stats_open(struct inode *inode, struct file *file);
- extern int nfsd_pool_stats_release(struct inode *inode, struct file *file);
- 
-@@ -1397,6 +1425,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
- 		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
-+		[NFSD_SupportedEnctypes] = {"supported_krb5_enctypes", &supported_enctypes_ops, S_IRUGO},
- #ifdef CONFIG_NFSD_V4
- 		[NFSD_Leasetime] = {"nfsv4leasetime", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Gracetime] = {"nfsv4gracetime", &transaction_ops, S_IWUSR|S_IRUSR},
+ static void nfs4_proc_commit_setup(struct nfs_write_data *data, struct rpc_message *msg)
+ {
+ 	struct nfs_server *server = NFS_SERVER(data->inode);
+ 	
+ 	data->args.bitmask = server->cache_consistency_bitmask;
++	if (!data->write_done_cb)
++		data->write_done_cb = nfs4_commit_done_cb;
+ 	data->res.server = server;
+ 	msg->rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COMMIT];
+ }
 -- 
-1.7.3.4
+1.7.2.1
 
