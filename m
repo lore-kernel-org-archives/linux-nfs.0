@@ -1,161 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail4.conversis.de ([213.203.219.181]:44090 "EHLO
-	mail4.conversis.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752933Ab1CUTEX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2011 15:04:23 -0400
-Message-ID: <4D87A135.6090309@conversis.de>
-Date: Mon, 21 Mar 2011 20:04:21 +0100
-From: Dennis Jacobfeuerborn <dennisml@conversis.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: bind mounts, crossmnt and multi client nfsv3
-References: <4D86B6F2.1070004@conversis.de> <20110321140923.5a618d89@notabene.brown> <4D874419.5030303@conversis.de> <20110321172530.GA32359@fieldses.org> <4D87908E.1020107@conversis.de> <20110321181913.GA472@fieldses.org>
-In-Reply-To: <20110321181913.GA472@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:64002 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755537Ab1CWMai (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 08:30:38 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 06/11] NFSv4.1: shift filelayout_free_lseg
+Date: Wed, 23 Mar 2011 08:30:07 -0400
+Message-Id: <1300883412-32296-7-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1300883412-32296-1-git-send-email-iisaman@netapp.com>
+References: <1300883412-32296-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 03/21/2011 07:19 PM, J. Bruce Fields wrote:
-> On Mon, Mar 21, 2011 at 06:53:18PM +0100, Dennis Jacobfeuerborn wrote:
->> On 03/21/2011 06:25 PM, J. Bruce Fields wrote:
->>> On Mon, Mar 21, 2011 at 01:27:05PM +0100, Dennis Jacobfeuerborn wrote:
->>>> On 03/21/2011 04:09 AM, NeilBrown wrote:
->>>>> On Mon, 21 Mar 2011 03:24:50 +0100 Dennis Jacobfeuerborn
->>>>> <d.jacobfeuerborn@conversis.de>    wrote:
->>>>>
->>>>>> Hi,
->>>>>> I have a storage system that is exporting many directories to multiple
->>>>>> clients resulting in a lot of mountpoints (156) on each client. What I'm
->>>>>> trying to do is to create a single directory on the server and then use
->>>>>> mount --bind to mount all the different directories (which are stored on
->>>>>> different LVM volumes) into this single export directory and finally export
->>>>>> this directory to the clients.
->>>>>> Now the exports man-page mentions the crossmnt option but it also mentions
->>>>>> that it cannot be used if I want to export the directory to multiple
->>>>>> clients. Is there another way to accomplish something like this?
->>>>>>
->>>>>
->>>>> Just export the top directory with 'crossmnt' - it should work fine.
->>>>>
->>>>> The 'multiple clients' thing only affects 'nohide' and I think it only
->>>>> affected it back in 2.4 days.
->>>>> Lots changed with 2.6, but maybe not enough of the man page changed :-(
->>>>>
->>>>> So try with 'crossmnt' and if it doesn't work, then come back with details.
->>>>
->>>> I've tried this now but it doesn't seem to work. This is the setup so far:
->>>>
->>>> ===========
->>>>
->>>> On the server I've created the bind mounts like this:
->>>>
->>>> /mnt/vg0/vol01/country/de/a on /exports/country/de/a type none (rw,bind)
->>>> /mnt/vg0/vol03/country/de/b on /exports/country/de/b type none (rw,bind)
->>>> ...
->>>>
->>>> Then I put the following line in /etc/exports:
->>>> /exports 192.168.0.0/255.255.255.0(rw,anonuid=96,anongid=96,secure,no_root_squash,wdelay,sync,crossmnt,no_subtree_check)
->>>>
->>>> additionally these exports exist for each volume:
->>>> /mnt/vg0/vol01/country 213.131.252.0/255.255.255.0(rw,anonuid=96,anongid=96,secure,no_root_squash,wdelay,sync)
->>>
->>> I'm a bit confused by the paths and ip blocks:
->>>
->>> 	- You want to export the path that the client sees
->>> 	  (/exports/country/whatever), not the original path
->>> 	  (/mnt/vg0/...).
->>> 	- If you expect clients to be able to traverse from /exports/ to
->>> 	  filesystems underneath, then you'd want to make sure /exports/
->>> 	  is exported to anything that the filesystems underneath are.
->>
->> The /mnt/vg0/volXX exports are currently used to export each
->> filesystem containing letters individually. On the client I then
->> mount each letter individually which means access to each mountpoint
->> doesn't have to traverse filesystem boundaries on the server but it
->> also means I end up with 156 individual mountpoints which is a pain
->> to deal with. I had to write a script that runs a loop mounting 5
->> letters then waiting 30 seconds then mount the next 5 letters etc.
->> If I try to mount these in one go about 10 mounts work fine but then
->> I only get errors. Apparently the server can only handle so many
->> mounts in a certain timeframe (socket timeouts?)
->
-> Might be interesting to pin that problem down.  I wonder if "insecure"
-> would help?
+Move it up to avoid forward declaration in later patch.
 
-I'm going to give it a try.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c |   20 ++++++++++----------
+ 1 files changed, 10 insertions(+), 10 deletions(-)
 
->> That's why I'm aiming for consolidating the letters on the server
->> using bind mounts and then just mount the country directories
->> leaving me with 6 mountpoints per client which would be *much*
->> easier to handle.
->
-> Oh, so you're actually exporting each filesystem *twice*, in two
-> different places?
->
-> I think the server can deal with that.  But probably only if the two
-> filesystems have the same export options.  (You've got crossmnt and
-> no_subtree_check set on one but not the other.)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 4285584..9401afd 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -496,6 +496,16 @@ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+ 	return 0;
+ }
+ 
++static void
++filelayout_free_lseg(struct pnfs_layout_segment *lseg)
++{
++	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
++
++	dprintk("--> %s\n", __func__);
++	nfs4_fl_put_deviceid(fl->dsaddr);
++	_filelayout_free_lseg(fl);
++}
++
+ static struct pnfs_layout_segment *
+ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
+ 		      struct nfs4_layoutget_res *lgr)
+@@ -517,16 +527,6 @@ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
+ 	return &fl->generic_hdr;
+ }
+ 
+-static void
+-filelayout_free_lseg(struct pnfs_layout_segment *lseg)
+-{
+-	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
+-
+-	dprintk("--> %s\n", __func__);
+-	nfs4_fl_put_deviceid(fl->dsaddr);
+-	_filelayout_free_lseg(fl);
+-}
+-
+ /*
+  * filelayout_pg_test(). Called by nfs_can_coalesce_requests()
+  *
+-- 
+1.7.2.1
 
-I've modified the entries so that the options are now exactly identical in 
-/var/lib/nfs/etab (all have set nohide,crossmnt,no_subtree_check now). This 
-doesn't seem to help so far.
-
-> Wait, and looks like you're also bind mounting *subdirectories* of
-> filesystems instead of whole filesystems.  I'm not sure the server will
-> handle that the way you'd expect.
->
-> Is there any reason you can't just bind-mount all of /mnt/vg0/vol01/, or
-> whatever, to the same path?
-
-Each of the 10 volumes contains (not quite) random letter directories for 
-various countries and when the are mounted on the clients they end up in 
-the proper hierarchy e.g.:
-
-vol01/de/a => country/de/a
-vol03/de/b => country/de/b
-vol07/de/c => country/de/c
-...
-vol03/fr/a => country/fr/a
-vol05/fr/b => country/fr/b
-...
-
-so I cannot really mount entire volumes in one go on the client. I guess 
-another way would be to mount the volumes on the clients and then use bind 
-mounts there to create the appropriate hierarchy. Since I'd have to 
-duplicate that on each client though I'd really like to avoid this and 
-accomplish this on the server side.
-
->> The 192 IP range was a mistake and that should be the same 213 range
->> as the /exports export. If I can get this working then I plan to
->> eliminate the individual /mnt/vg0/... exports if they are not
->> needed.
->>
->>> But actually you should only need the first /exports entry; filesystems
->>> underneath should inherit export options from the parent.
->>
->> This is what /var/lib/nfs/etab says for /exports after an exportfs -r:
->> /exports 213.131.252.0/255.255.255.0(rw,sync,wdelay,hide,crossmnt,secure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,mapping=identity,anonuid=96,anongid=96)
->>
->> When I mount this I can see the proper subdirectories until I get to
->> the bind mounted letter directories which have their expected
->> contents on the server but appear empty on the client.
->
-> Note also NFSv2/v3 clients aren't necessarily equipped to deal with
-> filesystem boundaries, and some applications may be confused by seeing
-> what look like files with the same inode number on the same filesystem
-> that are actually different files.
-
-I'd be interested to move on to v4 but from what I've heard the 
-user-mapping no longer is done using the uid. Since the users don't have 
-entries in /etc/passwd and exist purely as id's in the filesystem the 
-username based mapping in nfsv4 doesn't allow me to use it in this case.
-I guess the only way to accomplish that would be to write a custom 
-rpcidmapd daemon?
-
-I'm currently downloading the openfiler installer so I can replicate the 
-setup here for better testing. Maybe updating the nfs-utils package to a 
-more current version will have an impact.
-
-Regards,
-   Dennis
