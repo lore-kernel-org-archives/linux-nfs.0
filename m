@@ -1,63 +1,196 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:37618 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:5931 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750834Ab1CPPMH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Mar 2011 11:12:07 -0400
-Date: Wed, 16 Mar 2011 11:12:05 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs41: make sure nfs server return right
- ca_maxresponsesize_cached
-Message-ID: <20110316151205.GA9299@fieldses.org>
-References: <4D789D49.7090407@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D789D49.7090407@cn.fujitsu.com>
+	id S932583Ab1CWSsc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 14:48:32 -0400
+Message-ID: <4D8A407D.7060307@netapp.com>
+Date: Wed, 23 Mar 2011 14:48:29 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 2/3] NFS: Create nfs_open_dir_context
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Mar 10, 2011 at 05:43:37PM +0800, Mi Jinlong wrote:
-> According to rfc5661, 
->   
->   ca_maxresponsesize_cached:
-> 
->      Like ca_maxresponsesize, but the maximum size of a reply that
->      will be stored in the reply cache (Section 2.10.6.1).  For each
->      channel, the server MAY decrease this value, but MUST NOT
->      increase it.
+nfs_opendir() created a context that held much more information than we
+need for a readdir.  This patch introduces a slimmed-down
+nfs_open_dir_context that contains only the cookie and the cred used for
+RPC operations.  The new context will eventually be used to help detect
+readdir loops.
 
-I wonder what the reason for that is--I can't see why the client would
-object to the server increasing this.  Oh well, my as well observe the
-MUST NOT; applied.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/dir.c           |   54 +++++++++++++++++++++++++++++++++++++++++------
+ fs/nfs/inode.c         |    1 -
+ include/linux/nfs_fs.h |    3 ++
+ 3 files changed, 50 insertions(+), 8 deletions(-)
 
---b.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e9fa2c8..112494a 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -44,6 +44,7 @@
+ /* #define NFS_DEBUG_VERBOSE 1 */
+ 
+ static int nfs_opendir(struct inode *, struct file *);
++static int nfs_closedir(struct inode *, struct file *);
+ static int nfs_readdir(struct file *, void *, filldir_t);
+ static struct dentry *nfs_lookup(struct inode *, struct dentry *, struct nameidata *);
+ static int nfs_create(struct inode *, struct dentry *, int, struct nameidata *);
+@@ -64,7 +65,7 @@ const struct file_operations nfs_dir_operations = {
+ 	.read		= generic_read_dir,
+ 	.readdir	= nfs_readdir,
+ 	.open		= nfs_opendir,
+-	.release	= nfs_release,
++	.release	= nfs_closedir,
+ 	.fsync		= nfs_fsync_dir,
+ };
+ 
+@@ -133,13 +134,33 @@ const struct inode_operations nfs4_dir_inode_operations = {
+ 
+ #endif /* CONFIG_NFS_V4 */
+ 
++static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct rpc_cred *cred)
++{
++	struct nfs_open_dir_context *ctx;
++	ctx = kmalloc(sizeof(*ctx), GFP_KERNEL);
++	if (ctx != NULL) {
++		ctx->dir_cookie = 0;
++		ctx->cred = get_rpccred(cred);
++	} else
++		ctx = ERR_PTR(-ENOMEM);
++	return ctx;
++}
++
++static void put_nfs_open_dir_context(struct nfs_open_dir_context *ctx)
++{
++	put_rpccred(ctx->cred);
++	kfree(ctx);
++}
++
+ /*
+  * Open file
+  */
+ static int
+ nfs_opendir(struct inode *inode, struct file *filp)
+ {
+-	int res;
++	int res = 0;
++	struct nfs_open_dir_context *ctx;
++	struct rpc_cred *cred;
+ 
+ 	dfprintk(FILE, "NFS: open dir(%s/%s)\n",
+ 			filp->f_path.dentry->d_parent->d_name.name,
+@@ -147,8 +168,15 @@ nfs_opendir(struct inode *inode, struct file *filp)
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
+ 
+-	/* Call generic open code in order to cache credentials */
+-	res = nfs_open(inode, filp);
++	cred = rpc_lookup_cred();
++	if (IS_ERR(cred))
++		return PTR_ERR(cred);
++	ctx = alloc_nfs_open_dir_context(cred);
++	if (IS_ERR(ctx)) {
++		res = PTR_ERR(ctx);
++		goto out;
++	}
++	filp->private_data = ctx;
+ 	if (filp->f_path.dentry == filp->f_path.mnt->mnt_root) {
+ 		/* This is a mountpoint, so d_revalidate will never
+ 		 * have been called, so we need to refresh the
+@@ -156,9 +184,18 @@ nfs_opendir(struct inode *inode, struct file *filp)
+ 		 */
+ 		__nfs_revalidate_inode(NFS_SERVER(inode), inode);
+ 	}
++out:
++	put_rpccred(cred);
+ 	return res;
+ }
+ 
++static int
++nfs_closedir(struct inode *inode, struct file *filp)
++{
++	put_nfs_open_dir_context(filp->private_data);
++	return 0;
++}
++
+ struct nfs_cache_array_entry {
+ 	u64 cookie;
+ 	u64 ino;
+@@ -355,7 +392,8 @@ static
+ int nfs_readdir_xdr_filler(struct page **pages, nfs_readdir_descriptor_t *desc,
+ 			struct nfs_entry *entry, struct file *file, struct inode *inode)
+ {
+-	struct rpc_cred	*cred = nfs_file_cred(file);
++	struct nfs_open_dir_context *ctx = file->private_data;
++	struct rpc_cred	*cred = ctx->cred;
+ 	unsigned long	timestamp, gencount;
+ 	int		error;
+ 
+@@ -786,6 +824,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+ 	struct inode	*inode = dentry->d_inode;
+ 	nfs_readdir_descriptor_t my_desc,
+ 			*desc = &my_desc;
++	struct nfs_open_dir_context *dir_ctx = filp->private_data;
+ 	int res;
+ 
+ 	dfprintk(FILE, "NFS: readdir(%s/%s) starting at cookie %llu\n",
+@@ -802,7 +841,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
+ 	memset(desc, 0, sizeof(*desc));
+ 
+ 	desc->file = filp;
+-	desc->dir_cookie = &nfs_file_open_context(filp)->dir_cookie;
++	desc->dir_cookie = &dir_ctx->dir_cookie;
+ 	desc->decode = NFS_PROTO(inode)->decode_dirent;
+ 	desc->plus = NFS_USE_READDIRPLUS(inode);
+ 
+@@ -854,6 +893,7 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int origin)
+ {
+ 	struct dentry *dentry = filp->f_path.dentry;
+ 	struct inode *inode = dentry->d_inode;
++	struct nfs_open_dir_context *dir_ctx = filp->private_data;
+ 
+ 	dfprintk(FILE, "NFS: llseek dir(%s/%s, %lld, %d)\n",
+ 			dentry->d_parent->d_name.name,
+@@ -873,7 +913,7 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int origin)
+ 	}
+ 	if (offset != filp->f_pos) {
+ 		filp->f_pos = offset;
+-		nfs_file_open_context(filp)->dir_cookie = 0;
++		dir_ctx->dir_cookie = 0;
+ 	}
+ out:
+ 	mutex_unlock(&inode->i_mutex);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 01768e5..366f5f7 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -639,7 +639,6 @@ struct nfs_open_context *alloc_nfs_open_context(struct path *path, struct rpc_cr
+ 		ctx->mode = f_mode;
+ 		ctx->flags = 0;
+ 		ctx->error = 0;
+-		ctx->dir_cookie = 0;
+ 		nfs_init_lock_context(&ctx->lock_context);
+ 		ctx->lock_context.open_context = ctx;
+ 		INIT_LIST_HEAD(&ctx->list);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index f88522b..4b87c00 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -93,7 +93,10 @@ struct nfs_open_context {
+ 	int error;
+ 
+ 	struct list_head list;
++};
+ 
++struct nfs_open_dir_context {
++	struct rpc_cred *cred;
+ 	__u64 dir_cookie;
+ };
+ 
+-- 
+1.7.4.1
 
->  
-> the latest kernel(2.6.38-rc8) may increase the value for ignoring 
-> request's ca_maxresponsesize_cached value. We should not ignore it.
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  fs/nfsd/nfs4state.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 54b60bf..96edd02 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -608,7 +608,8 @@ static void init_forechannel_attrs(struct nfsd4_channel_attrs *new, struct nfsd4
->  	u32 maxrpc = nfsd_serv->sv_max_mesg;
->  
->  	new->maxreqs = numslots;
-> -	new->maxresp_cached = slotsize + NFSD_MIN_HDR_SEQ_SZ;
-> +	new->maxresp_cached = min_t(u32, req->maxresp_cached, 
-> +					slotsize + NFSD_MIN_HDR_SEQ_SZ);
->  	new->maxreq_sz = min_t(u32, req->maxreq_sz, maxrpc);
->  	new->maxresp_sz = min_t(u32, req->maxresp_sz, maxrpc);
->  	new->maxops = min_t(u32, req->maxops, NFSD_MAX_OPS_PER_COMPOUND);
-> -- 
-> 1.7.4.1
-> 
-> 
-> 
