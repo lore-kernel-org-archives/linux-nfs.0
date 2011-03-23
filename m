@@ -1,124 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:34404 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752663Ab1CNWWf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Mar 2011 18:22:35 -0400
-Date: Mon, 14 Mar 2011 18:22:29 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
-Cc: roel <roel.kluin@gmail.com>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: wrong index used in inner loop
-Message-ID: <20110314222229.GJ25442@fieldses.org>
-References: <4D76A06A.4090405@gmail.com>
- <20110309004955.GD15814@fieldses.org>
- <4D79A183.8090306@cn.fujitsu.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D79A183.8090306@cn.fujitsu.com>
+Received: from relay03.bluemeaney.com ([205.234.16.187]:56771 "EHLO
+	relay03.bluemeaney.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751899Ab1CWJmX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 05:42:23 -0400
+Message-ID: <4D89BCE6.3040707@nexenta.com>
+Date: Wed, 23 Mar 2011 12:27:02 +0300
+From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] nfs4: Fix NULL dereference at d_alloc_and_lookup()
+References: <1300830025-17152-1-git-send-email-gusev.vitaliy@nexenta.com>	 <1300830742.9442.53.camel@lade.trondhjem.org>	 <1300834707.17103.61.camel@vT510> <1300838379.22796.35.camel@lade.trondhjem.org>
+In-Reply-To: <1300838379.22796.35.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Mar 11, 2011 at 12:13:55PM +0800, Mi Jinlong wrote:
-> 
-> 
-> J. Bruce Fields:
-> > On Tue, Mar 08, 2011 at 10:32:26PM +0100, roel wrote:
-> >> Index i was already used in the outer loop
-> >>
-> >> Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
-> >> ---
-> >>  fs/nfsd/nfs4xdr.c |    4 ++--
-> >>  1 files changed, 2 insertions(+), 2 deletions(-)
-> >>
-> >> Not 100% sure this one is needed but it looks suspicious.
-> > 
-> > Looks bad to me, thanks.
-> > 
-> > nfsd4_decode_create_session should probably really be broken up a little
-> > bit; if it wasn't so long this would have been more obvious.
-> > 
-> > I'll see if I can slip this into 2.6.38 with a couple other last-minute
-> > patches....  Otherwise, it'll be in 2.6.39.
-> > 
-> > --b.
-> > 
-> >> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> >> index 1275b86..615f0a9 100644
-> >> --- a/fs/nfsd/nfs4xdr.c
-> >> +++ b/fs/nfsd/nfs4xdr.c
-> >> @@ -1142,7 +1142,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
-> >>  
-> >>  	u32 dummy;
-> >>  	char *machine_name;
-> >> -	int i;
-> >> +	int i, j;
-> >>  	int nr_secflavs;
-> >>  
-> >>  	READ_BUF(16);
-> >> @@ -1215,7 +1215,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
-> >>  			READ_BUF(4);
-> >>  			READ32(dummy);
-> >>  			READ_BUF(dummy * 4);
-> >> -			for (i = 0; i < dummy; ++i)
-> >> +			for (j = 0; j < dummy; ++j)
-> >>  				READ32(dummy);
-> 
->   We must not use dummy for index here.
->   After the first index, READ32(dummy) will change dummy!!!!
+On 03/23/2011 02:59 AM, Trond Myklebust wrote:
+> On Wed, 2011-03-23 at 01:58 +0300, Vitaliy Gusev wrote:
+>> On Tue, 2011-03-22 at 17:52 -0400, Trond Myklebust wrote:
+>>> On Wed, 2011-03-23 at 00:40 +0300, Vitaliy Gusev wrote:
+>>>> From: Gusev Vitaliy<gusev.vitaliy@nexenta.com>
+>>>>
+>>>> d_alloc_and_lookup() calls i_op->lookup method due to
+>>>> rootfh changes his fsid.
+>>>>
+>>>> During mount i_op of NFS root inode is set to
+>>>> nfs_mountpoint_inode_operations, if rpc_ops->getroot()
+>>>> and rpc_ops->getattr() return different fsid.
+>>>
+>>> That is a server bug! Why are you trying to "fix" that on the client
+>>> instead of telling the user that their server deserves to be burned
+>>> behind the shed?
+>>>
+>>
+>> Because nfs_update_inode() does it with success and pleasure:
+>>
+>> 	if (S_ISDIR(inode->i_mode)&&  (fattr->valid&  NFS_ATTR_FATTR_FSID)&&
+>> 			!nfs_fsid_equal(&server->fsid,&fattr->fsid)&&
+>> 			!IS_AUTOMOUNT(inode))
+>> 		server->fsid = fattr->fsid;
+>>
+>> And what are the reasons to tell to user about broken servers during
+>> mount, but do not tell about it after mount ?
+>
+> Sigh... That is a valid point.
+>
+> Looking at the Linux NFS server, I see that it has 3 different ways to
+> derive a fsid: only two are guaranteed to survive a reboot. I believe
+> that is probably why we added the above code to nfs_update_inode().
+>
+> Looking now at the uses of nfs4_get_root(), it looks as if all the users
+> have compared the original fsid to the super block fsid prior to getting
+> here, and so we know (hope) that the directory that was obtained with
+> this filehandle did at one point match. If that is always the case, then
+> we should be safe w.r.t. mistaking this for a server-side mountpoint.
+> Since a referral is supposed to give us an error when we try to get the
+> directory attributes,
 
-Actually, wait, this is kind of silly.  I don't see why we couldn't just
-skip the loop and do
+Check on referral at nfs4_get_rootfh():
 
-	p += dummy;
+	if (fsinfo.fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
+		printk(KERN_ERR "nfs4_get_rootfh:"
+		       " getroot obtained referral\n");
+		ret = -EREMOTE;
+		goto out;
+	}
 
-Also, your new test is still failing with a BAD_XDR error.  Well, maybe
-the test should fail--we don't really implement this yet anyway--but it
-should at least be getting past the xdr decoding.  So something else is
-still wrong.
+is vain and can be removed. That path never sets NFS_ATTR_FATTR_V4_REFERRAL.
 
---b.
+then we know this isn't pointing to a referral.
 
-> 
->   The following patch fix this problem.
-> 
-> --
-> thanks,
-> Mi Jinlong
-> ============================================================
-> 
-> We must not use dummy for index.
-> After the first index, READ32(dummy) will change dummy!!!!
-> 
-> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
-> ---
->  fs/nfsd/nfs4xdr.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 615f0a9..8dd70d0 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1140,7 +1140,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
->  {
->  	DECODE_HEAD;
->  
-> -	u32 dummy;
-> +	u32 dummy, tmp;
->  	char *machine_name;
->  	int i, j;
->  	int nr_secflavs;
-> @@ -1216,7 +1216,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
->  			READ32(dummy);
->  			READ_BUF(dummy * 4);
->  			for (j = 0; j < dummy; ++j)
-> -				READ32(dummy);
-> +				READ32(tmp);
->  			break;
->  		case RPC_AUTH_GSS:
->  			dprintk("RPC_AUTH_GSS callback secflavor "
-> -- 
-> 1.7.4.1
-> 
-> 
+
+Check
+
+(A)
+	if (mntroot->d_inode->i_op != 
+NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
+		dput(mntroot);
+		error = -ESTALE;
+		goto error_splat_super;
+	}
+
+was initially added by commit 4c1fe2f7 and now is not required because:
+
+   1. This patch fixes of changing i_op at nfs_fhget(). So 
+nfs4_get_root() always will return i_op == dir_inode_ops.
+
+   2. commit 4c1fe2f7 fixed BUG_ON at nfs_follow_mountpoint(). Now there 
+is no BUG_ON. It was replaced with ESTALE by commit 44d5759d
+
+So only one thing that does check (A) -  it fixes changing fsid 
+behaviour for NFSv2,NFSv3 protocol - nfs_xdev_mount(). In other places 
+it can be removed:
+
+*** fs/nfs/super.c:
+nfs_xdev_mount[2483]           if (mntroot->d_inode->i_op != 
+NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
+
+nfs4_xdev_mount[3066]          if (mntroot->d_inode->i_op != 
+NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
+
+nfs4_remote_referral_mount[3153] if (mntroot->d_inode->i_op != 
+NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
+
+
+
+>
+> OK, I'll take this patch...
+
