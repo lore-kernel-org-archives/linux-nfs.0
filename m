@@ -1,125 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.parallels.com ([64.131.90.16]:55190 "EHLO mx2.parallels.com"
+Received: from mx2.netapp.com ([216.240.18.37]:50793 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757005Ab1CaHsM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 Mar 2011 03:48:12 -0400
-Message-ID: <4D9431B3.2070305@parallels.com>
-Date: Thu, 31 Mar 2011 02:48:03 -0500
-From: Rob Landley <rlandley@parallels.com>
-To: <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <containers@lists.linux-foundation.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Tim Spriggs <tims@uahirise.org>, Kir Kolyshkin <kir@parallels.com>,
-        Pavel Emelyanov <xemul@parallels.com>
-Subject: [PATCH 3/3] Compare namespaces when comparing addresses in auth_unix
- cache.
-Content-Type: text/plain; charset="ISO-8859-1"
+	id S1754434Ab1CWR72 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 13:59:28 -0400
+Received: from svlrsexc2-prd.hq.netapp.com (svlrsexc2-prd.hq.netapp.com [10.57.115.31])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id p2NHxRYF026750
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Mar 2011 10:59:27 -0700 (PDT)
+Subject: Re: [PATCH 2/3] NFS: Create nfs_open_dir_context
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <4D8A305E.6090006@netapp.com>
+References: <4D8A305E.6090006@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 23 Mar 2011 13:59:26 -0400
+Message-ID: <1300903166.11677.34.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-From: Rob Landley <rlandley@parallels.com>
+On Wed, 2011-03-23 at 13:39 -0400, Bryan Schumaker wrote:
+> nfs_opendir() created a context that held much more information than we need for
+> a readdir.  This patch introduces a slimmed-down nfs_open_dir_context that
+> contains only the cookie and the cred used for RPC operations.  The new
+> context will eventually be used to help detect readdir loops.
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfs/dir.c           |   53 +++++++++++++++++++++++++++++++++++++++++------
+>  fs/nfs/inode.c         |    1 -
+>  include/linux/nfs_fs.h |    3 ++
+>  3 files changed, 49 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index e9fa2c8..b503791 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -44,6 +44,7 @@
+>  /* #define NFS_DEBUG_VERBOSE 1 */
+>  
+>  static int nfs_opendir(struct inode *, struct file *);
+> +static int nfs_closedir(struct inode *, struct file *);
+>  static int nfs_readdir(struct file *, void *, filldir_t);
+>  static struct dentry *nfs_lookup(struct inode *, struct dentry *, struct nameidata *);
+>  static int nfs_create(struct inode *, struct dentry *, int, struct nameidata *);
+> @@ -64,7 +65,7 @@ const struct file_operations nfs_dir_operations = {
+>  	.read		= generic_read_dir,
+>  	.readdir	= nfs_readdir,
+>  	.open		= nfs_opendir,
+> -	.release	= nfs_release,
+> +	.release	= nfs_closedir,
+>  	.fsync		= nfs_fsync_dir,
+>  };
+>  
+> @@ -133,13 +134,32 @@ const struct inode_operations nfs4_dir_inode_operations = {
+>  
+>  #endif /* CONFIG_NFS_V4 */
+>  
+> +static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct rpc_cred *cred)
+> +{
+> +	struct nfs_open_dir_context *ctx;
+> +	ctx = kmalloc(sizeof(*ctx), GFP_KERNEL);
+> +	if (ctx != NULL) {
+> +		ctx->dir_cookie = 0;
+> +		ctx->cred = get_rpccred(cred);
+> +	}
+> +	return ctx;
+> +}
+> +
+> +static void put_nfs_open_dir_context(struct nfs_open_dir_context *ctx)
+> +{
+> +	put_rpccred(ctx->cred);
+> +	kfree(ctx);
+> +}
+> +
+>  /*
+>   * Open file
+>   */
+>  static int
+>  nfs_opendir(struct inode *inode, struct file *filp)
+>  {
+> -	int res;
+> +	int res = 0;
+> +	struct nfs_open_dir_context *ctx;
+> +	struct rpc_cred *cred;
+>  
+>  	dfprintk(FILE, "NFS: open dir(%s/%s)\n",
+>  			filp->f_path.dentry->d_parent->d_name.name,
+> @@ -147,8 +167,15 @@ nfs_opendir(struct inode *inode, struct file *filp)
+>  
+>  	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
+>  
+> -	/* Call generic open code in order to cache credentials */
+> -	res = nfs_open(inode, filp);
+> +	cred = rpc_lookup_cred();
+> +	if (IS_ERR(cred))
+> +		return PTR_ERR(cred);
+> +	ctx = alloc_nfs_open_dir_context(cred);
+> +	if (IS_ERR(ctx)) {
 
-The auth_unix cache needs to check network namespace when comparing
-addresses. Add field to struct ip_map and extra argument to
-__ip_map_lookup() so it has the information to do so, and add test.
+As far as I can see, alloc_nfs_open_dir_context returns a NULL if it
+fails, not an ERR_PTR() value.
 
-Signed-off-by: Rob Landley <rlandley@parallels.com>
----
+> +		res = PTR_ERR(ctx);
+> +		goto out;
+> +	}
+> +	filp->private_data = ctx;
+>  	if (filp->f_path.dentry == filp->f_path.mnt->mnt_root) {
+>  		/* This is a mountpoint, so d_revalidate will never
+>  		 * have been called, so we need to refresh the
 
- net/sunrpc/svcauth_unix.c |   21 ++++++++++++++-------
- 1 file changed, 14 insertions(+), 7 deletions(-)
 
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 30916b0..63a2fa7 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -14,6 +14,7 @@
- #include <net/sock.h>
- #include <net/ipv6.h>
- #include <linux/kernel.h>
-+#include <linux/user_namespace.h>
- #define RPCDBG_FACILITY	RPCDBG_AUTH
- 
- #include <linux/sunrpc/clnt.h>
-@@ -94,6 +95,7 @@ struct ip_map {
- 	struct cache_head	h;
- 	char			m_class[8]; /* e.g. "nfsd" */
- 	struct in6_addr		m_addr;
-+	struct net		*m_net;
- 	struct unix_domain	*m_client;
- #ifdef CONFIG_NFSD_DEPRECATED
- 	int			m_add_change;
-@@ -134,6 +136,7 @@ static int ip_map_match(struct cache_head *corig, struct cache_head *cnew)
- 	struct ip_map *orig = container_of(corig, struct ip_map, h);
- 	struct ip_map *new = container_of(cnew, struct ip_map, h);
- 	return strcmp(orig->m_class, new->m_class) == 0 &&
-+	       net_eq(orig->m_net, new->m_net) &&
- 	       ipv6_addr_equal(&orig->m_addr, &new->m_addr);
- }
- static void ip_map_init(struct cache_head *cnew, struct cache_head *citem)
-@@ -142,6 +145,7 @@ static void ip_map_init(struct cache_head *cnew, struct cache_head *citem)
- 	struct ip_map *item = container_of(citem, struct ip_map, h);
- 
- 	strcpy(new->m_class, item->m_class);
-+	new->m_net = item->m_net;
- 	ipv6_addr_copy(&new->m_addr, &item->m_addr);
- }
- static void update(struct cache_head *cnew, struct cache_head *citem)
-@@ -186,7 +190,7 @@ static int ip_map_upcall(struct cache_detail *cd, struct cache_head *h)
- 	return sunrpc_cache_pipe_upcall(cd, h, ip_map_request);
- }
- 
--static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class, struct in6_addr *addr);
-+static struct ip_map *__ip_map_lookup(struct cache_detail *cd, struct net *net, char *class, struct in6_addr *addr);
- static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm, struct unix_domain *udom, time_t expiry);
- 
- static int ip_map_parse(struct cache_detail *cd,
-@@ -256,7 +260,8 @@ static int ip_map_parse(struct cache_detail *cd,
- 		dom = NULL;
- 
- 	/* IPv6 scope IDs are ignored for now */
--	ipmp = __ip_map_lookup(cd, class, &sin6.sin6_addr);
-+	ipmp = __ip_map_lookup(cd, current->nsproxy->net_ns, class,
-+			       &sin6.sin6_addr);
- 	if (ipmp) {
- 		err = __ip_map_update(cd, ipmp,
- 			     container_of(dom, struct unix_domain, h),
-@@ -301,13 +306,14 @@ static int ip_map_show(struct seq_file *m,
- }
- 
- 
--static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class,
--		struct in6_addr *addr)
-+static struct ip_map *__ip_map_lookup(struct cache_detail *cd, struct net *net,
-+		char *class, struct in6_addr *addr)
- {
- 	struct ip_map ip;
- 	struct cache_head *ch;
- 
- 	strcpy(ip.m_class, class);
-+	ip.m_net = net;
- 	ipv6_addr_copy(&ip.m_addr, addr);
- 	ch = sunrpc_cache_lookup(cd, &ip.h,
- 				 hash_str(class, IP_HASHBITS) ^
-@@ -325,7 +331,7 @@ static inline struct ip_map *ip_map_lookup(struct net *net, char *class,
- 	struct sunrpc_net *sn;
- 
- 	sn = net_generic(net, sunrpc_net_id);
--	return __ip_map_lookup(sn->ip_map_cache, class, addr);
-+	return __ip_map_lookup(sn->ip_map_cache, net, class, addr);
- }
- 
- static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm,
-@@ -748,8 +754,9 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
- 
- 	ipm = ip_map_cached_get(xprt);
- 	if (ipm == NULL)
--		ipm = __ip_map_lookup(sn->ip_map_cache, rqstp->rq_server->sv_program->pg_class,
--				    &sin6->sin6_addr);
-+		ipm = __ip_map_lookup(sn->ip_map_cache, net,
-+				      rqstp->rq_server->sv_program->pg_class,
-+				      &sin6->sin6_addr);
- 
- 	if (ipm == NULL)
- 		return SVC_DENIED;
+... otherwise this looks ok.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
