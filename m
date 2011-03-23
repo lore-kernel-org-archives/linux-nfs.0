@@ -1,79 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:41615 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:64002 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755972Ab1CRDwl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Mar 2011 23:52:41 -0400
-Date: Fri, 18 Mar 2011 14:52:32 +1100
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Small O_SYNC writes are no longer NFS_DATA_SYNC
-Message-ID: <20110318145232.7bbb4216@notabene.brown>
-In-Reply-To: <1300415108.13476.6.camel@lade.trondhjem.org>
-References: <20110216171555.6642c630@notabene.brown>
-	<1300405987.4621.10.camel@lade.trondhjem.org>
-	<20110318120417.435551da@notabene.brown>
-	<1300412966.9671.9.camel@lade.trondhjem.org>
-	<20110318131214.0e2c840a@notabene.brown>
-	<1300415108.13476.6.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1755085Ab1CWMai (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 08:30:38 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 04/11] NFSv4.1: pull error handling out of nfs_commit_list
+Date: Wed, 23 Mar 2011 08:30:05 -0400
+Message-Id: <1300883412-32296-5-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1300883412-32296-1-git-send-email-iisaman@netapp.com>
+References: <1300883412-32296-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On Thu, 17 Mar 2011 22:25:08 -0400 Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
+Create a separate support function for later use by data server
+commit code.
 
-> On Fri, 2011-03-18 at 13:12 +1100, NeilBrown wrote:
-> > On Thu, 17 Mar 2011 21:49:26 -0400 Trond Myklebust
-> > <Trond.Myklebust@netapp.com> wrote:
-> > 
-> > > However we could adopt the Solaris convention of always starting
-> > > writebacks with a FILE_SYNC, and then falling back to UNSTABLE for the
-> > > second rpc call and all subsequent calls...
-> > > 
-> > 
-> > That approach certainly has merit.
-> > 
-> > However, as we know from the wbc info whether the write is small and sync -
-> > which is the only case where I think a STABLE write is needed - I cannot see
-> > why you don't want to just use that information to guide the choice of
-> > 'stable' or not ???
-> 
-> By far the most common case we would want to optimise for is the sync at
-> close() or fsync() when you have written a small file (<= wsize). If we
-> can't optimise for that case, then the optimisation isn't worth doing at
-> all.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/write.c |   26 ++++++++++++++++----------
+ 1 files changed, 16 insertions(+), 10 deletions(-)
 
-Fair point.  I hadn't thought of that.
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index bf672fa..dbc8018 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1357,6 +1357,21 @@ static void nfs_init_commit(struct nfs_write_data *data,
+ 	nfs_fattr_init(&data->fattr);
+ }
+ 
++static void nfs_retry_commit(struct list_head *page_list)
++{
++	struct nfs_page *req;
++
++	while (!list_empty(page_list)) {
++		req = nfs_list_entry(page_list->next);
++		nfs_list_remove_request(req);
++		nfs_mark_request_commit(req);
++		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
++		dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
++			     BDI_RECLAIMABLE);
++		nfs_clear_page_tag_locked(req);
++	}
++}
++
+ /*
+  * Commit dirty pages
+  */
+@@ -1364,7 +1379,6 @@ static int
+ nfs_commit_list(struct inode *inode, struct list_head *head, int how)
+ {
+ 	struct nfs_write_data	*data;
+-	struct nfs_page         *req;
+ 
+ 	data = nfs_commitdata_alloc();
+ 
+@@ -1375,15 +1389,7 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how)
+ 	nfs_init_commit(data, head);
+ 	return nfs_initiate_commit(data, NFS_CLIENT(inode), data->mds_ops, how);
+  out_bad:
+-	while (!list_empty(head)) {
+-		req = nfs_list_entry(head->next);
+-		nfs_list_remove_request(req);
+-		nfs_mark_request_commit(req);
+-		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
+-		dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
+-				BDI_RECLAIMABLE);
+-		nfs_clear_page_tag_locked(req);
+-	}
++	nfs_retry_commit(head);
+ 	nfs_commit_clear_lock(NFS_I(inode));
+ 	return -ENOMEM;
+ }
+-- 
+1.7.2.1
 
-> 
-> The point is that in that particular case, the wbc doesn't help you at
-> all since the limits are set at 0 and LLONG_MAX (see nfs_wb_all(),
-> write_inode_now(),...)
-> 
-
-I would be trivial to use min(wbc->range_end, i_size_read(inode)) as the
-upper bound when assessing the size of the range to compare with 'wsize'.
-
-However that wouldn't address the case of a small append to a large file
-which would also be good to optimise.
-
-If you can detect the 'first' RPC reliably at the same time that you still
-have access to the wbc information, then:
-
- if this is the first request in a writeback, and the difference beween
-  the address of this page, and min(wbc->range_end, i_size_read(inode))
-  is less than wsize, then make it a STABLE write
-
-might be a heuristic that catches most interesting cases.
-It might be a bit complex though.
-
-I think we should in general err on the size of not using a STABLE write
-when it might be useful rather than using a STABLE write when it is not
-necessary as, while there a costs each way, I think the cost of incorrectly
-using STABLE would be higher.
-
-Thanks for the clarification.
-
-NeilBrown
