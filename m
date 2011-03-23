@@ -1,153 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:63312 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751169Ab1COCav (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Mar 2011 22:30:51 -0400
-Message-ID: <4D7ECF91.2030308@cn.fujitsu.com>
-Date: Tue, 15 Mar 2011 10:31:45 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: roel <roel.kluin@gmail.com>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: wrong index used in inner loop
-References: <4D76A06A.4090405@gmail.com> <20110309004955.GD15814@fieldses.org> <4D79A183.8090306@cn.fujitsu.com> <20110314222229.GJ25442@fieldses.org>
-In-Reply-To: <20110314222229.GJ25442@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:34838 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932773Ab1CWP0W convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 11:26:22 -0400
+Subject: Re: [PATCH 0/4] RFC: RPC over AF_LOCAL, kernel client-side
+Content-Type: text/plain; charset=us-ascii
+From: Andy Adamson <andros@netapp.com>
+In-Reply-To: <20110322220518.4360.51304.stgit@matisse.1015granger.net>
+Date: Wed, 23 Mar 2011 11:26:05 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <B08BDAF0-04A9-42ED-ACCE-6291E0F6BF4E@netapp.com>
+References: <20110322220518.4360.51304.stgit@matisse.1015granger.net>
+To: Chuck Lever <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Are you reviving the "RPC Upcall" that I implemented 10 years ago?
 
+-->Andy
 
-J. Bruce Fields:
-> On Fri, Mar 11, 2011 at 12:13:55PM +0800, Mi Jinlong wrote:
->>
->> J. Bruce Fields:
->>> On Tue, Mar 08, 2011 at 10:32:26PM +0100, roel wrote:
->>>> Index i was already used in the outer loop
->>>>
->>>> Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
->>>> ---
->>>>  fs/nfsd/nfs4xdr.c |    4 ++--
->>>>  1 files changed, 2 insertions(+), 2 deletions(-)
->>>>
->>>> Not 100% sure this one is needed but it looks suspicious.
->>> Looks bad to me, thanks.
->>>
->>> nfsd4_decode_create_session should probably really be broken up a little
->>> bit; if it wasn't so long this would have been more obvious.
->>>
->>> I'll see if I can slip this into 2.6.38 with a couple other last-minute
->>> patches....  Otherwise, it'll be in 2.6.39.
->>>
->>> --b.
->>>
->>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->>>> index 1275b86..615f0a9 100644
->>>> --- a/fs/nfsd/nfs4xdr.c
->>>> +++ b/fs/nfsd/nfs4xdr.c
->>>> @@ -1142,7 +1142,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
->>>>  
->>>>  	u32 dummy;
->>>>  	char *machine_name;
->>>> -	int i;
->>>> +	int i, j;
->>>>  	int nr_secflavs;
->>>>  
->>>>  	READ_BUF(16);
->>>> @@ -1215,7 +1215,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
->>>>  			READ_BUF(4);
->>>>  			READ32(dummy);
->>>>  			READ_BUF(dummy * 4);
->>>> -			for (i = 0; i < dummy; ++i)
->>>> +			for (j = 0; j < dummy; ++j)
->>>>  				READ32(dummy);
->>   We must not use dummy for index here.
->>   After the first index, READ32(dummy) will change dummy!!!!
+On Mar 22, 2011, at 6:08 PM, Chuck Lever wrote:
+
+> Just for sh*ts and giggles, I threw together a partial implementation
+> of RPC over AF_LOCAL sockets, and taught the kernel rpcbind client to
+> use it for registering in-kernel RPC services.
 > 
-> Actually, wait, this is kind of silly.  I don't see why we couldn't just
-> skip the loop and do
+> It's still a little rough around the edges.  Any thoughts?
 > 
-> 	p += dummy;
+> ---
 > 
-> Also, your new test is still failing with a BAD_XDR error.  Well, maybe
-> the test should fail--we don't really implement this yet anyway--but it
-> should at least be getting past the xdr decoding.  So something else is
-> still wrong.
-
-  How did you modify it??
-
-  When testing it, I modify as 
- 
-    -                       for (j = 0; j < dummy; ++j)
-    -                               READ32(dummy);
-    +                       p += dummy;
-
-  or
-    
-    -                       for (j = 0; j < dummy; ++j)
-    -                               READ32(dummy);
-
-  Test case CSESS16 and CSESS16a are PASS, 
-  I can't get BAD_XDR error as you said.
-
---
-thanks,
-Mi Jinlong
-
+> Chuck Lever (4):
+>      SUNRPC: Use AF_LOCAL for rpcbind upcalls
+>      SUNRPC: Support for RPC over AF_LOCAL transports
+>      SUNRPC: Rename xs_encode_tcp_fragment_header()
+>      SUNRPC: Clean up use of curly braces in switch cases
 > 
-> --b.
 > 
->>   The following patch fix this problem.
->>
->> --
->> thanks,
->> Mi Jinlong
->> ============================================================
->>
->> We must not use dummy for index.
->> After the first index, READ32(dummy) will change dummy!!!!
->>
->> Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
->> ---
->>  fs/nfsd/nfs4xdr.c |    4 ++--
->>  1 files changed, 2 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->> index 615f0a9..8dd70d0 100644
->> --- a/fs/nfsd/nfs4xdr.c
->> +++ b/fs/nfsd/nfs4xdr.c
->> @@ -1140,7 +1140,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
->>  {
->>  	DECODE_HEAD;
->>  
->> -	u32 dummy;
->> +	u32 dummy, tmp;
->>  	char *machine_name;
->>  	int i, j;
->>  	int nr_secflavs;
->> @@ -1216,7 +1216,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
->>  			READ32(dummy);
->>  			READ_BUF(dummy * 4);
->>  			for (j = 0; j < dummy; ++j)
->> -				READ32(dummy);
->> +				READ32(tmp);
->>  			break;
->>  		case RPC_AUTH_GSS:
->>  			dprintk("RPC_AUTH_GSS callback secflavor "
->> -- 
->> 1.7.4.1
->>
->>
+> include/linux/sunrpc/msg_prot.h |    1 
+> include/linux/sunrpc/xprt.h     |    3 
+> net/sunrpc/clnt.c               |   25 +-
+> net/sunrpc/rpcb_clnt.c          |   97 ++++++++-
+> net/sunrpc/svc.c                |    2 
+> net/sunrpc/xprtsock.c           |  417 ++++++++++++++++++++++++++++++++++++++-
+> 6 files changed, 506 insertions(+), 39 deletions(-)
+> 
+> -- 
+> Chuck Lever
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
--- 
-----
-thanks
-Mi Jinlong
 
