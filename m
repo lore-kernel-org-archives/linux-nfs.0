@@ -1,62 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:29699 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755078Ab1CRBuC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2011 21:50:02 -0400
-Subject: Re: Small O_SYNC writes are no longer NFS_DATA_SYNC
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20110318120417.435551da@notabene.brown>
-References: <20110216171555.6642c630@notabene.brown>
-	 <1300405987.4621.10.camel@lade.trondhjem.org>
-	 <20110318120417.435551da@notabene.brown>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 17 Mar 2011 21:49:26 -0400
-Message-ID: <1300412966.9671.9.camel@lade.trondhjem.org>
+Received: from gerard.telenet-ops.be ([195.130.132.48]:47126 "EHLO
+	gerard.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754042Ab1CWSEc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 14:04:32 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by mail.boven.lan (Postfix) with SMTP id 1467DD15
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Mar 2011 19:04:29 +0100 (CET)
+Message-ID: <4D8A3628.9040506@telenet.be>
+Date: Wed, 23 Mar 2011 19:04:24 +0100
+From: Tom Boven <tom.boven@telenet.be>
+To: Kevin Coffman <kwc@citi.umich.edu>
+CC: linux-nfs@vger.kernel.org, 619052@bugs.debian.org,
+        Bones <bones_was_here@yahoo.com.au>, Luk Claes <luk@debian.org>,
+        =?ISO-8859-1?Q?An=EDbal_Monsalve_Salazar?= <anibal@debian.org>
+Subject: Re: rpc.gssd: double free or corruption
+References: <AANLkTik72b2H3yVx7-YcE1Bmp73LboMzZ+DSOjww=RS0@mail.gmail.com>	<20110323000925.GA6353@master.debian.org> <AANLkTimX=F3gk2_optA5pX315vpPARuP0DsgmBy0YXbO@mail.gmail.com>
+In-Reply-To: <AANLkTimX=F3gk2_optA5pX315vpPARuP0DsgmBy0YXbO@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-03-18 at 12:04 +1100, NeilBrown wrote:
-> On Thu, 17 Mar 2011 19:53:07 -0400 Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> > Would it ever be wrong to set the FILE_SYNC flag for the very last rpc
-> > call in a writeback series? I'm thinking that we might want to set
-> > FLUSH_STABLE before the call to pageio_complete in
-> > nfs_writepage_locked() and nfs_writepages().
-> 
-> Interesting idea.
-> 
-> Am I correct in assuming you only mean if wbc->sync_mode == WB_SYNC_ALL.
-> It wouldn't seem to make any sense for WB_SYNC_NONE.
-> 
-> In that case that last RPC would be immediately followed by a COMMIT. So it
-> could be reasonable to make it NFS_DATA_SYNC.
+Op 23-03-11 16:32, Kevin Coffman schreef:
+> 2011/3/22 Aníbal Monsalve Salazar<anibal@debian.org>:
+>    
+>> On Wed, Mar 16, 2011 at 09:28:04PM -0400, Kevin Coffman wrote:
+>>      
+>>> A new version of library libgssglue is now available from:
+>>>
+>>> http://www.citi.umich.edu/projects/nfsv4/linux/libgssglue/libgssglue-0.2.tar.gz
+>>>
+>>> Changes since libgssglue-0.1:
+>>>
+>>>        * Modify the gss_acquire_cred() code to accept, and
+>>>          properly handle, an input name of GSS_C_NO_NAME.
+>>>          Other misc. changes to support this change.
+>>>        * Remove some generated files from git.  Change
+>>>          autogen.sh to clean up files that might become
+>>>          outdated and incompatible.
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>        
+>> Hello Kevin,
+>>
+>> Please have a look at Debian bug#619052.
+>>
+>> http://bugs.debian.org/619052
+>>
+>> The attached file is the original bug report.
+>>
+>> Thank you,
+>>
+>> Aníbal
+>>      
+> Hi,
+> So far, I'm stumped.  I've been unable to reproduce this on my Fedora
+> 13 machine.  I have a slightly different version of libc, an earlier
+> version of kerberos, and a later version of nfs-utils (the pnfs
+> version).  I went back to stock versions of everything and simply
+> replaced libgssglue with the new version.
+>
+> glibc-2.12.2-1.x86_64
+> krb5-libs-1.7.1-17.fc13.x86_64
+> krb5-debuginfo-1.7.1-17.fc13.x86_64
+> krb5-auth-dialog-0.15-1.fc13.x86_64
+> krb5-workstation-1.7.1-17.fc13.x86_64
+> pam_krb5-2.3.11-1.fc13.x86_64
+> krb5-devel-1.7.1-17.fc13.x86_64
+> nfs-utils-lib-devel-1.1.5-1.fc13.x86_64
+> nfs-utils-1.2.3-2.pnfs.fc15.x86_64
+> nfs-utils-lib-1.1.5-1.fc13.x86_64
+> nfs-utils-lib-debuginfo-1.1.5-1.fc13.x86_64
+>
+> Are you using any special options to gssd?
+>
+> K.C.
+>
+>    
+I've just checked but no, I don't use any option at all to start rpc.gssd
 
-No. DATA_SYNC _requires_ a COMMIT to ensure that metadata is synced too,
-so it makes little sense to use it here.
-
-> However the server would be seeing something a bit odd - a sequence of
-> unstable writes, then a stable write, then a commit.  This could cause it to
-> 'sync' things in the 'wrong' order which might be less than optimal.  It
-> would depend a lot on the particular server and filesystem of course, but it
-> seems to be mis-communicating.  So I think I would avoid this approach
-> (assuming I understand it correctly).
-
-Yes. Thinking a bit more about it, the latest versions of the Linux
-server actually do use vfs_fsync_range(), so it no longer makes sense to
-replace COMMIT with a FILE_SYNC write.
-
-However we could adopt the Solaris convention of always starting
-writebacks with a FILE_SYNC, and then falling back to UNSTABLE for the
-second rpc call and all subsequent calls...
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Tom
 
