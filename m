@@ -1,80 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64002 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755085Ab1CWMai (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2011 08:30:38 -0400
-From: Fred Isaman <iisaman@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: [PATCH 04/11] NFSv4.1: pull error handling out of nfs_commit_list
-Date: Wed, 23 Mar 2011 08:30:05 -0400
-Message-Id: <1300883412-32296-5-git-send-email-iisaman@netapp.com>
-In-Reply-To: <1300883412-32296-1-git-send-email-iisaman@netapp.com>
-References: <1300883412-32296-1-git-send-email-iisaman@netapp.com>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:35610 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932419Ab1CWSL4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 14:11:56 -0400
+From: <peter.staubach@emc.com>
+To: <bjschuma@netapp.com>, <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Date: Wed, 23 Mar 2011 14:10:09 -0400
+Subject: RE: [PATCH 3/3] NFS: Detect loops in a readdir due to bad cookies
+Message-ID: <5E6794FC7B8FCA41A704019BE3C70E8B0693F02D@MX31A.corp.emc.com>
+References: <4D8A3060.807@netapp.com>
+In-Reply-To: <4D8A3060.807@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Create a separate support function for later use by data server
-commit code.
+Doesn't returning identical cookies for multiple, different entries in the same directory constitute a protocol violation?
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
+		ps
+
+
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Bryan Schumaker
+Sent: Wednesday, March 23, 2011 1:40 PM
+To: Trond >> "Myklebust, Trond"
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] NFS: Detect loops in a readdir due to bad cookies
+
+Some filesystems (such as ext4) can return the same cookie value for multiple
+files.  If we try to start a readdir with one of these cookies, the server will
+return the first file found with a cookie of the same value.  This can cause 
+the client to enter an infinite loop.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/write.c |   26 ++++++++++++++++----------
- 1 files changed, 16 insertions(+), 10 deletions(-)
+ fs/nfs/dir.c           |   23 ++++++++++++++++++++++-
+ include/linux/nfs_fs.h |    2 ++
+ 2 files changed, 24 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index bf672fa..dbc8018 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1357,6 +1357,21 @@ static void nfs_init_commit(struct nfs_write_data *data,
- 	nfs_fattr_init(&data->fattr);
- }
- 
-+static void nfs_retry_commit(struct list_head *page_list)
-+{
-+	struct nfs_page *req;
-+
-+	while (!list_empty(page_list)) {
-+		req = nfs_list_entry(page_list->next);
-+		nfs_list_remove_request(req);
-+		nfs_mark_request_commit(req);
-+		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
-+		dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
-+			     BDI_RECLAIMABLE);
-+		nfs_clear_page_tag_locked(req);
-+	}
-+}
-+
- /*
-  * Commit dirty pages
-  */
-@@ -1364,7 +1379,6 @@ static int
- nfs_commit_list(struct inode *inode, struct list_head *head, int how)
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index b503791..dc475a7 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -139,7 +139,9 @@ static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct rpc_cred *
+ 	struct nfs_open_dir_context *ctx;
+ 	ctx = kmalloc(sizeof(*ctx), GFP_KERNEL);
+ 	if (ctx != NULL) {
++		ctx->duped = 0;
+ 		ctx->dir_cookie = 0;
++		ctx->dup_cookie = 0;
+ 		ctx->cred = get_rpccred(cred);
+ 	}
+ 	return ctx;
+@@ -342,11 +344,18 @@ static
+ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_descriptor_t *desc)
  {
- 	struct nfs_write_data	*data;
--	struct nfs_page         *req;
+ 	int i;
++	int new_pos;
+ 	int status = -EAGAIN;
++	struct nfs_open_dir_context *ctx = desc->file->private_data;
  
- 	data = nfs_commitdata_alloc();
+ 	for (i = 0; i < array->size; i++) {
+ 		if (array->array[i].cookie == *desc->dir_cookie) {
+-			desc->file->f_pos = desc->current_index + i;
++			new_pos = desc->current_index + i;
++			if (new_pos < desc->file->f_pos) {
++				ctx->dup_cookie = *desc->dir_cookie;
++				ctx->duped = 1;
++			}
++			desc->file->f_pos = new_pos;
+ 			desc->cache_entry_index = i;
+ 			return 0;
+ 		}
+@@ -731,6 +740,18 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
+ 	int i = 0;
+ 	int res = 0;
+ 	struct nfs_cache_array *array = NULL;
++	struct nfs_open_dir_context *ctx = file->private_data;
++
++	if (ctx->duped == 1 && ctx->dup_cookie == *desc->dir_cookie) {
++		if (printk_ratelimit()) {
++			pr_notice("NFS: directory %s/%s contains a readdir loop.  "
++				"Please contact your server vendor.",
++				file->f_dentry->d_parent->d_name.name,
++				file->f_dentry->d_name.name);
++		}
++		res = -ELOOP;
++		goto out;
++	}
  
-@@ -1375,15 +1389,7 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how)
- 	nfs_init_commit(data, head);
- 	return nfs_initiate_commit(data, NFS_CLIENT(inode), data->mds_ops, how);
-  out_bad:
--	while (!list_empty(head)) {
--		req = nfs_list_entry(head->next);
--		nfs_list_remove_request(req);
--		nfs_mark_request_commit(req);
--		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
--		dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
--				BDI_RECLAIMABLE);
--		nfs_clear_page_tag_locked(req);
--	}
-+	nfs_retry_commit(head);
- 	nfs_commit_clear_lock(NFS_I(inode));
- 	return -ENOMEM;
- }
+ 	array = nfs_readdir_get_array(desc->page);
+ 	if (IS_ERR(array)) {
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 4b87c00..bbb812b 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -97,7 +97,9 @@ struct nfs_open_context {
+ 
+ struct nfs_open_dir_context {
+ 	struct rpc_cred *cred;
++	int duped;
+ 	__u64 dir_cookie;
++	__u64 dup_cookie;
+ };
+ 
+ /*
 -- 
-1.7.2.1
+1.7.4.1
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
