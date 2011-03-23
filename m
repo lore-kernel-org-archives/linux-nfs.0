@@ -1,38 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:49445 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756475Ab1CWP5C convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 11:57:02 -0400
-Subject: Re: [PATCH 0/4] RFC: RPC over AF_LOCAL, kernel client-side
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <B08BDAF0-04A9-42ED-ACCE-6291E0F6BF4E@netapp.com>
-Date: Wed, 23 Mar 2011 11:56:55 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <B2821425-392E-4212-94FD-75D232CD4B28@oracle.com>
-References: <20110322220518.4360.51304.stgit@matisse.1015granger.net> <B08BDAF0-04A9-42ED-ACCE-6291E0F6BF4E@netapp.com>
-To: Andy Adamson <andros@netapp.com>
+Received: from cantor.suse.de ([195.135.220.2]:47900 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751833Ab1CWGlQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 02:41:16 -0400
+Date: Wed, 23 Mar 2011 17:41:05 +1100
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 mounts take longer the fail from ENETUNREACH than NFSv3
+ mounts.
+Message-ID: <20110323174105.4412e69f@notabene.brown>
+In-Reply-To: <1287692298.9144.95.camel@heimdal.trondhjem.org>
+References: <20101020181701.232dbeea@notabene>
+	<20101020135525.22977d8d@tlielax.poochiereds.net>
+	<20101020151657.42bc53f7@tlielax.poochiereds.net>
+	<20101021074028.44bca336@notabene>
+	<20101020204532.2019eb93@corrin.poochiereds.net>
+	<20101021142518.3934ae17@notabene>
+	<1287669939.3645.12.camel@heimdal.trondhjem.org>
+	<5CF8C718-2D02-481E-9200-8CAA724D9C8C@oracle.com>
+	<1287672124.3645.19.camel@heimdal.trondhjem.org>
+	<20101021154012.48f92cfc@corrin.poochiereds.net>
+	<1287690444.9144.88.camel@heimdal.trondhjem.org>
+	<20101021160846.49f30db3@corrin.poochiereds.net>
+	<1287692298.9144.95.camel@heimdal.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
 
-On Mar 23, 2011, at 11:26 AM, Andy Adamson wrote:
 
-> Are you reviving the "RPC Upcall" that I implemented 10 years ago?
+Hi all,
 
-This patchset doesn't specifically revive that idea, as its narrow purpose is to replace kernel rpcbind registration over network loopback.
+ I wold like to resurrect this old thread from last October, as the issue is
+still a problem.
 
-But the work could be a pre-requisite for a generic upcall mechanism over RPC.  An AF_LOCAL transport can be used as a generic upcall mechanism if user space services set up an AF_LOCAL listener.
+i.e. when the NFSv4 mount client in the kernel gets ENETUNREACH it doesn't
+fail immediately but rather it times out and then fails.
+Note that it doesn't timeout, retry, then fail.
+Rather it gets the error status, waits the timeout (2 minutes), and then fails
+with no retry.
 
-I'm guessing ten years ago there wasn't built-in standardized support for AF_LOCAL RPC transports in the glibc RPC implementation, which may have impeded the success of such a proposal back then.  libtirpc makes AF_LOCAL a little more practical, as the incremental cost of supporting AF_LOCAL for any user space service is now minimal.
+The message below was the last in the thread.  There-in Trond says something
+which sounds sensible and relevant, but unfortunately I completely fail to
+understand the full relevance of because I don't know the ins-and-outs of the
+rpc layer well enough.
 
-Hopefully it should now be easy to start testing assumptions about the development and prototyping costs and the extensibility of using RPC over AF_LOCAL rather than constructing ad hoc upcall mechanisms for new services.
+Trond (or anyone else):  Could you possibly expand on this, maybe with some
+pointers into the code.  I'm happy to try to come up with a fix myself, but I
+don't like my chances with my current level of understanding.
+
+Thanks,
+NeilBrown
+
+
+
+
+On Thu, 21 Oct 2010 16:18:18 -0400 Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+
+> On Thu, 2010-10-21 at 16:08 -0400, Jeff Layton wrote:
+> > On Thu, 21 Oct 2010 15:47:24 -0400
+> > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > 
+> > > On Thu, 2010-10-21 at 15:40 -0400, Jeff Layton wrote:
+> > > > On Thu, 21 Oct 2010 10:42:04 -0400
+> > > > Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> > > > 
+> > > > > On Thu, 2010-10-21 at 10:31 -0400, Chuck Lever wrote:
+> > > > > > On Oct 21, 2010, at 10:05 AM, Trond Myklebust wrote:
+> > > > > > > It seems to me that the problem is basically that RPC_IS_SOFTCONN is
+> > > > > > > poorly defined. IMO, the definition should really be that
+> > > > > > > 'RPC_IS_SOFTCONN' tasks MUST exit with an error if they ever have to run
+> > > > > > > call_bind or a call_connect more than once (i.e. if they ever have to
+> > > > > > > loop back).
+> > > > > > 
+> > > > > > I think you are suggesting that we define the places where RPC_IS_SOFTCONN should be tested as exactly those places that might want to restart the RPC call via rpc_force_rebind, tk_action = call_refresh, and so on.  Yes?
+> > > > > 
+> > > > > Yes.
+> > > > > 
+> > > > > > > With that in mind, I really don't see why the RPC_IS_SOFTCONN case is
+> > > > > > > being handled in call_transmit_status() instead of in call_status().
+> > > > > > 
+> > > > > > I tried it in call_status(), but it didn't work as expected.  My notes aren't specific about the problem.  One thing is for sure, there seems to be some redundant error handling logic in both of those states.  Unraveling it might be more than Neil bargained for, but would help "future generations."
+> > > > > 
+> > > > > call_transmit_status() is there basically in order to call
+> > > > > xprt_end_transmit() in the cases where we want to free up the socket
+> > > > > write lock (and then possibly sleep).
+> > > > > 
+> > > > > Actual state error handling is supposed occur in call_status().
+> > > > > 
+> > > > 
+> > > > This is terribly confusing. So the connect handling is done in
+> > > > call_transmit?
+> > > 
+> > > No. Connection-related _error conditions_ that result from trying to
+> > > send stuff through a socket that is not connected, are handled in
+> > > call_status(). Usually, by sending the process back to call_connect().
+> > > 
+> > 
+> > Yep, I get that part...
+> > 
+> > > > It seems like it would make more sense to have the connect handling
+> > > > mostly done in call_connect and call_connect_status, and only allow the
+> > > > tasks to proceed to the call_transmit phase after the connect has
+> > > > succeeded.
+> > > 
+> > > That is the case. However sockets can and do get closed by the _server_
+> > > in unpredictable ways. This is what may need to be handled after the
+> > > task has passed the call_connect state.
+> > > 
+> > 
+> > Right, the socket can change state at any time, but the code doesn't
+> > seem to do what you describe for initial connects.
+> > 
+> > In the EHOSTDOWN case, kernel_connect returns EINPROGRESS and then
+> > xs_error_report is called with a socket error of EHOSTDOWN. That wakes
+> > up the tasks with a status of EAGAIN and call_connect_status sends the
+> > task to call_transmit even though the socket is still not connected.
+> > 
+> > Having xs_error_report set the status of all tasks with EAGAIN seems
+> > wrong to me since we're essentially losing the error code that the
+> > socket layer sent up.
+> 
+> No. The next task to try to access the socket should pick it up.
+> 
+> See my previous comment about ensuring that we don't try to handle
+> state-related without adequate protection (i.e. locks) to ensure that
+> the state being reported by the error hasn't changed.
+> 
+> Trond
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
 
