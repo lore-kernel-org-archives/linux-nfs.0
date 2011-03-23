@@ -1,75 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay03.bluemeaney.com ([205.234.16.187]:47199 "EHLO
-	relay03.bluemeaney.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755479Ab1CVVwP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Mar 2011 17:52:15 -0400
-From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
+Received: from cantor2.suse.de ([195.135.220.15]:53399 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753184Ab1CWV2G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 17:28:06 -0400
+Date: Thu, 24 Mar 2011 08:27:54 +1100
+From: NeilBrown <neilb@suse.de>
 To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Gusev Vitaliy <gusev.vitaliy@nexenta.com>
-Subject: [PATCH] nfs4: Fix NULL dereference at d_alloc_and_lookup()
-Date: Wed, 23 Mar 2011 00:40:25 +0300
-Message-Id: <1300830025-17152-1-git-send-email-gusev.vitaliy@nexenta.com>
+Cc: peter.staubach@emc.com, bfields@fieldses.org, bjschuma@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] NFS: Detect loops in a readdir due to bad cookies
+Message-ID: <20110324082754.76f199a6@notabene.brown>
+In-Reply-To: <1300906115.11677.58.camel@lade.trondhjem.org>
+References: <4D8A3060.807@netapp.com>
+	<20110323182524.GB25284@fieldses.org>
+	<1300905243.11677.53.camel@lade.trondhjem.org>
+	<5E6794FC7B8FCA41A704019BE3C70E8B0693F05F@MX31A.corp.emc.com>
+	<1300906115.11677.58.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Gusev Vitaliy <gusev.vitaliy@nexenta.com>
+On Wed, 23 Mar 2011 14:48:35 -0400 Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
 
-d_alloc_and_lookup() calls i_op->lookup method due to
-rootfh changes his fsid.
+> On Wed, 2011-03-23 at 14:42 -0400, peter.staubach@emc.com wrote:
+> > Although I think that it is a good thing to protect the client against broken servers, it does seem like the right solution is to get the server fixed...
+> 
+> Don't get me wrong: I fully agree with that!
 
-During mount i_op of NFS root inode is set to
-nfs_mountpoint_inode_operations, if rpc_ops->getroot()
-and rpc_ops->getattr() return different fsid.
+Ack.
 
-After that  nfs_follow_remote_path() raised oops:
+As I understand it, ext4 (and ext3) use the hash of the basename as the
+cookie.  This hash has a per-directory random seed which is hidden so it is
+not possible to deliberately create files with the same hash, but thanks to
+the birthday paradox it isn't too hard to get collisions in a suitably large
+directory.
 
-   BUG: unable to handle kernel NULL pointer dereference at (null)
-   IP: [<          (null)>]           (null)
+For 'readdir' ext4 keeps extra state in the 'struct file' so that it knows
+where it was up to in a list of names with the same hash and so won't return
+duplicates.  However if you telldir/seekdir you will restart at the start of
+the sequence (I think).
 
-stack trace:
+Assuming that the fs always delivers names-with-the-same-cookie in a
+contiguous set (which seems likely), NFSD could mitigate this problem by
+treating them as a unit.
+i.e. to a given READDIR request, it either returns all names with a
+particular cookie, or none of them.
+This could only work if the set of names with the one cookie fits inside a
+single reply, but that should be likely unless the rsize is tiny.
 
-     d_alloc_and_lookup+0x4c/0x74
-     do_lookup+0x1e3/0x280
-     link_path_walk+0x12e/0xab0
-     nfs4_remote_get_sb+0x56/0x2c0 [nfs]
-     path_walk+0x67/0xe0
-     vfs_path_lookup+0x8e/0x100
-     nfs_follow_remote_path+0x16f/0x3e0 [nfs]
-     nfs4_try_mount+0x6f/0xd0 [nfs]
-     nfs_get_sb+0x269/0x400 [nfs]
-     vfs_kern_mount+0x8a/0x1f0
-     do_kern_mount+0x52/0x130
-     do_mount+0x20a/0x260
-     sys_mount+0x90/0xe0
-     system_call_fastpath+0x16/0x1b
+nfsd should also, after lseeking to the given address, skip over any
+subsequent entries that have the same address.
+This would ensure no looping happened, and the first step would make it
+unlikely that names were missed.
 
-So just refresh fsid, as RFC3530 doesn't specify behavior
-in case of rootfh changes fsid.
+It would be nice if filesystems would get this right, but I think it is
+reasonable for NFSD to take steps like this to guard against unfortunate
+filesystem design.
 
-Signed-off-by: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
----
- fs/nfs/getroot.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index 3031ef7..914eb78 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -192,6 +192,10 @@ struct dentry *nfs4_get_root(struct super_block *sb, struct nfs_fh *mntfh)
- 		goto out;
- 	}
- 
-+	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
-+	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
-+		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
-+
- 	inode = nfs_fhget(sb, mntfh, fattr);
- 	if (IS_ERR(inode)) {
- 		dprintk("nfs_get_root: get root inode failed\n");
--- 
-1.7.1
-
+NeilBrown
