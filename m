@@ -1,41 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:65398 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:49136 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755643Ab1CPVkU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2011 17:40:20 -0400
-Subject: Re: how to verify file delegations
+	id S1752320Ab1CWRHR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 13:07:17 -0400
+Subject: Re: different kernels mean NFS4/GSSAPI works or doesn't
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jimmy Dorff <jdorff@phy.duke.edu>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <4D812388.5020304@phy.duke.edu>
-References: <4D812388.5020304@phy.duke.edu>
+To: "Brian J. Murrell" <brian@interlinx.bc.ca>
+Cc: linux-nfs@vger.kernel.org, Kevin Coffman <kwc@citi.umich.edu>
+In-Reply-To: <4D8A0C9F.8090300@interlinx.bc.ca>
+References: <imbb8m$uiv$1@dough.gmane.org>
+	 <AANLkTimFJ2fMn805jY91u8FQihib8GfJ=8S7Yy4y47R3@mail.gmail.com>
+	 <4D89D36D.3090207@interlinx.bc.ca>
+	 <AANLkTi=b1z0MrYYQmidbra0EHanegcLO5qoOScLq21rb@mail.gmail.com>
+	 <4D8A0C9F.8090300@interlinx.bc.ca>
 Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 16 Mar 2011 17:40:19 -0400
-Message-ID: <1300311619.30551.14.camel@lade.trondhjem.org>
+Date: Wed, 23 Mar 2011 13:07:15 -0400
+Message-ID: <1300900035.11677.12.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-03-16 at 16:54 -0400, Jimmy Dorff wrote:
-> Hi,
+Please don't remove people from the Cc list.
+
+On Wed, 2011-03-23 at 11:07 -0400, Brian J. Murrell wrote:
+> On 11-03-23 10:29 AM, Kevin Coffman wrote:
+> > 
+> > However, that doesn't appear to be the case from looking at the
+> > gssd/svcgssd output.  Have you checked the server's syslog for
+> > messages about rpc.gssd not running?
 > 
-> I'm a sysadmin doing some testing with NFSv4 on RHEL6/Fedora 14. How can 
-> I verify that file read and write delegations are occurring ? The 
-> "delegpurge" and "delegreturn" values are zero from nfsstat.
+> Yup.  Nothing there.
+> 
+> > OK.  Thanks.  There is enough info there, even with the redaction.
+> 
+> Ahhh.  Good.
+> 
+> > This shows that a des (enctype 4) session key is being negotiated and
+> > delivered to both kernels, so I don't think any of the Kerberos issues
+> > should be involved here.  (At least from the user-land perspective.)
+> 
+> Hrm.  So this gets even more interesting (for some values of "interesting").
+> 
+> > I'm not sure what kernel change would be causing your hang ...
+> 
+> Thanks for looking though.
+> 
+> I'm open to any more ideas, debugging info requests, etc. that anyone
+> might have.
 
-If delegreturn is pinned at zero, then you are highly unlikely to be
-using delegations at all. Have you checked that the callback channel is
-set to a port that the server can connect to?
+You said this happens only with RPCSEC_GSS?
 
-You can pin the callback channel to a particular port (in this example
-port 4048) using something like the following on the NFS client:
+Have you tried bisecting, to see which changes caused it? You can
+probably restrict yourself to bisecting changes to include/linux/sunrpc,
+net/sunrpc and net/sunrpc/auth_gss.
 
-echo "options nfs callback_tcpport=4048" >> /etc/modprobe.d/options-local.conf
-
-then edit your NFS client firewall settings to allow incoming TCP
-connections to that port. Finally, you'll want to reboot that client...
-
-Trond
+Cheers
+  Trond
 -- 
 Trond Myklebust
 Linux NFS client maintainer
