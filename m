@@ -1,66 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:64259 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:49330 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751249Ab1CIXch (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Mar 2011 18:32:37 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/4] NFSv4: nfs4_state_mark_reclaim_nograce() should be static
-Date: Wed,  9 Mar 2011 18:32:27 -0500
-Message-Id: <1299713547-22190-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1299713547-22190-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1299713547-22190-1-git-send-email-Trond.Myklebust@netapp.com>
- <1299713547-22190-2-git-send-email-Trond.Myklebust@netapp.com>
- <1299713547-22190-3-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753635Ab1CWSZZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 14:25:25 -0400
+Date: Wed, 23 Mar 2011 14:25:24 -0400
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: "Trond >> Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/3] NFS: Detect loops in a readdir due to bad cookies
+Message-ID: <20110323182524.GB25284@fieldses.org>
+References: <4D8A3060.807@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D8A3060.807@netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-There are no more external users of nfs4_state_mark_reclaim_nograce() or
-nfs4_state_mark_reclaim_reboot(), so mark them as static.
+On Wed, Mar 23, 2011 at 01:39:44PM -0400, Bryan Schumaker wrote:
+> Some filesystems (such as ext4) can return the same cookie value for multiple
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4_fs.h   |    2 --
- fs/nfs/nfs4state.c |    4 ++--
- 2 files changed, 2 insertions(+), 4 deletions(-)
+Do the ext4 people know about this?  (And what's the easiest way to
+reproduce it?)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 07e7074..ecf39bb 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -315,8 +315,6 @@ extern void nfs4_state_set_mode_locked(struct nfs4_state *, fmode_t);
- extern void nfs4_schedule_lease_recovery(struct nfs_client *);
- extern void nfs4_schedule_state_manager(struct nfs_client *);
- extern void nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
--extern int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state);
--extern int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state);
- extern void nfs41_handle_sequence_flag_errors(struct nfs_client *clp, u32 flags);
- extern void nfs41_handle_recall_slot(struct nfs_client *clp);
- extern void nfs4_put_lock_state(struct nfs4_lock_state *lsp);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index caefb5c..32d4787 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1018,7 +1018,7 @@ void nfs4_schedule_lease_recovery(struct nfs_client *clp)
- 	nfs4_schedule_state_manager(clp);
- }
- 
--int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
-+static int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
- {
- 
- 	set_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
-@@ -1032,7 +1032,7 @@ int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *st
- 	return 1;
- }
- 
--int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state)
-+static int nfs4_state_mark_reclaim_nograce(struct nfs_client *clp, struct nfs4_state *state)
- {
- 	set_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags);
- 	clear_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
--- 
-1.7.4
+--b.
 
+> files.  If we try to start a readdir with one of these cookies, the server will
+> return the first file found with a cookie of the same value.  This can cause 
+> the client to enter an infinite loop.
+> 
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfs/dir.c           |   23 ++++++++++++++++++++++-
+>  include/linux/nfs_fs.h |    2 ++
+>  2 files changed, 24 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index b503791..dc475a7 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -139,7 +139,9 @@ static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct rpc_cred *
+>  	struct nfs_open_dir_context *ctx;
+>  	ctx = kmalloc(sizeof(*ctx), GFP_KERNEL);
+>  	if (ctx != NULL) {
+> +		ctx->duped = 0;
+>  		ctx->dir_cookie = 0;
+> +		ctx->dup_cookie = 0;
+>  		ctx->cred = get_rpccred(cred);
+>  	}
+>  	return ctx;
+> @@ -342,11 +344,18 @@ static
+>  int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_descriptor_t *desc)
+>  {
+>  	int i;
+> +	int new_pos;
+>  	int status = -EAGAIN;
+> +	struct nfs_open_dir_context *ctx = desc->file->private_data;
+>  
+>  	for (i = 0; i < array->size; i++) {
+>  		if (array->array[i].cookie == *desc->dir_cookie) {
+> -			desc->file->f_pos = desc->current_index + i;
+> +			new_pos = desc->current_index + i;
+> +			if (new_pos < desc->file->f_pos) {
+> +				ctx->dup_cookie = *desc->dir_cookie;
+> +				ctx->duped = 1;
+> +			}
+> +			desc->file->f_pos = new_pos;
+>  			desc->cache_entry_index = i;
+>  			return 0;
+>  		}
+> @@ -731,6 +740,18 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
+>  	int i = 0;
+>  	int res = 0;
+>  	struct nfs_cache_array *array = NULL;
+> +	struct nfs_open_dir_context *ctx = file->private_data;
+> +
+> +	if (ctx->duped == 1 && ctx->dup_cookie == *desc->dir_cookie) {
+> +		if (printk_ratelimit()) {
+> +			pr_notice("NFS: directory %s/%s contains a readdir loop.  "
+> +				"Please contact your server vendor.",
+> +				file->f_dentry->d_parent->d_name.name,
+> +				file->f_dentry->d_name.name);
+> +		}
+> +		res = -ELOOP;
+> +		goto out;
+> +	}
+>  
+>  	array = nfs_readdir_get_array(desc->page);
+>  	if (IS_ERR(array)) {
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index 4b87c00..bbb812b 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -97,7 +97,9 @@ struct nfs_open_context {
+>  
+>  struct nfs_open_dir_context {
+>  	struct rpc_cred *cred;
+> +	int duped;
+>  	__u64 dir_cookie;
+> +	__u64 dup_cookie;
+>  };
+>  
+>  /*
+> -- 
+> 1.7.4.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
