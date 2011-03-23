@@ -1,80 +1,120 @@
-From: "Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>
-Subject: Re: different kernels mean NFS4/GSSAPI works or doesn't
-Date: Wed, 23 Mar 2011 11:07:11 -0400
-Message-ID: <4D8A0C9F.8090300@interlinx.bc.ca>
-References: <imbb8m$uiv$1@dough.gmane.org>	<AANLkTimFJ2fMn805jY91u8FQihib8GfJ=8S7Yy4y47R3@mail.gmail.com>	<4D89D36D.3090207@interlinx.bc.ca> <AANLkTi=b1z0MrYYQmidbra0EHanegcLO5qoOScLq21rb@mail.gmail.com>
+From: Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH v2 3/3] NFS: Detect loops in a readdir due to bad cookies
+Date: Wed, 23 Mar 2011 14:48:31 -0400
+Message-ID: <4D8A407F.40105@netapp.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enigA271564123D175FF91B9B974"
-To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from lo.gmane.org ([80.91.229.12]:47681 "EHLO lo.gmane.org"
+Received: from mx2.netapp.com ([216.240.18.37]:5931 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932945Ab1CWPH3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2011 11:07:29 -0400
-Received: from list by lo.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1Q2Peh-0003QE-I9
-	for linux-nfs@vger.kernel.org; Wed, 23 Mar 2011 16:07:27 +0100
-Received: from d67-193-214-242.home3.cgocable.net ([67.193.214.242])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Mar 2011 16:07:27 +0100
-Received: from brian by d67-193-214-242.home3.cgocable.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Mar 2011 16:07:27 +0100
-In-Reply-To: <AANLkTi=b1z0MrYYQmidbra0EHanegcLO5qoOScLq21rb-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+	id S932587Ab1CWSsc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 14:48:32 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enigA271564123D175FF91B9B974
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: quoted-printable
+Some filesystems (such as ext4) can return the same cookie value for
+multiple files.  If we try to start a readdir with one of these cookies,
+the server will return the first file found with a cookie of the same
+value.  This can cause the client to enter an infinite loop.
 
-On 11-03-23 10:29 AM, Kevin Coffman wrote:
->=20
-> However, that doesn't appear to be the case from looking at the
-> gssd/svcgssd output.  Have you checked the server's syslog for
-> messages about rpc.gssd not running?
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/dir.c           |   26 +++++++++++++++++++++++++-
+ include/linux/nfs_fs.h |    2 ++
+ 2 files changed, 27 insertions(+), 1 deletions(-)
 
-Yup.  Nothing there.
-
-> OK.  Thanks.  There is enough info there, even with the redaction.
-
-Ahhh.  Good.
-
-> This shows that a des (enctype 4) session key is being negotiated and
-> delivered to both kernels, so I don't think any of the Kerberos issues
-> should be involved here.  (At least from the user-land perspective.)
-
-Hrm.  So this gets even more interesting (for some values of "interesting=
-").
-
-> I'm not sure what kernel change would be causing your hang ...
-
-Thanks for looking though.
-
-I'm open to any more ideas, debugging info requests, etc. that anyone
-might have.
-
-b.
-
-
---------------enigA271564123D175FF91B9B974
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.10 (GNU/Linux)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
-
-iEYEARECAAYFAk2KDJ8ACgkQl3EQlGLyuXC0UACfWRcpiyr9lR5qe7ySJnUNqZi3
-CskAn3HYn1Ru5euBvOve/4DAS39029Bx
-=upHz
------END PGP SIGNATURE-----
-
---------------enigA271564123D175FF91B9B974--
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 112494a..64fa9fc 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -139,7 +139,9 @@ static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct rpc_cred *
+ 	struct nfs_open_dir_context *ctx;
+ 	ctx = kmalloc(sizeof(*ctx), GFP_KERNEL);
+ 	if (ctx != NULL) {
++		ctx->duped = 0;
+ 		ctx->dir_cookie = 0;
++		ctx->dup_cookie = 0;
+ 		ctx->cred = get_rpccred(cred);
+ 	} else
+ 		ctx = ERR_PTR(-ENOMEM);
+@@ -321,6 +323,7 @@ int nfs_readdir_search_for_pos(struct nfs_cache_array *array, nfs_readdir_descri
+ {
+ 	loff_t diff = desc->file->f_pos - desc->current_index;
+ 	unsigned int index;
++	struct nfs_open_dir_context *ctx = desc->file->private_data;
+ 
+ 	if (diff < 0)
+ 		goto out_eof;
+@@ -333,6 +336,7 @@ int nfs_readdir_search_for_pos(struct nfs_cache_array *array, nfs_readdir_descri
+ 	index = (unsigned int)diff;
+ 	*desc->dir_cookie = array->array[index].cookie;
+ 	desc->cache_entry_index = index;
++	ctx->duped = 0;
+ 	return 0;
+ out_eof:
+ 	desc->eof = 1;
+@@ -343,11 +347,18 @@ static
+ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_descriptor_t *desc)
+ {
+ 	int i;
++	loff_t new_pos;
+ 	int status = -EAGAIN;
++	struct nfs_open_dir_context *ctx = desc->file->private_data;
+ 
+ 	for (i = 0; i < array->size; i++) {
+ 		if (array->array[i].cookie == *desc->dir_cookie) {
+-			desc->file->f_pos = desc->current_index + i;
++			new_pos = desc->current_index + i;
++			if (new_pos < desc->file->f_pos) {
++				ctx->dup_cookie = *desc->dir_cookie;
++				ctx->duped = 1;
++			}
++			desc->file->f_pos = new_pos;
+ 			desc->cache_entry_index = i;
+ 			return 0;
+ 		}
+@@ -732,6 +743,18 @@ int nfs_do_filldir(nfs_readdir_descriptor_t *desc, void *dirent,
+ 	int i = 0;
+ 	int res = 0;
+ 	struct nfs_cache_array *array = NULL;
++	struct nfs_open_dir_context *ctx = file->private_data;
++
++	if (ctx->duped != 0 && ctx->dup_cookie == *desc->dir_cookie) {
++		if (printk_ratelimit()) {
++			pr_notice("NFS: directory %s/%s contains a readdir loop.  "
++				"Please contact your server vendor.",
++				file->f_dentry->d_parent->d_name.name,
++				file->f_dentry->d_name.name);
++		}
++		res = -ELOOP;
++		goto out;
++	}
+ 
+ 	array = nfs_readdir_get_array(desc->page);
+ 	if (IS_ERR(array)) {
+@@ -900,6 +923,7 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int origin)
+ 			dentry->d_name.name,
+ 			offset, origin);
+ 
++	dir_ctx->duped = 0;
+ 	mutex_lock(&inode->i_mutex);
+ 	switch (origin) {
+ 		case 1:
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 4b87c00..69d6fc9 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -98,6 +98,8 @@ struct nfs_open_context {
+ struct nfs_open_dir_context {
+ 	struct rpc_cred *cred;
+ 	__u64 dir_cookie;
++	__u64 dup_cookie;
++	int duped;
+ };
+ 
+ /*
+-- 
+1.7.4.1
 
