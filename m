@@ -1,52 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:57586 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:19419 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751212Ab1CYDMm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Mar 2011 23:12:42 -0400
-Date: Thu, 24 Mar 2011 23:12:40 -0400
+	id S932868Ab1CWN2C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 09:28:02 -0400
+From: Fred Isaman <iisaman@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: Neil Brown <neilb@suse.de>
-Subject: [PATCH] nfsd: fix auth_domain reference leak on nlm operations
-Message-ID: <20110325031240.GA6479@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 01/12] NFSv4.1: don't send COMMIT to ds for data sync writes
+Date: Wed, 23 Mar 2011 09:27:44 -0400
+Message-Id: <1300886875-5016-2-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
+References: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-Well, that one was fun to track down....  And how did it manage to lurk
-for nearly 10 years?
+Based on consensus reached in Feb 2011 interim IETF meeting regarding
+use of LAYOUTCOMMIT, it has been decided that a NFS_DATA_SYNC return
+from a WRITE to data server should not initiate a COMMIT.
 
---b.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/write.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
 
-commit 38069804ed036adbf23aa94eafd5400c4f92fe6b
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Mar 24 22:51:14 2011 -0400
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 55a8c36..92b4a66 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -474,7 +474,10 @@ nfs_clear_request_commit(struct nfs_page *req)
+ static inline
+ int nfs_write_need_commit(struct nfs_write_data *data)
+ {
+-	return data->verf.committed != NFS_FILE_SYNC;
++	if (data->verf.committed == NFS_DATA_SYNC)
++		return data->lseg == NULL;
++	else
++		return data->verf.committed != NFS_FILE_SYNC;
+ }
+ 
+ static inline
+-- 
+1.7.2.1
 
-    nfsd: fix auth_domain reference leak on nlm operations
-    
-    This was noticed by users who performed more than 2^32 lock operations
-    and hence made this counter overflow (eventually leading to
-    use-after-free's).  Setting rq_client to NULL here means that it won't
-    later get auth_domain_put() when it should be.
-    
-    Appears to have been introduced in 2.5.42 by "[PATCH] kNFSd: Move auth
-    domain lookup into svcauth" which moved most of the rq_client handling
-    to common svcauth code, but left behind this one line.
-    
-    Cc: Neil Brown <neilb@suse.de>
-    Cc: stable@kernel.org
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/lockd.c b/fs/nfsd/lockd.c
-index 0c6d816..7c831a2 100644
---- a/fs/nfsd/lockd.c
-+++ b/fs/nfsd/lockd.c
-@@ -38,7 +38,6 @@ nlm_fopen(struct svc_rqst *rqstp, struct nfs_fh *f, struct file **filp)
- 	exp_readlock();
- 	nfserr = nfsd_open(rqstp, &fh, S_IFREG, NFSD_MAY_LOCK, filp);
- 	fh_put(&fh);
--	rqstp->rq_client = NULL;
- 	exp_readunlock();
-  	/* We return nlm error codes as nlm doesn't know
- 	 * about nfsd, but nfsd does know about nlm..
