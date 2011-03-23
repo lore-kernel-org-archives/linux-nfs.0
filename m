@@ -1,46 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:45843 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751326Ab1CWVV6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 17:21:58 -0400
-Date: Wed, 23 Mar 2011 17:21:57 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Christoph Hellwig <hch@infradead.org>, Fred Isaman <iisaman@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 11/12] NFSv4.1: layoutcommit
-Message-ID: <20110323212157.GA14281@infradead.org>
-References: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
- <1300886875-5016-12-git-send-email-iisaman@netapp.com>
- <20110323210028.GA31040@infradead.org>
- <1300914915.11677.88.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1300914915.11677.88.camel@lade.trondhjem.org>
+Received: from mx2.netapp.com ([216.240.18.37]:5931 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932576Ab1CWSsc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 14:48:32 -0400
+Message-ID: <4D8A407C.1010003@netapp.com>
+Date: Wed, 23 Mar 2011 14:48:28 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 1/3] NFS: Ensure that we update the readdir filp->f_pos
+ correctly
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Mar 23, 2011 at 05:15:15PM -0400, Trond Myklebust wrote:
-> We had a spec clarification about this recently. The result is that for
-> 'files' layout types:
-> 
-> 1) DATA_SYNC writes and unstable writes with COMMIT must store enough
-> data to disk to allow the server to recover the data if it crashes (i.e.
-> it provides the equivalent of O_DSYNC and/or fdatasync()). FILE_SYNC
-> writes must commit all data + metadata (i.e. they do the equivalent of
-> O_SYNC writes).
-> 2) This means that layoutcommit is only needed when the layout specifies
-> COMMIT to the data servers, or if the writes to the data servers return
-> a DATA_SYNC. All it does is commit the time stamps + file size to disk
-> on the metadata server (and so you avoid the need to do an expensive
-> recovery process on crash).
-> 
-> IOW: the above should be correct.
+If we're doing a search by readdir cookie, we need to ensure that the
+resulting f_pos is updated. To do so, we need to update the
+desc->current_index, in the same way that we do in the search by
+file offset case.
 
-Okay, care to add a comment explaining this fact?  The name layoutcommit
-doesn't quite suggest that it doesn't commit anything but timestamps
-and size.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/dir.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-Can you recover the size from the data servers with the code above?  The
-size should also be on disk for an fdatasync.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index abdf38d..e9fa2c8 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -290,7 +290,6 @@ int nfs_readdir_search_for_pos(struct nfs_cache_array *array, nfs_readdir_descri
+ 	if (diff >= array->size) {
+ 		if (array->eof_index >= 0)
+ 			goto out_eof;
+-		desc->current_index += array->size;
+ 		return -EAGAIN;
+ 	}
+ 
+@@ -311,6 +310,7 @@ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_des
+ 
+ 	for (i = 0; i < array->size; i++) {
+ 		if (array->array[i].cookie == *desc->dir_cookie) {
++			desc->file->f_pos = desc->current_index + i;
+ 			desc->cache_entry_index = i;
+ 			return 0;
+ 		}
+@@ -342,6 +342,7 @@ int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
+ 
+ 	if (status == -EAGAIN) {
+ 		desc->last_cookie = array->last_cookie;
++		desc->current_index += array->size;
+ 		desc->page_index++;
+ 	}
+ 	nfs_readdir_release_array(desc->page);
+-- 
+1.7.4.1
 
