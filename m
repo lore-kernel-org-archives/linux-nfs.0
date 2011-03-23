@@ -1,99 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:48179 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:5931 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754107Ab1CQW1f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Mar 2011 18:27:35 -0400
-Date: Thu, 17 Mar 2011 18:27:32 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Adam Lackorzynski <adam@os.inf.tu-dresden.de>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: 2.6.38: Quota over NFS4
-Message-ID: <20110317222732.GC31845@fieldses.org>
-References: <20110317133247.GB6424@os.inf.tu-dresden.de>
- <20110317173805.GB30180@fieldses.org>
- <20110317213302.GA2445@os.inf.tu-dresden.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110317213302.GA2445@os.inf.tu-dresden.de>
+	id S932503Ab1CWSsh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 14:48:37 -0400
+Subject: RE: [PATCH 3/3] NFS: Detect loops in a readdir due to bad cookies
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: peter.staubach@emc.com
+Cc: bfields@fieldses.org, bjschuma@netapp.com, linux-nfs@vger.kernel.org
+In-Reply-To: <5E6794FC7B8FCA41A704019BE3C70E8B0693F05F@MX31A.corp.emc.com>
+References: <4D8A3060.807@netapp.com>  <20110323182524.GB25284@fieldses.org>
+	 <1300905243.11677.53.camel@lade.trondhjem.org>
+	 <5E6794FC7B8FCA41A704019BE3C70E8B0693F05F@MX31A.corp.emc.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 23 Mar 2011 14:48:35 -0400
+Message-ID: <1300906115.11677.58.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Mar 17, 2011 at 10:33:03PM +0100, Adam Lackorzynski wrote:
-> 
-> On Thu Mar 17, 2011 at 13:38:05 -0400, J. Bruce Fields wrote:
-> > On Thu, Mar 17, 2011 at 02:32:47PM +0100, Adam Lackorzynski wrote:
-> > > Hello,
-> > > 
-> > > I'm seeing a problem with quotas in a system where the server running
-> > > 2.6.38 exports an XFS filesystem via NFS4 to a client. The client kernel
-> > > version does not seem to play a role, checked with 2.6.38, 2.6.37 and
-> > > 2.6.36. The following script and output show the problem:
-> > > 
-> > > #! /bin/sh
-> > > 
-> > > quota | grep home
-> > > du
-> > > cp /bin/ls x1
-> > > du
-> > > cat x1 > /dev/null
-> > > rm x1
-> > > du
-> > > quota | grep home
-> > > 
-> > > Output:
-> > > 
-> > >    homes:/home/ 8194720  9072000 9174400          403670  500000  550000        
-> > > 0       .
-> > > 96      .
-> > > 0       .
-> > >    homes:/home/ 8194816  9072000 9174400          403671  500000  550000        
-> > > 
-> > > 
-> > > As can be seen the 96 kb are still accounted on the quota of the user.
-> > > Removing the 'cat' command from the script makes the quota be ok again
-> > > (original value). Also mounting via nfs3 does not exhibit it, same for running
-> > > the script on the nfs-server directly.
-> > 
-> > Does "df" show the same problem?
-> 
-> With '/bin/ls' it does not change at all, so I took a bigger binary
-> which yields to:
-> 
->    homes:/home/ 8203780  9072000 9174400          403688  500000  550000        
-> 0       .
-> Filesystem           1K-blocks      Used Available Use% Mounted on
->   homes:/home        513671168 335251456 178419712  66% /tmp/xx
-> 4592    .
-> Filesystem           1K-blocks      Used Available Use% Mounted on
->   homes:/home        513671168 335256576 178414592  66% /tmp/xx
-> 0       .
-> Filesystem           1K-blocks      Used Available Use% Mounted on
->   homes:/home        513671168 335256576 178414592  66% /tmp/xx
->    homes:/home/ 8208372  9072000 9174400          403689  500000  550000        
-> 
-> So yes, it seems to be there as well.
+On Wed, 2011-03-23 at 14:42 -0400, peter.staubach@emc.com wrote:
+> Although I think that it is a good thing to protect the client against broken servers, it does seem like the right solution is to get the server fixed...
 
-It might be easier to see with "df -i" (assuming we're leaking an
-inode).
+Don't get me wrong: I fully agree with that!
 
-> > And does unmounting/remounting on the
-> > client clear the problem?
-> 
-> No.
-> 
-> > (Or that, in combination with stopping the
-> > server, unmounting the xfs export, remounting it, and restarting?)
-> 
-> I rebooted once, got a recovery and then the quotas were ok again (and
-> supposedly the used blocks as well). I assume a unmount/mount would show
-> the same behaviour but requires a bit of preparation to try out.
-> 
-> > Was there an earlier server version that didn't exhibit this problem?
-> 
-> Had 2.6.37 on the server before and that was fine regarding this.
+The reason for wanting this code is to cut down on the amount of
+debugging we have to do in order to detect those broken servers.
+Detecting duplicate cookies in a wireshark trace can be very
+time-consuming if you are dealing with a 10^6-entry directory.
 
-OK, thanks.  Sounds like a server bug, but I'm not managing to reproduce
-it here yet....
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
