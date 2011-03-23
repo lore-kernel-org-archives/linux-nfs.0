@@ -1,46 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from milhouse.imppc.org ([213.151.98.37]:29201 "EHLO
-	milhouse.imppc.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751209Ab1CPQw7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2011 12:52:59 -0400
-Message-ID: <4D80EAE9.6000603@imppc.org>
-Date: Wed, 16 Mar 2011 17:52:57 +0100
-From: Judith Flo Gaya <jflo@imppc.org>
-To: Jim Rees <rees@umich.edu>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: problem with nfs latency during high IO
-References: <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com> <4D7FA11F.5020604@imppc.org> <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com> <4D7FDB14.6090908@imppc.org> <9CC4990D-6969-4788-8B52-BA5AF2743DE3@oracle.com> <4D7FE0E8.5050701@imppc.org> <16BF52F0-4D1A-4B68-ADEE-DC70255A139C@oracle.com> <4D80A2DE.2030507@imppc.org> <E6EAC031-956D-42E7-AF01-72AD36474E8B@oracle.com> <20110316151827.GA12187@merit.edu> <20110316153129.GB12187@merit.edu>
-In-Reply-To: <20110316153129.GB12187@merit.edu>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Received: from bombadil.infradead.org ([18.85.46.34]:45843 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751326Ab1CWVV6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 17:21:58 -0400
+Date: Wed, 23 Mar 2011 17:21:57 -0400
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Fred Isaman <iisaman@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 11/12] NFSv4.1: layoutcommit
+Message-ID: <20110323212157.GA14281@infradead.org>
+References: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
+ <1300886875-5016-12-git-send-email-iisaman@netapp.com>
+ <20110323210028.GA31040@infradead.org>
+ <1300914915.11677.88.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1300914915.11677.88.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-THanks a lot to both for your suggestions and help.
-I already filed a bug [1] to bugzilla.
-j
-[1] https://bugzilla.redhat.com/show_bug.cgi?id=688232
+On Wed, Mar 23, 2011 at 05:15:15PM -0400, Trond Myklebust wrote:
+> We had a spec clarification about this recently. The result is that for
+> 'files' layout types:
+> 
+> 1) DATA_SYNC writes and unstable writes with COMMIT must store enough
+> data to disk to allow the server to recover the data if it crashes (i.e.
+> it provides the equivalent of O_DSYNC and/or fdatasync()). FILE_SYNC
+> writes must commit all data + metadata (i.e. they do the equivalent of
+> O_SYNC writes).
+> 2) This means that layoutcommit is only needed when the layout specifies
+> COMMIT to the data servers, or if the writes to the data servers return
+> a DATA_SYNC. All it does is commit the time stamps + file size to disk
+> on the metadata server (and so you avoid the need to do an expensive
+> recovery process on crash).
+> 
+> IOW: the above should be correct.
 
-On 03/16/2011 04:31 PM, Jim Rees wrote:
-> Jim Rees wrote:
->
->    I think 5 is the minimum for dirty_ratio, although this doesn't seem to be
->    documented anywhere.  If you want to set it lower, you have to use
->    dirty_bytes instead of dirty_ratio.
->
-> Never mind, I just looked at the code and the 5% limit seems to have been
-> removed later.  Last time I looked at this code was 3 years ago.
+Okay, care to add a comment explaining this fact?  The name layoutcommit
+doesn't quite suggest that it doesn't commit anything but timestamps
+and size.
 
--- 
-Judith Flo Gaya
-Systems Administrator IMPPC
-e-mail: jflo@imppc.org
-Tel (+34) 93 554-3079
-Fax (+34) 93 465-1472
+Can you recover the size from the data servers with the code above?  The
+size should also be on disk for an fdatasync.
 
-Institut de Medicina Predictiva i Personalitzada del Càncer
-Crta Can Ruti, Camí de les Escoles s/n
-08916 Badalona, Barcelona,
-Spain
-http://www.imppc.org
