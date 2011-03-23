@@ -1,94 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from os.inf.tu-dresden.de ([141.76.48.99]:47928 "EHLO
-	os.inf.tu-dresden.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752063Ab1CWWaV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 18:30:21 -0400
-Date: Wed, 23 Mar 2011 23:30:17 +0100
-From: Adam Lackorzynski <adam@os.inf.tu-dresden.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: 2.6.38: Quota over NFS4
-Message-ID: <20110323223017.GA5177@os.inf.tu-dresden.de>
-References: <20110320172758.GK11929@os.inf.tu-dresden.de>
- <20110320212633.GA26036@fieldses.org>
- <20110320213111.GO11929@os.inf.tu-dresden.de>
- <20110320214316.GB26036@fieldses.org>
- <20110321184043.GC4992@os.inf.tu-dresden.de>
- <20110321222301.GB472@fieldses.org>
- <20110322221305.GA5857@os.inf.tu-dresden.de>
- <20110323150328.GD23418@fieldses.org>
- <20110323174052.GE5005@os.inf.tu-dresden.de>
- <20110323190632.GA26306@fieldses.org>
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20110323190632.GA26306@fieldses.org>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:50256 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756256Ab1CWSuN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 14:50:13 -0400
+From: <peter.staubach@emc.com>
+To: <Trond.Myklebust@netapp.com>, <bfields@fieldses.org>
+CC: <bjschuma@netapp.com>, <linux-nfs@vger.kernel.org>
+Date: Wed, 23 Mar 2011 14:43:42 -0400
+Subject: RE: [PATCH 3/3] NFS: Detect loops in a readdir due to bad cookies
+Message-ID: <5E6794FC7B8FCA41A704019BE3C70E8B0693F062@MX31A.corp.emc.com>
+References: <4D8A3060.807@netapp.com>  <20110323182524.GB25284@fieldses.org>
+ <1300905243.11677.53.camel@lade.trondhjem.org>
+In-Reply-To: <1300905243.11677.53.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Wed Mar 23, 2011 at 15:06:32 -0400, J. Bruce Fields wrote:
-> On Wed, Mar 23, 2011 at 06:40:52PM +0100, Adam Lackorzynski wrote:
-> > > On Tue, Mar 22, 2011 at 11:13:06PM +0100, Adam Lackorzynski wrote:
-> > > > 
-> > > > On Mon Mar 21, 2011 at 18:23:01 -0400, J. Bruce Fields wrote:
-> > > > > 
-> > > > > Oh, right, you'd want to unmount on the sender before copying.
-> > > > > 
-> > > > > You *may* still get some kind of usable result if you fsck the fs you
-> > > > > get on the receiver, but who knows.
-> > > > 
-> > > > Ok, good news. After some fight I got it mounted in the VM. Reproducible
-> > > > with the original 2.6.38 kernel (as released) and also reproducible with
-> > > > latest git as of today. What now?
-> > > 
-> > > OK, so now you can reproduce the problem on one xfs filesystem, but not
-> > > the other.
-> > > 
-> > > Can we find any differences between the two filesystems?  Was one
-> > > created with different features, for example?
-> > >
-> > > Might also be worth asking xfs developers for ideas.
-> > 
-> > Bisecting shows this commit:
-> 
-> That's an odd place for it to end up.  You're positive the problem is
-> reliably reproduceable after this commit and not in the commit
-> immediately previous?
-
-I probably mistyped something and thus bisected again:
-
-acfdf5c383b38f7f4dddae41b97c97f1ae058f49 is the first bad commit
-commit acfdf5c383b38f7f4dddae41b97c97f1ae058f49
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Jan 31 19:20:39 2011 -0500
-
-    nfsd4: acquire only one lease per file
-    
-    Instead of acquiring one lease each time another client opens a file,
-    nfsd can acquire just one lease to represent all of them, and reference
-    count it to determine when to release it.
-    
-    This fixes a regression introduced by
-    c45821d263a8a5109d69a9e8942b8d65bcd5f31a "locks: eliminate fl_mylease
-    callback": after that patch, only the struct file * is used to determine
-    who owns a given lease.  But since we recently converted the server to
-    share a single struct file per open, if we acquire multiple leases on
-    the same file from nfsd, it then becomes impossible on unlocking a lease
-    to determine which of those leases (all of whom share the same struct
-    file *) we meant to remove.
-    
-    Thanks to Takashi Iwai <tiwai@suse.de> for catching a bug in a previous
-    version of this patch.
-    
-    Tested-by: Takashi Iwai <tiwai@suse.de>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-:040000 040000 5bf94b91c7c696586f0aaf8b5df1cd9c4aa70ac0 4ee1f39f455ee7f648fccedc1ddba4da6a94cec7 M      fs
-
- 
-
-
-Adam
--- 
-Adam                 adam@os.inf.tu-dresden.de
-  Lackorzynski         http://os.inf.tu-dresden.de/~adam/
+SG93IGRvZXMgbG9jYWwgcmVhZGRpciB3b3JrIG9uIHN1Y2ggZmlsZSBzeXN0ZW1zPyAgOi0pDQoN
+CgkJcHMNCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogbGludXgtbmZzLW93
+bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5v
+cmddIE9uIEJlaGFsZiBPZiBUcm9uZCBNeWtsZWJ1c3QNClNlbnQ6IFdlZG5lc2RheSwgTWFyY2gg
+MjMsIDIwMTEgMjozNCBQTQ0KVG86IEouIEJydWNlIEZpZWxkcw0KQ2M6IEJyeWFuIFNjaHVtYWtl
+cjsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KU3ViamVjdDogUmU6IFtQQVRDSCAzLzNdIE5G
+UzogRGV0ZWN0IGxvb3BzIGluIGEgcmVhZGRpciBkdWUgdG8gYmFkIGNvb2tpZXMNCg0KT24gV2Vk
+LCAyMDExLTAzLTIzIGF0IDE0OjI1IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+IE9u
+IFdlZCwgTWFyIDIzLCAyMDExIGF0IDAxOjM5OjQ0UE0gLTA0MDAsIEJyeWFuIFNjaHVtYWtlciB3
+cm90ZToNCj4gPiBTb21lIGZpbGVzeXN0ZW1zIChzdWNoIGFzIGV4dDQpIGNhbiByZXR1cm4gdGhl
+IHNhbWUgY29va2llIHZhbHVlIGZvciBtdWx0aXBsZQ0KPiANCj4gRG8gdGhlIGV4dDQgcGVvcGxl
+IGtub3cgYWJvdXQgdGhpcz8gIChBbmQgd2hhdCdzIHRoZSBlYXNpZXN0IHdheSB0bw0KPiByZXBy
+b2R1Y2UgaXQ/KQ0KDQpUaGV5IGFyZSBhd2FyZSBvZiBpdC4gSSBkb24ndCBrbm93IGlmIHRoZXkg
+YXJlIGF3YXJlIGhvdyBlYXN5IGl0IGlzIHRvDQpyZXByb2R1Y2UuDQoNCkJyeWFuIHNhdyBzZXZl
+cmFsIDEwcyBvZiBpbnN0YW5jZXMgb2YgZHVwbGljYXRlIGNvb2tpZXMgd2hlbiBoZSB3YXMNCmRv
+aW5nIHBlcmZvcm1hbmNlIHRlc3Rpbmcgb2YgcmVhZGRpciBvbiBhIGRpcmVjdG9yeSB3aXRoIDEw
+XjYgZW50cmllcy4NCk1vc3Qgb2YgdGhlIHRpbWUgaXQgZGlkbid0IGNhdXNlIGxvb3Bpbmcgb24g
+dGhlIGNsaWVudCBzaW5jZSB0aGUgbG9vcGluZw0KYmVoYXZpb3VyIGRlcGVuZHMgb24gdGhlIGRp
+c3RyaWJ1dGlvbiBvZiB0aG9zZSBjb29raWVzIGluIHRoZSBjbGllbnQncw0KcmVhZGRpciBjYWNo
+ZS4gSG93ZXZlciBvbiBvY2Nhc2lvbiBoZSBkaWQgc2VlIGxvb3BpbmcgaW4gdGhlIGNsaWVudCwg
+YW5kDQphdCBsZWFzdCBvbmNlIGhlIHNhdyBsb29waW5nIG9uIHRoZSBzZXJ2ZXIgdG9vIChpbiB3
+aGljaCBhIGR1cGxpY2F0ZQ0KY29va2llIGNhdXNlZCB0aGUgc2VydmVyIHRvIHJldHVybiBmaWxl
+cyB0aGF0IGl0IGhhZCBhbHJlYWR5IHNlbnQgdG8gdGhlDQpjbGllbnQpLg0KDQotLSANClRyb25k
+IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCi0tDQpUbyB1bnN1YnNjcmli
+ZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBp
+bg0KdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCk1v
+cmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWlu
+Zm8uaHRtbA0KDQoT77+977+97Lm7HO+/vSbvv71+77+9Ju+/vRjvv73vv70rLe+/ve+/vd22F++/
+ve+/vXfvv73vv73Lm++/ve+/ve+/vW3vv71i77+977+9Z37Ip++/vRfvv73vv73cqH3vv73vv73v
+v73GoHrvv70majordu+/ve+/ve+/vQfvv73vv73vv73vv716Wivvv73vv70rembvv73vv73vv71o
+77+977+977+9fu+/ve+/ve+/ve+/vWnvv73vv73vv71677+9Hu+/vXfvv73vv73vv70/77+977+9
+77+977+9Ju+/vSnfohtm
