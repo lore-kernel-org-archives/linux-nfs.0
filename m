@@ -1,194 +1,176 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:16464 "EHLO mx2.netapp.com"
+Received: from lo.gmane.org ([80.91.229.12]:36086 "EHLO lo.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752378Ab1CWRjq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2011 13:39:46 -0400
-Message-ID: <4D8A305E.6090006@netapp.com>
-Date: Wed, 23 Mar 2011 13:39:42 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/3] NFS: Create nfs_open_dir_context
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1756103Ab1CWLD1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 07:03:27 -0400
+Received: from list by lo.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1Q2LqY-0000li-JT
+	for linux-nfs@vger.kernel.org; Wed, 23 Mar 2011 12:03:26 +0100
+Received: from d67-193-214-242.home3.cgocable.net ([67.193.214.242])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Mar 2011 12:03:26 +0100
+Received: from brian by d67-193-214-242.home3.cgocable.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Mar 2011 12:03:26 +0100
+To: linux-nfs@vger.kernel.org
+From: "Brian J. Murrell" <brian@interlinx.bc.ca>
+Subject: Re: different kernels mean NFS4/GSSAPI works or doesn't
+Date: Wed, 23 Mar 2011 07:03:09 -0400
+Message-ID: <4D89D36D.3090207@interlinx.bc.ca>
+References: <imbb8m$uiv$1@dough.gmane.org> <AANLkTimFJ2fMn805jY91u8FQihib8GfJ=8S7Yy4y47R3@mail.gmail.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="------------enig568C8162DCD8295186EB2097"
+In-Reply-To: <AANLkTimFJ2fMn805jY91u8FQihib8GfJ=8S7Yy4y47R3@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-nfs_opendir() created a context that held much more information than we need for
-a readdir.  This patch introduces a slimmed-down nfs_open_dir_context that
-contains only the cookie and the cred used for RPC operations.  The new
-context will eventually be used to help detect readdir loops.
+--------------enig568C8162DCD8295186EB2097
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/dir.c           |   53 +++++++++++++++++++++++++++++++++++++++++------
- fs/nfs/inode.c         |    1 -
- include/linux/nfs_fs.h |    3 ++
- 3 files changed, 49 insertions(+), 8 deletions(-)
+On 11-03-22 10:41 PM, Kevin Coffman wrote:
+> Hi Brian,
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index e9fa2c8..b503791 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -44,6 +44,7 @@
- /* #define NFS_DEBUG_VERBOSE 1 */
- 
- static int nfs_opendir(struct inode *, struct file *);
-+static int nfs_closedir(struct inode *, struct file *);
- static int nfs_readdir(struct file *, void *, filldir_t);
- static struct dentry *nfs_lookup(struct inode *, struct dentry *, struct nameidata *);
- static int nfs_create(struct inode *, struct dentry *, int, struct nameidata *);
-@@ -64,7 +65,7 @@ const struct file_operations nfs_dir_operations = {
- 	.read		= generic_read_dir,
- 	.readdir	= nfs_readdir,
- 	.open		= nfs_opendir,
--	.release	= nfs_release,
-+	.release	= nfs_closedir,
- 	.fsync		= nfs_fsync_dir,
- };
- 
-@@ -133,13 +134,32 @@ const struct inode_operations nfs4_dir_inode_operations = {
- 
- #endif /* CONFIG_NFS_V4 */
- 
-+static struct nfs_open_dir_context *alloc_nfs_open_dir_context(struct rpc_cred *cred)
-+{
-+	struct nfs_open_dir_context *ctx;
-+	ctx = kmalloc(sizeof(*ctx), GFP_KERNEL);
-+	if (ctx != NULL) {
-+		ctx->dir_cookie = 0;
-+		ctx->cred = get_rpccred(cred);
-+	}
-+	return ctx;
-+}
-+
-+static void put_nfs_open_dir_context(struct nfs_open_dir_context *ctx)
-+{
-+	put_rpccred(ctx->cred);
-+	kfree(ctx);
-+}
-+
- /*
-  * Open file
-  */
- static int
- nfs_opendir(struct inode *inode, struct file *filp)
- {
--	int res;
-+	int res = 0;
-+	struct nfs_open_dir_context *ctx;
-+	struct rpc_cred *cred;
- 
- 	dfprintk(FILE, "NFS: open dir(%s/%s)\n",
- 			filp->f_path.dentry->d_parent->d_name.name,
-@@ -147,8 +167,15 @@ nfs_opendir(struct inode *inode, struct file *filp)
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
- 
--	/* Call generic open code in order to cache credentials */
--	res = nfs_open(inode, filp);
-+	cred = rpc_lookup_cred();
-+	if (IS_ERR(cred))
-+		return PTR_ERR(cred);
-+	ctx = alloc_nfs_open_dir_context(cred);
-+	if (IS_ERR(ctx)) {
-+		res = PTR_ERR(ctx);
-+		goto out;
-+	}
-+	filp->private_data = ctx;
- 	if (filp->f_path.dentry == filp->f_path.mnt->mnt_root) {
- 		/* This is a mountpoint, so d_revalidate will never
- 		 * have been called, so we need to refresh the
-@@ -156,9 +183,18 @@ nfs_opendir(struct inode *inode, struct file *filp)
- 		 */
- 		__nfs_revalidate_inode(NFS_SERVER(inode), inode);
- 	}
-+out:
-+	put_rpccred(cred);
- 	return res;
- }
- 
-+static int
-+nfs_closedir(struct inode *inode, struct file *filp)
-+{
-+	put_nfs_open_dir_context(filp->private_data);
-+	return 0;
-+}
-+
- struct nfs_cache_array_entry {
- 	u64 cookie;
- 	u64 ino;
-@@ -355,7 +391,8 @@ static
- int nfs_readdir_xdr_filler(struct page **pages, nfs_readdir_descriptor_t *desc,
- 			struct nfs_entry *entry, struct file *file, struct inode *inode)
- {
--	struct rpc_cred	*cred = nfs_file_cred(file);
-+	struct nfs_open_dir_context *ctx = file->private_data;
-+	struct rpc_cred	*cred = ctx->cred;
- 	unsigned long	timestamp, gencount;
- 	int		error;
- 
-@@ -786,6 +823,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
- 	struct inode	*inode = dentry->d_inode;
- 	nfs_readdir_descriptor_t my_desc,
- 			*desc = &my_desc;
-+	struct nfs_open_dir_context *dir_ctx = filp->private_data;
- 	int res;
- 
- 	dfprintk(FILE, "NFS: readdir(%s/%s) starting at cookie %llu\n",
-@@ -802,7 +840,7 @@ static int nfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
- 	memset(desc, 0, sizeof(*desc));
- 
- 	desc->file = filp;
--	desc->dir_cookie = &nfs_file_open_context(filp)->dir_cookie;
-+	desc->dir_cookie = &dir_ctx->dir_cookie;
- 	desc->decode = NFS_PROTO(inode)->decode_dirent;
- 	desc->plus = NFS_USE_READDIRPLUS(inode);
- 
-@@ -854,6 +892,7 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int origin)
- {
- 	struct dentry *dentry = filp->f_path.dentry;
- 	struct inode *inode = dentry->d_inode;
-+	struct nfs_open_dir_context *dir_ctx = filp->private_data;
- 
- 	dfprintk(FILE, "NFS: llseek dir(%s/%s, %lld, %d)\n",
- 			dentry->d_parent->d_name.name,
-@@ -873,7 +912,7 @@ static loff_t nfs_llseek_dir(struct file *filp, loff_t offset, int origin)
- 	}
- 	if (offset != filp->f_pos) {
- 		filp->f_pos = offset;
--		nfs_file_open_context(filp)->dir_cookie = 0;
-+		dir_ctx->dir_cookie = 0;
- 	}
- out:
- 	mutex_unlock(&inode->i_mutex);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 01768e5..366f5f7 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -639,7 +639,6 @@ struct nfs_open_context *alloc_nfs_open_context(struct path *path, struct rpc_cr
- 		ctx->mode = f_mode;
- 		ctx->flags = 0;
- 		ctx->error = 0;
--		ctx->dir_cookie = 0;
- 		nfs_init_lock_context(&ctx->lock_context);
- 		ctx->lock_context.open_context = ctx;
- 		INIT_LIST_HEAD(&ctx->list);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index f88522b..4b87c00 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -93,7 +93,10 @@ struct nfs_open_context {
- 	int error;
- 
- 	struct list_head list;
-+};
- 
-+struct nfs_open_dir_context {
-+	struct rpc_cred *cred;
- 	__u64 dir_cookie;
- };
- 
--- 
-1.7.4.1
+Hi Kevin,
 
+> Can you tell me how you removed the 3des keys from the keytab?  (If
+> you simply used ktutil, this isn't good enough.  The KDC will still
+> issue a ticket with 3DES because, as far as it knows, the service
+> still has a 3des key in the KDC and supports 3des.)
+
+Ahh.  Well, I did use ktutil.  I opened the keytabs (/etc/krb5.keytab on
+both the client and server) then while they were open in ktutil, removed
+the files from the respective filesystems, deleted the keys in ktutil
+then wrote it back out from ktutil to the filesystem.
+
+But you say this is not good enough, yes?  Should I be removing keys
+from the KDC also?
+
+kadmin.local:  getprinc nfs/pc.example.com@ILINX
+Principal: nfs/pc.example.com@ILINX
+Expiration date: [never]
+Last password change: Sun Mar 14 20:51:08 EDT 2010
+Password expiration date: [none]
+Maximum ticket life: 0 days 10:00:00
+Maximum renewable life: 7 days 00:00:00
+Last modified: Sun Mar 14 20:51:08 EDT 2010 (brian/admin@ILINX)
+Last successful authentication: Sat Mar 19 11:39:41 EDT 2011
+Last failed authentication: [never]
+Failed password attempts: 0
+Number of keys: 2
+Key: vno 2, Triple DES cbc mode with HMAC/sha1, no salt
+Key: vno 2, DES cbc mode with CRC-32, no salt
+MKey: vno 1
+Attributes: REQUIRES_PRE_AUTH
+Policy: [none]
+
+and/or
+
+kadmin.local:  getprinc nfs/linux.example.com@ILINX
+Principal: nfs/linux.example.com@ILINX
+Expiration date: [never]
+Last password change: Sat Nov 01 00:37:11 EDT 2008
+Password expiration date: [none]
+Maximum ticket life: 0 days 10:00:00
+Maximum renewable life: 7 days 00:00:00
+Last modified: Sat Nov 01 00:37:11 EDT 2008 (root/admin@ILINX)
+Last successful authentication: [never]
+Last failed authentication: [never]
+Failed password attempts: 0
+Number of keys: 1
+Key: vno 4, DES cbc mode with CRC-32, no salt
+MKey: vno 1
+Attributes:
+Policy: [none]
+
+Ahhhh.  But it seems that the server doesn't have a 3des key in the KDC,
+only the client does.
+
+> (Sorry if this was already provided and I missed it.)
+
+No, I don't think we have been here yet.
+
+> Do you have
+> output from gssd and svcgssd in the original failure/hang case?
+
+Here they are:
+
+pc# rpc.gssd with the -f -vvv
+beginning poll
+handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt4b90)
+handle_gssd_upcall: 'mech=3Dkrb5 uid=3D0 enctypes=3D18,17,16,23,3,1,2 '
+handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clnt4b90)
+process_krb5_upcall: service is '<null>'
+Full hostname for 'linux.example.com' is 'linux.example.com'
+Full hostname for 'pc' is 'pc'
+Key table entry not found while getting keytab entry for 'root/pc@ILINX'
+Key table entry not found while getting keytab entry for 'nfs/pc@ILINX'
+Key table entry not found while getting keytab entry for 'host/pc@ILINX'
+Success getting keytab entry for nfs/*@ILINX
+Successfully obtained machine credentials for principal
+'nfs/pc.example.com@ILINX' stored in ccache 'FILE:/tmp/krb5cc_machine_ILI=
+NX'
+INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_ILINX' are good until
+1300913838
+using FILE:/tmp/krb5cc_machine_ILINX as credentials cache for machine cre=
+ds
+using environment variable to select krb5 ccache
+FILE:/tmp/krb5cc_machine_ILINX
+creating context using fsuid 0 (save_uid 0)
+creating tcp client for server linux.example.com
+DEBUG: port already set to 2049
+creating context with server nfs@linux.example.com
+DEBUG: serialize_krb5_ctx: lucid version!
+prepare_krb5_rfc1964_buffer: serializing keys with enctype 4 and length 8=
+
+doing downcall
+
+linux# /usr/sbin/rpc.svcgssd -f -vvv
+entering poll
+leaving poll
+handling null request
+sname =3D nfs/pc.example.com@ILINX
+DEBUG: serialize_krb5_ctx: lucid version!
+prepare_krb5_rfc1964_buffer: serializing keys with enctype 4 and length 8=
+
+doing downcall
+mech: krb5, hndl len: 4, ctx len 85, timeout: 1300913838 (35999 from
+now), uid: -1, gid: -1, num aux grps: 0:
+sending null reply
+writing message: \x \x60...99 0 0 \x01000000 \x60......b2
+finished handling null request
+entering poll
+
+pc# mount -t nfs4 -o sec=3Dkrb5 linux.example.com:/tmp /mnt/tmp
+[hung/blocked]
+
+I don't know if the contents of the "writing message: " were important
+but I also don't know if there is sensitive information in it or not, so
+being cautious, I did some redacting.  Please let me know if that's a
+problem.
+
+All of the above is with my original keytabs, before 3des key removal.
+
+Cheers,
+b.
+
+
+--------------enig568C8162DCD8295186EB2097
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+
+iEYEARECAAYFAk2J020ACgkQl3EQlGLyuXC9vQCeLA0pczLnkZjbkXEhwhZYKt5g
+fhUAoOWX6Peu3Io6MbMqJHR/fr9JoAb8
+=aNGo
+-----END PGP SIGNATURE-----
+
+--------------enig568C8162DCD8295186EB2097--
