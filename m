@@ -1,108 +1,35 @@
-From: Bryan Schumaker <bjschuma@netapp.com>
-Subject: Re: [REGRESSION] 8f70e95f9f4159184f557 causes mount failure with
- EGAIN
-Date: Thu, 31 Mar 2011 13:17:16 -0400
-Message-ID: <4D94B71C.4010902@netapp.com>
-References: <1301513561.561.7.camel@unknown001a4b0c2895>	 <4D939CAF.40506@netapp.com>  <1301520805.561.11.camel@unknown001a4b0c2895> <1301535117.561.16.camel@unknown001a4b0c2895>
+From: Fred Isaman <iisaman@netapp.com>
+Subject: Re: [PATCH 09/12] NFSv4.1: remove GETATTR from ds commits
+Date: Wed, 23 Mar 2011 16:32:50 -0400
+Message-ID: <AANLkTi=_+22+7-bw_Y7q4NpF16B7G3wNin7r7EkJNg7n@mail.gmail.com>
+References: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
+	<1300886875-5016-10-git-send-email-iisaman@netapp.com>
+	<4D8A4F2B.5040007@panasas.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
-To: Eric Paris <eparis@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org,
+	Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1569 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758667Ab1CaRRS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 Mar 2011 13:17:18 -0400
-In-Reply-To: <1301535117.561.16.camel@unknown001a4b0c2895>
+Received: from mail-bw0-f46.google.com ([209.85.214.46]:39900 "EHLO
+	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933145Ab1CWUcv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 16:32:51 -0400
+Received: by bwz15 with SMTP id 15so6995829bwz.19
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Mar 2011 13:32:50 -0700 (PDT)
+In-Reply-To: <4D8A4F2B.5040007@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/30/2011 09:31 PM, Eric Paris wrote:
-> On Wed, 2011-03-30 at 17:33 -0400, Eric Paris wrote:
->> On Wed, 2011-03-30 at 17:12 -0400, Bryan Schumaker wrote:
->>> On 03/30/2011 03:32 PM, Eric Paris wrote:
->>>> $ git bisect good
->>>> 8f70e95f9f4159184f557a1db60c909d7c1bd2e3 is the first bad commit
->>>> commit 8f70e95f9f4159184f557a1db60c909d7c1bd2e3
->>>> Author: Bryan Schumaker <bjschuma@netapp.com>
->>>> Date:   Thu Mar 24 17:12:31 2011 +0000
->>>>
->>>>     NFS: Determine initial mount security
->>>>     
->>>>     When sec=<something> is not presented as a mount option,
->>>>     we should attempt to determine what security flavor the
->>>>     server is using.
->>>>     
->>>>     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->>>>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->>>>
->>>> Using a linux-next kernel for the last 2 days I have been unable to
->>>> mount exports from my RHEL6 server.  mount(2) returned EAGAIN.  Turned
->>>
->>> Thanks for letting me know.  What does your exports file look like?
->>
->> # cat /etc/exports
->> /		127.0.0.1(fsid=0)
->> /export		*(rw,fsid=1,all_squash,anonuid=500,anongid=500)
-> 
-> At jlayton's suggestion I changed /exports to not include the /
-> 127.0.0.1 and removed both explicit fsid= and it works.  So this patch
-> broke my setup, but I have a workaround.   (I'm pretty sure the
-> previous / 127 entry was a workaround for a problem when all my clients
-> broke during Fedora's switch to use NFSv4 default.  Funny one workaround
-> comes back to bit me again  :))
-> 
-> Thanks! 
+2011/3/23 Benny Halevy <bhalevy@panasas.com>:
+> On 2011-03-23 15:27, Fred Isaman wrote:
+>> Any COMMIT compound directed to a data server needs to have the
+>> GETATTR calls suppressed. =A0We here, make sure the field we are tes=
+ting
+>
+> s/We/While/?
+>
 
-Thanks for letting me know.
+Yes.
 
-Bryan
-
-> 
-> 
->> The client fstab looks like:
->> paris.rdu.redhat.com:/export/ /storage nfs tcp,noatime,nodiratime,noauto,users,exec,suid 0 0
->>
->>>
->>> Bryan
->>>
->>>> up debugging (thanks jlayton) and got:
->>>>
->>>>         [ 1732.795056] NFS: nfs mount opts='tcp,vers=4,addr=10.11.231.241,clientaddr=10.11.231.191'
->>>>         [ 1732.798079] NFS:   parsing nfs mount option 'tcp'
->>>>         [ 1732.800210] NFS:   parsing nfs mount option 'vers=4'
->>>>         [ 1732.802324] NFS:   parsing nfs mount option 'addr=10.11.231.241'
->>>>         [ 1732.804477] NFS:   parsing nfs mount option 'clientaddr=10.11.231.191'
->>>>         [ 1732.805790] NFS: MNTPATH: '/export/'
->>>>         [ 1732.806663] --> nfs4_try_mount()
->>>>         [ 1732.807459] --> nfs4_create_server()
->>>>         [ 1732.808301] --> nfs4_init_server()
->>>>         [ 1732.809136] --> nfs4_set_client()
->>>>         [ 1732.809898] --> nfs_get_client(paris.rdu.redhat.com,v4)
->>>>         [ 1732.811122] NFS: get client cookie (0xffff880039cfd9e8/0xffff88003b889000)
->>>>         [ 1732.813771] NFS: Callback listener port = 36700 (af 2)
->>>>         [ 1732.814931] NFS: Callback listener port = 60202 (af 10)
->>>>         [ 1732.816199] --> nfs_get_client() = ffff880039cfd9e8 [new]
->>>>         [ 1732.817356] <-- nfs4_set_client() = 0 [new ffff880039cfd9e8]
->>>>         [ 1732.818587] <-- nfs4_init_server() = 0
->>>>         [ 1732.819476] --> nfs4_get_rootfh()
->>>>         [ 1732.820282] encode_compound: tag=
->>>>         [ 1732.822070] encode_compound: tag=
->>>>         [ 1732.822937] nfs4_get_rootfh: getroot error = 11
->>>>         [ 1732.823982] <-- nfs4_get_rootfh() = -11
->>>>         [ 1732.824880] --> nfs_free_server()
->>>>         [ 1732.846219] --> nfs_put_client({1})
->>>>         [ 1732.847888] --> nfs_free_client(4)
->>>>         [ 1732.850236] NFS: releasing client cookie (0xffff880039cfd9e8/0xffff88003b889000)
->>>>         [ 1732.853726] <-- nfs_free_client()
->>>>         [ 1732.854505] <-- nfs_free_server()
->>>>         [ 1732.855274] <-- nfs4_create_server() = error -11
->>>>         [ 1732.856187] <-- nfs4_try_mount() = -11 [error]
->>>>
->>>> Bisected and got the commit listed above.
->>>>
->>>
->>
-> 
-> 
-
+=46red
