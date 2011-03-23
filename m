@@ -1,81 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:23794 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44967 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751400Ab1CGNu5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Mar 2011 08:50:57 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id p27DouIg027434
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 7 Mar 2011 08:50:56 -0500
-Date: Mon, 07 Mar 2011 22:50:54 +0900 (JST)
-Message-Id: <20110307.225054.778816292497413667.yamato@redhat.com>
-To: SteveD@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
-From: Masatake YAMATO <yamato@redhat.com>
-In-Reply-To: <4D74DAE7.5060503@RedHat.com>
-References: <20110306.151123.1031846434411534102.yamato@redhat.com>
-	<4D74D822.4000009@RedHat.com>
-	<4D74DAE7.5060503@RedHat.com>
-Content-Type: Text/Plain; charset=us-ascii
+	id S1754619Ab1CWRCq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 13:02:46 -0400
+Subject: Re: [PATCH 0/4] RFC: RPC over AF_LOCAL, kernel client-side
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Andy Adamson <andros@netapp.com>, linux-nfs@vger.kernel.org
+In-Reply-To: <B2821425-392E-4212-94FD-75D232CD4B28@oracle.com>
+References: <20110322220518.4360.51304.stgit@matisse.1015granger.net>
+	 <B08BDAF0-04A9-42ED-ACCE-6291E0F6BF4E@netapp.com>
+	 <B2821425-392E-4212-94FD-75D232CD4B28@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 23 Mar 2011 13:02:27 -0400
+Message-ID: <1300899747.11677.8.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, 2011-03-23 at 11:56 -0400, Chuck Lever wrote:
+> On Mar 23, 2011, at 11:26 AM, Andy Adamson wrote:
 > 
+> > Are you reviving the "RPC Upcall" that I implemented 10 years ago?
 > 
-> On 03/07/2011 08:05 AM, Steve Dickson wrote:
->> 
->> 
->> On 03/06/2011 01:11 AM, Masatake YAMATO wrote:
->>> On Sat, 5 Mar 2011 20:51:06 -0500, Jim Rees <rees@umich.edu> wrote
->>>> Steve Dickson wrote:
->>>>
->>>>   Now, I realize you added the ".export" explanation to the man page 
->>>>   but is there a particular reason why file in that directory have 
->>>>   to end with ".export"? Out of "easy of use" sake, should any 
->>>>   and all files that exist in that directory be expected to 
->>>>   be exports files?
->>>>
->>>> I don't know if that's the best way to do it, but I think it would be useful
->>>> to have a way to keep files in the directory that don't get automatically
->>>> read.  As an analogy, I have the following files in my /etc/init:
->>>>
->>>> portmap.conf           This is the real one that gets used
->>>> portmap.conf~          This is a backup file produced by emacs
->>>> portmap.conf-20100603  This is the file that came with my distro
->>>>
->>>> Only the first one gets used, which is what I want, because it's the only
->>>> one ending in ".conf".
->> This makes sense... 
->> 
->>>
->>> Jim, thank you for explanation. He wrote what I'd like to write.
->>>
->>> This technique is borrowed from util-linux-ng; libmount.so reads
->>> only *.fstab under /etc/fstab.d.
->>>
->>>
->>> In addition, ".export" suffix tells an editor which syntax highlighter
->>> should be used when editing .export file:P
->> True... But I noticed the suffix that gvim looks for is ".exports"
->> not ".export". 
->> 
->> What editor are you using and does it look for a ".export" by default?
->> 
-> After thinking about this a little longer, I think making the 
-> suffix ".exports" does make sense. Along with the that being 
-> the default syntax  highlighter for gvim, more importantly, its
-> also the name of the man page, exports(5).
+> This patchset doesn't specifically revive that idea, as its narrow purpose is to replace kernel rpcbind registration over network loopback.
+> 
+> But the work could be a pre-requisite for a generic upcall mechanism over RPC.  An AF_LOCAL transport can be used as a generic upcall mechanism if user space services set up an AF_LOCAL listener.
+> 
+> I'm guessing ten years ago there wasn't built-in standardized support for AF_LOCAL RPC transports in the glibc RPC implementation, which may have impeded the success of such a proposal back then.  libtirpc makes AF_LOCAL a little more practical, as the incremental cost of supporting AF_LOCAL for any user space service is now minimal.
 
-I see. I didn't think what is the best suffix the file such deeply.
-Do I need to resubmit a patch for s/.export/.exports/g?
+No. The idea was rejected simply because there is no need for all that
+XDR overhead when we're talking to a process on the same machine.
 
-Masatake YAMATO
- 
-> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
