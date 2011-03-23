@@ -1,130 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3708 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:15405 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932140Ab1COTw3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Mar 2011 15:52:29 -0400
-Message-ID: <4D7FC37C.3040600@netapp.com>
-Date: Tue, 15 Mar 2011 15:52:28 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 5/5] NFS: Determine initial mount security
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1756349Ab1CWSR5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 14:17:57 -0400
+Subject: RE: [PATCH 3/3] NFS: Detect loops in a readdir due to bad cookies
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: peter.staubach@emc.com
+Cc: bjschuma@netapp.com, linux-nfs@vger.kernel.org
+In-Reply-To: <5E6794FC7B8FCA41A704019BE3C70E8B0693F02D@MX31A.corp.emc.com>
+References: <4D8A3060.807@netapp.com>
+	 <5E6794FC7B8FCA41A704019BE3C70E8B0693F02D@MX31A.corp.emc.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 23 Mar 2011 14:17:47 -0400
+Message-ID: <1300904267.11677.47.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Wed, 2011-03-23 at 14:10 -0400, peter.staubach@emc.com wrote:
+> Doesn't returning identical cookies for multiple, different entries in the same directory constitute a protocol violation?
 
-When sec=<something> is not presented as a mount option,
-we should attempt to determine what security flavor the
-server is using.
+Yes. Unfortunately quite a few common filesystems seem quite happy to do
+so.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c                     |   33 +++++++++++++++++++++++++++++++--
- include/linux/sunrpc/gss_api.h        |    3 +++
- net/sunrpc/auth_gss/gss_mech_switch.c |   16 ++++++++++++++++
- 3 files changed, 50 insertions(+), 2 deletions(-)
+Most of the time they get away with it, but occasionally we do get
+support requests from people asking 'why is my NFS client looping
+forever?'.
+With Bryan's patches, we now have a way to have the client error out
+instead of looping, and notify the admin that their server is exporting
+a broken underlying filesystem.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2e56ec7..4746e37 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -41,6 +41,7 @@
- #include <linux/string.h>
- #include <linux/slab.h>
- #include <linux/sunrpc/clnt.h>
-+#include <linux/sunrpc/gss_api.h>
- #include <linux/nfs.h>
- #include <linux/nfs4.h>
- #include <linux/nfs_fs.h>
-@@ -2192,15 +2193,43 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return err;
- }
- 
-+static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-+				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
-+{
-+	struct rpc_auth *auth;
-+	int ret;
-+
-+	auth = rpcauth_create(flavor, server->client);
-+	if (!auth) {
-+		ret = -EIO;
-+		goto out;
-+	}
-+	ret = nfs4_lookup_root(server, fhandle, info);
-+	if (ret < 0)
-+		ret = -EAGAIN;
-+out:
-+	return ret;
-+}
-+
- /*
-  * get the file handle for the "/" directory on the server
-  */
- static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 			      struct nfs_fsinfo *info)
- {
--	int status;
-+	int i, len, status = 0;
-+	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS + 2];
- 
--	status = nfs4_lookup_root(server, fhandle, info);
-+	flav_array[0] = RPC_AUTH_UNIX;
-+	len = gss_mech_list_pseudoflavors(&flav_array[1]);
-+	flav_array[1+len] = RPC_AUTH_NULL;
-+	len += 2;
-+
-+	for (i = 0; i < len; i++) {
-+		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
-+		if (status == 0)
-+			break;
-+	}
- 	if (status == 0)
- 		status = nfs4_server_capabilities(server, fhandle);
- 	if (status == 0)
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index 5d8048b..332da61 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -126,6 +126,9 @@ struct gss_api_mech *gss_mech_get_by_name(const char *);
- /* Similar, but get by pseudoflavor. */
- struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
- 
-+/* Fill in an array with a list of supported pseudoflavors */
-+int gss_mech_list_pseudoflavors(u32 *);
-+
- /* Just increments the mechanism's reference count and returns its input: */
- struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
- 
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 6c844b0..e3c36a2 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -215,6 +215,22 @@ gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
- 
- EXPORT_SYMBOL_GPL(gss_mech_get_by_pseudoflavor);
- 
-+int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr)
-+{
-+	struct gss_api_mech *pos = NULL;
-+	int i = 0;
-+
-+	spin_lock(&registered_mechs_lock);
-+	list_for_each_entry(pos, &registered_mechs, gm_list) {
-+		array_ptr[i] = pos->gm_pfs->pseudoflavor;
-+		i++;
-+	}
-+	spin_unlock(&registered_mechs_lock);
-+	return i;
-+}
-+
-+EXPORT_SYMBOL_GPL(gss_mech_list_pseudoflavors);
-+
- u32
- gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
- {
 -- 
-1.7.4.1
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
