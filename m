@@ -1,45 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:36228 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933325Ab1CWVAa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 17:00:30 -0400
-Date: Wed, 23 Mar 2011 17:00:28 -0400
-From: Christoph Hellwig <hch@infradead.org>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 11/12] NFSv4.1: layoutcommit
-Message-ID: <20110323210028.GA31040@infradead.org>
+Received: from mx2.netapp.com ([216.240.18.37]:19419 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932883Ab1CWN2E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Mar 2011 09:28:04 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 04/12] NFSv4.1: pull error handling out of nfs_commit_list
+Date: Wed, 23 Mar 2011 09:27:47 -0400
+Message-Id: <1300886875-5016-5-git-send-email-iisaman@netapp.com>
+In-Reply-To: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
 References: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
- <1300886875-5016-12-git-send-email-iisaman@netapp.com>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1300886875-5016-12-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-> @@ -326,6 +326,9 @@ nfs_file_fsync(struct file *file, int datasync)
->  		ret = xchg(&ctx->error, 0);
->  	if (!ret && status < 0)
->  		ret = status;
-> +	if (!ret && !datasync)
-> +		/* application has asked for meta-data sync */
-> +		ret = pnfs_layoutcommit_inode(inode, 1);
+Create a separate support function for later use by data server
+commit code.
 
-I don't think that is correct.  AFAIK the layoutcommit is needed to
-get back to the data after a crash - basically the only thing a
-!datasync fsync can skip is dirty timestamps.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/write.c |   26 ++++++++++++++++----------
+ 1 files changed, 16 insertions(+), 10 deletions(-)
 
->  int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
->  {
-> -	return nfs_commit_unstable_pages(inode, wbc);
-> +	int ret;
-> +
-> +	ret = nfs_commit_unstable_pages(inode, wbc);
-> +	if (ret >= 0 && test_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags)) {
-> +		int status, sync = wbc->sync_mode;
-> +
-> +		if (wbc->nonblocking || wbc->for_background)
-> +				sync = 0;
-
-incorrect indentation.
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index bf672fa..dbc8018 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1357,6 +1357,21 @@ static void nfs_init_commit(struct nfs_write_data *data,
+ 	nfs_fattr_init(&data->fattr);
+ }
+ 
++static void nfs_retry_commit(struct list_head *page_list)
++{
++	struct nfs_page *req;
++
++	while (!list_empty(page_list)) {
++		req = nfs_list_entry(page_list->next);
++		nfs_list_remove_request(req);
++		nfs_mark_request_commit(req);
++		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
++		dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
++			     BDI_RECLAIMABLE);
++		nfs_clear_page_tag_locked(req);
++	}
++}
++
+ /*
+  * Commit dirty pages
+  */
+@@ -1364,7 +1379,6 @@ static int
+ nfs_commit_list(struct inode *inode, struct list_head *head, int how)
+ {
+ 	struct nfs_write_data	*data;
+-	struct nfs_page         *req;
+ 
+ 	data = nfs_commitdata_alloc();
+ 
+@@ -1375,15 +1389,7 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how)
+ 	nfs_init_commit(data, head);
+ 	return nfs_initiate_commit(data, NFS_CLIENT(inode), data->mds_ops, how);
+  out_bad:
+-	while (!list_empty(head)) {
+-		req = nfs_list_entry(head->next);
+-		nfs_list_remove_request(req);
+-		nfs_mark_request_commit(req);
+-		dec_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
+-		dec_bdi_stat(req->wb_page->mapping->backing_dev_info,
+-				BDI_RECLAIMABLE);
+-		nfs_clear_page_tag_locked(req);
+-	}
++	nfs_retry_commit(head);
+ 	nfs_commit_clear_lock(NFS_I(inode));
+ 	return -ENOMEM;
+ }
+-- 
+1.7.2.1
 
