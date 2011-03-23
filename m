@@ -1,67 +1,238 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from milhouse.imppc.org ([213.151.98.37]:60792 "EHLO
-	milhouse.imppc.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751239Ab1COVXA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 17:23:00 -0400
-Message-ID: <4D7FDB14.6090908@imppc.org>
-Date: Tue, 15 Mar 2011 22:33:08 +0100
-From: Judith Flo Gaya <jflo@imppc.org>
+Received: from mail-vx0-f174.google.com ([209.85.220.174]:65117 "EHLO
+	mail-vx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751065Ab1CWGaz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 02:30:55 -0400
+In-Reply-To: <43F07477-9075-444D-9BBB-368650538EA8@oracle.com>
+References: <AANLkTimjmdi8sFTTjSPerOVgHQ+pjjwwMvCUX3AJ16At@mail.gmail.com>
+	<43F07477-9075-444D-9BBB-368650538EA8@oracle.com>
+Date: Wed, 23 Mar 2011 07:30:53 +0100
+Message-ID: <AANLkTinHUQkBvcvh9APVutOqcKOug6CA066kS_O4p4Tq@mail.gmail.com>
+Subject: Re: [bisect] kernel 2.6.38 regression with root nfs mounting
+From: Belisko Marek <marek.belisko@gmail.com>
 To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: problem with nfs latency during high IO
-References: <4D7B6DE5.8010008@imppc.org> <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com> <4D7FA11F.5020604@imppc.org> <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com>
-In-Reply-To: <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Cc: Trond.Myklebust@netapp.com, broonie@opensource.wolfsonmicro.com,
+        bdowning@lavos.net, linux-nfs@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Added linux-nfs to CC (to keep history) add added log with nfsdebugroot enabled.
 
-
-On 3/15/11 7:03 PM, Chuck Lever wrote:
-> On Mar 15, 2011, at 1:25 PM, Judith Flo Gaya wrote:
+On Tue, Mar 22, 2011 at 1:34 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
 >
->> Hello Chuck,
+> On Mar 22, 2011, at 3:51 AM, Belisko Marek wrote:
+>
+>> After update from 2.6.38-rc8 to 2.6.38 is mounting rootfs over nfs not possible.
+>> Log:
+>> VFS: Mounted root (nfs filesystem) on device 0:14.
+>> Freeing init memory: 132K
+>> nfs: server 10.146.1.21 not responding, still trying
+>> nfs: server 10.146.1.21 not responding, still trying
 >>
->> On 03/15/2011 05:24 PM, Chuck Lever wrote:
->>> Hi Judith-
->>>
->>> On Mar 12, 2011, at 7:58 AM, Judith Flo Gaya wrote:
->>>
->>>> Hello,
->>>>
->>>> I was told some days ago that my problem with my NFS system is related to this bug, as the problem that I'm experiencing is quite similar.
->>>>
->>>> The bug : https://bugzilla.redhat.com/show_bug.cgi?id=469848
->>>>
->>>> The link itself explains quite well my issue, I'm just truing to copy a big file (36Gb) to my nfs server and when I try to get an ls -l command to the same folder where I'm copying data, the command gets stuck for some time. This amount of time changes from a few secs to SOME minutes (9' is the current record).
->>>> I can live with some seconds of delay, but minutes is something quite unacceptable.
->>>>
->>>> As this is an nfs server running on a red hat system (an HP ibrix x9300 with Red Hat 5.3 x86_64, kernel 2.6.18-128) I was told to apply the patch suggested from the bug on my clients.
->>>>
->>>> Unfortunately my clients are running fedora core 14 (x86_64, kernel 2.6.35.6-45) and I can't find the file that they are referring to, the file fs/nfs/inode.c is not there and I can't find the rpm that contains it.
->>>>
->>>> As the bug is a very very old one, I took it for granted that is already applied to fedora, but I wanted to make sure that it is looking at the file.
->>>>
->>>> Can you help me on this? I'm I wrong in my supposition (is the patch really applied)? is it possible that my problem is somewhere else?
->>> This sounds like typical behavior.
->> But it is not like this when I use a RHEL6 as a client to those servers, in this case, the ls only last for some seconds, nothing like the minutes that it takes from my fedora.
-> Which Fedora systems, exactly?  The fix I described below is almost certainly in RHEL 6.
-Fedora Core 14, 64 bit, 2.6.35.6-45
->>> POSIX requires that the mtime and file size returned by stat(2) ('ls -l') reflect the most recent write(2).  On NFS, the server sets both of these fields.  If a client is caching dirty data, and an application does a stat(2), the client is forced to flush the dirty data so that the server can update mtime and file size appropriately.  The client then does a GETATTR, and returns those values to the requesting application.
->>>
->> ok, sorry, I know this is a very stupid question but. what do you mean by dirty data?
-> Dirty data is data that your application has written to the file but which hasn't been flushed to the server's disk.  This data resides in the client's page cache, on its way to the server.
-ok, understood. Then the sysctl change that you suggest, I've been 
-checking both distributions, RHEL6 and FC14 and they share the same 
-value... I assume by this that changing this value will not "help", am I 
-right?
->> BTW i understand the time issue, but again, if the version of the kernel that the red hat has installed allows me to get the information soon, why a newer kernel in fedora does not?
-> Sounds like a bug.  Fedora kernels newer than 2.6.32 should work as well as, or better than, RHEL 6.
-I thought the same, but the test doesn't suggest that this is true ;(
-I saw your next message about the difference in the code and that would 
-make a lot of sense!
+>> This is never ending. I make short bisect (not too much commits
+>> between versions)
+>> and bad commit was reported: 53d4737580535e073963b91ce87d4216e434fab5
+>>
+>> NFS: NFSROOT should default to "proto=udp"
+>>
+>> I've tested on mini2440 board (DM9000, static IP).
+>> Is there some missing option or something else to be checked?
+>
+> NFSROOT is supposed to work as it did before 2.6.37.
+>
+> Enable NFSROOT debugging (see the description of nfsrootdebug in Documentation/filesystems/nfs/nfsroot.txt), try your boot, and then post the contents of your system log to linux-nfs@vger.kernel.org.
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
+>
 
-Thanks for your help!
-j
+Linux version 2.6.38-rc7+ (open-nandra@host) (gcc version 4.5.1
+(Sourcery G++ Lite 2010.09-50) ) #1 Wed Mar 23 07:23:36 CET 2011
+CPU: ARM920T [41129200] revision 0 (ARMv4T), cr=c0007177
+CPU: VIVT data cache, VIVT instruction cache
+Machine: MINI2440
+Memory policy: ECC disabled, Data cache writeback
+CPU S3C2440A (id 0x32440001)
+S3C24XX Clocks, Copyright 2004 Simtec Electronics
+S3C244X: core 405.000 MHz, memory 101.250 MHz, peripheral 50.625 MHz
+CLOCK: Slow mode (1.500 MHz), fast, MPLL on, UPLL on
+Built 1 zonelists in Zone order, mobility grouping on.  Total pages: 16256
+Kernel command line: console=ttySAC0,115200 noinitrd init=/sbin/init
+mini2440=1b nfsrootdebug root=/dev/nfs rw
+nfsroot=10.146.1.21:/home/open-nandra/rootfs
+ip=10.146.1.199:10.146.1.21::255.20
+PID hash table entries: 256 (order: -2, 1024 bytes)
+Dentry cache hash table entries: 8192 (order: 3, 32768 bytes)
+Inode-cache hash table entries: 4096 (order: 2, 16384 bytes)
+Memory: 64MB = 64MB total
+Memory: 60536k/60536k available, 5000k reserved, 0K highmem
+Virtual kernel memory layout:
+    vector  : 0xffff0000 - 0xffff1000   (   4 kB)
+    fixmap  : 0xfff00000 - 0xfffe0000   ( 896 kB)
+    DMA     : 0xffc00000 - 0xffe00000   (   2 MB)
+    vmalloc : 0xc4800000 - 0xf6000000   ( 792 MB)
+    lowmem  : 0xc0000000 - 0xc4000000   (  64 MB)
+    modules : 0xbf000000 - 0xc0000000   (  16 MB)
+      .init : 0xc0008000 - 0xc0029000   ( 132 kB)
+      .text : 0xc0029000 - 0xc03e9bb4   (3843 kB)
+      .data : 0xc03ea000 - 0xc040e220   ( 145 kB)
+SLUB: Genslabs=13, HWalign=32, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+NR_IRQS:85
+irq: clearing pending status 02000000
+irq: clearing subpending status 00000002
+Console: colour dummy device 80x30
+console [ttySAC0] enabled
+Calibrating delay loop... 201.93 BogoMIPS (lpj=504832)
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 512
+CPU: Testing write buffer coherency: ok
+gpiochip_add: gpios 288..303 (GPIOK) failed to register
+gpiochip_add: gpios 320..334 (GPIOL) failed to register
+gpiochip_add: gpios 352..353 (GPIOM) failed to register
+NET: Registered protocol family 16
+MINI2440: Option string mini2440=1b
+MINI2440: LCD 0:240x320 [1:800x480] 2:1024x768
+S3C2440: Initialising architecture
+S3C2440: IRQ Support
+S3C244X: Clock Support, DVS off
+bio: create slab <bio-0> at 0
+usbcore: registered new interface driver usbfs
+usbcore: registered new interface driver hub
+usbcore: registered new device driver usb
+s3c-i2c s3c2440-i2c: slave address 0x10
+s3c-i2c s3c2440-i2c: bus frequency set to 98 KHz
+s3c-i2c s3c2440-i2c: i2c-0: S3C I2C adapter
+Advanced Linux Sound Architecture Driver Version 1.0.23.
+NET: Registered protocol family 2
+IP route cache hash table entries: 1024 (order: 0, 4096 bytes)
+TCP established hash table entries: 2048 (order: 2, 16384 bytes)
+TCP bind hash table entries: 2048 (order: 1, 8192 bytes)
+TCP: Hash tables configured (established 2048 bind 2048)
+TCP reno registered
+UDP hash table entries: 256 (order: 0, 4096 bytes)
+UDP-Lite hash table entries: 256 (order: 0, 4096 bytes)
+NET: Registered protocol family 1
+RPC: Registered udp transport module.
+RPC: Registered tcp transport module.
+RPC: Registered tcp NFSv4.1 backchannel transport module.
+JFFS2 version 2.2. (NAND) �© 2001-2006 Red Hat, Inc.
+ROMFS MTD (C) 2007 Red Hat, Inc.
+msgmni has been set to 118
+io scheduler noop registered
+io scheduler deadline registered
+io scheduler cfq registered (default)
+Console: switching to colour frame buffer device 200x80
+fb0: s3c2410fb frame buffer device
+s3c2440-uart.0: ttySAC0 at MMIO 0x50000000 (irq = 70) is a S3C2440
+s3c2440-uart.1: ttySAC1 at MMIO 0x50004000 (irq = 73) is a S3C2440
+s3c2440-uart.2: ttySAC2 at MMIO 0x50008000 (irq = 76) is a S3C2440
+brd: module loaded
+at24 0-0050: 1024 byte 24c08 EEPROM, writable, 16 bytes/write
+S3C24XX NAND Driver, (c) 2004 Simtec Electronics
+s3c24xx-nand s3c2440-nand: Tacls=1, 9ns Twrph0=3 29ns, Twrph1=2 19ns
+s3c24xx-nand s3c2440-nand: NAND soft ECC
+NAND device: Manufacturer ID: 0xec, Chip ID: 0xda (Samsung NAND 256MiB
+3,3V 8-bit)
+Creating 4 MTD partitions on "nand":
+0x000000000000-0x000000040000 : "u-boot"
+ftl_cs: FTL header not found.
+0x000000040000-0x000000060000 : "u-boot-env"
+ftl_cs: FTL header not found.
+0x000000060000-0x000000560000 : "kernel"
+ftl_cs: FTL header not found.
+0x000000560000-0x000010000000 : "root"
+ftl_cs: FTL header not found.
+dm9000 Ethernet Driver, V1.31
+eth0: dm9000e at c486a300,c486e304 IRQ 51 MAC: 08:08:11:18:12:27 (chip)
+ohci_hcd: USB 1.1 'Open' Host Controller (OHCI) Driver
+s3c2410-ohci s3c2410-ohci: S3C24XX OHCI
+s3c2410-ohci s3c2410-ohci: new USB bus registered, assigned bus number 1
+s3c2410-ohci s3c2410-ohci: irq 42, io mem 0x49000000
+hub 1-0:1.0: USB hub found
+hub 1-0:1.0: 2 ports detected
+usbcore: registered new interface driver libusual
+s3c2440-usbgadget s3c2440-usbgadget: S3C2440: increasing FIFO to 128 bytes
+mousedev: PS/2 mouse device common for all mice
+input: gpio-keys as /devices/platform/gpio-keys/input/input0
+S3C24XX RTC, (c) 2004,2006 Simtec Electronics
+s3c-rtc s3c2410-rtc: rtc disabled, re-enabling
+s3c-rtc s3c2410-rtc: rtc core: registered s3c as rtc0
+i2c /dev entries driver
+S3C2410 Watchdog Timer, (c) 2004 Simtec Electronics
+s3c2410-wdt s3c2410-wdt: watchdog inactive, reset disabled, irq enabled
+cpuidle: using governor ladder
+sdhci: Secure Digital Host Controller Interface driver
+sdhci: Copyright(c) Pierre Ossman
+s3c-sdi s3c2440-sdi: powered down.
+s3c-sdi s3c2440-sdi: mmc0 - using pio, sw SDIO IRQ
+s3c-sdi s3c2440-sdi: running at 0kHz (requested: 0kHz).
+s3c-sdi s3c2440-sdi: running at 398kHz (requested: 400kHz).
+s3c-sdi s3c2440-sdi: running at 398kHz (requested: 400kHz).
+s3c-sdi s3c2440-sdi: running at 398kHz (requested: 400kHz).
+s3c-sdi s3c2440-sdi: running at 398kHz (requested: 400kHz).
+s3c-sdi s3c2440-sdi: running at 398kHz (requested: 400kHz).
+s3c-sdi s3c2440-sdi: running at 398kHz (requested: 400kHz).
+usbcore: registered new interface driver usbhid
+usbhid: USB HID core driver
+ALSA device list:
+  No soundcards found.
+TCP cubic registered
+NET: Registered protocol family 17
+Registering the dns_resolver key type
+s3c-rtc s3c2410-rtc: setting system clock to 2011-03-23 06:01:06 UTC
+(1300860066)
+s3c-sdi s3c2440-sdi: running at 398kHz (requested: 400kHz).
+s3c-sdi s3c2440-sdi: running at 16875kHz (requested: 25000kHz).
+s3c-sdi s3c2440-sdi: running at 16875kHz (requested: 25000kHz).
+mmc0: new SD card at address b368
+mmcblk0: mmc0:b368 SD    970 MiB
+ mmcblk0: p1 p2 p3
+eth0: link down
+IP-Config: Complete:
+     device=eth0, addr=10.146.1.199, mask=255.255.255.0, gw=255.255.255.255,
+     host=mini2440, domain=, nis-domain=(none),
+     bootserver=10.146.1.21, rootserver=10.146.1.21, rootpath=
+Root-NFS: nfsroot=/home/open-nandra/rootfs
+NFS: nfs mount opts='udp,nolock,addr=10.146.1.21'
+NFS:   parsing nfs mount option 'udp'
+NFS:   parsing nfs mount option 'nolock'
+NFS:   parsing nfs mount option 'addr=10.146.1.21'
+NFS: MNTPATH: '/home/open-nandra/rootfs'
+NFS: sending MNT request for 10.146.1.21:/home/open-nandra/rootfs
+eth0: link up, 100Mbps, full-duplex, lpa 0x45E1
+NFS: received 1 auth flavors
+NFS:   auth flavor[0]: 1
+NFS: MNT request succeeded
+NFS: using auth flavor 1
+VFS: Mounted root (nfs filesystem) on device 0:14.
+Freeing init memory: 132K
+nfs: server 10.146.1.21 not responding, still trying
+nfs: server 10.146.1.21 not responding, still trying
 
+This is behavior for commit 53d4737580535e073963b91ce87d4216e434fab5
+For commit before it works properly.
+
+
+regards,
+
+marek
+
+-- 
+as simple and primitive as possible
+-------------------------------------------------
+Marek Belisko - OPEN-NANDRA
+Freelance Developer
+
+Ruska Nova Ves 219 | Presov, 08005 Slovak Republic
+Tel: +421 915 052 184
+skype: marekwhite
+icq: 290551086
+web: http://open-nandra.com
