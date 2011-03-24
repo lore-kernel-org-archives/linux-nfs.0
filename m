@@ -1,51 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:60049 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758465Ab1CCOtW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Mar 2011 09:49:22 -0500
-Subject: Re: mount.nfs libmount support (v2)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1299159822-25190-1-git-send-email-kzak@redhat.com>
-Date: Thu, 3 Mar 2011 09:48:00 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <53DAB8EE-E7FD-4081-9227-5C8DB072945B@oracle.com>
-References: <1299159822-25190-1-git-send-email-kzak@redhat.com>
-To: Karel Zak <kzak@redhat.com>, Steve Dickson <SteveD@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:6014 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750883Ab1CXQs0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Mar 2011 12:48:26 -0400
+Subject: Re: [PATCH 11/12] NFSv4.1: layoutcommit
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: "William A. (Andy) Adamson" <androsadamson@gmail.com>,
+        Fred Isaman <iisaman@netapp.com>, NFS list <linux-nfs@vger.kernel.org>
+In-Reply-To: <4D8B732F.8020404@panasas.com>
+References: <AANLkTinBuLxDq5zrxC=-0fS_md5CXTQAS_POsKA9issP@mail.gmail.com>
+	 <4D8B732F.8020404@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 24 Mar 2011 12:48:25 -0400
+Message-ID: <1300985305.31106.6.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Mar 3, 2011, at 8:43 AM, Karel Zak wrote:
-
-> This is the second version of the mount.nfs with libmount support. The code
-> depends on util-linux >= v2.19 (e.g. Fedora 15).
+On Thu, 2011-03-24 at 18:37 +0200, Benny Halevy wrote:
+> On 2011-03-24 15:57, William A. (Andy) Adamson wrote:
+> >>> Only whole file layout support means that there is only one IOMODE_RW layout
+> >>> segment.
+> >>>
+> >>> Signed-off-by: Andy Adamson <andros@netapp.com>
+> >>> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+> >>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> >>> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+> >>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+> >>> Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
+> >>> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+> >>> Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+> >>> Tested-by: Boaz Harrosh <bharrosh@panasas.com>
+> >>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+> >>
+> >> The code in this patch is new and different enough from the one I/we
+> >> signed-off originally that they don't make sense here.
+> > 
+> > Hi Benny
+> > 
+> > OK with me
+> > 
+> >>>
+> >>> +             /* references matched in nfs4_layoutcommit_release */
+> >>> +             wdata->lseg->pls_lc_cred =
+> >>> +                     get_rpccred(wdata->args.context->state->owner->so_cred);
+> >>> +             mark_inode_dirty_sync(wdata->inode);
+> >>> +             dprintk("%s: Set layoutcommit for inode %lu ",
+> >>> +                     __func__, wdata->inode->i_ino);
+> >>> +     }
+> >>> +     if (end_pos > wdata->lseg->pls_end_pos)
+> >>> +             wdata->lseg->pls_end_pos = end_pos;
+> >>
+> >> The end_pos is essentially per inode, why maintain it per lseg?
+> >> How do you see this working with multiple lsegs in mind?
+> > 
+> > The end-pos is per lseg, not per inode - each layoutcommit applies to
+> > a range of WRITES for a layoutsegment over the LAYOUTCOMMIT range.
+> > 
+> > From Section 18.42.3
+> > .  The byte-range being committed is
+> >    specified through the byte-range (loca_offset and loca_length).  This
+> >    byte-range MUST overlap with one or more existing layouts previously
+> >    granted via LAYOUTGET
+> > 
+> > 
+> >    Also, loca_last_write_offset MUST overlap the range
+> >    described by loca_offset and loca_length.
+> > 
+> > For the multiple lseg case: if the lsegs are merged, bookeeping
+> > end_pos per lseg just works. If a layoutdriver does not use merged
+> > lsegs, then there is a bit of work to do to walk the list of lsegs and
+> > determine the final end_pos for a given LAYOUTCOMMIT.  If there are
+> > multiple non-contiguous lsegs, each used for WRITEs then multiple
+> > LAYOUTCOMMITs will need to be sent, otherwise the LAYOUTCOMMIT
+> > byte-range will not overlap as required.
+> > 
 > 
-> Chnages:
->  - move nfs_umount_do_umnt() to network.c
->  - use union nfs_sockaddr
->  - add missing GPL address paragraph
->  - use abstract function the storing and retrieval mount options
->  - use "static const" for struct option
->  - use "strncmp() == 0" everywhere
-> 
-> 
-> The locale issue is not fixed. It seems that _() macro from nls.h is used on
-> many places in the package, but ENABLE_NLS macro is nowhere defined and 
-> setlocale() is not called at all.
-> 
-> I believe that this issue should be fixed independently on the libmount
-> patches.
+> For the current layout types I believe that the LAYOUTCOMMIT can "merge"
+> multiple layout segments into a single LAYOUTCOMMIT, with a byte range
+> covering all segments and a last_byte_written offset which is just the maximum.
+> Future layout types may need this method though...
 
-Thanks for the update.
+Is that safe?
 
-The overall architecture looks sane to me.  I think we would accelerate adoption by having nfs-utils take this now as an experimental "technology preview" thing, so the new code is widely available in a shared repo.  That would make it easier for people to play with it as libmount becomes available in more distributions.  We can then quickly make any minor adjustments needed.  Steve, thoughts?
+What if I'm doing blocks and have written layout segment 1 & 3, but not
+layout segment 2? I don't want to have the MDS commit layout segment 2,
+and make the (lack of) data there visible to future readers.
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Trond Myklebust
+Linux NFS client maintainer
 
-
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
