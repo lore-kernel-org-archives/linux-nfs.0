@@ -1,45 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1570 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:34605 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752551Ab1CATZw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Mar 2011 14:25:52 -0500
-From: andros@netapp.com
-To: bhalevy@panasas.com
-Cc: linux-nfs@vger.kernel.org, Fred Isaman <iisaman@netapp.com>
-Subject: [PATCH pnfs-submit-wave3 update 1/5] wave3: SQUASHME: remove comment to pnfs_pageio_init_read
-Date: Tue,  1 Mar 2011 14:25:30 -0500
-Message-Id: <1299007534-4105-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1299007534-4105-1-git-send-email-andros@netapp.com>
-References: <1299007534-4105-1-git-send-email-andros@netapp.com>
+	id S1756697Ab1CXRvK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Mar 2011 13:51:10 -0400
+Date: Thu, 24 Mar 2011 13:51:06 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Adam Lackorzynski <adam@os.inf.tu-dresden.de>, linux-nfs@vger.kernel.org,
+        xfs@oss.sgi.com
+Subject: Re: 2.6.38: Quota over NFS4
+Message-ID: <20110324175106.GB1886@fieldses.org>
+References: <20110320213111.GO11929@os.inf.tu-dresden.de>
+ <20110320214316.GB26036@fieldses.org>
+ <20110321184043.GC4992@os.inf.tu-dresden.de>
+ <20110321222301.GB472@fieldses.org>
+ <20110322221305.GA5857@os.inf.tu-dresden.de>
+ <20110323150328.GD23418@fieldses.org>
+ <20110323174052.GE5005@os.inf.tu-dresden.de>
+ <20110323190632.GA26306@fieldses.org>
+ <20110323223017.GA5177@os.inf.tu-dresden.de>
+ <20110324171704.GA1784@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110324171704.GA1784@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: Fred Isaman <iisaman@netapp.com>
+On Thu, Mar 24, 2011 at 01:17:05PM -0400, Christoph Hellwig wrote:
+> On Wed, Mar 23, 2011 at 11:30:17PM +0100, Adam Lackorzynski wrote:
+> > I probably mistyped something and thus bisected again:
+> 
+> maybe this is just a symptom.  When was the nfs4 code converted
+> to just use a single open struct file, and what are the lifetime
+> rules for it?  It would easily be that a long alive file might
+> make XFS keep persistent preallocations longer or similar issues.
 
-Benny points out this comment is confusing and out of place
-for the write code, remove it from read code too.
+Definitely, the commit he's bisect to there seems much more likely to be
+a culprit.  I'll take a closer look....
 
-Signed-off-by: Fred Isaman <iisaman@netapp.com>
----
- fs/nfs/pnfs.c |    3 ---
- 1 files changed, 0 insertions(+), 3 deletions(-)
+> Adam, can you create a loop filesystem with ext3 or something else
+> on it and see if the problem is XFS-specific?
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e17cebd..3e54514 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -864,9 +864,6 @@ static int pnfs_read_pg_test(struct nfs_pageio_descriptor *pgio,
- 	return NFS_SERVER(pgio->pg_inode)->pnfs_curr_ld->pg_test(pgio, prev, req);
- }
- 
--/*
-- * rsize is already set by caller to MDS rsize.
-- */
- void
- pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode)
- {
--- 
-1.6.2.5
+Originally it sounded like he was able to reproduce this only on one
+specific filesystem so I wondered whether there was something particular
+to that filesystem.
 
+--b.
