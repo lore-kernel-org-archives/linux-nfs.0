@@ -1,35 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from asset.uwaterloo.ca ([129.97.92.29]:43439 "EHLO
-	asset.uwaterloo.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752826Ab1CPPQ3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2011 11:16:29 -0400
-Date: Wed, 16 Mar 2011 11:16:22 -0400
-From: j223yang@asset.uwaterloo.ca
-To: trond.myklebust@fys.uio.no
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [patch]xprt: remove redundant check 
-Message-ID: <20110316151622.GA2932@asset.uwaterloo.ca>
-Content-Type: text/plain; charset=us-ascii
+Received: from daytona.panasas.com ([67.152.220.89]:35699 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933899Ab1CXRGK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Mar 2011 13:06:10 -0400
+Message-ID: <4D8B79FF.8060906@panasas.com>
+Date: Thu, 24 Mar 2011 19:06:07 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+CC: Fred Isaman <iisaman@netapp.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 11/12] NFSv4.1: layoutcommit
+References: <AANLkTi=S+gQER_upORoaK6WSMp8++25W6pTDpR7MD9Ec@mail.gmail.com>
+In-Reply-To: <AANLkTi=S+gQER_upORoaK6WSMp8++25W6pTDpR7MD9Ec@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-remove redundant check, second hunk.
+On 2011-03-24 16:45, William A. (Andy) Adamson wrote:
+> Hi Benny
+> 
+> int sync is used because the struct writeback_control->sync_mode (an
+> enum) is assigned.
 
-Signed-off-by: Jinqiu Yang <crindy646@gmail.com>
----
- xprt.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Then the compiler will do the assignment into bool once (I hope it
+optimizes for the enum values which are {0,1}) and thereafter use the
+bool value.
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt
---- a/net/sunrpc/xprt.c	2011-03-16 11:06:58.460039603 -0400
-+++ b/net/sunrpc/xprt.c	2011-03-16 11:07:49.835164663 -0400
-@@ -212,7 +212,7 @@ out_sleep:
- 			task->tk_pid, xprt);
- 	task->tk_timeout = 0;
- 	task->tk_status = -EAGAIN;
--	if (req && req->rq_ntrans)
-+	if (req->rq_ntrans)
- 		rpc_sleep_on(&xprt->resend, task, NULL);
- 	else
- 		rpc_sleep_on(&xprt->sending, task, NULL);
+Benny
+
+> 
+> -->Andy
+> 
+>>> +pnfs_layoutcommit_inode(struct inode *inode, int sync)
+>>
+>> "bool sync" makes more sense
