@@ -1,275 +1,156 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:50396 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753982Ab1CCGUu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Mar 2011 01:20:50 -0500
-Date: Thu, 3 Mar 2011 01:20:49 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Rick Koshi <nfs-bug-report@more-right-rudder.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Possible NFSv4 locking bug
-Message-ID: <20110303062049.GF7724@fieldses.org>
-References: <201102281527.p1SFRNst010559@hope.more-right-rudder.com>
- <20110301155308.GB20599@fieldses.org>
- <201103012231.p21MV68F018619@hope.more-right-rudder.com>
- <20110302191545.GA3981@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110302191545.GA3981@fieldses.org>
+Received: from mexforward.lss.emc.com ([128.222.32.20]:22545 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933847Ab1CXTw7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Mar 2011 15:52:59 -0400
+From: <peter.staubach@emc.com>
+To: <andros@netapp.com>, <trond.myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Date: Thu, 24 Mar 2011 15:50:49 -0400
+Subject: RE: [PATCH 2/2] NFSv4.1 convert layoutcommit sync to boolean
+Message-ID: <5E6794FC7B8FCA41A704019BE3C70E8B069D3AAA@MX31A.corp.emc.com>
+References: <1299916690-2595-1-git-send-email-andros@netapp.com>
+ <1299916690-2595-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1299916690-2595-2-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Mar 02, 2011 at 02:15:45PM -0500, J. Bruce Fields wrote:
-> On Tue, Mar 01, 2011 at 05:31:06PM -0500, Rick Koshi wrote:
-> > "J. Bruce Fields" writes:
-> > > On Mon, Feb 28, 2011 at 10:27:23AM -0500, Rick Koshi wrote:
-> > > > 
-> > > > I've found that when I lock an NFS-mounted file on a client, the server
-> > > > reserves an open file descriptor (as seen in /proc/sys/fs/file-nr).
-> > > 
-> > > So it looks like that's the total number of allocated struct file's
-> > > across the system?
-> > 
-> > That sounds about right.  To be honest, I'm not 100% sure exactly
-> > what that file reports.  But I do know that when it got that large,
-> > I stopped being able to open new files as any non-root user.  Running
-> > basic things like 'ls' gave me errors, as they were unable to open
-> > shared libraries to run.
-> > 
-> > If you like, you can read the post I originally submitted
-> > on serverfault.com, when I was trying to figure this out.
-> > It documents a lot of what I tried:
-> > 
-> >    http://serverfault.com/questions/235059/vfs-file-max-limit-1231582-reached
-> 
-> Yeah, this is an nfsv4-specific bug, and I can reproduce it easily by
-> e.g. running cthon -l in a loop on the client while monitoring file-nr
-> on the server.  I see the problem, but there's more than one thing to
-> fix there, so it needs more thought; I'll try to have a patch out by the
-> end of the day.
+In nfs4_proc_layoutcommit(), I think that it read better as "if (!sync)".  Wasn't that part of the whole point of switching to boolean instead of just an int?  :-)
 
-Does this help?
+	Thanx...
 
-I think this addresses the worst problem, but I'm still having trouble
-unmounting an exported filesystem cleanly afterwards, so there's
-probably another leak to track down.
+		ps
 
---b.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 54b60bf..4e97b3a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -316,64 +316,6 @@ static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
- static struct list_head client_lru;
- static struct list_head close_lru;
- 
--static void unhash_generic_stateid(struct nfs4_stateid *stp)
--{
--	list_del(&stp->st_hash);
--	list_del(&stp->st_perfile);
--	list_del(&stp->st_perstateowner);
--}
--
--static void free_generic_stateid(struct nfs4_stateid *stp)
--{
--	put_nfs4_file(stp->st_file);
--	kmem_cache_free(stateid_slab, stp);
--}
--
--static void release_lock_stateid(struct nfs4_stateid *stp)
--{
--	struct file *file;
--
--	unhash_generic_stateid(stp);
--	file = find_any_file(stp->st_file);
--	if (file)
--		locks_remove_posix(file, (fl_owner_t)stp->st_stateowner);
--	free_generic_stateid(stp);
--}
--
--static void unhash_lockowner(struct nfs4_stateowner *sop)
--{
--	struct nfs4_stateid *stp;
--
--	list_del(&sop->so_idhash);
--	list_del(&sop->so_strhash);
--	list_del(&sop->so_perstateid);
--	while (!list_empty(&sop->so_stateids)) {
--		stp = list_first_entry(&sop->so_stateids,
--				struct nfs4_stateid, st_perstateowner);
--		release_lock_stateid(stp);
--	}
--}
--
--static void release_lockowner(struct nfs4_stateowner *sop)
--{
--	unhash_lockowner(sop);
--	nfs4_put_stateowner(sop);
--}
--
--static void
--release_stateid_lockowners(struct nfs4_stateid *open_stp)
--{
--	struct nfs4_stateowner *lock_sop;
--
--	while (!list_empty(&open_stp->st_lockowners)) {
--		lock_sop = list_entry(open_stp->st_lockowners.next,
--				struct nfs4_stateowner, so_perstateid);
--		/* list_del(&open_stp->st_lockowners);  */
--		BUG_ON(lock_sop->so_is_open_owner);
--		release_lockowner(lock_sop);
--	}
--}
--
- /*
-  * We store the NONE, READ, WRITE, and BOTH bits separately in the
-  * st_{access,deny}_bmap field of the stateid, in order to track not
-@@ -446,13 +388,71 @@ static int nfs4_access_bmap_to_omode(struct nfs4_stateid *stp)
- 	return nfs4_access_to_omode(access);
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of andros@netapp.com
+Sent: Saturday, March 12, 2011 2:58 AM
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org; Andy Adamson
+Subject: [PATCH 2/2] NFSv4.1 convert layoutcommit sync to boolean
+
+From: Andy Adamson <andros@netapp.com>
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/file.c     |    2 +-
+ fs/nfs/nfs4_fs.h  |    2 +-
+ fs/nfs/nfs4proc.c |    4 ++--
+ fs/nfs/pnfs.c     |    2 +-
+ fs/nfs/pnfs.h     |    4 ++--
+ fs/nfs/write.c    |    8 +++++---
+ 6 files changed, 12 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 85cb95d..3ac5bd6 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -328,7 +328,7 @@ nfs_file_fsync(struct file *file, int datasync)
+ 		ret = status;
+ 	if (!ret && !datasync)
+ 		/* application has asked for meta-data sync */
+-		ret = pnfs_layoutcommit_inode(inode, 1);
++		ret = pnfs_layoutcommit_inode(inode, true);
+ 	return ret;
  }
  
--static void release_open_stateid(struct nfs4_stateid *stp)
-+static void unhash_generic_stateid(struct nfs4_stateid *stp)
-+{
-+	list_del(&stp->st_hash);
-+	list_del(&stp->st_perfile);
-+	list_del(&stp->st_perstateowner);
-+}
-+
-+static void free_generic_stateid(struct nfs4_stateid *stp)
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 1e612d1..4414fd7 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -263,7 +263,7 @@ extern int nfs4_init_session(struct nfs_server *server);
+ extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
+ 		struct nfs_fsinfo *fsinfo);
+ extern int nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data,
+-				  int sync);
++				  bool sync);
+ 
+ static inline bool
+ is_ds_only_client(struct nfs_client *clp)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6f2f402..43045fa 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5671,7 +5671,7 @@ static const struct rpc_call_ops nfs4_layoutcommit_ops = {
+ };
+ 
+ int
+-nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int sync)
++nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, bool sync)
  {
- 	int oflag = nfs4_access_bmap_to_omode(stp);
- 
-+	nfs4_file_put_access(stp->st_file, oflag);
-+	put_nfs4_file(stp->st_file);
-+	kmem_cache_free(stateid_slab, stp);
-+}
-+
-+static void release_lock_stateid(struct nfs4_stateid *stp)
-+{
-+	struct file *file;
-+
-+	unhash_generic_stateid(stp);
-+	file = find_any_file(stp->st_file);
-+	if (file)
-+		locks_remove_posix(file, (fl_owner_t)stp->st_stateowner);
-+	free_generic_stateid(stp);
-+}
-+
-+static void unhash_lockowner(struct nfs4_stateowner *sop)
-+{
-+	struct nfs4_stateid *stp;
-+
-+	list_del(&sop->so_idhash);
-+	list_del(&sop->so_strhash);
-+	list_del(&sop->so_perstateid);
-+	while (!list_empty(&sop->so_stateids)) {
-+		stp = list_first_entry(&sop->so_stateids,
-+				struct nfs4_stateid, st_perstateowner);
-+		release_lock_stateid(stp);
-+	}
-+}
-+
-+static void release_lockowner(struct nfs4_stateowner *sop)
-+{
-+	unhash_lockowner(sop);
-+	nfs4_put_stateowner(sop);
-+}
-+
-+static void
-+release_stateid_lockowners(struct nfs4_stateid *open_stp)
-+{
-+	struct nfs4_stateowner *lock_sop;
-+
-+	while (!list_empty(&open_stp->st_lockowners)) {
-+		lock_sop = list_entry(open_stp->st_lockowners.next,
-+				struct nfs4_stateowner, so_perstateid);
-+		/* list_del(&open_stp->st_lockowners);  */
-+		BUG_ON(lock_sop->so_is_open_owner);
-+		release_lockowner(lock_sop);
-+	}
-+}
-+
-+static void release_open_stateid(struct nfs4_stateid *stp)
-+{
- 	unhash_generic_stateid(stp);
- 	release_stateid_lockowners(stp);
--	nfs4_file_put_access(stp->st_file, oflag);
- 	free_generic_stateid(stp);
- }
- 
-@@ -3734,6 +3734,7 @@ alloc_init_lock_stateid(struct nfs4_stateowner *sop, struct nfs4_file *fp, struc
- 	stp->st_stateid.si_stateownerid = sop->so_id;
- 	stp->st_stateid.si_fileid = fp->fi_id;
- 	stp->st_stateid.si_generation = 0;
-+	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
- 
-@@ -3748,6 +3749,17 @@ check_lock_length(u64 offset, u64 length)
- 	     LOFF_OVERFLOW(offset, length)));
- }
- 
-+static void get_lock_access(struct nfs4_stateid *lock_stp, u32 access)
-+{
-+	struct nfs4_file *fp = lock_stp->st_file;
-+	int oflag = nfs4_access_to_omode(access);
-+
-+	if (test_bit(access, &lock_stp->st_access_bmap))
-+		return;
-+	nfs4_file_get_access(fp, oflag);
-+	__set_bit(access, &lock_stp->st_access_bmap);
-+}
-+
- /*
-  *  LOCK operation 
-  */
-@@ -3764,7 +3776,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct file_lock conflock;
- 	__be32 status = 0;
- 	unsigned int strhashval;
--	unsigned int cmd;
- 	int err;
- 
- 	dprintk("NFSD: nfsd4_lock: start=%Ld length=%Ld\n",
-@@ -3846,22 +3857,18 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	switch (lock->lk_type) {
- 		case NFS4_READ_LT:
- 		case NFS4_READW_LT:
--			if (find_readable_file(lock_stp->st_file)) {
--				nfs4_get_vfs_file(rqstp, fp, &cstate->current_fh, NFS4_SHARE_ACCESS_READ);
--				filp = find_readable_file(lock_stp->st_file);
--			}
-+			filp = find_readable_file(lock_stp->st_file);
-+			if (filp)
-+				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_READ);
- 			file_lock.fl_type = F_RDLCK;
--			cmd = F_SETLK;
--		break;
-+			break;
- 		case NFS4_WRITE_LT:
- 		case NFS4_WRITEW_LT:
--			if (find_writeable_file(lock_stp->st_file)) {
--				nfs4_get_vfs_file(rqstp, fp, &cstate->current_fh, NFS4_SHARE_ACCESS_WRITE);
--				filp = find_writeable_file(lock_stp->st_file);
--			}
-+			filp = find_writeable_file(lock_stp->st_file);
-+			if (filp)
-+				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_WRITE);
- 			file_lock.fl_type = F_WRLCK;
--			cmd = F_SETLK;
--		break;
-+			break;
- 		default:
- 			status = nfserr_inval;
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTCOMMIT],
+@@ -5699,7 +5699,7 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int sync)
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return PTR_ERR(task);
+-	if (!sync)
++	if (sync == false)
  		goto out;
-@@ -3885,7 +3892,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	* Note: locks.c uses the BKL to protect the inode's lock list.
- 	*/
+ 	status = nfs4_wait_for_completion_rpc_task(task);
+ 	if (status != 0)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ac71125..22c2ddb 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -991,7 +991,7 @@ EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+  * if WRITEs to a data server return NFS_DATA_SYNC.
+  */
+ int
+-pnfs_layoutcommit_inode(struct inode *inode, int sync)
++pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ {
+ 	struct nfs4_layoutcommit_data *data;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 0806c77..33b9ae9 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -155,7 +155,7 @@ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+ bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+-int pnfs_layoutcommit_inode(struct inode *inode, int sync);
++int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
  
--	err = vfs_lock_file(filp, cmd, &file_lock, &conflock);
-+	err = vfs_lock_file(filp, F_SETLK, &file_lock, &conflock);
- 	switch (-err) {
- 	case 0: /* success! */
- 		update_stateid(&lock_stp->st_stateid);
+ static inline int lo_fail_bit(u32 iomode)
+ {
+@@ -328,7 +328,7 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
+ {
+ }
+ 
+-static inline int pnfs_layoutcommit_inode(struct inode *inode, int sync)
++static inline int pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ {
+ 	return 0;
+ }
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index a03c11f..85d7525 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1566,10 +1566,12 @@ int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 
+ 	ret = nfs_commit_unstable_pages(inode, wbc);
+ 	if (ret >= 0 && test_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags)) {
+-		int status, sync = wbc->sync_mode;
++		int status;
++		bool sync = true;
+ 
+-		if (wbc->nonblocking || wbc->for_background)
+-				sync = 0;
++		if (wbc->sync_mode == WB_SYNC_NONE || wbc->nonblocking ||
++		    wbc->for_background)
++			sync = false;
+ 
+ 		status = pnfs_layoutcommit_inode(inode, sync);
+ 		if (status < 0)
+-- 
+1.6.6
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
