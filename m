@@ -1,53 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mexforward.lss.emc.com ([128.222.32.20]:47891 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756278Ab1CWSoC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 14:44:02 -0400
-From: <peter.staubach@emc.com>
-To: <Trond.Myklebust@netapp.com>, <bfields@fieldses.org>
-CC: <bjschuma@netapp.com>, <linux-nfs@vger.kernel.org>
-Date: Wed, 23 Mar 2011 14:42:51 -0400
-Subject: RE: [PATCH 3/3] NFS: Detect loops in a readdir due to bad cookies
-Message-ID: <5E6794FC7B8FCA41A704019BE3C70E8B0693F05F@MX31A.corp.emc.com>
-References: <4D8A3060.807@netapp.com>  <20110323182524.GB25284@fieldses.org>
- <1300905243.11677.53.camel@lade.trondhjem.org>
-In-Reply-To: <1300905243.11677.53.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:47198 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753848Ab1CXN5q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Mar 2011 09:57:46 -0400
+Received: by iyb26 with SMTP id 26so9690199iyb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Mar 2011 06:57:46 -0700 (PDT)
+Date: Thu, 24 Mar 2011 09:57:46 -0400
+Message-ID: <AANLkTinBuLxDq5zrxC=-0fS_md5CXTQAS_POsKA9issP@mail.gmail.com>
+Subject: Re: [PATCH 11/12] NFSv4.1: layoutcommit
+From: "William A. (Andy) Adamson" <androsadamson@gmail.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Fred Isaman <iisaman@netapp.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-QWx0aG91Z2ggSSB0aGluayB0aGF0IGl0IGlzIGEgZ29vZCB0aGluZyB0byBwcm90ZWN0IHRoZSBj
-bGllbnQgYWdhaW5zdCBicm9rZW4gc2VydmVycywgaXQgZG9lcyBzZWVtIGxpa2UgdGhlIHJpZ2h0
-IHNvbHV0aW9uIGlzIHRvIGdldCB0aGUgc2VydmVyIGZpeGVkLi4uDQoNCgkJcHMNCg0KDQotLS0t
-LU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogbGludXgtbmZzLW93bmVyQHZnZXIua2VybmVs
-Lm9yZyBbbWFpbHRvOmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBP
-ZiBUcm9uZCBNeWtsZWJ1c3QNClNlbnQ6IFdlZG5lc2RheSwgTWFyY2ggMjMsIDIwMTEgMjozNCBQ
-TQ0KVG86IEouIEJydWNlIEZpZWxkcw0KQ2M6IEJyeWFuIFNjaHVtYWtlcjsgbGludXgtbmZzQHZn
-ZXIua2VybmVsLm9yZw0KU3ViamVjdDogUmU6IFtQQVRDSCAzLzNdIE5GUzogRGV0ZWN0IGxvb3Bz
-IGluIGEgcmVhZGRpciBkdWUgdG8gYmFkIGNvb2tpZXMNCg0KT24gV2VkLCAyMDExLTAzLTIzIGF0
-IDE0OjI1IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+IE9uIFdlZCwgTWFyIDIzLCAy
-MDExIGF0IDAxOjM5OjQ0UE0gLTA0MDAsIEJyeWFuIFNjaHVtYWtlciB3cm90ZToNCj4gPiBTb21l
-IGZpbGVzeXN0ZW1zIChzdWNoIGFzIGV4dDQpIGNhbiByZXR1cm4gdGhlIHNhbWUgY29va2llIHZh
-bHVlIGZvciBtdWx0aXBsZQ0KPiANCj4gRG8gdGhlIGV4dDQgcGVvcGxlIGtub3cgYWJvdXQgdGhp
-cz8gIChBbmQgd2hhdCdzIHRoZSBlYXNpZXN0IHdheSB0bw0KPiByZXByb2R1Y2UgaXQ/KQ0KDQpU
-aGV5IGFyZSBhd2FyZSBvZiBpdC4gSSBkb24ndCBrbm93IGlmIHRoZXkgYXJlIGF3YXJlIGhvdyBl
-YXN5IGl0IGlzIHRvDQpyZXByb2R1Y2UuDQoNCkJyeWFuIHNhdyBzZXZlcmFsIDEwcyBvZiBpbnN0
-YW5jZXMgb2YgZHVwbGljYXRlIGNvb2tpZXMgd2hlbiBoZSB3YXMNCmRvaW5nIHBlcmZvcm1hbmNl
-IHRlc3Rpbmcgb2YgcmVhZGRpciBvbiBhIGRpcmVjdG9yeSB3aXRoIDEwXjYgZW50cmllcy4NCk1v
-c3Qgb2YgdGhlIHRpbWUgaXQgZGlkbid0IGNhdXNlIGxvb3Bpbmcgb24gdGhlIGNsaWVudCBzaW5j
-ZSB0aGUgbG9vcGluZw0KYmVoYXZpb3VyIGRlcGVuZHMgb24gdGhlIGRpc3RyaWJ1dGlvbiBvZiB0
-aG9zZSBjb29raWVzIGluIHRoZSBjbGllbnQncw0KcmVhZGRpciBjYWNoZS4gSG93ZXZlciBvbiBv
-Y2Nhc2lvbiBoZSBkaWQgc2VlIGxvb3BpbmcgaW4gdGhlIGNsaWVudCwgYW5kDQphdCBsZWFzdCBv
-bmNlIGhlIHNhdyBsb29waW5nIG9uIHRoZSBzZXJ2ZXIgdG9vIChpbiB3aGljaCBhIGR1cGxpY2F0
-ZQ0KY29va2llIGNhdXNlZCB0aGUgc2VydmVyIHRvIHJldHVybiBmaWxlcyB0aGF0IGl0IGhhZCBh
-bHJlYWR5IHNlbnQgdG8gdGhlDQpjbGllbnQpLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCi0tDQpUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlz
-dDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KdGhlIGJvZHkgb2Yg
-YSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCk1vcmUgbWFqb3Jkb21vIGlu
-Zm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQoT77+9
-77+97Lm7HO+/vSbvv71+77+9Ju+/vRjvv73vv70rLe+/ve+/vd22F++/ve+/vXfvv73vv73Lm++/
-ve+/ve+/vW3vv71i77+977+9Z37Ip++/vRfvv73vv73cqH3vv73vv73vv73GoHrvv70majordu+/
-ve+/ve+/vQfvv73vv73vv73vv716Wivvv73vv70rembvv73vv73vv71o77+977+977+9fu+/ve+/
-ve+/ve+/vWnvv73vv73vv71677+9Hu+/vXfvv73vv73vv70/77+977+977+977+9Ju+/vSnfohtm
+>> Only whole file layout support means that there is only one IOMODE_RW layout
+>> segment.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
+>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+>> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
+>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
+>> Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
+>> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
+>> Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
+>> Tested-by: Boaz Harrosh <bharrosh@panasas.com>
+>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+>
+>The code in this patch is new and different enough from the one I/we
+>signed-off originally that they don't make sense here.
+
+Hi Benny
+
+OK with me
+
+>>
+>>+             /* references matched in nfs4_layoutcommit_release */
+>> +             wdata->lseg->pls_lc_cred =
+>> +                     get_rpccred(wdata->args.context->state->owner->so_cred);
+>> +             mark_inode_dirty_sync(wdata->inode);
+>> +             dprintk("%s: Set layoutcommit for inode %lu ",
+>> +                     __func__, wdata->inode->i_ino);
+>> +     }
+>> +     if (end_pos > wdata->lseg->pls_end_pos)
+>> +             wdata->lseg->pls_end_pos = end_pos;
+>
+> The end_pos is essentially per inode, why maintain it per lseg?
+> How do you see this working with multiple lsegs in mind?
+
+The end-pos is per lseg, not per inode - each layoutcommit applies to
+a range of WRITES for a layoutsegment over the LAYOUTCOMMIT range.
+
+>From Section 18.42.3
+.  The byte-range being committed is
+   specified through the byte-range (loca_offset and loca_length).  This
+   byte-range MUST overlap with one or more existing layouts previously
+   granted via LAYOUTGET
+
+
+   Also, loca_last_write_offset MUST overlap the range
+   described by loca_offset and loca_length.
+
+For the multiple lseg case: if the lsegs are merged, bookeeping
+end_pos per lseg just works. If a layoutdriver does not use merged
+lsegs, then there is a bit of work to do to walk the list of lsegs and
+determine the final end_pos for a given LAYOUTCOMMIT.  If there are
+multiple non-contiguous lsegs, each used for WRITEs then multiple
+LAYOUTCOMMITs will need to be sent, otherwise the LAYOUTCOMMIT
+byte-range will not overlap as required.
+
+>> +pnfs_layoutcommit_inode(struct inode *inode, int sync)
+>
+> "bool sync" makes more sense
+
+>> +{
+>> +     struct nfs4_layoutcommit_data *data;
+>> +     struct nfs_inode *nfsi = NFS_I(inode);
+>> +     struct pnfs_layout_segment *lseg;
+>> +     struct rpc_cred *cred;
+>> +     loff_t end_pos;
+>> +     int status = 0;
+>> +
+>> +     dprintk("--> %s inode %lu\n", __func__, inode->i_ino);
+>> +
+>> +     /* Note kzalloc ensures data->res.seq_res.sr_slot == NULL */
+>> +     data = kzalloc(sizeof(*data), GFP_NOFS);
+>> +     spin_lock(&inode->i_lock);
+>> +
+> >+     if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
+>
+> previously (i.e. in the linux-pnfs tree :) this function is called only
+> if layoutcommit_needed(), now I worry may waste a kzalloc too frequently.
+> I suggest testing (and not clearing) NFS_INO_LAYOUTCOMMIT before doing
+> the allocation to prevent that.
+
+Agreed.
+
+>> +     end_pos = lseg->pls_end_pos;
+>> +     cred = lseg->pls_lc_cred;
+>> +     lseg->pls_end_pos = 0;
+>> +     lseg->pls_lc_cred = NULL;
+>> +
+>> +     if (!data) {
+>
+> eh?
+> why not test this before test_and_clear_bit(NFS_INO_LAYOUTCOMMIT ?
+
+Because we should clear the LAYOUTCOMMIT needed information from the inode.
+The LAYOUTCOMMIT for the file layout is an optimization. If the client
+can't alloc the required buffer, the compound just won't be sent.
+
+-->Andy
