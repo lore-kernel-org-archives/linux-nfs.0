@@ -1,42 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:3969 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751717Ab1CWV0r convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 17:26:47 -0400
-Subject: Re: [PATCH 11/12] NFSv4.1: layoutcommit
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Fred Isaman <iisaman@netapp.com>, linux-nfs@vger.kernel.org
-In-Reply-To: <20110323212157.GA14281@infradead.org>
-References: <1300886875-5016-1-git-send-email-iisaman@netapp.com>
-	 <1300886875-5016-12-git-send-email-iisaman@netapp.com>
-	 <20110323210028.GA31040@infradead.org>
-	 <1300914915.11677.88.camel@lade.trondhjem.org>
-	 <20110323212157.GA14281@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 23 Mar 2011 17:26:42 -0400
-Message-ID: <1300915602.11677.91.camel@lade.trondhjem.org>
+Received: from os.inf.tu-dresden.de ([141.76.48.99]:33568 "EHLO
+	os.inf.tu-dresden.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932831Ab1CXW2M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Mar 2011 18:28:12 -0400
+Date: Thu, 24 Mar 2011 23:28:07 +0100
+From: Adam Lackorzynski <adam@os.inf.tu-dresden.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        xfs@oss.sgi.com
+Subject: Re: 2.6.38: Quota over NFS4
+Message-ID: <20110324222807.GC10821@os.inf.tu-dresden.de>
+References: <20110320214316.GB26036@fieldses.org>
+ <20110321184043.GC4992@os.inf.tu-dresden.de>
+ <20110321222301.GB472@fieldses.org>
+ <20110322221305.GA5857@os.inf.tu-dresden.de>
+ <20110323150328.GD23418@fieldses.org>
+ <20110323174052.GE5005@os.inf.tu-dresden.de>
+ <20110323190632.GA26306@fieldses.org>
+ <20110323223017.GA5177@os.inf.tu-dresden.de>
+ <20110324171704.GA1784@infradead.org>
+ <20110324175106.GB1886@fieldses.org>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20110324175106.GB1886@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-03-23 at 17:21 -0400, Christoph Hellwig wrote:
-> Okay, care to add a comment explaining this fact?  The name layoutcommit
-> doesn't quite suggest that it doesn't commit anything but timestamps
-> and size.
+
+On Thu Mar 24, 2011 at 13:51:06 -0400, J. Bruce Fields wrote:
+> On Thu, Mar 24, 2011 at 01:17:05PM -0400, Christoph Hellwig wrote:
+> > On Wed, Mar 23, 2011 at 11:30:17PM +0100, Adam Lackorzynski wrote:
+> > > I probably mistyped something and thus bisected again:
+> > 
+> > maybe this is just a symptom.  When was the nfs4 code converted
+> > to just use a single open struct file, and what are the lifetime
+> > rules for it?  It would easily be that a long alive file might
+> > make XFS keep persistent preallocations longer or similar issues.
 > 
-> Can you recover the size from the data servers with the code above?  The
-> size should also be on disk for an fdatasync.
+> Definitely, the commit he's bisect to there seems much more likely to be
+> a culprit.  I'll take a closer look....
+> 
+> > Adam, can you create a loop filesystem with ext3 or something else
+> > on it and see if the problem is XFS-specific?
+> 
+> Originally it sounded like he was able to reproduce this only on one
+> specific filesystem so I wondered whether there was something particular
+> to that filesystem.
 
-Yes. The specification is that there can be no loss of data (even in the
-case of a server crash) once the writes are committed to the data
-server.
+I just found out it happens also with a newly created xfs and also with
+ext3 and ext4. The reason that I did not see that initially is that the
+script I'm using needs to be on the same fs which wasn't the case when I
+initially tried it with a new fs. The sequence I'm using is:
 
+# mount x.x.x:/home /tmp/st
+# su - foo
+$ cd /tmp/st/foo/x
+$ ../test-script
+foo@host:/tmp/st/foo/x$ ../test-script 
+Filesystem            Inodes   IUsed   IFree IUse% Mounted on
+x.x.x:/home    39321600      15 39321585    1% /tmp/st
+Filesystem            Inodes   IUsed   IFree IUse% Mounted on
+x.x.x:/home    39321600      16 39321584    1% /tmp/st
+Filesystem            Inodes   IUsed   IFree IUse% Mounted on
+x.x.x:/home    39321600      16 39321584    1% /tmp/st
+
+
+
+test-script:
+#! /bin/sh
+
+df -i .
+cp /bin/ls x1
+df -i .
+cat x1 > /dev/null
+rm x1
+df -i .
+
+
+
+
+
+
+Adam
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+Adam                 adam@os.inf.tu-dresden.de
+  Lackorzynski         http://os.inf.tu-dresden.de/~adam/
