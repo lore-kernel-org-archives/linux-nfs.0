@@ -1,32 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from int-mailstore01.merit.edu ([207.75.116.232]:53465 "EHLO
-	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759868Ab1CDRtx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Mar 2011 12:49:53 -0500
-Date: Fri, 4 Mar 2011 12:49:52 -0500
-From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Subject: Re: hung iozone client bug recap
-Message-ID: <20110304174952.GA19684@merit.edu>
-References: <20110303222219.GA16426@merit.edu>
- <4D711318.7070909@RedHat.com>
+Received: from fieldses.org ([174.143.236.118]:53323 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751110Ab1CYADN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Mar 2011 20:03:13 -0400
+Date: Thu, 24 Mar 2011 20:03:10 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Adam Lackorzynski <adam@os.inf.tu-dresden.de>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        xfs@oss.sgi.com
+Subject: Re: 2.6.38: Quota over NFS4
+Message-ID: <20110325000310.GA5514@fieldses.org>
+References: <20110321184043.GC4992@os.inf.tu-dresden.de>
+ <20110321222301.GB472@fieldses.org>
+ <20110322221305.GA5857@os.inf.tu-dresden.de>
+ <20110323150328.GD23418@fieldses.org>
+ <20110323174052.GE5005@os.inf.tu-dresden.de>
+ <20110323190632.GA26306@fieldses.org>
+ <20110323223017.GA5177@os.inf.tu-dresden.de>
+ <20110324171704.GA1784@infradead.org>
+ <20110324175106.GB1886@fieldses.org>
+ <20110324222807.GC10821@os.inf.tu-dresden.de>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D711318.7070909@RedHat.com>
+In-Reply-To: <20110324222807.GC10821@os.inf.tu-dresden.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Steve Dickson wrote:
+On Thu, Mar 24, 2011 at 11:28:07PM +0100, Adam Lackorzynski wrote:
+> 
+> On Thu Mar 24, 2011 at 13:51:06 -0400, J. Bruce Fields wrote:
+> > On Thu, Mar 24, 2011 at 01:17:05PM -0400, Christoph Hellwig wrote:
+> > > On Wed, Mar 23, 2011 at 11:30:17PM +0100, Adam Lackorzynski wrote:
+> > > > I probably mistyped something and thus bisected again:
+> > > 
+> > > maybe this is just a symptom.  When was the nfs4 code converted
+> > > to just use a single open struct file, and what are the lifetime
+> > > rules for it?  It would easily be that a long alive file might
+> > > make XFS keep persistent preallocations longer or similar issues.
+> > 
+> > Definitely, the commit he's bisect to there seems much more likely to be
+> > a culprit.  I'll take a closer look....
+> > 
+> > > Adam, can you create a loop filesystem with ext3 or something else
+> > > on it and see if the problem is XFS-specific?
+> > 
+> > Originally it sounded like he was able to reproduce this only on one
+> > specific filesystem so I wondered whether there was something particular
+> > to that filesystem.
+> 
+> I just found out it happens also with a newly created xfs and also with
+> ext3 and ext4. The reason that I did not see that initially is that the
+> script I'm using needs to be on the same fs which wasn't the case when I
+> initially tried it with a new fs. The sequence I'm using is:
 
-  We are seeing this too with a straight Fedora 14 kernel.
-      https://bugzilla.redhat.com/show_bug.cgi?id=669204
-   
-  Unfortunately we are not able to reproduce it as easily as 
-  you are...
+Ah-hah, got it.  So the leak's probably of a delegation on the file
+containing the script itself.  OK, I should be able to fix that, thanks!
 
-There's some really good info in those bug reports.  Thanks.
+--b.
 
-I tried really hard to reproduce this in Santa Clara but had no luck.  My
-guess was that it was timing related, and since I was using VMs for the
-clients the timing was not right to trigger this.
+> 
+> # mount x.x.x:/home /tmp/st
+> # su - foo
+> $ cd /tmp/st/foo/x
+> $ ../test-script
+> foo@host:/tmp/st/foo/x$ ../test-script 
+> Filesystem            Inodes   IUsed   IFree IUse% Mounted on
+> x.x.x:/home    39321600      15 39321585    1% /tmp/st
+> Filesystem            Inodes   IUsed   IFree IUse% Mounted on
+> x.x.x:/home    39321600      16 39321584    1% /tmp/st
+> Filesystem            Inodes   IUsed   IFree IUse% Mounted on
+> x.x.x:/home    39321600      16 39321584    1% /tmp/st
+> 
+> 
+> 
+> test-script:
+> #! /bin/sh
+> 
+> df -i .
+> cp /bin/ls x1
+> df -i .
+> cat x1 > /dev/null
+> rm x1
+> df -i .
+> 
+> 
+> 
+> 
+> 
+> 
+> Adam
+> -- 
+> Adam                 adam@os.inf.tu-dresden.de
+>   Lackorzynski         http://os.inf.tu-dresden.de/~adam/
