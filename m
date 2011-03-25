@@ -1,102 +1,166 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17528 "EHLO mx1.redhat.com"
+Received: from cantor.suse.de ([195.135.220.2]:55403 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754082Ab1CaBcA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Mar 2011 21:32:00 -0400
-Subject: Re: [REGRESSION] 8f70e95f9f4159184f557 causes mount failure with
- EGAIN
-From: Eric Paris <eparis@redhat.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
-In-Reply-To: <1301520805.561.11.camel@unknown001a4b0c2895>
-References: <1301513561.561.7.camel@unknown001a4b0c2895>
-	 <4D939CAF.40506@netapp.com>  <1301520805.561.11.camel@unknown001a4b0c2895>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 30 Mar 2011 21:31:57 -0400
-Message-ID: <1301535117.561.16.camel@unknown001a4b0c2895>
+	id S1754525Ab1CYS0a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Mar 2011 14:26:30 -0400
+Date: Fri, 25 Mar 2011 19:26:26 +0100
+From: Jan Kara <jack@suse.cz>
+To: Wu Fengguang <fengguang.wu@intel.com>
+Cc: Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: NFS page states & writeback
+Message-ID: <20110325182626.GA26932@quack.suse.cz>
+References: <20110325012803.GA25052@quack.suse.cz>
+ <20110325070054.GA5970@localhost>
+ <20110325093957.GL26611@dastard>
+ <20110325142253.GA11589@localhost>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110325142253.GA11589@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-03-30 at 17:33 -0400, Eric Paris wrote:
-> On Wed, 2011-03-30 at 17:12 -0400, Bryan Schumaker wrote:
-> > On 03/30/2011 03:32 PM, Eric Paris wrote:
-> > > $ git bisect good
-> > > 8f70e95f9f4159184f557a1db60c909d7c1bd2e3 is the first bad commit
-> > > commit 8f70e95f9f4159184f557a1db60c909d7c1bd2e3
-> > > Author: Bryan Schumaker <bjschuma@netapp.com>
-> > > Date:   Thu Mar 24 17:12:31 2011 +0000
+On Fri 25-03-11 22:22:53, Wu Fengguang wrote:
+> On Fri, Mar 25, 2011 at 05:39:57PM +0800, Dave Chinner wrote:
+> > On Fri, Mar 25, 2011 at 03:00:54PM +0800, Wu Fengguang wrote:
+> > > Hi Jan,
 > > > 
-> > >     NFS: Determine initial mount security
-> > >     
-> > >     When sec=<something> is not presented as a mount option,
-> > >     we should attempt to determine what security flavor the
-> > >     server is using.
-> > >     
-> > >     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> > >     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > > On Fri, Mar 25, 2011 at 09:28:03AM +0800, Jan Kara wrote:
+> > > >   Hi,
+> > > > 
+> > > >   while working on changes to balance_dirty_pages() I was investigating why
+> > > > NFS writeback is *so* bumpy when I do not call writeback_inodes_wb() from
+> > > > balance_dirty_pages(). Take a single dd writing to NFS. What I can
+> > > > see is that we quickly accumulate dirty pages upto limit - ~700 MB on that
+> > > > machine. So flusher thread starts working and in an instant all these ~700
+> > > > MB transition from Dirty state to Writeback state. Then, as server acks
 > > > 
-> > > Using a linux-next kernel for the last 2 days I have been unable to
-> > > mount exports from my RHEL6 server.  mount(2) returned EAGAIN.  Turned
+> > > That can be fixed by the following patch:
+> > > 
+> > >         [PATCH 09/27] nfs: writeback pages wait queue
+> > >         https://lkml.org/lkml/2011/3/3/79
 > > 
-> > Thanks for letting me know.  What does your exports file look like?
+> > I don't think this is a good definition of write congestion for a
+> > NFS (or any other network fs) client. Firstly, writeback congestion
+> > is really dependent on the size of the network send window
+> > remaining. That is, if you've filled the socket buffer with writes
+> > and would block trying to queue more pages on the socket, then you
+> > are congested. i.e. the measure of congestion is the rate at which
+> > write request can be sent to the server and processed by the server.
 > 
-> # cat /etc/exports
-> /		127.0.0.1(fsid=0)
-> /export		*(rw,fsid=1,all_squash,anonuid=500,anongid=500)
-
-At jlayton's suggestion I changed /exports to not include the /
-127.0.0.1 and removed both explicit fsid= and it works.  So this patch
-broke my setup, but I have a workaround.   (I'm pretty sure the
-previous / 127 entry was a workaround for a problem when all my clients
-broke during Fedora's switch to use NFSv4 default.  Funny one workaround
-comes back to bit me again  :))
-
-Thanks! 
-
-
-> The client fstab looks like:
-> paris.rdu.redhat.com:/export/ /storage nfs tcp,noatime,nodiratime,noauto,users,exec,suid 0 0
+> You are right. The wait queue fullness does reflect the congestion in
+> typical setup because the queue size is typically much larger than the
+> network pipeline. If happens to not be the case, I don't bother much
+> because the patch's main goal is to avoid
 > 
-> > 
-> > Bryan
-> > 
-> > > up debugging (thanks jlayton) and got:
-> > > 
-> > >         [ 1732.795056] NFS: nfs mount opts='tcp,vers=4,addr=10.11.231.241,clientaddr=10.11.231.191'
-> > >         [ 1732.798079] NFS:   parsing nfs mount option 'tcp'
-> > >         [ 1732.800210] NFS:   parsing nfs mount option 'vers=4'
-> > >         [ 1732.802324] NFS:   parsing nfs mount option 'addr=10.11.231.241'
-> > >         [ 1732.804477] NFS:   parsing nfs mount option 'clientaddr=10.11.231.191'
-> > >         [ 1732.805790] NFS: MNTPATH: '/export/'
-> > >         [ 1732.806663] --> nfs4_try_mount()
-> > >         [ 1732.807459] --> nfs4_create_server()
-> > >         [ 1732.808301] --> nfs4_init_server()
-> > >         [ 1732.809136] --> nfs4_set_client()
-> > >         [ 1732.809898] --> nfs_get_client(paris.rdu.redhat.com,v4)
-> > >         [ 1732.811122] NFS: get client cookie (0xffff880039cfd9e8/0xffff88003b889000)
-> > >         [ 1732.813771] NFS: Callback listener port = 36700 (af 2)
-> > >         [ 1732.814931] NFS: Callback listener port = 60202 (af 10)
-> > >         [ 1732.816199] --> nfs_get_client() = ffff880039cfd9e8 [new]
-> > >         [ 1732.817356] <-- nfs4_set_client() = 0 [new ffff880039cfd9e8]
-> > >         [ 1732.818587] <-- nfs4_init_server() = 0
-> > >         [ 1732.819476] --> nfs4_get_rootfh()
-> > >         [ 1732.820282] encode_compound: tag=
-> > >         [ 1732.822070] encode_compound: tag=
-> > >         [ 1732.822937] nfs4_get_rootfh: getroot error = 11
-> > >         [ 1732.823982] <-- nfs4_get_rootfh() = -11
-> > >         [ 1732.824880] --> nfs_free_server()
-> > >         [ 1732.846219] --> nfs_put_client({1})
-> > >         [ 1732.847888] --> nfs_free_client(4)
-> > >         [ 1732.850236] NFS: releasing client cookie (0xffff880039cfd9e8/0xffff88003b889000)
-> > >         [ 1732.853726] <-- nfs_free_client()
-> > >         [ 1732.854505] <-- nfs_free_server()
-> > >         [ 1732.855274] <-- nfs4_create_server() = error -11
-> > >         [ 1732.856187] <-- nfs4_try_mount() = -11 [error]
-> > > 
-> > > Bisected and got the commit listed above.
-> > > 
-> > 
+> - NFS client side nr_dirty being constantly exhausted
 > 
+> - very bursty network IO (I literally see it), such as 1Gbps for 1
+>   second followed by completely idle for 10 seconds. Ideally if the
+>   server disk can only do 10MB/s then there should be a fluent 10MB/s
+>   network stream.
+> 
+> It just happens to inherit the old *congestion* names, and the upper
+> layer now actually hardly care about the congestion state.
+  Fengguang, I believe that limitting amount of NFS writeback pages is the
+wrong direction. I don't think that the rapid transition of Dirty pages to
+Writeback pages is a problem. Limiting Writeback pages only papers-over
+the problem in writeback code. So let NFS client write what we tell it to
+write as fast as the network and the server can take it. I agree that
+bursty sending of pages might cause problems with network congestion etc.
+but that's not the problem we are trying to address now.
 
+> > Secondly, the big problem that causes the lumpiness is that we only
+> > send commits when we reach at large threshold of unstable pages.
+> > Because most servers tend to cache large writes in RAM,
+> > the server might have a long commit latency because it has to write
+> > hundred of MB of data to disk to complete the commit.
+> > 
+> > IOWs, the client sends the commit only when it really needs the
+> > pages the be cleaned, and then we have the latency of the server
+> > write before it responds that they are clean. Hence commits can take
+> > a long time to complete and mark pages clean on the client side.
+>  
+> That's the point. That's why I add the following patches to limit the
+> NFS commit size:
+> 
+>         [PATCH 10/27] nfs: limit the commit size to reduce fluctuations
+>         [PATCH 11/27] nfs: limit the commit range
+  I agree we need something along the lines of your first patch to push
+pages from Unstable state more aggressively. I was testing a patch
+yesterday which was more conservative and just changed the check to:
 
+               if (nfsi->ncommit <= (nfsi->npages >> 4) ||
+                   (!exceeded && nfsi->ncommit <= (nfsi->npages >> 1)))
+                        goto out_mark_dirty;
+ 
+Where 'exceeded' is bdi->dirty_exceeded. So we are more aggresive only if
+we really need the pages back (since each commit forces a server to do
+fsync, it is good to avoid it if we don't really need it). And it worked
+nicely in reducing the bumps as well.
+
+I'm not entirely conviced the nfsi->ncommit <= (nfsi->npages >> 4) part of
+the check is the best thing to do, maybe we could have a fixed limit (like
+64 MB) there as well. So the condition could look like:
+
+if ((exceeded && nfsi->ncommit <= (nfsi->npages >> 4) && nfsi->ncommit < 16384)
+    || (!exceeded && nfsi->ncommit <= (nfsi->npages >> 1)))
+	goto out_mark_dirty;
+
+What do you think?
+
+I'm not sure about the second patch - I didn't test a load where it would
+help. It would possibly help only if several clients shared a file? How
+likely is that? Or do I misread your patch?
+
+> > A solution that IRIX used for this problem was the concept of a
+> > background commit. While doing writeback on an inode, if it sent
+> > more than than a certain threshold of data (typically in the range
+> > of 0.5-2s worth of data) to the server without a commit being
+> > issued, it would send an _asynchronous_ commit with the current dirty
+> > range to the server. That way the server starts writing the data
+> > before it hits dirty thresholds (i.e. prevents GBs of dirty data
+> > being cached on the server so commit lantecy is kept low).
+> > 
+> > When the background commit completes the NFS client can then convert
+> > pages in the commit range to clean. Hence we keep the number of
+> > unstable pages under control without needing to wait for a certain
+> > number of unstable pages to build up before commits are triggered.
+> > This allows the process of writing dirty pages to clean
+> > unstable pages at roughly the same rate as the write rate without
+> > needing any magic thresholds to be configured....
+> 
+> That's a good approach. In linux, by limiting the commit size, the NFS
+> flusher should roughly achieve the same effect.
+> 
+> However there is another problem. Look at the below graph. Even though
+> the commits are sent to NFS server in relatively small size and evenly
+> distributed in time (the green points), the commit COMPLETION events
+> from the server are observed to be pretty bumpy over time (the blue
+> points sitting on the red lines). This may not be easily fixable.. So
+> we still have to live with bumpy NFS commit completions...
+> 
+> http://www.kernel.org/pub/linux/kernel/people/wfg/writeback/dirty-throttling-v6/NFS/nfs-1dd-1M-8p-2945M-20%25-2.6.38-rc6-dt6+-2011-02-22-21-09/nfs-commit.png
+  Well, looking at your graph, and it also pretty well matches my tests, the
+completions come in ~50 MB batches. It's not perfect but far better than
+those +400 MB batches I was seeing previously - compare e.g.
+http://beta.suse.com/private/jack/balance_dirty_pages-v2/graphs/dd-test-nfs_8_1024-2011-02-28-21:52:05-mm.png
+and
+http://beta.suse.com/private/jack/balance_dirty_pages-v2/graphs/dd-test-nfs_8_1024-2011-03-25-01:02:43-mm.png
+
+With these smaller bumps, pauses in balance_dirty_pages() stay below 500 ms
+even with 8 dds banging the NFS share with my patchset (most of them is
+~30 ms in fact):
+http://beta.suse.com/private/jack/balance_dirty_pages-v2/graphs/dd-test-nfs_8_1024-2011-03-25-01:02:43-mm-procs.png
+
+So I'd say that fixing the background limit checking logic and the small
+tweak to commit check should be enough to make NFS reasonably well
+behaved...
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
