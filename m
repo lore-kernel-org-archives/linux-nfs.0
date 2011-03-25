@@ -1,72 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:15261 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754773Ab1CQPyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Mar 2011 11:54:33 -0400
-Subject: [PATCH v2] RPC: killing RPC tasks races fixed
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, xemul@parallels.com, neilb@suse.de,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        bfields@fieldses.org, davem@davemloft.net, skinsbursky@openvz.org
-Date: Thu, 17 Mar 2011 18:54:23 +0300
-Message-ID: <20110317155252.27674.52947.stgit@localhost6.localdomain6>
+Received: from mail-gx0-f174.google.com ([209.85.161.174]:45717 "EHLO
+	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755134Ab1CYViV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Mar 2011 17:38:21 -0400
+Received: by gxk21 with SMTP id 21so620854gxk.19
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Mar 2011 14:38:21 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/3] mount.nfs: Don't leak socket in nfs_ca_sockname()
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 25 Mar 2011 17:38:06 -0400
+Message-ID: <20110325213806.27166.56852.stgit@matisse.1015granger.net>
+In-Reply-To: <20110325213559.27166.71461.stgit@matisse.1015granger.net>
+References: <20110325213559.27166.71461.stgit@matisse.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-RPC task RPC_TASK_QUEUED bit is set must be checked before trying to wake up
-task rpc_killall_tasks() because task->tk_waitqueue can not be set (equal to
-NULL).
-Also, as Trond Myklebust mentioned, such approach (instead of checking
-tk_waitqueue to NULL) allows us to "optimise away the call to
-rpc_wake_up_queued_task() altogether for those
-tasks that aren't queued".
+Ensure the test socket is always closed before nfs_ca_sockname()
+returns.  Otherwise it's orphaned.
 
-Here is an example of dereferencing of tk_waitqueue equal to NULL:
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=197
 
-CPU 0               	CPU 1				CPU 2
---------------------	---------------------	--------------------------
-nfs4_run_open_task
-rpc_run_task
-rpc_execute
-rpc_set_active
-rpc_make_runnable
-(waiting)
-			rpc_async_schedule
-			nfs4_open_prepare
-			nfs_wait_on_sequence
-						nfs_umount_begin
-						rpc_killall_tasks
-						rpc_wake_up_task
-						rpc_wake_up_queued_task
-						spin_lock(tk_waitqueue == NULL)
-						BUG()
-			rpc_sleep_on
-			spin_lock(&q->lock)
-			__rpc_sleep_on
-			task->tk_waitqueue = q
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@openvz.org>
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/clnt.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 57d344c..3444757 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -436,7 +436,9 @@ void rpc_killall_tasks(struct rpc_clnt *clnt)
- 		if (!(rovr->tk_flags & RPC_TASK_KILLED)) {
- 			rovr->tk_flags |= RPC_TASK_KILLED;
- 			rpc_exit(rovr, -EIO);
--			rpc_wake_up_queued_task(rovr->tk_waitqueue, rovr);
-+			if (RPC_IS_QUEUED(rovr))
-+				rpc_wake_up_queued_task(rovr->tk_waitqueue, 
-+							rovr);
- 		}
+ utils/mount/network.c |   28 +++++++++++++---------------
+ 1 files changed, 13 insertions(+), 15 deletions(-)
+
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 9b6504d..52a5389 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -1095,7 +1095,7 @@ static int nfs_ca_sockname(const struct sockaddr *sap, const socklen_t salen,
+ 		.sin6_family		= AF_INET6,
+ 		.sin6_addr		= IN6ADDR_ANY_INIT,
+ 	};
+-	int sock;
++	int sock, result = 0;
+ 
+ 	sock = socket(sap->sa_family, SOCK_DGRAM, IPPROTO_UDP);
+ 	if (sock < 0)
+@@ -1103,28 +1103,26 @@ static int nfs_ca_sockname(const struct sockaddr *sap, const socklen_t salen,
+ 
+ 	switch (sap->sa_family) {
+ 	case AF_INET:
+-		if (bind(sock, SAFE_SOCKADDR(&sin), sizeof(sin)) < 0) {
+-			close(sock);
+-			return 0;
+-		}
++		if (bind(sock, SAFE_SOCKADDR(&sin), sizeof(sin)) < 0)
++			goto out;
+ 		break;
+ 	case AF_INET6:
+-		if (bind(sock, SAFE_SOCKADDR(&sin6), sizeof(sin6)) < 0) {
+-			close(sock);
+-			return 0;
+-		}
++		if (bind(sock, SAFE_SOCKADDR(&sin6), sizeof(sin6)) < 0)
++			goto out;
+ 		break;
+ 	default:
+ 		errno = EAFNOSUPPORT;
+-		return 0;
++		goto out;
  	}
- 	spin_unlock(&clnt->cl_lock);
+ 
+-	if (connect(sock, sap, salen) < 0) {
+-		close(sock);
+-		return 0;
+-	}
++	if (connect(sock, sap, salen) < 0)
++		goto out;
+ 
+-	return !getsockname(sock, buf, buflen);
++	result = !getsockname(sock, buf, buflen);
++
++out:
++	close(sock);
++	return result;
+ }
+ 
+ /*
 
