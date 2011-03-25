@@ -1,130 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:32249 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933905Ab1CXRMd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Mar 2011 13:12:33 -0400
-Message-ID: <4D8B7B7F.1040309@netapp.com>
-Date: Thu, 24 Mar 2011 13:12:31 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH v6 5/5] NFS: Determine initial mount security
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:8954 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756470Ab1CYJkC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Mar 2011 05:40:02 -0400
+Date: Fri, 25 Mar 2011 20:39:57 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Wu Fengguang <fengguang.wu@intel.com>
+Cc: Jan Kara <jack@suse.cz>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: NFS page states & writeback
+Message-ID: <20110325093957.GL26611@dastard>
+References: <20110325012803.GA25052@quack.suse.cz>
+ <20110325070054.GA5970@localhost>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110325070054.GA5970@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On Fri, Mar 25, 2011 at 03:00:54PM +0800, Wu Fengguang wrote:
+> Hi Jan,
+> 
+> On Fri, Mar 25, 2011 at 09:28:03AM +0800, Jan Kara wrote:
+> >   Hi,
+> > 
+> >   while working on changes to balance_dirty_pages() I was investigating why
+> > NFS writeback is *so* bumpy when I do not call writeback_inodes_wb() from
+> > balance_dirty_pages(). Take a single dd writing to NFS. What I can
+> > see is that we quickly accumulate dirty pages upto limit - ~700 MB on that
+> > machine. So flusher thread starts working and in an instant all these ~700
+> > MB transition from Dirty state to Writeback state. Then, as server acks
+> 
+> That can be fixed by the following patch:
+> 
+>         [PATCH 09/27] nfs: writeback pages wait queue
+>         https://lkml.org/lkml/2011/3/3/79
 
-When sec=<something> is not presented as a mount option,
-we should attempt to determine what security flavor the
-server is using.
+I don't think this is a good definition of write congestion for a
+NFS (or any other network fs) client. Firstly, writeback congestion
+is really dependent on the size of the network send window
+remaining. That is, if you've filled the socket buffer with writes
+and would block trying to queue more pages on the socket, then you
+are congested. i.e. the measure of congestion is the rate at which
+write request can be sent to the server and processed by the server.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c                     |   33 +++++++++++++++++++++++++++++++--
- include/linux/sunrpc/gss_api.h        |    3 +++
- net/sunrpc/auth_gss/gss_mech_switch.c |   16 ++++++++++++++++
- 3 files changed, 50 insertions(+), 2 deletions(-)
+Secondly, the big problem that causes the lumpiness is that we only
+send commits when we reach at large threshold of unstable pages.
+Because most servers tend to cache large writes in RAM,
+the server might have a long commit latency because it has to write
+hundred of MB of data to disk to complete the commit.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d6cba3f..fa4472d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -41,6 +41,7 @@
- #include <linux/string.h>
- #include <linux/slab.h>
- #include <linux/sunrpc/clnt.h>
-+#include <linux/sunrpc/gss_api.h>
- #include <linux/nfs.h>
- #include <linux/nfs4.h>
- #include <linux/nfs_fs.h>
-@@ -2191,15 +2192,43 @@ static int nfs4_lookup_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return err;
- }
- 
-+static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-+				struct nfs_fsinfo *info, rpc_authflavor_t flavor)
-+{
-+	struct rpc_auth *auth;
-+	int ret;
-+
-+	auth = rpcauth_create(flavor, server->client);
-+	if (!auth) {
-+		ret = -EIO;
-+		goto out;
-+	}
-+	ret = nfs4_lookup_root(server, fhandle, info);
-+	if (ret < 0)
-+		ret = -EAGAIN;
-+out:
-+	return ret;
-+}
-+
- /*
-  * get the file handle for the "/" directory on the server
-  */
- static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
- 			      struct nfs_fsinfo *info)
- {
--	int status;
-+	int i, len, status = 0;
-+	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS + 2];
- 
--	status = nfs4_lookup_root(server, fhandle, info);
-+	flav_array[0] = RPC_AUTH_UNIX;
-+	len = gss_mech_list_pseudoflavors(&flav_array[1]);
-+	flav_array[1+len] = RPC_AUTH_NULL;
-+	len += 2;
-+
-+	for (i = 0; i < len; i++) {
-+		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
-+		if (status == 0)
-+			break;
-+	}
- 	if (status == 0)
- 		status = nfs4_server_capabilities(server, fhandle);
- 	if (status == 0)
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index 5d8048b..332da61 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -126,6 +126,9 @@ struct gss_api_mech *gss_mech_get_by_name(const char *);
- /* Similar, but get by pseudoflavor. */
- struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
- 
-+/* Fill in an array with a list of supported pseudoflavors */
-+int gss_mech_list_pseudoflavors(u32 *);
-+
- /* Just increments the mechanism's reference count and returns its input: */
- struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
- 
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 6c844b0..e3c36a2 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -215,6 +215,22 @@ gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
- 
- EXPORT_SYMBOL_GPL(gss_mech_get_by_pseudoflavor);
- 
-+int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr)
-+{
-+	struct gss_api_mech *pos = NULL;
-+	int i = 0;
-+
-+	spin_lock(&registered_mechs_lock);
-+	list_for_each_entry(pos, &registered_mechs, gm_list) {
-+		array_ptr[i] = pos->gm_pfs->pseudoflavor;
-+		i++;
-+	}
-+	spin_unlock(&registered_mechs_lock);
-+	return i;
-+}
-+
-+EXPORT_SYMBOL_GPL(gss_mech_list_pseudoflavors);
-+
- u32
- gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
- {
+IOWs, the client sends the commit only when it really needs the
+pages the be cleaned, and then we have the latency of the server
+write before it responds that they are clean. Hence commits can take
+a long time to complete and mark pages clean on the client side.
+
+A solution that IRIX used for this problem was the concept of a
+background commit. While doing writeback on an inode, if it sent
+more than than a certain threshold of data (typically in the range
+of 0.5-2s worth of data) to the server without a commit being
+issued, it would send an _asynchronous_ commit with the current dirty
+range to the server. That way the server starts writing the data
+before it hits dirty thresholds (i.e. prevents GBs of dirty data
+being cached on the server so commit lantecy is kept low).
+
+When the background commit completes the NFS client can then convert
+pages in the commit range to clean. Hence we keep the number of
+unstable pages under control without needing to wait for a certain
+number of unstable pages to build up before commits are triggered.
+This allows the process of writing dirty pages to clean
+unstable pages at roughly the same rate as the write rate without
+needing any magic thresholds to be configured....
+
+Cheers,
+
+Dave.
 -- 
-1.7.4.1
-
+Dave Chinner
+david@fromorbit.com
