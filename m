@@ -1,52 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from swampdragon.chaosbits.net ([90.184.90.115]:18176 "EHLO
-	swampdragon.chaosbits.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754069Ab1CUTf6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2011 15:35:58 -0400
-Date: Mon, 21 Mar 2011 20:35:49 +0100 (CET)
-From: Jesper Juhl <jj@chaosbits.net>
-To: linux-nfs@vger.kernel.org
-cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Milton Miller <miltonm@bga.com>, Chuck Lever <chuck.lever@oracle.com>,
-        linux-kernel@vger.kernel.org, Neil Brown <neilb@suse.de>,
-        bfields@fieldses.org
-Subject: [PATCH][resend] Remove pointless memset in nfsacl_encode()
-Message-ID: <alpine.LNX.2.00.1103212031550.15815@swampdragon.chaosbits.net>
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:59550 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933960Ab1CYJaL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Mar 2011 05:30:11 -0400
+Received: by pzk9 with SMTP id 9so121297pzk.19
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Mar 2011 02:30:10 -0700 (PDT)
+Message-ID: <4D8C60B2.7090503@panasas.com>
+Date: Fri, 25 Mar 2011 11:30:26 +0200
+From: Benny Halevy <bhalevy@panasas.com>
+To: peter.staubach@emc.com, andros@netapp.com
+CC: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] NFSv4.1 convert layoutcommit sync to boolean
+References: <1299916690-2595-1-git-send-email-andros@netapp.com> <1299916690-2595-2-git-send-email-andros@netapp.com> <5E6794FC7B8FCA41A704019BE3C70E8B069D3AAA@MX31A.corp.emc.com>
+In-Reply-To: <5E6794FC7B8FCA41A704019BE3C70E8B069D3AAA@MX31A.corp.emc.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Remove pointless memset() in nfsacl_encode().
+On 2011-03-24 21:50, peter.staubach@emc.com wrote:
 
-Thanks to Trond Myklebust <Trond.Myklebust@netapp.com> for pointing out 
-that it is not needed since posix_acl_init() will set everything 
-regardless..
+> In nfs4_proc_layoutcommit(), I think that it read better as "if (!sync)".  Wasn't that part of the whole point of switching to boolean instead of just an int?  :-)
 
-Signed-off-by: Jesper Juhl <jj@chaosbits.net>
----
- nfsacl.c |    1 -
- 1 file changed, 1 deletion(-)
+==
 
- Patch against up-to-date Linus' tree.
+Otherwise, my ACK :)
 
-diff --git a/fs/nfs_common/nfsacl.c b/fs/nfs_common/nfsacl.c
-index 84c27d6..ec0f277 100644
---- a/fs/nfs_common/nfsacl.c
-+++ b/fs/nfs_common/nfsacl.c
-@@ -117,7 +117,6 @@ int nfsacl_encode(struct xdr_buf *buf, unsigned int base, struct inode *inode,
- 		 * invoked in contexts where a memory allocation failure is
- 		 * fatal.  Fortunately this fake ACL is small enough to
- 		 * construct on the stack. */
--		memset(acl2, 0, sizeof(acl2));
- 		posix_acl_init(acl2, 4);
- 
- 		/* Insert entries in canonical order: other orders seem
+Benny
 
-
-
--- 
-Jesper Juhl <jj@chaosbits.net>       http://www.chaosbits.net/
-Don't top-post http://www.catb.org/jargon/html/T/top-post.html
-Plain text mails only, please.
+> 	Thanx...
+>
+> 		ps
+>
+>
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of andros@netapp.com
+> Sent: Saturday, March 12, 2011 2:58 AM
+> To: trond.myklebust@netapp.com
+> Cc: linux-nfs@vger.kernel.org; Andy Adamson
+> Subject: [PATCH 2/2] NFSv4.1 convert layoutcommit sync to boolean
+>
+> From: Andy Adamson <andros@netapp.com>
+>
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/file.c     |    2 +-
+>  fs/nfs/nfs4_fs.h  |    2 +-
+>  fs/nfs/nfs4proc.c |    4 ++--
+>  fs/nfs/pnfs.c     |    2 +-
+>  fs/nfs/pnfs.h     |    4 ++--
+>  fs/nfs/write.c    |    8 +++++---
+>  6 files changed, 12 insertions(+), 10 deletions(-)
+>
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index 85cb95d..3ac5bd6 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -328,7 +328,7 @@ nfs_file_fsync(struct file *file, int datasync)
+>  		ret = status;
+>  	if (!ret && !datasync)
+>  		/* application has asked for meta-data sync */
+> -		ret = pnfs_layoutcommit_inode(inode, 1);
+> +		ret = pnfs_layoutcommit_inode(inode, true);
+>  	return ret;
+>  }
+>  
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index 1e612d1..4414fd7 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -263,7 +263,7 @@ extern int nfs4_init_session(struct nfs_server *server);
+>  extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
+>  		struct nfs_fsinfo *fsinfo);
+>  extern int nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data,
+> -				  int sync);
+> +				  bool sync);
+>  
+>  static inline bool
+>  is_ds_only_client(struct nfs_client *clp)
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 6f2f402..43045fa 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5671,7 +5671,7 @@ static const struct rpc_call_ops nfs4_layoutcommit_ops = {
+>  };
+>  
+>  int
+> -nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int sync)
+> +nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, bool sync)
+>  {
+>  	struct rpc_message msg = {
+>  		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LAYOUTCOMMIT],
+> @@ -5699,7 +5699,7 @@ nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data, int sync)
+>  	task = rpc_run_task(&task_setup_data);
+>  	if (IS_ERR(task))
+>  		return PTR_ERR(task);
+> -	if (!sync)
+> +	if (sync == false)
+>  		goto out;
+>  	status = nfs4_wait_for_completion_rpc_task(task);
+>  	if (status != 0)
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index ac71125..22c2ddb 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -991,7 +991,7 @@ EXPORT_SYMBOL_GPL(pnfs_set_layoutcommit);
+>   * if WRITEs to a data server return NFS_DATA_SYNC.
+>   */
+>  int
+> -pnfs_layoutcommit_inode(struct inode *inode, int sync)
+> +pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+>  {
+>  	struct nfs4_layoutcommit_data *data;
+>  	struct nfs_inode *nfsi = NFS_I(inode);
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 0806c77..33b9ae9 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -155,7 +155,7 @@ void pnfs_roc_release(struct inode *ino);
+>  void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+>  bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
+>  void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+> -int pnfs_layoutcommit_inode(struct inode *inode, int sync);
+> +int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+>  
+>  static inline int lo_fail_bit(u32 iomode)
+>  {
+> @@ -328,7 +328,7 @@ static inline void pnfs_clear_request_commit(struct nfs_page *req)
+>  {
+>  }
+>  
+> -static inline int pnfs_layoutcommit_inode(struct inode *inode, int sync)
+> +static inline int pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+>  {
+>  	return 0;
+>  }
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index a03c11f..85d7525 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -1566,10 +1566,12 @@ int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
+>  
+>  	ret = nfs_commit_unstable_pages(inode, wbc);
+>  	if (ret >= 0 && test_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags)) {
+> -		int status, sync = wbc->sync_mode;
+> +		int status;
+> +		bool sync = true;
+>  
+> -		if (wbc->nonblocking || wbc->for_background)
+> -				sync = 0;
+> +		if (wbc->sync_mode == WB_SYNC_NONE || wbc->nonblocking ||
+> +		    wbc->for_background)
+> +			sync = false;
+>  
+>  		status = pnfs_layoutcommit_inode(inode, sync);
+>  		if (status < 0)
 
