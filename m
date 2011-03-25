@@ -1,90 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4330 "EHLO mx1.redhat.com"
+Received: from mx2.parallels.com ([64.131.90.16]:37853 "EHLO mx2.parallels.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965125Ab1C3Vda (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Mar 2011 17:33:30 -0400
-Subject: Re: [REGRESSION] 8f70e95f9f4159184f557 causes mount failure with
- EGAIN
-From: Eric Paris <eparis@redhat.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
-In-Reply-To: <4D939CAF.40506@netapp.com>
-References: <1301513561.561.7.camel@unknown001a4b0c2895>
-	 <4D939CAF.40506@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 30 Mar 2011 17:33:25 -0400
-Message-ID: <1301520805.561.11.camel@unknown001a4b0c2895>
+	id S1754650Ab1CYRAa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Mar 2011 13:00:30 -0400
+Message-ID: <4D8CCA28.7040001@parallels.com>
+Date: Fri, 25 Mar 2011 12:00:24 -0500
+From: Rob Landley <rlandley@parallels.com>
+To: <linux-nfs@vger.kernel.org>, <containers@lists.linux-foundation.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [RFC PATCH] Teach auth_unix cache to check network namespace in comparisons
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-03-30 at 17:12 -0400, Bryan Schumaker wrote:
-> On 03/30/2011 03:32 PM, Eric Paris wrote:
-> > $ git bisect good
-> > 8f70e95f9f4159184f557a1db60c909d7c1bd2e3 is the first bad commit
-> > commit 8f70e95f9f4159184f557a1db60c909d7c1bd2e3
-> > Author: Bryan Schumaker <bjschuma@netapp.com>
-> > Date:   Thu Mar 24 17:12:31 2011 +0000
-> > 
-> >     NFS: Determine initial mount security
-> >     
-> >     When sec=<something> is not presented as a mount option,
-> >     we should attempt to determine what security flavor the
-> >     server is using.
-> >     
-> >     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> >     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > 
-> > Using a linux-next kernel for the last 2 days I have been unable to
-> > mount exports from my RHEL6 server.  mount(2) returned EAGAIN.  Turned
-> 
-> Thanks for letting me know.  What does your exports file look like?
+This patch samples current->nsproxy->net_ns in ip_map_parse().
+As far as I can tell this function is currently only called from
+cache_write_procfs() and cache_write_pipefs() (via cache_write()
+and cache_downcall()), meaning we should always have a relevant
+process context.  (The buf argument is __user annotated through
+cache_do_downcall()).
 
-# cat /etc/exports
-/		127.0.0.1(fsid=0)
-/export		*(rw,fsid=1,all_squash,anonuid=500,anongid=500)
+Does this sound like the right way to do it, or should I try to
+add a struct net * argument to cache_parse(), or...?
 
-The client fstab looks like:
-paris.rdu.redhat.com:/export/ /storage nfs tcp,noatime,nodiratime,noauto,users,exec,suid 0 0
+Here's the patch I have.
 
-> 
-> Bryan
-> 
-> > up debugging (thanks jlayton) and got:
-> > 
-> >         [ 1732.795056] NFS: nfs mount opts='tcp,vers=4,addr=10.11.231.241,clientaddr=10.11.231.191'
-> >         [ 1732.798079] NFS:   parsing nfs mount option 'tcp'
-> >         [ 1732.800210] NFS:   parsing nfs mount option 'vers=4'
-> >         [ 1732.802324] NFS:   parsing nfs mount option 'addr=10.11.231.241'
-> >         [ 1732.804477] NFS:   parsing nfs mount option 'clientaddr=10.11.231.191'
-> >         [ 1732.805790] NFS: MNTPATH: '/export/'
-> >         [ 1732.806663] --> nfs4_try_mount()
-> >         [ 1732.807459] --> nfs4_create_server()
-> >         [ 1732.808301] --> nfs4_init_server()
-> >         [ 1732.809136] --> nfs4_set_client()
-> >         [ 1732.809898] --> nfs_get_client(paris.rdu.redhat.com,v4)
-> >         [ 1732.811122] NFS: get client cookie (0xffff880039cfd9e8/0xffff88003b889000)
-> >         [ 1732.813771] NFS: Callback listener port = 36700 (af 2)
-> >         [ 1732.814931] NFS: Callback listener port = 60202 (af 10)
-> >         [ 1732.816199] --> nfs_get_client() = ffff880039cfd9e8 [new]
-> >         [ 1732.817356] <-- nfs4_set_client() = 0 [new ffff880039cfd9e8]
-> >         [ 1732.818587] <-- nfs4_init_server() = 0
-> >         [ 1732.819476] --> nfs4_get_rootfh()
-> >         [ 1732.820282] encode_compound: tag=
-> >         [ 1732.822070] encode_compound: tag=
-> >         [ 1732.822937] nfs4_get_rootfh: getroot error = 11
-> >         [ 1732.823982] <-- nfs4_get_rootfh() = -11
-> >         [ 1732.824880] --> nfs_free_server()
-> >         [ 1732.846219] --> nfs_put_client({1})
-> >         [ 1732.847888] --> nfs_free_client(4)
-> >         [ 1732.850236] NFS: releasing client cookie (0xffff880039cfd9e8/0xffff88003b889000)
-> >         [ 1732.853726] <-- nfs_free_client()
-> >         [ 1732.854505] <-- nfs_free_server()
-> >         [ 1732.855274] <-- nfs4_create_server() = error -11
-> >         [ 1732.856187] <-- nfs4_try_mount() = -11 [error]
-> > 
-> > Bisected and got the commit listed above.
-> > 
-> 
+From: Rob Landley <rlandley@parallels.com>
 
+Teach the auth_unix cache to check network namespace when comparing addresses.
 
+Signed-off-by: Rob Landley <rlandley@parallels.com>
+---
+
+ net/sunrpc/svcauth_unix.c |   21 ++++++++++++++-------
+ 1 file changed, 14 insertions(+), 7 deletions(-)
+
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 30916b0..63a2fa7 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -14,6 +14,7 @@
+ #include <net/sock.h>
+ #include <net/ipv6.h>
+ #include <linux/kernel.h>
++#include <linux/user_namespace.h>
+ #define RPCDBG_FACILITY	RPCDBG_AUTH
+ 
+ #include <linux/sunrpc/clnt.h>
+@@ -94,6 +95,7 @@ struct ip_map {
+ 	struct cache_head	h;
+ 	char			m_class[8]; /* e.g. "nfsd" */
+ 	struct in6_addr		m_addr;
++	struct net		*m_net;
+ 	struct unix_domain	*m_client;
+ #ifdef CONFIG_NFSD_DEPRECATED
+ 	int			m_add_change;
+@@ -134,6 +136,7 @@ static int ip_map_match(struct cache_head *corig, struct cache_head *cnew)
+ 	struct ip_map *orig = container_of(corig, struct ip_map, h);
+ 	struct ip_map *new = container_of(cnew, struct ip_map, h);
+ 	return strcmp(orig->m_class, new->m_class) == 0 &&
++	       net_eq(orig->m_net, new->m_net) &&
+ 	       ipv6_addr_equal(&orig->m_addr, &new->m_addr);
+ }
+ static void ip_map_init(struct cache_head *cnew, struct cache_head *citem)
+@@ -142,6 +145,7 @@ static void ip_map_init(struct cache_head *cnew, struct cache_head *citem)
+ 	struct ip_map *item = container_of(citem, struct ip_map, h);
+ 
+ 	strcpy(new->m_class, item->m_class);
++	new->m_net = item->m_net;
+ 	ipv6_addr_copy(&new->m_addr, &item->m_addr);
+ }
+ static void update(struct cache_head *cnew, struct cache_head *citem)
+@@ -186,7 +190,7 @@ static int ip_map_upcall(struct cache_detail *cd, struct cache_head *h)
+ 	return sunrpc_cache_pipe_upcall(cd, h, ip_map_request);
+ }
+ 
+-static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class, struct in6_addr *addr);
++static struct ip_map *__ip_map_lookup(struct cache_detail *cd, struct net *net, char *class, struct in6_addr *addr);
+ static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm, struct unix_domain *udom, time_t expiry);
+ 
+ static int ip_map_parse(struct cache_detail *cd,
+@@ -256,7 +260,8 @@ static int ip_map_parse(struct cache_detail *cd,
+ 		dom = NULL;
+ 
+ 	/* IPv6 scope IDs are ignored for now */
+-	ipmp = __ip_map_lookup(cd, class, &sin6.sin6_addr);
++	ipmp = __ip_map_lookup(cd, current->nsproxy->net_ns, class,
++			       &sin6.sin6_addr);
+ 	if (ipmp) {
+ 		err = __ip_map_update(cd, ipmp,
+ 			     container_of(dom, struct unix_domain, h),
+@@ -301,13 +306,14 @@ static int ip_map_show(struct seq_file *m,
+ }
+ 
+ 
+-static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class,
+-		struct in6_addr *addr)
++static struct ip_map *__ip_map_lookup(struct cache_detail *cd, struct net *net,
++		char *class, struct in6_addr *addr)
+ {
+ 	struct ip_map ip;
+ 	struct cache_head *ch;
+ 
+ 	strcpy(ip.m_class, class);
++	ip.m_net = net;
+ 	ipv6_addr_copy(&ip.m_addr, addr);
+ 	ch = sunrpc_cache_lookup(cd, &ip.h,
+ 				 hash_str(class, IP_HASHBITS) ^
+@@ -325,7 +331,7 @@ static inline struct ip_map *ip_map_lookup(struct net *net, char *class,
+ 	struct sunrpc_net *sn;
+ 
+ 	sn = net_generic(net, sunrpc_net_id);
+-	return __ip_map_lookup(sn->ip_map_cache, class, addr);
++	return __ip_map_lookup(sn->ip_map_cache, net, class, addr);
+ }
+ 
+ static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm,
+@@ -748,8 +754,9 @@ svcauth_unix_set_client(struct svc_rqst *rqstp)
+ 
+ 	ipm = ip_map_cached_get(xprt);
+ 	if (ipm == NULL)
+-		ipm = __ip_map_lookup(sn->ip_map_cache, rqstp->rq_server->sv_program->pg_class,
+-				    &sin6->sin6_addr);
++		ipm = __ip_map_lookup(sn->ip_map_cache, net,
++				      rqstp->rq_server->sv_program->pg_class,
++				      &sin6->sin6_addr);
+ 
+ 	if (ipm == NULL)
+ 		return SVC_DENIED;
