@@ -1,78 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:25817 "EHLO mx2.netapp.com"
+Received: from mga14.intel.com ([143.182.124.37]:60582 "EHLO mga14.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933425Ab1C3VMR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Mar 2011 17:12:17 -0400
-Message-ID: <4D939CAF.40506@netapp.com>
-Date: Wed, 30 Mar 2011 17:12:15 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-To: Eric Paris <eparis@redhat.com>
-CC: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
-Subject: Re: [REGRESSION] 8f70e95f9f4159184f557 causes mount failure with
- EGAIN
-References: <1301513561.561.7.camel@unknown001a4b0c2895>
-In-Reply-To: <1301513561.561.7.camel@unknown001a4b0c2895>
-Content-Type: text/plain; charset=UTF-8
+	id S932237Ab1CYHLx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Mar 2011 03:11:53 -0400
+Date: Fri, 25 Mar 2011 15:11:50 +0800
+From: Wu Fengguang <fengguang.wu@intel.com>
+To: Dave Chinner <david@fromorbit.com>
+Cc: Jan Kara <jack@suse.cz>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: NFS page states & writeback
+Message-ID: <20110325071149.GB5970@localhost>
+References: <20110325012803.GA25052@quack.suse.cz>
+ <20110325044754.GK26611@dastard>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110325044754.GK26611@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 03/30/2011 03:32 PM, Eric Paris wrote:
-> $ git bisect good
-> 8f70e95f9f4159184f557a1db60c909d7c1bd2e3 is the first bad commit
-> commit 8f70e95f9f4159184f557a1db60c909d7c1bd2e3
-> Author: Bryan Schumaker <bjschuma@netapp.com>
-> Date:   Thu Mar 24 17:12:31 2011 +0000
+On Fri, Mar 25, 2011 at 12:47:54PM +0800, Dave Chinner wrote:
+> On Fri, Mar 25, 2011 at 02:28:03AM +0100, Jan Kara wrote:
+> >   Hi,
+> > 
+> >   while working on changes to balance_dirty_pages() I was investigating why
+> > NFS writeback is *so* bumpy when I do not call writeback_inodes_wb() from
+> > balance_dirty_pages(). Take a single dd writing to NFS. What I can
+> > see is that we quickly accumulate dirty pages upto limit - ~700 MB on that
+> > machine. So flusher thread starts working and in an instant all these ~700
+> > MB transition from Dirty state to Writeback state. Then, as server acks
+> > writes, Writeback pages slowly change to Unstable pages (at 100 MB/s rate
+> > let's say) and then at one moment (commit to server happens) all pages
+> > transition from Unstable to Clean state - the cycle begins from the start.
+> > 
+> > The reason for this behavior seems to be a flaw in the logic in
+> > over_bground_thresh() which checks:
+> > global_page_state(NR_FILE_DIRTY) +
+> >       global_page_state(NR_UNSTABLE_NFS) > background_thresh
+> > So at the moment all pages are turned Writeback, flusher thread goes to
+> > sleep and doesn't do any background writeback, until we have accumulated
+> > enough Stable pages to get over background_thresh. But NFS needs to have
+> > ->write_inode() called so that it can sent commit requests to the server.
+> > So effectively we end up sending commit only when background_thresh Unstable
+> > pages have accumulated which creates the bumpyness. Previously this wasn't
+> > a problem because balance_dirty_pages() ended up calling ->write_inode()
+> > often enough for NFS to send commit requests reasonably often.
+> > 
+> > Now I wouldn't write so long email about this if I knew how to cleanly fix
+> > the check ;-). One way to "fix" the check would be to add there Writeback
+> > pages:
+> > NR_FILE_DIRTY + NR_WRITEBACK + NR_UNSTABLE_NFS > background_thresh
+> > 
+> > This would work in the sense that it would keep flusher thread working but
+> > a) for normal filesystems it would be working even if there's potentially
+> > nothing to do (or it is not necessary to do anything)
+> > b) NFS is picky when it sends commit requests (inode has to have more
+> > Stable pages than Writeback pages if I'm reading the code in
+> > nfs_commit_unstable_pages() right) so flusher thread may be working but
+> > nothing really happens until enough stable pages accumulate.
+> > 
+> > A check which kind of works but looks a bit hacky and is not perfect when
+> > there are multiple files is:
+> > NR_FILE_DIRTY + NR_UNSTABLE_NFS > background_thresh ||
+> > NR_UNSTABLE_NFS > NR_WRITEBACK (to match what NFS does)
+> > 
+> > Any better idea for a fix?
 > 
->     NFS: Determine initial mount security
->     
->     When sec=<something> is not presented as a mount option,
->     we should attempt to determine what security flavor the
->     server is using.
->     
->     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> Using a linux-next kernel for the last 2 days I have been unable to
-> mount exports from my RHEL6 server.  mount(2) returned EAGAIN.  Turned
+> Have NFS account for it's writeback pages to also be accounted as
+> NR_UNSTABLE_NFS pages? i.e. rather than incrementing NR_UNSTABLE_NFS
+> at the writeback->unstable transition, account it at the
+> dirty->writeback transition....
 
-Thanks for letting me know.  What does your exports file look like?
+This increases the opportunity for the NFS flusher to busy loop. Maybe
+not a big problem as long as we add some sleep in the loop.
 
-Bryan
+writeback: sleep for 10ms when nothing is written
+http://linux.derkeiler.com/Mailing-Lists/Kernel/2010-12/msg06391.html
 
-> up debugging (thanks jlayton) and got:
-> 
->         [ 1732.795056] NFS: nfs mount opts='tcp,vers=4,addr=10.11.231.241,clientaddr=10.11.231.191'
->         [ 1732.798079] NFS:   parsing nfs mount option 'tcp'
->         [ 1732.800210] NFS:   parsing nfs mount option 'vers=4'
->         [ 1732.802324] NFS:   parsing nfs mount option 'addr=10.11.231.241'
->         [ 1732.804477] NFS:   parsing nfs mount option 'clientaddr=10.11.231.191'
->         [ 1732.805790] NFS: MNTPATH: '/export/'
->         [ 1732.806663] --> nfs4_try_mount()
->         [ 1732.807459] --> nfs4_create_server()
->         [ 1732.808301] --> nfs4_init_server()
->         [ 1732.809136] --> nfs4_set_client()
->         [ 1732.809898] --> nfs_get_client(paris.rdu.redhat.com,v4)
->         [ 1732.811122] NFS: get client cookie (0xffff880039cfd9e8/0xffff88003b889000)
->         [ 1732.813771] NFS: Callback listener port = 36700 (af 2)
->         [ 1732.814931] NFS: Callback listener port = 60202 (af 10)
->         [ 1732.816199] --> nfs_get_client() = ffff880039cfd9e8 [new]
->         [ 1732.817356] <-- nfs4_set_client() = 0 [new ffff880039cfd9e8]
->         [ 1732.818587] <-- nfs4_init_server() = 0
->         [ 1732.819476] --> nfs4_get_rootfh()
->         [ 1732.820282] encode_compound: tag=
->         [ 1732.822070] encode_compound: tag=
->         [ 1732.822937] nfs4_get_rootfh: getroot error = 11
->         [ 1732.823982] <-- nfs4_get_rootfh() = -11
->         [ 1732.824880] --> nfs_free_server()
->         [ 1732.846219] --> nfs_put_client({1})
->         [ 1732.847888] --> nfs_free_client(4)
->         [ 1732.850236] NFS: releasing client cookie (0xffff880039cfd9e8/0xffff88003b889000)
->         [ 1732.853726] <-- nfs_free_client()
->         [ 1732.854505] <-- nfs_free_server()
->         [ 1732.855274] <-- nfs4_create_server() = error -11
->         [ 1732.856187] <-- nfs4_try_mount() = -11 [error]
-> 
-> Bisected and got the commit listed above.
-> 
-
+Thanks,
+Fengguang
