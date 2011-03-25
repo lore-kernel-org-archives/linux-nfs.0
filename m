@@ -1,95 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:58241 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752170Ab1CER6Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Mar 2011 12:58:24 -0500
-From: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Ted Ts'o" <tytso@mit.edu>, sfrench@us.ibm.com, agruen@linbit.com,
-        dilger.kernel@dilger.ca, sandeen@redhat.com, jlayton@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl interoperability
-In-Reply-To: <20110305003214.GF21260@fieldses.org>
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20110228211145.GG28617@thunk.org> <87oc5vgwqr.fsf@linux.vnet.ibm.com> <20110302154943.GB29136@fieldses.org> <87ei6pza5v.fsf@linux.vnet.ibm.com> <20110302185847.GA3524@fieldses.org> <871v2nw4q0.fsf@linux.vnet.ibm.com> <20110305003214.GF21260@fieldses.org>
-Date: Sat, 05 Mar 2011 23:28:12 +0530
-Message-ID: <87pqq5a1qj.fsf@linux.vnet.ibm.com>
+Received: from mga01.intel.com ([192.55.52.88]:18955 "EHLO mga01.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753006Ab1CYOWz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Mar 2011 10:22:55 -0400
+Date: Fri, 25 Mar 2011 22:22:53 +0800
+From: Wu Fengguang <fengguang.wu@intel.com>
+To: Dave Chinner <david@fromorbit.com>
+Cc: Jan Kara <jack@suse.cz>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: NFS page states & writeback
+Message-ID: <20110325142253.GA11589@localhost>
+References: <20110325012803.GA25052@quack.suse.cz>
+ <20110325070054.GA5970@localhost>
+ <20110325093957.GL26611@dastard>
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110325093957.GL26611@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 4 Mar 2011 19:32:15 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> On Fri, Mar 04, 2011 at 04:08:15PM +0530, Aneesh Kumar K. V wrote:
-> > On Wed, 2 Mar 2011 13:58:47 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > On Wed, Mar 02, 2011 at 11:17:56PM +0530, Aneesh Kumar K. V wrote:
-> > > > On Wed, 2 Mar 2011 10:49:43 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > > On Tue, Mar 01, 2011 at 12:20:36PM +0530, Aneesh Kumar K. V wrote:
-> > > > > > On Mon, 28 Feb 2011 16:11:45 -0500, "Ted Ts'o" <tytso@mit.edu> wrote:
-> > > > > > > Hi Aneesh,
-> > > > > > > 
-> > > > > > > What is the current status of this patch series?  I seem to remember
-> > > > > > > that Christoph and Al Viro had some objections; have those been
-> > > > > > > cleared yet?  If not, can you summarize what their objections are?
-> > > > > > 
-> > > > > > The main objection raised was the use of may_delete and may_create inode
-> > > > > > operations callback. They are gone now and we have MAY_* flags as
-> > > > > > favoured by Al Viro.  The new MAY_* flags added are 
-> > > > > > 
-> > > > > > #define MAY_CREATE_FILE 128
-> > > > > > #define MAY_CREATE_DIR 256
-> > > > > > #define MAY_DELETE_CHILD 512
-> > > > > > #define MAY_DELETE_SELF 1024
-> > > > > > #define MAY_TAKE_OWNERSHIP 2048
-> > > > > > #define MAY_CHMOD 4096
-> > > > > > #define MAY_SET_TIMES 8192
-> > > > > > 
-> > > > > > 
-> > > > > > > 
-> > > > > > > To be honest I haven't been paying super close attention to this patch
-> > > > > > > series, and I'm curious what needs to happen with it one way or
-> > > > > > > another.
-> > > > > > > 
-> > > > > > 
-> > > > > > IMHO we are ready to get first 11 patches upstream in the next merge
-> > > > > > window. ie the below set of patches.
-> > > > > 
-> > > > > Why aren't all of them ready?
-> > > > > 
-> > > > 
-> > > > All except how to enable richacl in local file system is ready. I
-> > > > actually floated two ideas in the patch series
-> > > > 
-> > > > 1) mount option
-> > > > 2) Ext4 compat flags.
-> > > 
-> > > The choice of ACL format is a persistant property of the filesystem, not
-> > > of a single mount of the filesystem: for example, people can't try out
-> > > richacls for one mount and then decide to revert bacak to posix acls.
-> > > 
-> > > (Right?)  So I'm assuming we should use the latter--but I don't
-> > > understand what ext4 compat flags are.... Is there some disadvantage to
-> > > using them?
-> > > 
+On Fri, Mar 25, 2011 at 05:39:57PM +0800, Dave Chinner wrote:
+> On Fri, Mar 25, 2011 at 03:00:54PM +0800, Wu Fengguang wrote:
+> > Hi Jan,
 > > 
-> > We already have a mount option to enable posix acl (-o acl|noacl). So
-> > along the same line should we have -o richacl|norichacl or should we
-> > have richacl as a ext4 compat flag EXT4_FEATURE_COMPAT_RICHACL. The
-> > compat feature can be enabled via tune2fs for an already created file
-> > system. Once the compat feature is enabled a -o acl mount option cause
-> > the richacl access check to be enabled. That can also result in
-> > mapping the existing posix acl in the file system to richacl and
-> > using mapped richacl for access restriction. With compat flag once set
-> > we will never be able to mount the file system again to use posix acl
-> > access restriction. (We cannot map richacl to posixacl because richacl
-> > support advanced access masks)
+> > On Fri, Mar 25, 2011 at 09:28:03AM +0800, Jan Kara wrote:
+> > >   Hi,
+> > > 
+> > >   while working on changes to balance_dirty_pages() I was investigating why
+> > > NFS writeback is *so* bumpy when I do not call writeback_inodes_wb() from
+> > > balance_dirty_pages(). Take a single dd writing to NFS. What I can
+> > > see is that we quickly accumulate dirty pages upto limit - ~700 MB on that
+> > > machine. So flusher thread starts working and in an instant all these ~700
+> > > MB transition from Dirty state to Writeback state. Then, as server acks
+> > 
+> > That can be fixed by the following patch:
+> > 
+> >         [PATCH 09/27] nfs: writeback pages wait queue
+> >         https://lkml.org/lkml/2011/3/3/79
 > 
-> Sounds fine to me.  I'm not sure you answered my question.  Is there any
-> disadvantage to doing it this way?
+> I don't think this is a good definition of write congestion for a
+> NFS (or any other network fs) client. Firstly, writeback congestion
+> is really dependent on the size of the network send window
+> remaining. That is, if you've filled the socket buffer with writes
+> and would block trying to queue more pages on the socket, then you
+> are congested. i.e. the measure of congestion is the rate at which
+> write request can be sent to the server and processed by the server.
+
+You are right. The wait queue fullness does reflect the congestion in
+typical setup because the queue size is typically much larger than the
+network pipeline. If happens to not be the case, I don't bother much
+because the patch's main goal is to avoid
+
+- NFS client side nr_dirty being constantly exhausted
+
+- very bursty network IO (I literally see it), such as 1Gbps for 1
+  second followed by completely idle for 10 seconds. Ideally if the
+  server disk can only do 10MB/s then there should be a fluent 10MB/s
+  network stream.
+
+It just happens to inherit the old *congestion* names, and the upper
+layer now actually hardly care about the congestion state.
+
+> Secondly, the big problem that causes the lumpiness is that we only
+> send commits when we reach at large threshold of unstable pages.
+> Because most servers tend to cache large writes in RAM,
+> the server might have a long commit latency because it has to write
+> hundred of MB of data to disk to complete the commit.
 > 
+> IOWs, the client sends the commit only when it really needs the
+> pages the be cleaned, and then we have the latency of the server
+> write before it responds that they are clean. Hence commits can take
+> a long time to complete and mark pages clean on the client side.
+ 
+That's the point. That's why I add the following patches to limit the
+NFS commit size:
 
-Andreas didn't like the compat feature flag patch. I don't remember why
-though. Andreas can you comment on why you didn't want the compat
-feature flag ?
+        [PATCH 10/27] nfs: limit the commit size to reduce fluctuations
+        [PATCH 11/27] nfs: limit the commit range
 
--aneesh
+> A solution that IRIX used for this problem was the concept of a
+> background commit. While doing writeback on an inode, if it sent
+> more than than a certain threshold of data (typically in the range
+> of 0.5-2s worth of data) to the server without a commit being
+> issued, it would send an _asynchronous_ commit with the current dirty
+> range to the server. That way the server starts writing the data
+> before it hits dirty thresholds (i.e. prevents GBs of dirty data
+> being cached on the server so commit lantecy is kept low).
+> 
+> When the background commit completes the NFS client can then convert
+> pages in the commit range to clean. Hence we keep the number of
+> unstable pages under control without needing to wait for a certain
+> number of unstable pages to build up before commits are triggered.
+> This allows the process of writing dirty pages to clean
+> unstable pages at roughly the same rate as the write rate without
+> needing any magic thresholds to be configured....
+
+That's a good approach. In linux, by limiting the commit size, the NFS
+flusher should roughly achieve the same effect.
+
+However there is another problem. Look at the below graph. Even though
+the commits are sent to NFS server in relatively small size and evenly
+distributed in time (the green points), the commit COMPLETION events
+from the server are observed to be pretty bumpy over time (the blue
+points sitting on the red lines). This may not be easily fixable.. So
+we still have to live with bumpy NFS commit completions...
+
+http://www.kernel.org/pub/linux/kernel/people/wfg/writeback/dirty-throttling-v6/NFS/nfs-1dd-1M-8p-2945M-20%25-2.6.38-rc6-dt6+-2011-02-22-21-09/nfs-commit.png
+
+Thanks,
+Fengguang
