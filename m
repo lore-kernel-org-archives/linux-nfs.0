@@ -1,82 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45875 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752002Ab1CBS6w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Mar 2011 13:58:52 -0500
-Date: Wed, 2 Mar 2011 13:58:47 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Aneesh Kumar K. V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: "Ted Ts'o" <tytso@mit.edu>, sfrench@us.ibm.com, agruen@linbit.com,
-        dilger.kernel@dilger.ca, sandeen@redhat.com, jlayton@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V5 00/24]  New ACL format for better NFSv4 acl
- interoperability
-Message-ID: <20110302185847.GA3524@fieldses.org>
-References: <1298469131-16555-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <20110228211145.GG28617@thunk.org>
- <87oc5vgwqr.fsf@linux.vnet.ibm.com>
- <20110302154943.GB29136@fieldses.org>
- <87ei6pza5v.fsf@linux.vnet.ibm.com>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:16370 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751028Ab1CYEr7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Mar 2011 00:47:59 -0400
+Date: Fri, 25 Mar 2011 15:47:54 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Jan Kara <jack@suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Wu Fengguang <fengguang.wu@intel.com>
+Subject: Re: NFS page states & writeback
+Message-ID: <20110325044754.GK26611@dastard>
+References: <20110325012803.GA25052@quack.suse.cz>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87ei6pza5v.fsf@linux.vnet.ibm.com>
+In-Reply-To: <20110325012803.GA25052@quack.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, Mar 02, 2011 at 11:17:56PM +0530, Aneesh Kumar K. V wrote:
-> On Wed, 2 Mar 2011 10:49:43 -0500, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > On Tue, Mar 01, 2011 at 12:20:36PM +0530, Aneesh Kumar K. V wrote:
-> > > On Mon, 28 Feb 2011 16:11:45 -0500, "Ted Ts'o" <tytso@mit.edu> wrote:
-> > > > Hi Aneesh,
-> > > > 
-> > > > What is the current status of this patch series?  I seem to remember
-> > > > that Christoph and Al Viro had some objections; have those been
-> > > > cleared yet?  If not, can you summarize what their objections are?
-> > > 
-> > > The main objection raised was the use of may_delete and may_create inode
-> > > operations callback. They are gone now and we have MAY_* flags as
-> > > favoured by Al Viro.  The new MAY_* flags added are 
-> > > 
-> > > #define MAY_CREATE_FILE 128
-> > > #define MAY_CREATE_DIR 256
-> > > #define MAY_DELETE_CHILD 512
-> > > #define MAY_DELETE_SELF 1024
-> > > #define MAY_TAKE_OWNERSHIP 2048
-> > > #define MAY_CHMOD 4096
-> > > #define MAY_SET_TIMES 8192
-> > > 
-> > > 
-> > > > 
-> > > > To be honest I haven't been paying super close attention to this patch
-> > > > series, and I'm curious what needs to happen with it one way or
-> > > > another.
-> > > > 
-> > > 
-> > > IMHO we are ready to get first 11 patches upstream in the next merge
-> > > window. ie the below set of patches.
-> > 
-> > Why aren't all of them ready?
-> > 
+On Fri, Mar 25, 2011 at 02:28:03AM +0100, Jan Kara wrote:
+>   Hi,
 > 
-> All except how to enable richacl in local file system is ready. I
-> actually floated two ideas in the patch series
+>   while working on changes to balance_dirty_pages() I was investigating why
+> NFS writeback is *so* bumpy when I do not call writeback_inodes_wb() from
+> balance_dirty_pages(). Take a single dd writing to NFS. What I can
+> see is that we quickly accumulate dirty pages upto limit - ~700 MB on that
+> machine. So flusher thread starts working and in an instant all these ~700
+> MB transition from Dirty state to Writeback state. Then, as server acks
+> writes, Writeback pages slowly change to Unstable pages (at 100 MB/s rate
+> let's say) and then at one moment (commit to server happens) all pages
+> transition from Unstable to Clean state - the cycle begins from the start.
 > 
-> 1) mount option
-> 2) Ext4 compat flags.
-
-The choice of ACL format is a persistant property of the filesystem, not
-of a single mount of the filesystem: for example, people can't try out
-richacls for one mount and then decide to revert bacak to posix acls.
-
-(Right?)  So I'm assuming we should use the latter--but I don't
-understand what ext4 compat flags are.... Is there some disadvantage to
-using them?
-
---b.
-
+> The reason for this behavior seems to be a flaw in the logic in
+> over_bground_thresh() which checks:
+> global_page_state(NR_FILE_DIRTY) +
+>       global_page_state(NR_UNSTABLE_NFS) > background_thresh
+> So at the moment all pages are turned Writeback, flusher thread goes to
+> sleep and doesn't do any background writeback, until we have accumulated
+> enough Stable pages to get over background_thresh. But NFS needs to have
+> ->write_inode() called so that it can sent commit requests to the server.
+> So effectively we end up sending commit only when background_thresh Unstable
+> pages have accumulated which creates the bumpyness. Previously this wasn't
+> a problem because balance_dirty_pages() ended up calling ->write_inode()
+> often enough for NFS to send commit requests reasonably often.
 > 
-> If we can get to decide which one, then the entire set can go in. We also
-> want others to review the richacl format. If that cannot be completed by
-> next merge window there is no reason to prevent the vfs changes from
-> going in. VFS changes are independent of richacl format.
+> Now I wouldn't write so long email about this if I knew how to cleanly fix
+> the check ;-). One way to "fix" the check would be to add there Writeback
+> pages:
+> NR_FILE_DIRTY + NR_WRITEBACK + NR_UNSTABLE_NFS > background_thresh
+> 
+> This would work in the sense that it would keep flusher thread working but
+> a) for normal filesystems it would be working even if there's potentially
+> nothing to do (or it is not necessary to do anything)
+> b) NFS is picky when it sends commit requests (inode has to have more
+> Stable pages than Writeback pages if I'm reading the code in
+> nfs_commit_unstable_pages() right) so flusher thread may be working but
+> nothing really happens until enough stable pages accumulate.
+> 
+> A check which kind of works but looks a bit hacky and is not perfect when
+> there are multiple files is:
+> NR_FILE_DIRTY + NR_UNSTABLE_NFS > background_thresh ||
+> NR_UNSTABLE_NFS > NR_WRITEBACK (to match what NFS does)
+> 
+> Any better idea for a fix?
+
+Have NFS account for it's writeback pages to also be accounted as
+NR_UNSTABLE_NFS pages? i.e. rather than incrementing NR_UNSTABLE_NFS
+at the writeback->unstable transition, account it at the
+dirty->writeback transition....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
