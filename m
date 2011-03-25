@@ -1,57 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42785 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751044Ab1CGNFm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Mar 2011 08:05:42 -0500
-Message-ID: <4D74D822.4000009@RedHat.com>
-Date: Mon, 07 Mar 2011 08:05:38 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Masatake YAMATO <yamato@redhat.com>
-CC: rees@umich.edu, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] Read /etc/exports.d/*.export as extra export files
-References: <20110217.215900.388120588347145930.yamato@redhat.com>	<4D72BD33.70208@RedHat.com>	<20110306015106.GA23388@merit.edu> <20110306.151123.1031846434411534102.yamato@redhat.com>
-In-Reply-To: <20110306.151123.1031846434411534102.yamato@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-gw0-f46.google.com ([74.125.83.46]:65501 "EHLO
+	mail-gw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755127Ab1CYVh6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Mar 2011 17:37:58 -0400
+Received: by gwaa18 with SMTP id a18so632092gwa.19
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Mar 2011 14:37:57 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/3] Three short subjects for nfs-utils
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 25 Mar 2011 17:37:39 -0400
+Message-ID: <20110325213559.27166.71461.stgit@matisse.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Hi Steve-
+
+Here are two minor bug fixes, and a mountd clean up that will help out
+with FedFS down the road.  No hurry.
+
+---
+
+Chuck Lever (2):
+      statd: Remove vestigial "-w" option from man page synopsis
+      mount.nfs: Don't leak socket in nfs_ca_sockname()
+
+Trond Myklebust (1):
+      exports: add a configurable time-to-live for the kernel cache entries
 
 
-On 03/06/2011 01:11 AM, Masatake YAMATO wrote:
-> On Sat, 5 Mar 2011 20:51:06 -0500, Jim Rees <rees@umich.edu> wrote
->> Steve Dickson wrote:
->>
->>   Now, I realize you added the ".export" explanation to the man page 
->>   but is there a particular reason why file in that directory have 
->>   to end with ".export"? Out of "easy of use" sake, should any 
->>   and all files that exist in that directory be expected to 
->>   be exports files?
->>
->> I don't know if that's the best way to do it, but I think it would be useful
->> to have a way to keep files in the directory that don't get automatically
->> read.  As an analogy, I have the following files in my /etc/init:
->>
->> portmap.conf           This is the real one that gets used
->> portmap.conf~          This is a backup file produced by emacs
->> portmap.conf-20100603  This is the file that came with my distro
->>
->> Only the first one gets used, which is what I want, because it's the only
->> one ending in ".conf".
-This makes sense... 
+ support/include/exportfs.h |    1 +
+ support/include/nfslib.h   |    1 +
+ support/nfs/exports.c      |    1 +
+ utils/mount/network.c      |   28 +++++++++++++---------------
+ utils/mountd/cache.c       |   15 ++++++++-------
+ utils/statd/statd.man      |    2 +-
+ 6 files changed, 25 insertions(+), 23 deletions(-)
 
-> 
-> Jim, thank you for explanation. He wrote what I'd like to write.
-> 
-> This technique is borrowed from util-linux-ng; libmount.so reads
-> only *.fstab under /etc/fstab.d.
-> 
-> 
-> In addition, ".export" suffix tells an editor which syntax highlighter
-> should be used when editing .export file:P
-True... But I noticed the suffix that gvim looks for is ".exports"
-not ".export". 
-
-What editor are you using and does it look for a ".export" by default?
-
-steved.
+-- 
+Chuck Lever
