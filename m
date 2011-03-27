@@ -1,110 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39629 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:39483 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754161Ab1CGPCU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Mar 2011 10:02:20 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 1/2] Define ENOAUTHSERVICE to indicate "Authentication service
- unavailable"
-To: linux-security-module@vger.kernel.org, keyrings@linux-nfs.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-afs@lists.infradead.org, linux-api@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org
-Date: Mon, 07 Mar 2011 15:02:08 +0000
-Message-ID: <20110307150208.28218.89348.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+	id S1753632Ab1C0P07 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Mar 2011 11:26:59 -0400
+Subject: Re: NFS page states & writeback
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Dave Chinner <david@fromorbit.com>
+Cc: Jan Kara <jack@suse.cz>, Wu Fengguang <fengguang.wu@intel.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>
+In-Reply-To: <20110326011806.GT26611@dastard>
+References: <20110325012803.GA25052@quack.suse.cz>
+	 <20110325070054.GA5970@localhost> <20110325093957.GL26611@dastard>
+	 <20110325142253.GA11589@localhost> <20110325225558.GQ26611@dastard>
+	 <20110325232440.GE26932@quack.suse.cz>  <20110326011806.GT26611@dastard>
+Content-Type: text/plain; charset="UTF-8"
+Date: Sun, 27 Mar 2011 17:26:41 +0200
+Message-ID: <1301239601.22136.23.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-As the kernel has or will have filesystems (and possibly other services) that
-want to obtain authentication tokens and/or encryption data on demand (via
-GSSAPI for example), it would seem useful to provide an additional error code
-to indicate a problem with the lookup, rather than overloading some other error
-code.
+On Sat, 2011-03-26 at 12:18 +1100, Dave Chinner wrote:
+> Yes - though this only reduces the variance the client sees in
+> steady state operation.  Realistically, we don't care if one commit
+> takes 2s for 100MB and the next takes 0.2s for the next 100MB as
+> long as we've been able to send 50MB/s of writes over the wire
+> consistently. IOWs, what we need to care about is getting the data
+> to the server as quickly as possible and decoupling that from the
+> commit operation.  i.e. we need to maximise and smooth the rate at
+> which we send dirty pages to the server, not the rate at which we
+> convert unstable pages to stable. If the server can't handle the
+> write rate we send it, if will slow downteh rate at which it
+> processes writes and we get congestion feedback that way (i.e. via
+> the network channel).
+> 
+> Essentially what I'm trying to say is that I don't think
+> unstable->clean operations (i.e. the commit) should affect or
+> control  the estimated bandwidth of the channel. A commit is an
+> operation that can be tuned to optimise throughput, but because of
+> it's variance it's not really an operation that can be used to
+> directly measure and control that throughput.
 
-We already have EKEYREJECTED, EKEYREVOKED and EKEYEXPIRED to indicate problems
-with a token that we already have, but what if the authentication server just
-isn't available?
+Agreed. However as I have said before, most of the problem here is that
+the Linux server is assuming that it should cache the data maximally as
+if this were a local process.
 
-Define ENOAUTHSERVICE to indicate "Authentication service unavailable".  This
-can be used to indicate, for example, that an attempt was made by request_key()
-to retrieve a key, but the authentication server (e.g. a KDC) it is supposed to
-contact didn't answer or that it couldn't determine the location of a suitable
-server.
+Once the NFS client starts flushing data to the server, it is because
+the client no longer wants to cache, but rather wants to see the data
+put onto stable storage as quickly as possible.
+At that point, the server should be focussing doing the same. It should
+not be setting the low water mark at 20% of total memory before starting
+writeback, because that means that the COMMIT may have to wait for
+several GB of data of data to hit the platter.
+If the water mark was set at say 100MB or so, then writeback would be
+much smoother...
 
-One way this can be used is that the user of a network filesystem can get a TGT
-from the KDC and stash it in their session keyring, then the filesystem can
-attempt to automatically get a ticket for accessing the filesystem - but if the
-server is uncontactable then the ticket can be negatively instantiated with
-KEYCTL_REJECT, giving the error to be handed to future requests as
-ENOAUTHSERVICE and a small timeout so that the key will expire from the cache
-and allow a retry after a short while to prevent thrashing.
+> It is also worth remembering that some NFS servers return STABLE as
+> the state of the data in their write response. This transitions the
+> pages directly from writeback to clean, so there is no unstable
+> state or need for a commit operation. Hence the bandwidth estimation
+> in these cases is directly related to the network/protocol
+> throughput. If we can run background commit operations triggered by
+> write responses, then we have the same bandwidth estimation
+> behaviour for writes regardless of whether they return as STABLE or
+> UNSTABLE on the server...
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+If the server were doing its job of acting as a glorified disk instead
+of trying to act as a caching device, then most of that data should
+already be on disk before the client sends the COMMIT.
 
- arch/alpha/include/asm/errno.h  |    1 +
- arch/mips/include/asm/errno.h   |    1 +
- arch/parisc/include/asm/errno.h |    1 +
- arch/sparc/include/asm/errno.h  |    1 +
- include/asm-generic/errno.h     |    1 +
- 5 files changed, 5 insertions(+), 0 deletions(-)
+Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-diff --git a/arch/alpha/include/asm/errno.h b/arch/alpha/include/asm/errno.h
-index 98099bd..519663c 100644
---- a/arch/alpha/include/asm/errno.h
-+++ b/arch/alpha/include/asm/errno.h
-@@ -121,5 +121,6 @@
- #define	ENOTRECOVERABLE	137	/* State not recoverable */
- 
- #define	ERFKILL		138	/* Operation not possible due to RF-kill */
-+#define	ENOAUTHSERVICE	139	/* Authentication service not available */
- 
- #endif
-diff --git a/arch/mips/include/asm/errno.h b/arch/mips/include/asm/errno.h
-index a0efc73..5fa7fed 100644
---- a/arch/mips/include/asm/errno.h
-+++ b/arch/mips/include/asm/errno.h
-@@ -120,6 +120,7 @@
- #define	ENOTRECOVERABLE	166	/* State not recoverable */
- 
- #define	ERFKILL		167	/* Operation not possible due to RF-kill */
-+#define	ENOAUTHSERVICE	168	/* Authentication service not available */
- 
- #define EDQUOT		1133	/* Quota exceeded */
- 
-diff --git a/arch/parisc/include/asm/errno.h b/arch/parisc/include/asm/errno.h
-index 9992abd..6a19346 100644
---- a/arch/parisc/include/asm/errno.h
-+++ b/arch/parisc/include/asm/errno.h
-@@ -121,5 +121,6 @@
- #define ENOTRECOVERABLE	255	/* State not recoverable */
- 
- #define	ERFKILL		256	/* Operation not possible due to RF-kill */
-+#define	ENOAUTHSERVICE	257	/* Authentication service not available */
- 
- #endif
-diff --git a/arch/sparc/include/asm/errno.h b/arch/sparc/include/asm/errno.h
-index 4e2bc49..ab3a26a 100644
---- a/arch/sparc/include/asm/errno.h
-+++ b/arch/sparc/include/asm/errno.h
-@@ -111,5 +111,6 @@
- #define	ENOTRECOVERABLE	133	/* State not recoverable */
- 
- #define	ERFKILL		134	/* Operation not possible due to RF-kill */
-+#define	ENOAUTHSERVICE	135	/* Authentication service not available */
- 
- #endif
-diff --git a/include/asm-generic/errno.h b/include/asm-generic/errno.h
-index 28cc03b..bcf1908 100644
---- a/include/asm-generic/errno.h
-+++ b/include/asm-generic/errno.h
-@@ -107,5 +107,6 @@
- #define	ENOTRECOVERABLE	131	/* State not recoverable */
- 
- #define ERFKILL		132	/* Operation not possible due to RF-kill */
-+#define	ENOAUTHSERVICE	133	/* Authentication service not available */
- 
- #endif
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
