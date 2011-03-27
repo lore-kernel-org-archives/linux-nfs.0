@@ -1,111 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:29097 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754359Ab1CGPCY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Mar 2011 10:02:24 -0500
-From: David Howells <dhowells@redhat.com>
-Subject: [PATCH 2/2] Define ENONAMESERVICE and ENAMEUNKNOWN to indicate name
- service errors
-To: linux-security-module@vger.kernel.org, keyrings@linux-nfs.org,
-        linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-afs@lists.infradead.org, linux-api@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org
-Date: Mon, 07 Mar 2011 15:02:18 +0000
-Message-ID: <20110307150218.28218.84916.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20110307150208.28218.89348.stgit@warthog.procyon.org.uk>
-References: <20110307150208.28218.89348.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail.parknet.co.jp ([210.171.160.6]:60677 "EHLO
+	mail.parknet.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753659Ab1C0Pci (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Mar 2011 11:32:38 -0400
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: strange put_rpccred() handling
+Date: Mon, 28 Mar 2011 00:05:02 +0900
+Message-ID: <87ei5sppsx.fsf@devron.myhome.or.jp>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Now that the kernel has filesystems (and possibly other services) that want to
-look up internet addresses corresponding to arbitrary hostnames retrieved from
-the server, it would seem useful to provide a couple of error codes to indicate
-problems with the look up, rather than overloading some other error code.
+Hi,
 
-Define ENONAMESERVICE to indicate "Network name service unavailable".  This can
-be used to indicate, for example, that an attempt was made by dns_query() to
-make a query, but the name server (e.g. a DNS server) it is supposed to contact
-didn't answer or that it couldn't determine the location of a suitable server.
+BUG: atomic_dec_and_test(): -1: atomic counter underflow at:
+Pid: 2827, comm: mount.nfs Not tainted 2.6.38 #1
+Call Trace:
+ [<ffffffffa02223a0>] ? put_rpccred+0x44/0x14e [sunrpc]
+ [<ffffffffa021bbe9>] ? rpc_ping+0x4e/0x58 [sunrpc]
+ [<ffffffffa021c4a5>] ? rpc_create+0x481/0x4fc [sunrpc]
+ [<ffffffffa022298a>] ? rpcauth_lookup_credcache+0xab/0x22d [sunrpc]
+ [<ffffffffa028be8c>] ? nfs_create_rpc_client+0xa6/0xeb [nfs]
+ [<ffffffffa028c660>] ? nfs4_set_client+0xc2/0x1f9 [nfs]
+ [<ffffffffa028cd3c>] ? nfs4_create_server+0xf2/0x2a6 [nfs]
+ [<ffffffffa0295d07>] ? nfs4_remote_mount+0x4e/0x14a [nfs]
+ [<ffffffff810dd570>] ? vfs_kern_mount+0x6e/0x133
+ [<ffffffffa029605a>] ? nfs_do_root_mount+0x76/0x95 [nfs]
+ [<ffffffffa029643d>] ? nfs4_try_mount+0x56/0xaf [nfs]
+ [<ffffffffa0297434>] ? nfs_get_sb+0x435/0x73c [nfs]
+ [<ffffffff810dd59b>] ? vfs_kern_mount+0x99/0x133
+ [<ffffffff810dd693>] ? do_kern_mount+0x48/0xd8
+ [<ffffffff810f5b75>] ? do_mount+0x6da/0x741
+ [<ffffffff810f5c5f>] ? sys_mount+0x83/0xc0
+ [<ffffffff8100293b>] ? system_call_fastpath+0x16/0x1b
 
-Define ENAMEUNKNOWN to indicate "Network name unknown".  This can be used to
-indicate, for example, that an attempt was made by dns_query() to make a query,
-but the name server (e.g. a DNS server) replied indicating that it had no
-matching records.
+This is not oops, and debug code is not in vanilla. This debug code is
+simple - detects atomic_dec_and_test() underflow.
 
-The DNS query upcall program can report these to keyctl_reject() so that cached
-failed queries will respond with these errors until they expire.
+Well, so, I think this is real bug of nfs codes somewhere. With some
+review, the code
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+rpc_call_sync()
+    rpc_run_task
+        rpc_execute()
+            __rpc_execute()
+                rpc_release_task()
+                    rpc_release_resources_task()
+                        put_rpccred()                <= release cred
+    rpc_put_task
+        rpc_do_put_task()
+            rpc_release_resources_task()
+                put_rpccred()                        <= release cred again
 
- arch/alpha/include/asm/errno.h  |    2 ++
- arch/mips/include/asm/errno.h   |    2 ++
- arch/parisc/include/asm/errno.h |    2 ++
- arch/sparc/include/asm/errno.h  |    2 ++
- include/asm-generic/errno.h     |    2 ++
- 5 files changed, 10 insertions(+), 0 deletions(-)
+seems to be release cred unintendedly.
 
-diff --git a/arch/alpha/include/asm/errno.h b/arch/alpha/include/asm/errno.h
-index 519663c..ee8a3f0 100644
---- a/arch/alpha/include/asm/errno.h
-+++ b/arch/alpha/include/asm/errno.h
-@@ -122,5 +122,7 @@
- 
- #define	ERFKILL		138	/* Operation not possible due to RF-kill */
- #define	ENOAUTHSERVICE	139	/* Authentication service not available */
-+#define	ENONAMESERVICE	140	/* Network name service unavailable */
-+#define	ENAMEUNKNOWN	141	/* Network name unknown */
- 
- #endif
-diff --git a/arch/mips/include/asm/errno.h b/arch/mips/include/asm/errno.h
-index 5fa7fed..faed965 100644
---- a/arch/mips/include/asm/errno.h
-+++ b/arch/mips/include/asm/errno.h
-@@ -121,6 +121,8 @@
- 
- #define	ERFKILL		167	/* Operation not possible due to RF-kill */
- #define	ENOAUTHSERVICE	168	/* Authentication service not available */
-+#define	ENONAMESERVICE	169	/* Network name service unavailable */
-+#define	ENAMEUNKNOWN	170	/* Network name unknown */
- 
- #define EDQUOT		1133	/* Quota exceeded */
- 
-diff --git a/arch/parisc/include/asm/errno.h b/arch/parisc/include/asm/errno.h
-index 6a19346..63ee0bc 100644
---- a/arch/parisc/include/asm/errno.h
-+++ b/arch/parisc/include/asm/errno.h
-@@ -122,5 +122,7 @@
- 
- #define	ERFKILL		256	/* Operation not possible due to RF-kill */
- #define	ENOAUTHSERVICE	257	/* Authentication service not available */
-+#define	ENONAMESERVICE	258	/* Network name service unavailable */
-+#define	ENAMEUNKNOWN	259	/* Network name unknown */
- 
- #endif
-diff --git a/arch/sparc/include/asm/errno.h b/arch/sparc/include/asm/errno.h
-index ab3a26a..f40d5ae 100644
---- a/arch/sparc/include/asm/errno.h
-+++ b/arch/sparc/include/asm/errno.h
-@@ -112,5 +112,7 @@
- 
- #define	ERFKILL		134	/* Operation not possible due to RF-kill */
- #define	ENOAUTHSERVICE	135	/* Authentication service not available */
-+#define	ENONAMESERVICE	136	/* Network name service unavailable */
-+#define	ENAMEUNKNOWN	137	/* Network name unknown */
- 
- #endif
-diff --git a/include/asm-generic/errno.h b/include/asm-generic/errno.h
-index bcf1908..25878f1 100644
---- a/include/asm-generic/errno.h
-+++ b/include/asm-generic/errno.h
-@@ -108,5 +108,7 @@
- 
- #define ERFKILL		132	/* Operation not possible due to RF-kill */
- #define	ENOAUTHSERVICE	133	/* Authentication service not available */
-+#define	ENONAMESERVICE	134	/* Network name service unavailable */
-+#define	ENAMEUNKNOWN	135	/* Network name unknown */
- 
- #endif
+static void rpc_release_resources_task(struct rpc_task *task)
+{
+	if (task->tk_rqstp)
+		xprt_release(task);
+	if (task->tk_msg.rpc_cred) {
+		put_rpccred(task->tk_msg.rpc_cred);
+		task->tk_msg.rpc_cred = NULL;
+	}
+	rpc_task_release_client(task);
+}
 
+The above change may fix the problem though, I don't know the codes what
+want to do actually. And I guess this is not right fix, because the path
+is looks strange - on early stage, __rpc_execute() calls
+rpc_release_task() explicitly.
+
+Thanks.
+-- 
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
