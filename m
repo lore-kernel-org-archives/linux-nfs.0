@@ -1,72 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:62225 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751154Ab1CBG3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Mar 2011 01:29:17 -0500
-Message-ID: <4D6DE3E7.4090105@cn.fujitsu.com>
-Date: Wed, 02 Mar 2011 14:29:59 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 05/17] CLNT: test reply too big
-References: <4D6DE26C.3010103@cn.fujitsu.com>
-In-Reply-To: <4D6DE26C.3010103@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mail.parknet.co.jp ([210.171.160.6]:43811 "EHLO
+	mail.parknet.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753913Ab1C0QPj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Mar 2011 12:15:39 -0400
+From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: strange put_rpccred() handling
+References: <87ei5sppsx.fsf@devron.myhome.or.jp>
+	<1301241303.22136.31.camel@lade.trondhjem.org>
+Date: Mon, 28 Mar 2011 01:15:36 +0900
+In-Reply-To: <1301241303.22136.31.camel@lade.trondhjem.org> (Trond Myklebust's
+	message of "Sun, 27 Mar 2011 17:55:03 +0200")
+Message-ID: <8739m8pmjb.fsf@devron.myhome.or.jp>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Trond Myklebust <Trond.Myklebust@netapp.com> writes:
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- nfs4.1/server41tests/st_create_session.py |   30 ++++++++++++++++++++++++++++-
- 1 files changed, 29 insertions(+), 1 deletions(-)
+> On Mon, 2011-03-28 at 00:05 +0900, OGAWA Hirofumi wrote:
+>> Hi,
+>> 
+>> BUG: atomic_dec_and_test(): -1: atomic counter underflow at:
+>> Pid: 2827, comm: mount.nfs Not tainted 2.6.38 #1
+>> Call Trace:
+>>  [<ffffffffa02223a0>] ? put_rpccred+0x44/0x14e [sunrpc]
+>>  [<ffffffffa021bbe9>] ? rpc_ping+0x4e/0x58 [sunrpc]
+>>  [<ffffffffa021c4a5>] ? rpc_create+0x481/0x4fc [sunrpc]
+>>  [<ffffffffa022298a>] ? rpcauth_lookup_credcache+0xab/0x22d [sunrpc]
+>>  [<ffffffffa028be8c>] ? nfs_create_rpc_client+0xa6/0xeb [nfs]
+>>  [<ffffffffa028c660>] ? nfs4_set_client+0xc2/0x1f9 [nfs]
+>>  [<ffffffffa028cd3c>] ? nfs4_create_server+0xf2/0x2a6 [nfs]
+>>  [<ffffffffa0295d07>] ? nfs4_remote_mount+0x4e/0x14a [nfs]
+>>  [<ffffffff810dd570>] ? vfs_kern_mount+0x6e/0x133
+>>  [<ffffffffa029605a>] ? nfs_do_root_mount+0x76/0x95 [nfs]
+>>  [<ffffffffa029643d>] ? nfs4_try_mount+0x56/0xaf [nfs]
+>>  [<ffffffffa0297434>] ? nfs_get_sb+0x435/0x73c [nfs]
+>>  [<ffffffff810dd59b>] ? vfs_kern_mount+0x99/0x133
+>>  [<ffffffff810dd693>] ? do_kern_mount+0x48/0xd8
+>>  [<ffffffff810f5b75>] ? do_mount+0x6da/0x741
+>>  [<ffffffff810f5c5f>] ? sys_mount+0x83/0xc0
+>>  [<ffffffff8100293b>] ? system_call_fastpath+0x16/0x1b
+>> 
+>> This is not oops, and debug code is not in vanilla. This debug code is
+>> simple - detects atomic_dec_and_test() underflow.
+>> 
+>> Well, so, I think this is real bug of nfs codes somewhere. With some
+>> review, the code
+>> 
+>> rpc_call_sync()
+>>     rpc_run_task
+>>         rpc_execute()
+>>             __rpc_execute()
+>>                 rpc_release_task()
+>>                     rpc_release_resources_task()
+>>                         put_rpccred()                <= release cred
+>>     rpc_put_task
+>>         rpc_do_put_task()
+>>             rpc_release_resources_task()
+>>                 put_rpccred()                        <= release cred again
+>> 
+>> seems to be release cred unintendedly.
+>> 
+>> static void rpc_release_resources_task(struct rpc_task *task)
+>> {
+>> 	if (task->tk_rqstp)
+>> 		xprt_release(task);
+>> 	if (task->tk_msg.rpc_cred) {
+>> 		put_rpccred(task->tk_msg.rpc_cred);
+>> 		task->tk_msg.rpc_cred = NULL;
+>> 	}
+>> 	rpc_task_release_client(task);
+>> }
+>
+> May I add a signed-off-by from you, and just push the above fix to
+> Linus?
 
-diff --git a/nfs4.1/server41tests/st_create_session.py b/nfs4.1/server41tests/st_create_session.py
-index 1b8b119..c474ce3 100644
---- a/nfs4.1/server41tests/st_create_session.py
-+++ b/nfs4.1/server41tests/st_create_session.py
-@@ -1,6 +1,6 @@
- from nfs4_const import *
- import nfs4_ops as op
--from environment import check, fail
-+from environment import check, fail, create_file, open_file
- from nfs4_type import *
- import random
- import nfs4lib
-@@ -427,3 +427,31 @@ def testTooSmallMaxRS(t, env):
-                                         chan_attrs, chan_attrs,
-                                         123, [])], None)
-     check(res, NFS4ERR_TOOSMALL)
-+
-+def testRepTooBig(t, env):
-+    """If requester sends a request for which the size of the reply
-+       would exceed ca_maxresponsesize, the replier will return
-+       NFS4ERR_REP_TOO_BIG
-+
-+    FLAGS: create_session all
-+    CODE: CSESS26
-+    """
-+    name = env.testname(t)
-+    c1 = env.c1.new_client(name)
-+    # create session with a small ca_maxresponsesize
-+    chan_attrs = channel_attrs4(0,8192,50,8192,128,8,[])
-+    sess1 = c1.create_session(fore_attrs=chan_attrs)
-+    owner = "owner_%s" % name
-+    path = sess1.c.homedir + [name]
-+    res = create_file(sess1, owner, path, access=OPEN4_SHARE_ACCESS_BOTH)
-+    check(res)
-+
-+    # write some data to file
-+    fh = res.resarray[-1].object
-+    stateid = res.resarray[-2].stateid
-+    res = sess1.compound([op.putfh(fh), op.write(stateid, 5, FILE_SYNC4, "write test data " * 10)])
-+    check(res)
-+
-+    # read data rather than ca_maxresponsesize
-+    res = sess1.compound([op.putfh(fh), op.read(stateid, 0, 500)])
-+    check(res, NFS4ERR_REP_TOO_BIG)
+Yes, of course.
+
+Signed-off-by: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+
 -- 
-1.7.4.1
-
-
+OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
