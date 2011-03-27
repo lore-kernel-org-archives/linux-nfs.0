@@ -1,111 +1,84 @@
-From: Dros Adamson <dros@netapp.com>
-Subject: Re: [PATCH] Cleanup XDR parsing for LAYOUTGET, GETDEVICEINFO
-Date: Fri, 25 Mar 2011 10:01:35 -0400
-Message-ID: <3FB1B364-AA14-4DBB-B47B-1A9193A979C0@netapp.com>
-References: <1300999701-2244-1-git-send-email-dros@netapp.com> <1301002148.27109.5.camel@lade.trondhjem.org>
-Mime-Version: 1.0 (Apple Message framework v1082)
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-nfs@vger.kernel.org
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+From: "Brian J. Murrell" <brian-SquOHqY54CVWr29BmMi2cA@public.gmane.org>
+Subject: Re: different kernels mean NFS4/GSSAPI works or doesn't
+Date: Sun, 27 Mar 2011 08:42:41 -0400
+Message-ID: <4D8F30C1.9030304@interlinx.bc.ca>
+References: <imbb8m$uiv$1@dough.gmane.org>	 <AANLkTimFJ2fMn805jY91u8FQihib8GfJ=8S7Yy4y47R3@mail.gmail.com>	 <4D89D36D.3090207@interlinx.bc.ca>	 <AANLkTi=b1z0MrYYQmidbra0EHanegcLO5qoOScLq21rb@mail.gmail.com>	 <4D8A0C9F.8090300@interlinx.bc.ca> <1300900035.11677.12.camel@lade.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="------------enig46C03FE5D91718A815AF52A6"
+Cc: kwc@citi.umich.edu, linux-nfs@vger.kernel.org
+To: Trond.Myklebust@netapp.com
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:26988 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753160Ab1CYOBg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Mar 2011 10:01:36 -0400
-In-Reply-To: <1301002148.27109.5.camel-SyLVLa/KEI9HwK5hSS5vWB2eb7JE58TQ@public.gmane.org>
+Received: from interlinx.bc.ca ([66.11.173.224]:54809 "EHLO
+	linux.interlinx.bc.ca" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1753542Ab1C0MwS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Mar 2011 08:52:18 -0400
+In-Reply-To: <1300900035.11677.12.camel-SyLVLa/KEI9HwK5hSS5vWB2eb7JE58TQ@public.gmane.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Looks good to me.
+This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
+--------------enig46C03FE5D91718A815AF52A6
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
--dros
-sd
-On Mar 24, 2011, at 5:29 PM, Trond Myklebust wrote:
+On 11-03-23 01:07 PM, Trond Myklebust wrote:
+> Please don't remove people from the Cc list.
 
-> On Thu, 2011-03-24 at 16:48 -0400, Weston Andros Adamson wrote:
-> 
->> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
->> index 433204f..414c7e9 100644
->> --- a/fs/nfs/nfs4filelayoutdev.c
->> +++ b/fs/nfs/nfs4filelayoutdev.c
->> @@ -261,7 +261,7 @@ out:
->>  * Currently only support ipv4, and one multi-path address.
->>  */
->> static struct nfs4_pnfs_ds *
->> -decode_and_add_ds(__be32 **pp, struct inode *inode)
->> +decode_and_add_ds(struct xdr_stream *streamp, struct inode *inode)
->> {
->> 	struct nfs4_pnfs_ds *ds = NULL;
->> 	char *buf;
->> @@ -269,25 +269,34 @@ decode_and_add_ds(__be32 **pp, struct inode *inode)
->> 	u32 ip_addr, port;
->> 	int nlen, rlen, i;
->> 	int tmp[2];
->> -	__be32 *r_netid, *r_addr, *p = *pp;
->> +	__be32 *p;
->> 
->> 	/* r_netid */
->> +	p = xdr_inline_decode(streamp, 4);
->> +	if (unlikely(!p))
->> +		goto out_err;
->> 	nlen = be32_to_cpup(p++);
->> -	r_netid = p;
->> -	p += XDR_QUADLEN(nlen);
->> 
->> -	/* r_addr */
->> -	rlen = be32_to_cpup(p++);
->> -	r_addr = p;
->> -	p += XDR_QUADLEN(rlen);
->> -	*pp = p;
->> +	p = xdr_inline_decode(streamp, nlen);
->> +	if (unlikely(!p))
->> +		goto out_err;
->> 
->> 	/* Check that netid is "tcp" */
->> -	if (nlen != 3 ||  memcmp((char *)r_netid, "tcp", 3)) {
->> +	if (nlen != 3 ||  memcmp((char *)p, "tcp", 3)) {
->> 		dprintk("%s: ERROR: non ipv4 TCP r_netid\n", __func__);
->> 		goto out_err;
->> 	}
->> 
->> +	/* r_addr */
->> +	p = xdr_inline_decode(streamp, 4);
->> +	if (unlikely(!p))
->> +		goto out_err;
->> +	rlen = be32_to_cpup(p);
->> +
->> +	p = xdr_inline_decode(streamp, rlen);
->> +	if (unlikely(!p))
->> +		goto out_err;
->> +
->> 	/* ipv6 length plus port is legal */
->> 	if (rlen > INET6_ADDRSTRLEN + 8) {
->> 		dprintk("%s: Invalid address, length %d\n", __func__,
->> @@ -295,8 +304,10 @@ decode_and_add_ds(__be32 **pp, struct inode *inode)
->> 		goto out_err;
->> 	}
->> 	buf = kmalloc(rlen + 1, GFP_KERNEL);
->> +	if (unlikely(!buf))
->> +		goto out_err;
->> 	buf[rlen] = '\0';
->> -	memcpy(buf, r_addr, rlen);
->> +	memcpy(buf, p, rlen);
->> 
->> 	/* replace the port dots with dashes for the in4_pton() delimiter*/
->> 	for (i = 0; i < 2; i++) {
-> 
-> I had a small conflict with this last hunk due to an existing patch in
-> the nfs-for-2.6.39 branch, but I think I've fixed it up correctly.
-> 
-> Please check the nfs-for-2.6.39 branch on
->     git://git.linux-nfs.org/projects/trondmy/nfs-2.6.git
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+Fair enough.  Personally, I dislike getting two copies, but I can
+respect others' wishes.
 
+> You said this happens only with RPCSEC_GSS?
+
+Indeed.  Hrm.  Well, to be honest my two scenarios are NFS4 with
+RPCSEC_GSS and NFSv3.  I've never really looked into NFS4 without
+RPCSEC_GSS.  Is that even possible?  What's the point?  I guess there
+are protocol improvements in NFS4 aside from RPCSEC_GSS?
+
+> Have you tried bisecting, to see which changes caused it?
+
+I just did, using Ubuntu's "mainline" kernels, which AFAIU are upstream
+kernel source without any of their special sauce, but built with their
+=2Econfigs.
+
+It seems the problem was introduced in 2.6.32.12.  I don't really know
+which commit between 2.6.32.11 and 2.6.32.12 though.  In fact I don't
+even know where to find these so-called .11 and .12 4th order of
+releases to see what all went into it.
+
+I did find
+http://www.kernel.org/pub/linux/kernel/v2.6/ChangeLog-2.6.32.11 but a
+gitweb interface to the changes would be much more useful I think.
+Although the number of changes that show up there for matches of /nfs/
+or /gss/ are quite small (only one for the latter).
+
+> You can
+> probably restrict yourself to bisecting changes to include/linux/sunrpc=
+,
+> net/sunrpc and net/sunrpc/auth_gss.
+
+If I could find a gitweb tree to grovel through.  :-)
+
+b.
+
+
+
+
+
+
+--------------enig46C03FE5D91718A815AF52A6
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.10 (GNU/Linux)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
+
+iEYEARECAAYFAk2PMMEACgkQl3EQlGLyuXCbWACg5SduTH9Qh0nQdXa07AYYLthH
+m5sAn31KTdkAPGSeQkWSLdtGFdVp59rC
+=Zapb
+-----END PGP SIGNATURE-----
+
+--------------enig46C03FE5D91718A815AF52A6--
