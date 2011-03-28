@@ -1,56 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:64973 "EHLO song.cn.fujitsu.com"
+Received: from cn.fujitsu.com ([222.73.24.84]:52531 "EHLO song.cn.fujitsu.com"
 	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753465Ab1C1I7O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Mar 2011 04:59:14 -0400
-Message-ID: <4D904E31.8070506@cn.fujitsu.com>
-Date: Mon, 28 Mar 2011 17:00:33 +0800
+	id S1751852Ab1C1HN7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Mar 2011 03:13:59 -0400
+Message-ID: <4D90357D.3080604@cn.fujitsu.com>
+Date: Mon, 28 Mar 2011 15:15:09 +0800
 From: Mi Jinlong <mijinlong@cn.fujitsu.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 5/5] CLNT: test double RECLAIM_COMPLETE after create session
-References: <4D6DE26C.3010103@cn.fujitsu.com> <4D904BEB.1060101@cn.fujitsu.com>
-In-Reply-To: <4D904BEB.1060101@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+Subject: [PATCH] nfsd4: set right access bmap when initializing lock stateid
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
+
+ 
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+
+------------[ cut here ]------------
+kernel BUG at fs/nfsd/nfs4state.c:380!
+invalid opcode: 0000 [#1] SMP
+last sysfs file: /sys/kernel/mm/ksm/run
+Modules linked in: nfs fscache md4 nls_utf8 cifs ip6table_filter ip6_tables ebtable_nat ebtables ipt_MASQUERADE iptable_nat nf_nat bridge stp llc nfsd lockd nfs_acl auth_rpcgss sunrpc ipv6 ppdev parport_pc parport pcnet32 mii pcspkr microcode i2c_piix4 BusLogic floppy [last unloaded: mperf]
+
+Pid: 1468, comm: nfsd Not tainted 2.6.38+ #120 VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform
+EIP: 0060:[<e24f180d>] EFLAGS: 00010297 CPU: 0
+EIP is at nfs4_access_to_omode+0x1c/0x29 [nfsd]
+EAX: ffffffff EBX: dd758120 ECX: 00000000 EDX: 00000004
+ESI: dd758120 EDI: ddfe657c EBP: dd54dde0 ESP: dd54dde0
+ DS: 007b ES: 007b FS: 00d8 GS: 00e0 SS: 0068
+Process nfsd (pid: 1468, ti=dd54c000 task=ddc92580 task.ti=dd54c000)
+Stack:
+ dd54ddf0 e24f19ca 00000000 ddfe6560 dd54de08 e24f1a5d dd758130 deee3a20
+ ddfe6560 31270000 dd54df1c e24f52fd 0000000f dd758090 e2505dd0 0be304cf
+ dbb51d68 0000000e ddfe657c ddcd8020 dd758130 dd758128 dd7580d8 dd54de68
+Call Trace:
+ [<e24f19ca>] free_generic_stateid+0x1c/0x3e [nfsd]
+ [<e24f1a5d>] release_lockowner+0x71/0x8a [nfsd]
+ [<e24f52fd>] nfsd4_lock+0x617/0x66c [nfsd]
+ [<e24e57b6>] ? nfsd_setuser+0x199/0x1bb [nfsd]
+ [<e24e056c>] ? nfsd_setuser_and_check_port+0x65/0x81 [nfsd]
+ [<c07a0052>] ? _cond_resched+0x8/0x1c
+ [<c04ca61f>] ? slab_pre_alloc_hook.clone.33+0x23/0x27
+ [<c04cac01>] ? kmem_cache_alloc+0x1a/0xd2
+ [<c04835a0>] ? __call_rcu+0xd7/0xdd
+ [<e24e0dfb>] ? fh_verify+0x401/0x452 [nfsd]
+ [<e24f0b61>] ? nfsd4_encode_operation+0x52/0x117 [nfsd]
+ [<e24ea0d7>] ? nfsd4_putfh+0x33/0x3b [nfsd]
+ [<e24f4ce6>] ? nfsd4_delegreturn+0xd4/0xd4 [nfsd]
+ [<e24ea2c9>] nfsd4_proc_compound+0x1ea/0x33e [nfsd]
+ [<e24de6ee>] nfsd_dispatch+0xd1/0x1a5 [nfsd]
+ [<e1d6e1c7>] svc_process_common+0x282/0x46f [sunrpc]
+ [<e1d6e578>] svc_process+0xdc/0xfa [sunrpc]
+ [<e24de0fa>] nfsd+0xd6/0x115 [nfsd]
+ [<e24de024>] ? nfsd_shutdown+0x24/0x24 [nfsd]
+ [<c0454322>] kthread+0x62/0x67
+ [<c04542c0>] ? kthread_worker_fn+0x114/0x114
+ [<c07a6ebe>] kernel_thread_helper+0x6/0x10
+Code: eb 05 b8 00 00 27 4f 8d 65 f4 5b 5e 5f 5d c3 83 e0 03 55 83 f8 02 89 e5 74 17 83 f8 03 74 05 48 75 09 eb 09 b8 02 00 00 00 eb 0b <0f> 0b 31 c0 eb 05 b8 01 00 00 00 5d c3 55 89 e5 57 56 89 d6 8d
+EIP: [<e24f180d>] nfs4_access_to_omode+0x1c/0x29 [nfsd] SS:ESP 0068:dd54dde0
+---[ end trace 2b0bf6c6557cb284 ]---
+
+The trace route is: 
+
+ -> nfsd4_lock()
+   -> if (lock->lk_is_new) {
+     -> alloc_init_lock_stateid()
+
+        3739: stp->st_access_bmap = 0;
+
+   ->if (status && lock->lk_is_new && lock_sop)
+     -> release_lockowner()
+      -> free_generic_stateid()
+       -> nfs4_access_bmap_to_omode()
+          -> nfs4_access_to_omode()
+
+        380: BUG();   *****
+
+This problem was introduced by 0997b1.
 
 Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
 ---
- nfs4.1/server41tests/st_reclaim_complete.py |   20 ++++++++++++++++++++
- 1 files changed, 20 insertions(+), 0 deletions(-)
+ fs/nfsd/nfs4state.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
-index c712d0e..ad2178c 100644
---- a/nfs4.1/server41tests/st_reclaim_complete.py
-+++ b/nfs4.1/server41tests/st_reclaim_complete.py
-@@ -107,3 +107,23 @@ def testLockBeforeRECC(t, env):
-     res = sess.compound([op.putfh(cfh), op.lock(READ_LT, FALSE, 0, 1, lowner)])
-     check(res, NFS4ERR_NO_GRACE)
-     sess.destroy()
-+
-+def testDoubleRECC(t, env):
-+    """If RECLAIM_COMPLETE is done a second time, error
-+       NFS4ERR_COMPLETE_ALREADY will be returned. rfc5661 18.51.4
-+
-+    FLAGS: reclaim_complete all
-+    CODE: RECC4
-+    """
-+    name = env.testname(t)
-+    c = env.c1.new_client(name)
-+    sess = c.create_session()
-+
-+    # RECLAIM_COMPLETE
-+    res = sess.compound([op.reclaim_complete(FALSE)])
-+    check(res)
-+
-+    # RECLAIM_COMPLETE again
-+    res = sess.compound([op.reclaim_complete(FALSE)])
-+    check(res, NFS4ERR_COMPLETE_ALREADY)
-+    sess.destroy()
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fbde6f7..68a9dbc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3736,7 +3736,7 @@ alloc_init_lock_stateid(struct nfs4_stateowner *sop, struct nfs4_file *fp, struc
+ 	stp->st_stateid.si_stateownerid = sop->so_id;
+ 	stp->st_stateid.si_fileid = fp->fi_id;
+ 	stp->st_stateid.si_generation = 0;
+-	stp->st_access_bmap = 0;
++	stp->st_access_bmap = open_stp->st_access_bmap;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
+ 
 -- 
 1.7.4.1
-
 
 
