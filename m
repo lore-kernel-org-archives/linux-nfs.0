@@ -1,54 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:49921 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751801Ab1CBGc2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Mar 2011 01:32:28 -0500
-Message-ID: <4D6DE4A5.1050702@cn.fujitsu.com>
-Date: Wed, 02 Mar 2011 14:33:09 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH 10/17] CLNT: test resues slot ID
-References: <4D6DE26C.3010103@cn.fujitsu.com>
-In-Reply-To: <4D6DE26C.3010103@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:20436 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751164Ab1C1Ent (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2011 00:43:49 -0400
+Date: Mon, 28 Mar 2011 15:43:34 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Ryan Mallon <ryan@bluewatersys.com>
+Cc: viro@zeniv.linux.org.uk, dchinner@redhat.com, Trond.Myklebust@netapp.com,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH 0/2] Introduce unlocked version of igrab
+Message-ID: <20110328044334.GA1022@dastard>
+References: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
----
- nfs4.1/server41tests/st_sequence.py |   18 ++++++++++++++++++
- 1 files changed, 18 insertions(+), 0 deletions(-)
+On Mon, Mar 28, 2011 at 02:55:59PM +1300, Ryan Mallon wrote:
+> Commit 250df6ed274d767da844a5d9f05720b804240197 "fs: protect 
+> inode->i_state with inode->i_lock" introduces a change to igrab to acquire
+> inode->i_lock. 
+> 
+> This change causes a panic on boot on my ARM EP93xx board when the rootfs
+> uses NFS. The problem occurs because nfs_inode_add_request acquires
+> inode->i_lock and then calls igrab, resulting in the following panic:
+> 
+> BUG: spinlock recursion on CPU#0, getty/262
+>  lock: cc421cb4, .magic: dead4ead, .owner: getty/262, .owner_cpu: 0
+> [<c0031b0c>] (unwind_backtrace+0x0/0xe4) from [<c015f16c>] (do_raw_spin_lock+0x40/0x13c)
+> [<c015f16c>] (do_raw_spin_lock+0x40/0x13c) from [<c00a938c>] (igrab+0x14/0x48)
+> [<c00a938c>] (igrab+0x14/0x48) from [<c01186bc>] (nfs_updatepage+0x2e0/0x524)
+> [<c01186bc>] (nfs_updatepage+0x2e0/0x524) from [<c010b19c>] (nfs_write_end+0x23c/0x270)
+> [<c010b19c>] (nfs_write_end+0x23c/0x270) from [<c006b484>] (generic_file_buffered_write+0x180/0x248)
+> [<c006b484>] (generic_file_buffered_write+0x180/0x248) from [<c006d060>] (__generic_file_aio_write+0x3b8/0x3f4)
+> [<c006d060>] (__generic_file_aio_write+0x3b8/0x3f4) from [<c006d108>] (generic_file_aio_write+0x6c/0xdc)
+> [<c006d108>] (generic_file_aio_write+0x6c/0xdc) from [<c010bce0>] (nfs_file_write+0xec/0x178)
+> [<c010bce0>] (nfs_file_write+0xec/0x178) from [<c00956ac>] (do_sync_write+0xa4/0xe4)
+> [<c00956ac>] (do_sync_write+0xa4/0xe4) from [<c00960c8>] (vfs_write+0xb4/0x12c)
+> [<c00960c8>] (vfs_write+0xb4/0x12c) from [<c00961f0>] (sys_write+0x3c/0x68)
+> [<c00961f0>] (sys_write+0x3c/0x68) from [<c002c8e0>] (ret_fast_syscall+0x0/0x2c)
+> 
+> This series introduces a new function called __igrab, which is an unlocked
+> version of igrab and modifies nfs_inode_add_request to use the unlocked
+> version.
 
-diff --git a/nfs4.1/server41tests/st_sequence.py b/nfs4.1/server41tests/st_sequence.py
-index 4ea5cab..391fc45 100644
---- a/nfs4.1/server41tests/st_sequence.py
-+++ b/nfs4.1/server41tests/st_sequence.py
-@@ -363,3 +363,21 @@ def testBadSequenceidAtSlot(t, env):
- 
-     res = c.c.compound([op.sequence(sid, nfs4lib.dec_u32(seqid), 2, 3, True)])
-     check(res, NFS4ERR_SEQ_MISORDERED)
-+
-+def testReuseSlotID(t, env):
-+    """
-+
-+    FLAGS: sequence all
-+    CODE: SEQ14
-+    """
-+    c = env.c1.new_client(env.testname(t))
-+    # CREATE_SESSION
-+    sess1 = c.create_session()
-+
-+    sid = sess1.sessionid 
-+    res = c.c.compound([op.sequence(sid, 1, 2, 3, True), op.putrootfh()])
-+    check(res)
-+
-+    res = c.c.compound([op.sequence(sid, 1, 2, 3, True)])
-+    # should we also check the ERROR of NFS4ERR_SEQ_FALSE_RETRY ??
-+    check(res)
+It's called ihold() and already exists.
+
+As it is, I thought I posted a igrab->ihold fix to lkml a couple of
+days ago when this first came up. Trond then posted a better fix by
+removingthe igrab() altoegther in the same thread.
+
+Turns out, someone removed LKML from the cc list on the thread half
+way through so neither of those patches made it to lkml.
+
+Trond, can you push your fix for this (NFS: Fix a hang in the
+writeback path) to Linus?
+
+Cheers,
+
+Dave.
 -- 
-1.7.4.1
-
-
-
+Dave Chinner
+david@fromorbit.com
