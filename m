@@ -1,94 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iw0-f174.google.com ([209.85.214.174]:39184 "EHLO
-	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752565Ab1CGSIV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Mar 2011 13:08:21 -0500
-Received: by iwn34 with SMTP id 34so4136355iwn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Mar 2011 10:08:20 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] NFS: NFSROOT should default to "proto=udp"
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 07 Mar 2011 13:08:16 -0500
-Message-ID: <20110307180716.2493.67087.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:63872 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751051Ab1C1GCF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2011 02:02:05 -0400
+Date: Mon, 28 Mar 2011 17:01:57 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Ryan Mallon <ryan@bluewatersys.com>
+Cc: sage@newdream.net, viro@zeniv.linux.org.uk, dchinner@redhat.com,
+        Trond.Myklebust@netapp.com, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        ceph-devel@vger.kernel.org
+Subject: Re: [RFC PATCH 0/2] Introduce unlocked version of igrab
+Message-ID: <20110328060157.GA3008@dastard>
+References: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com>
+ <20110328044334.GA1022@dastard>
+ <4D9012C5.8070401@bluewatersys.com>
+ <4D9016B7.1080505@bluewatersys.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D9016B7.1080505@bluewatersys.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-There have been a number of recent reports that NFSROOT is no longer
-working with default mount options, but fails only with certain NICs.
+On Mon, Mar 28, 2011 at 06:03:51PM +1300, Ryan Mallon wrote:
+> On 03/28/2011 05:47 PM, Ryan Mallon wrote:
+> > On 03/28/2011 05:43 PM, Dave Chinner wrote:
+> >> On Mon, Mar 28, 2011 at 02:55:59PM +1300, Ryan Mallon wrote:
+> >>> Commit 250df6ed274d767da844a5d9f05720b804240197 "fs: protect 
+> >>> inode->i_state with inode->i_lock" introduces a change to igrab to acquire
+> >>> inode->i_lock. 
+> >>>
+> >>> This change causes a panic on boot on my ARM EP93xx board when the rootfs
+> >>> uses NFS. The problem occurs because nfs_inode_add_request acquires
+> >>> inode->i_lock and then calls igrab, resulting in the following panic:
+> >>>
+> >>> BUG: spinlock recursion on CPU#0, getty/262
+> >>>  lock: cc421cb4, .magic: dead4ead, .owner: getty/262, .owner_cpu: 0
+> >>> [<c0031b0c>] (unwind_backtrace+0x0/0xe4) from [<c015f16c>] (do_raw_spin_lock+0x40/0x13c)
+> >>> [<c015f16c>] (do_raw_spin_lock+0x40/0x13c) from [<c00a938c>] (igrab+0x14/0x48)
+> >>> [<c00a938c>] (igrab+0x14/0x48) from [<c01186bc>] (nfs_updatepage+0x2e0/0x524)
+> >>> [<c01186bc>] (nfs_updatepage+0x2e0/0x524) from [<c010b19c>] (nfs_write_end+0x23c/0x270)
+> >>> [<c010b19c>] (nfs_write_end+0x23c/0x270) from [<c006b484>] (generic_file_buffered_write+0x180/0x248)
+> >>> [<c006b484>] (generic_file_buffered_write+0x180/0x248) from [<c006d060>] (__generic_file_aio_write+0x3b8/0x3f4)
+> >>> [<c006d060>] (__generic_file_aio_write+0x3b8/0x3f4) from [<c006d108>] (generic_file_aio_write+0x6c/0xdc)
+> >>> [<c006d108>] (generic_file_aio_write+0x6c/0xdc) from [<c010bce0>] (nfs_file_write+0xec/0x178)
+> >>> [<c010bce0>] (nfs_file_write+0xec/0x178) from [<c00956ac>] (do_sync_write+0xa4/0xe4)
+> >>> [<c00956ac>] (do_sync_write+0xa4/0xe4) from [<c00960c8>] (vfs_write+0xb4/0x12c)
+> >>> [<c00960c8>] (vfs_write+0xb4/0x12c) from [<c00961f0>] (sys_write+0x3c/0x68)
+> >>> [<c00961f0>] (sys_write+0x3c/0x68) from [<c002c8e0>] (ret_fast_syscall+0x0/0x2c)
+> >>>
+> >>> This series introduces a new function called __igrab, which is an unlocked
+> >>> version of igrab and modifies nfs_inode_add_request to use the unlocked
+> >>> version.
+> >> It's called ihold() and already exists.
+> > Thanks. Missed that one.
+> >
+> > Is ihold the correct replacement for the fs/ceph cases I mentioned in my
+> > other email?
+> >
+> > ~Ryan
+> >
+> 
+> i.e. this:
+> ---
+> 
+> fs/ceph: Use ihold instead of igrab when i_lock is already held
+> 
+> Signed-off-by: Ryan Mallon <ryan@bluewatersys.com>
 
-Brian Downing <bdowning@lavos.net> bisected to commit 56463e50 "NFS:
-Use super.c for NFSROOT mount option parsing".  Among other things,
-this commit changes the default mount options for NFSROOT to use TCP
-instead of UDP as the underlying transport.
+In essence, yes, though the NFS case (nfs4state.c) also needs the
+same treatment. I posted a patch that fixes all the cases you
+reported so you can continue to work without needing Tronnnd's
+bigger fix for the initial problem.
 
-TCP seems less able to deal with NICs that are slow to initialize.
-The system logs that have accompanied reports of problems all show
-that NFSROOT attempts to establish a TCP connection before the NIC is
-fully initialized, and thus the TCP connection attempt fails.
+Cheers,
 
-Because NFSROOT is used in some environments where it is not possible
-to update the kernel command line to specify "udp", the proper thing
-to do is change NFSROOT to use UDP by default, as it did before commit
-56463e50.
-
-To make it easier to see how to change default mount options for
-NFSROOT and to distinguish default settings from mandatory settings,
-I've adjusted a couple of areas to document the specifics.
-
-Tested-by: Brian Downing <bdowning@lavos.net>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: <stable@kernel.org> # 2.6.37
----
-
-Hi Trond-
-
-Retransmission.  This needs to go in 2.6.38 and 2.6.37.
-
- fs/nfs/nfsroot.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-index 903908a..0bc654f 100644
---- a/fs/nfs/nfsroot.c
-+++ b/fs/nfs/nfsroot.c
-@@ -86,11 +86,14 @@
- /* Default path we try to mount. "%s" gets replaced by our IP address */
- #define NFS_ROOT		"/tftpboot/%s"
- 
-+/* Default NFSROOT mount options. */
-+#define NFS_DEF_OPTIONS		"udp"
-+
- /* Parameters passed from the kernel command line */
- static char nfs_root_parms[256] __initdata = "";
- 
- /* Text-based mount options passed to super.c */
--static char nfs_root_options[256] __initdata = "";
-+static char nfs_root_options[256] __initdata = NFS_DEF_OPTIONS;
- 
- /* Address of NFS server */
- static __be32 servaddr __initdata = htonl(INADDR_NONE);
-@@ -217,7 +220,7 @@ static int __init root_nfs_parse_options(char *incoming, char *exppath,
-  */
- static int __init root_nfs_data(char *cmdline)
- {
--	char addr_option[sizeof("nolock,addr=") + INET_ADDRSTRLEN + 1];
-+	char mand_options[sizeof("nolock,addr=") + INET_ADDRSTRLEN + 1];
- 	int len, retval = -1;
- 	char *tmp = NULL;
- 	const size_t tmplen = sizeof(nfs_export_path);
-@@ -244,9 +247,9 @@ static int __init root_nfs_data(char *cmdline)
- 	 * Append mandatory options for nfsroot so they override
- 	 * what has come before
- 	 */
--	snprintf(addr_option, sizeof(addr_option), "nolock,addr=%pI4",
-+	snprintf(mand_options, sizeof(mand_options), "nolock,addr=%pI4",
- 			&servaddr);
--	if (root_nfs_cat(nfs_root_options, addr_option,
-+	if (root_nfs_cat(nfs_root_options, mand_options,
- 						sizeof(nfs_root_options)))
- 		goto out_optionstoolong;
- 
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
