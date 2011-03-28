@@ -1,68 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:45672 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757762Ab1COSD6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Mar 2011 14:03:58 -0400
-Subject: Re: problem with nfs latency during high IO
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4D7FA11F.5020604@imppc.org>
-Date: Tue, 15 Mar 2011 14:03:37 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <21A84B17-E061-4441-9181-100AC8E473E2@oracle.com>
-References: <4D7B6DE5.8010008@imppc.org> <526EE4AA-ABD2-4452-9C3A-C000BD3CFC60@oracle.com> <4D7FA11F.5020604@imppc.org>
-To: Judith Flo Gaya <jflo@imppc.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:57380 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754550Ab1C1U0S convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2011 16:26:18 -0400
+Received: by iwn34 with SMTP id 34so4054817iwn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Mar 2011 13:26:18 -0700 (PDT)
+In-Reply-To: <j2m3b6787961004170054o64f3cb47l38864ca402eb231b@mail.gmail.com>
+References: <y2n3b6787961004170051qfce975c0tdbc14b7ea237504d@mail.gmail.com>
+	<j2m3b6787961004170054o64f3cb47l38864ca402eb231b@mail.gmail.com>
+Date: Mon, 28 Mar 2011 16:26:17 -0400
+Message-ID: <AANLkTi=YZhpAE4ei6HV=36mCq_vY0AbdiPaH0EghKDxU@mail.gmail.com>
+Subject: Re: cannot mount nfsv4/krb5 with krb51.7, 1.8 and 1.8.1
+From: Olga Kornievskaia <aglo@citi.umich.edu>
+To: linux-nfs@vger.kernel.org
+Cc: Di Pe <dipeit@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+I'd like to 2nd this issue.
 
-On Mar 15, 2011, at 1:25 PM, Judith Flo Gaya wrote:
+the problem is in the kernel's derivation of the rc4 signature key.
+this is the commit that broke it.
 
-> Hello Chuck,
-> 
-> On 03/15/2011 05:24 PM, Chuck Lever wrote:
->> Hi Judith-
->> 
->> On Mar 12, 2011, at 7:58 AM, Judith Flo Gaya wrote:
->> 
->>> Hello,
->>> 
->>> I was told some days ago that my problem with my NFS system is related to this bug, as the problem that I'm experiencing is quite similar.
->>> 
->>> The bug : https://bugzilla.redhat.com/show_bug.cgi?id=469848
->>> 
->>> The link itself explains quite well my issue, I'm just truing to copy a big file (36Gb) to my nfs server and when I try to get an ls -l command to the same folder where I'm copying data, the command gets stuck for some time. This amount of time changes from a few secs to SOME minutes (9' is the current record).
->>> I can live with some seconds of delay, but minutes is something quite unacceptable.
->>> 
->>> As this is an nfs server running on a red hat system (an HP ibrix x9300 with Red Hat 5.3 x86_64, kernel 2.6.18-128) I was told to apply the patch suggested from the bug on my clients.
->>> 
->>> Unfortunately my clients are running fedora core 14 (x86_64, kernel 2.6.35.6-45) and I can't find the file that they are referring to, the file fs/nfs/inode.c is not there and I can't find the rpm that contains it.
->>> 
->>> As the bug is a very very old one, I took it for granted that is already applied to fedora, but I wanted to make sure that it is looking at the file.
->>> 
->>> Can you help me on this? I'm I wrong in my supposition (is the patch really applied)? is it possible that my problem is somewhere else?
->> 
->> This sounds like typical behavior.
-> But it is not like this when I use a RHEL6 as a client to those servers, in this case, the ls only last for some seconds, nothing like the minutes that it takes from my fedora.
+[aglo@skydive linux-pnfs]$ git show 411b5e05617593efebc06241dbc56f42150f2abe
+commit 411b5e05617593efebc06241dbc56f42150f2abe
+Author: Joe Perches <joe@perches.com>
+Date:   Mon Sep 13 12:48:01 2010 -0700
 
-Which Fedora systems, exactly?  The fix I described below is almost certainly in RHEL 6.
+    net/sunrpc: Use static const char arrays
 
->> 
->> POSIX requires that the mtime and file size returned by stat(2) ('ls -l') reflect the most recent write(2).  On NFS, the server sets both of these fields.  If a client is caching dirty data, and an application does a stat(2), the client is forced to flush the dirty data so that the server can update mtime and file size appropriately.  The client then does a GETATTR, and returns those values to the requesting application.
->> 
-> ok, sorry, I know this is a very stupid question but. what do you mean by dirty data?
+    Signed-off-by: Joe Perches <joe@perches.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Dirty data is data that your application has written to the file but which hasn't been flushed to the server's disk.  This data resides in the client's page cache, on its way to the server.
-
-> BTW i understand the time issue, but again, if the version of the kernel that the red hat has installed allows me to get the information soon, why a newer kernel in fedora does not?
-
-Sounds like a bug.  Fedora kernels newer than 2.6.32 should work as well as, or better than, RHEL 6.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_
+index 0326446..8a4d083c 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -422,7 +422,7 @@ static int
+ context_derive_keys_rc4(struct krb5_ctx *ctx)
+ {
+        struct crypto_hash *hmac;
+-       char sigkeyconstant[] = "signaturekey";
++       static const char sigkeyconstant[] = "signaturekey";
+        int slen = strlen(sigkeyconstant) + 1;  /* include null terminator */
+        struct hash_desc desc;
+        struct scatterlist sg[1];
 
 
 
 
+On Sat, Apr 17, 2010 at 3:54 AM, Di Pe <dipeit@gmail.com> wrote:
+> Hi,
+>
+> this looks like an issue with kerberos, but not 100% sure:
+>
+> ##############
+>
+>
+> I have a working configuration for Kerberized NFSv4 using Active
+> Directory 2003 functional level using
+>  Kernel 2.6.27 with krb5 1.6.3 and gssd 1.1.3. openSUSE 11.1  When I
+> switch to openSUSE 11.2 (Kernel 2.6.31, krb5 1.70, gssd 1.1.3)
+> rpc.gssd -fvvvvv shows this error message (Failed to create machine
+> krb5 context) and gives me more errros like "gss_create_upcall for uid
+> 0 result -13" when I turn on rpc/nfs debugging using 'echo "65535" >
+> /proc/sys/sunrpc/rpc[nfs]_debug'
+>
+> handling krb5 upcall
+> Full hostname for 'COMPUTRON.MYDOMAIN.ORG' is 'computron.mydomain.org'
+> Full hostname for 'phsgrid-03.fhcrc.org' is 'phsgrid-03.mydomain.org'
+> Key table entry not found while getting keytab entry for
+> 'root/phsgrid-03.mydomain.org@MYDOMAIN.ORG'
+> Success getting keytab entry for 'nfs/phsgrid-03.mydomain.org@MYDOMAIN.ORG'
+> Successfully obtained machine credentials for principal
+> 'nfs/phsgrid-03.mydomain.org@MYDOMAIN.ORG' stored in ccache
+> 'FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG'
+> INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG' are
+> good until 1271522236
+> using FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG as credentials cache for
+> machine creds
+> using environment variable to select krb5 ccache
+> FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG
+> creating context using fsuid 0 (save_uid 0)
+> creating tcp client for server COMPUTRON.MYDOMAIN.ORG
+> DEBUG: port already set to 2049
+> creating context with server nfs@COMPUTRON.MYDOMAIN.ORG
+> WARNING: Failed to create krb5 context for user with uid 0 for server
+> COMPUTRON.MYDOMAIN.ORG
+> WARNING: Failed to create machine krb5 context with credentials cache
+> FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG for server
+> COMPUTRON.MYDOMAIN.ORG
+> WARNING: Failed to create machine krb5 context with any credentials
+> cache for server COMPUTRON.MYDOMAIN.ORG
+> doing error downcall
+>
+>
+> now when replace krb5-1.7 with krb5-1.6.3 on openSUSE 11.2 everything
+> works again:
+>
+> handling krb5 upcall
+> Full hostname for 'computron.mydomain.org' is 'computron.mydomain.org'
+> Full hostname for 'panther5.mydomain.org' is 'panther5.mydomain.org'
+> Key table entry not found while getting keytab entry for
+> 'root/panther5.mydomain.org@MYDOMAIN.ORG'
+> Success getting keytab entry for 'nfs/panther5.mydomain.org@MYDOMAIN.ORG'
+> INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG' are
+> good until 1271518766
+> INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG' are
+> good until 1271518766
+> using FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG as credentials cache for
+> machine creds
+> using environment variable to select krb5 ccache
+> FILE:/tmp/krb5cc_machine_MYDOMAIN.ORG
+> creating context using fsuid 0 (save_uid 0)
+> creating tcp client for server computron.mydomain.org
+> creating context with server nfs@computron.mydomain.org
+> DEBUG: serialize_krb5_ctx: lucid version!
+> prepare_krb5_rfc1964_buffer: serializing keys with enctype 4 and length 8
+> doing downcall
+>
+>
+> going to openSUSE11.3 (Kernel 2.6.34-rc3, gssd 1.2.1, krb5 1.8) does
+> not help either. executing
+> mount -t nfs4 -o rsize=65536,wsize=65536,sec=krb5 computron:/tmp_iscsi tmp_iscsi
+> gives me the very some error message
+>
+> after that I tried to install the rpm package of krb5 1.8.1 and also
+> 1.8.1 straight from source. I am always getting the same error message
+> "Failed to create krb5 context"
+>
+>> cat /etc/krb5.conf
+> [libdefaults]
+>        default_realm = FHCRC.ORG
+>        clockskew = 300
+>        allow_weak_crypto = true
+>        default_tkt_enctypes = des-cbc-crc
+>        default_tgs_enctypes = des-cbc-crc
+>        #default_tkt_enctypes = des-cbc-md5
+>        #default_tgs_enctypes = des-cbc-md5
+>        #default_tkt_enctypes = rc4-hmac
+>        #default_tgs_enctypes = rc4-hmac
+>        #kdc_req_checksum_type = -138
+>        #ap_req_checksum_type = -138
+>        #safe_checksum_type = -138
+>        #ccache_type = 3
+>        #pkinit_eku_checking = kpServerAuth
+>
+>>cat idmapd.conf
+> [General]
+> Verbosity = 0
+> Pipefs-Directory = /var/lib/nfs/rpc_pipefs
+> Domain = mydomain.org
+> Local-Realm = MYDOMAIN.ORG
+>
+>> klist -k -e -t
+> Keytab name: WRFILE:/etc/krb5.keytab
+> KVNO Timestamp         Principal
+> ---- ----------------- --------------------------------------------------------
+>   3 12/31/69 16:00:00 nfs/phsgrid-03.mydomain.org@MYDOMAIN.ORG (DES
+> cbc mode with CRC-32)
+>
+>
+> Thanks for your help
+>
