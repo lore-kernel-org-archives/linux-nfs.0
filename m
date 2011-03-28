@@ -1,127 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:33130 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750748Ab1CXQhH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Mar 2011 12:37:07 -0400
-Message-ID: <4D8B732F.8020404@panasas.com>
-Date: Thu, 24 Mar 2011 18:37:03 +0200
-From: Benny Halevy <bhalevy@panasas.com>
-To: "William A. (Andy) Adamson" <androsadamson@gmail.com>
-CC: Fred Isaman <iisaman@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 11/12] NFSv4.1: layoutcommit
-References: <AANLkTinBuLxDq5zrxC=-0fS_md5CXTQAS_POsKA9issP@mail.gmail.com>
-In-Reply-To: <AANLkTinBuLxDq5zrxC=-0fS_md5CXTQAS_POsKA9issP@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.bluewatersys.com ([202.124.120.130]:16141 "EHLO
+	hayes.bluewaternz.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753282Ab1C1Bzq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Mar 2011 21:55:46 -0400
+From: Ryan Mallon <ryan@bluewatersys.com>
+To: viro@zeniv.linux.org.uk, dchinner@redhat.com, Trond.Myklebust@netapp.com
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Ryan Mallon <ryan@bluewatersys.com>
+Subject: [RFC PATCH 1/2] Add unlocked version of igrab.
+Date: Mon, 28 Mar 2011 14:56:00 +1300
+Message-Id: <1301277361-9453-2-git-send-email-ryan@bluewatersys.com>
+In-Reply-To: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com>
+References: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+Content-Type: text/plain
 MIME-Version: 1.0
 
-On 2011-03-24 15:57, William A. (Andy) Adamson wrote:
->>> Only whole file layout support means that there is only one IOMODE_RW layout
->>> segment.
->>>
->>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>> Signed-off-by: Alexandros Batsakis <batsakis@netapp.com>
->>> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
->>> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
->>> Signed-off-by: Fred Isaman <iisaman@citi.umich.edu>
->>> Signed-off-by: Mingyang Guo <guomingyang@nrchpc.ac.cn>
->>> Signed-off-by: Tao Guo <guotao@nrchpc.ac.cn>
->>> Signed-off-by: Zhang Jingwang <zhangjingwang@nrchpc.ac.cn>
->>> Tested-by: Boaz Harrosh <bharrosh@panasas.com>
->>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>
->> The code in this patch is new and different enough from the one I/we
->> signed-off originally that they don't make sense here.
-> 
-> Hi Benny
-> 
-> OK with me
-> 
->>>
->>> +             /* references matched in nfs4_layoutcommit_release */
->>> +             wdata->lseg->pls_lc_cred =
->>> +                     get_rpccred(wdata->args.context->state->owner->so_cred);
->>> +             mark_inode_dirty_sync(wdata->inode);
->>> +             dprintk("%s: Set layoutcommit for inode %lu ",
->>> +                     __func__, wdata->inode->i_ino);
->>> +     }
->>> +     if (end_pos > wdata->lseg->pls_end_pos)
->>> +             wdata->lseg->pls_end_pos = end_pos;
->>
->> The end_pos is essentially per inode, why maintain it per lseg?
->> How do you see this working with multiple lsegs in mind?
-> 
-> The end-pos is per lseg, not per inode - each layoutcommit applies to
-> a range of WRITES for a layoutsegment over the LAYOUTCOMMIT range.
-> 
-> From Section 18.42.3
-> .  The byte-range being committed is
->    specified through the byte-range (loca_offset and loca_length).  This
->    byte-range MUST overlap with one or more existing layouts previously
->    granted via LAYOUTGET
-> 
-> 
->    Also, loca_last_write_offset MUST overlap the range
->    described by loca_offset and loca_length.
-> 
-> For the multiple lseg case: if the lsegs are merged, bookeeping
-> end_pos per lseg just works. If a layoutdriver does not use merged
-> lsegs, then there is a bit of work to do to walk the list of lsegs and
-> determine the final end_pos for a given LAYOUTCOMMIT.  If there are
-> multiple non-contiguous lsegs, each used for WRITEs then multiple
-> LAYOUTCOMMITs will need to be sent, otherwise the LAYOUTCOMMIT
-> byte-range will not overlap as required.
-> 
+Commit 250df6ed274d767da844a5d9f05720b804240197 "fs: protect
+inode->i_state with inode->i_lock" changes igrab to acquire inode->i_lock,
+however some callees, notably nfs_inode_add_request, already hold the lock
+when calling igrab.
 
-For the current layout types I believe that the LAYOUTCOMMIT can "merge"
-multiple layout segments into a single LAYOUTCOMMIT, with a byte range
-covering all segments and a last_byte_written offset which is just the maximum.
-Future layout types may need this method though...
+Introduce an unlocked version of igrab called __igrab which can be
+called when inode->i_lock is already held.
 
-Benny
+Signed-off-by: Ryan Mallon <ryan@bluewatersys.com>
+---
+ fs/inode.c         |   16 ++++++++++++----
+ include/linux/fs.h |    1 +
+ 2 files changed, 13 insertions(+), 4 deletions(-)
 
->>> +pnfs_layoutcommit_inode(struct inode *inode, int sync)
->>
->> "bool sync" makes more sense
-> 
->>> +{
->>> +     struct nfs4_layoutcommit_data *data;
->>> +     struct nfs_inode *nfsi = NFS_I(inode);
->>> +     struct pnfs_layout_segment *lseg;
->>> +     struct rpc_cred *cred;
->>> +     loff_t end_pos;
->>> +     int status = 0;
->>> +
->>> +     dprintk("--> %s inode %lu\n", __func__, inode->i_ino);
->>> +
->>> +     /* Note kzalloc ensures data->res.seq_res.sr_slot == NULL */
->>> +     data = kzalloc(sizeof(*data), GFP_NOFS);
->>> +     spin_lock(&inode->i_lock);
->>> +
->>> +     if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
->>
->> previously (i.e. in the linux-pnfs tree :) this function is called only
->> if layoutcommit_needed(), now I worry may waste a kzalloc too frequently.
->> I suggest testing (and not clearing) NFS_INO_LAYOUTCOMMIT before doing
->> the allocation to prevent that.
-> 
-> Agreed.
-> 
->>> +     end_pos = lseg->pls_end_pos;
->>> +     cred = lseg->pls_lc_cred;
->>> +     lseg->pls_end_pos = 0;
->>> +     lseg->pls_lc_cred = NULL;
->>> +
->>> +     if (!data) {
->>
->> eh?
->> why not test this before test_and_clear_bit(NFS_INO_LAYOUTCOMMIT ?
-> 
-> Because we should clear the LAYOUTCOMMIT needed information from the inode.
-> The LAYOUTCOMMIT for the file layout is an optimization. If the client
-> can't alloc the required buffer, the compound just won't be sent.
-> 
-> -->Andy
+diff --git a/fs/inode.c b/fs/inode.c
+index 05a1f75..bdcfbba 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -1134,14 +1134,11 @@ ino_t iunique(struct super_block *sb, ino_t max_reserved)
+ }
+ EXPORT_SYMBOL(iunique);
+ 
+-struct inode *igrab(struct inode *inode)
++struct inode *__igrab(struct inode *inode)
+ {
+-	spin_lock(&inode->i_lock);
+ 	if (!(inode->i_state & (I_FREEING|I_WILL_FREE))) {
+ 		__iget(inode);
+-		spin_unlock(&inode->i_lock);
+ 	} else {
+-		spin_unlock(&inode->i_lock);
+ 		/*
+ 		 * Handle the case where s_op->clear_inode is not been
+ 		 * called yet, and somebody is calling igrab
+@@ -1149,6 +1146,17 @@ struct inode *igrab(struct inode *inode)
+ 		 */
+ 		inode = NULL;
+ 	}
++
++	return inode;
++}
++EXPORT_SYMBOL(__igrab);
++
++struct inode *igrab(struct inode *inode)
++{
++	spin_lock(&inode->i_lock);
++	inode = __igrab(inode);
++	spin_unlock(&inode->i_lock);
++
+ 	return inode;
+ }
+ EXPORT_SYMBOL(igrab);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b677bd7..32c4bc5 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2240,6 +2240,7 @@ extern void inode_init_once(struct inode *);
+ extern void address_space_init_once(struct address_space *mapping);
+ extern void ihold(struct inode * inode);
+ extern void iput(struct inode *);
++extern struct inode *__igrab(struct inode *inode);
+ extern struct inode * igrab(struct inode *);
+ extern ino_t iunique(struct super_block *, ino_t);
+ extern int inode_needs_sync(struct inode *inode);
+-- 
+1.7.0.4
+
