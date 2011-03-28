@@ -1,56 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:45830 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751774Ab1CVRyK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Mar 2011 13:54:10 -0400
-Date: Tue, 22 Mar 2011 13:54:06 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dennis Jacobfeuerborn <dennisml@conversis.de>
-Cc: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: bind mounts, crossmnt and multi client nfsv3
-Message-ID: <20110322175406.GC14627@fieldses.org>
-References: <4D86B6F2.1070004@conversis.de>
- <20110321140923.5a618d89@notabene.brown>
- <4D874419.5030303@conversis.de>
- <20110321172530.GA32359@fieldses.org>
- <4D87908E.1020107@conversis.de>
- <20110321181913.GA472@fieldses.org>
- <4D87A135.6090309@conversis.de>
- <4D88DFC1.10400@conversis.de>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4D88DFC1.10400@conversis.de>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:19658 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751695Ab1C1AXf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Mar 2011 20:23:35 -0400
+Date: Mon, 28 Mar 2011 11:23:29 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Jan Kara <jack@suse.cz>, Wu Fengguang <fengguang.wu@intel.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: NFS page states & writeback
+Message-ID: <20110328002329.GW26611@dastard>
+References: <20110325012803.GA25052@quack.suse.cz>
+ <20110325070054.GA5970@localhost>
+ <20110325093957.GL26611@dastard>
+ <20110325142253.GA11589@localhost>
+ <20110325225558.GQ26611@dastard>
+ <20110325232440.GE26932@quack.suse.cz>
+ <20110326011806.GT26611@dastard>
+ <1301239601.22136.23.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1301239601.22136.23.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, Mar 22, 2011 at 06:43:29PM +0100, Dennis Jacobfeuerborn wrote:
-> On 03/21/2011 08:04 PM, Dennis Jacobfeuerborn wrote:
+On Sun, Mar 27, 2011 at 05:26:41PM +0200, Trond Myklebust wrote:
+> On Sat, 2011-03-26 at 12:18 +1100, Dave Chinner wrote:
+> > Yes - though this only reduces the variance the client sees in
+> > steady state operation.  Realistically, we don't care if one commit
+> > takes 2s for 100MB and the next takes 0.2s for the next 100MB as
+> > long as we've been able to send 50MB/s of writes over the wire
+> > consistently. IOWs, what we need to care about is getting the data
+> > to the server as quickly as possible and decoupling that from the
+> > commit operation.  i.e. we need to maximise and smooth the rate at
+> > which we send dirty pages to the server, not the rate at which we
+> > convert unstable pages to stable. If the server can't handle the
+> > write rate we send it, if will slow downteh rate at which it
+> > processes writes and we get congestion feedback that way (i.e. via
+> > the network channel).
+> > 
+> > Essentially what I'm trying to say is that I don't think
+> > unstable->clean operations (i.e. the commit) should affect or
+> > control  the estimated bandwidth of the channel. A commit is an
+> > operation that can be tuned to optimise throughput, but because of
+> > it's variance it's not really an operation that can be used to
+> > directly measure and control that throughput.
 > 
-> [SNIP]
-> 
-> >I'd be interested to move on to v4 but from what I've heard the
-> >user-mapping no longer is done using the uid. Since the users don't have
-> >entries in /etc/passwd and exist purely as id's in the filesystem the
-> >username based mapping in nfsv4 doesn't allow me to use it in this case.
-> >I guess the only way to accomplish that would be to write a custom
-> >rpcidmapd daemon?
-> >
-> >I'm currently downloading the openfiler installer so I can replicate the
-> >setup here for better testing. Maybe updating the nfs-utils package to a
-> >more current version will have an impact.
-> 
-> Apparently I need to export both the /exports directory and all the
-> letter directories beneath it for the crossmnt option to work, e.g.:
-> 
-> /exports 192.168...
-> /exports/country/de/a 192.168...
-> /exports/country/de/b 192.168...
-> /exports/country/de/c 192.168...
+> Agreed. However as I have said before, most of the problem here is that
+> the Linux server is assuming that it should cache the data maximally as
+> if this were a local process.
 
-Huh.  I did just a quick test, mount --bind'ing a couple directories
-under a crossmnt export, and verified that I could see the result from
-an nfsv3 client.
+Yes, that's part of the problem, but it is not limited to Linux NFS
+servers. Pretty much any general purpose machine that acts as a NFS
+server has this problem to some extent.
 
-2.6.38-ish kernel, fc13 userspace (nfs-utils-1.2.2-6).
+> Once the NFS client starts flushing data to the server, it is because
+> the client no longer wants to cache, but rather wants to see the data
+> put onto stable storage as quickly as possible.
 
---b.
+*nod*
+
+> At that point, the server should be focussing doing the same. It should
+> not be setting the low water mark at 20% of total memory before starting
+> writeback, because that means that the COMMIT may have to wait for
+> several GB of data of data to hit the platter.
+> If the water mark was set at say 100MB or so, then writeback would be
+> much smoother...
+
+Right, but that's not as easy to do at the NFS server as it ѕounds.
+Besides:
+
+> If the server were doing its job of acting as a glorified disk instead
+> of trying to act as a caching device, then most of that data should
+> already be on disk before the client sends the COMMIT.
+
+We can't make this assumption about the NFS server's behaviour.
+Yes, if the server is optimal, the COMMIT will either be a no-op or
+not necessary in the first place. However, there are many servers
+out there that are not optimal (and never will be) and so we are
+left with attempting to optimise flushing to stable storage from the
+client side...
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
