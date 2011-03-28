@@ -1,60 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([174.143.236.118]:39444 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932256Ab1C2DWH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Mar 2011 23:22:07 -0400
-Date: Mon, 28 Mar 2011 23:22:05 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond@netapp.com>,
-        "William A.(Andy) Adamson" <andros@citi.umich.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs4.1 locking broken
-Message-ID: <20110329032205.GE2695@fieldses.org>
-References: <201103252328.p2PNSVRY013346@pop.test.fieldses.org>
- <20110326023403.GA16277@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110326023403.GA16277@fieldses.org>
+Received: from mail-iw0-f174.google.com ([209.85.214.174]:52318 "EHLO
+	mail-iw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750788Ab1C1FJa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2011 01:09:30 -0400
+In-Reply-To: <20110325141947.3236.83222.stgit@matisse.1015granger.net>
+References: <20110325141947.3236.83222.stgit@matisse.1015granger.net>
+Date: Mon, 28 Mar 2011 07:09:29 +0200
+Message-ID: <AANLkTikohEL9EVkOeX_hApVXQGB3c0V3Aqnfx3=tY0u6@mail.gmail.com>
+Subject: Re: [PATCH] NFS: Revert NFSROOT default mount options
+From: Belisko Marek <marek.belisko@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-And, yuck, I think this is why I let such a bad screwup get by in the
-server lock code: my usual automated testing depends on booting the same
-kernel to client and server, and when they saw the client failure they
-gave up and as a result never hit the bad server case.  Doh.  Something
-else to fix in my testing.
+On Fri, Mar 25, 2011 at 3:23 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> Marek Belisko <marek.belisko@gmail.com> reports that recent attempts
+> to fix regressions in NFSROOT have broken his configuration:
+>
+>> After update from 2.6.38-rc8 to 2.6.38 is mounting rootfs over nfs not possible.
+>> Log:
+>> VFS: Mounted root (nfs filesystem) on device 0:14.
+>> Freeing init memory: 132K
+>> nfs: server 10.146.1.21 not responding, still trying
+>> nfs: server 10.146.1.21 not responding, still trying
+>>
+>> This is never ending. I make short bisect (not too much commits
+>> between versions)
+>> and bad commit was reported: 53d4737580535e073963b91ce87d4216e434fab5
+>>
+>> NFS: NFSROOT should default to "proto=udp"
+>>
+>> I've tested on mini2440 board (DM9000, static IP).
+>> Is there some missing option or something else to be checked?
+>
+> An examination of a network trace captured during the failure shows
+> that the mount is actually succeeding, but that the client is not
+> seeing READ replies larger than 16KB.
+>
+> Last fall we removed the ad hoc mount option parser in fs/nfs/nfsroot.c
+> in favor of using the main parser in fs/nfs/super.c (see commit
+> 56463e50 "NFS: Use super.c for NFSROOT mount option parsing").  That
+> commit changed the default NFSROOT mount options to be the same as
+> those employed by user space mounts.  As it turns out, that change is
+> not tolerated by many embedded systems.
+>
+> Subsequently, commit 53d47375 introduced a clean way to specify
+> default mount options for NFSROOT, so we can restore the traditional
+> defaults for NFSROOT easily now:
+>
+>   vers=2,udp,rsize=4096,wsize=4096
+>
+> This should revert the changed default NFSROOT mount options
+> introduced with commit 56463e50.
+Work fine with below patch.
+You can add my Tested by: Marek Belisko <marek.belisko@open-nandra.com>
+>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>
+> Hi-
+>
+> Please test this, as I no longer have an NFSROOT rig here.
+>
+> Can some responsible maintainer type see that this gets into
+> linux-next quickly for broader testing?
+>
+>  fs/nfs/nfsroot.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+>
+> diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
+> index c541093..c4744e1 100644
+> --- a/fs/nfs/nfsroot.c
+> +++ b/fs/nfs/nfsroot.c
+> @@ -87,7 +87,7 @@
+>  #define NFS_ROOT               "/tftpboot/%s"
+>
+>  /* Default NFSROOT mount options. */
+> -#define NFS_DEF_OPTIONS                "udp"
+> +#define NFS_DEF_OPTIONS                "vers=2,udp,rsize=4096,wsize=4096"
+>
+>  /* Parameters passed from the kernel command line */
+>  static char nfs_root_parms[256] __initdata = "";
+>
+>
 
---b.
+regards,
 
-On Fri, Mar 25, 2011 at 10:34:03PM -0400, J. Bruce Fields wrote:
-> Commit 114f64b5f24abac33a42f4f1856eb3a9766d497e "NFSv4: remove duplicate
-> clientid in struct nfs_client" breaks locking over 4.1; from a cthon
-> run:
-> 
-> On Fri, Mar 25, 2011 at 07:28:31PM -0400, J. Bruce Fields wrote:
-> > Starting LOCKING tests: test directory /mnt/TMP (arg: -f)
-> > 
-> > Testing native post-LFS locking
-> > 
-> > Creating parent/child synchronization pipes.
-> > 
-> > Test #1 - Test regions of an unlocked file.
-> > 	Parent: 1.1  - F_TEST  [               0,               1] FAILED!
-> > 	Parent: **** Expected success, returned EINVAL...
-> > 	Parent: **** Probably implementation error.
-> > 
-> > ** PARENT pass 1 results: 0/0 pass, 0/0 warn, 1/1 fail (pass/total).
-> > 
-> > **  CHILD pass 1 results: 0/0 pass, 0/0 warn, 0/0 fail (pass/total).
-> > lock tests failed
-> 
-> I haven't figured out why.
-> 
-> Presumably the lock code assumed the clientid would be unset in the 4.1
-> case?
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+marek
+
+-- 
+as simple and primitive as possible
+-------------------------------------------------
+Marek Belisko - OPEN-NANDRA
+Freelance Developer
+
+Ruska Nova Ves 219 | Presov, 08005 Slovak Republic
+Tel: +421 915 052 184
+skype: marekwhite
+icq: 290551086
+web: http://open-nandra.com
