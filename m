@@ -1,228 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from peace.netnation.com ([204.174.223.2]:57815 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751703Ab1CUG3R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2011 02:29:17 -0400
-Date: Sun, 20 Mar 2011 23:29:16 -0700
-From: Simon Kirby <sim@hostway.ca>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: rpc.statd hanging
-Message-ID: <20110321062915.GA5580@hostway.ca>
-Content-Type: text/plain; charset=us-ascii
+Received: from mail.bluewatersys.com ([202.124.120.130]:3095 "EHLO
+	hayes.bluewaternz.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750739Ab1C1Ei4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Mar 2011 00:38:56 -0400
+Message-ID: <4D9010F1.1040909@bluewatersys.com>
+Date: Mon, 28 Mar 2011 17:39:13 +1300
+From: Ryan Mallon <ryan@bluewatersys.com>
+To: Matthew Wilcox <matthew@wil.cx>
+CC: viro@zeniv.linux.org.uk, dchinner@redhat.com, Trond.Myklebust@netapp.com,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH 1/2] Add unlocked version of igrab.
+References: <1301277361-9453-1-git-send-email-ryan@bluewatersys.com> <1301277361-9453-2-git-send-email-ryan@bluewatersys.com> <20110328025423.GN13806@parisc-linux.org>
+In-Reply-To: <20110328025423.GN13806@parisc-linux.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hello!
+On 03/28/2011 03:54 PM, Matthew Wilcox wrote:
+> On Mon, Mar 28, 2011 at 02:56:00PM +1300, Ryan Mallon wrote:
+>> Commit 250df6ed274d767da844a5d9f05720b804240197 "fs: protect
+>> inode->i_state with inode->i_lock" changes igrab to acquire inode->i_lock,
+>> however some callees, notably nfs_inode_add_request, already hold the lock
+>> when calling igrab.
+> 
+> I think a better solution to your problem is to notice that this is
+> called in the context of doing a write to an inode.  That means we
+> must already have a reference count on this inode, so it can't possibly
+> be in I_FREEING or I_WILL_FREE.  That means we can just call __iget()
+> instead ... except that __iget isn't exported to modules.
 
-Something has been causing rpc.statd to start hanging, which causes
-"lockd" to stay in D state on the server, and "lockd: server x not
-responding, still trying" on the clients trying to make use of NLM
-locking (NFSv3) from this server.
+Ah, okay. Thanks for the hint.
 
-This has happened now with old nfs-utils 1.1.2 and with 1.2.2 (upgraded
-after the first time it happened) on the server. It seems to be looping
-doing DNS lookups, and never seems to finish. The kernel's lockd keeps
-retransmitting requests, but rpc.statd doesn't seem to be finishing
-sm_notify_1_svc(), so everything stops.
+A few other locations that I can see that call igrab with inode->i_lock
+held are:
 
-(gdb) bt
-#0  sm_notify_1_svc (argp=0x7fff46ef5430, rqstp=<value optimized out>) at callback.c:107
-#1  0x0000000000405a21 in sm_prog_1 (rqstp=0x7fff46ef59b0, transp=0x1b070e0) at sm_inter_svc.c:84
-#2  0x00007f674d5fafa1 in svc_getreq_common () from /lib/libc.so.6
-#3  0x00007f674d5fb034 in svc_getreqset () from /lib/libc.so.6
-#4  0x000000000040527a in my_svc_run () at svc_run.c:129
-#5  0x0000000000404cbd in main (argc=1, argv=<value optimized out>) at statd.c:472
+  fs/ceph/snap.c::ceph_queue_cap_snap
+  fs/ceph/addr.c::ceph_set_page_dirty
+  fs/nfs/nfs4state.c::nfs4_get_open_state
 
-sm_notify_1_svc():
-   |102             /* okir change: statd doesn't remove the remote host from its
-   |103              * internal monitor list when receiving an SM_NOTIFY call from
-   |104              * it. Lockd will want to continue monitoring the remote host
-   |105              * until it issues an SM_UNMON call.
-   |106              */
-  >|107             for (lp = rtnl ; lp ; lp = lp->next)
-   |108                     if (NL_STATE(lp) != argp->state &&
-   |109                         (statd_matchhostname(argp->mon_name, lp->dns_name) ||
-   |110                          statd_matchhostname(ip_addr, lp->dns_name))) {
-   |111                             NL_STATE(lp) = argp->state;
-   |112                             call = nlist_clone(lp);
-   |113                             nlist_insert(&notify, call);
-   |114                     }
-   |115
-   |116
-   |117             return ((void *) &result);
-   |118     }
+There may be some more cases where the locking is less obvious. I don't
+know enough about the filesystem code to say whether each of those can
+skip the (I_FREEING | I_WILL_FREE) check, or whether the correct
+approach is to modify the filesystems themselves so that they do not
+hold i_lock when calling igrab (i.e. rework to use a different outer lock)?
 
-(gdb) print *rtnl
-$11 = {
-  mon = {
-    mon_id = {
-      mon_name = 0x1b07e80 "10.10.52.21",
-      my_id = {
-        my_name = 0x2a33b30 "nas08",
-        my_prog = 100021,
-        my_vers = 3,
-        my_proc = 16
-      }
-    }, 
-    priv = "\234\bq\000\000\233\001\210"
-  },
-  port = 0,
-  times = 5,
-  state = 0,
-  dns_name = 0x1e63140 "lsh1008.lsh",
-  next = 0x2961480,
-  prev = 0x0,
-  xid = 0,
-  when = 0
-}
-(gdb) print *lp                                                                      
-$12 = {
-  mon = {
-    mon_id = {
-      mon_name = 0x216b390 "10.10.52.28",
-      my_id = {
-        my_name = 0x216b370 "nas08",
-        my_prog = 100021,
-        my_vers = 3, 
-        my_proc = 16
-      }
-    }, 
-    priv = "005223\a\0338\000\000>\004\210"
-  }, 
-  port = 0,
-  times = 5,
-  state = 47, 
-  dns_name = 0x216b3b0 "lsh1015.lsh",
-  next = 0x216b220,
-  prev = 0x216b3e0,
-  xid = 0,   
-  when = 0
-}
-(gdb) set $x = rtnl
-(gdb) set $count = 0
-(gdb) while ($x->next)
- >set $count = $count + 1
- >set $x = $x->next
- >end
-(gdb) print $count
-$17 = 70916
-(gdb) print argp->state
-$18 = 89
-(gdb) print notify
-$19 = (notify_list *) 0x0
-(gdb) up
-#1  0x0000000000405a21 in sm_prog_1 (rqstp=0x7fff46ef59b0, transp=0x1b070e0) at sm_inter_svc.c:84
-(gdb) print rqstp
-$21 = (struct svc_req *) 0x7fff46ef59b0
-(gdb) print *rqstp
-$22 = {
-  rq_prog = 100024, 
-  rq_vers = 1, 
-  rq_proc = 6,    
-  rq_cred = {
-    oa_flavor = 0, 
-    oa_base = 0x7fff46ef54a0 "",
-    oa_length = 0
-  }, 
-  rq_clntcred = 0x7fff46ef57c0 "",
-  rq_xprt = 0x1b070e0
-}
-(gdb) print *transp  
-$23 = {
-  xp_sock = 7, 
-  xp_port = 33188,
-  xp_ops = 0x7f674d850840,
-  xp_addrlen = 16,
-  xp_raddr = {
-    sin_family = 2,
-    sin_port = 55042,
-    sin_addr = {   
-      s_addr = 859048458
-    }, 
-    sin_zero = "\000\000\000\000\000\000\000"
-  },   
-  xp_verf = {
-    oa_flavor = 0,
-    oa_base = 0x1b07280 "`",
-    oa_length = 0 
-  }, 
-  xp_p1 = 0x2a2eb00 "M\206",
-  xp_p2 = 0x1b07240 "`\"",
-  xp_pad = "\000002\000\000\000\000`\"\000\000\000\000\000\000\001\000\000\000\000\020\000\000\0000q\001\000\000\000\000\001\000\000\000\000\000\000\000xq\001\000\000\000\000 ", '\0' <repeats 11 times>
-, "\034", '\0' <repeats 11 times>, "\b\000\000\000\000\000\000\000\n\n4n\n4, '' <repeats 156 times>
-}
+If the correct approach is to use __iget or __igrab then I can prepare a
+patch for this. In the case of __iget, should it just be marked
+EXPORT_SYMBOL and added to include/linux/fs.h?
 
-(gdb) set $x = rtnl
-(gdb) while ($x->next)
- >print $x->mon.mon_id.mon_name
- >set $x = $x->next  
- >end
-$4 = 0x1b07e80 "10.10.52.21"
-$5 = 0x2a2eab0 "10.10.52.23"
-$6 = 0x2a2e9b0 "10.10.52.31"
-$7 = 0x2b5b400 "10.10.52.18"
-$8 = 0x2a34080 "10.10.52.12"
-$9 = 0x1e63120 "10.10.52.30"
-$10 = 0x2a332e0 "10.10.52.24"
-$11 = 0x2a341e0 "10.10.52.50"
-$12 = 0x2357d00 "10.10.52.22"
-$13 = 0x1b07e60 "10.10.52.20"
-$14 = 0x2a33220 "10.10.52.18"
-$15 = 0x2a33170 "10.10.52.30"
-$16 = 0x21100d0 "10.10.52.20"  
-$17 = 0x2a32e10 "10.10.52.12"
-$18 = 0x2a33110 "10.10.52.29"
-$19 = 0x2a32e50 "10.10.52.25"
-$20 = 0x2110210 "10.10.52.30"
-$21 = 0x278b240 "10.10.52.25"
-$22 = 0x2a33820 "10.10.52.24"
-$23 = 0x1e63190 "10.10.52.30"
-$24 = 0x2406b60 "10.10.52.50"
-$25 = 0x29614f0 "10.10.52.50"
-$26 = 0x2406ab0 "10.10.52.25"
-$27 = 0x1b080a0 "10.10.52.29"
-$28 = 0x2256f00 "10.10.52.24"
-$29 = 0x2a2ea20 "10.10.52.22"
-$30 = 0x255e470 "10.10.52.19"
-$31 = 0x2a33b10 "10.10.52.28"
-$32 = 0x2a2e8f0 "10.10.52.31"
-$33 = 0x2a2e810 "10.10.52.31"
-$34 = 0x2a2e730 "10.10.52.31"
-$35 = 0x2a2e650 "10.10.52.31"
-$36 = 0x2a2e570 "10.10.52.31"
-$37 = 0x2a2e490 "10.10.52.31"
-$38 = 0x2a2e3b0 "10.10.52.31"
-$39 = 0x2a2e2d0 "10.10.52.31"
-$40 = 0x2a2e1f0 "10.10.52.31"
-$41 = 0x2a2e110 "10.10.52.31"
-$42 = 0x2a2e030 "10.10.52.31"
-$43 = 0x2a2df50 "10.10.52.31"
-$44 = 0x2a2de70 "10.10.52.31"  
-$45 = 0x2a2dd90 "10.10.52.31"
-$46 = 0x2a2dcb0 "10.10.52.31"
-$47 = 0x2a2dbd0 "10.10.52.31"
-$48 = 0x2a2daf0 "10.10.52.31"
-$49 = 0x2a2da10 "10.10.52.31"
-$50 = 0x2a2d930 "10.10.52.31"  
-...
-$6949 = 0x28b42d0 "10.10.52.30"
-$6950 = 0x28b41f0 "10.10.52.30"
-...
-$14429 = 0x271b010 "10.10.52.22"
-$14430 = 0x271af30 "10.10.52.22"
-...
-$24804 = 0x24e3590 "10.10.52.25"
-$24805 = 0x24e34b0 "10.10.52.25"
-...
-$28179 = 0x242ac70 "10.10.52.19"
-$28180 = 0x242ab90 "10.10.52.19"
-...
-$44671 = 0x20a46f0 "10.10.52.20"
-$44672 = 0x20a4610 "10.10.52.20"
+~Ryan
 
-Hmm, I think that list got a little longer than expected. What would be
-causing this?
+-- 
+Bluewater Systems Ltd - ARM Technology Solution Centre
 
-Simon-
+Ryan Mallon         		5 Amuri Park, 404 Barbadoes St
+ryan@bluewatersys.com         	PO Box 13 889, Christchurch 8013
+http://www.bluewatersys.com	New Zealand
+Phone: +64 3 3779127		Freecall: Australia 1800 148 751
+Fax:   +64 3 3779135			  USA 1800 261 2934
