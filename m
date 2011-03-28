@@ -1,66 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-fx0-f46.google.com ([209.85.161.46]:52708 "EHLO
-	mail-fx0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751012Ab1CKRaX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Mar 2011 12:30:23 -0500
-In-Reply-To: <1299107978-3248-1-git-send-email-bookjovi@gmail.com>
-References: <1299107978-3248-1-git-send-email-bookjovi@gmail.com>
-Date: Fri, 11 Mar 2011 18:22:38 +0100
-Message-ID: <AANLkTinXc7uwCdZAFGqg=9ZsWGzos14F8d9YxhCA0q43@mail.gmail.com>
-Subject: Re: [PATCH] nfs: fix compilation warning
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-To: bookjovi@gmail.com
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        open list <linux-kernel@vger.kernel.org>,
-        Greg Kroah-Hartman <gregkh@suse.de>, stable <stable@kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from cn.fujitsu.com ([222.73.24.84]:54713 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752005Ab1C1I6X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Mar 2011 04:58:23 -0400
+Message-ID: <4D904DF9.1080806@cn.fujitsu.com>
+Date: Mon, 28 Mar 2011 16:59:37 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 3/5] CLNT: test reclaim after RECLAIM_COMPLETE
+References: <4D6DE26C.3010103@cn.fujitsu.com> <4D904BEB.1060101@cn.fujitsu.com>
+In-Reply-To: <4D904BEB.1060101@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, Mar 3, 2011 at 00:19,  <bookjovi@gmail.com> wrote:
-> From: Jovi Zhang <bookjovi@gmail.com>
->
-> this commit fix compilation warning as following:
-> linux-2.6/fs/nfs/nfs4proc.c:3265: warning: comparison of distinct pointer types lacks a cast
+Signed-off-by: Mi Jinlong <mijinlong@cn.fujitsu.com>
+---
+ nfs4.1/server41tests/st_reclaim_complete.py |   50 +++++++++++++++++++++++++++
+ 1 files changed, 50 insertions(+), 0 deletions(-)
 
-And as the offender is on track for 2.6.37.4-stable, it needs to be
-applied there, too.
+diff --git a/nfs4.1/server41tests/st_reclaim_complete.py b/nfs4.1/server41tests/st_reclaim_complete.py
+index 5e3174c..4c9fc37 100644
+--- a/nfs4.1/server41tests/st_reclaim_complete.py
++++ b/nfs4.1/server41tests/st_reclaim_complete.py
+@@ -1,9 +1,18 @@
+ from st_create_session import create_session
+ from nfs4_const import *
+ from environment import check, fail, use_obj, create_file
++from nfs4_type import open_owner4, locker4, open_to_lock_owner4
+ import nfs4_ops as op
+ import nfs4lib
+ 
++def opt_result(res, opt=None):
++    """Get the corresponding result at res.resarray[]"""
++    if opt == None:
++        return
++    for resa in res.resarray:
++        if resa.resop == opt:
++            return resa
++
+ def testSupported(t, env):
+     """Do a simple RECLAIM_COMPLETE
+ 
+@@ -20,3 +29,44 @@ def testSupported(t, env):
+     res = sess.compound([op.reclaim_complete(FALSE)])
+     check(res)
+     sess.destroy()
++
++def testReclaimAfterRECC(t, env):
++    """If client does subsequent reclaims of locking state after
++       RECLAIM_COMPLETE is done, server will return NFS4ERR_NO_GRACE.
++       rfc5661 18.51.3
++
++    FLAGS: reclaim_complete all
++    CODE: RECC2
++    """
++    name = env.testname(t)
++    c = env.c1.new_client(name)
++    sess = c.create_session()
++
++    # RECLAIM_COMPLETE
++    res = sess.compound([op.reclaim_complete(FALSE)])
++    check(res)
++
++    fname = "owner_%s" % name
++    path = sess.c.homedir + [name]
++    res = create_file(sess, fname, path, access=OPEN4_SHARE_ACCESS_BOTH)
++    check(res)
++
++    # Get stateid from OPEN4resok for making a lockowner
++    nres = opt_result(res, OP_OPEN)
++    if nres == None:
++        fail("Can not get OPEN4resok!")
++    oseqid = nres.stateid
++
++    owner = open_owner4(0, "My Open Owner")
++    otlowner = open_to_lock_owner4(0, oseqid, 0, owner)
++    lowner = locker4(TRUE, otlowner)
++
++    # Get filehandle from GETFHresok for locking
++    nres = opt_result(res, OP_GETFH)
++    if nres == None:
++	fail("Can not get GETFHresok!")
++    cfh = nres.object
++
++    res = sess.compound([op.putfh(cfh), op.lock(READ_LT, TRUE, 0, 1, lowner)])
++    check(res, NFS4ERR_NO_GRACE)
++    sess.destroy()
+-- 
+1.7.4.1
 
-> Signed-off-by: Jovi Zhang <bookjovi@gmail.com>
-> ---
->  fs/nfs/nfs4proc.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 1ff76ac..c7eb4ee 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3262,7 +3262,7 @@ static int buf_to_pages_noslab(const void *buf, size_t buflen,
->        spages = pages;
->
->        do {
-> -               len = min(PAGE_CACHE_SIZE, buflen);
-> +               len = min((size_t)PAGE_CACHE_SIZE, buflen);
 
-Alternatively, we could use
 
-len = min_t(size_t, PAGE_CACHE_SIZE, buflen);
-
-which may be somewhat cleaner, as it doesn't add an explicit cast.
-
->                newpage = alloc_page(GFP_KERNEL);
->
->                if (newpage == NULL)
-
-Gr{oetje,eeting}s,
-
-                        Geert
-
---
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
-
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-                                -- Linus Torvalds
