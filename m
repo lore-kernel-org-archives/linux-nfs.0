@@ -1,53 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:53408 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751073Ab1CWJkp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Mar 2011 05:40:45 -0400
-Message-ID: <4D89C05F.50208@cn.fujitsu.com>
-Date: Wed, 23 Mar 2011 17:41:51 +0800
-From: Mi Jinlong <mijinlong@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/17] CLNT: test resues slot ID
-References: <4D6DE26C.3010103@cn.fujitsu.com> <4D6DE4A5.1050702@cn.fujitsu.com> <20110303061442.GE7724@fieldses.org> <4D6F5B4E.7000903@cn.fujitsu.com> <4D70AB97.3070502@cn.fujitsu.com> <20110314184144.GB25442@fieldses.org> <20110314192434.GC25442@fieldses.org> <4D7ED324.4070600@cn.fujitsu.com> <20110317225245.GE31845@fieldses.org> <4D886F71.8050001@cn.fujitsu.com> <20110322214839.GA17784@fieldses.org>
-In-Reply-To: <20110322214839.GA17784@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mexforward.lss.emc.com ([128.222.32.20]:44050 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752978Ab1C2PwQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Mar 2011 11:52:16 -0400
+From: <peter.staubach@emc.com>
+To: <Zoltan.Menyhart@bull.net>, <chuck.lever@oracle.com>
+CC: <linux-nfs@vger.kernel.org>
+Date: Tue, 29 Mar 2011 11:50:36 -0400
+Subject: RE: NFS v4 client blocks when using UDP protocol
+Message-ID: <5E6794FC7B8FCA41A704019BE3C70E8B069D40C4@MX31A.corp.emc.com>
+References: <EB0F26AF-C0DB-4861-ABB5-72E39CB38090@bull.net>
+ <4D91ED79.4020302@bull.net>
+ <4A05F533-1BE6-4DFC-BC53-9392DA8BED76@oracle.com> <4D91FA1D.1000206@bull.net>
+In-Reply-To: <4D91FA1D.1000206@bull.net>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+It does talk about NFS over UDP, interestingly, but the text on page 25, indicates that the transport of choice MUST be one of the IETF-approved congestion control transport protocols, of which, UDP is not one.
+
+Perhaps some clean up of RFC3530bis and RFC5661 could include removal of the UDP mentions.
+
+		ps
 
 
-J. Bruce Fields:
-> On Tue, Mar 22, 2011 at 05:44:17PM +0800, Mi Jinlong wrote:
->>   I have made a mistake about this case, we don't need the filehandle from GETFHres,
->>   that is just unnecessary.
->>
->>   Thanks for your point about the homedir, 
->>   I found a function named use_obj at nfs4lib which can solve our problem.
->>
->>   After fixed, maybe the following patch is OK now.
-> 
-> Great, thanks--applied.
-> 
-> At this point I've applied and pushed out everything I've taken from
-> you.
+-----Original Message-----
+From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Menyhart Zoltan
+Sent: Tuesday, March 29, 2011 11:26 AM
+To: Chuck Lever
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS v4 client blocks when using UDP protocol
 
-  Thanks.
+Chuck Lever wrote:
+> Zoltan-
+>
+> As far as I know, NFSv4 is not supported on UDP transports.
+>Some of it may work, but no warrantee, either expressed or implied, is given.  :-)
 
-> 
-> So let me know what else you still have that's not in my git repo.  I
-> know there are the reclaim_complete tests that you're still looking
-> at, but there might also be a few other odd tests that I still had
-> questions about?
+Do you mean the Linux implementation?
+Because the RFC 3530 speaks about how to do NFS v4 over UDP and UDP6.
 
-  No. Just those tests about reclaim_complete.
+Thank you,
 
-  Maybe I have meet some other problem about pynfs41 tests, 
-  I will send the fixing out after I check out.
+Zoltan
 
--- 
-----
-thanks
-Mi Jinlong
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
