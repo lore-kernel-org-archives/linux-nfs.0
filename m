@@ -1,55 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:5681 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755764Ab1CRCZJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Mar 2011 22:25:09 -0400
-Subject: Re: Small O_SYNC writes are no longer NFS_DATA_SYNC
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20110318131214.0e2c840a@notabene.brown>
-References: <20110216171555.6642c630@notabene.brown>
-	 <1300405987.4621.10.camel@lade.trondhjem.org>
-	 <20110318120417.435551da@notabene.brown>
-	 <1300412966.9671.9.camel@lade.trondhjem.org>
-	 <20110318131214.0e2c840a@notabene.brown>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 17 Mar 2011 22:25:08 -0400
-Message-ID: <1300415108.13476.6.camel@lade.trondhjem.org>
+Received: from opensource.wolfsonmicro.com ([80.75.67.52]:46155 "EHLO
+	opensource2.wolfsonmicro.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752809Ab1C2VWC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Mar 2011 17:22:02 -0400
+Date: Wed, 30 Mar 2011 06:22:11 +0900
+From: Mark Brown <broonie@opensource.wolfsonmicro.com>
+To: Will Simoneau <simoneau@ele.uri.edu>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Belisko Marek <marek.belisko@gmail.com>, Trond.Myklebust@netapp.com,
+        bdowning@lavos.net, linux-nfs@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>
+Subject: Re: [bisect] kernel 2.6.38 regression with root nfs mounting
+Message-ID: <20110329212210.GB30482@opensource.wolfsonmicro.com>
+References: <43F07477-9075-444D-9BBB-368650538EA8@oracle.com>
+ <AANLkTinHUQkBvcvh9APVutOqcKOug6CA066kS_O4p4Tq@mail.gmail.com>
+ <DC2B75F8-382A-4AFB-9286-4A55EAF7609A@oracle.com>
+ <AANLkTikWyUbtHbbnSh8NBeP3mT4jDOu5Pbtfw=TwKrwE@mail.gmail.com>
+ <977C528D-4540-4EB2-92F9-6DAF357D8C81@oracle.com>
+ <AANLkTik0UgB+k2i=E5t9XcF50SoSr_iXaFYrhctDx0FJ@mail.gmail.com>
+ <8F19F0FE-0800-4C45-B857-1C682CF6A30D@oracle.com>
+ <AANLkTin4-+Mc7d0a-XnZvPKL-C_Cf+Kmnm1Bmh1XZZu4@mail.gmail.com>
+ <4AD2FFC1-E777-4C29-8718-4E1717EFCD86@oracle.com>
+ <20110329202408.GM1966@ele.uri.edu>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20110329202408.GM1966@ele.uri.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2011-03-18 at 13:12 +1100, NeilBrown wrote:
-> On Thu, 17 Mar 2011 21:49:26 -0400 Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> 
-> > However we could adopt the Solaris convention of always starting
-> > writebacks with a FILE_SYNC, and then falling back to UNSTABLE for the
-> > second rpc call and all subsequent calls...
-> > 
-> 
-> That approach certainly has merit.
-> 
-> However, as we know from the wbc info whether the write is small and sync -
-> which is the only case where I think a STABLE write is needed - I cannot see
-> why you don't want to just use that information to guide the choice of
-> 'stable' or not ???
+On Tue, Mar 29, 2011 at 04:24:08PM -0400, Will Simoneau wrote:
 
-By far the most common case we would want to optimise for is the sync at
-close() or fsync() when you have written a small file (<= wsize). If we
-can't optimise for that case, then the optimisation isn't worth doing at
-all.
+> Interestingly, we are both using DM9000 network chips. I wonder if there
+> is a UDP-related problem on the DM9000. I will play with my
+> configuration a little more (in particular testing proto=tcp and revert
+> of 53d4737580535e073963b91ce87d4216e434fab5) but my guess is the DM9000
+> driver/chip is to blame. The DM9000A on my board has 16K of on-chip SRAM
+> used for its RX/TX buffers which may be playing a part in the problem.
 
-The point is that in that particular case, the wbc doesn't help you at
-all since the limits are set at 0 and LLONG_MAX (see nfs_wb_all(),
-write_inode_now(),...)
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+It's more likely that the DM9000 is just slow and fragile.  One thing to
+note with a lot of the lower end network chips is that you end up
+needing to specify rsize and wsize so that you don't get fragmentation -
+about 1k tends to work well IME.  Otherwise performance often degrades
+to the point of unusability.
