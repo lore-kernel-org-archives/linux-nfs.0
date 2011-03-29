@@ -1,110 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.161.174]:52953 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752690Ab1CJRc1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Mar 2011 12:32:27 -0500
-Received: by gxk8 with SMTP id 8so745972gxk.19
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Mar 2011 09:32:27 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/8] NFS: Add a lame client-side function to display file
-	handles
-To: linux-nfs@vger.kernel.org
-Date: Thu, 10 Mar 2011 12:29:40 -0500
-Message-ID: <20110310172940.8878.11138.stgit@matisse.1015granger.net>
-In-Reply-To: <20110310171345.8878.25548.stgit@matisse.1015granger.net>
-References: <20110310171345.8878.25548.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:32786 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755596Ab1C2DSF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Mar 2011 23:18:05 -0400
+Date: Mon, 28 Mar 2011 23:18:04 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd4: set right access bmap when initializing lock
+ stateid
+Message-ID: <20110329031804.GD2695@fieldses.org>
+References: <4D90357D.3080604@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D90357D.3080604@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-nfs_display_fhandle() is a lame client-side function to display
-file handles on the console.  It is for debugging only.
+On Mon, Mar 28, 2011 at 03:15:09PM +0800, Mi Jinlong wrote:
+>  
+> Content-Type: text/plain; charset=ISO-2022-JP
+> Content-Transfer-Encoding: 7bit
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Thanks, Mi Jinlong, the analysis is helpful, but I don't think your fix
+is right.
 
- fs/nfs/inode.c         |   44 ++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs_fs.h |   13 +++++++++++++
- 2 files changed, 57 insertions(+), 0 deletions(-)
+I think the problem here is basically that the cleanup on exit from
+nfsd4_lock() may have to deal with a lock stateid that is partially
+initialized, in that everything has been setup except the stuff that's
+done by get_lock_access().
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 1cc600e..1325160 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1033,6 +1033,50 @@ struct nfs_fh *nfs_alloc_fhandle(void)
+Maybe something like this??  But I'm not able to test right now.
+
+--b.
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fbde6f7..9e8ef31 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -397,10 +397,13 @@ static void unhash_generic_stateid(struct nfs4_stateid *stp)
+ 
+ static void free_generic_stateid(struct nfs4_stateid *stp)
+ {
+-	int oflag = nfs4_access_bmap_to_omode(stp);
++	int oflag;
+ 
+-	nfs4_file_put_access(stp->st_file, oflag);
+-	put_nfs4_file(stp->st_file);
++	if (stp->st_access_bmap) {
++		nfs4_access_bmap_to_omode(stp);
++		nfs4_file_put_access(stp->st_file, oflag);
++		put_nfs4_file(stp->st_file);
++	}
+ 	kmem_cache_free(stateid_slab, stp);
  }
  
- /**
-+ * _nfs_display_fhandle - display an NFS file handle on the console
-+ *
-+ * @fh: file handle to display
-+ *
-+ * For debugging only.
-+ */
-+#ifdef RPC_DEBUG
-+void _nfs_display_fhandle(const struct nfs_fh *fh)
-+{
-+	unsigned short i;
-+
-+	if (fh->size == 0 || fh == NULL) {
-+		printk(KERN_NOTICE "Empty NFS file handle at %p\n", fh);
-+		return;
-+	}
-+
-+	printk(KERN_NOTICE "NFS file handle at %p (size %u):\n", fh, fh->size);
-+	for (i = 0; i < fh->size; i += 16) {
-+		__be32 *pos = (__be32 *)&fh->data[i];
-+
-+		switch ((fh->size - i - 1) >> 2) {
-+		case 0:
-+			printk(KERN_NOTICE " %08x",
-+				be32_to_cpup(pos));
-+			break;
-+		case 1:
-+			printk(KERN_NOTICE " %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1));
-+			break;
-+		case 2:
-+			printk(KERN_NOTICE " %08x %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1),
-+				be32_to_cpup(pos + 2));
-+			break;
-+		default:
-+			printk(KERN_NOTICE " %08x %08x %08x %08x\n",
-+				be32_to_cpup(pos), be32_to_cpup(pos + 1),
-+				be32_to_cpup(pos + 2), be32_to_cpup(pos + 3));
-+		}
-+	}
-+}
-+#endif
-+
-+/**
-  * nfs_inode_attrs_need_update - check if the inode attributes need updating
-  * @inode - pointer to inode
-  * @fattr - attributes
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 6023efa..511e22a 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -384,6 +384,19 @@ static inline void nfs_free_fhandle(const struct nfs_fh *fh)
- 	kfree(fh);
- }
- 
-+#ifdef RPC_DEBUG
-+extern void _nfs_display_fhandle(const struct nfs_fh *fh);
-+#define nfs_display_fhandle(fh)					\
-+	do {							\
-+		if (unlikely(nfs_debug & NFSDBG_FACILITY))	\
-+			_nfs_display_fhandle(fh);		\
-+	} while(0)
-+#else
-+static inline void nfs_display_fhandle(const struct nfs_fh *fh)
-+{
-+}
-+#endif
-+
- /*
-  * linux/fs/nfs/nfsroot.c
-  */
-
