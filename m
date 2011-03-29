@@ -1,96 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailin.studentenwerk.mhn.de ([141.84.225.229]:44049 "EHLO
-	email.studentenwerk.mhn.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751830Ab1CVOwY convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Mar 2011 10:52:24 -0400
-From: Wolfgang Walter <wolfgang.walter@stwm.de>
+Received: from cn.fujitsu.com ([222.73.24.84]:64707 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753492Ab1C2Dk3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Mar 2011 23:40:29 -0400
+Message-ID: <4D9154F3.20806@cn.fujitsu.com>
+Date: Tue, 29 Mar 2011 11:41:39 +0800
+From: Mi Jinlong <mijinlong@cn.fujitsu.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: problem with nfs4: rpciod seems to loop in rpc_shutdown_client forever
-Date: Tue, 22 Mar 2011 15:52:21 +0100
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-References: <201103182349.22331.wolfgang.walter@stwm.de> <20110321232857.GC472@fieldses.org>
-In-Reply-To: <20110321232857.GC472@fieldses.org>
-Content-Type: text/plain;
-  charset="utf-8"
-Message-Id: <201103221552.21826.wolfgang.walter@stwm.de>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd4: set right access bmap when initializing lock stateid
+References: <4D90357D.3080604@cn.fujitsu.com> <20110329031804.GD2695@fieldses.org>
+In-Reply-To: <20110329031804.GD2695@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Am Dienstag, 22. März 2011 schrieb J. Bruce Fields:
-> On Fri, Mar 18, 2011 at 11:49:21PM +0100, Wolfgang Walter wrote:
-> > Hello,
-> >
-> > I have a problem with our nfs-server (stable 2.6.32.33 but also with
-> > .31 or .32 and probably older ones): sometimes
-> > one or more rpciod get stuck. I used
-> >
-> > 	rpcdebug -m rpc -s all
-> >
-> > I get messages as the following one about every second:
-> >
-> > Mar 18 11:15:37 au kernel: [44640.906793] RPC:       killing all tasks
-> > for client ffff88041c51de00 Mar 18 11:15:38 au kernel: [44641.906793]
-> > RPC:       killing all tasks for client ffff88041c51de00 Mar 18 11:15:39
-> > au kernel: [44642.906795] RPC:       killing all tasks for client
-> > ffff88041c51de00 Mar 18 11:15:40 au kernel: [44643.906793] RPC:      
-> > killing all tasks for client ffff88041c51de00 Mar 18 11:15:41 au kernel:
-> > [44644.906795] RPC:       killing all tasks for client ffff88041c51de00
-> > Mar 18 11:15:42 au kernel: [44645.906794] RPC:       killing all tasks
-> > for client ffff88041c51de00
-> >
-> > and I get this messages:
-> >
-> > Mar 18 22:45:57 au kernel: [86061.779008]   174 0381     -5
-> > ffff88041c51de00   (null)        0 ffffffff817211a0 nfs4_cbv1 CB_NULL
-> > a:rpc_exit_task q:none
-> >
-> > My theorie is this one:
-> >
-> > * this async task is runnable but does not progress (calling
-> > rpc_exit_task). * this is because the same rpciod which handles this task
-> > loops in rpc_shutdown_client waiting for this task to go away.
-> > * because rpc_shutdown_client is called from an async rpc, too
->
-> Off hand I don't see any place where rpc_shutdown_client() is called
-> from rpciod; do you?
-
-I'm not familiar with the code.
-
-But could it be that this is in fs/nfsd/nfs4state.c ?
-
-Just a guess because 2.6.38 does not have this problem and in 2.6.38 it seems 
-to have a workqueue of its own.
-
->
-> > At the beginning is is always one or more tasks as above.
-> >
-> > Once a rpciod hangs more an more other tasks hang forever:
-> >
-> > Mar 18 22:45:57 au kernel: [86061.778809] -pid- flgs status -client-
-> > --rqstp- -timeout ---ops-- Mar 18 22:45:57 au kernel: [86061.778819]  
-> > 300 0281    -13 ffff8801ef5d0600   (null)        0 ffffffff817211a0
-> > nfs4_cbv1 CB_NULL a:call_refreshresult q:none Mar 18 22:45:57 au kernel:
-> > [86061.778823]   289 0281      0 ffff880142a49800 ffff8802a1dde000       
-> > 0 ffffffff817a3fd0 rpcbindv2 GETPORT a:call_status q:none Mar 18 22:45:57
-> > au kernel: [86061.778827]   286 0281      0 ffff880349f57e00
-> > ffff88010affe000        0 ffffffff817a3fd0 rpcbindv2 GETPORT
-> > a:call_status q:none Mar 18 22:45:57 au kernel: [86061.778830]   283 0281
-> >      0 ffff88041d19ac00 ffff880418650000        0 ffffffff817a3fd0
-> > rpcbindv2 GETPORT a:call_status q:none
->
-> There's a lot of these GETPORT calls.  Is portmap/rpcbind down?
-
-No, it is running.
-
-I think that these getports get scheduled as tasks for the hanging rpciod.
 
 
-Regards,
+J. Bruce Fields:
+> On Mon, Mar 28, 2011 at 03:15:09PM +0800, Mi Jinlong wrote:
+>>  
+>> Content-Type: text/plain; charset=ISO-2022-JP
+>> Content-Transfer-Encoding: 7bit
+> 
+> Thanks, Mi Jinlong, the analysis is helpful, but I don't think your fix
+> is right.
+> 
+> I think the problem here is basically that the cleanup on exit from
+> nfsd4_lock() may have to deal with a lock stateid that is partially
+> initialized, in that everything has been setup except the stuff that's
+> done by get_lock_access().
+
+  You are right.
+
+> 
+> Maybe something like this??  But I'm not able to test right now.
+> 
+> --b.
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index fbde6f7..9e8ef31 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -397,10 +397,13 @@ static void unhash_generic_stateid(struct nfs4_stateid *stp)
+>  
+>  static void free_generic_stateid(struct nfs4_stateid *stp)
+>  {
+> -	int oflag = nfs4_access_bmap_to_omode(stp);
+> +	int oflag;
+>  
+> -	nfs4_file_put_access(stp->st_file, oflag);
+> -	put_nfs4_file(stp->st_file);
+> +	if (stp->st_access_bmap) {
+> +		nfs4_access_bmap_to_omode(stp);
+
+ This line should be 
+
+     oflag = nfs4_access_bmap_to_omode(stp);
+
+ otherwise, uninitialized oflag will be used at the next line.
+
+ After this patch, kernel runs correctly!
+
 -- 
-Wolfgang Walter
-Studentenwerk München
-Anstalt des öffentlichen Rechts
+----
+thanks
+Mi Jinlong
+
+> +		nfs4_file_put_access(stp->st_file, oflag);
+> +		put_nfs4_file(stp->st_file);
+> +	}
+>  	kmem_cache_free(stateid_slab, stp);
+>  }
+>  
+> 
+> 
 
