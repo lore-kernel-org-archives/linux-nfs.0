@@ -1,109 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:1220 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751108Ab1CPNuG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Mar 2011 09:50:06 -0400
-Subject: RE: Use of READDIRPLUS on large directories
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: peter.staubach@emc.com
-Cc: neilb@suse.de, bjschuma@netapp.com, linux-nfs@vger.kernel.org
-In-Reply-To: <5E6794FC7B8FCA41A704019BE3C70E8B068397B4@MX31A.corp.emc.com>
-References: <20110316155528.31913c58@notabene.brown>
-	 <5E6794FC7B8FCA41A704019BE3C70E8B068397B4@MX31A.corp.emc.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 16 Mar 2011 09:50:04 -0400
-Message-ID: <1300283404.16266.41.camel@lade.trondhjem.org>
+Received: from mail-ww0-f44.google.com ([74.125.82.44]:57595 "EHLO
+	mail-ww0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965396Ab1C3VzB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Mar 2011 17:55:01 -0400
+Received: by wwa36 with SMTP id 36so2045993wwa.1
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Mar 2011 14:55:00 -0700 (PDT)
+In-Reply-To: <AANLkTinSq5Zg-Webeb-XE5MGJaohG67cBMbii6gjtWkZ@mail.gmail.com>
+References: <20110325161156.007b2a10@tlielax.poochiereds.net>
+	<AANLkTikq+y4hEaeyc=D5HRU2Jna4MZ41C+A3=0vF4JMZ@mail.gmail.com>
+	<AANLkTinSq5Zg-Webeb-XE5MGJaohG67cBMbii6gjtWkZ@mail.gmail.com>
+Date: Wed, 30 Mar 2011 14:55:00 -0700
+Message-ID: <AANLkTi=XA0dd7WJpX8DU-T_QSxnXmMfK-vLg+SpMR-cA@mail.gmail.com>
+Subject: Re: BUG() in shrink_dcache_for_umount_subtree on nfs4 mount
+From: Mark Moseley <moseleymark@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2011-03-16 at 08:30 -0400, peter.staubach@emc.com wrote:
-> Perhaps the use of a heuristic that enables readdirplus only after the application has shown that it is interested in the attributes for each entry in the directory?  Thus, if the application does readdir()/stat()/stat()/stat()/readdir()/... then the NFS client could use readdirplus to fill the caches.  If the application is just reading the directory and looking at the names, then the client could just use readdir.
-> 
-> 		ps
+> I'm not 100% sure it's related (but I'm going to guess it is) but on
+> these same boxes, they're not actually able to reboot at the end of a
+> graceful shutdown. After yielding that bug and continuing with the
+> shutdown process, it gets all the way to exec'ing:
+>
+> reboot -d -f -i
+>
+> and then just hangs forever. I'm guessing a thread is hung still
+> trying to unmount things. On another box, I triggered that bug with a
+> umount of one top-level mount that had subtrees. When I umount'd
+> another top-level mount with subtrees on that same box, it's blocked
+> and unkillable. That second umount also logged another bug to the
+> kernel logs.
+>
+> In both umounts described above, the entries in /proc/mounts go away
+> after the umount.
+>
+> Jeff, are you at liberty to do a graceful shutdown of the box you saw
+> that bug on? If so, does it actually reboot?
 
-Yes, possibly.
 
-The thing that convinced me that we should get rid of the limit was when
-Bryan was testing directories with 10^6 entries, and was seeing an order
-of magnitude improvement when comparing readdirplus vs. readdir on 'ls
--l' workloads. I wish he had published the actual numbers in the
-changelog.
+A bit more info: On the same boxes, freshly booted but with all the
+same mounts (even the subtrees) mounted, I don't get that bug, so it
+seems to happen just when there's been significant usage within those
+mounts. These are all read-only mounts, if it makes a difference.
 
-As I recall, the slowdown when comparing readdirplus vs readdir on 'ls'
-workloads was far less.
+I was however able to trigger the bug on a box that had been running
+(web serving) for about 15 minutes. Here's a snippet from slabinfo
+right before umount'ing (let me know if more of it would help):
 
-You can easily test that yourself, using the "-onordirplus" mount option
-to turn off readdirplus (which, btw, remains a workaround for people who
-don't care about 'ls -l' workloads).
-
-Cheers
-  Trond
-
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of NeilBrown
-> Sent: Wednesday, March 16, 2011 12:55 AM
-> To: Trond Myklebust; Bryan Schumaker
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Use of READDIRPLUS on large directories
-> 
-> 
-> Hi Trond / Bryan et al.
-> 
-> Now that openSUSE 11.4 is out I have started getting a few reports
-> of regressions that can be traced to 
-> 
-> commit 0715dc632a271fc0fedf3ef4779fe28ac1e53ef4
-> Author: Bryan Schumaker <bjschuma@netapp.com>
-> Date:   Fri Sep 24 18:50:01 2010 -0400
-> 
->     NFS: remove readdir plus limit
->     
->     We will now use readdir plus even on directories that are very large.
->     
->     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> 
-> This particularly affects users with their home directory over
-> NFS, and with largish maildir mail folders.
-> 
-> Where it used to take a smallish number of seconds for (e.g.)
-> xbiff to start up and read through the various directories, it now
-> takes multiple minutes.
-> 
-> I can confirm that the slow down is due to readdirplus by mounting the
-> filesystem with nordirplus.
-> 
-> 
-> While I can understand that there are sometime benefits in using
-> readdirplus for very large directories, there are also obviously real
-> costs.  So I think we have to see this patch as a regression that should
-> be reverted.
-> 
-> 
-> It would quite possibly make sense to create a tunable (mount option or
-> sysctl I guess) to set the max size for directories to use readdirplus,
-> but I think it really should be an opt-in situation.
-> 
-> [[ It would also be really nice if the change-log for such a significant
-> change contained a little more justification.... :-(   ]]
-> 
-> Thoughts?
-> 
-> Thanks,
-> NeilBrown
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+# grep nfs /proc/slabinfo
+nfsd4_delegations      0      0    360   22    2 : tunables    0    0
+  0 : slabdata      0      0      0
+nfsd4_stateids         0      0    120   34    1 : tunables    0    0
+  0 : slabdata      0      0      0
+nfsd4_files            0      0    136   30    1 : tunables    0    0
+  0 : slabdata      0      0      0
+nfsd4_stateowners      0      0    424   38    4 : tunables    0    0
+  0 : slabdata      0      0      0
+nfs_direct_cache       0      0    136   30    1 : tunables    0    0
+  0 : slabdata      0      0      0
+nfs_write_data        46     46    704   23    4 : tunables    0    0
+  0 : slabdata      2      2      0
+nfs_read_data        207    207    704   23    4 : tunables    0    0
+  0 : slabdata      9      9      0
+nfs_inode_cache    23901  23901   1056   31    8 : tunables    0    0
+  0 : slabdata    771    771      0
+nfs_page             256    256    128   32    1 : tunables    0    0
+  0 : slabdata      8      8      0
