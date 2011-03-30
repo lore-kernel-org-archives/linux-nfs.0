@@ -1,164 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-iy0-f174.google.com ([209.85.210.174]:52145 "EHLO
-	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752966Ab1CNM6A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Mar 2011 08:58:00 -0400
-Received: by mail-iy0-f174.google.com with SMTP id 26so4900509iyb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Mar 2011 05:58:00 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/12] NFS: Remove "const" from "struct nfs_server *" fields
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 14 Mar 2011 08:57:58 -0400
-Message-ID: <20110314125758.2413.94921.stgit@matisse.1015granger.net>
-In-Reply-To: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
-References: <20110314125204.2413.8870.stgit@matisse.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from verein.lst.de ([213.95.11.211]:59037 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754815Ab1C3Rdo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Mar 2011 13:33:44 -0400
+Date: Wed, 30 Mar 2011 19:33:44 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Rees <rees@citi.umich.edu>, linux-nfs@vger.kernel.org
+Subject: Re: [RFC] spnfs-block: restore i_op->fallocate
+Message-ID: <20110330173344.GA24631@lst.de>
+References: <1301500460-16467-1-git-send-email-bhalevy@panasas.com> <20110330155811.GA21931@lst.de> <4D936453.2070501@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D936453.2070501@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We're about to pass the nfs_server pointer in some NFSv4 argument and
-result structures to functions that may change it, so it's no longer
-"const".
+On Wed, Mar 30, 2011 at 07:11:47PM +0200, Benny Halevy wrote:
+> Makes sense. This could also be done by adding a respective flags argument
+> to fallocate and have a common wrapper function look at the file descriptor
+> and call the fs fallocate, that could then get the inode rather the file.
+> In other words, why copy code rather than factor it out into a common
+> function?
 
-The preference here is to maintain existing whitespace style rather
-than answer all the nits called out by checkpatch.pl.
+We can discuss that _iff_ a valid use for a file-less fallocate appears
+in mainline.  The pnfs-block one is not.  It's just a racy hack, which
+opens gapping holes.  Take a look what it does - it allocates block for
+a client to write into directly, with absolutely zero guarantee the
+block allocation actually stays around until that point.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- include/linux/nfs_xdr.h |   28 ++++++++++++++--------------
- 1 files changed, 14 insertions(+), 14 deletions(-)
-
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index bcf823b..b9ae049 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -256,7 +256,7 @@ struct nfs_openargs {
- 		fmode_t		delegation_type;	/* CLAIM_PREVIOUS */
- 	} u;
- 	const struct qstr *	name;
--	const struct nfs_server *server;	 /* Needed for ID mapping */
-+	struct nfs_server *	server;		/* Needed for ID mapping */
- 	const u32 *		bitmask;
- 	__u32			claim;
- 	struct nfs4_sequence_args	seq_args;
-@@ -270,7 +270,7 @@ struct nfs_openres {
- 	struct nfs_fattr *      f_attr;
- 	struct nfs_fattr *      dir_attr;
- 	struct nfs_seqid *	seqid;
--	const struct nfs_server *server;
-+	struct nfs_server *	server;
- 	fmode_t			delegation_type;
- 	nfs4_stateid		delegation;
- 	__u32			do_recall;
-@@ -309,7 +309,7 @@ struct nfs_closeres {
- 	nfs4_stateid            stateid;
- 	struct nfs_fattr *	fattr;
- 	struct nfs_seqid *	seqid;
--	const struct nfs_server *server;
-+	struct nfs_server *	server;
- 	struct nfs4_sequence_res	seq_res;
- };
- /*
-@@ -381,7 +381,7 @@ struct nfs4_delegreturnargs {
- 
- struct nfs4_delegreturnres {
- 	struct nfs_fattr * fattr;
--	const struct nfs_server *server;
-+	struct nfs_server * server;
- 	struct nfs4_sequence_res	seq_res;
- };
- 
-@@ -431,7 +431,7 @@ struct nfs_writeres {
- 	struct nfs_fattr *	fattr;
- 	struct nfs_writeverf *	verf;
- 	__u32			count;
--	const struct nfs_server *server;
-+	struct nfs_server *	server;
- 	struct nfs4_sequence_res	seq_res;
- };
- 
-@@ -446,7 +446,7 @@ struct nfs_removeargs {
- };
- 
- struct nfs_removeres {
--	const struct nfs_server *server;
-+	struct nfs_server	*server;
- 	struct nfs_fattr	*dir_attr;
- 	struct nfs4_change_info	cinfo;
- 	struct nfs4_sequence_res 	seq_res;
-@@ -465,7 +465,7 @@ struct nfs_renameargs {
- };
- 
- struct nfs_renameres {
--	const struct nfs_server		*server;
-+	struct nfs_server		*server;
- 	struct nfs4_change_info		old_cinfo;
- 	struct nfs_fattr		*old_fattr;
- 	struct nfs4_change_info		new_cinfo;
-@@ -546,7 +546,7 @@ struct nfs_getaclres {
- 
- struct nfs_setattrres {
- 	struct nfs_fattr *              fattr;
--	const struct nfs_server *	server;
-+	struct nfs_server *		server;
- 	struct nfs4_sequence_res	seq_res;
- };
- 
-@@ -719,7 +719,7 @@ struct nfs4_accessargs {
- };
- 
- struct nfs4_accessres {
--	const struct nfs_server *	server;
-+	struct nfs_server *		server;
- 	struct nfs_fattr *		fattr;
- 	u32				supported;
- 	u32				access;
-@@ -747,7 +747,7 @@ struct nfs4_create_arg {
- };
- 
- struct nfs4_create_res {
--	const struct nfs_server *	server;
-+	struct nfs_server *		server;
- 	struct nfs_fh *			fh;
- 	struct nfs_fattr *		fattr;
- 	struct nfs4_change_info		dir_cinfo;
-@@ -773,7 +773,7 @@ struct nfs4_getattr_arg {
- };
- 
- struct nfs4_getattr_res {
--	const struct nfs_server *	server;
-+	struct nfs_server *		server;
- 	struct nfs_fattr *		fattr;
- 	struct nfs4_sequence_res	seq_res;
- };
-@@ -787,7 +787,7 @@ struct nfs4_link_arg {
- };
- 
- struct nfs4_link_res {
--	const struct nfs_server *	server;
-+	struct nfs_server *		server;
- 	struct nfs_fattr *		fattr;
- 	struct nfs4_change_info		cinfo;
- 	struct nfs_fattr *		dir_attr;
-@@ -803,7 +803,7 @@ struct nfs4_lookup_arg {
- };
- 
- struct nfs4_lookup_res {
--	const struct nfs_server *	server;
-+	struct nfs_server *		server;
- 	struct nfs_fattr *		fattr;
- 	struct nfs_fh *			fh;
- 	struct nfs4_sequence_res	seq_res;
-@@ -918,7 +918,7 @@ struct nfs4_fs_location {
- #define NFS4_FS_LOCATIONS_MAXENTRIES 10
- struct nfs4_fs_locations {
- 	struct nfs_fattr fattr;
--	const struct nfs_server *server;
-+	struct nfs_server *server;
- 	struct nfs4_pathname fs_path;
- 	int nlocations;
- 	struct nfs4_fs_location locations[NFS4_FS_LOCATIONS_MAXENTRIES];
+You'll need to have some outstanding token on extent map changes like
+done in CXFS or NEC's "gfs" which implemented something similar to pnfs
+based on nfsv3.
 
