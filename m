@@ -1,63 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:41423 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:4330 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754506Ab1CUWy6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Mar 2011 18:54:58 -0400
-Subject: Re: Small O_SYNC writes are no longer NFS_DATA_SYNC
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <20110322091757.7bf56d80@notabene.brown>
-References: <20110216171555.6642c630@notabene.brown>
-	 <1300405987.4621.10.camel@lade.trondhjem.org>
-	 <20110318120417.435551da@notabene.brown>
-	 <1300412966.9671.9.camel@lade.trondhjem.org>
-	 <20110318131214.0e2c840a@notabene.brown>
-	 <1300415108.13476.6.camel@lade.trondhjem.org>
-	 <20110318145232.7bbb4216@notabene.brown>
-	 <1300741320.13307.50.camel@lade.trondhjem.org>
-	 <20110322091757.7bf56d80@notabene.brown>
+	id S965125Ab1C3Vda (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Mar 2011 17:33:30 -0400
+Subject: Re: [REGRESSION] 8f70e95f9f4159184f557 causes mount failure with
+ EGAIN
+From: Eric Paris <eparis@redhat.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com
+In-Reply-To: <4D939CAF.40506@netapp.com>
+References: <1301513561.561.7.camel@unknown001a4b0c2895>
+	 <4D939CAF.40506@netapp.com>
 Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 21 Mar 2011 18:54:55 -0400
-Message-ID: <1300748095.26546.12.camel@lade.trondhjem.org>
+Date: Wed, 30 Mar 2011 17:33:25 -0400
+Message-ID: <1301520805.561.11.camel@unknown001a4b0c2895>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-03-22 at 09:17 +1100, NeilBrown wrote:
-> On Mon, 21 Mar 2011 17:02:00 -0400 Trond Myklebust
-> <Trond.Myklebust@netapp.com> wrote:
-> I must admit that I found the terminology a bit confusing for 
-> FLUSH_COND_STABLE.
-> What is means is "if this turns out to be part of a larger request, then clear
-> FLUSH_STABLE" - which sounds a bit more like "FLUSH_COND_UNSTABLE" - i.e. if
-> a condition is met, then make it unstable.
-> But I don't think that change would help at all.
+On Wed, 2011-03-30 at 17:12 -0400, Bryan Schumaker wrote:
+> On 03/30/2011 03:32 PM, Eric Paris wrote:
+> > $ git bisect good
+> > 8f70e95f9f4159184f557a1db60c909d7c1bd2e3 is the first bad commit
+> > commit 8f70e95f9f4159184f557a1db60c909d7c1bd2e3
+> > Author: Bryan Schumaker <bjschuma@netapp.com>
+> > Date:   Thu Mar 24 17:12:31 2011 +0000
+> > 
+> >     NFS: Determine initial mount security
+> >     
+> >     When sec=<something> is not presented as a mount option,
+> >     we should attempt to determine what security flavor the
+> >     server is using.
+> >     
+> >     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> >     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > 
+> > Using a linux-next kernel for the last 2 days I have been unable to
+> > mount exports from my RHEL6 server.  mount(2) returned EAGAIN.  Turned
 > 
-> How about changing the test in nfs_write_rpcsetup to
-> 	if (how & (FLUSH_STABLE|FLUSH_CONDSTABLE)) {
-> 		data->args.stable = NFS_DATA_SYNC;
-> 		if (!nfs_need_commit(NFS_I(inode)))
-> 			data->args.stable = NFS_FILE_SYNC;
-> 	}
+> Thanks for letting me know.  What does your exports file look like?
+
+# cat /etc/exports
+/		127.0.0.1(fsid=0)
+/export		*(rw,fsid=1,all_squash,anonuid=500,anongid=500)
+
+The client fstab looks like:
+paris.rdu.redhat.com:/export/ /storage nfs tcp,noatime,nodiratime,noauto,users,exec,suid 0 0
+
 > 
-> and then just set either FLUSH_STABLE or FLUSH_COND_STABLE - never both -
-> and when you test FLUSH_COND_STABLE and then some other condition, just
-> clear FLUSH_COND_STABLE.
+> Bryan
 > 
-> I would find that quite a bit more readable.
+> > up debugging (thanks jlayton) and got:
+> > 
+> >         [ 1732.795056] NFS: nfs mount opts='tcp,vers=4,addr=10.11.231.241,clientaddr=10.11.231.191'
+> >         [ 1732.798079] NFS:   parsing nfs mount option 'tcp'
+> >         [ 1732.800210] NFS:   parsing nfs mount option 'vers=4'
+> >         [ 1732.802324] NFS:   parsing nfs mount option 'addr=10.11.231.241'
+> >         [ 1732.804477] NFS:   parsing nfs mount option 'clientaddr=10.11.231.191'
+> >         [ 1732.805790] NFS: MNTPATH: '/export/'
+> >         [ 1732.806663] --> nfs4_try_mount()
+> >         [ 1732.807459] --> nfs4_create_server()
+> >         [ 1732.808301] --> nfs4_init_server()
+> >         [ 1732.809136] --> nfs4_set_client()
+> >         [ 1732.809898] --> nfs_get_client(paris.rdu.redhat.com,v4)
+> >         [ 1732.811122] NFS: get client cookie (0xffff880039cfd9e8/0xffff88003b889000)
+> >         [ 1732.813771] NFS: Callback listener port = 36700 (af 2)
+> >         [ 1732.814931] NFS: Callback listener port = 60202 (af 10)
+> >         [ 1732.816199] --> nfs_get_client() = ffff880039cfd9e8 [new]
+> >         [ 1732.817356] <-- nfs4_set_client() = 0 [new ffff880039cfd9e8]
+> >         [ 1732.818587] <-- nfs4_init_server() = 0
+> >         [ 1732.819476] --> nfs4_get_rootfh()
+> >         [ 1732.820282] encode_compound: tag=
+> >         [ 1732.822070] encode_compound: tag=
+> >         [ 1732.822937] nfs4_get_rootfh: getroot error = 11
+> >         [ 1732.823982] <-- nfs4_get_rootfh() = -11
+> >         [ 1732.824880] --> nfs_free_server()
+> >         [ 1732.846219] --> nfs_put_client({1})
+> >         [ 1732.847888] --> nfs_free_client(4)
+> >         [ 1732.850236] NFS: releasing client cookie (0xffff880039cfd9e8/0xffff88003b889000)
+> >         [ 1732.853726] <-- nfs_free_client()
+> >         [ 1732.854505] <-- nfs_free_server()
+> >         [ 1732.855274] <-- nfs4_create_server() = error -11
+> >         [ 1732.856187] <-- nfs4_try_mount() = -11 [error]
+> > 
+> > Bisected and got the commit listed above.
+> > 
+> 
 
-The reason why I opted not to go for that approach was because
-nfs_write_rpcsetup() doesn't really know about whether or not there are
-any more RPCs pending (and so having a 'conditional' flag being
-interpreted there didn't appear to make sense), but if you feel that is
-easier on the eyes then I'm happy to change my opinion.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
 
