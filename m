@@ -1,59 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:37087 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:3043 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752799Ab1C3JAt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Mar 2011 05:00:49 -0400
-Subject: Re: NFS v4 client blocks when using UDP protocol
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Tom Haynes <tdh@excfb.com>
-Cc: peter.staubach@emc.com, Zoltan.Menyhart@bull.net, chuck.lever@oracle.com,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <20110330001232.GB19700@adept.internal.excfb.com>
-References: <EB0F26AF-C0DB-4861-ABB5-72E39CB38090@bull.net>
-	 <4D91ED79.4020302@bull.net>
-	 <4A05F533-1BE6-4DFC-BC53-9392DA8BED76@oracle.com>
-	 <4D91FA1D.1000206@bull.net>
-	 <5E6794FC7B8FCA41A704019BE3C70E8B069D40C4@MX31A.corp.emc.com>
-	 <20110330001232.GB19700@adept.internal.excfb.com>
+	id S1755795Ab1C3Tcn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Mar 2011 15:32:43 -0400
+Subject: [REGRESSION] 8f70e95f9f4159184f557 causes mount failure with EGAIN
+From: Eric Paris <eparis@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: bjschuma@netapp.com, Trond.Myklebust@netapp.com
 Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 30 Mar 2011 11:00:47 +0200
-Message-ID: <1301475647.7654.34.camel@lade.trondhjem.org>
+Date: Wed, 30 Mar 2011 15:32:41 -0400
+Message-ID: <1301513561.561.7.camel@unknown001a4b0c2895>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-03-29 at 19:12 -0500, Tom Haynes wrote:
-> On Tue, Mar 29, 2011 at 11:50:36AM -0400, peter.staubach@emc.com wrote:
-> > It does talk about NFS over UDP, interestingly, but the text on page 25, indicates that the transport of choice MUST be one of the IETF-approved congestion control transport protocols, of which, UDP is not one.
-> > 
-> > Perhaps some clean up of RFC3530bis and RFC5661 could include removal of the UDP mentions.
-> 
-> The text in 3530bis could be made to match that in 5661:
-> 
->    It is permissible for a connectionless transport to be used under
->    NFSv4.1; however, reliable and in-order delivery of data combined
->    with congestion control by the connectionless transport is REQUIRED.
->    As a consequence, UDP by itself MUST NOT be used as an NFSv4.1
->    transport.  NFSv4.1 assumes that a client transport address and
->    server transport address used to send data over a transport together
->    constitute a connection, even if the underlying transport eschews the
->    concept of a connection.
-> 
-> But as we can see 5661 is very strong.
+$ git bisect good
+8f70e95f9f4159184f557a1db60c909d7c1bd2e3 is the first bad commit
+commit 8f70e95f9f4159184f557a1db60c909d7c1bd2e3
+Author: Bryan Schumaker <bjschuma@netapp.com>
+Date:   Thu Mar 24 17:12:31 2011 +0000
 
-I think Peter is referring to the text in section 2.2 and section 17.2
-which describes the format for netids and universal addresses
-specifically for the UDP case.
+    NFS: Determine initial mount security
+    
+    When sec=<something> is not presented as a mount option,
+    we should attempt to determine what security flavor the
+    server is using.
+    
+    Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-I agree with Peter's suggestion that we should just delete that text.
+Using a linux-next kernel for the last 2 days I have been unable to
+mount exports from my RHEL6 server.  mount(2) returned EAGAIN.  Turned
+up debugging (thanks jlayton) and got:
 
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+        [ 1732.795056] NFS: nfs mount opts='tcp,vers=4,addr=10.11.231.241,clientaddr=10.11.231.191'
+        [ 1732.798079] NFS:   parsing nfs mount option 'tcp'
+        [ 1732.800210] NFS:   parsing nfs mount option 'vers=4'
+        [ 1732.802324] NFS:   parsing nfs mount option 'addr=10.11.231.241'
+        [ 1732.804477] NFS:   parsing nfs mount option 'clientaddr=10.11.231.191'
+        [ 1732.805790] NFS: MNTPATH: '/export/'
+        [ 1732.806663] --> nfs4_try_mount()
+        [ 1732.807459] --> nfs4_create_server()
+        [ 1732.808301] --> nfs4_init_server()
+        [ 1732.809136] --> nfs4_set_client()
+        [ 1732.809898] --> nfs_get_client(paris.rdu.redhat.com,v4)
+        [ 1732.811122] NFS: get client cookie (0xffff880039cfd9e8/0xffff88003b889000)
+        [ 1732.813771] NFS: Callback listener port = 36700 (af 2)
+        [ 1732.814931] NFS: Callback listener port = 60202 (af 10)
+        [ 1732.816199] --> nfs_get_client() = ffff880039cfd9e8 [new]
+        [ 1732.817356] <-- nfs4_set_client() = 0 [new ffff880039cfd9e8]
+        [ 1732.818587] <-- nfs4_init_server() = 0
+        [ 1732.819476] --> nfs4_get_rootfh()
+        [ 1732.820282] encode_compound: tag=
+        [ 1732.822070] encode_compound: tag=
+        [ 1732.822937] nfs4_get_rootfh: getroot error = 11
+        [ 1732.823982] <-- nfs4_get_rootfh() = -11
+        [ 1732.824880] --> nfs_free_server()
+        [ 1732.846219] --> nfs_put_client({1})
+        [ 1732.847888] --> nfs_free_client(4)
+        [ 1732.850236] NFS: releasing client cookie (0xffff880039cfd9e8/0xffff88003b889000)
+        [ 1732.853726] <-- nfs_free_client()
+        [ 1732.854505] <-- nfs_free_server()
+        [ 1732.855274] <-- nfs4_create_server() = error -11
+        [ 1732.856187] <-- nfs4_try_mount() = -11 [error]
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Bisected and got the commit listed above.
 
