@@ -1,54 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:34838 "EHLO mx2.netapp.com"
+Received: from mx2.parallels.com ([64.131.90.16]:55101 "EHLO mx2.parallels.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932773Ab1CWP0W convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 11:26:22 -0400
-Subject: Re: [PATCH 0/4] RFC: RPC over AF_LOCAL, kernel client-side
-Content-Type: text/plain; charset=us-ascii
-From: Andy Adamson <andros@netapp.com>
-In-Reply-To: <20110322220518.4360.51304.stgit@matisse.1015granger.net>
-Date: Wed, 23 Mar 2011 11:26:05 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <B08BDAF0-04A9-42ED-ACCE-6291E0F6BF4E@netapp.com>
-References: <20110322220518.4360.51304.stgit@matisse.1015granger.net>
-To: Chuck Lever <chuck.lever@oracle.com>
+	id S1753629Ab1CaHrE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 Mar 2011 03:47:04 -0400
+Message-ID: <4D943164.40800@parallels.com>
+Date: Thu, 31 Mar 2011 02:46:44 -0500
+From: Rob Landley <rlandley@parallels.com>
+To: <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <containers@lists.linux-foundation.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Tim Spriggs <tims@uahirise.org>, Kir Kolyshkin <kir@parallels.com>,
+        Pavel Emelyanov <xemul@parallels.com>
+Subject: [PATCH 0/3] Fix NFSv3 to work with network namespaces.
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Are you reviving the "RPC Upcall" that I implemented 10 years ago?
+This patch series makes NFSv3 work inside an lxc container that uses a
+different network namespace than the host.
 
--->Andy
+The series contains three patches.  The first adds network namespace
+information to the NFSv3 code under fs/nfs (copying the network context
+from the mount process during options parsing, saving it with
+appropriate reference counting in the persistent nfs_client struct, and
+supplying it to the RPC functions).  The second and third patches add
+additional network namespace information to the sunrpc code under
+net/sunrpc (which already had partial support for network namespaces).
 
-On Mar 22, 2011, at 6:08 PM, Chuck Lever wrote:
+1) Add network context to struct nfs_client and make NFSv3 use it.
+2) Supply network namespace to rpcbind.
+3) Compare network namespace in auth_unix cache address checks.
 
-> Just for sh*ts and giggles, I threw together a partial implementation
-> of RPC over AF_LOCAL sockets, and taught the kernel rpcbind client to
-> use it for registering in-kernel RPC services.
-> 
-> It's still a little rough around the edges.  Any thoughts?
-> 
-> ---
-> 
-> Chuck Lever (4):
->      SUNRPC: Use AF_LOCAL for rpcbind upcalls
->      SUNRPC: Support for RPC over AF_LOCAL transports
->      SUNRPC: Rename xs_encode_tcp_fragment_header()
->      SUNRPC: Clean up use of curly braces in switch cases
-> 
-> 
-> include/linux/sunrpc/msg_prot.h |    1 
-> include/linux/sunrpc/xprt.h     |    3 
-> net/sunrpc/clnt.c               |   25 +-
-> net/sunrpc/rpcb_clnt.c          |   97 ++++++++-
-> net/sunrpc/svc.c                |    2 
-> net/sunrpc/xprtsock.c           |  417 ++++++++++++++++++++++++++++++++++++++-
-> 6 files changed, 506 insertions(+), 39 deletions(-)
-> 
-> -- 
-> Chuck Lever
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+My containers test environment setup is described at:
 
+  http://landley.net/lxc
+
+I exported the NFS share from the "Laptop" layer using knfsd with the
+/etc/exports line:
+
+  /home/landley/nfs 192.168.254.2(rw,no_root_squash,insecure)
+
+And the mount command I ran in the container is:
+
+  mount -t nfs -o nfsvers=3 10.0.2.2:/home/landley/nfs nfstest
+
+(You don't need the -o if you haven't compiled NFSv4 support into your
+kernel.)
+
+I've tested NFSv2 and NFSv3 with UDP and TCP transports.  This series
+does not address using NFSv4, pNFS, or knfsd from container context.
+I haven't fixed lockd or kerberos authentication yet.
