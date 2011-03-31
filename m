@@ -1,112 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from relay03.bluemeaney.com ([205.234.16.187]:56771 "EHLO
-	relay03.bluemeaney.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751899Ab1CWJmX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Mar 2011 05:42:23 -0400
-Message-ID: <4D89BCE6.3040707@nexenta.com>
-Date: Wed, 23 Mar 2011 12:27:02 +0300
-From: Vitaliy Gusev <gusev.vitaliy@nexenta.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH] nfs4: Fix NULL dereference at d_alloc_and_lookup()
-References: <1300830025-17152-1-git-send-email-gusev.vitaliy@nexenta.com>	 <1300830742.9442.53.camel@lade.trondhjem.org>	 <1300834707.17103.61.camel@vT510> <1300838379.22796.35.camel@lade.trondhjem.org>
-In-Reply-To: <1300838379.22796.35.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:41881 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755464Ab1CaBhM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Mar 2011 21:37:12 -0400
+Date: Wed, 30 Mar 2011 21:37:48 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Mark Moseley <moseleymark@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: BUG() in shrink_dcache_for_umount_subtree on nfs4 mount
+Message-ID: <20110330213748.513d0774@corrin.poochiereds.net>
+In-Reply-To: <AANLkTi=XA0dd7WJpX8DU-T_QSxnXmMfK-vLg+SpMR-cA@mail.gmail.com>
+References: <20110325161156.007b2a10@tlielax.poochiereds.net>
+	<AANLkTikq+y4hEaeyc=D5HRU2Jna4MZ41C+A3=0vF4JMZ@mail.gmail.com>
+	<AANLkTinSq5Zg-Webeb-XE5MGJaohG67cBMbii6gjtWkZ@mail.gmail.com>
+	<AANLkTi=XA0dd7WJpX8DU-T_QSxnXmMfK-vLg+SpMR-cA@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 03/23/2011 02:59 AM, Trond Myklebust wrote:
-> On Wed, 2011-03-23 at 01:58 +0300, Vitaliy Gusev wrote:
->> On Tue, 2011-03-22 at 17:52 -0400, Trond Myklebust wrote:
->>> On Wed, 2011-03-23 at 00:40 +0300, Vitaliy Gusev wrote:
->>>> From: Gusev Vitaliy<gusev.vitaliy@nexenta.com>
->>>>
->>>> d_alloc_and_lookup() calls i_op->lookup method due to
->>>> rootfh changes his fsid.
->>>>
->>>> During mount i_op of NFS root inode is set to
->>>> nfs_mountpoint_inode_operations, if rpc_ops->getroot()
->>>> and rpc_ops->getattr() return different fsid.
->>>
->>> That is a server bug! Why are you trying to "fix" that on the client
->>> instead of telling the user that their server deserves to be burned
->>> behind the shed?
->>>
->>
->> Because nfs_update_inode() does it with success and pleasure:
->>
->> 	if (S_ISDIR(inode->i_mode)&&  (fattr->valid&  NFS_ATTR_FATTR_FSID)&&
->> 			!nfs_fsid_equal(&server->fsid,&fattr->fsid)&&
->> 			!IS_AUTOMOUNT(inode))
->> 		server->fsid = fattr->fsid;
->>
->> And what are the reasons to tell to user about broken servers during
->> mount, but do not tell about it after mount ?
->
-> Sigh... That is a valid point.
->
-> Looking at the Linux NFS server, I see that it has 3 different ways to
-> derive a fsid: only two are guaranteed to survive a reboot. I believe
-> that is probably why we added the above code to nfs_update_inode().
->
-> Looking now at the uses of nfs4_get_root(), it looks as if all the users
-> have compared the original fsid to the super block fsid prior to getting
-> here, and so we know (hope) that the directory that was obtained with
-> this filehandle did at one point match. If that is always the case, then
-> we should be safe w.r.t. mistaking this for a server-side mountpoint.
-> Since a referral is supposed to give us an error when we try to get the
-> directory attributes,
+On Wed, 30 Mar 2011 14:55:00 -0700
+Mark Moseley <moseleymark@gmail.com> wrote:
 
-Check on referral at nfs4_get_rootfh():
+> > I'm not 100% sure it's related (but I'm going to guess it is) but on
+> > these same boxes, they're not actually able to reboot at the end of a
+> > graceful shutdown. After yielding that bug and continuing with the
+> > shutdown process, it gets all the way to exec'ing:
+> >
+> > reboot -d -f -i
+> >
+> > and then just hangs forever. I'm guessing a thread is hung still
+> > trying to unmount things. On another box, I triggered that bug with a
+> > umount of one top-level mount that had subtrees. When I umount'd
+> > another top-level mount with subtrees on that same box, it's blocked
+> > and unkillable. That second umount also logged another bug to the
+> > kernel logs.
+> >
+> > In both umounts described above, the entries in /proc/mounts go away
+> > after the umount.
+> >
+> > Jeff, are you at liberty to do a graceful shutdown of the box you saw
+> > that bug on? If so, does it actually reboot?
+> 
+> 
+> A bit more info: On the same boxes, freshly booted but with all the
+> same mounts (even the subtrees) mounted, I don't get that bug, so it
+> seems to happen just when there's been significant usage within those
+> mounts. These are all read-only mounts, if it makes a difference.
+> 
+> I was however able to trigger the bug on a box that had been running
+> (web serving) for about 15 minutes. Here's a snippet from slabinfo
+> right before umount'ing (let me know if more of it would help):
+> 
 
-	if (fsinfo.fattr->valid & NFS_ATTR_FATTR_V4_REFERRAL) {
-		printk(KERN_ERR "nfs4_get_rootfh:"
-		       " getroot obtained referral\n");
-		ret = -EREMOTE;
-		goto out;
-	}
+No, it hung. Unfortunately, I didn't collect any info that told me
+where it was hung though.
 
-is vain and can be removed. That path never sets NFS_ATTR_FATTR_V4_REFERRAL.
+I believe that's fairly typical though in situations like this. The
+problem is that we likely have a dentry refcount leak somewhere. The
+vfsmount refcount was low enough to allow an unmount though. Often
+these sorts of problems lurk in error handling code...
 
-then we know this isn't pointing to a referral.
+> # grep nfs /proc/slabinfo
+> nfsd4_delegations      0      0    360   22    2 : tunables    0    0
+>   0 : slabdata      0      0      0
+> nfsd4_stateids         0      0    120   34    1 : tunables    0    0
+>   0 : slabdata      0      0      0
+> nfsd4_files            0      0    136   30    1 : tunables    0    0
+>   0 : slabdata      0      0      0
+> nfsd4_stateowners      0      0    424   38    4 : tunables    0    0
+>   0 : slabdata      0      0      0
+> nfs_direct_cache       0      0    136   30    1 : tunables    0    0
+>   0 : slabdata      0      0      0
+> nfs_write_data        46     46    704   23    4 : tunables    0    0
+>   0 : slabdata      2      2      0
+> nfs_read_data        207    207    704   23    4 : tunables    0    0
+>   0 : slabdata      9      9      0
+> nfs_inode_cache    23901  23901   1056   31    8 : tunables    0    0
+>   0 : slabdata    771    771      0
+> nfs_page             256    256    128   32    1 : tunables    0    0
+>   0 : slabdata      8      8      0
 
+slabinfo probably won't tell us much here. If we can narrow down the
+reproducer for this though then that would definitely help.
+Actually, /proc/self/mountstats might give us something to go on...
 
-Check
-
-(A)
-	if (mntroot->d_inode->i_op != 
-NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
-		dput(mntroot);
-		error = -ESTALE;
-		goto error_splat_super;
-	}
-
-was initially added by commit 4c1fe2f7 and now is not required because:
-
-   1. This patch fixes of changing i_op at nfs_fhget(). So 
-nfs4_get_root() always will return i_op == dir_inode_ops.
-
-   2. commit 4c1fe2f7 fixed BUG_ON at nfs_follow_mountpoint(). Now there 
-is no BUG_ON. It was replaced with ESTALE by commit 44d5759d
-
-So only one thing that does check (A) -  it fixes changing fsid 
-behaviour for NFSv2,NFSv3 protocol - nfs_xdev_mount(). In other places 
-it can be removed:
-
-*** fs/nfs/super.c:
-nfs_xdev_mount[2483]           if (mntroot->d_inode->i_op != 
-NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
-
-nfs4_xdev_mount[3066]          if (mntroot->d_inode->i_op != 
-NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
-
-nfs4_remote_referral_mount[3153] if (mntroot->d_inode->i_op != 
-NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops) {
-
-
-
->
-> OK, I'll take this patch...
-
+-- 
+Jeff Layton <jlayton@redhat.com>
