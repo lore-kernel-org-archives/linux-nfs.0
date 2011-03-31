@@ -1,87 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from peace.netnation.com ([204.174.223.2]:40645 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752394Ab1CLBJc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Mar 2011 20:09:32 -0500
-Date: Fri, 11 Mar 2011 17:09:30 -0800
-From: Simon Kirby <sim@hostway.ca>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Mark Moseley <moseleymark@gmail.com>, linux-nfs@vger.kernel.org,
-        Al Viro <viro@ZenIV.linux.org.uk>, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [git pull] more vfs fixes for final
-Message-ID: <20110312010930.GD8211@hostway.ca>
-References: <20110310110931.GF22723@ZenIV.linux.org.uk> <AANLkTi=gv+iT6Lc_ADoBu9_P78ivhmOwLh-+Oki7WmD1@mail.gmail.com> <20110310115856.GG22723@ZenIV.linux.org.uk> <20110311210938.GB8211@hostway.ca> <20110311213519.GA9404@fieldses.org>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20110311213519.GA9404@fieldses.org>
+Received: from mail-wy0-f174.google.com ([74.125.82.174]:36613 "EHLO
+	mail-wy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751664Ab1CaXVd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Mar 2011 19:21:33 -0400
+In-Reply-To: <AANLkTimS19xXqwTgjZ7b6=D5OoNAqeGzBJk6FEFBNVAe@mail.gmail.com>
+References: <20110325161156.007b2a10@tlielax.poochiereds.net>
+	<AANLkTikq+y4hEaeyc=D5HRU2Jna4MZ41C+A3=0vF4JMZ@mail.gmail.com>
+	<AANLkTinSq5Zg-Webeb-XE5MGJaohG67cBMbii6gjtWkZ@mail.gmail.com>
+	<AANLkTi=XA0dd7WJpX8DU-T_QSxnXmMfK-vLg+SpMR-cA@mail.gmail.com>
+	<20110330213748.513d0774@corrin.poochiereds.net>
+	<AANLkTimS19xXqwTgjZ7b6=D5OoNAqeGzBJk6FEFBNVAe@mail.gmail.com>
+Date: Thu, 31 Mar 2011 16:21:31 -0700
+Message-ID: <AANLkTi=dinD0KeHDb1S8k6L0yfhGsAxVxiz7TwszVQ7E@mail.gmail.com>
+Subject: Re: BUG() in shrink_dcache_for_umount_subtree on nfs4 mount
+From: Mark Moseley <moseleymark@gmail.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Mar 11, 2011 at 04:35:19PM -0500, J. Bruce Fields wrote:
+On Thu, Mar 31, 2011 at 12:17 PM, Mark Moseley <moseleymark@gmail.com> wrote:
+> On Wed, Mar 30, 2011 at 6:37 PM, Jeff Layton <jlayton@redhat.com> wrote:
+>> On Wed, 30 Mar 2011 14:55:00 -0700
+>> Mark Moseley <moseleymark@gmail.com> wrote:
+>>
+>>> > I'm not 100% sure it's related (but I'm going to guess it is) but on
+>>> > these same boxes, they're not actually able to reboot at the end of a
+>>> > graceful shutdown. After yielding that bug and continuing with the
+>>> > shutdown process, it gets all the way to exec'ing:
+>>> >
+>>> > reboot -d -f -i
+>>> >
+>>> > and then just hangs forever. I'm guessing a thread is hung still
+>>> > trying to unmount things. On another box, I triggered that bug with a
+>>> > umount of one top-level mount that had subtrees. When I umount'd
+>>> > another top-level mount with subtrees on that same box, it's blocked
+>>> > and unkillable. That second umount also logged another bug to the
+>>> > kernel logs.
+>>> >
+>>> > In both umounts described above, the entries in /proc/mounts go away
+>>> > after the umount.
+>>> >
+>>> > Jeff, are you at liberty to do a graceful shutdown of the box you saw
+>>> > that bug on? If so, does it actually reboot?
+>>>
+>>>
+>>> A bit more info: On the same boxes, freshly booted but with all the
+>>> same mounts (even the subtrees) mounted, I don't get that bug, so it
+>>> seems to happen just when there's been significant usage within those
+>>> mounts. These are all read-only mounts, if it makes a difference.
+>>>
+>>> I was however able to trigger the bug on a box that had been running
+>>> (web serving) for about 15 minutes. Here's a snippet from slabinfo
+>>> right before umount'ing (let me know if more of it would help):
+>>>
+>>
+>> No, it hung. Unfortunately, I didn't collect any info that told me
+>> where it was hung though.
+>>
+>> I believe that's fairly typical though in situations like this. The
+>> problem is that we likely have a dentry refcount leak somewhere. The
+>> vfsmount refcount was low enough to allow an unmount though. Often
+>> these sorts of problems lurk in error handling code...
+>>
+>>> # grep nfs /proc/slabinfo
+>>> nfsd4_delegations      0      0    360   22    2 : tunables    0    0
+>>>   0 : slabdata      0      0      0
+>>> nfsd4_stateids         0      0    120   34    1 : tunables    0    0
+>>>   0 : slabdata      0      0      0
+>>> nfsd4_files            0      0    136   30    1 : tunables    0    0
+>>>   0 : slabdata      0      0      0
+>>> nfsd4_stateowners      0      0    424   38    4 : tunables    0    0
+>>>   0 : slabdata      0      0      0
+>>> nfs_direct_cache       0      0    136   30    1 : tunables    0    0
+>>>   0 : slabdata      0      0      0
+>>> nfs_write_data        46     46    704   23    4 : tunables    0    0
+>>>   0 : slabdata      2      2      0
+>>> nfs_read_data        207    207    704   23    4 : tunables    0    0
+>>>   0 : slabdata      9      9      0
+>>> nfs_inode_cache    23901  23901   1056   31    8 : tunables    0    0
+>>>   0 : slabdata    771    771      0
+>>> nfs_page             256    256    128   32    1 : tunables    0    0
+>>>   0 : slabdata      8      8      0
+>>
+>> slabinfo probably won't tell us much here. If we can narrow down the
+>> reproducer for this though then that would definitely help.
+>> Actually, /proc/self/mountstats might give us something to go on...
+>
+> Would turning on kmemleak and letting it run for a bit (luckily 15
+> mins of regular use seems to be enough to trigger this bug) tell us
+> anything? I can do that easily enough but I don't know if it tracks
+> dentry entries.
+>
+> Also I'll grab mountstats as well before/after trying a umount.
+> Anything in particular within mountstats I should pay close attention
+> to?
+>
 
-> On Fri, Mar 11, 2011 at 01:09:38PM -0800, Simon Kirby wrote:
-> > On Thu, Mar 10, 2011 at 11:58:56AM +0000, Al Viro wrote:
-> > 
-> > > commit d891eedbc3b1b0fade8a9ce60cc0eba1cccb59e5
-> > > Author: J. Bruce Fields <bfields@fieldses.org>
-> > > Date:   Tue Jan 18 15:45:09 2011 -0500
-> > > 
-> > >     fs/dcache: allow d_obtain_alias() to return unhashed dentries
-> > 
-> > Hmm, I was hoping this or something recently would fix nfs_inode_cache
-> > growing forever and flush processes taking lots of system time since
-> > 2.6.36. For example:
-> > 
-> >   OBJS ACTIVE  USE OBJ SIZE  SLABS OBJ/SLAB CACHE SIZE NAME
-> > 3457486 3454365  99%    0.95K 105601       33   3379232K nfs_inode_cache
-> > 469638 248761  52%    0.10K  12042       39     48168K buffer_head
-> > 243712 216348  88%    0.02K    952      256      3808K kmalloc-16
-> > 232785 202185  86%    0.19K  11085       21     44340K dentry
-> > 149696  54633  36%    0.06K   2339       64      9356K kmalloc-64
-> > 115976 106806  92%    0.55K   4142       28     66272K radix_tree_node
-> >  76064  45680  60%    0.12K   2377       32      9508K kmalloc-128
-> >  62336  53427  85%    0.03K    487      128      1948K kmalloc-32
-> >  41958  41250  98%    0.75K   1998       21     31968K ext3_inode_cache
-> > 
-> > This clears them all, similar to what you posted:
-> > 
-> > echo 2 > /proc/sys/vm/drop_caches
-> > sync
-> > echo 2 > /proc/sys/vm/drop_caches
-> > 
-> > ...but 2.6.38-rc8 still doesn't seem to fix it.
-> > 
-> > http://0x.ca/sim/ref/2.6.37/cpu3_nfs.png
-> > http://www.spinics.net/lists/linux-nfs/msg18212.html
-> > 
-> > Any ideas?  This started with 2.6.36.
-> 
-> Do you have NFSv4 clients that are doing locking?  Then it's probably
-> 0997b17360 and 529d7b2a7f on the for-2.6.39 branch at:
-> 
-> 	git://linux-nfs.org/~bfields/linux.git for-2.6.39
-> 
-> Let me know if not.
+I've been trying random things too, just to see if anything shakes out:
 
-Yes, but when this started, it was all NFSv3. I tried NFSv4 to see if
-it made any different (no, other than more I/O wait due to idmapd and
-flock(LOCK_EX) breaking on a file opened O_RDONLY, which works locally
-and on NFSv3 -- fixed by changing to open(O_RDWR) in my code), but
-otherwise NFSv3 and NFSv4 look pretty much the same and "leak" at the
-same rate.
+* I tried mounting the top-level mount with the subtree mounts via TCP
+(was UDP), but I still get that error.
 
-Actually, I only changed the mount where it writes the log results, and
-not where it reads them from (a bunch of NFSv3 mounts that will take a
-lot more work to make NFSv4 since they currently run without libnss-mysql
-set up), so I haven't actually tested to see if it happens with purely
-NFSv4 mounts.
+* Mounting normally (UDP), if I iterate through the subtrees and
+unmount them *first* (so that there's zero subtrees left over) and
+then unmount the top-level mount, I *don't* get that error. And a
+umount at shutdown proceeds without error and the final call to reboot
+works just fine (instead of hanging indefinitely). So unmounting all
+the subtrees first cleans things up sufficiently.
 
-Anyway, it's locking on one file only, and it was purely for reducing
-writeback thrashing, so I could try without it if you think it might be
-related, but it all started without NFSv4. All this thing does is read a
-bunch of log files, crunch them into reports, and write them to another
-mount point, all run from xargs -P. Pretty basic readdir, read, write,
-unlink...not anything exotic.
-
-Simon-
+One random/irrelevant but slightly interesting thing is that when I
+trigger that error, it also bumps kernel.printk from "1 7 1 4" to "15
+7 1 4". I've not seen that before.
