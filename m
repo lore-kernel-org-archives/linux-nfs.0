@@ -1,153 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33597 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751981Ab1DMMhB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Apr 2011 08:37:01 -0400
-Date: Wed, 13 Apr 2011 08:36:56 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Badari Pulavarty <pbadari@us.ibm.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        khoa@us.ibm.com
-Subject: Re: [RFC][PATCH] Vector read/write support for NFS (DIO) client
-Message-ID: <20110413083656.12e54a91@tlielax.poochiereds.net>
-In-Reply-To: <1302630360.3877.72.camel@badari-desktop>
-References: <1302622335.3877.62.camel@badari-desktop>
-	<0DC51758-AE6C-4DD2-A959-8C8E701FEA4E@oracle.com>
-	<1302624935.3877.66.camel@badari-desktop>
-	<FF1EE11E-62EB-42B9-A4C9-7A2FE4C60D2F@oracle.com>
-	<1302630360.3877.72.camel@badari-desktop>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qw0-f46.google.com ([209.85.216.46]:57462 "EHLO
+	mail-qw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753230Ab1DAIaq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Apr 2011 04:30:46 -0400
+Received: by qwk3 with SMTP id 3so1997172qwk.19
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Apr 2011 01:30:45 -0700 (PDT)
+Message-ID: <4D958D31.6030507@panasas.com>
+Date: Fri, 01 Apr 2011 04:30:41 -0400
+From: Benny Halevy <bhalevy@panasas.com>
+To: Christoph Hellwig <hch@lst.de>
+CC: Rees <rees@citi.umich.edu>, linux-nfs@vger.kernel.org
+Subject: Re: [RFC] spnfs-block: restore i_op->fallocate
+References: <1301500460-16467-1-git-send-email-bhalevy@panasas.com> <20110330155811.GA21931@lst.de> <4D936453.2070501@panasas.com> <20110330173344.GA24631@lst.de> <4D942506.1020505@panasas.com> <20110331135338.GA20235@lst.de>
+In-Reply-To: <20110331135338.GA20235@lst.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 12 Apr 2011 10:46:00 -0700
-Badari Pulavarty <pbadari@us.ibm.com> wrote:
+On 2011-03-31 09:53, Christoph Hellwig wrote:
 
-> On Tue, 2011-04-12 at 12:42 -0400, Chuck Lever wrote:
-> > On Apr 12, 2011, at 12:15 PM, Badari Pulavarty wrote:
-> > 
-> > > On Tue, 2011-04-12 at 11:36 -0400, Chuck Lever wrote:
-> > >> On Apr 12, 2011, at 11:32 AM, Badari Pulavarty wrote:
-> > >> 
-> > >>> Hi,
-> > >>> 
-> > >>> We recently ran into serious performance issue with NFS client.
-> > >>> It turned out that its due to lack of readv/write support for
-> > >>> NFS (O_DIRECT) client.
-> > >>> 
-> > >>> Here is our use-case:
-> > >>> 
-> > >>> In our cloud environment, our storage is over NFS. Files
-> > >>> on NFS are passed as a blockdevices to the guest (using
-> > >>> O_DIRECT). When guest is doing IO on these block devices,
-> > >>> they will end up as O_DIRECT writes to NFS (on KVM host).
-> > >>> 
-> > >>> QEMU (on the host) gets a vector from virtio-ring and
-> > >>> submits them. Old versions of QEMU, linearized the vector
-> > >>> it got from KVM (copied them into a buffer) and submits
-> > >>> the buffer. So, NFS client always received a single buffer.
-> > >>> 
-> > >>> Later versions of QEMU, eliminated this copy and submits
-> > >>> a vector directly using preadv/pwritev().
-> > >>> 
-> > >>> NFS client loops through the vector and submits each
-> > >>> vector as separate request for each IO < wsize. In our
-> > >>> case (negotiated wsize=1MB), for 256K IO - we get 64 
-> > >>> vectors, each 4K. So, we end up submitting 64 4K FILE_SYNC IOs. 
-> > >>> Server end up doing each 4K synchronously. This causes
-> > >>> serious performance degrade. We are trying to see if the
-> > >>> performance improves if we convert IOs to ASYNC - but
-> > >>> our initial results doesn't look good.
-> > >>> 
-> > >>> readv/writev support NFS client for all possible cases is
-> > >>> hard. Instead, if all vectors are page-aligned and 
-> > >>> iosizes page-multiple - it fits the current code easily.
-> > >>> Luckily, QEMU use-case fits these requirements.
-> > >>> 
-> > >>> Here is the patch to add this support. Comments ?
-> > >> 
-> > >> Restricting buffer alignment requirements would be an onerous API change, IMO.
-> > > 
-> > > I am not suggesting an API change at all. All I am doing is, if all
-> > > the IOs are aligned - we can do a fast path as we can do in a single
-> > > IO request. (as if we got a single buffer). Otherwise, we do hard
-> > > way as today - loop through each one and do them individually.
-> > 
-> > Thanks for the clarification.  That means you don't also address the problem of doing multiple small segments with FILE_SYNC writes.
-> > 
-> > >> If the NFS write path is smart enough not to set FILE_SYNC when there are multiple segments to write, then the problem should be mostly fixed.  I think Jeff Layton already has a patch that does this.
-> > > 
-> > > We are trying that patch. It does improve the performance by little,
-> > > but not anywhere close to doing it as a single vector/buffer.
-> > > 
-> > > Khoa, can you share your performance data for all the
-> > > suggestions/patches you tried so far ?
-> > 
-> > The individual WRITEs should be submitted in parallel.  If there is additional performance overhead, it is probably due to the small RPC slot table size.  Have you tried increasing it?
-> 
-> We haven't tried both fixes together (RPC slot increase, Turn into
-> ASYNC). Each one individually didn't help much. We will try them
-> together.
-> 
+> Btw, how is the spnfs-block support supposed to work at all?
+>
+> fallocate creates unwritten extents, and I can't actually
+> spot a place that would later convert them to regular extents.
 
-I must have missed some of these emails, but here's the patch that
-Chuck mentioned and based on his suggestion. It may be reasonable as a
-stopgap solution until Trond's overhaul of the DIO code is complete.
+It's supposed to work by committing the extents on
+layoutcommit. It's supposed to happen in the spnfs-block
+but it doesn't. Currently, the generic layer calls write_inode_now
+if the size changes and the fs is exported "sync" so my guess is that
+it works now only when the file is extended but not when writing
+in-place into holes.
 
-With this + a larger slot table size, I would think you'd have a
-substantial write performance improvement. Probably not as good as if
-the writes were coalesced, but it should help.
+> And how does it work for filesystems without ->fallocate like
+> ext3?
 
-Badari, if you can let us know whether this plus increasing the slot
-table size helps, then I'll plan to "officially" submit it. This one is
-against RHEL6 but it should apply to mainline kernels with a small
-offset.
+It doesn't.  spnfs-block requires fs support for fallocate and fiemap.
 
------------------[snip]-----------------
+> And how do we prevent clients from reading uninitialized
+> blocks in areas allocated on the server but not written
+> to yet.  Is there anything like unwritten extents in the
+> on the write protocol?
 
-BZ#694309: nfs: use unstable writes for bigger groups of DIO writes
+Yes, there is, yet spnfs-block does not implement it
+as it was implemented essentially as a reference/testing tool.
 
-Currently, the client uses FILE_SYNC whenever it's writing less than or
-equal data to the wsize. This is a problem though if we have a bunch
-of small iovec's batched up in a single writev call. The client will
-iterate over them and do a single FILE_SYNC WRITE for each.
+The protocol allows the server to provisionally allocate space
+on layoutget that the client can write into, privately.
+The clients changes only become visible to other clients
+when they are committed to the file on LAYOUTCOMMIT.
+This also allows implementing copy-on-write as the client
+can be given in the layout separate extents describing the
+readable copy of the block and the writeable one and the
+client participates in the copy-on-write process by copying
+the contents of the block before modifying it (or zeroing it out
+if it's just invalid).  This is done at write_begin time on
+the client side.
 
-Instead, change the code to do unstable writes when we'll need to do
-multiple WRITE RPC's in order to satisfy the request. While we're at
-it, optimize away the allocation of commit_data when we aren't going
-to use it anyway.
+Benny
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/direct.c |   13 +++++++++++--
- 1 files changed, 11 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 398f8ed..d2ed659 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -870,9 +870,18 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 	dreq = nfs_direct_req_alloc();
- 	if (!dreq)
- 		goto out;
--	nfs_alloc_commit_data(dreq);
- 
--	if (dreq->commit_data == NULL || count <= wsize)
-+	if (count > wsize || nr_segs > 1)
-+		nfs_alloc_commit_data(dreq);
-+	else
-+		dreq->commit_data = NULL;
-+
-+	/*
-+	 * If we couldn't allocate commit data, or we'll just be doing a
-+	 * single write, then make this a NFS_FILE_SYNC write and do away
-+	 * with the commit.
-+	 */
-+	if (dreq->commit_data == NULL)
- 		sync = NFS_FILE_SYNC;
- 
- 	dreq->inode = inode;
--- 
-1.7.1
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
