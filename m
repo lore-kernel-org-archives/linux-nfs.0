@@ -1,55 +1,169 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:25720 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756257Ab1DVQzL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Apr 2011 12:55:11 -0400
-Date: Fri, 22 Apr 2011 12:54:52 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: andros@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] nfsd v4.1 lOCKT clientid field must be ignored
-Message-ID: <20110422165451.GB23345@pad.home.fieldses.org>
-References: <1303490759-2646-1-git-send-email-andros@netapp.com>
- <1303490759-2646-2-git-send-email-andros@netapp.com>
+Received: from rcsinet10.oracle.com ([148.87.113.121]:23791 "EHLO
+	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758047Ab1DAQ5r convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Apr 2011 12:57:47 -0400
+Subject: Re: kstrtox: convert net/sunrpc/
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1303490759-2646-2-git-send-email-andros@netapp.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20110331213625.GA3637@p183.telecom.by>
+Date: Fri, 1 Apr 2011 12:57:41 -0400
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <2A9AAF9A-727C-4558-883C-8052D1E2EF5A@oracle.com>
+References: <20110331213625.GA3637@p183.telecom.by>
+To: Alexey Dobriyan <adobriyan@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, Apr 22, 2011 at 12:45:59PM -0400, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> RFC 5661 Section 18.11.3
-> 
->    The clientid field of the owner MAY be set to any value by the client
->    and MUST be ignored by the server.  The reason the server MUST ignore
->    the clientid field is that the server MUST derive the client ID from
->    the session ID from the SEQUENCE operation of the COMPOUND request.
 
-I thought I'd checked the network and determined the failure prevented
-the client from even sending a request--but I guess not!  Thanks for
-tracking this down, applied.--b.
+On Mar 31, 2011, at 5:36 PM, Alexey Dobriyan wrote:
 
+> * fix a bug in rpc_parse_scope_id() where successfull parsing of
+>  scope ID was an error.
+
+What was the bad behavior?
+
+This looks a little bigger than just a fix to rpc_parse_scope_id().  Perhaps it should be split.
+
+>  I'm not sure whether ID=0 should be banned, though.
 > 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
+> Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
 > ---
->  fs/nfsd/nfs4xdr.c |    2 --
->  1 files changed, 0 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index abdd42d..eb234df 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -591,8 +591,6 @@ nfsd4_decode_lockt(struct nfsd4_compoundargs *argp, struct nfsd4_lockt *lockt)
->  	READ_BUF(lockt->lt_owner.len);
->  	READMEM(lockt->lt_owner.data, lockt->lt_owner.len);
->  
-> -	if (argp->minorversion && !zero_clientid(&lockt->lt_clientid))
-> -		return nfserr_inval;
->  	DECODE_TAIL;
->  }
->  
-> -- 
-> 1.7.2.3
+> net/sunrpc/addr.c     |   20 ++++++++------------
+> net/sunrpc/auth.c     |   15 ++++++---------
+> net/sunrpc/xprtsock.c |    8 +++++---
+> 3 files changed, 19 insertions(+), 24 deletions(-)
 > 
+> --- a/net/sunrpc/addr.c
+> +++ b/net/sunrpc/addr.c
+> @@ -173,15 +173,15 @@ static int rpc_parse_scope_id(const char *buf, const size_t buflen,
+> 	len = (buf + buflen) - delim - 1;
+> 	p = kstrndup(delim + 1, len, GFP_KERNEL);
+> 	if (p) {
+> -		unsigned long scope_id = 0;
+> 		struct net_device *dev;
+> +		u32 scope_id;
+> 
+> 		dev = dev_get_by_name(&init_net, p);
+> 		if (dev != NULL) {
+> 			scope_id = dev->ifindex;
+> 			dev_put(dev);
+> 		} else {
+> -			if (strict_strtoul(p, 10, &scope_id) == 0) {
+> +			if (kstrtou32(p, 10, &scope_id) < 0) {
+> 				kfree(p);
+> 				return 0;
+> 			}
+> @@ -299,7 +299,7 @@ EXPORT_SYMBOL_GPL(rpc_sockaddr2uaddr);
+>  * @sap: buffer into which to plant socket address
+>  * @salen: size of buffer
+>  *
+> - * @uaddr does not have to be '\0'-terminated, but strict_strtoul() and
+> + * @uaddr does not have to be '\0'-terminated, but kstrto*() and
+>  * rpc_pton() require proper string termination to be successful.
+>  *
+>  * Returns the size of the socket address if successful; otherwise
+> @@ -309,8 +309,8 @@ size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
+> 			  struct sockaddr *sap, const size_t salen)
+> {
+> 	char *c, buf[RPCBIND_MAXUADDRLEN + sizeof('\0')];
+> -	unsigned long portlo, porthi;
+> -	unsigned short port;
+> +	u8 portlo, porthi;
+> +	u16 port;
+> 
+> 	if (uaddr_len > RPCBIND_MAXUADDRLEN)
+> 		return 0;
+> @@ -321,21 +321,17 @@ size_t rpc_uaddr2sockaddr(const char *uaddr, const size_t uaddr_len,
+> 	c = strrchr(buf, '.');
+> 	if (unlikely(c == NULL))
+> 		return 0;
+> -	if (unlikely(strict_strtoul(c + 1, 10, &portlo) != 0))
+> -		return 0;
+> -	if (unlikely(portlo > 255))
+> +	if (unlikely(kstrtou8(c + 1, 10, &portlo) != 0))
+> 		return 0;
+> 
+> 	*c = '\0';
+> 	c = strrchr(buf, '.');
+> 	if (unlikely(c == NULL))
+> 		return 0;
+> -	if (unlikely(strict_strtoul(c + 1, 10, &porthi) != 0))
+> -		return 0;
+> -	if (unlikely(porthi > 255))
+> +	if (unlikely(kstrtou8(c + 1, 10, &porthi) != 0))
+> 		return 0;
+> 
+> -	port = (unsigned short)((porthi << 8) | portlo);
+> +	port = (porthi << 8) | portlo;
+> 
+> 	*c = '\0';
+> 	if (rpc_pton(buf, strlen(buf), sap, salen) == 0)
+> --- a/net/sunrpc/auth.c
+> +++ b/net/sunrpc/auth.c
+> @@ -41,24 +41,21 @@ static unsigned long number_cred_unused;
+> #define MAX_HASHTABLE_BITS (14)
+> static int param_set_hashtbl_sz(const char *val, const struct kernel_param *kp)
+> {
+> -	unsigned long num;
+> -	unsigned int nbits;
+> +	unsigned int num, nbits;
+> 	int ret;
+> 
+> 	if (!val)
+> -		goto out_inval;
+> -	ret = strict_strtoul(val, 0, &num);
+> -	if (ret == -EINVAL)
+> -		goto out_inval;
+> +		return -EINVAL;
+> +	ret = kstrtouint(val, 0, &num);
+> +	if (ret < 0)
+> +		return ret;
+> 	nbits = fls(num);
+> 	if (num > (1U << nbits))
+> 		nbits++;
+> 	if (nbits > MAX_HASHTABLE_BITS || nbits < 2)
+> -		goto out_inval;
+> +		return -EINVAL;
+> 	*(unsigned int *)kp->arg = nbits;
+> 	return 0;
+> -out_inval:
+> -	return -EINVAL;
+> }
+> 
+> static int param_get_hashtbl_sz(char *buffer, const struct kernel_param *kp)
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -2502,13 +2502,15 @@ static int param_set_uint_minmax(const char *val,
+> 		const struct kernel_param *kp,
+> 		unsigned int min, unsigned int max)
+> {
+> -	unsigned long num;
+> +	unsigned int num;
+> 	int ret;
+> 
+> 	if (!val)
+> 		return -EINVAL;
+> -	ret = strict_strtoul(val, 0, &num);
+> -	if (ret == -EINVAL || num < min || num > max)
+> +	ret = kstrtouint(val, 0, &num);
+> +	if (ret < 0)
+> +		return ret;
+> +	if (num < min || num > max)
+> 		return -EINVAL;
+> 	*((unsigned int *)kp->arg) = num;
+> 	return 0;
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
