@@ -1,63 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bw0-f46.google.com ([209.85.214.46]:61578 "EHLO
-	mail-bw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758080Ab1DLSFj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Apr 2011 14:05:39 -0400
-Message-ID: <4DA4946D.5020403@suse.cz>
-Date: Tue, 12 Apr 2011 20:05:33 +0200
-From: Jiri Slaby <jslaby@suse.cz>
-To: Bryan Schumaker <bjschuma@netapp.com>
-CC: Jiri Slaby <jirislaby@gmail.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-        mm-commits@vger.kernel.org, ML netdev <netdev@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Fix infinite loop in gss_create_upcall()
-References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org> <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org> <4D9D5CC9.2040002@suse.cz> <4DA36722.2020402@suse.cz> <4DA36758.4070203@suse.cz> <4DA36DB6.8060108@suse.cz> <4DA48EB0.40600@netapp.com>
-In-Reply-To: <4DA48EB0.40600@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:42829 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756393Ab1DBTBS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 2 Apr 2011 15:01:18 -0400
+Date: Sat, 2 Apr 2011 15:01:17 -0400
+To: Eric Paris <eparis@redhat.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        Trond.Myklebust@netapp.com
+Subject: Re: [REGRESSION] 8f70e95f9f4159184f557 causes mount failure with
+ EGAIN
+Message-ID: <20110402190117.GA8960@fieldses.org>
+References: <1301513561.561.7.camel@unknown001a4b0c2895>
+ <4D939CAF.40506@netapp.com>
+ <1301520805.561.11.camel@unknown001a4b0c2895>
+ <1301535117.561.16.camel@unknown001a4b0c2895>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1301535117.561.16.camel@unknown001a4b0c2895>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 04/12/2011 07:41 PM, Bryan Schumaker wrote:
-> On 04/11/2011 05:08 PM, Jiri Slaby wrote:
->>
->> Sorry for an extra message. I've just found out that there appears
->> messages in dmesg:
->> [   58.656048] RPC: AUTH_GSS upcall timed out.
->> [   58.656050] Please check user daemon is running.
->> [   88.656065] RPC: AUTH_GSS upcall timed out.
->> [   88.656068] Please check user daemon is running.
->> [  118.656077] RPC: AUTH_GSS upcall timed out.
->> [  118.656080] Please check user daemon is running.
->> [  148.656049] RPC: AUTH_GSS upcall timed out.
->> [  148.656052] Please check user daemon is running.
->> [  178.656046] RPC: AUTH_GSS upcall timed out.
->> [  178.656049] Please check user daemon is running.
->>
->>
->> I instrumented the code and it's stuck with trying RPC_AUTH_GSS_KRB5.
->>
->> I don't use GSS at all.
->>
->> regards,
+On Wed, Mar 30, 2011 at 09:31:57PM -0400, Eric Paris wrote:
+> On Wed, 2011-03-30 at 17:33 -0400, Eric Paris wrote:
+> > On Wed, 2011-03-30 at 17:12 -0400, Bryan Schumaker wrote:
+> > > On 03/30/2011 03:32 PM, Eric Paris wrote:
+> > > > $ git bisect good
+> > > > 8f70e95f9f4159184f557a1db60c909d7c1bd2e3 is the first bad commit
+> > > > commit 8f70e95f9f4159184f557a1db60c909d7c1bd2e3
+> > > > Author: Bryan Schumaker <bjschuma@netapp.com>
+> > > > Date:   Thu Mar 24 17:12:31 2011 +0000
+> > > > 
+> > > >     NFS: Determine initial mount security
+> > > >     
+> > > >     When sec=<something> is not presented as a mount option,
+> > > >     we should attempt to determine what security flavor the
+> > > >     server is using.
+> > > >     
+> > > >     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> > > >     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > > > 
+> > > > Using a linux-next kernel for the last 2 days I have been unable to
+> > > > mount exports from my RHEL6 server.  mount(2) returned EAGAIN.  Turned
+> > > 
+> > > Thanks for letting me know.  What does your exports file look like?
+> > 
+> > # cat /etc/exports
+> > /		127.0.0.1(fsid=0)
+> > /export		*(rw,fsid=1,all_squash,anonuid=500,anongid=500)
 > 
-> Does this patch help?
-> 
-> - Bryan
-> 
-> 
-> 
-> There can be an infinite loop if gss_create_upcall() is called without
-> the userspace program running.  To prevent this, we return -EACCES if
-> we notice that pipe_version hasn't changed (indicating that the pipe
-> has not been opened).
+> At jlayton's suggestion I changed /exports to not include the /
+> 127.0.0.1 and removed both explicit fsid= and it works.  So this patch
+> broke my setup, but I have a workaround.
 
-Yes, it fixes the problem. But it waits 15s before it times out. This is
-inacceptable for automounted NFS dirs.
+OK, but I'm a little confused why that would make any difference to
+client security negotiation code.
 
-thanks,
--- 
-js
-suse labs
+Do we understand why your setup broke after that client change?
+
+--b
+
+> (I'm pretty sure the
+> previous / 127 entry was a workaround for a problem when all my clients
+> broke during Fedora's switch to use NFSv4 default.  Funny one workaround
+> comes back to bit me again  :))
+> 
+> Thanks! 
+> 
+> 
+> > The client fstab looks like:
+> > paris.rdu.redhat.com:/export/ /storage nfs tcp,noatime,nodiratime,noauto,users,exec,suid 0 0
+> > 
+> > > 
+> > > Bryan
+> > > 
+> > > > up debugging (thanks jlayton) and got:
+> > > > 
+> > > >         [ 1732.795056] NFS: nfs mount opts='tcp,vers=4,addr=10.11.231.241,clientaddr=10.11.231.191'
+> > > >         [ 1732.798079] NFS:   parsing nfs mount option 'tcp'
+> > > >         [ 1732.800210] NFS:   parsing nfs mount option 'vers=4'
+> > > >         [ 1732.802324] NFS:   parsing nfs mount option 'addr=10.11.231.241'
+> > > >         [ 1732.804477] NFS:   parsing nfs mount option 'clientaddr=10.11.231.191'
+> > > >         [ 1732.805790] NFS: MNTPATH: '/export/'
+> > > >         [ 1732.806663] --> nfs4_try_mount()
+> > > >         [ 1732.807459] --> nfs4_create_server()
+> > > >         [ 1732.808301] --> nfs4_init_server()
+> > > >         [ 1732.809136] --> nfs4_set_client()
+> > > >         [ 1732.809898] --> nfs_get_client(paris.rdu.redhat.com,v4)
+> > > >         [ 1732.811122] NFS: get client cookie (0xffff880039cfd9e8/0xffff88003b889000)
+> > > >         [ 1732.813771] NFS: Callback listener port = 36700 (af 2)
+> > > >         [ 1732.814931] NFS: Callback listener port = 60202 (af 10)
+> > > >         [ 1732.816199] --> nfs_get_client() = ffff880039cfd9e8 [new]
+> > > >         [ 1732.817356] <-- nfs4_set_client() = 0 [new ffff880039cfd9e8]
+> > > >         [ 1732.818587] <-- nfs4_init_server() = 0
+> > > >         [ 1732.819476] --> nfs4_get_rootfh()
+> > > >         [ 1732.820282] encode_compound: tag=
+> > > >         [ 1732.822070] encode_compound: tag=
+> > > >         [ 1732.822937] nfs4_get_rootfh: getroot error = 11
+> > > >         [ 1732.823982] <-- nfs4_get_rootfh() = -11
+> > > >         [ 1732.824880] --> nfs_free_server()
+> > > >         [ 1732.846219] --> nfs_put_client({1})
+> > > >         [ 1732.847888] --> nfs_free_client(4)
+> > > >         [ 1732.850236] NFS: releasing client cookie (0xffff880039cfd9e8/0xffff88003b889000)
+> > > >         [ 1732.853726] <-- nfs_free_client()
+> > > >         [ 1732.854505] <-- nfs_free_server()
+> > > >         [ 1732.855274] <-- nfs4_create_server() = error -11
+> > > >         [ 1732.856187] <-- nfs4_try_mount() = -11 [error]
+> > > > 
+> > > > Bisected and got the commit listed above.
+> > > > 
+> > > 
+> > 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
