@@ -1,107 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from daytona.panasas.com ([67.152.220.89]:57162 "EHLO
-	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752671Ab1DTR16 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Apr 2011 13:27:58 -0400
-From: Benny Halevy <bhalevy@panasas.com>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC 13/27] pnfs: client stats
-Date: Wed, 20 Apr 2011 20:27:55 +0300
-Message-Id: <1303320475-21448-1-git-send-email-bhalevy@panasas.com>
-In-Reply-To: <4DAF0DE1.6020609@panasas.com>
-References: <4DAF0DE1.6020609@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:12200 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752930Ab1DDMsc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Apr 2011 08:48:32 -0400
+Message-ID: <4D99BE1E.80701@netapp.com>
+Date: Mon, 04 Apr 2011 08:48:30 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Eric Paris <eparis@redhat.com>, linux-nfs@vger.kernel.org,
+        Trond.Myklebust@netapp.com
+Subject: Re: [REGRESSION] 8f70e95f9f4159184f557 causes mount failure with
+ EGAIN
+References: <1301513561.561.7.camel@unknown001a4b0c2895> <4D939CAF.40506@netapp.com> <1301520805.561.11.camel@unknown001a4b0c2895> <1301535117.561.16.camel@unknown001a4b0c2895> <20110402190117.GA8960@fieldses.org>
+In-Reply-To: <20110402190117.GA8960@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-From: J. Bruce Fields <bfields@fieldses.org>
+On 04/02/2011 03:01 PM, J. Bruce Fields wrote:
+> On Wed, Mar 30, 2011 at 09:31:57PM -0400, Eric Paris wrote:
+>> On Wed, 2011-03-30 at 17:33 -0400, Eric Paris wrote:
+>>> On Wed, 2011-03-30 at 17:12 -0400, Bryan Schumaker wrote:
+>>>> On 03/30/2011 03:32 PM, Eric Paris wrote:
+>>>>> $ git bisect good
+>>>>> 8f70e95f9f4159184f557a1db60c909d7c1bd2e3 is the first bad commit
+>>>>> commit 8f70e95f9f4159184f557a1db60c909d7c1bd2e3
+>>>>> Author: Bryan Schumaker <bjschuma@netapp.com>
+>>>>> Date:   Thu Mar 24 17:12:31 2011 +0000
+>>>>>
+>>>>>     NFS: Determine initial mount security
+>>>>>     
+>>>>>     When sec=<something> is not presented as a mount option,
+>>>>>     we should attempt to determine what security flavor the
+>>>>>     server is using.
+>>>>>     
+>>>>>     Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>>>>>     Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>>>>>
+>>>>> Using a linux-next kernel for the last 2 days I have been unable to
+>>>>> mount exports from my RHEL6 server.  mount(2) returned EAGAIN.  Turned
+>>>>
+>>>> Thanks for letting me know.  What does your exports file look like?
+>>>
+>>> # cat /etc/exports
+>>> /		127.0.0.1(fsid=0)
+>>> /export		*(rw,fsid=1,all_squash,anonuid=500,anongid=500)
+>>
+>> At jlayton's suggestion I changed /exports to not include the /
+>> 127.0.0.1 and removed both explicit fsid= and it works.  So this patch
+>> broke my setup, but I have a workaround.
+> 
+> OK, but I'm a little confused why that would make any difference to
+> client security negotiation code.
+> 
+> Do we understand why your setup broke after that client change?
 
-A pNFS client auto-negotiates a lot of features (minorversion level,
-pNFS layout type, etc.).  This is convenient, but makes certain kinds of
-failures hard for a user to detect.
+There is some error code returned to the mount program that tells it to fall back to v3 for mounting.  My change stopped returning this error, and instead returned a different code that told mount to give up.  I think this patch fixes it.
 
-For example, if the client falls back on 4.0, or falls back to MDS IO
-because the user didn't connect to the right iscsi disks before
-mounting, the only symptoms may be reduced performance, which may not be
-noticed till long after the actual failure, and may be difficult for a
-user to diagnose.
-
-However, such "failures" may also be perfectly normal in some cases, so
-we don't want to spam the system logs with them.
-
-One approach would be to put some more information into
-/proc/self/mountstats.
-
-Signed-off-by: J. Bruce Fields <bfields@fieldses.org>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[pnfs: add commit client stats]
-[fixup data types for "ret" variables in pnfs_try_to* inline funcs.]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[fix definition of show_pnfs for !CONFIG_PNFS]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-[nfs41: Fix show_sessions in the not CONFIG_NFS_V4_1 case]
-    There is a build error when CONFIG_NFS_V4 is set but
-    CONFIG_NFS_V4_1 is *not* set. show_sessions() prototype
-    was unbalanced between the two cases.
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-[pnfs: super.c remove CONFIG_PNFS]
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
----
- fs/nfs/super.c |   25 +++++++++++++++++++++++++
- 1 files changed, 25 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2b8e9a5..50f3987 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -63,6 +63,7 @@
- #include "iostat.h"
- #include "internal.h"
- #include "fscache.h"
-+#include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-@@ -732,6 +733,28 @@ static int nfs_show_options(struct seq_file *m, struct vfsmount *mnt)
- 
- 	return 0;
- }
-+#ifdef CONFIG_NFS_V4_1
-+void show_sessions(struct seq_file *m, struct nfs_server *server)
-+{
-+	if (nfs4_has_session(server->nfs_client))
-+		seq_printf(m, ",sessions");
-+}
-+#else
-+void show_sessions(struct seq_file *m, struct nfs_server *server) {}
-+#endif
-+
-+#ifdef CONFIG_NFS_V4_1
-+void show_pnfs(struct seq_file *m, struct nfs_server *server)
-+{
-+	seq_printf(m, ",pnfs=");
-+	if (server->pnfs_curr_ld)
-+		seq_printf(m, "%s", server->pnfs_curr_ld->name);
-+	else
-+		seq_printf(m, "not configured");
-+}
-+#else  /* CONFIG_NFS_V4_1 */
-+void show_pnfs(struct seq_file *m, struct nfs_server *server) {}
-+#endif /* CONFIG_NFS_V4_1 */
- 
- static int nfs_show_devname(struct seq_file *m, struct vfsmount *mnt)
- {
-@@ -792,6 +815,8 @@ static int nfs_show_stats(struct seq_file *m, struct vfsmount *mnt)
- 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
- 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
- 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
-+		show_sessions(m, nfss);
-+		show_pnfs(m, nfss);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index dfd1e6d..9bf41ea 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2204,8 +2204,6 @@ static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandl
+ 		goto out;
  	}
- #endif
+ 	ret = nfs4_lookup_root(server, fhandle, info);
+-	if (ret < 0)
+-		ret = -EAGAIN;
+ out:
+ 	return ret;
+ }
+@@ -2226,7 +2224,7 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *fhandle,
  
--- 
-1.7.3.4
+ 	for (i = 0; i < len; i++) {
+ 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
+-		if (status == 0)
++		if (status != -EPERM)
+ 			break;
+ 	}
+ 	if (status == 0)
+
+
+
+
+> 
+> --b
+> 
+>> (I'm pretty sure the
+>> previous / 127 entry was a workaround for a problem when all my clients
+>> broke during Fedora's switch to use NFSv4 default.  Funny one workaround
+>> comes back to bit me again  :))
+>>
+>> Thanks! 
+>>
+>>
+>>> The client fstab looks like:
+>>> paris.rdu.redhat.com:/export/ /storage nfs tcp,noatime,nodiratime,noauto,users,exec,suid 0 0
+>>>
+>>>>
+>>>> Bryan
+>>>>
+>>>>> up debugging (thanks jlayton) and got:
+>>>>>
+>>>>>         [ 1732.795056] NFS: nfs mount opts='tcp,vers=4,addr=10.11.231.241,clientaddr=10.11.231.191'
+>>>>>         [ 1732.798079] NFS:   parsing nfs mount option 'tcp'
+>>>>>         [ 1732.800210] NFS:   parsing nfs mount option 'vers=4'
+>>>>>         [ 1732.802324] NFS:   parsing nfs mount option 'addr=10.11.231.241'
+>>>>>         [ 1732.804477] NFS:   parsing nfs mount option 'clientaddr=10.11.231.191'
+>>>>>         [ 1732.805790] NFS: MNTPATH: '/export/'
+>>>>>         [ 1732.806663] --> nfs4_try_mount()
+>>>>>         [ 1732.807459] --> nfs4_create_server()
+>>>>>         [ 1732.808301] --> nfs4_init_server()
+>>>>>         [ 1732.809136] --> nfs4_set_client()
+>>>>>         [ 1732.809898] --> nfs_get_client(paris.rdu.redhat.com,v4)
+>>>>>         [ 1732.811122] NFS: get client cookie (0xffff880039cfd9e8/0xffff88003b889000)
+>>>>>         [ 1732.813771] NFS: Callback listener port = 36700 (af 2)
+>>>>>         [ 1732.814931] NFS: Callback listener port = 60202 (af 10)
+>>>>>         [ 1732.816199] --> nfs_get_client() = ffff880039cfd9e8 [new]
+>>>>>         [ 1732.817356] <-- nfs4_set_client() = 0 [new ffff880039cfd9e8]
+>>>>>         [ 1732.818587] <-- nfs4_init_server() = 0
+>>>>>         [ 1732.819476] --> nfs4_get_rootfh()
+>>>>>         [ 1732.820282] encode_compound: tag=
+>>>>>         [ 1732.822070] encode_compound: tag=
+>>>>>         [ 1732.822937] nfs4_get_rootfh: getroot error = 11
+>>>>>         [ 1732.823982] <-- nfs4_get_rootfh() = -11
+>>>>>         [ 1732.824880] --> nfs_free_server()
+>>>>>         [ 1732.846219] --> nfs_put_client({1})
+>>>>>         [ 1732.847888] --> nfs_free_client(4)
+>>>>>         [ 1732.850236] NFS: releasing client cookie (0xffff880039cfd9e8/0xffff88003b889000)
+>>>>>         [ 1732.853726] <-- nfs_free_client()
+>>>>>         [ 1732.854505] <-- nfs_free_server()
+>>>>>         [ 1732.855274] <-- nfs4_create_server() = error -11
+>>>>>         [ 1732.856187] <-- nfs4_try_mount() = -11 [error]
+>>>>>
+>>>>> Bisected and got the commit listed above.
+>>>>>
+>>>>
+>>>
+>>
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
