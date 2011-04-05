@@ -1,102 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30677 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751227Ab1D0VFO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Apr 2011 17:05:14 -0400
-Message-ID: <4DB88503.9030909@RedHat.com>
-Date: Wed, 27 Apr 2011 17:05:07 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Benny Halevy <bhalevy@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsstat: reorder nfs4 stats for 2.6.38 and up
-References: <1303461980-6731-1-git-send-email-bhalevy@panasas.com>	 <23EF6F61-46F2-431B-8A44-A3E941688D65@oracle.com>	 <4DB7A084.2060009@panasas.com>	 <1303913806.13195.3.camel@lade.trondhjem.org>	 <4DB86605.3000304@panasas.com>	 <1303930718.23640.6.camel@lade.trondhjem.org>	 <4DB87B96.8090400@panasas.com> <1303936194.28589.2.camel@lade.trondhjem.org> <4DB87D93.8040205@panasas.com>
-In-Reply-To: <4DB87D93.8040205@panasas.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-px0-f179.google.com ([209.85.212.179]:51051 "EHLO
+	mail-px0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753951Ab1DETLN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Apr 2011 15:11:13 -0400
+Received: by pxi2 with SMTP id 2so396808pxi.10
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Apr 2011 12:11:12 -0700 (PDT)
+Message-ID: <4D9B694D.1030609@panasas.com>
+Date: Tue, 05 Apr 2011 12:11:09 -0700
+From: Benny Halevy <bhalevy@panasas.com>
+To: Garth Gibson <garth@cs.cmu.edu>
+CC: linux-nfs@vger.kernel.org, Jim Rees <rees@umich.edu>,
+        Andrew Klaassen <clawsoon@yahoo.com>
+Subject: Re: Prioritizing readdirplus/getattr/lookup
+References: <13701.83906.qm@web65411.mail.ac4.yahoo.com> <882887.75491.qm@web65412.mail.ac4.yahoo.com> <20110404230528.GA2624@merit.edu> <4D9A61C9.1030900@panasas.com> <20110405003944.GA31014@merit.edu> <4D9B195E.60108@panasas.com> <640DA909-32A8-43EF-AF0B-ACE0689AC0CD@cs.cmu.edu>
+In-Reply-To: <640DA909-32A8-43EF-AF0B-ACE0689AC0CD@cs.cmu.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+On 2011-04-05 10:14, Garth Gibson wrote:
+> The OpenGroup HECE proposals for extending the application/filesystem interface did not have a team of implementers behind them.  At the time some of the parallel file system vendors that added modules to the kernel were willing to work toward supporting these interfaces, but not a broader community.   
+>
+> I encourage the pNFS community to consider the use cases that led to those proposals.
+>
+> One example is lazy attributes.  Folks running large parallel jobs have a nasty habit of monitoring the progress of the job by running on their desktop a looping script doing ls -l on output files.  What is the length of a file that is open and being written to by other nodes?  Much of the time you want to be able to ask for a recently accurate value of attributes without recalling layouts, but perhaps some of the time you would like layouts to be recalled, or at least committed.
 
+Right now the pNFS server does not have to recall the layout on GETATTR
+so lazy would be the default behavior for most implementations. Even if
+a client holds a delegation the server could send a CB_GETATTR to it to
+get the latest attributes without recalling the layout.  At any rate,
+the broader issue is that the posix system call API assumes a local file
+system and is not network not cluster file-system aware.
 
-On 04/27/2011 04:33 PM, Benny Halevy wrote:
-> On 2011-04-27 23:29, Trond Myklebust wrote:
->> On Wed, 2011-04-27 at 23:24 +0300, Benny Halevy wrote:
->>> On 2011-04-27 21:58, Trond Myklebust wrote:
->>>> On Wed, 2011-04-27 at 21:52 +0300, Benny Halevy wrote:
->>>>> On 2011-04-27 17:16, Trond Myklebust wrote:
->>>>>> On Wed, 2011-04-27 at 07:50 +0300, Benny Halevy wrote:
->>>>>>> On 2011-04-25 17:11, Chuck Lever wrote:
->>>>>>>> Hey all-
->>>>>>>>
->>>>>>>> So what are we going to do when adding NFSv4.2 to this mix?  Will we
->>>>>>>> then have to freeze both the NFSv4.1 and NFSv4.0 procedure API in the
->>>>>>>> kernel?  Seems painful.
->>>>>>>
->>>>>>> Good question.
->>>>>>> How about changing the stat pseudo-file format to include an op
->>>>>>> identifier along with its respective counter, printing a line per op?
->>>>>>
->>>>>> We already have that in /proc/self/mountstats
->>>>>>
->>>>>>
->>>>>
->>>>> You mean /proc/self/status?
->>>>
->>>> No.
->>>
->>> So can you please explain what you meant by the /proc/self/mountstats
->>> example?
->>>
->>> This is what I see:
->>>
->>> $ head -3 /proc/self/mountstats
->>> device rootfs mounted on / with fstype rootfs
->>> device /proc mounted on /proc with fstype proc
->>> device /sys mounted on /sys with fstype sysfs
->>>
->>> Benny
->>
->> Try mounting an NFS partition. When I do, I also get:
->>
->> device ila.local:/raid0/data/vol0 mounted on /net/ila.local/raid0/data/vol0 with fstype nfs statvers=1.0
->> 	opts:	rw,vers=3,rsize=32768,wsize=32768,namlen=255,acregmin=3,acregmax=60,acdirmin=30,acdirmax=60,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.1.20,mountvers=3,mountport=993,mountproto=udp
->> 	age:	3
->> 	caps:	caps=0x3fcf,wtmult=4096,dtsize=4096,bsize=0,namlen=255
->> 	sec:	flavor=1,pseudoflavor=1
->> 	events:	4 101 0 0 6 0 107 0 0 0 0 0 12 0 0 0 0 0 0 0 0 0 0 0 0 
->> 	bytes:	0 0 0 0 0 0 0 0 
->> 	RPC iostats version: 1.0  p/v: 100003/3 (nfs)
->> 	xprt:	tcp 826 1 1 0 2 24 24 0 24 0
->> 	per-op statistics
->> 	        NULL: 0 0 0 0 0 0 0 0
->> 	     GETATTR: 6 6 0 752 672 0 1 1
->> 	     SETATTR: 0 0 0 0 0 0 0 0
->> 	      LOOKUP: 0 0 0 0 0 0 0 0
->> 	      ACCESS: 5 5 0 692 600 0 1 1
->> 	    READLINK: 0 0 0 0 0 0 0 0
->> 	        READ: 0 0 0 0 0 0 0 0
->> 	       WRITE: 0 0 0 0 0 0 0 0
->> 	      CREATE: 0 0 0 0 0 0 0 0
->> 	       MKDIR: 0 0 0 0 0 0 0 0
->> 	     SYMLINK: 0 0 0 0 0 0 0 0
->> 	       MKNOD: 0 0 0 0 0 0 0 0
->> 	      REMOVE: 0 0 0 0 0 0 0 0
->> 	       RMDIR: 0 0 0 0 0 0 0 0
->> 	      RENAME: 0 0 0 0 0 0 0 0
->> 	        LINK: 0 0 0 0 0 0 0 0
->> 	     READDIR: 0 0 0 0 0 0 0 0
->> 	 READDIRPLUS: 7 7 0 1112 13832 0 35 36
->> 	      FSSTAT: 1 1 0 104 84 0 1 1
->> 	      FSINFO: 2 2 0 208 160 0 0 0
->> 	    PATHCONF: 1 1 0 104 56 0 0 0
->> 	      COMMIT: 0 0 0 0 0 0 0 0
->>
->> Providing this kind of statistic was _exactly_ the reason for adding
->> mountstats in the first place.
-> 
-> Ah, cool!
-> This makes much more sense now :)
-FYI... both mountstats and nfsiostat using this file...
+Benny
 
-steved.
+> garth
+>
+> On Apr 5, 2011, at 9:30 AM, Benny Halevy wrote:
+>> On 2011-04-04 17:39, Jim Rees wrote:
+>>> Benny Halevy wrote:
+>>>
+>>>  Like this? :)
+>>>  http://www.opengroup.org/platform/hecewg/uploads/40/10903/posix_io_readdir+.pdf
+>>>
+>>> Yes, exactly, but that never went anywhere, did it?
+>> Correct.  It did not go anywhere AFAIK.
+>>
+>> Benny
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
