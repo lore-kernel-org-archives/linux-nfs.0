@@ -1,48 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:19832 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:49480 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756542Ab1DZO34 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Apr 2011 10:29:56 -0400
-Subject: Re: pNFS read/write behavior change in 2.6.39
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: NFS list <linux-nfs@vger.kernel.org>, Steve Dickson <SteveD@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <4DB6D0CC.4050601@desy.de>
-References: <4DB6D0CC.4050601@desy.de>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 26 Apr 2011 10:29:54 -0400
-Message-ID: <1303828194.1785.21.camel@lade.trondhjem.org>
+	id S1752904Ab1DEMUa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Apr 2011 08:20:30 -0400
+Date: Tue, 5 Apr 2011 22:20:19 +1000
+From: NeilBrown <neilb@suse.de>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Use of READDIRPLUS on large directories
+Message-ID: <20110405222019.6c4d2997@notabene.brown>
+In-Reply-To: <4D9A26B8.6080504@netapp.com>
+References: <20110316155528.31913c58@notabene.brown>
+	<24085EE6-EF0B-4F36-8F6A-100AB863F408@oracle.com>
+	<4D80C5C6.2060003@netapp.com>
+	<1300285203.16266.46.camel@lade.trondhjem.org>
+	<20110317083034.479ecb5f@notabene.brown>
+	<1300311755.30551.17.camel@lade.trondhjem.org>
+	<20110317094019.23f31f53@notabene.brown>
+	<20110317171831.GA30180@fieldses.org>
+	<4D9A26B8.6080504@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-04-26 at 16:03 +0200, Tigran Mkrtchyan wrote:
-> I run 2.6.39-0.rc4.git2.0 build for fedora-16 build by redhat.
-> Probably Steve and Bruce can comment on the patch set.
-> 
-> My observation is that state id provided by client on read to
-> DS dit not contain correct stateid:
-> 
-> struct stateid4 {
->          uint32_t        seqid;
->          opaque          other[12];
-> };
-> 
-> The seqid equals to zero when client send it to DS which is not the
-> value returned on OPEN.
+On Mon, 04 Apr 2011 16:14:48 -0400 Bryan Schumaker <bjschuma@netapp.com>
+wrote:
 
-Why do you think this is a bug? Section 8.2.2 of RFC5661 not only allows
-this behaviour, it actually suggests it is appropriate for READ and
-WRITE since it means that the server isn't forced to constantly check
-the seqid value.
+> I've done some more testing and posted my initial results here: https://wiki.linux-nfs.org/wiki/index.php/Readdir_performance_results.  If anybody has suggestions for better ways to organize the data, please let me know.  I'll also try to post some graphs in the next couple of days.
 
-Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+I think graphs would certainly help.
+Also it might be good to be explicit about the server hardware/config as that
+can make a real performance difference.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+No bright ideas about how to organise the graphs...
+I'd probably try just graphing the 'real' time against kernel version
+with one line for each different directory size.
 
+Then you get 16 graphs, 4 different configs (v3/v4 x rddirplus/norddirplus)
+and 4 different tests (ls -f, ls -lU, ls -U, rm -r... though I can't see how
+"ls -U" is different from "ls -f").
+
+NeilBrown
