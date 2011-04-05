@@ -1,69 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13320 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754614Ab1DNMoC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Apr 2011 08:44:02 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, pbadari@us.ibm.com, chuck.lever@oracle.com
-Subject: [PATCH] BZ#694309: nfs: use unstable writes for groups of small DIO writes
-Date: Thu, 14 Apr 2011 08:43:28 -0400
-Message-Id: <1302785008-30477-1-git-send-email-jlayton@redhat.com>
+Received: from int-mailstore01.merit.edu ([207.75.116.232]:42120 "EHLO
+	int-mailstore01.merit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753709Ab1DETe0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Apr 2011 15:34:26 -0400
+Date: Tue, 5 Apr 2011 15:34:25 -0400
+From: Jim Rees <rees@umich.edu>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Garth Gibson <garth@cs.cmu.edu>, linux-nfs@vger.kernel.org,
+        Andrew Klaassen <clawsoon@yahoo.com>
+Subject: Re: Prioritizing readdirplus/getattr/lookup
+Message-ID: <20110405193425.GA4263@merit.edu>
+References: <13701.83906.qm@web65411.mail.ac4.yahoo.com>
+ <882887.75491.qm@web65412.mail.ac4.yahoo.com>
+ <20110404230528.GA2624@merit.edu>
+ <4D9A61C9.1030900@panasas.com>
+ <20110405003944.GA31014@merit.edu>
+ <4D9B195E.60108@panasas.com>
+ <640DA909-32A8-43EF-AF0B-ACE0689AC0CD@cs.cmu.edu>
+ <4D9B694D.1030609@panasas.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4D9B694D.1030609@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-Content-Type: text/plain
 MIME-Version: 1.0
 
-Currently, the client uses FILE_SYNC whenever it's writing less than or
-equal data to the wsize with O_DIRECT. This is a problem though if we
-have a bunch of small iovec's batched up in a single writev call. The
-client will iterate over them and do a single FILE_SYNC WRITE for each.
+Benny Halevy wrote:
 
-Instead, change the code to do unstable writes when we'll need to do
-multiple WRITE RPC's in order to satisfy the request. While we're at
-it, optimize away the allocation of commit_data when we aren't going
-to use it anyway.
+  At any rate, the broader issue is that the posix system call API assumes a
+  local file system and is not network not cluster file-system aware.
 
-I tested this with a program that allocates 256 page-sized and aligned
-chunks of data into an array of iovecs, opens a file with O_DIRECT, and
-then passes that into a writev call 128 times. Without this patch, it
-took 5m16s to run on my (admittedly crappy) test rig. With this patch,
-it finished in 7.5s.
-
-Trond, would it be reasonable to take this patch as a stopgap measure
-until your overhaul of the O_DIRECT code is finished?
-
-Reported-by: Badari Pulavarty <pbadari@us.ibm.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/direct.c |   13 +++++++++++--
- 1 files changed, 11 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 8eea253..9fc3430 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -871,9 +871,18 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 	dreq = nfs_direct_req_alloc();
- 	if (!dreq)
- 		goto out;
--	nfs_alloc_commit_data(dreq);
- 
--	if (dreq->commit_data == NULL || count <= wsize)
-+	if (count > wsize || nr_segs > 1)
-+		nfs_alloc_commit_data(dreq);
-+	else
-+		dreq->commit_data = NULL;
-+
-+	/*
-+	 * If we couldn't allocate commit data, or we'll just be doing a
-+	 * single write, then make this a NFS_FILE_SYNC write and do away
-+	 * with the commit.
-+	 */
-+	if (dreq->commit_data == NULL)
- 		sync = NFS_FILE_SYNC;
- 
- 	dreq->inode = inode;
--- 
-1.7.1
-
+It would be interesting to see someone who is affected by this implement the
+readdirplus system call, modify ls to use it, and report the results.  I
+suspect the system call won't go anywhere in linux without some evidence
+that it solves a real problem for real users.
