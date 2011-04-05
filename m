@@ -1,60 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lvps87-230-0-242.dedicated.hosteurope.de ([87.230.0.242]:42841
-	"EHLO lvps87-230-0-242.dedicated.hosteurope.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752634Ab1DOKQw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Apr 2011 06:16:52 -0400
-Date: Fri, 15 Apr 2011 12:16:43 +0200
-From: Michael Guntsche <mike@it-loops.com>
-To: "Finney, Sean" <Sean.Finney@sonyericsson.com>
-Cc: "vovan@vovan.nl" <vovan@vovan.nl>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [BUG] sec=krb5 mount problem with nfs-utils 1.2.3 on client side
-Message-ID: <20110415120934@it-loops.com>
-References: <20110415010913@it-loops.com>
- <1302840158.2447.5.camel@vovan.net.home>
- <A50602A820F61543B29992A418BB321B66E18F8A71@seldmbx01.corpusers.net>
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <A50602A820F61543B29992A418BB321B66E18F8A71@seldmbx01.corpusers.net>
+Received: from mx2.netapp.com ([216.240.18.37]:53145 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753706Ab1DETsJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Apr 2011 15:48:09 -0400
+Subject: Re: Prioritizing readdirplus/getattr/lookup
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@panasas.com>
+Cc: Garth Gibson <garth@cs.cmu.edu>, linux-nfs@vger.kernel.org,
+        Jim Rees <rees@umich.edu>, Andrew Klaassen <clawsoon@yahoo.com>
+In-Reply-To: <4D9B694D.1030609@panasas.com>
+References: <13701.83906.qm@web65411.mail.ac4.yahoo.com>
+	 <882887.75491.qm@web65412.mail.ac4.yahoo.com>
+	 <20110404230528.GA2624@merit.edu> <4D9A61C9.1030900@panasas.com>
+	 <20110405003944.GA31014@merit.edu> <4D9B195E.60108@panasas.com>
+	 <640DA909-32A8-43EF-AF0B-ACE0689AC0CD@cs.cmu.edu>
+	 <4D9B694D.1030609@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 05 Apr 2011 12:48:07 -0700
+Message-ID: <1302032887.7265.40.camel@lade.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On 15 Apr 11 08:01, Finney, Sean wrote:
-> Hi guys,
+On Tue, 2011-04-05 at 12:11 -0700, Benny Halevy wrote:
+> On 2011-04-05 10:14, Garth Gibson wrote:
+> > The OpenGroup HECE proposals for extending the application/filesystem interface did not have a team of implementers behind them.  At the time some of the parallel file system vendors that added modules to the kernel were willing to work toward supporting these interfaces, but not a broader community.   
+> >
+> > I encourage the pNFS community to consider the use cases that led to those proposals.
+> >
+> > One example is lazy attributes.  Folks running large parallel jobs have a nasty habit of monitoring the progress of the job by running on their desktop a looping script doing ls -l on output files.  What is the length of a file that is open and being written to by other nodes?  Much of the time you want to be able to ask for a recently accurate value of attributes without recalling layouts, but perhaps some of the time you would like layouts to be recalled, or at least committed.
 > 
-> On Fri, 2011-04-15 at 06:02 +0200, Vladimir Elisseev wrote:
-> > Michael,
-> > 
-> > I've posted an email with the same question here a few weeks ago, but I
-> > haven't been able to investigate what the problem is. The only
-> > difference in my setup, that servers have kernel 2.6.36 the rest is
-> > exactly the same and exactly the same error. See thread with the subject
-> > "rpc.svcgssd problem after updating client 1.2.2->1.2.3".
-> 
-> I think the problem here is the same one we were experiencing, with
-> large group memberships causing invalid writes to the procfs rpc channel
-> files.  If you strace rpc.svcgssd (or rpc.mountd, you should see it
-> there too I think), you should see the write() calls being split into
-> multiple 1024-byte sized writes, each of which get EINVAL (or -EINVAL, I
-> forget) returned.
-<snip>
+> Right now the pNFS server does not have to recall the layout on GETATTR
+> so lazy would be the default behavior for most implementations. Even if
+> a client holds a delegation the server could send a CB_GETATTR to it to
+> get the latest attributes without recalling the layout.  At any rate,
+> the broader issue is that the posix system call API assumes a local file
+> system and is not network not cluster file-system aware.
 
-Thank you for the information, but I got it working in the meantime.
-The main problem still is that the code for some reason tries to use AES
-although I tried specifying a different enctype in my kerberos config.
-Nevertheless it should just work with AES as well, so where was the
-problem? 
-Quite simple....missing kernel support. I enabled AES support but I DID
-NOT enable CTS support which is of course needed as well. So after
-compiling the server and client kernels with BOTH AES and CTS support I
-can no mount the NFS4 export without any issues.
+Recalling the outstanding layouts in a directory on every 'ls -l' sounds
+like the perfect recipe for poor performance. I can't see why any
+servers would want to do this.
 
-I still think the error message could be a little bit more
-verbose/meaningful like "Missing kernel support for X" instead of a
-rather cryptic message.
+In any case, a layout recall does not trigger client writeback: layouts
+do not define a caching protocol.
 
-Once again, sorry for the noise and I'll keep testing this setup now
-more often so this hopefully does not happen again.
+Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-Kind regards,
-Michael Guntsche
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
