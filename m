@@ -1,83 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from rcsinet10.oracle.com ([148.87.113.121]:23974 "EHLO
-	rcsinet10.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751669Ab1DUOL0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Apr 2011 10:11:26 -0400
-Subject: Re: [PATCH] svc: make sure mountd can get ports from /etc/services
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4DAFA7AB.9020507@cn.fujitsu.com>
-Date: Thu, 21 Apr 2011 10:11:11 -0400
-Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-Message-Id: <5A8AD10C-81A4-4088-BCFA-08D0BA2337C7@oracle.com>
-References: <4DAD48C7.9090808@cn.fujitsu.com> <94B98C85-8FAE-4B72-A782-F0B0DFD83674@oracle.com> <4DAEA782.2090108@cn.fujitsu.com> <AD03EC99-CB5C-41BA-AE0B-FEA7A8D48B6E@oracle.com> <4DAFA7AB.9020507@cn.fujitsu.com>
-To: Mi Jinlong <mijinlong@cn.fujitsu.com>
+Received: from daytona.panasas.com ([67.152.220.89]:50979 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753605Ab1DEU5w (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Apr 2011 16:57:52 -0400
+Message-ID: <4D9B8247.9050300@panasas.com>
+Date: Tue, 05 Apr 2011 13:57:43 -0700
+From: Benny Halevy <bhalevy@panasas.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Garth Gibson <garth@cs.cmu.edu>, linux-nfs@vger.kernel.org,
+        Jim Rees <rees@umich.edu>, Andrew Klaassen <clawsoon@yahoo.com>
+Subject: Re: Prioritizing readdirplus/getattr/lookup
+References: <13701.83906.qm@web65411.mail.ac4.yahoo.com>	 <882887.75491.qm@web65412.mail.ac4.yahoo.com>	 <20110404230528.GA2624@merit.edu> <4D9A61C9.1030900@panasas.com>	 <20110405003944.GA31014@merit.edu> <4D9B195E.60108@panasas.com>	 <640DA909-32A8-43EF-AF0B-ACE0689AC0CD@cs.cmu.edu>	 <4D9B694D.1030609@panasas.com>	 <1302032887.7265.40.camel@lade.trondhjem.org>	 <4D9B7304.7010506@panasas.com> <1302033466.7265.45.camel@lade.trondhjem.org>
+In-Reply-To: <1302033466.7265.45.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-
-On Apr 20, 2011, at 11:42 PM, Mi Jinlong wrote:
-
+On 2011-04-05 12:57, Trond Myklebust wrote:
+> On Tue, 2011-04-05 at 12:52 -0700, Benny Halevy wrote:
+>> On 2011-04-05 12:48, Trond Myklebust wrote:
+>>> On Tue, 2011-04-05 at 12:11 -0700, Benny Halevy wrote:
+>>>> On 2011-04-05 10:14, Garth Gibson wrote:
+>>>>> The OpenGroup HECE proposals for extending the application/filesystem interface did not have a team of implementers behind them.  At the time some of the parallel file system vendors that added modules to the kernel were willing to work toward supporting these interfaces, but not a broader community.   
+>>>>>
+>>>>> I encourage the pNFS community to consider the use cases that led to those proposals.
+>>>>>
+>>>>> One example is lazy attributes.  Folks running large parallel jobs have a nasty habit of monitoring the progress of the job by running on their desktop a looping script doing ls -l on output files.  What is the length of a file that is open and being written to by other nodes?  Much of the time you want to be able to ask for a recently accurate value of attributes without recalling layouts, but perhaps some of the time you would like layouts to be recalled, or at least committed.
+>>>>
+>>>> Right now the pNFS server does not have to recall the layout on GETATTR
+>>>> so lazy would be the default behavior for most implementations. Even if
+>>>> a client holds a delegation the server could send a CB_GETATTR to it to
+>>>> get the latest attributes without recalling the layout.  At any rate,
+>>>> the broader issue is that the posix system call API assumes a local file
+>>>> system and is not network not cluster file-system aware.
+>>>
+>>> Recalling the outstanding layouts in a directory on every 'ls -l' sounds
+>>> like the perfect recipe for poor performance. I can't see why any
+>>> servers would want to do this.
+>>>
+>>> In any case, a layout recall does not trigger client writeback: layouts
+>>> do not define a caching protocol.
+>>
+>> Yet for already written (DATA_SYNC) data, a layout recall should trigger
+>> a LAYOUTCOMMIT and that will update the visible attrs.
 > 
+> Sure, but if the client still has the file open and has not flushed its
+> writes, then you are proposing a very expensive way to update attributes
+> that may bear no relevance to the true state of the file.
 > 
-> Chuck Lever:
->> On Apr 20, 2011, at 5:29 AM, Mi Jinlong wrote:
->> 
->>> 
->>> Chuck Lever:
->>>> Hi MJ-
->>>> 
->>>> On Apr 19, 2011, at 4:33 AM, Mi Jinlong wrote:
->>>> 
->>>>> At RHEL, if user set port for mountd at /etc/services as 
->>>>> "mount   12345/tcp", mountd should be bind to 12345, but the 
->>>>> latest nfs-utils, mountd get a rand port, not 12345.
->>>>> 
->>>>> This patch make sure mountd be bind to the port which was set
->>>>> at /etc/service.
->>>> I don't think this is documented anywhere.  Is there a reason it should work this way?
->>>> 
->>>> The typical way to set mountd's port is to use a command line option.  That's the way it works for all the other RPC daemons.  By default the ports are set up at random and registered with rpcbind.  That's why clients use rpcbind, and not /etc/services, to find these services.
->>> I don't have a depth research, agree with you.
->>> But I got different result when I set port for mountd at /etc/services
->>> between nfs-utils-1.2.3 and nfs-utils-1.2.2.
->> 
->> IMO that's unintentional behavior.  Could I ask a favor: would you bisect nfs-utils to find out exactly where this started and ended?
-> 
->  Hi Chuck,
-> 
->  It's after your patch "mountd: Support TI-RPC mountd listener" 
->  (commit id:b551b1fd0052de9b8c674b30c39d9f2a1e9d79cc).
-> 
->  Before this patch, mountd call rpc_init to create rpc socket,
->  after it, if HAVE_LIBTIRPC is defined, mountd will call 
->  nfs_svc_create to create rpc socket, that appears.
+> pNFS will suck _badly_ if you start recalling layouts willy nilly.
 
-Thanks.  I don't immediately see how that code path consults /etc/services.  There are no calls to getservby{name,port}(3) in either mountd or in libtirpc.  Did I miss something?  Any idea?
+Agreed.  Supporting CB_GETATTR seems to be a better choice.
 
-You said it stopped working after a while.  Can you bisect that as well?
-
-Note that if nfs-utils is built without TI-RPC support, rpc_init() is still used instead of nfs_svc_create().  If nfs_svc_create() is indeed the proximal cause of this behavior, mountd won't consult /etc/services if it is built without TI-RPC support.  So it might be a bug if this works for some build configurations and doesn't work for others.  The question is should it always work, or should it never work; see below.
-
-> 
->> 
->>> I just think we should get the same result at new nfs-utils as older.
->> 
->> Is there a real-world use case for this feature?  Why isn't the command line option adequate?
->> 
-> 
->  I have a test site which depend on this feature.
->  If this feature indeed unnecessary, I will try to modify my test site.
-
-Without knowing more about your test site, I claim it can and should use the "-p" option on rpc.mountd.  If your distribution of choice is Red Hat-based, you can set this in /etc/sysconfig/nfs (see MOUNTD_PORT=).
-
-In other words, we have a documented and supported mechanism now, that should always work, for setting mountd's listener port.  Can you explain in detail why allowing /etc/services to have this effect is also necessary?
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Benny
