@@ -1,50 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.netapp.com ([216.240.18.37]:20510 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754793Ab1DLSip convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Apr 2011 14:38:45 -0400
-Subject: Re: [PATCH] NFS: Fix infinite loop in gss_create_upcall()
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Jiri Slaby <jslaby@suse.cz>
-Cc: Bryan Schumaker <bjschuma@netapp.com>, Jiri Slaby <jirislaby@gmail.com>,
-        linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-        mm-commits@vger.kernel.org, ML netdev <netdev@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <4DA49B49.1020005@suse.cz>
-References: <201103312224.p2VMOA5g000983@imap1.linux-foundation.org>
-	 <4D96E4C5.2080302@suse.cz> <1302122693.16786.0.camel@lade.trondhjem.org>
-	 <4D9D5CC9.2040002@suse.cz> <4DA36722.2020402@suse.cz>
-	 <4DA36758.4070203@suse.cz> <4DA36DB6.8060108@suse.cz>
-	 <4DA48EB0.40600@netapp.com>  <4DA4946D.5020403@suse.cz>
-	 <1302633088.4801.48.camel@lade.trondhjem.org>  <4DA49B49.1020005@suse.cz>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 12 Apr 2011 14:38:42 -0400
-Message-ID: <1302633522.4801.49.camel@lade.trondhjem.org>
+Received: from web65408.mail.ac4.yahoo.com ([76.13.9.28]:25457 "HELO
+	web65408.mail.ac4.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752321Ab1DEQcl convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Apr 2011 12:32:41 -0400
+Message-ID: <521591.18062.qm@web65408.mail.ac4.yahoo.com>
+Date: Tue, 5 Apr 2011 09:32:38 -0700 (PDT)
+From: Andrew Klaassen <clawsoon@yahoo.com>
+Subject: Re: Fwd: Prioritizing readdirplus/getattr/lookup
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <4104737B-ECEA-46F7-BD26-39241DB8EBAF@oracle.com>
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2011-04-12 at 20:34 +0200, Jiri Slaby wrote:
-> On 04/12/2011 08:31 PM, Trond Myklebust wrote:
-> >> Yes, it fixes the problem. But it waits 15s before it times out. This is
-> >> inacceptable for automounted NFS dirs.
-> > 
-> > I'm still confused as to why you are hitting it at all. In the normal
-> > autonegotiation case, the client should be trying to use AUTH_SYS first
-> > and then trying rpcsec_gss if and only if that fails.
-> > 
-> > Are you really exporting a filesystem using AUTH_NULL as the only
-> > supported flavour?
+--- On Mon, 4/4/11, Chuck Lever <chuck.lever@oracle.com> wrote:
+
+> I suspect this is a result of the POSIX requirement
+> that stat(2) must return mtime and size that reflects the
+> very latest write to a file.  To meet this requirement,
+> the client flushes all dirty data for a file before
+> performing the GETATTR.
 > 
-> I don't know, I connect to a nfs server which is not maintained by me.
-> It looks like that. How can I find out?
+> The Linux VM allows a large amount of dirty data
+> outstanding when writing a file.  This means it could
+> take quite a while before that GETATTR can be done.
 
-A wireshark trace of a successful mount would help.
--- 
-Trond Myklebust
-Linux NFS client maintainer
+I've done some more benchmarking, and in my case writes appear to *not* be the culprit.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Having the HPC farm only reading files (with noatime set everywhere, of course) actually makes "ls -l" over NFS slightly ~slower~.
+
+Having the HPC farm only reading files that all fit in the server's cache makes "ls -l" over NFS yet slower.  (I watched iostat while this was running to make sure that nothing was being written to or read from disk.)
+
+So I've eliminated the disk as a bottleneck, and (as per my earlier emails) I've eliminated the filesystem and VM system.
+
+It really does look at this point like nfsd is the choke point.
+
+Andrew
+
 
