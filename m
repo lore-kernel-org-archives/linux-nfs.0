@@ -1,51 +1,61 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [stable] [105/105] nfsd4: fix oops on lock failure
-Date: Mon, 18 Apr 2011 11:21:23 -0700
-Message-ID: <20110418182123.GA12086@kroah.com>
-References: <20110412143559.186613198@clark.kroah.org>
- <87pqokx6lr.fsf@devron.myhome.or.jp>
- <BANLkTimN6L80e_oiJ_uqbLde2Cdnw5p45Q@mail.gmail.com>
- <20110418153236.GC20935@pad.home.fieldses.org>
- <87ipubwnj3.fsf@devron.myhome.or.jp>
- <8762qbwnf1.fsf@devron.myhome.or.jp>
- <87zknnv7id.fsf@devron.myhome.or.jp>
- <BANLkTi=HGzJ4LaZpWsWXrUQVWheS=x7CoQ@mail.gmail.com>
- <20110418171640.GJ20935@pad.home.fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: Fixes for NFS in environments with large group memberships
+Date: Tue, 5 Apr 2011 19:35:52 -0400
+Message-ID: <20110405233552.GB27961@fieldses.org>
+References: <A50602A820F61543B29992A418BB321B66E18F8A4A@seldmbx01.corpusers.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>,
-	Greg KH <gregkh@suse.de>, linux-kernel@vger.kernel.org,
-	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-	akpm@linux-foundation.org, stable@kernel.org,
-	alan@lxorguk.ukuu.org.uk
-To: "J. Bruce Fields" <bfields@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20110418171640.GJ20935@pad.home.fieldses.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: "Finney, Sean" <Sean.Finney@sonyericsson.com>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:58282 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751859Ab1DEXfw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Apr 2011 19:35:52 -0400
+In-Reply-To: <A50602A820F61543B29992A418BB321B66E18F8A4A-g6SuDuYnGwoBLpZRX7oUTsm4BeyDBExM@public.gmane.org>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 18, 2011 at 01:16:43PM -0400, J. Bruce Fields wrote:
-> On Mon, Apr 18, 2011 at 09:59:26AM -0700, Linus Torvalds wrote:
-> > On Mon, Apr 18, 2011 at 9:39 AM, OGAWA Hirofumi
-> > <hirofumi@mail.parknet.co.jp> wrote:
-> > >
-> > > For now, I feel this explain filp leak on my system. the leak is
-> > > increased slowly (filp, cred_jar, and no nfs* slabs), and leak is on
-> > > nfs server side.
-> > >
-> > > I'll start test of this patch, and see what happens.
-> > 
-> > Can somebody ping/remind me when that is verified - preferably about
-> > _both_ patches, even if it turns out that the first one by Ogawa
-> > wasn't the one that caused the problem?
-> > 
-> > Or can I just assume that the fix will be in Bruce's pull requests some day?
-> 
-> I'll send a pull request when it's sorted out, thanks.
+On Mon, Apr 04, 2011 at 10:02:59AM +0200, Finney, Sean wrote:
+> Hi There!
+>=20
+> Last week I fired off a couple patches to this list and in hindsight =
+I
+> realize that I might not have been totally clear for the motivation
+> behind the patches:
+>=20
+> [PATCH] Use a named constant for max number of managed groups, and in=
+c
+> [PATCH] Increase the default buffer size for cachelist channel files.
 
-Please tag it for stable as well so I know to pick it up.
+I can't find those; could you resend?
 
-thanks,
+--b.
 
-greg k-h
+>=20
+> Since nobody has reviewed them yet, I thought I'd make it clear that
+> these changes (or something along such lines) are required for NFS
+> access to mountpoints when users are in largeish (>100) numbers of
+> groups.  There are actually two problems:
+>=20
+> * Hard-coded limit for group membership at 100 groups in mountd sourc=
+e
+> * Large server-side procfs writes are split into mulitple writes due =
+to
+> stdio buffering in mountd and svcgssd sources, resulting in client
+> hangs.
+>=20
+> The patches in question solve this in as non-intrusive a manner as
+> possible, though I'm of course open to changing things up if you feel=
+ it
+> should be done otherwise.  So please let me know what you think, or i=
+f
+> it would be better for me to first go and open a bug, start a
+> discussion, etc.
+>=20
+>=20
+> Thanks,
+> Sean=20
+> N?????r??y????b?X??=C7=A7v?^?)=DE=BA{.n?+????{???"??^n?r???z?=1A??h??=
+???&??=1E?G???h?=03(?=E9=9A=8E?=DD=A2j"??=1A?=1Bm??????z?=DE=96???f???h=
+???~?m
