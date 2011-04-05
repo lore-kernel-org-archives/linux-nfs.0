@@ -1,41 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:54674 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752677Ab1DCRCq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Apr 2011 13:02:46 -0400
-Received: by yxs7 with SMTP id 7so1940614yxs.19
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Apr 2011 10:02:45 -0700 (PDT)
-In-Reply-To: <20110403151229.GA13399@merit.edu>
-References: <20110331165258.GA3048@merit.edu> <BANLkTinFftt0OiLYmY3cipXTtx1uTYoJPg@mail.gmail.com>
- <20110403151229.GA13399@merit.edu>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Mon, 4 Apr 2011 01:02:25 +0800
-Message-ID: <BANLkTimV2zSJ59b+JJLg2itTg5zzYhs30A@mail.gmail.com>
-Subject: Re: client hang in lock_flocks()
+Received: from daytona.panasas.com ([67.152.220.89]:47727 "EHLO
+	daytona.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752954Ab1DETqO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Apr 2011 15:46:14 -0400
+Message-ID: <4D9B7183.7000301@panasas.com>
+Date: Tue, 05 Apr 2011 12:46:11 -0700
+From: Benny Halevy <bhalevy@panasas.com>
 To: Jim Rees <rees@umich.edu>
-Cc: linux-nfs@vger.kernel.org, peter honeyman <honey@citi.umich.edu>
-Content-Type: text/plain; charset=UTF-8
+CC: Garth Gibson <garth@cs.cmu.edu>, linux-nfs@vger.kernel.org,
+        Andrew Klaassen <clawsoon@yahoo.com>
+Subject: Re: Prioritizing readdirplus/getattr/lookup
+References: <13701.83906.qm@web65411.mail.ac4.yahoo.com> <882887.75491.qm@web65412.mail.ac4.yahoo.com> <20110404230528.GA2624@merit.edu> <4D9A61C9.1030900@panasas.com> <20110405003944.GA31014@merit.edu> <4D9B195E.60108@panasas.com> <640DA909-32A8-43EF-AF0B-ACE0689AC0CD@cs.cmu.edu> <4D9B694D.1030609@panasas.com> <20110405193425.GA4263@merit.edu>
+In-Reply-To: <20110405193425.GA4263@merit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Hi, Jim,
+On 2011-04-05 12:34, Jim Rees wrote:
+> Benny Halevy wrote:
+> 
+>   At any rate, the broader issue is that the posix system call API assumes a
+>   local file system and is not network not cluster file-system aware.
+> 
+> It would be interesting to see someone who is affected by this implement the
+> readdirplus system call, modify ls to use it, and report the results.  I
+> suspect the system call won't go anywhere in linux without some evidence
+> that it solves a real problem for real users.
 
-On Sun, Apr 3, 2011 at 11:12 PM, Jim Rees <rees@umich.edu> wrote:
-> Peng Tao wrote:
->
->  Would you please send the complete trace log, or maybe open a bugzilla
->  entry and attach it there?
->
-> Here is everything that was reported to me.  I can ask for rpc info and a
-> tcpdump if that would be useful.
-Yes, rpc info is helpful. Please do
-'echo 0 > /proc/sys/sunrpc/rpc_debug'
-when the hang happens and upload /var/log/messages.
+How hard would it be to implement a micro-benchmark with pynfs to
+compare performance of readdir + stats vs. readdirplus as a first cut
+estimate of the benefits?
 
-And corresponding nfs.ko and sunrpc.ko would help analysis too.
+Benny
 
-
--- 
-Thanks,
--Bergwolf
